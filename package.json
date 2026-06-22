@@ -1,0 +1,53 @@
+{
+  "name": "axiom-protocol",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Axiom Protocol — verifiable intelligence layer for DeFi, built on 0G Chain. ERC-7857 iNFTs whose encrypted intelligence is re-keyed on every transfer via a real TEE-oracle, executing trading strategies via 0G Compute, persisting data on 0G Storage, settling on 0G Chain.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@11.5.1",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "pnpm -r run build",
+    "test": "pnpm -r run test",
+    "typecheck": "pnpm -r run typecheck",
+    "lint": "pnpm -r run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,sol,md,json,yml,yaml}\" --ignore-path .gitignore",
+    "format:check": "prettier --check \"**/*.{ts,tsx,sol,md,json,yml,yaml}\" --ignore-path .gitignore",
+    "clean": "pnpm -r exec rm -rf dist build out cache .turbo node_modules/.cache",
+    "prepare": "husky || true"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.5.4",
+    "prettier": "^3.3.3",
+    "eslint": "^9.10.0",
+    "@typescript-eslint/eslint-plugin": "^8.5.0",
+    "@typescript-eslint/parser": "^8.5.0",
+    "solhint": "^5.0.0",
+    "markdownlint-cli2": "^0.22.0",
+    "cspell": "^8.10.0",
+    "husky": "^9.1.4",
+    "lint-staged": "^15.2.8"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.sol": [
+      "solhint",
+      "prettier --write"
+    ],
+    "*.md": [
+      "markdownlint-cli2 --fix",
+      "prettier --write"
+    ]
+  }
+}

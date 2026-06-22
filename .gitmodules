@@ -1,0 +1,3 @@
+[submodule "apps/contracts/lib/0g-agent-nft"]
+	path = apps/contracts/lib/0g-agent-nft
+	url = https://github.com/0gfoundation/0g-agent-nft

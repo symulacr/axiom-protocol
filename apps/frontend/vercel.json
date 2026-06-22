@@ -1,0 +1,41 @@
+// Axiom Protocol — Vercel project configuration for the frontend.
+//
+// Drives the Vercel build/deploy pipeline for `beta.axiom-protocol.xyz` (and
+// PR previews). The frontend is a Vite + React 18 SPA — Vercel serves the
+// static `dist/` output and uses the `rewrites` block below to send every
+// non-asset path to `index.html` so the React Router routes
+// (`/agents/:tokenId`, `/vaults/:vaultId`, `/market`, `/history`,
+// `/settings`) work on a hard refresh. No Vercel Functions are used — the
+// long-lived Node backend (broker, oracle, indexer) lives on Fly.io, not
+// here.
+//
+// Canonical references:
+//   - Vercel project configuration (vercel.json schema, top-level fields):
+//     https://vercel.com/docs/project-configuration/vercel-json
+//   - Vercel framework presets — Vite (sets `framework: "vite"`, default
+//     buildCommand `vite build`, outputDirectory `dist`):
+//     https://vercel.com/docs/frameworks/vite
+//   - Vercel rewrites (SPA fallback from any path to /index.html):
+//     https://vercel.com/docs/project-configuration/rewrites
+//   - Vercel environment variables (set in dashboard, exposed at build
+//     time to Vite when prefixed `VITE_`):
+//     https://vercel.com/docs/environment-variables
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "buildCommand": "pnpm build",
+  "outputDirectory": "dist",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "regions": ["iad1"],
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    }
+  ]
+}

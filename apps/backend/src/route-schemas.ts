@@ -1,0 +1,85 @@
+import { z } from "zod";
+import { validateHex, validateAddress, toViemHex } from "@axiom/config/types/hex";
+
+/** Hex string Zod schema that outputs `0x${string}` (viem-compatible). */
+const hexViem = z.string().regex(/^0x[a-fA-F0-9]+$/, "Invalid hex").transform((v) => toViemHex(validateHex(v)));
+
+/** Address Zod schema that outputs `0x${string}` (viem-compatible). */
+const addressViem = z.string().regex(/^0x[a-fA-F0-9]{40}$/, "Invalid address").transform((v) => toViemHex(validateAddress(v)));
+
+export const chatCompletionsSchema = z.object({
+  model: z.string().min(1),
+  messages: z.array(z.object({ role: z.enum(["user", "assistant", "system"]), content: z.string() })).min(1),
+  max_tokens: z.number().int().positive().optional(),
+  temperature: z.number().optional(),
+  stream: z.boolean().optional(),
+});
+
+export const mintSchema = z.object({
+  agentNft: addressViem,
+  encryptedStrategyUri: hexViem,
+  sealedKey: hexViem,
+  owner: addressViem,
+});
+
+export const accessProofSchema = z.object({
+  dataHash: hexViem,
+  targetPubkey: hexViem,
+  nonce: z.union([z.string(), z.number()]),
+  proof: hexViem,
+  validUntil: z.union([z.string(), z.number()]),
+});
+
+export const transferBodySchema = z.object({
+  to: addressViem,
+  receiverPubKey64: hexViem,
+  accessProofNonce: z.union([z.string(), z.number()]).optional(),
+  dataHash: hexViem.optional(),
+  sealedKey: hexViem.optional(),
+  oldDataEncryptionKey: z.string().optional(),
+  oldDataUri: hexViem.optional(),
+  accessProof: accessProofSchema.optional(),
+});
+
+export const depositSchema = z.object({
+  valueWei: z.string().min(1),
+  depositor: addressViem.optional(),
+});
+
+export const strategySchema = z.object({
+  merkleRoot: hexViem,
+  dailyLimitWei: z.string().min(1),
+});
+
+export const paySchema = z.object({
+  amount: z.string().min(1),
+});
+
+export const computePaySchema = z.object({
+  provider: addressViem,
+  amount: z.string().min(1),
+});
+
+export const royaltySchema = z.object({
+  bps: z.number().int().min(0).max(10000),
+});
+
+export const eventBodySchema = z.object({
+  source: z.string().min(1),
+  eventName: z.string().min(1),
+  chainId: z.number(),
+  blockNumber: z.number(),
+  txHash: z.string().min(1),
+  logIndex: z.number(),
+  payload: z.record(z.string(), z.unknown()),
+});
+
+export const tickSchema = z.object({
+  vault: addressViem.optional(),
+  agentNft: addressViem.optional(),
+  agentTokenId: z.string().optional(),
+  computeModel: z.string().optional(),
+  strategy: z.string().optional(),
+  signalSource: z.string().optional(),
+  signalPayload: z.unknown().optional(),
+});

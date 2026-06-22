@@ -1,0 +1,56 @@
+name: Contracts CI
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "apps/contracts/**"
+      - ".github/workflows/contracts.yml"
+  pull_request:
+    paths:
+      - "apps/contracts/**"
+
+env:
+  FOUNDRY_PROFILE: ci
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Show Forge version
+        run: forge --version
+
+      - name: Check formatting
+        run: forge fmt --check
+        continue-on-error: true
+
+      - name: Build contracts
+        run: forge build --sizes
+
+      - name: Run tests
+        run: forge test -vvv
+
+      - name: Generate gas snapshot
+        run: forge snapshot
+
+      - name: Check gas regression
+        run: forge snapshot --diff || echo "No previous snapshot to compare against"
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install -g pnpm
+      - run: pnpm install
+      - run: pnpm -r run lint
+      - run: pnpm -r run typecheck

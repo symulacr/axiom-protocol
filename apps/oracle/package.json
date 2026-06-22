@@ -1,0 +1,55 @@
+{
+  "name": "@axiom/oracle",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Axiom TEE signer service — signs ERC-7857 OwnershipProofs and re-encrypts agent metadata",
+  "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./signer": {
+      "types": "./dist/signer.d.ts",
+      "default": "./dist/signer.js"
+    },
+    "./crypto/*": "./dist/crypto/*",
+    "./crypto/aes-gcm": {
+      "types": "./dist/crypto/aes-gcm.d.ts",
+      "default": "./dist/crypto/aes-gcm.js"
+    },
+    "./crypto/secp256k1": {
+      "types": "./dist/crypto/secp256k1.d.ts",
+      "default": "./dist/crypto/secp256k1.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc --project tsconfig.json",
+    "start": "node dist/index.js",
+    "prestart": "pnpm build",
+    "dev": "node --import tsx src/index.ts",
+    "test": "node --import tsx --test src/**/*.test.ts test/**/*.test.ts",
+    "lint": "eslint src",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@axiom/config": "workspace:*",
+    "@0gfoundation/0g-storage-ts-sdk": "^1.2.10",
+    "@types/cors": "^2.8.19",
+    "cors": "^2.8.6",
+    "eciesjs": "^0.4.14",
+    "ethereum-cryptography": "^2.2.1",
+    "ethers": "^6.16.0",
+    "express": "^4.21.0",
+    "express-rate-limit": "^7.5.1",
+    "helmet": "^8.2.0",
+    "viem": "^2.21.45"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.7.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.4"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

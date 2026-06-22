@@ -1,0 +1,131 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+out/
+cache/
+artifacts/
+typechain-types/
+coverage/
+coverage.json
+
+# Chrome headless (downloaded binary — never commit)
+chrome-headless-shell/
+
+# Foundry
+apps/contracts/cache/
+apps/contracts/out/
+apps/contracts/broadcast/
+
+# Next.js / Vite / React
+.next/
+.turbo/
+.vite/
+*.tsbuildinfo
+
+# Environment
+.env*
+!.env.example
+
+# Wallets and secrets — NEVER commit
+wallets/*.json
+wallets/.env
+*.pem
+*.key
+*.secret
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Test
+.nyc_output/
+
+# Husky
+.husky/_/
+apps/contracts/lib/
+
+# AI agent config — not project source code
+.claude/
+
+# Testing / benchmark infrastructure — not production code
+apps/bench/
+
+# Generated docs — benchmark campaign output
+docs/bench/
+
+# Generated audio — demo video voiceovers
+apps/bench/demo-video/public/*.mp3
+
+# Brand docs — narrative/pitch/tokenomics, not source code
+docs/brand/
+
+# Demo scripts — presentation materials, not source
+docs/demo-script*
+docs/demo-script-frames*
+
+# Security audit report — generated document
+docs/security/
+
+# Research findings — internal notes, not source
+docs/research/
+
+# Superseded deployment records
+docs/deployments/galileo-2026-06-14.md
+docs/deployments/payment-processor-galileo-2026-06-14.md
+
+# Submission form reference — not source code
+docs/submit-akindo.md
+
+# Generated fuzz bug log (13k+ lines, 723 KB)
+apps/contracts/test/BUGS.md
+
+# Testnet wallet addresses — operational config, not source
+wallets/ADDRESSES.md
+
+# Bench test artifacts — generated binary/sweep/perf data (never commit)
+.storage-sweep*/
+.stress-*/
+.perf-compare/
+.wallet-sweep/
+.five-wallet-race/
+.hammer/
+.compute-sweep/
+.logs/
+.tee-picker/
+.aristotle-precheck/
+.compute-fanout/
+.concurrent-mints/
+.context-limits/
+.da-chaos/
+.precompiles/
+.router-fallback/
+.skill-adoption/
+.e2e-cache/
+.finalize-redeploy-result.txt
+replay-after-payment-fix.json
+timing.json
+__pycache__/
+*.pyc
+
+# Bench generated JSON results (result files, not source)
+apps/bench/live-e2e/*.json
+apps/bench/live-e2e/**/result.json
+apps/bench/live-e2e/**/.roster.json
+apps/bench/**/all-ops.json

@@ -1,0 +1,62 @@
+{
+  "_meta": {
+    "description": "Minimal read-only ABI fragment for the AxiomAgentNFT contract (0G Galileo testnet, chainId 16602). Includes EIP-721 base getters + ERC-7857 iNFT extensions consumed by the dashboard.",
+    "source": "https://docs.soliditylang.org/en/latest/abi-spec.html",
+    "soliditySpec": "https://docs.soliditylang.org/en/latest/abi-spec.html",
+    "eip721": "https://eips.ethereum.org/EIPS/eip-721",
+    "eip7857": "https://eips.ethereum.org/EIPS/eip-7857",
+    "contractSource": "apps/contracts/src/AxiomAgentNFT.sol",
+    "wagmiDocs": "https://wagmi.sh/react/hooks/useReadContracts"
+  },
+  "abi": [
+    {
+      "type": "function",
+      "name": "name",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [{ "name": "", "type": "string" }]
+    },
+    {
+      "type": "function",
+      "name": "symbol",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [{ "name": "", "type": "string" }]
+    },
+    {
+      "type": "function",
+      "name": "ownerOf",
+      "stateMutability": "view",
+      "inputs": [{ "name": "tokenId", "type": "uint256" }],
+      "outputs": [{ "name": "owner", "type": "address" }]
+    },
+    {
+      "type": "function",
+      "name": "tokenURI",
+      "stateMutability": "view",
+      "inputs": [{ "name": "tokenId", "type": "uint256" }],
+      "outputs": [{ "name": "", "type": "string" }]
+    },
+    {
+      "type": "function",
+      "name": "creatorOf",
+      "stateMutability": "view",
+      "inputs": [{ "name": "tokenId", "type": "uint256" }],
+      "outputs": [{ "name": "creator", "type": "address" }]
+    },
+    {
+      "type": "function",
+      "name": "getDataHash",
+      "stateMutability": "view",
+      "inputs": [{ "name": "tokenId", "type": "uint256" }],
+      "outputs": [{ "name": "dataHash", "type": "bytes32" }]
+    },
+    {
+      "type": "function",
+      "name": "getSealedKey",
+      "stateMutability": "view",
+      "inputs": [{ "name": "tokenId", "type": "uint256" }],
+      "outputs": [{ "name": "sealedKey", "type": "bytes32" }]
+    }
+  ]
+}

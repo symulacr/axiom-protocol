@@ -1,0 +1,243 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+
+import {IAxiomAgentNFT} from "./interfaces/IAxiomAgentNFT.sol";
+
+/// @title AxiomPaymentProcessor
+/// @notice Routes payments to agent creators, compute providers, and the protocol treasury.
+/// @dev Pay-for-agent pulls a configurable ERC-20 stable (USDC.e / USDG) from the payer and
+///      credits the creator's withdrawable balance. The creator pulls funds via
+///      `withdrawAgentEarnings()`. Standalone, non-upgradeable.
+///
+///      References:
+///        - ERC-20 spec: https://eips.ethereum.org/EIPS/eip-20
+///        - OpenZeppelin SafeERC20 (handles non-standard ERC-20 tokens that don't return bool):
+///          https://docs.openzeppelin.com/contracts/5.x/api/token/erc20#SafeERC20
+contract AxiomPaymentProcessor is Ownable, Pausable, ReentrancyGuard {
+    using SafeERC20 for IERC20;
+
+    // ─── Custom errors ────────────────────────────────────────────
+    error ZeroAddress();
+    error ZeroAmount();
+    error NoEarnings();
+    error NotCreator();
+    error InvalidBps();
+    error AgentCreatorNotRegistered();
+
+    // ─── Events ──────────────────────────────────────────────────
+    event PaymentProcessed(
+        uint256 indexed agentTokenId,
+        address indexed payer,
+        address indexed creator,
+        uint256 amount,
+        uint256 creatorCut,
+        uint256 protocolCut
+    );
+    event ComputeProviderPaid(address indexed provider, uint256 amount);
+    event EarningsWithdrawn(address indexed creator, uint256 amount);
+    event RoyaltySet(uint256 indexed agentTokenId, uint256 bps);
+    event ProtocolTreasuryUpdated(address indexed oldTreasury, address indexed newTreasury);
+    event ProtocolFeeBpsUpdated(uint256 oldBps, uint256 newBps);
+    event PaymentTokenUpdated(address indexed oldToken, address indexed newToken);
+
+    /// @notice Basis points denominator (10000 = 100%)
+    uint256 public constant BPS_DENOMINATOR = 10_000;
+
+    /// @custom:storage-location erc7201:agent.storage.AxiomPaymentProcessor
+    struct PaymentProcessorStorage {
+        address protocolTreasury;
+        IERC20 paymentToken;               // ERC-20 stable (USDC.e / USDG); non-immutable for migration
+        uint256 protocolFeeBps;            // default protocol cut on every payForAgent
+        mapping(uint256 => uint256) agentRoyaltyBps;  // optional override per agent
+        mapping(uint256 => bool) agentRoyaltyBpsSet;  // whether royalty was explicitly set
+        mapping(address => uint256) agentEarnings;     // creator earnings (pull)
+    }
+
+    // keccak256(abi.encode(uint256(keccak256("agent.storage.AxiomPaymentProcessor")) - 1)) & ~bytes32(uint256(0xff))
+    // Canonical ERC-7201 formula (OZ v5). Computed with `cast`:
+    //   cast keccak $(cast abi-encode "f(uint256)" 0xf7a2d18dcc8f25e59e9ab331cff461df76ed6e563fd0924360d2d541d6aa357b)
+    //   → 0xb6e9ac8a...cebc63, masked to 0xb6e9ac8a...cebc00
+    bytes32 private constant STORAGE_LOCATION = 0xb6e9ac8ab7d5307044651d01576943b58a3563d54e8f2be64d1601b1a6cebc00;
+
+    function _getStorage() private pure returns (PaymentProcessorStorage storage $) {
+        assembly {
+            $.slot := STORAGE_LOCATION
+        }
+    }
+
+    IAxiomAgentNFT public immutable AXIOM_NFT;
+
+    modifier onlyAgentCreator(uint256 agentTokenId) {
+        address creator = IAxiomAgentNFT(AXIOM_NFT).creatorOf(agentTokenId);
+        if (creator != msg.sender) revert NotCreator();
+        _;
+    }
+
+    /// @param nftAddr            Address of the AxiomAgentNFT contract (used to resolve agent creators)
+    /// @param paymentTokenAddr   ERC-20 stable token used for payForAgent (USDC.e / USDG on 0G).
+    ///                           Must not be address(0). Setter `setPaymentToken` allows migration later.
+    /// @param treasuryAddr       Protocol treasury; receives the protocolCut on every payForAgent
+    /// @param protocolFeeBps_    Default protocol cut in basis points (0..10000)
+    /// @param initialOwner       Ownable admin (can set treasury, fee bps, pause, rotate payment token)
+    constructor(
+        address nftAddr,
+        address paymentTokenAddr,
+        address treasuryAddr,
+        uint256 protocolFeeBps_,
+        address initialOwner
+    ) Ownable(initialOwner) {
+        if (nftAddr == address(0)) revert ZeroAddress();
+        if (paymentTokenAddr == address(0)) revert ZeroAddress();
+        if (treasuryAddr == address(0)) revert ZeroAddress();
+        if (protocolFeeBps_ > BPS_DENOMINATOR) revert InvalidBps();
+        AXIOM_NFT = IAxiomAgentNFT(nftAddr);
+        PaymentProcessorStorage storage $ = _getStorage();
+        $.protocolTreasury = treasuryAddr;
+        $.protocolFeeBps = protocolFeeBps_;
+        $.paymentToken = IERC20(paymentTokenAddr);
+    }
+
+    // ─── Setters (onlyOwner) ─────────────────────────────────────
+    function setProtocolTreasury(address newTreasury) external onlyOwner {
+        if (newTreasury == address(0)) revert ZeroAddress();
+        address old = _getStorage().protocolTreasury;
+        _getStorage().protocolTreasury = newTreasury;
+        emit ProtocolTreasuryUpdated(old, newTreasury);
+    }
+
+    function setProtocolFeeBps(uint256 newBps) external onlyOwner {
+        if (newBps > BPS_DENOMINATOR) revert InvalidBps();
+        uint256 old = _getStorage().protocolFeeBps;
+        _getStorage().protocolFeeBps = newBps;
+        emit ProtocolFeeBpsUpdated(old, newBps);
+    }
+
+    /// @notice Rotate the payment ERC-20 (e.g. migrate from USDC.e to USDG). Only callable by owner.
+    /// @dev    The new token must be a real IERC20 implementation. No balance migration: the
+    ///         owner is expected to first drain the old token (sweep earnings via a migration
+    ///         payout to creators) before calling this. New payments go to the new token.
+    function setPaymentToken(address newPaymentToken) external onlyOwner {
+        if (newPaymentToken == address(0)) revert ZeroAddress();
+        IERC20 old = _getStorage().paymentToken;
+        _getStorage().paymentToken = IERC20(newPaymentToken);
+        emit PaymentTokenUpdated(address(old), newPaymentToken);
+    }
+
+    function setRoyaltyBps(uint256 agentTokenId, uint256 newBps) external onlyAgentCreator(agentTokenId) {
+        if (newBps > BPS_DENOMINATOR) revert InvalidBps();
+        PaymentProcessorStorage storage $ = _getStorage();
+        $.agentRoyaltyBps[agentTokenId] = newBps;
+        $.agentRoyaltyBpsSet[agentTokenId] = true;
+        emit RoyaltySet(agentTokenId, newBps);
+    }
+
+    // ─── Views ──────────────────────────────────────────────────
+    function protocolTreasury() external view returns (address) {
+        return _getStorage().protocolTreasury;
+    }
+
+    function protocolFeeBps() external view returns (uint256) {
+        return _getStorage().protocolFeeBps;
+    }
+
+    function paymentToken() external view returns (address) {
+        return address(_getStorage().paymentToken);
+    }
+
+    function royaltyBpsOf(uint256 agentTokenId) external view returns (uint256) {
+        return _getStorage().agentRoyaltyBps[agentTokenId];
+    }
+
+    function royaltyBpsSet(uint256 agentTokenId) external view returns (bool) {
+        return _getStorage().agentRoyaltyBpsSet[agentTokenId];
+    }
+
+    function agentEarningsOf(address creator) external view returns (uint256) {
+        return _getStorage().agentEarnings[creator];
+    }
+
+    // ─── Pay for agent (caller pays; ERC-20 stable) ──────────────
+    /// @notice Pay for an agent's service. Splits `amount` of `paymentToken` to the creator
+    ///         (royalty, credited to their withdrawable balance) and to the protocol treasury
+    ///         (protocolCut, forwarded immediately to the treasury address).
+    /// @dev    The payer must approve this contract for `amount` of `paymentToken` before calling.
+    ///         CEI ordering: state is updated (creator credited) BEFORE the external token call.
+    ///         The external call uses OpenZeppelin SafeERC20, which reverts with a custom error
+    ///         on failure. See: https://docs.openzeppelin.com/contracts/5.x/api/token/erc20#SafeERC20
+    function payForAgent(uint256 agentTokenId, uint256 amount) external nonReentrant whenNotPaused {
+        if (amount == 0) revert ZeroAmount();
+        PaymentProcessorStorage storage $ = _getStorage();
+        IERC20 token = $.paymentToken;
+
+        // Determine the creator and royalty bps (per-agent override, else default protocol fee)
+        address creator = IAxiomAgentNFT(AXIOM_NFT).creatorOf(agentTokenId);
+        if (creator == address(0)) revert AgentCreatorNotRegistered();
+        uint256 royaltyBps = $.agentRoyaltyBps[agentTokenId];
+        if (!$.agentRoyaltyBpsSet[agentTokenId]) royaltyBps = $.protocolFeeBps;
+
+        uint256 creatorCut = (amount * royaltyBps) / BPS_DENOMINATOR;
+        uint256 protocolCut = amount - creatorCut;
+
+        // CEI: state update first (credit creator's withdrawable balance)
+        if (creatorCut > 0) {
+            $.agentEarnings[creator] += creatorCut;
+        }
+
+        // External call: pull the full amount from the payer (one transferFrom is cheaper than
+        // two transfers, and we know exactly the amount the contract is taking custody of).
+        // SafeERC20 reverts with SafeERC20FailedOperation(token) on failure (e.g. insufficient
+        // allowance, insufficient balance, fee-on-transfer, or non-conforming ERC-20). The
+        // credited earnings will still be on the books, but the tx reverts, so atomicity
+        // is preserved at the call site.
+        // See: https://docs.openzeppelin.com/contracts/5.x/api/token/erc20#SafeERC20-safeTransferFrom-address-address-uint256-
+        token.safeTransferFrom(msg.sender, address(this), amount);
+
+        // Forward the protocol's cut to the treasury in the same call.
+        if (protocolCut > 0) {
+            token.safeTransfer($.protocolTreasury, protocolCut);
+        }
+
+        emit PaymentProcessed(agentTokenId, msg.sender, creator, amount, creatorCut, protocolCut);
+    }
+
+    /// @notice Pay a compute provider (protocol-level, no creator split)
+    /// @dev    The protocol operator approves this contract to spend `amount` of `paymentToken`,
+    ///         then calls this function. The full `amount` is forwarded to `provider`.
+    function payComputeProvider(address provider, uint256 amount) external nonReentrant whenNotPaused {
+        if (provider == address(0)) revert ZeroAddress();
+        if (amount == 0) revert ZeroAmount();
+        _getStorage().paymentToken.safeTransferFrom(msg.sender, provider, amount);
+        emit ComputeProviderPaid(provider, amount);
+    }
+
+    /// @notice Creator withdraws accumulated earnings in the configured payment token.
+    /// @dev    No native ETH is held or moved by this contract. The payment token is the
+    ///         only settlement asset. The creator must have `agentEarnings[msg.sender] > 0`.
+    ///         SafeERC20.safeTransfer handles both standard and non-conforming ERC-20 tokens.
+    function withdrawAgentEarnings() external nonReentrant {
+        PaymentProcessorStorage storage $ = _getStorage();
+        uint256 amount = $.agentEarnings[msg.sender];
+        if (amount == 0) revert NoEarnings();
+        // CEI: zero out the balance BEFORE the external call so a re-entrant callback cannot
+        // double-spend the same earnings.
+        $.agentEarnings[msg.sender] = 0;
+        emit EarningsWithdrawn(msg.sender, amount);
+        // Forward the payment token. See: https://docs.openzeppelin.com/contracts/5.x/api/token/erc20#SafeERC20-safeTransfer-address-uint256-
+        $.paymentToken.safeTransfer(msg.sender, amount);
+    }
+
+    // ─── Pause (onlyOwner) ───────────────────────────────────────
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    function unpause() external onlyOwner {
+        _unpause();
+    }
+}

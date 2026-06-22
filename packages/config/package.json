@@ -1,0 +1,35 @@
+{
+  "name": "@axiom/config",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared configuration for the Axiom Protocol — env loader, network defaults, deployed addresses.",
+  "main": "./dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./env": "./dist/env.js",
+    "./networks": "./dist/networks.js",
+    "./addresses": "./dist/addresses.js",
+    "./types/hex": "./dist/types/hex.js",
+    "./types/bigint": "./dist/types/bigint.js",
+    "./types/ethers": "./dist/types/ethers.js",
+    "./types/collections": "./dist/types/collections.js",
+    "./types/schemas": "./dist/types/schemas.js",
+    "./types/contract": "./dist/types/contract.js"
+  },
+  "scripts": {
+    "build": "tsc --project tsconfig.json",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "ethers": "^6.16.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.0",
+    "typescript": "^5.5.4"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
