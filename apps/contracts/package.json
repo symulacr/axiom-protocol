@@ -1,0 +1,45 @@
+{
+  "name": "@axiom/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Axiom Protocol smart contracts — AxiomAgentNFT (ERC-7857), AxiomStrategyVault, AxiomPaymentProcessor, AxiomTeeVerifier",
+  "license": "MIT",
+  "main": "index.js",
+  "scripts": {
+    "build": "forge build",
+    "test": "forge test -vv",
+    "coverage": "forge coverage",
+    "format": "forge fmt",
+    "format:check": "forge fmt --check",
+    "lint:sol": "solhint 'src/**/*.sol' 'test/**/*.sol' 'script/**/*.sol'",
+    "lint:fix": "solhint --fix 'src/**/*.sol' 'test/**/*.sol' 'script/**/*.sol'",
+    "lint": "forge fmt --check",
+    "typecheck": "tsc --noEmit",
+    "deploy:galileo": "forge script script/Deploy.s.sol --rpc-url ${OG_RPC_URL:-https://evmrpc-testnet.0g.ai} --broadcast --slow",
+    "verify:galileo": "hardhat verify --network galileo",
+    "deploy:mainnet": "forge script script/Deploy.s.sol --rpc-url ${OG_RPC_URL:-https://evmrpc.0g.ai} --broadcast --slow",
+    "verify:mainnet": "hardhat verify --network mainnet"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "5.0.2",
+    "@openzeppelin/contracts-upgradeable": "5.0.2"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@nomicfoundation/hardhat-ethers": "^3.0.8",
+    "@nomicfoundation/hardhat-verify": "^2.0.10",
+    "@typechain/ethers-v6": "^0.5.1",
+    "@typechain/hardhat": "^9.1.0",
+    "@types/chai": "^4.3.16",
+    "@types/mocha": "^10.0.7",
+    "@types/node": "^22.0.0",
+    "chai": "^4.5.0",
+    "dotenv": "^16.4.5",
+    "ethers": "^6.13.4",
+    "hardhat": "^2.22.17",
+    "solhint": "^5.0.0",
+    "ts-node": "^10.9.2",
+    "typechain": "^8.3.2",
+    "typescript": "^5.5.4"
+  }
+}

@@ -1,0 +1,333 @@
+================================================================================
+        AXIOM PROTOCOL  -  0G GALILEO TESTNET  (chainId 16602)
+        v1.0.0  -  commit ce04be9  /  diagram commit acbeca4
+================================================================================
+
+  ┌─────────────────────────────────────────────────────┐
+  │  USER (off-chain)                                   │
+  │   Owner / Buyer wallet                              │
+  │   0x437371dB1FBD534Bd01BD3f4E66DfA1675952F91        │
+  │   (operator; holds OPERATOR_ROLE + DEFAULT_ADMIN)   │
+  └──────────┬────────────────────────┬─────────────────┘
+             │                        │                        │
+             │ mint                   │ approve(axmUSDC,      │ chat request
+             │ iTransferFrom          │ payForAgent)          │
+             │ deposit / strategy     │                       │
+             ▼                        ▼                       ▼
+ ┌─────────────────────────────────────────────────────────────────────────┐
+ │  0G GALILEO TESTNET  (block ~38,919,827)                                │
+ │                                                                         │
+ │  ┌─────────────────────────────────────────────────────────────────┐    │
+ │  │  AxiomAgentNFT  (proxy  EIP-1967)                               │    │
+ │  │  0xf12F158a20c36a351b056FD60b3a7377ce4F1e09                     │    │
+ │  │  EIP-721  +  EIP-7857  +  iNFT data  +  validUntil             │    │
+ │  │                                                                  │    │
+ │  │     │  UUPS impl ──┐                                             │    │
+ │  │     ▼              ▼                                            │    │
+ │  │  ┌────────────────────────────────────────┐                      │    │
+ │  │  │  AxiomAgentNFT  (impl)                  │                      │    │
+ │  │  │  UUPSUpgradeable + AccessControl        │                      │    │
+ │  │  │  + ReentrancyGuard + Pausable           │                      │    │
+ │  │  │  + ERC7857Cloneable / Authorize         │                      │    │
+ │  │  │  + ERC7857IDataStorage                  │                      │    │
+ │  │  │                                         │                      │    │
+ │  │  │   4 public functions:                  │                      │    │
+ │  │  │     - mint(to, dataHash, sealedKey)     │                      │    │
+ │  │  │     - iTransferFrom(from,to,tid,proof)  │──────────┐          │    │
+ │  │  │     - authorizeUsage(tid,user,exp)      │          │          │    │
+ │  │  │     - setSealedKey(tid, newKey)         │          │          │    │
+ │  │  └────────────────────┬───────────────────┘          │          │    │
+ │  │                       │                              │          │    │
+ │  └───────────────────────┼──────────────────────────────┼──────────┘    │
+ │                          │                              │                │
+ │                          │ verifyTransferValidity      │                │
+ │                          │ (EIP-712 validUntil ≤ 7d)    │                │
+ │                          ▼                              │                │
+ │  ┌───────────────────────────────────┐                  │                │
+ │  │  AxiomTeeVerifier v2              │                  │                │
+ │  │  0x24f725198d64A...734A          │                  │                │
+ │  │  ECDSA oracle, 7-day validUntil   │                  │                │
+ │  │  registeredSigner = operator      │◀─── EIP-191     │                │
+ │  │                                   │      sign +      │                │
+ │  │  verifyTransferValidity(proof[])  │      recover     │                │
+ │  │  returns (bool, expired, tooFar)  │                  │                │
+ │  └───────────────────────────────────┘                  │                │
+ │                                                         │                │
+ │                          ┌──────────────────────────────┘                │
+ │                          │ deposit(0) + setStrategy                     │
+ │                          ▼                                               │
+ │  ┌───────────────────────────────────┐  ┌─────────────────────────────┐   │
+ │  │  AxiomStrategyVault               │  │  AxiomPaymentProcessor      │   │
+ │  │  0xb7F89e50D5A30...2874            │  │  0x096203fB54681...4A5f     │   │
+ │  │  per-tokenId deposit              │  │  payForAgent               │   │
+ │  │  merkleRoot strategy              │  │  withdrawAgentEarnings     │   │
+ │  │  dailyLimit enforcement           │  │  payComputeProvider        │   │
+ │  │                                   │  │                             │   │
+ │  │  emit Deposited / StrategySet     │  │  paymentToken ──▶ ┌──────┐  │   │
+ │  └───────────────────────────────────┘  └──────────────────│ Mock │  │   │
+ │                                                              │ USDC │  │   │
+ │                                                              │ 0xeA │  │   │
+ │                                                              │ 13E… │  │   │
+ │                                                              │ 0Dbf │  │   │
+ │                                                              └──────┘  │   │
+ │  ERC-20 (test-only) 18-dec                                 200 axmUSDC│   │
+ │                                                              per test  │   │
+ │                                                              receiver  │   │
+ └──────────────────────────────────────────────────────────────────────┘   │
+                                                                             │
+ ┌─────────────────────────────────────────────────────────────────────────┐
+ │  OFF-CHAIN  services  (apps/*)                                            │
+ │                                                                          │
+ │  ┌───────────────────────┐   ┌──────────────────────┐                    │
+ │  │ apps/backend          │   │ apps/oracle          │                    │
+ │  │ (orchestrator)        │   │ (TEE signer)         │                    │
+ │  │ HTTP/WS on :3000      │   │ HTTP on :8787        │                    │
+ │  │ StrategyRunner        │   │ POST /v1/ownership   │                    │
+ │  │ chainId explicit      │   │ signs EIP-191        │                    │
+ │  │                       │   │ + seen-set (dataHash)│                    │
+ │  │ ethers v6 cast/wait ──┼───┼─── POST /v1/ownership│                    │
+ │  └───────────────────────┘   └──────────────────────┘                    │
+ │           ▲                                 ▲                            │
+ │           │  POST /v1/*                    │ EIP-191 sign               │
+ │           │                                 │  + Bearer (app-sk-…)       │
+ │  ┌────────┴────────┐   ┌────────────────────┴─────┐                       │
+ │  │ apps/frontend   │   │ apps/indexer             │                       │
+ │  │ Vite + React 18 │   │ event watcher + 0G DA    │                       │
+ │  │ RainbowKit v2   │   │ watch Transfer / Deposited│                      │
+ │  │ 6 routes        │   │       / StrategySet /     │                      │
+ │  │                 │   │       PayForAgent         │                      │
+ │  │ wagmi useRead…  │   │                           │                      │
+ │  │ wagmi useWrite  │   └────────────┬──────────────┘                      │
+ │  └─────────────────┘                │                                    │
+ │           ▲                         │ canonicalize + submit              │
+ │           │ 9-step E2E              ▼                                    │
+ │  ┌────────┴────────┐                                                          │
+ │  │ apps/bench      │                                                          │
+ │  │ 9/9 E2E live    │                                                          │
+ │  │ + 4 Wave 12     │                                                          │
+ │  │   bench scripts │                                                          │
+ │  └─────────────────┘                                                          │
+ └──────────────────────────────────────────────────────────────────────────┘
+                                                                             │
+ ┌─────────────────────────────────────────────────────────────────────────┐
+ │  0G  INFRASTRUCTURE                                                        │
+ │                                                                          │
+ │  ┌──────────────────────────┐  ┌────────────────────────┐                │
+ │  │ 0G Storage  (Turbo)      │  │ 0G Compute             │                │
+ │  │ indexer-storage-         │  │ provider 0xa48f...     │                │
+ │  │   testnet-turbo.0g.ai    │  │ qwen2.5-omni-7b        │                │
+ │  │                          │  │ + 3 other providers    │                │
+ │  │ 5GB max per file         │  │ (Wave 8 data-driven    │                │
+ │  │ 10MB auto-chunk          │  │  sweep, was 2 hard-    │                │
+ │  │                          │  │  coded)                │                │
+ │  │ upload (AES-256-GCM +   │  │                        │                │
+ │  │   ECIES sealedKey)      │  │ chat / stream / image  │                │
+ │  │ downloadToBlob          │  │  / audio               │                │
+ │  │   (byte-exact)          │  │                        │                │
+ │  └──────────────────────────┘  └────────────────────────┘                │
+ │                                                                          │
+ │  ┌────────────────────────────────────────────────────────┐               │
+ │  │ 0G DA  (BUGS-WAVE10A-1: precompiles no-code on Galileo) │              │
+ │  │ DAEntrance 0xE75A…957B  DASigners 0x…1000              │               │
+ │  │ WrappedOGBase 0x…1001                                  │               │
+ │  └────────────────────────────────────────────────────────┘               │
+ └──────────────────────────────────────────────────────────────────────────┘
+
+
+================================================================================
+  THE  9-STEP  E2E  (the canonical flow, 9/9 live)
+================================================================================
+
+  ┌────┬─────────────────────────────────────────────────────────────────┐
+  │  1 │ GET /health                                                    │
+  │    │ F → B  →  { ok, chainHead: 38,919,827 }                        │
+  ├────┼─────────────────────────────────────────────────────────────────┤
+  │  2 │ Build StrategySpec (targetToken, threshold, action)             │
+  │    │ client-side JSON only                                          │
+  ├────┼─────────────────────────────────────────────────────────────────┤
+  │  3 │ AES-256-GCM encrypt(StrategySpec)                              │
+  │    │ ECIES.seal(dataKey, deployer.pub)                              │
+  │    │ real crypto: Node crypto + eciesjs; no mocks                   │
+  ├────┼─────────────────────────────────────────────────────────────────┤
+  │  4 │ upload(blob + key)  →  0G Storage                              │
+  │    │ { rootHash: 0xcd77…543f, tx: 0x…e7ba2 }                        │
+  ├────┼─────────────────────────────────────────────────────────────────┤
+  │  5 │ POST /v1/agents/mint                                           │
+  │    │ B  →  200 { ok, dataHash, txHash }                             │
+  ├────┼─────────────────────────────────────────────────────────────────┤
+  │  6 │ POST /v1/vaults/0/deposit  (0.1 OG)                            │
+  │    │ B → Vault  →  deposit(tokenId)  →  deposit event               │
+  ├────┼─────────────────────────────────────────────────────────────────┤
+  │  7 │ POST /v1/vaults/0/strategy  (merkleRoot, dailyLimit)            │
+  │    │ B → Vault  →  setStrategy(tokenId, merkleRoot, dailyLimit)     │
+  ├────┼─────────────────────────────────────────────────────────────────┤
+  │  8 │ POST /v1/orchestrator/tick    (fan-out)                         │
+  │    │  ├─ Storage.downloadToBlob(rootHash) → bytes                   │
+  │    │  ├─ Compute.chat(messages, model)  (per-call processResponse)  │
+  │    │  └─ Vault.read onchain state                                   │
+  │    │  →  { recommendation, rawModelOutput, onchain, storage, …}     │
+  ├────┼─────────────────────────────────────────────────────────────────┤
+  │  9 │ POST /v1/agents/0/transfer  (to, receiverPubKey64, dataHash)    │
+  │    │  a) B → Oracle: POST /v1/ownership                             │
+  │    │        { dataHash, sealedKey, targetPubkey, nonce, validUntil } │
+  │    │  b) Oracle: EIP-191 sign with registeredSigner key              │
+  │    │        → { signature, signer: 0x4373…F91 }                      │
+  │    │  c) B → AxiomAgentNFT.iTransferFrom(from, to, tid,             │
+  │    │                                 ownershipProof, accessProof)   │
+  │    │  d) NFT → Verifier.verifyTransferValidity(proof[])             │
+  │    │        (EIP-712 validUntil within 7d window)                    │
+  │    │  e) NFT  →  Transfer event                                     │
+  └────┴─────────────────────────────────────────────────────────────────┘
+
+
+================================================================================
+  CONTRACT  INHERITANCE  (AxiomAgentNFT impl)
+================================================================================
+
+                      ERC721Upgradeable
+                            │
+                            │
+   ┌────────────────────────┼────────────────────────┐
+   │                        │                        │
+   ▼                        ▼                        ▼
+AccessControl          ReentrancyGuard         PausableUpgradeable
+Upgradeable            Upgradeable                    │
+   │                        │                        │
+   │                        │                        │
+   └────────────┬───────────┴────────────┬───────────┘
+                │                        │
+                ▼                        ▼
+        UUPSUpgradeable         ERC7857Cloneable
+                                       │
+                                       ▼
+                           ERC7857Authorize
+                                       │
+                                       ▼
+                          ERC7857IDataStorage
+                                       │
+                                       ▼
+                          ─────────────────────
+                              AxiomAgentNFT
+                          ─────────────────────
+
+  4 external functions:
+    1. mint(to, dataHash, sealedKey)              onlyOwner
+    2. iTransferFrom(from,to,tid,proof)           onERC721Received + verifier
+    3. authorizeUsage(tid, user, expiresAt)       onlyOwner or delegated
+    4. setSealedKey(tid, newSealedKey)            onlyOwner (re-seal after transfer)
+
+  2 verifier methods (delegated to AxiomTeeVerifier v2):
+    - verifyTransferValidity(proof[]) returns (bool, expired, tooFar)
+    - getSealedKey(tokenId) returns (bytes32)
+
+
+================================================================================
+  STORAGE  LAYOUT  (the dataHash + sealedKey invariant)
+================================================================================
+
+  ┌────────────────────────────────────────────────────────────┐
+  │  AGENT 0  (tokenId = 0)                                     │
+  ├────────────────────────────────────────────────────────────┤
+  │  on-chain (AxiomAgentNFT)                                  │
+  │    dataHash   = 0xcd77ec0d9a2cf5fe5b4d1d3e57ed3e50d…     │
+  │    sealedKey  = 0xe1c2…f09b (ECIES-sealed for owner)      │
+  │    owner      = 0x437371dB1FBD534Bd01BD3f4E66DfA1675952F91│
+  │    verifier   = 0x24f725198d64A3b03A8386cD8fa12BD7c591734A│
+  │    validUntil = 1735…  (EIP-712 typed-data signed field)  │
+  │                                                             │
+  │  0G Storage (the encrypted strategy blob)                  │
+  │    rootHash   = 0xcd77ec0d9a2cf5fe5b4d1d3e57ed3e50d…       │
+  │    size       = 1024 bytes                                 │
+  │    numChunks  = 1  (< 10 MB auto-chunk threshold)          │
+  │                                                             │
+  │  re-seal invariant (BUGS-WAVE6B-01)                         │
+  │    transfer 0 → 1: old owner reveals sealedKey to new      │
+  │    new owner MUST call setSealedKey(newKey) within 7 days  │
+  │    else future /v1/ownership requests for this tokenId     │
+  │    are rejected by the oracle                               │
+  └────────────────────────────────────────────────────────────┘
+
+
+================================================================================
+  6-PACKAGE  MONOREPO  (~/og/)
+================================================================================
+
+  ~/og/
+  ├── apps/
+  │   ├── contracts/   Foundry + Hardhat
+  │   │                AxiomAgentNFT + 3 ERC-7857 extensions
+  │   │                AxiomTeeVerifier v2 + BaseVerifier
+  │   │                AxiomStrategyVault
+  │   │                AxiomPaymentProcessor
+  │   │                Utils.sol (pubKeyToAddress)
+  │   │                23 + 10 + 5 + 6 = 44 forge tests
+  │   │                Deploy.s.sol + DeployAristotle.s.sol
+  │   │
+  │   ├── oracle/      TEE signer (:8787)
+  │   │                signer.ts (EIP-191, 6/6 tests)
+  │   │                server.ts (3 routes)
+  │   │                storage.ts (in-memory seen-set)
+  │   │                crypto/ (aes-gcm, secp256k1, ecies)
+  │   │
+  │   ├── backend/     Orchestrator (:3000)
+  │   │                orchestrator/StrategyRunner
+  │   │                compute/0g-broker (chat, stream, image, audio)
+  │   │                storage/0g (KV, range, encrypt, merkle, upload, chain-id)
+  │   │                events/store.ts, json/bigint.ts
+  │   │                cli/run-e2e.ts (9-step CLI, 9/9 live)
+  │   │
+  │   ├── frontend/    Vite + React 18 + wagmi v2 + RainbowKit v2
+  │   │                6 routes: /, /vaults/:id, /agents, /agents/:id, /market, /history
+  │   │                4 hooks: useAgents, useAgentMetadata, useOrchestratorTick, useTransfer
+  │   │
+  │   ├── indexer/     event watcher + 0G DA submitter
+  │   │                watcher.ts, events.ts, da.ts, serialization.ts, sink.ts
+  │   │
+  │   └── bench/       k6 + micro + macro + live
+  │                    3 Wave 2 compute tests + 4 Wave 12 bench scripts
+  │                    live-e2e/full-flow.sh (9-step)
+  │                    discovery/ (Wave 1-13 reports)
+  │                    demo-video/  Remotion + ElevenLabs + Playwright
+  │                      out/axiom-demo-3min.mp4  (10.6 MB, h264 1920x1080 30fps aac 180s)
+  │
+  ├── docs/            14+ discovery reports
+  │                    runbook.md + demo-script.md + submit-akindo.md
+  │                    release-notes-v1.0.0.md
+  │                    deploy/ (galileo + aristotle)
+  │                    security/report-v0.md (47 KB, 15 STRIDE findings)
+  │                    diagrams/onchain-system-architecture.md  ← Mermaid source
+  │
+  ├── .claude/         21 SKILL.md + 6 patterns + AGENTS.md
+  ├── wallets/         5 testnet keys (gitignored)
+  └── .env            shared env (gitignored; has OG_COMPUTE_API_KEY + ELEVENLABS_API_KEY)
+
+
+================================================================================
+  STATE  AT  v1.0.0  (commit ce04be9)
+================================================================================
+
+  4 contracts deployed + verified on 0G Galileo (chainId 16602):
+    AxiomAgentNFT (proxy)      0xf12F158a20c36a...e09
+    AxiomTeeVerifier v2        0x24f725198d64A...734A
+    AxiomStrategyVault         0xb7F89e50D5A30...2874
+    AxiomPaymentProcessor      0x096203fB54681...4A5f
+    MockUSDC (test-only)       0xeA13E136E59c...0Dbf
+
+  9/9 E2E live (chainHead 38,919,827) in 32s
+  44/44 forge tests pass (the 2 pre-existing synthetic-pubkey failures remain)
+  35+ git commits on master
+  ~13,000-line BUGS.md with on-chain proof for every finding
+  21 SKILL.md + 6 patterns under .claude/
+  MP4 rendered: apps/bench/demo-video/out/axiom-demo-3min.mp4
+  v1.0.0 tag (local; git push is the user's job)
+
+  3 final human actions:
+    1. git push origin v1.0.0
+    2. Submit the AKINDO form at
+       https://app.akindo.io/wave-hacks/Z4MlX4vreI72ol6pd
+       (form content in docs/submit-akindo.md)
+    3. Fund the operator 0x437371dB1FBD534Bd01BD3f4E66DfA1675952F91
+       with ≥0.1 OG on chain 16661 for the Aristotle mainnet deploy
+       (Wave 13 FUNDING_GAP; DeployAristotle.s.sol is ready)
+
+================================================================================

@@ -1,0 +1,34 @@
+{
+  "name": "@axiom/indexer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Axiom on-chain event indexer — polls 0G Galileo testnet for AxiomAgentNFT + AxiomStrategyVault events and emits them to a sink. Starter for the MW17 DA indexer (future: submit events to 0G DA).",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc --project tsconfig.json",
+    "start": "node dist/index.js",
+    "dev": "node --import tsx src/index.ts",
+    "test": "node --import tsx --test src/**/*.test.ts",
+    "lint": "eslint src",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@0gfoundation/0g-storage-ts-sdk": "^1.2.10",
+    "@axiom/config": "workspace:*",
+    "@grpc/grpc-js": "^1.14.4",
+    "@grpc/proto-loader": "^0.8.1",
+    "ethers": "^6.16.0",
+    "viem": "^2.21.45",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.0",
+    "@types/ws": "^8.5.13",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.4"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

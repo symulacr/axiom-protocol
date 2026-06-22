@@ -1,0 +1,30 @@
+version: "3.8"
+services:
+  indexer:
+    build:
+      context: ./
+      dockerfile: apps/indexer/Dockerfile
+    container_name: axiom-indexer
+    environment:
+      - OG_RPC_URL=https://evmrpc-testnet.0g.ai
+      # DA (Data Availability) is disabled for the MVP.
+      #
+      # When disabled, events go to stdout + optional BACKEND_URL HTTP POST.
+      # The DA code path (apps/indexer/src/da.ts, da-client.ts) remains in the
+      # repo behind the INDEXER_DA_ENABLED flag and can be reactivated later.
+      #
+      # To re-enable DA:
+      #   1. Build the DA client sidecar from source:
+      #      https://github.com/0gfoundation/0g-da-client (uses combined.Dockerfile)
+      #   2. Build the DA encoder (~8 GB public params required):
+      #      https://github.com/0glabs/0g-da-encoder
+      #   3. Add a `da-client` service using the combined server image,
+      #      with BATCHER_ENCODER_ADDRESS pointing to the encoder.
+      #   4. Set INDEXER_DA_ENABLED=true and DA_GRPC_URL=da-client:51001.
+      - INDEXER_DA_ENABLED=false
+    networks:
+      - axiom-network
+
+networks:
+  axiom-network:
+    driver: bridge
