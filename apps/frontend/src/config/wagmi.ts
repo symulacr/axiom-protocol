@@ -25,16 +25,31 @@ import { galileo, aristotle } from './chains.js';
  *    https://wagmi.sh/core/config
  *  - 0G chain ids: https://docs.0g.ai/ai-context
  */
+// Read persisted settings from localStorage so the Settings page actually
+// takes effect on the next page load. Falls back to env vars / defaults.
+const storedWcProjectId =
+  typeof window !== 'undefined' && window.localStorage
+    ? (window.localStorage.getItem('axiom.wcProjectId') ?? '')
+    : '';
+const storedRpcUrl =
+  typeof window !== 'undefined' && window.localStorage
+    ? (window.localStorage.getItem('axiom.rpcUrl') ?? '')
+    : '';
+
+const galileoRpc = storedRpcUrl || 'https://evmrpc-testnet.0g.ai';
+const aristotleRpc = storedRpcUrl || 'https://evmrpc.0g.ai';
+
 export const wagmiConfig = getDefaultConfig({
   appName: 'Axiom Protocol',
   projectId:
-    import.meta.env.VITE_WALLETCONNECT_PROJECT_ID ??
+    storedWcProjectId ||
+    import.meta.env.VITE_WALLETCONNECT_PROJECT_ID ||
     '00000000000000000000000000000000',
   chains: [galileo, aristotle],
   ssr: false,
   transports: {
-    [galileo.id]: http(),
-    [aristotle.id]: http(),
+    [galileo.id]: http(galileoRpc),
+    [aristotle.id]: http(aristotleRpc),
   },
 });
 
