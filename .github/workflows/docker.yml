@@ -2,12 +2,7 @@ name: Docker Build
 
 on:
   push:
-    paths:
-      - "apps/indexer/**"
-      - "apps/indexer/Dockerfile"
-      - ".dockerignore"
-      - ".github/workflows/docker.yml"
-  pull_request:
+    branches: [main, master]
     paths:
       - "apps/indexer/**"
       - "apps/indexer/Dockerfile"
