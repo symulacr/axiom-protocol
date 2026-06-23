@@ -7,6 +7,7 @@ import rateLimit from "express-rate-limit";
 import { hexToBytes } from "ethereum-cryptography/utils";
 import { hexlify, isAddress } from "ethers";
 import { randomBytes } from "node:crypto";
+import { ZodError } from "zod";
 
 import { aesGcmDecrypt, aesGcmEncrypt, concatEncrypted, parseEncrypted } from "./crypto/aes-gcm.js";
 import { sealKeyForReceiver } from "./crypto/ecies.js";
@@ -14,6 +15,7 @@ import type { TeeSigner } from "./signer.js";
 import type { StorageAdapter } from "./storage.js";
 import {
   transferValiditySchema,
+  ownershipBodySchema,
   mintDataHashSchema,
 } from "./route-schemas.js";
 
@@ -148,13 +150,24 @@ export function startServer(config: ServerConfig): Express {
     dataHash: string;
     targetPubkey: string;
     sealedKey: string;
-    nonce: number;
+    nonce: string | number;
     to: string;
     nft: string;
     validUntil?: string | number;
   }
 
-  app.post("/v1/ownership", (req: Request<Record<string, never>, unknown, OwnershipRequestBody>, res: Response) => {
+  app.post("/v1/ownership", async (req: Request<Record<string, never>, unknown, OwnershipRequestBody>, res: Response) => {
+    let parsedBody;
+    try {
+      parsedBody = ownershipBodySchema.parse(req.body);
+    } catch (err) {
+      if (err instanceof ZodError) {
+        res.status(400).json({ error: err.issues[0]?.message ?? "Validation error" });
+        return;
+      }
+      throw err;
+    }
+
     const {
       dataHash,
       targetPubkey,
@@ -163,7 +176,7 @@ export function startServer(config: ServerConfig): Express {
       to: toIn,
       nft: nftIn,
       validUntil: rawValidUntil,
-    } = req.body;
+    } = parsedBody;
     if (!dataHash || !targetPubkey || !sealedKey) {
       res.status(400).json({ error: "Missing required field" });
       return;
