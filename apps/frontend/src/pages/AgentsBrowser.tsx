@@ -28,6 +28,7 @@ import type { ReactElement } from 'react';
 import { Link } from 'react-router-dom';
 import { useAccount } from 'wagmi';
 import { useAgents } from '../hooks/useAgents.js';
+import { Skeleton } from '../components/ui.js';
 
 export function AgentsBrowser(): ReactElement {
   // wagmi v2 useAccount — source of truth for connection status.
@@ -62,7 +63,11 @@ export function AgentsBrowser(): ReactElement {
     return (
       <main>
         <h1>Your Agents</h1>
-        <p>Loading\u2026</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 16 }}>
+          <Skeleton height={36} />
+          <Skeleton height={36} />
+          <Skeleton height={36} />
+        </div>
       </main>
     );
   }
