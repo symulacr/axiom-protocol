@@ -34,6 +34,7 @@ import { AgentDetail } from './pages/AgentDetail.js';
 import { MarketPage } from './pages/MarketPage.js';
 import { HistoryPage } from './pages/HistoryPage.js';
 import { SettingsPage } from './pages/SettingsPage.js';
+import { AgentsBrowser } from './pages/AgentsBrowser.js';
 import { MintAgentPage } from './pages/MintAgentPage.js';
 import { ExecuteStrategyPage } from './pages/ExecuteStrategyPage.js';
 import { NotFound } from './pages/NotFound.js';
@@ -110,6 +111,7 @@ export function App(): ReactElement {
         <ErrorBoundary>
           <Routes>
             <Route path="/" element={<HomePage />} />
+            <Route path="/agents" element={<AgentsBrowser />} />
             <Route path="/agents/new" element={<MintAgentPage />} />
             <Route path="/agents/:tokenId/execute" element={<ExecuteStrategyPage />} />
             <Route path="/agents/:tokenId" element={<AgentDetail />} />

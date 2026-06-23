@@ -7,11 +7,11 @@ import type { ReactElement } from 'react';
 import { Link } from 'react-router-dom';
 import { useAccount } from 'wagmi';
 import { useAgents } from '../hooks/useAgents.js';
-import { COLORS, Skeleton, Card, Alert, PageHeader, MonoLabel, SectionTitle } from '../components/ui.js';
+import { COLORS, Skeleton, Card, Alert, PageHeader } from '../components/ui.js';
 
 export function AgentsBrowser(): ReactElement {
   const { isConnected, address } = useAccount();
-  const { agents, isLoading, error } = useAgents();
+  const { count, isLoading, error } = useAgents();
 
   if (!isConnected) {
     return (
@@ -37,7 +37,7 @@ export function AgentsBrowser(): ReactElement {
     );
   }
 
-  if (isLoading && agents.length === 0) {
+  if (isLoading) {
     return (
       <main>
         <PageHeader title="Your Agents" />
@@ -50,7 +50,7 @@ export function AgentsBrowser(): ReactElement {
     );
   }
 
-  if (agents.length === 0) {
+  if (count === 0n) {
     return (
       <main>
         <PageHeader title="Your Agents" />
@@ -92,48 +92,22 @@ export function AgentsBrowser(): ReactElement {
     );
   }
 
+  const countLabel = count === 1n ? '1 iNFT' : `${count.toString()} iNFTs`;
+
   return (
     <main>
       <PageHeader
         title="Your Agents"
-        subtitle={`${agents.length} iNFT${agents.length === 1 ? '' : 's'} owned by ${address !== undefined ? `${address.slice(0, 6)}\u2026${address.slice(-4)}` : 'this wallet'}`}
+        subtitle={`${countLabel} owned by ${address !== undefined ? `${address.slice(0, 6)}\u2026${address.slice(-4)}` : 'this wallet'}`}
       />
-      <SectionTitle>Owned Tokens</SectionTitle>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {agents.map((agent) => (
-          <Link
-            key={agent.tokenId.toString()}
-            to={`/agents/${agent.tokenId.toString()}`}
-            style={{ textDecoration: 'none' }}
-          >
-            <Card hover style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                <span
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: 36,
-                    height: 36,
-                    borderRadius: 8,
-                    background: COLORS.bronzeBg,
-                    border: `1px solid ${COLORS.bronzeBorder}`,
-                    color: COLORS.bronzeLight,
-                    fontSize: 13,
-                    fontWeight: 700,
-                  }}
-                >
-                  #{agent.tokenId.toString()}
-                </span>
-                {agent.uri !== '' && <MonoLabel style={{ fontSize: 12 }}>{agent.uri}</MonoLabel>}
-              </div>
-              <span style={{ color: COLORS.textDim, fontSize: 13 }}>
-                View details
-              </span>
-            </Card>
-          </Link>
-        ))}
-      </div>
+      <Card style={{ textAlign: 'center', padding: 'var(--space-3xl) var(--space-xl)' }}>
+        <p style={{ color: COLORS.textPrimary, fontSize: 'var(--text-lg)', margin: '0 0 0.5rem', fontWeight: 'var(--fw-semibold)' }}>
+          {countLabel}
+        </p>
+        <p style={{ color: COLORS.textMuted, fontSize: 'var(--text-sm)', margin: 0, fontWeight: 'var(--fw-regular)', lineHeight: 'var(--lh-normal)' }}>
+          Token-level details are not available on-chain (the contract does not support enumeration). Connect to the backend event store for a full token listing.
+        </p>
+      </Card>
     </main>
   );
 }

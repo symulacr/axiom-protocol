@@ -91,7 +91,7 @@ export function useMint(): UseMintResult {
           accept: 'application/json',
         },
         body: JSON.stringify(input),
-        signal: controller.signal,
+        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]),
       });
       if (!res.ok) {
         // The backend returns `{ error: string }` on failure.

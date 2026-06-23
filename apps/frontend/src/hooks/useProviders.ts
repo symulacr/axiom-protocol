@@ -57,6 +57,7 @@ export function useProviders(): {
         const res = await fetch(`${BACKEND_URL}/v1/compute/providers`, {
           method: 'GET',
           headers: { accept: 'application/json' },
+          signal: AbortSignal.timeout(10000),
         });
         if (!res.ok) {
           const text = await res.text();
@@ -78,14 +79,18 @@ export function useProviders(): {
       }
     };
 
-    void load();
-    const id = setInterval(() => {
-      void load();
-    }, POLL_INTERVAL_MS);
+    async function schedule() {
+      await load();
+      if (!cancelled) {
+        timer = setTimeout(schedule, POLL_INTERVAL_MS);
+      }
+    }
+    let timer: ReturnType<typeof setTimeout>;
+    void schedule();
 
     return (): void => {
       cancelled = true;
-      clearInterval(id);
+      clearTimeout(timer);
     };
   }, [pollTick]);
 

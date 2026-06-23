@@ -5,8 +5,9 @@
 
 import type { ReactElement } from 'react';
 import { useEffect, useState } from 'react';
-import { ProviderCard } from '../components/ProviderCard';
-import { useProviders } from '../hooks/useProviders';
+import { useChainId } from 'wagmi';
+import { ProviderCard } from '../components/ProviderCard.js';
+import { useProviders } from '../hooks/useProviders.js';
 import { COLORS, Card, SectionTitle, Alert, PageHeader, Skeleton } from '../components/ui.js';
 
 const BACKEND_URL =
@@ -41,6 +42,12 @@ const transferRowStyle: React.CSSProperties = {
 };
 
 export function MarketPage(): ReactElement {
+  const chainId = useChainId();
+  const explorerBase =
+    chainId === 16661
+      ? 'https://chainscan.0g.ai'
+      : 'https://chainscan-galileo.0g.ai';
+
   const {
     providers,
     isLoading: providersLoading,
@@ -164,7 +171,7 @@ export function MarketPage(): ReactElement {
               </span>
               <span>token #{tx.tokenId}</span>
               <a
-                href={`https://chainscan-galileo.0g.ai/tx/${tx.transactionHash}`}
+                href={`${explorerBase}/tx/${tx.transactionHash}`}
                 target="_blank"
                 rel="noreferrer noopener"
                 style={{ color: COLORS.bronzeLight }}
