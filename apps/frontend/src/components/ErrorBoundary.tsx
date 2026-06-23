@@ -20,21 +20,27 @@ export class ErrorBoundary extends Component<Props, State> {
   override render(): ReactNode {
     if (this.state.hasError) {
       return (
-        <div style={{ padding: 40, textAlign: 'center' }}>
-          <h2 style={{ color: '#b91c1c', marginBottom: 8 }}>Something went wrong</h2>
-          <p style={{ color: '#6b7280', fontSize: 14, marginBottom: 16 }}>
-            {this.state.error?.message ?? 'An unexpected error occurred.'}
+        <div style={{ padding: 48, textAlign: 'center' }}>
+          <h2 style={{ color: '#c85a5a', marginBottom: 10, fontSize: 20, fontWeight: 600 }}>
+            Something went wrong
+          </h2>
+          <p style={{ color: '#8a8a8a', fontSize: 15, marginBottom: 24, maxWidth: 420, margin: '0 auto 24px' }}>
+            {this.state.error?.message ?? 'An unexpected error occurred while rendering this page.'}
           </p>
           <button
             type="button"
             onClick={() => this.setState({ hasError: false, error: null })}
             style={{
-              padding: '8px 16px',
+              padding: '10px 20px',
               borderRadius: 6,
-              border: '1px solid #d1d5db',
-              background: '#fff',
+              border: '1px solid #3a3a3a',
+              background: 'transparent',
+              color: '#e5e5e5',
               cursor: 'pointer',
               fontSize: 14,
+              fontWeight: 600,
+              transition: 'all 0.18s ease',
+              fontFamily: 'inherit',
             }}
           >
             Try again

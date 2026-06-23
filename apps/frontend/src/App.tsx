@@ -22,7 +22,7 @@
 // header):
 //   https://www.rainbowkit.com/docs/connect-button
 
-import type { ReactElement } from 'react';
+import type { CSSProperties, ReactElement } from 'react';
 import { Link, NavLink, Route, Routes } from 'react-router-dom';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 
@@ -43,13 +43,14 @@ import { NotFound } from './pages/NotFound.js';
 // ---------------------------------------------------------------------------
 
 export function App(): ReactElement {
-  const navLinkStyle = ({ isActive }: { isActive: boolean }): Record<string, string | number> => ({
+  const navLinkStyle = ({ isActive }: { isActive: boolean }): CSSProperties => ({
     textDecoration: 'none',
     fontSize: 14,
     fontWeight: isActive ? 600 : 400,
-    color: isActive ? '#111827' : '#6b7280',
-    padding: '4px 0',
-    borderBottom: isActive ? '2px solid #111827' : '2px solid transparent',
+    color: isActive ? '#c5a880' : '#8a8a8a',
+    padding: '6px 0',
+    borderBottom: isActive ? '2px solid #b8976e' : '2px solid transparent',
+    transition: 'color 0.15s ease, border-color 0.15s ease',
   });
 
   return (
@@ -59,21 +60,28 @@ export function App(): ReactElement {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '12px 24px',
-          borderBottom: '1px solid #e5e7eb',
-          background: '#fff',
+          padding: '14px 32px',
+          borderBottom: '1px solid #2a2a2a',
+          background: '#121212',
           position: 'sticky',
           top: 0,
           zIndex: 100,
+          backdropFilter: 'blur(12px)',
         }}
       >
         <nav
           aria-label="Primary"
-          style={{ display: 'flex', gap: 20, alignItems: 'center' }}
+          style={{ display: 'flex', gap: 28, alignItems: 'center' }}
         >
           <Link
             to="/"
-            style={{ fontWeight: 700, textDecoration: 'none', fontSize: 16, color: '#111827' }}
+            style={{
+              fontWeight: 700,
+              textDecoration: 'none',
+              fontSize: 17,
+              color: '#f5f5f5',
+              letterSpacing: '-0.01em',
+            }}
           >
             Axiom Protocol
           </Link>
@@ -93,12 +101,12 @@ export function App(): ReactElement {
             Settings
           </NavLink>
         </nav>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <HealthBadge />
           <ConnectButton />
         </div>
       </header>
-      <main style={{ padding: '24px', maxWidth: 1080, margin: '0 auto' }}>
+      <main style={{ padding: '32px 24px', maxWidth: 1080, margin: '0 auto' }}>
         <ErrorBoundary>
           <Routes>
             <Route path="/" element={<HomePage />} />

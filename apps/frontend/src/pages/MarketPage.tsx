@@ -31,9 +31,9 @@
 
 import type { ReactElement } from 'react';
 import { useEffect, useState } from 'react';
-
 import { ProviderCard } from '../components/ProviderCard';
 import { useProviders } from '../hooks/useProviders';
+import { COLORS, Card, SectionTitle, Alert, PageHeader, Skeleton } from '../components/ui.js';
 
 const BACKEND_URL =
   import.meta.env.VITE_BACKEND_URL ?? 'http://127.0.0.1:3000';
@@ -52,37 +52,18 @@ type TransferEvent = {
   tokenId: string;
 };
 
-const sectionHeaderStyle: React.CSSProperties = {
-  marginTop: 24,
-  marginBottom: 8,
-  fontSize: 18,
-  fontWeight: 600,
-};
-
-const gridStyle: React.CSSProperties = {
-  display: 'flex',
-  flexWrap: 'wrap',
-  gap: 12,
-};
-
-const listStyle: React.CSSProperties = {
-  listStyle: 'none',
-  padding: 0,
-  margin: 0,
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 6,
-};
-
 const transferRowStyle: React.CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: '90px 1fr 1fr 1fr',
-  gap: 8,
-  padding: '6px 8px',
-  border: '1px solid #e5e7eb',
-  borderRadius: 4,
+  gridTemplateColumns: '80px 1fr 1fr 1fr',
+  gap: 10,
+  padding: '10px 14px',
+  border: `1px solid ${COLORS.border}`,
+  borderRadius: 8,
   fontSize: 12,
-  fontFamily: 'monospace',
+  fontFamily: "'SF Mono', 'Fira Code', monospace",
+  background: COLORS.surface,
+  color: COLORS.textMuted,
+  transition: 'all 0.18s ease',
 };
 
 export function MarketPage(): ReactElement {
@@ -149,46 +130,60 @@ export function MarketPage(): ReactElement {
 
   return (
     <main>
-      <h1>Market</h1>
-      <p style={{ color: '#4b5563' }}>
-        Real-time view of the Axiom compute marketplace and recent
-        iNFT transfer activity. Provider data refreshes every 30&nbsp;seconds.
-      </p>
+      <PageHeader
+        title="Market"
+        subtitle="Compute providers and recent iNFT transfers — refreshes every 30 seconds"
+      />
 
-      <h2 style={sectionHeaderStyle}>Available Compute Providers</h2>
+      <SectionTitle>Compute Providers</SectionTitle>
       {providersLoading ? (
-        <p>Loading providers&hellip;</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <Skeleton height={80} />
+          <Skeleton height={80} />
+        </div>
       ) : providersError !== null ? (
-        <p style={{ color: '#b91c1c' }}>
-          Failed to load providers: {providersError.message}
-        </p>
+        <Alert variant="error">
+          Couldn't load providers: {providersError.message}
+        </Alert>
       ) : providers.length === 0 ? (
-        <p>No providers registered yet.</p>
+        <Card style={{ textAlign: 'center', padding: 40 }}>
+          <p style={{ color: COLORS.textMuted, fontSize: 14, margin: 0, fontWeight: 300 }}>
+            No compute providers registered yet. Providers appear here when they register on-chain.
+          </p>
+        </Card>
       ) : (
-        <div style={gridStyle}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
           {providers.map((p) => (
             <ProviderCard key={p.address} provider={p} />
           ))}
         </div>
       )}
 
-      <h2 style={sectionHeaderStyle}>Recent Transfers</h2>
+      <SectionTitle style={{ marginTop: 32 }}>Recent Transfers</SectionTitle>
       {transfersLoading ? (
-        <p>Loading transfers&hellip;</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <Skeleton height={42} />
+          <Skeleton height={42} />
+          <Skeleton height={42} />
+        </div>
       ) : transfersError !== null ? (
-        <p style={{ color: '#b91c1c' }}>
-          Failed to load transfers: {transfersError.message}
-        </p>
+        <Alert variant="error">
+          Couldn't load transfers: {transfersError.message}
+        </Alert>
       ) : transfers.length === 0 ? (
-        <p>No recent transfers.</p>
+        <Card style={{ textAlign: 'center', padding: 40 }}>
+          <p style={{ color: COLORS.textMuted, fontSize: 14, margin: 0, fontWeight: 300 }}>
+            No recent transfers recorded.
+          </p>
+        </Card>
       ) : (
-        <ul style={listStyle}>
+        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
           {transfers.map((tx) => (
             <li
               key={`${tx.transactionHash}-${tx.tokenId}`}
               style={transferRowStyle}
             >
-              <span>#{tx.blockNumber}</span>
+              <span style={{ color: COLORS.bronzeLight }}>#{tx.blockNumber}</span>
               <span>
                 {tx.from.slice(0, 6)}&hellip;{tx.from.slice(-4)} →&nbsp;
                 {tx.to.slice(0, 6)}&hellip;{tx.to.slice(-4)}
@@ -198,7 +193,7 @@ export function MarketPage(): ReactElement {
                 href={`https://chainscan-galileo.0g.ai/tx/${tx.transactionHash}`}
                 target="_blank"
                 rel="noreferrer noopener"
-                style={{ color: '#1d4ed8' }}
+                style={{ color: COLORS.bronzeLight }}
               >
                 {tx.transactionHash.slice(0, 10)}&hellip;
               </a>
