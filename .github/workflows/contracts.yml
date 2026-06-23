@@ -27,9 +27,17 @@ jobs:
       - name: Show Forge version
         run: forge --version
 
+      - name: Cache Foundry build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.foundry/cache
+            apps/contracts/forge-cache/
+          key: foundry-cache-${{ hashFiles('pnpm-lock.yaml') }}
+
       - name: Check formatting
-        run: forge fmt --check
         continue-on-error: true
+        run: forge fmt --check
 
       - name: Build contracts
         run: forge build --sizes
@@ -47,9 +55,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: 'pnpm'
+
       - run: npm install -g pnpm
       - run: pnpm install
       - run: pnpm -r run lint
