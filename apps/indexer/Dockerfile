@@ -37,7 +37,7 @@ COPY packages/config/ packages/config/
 COPY apps/indexer/ apps/indexer/
 
 # 5. Build only the indexer (its workspace deps are built transitively)
-RUN pnpm --filter @axiom/indexer build
+RUN pnpm --filter @axiom/indexer... build
 
 # ─── Stage 2: runtime ───────────────────────────────────────
 FROM node:22-alpine
