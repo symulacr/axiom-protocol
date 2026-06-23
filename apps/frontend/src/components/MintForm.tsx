@@ -19,17 +19,7 @@ import { AXIOM_AGENT_NFT_ADDRESS } from '../abi/addresses.js';
 import { useMint } from '../hooks/useMint.js';
 import { COLORS, Card, Button, Alert, PageHeader, SectionTitle, MonoLabel, Skeleton } from './ui.js';
 
-/**
- * Minimal read-only ABI fragment for `AxiomAgentNFT.mintFee()`. The shared
- * `AxiomAgentNFT.json` only carries the EIP-721 + EIP-7857 getters consumed
- * elsewhere; `mintFee` is a Wave-3 admin-set view function (see
- * `apps/contracts/src/AxiomAgentNFT.sol:178`) and is defined locally here so
- * the shared ABI file stays untouched for the other Wave-4 agents.
- *
- * wagmi v2 accepts a partial ABI array for `useReadContracts` and infers the
- * return type from the fragment — `bigint` for `uint256`.
- *   https://wagmi.sh/react/typescript#const-assert-abis-typed-data
- */
+/** Minimal ABI fragment for AxiomAgentNFT.mintFee(). */
 const mintFeeAbi = [
   {
     type: 'function',

@@ -59,9 +59,7 @@ export function MarketPage(): ReactElement {
   const [transfersLoading, setTransfersLoading] = useState<boolean>(true);
   const [transfersError, setTransfersError] = useState<Error | null>(null);
 
-  // Recent transfers — one-shot fetch on mount; cleanup just flips a
-  // `cancelled` flag so we don't `setState` after unmount.
-  // Source: https://react.dev/reference/react/useEffect#cleanup
+  // Recent transfers — one-shot fetch on mount.
   useEffect(() => {
     let cancelled = false;
 

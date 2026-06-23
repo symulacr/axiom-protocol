@@ -106,13 +106,7 @@ export function startServer(config: ServerConfig): Express {
       const targetPubkeyBytes = hexToBytes(targetPubkey64 as `0x${string}`);
       const sealedKey = sealKeyForReceiver(targetPubkeyBytes, newDataKey);
 
-      // Per ethers v6 docs (https://docs.ethers.org/v6/api/wallet/#Wallet-signMessage),
-      // signMessage applies an EIP-191 prefix — which is wrong for the on-chain
-      // verifier. TeeSigner.signOwnership uses signingKey.sign(digest) for a raw
-      // signature, which is what the verifier's ecrecover expects.
-      // Default `validUntil` is `now + 1 day` (inside the 7-day maxProofAgeSeconds
-      // the on-chain verifier enforces). An EIP-712 deadline field per
-      // https://eips.ethereum.org/EIPS/eip-712#definition-of-hashstruct.
+      // Default validUntil = now + 1 day. TeeSigner uses raw ECDSA (no EIP-191).
       const defaultValidUntil = BigInt(Math.floor(Date.now() / 1000)) + 86400n;
       const ownershipSignature = signer.signOwnership({
         dataHash: oldDataHash as `0x${string}`,
@@ -176,14 +170,7 @@ export function startServer(config: ServerConfig): Express {
       return;
     }
 
-    // Wave 6 A (storage+chain binding): reject signatures for dataHashes
-    // the oracle has never seen. This binds the off-chain payload to the
-    // on-chain OwnershipProof: the verifier can only be tricked into
-    // signing a `dataHash` the backend never actually uploaded.
-    // Per the 0G cross-layer skill
-    // (https://github.com/0gfoundation/0g-agent-skills → skills/cross-layer/
-    // storage-plus-chain/SKILL.md), the on-chain pointer MUST be backed by a
-    // verified storage upload — this server-side check enforces that.
+    // Block signatures for unseen dataHashes (storage+chain binding).
     if (!storage.hasSeenDataHash(dataHash as `0x${string}`)) {
       res.status(400).json({
         error: `Unknown dataHash: not previously seen by oracle. POST {dataHash} to /v1/agents/mint first.`,
