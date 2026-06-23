@@ -1,7 +1,7 @@
 import type { OwnershipProofInput, OwnershipProofResult, AccessProofInput } from "@axiom/oracle/signer";
 export type { OwnershipProofInput, OwnershipProofResult, AccessProofInput };
 import { recoverAccessSigner, type Eip712Domain } from "@axiom/oracle/signer";
-import { bigintReplacer } from "../server.js";
+import { bigintReplacer } from "@axiom/config/types/bigint";
 
 /**
  * HTTP client for the TEE signer service (apps/oracle).

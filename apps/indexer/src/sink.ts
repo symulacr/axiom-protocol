@@ -31,6 +31,7 @@
 //     https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal/timeout
 
 import type { AxiomEvent } from "./events.js";
+import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
 
 /**
  * Shape of the JSON body posted to the backend. Mirrors
@@ -120,7 +121,7 @@ export async function postEvent(
   // Re-read the env at call time so operators can rotate the chain id
   // between runs without restarting the indexer process. 0G Galileo
   // (testnet) is 16602; mainnet "Aristotle" is 16661.
-  const chainId = Number(process.env["OG_CHAIN_ID"] ?? 16602);
+  const chainId = Number(process.env["OG_CHAIN_ID"] ?? GALILEO_CHAIN_ID);
   const body: HttpEventBody = buildBody(event, source, chainId);
 
   // AbortSignal.timeout is available in Node 22+; the brief requires
