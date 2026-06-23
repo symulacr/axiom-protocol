@@ -58,6 +58,7 @@ const VAULT_ABI: string[] = [
  *   GET  /health                                 liveness probe + signer/chain head
  *   GET  /v1/compute/providers                   list available inference services (read-only)
  *   POST /v1/compute/chat/completions            standalone chat completion (OpenAI-compatible)
+ *   GET  /v1/agents                              list owned agents by owner address (from events)
  *   POST /v1/agents/mint                         upload encrypted strategy, call AxiomAgentNFT.mint
  *   POST /v1/agents/:id/transfer                 orchestrate the TEE oracle, call iTransferFrom
  *   POST /v1/vaults/:id/deposit                  relay native value to AxiomStrategyVault
@@ -664,6 +665,23 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
   // Refs: https://expressjs.com/en/4x/api.html#req.body
   //       https://expressjs.com/en/4x/api.html#res.json
   const events = getEventStore();
+
+  // ─── Agent listing by owner (best-effort from in-memory events) ──
+  app.get("/v1/agents", async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const owner = typeof req.query.owner === "string" ? req.query.owner.toLowerCase() : undefined;
+      if (!owner || !/^0x[0-9a-f]{40}$/i.test(owner)) {
+        res.status(400).json({ error: "Valid owner address required" });
+        return;
+      }
+      const limitRaw = typeof req.query.limit === "string" ? Number(req.query.limit) : undefined;
+      const limit = limitRaw !== undefined && Number.isInteger(limitRaw) && limitRaw > 0 && limitRaw <= 100 ? limitRaw : 100;
+      const tokens = events.getTokenIdsByOwner(owner, limit);
+      res.json({ owner, tokens });
+    } catch (err) {
+      next(err);
+    }
+  });
 
   app.get("/v1/agents/:id/history", async (req: Request, res: Response, next: NextFunction) => {
     try {
