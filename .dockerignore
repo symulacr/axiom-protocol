@@ -7,3 +7,25 @@ cache/
 .turbo/
 *.md
 docs/
+# Security — sensitive files
+wallets/
+.env
+.env.*
+*.pem
+*.key
+*.secret
+*.keystore
+*.jks
+*credentials*
+*service-account*
+
+# Build artifacts
+coverage/
+forge-cache/
+broadcast/
+artifacts/
+*.tsbuildinfo
+apps/contracts/out/
+apps/contracts/cache/
+chrome-headless-shell/
+.husky/
