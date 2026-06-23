@@ -2,7 +2,7 @@ import type { Wallet } from "ethers";
 import { AbiCoder, JsonRpcProvider, keccak256, type TransactionReceipt } from "ethers";
 import { TypedContract } from "@axiom/config/types/contract";
 import type { StrategyVaultMethods } from "../contract-types.js";
-import OpenAI from "openai";
+import type OpenAI from "openai";
 import { ZeroGStorage, type Encryption } from "../storage/0g.js";
 import { createRouterClient } from "../compute/router.js";
 import { DefaultSignerOracleClient } from "../oracle/client.js";
@@ -203,7 +203,7 @@ export class StrategyRunner {
     const data = "0x";
     // actionHash mirrors AxiomStrategyVault.execute(): keccak256(abi.encode(target, value, keccak256(data)))
     const innerHash = keccak256(data);
-    const actionHash = keccak256(AbiCoder.defaultAbiCoder().encode(
+    const _actionHash = keccak256(AbiCoder.defaultAbiCoder().encode(
       ["address", "uint256", "bytes32"],
       [target, value, innerHash],
     ));
