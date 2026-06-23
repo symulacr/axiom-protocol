@@ -37,6 +37,7 @@ import {
   useOrchestratorTick,
   type TickResult,
 } from '../hooks/useOrchestratorTick.js';
+import { COLORS, Button, Card, SectionTitle, MonoLabel, Alert, Skeleton } from './ui.js';
 
 /** Display the em-dash for an absent value. */
 const PLACEHOLDER = '\u2014';
@@ -45,26 +46,16 @@ const panelStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: 16,
-  padding: 16,
-  border: '1px solid #e5e7eb',
-  borderRadius: 6,
-  background: '#ffffff',
-};
-
-const buttonStyle: React.CSSProperties = {
-  padding: '8px 16px',
-  border: '1px solid #1f2937',
-  background: '#1f2937',
-  color: '#f9fafb',
-  borderRadius: 4,
-  cursor: 'pointer',
-  fontSize: 14,
+  padding: 24,
+  border: `1px solid ${COLORS.border}`,
+  borderRadius: 10,
+  background: COLORS.surface,
 };
 
 const actionColor: Record<string, string> = {
-  buy: '#16a34a',
-  sell: '#dc2626',
-  hold: '#6b7280',
+  buy: COLORS.success,
+  sell: COLORS.danger,
+  hold: COLORS.textMuted,
 };
 
 export type ExecutePanelProps = {
@@ -160,14 +151,23 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
   return (
     <section style={panelStyle} aria-label="Execute strategy tick">
       {!locked && (
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <span style={{ fontSize: 13, fontWeight: 600 }}>Agent</span>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: COLORS.textPrimary }}>Agent</span>
           <select
             value={selectedId}
             onChange={(e): void => setSelectedId(e.target.value)}
-            style={{ padding: '6px 8px', borderRadius: 4, border: '1px solid #d1d5db' }}
+            style={{
+              padding: '10px 14px',
+              borderRadius: 6,
+              border: `1px solid ${COLORS.borderStrong}`,
+              background: COLORS.bg,
+              color: COLORS.text,
+              fontSize: 14,
+              fontFamily: 'inherit',
+              outline: 'none',
+            }}
           >
-            <option value="">Select an owned agent\u2026</option>
+            <option value="">Select an owned agent…</option>
             {agents.map((a) => (
               <option key={a.tokenId.toString()} value={a.tokenId.toString()}>
                 Agent #{a.tokenId.toString()}
@@ -178,63 +178,54 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
       )}
 
       <div>
-        <h3 style={{ margin: '0 0 8px' }}>Vault State</h3>
-        <dl style={{ margin: 0, fontSize: 13 }}>
-          <dt>Balance</dt>
-          <dd>
-            {depositsWei === undefined
-              ? PLACEHOLDER
-              : `${formatEther(depositsWei)} OG`}
+        <SectionTitle>Vault State</SectionTitle>
+        <dl style={{ margin: 0, display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px 16px', fontSize: 14 }}>
+          <dt style={{ color: COLORS.textDim, fontWeight: 500 }}>Balance</dt>
+          <dd style={{ margin: 0, color: COLORS.bronzeLight, fontWeight: 600 }}>
+            {depositsWei === undefined ? PLACEHOLDER : `${formatEther(depositsWei)} OG`}
           </dd>
-          <dt>Strategy Root</dt>
-          <dd>
-            <code>
-              {strategyRoot === undefined ? PLACEHOLDER : `${strategyRoot.slice(0, 10)}\u2026`}
-            </code>
+          <dt style={{ color: COLORS.textDim, fontWeight: 500 }}>Strategy Root</dt>
+          <dd style={{ margin: 0 }}>
+            {strategyRoot !== undefined ? (
+              <MonoLabel style={{ fontSize: 12 }}>{`${strategyRoot.slice(0, 10)}\u2026`}</MonoLabel>
+            ) : <span style={{ color: COLORS.textDim }}>{PLACEHOLDER}</span>}
           </dd>
-          <dt>Daily Limit</dt>
-          <dd>
-            {dailyLimitWei === undefined
-              ? PLACEHOLDER
-              : `${formatEther(dailyLimitWei)} OG`}
+          <dt style={{ color: COLORS.textDim, fontWeight: 500 }}>Daily Limit</dt>
+          <dd style={{ margin: 0, color: COLORS.text }}>
+            {dailyLimitWei === undefined ? PLACEHOLDER : `${formatEther(dailyLimitWei)} OG`}
           </dd>
         </dl>
       </div>
 
       <div>
-        <button
-          type="button"
-          style={buttonStyle}
-          disabled={isLoading || activeId === ''}
-          onClick={onExecute}
-        >
-          {isLoading ? 'Running tick\u2026' : 'Execute Tick'}
-        </button>
+        <Button variant="primary" disabled={isLoading || activeId === ''} onClick={onExecute}>
+          {isLoading ? 'Running tick…' : 'Execute Tick'}
+        </Button>
       </div>
 
       {error !== null && (
-        <p role="alert" style={{ color: '#dc2626', fontSize: 13 }}>
-          {error.message}
-        </p>
+        <Alert variant="error">{error.message}</Alert>
       )}
 
       {result !== null && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
-            <h3 style={{ margin: '0 0 4px' }}>Recommendation</h3>
-            <p style={{ margin: 0, fontSize: 14 }}>
+            <SectionTitle>Recommendation</SectionTitle>
+            <p style={{ margin: 0, fontSize: 15 }}>
               <strong
                 style={{
-                  color: actionColor[result.recommendation.action] ?? '#374151',
+                  color: actionColor[result.recommendation.action] ?? COLORS.text,
+                  fontSize: 16,
+                  letterSpacing: '0.02em',
                 }}
               >
                 {result.recommendation.action.toUpperCase()}
               </strong>
               {result.recommendation.amount !== undefined && (
-                <> \u00b7 amount: {result.recommendation.amount}</>
+                <span style={{ color: COLORS.textMuted }}> · amount: {result.recommendation.amount}</span>
               )}
             </p>
-            <p style={{ margin: '4px 0 0', fontSize: 13, color: '#374151' }}>
+            <p style={{ margin: '6px 0 0', fontSize: 13, color: COLORS.textMuted, fontWeight: 300, lineHeight: 1.6 }}>
               {result.recommendation.reason}
             </p>
           </div>
@@ -248,23 +239,25 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
                 border: 'none',
                 cursor: 'pointer',
                 fontSize: 12,
-                color: '#2563eb',
+                color: COLORS.bronzeLight,
                 padding: 0,
+                fontFamily: 'inherit',
               }}
             >
-              {showRaw ? '\u25bc Hide' : '\u25b6 Show'} raw model output
+              {showRaw ? '▼ Hide' : '▶ Show'} raw model output
             </button>
             {showRaw && (
               <pre
                 style={{
-                  marginTop: 4,
-                  padding: 8,
-                  background: '#f9fafb',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: 4,
+                  marginTop: 8,
+                  padding: 12,
+                  background: COLORS.bg,
+                  border: `1px solid ${COLORS.border}`,
+                  borderRadius: 8,
                   fontSize: 11,
                   overflowX: 'auto',
                   whiteSpace: 'pre-wrap',
+                  color: COLORS.textMuted,
                 }}
               >
                 {result.rawModelOutput}
@@ -274,37 +267,33 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
 
           {result.execution !== undefined && (
             <div>
-              <h3 style={{ margin: '0 0 4px' }}>On-chain Execution</h3>
-              <dl style={{ margin: 0, fontSize: 13 }}>
-                <dt>Success</dt>
-                <dd>
+              <SectionTitle>On-chain Execution</SectionTitle>
+              <dl style={{ margin: 0, display: 'grid', gridTemplateColumns: '100px 1fr', gap: '8px 16px', fontSize: 13 }}>
+                <dt style={{ color: COLORS.textDim, fontWeight: 500 }}>Success</dt>
+                <dd style={{ margin: 0 }}>
                   {result.execution.success ? (
-                    <span style={{ color: '#16a34a' }}>yes</span>
+                    <span style={{ color: COLORS.success, fontWeight: 600 }}>yes</span>
                   ) : (
-                    <span style={{ color: '#dc2626' }}>no</span>
+                    <span style={{ color: COLORS.danger, fontWeight: 600 }}>no</span>
                   )}
                 </dd>
-                <dt>Action</dt>
-                <dd>{result.execution.action}</dd>
-                <dt>Target</dt>
-                <dd>
-                  <code>{result.execution.target}</code>
-                </dd>
-                <dt>Tx Hash</dt>
-                <dd>
-                  <code>{result.execution.txHash}</code>
-                </dd>
+                <dt style={{ color: COLORS.textDim, fontWeight: 500 }}>Action</dt>
+                <dd style={{ margin: 0, color: COLORS.text }}>{result.execution.action}</dd>
+                <dt style={{ color: COLORS.textDim, fontWeight: 500 }}>Target</dt>
+                <dd style={{ margin: 0 }}><MonoLabel style={{ fontSize: 12 }}>{result.execution.target}</MonoLabel></dd>
+                <dt style={{ color: COLORS.textDim, fontWeight: 500 }}>Tx Hash</dt>
+                <dd style={{ margin: 0 }}><MonoLabel style={{ fontSize: 12 }}>{result.execution.txHash}</MonoLabel></dd>
                 {result.execution.gasUsed !== undefined && (
                   <>
-                    <dt>Gas Used</dt>
-                    <dd>{result.execution.gasUsed}</dd>
+                    <dt style={{ color: COLORS.textDim, fontWeight: 500 }}>Gas Used</dt>
+                    <dd style={{ margin: 0, color: COLORS.text }}>{result.execution.gasUsed}</dd>
                   </>
                 )}
               </dl>
             </div>
           )}
 
-          <p style={{ fontSize: 12, color: '#6b7280', margin: 0 }}>
+          <p style={{ fontSize: 12, color: COLORS.textDim, margin: 0 }}>
             Completed in {result.durationMs} ms
           </p>
         </div>

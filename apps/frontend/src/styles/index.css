@@ -49,6 +49,11 @@ a:hover { color: #b8976e; }
   outline: 2px solid #b8976e;
   outline-offset: 2px;
 }
+/* Dialog backdrop — dark, atmospheric. */
+dialog::backdrop {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+}
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.01ms !important;

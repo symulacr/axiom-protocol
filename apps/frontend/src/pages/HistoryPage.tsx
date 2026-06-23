@@ -44,10 +44,9 @@
 
 import { useCallback, type ReactElement } from 'react';
 import { useAccount, useChainId } from 'wagmi';
-
 import { useEventHistory, type AxiomEvent } from '../hooks/useEventHistory.js';
 import { EventTimeline, type EventRenderer } from '../components/EventTimeline.js';
-
+import { COLORS, Card, Alert, PageHeader, Button } from '../components/ui.js';
 /** Display the em-dash for an absent value. Mirrors HomePage /
  *  VaultDashboard / AgentDetail. */
 const PLACEHOLDER = '\u2014';
@@ -155,7 +154,7 @@ const renderEventBody: EventRenderer = (event): ReactElement => {
   const explorer = explorerTxUrl(event.chainId, tx);
   return (
     <div>
-      <div style={{ marginBottom: '6px', color: '#374151' }}>
+      <div style={{ marginBottom: '6px', color: COLORS.textPrimary }}>
         <span style={{ fontWeight: 600 }}>chain</span> {event.chainId}
         {' \u00b7 '}
         <span style={{ fontWeight: 600 }}>tx</span>{' '}
@@ -166,7 +165,7 @@ const renderEventBody: EventRenderer = (event): ReactElement => {
             href={explorer}
             target="_blank"
             rel="noreferrer noopener"
-            style={{ color: '#2563eb', textDecoration: 'none' }}
+            style={{ color: COLORS.bronzeLight, textDecoration: 'none' }}
           >
             <code>{txShort}</code>
           </a>
@@ -178,8 +177,8 @@ const renderEventBody: EventRenderer = (event): ReactElement => {
         style={{
           margin: 0,
           padding: '8px 12px',
-          background: '#f9fafb',
-          border: '1px solid #e5e7eb',
+          background: COLORS.bg,
+          border: `1px solid ${COLORS.border}`,
           borderRadius: '4px',
           fontSize: '0.8125rem',
           lineHeight: 1.45,
@@ -252,88 +251,52 @@ export function HistoryPage(): ReactElement {
 
   return (
     <main>
-      <header
-        style={{
-          display: 'flex',
-          alignItems: 'baseline',
-          justifyContent: 'space-between',
-          marginBottom: '16px',
-        }}
-      >
-        <div>
-          <h1 style={{ marginBottom: 4 }}>History</h1>
-          <p style={{ margin: 0, color: '#6b7280' }}>
-            {address === undefined
-              ? PLACEHOLDER
-              : `${address.slice(0, 8)}\u2026${address.slice(-6)}`}{' '}
-            on chain {chainId}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={refresh}
-          style={{
-            padding: '6px 12px',
-            border: '1px solid #d1d5db',
-            background: '#fff',
-            borderRadius: '4px',
-            cursor: 'pointer',
-          }}
-        >
-          Refresh
-        </button>
-      </header>
+      <PageHeader
+        title="History"
+        subtitle={`${address === undefined ? PLACEHOLDER : `${address.slice(0, 8)}\u2026${address.slice(-6)}`} on chain ${chainId}`}
+        action={
+          <Button variant="secondary" onClick={refresh}>
+            Refresh
+          </Button>
+        }
+      />
 
       {error !== null && (
-        <div
-          role="alert"
-          style={{
-            padding: '8px 12px',
-            background: '#fef2f2',
-            border: '1px solid #fecaca',
-            color: '#991b1b',
-            borderRadius: '4px',
-            marginBottom: '12px',
-          }}
-        >
-          Failed to load events: {error.message}
-        </div>
+        <Alert variant="error" style={{ marginBottom: 20 }}>
+          Couldn't load events: {error.message}
+        </Alert>
       )}
 
       {groupKeys.length === 0 ? (
-        <p style={{ color: '#6b7280' }}>
-          {isLoading
-            ? 'Loading events\u2026'
-            : 'No events have been recorded yet for this wallet.'}
-        </p>
+        <Card style={{ textAlign: 'center', padding: 40 }}>
+          <p style={{ color: COLORS.textMuted, fontSize: 14, margin: 0, fontWeight: 300 }}>
+            {isLoading
+              ? 'Loading events…'
+              : 'No events recorded yet for this wallet.'}
+          </p>
+        </Card>
       ) : (
         groupKeys.map((name) => {
           const group = byName[name];
-          if (group === undefined) {
-            return null;
-          }
+          if (group === undefined) return null;
           return (
             <section
               key={name}
               aria-label={`${name} events`}
-              style={{ marginBottom: '24px' }}
+              style={{ marginBottom: 28 }}
             >
               <h2
                 style={{
-                  fontSize: '1rem',
+                  fontSize: 13,
                   fontWeight: 600,
-                  color: '#111827',
-                  marginBottom: '8px',
+                  color: COLORS.textDim,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                  marginBottom: 12,
                 }}
               >
                 {EVENT_LABELS[name] ?? name}
-                <span
-                  style={{
-                    marginLeft: '8px',
-                    color: '#6b7280',
-                    fontWeight: 400,
-                  }}
-                >
+                <span style={{ marginLeft: 8, color: COLORS.textDim, fontWeight: 400 }}>
                   ({group.length})
                 </span>
               </h2>
@@ -347,15 +310,9 @@ export function HistoryPage(): ReactElement {
         })
       )}
 
-      <footer
-        style={{
-          marginTop: '24px',
-          color: '#6b7280',
-          fontSize: '0.8125rem',
-        }}
-      >
+      <footer style={{ marginTop: 32, color: COLORS.textDim, fontSize: 13 }}>
         {events.length} event{events.length === 1 ? '' : 's'} total
-        {' \u00b7 '}auto-refresh every 15s
+        {' · '}auto-refresh every 15s
       </footer>
     </main>
   );

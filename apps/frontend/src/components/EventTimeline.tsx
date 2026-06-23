@@ -106,7 +106,7 @@ const railCellStyle: React.CSSProperties = {
   position: 'relative',
   paddingLeft: '12px',
   fontVariantNumeric: 'tabular-nums',
-  color: '#374151',
+  color: '#8a8a8a',
   fontSize: '0.875rem',
   lineHeight: 1.4,
 };
@@ -117,7 +117,7 @@ const railBeforeStyle: React.CSSProperties = {
   top: '0.5rem',
   bottom: 0,
   width: '2px',
-  background: '#d1d5db',
+  background: '#2a2a2a',
   content: '""',
 };
 
@@ -128,22 +128,22 @@ const railDotStyle: React.CSSProperties = {
   width: '8px',
   height: '8px',
   borderRadius: '50%',
-  background: '#2563eb',
+  background: '#b8976e',
 };
 
 const bodyCellStyle: React.CSSProperties = {
   paddingBottom: '8px',
-  borderBottom: '1px solid #f3f4f6',
+  borderBottom: '1px solid #2a2a2a',
   fontSize: '0.9375rem',
   lineHeight: 1.5,
-  color: '#111827',
+  color: '#e5e5e5',
 };
 
 const emptyStateStyle: React.CSSProperties = {
   gridColumn: '1 / -1',
   padding: '16px',
   textAlign: 'center',
-  color: '#6b7280',
+  color: '#6a6a6a',
   fontStyle: 'italic',
 };
 
@@ -210,8 +210,8 @@ function EventRow({ event, timestamp, renderEvent }: EventRowProps): ReactElemen
         <span style={railBeforeStyle} aria-hidden="true" />
         <span style={railDotStyle} aria-hidden="true" />
         <div>{timestamp}</div>
-        <div style={{ fontWeight: 600, color: '#111827' }}>{event.eventName}</div>
-        <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+        <div style={{ fontWeight: 600, color: '#e5e5e5' }}>{event.eventName}</div>
+        <div style={{ fontSize: '0.75rem', color: '#6a6a6a' }}>
           block {event.blockNumber} · log {event.logIndex}
         </div>
       </div>

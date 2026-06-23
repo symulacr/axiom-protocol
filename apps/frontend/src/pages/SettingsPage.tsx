@@ -36,7 +36,7 @@
 //     https://docs.0g.ai/ai-context
 
 import type { ChangeEvent, ReactElement } from 'react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useLocalStorage } from '../hooks/useLocalStorage.js';
 import { COLORS, Card, Button, Input, SectionTitle, PageHeader, Alert } from '../components/ui.js';
 
@@ -60,19 +60,11 @@ export function SettingsPage(): ReactElement {
     DEFAULT_CHAIN_ID,
   );
 
-  // Local drafts so the user can type without writing to localStorage
-  // on every keystroke. The drafts are seeded from the persisted hook
-  // value (which is itself hydrated from localStorage by the hook's
-  // mount-effect). We mirror hook → draft so a Save in another tab, or
-  // a future programmatic change, flows back into the visible input.
+  // Drafts are initialized from the persisted value. The inputs use `key`
+  // to remount when the saved value changes (e.g. saved in another tab),
+  // per the no-use-effect "reset with key" rule — no sync effects needed.
   const [rpcDraft, setRpcDraft] = useState<string>(rpcUrl);
   const [wcDraft, setWcDraft] = useState<string>(wcProjectId);
-  useEffect(() => {
-    setRpcDraft(rpcUrl);
-  }, [rpcUrl]);
-  useEffect(() => {
-    setWcDraft(wcProjectId);
-  }, [wcProjectId]);
 
   const onRpcDraftChange = (event: ChangeEvent<HTMLInputElement>): void => {
     setRpcDraft(event.target.value);
@@ -105,6 +97,7 @@ export function SettingsPage(): ReactElement {
         </p>
         <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
           <Input
+            key={`rpc-${rpcUrl}`}
             id="rpc-url-input"
             type="url"
             inputMode="url"
@@ -129,6 +122,7 @@ export function SettingsPage(): ReactElement {
         </p>
         <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
           <Input
+            key={`wc-${wcProjectId}`}
             id="wc-project-id-input"
             type="text"
             value={wcDraft}
