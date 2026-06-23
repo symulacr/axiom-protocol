@@ -1,5 +1,5 @@
 import { Indexer, MemData } from "@0gfoundation/0g-storage-ts-sdk";
-import { keccak256 } from "ethers";
+import { keccak256, type Signer } from "ethers";
 import type { Hex } from "viem";
 
 /**
@@ -47,10 +47,10 @@ export class InMemoryStorage implements StorageAdapter {
 export class ZeroGStorage implements StorageAdapter {
   private readonly indexer: Indexer;
   private readonly evmRpc: string;
-  private readonly signer: import("ethers").Signer;
+  private readonly signer: Signer;
   private seenDataHashes = new Set<string>();
 
-  constructor(config: { indexerRpc: string; evmRpc: string; signer: import("ethers").Signer }) {
+  constructor(config: { indexerRpc: string; evmRpc: string; signer: Signer }) {
     this.indexer = new Indexer(config.indexerRpc);
     this.evmRpc = config.evmRpc;
     this.signer = config.signer;
