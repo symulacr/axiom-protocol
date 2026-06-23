@@ -13,6 +13,6 @@
     "sourceMap": true,
     "types": ["node", "mocha", "chai"]
   },
-  "include": ["./scripts", "./test", "./typechain-types", "./hardhat.config.ts"],
+  "include": ["./script", "./hardhat.config.cjs"],
   "exclude": ["node_modules", "out", "cache", "broadcast"]
 }

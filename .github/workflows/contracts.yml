@@ -65,4 +65,4 @@ jobs:
 
       - run: pnpm install
       - run: pnpm --filter !@axiom/contracts -r run lint
-      - run: pnpm -r run typecheck
+      - run: pnpm --filter !@axiom/contracts -r run typecheck
