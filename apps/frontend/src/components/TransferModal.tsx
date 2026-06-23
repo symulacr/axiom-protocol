@@ -6,10 +6,8 @@
 
 import {
   useCallback,
-  useEffect,
   useId,
   useMemo,
-  useRef,
   useState,
   type ChangeEvent,
   type FormEvent,
@@ -18,7 +16,7 @@ import {
 import { isAddress } from 'viem';
 import { useAccount } from 'wagmi';
 import { useTransfer, type TransferInput } from '../hooks/useTransfer.js';
-import { COLORS, Button, Alert, MonoLabel } from './ui.js';
+import { COLORS, Button, Alert, MonoLabel, Input, Modal, Card } from './ui.js';
 
 const RECEIVER_PUBKEY_HEX_LENGTH = 130;
 
@@ -103,7 +101,6 @@ export function TransferModal({
   onTransferred,
   onSuccess,
 }: TransferModalProps): ReactElement {
-  const dialogRef = useRef<HTMLDialogElement | null>(null);
   const formId = useId();
 
   const { address: from, isConnected } = useAccount();
@@ -147,36 +144,6 @@ export function TransferModal({
     },
     [onSuccess, onTransferred],
   );
-
-  // Keep the <dialog> open state in sync with React. The `open`
-  // attribute is the React-friendly way to drive it declaratively;
-  // however <dialog> requires `.showModal()` for the inert backdrop
-  // and the focus trap, so we use it imperatively in an effect and
-  // reflect close events back into React state.
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-    if (open && !dialog.open) {
-      dialog.showModal();
-    } else if (!open && dialog.open) {
-      dialog.close();
-    }
-  }, [open]);
-
-  // The dialog fires a native `close` event when the user hits ESC or
-  // the backdrop is dismissed. Mirror it back into React state so
-  // parent components can react.
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-    const handleClose = (): void => {
-      setOpen(false);
-    };
-    dialog.addEventListener('close', handleClose);
-    return () => {
-      dialog.removeEventListener('close', handleClose);
-    };
-  }, [setOpen]);
 
   // The receiver-side AccessProof signs a fresh nonce. The nonce is
   // stable for the lifetime of this modal instance (re-mounts create
@@ -312,25 +279,13 @@ export function TransferModal({
         </Button>
       )}
 
-      <dialog
-        ref={dialogRef}
-        aria-labelledby={`${formId}-title`}
-        style={{
-          padding: 28,
-          border: `1px solid ${COLORS.borderStrong}`,
-          borderRadius: 12,
-          maxWidth: 500,
-          width: '90vw',
-          background: COLORS.surface,
-          color: COLORS.text,
-          boxShadow: '0 24px 80px rgba(0,0,0,0.5)',
-        }}
+      <Modal
+        open={open}
+        onClose={cancel}
+        title={`Transfer iNFT #${tokenId.toString()}`}
       >
         {phase === 'form' ? (
           <form onSubmit={onSubmit}>
-            <h2 id={`${formId}-title`} style={{ marginTop: 0, fontSize: 22, fontWeight: 700, color: COLORS.text, letterSpacing: '-0.02em' }}>
-              Transfer iNFT #{tokenId.toString()}
-            </h2>
 
             <p style={{ color: COLORS.textMuted, fontSize: 13, lineHeight: 1.6, fontWeight: 300, marginBottom: 20 }}>
               The receiver signs an EIP-712 AccessProof and the TEE oracle signs
@@ -342,34 +297,18 @@ export function TransferModal({
             <label htmlFor={`${formId}-to`} style={{ display: 'block', marginTop: 16, fontWeight: 500, fontSize: 13, color: COLORS.textPrimary }}>
               Receiver address
             </label>
-            <input
+            <Input
               id={`${formId}-to`}
-              name="to"
-              type="text"
               value={receiverAddress}
               onChange={onAddressChange}
               placeholder="0x…"
               autoComplete="off"
               spellCheck={false}
-              style={{
-                width: '100%',
-                padding: '10px 14px',
-                marginTop: 6,
-                fontFamily: "'SF Mono', monospace",
-                fontSize: 13,
-                border: `1px solid ${COLORS.borderStrong}`,
-                borderRadius: 6,
-                background: COLORS.bg,
-                color: COLORS.text,
-                boxSizing: 'border-box',
-                outline: 'none',
-              }}
+              style={{ width: '100%', boxSizing: 'border-box', fontFamily: "'SF Mono', monospace", marginTop: 6 }}
               required
             />
             {addressError !== null && (
-              <p role="alert" style={{ color: COLORS.danger, fontSize: 12, margin: '4px 0 0' }}>
-                {addressError}
-              </p>
+              <Alert variant="error" style={{ marginTop: 4 }}>{addressError}</Alert>
             )}
 
             <label htmlFor={`${formId}-pubkey`} style={{ display: 'block', marginTop: 16, fontWeight: 500, fontSize: 13, color: COLORS.textPrimary }}>
@@ -400,33 +339,17 @@ export function TransferModal({
               required
             />
             {pubKeyError !== null && (
-              <p role="alert" style={{ color: COLORS.danger, fontSize: 12, margin: '4px 0 0' }}>
-                {pubKeyError}
-              </p>
+              <Alert variant="error" style={{ marginTop: 4 }}>{pubKeyError}</Alert>
             )}
 
             <label htmlFor={`${formId}-nonce`} style={{ display: 'block', marginTop: 16, fontWeight: 500, fontSize: 13, color: COLORS.textPrimary }}>
               Access proof nonce
             </label>
-            <input
+            <Input
               id={`${formId}-nonce`}
-              name="accessProofNonce"
-              type="text"
               value={accessProofNonce}
               readOnly
-              style={{
-                width: '100%',
-                padding: '10px 14px',
-                marginTop: 6,
-                fontFamily: "'SF Mono', monospace",
-                fontSize: 13,
-                border: `1px solid ${COLORS.borderStrong}`,
-                borderRadius: 6,
-                background: COLORS.bg,
-                color: COLORS.bronzeLight,
-                boxSizing: 'border-box',
-                outline: 'none',
-              }}
+              style={{ width: '100%', boxSizing: 'border-box', fontFamily: "'SF Mono', monospace", marginTop: 6, color: COLORS.bronzeLight }}
             />
             <p style={{ color: COLORS.textDim, fontSize: 11, margin: '4px 0 0', fontWeight: 300 }}>
               32 random bytes generated locally. A new nonce is minted each time the modal opens.
@@ -443,59 +366,29 @@ export function TransferModal({
               <label htmlFor={`${formId}-oldkey`} style={{ display: 'block', marginTop: 8, fontWeight: 500, fontSize: 13, color: COLORS.textPrimary }}>
                 Old data encryption key (base64)
               </label>
-              <input
+              <Input
                 id={`${formId}-oldkey`}
-                name="oldDataEncryptionKey"
-                type="text"
                 value={oldDataEncryptionKey}
                 onChange={onOldDataKeyChange}
                 placeholder="base64 32-byte AES key"
                 autoComplete="off"
                 spellCheck={false}
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  marginTop: 6,
-                  fontFamily: "'SF Mono', monospace",
-                  fontSize: 13,
-                  border: `1px solid ${COLORS.borderStrong}`,
-                  borderRadius: 6,
-                  background: COLORS.bg,
-                  color: COLORS.text,
-                  boxSizing: 'border-box',
-                  outline: 'none',
-                }}
+                style={{ width: '100%', boxSizing: 'border-box', fontFamily: "'SF Mono', monospace", marginTop: 6 }}
               />
               <label htmlFor={`${formId}-olduri`} style={{ display: 'block', marginTop: 8, fontWeight: 500, fontSize: 13, color: COLORS.textPrimary }}>
                 Old data URI (0x…)
               </label>
-              <input
+              <Input
                 id={`${formId}-olduri`}
-                name="oldDataUri"
-                type="text"
                 value={oldDataUri}
                 onChange={onOldDataUriChange}
                 placeholder="0x… 0G Storage root hash"
                 autoComplete="off"
                 spellCheck={false}
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  marginTop: 6,
-                  fontFamily: "'SF Mono', monospace",
-                  fontSize: 13,
-                  border: `1px solid ${COLORS.borderStrong}`,
-                  borderRadius: 6,
-                  background: COLORS.bg,
-                  color: COLORS.text,
-                  boxSizing: 'border-box',
-                  outline: 'none',
-                }}
+                style={{ width: '100%', boxSizing: 'border-box', fontFamily: "'SF Mono', monospace", marginTop: 6 }}
               />
               {rekeyError !== null && (
-                <p role="alert" style={{ color: COLORS.danger, fontSize: 12, margin: '4px 0 0' }}>
-                  {rekeyError}
-                </p>
+                <Alert variant="error" style={{ marginTop: 4 }}>{rekeyError}</Alert>
               )}
             </details>
 
@@ -537,17 +430,7 @@ export function TransferModal({
             </p>
 
             {signature !== null && signature.rekeyed === true && (
-              <div
-                style={{
-                  marginTop: 12,
-                  padding: '12px 16px',
-                  background: COLORS.successBg,
-                  border: `1px solid ${COLORS.successBorder}`,
-                  borderRadius: 8,
-                  fontSize: 13,
-                  color: COLORS.success,
-                }}
-              >
+              <Alert variant="success" style={{ marginTop: 12 }}>
                 <strong>Re-encrypted</strong> — agent data was re-keyed for the receiver.
                 {signature.newDataHash !== undefined && (
                   <>
@@ -555,21 +438,11 @@ export function TransferModal({
                     New data hash: <MonoLabel style={{ fontSize: 11 }}>{signature.newDataHash}</MonoLabel>
                   </>
                 )}
-              </div>
+              </Alert>
             )}
 
             {signature !== null && (
-              <div
-                style={{
-                  marginTop: 12,
-                  padding: '12px 16px',
-                  background: COLORS.bg,
-                  border: `1px solid ${COLORS.border}`,
-                  borderRadius: 8,
-                  fontSize: 12,
-                  color: COLORS.textMuted,
-                }}
-              >
+              <Card style={{ background: COLORS.bg, padding: '12px 16px', borderRadius: 8, marginTop: 12, fontSize: 12, color: COLORS.textMuted }}>
                 <strong style={{ color: COLORS.text }}>OwnershipProof</strong> (TEE-signed)
                 <br />
                 Signer: <MonoLabel style={{ fontSize: 11 }}>{signature.signer ?? '—'}</MonoLabel>
@@ -582,25 +455,15 @@ export function TransferModal({
                     </code>
                   </>
                 )}
-              </div>
+              </Card>
             )}
 
             {signature !== null && signature.accessSigner !== undefined && (
-              <div
-                style={{
-                  marginTop: 8,
-                  padding: '12px 16px',
-                  background: COLORS.bg,
-                  border: `1px solid ${COLORS.border}`,
-                  borderRadius: 8,
-                  fontSize: 12,
-                  color: COLORS.textMuted,
-                }}
-              >
+              <Card style={{ background: COLORS.bg, padding: '12px 16px', borderRadius: 8, marginTop: 8, fontSize: 12, color: COLORS.textMuted }}>
                 <strong style={{ color: COLORS.text }}>AccessProof</strong> (receiver-signed)
                 <br />
                 Recovered signer: <MonoLabel style={{ fontSize: 11 }}>{signature.accessSigner}</MonoLabel>
-              </div>
+              </Card>
             )}
 
             {error !== null && (
@@ -624,7 +487,7 @@ export function TransferModal({
             </div>
           </form>
         )}
-      </dialog>
+      </Modal>
     </>
   );
 }

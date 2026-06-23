@@ -20,16 +20,6 @@ import {
 import { COLORS, Button, Card, SectionTitle, MonoLabel, Alert, Skeleton } from './ui.js';
 import { PLACEHOLDER } from '../utils/format.js';
 
-const panelStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 16,
-  padding: 24,
-  border: `1px solid ${COLORS.border}`,
-  borderRadius: 10,
-  background: COLORS.surface,
-};
-
 const actionColor: Record<string, string> = {
   buy: COLORS.success,
   sell: COLORS.danger,
@@ -104,9 +94,9 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
 
   if (!isConnected) {
     return (
-      <section style={panelStyle}>
+      <Card style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <p>Connect wallet to execute a strategy tick.</p>
-      </section>
+      </Card>
     );
   }
 
@@ -127,7 +117,7 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
   }
 
   return (
-    <section style={panelStyle} aria-label="Execute strategy tick">
+    <Card style={{ display: 'flex', flexDirection: 'column', gap: 16 }} aria-label="Execute strategy tick">
       {!locked && (
         <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <span style={{ fontSize: 13, fontWeight: 600, color: COLORS.textPrimary }}>Agent</span>
@@ -209,21 +199,9 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
           </div>
 
           <div>
-            <button
-              type="button"
-              onClick={(): void => setShowRaw((v) => !v)}
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: 12,
-                color: COLORS.bronzeLight,
-                padding: 0,
-                fontFamily: 'inherit',
-              }}
-            >
+            <Button variant="ghost" onClick={(): void => setShowRaw((v) => !v)} style={{ fontSize: 12, color: COLORS.bronzeLight, padding: 0 }}>
               {showRaw ? '▼ Hide' : '▶ Show'} raw model output
-            </button>
+            </Button>
             {showRaw && (
               <pre
                 style={{
@@ -276,7 +254,7 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
           </p>
         </div>
       )}
-    </section>
+    </Card>
   );
 }
 

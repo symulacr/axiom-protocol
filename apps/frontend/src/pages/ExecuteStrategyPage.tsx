@@ -5,6 +5,7 @@
 
 import type { ReactElement } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { COLORS, PageHeader, Alert } from '../components/ui.js';
 import { ExecutePanel } from '../components/ExecutePanel.js';
 
 /**
@@ -28,10 +29,12 @@ export function ExecuteStrategyPage(): ReactElement {
   if (tokenId === null) {
     return (
       <main>
-        <h1>Execute Strategy</h1>
-        <p role="alert">Invalid token id in the URL.</p>
-        <p>
-          <Link to="/agents">Back to your agents</Link>
+        <PageHeader title="Execute Strategy" />
+        <Alert variant="error">Invalid token id in the URL.</Alert>
+        <p style={{ marginTop: 'var(--space-md)' }}>
+          <Link to="/agents" style={{ color: COLORS.bronzeLight, fontSize: 'var(--text-sm)' }}>
+            Back to your agents
+          </Link>
         </p>
       </main>
     );
