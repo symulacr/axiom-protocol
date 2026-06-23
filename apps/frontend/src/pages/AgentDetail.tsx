@@ -41,6 +41,7 @@ import { axiomAgentNftAbi } from '../abi/axiomAgentNft.js';
 import { useAgentMetadata } from '../hooks/useAgentMetadata.js';
 import { TransferModal } from '../components/TransferModal.js';
 import { PaymentPanel } from '../components/PaymentPanel.js';
+import { Skeleton } from '../components/ui.js';
 
 /** Display the em-dash for an absent value. */
 const PLACEHOLDER = '\u2014';
@@ -142,7 +143,13 @@ export function AgentDetail(): ReactElement {
         <Link to="/agents">Back to your agents</Link>
       </p>
 
-      {metaLoading && <p>Loading agent metadata\u2026</p>}
+      {metaLoading && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 16 }}>
+          <Skeleton height={20} />
+          <Skeleton height={20} />
+          <Skeleton height={20} />
+        </div>
+      )}
       {metaError !== null && (
         <p role="alert">
           Failed to read agent metadata. Check the console for the
