@@ -4,7 +4,7 @@
 // on-chain `withdrawAgentEarnings()` call. HTTP I/O flows through
 // `usePayment`; the on-chain withdraw uses wagmi `useWriteContract`.
 
-import { useCallback, useEffect, useState, type ReactElement } from 'react';
+import { useCallback, useRef, useState, type ReactElement } from 'react';
 import { useAccount, useSendTransaction, useWriteContract } from 'wagmi';
 import type { Address } from 'viem';
 
@@ -18,6 +18,17 @@ import {
   type EarningsInfo,
   type RoyaltyResult,
 } from '../hooks/usePayment.js';
+import {
+  COLORS,
+  Card,
+  Button,
+  Input,
+  Alert,
+  SectionTitle,
+  MonoLabel,
+  Badge,
+  Spinner,
+} from './ui.js';
 
 /**
  * Minimal ABI fragment for the on-chain withdraw call. The backend
@@ -40,15 +51,6 @@ const PAYMENT_PROCESSOR_FRAGMENT = [
 /** Per-action status surfaced to the UI. */
 type ActionStatus = 'idle' | 'pending' | 'success' | 'error';
 
-/** Shared panel style: a bordered card section with spacing. */
-const sectionStyle: React.CSSProperties = {
-  border: '1px solid #2a2a2a',
-  borderRadius: 10,
-  padding: 20,
-  marginBottom: 16,
-  background: '#1a1a1a',
-};
-
 /** Inline form row: a labeled input + submit button. */
 const formRowStyle: React.CSSProperties = {
   display: 'flex',
@@ -56,20 +58,6 @@ const formRowStyle: React.CSSProperties = {
   alignItems: 'center',
   marginTop: 8,
 };
-
-/** Status pill colour per `ActionStatus`. */
-function statusColor(status: ActionStatus): string {
-  switch (status) {
-    case 'success':
-      return '#6b9e6b';
-    case 'error':
-      return '#c85a5a';
-    case 'pending':
-      return '#c5a25a';
-    default:
-      return '#8a8a8a';
-  }
-}
 
 export type PaymentPanelProps = {
   /** Token id of the agent this panel is scoped to. */
@@ -115,28 +103,18 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
 
   const [withdrawStatus, setWithdrawStatus] = useState<ActionStatus>('idle');
 
-  // Load payment config + current earnings on mount and whenever the
-  // token id changes. `cancelled` guards against state writes after
-  // unmount, per the React 18 useEffect idiom.
-  useEffect(() => {
-    let cancelled = false;
-    const load = async (): Promise<void> => {
-      try {
-        const [cfg, earn] = await Promise.all([
-          getPaymentConfig(),
-          getEarnings(tokenId),
-        ]);
-        if (cancelled) return;
+  // Render-time data initialisation — fires once on the first connected
+  // render, no `useEffect` needed.
+  const initRef = useRef(false);
+  if (!initRef.current && isConnected) {
+    initRef.current = true;
+    Promise.all([getPaymentConfig(), getEarnings(tokenId)])
+      .then(([cfg, earn]) => {
         setConfig(cfg);
         setEarnings(earn);
-      } catch {
-      }
-    };
-    void load();
-    return (): void => {
-      cancelled = true;
-    };
-  }, [tokenId, getPaymentConfig, getEarnings]);
+      })
+      .catch(() => {});
+  }
 
   const refreshEarnings = useCallback(async (): Promise<void> => {
     try {
@@ -198,48 +176,50 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
 
   if (!isConnected) {
     return (
-      <section style={sectionStyle}>
-        <h2>Payments</h2>
-        <p>Connect wallet to manage payments for this agent.</p>
-      </section>
+      <Card>
+        <SectionTitle>Payments</SectionTitle>
+        <p style={{ color: COLORS.textMuted, fontSize: 'var(--text-sm)', lineHeight: 'var(--lh-snug)' }}>
+          Connect wallet to manage payments for this agent.
+        </p>
+      </Card>
     );
   }
 
   return (
-    <section style={sectionStyle}>
-      <h2>Payments</h2>
+    <Card>
+      <SectionTitle>Payments</SectionTitle>
 
       {/* 1. Payment config */}
       <h3>Payment Config</h3>
       {config === null ? (
-        <p>Loading payment config\u2026</p>
+        <Spinner size={16} />
       ) : (
         <dl>
           <dt>Payment Token</dt>
           <dd>
-            <code title={config.paymentToken}>
+            <MonoLabel title={config.paymentToken}>
               {truncateHex(config.paymentToken)}
-            </code>
+            </MonoLabel>
           </dd>
           <dt>Protocol Fee</dt>
           <dd>{config.protocolFeeBps} bps</dd>
           <dt>Protocol Treasury</dt>
           <dd>
-            <code title={config.protocolTreasury}>
+            <MonoLabel title={config.protocolTreasury}>
               {truncateHex(config.protocolTreasury)}
-            </code>
+            </MonoLabel>
           </dd>
         </dl>
       )}
 
       {/* 2. Pay-for-agent form */}
       <h3>Pay for Agent</h3>
-      <p style={{ fontSize: 12, color: '#8a8a8a' }}>
+      <p style={{ fontSize: 12, color: COLORS.textMuted }}>
         Amount is in the payment token&apos;s smallest unit (e.g. 6-decimal
         USDC micro-units).
       </p>
       <div style={formRowStyle}>
-        <input
+        <Input
           type="text"
           inputMode="numeric"
           placeholder="amount (wei)"
@@ -248,67 +228,63 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
             setPayAmount(e.target.value);
             setPayStatus('idle');
           }}
-          style={{ flex: 1, padding: '4px 8px' }}
+          style={{ flex: 1 }}
         />
-        <button
-          type="button"
+        <Button
+          variant="primary"
           disabled={isLoading || payAmount === ''}
           onClick={(): void => {
             void handlePay();
           }}
         >
-          {payStatus === 'pending' ? 'Paying\u2026' : 'Pay'}
-        </button>
+          {payStatus === 'pending' ? <Spinner size={16} /> : 'Pay'}
+        </Button>
       </div>
-      <p style={{ color: statusColor(payStatus), fontSize: 12 }}>
-        {payStatus === 'success' && 'Payment submitted.'}
-        {payStatus === 'error' && 'Payment failed.'}
-      </p>
+      {payStatus === 'success' && <Alert variant="success">Payment submitted.</Alert>}
+      {payStatus === 'error' && <Alert variant="error">Payment failed.</Alert>}
 
       {/* 3. Earnings + withdraw */}
       <h3>Earnings</h3>
       {earnings === null ? (
-        <p>Loading earnings\u2026</p>
+        <Spinner size={16} />
       ) : (
         <dl>
           <dt>Creator</dt>
           <dd>
-            <code title={earnings.creator}>
+            <MonoLabel title={earnings.creator}>
               {earnings.creator === ethersZero
                 ? PLACEHOLDER
                 : truncateHex(earnings.creator)}
-            </code>
+            </MonoLabel>
           </dd>
           <dt>Accumulated Earnings</dt>
           <dd>
-            <code>{earnings.earnings}</code>
+            <MonoLabel>{earnings.earnings}</MonoLabel>
           </dd>
         </dl>
       )}
       <div style={formRowStyle}>
-        <button
-          type="button"
+        <Button
+          variant="secondary"
           disabled={isWithdrawPending || withdrawStatus === 'pending'}
           onClick={(): void => {
             void handleWithdraw();
           }}
         >
-          {withdrawStatus === 'pending' ? 'Withdrawing\u2026' : 'Withdraw'}
-        </button>
+          {withdrawStatus === 'pending' ? <Spinner size={16} /> : 'Withdraw'}
+        </Button>
       </div>
-      <p style={{ color: statusColor(withdrawStatus), fontSize: 12 }}>
-        {withdrawStatus === 'success' && 'Withdrawal submitted.'}
-        {withdrawStatus === 'error' && 'Withdrawal failed.'}
-      </p>
+      {withdrawStatus === 'success' && <Alert variant="success">Withdrawal submitted.</Alert>}
+      {withdrawStatus === 'error' && <Alert variant="error">Withdrawal failed.</Alert>}
 
       {/* 4. Royalty setting form */}
       <h3>Royalty</h3>
-      <p style={{ fontSize: 12, color: '#8a8a8a' }}>
+      <p style={{ fontSize: 12, color: COLORS.textMuted }}>
         Basis points (0\u201310000). 250 = 2.5%. Only the agent creator
         may set this on-chain.
       </p>
       <div style={formRowStyle}>
-        <input
+        <Input
           type="number"
           min={0}
           max={10000}
@@ -318,35 +294,29 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
             setRoyaltyBps(e.target.value);
             setRoyaltyStatus('idle');
           }}
-          style={{ flex: 1, padding: '4px 8px' }}
+          style={{ flex: 1 }}
         />
-        <button
-          type="button"
+        <Button
+          variant="primary"
           disabled={isLoading || royaltyBps === ''}
           onClick={(): void => {
             void handleSetRoyalty();
           }}
         >
-          {royaltyStatus === 'pending' ? 'Setting\u2026' : 'Set Royalty'}
-        </button>
+          {royaltyStatus === 'pending' ? <Spinner size={16} /> : 'Set Royalty'}
+        </Button>
       </div>
-      <p style={{ color: statusColor(royaltyStatus), fontSize: 12 }}>
-        {royaltyStatus === 'success' && 'Royalty updated.'}
-        {royaltyStatus === 'error' && 'Royalty update failed.'}
-      </p>
+      {royaltyStatus === 'success' && <Alert variant="success">Royalty updated.</Alert>}
+      {royaltyStatus === 'error' && <Alert variant="error">Royalty update failed.</Alert>}
 
       {/* Shared error line for any hook-level failure. */}
       {error !== null && (
-        <p role="alert" style={{ color: '#c85a5a', fontSize: 12 }}>
-          {error.message}
-        </p>
+        <Alert variant="error">{error.message}</Alert>
       )}
       {withdrawError !== null && (
-        <p role="alert" style={{ color: '#c85a5a', fontSize: 12 }}>
-          {withdrawError.message}
-        </p>
+        <Alert variant="error">{withdrawError.message}</Alert>
       )}
-    </section>
+    </Card>
   );
 }
 
