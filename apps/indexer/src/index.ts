@@ -298,7 +298,7 @@ async function main() {
     try {
       storageSigner = new ethers.Wallet(DEPLOYER_PK, provider);
       storageIndexer = new Indexer(ogStorageRpc);
-    } catch (err) {
+    } catch {
       // non-fatal — storage is best-effort
     }
   }
