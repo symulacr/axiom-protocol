@@ -4,7 +4,7 @@
 // POST /v1/agents/:id/pay, POST /v1/compute/pay, GET /v1/agents/:id/earnings,
 // POST /v1/agents/:id/royalty, GET /v1/payment/config.
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Address } from 'viem';
 
 const BACKEND_URL =
@@ -65,9 +65,10 @@ async function apiFetch<T>(
   path: string,
   init: RequestInit,
 ): Promise<T> {
+  const signal = init.signal ?? AbortSignal.timeout(10000);
   const res = await fetch(`${BACKEND_URL}${path}`, {
     ...init,
-    signal: AbortSignal.timeout(10000),
+    signal,
     headers: {
       'content-type': 'application/json',
       accept: 'application/json',
@@ -109,14 +110,22 @@ export type UsePaymentResult = {
 export function usePayment(): UsePaymentResult {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => abortRef.current?.abort();
+  }, []);
 
   const run = useCallback(async <T,>(
-    fn: () => Promise<T>,
+    fn: (signal: AbortSignal) => Promise<T>,
   ): Promise<T> => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     setIsLoading(true);
     setError(null);
     try {
-      return await fn();
+      return await fn(controller.signal);
     } catch (err) {
       const wrapped = err instanceof Error ? err : new Error(String(err));
       setError(wrapped);
@@ -128,10 +137,11 @@ export function usePayment(): UsePaymentResult {
 
   const payForAgent = useCallback(
     (tokenId: bigint, amount: string): Promise<AgentPayResult> =>
-      run(() =>
+      run((signal) =>
         apiFetch<AgentPayResult>(`/v1/agents/${tokenId.toString()}/pay`, {
           method: 'POST',
           body: JSON.stringify({ amount }),
+          signal,
         }),
       ),
     [run],
@@ -139,10 +149,11 @@ export function usePayment(): UsePaymentResult {
 
   const payComputeProvider = useCallback(
     (provider: Address, amount: string): Promise<ComputePayResult> =>
-      run(() =>
+      run((signal) =>
         apiFetch<ComputePayResult>('/v1/compute/pay', {
           method: 'POST',
           body: JSON.stringify({ provider, amount }),
+          signal,
         }),
       ),
     [run],
@@ -150,9 +161,10 @@ export function usePayment(): UsePaymentResult {
 
   const getEarnings = useCallback(
     (tokenId: bigint): Promise<EarningsInfo> =>
-      run(() =>
+      run((signal) =>
         apiFetch<EarningsInfo>(`/v1/agents/${tokenId.toString()}/earnings`, {
           method: 'GET',
+          signal,
         }),
       ),
     [run],
@@ -160,10 +172,11 @@ export function usePayment(): UsePaymentResult {
 
   const setRoyalty = useCallback(
     (tokenId: bigint, bps: number): Promise<RoyaltyResult> =>
-      run(() =>
+      run((signal) =>
         apiFetch<RoyaltyResult>(`/v1/agents/${tokenId.toString()}/royalty`, {
           method: 'POST',
           body: JSON.stringify({ bps }),
+          signal,
         }),
       ),
     [run],
@@ -171,9 +184,10 @@ export function usePayment(): UsePaymentResult {
 
   const getPaymentConfig = useCallback(
     (): Promise<PaymentConfig> =>
-      run(() =>
+      run((signal) =>
         apiFetch<PaymentConfig>('/v1/payment/config', {
           method: 'GET',
+          signal,
         }),
       ),
     [run],

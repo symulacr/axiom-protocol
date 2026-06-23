@@ -24,17 +24,17 @@ export function getComputeBaseUrl(): string {
   return chainId === 16661 ? DEFAULT_MAINNET_URL : DEFAULT_TESTNET_URL;
 }
 
-export function createRouterClient(): OpenAI {
+export function createRouterClient(timeout = 30_000): OpenAI {
   // 1. Direct SDK proxy path (app-sk-* key against Direct SDK proxy)
   const directKey = process.env.AXIOM_COMPUTE_DIRECT_KEY;
   if (directKey) {
     const baseURL = process.env.AXIOM_COMPUTE_BASE_URL ?? "https://compute-network-6.integratenetwork.work/v1/proxy";
-    return new OpenAI({ baseURL, apiKey: directKey });
+    return new OpenAI({ baseURL, apiKey: directKey, timeout, maxRetries: 2 });
   }
   // 2. Router API path (sk-* key against Router API)
   const routerKey = process.env.AXIOM_COMPUTE_API_KEY ?? process.env.OG_COMPUTE_API_KEY;
   if (routerKey) {
-    return new OpenAI({ baseURL: getComputeBaseUrl(), apiKey: routerKey });
+    return new OpenAI({ baseURL: getComputeBaseUrl(), apiKey: routerKey, timeout, maxRetries: 2 });
   }
   throw new Error("AXIOM_COMPUTE_DIRECT_KEY, AXIOM_COMPUTE_API_KEY, or OG_COMPUTE_API_KEY required");
 }

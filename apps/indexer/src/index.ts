@@ -134,6 +134,13 @@ async function flushBuffer(): Promise<void> {
     }
   } catch (err) {
     // Re-buffer on failure so events are not lost
+    const MAX_BUFFER_SIZE = 10000;
+    for (const ev of batch) {
+      if (eventBuffer.length >= MAX_BUFFER_SIZE) {
+        const dropped = eventBuffer.pop();
+        console.warn(`[indexer] event buffer full, dropping oldest event: ${dropped?.kind ?? "unknown"}`);
+      }
+    }
     eventBuffer.unshift(...batch);
     process.stderr.write(
       JSON.stringify({

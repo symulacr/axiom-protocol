@@ -9,6 +9,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider } from 'wagmi';
 import { RainbowKitProvider, darkTheme } from '@rainbow-me/rainbowkit';
 
+import { ErrorBoundary } from './components/ErrorBoundary.js';
 import { App } from './App';
 import { wagmiConfig } from './config/wagmi';
 import '@rainbow-me/rainbowkit/styles.css';
@@ -33,7 +34,9 @@ createRoot(rootEl).render(
           overlayBlur: 'small',
         })}>
           <BrowserRouter>
-            <App />
+            <ErrorBoundary>
+              <App />
+            </ErrorBoundary>
           </BrowserRouter>
         </RainbowKitProvider>
       </QueryClientProvider>

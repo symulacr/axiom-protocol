@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 /**
  * Request body posted to the Axiom backend orchestrator tick endpoint.
@@ -73,9 +73,17 @@ export function useOrchestratorTick(): {
 } {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => abortRef.current?.abort();
+  }, []);
 
   const tick = useCallback(
     async (req: TickRequest): Promise<TickResult> => {
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
       setIsLoading(true);
       setError(null);
       try {
@@ -86,7 +94,7 @@ export function useOrchestratorTick(): {
             accept: 'application/json',
           },
           body: JSON.stringify(req),
-          signal: AbortSignal.timeout(30000),
+          signal: AbortSignal.any([controller.signal, AbortSignal.timeout(30000)]),
         });
         if (!res.ok) {
           // Surface the response status + body as an Error so the UI can

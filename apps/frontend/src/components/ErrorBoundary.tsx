@@ -1,7 +1,15 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { COLORS } from './ui.js';
 
-type Props = { children: ReactNode };
-type State = { hasError: boolean; error: Error | null };
+interface Props {
+  children: ReactNode;
+  fallback?: ReactNode;
+}
+
+interface State {
+  hasError: boolean;
+  error: Error | null;
+}
 
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
@@ -19,31 +27,26 @@ export class ErrorBoundary extends Component<Props, State> {
 
   override render(): ReactNode {
     if (this.state.hasError) {
+      if (this.props.fallback) return this.props.fallback;
       return (
-        <div style={{ padding: 48, textAlign: 'center' }}>
-          <h2 style={{ color: '#c85a5a', marginBottom: 10, fontSize: 20, fontWeight: 600 }}>
-            Something went wrong
-          </h2>
-          <p style={{ color: '#8a8a8a', fontSize: 15, marginBottom: 24, maxWidth: 420, margin: '0 auto 24px' }}>
-            {this.state.error?.message ?? 'An unexpected error occurred while rendering this page.'}
-          </p>
+        <div style={{
+          padding: 24, margin: 24,
+          border: `1px solid ${COLORS.dangerBorder}`,
+          borderRadius: 8, background: COLORS.dangerBg,
+          color: COLORS.danger, fontSize: 14,
+        }}>
+          <h2 style={{ fontSize: 16, fontWeight: 600, margin: '0 0 8px' }}>Something went wrong</h2>
+          <p style={{ margin: 0 }}>{this.state.error?.message ?? 'Unknown error'}</p>
           <button
-            type="button"
-            onClick={() => this.setState({ hasError: false, error: null })}
+            onClick={() => window.location.reload()}
             style={{
-              padding: '10px 20px',
-              borderRadius: 6,
-              border: '1px solid #3a3a3a',
-              background: 'transparent',
-              color: '#e5e5e5',
-              cursor: 'pointer',
-              fontSize: 14,
-              fontWeight: 600,
-              transition: 'all 0.18s ease',
+              marginTop: 12, padding: '6px 16px',
+              background: COLORS.danger, color: '#fff',
+              border: 'none', borderRadius: 4, cursor: 'pointer',
               fontFamily: 'inherit',
             }}
           >
-            Try again
+            Reload page
           </button>
         </div>
       );
@@ -51,5 +54,3 @@ export class ErrorBoundary extends Component<Props, State> {
     return this.props.children;
   }
 }
-
-export default ErrorBoundary;
