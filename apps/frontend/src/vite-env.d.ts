@@ -1,6 +1,3 @@
-// Vite environment variable type declarations.
-// Source: https://vitejs.dev/guide/env-and-mode.html#intellisense-for-typescript
-
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {

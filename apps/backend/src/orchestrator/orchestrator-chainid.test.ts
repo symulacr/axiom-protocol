@@ -32,10 +32,7 @@ import assert from "node:assert/strict";
 import { Wallet } from "ethers";
 import { StrategyRunner } from "../../src/orchestrator/index.js";
 
-// Canonical 0G network endpoints. Sourced from
-// https://docs.0g.ai/ai-context and https://docs.0g.ai/developer-hub/mainnet/mainnet-overview.
-// Kept inline (not imported) so the test is self-contained and a typo in
-// either the SUT or the source table is caught by the assertion itself.
+// Canonical 0G network endpoints.
 const ARISTOTLE_STORAGE_RPC = "https://indexer-storage-turbo.0g.ai";
 const GALILEO_STORAGE_RPC = "https://indexer-storage-testnet-turbo.0g.ai";
 

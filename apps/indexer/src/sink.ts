@@ -124,9 +124,7 @@ export async function postEvent(
   const chainId = Number(process.env["OG_CHAIN_ID"] ?? GALILEO_CHAIN_ID);
   const body: HttpEventBody = buildBody(event, source, chainId);
 
-  // AbortSignal.timeout is available in Node 22+; the brief requires
-  // Node 22 for the 0G compute SDK, so this is safe. Source:
-  // https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal/timeout
+  // AbortSignal.timeout is safe in Node 22+.
   const signal = AbortSignal.timeout(timeoutMs);
   const res = await fetchImpl(url, {
     method: "POST",

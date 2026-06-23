@@ -148,9 +148,7 @@ export function useEventHistory(
         if (cancelled) {
           return;
         }
-        // AbortError is the expected shutdown path on unmount; do
-        // not surface it as a user-visible error. Source: MDN
-        // https://developer.mozilla.org/en-US/docs/Web/API/AbortController
+        // AbortError on unmount — ignore.
         if (err instanceof DOMException && err.name === 'AbortError') {
           return;
         }

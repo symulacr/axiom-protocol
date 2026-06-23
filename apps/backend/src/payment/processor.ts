@@ -1,13 +1,4 @@
-// PaymentProcessorClient — ethers v6 wrapper around AxiomPaymentProcessor.
-//
-// The contract is a standalone (non-upgradeable) ERC-20 payment splitter: it
-// pulls the configured stable from the caller, credits the agent creator's
-// withdrawable balance (royalty), and forwards the protocol cut to the treasury
-// in the same atomic call. See apps/contracts/src/AxiomPaymentProcessor.sol.
-//
-// Write methods return the tx receipt (after 1 confirmation). Read methods
-// return the decoded result. The constructor takes a signer for write paths
-// and falls back to a provider for view-only clients.
+// ethers v6 wrapper around AxiomPaymentProcessor.
 
 import { type ContractTransactionReceipt, type Wallet, type JsonRpcProvider, type Log, type EventLog } from "ethers";
 import { TypedContract } from "@axiom/config/types/contract";
