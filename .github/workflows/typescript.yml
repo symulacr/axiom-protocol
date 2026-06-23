@@ -47,5 +47,5 @@ jobs:
           node-version: 22
           cache: "pnpm"
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @axiom/config build
+      - run: pnpm --filter !@axiom/contracts -r build
       - run: pnpm --filter @axiom/backend test && pnpm --filter @axiom/oracle test && pnpm --filter @axiom/indexer test
