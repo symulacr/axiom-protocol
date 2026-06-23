@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useRef } from 'react';
 import type {
   ButtonHTMLAttributes,
   CSSProperties,
@@ -50,6 +51,12 @@ export const COLORS = {
 
 // Shared transitions
 const transition = 'all 0.18s cubic-bezier(0.4, 0, 0.2, 1)';
+
+// ─── Helpers ───────────────────────────────────────────────────────────
+function useMountEffect(effect: () => void | (() => void), deps: unknown[] = []) {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(effect, deps);
+}
 
 // Button
 type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost';
@@ -386,5 +393,142 @@ export function MonoLabel({
     >
       {children}
     </code>
+  );
+}
+
+// Select
+export function Select({
+  value, onChange, children, style, disabled, 'aria-label': ariaLabel,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  children: ReactNode;
+  style?: CSSProperties;
+  disabled?: boolean;
+  'aria-label'?: string;
+}): ReactElement {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      disabled={disabled}
+      aria-label={ariaLabel}
+      style={{
+        padding: '0.625rem 0.875rem',
+        borderRadius: 'var(--radius-md)',
+        border: `1px solid ${COLORS.borderStrong}`,
+        background: COLORS.bg,
+        color: COLORS.text,
+        fontSize: 'var(--text-sm)',
+        fontFamily: 'inherit',
+        outline: 'none',
+        minWidth: '12rem',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.4 : 1,
+        transition,
+        ...style,
+      }}
+    >
+      {children}
+    </select>
+  );
+}
+
+// Spinner
+export function Spinner({ size = 20, style }: { size?: number; style?: CSSProperties }): ReactElement {
+  return (
+    <span
+      style={{
+        display: 'inline-block',
+        width: size,
+        height: size,
+        border: `2px solid ${COLORS.border}`,
+        borderTopColor: COLORS.bronze,
+        borderRadius: '50%',
+        animation: 'axiom-spin 0.8s linear infinite',
+        ...style,
+      }}
+      aria-label="Loading"
+    />
+  );
+}
+
+interface ModalProps {
+  open: boolean;
+  onClose: () => void;
+  title?: string;
+  children: ReactNode;
+  style?: CSSProperties;
+}
+
+// Modal
+export function Modal({ open, onClose, title, children, style }: ModalProps): ReactElement | null {
+  const dialogRef = useRef<HTMLDialogElement | null>(null);
+
+  // useMountEffect for dialog open/close sync
+  useMountEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (open && !dialog.open) {
+      dialog.showModal();
+    } else if (!open && dialog.open) {
+      dialog.close();
+    }
+  }, [open]);
+
+  // Event handler for native close
+  const handleClose = useCallback(() => onClose(), [onClose]);
+
+  return (
+    <dialog
+      ref={dialogRef}
+      onClose={handleClose}
+      style={{
+        padding: 28,
+        border: `1px solid ${COLORS.borderStrong}`,
+        borderRadius: 12,
+        maxWidth: 500,
+        width: '90vw',
+        background: COLORS.surface,
+        color: COLORS.text,
+        boxShadow: '0 24px 80px rgba(0,0,0,0.5)',
+        ...style,
+      }}
+    >
+      {title !== undefined && (
+        <h2 style={{ marginTop: 0, fontSize: 22, fontWeight: 700, color: COLORS.text, letterSpacing: '-0.02em' }}>
+          {title}
+        </h2>
+      )}
+      {children}
+    </dialog>
+  );
+}
+
+// KeyValueTable
+export function KeyValueTable({
+  data,
+  style,
+}: {
+  data: Array<{ key: string; value: ReactNode }>;
+  style?: CSSProperties;
+}): ReactElement {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 0, ...style }}>
+      {data.map((row, i) => (
+        <div
+          key={row.key}
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            padding: '0.625rem 0',
+            borderBottom: i < data.length - 1 ? `1px solid ${COLORS.border}` : 'none',
+          }}
+        >
+          <span style={{ color: COLORS.textDim, fontSize: 'var(--text-sm)' }}>{row.key}</span>
+          <span style={{ color: COLORS.text, fontSize: 'var(--text-sm)' }}>{row.value}</span>
+        </div>
+      ))}
+    </div>
   );
 }
