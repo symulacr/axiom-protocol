@@ -17,8 +17,7 @@
 //     so the `topics: [topic0]` filter is exact. No false positives.
 //     Ref: https://docs.soliditylang.org/en/latest/abi-spec.html#events
 //   - We track `nextBlock` between ticks. On restart, we resume from
-//     the last persisted checkpoint (in-process for now; persistence to
-//     `apps/indexer/data/checkpoint.json` is a follow-up).
+//     the last persisted checkpoint in `apps/indexer/data/checkpoint.json`.
 //   - The sink is an injected `(event: AxiomEvent) => void | Promise<void>`.
 //     Default sink is in `index.ts` (prints JSON to stdout). Future DA
 //     submission wiring is a separate concern.
@@ -26,6 +25,8 @@
 import { ethers } from "ethers";
 import type { JsonRpcProvider, Log } from "ethers";
 import { decodeEventLog, getAddress, type Address } from "viem";
+import { readFile, writeFile, rename, mkdir } from "node:fs/promises";
+import { join, dirname } from "node:path";
 import { validateHex, toViemHex, type Hex } from "@axiom/config/types/hex";
 
 import { ADDRESSES, EVENT_ABI, type AxiomEvent, type EventName } from "./events.js";
@@ -49,6 +50,9 @@ const VIEM_PARSE_ABI_ITEM = "https://viem.sh/docs/abi/parseAbiItem.html";
  * Ref: https://www.quicknode.com/docs/0g/error-references
  */
 const QUICKNODE_OG_ERRORS = "https://www.quicknode.com/docs/0g/error-references";
+
+/** Path to the persisted checkpoint file (stores nextBlock cursor). */
+const CHECKPOINT_FILE = join(process.cwd(), "data", "checkpoint.json");
 
 /** Pre-computed topic-0 (event hash) for every signature we care about. */
 export type EventTopicTable = { [K in EventName]: Hex };
@@ -546,6 +550,40 @@ function logsByChainOrder(a: Log, b: Log) {
   return 0;
 }
 
+// ── Checkpoint persistence ─────────────────────────────────────────────
+
+/**
+ * Load the persisted nextBlock cursor from disk.
+ * Returns `null` when no checkpoint exists or the file is invalid.
+ */
+async function loadCheckpoint(): Promise<number | null> {
+  try {
+    const data = await readFile(CHECKPOINT_FILE, "utf-8");
+    const parsed = JSON.parse(data);
+    if (typeof parsed.nextBlock === "number" && Number.isInteger(parsed.nextBlock) && parsed.nextBlock > 0) {
+      return parsed.nextBlock;
+    }
+  } catch {
+    // File not found or invalid — return null
+  }
+  return null;
+}
+
+/**
+ * Atomically persist the nextBlock cursor to disk.
+ * Writes to a temp file first, then renames to avoid partial writes.
+ */
+async function saveCheckpoint(nextBlock: number): Promise<void> {
+  const tmp = CHECKPOINT_FILE + ".tmp";
+  try {
+    await mkdir(dirname(CHECKPOINT_FILE), { recursive: true });
+    await writeFile(tmp, JSON.stringify({ nextBlock, updatedAt: Date.now() }), "utf-8");
+    await rename(tmp, CHECKPOINT_FILE);
+  } catch (err) {
+    console.error("[watcher] failed to save checkpoint:", err);
+  }
+}
+
 /** Class that holds state for a long-running watcher. */
 export class Watcher {
   readonly provider: JsonRpcProvider;
@@ -641,6 +679,7 @@ export class Watcher {
           await this.sink(ev);
         }
         this.nextBlock = toBlock + 1n;
+        await saveCheckpoint(Number(this.nextBlock));
         this.logger({
           msg: "poll tick",
           fromBlock: fromBlock.toString(),
@@ -663,6 +702,14 @@ export class Watcher {
     };
 
     const loop = async (): Promise<void> => {
+      // Load persisted checkpoint before first tick so we resume from
+      // where we left off rather than falling back to head - window.
+      const savedBlock = await loadCheckpoint();
+      if (savedBlock !== null) {
+        console.log(`[watcher] resuming from checkpoint block ${savedBlock}`);
+        this.nextBlock = BigInt(savedBlock);
+      }
+
       while (this.running) {
         await tick();
         if (!this.running) break;
