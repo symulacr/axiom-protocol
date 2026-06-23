@@ -135,7 +135,7 @@ export function useEventHistory(
         const res = await fetch(url.toString(), {
           method: 'GET',
           headers: { accept: 'application/json' },
-          signal: controller.signal,
+          signal: AbortSignal.any([controller.signal, AbortSignal.timeout(10000)]),
         });
         if (!res.ok) {
           // The body may not be JSON; `.text()` is the safe read

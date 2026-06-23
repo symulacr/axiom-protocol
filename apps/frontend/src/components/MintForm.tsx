@@ -96,7 +96,6 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
   const { address, isConnected } = useAccount();
   const { mint, isLoading, error, result, reset } = useMint();
 
-  const [dataDescription, setDataDescription] = useState('');
   const [encryptedStrategyUri, setEncryptedStrategyUri] = useState('');
   const [sealedKey, setSealedKey] = useState('');
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -163,12 +162,6 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
     [canSubmit, encryptedStrategyUri, isLoading, mint, owner, sealedKey],
   );
 
-  const onDescriptionChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>): void => {
-      setDataDescription(event.target.value);
-    },
-    [],
-  );
   const onUriChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>): void => {
       setEncryptedStrategyUri(event.target.value);
@@ -211,24 +204,6 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
         </p>
 
         <form onSubmit={onSubmit}>
-          <label htmlFor={`${formId}-desc`} style={labelStyle}>
-            Strategy description <span style={{ color: COLORS.textDim, fontWeight: 400 }}>(optional)</span>
-          </label>
-          <input
-            id={`${formId}-desc`}
-            name="dataDescription"
-            type="text"
-            value={dataDescription}
-            onChange={onDescriptionChange}
-            placeholder="e.g. Mean-reversion on 0G OG/USDC"
-            autoComplete="off"
-            style={{ ...inputStyle, fontFamily: 'inherit' }}
-          />
-          <p style={fieldHintStyle}>
-            Stored as the iNFT <code style={{ color: COLORS.bronzeLight }}>dataDescription</code>.
-            Defaults to "Axiom strategy bundle" when blank.
-          </p>
-
           <label htmlFor={`${formId}-uri`} style={labelStyle}>
             Encrypted strategy URI / dataHash
           </label>

@@ -120,6 +120,21 @@ contract AxiomPaymentProcessor is Ownable, Pausable, ReentrancyGuard {
     }
 
     function setRoyaltyBps(uint256 agentTokenId, uint256 newBps) external onlyAgentCreator(agentTokenId) {
+        _setRoyaltyBps(agentTokenId, newBps);
+    }
+
+    /// @notice Set royalty override as the NFT owner (bypasses creator check).
+    /// @dev    Intended for frontend-directed calls where the NFT owner submits
+    ///         the tx directly (e.g. via wagmi). The `onlyAgentCreator` modifier
+    ///         fails when the backend deployer wallet is the tx signer, so this
+    ///         alternate entry point checks `ownerOf` instead.
+    function setRoyaltyBpsPermitted(uint256 agentTokenId, uint256 newBps) external {
+        if (IAxiomAgentNFT(AXIOM_NFT).ownerOf(agentTokenId) != msg.sender) revert NotCreator();
+        _setRoyaltyBps(agentTokenId, newBps);
+    }
+
+    /// @dev Internal storage write — reused by both public setters.
+    function _setRoyaltyBps(uint256 agentTokenId, uint256 newBps) internal {
         if (newBps > BPS_DENOMINATOR) revert InvalidBps();
         PaymentProcessorStorage storage $ = _getStorage();
         $.agentRoyaltyBps[agentTokenId] = newBps;

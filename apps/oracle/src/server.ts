@@ -26,8 +26,31 @@ export interface ServerConfig {
 
 export function startServer(config: ServerConfig): Express {
   const app = express();
-  app.use(helmet());
-  app.use(cors());
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:"],
+        connectSrc: ["'self'", process.env.AXIOM_FRONTEND_URL ?? 'http://localhost:5173'],
+      },
+    },
+  }));
+  app.use(cors({ origin: process.env.AXIOM_FRONTEND_URL ?? 'http://localhost:5173' }));
+  // Optional API key auth — skip if AXIOM_API_KEY is not set (local dev)
+  const API_KEY = process.env.AXIOM_API_KEY;
+  if (API_KEY) {
+    app.use((req, res, next) => {
+      if (req.path === '/health') return next();
+      const key = req.headers['x-api-key'];
+      if (key !== API_KEY) {
+        res.status(401).json({ error: 'unauthorized' });
+        return;
+      }
+      next();
+    });
+  }
   app.use(rateLimit({ windowMs: 60_000, max: 100 }));
   app.use(express.json({ limit: "1mb" }));
   const { signer, storage } = config;
