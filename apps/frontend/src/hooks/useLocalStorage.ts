@@ -1,28 +1,8 @@
 // Axiom Protocol — typed `useLocalStorage` hook.
 //
-// Persists a piece of React state to the browser's `localStorage` and keeps
-// the in-memory value in sync with subsequent updates from other tabs or
-// from the storage event.
-//
-// SSR-safe: the initial render never reads `window` or `localStorage`. The
-// initial value is the supplied `defaultValue`, so server-rendered output
-// matches the first client render (no hydration mismatch). After the
-// component mounts on the client, a `useEffect` reads the stored value
-// (if any) and updates state. This is the standard pattern for
-// `useLocalStorage` hooks that must work in environments where `window`
-// is undefined at module-load time.
-//
-// Canonical sources:
-//   - MDN: Window.localStorage (getItem, setItem, JSON serialisation):
-//     https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage
-//   - React 18 useState + useEffect (lazy initial state, mount-time sync):
-//     https://react.dev/reference/react/useState
-//     https://react.dev/reference/react/useEffect
-//
-// Type signature: a generic `[T, (v: T) => void]` tuple mirroring
-// `React.useState`. The setter always replaces the value (it does not
-// accept an updater function); callers that need functional updates can
-// read the current value via the tuple's first element.
+// SSR-safe localStorage persistence: returns `[T, setter]` similar to
+// `useState`. The setter writes through to localStorage synchronously.
+// Initial render returns `defaultValue` to avoid hydration mismatch.
 
 import { useCallback, useEffect, useState } from 'react';
 

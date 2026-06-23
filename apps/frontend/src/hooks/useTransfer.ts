@@ -1,56 +1,8 @@
 // Axiom Protocol — `useTransfer` hook.
 //
-// Drives the end-to-end iNFT transfer flow:
-//
-//   1. Challenge — POST /v1/agents/:tokenId/transfer with the receiver
-//      address + receiver's 64-byte uncompressed pubkey + an accessProofNonce
-//      (and, for full re-keying, the old AES data key + old 0G Storage URI).
-//      The backend returns the dataHash, targetPubkey, nonce, validUntil
-//      it will use for the OwnershipProof. When re-keying is requested it
-//      also returns `rekeyed: true`, the fresh `sealedKey`, `newDataHash`,
-//      and `newDataUri`.
-//
-//   2. Receiver signs the AccessProof EIP-712 typed data via the browser
-//      wallet's `signTypedData_v4` (wagmi v2 `useSignTypedData`). The
-//      wallet computes the EIP-712 digest internally — no EIP-191 prefix,
-//      matching the on-chain `ECDSA.recover(digest, sig)` in
-//      `AxiomTeeVerifier.verifyTransferValidity`.
-//
-//   3. Finalize — POST the signed AccessProof back to the backend. The
-//      backend recovers the access signer, builds the full on-chain
-//      TransferValidityProof structs, and returns them.
-//
-//   4. Submit the on-chain `iTransferFrom(from, to, tokenId, proofs)`
-//      transaction through wagmi v2's `useWriteContract`. The contract's
-//      `AxiomTeeVerifier` recovers the receiver from the AccessProof and the
-//      registered TEE signer from the OwnershipProof.
-//
-// The EIP-7857 spec mandates the `TransferValidityProof` struct passed to
-// `iTransferFrom`. See:
-//
-//   https://eips.ethereum.org/EIPS/eip-7857
-//
-// The 0G reference implementation (0gfoundation/0g-agent-nft) uses the
-// ERC-721-compatible `iTransferFrom(from, to, tokenId, proofs)` signature.
-//
-// Canonical sources:
-//   - wagmi v2 `useSignTypedData` (signTypedData_v4 / EIP-712):
-//     https://wagmi.sh/react/api/hooks/useSignTypedData
-//   - wagmi v2 `useWriteContract` (mutate / mutateAsync, status, data):
-//     https://wagmi.sh/react/hooks/useWriteContract
-//   - wagmi v2 `useAccount` (connected address used as `from`):
-//     https://wagmi.sh/react/hooks/useAccount
-//   - viem `Hex` / `Address` branded types:
-//     https://viem.sh/docs/types/hex
-//   - EIP-712 typed data spec (domain separator, struct hash):
-//     https://eips.ethereum.org/EIPS/eip-712
-//   - EIP-7857 iTransferFrom + TransferValidityProof struct:
-//     https://eips.ethereum.org/EIPS/eip-7857
-//   - MDN Fetch API (POST, JSON body, response handling):
-//     https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch
-//   - 0G chain ids (16602 Galileo / 16661 Aristotle) and 0G TEE verifier
-//     flow:
-//     https://docs.0g.ai/ai-context
+// Drives the end-to-end iNFT transfer flow: challenge the backend,
+// receiver signs an EIP-712 AccessProof, finalize proof structs,
+// then submit `iTransferFrom` on-chain via wagmi's `useWriteContract`.
 
 import { useCallback, useState } from 'react';
 import { useAccount, useSignTypedData, useWriteContract } from 'wagmi';

@@ -11,20 +11,8 @@ import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProo
 
 /// @title  FuzzAxiomStrategyVault.t.sol
 /// @notice Live, fork-based fuzz + invariant test suite for the deployed
-///         AxiomStrategyVault at 0xb7F89e50D5A3039Da7d39528436B820371572874
-///         on 0G Galileo testnet (chainId 16602).
+///         AxiomStrategyVault on 0G Galileo testnet.
 /// @dev    All tests run against a forked state of the LIVE chain. NO mocks.
-///         State changes from the test stay in the local EVM fork; nothing is
-///         broadcast to the live chain. Per the Wave 11 contract, the goal is
-///         to DISCOVER what is broken (edge cases, gas, auth gaps) — not to
-///         prove the contract works.
-///
-/// Canonical references:
-///   - Foundry fuzz testing:    https://book.getfoundry.sh/forge/fuzz-testing
-///   - Foundry invariants:      https://book.getfoundry.sh/forge/invariant-testing
-///   - OZ MerkleProof:          https://docs.openzeppelin.com/contracts/5.x/utils/cryptography#MerkleProof
-///   - OZ ReentrancyGuard:      https://docs.openzeppelin.com/contracts/5.x/api/utils#ReentrancyGuard
-///   - 0G Galileo:              https://docs.0g.ai/developer-hub/testnet/testnet-overview
 contract FuzzAxiomStrategyVaultTest is StdInvariant, Test {
     // ─── Live addresses (deployed on 0G Galileo, chainId 16602) ────────────
     address constant LIVE_VAULT = 0xb7F89e50D5A3039Da7d39528436B820371572874;
@@ -43,9 +31,6 @@ contract FuzzAxiomStrategyVaultTest is StdInvariant, Test {
     AxiomAgentNFT     internal nftFull; // for minting (mintWithRole needs full interface)
 
     // ─── Events re-declared for vm.expectEmit ──────────────────────
-    // Solidity events are not contract-type members, so `emit Vault.Deposited(...)`
-    // does not compile. Re-declare the same event signatures at the test-file
-    // scope. Source: https://book.getfoundry.sh/cheatcodes/expect-emit
     event Deposited(uint256 indexed tokenId, address indexed from, address indexed asset, uint256 amount);
     event Executed(uint256 indexed tokenId, bytes32 indexed actionHash, address indexed target, uint256 value, bytes result);
 
@@ -71,11 +56,7 @@ contract FuzzAxiomStrategyVaultTest is StdInvariant, Test {
         require(!vault.paused(), "vault is paused on fork");
         require(vault.owner() == OPERATOR, "vault.owner() != OPERATOR");
 
-        // Operator has MINTER_ROLE on the live NFT (verified by cast call at
-        // block 38,748,015). Mint a small set of agents so the fuzzers can
-        // exercise owner-gated paths against real on-chain token state.
-        // mintWithRole does NOT consume msg.value (mintFee is 0 on the live NFT).
-        // Source: https://eips.ethereum.org/EIPS/eip-721
+        // Operator has MINTER_ROLE on the live NFT. Mint agents for fuzz coverage.
         address[3] memory owners = [OPERATOR, RECEIVER1, RECEIVER2];
         for (uint256 i = 0; i < SEED_TOKENS; i++) {
             // Each wallet owns exactly 2 of the seeded tokens.
@@ -99,25 +80,18 @@ contract FuzzAxiomStrategyVaultTest is StdInvariant, Test {
 
     // ─── Helpers ──────────────────────────────────────────────────────
 
-    /// @dev Pick a random tokenId from the seed set. We use the fuzzer's input
-    ///      `index` (bounded to [0, SEED_TOKENS)) and read the real owner.
+    /// @dev Pick a random tokenId from the seed set.
     function _randomTokenId(uint8 index) internal view returns (uint256 tokenId, address owner) {
         uint256 bounded = uint256(index) % SEED_TOKENS;
         return (seedTokenIds[bounded], seedOwners[bounded]);
     }
 
     /// @dev Compute the action hash that execute() expects in the Merkle tree.
-    ///      Mirrors AxiomStrategyVault.execute():
-    ///        keccak256(abi.encode(target, value, keccak256(data)))
     function _actionHash(address target, uint256 value, bytes memory data) internal pure returns (bytes32) {
         return keccak256(abi.encode(target, value, keccak256(data)));
     }
 
-    /// @dev Build a single-leaf Merkle tree — the leaf IS the root.
-    ///      The proof is empty because a single-node tree has no siblings.
-    ///      OZ MerkleProof.verify returns true for an empty proof when the
-    ///      root equals the leaf, because processProof returns the leaf as-is.
-    ///      Source: https://docs.openzeppelin.com/contracts/5.x/utils/cryptography#MerkleProof
+    /// @dev Build a single-leaf Merkle tree — the leaf IS the root. Proof is empty.
     function _singleLeafProof(bytes32 /* leaf */) internal pure returns (bytes32[] memory proof) {
         proof = new bytes32[](0);
         return proof;
@@ -133,18 +107,13 @@ contract FuzzAxiomStrategyVaultTest is StdInvariant, Test {
     }
 
     // ─── Fuzz #1: deposit() ──────────────────────────────────────────
-    /// @notice Fuzz deposit() with a random tokenId-index and a random value.
-    ///         Verifies:
-    ///           (a) the deposit is credited to the depositor's vault balance
-    ///           (b) the deposit emits Deposited
-    ///           (c) the deposit can be made for any tokenId the depositor owns
-    /// @dev    The reentrancy vector is checked separately, see
-    ///         test_reentrancy_withdraw_isBlocked / test_reentrancy_execute_isBlocked.
+    /// @notice Fuzz deposit() with random tokenId and value.
+    ///         Verifies: (a) balance credited, (b) event emitted.
     function testFuzz_deposit_creditsBalanceAndEmits(
         uint8 tokenIndex,
         uint96 amount
     ) public {
-        // Bound amount to keep the test deterministic and bounded.
+        // Bound amount to keep the test deterministic.
         amount = uint96(bound(uint256(amount), 1 wei, 0.01 ether));
 
         (uint256 tid, address owner) = _randomTokenId(tokenIndex);
@@ -166,7 +135,6 @@ contract FuzzAxiomStrategyVaultTest is StdInvariant, Test {
     }
 
     /// @notice Fuzz deposit() with msg.value = 0 — should always revert.
-    /// @dev    Per the contract: `if (msg.value == 0) revert ZeroAmount();`
     function testFuzz_deposit_zeroValue_alwaysReverts(uint8 tokenIndex) public {
         (uint256 tid, address owner) = _randomTokenId(tokenIndex);
         vm.prank(owner);
@@ -190,11 +158,7 @@ contract FuzzAxiomStrategyVaultTest is StdInvariant, Test {
 
     // ─── Fuzz #2: setStrategy() ───────────────────────────────────────
     /// @notice Fuzz setStrategy() with random root, daily limit, and token index.
-    ///         Verifies:
-    ///           (a) only the owner of the token can set the strategy
-    ///           (b) the merkleRoot is stored verbatim
-    ///           (c) the dailyLimitWei is stored verbatim
-    ///           (d) a zero merkleRoot is accepted by setStrategy
+    ///         Verifies: (a) owner-only, (b) root stored, (c) limit stored.
     function testFuzz_setStrategy_ownerStoresRootAndLimit(
         uint8 tokenIndex,
         bytes32 root,
@@ -227,9 +191,7 @@ contract FuzzAxiomStrategyVaultTest is StdInvariant, Test {
         vault.setStrategy(tid, root, dailyLimit);
     }
 
-    /// @notice setStrategy() with a zero merkleRoot MUST be accepted (no revert).
-    ///         After this, execute() will revert with NoStrategySet — but
-    ///         setStrategy itself does not validate the root.
+    /// @notice setStrategy() with a zero merkleRoot MUST be accepted.
     function testFuzz_setStrategy_zeroRoot_accepted(uint8 tokenIndex, uint256 dailyLimit) public {
         (uint256 tid, address owner) = _randomTokenId(tokenIndex);
         vm.prank(owner);
@@ -240,13 +202,7 @@ contract FuzzAxiomStrategyVaultTest is StdInvariant, Test {
 
     // ─── Fuzz #3: execute() ──────────────────────────────────────────
     /// @notice Fuzz execute() with random target, value, and action.
-    ///         Strategy is set as a single-leaf tree where the leaf is the
-    ///         action hash for (target, value, keccak256(data)).
-    ///         Verifies:
-    ///           (a) the merkle proof is verified against the stored merkleRoot
-    ///           (b) the daily limit is enforced
-    ///           (c) the target.call is made (returns the call result)
-    ///           (d) the action is recorded in the audit log (via event)
+    ///         Verifies: merkle proof verified, daily limit enforced, call result returned.
     function testFuzz_execute_validProofAndBalance_passes(
         uint8 tokenIndex,
         uint96 value
@@ -256,10 +212,7 @@ contract FuzzAxiomStrategyVaultTest is StdInvariant, Test {
 
         (uint256 tid, address owner) = _randomTokenId(tokenIndex);
 
-        // Use maliciousReceiver as the target sink — it has a receive() that
-        // accepts value (without a receive(), address(this) would revert on
-        // the .call{value:..} and trip `require(ok, "Call failed")`, masking
-        // the real outcome of the merkle check).
+        // Use maliciousReceiver as the target sink — it has a receive() that accepts value.
         address target = address(maliciousReceiver);
 
         // Setup: fund the vault with enough balance to execute.
@@ -267,28 +220,28 @@ contract FuzzAxiomStrategyVaultTest is StdInvariant, Test {
         vm.prank(owner);
         vault.deposit{value: uint256(value)}(tid);
 
-        // Set strategy: a single-leaf tree, leaf = actionHash(target, value, "")
+        // Set strategy: a single-leaf tree.
         bytes memory data = new bytes(0);
         bytes32 leaf = _actionHash(target, uint256(value), data);
         bytes32[] memory proof = _singleLeafProof(leaf);
         vm.prank(owner);
         vault.setStrategy(tid, leaf, uint256(value)); // dailyLimit == value
 
-        // Expect Executed event (result not matched — non-indexed + variable)
-        vm.expectEmit(true, true, true, false);
-        emit Executed(tid, leaf, target, uint256(value), "");
-
         // Act
-        vm.prank(owner);
-        bytes memory result = vault.execute(tid, target, uint256(value), data, proof);
+        bytes memory result;
+        {
+            vm.expectEmit(true, true, true, false);
+            emit Executed(tid, leaf, target, uint256(value), "");
+            vm.prank(owner);
+            result = vault.execute(tid, target, uint256(value), data, proof);
+        }
         // (a) proof verified — implicit by no revert
-        // (b) daily limit enforced — implicit (we set limit == value)
-        // (c) call returned — result length is whatever maliciousReceiver's receive returns
-        // (d) event emitted — vm.expectEmit enforced
+        // (b) daily limit enforced — implicit
+        // (c) event emitted — vm.expectEmit enforced
         assertTrue(result.length >= 0, "execute returned");
     }
 
-    /// @notice execute() with a merkle proof that does NOT match the stored root MUST revert.
+    /// @notice execute() with an invalid merkle proof MUST revert.
     function testFuzz_execute_invalidProof_alwaysReverts(
         uint8 tokenIndex,
         uint96 value,
@@ -298,16 +251,15 @@ contract FuzzAxiomStrategyVaultTest is StdInvariant, Test {
         value = uint96(bound(uint256(value), 1 wei, 0.01 ether));
 
         (uint256 tid, address owner) = _randomTokenId(tokenIndex);
-        // Target must have a receive() so the call doesn't fail for the
-        // wrong reason (it would mask the InvalidMerkleProof revert).
+        // Target must have a receive() so the call doesn't fail for the wrong reason.
+
+        // Setup: fund + set a strategy.
+        // Strategy root differs from action hash so the merkle check fails.
         address target = address(maliciousReceiver);
         bytes memory data = new bytes(0);
 
         // Setup: fund + set a strategy.
-        // We deliberately set the strategy root to something DIFFERENT from
-        // the action hash we're about to submit, so the merkle proof check
-        // is what fails. A single-leaf tree with root==leaf trivially
-        // verifies, which would mask the bug we want to test.
+        // Strategy root differs from action hash so the merkle check fails.
         bytes32 storedRoot = keccak256("strategy-root-for-bad-proof-test");
         vm.deal(owner, uint256(value));
         vm.prank(owner);
@@ -315,10 +267,7 @@ contract FuzzAxiomStrategyVaultTest is StdInvariant, Test {
         bytes32 leaf = _actionHash(target, uint256(value), data);
         vm.prank(owner);
         vault.setStrategy(tid, storedRoot, uint256(value));
-        // The proof is for the (single) leaf=leaf, but the stored root is
-        // storedRoot != leaf, so MerkleProof.verify MUST return false.
         bytes32[] memory badProof = _singleLeafProof(leaf);
-        // Skip cases where the fuzzer happens to pick storedRoot == leaf.
         vm.assume(storedRoot != leaf);
         vm.prank(owner);
         vm.expectRevert(AxiomStrategyVault.InvalidMerkleProof.selector);
@@ -326,8 +275,7 @@ contract FuzzAxiomStrategyVaultTest is StdInvariant, Test {
     }
 
 
-    /// @notice execute() MUST enforce the daily limit. We set a tiny limit,
-    ///         then try to execute with a value that exceeds it.
+    /// @notice execute() MUST enforce the daily limit.
     function testFuzz_execute_exceedsDailyLimit_alwaysReverts(
         uint8 tokenIndex,
         uint96 value
@@ -386,24 +334,10 @@ contract FuzzAxiomStrategyVaultTest is StdInvariant, Test {
     }
 
     // ─── Fuzz #4: reentrancy ─────────────────────────────────────────
-    /// @notice withdraw() MUST block reentrancy.
-    /// @dev    The vault's `withdraw` sends ETH back to `msg.sender` (line 96:
-    ///         `(bool ok, ) = payable(msg.sender).call{value: amount}("")`).
-    ///         So the reentrancy vector is: a contract wallet owns the token,
-    ///         calls withdraw itself, and its `receive()` re-enters the vault.
-    ///         Because withdraw() has the nonReentrant guard, the re-entrant
-    ///         deposit() MUST revert, the outer call{value:...} fails, the
-    ///         `require(ok, "Transfer failed")` reverts the whole withdraw.
-    ///
-    /// BUG-NOTE: As a side observation, the vault does NOT accept a `to`
-    ///           parameter on withdraw — the destination is always `msg.sender`.
-    ///           This means withdraw cannot be used to send funds to a third
-    ///           party. Logged in BUGS.md.
+    /// @notice withdraw() MUST block reentrancy via nonReentrant guard.
     function test_reentrancy_withdraw_isBlocked() public {
         // The malicious receiver IS the token owner — it will call withdraw
-        // and the ETH it receives back will trigger its own receive() callback.
-        // (Confirmed by reading AxiomStrategyVault.sol:96 — the destination
-        //  is hardcoded to msg.sender.)
+        // and the ETH it receives will trigger its own receive() callback.
         uint256 evilTid = _mintExtraToken(maliciousReceiver, keccak256("evil-withdraw"));
 
         // Fund the malicious receiver's vault.
@@ -415,13 +349,10 @@ contract FuzzAxiomStrategyVaultTest is StdInvariant, Test {
         MaliciousReceiver(payable(maliciousReceiver)).armReentrancy(evilTid);
 
         // Now the malicious receiver calls withdraw on its own token. The
-        // vault sends ETH back to it; its receive() fires; receive() calls
-        // vault.deposit(evilTid){value: 0}() re-entrantly. Because withdraw()
-        // has nonReentrant, the inner deposit() MUST revert, which trips
-        // `require(ok, "Transfer failed")` and reverts the whole withdraw.
+        // vault sends ETH back; receive() fires and calls deposit() re-entrantly.
+        // withdraw() has nonReentrant, so the inner deposit() MUST revert.
         vm.prank(maliciousReceiver);
-        // Either OZ ReentrancyGuard revert string or "Transfer failed" — both
-        // are valid outcomes that prove reentrancy is blocked.
+        // Either OZ ReentrancyGuard revert or "Transfer failed" — both prove reentrancy is blocked.
         vm.expectRevert();
         vault.withdraw(evilTid, 1 ether);
 
@@ -442,8 +373,7 @@ contract FuzzAxiomStrategyVaultTest is StdInvariant, Test {
         // Mint a token for the malicious receiver so it can re-enter deposit
         uint256 evilTid = _mintExtraToken(address(maliciousReceiver), keccak256("evil-exec"));
 
-        // Set the malicious receiver as the target. Its receive() will
-        // call vault.deposit(evilTid) re-entrantly.
+        // Set the malicious receiver as the target. Its receive() will re-enter deposit().
         MaliciousReceiver(payable(maliciousReceiver)).armReentrancy(evilTid);
         address target = address(maliciousReceiver);
 
@@ -455,33 +385,24 @@ contract FuzzAxiomStrategyVaultTest is StdInvariant, Test {
         vm.prank(owner);
         vault.setStrategy(tid, leaf, value);
 
-        // The call reverts because: execute()'s nonReentrant blocks the
-        // re-entry. The exact revert string comes from OZ's ReentrancyGuard
-        // ("ReentrancyGuard: reentrant call") or the "Call failed" require —
-        // either way, the test only requires a revert.
+        // The call reverts because execute()'s nonReentrant blocks the re-entry.
         vm.prank(owner);
         vm.expectRevert();
         vault.execute(tid, target, value, data, proof);
     }
 
     // ─── Invariants ─────────────────────────────────────────────────
-    /// @notice invariant_totalDepositedMatchesSumOfBalances
-    ///         For every seeded tokenId, the sum of per-token balances
-    ///         must never exceed the vault's native balance (the vault
-    ///         only credits balances; it never debits from somewhere else).
+    /// @notice Sum of per-token balances must never exceed the vault's native balance.
     function invariant_totalDepositedMatchesSumOfBalances() public view {
         uint256 total = 0;
         for (uint256 i = 0; i < SEED_TOKENS; i++) {
             total += vault.balanceOf(seedTokenIds[i]);
         }
-        // Every wei credited to a vault balance is backed by an equal
-        // amount of native balance held by the vault contract.
+        // Every wei credited to a vault balance is backed by native balance.
         assertLe(total, address(vault).balance, "sum of balances <= vault native balance");
     }
 
-    /// @notice invariant_actionCountMonotonic
-    ///         The contract enforces `dailySpent <= dailyLimit` on every
-    ///         execute. We assert this as a cross-check invariant.
+    /// @notice Invariant: dailySpent <= dailyLimit on every execute.
     function invariant_actionCountMonotonic() public view {
         for (uint256 i = 0; i < SEED_TOKENS; i++) {
             (, uint256 dailyLimit, uint256 dailySpent, ) = vault.strategyOf(seedTokenIds[i]);
@@ -491,14 +412,7 @@ contract FuzzAxiomStrategyVaultTest is StdInvariant, Test {
 }
 
 /// @notice Malicious receiver used to verify ReentrancyGuard coverage.
-///         When armed, its receive() callback calls `vault.deposit(evilTid)`.
-///         If the outer call (withdraw/execute) is guarded by nonReentrant,
-///         the inner deposit MUST revert. If unguarded, the inner deposit
-///         would succeed and double-credit the balance — the outer test
-///         catches this by asserting the outer call reverts.
-/// @dev    Implements onERC721Received so OZ ERC721._safeMint allows the
-///         contract to receive the test agent NFT.
-///         Source: https://eips.ethereum.org/EIPS/eip-721
+///         When armed, receive() calls vault.deposit(evilTid) re-entrantly.
 contract MaliciousReceiver {
     AxiomStrategyVault public vault;
     uint256 public evilTokenId;
@@ -515,19 +429,12 @@ contract MaliciousReceiver {
 
     receive() external payable {
         if (armed) {
-            // Re-enter deposit. If the caller (vault.withdraw or vault.execute)
-            // is guarded by nonReentrant, this MUST revert and propagate out of
-            // receive(), causing the outer call{value:...} to fail.
             vault.deposit{value: 0}(evilTokenId);
         }
     }
 
     // ─── ERC721 receiver hook ────────────────────────────────────────
-    // OZ ERC721._safeMint requires contracts receiving the NFT to implement
-    // onERC721Received and return its magic value, otherwise it reverts with
-    // ERC721InvalidReceiver. We need this to mint an agent to the
-    // MaliciousReceiver for the reentrancy tests.
-    // Reference: https://eips.ethereum.org/EIPS/eip-721
+    // OZ ERC721._safeMint requires contracts to implement onERC721Received.
     function onERC721Received(
         address, /* operator */
         address, /* from */

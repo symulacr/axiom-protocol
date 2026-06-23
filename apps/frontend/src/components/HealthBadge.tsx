@@ -1,25 +1,7 @@
 // Axiom Protocol — `<HealthBadge />` header indicator.
 //
-// A tiny green/red dot rendered next to the ConnectButton in the top
-// nav. Every 30 s it pings `${VITE_BACKEND_URL}/v1/health` and flips the dot
-// between green (200 + `ok: true`) and red (any other outcome: network
-// error, non-2xx, parse error). The backend's health route returns
-// `{"ok": true, "signer": "<address>"}`; we only require `ok === true`
-// for the green state, so a degraded backend that still returns 200
-// with `ok: false` is correctly flagged as red.
-//
-// The polling is implemented with `setInterval` registered in a
-// `useEffect` and torn down in the effect's cleanup function, per the
-// React `useEffect` reference:
-//   https://react.dev/reference/react/useEffect
-//
-// The fetch uses the standard browser Fetch API:
-//   https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch
-//
-// The API base URL is read from Vite's `VITE_BACKEND_URL` env var (the
-// `VITE_` prefix keeps it visible to the browser bundle per Vite's
-// env-var convention):
-//   https://vitejs.dev/guide/env-and-mode
+// Green/red dot that polls `${VITE_BACKEND_URL}/v1/health` every 30 s
+// and flips between green (200 + `ok: true`) and red (any other outcome).
 
 import { useEffect, useState, type ReactElement } from 'react';
 

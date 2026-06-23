@@ -24,19 +24,16 @@ import type { PaymentProcessorMethods, ERC20Methods } from "../contract-types.js
 //   https://docs.openzeppelin.com/contracts/5.x/api/token/erc20#SafeERC20
 
 const PAYMENT_PROCESSOR_ABI: readonly string[] = [
-  // ─── Write ───────────────────────────────────────────────────
   "function payForAgent(uint256 agentTokenId, uint256 amount)",
   "function payComputeProvider(address provider, uint256 amount)",
   "function withdrawAgentEarnings()",
   "function setRoyaltyBps(uint256 agentTokenId, uint256 bps)",
-  // ─── Views ───────────────────────────────────────────────────
   "function protocolTreasury() view returns (address)",
   "function protocolFeeBps() view returns (uint256)",
   "function paymentToken() view returns (address)",
   "function royaltyBpsOf(uint256) view returns (uint256)",
   "function royaltyBpsSet(uint256) view returns (bool)",
   "function agentEarningsOf(address) view returns (uint256)",
-  // ─── Events ──────────────────────────────────────────────────
   "event PaymentProcessed(uint256 indexed agentTokenId, address indexed payer, address indexed creator, uint256 amount, uint256 creatorCut, uint256 protocolCut)",
   "event ComputeProviderPaid(address indexed provider, uint256 amount)",
   "event EarningsWithdrawn(address indexed creator, uint256 amount)",

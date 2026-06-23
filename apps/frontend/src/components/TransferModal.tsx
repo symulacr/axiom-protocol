@@ -1,81 +1,8 @@
 // Axiom Protocol — `TransferModal`.
 //
-// Modal that drives the iNFT (AxiomAgentNFT) transfer flow end-to-end in
-// two phases:
-//
-//   1. Form — the user enters the receiver's address + 64-byte
-//       uncompressed secp256k1 pubkey (raw X||Y, no 0x04 prefix) and
-//       optionally the old AES data key + 0G Storage URI to trigger a full
-//       re-key. On submit the modal calls `useTransfer().prepare()`, which
-//       challenges the backend (`POST /v1/agents/:tokenId/transfer`), has
-//       the receiver sign the AccessProof via EIP-712 `signTypedData_v4`
-//       (wagmi `useSignTypedData`), and finalizes to obtain the TEE-signed
-//       `TransferValidityProof` structs — without touching the chain.
-//
-//   2. Review — the modal shows the re-key status, the OwnershipProof
-//       signer (TEE) + validUntil, and the recovered AccessProof signer
-//       (receiver). The user explicitly confirms before the modal calls
-//       `useTransfer().confirm()`, which submits the on-chain
-//       `iTransferFrom(from, to, tokenId, proofs)` transaction through
-//       wagmi's `useWriteContract` (the AxiomAgentNFT proxy validates
-//       against the configured `AxiomTeeVerifier`).
-//
-// The on-chain surface follows the 0G reference implementation
-// (`0gfoundation/0g-agent-nft`, ERC-721-compatible `iTransferFrom`),
-// which in turn implements the EIP-7857 standard. The
-// `TransferValidityProof` struct passed to the contract is:
-//
-//   { accessProof: bytes; ownershipProof: bytes; }
-//
-// where each field is an ABI-encoded inner struct (AccessProof /
-// OwnershipProof) per the EIP-7857 spec. The AccessProof is an EIP-712
-// typed-data signature (no EIP-191 prefix); the contract recovers the
-// receiver via `ECDSA.recover(digest, sig)`.
-//
-// UI design notes:
-//   - Renders a real HTML5 <dialog> element so the browser handles
-//     focus trap, ESC-to-close, and the inert background. We open /
-//     close it with `.showModal()` / `.close()` rather than toggling a
-//     `display: none` so the accessibility tree is correct without
-//     any ARIA boilerplate. Source: MDN <dialog>:
-//       https://developer.mozilla.org/en-US/docs/Web/HTML/Element/dialog
-//   - Two open-state modes: controlled (`open` prop defined — the
-//     parent drives open/close, AgentDetail's pattern) and
-//     uncontrolled (the modal owns its own state and the optional
-//     `triggerLabel` self-trigger button toggles it). Both call
-//     `onClose` when the user dismisses the dialog.
-//   - The "opens via the button in AgentDetail" requirement is met
-//     because AgentDetail mounts the modal with `open={true}` from
-//     its own trigger button; we also expose the self-trigger via
-//     `triggerLabel` for the dApp's other entry points (HomePage
-//     teasers, agent cards, etc.).
-//   - All network I/O goes through the typed `useTransfer` hook so
-//     the modal stays a thin presentational layer.
-//   - No `!` non-null assertions; receiverAddress and pubKey are
-//     validated client-side before the POST so the user gets a clear
-//     inline error instead of a backend 400.
-//
-// Canonical sources:
-//   - MDN <dialog> element (.showModal, .close, ::backdrop):
-//       https://developer.mozilla.org/en-US/docs/Web/HTML/Element/dialog
-//   - MDN crypto.getRandomValues for the default accessProofNonce:
-//       https://developer.mozilla.org/en-US/docs/Web/API/Crypto/getRandomValues
-//   - EIP-7857 iTransferFrom + TransferValidityProof + ownership
-//     proof semantics (TEE-signed OwnershipProof over dataHash||
-//     dataHash||sealedKey||encryptedPubKey||nonce):
-//       https://eips.ethereum.org/EIPS/eip-7857
-//   - EIP-712 typed data spec (domain separator, struct hash):
-//       https://eips.ethereum.org/EIPS/eip-712
-//   - wagmi v2 `useSignTypedData` (signTypedData_v4 / EIP-712):
-//       https://wagmi.sh/react/api/hooks/useSignTypedData
-//   - wagmi v2 `useWriteContract` (mutate / mutateAsync, status, data):
-//       https://wagmi.sh/react/hooks/useWriteContract
-//   - wagmi v2 `useAccount` (connected wallet = `from`):
-//       https://wagmi.sh/react/hooks/useAccount
-//   - viem `isAddress` (0x-prefixed EIP-55 checksum validation):
-//       https://viem.sh/docs/utilities/isAddress
-//   - 0G chain id 16602 (Galileo) where the proxy is deployed:
-//       https://docs.0g.ai/ai-context
+// Modal that drives the iNFT transfer flow end-to-end in two phases:
+// form (enter receiver + optional re-key) and review (proof details + on-chain confirm).
+// Uses HTML5 <dialog> for correct accessibility. All I/O goes through `useTransfer`.
 
 import {
   useCallback,

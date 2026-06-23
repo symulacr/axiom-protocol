@@ -1,40 +1,8 @@
 // Axiom Protocol — `usePayment` hook.
 //
-// Thin typed wrapper over the Axiom backend's five payment routes
-// (Wave 3). Every route hits `AxiomPaymentProcessor` on-chain through
-// the backend signer; the frontend is a pure HTTP client. The hook
-// surfaces a single shared `isLoading` / `error` pair plus the action
-// functions themselves, mirroring the `useOrchestratorTick` /
-// `useProviders` convention so the rest of the dApp keeps one shape
-// for backend-driven async.
-//
-// Routes (see `apps/backend/src/server.ts`):
-//   POST   /v1/agents/:id/pay         { amount }
-//   POST   /v1/compute/pay            { provider, amount }
-//   GET    /v1/agents/:id/earnings
-//   POST   /v1/agents/:id/royalty     { bps }
-//   GET    /v1/payment/config
-//
-// The backend takes `amount` in the token's smallest unit (wei-style,
-// e.g. 6-decimal USDC micro-units); the caller is responsible for
-// converting human-readable amounts via viem's `parseUnits` before
-// calling. `bps` is a 0–10000 integer (basis points) per
-// `AxiomPaymentProcessor.setRoyaltyBps`.
-//
-// Backend base URL is read from Vite's `VITE_BACKEND_URL` env var (the
-// `VITE_` prefix keeps the value browser-visible per Vite's env
-// convention). Falls back to the local dev loopback used by
-// `apps/backend` (`pnpm dev` → :3000).
-//
-// Canonical references:
-//   - MDN Fetch API (POST, JSON body, error handling):
-//       https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch
-//   - Vite environment variables (VITE_ prefix):
-//       https://vitejs.dev/guide/env-and-mode
-//   - AxiomPaymentProcessor source of truth:
-//       apps/contracts/src/AxiomPaymentProcessor.sol
-//   - Backend route handlers:
-//       apps/backend/src/server.ts (search "/v1/agents/:id/pay")
+// Typed HTTP wrapper for the backend's five payment routes:
+// POST /v1/agents/:id/pay, POST /v1/compute/pay, GET /v1/agents/:id/earnings,
+// POST /v1/agents/:id/royalty, GET /v1/payment/config.
 
 import { useCallback, useState } from 'react';
 import type { Address } from 'viem';

@@ -13,7 +13,6 @@ import {IERC7857Metadata, IntelligentData} from "./IERC7857Metadata.sol";
 ///      (https://github.com/0gfoundation/0g-agent-nft). It is NOT copied from the
 ///      reference's IERC7857.sol (which is GPL-3.0). Re-implementation is licensed MIT.
 interface IERC7857 is IERC721, IERC7857Metadata {
-    // ─── Custom errors (inherited / shared across extensions) ────
     error ERC7857InvalidAssistant();
     error ERC7857EmptyProof();
     error ERC7857ProofCountMismatch();
@@ -22,7 +21,6 @@ interface IERC7857 is IERC721, IERC7857Metadata {
     error ERC7857WantedReceiverMismatch();
     error ERC7857TargetPubkeyMismatch();
 
-    // ─── Events (per-extension events are defined in the extension) ──
     event PublishedSealedKey(address indexed to, uint256 indexed tokenId, bytes[] sealedKeys);
     event DelegateAccess(address indexed user, address indexed assistant);
 

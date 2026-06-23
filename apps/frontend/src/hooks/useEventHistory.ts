@@ -1,46 +1,8 @@
 // Axiom Protocol — `useEventHistory` hook.
 //
-// Polls the backend's GET /v1/events endpoint on a fixed cadence (15s
-// by default) and returns the event list, a per-eventName grouped
-// index, and the loading/error state. The polling side-effect is
-// installed in a `useEffect` and torn down on unmount, so the network
-// request stops the instant the HistoryPage unmounts and the
-// request is correctly cancelled if the in-flight fetch is still
-// pending.
-//
-// The hook does not connect to the chain directly; the backend
-// (`apps/backend/src/server.ts` GET /v1/events) is the canonical
-// read path. The backend filters the in-memory `EventStore` ring
-// (apps/backend/src/events/store.ts) that the indexer fills via
-// POST /v1/events. The wire format mirrors `StoredEvent`:
-//
-//   { source, chainId, blockNumber, txHash, logIndex,
-//     eventName, payload, receivedAt }
-//
-// where `payload` is opaque per-event JSON. We surface every field
-// to the UI so the timeline can render the raw payload next to the
-// eventName badge and on-chain coordinates (block / tx / logIndex).
-//
-// The hook intentionally does not use `useReadContracts` or any
-// wagmi primitive — the data is served by the backend over plain
-// HTTP, so the native `fetch` API is the right tool. AbortController
-// is used to cancel the previous poll when the effect re-runs
-// (strict-mode double-invoke in dev, dependency change, etc.).
-//
-// Canonical sources:
-//   - MDN — Using the Fetch API (Request, Response, JSON body,
-//     AbortController):
-//     https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch
-//   - MDN — AbortController / AbortSignal:
-//     https://developer.mozilla.org/en-US/docs/Web/API/AbortController
-//   - MDN — JSON.parse (server response shape):
-//     https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/parse
-//   - React useEffect (cleanup, dependency array, abort on unmount):
-//     https://react.dev/reference/react/useEffect
-//   - Vite environment variables (VITE_ prefix keeps the value in
-//     the browser bundle, the unprefixed backend URL convention):
-//     https://vitejs.dev/guide/env-and-mode
-//   - Backend event store: apps/backend/src/events/store.ts
+// Polls GET /v1/events on a fixed cadence (15 s default) and returns
+// the event list, a per-eventName grouped index, and loading/error state.
+// Uses native fetch + AbortController; no wagmi dependency.
 
 import { useEffect, useMemo, useState } from 'react';
 

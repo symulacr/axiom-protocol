@@ -4,8 +4,6 @@ import { startServer } from "./server.js";
 import { loadEnv } from "./env.js";
 import { backendEnvSchema } from "./env-schema.js";
 
-// Seed process.env from a single .env file via the canonical loader.
-// See https://nodejs.org/api/process.html#processenv (env.ts documents the source).
 loadEnv();
 
 export const env = backendEnvSchema.parse(process.env);

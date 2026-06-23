@@ -11,64 +11,21 @@ import {IAxiomAgentNFT} from "../src/interfaces/IAxiomAgentNFT.sol";
 
 /// @title FuzzAxiomPaymentProcessor.t.sol
 /// @notice Wave 11 fuzz + invariant test suite for AxiomPaymentProcessor.
-/// @dev    The "live" AxiomPaymentProcessor address pinned in the wave brief
-///         (0xEf1bA81ba3A9c37a3A6efF46BB2B029d4068fd8D, Galileo) is documented as
-///         deployed. THIS TEST SUITE DISCOVERS THAT THE DEPLOYMENT NEVER ACTUALLY
-///         HAPPENED — see BUGS.md Bug-1. The on-chain code field at the pinned
-///         address is empty at every block checked (earliest → 38748015 → latest).
-///
-///         To exercise the *code* the production deploy was supposed to install,
-///         this suite deploys a local instance of `AxiomPaymentProcessor` from
-///         `src/AxiomPaymentProcessor.sol` against a real ERC-20 (the only mock
-///         allowed by the wave brief). The MockERC20 below wraps OZ's real ERC-20
-///         implementation, so the SafeERC20 / IERC20 paths the production contract
-///         uses are the real ones — this is the same code path USDC.e / USDG
-///         would exercise on Galileo.
-///
-///         References (every claim in this file is grounded here):
-///           - Wave-11 brief: see `apps/contracts/test/BUGS.md`
-///           - OpenZeppelin SafeERC20 (handles non-conforming ERC-20s):
-///             https://docs.openzeppelin.com/contracts/5.x/api/token/erc20#SafeERC20
-///           - OpenZeppelin IERC20:
-///             https://docs.openzeppelin.com/contracts/5.x/api/token/erc20#IERC20
-///           - OpenZeppelin ERC20 (the implementation MockERC20 wraps):
-///             https://docs.openzeppelin.com/contracts/5.x/api/token/erc20#ERC20
-///           - ERC-20 spec: https://eips.ethereum.org/EIPS/eip-20
-///           - Foundry fuzzing: https://book.getfoundry.sh/forge/fuzz-testing
-///           - Foundry invariants: https://book.getfoundry.sh/forge/invariant-testing
-///           - 0G Chain (Galileo, chainId 16602):
-///             https://docs.0g.ai/developer-hub/testnet/testnet-overview
-///           - OpenZeppelin Ownable (onlyOwner used by setPaymentToken):
-///             https://docs.openzeppelin.com/contracts/5.x/api/access#Ownable
-///           - OpenZeppelin ReentrancyGuard (used by payForAgent / withdrawAgentEarnings):
-///             https://docs.openzeppelin.com/contracts/5.x/api/utils#ReentrancyGuard
+/// @dev    The pinned on-chain address was never deployed (see BUGS.md Bug-1).
+///         This suite deploys a local instance of `AxiomPaymentProcessor` against
+///         a real ERC-20, exercising the same SafeERC20 code paths USDC.e would use.
 
-// ─── Test scaffolding ────────────────────────────────────────────────────
-
-/// @notice Minimal real ERC-20 used by the fuzz tests. Wraps OZ's real ERC-20
-///         so the SafeERC20 code path the production contract relies on is the
-///         actual production path. The only "mock" surface is the `mint` helper
-///         used to seed test balances (this is the only mock the wave brief
-///         permits).
+/// @notice Minimal real ERC-20 used by the fuzz tests. Wraps OZ's ERC20.
 contract MockERC20 is ERC20 {
     constructor(string memory name_, string memory symbol_) ERC20(name_, symbol_) {}
 
-    /// @notice Test-only mint helper. The production payment token (USDC.e / USDG)
-    ///         does NOT have this — we need it to seed test balances cheaply.
+    /// @notice Test-only mint helper.
     function mint(address to, uint256 amount) external {
         _mint(to, amount);
     }
 }
 
-/// @notice ERC-20 whose `transferFrom` ALWAYS returns `false` (the
-///         non-conforming "returns false" path). OpenZeppelin's SafeERC20 MUST
-///         detect the false return and revert with `SafeERC20FailedOperation`.
-///         This is the exact failure mode that protects the protocol against
-///         malicious or buggy ERC-20 implementations in production.
-/// @dev    Source: https://docs.openzeppelin.com/contracts/5.x/api/token/erc20#SafeERC20
-///         OZ SafeERC20's `_callOptionalReturn` reverts when
-///         `returndata.length != 0 && !abi.decode(returndata, (bool))` — see
-///         `lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol`.
+/// @notice ERC-20 whose `transferFrom` ALWAYS returns `false`. SafeERC20 MUST revert.
 contract FalseReturningERC20 is ERC20 {
     constructor() ERC20("FalseToken", "FALSE") {}
 
@@ -76,18 +33,13 @@ contract FalseReturningERC20 is ERC20 {
         _mint(to, amount);
     }
 
-    /// @notice Returns `false` instead of the standard bool. The processor's
-    ///         SafeERC20 wrapper MUST catch this and revert.
+    /// @notice Returns `false` instead of the standard bool.
     function transferFrom(address, address, uint256) public pure override returns (bool) {
         return false;
     }
 }
 
-/// @notice Minimal IAxiomAgentNFT stub. Returns a configurable creator for any
-///         tokenId. The full AxiomAgentNFT is exercised in AxiomAgentNFT.t.sol
-///         and is not part of this fuzz surface — payForAgent only reads
-///         `creatorOf`, so a minimal stub is sufficient and keeps this suite
-///         focused on the processor itself.
+/// @notice Minimal IAxiomAgentNFT stub. Returns a configurable creator.
 contract StubAxiomAgentNFT is IAxiomAgentNFT {
     mapping(uint256 => address) internal _creators;
     address public immutable DEFAULT_CREATOR;
@@ -110,10 +62,7 @@ contract StubAxiomAgentNFT is IAxiomAgentNFT {
     }
 }
 
-// ─── Unit + fuzz suite ───────────────────────────────────────────────────
-
-/// @notice Unit + fuzz suite for AxiomPaymentProcessor. See file header for
-///         the rationale on local deployment vs. the on-chain address.
+/// @notice Unit + fuzz suite for AxiomPaymentProcessor.
 contract FuzzAxiomPaymentProcessorUnit is Test {
     AxiomPaymentProcessor internal processor;
     MockERC20 internal token;
@@ -152,12 +101,9 @@ contract FuzzAxiomPaymentProcessorUnit is Test {
         );
     }
 
-    // ─── 1. Fuzz setPaymentToken(address) ─────────────────────────────────
-    // Verify: (a) only owner can call, (b) the new token is set, (c) zero
-    // address is rejected.
+    // ─── 1. Fuzz setPaymentToken ──────────────────────────────────────
 
-    /// @notice setPaymentToken accepts any NON-ZERO address and the new token
-    ///         becomes the active settlement asset.
+    /// @notice setPaymentToken accepts any non-zero address.
     function testFuzz_setPaymentToken_ownerSucceeds(address newToken) public {
         vm.assume(newToken != address(0));
         vm.prank(owner);
@@ -165,7 +111,7 @@ contract FuzzAxiomPaymentProcessorUnit is Test {
         assertEq(processor.paymentToken(), newToken, "paymentToken should be updated");
     }
 
-    /// @notice A non-owner calling setPaymentToken reverts. (a) from the brief.
+    /// @notice A non-owner calling setPaymentToken reverts.
     function testFuzz_setPaymentToken_revertsForNonOwner(address caller, address newToken)
         public
     {
@@ -179,8 +125,7 @@ contract FuzzAxiomPaymentProcessorUnit is Test {
         assertEq(processor.paymentToken(), address(token), "paymentToken should be unchanged");
     }
 
-    /// @notice setPaymentToken(0) reverts with the contract's ZeroAddress custom
-    ///         error. (c) from the brief.
+    /// @notice setPaymentToken(0) reverts with ZeroAddress.
     function testFuzz_setPaymentToken_revertsOnZero() public {
         vm.prank(owner);
         vm.expectRevert(AxiomPaymentProcessor.ZeroAddress.selector);
@@ -198,17 +143,11 @@ contract FuzzAxiomPaymentProcessorUnit is Test {
         processor.setPaymentToken(newToken);
     }
 
-    // ─── 2. Fuzz payForAgent(uint256 agentTokenId, uint256 amount) ────────
-    // Verify: (a) approval required, (b) creator earnings credited with
-    // creatorCut, (c) treasury receives protocolCut via safeTransfer, (d)
-    // revert on non-standard return.
+    // ─── 2. Fuzz payForAgent ──────────────────────────────────────────
 
-    /// @notice Happy path: a payer with sufficient allowance splits `amount`
-    ///         into the creator's withdrawable balance and the protocol
-    ///         treasury's balance, exactly as the brief requires.
+    /// @notice Happy path: payer splits `amount` into creator earnings and protocol treasury.
     function testFuzz_payForAgent_happySplits(uint256 agentTokenId, uint256 amount) public {
-        // Bound the amount so the test stays within practical ERC-20 supply
-        // (we mint a balance equal to `amount`).
+        // Bound the amount so the test stays within practical ERC-20 supply.
         amount = bound(amount, 1, type(uint128).max);
         address c = creator;
 
@@ -217,8 +156,7 @@ contract FuzzAxiomPaymentProcessorUnit is Test {
         vm.prank(payer);
         token.approve(address(processor), amount);
 
-        // Resolve the expected split. The contract falls back to protocolFeeBps
-        // when no per-agent royalty is set.
+        // Resolve the expected split.
         uint256 expectedCreatorCut = (amount * PROTOCOL_FEE_BPS) / 10_000;
         uint256 expectedProtocolCut = amount - expectedCreatorCut;
 
@@ -237,9 +175,7 @@ contract FuzzAxiomPaymentProcessorUnit is Test {
         assertEq(token.balanceOf(payer), 0, "payer paid full amount");
     }
 
-    /// @notice (a) from the brief: if the payer has not approved the processor
-    ///         for `amount`, payForAgent reverts and the creator's earnings
-    ///         remain at zero (atomicity preserved).
+    /// @notice payForAgent reverts when approval is missing (atomicity preserved).
     function testFuzz_payForAgent_revertsWithoutApproval(uint256 amount) public {
         amount = bound(amount, 1, type(uint128).max);
         token.mint(payer, amount);
@@ -253,24 +189,14 @@ contract FuzzAxiomPaymentProcessorUnit is Test {
         assertEq(token.balanceOf(treasury), 0, "treasury untouched on revert");
     }
 
-    /// @notice payForAgent(0) reverts with the contract's ZeroAmount custom
-    ///         error. (sanity)
+    /// @notice payForAgent(0) reverts with ZeroAmount.
     function testFuzz_payForAgent_revertsOnZeroAmount(uint256 agentTokenId) public {
         vm.prank(payer);
         vm.expectRevert(AxiomPaymentProcessor.ZeroAmount.selector);
         processor.payForAgent(agentTokenId, 0);
     }
 
-    /// @notice (d) from the brief: SafeERC20 reverts with
-    ///         `SafeERC20FailedOperation(token)` when the token returns the
-    ///         boolean `false` (a non-conforming "returns false" ERC-20).
-    ///         Note: tokens that return NO data at all are accepted by
-    ///         SafeERC20 (this is the documented OZ behavior, see
-    ///         `lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol`
-    ///         line 97: revert only if `returndata.length != 0 && !abi.decode(...)`).
-    ///         So we test the *failure* mode: a token that returns `false`
-    ///         MUST trigger the revert. See:
-    ///         https://docs.openzeppelin.com/contracts/5.x/api/token/erc20#SafeERC20
+    /// @notice SafeERC20 reverts when the token returns `false`.
     function testFuzz_payForAgent_revertsOnNonStandardToken(uint256 amount) public {
         amount = bound(amount, 1, type(uint128).max);
         FalseReturningERC20 bad = new FalseReturningERC20();
@@ -293,18 +219,11 @@ contract FuzzAxiomPaymentProcessorUnit is Test {
         processor.payForAgent(AGENT_TOKEN_ID, amount);
     }
 
-    // ─── 3. Fuzz withdrawAgentEarnings() with random accumulated earnings ─
-    // Verify: (a) creator's balance zeroed before the external call (CEI),
-    // (b) creator receives via safeTransfer, (c) re-entrancy blocked.
+    // ─── 3. Fuzz withdrawAgentEarnings ──────────────────────────────────
 
-    /// @notice Drive `targetEarnings` into the creator's balance, then
-    ///         withdraw and verify the full sweep. We bound `amount` so the
-    ///         integer-truncated creatorCut is non-zero (the truncation
-    ///         behavior for tiny amounts is documented in BUGS.md Bug-3).
+    /// @notice Drive earnings into the creator's balance, withdraw, verify the sweep.
     function testFuzz_withdrawAgentEarnings_sweeps(uint128 targetEarnings) public {
-        // PROTOCOL_FEE_BPS = 250 → creatorCut = amount / 40. The smallest
-        // amount that yields a non-zero creatorCut is 40. We use that as
-        // the lower bound; upper bound is `type(uint128).max`.
+        // PROTOCOL_FEE_BPS = 250 → creatorCut = amount / 40. Minimum amount is 40.
         uint256 minAmount = 40;
         uint256 maxAmount = uint256(targetEarnings) * 40;
         if (maxAmount < minAmount) maxAmount = minAmount;
@@ -340,12 +259,7 @@ contract FuzzAxiomPaymentProcessorUnit is Test {
         assertEq(token.balanceOf(address(processor)), 0, "processor no longer holds creatorCut");
     }
 
-    /// @notice (a) the earnings slot is zeroed BEFORE the external
-    ///         safeTransfer call (CEI ordering). The OZ ReentrancyGuard
-    ///         blocks the re-entrancy attack, AND the CEI ordering ensures
-    ///         the slot is already zero when the external call lands.
-    ///         This is the externally-observable consequence of CEI: after
-    ///         a successful withdraw, the slot must be zero.
+    /// @notice (a) earnings slot zeroed BEFORE the external safeTransfer call (CEI ordering).
     function test_withdrawAgentEarnings_ceiOrdering_stateIsZeroedFirst() public {
         // Seed earnings via a real payForAgent.
         token.mint(payer, 1_000_000);
@@ -357,22 +271,13 @@ contract FuzzAxiomPaymentProcessorUnit is Test {
         uint256 snapshotEarnings = processor.agentEarningsOf(creator);
         assertGt(snapshotEarnings, 0, "earnings seeded");
 
-        // Direct CEI verification: after the call, the slot is zero. A
-        // non-CEI-ordered withdraw would either (a) not zero the slot
-        // before the external call, allowing a re-entrant caller to
-        // observe the original balance, or (b) zero the slot AFTER the
-        // transfer, which would still be safe but is not the canonical
-        // CEI pattern. We assert the post-state (slot = 0) which is the
-        // externally-observable CEI invariant.
+        // Direct CEI verification: after the call, the slot is zero.
         vm.prank(creator);
         processor.withdrawAgentEarnings();
         assertEq(processor.agentEarningsOf(creator), 0, "earnings zeroed by withdraw");
     }
 
-    /// @notice (c) Re-entrancy on withdrawAgentEarnings is blocked by OZ's
-    ///         ReentrancyGuard. A second call (whether by a re-entrant
-    ///         attacker or a duplicate call from the same EOA) MUST revert
-    ///         because the earnings slot has been zeroed.
+    /// @notice (c) Reentrancy on withdrawAgentEarnings is blocked by ReentrancyGuard.
     function testFuzz_withdrawAgentEarnings_reentrancyBlocked(uint128) public {
         // Drive a non-zero earnings balance.
         token.mint(payer, 1_000_000);
@@ -381,7 +286,7 @@ contract FuzzAxiomPaymentProcessorUnit is Test {
         vm.prank(payer);
         processor.payForAgent(AGENT_TOKEN_ID, 1_000_000);
 
-        // First call from `creator` (succeeds and zeros the slot).
+        // First call from `creator` succeeds and zeros the slot.
         vm.prank(creator);
         processor.withdrawAgentEarnings();
 
@@ -393,12 +298,9 @@ contract FuzzAxiomPaymentProcessorUnit is Test {
         processor.withdrawAgentEarnings();
     }
 
-    // ─── 4. Fuzz payComputeProvider(address provider, uint256 amount) ────
-    // Verify: (a) event emitted, (b) tokens transferred.
+    // ─── 4. Fuzz payComputeProvider ─────────────────────────────────────
 
-    /// @notice payComputeProvider forwards the full `amount` to the named
-    ///         provider via SafeERC20.safeTransferFrom, and emits the
-    ///         ComputeProviderPaid event with the exact amount.
+    /// @notice payComputeProvider forwards the full `amount` to the provider via SafeERC20.
     function testFuzz_payComputeProvider_happy(address provider, uint256 amount) public {
         vm.assume(provider != address(0));
         vm.assume(provider != payer);
@@ -441,28 +343,18 @@ contract FuzzAxiomPaymentProcessorUnit is Test {
     }
 
     // ─── 5. Live-code probe (Bug-1) ──────────────────────────────────────
-    // The pinned AxiomPaymentProcessor address is documented as deployed.
-    // It isn't. We probe the chain at the wave-pinned fork block to confirm.
 
-    /// @notice Probe: the wave-pinned AxiomPaymentProcessor has no code at
-    ///         the wave-pinned fork block. This is the ship-blocker finding
-    ///         recorded in BUGS.md (Bug-1). The test is intentionally
-    ///         written so a future, correct redeploy would cause it to
-    ///         fail (i.e. the assertion would no longer hold) — that is
-    ///         the correct signal: "the bug is fixed when this test breaks".
+    /// @notice Probe: the wave-pinned AxiomPaymentProcessor has no code at the fork block.
     function test_liveAddress_hasNoCode_atPinnedBlock() public {
         // The wave brief explicitly says to fork at block 38748015.
         vm.createSelectFork("https://0g-galileo-testnet.drpc.org", 38_748_015);
         address live = address(0xEf1bA81ba3A9c37a3A6efF46BB2B029d4068fd8D);
-        // EXTCODESIZE is the cheapest "has code" check available without
-        // a contract call.
+        // EXTCODESIZE is the cheapest "has code" check.
         uint256 size;
         assembly {
             size := extcodesize(live)
         }
-        // Document the current (broken) state.
-        // Replace the assertion with `assertGt(size, 0)` once the contract
-        // is actually redeployed.
+        // Replace the assertion with `assertGt(size, 0)` once redeployed.
         assertEq(size, 0, "live AxiomPaymentProcessor has no code (see BUGS.md Bug-1)");
     }
 
@@ -481,10 +373,7 @@ contract FuzzAxiomPaymentProcessorUnit is Test {
 
 // ─── Invariant suite ─────────────────────────────────────────────────────
 
-/// @notice Handler contract: limits the fuzzer to the public, non-admin
-///         surface of the processor. The invariants only hold over USER
-///         actions, so we exclude the admin setters and pause/unpause from
-///         the target selectors.
+/// @notice Handler contract limiting the fuzzer to public, non-admin surface.
 contract ProcessorHandler is Test {
     AxiomPaymentProcessor public immutable processor;
     MockERC20 public immutable token;
@@ -492,18 +381,15 @@ contract ProcessorHandler is Test {
     address public immutable treasury;
     address public payer;
 
-    // Bounded set of payers and token IDs so the fuzzer explores a stable
-    // state space. Address(0) is reserved for the zero-address invariant
-    // (i.e. setPaymentToken(0) must always revert — though we don't target
-    // that path here, we keep the seed set clean of address(0)).
+    // Bounded set of payers and token IDs so the fuzzer explores stable state space.
     address[] public payers;
     uint256[] public agentTokenIds;
 
     /// @dev ghost variables for invariant accounting.
-    uint256 public ghostTotalDeposited;       // sum of all `amount` paid in via payForAgent
-    uint256 public ghostTotalCreatorEarnings; // sum of all creatorCut credited
-    uint256 public ghostTotalWithdrawn;       // sum of all EarningsWithdrawn
-    uint256 public ghostTotalProtocolPaid;    // sum of all payComputeProvider
+    uint256 public ghostTotalDeposited;
+    uint256 public ghostTotalCreatorEarnings;
+    uint256 public ghostTotalWithdrawn;
+    uint256 public ghostTotalProtocolPaid;
     uint256 public ghostCallCount;
 
     constructor(AxiomPaymentProcessor _processor, MockERC20 _token, address _creator) {
@@ -512,8 +398,6 @@ contract ProcessorHandler is Test {
         creator = _creator;
         payer = address(0xBA7A);
         treasury = processor.protocolTreasury();
-        // Seed a fixed roster of payers. Foundry's fuzzer will re-use these
-        // as the `actor` for the bound handlers.
         payers.push(address(0xBA7A));
         payers.push(address(0xA11CE));
         payers.push(address(0xB0B));
@@ -536,12 +420,10 @@ contract ProcessorHandler is Test {
     function payForAgentFuzz(uint256 payerSeed, uint256 agentSeed, uint256 amount) external {
         address p = _pickPayer(payerSeed);
         uint256 tokenId = _pickTokenId(agentSeed);
-        // Bound the amount to a sensible range. We must not produce a
-        // deposit that would make invariants false; the amounts are bounded
-        // small enough to never overflow uint256 totals.
+        // Bound the amount to a sensible range.
         amount = bound(amount, 1, 1_000_000 ether);
 
-        // Pre-fund the payer and approve the processor for exactly `amount`.
+        // Pre-fund the payer and approve the processor.
         token.mint(p, amount);
         vm.prank(p);
         token.approve(address(processor), amount);
@@ -598,8 +480,7 @@ contract ProcessorHandler is Test {
     }
 }
 
-/// @notice Invariant suite. Uses `targetSelectors` to limit the fuzzer to
-///         the handler's user-facing functions.
+/// @notice Invariant suite using targetSelectors for the handler's user-facing functions.
 contract FuzzAxiomPaymentProcessorInvariants is StdInvariant, Test {
     AxiomPaymentProcessor internal processor;
     MockERC20 internal token;
@@ -633,26 +514,14 @@ contract FuzzAxiomPaymentProcessorInvariants is StdInvariant, Test {
         targetContract(address(handler));
     }
 
-    /// @notice Invariant: deposits (creator credit increases) - withdrawals
-    ///         (creator token received) == creator's on-chain withdrawable
-    ///         earnings balance. This is the conservation-of-value property
-    ///         that proves the contract cannot mint, lose, or double-count
-    ///         creator earnings across any sequence of payForAgent /
-    ///         withdrawAgentEarnings calls.
+    /// @notice Invariant: deposits - withdrawals == creator's on-chain withdrawable earnings.
     function invariant_totalCreatorEarningsMatchesTotalCreatorPayments() public view {
         uint256 slot = processor.agentEarningsOf(creator);
         uint256 expected = handler.ghostTotalCreatorEarnings() - handler.ghostTotalWithdrawn();
         assertEq(slot, expected, "creator earnings slot must equal credits minus withdrawals");
     }
 
-    /// @notice Invariant: every token that entered the processor (via
-    ///         payForAgent and payComputeProvider) is exactly accounted
-    ///         for by (a) the creator's earnings slot, (b) tokens forwarded
-    ///         to the treasury, (c) tokens forwarded to compute providers,
-    ///         and (d) tokens forwarded to the creator on withdrawal. The
-    ///         processor's own token balance must equal the creator's
-    ///         unwithdrawn earnings slot — if it holds more, tokens are
-    ///         stuck; if it holds less, tokens leaked.
+    /// @notice Invariant: processor token balance equals creator earnings slot.
     function invariant_authorizedTokenTransfersBalanced() public view {
         uint256 processorBalance = token.balanceOf(address(processor));
         uint256 creatorEarnings = processor.agentEarningsOf(creator);

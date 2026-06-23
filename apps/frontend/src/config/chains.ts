@@ -1,25 +1,6 @@
 // Axiom Protocol — 0G chain definitions for wagmi v2.
-//
-// We use viem's `defineChain` to register 0G's two networks as custom chains.
-// `defineChain` is the canonical way to add a chain that is not in viem's
-// built-in `viem/chains` list. Source: wagmi v2 chains guide
-//   https://wagmi.sh/core/chains
-// and the viem `defineChain` reference:
-//   https://viem.sh/docs/chains/defining-chains
-//
-// Network facts (chainId, RPC, explorer, native currency) are taken from the
-// 0G developer documentation:
-//   Testnet overview: https://docs.0g.ai/developer-hub/testnet/testnet-overview
-//   Mainnet overview:  https://docs.0g.ai/concepts/overview
-//   AI context (chain address table):
-//     https://docs.0g.ai/ai-context
-//   Chainlist entry for 0G Galileo (chainId 16602):
-//     https://chainlist.org/chain/16602
-//
-// 0G native gas token ("OG", 18 decimals) is the same on testnet and mainnet
-// per the 0G docs. Testnet chainId 16602 in hex is 0x40DA; mainnet chainId
-// 16661 is 0x4115. These are the values MetaMask expects when calling
-// `wallet_addEthereumChain`.
+// Uses viem's `defineChain` to register Galileo testnet (16602) and
+// Aristotle mainnet (16661) as custom chains.
 
 import { defineChain } from 'viem';
 
