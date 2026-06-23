@@ -15,19 +15,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: "pnpm"
 
-      - name: Install pnpm
-        run: npm install -g pnpm
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Build frontend
-        run: pnpm --filter @axiom/frontend build
+        run: pnpm --filter @axiom/frontend... build
 
       - uses: actions/upload-artifact@v4
         with:
