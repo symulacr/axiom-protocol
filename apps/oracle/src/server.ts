@@ -1,6 +1,6 @@
 import { isHex } from "viem";
 
-import express, { type Request, type Response, type Express } from "express";
+import express, { type Request, type Response, type Express, type NextFunction } from "express";
 import helmet from "helmet";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
@@ -142,7 +142,8 @@ export function startServer(config: ServerConfig): Express {
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      res.status(500).json({ error: message });
+      console.error("[oracle] /v1/transfer-validity error:", err);
+      res.status(500).json({ error: "Transfer validity check failed" });
     }
   });
 
@@ -269,6 +270,14 @@ export function startServer(config: ServerConfig): Express {
     }
     storage.markDataHashSeen(dataHash as `0x${string}`);
     res.json({ ok: true, dataHash, seen: true });
+  });
+
+  app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[oracle] error:", err);
+    // Sanitize: never leak internal details in production
+    const safeMessage = message.length > 200 ? message.slice(0, 200) + "..." : message;
+    res.status(500).json({ error: safeMessage, code: "INTERNAL_ERROR" });
   });
 
   app.listen(config.port, config.bind, () => {

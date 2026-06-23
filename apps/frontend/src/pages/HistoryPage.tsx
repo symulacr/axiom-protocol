@@ -9,9 +9,7 @@ import { useAccount, useChainId } from 'wagmi';
 import { useEventHistory, type AxiomEvent } from '../hooks/useEventHistory.js';
 import { EventTimeline, type EventRenderer } from '../components/EventTimeline.js';
 import { COLORS, Card, Alert, PageHeader, Button } from '../components/ui.js';
-/** Display the em-dash for an absent value. Mirrors HomePage /
- *  VaultDashboard / AgentDetail. */
-const PLACEHOLDER = '\u2014';
+import { PLACEHOLDER } from '../utils/format.js';
 
 /** Order of the "headline" event groups. Other eventNames are
  *  appended at the bottom in the order the server first emits

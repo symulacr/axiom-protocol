@@ -6,6 +6,7 @@
 // rest of the frontend.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { BACKEND_URL } from '../config/env.js';
 
 /**
  * One compute provider entry returned by the backend's
@@ -20,9 +21,6 @@ export type Provider = {
   /** OpenAI-compatible base URL exposed by the provider's broker. */
   endpoint: string;
 };
-
-const BACKEND_URL =
-  import.meta.env.VITE_BACKEND_URL ?? 'http://127.0.0.1:3000';
 
 /** Polling interval (ms) — 30 s, per the assignment. */
 const POLL_INTERVAL_MS = 30_000;
