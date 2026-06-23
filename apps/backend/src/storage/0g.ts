@@ -1,6 +1,3 @@
-// Package migrated from @0gfoundation/0g-ts-sdk to @0gfoundation/0g-storage-ts-sdk.
-// The old package name still resolves (back-compat re-export) but has been
-// fully replaced across all consumers.
 import { Indexer, MemData } from "@0gfoundation/0g-storage-ts-sdk";
 import { ethers, type Signer } from "ethers";
 import type { Hex } from "viem";

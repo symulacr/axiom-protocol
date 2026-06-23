@@ -1,9 +1,4 @@
-// Axiom Protocol — `useProviders` polling hook.
-//
-// Polls `GET /v1/compute/providers` every 30 s and returns the
-// provider list plus loading/error/refetch state. Uses native fetch
-// + useState rather than TanStack Query to stay consistent with the
-// rest of the frontend.
+// Polls GET /v1/compute/providers every 30 s.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BACKEND_URL } from '../config/env.js';
@@ -45,10 +40,7 @@ export function useProviders(): {
   }, []);
 
   useEffect(() => {
-    // `let cancelled` + the cleanup function is the React 18 idiom for
-    // ignoring the result of a fetch that was in flight when the component
-    // unmounted (or when `pollTick` flipped and re-ran the effect). Source:
-    // https://react.dev/reference/react/useEffect#cleanup
+    // cancel in-flight fetch on unmount or re-poll
     let cancelled = false;
 
     const load = async (): Promise<void> => {

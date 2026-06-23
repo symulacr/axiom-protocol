@@ -172,8 +172,6 @@ function orderGroupKeys(byName: Record<string, AxiomEvent[]>): string[] {
 }
 
 export function HistoryPage(): ReactElement {
-  // wagmi v2 — connected wallet address shown in the page header.
-  // Source: https://wagmi.sh/react/hooks/useAccount
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
 
