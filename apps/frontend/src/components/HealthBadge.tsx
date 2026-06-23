@@ -100,13 +100,13 @@ export function HealthBadge(): ReactElement {
   }, []);
 
   const color =
-    status === 'ok' ? '#16a34a' : status === 'down' ? '#dc2626' : '#9ca3af';
+    status === 'ok' ? '#6b9e6b' : status === 'down' ? '#c85a5a' : '#6a6a6a';
   const label =
     status === 'ok'
       ? 'Backend healthy'
       : status === 'down'
         ? 'Backend unreachable'
-        : 'Backend status unknown';
+        : 'Checking backend status';
 
   return (
     <span
@@ -117,25 +117,29 @@ export function HealthBadge(): ReactElement {
       style={{
         display: 'inline-flex',
         alignItems: 'center',
-        gap: 6,
-        padding: '4px 8px',
-        borderRadius: 9999,
+        gap: 7,
+        padding: '5px 10px',
+        borderRadius: 999,
         fontSize: 12,
-        color: '#374151',
-        background: '#f3f4f6',
+        fontWeight: 500,
+        color: '#8a8a8a',
+        background: 'rgba(255,255,255,0.04)',
+        border: '1px solid #2a2a2a',
+        transition: 'all 0.2s ease',
       }}
     >
       <span
         aria-hidden="true"
         style={{
-          width: 8,
-          height: 8,
+          width: 7,
+          height: 7,
           borderRadius: '50%',
           background: color,
-          boxShadow: `0 0 0 2px ${color}33`,
+          boxShadow: `0 0 6px ${color}66`,
+          transition: 'background 0.3s ease, box-shadow 0.3s ease',
         }}
       />
-      <span>{status === 'ok' ? 'API' : status === 'down' ? 'API down' : 'API…'}</span>
+      <span>{status === 'ok' ? 'Online' : status === 'down' ? 'Offline' : 'Connecting'}</span>
     </span>
   );
 }

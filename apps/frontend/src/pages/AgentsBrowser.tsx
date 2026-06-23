@@ -28,21 +28,21 @@ import type { ReactElement } from 'react';
 import { Link } from 'react-router-dom';
 import { useAccount } from 'wagmi';
 import { useAgents } from '../hooks/useAgents.js';
-import { Skeleton } from '../components/ui.js';
+import { COLORS, Skeleton, Card, Alert, PageHeader, MonoLabel, SectionTitle } from '../components/ui.js';
 
 export function AgentsBrowser(): ReactElement {
-  // wagmi v2 useAccount — source of truth for connection status.
-  //   https://wagmi.sh/react/hooks/useAccount
-  const { isConnected } = useAccount();
-  // useAgents multicalls balanceOf + per-index + per-tokenURI.
-  //   https://wagmi.sh/react/hooks/useReadContracts
+  const { isConnected, address } = useAccount();
   const { agents, isLoading, error } = useAgents();
 
   if (!isConnected) {
     return (
       <main>
-        <h1>Your Agents</h1>
-        <p>Connect wallet to view your agents.</p>
+        <PageHeader title="Your Agents" />
+        <Card style={{ textAlign: 'center', padding: 48 }}>
+          <p style={{ color: COLORS.textMuted, fontSize: 15, margin: 0, fontWeight: 300 }}>
+            Connect your wallet to view the iNFTs you own.
+          </p>
+        </Card>
       </main>
     );
   }
@@ -50,11 +50,10 @@ export function AgentsBrowser(): ReactElement {
   if (error !== null) {
     return (
       <main>
-        <h1>Your Agents</h1>
-        <p role="alert">
-          Failed to read your agents. Check the console for the
-          underlying wagmi error.
-        </p>
+        <PageHeader title="Your Agents" />
+        <Alert variant="error">
+          Couldn't load your agents from the chain. Check your connection and try again.
+        </Alert>
       </main>
     );
   }
@@ -62,11 +61,11 @@ export function AgentsBrowser(): ReactElement {
   if (isLoading && agents.length === 0) {
     return (
       <main>
-        <h1>Your Agents</h1>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 16 }}>
-          <Skeleton height={36} />
-          <Skeleton height={36} />
-          <Skeleton height={36} />
+        <PageHeader title="Your Agents" />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <Skeleton height={48} />
+          <Skeleton height={48} />
+          <Skeleton height={48} />
         </div>
       </main>
     );
@@ -75,44 +74,61 @@ export function AgentsBrowser(): ReactElement {
   if (agents.length === 0) {
     return (
       <main>
-        <h1>Your Agents</h1>
-        <p>No agents yet. Mint one from a vault.</p>
+        <PageHeader title="Your Agents" />
+        <Card style={{ textAlign: 'center', padding: 48 }}>
+          <p style={{ color: COLORS.textMuted, fontSize: 15, margin: '0 0 16px', fontWeight: 300 }}>
+            You don't own any iNFT agents yet.
+          </p>
+          <Link to="/agents/new" style={{ color: COLORS.bronzeLight, fontSize: 14, fontWeight: 600 }}>
+            Mint your first agent
+          </Link>
+        </Card>
       </main>
     );
   }
 
   return (
     <main>
-      <h1>Your Agents</h1>
-      <p>
-        {agents.length} agent{agents.length === 1 ? '' : 's'} owned by the
-        connected wallet. Each row links to the on-chain detail view, which
-        multicalls EIP-721 (name, symbol, ownerOf, tokenURI) and the
-        AxiomAgentNFT iNFT extensions (dataHash, sealedKey) in one
-        round-trip.{' '}
-        <a
-          href="https://eips.ethereum.org/EIPS/eip-721"
-          rel="noreferrer noopener"
-          target="_blank"
-        >
-          EIP-721
-        </a>
-      </p>
-      <ul>
+      <PageHeader
+        title="Your Agents"
+        subtitle={`${agents.length} iNFT${agents.length === 1 ? '' : 's'} owned by ${address !== undefined ? `${address.slice(0, 6)}\u2026${address.slice(-4)}` : 'this wallet'}`}
+      />
+      <SectionTitle>Owned Tokens</SectionTitle>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {agents.map((agent) => (
-          <li key={agent.tokenId.toString()}>
-            <Link to={`/agents/${agent.tokenId.toString()}`}>
-              Agent #{agent.tokenId.toString()}
-            </Link>
-            {agent.uri !== '' && (
-              <>
-                {' '}
-                &middot; <code>{agent.uri}</code>
-              </>
-            )}
-          </li>
+          <Link
+            key={agent.tokenId.toString()}
+            to={`/agents/${agent.tokenId.toString()}`}
+            style={{ textDecoration: 'none' }}
+          >
+            <Card hover style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 36,
+                    height: 36,
+                    borderRadius: 8,
+                    background: COLORS.bronzeBg,
+                    border: `1px solid ${COLORS.bronzeBorder}`,
+                    color: COLORS.bronzeLight,
+                    fontSize: 13,
+                    fontWeight: 700,
+                  }}
+                >
+                  #{agent.tokenId.toString()}
+                </span>
+                {agent.uri !== '' && <MonoLabel style={{ fontSize: 12 }}>{agent.uri}</MonoLabel>}
+              </div>
+              <span style={{ color: COLORS.textDim, fontSize: 13 }}>
+                View details
+              </span>
+            </Card>
+          </Link>
         ))}
-      </ul>
+      </div>
     </main>
   );
 }

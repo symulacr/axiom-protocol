@@ -41,7 +41,16 @@ import { axiomAgentNftAbi } from '../abi/axiomAgentNft.js';
 import { useAgentMetadata } from '../hooks/useAgentMetadata.js';
 import { TransferModal } from '../components/TransferModal.js';
 import { PaymentPanel } from '../components/PaymentPanel.js';
-import { Skeleton } from '../components/ui.js';
+import {
+  COLORS,
+  Skeleton,
+  Card,
+  Button,
+  SectionTitle,
+  MonoLabel,
+  Alert,
+  PageHeader,
+} from '../components/ui.js';
 
 /** Display the em-dash for an absent value. */
 const PLACEHOLDER = '\u2014';
@@ -115,11 +124,15 @@ export function AgentDetail(): ReactElement {
   if (!isConnected) {
     return (
       <main>
-        <h1>Agent</h1>
-        <p>Connect wallet to view this agent.</p>
-        <p>
-          <Link to="/agents">Back to your agents</Link>
-        </p>
+        <PageHeader title="Agent" />
+        <Card style={{ textAlign: 'center', padding: 40 }}>
+          <p style={{ color: COLORS.textMuted, fontSize: 15, marginBottom: 20 }}>
+            Connect your wallet to view this agent's on-chain metadata.
+          </p>
+          <Link to="/agents" style={{ color: COLORS.bronzeLight, fontSize: 14, fontWeight: 500 }}>
+            Back to agents
+          </Link>
+        </Card>
       </main>
     );
   }
@@ -127,111 +140,112 @@ export function AgentDetail(): ReactElement {
   if (tokenId === null) {
     return (
       <main>
-        <h1>Agent</h1>
-        <p role="alert">Invalid token id in the URL.</p>
-        <p>
-          <Link to="/agents">Back to your agents</Link>
-        </p>
+        <PageHeader title="Agent" />
+        <Alert variant="error" style={{ marginBottom: 20 }}>
+          Invalid token ID in the URL. The ID must be a positive integer.
+        </Alert>
+        <Link to="/agents" style={{ color: COLORS.bronzeLight, fontSize: 14, fontWeight: 500 }}>
+          Back to agents
+        </Link>
       </main>
     );
   }
 
   return (
     <main>
-      <h1>Agent #{tokenId.toString()}</h1>
-      <p>
-        <Link to="/agents">Back to your agents</Link>
-      </p>
+      <PageHeader
+        title={`Agent #${tokenId.toString()}`}
+        subtitle="On-chain iNFT metadata and transfer history"
+        action={
+          <Link
+            to="/agents"
+            style={{
+              color: COLORS.textMuted,
+              fontSize: 14,
+              textDecoration: 'none',
+              transition: 'color 0.15s ease',
+            }}
+          >
+            Back to agents
+          </Link>
+        }
+      />
 
       {metaLoading && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 16 }}>
-          <Skeleton height={20} />
-          <Skeleton height={20} />
-          <Skeleton height={20} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
+          <Skeleton height={24} />
+          <Skeleton height={24} />
+          <Skeleton height={24} />
         </div>
       )}
+
       {metaError !== null && (
-        <p role="alert">
-          Failed to read agent metadata. Check the console for the
-          underlying wagmi error.
-        </p>
+        <Alert variant="error" style={{ marginBottom: 24 }}>
+          Couldn't load agent metadata from the chain. Check your connection and
+          try refreshing the page.
+        </Alert>
       )}
 
       {data !== null && (
-        <section>
-          <h2>Metadata</h2>
-          <dl>
-            <dt>Name</dt>
-            <dd>{data.name === '' ? PLACEHOLDER : data.name}</dd>
-            <dt>Symbol</dt>
-            <dd>{data.symbol === '' ? PLACEHOLDER : data.symbol}</dd>
-            <dt>Owner</dt>
-            <dd>
-              <code>{data.owner}</code>
+        <Card style={{ marginBottom: 24 }}>
+          <SectionTitle>Metadata</SectionTitle>
+          <dl style={{ margin: 0, display: 'grid', gridTemplateColumns: '140px 1fr', gap: '12px 16px', fontSize: 14 }}>
+            <dt style={{ color: COLORS.textDim, fontWeight: 500 }}>Collection</dt>
+            <dd style={{ margin: 0, color: COLORS.text }}>
+              {data.name === '' ? PLACEHOLDER : data.name}{' '}
+              {data.symbol !== '' && (
+                <span style={{ color: COLORS.textMuted }}>({data.symbol})</span>
+              )}
             </dd>
-            <dt>Creator</dt>
-            <dd>
-              <code>{creator ?? PLACEHOLDER}</code>
+            <dt style={{ color: COLORS.textDim, fontWeight: 500 }}>Owner</dt>
+            <dd style={{ margin: 0 }}>
+              <MonoLabel>{data.owner}</MonoLabel>
             </dd>
-            <dt>Data Hash</dt>
-            <dd>
-              <code title={data.dataHash}>
-                {truncateHex(data.dataHash)}
-              </code>
+            <dt style={{ color: COLORS.textDim, fontWeight: 500 }}>Creator</dt>
+            <dd style={{ margin: 0 }}>
+              {creator !== undefined ? <MonoLabel>{creator}</MonoLabel> : <span style={{ color: COLORS.textDim }}>{PLACEHOLDER}</span>}
             </dd>
-            <dt>Data Description</dt>
-            <dd>
-              {data.dataDescription === '' ? PLACEHOLDER : data.dataDescription}
+            <dt style={{ color: COLORS.textDim, fontWeight: 500 }}>Data Hash</dt>
+            <dd style={{ margin: 0 }}>
+              <MonoLabel title={data.dataHash}>{truncateHex(data.dataHash)}</MonoLabel>
             </dd>
-            <dt>tokenURI</dt>
-            <dd>
-              <code>{data.tokenUri === '' ? PLACEHOLDER : data.tokenUri}</code>
+            <dt style={{ color: COLORS.textDim, fontWeight: 500 }}>Description</dt>
+            <dd style={{ margin: 0, color: COLORS.text }}>
+              {data.dataDescription === '' ? <span style={{ color: COLORS.textDim }}>{PLACEHOLDER}</span> : data.dataDescription}
+            </dd>
+            <dt style={{ color: COLORS.textDim, fontWeight: 500 }}>Token URI</dt>
+            <dd style={{ margin: 0 }}>
+              {data.tokenUri === '' ? <span style={{ color: COLORS.textDim }}>{PLACEHOLDER}</span> : <MonoLabel>{data.tokenUri}</MonoLabel>}
             </dd>
           </dl>
-        </section>
+        </Card>
       )}
 
-      <section>
-        <h2>Transfer</h2>
-        <p>
-          Transfer re-encrypts the agent's encrypted intelligence on 0G
-          Storage and writes a sealed key the receiver can unwrap. See
-          EIP-721{' '}
-          <a
-            href="https://eips.ethereum.org/EIPS/eip-721"
-            rel="noreferrer noopener"
-            target="_blank"
-          >
-            ownerOf
-          </a>{' '}
-          for the on-chain ownership primitive that backs this flow.
+      <Card style={{ marginBottom: 24 }}>
+        <SectionTitle>Transfer</SectionTitle>
+        <p style={{ color: COLORS.textMuted, fontSize: 14, lineHeight: 1.65, margin: '0 0 16px', fontWeight: 300 }}>
+          Transfer ownership with cryptographic proof of integrity. The agent's
+          encrypted intelligence is re-keyed on 0G Storage, and the receiver
+          unwraps the sealed key inside a TEE.
         </p>
-        <button
-          type="button"
-          onClick={(): void => {
-            setTransferOpen(true);
-          }}
-        >
+        <Button variant="primary" onClick={(): void => setTransferOpen(true)}>
           Transfer Agent
-        </button>
-      </section>
+        </Button>
+      </Card>
 
       <PaymentPanel tokenId={tokenId} />
+
       {address !== undefined && (
-        <p>
-          Connected as <code>{address}</code>
+        <p style={{ marginTop: 24, fontSize: 13, color: COLORS.textDim }}>
+          Connected as <MonoLabel>{address}</MonoLabel>
         </p>
       )}
 
       {transferOpen && (
         <TransferModal
           tokenId={tokenId}
-          onClose={(): void => {
-            setTransferOpen(false);
-          }}
-          onSuccess={(): void => {
-            setTransferOpen(false);
-          }}
+          onClose={(): void => setTransferOpen(false)}
+          onSuccess={(): void => setTransferOpen(false)}
         />
       )}
     </main>

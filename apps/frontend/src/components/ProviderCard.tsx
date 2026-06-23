@@ -33,24 +33,29 @@ import { getAddress } from 'viem';
 import type { Provider } from '../hooks/useProviders';
 
 const buttonStyle: React.CSSProperties = {
-  marginTop: 8,
-  padding: '6px 12px',
-  border: '1px solid #1f2937',
-  background: '#1f2937',
-  color: '#f9fafb',
-  borderRadius: 4,
+  marginTop: 12,
+  padding: '8px 16px',
+  border: `1px solid ${'#b8976e'}`,
+  background: 'rgba(184, 151, 110, 0.08)',
+  color: '#c5a880',
+  borderRadius: 6,
   cursor: 'pointer',
+  fontSize: 13,
+  fontWeight: 600,
+  transition: 'all 0.18s ease',
+  fontFamily: 'inherit',
 };
 
 const cardStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
-  gap: 4,
-  padding: 12,
-  border: '1px solid #e5e7eb',
-  borderRadius: 6,
+  gap: 6,
+  padding: 16,
+  border: '1px solid #2a2a2a',
+  borderRadius: 10,
   minWidth: 260,
-  background: '#ffffff',
+  background: '#1a1a1a',
+  transition: 'all 0.18s ease',
 };
 
 /** Best-effort EIP-55 checksum; falls back to the raw input on failure. */
@@ -68,20 +73,18 @@ export function ProviderCard({ provider }: { provider: Provider }): ReactElement
 
   const onUse = (e: MouseEvent<HTMLButtonElement>): void => {
     e.preventDefault();
-    // The mint flow reads the `provider` query param to pre-select a
-    // compute broker. Source: React Router `useNavigate`.
     navigate(`/agents/new?provider=${provider.address}`);
   };
 
   return (
     <article style={cardStyle} aria-label={`Provider ${addressLabel}`}>
-      <div style={{ fontFamily: 'monospace', fontSize: 13 }}>{addressLabel}</div>
-      <div style={{ fontSize: 12, color: '#374151' }}>{provider.model}</div>
+      <div style={{ fontFamily: "'SF Mono', monospace", fontSize: 13, color: '#c5a880' }}>{addressLabel}</div>
+      <div style={{ fontSize: 13, color: '#e5e5e5', fontWeight: 500 }}>{provider.model}</div>
       <div
         style={{
           fontSize: 11,
-          color: '#6b7280',
-          fontFamily: 'monospace',
+          color: '#6a6a6a',
+          fontFamily: "'SF Mono', monospace",
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap',

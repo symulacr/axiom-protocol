@@ -37,8 +37,8 @@
 
 import type { ChangeEvent, ReactElement } from 'react';
 import { useEffect, useState } from 'react';
-
 import { useLocalStorage } from '../hooks/useLocalStorage.js';
+import { COLORS, Card, Button, Input, SectionTitle, PageHeader, Alert } from '../components/ui.js';
 
 const DEFAULT_RPC_URL = 'https://evmrpc-testnet.0g.ai';
 const DEFAULT_WC_PROJECT_ID = '';
@@ -95,145 +95,120 @@ export function SettingsPage(): ReactElement {
   };
 
   return (
-    <section aria-labelledby="settings-heading">
-      <h1 id="settings-heading">Settings</h1>
+    <main>
+      <PageHeader title="Settings" subtitle="Configure RPC endpoint, wallet connector, and chain" />
 
-      <fieldset style={{ marginBottom: 24 }}>
-        <legend>
-          <strong>RPC URL</strong>
-        </legend>
-        <p style={{ margin: '4px 0 8px 0' }}>
-          The JSON-RPC endpoint the frontend uses to read 0G chain state.
+      <Card style={{ marginBottom: 24 }}>
+        <SectionTitle>RPC Endpoint</SectionTitle>
+        <p style={{ color: COLORS.textMuted, fontSize: 14, margin: '0 0 16px', fontWeight: 300 }}>
+          The JSON-RPC endpoint used to read 0G chain state.
         </p>
-        <label htmlFor="rpc-url-input">Endpoint</label>
-        <br />
-        <input
-          id="rpc-url-input"
-          type="url"
-          inputMode="url"
-          value={rpcDraft}
-          onChange={onRpcDraftChange}
-          placeholder={DEFAULT_RPC_URL}
-          style={{ minWidth: 360, padding: '4px 8px' }}
-        />
-        <button
-          type="button"
-          onClick={onSaveRpc}
-          style={{ marginLeft: 8, padding: '4px 12px' }}
-        >
-          Save
-        </button>
-        <p
-          style={{
-            margin: '8px 0 0 0',
-            fontSize: 12,
-            color: '#6b7280',
-          }}
-        >
-          Persists to <code>localStorage</code> key <code>axiom.rpcUrl</code>.
+        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+          <Input
+            id="rpc-url-input"
+            type="url"
+            inputMode="url"
+            value={rpcDraft}
+            onChange={onRpcDraftChange}
+            placeholder={DEFAULT_RPC_URL}
+            style={{ flex: 1, minWidth: 'auto' }}
+          />
+          <Button variant="primary" onClick={onSaveRpc}>
+            Save
+          </Button>
+        </div>
+        <p style={{ margin: '12px 0 0', fontSize: 12, color: COLORS.textDim }}>
+          Saved to localStorage key <code style={{ color: COLORS.bronzeLight }}>axiom.rpcUrl</code>. Takes effect on next page load.
         </p>
-      </fieldset>
+      </Card>
 
-      <fieldset style={{ marginBottom: 24 }}>
-        <legend>
-          <strong>WalletConnect project ID</strong>
-        </legend>
-        <p style={{ margin: '4px 0 8px 0' }}>
-          Your WalletConnect Cloud project identifier. Required for
-          WalletConnect-based wallets (Rainbow, Trust, MetaMask mobile via
-          QR, etc.).
+      <Card style={{ marginBottom: 24 }}>
+        <SectionTitle>WalletConnect Project ID</SectionTitle>
+        <p style={{ color: COLORS.textMuted, fontSize: 14, margin: '0 0 16px', fontWeight: 300 }}>
+          Your WalletConnect Cloud project identifier. Required for WalletConnect-based wallets like Rainbow, Trust, and MetaMask Mobile.
         </p>
-        <label htmlFor="wc-project-id-input">Project ID</label>
-        <br />
-        <input
-          id="wc-project-id-input"
-          type="text"
-          value={wcDraft}
-          onChange={onWcDraftChange}
-          placeholder="00000000000000000000000000000000"
-          style={{ minWidth: 360, padding: '4px 8px' }}
-        />
-        <button
-          type="button"
-          onClick={onSaveWcProjectId}
-          style={{ marginLeft: 8, padding: '4px 12px' }}
-        >
-          Save
-        </button>
-        <p
-          style={{
-            margin: '8px 0 0 0',
-            fontSize: 12,
-            color: '#b45309',
-          }}
-        >
-          <strong>Note:</strong> the change requires a full page reload
-          before the wagmi config picks up the new project id.
-        </p>
-        <p
-          style={{
-            margin: '4px 0 0 0',
-            fontSize: 12,
-            color: '#6b7280',
-          }}
-        >
-          Persists to <code>localStorage</code> key{' '}
-          <code>axiom.wcProjectId</code>.
-        </p>
-      </fieldset>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+          <Input
+            id="wc-project-id-input"
+            type="text"
+            value={wcDraft}
+            onChange={onWcDraftChange}
+            placeholder="00000000000000000000000000000000"
+            style={{ flex: 1, minWidth: 'auto' }}
+          />
+          <Button variant="primary" onClick={onSaveWcProjectId}>
+            Save
+          </Button>
+        </div>
+        <Alert variant="warning" style={{ marginTop: 12 }}>
+          Reload the page after saving — the wallet connector initializes once on page load.
+        </Alert>
+      </Card>
 
-      <fieldset>
-        <legend>
-          <strong>Active chain</strong>
-        </legend>
-        <p style={{ margin: '4px 0 8px 0' }}>
+      <Card>
+        <SectionTitle>Active Chain</SectionTitle>
+        <p style={{ color: COLORS.textMuted, fontSize: 14, margin: '0 0 16px', fontWeight: 300 }}>
           The 0G chain the frontend targets by default.
         </p>
-        <div>
-          <label style={{ display: 'block', marginBottom: 4 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              padding: '12px 16px',
+              borderRadius: 8,
+              border: `1px solid ${chainId === GALILEO_CHAIN_ID ? COLORS.bronzeBorder : COLORS.border}`,
+              background: chainId === GALILEO_CHAIN_ID ? COLORS.bronzeBg : 'transparent',
+              cursor: 'pointer',
+              transition: 'all 0.18s ease',
+              color: COLORS.text,
+              fontSize: 14,
+            }}
+          >
             <input
               type="radio"
               name="chain"
               value={GALILEO_CHAIN_ID}
               checked={chainId === GALILEO_CHAIN_ID}
               onChange={onChainChange}
-            />{' '}
-            Galileo Testnet (16602)
+              style={{ accentColor: COLORS.bronze }}
+            />
+            Galileo Testnet
+            <span style={{ color: COLORS.textDim, fontSize: 12 }}>(chainId 16602)</span>
           </label>
-          <label style={{ display: 'block' }}>
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              padding: '12px 16px',
+              borderRadius: 8,
+              border: `1px solid ${chainId === ARISTOTLE_CHAIN_ID ? COLORS.bronzeBorder : COLORS.border}`,
+              background: chainId === ARISTOTLE_CHAIN_ID ? COLORS.bronzeBg : 'transparent',
+              cursor: 'pointer',
+              transition: 'all 0.18s ease',
+              color: COLORS.text,
+              fontSize: 14,
+            }}
+          >
             <input
               type="radio"
               name="chain"
               value={ARISTOTLE_CHAIN_ID}
               checked={chainId === ARISTOTLE_CHAIN_ID}
               onChange={onChainChange}
-            />{' '}
-            Aristotle Mainnet (16661)
+              style={{ accentColor: COLORS.bronze }}
+            />
+            Aristotle Mainnet
+            <span style={{ color: COLORS.textDim, fontSize: 12 }}>(chainId 16661)</span>
           </label>
         </div>
-        <p
-          style={{
-            margin: '8px 0 0 0',
-            fontSize: 12,
-            color: '#b45309',
-          }}
-        >
-          <strong>Note:</strong> the wagmi config picks up this value on
-          the next page load. The current page is using the chain that
-          was active when it was loaded.
+        <p style={{ margin: '12px 0 0', fontSize: 12, color: COLORS.textDim }}>
+          Saved to localStorage key <code style={{ color: COLORS.bronzeLight }}>axiom.chainId</code>. Takes effect on next page load.
         </p>
-        <p
-          style={{
-            margin: '4px 0 0 0',
-            fontSize: 12,
-            color: '#6b7280',
-          }}
-        >
-          Persists to <code>localStorage</code> key{' '}
-          <code>axiom.chainId</code>.
-        </p>
-      </fieldset>
-    </section>
+      </Card>
+    </main>
   );
 }
 

@@ -83,10 +83,11 @@ function truncateHex(value: string, head = 10, tail = 6): string {
 
 /** Shared panel style: a bordered card section with spacing. */
 const sectionStyle: React.CSSProperties = {
-  border: '1px solid #e5e7eb',
-  borderRadius: 8,
-  padding: 16,
+  border: '1px solid #2a2a2a',
+  borderRadius: 10,
+  padding: 20,
   marginBottom: 16,
+  background: '#1a1a1a',
 };
 
 /** Inline form row: a labeled input + submit button. */
@@ -101,13 +102,13 @@ const formRowStyle: React.CSSProperties = {
 function statusColor(status: ActionStatus): string {
   switch (status) {
     case 'success':
-      return '#16a34a';
+      return '#6b9e6b';
     case 'error':
-      return '#dc2626';
+      return '#c85a5a';
     case 'pending':
-      return '#d97706';
+      return '#c5a25a';
     default:
-      return '#6b7280';
+      return '#8a8a8a';
   }
 }
 
@@ -267,7 +268,7 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
 
       {/* 2. Pay-for-agent form */}
       <h3>Pay for Agent</h3>
-      <p style={{ fontSize: 12, color: '#6b7280' }}>
+      <p style={{ fontSize: 12, color: '#8a8a8a' }}>
         Amount is in the payment token&apos;s smallest unit (e.g. 6-decimal
         USDC micro-units).
       </p>
@@ -336,7 +337,7 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
 
       {/* 4. Royalty setting form */}
       <h3>Royalty</h3>
-      <p style={{ fontSize: 12, color: '#6b7280' }}>
+      <p style={{ fontSize: 12, color: '#8a8a8a' }}>
         Basis points (0\u201310000). 250 = 2.5%. Only the agent creator
         may set this on-chain.
       </p>
@@ -370,12 +371,12 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
 
       {/* Shared error line for any hook-level failure. */}
       {error !== null && (
-        <p role="alert" style={{ color: '#dc2626', fontSize: 12 }}>
+        <p role="alert" style={{ color: '#c85a5a', fontSize: 12 }}>
           {error.message}
         </p>
       )}
       {withdrawError !== null && (
-        <p role="alert" style={{ color: '#dc2626', fontSize: 12 }}>
+        <p role="alert" style={{ color: '#c85a5a', fontSize: 12 }}>
           {withdrawError.message}
         </p>
       )}
