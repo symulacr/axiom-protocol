@@ -15,7 +15,7 @@ WORKDIR /build
 COPY apps/indexer/package.json apps/indexer/tsconfig.json ./
 COPY tsconfig.base.json /
 
-RUN npm install
+RUN npm install --legacy-peer-deps
 
 # Copy source, vendored proto
 COPY apps/indexer/src/ src/
