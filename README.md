@@ -12,14 +12,14 @@
   <a href="https://opensource.org/licenses/MIT">
     <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License" />
   </a>
-  <a href="https://soliditylang.org">
-    <img src="https://img.shields.io/badge/Solidity-%5E0.8.20-black?logo=solidity" alt="Solidity ^0.8.20" />
+  <a href="https://docs.soliditylang.org/en/v0.8.20/">
+    <img src="https://img.shields.io/badge/Solidity-0.8.20-black?logo=solidity" alt="Solidity 0.8.20" />
   </a>
-  <a href="https://typescriptlang.org">
+  <a href="https://devblogs.microsoft.com/typescript/announcing-typescript-5-5/">
     <img src="https://img.shields.io/badge/TypeScript-5.5-blue?logo=typescript" alt="TypeScript 5.5" />
   </a>
-  <a href="https://pnpm.io">
-    <img src="https://img.shields.io/badge/pnpm-%5E9-F69220?logo=pnpm" alt="pnpm ^9" />
+  <a href="https://pnpm.io/installation">
+    <img src="https://img.shields.io/badge/pnpm-9-F69220?logo=pnpm" alt="pnpm 9" />
   </a>
 </p>
 
@@ -59,8 +59,8 @@ make dev              # Start oracle + backend + indexer
 
 ## Resources
 
-- [Release Notes (v1.0.0)](https://github.com/symulacr/axiom-protocol/releases/tag/v0.0.1)
+- [Release Notes (v0.0.1)](https://github.com/symulacr/axiom-protocol/releases/tag/v0.0.1)
 
 ## Acknowledgments
 
-Built for the [0G Bridge by AKINDO](https://0g-foundation) hackathon.
+Built for the [0G Bridge by AKINDO](https://docs.0g.ai) hackathon.
