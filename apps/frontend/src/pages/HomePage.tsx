@@ -1,83 +1,184 @@
-// Axiom Protocol — landing page (`/` route).
-//
-// Renders the canonical Axiom brand narrative, then three call-to-action
-// buttons that route the user into the rest of the dApp. The narrative
-// paragraph is pulled from `docs/brand/axiom-narrative.md` (the source of
-// truth for all Axiom marketing copy). If that file is ever deleted in a
-// future micro-wave, a short placeholder is rendered in its place so the
-// page never blanks out.
-//
-// The three CTAs are React Router `Link` elements (not raw `<a>` tags) so
-// the SPA transition is instant and the wallet / wagmi state in the React
-// tree survives the navigation. The destination routes mirror the
-// `<Route>` table in `src/App.tsx`:
-//   - /vaults/:vaultId → opens the deployed AxiomStrategyVault
-//   - /agents         → lists the connected wallet's iNFTs (added later)
-//   - /connect        → opens the RainbowKit connect modal anchor
-//
-// Source URLs (cited inline at the call sites that use them):
-//   - React Router v6+ `<Link>` API (replaces history with declarative nav):
-//     https://reactrouter.com/en/main/components/link
-//   - wagmi v2 `useConnect` / RainbowKit `ConnectButton` (for the third
-//     CTA's `onClick` handler that opens the wallet modal):
-//     https://wagmi.sh/react/hooks/useConnect
-//   - RainbowKit `ConnectButton` (the open-modal entry point):
-//     https://www.rainbowkit.com/docs/connect-button
-//   - 0G chain facts (chainId 16602, native gas token OG):
-//     https://docs.0g.ai/ai-context
-//   - Brand narrative source of truth:
-//     local://docs/brand/axiom-narrative.md  (this file is not loaded by
-//     the build — copy is pinned here verbatim so a missing file in a
-//     future micro-wave never blanks the landing page)
-
-import type { ReactElement } from 'react';
-import { useConnect } from 'wagmi';
+import type { CSSProperties, ReactElement } from 'react';
 import { Link } from 'react-router-dom';
+import { useAccount } from 'wagmi';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { AXIOM_VAULT_ADDRESSES } from '../abi/addresses.js';
+import { Card } from '../components/ui.js';
 
-const NARRATIVE_PARAGRAPH =
-  'Axiom Protocol is the verifiable intelligence layer for DeFi. It is the on-chain infrastructure that lets an AI agent\u2019s intelligence \u2014 its model, weights, strategy, execution logic \u2014 be tokenized as an NFT, owned by a user, transferred with provable integrity, and run with cryptographic proof of correct execution.';
+const NARRATIVE =
+  'Axiom Protocol is the verifiable intelligence layer for DeFi. It lets an AI agent\u2019s intelligence \u2014 its model, weights, strategy, execution logic \u2014 be tokenized as an NFT, owned by a user, transferred with provable integrity, and run with cryptographic proof of correct execution.';
 
-const VAULT_ROUTE = `/vaults/0` as const;
+const heroStyle: CSSProperties = {
+  textAlign: 'center',
+  padding: '60px 20px 48px',
+};
+
+const heroTitleStyle: CSSProperties = {
+  fontSize: 40,
+  fontWeight: 800,
+  color: '#111827',
+  margin: '0 0 16px',
+  lineHeight: 1.2,
+};
+
+const heroSubtitleStyle: CSSProperties = {
+  fontSize: 18,
+  color: '#6b7280',
+  maxWidth: 640,
+  margin: '0 auto 32px',
+  lineHeight: 1.6,
+};
+
+const ctaRowStyle: CSSProperties = {
+  display: 'flex',
+  gap: 12,
+  justifyContent: 'center',
+  flexWrap: 'wrap',
+};
+
+const ctaButtonBase: CSSProperties = {
+  display: 'inline-block',
+  padding: '10px 24px',
+  borderRadius: 8,
+  fontSize: 15,
+  fontWeight: 600,
+  textDecoration: 'none',
+  transition: 'opacity 0.15s',
+};
+
+const primaryCta: CSSProperties = {
+  ...ctaButtonBase,
+  background: '#1f2937',
+  color: '#f9fafb',
+};
+
+const secondaryCta: CSSProperties = {
+  ...ctaButtonBase,
+  background: '#fff',
+  color: '#111827',
+  border: '1px solid #e5e7eb',
+};
+
+const statsGridStyle: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+  gap: 16,
+  margin: '40px auto',
+  maxWidth: 720,
+};
+
+const statCardStyle: CSSProperties = {
+  textAlign: 'center',
+  padding: 24,
+};
+
+const statNumberStyle: CSSProperties = {
+  fontSize: 32,
+  fontWeight: 700,
+  color: '#111827',
+  margin: '0 0 4px',
+};
+
+const statLabelStyle: CSSProperties = {
+  fontSize: 13,
+  color: '#6b7280',
+};
+
+const stepsSectionStyle: CSSProperties = {
+  maxWidth: 800,
+  margin: '40px auto',
+};
+
+const stepsGridStyle: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+  gap: 20,
+};
+
+const stepNumberStyle: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: 32,
+  height: 32,
+  borderRadius: '50%',
+  background: '#1f2937',
+  color: '#f9fafb',
+  fontSize: 16,
+  fontWeight: 700,
+  marginBottom: 12,
+};
 
 export function HomePage(): ReactElement {
-  // `useConnect` gives us the `connectors` list and a `connect` action.
-  // We surface the first available EIP-1193 / WalletConnect / Injected
-  // connector as the "Connect Wallet" CTA. Source:
-  //   https://wagmi.sh/react/hooks/useConnect
-  const { connectors, connect, isPending } = useConnect();
-  const primaryConnector = connectors[0];
-
-  const onConnect = (): void => {
-    if (primaryConnector) {
-      connect({ connector: primaryConnector });
-    }
-  };
+  const { isConnected } = useAccount();
+  const vaultAddr = AXIOM_VAULT_ADDRESSES[0];
 
   return (
     <main>
-      <h1>Axiom Protocol</h1>
-      <p>{NARRATIVE_PARAGRAPH}</p>
+      {/* Hero */}
+      <section style={heroStyle}>
+        <h1 style={heroTitleStyle}>Axiom Protocol</h1>
+        <p style={heroSubtitleStyle}>{NARRATIVE}</p>
+        <div style={ctaRowStyle}>
+          <Link to={vaultAddr !== undefined ? `/vaults/${vaultAddr}` : '/agents'} style={primaryCta}>
+            View Vaults
+          </Link>
+          <Link to="/agents" style={secondaryCta}>
+            Browse Agents
+          </Link>
+          {!isConnected && (
+            <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+              <ConnectButton />
+            </span>
+          )}
+        </div>
+      </section>
 
-      <nav aria-label="Primary actions">
-        <Link
-          to={
-            AXIOM_VAULT_ADDRESSES[0] !== undefined
-              ? `/vaults/${AXIOM_VAULT_ADDRESSES[0]}`
-              : VAULT_ROUTE
-          }
-        >
-          View Vaults
-        </Link>
-        <Link to="/agents">Browse Agents</Link>
-        <button
-          type="button"
-          onClick={onConnect}
-          disabled={primaryConnector === undefined || isPending}
-        >
-          Connect Wallet
-        </button>
-      </nav>
+      {/* Stats */}
+      <section style={statsGridStyle}>
+        <Card style={statCardStyle}>
+          <div style={statNumberStyle}>{AXIOM_VAULT_ADDRESSES.length}</div>
+          <div style={statLabelStyle}>Vaults Deployed</div>
+        </Card>
+        <Card style={statCardStyle}>
+          <div style={statNumberStyle}>EIP-7857</div>
+          <div style={statLabelStyle}>iNFT Standard</div>
+        </Card>
+        <Card style={statCardStyle}>
+          <div style={statNumberStyle}>0G</div>
+          <div style={statLabelStyle}>Storage &amp; Compute</div>
+        </Card>
+      </section>
+
+      {/* How it works */}
+      <section style={stepsSectionStyle}>
+        <h2 style={{ fontSize: 22, fontWeight: 700, textAlign: 'center', marginBottom: 24 }}>
+          How it works
+        </h2>
+        <div style={stepsGridStyle}>
+          <Card>
+            <div style={stepNumberStyle}>1</div>
+            <h3 style={{ fontSize: 16, fontWeight: 600, margin: '0 0 8px' }}>Mint an iNFT</h3>
+            <p style={{ fontSize: 14, color: '#6b7280', margin: 0, lineHeight: 1.6 }}>
+              Upload your encrypted strategy to 0G Storage and mint it as an ERC-7857 intelligent NFT with a TEE-sealed key.
+            </p>
+          </Card>
+          <Card>
+            <div style={stepNumberStyle}>2</div>
+            <h3 style={{ fontSize: 16, fontWeight: 600, margin: '0 0 8px' }}>Transfer securely</h3>
+            <p style={{ fontSize: 14, color: '#6b7280', margin: 0, lineHeight: 1.6 }}>
+              Transfer ownership with cryptographic proof of integrity. The receiver unwraps the sealed key in a TEE.
+            </p>
+          </Card>
+          <Card>
+            <div style={stepNumberStyle}>3</div>
+            <h3 style={{ fontSize: 16, fontWeight: 600, margin: '0 0 8px' }}>Execute on-chain</h3>
+            <p style={{ fontSize: 14, color: '#6b7280', margin: 0, lineHeight: 1.6 }}>
+              Run strategy ticks via 0G Compute inference. The vault settles buy/sell actions on-chain with verifiable proof.
+            </p>
+          </Card>
+        </div>
+      </section>
     </main>
   );
 }
