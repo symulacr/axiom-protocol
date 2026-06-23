@@ -30,7 +30,7 @@ import { HealthBadge } from './components/HealthBadge.js';
 import { HomePage } from './pages/HomePage.js';
 
 import { VaultDashboard } from './pages/VaultDashboard.js';
-import { AgentsBrowser } from './pages/AgentsBrowser.js';
+
 import { AgentDetail } from './pages/AgentDetail.js';
 import { MarketPage } from './pages/MarketPage.js';
 import { HistoryPage } from './pages/HistoryPage.js';
