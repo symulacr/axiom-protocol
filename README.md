@@ -63,4 +63,4 @@ make dev              # Start oracle + backend + indexer
 
 ## Acknowledgments
 
-Built for the [0G Bridge by AKINDO](https://docs.0g.ai) hackathon.
+Built for the [0G Bridge by AKINDO](https://app.akindo.io/wave-hacks/xKOgjd91kCmrN3ORz/) hackathon.
