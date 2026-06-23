@@ -30,11 +30,14 @@ jobs:
           path: |
             ~/.foundry/cache
             apps/contracts/forge-cache/
-          key: foundry-cache-${{ hashFiles('pnpm-lock.yaml') }}
+          key: foundry-cache-${{ hashFiles('apps/contracts/src/**/*.sol', 'apps/contracts/test/**/*.sol', 'apps/contracts/script/**/*.sol') }}
 
       - name: Check formatting
-        continue-on-error: true
         run: forge fmt --check
+
+      - name: Lint Solidity
+        run: npx solhint 'src/**/*.sol' 'test/**/*.sol' 'script/**/*.sol'
+        working-directory: apps/contracts
 
       - name: Build contracts
         run: forge build --sizes

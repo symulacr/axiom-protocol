@@ -26,6 +26,8 @@ jobs:
           context: .
           file: apps/indexer/Dockerfile
           tags: axiom-indexer:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Smoke test
         run: docker run --rm axiom-indexer:ci node dist/index.js --help || true
