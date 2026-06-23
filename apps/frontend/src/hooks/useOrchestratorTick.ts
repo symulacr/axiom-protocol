@@ -48,22 +48,7 @@ export type TickResult = {
   durationMs: number;
 };
 
-/**
- * Hook that POSTs to the backend orchestrator tick endpoint via the native
- * browser Fetch API. No wagmi / viem dependency — the backend wallet signs
- * the on-chain execute() call; the frontend is a thin client.
- *
- * Backend base URL is read from Vite's `VITE_BACKEND_URL` env var (the
- * `VITE_` prefix keeps the value out of the server bundle and makes it
- * visible to the browser, per the Vite convention). Falls back to the
- * local dev loopback port used by `apps/backend` (`pnpm dev` → :3000).
- *
- * Canonical references:
- *  - MDN Fetch API: Request/Response, JSON body, error handling:
- *    https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch
- *  - Vite environment variables (VITE_ prefix):
- *    https://vitejs.dev/guide/env-and-mode
- */
+/** POSTs to /v1/orchestrator/tick. No wagmi — backend wallet signs on-chain calls. */
 export function useOrchestratorTick(): {
   tick: (req: TickRequest) => Promise<TickResult>;
   isLoading: boolean;

@@ -131,10 +131,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
     standardHeaders: true,
     legacyHeaders: false,
   }));
-  // BigInt-safe JSON replacer for res.json(). Required because TickResult.onchain
-  // .vaultBalance and StrategySpec.agentTokenId are bigint; without it res.json()
-  // throws "TypeError: Do not know how to serialize a BigInt".
-  // Source: https://expressjs.com/en/4x/api.html#app.set
+  // BigInt-safe JSON replacer for res.json().
   app.set("json replacer", bigintReplacer);
 
   const ogChainId = config.env?.AXIOM_CHAIN_ID ?? GALILEO_CHAIN_ID; // EIP-155 chain id; 16602 = Galileo testnet per https://docs.0g.ai/ai-context

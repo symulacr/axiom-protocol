@@ -30,18 +30,7 @@ export type AgentMetadata = {
 };
 
 /**
- * Read the full metadata view for a single AxiomAgentNFT tokenId in one
- * multicall. Combines the standard EIP-721 getters (`name`, `symbol`,
- * `ownerOf`) with the AxiomAgentNFT-specific extensions (`getDataHash`,
- * `getSealedKey`) and the EIP-721 `tokenURI`.
- *
- * Canonical references:
- *  - EIP-721: name / symbol / ownerOf / tokenURI:
- *    https://eips.ethereum.org/EIPS/eip-721
- *  - EIP-7857 IntelligentData / dataHash semantics:
- *    https://eips.ethereum.org/EIPS/eip-7857
- *  - wagmi v2 useReadContracts (batched reads, allowFailure):
- *    https://wagmi.sh/react/hooks/useReadContracts
+ * Read the full metadata view for a single AxiomAgentNFT tokenId in one multicall.
  */
 export function useAgentMetadata(tokenId: bigint): {
   data: AgentMetadata | null;
