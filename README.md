@@ -35,7 +35,7 @@
     <img src="https://img.shields.io/badge/Foundry-✓-orange" alt="Foundry" />
   </a>
   <a href="#">
-    <img src="https://img.shields.io/github/actions/workflow/status/symulacr/axiom-protocol/contracts.yml?branch=master&label=CI" alt="CI" />
+    <img src="https://img.shields.io/github/actions/workflow/status/symulacr/axiom-protocol/typescript.yml?branch=master&label=CI" alt="CI" />
   </a>
 </p>
 
@@ -56,7 +56,8 @@
 
 | Component | Status |
 |-----------|--------|
-| Chain (Galileo + Aristotle) | ✅ Deployed and verified |
+| Chain (Galileo testnet) | ✅ Deployed and verified |
+| Chain (Aristotle mainnet) | ⏳ Not yet deployed |
 | Storage (Turbo indexer) | ✅ Upload/download with Merkle proofs |
 | Compute (Router API + Direct SDK) | ✅ Chat completions working |
 | Agentic ID (ERC-7857) | ✅ On-chain + off-chain proof signing |
