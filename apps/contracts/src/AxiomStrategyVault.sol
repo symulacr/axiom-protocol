@@ -19,7 +19,6 @@ import {IAxiomAgentNFT} from "./interfaces/IAxiomAgentNFT.sol";
 contract AxiomStrategyVault is Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
-    // ─── Custom errors ────────────────────────────────────────────
     error NotTokenOwner();
     error InvalidMerkleProof();
     error DailyLimitExceeded();
@@ -28,7 +27,6 @@ contract AxiomStrategyVault is Ownable, Pausable, ReentrancyGuard {
     error ZeroAddress();
     error TokenNotInRegistry();
 
-    // ─── Events ──────────────────────────────────────────────────
     event Deposited(uint256 indexed tokenId, address indexed from, address indexed asset, uint256 amount);
     event Withdrawn(uint256 indexed tokenId, address indexed to, address indexed asset, uint256 amount);
     event StrategySet(uint256 indexed tokenId, bytes32 strategyRoot, uint256 dailyLimit, uint64 validUntilDay);
@@ -51,9 +49,7 @@ contract AxiomStrategyVault is Ownable, Pausable, ReentrancyGuard {
     }
 
     // keccak256(abi.encode(uint256(keccak256("agent.storage.AxiomStrategyVault")) - 1)) & ~bytes32(uint256(0xff))
-    // Canonical ERC-7201 formula (OZ v5). Computed with `cast`:
-    //   cast keccak $(cast abi-encode "f(uint256)" 0x3f569b10bfacf538d8245d30364cc2a6b8e3f5c2c9baf685016c5d1a465df58c)
-    //   → 0x2c850096...4ca138, masked to 0x2c850096...4ca100
+    // Canonical ERC-7201 formula (OZ v5).
     bytes32 private constant STORAGE_LOCATION = 0x2c8500969106113efc78631b1915a4e278f67bc66ee84f8db9954bdec44ca100;
 
     function _getVaults() private pure returns (mapping(uint256 => Vault) storage $) {
@@ -82,7 +78,6 @@ contract AxiomStrategyVault is Ownable, Pausable, ReentrancyGuard {
         emit RegistryUpdated(newNft);
     }
 
-    // ─── Deposit / Withdraw (native 0G) ──────────────────────────
     function deposit(uint256 tokenId) external payable whenNotPaused onlyTokenOwner(tokenId) {
         if (msg.value == 0) revert ZeroAmount();
         _getVaults()[tokenId].balance += msg.value;
@@ -104,7 +99,6 @@ contract AxiomStrategyVault is Ownable, Pausable, ReentrancyGuard {
         return _getVaults()[tokenId].balance;
     }
 
-    // ─── Strategy ────────────────────────────────────────────────
     /// @notice Set the Merkle root of approved actions + daily value limit
     /// @param tokenId The vault's NFT token ID
     /// @param root Merkle root of approved action hashes
@@ -123,7 +117,6 @@ contract AxiomStrategyVault is Ownable, Pausable, ReentrancyGuard {
         return (v.strategyRoot, v.dailyLimit, v.dailySpent, v.resetDay);
     }
 
-    // ─── Execution ──────────────────────────────────────────────
     /// @notice Execute an action whose hash is in the strategy Merkle tree
     /// @param tokenId The vault's NFT token ID
     /// @param target Address to call / send value to

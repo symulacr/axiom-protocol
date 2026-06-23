@@ -1,37 +1,8 @@
 // Axiom Protocol — agent detail page (`/agents/:tokenId` route).
 //
-// Renders the on-chain metadata for a single AxiomAgentNFT token in a
-// definition list. The "Transfer Agent" action opens the shared
-// <TransferModal /> (owned by Agent B) which drives the iTransferFrom
-// call with both the receiver's AccessProof signature and the TEE
-// OwnershipProof signature.
-//
-// Data sources:
-//
-//   1. The `useAgentMetadata(tokenId)` hook (apps/frontend/src/hooks/
-//      useAgentMetadata.ts) multicalls the standard EIP-721 getters
-//      (name, symbol, ownerOf, tokenURI) plus the AxiomAgentNFT iNFT
-//      extensions (getDataHash, getSealedKey) in a single round-trip.
-//      EIP-721: https://eips.ethereum.org/EIPS/eip-721
-//      wagmi v2 useReadContracts:
-//        https://wagmi.sh/react/hooks/useReadContracts
-//
-//   2. A second `useReadContracts` call reads `creatorOf(tokenId)` from
-//      the same ABI. The shared hook doesn't surface this field
-//      because it's AxiomAgentNFT-specific, not a property of the base
-//      EIP-721 spec, so we read it directly here.
-//
-// Routing:
-//
-//   - `useParams<{ tokenId: string }>()` returns the URL segment. We
-//     parse it with `BigInt(...)` (the EIP-721 tokenId type) and fall
-//     back to 0n if the segment is missing or non-numeric. React Router
-//     v6/v7 useParams API:
-//       https://reactrouter.com/api/hooks/useParams
-//
-// Truncation of `dataHash` and `sealedKey` follows the same convention
-// as VaultDashboard.tsx (first 10 + ellipsis + last 6) so the dApp
-// has one consistent hash-rendering style across pages.
+// Renders on-chain metadata for an AxiomAgentNFT token using
+// `useAgentMetadata` and a separate `creatorOf` multicall.
+// The "Transfer Agent" action opens `<TransferModal />`.
 
 import { useState, type ReactElement } from 'react';
 import { useParams, Link } from 'react-router-dom';

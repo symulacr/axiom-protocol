@@ -91,7 +91,6 @@ test("TeeSigner.recoverAccessSigner recovers a raw-ECDSA AccessProof", async () 
   const digest = accessMessageHash(input);
   const sig = receiver.signingKey.sign(getBytes(digest)).serialized;
 
-  // The signer's recoverAccessSigner recovers via raw ECDSA (no EIP-191).
   const recovered = signer.recoverAccessSigner(sig, input);
   assert.equal(recovered.toLowerCase(), receiver.address.toLowerCase());
 

@@ -1,19 +1,7 @@
 // Axiom Protocol — execute-strategy page (`/agents/:tokenId/execute` route).
 //
-// Thin wrapper around `<ExecutePanel />` that parses the `:tokenId` route
-// segment into a `bigint` (EIP-721 tokenId) and passes it as the locked
-// `tokenId` prop. When the segment is missing or non-numeric the page renders
-// an error instead of calling the panel with a bad id.
-//
-// Route registration lives in App.tsx (owned by W4-A):
-//   <Route path="/agents/:tokenId/execute" element={<ExecuteStrategyPage />} />
-//
-// Routing:
-//   - React Router v6+/v7 `useParams` returns the dynamic segment:
-//     https://reactrouter.com/api/hooks/useParams
-//
-// Truncation / placeholder convention matches AgentDetail.tsx and
-// VaultDashboard.tsx.
+// Thin wrapper around `<ExecutePanel />` that parses `:tokenId` into a
+// `bigint` and passes it as the locked `tokenId` prop.
 
 import type { ReactElement } from 'react';
 import { Link, useParams } from 'react-router-dom';

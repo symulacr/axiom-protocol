@@ -7,13 +7,11 @@ import {IERC7857} from "./IERC7857.sol";
 /// @notice Extension to ERC-7857 that lets the owner grant usage rights to other addresses
 /// @dev Max 100 authorized users per token; cleared on transfer
 interface IERC7857Authorize is IERC7857 {
-    // ─── Custom errors ────────────────────────────────────────────
     error ERC7857InvalidAuthorizedUser(address user);
     error ERC7857TooManyAuthorizedUsers();
     error ERC7857AlreadyAuthorized();
     error ERC7857NotAuthorized();
 
-    // ─── Events ──────────────────────────────────────────────────
     event Authorization(uint256 indexed tokenId, address indexed from, address indexed to);
     event AuthorizationRevoked(uint256 indexed tokenId, address indexed from, address indexed to);
 

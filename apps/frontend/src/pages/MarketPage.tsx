@@ -1,33 +1,7 @@
 // Axiom Protocol — `/market` page.
 //
-// Real-time market dashboard with two sections:
-//
-//   1. "Available Compute Providers" — fetched from
-//      `GET /v1/compute/providers` on mount and then polled every 30 s.
-//      Rendered as a list of `ProviderCard` components (one per provider).
-//   2. "Recent Transfers" — fetched from
-//      `GET /v1/events?eventName=Transfer` on mount (no polling — the
-//      chain event log is append-only and re-fetching the latest 25 is
-//      a cheap way to surface new activity without a WebSocket).
-//
-// The page is intentionally read-only — it does not write to the chain
-// or to the backend. State is local to the component; the polling effect
-// owns its own `setInterval` and cleans it up on unmount.
-//
-// The provider section delegates the polling to `useProviders`; the
-// transfer section uses a small in-place `useEffect` because we only
-// fetch once (the assignment does not require transfer polling).
-//
-// Canonical references:
-//  - MDN — Fetch API (Request, Response, JSON body, error handling):
-//    https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch
-//  - React — useEffect (run after commit, cleanup runs before next effect
-//    and on unmount):
-//    https://react.dev/reference/react/useEffect
-//  - React — useState (typed state for the transfer log + UI flags):
-//    https://react.dev/reference/react/useState
-//  - React Router v6+ — nested route mount + `useNavigate` import path:
-//    https://reactrouter.com/en/main/routers/create-browser-router
+// Real-time market dashboard: compute providers (polled every 30 s via
+// `useProviders`) and recent transfers (one-shot fetch on mount).
 
 import type { ReactElement } from 'react';
 import { useEffect, useState } from 'react';

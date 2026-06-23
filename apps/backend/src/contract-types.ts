@@ -1,13 +1,10 @@
 import type { TransactionResponse } from "ethers";
 
-// ─── AxiomPaymentProcessor ────────────────────────────────────────────────
-// Source ABI: apps/backend/src/payment/processor.ts
 export interface PaymentProcessorMethods {
   payForAgent(agentTokenId: bigint, amount: bigint): Promise<TransactionResponse>;
   payComputeProvider(provider: string, amount: bigint): Promise<TransactionResponse>;
   withdrawAgentEarnings(): Promise<TransactionResponse>;
   setRoyaltyBps(agentTokenId: bigint, bps: number): Promise<TransactionResponse>;
-  // Views
   protocolTreasury(): Promise<string>;
   protocolFeeBps(): Promise<bigint>;
   paymentToken(): Promise<string>;
@@ -16,16 +13,12 @@ export interface PaymentProcessorMethods {
   agentEarningsOf(creator: string): Promise<bigint>;
 }
 
-// ─── ERC-20 (minimal) ─────────────────────────────────────────────────────
 export interface ERC20Methods {
   allowance(owner: string, spender: string): Promise<bigint>;
   approve(spender: string, amount: bigint): Promise<TransactionResponse>;
   balanceOf(account: string): Promise<bigint>;
 }
 
-// ─── AxiomAgentNFT ────────────────────────────────────────────────────────
-// Source ABIs: apps/backend/src/server.ts (AGENT_NFT_ABI, AGENT_NFT_CREATOR_ABI),
-//              apps/backend/src/cli/run-e2e.ts (ITRANSFER_FROM_ABI)
 export interface AgentNFTMethods {
   mintFee(): Promise<bigint>;
   mint(iDatas: { dataDescription: string; dataHash: string }[], to: string, overrides?: { value?: bigint }): Promise<TransactionResponse>;
@@ -38,8 +31,6 @@ export interface AgentNFTMethods {
   symbol(): Promise<string>;
 }
 
-// ─── AxiomStrategyVault ────────────────────────────────────────────────────
-// Source ABIs: apps/backend/src/server.ts, apps/backend/src/orchestrator/index.ts
 export interface StrategyVaultMethods {
   deposit(tokenId: bigint, overrides?: { value?: bigint }): Promise<TransactionResponse>;
   setStrategy(tokenId: bigint, merkleRoot: string, dailyLimit: bigint): Promise<TransactionResponse>;

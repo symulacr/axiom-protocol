@@ -12,7 +12,7 @@ import "@0g-agent-nft/Utils.sol";
 
 /// @title ERC7857Upgradeable
 /// @notice Base ERC-7857 implementation: token transfer with re-encrypted metadata
-/// @dev Adapted from https://github.com/0gfoundation/0g-agent-nft (MIT)
+/// @dev Adapted from the 0G Agentic ID reference (MIT)
 abstract contract ERC7857Upgradeable is IERC7857, ERC721Upgradeable {
     /// @custom:storage-location erc7857:0g.storage.ERC7857
     struct ERC7857Storage {

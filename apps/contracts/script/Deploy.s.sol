@@ -19,18 +19,13 @@ contract Deploy is Script {
         uint256 oracleAdminKey = vm.envUint("ORACLE_ADMIN_PK");
         address teeSigner = vm.addr(teeSignerKey);
         address oracleAdmin = vm.addr(oracleAdminKey);
-        // Read the deployer / verifier owner from env so the operator can pin ownership
-        // (e.g. to a Safe) without changing the broadcaster. The verifier's `registerSigner`
-        // is gated on this address via OZ Ownable; the deployer key only funds the broadcast.
+        // registerSigner is gated on AXIOM_DEPLOYER_ADDRESS via OZ Ownable.
         address axiomDeployer = vm.envAddress("AXIOM_DEPLOYER_ADDRESS");
 
         vm.startBroadcast(deployerKey);
 
-        // 1. Deploy verifier (signer passed in; maxProofAge hardcoded to 7 days).
-        //    Owner is AXIOM_DEPLOYER_ADDRESS — the only account that can call registerSigner.
         AxiomTeeVerifier verifier = new AxiomTeeVerifier(axiomDeployer, teeSigner, 7 days);
 
-        // 2. Deploy NFT implementation + ERC1967 proxy
         AxiomAgentNFT implementation = new AxiomAgentNFT();
         ERC1967Proxy proxy = new ERC1967Proxy(
             address(implementation),
@@ -47,12 +42,10 @@ contract Deploy is Script {
         console2.log("AxiomAgentNFT proxy deployed at:", address(nft));
         console2.log("AxiomAgentNFT implementation at:", address(implementation));
 
-        // 3. Deploy StrategyVault (non-upgradeable, Ownable by oracleAdmin)
         AxiomStrategyVault vault = new AxiomStrategyVault(address(nft), oracleAdmin);
         console2.log("AxiomStrategyVault deployed at:", address(vault));
 
-        // 4. Deploy PaymentProcessor (non-upgradeable, Ownable by oracleAdmin, treasury = oracleAdmin)
-        //    paymentTokenAddr is read from the PAYMENT_TOKEN_ADDR env var (e.g. USDC.e / USDG on 0G).
+        // paymentTokenAddr is read from the PAYMENT_TOKEN_ADDR env var (e.g. USDC.e / USDG on 0G).
         address paymentTokenAddr = vm.envAddress("PAYMENT_TOKEN_ADDR");
         AxiomPaymentProcessor processor = new AxiomPaymentProcessor(
             address(nft),
@@ -65,7 +58,6 @@ contract Deploy is Script {
 
         vm.stopBroadcast();
 
-        // 5. Print summary
         console2.log("========== Axiom Protocol deployed ==========");
         console2.log("Network:           ", vm.envString("OG_NETWORK_NAME"));
         console2.log("Chain ID:          ", block.chainid);

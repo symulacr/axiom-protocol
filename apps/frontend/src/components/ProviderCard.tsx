@@ -1,30 +1,7 @@
 // Axiom Protocol — `ProviderCard` component.
 //
-// A small reusable card that renders a single compute provider's
-// address, model, and a "Use this provider" button that navigates to
-// `/agents/new?provider=0x...` so the AgentsBrowser / mint flow can
-// pre-select the provider when the user creates a new agent.
-//
-// The address is shown in the standard EIP-55 checksum form (mixed
-// case) when `getAddress` recognizes it as a valid 20-byte hex string;
-// otherwise the raw input is rendered verbatim. The model and endpoint
-// are left-truncated as needed to keep the card width bounded.
-//
-// Navigation uses the React Router v6+ imperative `useNavigate` hook
-// rather than a declarative `<Link>` because the destination is a
-// dynamic URL computed from the provider's on-chain address — the
-// declarative API is more awkward for the build-the-URL-at-click-time
-// case.
-//
-// Canonical references:
-//  - React Router v6+ `useNavigate` (imperative navigation; returns a
-//    function that pushes a new entry onto the history stack):
-//    https://reactrouter.com/en/main/hooks/use-navigate
-//  - React — JSX `onClick` handlers (typed as `MouseEventHandler`):
-//    https://react.dev/reference/react-dom/components/common#react-event-object
-//  - viem `getAddress` (EIP-55 checksum formatting; the same helper the
-//    rest of the Axiom frontend uses to render 0G addresses):
-//    https://viem.sh/docs/utilities/getAddress
+// Renders a compute provider's address, model, and endpoint with
+// a "Use this provider" button navigating to `/agents/new?provider=0x...`.
 
 import type { MouseEvent, ReactElement } from 'react';
 import { useNavigate } from 'react-router-dom';

@@ -48,10 +48,10 @@ export const COLORS = {
   link: '#c5a880',
 } as const;
 
-// ─── Shared transitions ─────────────────────────────────────────────
+// Shared transitions
 const transition = 'all 0.18s cubic-bezier(0.4, 0, 0.2, 1)';
 
-// ─── Button ─────────────────────────────────────────────────────────
+// Button
 type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost';
 
 const buttonBase: CSSProperties = {
@@ -119,7 +119,7 @@ export function Button({
   );
 }
 
-// ─── Card ───────────────────────────────────────────────────────────
+// Card
 export function Card({
   children,
   style,
@@ -146,7 +146,7 @@ export function Card({
   );
 }
 
-// ─── Input ──────────────────────────────────────────────────────────
+// Input
 export function Input({
   style,
   ...rest
@@ -171,7 +171,7 @@ export function Input({
   );
 }
 
-// ─── Alert ──────────────────────────────────────────────────────────
+// Alert
 type AlertVariant = 'error' | 'success' | 'warning';
 
 const alertStyles: Record<AlertVariant, CSSProperties> = {
@@ -220,7 +220,7 @@ export function Alert({
   );
 }
 
-// ─── Badge ──────────────────────────────────────────────────────────
+// Badge
 export function Badge({
   children,
   variant = 'neutral',
@@ -253,7 +253,7 @@ export function Badge({
   );
 }
 
-// ─── Skeleton (loading placeholder) ─────────────────────────────────
+// Skeleton (loading placeholder)
 export function Skeleton({
   width = '100%',
   height = 20,
@@ -277,7 +277,7 @@ export function Skeleton({
   );
 }
 
-// ─── PageHeader ─────────────────────────────────────────────────────
+// PageHeader
 export function PageHeader({
   title,
   subtitle,
@@ -320,7 +320,7 @@ export function PageHeader({
   );
 }
 
-// ─── SectionTitle ───────────────────────────────────────────────────
+// SectionTitle
 export function SectionTitle({
   children,
   style,
@@ -346,7 +346,7 @@ export function SectionTitle({
   );
 }
 
-// ─── Divider ────────────────────────────────────────────────────────
+// Divider
 export function Divider({ style }: { style?: CSSProperties }): ReactElement {
   return (
     <hr
@@ -360,7 +360,7 @@ export function Divider({ style }: { style?: CSSProperties }): ReactElement {
   );
 }
 
-// ─── MonoLabel (for hex / addresses) ────────────────────────────────
+// MonoLabel (for hex / addresses)
 export function MonoLabel({
   children,
   title,

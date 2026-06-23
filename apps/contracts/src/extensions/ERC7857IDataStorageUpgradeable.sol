@@ -14,7 +14,7 @@ import {IntelligentData} from "../interfaces/IERC7857Metadata.sol";
 
 /// @title ERC7857IDataStorageUpgradeable
 /// @notice Extension that stores IntelligentData[] per token
-/// @dev Adapted from https://github.com/0gfoundation/0g-agent-nft (MIT)
+/// @dev Adapted from the 0G Agentic ID reference (MIT)
 abstract contract ERC7857IDataStorageUpgradeable is ERC7857Upgradeable {
     /// @custom:storage-location erc7857:0g.storage.ERC7857IDataStorage
     struct ERC7857IDataStorageStorage {

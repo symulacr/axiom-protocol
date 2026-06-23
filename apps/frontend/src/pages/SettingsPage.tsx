@@ -1,39 +1,8 @@
 // Axiom Protocol — Settings page (`/settings` route).
 //
-// Three persistence-backed settings, each with its own UI affordance:
-//
-//   1. RPC URL — a controlled text input bound to a local draft state
-//      plus a "Save" button that commits the draft to localStorage and
-//      updates the persisted hook value. We keep a separate draft so
-//      keystrokes do not write to storage on every keypress.
-//
-//   2. WalletConnect project ID — same draft+Save pattern as the RPC
-//      URL. The note next to the field warns the user that changing it
-//      requires a full page reload before wagmi's connector picks up
-//      the new project id (this is a RainbowKit + WalletConnect v2
-//      constraint, not a wagmi v2 constraint).
-//
-//   3. Chain selector — radio buttons for the two supported 0G chains
-//      (Galileo testnet chainId 16602, Aristotle mainnet chainId 16661).
-//      The selection writes to localStorage on change. The note reminds
-//      the user that the wagmi `Config` is built once at module load in
-//      `src/config/wagmi.ts`; a future micro-wave will thread the
-//      stored value into the transport (this page persists the
-//      intent, the runtime reads it).
-//
-// Persistence keys (the public contract — referenced by `wagmi.ts` in a
-// later micro-wave):
-//   - axiom.rpcUrl       string   default "https://evmrpc-testnet.0g.ai"
-//   - axiom.wcProjectId  string   default ""
-//   - axiom.chainId      number   default 16602 (Galileo) or 16661 (Aristotle)
-//
-// Canonical sources:
-//   - MDN: Window.localStorage (getItem, setItem, JSON serialisation):
-//     https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage
-//   - React 18 controlled <input> (value + onChange pattern):
-//     https://react.dev/reference/react-dom/components/input#controlling-an-input
-//   - 0G chain ids (16602 Galileo, 16661 Aristotle):
-//     https://docs.0g.ai/ai-context
+// Three persistence-backed settings: RPC URL, WalletConnect project ID,
+// and chain selector. Each writes to localStorage via `useLocalStorage`.
+// Draft state prevents keystrokes from writing on every keypress.
 
 import type { ChangeEvent, ReactElement } from 'react';
 import { useState } from 'react';

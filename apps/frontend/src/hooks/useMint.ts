@@ -1,45 +1,8 @@
 // Axiom Protocol — `useMint` hook.
 //
-// POSTs to the backend `POST /v1/agents/mint` endpoint, which uploads the
-// encrypted strategy bundle to the TEE oracle, calls
-// `AxiomAgentNFT.mint(iDatas, owner)` with the on-chain mint fee, and
-// returns the freshly-minted tokenId + transaction hash. The backend wallet
-// signs the on-chain `mint()` call (the frontend is a thin client — no
-// wagmi `useWriteContract` is needed for mint, unlike the transfer flow).
-//
-// The backend route (apps/backend/src/server.ts) expects the request body:
-//
-//   {
-//     agentNft:            `0x${string}`  // AxiomAgentNFT proxy address
-//     encryptedStrategyUri: `0x${string}` // 0G Storage root hash / dataHash
-//     sealedKey:           `0x${string}`  // TEE-sealed encryption key
-//     owner:               `0x${string}`  // receiver of the minted tokenId
-//   }
-//
-// and responds with:
-//
-//   { ok: true, agentNft, owner, tokenId, dataHash, txHash }
-//
-// The hook uses the native Fetch API with an `AbortController` so an
-// unmounting caller cancels the in-flight request (the previous fetch is
-// aborted before a new one starts). This mirrors the fetch discipline used
-// by `useOrchestratorTick` and `useTransfer`.
-//
-// Backend base URL is read from Vite's `VITE_BACKEND_URL` env var (the
-// `VITE_` prefix keeps the value out of the server bundle and exposes it to
-// the browser, per the Vite convention). Falls back to the local dev
-// loopback port used by `apps/backend` (`pnpm dev` → :3000).
-//
-// Canonical references:
-//  - MDN Fetch API: Request/Response, JSON body, error handling:
-//    https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch
-//  - MDN AbortController (cancelable fetch on unmount):
-//    https://developer.mozilla.org/en-US/docs/Web/API/AbortController
-//  - Vite environment variables (VITE_ prefix):
-//    https://vitejs.dev/guide/env-and-mode
-//  - EIP-721 mint + EIP-7857 iNFT dataHash / sealedKey:
-//    https://eips.ethereum.org/EIPS/eip-721
-//    https://eips.ethereum.org/EIPS/eip-7857
+// POSTs to `POST /v1/agents/mint`. The backend wallet signs the on-chain
+// `mint()` call. Uses native fetch with AbortController for cancelation,
+// mirroring the discipline in `useOrchestratorTick` and `useTransfer`.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 

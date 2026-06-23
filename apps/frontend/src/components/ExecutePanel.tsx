@@ -1,28 +1,8 @@
 // Axiom Protocol — `<ExecutePanel />` component.
 //
-// Renders the strategy-execution surface for a single AxiomAgentNFT token.
-// The panel multicalls the AxiomStrategyVault read getters (`vaults`,
-// `getStrategy`, `totalDeposits`) to show the live vault state, then exposes
-// an "Execute Tick" button that fires `useOrchestratorTick` — POSTing to the
-// backend `/v1/orchestrator/tick` route, which runs one 0G Compute inference
-// cycle and (for buy/sell) settles on-chain via `vault.execute()`.
-//
-// The agent (tokenId) can be supplied as a prop (the
-// `/agents/:tokenId/execute` page does this) or picked from a dropdown of the
-// connected wallet's owned agents (the standalone usage). When `tokenId` is
-// provided the dropdown is hidden.
-//
-// Data sources:
-//   - wagmi v2 `useReadContracts` (batched multicall, allowFailure, isLoading):
-//     https://wagmi.sh/react/hooks/useReadContracts
-//   - `useOrchestratorTick` hook (apps/frontend/src/hooks/useOrchestratorTick.ts):
-//     native fetch wrapper around POST /v1/orchestrator/tick.
-//   - `useAgents` hook (owned-agent enumeration via balanceOf /
-//     tokenOfOwnerByIndex / tokenURI).
-//
-// Response shape (TickResult) — the backend serializes `bigint` as decimal
-// strings via `bigintReplacer`, so `vaultBalance` / `gasUsed` arrive as
-// strings on the wire. Source: apps/backend/src/json/bigint.ts.
+// Renders the strategy-execution surface for an AxiomAgentNFT token.
+// Multicalls vault read getters, then exposes an "Execute Tick" button
+// that fires `useOrchestratorTick` (POST /v1/orchestrator/tick).
 
 import { useMemo, useState, type ReactElement } from 'react';
 import { useAccount, useReadContracts } from 'wagmi';
@@ -144,7 +124,6 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
       });
       setResult(res);
     } catch {
-      // error state surfaced via `error` from the hook.
     }
   }
 

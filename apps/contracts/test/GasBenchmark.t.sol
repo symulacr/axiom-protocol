@@ -66,7 +66,7 @@ contract GasBenchmark is Test {
         );
     }
 
-    // ── Deploy gas ──────────────────────────────────────────────────────
+    // ── Deploy gas ──────────────────────────────────────────────────
 
     function testGas_deployVerifier() public {
         new AxiomTeeVerifier(admin, teeSigner, 7 days);
@@ -105,7 +105,7 @@ contract GasBenchmark is Test {
         );
     }
 
-    // ── NFT functions ───────────────────────────────────────────────────
+    // ── NFT functions ───────────────────────────────────────────────
 
     function testGas_nftMint() public {
         vm.deal(alice, 1 ether);
@@ -143,7 +143,7 @@ contract GasBenchmark is Test {
         nft.safeTransferFrom(alice, bob, 0);
     }
 
-    // ── Verifier functions (read-only) ─────────────────────────────────
+    // ── Verifier functions (read-only) ──────────────────────────────
 
     function testGas_verifierMaxProofAge() public view {
         verifier.maxProofAgeSeconds();
@@ -162,7 +162,7 @@ contract GasBenchmark is Test {
         verifier.registerSigner(address(0x7000000000000000000000000000000000000007));
     }
 
-    // ── Vault functions ────────────────────────────────────────────────
+    // ── Vault functions ─────────────────────────────────────────────
 
     function testGas_vaultDeposit() public {
         vm.deal(alice, 10 ether);
@@ -170,7 +170,7 @@ contract GasBenchmark is Test {
         vault.deposit{value: 1 ether}(0);
     }
 
-    // ── Payment Processor functions ─────────────────────────────────────
+    // ── Payment Processor functions ─────────────────────────────────
 
     function testGas_paymentPause() public {
         vm.prank(admin);

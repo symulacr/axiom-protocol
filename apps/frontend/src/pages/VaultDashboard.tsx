@@ -1,40 +1,7 @@
 // Axiom Protocol — vault dashboard (`/vaults/:vaultId` route).
 //
-// Renders a table of the on-chain `AxiomStrategyVault` contracts the dApp
-// knows about. For every vault address the dashboard multicalls three
-// read-only getters in one batched `useReadContracts` request:
-//
-//   - `vaults(uint256 vaultId)`    — returns the per-token Vault struct
-//                                    fields: asset, totalDeposited,
-//                                    strategyRoot, dailyLimit.
-//   - `totalDeposits()`            — aggregate deposits across the vault.
-//   - `getStrategy(uint256 vaultId)` — returns the current strategy root
-//                                    + daily limit + valid-until timestamp.
-//
-// wagmi v2's `useReadContracts` collapses these into a single JSON-RPC
-// multicall (one round-trip per chain), which is the recommended pattern
-// for dApp dashboards that show many cells at once. The hook also surfaces
-// a per-call result so we can render partial UI as data arrives.
-//
-// The vault list is hard-coded for now (the assignment scope). A future
-// micro-wave will replace this with a `useVaults()` hook that reads the
-// on-chain registry; the table shape here won't change.
-//
-// Source URLs (cited at the call sites that use them):
-//   - wagmi v2 useReadContracts (batched reads, args, allowFailure, chainId):
-//     https://wagmi.sh/react/hooks/useReadContracts
-//   - wagmi v2 useAccount (connected address, isConnected, status):
-//     https://wagmi.sh/react/hooks/useAccount
-//   - wagmi v2 useChainId (active chain id for chain-aware reads):
-//     https://wagmi.sh/react/hooks/useChainId
-//   - wagmi v2 useConfig (read the active Config, e.g. for transport/chains):
-//     https://wagmi.sh/react/hooks/useConfig
-//   - viem `formatEther` (wei → ETH display):
-//     https://viem.sh/docs/utilities/formatEther
-//   - 0G chain id 16602 (Galileo) and 16661 (Aristotle):
-//     https://docs.0g.ai/ai-context
-//   - Solidity ABI JSON spec (the contract ABI in `abi/AxiomStrategyVault.json`):
-//     https://docs.soliditylang.org/en/latest/abi-spec.html
+// Renders AxiomStrategyVault contract state by multicalling three read
+// getters per vault address in a single `useReadContracts` request.
 
 import type { ReactElement } from 'react';
 import { useAccount, useChainId, useReadContracts } from 'wagmi';

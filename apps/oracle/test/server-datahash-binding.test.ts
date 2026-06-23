@@ -1,48 +1,11 @@
 // Wave 6 A — server-side binding between /v1/ownership and the storage
-// "seen dataHashes" set. This test exercises the real HTTP layer via a
-// loopback listener (no mocks). It uses the same TEST_PRIV_HEX pattern as
-// apps/oracle/src/signer.test.ts.
-//
-// Canonical sources cited:
-//   - EIP-721 (NFT, token-bound dataHash):
-//     https://eips.ethereum.org/EIPS/eip-721
-//   - EIP-712 (typed structured data + deadline used in the OwnershipProof):
-//     https://eips.ethereum.org/EIPS/eip-712
-//   - ERC-7857 (AI Agent NFT with private metadata; the dataHash is the
-//     Merkle root of the encrypted payload stored off-chain, and the
-//     on-chain verifier MUST be bound to a previously-uploaded root):
-//     https://eips.ethereum.org/EIPS/eip-7857
-//     and 0G's developer hub page:
-//     https://docs.0g.ai/developer-hub/building-on-0g/agentic-id/erc7857
-//   - 0G cross-layer skill (storage+chain binding; the oracle MUST only
-//     sign for dataHashes it has previously seen uploaded):
-//     https://github.com/0gfoundation/0g-agent-skills
-//     → skills/cross-layer/storage-plus-chain/SKILL.md
-//   - ethers v6 `Wallet.signingKey.sign(digest).serialized` (raw ECDSA
-//     for the on-chain verifier — see signer.test.ts for the matching
-//     round-trip test):
-//     https://docs.ethers.org/v6/api/wallet/#Wallet-signMessage
-//   - node:test docs (test runner):
-//     https://nodejs.org/api/test.html
-//   - Node `http` module (real loopback listener; no mocks):
-//     https://nodejs.org/api/http.html
-//   - 12-factor config (env > file > default):
-//     https://12factor.net/config
-//   - Promise.withResolvers (used for the test's HTTP plumbing — Node 22+):
-//     https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/withResolvers
+// "seen dataHashes" set. Exercises the real HTTP layer via a loopback
+// listener (no mocks).
 //
 // Test surface (3 cases, all real network, no mocks):
-//   1. `unknown_dataHash_returns_400` — POST /v1/ownership with a dataHash
-//      that the oracle has never seen. Expects 400 + a clear error that
-//      names the seen-set rule.
-//   2. `dataHash_registered_via_agents_mint_succeeds` — POST /v1/agents/mint
-//      first to register, then POST /v1/ownership for the same dataHash.
-//      Expects 200 + a 65-byte signature whose recovery matches the
-//      configured TEE signer (i.e. the *real* TeeSigner is in the loop).
-//   3. `dataHash_observed_via_transfer_validity_succeeds` — drive the
-//      full /v1/transfer-validity path (which auto-registers the
-//      freshly-uploaded dataHash via storage.markDataHashSeen). Then POST
-//      /v1/ownership for that new dataHash. Expects 200.
+//   1. unknown_dataHash_returns_400 — POST /v1/ownership with unseen dataHash
+//   2. dataHash_registered_via_agents_mint_succeeds — register then sign
+//   3. dataHash_observed_via_transfer_validity_succeeds — full re-key path
 
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
@@ -102,9 +65,7 @@ function httpRequest(server: Server, method: string, path: string, body: unknown
         if (text.length > 0) {
           try {
             parsed = JSON.parse(text);
-          } catch {
-            // leave parsed as the raw text
-          }
+          } catch {}
         }
         resolve({ status: res.statusCode ?? 0, body: parsed });
       });
@@ -213,11 +174,6 @@ test("dataHash_registered_via_agents_mint_succeeds", async () => {
 });
 
 test("dataHash_observed_via_transfer_validity_succeeds", async () => {
-  // Build a valid encrypted blob for /v1/transfer-validity to ingest, then
-  // re-issue /v1/ownership against the new (auto-registered) dataHash.
-  // This is the *real* workflow: a transfer re-encrypts the payload, the
-  // oracle uploads the new ciphertext, the new rootHash is auto-marked
-  // seen, and a follow-up signing request succeeds.
   const aesKey = new Uint8Array(32).fill(0x07);
   const plaintext = new TextEncoder().encode("Wave 6 A transfer-validity roundtrip");
   const enc = aesGcmEncrypt(aesKey, plaintext);
@@ -245,8 +201,6 @@ test("dataHash_observed_via_transfer_validity_succeeds", async () => {
   const tvBody = tvRes.body as { newDataHash: string; newDataUri: string };
   assert.equal(tvBody.newDataHash, tvBody.newDataUri);
 
-  // The transfer-validity path auto-registered the new dataHash; /v1/ownership
-  // should now accept it without a separate /v1/agents/mint call.
   const ownRes = await httpRequest(server, "POST", "/v1/ownership", {
     dataHash: tvBody.newDataHash,
     targetPubkey: TEST_RECEIVER_PUBKEY_HEX,
