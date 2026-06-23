@@ -3,6 +3,7 @@
 // Aristotle mainnet (16661) as custom chains.
 
 import { defineChain } from 'viem';
+import { GALILEO_CHAIN_ID, ARISTOTLE_CHAIN_ID } from "@axiom/config/networks";
 
 /**
  * 0G Galileo Testnet.
@@ -12,7 +13,7 @@ import { defineChain } from 'viem';
  * testnet overview docs.
  */
 export const galileo = defineChain({
-  id: 16602,
+  id: GALILEO_CHAIN_ID,
   name: '0G Galileo Testnet',
   nativeCurrency: { name: 'OG', symbol: 'OG', decimals: 18 },
   rpcUrls: {
@@ -37,7 +38,7 @@ export const galileo = defineChain({
  * mainnet overview docs.
  */
 export const aristotle = defineChain({
-  id: 16661,
+  id: ARISTOTLE_CHAIN_ID,
   name: '0G Aristotle Mainnet',
   nativeCurrency: { name: 'OG', symbol: 'OG', decimals: 18 },
   rpcUrls: {

@@ -12,6 +12,9 @@ export interface OGNetwork {
   readonly flowContract: `0x${string}`;
 }
 
+export const GALILEO_CHAIN_ID = 16602;
+export const ARISTOTLE_CHAIN_ID = 16661;
+
 const _OG_NETWORKS = {
   16602: {
     name: "galileo",
