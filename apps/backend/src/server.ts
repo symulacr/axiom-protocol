@@ -249,7 +249,8 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      res.status(503).json({ ok: false, error: message });
+      console.error("[server] health check failed:", message);
+      res.status(503).json({ ok: false, error: "Health check failed" });
     }
   });
 
@@ -358,7 +359,9 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
           body: JSON.stringify({ dataHash: encryptedStrategyUri }),
           signal: AbortSignal.timeout(2000),
         });
-      } catch { /* swallow — oracle registration is best-effort */ }
+      } catch (err) {
+        console.warn("[mint] oracle registration failed (non-fatal):", err instanceof Error ? err.message : String(err));
+      }
       res.json({ ok: true, agentNft, owner, tokenId, dataHash: encryptedStrategyUri, txHash: receipt?.hash ?? tx.hash });
       broadcast("agent.mint", { owner, tokenId, dataHash: encryptedStrategyUri });
     } catch (err) {
@@ -393,9 +396,14 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
           const nftTc = new TypedContract<AgentNFTMethods>(config.addresses.agentNft, AGENT_NFT_ABI, provider);
           const datas = await nftTc.contract.intelligentDatasOf(BigInt(id));
           dataHash = (datas as { dataHash: string }[])?.[0]?.dataHash as `0x${string}` | undefined;
-        } catch { /* ignore — use fallback */ }
+        } catch (err) {
+          console.warn("[transfer] intelligentDatasOf failed for token", id, ":", err instanceof Error ? err.message : String(err));
+        }
       }
-      dataHash ??= ("0x" + id.padStart(64, "0").slice(-64)) as `0x${string}`;
+      if (!dataHash) {
+        dataHash = ("0x" + id.padStart(64, "0").slice(-64)) as `0x${string}`;
+        console.warn("[transfer] using synthetic dataHash for token", id, ":", dataHash);
+      }
       // The on-chain verifier expects a 64-byte raw uncompressed public key.
       let pk = receiverPubKey64;
       if (pk.length === 130 && pk.startsWith("0x04")) {
@@ -420,8 +428,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
             oldDataHash: dataHash,
             oldDataUri: oldDataUri!,
             targetPubkey64: pk,
-            accessProofNonce: Number(nonce),
-            ownershipProofNonce: Number(nonce),
+            accessProofNonce: nonce.toString(),
             oldDataEncryptionKey: oldDataEncryptionKey!,
             to,
             nft,
@@ -437,7 +444,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
             newDataHash: rekey.newDataHash,
             newDataUri: rekey.newDataUri,
             targetPubkey: pk,
-            accessProofNonce: Number(nonce),
+            accessProofNonce: nonce.toString(),
             validUntil: validUntil.toString(),
             sealedKey: rekey.sealedKey,
             ownershipSignature: rekey.ownershipSignature,
@@ -464,7 +471,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
           to,
           dataHash,
           targetPubkey: pk,
-          accessProofNonce: Number(nonce),
+          accessProofNonce: nonce.toString(),
           validUntil: validUntil.toString(),
           ownershipSignature: tee.signature,
           signer: tee.signer,
@@ -803,7 +810,25 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
 
   app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
     console.error("[server] error:", err);
-    res.status(500).json({ error: err.message });
+
+    if (err instanceof z.ZodError) {
+      res.status(400).json({ error: "Validation failed", details: err.issues, code: "VALIDATION_ERROR" });
+      return;
+    }
+
+    const status = (err as { status?: number }).status;
+    if (status && status >= 400 && status < 600) {
+      res.status(status).json({ error: err.message, code: `HTTP_${status}` });
+      return;
+    }
+
+    const msg = err.message ?? "";
+    if (/oracle|0g/i.test(msg)) {
+      res.status(502).json({ error: "Upstream service error", code: "UPSTREAM_ERROR" });
+      return;
+    }
+
+    res.status(500).json({ error: "Internal server error", code: "INTERNAL_ERROR" });
   });
 
   const httpServer = createServer(app);

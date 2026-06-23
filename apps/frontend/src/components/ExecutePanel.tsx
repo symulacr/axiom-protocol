@@ -123,7 +123,8 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
         agentTokenId: activeId,
       });
       setResult(res);
-    } catch {
+    } catch (err) {
+      console.error("ExecutePanel: orchestrator tick failed", err);
     }
   }
 
