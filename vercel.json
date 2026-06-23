@@ -1,0 +1,7 @@
+{
+  "rootDirectory": "apps/frontend",
+  "buildCommand": "pnpm --filter @axiom/frontend build",
+  "installCommand": "pnpm install",
+  "framework": "vite",
+  "outputDirectory": "dist"
+}

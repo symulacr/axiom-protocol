@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@11.5.1",
   "description": "Axiom Protocol iNFT agent dashboard — Vite + React 18 + wagmi v2 + RainbowKit v2",
   "scripts": {
     "dev": "vite",
