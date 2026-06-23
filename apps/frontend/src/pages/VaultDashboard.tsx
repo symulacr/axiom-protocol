@@ -37,7 +37,7 @@
 //     https://docs.soliditylang.org/en/latest/abi-spec.html
 
 import type { ReactElement } from 'react';
-import { useAccount, useChainId, useConfig, useReadContracts } from 'wagmi';
+import { useAccount, useChainId, useReadContracts } from 'wagmi';
 import { formatEther } from 'viem';
 import { AXIOM_VAULT_ADDRESSES } from '../abi/addresses.js';
 import { axiomStrategyVaultAbi } from '../abi/axiomStrategyVault.js';
@@ -48,39 +48,34 @@ const PLACEHOLDER = '\u2014';
 export function VaultDashboard(): ReactElement {
   const { isConnected, address } = useAccount();
   const chainId = useChainId();
-  // `useConfig` is in scope for chain switching / custom transport in a
-  // future micro-wave; touched here so the import isn't flagged unused.
-  void useConfig;
 
-  // Per-vault multicall. Token id "0" is used as the per-vault id;
-  // `vaults(uint256)` is the per-token getter in the AxiomStrategyVault
-  // ABI. wagmi v2 returns a per-call result whose `result` field is typed
-  // against the ABI; we narrow with explicit casts because the runtime
-  // can return `undefined` per `allowFailure: true` semantics.
+  // Single multicall covering all vaults × 3 getters. Hooks-safe: one
+  // unconditional useReadContracts call whose contracts array length is
+  // fixed at module load (AXIOM_VAULT_ADDRESSES is a const tuple).
   // Ref: https://wagmi.sh/react/hooks/useReadContracts
-  const readResults = AXIOM_VAULT_ADDRESSES.map((vaultAddress, index) => {
-    const query = useReadContracts({
-      contracts: [
-        {
-          address: vaultAddress,
-          abi: axiomStrategyVaultAbi,
-          functionName: 'vaults',
-          args: [0n],
-        },
-        {
-          address: vaultAddress,
-          abi: axiomStrategyVaultAbi,
-          functionName: 'totalDeposits',
-        },
-        {
-          address: vaultAddress,
-          abi: axiomStrategyVaultAbi,
-          functionName: 'getStrategy',
-          args: [0n],
-        },
-      ],
-    });
-    return { index, address: vaultAddress, query };
+  const vaultContracts = AXIOM_VAULT_ADDRESSES.flatMap((vaultAddress) => [
+    {
+      address: vaultAddress,
+      abi: axiomStrategyVaultAbi,
+      functionName: 'vaults',
+      args: [0n],
+    },
+    {
+      address: vaultAddress,
+      abi: axiomStrategyVaultAbi,
+      functionName: 'totalDeposits',
+    },
+    {
+      address: vaultAddress,
+      abi: axiomStrategyVaultAbi,
+      functionName: 'getStrategy',
+      args: [0n],
+    },
+  ] as const);
+
+  const vaultQuery = useReadContracts({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    contracts: vaultContracts as readonly any[],
   });
 
   return (
@@ -125,19 +120,16 @@ export function VaultDashboard(): ReactElement {
             </tr>
           </thead>
           <tbody>
-            {readResults.map(({ index, address: vaultAddress, query }) => {
-              // Tuple result types match the JSON ABI in
-              // `abi/AxiomStrategyVault.json`:
-              //   vaults(0)      → [address, uint256, bytes32, uint256]
-              //   totalDeposits  → uint256
-              //   getStrategy(0) → [bytes32, uint256, uint256]
-              const vaultsResult = query.data?.[0]?.result as
+            {AXIOM_VAULT_ADDRESSES.map((vaultAddress, index) => {
+              // Each vault occupies 3 slots in the flat multicall array.
+              const base = index * 3;
+              const vaultsResult = vaultQuery.data?.[base]?.result as
                 | readonly [string, bigint, `0x${string}`, bigint]
                 | undefined;
-              const totalDepositsResult = query.data?.[1]?.result as
+              const totalDepositsResult = vaultQuery.data?.[base + 1]?.result as
                 | bigint
                 | undefined;
-              const getStrategyResult = query.data?.[2]?.result as
+              const getStrategyResult = vaultQuery.data?.[base + 2]?.result as
                 | readonly [`0x${string}`, bigint, bigint]
                 | undefined;
 
@@ -175,8 +167,8 @@ export function VaultDashboard(): ReactElement {
             })}
           </tbody>
         </table>
-        {readResults.some((r) => r.query.isLoading) && <p>Loading\u2026</p>}
-        {readResults.some((r) => r.query.error) && (
+        {vaultQuery.isLoading && <p>Loading\u2026</p>}
+        {vaultQuery.error !== null && (
           <p role="alert">
             Failed to read one or more vaults. Check the console for the
             underlying wagmi error.

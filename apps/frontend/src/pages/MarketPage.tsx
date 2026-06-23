@@ -117,7 +117,14 @@ export function MarketPage(): ReactElement {
             `transfers fetch failed: ${res.status} ${res.statusText} ${text}`,
           );
         }
-        const data = (await res.json()) as TransferEvent[];
+        const body = (await res.json()) as { events: unknown[] };
+        const allEvents = Array.isArray(body.events) ? body.events : [];
+        const data = allEvents.filter(
+          (e): e is TransferEvent =>
+            typeof e === 'object' &&
+            e !== null &&
+            (e as { eventName?: unknown }).eventName === 'Transfer',
+        );
         if (cancelled) return;
         setTransfers(data);
         setTransfersError(null);
