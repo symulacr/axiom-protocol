@@ -146,20 +146,20 @@ export function MarketPage(): ReactElement {
           Couldn't load providers: {providersError.message}
         </Alert>
       ) : providers.length === 0 ? (
-        <Card style={{ textAlign: 'center', padding: 40 }}>
-          <p style={{ color: COLORS.textMuted, fontSize: 14, margin: 0, fontWeight: 300 }}>
+        <Card style={{ textAlign: 'center', padding: 'var(--space-3xl) var(--space-xl)' }}>
+          <p style={{ color: COLORS.textMuted, fontSize: 'var(--text-sm)', margin: 0, fontWeight: 'var(--fw-regular)', lineHeight: 'var(--lh-normal)' }}>
             No compute providers registered yet. Providers appear here when they register on-chain.
           </p>
         </Card>
       ) : (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-md)' }}>
           {providers.map((p) => (
             <ProviderCard key={p.address} provider={p} />
           ))}
         </div>
       )}
 
-      <SectionTitle style={{ marginTop: 32 }}>Recent Transfers</SectionTitle>
+      <SectionTitle style={{ marginTop: 'var(--space-2xl)' }}>Recent Transfers</SectionTitle>
       {transfersLoading ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <Skeleton height={42} />
@@ -171,13 +171,13 @@ export function MarketPage(): ReactElement {
           Couldn't load transfers: {transfersError.message}
         </Alert>
       ) : transfers.length === 0 ? (
-        <Card style={{ textAlign: 'center', padding: 40 }}>
-          <p style={{ color: COLORS.textMuted, fontSize: 14, margin: 0, fontWeight: 300 }}>
-            No recent transfers recorded.
+        <Card style={{ textAlign: 'center', padding: 'var(--space-3xl) var(--space-xl)' }}>
+          <p style={{ color: COLORS.textMuted, fontSize: 'var(--text-sm)', margin: 0, fontWeight: 'var(--fw-regular)', lineHeight: 'var(--lh-normal)' }}>
+            No recent transfers recorded. iNFT transfers will appear here as they happen on-chain.
           </p>
         </Card>
       ) : (
-        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
           {transfers.map((tx) => (
             <li
               key={`${tx.transactionHash}-${tx.tokenId}`}

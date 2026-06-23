@@ -75,11 +75,37 @@ export function AgentsBrowser(): ReactElement {
     return (
       <main>
         <PageHeader title="Your Agents" />
-        <Card style={{ textAlign: 'center', padding: 48 }}>
-          <p style={{ color: COLORS.textMuted, fontSize: 15, margin: '0 0 16px', fontWeight: 300 }}>
-            You don't own any iNFT agents yet.
+        <Card style={{ textAlign: 'center', padding: 'var(--space-3xl) var(--space-xl)' }}>
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '3rem',
+            height: '3rem',
+            borderRadius: '50%',
+            background: COLORS.bronzeBg,
+            border: `1px solid ${COLORS.bronzeBorder}`,
+            marginBottom: 'var(--space-lg)',
+          }}>
+            <span style={{ fontSize: 'var(--text-lg)', color: COLORS.bronzeLight }}>+</span>
+          </div>
+          <p style={{ color: COLORS.textPrimary, fontSize: 'var(--text-base)', margin: '0 0 0.5rem', fontWeight: 'var(--fw-semibold)' }}>
+            No agents yet
           </p>
-          <Link to="/agents/new" style={{ color: COLORS.bronzeLight, fontSize: 14, fontWeight: 600 }}>
+          <p style={{ color: COLORS.textMuted, fontSize: 'var(--text-sm)', margin: '0 0 var(--space-lg)', fontWeight: 'var(--fw-regular)', lineHeight: 'var(--lh-normal)' }}>
+            Mint your first iNFT to tokenize an AI strategy as an ownable, transferable on-chain asset.
+          </p>
+          <Link to="/agents/new" style={{
+            display: 'inline-block',
+            padding: '0.625rem 1.25rem',
+            borderRadius: 'var(--radius-md)',
+            background: COLORS.bronze,
+            color: '#0f0f0f',
+            fontSize: 'var(--text-sm)',
+            fontWeight: 'var(--fw-semibold)',
+            textDecoration: 'none',
+            transition: 'all 0.18s ease',
+          }}>
             Mint your first agent
           </Link>
         </Card>
