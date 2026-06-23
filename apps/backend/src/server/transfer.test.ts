@@ -155,6 +155,8 @@ test("POST /v1/agents/:id/transfer final returns full proof structs", async () =
   const digest = accessMessageHash({
     dataHash: challenge.dataHash as `0x${string}`,
     targetPubkey: challenge.targetPubkey as `0x${string}`,
+    to: receiverAddress as `0x${string}`,
+    nft: ("0x" + "0".repeat(40)) as `0x${string}`,
     nonce,
     validUntil,
   });
@@ -309,6 +311,8 @@ test("POST /v1/agents/:id/transfer challenge triggers full re-key via /v1/transf
     const digest = accessMessageHash({
       dataHash: challenge.dataHash as `0x${string}`,
       targetPubkey: challenge.targetPubkey as `0x${string}`,
+      to: receiver.address as `0x${string}`,
+      nft: ("0x" + "0".repeat(40)) as `0x${string}`,
       nonce,
       validUntil,
     });

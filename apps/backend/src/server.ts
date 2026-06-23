@@ -11,13 +11,13 @@ import type { AgentNFTMethods, StrategyVaultMethods } from "./contract-types.js"
 import { ZeroGStorage, pickOGNetwork } from "./storage/0g.js";
 // Compute via 0G Router API (OpenAI-compatible) — see compute/router.ts
 import { getComputeBaseUrl } from "./compute/router.js";
-import OpenAI from "openai";
+import type OpenAI from "openai";
 import { StrategyRunner, type StrategySpec, type MarketSignal, type TickResult } from "./orchestrator/index.js";
 import { createOrchestratorHandle, getRunnerOrThrow, type OrchestratorHandle } from "./orchestrator/handle.js";
 import { DefaultSignerOracleClient } from "./oracle/client.js";
 import { accessMessageHash, type AccessProofInput, type Eip712Domain, DEFAULT_EIP712_DOMAIN } from "@axiom/oracle/signer";
 import { loadEnv } from "./env.js";
-import { getEventStore, type StoredEvent } from "./events/store.js";
+import { getEventStore } from "./events/store.js";
 import { PaymentProcessorClient } from "./payment/processor.js";
 import type { BackendEnv } from "./env-schema.js";
 import {
@@ -289,7 +289,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
    */
   app.post("/v1/compute/chat/completions", async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { model, messages, max_tokens, temperature, stream } = chatCompletionsSchema.parse(req.body);
+      const { model, messages, max_tokens, temperature, stream: _stream } = chatCompletionsSchema.parse(req.body);
 
       // ── Resolve compute client ──────────────────────────────────────
       // Try Router path first, fall back to Direct path.
@@ -349,7 +349,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
 
   app.post("/v1/agents/mint", async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { agentNft, encryptedStrategyUri, sealedKey, owner } = mintSchema.parse(req.body);
+      const { agentNft, encryptedStrategyUri, sealedKey: _sealedKey, owner } = mintSchema.parse(req.body);
       const nftTc = new TypedContract<AgentNFTMethods>(agentNft, AGENT_NFT_ABI, config.signer);
       const iDatas = [{ dataDescription: "Axiom strategy bundle", dataHash: encryptedStrategyUri }];
       const mintFee = await nftTc.contract.mintFee();
@@ -431,6 +431,8 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
             accessProofNonce: Number(nonce),
             ownershipProofNonce: Number(nonce),
             oldDataEncryptionKey: oldDataEncryptionKey!,
+            to,
+            nft: (config.addresses?.agentNft ?? ("0x" + "0".repeat(40))) as `0x${string}`,
           });
           const validUntil = BigInt(rekey.validUntil ?? (Math.floor(Date.now() / 1000) + 86400));
           res.json({

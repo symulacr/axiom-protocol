@@ -40,6 +40,10 @@ export interface TransferValidityInput {
   ownershipProofNonce: number;
   /** Base64-encoded 32-byte AES-256 key that decrypts the old ciphertext. */
   oldDataEncryptionKey: string;
+  /** Receiver's address (0x-prefixed, 20 bytes). */
+  to: `0x${string}`;
+  /** NFT contract address. */
+  nft: `0x${string}`;
 }
 
 /**
