@@ -40,6 +40,7 @@ import { AXIOM_AGENT_NFT_ADDRESS } from '../abi/addresses.js';
 import { axiomAgentNftAbi } from '../abi/axiomAgentNft.js';
 import { useAgentMetadata } from '../hooks/useAgentMetadata.js';
 import { TransferModal } from '../components/TransferModal.js';
+import { PaymentPanel } from '../components/PaymentPanel.js';
 
 /** Display the em-dash for an absent value. */
 const PLACEHOLDER = '\u2014';
@@ -208,6 +209,7 @@ export function AgentDetail(): ReactElement {
         </button>
       </section>
 
+      <PaymentPanel tokenId={tokenId} />
       {address !== undefined && (
         <p>
           Connected as <code>{address}</code>
