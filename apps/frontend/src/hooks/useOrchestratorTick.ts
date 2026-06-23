@@ -86,6 +86,7 @@ export function useOrchestratorTick(): {
             accept: 'application/json',
           },
           body: JSON.stringify(req),
+          signal: AbortSignal.timeout(30000),
         });
         if (!res.ok) {
           // Surface the response status + body as an Error so the UI can

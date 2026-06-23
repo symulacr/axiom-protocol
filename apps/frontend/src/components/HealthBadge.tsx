@@ -1,6 +1,6 @@
 // Axiom Protocol — `<HealthBadge />` header indicator.
 //
-// Green/red dot that polls `${VITE_BACKEND_URL}/v1/health` every 30 s
+// Green/red dot that polls `${VITE_BACKEND_URL}/health` every 30 s
 // and flips between green (200 + `ok: true`) and red (any other outcome).
 
 import { useEffect, useState, type ReactElement } from 'react';
@@ -25,7 +25,7 @@ const API_URL = import.meta.env.VITE_BACKEND_URL ?? DEFAULT_API_URL;
  */
 async function checkHealth(signal: AbortSignal): Promise<boolean> {
   try {
-    const res = await fetch(`${API_URL}/v1/health`, {
+    const res = await fetch(`${API_URL}/health`, {
       method: 'GET',
       headers: { accept: 'application/json' },
       signal,

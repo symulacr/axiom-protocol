@@ -237,6 +237,7 @@ export function useTransfer(): UseTransferResult {
             accept: 'application/json',
           },
           body: JSON.stringify(challengeBody),
+          signal: AbortSignal.timeout(15000),
         });
         if (!challengeRes.ok) {
           const text = await challengeRes.text();
@@ -292,6 +293,7 @@ export function useTransfer(): UseTransferResult {
             'content-type': 'application/json',
             accept: 'application/json',
           },
+          signal: AbortSignal.timeout(15000),
           body: JSON.stringify({
             to: input.to,
             receiverPubKey64: input.receiverPubKey64,

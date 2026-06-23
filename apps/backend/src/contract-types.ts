@@ -5,6 +5,7 @@ export interface PaymentProcessorMethods {
   payComputeProvider(provider: string, amount: bigint): Promise<TransactionResponse>;
   withdrawAgentEarnings(): Promise<TransactionResponse>;
   setRoyaltyBps(agentTokenId: bigint, bps: number): Promise<TransactionResponse>;
+  setRoyaltyBpsPermitted(agentTokenId: bigint, bps: number): Promise<TransactionResponse>;
   protocolTreasury(): Promise<string>;
   protocolFeeBps(): Promise<bigint>;
   paymentToken(): Promise<string>;

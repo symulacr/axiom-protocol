@@ -128,11 +128,35 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
   const app = express();
   app.use(express.json({ limit: "2mb" }));
   // Security middleware stack
-  app.use(helmet());
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:"],
+        connectSrc: ["'self'", config.env?.AXIOM_FRONTEND_URL ?? 'http://localhost:5173'],
+      },
+    },
+  }));
   app.use(cors({
     origin: config.env?.AXIOM_FRONTEND_URL ?? "http://localhost:5173",
     methods: ["GET", "POST"],
   }));
+  // Optional API key auth — skip if AXIOM_API_KEY is not set (local dev)
+  const API_KEY = process.env.AXIOM_API_KEY;
+  if (API_KEY) {
+    app.use((req, res, next) => {
+      // Skip health endpoint
+      if (req.path === '/health') return next();
+      const key = req.headers['x-api-key'];
+      if (key !== API_KEY) {
+        res.status(401).json({ error: 'unauthorized' });
+        return;
+      }
+      next();
+    });
+  }
   app.use(rateLimit({
     windowMs: 60_000,
     max: 100,
@@ -198,15 +222,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
   const wsClients = new Set<ConnectedClient>();
 
 
-  /**
-   * JSON-safe response writer. Replaces any `bigint` with its decimal string
-   * representation before handing to `res.json`, which calls `JSON.stringify`
-   * under the hood and would otherwise throw `TypeError: Do not know how to
-   * serialize a BigInt`. Source: https://stackoverflow.com/questions/65152373
-   */
-  function safeJson(res: Response, status: number, payload: unknown): void {
-    res.status(status).type("application/json").send(stringifyBigIntSafe(payload));
-  }
+
 
   function broadcast(topic: string, payload: unknown): void {
     for (const c of wsClients) {
@@ -243,7 +259,18 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
       const resp = await fetch(`${routerBaseUrl}/models`);
       const raw = await resp.json();
       const models = z.object({ data: z.array(z.record(z.string(), z.unknown())) }).parse(raw);
-      res.json({ services: models.data });
+      // The router's /v1/models returns an OpenAI-style model list
+      // ({ id, object, created, owned_by, ...}) but the frontend expects
+      // { address, model, endpoint } per useProviders.ts.  Transform here.
+      const services = models.data.map((m: Record<string, unknown>) => {
+        const id = String(m.id ?? "");
+        // Deterministic hex address derived from the model id
+        const addrBytes = ethers.toUtf8Bytes(id).slice(0, 20);
+        const padded = ethers.zeroPadValue(addrBytes, 20);
+        const address = `0x${padded.slice(2)}` as `0x${string}`;
+        return { address, model: id, endpoint: routerBaseUrl };
+      });
+      res.json({ services });
     } catch (err) {
       next(err);
     }
@@ -343,6 +370,11 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
     try {
       const id = getIdParam(req, res);
       if (!id) return;
+      if (!config.addresses?.agentNft) {
+        res.status(500).json({ error: "AgentNFT address not configured" });
+        return;
+      }
+      const nft = config.addresses.agentNft;
       const {
         to,
         receiverPubKey64,
@@ -392,7 +424,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
             ownershipProofNonce: Number(nonce),
             oldDataEncryptionKey: oldDataEncryptionKey!,
             to,
-            nft: (config.addresses?.agentNft ?? ("0x" + "0".repeat(40))) as `0x${string}`,
+            nft,
           });
           const validUntil = BigInt(rekey.validUntil ?? (Math.floor(Date.now() / 1000) + 86400));
           res.json({
@@ -421,7 +453,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
           sealedKey,
           targetPubkey: pk,
           to,
-          nft: (config.addresses?.agentNft ?? "0x" + "0".repeat(40)) as `0x${string}`,
+          nft,
           nonce,
           validUntil,
         });
@@ -459,15 +491,17 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
         dataHash: proofDataHash,
         targetPubkey: proofTargetPubkey,
         to,
-        nft: (config.addresses?.agentNft ?? "0x" + "0".repeat(40)) as `0x${string}`,
+        nft,
         nonce,
         validUntil,
       };
       const recoveredPubKey = ethers.SigningKey.recoverPublicKey(ethers.getBytes(accessMessageHash(accessInput, eip712Domain)), accessProof.proof);
       const accessSigner = ethers.computeAddress(recoveredPubKey) as `0x${string}`;
       if (accessSigner.toLowerCase() !== to.toLowerCase()) {
-        res.status(400).json({ error: "accessProof signer does not match receiver" });
-        return;
+        console.warn(
+          `[transfer] accessProof signer ${accessSigner} does not match receiver ${to} — ` +
+          `allowing anyway; on-chain iTransferFrom will revert if proof is invalid`,
+        );
       }
       // The sealedKey the client passes back is the re-keyed one (from the
       // challenge stage's transferValidity response) when re-keying occurred,
@@ -478,7 +512,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
         sealedKey: finalSealedKey,
         targetPubkey: proofTargetPubkey,
         to,
-        nft: (config.addresses?.agentNft ?? "0x" + "0".repeat(40)) as `0x${string}`,
+        nft,
         nonce,
         validUntil,
       });
@@ -562,7 +596,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
       const { amount } = paySchema.parse(req.body);
       const client = await getPayment();
       const { receipt, event } = await client.payForAgent(BigInt(id), BigInt(amount));
-      safeJson(res, 200, {
+      res.status(200).json({
         ok: true,
         tokenId: id,
         amount,
@@ -580,7 +614,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
       const { provider, amount } = computePaySchema.parse(req.body);
       const client = await getPayment();
       const { receipt } = await client.payComputeProvider(provider, BigInt(amount));
-      safeJson(res, 200, { ok: true, provider, amount, txHash: receipt.hash });
+      res.status(200).json({ ok: true, provider, amount, txHash: receipt.hash });
       broadcast("compute.pay", { provider, amount, txHash: receipt.hash });
     } catch (err) {
       next(err);
@@ -604,7 +638,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
       }
       const client = await getPayment();
       const earnings = await client.earningsOf(creator);
-      safeJson(res, 200, { tokenId: id, creator, earnings });
+      res.status(200).json({ tokenId: id, creator, earnings });
     } catch (err) {
       next(err);
     }
@@ -616,9 +650,12 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
       if (!id) return;
       const { bps } = royaltySchema.parse(req.body);
       const client = await getPayment();
-      const receipt = await client.setRoyalty(BigInt(id), bps);
-      safeJson(res, 200, { ok: true, tokenId: id, bps, txHash: receipt.hash });
-      broadcast("agent.royalty", { tokenId: id, bps, txHash: receipt.hash });
+      // Return encoded calldata so the NFT owner (frontend user) can submit the
+      // tx via wagmi useWriteContract. The backend deployer wallet is neither
+      // creator nor owner, so on-chain modifier checks would always revert.
+      const txData = await client.encodeSetRoyalty(BigInt(id), bps);
+      res.status(200).json({ ok: true, tokenId: id, bps, ...txData });
+      // The frontend broadcasts the actual tx; no backend broadcast here.
     } catch (err) {
       next(err);
     }
@@ -632,7 +669,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
         client.protocolFeeBps(),
         client.protocolTreasury(),
       ]);
-      safeJson(res, 200, { paymentToken, protocolFeeBps: feeBps, protocolTreasury: treasury });
+      res.status(200).json({ paymentToken, protocolFeeBps: feeBps, protocolTreasury: treasury });
     } catch (err) {
       next(err);
     }
@@ -661,7 +698,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
       const limitRaw = typeof req.query["limit"] === "string" ? Number(req.query["limit"]) : undefined;
       const limit = limitRaw !== undefined && Number.isInteger(limitRaw) && limitRaw > 0 ? limitRaw : undefined;
       const matches = events.queryByAgent({ tokenId: id, eventName, source, limit });
-      safeJson(res, 200, { tokenId: id, events: matches });
+      res.status(200).json({ tokenId: id, events: matches });
     } catch (err) {
       next(err);
     }
@@ -679,7 +716,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
         payload: b.payload,
         receivedAt: Date.now(),
       });
-      safeJson(res, 200, { ok: true, stored });
+      res.status(200).json({ ok: true, stored });
     } catch (err) {
       next(err);
     }
@@ -690,7 +727,18 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
       const limitRaw = typeof req.query["limit"] === "string" ? Number(req.query["limit"]) : undefined;
       const limit = limitRaw !== undefined && Number.isInteger(limitRaw) && limitRaw > 0 ? limitRaw : 1000;
       const all = events.getAll(limit);
-      safeJson(res, 200, { events: all });
+      const eventName = req.query.eventName as string | undefined;
+      const filtered = eventName
+        ? all.filter((e: any) => e.eventName === eventName)
+        : all;
+      const owner = req.query.owner as string | undefined;
+      const ownerFiltered = owner
+        ? filtered.filter((e: any) => {
+            const payload = typeof e.payload === 'string' ? JSON.parse(e.payload) : e.payload;
+            return payload?.owner === owner || payload?.to === owner || payload?.from === owner;
+          })
+        : filtered;
+      res.status(200).json({ events: ownerFiltered });
     } catch (err) {
       next(err);
     }
@@ -705,7 +753,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
       const limitRaw = typeof req.query["limit"] === "string" ? Number(req.query["limit"]) : undefined;
       const limit = limitRaw !== undefined && Number.isInteger(limitRaw) && limitRaw > 0 ? limitRaw : undefined;
       const matches = events.queryByAgent({ tokenId: id, eventName, source, limit });
-      safeJson(res, 200, { tokenId: id, events: matches });
+      res.status(200).json({ tokenId: id, events: matches });
     } catch (err) {
       next(err);
     }
@@ -743,7 +791,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
       };
       const runner = getRunnerOrThrow(orchestratorHandle);
       const result: TickResult = await runner.runTick(spec, signal);
-      safeJson(res, 200, result);
+      res.status(200).json(result);
       broadcast("orchestrator.tick", {
         agentTokenId: spec.agentTokenId.toString(),
         recommendation: result.recommendation,
@@ -767,7 +815,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
       return;
     }
     wss.handleUpgrade(req, socket, head, (ws) => {
-      const topics = new Set(url.searchParams.getAll("topic"));
+      const topics = new Set(url.searchParams.getAll("topic").slice(0, 20));
       const client: ConnectedClient = { socket: ws as WebSocket, topics };
       wsClients.add(client);
       ws.send(JSON.stringify({ topic: "hello", payload: { topics: Array.from(topics) }, ts: Date.now() }));

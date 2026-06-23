@@ -11,3 +11,4 @@ allowBuilds:
   utf-8-validate: true
   blake-hash: true
   protobufjs: true
+strictDepBuilds: false

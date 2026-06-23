@@ -67,6 +67,7 @@ async function apiFetch<T>(
 ): Promise<T> {
   const res = await fetch(`${BACKEND_URL}${path}`, {
     ...init,
+    signal: AbortSignal.timeout(10000),
     headers: {
       'content-type': 'application/json',
       accept: 'application/json',

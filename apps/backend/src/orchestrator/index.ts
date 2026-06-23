@@ -7,7 +7,6 @@ import { ZeroGStorage, type Encryption } from "../storage/0g.js";
 import { createRouterClient } from "../compute/router.js";
 import { DefaultSignerOracleClient } from "../oracle/client.js";
 import { pickOGNetwork } from "../storage/0g.js";
-import { bigIntSafe } from "../server.js";
 const VAULT_ABI: string[] = [
   "function balanceOf(uint256 tokenId) view returns (uint256)",
   "function strategyOf(uint256 tokenId) view returns (bytes32 root, uint256 dailyLimit, uint256 dailySpent, uint64 resetDay)",
@@ -270,7 +269,7 @@ export class StrategyRunner {
       vaultTc.contract.balanceOf(tokenId),
       vaultTc.contract.strategyOf(tokenId),
     ]);
-    const vaultBalance = bigIntSafe(rawBalance) ?? 0n;
+    const vaultBalance = rawBalance ?? 0n;
 
     const latest = await this.provider.getBlockNumber();
     const fromBlock = Math.max(0, latest - 2000);

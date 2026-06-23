@@ -4,6 +4,7 @@
 // getters per vault address in a single `useReadContracts` request.
 
 import type { ReactElement } from 'react';
+import { useParams } from 'react-router-dom';
 import { useAccount, useChainId, useReadContracts } from 'wagmi';
 import { formatEther } from 'viem';
 import { AXIOM_VAULT_ADDRESSES } from '../abi/addresses.js';
@@ -14,8 +15,10 @@ import { COLORS, Card, SectionTitle, MonoLabel, Alert, PageHeader, Skeleton } fr
 const PLACEHOLDER = '\u2014';
 
 export function VaultDashboard(): ReactElement {
+  const { vaultId } = useParams<{ vaultId: string }>();
   const { isConnected, address } = useAccount();
   const chainId = useChainId();
+  const tokenId = BigInt(vaultId ?? '0');
 
   // Single multicall covering all vaults × 3 getters. Hooks-safe: one
   // unconditional useReadContracts call whose contracts array length is
@@ -26,7 +29,7 @@ export function VaultDashboard(): ReactElement {
       address: vaultAddress,
       abi: axiomStrategyVaultAbi,
       functionName: 'vaults',
-      args: [0n],
+      args: [tokenId],
     },
     {
       address: vaultAddress,
@@ -37,13 +40,12 @@ export function VaultDashboard(): ReactElement {
       address: vaultAddress,
       abi: axiomStrategyVaultAbi,
       functionName: 'getStrategy',
-      args: [0n],
+      args: [tokenId],
     },
-  ] as const);
+  ] as const) as readonly any[];
 
   const vaultQuery = useReadContracts({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    contracts: vaultContracts as readonly any[],
+    contracts: vaultContracts,
   });
 
   return (

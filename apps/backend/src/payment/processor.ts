@@ -28,6 +28,7 @@ const PAYMENT_PROCESSOR_ABI: readonly string[] = [
   "function payComputeProvider(address provider, uint256 amount)",
   "function withdrawAgentEarnings()",
   "function setRoyaltyBps(uint256 agentTokenId, uint256 bps)",
+  "function setRoyaltyBpsPermitted(uint256 agentTokenId, uint256 bps)",
   "function protocolTreasury() view returns (address)",
   "function protocolFeeBps() view returns (uint256)",
   "function paymentToken() view returns (address)",
@@ -138,13 +139,18 @@ export class PaymentProcessorClient {
   }
 
   /**
-   * Set the per-agent royalty override (basis points). Only the agent creator
-   * may call this on-chain; the backend signer must be the creator for the tx
-   * to succeed.
+   * Encode a `setRoyaltyBpsPermitted` call for the frontend to submit via
+   * wagmi `useWriteContract`. The backend signer (deployer wallet) is neither
+   * the creator nor the owner, so it cannot call `setRoyaltyBps` (creator-only)
+   * or `setRoyaltyBpsPermitted` (owner-only) directly. Instead the route
+   * returns the encoded calldata + target address so the NFT owner submits
+   * the transaction from their own wallet.
+   *
+   * @returns `{ to, data, value }` — pass directly to `useWriteContract`.
    */
-  async setRoyalty(agentTokenId: bigint, bps: number): Promise<ContractTransactionReceipt> {
-    const tx = await this.payment.contract.setRoyaltyBps(agentTokenId, bps);
-    return (await tx.wait()) as ContractTransactionReceipt;
+  async encodeSetRoyalty(agentTokenId: bigint, bps: number): Promise<{ to: string; data: string; value: bigint }> {
+    const data = this.payment.iface.encodeFunctionData("setRoyaltyBpsPermitted", [agentTokenId, bps]);
+    return { to: this.address, data, value: 0n };
   }
 
   // ─── Read paths ───────────────────────────────────────────────

@@ -50,8 +50,12 @@ export function SettingsPage(): ReactElement {
 
   const onChainChange = (event: ChangeEvent<HTMLInputElement>): void => {
     const next = Number.parseInt(event.target.value, 10);
-    if (next === GALILEO_CHAIN_ID || next === ARISTOTLE_CHAIN_ID) {
+    if (next === GALILEO_CHAIN_ID) {
       setChainId(next);
+      setRpcUrl('https://evmrpc-testnet.0g.ai');
+    } else if (next === ARISTOTLE_CHAIN_ID) {
+      setChainId(next);
+      setRpcUrl('https://evmrpc.0g.ai');
     }
   };
 
