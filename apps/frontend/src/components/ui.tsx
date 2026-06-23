@@ -53,7 +53,7 @@ export const COLORS = {
 const transition = 'all 0.18s cubic-bezier(0.4, 0, 0.2, 1)';
 
 // ─── Helpers ───────────────────────────────────────────────────────────
-function useMountEffect(effect: () => void | (() => void), deps: unknown[] = []) {
+export function useMountEffect(effect: () => void | (() => void), deps: unknown[] = []) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(effect, deps);
 }

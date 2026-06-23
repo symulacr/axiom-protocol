@@ -12,8 +12,8 @@ export const env = backendEnvSchema.parse(process.env);
 const provider = new JsonRpcProvider(env.AXIOM_EVM_RPC);
 const signer = new Wallet(env.DEPLOYER_PK, provider);
 startServer({
-  bind: env.BIND,
-  port: env.PORT,
+  bind: env.AXIOM_BIND,
+  port: env.AXIOM_PORT,
   env,
   evmRpc: env.AXIOM_EVM_RPC,
   storageRpc: env.AXIOM_STORAGE_RPC,

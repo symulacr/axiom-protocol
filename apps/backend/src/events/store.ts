@@ -167,6 +167,34 @@ export class EventStore {
     return limit !== undefined ? cloned.slice(0, limit) : cloned;
   }
 
+  /**
+   * Find all distinct token IDs associated with an owner address.
+   * Iterates all events and collects unique tokenIds from Transfer
+   * events where `to` matches the owner. Returns the most recent
+   * blockNumber for each token. Best-effort — depends on event coverage.
+   * Will be authoritative once a database is added.
+   */
+  getTokenIdsByOwner(owner: string, limit?: number): Array<{ tokenId: string; blockNumber: number }> {
+    const seen = new Map<string, number>();
+    for (const bucket of this.buckets.values()) {
+      for (const evt of bucket) {
+        if (evt.eventName !== "Transfer") continue;
+        const payload = evt.payload;
+        if (typeof payload.to !== "string") continue;
+        if (payload.to.toLowerCase() !== owner.toLowerCase()) continue;
+        const tid = tokenIdFromPayload(payload);
+        if (tid === null) continue;
+        if (!seen.has(tid) || evt.blockNumber > seen.get(tid)!) {
+          seen.set(tid, evt.blockNumber);
+        }
+      }
+    }
+    const sorted = Array.from(seen.entries())
+      .map(([tokenId, blockNumber]) => ({ tokenId, blockNumber }))
+      .sort((a, b) => b.blockNumber - a.blockNumber);
+    return limit !== undefined ? sorted.slice(0, limit) : sorted;
+  }
+
   /** Number of buckets (one per source/eventName pair). */
   get bucketCount(): number {
     return this.buckets.size;
