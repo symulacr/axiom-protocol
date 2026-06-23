@@ -127,6 +127,20 @@ function getIdParam(req: Request, res: Response) {
 export function startServer(config: ServerConfig): { app: Express; httpServer: HttpServer } {
   const app = express();
   app.use(express.json({ limit: "2mb" }));
+  // Request ID + request logging (before security/route middleware)
+  app.use((req, res, next) => {
+    const requestId = crypto.randomUUID();
+    res.setHeader("x-request-id", requestId);
+    (req as any).requestId = requestId;
+    next();
+  });
+  app.use((req, res, next) => {
+    const start = Date.now();
+    res.on("finish", () => {
+      console.log(`[${req.method}] ${req.originalUrl} ${res.statusCode} ${Date.now() - start}ms`);
+    });
+    next();
+  });
   // Security middleware stack
   app.use(helmet({
     contentSecurityPolicy: {
@@ -221,14 +235,36 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
 
   const wsClients = new Set<ConnectedClient>();
 
-
-
-
-  function broadcast(topic: string, payload: unknown): void {
+  // Heartbeat every 30 seconds — terminate clients that miss 3 pings
+  const HEARTBEAT_INTERVAL = 30_000;
+  const MAX_MISSED_PINGS = 3;
+  const heartbeatTimer = setInterval(() => {
     for (const c of wsClients) {
       if (c.socket.readyState !== c.socket.OPEN) continue;
-      const msg = stringifyBigIntSafe({ topic, payload: bigIntSafe(payload), ts: Date.now() });
-      c.socket.send(msg);
+      if ((c as any).missedPings >= MAX_MISSED_PINGS) {
+        c.socket.terminate();
+        wsClients.delete(c);
+        continue;
+      }
+      (c as any).missedPings = ((c as any).missedPings ?? 0) + 1;
+      c.socket.ping();
+    }
+  }, HEARTBEAT_INTERVAL);
+
+
+  const MAX_WS_CLIENTS = 1000;
+
+  function broadcast(topic: string, payload: unknown): void {
+    const msg = stringifyBigIntSafe({ topic, payload: bigIntSafe(payload), ts: Date.now() });
+    for (const c of wsClients) {
+      if (c.socket.readyState !== c.socket.OPEN) continue;
+      // Skip if client's buffer is backed up (>64KB)
+      if (c.socket.bufferedAmount > 65536) continue;
+      try {
+        c.socket.send(msg);
+      } catch {
+        wsClients.delete(c);
+      }
     }
   }
 
@@ -840,17 +876,29 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
       return;
     }
     wss.handleUpgrade(req, socket, head, (ws) => {
+      if (wsClients.size >= MAX_WS_CLIENTS) {
+        ws.close(1013, "Too many connections");
+        socket.destroy();
+        return;
+      }
       const topics = new Set(url.searchParams.getAll("topic").slice(0, 20));
       const client: ConnectedClient = { socket: ws as WebSocket, topics };
+      (ws as any).missedPings = 0;
       wsClients.add(client);
+      ws.on("pong", () => { (ws as any).missedPings = 0; });
       ws.send(JSON.stringify({ topic: "hello", payload: { topics: Array.from(topics) }, ts: Date.now() }));
       ws.on("close", () => wsClients.delete(client));
+      ws.on("error", () => wsClients.delete(client));
     });
   });
 
   httpServer.listen(config.port, config.bind, () => {
     console.log(`[backend] listening on http://${config.bind}:${config.port}`);
     console.log(`[backend] signer: ${config.signer.address}`);
+  });
+
+  httpServer.on("close", () => {
+    clearInterval(heartbeatTimer);
   });
 
   return { app, httpServer };

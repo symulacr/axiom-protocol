@@ -4,7 +4,7 @@
 // receiver signs an EIP-712 AccessProof, finalize proof structs,
 // then submit `iTransferFrom` on-chain via wagmi's `useWriteContract`.
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAccount, useSignTypedData, useWriteContract } from 'wagmi';
 import { type Address, type Hex } from 'viem';
 
@@ -200,6 +200,11 @@ export function useTransfer(): UseTransferResult {
   const [signature, setSignature] = useState<TransferResponse | null>(null);
   const [signingError, setSigningError] = useState<Error | null>(null);
   const [isSigning, setIsSigning] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => abortRef.current?.abort();
+  }, []);
 
   const prepare = useCallback(
     async (input: TransferInput): Promise<TransferResponse> => {
@@ -215,6 +220,10 @@ export function useTransfer(): UseTransferResult {
       setIsSigning(true);
       setSigningError(null);
       try {
+        abortRef.current?.abort();
+        const controller = new AbortController();
+        abortRef.current = controller;
+
         const url = `${BACKEND_URL}/v1/agents/${input.tokenId.toString()}/transfer`;
 
         // Step 1 — challenge: backend picks dataHash, targetPubkey, nonce,
@@ -237,7 +246,7 @@ export function useTransfer(): UseTransferResult {
             accept: 'application/json',
           },
           body: JSON.stringify(challengeBody),
-          signal: AbortSignal.timeout(15000),
+          signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]),
         });
         if (!challengeRes.ok) {
           const text = await challengeRes.text();
@@ -293,7 +302,7 @@ export function useTransfer(): UseTransferResult {
             'content-type': 'application/json',
             accept: 'application/json',
           },
-          signal: AbortSignal.timeout(15000),
+          signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]),
           body: JSON.stringify({
             to: input.to,
             receiverPubKey64: input.receiverPubKey64,

@@ -5,7 +5,7 @@
 // + useState rather than TanStack Query to stay consistent with the
 // rest of the frontend.
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 /**
  * One compute provider entry returned by the backend's
@@ -40,6 +40,7 @@ export function useProviders(): {
   // is how the `refetch` handle exposed to callers requests an immediate
   // re-poll without waiting for the next 30 s tick.
   const [pollTick, setPollTick] = useState<number>(0);
+  const abortRef = useRef<AbortController | null>(null);
 
   const refetch = useCallback((): void => {
     setPollTick((n) => n + 1);
@@ -53,11 +54,14 @@ export function useProviders(): {
     let cancelled = false;
 
     const load = async (): Promise<void> => {
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
       try {
         const res = await fetch(`${BACKEND_URL}/v1/compute/providers`, {
           method: 'GET',
           headers: { accept: 'application/json' },
-          signal: AbortSignal.timeout(10000),
+          signal: AbortSignal.any([controller.signal, AbortSignal.timeout(10000)]),
         });
         if (!res.ok) {
           const text = await res.text();
@@ -90,6 +94,7 @@ export function useProviders(): {
 
     return (): void => {
       cancelled = true;
+      abortRef.current?.abort();
       clearTimeout(timer);
     };
   }, [pollTick]);
