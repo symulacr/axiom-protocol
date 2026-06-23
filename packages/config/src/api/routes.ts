@@ -1,0 +1,18 @@
+export const ROUTES = {
+  HEALTH: "/health",
+  COMPUTE_PROVIDERS: "/v1/compute/providers",
+  COMPUTE_CHAT: "/v1/compute/chat/completions",
+  AGENTS_MINT: "/v1/agents/mint",
+  AGENTS_TRANSFER: "/v1/agents/:id/transfer",
+  AGENTS_EARNINGS: "/v1/agents/:id/earnings",
+  AGENTS_ROYALTY: "/v1/agents/:id/royalty",
+  AGENTS_PAY: "/v1/agents/:id/pay",
+  AGENTS_HISTORY: "/v1/agents/:id/history",
+  AGENTS_EVENTS: "/v1/agents/:id/events",
+  VAULTS_DEPOSIT: "/v1/vaults/:id/deposit",
+  VAULTS_STRATEGY: "/v1/vaults/:id/strategy",
+  COMPUTE_PAY: "/v1/compute/pay",
+  PAYMENT_CONFIG: "/v1/payment/config",
+  ORCHESTRATOR_TICK: "/v1/orchestrator/tick",
+  EVENTS: "/v1/events",
+} as const;

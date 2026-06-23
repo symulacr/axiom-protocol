@@ -23,6 +23,7 @@ import { createApiKeyAuth } from "@axiom/config/middleware/auth";
 import { getEventStore } from "./events/store.js";
 import { PaymentProcessorClient } from "./payment/processor.js";
 import type { BackendEnv } from "./env-schema.js";
+import { createHealthRouter } from "./routers/health.js";
 import {
   chatCompletionsSchema,
   mintSchema,
@@ -122,7 +123,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
     methods: ["GET", "POST"],
   }));
   // Optional API key auth — skip if AXIOM_API_KEY is not set (local dev)
-  app.use(createApiKeyAuth(process.env.AXIOM_API_KEY));
+  app.use(createApiKeyAuth(config.env?.AXIOM_API_KEY));
   app.use(rateLimit({
     windowMs: 60_000,
     max: 100,
@@ -220,27 +221,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
     }
   }
 
-  app.get("/health", async (_req: Request, res: Response) => {
-    try {
-      const [chainHead, oracleHealth] = await Promise.all([
-        provider.getBlockNumber().catch(() => 0),
-        oracle.health().catch(() => null),
-      ]);
-      const healthy = chainHead > 0 && oracleHealth?.ok === true;
-      res.status(healthy ? 200 : 503).json({
-        ok: healthy,
-        version: "0.1.0",
-        signer: config.signer.address,
-        chainHead,
-        oracle: oracleHealth?.ok === true ? "up" : "down",
-        addresses: config.addresses ?? null,
-      });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      console.error("[server] health check failed:", message);
-      res.status(503).json({ ok: false, error: "Health check failed" });
-    }
-  });
+  app.use(createHealthRouter(provider, oracle, config.signer.address, config.addresses));
 
   app.get("/v1/compute/providers", async (_req: Request, res: Response, next: NextFunction) => {
     try {

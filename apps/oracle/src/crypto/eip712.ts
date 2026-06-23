@@ -47,8 +47,8 @@ export interface Eip712Domain {
  * (AXIOM_TEE_VERIFIER, AXIOM_CHAIN_ID) or explicitly via the domain parameter.
  */
 export const DEFAULT_EIP712_DOMAIN: Eip712Domain = {
-  chainId: process.env.AXIOM_CHAIN_ID ? BigInt(process.env.AXIOM_CHAIN_ID) : 16602n,
-  verifyingContract: (process.env.AXIOM_TEE_VERIFIER ?? "0x24f725198d64A3b03A8386cD8fa12BD7c591734A") as `0x${string}`,
+  chainId: 16602n,
+  verifyingContract: "0x24f725198d64A3b03A8386cD8fa12BD7c591734A",
 };
 
 const abiCoder = AbiCoder.defaultAbiCoder();

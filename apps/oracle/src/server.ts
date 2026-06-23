@@ -19,12 +19,15 @@ import {
   ownershipBodySchema,
   mintDataHashSchema,
 } from "./route-schemas.js";
+import type { OracleEnv } from "./env-schema.js";
 
 export interface ServerConfig {
   signer: TeeSigner;
   storage: StorageAdapter;
   bind: string;
   port: number;
+  /** Full parsed environment (optional — falls back to process.env at runtime). */
+  env?: OracleEnv;
 }
 
 export function startServer(config: ServerConfig): Express {
@@ -36,13 +39,13 @@ export function startServer(config: ServerConfig): Express {
         scriptSrc: ["'self'"],
         styleSrc: ["'self'", "'unsafe-inline'"],
         imgSrc: ["'self'", "data:"],
-        connectSrc: ["'self'", process.env.AXIOM_FRONTEND_URL ?? 'http://localhost:5173'],
+        connectSrc: ["'self'", config.env?.AXIOM_FRONTEND_URL ?? 'http://localhost:5173'],
       },
     },
   }));
-  app.use(cors({ origin: process.env.AXIOM_FRONTEND_URL ?? 'http://localhost:5173' }));
+  app.use(cors({ origin: config.env?.AXIOM_FRONTEND_URL ?? 'http://localhost:5173' }));
   // Optional API key auth — skip if AXIOM_API_KEY is not set (local dev)
-  app.use(createApiKeyAuth(process.env.AXIOM_API_KEY));
+  app.use(createApiKeyAuth(config.env?.AXIOM_API_KEY));
   app.use(rateLimit({ windowMs: 60_000, max: 100 }));
   app.use(express.json({ limit: "1mb" }));
   const { signer, storage } = config;

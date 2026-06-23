@@ -32,4 +32,4 @@ if (env.AXIOM_STORAGE_INDEXER_RPC && env.AXIOM_STORAGE_EVM_RPC) {
   console.log("[oracle] storage: InMemoryStorage (no AXIOM_STORAGE_INDEXER_RPC/AXIOM_STORAGE_EVM_RPC configured)");
 }
 
-startServer({ signer, storage, bind: env.AXIOM_ORACLE_BIND, port: env.AXIOM_ORACLE_PORT });
+startServer({ signer, storage, bind: env.AXIOM_ORACLE_BIND, port: env.AXIOM_ORACLE_PORT, env });

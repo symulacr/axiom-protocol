@@ -57,6 +57,24 @@ export function getEnv(key: string, fallback?: string): string {
  *   DEPLOYER_PK, TEE_SIGNER_PK, ORACLE_ADMIN_PK
  */
 
+/** Well-known env var names as a typed const object. */
+export const ENV_KEYS = {
+  AXIOM_EVM_RPC: "AXIOM_EVM_RPC",
+  AXIOM_STORAGE_RPC: "AXIOM_STORAGE_RPC",
+  AXIOM_ORACLE_URL: "AXIOM_ORACLE_URL",
+  AXIOM_FRONTEND_URL: "AXIOM_FRONTEND_URL",
+  AXIOM_BIND: "AXIOM_BIND",
+  AXIOM_PORT: "AXIOM_PORT",
+  AXIOM_CHAIN_ID: "AXIOM_CHAIN_ID",
+  AXIOM_API_KEY: "AXIOM_API_KEY",
+  AXIOM_COMPUTE_API_KEY: "AXIOM_COMPUTE_API_KEY",
+  AXIOM_COMPUTE_DIRECT_KEY: "AXIOM_COMPUTE_DIRECT_KEY",
+  AXIOM_TEE_SIGNER_PK: "AXIOM_TEE_SIGNER_PK",
+  AXIOM_TEE_VERIFIER: "AXIOM_TEE_VERIFIER",
+  OG_COMPUTE_BASE_URL: "OG_COMPUTE_BASE_URL",
+  DEPLOYER_PK: "DEPLOYER_PK",
+} as const;
+
 /**
  * Resolve a canonical AXIOM_* env var with backward-compatible aliases.
  * Checks `canonical` first, then each alias in order. Throws if none are set

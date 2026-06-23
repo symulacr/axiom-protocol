@@ -51,7 +51,7 @@ async function main(): Promise<void> {
   console.log("============================================");
   console.log("  Axiom Protocol — E2E CLI (MW14)");
   console.log("============================================");
-  console.log(`Network:    ${process.env.OG_NETWORK_NAME ?? "galileo"}`);
+  console.log(`Network:    ${getEnv("OG_NETWORK_NAME", "galileo")}`);
   console.log(`RPC:        ${RPC}`);
   console.log(`Storage:    ${STORAGE_RPC}`);
   console.log(`Backend:    ${BACKEND_URL}`);
