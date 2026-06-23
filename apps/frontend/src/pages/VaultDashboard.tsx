@@ -86,25 +86,25 @@ export function VaultDashboard(): ReactElement {
         subtitle="Live on-chain state of every AxiomStrategyVault"
       />
 
-      <Card style={{ marginBottom: 24 }}>
+      <Card style={{ marginBottom: 'var(--space-xl)' }}>
         <SectionTitle>Connection</SectionTitle>
-        <dl style={{ margin: 0, display: 'grid', gridTemplateColumns: '120px 1fr', gap: '10px 16px', fontSize: 14 }}>
-          <dt style={{ color: COLORS.textDim, fontWeight: 500 }}>Status</dt>
+        <dl style={{ margin: 0, display: 'grid', gridTemplateColumns: '7.5rem 1fr', gap: 'var(--space-sm) var(--space-lg)', fontSize: 'var(--text-sm)' }}>
+          <dt style={{ color: COLORS.textDim, fontWeight: 'var(--fw-medium)' }}>Status</dt>
           <dd style={{ margin: 0, color: isConnected ? COLORS.success : COLORS.textMuted }}>
             {isConnected ? 'Connected' : 'Not connected'}
           </dd>
-          <dt style={{ color: COLORS.textDim, fontWeight: 500 }}>Address</dt>
+          <dt style={{ color: COLORS.textDim, fontWeight: 'var(--fw-medium)' }}>Address</dt>
           <dd style={{ margin: 0 }}>
             {address !== undefined ? <MonoLabel>{address}</MonoLabel> : <span style={{ color: COLORS.textDim }}>{PLACEHOLDER}</span>}
           </dd>
-          <dt style={{ color: COLORS.textDim, fontWeight: 500 }}>Chain ID</dt>
+          <dt style={{ color: COLORS.textDim, fontWeight: 'var(--fw-medium)' }}>Chain ID</dt>
           <dd style={{ margin: 0, color: COLORS.text }}>{chainId}</dd>
         </dl>
       </Card>
 
       <SectionTitle>Vaults</SectionTitle>
       {vaultQuery.isLoading && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
           <Skeleton height={56} />
           <Skeleton height={56} />
         </div>
@@ -114,7 +114,7 @@ export function VaultDashboard(): ReactElement {
           Couldn't read vault data from the chain. Check your connection and try again.
         </Alert>
       )}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
         {AXIOM_VAULT_ADDRESSES.map((vaultAddress, index) => {
           const base = index * 3;
           const vaultsResult = vaultQuery.data?.[base]?.result as
@@ -133,48 +133,48 @@ export function VaultDashboard(): ReactElement {
 
           return (
             <Card key={vaultAddress}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', marginBottom: 'var(--space-lg)' }}>
                 <span
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    width: 32,
-                    height: 32,
-                    borderRadius: 8,
+                    width: '2rem',
+                    height: '2rem',
+                    borderRadius: 'var(--radius-lg)',
                     background: COLORS.bronzeBg,
                     border: `1px solid ${COLORS.bronzeBorder}`,
                     color: COLORS.bronzeLight,
-                    fontSize: 13,
-                    fontWeight: 700,
+                    fontSize: 'var(--text-sm)',
+                    fontWeight: 'var(--fw-bold)',
                   }}
                 >
                   {index}
                 </span>
-                <MonoLabel style={{ fontSize: 12 }}>{vaultAddress}</MonoLabel>
+                <MonoLabel style={{ fontSize: 'var(--text-xs)' }}>{vaultAddress}</MonoLabel>
               </div>
-              <dl style={{ margin: 0, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+              <dl style={{ margin: 0, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(12rem, 1fr))', gap: 'var(--space-lg)' }}>
                 <div>
-                  <dt style={{ fontSize: 11, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4, fontWeight: 600 }}>
+                  <dt style={{ fontSize: 'var(--text-xs)', color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.25rem', fontWeight: 'var(--fw-semibold)' }}>
                     Total Deposits
                   </dt>
-                  <dd style={{ margin: 0, fontSize: 18, fontWeight: 600, color: COLORS.bronzeLight }}>
+                  <dd style={{ margin: 0, fontSize: 'var(--text-lg)', fontWeight: 'var(--fw-semibold)', color: COLORS.bronzeLight }}>
                     {depositsWei === undefined ? PLACEHOLDER : `${formatEther(depositsWei)} OG`}
                   </dd>
                 </div>
                 <div>
-                  <dt style={{ fontSize: 11, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4, fontWeight: 600 }}>
+                  <dt style={{ fontSize: 'var(--text-xs)', color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.25rem', fontWeight: 'var(--fw-semibold)' }}>
                     Strategy Root
                   </dt>
                   <dd style={{ margin: 0 }}>
-                    {root !== undefined ? <MonoLabel style={{ fontSize: 12 }}>{`${root.slice(0, 10)}\u2026`}</MonoLabel> : <span style={{ color: COLORS.textDim }}>{PLACEHOLDER}</span>}
+                    {root !== undefined ? <MonoLabel style={{ fontSize: 'var(--text-xs)' }}>{`${root.slice(0, 10)}\u2026`}</MonoLabel> : <span style={{ color: COLORS.textDim }}>{PLACEHOLDER}</span>}
                   </dd>
                 </div>
                 <div>
-                  <dt style={{ fontSize: 11, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4, fontWeight: 600 }}>
+                  <dt style={{ fontSize: 'var(--text-xs)', color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.25rem', fontWeight: 'var(--fw-semibold)' }}>
                     Daily Limit
                   </dt>
-                  <dd style={{ margin: 0, fontSize: 16, fontWeight: 500, color: COLORS.text }}>
+                  <dd style={{ margin: 0, fontSize: 'var(--text-base)', fontWeight: 'var(--fw-medium)', color: COLORS.text }}>
                     {dailyLimitWei === undefined ? PLACEHOLDER : `${formatEther(dailyLimitWei)} OG`}
                   </dd>
                 </div>

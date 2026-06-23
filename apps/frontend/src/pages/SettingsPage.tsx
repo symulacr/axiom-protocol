@@ -90,12 +90,12 @@ export function SettingsPage(): ReactElement {
     <main>
       <PageHeader title="Settings" subtitle="Configure RPC endpoint, wallet connector, and chain" />
 
-      <Card style={{ marginBottom: 24 }}>
+      <Card style={{ marginBottom: 'var(--space-xl)' }}>
         <SectionTitle>RPC Endpoint</SectionTitle>
-        <p style={{ color: COLORS.textMuted, fontSize: 14, margin: '0 0 16px', fontWeight: 300 }}>
+        <p style={{ color: COLORS.textMuted, fontSize: 'var(--text-sm)', margin: '0 0 var(--space-lg)', fontWeight: 'var(--fw-regular)', lineHeight: 'var(--lh-normal)' }}>
           The JSON-RPC endpoint used to read 0G chain state.
         </p>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+        <div style={{ display: 'flex', gap: 'var(--space-sm)', alignItems: 'flex-start' }}>
           <Input
             key={`rpc-${rpcUrl}`}
             id="rpc-url-input"
@@ -110,17 +110,17 @@ export function SettingsPage(): ReactElement {
             Save
           </Button>
         </div>
-        <p style={{ margin: '12px 0 0', fontSize: 12, color: COLORS.textDim }}>
+        <p style={{ margin: 'var(--space-md) 0 0', fontSize: 'var(--text-xs)', color: COLORS.textDim }}>
           Saved to localStorage key <code style={{ color: COLORS.bronzeLight }}>axiom.rpcUrl</code>. Takes effect on next page load.
         </p>
       </Card>
 
-      <Card style={{ marginBottom: 24 }}>
+      <Card style={{ marginBottom: 'var(--space-xl)' }}>
         <SectionTitle>WalletConnect Project ID</SectionTitle>
-        <p style={{ color: COLORS.textMuted, fontSize: 14, margin: '0 0 16px', fontWeight: 300 }}>
+        <p style={{ color: COLORS.textMuted, fontSize: 'var(--text-sm)', margin: '0 0 var(--space-lg)', fontWeight: 'var(--fw-regular)', lineHeight: 'var(--lh-normal)' }}>
           Your WalletConnect Cloud project identifier. Required for WalletConnect-based wallets like Rainbow, Trust, and MetaMask Mobile.
         </p>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+        <div style={{ display: 'flex', gap: 'var(--space-sm)', alignItems: 'flex-start' }}>
           <Input
             key={`wc-${wcProjectId}`}
             id="wc-project-id-input"
@@ -134,30 +134,30 @@ export function SettingsPage(): ReactElement {
             Save
           </Button>
         </div>
-        <Alert variant="warning" style={{ marginTop: 12 }}>
+        <Alert variant="warning" style={{ marginTop: 'var(--space-md)' }}>
           Reload the page after saving — the wallet connector initializes once on page load.
         </Alert>
       </Card>
 
       <Card>
         <SectionTitle>Active Chain</SectionTitle>
-        <p style={{ color: COLORS.textMuted, fontSize: 14, margin: '0 0 16px', fontWeight: 300 }}>
+        <p style={{ color: COLORS.textMuted, fontSize: 'var(--text-sm)', margin: '0 0 var(--space-lg)', fontWeight: 'var(--fw-regular)', lineHeight: 'var(--lh-normal)' }}>
           The 0G chain the frontend targets by default.
         </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
           <label
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 10,
-              padding: '12px 16px',
-              borderRadius: 8,
+              gap: 'var(--space-sm)',
+              padding: 'var(--space-md) var(--space-lg)',
+              borderRadius: 'var(--radius-lg)',
               border: `1px solid ${chainId === GALILEO_CHAIN_ID ? COLORS.bronzeBorder : COLORS.border}`,
               background: chainId === GALILEO_CHAIN_ID ? COLORS.bronzeBg : 'transparent',
               cursor: 'pointer',
               transition: 'all 0.18s ease',
               color: COLORS.text,
-              fontSize: 14,
+              fontSize: 'var(--text-sm)',
             }}
           >
             <input
@@ -169,21 +169,21 @@ export function SettingsPage(): ReactElement {
               style={{ accentColor: COLORS.bronze }}
             />
             Galileo Testnet
-            <span style={{ color: COLORS.textDim, fontSize: 12 }}>(chainId 16602)</span>
+            <span style={{ color: COLORS.textDim, fontSize: 'var(--text-xs)' }}>(chainId 16602)</span>
           </label>
           <label
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 10,
-              padding: '12px 16px',
-              borderRadius: 8,
+              gap: 'var(--space-sm)',
+              padding: 'var(--space-md) var(--space-lg)',
+              borderRadius: 'var(--radius-lg)',
               border: `1px solid ${chainId === ARISTOTLE_CHAIN_ID ? COLORS.bronzeBorder : COLORS.border}`,
               background: chainId === ARISTOTLE_CHAIN_ID ? COLORS.bronzeBg : 'transparent',
               cursor: 'pointer',
               transition: 'all 0.18s ease',
               color: COLORS.text,
-              fontSize: 14,
+              fontSize: 'var(--text-sm)',
             }}
           >
             <input
@@ -195,10 +195,10 @@ export function SettingsPage(): ReactElement {
               style={{ accentColor: COLORS.bronze }}
             />
             Aristotle Mainnet
-            <span style={{ color: COLORS.textDim, fontSize: 12 }}>(chainId 16661)</span>
+            <span style={{ color: COLORS.textDim, fontSize: 'var(--text-xs)' }}>(chainId 16661)</span>
           </label>
         </div>
-        <p style={{ margin: '12px 0 0', fontSize: 12, color: COLORS.textDim }}>
+        <p style={{ margin: 'var(--space-md) 0 0', fontSize: 'var(--text-xs)', color: COLORS.textDim }}>
           Saved to localStorage key <code style={{ color: COLORS.bronzeLight }}>axiom.chainId</code>. Takes effect on next page load.
         </p>
       </Card>

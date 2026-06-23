@@ -221,8 +221,8 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
     return (
       <main>
         <PageHeader title="Mint a New Agent" />
-        <Card style={{ textAlign: 'center', padding: 48 }}>
-          <p style={{ color: COLORS.textMuted, fontSize: 15, margin: 0, fontWeight: 300 }}>
+        <Card style={{ textAlign: 'center', padding: 'var(--space-3xl) var(--space-xl)' }}>
+          <p style={{ color: COLORS.textMuted, fontSize: 'var(--text-sm)', margin: 0, fontWeight: 'var(--fw-regular)', lineHeight: 'var(--lh-normal)' }}>
             Connect your wallet to mint an iNFT agent.
           </p>
         </Card>
@@ -231,11 +231,11 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
   }
 
   return (
-    <main style={{ maxWidth: 580 }}>
+    <main style={{ maxWidth: '36rem' }}>
       <PageHeader title="Mint a New Agent" subtitle="Upload an encrypted strategy and mint it as an ERC-7857 iNFT" />
 
       <Card>
-        <p style={{ color: COLORS.textMuted, fontSize: 13, lineHeight: 1.65, margin: '0 0 20px', fontWeight: 300 }}>
+        <p style={{ color: COLORS.textMuted, fontSize: 'var(--text-sm)', lineHeight: 'var(--lh-normal)', margin: '0 0 var(--space-xl)', fontWeight: 'var(--fw-regular)' }}>
           Upload your encrypted strategy bundle to the TEE oracle, then mint the
           iNFT. The backend relays the on-chain{' '}
           <code style={{ color: COLORS.bronzeLight }}>AxiomAgentNFT.mint()</code> call
@@ -322,8 +322,8 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
             style={{ ...inputStyle, background: COLORS.surface, color: COLORS.bronzeLight }}
           />
 
-          <div style={{ marginTop: 16, padding: '12px 16px', background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, fontSize: 13 }}>
-            <span style={{ fontWeight: 500, color: COLORS.textPrimary }}>Mint fee: </span>
+          <div style={{ marginTop: 'var(--space-lg)', padding: 'var(--space-md) var(--space-lg)', background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 'var(--radius-lg)', fontSize: 'var(--text-sm)' }}>
+            <span style={{ fontWeight: 'var(--fw-medium)', color: COLORS.textPrimary }}>Mint fee: </span>
             {feeError !== null ? (
               <span style={{ color: COLORS.danger }}>
                 unavailable ({feeError.message})
@@ -331,24 +331,24 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
             ) : mintFeeWei === undefined ? (
               <span style={{ color: COLORS.textMuted }}>loading…</span>
             ) : (
-              <span style={{ fontFamily: "'SF Mono', monospace", color: COLORS.bronzeLight, fontWeight: 600 }}>
+              <span style={{ fontFamily: "'SF Mono', monospace", color: COLORS.bronzeLight, fontWeight: 'var(--fw-semibold)' }}>
                 {formatEther(mintFeeWei)} OG
               </span>
             )}
             {provider !== undefined && (
-              <span style={{ color: COLORS.textDim, marginLeft: 12, fontSize: 12 }}>
+              <span style={{ color: COLORS.textDim, marginLeft: 'var(--space-md)', fontSize: 'var(--text-xs)' }}>
                 provider: {provider.slice(0, 10)}…
               </span>
             )}
           </div>
 
           {error !== null && (
-            <Alert variant="error" style={{ marginTop: 16 }}>
+            <Alert variant="error" style={{ marginTop: 'var(--space-lg)' }}>
               {error.message}
             </Alert>
           )}
           {submitError !== null && (
-            <Alert variant="error" style={{ marginTop: 12 }}>
+            <Alert variant="error" style={{ marginTop: 'var(--space-md)' }}>
               {submitError}
             </Alert>
           )}
@@ -357,30 +357,30 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
             <div
               role="status"
               style={{
-                marginTop: 16,
-                padding: '16px',
+                marginTop: 'var(--space-lg)',
+                padding: 'var(--space-lg)',
                 background: COLORS.successBg,
                 border: `1px solid ${COLORS.successBorder}`,
-                borderRadius: 8,
-                fontSize: 14,
+                borderRadius: 'var(--radius-lg)',
+                fontSize: 'var(--text-sm)',
                 color: COLORS.success,
               }}
             >
-              <strong style={{ fontSize: 15 }}>Minted agent #{result.tokenId}</strong>
+              <strong style={{ fontSize: 'var(--text-base)' }}>Minted agent #{result.tokenId}</strong>
               <br />
-              <span style={{ fontSize: 12 }}>tx: </span>
-              <code style={{ wordBreak: 'break-all', fontSize: 12, color: COLORS.bronzeLight }}>{result.txHash}</code>
+              <span style={{ fontSize: 'var(--text-xs)' }}>tx: </span>
+              <code style={{ wordBreak: 'break-all', fontSize: 'var(--text-xs)', color: COLORS.bronzeLight }}>{result.txHash}</code>
               <br />
               <Link
                 to={`/agents/${result.tokenId}`}
-                style={{ display: 'inline-block', marginTop: 10, color: COLORS.bronzeLight, fontSize: 14, fontWeight: 600 }}
+                style={{ display: 'inline-block', marginTop: 'var(--space-sm)', color: COLORS.bronzeLight, fontSize: 'var(--text-sm)', fontWeight: 'var(--fw-semibold)' }}
               >
                 View agent #{result.tokenId} →
               </Link>
             </div>
           )}
 
-          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
+          <div style={{ display: 'flex', gap: 'var(--space-sm)', justifyContent: 'flex-end', marginTop: 'var(--space-xl)' }}>
             <Button variant="primary" type="submit" disabled={!canSubmit}>
               {isLoading ? 'Minting…' : 'Mint agent'}
             </Button>

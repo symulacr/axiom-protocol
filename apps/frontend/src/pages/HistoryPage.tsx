@@ -262,17 +262,17 @@ export function HistoryPage(): ReactElement {
       />
 
       {error !== null && (
-        <Alert variant="error" style={{ marginBottom: 20 }}>
+        <Alert variant="error" style={{ marginBottom: 'var(--space-xl)' }}>
           Couldn't load events: {error.message}
         </Alert>
       )}
 
       {groupKeys.length === 0 ? (
-        <Card style={{ textAlign: 'center', padding: 40 }}>
-          <p style={{ color: COLORS.textMuted, fontSize: 14, margin: 0, fontWeight: 300 }}>
+        <Card style={{ textAlign: 'center', padding: 'var(--space-3xl) var(--space-xl)' }}>
+          <p style={{ color: COLORS.textMuted, fontSize: 'var(--text-sm)', margin: 0, fontWeight: 'var(--fw-regular)', lineHeight: 'var(--lh-normal)' }}>
             {isLoading
               ? 'Loading events…'
-              : 'No events recorded yet for this wallet.'}
+              : 'No events recorded yet for this wallet. Activity will appear here as agents are minted, transferred, and executed.'}
           </p>
         </Card>
       ) : (
@@ -283,20 +283,20 @@ export function HistoryPage(): ReactElement {
             <section
               key={name}
               aria-label={`${name} events`}
-              style={{ marginBottom: 28 }}
+              style={{ marginBottom: 'var(--space-2xl)' }}
             >
               <h2
                 style={{
-                  fontSize: 13,
-                  fontWeight: 600,
+                  fontSize: 'var(--text-xs)',
+                  fontWeight: 'var(--fw-semibold)',
                   color: COLORS.textDim,
                   textTransform: 'uppercase',
                   letterSpacing: '0.08em',
-                  marginBottom: 12,
+                  marginBottom: 'var(--space-md)',
                 }}
               >
                 {EVENT_LABELS[name] ?? name}
-                <span style={{ marginLeft: 8, color: COLORS.textDim, fontWeight: 400 }}>
+                <span style={{ marginLeft: 'var(--space-sm)', color: COLORS.textDim, fontWeight: 'var(--fw-regular)' }}>
                   ({group.length})
                 </span>
               </h2>
@@ -310,7 +310,7 @@ export function HistoryPage(): ReactElement {
         })
       )}
 
-      <footer style={{ marginTop: 32, color: COLORS.textDim, fontSize: 13 }}>
+      <footer style={{ marginTop: 'var(--space-2xl)', color: COLORS.textDim, fontSize: 'var(--text-sm)' }}>
         {events.length} event{events.length === 1 ? '' : 's'} total
         {' · '}auto-refresh every 15s
       </footer>
