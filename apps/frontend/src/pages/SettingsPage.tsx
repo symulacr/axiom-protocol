@@ -9,11 +9,11 @@ import { useState } from 'react';
 import { useLocalStorage } from '../hooks/useLocalStorage.js';
 import { COLORS, Card, Button, Input, SectionTitle, PageHeader, Alert } from '../components/ui.js';
 
+import { GALILEO_CHAIN_ID, ARISTOTLE_CHAIN_ID } from "@axiom/config/networks";
+
 const DEFAULT_RPC_URL = 'https://evmrpc-testnet.0g.ai';
 const DEFAULT_WC_PROJECT_ID = '';
-const DEFAULT_CHAIN_ID = 16602;
-const GALILEO_CHAIN_ID = 16602;
-const ARISTOTLE_CHAIN_ID = 16661;
+const DEFAULT_CHAIN_ID = GALILEO_CHAIN_ID;
 
 export function SettingsPage(): ReactElement {
   const [rpcUrl, setRpcUrl] = useLocalStorage<string>(

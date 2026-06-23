@@ -7,6 +7,8 @@ import { createServer, type Server as HttpServer } from "node:http";
 import { WebSocketServer, type WebSocket } from "ws";
 import { ethers, type Wallet } from "ethers";
 import { TypedContract } from "@axiom/config/types/contract";
+import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
+import { bigintReplacer, stringifyBigIntSafe, bigIntSafe } from "@axiom/config/types/bigint";
 import type { AgentNFTMethods, StrategyVaultMethods } from "./contract-types.js";
 import { ZeroGStorage, pickOGNetwork } from "./storage/0g.js";
 // Compute via 0G Router API (OpenAI-compatible) — see compute/router.ts
@@ -17,6 +19,7 @@ import { createOrchestratorHandle, getRunnerOrThrow, type OrchestratorHandle } f
 import { DefaultSignerOracleClient } from "./oracle/client.js";
 import { accessMessageHash, type AccessProofInput, type Eip712Domain, DEFAULT_EIP712_DOMAIN } from "@axiom/oracle/signer";
 import { loadEnv } from "./env.js";
+import { createApiKeyAuth } from "@axiom/config/middleware/auth";
 import { getEventStore } from "./events/store.js";
 import { PaymentProcessorClient } from "./payment/processor.js";
 import type { BackendEnv } from "./env-schema.js";
@@ -33,43 +36,11 @@ import {
   tickSchema,
 } from "./route-schemas.js";
 
-// ─── BigInt JSON helpers ──────────────────────────────────────
-// Per ECMA-262 §25.5.2, JSON.stringify throws on BigInt values.
-// These helpers provide safe serialization paths:
-//   - bigintReplacer: pass as JSON.stringify's second arg
-//   - stringifyBigIntSafe: convenience wrapper with the replacer
-//   - bigIntSafe: deeply converts all bigints to decimal strings
-//     for callers that want a plain object for res.json().
-// Source: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Errors/BigInt_not_serializable
-
-export function bigintReplacer(_key: string, value: unknown): unknown {
-  return typeof value === "bigint" ? value.toString() : value;
-}
-
-export function stringifyBigIntSafe(value: unknown): string {
-  return JSON.stringify(value, bigintReplacer);
-}
-
-/**
- * Recursively converts every `bigint` value in `value` to its decimal string
- * representation. Non-plain values (functions, symbols) are dropped.
- */
-export function bigIntSafe<T>(value: T): T {
-  if (value === null || value === undefined) return value;
-  if (typeof value === "bigint") return value.toString() as unknown as T;
-  if (Array.isArray(value)) return value.map((v) => bigIntSafe(v)) as unknown as T;
-  if (typeof value === "object") {
-    const out: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(value as Record<string, unknown>)) out[k] = bigIntSafe(v);
-    return out as unknown as T;
-  }
-  return value;
-}
-
 const AGENT_NFT_ABI: string[] = [
   "function mint((string dataDescription, bytes32 dataHash)[] iDatas, address to) payable returns (uint256 tokenId)",
   "function mintFee() view returns (uint256)",
   "function intelligentDatasOf(uint256 tokenId) view returns (tuple(string dataDescription, bytes32 dataHash)[])",
+  "function creatorOf(uint256 tokenId) view returns (address)",
   "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)",
 ];
 
@@ -79,13 +50,6 @@ const VAULT_ABI: string[] = [
   "function balanceOf(uint256) view returns (uint256)",
   "function strategyOf(uint256) view returns (bytes32,uint256,uint64)",
 ];
-
-// Minimal AgentNFT ABI — only what the payment routes need to resolve a token's
-// creator (the contract's onlyAgentCreator modifier and the earnings route both
-// key off IAxiomAgentNFT.creatorOf).
-const AGENT_NFT_CREATOR_ABI: readonly string[] = [
-  "function creatorOf(uint256 tokenId) view returns (address)",
-] as const;
 /**
  * HTTP + WebSocket server for the Axiom Protocol backend.
  *
@@ -158,19 +122,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
     methods: ["GET", "POST"],
   }));
   // Optional API key auth — skip if AXIOM_API_KEY is not set (local dev)
-  const API_KEY = process.env.AXIOM_API_KEY;
-  if (API_KEY) {
-    app.use((req, res, next) => {
-      // Skip health endpoint
-      if (req.path === '/health') return next();
-      const key = req.headers['x-api-key'];
-      if (key !== API_KEY) {
-        res.status(401).json({ error: 'unauthorized' });
-        return;
-      }
-      next();
-    });
-  }
+  app.use(createApiKeyAuth(process.env.AXIOM_API_KEY));
   app.use(rateLimit({
     windowMs: 60_000,
     max: 100,
@@ -183,7 +135,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
   // Source: https://expressjs.com/en/4x/api.html#app.set
   app.set("json replacer", bigintReplacer);
 
-  const ogChainId = config.env?.AXIOM_CHAIN_ID ?? 16602; // EIP-155 chain id; 16602 = Galileo testnet per https://docs.0g.ai/ai-context
+  const ogChainId = config.env?.AXIOM_CHAIN_ID ?? GALILEO_CHAIN_ID; // EIP-155 chain id; 16602 = Galileo testnet per https://docs.0g.ai/ai-context
   const _storage = new ZeroGStorage({
     indexerRpc: config.storageRpc ?? pickOGNetwork(ogChainId)?.storageRpc ?? "https://indexer-storage-testnet-turbo.0g.ai",
     evmRpc: config.evmRpc,
@@ -673,7 +625,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
         res.status(500).json({ error: "AgentNFT address not configured" });
         return;
       }
-      const nftTc = new TypedContract<AgentNFTMethods>(nftAddr, AGENT_NFT_CREATOR_ABI, provider);
+      const nftTc = new TypedContract<AgentNFTMethods>(nftAddr, AGENT_NFT_ABI, provider);
       const creator = await nftTc.contract.creatorOf(BigInt(id));
       if (!creator || creator === ethers.ZeroAddress) {
         res.status(404).json({ error: "Agent creator not registered for token" });

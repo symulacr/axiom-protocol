@@ -1,7 +1,7 @@
 // Package migrated from @0gfoundation/0g-ts-sdk to @0gfoundation/0g-storage-ts-sdk.
 // The old package name still resolves (back-compat re-export) but has been
 // fully replaced across all consumers.
-import { Indexer, MemData, MerkleTree, DEFAULT_CHUNK_SIZE } from "@0gfoundation/0g-storage-ts-sdk";
+import { Indexer, MemData } from "@0gfoundation/0g-storage-ts-sdk";
 import { ethers, type Signer } from "ethers";
 import type { Hex } from "viem";
 import { OG_NETWORKS, pickOGNetwork } from "@axiom/config/networks";
@@ -141,49 +141,3 @@ export class ZeroGStorage {
   }
 }
 
-/** Proof shape from SDK: lemma[0]=leaf, lemma[-1]=root. */
-export interface MerkleProof {
-  readonly lemma: readonly string[];
-  readonly path: readonly boolean[];
-}
-
-/** OZ-equivalent processProof — fold leaf to root via sibling hashes. */
-function processProof(leaf: string, lemma: readonly string[], path: readonly boolean[]): string {
-  let hash = leaf;
-  for (let i = 0; i < path.length; i++) {
-    const sibling = lemma[i + 1];
-    if (sibling === undefined) throw new Error(`proof truncated at index ${i}`);
-    hash = path[i] ? ethers.keccak256(ethers.concat([hash, sibling])) : ethers.keccak256(ethers.concat([sibling, hash]));
-  }
-  return hash;
-}
-
-/** Off-chain OZ MerkleProof.verify — true iff leaf + siblings re-derive root. */
-export function verifyProof(root: Hex, leaf: Hex, proof: MerkleProof): boolean {
-  if (proof.lemma.length < 1 || proof.lemma[0] !== leaf || proof.lemma[proof.lemma.length - 1] !== root) return false;
-  if (proof.path.length + 2 !== proof.lemma.length) return false;
-  try { return processProof(leaf, proof.lemma, proof.path) === root; } catch {
-    // Malformed proof — return false (callers handle verification failure)
-    return false;
-  }
-}
-
-/** Per-segment Merkle root for ≤1024 chunks of 256 bytes (mirrors SDK's AbstractFile.segmentRoot). */
-function computeSegmentRoot(segment: Uint8Array): string {
-  const tree = new MerkleTree();
-  for (let off = 0; off < segment.length; off += DEFAULT_CHUNK_SIZE) tree.addLeaf(segment.subarray(off, off + DEFAULT_CHUNK_SIZE));
-  tree.build();
-  return tree.rootHash() ?? "";
-}
-
-/** Re-derive file Merkle root from raw bytes (mirrors SDK's AbstractFile.merkleTree()). */
-export function rootFromBytes(bytes: Uint8Array): string {
-  if (bytes.length === 0) return "0x" + "00".repeat(32);
-  const SEGMENT_SIZE = 1024 * DEFAULT_CHUNK_SIZE; // 1024 chunks per segment (256 KiB)
-  const fileTree = new MerkleTree();
-  for (let off = 0; off < bytes.length; off += SEGMENT_SIZE) {
-    fileTree.addLeafByHash(computeSegmentRoot(bytes.subarray(off, Math.min(off + SEGMENT_SIZE, bytes.length))));
-  }
-  fileTree.build();
-  return fileTree.rootHash() ?? "";
-}

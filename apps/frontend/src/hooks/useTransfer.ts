@@ -12,8 +12,7 @@ import { AXIOM_AGENT_NFT_ADDRESS, AXIOM_TEE_VERIFIER_ADDRESS } from '../abi/addr
 import { iTransferFromAbi } from '../abi/iTransferFrom.js';
 import { BACKEND_URL } from '../config/env.js';
 
-/** 0G Galileo testnet chain id — the chain the verifier is deployed on. */
-const GALILEO_CHAIN_ID = 16602;
+import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
 
 /**
  * EIP-712 domain for `AxiomTeeVerifier`. Binds signatures to the Galileo

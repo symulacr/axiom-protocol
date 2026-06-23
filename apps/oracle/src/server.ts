@@ -8,6 +8,7 @@ import { hexToBytes } from "ethereum-cryptography/utils";
 import { hexlify, isAddress } from "ethers";
 import { randomBytes } from "node:crypto";
 import { ZodError } from "zod";
+import { createApiKeyAuth } from "@axiom/config/middleware/auth";
 
 import { aesGcmDecrypt, aesGcmEncrypt, concatEncrypted, parseEncrypted } from "./crypto/aes-gcm.js";
 import { sealKeyForReceiver } from "./crypto/ecies.js";
@@ -41,18 +42,7 @@ export function startServer(config: ServerConfig): Express {
   }));
   app.use(cors({ origin: process.env.AXIOM_FRONTEND_URL ?? 'http://localhost:5173' }));
   // Optional API key auth — skip if AXIOM_API_KEY is not set (local dev)
-  const API_KEY = process.env.AXIOM_API_KEY;
-  if (API_KEY) {
-    app.use((req, res, next) => {
-      if (req.path === '/health') return next();
-      const key = req.headers['x-api-key'];
-      if (key !== API_KEY) {
-        res.status(401).json({ error: 'unauthorized' });
-        return;
-      }
-      next();
-    });
-  }
+  app.use(createApiKeyAuth(process.env.AXIOM_API_KEY));
   app.use(rateLimit({ windowMs: 60_000, max: 100 }));
   app.use(express.json({ limit: "1mb" }));
   const { signer, storage } = config;

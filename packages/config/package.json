@@ -15,7 +15,8 @@
     "./types/ethers": "./dist/types/ethers.js",
     "./types/collections": "./dist/types/collections.js",
     "./types/schemas": "./dist/types/schemas.js",
-    "./types/contract": "./dist/types/contract.js"
+    "./types/contract": "./dist/types/contract.js",
+    "./middleware/auth": "./dist/middleware/auth.js"
   },
   "scripts": {
     "build": "tsc --project tsconfig.json",
@@ -23,9 +24,11 @@
   },
   "dependencies": {
     "ethers": "^6.16.0",
+    "express": "^4.21.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@types/express": "^4.17.21",
     "@types/node": "^22.7.0",
     "typescript": "^5.5.4"
   },

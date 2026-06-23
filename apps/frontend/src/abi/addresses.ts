@@ -38,8 +38,10 @@ const ADDRESSES: Record<number, AddressMap> = {
   },
 };
 
+import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
+
 /** Default chain identifier — Galileo testnet. */
-const DEFAULT_CHAIN = 16602;
+const DEFAULT_CHAIN = GALILEO_CHAIN_ID;
 
 /**
  * Return the address map for the given chain, falling back to Galileo when
