@@ -1,41 +1,8 @@
 // apps/indexer/src/da.test.ts
 //
-// In-process tests for the DA submitter and the canonical JSON
-// serializer.
-//
-// What we cover here
-// ------------------
-//   1. `submitEvent` returns a `{ txHash, seq }` from the injected
-//      `submitFn` (the production network path is gated by a SKIP
-//      because it requires `DEPLOYER_PK` + a funded Galileo testnet
-//      account).
-//   2. The bytes we hand to the `submitFn` are RFC 8785-canonical:
-//      object keys are sorted lexicographically, bigints are encoded
-//      as decimal strings, and the byte string is stable across two
-//      independent `canonicalizeEvent` invocations of the same event.
-//   3. When the injected `submitFn` throws, `submitEvent` does NOT
-//      propagate the error — it logs the failure and returns the
-//      sentinel `{ txHash: "", seq: 0n }`. The watcher depends on
-//      this guarantee to keep the polling loop alive during DA
-//      outages.
-//   4. Without a `submitFn` and without a `signer`, `submitEvent`
-//      returns the sentinel without throwing (no live network
-//      attempted).
-//
-// We use Node 22's built-in `node:test` runner and `assert/strict`.
-// The brief's test script is
-//   `node --import tsx --test src/**/*.test.ts`
-// so no extra test deps are needed (no Jest, no Vitest).
-//
-// Canonical sources cited in this file:
-//   - Node `node:test` runner:
-//     https://nodejs.org/api/test.html
-//   - RFC 8785 — JSON Canonicalization Scheme:
-//     https://datatracker.ietf.org/doc/html/rfc8785
-//   - 0G Storage SDK reference:
-//     https://docs.0g.ai/developer-hub/building-on-0g/storage/sdk
-//   - 0G DA concept (50 Gbps, VRF, erasure coding):
-//     https://docs.0g.ai/concepts/da
+// Tests for the DA submitter and the canonical JSON serializer.
+// Covers submitEvent with mock submitFn, RFC 8785 canonicalization,
+// error swallowing, and sentinel return on missing config.
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";

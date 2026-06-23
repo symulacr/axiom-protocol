@@ -1,8 +1,4 @@
 // Axiom Protocol — `<EventTimeline />` reusable component.
-//
-// Renders a vertical timeline of `AxiomEvent[]` using a CSS Grid layout
-// with a left rail (timestamp + eventName) and a render-prop for body content.
-// Event-shape-agnostic — callers control the body via `renderEvent`.
 
 import type { ReactElement, ReactNode } from 'react';
 import type { AxiomEvent } from '../hooks/useEventHistory.js';
@@ -38,8 +34,7 @@ export interface EventTimelineProps {
 }
 
 /** Cache formatters per-locale/timezone so a list of N events does
- *  not construct N DateTimeFormat instances. Source: MDN
- *  https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/DateTimeFormat */
+ *  not construct N DateTimeFormat instances. */
 const formatterCache = new Map<string, Intl.DateTimeFormat>();
 
 function getFormatter(locale: string, timeZone: string | undefined): Intl.DateTimeFormat {
@@ -118,8 +113,7 @@ const emptyStateStyle: React.CSSProperties = {
 };
 
 /**
- * Render a list of events as a vertical timeline. See file header
- * for the layout rationale and the canonical sources.
+ * Render a list of events as a vertical timeline.
  */
 export function EventTimeline({
   events,
@@ -190,10 +184,7 @@ function EventRow({ event, timestamp, renderEvent }: EventRowProps): ReactElemen
   );
 }
 
-/** Build a stable React key for an event. The (blockNumber, logIndex)
- *  pair uniquely identifies a log inside a chain; falling back to
- *  `receivedAt` for the (theoretical) case where a backend
- *  replays events without re-issuing coordinates. */
+/** Build a stable React key from (blockNumber, logIndex, txHash). */
 function eventKey(event: AxiomEvent, idx: number): string {
   return `${event.blockNumber}-${event.logIndex}-${event.txHash.slice(0, 10)}-${idx}`;
 }

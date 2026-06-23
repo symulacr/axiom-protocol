@@ -4,19 +4,12 @@ import type { Hex } from "viem";
 /**
  * EIP-712 typed-data digest helpers for AxiomTeeVerifier.
  *
- * The on-chain verifier (apps/contracts/src/verifiers/AxiomTeeVerifier.sol)
- * switched from raw `keccak256(abi.encode(...))` to EIP-712 typed-data
- * digests in Wave 3-B. Every off-chain signer (TEE oracle, backend, receiver
- * wallet) MUST compute the identical digest or the on-chain `ECDSA.recover`
- * rejects the proof and every transfer reverts.
+ * The on-chain verifier switched from raw `keccak256(abi.encode(...))` to
+ * EIP-712 typed-data digests. Off-chain signers MUST compute the identical
+ * digest or `ECDSA.recover` rejects the proof.
  *
- * Final digest (EIP-712, https://eips.ethereum.org/EIPS/eip-712):
- *   keccak256("\x19\x01" || domainSeparator || structHash)
- *
- * Per EIP-712 §Definition of hashStruct, `bytes` fields are pre-hashed to
- * `bytes32` via `keccak256`. Both this TypeScript module and the Solidity
- * verifier pre-hash `sealedKey` / `targetPubkey` before passing them to
- * `abi.encode`, ensuring identical struct hashes.
+ * Per EIP-712, `bytes` fields are pre-hashed to `bytes32` via `keccak256`
+ * to ensure identical struct hashes between TS and Solidity.
  */
 
 const EIP712_DOMAIN_TYPEHASH = keccak256(

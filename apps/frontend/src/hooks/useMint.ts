@@ -1,17 +1,8 @@
 // Axiom Protocol — `useMint` hook.
-//
-// POSTs to `POST /v1/agents/mint`. The backend wallet signs the on-chain
-// `mint()` call. Uses native fetch with AbortController for cancelation,
-// mirroring the discipline in `useOrchestratorTick` and `useTransfer`.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BACKEND_URL } from '../config/env.js';
 
-/**
- * Input to `useMint().mint(...)`. The caller supplies the encrypted
- * strategy pointer + sealed key (produced off-chain by the TEE oracle's
- * upload step) and the owner address (usually the connected wallet).
- */
 export type MintInput = {
   /** AxiomAgentNFT proxy address. Defaults to the deployed Galileo proxy. */
   agentNft?: `0x${string}`;
@@ -23,10 +14,6 @@ export type MintInput = {
   owner: `0x${string}`;
 };
 
-/**
- * The backend's response to `POST /v1/agents/mint`. `tokenId` is a decimal
- * string (ERC-721 tokenIds are uint256; JSON has no bigint natively).
- */
 export type MintResult = {
   ok: boolean;
   agentNft: `0x${string}`;
@@ -36,11 +23,7 @@ export type MintResult = {
   txHash: `0x${string}`;
 };
 
-/**
- * Hook surface. `mint` kicks off the backend mint round-trip; `result`
- * holds the last successful response so the UI can render the success
- * state (tokenId + tx hash + link to `/agents/:tokenId`).
- */
+/** Hook surface for the backend mint round-trip. */
 export type UseMintResult = {
   mint: (input: MintInput) => Promise<MintResult>;
   isLoading: boolean;
@@ -51,11 +34,8 @@ export type UseMintResult = {
 };
 
 /**
- * Drive the backend mint round-trip. The hook owns a single in-flight
- * `AbortController`: each new `mint()` call aborts the previous one, and
- * unmounting the calling component aborts whatever is in flight (via the
- * cleanup effect). This keeps stale responses from overwriting fresh UI
- * state when the user double-submits or navigates away mid-request.
+ * Drive the backend mint round-trip.
+ * Each call aborts the previous in-flight request via AbortController.
  */
 export function useMint(): UseMintResult {
   const [isLoading, setIsLoading] = useState(false);

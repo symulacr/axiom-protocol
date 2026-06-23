@@ -1,7 +1,4 @@
 // Axiom Protocol — vault dashboard (`/vaults/:vaultId` route).
-//
-// Renders AxiomStrategyVault contract state by multicalling three read
-// getters per vault address in a single `useReadContracts` request.
 
 import type { ReactElement } from 'react';
 import { useParams } from 'react-router-dom';
@@ -21,7 +18,7 @@ export function VaultDashboard(): ReactElement {
   // Single multicall covering all vaults × 3 getters. Hooks-safe: one
   // unconditional useReadContracts call whose contracts array length is
   // fixed at module load (AXIOM_VAULT_ADDRESSES is a const tuple).
-  // Ref: https://wagmi.sh/react/hooks/useReadContracts
+
   const vaultContracts = AXIOM_VAULT_ADDRESSES.flatMap((vaultAddress) => [
     {
       address: vaultAddress,

@@ -1,18 +1,11 @@
 // Axiom Protocol — execute-strategy page (`/agents/:tokenId/execute` route).
-//
-// Thin wrapper around `<ExecutePanel />` that parses `:tokenId` into a
-// `bigint` and passes it as the locked `tokenId` prop.
 
 import type { ReactElement } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { COLORS, PageHeader, Alert } from '../components/ui.js';
 import { ExecutePanel } from '../components/ExecutePanel.js';
 
-/**
- * Parse a route param string into a bigint tokenId. Returns null when
- * the segment is missing or not a valid integer (EIP-721 tokenIds are
- * uint256, which fits in bigint; we accept decimal form only).
- */
+/** Parse a route param string into a bigint tokenId; null when invalid. */
 function parseTokenId(raw: string | undefined): bigint | null {
   if (raw === undefined || raw === '') return null;
   try {

@@ -1,7 +1,4 @@
 // Axiom Protocol — mint page (`/agents/new` route).
-//
-// Thin wrapper around `MintForm`. Reads an optional `?provider=0x…` query
-// param from `ProviderCard`'s "Use this provider" button.
 
 import type { ReactElement } from 'react';
 import { useSearchParams } from 'react-router-dom';

@@ -2,10 +2,7 @@
 export const PLACEHOLDER = '\u2014';
 const ELLIPSIS = '\u2026';
 
-/**
- * Truncate a `0x…` hex string to `head + … + tail`.
- * Returns the original string if it's shorter than head + tail + 2.
- */
+/** Truncate a `0x…` hex string to `head + … + tail`. */
 export function truncateHex(value: string, head = 10, tail = 6): string {
   if (value.length <= head + tail + 2) {
     return value;

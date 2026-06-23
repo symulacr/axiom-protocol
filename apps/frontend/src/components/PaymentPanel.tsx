@@ -1,8 +1,4 @@
 // Axiom Protocol — `<PaymentPanel />`.
-//
-// Presentational panel for the five backend payment routes plus the
-// on-chain `withdrawAgentEarnings()` call. HTTP I/O flows through
-// `usePayment`; the on-chain withdraw uses wagmi `useWriteContract`.
 
 import { useCallback, useRef, useState, type ReactElement } from 'react';
 import { useAccount, useSendTransaction, useWriteContract } from 'wagmi';
@@ -64,12 +60,7 @@ export type PaymentPanelProps = {
   tokenId: bigint;
 };
 
-/**
- * Panel that wires the five backend payment routes + on-chain
- * `withdrawAgentEarnings` to a UI for one agent. Mounts inside
- * `AgentDetail` (a future wave will wire it; this file only
- * exports it).
- */
+/** Payment UI for one agent. */
 export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
   const { isConnected } = useAccount();
   const {
@@ -320,7 +311,6 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
   );
 }
 
-/** Sentinel for the zero address so we can render the placeholder. */
 const ethersZero: Address = '0x0000000000000000000000000000000000000000';
 
 export default PaymentPanel;

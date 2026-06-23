@@ -1,26 +1,7 @@
 // apps/indexer/src/watcher.ts
 //
-// Long-running polling loop that fetches event logs from 0G Galileo testnet
-// in fixed-size block windows, decodes them, and forwards them to a sink.
-//
-// Design notes:
-//   - We use ethers v6's `JsonRpcProvider.getLogs(filter)` rather than a
-//     WebSocket subscription. On 0G testnet, websocket providers are not
-//     always available; the documented public RPC is HTTP only. Polling is
-//     reliable and easy to reason about for the indexer MVP.
-//     Ref: https://docs.ethers.org/v6/api/providers/#Provider-getLogs
-//   - Window size: 50 blocks. Small enough to stay under `eth_getLogs`
-//     result-size limits (most public RPCs cap at 10_000 logs / call but
-//     a few KB of JSON), large enough to amortise round-trips.
-//   - Topic-0 (`keccak256(eventSignature)`) is the canonical event
-//     identifier; we precompute the topic for every event we care about
-//     so the `topics: [topic0]` filter is exact. No false positives.
-//     Ref: https://docs.soliditylang.org/en/latest/abi-spec.html#events
-//   - We track `nextBlock` between ticks. On restart, we resume from
-//     the last persisted checkpoint in `apps/indexer/data/checkpoint.json`.
-//   - The sink is an injected `(event: AxiomEvent) => void | Promise<void>`.
-//     Default sink is in `index.ts` (prints JSON to stdout). Future DA
-//     submission wiring is a separate concern.
+// Long-running polling loop for event logs from 0G Galileo testnet.
+// Fetches via ethers v6 `getLogs`, decodes events, and forwards to a sink.
 
 import { ethers } from "ethers";
 import type { JsonRpcProvider, Log } from "ethers";
@@ -43,11 +24,8 @@ const EIP_721 = "https://eips.ethereum.org/EIPS/eip-721";
 const OG_AI_CONTEXT = "https://docs.0g.ai/ai-context";
 const VIEM_PARSE_ABI_ITEM = "https://viem.sh/docs/abi/parseAbiItem.html";
 /**
- * 0G's `eth_getLogs` rejects ranges that overshoot the chain head with the
- * generic JSON-RPC error code -32000 and message "invalid block range
- * params" — same shape as many EVM providers. We bound the window to the
- * live head on every tick (see `Watcher.tick`) to avoid hitting it.
- * Ref: https://www.quicknode.com/docs/0g/error-references
+ * 0G's `eth_getLogs` rejects ranges that overshoot the chain head with
+ * error code -32000. We bound the window to the live head on every tick.
  */
 const QUICKNODE_OG_ERRORS = "https://www.quicknode.com/docs/0g/error-references";
 
@@ -61,7 +39,6 @@ const TOPIC_TABLE: EventTopicTable = {
   // form is `Name(type1,type2,...)` — no `event` prefix, no `indexed`
   // keyword, no parameter names. The `indexed`/name fields affect ONLY
   // which topics 1..n are populated, not the topic-0 hash.
-  // Ref: https://docs.soliditylang.org/en/latest/abi-spec.html#events
   Transfer: validateHex(ethers.id("Transfer(address,address,uint256)")),
   Updated: validateHex(ethers.id("Updated(uint256,(string,bytes32)[],(string,bytes32)[])")),
   Authorization: validateHex(ethers.id("Authorization(uint256,address,address)")),
