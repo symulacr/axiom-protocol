@@ -10,9 +10,7 @@ import { type Address, type Hex } from 'viem';
 
 import { AXIOM_AGENT_NFT_ADDRESS, AXIOM_TEE_VERIFIER_ADDRESS } from '../abi/addresses.js';
 import { iTransferFromAbi } from '../abi/iTransferFrom.js';
-
-const BACKEND_URL =
-  import.meta.env.VITE_BACKEND_URL ?? 'http://127.0.0.1:3000';
+import { BACKEND_URL } from '../config/env.js';
 
 /** 0G Galileo testnet chain id — the chain the verifier is deployed on. */
 const GALILEO_CHAIN_ID = 16602;

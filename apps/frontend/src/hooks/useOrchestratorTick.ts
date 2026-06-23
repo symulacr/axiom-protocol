@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { BACKEND_URL } from '../config/env.js';
 
 /**
  * Request body posted to the Axiom backend orchestrator tick endpoint.
@@ -63,9 +64,6 @@ export type TickResult = {
  *  - Vite environment variables (VITE_ prefix):
  *    https://vitejs.dev/guide/env-and-mode
  */
-const BACKEND_URL =
-  import.meta.env.VITE_BACKEND_URL ?? 'http://127.0.0.1:3000';
-
 export function useOrchestratorTick(): {
   tick: (req: TickRequest) => Promise<TickResult>;
   isLoading: boolean;

@@ -6,9 +6,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Address } from 'viem';
-
-const BACKEND_URL =
-  import.meta.env.VITE_BACKEND_URL ?? 'http://127.0.0.1:3000';
+import { BACKEND_URL } from '../config/env.js';
 
 /** Response body of `GET /v1/payment/config`. */
 export type PaymentConfig = {
@@ -52,7 +50,9 @@ export type RoyaltyResult = {
   ok: true;
   tokenId: string;
   bps: number;
-  txHash: `0x${string}`;
+  to: `0x${string}`;
+  data: `0x${string}`;
+  value: string;
 };
 
 /**

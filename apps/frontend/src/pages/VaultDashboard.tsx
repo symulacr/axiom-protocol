@@ -10,9 +10,7 @@ import { formatEther } from 'viem';
 import { AXIOM_VAULT_ADDRESSES } from '../abi/addresses.js';
 import { axiomStrategyVaultAbi } from '../abi/axiomStrategyVault.js';
 import { COLORS, Card, SectionTitle, MonoLabel, Alert, PageHeader, Skeleton } from '../components/ui.js';
-
-/** Display the em-dash for an absent value. */
-const PLACEHOLDER = '\u2014';
+import { PLACEHOLDER } from '../utils/format.js';
 
 export function VaultDashboard(): ReactElement {
   const { vaultId } = useParams<{ vaultId: string }>();

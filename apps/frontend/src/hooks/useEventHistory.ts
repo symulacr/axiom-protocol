@@ -5,6 +5,7 @@
 // Uses native fetch + AbortController; no wagmi dependency.
 
 import { useEffect, useMemo, useState } from 'react';
+import { BACKEND_URL } from '../config/env.js';
 
 /**
  * Wire-format event returned by GET /v1/events. Mirrors the
@@ -60,11 +61,6 @@ export interface UseEventHistoryOptions {
 }
 
 const DEFAULT_POLL_INTERVAL_MS = 15_000;
-
-/** Backend base URL. Matches the convention in `useOrchestratorTick`
- *  and `useTransfer` (VITE_ prefix → browser-visible). */
-const BACKEND_URL =
-  import.meta.env.VITE_BACKEND_URL ?? 'http://127.0.0.1:3000';
 
 /**
  * Group an event list by its `eventName` field. Insertion order

@@ -107,7 +107,7 @@ export function App(): ReactElement {
           <ConnectButton />
         </div>
       </header>
-      <main style={{ padding: 'var(--space-2xl) var(--space-xl)', maxWidth: '68rem', margin: '0 auto' }}>
+      <div style={{ padding: 'var(--space-2xl) var(--space-xl)', maxWidth: '68rem', margin: '0 auto' }}>
         <ErrorBoundary>
           <Routes>
             <Route path="/" element={<HomePage />} />
@@ -122,7 +122,7 @@ export function App(): ReactElement {
             <Route path="*" element={<NotFound />} />
           </Routes>
         </ErrorBoundary>
-      </main>
+      </div>
     </>
   );
 }

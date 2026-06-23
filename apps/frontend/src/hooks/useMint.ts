@@ -5,9 +5,7 @@
 // mirroring the discipline in `useOrchestratorTick` and `useTransfer`.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-
-const BACKEND_URL =
-  import.meta.env.VITE_BACKEND_URL ?? 'http://127.0.0.1:3000';
+import { BACKEND_URL } from '../config/env.js';
 
 /**
  * Input to `useMint().mint(...)`. The caller supplies the encrypted
