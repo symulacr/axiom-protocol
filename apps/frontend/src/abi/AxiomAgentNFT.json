@@ -46,17 +46,19 @@
     },
     {
       "type": "function",
-      "name": "getDataHash",
+      "name": "intelligentDatasOf",
       "stateMutability": "view",
       "inputs": [{ "name": "tokenId", "type": "uint256" }],
-      "outputs": [{ "name": "dataHash", "type": "bytes32" }]
-    },
-    {
-      "type": "function",
-      "name": "getSealedKey",
-      "stateMutability": "view",
-      "inputs": [{ "name": "tokenId", "type": "uint256" }],
-      "outputs": [{ "name": "sealedKey", "type": "bytes32" }]
+      "outputs": [
+        {
+          "name": "datas",
+          "type": "tuple[]",
+          "components": [
+            { "name": "dataDescription", "type": "string" },
+            { "name": "dataHash", "type": "bytes32" }
+          ]
+        }
+      ]
     }
   ]
 }

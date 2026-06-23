@@ -171,11 +171,9 @@ export function AgentDetail(): ReactElement {
                 {truncateHex(data.dataHash)}
               </code>
             </dd>
-            <dt>Sealed Key</dt>
+            <dt>Data Description</dt>
             <dd>
-              <code title={data.sealedKey}>
-                {truncateHex(data.sealedKey)}
-              </code>
+              {data.dataDescription === '' ? PLACEHOLDER : data.dataDescription}
             </dd>
             <dt>tokenURI</dt>
             <dd>
