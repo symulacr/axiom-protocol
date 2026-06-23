@@ -90,10 +90,11 @@ import {
 } from 'react';
 import { isAddress } from 'viem';
 import { useAccount } from 'wagmi';
-
 import { useTransfer, type TransferInput } from '../hooks/useTransfer.js';
+import { COLORS, Button, Alert, MonoLabel } from './ui.js';
 
-const RECEIVER_PUBKEY_HEX_LENGTH = 130; // '0x' + 64 raw bytes (128 hex chars)
+const RECEIVER_PUBKEY_HEX_LENGTH = 130;
+
 
 /**
  * Generate a fresh 32-byte random hex string suitable for the EIP-7857
@@ -379,42 +380,40 @@ export function TransferModal({
   return (
     <>
       {triggerLabel !== undefined && triggerLabel !== '' && (
-        <button type="button" onClick={openModal} disabled={!isConnected}>
+        <Button variant="primary" onClick={openModal} disabled={!isConnected}>
           {triggerLabel}
-        </button>
+        </Button>
       )}
 
       <dialog
         ref={dialogRef}
         aria-labelledby={`${formId}-title`}
         style={{
-          padding: 24,
-          border: '1px solid #e5e7eb',
-          borderRadius: 8,
-          maxWidth: 480,
+          padding: 28,
+          border: `1px solid ${COLORS.borderStrong}`,
+          borderRadius: 12,
+          maxWidth: 500,
           width: '90vw',
-          background: '#fff',
+          background: COLORS.surface,
+          color: COLORS.text,
+          boxShadow: '0 24px 80px rgba(0,0,0,0.5)',
         }}
       >
         {phase === 'form' ? (
           <form onSubmit={onSubmit}>
-            <h2 id={`${formId}-title`} style={{ marginTop: 0 }}>
+            <h2 id={`${formId}-title`} style={{ marginTop: 0, fontSize: 22, fontWeight: 700, color: COLORS.text, letterSpacing: '-0.02em' }}>
               Transfer iNFT #{tokenId.toString()}
             </h2>
 
-            <p style={{ color: '#6b7280', fontSize: 13 }}>
-              The receiver signs an EIP-712 AccessProof, the TEE oracle
-              signs the OwnershipProof, and the on-chain verifier
-              recovers both signatures. You will confirm the on-chain
-              <code> iTransferFrom </code>
-              in the next step after reviewing the proofs.
+            <p style={{ color: COLORS.textMuted, fontSize: 13, lineHeight: 1.6, fontWeight: 300, marginBottom: 20 }}>
+              The receiver signs an EIP-712 AccessProof and the TEE oracle signs
+              the OwnershipProof. You'll confirm the on-chain
+              <code style={{ color: COLORS.bronzeLight }}> iTransferFrom </code>
+              transaction in the next step.
             </p>
 
-            <label
-              htmlFor={`${formId}-to`}
-              style={{ display: 'block', marginTop: 12, fontWeight: 500 }}
-            >
-              Receiver address (0x…)
+            <label htmlFor={`${formId}-to`} style={{ display: 'block', marginTop: 16, fontWeight: 500, fontSize: 13, color: COLORS.textPrimary }}>
+              Receiver address
             </label>
             <input
               id={`${formId}-to`}
@@ -427,28 +426,27 @@ export function TransferModal({
               spellCheck={false}
               style={{
                 width: '100%',
-                padding: 8,
-                marginTop: 4,
-                fontFamily: 'monospace',
-                border: '1px solid #d1d5db',
-                borderRadius: 4,
+                padding: '10px 14px',
+                marginTop: 6,
+                fontFamily: "'SF Mono', monospace",
+                fontSize: 13,
+                border: `1px solid ${COLORS.borderStrong}`,
+                borderRadius: 6,
+                background: COLORS.bg,
+                color: COLORS.text,
+                boxSizing: 'border-box',
+                outline: 'none',
               }}
               required
             />
             {addressError !== null && (
-              <p
-                role="alert"
-                style={{ color: '#b91c1c', fontSize: 12, margin: '4px 0 0' }}
-              >
+              <p role="alert" style={{ color: COLORS.danger, fontSize: 12, margin: '4px 0 0' }}>
                 {addressError}
               </p>
             )}
 
-            <label
-              htmlFor={`${formId}-pubkey`}
-              style={{ display: 'block', marginTop: 12, fontWeight: 500 }}
-            >
-              Receiver pubkey (64 raw bytes, hex, no 0x04 prefix)
+            <label htmlFor={`${formId}-pubkey`} style={{ display: 'block', marginTop: 16, fontWeight: 500, fontSize: 13, color: COLORS.textPrimary }}>
+              Receiver pubkey (64 raw bytes, no 0x04 prefix)
             </label>
             <textarea
               id={`${formId}-pubkey`}
@@ -460,28 +458,27 @@ export function TransferModal({
               placeholder="0x…  (128 hex chars)"
               style={{
                 width: '100%',
-                padding: 8,
-                marginTop: 4,
-                fontFamily: 'monospace',
-                border: '1px solid #d1d5db',
-                borderRadius: 4,
+                padding: '10px 14px',
+                marginTop: 6,
+                fontFamily: "'SF Mono', monospace",
+                fontSize: 13,
+                border: `1px solid ${COLORS.borderStrong}`,
+                borderRadius: 6,
+                background: COLORS.bg,
+                color: COLORS.text,
+                boxSizing: 'border-box',
                 resize: 'vertical',
+                outline: 'none',
               }}
               required
             />
             {pubKeyError !== null && (
-              <p
-                role="alert"
-                style={{ color: '#b91c1c', fontSize: 12, margin: '4px 0 0' }}
-              >
+              <p role="alert" style={{ color: COLORS.danger, fontSize: 12, margin: '4px 0 0' }}>
                 {pubKeyError}
               </p>
             )}
 
-            <label
-              htmlFor={`${formId}-nonce`}
-              style={{ display: 'block', marginTop: 12, fontWeight: 500 }}
-            >
+            <label htmlFor={`${formId}-nonce`} style={{ display: 'block', marginTop: 16, fontWeight: 500, fontSize: 13, color: COLORS.textPrimary }}>
               Access proof nonce
             </label>
             <input
@@ -492,39 +489,31 @@ export function TransferModal({
               readOnly
               style={{
                 width: '100%',
-                padding: 8,
-                marginTop: 4,
-                fontFamily: 'monospace',
-                border: '1px solid #d1d5db',
-                borderRadius: 4,
-                background: '#f3f4f6',
+                padding: '10px 14px',
+                marginTop: 6,
+                fontFamily: "'SF Mono', monospace",
+                fontSize: 13,
+                border: `1px solid ${COLORS.borderStrong}`,
+                borderRadius: 6,
+                background: COLORS.bg,
+                color: COLORS.bronzeLight,
+                boxSizing: 'border-box',
+                outline: 'none',
               }}
             />
-            <p style={{ color: '#6b7280', fontSize: 11, margin: '2px 0 0' }}>
-              32 random bytes, generated locally for this transfer.
-              Re-opening the modal mints a fresh nonce.
+            <p style={{ color: COLORS.textDim, fontSize: 11, margin: '4px 0 0', fontWeight: 300 }}>
+              32 random bytes generated locally. A new nonce is minted each time the modal opens.
             </p>
 
-            <details style={{ marginTop: 12 }}>
-              <summary
-                style={{
-                  cursor: 'pointer',
-                  fontSize: 13,
-                  fontWeight: 500,
-                  color: '#374151',
-                }}
-              >
+            <details style={{ marginTop: 16 }}>
+              <summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 500, color: COLORS.textMuted }}>
                 Re-encrypt for receiver (optional re-key)
               </summary>
-              <p style={{ color: '#6b7280', fontSize: 11, margin: '4px 0' }}>
-                Supply the current AES data key + 0G Storage URI to trigger
-                a full re-key: the oracle re-encrypts the agent data for the
-                receiver and seals a fresh key. Leave blank for sign-only.
+              <p style={{ color: COLORS.textDim, fontSize: 11, margin: '8px 0', fontWeight: 300 }}>
+                Supply the current AES data key and 0G Storage URI to trigger a full
+                re-key. The oracle re-encrypts and seals a fresh key. Leave blank for sign-only.
               </p>
-              <label
-                htmlFor={`${formId}-oldkey`}
-                style={{ display: 'block', marginTop: 8, fontWeight: 500, fontSize: 13 }}
-              >
+              <label htmlFor={`${formId}-oldkey`} style={{ display: 'block', marginTop: 8, fontWeight: 500, fontSize: 13, color: COLORS.textPrimary }}>
                 Old data encryption key (base64)
               </label>
               <input
@@ -538,17 +527,19 @@ export function TransferModal({
                 spellCheck={false}
                 style={{
                   width: '100%',
-                  padding: 8,
-                  marginTop: 4,
-                  fontFamily: 'monospace',
-                  border: '1px solid #d1d5db',
-                  borderRadius: 4,
+                  padding: '10px 14px',
+                  marginTop: 6,
+                  fontFamily: "'SF Mono', monospace",
+                  fontSize: 13,
+                  border: `1px solid ${COLORS.borderStrong}`,
+                  borderRadius: 6,
+                  background: COLORS.bg,
+                  color: COLORS.text,
+                  boxSizing: 'border-box',
+                  outline: 'none',
                 }}
               />
-              <label
-                htmlFor={`${formId}-olduri`}
-                style={{ display: 'block', marginTop: 8, fontWeight: 500, fontSize: 13 }}
-              >
+              <label htmlFor={`${formId}-olduri`} style={{ display: 'block', marginTop: 8, fontWeight: 500, fontSize: 13, color: COLORS.textPrimary }}>
                 Old data URI (0x…)
               </label>
               <input
@@ -562,73 +553,43 @@ export function TransferModal({
                 spellCheck={false}
                 style={{
                   width: '100%',
-                  padding: 8,
-                  marginTop: 4,
-                  fontFamily: 'monospace',
-                  border: '1px solid #d1d5db',
-                  borderRadius: 4,
+                  padding: '10px 14px',
+                  marginTop: 6,
+                  fontFamily: "'SF Mono', monospace",
+                  fontSize: 13,
+                  border: `1px solid ${COLORS.borderStrong}`,
+                  borderRadius: 6,
+                  background: COLORS.bg,
+                  color: COLORS.text,
+                  boxSizing: 'border-box',
+                  outline: 'none',
                 }}
               />
               {rekeyError !== null && (
-                <p
-                  role="alert"
-                  style={{ color: '#b91c1c', fontSize: 12, margin: '4px 0 0' }}
-                >
+                <p role="alert" style={{ color: COLORS.danger, fontSize: 12, margin: '4px 0 0' }}>
                   {rekeyError}
                 </p>
               )}
             </details>
 
             {error !== null && (
-              <p
-                role="alert"
-                style={{
-                  marginTop: 12,
-                  padding: 8,
-                  background: '#fef2f2',
-                  border: '1px solid #ef4444',
-                  borderRadius: 4,
-                  color: '#b91c1c',
-                  fontSize: 12,
-                }}
-              >
+              <Alert variant="error" style={{ marginTop: 16 }}>
                 {error.message}
-              </p>
+              </Alert>
             )}
             {submitError !== null && (
-              <p
-                role="alert"
-                style={{
-                  marginTop: 12,
-                  padding: 8,
-                  background: '#fef2f2',
-                  border: '1px solid #ef4444',
-                  borderRadius: 4,
-                  color: '#b91c1c',
-                  fontSize: 12,
-                }}
-              >
+              <Alert variant="error" style={{ marginTop: 12 }}>
                 {submitError}
-              </p>
+              </Alert>
             )}
 
-            <div
-              style={{
-                display: 'flex',
-                gap: 8,
-                justifyContent: 'flex-end',
-                marginTop: 16,
-              }}
-            >
-              <button type="button" onClick={cancel} disabled={isLoading}>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
+              <Button variant="secondary" onClick={cancel} disabled={isLoading}>
                 Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={!canSubmit || rekeyError !== null}
-              >
+              </Button>
+              <Button variant="primary" type="submit" disabled={!canSubmit || rekeyError !== null}>
                 {isLoading ? 'Signing…' : 'Sign AccessProof'}
-              </button>
+              </Button>
             </div>
           </form>
         ) : (
@@ -638,68 +599,59 @@ export function TransferModal({
               void onConfirm();
             }}
           >
-            <h2 id={`${formId}-title`} style={{ marginTop: 0 }}>
-              Confirm transfer of iNFT #{tokenId.toString()}
+            <h2 id={`${formId}-title`} style={{ marginTop: 0, fontSize: 22, fontWeight: 700, color: COLORS.text, letterSpacing: '-0.02em' }}>
+              Confirm Transfer
             </h2>
 
-            <p style={{ color: '#6b7280', fontSize: 13 }}>
-              Review the proof details below, then submit the on-chain
-              <code> iTransferFrom </code>
+            <p style={{ color: COLORS.textMuted, fontSize: 13, lineHeight: 1.6, fontWeight: 300, marginBottom: 20 }}>
+              Review the proof details, then submit the on-chain
+              <code style={{ color: COLORS.bronzeLight }}> iTransferFrom </code>
               transaction. Your wallet will ask for the final signature.
             </p>
 
             {signature !== null && signature.rekeyed === true && (
-              <p
+              <div
                 style={{
                   marginTop: 12,
-                  padding: 8,
-                  background: '#ecfdf5',
-                  border: '1px solid #10b981',
-                  borderRadius: 4,
-                  fontSize: 12,
+                  padding: '12px 16px',
+                  background: COLORS.successBg,
+                  border: `1px solid ${COLORS.successBorder}`,
+                  borderRadius: 8,
+                  fontSize: 13,
+                  color: COLORS.success,
                 }}
               >
-                <strong>Re-encrypted ✓</strong> — agent data was re-keyed
-                for the receiver.
+                <strong>Re-encrypted</strong> — agent data was re-keyed for the receiver.
                 {signature.newDataHash !== undefined && (
                   <>
                     <br />
-                    New data hash:{' '}
-                    <code>{signature.newDataHash}</code>
+                    New data hash: <MonoLabel style={{ fontSize: 11 }}>{signature.newDataHash}</MonoLabel>
                   </>
                 )}
-                {signature.newDataUri !== undefined && (
-                  <>
-                    <br />
-                    New data URI: <code>{signature.newDataUri}</code>
-                  </>
-                )}
-              </p>
+              </div>
             )}
 
             {signature !== null && (
               <div
                 style={{
                   marginTop: 12,
-                  padding: 8,
-                  background: '#f9fafb',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: 4,
+                  padding: '12px 16px',
+                  background: COLORS.bg,
+                  border: `1px solid ${COLORS.border}`,
+                  borderRadius: 8,
                   fontSize: 12,
+                  color: COLORS.textMuted,
                 }}
               >
-                <strong>OwnershipProof</strong> (TEE-signed)
+                <strong style={{ color: COLORS.text }}>OwnershipProof</strong> (TEE-signed)
                 <br />
-                Signer:{' '}
-                <code>{signature.signer ?? '—'}</code>
+                Signer: <MonoLabel style={{ fontSize: 11 }}>{signature.signer ?? '—'}</MonoLabel>
                 {signature.ownershipProof !== undefined && (
                   <>
                     <br />
                     Valid until:{' '}
-                    <code>
-                      {new Date(
-                        Number(signature.ownershipProof.validUntil) * 1000,
-                      ).toISOString()}
+                    <code style={{ color: COLORS.bronzeLight, fontSize: 11 }}>
+                      {new Date(Number(signature.ownershipProof.validUntil) * 1000).toISOString()}
                     </code>
                   </>
                 )}
@@ -710,67 +662,38 @@ export function TransferModal({
               <div
                 style={{
                   marginTop: 8,
-                  padding: 8,
-                  background: '#f9fafb',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: 4,
+                  padding: '12px 16px',
+                  background: COLORS.bg,
+                  border: `1px solid ${COLORS.border}`,
+                  borderRadius: 8,
                   fontSize: 12,
+                  color: COLORS.textMuted,
                 }}
               >
-                <strong>AccessProof</strong> (receiver-signed)
+                <strong style={{ color: COLORS.text }}>AccessProof</strong> (receiver-signed)
                 <br />
-                Recovered signer:{' '}
-                <code>{signature.accessSigner}</code>
+                Recovered signer: <MonoLabel style={{ fontSize: 11 }}>{signature.accessSigner}</MonoLabel>
               </div>
             )}
 
             {error !== null && (
-              <p
-                role="alert"
-                style={{
-                  marginTop: 12,
-                  padding: 8,
-                  background: '#fef2f2',
-                  border: '1px solid #ef4444',
-                  borderRadius: 4,
-                  color: '#b91c1c',
-                  fontSize: 12,
-                }}
-              >
+              <Alert variant="error" style={{ marginTop: 16 }}>
                 {error.message}
-              </p>
+              </Alert>
             )}
             {submitError !== null && (
-              <p
-                role="alert"
-                style={{
-                  marginTop: 12,
-                  padding: 8,
-                  background: '#fef2f2',
-                  border: '1px solid #ef4444',
-                  borderRadius: 4,
-                  color: '#b91c1c',
-                  fontSize: 12,
-                }}
-              >
+              <Alert variant="error" style={{ marginTop: 12 }}>
                 {submitError}
-              </p>
+              </Alert>
             )}
 
-            <div
-              style={{
-                display: 'flex',
-                gap: 8,
-                justifyContent: 'flex-end',
-                marginTop: 16,
-              }}
-            >
-              <button type="button" onClick={onEdit} disabled={isLoading}>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
+              <Button variant="secondary" onClick={onEdit} disabled={isLoading}>
                 Edit
-              </button>
-              <button type="submit" disabled={isLoading || signature === null}>
+              </Button>
+              <Button variant="primary" type="submit" disabled={isLoading || signature === null}>
                 {isLoading ? 'Submitting…' : 'Confirm on-chain transfer'}
-              </button>
+              </Button>
             </div>
           </form>
         )}
