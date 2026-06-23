@@ -15,46 +15,10 @@ import {
 
 /// @title FuzzAxiomTeeVerifier.t.sol
 /// @notice Deep on-chain FUZZ tests for AxiomTeeVerifier, the ERC-7857 TEE oracle.
-/// @dev    Wave 11+14 deliverable. Targets the LIVE 0G Galileo testnet via
-///         `vm.createSelectFork("https://evmrpc-testnet.0g.ai", 38_748_015)`.
+/// @dev    Wave 11+14 deliverable. Targets LIVE 0G Galileo testnet via fork.
 ///         Companion to AxiomTeeVerifier.t.sol (deterministic F-01 tests).
-///
-///         Wave 14 updates (BUG-TEE-FIX-01, BUG-TEE-FIX-02):
-///           - The verifier now requires a `validUntil` EIP-712 deadline on
-///             both `AccessProof` and `OwnershipProof` (see IERC7857DataVerifier.sol
-///             and AxiomTeeVerifier.sol:151-167).
-///           - The verifier rejects expired proofs (AxiomProofExpired) and proofs
-///             whose `validUntil` is too far in the future
-///             (AxiomValidUntilTooFar, the overflow guard).
-///           - The test below fuzzes all four corner cases of `validUntil`:
-///               (a) past          -> reverts AxiomProofExpired
-///               (b) at now        -> passes
-///               (c) future (<7d)  -> passes
-///               (d) future (>7d)  -> reverts AxiomValidUntilTooFar
-///               (e) max uint256   -> reverts AxiomValidUntilTooFar (overflow-safe)
-///           - The Wave 11 fuzz surface (signature-recovery edge cases, replay
-///             protection, registerSigner) is preserved with the updated
-///             `validUntil` shape.
-///
-/// @dev    Canonical sources cited:
-///         - EIP-712 (typed structured data signing + deadline field):
-///           https://eips.ethereum.org/EIPS/eip-712
-///         - OpenZeppelin Ownable (errors, onlyOwner, OwnableUnauthorizedAccount):
-///           https://docs.openzeppelin.com/contracts/5.x/api/access#Ownable
-///         - OpenZeppelin ECDSA (signature length validation, recover):
-///           https://docs.openzeppelin.com/contracts/5.x/utils/cryptography#ECDSA
-///         - EIP-7857 (intelligent NFTs, TransferValidityProof shape):
-///           https://eips.ethereum.org/EIPS/eip-7857
-///         - Foundry book — fuzz testing and invariant testing:
-///           https://book.getfoundry.sh/forge/fuzz-testing
-///           https://book.getfoundry.sh/forge/invariant-testing
-///         - 0G Galileo testnet (chainId 16602, RPC, explorer):
-///           https://docs.0g.ai/developer-hub/testnet/testnet-overview
 contract FuzzAxiomTeeVerifierTest is StdInvariant, Test {
     // ─── Live fork (0G Galileo) ───────────────────────────────────────────
-    uint256 internal constant GALILEO_FORK_BLOCK = 38_748_015;
-    // The TEE signer registered on-chain at block 38_748_015 matches the operator key
-    // listed in ~/og/wallets/ADDRESSES.md (0x437371dB1FBD534Bd01BD3f4E66DfA1675952F91).
     address internal constant LIVE_TEE_SIGNER = 0x437371dB1FBD534Bd01BD3f4E66DfA1675952F91;
 
     // ─── Test keys (deterministic, mirrors AxiomTeeVerifier.t.sol) ───────
@@ -63,9 +27,7 @@ contract FuzzAxiomTeeVerifierTest is StdInvariant, Test {
     uint256 internal constant TEE_KEY        = 0x7E000000000000000000000000000000000000000000000000000000000E007;
     uint256 internal constant NEW_TEE_KEY    = 0x7E110000000000000000000000000000000000000000000000000000000E011;
 
-    // The deployer on-chain (which is also the TEE signer for the buildathon, per
-    // ADDRESSES.md). Used to bind the `bound(_keySeed, 1, ...)` clamp to a real
-    // secp256k1 key range — we never want to derive address(0).
+    // The deployer on-chain (also the TEE signer for the buildathon).
     uint256 internal constant SECP256K1_ORDER_MINUS_1 =
         0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364140;
     address internal owner;
@@ -90,10 +52,10 @@ contract FuzzAxiomTeeVerifierTest is StdInvariant, Test {
     bytes32 internal constant ACCESS_PROOF_TYPEHASH = keccak256(
         "AccessProof(bytes32 dataHash,bytes targetPubkey,address to,address nft,uint256 nonce,uint256 validUntil)"
     );
+    uint256 internal constant GALILEO_FORK_BLOCK = 38_748_015;
 
     function setUp() public {
-        // Select the live Galileo fork. EVERY test in this file runs against
-        // the real on-chain state at block 38_748_015 — no mocks, no stubs.
+        // Select the live Galileo fork. EVERY test runs against real on-chain state.
         forkId = vm.createSelectFork(RPC, GALILEO_FORK_BLOCK);
         assertEq(block.chainid, 16_602, "Galileo testnet (chainId 16602)");
 
@@ -101,20 +63,10 @@ contract FuzzAxiomTeeVerifierTest is StdInvariant, Test {
         stranger   = vm.addr(STRANGER_KEY);
         teeSigner  = vm.addr(TEE_KEY);
 
-        // A clean, locally-deployed verifier for unit-level fuzz (we want random
-        // inputs without colliding with the on-chain proof-nonce space at fork
-        // block 38_748_015).
+        // A clean, locally-deployed verifier for unit-level fuzz.
         verifier = new AxiomTeeVerifier(owner, teeSigner, 7 days);
 
-        // Restrict the invariant runner to a single safe target. Without
-        // this, the invariant engine will try to call every external
-        // function on `verifier` (including `verifyTransferValidity`,
-        // which requires careful pre-conditions and can hang the fuzzer
-        // for many runs of random calldata). `registerSigner` is the
-        // only state-mutating function we want to invariant-check, and
-        // the invariants we defined only depend on storage that
-        // `registerSigner` writes. Refs:
-        //   - https://book.getfoundry.sh/forge/invariant-testing#invariant-targets
+        // Restrict the invariant runner to registerSigner only.
         targetContract(address(verifier));
         bytes4[] memory selectors = new bytes4[](1);
         selectors[0] = AxiomTeeVerifier.registerSigner.selector;
@@ -126,11 +78,6 @@ contract FuzzAxiomTeeVerifierTest is StdInvariant, Test {
     // ════════════════════════════════════════════════════════════════════
 
     /// @notice Fuzz a valid single-proof verify against the registered TEE signer.
-    /// @dev    Bounded by [0, type(uint8).max] for `seed` and the secp256k1
-    ///         order-1 for the receiver key (so we never derive address(0)).
-    ///         The test signs ownership with TEE_KEY and access with a random
-    ///         receiver key. The verifier must accept the proof and the output
-    ///         must echo the input fields.
     function testFuzz_verifyTransferValidity_validProof_succeeds(
         uint8 seed,
         uint256 receiverKeySeed
@@ -158,11 +105,8 @@ contract FuzzAxiomTeeVerifierTest is StdInvariant, Test {
         assertEq(outs[0].sealedKey, proofs[0].ownershipProof.sealedKey, "sealedKey echoed");
     }
 
-    /// @notice Fuzz a wrong-signer scenario: the OwnershipProof is signed by a
-    ///         random key that is NOT the registered TEE signer. The verifier
-    ///         MUST revert with `AxiomInvalidOwnershipProof`. This is the
-    ///         ship-blocker case for ERC-7857 — without this guard, anyone
-    ///         could mint ownership proofs for arbitrary agents.
+    /// @notice Fuzz a wrong-signer scenario: random key != registered TEE signer.
+    ///         MUST revert with `AxiomInvalidOwnershipProof`.
     function testFuzz_verifyTransferValidity_wrongSigner_reverts(
         uint256 attackerKeySeed,
         uint256 receiverKeySeed,
@@ -176,9 +120,7 @@ contract FuzzAxiomTeeVerifierTest is StdInvariant, Test {
         address randomReceiver = vm.addr(receiverKeySeed);
         uint256 validUntil = block.timestamp + DEFAULT_VALID_UNTIL_OFFSET;
 
-        // Build a proof signed by the attacker for the OwnershipProof leg
-        // and signed by a legitimate receiver for the AccessProof leg. The
-        // OwnershipProof leg is the one we expect to fail.
+        // Build a proof signed by the attacker for the OwnershipProof leg.
         bytes memory pub = _addressToPubKey(randomReceiver);
         bytes memory sealedKey = _randomSealedKey(uint256(seed));
         uint256 nonce = uint256(keccak256(abi.encodePacked("nonce-wrong-signer", seed)));
@@ -210,18 +152,8 @@ contract FuzzAxiomTeeVerifierTest is StdInvariant, Test {
         verifier.verifyTransferValidity(proofs, address(0), address(0));
     }
 
-    /// @notice Fuzz a wrong-access-message scenario: OwnershipProof is signed
-    ///         correctly by the TEE signer, but the AccessProof leg is built
-    ///         over a MUTATED access message (the verifier's `ECDSA.recover`
-    ///         call returns address(0) or a non-zero address that is not
-    ///         the receiver — either way the contract should revert).
-    /// @dev    Per the implementation:
-    ///             accessSigner = _recoverSigner(accessMessage, p.accessProof.proof);
-    ///             if (accessSigner == address(0)) revert AxiomInvalidAccessProof();
-    ///         Note: the current implementation does NOT check that
-    ///         `accessSigner == targetPubkey`'s derived address — the only
-    ///         access-side check is the `address(0)` zero-check. This is
-    ///         documented in BUGS.md (BUG-01).
+    /// @notice Fuzz wrong access message: OwnershipProof signed correctly,
+    ///         AccessProof signed over mutated data.
     function testFuzz_verifyTransferValidity_wrongAccessMessage_reverts(uint8 seed) public {
         // Build a valid proof, then mutate the accessMessage domain (the
         // bytes that go into the access `ECDSA.recover`). The simplest tamper
@@ -236,17 +168,9 @@ contract FuzzAxiomTeeVerifierTest is StdInvariant, Test {
         uint256 nonce = uint256(keccak256(abi.encodePacked("nonce", seed)));
         bytes32 dataHash = keccak256(abi.encodePacked("dataHash", seed));
 
-        // Sign ownership correctly.
-        bytes32 ownershipMsg = _ownershipDigest(dataHash, sealedKey, pub, address(0), address(0), nonce, validUntil);
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(TEE_KEY, ownershipMsg);
+        // Sign ownership correctly, then sign access over a WRONG dataHash.
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(TEE_KEY, _ownershipDigest(dataHash, sealedKey, pub, address(0), address(0), nonce, validUntil));
         bytes memory ownershipSig = abi.encodePacked(r, s, v);
-
-        // Sign access over a WRONG dataHash (the verifier will compute
-        // keccak256(dataHash, pub, nonce, validUntil), but the sig was made
-        // over a different dataHash). For an arbitrary ECDSA preimage the
-        // recovered address is uniformly distributed; when it happens to
-        // be address(0) the verifier reverts with AxiomInvalidAccessProof;
-        // for non-zero values the proof is mistakenly accepted.
         bytes32 tamperedDataHash = bytes32(uint256(dataHash) ^ 0xDEAD_BEEF);
         bytes32 wrongAccessMsg = _accessDigest(tamperedDataHash, pub, address(0), address(0), nonce, validUntil);
         (v, r, s) = vm.sign(receiverKeySeed, wrongAccessMsg);
@@ -268,10 +192,8 @@ contract FuzzAxiomTeeVerifierTest is StdInvariant, Test {
 
         // Two possible outcomes documented in BUGS.md (BUG-01):
         //   (a) ECDSA.recover returns address(0)  -> AxiomInvalidAccessProof
-        //   (b) ECDSA.recover returns a non-zero address -> the proof passes
-        //       and we have a real cross-receiver / cross-pubkey hole.
-        // We accept EITHER outcome here so the test does not flake on the
-        // pseudorandom seed; the BUGS.md entry is the authoritative report.
+        //   (b) ECDSA.recover returns non-zero address -> permissive pass
+        // We accept EITHER outcome so the test does not flake.
         try verifier.verifyTransferValidity(proofs, address(0), address(0)) returns (TransferValidityProofOutput[] memory) {
             // accepted (case b): the access-side check is permissive. The
             // invariant holds vacuously; the bug is documented.
@@ -288,12 +210,7 @@ contract FuzzAxiomTeeVerifierTest is StdInvariant, Test {
         }
     }
 
-    /// @notice Fuzz a TRUNCATED (64-byte) ownership signature. The verifier
-    ///         MUST revert with `AxiomInvalidSigner` because the EIP-2098 /
-    ///         standard secp256k1 sig is 65 bytes; 64 bytes cannot be parsed
-    ///         by `ECDSA.recover`.
-    /// @dev    See https://docs.openzeppelin.com/contracts/5.x/utils/cryptography#ECDSA
-    ///         and AxiomTeeVerifier.sol (`if (signature.length != 65) revert AxiomInvalidSigner();`).
+    /// @notice Fuzz a TRUNCATED (64-byte) ownership signature. MUST revert with AxiomInvalidSigner.
     function testFuzz_verifyTransferValidity_truncatedSignature_reverts(uint8 seed) public {
         uint256 receiverKeySeed = bound(uint256(keccak256(abi.encodePacked(seed, "rx2"))), 1, SECP256K1_ORDER_MINUS_1);
         address randomReceiver = vm.addr(receiverKeySeed);
@@ -332,8 +249,7 @@ contract FuzzAxiomTeeVerifierTest is StdInvariant, Test {
         verifier.verifyTransferValidity(proofs, address(0), address(0));
     }
 
-    /// @notice Fuzz a ZERO-LENGTH ownership signature. The verifier MUST revert
-    ///         with `AxiomInvalidSigner` (length 0 != 65).
+    /// @notice Fuzz a ZERO-LENGTH ownership signature. MUST revert with AxiomInvalidSigner.
     function testFuzz_verifyTransferValidity_zeroLengthSignature_reverts(uint8 seed) public {
         uint256 receiverKeySeed = bound(uint256(keccak256(abi.encodePacked(seed, "rx3"))), 1, SECP256K1_ORDER_MINUS_1);
         address randomReceiver = vm.addr(receiverKeySeed);
@@ -366,14 +282,7 @@ contract FuzzAxiomTeeVerifierTest is StdInvariant, Test {
         verifier.verifyTransferValidity(proofs, address(0), address(0));
     }
 
-    /// @notice Fuzz an IN-BATCH replay: the same proof submitted twice in the
-    ///         same call must revert on the second occurrence. The
-    ///         `_checkAndMarkProof` guard writes `usedProofs[nonce] = true`
-    ///         on the first hit, so the second call hits
-    ///         `require(!usedProofs[proofNonce], "Proof already used")`.
-    /// @dev    The base verifier uses a `string`-reason `require`, so we match
-    ///         by string. Reference:
-    ///         https://github.com/0gfoundation/0g-agent-nft/blob/main/contracts/BaseVerifier.sol
+    /// @notice Fuzz an IN-BATCH replay: same proof submitted twice in one call must revert.
     function testFuzz_verifyTransferValidity_inBatchReplay_reverts(uint8 seed) public {
         uint256 receiverKeySeed = bound(uint256(keccak256(abi.encodePacked(seed, "rx4"))), 1, SECP256K1_ORDER_MINUS_1);
 
@@ -395,20 +304,14 @@ contract FuzzAxiomTeeVerifierTest is StdInvariant, Test {
         verifier.verifyTransferValidity(dup, address(0), address(0));
     }
 
-    /// @notice Fuzz a batch with `length = 0`. The loop never executes;
-    ///         `outputs = new TransferValidityProofOutput[](0)`; no revert.
-    ///         This is the boundary case the prompt explicitly calls out.
+    /// @notice Fuzz a batch with `length = 0`. No revert expected.
     function testFuzz_verifyTransferValidity_emptyBatch_succeeds() public {
         TransferValidityProof[] memory empty = new TransferValidityProof[](0);
         TransferValidityProofOutput[] memory outs = verifier.verifyTransferValidity(empty, address(0), address(0));
         assertEq(outs.length, 0, "empty batch produces empty output");
     }
 
-    /// @notice Fuzz a batch with `length = 5` and `length = 10` of distinct
-    ///         valid proofs. All must succeed; all outputs must echo inputs.
-    /// @dev    `length` is a constant in this test, not a fuzz input — the
-    ///         prompt's "length 0, 1, 5, 10" is a list of boundary values
-    ///         for the batch length, not a parameter to randomize.
+    /// @notice Fuzz batches of length 5 and 10 with distinct valid proofs.
     function testFuzz_verifyTransferValidity_batchLength5_succeeds() public {
         _batchHelper(5, 0xA1);
     }
@@ -441,16 +344,10 @@ contract FuzzAxiomTeeVerifierTest is StdInvariant, Test {
     }
 
     // ════════════════════════════════════════════════════════════════════
-    //  1b. BUG-TEE-FIX-02 — validUntil timestamp check (EIP-712 deadline)
+    //  1b. BUG-TEE-FIX-02 — validUntil timestamp check
     // ════════════════════════════════════════════════════════════════════
 
-    /// @notice Wave 14 fuzz: validUntil in the past MUST revert with
-    ///         `AxiomProofExpired`. Per EIP-712, the deadline is the latest
-    ///         moment a proof may be used; once `block.timestamp > validUntil`
-    ///         the proof is dead.
-    /// @dev    Fuzz the offset from `now` in [-7 days, -1 second] (i.e. strictly
-    ///         past). At the boundary `validUntil == nowTs` we test the
-    ///         separate happy case below.
+    /// @notice Wave 14 fuzz: validUntil in the past MUST revert with AxiomProofExpired.
     function testFuzz_verifyTransferValidity_validUntilPast_reverts(
         uint256 pastOffset,
         uint8 seed
@@ -501,9 +398,7 @@ contract FuzzAxiomTeeVerifierTest is StdInvariant, Test {
         verifier.verifyTransferValidity(proofs, address(0), address(0));
     }
 
-    /// @notice Wave 14 fuzz: validUntil == block.timestamp MUST pass
-    ///         (the boundary case — proof expires at the end of the current
-    ///         second, but is still valid in this block).
+    /// @notice Wave 14 fuzz: validUntil == block.timestamp MUST pass (boundary).
     function testFuzz_verifyTransferValidity_validUntilAtNow_succeeds(uint8 seed) public {
         uint256 receiverKeySeed = bound(uint256(keccak256(abi.encodePacked(seed, "rx-now"))), 1, SECP256K1_ORDER_MINUS_1);
         address randomReceiver = vm.addr(receiverKeySeed);
@@ -540,8 +435,7 @@ contract FuzzAxiomTeeVerifierTest is StdInvariant, Test {
         assertEq(outs.length, 1, "validUntil == now: passes");
     }
 
-    /// @notice Wave 14 fuzz: validUntil in the future (within `maxProofAgeSeconds`)
-    ///         MUST pass.
+    /// @notice Wave 14 fuzz: validUntil in the future (within maxProofAgeSeconds) MUST pass.
     function testFuzz_verifyTransferValidity_validUntilFuture_succeeds(
         uint256 futureOffset,
         uint8 seed
@@ -586,11 +480,7 @@ contract FuzzAxiomTeeVerifierTest is StdInvariant, Test {
         assertEq(outs.length, 1, "validUntil in future within window: passes");
     }
 
-    /// @notice Wave 14 fuzz: validUntil too far in the future
-    ///         (i.e. `validUntil - block.timestamp > maxProofAgeSeconds`)
-    ///         MUST revert with `AxiomValidUntilTooFar`. This is the guard
-    ///         against a malicious TEE signer minting arbitrarily long-lived
-    ///         proofs.
+    /// @notice Wave 14 fuzz: validUntil too far in the future MUST revert with AxiomValidUntilTooFar.
     function testFuzz_verifyTransferValidity_validUntilTooFar_reverts(
         uint256 overOffset,
         uint8 seed
@@ -640,16 +530,8 @@ contract FuzzAxiomTeeVerifierTest is StdInvariant, Test {
         verifier.verifyTransferValidity(proofs, address(0), address(0));
     }
 
-    /// @notice Wave 14 fuzz: validUntil == type(uint256).max (overflow attack)
-    ///         MUST revert gracefully with `AxiomValidUntilTooFar` — NOT a
-    ///         `Panic(0x11)` arithmetic overflow. The implementation must
-    ///         subtract `now` from `validUntil` only AFTER asserting
-    ///         `validUntil >= now` (so the subtraction is safe), and the
-    ///         resulting delta is guaranteed to exceed `maxProofAgeSeconds`.
-    /// @dev    This test was the reason the guard was implemented as
-    ///         `if (validUntil - now > maxAge)` rather than the more obvious
-    ///         `if (validUntil > now + maxAge)` (which would Panic on
-    ///         type(uint256).max).
+    /// @notice Wave 14 fuzz: validUntil == type(uint256).max MUST NOT Panic(0x11).
+    ///         MUST revert with AxiomValidUntilTooFar.
     function test_verifyTransferValidity_validUntilOverflow_reverts() public {
         uint256 receiverKeySeed = bound(uint256(keccak256(abi.encodePacked("rx-overflow"))), 1, SECP256K1_ORDER_MINUS_1);
         address randomReceiver = vm.addr(receiverKeySeed);
@@ -694,14 +576,7 @@ contract FuzzAxiomTeeVerifierTest is StdInvariant, Test {
         verifier.verifyTransferValidity(proofs, address(0), address(0));
     }
 
-    /// @notice Wave 14 fuzz: warp the chain forward past the validUntil of a
-    ///         stored proof. The replay-protection path (resubmit the same
-    ///         nonce with the original expired proof) MUST be rejected by
-    ///         the timestamp check, not by the replay guard. (i.e. the
-    ///         timestamp check fires first, so the user gets a clear
-    ///         `AxiomProofExpired` error rather than a confusing
-    ///         `"Proof already used"`. This is the BUG-TEE-FIX-02
-    ///         acceptance criterion.)
+    /// @notice Wave 14 fuzz: warp past validUntil. Timestamp check fires before replay guard.
     function testFuzz_verifyTransferValidity_warpPast_validUntilReverts(uint8 seed) public {
         uint256 receiverKeySeed = bound(uint256(keccak256(abi.encodePacked(seed, "rx-warp"))), 1, SECP256K1_ORDER_MINUS_1);
 
@@ -727,16 +602,7 @@ contract FuzzAxiomTeeVerifierTest is StdInvariant, Test {
     //  1c. BUG-TEE-FIX-01 — `maxProofAgeSeconds()` immutable on the live fork
     // ════════════════════════════════════════════════════════════════════
 
-    /// @notice Wave E-5: the live deployed verifier at `0x24f725…` DOES
-    ///         expose the `maxProofAgeSeconds()` selector (the Wave E-5
-    ///         bytecode includes the immutable getter). This test asserts
-    ///         the LIVE verifier returns the expected value, serving as a
-    ///         live-deployment regression guard.
-    /// @dev    Verified by `cast code 0x24f725198d64A3b03A8386cD8fa12BD7c591734A
-    ///         --rpc-url https://evmrpc-testnet.0g.ai` containing
-    ///         `0x1c8d368c` (Wave E-5 deploy). We sample the runtime code
-    ///         here so the assertion is reproducible from a Foundry test
-    ///         run.
+    /// @notice Wave E-5: the live deployed verifier exposes maxProofAgeSeconds selector.
     function test_liveForkBytecode_containsMaxProofAgeSelector() public view {
         // The live Wave E-5 verifier ships the fix — the selector IS present.
         address live = 0x24f725198d64A3b03A8386cD8fa12BD7c591734A;
@@ -757,12 +623,7 @@ contract FuzzAxiomTeeVerifierTest is StdInvariant, Test {
     //  2. registerSigner — auth + zero-address + rotation
     // ════════════════════════════════════════════════════════════════════
 
-    /// @notice Fuzz `registerSigner(address)` with a random address derived
-    ///         from a secp256k1 key seed. Contract-side behavior:
-    ///           - any non-zero address succeeds when called by the owner
-    ///           - zero address reverts (require, "Zero address")
-    ///         The non-owner path is exercised separately in
-    ///         `testFuzz_registerSigner_strangerReverts` below.
+    /// @notice Fuzz registerSigner with a random address. Owner succeeds, zero-address reverts.
     function testFuzz_registerSigner_ownerRotatesToNewSigner(
         uint256 newSignerKeySeed,
         uint8 /* seed */
@@ -777,11 +638,7 @@ contract FuzzAxiomTeeVerifierTest is StdInvariant, Test {
         assertTrue(newSigner != address(0), "sanity: newSigner != 0 (we just bounded it)");
     }
 
-    /// @notice Fuzz the zero-address guard. The contract MUST revert with
-    ///         the string `"Zero address"` (per the `require` in
-    ///         AxiomTeeVerifier.sol). We loop over a fuzz input that is
-    ///         then ignored; the only intent is to exercise the path
-    ///         repeatedly.
+    /// @notice Fuzz the zero-address guard. Owner cannot register zero address.
     function testFuzz_registerSigner_zeroAddress_reverts(uint8 seed) public {
         vm.prank(owner);
         vm.expectRevert(bytes("Zero address"));
@@ -793,9 +650,7 @@ contract FuzzAxiomTeeVerifierTest is StdInvariant, Test {
         seed;
     }
 
-    /// @notice Fuzz the onlyOwner guard. ANY caller that is not `owner` MUST
-    ///         revert with `OwnableUnauthorizedAccount(address caller)`.
-    /// @dev    https://docs.openzeppelin.com/contracts/5.x/api/access#Ownable
+    /// @notice Fuzz the onlyOwner guard. Non-owner MUST revert with OwnableUnauthorizedAccount.
     function testFuzz_registerSigner_strangerReverts(
         uint256 strangerKeySeed,
         uint256 newSignerKeySeed
@@ -805,10 +660,7 @@ contract FuzzAxiomTeeVerifierTest is StdInvariant, Test {
         address someStranger   = vm.addr(strangerKeySeed);
         address someNewSigner  = vm.addr(newSignerKeySeed);
 
-        // If the random stranger happens to BE the owner, skip — the test
-        // is about the stranger path, not the owner path. The fuzz runner
-        // will still see enough distinct values to cover the non-owner
-        // case.
+        // If the random stranger happens to BE the owner, skip.
         vm.assume(someStranger != owner);
 
         vm.prank(someStranger);
@@ -824,9 +676,7 @@ contract FuzzAxiomTeeVerifierTest is StdInvariant, Test {
         assertEq(verifier.registeredSigner(), teeSigner, "signer unchanged after revert");
     }
 
-    /// @notice Fuzz rotation to the CURRENT signer (a no-op rotation). This
-    ///         is a valid state transition (signer stays the same), so it
-    ///         must NOT revert. The contract has no "must differ" guard.
+    /// @notice Fuzz rotation to the CURRENT signer (no-op). Must NOT revert.
     function testFuzz_registerSigner_rotateToCurrentSigner_succeeds(uint8 seed) public {
         // Precondition.
         assertEq(verifier.registeredSigner(), teeSigner, "precondition: current signer");
@@ -842,16 +692,7 @@ contract FuzzAxiomTeeVerifierTest is StdInvariant, Test {
     //  3. cleanExpiredProofs — operator gating + expiry semantics
     // ════════════════════════════════════════════════════════════════════
 
-    /// @notice Fuzz cleanExpiredProofs with random arrays. Submit a set of
-    ///         proofs first (to populate `usedProofs` / `proofTimestamps`),
-    ///         then time-warp and call cleanExpiredProofs.
-    /// @dev    KNOWN BUG (BUG-02 in BUGS.md): the contract has NO operator
-    ///         gating on cleanExpiredProofs. The prompt assumes an
-    ///         `_setOperator` function exists, but the implementation
-    ///         permits any external caller. This test asserts the actual
-    ///         contract behavior (any caller can clean) and the
-    ///         documentation in BUGS.md records the gap. We do NOT add
-    ///         `vm.skip` — the test exercises the path honestly.
+    /// @notice Fuzz cleanExpiredProofs with random arrays. Any caller can clean (BUG-02).
     function testFuzz_cleanExpiredProofs_anyCallerCanClean(
         uint256 callerKeySeed,
         uint8 seed
@@ -877,6 +718,7 @@ contract FuzzAxiomTeeVerifierTest is StdInvariant, Test {
         vm.warp(block.timestamp + 7 days + 1);
 
         // 4. Any caller — including a random stranger — can clean.
+
         callerKeySeed = bound(callerKeySeed, 1, SECP256K1_ORDER_MINUS_1);
         address randomCaller = vm.addr(callerKeySeed);
 
@@ -885,17 +727,10 @@ contract FuzzAxiomTeeVerifierTest is StdInvariant, Test {
         vm.prank(randomCaller);
         verifier.cleanExpiredProofs(toClean);
 
-        // The proof is no longer marked used, so re-submitting succeeds
-        // (which is the real attack surface — a third party evicts another
-        // user's replay protection). See BUGS.md BUG-02.
-        // We do NOT call verifyTransferValidity again to assert this
-        // because the verifier has a separate test for replay; this test
-        // focuses on cleanExpiredProofs itself.
+        // The proof is no longer marked used, so re-submitting succeeds.
     }
 
-    /// @notice Fuzz cleanExpiredProofs with a mixed batch of live and expired
-    ///         proofs. Live proofs (timestamp + maxAge >= now) MUST be kept
-    ///         (the contract only deletes entries past maxAge).
+    /// @notice Fuzz cleanExpiredProofs with mixed live and expired proofs. Live proofs are kept.
     function testFuzz_cleanExpiredProofs_keepsLiveExpiresExpired(
         uint256 numProofsSeed,
         uint8 seed

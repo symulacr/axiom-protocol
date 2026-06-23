@@ -1,30 +1,9 @@
 // Axiom Protocol — `useProviders` polling hook.
 //
-// Typed React hook that polls the backend's `GET /v1/compute/providers`
-// endpoint every 30 seconds and returns the current provider list plus
-// loading / error / refetch state.
-//
-// Why poll instead of `useQuery`?
-//   - The rest of the Axiom frontend (see `useOrchestratorTick.ts`,
-//     `useAgentMetadata.ts`) uses the native Fetch API + `useState` pattern
-//     rather than TanStack Query so the project stays free of any query
-//     cache invariants. We follow the same convention here.
-//
-// Backend base URL is read from Vite's `VITE_BACKEND_URL` env var (the
-// `VITE_` prefix is the Vite convention for browser-visible vars;
-// https://vitejs.dev/guide/env-and-mode). It falls back to the local
-// dev loopback used by `apps/backend` (`pnpm dev` → :3000).
-//
-// Canonical references:
-//  - MDN — Fetch API: Request/Response, JSON body, error handling:
-//    https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch
-//  - React — useEffect (mount + cleanup), useState, useCallback:
-//    https://react.dev/reference/react/useEffect
-//  - React — useEffect cleanup functions (clear setInterval to stop the
-//    poll when the component unmounts):
-//    https://react.dev/reference/react/useEffect#cleanup
-//  - Vite environment variables (VITE_ prefix):
-//    https://vitejs.dev/guide/env-and-mode
+// Polls `GET /v1/compute/providers` every 30 s and returns the
+// provider list plus loading/error/refetch state. Uses native fetch
+// + useState rather than TanStack Query to stay consistent with the
+// rest of the frontend.
 
 import { useCallback, useEffect, useState } from 'react';
 

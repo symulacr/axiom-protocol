@@ -24,13 +24,6 @@ import {ERC7857AuthorizeUpgradeable} from "./extensions/ERC7857AuthorizeUpgradea
 import {ERC7857IDataStorageUpgradeable} from "./extensions/ERC7857IDataStorageUpgradeable.sol";
 import {IERC7857DataVerifier} from "./interfaces/IERC7857DataVerifier.sol";
 import {IntelligentData} from "./interfaces/IERC7857Metadata.sol";
-// Wave 10 C: attach the OpenSea-compatible JSON metadata library to the
-// `uint256` (tokenId) primitive so calls like
-// `tokenId.buildMetadataJson(datas, name(), symbol())` read naturally at
-// the call site. The library is storage-free and pure-function-only;
-// see apps/contracts/src/extensions/AxiomMetadataJson.sol for the
-// DECISION block that documents why the 2-root-hash metadata pattern
-// is REJECTED.
 import {AxiomMetadataJson} from "./extensions/AxiomMetadataJson.sol";
 /// @notice Concrete ERC-7857 iNFT contract for the Axiom Protocol
 /// @dev Composes the canonical 3 ERC-7857 extensions (Cloneable + Authorize + IDataStorage)
@@ -54,16 +47,6 @@ contract AxiomAgentNFT is
     event MintFeeUpdated(uint256 oldFee, uint256 newFee);
     /// @notice Emitted when the storage info is updated
     event StorageInfoUpdated(string oldInfo, string newInfo);
-    // Wave 10 C: sentinel event marking the explicit decision NOT to add
-    // a second on-chain root hash for unencrypted metadata. The event
-    // used to live on `AxiomMetadataJson` (which was an abstract
-    // contract) but was MOVED here during the abstract→library
-    // conversion because libraries cannot emit contract-scoped events
-    // on a third-party contract under the `using … for *;` pattern.
-    // Emitted once at deploy time from `initialize` so the decision
-    // is verifiable on-chain forever, not just in a doc-comment. The
-    // canonical rationale tag is `"2RH-REJECTED-v1"` (2-Root-Hash
-    // REJECTED v1) — see the DECISION block in AxiomMetadataJson.sol.
     event MetadataJsonDecisionDocumented(
         string collectionName,
         string collectionSymbol,
@@ -76,17 +59,6 @@ contract AxiomAgentNFT is
         mapping(uint256 => address) creators;
     }
 
-    // Wave 10 C: attach the OpenSea-compatible JSON metadata library to
-    // the `uint256` (tokenId) primitive. This is the OZ / Solidity 2025
-    // idiomatic way to enrich a value type with pure-function helpers:
-    // see https://dev.to/shlok2740/understanding-libraries-interfaces-and-abstract-contracts-in-solidity-14nn
-    // and https://docs.openzeppelin.com/contracts/5.x/api/utils (the
-    // canonical `using Math for uint256;` pattern, mirrored here for
-    // the AxiomMetadataJson library). Internal library functions are
-    // inlined at compile time; public library functions are linked via
-    // DELEGATECALL — the library stays storage-free, and the
-    // `tokenId.buildMetadataJson(datas, name(), symbol())` call site
-    // reads naturally.
     using AxiomMetadataJson for uint256;
 
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
@@ -95,9 +67,7 @@ contract AxiomAgentNFT is
     string public constant VERSION = "1.0.0";
 
     // keccak256(abi.encode(uint256(keccak256("agent.storage.AxiomAgentNFT")) - 1)) & ~bytes32(uint256(0xff))
-    // Canonical ERC-7201 formula (OZ v5). Computed with `cast`:
-    //   cast keccak $(cast abi-encode "f(uint256)" 0x2b2ee5fd3a97ac66c7c3b445ec5b19eaaf85a17773d235aee97715616a621951)
-    //   → 0xe982fe9a...94a939, masked to 0xe982fe9a...94a900
+    // Canonical ERC-7201 formula (OZ v5).
     bytes32 private constant STORAGE_LOCATION = 0xe982fe9a44d6409dbf89634fae06be5c796203a5c100b2ec87b395d27194a900;
 
     function _getAxiomAgentNFTStorage() private pure returns (AxiomAgentNFTStorage storage $) {
@@ -135,13 +105,9 @@ contract AxiomAgentNFT is
 
         AxiomAgentNFTStorage storage $ = _getAxiomAgentNFTStorage();
         $.storageInfo = storageInfo_;
-        // Wave 10 C: emit the sentinel event marking the explicit
-        // decision NOT to add a second on-chain root hash for
-        // unencrypted metadata. Once-only by `initializer` modifier.
         emit MetadataJsonDecisionDocumented(name(), symbol(), "2RH-REJECTED-v1");
     }
 
-    // ─── Internal hooks (required by ERC7857 extensions) ──────────
     function _update(address to, uint256 tokenId, address auth) internal virtual override(ERC721Upgradeable, ERC7857AuthorizeUpgradeable) returns (address) {
         return super._update(to, tokenId, auth);
     }
@@ -167,7 +133,6 @@ contract AxiomAgentNFT is
         return super.supportsInterface(interfaceId);
     }
 
-    // ─── Verifier rotation (operator) ────────────────────────────
     function updateVerifier(address newVerifier) public virtual onlyRole(OPERATOR_ROLE) {
         require(newVerifier != address(0), "Zero address");
         address oldVerifier = address(verifier());
@@ -175,7 +140,6 @@ contract AxiomAgentNFT is
         emit VerifierUpdated(oldVerifier, newVerifier);
     }
 
-    // ─── Mint fee management (admin) ─────────────────────────────
     function setMintFee(uint256 newFee) external onlyRole(ADMIN_ROLE) {
         AxiomAgentNFTStorage storage $ = _getAxiomAgentNFTStorage();
         uint256 oldFee = $.mintFee;
@@ -212,7 +176,6 @@ contract AxiomAgentNFT is
         _updateData(tokenId, newDatas);
     }
 
-    // ─── UUPS upgrade authorization ───────────────────────────────
     /// @notice Authorize a UUPS upgrade. Only the contract owner (set in initialize to admin_)
     ///         may upgrade the implementation behind the ERC1967 proxy.
     /// @dev    Required by UUPSUpgradeable. Without this override, UUPSUpgradeable._authorizeUpgrade

@@ -1,28 +1,7 @@
 // Axiom Protocol — agents browser (`/agents` route).
 //
-// Lists every ERC-721 tokenId owned by the connected wallet on
-// AxiomAgentNFT. Each row links to the corresponding
-// `/agents/:tokenId` detail page. The on-chain enumeration is done
-// by the shared `useAgents()` hook (apps/frontend/src/hooks/
-// useAgents.ts), which multicalls `balanceOf` + per-index
-// `tokenOfOwnerByIndex` + per-token `tokenURI` against the
-// `erc721Abi` / `axiomAgentNftAbi`.
-//
-// Canonical references:
-//   - EIP-721 (balanceOf, ownerOf, tokenOfOwnerByIndex via
-//     ERC-721Enumerable):
-//     https://eips.ethereum.org/EIPS/eip-721
-//   - wagmi v2 useReadContracts (multicall, allowFailure, isLoading):
-//     https://wagmi.sh/react/hooks/useReadContracts
-//   - wagmi v2 useAccount (isConnected, address):
-//     https://wagmi.sh/react/hooks/useAccount
-//   - React Router v6/v7 <Link> (declarative SPA navigation):
-//     https://reactrouter.com/en/main/components/link
-//
-// Connection states:
-//   - !isConnected       → "Connect wallet to view your agents".
-//   - connected, 0 agents → "No agents yet. Mint one from a vault."
-//   - connected, N agents → <ul> of <Link to={`/agents/${id}`}> items.
+// Lists ERC-721 tokenIds owned by the connected wallet on AxiomAgentNFT
+// via the shared `useAgents()` hook. Each row links to `/agents/:tokenId`.
 
 import type { ReactElement } from 'react';
 import { Link } from 'react-router-dom';

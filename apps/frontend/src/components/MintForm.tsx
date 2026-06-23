@@ -1,39 +1,7 @@
 // Axiom Protocol — `MintForm` component.
 //
-// Form that mints a new iNFT agent through the backend `POST /v1/agents/mint`
-// endpoint. The user supplies the encrypted strategy URI (the 0G Storage
-// root hash / iNFT `dataHash`) and the TEE-sealed encryption key; the owner
-// is auto-filled from the connected wallet (read-only). The on-chain mint
-// fee is read live from `AxiomAgentNFT.mintFee()` via wagmi v2
-// `useReadContracts` so the user sees the exact native-token cost before
-// submitting.
-//
-// The backend wallet signs the on-chain `mint()` call — the frontend does
-// NOT use `useWriteContract` for mint (unlike the transfer flow). The hook
-// `useMint` is the thin fetch client.
-//
-// UI states:
-//   - !isConnected          → "Connect wallet to mint an agent".
-//   - connected, idle       → editable form with live mint-fee display.
-//   - loading               → submit button disabled, "Minting…".
-//   - error                 → red alert with the backend error message.
-//   - success               → green panel: tokenId + tx hash + link to
-//                              `/agents/:tokenId`.
-//
-// Canonical references:
-//  - wagmi v2 `useReadContracts` (multicall, isLoading, data):
-//    https://wagmi.sh/react/hooks/useReadContracts
-//  - wagmi v2 `useAccount` (isConnected, address):
-//    https://wagmi.sh/react/hooks/useAccount
-//  - viem `formatEther` (wei → ETH string for the fee display):
-//    https://viem.sh/docs/utilities/formatEther
-//  - viem `isHex` (validate 0x-prefixed inputs):
-//    https://viem.sh/docs/utilities/isHex
-//  - React Router v6+ `<Link>` (SPA navigation to the new agent):
-//    https://reactrouter.com/en/main/components/link
-//  - EIP-721 mint + EIP-7857 iNFT dataHash / sealedKey:
-//    https://eips.ethereum.org/EIPS/eip-721
-//    https://eips.ethereum.org/EIPS/eip-7857
+// Mints a new iNFT agent via `POST /v1/agents/mint`. The backend wallet signs
+// the on-chain `mint()` call. Displays the live mint fee from `AxiomAgentNFT.mintFee()`.
 
 import {
   useCallback,

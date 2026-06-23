@@ -119,14 +119,12 @@ contract AxiomMetadataJsonTest is Test {
         uint256 tokenId = _mintOne(alice, keccak256("wave9b-data-1"), "agent-capabilities-v1");
         string memory json = nft.metadataJsonOf(tokenId);
 
-        // OpenSea requires name, description, image, attributes at minimum.
-        // See: https://docs.opensea.io/docs/metadata-standards
+        // OpenSea requires name, description, image, attributes.
         assertTrue(_contains(json, "\"name\":"), "name field present");
         assertTrue(_contains(json, "\"description\":"), "description field present");
         assertTrue(_contains(json, "\"image\":"), "image field present");
         assertTrue(_contains(json, "\"attributes\":"), "attributes array present");
-        // Symbol is an Axiom-injected convenience (not strictly OpenSea-required
-        // for ERC-721 but standard in many marketplaces; we include it).
+        // Symbol is an Axiom-injected convenience.
         assertTrue(_contains(json, "\"symbol\":"), "symbol field present");
     }
 
@@ -138,10 +136,7 @@ contract AxiomMetadataJsonTest is Test {
 
         string memory json = nft.metadataJsonOf(tokenId);
         string memory expected = _bytes32ToHexString(originalHash);
-        // The on-chain dataHash must appear in the JSON attributes, so any
-        // off-chain renderer can verify the JSON view against the EIP-7857
-        // dataHash by calling `intelligentDatasOf(tokenId)` (the same path
-        // Wave 9-A's verify-data-hash.ts uses for integrity).
+        // The on-chain dataHash must appear in the JSON attributes.
         assertTrue(_contains(json, expected), "dataHash hex appears in JSON");
         // And the matching trait_type key.
         assertTrue(_contains(json, "\"trait_type\":\"data_hash\""), "data_hash trait_type present");
@@ -159,7 +154,7 @@ contract AxiomMetadataJsonTest is Test {
         assertTrue(_contains(jsonV1, _bytes32ToHexString(v1Hash)), "v1 dataHash in JSON");
         assertFalse(_contains(jsonV1, _bytes32ToHexString(v2Hash)), "v2 NOT in JSON yet");
 
-        // Owner updates the metadata; JSON must reflect the new state.
+        // Owner updates metadata; JSON reflects new state.
         IntelligentData[] memory newData = new IntelligentData[](1);
         newData[0] = IntelligentData({dataDescription: "v2", dataHash: v2Hash});
         vm.prank(alice);
@@ -213,22 +208,13 @@ contract AxiomMetadataJsonTest is Test {
     // ─── Test 6: The DECISION — no 2nd root hash, no setter, no storage
 
     function test_decisionDocumented_noSecondHashStorage() public {
-        // The DECISION in the contract header is "REJECTED" the 2-root-hash
-        // pattern. Verify that rejection is reflected in the deployed code:
-        //   1. The extension exposes NO setter for an unencrypted metadata
-        //      hash (no setMetadataHash, no setTokenURI, no setMetadataURI).
+        // Verify no setter for an unencrypted metadata hash exists.
 
-        // (a) Selectors that a 2-root-hash implementation would have but
-        //     this one does NOT. Computed at test time so we don't have to
-        //     hand-roll the 4-byte selectors.
         bytes4 setMetadataHashSel = bytes4(keccak256("setMetadataHash(uint256,bytes32)"));
         bytes4 setTokenURISel = bytes4(keccak256("setTokenURI(uint256,string)"));
         bytes4 setMetadataURISel = bytes4(keccak256("setMetadataURI(string)"));
 
-        // (b) The deployed-code (post-proxy) must NOT contain these selectors.
-        //     The proxy's fallback will only succeed if the function exists
-        //     on the implementation. A `false` return is the canonical
-        //     signal that no matching selector is reachable.
+        // The deployed-code must NOT contain these selectors.
         (bool ok1, ) = address(nft).call(abi.encodeWithSelector(setMetadataHashSel, uint256(0), bytes32(0)));
         assertFalse(ok1, "setMetadataHash(uint256,bytes32) must NOT be present");
         (bool ok2, ) = address(nft).call(abi.encodeWithSelector(setTokenURISel, uint256(0), ""));
@@ -240,14 +226,7 @@ contract AxiomMetadataJsonTest is Test {
     // ─── Test 7: The DECISION — extension is non-additive (storage-free)
 
     function test_decisionDocumented_extensionIsStorageFree() public {
-        // The DECISION in the contract header is "non-additive" — the
-        // extension must NOT introduce new storage layout, new write
-        // functions, or new roles. We verify the runtime property:
-        //   (a) metadataJsonOf is deterministic for the same tokenId
-        //       (no hidden state, no per-tx randomness).
-        //   (b) The on-chain EIP-7857 view already returns the dataHash
-        //       we put in — proving the JSON view reads from that state
-        //       and not from any 2nd source.
+        // Verify: metadataJsonOf is deterministic (no hidden state, no per-tx randomness).
         bytes32 h = keccak256("wave9b-storage-free");
         uint256 tokenId = _mintOne(alice, h, "v1");
         string memory a = nft.metadataJsonOf(tokenId);
@@ -259,11 +238,6 @@ contract AxiomMetadataJsonTest is Test {
     // ─── Test 8: The DECISION — sentinel event documents the choice ──
 
     function test_decisionDocumented_sentinelEventEmitted() public {
-        // The deployer must be able to emit the decision-sentinel event
-        // via the documented init hook. We exercise the hook here
-        // directly (in production, AxiomAgentNFT.initialize would call
-        // _documentMetadataJsonDecision() right after the name/symbol
-        // are set).
         vm.expectEmit(false, false, false, true);
         emit MetadataJsonDecisionDocumented(
             "Axiom Agent NFT",
@@ -276,9 +250,8 @@ contract AxiomMetadataJsonTest is Test {
     // ─── Test 9: JSON-safe escaping for special characters ──────────
 
     function test_metadataJsonOf_escapesSpecialChars() public {
-        // EIP-7857 IntelligentData.dataDescription is a free-form string.
-        // A malicious or careless creator could put a quote or backslash
-        // in it. The JSON view must escape them per RFC 8259 §7.
+        // A malicious creator could put quotes or backslashes in dataDescription.
+        // RFC 8259 §7 requires escaping.
         IntelligentData[] memory datas = new IntelligentData[](1);
         datas[0] = IntelligentData({
             dataDescription: 'evil"quote\\backslash',
@@ -287,9 +260,7 @@ contract AxiomMetadataJsonTest is Test {
         uint256 tokenId = nft.mint(datas, alice);
 
         string memory json = nft.metadataJsonOf(tokenId);
-        // The JSON parser sees: \" (escaped quote) and \\ (escaped backslash)
-        // The unescaped characters MUST NOT appear inside the description string
-        // (we check that the escaping sequences are present).
+        // Verify escaping sequences are present.
         assertTrue(_contains(json, '\\"'), "quote is escaped");
         assertTrue(_contains(json, "\\\\"), "backslash is escaped");
     }
@@ -352,8 +323,7 @@ contract AxiomMetadataJsonTest is Test {
         return string(out);
     }
 
-    /// @dev RFC 4648 §4 base64 decoder (alphabet A–Z, a–z, 0–9, +, /, = pad).
-    ///      Inverse of the encoder in AxiomMetadataJson._base64Encode.
+    /// @dev RFC 4648 §4 base64 decoder.
     function _base64Decode(string memory input) internal pure returns (bytes memory) {
         bytes memory inb = bytes(input);
         require(inb.length % 4 == 0, "base64: input length not multiple of 4");
@@ -439,10 +409,6 @@ contract MetadataJsonNFT is AxiomAgentNFT {
         string memory symbol_,
         string memory rationaleTag
     ) external {
-        // Test path: the production code emits this in `initialize`
-        // (see AxiomAgentNFT.initialize). The library is pure (no
-        // event emission), so we re-emit on the test wrapper to give
-        // the `vm.expectEmit` assertion a stable call site.
         emit MetadataJsonDecisionDocumented(name_, symbol_, rationaleTag);
     }
 }

@@ -7,23 +7,8 @@ import { AXIOM_AGENT_NFT_ADDRESS } from '../abi/addresses.js';
  * Hook that returns the iNFT agents (ERC-721 token IDs) owned by the
  * currently-connected wallet on the AxiomAgentNFT contract.
  *
- * Strategy (per EIP-721 + ERC-721Enumerable):
- *   1. `balanceOf(owner)` → uint256 count of tokens the address holds.
- *   2. If count > 0, fan out `tokenOfOwnerByIndex(owner, i)` for each i.
- *   3. For each tokenId, fetch `tokenURI(tokenId)` to resolve the metadata
- *      pointer (0G Storage root hash, IPFS, or HTTPS).
- *
- * We do NOT call `tokenOfOwnerByIndex` when balance is 0 — that would revert
- * on every index (the method has no "no token at index" sentinel; the spec
- * requires `index < balanceOf(owner)`).
- *
- * Canonical references:
- *  - wagmi v2 useReadContracts (multicall, batched reads, isLoading/error):
- *    https://wagmi.sh/react/hooks/useReadContracts
- *  - EIP-721: balanceOf / tokenOfOwnerByIndex (ERC-721Enumerable extension):
- *    https://eips.ethereum.org/EIPS/eip-721
- *  - 0G chain config + 0G Storage URIs:
- *    https://docs.0g.ai/ai-context
+ * Strategy: `balanceOf` → fan-out `tokenOfOwnerByIndex` → `tokenURI` per token.
+ * Does NOT call `tokenOfOwnerByIndex` when balance is 0 (would revert).
  */
 export type AgentSummary = {
   tokenId: bigint;

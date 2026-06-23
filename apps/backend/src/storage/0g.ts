@@ -141,8 +141,6 @@ export class ZeroGStorage {
   }
 }
 
-// ─── Merkle proof helpers (migrated from merkle.ts) ────────────
-
 /** Proof shape from SDK: lemma[0]=leaf, lemma[-1]=root. */
 export interface MerkleProof {
   readonly lemma: readonly string[];

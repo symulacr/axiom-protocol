@@ -16,7 +16,7 @@ import {IntelligentData} from "../interfaces/IERC7857Metadata.sol";
 
 /// @title ERC7857AuthorizeUpgradeable
 /// @notice Extension that lets the owner grant usage rights to other addresses (max 100, cleared on transfer)
-/// @dev Adapted from https://github.com/0gfoundation/0g-agent-nft (MIT)
+/// @dev Adapted from the 0G Agentic ID reference (MIT)
 abstract contract ERC7857AuthorizeUpgradeable is IERC7857Authorize, ERC7857Upgradeable {
     using EnumerableSet for EnumerableSet.AddressSet;
 

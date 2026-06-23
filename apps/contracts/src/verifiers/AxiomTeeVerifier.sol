@@ -36,7 +36,6 @@ contract AxiomTeeVerifier is BaseVerifier, OwnableUpgradeable {
     ///      `type(uint256).max`.
     error AxiomValidUntilTooFar(uint256 validUntil, uint256 blockTimestamp, uint256 maxProofAgeSeconds);
 
-    // ─── Events ──────────────────────────────────────────────────
     event SignerRegistered(address indexed oldSigner, address indexed newSigner);
 
     /// @notice Maximum age (in seconds) a transfer-validity proof is allowed to be reused.
@@ -52,9 +51,7 @@ contract AxiomTeeVerifier is BaseVerifier, OwnableUpgradeable {
     }
 
     // keccak256(abi.encode(uint256(keccak256("agent.storage.AxiomTeeVerifier")) - 1)) & ~bytes32(uint256(0xff))
-    // Canonical ERC-7201 formula (OZ v5). Computed with `cast`:
-    //   cast keccak $(cast abi-encode "f(uint256)" 0x5d0188b08969a00676af154eb0fca3051bb94c1918479d8575173776dda9d1e9)
-    //   → 0xcdd50b25...c30934, masked to 0xcdd50b25...c30900
+    // Canonical ERC-7201 formula (OZ v5).
     bytes32 private constant STORAGE_LOCATION = 0xcdd50b252b44b49759effa27dcfb9f7db71e867632e96be05c00db87cfc30900;
 
     function _getAxiomTeeVerifierStorage() private pure returns (AxiomTeeVerifierStorage storage $) {
@@ -63,7 +60,6 @@ contract AxiomTeeVerifier is BaseVerifier, OwnableUpgradeable {
         }
     }
 
-    // ─── EIP-712 typed-data domain (fixes F-03/F-04/F-12) ──────────
     /// @dev Domain separator binds signatures to this contract instance and chain,
     ///      preventing cross-contract and cross-chain replay. Browser wallets sign
     ///      via signTypedData_v4, which produces raw ECDSA over the EIP-712 digest.

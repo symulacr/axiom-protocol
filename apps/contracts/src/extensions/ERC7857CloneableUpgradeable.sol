@@ -15,7 +15,7 @@ import {IERC7857DataVerifier, TransferValidityProof} from "../interfaces/IERC785
 
 /// @title ERC7857CloneableUpgradeable
 /// @notice Extension that allows cloning a token (new token with same metadata)
-/// @dev Adapted from https://github.com/0gfoundation/0g-agent-nft (MIT)
+/// @dev Adapted from the 0G Agentic ID reference (MIT)
 abstract contract ERC7857CloneableUpgradeable is IERC7857Cloneable, ERC7857Upgradeable {
     /// @custom:storage-location erc7857:0g.storage.ERC7857Cloneable
     struct ERC7857CloneableStorage {

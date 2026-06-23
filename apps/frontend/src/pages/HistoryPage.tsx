@@ -1,46 +1,8 @@
 // Axiom Protocol — `/history` page.
 //
-// Renders the connected wallet's recent activity as a vertical
-// timeline. The page consumes `useEventHistory()`, which polls
-// GET /v1/events on a 15-second cadence (see
-// apps/frontend/src/hooks/useEventHistory.ts) and exposes a
-// pre-grouped `byName: Record<string, AxiomEvent[]>` index. The
-// page renders the groups in the order the server first emits
-// each `eventName`, in one shared `EventTimeline`, with a
-// render-prop that formats the raw payload as JSON and shows the
-// on-chain coordinates.
-//
-// The grouping is purely presentational — the server returns a
-// flat `events` array and we derive the `byName` index on the
-// client. The headline event names below match the indexer's
-// `kind` discriminator (apps/indexer/src/events.ts) exactly:
-// Transfer, Updated, Authorization, Deposited, StrategySet,
-// Executed, PaymentProcessed, EarningsWithdrawn. We do not
-// whitelist, so any other eventName the indexer starts emitting
-// (e.g. `VerifierUpdated`, `AuthorizationRevoked`) is rendered
-// in its own group too.
-//
-// Why a render-prop on `<EventTimeline />`?
-//   The reusable component does not know the difference between
-//   a Transfer (which shows from/to/tokenId), a Deposited (which
-//   shows amount), and a StrategySet (which shows a merkle root +
-//   daily limit + validUntilDay). The page owns that formatting
-//   and supplies it as a function. The timeline owns layout and
-//   timestamps; the page owns content.
-//
-// Source URLs (cited at the call sites that use them):
-//   - React `useAccount` (connected wallet address shown in the
-//     header, drives the `?owner=` filter on the polled URL):
-//     https://wagmi.sh/react/hooks/useAccount
-//   - MDN — Intl.DateTimeFormat (the timestamp string in the
-//     rail cell is produced by the EventTimeline; this file does
-//     not re-format it):
-//     https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/DateTimeFormat
-//   - React useEffect (the polling hook lives there):
-//     https://react.dev/reference/react/useEffect
-//   - 0G chain ids (Galileo 16602 / Aristotle 16661) so the
-//     explorer link points at the right network:
-//     https://docs.0g.ai/ai-context
+// Renders the connected wallet's recent activity as a vertical timeline
+// using `useEventHistory()` (15 s polling cadence) and `<EventTimeline />`
+// with a render-prop for payload formatting.
 
 import { useCallback, type ReactElement } from 'react';
 import { useAccount, useChainId } from 'wagmi';

@@ -43,7 +43,6 @@ let receiverAddress: string;
 let receiverPubkey64: `0x${string}`;
 
 before(async () => {
-  // Start a real oracle with an in-memory storage adapter.
   const oracleSigner = new TeeSigner(ORACLE_PRIV);
   const storage = new InMemoryStorage();
 
@@ -67,7 +66,6 @@ before(async () => {
   });
   assert.equal(mint.status, 200);
 
-  // Receiver key material.
   const receiver = new Wallet(RECEIVER_PRIV);
   receiverAddress = receiver.address;
   const uncompressed = deriveUncompressedPubkeyFromHex(RECEIVER_PRIV);

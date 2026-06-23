@@ -1,43 +1,8 @@
 // Axiom Protocol — `<PaymentPanel />`.
 //
-// Presentational + thin-controller panel for the five backend payment
-// routes (Wave 3) plus the on-chain `withdrawAgentEarnings()` call.
-// It is intended to be embedded inside the agent detail page
-// (`/agents/:tokenId`) — it accepts the parsed `tokenId` prop and
-// renders:
-//
-//   1. Payment config display (payment token, protocol fee bps,
-//      treasury) — pulled from `GET /v1/payment/config` on mount.
-//   2. Pay-for-agent form (amount input + submit) — POSTs to
-//      `/v1/agents/:id/pay` via the backend signer.
-//   3. Earnings display (creator address + accumulated earnings) +
-//      "Withdraw" button that calls `withdrawAgentEarnings()` on
-//      `AxiomPaymentProcessor` directly through wagmi v2
-//      `useWriteContract` (the backend has no withdraw route — see
-//      apps/backend/src/server.ts).
-//   4. Royalty setting form (bps input + submit) — POSTs to
-//      `/v1/agents/:id/royalty`.
-//
-// All HTTP I/O flows through the `usePayment` hook so this file
-// stays presentational. The on-chain withdraw is the one exception —
-// there is no backend wrapper, so the connected wallet signs it
-// directly via wagmi, mirroring the `useTransfer` on-chain submit.
-//
-// Style follows the rest of the dApp: functional component, inline
-// styles, explicit `ReactElement` return type, no `!` assertions.
-// See `AgentDetail.tsx` and `HealthBadge.tsx` for the convention.
-//
-// Canonical references:
-//   - wagmi v2 `useAccount`:
-//       https://wagmi.sh/react/hooks/useAccount
-//   - wagmi v2 `useWriteContract`:
-//       https://wagmi.sh/react/hooks/useWriteContract
-//   - wagmi v2 `useReadContract`:
-//       https://wagmi.sh/react/hooks/useReadContract
-//   - AxiomPaymentProcessor source of truth:
-//       apps/contracts/src/AxiomPaymentProcessor.sol
-//   - EIP-20 (ERC-20 approve/allowance, basis for the pull payment):
-//       https://eips.ethereum.org/EIPS/eip-20
+// Presentational panel for the five backend payment routes plus the
+// on-chain `withdrawAgentEarnings()` call. HTTP I/O flows through
+// `usePayment`; the on-chain withdraw uses wagmi `useWriteContract`.
 
 import { useCallback, useEffect, useState, type ReactElement } from 'react';
 import { useAccount, useWriteContract } from 'wagmi';
@@ -169,7 +134,6 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
         setConfig(cfg);
         setEarnings(earn);
       } catch {
-        // Surfaced via the hook's `error` state; no per-field render.
       }
     };
     void load();
@@ -183,7 +147,6 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
       const earn = await getEarnings(tokenId);
       setEarnings(earn);
     } catch {
-      // Hook surfaces it.
     }
   }, [tokenId, getEarnings]);
 

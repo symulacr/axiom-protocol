@@ -14,15 +14,9 @@ import {IAxiomAgentNFT} from "./interfaces/IAxiomAgentNFT.sol";
 /// @dev Pay-for-agent pulls a configurable ERC-20 stable (USDC.e / USDG) from the payer and
 ///      credits the creator's withdrawable balance. The creator pulls funds via
 ///      `withdrawAgentEarnings()`. Standalone, non-upgradeable.
-///
-///      References:
-///        - ERC-20 spec: https://eips.ethereum.org/EIPS/eip-20
-///        - OpenZeppelin SafeERC20 (handles non-standard ERC-20 tokens that don't return bool):
-///          https://docs.openzeppelin.com/contracts/5.x/api/token/erc20#SafeERC20
 contract AxiomPaymentProcessor is Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
-    // ─── Custom errors ────────────────────────────────────────────
     error ZeroAddress();
     error ZeroAmount();
     error NoEarnings();
@@ -30,7 +24,6 @@ contract AxiomPaymentProcessor is Ownable, Pausable, ReentrancyGuard {
     error InvalidBps();
     error AgentCreatorNotRegistered();
 
-    // ─── Events ──────────────────────────────────────────────────
     event PaymentProcessed(
         uint256 indexed agentTokenId,
         address indexed payer,
@@ -60,9 +53,7 @@ contract AxiomPaymentProcessor is Ownable, Pausable, ReentrancyGuard {
     }
 
     // keccak256(abi.encode(uint256(keccak256("agent.storage.AxiomPaymentProcessor")) - 1)) & ~bytes32(uint256(0xff))
-    // Canonical ERC-7201 formula (OZ v5). Computed with `cast`:
-    //   cast keccak $(cast abi-encode "f(uint256)" 0xf7a2d18dcc8f25e59e9ab331cff461df76ed6e563fd0924360d2d541d6aa357b)
-    //   → 0xb6e9ac8a...cebc63, masked to 0xb6e9ac8a...cebc00
+    // Canonical ERC-7201 formula (OZ v5).
     bytes32 private constant STORAGE_LOCATION = 0xb6e9ac8ab7d5307044651d01576943b58a3563d54e8f2be64d1601b1a6cebc00;
 
     function _getStorage() private pure returns (PaymentProcessorStorage storage $) {
@@ -103,7 +94,6 @@ contract AxiomPaymentProcessor is Ownable, Pausable, ReentrancyGuard {
         $.paymentToken = IERC20(paymentTokenAddr);
     }
 
-    // ─── Setters (onlyOwner) ─────────────────────────────────────
     function setProtocolTreasury(address newTreasury) external onlyOwner {
         if (newTreasury == address(0)) revert ZeroAddress();
         address old = _getStorage().protocolTreasury;
@@ -137,7 +127,6 @@ contract AxiomPaymentProcessor is Ownable, Pausable, ReentrancyGuard {
         emit RoyaltySet(agentTokenId, newBps);
     }
 
-    // ─── Views ──────────────────────────────────────────────────
     function protocolTreasury() external view returns (address) {
         return _getStorage().protocolTreasury;
     }
@@ -162,7 +151,7 @@ contract AxiomPaymentProcessor is Ownable, Pausable, ReentrancyGuard {
         return _getStorage().agentEarnings[creator];
     }
 
-    // ─── Pay for agent (caller pays; ERC-20 stable) ──────────────
+
     /// @notice Pay for an agent's service. Splits `amount` of `paymentToken` to the creator
     ///         (royalty, credited to their withdrawable balance) and to the protocol treasury
     ///         (protocolCut, forwarded immediately to the treasury address).
@@ -232,7 +221,6 @@ contract AxiomPaymentProcessor is Ownable, Pausable, ReentrancyGuard {
         $.paymentToken.safeTransfer(msg.sender, amount);
     }
 
-    // ─── Pause (onlyOwner) ───────────────────────────────────────
     function pause() external onlyOwner {
         _pause();
     }

@@ -1,38 +1,8 @@
 // Axiom Protocol — `<EventTimeline />` reusable component.
 //
-// Renders a vertical timeline of `AxiomEvent[]` with a left rail of
-// timestamp+eventName badges and a main column of event-specific
-// content produced by a render-prop. The component is intentionally
-// event-shape-agnostic: callers supply the render-prop so the same
-// timeline can render raw payloads, formatted JSON, links to the
-// block explorer, or whatever else the calling page wants.
-//
-// The layout uses CSS Grid with a fixed-width left column for the
-// rail and a flexible main column for the body, per the
-// "Realizing common layouts" patterns:
-//
-//   display:        grid
-//   grid-template-columns: <rail> 1fr
-//   gap:            <rail-gap>
-//
-// The rail and the main column share an implicit row for each
-// event; the connecting line is drawn with a `::before` pseudo
-// on the rail cell so it never desyncs from the event count.
-// The component is also flexible to the empty case (renders
-// a single muted "no events" cell that spans both columns) and
-// to per-event loading (a centered placeholder).
-//
-// Canonical sources:
-//   - MDN — CSS Grid common layouts (two-column "sidebar +
-//     content" with grid-template-columns, gap, and
-//     column/row alignment):
-//     https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_grid_layout/Realizing_common_layouts_for_grids
-//   - MDN — ::before pseudo-element (vertical timeline rail):
-//     https://developer.mozilla.org/en-US/docs/Web/CSS/::before
-//   - MDN — Intl.DateTimeFormat (per-event timestamp rendering):
-//     https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/DateTimeFormat
-//   - React types (ReactNode, ReactElement):
-//     https://react.dev/reference/react/ReactNode
+// Renders a vertical timeline of `AxiomEvent[]` using a CSS Grid layout
+// with a left rail (timestamp + eventName) and a render-prop for body content.
+// Event-shape-agnostic — callers control the body via `renderEvent`.
 
 import type { ReactElement, ReactNode } from 'react';
 import type { AxiomEvent } from '../hooks/useEventHistory.js';

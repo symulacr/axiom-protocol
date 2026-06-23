@@ -251,49 +251,11 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
 
   // ─── Compute — Direct Chat Completions ──────────────────────────────
 
-  /**
-   * POST /v1/compute/chat/completions
-   *
-   * OpenAI-compatible chat completions endpoint. Supports both the Router
-   * path (sk-* key via AXIOM_COMPUTE_API_KEY) and the Direct path (app-sk-*
-   * key via AXIOM_COMPUTE_DIRECT_KEY).
-   *
-   * Request body (OpenAI Chat Completions subset):
-   *   {
-   *     model: string;          // e.g. "qwen/qwen2.5-omni-7b"
-   *     messages: Array<{       // OpenAI message format
-   *       role: "system"|"user"|"assistant",
-   *       content: string
-   *     }>;
-   *     max_tokens?: number;    // default: 512
-   *     temperature?: number;   // default: 0.7
-   *     stream?: boolean;       // NOT YET SUPPORTED
-   *   }
-   *
-   * Response shape (OpenAI-compatible subset):
-   *   {
-   *     id: string;
-   *     object: "chat.completion";
-   *     created: number;
-   *     model: string;
-   *     choices: Array<{
-   *       index: number;
-   *       message: { role: string; content: string };
-   *       finish_reason: string;
-   *     }>;
-   *     usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number };
-   *   }
-   *
-   * Errors: 400 (invalid body), 401 (no compute credentials configured),
-   *         502 (upstream compute provider error)
-   */
+  /** Chat completions proxy to 0G Compute Router. */
   app.post("/v1/compute/chat/completions", async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { model, messages, max_tokens, temperature, stream: _stream } = chatCompletionsSchema.parse(req.body);
 
-      // ── Resolve compute client ──────────────────────────────────────
-      // Try Router path first, fall back to Direct path.
-      // createComputeClient() is defined in compute/router.ts.
       let client: OpenAI;
       try {
         const { createComputeClient } = await import("./compute/router.js");
@@ -307,7 +269,6 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
         return;
       }
 
-      // ── Call upstream ───────────────────────────────────────────────
       const completion = await client.chat.completions.create({
         model,
         messages,
@@ -316,7 +277,6 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
         stream: false, // explicit until streaming is supported
       });
 
-      // ── Respond ─────────────────────────────────────────────────────
       res.json({
         id: completion.id,
         object: "chat.completion",

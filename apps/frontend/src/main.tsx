@@ -1,28 +1,6 @@
 // Axiom Protocol — Vite entry point.
-//
-// Wraps the React tree in the three required providers in the order
-// recommended by the RainbowKit v2 installation guide:
-//
-//   QueryClientProvider     — required by both wagmi v2 and RainbowKit v2
-//                             (TanStack Query is a peer dependency).
-//   WagmiProvider           — supplies the wagmi client (viem transports,
-//                             connectors, query/mutation client) to the
-//                             rest of the React tree.
-//   RainbowKitProvider      — supplies the RainbowKit modal context. Must
-//                             be a descendant of WagmiProvider so it can
-//                             read the active chain and client.
-//
-// Sources (canonical):
-//   RainbowKit v2 installation guide:
-//     https://www.rainbowkit.com/docs/installation
-//   wagmi v2 React quickstart:
-//     https://wagmi.sh/react/quickstart
-//
-// `wagmiConfig` is built in apps/frontend/src/config/wagmi.ts (owned by
-// Agent C) and re-exports the `getDefaultConfig` output with the 0G
-// Galileo testnet and 0G Aristotle mainnet registered as the supported
-// chains. `chains` is a tuple the RainbowKitProvider needs to render the
-// chain-switcher UI in the ConnectButton modal.
+// Wraps the React tree in QueryClientProvider, WagmiProvider,
+// and RainbowKitProvider per the RainbowKit v2 installation guide.
 
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';

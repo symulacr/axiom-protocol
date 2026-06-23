@@ -5,7 +5,7 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {IntelligentData} from "../interfaces/IERC7857Metadata.sol";
 
 /// @title  AxiomMetadataJson
-/// @notice Wave 9-B — optional iNFT metadata extension for AxiomAgentNFT
+/// @notice Optional iNFT metadata extension for AxiomAgentNFT
 /// @dev    ─────────────────────  DECISION  ─────────────────────
 ///         The 2-root-hash metadata pattern (store an additional, unencrypted
 ///         ERC-721-style JSON metadata blob on 0G Storage and record its root
@@ -56,31 +56,15 @@ import {IntelligentData} from "../interfaces/IERC7857Metadata.sol";
 ///         wants the full payload, it follows the `dataHash` to 0G Storage
 ///         using the per-hash client (the same path Wave 9-A's
 ///         verify-data-hash.ts uses for integrity checks).
-/// @dev    Adapted from https://github.com/0gfoundation/0g-agent-nft (MIT) for
-///         the Axiom buildathon.
+/// @dev    Adapted from https://github.com/0gfoundation/0g-agent-nft (MIT)
 
-/// @dev    Wave 10 C — conversion from `abstract contract` to `library`.
-///         The sentinel event `MetadataJsonDecisionDocumented` was MOVED
-///         to `AxiomAgentNFT` (the only contract that ever emits it)
-///         because libraries cannot emit contract-scoped events on a
-///         third-party contract under the `using … for *;` pattern. The
+/// @dev    The sentinel event `MetadataJsonDecisionDocumented` lives on
+///         `AxiomAgentNFT` because libraries cannot emit contract-scoped
+///         events on a third-party contract under `using … for *;`. The
 ///         library exposes a public pure helper
 ///         `documentMetadataJsonDecision(name, symbol, rationaleTag)`
 ///         that returns the canonical triple so the caller can emit the
-///         event itself (pure: no state, no external calls). Per
-///         Solidity 2025 best practice
-///         (https://dev.to/shlok2740/understanding-libraries-interfaces-and-abstract-contracts-in-solidity-14nn)
-///         a stateless, pure-function container is the canonical library
-///         idiom: internal library functions are inlined at compile time,
-///         public library functions are linked via DELEGATECALL, and
-///         `using AxiomMetadataJson for uint256;` attaches the helpers
-///         to the `tokenId` primitive so calls like
-///         `tokenId.buildMetadataJson(datas, name(), symbol())` read
-///         naturally at the call site. The concrete contract
-///         (AxiomAgentNFT) attaches the library with
-///         `using AxiomMetadataJson for uint256;` and calls the
-///         helpers on the tokenId to render the OpenSea-compatible
-///         JSON.
+///         event itself.
 library AxiomMetadataJson {
     // NOTE: The `MetadataJsonDecisionDocumented` event used to live here.
     // It was MOVED to AxiomAgentNFT (the only contract that ever emits
@@ -159,8 +143,6 @@ library AxiomMetadataJson {
         );
     }
 
-
-    // ──────────────────────────  INTERNAL HELPERS  ──────────────────────────
 
     /// @dev Build the `attributes` array JSON for the OpenSea schema. The
     ///      first attribute is always `data_hash` (the first IntelligentData
