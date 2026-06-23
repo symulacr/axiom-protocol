@@ -125,11 +125,11 @@ export function AgentDetail(): ReactElement {
     return (
       <main>
         <PageHeader title="Agent" />
-        <Card style={{ textAlign: 'center', padding: 40 }}>
-          <p style={{ color: COLORS.textMuted, fontSize: 15, marginBottom: 20 }}>
+        <Card style={{ textAlign: 'center', padding: 'var(--space-3xl) var(--space-xl)' }}>
+          <p style={{ color: COLORS.textMuted, fontSize: 'var(--text-sm)', marginBottom: 'var(--space-lg)', fontWeight: 'var(--fw-regular)', lineHeight: 'var(--lh-normal)' }}>
             Connect your wallet to view this agent's on-chain metadata.
           </p>
-          <Link to="/agents" style={{ color: COLORS.bronzeLight, fontSize: 14, fontWeight: 500 }}>
+          <Link to="/agents" style={{ color: COLORS.bronzeLight, fontSize: 'var(--text-sm)', fontWeight: 'var(--fw-semibold)' }}>
             Back to agents
           </Link>
         </Card>
@@ -140,11 +140,10 @@ export function AgentDetail(): ReactElement {
   if (tokenId === null) {
     return (
       <main>
-        <PageHeader title="Agent" />
-        <Alert variant="error" style={{ marginBottom: 20 }}>
+        <Alert variant="error" style={{ marginBottom: 'var(--space-lg)' }}>
           Invalid token ID in the URL. The ID must be a positive integer.
         </Alert>
-        <Link to="/agents" style={{ color: COLORS.bronzeLight, fontSize: 14, fontWeight: 500 }}>
+        <Link to="/agents" style={{ color: COLORS.bronzeLight, fontSize: 'var(--text-sm)', fontWeight: 'var(--fw-semibold)' }}>
           Back to agents
         </Link>
       </main>
@@ -161,7 +160,7 @@ export function AgentDetail(): ReactElement {
             to="/agents"
             style={{
               color: COLORS.textMuted,
-              fontSize: 14,
+              fontSize: 'var(--text-sm)',
               textDecoration: 'none',
               transition: 'color 0.15s ease',
             }}
@@ -172,7 +171,7 @@ export function AgentDetail(): ReactElement {
       />
 
       {metaLoading && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)', marginBottom: 'var(--space-xl)' }}>
           <Skeleton height={24} />
           <Skeleton height={24} />
           <Skeleton height={24} />
@@ -180,40 +179,40 @@ export function AgentDetail(): ReactElement {
       )}
 
       {metaError !== null && (
-        <Alert variant="error" style={{ marginBottom: 24 }}>
+        <Alert variant="error" style={{ marginBottom: 'var(--space-xl)' }}>
           Couldn't load agent metadata from the chain. Check your connection and
           try refreshing the page.
         </Alert>
       )}
 
       {data !== null && (
-        <Card style={{ marginBottom: 24 }}>
+        <Card style={{ marginBottom: 'var(--space-xl)' }}>
           <SectionTitle>Metadata</SectionTitle>
-          <dl style={{ margin: 0, display: 'grid', gridTemplateColumns: '140px 1fr', gap: '12px 16px', fontSize: 14 }}>
-            <dt style={{ color: COLORS.textDim, fontWeight: 500 }}>Collection</dt>
+          <dl style={{ margin: 0, display: 'grid', gridTemplateColumns: '8.75rem 1fr', gap: 'var(--space-md) var(--space-lg)', fontSize: 'var(--text-sm)' }}>
+            <dt style={{ color: COLORS.textDim, fontWeight: 'var(--fw-medium)' }}>Collection</dt>
             <dd style={{ margin: 0, color: COLORS.text }}>
               {data.name === '' ? PLACEHOLDER : data.name}{' '}
               {data.symbol !== '' && (
                 <span style={{ color: COLORS.textMuted }}>({data.symbol})</span>
               )}
             </dd>
-            <dt style={{ color: COLORS.textDim, fontWeight: 500 }}>Owner</dt>
+            <dt style={{ color: COLORS.textDim, fontWeight: 'var(--fw-medium)' }}>Owner</dt>
             <dd style={{ margin: 0 }}>
               <MonoLabel>{data.owner}</MonoLabel>
             </dd>
-            <dt style={{ color: COLORS.textDim, fontWeight: 500 }}>Creator</dt>
+            <dt style={{ color: COLORS.textDim, fontWeight: 'var(--fw-medium)' }}>Creator</dt>
             <dd style={{ margin: 0 }}>
               {creator !== undefined ? <MonoLabel>{creator}</MonoLabel> : <span style={{ color: COLORS.textDim }}>{PLACEHOLDER}</span>}
             </dd>
-            <dt style={{ color: COLORS.textDim, fontWeight: 500 }}>Data Hash</dt>
+            <dt style={{ color: COLORS.textDim, fontWeight: 'var(--fw-medium)' }}>Data Hash</dt>
             <dd style={{ margin: 0 }}>
               <MonoLabel title={data.dataHash}>{truncateHex(data.dataHash)}</MonoLabel>
             </dd>
-            <dt style={{ color: COLORS.textDim, fontWeight: 500 }}>Description</dt>
+            <dt style={{ color: COLORS.textDim, fontWeight: 'var(--fw-medium)' }}>Description</dt>
             <dd style={{ margin: 0, color: COLORS.text }}>
               {data.dataDescription === '' ? <span style={{ color: COLORS.textDim }}>{PLACEHOLDER}</span> : data.dataDescription}
             </dd>
-            <dt style={{ color: COLORS.textDim, fontWeight: 500 }}>Token URI</dt>
+            <dt style={{ color: COLORS.textDim, fontWeight: 'var(--fw-medium)' }}>Token URI</dt>
             <dd style={{ margin: 0 }}>
               {data.tokenUri === '' ? <span style={{ color: COLORS.textDim }}>{PLACEHOLDER}</span> : <MonoLabel>{data.tokenUri}</MonoLabel>}
             </dd>
@@ -221,9 +220,9 @@ export function AgentDetail(): ReactElement {
         </Card>
       )}
 
-      <Card style={{ marginBottom: 24 }}>
+      <Card style={{ marginBottom: 'var(--space-xl)' }}>
         <SectionTitle>Transfer</SectionTitle>
-        <p style={{ color: COLORS.textMuted, fontSize: 14, lineHeight: 1.65, margin: '0 0 16px', fontWeight: 300 }}>
+        <p style={{ color: COLORS.textMuted, fontSize: 'var(--text-sm)', lineHeight: 'var(--lh-normal)', margin: '0 0 var(--space-lg)', fontWeight: 'var(--fw-regular)' }}>
           Transfer ownership with cryptographic proof of integrity. The agent's
           encrypted intelligence is re-keyed on 0G Storage, and the receiver
           unwraps the sealed key inside a TEE.
@@ -236,10 +235,11 @@ export function AgentDetail(): ReactElement {
       <PaymentPanel tokenId={tokenId} />
 
       {address !== undefined && (
-        <p style={{ marginTop: 24, fontSize: 13, color: COLORS.textDim }}>
+        <p style={{ marginTop: 'var(--space-xl)', fontSize: 'var(--text-sm)', color: COLORS.textDim }}>
           Connected as <MonoLabel>{address}</MonoLabel>
         </p>
       )}
+
 
       {transferOpen && (
         <TransferModal
