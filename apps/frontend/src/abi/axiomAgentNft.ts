@@ -11,19 +11,7 @@
 // only reads the array. `resolveJsonModule` is enabled in
 // `tsconfig.base.json`, so the JSON import is already typed as a
 // `readonly` array — adding `as const` on a non-literal import
-// binding is a TS error (TS1355). The wagmi TypeScript guide
-// documents the recommended pattern:
-//   https://wagmi.sh/react/typescript#const-assert-abis-typed-data
-//
-// Source URLs:
-//   - Solidity ABI JSON spec:
-//     https://docs.soliditylang.org/en/latest/abi-spec.html
-//   - EIP-721 (name / symbol / ownerOf / tokenURI):
-//     https://eips.ethereum.org/EIPS/eip-721
-//   - EIP-7857 (getDataHash / getSealedKey / iNFT extensions):
-//     https://eips.ethereum.org/EIPS/eip-7857
-//   - wagmi v2 useReadContracts:
-//     https://wagmi.sh/react/hooks/useReadContracts
+// binding is a TS error (TS1355).
 import axiomAgentNftAbiJson from './AxiomAgentNFT.json';
 
 export const axiomAgentNftAbi = axiomAgentNftAbiJson.abi;

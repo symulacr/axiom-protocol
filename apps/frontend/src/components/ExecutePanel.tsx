@@ -1,8 +1,4 @@
 // Axiom Protocol — `<ExecutePanel />` component.
-//
-// Renders the strategy-execution surface for an AxiomAgentNFT token.
-// Multicalls vault read getters, then exposes an "Execute Tick" button
-// that fires `useOrchestratorTick` (POST /v1/orchestrator/tick).
 
 import { useMemo, useState, type ReactElement } from 'react';
 import { useAccount, useReadContracts } from 'wagmi';
@@ -50,10 +46,8 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
     }
   }, [activeId]);
 
-  // Read vault state for the active agent token. Mirrors the multicall
-  // pattern in VaultDashboard.tsx: `vaults(tokenId)`, `totalDeposits()`,
-  // and `getStrategy(tokenId)` in one batched request.
-  // Ref: https://wagmi.sh/react/hooks/useReadContracts
+  // Read vault state for the active agent token: vaults(), totalDeposits(),
+  // and getStrategy() in one batched request.
   const vaultQuery = useReadContracts({
     allowFailure: true,
     contracts: [

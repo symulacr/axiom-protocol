@@ -7,10 +7,7 @@ export { OG_NETWORKS, pickOGNetwork };
 
 /**
  * Typed wrapper around @0gfoundation/0g-storage-ts-sdk for 0G Storage.
- * <p>Package was renamed from @0gfoundation/0g-ts-sdk to @0gfoundation/0g-storage-ts-sdk.
- * <p>Two client-side encryption modes are supported (set via the SDK's `encryption` option):
- *  - aes256: 32-byte symmetric key, AES-256-CTR + 17-byte header [v=0x01][nonce:16].
- *  - ecies:   33-byte compressed receiver pubkey, ECDH+HKDF+AES-256-CTR.
+ * Supports aes256 (32-byte symmetric key) and ecies (33-byte compressed pubkey) encryption.
  */
 
 /**

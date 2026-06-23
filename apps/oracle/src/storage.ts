@@ -3,10 +3,8 @@ import { keccak256, type Signer } from "ethers";
 import type { Hex } from "viem";
 
 /**
- * Storage adapter interface for the oracle service. Implementations handle
- * blob upload/download (backed by 0G Storage in production, an in-memory Map
- * in dev/test) plus a "seen dataHash" set that binds on-chain OwnershipProofs
- * to previously-uploaded storage roots (ERC-7857 storage+chain binding).
+ * Storage adapter interface for the oracle service. Handles blob
+ * upload/download plus a "seen dataHash" set for on-chain proof binding.
  */
 export interface StorageAdapter {
   upload(blob: Uint8Array): Promise<{ rootHash: Hex }>;
@@ -15,11 +13,7 @@ export interface StorageAdapter {
   hasSeenDataHash(rootHash: Hex): boolean;
 }
 
-/**
- * In-memory storage adapter for dev/test. Uses keccak256 of the blob as a
- * stand-in root hash (mimicking 0G's Merkle root) so the oracle can be tested
- * in isolation without a live 0G Storage node.
- */
+/** In-memory storage adapter for dev/test. Uses keccak256 as a stand-in root hash. */
 export class InMemoryStorage implements StorageAdapter {
   private store = new Map<string, Uint8Array>();
   private seenDataHashes = new Set<string>();
@@ -40,10 +34,7 @@ export class InMemoryStorage implements StorageAdapter {
   hasSeenDataHash(rootHash: Hex): boolean { return this.seenDataHashes.has(rootHash.toLowerCase()); }
 }
 
-/**
- * Production storage adapter backed by real 0G Storage.
- * Uses the SDK directly (@0gfoundation/0g-storage-ts-sdk).
- */
+/** Production storage adapter backed by real 0G Storage. */
 export class ZeroGStorage implements StorageAdapter {
   private readonly indexer: Indexer;
   private readonly evmRpc: string;

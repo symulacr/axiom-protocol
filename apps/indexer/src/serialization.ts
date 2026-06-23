@@ -1,40 +1,8 @@
 // apps/indexer/src/serialization.ts
 //
 // Deterministic, byte-stable JSON serialization for indexed events.
-//
-// We follow the JSON Canonicalization Scheme (JCS) defined in
-//   RFC 8785 — JSON Canonicalization Scheme
-//   https://datatracker.ietf.org/doc/html/rfc8785
-//
-// The three rules we apply are:
-//
-//   1. **Object keys are sorted** lexicographically by their UTF-16 code
-//      unit values, before serialization (RFC 8785 §3.2 step 5).
-//   2. **Numbers** are serialized using ECMAScript's `JSON.stringify`
-//      rules, which RFC 8785 §3.2.2.3 explicitly defers to JSON itself.
-//      For our event payloads every numeric value is a `bigint` (token
-//      IDs, amounts, sequence numbers), and JavaScript cannot represent
-//      integers > 2^53 in a `number`. We therefore encode **bigints as
-//      decimal strings** (per RFC 8785 §3.2.2.3's "implementation may
-//      choose" note — we always choose strings, the safer option, to
-//      avoid silent precision loss).
-//   3. **Strings** are emitted with the standard JSON escapes RFC 8785
-//      §3.2.2.2 requires. `JSON.stringify` already produces them, so
-//      no extra work is needed for strings.
-//
-// What this does NOT cover (and why):
-//   - **Unicode normalization** (RFC 8785 §3.2.2.2). Our events contain
-//     only ASCII hex addresses, EVM topics, and short English field
-//     names; we never accept arbitrary user text into a `kind` or `txHash`,
-//     so NFC/NFD normalization is a no-op for our data.
-//   - **Arrays of objects**: RFC 8785 preserves array order. We preserve
-//     it too — `sealedKeys` (an array of `Hex` strings) must retain its
-//     on-chain order, and a sorted-keys serialization of the array's
-//     elements is meaningless because each element is a primitive.
-//
-// The output of `canonicalizeEvent` is suitable for a content hash:
-// two indexers running the same `AxiomEvent` will produce byte-identical
-// bytes, which is the property 0G DA needs to detect re-submissions.
+// Follows RFC 8785 (JSON Canonicalization Scheme): sorted object keys,
+// bigints as decimal strings, array order preserved.
 
 import type { AxiomEvent } from "./events.js";
 

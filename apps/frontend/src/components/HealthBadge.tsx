@@ -1,24 +1,14 @@
 // Axiom Protocol — `<HealthBadge />` header indicator.
-//
-// Green/red dot that polls `${VITE_BACKEND_URL}/health` every 30 s
-// and flips between green (200 + `ok: true`) and red (any other outcome).
 
 import { useEffect, useState, type ReactElement } from 'react';
 import { BACKEND_URL } from '../config/env.js';
 
-/** Status of the backend health probe; maps directly to the dot color. */
 type HealthStatus = 'unknown' | 'ok' | 'down';
 
 const POLL_INTERVAL_MS = 30_000;
-/** Total time we wait for the health endpoint before giving up. */
 const REQUEST_TIMEOUT_MS = 5_000;
 
-/**
- * Probe the backend health endpoint once. Returns `true` only on a
- * 2xx response whose JSON body has `ok === true`. Any other outcome
- * (network error, non-2xx, parse error, shape mismatch, timeout) is
- * reported as `false` so the dot turns red.
- */
+/** Returns `true` only on a 2xx response whose JSON body has `ok === true`. */
 async function checkHealth(signal: AbortSignal): Promise<boolean> {
   try {
     const res = await fetch(`${BACKEND_URL}/health`, {

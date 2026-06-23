@@ -1,9 +1,5 @@
 // Single source of truth for env loading + getEnv helper.
-//
-// Env vars come from `process.env` (https://nodejs.org/api/process.html#processenv).
-// We seed `process.env` from a single `.env` file via a hand-rolled loader
-// instead of the `dotenv` npm package — strict subset of
-// https://github.com/motdotla/dotenv (no expansion, no multiline, no override).
+// Seeds `process.env` from a single `.env` file via a hand-rolled loader.
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";

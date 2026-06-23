@@ -10,9 +10,7 @@ import type { PaymentProcessorMethods, ERC20Methods } from "../contract-types.js
 //
 // The contract pulls an ERC-20 stable (USDC.e / USDG) from the payer, credits
 // the agent creator's withdrawable balance (royalty), and forwards the protocol
-// cut to the treasury in the same call. See:
-//   https://eips.ethereum.org/EIPS/eip-20 (ERC-20)
-//   https://docs.openzeppelin.com/contracts/5.x/api/token/erc20#SafeERC20
+// cut to the treasury in the same call.
 
 const PAYMENT_PROCESSOR_ABI: readonly string[] = [
   "function payForAgent(uint256 agentTokenId, uint256 amount)",
@@ -176,7 +174,6 @@ export class PaymentProcessorClient {
    * Grant the processor an allowance covering `amount` if the current
    * allowance is insufficient. Uses a single approve call rather than
    * bumping, since the signer is the operator and approvals are cheap.
-   * Ref: https://eips.ethereum.org/EIPS/eip-20 (approve).
    */
   private async ensureAllowance(amount: bigint): Promise<void> {
     const current = await this.token.contract.allowance(this.signer.address, this.address);

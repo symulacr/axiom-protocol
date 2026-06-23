@@ -1,32 +1,8 @@
 // apps/indexer/src/da.ts
 //
-// Data Availability submission for indexed events.
-//
-// What this module does
-// ---------------------
-// `submitEvent` turns one `AxiomEvent` (decoded in `watcher.ts` from an
-// on-chain log) into a single blob submitted to 0G DA via gRPC DisperseBlob
-// and returns the resulting request ID. The underlying transport is the 0G
-// DA Client sidecar gRPC service (port 51001).
-//
-// Why a `submitFn` option?
-// -------------------------
-// Two reasons:
-//   1. Tests cannot hit the live network and the testnet is rate-limited.
-//      A mock `submitFn` lets `da.test.ts` validate the canonical
-//      serialization and the returned shape without a wallet.
-//   2. Production wiring can swap the real submitter for a queue
-//      (NATS / Redis Streams) publish without touching the watcher.
-//
-// The "never throw" guarantee
-// ---------------------------
-// `Watcher.tick` (apps/indexer/src/watcher.ts:458) only catches errors
-// at the tick level, so a thrown sink function would stop the whole
-// polling loop. `submitEvent` is designed to be the `sink`: it catches
-// every error, logs to stderr, and returns a sentinel
-// `{ txHash: "", seq: 0n }` for failed submissions. The watcher can
-// then chain `submitEvent` directly into the sink and survive
-// transient DA outages without manual intervention.
+// Data Availability submission for indexed events via 0G DA gRPC DisperseBlob.
+// Never throws — returns `{ txHash: "", seq: 0n }` on failure so the watcher
+// polling loop survives transient DA outages.
 
 import { DaClient } from "./da-client.js";
 

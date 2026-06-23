@@ -1,19 +1,7 @@
 // apps/backend/src/events/store.ts
 //
-// In-memory event store for agent lifecycle events received from the
-// indexer (via POST /v1/events) and the orchestrator (via internal
-// broadcasts). The store is bounded — at most MAX_EVENTS_PER_SOURCE
-// events are retained per (source, eventName) pair; older events are
-// evicted FIFO once the cap is reached.
-//
-// This is a "last 1000" ring per source/eventName. It is NOT a database;
-// it is meant for the dashboard's "recent activity" panel and for
-// short-horizon reconciliation between the indexer and the orchestrator.
-// Persistence to 0G Storage or Postgres is a future wave (MW17+).
-//
-// Pure functions, no Express / no HTTP / no IO. The store is constructed
-// once at server start and shared across requests via module-level
-// singleton in server.ts.
+// In-memory event store for agent lifecycle events. Bounded FIFO ring
+// per (source, eventName) — "last 1000" for the dashboard activity panel.
 //
 
 
@@ -88,7 +76,6 @@ export class EventStore {
    * Append a new event. Deep-clones via `structuredClone` so the caller's
    * object cannot be mutated post-append. Evicts the oldest event (FIFO)
    * when the bucket exceeds `cap`. Returns the cloned event stored.
-   * Source: https://developer.mozilla.org/en-US/docs/Web/API/Window/structuredClone
    */
   append(evt: StoredEvent): StoredEvent {
     const stored = structuredClone(evt) as StoredEvent;

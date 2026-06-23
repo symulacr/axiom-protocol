@@ -1,27 +1,7 @@
 // apps/indexer/src/index.ts
 //
-// Long-running on-chain event indexer for the Axiom Protocol.
-//
-// Behaviour:
-//   1. Connect to 0G Galileo testnet via HTTP RPC (env: `OG_RPC_URL`,
-//      default `https://0g-galileo-testnet.drpc.org`, chainId 16602).
-//      Ref: https://docs.0g.ai/ai-context
-//   2. Poll the chain every 12 s, 50 blocks at a time, for events emitted
-//      by AxiomAgentNFT (ERC-1967 proxy at `0xf12F158a20c36a351b056FD60b3a7377ce4F1e09`)
-//      and AxiomStrategyVault (`0xb7F89e50D5A3039Da7d39528436B820371572874`).
-//   3. Decode each log using the event-signature table in `events.ts` and
-//      print it to stdout as one JSON object per line.
-//   4. On SIGINT / SIGTERM, stop the loop cleanly and exit.
-//
-// Future work (NOT in this starter):
-//   - Submit each emitted event to 0G DA (gRPC `DisperseBlob` on the
-//     0G DA Client container, port 51001). The backend orchestration
-//     layer at `apps/backend/src/orchestrator/index.ts` will own this
-//     interface; this indexer should publish to a queue (NATS / Redis
-//     Streams / direct gRPC) that the orchestrator subscribes to.
-//     Ref: https://docs.0g.ai/developer-hub/building-on-0g/da-integration
-//   - Persist the last polled block to `apps/indexer/data/checkpoint.json`
-//     and resume on restart. Right now we start from `head - window`.
+// Long-running on-chain event indexer for the 0G Galileo testnet.
+// Polls every 12s for events from AxiomAgentNFT and AxiomStrategyVault.
 
 import { Indexer, MemData } from "@0gfoundation/0g-storage-ts-sdk";
 import { ethers } from "ethers";

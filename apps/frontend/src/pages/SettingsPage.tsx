@@ -1,8 +1,4 @@
 // Axiom Protocol — Settings page (`/settings` route).
-//
-// Three persistence-backed settings: RPC URL, WalletConnect project ID,
-// and chain selector. Each writes to localStorage via `useLocalStorage`.
-// Draft state prevents keystrokes from writing on every keypress.
 
 import type { ChangeEvent, ReactElement } from 'react';
 import { useState } from 'react';

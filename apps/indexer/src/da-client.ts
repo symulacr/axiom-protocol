@@ -1,19 +1,7 @@
 // apps/indexer/src/da-client.ts
 //
 // gRPC client wrapper for the 0G DA Disperser service.
-//
-// Wraps three RPCs defined in the 0G DA disperser.proto:
-//   - DisperseBlob       — submit blob bytes, receive request_id
-//   - GetBlobStatus      — poll blob processing status by request_id
-//   - RetrieveBlob       — retrieve a previously dispersed blob
-//
-// Proto source:
-//   https://github.com/0gfoundation/0g-da-client/blob/main/api/proto/disperser/disperser.proto
-//
-// Usage:
-//   import { DaClient } from "./da-client.js";
-//   const client = new DaClient("localhost:51001");
-//   const { requestId } = await client.disperseBlob(bytes);
+// Wraps DisperseBlob, GetBlobStatus, and RetrieveBlob RPCs.
 
 import * as grpc from "@grpc/grpc-js";
 import * as protoLoader from "@grpc/proto-loader";

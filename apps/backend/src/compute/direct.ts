@@ -22,10 +22,7 @@ export function decodeDirectKeyToken(token: string): { provider: string; address
   }
 }
 
-/**
- * Known testnet provider URLs (fallback when on-chain broker is unreachable).
- * Source: apps/backend/test/integration/LiveCompute.t.sol lines 43-44
- */
+/** Known testnet provider URLs (fallback when on-chain broker is unreachable). */
 const KNOWN_PROVIDERS: Record<string, string> = {
   "0xa48f01287233509FD694a22Bf840225062E67836": "https://inference-0xa48f01287233509FD694a22Bf840225062E67836.testnet.0g.ai",
   "0x8e60d466FD16798Bec4868aa4CE38586D5590049": "https://inference-0x8e60d466FD16798Bec4868aa4CE38586D5590049.testnet.0g.ai",

@@ -1,9 +1,6 @@
 import { getEnvWithAlias } from "./env.js";
 
-/**
- * 0G network entry for a given chainId.
- * Source: https://docs.0g.ai/ai-context
- */
+/** 0G network entry for a given chainId. */
 export interface OGNetwork {
   readonly name: "galileo" | "aristotle";
   readonly chainId: number;

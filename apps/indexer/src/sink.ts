@@ -1,34 +1,7 @@
 // apps/indexer/src/sink.ts
 //
-// HTTP event sink for the indexer. Forwards every decoded AxiomEvent to
-// the backend's POST /v1/events endpoint so the dashboard can show
-// "recent activity" without re-syncing the chain.
-//
-// Wire format (matches apps/backend/src/events/store.ts#StoredEvent):
-//   { source, chainId, blockNumber, txHash, logIndex, eventName, payload }
-//
-// The `payload` is the full AxiomEvent body, with bigints serialised as
-// decimal strings via the standard bigint-replacer pattern (see
-// apps/backend/src/json/bigint.ts). We do this client-side so the
-// backend can stay string-typed and the wire stays JSON-valid.
-//
-// Two surfaces are exported:
-//   - `postEvent(event, opts) -> Promise<{ status: number }>`
-//       The primitive — POSTs one event and returns the response
-//       status. Used by `httpEventSink` and exposed for tests.
-//   - `httpEventSink(opts) -> (event) => Promise<{ status: number }>`
-//       A factory matching the brief's signature. Each call returns
-//       a fresh sink closure bound to a backend URL.
-//
-// Canonical sources cited in this file:
-//   - MDN — Using the Fetch API:
-//     https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch
-//   - MDN — Response.status:
-//     https://developer.mozilla.org/en-US/docs/Web/API/Response/status
-//   - MDN — JSON.stringify (BigInt handling via replacer):
-//     https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify
-//   - MDN — AbortSignal.timeout:
-//     https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal/timeout
+// HTTP event sink for the indexer. Forwards decoded AxiomEvents to
+// the backend's POST /v1/events endpoint for the dashboard activity panel.
 
 import type { AxiomEvent } from "./events.js";
 import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
@@ -106,8 +79,7 @@ function buildBody(event: AxiomEvent, source: string, chainId: number): HttpEven
 
 /**
  * POST a single event to the backend. Returns the HTTP status; throws
- * on network error / abort. Source:
- *   https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch
+ * on network error / abort.
  */
 export async function postEvent(
   event: AxiomEvent,

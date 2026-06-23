@@ -1,7 +1,4 @@
 // Axiom Protocol — agents browser (`/agents` route).
-//
-// Lists ERC-721 tokenIds owned by the connected wallet on AxiomAgentNFT
-// via the shared `useAgents()` hook. Each row links to `/agents/:tokenId`.
 
 import type { ReactElement } from 'react';
 import { Link } from 'react-router-dom';

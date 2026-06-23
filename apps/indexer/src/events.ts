@@ -1,33 +1,11 @@
 // apps/indexer/src/events.ts
 //
-// Typed event definitions for the Axiom Protocol contracts. The Solidity
-// `event` ABI strings in this file are derived directly from the contract
-// source — they MUST match the source byte-for-byte, otherwise
-// `keccak256(eventSignature)` (the topic-0 filter used by
-// `provider.getLogs`) will not match the on-chain logs.
-//
-// Sources:
-//   - ERC-721 Transfer event:
-//       https://eips.ethereum.org/EIPS/eip-721
-//       `event Transfer(address indexed _from, address indexed _to, uint256 indexed _tokenId);`
-//   - AxiomAgentNFT events: apps/contracts/src/AxiomAgentNFT.sol
-//   - AxiomStrategyVault events: apps/contracts/src/AxiomStrategyVault.sol
-//   - ERC-7857 base extension events:
-//       https://github.com/0gfoundation/0g-agent-nft
-//   - ethers v6 event topic computation:
-//       https://docs.ethers.org/v6/api/providers/#Provider-getLogs
+// Typed event definitions and decoding for the Axiom Protocol contracts.
+// Event ABI strings MUST match the Solidity source byte-for-byte.
 //
 // IMPORTANT: the task brief used the names "DataUpdated" and "UsageAuthorized",
 // but those do not exist in the contract. The actual emitted events from the
-// ERC-7857 extensions are `Updated` (data hash/IntelligentData[] changed) and
-// `Authorization` (delegate access granted). We track the real events; using
-// the brief's placeholder names would yield topic hashes that match nothing
-// on-chain.
-//
-// NOTE on `Authorization`: per IERC7857Authorize.sol it is
-//   event Authorization(uint256 indexed tokenId, address indexed from, address indexed to);
-// there is no `expiresAt` field in the on-chain event. The "validUntilDay"
-// exists on the Vault's StrategySet event, not on Authorization.
+// ERC-7857 extensions are `Updated` and `Authorization`.
 
 import { parseAbiItem, type AbiEvent, type Address, type Hex } from "viem";
 import { toViemHex } from "@axiom/config/types/hex";
@@ -142,7 +120,6 @@ export const EVENT_SIGNATURES = {
     "event SignerRegistered(address indexed oldSigner, address indexed newSigner)" as const,
 
   // ── ERC-1967 Proxy events (emitted by the ERC1967Proxy at AXIOM_AGENT_NFT address) ──
-  // Source: @openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol
   Upgraded:
     "event Upgraded(address indexed implementation)" as const,
   AdminChanged:

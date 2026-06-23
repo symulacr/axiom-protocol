@@ -1,26 +1,5 @@
 // Axiom Protocol — top-level App component.
-//
-// Sets up the React Router v6+ route table and the top header
-// (logo + nav + wallet connect button) for the dApp. The route
-// components live in `apps/frontend/src/pages/`:
-//
-//   - HomePage        (`/`)
-//   - VaultDashboard  (`/vaults/:vaultId`)
-//   - AgentsBrowser   (`/agents`)
-//   - MintAgentPage   (`/agents/new`)         — before :tokenId (route order)
-//   - ExecuteStrategyPage (`/agents/:tokenId/execute`)
-//   - AgentDetail     (`/agents/:tokenId`)
-//   - MarketPage      (`/market`)
-//   - HistoryPage     (`/history`)
-//   - SettingsPage    (`/settings`)
-//
-// The route table is the React Router v6+ JSX <Route> API:
-//   https://reactrouter.com/en/main/routers/create-browser-router
-//   https://reactrouter.com/en/main/route/route
-//
-// RainbowKit ConnectButton (the open-modal entry point used in the
-// header):
-//   https://www.rainbowkit.com/docs/connect-button
+// React Router v6+ route table + header (nav + ConnectButton).
 
 import type { CSSProperties, ReactElement } from 'react';
 import { Link, NavLink, Route, Routes } from 'react-router-dom';

@@ -22,13 +22,7 @@ const RECEIVER_PUBKEY_HEX_LENGTH = 130;
 
 
 /**
- * Generate a fresh 32-byte random hex string suitable for the EIP-7857
- * accessProofNonce. `crypto.getRandomValues` is available in every
- * modern browser (MDN: "available everywhere") and is the spec-blessed
- * way to source entropy for security-sensitive values without dragging
- * in a `randombytes` shim.
- *
- * Source: https://developer.mozilla.org/en-US/docs/Web/API/Crypto/getRandomValues
+ * Generate a fresh 32-byte random hex string for EIP-7857 accessProofNonce.
  */
 function freshNonceHex(byteLength = 32): `0x${string}` {
   const bytes = new Uint8Array(byteLength);

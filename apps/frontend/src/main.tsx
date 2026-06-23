@@ -1,6 +1,4 @@
 // Axiom Protocol — Vite entry point.
-// Wraps the React tree in QueryClientProvider, WagmiProvider,
-// and RainbowKitProvider per the RainbowKit v2 installation guide.
 
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';

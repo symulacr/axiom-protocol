@@ -1,7 +1,4 @@
 // Axiom Protocol — `ProviderCard` component.
-//
-// Renders a compute provider's address, model, and endpoint with
-// a "Use this provider" button navigating to `/agents/new?provider=0x...`.
 
 import type { MouseEvent, ReactElement } from 'react';
 import { useNavigate } from 'react-router-dom';

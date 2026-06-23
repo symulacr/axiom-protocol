@@ -1,8 +1,4 @@
 // Axiom Protocol — typed `useLocalStorage` hook.
-//
-// SSR-safe localStorage persistence: returns `[T, setter]` similar to
-// `useState`. The setter writes through to localStorage synchronously.
-// Initial render returns `defaultValue` to avoid hydration mismatch.
 
 import { useCallback, useEffect, useState } from 'react';
 
@@ -35,9 +31,7 @@ export function useLocalStorage<T>(
     }
   }, [key]);
 
-  // Setter that writes through to `localStorage` synchronously. Wrapped
-  // in `useCallback` so consumers can safely include it in dependency
-  // arrays without causing re-renders.
+  // Writes through to localStorage synchronously.
   const setStoredValue = useCallback<Setter<T>>(
     (next: T) => {
       setValue(next);
