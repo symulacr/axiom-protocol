@@ -5,16 +5,18 @@
 // `usePayment`; the on-chain withdraw uses wagmi `useWriteContract`.
 
 import { useCallback, useEffect, useState, type ReactElement } from 'react';
-import { useAccount, useWriteContract } from 'wagmi';
+import { useAccount, useSendTransaction, useWriteContract } from 'wagmi';
 import type { Address } from 'viem';
 
 import {
   AXIOM_PAYMENT_PROCESSOR_ADDRESS,
 } from '../abi/addresses.js';
+import { PLACEHOLDER, truncateHex } from '../utils/format.js';
 import {
   usePayment,
   type PaymentConfig,
   type EarningsInfo,
+  type RoyaltyResult,
 } from '../hooks/usePayment.js';
 
 /**
@@ -37,14 +39,6 @@ const PAYMENT_PROCESSOR_FRAGMENT = [
 
 /** Per-action status surfaced to the UI. */
 type ActionStatus = 'idle' | 'pending' | 'success' | 'error';
-
-/** Display the em-dash for an absent value (matches AgentDetail). */
-const PLACEHOLDER = '\u2014';
-/** Truncate a `0x…` hex string to `head + … + tail` (matches AgentDetail). */
-function truncateHex(value: string, head = 10, tail = 6): string {
-  if (value.length <= head + tail + 1) return value;
-  return `${value.slice(0, head)}\u2026${value.slice(-tail)}`;
-}
 
 /** Shared panel style: a bordered card section with spacing. */
 const sectionStyle: React.CSSProperties = {
@@ -108,6 +102,8 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
     error: withdrawError,
   } = useWriteContract();
 
+  const { sendTransactionAsync } = useSendTransaction();
+
   const [config, setConfig] = useState<PaymentConfig | null>(null);
   const [earnings, setEarnings] = useState<EarningsInfo | null>(null);
 
@@ -170,12 +166,19 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
     }
     setRoyaltyStatus('pending');
     try {
-      await setRoyalty(tokenId, parsed);
+      const result = await setRoyalty(tokenId, parsed);
+      if (result?.to && result?.data) {
+        await sendTransactionAsync({
+          to: result.to,
+          data: result.data,
+          value: BigInt(result.value ?? '0'),
+        });
+      }
       setRoyaltyStatus('success');
     } catch {
       setRoyaltyStatus('error');
     }
-  }, [royaltyBps, setRoyalty, tokenId]);
+  }, [royaltyBps, setRoyalty, tokenId, sendTransactionAsync]);
 
   const handleWithdraw = useCallback(async (): Promise<void> => {
     setWithdrawStatus('pending');

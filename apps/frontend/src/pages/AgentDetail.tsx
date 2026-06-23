@@ -22,18 +22,7 @@ import {
   Alert,
   PageHeader,
 } from '../components/ui.js';
-
-/** Display the em-dash for an absent value. */
-const PLACEHOLDER = '\u2014';
-const ELLIPSIS = '\u2026';
-
-/** Truncate a `0x…` hex string to `head + … + tail`. */
-function truncateHex(value: string, head = 10, tail = 6) {
-  if (value.length <= head + tail + 2) {
-    return value;
-  }
-  return `${value.slice(0, head)}${ELLIPSIS}${value.slice(-tail)}`;
-}
+import { PLACEHOLDER, truncateHex } from '../utils/format.js';
 
 /**
  * Parse a route param string into a bigint tokenId. Returns null when

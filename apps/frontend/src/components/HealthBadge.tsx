@@ -4,18 +4,14 @@
 // and flips between green (200 + `ok: true`) and red (any other outcome).
 
 import { useEffect, useState, type ReactElement } from 'react';
+import { BACKEND_URL } from '../config/env.js';
 
 /** Status of the backend health probe; maps directly to the dot color. */
 type HealthStatus = 'unknown' | 'ok' | 'down';
 
 const POLL_INTERVAL_MS = 30_000;
-/** Default backend loopback for local dev (matches `apps/backend` `pnpm dev`). */
-const DEFAULT_API_URL = 'http://127.0.0.1:3000';
 /** Total time we wait for the health endpoint before giving up. */
 const REQUEST_TIMEOUT_MS = 5_000;
-
-/** Resolved backend base URL (Vite env var, with a local-dev fallback). */
-const API_URL = import.meta.env.VITE_BACKEND_URL ?? DEFAULT_API_URL;
 
 /**
  * Probe the backend health endpoint once. Returns `true` only on a
@@ -25,7 +21,7 @@ const API_URL = import.meta.env.VITE_BACKEND_URL ?? DEFAULT_API_URL;
  */
 async function checkHealth(signal: AbortSignal): Promise<boolean> {
   try {
-    const res = await fetch(`${API_URL}/health`, {
+    const res = await fetch(`${BACKEND_URL}/health`, {
       method: 'GET',
       headers: { accept: 'application/json' },
       signal,
@@ -95,7 +91,7 @@ export function HealthBadge(): ReactElement {
       role="status"
       aria-live="polite"
       aria-label={label}
-      title={`${label} (${API_URL})`}
+      title={`${label} (${BACKEND_URL})`}
       style={{
         display: 'inline-flex',
         alignItems: 'center',

@@ -18,9 +18,7 @@ import {
   type TickResult,
 } from '../hooks/useOrchestratorTick.js';
 import { COLORS, Button, Card, SectionTitle, MonoLabel, Alert, Skeleton } from './ui.js';
-
-/** Display the em-dash for an absent value. */
-const PLACEHOLDER = '\u2014';
+import { PLACEHOLDER } from '../utils/format.js';
 
 const panelStyle: React.CSSProperties = {
   display: 'flex',

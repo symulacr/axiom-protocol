@@ -9,22 +9,23 @@ import { useChainId } from 'wagmi';
 import { ProviderCard } from '../components/ProviderCard.js';
 import { useProviders } from '../hooks/useProviders.js';
 import { COLORS, Card, SectionTitle, Alert, PageHeader, Skeleton } from '../components/ui.js';
-
-const BACKEND_URL =
-  import.meta.env.VITE_BACKEND_URL ?? 'http://127.0.0.1:3000';
+import { BACKEND_URL } from '../config/env.js';
 
 /**
  * One row returned by `GET /v1/events?eventName=Transfer`. The backend
- * (see `apps/backend/src/server.ts`) normalizes ERC-721 Transfer events
- * into this flat shape; the exact field names match the chain event ABI
- * (lowercased keys, hex addresses, bigint-serialised block numbers).
+ * returns `StoredEvent`-shaped objects where transfer-specific fields are
+ * nested inside a `payload` object.
  */
 type TransferEvent = {
-  blockNumber: string;
-  transactionHash: `0x${string}`;
-  from: `0x${string}`;
-  to: `0x${string}`;
-  tokenId: string;
+  source: string;
+  blockNumber: number;
+  txHash: string;
+  eventName: string;
+  payload: {
+    from: `0x${string}`;
+    to: `0x${string}`;
+    tokenId: string;
+  };
 };
 
 const transferRowStyle: React.CSSProperties = {
@@ -161,22 +162,22 @@ export function MarketPage(): ReactElement {
         <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
           {transfers.map((tx) => (
             <li
-              key={`${tx.transactionHash}-${tx.tokenId}`}
+              key={`${tx.txHash}-${tx.payload.tokenId}`}
               style={transferRowStyle}
             >
               <span style={{ color: COLORS.bronzeLight }}>#{tx.blockNumber}</span>
               <span>
-                {tx.from.slice(0, 6)}&hellip;{tx.from.slice(-4)} →&nbsp;
-                {tx.to.slice(0, 6)}&hellip;{tx.to.slice(-4)}
+                {tx.payload.from.slice(0, 6)}&hellip;{tx.payload.from.slice(-4)} →&nbsp;
+                {tx.payload.to.slice(0, 6)}&hellip;{tx.payload.to.slice(-4)}
               </span>
-              <span>token #{tx.tokenId}</span>
+              <span>token #{tx.payload.tokenId}</span>
               <a
-                href={`${explorerBase}/tx/${tx.transactionHash}`}
+                href={`${explorerBase}/tx/${tx.txHash}`}
                 target="_blank"
                 rel="noreferrer noopener"
                 style={{ color: COLORS.bronzeLight }}
               >
-                {tx.transactionHash.slice(0, 10)}&hellip;
+                {tx.txHash.slice(0, 10)}&hellip;
               </a>
             </li>
           ))}
