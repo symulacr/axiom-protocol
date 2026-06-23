@@ -178,6 +178,7 @@ export class StrategyRunner {
         reason: typeof parsed.reason === "string" ? parsed.reason : "no reason provided",
       };
     } catch {
+      console.warn("[orchestrator] unparseable model output:", rawModelOutput.slice(0, 200));
       return { action: "hold", reason: `Model output not parseable as JSON: ${rawModelOutput.slice(0, 80)}…` };
     }
   }

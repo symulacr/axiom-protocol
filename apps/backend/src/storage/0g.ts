@@ -162,7 +162,10 @@ function processProof(leaf: string, lemma: readonly string[], path: readonly boo
 export function verifyProof(root: Hex, leaf: Hex, proof: MerkleProof): boolean {
   if (proof.lemma.length < 1 || proof.lemma[0] !== leaf || proof.lemma[proof.lemma.length - 1] !== root) return false;
   if (proof.path.length + 2 !== proof.lemma.length) return false;
-  try { return processProof(leaf, proof.lemma, proof.path) === root; } catch { return false; }
+  try { return processProof(leaf, proof.lemma, proof.path) === root; } catch {
+    // Malformed proof — return false (callers handle verification failure)
+    return false;
+  }
 }
 
 /** Per-segment Merkle root for ≤1024 chunks of 256 bytes (mirrors SDK's AbstractFile.segmentRoot). */

@@ -21,6 +21,8 @@ import { bigintReplacer } from "../server.js";
 
 export interface OracleClientConfig {
   baseUrl: string; // e.g., "http://127.0.0.1:8787"
+  /** Timeout in milliseconds for each HTTP request. Defaults to 10_000. */
+  timeoutMs?: number;
 }
 
 /**
@@ -35,9 +37,9 @@ export interface TransferValidityInput {
   /** Receiver's 64-byte uncompressed public key (X||Y, no 0x04 prefix; 0x + 128 hex). */
   targetPubkey64: `0x${string}`;
   /** Nonce for the AccessProof (receiver's signature). */
-  accessProofNonce: number;
+  accessProofNonce: string | number;
   /** Nonce for the OwnershipProof (TEE signature). Defaults to accessProofNonce. */
-  ownershipProofNonce: number;
+  ownershipProofNonce?: string | number;
   /** Base64-encoded 32-byte AES-256 key that decrypts the old ciphertext. */
   oldDataEncryptionKey: string;
   /** Receiver's address (0x-prefixed, 20 bytes). */
@@ -64,7 +66,11 @@ export interface OracleClient {
 }
 
 export class DefaultSignerOracleClient implements OracleClient {
-  constructor(private readonly config: OracleClientConfig) {}
+  private readonly baseUrl: string;
+
+  constructor(private readonly config: OracleClientConfig) {
+    this.baseUrl = config.baseUrl.replace(/\/$/, "");
+  }
 
   health() { return this.get<{ ok: boolean; signer: `0x${string}`; version: string }>("/health"); }
 
@@ -86,17 +92,20 @@ export class DefaultSignerOracleClient implements OracleClient {
   }
 
   private async get<T>(path: string): Promise<T> {
-    const res = await fetch(`${this.config.baseUrl}${path}`);
+    const timeout = this.config.timeoutMs ?? 10_000;
+    const res = await fetch(`${this.baseUrl}${path}`, { signal: AbortSignal.timeout(timeout) });
     if (!res.ok) throw new Error(`Oracle ${path} returned ${res.status}`);
     return (await res.json()) as T;
   }
 
   private async post<T>(path: string, input: object): Promise<T> {
+    const timeout = this.config.timeoutMs ?? 10_000;
     const body = JSON.stringify(input, bigintReplacer);
-    const res = await fetch(`${this.config.baseUrl}${path}`, {
+    const res = await fetch(`${this.baseUrl}${path}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body,
+      signal: AbortSignal.timeout(timeout),
     });
     if (!res.ok) {
       const text = await res.text();
