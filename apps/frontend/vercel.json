@@ -3,7 +3,7 @@
   "framework": "vite",
   "buildCommand": "pnpm --filter @axiom/frontend build",
   "outputDirectory": "dist",
-  "installCommand": "pnpm install",
+  "installCommand": "pnpm install --no-strict-dep-builds",
   "regions": ["iad1"],
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
