@@ -16,7 +16,16 @@
     "./types/collections": "./dist/types/collections.js",
     "./types/schemas": "./dist/types/schemas.js",
     "./types/contract": "./dist/types/contract.js",
-    "./middleware/auth": "./dist/middleware/auth.js"
+    "./abis": "./dist/abis/index.js",
+    "./abis/agentNft": "./dist/abis/agentNft.js",
+    "./abis/vault": "./dist/abis/vault.js",
+    "./abis/paymentProcessor": "./dist/abis/paymentProcessor.js",
+    "./abis/iTransferFrom": "./dist/abis/iTransferFrom.js",
+    "./middleware/auth": "./dist/middleware/auth.js",
+    "./env-schema": "./dist/env-schema.js",
+    "./api/responses": "./dist/api/responses.js",
+    "./api/routes": "./dist/api/routes.js",
+    "./api": "./dist/api/index.js"
   },
   "scripts": {
     "build": "tsc --project tsconfig.json",
@@ -25,6 +34,7 @@
   "dependencies": {
     "ethers": "^6.16.0",
     "express": "^4.21.0",
+    "viem": "^2.21.45",
     "zod": "^4.4.3"
   },
   "devDependencies": {

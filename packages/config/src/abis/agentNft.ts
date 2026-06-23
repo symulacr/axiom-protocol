@@ -1,0 +1,16 @@
+export const AGENT_NFT_ABI = [
+  "function mint((string dataDescription, bytes32 dataHash)[] iDatas, address to) payable returns (uint256 tokenId)",
+  "function mintFee() view returns (uint256)",
+  "function intelligentDatasOf(uint256 tokenId) view returns (tuple(string dataDescription, bytes32 dataHash)[])",
+  "function creatorOf(uint256 tokenId) view returns (address)",
+  "function ownerOf(uint256 tokenId) view returns (address)",
+  "function name() view returns (string)",
+  "function symbol() view returns (string)",
+  "function tokenURI(uint256 tokenId) view returns (string)",
+  "function updateVerifier(address newVerifier)",
+  "function setMintFee(uint256 newFee)",
+  "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)",
+  "event VerifierUpdated(address indexed oldVerifier, address indexed newVerifier)",
+  "event CreatorSet(uint256 indexed tokenId, address indexed creator)",
+  "event MintFeeUpdated(uint256 oldFee, uint256 newFee)",
+] as const;
