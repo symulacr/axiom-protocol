@@ -55,15 +55,16 @@ const transition = 'all 0.18s cubic-bezier(0.4, 0, 0.2, 1)';
 type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost';
 
 const buttonBase: CSSProperties = {
-  padding: '10px 20px',
-  borderRadius: 6,
-  fontSize: 14,
-  fontWeight: 600,
+  padding: '0.625rem 1.25rem',
+  borderRadius: 'var(--radius-md)',
+  fontSize: 'var(--text-sm)',
+  fontWeight: 'var(--fw-semibold)',
   cursor: 'pointer',
   border: '1px solid transparent',
   transition,
   fontFamily: 'inherit',
   letterSpacing: '0.01em',
+  lineHeight: 1,
 };
 
 const buttonVariants: Record<ButtonVariant, CSSProperties> = {
@@ -90,7 +91,7 @@ const buttonVariants: Record<ButtonVariant, CSSProperties> = {
     background: 'transparent',
     color: COLORS.textMuted,
     borderColor: 'transparent',
-    padding: '8px 12px',
+    padding: '0.5rem 0.75rem',
   },
 };
 
@@ -133,8 +134,8 @@ export function Card({
       style={{
         background: COLORS.surface,
         border: `1px solid ${COLORS.border}`,
-        borderRadius: 10,
-        padding: 24,
+        borderRadius: 'var(--radius-xl)',
+        padding: 'var(--space-xl)',
         transition,
         ...(hover ? { cursor: 'pointer' } : {}),
         ...style,
@@ -154,15 +155,15 @@ export function Input({
     <input
       {...rest}
       style={{
-        padding: '10px 14px',
-        borderRadius: 6,
+        padding: '0.625rem 0.875rem',
+        borderRadius: 'var(--radius-md)',
         border: `1px solid ${COLORS.borderStrong}`,
         background: COLORS.bg,
         color: COLORS.text,
-        fontSize: 14,
+        fontSize: 'var(--text-sm)',
         fontFamily: 'inherit',
         outline: 'none',
-        minWidth: 320,
+        minWidth: '20rem',
         transition,
         ...style,
       }}
@@ -175,28 +176,31 @@ type AlertVariant = 'error' | 'success' | 'warning';
 
 const alertStyles: Record<AlertVariant, CSSProperties> = {
   error: {
-    padding: '12px 16px',
+    padding: 'var(--space-md) var(--space-lg)',
     background: COLORS.dangerBg,
     border: `1px solid ${COLORS.dangerBorder}`,
     color: COLORS.danger,
-    borderRadius: 8,
-    fontSize: 14,
+    borderRadius: 'var(--radius-lg)',
+    fontSize: 'var(--text-sm)',
+    lineHeight: 'var(--lh-snug)',
   },
   success: {
-    padding: '12px 16px',
+    padding: 'var(--space-md) var(--space-lg)',
     background: COLORS.successBg,
     border: `1px solid ${COLORS.successBorder}`,
     color: COLORS.success,
-    borderRadius: 8,
-    fontSize: 14,
+    borderRadius: 'var(--radius-lg)',
+    fontSize: 'var(--text-sm)',
+    lineHeight: 'var(--lh-snug)',
   },
   warning: {
-    padding: '12px 16px',
+    padding: 'var(--space-md) var(--space-lg)',
     background: COLORS.warningBg,
     border: `1px solid ${COLORS.warningBorder}`,
     color: COLORS.warning,
-    borderRadius: 8,
-    fontSize: 14,
+    borderRadius: 'var(--radius-lg)',
+    fontSize: 'var(--text-sm)',
+    lineHeight: 'var(--lh-snug)',
   },
 };
 
@@ -234,12 +238,13 @@ export function Badge({
     <span
       style={{
         display: 'inline-block',
-        padding: '3px 10px',
+        padding: '0.1875rem 0.625rem',
         borderRadius: 999,
-        fontSize: 11,
-        fontWeight: 600,
+        fontSize: 'var(--text-xs)',
+        fontWeight: 'var(--fw-semibold)',
         letterSpacing: '0.03em',
         textTransform: 'uppercase',
+        lineHeight: 'var(--lh-snug)',
         ...variants[variant],
       }}
     >
@@ -288,25 +293,26 @@ export function PageHeader({
         display: 'flex',
         alignItems: 'baseline',
         justifyContent: 'space-between',
-        marginBottom: 28,
+        marginBottom: 'var(--space-2xl)',
         flexWrap: 'wrap',
-        gap: 12,
+        gap: 'var(--space-md)',
       }}
     >
       <div>
         <h1
           style={{
-            margin: '0 0 6px',
-            fontSize: 28,
-            fontWeight: 700,
+            margin: '0 0 0.375rem',
+            fontSize: 'var(--text-xl)',
+            fontWeight: 'var(--fw-bold)',
             color: COLORS.text,
             letterSpacing: '-0.02em',
+            lineHeight: 'var(--lh-tight)',
           }}
         >
           {title}
         </h1>
         {subtitle !== undefined && (
-          <p style={{ margin: 0, color: COLORS.textMuted, fontSize: 15 }}>{subtitle}</p>
+          <p style={{ margin: 0, color: COLORS.textMuted, fontSize: 'var(--text-sm)', lineHeight: 'var(--lh-snug)' }}>{subtitle}</p>
         )}
       </div>
       {action !== undefined && <div>{action}</div>}
@@ -325,12 +331,13 @@ export function SectionTitle({
   return (
     <h2
       style={{
-        fontSize: 13,
-        fontWeight: 600,
+        fontSize: 'var(--text-xs)',
+        fontWeight: 'var(--fw-semibold)',
         color: COLORS.textDim,
         textTransform: 'uppercase',
         letterSpacing: '0.08em',
-        margin: '0 0 16px',
+        margin: '0 0 var(--space-lg)',
+        lineHeight: 'var(--lh-snug)',
         ...style,
       }}
     >
@@ -346,7 +353,7 @@ export function Divider({ style }: { style?: CSSProperties }): ReactElement {
       style={{
         border: 'none',
         borderTop: `1px solid ${COLORS.border}`,
-        margin: '24px 0',
+        margin: 'var(--space-xl) 0',
         ...style,
       }}
     />
@@ -368,11 +375,11 @@ export function MonoLabel({
       title={title}
       style={{
         fontFamily: "'SF Mono', 'Fira Code', 'JetBrains Mono', monospace",
-        fontSize: 13,
+        fontSize: 'var(--text-sm)',
         color: COLORS.bronzeLight,
         background: COLORS.bronzeBg,
-        padding: '2px 8px',
-        borderRadius: 4,
+        padding: '0.125rem 0.5rem',
+        borderRadius: 'var(--radius-sm)',
         wordBreak: 'break-all',
         ...style,
       }}

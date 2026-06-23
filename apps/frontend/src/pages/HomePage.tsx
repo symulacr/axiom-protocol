@@ -10,16 +10,16 @@ const NARRATIVE =
 
 const heroSectionStyle: CSSProperties = {
   textAlign: 'center',
-  padding: '80px 24px 56px',
+  padding: 'var(--space-4xl) var(--space-xl) var(--space-3xl)',
   animation: 'axiom-fade-in 0.6s cubic-bezier(0.25, 1, 0.5, 1)',
 };
 
 const heroTitleStyle: CSSProperties = {
-  fontSize: 52,
-  fontWeight: 800,
+  fontSize: 'var(--text-3xl)',
+  fontWeight: 'var(--fw-bold)',
   color: COLORS.text,
-  margin: '0 0 20px',
-  lineHeight: 1.1,
+  margin: '0 0 var(--space-lg)',
+  lineHeight: 'var(--lh-tight)',
   letterSpacing: '-0.03em',
 };
 
@@ -28,27 +28,27 @@ const heroAccentStyle: CSSProperties = {
 };
 
 const heroSubtitleStyle: CSSProperties = {
-  fontSize: 18,
+  fontSize: 'var(--text-lg)',
   color: COLORS.textMuted,
-  maxWidth: 580,
-  margin: '0 auto 40px',
-  lineHeight: 1.7,
-  fontWeight: 300,
+  maxWidth: '36rem',
+  margin: '0 auto var(--space-2xl)',
+  lineHeight: 'var(--lh-relaxed)',
+  fontWeight: 'var(--fw-regular)',
 };
 
 const ctaRowStyle: CSSProperties = {
   display: 'flex',
-  gap: 14,
+  gap: 'var(--space-sm)',
   justifyContent: 'center',
   flexWrap: 'wrap',
 };
 
 const ctaBase: CSSProperties = {
   display: 'inline-block',
-  padding: '12px 28px',
-  borderRadius: 8,
-  fontSize: 15,
-  fontWeight: 600,
+  padding: '0.75rem 1.75rem',
+  borderRadius: 'var(--radius-lg)',
+  fontSize: 'var(--text-sm)',
+  fontWeight: 'var(--fw-semibold)',
   textDecoration: 'none',
   transition: 'all 0.18s cubic-bezier(0.4, 0, 0.2, 1)',
   letterSpacing: '0.01em',
@@ -70,83 +70,85 @@ const secondaryCtaStyle: CSSProperties = {
 
 const statsGridStyle: CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-  gap: 16,
-  margin: '48px auto',
-  maxWidth: 760,
+  gridTemplateColumns: 'repeat(auto-fit, minmax(12rem, 1fr))',
+  gap: 'var(--space-lg)',
+  margin: 'var(--space-3xl) auto',
+  maxWidth: '48rem',
 };
 
 const statCardStyle: CSSProperties = {
   textAlign: 'center',
-  padding: '28px 20px',
+  padding: 'var(--space-2xl) var(--space-xl)',
 };
 
 const statNumberStyle: CSSProperties = {
-  fontSize: 36,
-  fontWeight: 700,
+  fontSize: 'var(--text-2xl)',
+  fontWeight: 'var(--fw-bold)',
   color: COLORS.bronzeLight,
-  margin: '0 0 6px',
+  margin: '0 0 0.375rem',
   letterSpacing: '-0.02em',
+  lineHeight: 'var(--lh-tight)',
 };
 
 const statLabelStyle: CSSProperties = {
-  fontSize: 12,
+  fontSize: 'var(--text-xs)',
   color: COLORS.textDim,
   textTransform: 'uppercase' as const,
   letterSpacing: '0.08em',
-  fontWeight: 500,
+  fontWeight: 'var(--fw-medium)',
 };
 
 const stepsSectionStyle: CSSProperties = {
-  maxWidth: 820,
-  margin: '56px auto 80px',
+  maxWidth: '52rem',
+  margin: 'var(--space-3xl) auto var(--space-4xl)',
 };
 
 const stepsHeadingStyle: CSSProperties = {
-  fontSize: 14,
-  fontWeight: 600,
+  fontSize: 'var(--text-sm)',
+  fontWeight: 'var(--fw-semibold)',
   color: COLORS.textDim,
   textTransform: 'uppercase' as const,
   letterSpacing: '0.1em',
   textAlign: 'center',
-  marginBottom: 32,
+  marginBottom: 'var(--space-2xl)',
 };
 
 const stepsGridStyle: CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-  gap: 20,
+  gridTemplateColumns: 'repeat(auto-fit, minmax(15rem, 1fr))',
+  gap: 'var(--space-xl)',
 };
 
 const stepNumberStyle: CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
-  width: 36,
-  height: 36,
+  width: '2.25rem',
+  height: '2.25rem',
   borderRadius: '50%',
   background: COLORS.bronzeBg,
   border: `1px solid ${COLORS.bronzeBorder}`,
   color: COLORS.bronzeLight,
-  fontSize: 15,
-  fontWeight: 700,
-  marginBottom: 16,
+  fontSize: 'var(--text-sm)',
+  fontWeight: 'var(--fw-bold)',
+  marginBottom: 'var(--space-lg)',
 };
 
 const stepTitleStyle: CSSProperties = {
-  fontSize: 17,
-  fontWeight: 600,
+  fontSize: 'var(--text-lg)',
+  fontWeight: 'var(--fw-semibold)',
   color: COLORS.text,
-  margin: '0 0 10px',
+  margin: '0 0 0.625rem',
   letterSpacing: '-0.01em',
+  lineHeight: 'var(--lh-snug)',
 };
 
 const stepBodyStyle: CSSProperties = {
-  fontSize: 14,
+  fontSize: 'var(--text-sm)',
   color: COLORS.textMuted,
   margin: 0,
-  lineHeight: 1.65,
-  fontWeight: 300,
+  lineHeight: 'var(--lh-normal)',
+  fontWeight: 'var(--fw-regular)',
 };
 
 export function HomePage(): ReactElement {

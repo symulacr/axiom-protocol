@@ -45,11 +45,11 @@ import { NotFound } from './pages/NotFound.js';
 export function App(): ReactElement {
   const navLinkStyle = ({ isActive }: { isActive: boolean }): CSSProperties => ({
     textDecoration: 'none',
-    fontSize: 14,
-    fontWeight: isActive ? 600 : 400,
-    color: isActive ? '#c5a880' : '#8a8a8a',
-    padding: '6px 0',
-    borderBottom: isActive ? '2px solid #b8976e' : '2px solid transparent',
+    fontSize: 'var(--text-sm)',
+    fontWeight: isActive ? 'var(--fw-semibold)' : 'var(--fw-regular)',
+    color: isActive ? 'var(--c-bronze-light)' : 'var(--c-text-muted)',
+    padding: '0.375rem 0',
+    borderBottom: isActive ? '2px solid var(--c-bronze)' : '2px solid transparent',
     transition: 'color 0.15s ease, border-color 0.15s ease',
   });
 
@@ -60,9 +60,9 @@ export function App(): ReactElement {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '14px 32px',
-          borderBottom: '1px solid #2a2a2a',
-          background: '#121212',
+          padding: '0.875rem 2rem',
+          borderBottom: '1px solid var(--c-border)',
+          background: 'var(--c-bg)',
           position: 'sticky',
           top: 0,
           zIndex: 100,
@@ -71,15 +71,15 @@ export function App(): ReactElement {
       >
         <nav
           aria-label="Primary"
-          style={{ display: 'flex', gap: 28, alignItems: 'center' }}
+          style={{ display: 'flex', gap: '1.75rem', alignItems: 'center' }}
         >
           <Link
             to="/"
             style={{
-              fontWeight: 700,
+              fontWeight: 'var(--fw-bold)',
               textDecoration: 'none',
-              fontSize: 17,
-              color: '#f5f5f5',
+              fontSize: 'var(--text-lg)',
+              color: 'var(--c-text)',
               letterSpacing: '-0.01em',
             }}
           >
@@ -101,12 +101,12 @@ export function App(): ReactElement {
             Settings
           </NavLink>
         </nav>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
           <HealthBadge />
           <ConnectButton />
         </div>
       </header>
-      <main style={{ padding: '32px 24px', maxWidth: 1080, margin: '0 auto' }}>
+      <main style={{ padding: 'var(--space-2xl) var(--space-xl)', maxWidth: '68rem', margin: '0 auto' }}>
         <ErrorBoundary>
           <Routes>
             <Route path="/" element={<HomePage />} />

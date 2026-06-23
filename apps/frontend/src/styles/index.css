@@ -1,21 +1,108 @@
 /* Axiom Protocol — dark, grounded, spiritual-tech aesthetic. */
 
+/* ─── Spacing scale (4pt base: 4, 8, 12, 16, 24, 32, 48, 64) ─────── */
 :root {
+  --space-xs: 0.25rem;   /* 4px  */
+  --space-sm: 0.5rem;    /* 8px  */
+  --space-md: 0.75rem;   /* 12px */
+  --space-lg: 1rem;      /* 16px */
+  --space-xl: 1.5rem;    /* 24px */
+  --space-2xl: 2rem;     /* 32px */
+  --space-3xl: 3rem;     /* 48px */
+  --space-4xl: 4rem;     /* 64px */
+
+  /* ─── Type scale (1.2 ratio, rem-based for product UI) ──────────── */
+  --text-xs: 0.75rem;     /* 12px — captions, metadata */
+  --text-sm: 0.875rem;    /* 14px — secondary UI, labels */
+  --text-base: 1rem;      /* 16px — body text */
+  --text-lg: 1.25rem;     /* 20px — subheadings */
+  --text-xl: 1.5rem;      /* 24px — page headings */
+  --text-2xl: 2rem;       /* 32px — hero heading */
+  --text-3xl: 2.5rem;     /* 40px — display heading */
+
+  /* ─── Font weights ──────────────────────────────────────────────── */
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+
+  /* ─── Line heights ──────────────────────────────────────────────── */
+  --lh-tight: 1.2;        /* headings */
+  --lh-snug: 1.4;         /* subheadings, labels */
+  --lh-normal: 1.6;       /* body text (light-on-dark: +0.1) */
+  --lh-relaxed: 1.7;      /* long-form body */
+
+  /* ─── Border radius ─────────────────────────────────────────────── */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+
+  /* ─── Colors ────────────────────────────────────────────────────── */
+  --c-bg: #0f0f0f;
+  --c-surface: #1a1a1a;
+  --c-surface-hover: #222222;
+  --c-elevated: #1e1e1e;
+  --c-border: #2a2a2a;
+  --c-border-strong: #3a3a3a;
+  --c-text: #f5f5f5;
+  --c-text-primary: #e5e5e5;
+  --c-text-muted: #8a8a8a;
+  --c-text-dim: #6a6a6a;
+  --c-bronze: #b8976e;
+  --c-bronze-light: #c5a880;
+  --c-bronze-bg: rgba(184, 151, 110, 0.08);
+  --c-bronze-border: rgba(184, 151, 110, 0.25);
+  --c-danger: #c85a5a;
+  --c-danger-bg: rgba(200, 90, 90, 0.08);
+  --c-danger-border: rgba(200, 90, 90, 0.2);
+  --c-success: #6b9e6b;
+  --c-success-bg: rgba(107, 158, 107, 0.08);
+  --c-success-border: rgba(107, 158, 107, 0.2);
+  --c-warning: #c5a25a;
+  --c-warning-bg: rgba(197, 162, 90, 0.08);
+  --c-warning-border: rgba(197, 162, 90, 0.2);
+
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
     Oxygen, Ubuntu, Cantarell, sans-serif;
-  line-height: 1.6;
-  color: #e5e5e5;
-  background: #0f0f0f;
+  font-size: var(--text-base);
+  line-height: var(--lh-normal);
+  color: var(--c-text);
+  background: var(--c-bg);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-kerning: normal;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  background: #0f0f0f;
+  background: var(--c-bg);
 }
 
+/* ─── Headings: tighter line-height, negative tracking for large sizes */
+h1, h2, h3 {
+  line-height: var(--lh-tight);
+  margin: 0;
+  font-weight: var(--fw-bold);
+}
+h1 { font-size: var(--text-xl); letter-spacing: -0.02em; }
+h2 { font-size: var(--text-lg); letter-spacing: -0.01em; }
+h3 { font-size: var(--text-base); font-weight: var(--fw-semibold); }
+
+/* ─── Body text: light-on-dark compensation */
+p {
+  margin: 0;
+  line-height: var(--lh-normal);
+}
+
+/* ─── Code: monospace, no ligatures */
+code, pre {
+  font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+  font-variant-ligatures: none;
+}
+
+/* ─── Animations ──────────────────────────────────────────────────── */
 @keyframes axiom-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
@@ -26,34 +113,48 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* ─── Links ───────────────────────────────────────────────────────── */
 a {
-  color: #c5a880;
+  color: var(--c-bronze-light);
   text-decoration: none;
   transition: color 0.15s ease;
 }
-a:hover { color: #b8976e; }
+a:hover { color: var(--c-bronze); }
 
-/* RainbowKit dark theme overrides — bind the modal to our palette. */
+/* ─── RainbowKit dark theme overrides ─────────────────────────────── */
 [data-rk] {
   --rk-font-family: 'Inter', -apple-system, sans-serif;
 }
 
-/* Scrollbar — subtle, on-brand. */
+/* ─── Scrollbar ───────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: #121212; }
-::-webkit-scrollbar-thumb { background: #3a3a3a; border-radius: 4px; }
+::-webkit-scrollbar-track { background: var(--c-bg); }
+::-webkit-scrollbar-thumb { background: var(--c-border-strong); border-radius: var(--radius-sm); }
 ::-webkit-scrollbar-thumb:hover { background: #4a4a4a; }
 
-/* Focus rings — bronze, restrained. */
+/* ─── Focus rings ─────────────────────────────────────────────────── */
 *:focus-visible {
-  outline: 2px solid #b8976e;
+  outline: 2px solid var(--c-bronze);
   outline-offset: 2px;
 }
-/* Dialog backdrop — dark, atmospheric. */
+
+/* ─── Dialog backdrop ─────────────────────────────────────────────── */
 dialog::backdrop {
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(4px);
 }
+
+/* ─── Button base reset (for raw <button> elements not using Button) */
+button {
+  font-family: inherit;
+}
+
+/* ─── Form elements inherit font */
+input, textarea, select {
+  font-family: inherit;
+}
+
+/* ─── Reduced motion ──────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.01ms !important;
