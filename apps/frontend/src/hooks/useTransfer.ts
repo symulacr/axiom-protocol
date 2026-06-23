@@ -88,6 +88,8 @@ const ACCESS_PROOF_TYPES = {
   AccessProof: [
     { name: 'dataHash', type: 'bytes32' },
     { name: 'targetPubkey', type: 'bytes' },
+    { name: 'to', type: 'address' },
+    { name: 'nft', type: 'address' },
     { name: 'nonce', type: 'uint256' },
     { name: 'validUntil', type: 'uint256' },
   ],
@@ -319,6 +321,8 @@ export function useTransfer(): UseTransferResult {
           message: {
             dataHash: proofDataHash,
             targetPubkey: challenge.targetPubkey,
+            to: input.to,
+            nft: AXIOM_AGENT_NFT_ADDRESS,
             nonce,
             validUntil,
           },

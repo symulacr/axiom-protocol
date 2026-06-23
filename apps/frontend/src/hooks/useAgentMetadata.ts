@@ -20,12 +20,11 @@ export type AgentMetadata = {
    */
   dataHash: Hex;
   /**
-   * The new owner's wrapped decryption key (`sealedKey`) that the receiver
-   * must unwrap with their secp256k1 private key to decrypt the re-encrypted
-   * blob on 0G Storage. Empty when the agent is not currently being
-   * transferred.
+   * Human-readable description of the intelligent data slice, as stored
+   * on-chain in the IntelligentData struct (EIP-7857). Empty when the
+   * token has no data or the description is unset.
    */
-  sealedKey: Hex;
+  dataDescription: string;
   /** tokenURI pointer to the on-chain / off-chain metadata blob. */
   tokenUri: string;
 };
@@ -71,13 +70,7 @@ export function useAgentMetadata(tokenId: bigint): {
       {
         address: AXIOM_AGENT_NFT_ADDRESS,
         abi: axiomAgentNftAbi,
-        functionName: 'getDataHash',
-        args: [tokenId],
-      },
-      {
-        address: AXIOM_AGENT_NFT_ADDRESS,
-        abi: axiomAgentNftAbi,
-        functionName: 'getSealedKey',
+        functionName: 'intelligentDatasOf',
         args: [tokenId],
       },
       {
@@ -92,15 +85,23 @@ export function useAgentMetadata(tokenId: bigint): {
     },
   });
 
+  // intelligentDatasOf returns IntelligentData[] = { dataDescription, dataHash }.
+  // We surface the first data slice (the Axiom mint flow writes exactly one).
+  const intelligentDatas =
+    (query.data?.[3] as
+      | ReadonlyArray<{ dataDescription: string; dataHash: Hex }>
+      | undefined) ?? undefined;
+  const firstData = intelligentDatas?.[0];
+
   const data: AgentMetadata | null = query.data
     ? {
         tokenId,
         name: (query.data[0] as string) ?? '',
         symbol: (query.data[1] as string) ?? '',
         owner: (query.data[2] as Address) ?? '0x0',
-        dataHash: (query.data[3] as Hex) ?? '0x',
-        sealedKey: (query.data[4] as Hex) ?? '0x',
-        tokenUri: (query.data[5] as string) ?? '',
+        dataHash: firstData?.dataHash ?? '0x',
+        dataDescription: firstData?.dataDescription ?? '',
+        tokenUri: (query.data[4] as string) ?? '',
       }
     : null;
 
