@@ -14,7 +14,6 @@ import type { TeeSigner } from "./signer.js";
 import type { StorageAdapter } from "./storage.js";
 import {
   transferValiditySchema,
-  ownershipBodySchema,
   mintDataHashSchema,
 } from "./route-schemas.js";
 
