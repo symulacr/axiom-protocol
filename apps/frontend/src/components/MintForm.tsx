@@ -47,9 +47,9 @@ import {
 import { Link } from 'react-router-dom';
 import { useAccount, useReadContracts } from 'wagmi';
 import { formatEther, isHex, type Address } from 'viem';
-
 import { AXIOM_AGENT_NFT_ADDRESS } from '../abi/addresses.js';
 import { useMint } from '../hooks/useMint.js';
+import { COLORS, Card, Button, Alert, PageHeader, SectionTitle, MonoLabel, Skeleton } from './ui.js';
 
 /**
  * Minimal read-only ABI fragment for `AxiomAgentNFT.mintFee()`. The shared
@@ -72,46 +72,34 @@ const mintFeeAbi = [
   },
 ] as const;
 
-/** Shared inline style for text inputs (matches TransferModal's look). */
 const inputStyle: React.CSSProperties = {
   width: '100%',
-  padding: 8,
-  marginTop: 4,
-  fontFamily: 'monospace',
-  border: '1px solid #d1d5db',
-  borderRadius: 4,
+  padding: '10px 14px',
+  marginTop: 6,
+  fontFamily: "'SF Mono', monospace",
+  fontSize: 13,
+  border: `1px solid ${COLORS.borderStrong}`,
+  borderRadius: 6,
+  background: COLORS.bg,
+  color: COLORS.text,
   boxSizing: 'border-box',
+  outline: 'none',
+  transition: 'all 0.18s ease',
 };
 
 const labelStyle: React.CSSProperties = {
   display: 'block',
-  marginTop: 12,
+  marginTop: 16,
   fontWeight: 500,
+  fontSize: 13,
+  color: COLORS.textPrimary,
 };
 
 const fieldHintStyle: React.CSSProperties = {
-  color: '#6b7280',
+  color: COLORS.textDim,
   fontSize: 11,
-  margin: '2px 0 0',
-};
-
-const errorBoxStyle: React.CSSProperties = {
-  marginTop: 12,
-  padding: 8,
-  background: '#fef2f2',
-  border: '1px solid #ef4444',
-  borderRadius: 4,
-  color: '#b91c1c',
-  fontSize: 12,
-};
-
-const successBoxStyle: React.CSSProperties = {
-  marginTop: 12,
-  padding: 12,
-  background: '#ecfdf5',
-  border: '1px solid #10b981',
-  borderRadius: 4,
-  fontSize: 13,
+  margin: '4px 0 0',
+  fontWeight: 300,
 };
 
 export type MintFormProps = {
@@ -232,165 +220,173 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
   if (!isConnected) {
     return (
       <main>
-        <h1>Mint a new agent</h1>
-        <p style={{ color: '#6b7280' }}>
-          Connect a wallet to mint an iNFT agent.
-        </p>
+        <PageHeader title="Mint a New Agent" />
+        <Card style={{ textAlign: 'center', padding: 48 }}>
+          <p style={{ color: COLORS.textMuted, fontSize: 15, margin: 0, fontWeight: 300 }}>
+            Connect your wallet to mint an iNFT agent.
+          </p>
+        </Card>
       </main>
     );
   }
 
   return (
-    <main style={{ maxWidth: 560 }}>
-      <h1 style={{ marginTop: 0 }}>Mint a new agent</h1>
-      <p style={{ color: '#6b7280', fontSize: 13 }}>
-        Upload your encrypted strategy bundle to the TEE oracle, then mint the
-        iNFT. The backend relays the on-chain{' '}
-        <code>AxiomAgentNFT.mint()</code> call and pays the mint fee from the
-        backend wallet.
-      </p>
+    <main style={{ maxWidth: 580 }}>
+      <PageHeader title="Mint a New Agent" subtitle="Upload an encrypted strategy and mint it as an ERC-7857 iNFT" />
 
-      <form onSubmit={onSubmit}>
-        <label htmlFor={`${formId}-desc`} style={labelStyle}>
-          Strategy description (optional)
-        </label>
-        <input
-          id={`${formId}-desc`}
-          name="dataDescription"
-          type="text"
-          value={dataDescription}
-          onChange={onDescriptionChange}
-          placeholder="e.g. Mean-reversion on 0G OG/USDC"
-          autoComplete="off"
-          style={inputStyle}
-        />
-        <p style={fieldHintStyle}>
-          Stored as the iNFT <code>dataDescription</code>; the backend defaults
-          it to &quot;Axiom strategy bundle&quot; when blank.
+      <Card>
+        <p style={{ color: COLORS.textMuted, fontSize: 13, lineHeight: 1.65, margin: '0 0 20px', fontWeight: 300 }}>
+          Upload your encrypted strategy bundle to the TEE oracle, then mint the
+          iNFT. The backend relays the on-chain{' '}
+          <code style={{ color: COLORS.bronzeLight }}>AxiomAgentNFT.mint()</code> call
+          and pays the mint fee from the backend wallet.
         </p>
 
-        <label htmlFor={`${formId}-uri`} style={labelStyle}>
-          Encrypted strategy URI / dataHash (0x…)
-        </label>
-        <input
-          id={`${formId}-uri`}
-          name="encryptedStrategyUri"
-          type="text"
-          value={encryptedStrategyUri}
-          onChange={onUriChange}
-          placeholder="0x…  (0G Storage root hash)"
-          autoComplete="off"
-          spellCheck={false}
-          style={inputStyle}
-          required
-        />
-        {uriError !== null && (
-          <p role="alert" style={{ color: '#b91c1c', fontSize: 12, margin: '4px 0 0' }}>
-            {uriError}
+        <form onSubmit={onSubmit}>
+          <label htmlFor={`${formId}-desc`} style={labelStyle}>
+            Strategy description <span style={{ color: COLORS.textDim, fontWeight: 400 }}>(optional)</span>
+          </label>
+          <input
+            id={`${formId}-desc`}
+            name="dataDescription"
+            type="text"
+            value={dataDescription}
+            onChange={onDescriptionChange}
+            placeholder="e.g. Mean-reversion on 0G OG/USDC"
+            autoComplete="off"
+            style={{ ...inputStyle, fontFamily: 'inherit' }}
+          />
+          <p style={fieldHintStyle}>
+            Stored as the iNFT <code style={{ color: COLORS.bronzeLight }}>dataDescription</code>.
+            Defaults to "Axiom strategy bundle" when blank.
           </p>
-        )}
-        <p style={fieldHintStyle}>
-          The 0G Storage root hash of the encrypted strategy. Becomes the iNFT{' '}
-          <code>dataHash</code>.
-        </p>
 
-        <label htmlFor={`${formId}-sealed`} style={labelStyle}>
-          Sealed key (0x…)
-        </label>
-        <input
-          id={`${formId}-sealed`}
-          name="sealedKey"
-          type="text"
-          value={sealedKey}
-          onChange={onSealedKeyChange}
-          placeholder="0x…  (TEE-sealed encryption key)"
-          autoComplete="off"
-          spellCheck={false}
-          style={inputStyle}
-          required
-        />
-        {sealedKeyError !== null && (
-          <p role="alert" style={{ color: '#b91c1c', fontSize: 12, margin: '4px 0 0' }}>
-            {sealedKeyError}
-          </p>
-        )}
-        <p style={fieldHintStyle}>
-          The TEE-sealed encryption key produced by the oracle upload step.
-          Becomes the iNFT <code>sealedKey</code>.
-        </p>
-
-        <label htmlFor={`${formId}-owner`} style={labelStyle}>
-          Owner (connected wallet)
-        </label>
-        <input
-          id={`${formId}-owner`}
-          name="owner"
-          type="text"
-          value={owner ?? ''}
-          readOnly
-          style={{ ...inputStyle, background: '#f3f4f6' }}
-        />
-
-        <div style={{ marginTop: 12, fontSize: 13 }}>
-          <span style={{ fontWeight: 500 }}>Mint fee: </span>
-          {feeError !== null ? (
-            <span style={{ color: '#b91c1c' }}>
-              unavailable ({feeError.message})
-            </span>
-          ) : mintFeeWei === undefined ? (
-            <span style={{ color: '#6b7280' }}>loading…</span>
-          ) : (
-            <span style={{ fontFamily: 'monospace' }}>
-              {formatEther(mintFeeWei)} OG
-            </span>
+          <label htmlFor={`${formId}-uri`} style={labelStyle}>
+            Encrypted strategy URI / dataHash
+          </label>
+          <input
+            id={`${formId}-uri`}
+            name="encryptedStrategyUri"
+            type="text"
+            value={encryptedStrategyUri}
+            onChange={onUriChange}
+            placeholder="0x…  (0G Storage root hash)"
+            autoComplete="off"
+            spellCheck={false}
+            style={inputStyle}
+            required
+          />
+          {uriError !== null && (
+            <p role="alert" style={{ color: COLORS.danger, fontSize: 12, margin: '4px 0 0' }}>
+              {uriError}
+            </p>
           )}
-          {provider !== undefined && (
-            <span style={{ color: '#6b7280', marginLeft: 12 }}>
-              provider pre-fill: {provider.slice(0, 10)}…
-            </span>
+          <p style={fieldHintStyle}>
+            The 0G Storage root hash of the encrypted strategy. Becomes the iNFT{' '}
+            <code style={{ color: COLORS.bronzeLight }}>dataHash</code>.
+          </p>
+
+          <label htmlFor={`${formId}-sealed`} style={labelStyle}>
+            Sealed key
+          </label>
+          <input
+            id={`${formId}-sealed`}
+            name="sealedKey"
+            type="text"
+            value={sealedKey}
+            onChange={onSealedKeyChange}
+            placeholder="0x…  (TEE-sealed encryption key)"
+            autoComplete="off"
+            spellCheck={false}
+            style={inputStyle}
+            required
+          />
+          {sealedKeyError !== null && (
+            <p role="alert" style={{ color: COLORS.danger, fontSize: 12, margin: '4px 0 0' }}>
+              {sealedKeyError}
+            </p>
           )}
-        </div>
-
-        {error !== null && (
-          <p role="alert" style={errorBoxStyle}>
-            {error.message}
+          <p style={fieldHintStyle}>
+            The TEE-sealed encryption key from the oracle upload step.
           </p>
-        )}
-        {submitError !== null && (
-          <p role="alert" style={errorBoxStyle}>
-            {submitError}
-          </p>
-        )}
 
-        {result !== null && (
-          <div role="status" style={successBoxStyle}>
-            <strong>Minted agent #{result.tokenId}</strong>
-            <br />
-            <span>tx: </span>
-            <code style={{ wordBreak: 'break-all' }}>{result.txHash}</code>
-            <br />
-            <Link
-              to={`/agents/${result.tokenId}`}
-              style={{ display: 'inline-block', marginTop: 8 }}
-            >
-              View agent #{result.tokenId} →
-            </Link>
+          <label htmlFor={`${formId}-owner`} style={labelStyle}>
+            Owner <span style={{ color: COLORS.textDim, fontWeight: 400 }}>(connected wallet)</span>
+          </label>
+          <input
+            id={`${formId}-owner`}
+            name="owner"
+            type="text"
+            value={owner ?? ''}
+            readOnly
+            style={{ ...inputStyle, background: COLORS.surface, color: COLORS.bronzeLight }}
+          />
+
+          <div style={{ marginTop: 16, padding: '12px 16px', background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 8, fontSize: 13 }}>
+            <span style={{ fontWeight: 500, color: COLORS.textPrimary }}>Mint fee: </span>
+            {feeError !== null ? (
+              <span style={{ color: COLORS.danger }}>
+                unavailable ({feeError.message})
+              </span>
+            ) : mintFeeWei === undefined ? (
+              <span style={{ color: COLORS.textMuted }}>loading…</span>
+            ) : (
+              <span style={{ fontFamily: "'SF Mono', monospace", color: COLORS.bronzeLight, fontWeight: 600 }}>
+                {formatEther(mintFeeWei)} OG
+              </span>
+            )}
+            {provider !== undefined && (
+              <span style={{ color: COLORS.textDim, marginLeft: 12, fontSize: 12 }}>
+                provider: {provider.slice(0, 10)}…
+              </span>
+            )}
           </div>
-        )}
 
-        <div
-          style={{
-            display: 'flex',
-            gap: 8,
-            justifyContent: 'flex-end',
-            marginTop: 16,
-          }}
-        >
-          <button type="submit" disabled={!canSubmit}>
-            {isLoading ? 'Minting…' : 'Mint agent'}
-          </button>
-        </div>
-      </form>
+          {error !== null && (
+            <Alert variant="error" style={{ marginTop: 16 }}>
+              {error.message}
+            </Alert>
+          )}
+          {submitError !== null && (
+            <Alert variant="error" style={{ marginTop: 12 }}>
+              {submitError}
+            </Alert>
+          )}
+
+          {result !== null && (
+            <div
+              role="status"
+              style={{
+                marginTop: 16,
+                padding: '16px',
+                background: COLORS.successBg,
+                border: `1px solid ${COLORS.successBorder}`,
+                borderRadius: 8,
+                fontSize: 14,
+                color: COLORS.success,
+              }}
+            >
+              <strong style={{ fontSize: 15 }}>Minted agent #{result.tokenId}</strong>
+              <br />
+              <span style={{ fontSize: 12 }}>tx: </span>
+              <code style={{ wordBreak: 'break-all', fontSize: 12, color: COLORS.bronzeLight }}>{result.txHash}</code>
+              <br />
+              <Link
+                to={`/agents/${result.tokenId}`}
+                style={{ display: 'inline-block', marginTop: 10, color: COLORS.bronzeLight, fontSize: 14, fontWeight: 600 }}
+              >
+                View agent #{result.tokenId} →
+              </Link>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
+            <Button variant="primary" type="submit" disabled={!canSubmit}>
+              {isLoading ? 'Minting…' : 'Mint agent'}
+            </Button>
+          </div>
+        </form>
+      </Card>
     </main>
   );
 }
