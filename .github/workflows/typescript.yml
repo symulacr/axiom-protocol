@@ -8,12 +8,6 @@ on:
       - "packages/**"
       - "package.json"
       - "pnpm-lock.yaml"
-  pull_request:
-    paths:
-      - "apps/**"
-      - "packages/**"
-      - "package.json"
-      - "pnpm-lock.yaml"
 
 jobs:
   build:
