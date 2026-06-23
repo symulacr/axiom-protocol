@@ -14,12 +14,7 @@ import { BACKEND_URL } from '../config/env.js';
 
 import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
 
-/**
- * EIP-712 domain for `AxiomTeeVerifier`. Binds signatures to the Galileo
- * testnet + the deployed verifier so a proof minted for one chain/contract
- * cannot be replayed on another. The on-chain `_domainSeparator()` is
- * `keccak256(abi.encode(EIP712Domain(...)))` with this exact name/version.
- */
+/** 0G Galileo testnet chain id — the chain the verifier is deployed on. */
 const EIP712_DOMAIN = {
   name: 'AxiomTeeVerifier',
   version: '1',

@@ -15,13 +15,7 @@
 // once at server start and shared across requests via module-level
 // singleton in server.ts.
 //
-// Canonical sources cited in this file:
-//   - MDN — Array.prototype.push:
-//     https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/push
-//   - MDN — Map (insertion order is preserved):
-//     https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map
-//   - MDN — structuredClone (for the snapshot returned to HTTP callers):
-//     https://developer.mozilla.org/en-US/docs/Web/API/Window/structuredClone
+
 
 /**
  * Default retention cap: 1000 events per (source, eventName) pair.

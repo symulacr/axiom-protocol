@@ -1,8 +1,5 @@
 // Axiom Protocol — `useEventHistory` hook.
-//
-// Polls GET /v1/events on a fixed cadence (15 s default) and returns
-// the event list, a per-eventName grouped index, and loading/error state.
-// Uses native fetch + AbortController; no wagmi dependency.
+// Polls GET /v1/events on a fixed cadence and returns the event list.
 
 import { useEffect, useMemo, useState } from 'react';
 import { BACKEND_URL } from '../config/env.js';

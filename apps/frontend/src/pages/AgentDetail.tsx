@@ -41,9 +41,6 @@ function parseTokenId(raw: string | undefined) {
 }
 
 export function AgentDetail(): ReactElement {
-  // React Router v6+/v7: useParams returns the route's dynamic segments
-  // typed against the path pattern in <Route path="/agents/:tokenId">.
-  // Source: https://reactrouter.com/api/hooks/useParams
   const params = useParams<{ tokenId: string }>();
   const tokenId = parseTokenId(params.tokenId);
 
