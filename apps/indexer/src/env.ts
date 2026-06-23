@@ -2,13 +2,7 @@
 // DA-helper kept local since it is unique to the indexer.
 export { loadEnv, getEnv } from "@axiom/config/env";
 
-/**
- * Default 0G DA gRPC endpoint (Galileo testnet).
- *
- * The DA Client sidecar listens on port 51001. When running locally,
- * override via `DA_GRPC_URL` in `.env`.
- * Ref: https://docs.0g.ai/developer-hub/building-on-0g/da-integration
- */
+/** Default 0G DA gRPC endpoint (Galileo testnet, port 51001). */
 export const DEFAULT_DA_GRPC_URL = "localhost:51001";
 
 /**

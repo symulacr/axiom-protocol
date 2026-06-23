@@ -3,9 +3,8 @@ import OpenAI from "openai";
 export { createDirectClient } from "./direct.js";
 
 // Default Router URLs per network.
-// Mainnet (Aristotle):  chainId 16661 — https://router-api.0g.ai/v1
-// Testnet (Galileo):    chainId 16602 — https://router-api-testnet.integratenetwork.work/v1
-// Source: https://docs.0g.ai/ai-context
+// Mainnet (Aristotle):  chainId 16661
+// Testnet (Galileo):    chainId 16602
 const DEFAULT_MAINNET_URL = "https://router-api.0g.ai/v1";
 const DEFAULT_TESTNET_URL = "https://router-api-testnet.integratenetwork.work/v1";
 

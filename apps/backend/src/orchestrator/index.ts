@@ -83,13 +83,8 @@ export interface OrchestratorConfig {
   };
   /**
    * EIP-155 chain id used to pick the canonical 0G Storage indexer and Flow
-   * contract. Required by design: ethers v6 `provider.getNetwork()` is async
-   * (see https://docs.ethers.org/v6/api/providers/#Provider-getNetwork) and
-   * `network.chainId` is a `bigint` (see https://docs.ethers.org/v6/api/providers/#Network),
-   * so a synchronous fallback in the constructor is unsound. Callers MUST
-   * pass the explicit chainId; the default below (16602 = Galileo testnet)
-   * preserves existing behavior for callers that omit the field.
-   * Source: https://docs.0g.ai/ai-context
+   * contract. Required because ethers v6 `provider.getNetwork()` is async,
+   * so a synchronous fallback is unsound. Default: 16602 (Galileo testnet).
    */
   chainId?: number;
 }

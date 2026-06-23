@@ -3,10 +3,6 @@ import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 /**
  * AES-256-GCM symmetric encryption (Node crypto, no mocks).
  * Output layout: iv (12 bytes) || ciphertext || authTag (16 bytes).
- *
- * Canonical sources (per the constraint to cite MDN/ECMA-262/Node/0G/EIP only):
- *   - https://nodejs.org/api/crypto.html#ciphercreatecipherivalgorithm-key-iv-options
- *   - https://nodejs.org/api/crypto.html#ciphergetauthtag
  */
 const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 12;

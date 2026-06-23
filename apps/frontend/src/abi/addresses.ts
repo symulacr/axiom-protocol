@@ -1,14 +1,7 @@
 // Axiom Protocol — on-chain contract addresses, keyed by chain ID.
 //
-// Galileo testnet (16602) addresses correspond to the Canonical Wave E-5
-// deployment (2026-06-16). See:
-//   docs/deployments/wave-e5-redeploy-2026-06-16.md
-//
-// Aristotle mainnet (16661) addresses are placeholders until the mainnet
-// deployment is live.
-//
-// All addresses are `0x${string}` literals so wagmi v2's `useReadContracts`
-// return types stay exact (viem `Address` branded type).
+// Galileo testnet addresses correspond to the Wave E-5 deployment.
+// Aristotle mainnet addresses are placeholders until mainnet is live.
 import type { Address } from 'viem';
 
 type AddressMap = {
@@ -40,23 +33,16 @@ const ADDRESSES: Record<number, AddressMap> = {
 
 import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
 
-/** Default chain identifier — Galileo testnet. */
+/** Default chain — Galileo testnet. */
 const DEFAULT_CHAIN = GALILEO_CHAIN_ID;
 
-/**
- * Return the address map for the given chain, falling back to Galileo when
- * the chain is unknown or not provided.
- */
+/** Return the address map for the given chain (fallback to Galileo). */
 export function getAddresses(chainId?: number): AddressMap {
   return ADDRESSES[chainId ?? DEFAULT_CHAIN] ?? ADDRESSES[DEFAULT_CHAIN]!;
 }
 
-// ---------------------------------------------------------------------------
-// Backward-compatible aliases — all resolve to Galileo defaults so every
-// existing import keeps working without changes.
-// ---------------------------------------------------------------------------
+// Backward-compatible aliases (resolve to Galileo defaults).
 
-/** AxiomStrategyVault — single deployed vault instance. */
 export const AXIOM_STRATEGY_VAULT_ADDRESS: Address =
   ADDRESSES[DEFAULT_CHAIN]!.axiomStrategyVault;
 
@@ -73,7 +59,6 @@ export const AXIOM_AGENT_NFT_ADDRESS: Address =
 export const AXIOM_TEE_VERIFIER_ADDRESS: Address =
   ADDRESSES[DEFAULT_CHAIN]!.axiomTeeVerifier;
 
-/** AxiomPaymentProcessor — handles agent payment routing. */
 export const AXIOM_PAYMENT_PROCESSOR_ADDRESS: Address =
   ADDRESSES[DEFAULT_CHAIN]!.axiomPaymentProcessor;
 

@@ -25,7 +25,6 @@ export function extractBigIntArg(args: Record<string, unknown>, key: string): bi
 //   - stringifyBigIntSafe: convenience wrapper with the replacer
 //   - bigIntSafe: deeply converts all bigints to decimal strings
 //     for callers that want a plain object for res.json().
-// Source: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Errors/BigInt_not_serializable
 
 export function bigintReplacer(_key: string, value: unknown): unknown {
   return typeof value === "bigint" ? value.toString() : value;

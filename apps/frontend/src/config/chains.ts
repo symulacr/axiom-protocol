@@ -1,17 +1,9 @@
 // Axiom Protocol — 0G chain definitions for wagmi v2.
-// Uses viem's `defineChain` to register Galileo testnet (16602) and
-// Aristotle mainnet (16661) as custom chains.
 
 import { defineChain } from 'viem';
 import { GALILEO_CHAIN_ID, ARISTOTLE_CHAIN_ID } from "@axiom/config/networks";
 
-/**
- * 0G Galileo Testnet.
- *
- * chainId 16602 (0x40DA), native gas token "OG" (18 decimals). The default
- * HTTP RPC and the block explorer URL are taken verbatim from the 0G
- * testnet overview docs.
- */
+/** 0G Galileo Testnet (chainId 16602). */
 export const galileo = defineChain({
   id: GALILEO_CHAIN_ID,
   name: '0G Galileo Testnet',
@@ -30,13 +22,7 @@ export const galileo = defineChain({
   testnet: true,
 });
 
-/**
- * 0G Aristotle Mainnet.
- *
- * chainId 16661 (0x4115), native gas token "OG" (18 decimals). The default
- * HTTP RPC and the block explorer URL are taken verbatim from the 0G
- * mainnet overview docs.
- */
+/** 0G Aristotle Mainnet (chainId 16661). */
 export const aristotle = defineChain({
   id: ARISTOTLE_CHAIN_ID,
   name: '0G Aristotle Mainnet',

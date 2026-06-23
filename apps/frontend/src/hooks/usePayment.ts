@@ -1,8 +1,4 @@
 // Axiom Protocol — `usePayment` hook.
-//
-// Typed HTTP wrapper for the backend's five payment routes:
-// POST /v1/agents/:id/pay, POST /v1/compute/pay, GET /v1/agents/:id/earnings,
-// POST /v1/agents/:id/royalty, GET /v1/payment/config.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Address } from 'viem';
@@ -55,12 +51,7 @@ export type RoyaltyResult = {
   value: string;
 };
 
-/**
- * Shared fetch helper. Throws an `Error` on non-2xx so the hook's
- * `try / catch` can wrap it into state. Mirrors the pattern in
- * `useOrchestratorTick.ts` so the whole codebase surfaces backend
- * failures the same way.
- */
+/** Shared fetch helper; throws on non-2xx. */
 async function apiFetch<T>(
   path: string,
   init: RequestInit,
@@ -84,7 +75,6 @@ async function apiFetch<T>(
   return (await res.json()) as T;
 }
 
-/** Hook surface returned by `usePayment()`. */
 export type UsePaymentResult = {
   payForAgent: (tokenId: bigint, amount: string) => Promise<AgentPayResult>;
   payComputeProvider: (
@@ -101,11 +91,8 @@ export type UsePaymentResult = {
 };
 
 /**
- * HTTP client for the backend's payment routes. Each action is a thin
- * `fetch` wrapper that sets `isLoading` for the duration and stores
- * any thrown error in `error`. Actions re-throw so the caller can
- * also react in-line (e.g. show a toast) — matching
- * `useOrchestratorTick`'s contract.
+ * HTTP client for the backend's payment routes.
+ * Actions re-throw so callers can handle errors in-line.
  */
 export function usePayment(): UsePaymentResult {
   const [isLoading, setIsLoading] = useState(false);

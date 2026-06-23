@@ -1,23 +1,16 @@
 // Axiom Protocol — `useEventStream` hook.
-//
-// WebSocket event stream hook. Connects to the backend WS /v1/stream,
-// subscribes to topic filters, and merges events into the same shape
-// as useEventHistory. Falls back gracefully when WS is unavailable
-// (the polling hook should be used alongside this one).
 
 import { useCallback, useRef, useState } from 'react';
 import { useMountEffect } from '../components/ui.js';
 import { BACKEND_URL } from '../config/env.js';
 import type { AxiomEvent } from './useEventHistory.js';
 
-/** Public surface of the hook. */
 export interface UseEventStreamResult {
   events: AxiomEvent[];
   isConnected: boolean;
   error: Event | null;
 }
 
-/** Options accepted by `useEventStream`. */
 export interface UseEventStreamOptions {
   /** Topic sub-string filters forwarded as `?topic=` query params. */
   topics?: string[];
@@ -30,17 +23,7 @@ const MAX_EVENTS = 500;
 
 /**
  * Subscribe to the backend WebSocket event stream.
- *
- * The hook establishes a single WS connection on mount, forwards
- * incoming JSON messages into the standard `AxiomEvent` shape, and
- * tears down the connection on unmount. A `?topic=` query parameter
- * is appended for each entry in the `topics` array so the backend
- * can optionally server-side filter.
- *
- * Usage:
- *   const { events, isConnected } = useEventStream({
- *     topics: ['Transfer', 'PaymentProcessed'],
- *   });
+ * Forwards incoming JSON into the standard `AxiomEvent` shape.
  */
 export function useEventStream(
   options: UseEventStreamOptions = {},
