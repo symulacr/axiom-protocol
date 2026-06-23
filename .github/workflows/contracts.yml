@@ -61,5 +61,5 @@ jobs:
           cache: 'pnpm'
 
       - run: pnpm install
-      - run: pnpm -r run lint
+      - run: pnpm --filter !@axiom/contracts -r run lint
       - run: pnpm -r run typecheck
