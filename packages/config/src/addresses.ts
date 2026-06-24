@@ -1,4 +1,3 @@
-import { getEnvWithAlias } from "./env.js";
 import { validateHex } from "./types/hex.js";
 
 // ── Canonical deployed addresses (Wave E-5, 2026-06-16) ──────────
@@ -10,7 +9,7 @@ import { validateHex } from "./types/hex.js";
 //   AXIOM_PAYMENT_PROCESSOR_ADDRESS
 //   AXIOM_MOCK_USDC_ADDRESS
 
-const WAVE_E5: Record<string, `0x${string}`> = {
+const WAVE_E5 = {
   agentNft:           "0xf12F158a20c36a351b056FD60b3a7377ce4F1e09",
   strategyVault:      "0xb7F89e50D5A3039Da7d39528436B820371572874",
   teeVerifier:        "0x24f725198d64A3b03A8386cD8fa12BD7c591734A",
@@ -19,9 +18,9 @@ const WAVE_E5: Record<string, `0x${string}`> = {
 } as const;
 
 export const DEPLOYED_ADDRESSES = {
-  agentNft:         validateHex(getEnvWithAlias("AXIOM_AGENT_NFT_ADDRESS",    ["AGENT_NFT_ADDRESS"],  WAVE_E5.agentNft), "AXIOM_AGENT_NFT_ADDRESS"),
-  strategyVault:    validateHex(getEnvWithAlias("AXIOM_STRATEGY_VAULT_ADDRESS", ["VAULT_ADDRESS"],     WAVE_E5.strategyVault), "AXIOM_STRATEGY_VAULT_ADDRESS"),
-  teeVerifier:      validateHex(getEnvWithAlias("AXIOM_TEE_VERIFIER_ADDRESS", ["AXIOM_TEE_VERIFIER"], WAVE_E5.teeVerifier), "AXIOM_TEE_VERIFIER_ADDRESS"),
-  paymentProcessor: validateHex(getEnvWithAlias("AXIOM_PAYMENT_PROCESSOR_ADDRESS", ["PAYMENT_PROCESSOR_ADDRESS", "AXIOM_PAYMENT_PROCESSOR"], WAVE_E5.paymentProcessor), "AXIOM_PAYMENT_PROCESSOR_ADDRESS"),
-  mockUsdc:         validateHex(getEnvWithAlias("AXIOM_MOCK_USDC_ADDRESS",    ["AXIOM_PAYMENT_TOKEN"], WAVE_E5.mockUsdc), "AXIOM_MOCK_USDC_ADDRESS"),
+  agentNft:         validateHex((process.env.AXIOM_AGENT_NFT_ADDRESS || process.env.AGENT_NFT_ADDRESS || WAVE_E5.agentNft) as string, "AXIOM_AGENT_NFT_ADDRESS"),
+  strategyVault:    validateHex((process.env.AXIOM_STRATEGY_VAULT_ADDRESS || process.env.VAULT_ADDRESS || WAVE_E5.strategyVault) as string, "AXIOM_STRATEGY_VAULT_ADDRESS"),
+  teeVerifier:      validateHex((process.env.AXIOM_TEE_VERIFIER_ADDRESS || process.env.AXIOM_TEE_VERIFIER || WAVE_E5.teeVerifier) as string, "AXIOM_TEE_VERIFIER_ADDRESS"),
+  paymentProcessor: validateHex((process.env.AXIOM_PAYMENT_PROCESSOR_ADDRESS || process.env.PAYMENT_PROCESSOR_ADDRESS || process.env.AXIOM_PAYMENT_PROCESSOR || WAVE_E5.paymentProcessor) as string, "AXIOM_PAYMENT_PROCESSOR_ADDRESS"),
+  mockUsdc:         validateHex((process.env.AXIOM_MOCK_USDC_ADDRESS || process.env.AXIOM_PAYMENT_TOKEN || WAVE_E5.mockUsdc) as string, "AXIOM_MOCK_USDC_ADDRESS"),
 } as const;

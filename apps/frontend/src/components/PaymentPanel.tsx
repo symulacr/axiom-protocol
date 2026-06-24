@@ -12,7 +12,6 @@ import {
   usePayment,
   type PaymentConfig,
   type EarningsInfo,
-  type RoyaltyResult,
 } from '../hooks/usePayment.js';
 import {
   COLORS,

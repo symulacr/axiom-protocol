@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { validateHex, validateAddress, toViemHex, type Hex, type Address } from "./hex.js";
+import { validateHex, validateAddress, toViemHex } from "./hex.js";
 
 /** Hex string with runtime validation + brand transform. */
 export const hexString = z.string().regex(/^0x[a-fA-F0-9]+$/, "Invalid hex").transform((v) => validateHex(v));

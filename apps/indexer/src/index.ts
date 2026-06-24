@@ -96,7 +96,7 @@ async function flushBuffer(): Promise<void> {
   } catch (err) {
     // Re-buffer on failure so events aren't lost
     const MAX_BUFFER_SIZE = 10000;
-    for (const ev of batch) {
+    for (const _ev of batch) {
       if (eventBuffer.length >= MAX_BUFFER_SIZE) {
         const dropped = eventBuffer.pop();
         console.warn(`[indexer] event buffer full, dropping oldest event: ${dropped?.kind ?? "unknown"}`);
