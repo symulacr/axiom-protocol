@@ -26,7 +26,7 @@ export function sealKeyForReceiver(receiverPubkey64: Uint8Array, dataEncryptionK
   return encrypt(toCompressed(receiverPubkey64), dataEncryptionKey);
 }
 
-export function unsealKeyForReceiver(receiverPrivateKey: Uint8Array, sealedKey: Uint8Array) {
+function unsealKeyForReceiver(receiverPrivateKey: Uint8Array, sealedKey: Uint8Array) {
   return decrypt(receiverPrivateKey, sealedKey);
 }
 

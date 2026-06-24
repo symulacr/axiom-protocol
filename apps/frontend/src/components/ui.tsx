@@ -50,12 +50,6 @@ export const COLORS = {
 // Shared transitions
 const transition = 'all 0.18s cubic-bezier(0.4, 0, 0.2, 1)';
 
-// ─── Helpers ───────────────────────────────────────────────────────────
-export function useMountEffect(effect: () => void | (() => void), deps: unknown[] = []) {
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(effect, deps);
-}
-
 type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost';
 
 const buttonBase: CSSProperties = {
@@ -221,38 +215,6 @@ export function Alert({
   );
 }
 
-export function Badge({
-  children,
-  variant = 'neutral',
-}: {
-  children: ReactNode;
-  variant?: 'neutral' | 'bronze' | 'success' | 'danger';
-}): ReactElement {
-  const variants: Record<string, CSSProperties> = {
-    neutral: { background: 'rgba(255,255,255,0.06)', color: COLORS.textMuted },
-    bronze: { background: COLORS.bronzeBg, color: COLORS.bronzeLight },
-    success: { background: COLORS.successBg, color: COLORS.success },
-    danger: { background: COLORS.dangerBg, color: COLORS.danger },
-  };
-  return (
-    <span
-      style={{
-        display: 'inline-block',
-        padding: '0.1875rem 0.625rem',
-        borderRadius: 999,
-        fontSize: 'var(--text-xs)',
-        fontWeight: 'var(--fw-semibold)',
-        letterSpacing: '0.03em',
-        textTransform: 'uppercase',
-        lineHeight: 'var(--lh-snug)',
-        ...variants[variant],
-      }}
-    >
-      {children}
-    </span>
-  );
-}
-
 export function Skeleton({
   width = '100%',
   height = 20,
@@ -343,19 +305,6 @@ export function SectionTitle({
   );
 }
 
-export function Divider({ style }: { style?: CSSProperties }): ReactElement {
-  return (
-    <hr
-      style={{
-        border: 'none',
-        borderTop: `1px solid ${COLORS.border}`,
-        margin: 'var(--space-xl) 0',
-        ...style,
-      }}
-    />
-  );
-}
-
 export function MonoLabel({
   children,
   title,
@@ -381,43 +330,6 @@ export function MonoLabel({
     >
       {children}
     </code>
-  );
-}
-
-export function Select({
-  value, onChange, children, style, disabled, 'aria-label': ariaLabel,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  children: ReactNode;
-  style?: CSSProperties;
-  disabled?: boolean;
-  'aria-label'?: string;
-}): ReactElement {
-  return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      disabled={disabled}
-      aria-label={ariaLabel}
-      style={{
-        padding: '0.625rem 0.875rem',
-        borderRadius: 'var(--radius-md)',
-        border: `1px solid ${COLORS.borderStrong}`,
-        background: COLORS.bg,
-        color: COLORS.text,
-        fontSize: 'var(--text-sm)',
-        fontFamily: 'inherit',
-        outline: 'none',
-        minWidth: '12rem',
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        opacity: disabled ? 0.4 : 1,
-        transition,
-        ...style,
-      }}
-    >
-      {children}
-    </select>
   );
 }
 
@@ -450,7 +362,7 @@ interface ModalProps {
 export function Modal({ open, onClose, title, children, style }: ModalProps): ReactElement | null {
   const dialogRef = useRef<HTMLDialogElement | null>(null);
 
-  useMountEffect(() => {
+  useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
     if (open && !dialog.open) {
@@ -488,29 +400,4 @@ export function Modal({ open, onClose, title, children, style }: ModalProps): Re
   );
 }
 
-export function KeyValueTable({
-  data,
-  style,
-}: {
-  data: Array<{ key: string; value: ReactNode }>;
-  style?: CSSProperties;
-}): ReactElement {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 0, ...style }}>
-      {data.map((row, i) => (
-        <div
-          key={row.key}
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            padding: '0.625rem 0',
-            borderBottom: i < data.length - 1 ? `1px solid ${COLORS.border}` : 'none',
-          }}
-        >
-          <span style={{ color: COLORS.textDim, fontSize: 'var(--text-sm)' }}>{row.key}</span>
-          <span style={{ color: COLORS.text, fontSize: 'var(--text-sm)' }}>{row.value}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
+

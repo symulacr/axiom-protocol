@@ -15,7 +15,6 @@ import { ZeroGStorage, pickOGNetwork } from "./storage/0g.js";
 import { getComputeBaseUrl } from "./compute/router.js";
 import type OpenAI from "openai";
 import { StrategyRunner, type StrategySpec, type MarketSignal, type TickResult } from "./orchestrator/index.js";
-import { createOrchestratorHandle, getRunnerOrThrow, type OrchestratorHandle } from "./orchestrator/handle.js";
 import { DefaultSignerOracleClient } from "./oracle/client.js";
 import { accessMessageHash, type AccessProofInput, type Eip712Domain, DEFAULT_EIP712_DOMAIN } from "@axiom/oracle/signer";
 import { loadEnv } from "./env.js";
@@ -70,10 +69,12 @@ interface ConnectedClient {
   topics: Set<string>;
 }
 
-function getIdParam(req: Request, res: Response) {
-  const id = req.params.id;
-  if (typeof id !== "string") { res.status(400).json({ error: "Missing id" }); return null; }
-  return id;
+function getIdParam(req: Request, res: Response): string | false {
+  if (typeof req.params.id !== "string") {
+    res.status(400).json({ error: "Missing id" });
+    return false;
+  }
+  return req.params.id;
 }
 
 export function startServer(config: ServerConfig): { app: Express; httpServer: HttpServer } {
@@ -132,20 +133,17 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
     chainId: BigInt(ogChainId),
     verifyingContract: config.addresses?.verifier ?? DEFAULT_EIP712_DOMAIN.verifyingContract,
   };
-  let orchestratorHandle: OrchestratorHandle = createOrchestratorHandle();
+  let orchestratorHandle: StrategyRunner | null = null;
   try {
-    const runner = new StrategyRunner({
+    orchestratorHandle = new StrategyRunner({
       evmRpc: config.evmRpc,
       signer: config.signer,
       oracleBaseUrl: config.oracleBaseUrl,
       chainId: ogChainId,
       addresses: config.addresses,
     });
-    orchestratorHandle = { state: "ready", runner };
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.warn(`[server] StrategyRunner init failed (compute degraded): ${message}`);
-    orchestratorHandle = { state: "errored", error: err instanceof Error ? err : new Error(String(err)) };
+    console.warn(`[server] StrategyRunner init failed: ${err instanceof Error ? err.message : String(err)}`);
   }
   const provider = new ethers.JsonRpcProvider(config.evmRpc);
   // PaymentProcessor client: lazily resolved; paymentToken read from contract.
@@ -232,8 +230,8 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
 
       let client: OpenAI;
       try {
-        const { createComputeClient } = await import("./compute/router.js");
-        client = createComputeClient();
+        const { createRouterClient } = await import("./compute/router.js");
+        client = createRouterClient();
       } catch (keyErr) {
         res.status(401).json({
           error: "No compute credentials configured",
@@ -317,7 +315,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
   app.post("/v1/agents/:id/transfer", async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = getIdParam(req, res);
-      if (!id) return;
+      if (id === false) return;
       if (!config.addresses?.agentNft) {
         res.status(500).json({ error: "AgentNFT address not configured" });
         return;
@@ -489,7 +487,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
   app.post("/v1/vaults/:id/deposit", async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = getIdParam(req, res);
-      if (!id) return;
+      if (id === false) return;
       const vaultAddr = config.addresses?.vault;
       if (!vaultAddr) {
         res.status(500).json({ error: "Vault address not configured" });
@@ -509,7 +507,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
   app.post("/v1/vaults/:id/strategy", async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = getIdParam(req, res);
-      if (!id) return;
+      if (id === false) return;
       const vaultAddr = config.addresses?.vault;
       if (!vaultAddr) {
         res.status(500).json({ error: "Vault address not configured" });
@@ -529,7 +527,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
   app.post("/v1/agents/:id/pay", async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = getIdParam(req, res);
-      if (!id) return;
+      if (id === false) return;
       const { amount } = paySchema.parse(req.body);
       const client = await getPayment();
       const { receipt, event } = await client.payForAgent(BigInt(id), BigInt(amount));
@@ -561,7 +559,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
   app.get("/v1/agents/:id/earnings", async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = getIdParam(req, res);
-      if (!id) return;
+      if (id === false) return;
       const nftAddr = config.addresses?.agentNft;
       if (!nftAddr) {
         res.status(500).json({ error: "AgentNFT address not configured" });
@@ -584,7 +582,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
   app.post("/v1/agents/:id/royalty", async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = getIdParam(req, res);
-      if (!id) return;
+      if (id === false) return;
       const { bps } = royaltySchema.parse(req.body);
       const client = await getPayment();
       // Encoded calldata for NFT owner submission.
@@ -633,7 +631,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
   app.get("/v1/agents/:id/history", async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = getIdParam(req, res);
-      if (!id) return;
+      if (id === false) return;
       const eventName = typeof req.query["eventName"] === "string" ? req.query["eventName"] : undefined;
       const source = typeof req.query["source"] === "string" ? req.query["source"] : undefined;
       const limitRaw = typeof req.query["limit"] === "string" ? Number(req.query["limit"]) : undefined;
@@ -688,7 +686,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
   app.get("/v1/agents/:id/events", async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = getIdParam(req, res);
-      if (!id) return;
+      if (id === false) return;
       const eventName = typeof req.query["eventName"] === "string" ? req.query["eventName"] : undefined;
       const source = typeof req.query["source"] === "string" ? req.query["source"] : undefined;
       const limitRaw = typeof req.query["limit"] === "string" ? Number(req.query["limit"]) : undefined;
@@ -730,8 +728,8 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
         payload: signalPayload ?? { strategyHint: strategyHint ?? "hold" },
         emittedAt: Date.now(),
       };
-      const runner = getRunnerOrThrow(orchestratorHandle);
-      const result: TickResult = await runner.runTick(spec, signal);
+      if (!orchestratorHandle) { res.status(503).json({ error: "Orchestrator not available" }); return; }
+      const result: TickResult = await orchestratorHandle.runTick(spec, signal);
       res.status(200).json(result);
       broadcast("orchestrator.tick", {
         agentTokenId: spec.agentTokenId.toString(),

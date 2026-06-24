@@ -34,20 +34,10 @@ import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
 /** Default chain — Galileo testnet. */
 const DEFAULT_CHAIN = GALILEO_CHAIN_ID;
 
-/** Return the address map for the given chain (fallback to Galileo). */
-export function getAddresses(chainId?: number): AddressMap {
-  return ADDRESSES[chainId ?? DEFAULT_CHAIN] ?? ADDRESSES[DEFAULT_CHAIN]!;
-}
-
 // Backward-compatible aliases (resolve to Galileo).
 
 export const AXIOM_STRATEGY_VAULT_ADDRESS: Address =
   ADDRESSES[DEFAULT_CHAIN]!.axiomStrategyVault;
-
-/** Vault addresses for multi-vault fan-out. */
-export const AXIOM_VAULT_ADDRESSES: readonly Address[] = [
-  ADDRESSES[DEFAULT_CHAIN]!.axiomStrategyVault,
-] as const;
 
 /** AxiomAgentNFT proxy (ERC-1967). */
 export const AXIOM_AGENT_NFT_ADDRESS: Address =
