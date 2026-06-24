@@ -1,6 +1,7 @@
 // On-chain contract addresses, keyed by chain ID.
 // Galileo = Wave E-5. Aristotle = placeholders until deploy.
 import type { Address } from 'viem';
+import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
 
 type AddressMap = {
   axiomAgentNft: Address;
@@ -29,27 +30,69 @@ const ADDRESSES: Record<number, AddressMap> = {
   },
 };
 
-import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
-
 /** Default chain — Galileo testnet. */
 const DEFAULT_CHAIN = GALILEO_CHAIN_ID;
 
-// Backward-compatible aliases (resolve to Galileo).
+// ── Chain-aware getter functions ──
 
-export const AXIOM_STRATEGY_VAULT_ADDRESS: Address =
-  ADDRESSES[DEFAULT_CHAIN]!.axiomStrategyVault;
+export function getAxiomStrategyVaultAddress(chainId?: number): Address {
+  const cid = chainId ?? DEFAULT_CHAIN;
+  const addr = ADDRESSES[cid]?.axiomStrategyVault;
+  if (!addr || addr === '0x0000000000000000000000000000000000000000') {
+    throw new Error(`AxiomStrategyVault not deployed on chain ${cid}`);
+  }
+  return addr;
+}
 
-/** AxiomAgentNFT proxy (ERC-1967). */
-export const AXIOM_AGENT_NFT_ADDRESS: Address =
-  ADDRESSES[DEFAULT_CHAIN]!.axiomAgentNft;
+export function getAxiomAgentNftAddress(chainId?: number): Address {
+  const cid = chainId ?? DEFAULT_CHAIN;
+  const addr = ADDRESSES[cid]?.axiomAgentNft;
+  if (!addr || addr === '0x0000000000000000000000000000000000000000') {
+    throw new Error(`AxiomAgentNft not deployed on chain ${cid}`);
+  }
+  return addr;
+}
 
-/** AxiomTeeVerifier — registered verifier on the NFT proxy. */
-export const AXIOM_TEE_VERIFIER_ADDRESS: Address =
-  ADDRESSES[DEFAULT_CHAIN]!.axiomTeeVerifier;
+export function getAxiomTeeVerifierAddress(chainId?: number): Address {
+  const cid = chainId ?? DEFAULT_CHAIN;
+  const addr = ADDRESSES[cid]?.axiomTeeVerifier;
+  if (!addr || addr === '0x0000000000000000000000000000000000000000') {
+    throw new Error(`AxiomTeeVerifier not deployed on chain ${cid}`);
+  }
+  return addr;
+}
 
-export const AXIOM_PAYMENT_PROCESSOR_ADDRESS: Address =
-  ADDRESSES[DEFAULT_CHAIN]!.axiomPaymentProcessor;
+export function getAxiomPaymentProcessorAddress(chainId?: number): Address {
+  const cid = chainId ?? DEFAULT_CHAIN;
+  const addr = ADDRESSES[cid]?.axiomPaymentProcessor;
+  if (!addr || addr === '0x0000000000000000000000000000000000000000') {
+    throw new Error(`AxiomPaymentProcessor not deployed on chain ${cid}`);
+  }
+  return addr;
+}
 
-/** MockUSDC — testnet payment token. */
-export const AXIOM_MOCK_USDC_ADDRESS: Address =
-  ADDRESSES[DEFAULT_CHAIN]!.axiomMockUsdc;
+export function getAxiomMockUsdcAddress(chainId?: number): Address {
+  const cid = chainId ?? DEFAULT_CHAIN;
+  const addr = ADDRESSES[cid]?.axiomMockUsdc;
+  if (!addr || addr === '0x0000000000000000000000000000000000000000') {
+    throw new Error(`AxiomMockUsdc not deployed on chain ${cid}`);
+  }
+  return addr;
+}
+
+// ── Backward-compatible aliases (resolve to default chain) ──
+
+/** @deprecated Use getAxiomStrategyVaultAddress(chainId) instead */
+export const AXIOM_STRATEGY_VAULT_ADDRESS: Address = getAxiomStrategyVaultAddress();
+
+/** @deprecated Use getAxiomAgentNftAddress(chainId) instead */
+export const AXIOM_AGENT_NFT_ADDRESS: Address = getAxiomAgentNftAddress();
+
+/** @deprecated Use getAxiomTeeVerifierAddress(chainId) instead */
+export const AXIOM_TEE_VERIFIER_ADDRESS: Address = getAxiomTeeVerifierAddress();
+
+/** @deprecated Use getAxiomPaymentProcessorAddress(chainId) instead */
+export const AXIOM_PAYMENT_PROCESSOR_ADDRESS: Address = getAxiomPaymentProcessorAddress();
+
+/** @deprecated Use getAxiomMockUsdcAddress(chainId) instead */
+export const AXIOM_MOCK_USDC_ADDRESS: Address = getAxiomMockUsdcAddress();
