@@ -125,7 +125,6 @@ export function startServer(config: ServerConfig): Express {
         validUntil: defaultValidUntil.toString(),
       });
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
       console.error("[oracle] /v1/transfer-validity error:", err);
       res.status(500).json({ error: "Transfer validity check failed" });
     }

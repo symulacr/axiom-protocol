@@ -23,6 +23,7 @@ jobs:
       - run: pnpm --filter !@axiom/contracts -r build
 
   lint-and-typecheck:
+    needs: [build]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

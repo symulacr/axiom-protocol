@@ -13,7 +13,7 @@ import {
   useOrchestratorTick,
   type TickResult,
 } from '../hooks/useOrchestratorTick.js';
-import { COLORS, Button, Card, SectionTitle, MonoLabel, Alert, Skeleton } from './ui.js';
+import { COLORS, Button, Card, SectionTitle, MonoLabel, Alert } from './ui.js';
 import { PLACEHOLDER } from '../utils/format.js';
 
 const actionColor: Record<string, string> = {

@@ -1,0 +1,16 @@
+{
+  "extends": ["solhint:recommended"],
+  "rules": {
+    "compiler-version": ["error", "^0.8.20"],
+    "func-visibility": ["error", { "ignoreConstructors": true }],
+    "max-line-length": ["error", 120],
+    "no-inline-assembly": "off",
+    "reason-string": ["warn", { "maxLength": 64 }],
+    "no-empty-blocks": "off",
+    "no-console": "off",
+    "import-path-check": "off",
+    "no-global-import": "off",
+    "gas-custom-errors": "warn",
+    "avoid-low-level-calls": "off"
+  }
+}

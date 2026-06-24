@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { discoverProviders, resolveProviderUrl } from "./provider-discovery.js";
+import { resolveProviderUrl } from "./provider-discovery.js";
 
 // Default Router URLs per network.
 // Mainnet (Aristotle):  chainId 16661

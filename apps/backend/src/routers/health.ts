@@ -21,7 +21,6 @@ export function createHealthRouter(provider: JsonRpcProvider, oracle: OracleClie
         addresses: addresses ?? null,
       });
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
       console.error("[health] error:", err);
       res.status(503).json({ ok: false, error: "Health check failed" });
     }

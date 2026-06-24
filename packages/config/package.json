@@ -12,8 +12,6 @@
     "./addresses": "./dist/addresses.js",
     "./types/hex": "./dist/types/hex.js",
     "./types/bigint": "./dist/types/bigint.js",
-    "./types/ethers": "./dist/types/ethers.js",
-    "./types/collections": "./dist/types/collections.js",
     "./types/schemas": "./dist/types/schemas.js",
     "./types/contract": "./dist/types/contract.js",
     "./abis": "./dist/abis/index.js",
@@ -23,8 +21,6 @@
     "./abis/iTransferFrom": "./dist/abis/iTransferFrom.js",
     "./middleware/auth": "./dist/middleware/auth.js",
     "./env-schema": "./dist/env-schema.js",
-    "./api/responses": "./dist/api/responses.js",
-    "./api/routes": "./dist/api/routes.js",
     "./api": "./dist/api/index.js",
     "./storage/0g": "./dist/storage/0g.js"
   },

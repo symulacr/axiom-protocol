@@ -12,7 +12,7 @@ import { useAccount, useReadContracts } from 'wagmi';
 import { formatEther, isHex, type Address } from 'viem';
 import { AXIOM_AGENT_NFT_ADDRESS } from '../abi/addresses.js';
 import { useMint } from '../hooks/useMint.js';
-import { COLORS, Card, Button, Alert, PageHeader, SectionTitle, MonoLabel, Skeleton } from './ui.js';
+import { COLORS, Card, Button, Alert, PageHeader } from './ui.js';
 
 const mintFeeAbi = [
   {

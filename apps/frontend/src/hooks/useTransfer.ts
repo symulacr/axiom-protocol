@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { useAccount, useSignTypedData, useWriteContract } from 'wagmi';
 import { type Address, type Hex } from 'viem';
 
-import { AXIOM_AGENT_NFT_ADDRESS, AXIOM_TEE_VERIFIER_ADDRESS } from '../abi/addresses.js';
+import { AXIOM_AGENT_NFT_ADDRESS } from '../abi/addresses.js';
 import { iTransferFromAbi } from '../abi/iTransferFrom.js';
 import { BACKEND_URL } from '../config/env.js';
 
