@@ -29,11 +29,7 @@ const _OG_NETWORKS = {
   },
 } as const satisfies Record<number, OGNetwork>;
 
-/**
- * Publicly exported OG_NETWORKS map. Cast to Record<number, OGNetwork>
- * to satisfy the type checker while keeping the const assertion for
- * literal inference.
- */
+/** OG_NETWORKS map cast to Record<number, OGNetwork> for type inference. */
 export const OG_NETWORKS: Record<number, OGNetwork> = _OG_NETWORKS as unknown as Record<number, OGNetwork>;
 
 /** Look up the canonical 0G network entry for a chainId, or null if unsupported. */
@@ -41,15 +37,7 @@ export function pickOGNetwork(chainId: number): OGNetwork | null {
   return OG_NETWORKS[chainId] ?? null;
 }
 
-/**
- * Resolve the EVM RPC URL from the environment or fall back to the
- * network default for the given chainId.
- *
- * Precedence:
- *   1. AXIOM_EVM_RPC / OG_RPC_URL / RPC_URL env var
- *   2. Network default for the given chainId
- *   3. Galileo testnet fallback
- */
+/** Resolve EVM RPC URL from env or network default. Precedence: AXIOM_EVM_RPC → OG_RPC_URL → RPC_URL → chain default → Galileo fallback. */
 export function resolveRpcUrl(chainId?: number): string {
   const varVal = getEnvWithAlias("AXIOM_EVM_RPC", ["OG_RPC_URL", "RPC_URL"]);
   if (varVal) return varVal;
@@ -57,15 +45,7 @@ export function resolveRpcUrl(chainId?: number): string {
   return network?.evmRpc ?? "https://evmrpc-testnet.0g.ai";
 }
 
-/**
- * Resolve the Storage RPC URL from the environment or fall back to the
- * network default for the given chainId.
- *
- * Precedence:
- *   1. AXIOM_STORAGE_RPC / OG_STORAGE_RPC env var
- *   2. Network default for the given chainId
- *   3. Galileo testnet fallback
- */
+/** Resolve Storage RPC URL from env or network default. Precedence: AXIOM_STORAGE_RPC → OG_STORAGE_RPC → chain default → Galileo fallback. */
 export function resolveStorageRpc(chainId?: number): string {
   const varVal = getEnvWithAlias("AXIOM_STORAGE_RPC", ["OG_STORAGE_RPC"]);
   if (varVal) return varVal;

@@ -234,7 +234,7 @@ export function startServer(config: ServerConfig): Express {
     });
   });
 
-  // Explicit data hash registration route (called by backend after storage upload).
+  // Called by backend after storage upload to register dataHash.
   app.post("/v1/agents/mint", (req: Request, res: Response) => {
     const { dataHash } = mintDataHashSchema.parse(req.body);
     if (!/^0x[0-9a-fA-F]{64}$/.test(dataHash)) {
