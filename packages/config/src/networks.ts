@@ -1,5 +1,3 @@
-import { getEnvWithAlias } from "./env.js";
-
 /** 0G network entry for a given chainId. */
 export interface OGNetwork {
   readonly name: "galileo" | "aristotle";
@@ -56,7 +54,7 @@ export function pickOGNetwork(chainId: number): OGNetwork | null {
 
 /** Resolve EVM RPC URL from env or network default. Precedence: AXIOM_EVM_RPC → OG_RPC_URL → RPC_URL → chain default → Galileo fallback. */
 export function resolveRpcUrl(chainId?: number): string {
-  const varVal = getEnvWithAlias("AXIOM_EVM_RPC", ["OG_RPC_URL", "RPC_URL"]);
+  const varVal = process.env.AXIOM_EVM_RPC || process.env.OG_RPC_URL || process.env.RPC_URL;
   if (varVal) return varVal;
   const network = chainId ? pickOGNetwork(chainId) : null;
   return network?.evmRpc ?? "https://evmrpc-testnet.0g.ai";
@@ -64,7 +62,7 @@ export function resolveRpcUrl(chainId?: number): string {
 
 /** Resolve Storage RPC URL from env or network default. Precedence: AXIOM_STORAGE_RPC → OG_STORAGE_RPC → chain default → Galileo fallback. */
 export function resolveStorageRpc(chainId?: number): string {
-  const varVal = getEnvWithAlias("AXIOM_STORAGE_RPC", ["OG_STORAGE_RPC"]);
+  const varVal = process.env.AXIOM_STORAGE_RPC || process.env.OG_STORAGE_RPC;
   if (varVal) return varVal;
   const network = chainId ? pickOGNetwork(chainId) : null;
   return network?.storageRpc ?? "https://indexer-storage-testnet-turbo.0g.ai";

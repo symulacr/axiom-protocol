@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { getAddress } from 'viem';
 
 import type { Provider } from '../hooks/useProviders';
-import { COLORS, Card, Button, MonoLabel } from './ui.js';
+import { Card, Button, MonoLabel } from './ui.js';
 
 /** Best-effort EIP-55 checksum; falls back to the raw input on failure. */
 function formatAddress(raw: `0x${string}`): string {

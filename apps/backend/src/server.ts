@@ -5,7 +5,7 @@ import cors from "cors";
 import rateLimit from "express-rate-limit";
 import { createServer, type Server as HttpServer } from "node:http";
 import { WebSocketServer, type WebSocket } from "ws";
-import { ethers, FetchRequest, type TransactionResponse, type Wallet } from "ethers";
+import { ethers, type TransactionResponse, type Wallet } from "ethers";
 import { TypedContract } from "@axiom/config/types/contract";
 import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
 import { bigintReplacer } from "@axiom/config/types/bigint";
@@ -753,7 +753,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
     path: "/v1/compute/pay",
     schema: computePaySchema,
     broadcast: "compute.pay",
-  }, async (parsed: z.infer<typeof computePaySchema>, _req, _res, { config: cfg }) => {
+  }, async (parsed: z.infer<typeof computePaySchema>, _req, _res, { config: _cfg }) => {
     const { provider, amount } = parsed;
     const client = await getPayment();
     const { receipt } = await client.payComputeProvider(provider, BigInt(amount));
