@@ -1,1 +1,1 @@
-export { loadEnv, getEnv } from "@axiom/config/env";
+export { loadEnv, getEnv, getEnvWithAlias } from "@axiom/config/env";

@@ -13,7 +13,7 @@ import { createApiKeyAuth } from "@axiom/config/middleware/auth";
 import { aesGcmDecrypt, aesGcmEncrypt, concatEncrypted, parseEncrypted } from "./crypto/aes-gcm.js";
 import { sealKeyForReceiver } from "./crypto/ecies.js";
 import type { TeeSigner } from "./signer.js";
-import type { StorageAdapter } from "./storage.js";
+import type { StorageAdapter } from "@axiom/config/storage/0g";
 import {
   transferValiditySchema,
   ownershipBodySchema,

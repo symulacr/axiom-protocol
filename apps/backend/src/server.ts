@@ -5,13 +5,16 @@ import cors from "cors";
 import rateLimit from "express-rate-limit";
 import { createServer, type Server as HttpServer } from "node:http";
 import { WebSocketServer, type WebSocket } from "ws";
-import { ethers, type TransactionResponse, type Wallet } from "ethers";
+import { ethers, FetchRequest, type TransactionResponse, type Wallet } from "ethers";
 import { TypedContract } from "@axiom/config/types/contract";
 import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
 import { bigintReplacer } from "@axiom/config/types/bigint";
-import { ZeroGStorage, pickOGNetwork } from "./storage/0g.js";
+import { ZeroGStorage } from "@axiom/config/storage/0g";
+import { pickOGNetwork } from "@axiom/config/networks";
 // Compute via 0G Router API — see compute/router.ts
-import { getComputeBaseUrl } from "./compute/router.js";
+import { createRouterClient, getComputeBaseUrl } from "./compute/router.js";
+import { discoverProviders } from "./compute/provider-discovery.js";
+import { AGENT_NFT_ABI } from "@axiom/config/abis";
 import type OpenAI from "openai";
 import { StrategyRunner, type StrategySpec, type MarketSignal, type TickResult } from "./orchestrator/index.js";
 import { DefaultSignerOracleClient } from "./oracle/client.js";
@@ -36,14 +39,6 @@ import {
   eventBodySchema,
   tickSchema,
 } from "./route-schemas.js";
-
-const AGENT_NFT_ABI: string[] = [
-  "function mint((string dataDescription, bytes32 dataHash)[] iDatas, address to) payable returns (uint256 tokenId)",
-  "function mintFee() view returns (uint256)",
-  "function intelligentDatasOf(uint256 tokenId) view returns (tuple(string dataDescription, bytes32 dataHash)[])",
-  "function creatorOf(uint256 tokenId) view returns (address)",
-  "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)",
-];
 
 const VAULT_ABI: string[] = [
   "function deposit(uint256 tokenId) payable",
@@ -157,7 +152,9 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
   } catch (err) {
     console.warn(`[server] StrategyRunner init failed: ${err instanceof Error ? err.message : String(err)}`);
   }
-  const provider = new ethers.JsonRpcProvider(config.evmRpc);
+  const fetchReq = new ethers.FetchRequest(config.evmRpc);
+  fetchReq.timeout = 10_000;
+  const provider = new ethers.JsonRpcProvider(fetchReq, ogChainId, { staticNetwork: true });
   // PaymentProcessor client: lazily resolved; paymentToken read from contract.
   let payment: PaymentProcessorClient | null = null;
   async function getPayment(): Promise<PaymentProcessorClient> {
@@ -203,13 +200,13 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
       const resp = await fetch(`${routerBaseUrl}/models`);
       const raw = await resp.json();
       const models = z.object({ data: z.array(z.record(z.string(), z.unknown())) }).parse(raw);
-      // Transform router's model list to frontend format.
+      // Resolve provider addresses from on-chain registry.
+      const onChainProviders = await discoverProviders();
+      const providerMap = new Map(onChainProviders.map(s => [s.model.toLowerCase(), s.provider]));
       const services = models.data.map((m: Record<string, unknown>) => {
         const id = String(m.id ?? "");
-        // Deterministic hex address derived from the model id
-        const addrBytes = ethers.toUtf8Bytes(id).slice(0, 20);
-        const padded = ethers.zeroPadValue(addrBytes, 20);
-        const address = `0x${padded.slice(2)}` as `0x${string}`;
+        const address = providerMap.get(id.toLowerCase())
+          ?? ethers.keccak256(ethers.toUtf8Bytes(`model:${id}`)).slice(0, 42) as `0x${string}`;
         return { address, model: id, endpoint: routerBaseUrl };
       });
       res.json({ services });
@@ -223,12 +220,20 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
 
   app.post("/v1/compute/chat/completions", async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { model, messages, max_tokens, temperature, stream: _stream } = chatCompletionsSchema.parse(req.body);
+      const {
+        model, messages,
+        max_tokens, max_completion_tokens, temperature, top_p, stop,
+        stream: _stream, stream_options,
+        tools, tool_choice, parallel_tool_calls,
+        response_format,
+        frequency_penalty, presence_penalty,
+        reasoning_effort, logprobs, top_logprobs,
+        seed, n, user, metadata, store, service_tier,
+      } = chatCompletionsSchema.parse(req.body);
 
       let client: OpenAI;
       try {
-        const { createRouterClient } = await import("./compute/router.js");
-        client = createRouterClient();
+        client = await createRouterClient();
       } catch (keyErr) {
         res.status(401).json({
           error: "No compute credentials configured",
@@ -238,31 +243,90 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
         return;
       }
 
-      const completion = await client.chat.completions.create({
-        model,
-        messages,
-        max_tokens: max_tokens ?? 512,
+      const completionParams: Record<string, unknown> = {
+        model, messages,
+        max_tokens: max_tokens ?? undefined,
+        max_completion_tokens: max_completion_tokens ?? undefined,
         temperature: temperature ?? 0.7,
-        stream: false, // streaming not yet supported
-      });
+        top_p: top_p ?? undefined,
+        stop: stop ?? undefined,
+        stream: _stream ?? false,
+        ...(_stream && stream_options ? { stream_options } : {}),
+        ...(tools && tools.length > 0 ? { tools, tool_choice: tool_choice ?? "auto", parallel_tool_calls } : {}),
+        ...(response_format ? { response_format } : {}),
+        ...(frequency_penalty != null ? { frequency_penalty } : {}),
+        ...(presence_penalty != null ? { presence_penalty } : {}),
+        ...(reasoning_effort ? { reasoning_effort } : {}),
+        ...(logprobs ? { logprobs, top_logprobs } : {}),
+        ...(seed != null ? { seed } : {}),
+        ...(n ? { n } : {}),
+        ...(user ? { user } : {}),
+        ...(metadata ? { metadata } : {}),
+        ...(store ? { store } : {}),
+        ...(service_tier ? { service_tier } : {}),
+      };
+
+      // ── Streaming path ──────────────────────────────────────────
+      if (_stream) {
+        res.setHeader("Content-Type", "text/event-stream");
+        res.setHeader("Cache-Control", "no-cache");
+        res.setHeader("Connection", "keep-alive");
+        res.setHeader("X-Accel-Buffering", "no");
+
+        const stream = await (client.chat.completions.create as any)({
+          ...completionParams,
+          stream: true,
+        }) as AsyncIterable<unknown>;
+
+        let aborted = false;
+        req.on("close", () => { aborted = true; });
+
+        try {
+          for await (const chunk of stream) {
+            if (aborted) break;
+            res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+          }
+          res.write("data: [DONE]\n\n");
+          res.end();
+        } catch (streamErr) {
+          if (!res.headersSent) {
+            res.status(502).json({ error: "Stream error", detail: streamErr instanceof Error ? streamErr.message : String(streamErr) });
+          } else {
+            res.write(`data: ${JSON.stringify({ error: "Stream error", detail: streamErr instanceof Error ? streamErr.message : String(streamErr) })}\n\n`);
+            res.write("data: [DONE]\n\n");
+            res.end();
+          }
+        }
+        return;
+      }
+
+      // ── Non-streaming path with TEE attestation ─────────────────
+      const completionWithResponse = await (client.chat.completions.create as any)(
+        { ...completionParams, stream: false },
+      );
+      const { data: completion, response: rawResponse } = await (completionWithResponse as any).withResponse();
+
+      const x0gTrace = rawResponse?.headers?.get?.("x-0g-trace");
+      const traceParsed = x0gTrace ? ((() => { try { return JSON.parse(x0gTrace); } catch { return null; } })()) : null;
 
       res.json({
         id: completion.id,
         object: "chat.completion",
         created: completion.created,
         model: completion.model,
-        choices: completion.choices?.map((c) => ({
+        choices: ((completion.choices as Array<Record<string, unknown>>) ?? []).map((c: Record<string, unknown>) => ({
           index: c.index,
-          message: { role: c.message.role, content: c.message.content ?? "" },
+          message: { role: (c.message as Record<string, unknown>)?.role, content: (c.message as Record<string, unknown>)?.content ?? "" },
           finish_reason: c.finish_reason,
-        })) ?? [],
+        })),
         usage: completion.usage
           ? {
-              prompt_tokens: completion.usage.prompt_tokens,
-              completion_tokens: completion.usage.completion_tokens,
-              total_tokens: completion.usage.total_tokens,
+              prompt_tokens: (completion.usage as Record<string, unknown>).prompt_tokens,
+              completion_tokens: (completion.usage as Record<string, unknown>).completion_tokens,
+              total_tokens: (completion.usage as Record<string, unknown>).total_tokens,
             }
           : undefined,
+        ...(traceParsed ? { x_0g_trace: traceParsed } : {}),
       });
     } catch (err) {
       // Distinguish upstream from internal errors

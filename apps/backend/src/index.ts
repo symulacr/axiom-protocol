@@ -1,15 +1,23 @@
-import { Wallet, JsonRpcProvider } from "ethers";
+import { FetchRequest, JsonRpcProvider, Wallet } from "ethers";
 import { getAddress } from "viem";
 import { startServer } from "./server.js";
 import { loadEnv } from "./env.js";
 import { backendEnvSchema } from "./env-schema.js";
 import { DEPLOYED_ADDRESSES } from "@axiom/config/addresses";
+import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
 
 loadEnv();
 
 export const env = backendEnvSchema.parse(process.env);
 
-const provider = new JsonRpcProvider(env.AXIOM_EVM_RPC);
+const fetchReq = new FetchRequest(env.AXIOM_EVM_RPC);
+fetchReq.timeout = 10_000;
+
+const provider = new JsonRpcProvider(
+  fetchReq,
+  env.AXIOM_CHAIN_ID ?? GALILEO_CHAIN_ID,
+  { staticNetwork: true },
+);
 const signer = new Wallet(env.DEPLOYER_PK, provider);
 startServer({
   bind: env.AXIOM_BIND,

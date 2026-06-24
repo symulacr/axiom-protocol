@@ -79,7 +79,7 @@ contract FuzzAxiomAgentNFT is StdInvariant, Test {
         RECEIVER_2_PK = vm.envUint("AXIOM_TEST_RECEIVER_2_PK");
 
         // Pin the fork at the Galileo block used by other Wave 11 fuzz agents.
-        vm.createSelectFork("https://0g-galileo-testnet.drpc.org", 38_748_015);
+        vm.createSelectFork("https://evmrpc-testnet.0g.ai", 38_748_015);
 
         // Verify we are pointing at the live proxy, not a mock.
         assertEq(LIVE_NFT.name(), "Axiom Agent NFT", "live proxy name mismatch");
@@ -411,7 +411,7 @@ contract FuzzAxiomAgentNFTSanity is Test {
         0x8d55221bd6fec1e93fcf974e20f4fbc3e25cca19b89d2c9c3a0ac21ad0bcd500;
 
     function test_sanity_proxyLive() public {
-        vm.createSelectFork("https://0g-galileo-testnet.drpc.org", 38_748_015);
+        vm.createSelectFork("https://evmrpc-testnet.0g.ai", 38_748_015);
         assertEq(LIVE_NFT.name(), "Axiom Agent NFT");
         assertEq(LIVE_NFT.symbol(), "AXM-A");
         assertTrue(vm.load(address(LIVE_NFT), EIP1967_IMPL_SLOT) != bytes32(0));

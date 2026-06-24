@@ -1,5 +1,6 @@
 import * as grpc from "@grpc/grpc-js";
 import * as protoLoader from "@grpc/proto-loader";
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -8,6 +9,14 @@ const __dirname = dirname(__filename);
 
 /** Path to the vendored disperser.proto. */
 const PROTO_PATH = join(__dirname, "disperser.proto");
+
+/** Maximum blob size per 0G DA spec: 31744 KiB. */
+const MAX_BLOB_SIZE_BYTES = 31_744 * 1024; // 32,505,856 bytes
+
+/** Default deadline for DisperseBlob calls (60 seconds). */
+const DEFAULT_DISPERSE_DEADLINE_MS = 60_000;
+/** Default deadline for status/retrieve calls (30 seconds). */
+const DEFAULT_STATUS_DEADLINE_MS = 30_000;
 
 /** Blob processing status. Maps 1:1 to proto BlobStatus enum. */
 export const BlobStatus = {
@@ -49,7 +58,7 @@ export class DaClient {
   private client: any;
 
   /** @param grpcUrl Host:port of the 0G DA Client gRPC endpoint. */
-  constructor(grpcUrl: string) {
+  constructor(grpcUrl: string, channelOptions?: grpc.ChannelOptions) {
     const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
       keepCase: false,
       longs: Number,
@@ -67,16 +76,67 @@ export class DaClient {
     const Disperser = disperserPackage["Disperser"] as new (
       url: string,
       creds: grpc.ChannelCredentials,
+      options?: grpc.ChannelOptions,
     ) => grpc.Client;
 
-    this.client = new Disperser(grpcUrl, grpc.credentials.createInsecure());
+    const credentials = this.loadCredentials();
+    this.client = new Disperser(grpcUrl, credentials, {
+      // Reconnect backoff bounds (library handles actual retry loop)
+      "grpc.initial_reconnect_backoff_ms": 1_000,
+      "grpc.max_reconnect_backoff_ms": 60_000,
+      // Enable automatic retry for UNAVAILABLE etc.
+      "grpc.enable_retries": 1,
+      // Message size limits (64 MiB — covers max 31 MiB blob + metadata)
+      "grpc.max_send_message_length": 64 * 1024 * 1024,
+      "grpc.max_receive_message_length": 64 * 1024 * 1024,
+      // Caller overrides
+      ...channelOptions,
+    });
+  }
+
+  private loadCredentials(): grpc.ChannelCredentials {
+    const caCertPath = process.env["DA_GRPC_CA_CERT"];
+    if (caCertPath) {
+      try {
+        const caCert = readFileSync(caCertPath);
+        return grpc.credentials.createSsl(caCert);
+      } catch (err) {
+        process.stderr.write(JSON.stringify({
+          level: "fatal",
+          msg: "Failed to load DA gRPC TLS CA cert",
+          path: caCertPath,
+          err: err instanceof Error ? err.message : String(err),
+        }) + "\n");
+        process.exit(1);
+      }
+    }
+    if (process.env["DA_GRPC_TLS_ENABLED"] === "1" || process.env["DA_GRPC_TLS_ENABLED"] === "true") {
+      return grpc.credentials.createSsl();
+    }
+    return grpc.credentials.createInsecure();
+  }
+
+  /** Whether the gRPC channel is currently in READY state. */
+  get connected(): boolean {
+    // getConnectivityState is available on grpc.Client
+    const state = this.client.getConnectivityState(false) as grpc.connectivityState;
+    return state === grpc.connectivityState.READY;
   }
 
   /** Submit a blob to the 0G DA network (async; returns on acceptance). */
-  disperseBlob(data: Uint8Array): Promise<DisperseBlobResult> {
+  disperseBlob(data: Uint8Array, timeoutMs = DEFAULT_DISPERSE_DEADLINE_MS): Promise<DisperseBlobResult> {
+    if (data.byteLength > MAX_BLOB_SIZE_BYTES) {
+      return Promise.reject(
+        new RangeError(
+          `Blob size ${data.byteLength} exceeds max ${MAX_BLOB_SIZE_BYTES} bytes (${MAX_BLOB_SIZE_BYTES / 1024 / 1024} MiB)`,
+        ),
+      );
+    }
     return new Promise((resolve, reject) => {
+      const deadline = new Date(Date.now() + timeoutMs);
       this.client["DisperseBlob"](
         { data },
+        { deadline },
         (err: grpc.ServiceError | null, response: Record<string, unknown>) => {
           if (err) {
             reject(err);
@@ -93,11 +153,13 @@ export class DaClient {
   }
 
   /** Poll the processing status of a previously dispersed blob. */
-  getBlobStatus(requestIdHex: string): Promise<BlobStatusResult> {
+  getBlobStatus(requestIdHex: string, timeoutMs = DEFAULT_STATUS_DEADLINE_MS): Promise<BlobStatusResult> {
     const requestIdBytes = Buffer.from(requestIdHex, "hex");
+    const deadline = new Date(Date.now() + timeoutMs);
     return new Promise((resolve, reject) => {
       this.client["GetBlobStatus"](
         { request_id: requestIdBytes },
+        { deadline },
         (err: grpc.ServiceError | null, response: Record<string, unknown>) => {
           if (err) {
             reject(err);
@@ -160,7 +222,9 @@ export class DaClient {
     storageRoot: Uint8Array,
     epoch: number,
     quorumId: number,
+    timeoutMs = DEFAULT_STATUS_DEADLINE_MS,
   ): Promise<RetrieveBlobResult> {
+    const deadline = new Date(Date.now() + timeoutMs);
     return new Promise((resolve, reject) => {
       this.client["RetrieveBlob"](
         {
@@ -168,6 +232,7 @@ export class DaClient {
           epoch: epoch,
           quorum_id: quorumId,
         },
+        { deadline },
         (err: grpc.ServiceError | null, response: Record<string, unknown>) => {
           if (err) {
             reject(err);

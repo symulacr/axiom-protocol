@@ -1,13 +1,15 @@
 import { randomBytes } from "node:crypto";
-import { Wallet, parseEther, hexlify, toUtf8Bytes, JsonRpcProvider, getBytes, SigningKey, computeAddress, type TransactionResponse } from "ethers";
+import { Wallet, parseEther, hexlify, toUtf8Bytes, FetchRequest, JsonRpcProvider, getBytes, SigningKey, computeAddress, type TransactionResponse } from "ethers";
 import { TypedContract } from "@axiom/config/types/contract";
 import { keccak256 } from "ethereum-cryptography/keccak";
-import { ZeroGStorage } from "../storage/0g.js";
+import { ZeroGStorage } from "@axiom/config/storage/0g";
 import { encrypt as eciesEncrypt, decrypt as eciesDecrypt } from "eciesjs";
-import { loadEnv, getEnv } from "../env.js";
-import { aesGcmEncrypt } from "@axiom/oracle/crypto/aes-gcm.js";
+import { loadEnv, getEnv, getEnvWithAlias } from "../env.js";
+import { aesGcmEncrypt } from "@axiom/oracle/crypto/aes-gcm";
 import { accessMessageHash, type Eip712Domain } from "@axiom/oracle/signer";
 import { deriveUncompressedPubkeyFromHex } from "@axiom/oracle/crypto/secp256k1";
+import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
+import { ITRANSFER_FROM_ABI } from "@axiom/config/abis";
 
 /**
  * End-to-end CLI for the Axiom Protocol on 0G Galileo testnet.
@@ -18,9 +20,10 @@ loadEnv();
 
 const DEPLOYER_PK = getEnv("DEPLOYER_PK");
 const TEE_SIGNER_PK = getEnv("TEE_SIGNER_PK");
-const RPC = getEnv("OG_RPC_URL");
-const STORAGE_RPC = getEnv("OG_STORAGE_RPC", "https://indexer-storage-testnet-turbo.0g.ai");
+const RPC = getEnvWithAlias("AXIOM_EVM_RPC", ["OG_RPC_URL"]);
+const STORAGE_RPC = getEnvWithAlias("AXIOM_STORAGE_RPC", ["OG_STORAGE_RPC"], "https://indexer-storage-testnet-turbo.0g.ai");
 const BACKEND_URL = getEnv("BACKEND_URL", "http://127.0.0.1:3000");
+const OG_CHAIN_ID = Number.parseInt(getEnvWithAlias("AXIOM_CHAIN_ID", ["OG_CHAIN_ID"], String(GALILEO_CHAIN_ID)), 10);
 // Wave E-5 (2026-06-16) — all addresses are env-driven so a redeploy
 // doesn't require a code change. See docs/deployments/wave-e5-redeploy-2026-06-16.md.
 const TEE_VERIFIER = getEnv("AXIOM_TEE_VERIFIER", "0x24f725198d64A3b03A8386cD8fa12BD7c591734A");
@@ -29,7 +32,9 @@ const PAYMENT_TOKEN = getEnv("AXIOM_PAYMENT_TOKEN", "0xeA13E136E59c6e919BeF2221f
 const AGENT_NFT = getEnv("AGENT_NFT_ADDRESS", "0xf12F158a20c36a351b056FD60b3a7377ce4F1e09");
 const VAULT = getEnv("VAULT_ADDRESS", "0xb7F89e50D5A3039Da7d39528436B820371572874");
 
-const provider = new JsonRpcProvider(RPC);
+const fetchReq = new FetchRequest(RPC);
+fetchReq.timeout = 10_000;
+const provider = new JsonRpcProvider(fetchReq, OG_CHAIN_ID, { staticNetwork: true });
 const deployer = new Wallet(DEPLOYER_PK, provider);
 const teeSigner = new Wallet(TEE_SIGNER_PK, provider);
 const RECEIVER_PK = getEnv("RECEIVER_PK");
@@ -39,7 +44,7 @@ const receiverPubKey64 = hexlify(deriveUncompressedPubkeyFromHex(RECEIVER_PK)) a
 // EIP-712 domain for AccessProof signing — MUST match the on-chain
 // AxiomTeeVerifier._domainSeparator() (chainId + verifyingContract).
 const eip712Domain: Eip712Domain = {
-  chainId: BigInt(Number.parseInt(getEnv("OG_CHAIN_ID", "16602"), 10)),
+  chainId: BigInt(OG_CHAIN_ID),
   verifyingContract: TEE_VERIFIER as `0x${string}`,
 };
 
@@ -250,12 +255,12 @@ async function main(): Promise<void> {
   console.log(`          AccessProof signer ${finalResp.accessSigner} matches receiver ${to}`);
 
   console.log(`\n[Step 10] AxiomAgentNFT.iTransferFrom on Galileo`);
-  const ITRANSFER_FROM_ABI = [
-    "function iTransferFrom(address from, address to, uint256 tokenId, tuple(tuple(bytes32 dataHash, bytes targetPubkey, uint256 nonce, bytes proof, uint256 validUntil) accessProof, tuple(uint8 oracleType, bytes32 dataHash, bytes sealedKey, bytes targetPubkey, uint256 nonce, bytes proof, uint256 validUntil) ownershipProof)[] proofs)",
+  const ITRANSFER_FROM_ABI_LOCAL = [
+    ...ITRANSFER_FROM_ABI,
     "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)",
     "function ownerOf(uint256 tokenId) view returns (address)",
   ];
-  const nftTc = new TypedContract<AgentNFTMethods>(AGENT_NFT, ITRANSFER_FROM_ABI, deployer);
+  const nftTc = new TypedContract<AgentNFTMethods>(AGENT_NFT, ITRANSFER_FROM_ABI_LOCAL, deployer);
   const currentOwner = await nftTc.contract.ownerOf(BigInt(tokenId));
   if (currentOwner.toLowerCase() !== deployer.address.toLowerCase()) {
     console.log(`          Skip: tokenId=${tokenId} already owned by ${currentOwner} (not deployer).`);

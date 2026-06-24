@@ -1,7 +1,8 @@
 import { Indexer } from "@0gfoundation/0g-storage-ts-sdk";
 import { ethers } from "ethers";
-import { loadEnv } from "./env.js";
+import { loadEnv, getEnvWithAlias } from "./env.js";
 import { fileURLToPath } from "node:url";
+import { createServer } from "node:http";
 import { GALILEO_CHAIN_ID, OG_NETWORKS } from "@axiom/config/networks";
 import { uploadToStorage } from "@axiom/config/storage/0g";
 
@@ -12,7 +13,9 @@ import {
 } from "./watcher.js";
 import type { AxiomEvent } from "./events.js";
 import { postEvent } from "./sink.js";
-import { submitEvent, makeRealSubmitter } from "./da.js";
+import { submitEvent, makeRealSubmitterFromClient } from "./da.js";
+import type { SubmitFn } from "./da.js";
+import { DaClient } from "./da-client.js";
 
 // Load shared .env before any env reads.
 loadEnv(fileURLToPath(new URL("../../.env", import.meta.url)));
@@ -20,15 +23,15 @@ loadEnv(fileURLToPath(new URL("../../.env", import.meta.url)));
 const DEFAULT_RPC_URL = OG_NETWORKS[GALILEO_CHAIN_ID]?.evmRpc ?? "https://evmrpc-testnet.0g.ai";
 
 function rpcUrl() {
-  return process.env["OG_RPC_URL"] ?? DEFAULT_RPC_URL;
+  return getEnvWithAlias("AXIOM_EVM_RPC", ["OG_RPC_URL", "RPC_URL"], DEFAULT_RPC_URL);
 }
 
 function chainId() {
-  const raw = process.env["OG_CHAIN_ID"];
-  if (raw === undefined || raw === "") return GALILEO_CHAIN_ID;
+  const raw = getEnvWithAlias("AXIOM_CHAIN_ID", ["OG_CHAIN_ID"], String(GALILEO_CHAIN_ID));
+  if (raw === "") return GALILEO_CHAIN_ID;
   const n = Number(raw);
   if (!Number.isInteger(n) || n <= 0) {
-    throw new Error(`OG_CHAIN_ID is not a positive integer: ${raw}`);
+    throw new Error(`AXIOM_CHAIN_ID is not a positive integer: ${raw}`);
   }
   return n;
 }
@@ -137,38 +140,21 @@ type EventSinkConfig =
 function composeSinks(config: EventSinkConfig, extra: {
   backendUrl: string | undefined;
   rpcUrl: string;
+  grpcClient?: DaClient;
 }) {
+  const grpcSubmitFn: SubmitFn | undefined =
+    config.da === "grpc" && extra.grpcClient
+      ? makeRealSubmitterFromClient(extra.grpcClient)
+      : undefined;
+
   return async (event: AxiomEvent) => {
     switch (config.da) {
       case "disabled":
         break;
-      case "grpc": {
-        const submitFn = makeRealSubmitter(config.grpcUrl);
-        try {
-          await submitEvent(event, { submitFn });
-        } catch (err) {
-          process.stderr.write(
-            JSON.stringify({
-              level: "error",
-              msg: "da submit failed",
-              err: err instanceof Error ? err.message : String(err),
-            }) + "\n",
-          );
-        }
+      case "grpc":
+        await submitEvent(event, { submitFn: grpcSubmitFn });
         break;
-      }
       case "storage":
-        try {
-          await submitEvent(event, {});
-        } catch (err) {
-          process.stderr.write(
-            JSON.stringify({
-              level: "error",
-              msg: "da submit failed",
-              err: err instanceof Error ? err.message : String(err),
-            }) + "\n",
-          );
-        }
         break;
     }
 
@@ -217,7 +203,9 @@ async function main() {
   const url = rpcUrl();
 
   // Explicit chainId avoids eth_chainId round-trip.
-  const provider = new ethers.JsonRpcProvider(url, cid, {
+  const fetchReq = new ethers.FetchRequest(url);
+  fetchReq.timeout = 10_000;
+  const provider = new ethers.JsonRpcProvider(fetchReq, cid, {
     staticNetwork: true,
   });
   banner(cid);
@@ -243,10 +231,10 @@ async function main() {
   const daEnabled = process.env["INDEXER_DA_ENABLED"] === "1"
     || process.env["INDEXER_DA_ENABLED"] === "true";
   const backendUrl = process.env["BACKEND_URL"];
-  const daGrpcUrl = process.env["DA_GRPC_URL"];
+  const daGrpcUrl = process.env["DA_GRPC_URL"] ?? process.env["OG_DA_GRPC_URL"];
 
   // 0G Storage setup (replaces DA sidecar for event permanence)
-  const ogStorageRpc = process.env["OG_STORAGE_RPC"];
+  const ogStorageRpc = getEnvWithAlias("AXIOM_STORAGE_RPC", ["OG_STORAGE_RPC"], "");
   const DEPLOYER_PK = process.env["DEPLOYER_PK"];
   let storageIndexer: Indexer | undefined;
   let storageSigner: ethers.Wallet | undefined;
@@ -269,9 +257,21 @@ async function main() {
       ? { da: "storage", storageIndexer, storageSigner }
       : { da: "disabled" };
 
+  // Create the gRPC client ONCE, outside the sink closure
+  const grpcClient = daConfig.da === "grpc" && typeof daConfig.grpcUrl === "string"
+    ? new DaClient(daConfig.grpcUrl)
+    : undefined;
+
+  // Health endpoint for orchestration probes (e.g. k8s readiness)
+  const healthPort = parseInt(process.env["HEALTH_PORT"] ?? "9091", 10);
+  const healthServer = grpcClient
+    ? startHealthServer(healthPort, () => grpcClient.connected)
+    : undefined;
+
   const composedSink = composeSinks(daConfig, {
     backendUrl,
     rpcUrl: url,
+    grpcClient,
   });
 
   const watcher = new Watcher({
@@ -295,7 +295,28 @@ async function main() {
   // Flush any remaining buffered events to 0G Storage
   stopBatchTimer();
   await flushBuffer();
+  if (healthServer) healthServer.close();
+  if (grpcClient) grpcClient.close();
   process.stderr.write(JSON.stringify({ level: "info", msg: "stopped" }) + "\n");
+}
+
+/** HTTP health endpoint — returns 200 if DA gRPC is connected, 503 otherwise. */
+function startHealthServer(port: number, daConnected: () => boolean) {
+  const server = createServer((req, res) => {
+    if (req.url === "/health") {
+      const healthy = daConnected();
+      res.writeHead(healthy ? 200 : 503, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({
+        status: healthy ? "ok" : "degraded",
+        da: healthy ? "connected" : "disconnected",
+      }));
+    } else {
+      res.writeHead(404);
+      res.end();
+    }
+  });
+  server.listen(port);
+  return server;
 }
 
 // `main()` returns a Promise<void>; we attach a single error handler so
