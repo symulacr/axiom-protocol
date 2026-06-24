@@ -1,7 +1,5 @@
-// Axiom Protocol — on-chain contract addresses, keyed by chain ID.
-//
-// Galileo testnet addresses correspond to the Wave E-5 deployment.
-// Aristotle mainnet addresses are placeholders until mainnet is live.
+// On-chain contract addresses, keyed by chain ID.
+// Galileo = Wave E-5. Aristotle = placeholders until deploy.
 import type { Address } from 'viem';
 
 type AddressMap = {
@@ -41,21 +39,21 @@ export function getAddresses(chainId?: number): AddressMap {
   return ADDRESSES[chainId ?? DEFAULT_CHAIN] ?? ADDRESSES[DEFAULT_CHAIN]!;
 }
 
-// Backward-compatible aliases (resolve to Galileo defaults).
+// Backward-compatible aliases (resolve to Galileo).
 
 export const AXIOM_STRATEGY_VAULT_ADDRESS: Address =
   ADDRESSES[DEFAULT_CHAIN]!.axiomStrategyVault;
 
-/** Vault addresses the dashboard renders (array shape for multi-vault fan-out). */
+/** Vault addresses for multi-vault fan-out. */
 export const AXIOM_VAULT_ADDRESSES: readonly Address[] = [
   ADDRESSES[DEFAULT_CHAIN]!.axiomStrategyVault,
 ] as const;
 
-/** AxiomAgentNFT proxy (ERC-1967) — calls go through the proxy, not the impl. */
+/** AxiomAgentNFT proxy (ERC-1967). */
 export const AXIOM_AGENT_NFT_ADDRESS: Address =
   ADDRESSES[DEFAULT_CHAIN]!.axiomAgentNft;
 
-/** AxiomTeeVerifier — registered as trusted verifier on the NFT proxy. */
+/** AxiomTeeVerifier — registered verifier on the NFT proxy. */
 export const AXIOM_TEE_VERIFIER_ADDRESS: Address =
   ADDRESSES[DEFAULT_CHAIN]!.axiomTeeVerifier;
 

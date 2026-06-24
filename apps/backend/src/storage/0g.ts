@@ -6,14 +6,10 @@ export type { OGNetwork } from "@axiom/config/networks";
 export { OG_NETWORKS, pickOGNetwork };
 
 /**
- * Typed wrapper around @0gfoundation/0g-storage-ts-sdk for 0G Storage.
- * Supports aes256 (32-byte symmetric key) and ecies (33-byte compressed pubkey) encryption.
+ * Typed wrapper around @0gfoundation/0g-storage-ts-sdk.
  */
 
-/**
- * Retry wrapper for transient SDK failures. 3 attempts with
- * exponential backoff: 100ms, 400ms, 900ms.
- */
+/** Retry wrapper: 3 attempts with exponential backoff (100, 400, 900ms). */
 export async function withRetry<T>(fn: () => Promise<T>, opts?: { attempts?: number }): Promise<T> {
   const maxAttempts = opts?.attempts ?? 3;
   let lastErr: unknown;
@@ -53,12 +49,7 @@ export type Encryption = { type: "aes256"; key: Uint8Array } | { type: "ecies"; 
 
 /**
  * Thread-safe nonce manager for concurrent uploads from the same wallet.
- * Reads the current nonce from chain lazily, then hands out sequentially
- * increasing values. This prevents "replacement transaction underpriced"
- * errors when multiple `uploadData` calls race on the same EVM nonce.
- *
- * The SDK's UploadOption supports a `nonce?: bigint` field; we pass the
- * managed nonce through that channel.
+ * Prevents "replacement transaction underpriced" errors when upload calls race.
  */
 class NonceManager {
   private provider: ethers.JsonRpcProvider;
@@ -84,14 +75,7 @@ class NonceManager {
   }
 }
 
-/**
- * Minimal typed wrapper around the 0G Storage Indexer.
- * Uploads in-memory data via MemData, downloads via downloadToBlob,
- * and wraps both with retry logic.
- *
- * Concurrent uploads from the same wallet are protected by NonceManager
- * which hands out strictly increasing EVM nonces.
- */
+/** Typed wrapper around the 0G Storage Indexer with retry and nonce management. */
 export class ZeroGStorage {
   readonly indexer: Indexer;
   readonly config: ZeroGStorageConfig;

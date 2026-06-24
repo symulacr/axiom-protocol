@@ -16,51 +16,27 @@ const VAULT_ABI: string[] = [
   "event Executed(uint256 indexed tokenId, bytes32 indexed actionHash, address indexed target, uint256 value, bytes result)",
 ];
 
-/**
- * StrategyRunner — fans out a single tick of work to compute, chain reads,
- * and storage in parallel via Promise.all. Switching any sub-task to
- * sequential defeats the orchestrator's purpose.
- */
-
 export interface MarketSignal {
-  /** Source of the signal (e.g., "vault:ticker", "rpc:newHeads", "manual:user"). */
   source: string;
-  /** Free-form payload (e.g., recent trade data, vault state snapshot). */
   payload: unknown;
-  /** Unix ms timestamp when the signal was emitted. */
   emittedAt: number;
 }
 
 export interface StrategySpec {
-  /** On-chain NFT token id of the agent. */
   agentTokenId: bigint;
-  /** Hex address of the AxiomAgentNFT contract. */
   agentNft: `0x${string}`;
-  /** Hex address of the AxiomStrategyVault. */
   vault: `0x${string}`;
-  /** Compute model id (e.g., "qwen/qwen2.5-omni-7b"). */
   computeModel: string;
-  /** System prompt that the inference runs on every tick. */
   systemPrompt: string;
-  /** Storage root of the agent's previously-published encrypted model (bytes32 hex). */
   modelDataRoot: `0x${string}`;
-  /** Encryption for the model data (none for plaintext strategy, aes256 for encrypted). */
   modelEncryption: Encryption | undefined;
 }
 
 export interface TickResult {
-  /** The model's recommendation as a JSON-parsed object. */
   recommendation: { action: "buy" | "sell" | "hold"; amount?: number; reason: string };
-  /** Raw model output (string). */
   rawModelOutput: string;
-  /** On-chain state snapshot (vault balance, last 5 events). */
-  onchain: {
-    vaultBalance: bigint;
-    recentEvents: unknown[];
-  };
-  /** Storage peek result (the new/decrypted data root hash). */
+  onchain: { vaultBalance: bigint; recentEvents: unknown[] };
   storage: { rootHash: `0x${string}`; size: number };
-  /** On-chain settlement result when the recommendation is acted on (buy/sell). */
   execution?: {
     txHash: `0x${string}`;
     action: string;
@@ -69,7 +45,6 @@ export interface TickResult {
     result?: `0x${string}`;
     gasUsed?: bigint;
   };
-  /** Total wall-clock duration of the tick. */
   durationMs: number;
 }
 
@@ -78,14 +53,9 @@ export interface OrchestratorConfig {
   signer: Wallet;
   oracleBaseUrl: string;
   addresses?: {
-    /** Strategy vault contract address. */
     vault?: `0x${string}`;
   };
-  /**
-   * EIP-155 chain id used to pick the canonical 0G Storage indexer and Flow
-   * contract. Required because ethers v6 `provider.getNetwork()` is async,
-   * so a synchronous fallback is unsound. Default: 16602 (Galileo testnet).
-   */
+  /** EIP-155 chain id (default 16602 = Galileo testnet). */
   chainId?: number;
 }
 
@@ -119,11 +89,7 @@ export class StrategyRunner {
     return this.openai;
   }
 
-  /**
-   * Run a single strategy tick: fan out to compute (call LLM), on-chain reads
-   * (vault balance + recent events), and storage peek in parallel via Promise.all.
-   * For buy/sell recommendations, settle on-chain by calling vault.execute().
-   */
+  /** Run a single strategy tick: fan out to compute, on-chain reads, and storage. */
   async runTick(strategy: StrategySpec, signal: MarketSignal): Promise<TickResult> {
     const start = Date.now();
 
@@ -159,10 +125,7 @@ export class StrategyRunner {
     };
   }
 
-  /**
-   * Parse the raw LLM output into a validated recommendation. Falls back to
-   * "hold" when the output is not parseable JSON or has an unknown action.
-   */
+  /** Parse raw LLM output into a validated recommendation. Falls back to "hold". */
   private parseRecommendation(rawModelOutput: string): TickResult["recommendation"] {
     try {
       const parsed = JSON.parse(rawModelOutput.trim()) as TickResult["recommendation"];
@@ -179,13 +142,8 @@ export class StrategyRunner {
   }
 
   /**
-   * Settle a buy/sell recommendation on-chain via vault.execute(). The vault
-   * requires a Merkle proof that the action hash is in the strategy tree. For
-   * MVP the strategy is a single-leaf tree: root == leaf, proof == [] (OZ
-   * MerkleProof.verify returns true for an empty proof when root == leaf).
-   * The action hash is keccak256(abi.encode(target, value, keccak256(data)))
-   * — see AxiomStrategyVault.sol:151. We use target = vault, value = 0, data = ""
-   * to demonstrate the settlement path without implementing a full trade.
+   * Settle on-chain via vault.execute(). MVP uses a single-leaf Merkle tree
+   * (root == leaf, proof == []) with a no-op action (target=vault, value=0, data="").
    */
   private async settleOnChain(strategy: StrategySpec, action: string): Promise<NonNullable<TickResult["execution"]>> {
     const vaultAddr = this.addresses?.vault;
@@ -301,9 +259,7 @@ export class StrategyRunner {
     if (strategy.modelDataRoot === ("0x" + "0".repeat(64))) {
       return { rootHash: strategy.modelDataRoot, size: 0 };
     }
-    // ECIES-encrypted blobs need the receiver's private key (not available
-    // in the devnet orchestrator); skip with size=0 and let the caller
-    // surface it from `rawModelOutput`. AES-256 uses the symmetric key.
+    // ECIES-encrypted blobs skipped in devnet (no receiver key). AES-256 uses symmetric key.
     const opts = strategy.modelEncryption?.type === "aes256"
       ? { symmetricKey: strategy.modelEncryption.key, withProof: true }
       : { withProof: true };

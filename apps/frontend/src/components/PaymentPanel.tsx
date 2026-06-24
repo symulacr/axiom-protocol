@@ -1,4 +1,4 @@
-// Axiom Protocol — `<PaymentPanel />`.
+// PaymentPanel — agent payment management.
 
 import { useCallback, useRef, useState, type ReactElement } from 'react';
 import { useAccount, useSendTransaction, useWriteContract } from 'wagmi';
@@ -27,12 +27,9 @@ import {
 } from './ui.js';
 
 /**
- * Minimal ABI fragment for the on-chain withdraw call. The backend
- * has no `/withdraw` route; creators call `withdrawAgentEarnings()`
- * directly on `AxiomPaymentProcessor`. The view `royaltyBpsOf` is
- * included so the panel can render the current royalty setting next
- * to the setter form. Source of truth:
- * apps/contracts/src/AxiomPaymentProcessor.sol.
+ * Minimal ABI fragment for `withdrawAgentEarnings()`. The backend has
+ * no `/withdraw` route; creators call this directly on-chain.
+ * Source: apps/contracts/src/AxiomPaymentProcessor.sol.
  */
 const PAYMENT_PROCESSOR_FRAGMENT = [
   {
@@ -56,11 +53,9 @@ const formRowStyle: React.CSSProperties = {
 };
 
 export type PaymentPanelProps = {
-  /** Token id of the agent this panel is scoped to. */
   tokenId: bigint;
 };
 
-/** Payment UI for one agent. */
 export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
   const { isConnected } = useAccount();
   const {
