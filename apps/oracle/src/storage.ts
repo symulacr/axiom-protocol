@@ -2,10 +2,7 @@ import { Indexer, MemData } from "@0gfoundation/0g-storage-ts-sdk";
 import { keccak256, type Signer } from "ethers";
 import type { Hex } from "viem";
 
-/**
- * Storage adapter interface for the oracle service. Handles blob
- * upload/download plus a "seen dataHash" set for on-chain proof binding.
- */
+/** Storage adapter: blob upload/download and seen-dataHash tracking. */
 export interface StorageAdapter {
   upload(blob: Uint8Array): Promise<{ rootHash: Hex }>;
   download(rootHash: Hex): Promise<Uint8Array>;

@@ -8,8 +8,6 @@ import type {
 } from 'react';
 
 // ─── Design tokens — dark, grounded, spiritual-tech ─────────────────
-// Deep charcoal base, warm bronze accent, off-white text.
-// Never bright neon. Never light backgrounds.
 export const COLORS = {
   // Backgrounds
   bg: '#0f0f0f',
@@ -465,7 +463,7 @@ interface ModalProps {
 export function Modal({ open, onClose, title, children, style }: ModalProps): ReactElement | null {
   const dialogRef = useRef<HTMLDialogElement | null>(null);
 
-  // useMountEffect for dialog open/close sync
+  // useMountEffect syncs dialog open/close state.
   useMountEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
@@ -476,7 +474,6 @@ export function Modal({ open, onClose, title, children, style }: ModalProps): Re
     }
   }, [open]);
 
-  // Event handler for native close
   const handleClose = useCallback(() => onClose(), [onClose]);
 
   return (

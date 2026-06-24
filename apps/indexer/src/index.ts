@@ -1,8 +1,3 @@
-// apps/indexer/src/index.ts
-//
-// Long-running on-chain event indexer for the 0G Galileo testnet.
-// Polls every 12s for events from AxiomAgentNFT and AxiomStrategyVault.
-
 import { Indexer, MemData } from "@0gfoundation/0g-storage-ts-sdk";
 import { ethers } from "ethers";
 import { loadEnv } from "./env.js";
@@ -12,7 +7,6 @@ import {
   POLL_INTERVAL_MS,
   POLL_WINDOW_BLOCKS,
   Watcher,
-  SOURCES,
 } from "./watcher.js";
 import type { AxiomEvent } from "./events.js";
 import { postEvent } from "./sink.js";
@@ -21,9 +15,9 @@ import { submitEvent, makeRealSubmitter } from "./da.js";
 // Load shared .env from repo root before any env reads.
 loadEnv(fileURLToPath(new URL("../../.env", import.meta.url)));
 
-/** 0G Galileo testnet. Source: https://docs.0g.ai/ai-context */
+/** 0G Galileo testnet. */
 const DEFAULT_RPC_URL = "https://evmrpc-testnet.0g.ai";
-/** 0G Galileo chain id (0x40DA). Source: https://docs.0g.ai/ai-context */
+/** 0G Galileo chain id (0x40DA). */
 const DEFAULT_CHAIN_ID = 16602;
 
 function rpcUrl() {
@@ -51,11 +45,7 @@ function bigintReplacer(_key: string, value: unknown) {
   return typeof value === "bigint" ? value.toString() : value;
 }
 
-/**
- * Banner emitted on startup so the operator can see the indexer is live
- * and which contracts it's watching. Goes to stderr (stdout is reserved
- * for event JSON lines, the canonical machine-readable stream).
- */
+/** Banner emitted on startup (stderr; stdout is reserved for event JSON). */
 function banner(cid: number) {
   process.stderr.write(
     JSON.stringify({
@@ -65,15 +55,11 @@ function banner(cid: number) {
       chainId: cid,
       pollWindowBlocks: POLL_WINDOW_BLOCKS.toString(),
       pollIntervalMs: POLL_INTERVAL_MS,
-      sources: SOURCES,
     }) + "\n",
   );
 }
 
-// --- 0G Storage event batching ---
-//
-// Instead of uploading each event individually (each costs ~0.0012 OG in gas),
-// we buffer events and upload them as a batch JSON array blob.
+// --- 0G Storage event batching (batch uploads to reduce gas cost) ---
 const eventBuffer: AxiomEvent[] = [];
 const BATCH_INTERVAL = parseInt(process.env["STORAGE_BATCH_INTERVAL_MS"] ?? "5000");
 const BATCH_MAX = parseInt(process.env["STORAGE_BATCH_MAX_EVENTS"] ?? "10");
@@ -238,10 +224,7 @@ async function main() {
   const cid = chainId();
   const url = rpcUrl();
 
-  // ethers v6: `JsonRpcProvider(url, network, options)`. Passing the
-  // explicit chainId avoids an extra `eth_chainId` round-trip and lets
-  // ethers throw a clear "chainId mismatch" error if the RPC is wrong.
-  // Ref: https://docs.ethers.org/v6/api/providers/#JsonRpcProvider
+  // Explicit chainId avoids an extra `eth_chainId` round-trip.
   const provider = new ethers.JsonRpcProvider(url, cid, {
     staticNetwork: true,
   });
@@ -262,15 +245,9 @@ async function main() {
     process.exit(1);
   }
 
-  //   - `INDEXER_DA_ENABLED` gates the DA submitter (apps/indexer/src/da.ts).
-  //     When true, every decoded event is submitted to 0G DA *before* the
-  //     stdout sink fires so a slow / failing DA cannot block the indexer
-  //     but a successful DA submit is observable to the operator.
-  //   - `DA_GRPC_URL` points to the 0G DA Client gRPC endpoint (default
-  //     port 51001). The DA Client sidecar handles gas payment, so the
-  //     indexer no longer needs a private key or signer.
-  //   - `BACKEND_URL` (when set) routes events to the backend's
-  //     POST /v1/events via postEvent. Default sink remains stdout.
+  //   - `INDEXER_DA_ENABLED` gates DA submission.
+  //   - `DA_GRPC_URL` points to the 0G DA Client gRPC endpoint.
+  //   - `BACKEND_URL` (when set) routes events to the backend's POST /v1/events.
   const daEnabled = process.env["INDEXER_DA_ENABLED"] === "1"
     || process.env["INDEXER_DA_ENABLED"] === "true";
   const backendUrl = process.env["BACKEND_URL"];

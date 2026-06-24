@@ -1,8 +1,3 @@
-// apps/indexer/src/watcher.ts
-//
-// Long-running polling loop for event logs from 0G Galileo testnet.
-// Fetches via ethers v6 `getLogs`, decodes events, and forwards to a sink.
-
 import { ethers } from "ethers";
 import type { JsonRpcProvider, Log } from "ethers";
 import { decodeEventLog, getAddress, type Address } from "viem";
@@ -15,19 +10,13 @@ import { ADDRESSES, EVENT_ABI, type AxiomEvent, type EventName } from "./events.
 /** How many blocks to query per `eth_getLogs` call. */
 export const POLL_WINDOW_BLOCKS = 50n;
 
-/** Polling cadence in milliseconds (matches the brief). */
+/** Polling cadence in milliseconds. */
 export const POLL_INTERVAL_MS = 12_000;
 
-/** Source URLs cited in this file. */
-const ETHERS_GETLOGS = "https://docs.ethers.org/v6/api/providers/#Provider-getLogs";
-const EIP_721 = "https://eips.ethereum.org/EIPS/eip-721";
-const OG_AI_CONTEXT = "https://docs.0g.ai/ai-context";
-const VIEM_PARSE_ABI_ITEM = "https://viem.sh/docs/abi/parseAbiItem.html";
 /**
  * 0G's `eth_getLogs` rejects ranges that overshoot the chain head with
  * error code -32000. We bound the window to the live head on every tick.
  */
-const QUICKNODE_OG_ERRORS = "https://www.quicknode.com/docs/0g/error-references";
 
 /** Path to the persisted checkpoint file (stores nextBlock cursor). */
 const CHECKPOINT_FILE = join(process.cwd(), "data", "checkpoint.json");
@@ -74,10 +63,7 @@ const TOPIC_TABLE: EventTopicTable = {
   Initialized: validateHex(ethers.id("Initialized(uint64)")),
  };
 
-/**
- * Reverse lookup: lowercased topic-0 hex → event name.
- * Populated once at module load so `decodeAxiomLog` has a cast-free match path.
- */
+/** Reverse lookup: lowercased topic-0 hex → event name. */
 const TOPIC_TO_EVENT: Record<string, EventName> = {};
 {
   // Explicit list — must match EVENT_SIGNATURES keys in events.ts.
@@ -166,18 +152,8 @@ type BaseFields = {
 };
 
 /**
- * Decode one raw log into an `AxiomEvent` using the typed per-event ABI
- * items exported from `events.ts`. Returns `null` for logs that don't
- * match any signature we track.
- *
- * Each `case` calls viem's `decodeEventLog` with the single-event abi
- * for its event, which lets viem infer the `args` shape precisely —
- * no casts, no `any`, no `Record<string, unknown>` indexing.
- *
- * The return value of each case is annotated with
- * `satisfies Extract<AxiomEvent, { kind: "..." }>` so that adding a new
- * event to `EVENT_SIGNATURES` / `AxiomEvent` without updating this
- * switch is a typecheck error.
+ * Decode one raw log into an `AxiomEvent` via per-event ABI items.
+ * Returns `null` for unmatched signatures.
  */
 export function decodeAxiomLog(log: Log) {
   const topic0 = log.topics[0];
@@ -513,10 +489,7 @@ export async function pollOnce(
   return allLogs;
 }
 
-/**
- * Sort logs by (blockNumber asc, logIndex asc) so consumers see a stable
- * in-chain order. `Log.blockNumber` and `Log.index` are bigint in ethers v6.
- */
+/** Sort logs by (blockNumber asc, logIndex asc). */
 function logsByChainOrder(a: Log, b: Log) {
   if (a.blockNumber !== b.blockNumber) {
     return a.blockNumber < b.blockNumber ? -1 : 1;
@@ -529,10 +502,7 @@ function logsByChainOrder(a: Log, b: Log) {
 
 // ── Checkpoint persistence ─────────────────────────────────────────────
 
-/**
- * Load the persisted nextBlock cursor from disk.
- * Returns `null` when no checkpoint exists or the file is invalid.
- */
+/** Load the persisted nextBlock cursor from disk. Returns null if unavailable. */
 async function loadCheckpoint(): Promise<number | null> {
   try {
     const data = await readFile(CHECKPOINT_FILE, "utf-8");
@@ -546,10 +516,7 @@ async function loadCheckpoint(): Promise<number | null> {
   return null;
 }
 
-/**
- * Atomically persist the nextBlock cursor to disk.
- * Writes to a temp file first, then renames to avoid partial writes.
- */
+/** Atomically persist the nextBlock cursor (write to tmp, then rename). */
 async function saveCheckpoint(nextBlock: number): Promise<void> {
   const tmp = CHECKPOINT_FILE + ".tmp";
   try {
@@ -588,14 +555,7 @@ export class Watcher {
     return this.nextBlock;
   }
 
-  /**
-   * Start the polling loop. Resolves with a stop() function. The loop
-   * exits cleanly when `stop()` is called or on SIGINT/SIGTERM.
-   *
-   * We use `Promise.withResolvers()` (Node 22 / TS 5.5+) per the
-   * `ts-promise-with-resolvers` rule — the explicit executor form is
-   * only used where APIs demand it.
-   */
+  /** Start the polling loop. Returns a `{ stop }` handle. */
   start() {
     if (this.running) throw new Error("Watcher already running");
     this.running = true;
@@ -603,16 +563,9 @@ export class Watcher {
     const tick = async (): Promise<void> => {
       if (!this.running) return;
       try {
-        // Fetch the live chain head on EVERY tick — not just on first run.
-        // The previous implementation only fetched on init, so the cursor
-        // advanced by `window` (50) every 12 s while the head moved ~1-12
-        // blocks, and within 3 ticks `toBlock` overran the head. 0G's
-        // `eth_getLogs` rejects that with JSON-RPC code -32000
-        // "invalid block range params". Clamping the window to the live
-        // head on every tick eliminates the race entirely.
-        // Refs:
-        //   https://docs.ethers.org/v6/api/providers/#Provider-getBlockNumber
-        //   https://www.quicknode.com/docs/0g/error-references
+        // Fetch the live chain head on every tick so the window never
+        // overshoots the chain head (0G rejects ranges past head with
+        // error code -32000).
         const head = await this.provider.getBlockNumber();
         const latest = BigInt(head);
 
@@ -707,11 +660,4 @@ export class Watcher {
   }
 }
 
-/** Public URLs that informed this file. (Used by `index.ts` for its banner.) */
-export const SOURCES = {
-  ethersGetLogs: ETHERS_GETLOGS,
-  eip721: EIP_721,
-  ogAiContext: OG_AI_CONTEXT,
-  viemParseAbiItem: VIEM_PARSE_ABI_ITEM,
-  quicknodeOgErrors: QUICKNODE_OG_ERRORS,
-} as const;
+
