@@ -137,7 +137,7 @@ Foundry config: `evm_version = "cancun"`, Solidity 0.8.20, optimizer 200 runs, v
 | Service | Status | Detail |
 |---------|--------|--------|
 | Chain (Galileo) | ✅ Deployed | 4 verified contracts, chainId 16602, `evmrpc-testnet.0g.ai` |
-| Compute (Router) | ✅ Operational | `@0gfoundation/0g-serving-broker`, Router API + Direct SDK |
+| Compute (Router) | ✅ Operational | `openai` (OpenAI SDK), Router API + Direct SDK |
 | Storage | ✅ Operational | `@0gfoundation/0g-storage-ts-sdk`, Merkle proofs, AES-256-GCM |
 | Agentic ID (ERC-7857) | ✅ Integrated | 3 ERC-7857 extensions, EIP-712 domain binding |
 | DA (gRPC) | ⏳ Client ready | `DisperseBlob` gRPC client vendored, sidecar TBD |
@@ -154,7 +154,7 @@ Foundry config: `evm_version = "cancun"`, Solidity 0.8.20, optimizer 200 runs, v
 **Technical Approach (30%)**
 - Clean layered architecture: contracts → oracle → backend → frontend, with clear dependency direction and no circular coupling.
 - Security is foundational: TEE for low-latency attestation, EIP-712 domain binding against replay, CEI pattern in payment logic, Merkle proofs for storage integrity, UUPS for upgradeability.
-- Correct 0G service usage: each integration uses the official SDK or API (0g-storage-ts-sdk, 0g-serving-broker, ERC-7857 reference). Deployment matches 0G Galileo testnet RPC and chain parameters.
+- Correct 0G service usage: each integration uses the official SDK or API (0g-storage-ts-sdk, openai, ERC-7857 reference). Deployment matches 0G Galileo testnet RPC and chain parameters.
 - Code quality: zero TypeScript errors across 5 packages, 5 CI/CD workflows green, comprehensive fuzz + invariant test suite, disciplined cleanup before submission.
 
 **Team & Execution Signal (30%)**

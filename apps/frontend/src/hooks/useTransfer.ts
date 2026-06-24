@@ -6,27 +6,8 @@ import { AXIOM_AGENT_NFT_ADDRESS, AXIOM_TEE_VERIFIER_ADDRESS } from '../abi/addr
 import { iTransferFromAbi } from '../abi/iTransferFrom.js';
 import { BACKEND_URL } from '../config/env.js';
 
-import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
 import { useAsyncAction } from './useAsyncAction.js';
-
-const EIP712_DOMAIN = {
-  name: 'AxiomTeeVerifier',
-  version: '1',
-  chainId: GALILEO_CHAIN_ID,
-  verifyingContract: AXIOM_TEE_VERIFIER_ADDRESS,
-} as const;
-
-/** EIP-712 AccessProof — wallet signs the digest directly (no EIP-191 prefix). */
-const ACCESS_PROOF_TYPES = {
-  AccessProof: [
-    { name: 'dataHash', type: 'bytes32' },
-    { name: 'targetPubkey', type: 'bytes' },
-    { name: 'to', type: 'address' },
-    { name: 'nft', type: 'address' },
-    { name: 'nonce', type: 'uint256' },
-    { name: 'validUntil', type: 'uint256' },
-  ],
-} as const;
+import { EIP712_DOMAIN, ACCESS_PROOF_TYPES } from '../abi/eip712.js';
 
 export type TransferInput = {
   tokenId: bigint;
