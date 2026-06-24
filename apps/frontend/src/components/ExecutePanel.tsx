@@ -29,7 +29,7 @@ export type ExecutePanelProps = {
 
 export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): ReactElement {
   const { isConnected } = useAccount();
-  const { agents } = useAgents();
+  const { agents, isLoading: agentsLoading } = useAgents();
   const { tick, isLoading, error } = useOrchestratorTick();
   const [selectedId, setSelectedId] = useState<string>(tokenIdProp?.toString() ?? '');
   const [result, setResult] = useState<TickResult | null>(null);
@@ -136,6 +136,11 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
               </option>
             ))}
           </select>
+          {!agentsLoading && agents.length === 0 && (
+            <p style={{ margin: 0, fontSize: 13, color: COLORS.textDim }}>
+              No agents found for the connected wallet.
+            </p>
+          )}
         </label>
       )}
 

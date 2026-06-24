@@ -6,7 +6,8 @@ import { COLORS, Skeleton, Card, Alert, PageHeader } from '../components/ui.js';
 
 export function AgentsBrowser(): ReactElement {
   const { isConnected, address } = useAccount();
-  const { count, isLoading, error } = useAgents();
+  const { agents, isLoading, error } = useAgents();
+  const count = agents.length;
 
   if (!isConnected) {
     return (
@@ -45,7 +46,7 @@ export function AgentsBrowser(): ReactElement {
     );
   }
 
-  if (count === 0n) {
+  if (count === 0) {
     return (
       <main>
         <PageHeader title="Your Agents" />
@@ -87,7 +88,7 @@ export function AgentsBrowser(): ReactElement {
     );
   }
 
-  const countLabel = count === 1n ? '1 iNFT' : `${count.toString()} iNFTs`;
+  const countLabel = count === 1 ? '1 iNFT' : `${count} iNFTs`;
 
   return (
     <main>

@@ -39,7 +39,7 @@ if (!DEPLOYER_PK) {
     const enc: Encryption = { type: "aes256", key: aesKey };
     const { rootHash, txHash, size } = await storage.uploadData(payload, enc);
     console.log(`[storage] uploaded (encrypted) ${size} bytes → root=${rootHash} tx=${txHash}`);
-    const { data, size: dlSize } = await storage.download(rootHash, { decryptionKey: aesKey, withProof: true });
+    const { data, size: dlSize } = await storage.download(rootHash, { symmetricKey: aesKey, withProof: true });
     assert.equal(dlSize, payload.length);
     assert.equal(new TextDecoder().decode(data), "Secret agent intelligence — encrypted at rest");
   });
