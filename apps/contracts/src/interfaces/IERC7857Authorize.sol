@@ -12,6 +12,9 @@ interface IERC7857Authorize is IERC7857 {
     error ERC7857AlreadyAuthorized();
     error ERC7857NotAuthorized();
 
+    /// @dev DEV-NOTE: Per EIP-7857 spec, `_tokenId` and `_to` should both be `indexed`.
+    ///      Current form indexes `tokenId` only (not `to`). This is NOT spec-compliant.
+    ///      Fix deferred to next major version — changing indexed params is ABI-breaking.
     event Authorization(uint256 indexed tokenId, address indexed from, address indexed to);
     event AuthorizationRevoked(uint256 indexed tokenId, address indexed from, address indexed to);
 

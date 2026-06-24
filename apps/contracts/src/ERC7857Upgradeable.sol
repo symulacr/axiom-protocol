@@ -14,6 +14,12 @@ import "@0g-agent-nft/Utils.sol";
 /// @notice Base ERC-7857 implementation: token transfer with re-encrypted metadata
 /// @dev Adapted from the 0G Agentic ID reference (MIT)
 abstract contract ERC7857Upgradeable is IERC7857, ERC721Upgradeable {
+    /// @notice Emitted when a token is transferred with proof verification (EIP-7857)
+    /// @param _tokenId The token identifier
+    /// @param _from The previous owner
+    /// @param _to The new owner
+    event Transferred(uint256 _tokenId, address indexed _from, address indexed _to);
+
     /// @custom:storage-location erc7857:0g.storage.ERC7857
     struct ERC7857Storage {
         mapping(address owner => address) accessAssistants;
@@ -123,6 +129,7 @@ abstract contract ERC7857Upgradeable is IERC7857, ERC721Upgradeable {
         bytes[] memory sealedKeys = _proofCheck(from, to, tokenId, proofs);
         safeTransferFrom(from, to, tokenId);
         emit PublishedSealedKey(to, tokenId, sealedKeys);
+        emit Transferred(tokenId, from, to);
     }
 
     function iTransferFrom(
@@ -132,6 +139,15 @@ abstract contract ERC7857Upgradeable is IERC7857, ERC721Upgradeable {
         TransferValidityProof[] calldata proofs
     ) public virtual {
         _transfer(from, to, tokenId, proofs);
+    }
+
+    function iTransfer(address to, uint256 tokenId, TransferValidityProof[] calldata proofs) public virtual {
+        address from = _ownerOf(tokenId);
+        if (from == address(0)) revert ERC721NonexistentToken(tokenId);
+        _checkAuthorized(from, _msgSender(), tokenId);
+        _proofCheck(from, to, tokenId, proofs);
+        _transfer(from, to, tokenId);
+        emit Transferred(tokenId, from, to);
     }
 
     function _intelligentDatasOf(uint256 /*tokenId*/) internal view virtual returns (IntelligentData[] memory) {

@@ -12,6 +12,8 @@ export const sharedEnvSchema = z.object({
   AXIOM_FRONTEND_URL: z.string().url().optional(),
   /** API key for optional bearer-token auth on HTTP endpoints. */
   AXIOM_API_KEY: z.string().optional(),
+  /** API key for authenticating with the 0G Compute proxy. */
+  OG_COMPUTE_API_KEY: z.string().optional(),
   /** EIP-155 chain ID (defaults to 16602 = Galileo testnet). */
   AXIOM_CHAIN_ID: z.coerce.number().int().positive().default(16602),
   /** Explicit override for the 0G Compute Router base URL. */

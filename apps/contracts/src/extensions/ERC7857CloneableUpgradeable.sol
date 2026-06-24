@@ -73,4 +73,13 @@ abstract contract ERC7857CloneableUpgradeable is IERC7857Cloneable, ERC7857Upgra
         _checkAuthorized(from, msg.sender, tokenId);
         return _clone(from, to, tokenId, proofs);
     }
+
+    function iClone(address to, uint256 tokenId, TransferValidityProof[] calldata proofs) public virtual returns (uint256 newTokenId) {
+        address from = _ownerOf(tokenId);
+        if (from == address(0)) revert ERC721NonexistentToken(tokenId);
+        _checkAuthorized(from, _msgSender(), tokenId);
+        // Clone reuses the same proofs for the source token
+        _proofCheck(from, to, tokenId, proofs);
+        newTokenId = _clone(from, to, tokenId, proofs);
+    }
 }
