@@ -9,7 +9,6 @@ export const DEPLOYED_ADDRESSES = {
   mockUsdc:         validateHex((process.env.AXIOM_MOCK_USDC_ADDRESS || process.env.AXIOM_PAYMENT_TOKEN || "0xeA13E136E59c6e919BeF2221f6ecDE2cBCEb0Dbf") as string, "AXIOM_MOCK_USDC_ADDRESS"),
 } as const;
 
-/** InferenceServing broker contract address per chain. */
 export const BROKER_ADDRESSES: Record<number, `0x${string}`> = {
   [GALILEO_CHAIN_ID]: "0xa79F4c8311FF93C06b8CfB403690cc987c93F91E",
 } as const;

@@ -1,5 +1,3 @@
-// Axiom Protocol — `useEventStream` hook.
-
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BACKEND_URL } from '../config/env.js';
 import type { AxiomEvent } from './useEventHistory.js';
@@ -36,7 +34,6 @@ export function useEventStream(
   const connect = useCallback(() => {
     if (!enabled) return;
 
-    // Build WS URL with topic params
     // Topic supports wildcards: 'tick.*' subscribes to all tick topics.
     const scheme = BACKEND_URL.startsWith('https://') ? 'wss' : 'ws';
     const url = new URL(BACKEND_URL.replace(/^https?:\/\//, `${scheme}://`) + '/v1/stream');
@@ -58,7 +55,6 @@ export function useEventStream(
           const data = JSON.parse(msg.data);
           if (data.topic === 'hello') return; // connection handshake
 
-          // Convert WS message to AxiomEvent shape
           const event: AxiomEvent = {
             source: data.payload?.source ?? 'ws',
             chainId: data.payload?.chainId ?? 0,
@@ -76,7 +72,7 @@ export function useEventStream(
             return next.length > MAX_EVENTS ? next.slice(0, MAX_EVENTS) : next;
           });
         } catch {
-          // Silently skip unparseable messages
+          /* skip unparseable */
         }
       };
 

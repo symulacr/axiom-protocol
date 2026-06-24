@@ -1,8 +1,6 @@
 import { z } from "zod";
 import { hexViem, addressViem } from "@axiom/config/types/schemas";
 
-// ── OpenAI-compatible message types ─────────────────────────────────────────
-
 const functionCallSchema = z.object({
   name: z.string(),
   arguments: z.string(),
@@ -22,8 +20,6 @@ const chatMessageSchema = z.object({
   reasoning_content: z.string().optional(),
   name: z.string().optional(),
 });
-
-// ── Tool / structured output schemas ─────────────────────────────────────────
 
 const functionDefSchema = z.object({
   name: z.string(),
@@ -54,8 +50,6 @@ const streamOptionsSchema = z.object({
   include_usage: z.boolean().optional(),
 });
 
-// ── Legacy function_call / functions (deprecated but backward-compatible) ────
-
 const legacyFunctionCallSchema = z.union([
   z.literal("none"),
   z.literal("auto"),
@@ -69,48 +63,30 @@ const legacyFunctionDefSchema = z.object({
 });
 
 export const chatCompletionsSchema = z.object({
-  // Required
   model: z.string().min(1),
   messages: z.array(chatMessageSchema).min(1),
-
-  // Generation params
   max_tokens: z.number().int().positive().optional(),
   max_completion_tokens: z.number().int().positive().optional(),
   temperature: z.number().optional(),
   top_p: z.number().optional(),
   stop: z.union([z.string(), z.array(z.string())]).optional(),
   n: z.number().int().positive().optional(),
-
-  // Streaming
   stream: z.boolean().optional(),
   stream_options: streamOptionsSchema.optional(),
-
-  // Tools
   tools: z.array(toolSchema).optional(),
   tool_choice: toolChoiceSchema.optional(),
   parallel_tool_calls: z.boolean().optional(),
-
-  // Structured output
   response_format: responseFormatSchema.optional(),
-
-  // Penalties
   frequency_penalty: z.number().optional(),
   presence_penalty: z.number().optional(),
-
-  // Reasoning
   reasoning_effort: z.enum(["low", "medium", "high"]).optional(),
-
-  // Logprobs
   logprobs: z.boolean().optional(),
   top_logprobs: z.number().int().positive().optional(),
-
-  // Determinism & routing
   seed: z.number().int().positive().optional(),
   user: z.string().optional(),
   metadata: z.record(z.string(), z.string()).optional(),
   store: z.boolean().optional(),
   service_tier: z.string().optional(),
-
   // Deprecated legacy fields
   function_call: legacyFunctionCallSchema.optional(),
   functions: z.array(legacyFunctionDefSchema).optional(),

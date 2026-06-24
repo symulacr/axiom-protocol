@@ -8,7 +8,6 @@ import "../interfaces/IERC7857DataVerifier.sol";
 /// @dev Copied verbatim from https://github.com/0gfoundation/0g-agent-nft (MIT)
 abstract contract BaseVerifier is IERC7857DataVerifier {
     /// @notice Thrown when a proof has already been used (replay protection)
-    /// @param proofHash The hash of the reused proof
     error ProofAlreadyUsed(bytes32 proofHash);
     /// @dev Replay protection: marks a proof nonce as used
     mapping(bytes32 => bool) internal usedProofs;
@@ -22,12 +21,9 @@ abstract contract BaseVerifier is IERC7857DataVerifier {
         proofTimestamps[proofNonce] = block.timestamp;
     }
 
-    /// @notice Get the maximum proof age in seconds (override per deployment)
-    /// @return The maximum proof age in seconds
     function _getMaxProofAge() internal view virtual returns (uint256);
 
     /// @notice Clean expired proof records to save gas
-    /// @param proofNonces Array of nonces to attempt to clean
     function cleanExpiredProofs(bytes32[] calldata proofNonces) external {
         uint256 maxAge = _getMaxProofAge();
         for (uint256 i = 0; i < proofNonces.length; i++) {

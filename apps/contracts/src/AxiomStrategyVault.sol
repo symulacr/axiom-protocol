@@ -100,9 +100,6 @@ contract AxiomStrategyVault is Ownable, Pausable, ReentrancyGuard {
     }
 
     /// @notice Set the Merkle root of approved actions + daily value limit
-    /// @param tokenId The vault's NFT token ID
-    /// @param root Merkle root of approved action hashes
-    /// @param dailyLimit Max total value (in wei) that can be executed per UTC day
     function setStrategy(uint256 tokenId, bytes32 root, uint256 dailyLimit) external whenNotPaused onlyTokenOwner(tokenId) {
         Vault storage v = _getVaults()[tokenId];
         v.strategyRoot = root;
@@ -118,11 +115,6 @@ contract AxiomStrategyVault is Ownable, Pausable, ReentrancyGuard {
     }
 
     /// @notice Execute an action whose hash is in the strategy Merkle tree
-    /// @param tokenId The vault's NFT token ID
-    /// @param target Address to call / send value to
-    /// @param value Native value to send
-    /// @param data Calldata (empty for simple value transfer)
-    /// @param merkleProof Merkle proof that keccak256(target, value, keccak256(data)) is in the strategy root
     function execute(
         uint256 tokenId,
         address target,
@@ -165,7 +157,6 @@ contract AxiomStrategyVault is Ownable, Pausable, ReentrancyGuard {
         return result;
     }
 
-    /// @notice Pause / unpause (onlyOwner)
     function pause() external onlyOwner {
         _pause();
     }

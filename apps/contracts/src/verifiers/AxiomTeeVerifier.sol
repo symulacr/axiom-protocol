@@ -38,7 +38,6 @@ contract AxiomTeeVerifier is BaseVerifier, OwnableUpgradeable {
 
     event SignerRegistered(address indexed oldSigner, address indexed newSigner);
 
-    /// @notice Maximum age (in seconds) a transfer-validity proof is allowed to be reused.
     /// @dev Set once at deployment; immutable so the value is baked into the deployed bytecode
     ///      and is part of the contract's ABI as a queryable getter (auto-generated `maxProofAgeSeconds()`).
     ///      Reference: Solidity 0.8.20 — Immutable variables
@@ -105,19 +104,16 @@ contract AxiomTeeVerifier is BaseVerifier, OwnableUpgradeable {
         __Ownable_init(initialOwner);
     }
 
-    /// @notice Get the registered TEE signer address
     function registeredSigner() public view returns (address) {
         return _getAxiomTeeVerifierStorage().registeredSigner;
     }
 
-    /// @notice Register a new TEE signer.
     /// @dev Restricted to the contract owner via OZ `onlyOwner` (OwnableUpgradeable).
     ///      Without this guard, any external caller could rotate the trusted TEE signer
     ///      and steal every iNFT on the next transfer. Owner of the verifier is the
     ///      `AXIOM_DEPLOYER_ADDRESS` set at deploy time. Refs:
     ///        - https://docs.openzeppelin.com/contracts/5.x/access-control
     ///        - https://docs.openzeppelin.com/contracts/5.x/api/access#Ownable-onlyOwner--
-    /// @param newSigner The new signer's Ethereum address
     function registerSigner(address newSigner) external onlyOwner {
         require(newSigner != address(0), "Zero address");
         AxiomTeeVerifierStorage storage $ = _getAxiomTeeVerifierStorage();
@@ -126,9 +122,6 @@ contract AxiomTeeVerifier is BaseVerifier, OwnableUpgradeable {
         emit SignerRegistered(old, newSigner);
     }
 
-    /// @notice Maximum age of a transfer validity proof, taken from the immutable
-    ///         `maxProofAgeSeconds` set at construction. Used by BaseVerifier.cleanExpiredProofs
-    ///         to bound how long a replay-protected proof is kept in storage.
     /// @dev ERC-7857 leaves the exact freshness window to the implementation; the canonical
     ///      0G reference uses a 7-day expiry (replay protection is enforced via
     ///      `usedProofs` regardless). Override the value per deployment to tighten or relax.
@@ -138,7 +131,6 @@ contract AxiomTeeVerifier is BaseVerifier, OwnableUpgradeable {
         return maxProofAgeSeconds;
     }
 
-    /// @notice Recover the signer of a raw ECDSA signature over the EIP-712 digest
     /// @dev Both proof legs are now EIP-712 typed-data digests (see _domainSeparator).
     ///      Browser wallets produce raw ECDSA over the EIP-712 digest via
     ///      signTypedData_v4, so no EIP-191 prefix is applied off-chain.
@@ -149,7 +141,6 @@ contract AxiomTeeVerifier is BaseVerifier, OwnableUpgradeable {
         return recovered;
     }
 
-    /// @notice EIP-712 domain separator — binds signatures to this contract + chain.
     /// @dev Off-chain signers (backend, oracle, browser wallet via signTypedData_v4)
     ///      MUST compute the same digest:
     ///        keccak256(abi.encodePacked("\x19\x01", domainSeparator(), structHash))
@@ -164,8 +155,6 @@ contract AxiomTeeVerifier is BaseVerifier, OwnableUpgradeable {
         ));
     }
 
-    /// @notice Public accessor for the EIP-712 domain separator.
-    /// @return The domain separator hash for the current contract instance + chain.
     function domainSeparator() public view returns (bytes32) {
         return _domainSeparator();
     }
@@ -293,10 +282,6 @@ contract AxiomTeeVerifier is BaseVerifier, OwnableUpgradeable {
     ///        (also covers `validUntil = type(uint256).max` since the subtraction
     ///        is huge and definitely exceeds `maxAge`).
     ///      - Otherwise, the proof is valid for the current block.
-    /// @param validUntil The deadline chosen by the signer at signing time.
-    /// @param nowTs      The current `block.timestamp`.
-    /// @param maxAge     The `maxProofAgeSeconds` immutable (TEE's upper bound on
-    ///                   how far in the future `validUntil` can be).
     function _checkValidUntil(uint256 validUntil, uint256 nowTs, uint256 maxAge) private pure {
         if (validUntil < nowTs) {
             revert AxiomProofExpired(validUntil, nowTs);

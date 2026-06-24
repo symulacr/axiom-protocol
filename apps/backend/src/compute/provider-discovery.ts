@@ -1,5 +1,3 @@
-// ─── On-chain compute provider discovery (SDK-backed) ─────────────────────
-//
 // Thin wrapper around the 0G Compute SDK's ReadOnlyInferenceBroker.
 // Results are cached for process lifetime so the RPC is called at most once.
 
@@ -7,9 +5,6 @@ import { ethers } from "ethers";
 import { createReadOnlyInferenceBroker } from "@0gfoundation/0g-compute-ts-sdk";
 import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
 
-// ---------------------------------------------------------------------------
-// Public types
-// ---------------------------------------------------------------------------
 export interface ServiceInfo {
   /** Provider on-chain address (lowercased). */
   provider: string;
@@ -19,9 +14,6 @@ export interface ServiceInfo {
   appClientAddr: string;
 }
 
-// ---------------------------------------------------------------------------
-// Lazy process-lifetime cache
-// ---------------------------------------------------------------------------
 let _cachedProviders: ServiceInfo[] | null = null;
 let _cachePromise: Promise<ServiceInfo[]> | null = null;
 

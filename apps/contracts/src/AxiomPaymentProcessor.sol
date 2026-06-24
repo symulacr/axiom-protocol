@@ -39,7 +39,6 @@ contract AxiomPaymentProcessor is Ownable, Pausable, ReentrancyGuard {
     event ProtocolFeeBpsUpdated(uint256 oldBps, uint256 newBps);
     event PaymentTokenUpdated(address indexed oldToken, address indexed newToken);
 
-    /// @notice Basis points denominator (10000 = 100%)
     uint256 public constant BPS_DENOMINATOR = 10_000;
 
     /// @custom:storage-location erc7201:agent.storage.AxiomPaymentProcessor
@@ -70,12 +69,6 @@ contract AxiomPaymentProcessor is Ownable, Pausable, ReentrancyGuard {
         _;
     }
 
-    /// @param nftAddr            Address of the AxiomAgentNFT contract (used to resolve agent creators)
-    /// @param paymentTokenAddr   ERC-20 stable token used for payForAgent (USDC.e / USDG on 0G).
-    ///                           Must not be address(0). Setter `setPaymentToken` allows migration later.
-    /// @param treasuryAddr       Protocol treasury; receives the protocolCut on every payForAgent
-    /// @param protocolFeeBps_    Default protocol cut in basis points (0..10000)
-    /// @param initialOwner       Ownable admin (can set treasury, fee bps, pause, rotate payment token)
     constructor(
         address nftAddr,
         address paymentTokenAddr,
@@ -133,7 +126,6 @@ contract AxiomPaymentProcessor is Ownable, Pausable, ReentrancyGuard {
         _setRoyaltyBps(agentTokenId, newBps);
     }
 
-    /// @dev Internal storage write — reused by both public setters.
     function _setRoyaltyBps(uint256 agentTokenId, uint256 newBps) internal {
         if (newBps > BPS_DENOMINATOR) revert InvalidBps();
         PaymentProcessorStorage storage $ = _getStorage();
@@ -210,7 +202,6 @@ contract AxiomPaymentProcessor is Ownable, Pausable, ReentrancyGuard {
         emit PaymentProcessed(agentTokenId, msg.sender, creator, amount, creatorCut, protocolCut);
     }
 
-    /// @notice Pay a compute provider (protocol-level, no creator split)
     /// @dev    The protocol operator approves this contract to spend `amount` of `paymentToken`,
     ///         then calls this function. The full `amount` is forwarded to `provider`.
     function payComputeProvider(address provider, uint256 amount) external nonReentrant whenNotPaused {
