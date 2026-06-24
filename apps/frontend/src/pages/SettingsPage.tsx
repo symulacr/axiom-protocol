@@ -1,5 +1,3 @@
-// Axiom Protocol — Settings page (`/settings` route).
-
 import type { ChangeEvent, ReactElement } from 'react';
 import { useState } from 'react';
 import { useLocalStorage } from '../hooks/useLocalStorage.js';
@@ -25,9 +23,6 @@ export function SettingsPage(): ReactElement {
     DEFAULT_CHAIN_ID,
   );
 
-  // Drafts are initialized from the persisted value. The inputs use `key`
-  // to remount when the saved value changes (e.g. saved in another tab),
-  // per the no-use-effect "reset with key" rule — no sync effects needed.
   const [rpcDraft, setRpcDraft] = useState<string>(rpcUrl);
   const [wcDraft, setWcDraft] = useState<string>(wcProjectId);
 

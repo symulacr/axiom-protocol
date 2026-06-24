@@ -1,9 +1,3 @@
-// Axiom Protocol — agent detail page (`/agents/:tokenId` route).
-//
-// Renders on-chain metadata for an AxiomAgentNFT token using
-// `useAgentMetadata` and a separate `creatorOf` multicall.
-// The "Transfer Agent" action opens `<TransferModal />`.
-
 import { useState, type ReactElement } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAccount, useReadContracts } from 'wagmi';
@@ -24,11 +18,6 @@ import {
 } from '../components/ui.js';
 import { PLACEHOLDER, truncateHex } from '../utils/format.js';
 
-/**
- * Parse a route param string into a bigint tokenId. Returns null when
- * the segment is missing or not a valid integer (EIP-721 tokenIds are
- * uint256, which fits in bigint; we accept decimal form only).
- */
 function parseTokenId(raw: string | undefined) {
   if (raw === undefined || raw === '') {
     return null;
@@ -44,22 +33,12 @@ export function AgentDetail(): ReactElement {
   const params = useParams<{ tokenId: string }>();
   const tokenId = parseTokenId(params.tokenId);
 
-  // wagmi v2 useAccount — connected address + status flags. Source:
-  //   https://wagmi.sh/react/hooks/useAccount
   const { isConnected, address } = useAccount();
 
-  // useAgentMetadata is a multicall of EIP-721 + iNFT getters. We
-  // guard on tokenId !== null so wagmi doesn't read with `args: [null]`
-  // and revert on every poll. Source:
-  //   https://wagmi.sh/react/hooks/useReadContracts
   const metadata = useAgentMetadata(tokenId ?? 0n);
   const { data, isLoading: metaLoading, error: metaError } = metadata;
 
-  // `creatorOf(tokenId)` is an AxiomAgentNFT-specific getter, not a base
-  // EIP-721 spec function, so the shared hook doesn't include it. We
-  // multicall it here so the detail page shows the creator alongside
-  // the owner. ABI:
-  //   https://docs.soliditylang.org/en/latest/abi-spec.html
+  // Multcalled here — `creatorOf` is AxiomAgentNFT-specific (not base ERC-721).
   const creatorQuery = useReadContracts({
     allowFailure: false,
     contracts: [

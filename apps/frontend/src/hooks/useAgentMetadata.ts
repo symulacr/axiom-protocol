@@ -4,34 +4,15 @@ import { AXIOM_AGENT_NFT_ADDRESS } from '../abi/addresses.js';
 import { axiomAgentNftAbi } from '../abi/axiomAgentNft.js';
 
 export type AgentMetadata = {
-  /** ERC-721 tokenId. */
   tokenId: bigint;
-  /** Contract-level collection name (ERC-721 `name()`). */
   name: string;
-  /** Contract-level collection symbol (ERC-721 `symbol()`). */
   symbol: string;
-  /** Current owner of the token (ERC-721 `ownerOf`). */
   owner: Address;
-  /**
-   * keccak256 hash of the encrypted model payload stored on 0G Storage.
-   * The bytes32 returned by the contract is the canonical content-addressed
-   * identifier of the iNFT's encrypted intelligence. Source:
-   * https://eips.ethereum.org/EIPS/eip-7857
-   */
   dataHash: Hex;
-  /**
-   * Human-readable description of the intelligent data slice, as stored
-   * on-chain in the IntelligentData struct (EIP-7857). Empty when the
-   * token has no data or the description is unset.
-   */
   dataDescription: string;
-  /** tokenURI pointer to the on-chain / off-chain metadata blob. */
   tokenUri: string;
 };
 
-/**
- * Read the full metadata view for a single AxiomAgentNFT tokenId in one multicall.
- */
 export function useAgentMetadata(tokenId: bigint): {
   data: AgentMetadata | null;
   isLoading: boolean;
@@ -74,8 +55,6 @@ export function useAgentMetadata(tokenId: bigint): {
     },
   });
 
-  // intelligentDatasOf returns IntelligentData[] = { dataDescription, dataHash }.
-  // We surface the first data slice (the Axiom mint flow writes exactly one).
   const intelligentDatas =
     (query.data?.[3] as
       | ReadonlyArray<{ dataDescription: string; dataHash: Hex }>

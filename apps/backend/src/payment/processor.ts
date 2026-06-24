@@ -4,13 +4,7 @@ import { type ContractTransactionReceipt, type Wallet, type JsonRpcProvider, typ
 import { TypedContract } from "@axiom/config/types/contract";
 import type { PaymentProcessorMethods, ERC20Methods } from "../contract-types.js";
 
-// AxiomPaymentProcessor ABI — standalone, non-upgradeable contract.
-// Source of truth: apps/contracts/src/AxiomPaymentProcessor.sol
-// Deployed at 0x096203fB54681b66dD8ab9bA47aaB462aA8C4A5f (Galileo testnet).
-//
-// The contract pulls an ERC-20 stable (USDC.e / USDG) from the payer, credits
-// the agent creator's withdrawable balance (royalty), and forwards the protocol
-// cut to the treasury in the same call.
+// AxiomPaymentProcessor ABI — standalone, non-upgradeable.
 
 const PAYMENT_PROCESSOR_ABI: readonly string[] = [
   "function payForAgent(uint256 agentTokenId, uint256 amount)",
@@ -30,10 +24,7 @@ const PAYMENT_PROCESSOR_ABI: readonly string[] = [
   "event RoyaltySet(uint256 indexed agentTokenId, uint256 bps)",
 ] as const;
 
-// Minimal ERC-20 ABI for the approval pre-flight. The PaymentProcessor pulls
-// the full amount from the caller via safeTransferFrom, so the backend signer
-// must have granted sufficient allowance to the processor before payForAgent /
-// payComputeProvider will succeed.
+// Minimal ERC-20 ABI for approval pre-flight.
 const ERC20_ABI: readonly string[] = [
   "function approve(address spender, uint256 amount) returns (bool)",
   "function allowance(address owner, address spender) view returns (uint256)",
@@ -61,9 +52,8 @@ export interface PaymentProcessedEvent {
 }
 
 /**
- * Thin wrapper over the AxiomPaymentProcessor contract. Each write method
- * waits for one confirmation and returns the receipt; read methods return the
- * decoded result. The class never caches state — every call hits the chain.
+ * Thin wrapper over AxiomPaymentProcessor. Write methods wait for
+ * one confirmation; read methods hit the chain directly.
  */
 export class PaymentProcessorClient {
   readonly address: string;
@@ -80,16 +70,13 @@ export class PaymentProcessorClient {
     this.token = new TypedContract<ERC20Methods>(cfg.paymentTokenAddress, ERC20_ABI, cfg.signer);
   }
 
-  // ─── Write paths ──────────────────────────────────────────────
+  // ─── Write paths ─────────────────────────────────────────
 
   /**
-   * Pay for an agent's service. Pulls `amount` of the payment token from the
-   * backend signer (must have approved the processor) and splits it between
-   * the creator (credited, pull via withdrawEarnings) and the treasury.
+   * Pay for an agent. Pulls amount from the backend signer and splits
+   * between creator (credited) and treasury.
    *
-   * Pre-flight: if the current allowance is below `amount`, approve the
-   * processor for `amount` first. This keeps the route self-contained for
-   * operator-driven flows (the signer is the protocol operator).
+   * Pre-flight: approve processor if allowance is below amount.
    */
   async payForAgent(agentTokenId: bigint, amount: bigint): Promise<{ receipt: ContractTransactionReceipt; event: PaymentProcessedEvent | null }> {
     await this.ensureAllowance(amount);
@@ -100,8 +87,8 @@ export class PaymentProcessorClient {
   }
 
   /**
-   * Protocol-level compute provider payout. Pulls `amount` from the backend
-   * signer and forwards the full amount to `provider`.
+   * Protocol-level compute provider payout. Pulls amount from backend
+   * signer and forwards to provider.
    */
   async payComputeProvider(provider: string, amount: bigint): Promise<{ receipt: ContractTransactionReceipt; provider: string; amount: bigint }> {
     await this.ensureAllowance(amount);
@@ -111,8 +98,7 @@ export class PaymentProcessorClient {
   }
 
   /**
-   * Withdraw the backend signer's accumulated creator earnings. Only meaningful
-   * when the signer is itself an agent creator.
+   * Withdraw backend signer's accumulated creator earnings.
    */
   async withdrawEarnings(): Promise<{ receipt: ContractTransactionReceipt; amount: bigint | null }> {
     const tx = await this.payment.contract.withdrawAgentEarnings();
@@ -128,14 +114,11 @@ export class PaymentProcessorClient {
   }
 
   /**
-   * Encode a `setRoyaltyBpsPermitted` call for the frontend to submit via
-   * wagmi `useWriteContract`. The backend signer (deployer wallet) is neither
-   * the creator nor the owner, so it cannot call `setRoyaltyBps` (creator-only)
-   * or `setRoyaltyBpsPermitted` (owner-only) directly. Instead the route
-   * returns the encoded calldata + target address so the NFT owner submits
-   * the transaction from their own wallet.
+   * Encode setRoyaltyBpsPermitted call for frontend submission via
+   * useWriteContract. Backend signer cannot call setRoyaltyBps directly
+   * (it is creator-only).
    *
-   * @returns `{ to, data, value }` — pass directly to `useWriteContract`.
+   * @returns { to, data, value } — pass to useWriteContract.
    */
   async encodeSetRoyalty(agentTokenId: bigint, bps: number): Promise<{ to: string; data: string; value: bigint }> {
     const data = this.payment.iface.encodeFunctionData("setRoyaltyBpsPermitted", [agentTokenId, bps]);
@@ -171,9 +154,7 @@ export class PaymentProcessorClient {
   // ─── Internals ────────────────────────────────────────────────
 
   /**
-   * Grant the processor an allowance covering `amount` if the current
-   * allowance is insufficient. Uses a single approve call rather than
-   * bumping, since the signer is the operator and approvals are cheap.
+   * Grant processor allowance covering amount if current allowance insufficient.
    */
   private async ensureAllowance(amount: bigint): Promise<void> {
     const current = await this.token.contract.allowance(this.signer.address, this.address);

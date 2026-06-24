@@ -463,7 +463,6 @@ interface ModalProps {
 export function Modal({ open, onClose, title, children, style }: ModalProps): ReactElement | null {
   const dialogRef = useRef<HTMLDialogElement | null>(null);
 
-  // useMountEffect syncs dialog open/close state.
   useMountEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;

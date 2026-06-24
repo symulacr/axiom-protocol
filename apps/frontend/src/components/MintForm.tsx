@@ -1,8 +1,3 @@
-// Axiom Protocol — `MintForm` component.
-//
-// Mints a new iNFT agent via `POST /v1/agents/mint`. The backend wallet signs
-// the on-chain `mint()` call. Displays the live mint fee from `AxiomAgentNFT.mintFee()`.
-
 import {
   useCallback,
   useId,
@@ -19,7 +14,6 @@ import { AXIOM_AGENT_NFT_ADDRESS } from '../abi/addresses.js';
 import { useMint } from '../hooks/useMint.js';
 import { COLORS, Card, Button, Alert, PageHeader, SectionTitle, MonoLabel, Skeleton } from './ui.js';
 
-/** Minimal ABI fragment for AxiomAgentNFT.mintFee(). */
 const mintFeeAbi = [
   {
     type: 'function',
@@ -61,15 +55,9 @@ const fieldHintStyle: React.CSSProperties = {
 };
 
 export type MintFormProps = {
-  /** Optional provider address pre-fill (?provider=0x…). Kept for the
-   * page wrapper to thread through; not directly rendered as a field. */
   provider?: `0x${string}` | undefined;
 };
 
-/**
- * Validate a 0x-prefixed hex input. Returns `null` when valid (non-empty and
- * hex-shaped), otherwise a human-readable error string.
- */
 function validateHex(value: string, label: string): string | null {
   if (value.length === 0) return null;
   if (!value.startsWith('0x')) {
@@ -90,10 +78,6 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
   const [sealedKey, setSealedKey] = useState('');
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Live mint-fee read. `useReadContracts` infers `bigint` from the
-  // `uint256` output; we only enable the query once the contract address
-  // is known (always true for the deployed Galileo proxy, but the guard
-  // keeps wagmi's type inference happy and avoids a stray call in tests).
   const feeQuery = useReadContracts({
     allowFailure: false,
     contracts: [
@@ -144,8 +128,6 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
           owner,
         });
       } catch (err) {
-        // The hook surfaces the error via `error`; keep this branch for
-        // the rare synchronous throw.
         setSubmitError(err instanceof Error ? err.message : String(err));
       }
     },
@@ -155,7 +137,6 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
   const onUriChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>): void => {
       setEncryptedStrategyUri(event.target.value);
-      // Clear a prior success/error when the user edits after minting.
       if (result !== null) reset();
     },
     [result, reset],

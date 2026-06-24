@@ -1,5 +1,3 @@
-// TransferModal — two-phase iNFT transfer flow (form + review).
-
 import {
   useCallback,
   useId,
@@ -20,9 +18,6 @@ const RECEIVER_PUBKEY_HEX_LENGTH = 130;
 function freshNonceHex(byteLength = 32): `0x${string}` {
   const bytes = new Uint8Array(byteLength);
   crypto.getRandomValues(bytes);
-  // `Uint8Array.prototype.toHex` is not in the lib.dom.d.ts we ship
-  // (and was only added to V8 / Node 22+ as a non-standard extension),
-  // so we hand-roll the hex conversion.
   let hex = '';
   for (let i = 0; i < bytes.length; i += 1) {
     const byte = bytes[i] ?? 0;
@@ -33,26 +28,10 @@ function freshNonceHex(byteLength = 32): `0x${string}` {
 
 export type TransferModalProps = {
   tokenId: bigint;
-  /**
-   * When provided, renders a self-triggering button. When omitted, the
-   * modal is fully controlled via `open`/`onClose`.
-   */
   triggerLabel?: string;
-  /**
-   * Controlled open state. When defined the parent owns the state;
-   * when undefined the modal manages its own state.
-   */
   open?: boolean;
-  /**
-   * Optional: called whenever the dialog transitions to closed. The
-   * parent can use this to reset the trigger button's pressed state.
-   */
   onClose?: () => void;
-  /**
-   * Called when the on-chain write resolves. The parent can layer
-   * `useWaitForTransactionReceipt` for confirmation tracking.
-   * Aliased as `onSuccess` for back-compat.
-   */
+  /** Called when the on-chain write resolves. Aliased as `onSuccess` for back-compat. */
   onTransferred?: (txHash: `0x${string}`) => void;
   onSuccess?: (txHash: `0x${string}`) => void;
 };
@@ -84,10 +63,8 @@ export function TransferModal({
   const [oldDataEncryptionKey, setOldDataEncryptionKey] = useState('');
   const [oldDataUri, setOldDataUri] = useState('');
   const [submitError, setSubmitError] = useState<string | null>(null);
-  // Two-phase UI: 'form' → 'review'.
   const [phase, setPhase] = useState<'form' | 'review'>('form');
 
-  // Controlled mode: parent owns `openProp`. Uncontrolled: modal manages `internalOpen`.
   const isControlled = openProp !== undefined;
   const [internalOpen, setInternalOpen] = useState(false);
   const open = isControlled ? openProp : internalOpen;
@@ -98,7 +75,6 @@ export function TransferModal({
     },
     [isControlled, onClose],
   );
-  // Merged success callback: fires both `onTransferred` and `onSuccess` (back-compat).
   const handleTransferred = useCallback(
     (txHash: `0x${string}`): void => {
       onTransferred?.(txHash);
@@ -107,7 +83,6 @@ export function TransferModal({
     [onSuccess, onTransferred],
   );
 
-  // Fresh nonce per modal mount — replay-resistant per transfer.
   const accessProofNonce = useMemo(
     () => freshNonceHex(32) as `0x${string}`,
     [],
@@ -131,7 +106,6 @@ export function TransferModal({
     addressError === null &&
     pubKeyError === null &&
     !isLoading;
-  // Re-key inputs: both or neither.
   const rekeyError = useMemo(() => {
     const hasKey = oldDataEncryptionKey.length > 0;
     const hasUri = oldDataUri.length > 0;
@@ -140,7 +114,6 @@ export function TransferModal({
     }
     return null;
   }, [oldDataEncryptionKey, oldDataUri]);
-  // Shared TransferInput builder for prepare + confirm phases.
   const buildInput = useCallback((): TransferInput => {
     const input: TransferInput = {
       tokenId,
@@ -155,7 +128,6 @@ export function TransferModal({
     return input;
   }, [accessProofNonce, oldDataEncryptionKey, oldDataUri, receiverAddress, receiverPubKey, tokenId]);
 
-  // Phase 1 — prepare: challenge → sign → finalize.
   const onSubmit = useCallback(
     async (event: FormEvent<HTMLFormElement>): Promise<void> => {
       event.preventDefault();
@@ -171,7 +143,6 @@ export function TransferModal({
     [buildInput, canSubmit, from, prepare, rekeyError],
   );
 
-  // Phase 2 — confirm: on-chain `iTransferFrom` using prepared proof.
   const onConfirm = useCallback(async (): Promise<void> => {
     if (!signature) return;
     setSubmitError(null);
@@ -184,7 +155,6 @@ export function TransferModal({
     }
   }, [buildInput, confirm, handleTransferred, setOpen, signature]);
 
-  // Back to form phase; clears prepared proof.
   const onEdit = useCallback((): void => {
     reset();
     setSubmitError(null);
