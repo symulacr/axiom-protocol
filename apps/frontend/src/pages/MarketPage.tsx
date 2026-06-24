@@ -3,7 +3,7 @@
 // Real-time market dashboard: compute providers (polled every 30 s via
 // `useProviders`) and recent transfers (one-shot fetch on mount).
 
-import { ARISTOTLE_CHAIN_ID } from "@axiom/config/networks";
+import { resolveBlockExplorerUrl } from "@axiom/config/networks";
 import type { ReactElement } from 'react';
 import { useEffect, useState } from 'react';
 import { useChainId } from 'wagmi';
@@ -45,10 +45,7 @@ const transferRowStyle: React.CSSProperties = {
 
 export function MarketPage(): ReactElement {
   const chainId = useChainId();
-  const explorerBase =
-    chainId === ARISTOTLE_CHAIN_ID
-      ? 'https://chainscan.0g.ai'
-      : 'https://chainscan-galileo.0g.ai';
+  const explorerBase = resolveBlockExplorerUrl(chainId);
 
   const {
     providers,
