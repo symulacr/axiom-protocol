@@ -10,9 +10,12 @@ export function truncateHex(value: string, head = 10, tail = 6): string {
   return `${value.slice(0, head)}${ELLIPSIS}${value.slice(-tail)}`;
 }
 
-/** Shorten 0x-prefixed address for inline display. */
-export function shortAddr(value: string | undefined): string {
-  if (value === undefined || value === '') return PLACEHOLDER;
-  if (value.length <= 10) return value;
-  return `${value.slice(0, 6)}${ELLIPSIS}${value.slice(-4)}`;
+/** Parse a token ID string from URL params. Returns null for invalid input. */
+export function parseTokenId(raw: string | undefined): bigint | null {
+  if (raw === undefined || raw === '') return null;
+  try {
+    return BigInt(raw);
+  } catch {
+    return null;
+  }
 }

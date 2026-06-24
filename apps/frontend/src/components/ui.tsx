@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
+import { useAccount } from 'wagmi';
 import type {
   ButtonHTMLAttributes,
   CSSProperties,
@@ -12,8 +13,7 @@ export const COLORS = {
   // Backgrounds
   bg: '#0f0f0f',
   surface: '#1a1a1a',
-  surfaceHover: '#222222',
-  elevated: '#1e1e1e',
+
 
   // Borders
   border: '#2a2a2a',
@@ -28,7 +28,7 @@ export const COLORS = {
   // Accent — warm bronze / muted gold
   bronze: '#b8976e',
   bronzeLight: '#c5a880',
-  bronzeDim: '#8a7050',
+
   bronzeBg: 'rgba(184, 151, 110, 0.08)',
   bronzeBorder: 'rgba(184, 151, 110, 0.25)',
 
@@ -43,8 +43,7 @@ export const COLORS = {
   warningBg: 'rgba(197, 162, 90, 0.08)',
   warningBorder: 'rgba(197, 162, 90, 0.2)',
 
-  // Links
-  link: '#c5a880',
+
 } as const;
 
 // Shared transitions
@@ -398,6 +397,20 @@ export function Modal({ open, onClose, title, children, style }: ModalProps): Re
       {children}
     </dialog>
   );
+}
+
+export function ConnectedGuard({ children }: { children: React.ReactNode }): React.ReactElement | null {
+  const { isConnected } = useAccount();
+  if (!isConnected) {
+    return (
+      <Card style={{ textAlign: 'center', padding: 'var(--space-3xl) var(--space-xl)' }}>
+        <p style={{ color: COLORS.textMuted, fontSize: 'var(--text-sm)', margin: 0, fontWeight: 'var(--fw-regular)', lineHeight: 'var(--lh-normal)' }}>
+          Connect your wallet to view this content.
+        </p>
+      </Card>
+    );
+  }
+  return <>{children}</>;
 }
 
 

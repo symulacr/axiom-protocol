@@ -37,6 +37,7 @@ export function useEventStream(
     if (!enabled) return;
 
     // Build WS URL with topic params
+    // Topic supports wildcards: 'tick.*' subscribes to all tick topics.
     const scheme = BACKEND_URL.startsWith('https://') ? 'wss' : 'ws';
     const url = new URL(BACKEND_URL.replace(/^https?:\/\//, `${scheme}://`) + '/v1/stream');
     for (const t of topics) {
@@ -67,6 +68,7 @@ export function useEventStream(
             eventName: data.topic,
             payload: data.payload ?? {},
             receivedAt: data.ts ?? Date.now(),
+            timestamp: data.ts ?? Date.now(),
           };
 
           setEvents(prev => {

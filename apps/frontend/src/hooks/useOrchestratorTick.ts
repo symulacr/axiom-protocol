@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
-import { BACKEND_URL } from '../config/env.js';
 import { useAsyncAction } from './useAsyncAction.js';
+import { apiFetch, STREAM_TIMEOUT } from '../utils/apiFetch.js';
+import { BACKEND_URL } from '../config/env.js';
 
 export type TickRequest = {
   vault: `0x${string}`;
@@ -30,7 +31,7 @@ export type TickResult = {
 
 export type TickStreamOptions = {
   /** Called for each text token received from the SSE stream */
-  onChunk: (token: string) => void;
+  onChunk?: (token: string) => void;
   /** Optional external abort signal */
   signal?: AbortSignal;
 };
@@ -40,30 +41,30 @@ export function useOrchestratorTick(): {
   tickStream: (req: TickRequest, opts: TickStreamOptions) => Promise<TickResult>;
   isLoading: boolean;
   isStreaming: boolean;
+  streamedTokens: string;
+  streamingError: string | null;
   error: Error | null;
+  resetStream: () => void;
 } {
   const { execute, isLoading, error } = useAsyncAction();
   const [isStreaming, setIsStreaming] = useState(false);
+  const [streamedTokens, setStreamedTokens] = useState('');
+  const [streamingError, setStreamingError] = useState<string | null>(null);
+
+  const resetStream = useCallback(() => {
+    setStreamedTokens('');
+    setStreamingError(null);
+  }, []);
 
   const tick = useCallback(
     async (req: TickRequest): Promise<TickResult> => {
       return execute(async (signal) => {
-        const res = await fetch(`${BACKEND_URL}/v1/orchestrator/tick`, {
+        const data = await apiFetch<TickResult>('/v1/orchestrator/tick', {
           method: 'POST',
-          headers: {
-            'content-type': 'application/json',
-            accept: 'application/json',
-          },
           body: JSON.stringify(req),
-          signal: AbortSignal.any([signal, AbortSignal.timeout(30000)]),
+          signal,
+          timeout: 30000,
         });
-        if (!res.ok) {
-          const text = await res.text();
-          throw new Error(
-            `orchestrator tick failed: ${res.status} ${res.statusText} ${text}`,
-          );
-        }
-        const data = (await res.json()) as TickResult;
         return data;
       });
     },
@@ -73,116 +74,86 @@ export function useOrchestratorTick(): {
   const tickStream = useCallback(
     async (req: TickRequest, opts: TickStreamOptions): Promise<TickResult> => {
       setIsStreaming(true);
+      setStreamedTokens('');
+      setStreamingError(null);
+      const onChunk = opts.onChunk ?? (() => {});
       try {
         return await execute(async (signal) => {
-          const signals: AbortSignal[] = [signal, AbortSignal.timeout(120000)];
+          const signals: AbortSignal[] = [signal, AbortSignal.timeout(STREAM_TIMEOUT)];
           if (opts.signal) signals.push(opts.signal);
           const combinedSignal = AbortSignal.any(signals);
 
-          const res = await fetch(`${BACKEND_URL}/v1/orchestrator/tick`, {
-            method: 'POST',
-            headers: {
-              'content-type': 'application/json',
-              accept: 'text/event-stream',
-            },
-            body: JSON.stringify({ ...req, stream: true }),
-            signal: combinedSignal,
-          });
-
-          if (!res.ok) {
-            const text = await res.text();
-            throw new Error(
-              `orchestrator tick stream failed: ${res.status} ${res.statusText} ${text}`,
+          // ---- Primary: WSS streaming ----
+          try {
+            // 1. Make HTTP request to start the tick (returns immediately with streamTopic)
+            const initRes = await apiFetch<{ ok: boolean; streamTopic: string }>(
+              '/v1/orchestrator/tick',
+              {
+                method: 'POST',
+                body: JSON.stringify({ ...req, stream: true }),
+                signal: combinedSignal,
+                timeout: 5000,
+                headers: {
+                  'content-type': 'application/json',
+                  accept: 'application/json',
+                },
+              },
             );
-          }
 
-          const contentType = res.headers.get('content-type') ?? '';
-          if (!contentType.includes('text/event-stream')) {
-            // Non-streaming fallback — parse as JSON
-            const data = (await res.json()) as TickResult;
-            opts.onChunk(data.rawModelOutput);
-            return data;
-          }
+            if (!initRes.ok) throw new Error('Failed to start tick stream');
+            const topic = initRes.streamTopic;
 
-          // Read the response body as a SSE stream
-          const reader = res.body?.getReader();
-          if (!reader) {
-            throw new Error('Response body is not readable');
-          }
+            // 2. Subscribe to WSS for the streaming tokens
+            const scheme = BACKEND_URL.startsWith('https://') ? 'wss' : 'ws';
+            const wsUrl = new URL(
+              BACKEND_URL.replace(/^https?:\/\//, `${scheme}://`) + '/v1/stream',
+            );
+            wsUrl.searchParams.append('topic', topic);
 
-          const decoder = new TextDecoder();
-          let buffer = '';
-          let accumulatedResult: Partial<TickResult> = {};
+            // 3. Return a promise that resolves when the stream completes
+            return await new Promise<TickResult>((resolve, reject) => {
+              const ws = new WebSocket(wsUrl.toString());
+              let accumulatedResult: Partial<TickResult> = {};
 
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            buffer += decoder.decode(value, { stream: true });
-
-            // Split into lines — SSE events are line-oriented
-            const parts = buffer.split('\n');
-            buffer = parts.pop() ?? ''; // keep incomplete trailing part
-
-            for (const line of parts) {
-              const trimmed = line.trim();
-              if (trimmed === '') continue; // blank line (event separator)
-              if (!trimmed.startsWith('data: ')) continue;
-
-              const payload = trimmed.slice(6);
-
-              // Check for the [DONE] sentinel
-              if (payload === '[DONE]') {
-                return accumulatedResult as TickResult;
+              if (combinedSignal) {
+                combinedSignal.addEventListener('abort', () => {
+                  ws.close();
+                  reject(new DOMException('Aborted', 'AbortError'));
+                });
               }
 
-              // Try to parse as JSON
-              try {
-                const parsed = JSON.parse(payload);
+              ws.onmessage = (msg: MessageEvent) => {
+                try {
+                  const data = JSON.parse(msg.data);
+                  if (data.topic !== topic) return;
+                  const payload = data.payload;
 
-                // Extract text content from various SSE event shapes
-                const content =
-                  parsed.choices?.[0]?.delta?.content ??
-                  parsed.choices?.[0]?.text ??
-                  parsed.content ??
-                  parsed.token ??
-                  '';
+                  if (payload.type === 'token') {
+                    onChunk(payload.content);
+                    setStreamedTokens((prev) => prev + payload.content);
+                  } else if (payload.type === 'complete') {
+                    accumulatedResult = { ...payload };
+                    ws.close();
+                    resolve(accumulatedResult as TickResult);
+                  } else if (payload.type === 'error') {
+                    setStreamingError(payload.error);
+                    ws.close();
+                    reject(new Error(payload.error));
+                  }
+                } catch {
+                  /* skip unparseable */
+                }
+              };
 
-                if (content) {
-                  opts.onChunk(content);
-                }
-
-                // Accumulate partial TickResult fields
-                if (parsed.recommendation) {
-                  accumulatedResult.recommendation = parsed.recommendation;
-                }
-                if (parsed.rawModelOutput) {
-                  accumulatedResult.rawModelOutput = parsed.rawModelOutput;
-                }
-                if (parsed.onchain) {
-                  accumulatedResult.onchain = parsed.onchain;
-                }
-                if (parsed.storage) {
-                  accumulatedResult.storage = parsed.storage;
-                }
-                if (parsed.execution !== undefined) {
-                  accumulatedResult.execution = parsed.execution;
-                }
-                if (typeof parsed.durationMs === 'number') {
-                  accumulatedResult.durationMs = parsed.durationMs;
-                }
-              } catch {
-                // Not JSON — forward the raw text as a chunk
-                opts.onChunk(payload);
-              }
-            }
+              ws.onerror = () => {
+                reject(new Error('WebSocket connection failed for tick stream'));
+              };
+            });
+          } catch (err) {
+            throw err;
           }
 
-          // Stream ended without [DONE] sentinel
-          if (Object.keys(accumulatedResult).length > 0) {
-            return accumulatedResult as TickResult;
-          }
-          throw new Error('Stream ended without receiving data');
+
         });
       } finally {
         setIsStreaming(false);
@@ -191,5 +162,5 @@ export function useOrchestratorTick(): {
     [execute],
   );
 
-  return { tick, tickStream, isLoading, isStreaming, error };
+  return { tick, tickStream, isLoading, isStreaming, streamedTokens, streamingError, error, resetStream };
 }

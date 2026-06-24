@@ -1,12 +1,10 @@
 // PaymentPanel — agent payment management.
 
-import { useCallback, useRef, useState, type ReactElement } from 'react';
-import { useAccount, useSendTransaction, useWriteContract } from 'wagmi';
+import { useCallback, useEffect, useState, type ReactElement } from 'react';
+import { useSendTransaction, useWriteContract } from 'wagmi';
 import type { Address } from 'viem';
 
-import {
-  AXIOM_PAYMENT_PROCESSOR_ADDRESS,
-} from '../abi/addresses.js';
+import { getAxiomPaymentProcessorAddress } from '../abi/addresses.js';
 import { PLACEHOLDER, truncateHex } from '../utils/format.js';
 import {
   usePayment,
@@ -22,6 +20,7 @@ import {
   SectionTitle,
   MonoLabel,
   Spinner,
+  ConnectedGuard,
 } from './ui.js';
 
 /**
@@ -55,7 +54,6 @@ export type PaymentPanelProps = {
 };
 
 export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
-  const { isConnected } = useAccount();
   const {
     payForAgent,
     getEarnings,
@@ -86,19 +84,21 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
   const [royaltyStatus, setRoyaltyStatus] = useState<ActionStatus>('idle');
 
   const [withdrawStatus, setWithdrawStatus] = useState<ActionStatus>('idle');
+  const [initError, setInitError] = useState<string | null>(null);
 
-  // Render-time data initialisation — fires once on the first connected
-  // render, no `useEffect` needed.
-  const initRef = useRef(false);
-  if (!initRef.current && isConnected) {
-    initRef.current = true;
+  // Initialise config and earnings once on mount via useEffect.
+  useEffect(() => {
+    setInitError(null);
     Promise.all([getPaymentConfig(), getEarnings(tokenId)])
       .then(([cfg, earn]) => {
         setConfig(cfg);
         setEarnings(earn);
       })
-      .catch(() => {});
-  }
+      .catch(err => {
+        console.error('[PaymentPanel] initialization failed:', err);
+        setInitError(err instanceof Error ? err.message : String(err));
+      });
+  }, []);
 
   const refreshEarnings = useCallback(async (): Promise<void> => {
     try {
@@ -146,7 +146,7 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
     setWithdrawStatus('pending');
     try {
       await writeContractAsync({
-        address: AXIOM_PAYMENT_PROCESSOR_ADDRESS,
+        address: getAxiomPaymentProcessorAddress(),
         abi: PAYMENT_PROCESSOR_FRAGMENT,
         functionName: 'withdrawAgentEarnings',
         args: [],
@@ -158,22 +158,17 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
     }
   }, [writeContractAsync, refreshEarnings]);
 
-  if (!isConnected) {
-    return (
-      <Card>
-        <SectionTitle>Payments</SectionTitle>
-        <p style={{ color: COLORS.textMuted, fontSize: 'var(--text-sm)', lineHeight: 'var(--lh-snug)' }}>
-          Connect wallet to manage payments for this agent.
-        </p>
-      </Card>
-    );
-  }
-
   return (
     <Card>
+      <ConnectedGuard>
       <SectionTitle>Payments</SectionTitle>
 
       {/* 1. Payment config */}
+      {initError !== null && (
+        <Alert variant="error" style={{ marginBottom: 'var(--space-lg)' }}>
+          {initError}
+        </Alert>
+      )}
       <h3>Payment Config</h3>
       {config === null ? (
         <Spinner size={16} />
@@ -300,6 +295,7 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
       {withdrawError !== null && (
         <Alert variant="error">{withdrawError.message}</Alert>
       )}
+      </ConnectedGuard>
     </Card>
   );
 }

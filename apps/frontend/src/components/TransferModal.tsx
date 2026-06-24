@@ -56,7 +56,41 @@ export function TransferModal({
   const formId = useId();
 
   const { address: from, isConnected } = useAccount();
-  const { prepare, confirm, isLoading, error, signature, reset } = useTransfer();
+  const { prepare, confirm, isLoading, error, signature, reset, transferPhase } = useTransfer();
+
+  const PHASE_LABELS: Record<string, string> = {
+    idle: 'Prepare Transfer',
+    challenge: 'Challenge',
+    signing: 'Sign in Wallet',
+    finalizing: 'Finalize',
+    confirming: 'Confirm on-chain',
+  };
+
+  const retryGuidance = useMemo<string | null>(() => {
+    if (!error) return null;
+    const msg = error.message.toLowerCase();
+
+    if (transferPhase === 'challenge') {
+      return 'The challenge request to the oracle failed. The nonce has been consumed — generate a new nonce and try again.';
+    }
+    if (transferPhase === 'signing') {
+      return 'The wallet signature was rejected or failed. The nonce has been consumed — click "Edit" to restart from the beginning.';
+    }
+    if (transferPhase === 'finalizing') {
+      return 'Finalization with the oracle failed. The transaction was NOT submitted. Generate a new nonce and restart.';
+    }
+    if (transferPhase === 'confirming') {
+      return 'The on-chain transaction failed. Click "Edit" to restart the flow with a fresh nonce.';
+    }
+
+    if (msg.includes('challenge')) {
+      return 'The challenge request failed. Generate a new nonce and try again.';
+    }
+    if (msg.includes('final') || msg.includes('proof struct')) {
+      return 'Finalization failed. The transaction was NOT submitted. Click "Prepare Transfer" to restart.';
+    }
+    return 'Something went wrong. Click the appropriate button to restart from the beginning with a fresh nonce.';
+  }, [error, transferPhase]);
 
   const [receiverAddress, setReceiverAddress] = useState('');
   const [receiverPubKey, setReceiverPubKey] = useState('');
@@ -209,6 +243,52 @@ export function TransferModal({
         onClose={cancel}
         title={`Transfer iNFT #${tokenId.toString()}`}
       >
+        {/* Phase indicator */}
+        <div
+          style={{
+            marginBottom: 16,
+            display: 'flex',
+            gap: 6,
+            alignItems: 'center',
+            fontSize: 12,
+            fontWeight: 500,
+          }}
+        >
+          {(['idle', 'challenge', 'signing', 'finalizing', 'confirming'] as const).map((p, i, arr) => (
+            <span
+              key={p}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                color:
+                  transferPhase === p
+                    ? COLORS.bronzeLight
+                    : arr.indexOf(transferPhase) > i
+                      ? COLORS.textMuted
+                      : COLORS.textDim,
+              }}
+            >
+              {i > 0 && (
+                <span style={{ color: COLORS.textDim, fontSize: 10 }}>→</span>
+              )}
+              <span
+                style={{
+                  background:
+                    transferPhase === p
+                      ? 'rgba(191, 144, 86, 0.12)'
+                      : 'transparent',
+                  padding: '2px 8px',
+                  borderRadius: 4,
+                  fontWeight: transferPhase === p ? 600 : 400,
+                }}
+              >
+                {PHASE_LABELS[p]}
+              </span>
+            </span>
+          ))}
+        </div>
+
         {phase === 'form' ? (
           <form onSubmit={onSubmit}>
 
@@ -322,6 +402,11 @@ export function TransferModal({
                 {error.message}
               </Alert>
             )}
+            {retryGuidance !== null && (
+              <Alert variant="warning" style={{ marginTop: 8 }}>
+                {retryGuidance}
+              </Alert>
+            )}
             {submitError !== null && (
               <Alert variant="error" style={{ marginTop: 12 }}>
                 {submitError}
@@ -394,6 +479,11 @@ export function TransferModal({
             {error !== null && (
               <Alert variant="error" style={{ marginTop: 16 }}>
                 {error.message}
+              </Alert>
+            )}
+            {retryGuidance !== null && (
+              <Alert variant="warning" style={{ marginTop: 8 }}>
+                {retryGuidance}
               </Alert>
             )}
             {submitError !== null && (

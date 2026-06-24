@@ -1,5 +1,6 @@
 import type { ReactElement, ReactNode } from 'react';
 import type { AxiomEvent } from '../hooks/useEventHistory.js';
+import { COLORS } from './ui.js';
 
 export type EventRenderer = (
   event: AxiomEvent,
@@ -49,7 +50,7 @@ const railCellStyle: React.CSSProperties = {
   position: 'relative',
   paddingLeft: '12px',
   fontVariantNumeric: 'tabular-nums',
-  color: '#8a8a8a',
+  color: COLORS.textMuted,
   fontSize: '0.875rem',
   lineHeight: 1.4,
 };
@@ -60,7 +61,7 @@ const railBeforeStyle: React.CSSProperties = {
   top: '0.5rem',
   bottom: 0,
   width: '2px',
-  background: '#2a2a2a',
+  background: COLORS.border,
   content: '""',
 };
 
@@ -71,22 +72,22 @@ const railDotStyle: React.CSSProperties = {
   width: '8px',
   height: '8px',
   borderRadius: '50%',
-  background: '#b8976e',
+  background: COLORS.bronze,
 };
 
 const bodyCellStyle: React.CSSProperties = {
   paddingBottom: '8px',
-  borderBottom: '1px solid #2a2a2a',
+  borderBottom: `1px solid ${COLORS.border}`,
   fontSize: '0.9375rem',
   lineHeight: 1.5,
-  color: '#e5e5e5',
+  color: COLORS.textPrimary,
 };
 
 const emptyStateStyle: React.CSSProperties = {
   gridColumn: '1 / -1',
   padding: '16px',
   textAlign: 'center',
-  color: '#6a6a6a',
+  color: COLORS.textDim,
   fontStyle: 'italic',
 };
 
@@ -149,8 +150,8 @@ function EventRow({ event, timestamp, renderEvent }: EventRowProps): ReactElemen
         <span style={railBeforeStyle} aria-hidden="true" />
         <span style={railDotStyle} aria-hidden="true" />
         <div>{timestamp}</div>
-        <div style={{ fontWeight: 600, color: '#e5e5e5' }}>{event.eventName}</div>
-        <div style={{ fontSize: '0.75rem', color: '#6a6a6a' }}>
+        <div style={{ fontWeight: 600, color: COLORS.textPrimary }}>{event.eventName}</div>
+        <div style={{ fontSize: '0.75rem', color: COLORS.textDim }}>
           block {event.blockNumber} · log {event.logIndex}
         </div>
       </div>

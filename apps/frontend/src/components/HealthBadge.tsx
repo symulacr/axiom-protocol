@@ -1,20 +1,13 @@
-import { useEffect, useState, type ReactElement } from 'react';
+import { useCallback, useState, type ReactElement } from 'react';
+import { apiFetch } from '../utils/apiFetch.js';
+import { usePoll } from '../hooks/usePoll.js';
 import { BACKEND_URL } from '../config/env.js';
 
 type HealthStatus = 'unknown' | 'ok' | 'down';
 
-const POLL_INTERVAL_MS = 30_000;
-const REQUEST_TIMEOUT_MS = 5_000;
-
 async function checkHealth(signal: AbortSignal): Promise<boolean> {
   try {
-    const res = await fetch(`${BACKEND_URL}/health`, {
-      method: 'GET',
-      headers: { accept: 'application/json' },
-      signal,
-    });
-    if (!res.ok) return false;
-    const data = (await res.json()) as { ok?: unknown };
+    const data = await apiFetch<{ ok?: unknown }>('/health', { signal, timeout: 5000 });
     return data?.ok === true;
   } catch {
     return false;
@@ -24,39 +17,18 @@ async function checkHealth(signal: AbortSignal): Promise<boolean> {
 export function HealthBadge(): ReactElement {
   const [status, setStatus] = useState<HealthStatus>('unknown');
 
-  useEffect(() => {
-    let cancelled = false;
-
-    let controller: AbortController | undefined;
-
-    const tick = (): void => {
-      controller?.abort();
-      controller = new AbortController();
-      const timeoutId = setTimeout(
-        () => controller?.abort(),
-        REQUEST_TIMEOUT_MS,
-      );
-      checkHealth(controller.signal)
-        .then((ok) => {
-          if (cancelled) return;
-          setStatus(ok ? 'ok' : 'down');
-        })
-        .catch(() => {
-          if (cancelled) return;
-          setStatus('down');
-        })
-        .finally(() => clearTimeout(timeoutId));
-    };
-
-    tick();
-    const intervalId = setInterval(tick, POLL_INTERVAL_MS);
-
-    return () => {
-      cancelled = true;
-      clearInterval(intervalId);
-      controller?.abort();
-    };
+  const handleResult = useCallback((ok: boolean) => {
+    setStatus(ok ? 'ok' : 'down');
   }, []);
+
+  const handleError = useCallback(() => {
+    setStatus('down');
+  }, []);
+
+  usePoll(checkHealth, handleResult, handleError, {
+    intervalMs: 30000,
+    enabled: true,
+  });
 
   const color =
     status === 'ok' ? '#6b9e6b' : status === 'down' ? '#c85a5a' : '#6a6a6a';

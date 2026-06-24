@@ -6,7 +6,6 @@ export interface OGNetwork {
   readonly storageRpc: string;
   readonly flowContract: `0x${string}`;
 
-  // ── Network config enrichment (Wave 1B) ──
   readonly computeRouterUrl: string;
   readonly computeDirectProxyUrl: string;
   readonly daGrpcUrl: string;
@@ -68,38 +67,8 @@ export function resolveStorageRpc(chainId?: number): string {
   return network?.storageRpc ?? "https://indexer-storage-testnet-turbo.0g.ai";
 }
 
-/** Resolve Compute Router URL from env or network default. */
-export function resolveComputeRouterUrl(chainId?: number): string {
-  const varVal = process.env.AXIOM_COMPUTE_BASE_URL || process.env.OG_COMPUTE_BASE_URL;
-  if (varVal) return varVal;
-  const network = chainId ? pickOGNetwork(chainId) : null;
-  return network?.computeRouterUrl ?? "https://router-api-testnet.integratenetwork.work/v1";
-}
-
-/** Resolve Compute Direct Proxy URL from env or network default. */
-export function resolveComputeDirectProxyUrl(chainId?: number): string {
-  const varVal = process.env.AXIOM_COMPUTE_DIRECT_BASE_URL;
-  if (varVal) return varVal;
-  const network = chainId ? pickOGNetwork(chainId) : null;
-  return network?.computeDirectProxyUrl ?? "https://compute-network-6.integratenetwork.work/v1/proxy";
-}
-
-/** Resolve DA gRPC URL from env or network default. */
-export function resolveDaGrpcUrl(chainId?: number): string {
-  const varVal = process.env.DA_GRPC_URL || process.env.OG_DA_GRPC_URL;
-  if (varVal) return varVal;
-  const network = chainId ? pickOGNetwork(chainId) : null;
-  return network?.daGrpcUrl ?? "dgrpc-testnet.0g.ai:9090";
-}
-
 /** Resolve block explorer URL. */
 export function resolveBlockExplorerUrl(chainId?: number): string {
   const network = chainId ? pickOGNetwork(chainId) : null;
   return network?.blockExplorer ?? "https://chainscan-galileo.0g.ai";
-}
-
-/** Resolve block explorer API URL. */
-export function resolveExplorerApiUrl(chainId?: number): string {
-  const network = chainId ? pickOGNetwork(chainId) : null;
-  return network?.explorerApiUrl ?? "https://chainscan-galileo.0g.ai/api";
 }

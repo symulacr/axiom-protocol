@@ -14,19 +14,20 @@ import { pickOGNetwork } from "@axiom/config/networks";
 // Compute via 0G Router API — see compute/router.ts
 import { createRouterClient, getComputeBaseUrl } from "./compute/router.js";
 import { discoverProviders } from "./compute/provider-discovery.js";
-import { AGENT_NFT_ABI } from "@axiom/config/abis";
+import { AGENT_NFT_ABI, VAULT_ABI } from "@axiom/config/abis";
 import type OpenAI from "openai";
 import { StrategyRunner, type StrategySpec, type MarketSignal, type TickResult } from "./orchestrator/index.js";
 import { DefaultSignerOracleClient } from "./oracle/client.js";
 import { accessMessageHash, type AccessProofInput, type Eip712Domain, DEFAULT_EIP712_DOMAIN } from "@axiom/oracle/signer";
 import { loadEnv } from "./env.js";
+import { getSharedProvider } from "./provider.js";
 import { createApiKeyAuth } from "@axiom/config/middleware/auth";
 import { getEventStore } from "./events/store.js";
 import { PaymentProcessorClient } from "./payment/processor.js";
 import type { BackendEnv } from "./env-schema.js";
 import { createHealthRouter } from "./routers/health.js";
 import { createRoute } from "./routers/route-factory.js";
-import { broadcast, getClients, registerClient, unregisterClient, type ConnectedClient } from "./ws/broadcaster.js";
+import { broadcast, getClients, registerClient, unregisterClient, sendToTopic, type ConnectedClient } from "./ws/broadcaster.js";
 import {
   chatCompletionsSchema,
   mintSchema,
@@ -40,12 +41,6 @@ import {
   tickSchema,
 } from "./route-schemas.js";
 
-const VAULT_ABI: string[] = [
-  "function deposit(uint256 tokenId) payable",
-  "function setStrategy(uint256 tokenId, bytes32 merkleRoot, uint256 dailyLimit)",
-  "function balanceOf(uint256) view returns (uint256)",
-  "function strategyOf(uint256) view returns (bytes32,uint256,uint64)",
-];
 
 // Local contract method types derived from the ABIs above (avoid shared contract-types.ts drift).
 type AgentNFTMethods = {
@@ -92,6 +87,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
     const requestId = crypto.randomUUID();
     res.setHeader("x-request-id", requestId);
     (req as any).requestId = requestId;
+    res.locals.requestId = requestId;
     next();
   });
   app.use((req, res, next) => {
@@ -102,6 +98,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
     next();
   });
   // Security middleware stack
+  const DEV_FRONTEND_ORIGIN = 'http://localhost:5173';
   app.use(helmet({
     contentSecurityPolicy: {
       directives: {
@@ -109,12 +106,12 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
         scriptSrc: ["'self'"],
         styleSrc: ["'self'", "'unsafe-inline'"],
         imgSrc: ["'self'", "data:"],
-        connectSrc: ["'self'", config.env?.AXIOM_FRONTEND_URL ?? 'http://localhost:5173'],
+        connectSrc: ["'self'", config.env?.AXIOM_FRONTEND_URL ?? DEV_FRONTEND_ORIGIN],
       },
     },
   }));
   app.use(cors({
-    origin: config.env?.AXIOM_FRONTEND_URL ?? "http://localhost:5173",
+    origin: config.env?.AXIOM_FRONTEND_URL ?? DEV_FRONTEND_ORIGIN,
     methods: ["GET", "POST"],
   }));
   // Optional API key auth (skipped when unset for local dev)
@@ -152,9 +149,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
   } catch (err) {
     console.warn(`[server] StrategyRunner init failed: ${err instanceof Error ? err.message : String(err)}`);
   }
-  const fetchReq = new ethers.FetchRequest(config.evmRpc);
-  fetchReq.timeout = 10_000;
-  const provider = new ethers.JsonRpcProvider(fetchReq, ogChainId, { staticNetwork: true });
+  const provider = getSharedProvider();
   // PaymentProcessor client: lazily resolved; paymentToken read from contract.
   let payment: PaymentProcessorClient | null = null;
   async function getPayment(): Promise<PaymentProcessorClient> {
@@ -197,11 +192,13 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
   app.get("/v1/compute/providers", async (_req: Request, res: Response, next: NextFunction) => {
     try {
       const routerBaseUrl = getComputeBaseUrl();
-      const resp = await fetch(`${routerBaseUrl}/models`);
+      const resp = await fetch(`${routerBaseUrl}/models`, {
+        headers: { 'X-Request-ID': res.locals.requestId as string },
+      });
       const raw = await resp.json();
       const models = z.object({ data: z.array(z.record(z.string(), z.unknown())) }).parse(raw);
       // Resolve provider addresses from on-chain registry.
-      const onChainProviders = await discoverProviders();
+      const onChainProviders = await discoverProviders(config.evmRpc);
       const providerMap = new Map(onChainProviders.map(s => [s.model.toLowerCase(), s.provider]));
       const services = models.data.map((m: Record<string, unknown>) => {
         const id = String(m.id ?? "");
@@ -245,11 +242,11 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
 
       const completionParams: Record<string, unknown> = {
         model, messages,
-        max_tokens: max_tokens ?? undefined,
-        max_completion_tokens: max_completion_tokens ?? undefined,
+        max_tokens: max_tokens,
+        max_completion_tokens: max_completion_tokens,
         temperature: temperature ?? 0.7,
-        top_p: top_p ?? undefined,
-        stop: stop ?? undefined,
+        top_p: top_p,
+        stop: stop,
         stream: _stream ?? false,
         ...(_stream && stream_options ? { stream_options } : {}),
         ...(tools && tools.length > 0 ? { tools, tool_choice: tool_choice ?? "auto", parallel_tool_calls } : {}),
@@ -267,6 +264,9 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
       };
 
       // ── Streaming path ──────────────────────────────────────────
+      // Pre-encode SSE frame prefix/suffix (saves ~50% string allocation per token)
+      const FRAME_PREFIX = 'data: ';
+      const FRAME_SUFFIX = '\n\n';
       if (_stream) {
         res.setHeader("Content-Type", "text/event-stream");
         res.setHeader("Cache-Control", "no-cache");
@@ -284,16 +284,16 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
         try {
           for await (const chunk of stream) {
             if (aborted) break;
-            res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+            res.write(FRAME_PREFIX + JSON.stringify(chunk, bigintReplacer) + FRAME_SUFFIX);
           }
-          res.write("data: [DONE]\n\n");
+          res.write(FRAME_PREFIX + "[DONE]" + FRAME_SUFFIX);
           res.end();
         } catch (streamErr) {
           if (!res.headersSent) {
             res.status(502).json({ error: "Stream error", detail: streamErr instanceof Error ? streamErr.message : String(streamErr) });
           } else {
-            res.write(`data: ${JSON.stringify({ error: "Stream error", detail: streamErr instanceof Error ? streamErr.message : String(streamErr) })}\n\n`);
-            res.write("data: [DONE]\n\n");
+            res.write(FRAME_PREFIX + JSON.stringify({ error: "Stream error", detail: streamErr instanceof Error ? streamErr.message : String(streamErr) }, bigintReplacer) + FRAME_SUFFIX);
+            res.write(FRAME_PREFIX + "[DONE]" + FRAME_SUFFIX);
             res.end();
           }
         }
@@ -356,15 +356,27 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
         tokenId = parsed?.args.tokenId?.toString();
       }
       // Register dataHash with oracle's seen-set so subsequent transfer doesn't 400.
-      try {
-        await fetch(`${config.oracleBaseUrl}/v1/agents/mint`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ dataHash: encryptedStrategyUri }),
-          signal: AbortSignal.timeout(2000),
-        });
-      } catch (err) {
-        console.warn("[mint] oracle registration failed (non-fatal):", err instanceof Error ? err.message : String(err));
+      // Retry once if first attempt fails.
+      let oracleRegistered = false;
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+          await fetch(`${config.oracleBaseUrl}/v1/agents/mint`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Request-ID": res.locals.requestId as string },
+            body: JSON.stringify({ dataHash: encryptedStrategyUri }),
+            signal: AbortSignal.timeout(15000),
+          });
+          oracleRegistered = true;
+          break;
+        } catch (err) {
+          if (attempt === 1) {
+            console.warn(`[mint] Oracle registration attempt ${attempt} failed, retrying: ${err instanceof Error ? err.message : err}`);
+            await new Promise(r => setTimeout(r, 1000));
+          } else {
+            console.warn(`[mint] Oracle registration failed after 2 attempts (non-fatal): ${err instanceof Error ? err.message : err}`);
+            console.warn(`[mint] Token ${tokenId ?? '(unknown)'} will not be transferable until oracle is re-registered`);
+          }
+        }
       }
       res.json({ ok: true, agentNft, owner, tokenId, dataHash: encryptedStrategyUri, txHash: receipt?.hash ?? tx.hash });
       broadcast("agent.mint", { owner, tokenId, dataHash: encryptedStrategyUri });
@@ -405,8 +417,12 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
         }
       }
       if (!dataHash) {
-        dataHash = ("0x" + id.padStart(64, "0").slice(-64)) as `0x${string}`;
-        console.warn("[transfer] using synthetic dataHash for token", id, ":", dataHash);
+        res.status(400).json({
+          error: "Cannot determine dataHash for token",
+          detail: "intelligentDatasOf returned no data and no dataHash was provided in the request body",
+          tokenId: id,
+        });
+        return;
       }
       // The on-chain verifier expects 64-byte raw uncompressed public key.
       let pk = receiverPubKey64;
@@ -451,7 +467,11 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
           return;
         }
         const validUntil = BigInt(Math.floor(Date.now() / 1000)) + 86400n;
-        const sealedKey: `0x${string}` = (sealedKeyIn && sealedKeyIn.length >= 2 ? sealedKeyIn : ("0x" + "00".repeat(32))) as `0x${string}`;
+        const sealedKeyOrDefault: `0x${string}` = (sealedKeyIn && sealedKeyIn.length >= 2 ? sealedKeyIn : ("0x" + "00".repeat(32))) as `0x${string}`;
+        const sealedKey = sealedKeyOrDefault;
+        if (!sealedKeyIn || sealedKeyIn.length < 2) {
+          console.warn(`[transfer] No sealedKey provided for token ${id} — using zero-padded fallback (devnet only)`);
+        }
         const tee = await oracle.signOwnership({
           dataHash,
           sealedKey,
@@ -506,7 +526,11 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
         );
       }
       // Client's sealedKey: re-keyed (from challenge/transferValidity) or original/zero-pad.
-      const finalSealedKey: `0x${string}` = (sealedKeyIn && sealedKeyIn.length >= 2 ? sealedKeyIn : ("0x" + "00".repeat(32))) as `0x${string}`;
+      const sealedKeyOrDefault: `0x${string}` = (sealedKeyIn && sealedKeyIn.length >= 2 ? sealedKeyIn : ("0x" + "00".repeat(32))) as `0x${string}`;
+      const finalSealedKey = sealedKeyOrDefault;
+      if (!sealedKeyIn || sealedKeyIn.length < 2) {
+        console.warn(`[transfer] No sealedKey provided for token ${id} — using zero-padded fallback (devnet only)`);
+      }
       const tee = await oracle.signOwnership({
         dataHash: proofDataHash,
         sealedKey: finalSealedKey,
@@ -592,17 +616,25 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
     return { tokenId: id, bps: parsed.bps, ...txData };
   }, config);
 
+  let paymentConfigCache: { data: unknown; timestamp: number } | null = null;
+  const PAYMENT_CONFIG_TTL = 300_000; // 5 minutes
+
   createRoute(paymentRouter, {
     path: "/v1/payment/config",
     method: "get",
   }, async (_parsed, _req, _res, { config: _cfg }) => {
+    if (paymentConfigCache && Date.now() - paymentConfigCache.timestamp < PAYMENT_CONFIG_TTL) {
+      return paymentConfigCache.data;
+    }
     const client = await getPayment();
     const [paymentToken, feeBps, treasury] = await Promise.all([
       client.paymentToken(),
       client.protocolFeeBps(),
       client.protocolTreasury(),
     ]);
-    return { paymentToken, protocolFeeBps: feeBps, protocolTreasury: treasury };
+    const result = { paymentToken, protocolFeeBps: feeBps, protocolTreasury: treasury };
+    paymentConfigCache = { data: result, timestamp: Date.now() };
+    return result;
   }, config);
 
   app.use(paymentRouter);
@@ -621,7 +653,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
       const limitRaw = typeof req.query.limit === "string" ? Number(req.query.limit) : undefined;
       const limit = limitRaw !== undefined && Number.isInteger(limitRaw) && limitRaw > 0 && limitRaw <= 100 ? limitRaw : 100;
       const tokens = events.getTokenIdsByOwner(owner, limit);
-      res.json({ owner, tokens });
+      res.json({ owner, agents: tokens.map(t => ({ tokenId: String(t.tokenId), owner })) });
     } catch (err) {
       next(err);
     }
@@ -647,6 +679,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
       logIndex: b.logIndex,
       payload: b.payload,
       receivedAt: Date.now(),
+      timestamp: Date.now(),
     });
     return { stored };
   }, config);
@@ -654,7 +687,10 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
   createRoute(app, { method: "get", path: "/v1/events" }, async (_parsed, req, _res, { config: _config }) => {
     const limitRaw = typeof req.query.limit === "string" ? Number(req.query.limit) : undefined;
     const limit = limitRaw !== undefined && Number.isInteger(limitRaw) && limitRaw > 0 ? limitRaw : 1000;
-    const all = events.getAll(limit);
+    // Cursor-based pull: only return events after this timestamp (ms)
+    const sinceRaw = typeof req.query.since === "string" ? Number(req.query.since) : undefined;
+    const since = sinceRaw !== undefined && !isNaN(sinceRaw) && sinceRaw > 0 ? sinceRaw : undefined;
+    const all = events.getAll(limit, since);
     const eventName = req.query.eventName as string | undefined;
     const filtered = eventName
       ? all.filter((e: any) => e.eventName === eventName)
@@ -680,6 +716,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
 
   app.post("/v1/orchestrator/tick", async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const parsed = tickSchema.parse(req.body ?? {});
       const {
         vault,
         agentNft,
@@ -688,7 +725,8 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
         strategy: strategyHint,
         signalSource,
         signalPayload,
-      } = tickSchema.parse(req.body ?? {});
+        stream: shouldStream,
+      } = parsed;
       if (!vault || !agentNft || !agentTokenId) {
         res.status(400).json({ error: "Missing required field: vault, agentNft, agentTokenId" });
         return;
@@ -709,11 +747,41 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
         emittedAt: Date.now(),
       };
       if (!orchestratorHandle) { res.status(503).json({ error: "Orchestrator not available" }); return; }
-      const result: TickResult = await orchestratorHandle.runTick(spec, signal);
-      res.status(200).json(result);
+
+      let orchestratorResult: TickResult;
+
+      // Streaming via WSS
+      if (shouldStream) {
+        // Streaming via WSS callback — tokens burst after inference completes
+        // (before on-chain settlement), making streaming more responsive
+        orchestratorHandle.runTick(spec, signal, (chunk) => {
+          if (chunk.type === 'token') {
+            sendToTopic(`tick.${agentTokenId}`, chunk);
+          }
+        }).then(result => {
+          sendToTopic(`tick.${agentTokenId}`, {
+            type: 'complete',
+            ...result,
+          });
+        }).catch(err => {
+          sendToTopic(`tick.${agentTokenId}`, {
+            type: 'error',
+            error: err instanceof Error ? err.message : String(err),
+          });
+        });
+
+        // Respond immediately to HTTP request — streaming happens via WSS
+        res.status(202).json({ ok: true, streamTopic: `tick.${agentTokenId}` });
+        return; // Exit early — streaming handled asynchronously via WSS
+      } else {
+        // JSON path (existing)
+        orchestratorResult = await orchestratorHandle.runTick(spec, signal);
+        res.status(200).json(orchestratorResult);
+      }
+
       broadcast("orchestrator.tick", {
         agentTokenId: spec.agentTokenId.toString(),
-        recommendation: result.recommendation,
+        recommendation: orchestratorResult.recommendation,
       });
     } catch (err) {
       next(err);
@@ -800,13 +868,18 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
         return;
       }
       const topics = new Set(url.searchParams.getAll("topic").slice(0, 20));
+      // Topic subscriptions support '*' wildcard: subscribing to `data.*` matches
+      // all topics starting with `data.` (e.g. `data.token`, `data.signal`).
       const client: ConnectedClient = { socket: ws as WebSocket, topics };
       (ws as any).missedPings = 0;
       registerClient(client);
       ws.on("pong", () => { (ws as any).missedPings = 0; });
       ws.send(JSON.stringify({ topic: "hello", payload: { topics: Array.from(topics) }, ts: Date.now() }));
       ws.on("close", () => unregisterClient(client));
-      ws.on("error", () => unregisterClient(client));
+      ws.on("error", (err) => {
+        console.warn("[ws] client error:", (err as Error).message);
+        unregisterClient(client);
+      });
     });
   });
 

@@ -2,12 +2,12 @@ import { useCallback, useState } from 'react';
 import { useAccount, useSignTypedData, useWriteContract } from 'wagmi';
 import { type Address, type Hex } from 'viem';
 
-import { AXIOM_AGENT_NFT_ADDRESS } from '../abi/addresses.js';
+import { getAxiomAgentNftAddress } from '../abi/addresses.js';
 import { iTransferFromAbi } from '../abi/iTransferFrom.js';
-import { BACKEND_URL } from '../config/env.js';
 
 import { useAsyncAction } from './useAsyncAction.js';
-import { EIP712_DOMAIN, ACCESS_PROOF_TYPES } from '../abi/eip712.js';
+import { useEip712Domain, ACCESS_PROOF_TYPES } from '../abi/eip712.js';
+import { apiFetch, LONG_TIMEOUT } from '../utils/apiFetch.js';
 
 export type TransferInput = {
   tokenId: bigint;
@@ -59,6 +59,8 @@ export type TransferResponse = {
   ownershipProof?: OwnershipProofStruct;
 };
 
+export type TransferPhase = 'idle' | 'challenge' | 'signing' | 'finalizing' | 'confirming';
+
 export type UseTransferResult = {
   prepare: (input: TransferInput) => Promise<TransferResponse>;
   confirm: (input: TransferInput) => Promise<Hex>;
@@ -67,6 +69,7 @@ export type UseTransferResult = {
   error: Error | null;
   signature: TransferResponse | null;
   reset: () => void;
+  transferPhase: TransferPhase;
 };
 
 export function useTransfer(): UseTransferResult {
@@ -74,8 +77,10 @@ export function useTransfer(): UseTransferResult {
   const { signTypedDataAsync } = useSignTypedData();
   const { writeContractAsync, isPending: isWritePending, error: writeError, reset: resetWrite } =
     useWriteContract();
+  const { domain } = useEip712Domain();
 
   const [signature, setSignature] = useState<TransferResponse | null>(null);
+  const [transferPhase, setTransferPhase] = useState<TransferPhase>('idle');
   const { execute, isLoading: actionLoading, error: actionError, reset: resetAction } =
     useAsyncAction();
 
@@ -91,7 +96,9 @@ export function useTransfer(): UseTransferResult {
       }
 
       return execute(async (signal) => {
-        const url = `${BACKEND_URL}/v1/agents/${input.tokenId.toString()}/transfer`;
+        const path = `/v1/agents/${input.tokenId.toString()}/transfer`;
+
+        setTransferPhase('challenge');
 
         // Step 1 — challenge (backend returns proof params).
         const challengeBody: Record<string, unknown> = {
@@ -103,24 +110,20 @@ export function useTransfer(): UseTransferResult {
           challengeBody.oldDataEncryptionKey = input.oldDataEncryptionKey;
           challengeBody.oldDataUri = input.oldDataUri;
         }
-        const challengeRes = await fetch(url, {
+        // Show user-facing warning if challenge phase takes > 30s
+        const challengeWarnTimer = setTimeout(() => {
+          console.warn('[transfer] Challenge phase is taking longer than expected. The oracle may be processing.');
+        }, 30000);
+
+        const challenge = await apiFetch<TransferResponse>(path, {
           method: 'POST',
-          headers: {
-            'content-type': 'application/json',
-            accept: 'application/json',
-          },
           body: JSON.stringify(challengeBody),
-          signal: AbortSignal.any([signal, AbortSignal.timeout(15000)]),
+          signal,
+          timeout: LONG_TIMEOUT,
         });
-        if (!challengeRes.ok) {
-          const text = await challengeRes.text();
-          throw new Error(
-            `transfer challenge failed: ${challengeRes.status} ${challengeRes.statusText} ${text}`,
-          );
-        }
-        const challenge = (await challengeRes.json()) as TransferResponse;
+        clearTimeout(challengeWarnTimer);
         if (!challenge.ok || challenge.stage !== 'challenge') {
-          throw new Error('backend did not return a transfer challenge');
+          throw new Error('backend did not return a transfer challenge. Challenge failed — generate a new nonce and try again.');
         }
         if (
           !challenge.dataHash ||
@@ -128,8 +131,10 @@ export function useTransfer(): UseTransferResult {
           challenge.accessProofNonce === undefined ||
           challenge.validUntil === undefined
         ) {
-          throw new Error('incomplete transfer challenge from backend');
+          throw new Error('incomplete transfer challenge from backend — generate a new nonce and start over');
         }
+
+        setTransferPhase('signing');
 
         // Step 2 — receiver signs EIP-712 AccessProof.
         const nonce = BigInt(challenge.accessProofNonce);
@@ -138,28 +143,32 @@ export function useTransfer(): UseTransferResult {
           ? challenge.newDataHash
           : challenge.dataHash;
         const accessSignature = await signTypedDataAsync({
-          domain: EIP712_DOMAIN,
+          domain,
           types: ACCESS_PROOF_TYPES,
           primaryType: 'AccessProof',
           message: {
             dataHash: proofDataHash,
             targetPubkey: challenge.targetPubkey,
             to: input.to,
-            nft: AXIOM_AGENT_NFT_ADDRESS,
+            nft: getAxiomAgentNftAddress(),
             nonce,
             validUntil,
           },
           account: from,
         });
 
+        setTransferPhase('finalizing');
+
         // Step 3 — finalize (backend builds on-chain structs from signed proof).
-        const finalRes = await fetch(url, {
+        // Show user-facing warning if finalization takes > 30s
+        const finalizeWarnTimer = setTimeout(() => {
+          console.warn('[transfer] Finalization is taking longer than expected. The transaction may still complete.');
+        }, 30000);
+
+        const proof = await apiFetch<TransferResponse>(path, {
           method: 'POST',
-          headers: {
-            'content-type': 'application/json',
-            accept: 'application/json',
-          },
-          signal: AbortSignal.any([signal, AbortSignal.timeout(15000)]),
+          signal,
+          timeout: LONG_TIMEOUT,
           body: JSON.stringify({
             to: input.to,
             receiverPubKey64: input.receiverPubKey64,
@@ -174,18 +183,12 @@ export function useTransfer(): UseTransferResult {
             },
           }),
         });
-        if (!finalRes.ok) {
-          const text = await finalRes.text();
-          throw new Error(
-            `transfer finalization failed: ${finalRes.status} ${finalRes.statusText} ${text}`,
-          );
-        }
-        const proof = (await finalRes.json()) as TransferResponse;
+        clearTimeout(finalizeWarnTimer);
         if (!proof.ok || proof.stage !== 'final') {
-          throw new Error('backend did not return final proof structs');
+          throw new Error('backend did not return final proof structs. Finalization failed — transaction was NOT submitted. Click "Prepare Transfer" to restart.');
         }
         if (!proof.accessProof || !proof.ownershipProof) {
-          throw new Error('incomplete proof structs from backend');
+          throw new Error('incomplete proof structs from backend. Finalization failed — transaction was NOT submitted. Click "Prepare Transfer" to restart.');
         }
         // Carry re-key status forward for the modal.
         if (challenge.rekeyed) {
@@ -194,10 +197,11 @@ export function useTransfer(): UseTransferResult {
           proof.newDataUri = challenge.newDataUri;
         }
         setSignature(proof);
+        setTransferPhase('idle');
         return proof;
       });
     },
-    [from, signTypedDataAsync, execute],
+    [from, domain, signTypedDataAsync, execute],
   );
 
   const confirm = useCallback(
@@ -208,22 +212,33 @@ export function useTransfer(): UseTransferResult {
       if (!signature?.accessProof || !signature?.ownershipProof) {
         throw new Error('no prepared proof — call prepare() first');
       }
-      return writeContractAsync({
-        address: AXIOM_AGENT_NFT_ADDRESS,
-        abi: iTransferFromAbi,
-        functionName: 'iTransferFrom',
-        args: [
-          from,
-          input.to,
-          input.tokenId,
-          [
-            {
-              accessProof: signature.accessProof,
-              ownershipProof: signature.ownershipProof,
-            },
+      setTransferPhase('confirming');
+      try {
+        const txHash = await writeContractAsync({
+          address: getAxiomAgentNftAddress(),
+          abi: iTransferFromAbi,
+          functionName: 'iTransferFrom',
+          args: [
+            from,
+            input.to,
+            input.tokenId,
+            [
+              {
+                accessProof: signature.accessProof,
+                ownershipProof: signature.ownershipProof,
+              },
+            ],
           ],
-        ],
-      });
+        });
+        setTransferPhase('idle');
+        return txHash;
+      } catch (err) {
+        setTransferPhase('idle');
+        const msg = err instanceof Error ? err.message : String(err);
+        throw new Error(
+          `On-chain transaction failed: ${msg}. Your prepared proof is still valid — click "Edit" to restart the flow with a fresh nonce.`,
+        );
+      }
     },
     [from, signature, writeContractAsync],
   );
@@ -238,6 +253,7 @@ export function useTransfer(): UseTransferResult {
 
   const reset = useCallback((): void => {
     setSignature(null);
+    setTransferPhase('idle');
     resetAction();
     resetWrite();
   }, [resetAction, resetWrite]);
@@ -250,5 +266,6 @@ export function useTransfer(): UseTransferResult {
     error: actionError ?? (writeError as Error | null),
     signature,
     reset,
+    transferPhase,
   };
 }
