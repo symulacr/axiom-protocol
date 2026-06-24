@@ -59,7 +59,7 @@ abstract contract ERC7857AuthorizeUpgradeable is IERC7857Authorize, ERC7857Upgra
 
         authorizedUsers.add(to);
 
-        emit Authorization(tokenId, msg.sender, to);
+        emit Authorization(msg.sender, to, tokenId);
     }
 
     function _clearAuthorized(uint256 tokenId) internal {

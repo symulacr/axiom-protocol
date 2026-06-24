@@ -1,0 +1,1 @@
+cd /home/eya/og/.omc/research && chmod +x probe_storage_api.sh && bash probe_storage_api.sh
