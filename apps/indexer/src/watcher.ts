@@ -7,27 +7,24 @@ import { validateHex, toViemHex, type Hex } from "@axiom/config/types/hex";
 
 import { ADDRESSES, EVENT_ABI, type AxiomEvent, type EventName } from "./events.js";
 
-/** How many blocks to query per `eth_getLogs` call. */
+/** Block range per eth_getLogs call. */
 export const POLL_WINDOW_BLOCKS = 50n;
 
-/** Polling cadence in milliseconds. */
+/** Poll interval in ms. */
 export const POLL_INTERVAL_MS = 12_000;
 
 /**
- * 0G's `eth_getLogs` rejects ranges that overshoot the chain head with
- * error code -32000. We bound the window to the live head on every tick.
+ * 0G's eth_getLogs rejects ranges past chain head with -32000.
+ * We bound the window to the live head on every tick.
  */
 
-/** Path to the persisted checkpoint file (stores nextBlock cursor). */
+/** Checkpoint file (stores nextBlock cursor). */
 const CHECKPOINT_FILE = join(process.cwd(), "data", "checkpoint.json");
 
-/** Pre-computed topic-0 (event hash) for every signature we care about. */
+/** Topic-0 for every event. */
 export type EventTopicTable = { [K in EventName]: Hex };
 const TOPIC_TABLE: EventTopicTable = {
-  // On-chain topic-0 is keccak256(canonicalSignature) where the canonical
-  // form is `Name(type1,type2,...)` — no `event` prefix, no `indexed`
-  // keyword, no parameter names. The `indexed`/name fields affect ONLY
-  // which topics 1..n are populated, not the topic-0 hash.
+  // topic-0 = keccak256("Name(type1,type2,…)"). indexed affects topics 1..n, not topic-0.
   Transfer: validateHex(ethers.id("Transfer(address,address,uint256)")),
   Updated: validateHex(ethers.id("Updated(uint256,(string,bytes32)[],(string,bytes32)[])")),
   Authorization: validateHex(ethers.id("Authorization(uint256,address,address)")),
@@ -63,11 +60,10 @@ const TOPIC_TABLE: EventTopicTable = {
   Initialized: validateHex(ethers.id("Initialized(uint64)")),
  };
 
-/** Reverse lookup: lowercased topic-0 hex → event name. */
+/** topic-0 hex → event name. */
 const TOPIC_TO_EVENT: Record<string, EventName> = {};
 {
-  // Explicit list — must match EVENT_SIGNATURES keys in events.ts.
-  // TypeScript validates every entry against `EventName`.
+  // Must match EVENT_SIGNATURES keys in events.ts.
   const eventNames: EventName[] = [
     "Transfer", "Updated", "Authorization", "AuthorizationRevoked",
     "VerifierUpdated", "CreatorSet", "MintFeeUpdated", "StorageInfoUpdated",
@@ -89,7 +85,7 @@ export type WatchedEvent = {
   address: Address;
 };
 
-/** The default watch list — every event the indexer cares about, all contracts. */
+/** Events the indexer watches. */
 export const DEFAULT_WATCH_LIST: readonly WatchedEvent[] = [
   // AxiomAgentNFT
   { name: "Transfer", address: ADDRESSES.AXIOM_AGENT_NFT },
@@ -144,7 +140,7 @@ export type WatcherOptions = {
   logger?: (line: Record<string, unknown>) => void;
 };
 
-/** Common fields every `AxiomEvent` carries. */
+/** Fields every AxiomEvent carries. */
 type BaseFields = {
   blockNumber: number;
   txHash: `0x${string}`;
@@ -158,7 +154,6 @@ type BaseFields = {
 export function decodeAxiomLog(log: Log) {
   const topic0 = log.topics[0];
   if (typeof topic0 !== "string") return null;
-  // Find the event name whose topic0 matches.
   const lowerTopic = topic0.toLowerCase();
   const name = TOPIC_TO_EVENT[lowerTopic];
   if (name === undefined) return null;
@@ -472,9 +467,7 @@ export async function pollOnce(
 ) {
   const toBlock = fromBlock + window - 1n;
 
-  // One getLogs call per (event, address) pair. We could batch by contract
-  // address using multiple topic0 OR'd together, but each individual call
-  // is cheap and easier to error-isolate.
+  // One call per (event, address) pair — cheap to error-isolate.
   const allLogs: Log[] = [];
   for (const { name, address } of watchList) {
     const filter = {
@@ -489,7 +482,7 @@ export async function pollOnce(
   return allLogs;
 }
 
-/** Sort logs by (blockNumber asc, logIndex asc). */
+/** Sort on-chain. */
 function logsByChainOrder(a: Log, b: Log) {
   if (a.blockNumber !== b.blockNumber) {
     return a.blockNumber < b.blockNumber ? -1 : 1;
@@ -502,7 +495,7 @@ function logsByChainOrder(a: Log, b: Log) {
 
 // ── Checkpoint persistence ─────────────────────────────────────────────
 
-/** Load the persisted nextBlock cursor from disk. Returns null if unavailable. */
+/** Load nextBlock cursor from disk. Returns null on error. */
 async function loadCheckpoint(): Promise<number | null> {
   try {
     const data = await readFile(CHECKPOINT_FILE, "utf-8");
@@ -511,12 +504,11 @@ async function loadCheckpoint(): Promise<number | null> {
       return parsed.nextBlock;
     }
   } catch {
-    // File not found or invalid — return null
   }
   return null;
 }
 
-/** Atomically persist the nextBlock cursor (write to tmp, then rename). */
+/** Atomically persist nextBlock cursor. */
 async function saveCheckpoint(nextBlock: number): Promise<void> {
   const tmp = CHECKPOINT_FILE + ".tmp";
   try {
@@ -528,7 +520,7 @@ async function saveCheckpoint(nextBlock: number): Promise<void> {
   }
 }
 
-/** Class that holds state for a long-running watcher. */
+/** Long-running block watcher. */
 export class Watcher {
   readonly provider: JsonRpcProvider;
   readonly watchList: readonly WatchedEvent[];
@@ -550,7 +542,7 @@ export class Watcher {
     this.nextBlock = opts.startBlock ?? 0n;
   }
 
-  /** Return the next block the watcher will query (for checkpointing). */
+  /** Next block to query. */
   get cursor(): bigint {
     return this.nextBlock;
   }
@@ -598,8 +590,7 @@ export class Watcher {
           return;
         }
 
-        // Pass the actual range size so `pollOnce`'s internal
-        // `toBlock = fromBlock + window - 1n` resolves to our `toBlock`.
+        // Range derived from clamped toBlock — tells pollOnce exactly what we want.
         const range = toBlock - fromBlock + 1n;
         const logs = await pollOnce(this.provider, this.watchList, fromBlock, range);
         logs.sort(logsByChainOrder);
@@ -624,7 +615,7 @@ export class Watcher {
           msg: "poll tick failed",
           err: err instanceof Error ? err.message : String(err),
         });
-        // Back off a little on error to avoid hammering the RPC.
+        // Back off on error to avoid hammering the RPC.
         const { promise, resolve } = Promise.withResolvers<void>();
         setTimeout(resolve, this.intervalMs);
         await promise;

@@ -1,40 +1,21 @@
-// Axiom Protocol — `<EventTimeline />` reusable component.
-
 import type { ReactElement, ReactNode } from 'react';
 import type { AxiomEvent } from '../hooks/useEventHistory.js';
 
-/** Render-prop signature. Receives the event and a formatted
- *  timestamp string; returns the body cell's content. */
 export type EventRenderer = (
   event: AxiomEvent,
   formattedTimestamp: string,
 ) => ReactNode;
 
-/** Props for `<EventTimeline />`. */
 export interface EventTimelineProps {
-  /** Events to render, in the order they should appear. The component
-   *  does NOT sort — the caller decides. */
   events: readonly AxiomEvent[];
-  /** Render-prop for the body cell of each event. */
   renderEvent: EventRenderer;
-  /** Optional locale for the timestamp formatter; default `'en-US'`. */
   locale?: string;
-  /** Optional ISO-3166 / IANA timezone, e.g. `'UTC'`. Default: the
-   *  browser's local timezone. */
   timeZone?: string;
-  /** Rendered when `events` is empty AND the caller is not
-   *  loading. Default: a muted "No events yet." */
   emptyState?: ReactNode;
-  /** Rendered in place of every event when the caller is still
-   *  loading its first batch. The render-prop is not called. */
   loadingState?: ReactNode;
-  /** Loading flag. When true, `loadingState` is shown instead of
-   *  `events`. Default: false. */
   isLoading?: boolean;
 }
 
-/** Cache formatters per-locale/timezone so a list of N events does
- *  not construct N DateTimeFormat instances. */
 const formatterCache = new Map<string, Intl.DateTimeFormat>();
 
 function getFormatter(locale: string, timeZone: string | undefined): Intl.DateTimeFormat {
@@ -52,9 +33,6 @@ function getFormatter(locale: string, timeZone: string | undefined): Intl.DateTi
   return fmt;
 }
 
-/** Reused grid-line style constants. Defined at module scope so the
- *  same `style` object is shared across every cell (no per-render
- *  object allocation). */
 const RAIL_WIDTH = '10rem';
 const ROW_GAP = '12px';
 
@@ -112,9 +90,6 @@ const emptyStateStyle: React.CSSProperties = {
   fontStyle: 'italic',
 };
 
-/**
- * Render a list of events as a vertical timeline.
- */
 export function EventTimeline({
   events,
   renderEvent,
@@ -184,7 +159,6 @@ function EventRow({ event, timestamp, renderEvent }: EventRowProps): ReactElemen
   );
 }
 
-/** Build a stable React key from (blockNumber, logIndex, txHash). */
 function eventKey(event: AxiomEvent, idx: number): string {
   return `${event.blockNumber}-${event.logIndex}-${event.txHash.slice(0, 10)}-${idx}`;
 }

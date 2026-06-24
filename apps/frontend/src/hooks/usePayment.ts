@@ -1,30 +1,21 @@
-// Axiom Protocol — `usePayment` hook.
-
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Address } from 'viem';
 import { BACKEND_URL } from '../config/env.js';
 
 /** Response body of `GET /v1/payment/config`. */
 export type PaymentConfig = {
-  /** ERC-20 payment token (USDC.e / USDG) contract address. */
   paymentToken: Address;
-  /** Protocol fee in basis points (0–10000). */
   protocolFeeBps: number;
-  /** Treasury address that receives the protocol cut. */
   protocolTreasury: Address;
 };
 
 /** Response body of `GET /v1/agents/:id/earnings`. */
 export type EarningsInfo = {
-  /** Token id queried. */
   tokenId: string;
-  /** Creator address whose balance was read. */
   creator: Address;
-  /** Withdrawable creator earnings, smallest token unit (string). */
   earnings: string;
 };
 
-/** Response body of `POST /v1/agents/:id/pay`. */
 export type AgentPayResult = {
   ok: true;
   tokenId: string;
@@ -33,7 +24,6 @@ export type AgentPayResult = {
   payment: unknown;
 };
 
-/** Response body of `POST /v1/compute/pay`. */
 export type ComputePayResult = {
   ok: true;
   provider: Address;
@@ -41,7 +31,6 @@ export type ComputePayResult = {
   txHash: `0x${string}`;
 };
 
-/** Response body of `POST /v1/agents/:id/royalty`. */
 export type RoyaltyResult = {
   ok: true;
   tokenId: string;
@@ -51,7 +40,6 @@ export type RoyaltyResult = {
   value: string;
 };
 
-/** Shared fetch helper; throws on non-2xx. */
 async function apiFetch<T>(
   path: string,
   init: RequestInit,
@@ -77,23 +65,14 @@ async function apiFetch<T>(
 
 export type UsePaymentResult = {
   payForAgent: (tokenId: bigint, amount: string) => Promise<AgentPayResult>;
-  payComputeProvider: (
-    provider: Address,
-    amount: string,
-  ) => Promise<ComputePayResult>;
+  payComputeProvider: (provider: Address, amount: string) => Promise<ComputePayResult>;
   getEarnings: (tokenId: bigint) => Promise<EarningsInfo>;
   setRoyalty: (tokenId: bigint, bps: number) => Promise<RoyaltyResult>;
   getPaymentConfig: () => Promise<PaymentConfig>;
-  /** True while any action is in flight. */
   isLoading: boolean;
-  /** Last error from any action; cleared on the next successful call. */
   error: Error | null;
 };
 
-/**
- * HTTP client for the backend's payment routes.
- * Actions re-throw so callers can handle errors in-line.
- */
 export function usePayment(): UsePaymentResult {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);

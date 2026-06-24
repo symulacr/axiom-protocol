@@ -1,5 +1,3 @@
-// Axiom Protocol — mint page (`/agents/new` route).
-
 import type { ReactElement } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { getAddress, isAddress } from 'viem';
@@ -10,8 +8,6 @@ export function MintAgentPage(): ReactElement {
   const [searchParams] = useSearchParams();
   const rawProvider = searchParams.get('provider') ?? undefined;
 
-  // Only accept the provider param if it's a valid address; otherwise drop
-  // it silently rather than rendering a broken hint.
   const provider: `0x${string}` | undefined =
     rawProvider !== undefined && isAddress(rawProvider)
       ? (getAddress(rawProvider) as `0x${string}`)

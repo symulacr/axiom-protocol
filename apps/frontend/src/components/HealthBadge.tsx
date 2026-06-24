@@ -1,5 +1,3 @@
-// Axiom Protocol — `<HealthBadge />` header indicator.
-
 import { useEffect, useState, type ReactElement } from 'react';
 import { BACKEND_URL } from '../config/env.js';
 
@@ -8,7 +6,6 @@ type HealthStatus = 'unknown' | 'ok' | 'down';
 const POLL_INTERVAL_MS = 30_000;
 const REQUEST_TIMEOUT_MS = 5_000;
 
-/** Returns `true` only on a 2xx response whose JSON body has `ok === true`. */
 async function checkHealth(signal: AbortSignal): Promise<boolean> {
   try {
     const res = await fetch(`${BACKEND_URL}/health`, {
@@ -25,15 +22,11 @@ async function checkHealth(signal: AbortSignal): Promise<boolean> {
 }
 
 export function HealthBadge(): ReactElement {
-  // Start in the "unknown" state so we don't flash a green dot before
-  // the first probe lands. The first probe runs in the effect below.
   const [status, setStatus] = useState<HealthStatus>('unknown');
 
   useEffect(() => {
     let cancelled = false;
 
-    // AbortController is recreated on cleanup so each poll's timeout
-    // doesn't leak a pending fetch into the next tick.
     let controller: AbortController | undefined;
 
     const tick = (): void => {
@@ -55,8 +48,6 @@ export function HealthBadge(): ReactElement {
         .finally(() => clearTimeout(timeoutId));
     };
 
-    // Run one probe immediately so the dot picks up a real color
-    // within ~1 s of the page mounting, then poll every 30 s.
     tick();
     const intervalId = setInterval(tick, POLL_INTERVAL_MS);
 
