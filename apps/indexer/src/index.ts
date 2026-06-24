@@ -36,9 +36,7 @@ function chainId() {
   return n;
 }
 
-/** Default sink: one JSON per line on stdout. */
 function stdoutSink(event: AxiomEvent) {
-  // JSON.stringify replacer converts bigints to strings.
   console.log(JSON.stringify(event, bigintReplacer));
 }
 
@@ -46,7 +44,6 @@ function bigintReplacer(_key: string, value: unknown) {
   return typeof value === "bigint" ? value.toString() : value;
 }
 
-/** Banner emitted on startup (stderr; stdout for event JSON). */
 function banner(cid: number) {
   process.stderr.write(
     JSON.stringify({
@@ -60,26 +57,21 @@ function banner(cid: number) {
   );
 }
 
-// --- 0G Storage event batching ---
 const eventBuffer: AxiomEvent[] = [];
 const BATCH_INTERVAL = parseInt(process.env["STORAGE_BATCH_INTERVAL_MS"] ?? "5000");
 const BATCH_MAX = parseInt(process.env["STORAGE_BATCH_MAX_EVENTS"] ?? "10");
 
-// --- 0G DA event batching ---
 const DA_BATCH_INTERVAL = parseInt(process.env["DA_BATCH_INTERVAL_MS"] ?? "5000");
 const DA_BATCH_MAX = parseInt(process.env["DA_BATCH_MAX_EVENTS"] ?? "100");
 
-/** Module-level handles for 0G Storage, set once in main(). */
 let _storageIndexer: Indexer | undefined;
 let _storageSigner: ethers.Wallet | undefined;
 let _storageRpcUrl = "";
 
-/** Module-level handle for DA submit function, set once in composeSinks(). */
 let _daSubmitFn: SubmitFn | undefined;
 
 let batchTimer: ReturnType<typeof setTimeout> | null = null;
 
-// --- DA batch state ---
 let daEventBuffer: AxiomEvent[] = [];
 let daBatchTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -140,8 +132,6 @@ function stopBatchTimer(): void {
   }
 }
 
-// --- DA batch flush ---
-
 async function flushDaBuffer(): Promise<void> {
   if (daEventBuffer.length === 0) return;
   if (!_daSubmitFn) return;
@@ -189,9 +179,6 @@ type EventSinkConfig =
   | { readonly da: "grpc"; grpcUrl: string }
   | { readonly da: "storage"; storageIndexer: Indexer; storageSigner: ethers.Wallet };
 
-/**
- * Build the composed EventSink used by the watcher. Base sink is stdout.
- */
 function composeSinks(config: EventSinkConfig, extra: {
   backendUrl: string | undefined;
   rpcUrl: string;
@@ -321,12 +308,10 @@ async function main() {
       ? { da: "storage", storageIndexer, storageSigner }
       : { da: "disabled" };
 
-  // Create the gRPC client ONCE, outside the sink closure
   const grpcClient = daConfig.da === "grpc" && typeof daConfig.grpcUrl === "string"
     ? new DaClient(daConfig.grpcUrl)
     : undefined;
 
-  // Health endpoint for orchestration probes (e.g. k8s readiness)
   const healthPort = parseInt(process.env["HEALTH_PORT"] ?? "9091", 10);
   const healthServer = grpcClient
     ? startHealthServer(healthPort, () => grpcClient.connected)
@@ -356,10 +341,8 @@ async function main() {
   const handle = watcher.start();
   await shutdown;
   await handle.stop();
-  // Flush any remaining buffered events to 0G Storage
   stopBatchTimer();
   await flushBuffer();
-  // Flush any remaining buffered events to 0G DA
   stopDaBatchTimer();
   await flushDaBuffer();
   if (healthServer) healthServer.close();

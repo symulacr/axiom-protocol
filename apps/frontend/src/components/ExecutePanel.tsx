@@ -1,5 +1,3 @@
-// ExecutePanel — strategy tick execution.
-
 import { useMemo, useState, type ReactElement } from 'react';
 import { useAccount } from 'wagmi';
 import { formatEther } from 'viem';
@@ -47,7 +45,6 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
     }
   }, [activeId]);
 
-  // Read vault state for the active agent token via the shared hook.
   const vd = useVaultData(activeBigint);
   const isReady = !vd.isLoading && activeId !== '';
   const depositsWei = isReady ? vd.depositsWei : undefined;

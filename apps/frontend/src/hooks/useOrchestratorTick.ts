@@ -83,9 +83,7 @@ export function useOrchestratorTick(): {
           if (opts.signal) signals.push(opts.signal);
           const combinedSignal = AbortSignal.any(signals);
 
-          // ---- Primary: WSS streaming ----
           try {
-            // 1. Make HTTP request to start the tick (returns immediately with streamTopic)
             const initRes = await apiFetch<{ ok: boolean; streamTopic: string }>(
               '/v1/orchestrator/tick',
               {
@@ -103,14 +101,12 @@ export function useOrchestratorTick(): {
             if (!initRes.ok) throw new Error('Failed to start tick stream');
             const topic = initRes.streamTopic;
 
-            // 2. Subscribe to WSS for the streaming tokens
             const scheme = BACKEND_URL.startsWith('https://') ? 'wss' : 'ws';
             const wsUrl = new URL(
               BACKEND_URL.replace(/^https?:\/\//, `${scheme}://`) + '/v1/stream',
             );
             wsUrl.searchParams.append('topic', topic);
 
-            // 3. Return a promise that resolves when the stream completes
             return await new Promise<TickResult>((resolve, reject) => {
               const ws = new WebSocket(wsUrl.toString());
               let accumulatedResult: Partial<TickResult> = {};

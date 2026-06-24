@@ -2,22 +2,9 @@ import OpenAI from "openai";
 import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
 import { resolveProviderUrl } from "./provider-discovery.js";
 
-// Default Router URLs per network.
-// Mainnet (Aristotle):  chainId 16661
-// Testnet (Galileo):    chainId 16602
 const DEFAULT_MAINNET_URL = "https://router-api.0g.ai/v1";
 const DEFAULT_TESTNET_URL = "https://router-api-testnet.integratenetwork.work/v1";
 
-/**
- * Decode an app-sk-* token to extract the embedded provider address.
- * Format: app-sk-<base64(JSON.stringify(payload) + "|" + EIP-191 signature)>
- * Example payload:
- *   {"address":"0x644F...","provider":"0xa48f...","timestamp":1782153207671,
- *    "expiresAt":0,"nonce":"1d471e...","generation":0,"tokenId":0}
- *
- * Fields are normalized: `provider` / `providerAddress` → provider string,
- * `address` / `user` → address string.
- */
 function decodeDirectKeyToken(token: string): { provider: string; address: string } | null {
   if (!token.startsWith("app-sk-")) return null;
   const b64 = token.slice("app-sk-".length);
@@ -55,7 +42,6 @@ export function getComputeBaseUrl(): string {
 const ROUTER_TIMEOUT_MS = 30_000;
 
 export async function createRouterClient(timeout = ROUTER_TIMEOUT_MS): Promise<OpenAI> {
-  // 1. Direct SDK proxy path (app-sk-* key)
   const directKey = process.env.AXIOM_COMPUTE_DIRECT_KEY;
   if (directKey) {
     const tokenInfo = decodeDirectKeyToken(directKey);
@@ -74,7 +60,6 @@ export async function createRouterClient(timeout = ROUTER_TIMEOUT_MS): Promise<O
     }
     throw new Error("Cannot decode app-sk-* token. Check AXIOM_COMPUTE_DIRECT_KEY.");
   }
-  // 2. Router API path (sk-* key against Router API)
   const routerKey = process.env.AXIOM_COMPUTE_API_KEY ?? process.env.OG_COMPUTE_API_KEY;
   if (routerKey) {
     return new OpenAI({ baseURL: getComputeBaseUrl(), apiKey: routerKey, timeout, maxRetries: 2 });

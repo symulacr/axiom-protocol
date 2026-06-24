@@ -8,7 +8,7 @@ import { DefaultSignerOracleClient } from "../oracle/client.js";
 import { pickOGNetwork, GALILEO_CHAIN_ID } from "@axiom/config/networks";
 import { VAULT_ABI } from "@axiom/config/abis";
 
-// Local contract method types derived from VAULT_ABI (avoid shared contract-types.ts drift).
+// Local contract types (avoid shared contract-types.ts drift).
 type StrategyVaultMethods = {
   balanceOf(tokenId: bigint): Promise<bigint>;
   execute(tokenId: bigint, target: string, value: bigint, data: string, proof: string[]): Promise<TransactionResponse>;
@@ -137,7 +137,6 @@ export class StrategyRunner {
     return result;
   }
 
-  /** Parse raw LLM output into a validated recommendation. Falls back to "hold". */
   private parseRecommendation(rawModelOutput: string): TickResult["recommendation"] {
     try {
       const parsed = JSON.parse(rawModelOutput.trim()) as TickResult["recommendation"];
@@ -153,10 +152,6 @@ export class StrategyRunner {
     }
   }
 
-  /**
-   * Settle on-chain via vault.execute(). MVP uses a single-leaf Merkle tree
-   * (root == leaf, proof == []) with a no-op action (target=vault, value=0, data="").
-   */
   private async settleOnChain(strategy: StrategySpec, action: string): Promise<NonNullable<TickResult["execution"]>> {
     const vaultAddr = this.addresses?.vault;
     if (!vaultAddr) {

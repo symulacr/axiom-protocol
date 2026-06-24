@@ -110,7 +110,6 @@ export function useTransfer(): UseTransferResult {
           challengeBody.oldDataEncryptionKey = input.oldDataEncryptionKey;
           challengeBody.oldDataUri = input.oldDataUri;
         }
-        // Show user-facing warning if challenge phase takes > 30s
         const challengeWarnTimer = setTimeout(() => {
           console.warn('[transfer] Challenge phase is taking longer than expected. The oracle may be processing.');
         }, 30000);
@@ -160,7 +159,6 @@ export function useTransfer(): UseTransferResult {
         setTransferPhase('finalizing');
 
         // Step 3 — finalize (backend builds on-chain structs from signed proof).
-        // Show user-facing warning if finalization takes > 30s
         const finalizeWarnTimer = setTimeout(() => {
           console.warn('[transfer] Finalization is taking longer than expected. The transaction may still complete.');
         }, 30000);

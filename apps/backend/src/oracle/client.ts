@@ -6,22 +6,6 @@ import { bigintReplacer } from "@axiom/config/types/bigint";
 // Default timeout for oracle HTTP requests (10 seconds, matches frontend).
 const ORACLE_TIMEOUT_MS = 10_000;
 
-/**
- * HTTP client for the TEE signer service (apps/oracle).
- * The oracle signs the OwnershipProof payload (TEE-side) and the backend
- * recovers the AccessProof signer locally using the same canonical hash.
- *
- * Two signing modes:
- *  - signOwnership (/v1/ownership): sign-only — the caller supplies the
- *    sealedKey; no re-encryption occurs. Used as a fallback when the client
- *    does not provide re-key inputs.
- *  - transferValidity (/v1/transfer-validity): full re-key — the oracle
- *    downloads the old ciphertext, decrypts with the caller-supplied
- *    oldDataEncryptionKey, generates a fresh AES-256 key, re-encrypts,
- *    uploads the new blob to 0G Storage, ECIES-seals the new key for the
- *    receiver, and signs the OwnershipProof over the re-keyed payload.
- */
-
 export interface OracleClientConfig {
   baseUrl: string; // e.g., "http://127.0.0.1:8787"
   /** Timeout in milliseconds for each HTTP request. Defaults to 10_000. */

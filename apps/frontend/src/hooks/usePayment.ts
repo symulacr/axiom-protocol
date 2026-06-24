@@ -3,14 +3,12 @@ import type { Address } from 'viem';
 import { useAsyncAction } from './useAsyncAction.js';
 import { apiFetch } from '../utils/apiFetch.js';
 
-/** Response body of `GET /v1/payment/config`. */
 export type PaymentConfig = {
   paymentToken: Address;
   protocolFeeBps: number;
   protocolTreasury: Address;
 };
 
-/** Response body of `GET /v1/agents/:id/earnings`. */
 export type EarningsInfo = {
   tokenId: string;
   creator: Address;

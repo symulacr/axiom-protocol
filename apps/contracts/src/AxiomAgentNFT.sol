@@ -176,8 +176,6 @@ contract AxiomAgentNFT is
         _updateData(tokenId, newDatas);
     }
 
-    /// @notice Authorize a UUPS upgrade. Only the contract owner (set in initialize to admin_)
-    ///         may upgrade the implementation behind the ERC1967 proxy.
     /// @dev    Required by UUPSUpgradeable. Without this override, UUPSUpgradeable._authorizeUpgrade
     ///         reverts with "UUPSUnauthorizedCallContext". Per OZ docs, the canonical override is:
     ///         https://docs.openzeppelin.com/contracts/5.x/api/proxy#UUPSUpgradeable-_authorizeUpgrade-address-

@@ -1,5 +1,3 @@
-// HistoryPage — connected wallet activity timeline.
-
 import { resolveBlockExplorerUrl } from "@axiom/config/networks";
 import { useCallback, useMemo, type ReactElement } from 'react';
 import { useAccount, useChainId } from 'wagmi';
@@ -78,7 +76,6 @@ function formatPayload(eventName: string, payload: Record<string, unknown>): str
   }
 }
 
-/** Shorten 0x-prefixed address for inline display. */
 function shortAddr(value: unknown): string {
   if (typeof value !== 'string' || value.length < 10) {
     return PLACEHOLDER;

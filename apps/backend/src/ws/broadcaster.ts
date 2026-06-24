@@ -12,7 +12,6 @@ const _clients = new Set<ConnectedClient>();
 const _clientIds = new WeakMap<WebSocket, string>();
 const _clientMap = new Map<string, ConnectedClient>();
 
-/** Broadcast a payload to all connected WebSocket clients. */
 export function broadcast(topic: string, payload: unknown): void {
   const msg = JSON.stringify({ topic, payload, ts: Date.now() }, bigintReplacer);
   for (const c of _clients) {
@@ -49,7 +48,6 @@ export function getClients(): Set<ConnectedClient> {
   return _clients;
 }
 
-/** Send a payload to all clients subscribed to a matching topic (supports '*' wildcard). */
 export function sendToTopic(topicPrefix: string, data: unknown): number {
   const msg = JSON.stringify({ topic: topicPrefix, payload: data, ts: Date.now() }, bigintReplacer);
   let sent = 0;

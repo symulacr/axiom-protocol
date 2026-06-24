@@ -52,12 +52,10 @@ export interface RetrieveBlobResult {
   data: Uint8Array;
 }
 
-/** gRPC client for the 0G DA Disperser service. */
 export class DaClient {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private client: any;
 
-  /** @param grpcUrl Host:port of the 0G DA Client gRPC endpoint. */
   constructor(grpcUrl: string, channelOptions?: grpc.ChannelOptions) {
     const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
       keepCase: false,
@@ -120,14 +118,12 @@ export class DaClient {
     return grpc.credentials.createInsecure();
   }
 
-  /** Whether the gRPC channel is currently in READY state. */
   get connected(): boolean {
     // getConnectivityState is available on grpc.Client
     const state = this.client.getConnectivityState(false) as grpc.connectivityState;
     return state === grpc.connectivityState.READY;
   }
 
-  /** Submit a blob to the 0G DA network (async; returns on acceptance). */
   disperseBlob(data: Uint8Array, timeoutMs = DEFAULT_DISPERSE_DEADLINE_MS): Promise<DisperseBlobResult> {
     if (data.byteLength > MAX_BLOB_SIZE_BYTES) {
       return Promise.reject(
@@ -156,7 +152,6 @@ export class DaClient {
     });
   }
 
-  /** Poll the processing status of a previously dispersed blob. */
   getBlobStatus(requestIdHex: string, timeoutMs = DEFAULT_STATUS_DEADLINE_MS): Promise<BlobStatusResult> {
     const requestIdBytes = Buffer.from(requestIdHex, "hex");
     const deadline = new Date(Date.now() + timeoutMs);
@@ -221,7 +216,6 @@ export class DaClient {
     );
   }
 
-  /** Retrieve a blob by storage root, epoch, and quorum ID. */
   retrieveBlob(
     storageRoot: Uint8Array,
     epoch: number,
@@ -248,7 +242,6 @@ export class DaClient {
     });
   }
 
-  /** Wait for the gRPC connection to become ready. */
   async waitForReady(timeoutMs = 30_000): Promise<void> {
     return new Promise((resolve, reject) => {
       const deadline = new Date(Date.now() + timeoutMs);
@@ -259,7 +252,6 @@ export class DaClient {
     });
   }
 
-  /** Close the underlying gRPC connection. */
   close(): void {
     this.client.close();
   }

@@ -35,9 +35,7 @@ export function useAgents(): {
         timeout: 10000,
       });
       setAgents(data.agents ?? []);
-    }).catch(() => {
-      /* error is captured by useAsyncAction's internal error state */
-    });
+    }).catch(() => {});
   }, [address, execute]);
 
   useEffect(() => {

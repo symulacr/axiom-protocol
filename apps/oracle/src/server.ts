@@ -44,7 +44,6 @@ export function startServer(config: ServerConfig): Express {
   }));
   app.use(cors({ origin: config.env?.AXIOM_FRONTEND_URL ?? 'http://localhost:5173' }));
   // Optional API key auth — skip if AXIOM_API_KEY is not set (local dev)
-  app.use(createApiKeyAuth(config.env?.AXIOM_API_KEY));
   app.use(rateLimit({ windowMs: 60_000, max: 100 }));
   app.use(express.json({ limit: "1mb" }));
   const { signer, storage } = config;
@@ -103,7 +102,6 @@ export function startServer(config: ServerConfig): Express {
       const targetPubkeyBytes = hexToBytes(targetPubkey64 as `0x${string}`);
       const sealedKey = sealKeyForReceiver(targetPubkeyBytes, newDataKey);
 
-      // validUntil = now + 1 day.
       const defaultValidUntil = BigInt(Math.floor(Date.now() / 1000)) + 86400n;
       const ownershipSignature = signer.signOwnership({
         dataHash: oldDataHash as `0x${string}`,
@@ -184,7 +182,6 @@ export function startServer(config: ServerConfig): Express {
       return;
     }
 
-    // Parse caller-supplied deadline, falling back to now + 1 day.
     const defaultValidUntil = BigInt(Math.floor(Date.now() / 1000)) + 86400n;
     let validUntil = defaultValidUntil;
     if (rawValidUntil !== undefined) {
@@ -233,7 +230,6 @@ export function startServer(config: ServerConfig): Express {
     });
   });
 
-  // Called by backend after storage upload to register dataHash.
   app.post("/v1/agents/mint", (req: Request, res: Response) => {
     const { dataHash } = mintDataHashSchema.parse(req.body);
     if (!/^0x[0-9a-fA-F]{64}$/.test(dataHash)) {

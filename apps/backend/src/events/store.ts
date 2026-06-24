@@ -70,9 +70,6 @@ export class EventStore {
     return stored;
   }
 
-  /**
-   * Return all events matching (source, eventName), oldest first.
-   */
   queryBySource(source: string, eventName: string): readonly StoredEvent[] {
     const bucket = this.buckets.get(`${source}::${eventName}`);
     if (bucket === undefined) return [];
@@ -99,9 +96,6 @@ export class EventStore {
     matches.sort(byBlockThenLogReceived);
     return query.limit !== undefined ? matches.slice(0, query.limit) : matches;
   }
-  /**
-   * Return retained events across all buckets, oldest first.
-   */
   getAll(limit?: number, since?: number): readonly StoredEvent[] {
     const all: StoredEvent[] = [];
     for (const bucket of this.buckets.values()) {
@@ -140,24 +134,20 @@ export class EventStore {
     return limit !== undefined ? sorted.slice(0, limit) : sorted;
   }
 
-  /** Number of buckets. */
   get bucketCount(): number {
     return this.buckets.size;
   }
 
-  /** Total events currently retained. */
   get size(): number {
     let n = 0;
     for (const bucket of this.buckets.values()) n += bucket.length;
     return n;
   }
 
-  /** Total events appended since process start. */
   get totalAppends(): number {
     return this.total;
   }
 
-  /** Drop all retained events. For tests. */
   clear(): void {
     this.buckets.clear();
     this.total = 0;

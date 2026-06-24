@@ -2,28 +2,19 @@ import { DaClient } from "./da-client.js";
 import type { AxiomEvent } from "./events.js";
 import { canonicalizeEvent } from "./serialization.js";
 
-/** DA submission receipt. */
 export type SubmitResult = { txHash: string; seq: bigint };
 
-/** Sentinel for failed submission. */
 const FAILED_SUBMIT: Readonly<SubmitResult> = Object.freeze({ txHash: "", seq: 0n });
 
-/** Submitter function (swappable for tests). */
 export type SubmitFn = (bytes: Uint8Array, event: AxiomEvent) => Promise<SubmitResult>;
 
 export type DaLogger = (line: Record<string, unknown>) => void;
 
-/** Options for submitEvent. */
 export type SubmitEventOptions = {
-  /** Override the submitter (test seam, queue publisher, etc.). */
   submitFn?: SubmitFn;
-  /** Logger for non-fatal submission errors. Default: stderr JSON. */
   logger?: DaLogger;
 };
 
-/**
- * Submit one event to 0G DA. Never throws — returns sentinel on failure.
- */
 export async function submitEvent(
   event: AxiomEvent,
   opts: SubmitEventOptions = {},
@@ -55,15 +46,11 @@ export async function submitEvent(
   }
 }
 
-/**
- * Submit multiple events to 0G DA as a single blob.
- * Concatenates events into one DisperseBlob call for ~1000x cost reduction.
- * Never throws — returns sentinel on failure.
- */
 export async function submitBatch(
   events: AxiomEvent[],
   opts: SubmitEventOptions = {},
 ): Promise<SubmitResult> {
+  // Batch into one DisperseBlob call for ~1000x cost reduction
   const log: DaLogger = opts.logger ?? stderrJsonLogger;
 
   if (events.length === 0) return FAILED_SUBMIT;
@@ -100,7 +87,6 @@ function stderrJsonLogger(line: Record<string, unknown>) {
   console.error(JSON.stringify({ ...line, ts: new Date().toISOString() }));
 }
 
-/** Build a SubmitFn from a pre-configured DA gRPC URL. */
 export function makeRealSubmitter(daGrpcUrl: string): SubmitFn {
   const client = new DaClient(daGrpcUrl);
   // Fire-and-forget readiness check — logs fatal error at startup
@@ -118,7 +104,6 @@ export function makeRealSubmitter(daGrpcUrl: string): SubmitFn {
   };
 }
 
-/** Build a SubmitFn from an existing DaClient (singleton pattern). */
 export function makeRealSubmitterFromClient(client: DaClient): SubmitFn {
   return async (bytes: Uint8Array, _event: AxiomEvent) => {
     const { requestId } = await client.disperseBlob(bytes);

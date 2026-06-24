@@ -57,7 +57,6 @@ type StrategyVaultMethods = {
   strategyOf(tokenId: bigint): Promise<[string, bigint, bigint, bigint]>;
 };
 
-/** HTTP + WebSocket server. */
 loadEnv();
 
 export interface ServerConfig {
@@ -212,9 +211,6 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
     }
   });
 
-  // ─── Compute — Chat Completions ──────────────────────────────
-
-
   app.post("/v1/compute/chat/completions", async (req: Request, res: Response, next: NextFunction) => {
     try {
       const {
@@ -263,7 +259,6 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
         ...(service_tier ? { service_tier } : {}),
       };
 
-      // ── Streaming path ──────────────────────────────────────────
       // Pre-encode SSE frame prefix/suffix (saves ~50% string allocation per token)
       const FRAME_PREFIX = 'data: ';
       const FRAME_SUFFIX = '\n\n';
@@ -300,7 +295,6 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
         return;
       }
 
-      // ── Non-streaming path with TEE attestation ─────────────────
       const completionWithResponse = await (client.chat.completions.create as any)(
         { ...completionParams, stream: false },
       );
@@ -329,7 +323,6 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
         ...(traceParsed ? { x_0g_trace: traceParsed } : {}),
       });
     } catch (err) {
-      // Distinguish upstream from internal errors
       const status = (err as { status?: number }).status ?? 502;
       const message = err instanceof Error ? err.message : String(err);
       if (status >= 400 && status < 500) {
@@ -571,7 +564,6 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
 
 
 
-  // ─── Payment routes (AxiomPaymentProcessor) — refactored via createRoute factory ─────
   const paymentRouter = Router();
 
   createRoute(paymentRouter, {
@@ -639,10 +631,8 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
 
   app.use(paymentRouter);
 
-  // Wave 6: event ingestion + dashboard history.
   const events = getEventStore();
 
-  // ─── Agent listing ────────────────────────────────────────────────
   app.get("/v1/agents", async (req: Request, res: Response, next: NextFunction) => {
     try {
       const owner = typeof req.query.owner === "string" ? req.query.owner.toLowerCase() : undefined;
@@ -687,7 +677,6 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
   createRoute(app, { method: "get", path: "/v1/events" }, async (_parsed, req, _res, { config: _config }) => {
     const limitRaw = typeof req.query.limit === "string" ? Number(req.query.limit) : undefined;
     const limit = limitRaw !== undefined && Number.isInteger(limitRaw) && limitRaw > 0 ? limitRaw : 1000;
-    // Cursor-based pull: only return events after this timestamp (ms)
     const sinceRaw = typeof req.query.since === "string" ? Number(req.query.since) : undefined;
     const since = sinceRaw !== undefined && !isNaN(sinceRaw) && sinceRaw > 0 ? sinceRaw : undefined;
     const all = events.getAll(limit, since);
@@ -750,7 +739,6 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
 
       let orchestratorResult: TickResult;
 
-      // Streaming via WSS
       if (shouldStream) {
         // Streaming via WSS callback — tokens burst after inference completes
         // (before on-chain settlement), making streaming more responsive
@@ -774,7 +762,6 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
         res.status(202).json({ ok: true, streamTopic: `tick.${agentTokenId}` });
         return; // Exit early — streaming handled asynchronously via WSS
       } else {
-        // JSON path (existing)
         orchestratorResult = await orchestratorHandle.runTick(spec, signal);
         res.status(200).json(orchestratorResult);
       }

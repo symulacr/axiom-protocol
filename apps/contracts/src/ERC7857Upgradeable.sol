@@ -15,9 +15,6 @@ import "@0g-agent-nft/Utils.sol";
 /// @dev Adapted from the 0G Agentic ID reference (MIT)
 abstract contract ERC7857Upgradeable is IERC7857, ERC721Upgradeable {
     /// @notice Emitted when a token is transferred with proof verification (EIP-7857)
-    /// @param _tokenId The token identifier
-    /// @param _from The previous owner
-    /// @param _to The new owner
     event Transferred(uint256 _tokenId, address indexed _from, address indexed _to);
 
     /// @custom:storage-location erc7857:0g.storage.ERC7857
@@ -169,8 +166,6 @@ abstract contract ERC7857Upgradeable is IERC7857, ERC721Upgradeable {
     }
 
     /// @notice Alias for intelligentDatasOf (EIP-7857 uses singular form)
-    /// @param tokenId The token to query
-    /// @return data The IntelligentData entries associated with the token
     function intelligentDataOf(uint256 tokenId) external view virtual returns (IntelligentData[] memory data) {
         return intelligentDatasOf(tokenId);
     }

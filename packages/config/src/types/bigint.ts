@@ -1,4 +1,3 @@
-/** Branded mapped type: serialized bigint values. */
 export type Serialized<T extends bigint> = T extends bigint ? string : never;
 export type Deserialized<T extends string> = T extends string ? bigint : never;
 
@@ -18,7 +17,6 @@ export function extractBigIntArg(args: Record<string, unknown>, key: string): bi
   return raw;
 }
 
-// ─── BigInt JSON serialization helper ──────────────────────────
 // Per ECMA-262 §25.5.2, JSON.stringify throws on BigInt values.
 // Pass bigintReplacer as JSON.stringify's second arg for safe serialization.
 

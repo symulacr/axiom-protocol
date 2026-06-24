@@ -32,17 +32,14 @@ export interface OwnershipProofResult {
   ownershipProofNonce?: number;
 }
 
-/** EIP-712 OwnershipProof digest (signed by TEE oracle with raw ECDSA). */
 export function ownershipMessageHash(input: OwnershipProofInput, domain: Eip712Domain = DEFAULT_EIP712_DOMAIN): Hex {
   return eip712OwnershipMessageHash(input, domain);
 }
 
-/** EIP-712 AccessProof digest (signed by receiver with raw ECDSA). */
 export function accessMessageHash(input: AccessProofInput, domain: Eip712Domain = DEFAULT_EIP712_DOMAIN): Hex {
   return eip712AccessMessageHash(input, domain);
 }
 
-/** Recover the signer of a raw-ECDSA AccessProof signature (no EIP-191 prefix). */
 export function recoverAccessSigner(
   signature: Hex,
   input: AccessProofInput,
@@ -71,13 +68,11 @@ export class TeeSigner {
     this.uncompressedPubkey = publicKeyUncompressedFromPrivate(priv);
   }
 
-  /** Sign an OwnershipProof payload. Returns a 65-byte (r || s || v) signature. */
   signOwnership(input: OwnershipProofInput): Hex {
     const digest = ownershipMessageHash(input, this.domain);
     return this.wallet.signingKey.sign(digest).serialized as Hex;
   }
 
-  /** Recover the signer of an AccessProof payload via raw ECDSA. */
   recoverAccessSigner(signature: Hex, input: AccessProofInput): Hex {
     const digest = accessMessageHash(input, this.domain);
     const recovered = SigningKey.recoverPublicKey(getBytes(digest), signature);

@@ -1,5 +1,3 @@
-// ethers v6 wrapper around AxiomPaymentProcessor.
-
 import { type ContractTransactionReceipt, type TransactionResponse, type Wallet, type JsonRpcProvider, type Log, type EventLog } from "ethers";
 import { TypedContract } from "@axiom/config/types/contract";
 import { PAYMENT_PROCESSOR_ABI, ERC20_ABI } from "@axiom/config/abis";
@@ -63,8 +61,6 @@ export class PaymentProcessorClient {
     this.token = new TypedContract<ERC20Methods>(cfg.paymentTokenAddress, ERC20_ABI, cfg.signer);
   }
 
-  // ─── Write paths ─────────────────────────────────────────
-
   /**
    * Pay for an agent. Pulls amount from the backend signer and splits
    * between creator (credited) and treasury.
@@ -118,8 +114,6 @@ export class PaymentProcessorClient {
     return { to: this.address, data, value: 0n };
   }
 
-  // ─── Read paths ───────────────────────────────────────────────
-
   async earningsOf(creator: string): Promise<bigint> {
     return await this.payment.contract.agentEarningsOf(creator);
   }
@@ -143,8 +137,6 @@ export class PaymentProcessorClient {
   async paymentToken(): Promise<string> {
     return await this.payment.contract.paymentToken();
   }
-
-  // ─── Internals ────────────────────────────────────────────────
 
   /**
    * Grant processor allowance covering amount if current allowance insufficient.

@@ -2,8 +2,6 @@ import { Indexer, MemData } from "@0gfoundation/0g-storage-ts-sdk";
 import { keccak256, type Signer } from "ethers";
 import type { Hex } from "viem";
 
-// ── Public types ──────────────────────────────────────────────────────────
-
 export interface UploadResult {
   rootHash: Hex;
   txHash: Hex;
@@ -126,10 +124,7 @@ export class ZeroGStorage implements StorageAdapter {
   }
 
   // Backward-compat methods (for backend consumers)
-  /**
-   * @param data - The raw bytes to upload.
-   * @param _encryption - Reserved for future use. Currently unused.
-   */
+  /** @param _encryption - Reserved for future use. Currently unused. */
   async uploadData(data: Uint8Array, _encryption?: Encryption): Promise<UploadResult> {
     return uploadToStorage(this.indexer, data, this.config.evmRpc, this.config.signer);
   }
