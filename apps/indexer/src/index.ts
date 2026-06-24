@@ -2,6 +2,7 @@ import { Indexer, MemData } from "@0gfoundation/0g-storage-ts-sdk";
 import { ethers } from "ethers";
 import { loadEnv } from "./env.js";
 import { fileURLToPath } from "node:url";
+import { GALILEO_CHAIN_ID, OG_NETWORKS } from "@axiom/config/networks";
 
 import {
   POLL_INTERVAL_MS,
@@ -15,10 +16,7 @@ import { submitEvent, makeRealSubmitter } from "./da.js";
 // Load shared .env before any env reads.
 loadEnv(fileURLToPath(new URL("../../.env", import.meta.url)));
 
-/** 0G Galileo testnet (0x40DA). */
-const DEFAULT_RPC_URL = "https://evmrpc-testnet.0g.ai";
-/** 0G Galileo chain id (0x40DA). */
-const DEFAULT_CHAIN_ID = 16602;
+const DEFAULT_RPC_URL = OG_NETWORKS[GALILEO_CHAIN_ID]?.evmRpc ?? "https://evmrpc-testnet.0g.ai";
 
 function rpcUrl() {
   return process.env["OG_RPC_URL"] ?? DEFAULT_RPC_URL;
@@ -26,7 +24,7 @@ function rpcUrl() {
 
 function chainId() {
   const raw = process.env["OG_CHAIN_ID"];
-  if (raw === undefined || raw === "") return DEFAULT_CHAIN_ID;
+  if (raw === undefined || raw === "") return GALILEO_CHAIN_ID;
   const n = Number(raw);
   if (!Number.isInteger(n) || n <= 0) {
     throw new Error(`OG_CHAIN_ID is not a positive integer: ${raw}`);

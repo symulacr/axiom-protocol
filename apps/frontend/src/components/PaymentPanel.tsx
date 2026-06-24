@@ -22,7 +22,6 @@ import {
   Alert,
   SectionTitle,
   MonoLabel,
-  Badge,
   Spinner,
 } from './ui.js';
 

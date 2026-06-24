@@ -2,7 +2,7 @@ import type { ReactElement } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAccount, useChainId, useReadContracts } from 'wagmi';
 import { formatEther } from 'viem';
-import { AXIOM_VAULT_ADDRESSES } from '../abi/addresses.js';
+import { AXIOM_STRATEGY_VAULT_ADDRESS } from '../abi/addresses.js';
 import { axiomStrategyVaultAbi } from '../abi/axiomStrategyVault.js';
 import { COLORS, Card, SectionTitle, MonoLabel, Alert, PageHeader, Skeleton } from '../components/ui.js';
 import { PLACEHOLDER } from '../utils/format.js';
@@ -13,7 +13,7 @@ export function VaultDashboard(): ReactElement {
   const chainId = useChainId();
   const tokenId = BigInt(vaultId ?? '0');
 
-  const vaultContracts = AXIOM_VAULT_ADDRESSES.flatMap((vaultAddress) => [
+  const vaultContracts = [AXIOM_STRATEGY_VAULT_ADDRESS].flatMap((vaultAddress) => [
     {
       address: vaultAddress,
       abi: axiomStrategyVaultAbi,
@@ -73,7 +73,7 @@ export function VaultDashboard(): ReactElement {
         </Alert>
       )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
-        {AXIOM_VAULT_ADDRESSES.map((vaultAddress, index) => {
+        {[AXIOM_STRATEGY_VAULT_ADDRESS].map((vaultAddress, index) => {
           const base = index * 3;
           const vaultsResult = vaultQuery.data?.[base]?.result as
             | readonly [string, bigint, `0x${string}`, bigint]
