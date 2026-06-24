@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useAccount, useSignTypedData, useWriteContract } from 'wagmi';
 import { type Address, type Hex } from 'viem';
 
@@ -7,6 +7,7 @@ import { iTransferFromAbi } from '../abi/iTransferFrom.js';
 import { BACKEND_URL } from '../config/env.js';
 
 import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
+import { useAsyncAction } from './useAsyncAction.js';
 
 const EIP712_DOMAIN = {
   name: 'AxiomTeeVerifier',
@@ -94,13 +95,8 @@ export function useTransfer(): UseTransferResult {
     useWriteContract();
 
   const [signature, setSignature] = useState<TransferResponse | null>(null);
-  const [signingError, setSigningError] = useState<Error | null>(null);
-  const [isSigning, setIsSigning] = useState(false);
-  const abortRef = useRef<AbortController | null>(null);
-
-  useEffect(() => {
-    return () => abortRef.current?.abort();
-  }, []);
+  const { execute, isLoading: actionLoading, error: actionError, reset: resetAction } =
+    useAsyncAction();
 
   const prepare = useCallback(
     async (input: TransferInput): Promise<TransferResponse> => {
@@ -113,13 +109,7 @@ export function useTransfer(): UseTransferResult {
         );
       }
 
-      setIsSigning(true);
-      setSigningError(null);
-      try {
-        abortRef.current?.abort();
-        const controller = new AbortController();
-        abortRef.current = controller;
-
+      return execute(async (signal) => {
         const url = `${BACKEND_URL}/v1/agents/${input.tokenId.toString()}/transfer`;
 
         // Step 1 — challenge (backend returns proof params).
@@ -139,7 +129,7 @@ export function useTransfer(): UseTransferResult {
             accept: 'application/json',
           },
           body: JSON.stringify(challengeBody),
-          signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]),
+          signal: AbortSignal.any([signal, AbortSignal.timeout(15000)]),
         });
         if (!challengeRes.ok) {
           const text = await challengeRes.text();
@@ -188,7 +178,7 @@ export function useTransfer(): UseTransferResult {
             'content-type': 'application/json',
             accept: 'application/json',
           },
-          signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]),
+          signal: AbortSignal.any([signal, AbortSignal.timeout(15000)]),
           body: JSON.stringify({
             to: input.to,
             receiverPubKey64: input.receiverPubKey64,
@@ -224,15 +214,9 @@ export function useTransfer(): UseTransferResult {
         }
         setSignature(proof);
         return proof;
-      } catch (err) {
-        const wrapped = err instanceof Error ? err : new Error(String(err));
-        setSigningError(wrapped);
-        throw wrapped;
-      } finally {
-        setIsSigning(false);
-      }
+      });
     },
-    [from, signTypedDataAsync],
+    [from, signTypedDataAsync, execute],
   );
 
   const confirm = useCallback(
@@ -273,16 +257,16 @@ export function useTransfer(): UseTransferResult {
 
   const reset = useCallback((): void => {
     setSignature(null);
-    setSigningError(null);
+    resetAction();
     resetWrite();
-  }, [resetWrite]);
+  }, [resetAction, resetWrite]);
 
   return {
     prepare,
     confirm,
     transfer,
-    isLoading: isSigning || isWritePending,
-    error: signingError ?? (writeError as Error | null),
+    isLoading: actionLoading || isWritePending,
+    error: actionError ?? (writeError as Error | null),
     signature,
     reset,
   };

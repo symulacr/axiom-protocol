@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback } from 'react';
 import { BACKEND_URL } from '../config/env.js';
+import { useAsyncAction } from './useAsyncAction.js';
 
 export type TickRequest = {
   vault: `0x${string}`;
@@ -32,22 +33,11 @@ export function useOrchestratorTick(): {
   isLoading: boolean;
   error: Error | null;
 } {
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
-
-  useEffect(() => {
-    return () => abortRef.current?.abort();
-  }, []);
+  const { execute, isLoading, error } = useAsyncAction();
 
   const tick = useCallback(
     async (req: TickRequest): Promise<TickResult> => {
-      abortRef.current?.abort();
-      const controller = new AbortController();
-      abortRef.current = controller;
-      setIsLoading(true);
-      setError(null);
-      try {
+      return execute(async (signal) => {
         const res = await fetch(`${BACKEND_URL}/v1/orchestrator/tick`, {
           method: 'POST',
           headers: {
@@ -55,7 +45,7 @@ export function useOrchestratorTick(): {
             accept: 'application/json',
           },
           body: JSON.stringify(req),
-          signal: AbortSignal.any([controller.signal, AbortSignal.timeout(30000)]),
+          signal: AbortSignal.any([signal, AbortSignal.timeout(30000)]),
         });
         if (!res.ok) {
           const text = await res.text();
@@ -65,15 +55,9 @@ export function useOrchestratorTick(): {
         }
         const data = (await res.json()) as TickResult;
         return data;
-      } catch (err) {
-        const wrapped = err instanceof Error ? err : new Error(String(err));
-        setError(wrapped);
-        throw wrapped;
-      } finally {
-        setIsLoading(false);
-      }
+      });
     },
-    [],
+    [execute],
   );
 
   return { tick, isLoading, error };

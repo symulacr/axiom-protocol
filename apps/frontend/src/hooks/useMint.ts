@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { BACKEND_URL } from '../config/env.js';
+import { useAsyncAction } from './useAsyncAction.js';
 
 export type MintInput = {
   agentNft?: `0x${string}`;
@@ -26,26 +27,11 @@ export type UseMintResult = {
 };
 
 export function useMint(): UseMintResult {
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
   const [result, setResult] = useState<MintResult | null>(null);
-
-  const abortRef = useRef<AbortController | null>(null);
-
-  useEffect(() => {
-    return () => {
-      abortRef.current?.abort();
-    };
-  }, []);
+  const { execute, isLoading, error, reset: resetAction } = useAsyncAction();
 
   const mint = useCallback(async (input: MintInput): Promise<MintResult> => {
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-
-    setIsLoading(true);
-    setError(null);
-    try {
+    const data = await execute(async (signal) => {
       const res = await fetch(`${BACKEND_URL}/v1/agents/mint`, {
         method: 'POST',
         headers: {
@@ -53,7 +39,7 @@ export function useMint(): UseMintResult {
           accept: 'application/json',
         },
         body: JSON.stringify(input),
-        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]),
+        signal: AbortSignal.any([signal, AbortSignal.timeout(15000)]),
       });
       if (!res.ok) {
         const text = await res.text();
@@ -64,22 +50,14 @@ export function useMint(): UseMintResult {
       const data = (await res.json()) as MintResult;
       setResult(data);
       return data;
-    } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') {
-        throw err;
-      }
-      const wrapped = err instanceof Error ? err : new Error(String(err));
-      setError(wrapped);
-      throw wrapped;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+    });
+    return data;
+  }, [execute]);
 
   const reset = useCallback((): void => {
-    setError(null);
+    resetAction();
     setResult(null);
-  }, []);
+  }, [resetAction]);
 
   return { mint, isLoading, error, result, reset };
 }
