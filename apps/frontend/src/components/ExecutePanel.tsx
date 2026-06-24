@@ -30,10 +30,12 @@ export type ExecutePanelProps = {
 export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): ReactElement {
   const { isConnected } = useAccount();
   const { agents, isLoading: agentsLoading } = useAgents();
-  const { tick, isLoading, error } = useOrchestratorTick();
+  const { tick, tickStream, isLoading, isStreaming, error } = useOrchestratorTick();
   const [selectedId, setSelectedId] = useState<string>(tokenIdProp?.toString() ?? '');
   const [result, setResult] = useState<TickResult | null>(null);
   const [showRaw, setShowRaw] = useState(false);
+  const [streamMode, setStreamMode] = useState(false);
+  const [streamedTokens, setStreamedTokens] = useState('');
 
   // When tokenIdProp is given, the panel is locked to that agent.
   const locked = tokenIdProp !== undefined;
@@ -98,13 +100,30 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
     if (!activeId) return;
     setResult(null);
     setShowRaw(false);
+    setStreamedTokens('');
     try {
-      const res = await tick({
-        vault: AXIOM_STRATEGY_VAULT_ADDRESS,
-        agentNft: AXIOM_AGENT_NFT_ADDRESS,
-        agentTokenId: activeId,
-      });
-      setResult(res);
+      if (streamMode) {
+        const res = await tickStream(
+          {
+            vault: AXIOM_STRATEGY_VAULT_ADDRESS,
+            agentNft: AXIOM_AGENT_NFT_ADDRESS,
+            agentTokenId: activeId,
+          },
+          {
+            onChunk: (token: string): void => {
+              setStreamedTokens((prev) => prev + token);
+            },
+          },
+        );
+        setResult(res);
+      } else {
+        const res = await tick({
+          vault: AXIOM_STRATEGY_VAULT_ADDRESS,
+          agentNft: AXIOM_AGENT_NFT_ADDRESS,
+          agentTokenId: activeId,
+        });
+        setResult(res);
+      }
     } catch (err) {
       console.error("ExecutePanel: orchestrator tick failed", err);
     }
@@ -164,14 +183,54 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
         </dl>
       </div>
 
-      <div>
-        <Button variant="primary" disabled={isLoading || activeId === ''} onClick={onExecute}>
-          {isLoading ? 'Running tick…' : 'Execute Tick'}
-        </Button>
+      <div style={{ display: 'flex', alignItems: 'flex-start', flexDirection: 'column', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <Button variant="primary" disabled={isLoading || activeId === ''} onClick={onExecute}>
+            {isLoading ? (isStreaming ? 'Streaming…' : 'Running tick…') : 'Execute Tick'}
+          </Button>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer', color: COLORS.textMuted, userSelect: 'none' }}>
+            <input
+              type="checkbox"
+              checked={streamMode}
+              onChange={(e): void => setStreamMode(e.target.checked)}
+              disabled={isLoading}
+            />
+            Stream
+          </label>
+        </div>
+        {isStreaming && (
+          <span style={{ fontSize: 12, color: COLORS.bronzeLight, fontStyle: 'italic' }}>
+            Receiving tokens from stream...
+          </span>
+        )}
       </div>
 
       {error !== null && (
         <Alert variant="error">{error.message}</Alert>
+      )}
+
+      {streamedTokens !== '' && (
+        <div>
+          <SectionTitle>Live Stream Output</SectionTitle>
+          <pre
+            style={{
+              marginTop: 8,
+              padding: 12,
+              background: COLORS.bg,
+              border: `1px solid ${COLORS.border}`,
+              borderRadius: 8,
+              fontSize: 11,
+              overflowX: 'auto',
+              whiteSpace: 'pre-wrap',
+              color: COLORS.textMuted,
+              maxHeight: 200,
+              opacity: isStreaming ? 0.9 : 0.7,
+            }}
+          >
+            {streamedTokens}
+            {isStreaming && <span style={{ display: 'inline-block', marginLeft: 2, color: COLORS.bronzeLight }}>|</span>}
+          </pre>
+        </div>
       )}
 
       {result !== null && (
