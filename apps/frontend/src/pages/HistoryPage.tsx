@@ -1,11 +1,12 @@
 // HistoryPage — connected wallet activity timeline.
 
 import { resolveBlockExplorerUrl } from "@axiom/config/networks";
-import { useCallback, type ReactElement } from 'react';
+import { useCallback, useMemo, type ReactElement } from 'react';
 import { useAccount, useChainId } from 'wagmi';
 import { useEventHistory, type AxiomEvent } from '../hooks/useEventHistory.js';
+import { useEventStream } from '../hooks/useEventStream.js';
 import { EventTimeline, type EventRenderer } from '../components/EventTimeline.js';
-import { COLORS, Card, Alert, PageHeader, Button } from '../components/ui.js';
+import { COLORS, Card, Alert, PageHeader, Button, ConnectedGuard } from '../components/ui.js';
 import { PLACEHOLDER } from '../utils/format.js';
 
 /** Order of headline event groups. Unknown names fall through to an
@@ -163,24 +164,43 @@ export function HistoryPage(): ReactElement {
     enabled: isConnected,
   });
 
+  // Real-time WebSocket stream for live updates, including WSS tick + data streams.
+  const { events: wsEvents } = useEventStream({
+    topics: [
+      'Transfer', 'Updated', 'Authorization', 'Deposited',
+      'StrategySet', 'Executed', 'PaymentProcessed', 'EarningsWithdrawn',
+      'tick.*',  // WSS tick streaming (via useOrchestratorTick)
+      'data.*',  // Future: arbitrary data updates
+    ],
+    enabled: isConnected,
+  });
+
+  // Prepend WebSocket events to the polled events (deduplicated).
+  const allEvents = useMemo(() => {
+    const existingIds = new Set(events.map(e => `${e.txHash}-${e.logIndex}`));
+    const newEvents = wsEvents.filter(e => !existingIds.has(`${e.txHash}-${e.logIndex}`));
+    return [...newEvents, ...events];
+  }, [events, wsEvents]);
+
+  // Group all events by eventName for the timeline sections.
+  const allByName = useMemo(() => {
+    const grouped: Record<string, AxiomEvent[]> = {};
+    for (const ev of allEvents) {
+      (grouped[ev.eventName] ??= []).push(ev);
+    }
+    return grouped;
+  }, [allEvents]);
+
   const refresh = useCallback((): void => {
-    // Manual refresh — polling ticks every 15s, so this is a UX nicety.
-    window.location.reload();
+    // The polling already handles refreshes — this is just a UX nicety.
+    // WS events provide real-time updates, no hard refresh needed.
   }, []);
 
-  if (!isConnected) {
-    return (
-      <main>
-        <h1>History</h1>
-        <p>Connect a wallet to view recent activity.</p>
-      </main>
-    );
-  }
-
-  const groupKeys = orderGroupKeys(byName);
+  const groupKeys = orderGroupKeys(allByName);
 
   return (
     <main>
+      <ConnectedGuard>
       <PageHeader
         title="History"
         subtitle={`${address === undefined ? PLACEHOLDER : `${address.slice(0, 8)}\u2026${address.slice(-6)}`} on chain ${chainId}`}
@@ -207,7 +227,7 @@ export function HistoryPage(): ReactElement {
         </Card>
       ) : (
         groupKeys.map((name) => {
-          const group = byName[name];
+          const group = allByName[name];
           if (group === undefined) return null;
           return (
             <section
@@ -241,9 +261,10 @@ export function HistoryPage(): ReactElement {
       )}
 
       <footer style={{ marginTop: 'var(--space-2xl)', color: COLORS.textDim, fontSize: 'var(--text-sm)' }}>
-        {events.length} event{events.length === 1 ? '' : 's'} total
+        {allEvents.length} event{allEvents.length === 1 ? '' : 's'} total
         {' · '}auto-refresh every 15s
       </footer>
+      </ConnectedGuard>
     </main>
   );
 }

@@ -2,15 +2,7 @@ import type { ReactElement } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { COLORS, PageHeader, Alert } from '../components/ui.js';
 import { ExecutePanel } from '../components/ExecutePanel.js';
-
-function parseTokenId(raw: string | undefined): bigint | null {
-  if (raw === undefined || raw === '') return null;
-  try {
-    return BigInt(raw);
-  } catch {
-    return null;
-  }
-}
+import { parseTokenId } from '../utils/format.js';
 
 export function ExecuteStrategyPage(): ReactElement {
   const params = useParams<{ tokenId: string }>();

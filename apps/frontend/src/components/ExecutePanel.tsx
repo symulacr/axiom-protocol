@@ -1,13 +1,13 @@
 // ExecutePanel — strategy tick execution.
 
 import { useMemo, useState, type ReactElement } from 'react';
-import { useAccount, useReadContracts } from 'wagmi';
+import { useAccount } from 'wagmi';
 import { formatEther } from 'viem';
 import {
-  AXIOM_AGENT_NFT_ADDRESS,
-  AXIOM_STRATEGY_VAULT_ADDRESS,
+  getAxiomAgentNftAddress,
+  getAxiomStrategyVaultAddress,
 } from '../abi/addresses.js';
-import { axiomStrategyVaultAbi } from '../abi/axiomStrategyVault.js';
+import { useVaultData } from '../hooks/useVaultData.js';
 import { useAgents } from '../hooks/useAgents.js';
 import {
   useOrchestratorTick,
@@ -30,12 +30,11 @@ export type ExecutePanelProps = {
 export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): ReactElement {
   const { isConnected } = useAccount();
   const { agents, isLoading: agentsLoading } = useAgents();
-  const { tick, tickStream, isLoading, isStreaming, error } = useOrchestratorTick();
+  const { tick, tickStream, isLoading, isStreaming, streamedTokens, streamingError, error, resetStream } = useOrchestratorTick();
   const [selectedId, setSelectedId] = useState<string>(tokenIdProp?.toString() ?? '');
   const [result, setResult] = useState<TickResult | null>(null);
   const [showRaw, setShowRaw] = useState(false);
   const [streamMode, setStreamMode] = useState(false);
-  const [streamedTokens, setStreamedTokens] = useState('');
 
   // When tokenIdProp is given, the panel is locked to that agent.
   const locked = tokenIdProp !== undefined;
@@ -48,45 +47,12 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
     }
   }, [activeId]);
 
-  // Read vault state for the active agent token: vaults(), totalDeposits(),
-  // and getStrategy() in one batched request.
-  const vaultQuery = useReadContracts({
-    allowFailure: true,
-    contracts: [
-      {
-        address: AXIOM_STRATEGY_VAULT_ADDRESS,
-        abi: axiomStrategyVaultAbi,
-        functionName: 'vaults',
-        args: [activeBigint],
-      },
-      {
-        address: AXIOM_STRATEGY_VAULT_ADDRESS,
-        abi: axiomStrategyVaultAbi,
-        functionName: 'totalDeposits',
-      },
-      {
-        address: AXIOM_STRATEGY_VAULT_ADDRESS,
-        abi: axiomStrategyVaultAbi,
-        functionName: 'getStrategy',
-        args: [activeBigint],
-      },
-    ],
-    query: { enabled: activeId !== '' },
-  });
-
-  const vaultsResult = vaultQuery.data?.[0]?.result as
-    | readonly [string, bigint, `0x${string}`, bigint]
-    | undefined;
-  const totalDepositsResult = vaultQuery.data?.[1]?.result as
-    | bigint
-    | undefined;
-  const getStrategyResult = vaultQuery.data?.[2]?.result as
-    | readonly [`0x${string}`, bigint, bigint]
-    | undefined;
-
-  const depositsWei = vaultsResult?.[1] ?? totalDepositsResult;
-  const strategyRoot = vaultsResult?.[2] ?? getStrategyResult?.[0];
-  const dailyLimitWei = vaultsResult?.[3] ?? getStrategyResult?.[1];
+  // Read vault state for the active agent token via the shared hook.
+  const vd = useVaultData(activeBigint);
+  const isReady = !vd.isLoading && activeId !== '';
+  const depositsWei = isReady ? vd.depositsWei : undefined;
+  const strategyRoot = isReady ? vd.strategyRoot : undefined;
+  const dailyLimitWei = isReady ? vd.dailyLimitWei : undefined;
 
   if (!isConnected) {
     return (
@@ -100,26 +66,23 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
     if (!activeId) return;
     setResult(null);
     setShowRaw(false);
-    setStreamedTokens('');
+    resetStream();
     try {
       if (streamMode) {
+        // Strategy tick uses WSS streaming (via useOrchestratorTick's tickStream — SSE→WSS is transparent)
         const res = await tickStream(
           {
-            vault: AXIOM_STRATEGY_VAULT_ADDRESS,
-            agentNft: AXIOM_AGENT_NFT_ADDRESS,
+            vault: getAxiomStrategyVaultAddress(),
+            agentNft: getAxiomAgentNftAddress(),
             agentTokenId: activeId,
           },
-          {
-            onChunk: (token: string): void => {
-              setStreamedTokens((prev) => prev + token);
-            },
-          },
+          {},
         );
         setResult(res);
       } else {
         const res = await tick({
-          vault: AXIOM_STRATEGY_VAULT_ADDRESS,
-          agentNft: AXIOM_AGENT_NFT_ADDRESS,
+          vault: getAxiomStrategyVaultAddress(),
+          agentNft: getAxiomAgentNftAddress(),
           agentTokenId: activeId,
         });
         setResult(res);
@@ -200,13 +163,17 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
         </div>
         {isStreaming && (
           <span style={{ fontSize: 12, color: COLORS.bronzeLight, fontStyle: 'italic' }}>
-            Receiving tokens from stream...
+            Receiving live output...
           </span>
         )}
       </div>
 
       {error !== null && (
         <Alert variant="error">{error.message}</Alert>
+      )}
+
+      {streamingError !== null && (
+        <Alert variant="error">{streamingError}</Alert>
       )}
 
       {streamedTokens !== '' && (

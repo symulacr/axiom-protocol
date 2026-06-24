@@ -19,6 +19,7 @@
   "dependencies": {
     "@axiom/config": "workspace:*",
     "@axiom/oracle": "workspace:*",
+    "@0gfoundation/0g-compute-ts-sdk": "^0.8.4",
     "cors": "^2.8.6",
     "eciesjs": "^0.4.18",
     "ethereum-cryptography": "^2.2.1",

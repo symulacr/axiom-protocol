@@ -1,7 +1,7 @@
 import { useState, type ReactElement } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAccount, useReadContracts } from 'wagmi';
-import { AXIOM_AGENT_NFT_ADDRESS } from '../abi/addresses.js';
+import { getAxiomAgentNftAddress } from '../abi/addresses.js';
 import { axiomAgentNftAbi } from '../abi/axiomAgentNft.js';
 import { useAgentMetadata } from '../hooks/useAgentMetadata.js';
 import { TransferModal } from '../components/TransferModal.js';
@@ -15,25 +15,15 @@ import {
   MonoLabel,
   Alert,
   PageHeader,
+  ConnectedGuard,
 } from '../components/ui.js';
-import { PLACEHOLDER, truncateHex } from '../utils/format.js';
-
-function parseTokenId(raw: string | undefined) {
-  if (raw === undefined || raw === '') {
-    return null;
-  }
-  try {
-    return BigInt(raw);
-  } catch {
-    return null;
-  }
-}
+import { PLACEHOLDER, truncateHex, parseTokenId } from '../utils/format.js';
 
 export function AgentDetail(): ReactElement {
   const params = useParams<{ tokenId: string }>();
   const tokenId = parseTokenId(params.tokenId);
 
-  const { isConnected, address } = useAccount();
+  const { address } = useAccount();
 
   const metadata = useAgentMetadata(tokenId ?? 0n);
   const { data, isLoading: metaLoading, error: metaError } = metadata;
@@ -43,35 +33,19 @@ export function AgentDetail(): ReactElement {
     allowFailure: false,
     contracts: [
       {
-        address: AXIOM_AGENT_NFT_ADDRESS,
+        address: getAxiomAgentNftAddress(),
         abi: axiomAgentNftAbi,
         functionName: 'creatorOf',
         args: [tokenId ?? 0n],
       },
     ],
     query: {
-      enabled: tokenId !== null && Boolean(AXIOM_AGENT_NFT_ADDRESS),
+      enabled: tokenId !== null && Boolean(getAxiomAgentNftAddress()),
     },
   });
   const creator = (creatorQuery.data?.[0] as string | undefined) ?? undefined;
 
   const [transferOpen, setTransferOpen] = useState(false);
-
-  if (!isConnected) {
-    return (
-      <main>
-        <PageHeader title="Agent" />
-        <Card style={{ textAlign: 'center', padding: 'var(--space-3xl) var(--space-xl)' }}>
-          <p style={{ color: COLORS.textMuted, fontSize: 'var(--text-sm)', marginBottom: 'var(--space-lg)', fontWeight: 'var(--fw-regular)', lineHeight: 'var(--lh-normal)' }}>
-            Connect your wallet to view this agent's on-chain metadata.
-          </p>
-          <Link to="/agents" style={{ color: COLORS.bronzeLight, fontSize: 'var(--text-sm)', fontWeight: 'var(--fw-semibold)' }}>
-            Back to agents
-          </Link>
-        </Card>
-      </main>
-    );
-  }
 
   if (tokenId === null) {
     return (
@@ -88,6 +62,7 @@ export function AgentDetail(): ReactElement {
 
   return (
     <main>
+      <ConnectedGuard>
       <PageHeader
         title={`Agent #${tokenId.toString()}`}
         subtitle="On-chain iNFT metadata and transfer history"
@@ -184,6 +159,7 @@ export function AgentDetail(): ReactElement {
           onSuccess={(): void => setTransferOpen(false)}
         />
       )}
+      </ConnectedGuard>
     </main>
   );
 }

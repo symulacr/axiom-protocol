@@ -16,6 +16,8 @@ export interface StoredEvent {
   eventName: string;
   payload: Record<string, unknown>;
   receivedAt: number;
+  /** Monotonic timestamp (ms) set when the event is appended to the store. Used for cursor-based pull. */
+  timestamp: number;
 }
 
 /** Query filter — all fields optional, ANDed together. */
@@ -61,6 +63,7 @@ export class EventStore {
       bucket = [];
       this.buckets.set(key, bucket);
     }
+    stored.timestamp = Date.now();
     bucket.push(stored);
     if (bucket.length > this.cap) bucket.shift(); // Map order is preserved
     this.total += 1;
@@ -70,16 +73,16 @@ export class EventStore {
   /**
    * Return all events matching (source, eventName), oldest first.
    */
-  queryBySource(source: string, eventName: string): StoredEvent[] {
+  queryBySource(source: string, eventName: string): readonly StoredEvent[] {
     const bucket = this.buckets.get(`${source}::${eventName}`);
     if (bucket === undefined) return [];
-    return structuredClone(bucket) as StoredEvent[];
+    return bucket;
   }
 
   /**
    * Return every event with matching tokenId in payload. Iterates all buckets.
    */
-  queryByAgent(query: AgentEventQuery): StoredEvent[] {
+  queryByAgent(query: AgentEventQuery): readonly StoredEvent[] {
     const target = BigInt(query.tokenId).toString();
     const matches: StoredEvent[] = [];
     for (const bucket of this.buckets.values()) {
@@ -94,20 +97,22 @@ export class EventStore {
     }
     // Stable order: by (blockNumber, logIndex) then receivedAt.
     matches.sort(byBlockThenLogReceived);
-    const cloned = structuredClone(matches) as StoredEvent[];
-    return query.limit !== undefined ? cloned.slice(0, query.limit) : cloned;
+    return query.limit !== undefined ? matches.slice(0, query.limit) : matches;
   }
   /**
    * Return retained events across all buckets, oldest first.
    */
-  getAll(limit?: number): StoredEvent[] {
+  getAll(limit?: number, since?: number): readonly StoredEvent[] {
     const all: StoredEvent[] = [];
     for (const bucket of this.buckets.values()) {
       all.push(...bucket);
     }
-    all.sort(byBlockThenLogReceived);
-    const cloned = structuredClone(all) as StoredEvent[];
-    return limit !== undefined ? cloned.slice(0, limit) : cloned;
+    let results = all;
+    if (since !== undefined) {
+      results = results.filter(e => e.timestamp > since);
+    }
+    results.sort(byBlockThenLogReceived);
+    return limit !== undefined ? results.slice(0, limit) : results;
   }
 
   /**

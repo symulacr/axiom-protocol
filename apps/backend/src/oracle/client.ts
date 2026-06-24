@@ -3,6 +3,9 @@ export type { OwnershipProofInput, OwnershipProofResult, AccessProofInput };
 import { recoverAccessSigner, type Eip712Domain } from "@axiom/oracle/signer";
 import { bigintReplacer } from "@axiom/config/types/bigint";
 
+// Default timeout for oracle HTTP requests (10 seconds, matches frontend).
+const ORACLE_TIMEOUT_MS = 10_000;
+
 /**
  * HTTP client for the TEE signer service (apps/oracle).
  * The oracle signs the OwnershipProof payload (TEE-side) and the backend
@@ -92,14 +95,14 @@ export class DefaultSignerOracleClient implements OracleClient {
   }
 
   private async get<T>(path: string): Promise<T> {
-    const timeout = this.config.timeoutMs ?? 10_000;
+    const timeout = this.config.timeoutMs ?? ORACLE_TIMEOUT_MS;
     const res = await fetch(`${this.baseUrl}${path}`, { signal: AbortSignal.timeout(timeout) });
     if (!res.ok) throw new Error(`Oracle ${path} returned ${res.status}`);
     return (await res.json()) as T;
   }
 
   private async post<T>(path: string, input: object): Promise<T> {
-    const timeout = this.config.timeoutMs ?? 10_000;
+    const timeout = this.config.timeoutMs ?? ORACLE_TIMEOUT_MS;
     const body = JSON.stringify(input, bigintReplacer);
     const res = await fetch(`${this.baseUrl}${path}`, {
       method: "POST",

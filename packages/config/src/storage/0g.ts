@@ -34,28 +34,6 @@ export type Encryption =
   | { type: "aes256"; key: Uint8Array }
   | { type: "ecies"; recipientPubKey: Uint8Array | string };
 
-// ── Retry helper (moved from backend) ─────────────────────────────────────
-
-export async function withRetry<T>(
-  fn: () => Promise<T>,
-  opts?: { attempts?: number },
-): Promise<T> {
-  const maxAttempts = opts?.attempts ?? 3;
-  let lastErr: unknown;
-  for (let i = 0; i < maxAttempts; i++) {
-    try {
-      return await fn();
-    } catch (err) {
-      lastErr = err;
-      if (i < maxAttempts - 1) {
-        const delay = 100 * (i + 1) * (i + 1); // 100, 400, 900
-        await new Promise((r) => setTimeout(r, delay));
-      }
-    }
-  }
-  throw lastErr;
-}
-
 // ── In-memory storage for dev/test (moved from oracle) ────────────────────
 
 export class InMemoryStorage implements StorageAdapter {
@@ -130,16 +108,12 @@ export class ZeroGStorage implements StorageAdapter {
 
   // StorageAdapter interface (for oracle compat)
   async upload(blob: Uint8Array): Promise<{ rootHash: Hex }> {
-    const result = await withRetry(() =>
-      uploadToStorage(this.indexer, blob, this.config.evmRpc, this.config.signer),
-    );
+    const result = await uploadToStorage(this.indexer, blob, this.config.evmRpc, this.config.signer);
     return { rootHash: result.rootHash };
   }
 
   async download(rootHash: Hex): Promise<Uint8Array> {
-    const result = await withRetry(() =>
-      downloadFromStorage(this.indexer, rootHash, { withProof: false }),
-    );
+    const result = await downloadFromStorage(this.indexer, rootHash, { withProof: false });
     return result.data;
   }
 
@@ -152,20 +126,20 @@ export class ZeroGStorage implements StorageAdapter {
   }
 
   // Backward-compat methods (for backend consumers)
-  // encryption param kept for backward compat (callers still pass it)
+  /**
+   * @param data - The raw bytes to upload.
+   * @param _encryption - Reserved for future use. Currently unused.
+   */
   async uploadData(data: Uint8Array, _encryption?: Encryption): Promise<UploadResult> {
-    return withRetry(() =>
-      uploadToStorage(this.indexer, data, this.config.evmRpc, this.config.signer),
-    );
+    return uploadToStorage(this.indexer, data, this.config.evmRpc, this.config.signer);
   }
 
   async downloadWithOpts(
     rootHash: Hex,
     opts?: { symmetricKey?: Uint8Array; privateKey?: Uint8Array | string; withProof?: boolean },
   ): Promise<DownloadResult> {
-    return withRetry(() => downloadFromStorage(this.indexer, rootHash, opts));
+    return downloadFromStorage(this.indexer, rootHash, opts);
   }
 }
 
-// TODO Wave 4: Delete apps/backend/src/storage/0g.ts — functionality consolidated here
-// TODO Wave 4: Delete apps/oracle/src/storage.ts — functionality consolidated here
+

@@ -10,9 +10,9 @@ import {
 import { Link } from 'react-router-dom';
 import { useAccount, useReadContracts } from 'wagmi';
 import { formatEther, isHex, type Address } from 'viem';
-import { AXIOM_AGENT_NFT_ADDRESS } from '../abi/addresses.js';
+import { getAxiomAgentNftAddress } from '../abi/addresses.js';
 import { useMint } from '../hooks/useMint.js';
-import { COLORS, Card, Button, Alert, PageHeader } from './ui.js';
+import { COLORS, Card, Button, Alert, PageHeader, Input, ConnectedGuard } from './ui.js';
 
 const mintFeeAbi = [
   {
@@ -23,21 +23,6 @@ const mintFeeAbi = [
     outputs: [{ name: '', type: 'uint256' }],
   },
 ] as const;
-
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '10px 14px',
-  marginTop: 6,
-  fontFamily: "'SF Mono', monospace",
-  fontSize: 13,
-  border: `1px solid ${COLORS.borderStrong}`,
-  borderRadius: 6,
-  background: COLORS.bg,
-  color: COLORS.text,
-  boxSizing: 'border-box',
-  outline: 'none',
-  transition: 'all 0.18s ease',
-};
 
 const labelStyle: React.CSSProperties = {
   display: 'block',
@@ -58,6 +43,11 @@ export type MintFormProps = {
   provider?: `0x${string}` | undefined;
 };
 
+function isOracleRelatedError(message: string): boolean {
+  const lower = message.toLowerCase();
+  return lower.includes('timeout') || lower.includes('oracle');
+}
+
 function validateHex(value: string, label: string): string | null {
   if (value.length === 0) return null;
   if (!value.startsWith('0x')) {
@@ -72,7 +62,7 @@ function validateHex(value: string, label: string): string | null {
 export function MintForm({ provider }: MintFormProps): ReactElement {
   const formId = useId();
   const { address, isConnected } = useAccount();
-  const { mint, isLoading, error, result, reset } = useMint();
+  const { mint, isLoading, error, result, registrationWarning, reset } = useMint();
 
   const [encryptedStrategyUri, setEncryptedStrategyUri] = useState('');
   const [sealedKey, setSealedKey] = useState('');
@@ -82,14 +72,14 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
     allowFailure: false,
     contracts: [
       {
-        address: AXIOM_AGENT_NFT_ADDRESS,
+        address: getAxiomAgentNftAddress(),
         abi: mintFeeAbi,
         functionName: 'mintFee',
         args: undefined,
       },
     ],
     query: {
-      enabled: Boolean(AXIOM_AGENT_NFT_ADDRESS),
+      enabled: Boolean(getAxiomAgentNftAddress()),
     },
   });
 
@@ -122,7 +112,7 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
       setSubmitError(null);
       try {
         await mint({
-          agentNft: AXIOM_AGENT_NFT_ADDRESS,
+          agentNft: getAxiomAgentNftAddress(),
           encryptedStrategyUri: encryptedStrategyUri as `0x${string}`,
           sealedKey: sealedKey as `0x${string}`,
           owner,
@@ -149,21 +139,9 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
     [result, reset],
   );
 
-  if (!isConnected) {
-    return (
-      <main>
-        <PageHeader title="Mint a New Agent" />
-        <Card style={{ textAlign: 'center', padding: 'var(--space-3xl) var(--space-xl)' }}>
-          <p style={{ color: COLORS.textMuted, fontSize: 'var(--text-sm)', margin: 0, fontWeight: 'var(--fw-regular)', lineHeight: 'var(--lh-normal)' }}>
-            Connect your wallet to mint an iNFT agent.
-          </p>
-        </Card>
-      </main>
-    );
-  }
-
   return (
     <main style={{ maxWidth: '36rem' }}>
+      <ConnectedGuard>
       <PageHeader title="Mint a New Agent" subtitle="Upload an encrypted strategy and mint it as an ERC-7857 iNFT" />
 
       <Card>
@@ -178,7 +156,7 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
           <label htmlFor={`${formId}-uri`} style={labelStyle}>
             Encrypted strategy URI / dataHash
           </label>
-          <input
+          <Input
             id={`${formId}-uri`}
             name="encryptedStrategyUri"
             type="text"
@@ -187,7 +165,7 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
             placeholder="0x…  (0G Storage root hash)"
             autoComplete="off"
             spellCheck={false}
-            style={inputStyle}
+            style={{ width: '100%', marginTop: 6, fontFamily: "'SF Mono', monospace", boxSizing: 'border-box' }}
             required
           />
           {uriError !== null && (
@@ -203,7 +181,7 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
           <label htmlFor={`${formId}-sealed`} style={labelStyle}>
             Sealed key
           </label>
-          <input
+          <Input
             id={`${formId}-sealed`}
             name="sealedKey"
             type="text"
@@ -212,7 +190,7 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
             placeholder="0x…  (TEE-sealed encryption key)"
             autoComplete="off"
             spellCheck={false}
-            style={inputStyle}
+            style={{ width: '100%', marginTop: 6, fontFamily: "'SF Mono', monospace", boxSizing: 'border-box' }}
             required
           />
           {sealedKeyError !== null && (
@@ -227,13 +205,13 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
           <label htmlFor={`${formId}-owner`} style={labelStyle}>
             Owner <span style={{ color: COLORS.textDim, fontWeight: 400 }}>(connected wallet)</span>
           </label>
-          <input
+          <Input
             id={`${formId}-owner`}
             name="owner"
             type="text"
             value={owner ?? ''}
             readOnly
-            style={{ ...inputStyle, background: COLORS.surface, color: COLORS.bronzeLight }}
+            style={{ width: '100%', marginTop: 6, fontFamily: "'SF Mono', monospace", boxSizing: 'border-box', background: COLORS.surface, color: COLORS.bronzeLight }}
           />
 
           <div style={{ marginTop: 'var(--space-lg)', padding: 'var(--space-md) var(--space-lg)', background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 'var(--radius-lg)', fontSize: 'var(--text-sm)' }}>
@@ -259,11 +237,21 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
           {error !== null && (
             <Alert variant="error" style={{ marginTop: 'var(--space-lg)' }}>
               {error.message}
+              {isOracleRelatedError(error.message) && (
+                <p style={{ fontSize: '0.85em', marginTop: 6, opacity: 0.85 }}>
+                  This may be related to oracle connectivity. Ensure your TEE oracle service is running and reachable.
+                </p>
+              )}
             </Alert>
           )}
           {submitError !== null && (
             <Alert variant="error" style={{ marginTop: 'var(--space-md)' }}>
               {submitError}
+              {isOracleRelatedError(submitError) && (
+                <p style={{ fontSize: '0.85em', marginTop: 6, opacity: 0.85 }}>
+                  This may be related to oracle connectivity. Ensure your TEE oracle service is running and reachable.
+                </p>
+              )}
             </Alert>
           )}
 
@@ -291,6 +279,11 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
               >
                 View agent #{result.tokenId} →
               </Link>
+              {registrationWarning !== null && (
+                <p style={{ fontSize: '0.85em', color: COLORS.textMuted, marginTop: 8 }}>
+                  {registrationWarning}
+                </p>
+              )}
             </div>
           )}
 
@@ -301,6 +294,7 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
           </div>
         </form>
       </Card>
+      </ConnectedGuard>
     </main>
   );
 }

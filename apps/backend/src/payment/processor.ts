@@ -2,14 +2,7 @@
 
 import { type ContractTransactionReceipt, type TransactionResponse, type Wallet, type JsonRpcProvider, type Log, type EventLog } from "ethers";
 import { TypedContract } from "@axiom/config/types/contract";
-import { PAYMENT_PROCESSOR_ABI } from "@axiom/config/abis";
-
-// Minimal ERC-20 ABI for approval pre-flight (not exported from config package).
-const ERC20_ABI: readonly string[] = [
-  "function approve(address spender, uint256 amount) returns (bool)",
-  "function allowance(address owner, address spender) view returns (uint256)",
-  "function balanceOf(address account) view returns (uint256)",
-] as const;
+import { PAYMENT_PROCESSOR_ABI, ERC20_ABI } from "@axiom/config/abis";
 
 // Local contract method types derived from the ABIs above (avoid shared contract-types.ts drift).
 type PaymentProcessorMethods = {
