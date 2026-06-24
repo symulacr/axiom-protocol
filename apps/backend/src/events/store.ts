@@ -1,8 +1,4 @@
-// apps/backend/src/events/store.ts
-//
-// In-memory event store for agent lifecycle events. Bounded FIFO ring
-// per (source, eventName) — "last 1000" for the dashboard activity panel.
-//
+// In-memory event store for agent lifecycle events.
 
 
 /** Default retention: 1000 events per (source, eventName) pair. */
@@ -12,33 +8,21 @@ export const DEFAULT_MAX_EVENTS_PER_SOURCE = 1000;
  * Wire-format event from the indexer or orchestrator. payload is opaque to the store.
  */
 export interface StoredEvent {
-  /** Origin system, e.g. "indexer". */
   source: string;
-  /** 0G Galileo = 16602. */
   chainId: number;
-  /** Block number the log was emitted in. */
   blockNumber: number;
-  /** Transaction hash the log was emitted in. */
   txHash: string;
-  /** Log index inside the transaction. */
   logIndex: number;
-  /** Decoded event name. */
   eventName: string;
-  /** Opaque event payload. */
   payload: Record<string, unknown>;
-  /** Wall-clock ms when the store received it. */
   receivedAt: number;
 }
 
 /** Query filter — all fields optional, ANDed together. */
 export interface AgentEventQuery {
-  /** Token id (decimal string or bigint). The store compares as string. */
   tokenId: string;
-  /** Optional event name filter, e.g. "Transfer". */
   eventName?: string;
-  /** Optional source filter, e.g. "indexer". */
   source?: string;
-  /** Optional cap on results; default returns all matching. */
   limit?: number;
 }
 

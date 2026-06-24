@@ -357,8 +357,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
         pk = ethers.hexlify(ethers.getBytes(pk).slice(1)) as `0x${string}`;
       }
 
-      // Challenge stage: re-key via oracle when client supplies re-key inputs;
-      // otherwise fall back to sign-only.
+      // Challenge stage: re-key via oracle or sign-only.
       const canRekey = !!(oldDataEncryptionKey && oldDataUri);
       if (!accessProof) {
         const nonce = BigInt(accessProofNonce ?? 0);
@@ -447,9 +446,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
           `allowing anyway; on-chain iTransferFrom will revert if proof is invalid`,
         );
       }
-      // The sealedKey the client passes back is the re-keyed one (from the
-      // challenge stage's transferValidity response) when re-keying occurred,
-      // or the original caller-supplied / zero-pad value in the sign-only path.
+      // Client's sealedKey: re-keyed (from challenge/transferValidity) or original/zero-pad.
       const finalSealedKey: `0x${string}` = (sealedKeyIn && sealedKeyIn.length >= 2 ? sealedKeyIn : ("0x" + "00".repeat(32))) as `0x${string}`;
       const tee = await oracle.signOwnership({
         dataHash: proofDataHash,
@@ -528,8 +525,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
       next(err);
     }
   });
-  // ─── Payment routes (AxiomPaymentProcessor) ────────────────
-  // Auto-approve when allowance insufficient.
+  // ─── Payment routes (AxiomPaymentProcessor) — auto-approve when insufficient ─────
   app.post("/v1/agents/:id/pay", async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = getIdParam(req, res);
@@ -591,7 +587,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
       if (!id) return;
       const { bps } = royaltySchema.parse(req.body);
       const client = await getPayment();
-      // Return encoded calldata for the NFT owner to submit; backend wallet cannot pass on-chain checks.
+      // Encoded calldata for NFT owner submission.
       const txData = await client.encodeSetRoyalty(BigInt(id), bps);
       res.status(200).json({ ok: true, tokenId: id, bps, ...txData });
       // The frontend broadcasts the actual tx; no backend broadcast here.

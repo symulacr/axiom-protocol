@@ -24,7 +24,7 @@ const CHECKPOINT_FILE = join(process.cwd(), "data", "checkpoint.json");
 /** Topic-0 for every event. */
 export type EventTopicTable = { [K in EventName]: Hex };
 const TOPIC_TABLE: EventTopicTable = {
-  // topic-0 = keccak256("Name(type1,type2,…)"). indexed affects topics 1..n, not topic-0.
+  // topic-0 = keccak256(eventSig); indexed only affects topics 1+.
   Transfer: validateHex(ethers.id("Transfer(address,address,uint256)")),
   Updated: validateHex(ethers.id("Updated(uint256,(string,bytes32)[],(string,bytes32)[])")),
   Authorization: validateHex(ethers.id("Authorization(uint256,address,address)")),

@@ -22,10 +22,7 @@ export interface Eip712Domain {
   verifyingContract: `0x${string}`;
 }
 
-/**
- * Default domain for Galileo testnet. Production MUST pass real
- * chain id + verifier address.
- */
+/** Default domain for Galileo testnet. Production MUST pass real chain id + verifier address. */
 export const DEFAULT_EIP712_DOMAIN: Eip712Domain = {
   chainId: 16602n,
   verifyingContract: "0x24f725198d64A3b03A8386cD8fa12BD7c591734A",
@@ -33,10 +30,7 @@ export const DEFAULT_EIP712_DOMAIN: Eip712Domain = {
 
 const abiCoder = AbiCoder.defaultAbiCoder();
 
-/**
- * EIP-712 domain separator — keccak256(abi.encode(EIP712Domain(...))).
- * Mirrors AxiomTeeVerifier._domainSeparator().
- */
+/** EIP-712 domain separator — keccak256(abi.encode(EIP712Domain(...))). Mirrors AxiomTeeVerifier._domainSeparator(). */
 export function domainSeparator(domain: Eip712Domain): Hex {
   return keccak256(
     abiCoder.encode(
@@ -67,9 +61,7 @@ export interface AccessProofInput {
   validUntil: bigint;
 }
 
-/**
- * EIP-712 OwnershipProof struct hash. Matches verifier ownership leg.
- */
+/** EIP-712 OwnershipProof struct hash. */
 export function ownershipStructHash(input: OwnershipProofInput): Hex {
   return keccak256(
     abiCoder.encode(
@@ -88,9 +80,7 @@ export function ownershipStructHash(input: OwnershipProofInput): Hex {
   ) as Hex;
 }
 
-/**
- * EIP-712 AccessProof struct hash. Matches verifier access leg.
- */
+/** EIP-712 AccessProof struct hash. */
 export function accessStructHash(input: AccessProofInput): Hex {
   return keccak256(
     abiCoder.encode(
@@ -108,23 +98,17 @@ export function accessStructHash(input: AccessProofInput): Hex {
   ) as Hex;
 }
 
-/**
- * Full EIP-712 OwnershipProof digest (signed by TEE oracle).
- */
+/** Full EIP-712 OwnershipProof digest (signed by TEE oracle). */
 export function ownershipMessageHash(input: OwnershipProofInput, domain: Eip712Domain): Hex {
   return keccak256(concat(["0x1901", domainSeparator(domain), ownershipStructHash(input)])) as Hex;
 }
 
-/**
- * Full EIP-712 AccessProof digest (signed by receiver).
- */
+/** Full EIP-712 AccessProof digest (signed by receiver). */
 export function accessMessageHash(input: AccessProofInput, domain: Eip712Domain): Hex {
   return keccak256(concat(["0x1901", domainSeparator(domain), accessStructHash(input)])) as Hex;
 }
 
-/**
- * Recover the signer of a raw-ECDSA AccessProof signature.
- */
+/** Recover the signer of a raw-ECDSA AccessProof signature. */
 export function recoverAccessSigner(signature: Hex, input: AccessProofInput, domain: Eip712Domain): Hex {
   const recovered = SigningKey.recoverPublicKey(getBytes(accessMessageHash(input, domain)), signature);
   return computeAddress(recovered) as Hex;
