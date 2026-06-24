@@ -20,7 +20,7 @@ export interface HttpEventBody {
 /** Minimal fetch-compatible function; defaults to global fetch. */
 export type Fetcher = (input: string, init?: RequestInit) => Promise<Response>;
 
-/** Options for postEvent and httpEventSink. */
+/** Options for postEvent. */
 export interface HttpEventSinkOptions {
   /** Base URL of the backend, e.g. `http://127.0.0.1:3000`. */
   backendUrl: string;
@@ -40,7 +40,7 @@ export interface HttpEventSinkOptions {
   timeoutMs?: number;
 }
 
-/** Returned by postEvent / httpEventSink. */
+/** Returned by postEvent. */
 export interface HttpEventSinkResult {
   status: number;
 }
@@ -99,9 +99,4 @@ export async function postEvent(
   return { status: res.status };
 }
 
-/**
- * Build a sink closure that POSTs each event to the backend.
- */
-export function httpEventSink(opts: HttpEventSinkOptions) {
-  return (event: AxiomEvent) => postEvent(event, opts);
-}
+

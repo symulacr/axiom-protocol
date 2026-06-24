@@ -2,7 +2,7 @@ import type { CSSProperties, ReactElement } from 'react';
 import { Link } from 'react-router-dom';
 import { useAccount } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { AXIOM_VAULT_ADDRESSES } from '../abi/addresses.js';
+import { AXIOM_STRATEGY_VAULT_ADDRESS } from '../abi/addresses.js';
 import { Card, COLORS } from '../components/ui.js';
 
 const NARRATIVE =
@@ -153,7 +153,7 @@ const stepBodyStyle: CSSProperties = {
 
 export function HomePage(): ReactElement {
   const { isConnected } = useAccount();
-  const vaultAddr = AXIOM_VAULT_ADDRESSES[0];
+  const vaultAddr = AXIOM_STRATEGY_VAULT_ADDRESS;
 
   return (
     <main>
@@ -184,7 +184,7 @@ export function HomePage(): ReactElement {
       {/* Stats */}
       <section style={statsGridStyle}>
         <Card style={statCardStyle}>
-          <div style={statNumberStyle}>{AXIOM_VAULT_ADDRESSES.length}</div>
+          <div style={statNumberStyle}>{1}</div>
           <div style={statLabelStyle}>Vaults Live</div>
         </Card>
         <Card style={statCardStyle}>

@@ -1,5 +1,5 @@
 import { Indexer, MemData } from "@0gfoundation/0g-storage-ts-sdk";
-import { ethers, type Signer } from "ethers";
+import type { Signer } from "ethers";
 import type { Hex } from "viem";
 import { OG_NETWORKS, pickOGNetwork } from "@axiom/config/networks";
 export type { OGNetwork } from "@axiom/config/networks";
@@ -47,39 +47,10 @@ export interface DownloadResult {
 
 export type Encryption = { type: "aes256"; key: Uint8Array } | { type: "ecies"; recipientPubKey: Uint8Array | string };
 
-/**
- * Thread-safe nonce manager for concurrent uploads from the same wallet.
- * Prevents "replacement transaction underpriced" errors when upload calls race.
- */
-class NonceManager {
-  private provider: ethers.JsonRpcProvider;
-  private signer: Signer;
-  private address: string | null = null;
-  private nextNonce: Promise<bigint> | null = null;
-
-  constructor(evmRpc: string, signer: Signer) {
-    this.provider = new ethers.JsonRpcProvider(evmRpc);
-    this.signer = signer;
-  }
-
-  /** Atomically allocate the next nonce for this wallet. */
-  async getNextNonce(): Promise<bigint> {
-    if (!this.nextNonce) {
-      this.address ??= await this.signer.getAddress();
-      const nonce = await this.provider.getTransactionCount(this.address, "pending");
-      this.nextNonce = Promise.resolve(BigInt(nonce));
-    }
-    const nonce = await this.nextNonce;
-    this.nextNonce = Promise.resolve(nonce + 1n);
-    return nonce;
-  }
-}
-
-/** Typed wrapper around the 0G Storage Indexer with retry and nonce management. */
+/** Typed wrapper around the 0G Storage Indexer with retry. */
 export class ZeroGStorage {
   readonly indexer: Indexer;
   readonly config: ZeroGStorageConfig;
-  private nonceManager: NonceManager | null = null;
 
   constructor(config: ZeroGStorageConfig) {
     this.config = config;
@@ -87,11 +58,7 @@ export class ZeroGStorage {
   }
 
   async uploadData(data: Uint8Array, encryption?: Encryption): Promise<UploadResult> {
-    if (!this.nonceManager) {
-      this.nonceManager = new NonceManager(this.config.evmRpc, this.config.signer);
-    }
-    const nonce = await this.nonceManager.getNextNonce();
-    const uploadOpts = encryption ? { encryption, nonce } : { nonce };
+    const uploadOpts = encryption ? { encryption } : {};
     const [tx, err] = await withRetry(() =>
       this.indexer.upload(new MemData(data), this.config.evmRpc, this.config.signer, uploadOpts),
     );

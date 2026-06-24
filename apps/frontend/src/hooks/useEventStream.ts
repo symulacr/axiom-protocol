@@ -1,7 +1,6 @@
 // Axiom Protocol — `useEventStream` hook.
 
-import { useCallback, useRef, useState } from 'react';
-import { useMountEffect } from '../components/ui.js';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { BACKEND_URL } from '../config/env.js';
 import type { AxiomEvent } from './useEventHistory.js';
 
@@ -93,7 +92,7 @@ export function useEventStream(
     }
   }, [enabled, topics.join(',')]);
 
-  useMountEffect(() => {
+  useEffect(() => {
     connect();
     return () => {
       wsRef.current?.close();

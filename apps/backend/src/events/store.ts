@@ -26,6 +26,10 @@ export interface AgentEventQuery {
   limit?: number;
 }
 
+/** Shared sort comparator: by (blockNumber, logIndex, receivedAt). */
+const byBlockThenLogReceived = (a: StoredEvent, b: StoredEvent) =>
+  a.blockNumber - b.blockNumber || a.logIndex - b.logIndex || a.receivedAt - b.receivedAt;
+
 /** In-memory event store. One per server process. */
 export class EventStore {
   private readonly cap: number;
@@ -89,11 +93,7 @@ export class EventStore {
       }
     }
     // Stable order: by (blockNumber, logIndex) then receivedAt.
-    matches.sort((a, b) => {
-      if (a.blockNumber !== b.blockNumber) return a.blockNumber - b.blockNumber;
-      if (a.logIndex !== b.logIndex) return a.logIndex - b.logIndex;
-      return a.receivedAt - b.receivedAt;
-    });
+    matches.sort(byBlockThenLogReceived);
     const cloned = structuredClone(matches) as StoredEvent[];
     return query.limit !== undefined ? cloned.slice(0, query.limit) : cloned;
   }
@@ -105,11 +105,7 @@ export class EventStore {
     for (const bucket of this.buckets.values()) {
       all.push(...bucket);
     }
-    all.sort((a, b) => {
-      if (a.blockNumber !== b.blockNumber) return a.blockNumber - b.blockNumber;
-      if (a.logIndex !== b.logIndex) return a.logIndex - b.logIndex;
-      return a.receivedAt - b.receivedAt;
-    });
+    all.sort(byBlockThenLogReceived);
     const cloned = structuredClone(all) as StoredEvent[];
     return limit !== undefined ? cloned.slice(0, limit) : cloned;
   }
