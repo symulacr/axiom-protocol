@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback } from 'react';
 import type { Address } from 'viem';
 import { BACKEND_URL } from '../config/env.js';
+import { useAsyncAction } from './useAsyncAction.js';
 
 /** Response body of `GET /v1/payment/config`. */
 export type PaymentConfig = {
@@ -74,89 +75,64 @@ export type UsePaymentResult = {
 };
 
 export function usePayment(): UsePaymentResult {
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
-
-  useEffect(() => {
-    return () => abortRef.current?.abort();
-  }, []);
-
-  const run = useCallback(async <T,>(
-    fn: (signal: AbortSignal) => Promise<T>,
-  ): Promise<T> => {
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-    setIsLoading(true);
-    setError(null);
-    try {
-      return await fn(controller.signal);
-    } catch (err) {
-      const wrapped = err instanceof Error ? err : new Error(String(err));
-      setError(wrapped);
-      throw wrapped;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const { execute, isLoading, error } = useAsyncAction();
 
   const payForAgent = useCallback(
     (tokenId: bigint, amount: string): Promise<AgentPayResult> =>
-      run((signal) =>
+      execute((signal) =>
         apiFetch<AgentPayResult>(`/v1/agents/${tokenId.toString()}/pay`, {
           method: 'POST',
           body: JSON.stringify({ amount }),
           signal,
         }),
       ),
-    [run],
+    [execute],
   );
 
   const payComputeProvider = useCallback(
     (provider: Address, amount: string): Promise<ComputePayResult> =>
-      run((signal) =>
+      execute((signal) =>
         apiFetch<ComputePayResult>('/v1/compute/pay', {
           method: 'POST',
           body: JSON.stringify({ provider, amount }),
           signal,
         }),
       ),
-    [run],
+    [execute],
   );
 
   const getEarnings = useCallback(
     (tokenId: bigint): Promise<EarningsInfo> =>
-      run((signal) =>
+      execute((signal) =>
         apiFetch<EarningsInfo>(`/v1/agents/${tokenId.toString()}/earnings`, {
           method: 'GET',
           signal,
         }),
       ),
-    [run],
+    [execute],
   );
 
   const setRoyalty = useCallback(
     (tokenId: bigint, bps: number): Promise<RoyaltyResult> =>
-      run((signal) =>
+      execute((signal) =>
         apiFetch<RoyaltyResult>(`/v1/agents/${tokenId.toString()}/royalty`, {
           method: 'POST',
           body: JSON.stringify({ bps }),
           signal,
         }),
       ),
-    [run],
+    [execute],
   );
 
   const getPaymentConfig = useCallback(
     (): Promise<PaymentConfig> =>
-      run((signal) =>
+      execute((signal) =>
         apiFetch<PaymentConfig>('/v1/payment/config', {
           method: 'GET',
           signal,
         }),
       ),
-    [run],
+    [execute],
   );
 
   return {
