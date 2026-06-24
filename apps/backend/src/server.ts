@@ -1,15 +1,14 @@
 import { z } from "zod";
-import express, { type Request, type Response, type Express, type NextFunction } from "express";
+import express, { type Request, type Response, type Express, type NextFunction, Router } from "express";
 import helmet from "helmet";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
 import { createServer, type Server as HttpServer } from "node:http";
 import { WebSocketServer, type WebSocket } from "ws";
-import { ethers, type Wallet } from "ethers";
+import { ethers, type TransactionResponse, type Wallet } from "ethers";
 import { TypedContract } from "@axiom/config/types/contract";
 import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
-import { bigintReplacer, stringifyBigIntSafe, bigIntSafe } from "@axiom/config/types/bigint";
-import type { AgentNFTMethods, StrategyVaultMethods } from "./contract-types.js";
+import { bigintReplacer } from "@axiom/config/types/bigint";
 import { ZeroGStorage, pickOGNetwork } from "./storage/0g.js";
 // Compute via 0G Router API — see compute/router.ts
 import { getComputeBaseUrl } from "./compute/router.js";
@@ -23,6 +22,8 @@ import { getEventStore } from "./events/store.js";
 import { PaymentProcessorClient } from "./payment/processor.js";
 import type { BackendEnv } from "./env-schema.js";
 import { createHealthRouter } from "./routers/health.js";
+import { createRoute } from "./routers/route-factory.js";
+import { broadcast, getClients, registerClient, unregisterClient, type ConnectedClient } from "./ws/broadcaster.js";
 import {
   chatCompletionsSchema,
   mintSchema,
@@ -50,6 +51,22 @@ const VAULT_ABI: string[] = [
   "function balanceOf(uint256) view returns (uint256)",
   "function strategyOf(uint256) view returns (bytes32,uint256,uint64)",
 ];
+
+// Local contract method types derived from the ABIs above (avoid shared contract-types.ts drift).
+type AgentNFTMethods = {
+  mintFee(): Promise<bigint>;
+  mint(iDatas: { dataDescription: string; dataHash: string }[], to: string, overrides?: { value?: bigint }): Promise<TransactionResponse>;
+  intelligentDatasOf(tokenId: bigint): Promise<{ dataDescription: string; dataHash: string }[]>;
+  creatorOf(tokenId: bigint): Promise<string>;
+};
+
+type StrategyVaultMethods = {
+  deposit(tokenId: bigint, overrides?: { value?: bigint }): Promise<TransactionResponse>;
+  setStrategy(tokenId: bigint, merkleRoot: string, dailyLimit: bigint): Promise<TransactionResponse>;
+  balanceOf(tokenId: bigint): Promise<bigint>;
+  strategyOf(tokenId: bigint): Promise<[string, bigint, bigint, bigint]>;
+};
+
 /** HTTP + WebSocket server. */
 loadEnv();
 
@@ -62,11 +79,6 @@ export interface ServerConfig {
   oracleBaseUrl: string;
   addresses?: { agentNft: `0x${string}`; vault: `0x${string}`; verifier: `0x${string}`; paymentProcessor?: `0x${string}` };
   env?: BackendEnv;
-}
-
-interface ConnectedClient {
-  socket: WebSocket;
-  topics: Set<string>;
 }
 
 function getIdParam(req: Request, res: Response): string | false {
@@ -163,12 +175,12 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
     return payment;
   }
 
-  const wsClients = new Set<ConnectedClient>();
-
   // Heartbeat every 30s; disconnect clients that miss 3 pings
   const HEARTBEAT_INTERVAL = 30_000;
   const MAX_MISSED_PINGS = 3;
+  const MAX_WS_CLIENTS = 1000;
   const heartbeatTimer = setInterval(() => {
+    const wsClients = getClients();
     for (const c of wsClients) {
       if (c.socket.readyState !== c.socket.OPEN) continue;
       if ((c as any).missedPings >= MAX_MISSED_PINGS) {
@@ -182,21 +194,6 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
   }, HEARTBEAT_INTERVAL);
 
 
-  const MAX_WS_CLIENTS = 1000;
-
-  function broadcast(topic: string, payload: unknown): void {
-    const msg = stringifyBigIntSafe({ topic, payload: bigIntSafe(payload), ts: Date.now() });
-    for (const c of wsClients) {
-      if (c.socket.readyState !== c.socket.OPEN) continue;
-      // Skip if client's buffer is backed up (>64KB)
-      if (c.socket.bufferedAmount > 65536) continue;
-      try {
-        c.socket.send(msg);
-      } catch {
-        wsClients.delete(c);
-      }
-    }
-  }
 
   app.use(createHealthRouter(provider, oracle, config.signer.address, config.addresses));
 
@@ -484,129 +481,67 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
     }
   });
 
-  app.post("/v1/vaults/:id/deposit", async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const id = getIdParam(req, res);
-      if (id === false) return;
-      const vaultAddr = config.addresses?.vault;
-      if (!vaultAddr) {
-        res.status(500).json({ error: "Vault address not configured" });
-        return;
-      }
-      const { valueWei, depositor } = depositSchema.parse(req.body);
-      const vaultTc = new TypedContract<StrategyVaultMethods>(vaultAddr, VAULT_ABI, config.signer);
-      const tx = await vaultTc.contract.deposit(BigInt(id), { value: BigInt(valueWei) });
-      const receipt = await tx.wait();
-      res.json({ ok: true, tokenId: id, depositor, valueWei, txHash: receipt?.hash ?? tx.hash });
-      broadcast("vault.deposit", { tokenId: id, depositor, valueWei });
-    } catch (err) {
-      next(err);
-    }
-  });
 
-  app.post("/v1/vaults/:id/strategy", async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const id = getIdParam(req, res);
-      if (id === false) return;
-      const vaultAddr = config.addresses?.vault;
-      if (!vaultAddr) {
-        res.status(500).json({ error: "Vault address not configured" });
-        return;
-      }
-      const { merkleRoot, dailyLimitWei } = strategySchema.parse(req.body);
-      const vaultTc = new TypedContract<StrategyVaultMethods>(vaultAddr, VAULT_ABI, config.signer);
-      const tx = await vaultTc.contract.setStrategy(BigInt(id), merkleRoot, BigInt(dailyLimitWei));
-      const receipt = await tx.wait();
-      res.json({ ok: true, tokenId: id, merkleRoot, dailyLimitWei, txHash: receipt?.hash ?? tx.hash });
-      broadcast("vault.strategy", { tokenId: id, merkleRoot });
-    } catch (err) {
-      next(err);
-    }
-  });
-  // ─── Payment routes (AxiomPaymentProcessor) — auto-approve when insufficient ─────
-  app.post("/v1/agents/:id/pay", async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const id = getIdParam(req, res);
-      if (id === false) return;
-      const { amount } = paySchema.parse(req.body);
-      const client = await getPayment();
-      const { receipt, event } = await client.payForAgent(BigInt(id), BigInt(amount));
-      res.status(200).json({
-        ok: true,
-        tokenId: id,
-        amount,
-        txHash: receipt.hash,
-        payment: event,
-      });
-      broadcast("agent.pay", { tokenId: id, amount, txHash: receipt.hash });
-    } catch (err) {
-      next(err);
-    }
-  });
 
-  app.post("/v1/compute/pay", async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { provider, amount } = computePaySchema.parse(req.body);
-      const client = await getPayment();
-      const { receipt } = await client.payComputeProvider(provider, BigInt(amount));
-      res.status(200).json({ ok: true, provider, amount, txHash: receipt.hash });
-      broadcast("compute.pay", { provider, amount, txHash: receipt.hash });
-    } catch (err) {
-      next(err);
-    }
-  });
+  // ─── Payment routes (AxiomPaymentProcessor) — refactored via createRoute factory ─────
+  const paymentRouter = Router();
 
-  app.get("/v1/agents/:id/earnings", async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const id = getIdParam(req, res);
-      if (id === false) return;
-      const nftAddr = config.addresses?.agentNft;
-      if (!nftAddr) {
-        res.status(500).json({ error: "AgentNFT address not configured" });
-        return;
-      }
-      const nftTc = new TypedContract<AgentNFTMethods>(nftAddr, AGENT_NFT_ABI, provider);
-      const creator = await nftTc.contract.creatorOf(BigInt(id));
-      if (!creator || creator === ethers.ZeroAddress) {
-        res.status(404).json({ error: "Agent creator not registered for token" });
-        return;
-      }
-      const client = await getPayment();
-      const earnings = await client.earningsOf(creator);
-      res.status(200).json({ tokenId: id, creator, earnings });
-    } catch (err) {
-      next(err);
-    }
-  });
+  createRoute(paymentRouter, {
+    path: "/v1/agents/:id/pay",
+    schema: paySchema,
+    requireId: true,
+    broadcast: "agent.pay",
+  }, async (parsed: z.infer<typeof paySchema>, _req, _res, { id, config: _cfg }) => {
+    const client = await getPayment();
+    const { receipt, event } = await client.payForAgent(BigInt(id), BigInt(parsed.amount));
+    return { tokenId: id, amount: parsed.amount, txHash: receipt.hash, payment: event };
+  }, config);
 
-  app.post("/v1/agents/:id/royalty", async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const id = getIdParam(req, res);
-      if (id === false) return;
-      const { bps } = royaltySchema.parse(req.body);
-      const client = await getPayment();
-      // Encoded calldata for NFT owner submission.
-      const txData = await client.encodeSetRoyalty(BigInt(id), bps);
-      res.status(200).json({ ok: true, tokenId: id, bps, ...txData });
-      // The frontend broadcasts the actual tx; no backend broadcast here.
-    } catch (err) {
-      next(err);
+  createRoute(paymentRouter, {
+    path: "/v1/agents/:id/earnings",
+    method: "get",
+    requireId: true,
+  }, async (_parsed, _req, res, { id, config: cfg }) => {
+    const nftAddr = cfg.addresses?.agentNft;
+    if (!nftAddr) {
+      res.status(500).json({ error: "AgentNFT address not configured" });
+      return;
     }
-  });
+    const nftTc = new TypedContract<AgentNFTMethods>(nftAddr, AGENT_NFT_ABI, provider);
+    const creator = await nftTc.contract.creatorOf(BigInt(id));
+    if (!creator || creator === ethers.ZeroAddress) {
+      res.status(404).json({ error: "Agent creator not registered for token" });
+      return;
+    }
+    const client = await getPayment();
+    const earnings = await client.earningsOf(creator);
+    return { tokenId: id, creator, earnings };
+  }, config);
 
-  app.get("/v1/payment/config", async (_req: Request, res: Response, next: NextFunction) => {
-    try {
-      const client = await getPayment();
-      const [paymentToken, feeBps, treasury] = await Promise.all([
-        client.paymentToken(),
-        client.protocolFeeBps(),
-        client.protocolTreasury(),
-      ]);
-      res.status(200).json({ paymentToken, protocolFeeBps: feeBps, protocolTreasury: treasury });
-    } catch (err) {
-      next(err);
-    }
-  });
+  createRoute(paymentRouter, {
+    path: "/v1/agents/:id/royalty",
+    schema: royaltySchema,
+    requireId: true,
+  }, async (parsed: z.infer<typeof royaltySchema>, _req, _res, { id, config: _cfg }) => {
+    const client = await getPayment();
+    const txData = await client.encodeSetRoyalty(BigInt(id), parsed.bps);
+    return { tokenId: id, bps: parsed.bps, ...txData };
+  }, config);
+
+  createRoute(paymentRouter, {
+    path: "/v1/payment/config",
+    method: "get",
+  }, async (_parsed, _req, _res, { config: _cfg }) => {
+    const client = await getPayment();
+    const [paymentToken, feeBps, treasury] = await Promise.all([
+      client.paymentToken(),
+      client.protocolFeeBps(),
+      client.protocolTreasury(),
+    ]);
+    return { paymentToken, protocolFeeBps: feeBps, protocolTreasury: treasury };
+  }, config);
+
+  app.use(paymentRouter);
 
   // Wave 6: event ingestion + dashboard history.
   const events = getEventStore();
@@ -628,75 +563,56 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
     }
   });
 
-  app.get("/v1/agents/:id/history", async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const id = getIdParam(req, res);
-      if (id === false) return;
-      const eventName = typeof req.query["eventName"] === "string" ? req.query["eventName"] : undefined;
-      const source = typeof req.query["source"] === "string" ? req.query["source"] : undefined;
-      const limitRaw = typeof req.query["limit"] === "string" ? Number(req.query["limit"]) : undefined;
-      const limit = limitRaw !== undefined && Number.isInteger(limitRaw) && limitRaw > 0 ? limitRaw : undefined;
-      const matches = events.queryByAgent({ tokenId: id, eventName, source, limit });
-      res.status(200).json({ tokenId: id, events: matches });
-    } catch (err) {
-      next(err);
-    }
-  });
-  app.post("/v1/events", async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const b = eventBodySchema.parse(req.body);
-      const stored = events.append({
-        source: b.source,
-        eventName: b.eventName,
-        chainId: b.chainId,
-        blockNumber: b.blockNumber,
-        txHash: b.txHash,
-        logIndex: b.logIndex,
-        payload: b.payload,
-        receivedAt: Date.now(),
-      });
-      res.status(200).json({ ok: true, stored });
-    } catch (err) {
-      next(err);
-    }
-  });
+  createRoute(app, { method: "get", path: "/v1/agents/:id/history", requireId: true }, async (_parsed, req, _res, { id, config: _config }) => {
+    const eventName = typeof req.query.eventName === "string" ? req.query.eventName : undefined;
+    const source = typeof req.query.source === "string" ? req.query.source : undefined;
+    const limitRaw = typeof req.query.limit === "string" ? Number(req.query.limit) : undefined;
+    const limit = limitRaw !== undefined && Number.isInteger(limitRaw) && limitRaw > 0 ? limitRaw : undefined;
+    const matches = events.queryByAgent({ tokenId: id!, eventName, source, limit });
+    return { tokenId: id, events: matches };
+  }, config);
 
-  app.get("/v1/events", async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const limitRaw = typeof req.query["limit"] === "string" ? Number(req.query["limit"]) : undefined;
-      const limit = limitRaw !== undefined && Number.isInteger(limitRaw) && limitRaw > 0 ? limitRaw : 1000;
-      const all = events.getAll(limit);
-      const eventName = req.query.eventName as string | undefined;
-      const filtered = eventName
-        ? all.filter((e: any) => e.eventName === eventName)
-        : all;
-      const owner = req.query.owner as string | undefined;
-      const ownerFiltered = owner
-        ? filtered.filter((e: any) => {
-            const payload = typeof e.payload === 'string' ? JSON.parse(e.payload) : e.payload;
-            return payload?.owner === owner || payload?.to === owner || payload?.from === owner;
-          })
-        : filtered;
-      res.status(200).json({ events: ownerFiltered });
-    } catch (err) {
-      next(err);
-    }
-  });
+  createRoute(app, { method: "post", path: "/v1/events", schema: eventBodySchema }, async (parsed, _req, _res, { config: _config }) => {
+    const b = parsed as z.infer<typeof eventBodySchema>;
+    const stored = events.append({
+      source: b.source,
+      eventName: b.eventName,
+      chainId: b.chainId,
+      blockNumber: b.blockNumber,
+      txHash: b.txHash,
+      logIndex: b.logIndex,
+      payload: b.payload,
+      receivedAt: Date.now(),
+    });
+    return { stored };
+  }, config);
 
-  app.get("/v1/agents/:id/events", async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const id = getIdParam(req, res);
-      if (id === false) return;
-      const eventName = typeof req.query["eventName"] === "string" ? req.query["eventName"] : undefined;
-      const source = typeof req.query["source"] === "string" ? req.query["source"] : undefined;
-      const limitRaw = typeof req.query["limit"] === "string" ? Number(req.query["limit"]) : undefined;
-      const limit = limitRaw !== undefined && Number.isInteger(limitRaw) && limitRaw > 0 ? limitRaw : undefined;
-      const matches = events.queryByAgent({ tokenId: id, eventName, source, limit });
-      res.status(200).json({ tokenId: id, events: matches });
-    } catch (err) {
-      next(err);
-    }
-  });
+  createRoute(app, { method: "get", path: "/v1/events" }, async (_parsed, req, _res, { config: _config }) => {
+    const limitRaw = typeof req.query.limit === "string" ? Number(req.query.limit) : undefined;
+    const limit = limitRaw !== undefined && Number.isInteger(limitRaw) && limitRaw > 0 ? limitRaw : 1000;
+    const all = events.getAll(limit);
+    const eventName = req.query.eventName as string | undefined;
+    const filtered = eventName
+      ? all.filter((e: any) => e.eventName === eventName)
+      : all;
+    const owner = req.query.owner as string | undefined;
+    const ownerFiltered = owner
+      ? filtered.filter((e: any) => {
+          const payload = typeof e.payload === "string" ? JSON.parse(e.payload) : e.payload;
+          return payload?.owner === owner || payload?.to === owner || payload?.from === owner;
+        })
+      : filtered;
+    return { events: ownerFiltered };
+  }, config);
+
+  createRoute(app, { method: "get", path: "/v1/agents/:id/events", requireId: true }, async (_parsed, req, _res, { id, config: _config }) => {
+    const eventName = typeof req.query.eventName === "string" ? req.query.eventName : undefined;
+    const source = typeof req.query.source === "string" ? req.query.source : undefined;
+    const limitRaw = typeof req.query.limit === "string" ? Number(req.query.limit) : undefined;
+    const limit = limitRaw !== undefined && Number.isInteger(limitRaw) && limitRaw > 0 ? limitRaw : undefined;
+    const matches = events.queryByAgent({ tokenId: id!, eventName, source, limit });
+    return { tokenId: id, events: matches };
+  }, config);
 
   app.post("/v1/orchestrator/tick", async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -740,6 +656,47 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
     }
   });
 
+  const routeRouter = Router();
+  createRoute(routeRouter, {
+    path: "/v1/vaults/:id/deposit",
+    schema: depositSchema,
+    requireId: true,
+    requireAddress: "vault",
+    broadcast: "vault.deposit",
+  }, async (parsed: z.infer<typeof depositSchema>, _req, _res, { id, config: cfg }) => {
+    const vaultAddr = cfg.addresses!.vault!;
+    const { valueWei, depositor } = parsed;
+    const vaultTc = new TypedContract<StrategyVaultMethods>(vaultAddr, VAULT_ABI, cfg.signer);
+    const tx = await vaultTc.contract.deposit(BigInt(id), { value: BigInt(valueWei) });
+    const receipt = await tx.wait();
+    return { ok: true, tokenId: id, depositor, valueWei, txHash: receipt?.hash ?? tx.hash };
+  }, config);
+  createRoute(routeRouter, {
+    path: "/v1/vaults/:id/strategy",
+    schema: strategySchema,
+    requireId: true,
+    requireAddress: "vault",
+    broadcast: "vault.strategy",
+  }, async (parsed: z.infer<typeof strategySchema>, _req, _res, { id, config: cfg }) => {
+    const vaultAddr = cfg.addresses!.vault!;
+    const { merkleRoot, dailyLimitWei } = parsed;
+    const vaultTc = new TypedContract<StrategyVaultMethods>(vaultAddr, VAULT_ABI, cfg.signer);
+    const tx = await vaultTc.contract.setStrategy(BigInt(id), merkleRoot, BigInt(dailyLimitWei));
+    const receipt = await tx.wait();
+    return { ok: true, tokenId: id, merkleRoot, dailyLimitWei, txHash: receipt?.hash ?? tx.hash };
+  }, config);
+  createRoute(routeRouter, {
+    path: "/v1/compute/pay",
+    schema: computePaySchema,
+    broadcast: "compute.pay",
+  }, async (parsed: z.infer<typeof computePaySchema>, _req, _res, { config: cfg }) => {
+    const { provider, amount } = parsed;
+    const client = await getPayment();
+    const { receipt } = await client.payComputeProvider(provider, BigInt(amount));
+    return { ok: true, provider, amount, txHash: receipt.hash };
+  }, config);
+  app.use(routeRouter);
+
   app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
     console.error("[server] error:", err);
 
@@ -772,6 +729,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
       return;
     }
     wss.handleUpgrade(req, socket, head, (ws) => {
+      const wsClients = getClients();
       if (wsClients.size >= MAX_WS_CLIENTS) {
         ws.close(1013, "Too many connections");
         socket.destroy();
@@ -780,11 +738,11 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
       const topics = new Set(url.searchParams.getAll("topic").slice(0, 20));
       const client: ConnectedClient = { socket: ws as WebSocket, topics };
       (ws as any).missedPings = 0;
-      wsClients.add(client);
+      registerClient(client);
       ws.on("pong", () => { (ws as any).missedPings = 0; });
       ws.send(JSON.stringify({ topic: "hello", payload: { topics: Array.from(topics) }, ts: Date.now() }));
-      ws.on("close", () => wsClients.delete(client));
-      ws.on("error", () => wsClients.delete(client));
+      ws.on("close", () => unregisterClient(client));
+      ws.on("error", () => unregisterClient(client));
     });
   });
 

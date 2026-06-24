@@ -1,7 +1,6 @@
 import type { Wallet } from "ethers";
-import { AbiCoder, JsonRpcProvider, keccak256, type TransactionReceipt } from "ethers";
+import { AbiCoder, JsonRpcProvider, keccak256, type TransactionReceipt, type TransactionResponse } from "ethers";
 import { TypedContract } from "@axiom/config/types/contract";
-import type { StrategyVaultMethods } from "../contract-types.js";
 import type OpenAI from "openai";
 import { ZeroGStorage, type Encryption } from "../storage/0g.js";
 import { createRouterClient } from "../compute/router.js";
@@ -15,6 +14,13 @@ const VAULT_ABI: string[] = [
   "event StrategySet(uint256 indexed tokenId, bytes32 strategyRoot, uint256 dailyLimit, uint64 validUntilDay)",
   "event Executed(uint256 indexed tokenId, bytes32 indexed actionHash, address indexed target, uint256 value, bytes result)",
 ];
+
+// Local contract method types derived from VAULT_ABI (avoid shared contract-types.ts drift).
+type StrategyVaultMethods = {
+  balanceOf(tokenId: bigint): Promise<bigint>;
+  strategyOf(tokenId: bigint): Promise<[string, bigint, bigint, bigint]>;
+  execute(tokenId: bigint, target: string, value: bigint, data: string, proof: string[]): Promise<TransactionResponse>;
+};
 
 export interface MarketSignal {
   source: string;

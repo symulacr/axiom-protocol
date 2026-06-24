@@ -1,8 +1,7 @@
 // ethers v6 wrapper around AxiomPaymentProcessor.
 
-import { type ContractTransactionReceipt, type Wallet, type JsonRpcProvider, type Log, type EventLog } from "ethers";
+import { type ContractTransactionReceipt, type TransactionResponse, type Wallet, type JsonRpcProvider, type Log, type EventLog } from "ethers";
 import { TypedContract } from "@axiom/config/types/contract";
-import type { PaymentProcessorMethods, ERC20Methods } from "../contract-types.js";
 
 // AxiomPaymentProcessor ABI — standalone, non-upgradeable.
 
@@ -30,6 +29,26 @@ const ERC20_ABI: readonly string[] = [
   "function allowance(address owner, address spender) view returns (uint256)",
   "function balanceOf(address account) view returns (uint256)",
 ] as const;
+
+// Local contract method types derived from the ABIs above (avoid shared contract-types.ts drift).
+type PaymentProcessorMethods = {
+  payForAgent(agentTokenId: bigint, amount: bigint): Promise<TransactionResponse>;
+  payComputeProvider(provider: string, amount: bigint): Promise<TransactionResponse>;
+  withdrawAgentEarnings(): Promise<TransactionResponse>;
+  setRoyaltyBpsPermitted(agentTokenId: bigint, bps: number): Promise<TransactionResponse>;
+  protocolTreasury(): Promise<string>;
+  protocolFeeBps(): Promise<bigint>;
+  paymentToken(): Promise<string>;
+  royaltyBpsOf(tokenId: bigint): Promise<bigint>;
+  royaltyBpsSet(tokenId: bigint): Promise<boolean>;
+  agentEarningsOf(creator: string): Promise<bigint>;
+};
+
+type ERC20Methods = {
+  allowance(owner: string, spender: string): Promise<bigint>;
+  approve(spender: string, amount: bigint): Promise<TransactionResponse>;
+  balanceOf(account: string): Promise<bigint>;
+};
 
 export interface PaymentConfig {
   /** AxiomPaymentProcessor proxy address. */
