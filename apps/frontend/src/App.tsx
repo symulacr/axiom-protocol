@@ -1,5 +1,4 @@
-// Axiom Protocol — top-level App component.
-// React Router v6+ route table + header (nav + ConnectButton).
+// App — route table + header (nav + ConnectButton).
 
 import type { CSSProperties, ReactElement } from 'react';
 import { Link, NavLink, Route, Routes } from 'react-router-dom';
@@ -18,9 +17,7 @@ import { MintAgentPage } from './pages/MintAgentPage.js';
 import { ExecuteStrategyPage } from './pages/ExecuteStrategyPage.js';
 import { NotFound } from './pages/NotFound.js';
 
-// ---------------------------------------------------------------------------
 // Top-level App.
-// ---------------------------------------------------------------------------
 
 export function App(): ReactElement {
   const navLinkStyle = ({ isActive }: { isActive: boolean }): CSSProperties => ({

@@ -1,4 +1,4 @@
-// Axiom Protocol — `<ExecutePanel />` component.
+// ExecutePanel — strategy tick execution.
 
 import { useMemo, useState, type ReactElement } from 'react';
 import { useAccount, useReadContracts } from 'wagmi';
@@ -23,7 +23,7 @@ const actionColor: Record<string, string> = {
 };
 
 export type ExecutePanelProps = {
-  /** Token id from the route. When provided the agent dropdown is hidden. */
+  /** Route token id; when provided the agent dropdown is hidden. */
   tokenId?: bigint;
 };
 

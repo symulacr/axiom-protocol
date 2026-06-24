@@ -1,4 +1,4 @@
-// Axiom Protocol — 0G chain definitions for wagmi v2.
+// 0G chain definitions for wagmi v2.
 
 import { defineChain } from 'viem';
 import { GALILEO_CHAIN_ID, ARISTOTLE_CHAIN_ID } from "@axiom/config/networks";

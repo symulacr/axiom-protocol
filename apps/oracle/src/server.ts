@@ -26,7 +26,6 @@ export interface ServerConfig {
   storage: StorageAdapter;
   bind: string;
   port: number;
-  /** Full parsed environment (optional — falls back to process.env at runtime). */
   env?: OracleEnv;
 }
 
@@ -98,15 +97,13 @@ export function startServer(config: ServerConfig): Express {
       const newEnc = aesGcmEncrypt(newDataKey, oldPlaintext);
       const newBlob = concatEncrypted(newEnc);
       const { rootHash: newDataHash } = await storage.upload(newBlob);
-      // Wave 6 A: auto-register the freshly-uploaded dataHash so a follow-up
-      // /v1/ownership call against it succeeds without a separate
-      // /v1/agents/mint round trip. See 0g-agent-skills cross-layer skill.
+      // Auto-register the uploaded dataHash so /v1/ownership succeeds without a separate round trip.
       storage.markDataHashSeen(newDataHash);
 
       const targetPubkeyBytes = hexToBytes(targetPubkey64 as `0x${string}`);
       const sealedKey = sealKeyForReceiver(targetPubkeyBytes, newDataKey);
 
-      // Default validUntil = now + 1 day. TeeSigner uses raw ECDSA (no EIP-191).
+      // validUntil = now + 1 day.
       const defaultValidUntil = BigInt(Math.floor(Date.now() / 1000)) + 86400n;
       const ownershipSignature = signer.signOwnership({
         dataHash: oldDataHash as `0x${string}`,
@@ -237,11 +234,7 @@ export function startServer(config: ServerConfig): Express {
     });
   });
 
-  // Wave 6 A: explicit registration route. The backend calls this right after
-  // it has uploaded an encrypted payload to 0G Storage, so the subsequent
-  // /v1/ownership request for the same dataHash passes the seen-check above.
-  // (The /v1/transfer-validity path auto-registers on its own uploads, so it
-  // does not need to call this — but it does not hurt to call it anyway.)
+  // Explicit data hash registration route (called by backend after storage upload).
   app.post("/v1/agents/mint", (req: Request, res: Response) => {
     const { dataHash } = mintDataHashSchema.parse(req.body);
     if (!/^0x[0-9a-fA-F]{64}$/.test(dataHash)) {
@@ -255,7 +248,7 @@ export function startServer(config: ServerConfig): Express {
   app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
     const message = err instanceof Error ? err.message : String(err);
     console.error("[oracle] error:", err);
-    // Sanitize: never leak internal details in production
+    // Sanitize: never leak internal details
     const safeMessage = message.length > 200 ? message.slice(0, 200) + "..." : message;
     res.status(500).json({ error: safeMessage, code: "INTERNAL_ERROR" });
   });

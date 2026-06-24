@@ -1,12 +1,3 @@
-// apps/indexer/src/events.ts
-//
-// Typed event definitions and decoding for the Axiom Protocol contracts.
-// Event ABI strings MUST match the Solidity source byte-for-byte.
-//
-// IMPORTANT: the task brief used the names "DataUpdated" and "UsageAuthorized",
-// but those do not exist in the contract. The actual emitted events from the
-// ERC-7857 extensions are `Updated` and `Authorization`.
-
 import { parseAbiItem, type AbiEvent, type Address, type Hex } from "viem";
 import { toViemHex } from "@axiom/config/types/hex";
 import { DEPLOYED_ADDRESSES } from "@axiom/config/addresses";
@@ -23,35 +14,8 @@ export const ADDRESSES = {
 } as const;
 
 /**
- * Solidity event ABI strings exactly as written in the contracts.
+ * Solidity event ABI strings as written in the contracts.
  * These are passed to viem's `parseAbiItem` / `keccak256` to derive topic-0.
- *
- *   ERC-721 (https://eips.ethereum.org/EIPS/eip-721):
- *     "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)"
- *
- *   ERC7857IDataStorageUpgradeable.sol (apps/contracts/src/extensions/...):
- *     "event Updated(uint256 indexed tokenId, IntelligentData[] oldDatas, IntelligentData[] newDatas)"
- *
- *   IERC7857Authorize.sol (apps/contracts/src/interfaces/...):
- *     "event Authorization(uint256 indexed tokenId, address indexed from, address indexed to)"
- *     "event AuthorizationRevoked(uint256 indexed tokenId, address indexed from, address indexed to)"
- *
- *   AxiomAgentNFT.sol:
- *     "event VerifierUpdated(address indexed oldVerifier, address indexed newVerifier)"
- *     "event CreatorSet(uint256 indexed tokenId, address indexed creator)"
- *     "event MintFeeUpdated(uint256 oldFee, uint256 newFee)"
- *     "event StorageInfoUpdated(string oldInfo, string newInfo)"
- *
- *   IERC7857.sol (base):
- *     "event PublishedSealedKey(address indexed to, uint256 indexed tokenId, bytes[] sealedKeys)"
- *     "event DelegateAccess(address indexed user, address indexed assistant)"
- *
- *   AxiomStrategyVault.sol:
- *     "event Deposited(uint256 indexed tokenId, address indexed from, address indexed asset, uint256 amount)"
- *     "event Withdrawn(uint256 indexed tokenId, address indexed to, address indexed asset, uint256 amount)"
- *     "event StrategySet(uint256 indexed tokenId, bytes32 strategyRoot, uint256 dailyLimit, uint64 validUntilDay)"
- *     "event Executed(uint256 indexed tokenId, bytes32 indexed actionHash, address indexed target, uint256 value, bytes result)"
- *     "event RegistryUpdated(address indexed nft)"
  */
 export const EVENT_SIGNATURES = {
   // ── AxiomAgentNFT (ERC-721 inherited) ──────────────────────────────
@@ -59,10 +23,8 @@ export const EVENT_SIGNATURES = {
     "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)" as const,
 
   // ── AxiomAgentNFT (ERC-7857 IDataStorage extension) ────────────────
-  // Solidity-style canonical signature for documentation/topic-hash reference;
-  // the `AbiEvent` for viem decoding lives in `EVENT_ABI.Updated` below as a
-  // JSON object (viem's human-readable ABI parser does not accept inline
-  // `tuple(...)` syntax for struct fields).
+  // Canonical signature without tuple syntax (viem's human-readable parser
+  // does not accept inline `tuple(...)`); the JSON AbiEvent is in `EVENT_ABI.Updated`.
   Updated: "Updated(uint256,(string,bytes32)[],(string,bytes32)[])" as const,
   Authorization:
     "event Authorization(uint256 indexed tokenId, address indexed from, address indexed to)" as const,
@@ -92,7 +54,7 @@ export const EVENT_SIGNATURES = {
     "event Executed(uint256 indexed tokenId, bytes32 indexed actionHash, address indexed target, uint256 value, bytes result)" as const,
   RegistryUpdated: "event RegistryUpdated(address indexed nft)" as const,
 
-  // ── AxiomPaymentProcessor (apps/contracts/src/AxiomPaymentProcessor.sol) ──
+  // ── AxiomPaymentProcessor ─────────────────────────────────────────
   PaymentProcessed:
     "event PaymentProcessed(uint256 indexed agentTokenId, address indexed payer, address indexed creator, uint256 amount, uint256 creatorCut, uint256 protocolCut)" as const,
   ComputeProviderPaid:
@@ -107,15 +69,15 @@ export const EVENT_SIGNATURES = {
   PaymentTokenUpdated:
     "event PaymentTokenUpdated(address indexed oldToken, address indexed newToken)" as const,
 
-  // ── ERC7857Cloneable (apps/contracts/src/extensions/ERC7857CloneableUpgradeable.sol) ──
+  // ── ERC7857Cloneable ──────────────────────────────────────────────
   Cloned:
     "event Cloned(uint256 indexed tokenId, uint256 indexed newTokenId, address from, address to)" as const,
 
-  // ── AxiomAgentNFT (metadata decision, apps/contracts/src/AxiomAgentNFT.sol) ──
+  // ── AxiomAgentNFT (metadata decision) ─────────────────────────────
   MetadataJsonDecisionDocumented:
     "event MetadataJsonDecisionDocumented(string collectionName, string collectionSymbol, string rationaleTag)" as const,
 
-  // ── AxiomTeeVerifier (apps/contracts/src/verifiers/AxiomTeeVerifier.sol) ──
+  // ── AxiomTeeVerifier ──────────────────────────────────────────────
   SignerRegistered:
     "event SignerRegistered(address indexed oldSigner, address indexed newSigner)" as const,
 
@@ -127,8 +89,8 @@ export const EVENT_SIGNATURES = {
   BeaconUpgraded:
     "event BeaconUpgraded(address indexed beacon)" as const,
 
-  // ── OpenZeppelin Initializable (apps/contracts/lib/.../proxy/utils/Initializable.sol) ──
-  // uint64 matches OZ v5; the older v4 used uint8.
+  // ── OpenZeppelin Initializable ────────────────────────────────────
+  // uint64 matches OZ v5 (v4 used uint8).
   Initialized:
     "event Initialized(uint64 version)" as const,
  } as const;
@@ -136,13 +98,7 @@ export const EVENT_SIGNATURES = {
 /** Type alias for any event name defined above. */
 export type EventName = keyof typeof EVENT_SIGNATURES;
 
-/**
- * Decoded, typed event objects. The `kind` discriminator is sufficient
- * to exactly one of `AxiomAgentNFT` or `AxiomStrategyVault`, so we
- * don't carry a redundant `contract` tag. Adding one forces every
- * switch arm in `watcher.ts` to either re-narrow the union or accept
- * a wide `string` tag; the `kind` alone is the right contract.
- */
+/** Decoded event objects. The `kind` discriminator is sufficient on its own. */
 export type AxiomEvent =
   // ERC-721
   | { kind: "Transfer"; blockNumber: number; txHash: Hex; logIndex: number; from: Address; to: Address; tokenId: bigint }
@@ -191,12 +147,7 @@ export type EventAbiTable = {
   [K in EventName]: AbiEvent;
 };
 
-/**
- * Per-event typed `AbiEvent` items. Built once at module load via
- * `parseAbiItem(signature)`. Downstream code passes the per-event
- * item to viem's `decodeEventLog`, which then infers the args shape
- * precisely — no casts at the consumer.
- */
+/** Per-event `AbiEvent` items, built at module load. */
 export const EVENT_ABI = {
   Transfer: parseAbiItem(EVENT_SIGNATURES.Transfer),
   Updated: {

@@ -1,8 +1,4 @@
-// Axiom Protocol — `useTransfer` hook.
-//
-// Drives the end-to-end iNFT transfer flow: challenge the backend,
-// receiver signs an EIP-712 AccessProof, finalize proof structs,
-// then submit `iTransferFrom` on-chain via wagmi's `useWriteContract`.
+// useTransfer — end-to-end iNFT transfer flow (challenge → sign → finalize → on-chain).
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAccount, useSignTypedData, useWriteContract } from 'wagmi';
@@ -14,7 +10,7 @@ import { BACKEND_URL } from '../config/env.js';
 
 import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
 
-/** 0G Galileo testnet chain id — the chain the verifier is deployed on. */
+/** 0G Galileo testnet chain id — verifier deployment chain. */
 const EIP712_DOMAIN = {
   name: 'AxiomTeeVerifier',
   version: '1',
@@ -23,10 +19,9 @@ const EIP712_DOMAIN = {
 } as const;
 
 /**
- * EIP-712 type for the AccessProof struct. Mirrors the contract's
- * `ACCESS_PROOF_TYPEHASH` (`AxiomTeeVerifier.sol:74-75`). The wallet's
- * `signTypedData_v4` encodes this per the EIP-712 spec and signs the
- * resulting digest with raw ECDSA — no EIP-191 prefix.
+ * EIP-712 types for AccessProof. Mirrors `ACCESS_PROOF_TYPEHASH` in
+ * `AxiomTeeVerifier.sol`. The wallet signs the EIP-712 digest directly
+ * (no EIP-191 prefix), matching on-chain `ECDSA.recover`.
  */
 const ACCESS_PROOF_TYPES = {
   AccessProof: [
@@ -40,29 +35,7 @@ const ACCESS_PROOF_TYPES = {
 } as const;
 
 /**
- * Input to `useTransfer().transfer(...)`. The caller has already gathered
- * these from the user (the modal owns the form):
- *
- *   - tokenId:          the iNFT (AxiomAgentNFT) tokenId being transferred.
- *   - to:               the receiver's EVM address. The on-chain `to`.
- *   - receiverPubKey64: the receiver's 64-byte uncompressed secp256k1
- *                       public key (raw X||Y, NO leading 0x04 byte).
- *                       The TEE signer service uses this to seal the new
- *                       AES-256 data key for the receiver. Length is
- *                       enforced to 64 bytes (128 hex chars + '0x').
- *   - accessProofNonce: the receiver-supplied nonce that the access
- *                       proof signs over. Typically a fresh 32-byte
- *                       random hex per transfer; the verifier rejects
- *                       replays via `BaseVerifier.usedProofs`.
- *   - oldDataEncryptionKey: optional base64 32-byte AES key decrypting the
- *                       existing ciphertext. When supplied together with
- *                       `oldDataUri`, the backend triggers a full re-key:
- *                       it downloads + decrypts the old blob, generates a
- *                       fresh AES-256 key, re-encrypts, uploads the new
- *                       blob, and ECIES-seals the new key for the receiver.
- *   - oldDataUri:       optional 0G Storage root hash of the existing
- *                       ciphertext. Required when `oldDataEncryptionKey`
- *                       is supplied (re-key flow).
+ * Input to `useTransfer.transfer()`. Gathered from user form fields.
  */
 export type TransferInput = {
   tokenId: bigint;
@@ -74,11 +47,8 @@ export type TransferInput = {
 };
 
 /**
- * The backend's response to `POST /v1/agents/:tokenId/transfer`. The
- * exact JSON shape is pinned by `apps/backend/src/server.ts`
- * `POST /v1/agents/:id/transfer`. Only the fields the frontend needs to
- * build the on-chain `TransferValidityProof` and to show the user are
- * surfaced here.
+ * Backend response to `POST /v1/agents/:tokenId/transfer`.
+ * Only surfaces frontend-relevant fields.
  */
 export type AccessProofStruct = {
   dataHash: Hex;
@@ -99,16 +69,11 @@ export type OwnershipProofStruct = {
 };
 
 /**
- * The backend's response to `POST /v1/agents/:tokenId/transfer`.
- * The endpoint works in two stages:
- *   1. `stage: 'challenge'` — the backend returns the dataHash, targetPubkey,
- *      nonce, and validUntil it will use for the OwnershipProof. The receiver
- *      wallet signs the AccessProof EIP-712 typed data. When re-keying is
- *      requested the response also carries `rekeyed: true`, `sealedKey`,
- *      `newDataHash`, and `newDataUri`.
- *   2. `stage: 'final'` — the frontend posts the signed AccessProof back; the
- *      backend recovers the signer, builds the full on-chain structs, and
- *      returns them so the frontend can call `iTransferFrom`.
+ * Backend response for the two-stage transfer protocol:
+ * 1. `stage: 'challenge'` — backend returns proof params; receiver signs
+ *    the AccessProof via EIP-712.
+ * 2. `stage: 'final'` — backend builds full on-chain structs from the
+ *    signed AccessProof.
  */
 export type TransferResponse = {
   ok: boolean;
@@ -137,25 +102,11 @@ export type TransferResponse = {
 };
 
 /**
- * Hook surface.
- *
- * The flow is split into two phases so the modal can show proof details
- * and require an explicit confirmation before the on-chain write:
- *
- *   - `prepare(input)` — challenge + receiver EIP-712 signature + finalize.
- *     Produces the full `TransferValidityProof` structs (stored in
- *     `signature`) but does NOT touch the chain. The modal renders the
- *     re-key status, OwnershipProof signer, and recovered AccessProof
- *     signer from this response.
- *   - `confirm(input)` — submits the on-chain `iTransferFrom` call using
- *     the prepared `signature`. Requires `prepare` to have succeeded.
- *
- * `transfer(input)` is a convenience that chains `prepare` → `confirm`
- * for callers that do not want the intermediate confirmation step.
- *
- * `signature` is the final backend response (full proof structs), kept
- * around so the modal can render the proof details before the user
- * confirms the on-chain write.
+ * Hook surface. Split into two phases so the modal can show proof details
+ * before the on-chain write:
+ * - `prepare` — challenge + sign + finalize (no chain write).
+ * - `confirm` — submit `iTransferFrom` using prepared `signature`.
+ * - `transfer` — convenience: prepare + confirm in one call.
  */
 export type UseTransferResult = {
   /** Challenge + sign + finalize. Sets `signature`; does not write on-chain. */
@@ -172,16 +123,7 @@ export type UseTransferResult = {
 
 /**
  * Drive the end-to-end iNFT transfer flow:
- *   1. Challenge — ask the backend for the dataHash/targetPubkey/validUntil
- *      it will use for the OwnershipProof (and, when `oldDataEncryptionKey`
- *      + `oldDataUri` are supplied, trigger a full re-key).
- *   2. Receiver `signTypedData_v4` — the connected wallet signs the
- *      AccessProof EIP-712 typed data. The wallet computes the EIP-712
- *      digest internally (no EIP-191 prefix), matching the on-chain
- *      `ECDSA.recover(digest, sig)`.
- *   3. Finalize — post the signed AccessProof to the backend; it recovers
- *      the access signer, builds the full on-chain structs, and returns them.
- *   4. On-chain `iTransferFrom` through wagmi v2's `useWriteContract`.
+ * challenge → receiver EIP-712 sign → finalize → on-chain `iTransferFrom`.
  */
 export function useTransfer(): UseTransferResult {
   const { address: from } = useAccount();
@@ -218,10 +160,8 @@ export function useTransfer(): UseTransferResult {
 
         const url = `${BACKEND_URL}/v1/agents/${input.tokenId.toString()}/transfer`;
 
-        // Step 1 — challenge: backend picks dataHash, targetPubkey, nonce,
-        // and validUntil for the OwnershipProof it will sign. When re-key
-        // inputs are supplied, the backend performs a full re-key and also
-        // returns the fresh sealedKey + newDataHash + newDataUri.
+        // Step 1 — challenge: backend picks proof params. When re-key inputs
+        // are supplied, the backend performs a full re-key.
         const challengeBody: Record<string, unknown> = {
           to: input.to,
           receiverPubKey64: input.receiverPubKey64,
@@ -260,9 +200,8 @@ export function useTransfer(): UseTransferResult {
         }
 
         // Step 2 — receiver signs the AccessProof EIP-712 typed data.
-        // When the backend re-keyed, the proof must bind to the FRESH
-        // data hash (the on-chain token will reference the new blob), so
-        // we sign over `newDataHash` instead of the original `dataHash`.
+        // When rekeyed, bind to the fresh data hash (the on-chain token
+        // references the new blob).
         const nonce = BigInt(challenge.accessProofNonce);
         const validUntil = BigInt(challenge.validUntil);
         const proofDataHash = challenge.rekeyed && challenge.newDataHash
@@ -283,11 +222,8 @@ export function useTransfer(): UseTransferResult {
           account: from,
         });
 
-        // Step 3 — finalize: post the signed AccessProof; the backend
-        // builds the full on-chain TransferValidityProof structs. Echo
-        // the rekeyed sealedKey back so the OwnershipProof binds to the
-        // fresh sealed key (backend server.ts:358-368 reads `sealedKey`
-        // from the request body).
+        // Step 3 — finalize: post signed AccessProof; backend builds
+        // on-chain structs. Echo sealedKey for re-key flow.
         const finalRes = await fetch(url, {
           method: 'POST',
           headers: {
@@ -322,7 +258,7 @@ export function useTransfer(): UseTransferResult {
         if (!proof.accessProof || !proof.ownershipProof) {
           throw new Error('incomplete proof structs from backend');
         }
-        // Carry re-key status forward so the modal can render it.
+        // Carry re-key status forward for the modal.
         if (challenge.rekeyed) {
           proof.rekeyed = true;
           proof.newDataHash = challenge.newDataHash;

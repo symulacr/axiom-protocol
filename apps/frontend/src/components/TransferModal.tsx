@@ -1,8 +1,4 @@
-// Axiom Protocol — `TransferModal`.
-//
-// Modal that drives the iNFT transfer flow end-to-end in two phases:
-// form (enter receiver + optional re-key) and review (proof details + on-chain confirm).
-// Uses HTML5 <dialog> for correct accessibility. All I/O goes through `useTransfer`.
+// TransferModal — two-phase iNFT transfer flow (form + review).
 
 import {
   useCallback,
@@ -21,9 +17,6 @@ import { COLORS, Button, Alert, MonoLabel, Input, Modal, Card } from './ui.js';
 const RECEIVER_PUBKEY_HEX_LENGTH = 130;
 
 
-/**
- * Generate a fresh 32-byte random hex string for EIP-7857 accessProofNonce.
- */
 function freshNonceHex(byteLength = 32): `0x${string}` {
   const bytes = new Uint8Array(byteLength);
   crypto.getRandomValues(bytes);
@@ -39,23 +32,15 @@ function freshNonceHex(byteLength = 32): `0x${string}` {
 }
 
 export type TransferModalProps = {
-  /** The iNFT (AxiomAgentNFT) tokenId being transferred. */
   tokenId: bigint;
   /**
-   * Optional: a label for the trigger button. When provided, the modal
-   * renders a self-triggering <button> that opens the dialog on click
-   * (matches the "opens via the button in AgentDetail" requirement
-   * for the default in-page use). When omitted, the dialog is fully
-   * controlled via `open` / `onClose` and AgentDetail can wire it
-   * into its own trigger button (AgentDetail manages the `open` state
-   * externally and renders the dialog only when open).
+   * When provided, renders a self-triggering button. When omitted, the
+   * modal is fully controlled via `open`/`onClose`.
    */
   triggerLabel?: string;
   /**
-   * Optional: controls the open state of the dialog. When defined,
-   * the parent owns the state (AgentDetail's pattern). When undefined
-   * the modal manages its own state and the optional self-trigger
-   * button toggles it.
+   * Controlled open state. When defined the parent owns the state;
+   * when undefined the modal manages its own state.
    */
   open?: boolean;
   /**
@@ -64,20 +49,14 @@ export type TransferModalProps = {
    */
   onClose?: () => void;
   /**
-   * Optional: called when the on-chain write resolves with a tx hash.
-   * The modal does not poll for confirmations; the parent can layer
-   * `useWaitForTransactionReceipt` on top if it needs to surface a
-   * "confirmed" state. Aliased as `onSuccess` for back-compat with
-   * Agent A's AgentDetail call site, which uses the shorter name.
+   * Called when the on-chain write resolves. The parent can layer
+   * `useWaitForTransactionReceipt` for confirmation tracking.
+   * Aliased as `onSuccess` for back-compat.
    */
   onTransferred?: (txHash: `0x${string}`) => void;
   onSuccess?: (txHash: `0x${string}`) => void;
 };
 
-/**
- * Validate the receiver's pubkey string. Returns `null` when valid,
- * otherwise a human-readable error to render under the field.
- */
 function validatePubKey(value: string): string | null {
   if (value.length === 0) return 'required';
   if (!value.startsWith('0x')) return 'must be 0x-prefixed';
@@ -105,17 +84,10 @@ export function TransferModal({
   const [oldDataEncryptionKey, setOldDataEncryptionKey] = useState('');
   const [oldDataUri, setOldDataUri] = useState('');
   const [submitError, setSubmitError] = useState<string | null>(null);
-  // Two-phase UI: 'form' (enter receiver + optional re-key inputs) →
-  // 'review' (proof details + confirm on-chain write) → back to 'form'.
+  // Two-phase UI: 'form' → 'review'.
   const [phase, setPhase] = useState<'form' | 'review'>('form');
 
-  // Two open-state modes:
-  //   - Controlled:   `openProp !== undefined` — the parent owns the
-  //                   state (AgentDetail's pattern). The modal reads
-  //                   `openProp` and never writes to it.
-  //   - Uncontrolled: `openProp === undefined` — the modal owns its
-  //                   own `internalOpen` state, toggled by the
-  //                   optional self-trigger button.
+  // Controlled mode: parent owns `openProp`. Uncontrolled: modal manages `internalOpen`.
   const isControlled = openProp !== undefined;
   const [internalOpen, setInternalOpen] = useState(false);
   const open = isControlled ? openProp : internalOpen;
@@ -126,11 +98,7 @@ export function TransferModal({
     },
     [isControlled, onClose],
   );
-  // `handleTransferred` is the merged success callback: fires
-  // `onTransferred` *and* `onSuccess` (both, when provided). Agent
-  // A's AgentDetail passes `onSuccess`; the assignment's reference
-  // signature uses `onTransferred`; supporting both keeps both call
-  // sites typecheck-clean without forcing either to rename.
+  // Merged success callback: fires both `onTransferred` and `onSuccess` (back-compat).
   const handleTransferred = useCallback(
     (txHash: `0x${string}`): void => {
       onTransferred?.(txHash);
@@ -139,9 +107,7 @@ export function TransferModal({
     [onSuccess, onTransferred],
   );
 
-  // The receiver-side AccessProof signs a fresh nonce. The nonce is
-  // stable for the lifetime of this modal instance (re-mounts create
-  // a new one). Each transfer gets a unique replay-resistant value.
+  // Fresh nonce per modal mount — replay-resistant per transfer.
   const accessProofNonce = useMemo(
     () => freshNonceHex(32) as `0x${string}`,
     [],
@@ -165,7 +131,7 @@ export function TransferModal({
     addressError === null &&
     pubKeyError === null &&
     !isLoading;
-  // Re-key inputs are optional; when one is supplied the other is required.
+  // Re-key inputs: both or neither.
   const rekeyError = useMemo(() => {
     const hasKey = oldDataEncryptionKey.length > 0;
     const hasUri = oldDataUri.length > 0;
@@ -174,8 +140,7 @@ export function TransferModal({
     }
     return null;
   }, [oldDataEncryptionKey, oldDataUri]);
-  // `buildInput` assembles the TransferInput from the form state so both
-  // the prepare and confirm phases share identical fields.
+  // Shared TransferInput builder for prepare + confirm phases.
   const buildInput = useCallback((): TransferInput => {
     const input: TransferInput = {
       tokenId,
@@ -190,9 +155,7 @@ export function TransferModal({
     return input;
   }, [accessProofNonce, oldDataEncryptionKey, oldDataUri, receiverAddress, receiverPubKey, tokenId]);
 
-  // Phase 1 — prepare: challenge + EIP-712 sign + finalize. Produces the
-  // proof structs (in `signature`) and advances to the review phase so
-  // the user can inspect the proof details before the on-chain write.
+  // Phase 1 — prepare: challenge → sign → finalize.
   const onSubmit = useCallback(
     async (event: FormEvent<HTMLFormElement>): Promise<void> => {
       event.preventDefault();
@@ -208,8 +171,7 @@ export function TransferModal({
     [buildInput, canSubmit, from, prepare, rekeyError],
   );
 
-  // Phase 2 — confirm: submit the on-chain `iTransferFrom` using the
-  // prepared proof. Requires `signature` (set by `prepare`).
+  // Phase 2 — confirm: on-chain `iTransferFrom` using prepared proof.
   const onConfirm = useCallback(async (): Promise<void> => {
     if (!signature) return;
     setSubmitError(null);
@@ -222,8 +184,7 @@ export function TransferModal({
     }
   }, [buildInput, confirm, handleTransferred, setOpen, signature]);
 
-  // Back to the form phase (e.g. after reviewing proof details and
-  // wanting to change inputs). Clears the prepared proof.
+  // Back to form phase; clears prepared proof.
   const onEdit = useCallback((): void => {
     reset();
     setSubmitError(null);

@@ -1,8 +1,4 @@
-// Axiom Protocol — `/history` page.
-//
-// Renders the connected wallet's recent activity as a vertical timeline
-// using `useEventHistory()` (15 s polling cadence) and `<EventTimeline />`
-// with a render-prop for payload formatting.
+// HistoryPage — connected wallet activity timeline.
 
 import { useCallback, type ReactElement } from 'react';
 import { useAccount, useChainId } from 'wagmi';
@@ -11,11 +7,9 @@ import { EventTimeline, type EventRenderer } from '../components/EventTimeline.j
 import { COLORS, Card, Alert, PageHeader, Button } from '../components/ui.js';
 import { PLACEHOLDER } from '../utils/format.js';
 
-/** Order of the "headline" event groups. Other eventNames are
- *  appended at the bottom in the order the server first emits
- *  them. The names MUST match the indexer's `kind` discriminator
- *  (apps/indexer/src/events.ts) exactly — wrong names silently
- *  fall through to the unordered tail and never populate. */
+/** Order of headline event groups. Unknown names fall through to an
+ *  unordered tail. Must match the indexer's `kind` discriminator
+ *  (apps/indexer/src/events.ts) exactly. */
 const HEADLINE_EVENT_ORDER: readonly string[] = [
   'Transfer',
   'Updated',           // ERC-7857 IDataStorage (was wrongly 'DataUpdated')
@@ -27,9 +21,7 @@ const HEADLINE_EVENT_ORDER: readonly string[] = [
   'EarningsWithdrawn', // AxiomPaymentProcessor
 ];
 
-/** Human-readable display label for each headline event group.
- *  Unknown names fall back to the raw `eventName`. Keeps the
- *  group header readable without touching the wire format. */
+/** Human-readable display label for each headline event group. */
 const EVENT_LABELS: Readonly<Record<string, string>> = {
   Transfer: 'Transfer',
   Updated: 'Data Updated',
@@ -41,9 +33,7 @@ const EVENT_LABELS: Readonly<Record<string, string>> = {
   EarningsWithdrawn: 'Earnings Withdrawn',
 };
 
-/** Build the explorer URL for a given chain + tx hash. Returns
- *  `null` for chains we don't know about so the page never
- *  links to a wrong-network explorer. */
+/** Explorer URL for chain + tx hash. Returns `null` for unknown chains. */
 function explorerTxUrl(
   chainId: number,
   txHash: string,
@@ -59,11 +49,8 @@ function explorerTxUrl(
 }
 
 /**
- * Pretty-print an event payload as a string. For the headline
- * PaymentProcessor events we render a compact human-readable
- * line; everything else falls back to indented JSON. The
- * function handles the empty-payload case (returns the em-dash)
- * so the timeline never shows a blank cell.
+ * Pretty-print event payload. PaymentProcessor events get a compact line;
+ * everything else falls back to indented JSON.
  */
 function formatPayload(eventName: string, payload: Record<string, unknown>): string {
   switch (eventName) {
@@ -94,8 +81,7 @@ function formatPayload(eventName: string, payload: Record<string, unknown>): str
   }
 }
 
-/** Shorten a 0x-prefixed address to `0x1234\u20265678` for inline
- *  display. Returns the em-dash for non-string / missing values. */
+/** Shorten 0x-prefixed address for inline display. */
 function shortAddr(value: unknown): string {
   if (typeof value !== 'string' || value.length < 10) {
     return PLACEHOLDER;
@@ -103,10 +89,10 @@ function shortAddr(value: unknown): string {
   return `${value.slice(0, 6)}\u2026${value.slice(-4)}`;
 }
 
-/** Render-prop body for one event: a short header (chain + tx
- *  short hash + explorer link when applicable) and the raw
- *  payload in a <pre>. Lives at module scope so a re-render of
- *  the parent does not re-allocate the callback. */
+/**
+ * Render-prop body for one event: header (chain + tx + explorer link) + payload.
+ * Defined at module scope so parent re-renders don't re-allocate it.
+ */
 const renderEventBody: EventRenderer = (event): ReactElement => {
   const tx = event.txHash;
   const txShort =
@@ -175,24 +161,14 @@ export function HistoryPage(): ReactElement {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
 
-  // Polls GET /v1/events every 15s with cleanup; see
-  // apps/frontend/src/hooks/useEventHistory.ts. The `owner` is
-  // forwarded as `?owner=0x...` so a future server-side filter
-  // can scope to the connected wallet; today's backend ignores it
-  // and returns the full ring.
+  // Polls GET /v1/events every 15s via useEventHistory.
   const { events, byName, isLoading, error } = useEventHistory({
     owner: address,
     enabled: isConnected,
   });
 
   const refresh = useCallback((): void => {
-    // Re-render is the right "refresh" — the polling hook ticks
-    // every 15s, so a manual button is just a UX nicety that
-    // re-keys the EventTimeline to force a fresh render of the
-    // current snapshot. We re-render via a no-op state nudge is
-    // overkill; a `key` bump on the timeline would also work
-    // but adds state for no benefit. Keep the button as a
-    // visual affordance that the page is live.
+    // Manual refresh — polling ticks every 15s, so this is a UX nicety.
     window.location.reload();
   }, []);
 

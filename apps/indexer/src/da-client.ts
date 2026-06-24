@@ -1,8 +1,3 @@
-// apps/indexer/src/da-client.ts
-//
-// gRPC client wrapper for the 0G DA Disperser service.
-// Wraps DisperseBlob, GetBlobStatus, and RetrieveBlob RPCs.
-
 import * as grpc from "@grpc/grpc-js";
 import * as protoLoader from "@grpc/proto-loader";
 import { fileURLToPath } from "node:url";
@@ -13,10 +8,6 @@ const __dirname = dirname(__filename);
 
 /** Path to the vendored disperser.proto. */
 const PROTO_PATH = join(__dirname, "disperser.proto");
-
-// ---------------------------------------------------------------------------
-// Enums matching disperser.proto
-// ---------------------------------------------------------------------------
 
 /** Blob processing status. Maps 1:1 to the proto BlobStatus enum. */
 export const BlobStatus = {
@@ -29,10 +20,6 @@ export const BlobStatus = {
 } as const;
 
 export type BlobStatus = (typeof BlobStatus)[keyof typeof BlobStatus];
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
 
 export interface DisperseBlobResult {
   /** Hex-encoded request ID (unique per request, usable with GetBlobStatus). */
@@ -56,24 +43,12 @@ export interface RetrieveBlobResult {
   data: Uint8Array;
 }
 
-// ---------------------------------------------------------------------------
-// Client
-// ---------------------------------------------------------------------------
-
-/**
- * gRPC client for the 0G DA Disperser service.
- *
- * Loads the proto definition at runtime (no codegen required) and exposes
- * typed async methods for each RPC.
- */
+/** gRPC client for the 0G DA Disperser service. */
 export class DaClient {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private client: any;
 
-  /**
-   * @param grpcUrl  Host:port of the 0G DA Client gRPC endpoint
-   *                 (e.g. "localhost:51001").
-   */
+  /** @param grpcUrl Host:port of the 0G DA Client gRPC endpoint. */
   constructor(grpcUrl: string) {
     const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
       keepCase: false,
@@ -97,14 +72,7 @@ export class DaClient {
     this.client = new Disperser(grpcUrl, grpc.credentials.createInsecure());
   }
 
-  /**
-   * Submit a blob to the 0G DA network.
-   *
-   * This is an async operation — the method returns as soon as the request
-   * is accepted. Use `getBlobStatus` to poll for CONFIRMED / FINALIZED.
-   *
-   * @param data  Raw blob bytes (≤ ~31 MiB per the proto contract).
-   */
+  /** Submit a blob to the 0G DA network (async; returns on acceptance). */
   disperseBlob(data: Uint8Array): Promise<DisperseBlobResult> {
     return new Promise((resolve, reject) => {
       this.client["DisperseBlob"](
@@ -124,11 +92,7 @@ export class DaClient {
     });
   }
 
-  /**
-   * Poll the processing status of a previously dispersed blob.
-   *
-   * @param requestIdHex  The hex-encoded request ID returned by `disperseBlob`.
-   */
+  /** Poll the processing status of a previously dispersed blob. */
   getBlobStatus(requestIdHex: string): Promise<BlobStatusResult> {
     const requestIdBytes = Buffer.from(requestIdHex, "hex");
     return new Promise((resolve, reject) => {
@@ -159,17 +123,7 @@ export class DaClient {
     });
   }
 
-  /**
-   * Poll `GetBlobStatus` with a simple retry loop until the blob reaches
-   * a terminal state (FINALIZED, FAILED, or INSUFFICIENT_SIGNATURES) or
-   * the timeout is exceeded.
-   *
-   * @param requestIdHex   Hex-encoded request ID.
-   * @param pollIntervalMs Polling interval in ms (default 2 000).
-   * @param timeoutMs      Max time to wait in ms (default 120 000).
-   * @returns              The final BlobStatusResult once terminal.
-   * @throws               If the timeout expires before a terminal state.
-   */
+  /** Poll until terminal state or timeout. */
   async pollUntilFinalized(
     requestIdHex: string,
     pollIntervalMs = 2_000,
@@ -202,9 +156,7 @@ export class DaClient {
     );
   }
 
-  /**
-   * Retrieve a previously dispersed blob by storage root, epoch, and quorum ID.
-   */
+  /** Retrieve a blob by storage root, epoch, and quorum ID. */
   retrieveBlob(
     storageRoot: Uint8Array,
     epoch: number,
@@ -228,13 +180,7 @@ export class DaClient {
     });
   }
 
-  /**
-   * Wait for the gRPC connection to become ready.
-   * Uses gRPC's built-in `waitForReady` with a configurable timeout.
-   *
-   * @param timeoutMs  Max time to wait in ms (default 30_000).
-   * @throws If the timeout expires before the channel is ready.
-   */
+  /** Wait for the gRPC connection to become ready. */
   async waitForReady(timeoutMs = 30_000): Promise<void> {
     return new Promise((resolve, reject) => {
       const deadline = new Date(Date.now() + timeoutMs);
@@ -250,10 +196,6 @@ export class DaClient {
     this.client.close();
   }
 }
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));

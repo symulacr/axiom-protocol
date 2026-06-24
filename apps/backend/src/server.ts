@@ -51,21 +51,7 @@ const VAULT_ABI: string[] = [
   "function balanceOf(uint256) view returns (uint256)",
   "function strategyOf(uint256) view returns (bytes32,uint256,uint64)",
 ];
-/**
- * HTTP + WebSocket server for the Axiom Protocol backend.
- *
- * Endpoints (per the MW13 plan):
- *   GET  /health                                 liveness probe + signer/chain head
- *   GET  /v1/compute/providers                   list available inference services (read-only)
- *   POST /v1/compute/chat/completions            standalone chat completion (OpenAI-compatible)
- *   GET  /v1/agents                              list owned agents by owner address (from events)
- *   POST /v1/agents/mint                         upload encrypted strategy, call AxiomAgentNFT.mint
- *   POST /v1/agents/:id/transfer                 orchestrate the TEE oracle, call iTransferFrom
- *   POST /v1/vaults/:id/deposit                  relay native value to AxiomStrategyVault
- *   POST /v1/vaults/:id/strategy                 commit Merkle root + daily limit
- *   POST /v1/orchestrator/tick                  run a strategy tick (Promise.all fan-out)
- *   WS   /v1/stream                               real-time event log stream
- */
+/** HTTP + WebSocket server for the backend. */
 loadEnv();
 
 export interface ServerConfig {
@@ -123,7 +109,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
     origin: config.env?.AXIOM_FRONTEND_URL ?? "http://localhost:5173",
     methods: ["GET", "POST"],
   }));
-  // Optional API key auth — skip if AXIOM_API_KEY is not set (local dev)
+  // Optional API key auth (skipped when unset for local dev)
   app.use(createApiKeyAuth(config.env?.AXIOM_API_KEY));
   app.use(rateLimit({
     windowMs: 60_000,
@@ -134,17 +120,14 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
   // BigInt-safe JSON replacer for res.json().
   app.set("json replacer", bigintReplacer);
 
-  const ogChainId = config.env?.AXIOM_CHAIN_ID ?? GALILEO_CHAIN_ID; // EIP-155 chain id; 16602 = Galileo testnet per https://docs.0g.ai/ai-context
+  const ogChainId = config.env?.AXIOM_CHAIN_ID ?? GALILEO_CHAIN_ID; // 16602 = Galileo testnet
   const _storage = new ZeroGStorage({
     indexerRpc: config.storageRpc ?? pickOGNetwork(ogChainId)?.storageRpc ?? "https://indexer-storage-testnet-turbo.0g.ai",
     evmRpc: config.evmRpc,
     signer: config.signer,
   });
   const oracle = new DefaultSignerOracleClient({ baseUrl: config.oracleBaseUrl });
-  // EIP-712 domain for AccessProof recovery: the on-chain AxiomTeeVerifier
-  // computes its domain separator from block.chainid + address(this), so the
-  // backend MUST recover over the same digest. Falls back to the configured
-  // Galileo testnet verifier when addresses.verifier is absent (dev/test).
+  // EIP-712 domain for AccessProof recovery (must match on-chain domain separator).
   const eip712Domain: Eip712Domain = {
     chainId: BigInt(ogChainId),
     verifyingContract: config.addresses?.verifier ?? DEFAULT_EIP712_DOMAIN.verifyingContract,
@@ -165,9 +148,8 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
     orchestratorHandle = { state: "errored", error: err instanceof Error ? err : new Error(String(err)) };
   }
   const provider = new ethers.JsonRpcProvider(config.evmRpc);
-  // PaymentProcessor client: lazily resolved once we know both the processor
-  // address and the on-chain payment token (read from the contract itself so
-  // a token rotation via setPaymentToken needs no backend redeploy).
+  // PaymentProcessor client: lazily resolved; token read from contract so
+  // setPaymentToken updates don't need a redeploy.
   let payment: PaymentProcessorClient | null = null;
   async function getPayment(): Promise<PaymentProcessorClient> {
     if (payment) return payment;
@@ -186,7 +168,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
 
   const wsClients = new Set<ConnectedClient>();
 
-  // Heartbeat every 30 seconds — terminate clients that miss 3 pings
+  // Heartbeat every 30s; terminate clients that miss 3 pings
   const HEARTBEAT_INTERVAL = 30_000;
   const MAX_MISSED_PINGS = 3;
   const heartbeatTimer = setInterval(() => {
@@ -227,9 +209,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
       const resp = await fetch(`${routerBaseUrl}/models`);
       const raw = await resp.json();
       const models = z.object({ data: z.array(z.record(z.string(), z.unknown())) }).parse(raw);
-      // The router's /v1/models returns an OpenAI-style model list
-      // ({ id, object, created, owned_by, ...}) but the frontend expects
-      // { address, model, endpoint } per useProviders.ts.  Transform here.
+      // Transform router's OpenAI-style model list to frontend's { address, model, endpoint }.
       const services = models.data.map((m: Record<string, unknown>) => {
         const id = String(m.id ?? "");
         // Deterministic hex address derived from the model id
@@ -246,7 +226,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
 
   // ─── Compute — Direct Chat Completions ──────────────────────────────
 
-  /** Chat completions proxy to 0G Compute Router. */
+
   app.post("/v1/compute/chat/completions", async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { model, messages, max_tokens, temperature, stream: _stream } = chatCompletionsSchema.parse(req.body);
@@ -269,7 +249,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
         messages,
         max_tokens: max_tokens ?? 512,
         temperature: temperature ?? 0.7,
-        stream: false, // explicit until streaming is supported
+        stream: false, // streaming not yet supported
       });
 
       res.json({
@@ -317,8 +297,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
         const parsed = nftTc.iface.parseLog(transferLog);
         tokenId = parsed?.args.tokenId?.toString();
       }
-      // Register the dataHash with the oracle's seen-set (Wave 6 A binding)
-      // so the subsequent /v1/agents/:id/transfer call doesn't 400.
+      // Register dataHash with the oracle's seen-set so subsequent transfer doesn't 400.
       try {
         await fetch(`${config.oracleBaseUrl}/v1/agents/mint`, {
           method: "POST",
@@ -379,14 +358,8 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
         pk = ethers.hexlify(ethers.getBytes(pk).slice(1)) as `0x${string}`;
       }
 
-      // Challenge stage: no signed AccessProof yet — return a challenge so the
-      // receiver wallet can sign the AccessProof digest. When the client
-      // supplies re-key inputs (oldDataEncryptionKey + oldDataUri), trigger the
-      // full re-key via oracle /v1/transfer-validity: the oracle downloads the
-      // old ciphertext, decrypts, generates a fresh AES-256 key, re-encrypts,
-      // uploads the new blob, ECIES-seals the new key for the receiver, and
-      // signs the OwnershipProof. Otherwise fall back to sign-only
-      // /v1/ownership (backward compat — sealedKey from request or zero pad).
+      // Challenge stage: re-key via oracle /v1/transfer-validity when client
+      // supplies re-key inputs; otherwise fall back to sign-only /v1/ownership.
       const canRekey = !!(oldDataEncryptionKey && oldDataUri);
       if (!accessProof) {
         const nonce = BigInt(accessProofNonce ?? 0);
@@ -446,9 +419,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
         return;
       }
 
-      // Finalize: the frontend posted a signed AccessProof. Recover the
-      // access signer via EIP-191, sign the matching OwnershipProof, and
-      // return the full on-chain TransferValidityProof structs.
+      // Finalize: recover access signer, sign OwnershipProof, return TransferValidityProof structs.
       const nonce = BigInt(accessProof.nonce);
       const validUntil = BigInt(accessProof.validUntil);
       const proofDataHash = accessProof.dataHash;
@@ -559,10 +530,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
     }
   });
   // ─── Payment routes (AxiomPaymentProcessor) ───────────────────
-  // The processor pulls an ERC-20 stable from the backend signer (operator).
-  // payForAgent / payComputeProvider auto-approve the processor for the exact
-  // amount when allowance is insufficient, so these routes are self-contained
-  // for operator-driven flows. See apps/backend/src/payment/processor.ts.
+  // payForAgent / payComputeProvider auto-approve when allowance is insufficient.
   app.post("/v1/agents/:id/pay", async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = getIdParam(req, res);
@@ -624,9 +592,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
       if (!id) return;
       const { bps } = royaltySchema.parse(req.body);
       const client = await getPayment();
-      // Return encoded calldata so the NFT owner (frontend user) can submit the
-      // tx via wagmi useWriteContract. The backend deployer wallet is neither
-      // creator nor owner, so on-chain modifier checks would always revert.
+      // Return encoded calldata for the NFT owner to submit; backend wallet cannot pass on-chain checks.
       const txData = await client.encodeSetRoyalty(BigInt(id), bps);
       res.status(200).json({ ok: true, tokenId: id, bps, ...txData });
       // The frontend broadcasts the actual tx; no backend broadcast here.
@@ -649,21 +615,11 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
     }
   });
 
-  // Wave 6: indexer -> backend event ingestion + dashboard history read.
-  //   POST /v1/events            accepts { source, chainId, blockNumber,
-  //                                txHash, logIndex, eventName, payload }
-  //                                and stores it in an in-memory ring.
-  //   GET  /v1/agents/:id/history  &  GET  /v1/agents/:id/events
-  //                                both filter the ring by tokenId and
-  //                                return the matching events for the
-  //                                dashboard (aliases of the same query).
-  // Body / response shape: see apps/backend/src/events/store.ts and
-  // apps/indexer/src/sink.ts#HttpEventBody (keep in sync).
-  // Refs: https://expressjs.com/en/4x/api.html#req.body
-  //       https://expressjs.com/en/4x/api.html#res.json
+  // Wave 6: indexer → backend event ingestion + dashboard history read.
+  // POST /v1/events stores events; GET /v1/agents/:id/history & /events filter by tokenId.
   const events = getEventStore();
 
-  // ─── Agent listing by owner (best-effort from in-memory events) ──
+  // ─── Agent listing ────────────────────────────────────────────────
   app.get("/v1/agents", async (req: Request, res: Response, next: NextFunction) => {
     try {
       const owner = typeof req.query.owner === "string" ? req.query.owner.toLowerCase() : undefined;
