@@ -1,5 +1,3 @@
-// Axiom Protocol — `ProviderCard` component.
-
 import type { MouseEvent, ReactElement } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getAddress } from 'viem';

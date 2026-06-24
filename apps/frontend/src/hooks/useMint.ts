@@ -34,7 +34,6 @@ export function useMint(): UseMintResult {
 
   const mint = useCallback(async (input: MintInput): Promise<MintResult> => {
     const data = await execute(async (signal) => {
-      // Show user-facing warning if mint takes > 30s
       const warnTimer = setTimeout(() => {
         console.warn('[mint] Transaction is taking longer than expected. It may still complete on-chain.');
       }, 30000);

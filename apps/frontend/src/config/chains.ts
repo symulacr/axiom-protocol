@@ -1,9 +1,6 @@
-// 0G chain definitions for wagmi v2.
-
 import { defineChain } from 'viem';
 import { GALILEO_CHAIN_ID, ARISTOTLE_CHAIN_ID, resolveRpcUrl } from "@axiom/config/networks";
 
-/** 0G Galileo Testnet (chainId 16602). */
 export const galileo = defineChain({
   id: GALILEO_CHAIN_ID,
   name: '0G Galileo Testnet',
@@ -22,7 +19,6 @@ export const galileo = defineChain({
   testnet: true,
 });
 
-/** 0G Aristotle Mainnet (chainId 16661). */
 export const aristotle = defineChain({
   id: ARISTOTLE_CHAIN_ID,
   name: '0G Aristotle Mainnet',

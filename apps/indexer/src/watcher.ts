@@ -7,24 +7,17 @@ import { validateHex, type Hex } from "@axiom/config/types/hex";
 
 import { ADDRESSES, EVENT_ABI, type AxiomEvent, type EventName } from "./events.js";
 
-/** Block range per eth_getLogs call. */
 export const POLL_WINDOW_BLOCKS = 50n;
 
-/** Poll interval in ms. */
 export const POLL_INTERVAL_MS = 12_000;
 
-/**
- * 0G's eth_getLogs rejects ranges past chain head with -32000.
- * We bound the window to the live head on every tick.
- */
+// 0G's eth_getLogs rejects ranges past chain head with -32000.
+// We bound the window to the live head on every tick.
 
-/** Checkpoint file (stores nextBlock cursor). */
 const CHECKPOINT_FILE = join(process.cwd(), "data", "checkpoint.json");
 
-/** Topic-0 for every event. */
 export type EventTopicTable = { [K in EventName]: Hex };
 const TOPIC_TABLE: EventTopicTable = {
-  // topic-0 = keccak256(eventSig); indexed only affects topics 1+.
   Transfer: validateHex(ethers.id("Transfer(address,address,uint256)")),
   Updated: validateHex(ethers.id("Updated(uint256,(string,bytes32)[],(string,bytes32)[])")),
   Authorization: validateHex(ethers.id("Authorization(uint256,address,address)")),
@@ -60,7 +53,6 @@ const TOPIC_TABLE: EventTopicTable = {
   Initialized: validateHex(ethers.id("Initialized(uint64)")),
  };
 
-/** topic-0 hex → event name. */
 const TOPIC_TO_EVENT: Record<string, EventName> = {};
 {
   // Must match EVENT_SIGNATURES keys in events.ts.
@@ -79,13 +71,11 @@ const TOPIC_TO_EVENT: Record<string, EventName> = {};
   }
 }
 
-/** Subscription shape: (event name, contract address) pairs to watch. */
 export type WatchedEvent = {
   name: EventName;
   address: Address;
 };
 
-/** Events the indexer watches. */
 export const DEFAULT_WATCH_LIST: readonly WatchedEvent[] = [
   // AxiomAgentNFT
   { name: "Transfer", address: ADDRESSES.AXIOM_AGENT_NFT },
@@ -124,10 +114,8 @@ export const DEFAULT_WATCH_LIST: readonly WatchedEvent[] = [
   { name: "Initialized", address: ADDRESSES.AXIOM_AGENT_NFT },
 ];
 
-/** Sink function. Async or sync; errors propagate to the caller. */
 export type EventSink = (event: AxiomEvent) => void | Promise<void>;
 
-/** Watcher constructor options. */
 export type WatcherOptions = {
   provider: JsonRpcProvider;
   watchList?: readonly WatchedEvent[];
@@ -140,17 +128,12 @@ export type WatcherOptions = {
   logger?: (line: Record<string, unknown>) => void;
 };
 
-/** Fields every AxiomEvent carries. */
 type BaseFields = {
   blockNumber: number;
   txHash: `0x${string}`;
   logIndex: number;
 };
 
-/**
- * Decode one raw log into an `AxiomEvent` via per-event ABI items.
- * Returns `null` for unmatched signatures.
- */
 export function decodeAxiomLog(log: Log) {
   const topic0 = log.topics[0];
   if (typeof topic0 !== "string") return null;
@@ -321,7 +304,6 @@ export function decodeAxiomLog(log: Log) {
         nft: getAddress(d.args.nft),
       } satisfies Extract<AxiomEvent, { kind: "RegistryUpdated" }>;
     }
-    // ── AxiomPaymentProcessor ─────────────────────────────────────────
     case "PaymentProcessed": {
       const d = decodeEventLog({ abi: [EVENT_ABI.PaymentProcessed], data, topics, strict: true });
       return {
@@ -389,7 +371,6 @@ export function decodeAxiomLog(log: Log) {
         newToken: getAddress(d.args.newToken),
       } satisfies Extract<AxiomEvent, { kind: "PaymentTokenUpdated" }>;
     }
-    // ── ERC7857Cloneable ──────────────────────────────────────────────
     case "Cloned": {
       const d = decodeEventLog({ abi: [EVENT_ABI.Cloned], data, topics, strict: true });
       return {
@@ -401,7 +382,6 @@ export function decodeAxiomLog(log: Log) {
         to: getAddress(d.args.to),
       } satisfies Extract<AxiomEvent, { kind: "Cloned" }>;
     }
-    // ── AxiomAgentNFT (metadata decision) ─────────────────────────────
     case "MetadataJsonDecisionDocumented": {
       const d = decodeEventLog({ abi: [EVENT_ABI.MetadataJsonDecisionDocumented], data, topics, strict: true });
       return {
@@ -412,7 +392,6 @@ export function decodeAxiomLog(log: Log) {
         rationaleTag: d.args.rationaleTag,
       } satisfies Extract<AxiomEvent, { kind: "MetadataJsonDecisionDocumented" }>;
     }
-    // ── AxiomTeeVerifier ──────────────────────────────────────────────
     case "SignerRegistered": {
       const d = decodeEventLog({ abi: [EVENT_ABI.SignerRegistered], data, topics, strict: true });
       return {
@@ -422,7 +401,6 @@ export function decodeAxiomLog(log: Log) {
         newSigner: getAddress(d.args.newSigner),
       } satisfies Extract<AxiomEvent, { kind: "SignerRegistered" }>;
     }
-    // ── ERC-1967 proxy events ─────────────────────────────────────────
     case "Upgraded": {
       const d = decodeEventLog({ abi: [EVENT_ABI.Upgraded], data, topics, strict: true });
       return {
@@ -448,7 +426,6 @@ export function decodeAxiomLog(log: Log) {
         beacon: getAddress(d.args.beacon),
       } satisfies Extract<AxiomEvent, { kind: "BeaconUpgraded" }>;
     }
-    // ── OpenZeppelin Initializable ────────────────────────────────────
     case "Initialized": {
       const d = decodeEventLog({ abi: [EVENT_ABI.Initialized], data, topics, strict: true });
       return {
@@ -484,7 +461,6 @@ export async function pollOnce(
   return allLogs;
 }
 
-/** Sort on-chain. */
 function logsByChainOrder(a: Log, b: Log) {
   if (a.blockNumber !== b.blockNumber) {
     return a.blockNumber < b.blockNumber ? -1 : 1;
@@ -495,9 +471,6 @@ function logsByChainOrder(a: Log, b: Log) {
   return 0;
 }
 
-// ── Checkpoint persistence ─────────────────────────────────────────────
-
-/** Load nextBlock cursor from disk. Returns null on error. */
 async function loadCheckpoint(): Promise<number | null> {
   try {
     const data = await readFile(CHECKPOINT_FILE, "utf-8");
@@ -510,7 +483,6 @@ async function loadCheckpoint(): Promise<number | null> {
   return null;
 }
 
-/** Atomically persist nextBlock cursor. */
 async function saveCheckpoint(nextBlock: number): Promise<void> {
   const tmp = CHECKPOINT_FILE + ".tmp";
   try {
@@ -522,7 +494,6 @@ async function saveCheckpoint(nextBlock: number): Promise<void> {
   }
 }
 
-/** Long-running block watcher. */
 export class Watcher {
   readonly provider: JsonRpcProvider;
   readonly watchList: readonly WatchedEvent[];
@@ -544,12 +515,10 @@ export class Watcher {
     this.nextBlock = opts.startBlock ?? 0n;
   }
 
-  /** Next block to query. */
   get cursor(): bigint {
     return this.nextBlock;
   }
 
-  /** Start the polling loop. Returns a `{ stop }` handle. */
   start() {
     if (this.running) throw new Error("Watcher already running");
     this.running = true;

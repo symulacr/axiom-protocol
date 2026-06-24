@@ -16,9 +16,7 @@ const VERIFIER_VERSION_HASH = keccak256(toUtf8Bytes("1"));
 
 /** EIP-712 domain: binds signatures to specific chain + verifier contract. */
 export interface Eip712Domain {
-  /** EIP-155 chain id (e.g. 16602 = Galileo). */
   chainId: bigint;
-  /** AxiomTeeVerifier contract address. */
   verifyingContract: `0x${string}`;
 }
 
@@ -61,7 +59,6 @@ export interface AccessProofInput {
   validUntil: bigint;
 }
 
-/** EIP-712 OwnershipProof struct hash. */
 export function ownershipStructHash(input: OwnershipProofInput): Hex {
   return keccak256(
     abiCoder.encode(
@@ -80,7 +77,6 @@ export function ownershipStructHash(input: OwnershipProofInput): Hex {
   ) as Hex;
 }
 
-/** EIP-712 AccessProof struct hash. */
 export function accessStructHash(input: AccessProofInput): Hex {
   return keccak256(
     abiCoder.encode(

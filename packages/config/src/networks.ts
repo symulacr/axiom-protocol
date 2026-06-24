@@ -1,4 +1,3 @@
-/** 0G network entry for a given chainId. */
 export interface OGNetwork {
   readonly name: "galileo" | "aristotle";
   readonly chainId: number;
@@ -43,15 +42,13 @@ const _OG_NETWORKS = {
   },
 } as const satisfies Record<number, OGNetwork>;
 
-/** OG_NETWORKS map cast to Record<number, OGNetwork> for type inference. */
 export const OG_NETWORKS: Record<number, OGNetwork> = _OG_NETWORKS as unknown as Record<number, OGNetwork>;
 
-/** Look up the canonical 0G network entry for a chainId, or null if unsupported. */
 export function pickOGNetwork(chainId: number): OGNetwork | null {
   return OG_NETWORKS[chainId] ?? null;
 }
 
-/** Resolve EVM RPC URL from env or network default. Precedence: AXIOM_EVM_RPC → OG_RPC_URL → RPC_URL → chain default → Galileo fallback. */
+/** Precedence: AXIOM_EVM_RPC → OG_RPC_URL → RPC_URL → chain default → Galileo fallback. */
 export function resolveRpcUrl(chainId?: number): string {
   const varVal = process.env.AXIOM_EVM_RPC || process.env.OG_RPC_URL || process.env.RPC_URL;
   if (varVal) return varVal;
@@ -59,7 +56,7 @@ export function resolveRpcUrl(chainId?: number): string {
   return network?.evmRpc ?? "https://evmrpc-testnet.0g.ai";
 }
 
-/** Resolve Storage RPC URL from env or network default. Precedence: AXIOM_STORAGE_RPC → OG_STORAGE_RPC → chain default → Galileo fallback. */
+/** Precedence: AXIOM_STORAGE_RPC → OG_STORAGE_RPC → chain default → Galileo fallback. */
 export function resolveStorageRpc(chainId?: number): string {
   const varVal = process.env.AXIOM_STORAGE_RPC || process.env.OG_STORAGE_RPC;
   if (varVal) return varVal;
@@ -67,7 +64,6 @@ export function resolveStorageRpc(chainId?: number): string {
   return network?.storageRpc ?? "https://indexer-storage-testnet-turbo.0g.ai";
 }
 
-/** Resolve block explorer URL. */
 export function resolveBlockExplorerUrl(chainId?: number): string {
   const network = chainId ? pickOGNetwork(chainId) : null;
   return network?.blockExplorer ?? "https://chainscan-galileo.0g.ai";

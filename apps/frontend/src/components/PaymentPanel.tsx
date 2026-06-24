@@ -1,5 +1,3 @@
-// PaymentPanel — agent payment management.
-
 import { useCallback, useEffect, useState, type ReactElement } from 'react';
 import { useSendTransaction, useWriteContract } from 'wagmi';
 import type { Address } from 'viem';
@@ -38,10 +36,8 @@ const PAYMENT_PROCESSOR_FRAGMENT = [
   },
 ] as const;
 
-/** Per-action status surfaced to the UI. */
 type ActionStatus = 'idle' | 'pending' | 'success' | 'error';
 
-/** Inline form row: a labeled input + submit button. */
 const formRowStyle: React.CSSProperties = {
   display: 'flex',
   gap: 8,
@@ -86,7 +82,6 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
   const [withdrawStatus, setWithdrawStatus] = useState<ActionStatus>('idle');
   const [initError, setInitError] = useState<string | null>(null);
 
-  // Initialise config and earnings once on mount via useEffect.
   useEffect(() => {
     setInitError(null);
     Promise.all([getPaymentConfig(), getEarnings(tokenId)])

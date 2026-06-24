@@ -1,8 +1,3 @@
-// Axiom Protocol — `/market` page.
-//
-// Real-time market dashboard: compute providers (polled every 30 s via
-// `useProviders`) and recent transfers (one-shot fetch on mount).
-
 import { resolveBlockExplorerUrl } from "@axiom/config/networks";
 import type { ReactElement } from 'react';
 import { useEffect, useState } from 'react';

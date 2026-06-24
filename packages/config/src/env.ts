@@ -4,7 +4,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-/** Load a `.env`-style file into `process.env`. Missing file is fine. */
 export function loadEnv(rootPath: string = join(process.cwd(), "../../.env")): void {
   try {
     const content = readFileSync(rootPath, "utf-8");
@@ -22,7 +21,6 @@ export function loadEnv(rootPath: string = join(process.cwd(), "../../.env")): v
   }
 }
 
-/** `process.env[key]` or `fallback`. Throws if neither is set. */
 export function getEnv(key: string, fallback?: string): string {
   const val = process.env[key];
   if (val !== undefined && val !== "") return val;
@@ -31,17 +29,7 @@ export function getEnv(key: string, fallback?: string): string {
 }
 
 /**
- * Canonical env-var namespace (all public, none are secrets):
- *
- *   AXIOM_EVM_RPC         — JSON-RPC endpoint for 0G Chain
- *   AXIOM_STORAGE_RPC     — 0G Storage indexer RPC
- *   AXIOM_ORACLE_URL      — Oracle service base URL
- *   AXIOM_FRONTEND_URL    — Frontend origin (for CORS)
- *   AXIOM_BIND            — Listen address (default: 127.0.0.1)
- *   AXIOM_PORT            — Listen port (default: 3000)
- *   AXIOM_CHAIN_ID        — EIP-155 chain ID (default: 16602)
- *
- *   # Backward-compat aliases (read on fallback, warn if used):
+ * # Backward-compat aliases (read on fallback, warn if used):
  *   OG_STORAGE_RPC   → AXIOM_STORAGE_RPC
  *   OG_EVM_RPC       → AXIOM_EVM_RPC
  *   RPC_URL          → AXIOM_EVM_RPC
@@ -53,11 +41,6 @@ export function getEnv(key: string, fallback?: string): string {
  *   DEPLOYER_PK, TEE_SIGNER_PK, ORACLE_ADMIN_PK
  */
 
-/**
- * Resolve a canonical AXIOM_* env var with backward-compatible aliases.
- * Checks `canonical` first, then each alias in order. Throws if none are set
- * and no `fallback` is provided.
- */
 export function getEnvWithAlias(canonical: string, aliases: string[], fallback?: string): string {
   for (const key of [canonical, ...aliases]) {
     const val = process.env[key];
