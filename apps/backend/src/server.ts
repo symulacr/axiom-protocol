@@ -11,7 +11,7 @@ import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
 import { bigintReplacer, stringifyBigIntSafe, bigIntSafe } from "@axiom/config/types/bigint";
 import type { AgentNFTMethods, StrategyVaultMethods } from "./contract-types.js";
 import { ZeroGStorage, pickOGNetwork } from "./storage/0g.js";
-// Compute via 0G Router API (OpenAI-compatible) — see compute/router.ts
+// Compute via 0G Router API — see compute/router.ts
 import { getComputeBaseUrl } from "./compute/router.js";
 import type OpenAI from "openai";
 import { StrategyRunner, type StrategySpec, type MarketSignal, type TickResult } from "./orchestrator/index.js";
@@ -51,7 +51,7 @@ const VAULT_ABI: string[] = [
   "function balanceOf(uint256) view returns (uint256)",
   "function strategyOf(uint256) view returns (bytes32,uint256,uint64)",
 ];
-/** HTTP + WebSocket server for the backend. */
+/** HTTP + WebSocket server. */
 loadEnv();
 
 export interface ServerConfig {
@@ -79,7 +79,7 @@ function getIdParam(req: Request, res: Response) {
 export function startServer(config: ServerConfig): { app: Express; httpServer: HttpServer } {
   const app = express();
   app.use(express.json({ limit: "2mb" }));
-  // Request ID + request logging (before security/route middleware)
+  // Request ID + logging (before middleware)
   app.use((req, res, next) => {
     const requestId = crypto.randomUUID();
     res.setHeader("x-request-id", requestId);
@@ -117,17 +117,17 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
     standardHeaders: true,
     legacyHeaders: false,
   }));
-  // BigInt-safe JSON replacer for res.json().
+  // BigInt-safe JSON replacer for res.json()
   app.set("json replacer", bigintReplacer);
 
-  const ogChainId = config.env?.AXIOM_CHAIN_ID ?? GALILEO_CHAIN_ID; // 16602 = Galileo testnet
+  const ogChainId = config.env?.AXIOM_CHAIN_ID ?? GALILEO_CHAIN_ID; // 16602 = Galileo
   const _storage = new ZeroGStorage({
     indexerRpc: config.storageRpc ?? pickOGNetwork(ogChainId)?.storageRpc ?? "https://indexer-storage-testnet-turbo.0g.ai",
     evmRpc: config.evmRpc,
     signer: config.signer,
   });
   const oracle = new DefaultSignerOracleClient({ baseUrl: config.oracleBaseUrl });
-  // EIP-712 domain for AccessProof recovery (must match on-chain domain separator).
+  // EIP-712 domain for AccessProof (must match on-chain).
   const eip712Domain: Eip712Domain = {
     chainId: BigInt(ogChainId),
     verifyingContract: config.addresses?.verifier ?? DEFAULT_EIP712_DOMAIN.verifyingContract,
@@ -148,8 +148,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
     orchestratorHandle = { state: "errored", error: err instanceof Error ? err : new Error(String(err)) };
   }
   const provider = new ethers.JsonRpcProvider(config.evmRpc);
-  // PaymentProcessor client: lazily resolved; token read from contract so
-  // setPaymentToken updates don't need a redeploy.
+  // PaymentProcessor client: lazily resolved; paymentToken read from contract.
   let payment: PaymentProcessorClient | null = null;
   async function getPayment(): Promise<PaymentProcessorClient> {
     if (payment) return payment;
@@ -168,7 +167,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
 
   const wsClients = new Set<ConnectedClient>();
 
-  // Heartbeat every 30s; terminate clients that miss 3 pings
+  // Heartbeat every 30s; disconnect clients that miss 3 pings
   const HEARTBEAT_INTERVAL = 30_000;
   const MAX_MISSED_PINGS = 3;
   const heartbeatTimer = setInterval(() => {
@@ -209,7 +208,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
       const resp = await fetch(`${routerBaseUrl}/models`);
       const raw = await resp.json();
       const models = z.object({ data: z.array(z.record(z.string(), z.unknown())) }).parse(raw);
-      // Transform router's OpenAI-style model list to frontend's { address, model, endpoint }.
+      // Transform router's model list to frontend format.
       const services = models.data.map((m: Record<string, unknown>) => {
         const id = String(m.id ?? "");
         // Deterministic hex address derived from the model id
@@ -224,7 +223,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
     }
   });
 
-  // ─── Compute — Direct Chat Completions ──────────────────────────────
+  // ─── Compute — Chat Completions ──────────────────────────────
 
 
   app.post("/v1/compute/chat/completions", async (req: Request, res: Response, next: NextFunction) => {
@@ -271,13 +270,13 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
           : undefined,
       });
     } catch (err) {
-      // Distinguish upstream errors from internal errors
+      // Distinguish upstream from internal errors
       const status = (err as { status?: number }).status ?? 502;
       const message = err instanceof Error ? err.message : String(err);
       if (status >= 400 && status < 500) {
         res.status(status).json({ error: message });
       } else {
-        next(err); // defer to global error handler for 5xx
+        next(err); // defer to global handler for 5xx
       }
     }
   });
@@ -297,7 +296,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
         const parsed = nftTc.iface.parseLog(transferLog);
         tokenId = parsed?.args.tokenId?.toString();
       }
-      // Register dataHash with the oracle's seen-set so subsequent transfer doesn't 400.
+      // Register dataHash with oracle's seen-set so subsequent transfer doesn't 400.
       try {
         await fetch(`${config.oracleBaseUrl}/v1/agents/mint`, {
           method: "POST",
@@ -350,7 +349,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
         dataHash = ("0x" + id.padStart(64, "0").slice(-64)) as `0x${string}`;
         console.warn("[transfer] using synthetic dataHash for token", id, ":", dataHash);
       }
-      // The on-chain verifier expects a 64-byte raw uncompressed public key.
+      // The on-chain verifier expects 64-byte raw uncompressed public key.
       let pk = receiverPubKey64;
       if (pk.length === 130 && pk.startsWith("0x04")) {
         pk = ("0x" + pk.slice(4)) as `0x${string}`;
@@ -358,8 +357,8 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
         pk = ethers.hexlify(ethers.getBytes(pk).slice(1)) as `0x${string}`;
       }
 
-      // Challenge stage: re-key via oracle /v1/transfer-validity when client
-      // supplies re-key inputs; otherwise fall back to sign-only /v1/ownership.
+      // Challenge stage: re-key via oracle when client supplies re-key inputs;
+      // otherwise fall back to sign-only.
       const canRekey = !!(oldDataEncryptionKey && oldDataUri);
       if (!accessProof) {
         const nonce = BigInt(accessProofNonce ?? 0);
@@ -419,7 +418,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
         return;
       }
 
-      // Finalize: recover access signer, sign OwnershipProof, return TransferValidityProof structs.
+      // Finalize: recover access signer, sign OwnershipProof.
       const nonce = BigInt(accessProof.nonce);
       const validUntil = BigInt(accessProof.validUntil);
       const proofDataHash = accessProof.dataHash;
@@ -529,8 +528,8 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
       next(err);
     }
   });
-  // ─── Payment routes (AxiomPaymentProcessor) ───────────────────
-  // payForAgent / payComputeProvider auto-approve when allowance is insufficient.
+  // ─── Payment routes (AxiomPaymentProcessor) ────────────────
+  // Auto-approve when allowance insufficient.
   app.post("/v1/agents/:id/pay", async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = getIdParam(req, res);
@@ -615,8 +614,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
     }
   });
 
-  // Wave 6: indexer → backend event ingestion + dashboard history read.
-  // POST /v1/events stores events; GET /v1/agents/:id/history & /events filter by tokenId.
+  // Wave 6: event ingestion + dashboard history.
   const events = getEventStore();
 
   // ─── Agent listing ────────────────────────────────────────────────

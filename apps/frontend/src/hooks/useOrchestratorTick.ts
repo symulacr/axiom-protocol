@@ -1,41 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BACKEND_URL } from '../config/env.js';
 
-/**
- * Request body posted to the Axiom backend orchestrator tick endpoint.
- * The backend runs one cycle of a strategy against the connected vault /
- * agent on 0G, then returns the on-chain and off-chain effects.
- */
 export type TickRequest = {
-  /** AxiomStrategyVault address. */
   vault: `0x${string}`;
-  /** AxiomAgentNFT contract address. */
   agentNft: `0x${string}`;
-  /** Token id of the agent to run the strategy against. */
   agentTokenId: string;
-  /** Optional strategy hint passed through in the market signal. */
   strategy?: string;
-  /** Optional signal source label; defaults to "manual:user". */
   signalSource?: string;
-  /** Optional arbitrary payload for the market signal. */
   signalPayload?: unknown;
 };
 
 export type TickResult = {
-  /** The model's recommendation as a JSON-parsed object. */
   recommendation: { action: 'buy' | 'sell' | 'hold'; amount?: number; reason: string };
-  /** Raw model output (string). */
   rawModelOutput: string;
-  /** On-chain state snapshot (vault balance, recent events). */
   onchain: { vaultBalance: string; recentEvents: unknown[] };
-  /** Storage peek result. */
   storage: { rootHash: `0x${string}`; size: number };
-  /**
-   * On-chain settlement result when the recommendation is acted on
-   * (buy/sell). Absent for "hold" recommendations. The backend serializes
-   * `bigint` fields (gasUsed) as decimal strings on the wire via its
-   * `bigintReplacer`, so `gasUsed` is typed as `string` here, not `bigint`.
-   */
+  /** Present for buy/sell; absent for "hold". `gasUsed` is string (backend serialises bigint as decimal). */
   execution?: {
     txHash: `0x${string}`;
     action: string;
@@ -44,11 +24,9 @@ export type TickResult = {
     result?: `0x${string}`;
     gasUsed?: string;
   };
-  /** Total wall-clock duration of the tick. */
   durationMs: number;
 };
 
-/** POSTs to /v1/orchestrator/tick. No wagmi — backend wallet signs on-chain calls. */
 export function useOrchestratorTick(): {
   tick: (req: TickRequest) => Promise<TickResult>;
   isLoading: boolean;
@@ -80,8 +58,6 @@ export function useOrchestratorTick(): {
           signal: AbortSignal.any([controller.signal, AbortSignal.timeout(30000)]),
         });
         if (!res.ok) {
-          // Surface the response status + body as an Error so the UI can
-          // // render it; the backend returns JSON `{ error: string }`.
           const text = await res.text();
           throw new Error(
             `orchestrator tick failed: ${res.status} ${res.statusText} ${text}`,

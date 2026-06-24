@@ -1,5 +1,3 @@
-// useTransfer — end-to-end iNFT transfer flow (challenge → sign → finalize → on-chain).
-
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAccount, useSignTypedData, useWriteContract } from 'wagmi';
 import { type Address, type Hex } from 'viem';
@@ -10,7 +8,6 @@ import { BACKEND_URL } from '../config/env.js';
 
 import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
 
-/** 0G Galileo testnet chain id — verifier deployment chain. */
 const EIP712_DOMAIN = {
   name: 'AxiomTeeVerifier',
   version: '1',
@@ -18,11 +15,7 @@ const EIP712_DOMAIN = {
   verifyingContract: AXIOM_TEE_VERIFIER_ADDRESS,
 } as const;
 
-/**
- * EIP-712 types for AccessProof. Mirrors `ACCESS_PROOF_TYPEHASH` in
- * `AxiomTeeVerifier.sol`. The wallet signs the EIP-712 digest directly
- * (no EIP-191 prefix), matching on-chain `ECDSA.recover`.
- */
+/** EIP-712 AccessProof — wallet signs the digest directly (no EIP-191 prefix). */
 const ACCESS_PROOF_TYPES = {
   AccessProof: [
     { name: 'dataHash', type: 'bytes32' },
@@ -34,9 +27,6 @@ const ACCESS_PROOF_TYPES = {
   ],
 } as const;
 
-/**
- * Input to `useTransfer.transfer()`. Gathered from user form fields.
- */
 export type TransferInput = {
   tokenId: bigint;
   to: Address;
@@ -46,10 +36,7 @@ export type TransferInput = {
   oldDataUri?: Hex;
 };
 
-/**
- * Backend response to `POST /v1/agents/:tokenId/transfer`.
- * Only surfaces frontend-relevant fields.
- */
+/** Backend response to `POST /v1/agents/:tokenId/transfer` (frontend-relevant fields). */
 export type AccessProofStruct = {
   dataHash: Hex;
   targetPubkey: Hex;
@@ -68,52 +55,31 @@ export type OwnershipProofStruct = {
   validUntil: bigint;
 };
 
-/**
- * Backend response for the two-stage transfer protocol:
- * 1. `stage: 'challenge'` — backend returns proof params; receiver signs
- *    the AccessProof via EIP-712.
- * 2. `stage: 'final'` — backend builds full on-chain structs from the
- *    signed AccessProof.
- */
+/** Backend response for the two-stage transfer protocol (challenge → final). */
 export type TransferResponse = {
   ok: boolean;
   stage: 'challenge' | 'final';
   tokenId: string;
   to: Address;
   dataHash?: Hex;
-  /** Original data hash (re-key flow) — same as `dataHash` for sign-only. */
   oldDataHash?: Hex;
-  /** Fresh data hash after re-encryption (re-key flow only). */
   newDataHash?: Hex;
-  /** 0G Storage root hash of the re-encrypted blob (re-key flow only). */
   newDataUri?: Hex;
   targetPubkey?: Hex;
   accessProofNonce?: number;
   validUntil?: string;
-  /** ECIES-sealed fresh AES key for the receiver (re-key flow only). */
   sealedKey?: Hex;
   ownershipSignature?: Hex;
   signer?: Address;
   accessSigner?: Address;
-  /** `true` when the backend performed a full re-key. */
   rekeyed?: boolean;
   accessProof?: AccessProofStruct;
   ownershipProof?: OwnershipProofStruct;
 };
 
-/**
- * Hook surface. Split into two phases so the modal can show proof details
- * before the on-chain write:
- * - `prepare` — challenge + sign + finalize (no chain write).
- * - `confirm` — submit `iTransferFrom` using prepared `signature`.
- * - `transfer` — convenience: prepare + confirm in one call.
- */
 export type UseTransferResult = {
-  /** Challenge + sign + finalize. Sets `signature`; does not write on-chain. */
   prepare: (input: TransferInput) => Promise<TransferResponse>;
-  /** Submit the on-chain `iTransferFrom` using the prepared `signature`. */
   confirm: (input: TransferInput) => Promise<Hex>;
-  /** Convenience: `prepare` then `confirm` in one call. */
   transfer: (input: TransferInput) => Promise<Hex>;
   isLoading: boolean;
   error: Error | null;
@@ -121,10 +87,6 @@ export type UseTransferResult = {
   reset: () => void;
 };
 
-/**
- * Drive the end-to-end iNFT transfer flow:
- * challenge → receiver EIP-712 sign → finalize → on-chain `iTransferFrom`.
- */
 export function useTransfer(): UseTransferResult {
   const { address: from } = useAccount();
   const { signTypedDataAsync } = useSignTypedData();
@@ -160,8 +122,7 @@ export function useTransfer(): UseTransferResult {
 
         const url = `${BACKEND_URL}/v1/agents/${input.tokenId.toString()}/transfer`;
 
-        // Step 1 — challenge: backend picks proof params. When re-key inputs
-        // are supplied, the backend performs a full re-key.
+        // Step 1 — challenge (backend returns proof params).
         const challengeBody: Record<string, unknown> = {
           to: input.to,
           receiverPubKey64: input.receiverPubKey64,
@@ -199,9 +160,7 @@ export function useTransfer(): UseTransferResult {
           throw new Error('incomplete transfer challenge from backend');
         }
 
-        // Step 2 — receiver signs the AccessProof EIP-712 typed data.
-        // When rekeyed, bind to the fresh data hash (the on-chain token
-        // references the new blob).
+        // Step 2 — receiver signs EIP-712 AccessProof.
         const nonce = BigInt(challenge.accessProofNonce);
         const validUntil = BigInt(challenge.validUntil);
         const proofDataHash = challenge.rekeyed && challenge.newDataHash
@@ -222,8 +181,7 @@ export function useTransfer(): UseTransferResult {
           account: from,
         });
 
-        // Step 3 — finalize: post signed AccessProof; backend builds
-        // on-chain structs. Echo sealedKey for re-key flow.
+        // Step 3 — finalize (backend builds on-chain structs from signed proof).
         const finalRes = await fetch(url, {
           method: 'POST',
           headers: {
@@ -285,7 +243,6 @@ export function useTransfer(): UseTransferResult {
       if (!signature?.accessProof || !signature?.ownershipProof) {
         throw new Error('no prepared proof — call prepare() first');
       }
-      // Step 4 — submit the on-chain `iTransferFrom` call with full structs.
       return writeContractAsync({
         address: AXIOM_AGENT_NFT_ADDRESS,
         abi: iTransferFromAbi,

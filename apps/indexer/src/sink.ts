@@ -1,14 +1,11 @@
-// apps/indexer/src/sink.ts
-//
-// HTTP event sink for the indexer. Forwards decoded AxiomEvents to
-// the backend's POST /v1/events endpoint for the dashboard activity panel.
+// Posts decoded AxiomEvents to the backend's POST /v1/events.
 
 import type { AxiomEvent } from "./events.js";
 import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
 
 /**
- * Shape of the JSON body posted to the backend. Mirrors
- * `StoredEvent` in apps/backend/src/events/store.ts — keep both in sync.
+ * Shape of the JSON body posted to the backend.
+ * Mirrors StoredEvent in backend/src/events/store.ts.
  */
 export interface HttpEventBody {
   source: string;
@@ -20,10 +17,10 @@ export interface HttpEventBody {
   payload: Record<string, unknown>;
 }
 
-/** Minimal `fetch`-compatible function; defaults to the global `fetch`. */
+/** Minimal fetch-compatible function; defaults to global fetch. */
 export type Fetcher = (input: string, init?: RequestInit) => Promise<Response>;
 
-/** Options accepted by `postEvent` and `httpEventSink`. */
+/** Options for postEvent and httpEventSink. */
 export interface HttpEventSinkOptions {
   /** Base URL of the backend, e.g. `http://127.0.0.1:3000`. */
   backendUrl: string;
@@ -34,20 +31,16 @@ export interface HttpEventSinkOptions {
    */
   fetcher?: Fetcher;
   /**
-   * Logical source tag sent to the backend. The backend stores events
-   * bucketed by this string; default `"indexer"` matches the brief.
+   * Source tag sent to backend; default "indexer".
    */
   source?: string;
   /**
-   * Optional per-request timeout in ms. When set, the request is raced
-   * against an AbortController so a slow backend cannot stall the
-   * indexer poll loop. Default: 5_000.
+   * Per-request timeout ms. Default: 5_000.
    */
   timeoutMs?: number;
 }
 
-/** Returned by `postEvent` / `httpEventSink`'s sink so callers can
- *  log / metric the result. */
+/** Returned by postEvent / httpEventSink. */
 export interface HttpEventSinkResult {
   status: number;
 }
@@ -58,10 +51,8 @@ function resolveUrl(backendUrl: string) {
 }
 
 /**
- * Build the wire body for one event. Lifts the shared `BaseFields`
- * (blockNumber / txHash / logIndex) to the top level and keeps the
- * event-specific fields in `payload`. The event's `kind` becomes
- * `eventName`.
+ * Build the wire body for one event. The event's kind becomes eventName;
+ * remaining fields go in payload.
  */
 function buildBody(event: AxiomEvent, source: string, chainId: number): HttpEventBody {
   const { blockNumber, txHash, logIndex, kind: eventName, ...rest } =
@@ -78,7 +69,7 @@ function buildBody(event: AxiomEvent, source: string, chainId: number): HttpEven
 }
 
 /**
- * POST a single event to the backend. Returns the HTTP status; throws
+ * POST a single event to the backend. Returns HTTP status; throws
  * on network error / abort.
  */
 export async function postEvent(
@@ -90,21 +81,18 @@ export async function postEvent(
   const timeoutMs = opts.timeoutMs ?? 5_000;
   const url = resolveUrl(opts.backendUrl);
 
-  // Re-read the env at call time so operators can rotate the chain id
-  // between runs without restarting the indexer process. 0G Galileo
-  // (testnet) is 16602; mainnet "Aristotle" is 16661.
+  // Re-read env at call time so chain id can be rotated without restart.
+  // 0G Galileo (testnet) = 16602; mainnet "Aristotle" = 16661.
   const chainId = Number(process.env["OG_CHAIN_ID"] ?? GALILEO_CHAIN_ID);
   const body: HttpEventBody = buildBody(event, source, chainId);
 
-  // AbortSignal.timeout is safe in Node 22+.
+  // AbortSignal.timeout is safe in Node 22+
   const signal = AbortSignal.timeout(timeoutMs);
   const res = await fetchImpl(url, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    // body is a string so fetch does not need a Blob polyfill in Node.
-    // The replacer converts every bigint to its decimal string form;
-    // per ECMA-262, JSON.stringify has no native BigInt path, so the
-    // replacer is required for fields like `tokenId` / `amount`.
+    // body is a string so fetch doesn't need a Blob polyfill.
+    // The replacer converts bigints to decimal strings.
     body: JSON.stringify(body, (_k, v) => (typeof v === "bigint" ? v.toString() : v)),
     signal,
   });
@@ -112,13 +100,7 @@ export async function postEvent(
 }
 
 /**
- * Build a sink closure that POSTs each event to `${backendUrl}/v1/events`
- * and returns the response status. Matches the brief's signature:
- *   `httpEventSink({ backendUrl, fetcher? }): (event) => Promise<{ status: number }>`
- *
- * The returned closure captures the `opts` so a single factory call
- * can be reused across many events without re-binding. Callers that
- * need the raw status (e.g. for metrics) should use `postEvent` directly.
+ * Build a sink closure that POSTs each event to the backend.
  */
 export function httpEventSink(opts: HttpEventSinkOptions) {
   return (event: AxiomEvent) => postEvent(event, opts);

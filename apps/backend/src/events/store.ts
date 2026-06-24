@@ -5,24 +5,16 @@
 //
 
 
-/**
- * Default retention cap: 1000 events per (source, eventName) pair.
- * Matches the brief. Tune via the constructor argument when a different
- * cap is needed (tests, dev mode, etc.).
- */
+/** Default retention: 1000 events per (source, eventName) pair. */
 export const DEFAULT_MAX_EVENTS_PER_SOURCE = 1000;
 
 /**
- * Wire-format event as received from the indexer's HTTP sink or produced
- * by the orchestrator. `payload` is intentionally `unknown` — its shape
- * is event-specific (e.g. a Transfer event has {from,to,tokenId}; a
- * StrategyExecuted event has {agentTokenId, vaultBalance, ...}). The
- * store treats it as opaque JSON; callers filter / project as needed.
+ * Wire-format event from the indexer or orchestrator. payload is opaque to the store.
  */
 export interface StoredEvent {
-  /** Origin system, e.g. "indexer", "orchestrator". */
+  /** Origin system, e.g. "indexer". */
   source: string;
-  /** EVM chain id the event was observed on (0G Galileo = 16602). */
+  /** 0G Galileo = 16602. */
   chainId: number;
   /** Block number the log was emitted in. */
   blockNumber: number;
@@ -30,15 +22,15 @@ export interface StoredEvent {
   txHash: string;
   /** Log index inside the transaction. */
   logIndex: number;
-  /** Decoded event name (e.g. "Transfer", "StrategyExecuted"). */
+  /** Decoded event name. */
   eventName: string;
-  /** Opaque event-specific payload. */
+  /** Opaque event payload. */
   payload: Record<string, unknown>;
   /** Wall-clock ms when the store received it. */
   receivedAt: number;
 }
 
-/** Query filter for `queryByAgent` — all fields optional, ANDed together. */
+/** Query filter — all fields optional, ANDed together. */
 export interface AgentEventQuery {
   /** Token id (decimal string or bigint). The store compares as string. */
   tokenId: string;
@@ -50,15 +42,12 @@ export interface AgentEventQuery {
   limit?: number;
 }
 
-/**
- * The event store. One instance per server process. Public surface is
- * `append`, `queryByAgent`, `queryBySource`, `size`, and `clear`.
- */
+/** In-memory event store. One per server process. */
 export class EventStore {
   private readonly cap: number;
-  /** Keyed by `${source}::${eventName}`. Insertion order is preserved (Map). */
+  /** Keyed by `${source}::${eventName}`. Insertion order preserved. */
   private readonly buckets: Map<string, StoredEvent[]>;
-  /** Total appends since process start (post-eviction). */
+  /** Total appends since process start. */
   private total: number;
 
   constructor(maxEventsPerSource: number = DEFAULT_MAX_EVENTS_PER_SOURCE) {
@@ -73,9 +62,8 @@ export class EventStore {
   }
 
   /**
-   * Append a new event. Deep-clones via `structuredClone` so the caller's
-   * object cannot be mutated post-append. Evicts the oldest event (FIFO)
-   * when the bucket exceeds `cap`. Returns the cloned event stored.
+   * Append a new event. Deep-clones via structuredClone. Evicts oldest (FIFO)
+   * when the bucket exceeds cap. Returns the stored clone.
    */
   append(evt: StoredEvent): StoredEvent {
     const stored = structuredClone(evt) as StoredEvent;
@@ -92,9 +80,7 @@ export class EventStore {
   }
 
   /**
-   * Return all events matching the given (source, eventName) pair, oldest
-   * first. The returned array is a deep clone so callers can sort / slice
-   * without affecting the store.
+   * Return all events matching (source, eventName), oldest first.
    */
   queryBySource(source: string, eventName: string): StoredEvent[] {
     const bucket = this.buckets.get(`${source}::${eventName}`);
@@ -103,10 +89,7 @@ export class EventStore {
   }
 
   /**
-   * Return every event whose `payload` contains a `tokenId` field equal
-   * to the query's `tokenId` (compared as decimal string). Iterates all
-   * buckets; intended for the dashboard's per-agent history panel which
-   * scans the full recent window. Cap with `query.limit` to bound cost.
+   * Return every event with matching tokenId in payload. Iterates all buckets.
    */
   queryByAgent(query: AgentEventQuery): StoredEvent[] {
     const target = BigInt(query.tokenId).toString();
@@ -131,8 +114,7 @@ export class EventStore {
     return query.limit !== undefined ? cloned.slice(0, query.limit) : cloned;
   }
   /**
-   * Return every retained event across all buckets, oldest first. The
-   * optional `limit` caps the result. The array is a deep clone.
+   * Return retained events across all buckets, oldest first.
    */
   getAll(limit?: number): StoredEvent[] {
     const all: StoredEvent[] = [];
@@ -149,11 +131,8 @@ export class EventStore {
   }
 
   /**
-   * Find all distinct token IDs associated with an owner address.
-   * Iterates all events and collects unique tokenIds from Transfer
-   * events where `to` matches the owner. Returns the most recent
-   * blockNumber for each token. Best-effort — depends on event coverage.
-   * Will be authoritative once a database is added.
+   * Find token IDs by owner address. Scans Transfer events for matching `to`.
+   * Best-effort — authoritative once a database is added.
    */
   getTokenIdsByOwner(owner: string, limit?: number): Array<{ tokenId: string; blockNumber: number }> {
     const seen = new Map<string, number>();
@@ -176,24 +155,24 @@ export class EventStore {
     return limit !== undefined ? sorted.slice(0, limit) : sorted;
   }
 
-  /** Number of buckets (one per source/eventName pair). */
+  /** Number of buckets. */
   get bucketCount(): number {
     return this.buckets.size;
   }
 
-  /** Total events currently retained across all buckets. */
+  /** Total events currently retained. */
   get size(): number {
     let n = 0;
     for (const bucket of this.buckets.values()) n += bucket.length;
     return n;
   }
 
-  /** Total events appended since process start (pre-eviction count). */
+  /** Total events appended since process start. */
   get totalAppends(): number {
     return this.total;
   }
 
-  /** Drop all retained events. Useful for tests; not exposed via HTTP. */
+  /** Drop all retained events. For tests. */
   clear(): void {
     this.buckets.clear();
     this.total = 0;
@@ -201,10 +180,8 @@ export class EventStore {
 }
 
 /**
- * Extract a `tokenId`-shaped field from an opaque event payload. Supports
- * `tokenId` (ERC-721), `agentTokenId` (vault / orchestrator), and
- * `_tokenId` (the underscored variant some ABI decoders emit). Returns
- * the value as a decimal string for comparison, or `null` if absent.
+ * Extract tokenId-shaped field from an opaque payload. Supports
+ * tokenId, agentTokenId, _tokenId. Returns decimal string or null.
  */
 function tokenIdFromPayload(payload: Record<string, unknown>): string | null {
   for (const key of ["tokenId", "agentTokenId", "_tokenId"] as const) {
@@ -219,10 +196,7 @@ function tokenIdFromPayload(payload: Record<string, unknown>): string | null {
   return null;
 }
 
-/**
- * Process-wide singleton, constructed lazily on first access. Tests
- * construct their own `EventStore` for isolation.
- */
+/** Lazy-initialized singleton. Tests construct their own. */
 let singleton: EventStore | undefined;
 export function getEventStore(): EventStore {
   singleton ??= new EventStore();

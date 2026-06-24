@@ -2,10 +2,6 @@ import { useAccount, useReadContracts } from 'wagmi';
 import { erc721Abi } from 'viem';
 import { AXIOM_AGENT_NFT_ADDRESS } from '../abi/addresses.js';
 
-/**
- * Returns the iNFT agent count for the connected wallet via `balanceOf`.
- * No ERC-721Enumerable support, so individual token IDs are not enumerated.
- */
 export type AgentSummary = {
   tokenId: bigint;
   uri: string;

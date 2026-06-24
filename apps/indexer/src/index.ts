@@ -12,10 +12,10 @@ import type { AxiomEvent } from "./events.js";
 import { postEvent } from "./sink.js";
 import { submitEvent, makeRealSubmitter } from "./da.js";
 
-// Load shared .env from repo root before any env reads.
+// Load shared .env before any env reads.
 loadEnv(fileURLToPath(new URL("../../.env", import.meta.url)));
 
-/** 0G Galileo testnet. */
+/** 0G Galileo testnet (0x40DA). */
 const DEFAULT_RPC_URL = "https://evmrpc-testnet.0g.ai";
 /** 0G Galileo chain id (0x40DA). */
 const DEFAULT_CHAIN_ID = 16602;
@@ -34,10 +34,9 @@ function chainId() {
   return n;
 }
 
-/** Default sink: one JSON object per line on stdout. */
+/** Default sink: one JSON per line on stdout. */
 function stdoutSink(event: AxiomEvent) {
-  // We deliberately do NOT spread the bigint fields; the JSON.stringify
-  // replacer below stringifies them so the output is valid JSON.
+  // JSON.stringify replacer converts bigints to strings.
   console.log(JSON.stringify(event, bigintReplacer));
 }
 
@@ -45,7 +44,7 @@ function bigintReplacer(_key: string, value: unknown) {
   return typeof value === "bigint" ? value.toString() : value;
 }
 
-/** Banner emitted on startup (stderr; stdout is reserved for event JSON). */
+/** Banner emitted on startup (stderr; stdout for event JSON). */
 function banner(cid: number) {
   process.stderr.write(
     JSON.stringify({
@@ -59,12 +58,12 @@ function banner(cid: number) {
   );
 }
 
-// --- 0G Storage event batching (batch uploads to reduce gas cost) ---
+// --- 0G Storage event batching ---
 const eventBuffer: AxiomEvent[] = [];
 const BATCH_INTERVAL = parseInt(process.env["STORAGE_BATCH_INTERVAL_MS"] ?? "5000");
 const BATCH_MAX = parseInt(process.env["STORAGE_BATCH_MAX_EVENTS"] ?? "10");
 
-/** Module-level handles for 0G Storage (set once in main()). */
+/** Module-level handles for 0G Storage, set once in main(). */
 let _storageIndexer: Indexer | undefined;
 let _storageSigner: ethers.Wallet | undefined;
 let _storageRpcUrl = "";
@@ -99,7 +98,7 @@ async function flushBuffer(): Promise<void> {
       );
     }
   } catch (err) {
-    // Re-buffer on failure so events are not lost
+    // Re-buffer on failure so events aren't lost
     const MAX_BUFFER_SIZE = 10000;
     for (const ev of batch) {
       if (eventBuffer.length >= MAX_BUFFER_SIZE) {
@@ -140,7 +139,7 @@ type EventSinkConfig =
   | { readonly da: "storage"; storageIndexer: Indexer; storageSigner: ethers.Wallet };
 
 /**
- * Build the composed `EventSink` used by the watcher. The base sink is stdout.
+ * Build the composed EventSink used by the watcher. Base sink is stdout.
  */
 function composeSinks(config: EventSinkConfig, extra: {
   backendUrl: string | undefined;
@@ -224,13 +223,13 @@ async function main() {
   const cid = chainId();
   const url = rpcUrl();
 
-  // Explicit chainId avoids an extra `eth_chainId` round-trip.
+  // Explicit chainId avoids eth_chainId round-trip.
   const provider = new ethers.JsonRpcProvider(url, cid, {
     staticNetwork: true,
   });
   banner(cid);
 
-  // Verify the RPC is actually answering on the expected chain.
+  // Verify the RPC is actually answering on the expected chain
   const liveChainId = Number((await provider.getNetwork()).chainId);
   if (liveChainId !== cid) {
     process.stderr.write(
@@ -245,9 +244,9 @@ async function main() {
     process.exit(1);
   }
 
-  //   - `INDEXER_DA_ENABLED` gates DA submission.
-  //   - `DA_GRPC_URL` points to the 0G DA Client gRPC endpoint.
-  //   - `BACKEND_URL` (when set) routes events to the backend's POST /v1/events.
+  //   - INDEXER_DA_ENABLED gates DA submission.
+  //   - DA_GRPC_URL points to the 0G DA Client gRPC endpoint.
+  //   - BACKEND_URL routes events to POST /v1/events.
   const daEnabled = process.env["INDEXER_DA_ENABLED"] === "1"
     || process.env["INDEXER_DA_ENABLED"] === "true";
   const backendUrl = process.env["BACKEND_URL"];

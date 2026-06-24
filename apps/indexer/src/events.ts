@@ -2,10 +2,6 @@ import { parseAbiItem, type AbiEvent, type Address, type Hex } from "viem";
 import { toViemHex } from "@axiom/config/types/hex";
 import { DEPLOYED_ADDRESSES } from "@axiom/config/addresses";
 
-/**
- * Lowercase contract addresses (used for `getLogs({ address })` filters).
- * Derived from the canonical config to avoid duplication.
- */
 export const ADDRESSES = {
   AXIOM_AGENT_NFT: toViemHex(DEPLOYED_ADDRESSES.agentNft),
   AXIOM_STRATEGY_VAULT: toViemHex(DEPLOYED_ADDRESSES.strategyVault),
@@ -15,7 +11,7 @@ export const ADDRESSES = {
 
 /**
  * Solidity event ABI strings as written in the contracts.
- * These are passed to viem's `parseAbiItem` / `keccak256` to derive topic-0.
+ * Passed to viem's parseAbiItem to derive topic-0.
  */
 export const EVENT_SIGNATURES = {
   // ── AxiomAgentNFT (ERC-721 inherited) ──────────────────────────────
@@ -23,8 +19,7 @@ export const EVENT_SIGNATURES = {
     "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)" as const,
 
   // ── AxiomAgentNFT (ERC-7857 IDataStorage extension) ────────────────
-  // Canonical signature without tuple syntax (viem's human-readable parser
-  // does not accept inline `tuple(...)`); the JSON AbiEvent is in `EVENT_ABI.Updated`.
+  // Canonical signature without tuple syntax (viem parseAbiItem does not accept inline tuple).
   Updated: "Updated(uint256,(string,bytes32)[],(string,bytes32)[])" as const,
   Authorization:
     "event Authorization(uint256 indexed tokenId, address indexed from, address indexed to)" as const,
@@ -98,7 +93,7 @@ export const EVENT_SIGNATURES = {
 /** Type alias for any event name defined above. */
 export type EventName = keyof typeof EVENT_SIGNATURES;
 
-/** Decoded event objects. The `kind` discriminator is sufficient on its own. */
+/** Decoded event objects. kind discriminator is sufficient. */
 export type AxiomEvent =
   // ERC-721
   | { kind: "Transfer"; blockNumber: number; txHash: Hex; logIndex: number; from: Address; to: Address; tokenId: bigint }
@@ -142,12 +137,12 @@ export type AxiomEvent =
   // OpenZeppelin Initializable
   | { kind: "Initialized"; blockNumber: number; txHash: Hex; logIndex: number; version: number };
 
-/** viem `AbiEvent` table for the events we subscribe to, keyed by event name. */
+/** viem AbiEvent table keyed by event name. */
 export type EventAbiTable = {
   [K in EventName]: AbiEvent;
 };
 
-/** Per-event `AbiEvent` items, built at module load. */
+/** Per-event AbiEvent items, built at module load. */
 export const EVENT_ABI = {
   Transfer: parseAbiItem(EVENT_SIGNATURES.Transfer),
   Updated: {

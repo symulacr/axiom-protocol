@@ -2,9 +2,7 @@ import { getDefaultConfig } from '@rainbow-me/rainbowkit';
 import { http } from 'wagmi';
 import { galileo, aristotle } from './chains.js';
 
-/** wagmi v2 + RainbowKit v2 config for the dashboard. */
-// Read persisted settings from localStorage so the Settings page actually
-// takes effect on the next page load. Falls back to env vars / defaults.
+// Read from localStorage (Settings page), fall back to env vars / defaults.
 const storedWcProjectId =
   typeof window !== 'undefined' && window.localStorage
     ? (window.localStorage.getItem('axiom.wcProjectId') ?? '')

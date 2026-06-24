@@ -1,17 +1,6 @@
 import { toUtf8Bytes, keccak256, AbiCoder, concat, getBytes, SigningKey, computeAddress } from "ethers";
 import type { Hex } from "viem";
 
-/**
- * EIP-712 typed-data digest helpers for AxiomTeeVerifier.
- *
- * The on-chain verifier switched from raw `keccak256(abi.encode(...))` to
- * EIP-712 typed-data digests. Off-chain signers MUST compute the identical
- * digest or `ECDSA.recover` rejects the proof.
- *
- * Per EIP-712, `bytes` fields are pre-hashed to `bytes32` via `keccak256`
- * to ensure identical struct hashes between TS and Solidity.
- */
-
 const EIP712_DOMAIN_TYPEHASH = keccak256(
   toUtf8Bytes("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
 );
@@ -25,19 +14,17 @@ const ACCESS_PROOF_TYPEHASH = keccak256(
 const VERIFIER_NAME_HASH = keccak256(toUtf8Bytes("AxiomTeeVerifier"));
 const VERIFIER_VERSION_HASH = keccak256(toUtf8Bytes("1"));
 
-/** EIP-712 domain: binds signatures to a specific chain + verifier contract. */
+/** EIP-712 domain: binds signatures to specific chain + verifier contract. */
 export interface Eip712Domain {
-  /** EIP-155 chain id the proof will be verified on (e.g. 16602 = Galileo). */
+  /** EIP-155 chain id (e.g. 16602 = Galileo). */
   chainId: bigint;
-  /** AxiomTeeVerifier contract address the proof will be verified against. */
+  /** AxiomTeeVerifier contract address. */
   verifyingContract: `0x${string}`;
 }
 
 /**
- * Default domain for the Galileo testnet deployment. Used as the fallback
- * when a caller does not supply a domain (tests, devnet CLIs). Production
- * code MUST pass the real chain id + verifier address via env vars
- * (AXIOM_TEE_VERIFIER, AXIOM_CHAIN_ID) or explicitly via the domain parameter.
+ * Default domain for Galileo testnet. Production MUST pass real
+ * chain id + verifier address.
  */
 export const DEFAULT_EIP712_DOMAIN: Eip712Domain = {
   chainId: 16602n,
@@ -47,8 +34,8 @@ export const DEFAULT_EIP712_DOMAIN: Eip712Domain = {
 const abiCoder = AbiCoder.defaultAbiCoder();
 
 /**
- * EIP-712 domain separator — `keccak256(abi.encode(EIP712Domain(...)))`.
- * Mirrors `AxiomTeeVerifier._domainSeparator()` exactly.
+ * EIP-712 domain separator — keccak256(abi.encode(EIP712Domain(...))).
+ * Mirrors AxiomTeeVerifier._domainSeparator().
  */
 export function domainSeparator(domain: Eip712Domain): Hex {
   return keccak256(
@@ -66,8 +53,7 @@ export interface OwnershipProofInput {
   to: Hex;
   nft: Hex;
   nonce: bigint;
-  /// Unix-seconds deadline after which the proof is expired. Must be in the future
-  /// and within `maxProofAgeSeconds` of the current block timestamp.
+  /// Unix-seconds deadline. Must be in the future within maxProofAgeSeconds.
   validUntil: bigint;
 }
 
@@ -77,14 +63,12 @@ export interface AccessProofInput {
   to: Hex;
   nft: Hex;
   nonce: bigint;
-  /// Unix-seconds deadline after which the proof is expired.
+  /// Unix-seconds deadline.
   validUntil: bigint;
 }
 
 /**
- * EIP-712 OwnershipProof struct hash:
- *   keccak256(abi.encode(OWNERSHIP_PROOF_TYPEHASH, dataHash, sealedKey, targetPubkey, nonce, validUntil))
- * Matches `AxiomTeeVerifier.verifyTransferValidity` ownership leg.
+ * EIP-712 OwnershipProof struct hash. Matches verifier ownership leg.
  */
 export function ownershipStructHash(input: OwnershipProofInput): Hex {
   return keccak256(
@@ -105,9 +89,7 @@ export function ownershipStructHash(input: OwnershipProofInput): Hex {
 }
 
 /**
- * EIP-712 AccessProof struct hash:
- *   keccak256(abi.encode(ACCESS_PROOF_TYPEHASH, dataHash, targetPubkey, nonce, validUntil))
- * Matches `AxiomTeeVerifier.verifyTransferValidity` access leg.
+ * EIP-712 AccessProof struct hash. Matches verifier access leg.
  */
 export function accessStructHash(input: AccessProofInput): Hex {
   return keccak256(
@@ -127,28 +109,21 @@ export function accessStructHash(input: AccessProofInput): Hex {
 }
 
 /**
- * Full EIP-712 OwnershipProof digest:
- *   keccak256("\x19\x01" || domainSeparator || ownershipStructHash)
- * The TEE oracle signs this digest with raw ECDSA (signingKey.sign).
+ * Full EIP-712 OwnershipProof digest (signed by TEE oracle).
  */
 export function ownershipMessageHash(input: OwnershipProofInput, domain: Eip712Domain): Hex {
   return keccak256(concat(["0x1901", domainSeparator(domain), ownershipStructHash(input)])) as Hex;
 }
 
 /**
- * Full EIP-712 AccessProof digest:
- *   keccak256("\x19\x01" || domainSeparator || accessStructHash)
- * The receiver signs this digest with raw ECDSA (signingKey.sign) — matching
- * the on-chain `ECDSA.recover(digest, sig)` with no EIP-191 prefix.
+ * Full EIP-712 AccessProof digest (signed by receiver).
  */
 export function accessMessageHash(input: AccessProofInput, domain: Eip712Domain): Hex {
   return keccak256(concat(["0x1901", domainSeparator(domain), accessStructHash(input)])) as Hex;
 }
 
 /**
- * Recover the signer of a raw-ECDSA AccessProof signature. The on-chain
- * verifier uses `ECDSA.recover(digest, sig)` (no EIP-191 prefix), so we
- * recover the public key directly from the EIP-712 digest.
+ * Recover the signer of a raw-ECDSA AccessProof signature.
  */
 export function recoverAccessSigner(signature: Hex, input: AccessProofInput, domain: Eip712Domain): Hex {
   const recovered = SigningKey.recoverPublicKey(getBytes(accessMessageHash(input, domain)), signature);

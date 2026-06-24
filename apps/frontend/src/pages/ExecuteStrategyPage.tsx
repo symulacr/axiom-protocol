@@ -1,11 +1,8 @@
-// Axiom Protocol — execute-strategy page (`/agents/:tokenId/execute` route).
-
 import type { ReactElement } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { COLORS, PageHeader, Alert } from '../components/ui.js';
 import { ExecutePanel } from '../components/ExecutePanel.js';
 
-/** Parse a route param string into a bigint tokenId; null when invalid. */
 function parseTokenId(raw: string | undefined): bigint | null {
   if (raw === undefined || raw === '') return null;
   try {

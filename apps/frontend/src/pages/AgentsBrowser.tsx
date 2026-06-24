@@ -1,5 +1,3 @@
-// Axiom Protocol — agents browser (`/agents` route).
-
 import type { ReactElement } from 'react';
 import { Link } from 'react-router-dom';
 import { useAccount } from 'wagmi';

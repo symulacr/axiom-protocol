@@ -9,7 +9,7 @@ const __dirname = dirname(__filename);
 /** Path to the vendored disperser.proto. */
 const PROTO_PATH = join(__dirname, "disperser.proto");
 
-/** Blob processing status. Maps 1:1 to the proto BlobStatus enum. */
+/** Blob processing status. Maps 1:1 to proto BlobStatus enum. */
 export const BlobStatus = {
   UNKNOWN: 0,
   PROCESSING: 1,
@@ -22,7 +22,7 @@ export const BlobStatus = {
 export type BlobStatus = (typeof BlobStatus)[keyof typeof BlobStatus];
 
 export interface DisperseBlobResult {
-  /** Hex-encoded request ID (unique per request, usable with GetBlobStatus). */
+  /** Hex request ID (unique per request, usable with GetBlobStatus). */
   requestId: string;
   /** Initial blob status (typically PROCESSING). */
   blobStatus: BlobStatus;
@@ -140,8 +140,7 @@ export class DaClient {
         case BlobStatus.INSUFFICIENT_SIGNATURES:
           return result;
         case BlobStatus.CONFIRMED:
-          // CONFIRMED is almost-terminal; return it so callers can
-          // decide whether they need to wait for FINALIZED.
+          // almost-terminal; let callers decide if they need FINALIZED
           return result;
         case BlobStatus.PROCESSING:
         case BlobStatus.UNKNOWN:
