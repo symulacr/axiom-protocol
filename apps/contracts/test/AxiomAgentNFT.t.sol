@@ -413,6 +413,143 @@ contract AxiomAgentNFTTest is Test {
             "post-upgrade: EIP-1967 slot must equal mockV2"
         );
     }
+
+    // ─── iCloneFrom tests ──────────────────────────────────────────
+
+    function testICloneFrom_succeeds() public {
+        uint256 tokenId = _mintTo(alice);
+        bytes32 dataHash = nft.intelligentDatasOf(tokenId)[0].dataHash;
+        TransferValidityProof[] memory proofs = _makeProofs(alice, bob, dataHash, 42);
+        vm.prank(alice);
+        uint256 clonedTokenId = nft.iCloneFrom(alice, bob, tokenId, proofs);
+
+        assertEq(clonedTokenId, 1, "cloned tokenId must be 1");
+        assertEq(nft.ownerOf(clonedTokenId), bob, "cloned token owner must be bob");
+        assertEq(nft.intelligentDatasOf(clonedTokenId).length, 1, "cloned token must have 1 data entry");
+        assertEq(nft.intelligentDatasOf(clonedTokenId)[0].dataHash, dataHash, "cloned token dataHash must match original");
+        assertEq(nft.ownerOf(tokenId), alice, "original token must still be owned by alice");
+    }
+
+    function testICloneFrom_unapprovedCaller_reverts() public {
+        uint256 tokenId = _mintTo(alice);
+        bytes32 dataHash = nft.intelligentDatasOf(tokenId)[0].dataHash;
+        TransferValidityProof[] memory proofs = _makeProofs(alice, bob, dataHash, 43);
+        vm.prank(carol);
+        vm.expectRevert();
+        nft.iCloneFrom(alice, bob, tokenId, proofs);
+    }
+
+    // ─── Revoke authorization tests ─────────────────────────────────
+
+    event AuthorizationRevoked(uint256 indexed tokenId, address indexed from, address indexed to);
+
+    function testRevokeAuthorization_succeeds() public {
+        uint256 tokenId = _mintTo(alice);
+
+        vm.prank(alice);
+        nft.authorizeUsage(tokenId, bob);
+        address[] memory authorized = nft.authorizedUsersOf(tokenId);
+        assertEq(authorized.length, 1, "must have 1 authorized user");
+        assertEq(authorized[0], bob, "authorized user must be bob");
+
+        vm.expectEmit(true, true, true, true);
+        emit AuthorizationRevoked(tokenId, alice, bob);
+        vm.prank(alice);
+        nft.revokeAuthorization(tokenId, bob);
+
+        address[] memory usersAfter = nft.authorizedUsersOf(tokenId);
+        assertEq(usersAfter.length, 0, "authorized users must be empty after revoke");
+    }
+
+    function testRevokeAuthorization_notOwner_reverts() public {
+        uint256 tokenId = _mintTo(alice);
+
+        vm.prank(bob);
+        vm.expectRevert();
+        nft.revokeAuthorization(tokenId, bob);
+    }
+
+    // ─── Delegate access tests ──────────────────────────────────────
+
+    function testDelegateAccess_succeeds() public {
+        vm.prank(alice);
+        nft.delegateAccess(bob);
+
+        address assistant = nft.getDelegateAccess(alice);
+        assertEq(assistant, bob, "delegate must be bob");
+    }
+
+    function testDelegateAccess_twice_updates() public {
+        vm.prank(alice);
+        nft.delegateAccess(bob);
+        assertEq(nft.getDelegateAccess(alice), bob, "first delegate must be bob");
+
+        vm.prank(alice);
+        nft.delegateAccess(carol);
+        assertEq(nft.getDelegateAccess(alice), carol, "delegate must be updated to carol");
+    }
+
+    // ─── Operator transfer tests ────────────────────────────────────
+
+    function testOperatorTransfer_succeeds() public {
+        uint256 tokenId = _mintTo(alice);
+        bytes32 dataHash = nft.intelligentDatasOf(tokenId)[0].dataHash;
+        TransferValidityProof[] memory proofs = _makeProofs(alice, carol, dataHash, 44);
+
+        vm.prank(alice);
+        nft.setApprovalForAll(bob, true);
+
+        vm.prank(bob);
+        nft.iTransferFrom(alice, carol, tokenId, proofs);
+
+        assertEq(nft.ownerOf(tokenId), carol, "token must be transferred to carol");
+    }
+
+    function testOperatorTransfer_unapproved_reverts() public {
+        uint256 tokenId = _mintTo(alice);
+        bytes32 dataHash = nft.intelligentDatasOf(tokenId)[0].dataHash;
+        TransferValidityProof[] memory proofs = _makeProofs(alice, carol, dataHash, 45);
+
+        vm.prank(carol);
+        vm.expectRevert();
+        nft.iTransferFrom(alice, carol, tokenId, proofs);
+    }
+
+    // ─── Batch transfer test ────────────────────────────────────────
+
+    function testBatchTransfer_succeeds() public {
+        uint256 tokenId1 = _mintTo(alice);
+        uint256 tokenId2 = _mintTo(alice);
+
+        bytes32 dataHash1 = nft.intelligentDatasOf(tokenId1)[0].dataHash;
+        bytes32 dataHash2 = nft.intelligentDatasOf(tokenId2)[0].dataHash;
+
+        TransferValidityProof[] memory proofs1 = _makeProofs(alice, carol, dataHash1, 46);
+        TransferValidityProof[] memory proofs2 = _makeProofs(alice, carol, dataHash2, 47);
+
+        vm.startPrank(alice);
+        nft.iTransferFrom(alice, carol, tokenId1, proofs1);
+        nft.iTransferFrom(alice, carol, tokenId2, proofs2);
+        vm.stopPrank();
+
+        assertEq(nft.ownerOf(tokenId1), carol, "token 1 must be transferred to carol");
+        assertEq(nft.ownerOf(tokenId2), carol, "token 2 must be transferred to carol");
+    }
+
+    // ─── Transferred event test ─────────────────────────────────────
+
+    event Transferred(uint256 _tokenId, address indexed _from, address indexed _to);
+
+    function testTransferredEvent_emitted() public {
+        uint256 tokenId = _mintTo(alice);
+        bytes32 dataHash = nft.intelligentDatasOf(tokenId)[0].dataHash;
+        TransferValidityProof[] memory proofs = _makeProofs(alice, bob, dataHash, 48);
+
+        vm.expectEmit(true, true, true, true);
+        emit Transferred(tokenId, alice, bob);
+        vm.prank(alice);
+        nft.iTransferFrom(alice, bob, tokenId, proofs);
+    }
 }
 
 /// @notice Minimal UUPS-compatible "V2" implementation used solely to exercise the

@@ -12,6 +12,7 @@ import {
     OracleType
 } from "../src/interfaces/IERC7857DataVerifier.sol";
 import {AxiomTeeVerifier} from "../src/verifiers/AxiomTeeVerifier.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 /// @title FuzzAxiomAgentNFT
 /// @notice Foundry fuzz + invariant suite for the LIVE AxiomAgentNFT proxy on 0G Galileo.
@@ -417,5 +418,222 @@ contract FuzzAxiomAgentNFTSanity is Test {
         assertTrue(vm.load(address(LIVE_NFT), EIP1967_IMPL_SLOT) != bytes32(0));
         // The ERC-7201 nextTokenId slot must be readable.
         assertEq(uint256(vm.load(address(LIVE_NFT), CLONEABLE_STORAGE_SLOT)), 0);
+    }
+}
+
+/// @title FuzzAxiomAgentNFTLocal
+/// @notice Local-deployment fuzz tests for iCloneFrom (no fork required).
+///         Uses the same keypairs and proof helpers as AxiomAgentNFTTest.
+contract FuzzAxiomAgentNFTLocal is Test {
+    AxiomAgentNFT public nft;
+    AxiomTeeVerifier public verifier;
+
+    address public admin;
+    address public alice;
+    address public bob;
+    address public carol;
+    address public teeSigner;
+
+    uint256 internal constant ADMIN_KEY = 0xAD0000000000000000000000000000000000000000000000000000000000AD;
+    uint256 internal constant ALICE_KEY = 0xA11C0000000000000000000000000000000000000000000000000000000A11C;
+    uint256 internal constant BOB_KEY   = 0xB0B000000000000000000000000000000000000000000000000000000B0B000;
+    uint256 internal constant CAROL_KEY = 0xCA20000000000000000000000000000000000000000000000000000000CA2;
+    uint256 internal constant TEE_SIGNER_KEY = 0xA11CE00000000000000000000000000000000000000000000000000000A11C;
+
+    bytes constant ALICE_PUB64 = hex"8517ac9f78ea4ac7d1b49080b2b4dfae7f9a74706196ff07054a2487ec6aeef4ac91c131cdafda05d68788a64269d079bec396a26901732c45eca768402f27c7";
+    bytes constant BOB_PUB64   = hex"1d3015ac205ab30d45136c50fd02acceb9ee36a564ba4bbab360503994c4d00d0aff28a0f89ce9534b2f4f55000ea0b540f783c75ea46d2d84b6934e021fbe99";
+    bytes constant CAROL_PUB64 = hex"e2c27802172b6a2f02217de87f502211850f257f1fe5f66cf05928467f6aeae788ee4a5bc7ee7c817b224be835df5bd04b85affd4c7121b801689ccd83e493e2";
+    bytes constant ADMIN_PUB64 = hex"704bad530a71af03b909fe53754132a6ed93eefb530beda9ea0a2eb70e0bfcf6734138928c2a65d1252ef13a005710a9e8b2d7a4e584a47d8646e6b66b439ed1";
+
+    // ─── EIP-712 typehashes (must mirror AxiomTeeVerifier.sol) ─────
+    bytes32 internal constant EIP712_DOMAIN_TYPEHASH = keccak256(
+        "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+    );
+    bytes32 internal constant OWNERSHIP_PROOF_TYPEHASH = keccak256(
+        "OwnershipProof(bytes32 dataHash,bytes sealedKey,bytes targetPubkey,address to,address nft,uint256 nonce,uint256 validUntil)"
+    );
+    bytes32 internal constant ACCESS_PROOF_TYPEHASH = keccak256(
+        "AccessProof(bytes32 dataHash,bytes targetPubkey,address to,address nft,uint256 nonce,uint256 validUntil)"
+    );
+
+    function setUp() public {
+        admin = vm.addr(ADMIN_KEY);
+        alice = vm.addr(ALICE_KEY);
+        bob = vm.addr(BOB_KEY);
+        carol = vm.addr(CAROL_KEY);
+        teeSigner = vm.addr(TEE_SIGNER_KEY);
+
+        verifier = new AxiomTeeVerifier(admin, teeSigner, 7 days);
+        AxiomAgentNFT implementation = new AxiomAgentNFT();
+        ERC1967Proxy proxy = new ERC1967Proxy(
+            address(implementation),
+            abi.encodeWithSelector(
+                AxiomAgentNFT.initialize.selector,
+                "Axiom Agent NFT",
+                "AXM-A",
+                "ipfs://axiom-storage",
+                address(verifier),
+                admin
+            )
+        );
+        nft = AxiomAgentNFT(address(proxy));
+    }
+
+    // ─── Helpers (mirror AxiomAgentNFTTest) ─────────────────────────
+
+    function _makeData(bytes32 dataHash) internal pure returns (IntelligentData[] memory) {
+        IntelligentData[] memory data = new IntelligentData[](1);
+        data[0] = IntelligentData({dataDescription: "v1", dataHash: dataHash});
+        return data;
+    }
+
+    function _pubKeyOf(address user) internal view returns (bytes memory) {
+        if (user == alice) return ALICE_PUB64;
+        if (user == bob) return BOB_PUB64;
+        if (user == carol) return CAROL_PUB64;
+        if (user == admin) return ADMIN_PUB64;
+        revert("Unknown user");
+    }
+
+    function _keyOf(address user) internal view returns (uint256) {
+        if (user == alice) return ALICE_KEY;
+        if (user == bob) return BOB_KEY;
+        if (user == carol) return CAROL_KEY;
+        if (user == admin) return ADMIN_KEY;
+        revert("Unknown user");
+    }
+
+    function _domainSeparator() internal view returns (bytes32) {
+        return keccak256(abi.encode(
+            EIP712_DOMAIN_TYPEHASH,
+            keccak256("AxiomTeeVerifier"),
+            keccak256("1"),
+            block.chainid,
+            address(verifier)
+        ));
+    }
+
+    function _ownershipDigest(
+        bytes32 dataHash,
+        bytes memory sealedKey,
+        bytes memory pub,
+        address to,
+        address nftAddr,
+        uint256 nonce,
+        uint256 validUntil
+    ) internal view returns (bytes32) {
+        return keccak256(abi.encodePacked(
+            "\x19\x01",
+            _domainSeparator(),
+            keccak256(abi.encode(
+                OWNERSHIP_PROOF_TYPEHASH,
+                dataHash,
+                keccak256(sealedKey),
+                keccak256(pub),
+                to,
+                nftAddr,
+                nonce,
+                validUntil
+            ))
+        ));
+    }
+
+    function _accessDigest(
+        bytes32 dataHash,
+        bytes memory pub,
+        address to,
+        address nftAddr,
+        uint256 nonce,
+        uint256 validUntil
+    ) internal view returns (bytes32) {
+        return keccak256(abi.encodePacked(
+            "\x19\x01",
+            _domainSeparator(),
+            keccak256(abi.encode(
+                ACCESS_PROOF_TYPEHASH,
+                dataHash,
+                keccak256(pub),
+                to,
+                nftAddr,
+                nonce,
+                validUntil
+            ))
+        ));
+    }
+
+    /// @dev Build a single TransferValidityProof for an iCloneFrom(alice -> bob) flow.
+    function _makeProofs(address /* from */, address to, bytes32 dataHash, uint256 nonce) internal view returns (TransferValidityProof[] memory proofs) {
+        bytes memory pub = _pubKeyOf(to);
+        bytes memory sealedKey = new bytes(64);
+        uint256 validUntil = block.timestamp + 1 days;
+
+        bytes32 ownershipMsg = _ownershipDigest(dataHash, sealedKey, pub, to, address(nft), nonce, validUntil);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(TEE_SIGNER_KEY, ownershipMsg);
+        bytes memory ownershipSig = abi.encodePacked(r, s, v);
+
+        uint256 receiverKey = _keyOf(to);
+        bytes32 accessMsg = _accessDigest(dataHash, pub, to, address(nft), nonce, validUntil);
+        (v, r, s) = vm.sign(receiverKey, accessMsg);
+        bytes memory accessSig = abi.encodePacked(r, s, v);
+
+        proofs = new TransferValidityProof[](1);
+        proofs[0] = TransferValidityProof({
+            accessProof: AccessProof({dataHash: dataHash, targetPubkey: pub, nonce: nonce, proof: accessSig, validUntil: validUntil}),
+            ownershipProof: OwnershipProof({oracleType: OracleType.TEE, dataHash: dataHash, sealedKey: sealedKey, targetPubkey: pub, nonce: nonce, proof: ownershipSig, validUntil: validUntil})
+        });
+    }
+
+    // ─── Fuzz: iCloneFrom ───────────────────────────────────────────
+
+    /// @notice Fuzz iCloneFrom with random dataHash and nonce. Mint token
+    ///         to alice, clone to bob, verify both tokens exist after.
+    function testFuzz_iCloneFrom_succeeds(bytes32 dataHash, uint256 nonce) public {
+        vm.assume(dataHash != bytes32(0));
+
+        vm.prank(alice);
+        IntelligentData[] memory data = _makeData(dataHash);
+        uint256 tokenId = nft.mint(data, alice);
+
+        TransferValidityProof[] memory proofs = _makeProofs(alice, bob, dataHash, nonce);
+        vm.prank(alice);
+        uint256 clonedTokenId = nft.iCloneFrom(alice, bob, tokenId, proofs);
+
+        assertTrue(clonedTokenId > tokenId, "cloned tokenId must be greater than original");
+        assertEq(nft.ownerOf(tokenId), alice, "original must still be owned by alice");
+        assertEq(nft.ownerOf(clonedTokenId), bob, "clone must be owned by bob");
+        assertEq(nft.intelligentDatasOf(clonedTokenId)[0].dataHash, dataHash, "clone dataHash must match original");
+    }
+
+    /// @notice Fuzz iCloneFrom with random dataHash, nonce, and verify
+    ///         the original token's metadata is untouched after cloning.
+    function testFuzz_iCloneFrom_preservesOriginal(bytes32 dataHash, uint256 nonce) public {
+        vm.assume(dataHash != bytes32(0));
+
+        vm.prank(alice);
+        IntelligentData[] memory data = _makeData(dataHash);
+        uint256 tokenId = nft.mint(data, alice);
+
+        TransferValidityProof[] memory proofs = _makeProofs(alice, bob, dataHash, nonce);
+        vm.prank(alice);
+        nft.iCloneFrom(alice, bob, tokenId, proofs);
+
+        // Original metadata unchanged
+        assertEq(nft.intelligentDatasOf(tokenId)[0].dataHash, dataHash, "original dataHash must be preserved");
+        assertEq(nft.intelligentDatasOf(tokenId)[0].dataDescription, "v1", "original dataDescription must be preserved");
+    }
+
+    /// @notice Fuzz iCloneFrom with a random non-owner caller. Expect revert.
+    function testFuzz_iCloneFrom_unauthorizedCallerReverts(bytes32 dataHash, uint256 nonce, address caller) public {
+        vm.assume(dataHash != bytes32(0));
+        vm.assume(caller != alice && caller != address(0));
+
+        vm.prank(alice);
+        IntelligentData[] memory data = _makeData(dataHash);
+        uint256 tokenId = nft.mint(data, alice);
+
+        TransferValidityProof[] memory proofs = _makeProofs(alice, bob, dataHash, nonce);
+        vm.prank(caller);
+        vm.expectRevert();
+        nft.iCloneFrom(alice, bob, tokenId, proofs);
     }
 }
