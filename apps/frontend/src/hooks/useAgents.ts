@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAccount } from 'wagmi';
-import { BACKEND_URL } from '../config/env.js';
 import { useAsyncAction } from './useAsyncAction.js';
+import { apiFetch } from '../utils/apiFetch.js';
 
 export interface AgentInfo {
   tokenId: string;
@@ -30,20 +30,10 @@ export function useAgents(): {
       return;
     }
     execute(async (signal) => {
-      const res = await fetch(
-        `${BACKEND_URL}/v1/agents?owner=${address}`,
-        {
-          headers: { accept: 'application/json' },
-          signal: AbortSignal.any([signal, AbortSignal.timeout(10000)]),
-        },
-      );
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(
-          `failed to fetch agents: ${res.status} ${res.statusText} ${text}`,
-        );
-      }
-      const data = (await res.json()) as AgentsApiResponse;
+      const data = await apiFetch<AgentsApiResponse>(`/v1/agents?owner=${address}`, {
+        signal,
+        timeout: 10000,
+      });
       setAgents(data.agents ?? []);
     }).catch(() => {
       /* error is captured by useAsyncAction's internal error state */

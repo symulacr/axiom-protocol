@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { getAddress } from 'viem';
 
 import type { Provider } from '../hooks/useProviders';
-import { Card, Button, MonoLabel } from './ui.js';
+import { Card, Button, MonoLabel, COLORS } from './ui.js';
 
 /** Best-effort EIP-55 checksum; falls back to the raw input on failure. */
 function formatAddress(raw: `0x${string}`): string {
@@ -28,11 +28,11 @@ export function ProviderCard({ provider }: { provider: Provider }): ReactElement
   return (
     <Card hover>
       <MonoLabel>{addressLabel}</MonoLabel>
-      <div style={{ fontSize: 13, color: '#e5e5e5', fontWeight: 500 }}>{provider.model}</div>
+      <div style={{ fontSize: 13, color: COLORS.textPrimary, fontWeight: 500 }}>{provider.model}</div>
       <div
         style={{
           fontSize: 11,
-          color: '#6a6a6a',
+          color: COLORS.textDim,
           fontFamily: "'SF Mono', monospace",
           overflow: 'hidden',
           textOverflow: 'ellipsis',

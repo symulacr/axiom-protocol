@@ -5,13 +5,12 @@ import type OpenAI from "openai";
 import { ZeroGStorage, type Encryption } from "@axiom/config/storage/0g";
 import { createRouterClient } from "../compute/router.js";
 import { DefaultSignerOracleClient } from "../oracle/client.js";
-import { pickOGNetwork } from "@axiom/config/networks";
+import { pickOGNetwork, GALILEO_CHAIN_ID } from "@axiom/config/networks";
 import { VAULT_ABI } from "@axiom/config/abis";
 
 // Local contract method types derived from VAULT_ABI (avoid shared contract-types.ts drift).
 type StrategyVaultMethods = {
   balanceOf(tokenId: bigint): Promise<bigint>;
-  strategyOf(tokenId: bigint): Promise<[string, bigint, bigint, bigint]>;
   execute(tokenId: bigint, target: string, value: bigint, data: string, proof: string[]): Promise<TransactionResponse>;
 };
 
@@ -47,6 +46,12 @@ export interface TickResult {
   durationMs: number;
 }
 
+export type StreamCallback = (
+  chunk: { type: 'token'; content: string; index: number }
+    | { type: 'complete'; result: TickResult }
+    | { type: 'error'; error: string },
+) => void;
+
 export interface OrchestratorConfig {
   evmRpc: string;
   signer: Wallet;
@@ -68,7 +73,7 @@ export class StrategyRunner {
   private readonly signer: Wallet;
 
   constructor(config: OrchestratorConfig) {
-    const chainId = config.chainId ?? 16602;
+    const chainId = config.chainId ?? GALILEO_CHAIN_ID;
     this.chainId = chainId;
     const fetchReq = new FetchRequest(config.evmRpc);
     fetchReq.timeout = 10_000;
@@ -91,11 +96,11 @@ export class StrategyRunner {
   }
 
   /** Run a single strategy tick: fan out to compute, on-chain reads, and storage. */
-  async runTick(strategy: StrategySpec, signal: MarketSignal): Promise<TickResult> {
+  async runTick(strategy: StrategySpec, signal: MarketSignal, onChunk?: StreamCallback): Promise<TickResult> {
     const start = Date.now();
 
     const [rawModelOutput, onchain, storage] = await Promise.all([
-      this.runInference(strategy, signal),
+      this.runInference(strategy, signal, onChunk),
       this.fetchOnchainState(strategy),
       this.fetchStoragePeek(strategy),
     ]);
@@ -116,7 +121,7 @@ export class StrategyRunner {
           } satisfies NonNullable<TickResult["execution"]>;
         });
 
-    return {
+    const result: TickResult = {
       recommendation,
       rawModelOutput,
       onchain,
@@ -124,6 +129,12 @@ export class StrategyRunner {
       execution,
       durationMs: Date.now() - start,
     };
+
+    if (onChunk) {
+      onChunk({ type: 'complete', result });
+    }
+
+    return result;
   }
 
   /** Parse raw LLM output into a validated recommendation. Falls back to "hold". */
@@ -195,13 +206,37 @@ export class StrategyRunner {
     };
   }
 
-  private async runInference(strategy: StrategySpec, signal: MarketSignal): Promise<string> {
+  private async runInference(strategy: StrategySpec, signal: MarketSignal, onChunk?: StreamCallback): Promise<string> {
     const userPrompt = `Vault state: ${JSON.stringify(signal.payload)}\n` +
       `Provide a JSON recommendation: {"action":"buy|sell|hold","amount":number,"reason":"…"}`;
     const messages = [
       { role: "system" as const, content: strategy.systemPrompt },
       { role: "user" as const, content: userPrompt },
     ];
+
+    if (onChunk) {
+      // Streaming path: emit tokens as they arrive from OpenAI.
+      // response_format with stream: true would return 400 from OpenAI,
+      // so we rely on the system prompt asking for JSON output —
+      // parseRecommendation handles malformed JSON gracefully.
+      const client = await this.getClient();
+      const stream = await client.chat.completions.create({
+        model: strategy.computeModel,
+        messages,
+        stream: true,
+      });
+      let full = '';
+      for await (const chunk of stream) {
+        const delta = chunk.choices?.[0]?.delta?.content ?? '';
+        if (delta) {
+          full += delta;
+          onChunk({ type: 'token', content: delta, index: full.length - delta.length });
+        }
+      }
+      return full;
+    }
+
+    // Non-streaming path: preserves response_format for JSON reliability.
     const completion = await (await this.getClient()).chat.completions.create({
       model: strategy.computeModel,
       messages,
@@ -220,10 +255,7 @@ export class StrategyRunner {
     if (!vaultTc.raw.filters?.StrategySet || !vaultTc.raw.filters?.Deposited) {
       return { vaultBalance: 0n, recentEvents: [] };
     }
-    const [rawBalance] = await Promise.all([
-      vaultTc.contract.balanceOf(tokenId),
-      vaultTc.contract.strategyOf(tokenId),
-    ]);
+    const rawBalance = await vaultTc.contract.balanceOf(tokenId);
     const vaultBalance = rawBalance ?? 0n;
 
     const latest = await this.provider.getBlockNumber();
@@ -256,6 +288,13 @@ export class StrategyRunner {
     return { vaultBalance, recentEvents };
   }
 
+  /**
+   * Peek at the stored model data on 0G.
+   * NOTE: modelDataRoot is always the zero-hash in current production usage
+   * (see server.ts where StrategySpec.modelDataRoot is set to zero-hash).
+   * The storage download path below is dead code until modelDataRoot is
+   * populated with a real root hash (e.g. after on-chain model registration).
+   */
   private async fetchStoragePeek(strategy: StrategySpec): Promise<TickResult["storage"]> {
     if (strategy.modelDataRoot === ("0x" + "0".repeat(64))) {
       return { rootHash: strategy.modelDataRoot, size: 0 };

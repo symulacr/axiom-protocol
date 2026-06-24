@@ -183,4 +183,5 @@ export const tickSchema = z.object({
   strategy: z.string().optional(),
   signalSource: z.string().optional(),
   signalPayload: z.unknown().optional(),
+  stream: z.boolean().optional(),
 });

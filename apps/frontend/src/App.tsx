@@ -1,21 +1,22 @@
 // App — route table + header (nav + ConnectButton).
 
-import type { CSSProperties, ReactElement } from 'react';
+import { lazy, Suspense, type CSSProperties, type ReactElement } from 'react';
 import { Link, NavLink, Route, Routes } from 'react-router-dom';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 
 import { ErrorBoundary } from './components/ErrorBoundary.js';
 import { HealthBadge } from './components/HealthBadge.js';
 import { HomePage } from './pages/HomePage.js';
-import { VaultDashboard } from './pages/VaultDashboard.js';
-import { AgentDetail } from './pages/AgentDetail.js';
-import { MarketPage } from './pages/MarketPage.js';
-import { HistoryPage } from './pages/HistoryPage.js';
-import { SettingsPage } from './pages/SettingsPage.js';
-import { AgentsBrowser } from './pages/AgentsBrowser.js';
-import { MintAgentPage } from './pages/MintAgentPage.js';
-import { ExecuteStrategyPage } from './pages/ExecuteStrategyPage.js';
-import { NotFound } from './pages/NotFound.js';
+
+const VaultDashboard = lazy(() => import('./pages/VaultDashboard.js'));
+const AgentDetail = lazy(() => import('./pages/AgentDetail.js'));
+const MarketPage = lazy(() => import('./pages/MarketPage.js'));
+const HistoryPage = lazy(() => import('./pages/HistoryPage.js'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage.js'));
+const AgentsBrowser = lazy(() => import('./pages/AgentsBrowser.js'));
+const MintAgentPage = lazy(() => import('./pages/MintAgentPage.js'));
+const ExecuteStrategyPage = lazy(() => import('./pages/ExecuteStrategyPage.js'));
+const NotFound = lazy(() => import('./pages/NotFound.js'));
 
 // Top-level App.
 
@@ -85,18 +86,20 @@ export function App(): ReactElement {
       </header>
       <div style={{ padding: 'var(--space-2xl) var(--space-xl)', maxWidth: '68rem', margin: '0 auto' }}>
         <ErrorBoundary>
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/agents" element={<AgentsBrowser />} />
-            <Route path="/agents/new" element={<MintAgentPage />} />
-            <Route path="/agents/:tokenId/execute" element={<ExecuteStrategyPage />} />
-            <Route path="/agents/:tokenId" element={<AgentDetail />} />
-            <Route path="/vaults/:vaultId" element={<VaultDashboard />} />
-            <Route path="/market" element={<MarketPage />} />
-            <Route path="/history" element={<HistoryPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <Suspense fallback={<div style={{ padding: '2rem', textAlign: 'center', color: 'var(--c-text-muted)' }}>Loading...</div>}>
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/agents" element={<AgentsBrowser />} />
+              <Route path="/agents/new" element={<MintAgentPage />} />
+              <Route path="/agents/:tokenId/execute" element={<ExecuteStrategyPage />} />
+              <Route path="/agents/:tokenId" element={<AgentDetail />} />
+              <Route path="/vaults/:vaultId" element={<VaultDashboard />} />
+              <Route path="/market" element={<MarketPage />} />
+              <Route path="/history" element={<HistoryPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
         </ErrorBoundary>
       </div>
     </>

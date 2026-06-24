@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
-import { BACKEND_URL } from '../config/env.js';
 import { usePoll } from './usePoll.js';
+import { apiFetch } from '../utils/apiFetch.js';
 
 /** Wire-format event from GET /v1/events (mirrors backend `StoredEvent`). */
 export interface AxiomEvent {
@@ -12,6 +12,7 @@ export interface AxiomEvent {
   eventName: string;
   payload: Record<string, unknown>;
   receivedAt: number;
+  timestamp: number;
 }
 
 interface EventsResponse {
@@ -59,28 +60,33 @@ export function useEventHistory(
 
   const [events, setEvents] = useState<AxiomEvent[]>([]);
   const [error, setError] = useState<Error | null>(null);
+  const [lastTimestamp, setLastTimestamp] = useState<number>(0);
 
   const fetcher = useCallback(
     async (signal: AbortSignal): Promise<AxiomEvent[]> => {
-      const url = new URL(`${BACKEND_URL}/v1/events`);
+      let path = `/v1/events?since=${lastTimestamp}`;
       if (owner !== undefined) {
-        url.searchParams.set('owner', owner);
+        path += `&owner=${owner}`;
       }
-      const res = await fetch(url.toString(), {
+      const data = await apiFetch<EventsResponse>(path, {
         method: 'GET',
-        headers: { accept: 'application/json' },
-        signal: AbortSignal.any([signal, AbortSignal.timeout(10000)]),
+        signal,
+        timeout: 10000,
       });
-      if (!res.ok) {
-        const body = await res.text().catch(() => '');
-        throw new Error(
-          `events fetch failed: ${res.status} ${res.statusText}${body.length > 0 ? ` ${body}` : ''}`,
-        );
+      const events = Array.isArray(data.events) ? data.events : [];
+
+      // Update lastTimestamp from the newest event for incremental polling.
+      // First poll gets ALL events; subsequent polls only get NEW events.
+      if (events.length > 0) {
+        const newestTimestamp = Math.max(...events.map(e => e.timestamp ?? 0));
+        if (newestTimestamp > lastTimestamp) {
+          setLastTimestamp(newestTimestamp);
+        }
       }
-      const data = (await res.json()) as EventsResponse;
-      return Array.isArray(data.events) ? data.events : [];
+
+      return events;
     },
-    [owner],
+    [owner, lastTimestamp],
   );
 
   const { isLoading } = usePoll(fetcher, setEvents, setError, {

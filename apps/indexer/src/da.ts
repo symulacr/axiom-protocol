@@ -55,6 +55,47 @@ export async function submitEvent(
   }
 }
 
+/**
+ * Submit multiple events to 0G DA as a single blob.
+ * Concatenates events into one DisperseBlob call for ~1000x cost reduction.
+ * Never throws — returns sentinel on failure.
+ */
+export async function submitBatch(
+  events: AxiomEvent[],
+  opts: SubmitEventOptions = {},
+): Promise<SubmitResult> {
+  const log: DaLogger = opts.logger ?? stderrJsonLogger;
+
+  if (events.length === 0) return FAILED_SUBMIT;
+
+  // Serialize all events as a JSON array (BigInt-safe)
+  const blobData = JSON.stringify(events, (_key, value) =>
+    typeof value === "bigint" ? value.toString() : value,
+  );
+  const blobBytes = new TextEncoder().encode(blobData);
+
+  if (!opts.submitFn) {
+    log({
+      level: "warn",
+      msg: "da batch submission skipped: no submitFn configured",
+      batchSize: events.length,
+    });
+    return FAILED_SUBMIT;
+  }
+
+  try {
+    return await opts.submitFn(blobBytes, events[0]!);
+  } catch (err) {
+    log({
+      level: "error",
+      msg: "da batch submission failed",
+      batchSize: events.length,
+      err: err instanceof Error ? err.message : String(err),
+    });
+    return FAILED_SUBMIT;
+  }
+}
+
 function stderrJsonLogger(line: Record<string, unknown>) {
   console.error(JSON.stringify({ ...line, ts: new Date().toISOString() }));
 }

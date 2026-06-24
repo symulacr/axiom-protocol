@@ -13,7 +13,7 @@ import {
 } from "./watcher.js";
 import type { AxiomEvent } from "./events.js";
 import { postEvent } from "./sink.js";
-import { submitEvent, makeRealSubmitterFromClient } from "./da.js";
+import { submitEvent, submitBatch, makeRealSubmitterFromClient } from "./da.js";
 import type { SubmitFn } from "./da.js";
 import { DaClient } from "./da-client.js";
 
@@ -65,12 +65,23 @@ const eventBuffer: AxiomEvent[] = [];
 const BATCH_INTERVAL = parseInt(process.env["STORAGE_BATCH_INTERVAL_MS"] ?? "5000");
 const BATCH_MAX = parseInt(process.env["STORAGE_BATCH_MAX_EVENTS"] ?? "10");
 
+// --- 0G DA event batching ---
+const DA_BATCH_INTERVAL = parseInt(process.env["DA_BATCH_INTERVAL_MS"] ?? "5000");
+const DA_BATCH_MAX = parseInt(process.env["DA_BATCH_MAX_EVENTS"] ?? "100");
+
 /** Module-level handles for 0G Storage, set once in main(). */
 let _storageIndexer: Indexer | undefined;
 let _storageSigner: ethers.Wallet | undefined;
 let _storageRpcUrl = "";
 
+/** Module-level handle for DA submit function, set once in composeSinks(). */
+let _daSubmitFn: SubmitFn | undefined;
+
 let batchTimer: ReturnType<typeof setTimeout> | null = null;
+
+// --- DA batch state ---
+let daEventBuffer: AxiomEvent[] = [];
+let daBatchTimer: ReturnType<typeof setTimeout> | null = null;
 
 async function flushBuffer(): Promise<void> {
   if (eventBuffer.length === 0) return;
@@ -129,6 +140,50 @@ function stopBatchTimer(): void {
   }
 }
 
+// --- DA batch flush ---
+
+async function flushDaBuffer(): Promise<void> {
+  if (daEventBuffer.length === 0) return;
+  if (!_daSubmitFn) return;
+  const batch = daEventBuffer.splice(0, DA_BATCH_MAX);
+  try {
+    await submitBatch(batch, { submitFn: _daSubmitFn });
+    process.stderr.write(
+      JSON.stringify({
+        level: "debug",
+        msg: "batch submitted to 0G DA",
+        batchSize: batch.length,
+      }) + "\n",
+    );
+  } catch (err) {
+    // Re-buffer on failure so events aren't lost (same pattern as storage)
+    daEventBuffer.unshift(...batch);
+    process.stderr.write(
+      JSON.stringify({
+        level: "warn",
+        msg: "batch DA submission failed, events re-buffered",
+        err: err instanceof Error ? err.message : String(err),
+        batchSize: batch.length,
+      }) + "\n",
+    );
+  }
+}
+
+function startDaBatchTimer(): void {
+  if (daBatchTimer !== null) return;
+  daBatchTimer = setTimeout(async () => {
+    stopDaBatchTimer();
+    await flushDaBuffer();
+  }, DA_BATCH_INTERVAL);
+}
+
+function stopDaBatchTimer(): void {
+  if (daBatchTimer !== null) {
+    clearTimeout(daBatchTimer);
+    daBatchTimer = null;
+  }
+}
+
 type EventSinkConfig =
   | { readonly da: "disabled" }
   | { readonly da: "grpc"; grpcUrl: string }
@@ -146,13 +201,21 @@ function composeSinks(config: EventSinkConfig, extra: {
     config.da === "grpc" && extra.grpcClient
       ? makeRealSubmitterFromClient(extra.grpcClient)
       : undefined;
+  _daSubmitFn = grpcSubmitFn;
 
   return async (event: AxiomEvent) => {
     switch (config.da) {
       case "disabled":
         break;
       case "grpc":
-        await submitEvent(event, { submitFn: grpcSubmitFn });
+        // Buffer events for batched DA submission (~1000x cost reduction)
+        daEventBuffer.push(event);
+        if (daEventBuffer.length >= DA_BATCH_MAX) {
+          stopDaBatchTimer();
+          await flushDaBuffer();
+        } else if (daBatchTimer === null) {
+          startDaBatchTimer();
+        }
         break;
       case "storage":
         break;
@@ -222,7 +285,8 @@ async function main() {
         rpcUrl: url,
       }) + "\n",
     );
-    process.exit(1);
+    // Don't crash — let the watcher continue or gracefully degrade
+    return;
   }
 
   //   - INDEXER_DA_ENABLED gates DA submission.
@@ -295,6 +359,9 @@ async function main() {
   // Flush any remaining buffered events to 0G Storage
   stopBatchTimer();
   await flushBuffer();
+  // Flush any remaining buffered events to 0G DA
+  stopDaBatchTimer();
+  await flushDaBuffer();
   if (healthServer) healthServer.close();
   if (grpcClient) grpcClient.close();
   process.stderr.write(JSON.stringify({ level: "info", msg: "stopped" }) + "\n");

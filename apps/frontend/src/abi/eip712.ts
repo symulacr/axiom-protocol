@@ -1,12 +1,29 @@
-import { AXIOM_TEE_VERIFIER_ADDRESS } from './addresses.js';
-import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
-
-export const EIP712_DOMAIN = {
-  name: 'AxiomTeeVerifier',
+import { useMemo } from 'react';
+import { useChainId } from 'wagmi';
+import { getAxiomTeeVerifierAddress } from './addresses.js';
+const BASE_DOMAIN = {
+  name: 'Axiom iNFT',
   version: '1',
-  chainId: GALILEO_CHAIN_ID,
-  verifyingContract: AXIOM_TEE_VERIFIER_ADDRESS,
 } as const;
+
+/**
+ * Reactive hook that returns an EIP-712 domain object for the current chain.
+ * The domain includes the dynamic chainId and the correct verifying contract
+ * address for the active network.
+ */
+export function useEip712Domain(): { domain: typeof BASE_DOMAIN & { chainId: number; verifyingContract: `0x${string}` } } {
+  const chainId = useChainId();
+  return useMemo(
+    () => ({
+      domain: {
+        ...BASE_DOMAIN,
+        chainId,
+        verifyingContract: getAxiomTeeVerifierAddress(chainId),
+      },
+    }),
+    [chainId],
+  );
+}
 
 export const ACCESS_PROOF_TYPES = {
   AccessProof: [

@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { BACKEND_URL } from '../config/env.js';
 import { usePoll } from './usePoll.js';
+import { apiFetch } from '../utils/apiFetch.js';
 
 export type Provider = {
   address: `0x${string}`;
@@ -21,18 +21,11 @@ export function useProviders(): {
 
   const { isLoading, refetch } = usePoll(
     async (signal): Promise<Provider[]> => {
-      const res = await fetch(`${BACKEND_URL}/v1/compute/providers`, {
+      const { services } = await apiFetch<{ services: Provider[] }>('/v1/compute/providers', {
         method: 'GET',
-        headers: { accept: 'application/json' },
-        signal: AbortSignal.any([signal, AbortSignal.timeout(10000)]),
+        signal,
+        timeout: 10000,
       });
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(
-          `providers fetch failed: ${res.status} ${res.statusText} ${text}`,
-        );
-      }
-      const { services } = (await res.json()) as { services: Provider[] };
       return services;
     },
     setProviders,

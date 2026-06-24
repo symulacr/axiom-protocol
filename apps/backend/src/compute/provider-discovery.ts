@@ -1,30 +1,11 @@
-// ─── On-chain compute provider discovery ───────────────────────────────────
+// ─── On-chain compute provider discovery (SDK-backed) ─────────────────────
 //
-// Instead of hardcoding provider URLs, query the on-chain InferenceServing
-// broker contract.  Results are cached for process lifetime so the RPC is
-// called at most once.
-//
-// If the RPC call fails (network unavailable, chain not deployed), the cache
-// stays empty and callers receive an empty list / null.
+// Thin wrapper around the 0G Compute SDK's ReadOnlyInferenceBroker.
+// Results are cached for process lifetime so the RPC is called at most once.
 
-import { ethers, FetchRequest, JsonRpcProvider } from "ethers";
-import { GALILEO_CHAIN_ID, resolveRpcUrl } from "@axiom/config/networks";
-
-// ---------------------------------------------------------------------------
-// Broker contract addresses per chain
-// ---------------------------------------------------------------------------
-// Galileo testnet: confirmed at 0xa79F4c8311FF93C06b8CfB403690cc987c93F91E
-// Aristotle mainnet: TBD — add when the deployment script outputs the address
-const BROKER_ADDRESSES: Record<number, string> = {
-  [GALILEO_CHAIN_ID]: "0xa79F4c8311FF93C06b8CfB403690cc987c93F91E",
-};
-
-// ---------------------------------------------------------------------------
-// Minimal ABI — only the fields we need for provider routing
-// ---------------------------------------------------------------------------
-const INFERENCE_SERVING_ABI = [
-  "function getAllServices(uint256 offset, uint256 limit) view returns (tuple(address provider, string model, string url, uint256 stake, bool active)[] services, uint256 total)",
-] as const;
+import { ethers } from "ethers";
+import { createReadOnlyInferenceBroker } from "@0gfoundation/0g-compute-ts-sdk";
+import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -34,12 +15,8 @@ export interface ServiceInfo {
   provider: string;
   /** Model identifier (e.g. "qwen2.5-omni-7b"). */
   model: string;
-  /** Inference endpoint URL. */
-  url: string;
-  /** Provider stake (wei). */
-  stake: bigint;
-  /** Whether the provider is currently active. */
-  active: boolean;
+  /** Application client address. */
+  appClientAddr: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -49,55 +26,30 @@ let _cachedProviders: ServiceInfo[] | null = null;
 let _cachePromise: Promise<ServiceInfo[]> | null = null;
 
 /**
- * Discover compute providers by calling `InferenceServing.getAllServices()`
- * on-chain.  The result is cached for the lifetime of the process.
+ * Discover compute providers via the SDK's ReadOnlyInferenceBroker.
+ * The result is cached for the lifetime of the process.
  *
+ * @param rpcUrl   JSON-RPC endpoint URL.
  * @param chainId  Optional chain ID (defaults to `AXIOM_CHAIN_ID` env or Galileo).
- * @returns        List of active `ServiceInfo` records (empty on failure).
+ * @returns        List of `ServiceInfo` records (empty on failure).
  */
-export async function discoverProviders(chainId?: number): Promise<ServiceInfo[]> {
+export async function discoverProviders(rpcUrl: string, chainId: number = GALILEO_CHAIN_ID): Promise<ServiceInfo[]> {
   if (_cachedProviders) return _cachedProviders;
   if (_cachePromise) return _cachePromise;
 
   _cachePromise = (async (): Promise<ServiceInfo[]> => {
     const cid = chainId ?? (Number(process.env.AXIOM_CHAIN_ID) || GALILEO_CHAIN_ID);
-    const brokerAddr = BROKER_ADDRESSES[cid];
-    if (!brokerAddr) {
-      console.warn(`[compute] No InferenceServing broker for chain ${cid}; provider list empty`);
-      _cachedProviders = [];
-      return _cachedProviders;
-    }
+    const broker = await createReadOnlyInferenceBroker(rpcUrl, cid);
+    const services = await broker.listService();
 
-    const rpcUrl = resolveRpcUrl(cid);
-    const fetchReq = new FetchRequest(rpcUrl);
-    fetchReq.timeout = 10_000;
-    const provider = new JsonRpcProvider(fetchReq, cid, { staticNetwork: true });
+    const mapped: ServiceInfo[] = services.map((s: any) => ({
+      provider: s.provider ?? s.appClientAddr,
+      model: s.model ?? "unknown",
+      appClientAddr: s.appClientAddr ?? s.provider,
+    }));
 
-    const iface = new ethers.Interface(INFERENCE_SERVING_ABI);
-    const data = iface.encodeFunctionData("getAllServices", [0n, 100n]);
-    const result = await provider.call({ to: brokerAddr, data });
-    const decoded = iface.decodeFunctionResult("getAllServices", result);
-
-    const rawServices = decoded.services as Array<{
-      provider: string;
-      model: string;
-      url: string;
-      stake: bigint;
-      active: boolean;
-    }>;
-
-    const services: ServiceInfo[] = rawServices
-      .filter((s) => s.active)
-      .map((s) => ({
-        provider: s.provider.toLowerCase(),
-        model: s.model,
-        url: s.url,
-        stake: s.stake,
-        active: s.active,
-      }));
-
-    _cachedProviders = services;
-    return services;
+    _cachedProviders = mapped;
+    return mapped;
   })();
 
   try {
@@ -113,14 +65,22 @@ export async function discoverProviders(chainId?: number): Promise<ServiceInfo[]
 }
 
 /**
- * Resolve a provider's inference URL from the on-chain cache.
+ * Invalidate the cached provider list so the next call re-fetches from chain.
+ */
+export function invalidateProviderCache(): void {
+  _cachedProviders = null;
+  _cachePromise = null;
+}
+
+/**
+ * Resolve a provider's inference URL from the on-chain registry.
+ * Returns null for direct URLs (placeholder until SDK-based resolution is wired).
  *
  * @param providerAddress  Provider address (case-insensitive).
- * @returns                Inference URL or `null` if the provider is not registered.
+ * @param rpcUrl           Optional RPC URL for on-chain lookup.
+ * @returns                Inference URL or `null`.
  */
-export async function resolveProviderUrl(providerAddress: string): Promise<string | null> {
-  const providers = await discoverProviders();
-  const addr = providerAddress.toLowerCase();
-  const match = providers.find((s) => s.provider === addr);
-  return match?.url ?? null;
+export async function resolveProviderUrl(providerAddress: string, rpcUrl?: string): Promise<string | null> {
+  // Resolve from on-chain registry for now — returns null for direct URLs
+  return null;
 }

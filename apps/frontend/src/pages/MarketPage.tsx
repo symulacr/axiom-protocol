@@ -10,7 +10,7 @@ import { useChainId } from 'wagmi';
 import { ProviderCard } from '../components/ProviderCard.js';
 import { useProviders } from '../hooks/useProviders.js';
 import { COLORS, Card, SectionTitle, Alert, PageHeader, Skeleton } from '../components/ui.js';
-import { BACKEND_URL } from '../config/env.js';
+import { apiFetch } from '../utils/apiFetch.js';
 
 /**
  * One row returned by `GET /v1/events?eventName=Transfer`. The backend
@@ -59,24 +59,18 @@ export function MarketPage(): ReactElement {
 
   // Recent transfers — one-shot fetch on mount.
   useEffect(() => {
-    let cancelled = false;
+    const abortController = new AbortController();
 
     const load = async (): Promise<void> => {
       try {
-        const res = await fetch(
-          `${BACKEND_URL}/v1/events?eventName=Transfer`,
+        const body = await apiFetch<{ events: unknown[] }>(
+          '/v1/events?eventName=Transfer',
           {
             method: 'GET',
-            headers: { accept: 'application/json' },
+            signal: abortController.signal,
+            timeout: 10000,
           },
         );
-        if (!res.ok) {
-          const text = await res.text();
-          throw new Error(
-            `transfers fetch failed: ${res.status} ${res.statusText} ${text}`,
-          );
-        }
-        const body = (await res.json()) as { events: unknown[] };
         const allEvents = Array.isArray(body.events) ? body.events : [];
         const data = allEvents.filter(
           (e): e is TransferEvent =>
@@ -84,16 +78,16 @@ export function MarketPage(): ReactElement {
             e !== null &&
             (e as { eventName?: unknown }).eventName === 'Transfer',
         );
-        if (cancelled) return;
+        if (abortController.signal.aborted) return;
         setTransfers(data);
         setTransfersError(null);
       } catch (err) {
-        if (cancelled) return;
+        if (abortController.signal.aborted) return;
         setTransfersError(
           err instanceof Error ? err : new Error(String(err)),
         );
       } finally {
-        if (!cancelled) {
+        if (!abortController.signal.aborted) {
           setTransfersLoading(false);
         }
       }
@@ -102,7 +96,7 @@ export function MarketPage(): ReactElement {
     void load();
 
     return (): void => {
-      cancelled = true;
+      abortController.abort();
     };
   }, []);
 

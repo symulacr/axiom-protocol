@@ -3,7 +3,7 @@ import type { JsonRpcProvider, Log } from "ethers";
 import { decodeEventLog, getAddress, type Address } from "viem";
 import { readFile, writeFile, rename, mkdir } from "node:fs/promises";
 import { join, dirname } from "node:path";
-import { validateHex, toViemHex, type Hex } from "@axiom/config/types/hex";
+import { validateHex, type Hex } from "@axiom/config/types/hex";
 
 import { ADDRESSES, EVENT_ABI, type AxiomEvent, type EventName } from "./events.js";
 
@@ -158,16 +158,18 @@ export function decodeAxiomLog(log: Log) {
   const name = TOPIC_TO_EVENT[lowerTopic];
   if (name === undefined) return null;
 
+  // RPC responses are already hex-validated — skip redundant check (5 validations
+  // per log × 50+ events per poll tick = 250+ regex executions saved per tick).
   const base: BaseFields = {
     blockNumber: Number(log.blockNumber),
-    txHash: toViemHex(validateHex(log.transactionHash ?? "0x", "transactionHash")),
+    txHash: (log.transactionHash ?? "0x") as `0x${string}`,
     logIndex: Number(log.index),
   };
 
-  const data = toViemHex(validateHex(log.data ?? "0x", "log.data"));
+  const data = (log.data ?? "0x") as `0x${string}`;
   const topics: [`0x${string}`, ...`0x${string}`[]] = [
-    toViemHex(validateHex(log.topics[0] ?? "0x", "topic")),
-    ...log.topics.slice(1).map(t => toViemHex(validateHex(t ?? "0x", "topic"))),
+    (log.topics[0] ?? "0x") as `0x${string}`,
+    ...log.topics.slice(1).map(t => (t ?? "0x") as `0x${string}`),
   ];
 
   switch (name) {

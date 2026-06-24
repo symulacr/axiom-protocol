@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import type { Address } from 'viem';
-import { BACKEND_URL } from '../config/env.js';
 import { useAsyncAction } from './useAsyncAction.js';
+import { apiFetch } from '../utils/apiFetch.js';
 
 /** Response body of `GET /v1/payment/config`. */
 export type PaymentConfig = {
@@ -40,29 +40,6 @@ export type RoyaltyResult = {
   data: `0x${string}`;
   value: string;
 };
-
-async function apiFetch<T>(
-  path: string,
-  init: RequestInit,
-): Promise<T> {
-  const signal = init.signal ?? AbortSignal.timeout(10000);
-  const res = await fetch(`${BACKEND_URL}${path}`, {
-    ...init,
-    signal,
-    headers: {
-      'content-type': 'application/json',
-      accept: 'application/json',
-      ...(init.headers ?? {}),
-    },
-  });
-  if (!res.ok) {
-    // Backend returns JSON `{ error: string }`; surface the body so the
-    // UI can show a meaningful message instead of just a status code.
-    const text = await res.text();
-    throw new Error(`${path} failed: ${res.status} ${res.statusText} ${text}`);
-  }
-  return (await res.json()) as T;
-}
 
 export type UsePaymentResult = {
   payForAgent: (tokenId: bigint, amount: string) => Promise<AgentPayResult>;

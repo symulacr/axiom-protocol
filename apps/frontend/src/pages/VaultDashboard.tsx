@@ -1,9 +1,9 @@
 import type { ReactElement } from 'react';
 import { useParams } from 'react-router-dom';
-import { useAccount, useChainId, useReadContracts } from 'wagmi';
+import { useAccount, useChainId } from 'wagmi';
 import { formatEther } from 'viem';
-import { AXIOM_STRATEGY_VAULT_ADDRESS } from '../abi/addresses.js';
-import { axiomStrategyVaultAbi } from '../abi/axiomStrategyVault.js';
+import { getAxiomStrategyVaultAddress } from '../abi/addresses.js';
+import { useVaultData } from '../hooks/useVaultData.js';
 import { COLORS, Card, SectionTitle, MonoLabel, Alert, PageHeader, Skeleton } from '../components/ui.js';
 import { PLACEHOLDER } from '../utils/format.js';
 
@@ -13,29 +13,12 @@ export function VaultDashboard(): ReactElement {
   const chainId = useChainId();
   const tokenId = BigInt(vaultId ?? '0');
 
-  const vaultContracts = [AXIOM_STRATEGY_VAULT_ADDRESS].flatMap((vaultAddress) => [
-    {
-      address: vaultAddress,
-      abi: axiomStrategyVaultAbi,
-      functionName: 'vaults',
-      args: [tokenId],
-    },
-    {
-      address: vaultAddress,
-      abi: axiomStrategyVaultAbi,
-      functionName: 'totalDeposits',
-    },
-    {
-      address: vaultAddress,
-      abi: axiomStrategyVaultAbi,
-      functionName: 'getStrategy',
-      args: [tokenId],
-    },
-  ] as const) as readonly any[];
-
-  const vaultQuery = useReadContracts({
-    contracts: vaultContracts,
-  });
+  const vd = useVaultData(tokenId);
+  const depositsWei = vd.isLoading ? undefined : vd.depositsWei;
+  const root = vd.isLoading ? undefined : (vd.strategyRoot || undefined);
+  const dailyLimitWei = vd.isLoading ? undefined : vd.dailyLimitWei;
+  const isLoading = vd.isLoading;
+  const error = vd.error;
 
   return (
     <main>
@@ -61,85 +44,66 @@ export function VaultDashboard(): ReactElement {
       </Card>
 
       <SectionTitle>Vaults</SectionTitle>
-      {vaultQuery.isLoading && (
+      {isLoading && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
           <Skeleton height={56} />
           <Skeleton height={56} />
         </div>
       )}
-      {vaultQuery.error !== null && (
+      {error !== null && (
         <Alert variant="error">
           Couldn't read vault data from the chain. Check your connection and try again.
         </Alert>
       )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
-        {[AXIOM_STRATEGY_VAULT_ADDRESS].map((vaultAddress, index) => {
-          const base = index * 3;
-          const vaultsResult = vaultQuery.data?.[base]?.result as
-            | readonly [string, bigint, `0x${string}`, bigint]
-            | undefined;
-          const totalDepositsResult = vaultQuery.data?.[base + 1]?.result as
-            | bigint
-            | undefined;
-          const getStrategyResult = vaultQuery.data?.[base + 2]?.result as
-            | readonly [`0x${string}`, bigint, bigint]
-            | undefined;
-
-          const depositsWei = vaultsResult?.[1] ?? totalDepositsResult;
-          const root = vaultsResult?.[2] ?? getStrategyResult?.[0];
-          const dailyLimitWei = vaultsResult?.[3] ?? getStrategyResult?.[1];
-
-          return (
-            <Card key={vaultAddress}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', marginBottom: 'var(--space-lg)' }}>
-                <span
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: '2rem',
-                    height: '2rem',
-                    borderRadius: 'var(--radius-lg)',
-                    background: COLORS.bronzeBg,
-                    border: `1px solid ${COLORS.bronzeBorder}`,
-                    color: COLORS.bronzeLight,
-                    fontSize: 'var(--text-sm)',
-                    fontWeight: 'var(--fw-bold)',
-                  }}
-                >
-                  {index}
-                </span>
-                <MonoLabel style={{ fontSize: 'var(--text-xs)' }}>{vaultAddress}</MonoLabel>
-              </div>
-              <dl style={{ margin: 0, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(12rem, 1fr))', gap: 'var(--space-lg)' }}>
-                <div>
-                  <dt style={{ fontSize: 'var(--text-xs)', color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.25rem', fontWeight: 'var(--fw-semibold)' }}>
-                    Total Deposits
-                  </dt>
-                  <dd style={{ margin: 0, fontSize: 'var(--text-lg)', fontWeight: 'var(--fw-semibold)', color: COLORS.bronzeLight }}>
-                    {depositsWei === undefined ? PLACEHOLDER : `${formatEther(depositsWei)} OG`}
-                  </dd>
-                </div>
-                <div>
-                  <dt style={{ fontSize: 'var(--text-xs)', color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.25rem', fontWeight: 'var(--fw-semibold)' }}>
-                    Strategy Root
-                  </dt>
-                  <dd style={{ margin: 0 }}>
-                    {root !== undefined ? <MonoLabel style={{ fontSize: 'var(--text-xs)' }}>{`${root.slice(0, 10)}\u2026`}</MonoLabel> : <span style={{ color: COLORS.textDim }}>{PLACEHOLDER}</span>}
-                  </dd>
-                </div>
-                <div>
-                  <dt style={{ fontSize: 'var(--text-xs)', color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.25rem', fontWeight: 'var(--fw-semibold)' }}>
-                    Daily Limit
-                  </dt>
-                  <dd style={{ margin: 0, fontSize: 'var(--text-base)', fontWeight: 'var(--fw-medium)', color: COLORS.text }}>
-                    {dailyLimitWei === undefined ? PLACEHOLDER : `${formatEther(dailyLimitWei)} OG`}
-                  </dd>
-                </div>
-              </dl>
-            </Card>
-          );
-        })}
+        <Card key={getAxiomStrategyVaultAddress()}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', marginBottom: 'var(--space-lg)' }}>
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '2rem',
+                height: '2rem',
+                borderRadius: 'var(--radius-lg)',
+                background: COLORS.bronzeBg,
+                border: `1px solid ${COLORS.bronzeBorder}`,
+                color: COLORS.bronzeLight,
+                fontSize: 'var(--text-sm)',
+                fontWeight: 'var(--fw-bold)',
+              }}
+            >
+              0
+            </span>
+            <MonoLabel style={{ fontSize: 'var(--text-xs)' }}>{getAxiomStrategyVaultAddress()}</MonoLabel>
+          </div>
+          <dl style={{ margin: 0, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(12rem, 1fr))', gap: 'var(--space-lg)' }}>
+            <div>
+              <dt style={{ fontSize: 'var(--text-xs)', color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.25rem', fontWeight: 'var(--fw-semibold)' }}>
+                Total Deposits
+              </dt>
+              <dd style={{ margin: 0, fontSize: 'var(--text-lg)', fontWeight: 'var(--fw-semibold)', color: COLORS.bronzeLight }}>
+                {depositsWei === undefined ? PLACEHOLDER : `${formatEther(depositsWei)} OG`}
+              </dd>
+            </div>
+            <div>
+              <dt style={{ fontSize: 'var(--text-xs)', color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.25rem', fontWeight: 'var(--fw-semibold)' }}>
+                Strategy Root
+              </dt>
+              <dd style={{ margin: 0 }}>
+                {root !== undefined ? <MonoLabel style={{ fontSize: 'var(--text-xs)' }}>{`${root.slice(0, 10)}\u2026`}</MonoLabel> : <span style={{ color: COLORS.textDim }}>{PLACEHOLDER}</span>}
+              </dd>
+            </div>
+            <div>
+              <dt style={{ fontSize: 'var(--text-xs)', color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.25rem', fontWeight: 'var(--fw-semibold)' }}>
+                Daily Limit
+              </dt>
+              <dd style={{ margin: 0, fontSize: 'var(--text-base)', fontWeight: 'var(--fw-medium)', color: COLORS.text }}>
+                {dailyLimitWei === undefined ? PLACEHOLDER : `${formatEther(dailyLimitWei)} OG`}
+              </dd>
+            </div>
+          </dl>
+        </Card>
       </div>
     </main>
   );

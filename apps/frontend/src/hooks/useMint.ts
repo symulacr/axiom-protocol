@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
-import { BACKEND_URL } from '../config/env.js';
 import { useAsyncAction } from './useAsyncAction.js';
+import { apiFetch, LONG_TIMEOUT } from '../utils/apiFetch.js';
 
 export type MintInput = {
   agentNft?: `0x${string}`;
@@ -23,33 +23,37 @@ export type UseMintResult = {
   isLoading: boolean;
   error: Error | null;
   result: MintResult | null;
+  registrationWarning: string | null;
   reset: () => void;
 };
 
 export function useMint(): UseMintResult {
   const [result, setResult] = useState<MintResult | null>(null);
+  const [registrationWarning, setRegistrationWarning] = useState<string | null>(null);
   const { execute, isLoading, error, reset: resetAction } = useAsyncAction();
 
   const mint = useCallback(async (input: MintInput): Promise<MintResult> => {
     const data = await execute(async (signal) => {
-      const res = await fetch(`${BACKEND_URL}/v1/agents/mint`, {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          accept: 'application/json',
-        },
-        body: JSON.stringify(input),
-        signal: AbortSignal.any([signal, AbortSignal.timeout(15000)]),
-      });
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(
-          `mint failed: ${res.status} ${res.statusText} ${text}`,
+      // Show user-facing warning if mint takes > 30s
+      const warnTimer = setTimeout(() => {
+        console.warn('[mint] Transaction is taking longer than expected. It may still complete on-chain.');
+      }, 30000);
+
+      try {
+        const data = await apiFetch<MintResult>('/v1/agents/mint', {
+          method: 'POST',
+          body: JSON.stringify(input),
+          signal,
+          timeout: LONG_TIMEOUT,
+        });
+        setResult(data);
+        setRegistrationWarning(
+          "Mint succeeded on-chain. Transfers require oracle registration — ensure your oracle service is running and can reach this token's data hash."
         );
+        return data;
+      } finally {
+        clearTimeout(warnTimer);
       }
-      const data = (await res.json()) as MintResult;
-      setResult(data);
-      return data;
     });
     return data;
   }, [execute]);
@@ -57,7 +61,8 @@ export function useMint(): UseMintResult {
   const reset = useCallback((): void => {
     resetAction();
     setResult(null);
+    setRegistrationWarning(null);
   }, [resetAction]);
 
-  return { mint, isLoading, error, result, reset };
+  return { mint, isLoading, error, result, registrationWarning, reset };
 }

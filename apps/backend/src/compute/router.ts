@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
 import { resolveProviderUrl } from "./provider-discovery.js";
 
 // Default Router URLs per network.
@@ -47,11 +48,13 @@ function decodeDirectKeyToken(token: string): { provider: string; address: strin
 export function getComputeBaseUrl(): string {
   const explicit = process.env.OG_COMPUTE_BASE_URL;
   if (explicit) return explicit;
-  const chainId = Number(process.env.AXIOM_CHAIN_ID) || 16602;
+  const chainId = Number(process.env.AXIOM_CHAIN_ID) || GALILEO_CHAIN_ID;
   return chainId === 16661 ? DEFAULT_MAINNET_URL : DEFAULT_TESTNET_URL;
 }
 
-export async function createRouterClient(timeout = 30_000): Promise<OpenAI> {
+const ROUTER_TIMEOUT_MS = 30_000;
+
+export async function createRouterClient(timeout = ROUTER_TIMEOUT_MS): Promise<OpenAI> {
   // 1. Direct SDK proxy path (app-sk-* key)
   const directKey = process.env.AXIOM_COMPUTE_DIRECT_KEY;
   if (directKey) {

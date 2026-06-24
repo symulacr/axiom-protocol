@@ -1,6 +1,6 @@
-// AxiomProtocol — AxiomAgentNFT ABI. Re-exports `abi` from JSON for wagmi v2 inference.
-import axiomAgentNftAbiJson from './AxiomAgentNFT.json';
+// AxiomProtocol — AxiomAgentNFT ABI. Import from canonical @axiom/config/abis.
+import { AGENT_NFT_ABI } from "@axiom/config/abis";
 
-export const axiomAgentNftAbi = axiomAgentNftAbiJson.abi;
+export const axiomAgentNftAbi = AGENT_NFT_ABI;
 
 export type AxiomAgentNftAbi = typeof axiomAgentNftAbi;

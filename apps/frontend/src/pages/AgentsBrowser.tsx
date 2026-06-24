@@ -2,25 +2,12 @@ import type { ReactElement } from 'react';
 import { Link } from 'react-router-dom';
 import { useAccount } from 'wagmi';
 import { useAgents } from '../hooks/useAgents.js';
-import { COLORS, Skeleton, Card, Alert, PageHeader } from '../components/ui.js';
+import { COLORS, Skeleton, Card, Alert, PageHeader, ConnectedGuard } from '../components/ui.js';
 
 export function AgentsBrowser(): ReactElement {
-  const { isConnected, address } = useAccount();
+  const { address } = useAccount();
   const { agents, isLoading, error } = useAgents();
   const count = agents.length;
-
-  if (!isConnected) {
-    return (
-      <main>
-        <PageHeader title="Your Agents" />
-        <Card style={{ textAlign: 'center', padding: 48 }}>
-          <p style={{ color: COLORS.textMuted, fontSize: 15, margin: 0, fontWeight: 300 }}>
-            Connect your wallet to view the iNFTs you own.
-          </p>
-        </Card>
-      </main>
-    );
-  }
 
   if (error !== null) {
     return (
@@ -92,6 +79,7 @@ export function AgentsBrowser(): ReactElement {
 
   return (
     <main>
+      <ConnectedGuard>
       <PageHeader
         title="Your Agents"
         subtitle={`${countLabel} owned by ${address !== undefined ? `${address.slice(0, 6)}\u2026${address.slice(-4)}` : 'this wallet'}`}
@@ -104,6 +92,7 @@ export function AgentsBrowser(): ReactElement {
           Token-level details are not available on-chain (the contract does not support enumeration). Connect to the backend event store for a full token listing.
         </p>
       </Card>
+      </ConnectedGuard>
     </main>
   );
 }

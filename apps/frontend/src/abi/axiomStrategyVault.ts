@@ -1,6 +1,6 @@
-// AxiomProtocol — AxiomStrategyVault ABI. Re-exports `abi` from JSON for wagmi v2 inference.
-import axiomStrategyVaultAbiJson from './AxiomStrategyVault.json';
+// AxiomProtocol — AxiomStrategyVault ABI. Import from canonical @axiom/config/abis.
+import { VAULT_ABI } from "@axiom/config/abis";
 
-export const axiomStrategyVaultAbi = axiomStrategyVaultAbiJson.abi;
+export const axiomStrategyVaultAbi = VAULT_ABI;
 
 export type AxiomStrategyVaultAbi = typeof axiomStrategyVaultAbi;
