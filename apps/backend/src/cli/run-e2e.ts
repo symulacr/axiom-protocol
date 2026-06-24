@@ -1,7 +1,6 @@
 import { randomBytes } from "node:crypto";
-import { Wallet, parseEther, hexlify, toUtf8Bytes, JsonRpcProvider, getBytes, SigningKey, computeAddress } from "ethers";
+import { Wallet, parseEther, hexlify, toUtf8Bytes, JsonRpcProvider, getBytes, SigningKey, computeAddress, type TransactionResponse } from "ethers";
 import { TypedContract } from "@axiom/config/types/contract";
-import type { AgentNFTMethods } from "../contract-types.js";
 import { keccak256 } from "ethereum-cryptography/keccak";
 import { ZeroGStorage } from "../storage/0g.js";
 import { encrypt as eciesEncrypt, decrypt as eciesDecrypt } from "eciesjs";
@@ -42,6 +41,12 @@ const receiverPubKey64 = hexlify(deriveUncompressedPubkeyFromHex(RECEIVER_PK)) a
 const eip712Domain: Eip712Domain = {
   chainId: BigInt(Number.parseInt(getEnv("OG_CHAIN_ID", "16602"), 10)),
   verifyingContract: TEE_VERIFIER as `0x${string}`,
+};
+
+// Local contract method types derived from ITRANSFER_FROM_ABI (avoid shared contract-types.ts drift).
+type AgentNFTMethods = {
+  iTransferFrom(from: string, to: string, tokenId: bigint, proofs: unknown[]): Promise<TransactionResponse>;
+  ownerOf(tokenId: bigint): Promise<string>;
 };
 
 interface StepResult { step: number; name: string; ok: boolean; summary: string; txHash?: string; }
