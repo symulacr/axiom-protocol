@@ -62,6 +62,9 @@ abstract contract ERC7857Upgradeable is IERC7857, ERC721Upgradeable {
     }
 
     function delegateAccess(address assistant) public virtual {
+        if (assistant == address(0)) {
+            revert ERC7857InvalidAssistant(assistant);
+        }
         ERC7857Storage storage $ = _getERC7857Storage();
         $.accessAssistants[msg.sender] = assistant;
         emit DelegateAccess(msg.sender, assistant);
@@ -163,6 +166,13 @@ abstract contract ERC7857Upgradeable is IERC7857, ERC721Upgradeable {
             revert ERC721NonexistentToken(tokenId);
         }
         return _intelligentDatasOf(tokenId);
+    }
+
+    /// @notice Alias for intelligentDatasOf (EIP-7857 uses singular form)
+    /// @param tokenId The token to query
+    /// @return data The IntelligentData entries associated with the token
+    function intelligentDataOf(uint256 tokenId) external view virtual returns (IntelligentData[] memory data) {
+        return intelligentDatasOf(tokenId);
     }
 
     function verifier() public view virtual returns (IERC7857DataVerifier) {

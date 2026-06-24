@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import {Test} from "forge-std/Test.sol";
 import {StdInvariant} from "forge-std/StdInvariant.sol";
 import {AxiomTeeVerifier} from "../src/verifiers/AxiomTeeVerifier.sol";
+import {BaseVerifier} from "../src/verifiers/BaseVerifier.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {
     TransferValidityProof,
@@ -300,7 +301,16 @@ contract FuzzAxiomTeeVerifierTest is StdInvariant, Test {
         dup[0] = single[0];
         dup[1] = single[0];
 
-        vm.expectRevert(bytes("Proof already used"));
+        bytes32 proofNonce = keccak256(
+            abi.encode(
+                single[0].accessProof.dataHash,
+                single[0].accessProof.targetPubkey,
+                single[0].ownershipProof.sealedKey,
+                single[0].accessProof.nonce,
+                single[0].accessProof.validUntil
+            )
+        );
+        vm.expectRevert(abi.encodeWithSelector(BaseVerifier.ProofAlreadyUsed.selector, proofNonce));
         verifier.verifyTransferValidity(dup, address(0), address(0));
     }
 
@@ -594,7 +604,7 @@ contract FuzzAxiomTeeVerifierTest is StdInvariant, Test {
         // Warp past it.
         vm.warp(block.timestamp + 2 days);
 
-        vm.expectRevert(); // either AxiomProofExpired (bug fix) or "Proof already used" (replay)
+        vm.expectRevert(); // either AxiomProofExpired (bug fix) or ProofAlreadyUsed (replay)
         verifier.verifyTransferValidity(proofs, address(0), address(0));
     }
 
@@ -771,7 +781,7 @@ contract FuzzAxiomTeeVerifierTest is StdInvariant, Test {
         // Re-call the live/expired categorization using BaseVerifier's
         // internal `proofTimestamps` (which is internal; we can probe it
         // by attempting to re-submit each nonce — if the proof is still
-        // marked used, the re-submit reverts with "Proof already used",
+        // marked used, the re-submit reverts with ProofAlreadyUsed,
         // and if it was deleted, the re-submit succeeds).
         for (uint256 i = 0; i < numProofsSeed; i++) {
             // We can't read proofTimestamps directly, but the spec says
@@ -811,7 +821,7 @@ contract FuzzAxiomTeeVerifierTest is StdInvariant, Test {
 
         // Re-submit a dead nonce — must succeed (i.e., it WAS cleaned).
         // We rebuild a fresh proof with the same nonce (it was cleaned, so
-        // the nonce slot is free) to avoid "Proof already used" on the
+        // the nonce slot is free) to avoid ProofAlreadyUsed on the
         // re-submit path. We can't re-use the original proof because the
         // nonce is part of the message and the recovery would still work,
         // but the replay guard would reject. So we re-sign with a fresh
@@ -857,7 +867,7 @@ contract FuzzAxiomTeeVerifierTest is StdInvariant, Test {
                     validUntil: validUntil
                 })
             });
-            // Note: this may revert with "Proof already used" if the
+            // Note: this may revert with ProofAlreadyUsed if the
             // original nonce was not actually cleaned (i.e., if cleanExpiredProofs
             // has a bug and skips expired entries). We treat such a
             // revert as a test failure and let forge's counter-example
