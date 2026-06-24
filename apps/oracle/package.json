@@ -32,7 +32,6 @@
   },
   "dependencies": {
     "@axiom/config": "workspace:*",
-    "@0gfoundation/0g-storage-ts-sdk": "^1.2.10",
     "cors": "^2.8.6",
     "eciesjs": "^0.4.14",
     "ethereum-cryptography": "^2.2.1",

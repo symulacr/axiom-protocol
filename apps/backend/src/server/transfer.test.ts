@@ -1,5 +1,5 @@
-import { aesGcmEncrypt, concatEncrypted } from "../../../oracle/src/crypto/aes-gcm.js";
-import { unsealKeyForReceiver } from "../../../oracle/src/crypto/ecies.js";
+import { aesGcmEncrypt, concatEncrypted } from "@axiom/oracle/crypto/aes-gcm";
+import { unsealKeyForReceiver } from "@axiom/oracle/crypto/ecies";
 import { randomBytes } from "node:crypto";
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
@@ -10,8 +10,8 @@ import express from "express";
 import { Wallet, getBytes } from "ethers";
 
 import { startServer as startBackendServer } from "../server.js";
-import { startServer as startOracleServer } from "../../../oracle/src/server.js";
-import { TeeSigner, accessMessageHash, deriveUncompressedPubkeyFromHex } from "../../../oracle/src/signer.js";
+import { startServer as startOracleServer } from "@axiom/oracle";
+import { TeeSigner, accessMessageHash, deriveUncompressedPubkeyFromHex } from "@axiom/oracle/signer";
 import { InMemoryStorage } from "@axiom/config/storage/0g";
 
 const ORACLE_PRIV = "0x" + "11".repeat(32);
