@@ -25,13 +25,15 @@
     "./env-schema": "./dist/env-schema.js",
     "./api/responses": "./dist/api/responses.js",
     "./api/routes": "./dist/api/routes.js",
-    "./api": "./dist/api/index.js"
+    "./api": "./dist/api/index.js",
+    "./storage/0g": "./dist/storage/0g.js"
   },
   "scripts": {
     "build": "tsc --project tsconfig.json",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@0gfoundation/0g-storage-ts-sdk": "^1.2.10",
     "ethers": "^6.16.0",
     "express": "^4.21.0",
     "viem": "^2.21.45",

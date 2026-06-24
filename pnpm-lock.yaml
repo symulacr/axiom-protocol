@@ -332,6 +332,9 @@ importers:
 
   packages/config:
     dependencies:
+      '@0gfoundation/0g-storage-ts-sdk':
+        specifier: ^1.2.10
+        version: 1.2.10(bufferutil@4.1.0)(ethers@6.16.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
       ethers:
         specifier: ^6.16.0
         version: 6.16.0(bufferutil@4.1.0)(utf-8-validate@5.0.10)
