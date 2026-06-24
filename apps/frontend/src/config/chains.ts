@@ -1,7 +1,7 @@
 // 0G chain definitions for wagmi v2.
 
 import { defineChain } from 'viem';
-import { GALILEO_CHAIN_ID, ARISTOTLE_CHAIN_ID } from "@axiom/config/networks";
+import { GALILEO_CHAIN_ID, ARISTOTLE_CHAIN_ID, resolveRpcUrl } from "@axiom/config/networks";
 
 /** 0G Galileo Testnet (chainId 16602). */
 export const galileo = defineChain({
@@ -10,7 +10,7 @@ export const galileo = defineChain({
   nativeCurrency: { name: 'OG', symbol: 'OG', decimals: 18 },
   rpcUrls: {
     default: {
-      http: ['https://evmrpc-testnet.0g.ai'],
+      http: [resolveRpcUrl(GALILEO_CHAIN_ID)],
     },
   },
   blockExplorers: {
@@ -29,7 +29,7 @@ export const aristotle = defineChain({
   nativeCurrency: { name: 'OG', symbol: 'OG', decimals: 18 },
   rpcUrls: {
     default: {
-      http: ['https://evmrpc.0g.ai'],
+      http: [resolveRpcUrl(ARISTOTLE_CHAIN_ID)],
     },
   },
   blockExplorers: {

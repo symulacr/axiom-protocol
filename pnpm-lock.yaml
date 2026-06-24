@@ -200,9 +200,6 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.59.0
         version: 5.101.0(react@18.3.1)
-      ethers:
-        specifier: ^6.16.0
-        version: 6.16.0(bufferutil@4.1.0)(utf-8-validate@5.0.10)
       react:
         specifier: ^18.3.1
         version: 18.3.1
