@@ -1,4 +1,4 @@
-import { Indexer, MemData, tryDecrypt } from "@0gfoundation/0g-storage-ts-sdk";
+import { Indexer, MemData } from "@0gfoundation/0g-storage-ts-sdk";
 import { keccak256, type Signer } from "ethers";
 import type { Hex } from "viem";
 
@@ -90,10 +90,8 @@ export async function uploadToStorage(
   data: Uint8Array,
   evmRpc: string,
   signer: Signer,
-  encryption?: Encryption,
 ): Promise<UploadResult> {
-  const opts = encryption ? { encryption } : {};
-  const [tx, err] = await indexer.upload(new MemData(data), evmRpc, signer, opts);
+  const [tx, err] = await indexer.upload(new MemData(data), evmRpc, signer);
   if (err) throw new Error(`0G upload failed: ${err.message ?? String(err)}`);
   if (!tx) throw new Error("0G Storage upload returned no transaction");
   const rootHash = "rootHash" in tx ? (tx.rootHash as Hex) : (tx.rootHashes[0] as Hex);
@@ -109,27 +107,11 @@ export async function downloadFromStorage(
 ): Promise<DownloadResult> {
   const downloadOpts = {
     proof: opts?.withProof ?? true,
-    decryption: { symmetricKey: opts?.symmetricKey, privateKey: opts?.privateKey },
   };
   const [blob, err] = await indexer.downloadToBlob(rootHash, downloadOpts);
   if (err) throw new Error(`0G download failed: ${err.message ?? String(err)}`);
   if (!blob) throw new Error(`0G Storage download returned no blob for ${rootHash}`);
   const data = new Uint8Array(await blob.arrayBuffer());
-
-  // 🛡️ Guard against silent decryption failure (tryDecrypt never throws)
-  if (opts?.symmetricKey || opts?.privateKey) {
-    const result = tryDecrypt(data, {
-      symmetricKey: opts.symmetricKey,
-      privateKey: opts.privateKey,
-    });
-    if (!result.decrypted) {
-      throw new Error(
-        `0G Storage decryption failed for ${rootHash}: ` +
-          "the SDK returned raw bytes (wrong key, missing header, or malformed data). " +
-          "Check that the correct decryption key was provided and that the file was SDK-encrypted.",
-      );
-    }
-  }
 
   return { data, rootHash, size: data.length };
 }
@@ -170,9 +152,10 @@ export class ZeroGStorage implements StorageAdapter {
   }
 
   // Backward-compat methods (for backend consumers)
-  async uploadData(data: Uint8Array, encryption?: Encryption): Promise<UploadResult> {
+  // encryption param kept for backward compat (callers still pass it)
+  async uploadData(data: Uint8Array, _encryption?: Encryption): Promise<UploadResult> {
     return withRetry(() =>
-      uploadToStorage(this.indexer, data, this.config.evmRpc, this.config.signer, encryption),
+      uploadToStorage(this.indexer, data, this.config.evmRpc, this.config.signer),
     );
   }
 
