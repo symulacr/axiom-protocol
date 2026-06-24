@@ -1,11 +1,5 @@
 import { z } from "zod";
-import { validateHex, validateAddress, toViemHex } from "@axiom/config/types/hex";
-
-/** Hex string Zod schema that outputs `0x${string}` (viem-compatible). */
-const hexViem = z.string().regex(/^0x[a-fA-F0-9]+$/, "Invalid hex").transform((v) => toViemHex(validateHex(v)));
-
-/** Address Zod schema that outputs `0x${string}` (viem-compatible). */
-const addressViem = z.string().regex(/^0x[a-fA-F0-9]{40}$/, "Invalid address").transform((v) => toViemHex(validateAddress(v)));
+import { hexViem, addressViem } from "@axiom/config/types/schemas";
 
 export const transferValiditySchema = z.object({
   oldDataHash: hexViem,

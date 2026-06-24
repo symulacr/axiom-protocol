@@ -1,6 +1,7 @@
-import { Indexer, MemData } from "@0gfoundation/0g-storage-ts-sdk";
+import { Indexer } from "@0gfoundation/0g-storage-ts-sdk";
 import { keccak256, type Signer } from "ethers";
 import type { Hex } from "viem";
+import { uploadToStorage } from "@axiom/config/storage/0g";
 
 /** Storage adapter: blob upload/download and seen-dataHash tracking. */
 export interface StorageAdapter {
@@ -45,14 +46,8 @@ export class ZeroGStorage implements StorageAdapter {
   }
 
   async upload(blob: Uint8Array): Promise<{ rootHash: Hex }> {
-    const [tx, err] = await this.indexer.upload(
-      new MemData(blob), this.evmRpc, this.signer, {}
-    );
-    if (err) throw err;
-    if (!tx) throw new Error("0G Storage upload returned no transaction");
-    const rootHash = "rootHash" in tx ? tx.rootHash : tx.rootHashes[0];
-    if (!rootHash) throw new Error("0G Storage upload returned no rootHash");
-    return { rootHash: rootHash as Hex };
+    const result = await uploadToStorage(this.indexer, blob, this.evmRpc, this.signer);
+    return { rootHash: result.rootHash };
   }
 
   async download(rootHash: Hex): Promise<Uint8Array> {

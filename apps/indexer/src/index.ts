@@ -1,8 +1,9 @@
-import { Indexer, MemData } from "@0gfoundation/0g-storage-ts-sdk";
+import { Indexer } from "@0gfoundation/0g-storage-ts-sdk";
 import { ethers } from "ethers";
 import { loadEnv } from "./env.js";
 import { fileURLToPath } from "node:url";
 import { GALILEO_CHAIN_ID, OG_NETWORKS } from "@axiom/config/networks";
+import { uploadToStorage } from "@axiom/config/storage/0g";
 
 import {
   POLL_INTERVAL_MS,
@@ -74,27 +75,21 @@ async function flushBuffer(): Promise<void> {
   const batch = eventBuffer.splice(0);
   try {
     const payload = new TextEncoder().encode(JSON.stringify(batch, bigintReplacer));
-    const [tx] = await _storageIndexer.upload(
-      new MemData(payload),
+    const result = await uploadToStorage(
+      _storageIndexer,
+      payload,
       _storageRpcUrl,
       _storageSigner,
     );
-    if (tx) {
-      const rootHash = "rootHash" in tx ? tx.rootHash : tx.rootHashes[0];
-      const txHash = "txHash" in tx ? tx.txHash : tx.txHashes[0];
-      if (rootHash === undefined || txHash === undefined) {
-        throw new Error("Storage upload returned no root hash");
-      }
-      process.stderr.write(
-        JSON.stringify({
-          level: "debug",
-          msg: "batch stored to 0G Storage",
-          rootHash,
-          batchSize: batch.length,
-          txHash,
-        }) + "\n",
-      );
-    }
+    process.stderr.write(
+      JSON.stringify({
+        level: "debug",
+        msg: "batch stored to 0G Storage",
+        rootHash: result.rootHash,
+        batchSize: batch.length,
+        txHash: result.txHash,
+      }) + "\n",
+    );
   } catch (err) {
     // Re-buffer on failure so events aren't lost
     const MAX_BUFFER_SIZE = 10000;
