@@ -12,7 +12,7 @@ import { Wallet, getBytes } from "ethers";
 import { startServer as startBackendServer } from "../server.js";
 import { startServer as startOracleServer } from "../../../oracle/src/server.js";
 import { TeeSigner, accessMessageHash, deriveUncompressedPubkeyFromHex } from "../../../oracle/src/signer.js";
-import { InMemoryStorage } from "../../../oracle/src/storage.js";
+import { InMemoryStorage } from "@axiom/config/storage/0g";
 
 const ORACLE_PRIV = "0x" + "11".repeat(32);
 const BACKEND_PRIV = "0x" + "33".repeat(32);

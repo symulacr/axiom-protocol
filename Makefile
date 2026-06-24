@@ -123,10 +123,10 @@ frontend-build:
 # ────────────────────────────────────────────────────────────
 
 dev-up:
-	docker compose -f docker-compose.yml up -d
+	docker compose -f apps/indexer/docker-compose.yml --env-file .env up -d
 
 dev-down:
-	docker compose -f docker-compose.yml down
+	docker compose -f apps/indexer/docker-compose.yml down
 
 logs:
-	docker compose -f docker-compose.yml logs -f --tail=100
+	docker compose -f apps/indexer/docker-compose.yml logs -f --tail=100
