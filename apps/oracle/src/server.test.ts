@@ -6,7 +6,7 @@ import type http from "node:http";
 
 import { startServer } from "./server.js";
 import { TeeSigner } from "./signer.js";
-import { InMemoryStorage } from "./storage.js";
+import { InMemoryStorage } from "@axiom/config/storage/0g";
 
 const TEST_PRIV_HEX = "0x" + "11".repeat(32);
 const dataHash = "0x" + "aa".repeat(32);

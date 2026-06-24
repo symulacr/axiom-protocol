@@ -347,7 +347,7 @@ contract FuzzAxiomPaymentProcessorUnit is Test {
     /// @notice Probe: the wave-pinned AxiomPaymentProcessor has no code at the fork block.
     function test_liveAddress_hasNoCode_atPinnedBlock() public {
         // The wave brief explicitly says to fork at block 38748015.
-        vm.createSelectFork("https://0g-galileo-testnet.drpc.org", 38_748_015);
+        vm.createSelectFork("https://evmrpc-testnet.0g.ai", 38_748_015);
         address live = address(0xEf1bA81ba3A9c37a3A6efF46BB2B029d4068fd8D);
         // EXTCODESIZE is the cheapest "has code" check.
         uint256 size;
@@ -361,7 +361,7 @@ contract FuzzAxiomPaymentProcessorUnit is Test {
     /// @notice Same probe at the latest block. If the contract were
     ///         redeployed, this would observe code.
     function test_liveAddress_hasNoCode_atLatestBlock() public {
-        vm.createSelectFork("https://0g-galileo-testnet.drpc.org");
+        vm.createSelectFork("https://evmrpc-testnet.0g.ai");
         address live = address(0xEf1bA81ba3A9c37a3A6efF46BB2B029d4068fd8D);
         uint256 size;
         assembly {
