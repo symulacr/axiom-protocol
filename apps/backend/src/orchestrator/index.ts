@@ -1,19 +1,12 @@
 import type { Wallet } from "ethers";
-import { AbiCoder, JsonRpcProvider, keccak256, type TransactionReceipt, type TransactionResponse } from "ethers";
+import { AbiCoder, FetchRequest, JsonRpcProvider, keccak256, type TransactionReceipt, type TransactionResponse } from "ethers";
 import { TypedContract } from "@axiom/config/types/contract";
 import type OpenAI from "openai";
-import { ZeroGStorage, type Encryption } from "../storage/0g.js";
+import { ZeroGStorage, type Encryption } from "@axiom/config/storage/0g";
 import { createRouterClient } from "../compute/router.js";
 import { DefaultSignerOracleClient } from "../oracle/client.js";
-import { pickOGNetwork } from "../storage/0g.js";
-const VAULT_ABI: string[] = [
-  "function balanceOf(uint256 tokenId) view returns (uint256)",
-  "function strategyOf(uint256 tokenId) view returns (bytes32 root, uint256 dailyLimit, uint256 dailySpent, uint64 resetDay)",
-  "function execute(uint256 tokenId, address target, uint256 value, bytes data, bytes32[] proof) returns (bytes)",
-  "event Deposited(uint256 indexed tokenId, address indexed from, address indexed asset, uint256 amount)",
-  "event StrategySet(uint256 indexed tokenId, bytes32 strategyRoot, uint256 dailyLimit, uint64 validUntilDay)",
-  "event Executed(uint256 indexed tokenId, bytes32 indexed actionHash, address indexed target, uint256 value, bytes result)",
-];
+import { pickOGNetwork } from "@axiom/config/networks";
+import { VAULT_ABI } from "@axiom/config/abis";
 
 // Local contract method types derived from VAULT_ABI (avoid shared contract-types.ts drift).
 type StrategyVaultMethods = {
@@ -77,7 +70,9 @@ export class StrategyRunner {
   constructor(config: OrchestratorConfig) {
     const chainId = config.chainId ?? 16602;
     this.chainId = chainId;
-    this.provider = new JsonRpcProvider(config.evmRpc, chainId);
+    const fetchReq = new FetchRequest(config.evmRpc);
+    fetchReq.timeout = 10_000;
+    this.provider = new JsonRpcProvider(fetchReq, chainId, { staticNetwork: true });
     this.addresses = config.addresses;
     this.signer = config.signer;
     const network = pickOGNetwork(chainId);
@@ -88,9 +83,9 @@ export class StrategyRunner {
     this.oracle = new DefaultSignerOracleClient({ baseUrl: config.oracleBaseUrl });
   }
 
-  private getClient(): OpenAI {
+  private async getClient(): Promise<OpenAI> {
     if (!this.openai) {
-      this.openai = createRouterClient();
+      this.openai = await createRouterClient();
     }
     return this.openai;
   }
@@ -207,7 +202,7 @@ export class StrategyRunner {
       { role: "system" as const, content: strategy.systemPrompt },
       { role: "user" as const, content: userPrompt },
     ];
-    const completion = await this.getClient().chat.completions.create({
+    const completion = await (await this.getClient()).chat.completions.create({
       model: strategy.computeModel,
       messages,
       response_format: { type: "json_object" },
@@ -269,7 +264,7 @@ export class StrategyRunner {
     const opts = strategy.modelEncryption?.type === "aes256"
       ? { symmetricKey: strategy.modelEncryption.key, withProof: true }
       : { withProof: true };
-    const blob = await this.storage.download(strategy.modelDataRoot, opts);
+    const blob = await this.storage.downloadWithOpts(strategy.modelDataRoot, opts);
     return { rootHash: strategy.modelDataRoot, size: blob.size };
   }
 }

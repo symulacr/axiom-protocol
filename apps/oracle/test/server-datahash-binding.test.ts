@@ -13,7 +13,7 @@ import { createServer, request, type Server, type IncomingMessage } from "node:h
 import type { AddressInfo } from "node:net";
 import { SigningKey, keccak256 } from "ethers";
 
-import { InMemoryStorage } from "../src/storage.js";
+import { InMemoryStorage } from "@axiom/config/storage/0g";
 import { TeeSigner, ownershipMessageHash } from "../src/signer.js";
 import { startServer } from "../src/server.js";
 import { aesGcmEncrypt, concatEncrypted } from "../src/crypto/aes-gcm.js";

@@ -20,7 +20,7 @@ import {
 ///         this file pins 5 canonical cases against the LIVE verifier.
 contract V12C3ValidUntilTest is Test {
     // ─── Live fork (0G Galileo testnet, chainId 16602) ──────────────────
-    string internal constant GALILEO_RPC = "https://0g-galileo-testnet.drpc.org";
+    string internal constant GALILEO_RPC = "https://evmrpc-testnet.0g.ai";
     uint256 internal constant GALILEO_CHAIN_ID = 16_602;
 
     // The LIVE v2 AxiomTeeVerifier deployment. Verified 2026-06-16 (Wave E-5).

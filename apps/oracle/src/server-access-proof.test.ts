@@ -8,7 +8,7 @@ import { Wallet, getBytes } from "ethers";
 
 import { startServer } from "./server.js";
 import { TeeSigner, accessMessageHash } from "./signer.js";
-import { InMemoryStorage } from "./storage.js";
+import { InMemoryStorage } from "@axiom/config/storage/0g";
 
 const TEST_PRIV_HEX = "0x" + "11".repeat(32);
 const RECEIVER_PRIV_HEX = "0x" + "22".repeat(32);

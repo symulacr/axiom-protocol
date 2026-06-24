@@ -45,7 +45,7 @@ contract FuzzAxiomStrategyVaultTest is StdInvariant, Test {
         // Pin the live fork at the canonical block from the task spec.
         //   https://book.getfoundry.sh/forge/fork-testing
         //   https://book.getfoundry.sh/reference/config/testing#fork
-        vm.createSelectFork("https://0g-galileo-testnet.drpc.org", 38_748_015);
+        vm.createSelectFork("https://evmrpc-testnet.0g.ai", 38_748_015);
 
         vault   = AxiomStrategyVault(LIVE_VAULT);
         nft     = IAxiomAgentNFT(LIVE_NFT);

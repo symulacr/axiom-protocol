@@ -76,3 +76,11 @@ export function makeRealSubmitter(daGrpcUrl: string): SubmitFn {
     return { txHash: requestId, seq: 0n };
   };
 }
+
+/** Build a SubmitFn from an existing DaClient (singleton pattern). */
+export function makeRealSubmitterFromClient(client: DaClient): SubmitFn {
+  return async (bytes: Uint8Array, _event: AxiomEvent) => {
+    const { requestId } = await client.disperseBlob(bytes);
+    return { txHash: requestId, seq: 0n };
+  };
+}

@@ -38,7 +38,7 @@ contract FuzzAxiomTeeVerifierTest is StdInvariant, Test {
 
     // ─── Fork bookkeeping ────────────────────────────────────────────────
     uint256 internal forkId;
-    string  internal constant RPC = "https://0g-galileo-testnet.drpc.org";
+    string  internal constant RPC = "https://evmrpc-testnet.0g.ai";
 
     // ─── Default deadline (1 day in the future, inside maxProofAgeSeconds=7d) ──
     uint256 internal constant DEFAULT_VALID_UNTIL_OFFSET = 1 days;

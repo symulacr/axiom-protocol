@@ -2,28 +2,9 @@
 
 import { type ContractTransactionReceipt, type TransactionResponse, type Wallet, type JsonRpcProvider, type Log, type EventLog } from "ethers";
 import { TypedContract } from "@axiom/config/types/contract";
+import { PAYMENT_PROCESSOR_ABI } from "@axiom/config/abis";
 
-// AxiomPaymentProcessor ABI — standalone, non-upgradeable.
-
-const PAYMENT_PROCESSOR_ABI: readonly string[] = [
-  "function payForAgent(uint256 agentTokenId, uint256 amount)",
-  "function payComputeProvider(address provider, uint256 amount)",
-  "function withdrawAgentEarnings()",
-  "function setRoyaltyBps(uint256 agentTokenId, uint256 bps)",
-  "function setRoyaltyBpsPermitted(uint256 agentTokenId, uint256 bps)",
-  "function protocolTreasury() view returns (address)",
-  "function protocolFeeBps() view returns (uint256)",
-  "function paymentToken() view returns (address)",
-  "function royaltyBpsOf(uint256) view returns (uint256)",
-  "function royaltyBpsSet(uint256) view returns (bool)",
-  "function agentEarningsOf(address) view returns (uint256)",
-  "event PaymentProcessed(uint256 indexed agentTokenId, address indexed payer, address indexed creator, uint256 amount, uint256 creatorCut, uint256 protocolCut)",
-  "event ComputeProviderPaid(address indexed provider, uint256 amount)",
-  "event EarningsWithdrawn(address indexed creator, uint256 amount)",
-  "event RoyaltySet(uint256 indexed agentTokenId, uint256 bps)",
-] as const;
-
-// Minimal ERC-20 ABI for approval pre-flight.
+// Minimal ERC-20 ABI for approval pre-flight (not exported from config package).
 const ERC20_ABI: readonly string[] = [
   "function approve(address spender, uint256 amount) returns (bool)",
   "function allowance(address owner, address spender) view returns (uint256)",
