@@ -1,6 +1,7 @@
 import { getDefaultConfig } from '@rainbow-me/rainbowkit';
 import { http } from 'wagmi';
 import { galileo, aristotle } from './chains.js';
+import { GALILEO_CHAIN_ID, ARISTOTLE_CHAIN_ID, resolveRpcUrl } from "@axiom/config/networks";
 
 // Read from localStorage (Settings page), fall back to env vars / defaults.
 const storedWcProjectId =
@@ -12,8 +13,8 @@ const storedRpcUrl =
     ? (window.localStorage.getItem('axiom.rpcUrl') ?? '')
     : '';
 
-const galileoRpc = storedRpcUrl || 'https://evmrpc-testnet.0g.ai';
-const aristotleRpc = storedRpcUrl || 'https://evmrpc.0g.ai';
+const galileoRpc = storedRpcUrl || resolveRpcUrl(GALILEO_CHAIN_ID);
+const aristotleRpc = storedRpcUrl || resolveRpcUrl(ARISTOTLE_CHAIN_ID);
 
 export const wagmiConfig = getDefaultConfig({
   appName: 'Axiom Protocol',
