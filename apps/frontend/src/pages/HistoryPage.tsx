@@ -1,6 +1,6 @@
 // HistoryPage — connected wallet activity timeline.
 
-import { GALILEO_CHAIN_ID, ARISTOTLE_CHAIN_ID } from "@axiom/config/networks";
+import { resolveBlockExplorerUrl } from "@axiom/config/networks";
 import { useCallback, type ReactElement } from 'react';
 import { useAccount, useChainId } from 'wagmi';
 import { useEventHistory, type AxiomEvent } from '../hooks/useEventHistory.js';
@@ -39,14 +39,9 @@ function explorerTxUrl(
   chainId: number,
   txHash: string,
 ): string | null {
-  switch (chainId) {
-    case GALILEO_CHAIN_ID:
-      return `https://chainscan-galileo.0g.ai/tx/${txHash}`;
-    case ARISTOTLE_CHAIN_ID:
-      return `https://chainscan.0g.ai/tx/${txHash}`;
-    default:
-      return null;
-  }
+  const base = resolveBlockExplorerUrl(chainId);
+  if (base === null) return null;
+  return `${base}/tx/${txHash}`;
 }
 
 /**

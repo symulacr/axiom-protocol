@@ -17,7 +17,6 @@
     "run-e2e": "pnpm --filter @axiom/oracle build && pnpm build && node --import tsx src/cli/run-e2e.ts"
   },
   "dependencies": {
-    "@0gfoundation/0g-storage-ts-sdk": "^1.2.10",
     "@axiom/config": "workspace:*",
     "@axiom/oracle": "workspace:*",
     "cors": "^2.8.6",

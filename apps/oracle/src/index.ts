@@ -3,6 +3,7 @@ import { Wallet } from "ethers";
 import { TeeSigner, type Eip712Domain } from "./signer.js";
 import { InMemoryStorage, ZeroGStorage, type StorageAdapter } from "@axiom/config/storage/0g";
 import { startServer } from "./server.js";
+export { startServer } from "./server.js";
 import { loadEnv } from "./env.js";
 import { oracleEnvSchema } from "./env-schema.js";
 import { toViemHex } from "@axiom/config/types/hex";

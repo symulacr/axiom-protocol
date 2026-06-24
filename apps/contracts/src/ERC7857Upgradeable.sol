@@ -145,9 +145,7 @@ abstract contract ERC7857Upgradeable is IERC7857, ERC721Upgradeable {
         address from = _ownerOf(tokenId);
         if (from == address(0)) revert ERC721NonexistentToken(tokenId);
         _checkAuthorized(from, _msgSender(), tokenId);
-        _proofCheck(from, to, tokenId, proofs);
-        _transfer(from, to, tokenId);
-        emit Transferred(tokenId, from, to);
+        _transfer(from, to, tokenId, proofs);
     }
 
     function _intelligentDatasOf(uint256 /*tokenId*/) internal view virtual returns (IntelligentData[] memory) {

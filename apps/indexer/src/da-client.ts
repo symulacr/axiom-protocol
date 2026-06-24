@@ -84,6 +84,10 @@ export class DaClient {
       // Reconnect backoff bounds (library handles actual retry loop)
       "grpc.initial_reconnect_backoff_ms": 1_000,
       "grpc.max_reconnect_backoff_ms": 60_000,
+      // Keepalive pings to detect dead connections
+      "grpc.keepalive_time_ms": 10_000,
+      "grpc.keepalive_timeout_ms": 5_000,
+      "grpc.keepalive_permit_without_calls": 1,
       // Enable automatic retry for UNAVAILABLE etc.
       "grpc.enable_retries": 1,
       // Message size limits (64 MiB — covers max 31 MiB blob + metadata)
