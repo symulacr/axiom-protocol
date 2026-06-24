@@ -29,12 +29,8 @@ apps/contracts/broadcast/
 forge-cache/
 .gas-snapshot
 
-# ── Research probe artifacts ────────────────────────────────
-.omc/research/probe_*.sh
-.omc/research/run*.sh
-.omc/research/runner.sh
-.omc/research/*-probe.txt
-.omc/research/live-endpoint-test-results.txt
+# ── Research reports (generated, not source) ───────────────
+.omc/research/
 
 # ── Next.js / Vite / React ─────────────────────────────────
 .next/
