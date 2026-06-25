@@ -39,12 +39,238 @@ function useAutoClear(
   }, [status, setStatus, ms]);
 }
 
-const formRowStyle: React.CSSProperties = {
-  display: 'flex',
-  gap: 8,
-  alignItems: 'center',
-  marginTop: 8,
-};
+const formRowClassName = "flex items-center gap-sm mt-sm";
+
+// ---------------------------------------------------------------------------
+// Extracted sub-components
+// ---------------------------------------------------------------------------
+
+function PaymentConfigDisplay({
+  config,
+  initError,
+}: {
+  config: PaymentConfig | null;
+  initError: string | null;
+}): ReactElement {
+  return (
+    <>
+      {initError !== null && (
+        <Alert variant="error" style={{ marginBottom: 'var(--space-lg)' }}>
+          {initError}
+        </Alert>
+      )}
+      <h3>Payment Config</h3>
+      {config === null ? (
+        <Spinner size={16} />
+      ) : (
+        <dl>
+          <dt>Payment Token</dt>
+          <dd>
+            <MonoLabel title={config.paymentToken}>
+              {truncateHex(config.paymentToken)}
+            </MonoLabel>
+          </dd>
+          <dt>Protocol Fee</dt>
+          <dd>{config.protocolFeeBps} bps</dd>
+          <dt>Protocol Treasury</dt>
+          <dd>
+            <MonoLabel title={config.protocolTreasury}>
+              {truncateHex(config.protocolTreasury)}
+            </MonoLabel>
+          </dd>
+        </dl>
+      )}
+    </>
+  );
+}
+
+function PaymentForm({
+  isPayLoading,
+  payAmount,
+  payStatus,
+  payError,
+  onPayAmountChange,
+  onPay,
+}: {
+  isPayLoading: boolean;
+  payAmount: string;
+  payStatus: ActionStatus;
+  payError: string | null;
+  onPayAmountChange: (value: string) => void;
+  onPay: () => void;
+}): ReactElement {
+  return (
+    <>
+      <h3>Pay for Agent</h3>
+      <p className="text-xs text-muted">
+        Amount is in the payment token&apos;s smallest unit (e.g. 6-decimal
+        USDC micro-units).
+      </p>
+      <div className={formRowClassName}>
+        <Input
+          type="number"
+          inputMode="numeric"
+          min="0"
+          step="1"
+          placeholder="amount (wei)"
+          value={payAmount}
+          onChange={(e): void => {
+            onPayAmountChange(e.target.value);
+          }}
+          style={{ flex: 1 }}
+        />
+        <Button
+          variant="primary"
+          disabled={isPayLoading || payAmount === ''}
+          onClick={onPay}
+          style={{ minWidth: '140px' }}
+        >
+          {payStatus === 'pending' ? <Spinner size={16} /> : 'Pay'}
+        </Button>
+      </div>
+      {payStatus === 'success' && <Alert variant="success">Payment submitted.</Alert>}
+      {payStatus === 'error' && (
+        <Alert variant="error">{payError ?? 'Payment failed.'}</Alert>
+      )}
+    </>
+  );
+}
+
+function EarningsSection({
+  earnings,
+  isWithdrawPending,
+  withdrawStatus,
+  showWithdrawConfirm,
+  withdrawActionError,
+  onWithdrawRequest,
+  onWithdrawCancel,
+  onWithdrawConfirm,
+}: {
+  earnings: EarningsInfo | null;
+  isWithdrawPending: boolean;
+  withdrawStatus: ActionStatus;
+  showWithdrawConfirm: boolean;
+  withdrawActionError: string | null;
+  onWithdrawRequest: () => void;
+  onWithdrawCancel: () => void;
+  onWithdrawConfirm: () => void;
+}): ReactElement {
+  return (
+    <>
+      <h3>Earnings</h3>
+      {earnings === null ? (
+        <Spinner size={16} />
+      ) : (
+        <dl>
+          <dt>Creator</dt>
+          <dd>
+            <MonoLabel title={earnings.creator}>
+              {earnings.creator === ethersZero
+                ? PLACEHOLDER
+                : truncateHex(earnings.creator)}
+            </MonoLabel>
+          </dd>
+          <dt>Accumulated Earnings</dt>
+          <dd>
+            <MonoLabel>{earnings.earnings}</MonoLabel>
+          </dd>
+        </dl>
+      )}
+      <div className={formRowClassName}>
+        <Button
+          variant="secondary"
+          disabled={isWithdrawPending || withdrawStatus === 'pending'}
+          onClick={onWithdrawRequest}
+          style={{ minWidth: '140px' }}
+        >
+          {withdrawStatus === 'pending' ? <Spinner size={16} /> : 'Withdraw'}
+        </Button>
+      </div>
+      <Modal
+        open={showWithdrawConfirm}
+        onClose={onWithdrawCancel}
+        title="Confirm Withdrawal"
+      >
+        <p>Withdraw all agent earnings? This will send funds to your wallet.</p>
+        <div className="flex justify-end" style={{ gap: 10, marginTop: 20 }}>
+          <Button variant="secondary" onClick={onWithdrawCancel}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={onWithdrawConfirm}>
+            Confirm
+          </Button>
+        </div>
+      </Modal>
+      {withdrawStatus === 'success' && (
+        <Alert variant="success">Withdrawal submitted.</Alert>
+      )}
+      {withdrawStatus === 'error' && (
+        <Alert variant="error">
+          {withdrawActionError ?? 'Withdrawal failed.'}
+        </Alert>
+      )}
+    </>
+  );
+}
+
+function RoyaltySection({
+  isRoyaltyLoading,
+  royaltyBps,
+  royaltyStatus,
+  royaltyError,
+  onRoyaltyBpsChange,
+  onSetRoyalty,
+}: {
+  isRoyaltyLoading: boolean;
+  royaltyBps: string;
+  royaltyStatus: ActionStatus;
+  royaltyError: string | null;
+  onRoyaltyBpsChange: (value: string) => void;
+  onSetRoyalty: () => void;
+}): ReactElement {
+  return (
+    <>
+      <h3>Royalty</h3>
+      <p className="text-xs text-muted">
+        Basis points (0\u201310000). 250 = 2.5%. Only the agent creator
+        may set this on-chain.
+      </p>
+      <div className={formRowClassName}>
+        <Input
+          type="number"
+          min={0}
+          max={10000}
+          placeholder="bps (0\u201310000)"
+          value={royaltyBps}
+          onChange={(e): void => {
+            onRoyaltyBpsChange(e.target.value);
+          }}
+          style={{ flex: 1 }}
+        />
+        <Button
+          variant="primary"
+          disabled={isRoyaltyLoading || royaltyBps === ''}
+          onClick={onSetRoyalty}
+          style={{ minWidth: '140px' }}
+        >
+          {royaltyStatus === 'pending' ? <Spinner size={16} /> : 'Set Royalty'}
+        </Button>
+      </div>
+      {royaltyStatus === 'success' && (
+        <Alert variant="success">Royalty updated.</Alert>
+      )}
+      {royaltyStatus === 'error' && (
+        <Alert variant="error">
+          {royaltyError ?? 'Royalty update failed.'}
+        </Alert>
+      )}
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main component
+// ---------------------------------------------------------------------------
 
 export type PaymentPanelProps = {
   tokenId: bigint;
@@ -182,156 +408,47 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
       <SectionTitle>Payments</SectionTitle>
 
       {/* 1. Payment config */}
-      {initError !== null && (
-        <Alert variant="error" style={{ marginBottom: 'var(--space-lg)' }}>
-          {initError}
-        </Alert>
-      )}
-      <h3>Payment Config</h3>
-      {config === null ? (
-        <Spinner size={16} />
-      ) : (
-        <dl>
-          <dt>Payment Token</dt>
-          <dd>
-            <MonoLabel title={config.paymentToken}>
-              {truncateHex(config.paymentToken)}
-            </MonoLabel>
-          </dd>
-          <dt>Protocol Fee</dt>
-          <dd>{config.protocolFeeBps} bps</dd>
-          <dt>Protocol Treasury</dt>
-          <dd>
-            <MonoLabel title={config.protocolTreasury}>
-              {truncateHex(config.protocolTreasury)}
-            </MonoLabel>
-          </dd>
-        </dl>
-      )}
+      <PaymentConfigDisplay config={config} initError={initError} />
 
       {/* 2. Pay-for-agent form */}
-      <h3>Pay for Agent</h3>
-      <p style={{ fontSize: 'var(--text-xs)', color: COLORS.textMuted }}>
-        Amount is in the payment token&apos;s smallest unit (e.g. 6-decimal
-        USDC micro-units).
-      </p>
-      <div style={formRowStyle}>
-        <Input
-          type="number"
-          inputMode="numeric"
-          min="0"
-          step="1"
-          placeholder="amount (wei)"
-          value={payAmount}
-          onChange={(e): void => {
-            setPayAmount(e.target.value);
-            setPayStatus('idle');
-            setPayError(null);
-          }}
-          style={{ flex: 1 }}
-        />
-        <Button
-          variant="primary"
-          disabled={isPayLoading || payAmount === ''}
-          onClick={(): void => {
-            void handlePay();
-          }}
-          style={{ minWidth: '140px' }}
-        >
-          {payStatus === 'pending' ? <Spinner size={16} /> : 'Pay'}
-        </Button>
-      </div>
-      {payStatus === 'success' && <Alert variant="success">Payment submitted.</Alert>}
-      {payStatus === 'error' && <Alert variant="error">{payError ?? 'Payment failed.'}</Alert>}
+      <PaymentForm
+        isPayLoading={isPayLoading}
+        payAmount={payAmount}
+        payStatus={payStatus}
+        payError={payError}
+        onPayAmountChange={(v): void => {
+          setPayAmount(v);
+          setPayStatus('idle');
+          setPayError(null);
+        }}
+        onPay={(): void => { void handlePay(); }}
+      />
 
       {/* 3. Earnings + withdraw */}
-      <h3>Earnings</h3>
-      {earnings === null ? (
-        <Spinner size={16} />
-      ) : (
-        <dl>
-          <dt>Creator</dt>
-          <dd>
-            <MonoLabel title={earnings.creator}>
-              {earnings.creator === ethersZero
-                ? PLACEHOLDER
-                : truncateHex(earnings.creator)}
-            </MonoLabel>
-          </dd>
-          <dt>Accumulated Earnings</dt>
-          <dd>
-            <MonoLabel>{earnings.earnings}</MonoLabel>
-          </dd>
-        </dl>
-      )}
-      <div style={formRowStyle}>
-        <Button
-          variant="secondary"
-          disabled={isWithdrawPending || withdrawStatus === 'pending'}
-          onClick={(): void => {
-            setShowWithdrawConfirm(true);
-          }}
-          style={{ minWidth: '140px' }}
-        >
-          {withdrawStatus === 'pending' ? <Spinner size={16} /> : 'Withdraw'}
-        </Button>
-      </div>
-      <Modal
-        open={showWithdrawConfirm}
-        onClose={() => setShowWithdrawConfirm(false)}
-        title="Confirm Withdrawal"
-      >
-        <p>Withdraw all agent earnings? This will send funds to your wallet.</p>
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
-          <Button variant="secondary" onClick={() => setShowWithdrawConfirm(false)}>
-            Cancel
-          </Button>
-          <Button
-            variant="primary"
-            onClick={() => {
-              void handleWithdraw();
-            }}
-          >
-            Confirm
-          </Button>
-        </div>
-      </Modal>
-      {withdrawStatus === 'success' && <Alert variant="success">Withdrawal submitted.</Alert>}
-      {withdrawStatus === 'error' && <Alert variant="error">{withdrawActionError ?? 'Withdrawal failed.'}</Alert>}
+      <EarningsSection
+        earnings={earnings}
+        isWithdrawPending={isWithdrawPending}
+        withdrawStatus={withdrawStatus}
+        showWithdrawConfirm={showWithdrawConfirm}
+        withdrawActionError={withdrawActionError}
+        onWithdrawRequest={(): void => { setShowWithdrawConfirm(true); }}
+        onWithdrawCancel={(): void => { setShowWithdrawConfirm(false); }}
+        onWithdrawConfirm={(): void => { void handleWithdraw(); }}
+      />
 
       {/* 4. Royalty setting form */}
-      <h3>Royalty</h3>
-      <p style={{ fontSize: 'var(--text-xs)', color: COLORS.textMuted }}>
-        Basis points (0\u201310000). 250 = 2.5%. Only the agent creator
-        may set this on-chain.
-      </p>
-      <div style={formRowStyle}>
-        <Input
-          type="number"
-          min={0}
-          max={10000}
-          placeholder="bps (0\u201310000)"
-          value={royaltyBps}
-          onChange={(e): void => {
-            setRoyaltyBps(e.target.value);
-            setRoyaltyStatus('idle');
-            setRoyaltyError(null);
-          }}
-          style={{ flex: 1 }}
-        />
-        <Button
-          variant="primary"
-          disabled={isRoyaltyLoading || royaltyBps === ''}
-          onClick={(): void => {
-            void handleSetRoyalty();
-          }}
-          style={{ minWidth: '140px' }}
-        >
-          {royaltyStatus === 'pending' ? <Spinner size={16} /> : 'Set Royalty'}
-        </Button>
-      </div>
-      {royaltyStatus === 'success' && <Alert variant="success">Royalty updated.</Alert>}
-      {royaltyStatus === 'error' && <Alert variant="error">{royaltyError ?? 'Royalty update failed.'}</Alert>}
+      <RoyaltySection
+        isRoyaltyLoading={isRoyaltyLoading}
+        royaltyBps={royaltyBps}
+        royaltyStatus={royaltyStatus}
+        royaltyError={royaltyError}
+        onRoyaltyBpsChange={(v): void => {
+          setRoyaltyBps(v);
+          setRoyaltyStatus('idle');
+          setRoyaltyError(null);
+        }}
+        onSetRoyalty={(): void => { void handleSetRoyalty(); }}
+      />
 
       {/* Hook-level errors for fetch operations. */}
       {fetchError !== null && (

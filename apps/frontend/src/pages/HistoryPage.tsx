@@ -102,10 +102,10 @@ const renderEventBody: EventRenderer = (event): ReactElement => {
 
   return (
     <div>
-      <div style={{ marginBottom: '6px', color: COLORS.textPrimary }}>
-        <span style={{ fontWeight: 'var(--fw-semibold)' }}>chain</span> {event.chainId}
+      <div className="text-primary" style={{ marginBottom: '6px' }}>
+        <span className="fw-semibold">chain</span> {event.chainId}
         {' \u00b7 '}
-        <span style={{ fontWeight: 'var(--fw-semibold)' }}>tx</span>{' '}
+        <span className="fw-semibold">tx</span>{' '}
         {explorer === null ? (
           <code>{txShort}</code>
         ) : (
@@ -119,7 +119,7 @@ const renderEventBody: EventRenderer = (event): ReactElement => {
           </a>
         )}
         {' \u00b7 '}
-        <span style={{ fontWeight: 'var(--fw-semibold)' }}>source</span> {event.source}
+        <span className="fw-semibold">source</span> {event.source}
       </div>
       {isSpecialEvent ? (
         <pre
@@ -137,15 +137,15 @@ const renderEventBody: EventRenderer = (event): ReactElement => {
           {formatPayload(event.eventName, event.payload)}
         </pre>
       ) : keys.length === 0 ? (
-        <span style={{ color: COLORS.textMuted }}>{PLACEHOLDER}</span>
+        <span className="text-muted">{PLACEHOLDER}</span>
       ) : (
-        <dl style={{ margin: 0, fontSize: 'var(--text-xs)', color: COLORS.textMuted }}>
+        <dl className="m-0 text-xs text-muted">
           {keys.map((key) => {
             const val = payload[key];
             return (
-              <div key={key} style={{ display: 'flex', gap: 8, marginBottom: 2 }}>
-                <dt style={{ fontWeight: 'var(--fw-semibold)', minWidth: 100 }}>{key}</dt>
-                <dd style={{ margin: 0, fontFamily: 'monospace', wordBreak: 'break-all' }}>
+              <div key={key} className="flex" style={{ gap: 8, marginBottom: 2 }}>
+                <dt className="fw-semibold" style={{ minWidth: 100 }}>{key}</dt>
+                <dd className="m-0" style={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>
                   {typeof val === 'object' ? JSON.stringify(val) : String(val)}
                 </dd>
               </div>
@@ -247,8 +247,8 @@ export function HistoryPage(): ReactElement {
 
   return (
     <main>
-      <p style={{ margin: 0, marginBottom: 'var(--space-md)' }}>
-        <Link to="/" style={{ color: COLORS.textDim, textDecoration: 'none', fontSize: '0.875rem' }}>
+      <p className="m-0 mb-md">
+        <Link to="/" className="text-dim text-sm" style={{ textDecoration: 'none' }}>
           ← Back
         </Link>
       </p>
@@ -267,14 +267,15 @@ export function HistoryPage(): ReactElement {
         <ErrorAlert message={`Couldn't load events: ${error.message}`} />
       )}
 
-      <label htmlFor="event-filter" style={{ color: COLORS.textMuted, fontSize: 'var(--text-sm)', marginRight: 8 }}>Event Type</label>
+      <label htmlFor="event-filter" className="text-muted text-sm" style={{ marginRight: 8 }}>Event Type</label>
       <select
         id="event-filter"
         value={eventFilter}
         onChange={e => setEventFilter(e.target.value)}
-        style={{ padding: '8px 12px', borderRadius: 'var(--radius-md)', marginBottom: 16,
+        className="radius-md w-full"
+        style={{ padding: '8px 12px', marginBottom: 16,
           border: `1px solid ${COLORS.border}`, background: COLORS.surface,
-          color: COLORS.text, width: '100%', boxSizing: 'border-box' }}
+          color: COLORS.text, boxSizing: 'border-box' }}
       >
         <option value="">All events</option>
         {eventNames.map(name => (
@@ -284,7 +285,7 @@ export function HistoryPage(): ReactElement {
 
       {groupKeys.length === 0 ? (
         <Card style={{ textAlign: 'center', padding: 'var(--space-3xl) var(--space-xl)' }}>
-          <p style={{ color: COLORS.textMuted, fontSize: 'var(--text-sm)', margin: 0, fontWeight: 'var(--fw-regular)', lineHeight: 'var(--lh-normal)' }}>
+          <p className="text-muted text-sm m-0 fw-regular">
             {isLoading
               ? 'Loading events…'
               : 'No events recorded yet for this wallet. Activity will appear here as agents are minted, transferred, and executed.'}
@@ -298,20 +299,18 @@ export function HistoryPage(): ReactElement {
             <section
               key={name}
               aria-label={`${name} events`}
-              style={{ marginBottom: 'var(--space-2xl)' }}
+              className="mb-2xl"
             >
               <h2
+                className="text-xs fw-semibold text-dim"
                 style={{
-                  fontSize: 'var(--text-xs)',
-                  fontWeight: 'var(--fw-semibold)',
-                  color: COLORS.textDim,
                   textTransform: 'uppercase',
                   letterSpacing: '0.08em',
                   marginBottom: 'var(--space-md)',
                 }}
               >
                 {EVENT_LABELS[name] ?? name}
-                <span style={{ marginLeft: 'var(--space-sm)', color: COLORS.textDim, fontWeight: 'var(--fw-regular)' }}>
+                <span className="text-dim fw-regular" style={{ marginLeft: 'var(--space-sm)' }}>
                   ({group.length})
                 </span>
               </h2>
@@ -325,7 +324,7 @@ export function HistoryPage(): ReactElement {
         })
       )}
 
-      <footer style={{ marginTop: 'var(--space-2xl)', color: COLORS.textDim, fontSize: 'var(--text-sm)' }}>
+      <footer className="mt-2xl text-dim text-sm">
         {allEvents.length} event{allEvents.length === 1 ? '' : 's'} total
       </footer>
       </ConnectedGuard>

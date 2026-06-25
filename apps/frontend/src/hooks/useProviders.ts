@@ -1,6 +1,4 @@
-import { useState } from 'react';
-import { usePoll } from './usePoll.js';
-import { apiFetch } from '../utils/apiFetch.js';
+import { usePolledApi } from './usePolledApi.js';
 
 export type Provider = {
   address: `0x${string}`;
@@ -17,22 +15,15 @@ export function useProviders(): {
   error: Error | null;
   refetch: () => void;
 } {
-  const [providers, setProviders] = useState<Provider[]>([]);
-  const [error, setError] = useState<Error | null>(null);
-
-  const { isLoading, refetch } = usePoll(
-    async (signal): Promise<Provider[]> => {
-      const { services } = await apiFetch<{ services: Provider[] }>('/v1/compute/providers', {
-        method: 'GET',
-        signal,
-        timeout: 10000,
-      });
-      return services;
-    },
-    setProviders,
-    setError,
-    { intervalMs: POLL_INTERVAL_MS },
+  const query = usePolledApi<{ services: Provider[] }>(
+    '/v1/compute/providers',
+    { refetchInterval: POLL_INTERVAL_MS },
   );
 
-  return { providers, isLoading, error, refetch };
+  return {
+    providers: query.data?.services ?? [],
+    isLoading: query.isFetching,
+    error: query.error,
+    refetch: () => void query.refetch(),
+  };
 }
