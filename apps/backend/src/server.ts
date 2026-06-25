@@ -9,17 +9,15 @@ import { ethers, type TransactionResponse, type Wallet } from "ethers";
 import { TypedContract } from "@axiom/config/types/contract";
 import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
 import { bigintReplacer } from "@axiom/config/types/bigint";
-import { ZeroGStorage } from "@axiom/config/storage/0g";
-import { pickOGNetwork } from "@axiom/config/networks";
+
 // Compute via 0G Router API — see compute/router.ts
-import { createRouterClient, getComputeBaseUrl } from "./compute/router.js";
+import { getComputeBaseUrl } from "./compute/router.js";
 import { discoverProviders } from "./compute/provider-discovery.js";
 import { AGENT_NFT_ABI, VAULT_ABI } from "@axiom/config/abis";
-import type OpenAI from "openai";
+
 import { StrategyRunner, type StrategySpec, type MarketSignal, type TickResult } from "./orchestrator/index.js";
 import { DefaultSignerOracleClient } from "./oracle/client.js";
 import { accessMessageHash, type AccessProofInput, type Eip712Domain, DEFAULT_EIP712_DOMAIN } from "@axiom/oracle/signer";
-import { loadEnv } from "./env.js";
 import { getSharedProvider } from "./provider.js";
 import { createApiKeyAuth } from "@axiom/config/middleware/auth";
 import { getEventStore } from "./events/store.js";
@@ -29,7 +27,6 @@ import { createHealthRouter } from "./routers/health.js";
 import { createRoute } from "./routers/route-factory.js";
 import { broadcast, getClients, registerClient, unregisterClient, sendToTopic, type ConnectedClient } from "./ws/broadcaster.js";
 import {
-  chatCompletionsSchema,
   mintSchema,
   transferBodySchema,
   depositSchema,
@@ -56,8 +53,6 @@ type StrategyVaultMethods = {
   balanceOf(tokenId: bigint): Promise<bigint>;
   strategyOf(tokenId: bigint): Promise<[string, bigint, bigint, bigint]>;
 };
-
-loadEnv();
 
 export interface ServerConfig {
   bind: string;
@@ -125,11 +120,6 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
   app.set("json replacer", bigintReplacer);
 
   const ogChainId = config.env?.AXIOM_CHAIN_ID ?? GALILEO_CHAIN_ID; // 16602 = Galileo
-  const _storage = new ZeroGStorage({
-    indexerRpc: config.storageRpc ?? pickOGNetwork(ogChainId)?.storageRpc ?? "https://indexer-storage-testnet-turbo.0g.ai",
-    evmRpc: config.evmRpc,
-    signer: config.signer,
-  });
   const oracle = new DefaultSignerOracleClient({ baseUrl: config.oracleBaseUrl });
   // EIP-712 domain for AccessProof (must match on-chain).
   const eip712Domain: Eip712Domain = {
@@ -137,16 +127,22 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
     verifyingContract: config.addresses?.verifier ?? DEFAULT_EIP712_DOMAIN.verifyingContract,
   };
   let orchestratorHandle: StrategyRunner | null = null;
-  try {
-    orchestratorHandle = new StrategyRunner({
-      evmRpc: config.evmRpc,
-      signer: config.signer,
-      oracleBaseUrl: config.oracleBaseUrl,
-      chainId: ogChainId,
-      addresses: config.addresses,
-    });
-  } catch (err) {
-    console.warn(`[server] StrategyRunner init failed: ${err instanceof Error ? err.message : String(err)}`);
+
+  function getOrCreateOrchestrator(): StrategyRunner | null {
+    if (!orchestratorHandle) {
+      try {
+        orchestratorHandle = new StrategyRunner({
+          evmRpc: config.evmRpc,
+          signer: config.signer,
+          oracleBaseUrl: config.oracleBaseUrl,
+          chainId: ogChainId,
+          addresses: config.addresses,
+        });
+      } catch (err) {
+        console.warn(`[server] StrategyRunner init failed: ${err instanceof Error ? err.message : err} — will retry on next tick`);
+      }
+    }
+    return orchestratorHandle;
   }
   const provider = getSharedProvider();
   // PaymentProcessor client: lazily resolved; paymentToken read from contract.
@@ -174,12 +170,12 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
     const wsClients = getClients();
     for (const c of wsClients) {
       if (c.socket.readyState !== c.socket.OPEN) continue;
-      if ((c as any).missedPings >= MAX_MISSED_PINGS) {
+      if (c.missedPings >= MAX_MISSED_PINGS) {
         c.socket.terminate();
         wsClients.delete(c);
         continue;
       }
-      (c as any).missedPings = ((c as any).missedPings ?? 0) + 1;
+      c.missedPings++;
       c.socket.ping();
     }
   }, HEARTBEAT_INTERVAL);
@@ -203,133 +199,15 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
         const id = String(m.id ?? "");
         const address = providerMap.get(id.toLowerCase())
           ?? ethers.keccak256(ethers.toUtf8Bytes(`model:${id}`)).slice(0, 42) as `0x${string}`;
-        return { address, model: id, endpoint: routerBaseUrl };
+        const pricingRaw = m.pricing;
+        const price = pricingRaw && typeof pricingRaw === 'object'
+          ? String((pricingRaw as Record<string, unknown>).prompt ?? '')
+          : undefined;
+        return { address, model: id, endpoint: routerBaseUrl, price };
       });
       res.json({ services });
     } catch (err) {
       next(err);
-    }
-  });
-
-  app.post("/v1/compute/chat/completions", async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const {
-        model, messages,
-        max_tokens, max_completion_tokens, temperature, top_p, stop,
-        stream: _stream, stream_options,
-        tools, tool_choice, parallel_tool_calls,
-        response_format,
-        frequency_penalty, presence_penalty,
-        reasoning_effort, logprobs, top_logprobs,
-        seed, n, user, metadata, store, service_tier,
-      } = chatCompletionsSchema.parse(req.body);
-
-      let client: OpenAI;
-      try {
-        client = await createRouterClient();
-      } catch (keyErr) {
-        res.status(401).json({
-          error: "No compute credentials configured",
-          detail: (keyErr instanceof Error ? keyErr.message : String(keyErr)),
-          help: "Set AXIOM_COMPUTE_API_KEY (sk-*, Router) or AXIOM_COMPUTE_DIRECT_KEY (app-sk-*, Direct) in .env",
-        });
-        return;
-      }
-
-      const completionParams: Record<string, unknown> = {
-        model, messages,
-        max_tokens: max_tokens,
-        max_completion_tokens: max_completion_tokens,
-        temperature: temperature ?? 0.7,
-        top_p: top_p,
-        stop: stop,
-        stream: _stream ?? false,
-        ...(_stream && stream_options ? { stream_options } : {}),
-        ...(tools && tools.length > 0 ? { tools, tool_choice: tool_choice ?? "auto", parallel_tool_calls } : {}),
-        ...(response_format ? { response_format } : {}),
-        ...(frequency_penalty != null ? { frequency_penalty } : {}),
-        ...(presence_penalty != null ? { presence_penalty } : {}),
-        ...(reasoning_effort ? { reasoning_effort } : {}),
-        ...(logprobs ? { logprobs, top_logprobs } : {}),
-        ...(seed != null ? { seed } : {}),
-        ...(n ? { n } : {}),
-        ...(user ? { user } : {}),
-        ...(metadata ? { metadata } : {}),
-        ...(store ? { store } : {}),
-        ...(service_tier ? { service_tier } : {}),
-      };
-
-      // Pre-encode SSE frame prefix/suffix (saves ~50% string allocation per token)
-      const FRAME_PREFIX = 'data: ';
-      const FRAME_SUFFIX = '\n\n';
-      if (_stream) {
-        res.setHeader("Content-Type", "text/event-stream");
-        res.setHeader("Cache-Control", "no-cache");
-        res.setHeader("Connection", "keep-alive");
-        res.setHeader("X-Accel-Buffering", "no");
-
-        const stream = await (client.chat.completions.create as any)({
-          ...completionParams,
-          stream: true,
-        }) as AsyncIterable<unknown>;
-
-        let aborted = false;
-        req.on("close", () => { aborted = true; });
-
-        try {
-          for await (const chunk of stream) {
-            if (aborted) break;
-            res.write(FRAME_PREFIX + JSON.stringify(chunk, bigintReplacer) + FRAME_SUFFIX);
-          }
-          res.write(FRAME_PREFIX + "[DONE]" + FRAME_SUFFIX);
-          res.end();
-        } catch (streamErr) {
-          if (!res.headersSent) {
-            res.status(502).json({ error: "Stream error", detail: streamErr instanceof Error ? streamErr.message : String(streamErr) });
-          } else {
-            res.write(FRAME_PREFIX + JSON.stringify({ error: "Stream error", detail: streamErr instanceof Error ? streamErr.message : String(streamErr) }, bigintReplacer) + FRAME_SUFFIX);
-            res.write(FRAME_PREFIX + "[DONE]" + FRAME_SUFFIX);
-            res.end();
-          }
-        }
-        return;
-      }
-
-      const completionWithResponse = await (client.chat.completions.create as any)(
-        { ...completionParams, stream: false },
-      );
-      const { data: completion, response: rawResponse } = await (completionWithResponse as any).withResponse();
-
-      const x0gTrace = rawResponse?.headers?.get?.("x-0g-trace");
-      const traceParsed = x0gTrace ? ((() => { try { return JSON.parse(x0gTrace); } catch { return null; } })()) : null;
-
-      res.json({
-        id: completion.id,
-        object: "chat.completion",
-        created: completion.created,
-        model: completion.model,
-        choices: ((completion.choices as Array<Record<string, unknown>>) ?? []).map((c: Record<string, unknown>) => ({
-          index: c.index,
-          message: { role: (c.message as Record<string, unknown>)?.role, content: (c.message as Record<string, unknown>)?.content ?? "" },
-          finish_reason: c.finish_reason,
-        })),
-        usage: completion.usage
-          ? {
-              prompt_tokens: (completion.usage as Record<string, unknown>).prompt_tokens,
-              completion_tokens: (completion.usage as Record<string, unknown>).completion_tokens,
-              total_tokens: (completion.usage as Record<string, unknown>).total_tokens,
-            }
-          : undefined,
-        ...(traceParsed ? { x_0g_trace: traceParsed } : {}),
-      });
-    } catch (err) {
-      const status = (err as { status?: number }).status ?? 502;
-      const message = err instanceof Error ? err.message : String(err);
-      if (status >= 400 && status < 500) {
-        res.status(status).json({ error: message });
-      } else {
-        next(err); // defer to global handler for 5xx
-      }
     }
   });
 
@@ -372,7 +250,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
         }
       }
       res.json({ ok: true, agentNft, owner, tokenId, dataHash: encryptedStrategyUri, txHash: receipt?.hash ?? tx.hash });
-      broadcast("agent.mint", { owner, tokenId, dataHash: encryptedStrategyUri });
+      broadcast("Transfer", { owner, tokenId, dataHash: encryptedStrategyUri });
     } catch (err) {
       next(err);
     }
@@ -463,6 +341,10 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
         const sealedKeyOrDefault: `0x${string}` = (sealedKeyIn && sealedKeyIn.length >= 2 ? sealedKeyIn : ("0x" + "00".repeat(32))) as `0x${string}`;
         const sealedKey = sealedKeyOrDefault;
         if (!sealedKeyIn || sealedKeyIn.length < 2) {
+          if (process.env.NODE_ENV === 'production') {
+            res.status(400).json({ error: "sealedKey is required in production" });
+            return;
+          }
           console.warn(`[transfer] No sealedKey provided for token ${id} — using zero-padded fallback (devnet only)`);
         }
         const tee = await oracle.signOwnership({
@@ -522,6 +404,10 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
       const sealedKeyOrDefault: `0x${string}` = (sealedKeyIn && sealedKeyIn.length >= 2 ? sealedKeyIn : ("0x" + "00".repeat(32))) as `0x${string}`;
       const finalSealedKey = sealedKeyOrDefault;
       if (!sealedKeyIn || sealedKeyIn.length < 2) {
+        if (process.env.NODE_ENV === 'production') {
+          res.status(400).json({ error: "sealedKey is required in production" });
+          return;
+        }
         console.warn(`[transfer] No sealedKey provided for token ${id} — using zero-padded fallback (devnet only)`);
       }
       const tee = await oracle.signOwnership({
@@ -570,7 +456,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
     path: "/v1/agents/:id/pay",
     schema: paySchema,
     requireId: true,
-    broadcast: "agent.pay",
+    broadcast: "PaymentProcessed",
   }, async (parsed: z.infer<typeof paySchema>, _req, _res, { id, config: _cfg }) => {
     const client = await getPayment();
     const { receipt, event } = await client.payForAgent(BigInt(id), BigInt(parsed.amount));
@@ -679,29 +565,31 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
     const limit = limitRaw !== undefined && Number.isInteger(limitRaw) && limitRaw > 0 ? limitRaw : 1000;
     const sinceRaw = typeof req.query.since === "string" ? Number(req.query.since) : undefined;
     const since = sinceRaw !== undefined && !isNaN(sinceRaw) && sinceRaw > 0 ? sinceRaw : undefined;
-    const all = events.getAll(limit, since);
     const eventName = req.query.eventName as string | undefined;
-    const filtered = eventName
-      ? all.filter((e: any) => e.eventName === eventName)
-      : all;
+    const all = events.getAll(limit, since, eventName);
     const owner = req.query.owner as string | undefined;
     const ownerFiltered = owner
-      ? filtered.filter((e: any) => {
+      ? all.filter((e: any) => {
           const payload = typeof e.payload === "string" ? JSON.parse(e.payload) : e.payload;
           return payload?.owner === owner || payload?.to === owner || payload?.from === owner;
         })
-      : filtered;
+      : all;
     return { events: ownerFiltered };
   }, config);
 
-  createRoute(app, { method: "get", path: "/v1/agents/:id/events", requireId: true }, async (_parsed, req, _res, { id, config: _config }) => {
-    const eventName = typeof req.query.eventName === "string" ? req.query.eventName : undefined;
-    const source = typeof req.query.source === "string" ? req.query.source : undefined;
-    const limitRaw = typeof req.query.limit === "string" ? Number(req.query.limit) : undefined;
-    const limit = limitRaw !== undefined && Number.isInteger(limitRaw) && limitRaw > 0 ? limitRaw : undefined;
-    const matches = events.queryByAgent({ tokenId: id!, eventName, source, limit });
-    return { tokenId: id, events: matches };
-  }, config);
+  // DEPRECATED: Redirect to /v1/agents/:id/history.
+  app.get("/v1/agents/:id/events", (req, res) => {
+    const queryString = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+    res.redirect(301, `/v1/agents/${req.params.id}/history${queryString}`);
+  });
+
+  app.get('/v1/protocol/stats', (_req, res) => {
+    res.json({
+      vaultCount: 1,
+      nftStandard: 7857,
+      label: '0G Protocol',
+    });
+  });
 
   app.post("/v1/orchestrator/tick", async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -735,14 +623,36 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
         payload: signalPayload ?? { strategyHint: strategyHint ?? "hold" },
         emittedAt: Date.now(),
       };
-      if (!orchestratorHandle) { res.status(503).json({ error: "Orchestrator not available" }); return; }
+      const runner = getOrCreateOrchestrator();
+      if (!runner) { res.status(503).json({ error: "Orchestrator not available" }); return; }
 
       let orchestratorResult: TickResult;
 
       if (shouldStream) {
+        const topic = `tick.${agentTokenId}`;
+        // Check if any connected client subscribes to this topic
+        let hasSubscribers = false;
+        for (const c of getClients()) {
+          if (c.topics.has(topic) || c.topics.has('*')) {
+            hasSubscribers = true;
+            break;
+          }
+        }
+
+        if (!hasSubscribers) {
+          // No WS subscribers — fall back to non-streaming JSON response
+          try {
+            const runner = getOrCreateOrchestrator();
+            if (!runner) { res.status(503).json({ error: "Orchestrator not available" }); return; }
+            orchestratorResult = await runner.runTick(spec, signal);
+            res.status(200).json(orchestratorResult);
+            return;
+          } catch (err) { next(err); return; }
+        }
+
         // Streaming via WSS callback — tokens burst after inference completes
         // (before on-chain settlement), making streaming more responsive
-        orchestratorHandle.runTick(spec, signal, (chunk) => {
+        runner.runTick(spec, signal, (chunk) => {
           if (chunk.type === 'token') {
             sendToTopic(`tick.${agentTokenId}`, chunk);
           }
@@ -762,7 +672,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
         res.status(202).json({ ok: true, streamTopic: `tick.${agentTokenId}` });
         return; // Exit early — streaming handled asynchronously via WSS
       } else {
-        orchestratorResult = await orchestratorHandle.runTick(spec, signal);
+        orchestratorResult = await runner.runTick(spec, signal);
         res.status(200).json(orchestratorResult);
       }
 
@@ -781,7 +691,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
     schema: depositSchema,
     requireId: true,
     requireAddress: "vault",
-    broadcast: "vault.deposit",
+    broadcast: "Deposited",
   }, async (parsed: z.infer<typeof depositSchema>, _req, _res, { id, config: cfg }) => {
     const vaultAddr = cfg.addresses!.vault!;
     const { valueWei, depositor } = parsed;
@@ -795,7 +705,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
     schema: strategySchema,
     requireId: true,
     requireAddress: "vault",
-    broadcast: "vault.strategy",
+    broadcast: "StrategySet",
   }, async (parsed: z.infer<typeof strategySchema>, _req, _res, { id, config: cfg }) => {
     const vaultAddr = cfg.addresses!.vault!;
     const { merkleRoot, dailyLimitWei } = parsed;
@@ -807,7 +717,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
   createRoute(routeRouter, {
     path: "/v1/compute/pay",
     schema: computePaySchema,
-    broadcast: "compute.pay",
+    broadcast: "ComputeProviderPaid",
   }, async (parsed: z.infer<typeof computePaySchema>, _req, _res, { config: _cfg }) => {
     const { provider, amount } = parsed;
     const client = await getPayment();
@@ -857,10 +767,9 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
       const topics = new Set(url.searchParams.getAll("topic").slice(0, 20));
       // Topic subscriptions support '*' wildcard: subscribing to `data.*` matches
       // all topics starting with `data.` (e.g. `data.token`, `data.signal`).
-      const client: ConnectedClient = { socket: ws as WebSocket, topics };
-      (ws as any).missedPings = 0;
+      const client: ConnectedClient = { socket: ws as WebSocket, topics, missedPings: 0 };
       registerClient(client);
-      ws.on("pong", () => { (ws as any).missedPings = 0; });
+      ws.on("pong", () => { client.missedPings = 0; });
       ws.send(JSON.stringify({ topic: "hello", payload: { topics: Array.from(topics) }, ts: Date.now() }));
       ws.on("close", () => unregisterClient(client));
       ws.on("error", (err) => {

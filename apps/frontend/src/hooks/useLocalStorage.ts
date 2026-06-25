@@ -18,7 +18,8 @@ export function useLocalStorage<T>(
       if (stored !== null) {
         setValue(JSON.parse(stored) as T);
       }
-    } catch {
+    } catch (err) {
+      console.warn('[useLocalStorage] Failed to parse stored value for key:', key, err);
       // Corrupt or disabled — keep default.
     }
   }, [key]);
@@ -31,7 +32,8 @@ export function useLocalStorage<T>(
       }
       try {
         window.localStorage.setItem(key, JSON.stringify(next));
-      } catch {
+      } catch (err) {
+        console.warn('[useLocalStorage] Failed to write key:', key, err);
         // Storage full or disabled — in-memory value is still updated.
       }
     },

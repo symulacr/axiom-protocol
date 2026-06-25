@@ -89,7 +89,9 @@ contracts-verify-galileo:
 	cd apps/contracts && npx hardhat verify --network galileo
 
 contracts-deploy-mainnet:
-	cd apps/contracts && forge script script/Deploy.s.sol --rpc-url $${OG_RPC_URL:-https://evmrpc.0g.ai} --broadcast --slow
+	cd apps/contracts && forge script script/DeployAristotle.s.sol --rpc-url $${AXIOM_EVM_RPC:-https://evmrpc.0g.ai} --broadcast --slow
+
+contracts-deploy-aristotle: contracts-deploy-mainnet
 
 contracts-verify-mainnet:
 	cd apps/contracts && npx hardhat verify --network mainnet

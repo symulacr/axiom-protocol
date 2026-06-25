@@ -4,6 +4,7 @@ import { bigintReplacer } from "@axiom/config/types/bigint";
 export interface ConnectedClient {
   socket: WebSocket;
   topics: Set<string>;
+  missedPings: number;
 }
 
 export const MAX_WS_CLIENTS = 1000;

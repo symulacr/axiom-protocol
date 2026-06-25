@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAsyncAction } from './useAsyncAction.js';
 import { apiFetch, STREAM_TIMEOUT } from '../utils/apiFetch.js';
 import { BACKEND_URL } from '../config/env.js';
@@ -39,6 +39,7 @@ export type TickStreamOptions = {
 export function useOrchestratorTick(): {
   tick: (req: TickRequest) => Promise<TickResult>;
   tickStream: (req: TickRequest, opts: TickStreamOptions) => Promise<TickResult>;
+  cancelTick: () => void;
   isLoading: boolean;
   isStreaming: boolean;
   streamedTokens: string;
@@ -49,20 +50,57 @@ export function useOrchestratorTick(): {
   const { execute, isLoading, error } = useAsyncAction();
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamedTokens, setStreamedTokens] = useState('');
+  const streamedRef = useRef('');
   const [streamingError, setStreamingError] = useState<string | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const resetStream = useCallback(() => {
     setStreamedTokens('');
+    streamedRef.current = '';
     setStreamingError(null);
   }, []);
 
+  // Flush accumulated tokens from ref to state on a 50ms debounced interval
+  // to avoid re-rendering on every individual WebSocket token.
+  useEffect(() => {
+    const flush = () => {
+      const batch = streamedRef.current;
+      if (batch) {
+        streamedRef.current = '';
+        const MAX_STREAMED_TOKENS = 50000;
+        setStreamedTokens((prev) => {
+          const next = prev + batch;
+          return next.length > MAX_STREAMED_TOKENS
+            ? next.slice(next.length - MAX_STREAMED_TOKENS)
+            : next;
+        });
+      }
+    };
+
+    if (!isStreaming) {
+      flush();
+      return;
+    }
+
+    const id = setInterval(flush, 50);
+    return () => {
+      clearInterval(id);
+      flush();
+    };
+  }, [isStreaming]);
+
   const tick = useCallback(
     async (req: TickRequest): Promise<TickResult> => {
+      abortControllerRef.current?.abort();
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
       return execute(async (signal) => {
+        const combinedSignal = AbortSignal.any([signal, controller.signal]);
         const data = await apiFetch<TickResult>('/v1/orchestrator/tick', {
           method: 'POST',
           body: JSON.stringify(req),
-          signal,
+          signal: combinedSignal,
           timeout: 30000,
         });
         return data;
@@ -73,13 +111,18 @@ export function useOrchestratorTick(): {
 
   const tickStream = useCallback(
     async (req: TickRequest, opts: TickStreamOptions): Promise<TickResult> => {
+      abortControllerRef.current?.abort();
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
       setIsStreaming(true);
       setStreamedTokens('');
+      streamedRef.current = '';
       setStreamingError(null);
       const onChunk = opts.onChunk ?? (() => {});
       try {
         return await execute(async (signal) => {
-          const signals: AbortSignal[] = [signal, AbortSignal.timeout(STREAM_TIMEOUT)];
+          const signals: AbortSignal[] = [signal, controller.signal, AbortSignal.timeout(STREAM_TIMEOUT)];
           if (opts.signal) signals.push(opts.signal);
           const combinedSignal = AbortSignal.any(signals);
 
@@ -126,7 +169,7 @@ export function useOrchestratorTick(): {
 
                   if (payload.type === 'token') {
                     onChunk(payload.content);
-                    setStreamedTokens((prev) => prev + payload.content);
+                    streamedRef.current += payload.content;
                   } else if (payload.type === 'complete') {
                     accumulatedResult = { ...payload };
                     ws.close();
@@ -137,11 +180,13 @@ export function useOrchestratorTick(): {
                     reject(new Error(payload.error));
                   }
                 } catch {
+                  console.warn('[useOrchestratorTick] Unparseable WS message:', msg.data);
                   /* skip unparseable */
                 }
               };
 
               ws.onerror = () => {
+                ws.close();
                 reject(new Error('WebSocket connection failed for tick stream'));
               };
             });
@@ -158,5 +203,10 @@ export function useOrchestratorTick(): {
     [execute],
   );
 
-  return { tick, tickStream, isLoading, isStreaming, streamedTokens, streamingError, error, resetStream };
+  const cancelTick = useCallback(() => {
+    abortControllerRef.current?.abort();
+    setIsStreaming(false);
+  }, []);
+
+  return { tick, tickStream, cancelTick, isLoading, isStreaming, streamedTokens, streamingError, error, resetStream };
 }

@@ -1,5 +1,5 @@
 import { defineChain } from 'viem';
-import { GALILEO_CHAIN_ID, ARISTOTLE_CHAIN_ID, resolveRpcUrl } from "@axiom/config/networks";
+import { GALILEO_CHAIN_ID, ARISTOTLE_CHAIN_ID } from "@axiom/config/networks";
 
 export const galileo = defineChain({
   id: GALILEO_CHAIN_ID,
@@ -7,7 +7,7 @@ export const galileo = defineChain({
   nativeCurrency: { name: 'OG', symbol: 'OG', decimals: 18 },
   rpcUrls: {
     default: {
-      http: [resolveRpcUrl(GALILEO_CHAIN_ID)],
+      http: ["https://evmrpc-testnet.0g.ai"],
     },
   },
   blockExplorers: {
@@ -25,7 +25,7 @@ export const aristotle = defineChain({
   nativeCurrency: { name: 'OG', symbol: 'OG', decimals: 18 },
   rpcUrls: {
     default: {
-      http: [resolveRpcUrl(ARISTOTLE_CHAIN_ID)],
+      http: ["https://evmrpc-testnet.0g.ai"],
     },
   },
   blockExplorers: {

@@ -21,7 +21,6 @@
     "./abis/iTransferFrom": "./dist/abis/iTransferFrom.js",
     "./middleware/auth": "./dist/middleware/auth.js",
     "./env-schema": "./dist/env-schema.js",
-    "./api": "./dist/api/index.js",
     "./storage/0g": "./dist/storage/0g.js"
   },
   "scripts": {

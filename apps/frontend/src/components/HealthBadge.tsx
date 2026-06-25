@@ -2,6 +2,7 @@ import { useCallback, useState, type ReactElement } from 'react';
 import { apiFetch } from '../utils/apiFetch.js';
 import { usePoll } from '../hooks/usePoll.js';
 import { BACKEND_URL } from '../config/env.js';
+import { COLORS } from './ui.js';
 
 type HealthStatus = 'unknown' | 'ok' | 'down';
 
@@ -9,7 +10,8 @@ async function checkHealth(signal: AbortSignal): Promise<boolean> {
   try {
     const data = await apiFetch<{ ok?: unknown }>('/health', { signal, timeout: 5000 });
     return data?.ok === true;
-  } catch {
+  } catch (err) {
+    console.warn('[HealthBadge] Health check failed:', err);
     return false;
   }
 }
@@ -31,7 +33,7 @@ export function HealthBadge(): ReactElement {
   });
 
   const color =
-    status === 'ok' ? '#6b9e6b' : status === 'down' ? '#c85a5a' : '#6a6a6a';
+    status === 'ok' ? COLORS.success : status === 'down' ? COLORS.danger : COLORS.textDim;
   const label =
     status === 'ok'
       ? 'Backend healthy'
@@ -50,12 +52,12 @@ export function HealthBadge(): ReactElement {
         alignItems: 'center',
         gap: 7,
         padding: '5px 10px',
-        borderRadius: 999,
-        fontSize: 12,
-        fontWeight: 500,
-        color: '#8a8a8a',
+        borderRadius: 'var(--radius-xl)',
+        fontSize: 'var(--text-xs)',
+        fontWeight: 'var(--fw-medium)',
+        color: COLORS.textMuted,
         background: 'rgba(255,255,255,0.04)',
-        border: '1px solid #2a2a2a',
+        border: `1px solid ${COLORS.border}`,
         transition: 'all 0.2s ease',
       }}
     >

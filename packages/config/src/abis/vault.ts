@@ -1,5 +1,6 @@
 export const VAULT_ABI = [
   "function deposit(uint256 tokenId) payable",
+  "function withdraw(uint256 tokenId, uint256 amount)",
   "function balanceOf(uint256) view returns (uint256)",
   "function strategyOf(uint256) view returns (bytes32 root, uint256 dailyLimit, uint256 dailySpent, uint64 resetDay)",
   "function setStrategy(uint256 tokenId, bytes32 root, uint256 dailyLimit)",

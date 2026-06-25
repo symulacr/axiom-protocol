@@ -8,12 +8,21 @@ import {
   type ReactElement,
 } from 'react';
 import { isAddress } from 'viem';
+import { toast } from 'sonner';
 import { useAccount } from 'wagmi';
 import { useTransfer, type TransferInput } from '../hooks/useTransfer.js';
 import { COLORS, Button, Alert, MonoLabel, Input, Modal, Card } from './ui.js';
 
 const RECEIVER_PUBKEY_HEX_LENGTH = 130;
 
+
+const PHASE_LABELS: Record<string, string> = {
+  idle: 'Prepare Transfer',
+  challenge: 'Challenge',
+  signing: 'Sign in Wallet',
+  finalizing: 'Finalize',
+  confirming: 'Confirm on-chain',
+};
 
 function freshNonceHex(byteLength = 32): `0x${string}` {
   const bytes = new Uint8Array(byteLength);
@@ -57,14 +66,6 @@ export function TransferModal({
 
   const { address: from, isConnected } = useAccount();
   const { prepare, confirm, isLoading, error, signature, reset, transferPhase } = useTransfer();
-
-  const PHASE_LABELS: Record<string, string> = {
-    idle: 'Prepare Transfer',
-    challenge: 'Challenge',
-    signing: 'Sign in Wallet',
-    finalizing: 'Finalize',
-    confirming: 'Confirm on-chain',
-  };
 
   const retryGuidance = useMemo<string | null>(() => {
     if (!error) return null;
@@ -111,6 +112,7 @@ export function TransferModal({
   );
   const handleTransferred = useCallback(
     (txHash: `0x${string}`): void => {
+      toast.success(`Transfer ${txHash.slice(0, 10)}... confirmed`);
       onTransferred?.(txHash);
       onSuccess?.(txHash);
     },
@@ -187,7 +189,7 @@ export function TransferModal({
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : String(err));
     }
-  }, [buildInput, confirm, handleTransferred, setOpen, signature]);
+  }, [buildInput, confirm, handleTransferred, setOpen, signature, tokenId, receiverAddress]);
 
   const onEdit = useCallback((): void => {
     reset();
@@ -230,6 +232,24 @@ export function TransferModal({
     setOpen(false);
   }, [setOpen]);
 
+  const mergedError =
+    submitError !== null ? (
+      <Alert variant="error" style={{ marginTop: 16 }}>
+        {submitError}
+      </Alert>
+    ) : error !== null ? (
+      <Alert variant="error" style={{ marginTop: 16 }}>
+        {error.message}
+        {retryGuidance !== null && (
+          <>
+            <br />
+            <br />
+            {retryGuidance}
+          </>
+        )}
+      </Alert>
+    ) : null;
+
   return (
     <>
       {triggerLabel !== undefined && triggerLabel !== '' && (
@@ -250,8 +270,8 @@ export function TransferModal({
             display: 'flex',
             gap: 6,
             alignItems: 'center',
-            fontSize: 12,
-            fontWeight: 500,
+            fontSize: 'var(--text-xs)',
+            fontWeight: 'var(--fw-medium)',
           }}
         >
           {(['idle', 'challenge', 'signing', 'finalizing', 'confirming'] as const).map((p, i, arr) => (
@@ -270,7 +290,7 @@ export function TransferModal({
               }}
             >
               {i > 0 && (
-                <span style={{ color: COLORS.textDim, fontSize: 10 }}>→</span>
+                <span style={{ color: COLORS.textDim, fontSize: 'var(--text-xs)' }}>→</span>
               )}
               <span
                 style={{
@@ -279,8 +299,8 @@ export function TransferModal({
                       ? 'rgba(191, 144, 86, 0.12)'
                       : 'transparent',
                   padding: '2px 8px',
-                  borderRadius: 4,
-                  fontWeight: transferPhase === p ? 600 : 400,
+                  borderRadius: 'var(--radius-sm)',
+                  fontWeight: transferPhase === p ? 'var(--fw-semibold)' : 'var(--fw-regular)',
                 }}
               >
                 {PHASE_LABELS[p]}
@@ -292,14 +312,14 @@ export function TransferModal({
         {phase === 'form' ? (
           <form onSubmit={onSubmit}>
 
-            <p style={{ color: COLORS.textMuted, fontSize: 13, lineHeight: 1.6, fontWeight: 300, marginBottom: 20 }}>
+            <p style={{ color: COLORS.textMuted, fontSize: 'var(--text-sm)', lineHeight: 1.6, fontWeight: 'var(--fw-light)', marginBottom: 20 }}>
               The receiver signs an EIP-712 AccessProof and the TEE oracle signs
               the OwnershipProof. You'll confirm the on-chain
               <code style={{ color: COLORS.bronzeLight }}> iTransferFrom </code>
               transaction in the next step.
             </p>
 
-            <label htmlFor={`${formId}-to`} style={{ display: 'block', marginTop: 16, fontWeight: 500, fontSize: 13, color: COLORS.textPrimary }}>
+            <label htmlFor={`${formId}-to`} style={{ display: 'block', marginTop: 16, fontWeight: 'var(--fw-medium)', fontSize: 'var(--text-sm)', color: COLORS.textPrimary }}>
               Receiver address
             </label>
             <Input
@@ -316,7 +336,7 @@ export function TransferModal({
               <Alert variant="error" style={{ marginTop: 4 }}>{addressError}</Alert>
             )}
 
-            <label htmlFor={`${formId}-pubkey`} style={{ display: 'block', marginTop: 16, fontWeight: 500, fontSize: 13, color: COLORS.textPrimary }}>
+            <label htmlFor={`${formId}-pubkey`} style={{ display: 'block', marginTop: 16, fontWeight: 'var(--fw-medium)', fontSize: 'var(--text-sm)', color: COLORS.textPrimary }}>
               Receiver pubkey (64 raw bytes, no 0x04 prefix)
             </label>
             <textarea
@@ -332,14 +352,13 @@ export function TransferModal({
                 padding: '10px 14px',
                 marginTop: 6,
                 fontFamily: "'SF Mono', monospace",
-                fontSize: 13,
+                fontSize: 'var(--text-sm)',
                 border: `1px solid ${COLORS.borderStrong}`,
-                borderRadius: 6,
+                borderRadius: 'var(--radius-md)',
                 background: COLORS.bg,
                 color: COLORS.text,
                 boxSizing: 'border-box',
                 resize: 'vertical',
-                outline: 'none',
               }}
               required
             />
@@ -347,7 +366,7 @@ export function TransferModal({
               <Alert variant="error" style={{ marginTop: 4 }}>{pubKeyError}</Alert>
             )}
 
-            <label htmlFor={`${formId}-nonce`} style={{ display: 'block', marginTop: 16, fontWeight: 500, fontSize: 13, color: COLORS.textPrimary }}>
+            <label htmlFor={`${formId}-nonce`} style={{ display: 'block', marginTop: 16, fontWeight: 'var(--fw-medium)', fontSize: 'var(--text-sm)', color: COLORS.textPrimary }}>
               Access proof nonce
             </label>
             <Input
@@ -356,19 +375,19 @@ export function TransferModal({
               readOnly
               style={{ width: '100%', boxSizing: 'border-box', fontFamily: "'SF Mono', monospace", marginTop: 6, color: COLORS.bronzeLight }}
             />
-            <p style={{ color: COLORS.textDim, fontSize: 11, margin: '4px 0 0', fontWeight: 300 }}>
+            <p style={{ color: COLORS.textDim, fontSize: 'var(--text-xs)', margin: '4px 0 0', fontWeight: 'var(--fw-light)' }}>
               32 random bytes generated locally. A new nonce is minted each time the modal opens.
             </p>
 
             <details style={{ marginTop: 16 }}>
-              <summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 500, color: COLORS.textMuted }}>
+              <summary style={{ cursor: 'pointer', fontSize: 'var(--text-sm)', fontWeight: 'var(--fw-medium)', color: COLORS.textMuted }}>
                 Re-encrypt for receiver (optional re-key)
               </summary>
-              <p style={{ color: COLORS.textDim, fontSize: 11, margin: '8px 0', fontWeight: 300 }}>
+              <p style={{ color: COLORS.textDim, fontSize: 'var(--text-xs)', margin: '8px 0', fontWeight: 'var(--fw-light)' }}>
                 Supply the current AES data key and 0G Storage URI to trigger a full
                 re-key. The oracle re-encrypts and seals a fresh key. Leave blank for sign-only.
               </p>
-              <label htmlFor={`${formId}-oldkey`} style={{ display: 'block', marginTop: 8, fontWeight: 500, fontSize: 13, color: COLORS.textPrimary }}>
+              <label htmlFor={`${formId}-oldkey`} style={{ display: 'block', marginTop: 8, fontWeight: 'var(--fw-medium)', fontSize: 'var(--text-sm)', color: COLORS.textPrimary }}>
                 Old data encryption key (base64)
               </label>
               <Input
@@ -380,7 +399,7 @@ export function TransferModal({
                 spellCheck={false}
                 style={{ width: '100%', boxSizing: 'border-box', fontFamily: "'SF Mono', monospace", marginTop: 6 }}
               />
-              <label htmlFor={`${formId}-olduri`} style={{ display: 'block', marginTop: 8, fontWeight: 500, fontSize: 13, color: COLORS.textPrimary }}>
+              <label htmlFor={`${formId}-olduri`} style={{ display: 'block', marginTop: 8, fontWeight: 'var(--fw-medium)', fontSize: 'var(--text-sm)', color: COLORS.textPrimary }}>
                 Old data URI (0x…)
               </label>
               <Input
@@ -397,21 +416,7 @@ export function TransferModal({
               )}
             </details>
 
-            {error !== null && (
-              <Alert variant="error" style={{ marginTop: 16 }}>
-                {error.message}
-              </Alert>
-            )}
-            {retryGuidance !== null && (
-              <Alert variant="warning" style={{ marginTop: 8 }}>
-                {retryGuidance}
-              </Alert>
-            )}
-            {submitError !== null && (
-              <Alert variant="error" style={{ marginTop: 12 }}>
-                {submitError}
-              </Alert>
-            )}
+            {mergedError}
 
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
               <Button variant="secondary" onClick={cancel} disabled={isLoading}>
@@ -429,11 +434,11 @@ export function TransferModal({
               void onConfirm();
             }}
           >
-            <h2 id={`${formId}-title`} style={{ marginTop: 0, fontSize: 22, fontWeight: 700, color: COLORS.text, letterSpacing: '-0.02em' }}>
+            <h2 id={`${formId}-title`} style={{ marginTop: 0, fontSize: 'var(--text-xl)', fontWeight: 'var(--fw-bold)', color: COLORS.text, letterSpacing: '-0.02em' }}>
               Confirm Transfer
             </h2>
 
-            <p style={{ color: COLORS.textMuted, fontSize: 13, lineHeight: 1.6, fontWeight: 300, marginBottom: 20 }}>
+            <p style={{ color: COLORS.textMuted, fontSize: 'var(--text-sm)', lineHeight: 1.6, fontWeight: 'var(--fw-light)', marginBottom: 20 }}>
               Review the proof details, then submit the on-chain
               <code style={{ color: COLORS.bronzeLight }}> iTransferFrom </code>
               transaction. Your wallet will ask for the final signature.
@@ -445,22 +450,22 @@ export function TransferModal({
                 {signature.newDataHash !== undefined && (
                   <>
                     <br />
-                    New data hash: <MonoLabel style={{ fontSize: 11 }}>{signature.newDataHash}</MonoLabel>
+                    New data hash: <MonoLabel style={{ fontSize: 'var(--text-xs)' }}>{signature.newDataHash}</MonoLabel>
                   </>
                 )}
               </Alert>
             )}
 
             {signature !== null && (
-              <Card style={{ background: COLORS.bg, padding: '12px 16px', borderRadius: 8, marginTop: 12, fontSize: 12, color: COLORS.textMuted }}>
+              <Card style={{ background: COLORS.bg, padding: '12px 16px', borderRadius: 'var(--radius-lg)', marginTop: 12, fontSize: 'var(--text-xs)', color: COLORS.textMuted }}>
                 <strong style={{ color: COLORS.text }}>OwnershipProof</strong> (TEE-signed)
                 <br />
-                Signer: <MonoLabel style={{ fontSize: 11 }}>{signature.signer ?? '—'}</MonoLabel>
+                Signer: <MonoLabel style={{ fontSize: 'var(--text-xs)' }}>{signature.signer ?? '—'}</MonoLabel>
                 {signature.ownershipProof !== undefined && (
                   <>
                     <br />
                     Valid until:{' '}
-                    <code style={{ color: COLORS.bronzeLight, fontSize: 11 }}>
+                    <code style={{ color: COLORS.bronzeLight, fontSize: 'var(--text-xs)' }}>
                       {new Date(Number(signature.ownershipProof.validUntil) * 1000).toISOString()}
                     </code>
                   </>
@@ -469,28 +474,18 @@ export function TransferModal({
             )}
 
             {signature !== null && signature.accessSigner !== undefined && (
-              <Card style={{ background: COLORS.bg, padding: '12px 16px', borderRadius: 8, marginTop: 8, fontSize: 12, color: COLORS.textMuted }}>
+              <Card style={{ background: COLORS.bg, padding: '12px 16px', borderRadius: 'var(--radius-lg)', marginTop: 8, fontSize: 'var(--text-xs)', color: COLORS.textMuted }}>
                 <strong style={{ color: COLORS.text }}>AccessProof</strong> (receiver-signed)
                 <br />
-                Recovered signer: <MonoLabel style={{ fontSize: 11 }}>{signature.accessSigner}</MonoLabel>
+                Recovered signer: <MonoLabel style={{ fontSize: 'var(--text-xs)' }}>{signature.accessSigner}</MonoLabel>
               </Card>
             )}
 
-            {error !== null && (
-              <Alert variant="error" style={{ marginTop: 16 }}>
-                {error.message}
-              </Alert>
-            )}
-            {retryGuidance !== null && (
-              <Alert variant="warning" style={{ marginTop: 8 }}>
-                {retryGuidance}
-              </Alert>
-            )}
-            {submitError !== null && (
-              <Alert variant="error" style={{ marginTop: 12 }}>
-                {submitError}
-              </Alert>
-            )}
+            {mergedError}
+
+            <p style={{ fontSize: 'var(--text-xs)', color: COLORS.textDim, margin: '12px 0 0' }}>
+              The on-chain transfer will incur gas costs.
+            </p>
 
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
               <Button variant="secondary" onClick={onEdit} disabled={isLoading}>
@@ -499,6 +494,7 @@ export function TransferModal({
               <Button variant="primary" type="submit" disabled={isLoading || signature === null}>
                 {isLoading ? 'Submitting…' : 'Confirm on-chain transfer'}
               </Button>
+
             </div>
           </form>
         )}
