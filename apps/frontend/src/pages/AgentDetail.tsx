@@ -1,7 +1,9 @@
-import { useState, type ReactElement } from 'react';
+import { useState, useMemo, type ReactElement } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAccount } from 'wagmi';
 import { useAgentMetadata } from '../hooks/useAgentMetadata.js';
+import { useEventHistory } from '../hooks/useEventHistory.js';
+import { EventTimeline } from '../components/EventTimeline.js';
 import { ExecutePanel } from '../components/ExecutePanel.js';
 import { PaymentPanel } from '../components/PaymentPanel.js';
 import { TransferModal } from '../components/TransferModal.js';
@@ -27,6 +29,13 @@ export function AgentDetail(): ReactElement {
 
   const metadata = useAgentMetadata(tokenId ?? 0n);
   const { data, isLoading: metaLoading, error: metaError } = metadata;
+
+  const { events } = useEventHistory({ pollIntervalMs: 15_000 });
+
+  const agentEvents = useMemo(
+    () => events.filter(ev => String((ev.payload as Record<string, unknown>)?.tokenId) === tokenId?.toString()),
+    [events, tokenId],
+  );
 
   const [transferOpen, setTransferOpen] = useState(false);
 
@@ -106,14 +115,32 @@ export function AgentDetail(): ReactElement {
         </Button>
       </Card>
 
-      <details style={{ marginTop: 'var(--space-xl)' }}>
-        <summary style={{ cursor: 'pointer', color: COLORS.bronzeLight, fontWeight: 'var(--fw-semibold)', fontSize: 'var(--text-sm)' }}>
-          Execute Strategy
-        </summary>
-        <div style={{ marginTop: 'var(--space-md)' }}>
-          <ExecutePanel tokenId={tokenId} />
-        </div>
-      </details>
+      {agentEvents.length > 0 && (
+        <Card style={{ marginBottom: 'var(--space-xl)' }}>
+          <SectionTitle>Agent Activity</SectionTitle>
+          <EventTimeline
+            events={agentEvents}
+            renderEvent={(ev) => {
+              if (ev.eventName === 'Tick') {
+                const p = ev.payload as Record<string, unknown>;
+                const action = String(p.action ?? '');
+                const actionColor = action === 'buy' ? '#6b9e6b' : action === 'sell' ? '#c85a5a' : COLORS.textMuted;
+                return (
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'center', fontSize: 'var(--text-sm)' }}>
+                    <strong style={{ color: actionColor, textTransform: 'uppercase' }}>{action}</strong>
+                    {p.amount !== undefined && p.amount !== null && <span style={{ color: COLORS.textMuted }}>amount: {String(p.amount)}</span>}
+                    <span style={{ color: COLORS.textDim }}>{String(p.durationMs ?? '')}ms</span>
+                  </div>
+                );
+              }
+              return <span style={{ color: COLORS.text }}>{ev.eventName}</span>;
+            }}
+          />
+        </Card>
+      )}
+
+      <SectionTitle style={{ marginBottom: 'var(--space-md)' }}>Execute Strategy</SectionTitle>
+      <ExecutePanel tokenId={tokenId} />
 
       <details style={{ marginTop: 'var(--space-md)' }}>
         <summary style={{ cursor: 'pointer', color: COLORS.bronzeLight, fontWeight: 'var(--fw-semibold)', fontSize: 'var(--text-sm)' }}>
