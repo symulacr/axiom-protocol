@@ -35,7 +35,9 @@ export function useAgents(): {
         timeout: 10000,
       });
       setAgents(data.agents ?? []);
-    }).catch(() => {});
+    }).catch((err: unknown) => {
+      console.warn('[useAgents] fetch failed:', err);
+    });
   }, [address, execute]);
 
   useEffect(() => {

@@ -1,21 +1,29 @@
-import type { ReactElement } from 'react';
+import { useMemo, useState, type ReactElement } from 'react';
 import { Link } from 'react-router-dom';
 import { useAccount } from 'wagmi';
 import { useAgents } from '../hooks/useAgents.js';
-import { COLORS, Skeleton, Card, Alert, PageHeader, ConnectedGuard } from '../components/ui.js';
+import { COLORS, Skeleton, Card, Alert, ErrorAlert, PageHeader, ConnectedGuard } from '../components/ui.js';
 
 export function AgentsBrowser(): ReactElement {
   const { address } = useAccount();
   const { agents, isLoading, error } = useAgents();
   const count = agents.length;
+  const [searchTerm, setSearchTerm] = useState('');
+  const filteredAgents = useMemo(
+    () => searchTerm
+      ? agents.filter(a =>
+          a.tokenId?.toString().includes(searchTerm) ||
+          a.owner?.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+      : agents,
+    [searchTerm, agents]
+  );
 
   if (error !== null) {
     return (
       <main>
         <PageHeader title="Your Agents" />
-        <Alert variant="error">
-          Couldn't load your agents from the chain. Check your connection and try again.
-        </Alert>
+        <ErrorAlert message="Couldn't load your agents from the chain. Check your connection and try again." />
       </main>
     );
   }
@@ -79,19 +87,60 @@ export function AgentsBrowser(): ReactElement {
 
   return (
     <main>
+      <p style={{ margin: 0, marginBottom: 'var(--space-md)' }}>
+        <Link to="/" style={{ color: COLORS.textDim, textDecoration: 'none', fontSize: '0.875rem' }}>
+          ← Back
+        </Link>
+      </p>
       <ConnectedGuard>
       <PageHeader
         title="Your Agents"
         subtitle={`${countLabel} owned by ${address !== undefined ? `${address.slice(0, 6)}\u2026${address.slice(-4)}` : 'this wallet'}`}
       />
-      <Card style={{ textAlign: 'center', padding: 'var(--space-3xl) var(--space-xl)' }}>
-        <p style={{ color: COLORS.textPrimary, fontSize: 'var(--text-lg)', margin: '0 0 0.5rem', fontWeight: 'var(--fw-semibold)' }}>
-          {countLabel}
-        </p>
-        <p style={{ color: COLORS.textMuted, fontSize: 'var(--text-sm)', margin: 0, fontWeight: 'var(--fw-regular)', lineHeight: 'var(--lh-normal)' }}>
-          Token-level details are not available on-chain (the contract does not support enumeration). Connect to the backend event store for a full token listing.
-        </p>
-      </Card>
+      <label htmlFor="agent-search" style={{ color: COLORS.textMuted, fontSize: 'var(--text-sm)' }}>Search Agents</label>
+      <input
+        id="agent-search"
+        type="text"
+        placeholder="Search agents by ID or owner..."
+        value={searchTerm}
+        onChange={e => setSearchTerm(e.target.value)}
+        style={{ width: '100%', padding: '8px 12px', borderRadius: 'var(--radius-md)',
+          border: `1px solid ${COLORS.border}`, background: COLORS.surface,
+          color: COLORS.text, marginBottom: 16, boxSizing: 'border-box' }}
+      />
+      {agents.length === 0 ? (
+        <p style={{ color: COLORS.textDim, textAlign: 'center', margin: 'var(--space-2xl) 0' }}>No agents found for this wallet</p>
+      ) : filteredAgents.length === 0 ? (
+        <p style={{ color: COLORS.textDim, textAlign: 'center', margin: 'var(--space-2xl) 0' }}>No agents match your search</p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {filteredAgents.map(agent => (
+            <Link
+              key={agent.tokenId}
+              to={`/agents/${agent.tokenId}`}
+              className="agent-card"
+              style={{
+                padding: '12px 16px',
+                borderRadius: 'var(--radius-lg)',
+                background: COLORS.surface,
+                color: COLORS.text,
+                textDecoration: 'none',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                border: `1px solid ${COLORS.border}`,
+                transition: 'border-color 0.18s ease',
+              }}
+
+            >
+              <span style={{ fontWeight: 'var(--fw-semibold)' }}>Agent #{agent.tokenId}</span>
+              <span style={{ color: COLORS.textDim, fontSize: '0.875rem' }}>
+                {agent.owner?.slice(0, 6)}...{agent.owner?.slice(-4)}
+              </span>
+            </Link>
+          ))}
+        </div>
+      )}
       </ConnectedGuard>
     </main>
   );

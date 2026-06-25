@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import type { Address } from 'viem';
 import { useAsyncAction } from './useAsyncAction.js';
+import { agentPayPath, agentEarningsPath, agentRoyaltyPath } from '../utils/apiPaths.js';
 import { apiFetch } from '../utils/apiFetch.js';
 
 export type PaymentConfig = {
@@ -23,12 +24,7 @@ export type AgentPayResult = {
   payment: unknown;
 };
 
-export type ComputePayResult = {
-  ok: true;
-  provider: Address;
-  amount: string;
-  txHash: `0x${string}`;
-};
+
 
 export type RoyaltyResult = {
   ok: true;
@@ -41,82 +37,92 @@ export type RoyaltyResult = {
 
 export type UsePaymentResult = {
   payForAgent: (tokenId: bigint, amount: string) => Promise<AgentPayResult>;
-  payComputeProvider: (provider: Address, amount: string) => Promise<ComputePayResult>;
+
   getEarnings: (tokenId: bigint) => Promise<EarningsInfo>;
   setRoyalty: (tokenId: bigint, bps: number) => Promise<RoyaltyResult>;
   getPaymentConfig: () => Promise<PaymentConfig>;
-  isLoading: boolean;
-  error: Error | null;
+  isPayLoading: boolean;
+  payError: Error | null;
+  isRoyaltyLoading: boolean;
+  royaltyError: Error | null;
+  isFetching: boolean;
+  fetchError: Error | null;
+  isEarningsLoading: boolean;
+  earningsError: Error | null;
+  resetPay: () => void;
+  resetRoyalty: () => void;
+  resetFetch: () => void;
+  resetEarnings: () => void;
 };
 
 export function usePayment(): UsePaymentResult {
-  const { execute, isLoading, error } = useAsyncAction();
+  const fetchAction = useAsyncAction();
+  const earningsAction = useAsyncAction();
+  const agentPayAction = useAsyncAction();
+  const royaltyAction = useAsyncAction();
 
   const payForAgent = useCallback(
     (tokenId: bigint, amount: string): Promise<AgentPayResult> =>
-      execute((signal) =>
-        apiFetch<AgentPayResult>(`/v1/agents/${tokenId.toString()}/pay`, {
+      agentPayAction.execute((signal) =>
+        apiFetch<AgentPayResult>(agentPayPath(tokenId), {
           method: 'POST',
           body: JSON.stringify({ amount }),
           signal,
         }),
       ),
-    [execute],
-  );
-
-  const payComputeProvider = useCallback(
-    (provider: Address, amount: string): Promise<ComputePayResult> =>
-      execute((signal) =>
-        apiFetch<ComputePayResult>('/v1/compute/pay', {
-          method: 'POST',
-          body: JSON.stringify({ provider, amount }),
-          signal,
-        }),
-      ),
-    [execute],
+    [agentPayAction.execute],
   );
 
   const getEarnings = useCallback(
     (tokenId: bigint): Promise<EarningsInfo> =>
-      execute((signal) =>
-        apiFetch<EarningsInfo>(`/v1/agents/${tokenId.toString()}/earnings`, {
+      earningsAction.execute((signal) =>
+        apiFetch<EarningsInfo>(agentEarningsPath(tokenId), {
           method: 'GET',
           signal,
         }),
       ),
-    [execute],
+    [earningsAction.execute],
   );
 
   const setRoyalty = useCallback(
     (tokenId: bigint, bps: number): Promise<RoyaltyResult> =>
-      execute((signal) =>
-        apiFetch<RoyaltyResult>(`/v1/agents/${tokenId.toString()}/royalty`, {
+      royaltyAction.execute((signal) =>
+        apiFetch<RoyaltyResult>(agentRoyaltyPath(tokenId), {
           method: 'POST',
           body: JSON.stringify({ bps }),
           signal,
         }),
       ),
-    [execute],
+    [royaltyAction.execute],
   );
 
   const getPaymentConfig = useCallback(
     (): Promise<PaymentConfig> =>
-      execute((signal) =>
+      fetchAction.execute((signal) =>
         apiFetch<PaymentConfig>('/v1/payment/config', {
           method: 'GET',
           signal,
         }),
       ),
-    [execute],
+    [fetchAction.execute],
   );
 
   return {
     payForAgent,
-    payComputeProvider,
     getEarnings,
     setRoyalty,
     getPaymentConfig,
-    isLoading,
-    error,
+    isPayLoading: agentPayAction.isLoading,
+    payError: agentPayAction.error,
+    isRoyaltyLoading: royaltyAction.isLoading,
+    royaltyError: royaltyAction.error,
+    isFetching: fetchAction.isLoading,
+    fetchError: fetchAction.error,
+    isEarningsLoading: earningsAction.isLoading,
+    earningsError: earningsAction.error,
+    resetPay: agentPayAction.reset,
+    resetRoyalty: royaltyAction.reset,
+    resetFetch: fetchAction.reset,
+    resetEarnings: earningsAction.reset,
   };
 }

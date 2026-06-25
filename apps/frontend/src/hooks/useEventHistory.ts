@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { usePoll } from './usePoll.js';
 import { apiFetch } from '../utils/apiFetch.js';
 
@@ -24,6 +24,7 @@ export interface UseEventHistoryResult {
   byName: Record<string, AxiomEvent[]>;
   isLoading: boolean;
   error: Error | null;
+  refetch: () => void;
 }
 
 export interface UseEventHistoryOptions {
@@ -52,6 +53,8 @@ function groupByName(events: readonly AxiomEvent[]): Record<string, AxiomEvent[]
  * Polled event history — fetches `GET /v1/events` on cadence. In-flight
  * requests are aborted on unmount or when key options change.
  */
+const MAX_EVENTS = 500;
+
 export function useEventHistory(
   options: UseEventHistoryOptions = {},
 ): UseEventHistoryResult {
@@ -60,11 +63,11 @@ export function useEventHistory(
 
   const [events, setEvents] = useState<AxiomEvent[]>([]);
   const [error, setError] = useState<Error | null>(null);
-  const [lastTimestamp, setLastTimestamp] = useState<number>(0);
+  const lastTimestampRef = useRef<number>(0);
 
   const fetcher = useCallback(
     async (signal: AbortSignal): Promise<AxiomEvent[]> => {
-      let path = `/v1/events?since=${lastTimestamp}`;
+      let path = `/v1/events?since=${lastTimestampRef.current}`;
       if (owner !== undefined) {
         path += `&owner=${owner}`;
       }
@@ -73,23 +76,24 @@ export function useEventHistory(
         signal,
         timeout: 10000,
       });
-      const events = Array.isArray(data.events) ? data.events : [];
+      const rawEvents = Array.isArray(data.events) ? data.events : [];
+      const events = rawEvents.length > MAX_EVENTS ? rawEvents.slice(0, MAX_EVENTS) : rawEvents;
 
       // Update lastTimestamp from the newest event for incremental polling.
       // First poll gets ALL events; subsequent polls only get NEW events.
       if (events.length > 0) {
         const newestTimestamp = Math.max(...events.map(e => e.timestamp ?? 0));
-        if (newestTimestamp > lastTimestamp) {
-          setLastTimestamp(newestTimestamp);
+        if (newestTimestamp > lastTimestampRef.current) {
+          lastTimestampRef.current = newestTimestamp;
         }
       }
 
       return events;
     },
-    [owner, lastTimestamp],
+    [owner],
   );
 
-  const { isLoading } = usePoll(fetcher, setEvents, setError, {
+  const { isLoading, refetch } = usePoll(fetcher, setEvents, setError, {
     intervalMs: interval,
     enabled,
   });
@@ -99,5 +103,5 @@ export function useEventHistory(
     [events],
   );
 
-  return { events, byName, isLoading, error };
+  return { events, byName, isLoading, error, refetch };
 }

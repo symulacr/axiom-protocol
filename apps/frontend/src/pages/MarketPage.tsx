@@ -1,10 +1,12 @@
 import { resolveBlockExplorerUrl } from "@axiom/config/networks";
 import type { ReactElement } from 'react';
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useChainId } from 'wagmi';
 import { ProviderCard } from '../components/ProviderCard.js';
 import { useProviders } from '../hooks/useProviders.js';
-import { COLORS, Card, SectionTitle, Alert, PageHeader, Skeleton } from '../components/ui.js';
+import { usePoll } from '../hooks/usePoll.js';
+import { COLORS, Card, SectionTitle, ErrorAlert, PageHeader, Skeleton } from '../components/ui.js';
 import { apiFetch } from '../utils/apiFetch.js';
 
 /**
@@ -30,8 +32,8 @@ const transferRowStyle: React.CSSProperties = {
   gap: 10,
   padding: '10px 14px',
   border: `1px solid ${COLORS.border}`,
-  borderRadius: 8,
-  fontSize: 12,
+  borderRadius: 'var(--radius-lg)',
+  fontSize: 'var(--text-xs)',
   fontFamily: "'SF Mono', 'Fira Code', monospace",
   background: COLORS.surface,
   color: COLORS.textMuted,
@@ -46,57 +48,40 @@ export function MarketPage(): ReactElement {
     providers,
     isLoading: providersLoading,
     error: providersError,
+    refetch: refetchProviders,
   } = useProviders();
 
   const [transfers, setTransfers] = useState<TransferEvent[]>([]);
-  const [transfersLoading, setTransfersLoading] = useState<boolean>(true);
   const [transfersError, setTransfersError] = useState<Error | null>(null);
 
-  // Recent transfers — one-shot fetch on mount.
-  useEffect(() => {
-    const abortController = new AbortController();
-
-    const load = async (): Promise<void> => {
-      try {
-        const body = await apiFetch<{ events: unknown[] }>(
-          '/v1/events?eventName=Transfer',
-          {
-            method: 'GET',
-            signal: abortController.signal,
-            timeout: 10000,
-          },
-        );
-        const allEvents = Array.isArray(body.events) ? body.events : [];
-        const data = allEvents.filter(
-          (e): e is TransferEvent =>
-            typeof e === 'object' &&
-            e !== null &&
-            (e as { eventName?: unknown }).eventName === 'Transfer',
-        );
-        if (abortController.signal.aborted) return;
-        setTransfers(data);
-        setTransfersError(null);
-      } catch (err) {
-        if (abortController.signal.aborted) return;
-        setTransfersError(
-          err instanceof Error ? err : new Error(String(err)),
-        );
-      } finally {
-        if (!abortController.signal.aborted) {
-          setTransfersLoading(false);
-        }
-      }
-    };
-
-    void load();
-
-    return (): void => {
-      abortController.abort();
-    };
+  const fetcher = useCallback(async (signal: AbortSignal): Promise<TransferEvent[]> => {
+    const body = await apiFetch<{ events: unknown[] }>(
+      '/v1/events?eventName=Transfer',
+      { method: 'GET', signal, timeout: 10000 },
+    );
+    const allEvents = Array.isArray(body.events) ? body.events : [];
+    return allEvents.filter(
+      (e): e is TransferEvent =>
+        typeof e === 'object' &&
+        e !== null &&
+        (e as { eventName?: unknown }).eventName === 'Transfer',
+    );
   }, []);
+
+  const { isLoading: transfersLoading, refetch: refetchTransfers } = usePoll(
+    fetcher,
+    setTransfers,
+    setTransfersError,
+    { intervalMs: 30000 },
+  );
 
   return (
     <main>
+      <p style={{ margin: 0, marginBottom: 'var(--space-md)' }}>
+        <Link to="/" style={{ color: COLORS.textDim, textDecoration: 'none', fontSize: '0.875rem' }}>
+          ← Back
+        </Link>
+      </p>
       <PageHeader
         title="Market"
         subtitle="Compute providers and recent iNFT transfers — refreshes every 30 seconds"
@@ -109,9 +94,7 @@ export function MarketPage(): ReactElement {
           <Skeleton height={80} />
         </div>
       ) : providersError !== null ? (
-        <Alert variant="error">
-          Couldn't load providers: {providersError.message}
-        </Alert>
+        <ErrorAlert message={`Couldn't load providers: ${providersError.message}`} onRetry={refetchProviders} />
       ) : providers.length === 0 ? (
         <Card style={{ textAlign: 'center', padding: 'var(--space-3xl) var(--space-xl)' }}>
           <p style={{ color: COLORS.textMuted, fontSize: 'var(--text-sm)', margin: 0, fontWeight: 'var(--fw-regular)', lineHeight: 'var(--lh-normal)' }}>
@@ -134,9 +117,7 @@ export function MarketPage(): ReactElement {
           <Skeleton height={42} />
         </div>
       ) : transfersError !== null ? (
-        <Alert variant="error">
-          Couldn't load transfers: {transfersError.message}
-        </Alert>
+        <ErrorAlert message={`Couldn't load transfers: ${transfersError.message}`} onRetry={refetchTransfers} />
       ) : transfers.length === 0 ? (
         <Card style={{ textAlign: 'center', padding: 'var(--space-3xl) var(--space-xl)' }}>
           <p style={{ color: COLORS.textMuted, fontSize: 'var(--text-sm)', margin: 0, fontWeight: 'var(--fw-regular)', lineHeight: 'var(--lh-normal)' }}>
@@ -144,7 +125,7 @@ export function MarketPage(): ReactElement {
           </p>
         </Card>
       ) : (
-        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+        <ul aria-label="Recent iNFT transfers" style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
           {transfers.map((tx) => (
             <li
               key={`${tx.txHash}-${tx.payload.tokenId}`}

@@ -1,12 +1,15 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useAccount, useSignTypedData, useWriteContract } from 'wagmi';
-import { type Address, type Hex } from 'viem';
+import { parseAbi, type Address, type Hex } from 'viem';
 
 import { getAxiomAgentNftAddress } from '../abi/addresses.js';
-import { iTransferFromAbi } from '../abi/iTransferFrom.js';
+import { ITRANSFER_FROM_ABI } from '@axiom/config/abis';
+
+const iTransferFromAbi = parseAbi(ITRANSFER_FROM_ABI);
 
 import { useAsyncAction } from './useAsyncAction.js';
 import { useEip712Domain, ACCESS_PROOF_TYPES } from '../abi/eip712.js';
+import { agentTransferPath } from '../utils/apiPaths.js';
 import { apiFetch, LONG_TIMEOUT } from '../utils/apiFetch.js';
 
 export type TransferInput = {
@@ -72,6 +75,14 @@ export type UseTransferResult = {
   transferPhase: TransferPhase;
 };
 
+function useWarnTimeout(message: string, delay: number, active: boolean): void {
+  useEffect(() => {
+    if (!active) return;
+    const timer = setTimeout(() => console.warn(message), delay);
+    return () => clearTimeout(timer);
+  }, [message, delay, active]);
+}
+
 export function useTransfer(): UseTransferResult {
   const { address: from } = useAccount();
   const { signTypedDataAsync } = useSignTypedData();
@@ -83,6 +94,9 @@ export function useTransfer(): UseTransferResult {
   const [transferPhase, setTransferPhase] = useState<TransferPhase>('idle');
   const { execute, isLoading: actionLoading, error: actionError, reset: resetAction } =
     useAsyncAction();
+  const isLoading = actionLoading || isWritePending;
+  useWarnTimeout('[transfer] Challenge phase is taking longer than expected. The oracle may be processing.', 30000, isLoading);
+  useWarnTimeout('[transfer] Finalization is taking longer than expected. The transaction may still complete.', 30000, isLoading);
 
   const prepare = useCallback(
     async (input: TransferInput): Promise<TransferResponse> => {
@@ -96,7 +110,7 @@ export function useTransfer(): UseTransferResult {
       }
 
       return execute(async (signal) => {
-        const path = `/v1/agents/${input.tokenId.toString()}/transfer`;
+        const path = agentTransferPath(input.tokenId);
 
         setTransferPhase('challenge');
 
@@ -110,17 +124,12 @@ export function useTransfer(): UseTransferResult {
           challengeBody.oldDataEncryptionKey = input.oldDataEncryptionKey;
           challengeBody.oldDataUri = input.oldDataUri;
         }
-        const challengeWarnTimer = setTimeout(() => {
-          console.warn('[transfer] Challenge phase is taking longer than expected. The oracle may be processing.');
-        }, 30000);
-
         const challenge = await apiFetch<TransferResponse>(path, {
           method: 'POST',
           body: JSON.stringify(challengeBody),
           signal,
           timeout: LONG_TIMEOUT,
         });
-        clearTimeout(challengeWarnTimer);
         if (!challenge.ok || challenge.stage !== 'challenge') {
           throw new Error('backend did not return a transfer challenge. Challenge failed — generate a new nonce and try again.');
         }
@@ -159,11 +168,7 @@ export function useTransfer(): UseTransferResult {
         setTransferPhase('finalizing');
 
         // Step 3 — finalize (backend builds on-chain structs from signed proof).
-        const finalizeWarnTimer = setTimeout(() => {
-          console.warn('[transfer] Finalization is taking longer than expected. The transaction may still complete.');
-        }, 30000);
-
-        const proof = await apiFetch<TransferResponse>(path, {
+        let proof = await apiFetch<TransferResponse>(path, {
           method: 'POST',
           signal,
           timeout: LONG_TIMEOUT,
@@ -181,7 +186,6 @@ export function useTransfer(): UseTransferResult {
             },
           }),
         });
-        clearTimeout(finalizeWarnTimer);
         if (!proof.ok || proof.stage !== 'final') {
           throw new Error('backend did not return final proof structs. Finalization failed — transaction was NOT submitted. Click "Prepare Transfer" to restart.');
         }
@@ -190,9 +194,7 @@ export function useTransfer(): UseTransferResult {
         }
         // Carry re-key status forward for the modal.
         if (challenge.rekeyed) {
-          proof.rekeyed = true;
-          proof.newDataHash = challenge.newDataHash;
-          proof.newDataUri = challenge.newDataUri;
+          proof = { ...proof, rekeyed: true, newDataHash: challenge.newDataHash, newDataUri: challenge.newDataUri };
         }
         setSignature(proof);
         setTransferPhase('idle');

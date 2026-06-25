@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { createServer } from "node:http";
 import { GALILEO_CHAIN_ID, OG_NETWORKS } from "@axiom/config/networks";
 import { uploadToStorage } from "@axiom/config/storage/0g";
+import { bigintReplacer } from "@axiom/config/types/bigint";
 
 import {
   POLL_INTERVAL_MS,
@@ -38,10 +39,6 @@ function chainId() {
 
 function stdoutSink(event: AxiomEvent) {
   console.log(JSON.stringify(event, bigintReplacer));
-}
-
-function bigintReplacer(_key: string, value: unknown) {
-  return typeof value === "bigint" ? value.toString() : value;
 }
 
 function banner(cid: number) {

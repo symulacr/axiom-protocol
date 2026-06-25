@@ -32,17 +32,17 @@ export class ErrorBoundary extends Component<Props, State> {
         <div style={{
           padding: 24, margin: 24,
           border: `1px solid ${COLORS.dangerBorder}`,
-          borderRadius: 8, background: COLORS.dangerBg,
-          color: COLORS.danger, fontSize: 14,
+          borderRadius: 'var(--radius-lg)', background: COLORS.dangerBg,
+          color: COLORS.danger, fontSize: 'var(--text-sm)',
         }}>
-          <h2 style={{ fontSize: 16, fontWeight: 600, margin: '0 0 8px' }}>Something went wrong</h2>
+          <h2 style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--fw-semibold)', margin: '0 0 8px' }}>Something went wrong</h2>
           <p style={{ margin: 0 }}>{this.state.error?.message ?? 'Unknown error'}</p>
           <button
             onClick={() => window.location.reload()}
             style={{
               marginTop: 12, padding: '6px 16px',
-              background: COLORS.danger, color: '#fff',
-              border: 'none', borderRadius: 4, cursor: 'pointer',
+              background: COLORS.danger, color: COLORS.text,
+              border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
               fontFamily: 'inherit',
             }}
           >

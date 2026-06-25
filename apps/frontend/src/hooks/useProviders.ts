@@ -6,6 +6,7 @@ export type Provider = {
   address: `0x${string}`;
   model: string;
   endpoint: string;
+  price?: string;
 };
 
 const POLL_INTERVAL_MS = 30_000;

@@ -1,4 +1,4 @@
-import { useReadContracts } from 'wagmi';
+import { useChainId, useReadContracts } from 'wagmi';
 import { type Address } from 'viem';
 import { getAxiomStrategyVaultAddress } from '../abi/addresses.js';
 import { axiomStrategyVaultAbi } from '../abi/axiomStrategyVault.js';
@@ -12,7 +12,8 @@ export type VaultData = {
 };
 
 export function useVaultData(tokenId: bigint): VaultData {
-  const vaultAddr = getAxiomStrategyVaultAddress();
+  const chainId = useChainId();
+  const vaultAddr = getAxiomStrategyVaultAddress(chainId);
 
   const query = useReadContracts({
     allowFailure: false,
@@ -31,7 +32,8 @@ export function useVaultData(tokenId: bigint): VaultData {
       },
     ] as const,
     query: {
-      enabled: tokenId > 0n,
+      staleTime: 30_000,
+      enabled: tokenId >= 0n,
     },
   });
 

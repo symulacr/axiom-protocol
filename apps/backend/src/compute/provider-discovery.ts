@@ -66,13 +66,23 @@ export function invalidateProviderCache(): void {
 
 /**
  * Resolve a provider's inference URL from the on-chain registry.
- * Returns null for direct URLs (placeholder until SDK-based resolution is wired).
  *
- * @param providerAddress  Provider address (case-insensitive).
- * @param rpcUrl           Optional RPC URL for on-chain lookup.
- * @returns                Inference URL or `null`.
+ * @param providerAddr  Provider address (case-insensitive).
+ * @param rpcUrl        Optional RPC URL for on-chain lookup.
+ * @returns             Inference URL or `null`.
  */
-export async function resolveProviderUrl(providerAddress: string, rpcUrl?: string): Promise<string | null> {
-  // Resolve from on-chain registry for now — returns null for direct URLs
-  return null;
+export async function resolveProviderUrl(providerAddr: string, rpcUrl?: string): Promise<string | null> {
+  try {
+    const eRpc = rpcUrl ?? process.env.AXIOM_EVM_RPC ?? "https://evmrpc-testnet.0g.ai";
+    const cid = Number(process.env.AXIOM_CHAIN_ID) || GALILEO_CHAIN_ID;
+    const broker = await createReadOnlyInferenceBroker(eRpc, cid);
+    const services = await broker.listService();
+    const found = services.find((s: any) =>
+      (s.provider ?? "").toLowerCase() === providerAddr.toLowerCase() ||
+      (s.appClientAddr ?? "").toLowerCase() === providerAddr.toLowerCase()
+    );
+    return found?.url ?? null;
+  } catch {
+    return null;
+  }
 }
