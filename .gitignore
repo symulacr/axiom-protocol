@@ -258,3 +258,4 @@ tmp_*.sh
 tmp-*.ts
 run_*.sh
 cleanup.sh
+.vercel
