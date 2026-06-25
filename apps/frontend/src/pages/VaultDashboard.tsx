@@ -2,9 +2,11 @@ import type { ReactElement } from 'react';
 import { useCallback, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useAccount, useWriteContract } from 'wagmi';
-import { formatEther, parseEther } from 'viem';
+import { formatEther, parseAbi, parseEther } from 'viem';
 import { getAxiomStrategyVaultAddress } from '../abi/addresses.js';
 import { axiomStrategyVaultAbi } from '../abi/axiomStrategyVault.js';
+
+const axiomStrategyVaultAbiParsed = parseAbi(axiomStrategyVaultAbi);
 import { useVaultData } from '../hooks/useVaultData.js';
 import { COLORS, Card, SectionTitle, MonoLabel, Alert, ErrorAlert, PageHeader, Skeleton, Button, Input, Spinner, Modal } from '../components/ui.js';
 import { PLACEHOLDER } from '../utils/format.js';
@@ -33,7 +35,7 @@ export function VaultDashboard(): ReactElement {
     if (!depositAmount) return;
     doDeposit({
       address: vaultAddr,
-      abi: axiomStrategyVaultAbi,
+      abi: axiomStrategyVaultAbiParsed,
       functionName: 'deposit',
       args: [tokenId],
       value: parseEther(depositAmount),
@@ -49,7 +51,7 @@ export function VaultDashboard(): ReactElement {
     if (!withdrawAmount) return;
     doWithdraw({
       address: vaultAddr,
-      abi: axiomStrategyVaultAbi,
+      abi: axiomStrategyVaultAbiParsed,
       functionName: 'withdraw',
       args: [tokenId, BigInt(withdrawAmount)],
     });

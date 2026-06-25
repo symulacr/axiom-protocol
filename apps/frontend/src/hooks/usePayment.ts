@@ -1,8 +1,11 @@
 import { useCallback } from 'react';
+import { parseAbi } from 'viem';
 import type { Address } from 'viem';
 import { useWriteContract } from 'wagmi';
 import { useAsyncAction } from './useAsyncAction.js';
 import { PAYMENT_PROCESSOR_ABI } from '@axiom/config/abis';
+
+const paymentProcessorAbi = parseAbi(PAYMENT_PROCESSOR_ABI);
 import { getAxiomPaymentProcessorAddress } from '../abi/addresses.js';
 import { agentEarningsPath, agentRoyaltyPath } from '../utils/apiPaths.js';
 import { apiFetch } from '../utils/apiFetch.js';
@@ -69,7 +72,7 @@ export function usePayment(): UsePaymentResult {
     async (tokenId: bigint, amount: string): Promise<AgentPayResult> => {
       const txHash = await writeContractAsync({
         address: getAxiomPaymentProcessorAddress(),
-        abi: PAYMENT_PROCESSOR_ABI,
+        abi: paymentProcessorAbi,
         functionName: 'payForAgent',
         args: [tokenId, BigInt(amount)],
       });

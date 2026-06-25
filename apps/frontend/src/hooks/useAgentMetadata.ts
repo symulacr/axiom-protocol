@@ -1,7 +1,9 @@
 import { useReadContracts } from 'wagmi';
-import { type Address, type Hex } from 'viem';
+import { parseAbi, type Address, type Hex } from 'viem';
 import { getAxiomAgentNftAddress } from '../abi/addresses.js';
 import { axiomAgentNftAbi } from '../abi/axiomAgentNft.js';
+
+const axiomAgentNftAbiParsed = parseAbi(axiomAgentNftAbi);
 
 export type AgentMetadata = {
   tokenId: bigint;
@@ -25,35 +27,35 @@ export function useAgentMetadata(tokenId: bigint): {
     contracts: [
       {
         address: getAxiomAgentNftAddress(),
-        abi: axiomAgentNftAbi,
+        abi: axiomAgentNftAbiParsed,
         functionName: 'name',
       },
       {
         address: getAxiomAgentNftAddress(),
-        abi: axiomAgentNftAbi,
+        abi: axiomAgentNftAbiParsed,
         functionName: 'symbol',
       },
       {
         address: getAxiomAgentNftAddress(),
-        abi: axiomAgentNftAbi,
+        abi: axiomAgentNftAbiParsed,
         functionName: 'ownerOf',
         args: [tokenId],
       },
       {
         address: getAxiomAgentNftAddress(),
-        abi: axiomAgentNftAbi,
+        abi: axiomAgentNftAbiParsed,
         functionName: 'intelligentDatasOf',
         args: [tokenId],
       },
       {
         address: getAxiomAgentNftAddress(),
-        abi: axiomAgentNftAbi,
+        abi: axiomAgentNftAbiParsed,
         functionName: 'tokenURI',
         args: [tokenId],
       },
       {
         address: getAxiomAgentNftAddress(),
-        abi: axiomAgentNftAbi,
+        abi: axiomAgentNftAbiParsed,
         functionName: 'creatorOf',
         args: [tokenId],
       },
