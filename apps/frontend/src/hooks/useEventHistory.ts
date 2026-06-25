@@ -1,6 +1,5 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
-import { usePoll } from './usePoll.js';
-import { apiFetch } from '../utils/apiFetch.js';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { usePolledApi } from './usePolledApi.js';
 
 /** Wire-format event from GET /v1/events (mirrors backend `StoredEvent`). */
 export interface AxiomEvent {
@@ -34,6 +33,7 @@ export interface UseEventHistoryOptions {
 }
 
 const DEFAULT_POLL_INTERVAL_MS = 15_000;
+const MAX_EVENTS = 500;
 
 /** Group events by `eventName`, preserving first-occurrence order. */
 function groupByName(events: readonly AxiomEvent[]): Record<string, AxiomEvent[]> {
@@ -52,56 +52,64 @@ function groupByName(events: readonly AxiomEvent[]): Record<string, AxiomEvent[]
 /**
  * Polled event history — fetches `GET /v1/events` on cadence. In-flight
  * requests are aborted on unmount or when key options change.
+ *
+ * Uses cursor-based incremental polling: only events *after* the most-recent
+ * known timestamp are fetched on subsequent polls.
  */
-const MAX_EVENTS = 500;
-
 export function useEventHistory(
   options: UseEventHistoryOptions = {},
 ): UseEventHistoryResult {
   const { pollIntervalMs, owner, enabled = true } = options;
   const interval = pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
 
-  const [events, setEvents] = useState<AxiomEvent[]>([]);
-  const [error, setError] = useState<Error | null>(null);
-  const lastTimestampRef = useRef<number>(0);
+  // Ref (not state) — updates after each successful fetch without
+  // causing a re-render or query-key change that would flicker data.
+  const lastTimestampRef = useRef(0);
 
-  const fetcher = useCallback(
-    async (signal: AbortSignal): Promise<AxiomEvent[]> => {
-      let path = `/v1/events?since=${lastTimestampRef.current}`;
-      if (owner !== undefined) {
-        path += `&owner=${owner}`;
-      }
-      const data = await apiFetch<EventsResponse>(path, {
-        method: 'GET',
-        signal,
-        timeout: 10000,
-      });
-      const rawEvents = Array.isArray(data.events) ? data.events : [];
-      const events = rawEvents.length > MAX_EVENTS ? rawEvents.slice(0, MAX_EVENTS) : rawEvents;
+  // Getter: reads the latest cursor value at fetch time.
+  const urlGetter = useCallback(() => {
+    let path = `/v1/events?since=${lastTimestampRef.current}`;
+    if (owner !== undefined) {
+      path += `&owner=${owner}`;
+    }
+    return path;
+  }, [owner]);
 
-      // Update lastTimestamp from the newest event for incremental polling.
-      // First poll gets ALL events; subsequent polls only get NEW events.
-      if (events.length > 0) {
-        const newestTimestamp = Math.max(...events.map(e => e.timestamp ?? 0));
-        if (newestTimestamp > lastTimestampRef.current) {
-          lastTimestampRef.current = newestTimestamp;
-        }
-      }
-
-      return events;
-    },
-    [owner],
-  );
-
-  const { isLoading, refetch } = usePoll(fetcher, setEvents, setError, {
-    intervalMs: interval,
+  const query = usePolledApi<EventsResponse>(urlGetter, {
+    refetchInterval: interval,
     enabled,
+    queryKey: ['events', { owner }],
   });
+
+  // Advance the cursor after each successful fetch so the next poll
+  // only retrieves newer events.
+  useEffect(() => {
+    if (!query.data) return;
+    const raw = Array.isArray(query.data.events) ? query.data.events : [];
+    if (raw.length > 0) {
+      const maxTs = Math.max(...raw.map((e) => e.timestamp ?? 0));
+      if (maxTs > lastTimestampRef.current) {
+        lastTimestampRef.current = maxTs;
+      }
+    }
+  }, [query.data]);
+
+  const events = useMemo(() => {
+    if (!query.data?.events) return [];
+    const raw = Array.isArray(query.data.events) ? query.data.events : [];
+    return raw.length > MAX_EVENTS ? raw.slice(0, MAX_EVENTS) : raw;
+  }, [query.data]);
 
   const byName = useMemo<Record<string, AxiomEvent[]>>(
     () => groupByName(events),
     [events],
   );
 
-  return { events, byName, isLoading, error, refetch };
+  return {
+    events,
+    byName,
+    isLoading: query.isFetching,
+    error: query.error,
+    refetch: () => void query.refetch(),
+  };
 }

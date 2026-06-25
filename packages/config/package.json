@@ -24,8 +24,10 @@
     "./storage/0g": "./dist/storage/0g.js"
   },
   "scripts": {
-    "build": "tsc --project tsconfig.json",
-    "typecheck": "tsc --noEmit"
+    "generate": "wagmi generate",
+    "build": "wagmi generate && tsc --project tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "watch:contracts": "wagmi generate --watch"
   },
   "dependencies": {
     "@0gfoundation/0g-storage-ts-sdk": "^1.2.10",
@@ -37,6 +39,7 @@
   "devDependencies": {
     "@types/express": "^4.17.21",
     "@types/node": "^22.7.0",
+    "@wagmi/cli": "^2.10.0",
     "typescript": "^5.5.4"
   },
   "engines": {

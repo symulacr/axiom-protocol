@@ -3,12 +3,12 @@
 /* ─── Spacing scale (4pt base: 4, 8, 12, 16, 24, 32, 48, 64) ─────── */
 :root {
   --space-sm: 0.5rem;    /* 8px  */
+  --space-xs: 0.25rem;   /* 4px  */
   --space-md: 0.75rem;   /* 12px */
   --space-lg: 1rem;      /* 16px */
   --space-xl: 1.5rem;    /* 24px */
   --space-2xl: 2rem;     /* 32px */
   --space-3xl: 3rem;     /* 48px */
-  --space-4xl: 4rem;     /* 64px */
 
   /* ─── Type scale (1.2 ratio, rem-based for product UI) ──────────── */
   --text-xs: 0.75rem;     /* 12px — captions, metadata */
@@ -16,8 +16,6 @@
   --text-base: 1rem;      /* 16px — body text */
   --text-lg: 1.25rem;     /* 20px — subheadings */
   --text-xl: 1.5rem;      /* 24px — page headings */
-  --text-2xl: 2rem;       /* 32px — hero heading */
-  --text-3xl: 2.5rem;     /* 40px — display heading */
 
   /* ─── Font weights ──────────────────────────────────────────────── */
   --fw-light: 300;
@@ -30,7 +28,6 @@
   --lh-tight: 1.2;        /* headings */
   --lh-snug: 1.4;         /* subheadings, labels */
   --lh-normal: 1.6;       /* body text (light-on-dark: +0.1) */
-  --lh-relaxed: 1.7;      /* long-form body */
 
   /* ─── Border radius ─────────────────────────────────────────────── */
   --radius-sm: 4px;
@@ -46,9 +43,10 @@
   --c-text: #f5f5f5;
   --c-text-primary: #e5e5e5;
   --c-text-muted: #8a8a8a;
-  --c-text-dim: #888888;
+  --c-text-dim: #6a6a6a;
   --c-bronze: #b8976e;
   --c-bronze-light: #c5a880;
+  --c-bronze-border: rgba(184, 151, 110, 0.25);
   --c-danger: #c85a5a;
   --c-success: #6b9e6b;
   --c-warning: #c5a25a;
@@ -227,3 +225,72 @@ input, textarea, select {
     border: 1px solid;
   }
 }
+
+/* ── Utility classes ──────────────────────────── */
+/* These replace the most common inline style={{}} patterns.
+   Migrate gradually — add className instead of style={{}} in new code. */
+
+/* Text */
+.text-md     { font-size: var(--text-md); }
+.text-muted  { color: var(--c-text-muted); }
+.text-dim    { color: var(--c-text-dim); }
+.text-primary { color: var(--c-text-primary); }
+.text-center { text-align: center; }
+
+/* Font weight */
+.fw-normal   { font-weight: var(--fw-regular); }
+.fw-medium   { font-weight: var(--fw-medium); }
+.fw-semibold { font-weight: var(--fw-semibold); }
+.fw-bold     { font-weight: var(--fw-bold); }
+
+/* Line height */
+.lh-tight { line-height: var(--lh-tight); }
+.lh-snug  { line-height: var(--lh-snug); }
+
+/* Spacing */
+.m-0 { margin: 0; }
+.mt-0 { margin-top: 0; }
+.mt-xs { margin-top: var(--space-xs); }
+.mt-sm { margin-top: var(--space-sm); }
+.mt-md { margin-top: var(--space-md); }
+.mt-lg { margin-top: var(--space-lg); }
+.mt-xl { margin-top: var(--space-xl); }
+.mt-2xl { margin-top: var(--space-2xl); }
+.mb-sm { margin-bottom: var(--space-sm); }
+.mb-md { margin-bottom: var(--space-md); }
+.mb-lg { margin-bottom: var(--space-lg); }
+.mb-xl { margin-bottom: var(--space-xl); }
+.mb-2xl { margin-bottom: var(--space-2xl); }
+
+/* Flex layout */
+.block        { display: block; }
+.flex         { display: flex; }
+.inline-flex  { display: inline-flex; }
+.flex-col     { flex-direction: column; }
+.flex-wrap    { flex-wrap: wrap; }
+.items-center { align-items: center; }
+.items-baseline { align-items: baseline; }
+.justify-center { justify-content: center; }
+.justify-between { justify-content: space-between; }
+.justify-end   { justify-content: flex-end; }
+.gap-xs  { gap: var(--space-xs); }
+.gap-sm  { gap: var(--space-sm); }
+.gap-md  { gap: var(--space-md); }
+.gap-lg  { gap: var(--space-lg); }
+
+/* Grid */
+.grid-cols-2 { display: grid; grid-template-columns: 1fr 1fr; }
+
+/* Width */
+.w-full { width: 100%; }
+
+/* Border radius */
+.radius-sm { border-radius: var(--radius-sm); }
+.radius-md { border-radius: var(--radius-md); }
+.radius-lg { border-radius: var(--radius-lg); }
+
+/* Cursor */
+.cursor-pointer { cursor: pointer; }
+
+/* Transitions */
+.transition { transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1); }

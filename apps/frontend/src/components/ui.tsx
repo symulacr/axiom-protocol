@@ -221,7 +221,7 @@ export function ErrorAlert({ message, onRetry }: ErrorAlertProps): ReactElement 
     <Alert variant="error">
       <p>{message ?? 'An unexpected error occurred'}</p>
       {onRetry !== undefined && (
-        <Button variant="secondary" onClick={onRetry} style={{ flexShrink: 0, fontSize: 'var(--text-xs)', minHeight: 44 }}>
+        <Button variant="secondary" onClick={onRetry} className="text-xs" style={{ flexShrink: 0, minHeight: 44 }}>
           Retry
         </Button>
       )}
@@ -264,31 +264,20 @@ export function PageHeader({
   action?: ReactNode;
 }): ReactElement {
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'baseline',
-        justifyContent: 'space-between',
-        marginBottom: 'var(--space-2xl)',
-        flexWrap: 'wrap',
-        gap: 'var(--space-md)',
-      }}
-    >
+    <div className="flex items-baseline justify-between mb-2xl flex-wrap gap-md">
       <div>
         <h1
+          className="text-xl fw-bold lh-tight"
           style={{
             margin: '0 0 0.375rem',
-            fontSize: 'var(--text-xl)',
-            fontWeight: 'var(--fw-bold)',
             color: COLORS.text,
             letterSpacing: '-0.02em',
-            lineHeight: 'var(--lh-tight)',
           }}
         >
           {title}
         </h1>
         {subtitle !== undefined && (
-          <p style={{ margin: 0, color: COLORS.textMuted, fontSize: 'var(--text-sm)', lineHeight: 'var(--lh-snug)' }}>{subtitle}</p>
+          <p className="m-0 text-muted text-sm lh-snug">{subtitle}</p>
         )}
       </div>
       {action !== undefined && <div aria-label="Page actions">{action}</div>}
@@ -305,14 +294,10 @@ export function SectionTitle({
 }): ReactElement {
   return (
     <h2
+      className="text-xs fw-semibold text-dim lh-snug m-0 mb-lg"
       style={{
-        fontSize: 'var(--text-xs)',
-        fontWeight: 'var(--fw-semibold)',
-        color: COLORS.textDim,
         textTransform: 'uppercase',
         letterSpacing: '0.08em',
-        margin: '0 0 var(--space-lg)',
-        lineHeight: 'var(--lh-snug)',
         ...style,
       }}
     >
@@ -409,7 +394,7 @@ export const Modal = React.memo(function Modal({ open, onClose, title, children,
       }}
     >
       {title !== undefined && (
-        <h2 id="modal-title" style={{ marginTop: 0, fontSize: 'var(--text-xl)', fontWeight: 'var(--fw-bold)', color: COLORS.text, letterSpacing: '-0.02em' }}>
+        <h2 id="modal-title" className="mt-0 text-xl fw-bold" style={{ color: COLORS.text, letterSpacing: '-0.02em' }}>
           {title}
         </h2>
       )}
@@ -423,7 +408,7 @@ export function ConnectedGuard({ children }: { children: React.ReactNode }): Rea
   if (!isConnected) {
     return (
       <Card style={{ textAlign: 'center', padding: 'var(--space-3xl) var(--space-xl)' }}>
-        <p style={{ color: COLORS.textMuted, fontSize: 'var(--text-sm)', margin: 0, fontWeight: 'var(--fw-regular)', lineHeight: 'var(--lh-normal)' }}>
+        <p className="text-muted text-sm fw-regular">
           Connect your wallet to view this content.
         </p>
       </Card>

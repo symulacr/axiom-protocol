@@ -22,3 +22,10 @@ export function agentRoyaltyPath(id: bigint | string): string {
 export function agentHistoryPath(id: bigint | string): string {
   return agentPath(id, 'history');
 }
+
+/** React Query key factories for auto-prefixed, type-safe query keys. */
+export const queryKeys = {
+  events: (since?: number) => ['events', { since }] as const,
+  providers: () => ['providers'] as const,
+  health: () => ['health'] as const,
+};

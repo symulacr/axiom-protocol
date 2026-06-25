@@ -16,9 +16,7 @@
   "dependencies": {
     "@0gfoundation/0g-storage-ts-sdk": "^1.2.10",
     "@axiom/config": "workspace:*",
-    "@grpc/grpc-js": "^1.14.4",
-    "@grpc/proto-loader": "^0.8.1",
-    "canonicalize": "^3.0.0",
+
     "ethers": "^6.16.0",
     "viem": "^2.21.45"
   },

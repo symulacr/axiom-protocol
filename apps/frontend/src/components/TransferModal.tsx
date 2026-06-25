@@ -10,7 +10,7 @@ import {
 import { isAddress } from 'viem';
 import { toast } from 'sonner';
 import { useAccount } from 'wagmi';
-import { useTransfer, type TransferInput } from '../hooks/useTransfer.js';
+import { useTransfer, type TransferInput, type TransferPhase, type TransferResponse } from '../hooks/useTransfer.js';
 import { COLORS, Button, Alert, MonoLabel, Input, Modal, Card } from './ui.js';
 
 const RECEIVER_PUBKEY_HEX_LENGTH = 130;
@@ -23,6 +23,8 @@ const PHASE_LABELS: Record<string, string> = {
   finalizing: 'Finalize',
   confirming: 'Confirm on-chain',
 };
+
+const PHASES = (['idle', 'challenge', 'signing', 'finalizing', 'confirming'] as const);
 
 function freshNonceHex(byteLength = 32): `0x${string}` {
   const bytes = new Uint8Array(byteLength);
@@ -53,6 +55,299 @@ function validatePubKey(value: string): string | null {
   }
   return null;
 }
+
+// ── Phase indicator ──────────────────────────────────────────────────────────
+
+function PhaseIndicator({ transferPhase }: { transferPhase: TransferPhase }): ReactElement {
+  return (
+    <div className="mb-lg flex items-center text-xs fw-medium" style={{ gap: 6 }}>
+      {PHASES.map((p, i, arr) => (
+        <span
+          key={p}
+          className="inline-flex items-center"
+          style={{
+            gap: 6,
+            color:
+              transferPhase === p
+                ? COLORS.bronzeLight
+                : arr.indexOf(transferPhase) > i
+                  ? COLORS.textMuted
+                  : COLORS.textDim,
+          }}
+        >
+          {i > 0 && (
+            <span className="text-dim text-xs">→</span>
+          )}
+          <span
+            style={{
+              background:
+                transferPhase === p
+                  ? 'rgba(191, 144, 86, 0.12)'
+                  : 'transparent',
+              padding: '2px 8px',
+              borderRadius: 'var(--radius-sm)',
+              fontWeight: transferPhase === p ? 'var(--fw-semibold)' : 'var(--fw-regular)',
+            }}
+          >
+            {PHASE_LABELS[p]}
+          </span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+// ── Form phase (fill in transfer details) ────────────────────────────────────
+
+function TransferFormPhase({
+  formId,
+  receiverAddress,
+  onAddressChange,
+  addressError,
+  receiverPubKey,
+  onPubKeyChange,
+  pubKeyError,
+  accessProofNonce,
+  oldDataEncryptionKey,
+  onOldDataKeyChange,
+  oldDataUri,
+  onOldDataUriChange,
+  rekeyError,
+  mergedError,
+  cancel,
+  canSubmit,
+  isLoading,
+  onSubmit,
+}: {
+  formId: string;
+  receiverAddress: string;
+  onAddressChange: (e: ChangeEvent<HTMLInputElement>) => void;
+  addressError: string | null;
+  receiverPubKey: string;
+  onPubKeyChange: (e: ChangeEvent<HTMLTextAreaElement>) => void;
+  pubKeyError: string | null;
+  accessProofNonce: `0x${string}`;
+  oldDataEncryptionKey: string;
+  onOldDataKeyChange: (e: ChangeEvent<HTMLInputElement>) => void;
+  oldDataUri: string;
+  onOldDataUriChange: (e: ChangeEvent<HTMLInputElement>) => void;
+  rekeyError: string | null;
+  mergedError: ReactElement | null;
+  cancel: () => void;
+  canSubmit: boolean;
+  isLoading: boolean;
+  onSubmit: (e: FormEvent<HTMLFormElement>) => Promise<void>;
+}): ReactElement {
+  return (
+    <form onSubmit={onSubmit}>
+      <p className="text-muted text-sm" style={{ lineHeight: 1.6, fontWeight: 'var(--fw-light)', marginBottom: 20 }}>
+        The receiver signs an EIP-712 AccessProof and the TEE oracle signs
+        the OwnershipProof. You'll confirm the on-chain
+        <code style={{ color: COLORS.bronzeLight }}> iTransferFrom </code>
+        transaction in the next step.
+      </p>
+
+      <label htmlFor={`${formId}-to`} className="block mt-lg fw-medium text-sm text-primary">
+        Receiver address
+      </label>
+      <Input
+        id={`${formId}-to`}
+        value={receiverAddress}
+        onChange={onAddressChange}
+        placeholder="0x\u2026"
+        autoComplete="off"
+        spellCheck={false}
+        className="w-full" style={{ boxSizing: 'border-box', fontFamily: "'SF Mono', monospace", marginTop: 6 }}
+        required
+      />
+      {addressError !== null && (
+        <Alert variant="error" style={{ marginTop: 4 }}>{addressError}</Alert>
+      )}
+
+      <label htmlFor={`${formId}-pubkey`} className="block mt-lg fw-medium text-sm text-primary">
+        Receiver pubkey (64 raw bytes, no 0x04 prefix)
+      </label>
+      <textarea
+        id={`${formId}-pubkey`}
+        name="receiverPubKey64"
+        value={receiverPubKey}
+        onChange={onPubKeyChange}
+        rows={3}
+        spellCheck={false}
+        placeholder="0x\u2026  (128 hex chars)"
+        style={{
+          width: '100%',
+          padding: '10px 14px',
+          marginTop: 6,
+          fontFamily: "'SF Mono', monospace",
+          fontSize: 'var(--text-sm)',
+          border: `1px solid ${COLORS.borderStrong}`,
+          borderRadius: 'var(--radius-md)',
+          background: COLORS.bg,
+          color: COLORS.text,
+          boxSizing: 'border-box',
+          resize: 'vertical',
+        }}
+        required
+      />
+      {pubKeyError !== null && (
+        <Alert variant="error" style={{ marginTop: 4 }}>{pubKeyError}</Alert>
+      )}
+
+      <label htmlFor={`${formId}-nonce`} className="block mt-lg fw-medium text-sm text-primary">
+        Access proof nonce
+      </label>
+      <Input
+        id={`${formId}-nonce`}
+        value={accessProofNonce}
+        readOnly
+        className="w-full" style={{ boxSizing: 'border-box', fontFamily: "'SF Mono', monospace", marginTop: 6, color: COLORS.bronzeLight }}
+      />
+      <p className="text-dim text-xs" style={{ margin: '4px 0 0', fontWeight: 'var(--fw-light)' }}>
+        32 random bytes generated locally. A new nonce is minted each time the modal opens.
+      </p>
+
+      <details className="mt-lg">
+        <summary className="cursor-pointer text-sm fw-medium text-muted">
+          Re-encrypt for receiver (optional re-key)
+        </summary>
+        <p className="text-dim text-xs" style={{ margin: '8px 0', fontWeight: 'var(--fw-light)' }}>
+          Supply the current AES data key and 0G Storage URI to trigger a full
+          re-key. The oracle re-encrypts and seals a fresh key. Leave blank for sign-only.
+        </p>
+        <label htmlFor={`${formId}-oldkey`} className="block mt-sm fw-medium text-sm text-primary">
+          Old data encryption key (base64)
+        </label>
+        <Input
+          id={`${formId}-oldkey`}
+          value={oldDataEncryptionKey}
+          onChange={onOldDataKeyChange}
+          placeholder="base64 32-byte AES key"
+          autoComplete="off"
+          spellCheck={false}
+          className="w-full" style={{ boxSizing: 'border-box', fontFamily: "'SF Mono', monospace", marginTop: 6 }}
+        />
+        <label htmlFor={`${formId}-olduri`} className="block mt-sm fw-medium text-sm text-primary">
+          Old data URI (0x&hellip;)
+        </label>
+        <Input
+          id={`${formId}-olduri`}
+          value={oldDataUri}
+          onChange={onOldDataUriChange}
+          placeholder="0x\u2026 0G Storage root hash"
+          autoComplete="off"
+          spellCheck={false}
+          className="w-full" style={{ boxSizing: 'border-box', fontFamily: "'SF Mono', monospace", marginTop: 6 }}
+        />
+        {rekeyError !== null && (
+          <Alert variant="error" style={{ marginTop: 4 }}>{rekeyError}</Alert>
+        )}
+      </details>
+
+      {mergedError}
+
+      <div className="flex justify-end" style={{ gap: 10, marginTop: 20 }}>
+        <Button variant="secondary" onClick={cancel} disabled={isLoading}>
+          Cancel
+        </Button>
+        <Button variant="primary" type="submit" disabled={!canSubmit || rekeyError !== null}>
+          {isLoading ? 'Signing\u2026' : 'Sign AccessProof'}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+// ── Confirm phase (review + submit on-chain) ─────────────────────────────────
+
+function ConfirmTransferPhase({
+  formId,
+  signature,
+  mergedError,
+  isLoading,
+  onEdit,
+  onConfirm,
+}: {
+  formId: string;
+  signature: TransferResponse | null;
+  mergedError: ReactElement | null;
+  isLoading: boolean;
+  onEdit: () => void;
+  onConfirm: () => Promise<void>;
+}): ReactElement {
+  return (
+    <form
+      onSubmit={(e): void => {
+        e.preventDefault();
+        void onConfirm();
+      }}
+    >
+      <h2 id={`${formId}-title`} className="mt-0 text-xl fw-bold" style={{ color: COLORS.text, letterSpacing: '-0.02em' }}>
+        Confirm Transfer
+      </h2>
+
+      <p className="text-muted text-sm" style={{ lineHeight: 1.6, fontWeight: 'var(--fw-light)', marginBottom: 20 }}>
+        Review the proof details, then submit the on-chain
+        <code style={{ color: COLORS.bronzeLight }}> iTransferFrom </code>
+        transaction. Your wallet will ask for the final signature.
+      </p>
+
+      {signature !== null && signature.rekeyed === true && (
+        <Alert variant="success" style={{ marginTop: 12 }}>
+          <strong>Re-encrypted</strong> &mdash; agent data was re-keyed for the receiver.
+          {signature.newDataHash !== undefined && (
+            <>
+              <br />
+              New data hash: <MonoLabel style={{ fontSize: 'var(--text-xs)' }}>{signature.newDataHash}</MonoLabel>
+            </>
+          )}
+        </Alert>
+      )}
+
+      {signature !== null && (
+        <Card style={{ background: COLORS.bg, padding: '12px 16px', borderRadius: 'var(--radius-lg)', marginTop: 12, fontSize: 'var(--text-xs)', color: COLORS.textMuted }}>
+          <strong style={{ color: COLORS.text }}>OwnershipProof</strong> (TEE-signed)
+          <br />
+          Signer: <MonoLabel style={{ fontSize: 'var(--text-xs)' }}>{signature.signer ?? '\u2014'}</MonoLabel>
+          {signature.ownershipProof !== undefined && (
+            <>
+              <br />
+              Valid until:{' '}
+              <code style={{ color: COLORS.bronzeLight, fontSize: 'var(--text-xs)' }}>
+                {new Date(Number(signature.ownershipProof.validUntil) * 1000).toISOString()}
+              </code>
+            </>
+          )}
+        </Card>
+      )}
+
+      {signature !== null && signature.accessSigner !== undefined && (
+        <Card style={{ background: COLORS.bg, padding: '12px 16px', borderRadius: 'var(--radius-lg)', marginTop: 8, fontSize: 'var(--text-xs)', color: COLORS.textMuted }}>
+          <strong style={{ color: COLORS.text }}>AccessProof</strong> (receiver-signed)
+          <br />
+          Recovered signer: <MonoLabel style={{ fontSize: 'var(--text-xs)' }}>{signature.accessSigner}</MonoLabel>
+        </Card>
+      )}
+
+      {mergedError}
+
+      <p className="text-dim text-xs" style={{ margin: '12px 0 0' }}>
+        The on-chain transfer will incur gas costs.
+      </p>
+
+      <div className="flex justify-end" style={{ gap: 10, marginTop: 20 }}>
+        <Button variant="secondary" onClick={onEdit} disabled={isLoading}>
+          Edit
+        </Button>
+        <Button variant="primary" type="submit" disabled={isLoading || signature === null}>
+          {isLoading ? 'Submitting\u2026' : 'Confirm on-chain transfer'}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+// ── Main component ───────────────────────────────────────────────────────────
 
 export function TransferModal({
   tokenId,
@@ -263,240 +558,38 @@ export function TransferModal({
         onClose={cancel}
         title={`Transfer iNFT #${tokenId.toString()}`}
       >
-        {/* Phase indicator */}
-        <div
-          style={{
-            marginBottom: 16,
-            display: 'flex',
-            gap: 6,
-            alignItems: 'center',
-            fontSize: 'var(--text-xs)',
-            fontWeight: 'var(--fw-medium)',
-          }}
-        >
-          {(['idle', 'challenge', 'signing', 'finalizing', 'confirming'] as const).map((p, i, arr) => (
-            <span
-              key={p}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                color:
-                  transferPhase === p
-                    ? COLORS.bronzeLight
-                    : arr.indexOf(transferPhase) > i
-                      ? COLORS.textMuted
-                      : COLORS.textDim,
-              }}
-            >
-              {i > 0 && (
-                <span style={{ color: COLORS.textDim, fontSize: 'var(--text-xs)' }}>→</span>
-              )}
-              <span
-                style={{
-                  background:
-                    transferPhase === p
-                      ? 'rgba(191, 144, 86, 0.12)'
-                      : 'transparent',
-                  padding: '2px 8px',
-                  borderRadius: 'var(--radius-sm)',
-                  fontWeight: transferPhase === p ? 'var(--fw-semibold)' : 'var(--fw-regular)',
-                }}
-              >
-                {PHASE_LABELS[p]}
-              </span>
-            </span>
-          ))}
-        </div>
+        <PhaseIndicator transferPhase={transferPhase} />
 
         {phase === 'form' ? (
-          <form onSubmit={onSubmit}>
-
-            <p style={{ color: COLORS.textMuted, fontSize: 'var(--text-sm)', lineHeight: 1.6, fontWeight: 'var(--fw-light)', marginBottom: 20 }}>
-              The receiver signs an EIP-712 AccessProof and the TEE oracle signs
-              the OwnershipProof. You'll confirm the on-chain
-              <code style={{ color: COLORS.bronzeLight }}> iTransferFrom </code>
-              transaction in the next step.
-            </p>
-
-            <label htmlFor={`${formId}-to`} style={{ display: 'block', marginTop: 16, fontWeight: 'var(--fw-medium)', fontSize: 'var(--text-sm)', color: COLORS.textPrimary }}>
-              Receiver address
-            </label>
-            <Input
-              id={`${formId}-to`}
-              value={receiverAddress}
-              onChange={onAddressChange}
-              placeholder="0x…"
-              autoComplete="off"
-              spellCheck={false}
-              style={{ width: '100%', boxSizing: 'border-box', fontFamily: "'SF Mono', monospace", marginTop: 6 }}
-              required
-            />
-            {addressError !== null && (
-              <Alert variant="error" style={{ marginTop: 4 }}>{addressError}</Alert>
-            )}
-
-            <label htmlFor={`${formId}-pubkey`} style={{ display: 'block', marginTop: 16, fontWeight: 'var(--fw-medium)', fontSize: 'var(--text-sm)', color: COLORS.textPrimary }}>
-              Receiver pubkey (64 raw bytes, no 0x04 prefix)
-            </label>
-            <textarea
-              id={`${formId}-pubkey`}
-              name="receiverPubKey64"
-              value={receiverPubKey}
-              onChange={onPubKeyChange}
-              rows={3}
-              spellCheck={false}
-              placeholder="0x…  (128 hex chars)"
-              style={{
-                width: '100%',
-                padding: '10px 14px',
-                marginTop: 6,
-                fontFamily: "'SF Mono', monospace",
-                fontSize: 'var(--text-sm)',
-                border: `1px solid ${COLORS.borderStrong}`,
-                borderRadius: 'var(--radius-md)',
-                background: COLORS.bg,
-                color: COLORS.text,
-                boxSizing: 'border-box',
-                resize: 'vertical',
-              }}
-              required
-            />
-            {pubKeyError !== null && (
-              <Alert variant="error" style={{ marginTop: 4 }}>{pubKeyError}</Alert>
-            )}
-
-            <label htmlFor={`${formId}-nonce`} style={{ display: 'block', marginTop: 16, fontWeight: 'var(--fw-medium)', fontSize: 'var(--text-sm)', color: COLORS.textPrimary }}>
-              Access proof nonce
-            </label>
-            <Input
-              id={`${formId}-nonce`}
-              value={accessProofNonce}
-              readOnly
-              style={{ width: '100%', boxSizing: 'border-box', fontFamily: "'SF Mono', monospace", marginTop: 6, color: COLORS.bronzeLight }}
-            />
-            <p style={{ color: COLORS.textDim, fontSize: 'var(--text-xs)', margin: '4px 0 0', fontWeight: 'var(--fw-light)' }}>
-              32 random bytes generated locally. A new nonce is minted each time the modal opens.
-            </p>
-
-            <details style={{ marginTop: 16 }}>
-              <summary style={{ cursor: 'pointer', fontSize: 'var(--text-sm)', fontWeight: 'var(--fw-medium)', color: COLORS.textMuted }}>
-                Re-encrypt for receiver (optional re-key)
-              </summary>
-              <p style={{ color: COLORS.textDim, fontSize: 'var(--text-xs)', margin: '8px 0', fontWeight: 'var(--fw-light)' }}>
-                Supply the current AES data key and 0G Storage URI to trigger a full
-                re-key. The oracle re-encrypts and seals a fresh key. Leave blank for sign-only.
-              </p>
-              <label htmlFor={`${formId}-oldkey`} style={{ display: 'block', marginTop: 8, fontWeight: 'var(--fw-medium)', fontSize: 'var(--text-sm)', color: COLORS.textPrimary }}>
-                Old data encryption key (base64)
-              </label>
-              <Input
-                id={`${formId}-oldkey`}
-                value={oldDataEncryptionKey}
-                onChange={onOldDataKeyChange}
-                placeholder="base64 32-byte AES key"
-                autoComplete="off"
-                spellCheck={false}
-                style={{ width: '100%', boxSizing: 'border-box', fontFamily: "'SF Mono', monospace", marginTop: 6 }}
-              />
-              <label htmlFor={`${formId}-olduri`} style={{ display: 'block', marginTop: 8, fontWeight: 'var(--fw-medium)', fontSize: 'var(--text-sm)', color: COLORS.textPrimary }}>
-                Old data URI (0x…)
-              </label>
-              <Input
-                id={`${formId}-olduri`}
-                value={oldDataUri}
-                onChange={onOldDataUriChange}
-                placeholder="0x… 0G Storage root hash"
-                autoComplete="off"
-                spellCheck={false}
-                style={{ width: '100%', boxSizing: 'border-box', fontFamily: "'SF Mono', monospace", marginTop: 6 }}
-              />
-              {rekeyError !== null && (
-                <Alert variant="error" style={{ marginTop: 4 }}>{rekeyError}</Alert>
-              )}
-            </details>
-
-            {mergedError}
-
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
-              <Button variant="secondary" onClick={cancel} disabled={isLoading}>
-                Cancel
-              </Button>
-              <Button variant="primary" type="submit" disabled={!canSubmit || rekeyError !== null}>
-                {isLoading ? 'Signing…' : 'Sign AccessProof'}
-              </Button>
-            </div>
-          </form>
+          <TransferFormPhase
+            formId={formId}
+            receiverAddress={receiverAddress}
+            onAddressChange={onAddressChange}
+            addressError={addressError}
+            receiverPubKey={receiverPubKey}
+            onPubKeyChange={onPubKeyChange}
+            pubKeyError={pubKeyError}
+            accessProofNonce={accessProofNonce}
+            oldDataEncryptionKey={oldDataEncryptionKey}
+            onOldDataKeyChange={onOldDataKeyChange}
+            oldDataUri={oldDataUri}
+            onOldDataUriChange={onOldDataUriChange}
+            rekeyError={rekeyError}
+            mergedError={mergedError}
+            cancel={cancel}
+            canSubmit={canSubmit}
+            isLoading={isLoading}
+            onSubmit={onSubmit}
+          />
         ) : (
-          <form
-            onSubmit={(e): void => {
-              e.preventDefault();
-              void onConfirm();
-            }}
-          >
-            <h2 id={`${formId}-title`} style={{ marginTop: 0, fontSize: 'var(--text-xl)', fontWeight: 'var(--fw-bold)', color: COLORS.text, letterSpacing: '-0.02em' }}>
-              Confirm Transfer
-            </h2>
-
-            <p style={{ color: COLORS.textMuted, fontSize: 'var(--text-sm)', lineHeight: 1.6, fontWeight: 'var(--fw-light)', marginBottom: 20 }}>
-              Review the proof details, then submit the on-chain
-              <code style={{ color: COLORS.bronzeLight }}> iTransferFrom </code>
-              transaction. Your wallet will ask for the final signature.
-            </p>
-
-            {signature !== null && signature.rekeyed === true && (
-              <Alert variant="success" style={{ marginTop: 12 }}>
-                <strong>Re-encrypted</strong> — agent data was re-keyed for the receiver.
-                {signature.newDataHash !== undefined && (
-                  <>
-                    <br />
-                    New data hash: <MonoLabel style={{ fontSize: 'var(--text-xs)' }}>{signature.newDataHash}</MonoLabel>
-                  </>
-                )}
-              </Alert>
-            )}
-
-            {signature !== null && (
-              <Card style={{ background: COLORS.bg, padding: '12px 16px', borderRadius: 'var(--radius-lg)', marginTop: 12, fontSize: 'var(--text-xs)', color: COLORS.textMuted }}>
-                <strong style={{ color: COLORS.text }}>OwnershipProof</strong> (TEE-signed)
-                <br />
-                Signer: <MonoLabel style={{ fontSize: 'var(--text-xs)' }}>{signature.signer ?? '—'}</MonoLabel>
-                {signature.ownershipProof !== undefined && (
-                  <>
-                    <br />
-                    Valid until:{' '}
-                    <code style={{ color: COLORS.bronzeLight, fontSize: 'var(--text-xs)' }}>
-                      {new Date(Number(signature.ownershipProof.validUntil) * 1000).toISOString()}
-                    </code>
-                  </>
-                )}
-              </Card>
-            )}
-
-            {signature !== null && signature.accessSigner !== undefined && (
-              <Card style={{ background: COLORS.bg, padding: '12px 16px', borderRadius: 'var(--radius-lg)', marginTop: 8, fontSize: 'var(--text-xs)', color: COLORS.textMuted }}>
-                <strong style={{ color: COLORS.text }}>AccessProof</strong> (receiver-signed)
-                <br />
-                Recovered signer: <MonoLabel style={{ fontSize: 'var(--text-xs)' }}>{signature.accessSigner}</MonoLabel>
-              </Card>
-            )}
-
-            {mergedError}
-
-            <p style={{ fontSize: 'var(--text-xs)', color: COLORS.textDim, margin: '12px 0 0' }}>
-              The on-chain transfer will incur gas costs.
-            </p>
-
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
-              <Button variant="secondary" onClick={onEdit} disabled={isLoading}>
-                Edit
-              </Button>
-              <Button variant="primary" type="submit" disabled={isLoading || signature === null}>
-                {isLoading ? 'Submitting…' : 'Confirm on-chain transfer'}
-              </Button>
-
-            </div>
-          </form>
+          <ConfirmTransferPhase
+            formId={formId}
+            signature={signature}
+            mergedError={mergedError}
+            isLoading={isLoading}
+            onEdit={onEdit}
+            onConfirm={onConfirm}
+          />
         )}
       </Modal>
     </>
