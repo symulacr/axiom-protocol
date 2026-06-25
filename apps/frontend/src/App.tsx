@@ -14,6 +14,7 @@ const AgentsBrowser = lazy(() => import('./pages/AgentsBrowser.js'));
 const MintAgentPage = lazy(() => import('./pages/MintAgentPage.js'));
 const ExecuteStrategyPage = lazy(() => import('./pages/ExecuteStrategyPage.js'));
 const AgentPaymentsPage = lazy(() => import('./pages/AgentPaymentsPage.js').then(m => ({ default: m.AgentPaymentsPage })));
+const ChatPage = lazy(() => import('./pages/ChatPage.js'));
 const NotFound = lazy(() => import('./pages/NotFound.js'));
 
 function navLinkStyle({ isActive }: { isActive: boolean }): React.CSSProperties {
@@ -74,6 +75,9 @@ export function App(): ReactElement {
               </NavLink>
               <NavLink to="/market" style={navLinkStyle}>
                 Market
+              </NavLink>
+              <NavLink to="/chat" style={navLinkStyle}>
+                Chat
               </NavLink>
             </>
           )}
@@ -140,6 +144,9 @@ export function App(): ReactElement {
           <NavLink to="/market" style={navLinkStyle} onClick={() => setMenuOpen(false)}>
             Market
           </NavLink>
+          <NavLink to="/chat" style={navLinkStyle} onClick={() => setMenuOpen(false)}>
+            Chat
+          </NavLink>
         </div>
       )}
       <div id="main-content" style={{ padding: 'var(--space-2xl) var(--space-xl)', maxWidth: '68rem', margin: '0 auto', minHeight: 'calc(100vh - 3.25rem)' }}>
@@ -163,6 +170,7 @@ export function App(): ReactElement {
               <Route path="/vaults" element={<Navigate to="/vaults/0" replace />} />
               <Route path="/vaults/:vaultId" element={<VaultDashboard />} />
               <Route path="/market" element={<MarketPage />} />
+              <Route path="/chat" element={<ChatPage />} />
               <Route path="/settings" element={<Navigate to="/" replace />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
