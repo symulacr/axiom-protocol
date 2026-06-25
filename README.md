@@ -136,12 +136,6 @@ packages/
 
 ---
 
-## Changelog
-
-See [docs/changelog-v0.2.3.md](docs/changelog-v0.2.3.md) for the full v0.2.x history.
-
----
-
 ## License
 
 MIT. Built for the [0G Bridge by AKINDO](https://app.akindo.io/wave-hacks/xKOgjd91kCmrN3ORz/) hackathon.
