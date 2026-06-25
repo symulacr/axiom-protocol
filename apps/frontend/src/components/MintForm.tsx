@@ -10,8 +10,10 @@ import {
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useAccount, useReadContracts } from 'wagmi';
-import { formatEther, isHex, type Address } from 'viem';
+import { formatEther, isHex, parseAbi, type Address } from 'viem';
 import { AGENT_NFT_ABI } from '@axiom/config/abis';
+
+const agentNftAbi = parseAbi(AGENT_NFT_ABI);
 import { getAxiomAgentNftAddress } from '../abi/addresses.js';
 import { useMint } from '../hooks/useMint.js';
 import { COLORS, Card, Button, Alert, PageHeader, Input, ConnectedGuard } from './ui.js';
@@ -66,7 +68,7 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
     contracts: [
       {
         address: getAxiomAgentNftAddress(),
-        abi: AGENT_NFT_ABI,
+        abi: agentNftAbi,
         functionName: 'mintFee',
         args: undefined,
       },
