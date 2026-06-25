@@ -51,6 +51,9 @@ export function AgentsBrowser(): ReactElement {
           <p style={{ color: COLORS.textMuted, fontSize: 'var(--text-sm)', margin: 0 }}>
             Own your AI strategy on-chain
           </p>
+          <p style={{ color: COLORS.textDim, fontSize: 'var(--text-xs)', margin: '0.5rem 0 0', lineHeight: '1.4' }}>
+            Mint an ERC-7857 iNFT to tokenize your AI strategy as a transferable on-chain asset. Connect your wallet to get started.
+          </p>
         </div>
         <PageHeader title="Your Agents" />
         <Card style={{ textAlign: 'center', padding: 'var(--space-3xl) var(--space-xl)' }}>
@@ -101,6 +104,9 @@ export function AgentsBrowser(): ReactElement {
         </h1>
         <p style={{ color: COLORS.textMuted, fontSize: 'var(--text-sm)', margin: 0 }}>
           Own your AI strategy on-chain
+        </p>
+        <p style={{ color: COLORS.textDim, fontSize: 'var(--text-xs)', margin: '0.5rem 0 0', lineHeight: '1.4' }}>
+          Your agents are listed below. Click to view details, execute strategies, or transfer.
         </p>
       </div>
       <ConnectedGuard>
