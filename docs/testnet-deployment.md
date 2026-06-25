@@ -49,10 +49,11 @@ forge script script/Deploy.s.sol \
   -vvv
 ```
 
-## Step 2: Update Frontend Addresses
+## Step 2: Update Contract Addresses
 
-After deployment, update `apps/frontend/src/abi/addresses.ts` with the real deployed
-addresses for chainId 16602.
+After deployment, update the hardcoded defaults in `packages/config/src/addresses.ts`
+(or override via env vars `AXIOM_AGENT_NFT_ADDRESS`, `AXIOM_STRATEGY_VAULT_ADDRESS`,
+`AXIOM_TEE_VERIFIER_ADDRESS`, `AXIOM_PAYMENT_PROCESSOR_ADDRESS` in `.env`).
 
 ## Step 3: Start Oracle
 

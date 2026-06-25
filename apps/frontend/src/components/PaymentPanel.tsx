@@ -41,10 +41,6 @@ function useAutoClear(
 
 const formRowClassName = "flex items-center gap-sm mt-sm";
 
-// ---------------------------------------------------------------------------
-// Extracted sub-components
-// ---------------------------------------------------------------------------
-
 function PaymentConfigDisplay({
   config,
   initError,
@@ -268,9 +264,7 @@ function RoyaltySection({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Main component
-// ---------------------------------------------------------------------------
+
 
 export type PaymentPanelProps = {
   tokenId: bigint;
@@ -407,10 +401,8 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
       <ConnectedGuard>
       <SectionTitle>Payments</SectionTitle>
 
-      {/* 1. Payment config */}
       <PaymentConfigDisplay config={config} initError={initError} />
 
-      {/* 2. Pay-for-agent form */}
       <PaymentForm
         isPayLoading={isPayLoading}
         payAmount={payAmount}
@@ -424,7 +416,6 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
         onPay={(): void => { void handlePay(); }}
       />
 
-      {/* 3. Earnings + withdraw */}
       <EarningsSection
         earnings={earnings}
         isWithdrawPending={isWithdrawPending}
@@ -436,7 +427,6 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
         onWithdrawConfirm={(): void => { void handleWithdraw(); }}
       />
 
-      {/* 4. Royalty setting form */}
       <RoyaltySection
         isRoyaltyLoading={isRoyaltyLoading}
         royaltyBps={royaltyBps}
@@ -450,7 +440,6 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
         onSetRoyalty={(): void => { void handleSetRoyalty(); }}
       />
 
-      {/* Hook-level errors for fetch operations. */}
       {fetchError !== null && (
         <Alert variant="error">{fetchError.message}</Alert>
       )}

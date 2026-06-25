@@ -125,7 +125,6 @@ export function HomePage(): ReactElement {
 
   return (
     <main>
-      {/* Hero */}
       <section style={heroSectionStyle}>
         <h1 style={heroTitleStyle}>
           Axiom <span style={heroAccentStyle}>Protocol</span>
@@ -149,12 +148,10 @@ export function HomePage(): ReactElement {
         </div>
       </section>
 
-      {/* Stats */}
       <p style={{ fontSize: 'var(--text-sm)', color: COLORS.textMuted, textAlign: 'center', margin: 'var(--space-3xl) auto' }}>
         Powered by 0G Protocol
       </p>
 
-      {/* How it works */}
       <section style={stepsSectionStyle}>
         <h2 style={stepsHeadingStyle}>How it works</h2>
         <div style={stepsGridStyle}>

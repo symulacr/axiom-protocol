@@ -24,12 +24,9 @@ interface IERC7857Authorize is IERC7857 {
     function authorizeUsage(uint256 _tokenId, address _user) external;
 
     /// @notice Revoke a user's authorization
-    /// @param _tokenId Token
-    /// @param _user User to revoke
     function revokeAuthorization(uint256 _tokenId, address _user) external;
 
     /// @notice Get the list of users authorized for a token
-    /// @param _tokenId Token
     /// @return Array of authorized user addresses
     function authorizedUsersOf(uint256 _tokenId) external view returns (address[] memory);
 }

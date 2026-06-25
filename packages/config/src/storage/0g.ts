@@ -32,7 +32,7 @@ export type Encryption =
   | { type: "aes256"; key: Uint8Array }
   | { type: "ecies"; recipientPubKey: Uint8Array | string };
 
-// ── In-memory storage for dev/test (moved from oracle) ────────────────────
+// In-memory storage for dev/test
 
 export class InMemoryStorage implements StorageAdapter {
   private store = new Map<string, Uint8Array>();
@@ -59,7 +59,7 @@ export class InMemoryStorage implements StorageAdapter {
   }
 }
 
-// ── Core upload/download helpers (augmented from existing) ────────────────
+// Core upload/download helpers
 
 export async function uploadToStorage(
   indexer: Indexer,
@@ -92,7 +92,7 @@ export async function downloadFromStorage(
   return { data, rootHash, size: data.length };
 }
 
-// ── Unified ZeroGStorage (replaces backend + oracle wrappers) ─────────────
+// Unified ZeroGStorage
 
 export class ZeroGStorage implements StorageAdapter {
   readonly indexer: Indexer;
@@ -124,7 +124,6 @@ export class ZeroGStorage implements StorageAdapter {
   }
 
   // Backward-compat methods (for backend consumers)
-  /** @param _encryption - Reserved for future use. Currently unused. */
   async uploadData(data: Uint8Array, _encryption?: Encryption): Promise<UploadResult> {
     return uploadToStorage(this.indexer, data, this.config.evmRpc, this.config.signer);
   }
@@ -136,5 +135,4 @@ export class ZeroGStorage implements StorageAdapter {
     return downloadFromStorage(this.indexer, rootHash, opts);
   }
 }
-
 

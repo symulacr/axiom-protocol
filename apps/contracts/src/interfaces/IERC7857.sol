@@ -52,7 +52,6 @@ interface IERC7857 is IERC721, IERC7857Metadata {
     function delegateAccess(address _assistant) external;
 
     /// @notice Get the access assistant for a user (or address(0) if none)
-    /// @param _user The user
     /// @return The assistant address
     function getDelegateAccess(address _user) external view returns (address);
 }

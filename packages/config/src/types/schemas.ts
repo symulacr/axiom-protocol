@@ -12,5 +12,3 @@ export const hexViem = hexString.transform((v) => toViemHex(v));
 
 /** Viem-compatible address schema (outputs `0x${string}`). */
 export const addressViem = address.transform((v) => toViemHex(v));
-
-
