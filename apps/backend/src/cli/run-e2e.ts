@@ -259,7 +259,7 @@ async function main(): Promise<void> {
     ...ITRANSFER_FROM_ABI,
     "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)",
     "function ownerOf(uint256 tokenId) view returns (address)",
-  ];
+  ] as unknown as readonly string[];
   const nftTc = new TypedContract<AgentNFTMethods>(AGENT_NFT, ITRANSFER_FROM_ABI_LOCAL, deployer);
   const currentOwner = await nftTc.contract.ownerOf(BigInt(tokenId));
   if (currentOwner.toLowerCase() !== deployer.address.toLowerCase()) {

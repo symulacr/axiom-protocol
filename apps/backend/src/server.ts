@@ -24,10 +24,9 @@ import { getEventStore } from "./events/store.js";
 import { PaymentProcessorClient } from "./payment/processor.js";
 import type { BackendEnv } from "./env-schema.js";
 import { createHealthRouter } from "./routers/health.js";
-import { createRoute, REGISTERED_ROUTES } from "./routers/route-factory.js";
+import { createRoute } from "./routers/route-factory.js";
 import { broadcast, getClients, registerClient, unregisterClient, sendToTopic, type ConnectedClient } from "./ws/broadcaster.js";
 import {
-  mintSchema,
   transferBodySchema,
   royaltySchema,
   eventBodySchema,
@@ -173,11 +172,6 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
 
   app.use(createHealthRouter(provider, oracle, config.signer.address, config.addresses));
 
-  // Admin: expose all registered routes (API-key gated by global middleware)
-  app.get("/v1/admin/routes", (_req: Request, res: Response) => {
-    res.json({ routes: REGISTERED_ROUTES });
-  });
-
   app.get("/v1/compute/providers", async (_req: Request, res: Response, next: NextFunction) => {
     try {
       const routerBaseUrl = getComputeBaseUrl();
@@ -200,51 +194,6 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
         return { address, model: id, endpoint: routerBaseUrl, price };
       });
       res.json({ services });
-    } catch (err) {
-      next(err);
-    }
-  });
-
-  app.post("/v1/agents/mint", async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { agentNft, encryptedStrategyUri, sealedKey: _sealedKey, owner } = mintSchema.parse(req.body);
-      const nftTc = new TypedContract<AgentNFTMethods>(agentNft, AGENT_NFT_ABI, config.signer);
-      const iDatas = [{ dataDescription: "Axiom strategy bundle", dataHash: encryptedStrategyUri }];
-      const mintFee = await nftTc.contract.mintFee();
-      const tx = await nftTc.contract.mint(iDatas, owner, { value: mintFee });
-      const receipt = await tx.wait();
-      const transferTopic = nftTc.iface.getEvent("Transfer")?.topicHash;
-      const transferLog = receipt?.logs.find((log) => log.topics[0] === transferTopic);
-      let tokenId: string | undefined;
-      if (transferLog) {
-        const parsed = nftTc.iface.parseLog(transferLog);
-        tokenId = parsed?.args.tokenId?.toString();
-      }
-      // Register dataHash with oracle's seen-set so subsequent transfer doesn't 400.
-      // Retry once if first attempt fails.
-      let oracleRegistered = false;
-      for (let attempt = 1; attempt <= 2; attempt++) {
-        try {
-          await fetch(`${config.oracleBaseUrl}/v1/agents/mint`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "X-Request-ID": res.locals.requestId as string },
-            body: JSON.stringify({ dataHash: encryptedStrategyUri }),
-            signal: AbortSignal.timeout(15000),
-          });
-          oracleRegistered = true;
-          break;
-        } catch (err) {
-          if (attempt === 1) {
-            console.warn(`[mint] Oracle registration attempt ${attempt} failed, retrying: ${err instanceof Error ? err.message : err}`);
-            await new Promise(r => setTimeout(r, 1000));
-          } else {
-            console.warn(`[mint] Oracle registration failed after 2 attempts (non-fatal): ${err instanceof Error ? err.message : err}`);
-            console.warn(`[mint] Token ${tokenId ?? '(unknown)'} will not be transferable until oracle is re-registered`);
-          }
-        }
-      }
-      res.json({ ok: true, agentNft, owner, tokenId, dataHash: encryptedStrategyUri, txHash: receipt?.hash ?? tx.hash });
-      broadcast("Transfer", { owner, tokenId, dataHash: encryptedStrategyUri });
     } catch (err) {
       next(err);
     }
@@ -523,15 +472,6 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
       next(err);
     }
   });
-
-  createRoute(app, { method: "get", path: "/v1/agents/:id/history", requireId: true, description: "Agent event history (unused — frontend polls /v1/events instead)" }, async (_parsed, req, _res, { id, config: _config }) => {
-    const eventName = typeof req.query.eventName === "string" ? req.query.eventName : undefined;
-    const source = typeof req.query.source === "string" ? req.query.source : undefined;
-    const limitRaw = typeof req.query.limit === "string" ? Number(req.query.limit) : undefined;
-    const limit = limitRaw !== undefined && Number.isInteger(limitRaw) && limitRaw > 0 ? limitRaw : undefined;
-    const matches = events.queryByAgent({ tokenId: id!, eventName, source, limit });
-    return { tokenId: id, events: matches };
-  }, config);
 
   createRoute(app, { method: "post", path: "/v1/events", schema: eventBodySchema, consumer: "sink.ts", description: "Append event to store (indexer)" }, async (parsed, _req, _res, { config: _config }) => {
     const b = parsed as z.infer<typeof eventBodySchema>;

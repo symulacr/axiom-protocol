@@ -45,7 +45,7 @@ export function ProviderCard({ provider }: { provider: Provider }): ReactElement
       </div>
       {provider.price && (
         <div style={{ fontSize: 'var(--text-xs)', color: COLORS.textMuted }}>
-          {provider.price} OG/token
+          {provider.price} 0G/token
         </div>
       )}
       <Button variant="secondary" onClick={onUse}>

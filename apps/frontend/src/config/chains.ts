@@ -4,7 +4,7 @@ import { GALILEO_CHAIN_ID, ARISTOTLE_CHAIN_ID } from "@axiom/config/networks";
 export const galileo = defineChain({
   id: GALILEO_CHAIN_ID,
   name: '0G Galileo Testnet',
-  nativeCurrency: { name: 'OG', symbol: 'OG', decimals: 18 },
+  nativeCurrency: { name: '0G', symbol: '0G', decimals: 18 },
   rpcUrls: {
     default: {
       http: ["https://evmrpc-testnet.0g.ai"],
@@ -22,7 +22,7 @@ export const galileo = defineChain({
 export const aristotle = defineChain({
   id: ARISTOTLE_CHAIN_ID,
   name: '0G Aristotle Mainnet',
-  nativeCurrency: { name: 'OG', symbol: 'OG', decimals: 18 },
+  nativeCurrency: { name: '0G', symbol: '0G', decimals: 18 },
   rpcUrls: {
     default: {
       http: ["https://evmrpc.0g.ai"],
