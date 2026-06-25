@@ -25,7 +25,7 @@ export const aristotle = defineChain({
   nativeCurrency: { name: 'OG', symbol: 'OG', decimals: 18 },
   rpcUrls: {
     default: {
-      http: ["https://evmrpc-testnet.0g.ai"],
+      http: ["https://evmrpc.0g.ai"],
     },
   },
   blockExplorers: {
