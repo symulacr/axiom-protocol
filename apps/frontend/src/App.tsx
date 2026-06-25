@@ -6,13 +6,10 @@ import { ErrorBoundary } from './components/ErrorBoundary.js';
 import { HealthBadge } from './components/HealthBadge.js';
 import { COLORS } from './components/ui.js';
 import { useMediaQuery } from './hooks/useMediaQuery.js';
-import { HomePage } from './pages/HomePage.js';
 
 const VaultDashboard = lazy(() => import('./pages/VaultDashboard.js'));
 const AgentDetail = lazy(() => import('./pages/AgentDetail.js'));
 const MarketPage = lazy(() => import('./pages/MarketPage.js'));
-const HistoryPage = lazy(() => import('./pages/HistoryPage.js'));
-const SettingsPage = lazy(() => import('./pages/SettingsPage.js'));
 const AgentsBrowser = lazy(() => import('./pages/AgentsBrowser.js'));
 const MintAgentPage = lazy(() => import('./pages/MintAgentPage.js'));
 const ExecuteStrategyPage = lazy(() => import('./pages/ExecuteStrategyPage.js'));
@@ -72,20 +69,11 @@ export function App(): ReactElement {
               <NavLink to="/agents" style={navLinkStyle}>
                 Agents
               </NavLink>
-              <NavLink to="/agents/new" style={navLinkStyle}>
-                Mint
-              </NavLink>
               <NavLink to="/vaults/0" style={navLinkStyle}>
                 Vault
               </NavLink>
               <NavLink to="/market" style={navLinkStyle}>
                 Market
-              </NavLink>
-              <NavLink to="/history" style={navLinkStyle}>
-                History
-              </NavLink>
-              <NavLink to="/settings" style={navLinkStyle}>
-                Settings
               </NavLink>
             </>
           )}
@@ -146,20 +134,11 @@ export function App(): ReactElement {
           <NavLink to="/agents" style={navLinkStyle} onClick={() => setMenuOpen(false)}>
             Agents
           </NavLink>
-          <NavLink to="/agents/new" style={navLinkStyle} onClick={() => setMenuOpen(false)}>
-            Mint
-          </NavLink>
           <NavLink to="/vaults/0" style={navLinkStyle} onClick={() => setMenuOpen(false)}>
             Vault
           </NavLink>
           <NavLink to="/market" style={navLinkStyle} onClick={() => setMenuOpen(false)}>
             Market
-          </NavLink>
-          <NavLink to="/history" style={navLinkStyle} onClick={() => setMenuOpen(false)}>
-            History
-          </NavLink>
-          <NavLink to="/settings" style={navLinkStyle} onClick={() => setMenuOpen(false)}>
-            Settings
           </NavLink>
         </div>
       )}
@@ -170,13 +149,12 @@ export function App(): ReactElement {
               <div style={{
                 width: 32, height: 32, borderRadius: '50%',
                 border: '3px solid rgba(180,160,120,0.2)', borderTopColor: '#b4a078',
-                animation: 'spin 0.8s linear infinite',
+                animation: 'axiom-spin 0.8s linear infinite',
               }} />
-              <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
             </div>
           }>
             <Routes>
-              <Route path="/" element={<HomePage />} />
+              <Route path="/" element={<Navigate to="/agents" replace />} />
               <Route path="/agents" element={<AgentsBrowser />} />
               <Route path="/agents/new" element={<MintAgentPage />} />
               <Route path="/agents/:tokenId/execute" element={<ExecuteStrategyPage />} />
@@ -185,8 +163,7 @@ export function App(): ReactElement {
               <Route path="/vaults" element={<Navigate to="/vaults/0" replace />} />
               <Route path="/vaults/:vaultId" element={<VaultDashboard />} />
               <Route path="/market" element={<MarketPage />} />
-              <Route path="/history" element={<HistoryPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/settings" element={<Navigate to="/" replace />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>

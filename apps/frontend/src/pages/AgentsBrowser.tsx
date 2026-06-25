@@ -44,6 +44,14 @@ export function AgentsBrowser(): ReactElement {
   if (count === 0) {
     return (
       <main>
+        <div style={{ marginBottom: 'var(--space-xl)', textAlign: 'left' }}>
+          <h1 style={{ fontSize: 'var(--text-xl)', fontWeight: 'var(--fw-semibold)', margin: '0 0 0.25rem', letterSpacing: '-0.01em' }}>
+            Axiom Protocol
+          </h1>
+          <p style={{ color: COLORS.textMuted, fontSize: 'var(--text-sm)', margin: 0 }}>
+            Own your AI strategy on-chain
+          </p>
+        </div>
         <PageHeader title="Your Agents" />
         <Card style={{ textAlign: 'center', padding: 'var(--space-3xl) var(--space-xl)' }}>
           <div style={{
@@ -87,15 +95,21 @@ export function AgentsBrowser(): ReactElement {
 
   return (
     <main>
-      <p style={{ margin: 0, marginBottom: 'var(--space-md)' }}>
-        <Link to="/" style={{ color: COLORS.textDim, textDecoration: 'none', fontSize: '0.875rem' }}>
-          ← Back
-        </Link>
-      </p>
+      <div style={{ marginBottom: 'var(--space-xl)', textAlign: 'left' }}>
+        <h1 style={{ fontSize: 'var(--text-xl)', fontWeight: 'var(--fw-semibold)', margin: '0 0 0.25rem', letterSpacing: '-0.01em' }}>
+          Axiom Protocol
+        </h1>
+        <p style={{ color: COLORS.textMuted, fontSize: 'var(--text-sm)', margin: 0 }}>
+          Own your AI strategy on-chain
+        </p>
+      </div>
       <ConnectedGuard>
       <PageHeader
         title="Your Agents"
-        subtitle={`${countLabel} owned by ${address !== undefined ? `${address.slice(0, 6)}\u2026${address.slice(-4)}` : 'this wallet'}`}
+        action={<Link to="/agents/new" style={{
+          fontSize: 'var(--text-sm)', fontWeight: 'var(--fw-semibold)',
+          color: COLORS.bronzeLight, textDecoration: 'none',
+        }}>+ Mint</Link>}
       />
       <label htmlFor="agent-search" style={{ color: COLORS.textMuted, fontSize: 'var(--text-sm)' }}>Search Agents</label>
       <input

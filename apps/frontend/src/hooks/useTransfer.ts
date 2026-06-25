@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAccount, useSignTypedData, useWriteContract } from 'wagmi';
-import { parseAbi, type Address, type Hex } from 'viem';
+import { type Address, type Hex } from 'viem';
 
 import { getAxiomAgentNftAddress } from '../abi/addresses.js';
 import { ITRANSFER_FROM_ABI } from '@axiom/config/abis';
-
-const iTransferFromAbi = parseAbi(ITRANSFER_FROM_ABI);
 
 import { useAsyncAction } from './useAsyncAction.js';
 import { useEip712Domain, ACCESS_PROOF_TYPES } from '../abi/eip712.js';
@@ -216,7 +214,7 @@ export function useTransfer(): UseTransferResult {
       try {
         const txHash = await writeContractAsync({
           address: getAxiomAgentNftAddress(),
-          abi: iTransferFromAbi,
+          abi: ITRANSFER_FROM_ABI,
           functionName: 'iTransferFrom',
           args: [
             from,

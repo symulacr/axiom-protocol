@@ -146,7 +146,7 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
         <dl className="stack-on-mobile" style={{ margin: 0, display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px 16px', fontSize: 'var(--text-sm)' }}>
           <dt style={{ color: COLORS.textDim, fontWeight: 'var(--fw-medium)' }}>Balance</dt>
           <dd style={{ margin: 0, color: COLORS.bronzeLight, fontWeight: 'var(--fw-semibold)' }}>
-            {depositsWei === undefined ? PLACEHOLDER : `${formatEther(depositsWei)} OG`}
+            {depositsWei === undefined ? PLACEHOLDER : `${formatEther(depositsWei)} 0G`}
           </dd>
           <dt style={{ color: COLORS.textDim, fontWeight: 'var(--fw-medium)' }}>Strategy Root</dt>
           <dd style={{ margin: 0 }}>
@@ -156,7 +156,7 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
           </dd>
           <dt style={{ color: COLORS.textDim, fontWeight: 'var(--fw-medium)' }}>Daily Limit</dt>
           <dd style={{ margin: 0, color: COLORS.text }}>
-            {dailyLimitWei === undefined ? PLACEHOLDER : `${formatEther(dailyLimitWei)} OG`}
+            {dailyLimitWei === undefined ? PLACEHOLDER : `${formatEther(dailyLimitWei)} 0G`}
           </dd>
         </dl>
       </div>

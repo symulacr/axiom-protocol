@@ -2,6 +2,8 @@ import { useState, type ReactElement } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAccount } from 'wagmi';
 import { useAgentMetadata } from '../hooks/useAgentMetadata.js';
+import { ExecutePanel } from '../components/ExecutePanel.js';
+import { PaymentPanel } from '../components/PaymentPanel.js';
 import { TransferModal } from '../components/TransferModal.js';
 import {
   COLORS,
@@ -34,9 +36,6 @@ export function AgentDetail(): ReactElement {
         <Alert variant="error" style={{ marginBottom: 'var(--space-lg)' }}>
           Invalid token ID in the URL. The ID must be a positive integer.
         </Alert>
-        <Link to="/agents" style={{ color: COLORS.bronzeLight, fontSize: 'var(--text-sm)', fontWeight: 'var(--fw-semibold)' }}>
-          Back to agents
-        </Link>
       </main>
     );
   }
@@ -45,38 +44,7 @@ export function AgentDetail(): ReactElement {
     <main>
       <ConnectedGuard>
       <PageHeader
-        title={`Agent #${tokenId.toString()}`}
-        subtitle="On-chain iNFT metadata and transfer history"
-        action={
-          <div style={{ display: 'flex', gap: 'var(--space-sm)', alignItems: 'center' }}>
-            <Link
-              to={`/agents/${tokenId.toString()}/execute`}
-              style={{
-                display: 'inline-block',
-                padding: '8px 16px',
-                borderRadius: 'var(--radius-md)',
-                background: COLORS.bronze,
-                color: '#0f0f0f',
-                textDecoration: 'none',
-                fontSize: 'var(--text-sm)',
-                fontWeight: 'var(--fw-semibold)',
-              }}
-            >
-              Execute Strategy
-            </Link>
-            <Link
-              to="/agents"
-              style={{
-                color: COLORS.textMuted,
-                fontSize: 'var(--text-sm)',
-                textDecoration: 'none',
-                transition: 'color 0.15s ease',
-              }}
-            >
-              Back to agents
-            </Link>
-          </div>
-        }
+        title={data?.dataDescription ?? `Agent #${tokenId.toString()}`}
       />
 
       {metaLoading && (
@@ -138,14 +106,23 @@ export function AgentDetail(): ReactElement {
         </Button>
       </Card>
 
-      <Link to={`/agents/${tokenId.toString()}/payments`} style={{ textDecoration: 'none' }}>
-        <Card hover style={{ padding: 16, textAlign: 'center' }}>
-          <SectionTitle>Manage Payments</SectionTitle>
-          <p style={{ fontSize: 'var(--text-sm)', color: COLORS.textMuted, margin: 0 }}>
-            Pay, withdraw earnings, and manage royalties →
-          </p>
-        </Card>
-      </Link>
+      <details style={{ marginTop: 'var(--space-xl)' }}>
+        <summary style={{ cursor: 'pointer', color: COLORS.bronzeLight, fontWeight: 'var(--fw-semibold)', fontSize: 'var(--text-sm)' }}>
+          Execute Strategy
+        </summary>
+        <div style={{ marginTop: 'var(--space-md)' }}>
+          <ExecutePanel tokenId={tokenId} />
+        </div>
+      </details>
+
+      <details style={{ marginTop: 'var(--space-md)' }}>
+        <summary style={{ cursor: 'pointer', color: COLORS.bronzeLight, fontWeight: 'var(--fw-semibold)', fontSize: 'var(--text-sm)' }}>
+          Payments
+        </summary>
+        <div style={{ marginTop: 'var(--space-md)' }}>
+          <PaymentPanel tokenId={tokenId} />
+        </div>
+      </details>
 
       {address !== undefined && (
         <p style={{ marginTop: 'var(--space-xl)', fontSize: 'var(--text-sm)', color: COLORS.textDim }}>
