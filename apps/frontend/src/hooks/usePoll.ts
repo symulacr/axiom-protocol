@@ -5,6 +5,11 @@ export interface UsePollOptions {
   enabled?: boolean;
 }
 
+/**
+ * @deprecated Use `usePolledApi` from `./usePolledApi.js` instead for HTTP
+ *   polling consumers. This hook still works for non-HTTP / custom-fetcher
+ *   use cases but will be removed in a future wave.
+ */
 export function usePoll<T>(
   fetcher: (signal: AbortSignal) => Promise<T>,
   onResult: (data: T) => void,
