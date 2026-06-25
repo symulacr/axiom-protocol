@@ -12,7 +12,9 @@ loadEnv();
 
 const env = oracleEnvSchema.parse(process.env);
 
-const teeVerifier: `0x${string}` = toViemHex(env.AXIOM_TEE_VERIFIER);
+const teeVerifierRaw = env.AXIOM_TEE_VERIFIER_ADDRESS ?? env.AXIOM_TEE_VERIFIER;
+if (!teeVerifierRaw) throw new Error("Missing AXIOM_TEE_VERIFIER_ADDRESS or deprecated AXIOM_TEE_VERIFIER");
+const teeVerifier: `0x${string}` = toViemHex(teeVerifierRaw);
 const chainId = BigInt(env.AXIOM_CHAIN_ID);
 const eip712Domain: Eip712Domain = { chainId, verifyingContract: teeVerifier };
 const signer = new TeeSigner(env.AXIOM_TEE_SIGNER_PK, eip712Domain);

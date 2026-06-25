@@ -7,36 +7,28 @@ import {
   type FormEvent,
   type ReactElement,
 } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { useAccount, useReadContracts } from 'wagmi';
 import { formatEther, isHex, type Address } from 'viem';
+import { AGENT_NFT_ABI } from '@axiom/config/abis';
 import { getAxiomAgentNftAddress } from '../abi/addresses.js';
 import { useMint } from '../hooks/useMint.js';
 import { COLORS, Card, Button, Alert, PageHeader, Input, ConnectedGuard } from './ui.js';
 
-const mintFeeAbi = [
-  {
-    type: 'function',
-    name: 'mintFee',
-    stateMutability: 'view',
-    inputs: [],
-    outputs: [{ name: '', type: 'uint256' }],
-  },
-] as const;
-
 const labelStyle: React.CSSProperties = {
   display: 'block',
   marginTop: 16,
-  fontWeight: 500,
-  fontSize: 13,
+  fontWeight: 'var(--fw-medium)',
+  fontSize: 'var(--text-sm)',
   color: COLORS.textPrimary,
 };
 
 const fieldHintStyle: React.CSSProperties = {
   color: COLORS.textDim,
-  fontSize: 11,
+  fontSize: 'var(--text-xs)',
   margin: '4px 0 0',
-  fontWeight: 300,
+  fontWeight: 'var(--fw-light)',
 };
 
 export type MintFormProps = {
@@ -62,8 +54,9 @@ function validateHex(value: string, label: string): string | null {
 export function MintForm({ provider }: MintFormProps): ReactElement {
   const formId = useId();
   const { address, isConnected } = useAccount();
-  const { mint, isLoading, error, result, registrationWarning, reset } = useMint();
+  const { mint, cancelMint, isLoading, error, result, registrationWarning, reset } = useMint();
 
+  const navigate = useNavigate();
   const [encryptedStrategyUri, setEncryptedStrategyUri] = useState('');
   const [sealedKey, setSealedKey] = useState('');
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -73,7 +66,7 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
     contracts: [
       {
         address: getAxiomAgentNftAddress(),
-        abi: mintFeeAbi,
+        abi: AGENT_NFT_ABI,
         functionName: 'mintFee',
         args: undefined,
       },
@@ -83,7 +76,7 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
     },
   });
 
-  const mintFeeWei: bigint | undefined = feeQuery.data?.[0];
+  const mintFeeWei: bigint | undefined = feeQuery.data?.[0] as bigint | undefined;
   const feeError = (feeQuery.error as Error | null) ?? null;
 
   const uriError = useMemo(
@@ -111,13 +104,20 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
       if (!canSubmit || !owner) return;
       setSubmitError(null);
       try {
-        await mint({
+        const mintResult = await mint({
           agentNft: getAxiomAgentNftAddress(),
           encryptedStrategyUri: encryptedStrategyUri as `0x${string}`,
           sealedKey: sealedKey as `0x${string}`,
           owner,
         });
+        if (mintResult) {
+          toast.success(`Agent #${mintResult.tokenId} minted!`);
+          setEncryptedStrategyUri('');
+          setSealedKey('');
+          navigate('/agents');
+        }
       } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return;
         setSubmitError(err instanceof Error ? err.message : String(err));
       }
     },
@@ -153,6 +153,38 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
         </p>
 
         <form onSubmit={onSubmit}>
+          <label htmlFor="strategy-bundle" style={labelStyle}>Encrypted Strategy Bundle</label>
+          <input
+            id="strategy-bundle"
+            type="file"
+            accept=".json,.bin"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              const text = await file.text();
+              try {
+                const bundle = JSON.parse(text);
+                if (bundle.encryptedStrategyUri) setEncryptedStrategyUri(bundle.encryptedStrategyUri);
+                if (bundle.sealedKey) setSealedKey(bundle.sealedKey);
+              } catch (err) {
+                console.warn('[MintForm] File parse failed, treating as raw text:', err);
+                setEncryptedStrategyUri(text.trim());
+              }
+            }}
+            style={{ marginBottom: 12, color: COLORS.textMuted, fontSize: 'var(--text-sm)' }}
+          />
+          <p style={{ fontSize: 'var(--text-xs)', color: COLORS.textMuted, margin: '4px 0 12px 0' }}>
+            Upload a strategy bundle from your TEE session, or manually enter the hex values below.
+          </p>
+          <details style={{ fontSize: 'var(--text-xs)', color: COLORS.textMuted, marginBottom: 12 }}>
+            <summary style={{ cursor: 'pointer', color: COLORS.bronzeLight }}>How to get strategy bundle?</summary>
+            <ol style={{ paddingLeft: 16, marginTop: 8, lineHeight: 'var(--lh-relaxed)' }}>
+              <li>Run your AI agent strategy in a Trusted Execution Environment (TEE)</li>
+              <li>The TEE outputs an encrypted strategy bundle file</li>
+              <li>Upload the bundle above, or paste its hex values manually</li>
+            </ol>
+          </details>
+
           <label htmlFor={`${formId}-uri`} style={labelStyle}>
             Encrypted strategy URI / dataHash
           </label>
@@ -169,7 +201,7 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
             required
           />
           {uriError !== null && (
-            <p role="alert" style={{ color: COLORS.danger, fontSize: 12, margin: '4px 0 0' }}>
+            <p role="alert" style={{ color: COLORS.danger, fontSize: 'var(--text-xs)', margin: '4px 0 0' }}>
               {uriError}
             </p>
           )}
@@ -194,25 +226,13 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
             required
           />
           {sealedKeyError !== null && (
-            <p role="alert" style={{ color: COLORS.danger, fontSize: 12, margin: '4px 0 0' }}>
+            <p role="alert" style={{ color: COLORS.danger, fontSize: 'var(--text-xs)', margin: '4px 0 0' }}>
               {sealedKeyError}
             </p>
           )}
           <p style={fieldHintStyle}>
             The TEE-sealed encryption key from the oracle upload step.
           </p>
-
-          <label htmlFor={`${formId}-owner`} style={labelStyle}>
-            Owner <span style={{ color: COLORS.textDim, fontWeight: 400 }}>(connected wallet)</span>
-          </label>
-          <Input
-            id={`${formId}-owner`}
-            name="owner"
-            type="text"
-            value={owner ?? ''}
-            readOnly
-            style={{ width: '100%', marginTop: 6, fontFamily: "'SF Mono', monospace", boxSizing: 'border-box', background: COLORS.surface, color: COLORS.bronzeLight }}
-          />
 
           <div style={{ marginTop: 'var(--space-lg)', padding: 'var(--space-md) var(--space-lg)', background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 'var(--radius-lg)', fontSize: 'var(--text-sm)' }}>
             <span style={{ fontWeight: 'var(--fw-medium)', color: COLORS.textPrimary }}>Mint fee: </span>
@@ -238,7 +258,7 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
             <Alert variant="error" style={{ marginTop: 'var(--space-lg)' }}>
               {error.message}
               {isOracleRelatedError(error.message) && (
-                <p style={{ fontSize: '0.85em', marginTop: 6, opacity: 0.85 }}>
+                <p style={{ fontSize: 'var(--text-xs)', marginTop: 6, opacity: 0.85 }}>
                   This may be related to oracle connectivity. Ensure your TEE oracle service is running and reachable.
                 </p>
               )}
@@ -248,7 +268,7 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
             <Alert variant="error" style={{ marginTop: 'var(--space-md)' }}>
               {submitError}
               {isOracleRelatedError(submitError) && (
-                <p style={{ fontSize: '0.85em', marginTop: 6, opacity: 0.85 }}>
+                <p style={{ fontSize: 'var(--text-xs)', marginTop: 6, opacity: 0.85 }}>
                   This may be related to oracle connectivity. Ensure your TEE oracle service is running and reachable.
                 </p>
               )}
@@ -256,19 +276,8 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
           )}
 
           {result !== null && (
-            <div
-              role="status"
-              style={{
-                marginTop: 'var(--space-lg)',
-                padding: 'var(--space-lg)',
-                background: COLORS.successBg,
-                border: `1px solid ${COLORS.successBorder}`,
-                borderRadius: 'var(--radius-lg)',
-                fontSize: 'var(--text-sm)',
-                color: COLORS.success,
-              }}
-            >
-              <strong style={{ fontSize: 'var(--text-base)' }}>Minted agent #{result.tokenId}</strong>
+            <Alert variant="success" style={{ marginTop: 'var(--space-lg)' }}>
+              <strong>Minted agent #{result.tokenId}</strong>
               <br />
               <span style={{ fontSize: 'var(--text-xs)' }}>tx: </span>
               <code style={{ wordBreak: 'break-all', fontSize: 'var(--text-xs)', color: COLORS.bronzeLight }}>{result.txHash}</code>
@@ -280,17 +289,24 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
                 View agent #{result.tokenId} →
               </Link>
               {registrationWarning !== null && (
-                <p style={{ fontSize: '0.85em', color: COLORS.textMuted, marginTop: 8 }}>
+                <p style={{ fontSize: 'var(--text-xs)', color: COLORS.textMuted, marginTop: 8 }}>
                   {registrationWarning}
                 </p>
               )}
-            </div>
+            </Alert>
           )}
 
           <div style={{ display: 'flex', gap: 'var(--space-sm)', justifyContent: 'flex-end', marginTop: 'var(--space-xl)' }}>
             <Button variant="primary" type="submit" disabled={!canSubmit}>
               {isLoading ? 'Minting…' : 'Mint agent'}
             </Button>
+            {isLoading && (
+              <button type="button" onClick={cancelMint}
+                style={{ padding: '8px 16px', borderRadius: 'var(--radius-md)', background: 'transparent',
+                  border: `1px solid ${COLORS.textDim}`, color: COLORS.text, cursor: 'pointer' }}>
+                Cancel
+              </button>
+            )}
           </div>
         </form>
       </Card>

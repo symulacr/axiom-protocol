@@ -8,7 +8,7 @@ import { loadEnv, getEnv, getEnvWithAlias } from "../env.js";
 import { aesGcmEncrypt } from "@axiom/oracle/crypto/aes-gcm";
 import { accessMessageHash, type Eip712Domain } from "@axiom/oracle/signer";
 import { deriveUncompressedPubkeyFromHex } from "@axiom/oracle/crypto/secp256k1";
-import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
+import { resolveStorageRpc, GALILEO_CHAIN_ID } from "@axiom/config/networks";
 import { ITRANSFER_FROM_ABI } from "@axiom/config/abis";
 
 /**
@@ -21,7 +21,7 @@ loadEnv();
 const DEPLOYER_PK = getEnv("DEPLOYER_PK");
 const TEE_SIGNER_PK = getEnv("TEE_SIGNER_PK");
 const RPC = getEnvWithAlias("AXIOM_EVM_RPC", ["OG_RPC_URL"]);
-const STORAGE_RPC = getEnvWithAlias("AXIOM_STORAGE_RPC", ["OG_STORAGE_RPC"], "https://indexer-storage-testnet-turbo.0g.ai");
+const STORAGE_RPC = getEnvWithAlias("AXIOM_STORAGE_RPC", ["OG_STORAGE_RPC"], resolveStorageRpc(GALILEO_CHAIN_ID));
 const BACKEND_URL = getEnv("BACKEND_URL", "http://127.0.0.1:3000");
 const OG_CHAIN_ID = Number.parseInt(getEnvWithAlias("AXIOM_CHAIN_ID", ["OG_CHAIN_ID"], String(GALILEO_CHAIN_ID)), 10);
 // Wave E-5 (2026-06-16) — all addresses are env-driven so a redeploy

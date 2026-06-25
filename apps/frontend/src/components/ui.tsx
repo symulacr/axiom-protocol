@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { useAccount } from 'wagmi';
 import type {
   ButtonHTMLAttributes,
@@ -22,7 +22,7 @@ export const COLORS = {
   text: '#f5f5f5',
   textPrimary: '#e5e5e5',
   textMuted: '#8a8a8a',
-  textDim: '#6a6a6a',
+  textDim: '#6a6a6a',  // intentionally dimmer than textMuted
 
   // Accent — warm bronze / muted gold
   bronze: '#b8976e',
@@ -90,7 +90,7 @@ const buttonVariants: Record<ButtonVariant, CSSProperties> = {
   },
 };
 
-export function Button({
+export const Button = React.memo(function Button({
   variant = 'primary',
   style,
   disabled,
@@ -112,9 +112,9 @@ export function Button({
       {children}
     </button>
   );
-}
+});
 
-export function Card({
+export const Card = React.memo(function Card({
   children,
   style,
   hover = false,
@@ -138,7 +138,7 @@ export function Card({
       {children}
     </div>
   );
-}
+});
 
 export function Input({
   style,
@@ -155,8 +155,7 @@ export function Input({
         color: COLORS.text,
         fontSize: 'var(--text-sm)',
         fontFamily: 'inherit',
-        outline: 'none',
-        minWidth: '20rem',
+        minWidth: '0',
         transition,
         ...style,
       }}
@@ -212,6 +211,24 @@ export function Alert({
   );
 }
 
+interface ErrorAlertProps {
+  message?: string;
+  onRetry?: () => void;
+}
+
+export function ErrorAlert({ message, onRetry }: ErrorAlertProps): ReactElement {
+  return (
+    <Alert variant="error">
+      <p>{message ?? 'An unexpected error occurred'}</p>
+      {onRetry !== undefined && (
+        <Button variant="secondary" onClick={onRetry} style={{ flexShrink: 0, fontSize: 'var(--text-xs)', minHeight: 44 }}>
+          Retry
+        </Button>
+      )}
+    </Alert>
+  );
+}
+
 export function Skeleton({
   width = '100%',
   height = 20,
@@ -223,11 +240,13 @@ export function Skeleton({
 }): ReactElement {
   return (
     <div
+      role="status"
+      aria-label="Loading content"
       style={{
         width,
         height,
         background: COLORS.border,
-        borderRadius: 4,
+        borderRadius: 'var(--radius-sm)',
         animation: 'axiom-pulse 1.5s ease-in-out infinite',
         ...style,
       }}
@@ -272,7 +291,7 @@ export function PageHeader({
           <p style={{ margin: 0, color: COLORS.textMuted, fontSize: 'var(--text-sm)', lineHeight: 'var(--lh-snug)' }}>{subtitle}</p>
         )}
       </div>
-      {action !== undefined && <div>{action}</div>}
+      {action !== undefined && <div aria-label="Page actions">{action}</div>}
     </div>
   );
 }
@@ -333,6 +352,7 @@ export function MonoLabel({
 export function Spinner({ size = 20, style }: { size?: number; style?: CSSProperties }): ReactElement {
   return (
     <span
+      role="status"
       style={{
         display: 'inline-block',
         width: size,
@@ -356,7 +376,7 @@ interface ModalProps {
   style?: CSSProperties;
 }
 
-export function Modal({ open, onClose, title, children, style }: ModalProps): ReactElement | null {
+export const Modal = React.memo(function Modal({ open, onClose, title, children, style }: ModalProps): ReactElement | null {
   const dialogRef = useRef<HTMLDialogElement | null>(null);
 
   useEffect(() => {
@@ -375,10 +395,11 @@ export function Modal({ open, onClose, title, children, style }: ModalProps): Re
     <dialog
       ref={dialogRef}
       onClose={handleClose}
+      aria-labelledby={title ? 'modal-title' : undefined}
       style={{
         padding: 28,
         border: `1px solid ${COLORS.borderStrong}`,
-        borderRadius: 12,
+        borderRadius: 'var(--radius-xl)',
         maxWidth: 500,
         width: '90vw',
         background: COLORS.surface,
@@ -388,14 +409,14 @@ export function Modal({ open, onClose, title, children, style }: ModalProps): Re
       }}
     >
       {title !== undefined && (
-        <h2 style={{ marginTop: 0, fontSize: 22, fontWeight: 700, color: COLORS.text, letterSpacing: '-0.02em' }}>
+        <h2 id="modal-title" style={{ marginTop: 0, fontSize: 'var(--text-xl)', fontWeight: 'var(--fw-bold)', color: COLORS.text, letterSpacing: '-0.02em' }}>
           {title}
         </h2>
       )}
       {children}
     </dialog>
   );
-}
+});
 
 export function ConnectedGuard({ children }: { children: React.ReactNode }): React.ReactElement | null {
   const { isConnected } = useAccount();

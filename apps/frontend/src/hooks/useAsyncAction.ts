@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 export interface UseAsyncActionResult {
   execute: <U>(fn: (signal: AbortSignal) => Promise<U>) => Promise<U>;
+  cancel: () => void;
   isLoading: boolean;
   error: Error | null;
   reset: () => void;
@@ -45,9 +46,13 @@ export function useAsyncAction(): UseAsyncActionResult {
     }
   }, []);
 
+  const cancel = useCallback(() => {
+    abortRef.current?.abort();
+  }, []);
+
   const reset = useCallback(() => {
     setError(null);
   }, []);
 
-  return { execute, isLoading, error, reset };
+  return { execute, cancel, isLoading, error, reset };
 }

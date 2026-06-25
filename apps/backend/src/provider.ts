@@ -1,11 +1,11 @@
 import { JsonRpcProvider, FetchRequest } from 'ethers';
-import { getEnv } from '@axiom/config/env';
+import { resolveRpcUrl } from "@axiom/config/networks";
 
 let _provider: JsonRpcProvider | null = null;
 
-export function getSharedProvider(): JsonRpcProvider {
+export function getSharedProvider(chainId?: number): JsonRpcProvider {
   if (!_provider) {
-    const rpcUrl = getEnv('AXIOM_EVM_RPC', 'https://evmrpc-testnet.0g.ai');
+    const rpcUrl = resolveRpcUrl(chainId);
     const fetchReq = new FetchRequest(rpcUrl);
     fetchReq.timeout = 10_000;
     _provider = new JsonRpcProvider(fetchReq, undefined, { staticNetwork: true });

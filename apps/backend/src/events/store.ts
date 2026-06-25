@@ -1,8 +1,14 @@
+import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'node:fs';
+import { join } from 'node:path';
+
 // In-memory event store for agent lifecycle events.
 
 
 /** Default retention: 1000 events per (source, eventName) pair. */
 export const DEFAULT_MAX_EVENTS_PER_SOURCE = 1000;
+
+const PERSIST_DIR = join(process.cwd(), '.data');
+const PERSIST_FILE = join(PERSIST_DIR, 'events.json');
 
 /**
  * Wire-format event from the indexer or orchestrator. payload is opaque to the store.
@@ -37,6 +43,10 @@ export class EventStore {
   private readonly cap: number;
   /** Keyed by `${source}::${eventName}`. Insertion order preserved. */
   private readonly buckets: Map<string, StoredEvent[]>;
+  /** Index by eventName. */
+  private readonly byEventName: Map<string, StoredEvent[]>;
+  /** Index by tokenId (extracted from payload). */
+  private readonly byTokenId: Map<string, StoredEvent[]>;
   /** Total appends since process start. */
   private total: number;
 
@@ -48,7 +58,10 @@ export class EventStore {
     }
     this.cap = maxEventsPerSource;
     this.buckets = new Map();
+    this.byEventName = new Map();
+    this.byTokenId = new Map();
     this.total = 0;
+    this.load();
   }
 
   /**
@@ -64,9 +77,16 @@ export class EventStore {
       this.buckets.set(key, bucket);
     }
     stored.timestamp = Date.now();
+    if (bucket.length >= this.cap) {
+      const evicted = bucket.shift()!;
+      this.removeFromIndex(evicted);
+    }
     bucket.push(stored);
-    if (bucket.length > this.cap) bucket.shift(); // Map order is preserved
+    this.addToEventNameIndex(stored);
+    const tid = tokenIdFromPayload(stored.payload);
+    if (tid !== null) this.addToTokenIdIndex(tid, stored);
     this.total += 1;
+    this.persistDebounced();
     return stored;
   }
 
@@ -77,27 +97,30 @@ export class EventStore {
   }
 
   /**
-   * Return every event with matching tokenId in payload. Iterates all buckets.
+   * Return every event with matching tokenId in payload. Uses the byTokenId index.
    */
   queryByAgent(query: AgentEventQuery): readonly StoredEvent[] {
     const target = BigInt(query.tokenId).toString();
+    const bucket = this.byTokenId.get(target);
+    if (bucket === undefined) return [];
     const matches: StoredEvent[] = [];
-    for (const bucket of this.buckets.values()) {
-      for (const evt of bucket) {
-        const tid = tokenIdFromPayload(evt.payload);
-        if (tid === null) continue;
-        if (tid !== target) continue;
-        if (query.eventName !== undefined && evt.eventName !== query.eventName) continue;
-        if (query.source !== undefined && evt.source !== query.source) continue;
-        matches.push(evt);
-      }
+    for (const evt of bucket) {
+      if (query.eventName !== undefined && evt.eventName !== query.eventName) continue;
+      if (query.source !== undefined && evt.source !== query.source) continue;
+      matches.push(evt);
     }
     // Stable order: by (blockNumber, logIndex) then receivedAt.
     matches.sort(byBlockThenLogReceived);
     return query.limit !== undefined ? matches.slice(0, query.limit) : matches;
   }
-  getAll(limit?: number, since?: number): readonly StoredEvent[] {
-    const all: StoredEvent[] = [];
+  getAll(limit?: number, since?: number, eventName?: string): readonly StoredEvent[] {
+    if (eventName !== undefined) {
+      const bucket = this.byEventName.get(eventName);
+      if (!bucket) return [];
+      if (!since) return bucket;
+      return bucket.filter(e => e.timestamp > since);
+    }
+    let all: StoredEvent[] = [];
     for (const bucket of this.buckets.values()) {
       all.push(...bucket);
     }
@@ -148,8 +171,95 @@ export class EventStore {
     return this.total;
   }
 
+  /**
+   * Load persisted events from disk. Silently no-ops if the file doesn't exist
+   * or is corrupt — data loss is acceptable for this in-memory store.
+   */
+  private load(): void {
+    try {
+      if (!existsSync(PERSIST_FILE)) return;
+      const raw = readFileSync(PERSIST_FILE, 'utf-8');
+      const data = JSON.parse(raw) as Record<string, StoredEvent[]>;
+      this.buckets.clear();
+      this.byEventName.clear();
+      this.byTokenId.clear();
+      for (const [key, events] of Object.entries(data)) {
+        this.buckets.set(key, events);
+        this.total += events.length;
+        for (const evt of events) {
+          this.addToEventNameIndex(evt);
+          const tid = tokenIdFromPayload(evt.payload);
+          if (tid !== null) this.addToTokenIdIndex(tid, evt);
+        }
+      }
+    } catch {
+      // File missing or corrupt — start fresh.
+    }
+  }
+
+  /** Index an event by eventName. */
+  private addToEventNameIndex(evt: StoredEvent): void {
+    let bucket = this.byEventName.get(evt.eventName);
+    if (!bucket) {
+      bucket = [];
+      this.byEventName.set(evt.eventName, bucket);
+    }
+    bucket.push(evt);
+  }
+
+  /** Index an event by tokenId. */
+  private addToTokenIdIndex(tokenId: string, evt: StoredEvent): void {
+    let bucket = this.byTokenId.get(tokenId);
+    if (!bucket) {
+      bucket = [];
+      this.byTokenId.set(tokenId, bucket);
+    }
+    bucket.push(evt);
+  }
+
+  /** Remove an evicted event from the indexes. */
+  private removeFromIndex(evt: StoredEvent): void {
+    const nameBucket = this.byEventName.get(evt.eventName);
+    if (nameBucket) {
+      const idx = nameBucket.indexOf(evt);
+      if (idx !== -1) nameBucket.splice(idx, 1);
+    }
+    const tid = tokenIdFromPayload(evt.payload);
+    if (tid !== null) {
+      const tidBucket = this.byTokenId.get(tid);
+      if (tidBucket) {
+        const idx = tidBucket.indexOf(evt);
+        if (idx !== -1) tidBucket.splice(idx, 1);
+      }
+    }
+  }
+
+  /** Persist all buckets to disk as JSON. */
+  private persist(): void {
+    try {
+      if (!existsSync(PERSIST_DIR)) mkdirSync(PERSIST_DIR, { recursive: true });
+      const data = Object.fromEntries(this.buckets);
+      writeFileSync(PERSIST_FILE, JSON.stringify(data, (_key, value) =>
+        typeof value === 'bigint' ? value.toString() : value,
+      ));
+    } catch (err) {
+      console.warn('[events] persist failed:', err);
+    }
+  }
+
+  /** Debounced (2s) variant — safe to call after every append. */
+  private persistDebounced = (() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    return () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => this.persist(), 2_000);
+    };
+  })();
+
   clear(): void {
     this.buckets.clear();
+    this.byEventName.clear();
+    this.byTokenId.clear();
     this.total = 0;
   }
 }

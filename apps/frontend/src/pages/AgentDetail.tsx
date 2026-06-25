@@ -1,11 +1,8 @@
 import { useState, type ReactElement } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useAccount, useReadContracts } from 'wagmi';
-import { getAxiomAgentNftAddress } from '../abi/addresses.js';
-import { axiomAgentNftAbi } from '../abi/axiomAgentNft.js';
+import { useAccount } from 'wagmi';
 import { useAgentMetadata } from '../hooks/useAgentMetadata.js';
 import { TransferModal } from '../components/TransferModal.js';
-import { PaymentPanel } from '../components/PaymentPanel.js';
 import {
   COLORS,
   Skeleton,
@@ -14,6 +11,7 @@ import {
   SectionTitle,
   MonoLabel,
   Alert,
+  ErrorAlert,
   PageHeader,
   ConnectedGuard,
 } from '../components/ui.js';
@@ -27,23 +25,6 @@ export function AgentDetail(): ReactElement {
 
   const metadata = useAgentMetadata(tokenId ?? 0n);
   const { data, isLoading: metaLoading, error: metaError } = metadata;
-
-  // Multcalled here — `creatorOf` is AxiomAgentNFT-specific (not base ERC-721).
-  const creatorQuery = useReadContracts({
-    allowFailure: false,
-    contracts: [
-      {
-        address: getAxiomAgentNftAddress(),
-        abi: axiomAgentNftAbi,
-        functionName: 'creatorOf',
-        args: [tokenId ?? 0n],
-      },
-    ],
-    query: {
-      enabled: tokenId !== null && Boolean(getAxiomAgentNftAddress()),
-    },
-  });
-  const creator = (creatorQuery.data?.[0] as string | undefined) ?? undefined;
 
   const [transferOpen, setTransferOpen] = useState(false);
 
@@ -67,17 +48,34 @@ export function AgentDetail(): ReactElement {
         title={`Agent #${tokenId.toString()}`}
         subtitle="On-chain iNFT metadata and transfer history"
         action={
-          <Link
-            to="/agents"
-            style={{
-              color: COLORS.textMuted,
-              fontSize: 'var(--text-sm)',
-              textDecoration: 'none',
-              transition: 'color 0.15s ease',
-            }}
-          >
-            Back to agents
-          </Link>
+          <div style={{ display: 'flex', gap: 'var(--space-sm)', alignItems: 'center' }}>
+            <Link
+              to={`/agents/${tokenId.toString()}/execute`}
+              style={{
+                display: 'inline-block',
+                padding: '8px 16px',
+                borderRadius: 'var(--radius-md)',
+                background: COLORS.bronze,
+                color: '#0f0f0f',
+                textDecoration: 'none',
+                fontSize: 'var(--text-sm)',
+                fontWeight: 'var(--fw-semibold)',
+              }}
+            >
+              Execute Strategy
+            </Link>
+            <Link
+              to="/agents"
+              style={{
+                color: COLORS.textMuted,
+                fontSize: 'var(--text-sm)',
+                textDecoration: 'none',
+                transition: 'color 0.15s ease',
+              }}
+            >
+              Back to agents
+            </Link>
+          </div>
         }
       />
 
@@ -90,16 +88,13 @@ export function AgentDetail(): ReactElement {
       )}
 
       {metaError !== null && (
-        <Alert variant="error" style={{ marginBottom: 'var(--space-xl)' }}>
-          Couldn't load agent metadata from the chain. Check your connection and
-          try refreshing the page.
-        </Alert>
+        <ErrorAlert message="Couldn't load agent metadata from the chain. Check your connection and try refreshing the page." onRetry={metadata.refetch} />
       )}
 
       {data !== null && (
         <Card style={{ marginBottom: 'var(--space-xl)' }}>
           <SectionTitle>Metadata</SectionTitle>
-          <dl style={{ margin: 0, display: 'grid', gridTemplateColumns: '8.75rem 1fr', gap: 'var(--space-md) var(--space-lg)', fontSize: 'var(--text-sm)' }}>
+          <dl className="stack-on-mobile" style={{ margin: 0, display: 'grid', gridTemplateColumns: '8.75rem 1fr', gap: 'var(--space-md) var(--space-lg)', fontSize: 'var(--text-sm)' }}>
             <dt style={{ color: COLORS.textDim, fontWeight: 'var(--fw-medium)' }}>Collection</dt>
             <dd style={{ margin: 0, color: COLORS.text }}>
               {data.name === '' ? PLACEHOLDER : data.name}{' '}
@@ -113,7 +108,7 @@ export function AgentDetail(): ReactElement {
             </dd>
             <dt style={{ color: COLORS.textDim, fontWeight: 'var(--fw-medium)' }}>Creator</dt>
             <dd style={{ margin: 0 }}>
-              {creator !== undefined ? <MonoLabel>{creator}</MonoLabel> : <span style={{ color: COLORS.textDim }}>{PLACEHOLDER}</span>}
+              {data.creator !== undefined ? <MonoLabel>{data.creator}</MonoLabel> : <span style={{ color: COLORS.textDim }}>{PLACEHOLDER}</span>}
             </dd>
             <dt style={{ color: COLORS.textDim, fontWeight: 'var(--fw-medium)' }}>Data Hash</dt>
             <dd style={{ margin: 0 }}>
@@ -143,7 +138,14 @@ export function AgentDetail(): ReactElement {
         </Button>
       </Card>
 
-      <PaymentPanel tokenId={tokenId} />
+      <Link to={`/agents/${tokenId.toString()}/payments`} style={{ textDecoration: 'none' }}>
+        <Card hover style={{ padding: 16, textAlign: 'center' }}>
+          <SectionTitle>Manage Payments</SectionTitle>
+          <p style={{ fontSize: 'var(--text-sm)', color: COLORS.textMuted, margin: 0 }}>
+            Pay, withdraw earnings, and manage royalties →
+          </p>
+        </Card>
+      </Link>
 
       {address !== undefined && (
         <p style={{ marginTop: 'var(--space-xl)', fontSize: 'var(--text-sm)', color: COLORS.textDim }}>

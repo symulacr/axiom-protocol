@@ -13,13 +13,4 @@ export const hexViem = hexString.transform((v) => toViemHex(v));
 /** Viem-compatible address schema (outputs `0x${string}`). */
 export const addressViem = address.transform((v) => toViemHex(v));
 
-/** bytes32 (64-char hex). */
-export const bytes32 = z.string().regex(/^0x[a-fA-F0-9]{64}$/, "Invalid bytes32").transform((v) => validateHex(v));
 
-/** Generic fetch + validate. */
-export async function fetchAndValidate<T>(url: string, schema: z.ZodType<T>, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, init);
-  if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-  const raw = await res.json();
-  return schema.parse(raw);
-}

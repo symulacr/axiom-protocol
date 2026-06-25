@@ -20,6 +20,7 @@ export type MintResult = {
 
 export type UseMintResult = {
   mint: (input: MintInput) => Promise<MintResult>;
+  cancelMint: () => void;
   isLoading: boolean;
   error: Error | null;
   result: MintResult | null;
@@ -30,7 +31,7 @@ export type UseMintResult = {
 export function useMint(): UseMintResult {
   const [result, setResult] = useState<MintResult | null>(null);
   const [registrationWarning, setRegistrationWarning] = useState<string | null>(null);
-  const { execute, isLoading, error, reset: resetAction } = useAsyncAction();
+  const { execute, cancel, isLoading, error, reset: resetAction } = useAsyncAction();
 
   const mint = useCallback(async (input: MintInput): Promise<MintResult> => {
     const data = await execute(async (signal) => {
@@ -57,11 +58,15 @@ export function useMint(): UseMintResult {
     return data;
   }, [execute]);
 
+  const cancelMint = useCallback(() => {
+    cancel();
+  }, [cancel]);
+
   const reset = useCallback((): void => {
     resetAction();
     setResult(null);
     setRegistrationWarning(null);
   }, [resetAction]);
 
-  return { mint, isLoading, error, result, registrationWarning, reset };
+  return { mint, cancelMint, isLoading, error, result, registrationWarning, reset };
 }

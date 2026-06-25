@@ -2,7 +2,6 @@ import type { CSSProperties, ReactElement } from 'react';
 import { Link } from 'react-router-dom';
 import { useAccount } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { getAxiomStrategyVaultAddress } from '../abi/addresses.js';
 import { Card, COLORS } from '../components/ui.js';
 
 const NARRATIVE =
@@ -68,36 +67,6 @@ const secondaryCtaStyle: CSSProperties = {
   border: `1px solid ${COLORS.borderStrong}`,
 };
 
-const statsGridStyle: CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(12rem, 1fr))',
-  gap: 'var(--space-lg)',
-  margin: 'var(--space-3xl) auto',
-  maxWidth: '48rem',
-};
-
-const statCardStyle: CSSProperties = {
-  textAlign: 'center',
-  padding: 'var(--space-2xl) var(--space-xl)',
-};
-
-const statNumberStyle: CSSProperties = {
-  fontSize: 'var(--text-2xl)',
-  fontWeight: 'var(--fw-bold)',
-  color: COLORS.bronzeLight,
-  margin: '0 0 0.375rem',
-  letterSpacing: '-0.02em',
-  lineHeight: 'var(--lh-tight)',
-};
-
-const statLabelStyle: CSSProperties = {
-  fontSize: 'var(--text-xs)',
-  color: COLORS.textDim,
-  textTransform: 'uppercase' as const,
-  letterSpacing: '0.08em',
-  fontWeight: 'var(--fw-medium)',
-};
-
 const stepsSectionStyle: CSSProperties = {
   maxWidth: '52rem',
   margin: 'var(--space-3xl) auto var(--space-4xl)',
@@ -153,7 +122,6 @@ const stepBodyStyle: CSSProperties = {
 
 export function HomePage(): ReactElement {
   const { isConnected } = useAccount();
-  const vaultAddr = getAxiomStrategyVaultAddress();
 
   return (
     <main>
@@ -165,7 +133,7 @@ export function HomePage(): ReactElement {
         <p style={heroSubtitleStyle}>{NARRATIVE}</p>
         <div style={ctaRowStyle}>
           <Link
-            to={vaultAddr !== undefined ? `/vaults/${vaultAddr}` : '/agents'}
+            to="/vaults/0"
             style={primaryCtaStyle}
           >
             Explore Vaults
@@ -182,20 +150,9 @@ export function HomePage(): ReactElement {
       </section>
 
       {/* Stats */}
-      <section style={statsGridStyle}>
-        <Card style={statCardStyle}>
-          <div style={statNumberStyle}>{1}</div>
-          <div style={statLabelStyle}>Vaults Live</div>
-        </Card>
-        <Card style={statCardStyle}>
-          <div style={statNumberStyle}>7857</div>
-          <div style={statLabelStyle}>iNFT Standard</div>
-        </Card>
-        <Card style={statCardStyle}>
-          <div style={statNumberStyle}>0G</div>
-          <div style={statLabelStyle}>Storage &amp; Compute</div>
-        </Card>
-      </section>
+      <p style={{ fontSize: 'var(--text-sm)', color: COLORS.textMuted, textAlign: 'center', margin: 'var(--space-3xl) auto' }}>
+        Powered by 0G Protocol
+      </p>
 
       {/* How it works */}
       <section style={stepsSectionStyle}>

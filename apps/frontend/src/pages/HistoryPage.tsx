@@ -1,10 +1,11 @@
 import { resolveBlockExplorerUrl } from "@axiom/config/networks";
-import { useCallback, useMemo, type ReactElement } from 'react';
+import { useCallback, useMemo, useRef, useState, type ReactElement } from 'react';
+import { Link } from 'react-router-dom';
 import { useAccount, useChainId } from 'wagmi';
 import { useEventHistory, type AxiomEvent } from '../hooks/useEventHistory.js';
 import { useEventStream } from '../hooks/useEventStream.js';
 import { EventTimeline, type EventRenderer } from '../components/EventTimeline.js';
-import { COLORS, Card, Alert, PageHeader, Button, ConnectedGuard } from '../components/ui.js';
+import { COLORS, Card, Alert, ErrorAlert, PageHeader, Button, ConnectedGuard } from '../components/ui.js';
 import { PLACEHOLDER } from '../utils/format.js';
 
 /** Order of headline event groups. Unknown names fall through to an
@@ -71,7 +72,7 @@ function formatPayload(eventName: string, payload: Record<string, unknown>): str
       if (keys.length === 0) {
         return PLACEHOLDER;
       }
-      return JSON.stringify(payload, null, 2);
+      return JSON.stringify(payload);
     }
   }
 }
@@ -92,12 +93,19 @@ const renderEventBody: EventRenderer = (event): ReactElement => {
   const txShort =
     tx.length > 14 ? `${tx.slice(0, 10)}\u2026${tx.slice(-4)}` : tx;
   const explorer = explorerTxUrl(event.chainId, tx);
+
+  const isSpecialEvent =
+    event.eventName === 'PaymentProcessed' || event.eventName === 'EarningsWithdrawn';
+
+  const payload = event.payload as Record<string, unknown>;
+  const keys = Object.keys(payload);
+
   return (
     <div>
       <div style={{ marginBottom: '6px', color: COLORS.textPrimary }}>
-        <span style={{ fontWeight: 600 }}>chain</span> {event.chainId}
+        <span style={{ fontWeight: 'var(--fw-semibold)' }}>chain</span> {event.chainId}
         {' \u00b7 '}
-        <span style={{ fontWeight: 600 }}>tx</span>{' '}
+        <span style={{ fontWeight: 'var(--fw-semibold)' }}>tx</span>{' '}
         {explorer === null ? (
           <code>{txShort}</code>
         ) : (
@@ -111,22 +119,40 @@ const renderEventBody: EventRenderer = (event): ReactElement => {
           </a>
         )}
         {' \u00b7 '}
-        <span style={{ fontWeight: 600 }}>source</span> {event.source}
+        <span style={{ fontWeight: 'var(--fw-semibold)' }}>source</span> {event.source}
       </div>
-      <pre
-        style={{
-          margin: 0,
-          padding: '8px 12px',
-          background: COLORS.bg,
-          border: `1px solid ${COLORS.border}`,
-          borderRadius: '4px',
-          fontSize: '0.8125rem',
-          lineHeight: 1.45,
-          overflowX: 'auto',
-        }}
-      >
-        {formatPayload(event.eventName, event.payload)}
-      </pre>
+      {isSpecialEvent ? (
+        <pre
+          style={{
+            margin: 0,
+            padding: '8px 12px',
+            background: COLORS.bg,
+            border: `1px solid ${COLORS.border}`,
+            borderRadius: '4px',
+            fontSize: '0.8125rem',
+            lineHeight: 1.45,
+            overflowX: 'auto',
+          }}
+        >
+          {formatPayload(event.eventName, event.payload)}
+        </pre>
+      ) : keys.length === 0 ? (
+        <span style={{ color: COLORS.textMuted }}>{PLACEHOLDER}</span>
+      ) : (
+        <dl style={{ margin: 0, fontSize: 'var(--text-xs)', color: COLORS.textMuted }}>
+          {keys.map((key) => {
+            const val = payload[key];
+            return (
+              <div key={key} style={{ display: 'flex', gap: 8, marginBottom: 2 }}>
+                <dt style={{ fontWeight: 'var(--fw-semibold)', minWidth: 100 }}>{key}</dt>
+                <dd style={{ margin: 0, fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                  {typeof val === 'object' ? JSON.stringify(val) : String(val)}
+                </dd>
+              </div>
+            );
+          })}
+        </dl>
+      )}
     </div>
   );
 };
@@ -154,9 +180,10 @@ function orderGroupKeys(byName: Record<string, AxiomEvent[]>): string[] {
 export function HistoryPage(): ReactElement {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
+  const seenEventIdsRef = useRef(new Set<string>());
 
   // Polls GET /v1/events every 15s via useEventHistory.
-  const { events, byName, isLoading, error } = useEventHistory({
+  const { events, byName, isLoading, error, refetch } = useEventHistory({
     owner: address,
     enabled: isConnected,
   });
@@ -166,37 +193,65 @@ export function HistoryPage(): ReactElement {
     topics: [
       'Transfer', 'Updated', 'Authorization', 'Deposited',
       'StrategySet', 'Executed', 'PaymentProcessed', 'EarningsWithdrawn',
-      'tick.*',  // WSS tick streaming (via useOrchestratorTick)
       'data.*',  // Future: arbitrary data updates
     ],
     enabled: isConnected,
   });
 
-  // Prepend WebSocket events to the polled events (deduplicated).
+  // Single-pass merge with a persistent dedup set (avoids 4 allocations per tick).
   const allEvents = useMemo(() => {
-    const existingIds = new Set(events.map(e => `${e.txHash}-${e.logIndex}`));
-    const newEvents = wsEvents.filter(e => !existingIds.has(`${e.txHash}-${e.logIndex}`));
-    return [...newEvents, ...events];
+    const existingIds = seenEventIdsRef.current;
+    const merged: AxiomEvent[] = [];
+    // Prepend WS events that aren't in the existing set
+    for (const evt of wsEvents) {
+      const key = `${evt.txHash}-${evt.logIndex}`;
+      if (!existingIds.has(key)) {
+        existingIds.add(key);
+        merged.push(evt);
+      }
+    }
+    // Append all polled events
+    for (const evt of events) {
+      const key = `${evt.txHash}-${evt.logIndex}`;
+      if (!existingIds.has(key)) {
+        existingIds.add(key);
+        merged.push(evt);
+      }
+    }
+    return merged;
   }, [events, wsEvents]);
 
   // Group all events by eventName for the timeline sections.
+  const [eventFilter, setEventFilter] = useState<string>('');
+  const eventNames = useMemo(
+    () => [...new Set(allEvents.map(e => e.eventName))],
+    [allEvents],
+  );
+  const filteredAllEvents = useMemo(
+    () => (eventFilter ? allEvents.filter(e => e.eventName === eventFilter) : allEvents),
+    [allEvents, eventFilter],
+  );
   const allByName = useMemo(() => {
     const grouped: Record<string, AxiomEvent[]> = {};
-    for (const ev of allEvents) {
+    for (const ev of filteredAllEvents) {
       (grouped[ev.eventName] ??= []).push(ev);
     }
     return grouped;
-  }, [allEvents]);
+  }, [filteredAllEvents]);
 
   const refresh = useCallback((): void => {
-    // The polling already handles refreshes — this is just a UX nicety.
-    // WS events provide real-time updates, no hard refresh needed.
-  }, []);
+    refetch?.();
+  }, [refetch]);
 
   const groupKeys = orderGroupKeys(allByName);
 
   return (
     <main>
+      <p style={{ margin: 0, marginBottom: 'var(--space-md)' }}>
+        <Link to="/" style={{ color: COLORS.textDim, textDecoration: 'none', fontSize: '0.875rem' }}>
+          ← Back
+        </Link>
+      </p>
       <ConnectedGuard>
       <PageHeader
         title="History"
@@ -209,10 +264,23 @@ export function HistoryPage(): ReactElement {
       />
 
       {error !== null && (
-        <Alert variant="error" style={{ marginBottom: 'var(--space-xl)' }}>
-          Couldn't load events: {error.message}
-        </Alert>
+        <ErrorAlert message={`Couldn't load events: ${error.message}`} />
       )}
+
+      <label htmlFor="event-filter" style={{ color: COLORS.textMuted, fontSize: 'var(--text-sm)', marginRight: 8 }}>Event Type</label>
+      <select
+        id="event-filter"
+        value={eventFilter}
+        onChange={e => setEventFilter(e.target.value)}
+        style={{ padding: '8px 12px', borderRadius: 'var(--radius-md)', marginBottom: 16,
+          border: `1px solid ${COLORS.border}`, background: COLORS.surface,
+          color: COLORS.text, width: '100%', boxSizing: 'border-box' }}
+      >
+        <option value="">All events</option>
+        {eventNames.map(name => (
+          <option key={name} value={name}>{EVENT_LABELS[name] ?? name}</option>
+        ))}
+      </select>
 
       {groupKeys.length === 0 ? (
         <Card style={{ textAlign: 'center', padding: 'var(--space-3xl) var(--space-xl)' }}>
@@ -259,7 +327,6 @@ export function HistoryPage(): ReactElement {
 
       <footer style={{ marginTop: 'var(--space-2xl)', color: COLORS.textDim, fontSize: 'var(--text-sm)' }}>
         {allEvents.length} event{allEvents.length === 1 ? '' : 's'} total
-        {' · '}auto-refresh every 15s
       </footer>
       </ConnectedGuard>
     </main>

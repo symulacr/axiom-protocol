@@ -1,6 +1,9 @@
-import { useMemo, useState, type ReactElement } from 'react';
-import { useAccount } from 'wagmi';
+import { useCallback, useMemo, useState, type ReactElement } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useAccount, useChainId } from 'wagmi';
+import { axiomStrategyVaultAbi } from '../abi/axiomStrategyVault.js';
 import { formatEther } from 'viem';
+import { toast } from 'sonner';
 import {
   getAxiomAgentNftAddress,
   getAxiomStrategyVaultAddress,
@@ -27,8 +30,9 @@ export type ExecutePanelProps = {
 
 export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): ReactElement {
   const { isConnected } = useAccount();
-  const { agents, isLoading: agentsLoading } = useAgents();
-  const { tick, tickStream, isLoading, isStreaming, streamedTokens, streamingError, error, resetStream } = useOrchestratorTick();
+  const chainId = useChainId();
+  const { agents, isLoading: agentsLoading } = tokenIdProp === undefined ? useAgents() : { agents: [], isLoading: false };
+  const { tick, tickStream, cancelTick, isLoading, isStreaming, streamedTokens, streamingError, error, resetStream } = useOrchestratorTick();
   const [selectedId, setSelectedId] = useState<string>(tokenIdProp?.toString() ?? '');
   const [result, setResult] = useState<TickResult | null>(null);
   const [showRaw, setShowRaw] = useState(false);
@@ -40,12 +44,14 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
   const activeBigint = useMemo(() => {
     try {
       return activeId ? BigInt(activeId) : 0n;
-    } catch {
+    } catch (err) {
+      console.warn('[ExecutePanel] Operation failed:', err);
       return 0n;
     }
   }, [activeId]);
 
   const vd = useVaultData(activeBigint);
+  const queryClient = useQueryClient();
   const isReady = !vd.isLoading && activeId !== '';
   const depositsWei = isReady ? vd.depositsWei : undefined;
   const strategyRoot = isReady ? vd.strategyRoot : undefined;
@@ -59,7 +65,7 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
     );
   }
 
-  async function onExecute(): Promise<void> {
+  const onExecute = useCallback(async (): Promise<void> => {
     if (!activeId) return;
     setResult(null);
     setShowRaw(false);
@@ -84,28 +90,40 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
         });
         setResult(res);
       }
+      toast.success('Tick executed successfully');
+      // Refresh vault data after tick execution (balance may have changed via on-chain settle)
+      const vaultAddr = getAxiomStrategyVaultAddress();
+      queryClient.invalidateQueries({
+        queryKey: ['readContracts', {
+          contracts: [
+            { address: vaultAddr, abi: axiomStrategyVaultAbi, functionName: 'balanceOf', args: [activeBigint], chainId },
+            { address: vaultAddr, abi: axiomStrategyVaultAbi, functionName: 'strategyOf', args: [activeBigint], chainId },
+          ],
+          allowFailure: false,
+          chainId,
+        }],
+      });
     } catch (err) {
       console.error("ExecutePanel: orchestrator tick failed", err);
     }
-  }
+  }, [activeId, streamMode, tick, tickStream, resetStream, activeBigint, chainId, queryClient]);
 
   return (
     <Card style={{ display: 'flex', flexDirection: 'column', gap: 16 }} aria-label="Execute strategy tick">
       {!locked && (
         <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: COLORS.textPrimary }}>Agent</span>
+          <span style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--fw-semibold)', color: COLORS.textPrimary }}>Agent</span>
           <select
             value={selectedId}
             onChange={(e): void => setSelectedId(e.target.value)}
             style={{
               padding: '10px 14px',
-              borderRadius: 6,
+              borderRadius: 'var(--radius-md)',
               border: `1px solid ${COLORS.borderStrong}`,
               background: COLORS.bg,
               color: COLORS.text,
-              fontSize: 14,
+              fontSize: 'var(--text-sm)',
               fontFamily: 'inherit',
-              outline: 'none',
             }}
           >
             <option value="">Select an owned agent…</option>
@@ -116,7 +134,7 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
             ))}
           </select>
           {!agentsLoading && agents.length === 0 && (
-            <p style={{ margin: 0, fontSize: 13, color: COLORS.textDim }}>
+            <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: COLORS.textDim }}>
               No agents found for the connected wallet.
             </p>
           )}
@@ -125,18 +143,18 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
 
       <div>
         <SectionTitle>Vault State</SectionTitle>
-        <dl style={{ margin: 0, display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px 16px', fontSize: 14 }}>
-          <dt style={{ color: COLORS.textDim, fontWeight: 500 }}>Balance</dt>
-          <dd style={{ margin: 0, color: COLORS.bronzeLight, fontWeight: 600 }}>
+        <dl className="stack-on-mobile" style={{ margin: 0, display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px 16px', fontSize: 'var(--text-sm)' }}>
+          <dt style={{ color: COLORS.textDim, fontWeight: 'var(--fw-medium)' }}>Balance</dt>
+          <dd style={{ margin: 0, color: COLORS.bronzeLight, fontWeight: 'var(--fw-semibold)' }}>
             {depositsWei === undefined ? PLACEHOLDER : `${formatEther(depositsWei)} OG`}
           </dd>
-          <dt style={{ color: COLORS.textDim, fontWeight: 500 }}>Strategy Root</dt>
+          <dt style={{ color: COLORS.textDim, fontWeight: 'var(--fw-medium)' }}>Strategy Root</dt>
           <dd style={{ margin: 0 }}>
             {strategyRoot !== undefined ? (
-              <MonoLabel style={{ fontSize: 12 }}>{`${strategyRoot.slice(0, 10)}\u2026`}</MonoLabel>
+              <MonoLabel style={{ fontSize: 'var(--text-xs)' }}>{`${strategyRoot.slice(0, 10)}\u2026`}</MonoLabel>
             ) : <span style={{ color: COLORS.textDim }}>{PLACEHOLDER}</span>}
           </dd>
-          <dt style={{ color: COLORS.textDim, fontWeight: 500 }}>Daily Limit</dt>
+          <dt style={{ color: COLORS.textDim, fontWeight: 'var(--fw-medium)' }}>Daily Limit</dt>
           <dd style={{ margin: 0, color: COLORS.text }}>
             {dailyLimitWei === undefined ? PLACEHOLDER : `${formatEther(dailyLimitWei)} OG`}
           </dd>
@@ -148,20 +166,27 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
           <Button variant="primary" disabled={isLoading || activeId === ''} onClick={onExecute}>
             {isLoading ? (isStreaming ? 'Streaming…' : 'Running tick…') : 'Execute Tick'}
           </Button>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer', color: COLORS.textMuted, userSelect: 'none' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-sm)', cursor: 'pointer', color: COLORS.textMuted, userSelect: 'none' }}>
             <input
               type="checkbox"
               checked={streamMode}
               onChange={(e): void => setStreamMode(e.target.checked)}
               disabled={isLoading}
+              title="Stream live model output as it executes, instead of waiting for the full response"
             />
             Stream
           </label>
         </div>
+        <p style={{ fontSize: 'var(--text-xs)', color: COLORS.textDim, margin: 0 }}>
+          On-chain execution will incur gas costs.
+        </p>
         {isStreaming && (
-          <span style={{ fontSize: 12, color: COLORS.bronzeLight, fontStyle: 'italic' }}>
+          <span style={{ fontSize: 'var(--text-xs)', color: COLORS.bronzeLight, fontStyle: 'italic' }}>
             Receiving live output...
           </span>
+        )}
+        {isStreaming && (
+          <Button variant="secondary" onClick={cancelTick}>Cancel</Button>
         )}
       </div>
 
@@ -182,8 +207,8 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
               padding: 12,
               background: COLORS.bg,
               border: `1px solid ${COLORS.border}`,
-              borderRadius: 8,
-              fontSize: 11,
+              borderRadius: 'var(--radius-lg)',
+              fontSize: 'var(--text-xs)',
               overflowX: 'auto',
               whiteSpace: 'pre-wrap',
               color: COLORS.textMuted,
@@ -201,11 +226,11 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
             <SectionTitle>Recommendation</SectionTitle>
-            <p style={{ margin: 0, fontSize: 15 }}>
+            <p style={{ margin: 0, fontSize: 'var(--text-base)' }}>
               <strong
                 style={{
                   color: actionColor[result.recommendation.action] ?? COLORS.text,
-                  fontSize: 16,
+                  fontSize: 'var(--text-base)',
                   letterSpacing: '0.02em',
                 }}
               >
@@ -215,13 +240,13 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
                 <span style={{ color: COLORS.textMuted }}> · amount: {result.recommendation.amount}</span>
               )}
             </p>
-            <p style={{ margin: '6px 0 0', fontSize: 13, color: COLORS.textMuted, fontWeight: 300, lineHeight: 1.6 }}>
+            <p style={{ margin: '6px 0 0', fontSize: 'var(--text-sm)', color: COLORS.textMuted, fontWeight: 'var(--fw-light)', lineHeight: 1.6 }}>
               {result.recommendation.reason}
             </p>
           </div>
 
           <div>
-            <Button variant="ghost" onClick={(): void => setShowRaw((v) => !v)} style={{ fontSize: 12, color: COLORS.bronzeLight, padding: 0 }}>
+            <Button variant="ghost" onClick={(): void => setShowRaw((v) => !v)} style={{ fontSize: 'var(--text-xs)', color: COLORS.bronzeLight, padding: 0 }}>
               {showRaw ? '▼ Hide' : '▶ Show'} raw model output
             </Button>
             {showRaw && (
@@ -231,8 +256,8 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
                   padding: 12,
                   background: COLORS.bg,
                   border: `1px solid ${COLORS.border}`,
-                  borderRadius: 8,
-                  fontSize: 11,
+                  borderRadius: 'var(--radius-lg)',
+                  fontSize: 'var(--text-xs)',
                   overflowX: 'auto',
                   whiteSpace: 'pre-wrap',
                   color: COLORS.textMuted,
@@ -246,24 +271,24 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
           {result.execution !== undefined && (
             <div>
               <SectionTitle>On-chain Execution</SectionTitle>
-              <dl style={{ margin: 0, display: 'grid', gridTemplateColumns: '100px 1fr', gap: '8px 16px', fontSize: 13 }}>
-                <dt style={{ color: COLORS.textDim, fontWeight: 500 }}>Success</dt>
+              <dl className="stack-on-mobile" style={{ margin: 0, display: 'grid', gridTemplateColumns: '100px 1fr', gap: '8px 16px', fontSize: 'var(--text-sm)' }}>
+                <dt style={{ color: COLORS.textDim, fontWeight: 'var(--fw-medium)' }}>Success</dt>
                 <dd style={{ margin: 0 }}>
                   {result.execution.success ? (
-                    <span style={{ color: COLORS.success, fontWeight: 600 }}>yes</span>
+                    <span style={{ color: COLORS.success, fontWeight: 'var(--fw-semibold)' }}>yes</span>
                   ) : (
-                    <span style={{ color: COLORS.danger, fontWeight: 600 }}>no</span>
+                    <span style={{ color: COLORS.danger, fontWeight: 'var(--fw-semibold)' }}>no</span>
                   )}
                 </dd>
-                <dt style={{ color: COLORS.textDim, fontWeight: 500 }}>Action</dt>
+                <dt style={{ color: COLORS.textDim, fontWeight: 'var(--fw-medium)' }}>Action</dt>
                 <dd style={{ margin: 0, color: COLORS.text }}>{result.execution.action}</dd>
-                <dt style={{ color: COLORS.textDim, fontWeight: 500 }}>Target</dt>
-                <dd style={{ margin: 0 }}><MonoLabel style={{ fontSize: 12 }}>{result.execution.target}</MonoLabel></dd>
-                <dt style={{ color: COLORS.textDim, fontWeight: 500 }}>Tx Hash</dt>
-                <dd style={{ margin: 0 }}><MonoLabel style={{ fontSize: 12 }}>{result.execution.txHash}</MonoLabel></dd>
+                <dt style={{ color: COLORS.textDim, fontWeight: 'var(--fw-medium)' }}>Target</dt>
+                <dd style={{ margin: 0 }}><MonoLabel style={{ fontSize: 'var(--text-xs)' }}>{result.execution.target}</MonoLabel></dd>
+                <dt style={{ color: COLORS.textDim, fontWeight: 'var(--fw-medium)' }}>Tx Hash</dt>
+                <dd style={{ margin: 0 }}><MonoLabel style={{ fontSize: 'var(--text-xs)' }}>{result.execution.txHash}</MonoLabel></dd>
                 {result.execution.gasUsed !== undefined && (
                   <>
-                    <dt style={{ color: COLORS.textDim, fontWeight: 500 }}>Gas Used</dt>
+                    <dt style={{ color: COLORS.textDim, fontWeight: 'var(--fw-medium)' }}>Gas Used</dt>
                     <dd style={{ margin: 0, color: COLORS.text }}>{result.execution.gasUsed}</dd>
                   </>
                 )}
@@ -271,7 +296,7 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
             </div>
           )}
 
-          <p style={{ fontSize: 12, color: COLORS.textDim, margin: 0 }}>
+          <p style={{ fontSize: 'var(--text-xs)', color: COLORS.textDim, margin: 0 }}>
             Completed in {result.durationMs} ms
           </p>
         </div>

@@ -8,6 +8,7 @@ export type AgentMetadata = {
   name: string;
   symbol: string;
   owner: Address;
+  creator: Address | undefined;
   dataHash: Hex;
   dataDescription: string;
   tokenUri: string;
@@ -17,6 +18,7 @@ export function useAgentMetadata(tokenId: bigint): {
   data: AgentMetadata | null;
   isLoading: boolean;
   error: Error | null;
+  refetch: () => void;
 } {
   const query = useReadContracts({
     allowFailure: false,
@@ -49,6 +51,12 @@ export function useAgentMetadata(tokenId: bigint): {
         functionName: 'tokenURI',
         args: [tokenId],
       },
+      {
+        address: getAxiomAgentNftAddress(),
+        abi: axiomAgentNftAbi,
+        functionName: 'creatorOf',
+        args: [tokenId],
+      },
     ],
     query: {
       enabled: Boolean(getAxiomAgentNftAddress()) && tokenId > 0n,
@@ -67,6 +75,7 @@ export function useAgentMetadata(tokenId: bigint): {
         name: (query.data[0] as string) || '',
         symbol: (query.data[1] as string) || '',
         owner: (query.data[2] as Address) ?? '0x0',
+        creator: (query.data[5] as Address | undefined) ?? undefined,
         dataHash: firstData?.dataHash ?? '0x',
         dataDescription: firstData?.dataDescription ?? '',
         tokenUri: (query.data[4] as string) ?? '',
@@ -77,5 +86,6 @@ export function useAgentMetadata(tokenId: bigint): {
     data,
     isLoading: query.isLoading,
     error: (query.error as Error | null) ?? null,
+    refetch: query.refetch,
   };
 }

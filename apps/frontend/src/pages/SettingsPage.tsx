@@ -1,13 +1,12 @@
 import type { ChangeEvent, ReactElement } from 'react';
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
 import { useLocalStorage } from '../hooks/useLocalStorage.js';
 import { COLORS, Card, Button, Input, SectionTitle, PageHeader, Alert } from '../components/ui.js';
 
-import { GALILEO_CHAIN_ID, ARISTOTLE_CHAIN_ID } from "@axiom/config/networks";
-
 const DEFAULT_RPC_URL = 'https://evmrpc-testnet.0g.ai';
 const DEFAULT_WC_PROJECT_ID = '';
-const DEFAULT_CHAIN_ID = GALILEO_CHAIN_ID;
 
 export function SettingsPage(): ReactElement {
   const [rpcUrl, setRpcUrl] = useLocalStorage<string>(
@@ -18,41 +17,49 @@ export function SettingsPage(): ReactElement {
     'axiom.wcProjectId',
     DEFAULT_WC_PROJECT_ID,
   );
-  const [chainId, setChainId] = useLocalStorage<number>(
-    'axiom.chainId',
-    DEFAULT_CHAIN_ID,
-  );
-
   const [rpcDraft, setRpcDraft] = useState<string>(rpcUrl);
   const [wcDraft, setWcDraft] = useState<string>(wcProjectId);
+  const [error, setError] = useState<string | null>(null);
 
   const onRpcDraftChange = (event: ChangeEvent<HTMLInputElement>): void => {
     setRpcDraft(event.target.value);
+    setError(null);
   };
   const onWcDraftChange = (event: ChangeEvent<HTMLInputElement>): void => {
     setWcDraft(event.target.value);
+    setError(null);
   };
   const onSaveRpc = (): void => {
+    if (!rpcDraft.startsWith('http')) {
+      setError('RPC URL must start with http:// or https://');
+      return;
+    }
+    setError(null);
     setRpcUrl(rpcDraft);
+    toast.success('RPC URL saved. Takes effect on next page load.');
   };
   const onSaveWcProjectId = (): void => {
-    setWcProjectId(wcDraft);
-  };
-
-  const onChainChange = (event: ChangeEvent<HTMLInputElement>): void => {
-    const next = Number.parseInt(event.target.value, 10);
-    if (next === GALILEO_CHAIN_ID) {
-      setChainId(next);
-      setRpcUrl('https://evmrpc-testnet.0g.ai');
-    } else if (next === ARISTOTLE_CHAIN_ID) {
-      setChainId(next);
-      setRpcUrl('https://evmrpc.0g.ai');
+    if (wcDraft && !/^[a-f0-9]{32}$/i.test(wcDraft)) {
+      setError('WalletConnect Project ID should be a 32-character hex string');
+      return;
     }
+    setError(null);
+    setWcProjectId(wcDraft);
+    toast.success('WalletConnect Project ID saved. Reload to apply.');
   };
 
   return (
     <main>
-      <PageHeader title="Settings" subtitle="Configure RPC endpoint, wallet connector, and chain" />
+      <p style={{ margin: 0, marginBottom: 'var(--space-md)' }}>
+        <Link to="/" style={{ color: COLORS.textDim, textDecoration: 'none', fontSize: '0.875rem' }}>
+          ← Back
+        </Link>
+      </p>
+      <PageHeader title="Settings" subtitle="Configure RPC endpoint and wallet connector" />
+
+      {error !== null && (
+        <Alert variant="error" style={{ marginBottom: 'var(--space-xl)' }}>{error}</Alert>
+      )}
 
       <Card style={{ marginBottom: 'var(--space-xl)' }}>
         <SectionTitle>RPC Endpoint</SectionTitle>
@@ -60,8 +67,8 @@ export function SettingsPage(): ReactElement {
           The JSON-RPC endpoint used to read 0G chain state.
         </p>
         <div style={{ display: 'flex', gap: 'var(--space-sm)', alignItems: 'flex-start' }}>
+          <label htmlFor="rpc-url-input" style={{ color: COLORS.textMuted, fontSize: 'var(--text-sm)', marginBottom: 'var(--space-sm)', display: 'block' }}>RPC Endpoint</label>
           <Input
-            key={`rpc-${rpcUrl}`}
             id="rpc-url-input"
             type="url"
             inputMode="url"
@@ -85,8 +92,8 @@ export function SettingsPage(): ReactElement {
           Your WalletConnect Cloud project identifier. Required for WalletConnect-based wallets like Rainbow, Trust, and MetaMask Mobile.
         </p>
         <div style={{ display: 'flex', gap: 'var(--space-sm)', alignItems: 'flex-start' }}>
+          <label htmlFor="wc-project-id-input" style={{ color: COLORS.textMuted, fontSize: 'var(--text-sm)', marginBottom: 'var(--space-sm)', display: 'block' }}>WalletConnect Project ID</label>
           <Input
-            key={`wc-${wcProjectId}`}
             id="wc-project-id-input"
             type="text"
             value={wcDraft}
@@ -103,69 +110,6 @@ export function SettingsPage(): ReactElement {
         </Alert>
       </Card>
 
-      <Card>
-        <SectionTitle>Active Chain</SectionTitle>
-        <p style={{ color: COLORS.textMuted, fontSize: 'var(--text-sm)', margin: '0 0 var(--space-lg)', fontWeight: 'var(--fw-regular)', lineHeight: 'var(--lh-normal)' }}>
-          The 0G chain the frontend targets by default.
-        </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
-          <label
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 'var(--space-sm)',
-              padding: 'var(--space-md) var(--space-lg)',
-              borderRadius: 'var(--radius-lg)',
-              border: `1px solid ${chainId === GALILEO_CHAIN_ID ? COLORS.bronzeBorder : COLORS.border}`,
-              background: chainId === GALILEO_CHAIN_ID ? COLORS.bronzeBg : 'transparent',
-              cursor: 'pointer',
-              transition: 'all 0.18s ease',
-              color: COLORS.text,
-              fontSize: 'var(--text-sm)',
-            }}
-          >
-            <input
-              type="radio"
-              name="chain"
-              value={GALILEO_CHAIN_ID}
-              checked={chainId === GALILEO_CHAIN_ID}
-              onChange={onChainChange}
-              style={{ accentColor: COLORS.bronze }}
-            />
-            Galileo Testnet
-            <span style={{ color: COLORS.textDim, fontSize: 'var(--text-xs)' }}>(chainId 16602)</span>
-          </label>
-          <label
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 'var(--space-sm)',
-              padding: 'var(--space-md) var(--space-lg)',
-              borderRadius: 'var(--radius-lg)',
-              border: `1px solid ${chainId === ARISTOTLE_CHAIN_ID ? COLORS.bronzeBorder : COLORS.border}`,
-              background: chainId === ARISTOTLE_CHAIN_ID ? COLORS.bronzeBg : 'transparent',
-              cursor: 'pointer',
-              transition: 'all 0.18s ease',
-              color: COLORS.text,
-              fontSize: 'var(--text-sm)',
-            }}
-          >
-            <input
-              type="radio"
-              name="chain"
-              value={ARISTOTLE_CHAIN_ID}
-              checked={chainId === ARISTOTLE_CHAIN_ID}
-              onChange={onChainChange}
-              style={{ accentColor: COLORS.bronze }}
-            />
-            Aristotle Mainnet
-            <span style={{ color: COLORS.textDim, fontSize: 'var(--text-xs)' }}>(chainId 16661)</span>
-          </label>
-        </div>
-        <p style={{ margin: 'var(--space-md) 0 0', fontSize: 'var(--text-xs)', color: COLORS.textDim }}>
-          Saved to localStorage key <code style={{ color: COLORS.bronzeLight }}>axiom.chainId</code>. Takes effect on next page load.
-        </p>
-      </Card>
     </main>
   );
 }

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type ReactElement } from 'react';
 import { useSendTransaction, useWriteContract } from 'wagmi';
 import type { Address } from 'viem';
 
+import { PAYMENT_PROCESSOR_ABI } from '@axiom/config/abis';
 import { getAxiomPaymentProcessorAddress } from '../abi/addresses.js';
 import { PLACEHOLDER, truncateHex } from '../utils/format.js';
 import {
@@ -9,6 +10,7 @@ import {
   type PaymentConfig,
   type EarningsInfo,
 } from '../hooks/usePayment.js';
+import { toast } from 'sonner';
 import {
   COLORS,
   Card,
@@ -17,26 +19,25 @@ import {
   Alert,
   SectionTitle,
   MonoLabel,
+  Modal,
   Spinner,
   ConnectedGuard,
 } from './ui.js';
 
-/**
- * Minimal ABI fragment for `withdrawAgentEarnings()`. The backend has
- * no `/withdraw` route; creators call this directly on-chain.
- * Source: apps/contracts/src/AxiomPaymentProcessor.sol.
- */
-const PAYMENT_PROCESSOR_FRAGMENT = [
-  {
-    type: 'function',
-    name: 'withdrawAgentEarnings',
-    stateMutability: 'nonpayable',
-    inputs: [],
-    outputs: [],
-  },
-] as const;
-
 type ActionStatus = 'idle' | 'pending' | 'success' | 'error';
+
+function useAutoClear(
+  status: ActionStatus,
+  setStatus: (s: ActionStatus) => void,
+  ms = 6000,
+): void {
+  useEffect(() => {
+    if (status === 'success' || status === 'error') {
+      const timer = setTimeout(() => setStatus('idle'), ms);
+      return () => clearTimeout(timer);
+    }
+  }, [status, setStatus, ms]);
+}
 
 const formRowStyle: React.CSSProperties = {
   display: 'flex',
@@ -55,8 +56,11 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
     getEarnings,
     setRoyalty,
     getPaymentConfig,
-    isLoading,
-    error,
+    isPayLoading,
+    isRoyaltyLoading,
+    isEarningsLoading,
+    earningsError,
+    fetchError,
   } = usePayment();
 
   // On-chain withdraw — backend has no route, so the connected
@@ -75,31 +79,43 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
 
   const [payAmount, setPayAmount] = useState('');
   const [payStatus, setPayStatus] = useState<ActionStatus>('idle');
+  const [payError, setPayError] = useState<string | null>(null);
 
   const [royaltyBps, setRoyaltyBps] = useState('');
   const [royaltyStatus, setRoyaltyStatus] = useState<ActionStatus>('idle');
+  const [royaltyError, setRoyaltyError] = useState<string | null>(null);
 
   const [withdrawStatus, setWithdrawStatus] = useState<ActionStatus>('idle');
+  const [withdrawActionError, setWithdrawActionError] = useState<string | null>(null);
+  const [showWithdrawConfirm, setShowWithdrawConfirm] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
 
+  useAutoClear(payStatus, setPayStatus);
+  useAutoClear(royaltyStatus, setRoyaltyStatus);
+  useAutoClear(withdrawStatus, setWithdrawStatus);
+
   useEffect(() => {
+    let cancelled = false;
     setInitError(null);
     Promise.all([getPaymentConfig(), getEarnings(tokenId)])
       .then(([cfg, earn]) => {
+        if (cancelled) return;
         setConfig(cfg);
         setEarnings(earn);
       })
       .catch(err => {
-        console.error('[PaymentPanel] initialization failed:', err);
+        if (cancelled) return;
         setInitError(err instanceof Error ? err.message : String(err));
       });
-  }, []);
+    return () => { cancelled = true; };
+  }, [tokenId, getPaymentConfig, getEarnings]);
 
   const refreshEarnings = useCallback(async (): Promise<void> => {
     try {
       const earn = await getEarnings(tokenId);
       setEarnings(earn);
-    } catch {
+    } catch (err) {
+      console.warn('[PaymentPanel] Failed to refresh earnings:', err);
     }
   }, [tokenId, getEarnings]);
 
@@ -109,9 +125,11 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
     try {
       await payForAgent(tokenId, payAmount);
       setPayStatus('success');
+      toast.success('Payment processed');
       await refreshEarnings();
-    } catch {
+    } catch (err) {
       setPayStatus('error');
+      setPayError(err instanceof Error ? err.message : String(err));
     }
   }, [payAmount, payForAgent, tokenId, refreshEarnings]);
 
@@ -132,24 +150,29 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
         });
       }
       setRoyaltyStatus('success');
-    } catch {
+      toast.success('Royalty updated');
+    } catch (err) {
       setRoyaltyStatus('error');
+      setRoyaltyError(err instanceof Error ? err.message : String(err));
     }
   }, [royaltyBps, setRoyalty, tokenId, sendTransactionAsync]);
 
   const handleWithdraw = useCallback(async (): Promise<void> => {
+    setShowWithdrawConfirm(false);
     setWithdrawStatus('pending');
     try {
       await writeContractAsync({
         address: getAxiomPaymentProcessorAddress(),
-        abi: PAYMENT_PROCESSOR_FRAGMENT,
+        abi: PAYMENT_PROCESSOR_ABI,
         functionName: 'withdrawAgentEarnings',
         args: [],
       });
       setWithdrawStatus('success');
+      toast.success('Withdrawal submitted');
       await refreshEarnings();
-    } catch {
+    } catch (err) {
       setWithdrawStatus('error');
+      setWithdrawActionError(err instanceof Error ? err.message : String(err));
     }
   }, [writeContractAsync, refreshEarnings]);
 
@@ -188,34 +211,38 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
 
       {/* 2. Pay-for-agent form */}
       <h3>Pay for Agent</h3>
-      <p style={{ fontSize: 12, color: COLORS.textMuted }}>
+      <p style={{ fontSize: 'var(--text-xs)', color: COLORS.textMuted }}>
         Amount is in the payment token&apos;s smallest unit (e.g. 6-decimal
         USDC micro-units).
       </p>
       <div style={formRowStyle}>
         <Input
-          type="text"
+          type="number"
           inputMode="numeric"
+          min="0"
+          step="1"
           placeholder="amount (wei)"
           value={payAmount}
           onChange={(e): void => {
             setPayAmount(e.target.value);
             setPayStatus('idle');
+            setPayError(null);
           }}
           style={{ flex: 1 }}
         />
         <Button
           variant="primary"
-          disabled={isLoading || payAmount === ''}
+          disabled={isPayLoading || payAmount === ''}
           onClick={(): void => {
             void handlePay();
           }}
+          style={{ minWidth: '140px' }}
         >
           {payStatus === 'pending' ? <Spinner size={16} /> : 'Pay'}
         </Button>
       </div>
       {payStatus === 'success' && <Alert variant="success">Payment submitted.</Alert>}
-      {payStatus === 'error' && <Alert variant="error">Payment failed.</Alert>}
+      {payStatus === 'error' && <Alert variant="error">{payError ?? 'Payment failed.'}</Alert>}
 
       {/* 3. Earnings + withdraw */}
       <h3>Earnings</h3>
@@ -242,18 +269,39 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
           variant="secondary"
           disabled={isWithdrawPending || withdrawStatus === 'pending'}
           onClick={(): void => {
-            void handleWithdraw();
+            setShowWithdrawConfirm(true);
           }}
+          style={{ minWidth: '140px' }}
         >
           {withdrawStatus === 'pending' ? <Spinner size={16} /> : 'Withdraw'}
         </Button>
       </div>
+      <Modal
+        open={showWithdrawConfirm}
+        onClose={() => setShowWithdrawConfirm(false)}
+        title="Confirm Withdrawal"
+      >
+        <p>Withdraw all agent earnings? This will send funds to your wallet.</p>
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
+          <Button variant="secondary" onClick={() => setShowWithdrawConfirm(false)}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            onClick={() => {
+              void handleWithdraw();
+            }}
+          >
+            Confirm
+          </Button>
+        </div>
+      </Modal>
       {withdrawStatus === 'success' && <Alert variant="success">Withdrawal submitted.</Alert>}
-      {withdrawStatus === 'error' && <Alert variant="error">Withdrawal failed.</Alert>}
+      {withdrawStatus === 'error' && <Alert variant="error">{withdrawActionError ?? 'Withdrawal failed.'}</Alert>}
 
       {/* 4. Royalty setting form */}
       <h3>Royalty</h3>
-      <p style={{ fontSize: 12, color: COLORS.textMuted }}>
+      <p style={{ fontSize: 'var(--text-xs)', color: COLORS.textMuted }}>
         Basis points (0\u201310000). 250 = 2.5%. Only the agent creator
         may set this on-chain.
       </p>
@@ -267,25 +315,30 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
           onChange={(e): void => {
             setRoyaltyBps(e.target.value);
             setRoyaltyStatus('idle');
+            setRoyaltyError(null);
           }}
           style={{ flex: 1 }}
         />
         <Button
           variant="primary"
-          disabled={isLoading || royaltyBps === ''}
+          disabled={isRoyaltyLoading || royaltyBps === ''}
           onClick={(): void => {
             void handleSetRoyalty();
           }}
+          style={{ minWidth: '140px' }}
         >
           {royaltyStatus === 'pending' ? <Spinner size={16} /> : 'Set Royalty'}
         </Button>
       </div>
       {royaltyStatus === 'success' && <Alert variant="success">Royalty updated.</Alert>}
-      {royaltyStatus === 'error' && <Alert variant="error">Royalty update failed.</Alert>}
+      {royaltyStatus === 'error' && <Alert variant="error">{royaltyError ?? 'Royalty update failed.'}</Alert>}
 
-      {/* Shared error line for any hook-level failure. */}
-      {error !== null && (
-        <Alert variant="error">{error.message}</Alert>
+      {/* Hook-level errors for fetch operations. */}
+      {fetchError !== null && (
+        <Alert variant="error">{fetchError.message}</Alert>
+      )}
+      {earningsError !== null && (
+        <Alert variant="error">{earningsError.message}</Alert>
       )}
       {withdrawError !== null && (
         <Alert variant="error">{withdrawError.message}</Alert>

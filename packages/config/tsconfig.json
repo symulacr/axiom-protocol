@@ -10,7 +10,8 @@
     "declarationMap": true,
     "sourceMap": true,
     "types": ["node"],
-    "composite": true
+    "composite": true,
+    "incremental": true
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist"]

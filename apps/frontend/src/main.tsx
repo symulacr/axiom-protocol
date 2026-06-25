@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider } from 'wagmi';
 import { RainbowKitProvider, darkTheme } from '@rainbow-me/rainbowkit';
 
-import { ErrorBoundary } from './components/ErrorBoundary.js';
+import { Toaster } from 'sonner';
 import { App } from './App';
 import { wagmiConfig } from './config/wagmi';
 import '@rainbow-me/rainbowkit/styles.css';
@@ -30,9 +30,17 @@ createRoot(rootEl).render(
           overlayBlur: 'small',
         })}>
           <BrowserRouter>
-            <ErrorBoundary>
               <App />
-            </ErrorBoundary>
+              <Toaster
+                position="bottom-right"
+                toastOptions={{
+                  style: {
+                    background: '#1a1a1a',
+                    color: '#f5f5f5',
+                    border: '1px solid #2a2a2a',
+                  },
+                }}
+              />
           </BrowserRouter>
         </RainbowKitProvider>
       </QueryClientProvider>
