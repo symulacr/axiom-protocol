@@ -631,6 +631,25 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
         return; // Exit early — streaming handled asynchronously via WSS
       } else {
         orchestratorResult = await runner.runTick(spec, signal);
+        events.append({
+          source: "orchestrator",
+          eventName: "Tick",
+          chainId: ogChainId,
+          blockNumber: 0,
+          txHash: "0x" + "0".repeat(64),
+          logIndex: 0,
+          payload: {
+            tokenId: spec.agentTokenId.toString(),
+            action: orchestratorResult.recommendation.action,
+            amount: orchestratorResult.recommendation.amount ?? null,
+            reason: orchestratorResult.recommendation.reason,
+            durationMs: orchestratorResult.durationMs,
+            executionSuccess: orchestratorResult.execution?.success ?? null,
+            vaultBalance: orchestratorResult.onchain.vaultBalance.toString(),
+          },
+          receivedAt: Date.now(),
+          timestamp: Date.now(),
+        });
         res.status(200).json(orchestratorResult);
       }
 
