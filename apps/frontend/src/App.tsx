@@ -1,5 +1,3 @@
-// App — route table + header (nav + ConnectButton).
-
 import { lazy, Suspense, useState, type ReactElement } from 'react';
 import { Link, NavLink, Navigate, Route, Routes } from 'react-router-dom';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
@@ -31,8 +29,6 @@ function navLinkStyle({ isActive }: { isActive: boolean }): React.CSSProperties 
     transition: 'color 0.18s ease',
   };
 }
-
-// Top-level App.
 
 export function App(): ReactElement {
   const isMobile = useMediaQuery('(max-width: 640px)');

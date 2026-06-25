@@ -1,6 +1,3 @@
-// Single source of truth for env loading + getEnv helper.
-// Seeds `process.env` from a single `.env` file via a hand-rolled loader.
-
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 

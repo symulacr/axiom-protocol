@@ -34,7 +34,6 @@ export interface AgentEventQuery {
   limit?: number;
 }
 
-/** Shared sort comparator: by (blockNumber, logIndex, receivedAt). */
 const byBlockThenLogReceived = (a: StoredEvent, b: StoredEvent) =>
   a.blockNumber - b.blockNumber || a.logIndex - b.logIndex || a.receivedAt - b.receivedAt;
 
@@ -197,7 +196,6 @@ export class EventStore {
     }
   }
 
-  /** Index an event by eventName. */
   private addToEventNameIndex(evt: StoredEvent): void {
     let bucket = this.byEventName.get(evt.eventName);
     if (!bucket) {
@@ -207,7 +205,6 @@ export class EventStore {
     bucket.push(evt);
   }
 
-  /** Index an event by tokenId. */
   private addToTokenIdIndex(tokenId: string, evt: StoredEvent): void {
     let bucket = this.byTokenId.get(tokenId);
     if (!bucket) {
@@ -217,7 +214,6 @@ export class EventStore {
     bucket.push(evt);
   }
 
-  /** Remove an evicted event from the indexes. */
   private removeFromIndex(evt: StoredEvent): void {
     const nameBucket = this.byEventName.get(evt.eventName);
     if (nameBucket) {
@@ -234,7 +230,6 @@ export class EventStore {
     }
   }
 
-  /** Persist all buckets to disk as JSON. */
   private persist(): void {
     try {
       if (!existsSync(PERSIST_DIR)) mkdirSync(PERSIST_DIR, { recursive: true });
