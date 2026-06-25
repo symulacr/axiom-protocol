@@ -23,7 +23,7 @@ export interface Eip712Domain {
 /** Default domain for Galileo testnet. Production MUST pass real chain id + verifier address. */
 export const DEFAULT_EIP712_DOMAIN: Eip712Domain = {
   chainId: 16602n,
-  verifyingContract: "0x24f725198d64A3b03A8386cD8fa12BD7c591734A",
+  verifyingContract: "0xB27c73aD01f61Ec1FDC302dF2350326228F14c11",
 };
 
 const abiCoder = AbiCoder.defaultAbiCoder();

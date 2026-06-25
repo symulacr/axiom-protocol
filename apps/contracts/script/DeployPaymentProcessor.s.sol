@@ -19,8 +19,6 @@ contract AxiomMockUSDC is ERC20 {
 ///         then the processor via plain CREATE.
 /// @dev AXIOM_ORACLE_ADMIN_PK=<pk> forge script script/DeployPaymentProcessor.s.sol --rpc-url https://evmrpc-testnet.0g.ai --chain-id 16602 --broadcast --priority-gas-price 2000000000 --legacy --slow
 contract DeployPaymentProcessor is Script {
-    address internal constant TARGET_ADDRESS = 0xEf1bA81ba3A9c37a3A6efF46BB2B029d4068fd8D;
-    address internal constant NFT_PROXY = 0xf12F158a20c36a351b056FD60b3a7377ce4F1e09;
     uint256 internal constant GALILEO_CHAIN_ID = 16602;
 
     error WrongChain(uint256 actual, uint256 expected);
@@ -34,7 +32,10 @@ contract DeployPaymentProcessor is Script {
         uint256 operatorKey = vm.envUint("ORACLE_ADMIN_PK");
         address operator = vm.addr(operatorKey);
 
-        bytes memory existing = TARGET_ADDRESS.code;
+        address targetAddress = vm.envAddress("AXIOM_PAYMENT_PROCESSOR_ADDRESS");
+        address nftProxy = vm.envAddress("AGENT_NFT_ADDRESS");
+
+        bytes memory existing = targetAddress.code;
         if (existing.length != 0) {
             console2.log("[DeployPaymentProcessor] NOTE: 0xEf1bA81... already has code; nothing to do.");
             return;
@@ -47,20 +48,20 @@ contract DeployPaymentProcessor is Script {
         bytes32 salt = keccak256("AxiomPaymentProcessor.galileo.2026-06-14");
         bytes memory initCode = abi.encodePacked(
             type(AxiomPaymentProcessor).creationCode,
-            abi.encode(NFT_PROXY, address(paymentToken), operator, uint256(100), operator)
+            abi.encode(nftProxy, address(paymentToken), operator, uint256(100), operator)
         );
         address create2Predicted = vm.computeCreate2Address(salt, keccak256(initCode), operator);
         console2.log("[DeployPaymentProcessor] CREATE2 predicted address :", create2Predicted);
-        console2.log("[DeployPaymentProcessor] Target (docs) address      :", TARGET_ADDRESS);
+        console2.log("[DeployPaymentProcessor] Target (docs) address      :", targetAddress);
 
-        if (create2Predicted == TARGET_ADDRESS) {
+        if (create2Predicted == targetAddress) {
             console2.log("[DeployPaymentProcessor] CREATE2 predicted == TARGET.");
         } else {
             console2.log("[DeployPaymentProcessor] CREATE2 predicted != TARGET -- using plain CREATE.");
         }
 
         AxiomPaymentProcessor processor = new AxiomPaymentProcessor(
-            NFT_PROXY,
+            nftProxy,
             address(paymentToken),
             operator, // treasury
             100,      // 1% protocol fee
@@ -69,7 +70,7 @@ contract DeployPaymentProcessor is Script {
         console2.log("[DeployPaymentProcessor] AxiomPaymentProcessor deployed at:", address(processor));
 
         address storedNft = address(processor.AXIOM_NFT());
-        require(storedNft == NFT_PROXY, "constructor did not wire AXIOM_NFT correctly");
+        require(storedNft == nftProxy, "constructor did not wire AXIOM_NFT correctly");
         console2.log("[DeployPaymentProcessor] AXIOM_NFT confirmed:", storedNft);
 
         address liveToken = processor.paymentToken();
@@ -81,7 +82,7 @@ contract DeployPaymentProcessor is Script {
         console2.log("========== DeployPaymentProcessor summary ==========");
         console2.log("Network:               0G Galileo testnet (chainId 16602)");
         console2.log("Operator (broadcaster):", operator);
-        console2.log("NFT proxy:             ", NFT_PROXY);
+        console2.log("NFT proxy:             ", nftProxy);
         console2.log("Payment token (mock):  ", address(paymentToken));
         console2.log("Treasury + owner:      ", operator);
         console2.log("Protocol fee (bps):    100");
