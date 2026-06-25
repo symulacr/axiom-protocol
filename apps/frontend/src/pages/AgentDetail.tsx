@@ -1,8 +1,10 @@
-import { useState, useMemo, type ReactElement } from 'react';
+import { useState, useMemo, useRef, useEffect, type ReactElement } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAccount } from 'wagmi';
 import { useAgentMetadata } from '../hooks/useAgentMetadata.js';
 import { useEventHistory } from '../hooks/useEventHistory.js';
+import { useEventStream } from '../hooks/useEventStream.js';
+import { useHealth } from '../hooks/useHealth.js';
 import { EventTimeline } from '../components/EventTimeline.js';
 import { ExecutePanel } from '../components/ExecutePanel.js';
 import { PaymentPanel } from '../components/PaymentPanel.js';
@@ -30,7 +32,17 @@ export function AgentDetail(): ReactElement {
   const metadata = useAgentMetadata(tokenId ?? 0n);
   const { data, isLoading: metaLoading, error: metaError } = metadata;
 
-  const { events } = useEventHistory({ pollIntervalMs: 15_000 });
+  const { events, refetch } = useEventHistory({ pollIntervalMs: 15_000 });
+
+  const { events: wsEvents } = useEventStream({ topics: ['*'] });
+  const health = useHealth();
+
+  // Debounced refetch on WS event — keeps the timeline fresh between polls
+  useEffect(() => {
+    if (wsEvents.length === 0) return;
+    const t = setTimeout(refetch, 200);
+    return () => clearTimeout(t);
+  }, [wsEvents, refetch]);
 
   const agentEvents = useMemo(
     () => events.filter(ev => String((ev.payload as Record<string, unknown>)?.tokenId) === tokenId?.toString()),
@@ -98,6 +110,16 @@ export function AgentDetail(): ReactElement {
             <dt style={{ color: COLORS.textDim, fontWeight: 'var(--fw-medium)' }}>Token URI</dt>
             <dd style={{ margin: 0 }}>
               {data.tokenUri === '' ? <span style={{ color: COLORS.textDim }}>{PLACEHOLDER}</span> : <MonoLabel>{data.tokenUri}</MonoLabel>}
+            </dd>
+            <dt style={{ color: COLORS.textDim, fontWeight: 'var(--fw-medium)' }}>Oracle</dt>
+            <dd style={{ margin: 0 }}>
+              {health.data ? (
+                <MonoLabel style={{ color: health.data.oracle === 'up' ? COLORS.success : COLORS.danger }}>
+                  TEE {health.data.oracle === 'up' ? '✓' : '✗'}
+                </MonoLabel>
+              ) : (
+                <span style={{ color: COLORS.textDim }}>{PLACEHOLDER}</span>
+              )}
             </dd>
           </dl>
         </Card>
