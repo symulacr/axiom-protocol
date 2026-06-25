@@ -1,7 +1,7 @@
 export const AGENT_NFT_ABI = [
   "function mint((string dataDescription, bytes32 dataHash)[] iDatas, address to) payable returns (uint256 tokenId)",
   "function mintFee() view returns (uint256)",
-  "function intelligentDatasOf(uint256 tokenId) view returns (tuple(string dataDescription, bytes32 dataHash)[])",
+  "function intelligentDatasOf(uint256 tokenId) view returns ((string dataDescription, bytes32 dataHash)[])",
   "function creatorOf(uint256 tokenId) view returns (address)",
   "function ownerOf(uint256 tokenId) view returns (address)",
   "function name() view returns (string)",

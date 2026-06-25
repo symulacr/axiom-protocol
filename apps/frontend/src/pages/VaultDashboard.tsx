@@ -60,14 +60,8 @@ export function VaultDashboard(): ReactElement {
 
   return (
     <main>
-      <p style={{ margin: 0, marginBottom: 'var(--space-md)' }}>
-        <Link to="/" style={{ color: COLORS.textDim, textDecoration: 'none', fontSize: '0.875rem' }}>
-          ← Back
-        </Link>
-      </p>
       <PageHeader
         title="Vault Dashboard"
-        subtitle="Live on-chain state of every AxiomStrategyVault"
       />
 
 
@@ -110,7 +104,7 @@ export function VaultDashboard(): ReactElement {
                 Total Deposits
               </dt>
               <dd style={{ margin: 0, fontSize: 'var(--text-lg)', fontWeight: 'var(--fw-semibold)', color: COLORS.bronzeLight }}>
-                {depositsWei === undefined ? PLACEHOLDER : `${formatEther(depositsWei)} OG`}
+                {depositsWei === undefined ? PLACEHOLDER : `${formatEther(depositsWei)} 0G`}
               </dd>
             </div>
             <div>
@@ -126,7 +120,7 @@ export function VaultDashboard(): ReactElement {
                 Daily Limit
               </dt>
               <dd style={{ margin: 0, fontSize: 'var(--text-base)', fontWeight: 'var(--fw-medium)', color: COLORS.text }}>
-                {dailyLimitWei === undefined ? PLACEHOLDER : `${formatEther(dailyLimitWei)} OG`}
+                {dailyLimitWei === undefined ? PLACEHOLDER : `${formatEther(dailyLimitWei)} 0G`}
               </dd>
             </div>
           </dl>
@@ -139,7 +133,7 @@ export function VaultDashboard(): ReactElement {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
             <div>
               <p style={{ margin: '0 0 var(--space-sm)', fontSize: 'var(--text-sm)', color: COLORS.textDim }}>
-                Deposit OG (ETH)
+                Deposit 0G
               </p>
               <div style={{ display: 'flex', gap: 'var(--space-sm)', alignItems: 'center' }}>
                 <Input

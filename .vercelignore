@@ -1,0 +1,10 @@
+node_modules
+.git
+.omc
+apps/contracts/lib
+apps/bench
+apps/contracts/broadcast
+apps/contracts/out
+apps/contracts/cache
+artifacts
+chrome-headless-shell

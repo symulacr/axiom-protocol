@@ -47,7 +47,7 @@ export const COLORS = {
 
 const transition = 'all 0.18s cubic-bezier(0.4, 0, 0.2, 1)';
 
-type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost';
+type ButtonVariant = 'primary' | 'secondary' | 'ghost';
 
 const buttonBase: CSSProperties = {
   padding: '0.625rem 1.25rem',
@@ -74,12 +74,6 @@ const buttonVariants: Record<ButtonVariant, CSSProperties> = {
     background: 'transparent',
     color: COLORS.textPrimary,
     borderColor: COLORS.borderStrong,
-  },
-  danger: {
-    ...buttonBase,
-    background: 'transparent',
-    color: COLORS.danger,
-    borderColor: COLORS.dangerBorder,
   },
   ghost: {
     ...buttonBase,
@@ -163,7 +157,7 @@ export function Input({
   );
 }
 
-type AlertVariant = 'error' | 'success' | 'warning';
+type AlertVariant = 'error' | 'success';
 
 const alertStyles: Record<AlertVariant, CSSProperties> = {
   error: {
@@ -180,15 +174,6 @@ const alertStyles: Record<AlertVariant, CSSProperties> = {
     background: COLORS.successBg,
     border: `1px solid ${COLORS.successBorder}`,
     color: COLORS.success,
-    borderRadius: 'var(--radius-lg)',
-    fontSize: 'var(--text-sm)',
-    lineHeight: 'var(--lh-snug)',
-  },
-  warning: {
-    padding: 'var(--space-md) var(--space-lg)',
-    background: COLORS.warningBg,
-    border: `1px solid ${COLORS.warningBorder}`,
-    color: COLORS.warning,
     borderRadius: 'var(--radius-lg)',
     fontSize: 'var(--text-sm)',
     lineHeight: 'var(--lh-snug)',

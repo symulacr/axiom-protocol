@@ -11,7 +11,7 @@ export function createHealthRouter(provider: JsonRpcProvider, oracle: OracleClie
         provider.getBlockNumber().catch(() => 0),
         oracle.health().catch(() => null),
       ]);
-      const healthy = chainHead > 0 && oracleHealth?.ok === true;
+      const healthy = chainHead > 0;
       res.status(healthy ? 200 : 503).json({
         ok: healthy,
         version: "0.1.0",

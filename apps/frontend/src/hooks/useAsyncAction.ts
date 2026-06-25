@@ -40,9 +40,7 @@ export function useAsyncAction(): UseAsyncActionResult {
       setError(wrapped);
       throw wrapped;
     } finally {
-      if (!cancelledRef.current) {
-        setIsLoading(false);
-      }
+      setIsLoading(false);
     }
   }, []);
 
@@ -52,6 +50,7 @@ export function useAsyncAction(): UseAsyncActionResult {
 
   const reset = useCallback(() => {
     setError(null);
+    setIsLoading(false);
   }, []);
 
   return { execute, cancel, isLoading, error, reset };

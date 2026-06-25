@@ -77,14 +77,8 @@ export function MarketPage(): ReactElement {
 
   return (
     <main>
-      <p style={{ margin: 0, marginBottom: 'var(--space-md)' }}>
-        <Link to="/" style={{ color: COLORS.textDim, textDecoration: 'none', fontSize: '0.875rem' }}>
-          ← Back
-        </Link>
-      </p>
       <PageHeader
         title="Market"
-        subtitle="Compute providers and recent iNFT transfers — refreshes every 30 seconds"
       />
 
       <SectionTitle>Compute Providers</SectionTitle>

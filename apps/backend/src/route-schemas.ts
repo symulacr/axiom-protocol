@@ -1,13 +1,6 @@
 import { z } from "zod";
 import { hexViem, addressViem } from "@axiom/config/types/schemas";
 
-export const mintSchema = z.object({
-  agentNft: addressViem,
-  encryptedStrategyUri: hexViem,
-  sealedKey: hexViem,
-  owner: addressViem,
-});
-
 export const accessProofSchema = z.object({
   dataHash: hexViem,
   targetPubkey: hexViem,
