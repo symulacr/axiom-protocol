@@ -9,9 +9,6 @@ import {AxiomTeeVerifier} from "../src/verifiers/AxiomTeeVerifier.sol";
 ///         via plain CREATE (original address has code). Proxy owner must rotate after.
 /// @dev AXIOM_ORACLE_ADMIN_PK=<pk> forge script script/RedeployTeeVerifier.s.sol --rpc-url https://evmrpc-testnet.0g.ai --chain-id 16602 --broadcast --priority-gas-price 3000000000 --legacy --slow
 contract RedeployTeeVerifier is Script {
-    address internal constant OPERATOR = 0x437371dB1FBD534Bd01BD3f4E66DfA1675952F91;
-    /// @dev Same address as operator on Galileo (separate key in production).
-    address internal constant TEE_SIGNER = 0x437371dB1FBD534Bd01BD3f4E66DfA1675952F91;
     uint256 internal constant MAX_PROOF_AGE_SECONDS = 604800;
     uint256 internal constant GALILEO_CHAIN_ID = 16602;
 
@@ -25,23 +22,25 @@ contract RedeployTeeVerifier is Script {
 
         uint256 operatorKey = vm.envUint("ORACLE_ADMIN_PK");
         address operator = vm.addr(operatorKey);
-        require(operator == OPERATOR, "broadcaster must be the operator (0x4373...)");
+        address operatorAddr = vm.envAddress("AXIOM_OPERATOR_ADDRESS");
+        address teeSigner = vm.envAddress("AXIOM_TEE_SIGNER_ADDRESS");
+        require(operator == operatorAddr, "broadcaster must be the operator");
 
         uint64 currentNonce = vm.getNonce(operator);
         console2.log("[RedeployTeeVerifier] Operator nonce at broadcast time:", currentNonce);
         console2.log("[RedeployTeeVerifier] Operator:                       ", operator);
         console2.log("[RedeployTeeVerifier] Constructor args:");
-        console2.log("    initialOwner        =", OPERATOR);
-        console2.log("    signer (TEE)        =", TEE_SIGNER);
+        console2.log("    initialOwner        =", operatorAddr);
+        console2.log("    signer (TEE)        =", teeSigner);
         console2.log("    maxProofAgeSeconds  =", MAX_PROOF_AGE_SECONDS);
 
         vm.startBroadcast(operatorKey);
-        AxiomTeeVerifier verifier = new AxiomTeeVerifier(OPERATOR, TEE_SIGNER, MAX_PROOF_AGE_SECONDS);
+        AxiomTeeVerifier verifier = new AxiomTeeVerifier(operatorAddr, teeSigner, MAX_PROOF_AGE_SECONDS);
         vm.stopBroadcast();
         console2.log("[RedeployTeeVerifier] AxiomTeeVerifier deployed at:", address(verifier));
 
         address liveSigner = verifier.registeredSigner();
-        require(liveSigner == TEE_SIGNER, "constructor did not wire signer correctly");
+        require(liveSigner == teeSigner, "constructor did not wire signer correctly");
         console2.log("[RedeployTeeVerifier] registeredSigner confirmed:", liveSigner);
 
         uint256 liveMaxAge = verifier.maxProofAgeSeconds();
