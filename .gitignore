@@ -146,8 +146,9 @@ __pycache__/
 *.pyc
 
 # ── Generated ABI artifacts (wagmi CLI codegen + forge intermediate) ──
-packages/config/abis/*.json
-packages/config/src/abis/generated.ts
+# Tracked in git since Railway needs them and lacks forge
+# packages/config/abis/*.json
+# packages/config/src/abis/generated.ts
 
 # ── Generated docs — benchmark / brand / security ──────────
 docs/bench/
