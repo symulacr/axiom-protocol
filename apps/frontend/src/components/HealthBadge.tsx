@@ -27,6 +27,19 @@ export function HealthBadge(): ReactElement {
     setStatus('down');
   }, []);
 
+  const isLocalhost = BACKEND_URL.includes('127.0.0.1') || BACKEND_URL.includes('localhost');
+  if (isLocalhost) {
+    return (
+      <span role="status" aria-label="Local development" title={`Backend: ${BACKEND_URL}`}
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '5px 10px',
+          borderRadius: 'var(--radius-xl)', fontSize: 'var(--text-xs)', fontWeight: 'var(--fw-medium)',
+          color: COLORS.textMuted, background: 'rgba(255,255,255,0.04)', border: `1px solid ${COLORS.border}` }}>
+        <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: '50%', background: COLORS.textDim }} />
+        <span>Local</span>
+      </span>
+    );
+  }
+
   usePoll(checkHealth, handleResult, handleError, {
     intervalMs: 30000,
     enabled: true,

@@ -57,7 +57,7 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
 
   const onSubmit = useCallback(async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
-    if (!canSubmit || !owner || !mintFeeWei || isBusy) return;
+    if (!canSubmit || !owner || mintFeeWei === undefined || isBusy) return;
     setSubmitError(null);
     setIsBusy(true);
     try {
@@ -67,7 +67,10 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
         functionName: 'mint',
         args: [[{ dataDescription: agentName, dataHash }], owner],
       });
-      const hash = await window.ethereum!.request({
+      if (!window.ethereum) {
+        throw new Error('No wallet found. Install MetaMask or another web3 wallet.');
+      }
+      const hash = await window.ethereum.request({
         method: 'eth_sendTransaction',
         params: [{
           from: owner,
