@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useState, type ReactElement } from 'react';
 import { useSendTransaction, useWriteContract } from 'wagmi';
+import { parseAbi } from 'viem';
 import type { Address } from 'viem';
 
 import { PAYMENT_PROCESSOR_ABI } from '@axiom/config/abis';
+
+const paymentProcessorAbi = parseAbi(PAYMENT_PROCESSOR_ABI);
 import { getAxiomPaymentProcessorAddress } from '../abi/addresses.js';
 import { PLACEHOLDER, truncateHex } from '../utils/format.js';
 import {
@@ -383,7 +386,7 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
     try {
       await writeContractAsync({
         address: getAxiomPaymentProcessorAddress(),
-        abi: PAYMENT_PROCESSOR_ABI,
+        abi: paymentProcessorAbi,
         functionName: 'withdrawAgentEarnings',
         args: [],
       });

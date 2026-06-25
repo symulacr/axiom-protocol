@@ -1,7 +1,9 @@
 import { useChainId, useReadContracts } from 'wagmi';
-import { type Address } from 'viem';
+import { parseAbi, type Address } from 'viem';
 import { getAxiomStrategyVaultAddress } from '../abi/addresses.js';
 import { axiomStrategyVaultAbi } from '../abi/axiomStrategyVault.js';
+
+const axiomStrategyVaultAbiParsed = parseAbi(axiomStrategyVaultAbi);
 
 export type VaultData = {
   depositsWei: bigint;
@@ -20,13 +22,13 @@ export function useVaultData(tokenId: bigint): VaultData {
     contracts: [
       {
         address: vaultAddr,
-        abi: axiomStrategyVaultAbi,
+        abi: axiomStrategyVaultAbiParsed,
         functionName: 'balanceOf',
         args: [tokenId],
       },
       {
         address: vaultAddr,
-        abi: axiomStrategyVaultAbi,
+        abi: axiomStrategyVaultAbiParsed,
         functionName: 'strategyOf',
         args: [tokenId],
       },
