@@ -15,26 +15,97 @@
   <a href="https://docs.soliditylang.org/en/v0.8.20/">
     <img src="https://img.shields.io/badge/Solidity-0.8.20-black?logo=solidity" alt="Solidity 0.8.20" />
   </a>
-  <a href="https://devblogs.microsoft.com/typescript/announcing-typescript-5-5/">
-    <img src="https://img.shields.io/badge/TypeScript-5.5-blue?logo=typescript" alt="TypeScript 5.5" />
-  </a>
-  <a href="https://pnpm.io/installation">
-    <img src="https://img.shields.io/badge/pnpm-9-F69220?logo=pnpm" alt="pnpm 9" />
+  <a href="https://github.com/symulacr/axiom-protocol/releases">
+    <img src="https://img.shields.io/badge/release-v0.2.7-blue?logo=github" alt="v0.2.7" />
   </a>
 </p>
 
 ---
 
+## Overview
+
+Axiom Protocol lets users mint, own, and transfer **intelligent NFTs (iNFTs)** — ERC-7857 tokens tied to AI agent metadata that is cryptographically sealed and re-keyed inside a TEE on transfer.
+
+Built on [0G Chain](https://0g.ai) (Galileo testnet, Aristotle mainnet).
+
+### How it works
+
+1. **Mint** an iNFT — on-chain metadata + encrypted agent data stored on 0G Storage
+2. **Run** strategies — the orchestrator calls an LLM via the 0G Compute Router (OpenAI-compatible) with vault state and market signals
+3. **Transfer** — the oracle generates EIP-712 ownership proofs; the receiver's TEE unwraps the sealed encryption key
+4. **Pay** — users pay agents directly via `payForAgent()` (user-signed); protocol pays compute providers
+
+---
+
 ## Architecture
 
-| Layer | Description |
-|-------|-------------|
-| **Contracts** | Four Solidity contracts on 0G Chain: `AxiomAgentNFT` (ERC-7857), `AxiomStrategyVault`, `AxiomTeeVerifier`, `AxiomPaymentProcessor`. Deployed on Galileo testnet. |
-| **Indexer** | Chain event watcher, stores audit trail to 0G Storage, optionally POSTs events to backend. |
-| **Backend** | Express orchestrator — compute inference via 0G Router API (OpenAI-compatible), storage encryption, on-chain settlement. Route registry auto-exposed at `GET /v1/admin/routes`. |
-| **Oracle** | EIP-712 signing (domain: `AxiomTeeVerifier`) for ownership proofs, re-encrypts agent data on transfer. |
-| **Frontend** | Vite + React + wagmi + RainbowKit + react-query UI for minting, viewing, and transferring iNFTs. Polls via `usePolledApi` (react-query). Wagmi ABIs generated from forge artifacts. |
-| **Shared Config** | Env loading, network config, deployed addresses, Zod schemas, branded types, ABI exports. |
+| Layer | Tech | Role |
+|-------|------|------|
+| **Contracts** | Solidity 0.8.20 + Foundry | ERC-7857 iNFT, strategy vault, TEE verifier, payment processor. UUPS upgradeable. |
+| **Indexer** | TypeScript + 0G Storage SDK | Polls chain events, stores audit trail to 0G Storage, forwards to backend. |
+| **Backend** | Express + ethers v6 + Zod | Orchestrates inference (0G Router API), on-chain settlement, storage encryption. Route registry at `GET /v1/admin/routes`. |
+| **Oracle** | Express + eciesjs | EIP-712 signing for ownership proofs, TEE re-encryption on transfer. Domain: `AxiomTeeVerifier`. |
+| **Frontend** | Vite + React + wagmi + RainbowKit | Mint/view/transfer iNFTs. ABI types generated from forge artifacts. Polling via `usePolledApi` (react-query). |
+| **Config** | Shared TS package | Env loading, network config, deployed addresses, Zod schemas, typed ABIs. |
+
+---
+
+## Quick Start
+
+```bash
+# Prerequisites: Node 22, pnpm 9, Foundry
+
+pnpm install
+
+# Configure environment
+cp .env.example .env
+
+# Build + start all services
+make dev
+```
+
+### Manual start (per-service)
+
+```bash
+# Backend
+pnpm --filter @axiom/backend dev
+
+# Frontend
+pnpm --filter @axiom/frontend dev
+
+# Oracle
+pnpm --filter @axiom/oracle dev
+
+# Indexer
+pnpm --filter @axiom/indexer dev
+```
+
+### Contracts
+
+```bash
+# Build
+cd apps/contracts && forge build
+
+# Test
+cd apps/contracts && forge test
+
+# Deploy to Galileo testnet (configure .env first)
+cd apps/contracts && forge script script/DeployPaymentProcessor.s.sol --rpc-url https://evmrpc-testnet.0g.ai --broadcast
+```
+
+---
+
+## Deployments
+
+| Contract | Galileo (testnet) | Aristotle (mainnet) |
+|----------|-------------------|---------------------|
+| AxiomAgentNFT | Deployed | Not yet deployed |
+| AxiomStrategyVault | Deployed | Not yet deployed |
+| AxiomTeeVerifier | Deployed | Not yet deployed |
+| AxiomPaymentProcessor | Deployed | Not yet deployed |
+| MockUSDC | Deployed | Not yet deployed |
+
+---
 
 ## 0G Integration
 
@@ -42,59 +113,35 @@
 |-----------|--------|
 | Chain (Galileo testnet) | ✅ Deployed and verified |
 | Chain (Aristotle mainnet) | ⏳ Not yet deployed |
-| Storage | ✅ Upload/download with Merkle proofs |
-| Compute | ✅ Chat completions via Router API (OpenAI SDK) + Direct SDK provider discovery |
+| Storage | ✅ Upload/download with Merkle proofs via `@0gfoundation/0g-storage-ts-sdk` |
+| Compute | ✅ Chat completions via Router API (OpenAI SDK) |
 | Agentic ID (ERC-7857) | ✅ On-chain + off-chain proof signing |
-| Data Availability | ✅ Event audit trail stored to 0G Storage (gRPC DA removed) |
-
-## Quick Start
-
-Requires Node 22 and pnpm 9.
-
-```bash
-pnpm install          # Install all workspace deps
-cp .env.galileo.example .env  # Or: cp apps/backend/.env.example .env
-make dev              # Start oracle + backend + indexer
-```
-
-## Resources
-
-- [Release Notes (v0.0.1)](https://github.com/symulacr/axiom-protocol/releases/tag/v0.0.1)
-
-## Changelog
-
-### v0.2.6 — Server Hardening
-
-- `loadEnv` centralized in `@axiom/config/env` — no longer called from `server.ts`. Single call at `index.ts` module scope.
-- Error handler deduplication: single `app.use` error boundary replaces scattered per-route catches.
-- Request ID tracing (`x-request-id`) added to all responses.
-
-### v0.2.5 — Codegen + Route Registry + Dead Code Cleanup
-
-- **wagmi CLI codegen**: ABIs now generated by `@wagmi/cli` from forge `out/` JSON artifacts (`wagmi generate`). Generated types in `@axiom/config/abis/generated.ts`. Hand-written ABI exports preserved for backward compat.
-- **Route registry**: `REGISTERED_ROUTES` export in `route-factory.ts`; exposed at `GET /v1/admin/routes` (API-key gated).
-- **Dead routes deleted**: `protocol/stats`, vault-specific routes, `compute/pay`, and 7 other legacy endpoints removed from `server.ts`.
-- **EIP-712 domain fixed**: Domain name changed from `"Axiom iNFT"` → `"AxiomTeeVerifier"` in both oracle signer and frontend `useEip712Domain` hook. Matches on-chain `AxiomTeeVerifier._domainSeparator()`.
-- **usePolledApi**: New `usePolledApi` hook wraps `@tanstack/react-query` `useQuery` for HTTP polling. Replaces ad-hoc `setInterval` patterns in `useProviders`, `useEventHistory`. Legacy `usePoll` marked deprecated.
-
-### v0.2.4 — DA gRPC Removal
-
-- Vendored gRPC client (`da-client.ts`, `da.ts`, `disperser.proto`) deleted from indexer source. Stale `dist/` artifacts remain but are unreferenced.
-- Indexer event persistence now uses 0G Storage exclusively (batched upload via `@0gfoundation/0g-storage-ts-sdk` `Indexer`).
-- `DA_GRPC_URL`, `DA_GRPC_CA_CERT`, `DA_GRPC_TLS_ENABLED` env vars no longer read.
-- Docker Compose `da-client` sidecar service retained but not required by indexer (vestigial).
-- Indexer `sink.ts` simplified: events POST to backend + batched 0G Storage upload.
-
-### v0.2.3 — Compute Router Migration
-
-- Custom `InferenceServing.getAllServices()` RPC wrapper replaced with 0G Compute SDK's `ReadOnlyInferenceBroker.listService()`.
-- Router client rewritten as OpenAI-compatible SDK (`createRouterClient()` returns `OpenAI` instance from `openai` npm package).
-- SSE streaming via `stream: true` + async iterator (removed fake word-splitting post-processing).
-- Provider discovery cached process-lifetime with lazy initialization.
-- `AXIOM_COMPUTE_API_KEY`, `AXIOM_COMPUTE_DIRECT_KEY`, `OG_COMPUTE_API_KEY` env vars for auth. No hardcoded fallback URLs.
+| Data Availability | ✅ Event audit trail via 0G Storage (gRPC DA removed) |
 
 ---
 
-## Acknowledgments
+## Project Structure
 
-Built for the [0G Bridge by AKINDO](https://app.akindo.io/wave-hacks/xKOgjd91kCmrN3ORz/) hackathon.
+```
+apps/
+  backend/     — Express server, orchestrator, payment processor
+  frontend/    — React + wagmi UI
+  contracts/   — Solidity contracts + Foundry scripts
+  oracle/      — TEE signer service
+  indexer/     — On-chain event watcher
+  bench/       — Benchmarks and stress tests
+packages/
+  config/      — Shared env, networks, ABIs, types, storage client
+```
+
+---
+
+## Changelog
+
+See [docs/changelog-v0.2.3.md](docs/changelog-v0.2.3.md) for the full v0.2.x history.
+
+---
+
+## License
+
+MIT. Built for the [0G Bridge by AKINDO](https://app.akindo.io/wave-hacks/xKOgjd91kCmrN3ORz/) hackathon.
