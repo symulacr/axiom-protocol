@@ -464,10 +464,49 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
         res.status(400).json({ error: "Valid owner address required" });
         return;
       }
-      const limitRaw = typeof req.query.limit === "string" ? Number(req.query.limit) : undefined;
-      const limit = limitRaw !== undefined && Number.isInteger(limitRaw) && limitRaw > 0 && limitRaw <= 100 ? limitRaw : 100;
-      const tokens = events.getTokenIdsByOwner(owner, limit);
-      res.json({ owner, agents: tokens.map(t => ({ tokenId: String(t.tokenId), owner })) });
+      const nftAddr = config.addresses?.agentNft;
+      if (!nftAddr) {
+        res.status(503).json({ error: "Agent NFT address not configured" });
+        return;
+      }
+      // Read agents directly from chain — no indexer needed
+      const iface = new ethers.Interface([
+        "function balanceOf(address) view returns (uint256)",
+        "function ownerOf(uint256) view returns (address)",
+        "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)",
+      ]);
+      const balanceHex = await provider.call({ to: nftAddr, data: iface.encodeFunctionData("balanceOf", [owner]) });
+      const balance = BigInt(balanceHex);
+      if (balance === 0n) {
+        res.json({ owner, agents: [] });
+        return;
+      }
+      // Query Transfer events to discover token IDs
+      const TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+      const paddedOwner = ("0x" + "00".repeat(12) + owner!.slice(2)) as `0x${string}`;
+      const transferLogs = await provider.getLogs({
+        address: nftAddr,
+        fromBlock: 0,
+        toBlock: "latest",
+        topics: [TRANSFER_TOPIC, null, paddedOwner],
+      });
+      // Deduplicate: keep tokens user still owns
+      const seen = new Set<bigint>();
+      const tokens: { tokenId: string; owner: string }[] = [];
+      for (const log of transferLogs) {
+        const rawTid = log.topics[3];
+        if (!rawTid) continue;
+        const tokenId = BigInt(rawTid);
+        if (seen.has(tokenId)) continue;
+        seen.add(tokenId);
+        const ownerHex = await provider.call({ to: nftAddr, data: iface.encodeFunctionData("ownerOf", [tokenId]) });
+        const currentOwner = ethers.getAddress("0x" + ownerHex.slice(26));
+        if (currentOwner.toLowerCase() === owner) {
+          tokens.push({ tokenId: tokenId.toString(), owner });
+        }
+        if (tokens.length >= 100) break;
+      }
+      res.json({ owner, agents: tokens });
     } catch (err) {
       next(err);
     }
