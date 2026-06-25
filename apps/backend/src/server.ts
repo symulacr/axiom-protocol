@@ -11,7 +11,7 @@ import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
 import { bigintReplacer } from "@axiom/config/types/bigint";
 
 // Compute via 0G Router API — see compute/router.ts
-import { getComputeBaseUrl } from "./compute/router.js";
+import { getComputeBaseUrl, createRouterClient } from "./compute/router.js";
 import { discoverProviders } from "./compute/provider-discovery.js";
 import { AGENT_NFT_ABI } from "@axiom/config/abis";
 
@@ -194,6 +194,35 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
         return { address, model: id, endpoint: routerBaseUrl, price };
       });
       res.json({ services });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // === Chat Completions Proxy (0G Compute Router) ===
+  app.post("/v1/chat/completions", async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { messages, tools } = req.body ?? {};
+      if (!messages || !Array.isArray(messages)) {
+        res.status(400).json({ error: "messages array required" });
+        return;
+      }
+      const client = await createRouterClient();
+      const openaiRes = await client.chat.completions.create({
+        model: config.env?.AXIOM_COMPUTE_MODEL ?? "qwen/qwen2.5-omni-7b",
+        messages,
+        tools,
+        stream: true,
+        max_tokens: 2048,
+      });
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
+      for await (const chunk of openaiRes) {
+        res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+      }
+      res.write("data: [DONE]\n\n");
+      res.end();
     } catch (err) {
       next(err);
     }

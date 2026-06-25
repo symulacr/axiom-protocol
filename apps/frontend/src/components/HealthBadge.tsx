@@ -1,31 +1,10 @@
-import { useCallback, useState, type ReactElement } from 'react';
-import { apiFetch } from '../utils/apiFetch.js';
-import { usePoll } from '../hooks/usePoll.js';
+import { type ReactElement } from 'react';
 import { BACKEND_URL } from '../config/env.js';
 import { COLORS } from './ui.js';
-
-type HealthStatus = 'unknown' | 'ok' | 'down';
-
-async function checkHealth(signal: AbortSignal): Promise<boolean> {
-  try {
-    const data = await apiFetch<{ ok?: unknown }>('/health', { signal, timeout: 5000 });
-    return data?.ok === true;
-  } catch (err) {
-    console.warn('[HealthBadge] Health check failed:', err);
-    return false;
-  }
-}
+import { useHealth } from '../hooks/useHealth.js';
 
 export function HealthBadge(): ReactElement {
-  const [status, setStatus] = useState<HealthStatus>('unknown');
-
-  const handleResult = useCallback((ok: boolean) => {
-    setStatus(ok ? 'ok' : 'down');
-  }, []);
-
-  const handleError = useCallback(() => {
-    setStatus('down');
-  }, []);
+  const { data, isLoading, isError } = useHealth();
 
   const isLocalhost = BACKEND_URL.includes('127.0.0.1') || BACKEND_URL.includes('localhost');
   if (isLocalhost) {
@@ -40,12 +19,9 @@ export function HealthBadge(): ReactElement {
     );
   }
 
-  usePoll(checkHealth, handleResult, handleError, {
-    intervalMs: 30000,
-    enabled: true,
-  });
+  const status = !data ? (isLoading ? 'unknown' : 'down') : data.ok ? 'ok' : 'down';
 
-  const color =
+  const dotColor =
     status === 'ok' ? COLORS.success : status === 'down' ? COLORS.danger : COLORS.textDim;
   const label =
     status === 'ok'
@@ -53,6 +29,8 @@ export function HealthBadge(): ReactElement {
       : status === 'down'
         ? 'Backend unreachable'
         : 'Checking backend status';
+  const statusText =
+    status === 'ok' ? 'Online' : status === 'down' ? 'Offline' : 'Connecting';
 
   return (
     <span
@@ -80,12 +58,21 @@ export function HealthBadge(): ReactElement {
           width: 7,
           height: 7,
           borderRadius: '50%',
-          background: color,
-          boxShadow: `0 0 6px ${color}66`,
+          background: dotColor,
+          boxShadow: `0 0 6px ${dotColor}66`,
           transition: 'background 0.3s ease, box-shadow 0.3s ease',
         }}
       />
-      <span>{status === 'ok' ? 'Online' : status === 'down' ? 'Offline' : 'Connecting'}</span>
+      <span>{statusText}</span>
+      {data && (
+        <>
+          <span aria-hidden="true" style={{ width: 1, height: 14, background: COLORS.border, margin: '0 2px' }} />
+          <span>#{data.chainHead}</span>
+          <span style={{ color: data.oracle === 'up' ? COLORS.success : COLORS.danger }}>
+            Oracle {data.oracle === 'up' ? '✓' : '✗'}
+          </span>
+        </>
+      )}
     </span>
   );
 }
