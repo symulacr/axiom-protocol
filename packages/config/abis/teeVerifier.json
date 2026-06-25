@@ -1,0 +1,454 @@
+[
+  {
+    "type": "constructor",
+    "inputs": [
+      {
+        "name": "initialOwner",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "signer_",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "maxProofAgeSeconds_",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "cleanExpiredProofs",
+    "inputs": [
+      {
+        "name": "proofNonces",
+        "type": "bytes32[]",
+        "internalType": "bytes32[]"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "domainSeparator",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "initialize",
+    "inputs": [
+      {
+        "name": "initialOwner",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "maxProofAgeSeconds",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "owner",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "registerSigner",
+    "inputs": [
+      {
+        "name": "newSigner",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "registeredSigner",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "renounceOwnership",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "transferOwnership",
+    "inputs": [
+      {
+        "name": "newOwner",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "verifyTransferValidity",
+    "inputs": [
+      {
+        "name": "proofs",
+        "type": "tuple[]",
+        "internalType": "struct TransferValidityProof[]",
+        "components": [
+          {
+            "name": "accessProof",
+            "type": "tuple",
+            "internalType": "struct AccessProof",
+            "components": [
+              {
+                "name": "dataHash",
+                "type": "bytes32",
+                "internalType": "bytes32"
+              },
+              {
+                "name": "targetPubkey",
+                "type": "bytes",
+                "internalType": "bytes"
+              },
+              {
+                "name": "nonce",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "proof",
+                "type": "bytes",
+                "internalType": "bytes"
+              },
+              {
+                "name": "validUntil",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ]
+          },
+          {
+            "name": "ownershipProof",
+            "type": "tuple",
+            "internalType": "struct OwnershipProof",
+            "components": [
+              {
+                "name": "oracleType",
+                "type": "uint8",
+                "internalType": "enum OracleType"
+              },
+              {
+                "name": "dataHash",
+                "type": "bytes32",
+                "internalType": "bytes32"
+              },
+              {
+                "name": "sealedKey",
+                "type": "bytes",
+                "internalType": "bytes"
+              },
+              {
+                "name": "targetPubkey",
+                "type": "bytes",
+                "internalType": "bytes"
+              },
+              {
+                "name": "nonce",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "proof",
+                "type": "bytes",
+                "internalType": "bytes"
+              },
+              {
+                "name": "validUntil",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "to",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "nft",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "outputs",
+        "type": "tuple[]",
+        "internalType": "struct TransferValidityProofOutput[]",
+        "components": [
+          {
+            "name": "dataHash",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "sealedKey",
+            "type": "bytes",
+            "internalType": "bytes"
+          },
+          {
+            "name": "targetPubkey",
+            "type": "bytes",
+            "internalType": "bytes"
+          },
+          {
+            "name": "wantedKey",
+            "type": "bytes",
+            "internalType": "bytes"
+          },
+          {
+            "name": "accessAssistant",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "accessProofNonce",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "ownershipProofNonce",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "Initialized",
+    "inputs": [
+      {
+        "name": "version",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "OwnershipTransferred",
+    "inputs": [
+      {
+        "name": "previousOwner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "newOwner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "SignerRegistered",
+    "inputs": [
+      {
+        "name": "oldSigner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "newSigner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "AxiomInvalidAccessProof",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "AxiomInvalidOwnershipProof",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "AxiomInvalidSigner",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "AxiomProofExpired",
+    "inputs": [
+      {
+        "name": "validUntil",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "blockTimestamp",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "AxiomValidUntilTooFar",
+    "inputs": [
+      {
+        "name": "validUntil",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "blockTimestamp",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "maxProofAgeSeconds",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ECDSAInvalidSignature",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ECDSAInvalidSignatureLength",
+    "inputs": [
+      {
+        "name": "length",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ECDSAInvalidSignatureS",
+    "inputs": [
+      {
+        "name": "s",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "InvalidInitialization",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotInitializing",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "OwnableInvalidOwner",
+    "inputs": [
+      {
+        "name": "owner",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "OwnableUnauthorizedAccount",
+    "inputs": [
+      {
+        "name": "account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ProofAlreadyUsed",
+    "inputs": [
+      {
+        "name": "proofHash",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ProofFieldMismatch",
+    "inputs": []
+  }
+]

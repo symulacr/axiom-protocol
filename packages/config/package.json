@@ -25,7 +25,7 @@
   },
   "scripts": {
     "generate": "wagmi generate",
-    "build": "wagmi generate && tsc --project tsconfig.json",
+    "build": "command -v forge >/dev/null 2>&1 && wagmi generate; tsc --project tsconfig.json",
     "typecheck": "tsc --noEmit",
     "watch:contracts": "wagmi generate --watch"
   },
