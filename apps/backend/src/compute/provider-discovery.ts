@@ -6,11 +6,8 @@ import { createReadOnlyInferenceBroker } from "@0gfoundation/0g-compute-ts-sdk";
 import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
 
 export interface ServiceInfo {
-  /** Provider on-chain address (lowercased). */
   provider: string;
-  /** Model identifier (e.g. "qwen2.5-omni-7b"). */
   model: string;
-  /** Application client address. */
   appClientAddr: string;
 }
 
