@@ -1,7 +1,10 @@
 import { useCallback } from 'react';
 import type { Address } from 'viem';
+import { useWriteContract } from 'wagmi';
 import { useAsyncAction } from './useAsyncAction.js';
-import { agentPayPath, agentEarningsPath, agentRoyaltyPath } from '../utils/apiPaths.js';
+import { PAYMENT_PROCESSOR_ABI } from '@axiom/config/abis';
+import { getAxiomPaymentProcessorAddress } from '../abi/addresses.js';
+import { agentEarningsPath, agentRoyaltyPath } from '../utils/apiPaths.js';
 import { apiFetch } from '../utils/apiFetch.js';
 
 export type PaymentConfig = {
@@ -58,19 +61,21 @@ export type UsePaymentResult = {
 export function usePayment(): UsePaymentResult {
   const fetchAction = useAsyncAction();
   const earningsAction = useAsyncAction();
-  const agentPayAction = useAsyncAction();
   const royaltyAction = useAsyncAction();
 
+  const { writeContractAsync, isPending: isPayLoading, error: payError } = useWriteContract();
+
   const payForAgent = useCallback(
-    (tokenId: bigint, amount: string): Promise<AgentPayResult> =>
-      agentPayAction.execute((signal) =>
-        apiFetch<AgentPayResult>(agentPayPath(tokenId), {
-          method: 'POST',
-          body: JSON.stringify({ amount }),
-          signal,
-        }),
-      ),
-    [agentPayAction.execute],
+    async (tokenId: bigint, amount: string): Promise<AgentPayResult> => {
+      const txHash = await writeContractAsync({
+        address: getAxiomPaymentProcessorAddress(),
+        abi: PAYMENT_PROCESSOR_ABI,
+        functionName: 'payForAgent',
+        args: [tokenId, BigInt(amount)],
+      });
+      return { ok: true, tokenId: tokenId.toString(), amount, txHash, payment: null };
+    },
+    [writeContractAsync],
   );
 
   const getEarnings = useCallback(
@@ -112,15 +117,15 @@ export function usePayment(): UsePaymentResult {
     getEarnings,
     setRoyalty,
     getPaymentConfig,
-    isPayLoading: agentPayAction.isLoading,
-    payError: agentPayAction.error,
+    isPayLoading,
+    payError,
     isRoyaltyLoading: royaltyAction.isLoading,
     royaltyError: royaltyAction.error,
     isFetching: fetchAction.isLoading,
     fetchError: fetchAction.error,
     isEarningsLoading: earningsAction.isLoading,
     earningsError: earningsAction.error,
-    resetPay: agentPayAction.reset,
+    resetPay: () => {},
     resetRoyalty: royaltyAction.reset,
     resetFetch: fetchAction.reset,
     resetEarnings: earningsAction.reset,

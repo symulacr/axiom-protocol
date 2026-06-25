@@ -27,22 +27,7 @@ export const transferBodySchema = z.object({
   accessProof: accessProofSchema.optional(),
 });
 
-export const depositSchema = z.object({
-  valueWei: z.string().min(1),
-  depositor: addressViem.optional(),
-});
-
-export const strategySchema = z.object({
-  merkleRoot: hexViem,
-  dailyLimitWei: z.string().min(1),
-});
-
 export const paySchema = z.object({
-  amount: z.string().min(1),
-});
-
-export const computePaySchema = z.object({
-  provider: addressViem,
   amount: z.string().min(1),
 });
 

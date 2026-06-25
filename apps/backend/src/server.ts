@@ -13,7 +13,7 @@ import { bigintReplacer } from "@axiom/config/types/bigint";
 // Compute via 0G Router API — see compute/router.ts
 import { getComputeBaseUrl } from "./compute/router.js";
 import { discoverProviders } from "./compute/provider-discovery.js";
-import { AGENT_NFT_ABI, VAULT_ABI } from "@axiom/config/abis";
+import { AGENT_NFT_ABI } from "@axiom/config/abis";
 
 import { StrategyRunner, type StrategySpec, type MarketSignal, type TickResult } from "./orchestrator/index.js";
 import { DefaultSignerOracleClient } from "./oracle/client.js";
@@ -24,15 +24,11 @@ import { getEventStore } from "./events/store.js";
 import { PaymentProcessorClient } from "./payment/processor.js";
 import type { BackendEnv } from "./env-schema.js";
 import { createHealthRouter } from "./routers/health.js";
-import { createRoute } from "./routers/route-factory.js";
+import { createRoute, REGISTERED_ROUTES } from "./routers/route-factory.js";
 import { broadcast, getClients, registerClient, unregisterClient, sendToTopic, type ConnectedClient } from "./ws/broadcaster.js";
 import {
   mintSchema,
   transferBodySchema,
-  depositSchema,
-  strategySchema,
-  paySchema,
-  computePaySchema,
   royaltySchema,
   eventBodySchema,
   tickSchema,
@@ -45,13 +41,6 @@ type AgentNFTMethods = {
   mint(iDatas: { dataDescription: string; dataHash: string }[], to: string, overrides?: { value?: bigint }): Promise<TransactionResponse>;
   intelligentDatasOf(tokenId: bigint): Promise<{ dataDescription: string; dataHash: string }[]>;
   creatorOf(tokenId: bigint): Promise<string>;
-};
-
-type StrategyVaultMethods = {
-  deposit(tokenId: bigint, overrides?: { value?: bigint }): Promise<TransactionResponse>;
-  setStrategy(tokenId: bigint, merkleRoot: string, dailyLimit: bigint): Promise<TransactionResponse>;
-  balanceOf(tokenId: bigint): Promise<bigint>;
-  strategyOf(tokenId: bigint): Promise<[string, bigint, bigint, bigint]>;
 };
 
 export interface ServerConfig {
@@ -183,6 +172,11 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
 
 
   app.use(createHealthRouter(provider, oracle, config.signer.address, config.addresses));
+
+  // Admin: expose all registered routes (API-key gated by global middleware)
+  app.get("/v1/admin/routes", (_req: Request, res: Response) => {
+    res.json({ routes: REGISTERED_ROUTES });
+  });
 
   app.get("/v1/compute/providers", async (_req: Request, res: Response, next: NextFunction) => {
     try {
@@ -453,20 +447,11 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
   const paymentRouter = Router();
 
   createRoute(paymentRouter, {
-    path: "/v1/agents/:id/pay",
-    schema: paySchema,
-    requireId: true,
-    broadcast: "PaymentProcessed",
-  }, async (parsed: z.infer<typeof paySchema>, _req, _res, { id, config: _cfg }) => {
-    const client = await getPayment();
-    const { receipt, event } = await client.payForAgent(BigInt(id), BigInt(parsed.amount));
-    return { tokenId: id, amount: parsed.amount, txHash: receipt.hash, payment: event };
-  }, config);
-
-  createRoute(paymentRouter, {
     path: "/v1/agents/:id/earnings",
     method: "get",
     requireId: true,
+    consumer: "usePayment",
+    description: "Get agent earnings by token ID",
   }, async (_parsed, _req, res, { id, config: cfg }) => {
     const nftAddr = cfg.addresses?.agentNft;
     if (!nftAddr) {
@@ -488,6 +473,8 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
     path: "/v1/agents/:id/royalty",
     schema: royaltySchema,
     requireId: true,
+    consumer: "usePayment",
+    description: "Encode royalty set transaction data",
   }, async (parsed: z.infer<typeof royaltySchema>, _req, _res, { id, config: _cfg }) => {
     const client = await getPayment();
     const txData = await client.encodeSetRoyalty(BigInt(id), parsed.bps);
@@ -500,6 +487,8 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
   createRoute(paymentRouter, {
     path: "/v1/payment/config",
     method: "get",
+    consumer: "usePayment",
+    description: "Payment contract configuration (cached 5min)",
   }, async (_parsed, _req, _res, { config: _cfg }) => {
     if (paymentConfigCache && Date.now() - paymentConfigCache.timestamp < PAYMENT_CONFIG_TTL) {
       return paymentConfigCache.data;
@@ -535,7 +524,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
     }
   });
 
-  createRoute(app, { method: "get", path: "/v1/agents/:id/history", requireId: true }, async (_parsed, req, _res, { id, config: _config }) => {
+  createRoute(app, { method: "get", path: "/v1/agents/:id/history", requireId: true, description: "Agent event history (unused — frontend polls /v1/events instead)" }, async (_parsed, req, _res, { id, config: _config }) => {
     const eventName = typeof req.query.eventName === "string" ? req.query.eventName : undefined;
     const source = typeof req.query.source === "string" ? req.query.source : undefined;
     const limitRaw = typeof req.query.limit === "string" ? Number(req.query.limit) : undefined;
@@ -544,7 +533,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
     return { tokenId: id, events: matches };
   }, config);
 
-  createRoute(app, { method: "post", path: "/v1/events", schema: eventBodySchema }, async (parsed, _req, _res, { config: _config }) => {
+  createRoute(app, { method: "post", path: "/v1/events", schema: eventBodySchema, consumer: "sink.ts", description: "Append event to store (indexer)" }, async (parsed, _req, _res, { config: _config }) => {
     const b = parsed as z.infer<typeof eventBodySchema>;
     const stored = events.append({
       source: b.source,
@@ -560,7 +549,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
     return { stored };
   }, config);
 
-  createRoute(app, { method: "get", path: "/v1/events" }, async (_parsed, req, _res, { config: _config }) => {
+  createRoute(app, { method: "get", path: "/v1/events", consumer: "useEventHistory", description: "Query events with optional filters" }, async (_parsed, req, _res, { config: _config }) => {
     const limitRaw = typeof req.query.limit === "string" ? Number(req.query.limit) : undefined;
     const limit = limitRaw !== undefined && Number.isInteger(limitRaw) && limitRaw > 0 ? limitRaw : 1000;
     const sinceRaw = typeof req.query.since === "string" ? Number(req.query.since) : undefined;
@@ -577,19 +566,9 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
     return { events: ownerFiltered };
   }, config);
 
-  // DEPRECATED: Redirect to /v1/agents/:id/history.
-  app.get("/v1/agents/:id/events", (req, res) => {
-    const queryString = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
-    res.redirect(301, `/v1/agents/${req.params.id}/history${queryString}`);
-  });
 
-  app.get('/v1/protocol/stats', (_req, res) => {
-    res.json({
-      vaultCount: 1,
-      nftStandard: 7857,
-      label: '0G Protocol',
-    });
-  });
+
+
 
   app.post("/v1/orchestrator/tick", async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -685,46 +664,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
     }
   });
 
-  const routeRouter = Router();
-  createRoute(routeRouter, {
-    path: "/v1/vaults/:id/deposit",
-    schema: depositSchema,
-    requireId: true,
-    requireAddress: "vault",
-    broadcast: "Deposited",
-  }, async (parsed: z.infer<typeof depositSchema>, _req, _res, { id, config: cfg }) => {
-    const vaultAddr = cfg.addresses!.vault!;
-    const { valueWei, depositor } = parsed;
-    const vaultTc = new TypedContract<StrategyVaultMethods>(vaultAddr, VAULT_ABI, cfg.signer);
-    const tx = await vaultTc.contract.deposit(BigInt(id), { value: BigInt(valueWei) });
-    const receipt = await tx.wait();
-    return { ok: true, tokenId: id, depositor, valueWei, txHash: receipt?.hash ?? tx.hash };
-  }, config);
-  createRoute(routeRouter, {
-    path: "/v1/vaults/:id/strategy",
-    schema: strategySchema,
-    requireId: true,
-    requireAddress: "vault",
-    broadcast: "StrategySet",
-  }, async (parsed: z.infer<typeof strategySchema>, _req, _res, { id, config: cfg }) => {
-    const vaultAddr = cfg.addresses!.vault!;
-    const { merkleRoot, dailyLimitWei } = parsed;
-    const vaultTc = new TypedContract<StrategyVaultMethods>(vaultAddr, VAULT_ABI, cfg.signer);
-    const tx = await vaultTc.contract.setStrategy(BigInt(id), merkleRoot, BigInt(dailyLimitWei));
-    const receipt = await tx.wait();
-    return { ok: true, tokenId: id, merkleRoot, dailyLimitWei, txHash: receipt?.hash ?? tx.hash };
-  }, config);
-  createRoute(routeRouter, {
-    path: "/v1/compute/pay",
-    schema: computePaySchema,
-    broadcast: "ComputeProviderPaid",
-  }, async (parsed: z.infer<typeof computePaySchema>, _req, _res, { config: _cfg }) => {
-    const { provider, amount } = parsed;
-    const client = await getPayment();
-    const { receipt } = await client.payComputeProvider(provider, BigInt(amount));
-    return { ok: true, provider, amount, txHash: receipt.hash };
-  }, config);
-  app.use(routeRouter);
+
 
   app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
     console.error("[server] error:", err);

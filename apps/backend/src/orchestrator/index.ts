@@ -102,8 +102,10 @@ export class StrategyRunner {
     const [rawModelOutput, onchain, storage] = await Promise.all([
       this.runInference(strategy, signal, onChunk),
       this.fetchOnchainState(strategy),
-      this.fetchStoragePeek(strategy),
-    ]);
+      strategy.modelDataRoot === ("0x" + "0".repeat(64))
+        ? { rootHash: strategy.modelDataRoot, size: 0 }
+        : this.fetchStoragePeek(strategy),
+    ] as const);
 
     const recommendation = this.parseRecommendation(rawModelOutput);
 

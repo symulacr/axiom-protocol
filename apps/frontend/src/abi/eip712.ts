@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useChainId } from 'wagmi';
 import { getAxiomTeeVerifierAddress } from './addresses.js';
 const BASE_DOMAIN = {
-  name: 'Axiom iNFT',
+  name: 'AxiomTeeVerifier',
   version: '1',
 } as const;
 
