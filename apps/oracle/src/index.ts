@@ -59,4 +59,3 @@ process.on("uncaughtException", (err: Error) => {
   console.error(JSON.stringify({ level: "error", msg: "uncaughtException", err: err.stack ?? err.message, pid: process.pid }));
   process.exit(1);
 });
-// @fix F1-A1: unhandledRejection + uncaughtException handlers added above

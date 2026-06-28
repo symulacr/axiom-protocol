@@ -227,8 +227,6 @@ async function main() {
     provider,
     sink: composedSink,
   });
-  // Graceful shutdown on SIGINT / SIGTERM. We use `Promise.withResolvers()`
-  // per the project's `ts-promise-with-resolvers` rule — the explicit
   // Health check server for Docker/k8s probes
   const healthPort = env.INDEXER_HEALTH_PORT;
   const healthServer = createServer((req, res) => {
@@ -247,6 +245,8 @@ async function main() {
   });
   healthServer.listen(healthPort);
   process.stderr.write(JSON.stringify({ level: "info", msg: "health server listening", port: healthPort }) + "\n");
+  // Graceful shutdown on SIGINT/SIGTERM. We use `Promise.withResolvers()`
+  // per the project's `ts-promise-with-resolvers` rule — the explicit
   // executor form is the documented exception, not the default.
   const { promise: shutdown, resolve: resolveShutdown } = Promise.withResolvers<void>();
   const onSignal = (sig: NodeJS.Signals): void => {
@@ -259,7 +259,6 @@ async function main() {
   const handle = watcher.start();
   await shutdown;
   await handle.stop();
-  // Close the health server
   await new Promise<void>((resolve) => healthServer.close(() => resolve()));
   stopBatchTimer();
   await flushBuffer();
@@ -283,4 +282,3 @@ process.on("uncaughtException", (err: Error) => {
   console.error(JSON.stringify({ level: "error", msg: "uncaughtException", err: err.stack ?? err.message, pid: process.pid }));
   process.exit(1);
 });
-// @fix F1-A1: unhandledRejection + uncaughtException handlers added above

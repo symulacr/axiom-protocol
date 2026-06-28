@@ -400,7 +400,6 @@ export class Watcher {
           return;
         }
 
-        // Range derived from clamped toBlock — tells pollOnce exactly what we want.
         const range = toBlock - fromBlock + 1n;
         const logs = await pollOnce(this.provider, this.watchList, fromBlock, range);
         logs.sort(logsByChainOrder);
