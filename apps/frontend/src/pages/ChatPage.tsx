@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { useAccount, usePublicClient, useWriteContract } from 'wagmi';
-import { parseEther } from 'viem';
+import { parseEther, formatEther } from 'viem';
 import { toast } from 'sonner';
 import { apiFetch } from '../utils/apiFetch.js';
 import { BACKEND_URL } from '../config/env.js';
@@ -11,12 +11,55 @@ import {
   COLORS,
   Card,
   Button,
-  SectionTitle,
+  Input,
   PageHeader,
   ConnectedGuard,
-  Skeleton,
-  Alert,
 } from '../components/ui.js';
+
+const TOOL_LABELS: Record<string, string> = {
+  vault_balance: 'Vault Balance',
+  agent_metadata: 'Agent Info',
+  list_my_agents: 'Your Agents',
+  execute_tick: 'Execute Tick',
+  mint_agent: 'Mint Agent',
+  deposit: 'Deposit',
+  withdraw: 'Withdraw',
+};
+
+function formatToolResult(name: string, result: unknown): string {
+  let r: unknown = result;
+  if (typeof r === 'string') {
+    try { r = JSON.parse(r); } catch { return r as string; }
+  }
+  if (typeof r !== 'object' || r === null) return String(r);
+  const obj = r as Record<string, unknown>;
+  if (obj.error !== undefined) return `Error: ${String(obj.error)}`;
+  if (obj.ok === true && obj.txHash !== undefined) return `Transaction sent: ${String(obj.txHash)}`;
+  if (obj.balance !== undefined) {
+    const bal = typeof obj.balance === 'string' ? BigInt(obj.balance) : BigInt(String(obj.balance));
+    return `Balance: ${formatEther(bal)} 0G`;
+  }
+  if (obj.tokenId !== undefined && Object.keys(obj).length <= 2) return `Agent #${obj.tokenId}`;
+  if (obj.agents !== undefined) {
+    const agents = obj.agents as unknown[];
+    if (agents.length === 0) return 'No agents found.';
+    return agents.map((a, i) => {
+      const agent = a as Record<string, unknown>;
+      return `${i + 1}. Agent #${agent.tokenId ?? '?'} — ${agent.dataDescription ?? agent.name ?? 'Unnamed'}`;
+    }).join('\n');
+  }
+  if (obj.events !== undefined) {
+    const events = obj.events as unknown[];
+    if (events.length === 0) return 'No events found.';
+    return events.map((e) => {
+      const ev = e as Record<string, unknown>;
+      return `• ${ev.event ?? ev.name ?? 'Event'} (block ${ev.blockNumber ?? '?'})`;
+    }).join('\n');
+  }
+  // Fallback: pretty-print known fields
+  const lines = Object.entries(obj).map(([k, v]) => `${k}: ${String(v)}`);
+  return lines.join('\n');
+}
 
 // ── Types ──
 type Message = {
@@ -177,6 +220,50 @@ const TOOLS: ToolDefinition[] = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'archive_lookup',
+      description: 'Look up all Wayback Machine (Internet Archive) snapshots for a URL. Returns list of timestamps where the URL was archived. Use to find snapshotted posts of an account, confirm if a specific URL was ever archived, or get the snapshot URL to view in a browser. NOTE: Twitter/X is JS-rendered; snapshots only contain the HTML shell, not the actual bio or tweet text.',
+      parameters: {
+        type: 'object',
+        properties: {
+          url: { type: 'string', description: 'Full URL to look up (e.g. https://x.com/handle/status/123)' },
+          limit: { type: 'number', description: 'Max snapshots to return (default 50)' },
+        },
+        required: ['url'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'archive_account_tweets',
+      description: 'List all archived tweets for an X/Twitter account handle. Returns all tweet URLs that were captured by the Wayback Machine, with timestamps. Use to research an account\'s snapshotted history.',
+      parameters: {
+        type: 'object',
+        properties: {
+          handle: { type: 'string', description: 'X/Twitter handle without @ (e.g. "0xSero")' },
+          limit: { type: 'number', description: 'Max snapshots to return (default 100)' },
+        },
+        required: ['handle'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'archive_confirm_deletion',
+      description: 'Check if a specific tweet URL was ever archived by the Wayback Machine. Returns { archived, snapshot, snapshotUrl } — useful as evidence that a post existed at a specific time even if it is now deleted. Does NOT extract tweet content.',
+      parameters: {
+        type: 'object',
+        properties: {
+          url: { type: 'string', description: 'Full tweet URL (e.g. https://x.com/handle/status/1234567890)' },
+        },
+        required: ['url'],
+      },
+    },
+  },
 ];
 
 // ── Tool Handlers ──
@@ -288,7 +375,51 @@ function useToolHandlers(ctx: ToolContext): Record<string, ToolHandler> {
         return JSON.stringify({ error: err instanceof Error ? err.message : 'Transaction failed' });
       }
     },
-  }), [ctx.address, ctx.writeContractAsync, ctx.publicClient]);
+    archive_lookup: async (args) => {
+      const { url, limit } = args as { url: string; limit?: number };
+      const params = new URLSearchParams({ url });
+      if (limit !== undefined) params.set('limit', String(limit));
+      const data = await apiFetch<{ url: string; count: number; snapshots: Array<{ url: string; timestamp: string; iso: string; snapshotUrl: string }> }>(
+        `/v1/archive/snapshots?${params.toString()}`,
+        { timeout: 30_000 },
+      );
+      return JSON.stringify({
+        url: data.url,
+        count: data.count,
+        snapshots: data.snapshots.map(s => ({ archivedAt: s.iso, snapshotUrl: s.snapshotUrl })),
+        note: 'Snapshots contain only the HTML shell (Twitter/X is JS-rendered). Open snapshotUrl in a browser to view rendered content.',
+      });
+    },
+    archive_account_tweets: async (args) => {
+      const { handle, limit } = args as { handle: string; limit?: number };
+      const data = await apiFetch<{ handle: string; count: number; snapshots: Array<{ url: string; timestamp: string; iso: string; snapshotUrl: string }> }>(
+        '/v1/archive/account',
+        { method: 'POST', body: JSON.stringify({ handle, limit: limit ?? 100 }), timeout: 30_000 },
+      );
+      return JSON.stringify({
+        handle: data.handle,
+        archivedTweetCount: data.count,
+        tweets: data.snapshots.map(s => ({ tweetUrl: s.url, archivedAt: s.iso, snapshotUrl: s.snapshotUrl })),
+        note: 'Each entry is a tweet URL archived at the given timestamp. The actual tweet text is not extractable from snapshots (JS-rendered).',
+      });
+    },
+    archive_confirm_deletion: async (args) => {
+      const { url } = args as { url: string };
+      const data = await apiFetch<{ archived: boolean; snapshot: { url: string; timestamp: string; iso: string; snapshotUrl: string } | null }>(
+        '/v1/archive/confirm',
+        { method: 'POST', body: JSON.stringify({ url }), timeout: 30_000 },
+      );
+      return JSON.stringify({
+        url,
+        wasArchived: data.archived,
+        snapshotUrl: data.snapshot?.snapshotUrl ?? null,
+        archivedAt: data.snapshot?.iso ?? null,
+        interpretation: data.archived
+          ? `Wayback Machine captured this URL on ${data.snapshot?.iso}. Evidence the content existed at that time. Open snapshotUrl in a browser to view the rendered page.`
+          : 'Wayback Machine has no snapshot of this URL. Cannot confirm or deny if it ever existed.',
+      });
+    },
+   }), [ctx.address, ctx.writeContractAsync, ctx.publicClient]);
 }
 
 // ── SSE Parser ──
@@ -317,6 +448,11 @@ export function ChatPage(): ReactElement {
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamText, setStreamText] = useState('');
+  const [hasUsedChat, setHasUsedChat] = useState(() => {
+    try { return localStorage.getItem('axiom:hasUsedChat') === 'true'; } catch { return false; }
+  });
+  const [streamStartTime, setStreamStartTime] = useState<number | null>(null);
+  const [elapsed, setElapsed] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -336,6 +472,22 @@ export function ChatPage(): ReactElement {
       listRef.current.scrollTop = listRef.current.scrollHeight;
     }
   }, [messages, streamText]);
+  useEffect(() => {
+    if (isStreaming && streamStartTime === null) {
+      setStreamStartTime(Date.now());
+    } else if (!isStreaming && streamStartTime !== null) {
+      setStreamStartTime(null);
+      setElapsed(0);
+    }
+  }, [isStreaming, streamStartTime]);
+
+  useEffect(() => {
+    if (streamStartTime === null) return;
+    const interval = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - streamStartTime) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [streamStartTime]);
 
   const sendMessage = useCallback(async (userText: string) => {
     if (!userText.trim() || isStreaming) return;
@@ -346,6 +498,10 @@ export function ChatPage(): ReactElement {
     setMessages(currentMessages);
     setIsStreaming(true);
     setStreamText('');
+    if (!hasUsedChat) {
+      setHasUsedChat(true);
+      try { localStorage.setItem('axiom:hasUsedChat', 'true'); } catch {}
+    }
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -361,7 +517,7 @@ export function ChatPage(): ReactElement {
         // Call backend proxy
         const response = await fetch(`${BACKEND_URL}/v1/chat/completions`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'x-api-key': import.meta.env.VITE_API_KEY ?? '' },
           body: JSON.stringify({
             model: 'qwen/qwen2.5-omni-7b',
             messages: currentMessages,
@@ -479,7 +635,7 @@ export function ChatPage(): ReactElement {
       setStreamText('');
       abortRef.current = null;
     }
-  }, [messages, isStreaming, handlers, toolCtx]);
+  }, [messages, isStreaming, handlers, toolCtx, hasUsedChat]);
 
   const cancelStream = useCallback(() => {
     abortRef.current?.abort();
@@ -489,23 +645,51 @@ export function ChatPage(): ReactElement {
   return (
     <main>
       <ConnectedGuard>
-        <PageHeader title="AI Chat" subtitle="Ask about your agents, vaults, or the protocol" />
+        <PageHeader
+          title="AI Chat"
+          subtitle="Ask about your agents, vaults, or the protocol"
+          action={messages.length > 0 ? (
+            <Button variant="ghost" onClick={() => { setMessages([]); setHasUsedChat(false); }} style={{ fontSize: 'var(--text-sm)' }}>
+              New chat
+            </Button>
+          ) : undefined}
+        />
 
-        {/* Welcome / empty state */}
+        {/* Welcome / empty state — always show chips when no messages */}
         {messages.length === 0 && !isStreaming && (
           <Card style={{ marginBottom: 'var(--space-lg)', padding: 'var(--space-2xl)', textAlign: 'center' }}>
             <p style={{ color: COLORS.textMuted, fontSize: 'var(--text-sm)', lineHeight: 'var(--lh-normal)', margin: '0 0 var(--space-md)' }}>
-              Ask me anything about your agents, vaults, or the protocol.
+              {hasUsedChat ? 'Start a new conversation.' : 'Ask me anything about your agents, vaults, or the protocol.'}
             </p>
-            <p style={{ color: COLORS.textDim, fontSize: 'var(--text-xs)', margin: 0 }}>
-              Try: <em>"list my agents"</em>, <em>"what's the vault balance for agent 1?"</em>, or <em>"mint an agent named Test"</em>
-            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)', justifyContent: 'center', margin: 'var(--space-lg) 0' }}>
+              {['List my agents', 'What\'s my vault balance?', 'Execute a strategy'].map((prompt) => (
+                <button
+                  key={prompt}
+                  onClick={() => sendMessage(prompt)}
+                  style={{
+                    background: COLORS.bronzeBg,
+                    border: `1px solid ${COLORS.bronzeBorder}`,
+                    borderRadius: 'var(--radius-lg)',
+                    padding: '0.5rem 1rem',
+                    color: COLORS.bronzeLight,
+                    fontSize: 'var(--text-sm)',
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  {prompt}
+                </button>
+              ))}
+            </div>
           </Card>
         )}
 
         {/* Message list */}
         <div
           ref={listRef}
+          role="log"
+          aria-live="polite"
           style={{
             maxHeight: 'calc(100vh - 22rem)',
             overflowY: 'auto',
@@ -517,7 +701,7 @@ export function ChatPage(): ReactElement {
           }}
         >
           {messages.map((msg, i) => (
-            <Card key={i} style={{ padding: 'var(--space-md) var(--space-lg)' }}>
+            <div key={i} style={{ padding: 'var(--space-md) var(--space-lg)', borderBottom: `1px solid ${COLORS.border}` }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 'var(--space-xs)' }}>
                 <span style={{
                   display: 'inline-block',
@@ -527,19 +711,29 @@ export function ChatPage(): ReactElement {
                   background: msg.role === 'user' ? COLORS.bronzeLight : msg.role === 'tool' ? COLORS.textDim : COLORS.text,
                 }} />
                 <span style={{ fontWeight: 'var(--fw-semibold)', fontSize: 'var(--text-xs)', color: COLORS.textDim, textTransform: 'uppercase' }}>
-                  {msg.role === 'user' ? 'You' : msg.role === 'tool' ? `Tool: ${msg.name ?? ''}` : 'Assistant'}
+                  {msg.role === 'user' ? 'You' : msg.role === 'tool' ? (TOOL_LABELS[msg.name ?? ''] ?? msg.name ?? 'Tool') : 'Assistant'}
                 </span>
               </div>
               {msg.role === 'tool' ? (
-                <pre style={{ fontSize: 'var(--text-xs)', color: COLORS.textMuted, margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-                  {msg.content}
-                </pre>
+                <div style={{
+                  background: COLORS.bg,
+                  border: `1px solid ${COLORS.border}`,
+                  borderRadius: 'var(--radius-md)',
+                  padding: 'var(--space-sm) var(--space-md)',
+                  fontSize: 'var(--text-sm)',
+                  color: COLORS.textMuted,
+                  marginTop: 'var(--space-xs)',
+                }}>
+                  <pre style={{ fontSize: 'var(--text-xs)', margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 'var(--lh-normal)', fontFamily: 'inherit' }}>
+                    {formatToolResult(msg.name ?? '', msg.content)}
+                  </pre>
+                </div>
               ) : msg.tool_calls ? (
                 <div style={{ fontSize: 'var(--text-sm)', color: COLORS.textMuted }}>
                   {msg.tool_calls.map(tc => (
                     <div key={tc.id}>
-                      <strong style={{ color: COLORS.bronzeLight }}>🔧 {tc.function.name}</strong>
-                      {' '}{tc.function.arguments.slice(0, 80)}...
+                      <span style={{ fontSize: 'var(--text-xs)', color: COLORS.textMuted }}>Calling:</span>{' '}
+                      <strong style={{ color: COLORS.bronzeLight }}>{TOOL_LABELS[tc.function.name] ?? tc.function.name}</strong>
                     </div>
                   ))}
                 </div>
@@ -548,12 +742,12 @@ export function ChatPage(): ReactElement {
                   {msg.content}
                 </p>
               )}
-            </Card>
+            </div>
           ))}
 
           {/* Streaming in-progress indicator */}
           {isStreaming && (
-            <Card style={{ padding: 'var(--space-md) var(--space-lg)' }}>
+            <div style={{ padding: 'var(--space-md) var(--space-lg)', borderBottom: `1px solid ${COLORS.border}` }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 'var(--space-xs)' }}>
                 <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: COLORS.text }} />
                 <span style={{ fontWeight: 'var(--fw-semibold)', fontSize: 'var(--text-xs)', color: COLORS.textDim, textTransform: 'uppercase' }}>Assistant</span>
@@ -563,34 +757,29 @@ export function ChatPage(): ReactElement {
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                     <span style={{
                       display: 'inline-block', width: 14, height: 14, borderRadius: '50%',
-                      border: '2px solid rgba(180,160,120,0.3)', borderTopColor: '#b4a078',
+                      border: `2px solid ${COLORS.border}`, borderTopColor: COLORS.bronze,
                       animation: 'axiom-spin 0.8s linear infinite',
                     }} />
-                    Thinking...
+                    Thinking... {elapsed > 0 && `(${elapsed}s)`}
                   </span>
                 )}
               </p>
-            </Card>
+            </div>
           )}
         </div>
 
         {/* Input bar */}
         <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
-          <input
+          <Input
+            aria-label="Chat input"
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(input); } }}
-            placeholder={isStreaming ? 'Waiting for response...' : 'Ask something...'}
+            placeholder={isStreaming ? 'Waiting for response...' : 'Ask about your agents, vaults, or strategies...'}
             disabled={isStreaming}
+            maxLength={4000}
             style={{
               flex: 1,
-              background: COLORS.surface,
-              border: `1px solid ${COLORS.border}`,
-              borderRadius: 'var(--radius-lg)',
-              padding: '0.625rem 1rem',
-              fontSize: 'var(--text-sm)',
-              color: COLORS.text,
-              outline: 'none',
             }}
           />
           {isStreaming ? (

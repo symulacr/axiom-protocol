@@ -29,7 +29,7 @@ export interface ServerConfig {
   env?: OracleEnv;
 }
 
-export function startServer(config: ServerConfig): Express {
+export function startServer(config: ServerConfig): { app: Express; httpServer: import("node:http").Server } {
   const app = express();
   app.use(helmet({
     contentSecurityPolicy: {
@@ -248,11 +248,11 @@ export function startServer(config: ServerConfig): Express {
     res.status(500).json({ error: safeMessage, code: "INTERNAL_ERROR" });
   });
 
-  app.listen(config.port, config.bind, () => {
+  const httpServer = app.listen(config.port, config.bind, () => {
     console.log(`[oracle] listening on http://${config.bind}:${config.port}`);
     console.log(`[oracle] TEE signer: ${signer.address}`);
     console.log("[oracle] \u26A0 SIMULATED TEE: runs in Node.js with cleartext private key. Not Intel TDX/SEV.");
   });
 
-  return app;
+  return { app, httpServer };
 }

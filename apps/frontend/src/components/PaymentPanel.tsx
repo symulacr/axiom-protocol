@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type ReactElement } from 'react';
 import { useSendTransaction, useWriteContract } from 'wagmi';
-import { parseAbi } from 'viem';
+import { parseAbi, parseEther } from 'viem';
 import type { Address } from 'viem';
 
 import { PAYMENT_PROCESSOR_ABI } from '@axiom/config/abis';
@@ -51,35 +51,27 @@ function PaymentConfigDisplay({
   config: PaymentConfig | null;
   initError: string | null;
 }): ReactElement {
+  if (initError !== null) {
+    return (
+      <Alert variant="error" style={{ marginBottom: 'var(--space-lg)' }}>
+        {initError}
+      </Alert>
+    );
+  }
+  if (config === null) {
+    return <Spinner size={16} />;
+  }
+  const pct = (config.protocolFeeBps / 100).toFixed(2);
   return (
-    <>
-      {initError !== null && (
-        <Alert variant="error" style={{ marginBottom: 'var(--space-lg)' }}>
-          {initError}
-        </Alert>
-      )}
-      <h3>Payment Config</h3>
-      {config === null ? (
-        <Spinner size={16} />
-      ) : (
-        <dl>
-          <dt>Payment Token</dt>
-          <dd>
-            <MonoLabel title={config.paymentToken}>
-              {truncateHex(config.paymentToken)}
-            </MonoLabel>
-          </dd>
-          <dt>Protocol Fee</dt>
-          <dd>{config.protocolFeeBps} bps</dd>
-          <dt>Protocol Treasury</dt>
-          <dd>
-            <MonoLabel title={config.protocolTreasury}>
-              {truncateHex(config.protocolTreasury)}
-            </MonoLabel>
-          </dd>
-        </dl>
-      )}
-    </>
+    <p style={{ fontSize: 'var(--text-xs)', color: COLORS.textMuted, margin: 0 }}>
+      Protocol fee: {config.protocolFeeBps} bps ({pct}%){' '}
+      <span
+        title={`Payment token: ${config.paymentToken}\nProtocol treasury: ${config.protocolTreasury}`}
+        style={{ cursor: 'help', borderBottom: `1px dotted ${COLORS.textDim}` }}
+      >
+        details
+      </span>
+    </p>
   );
 }
 
@@ -102,16 +94,16 @@ function PaymentForm({
     <>
       <h3>Pay for Agent</h3>
       <p className="text-xs text-muted">
-        Amount is in the payment token&apos;s smallest unit (e.g. 6-decimal
-        USDC micro-units).
+        Enter amount in tokens (e.g. &quot;10&quot;). Converted to smallest unit automatically.
       </p>
       <div className={formRowClassName}>
         <Input
           type="number"
           inputMode="numeric"
           min="0"
-          step="1"
-          placeholder="amount (wei)"
+          step="0.000001"
+          maxLength={78}
+          placeholder="amount (tokens)"
           value={payAmount}
           onChange={(e): void => {
             onPayAmountChange(e.target.value);
@@ -120,7 +112,7 @@ function PaymentForm({
         />
         <Button
           variant="primary"
-          disabled={isPayLoading || payAmount === ''}
+          disabled={isPayLoading || payStatus === 'pending' || payAmount === ''}
           onClick={onPay}
           style={{ minWidth: '140px' }}
         >
@@ -191,14 +183,12 @@ function EarningsSection({
         title="Confirm Withdrawal"
       >
         <p>Withdraw all agent earnings? This will send funds to your wallet.</p>
-        <div className="flex justify-end" style={{ gap: 10, marginTop: 20 }}>
           <Button variant="secondary" onClick={onWithdrawCancel}>
             Cancel
           </Button>
-          <Button variant="primary" onClick={onWithdrawConfirm}>
+          <Button variant="primary" onClick={onWithdrawConfirm} disabled={isWithdrawPending || withdrawStatus === 'pending'}>
             Confirm
           </Button>
-        </div>
       </Modal>
       {withdrawStatus === 'success' && (
         <Alert variant="success">Withdrawal submitted.</Alert>
@@ -237,8 +227,10 @@ function RoyaltySection({
       <div className={formRowClassName}>
         <Input
           type="number"
+          inputMode="numeric"
           min={0}
           max={10000}
+          maxLength={5}
           placeholder="bps (0\u201310000)"
           value={royaltyBps}
           onChange={(e): void => {
@@ -248,7 +240,7 @@ function RoyaltySection({
         />
         <Button
           variant="primary"
-          disabled={isRoyaltyLoading || royaltyBps === ''}
+          disabled={isRoyaltyLoading || royaltyStatus === 'pending' || royaltyBps === ''}
           onClick={onSetRoyalty}
           style={{ minWidth: '140px' }}
         >
@@ -281,7 +273,6 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
     getPaymentConfig,
     isPayLoading,
     isRoyaltyLoading,
-    isEarningsLoading,
     earningsError,
     fetchError,
   } = usePayment();
@@ -346,8 +337,7 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
     if (payAmount === '') return;
     setPayStatus('pending');
     try {
-      await payForAgent(tokenId, payAmount);
-      setPayStatus('success');
+      await payForAgent(tokenId, parseEther(payAmount).toString());
       toast.success('Payment processed');
       await refreshEarnings();
     } catch (err) {

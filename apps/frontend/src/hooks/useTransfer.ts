@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAccount, useSignTypedData, useWriteContract } from 'wagmi';
-import { type Address, type Hex } from 'viem';
+import { type Hex } from 'viem';
 
 import { getAxiomAgentNftAddress } from '../abi/addresses.js';
 import { ITRANSFER_FROM_ABI } from '@axiom/config/abis';
@@ -9,59 +9,14 @@ import { useAsyncAction } from './useAsyncAction.js';
 import { useEip712Domain, ACCESS_PROOF_TYPES } from '../abi/eip712.js';
 import { agentTransferPath } from '../utils/apiPaths.js';
 import { apiFetch, LONG_TIMEOUT } from '../utils/apiFetch.js';
-
-export type TransferInput = {
-  tokenId: bigint;
-  to: Address;
-  receiverPubKey64: Hex;
-  accessProofNonce: Hex;
-  oldDataEncryptionKey?: string;
-  oldDataUri?: Hex;
-};
-
-/** Backend response to `POST /v1/agents/:tokenId/transfer` (frontend-relevant fields). */
-export type AccessProofStruct = {
-  dataHash: Hex;
-  targetPubkey: Hex;
-  nonce: bigint;
-  proof: Hex;
-  validUntil: bigint;
-};
-
-export type OwnershipProofStruct = {
-  oracleType: number;
-  dataHash: Hex;
-  sealedKey: Hex;
-  targetPubkey: Hex;
-  nonce: bigint;
-  proof: Hex;
-  validUntil: bigint;
-};
-
-/** Backend response for the two-stage transfer protocol (challenge → final). */
-export type TransferResponse = {
-  ok: boolean;
-  stage: 'challenge' | 'final';
-  tokenId: string;
-  to: Address;
-  dataHash?: Hex;
-  oldDataHash?: Hex;
-  newDataHash?: Hex;
-  newDataUri?: Hex;
-  targetPubkey?: Hex;
-  accessProofNonce?: number;
-  validUntil?: string;
-  sealedKey?: Hex;
-  ownershipSignature?: Hex;
-  signer?: Address;
-  accessSigner?: Address;
-  rekeyed?: boolean;
-  accessProof?: AccessProofStruct;
-  ownershipProof?: OwnershipProofStruct;
-};
-
-export type TransferPhase = 'idle' | 'challenge' | 'signing' | 'finalizing' | 'confirming';
-
+import type {
+  TransferInput,
+  AccessProofStruct,
+  OwnershipProofStruct,
+  TransferResponse,
+  TransferPhase,
+} from '@axiom/config/types/transfer';
+export type { TransferInput, AccessProofStruct, OwnershipProofStruct, TransferResponse, TransferPhase };
 export type UseTransferResult = {
   prepare: (input: TransferInput) => Promise<TransferResponse>;
   confirm: (input: TransferInput) => Promise<Hex>;

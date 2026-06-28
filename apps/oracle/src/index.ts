@@ -3,7 +3,7 @@ import { Wallet } from "ethers";
 import { TeeSigner, type Eip712Domain } from "./signer.js";
 import { InMemoryStorage, ZeroGStorage, type StorageAdapter } from "@axiom/config/storage/0g";
 import { startServer } from "./server.js";
-export { startServer } from "./server.js";
+export { startServer, type ServerConfig } from "./server.js";
 import { loadEnv } from "./env.js";
 import { oracleEnvSchema } from "./env-schema.js";
 import { toViemHex } from "@axiom/config/types/hex";
@@ -37,4 +37,15 @@ if (env.AXIOM_STORAGE_INDEXER_RPC || process.env.AXIOM_STORAGE_RPC) {
   console.log("[oracle] storage: InMemoryStorage (no AXIOM_STORAGE_INDEXER_RPC/AXIOM_STORAGE_RPC configured)");
 }
 
-startServer({ signer, storage, bind: env.AXIOM_ORACLE_BIND, port: env.AXIOM_ORACLE_PORT, env });
+const { httpServer: oracleHttp } = startServer({ signer, storage, bind: env.AXIOM_ORACLE_BIND, port: env.AXIOM_ORACLE_PORT, env });
+
+process.on("SIGTERM", () => {
+  console.log("[oracle] SIGTERM received — draining connections...");
+  oracleHttp.closeAllConnections?.();
+  oracleHttp.close(() => process.exit(0));
+});
+process.on("SIGINT", () => {
+  console.log("[oracle] SIGINT received — draining connections...");
+  oracleHttp.closeAllConnections?.();
+  oracleHttp.close(() => process.exit(0));
+});

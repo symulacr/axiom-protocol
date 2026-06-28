@@ -1,5 +1,8 @@
 import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { createLogger } from '../utils/logger.js';
+
+const log = createLogger("events");
 
 // In-memory event store for agent lifecycle events.
 
@@ -238,7 +241,7 @@ export class EventStore {
         typeof value === 'bigint' ? value.toString() : value,
       ));
     } catch (err) {
-      console.warn('[events] persist failed:', err);
+      log.warn("persist failed", { error: err instanceof Error ? err.message : String(err) });
     }
   }
 

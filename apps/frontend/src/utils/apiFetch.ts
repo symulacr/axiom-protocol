@@ -3,7 +3,6 @@ import { BACKEND_URL } from '../config/env.js';
 const API_KEY = import.meta.env.VITE_API_KEY ?? '';
 
 export const DEFAULT_TIMEOUT = 10_000;
-export const SHORT_TIMEOUT = 5_000;
 export const LONG_TIMEOUT = 60_000;  // on-chain tx wait
 export const STREAM_TIMEOUT = 120_000; // LLM streaming
 

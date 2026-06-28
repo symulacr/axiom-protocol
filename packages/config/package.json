@@ -21,7 +21,10 @@
     "./abis/iTransferFrom": "./dist/abis/iTransferFrom.js",
     "./middleware/auth": "./dist/middleware/auth.js",
     "./env-schema": "./dist/env-schema.js",
-    "./storage/0g": "./dist/storage/0g.js"
+    "./storage/0g": "./dist/storage/0g.js",
+    "./types/performance": "./dist/types/performance.js",
+    "./types/orchestrator": "./dist/types/orchestrator.js",
+    "./types/transfer": "./dist/types/transfer.js"
   },
   "scripts": {
     "generate": "wagmi generate",
@@ -33,6 +36,7 @@
     "@0gfoundation/0g-storage-ts-sdk": "^1.2.10",
     "ethers": "^6.16.0",
     "express": "^4.21.0",
+    "omnichron": "^0.3.1",
     "viem": "^2.21.45",
     "zod": "^4.4.3"
   },

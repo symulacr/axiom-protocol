@@ -1,7 +1,5 @@
-import { useCallback, useMemo, useState, type ReactElement } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { useAccount, useChainId } from 'wagmi';
-import { axiomStrategyVaultAbi } from '../abi/axiomStrategyVault.js';
+import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react';
+import { useAccount } from 'wagmi';
 import { formatEther } from 'viem';
 import { toast } from 'sonner';
 import {
@@ -14,7 +12,7 @@ import {
   useOrchestratorTick,
   type TickResult,
 } from '../hooks/useOrchestratorTick.js';
-import { COLORS, Button, Card, SectionTitle, MonoLabel, Alert } from './ui.js';
+import { COLORS, Button, Card, SectionTitle, MonoLabel, Alert, HelpTip } from './ui.js';
 import { PLACEHOLDER } from '../utils/format.js';
 
 const actionColor: Record<string, string> = {
@@ -30,13 +28,20 @@ export type ExecutePanelProps = {
 
 export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): ReactElement {
   const { isConnected } = useAccount();
-  const chainId = useChainId();
   const { agents, isLoading: agentsLoading } = tokenIdProp === undefined ? useAgents() : { agents: [], isLoading: false };
   const { tick, tickStream, cancelTick, isLoading, isStreaming, streamedTokens, streamingError, error, resetStream } = useOrchestratorTick();
-  const [selectedId, setSelectedId] = useState<string>(tokenIdProp?.toString() ?? '');
+  const [selectedId, setSelectedId] = useState<string>(() => {
+    if (tokenIdProp) return tokenIdProp.toString();
+    try { return localStorage.getItem('axiom:lastAgent') ?? ''; } catch { return ''; }
+  });
   const [result, setResult] = useState<TickResult | null>(null);
   const [showRaw, setShowRaw] = useState(false);
   const [streamMode, setStreamMode] = useState(false);
+  useEffect(() => {
+    if (selectedId && !tokenIdProp) {
+      try { localStorage.setItem('axiom:lastAgent', selectedId); } catch {}
+    }
+  }, [selectedId, tokenIdProp]);
 
   // When tokenIdProp is given, the panel is locked to that agent.
   const locked = tokenIdProp !== undefined;
@@ -51,7 +56,6 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
   }, [activeId]);
 
   const vd = useVaultData(activeBigint);
-  const queryClient = useQueryClient();
   const isReady = !vd.isLoading && activeId !== '';
   const depositsWei = isReady ? vd.depositsWei : undefined;
   const strategyRoot = isReady ? vd.strategyRoot : undefined;
@@ -91,22 +95,11 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
         setResult(res);
       }
       toast.success('Tick executed successfully');
-      // Refresh vault data after tick execution (balance may have changed via on-chain settle)
-      const vaultAddr = getAxiomStrategyVaultAddress();
-      queryClient.invalidateQueries({
-        queryKey: ['readContracts', {
-          contracts: [
-            { address: vaultAddr, abi: axiomStrategyVaultAbi, functionName: 'balanceOf', args: [activeBigint], chainId },
-            { address: vaultAddr, abi: axiomStrategyVaultAbi, functionName: 'strategyOf', args: [activeBigint], chainId },
-          ],
-          allowFailure: false,
-          chainId,
-        }],
-      });
+      vd.refetch();
     } catch (err) {
       console.error("ExecutePanel: orchestrator tick failed", err);
     }
-  }, [activeId, streamMode, tick, tickStream, resetStream, activeBigint, chainId, queryClient]);
+  }, [activeId, streamMode, tick, tickStream, resetStream, activeBigint]);
 
   return (
     <Card style={{ display: 'flex', flexDirection: 'column', gap: 16 }} aria-label="Execute strategy tick">
@@ -148,13 +141,13 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
           <dd style={{ margin: 0, color: COLORS.bronzeLight, fontWeight: 'var(--fw-semibold)' }}>
             {depositsWei === undefined ? PLACEHOLDER : `${formatEther(depositsWei)} 0G`}
           </dd>
-          <dt style={{ color: COLORS.textDim, fontWeight: 'var(--fw-medium)' }}>Strategy Root</dt>
+          <dt style={{ color: COLORS.textDim, fontWeight: 'var(--fw-medium)' }}><HelpTip tip="The on-chain address of the strategy contract controlling this agent's vault logic">Strategy Root</HelpTip></dt>
           <dd style={{ margin: 0 }}>
             {strategyRoot !== undefined ? (
               <MonoLabel style={{ fontSize: 'var(--text-xs)' }}>{`${strategyRoot.slice(0, 10)}\u2026`}</MonoLabel>
             ) : <span style={{ color: COLORS.textDim }}>{PLACEHOLDER}</span>}
           </dd>
-          <dt style={{ color: COLORS.textDim, fontWeight: 'var(--fw-medium)' }}>Daily Limit</dt>
+          <dt style={{ color: COLORS.textDim, fontWeight: 'var(--fw-medium)' }}><HelpTip tip="Maximum amount the agent can spend per 24-hour cycle, enforced by the vault contract">Daily Limit</HelpTip></dt>
           <dd style={{ margin: 0, color: COLORS.text }}>
             {dailyLimitWei === undefined ? PLACEHOLDER : `${formatEther(dailyLimitWei)} 0G`}
           </dd>
@@ -163,7 +156,12 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
 
       <div style={{ display: 'flex', alignItems: 'flex-start', flexDirection: 'column', gap: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Button variant="primary" disabled={isLoading || activeId === ''} onClick={onExecute}>
+          <Button
+            variant="primary"
+            disabled={isLoading || activeId === ''}
+            title="This will consume gas to execute the strategy tick on-chain"
+            onClick={(): void => { void onExecute(); }}
+          >
             {isLoading ? (isStreaming ? 'Streaming…' : 'Running tick…') : 'Execute Tick'}
           </Button>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-sm)', cursor: 'pointer', color: COLORS.textMuted, userSelect: 'none' }}>
@@ -177,9 +175,6 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
             Stream
           </label>
         </div>
-        <p style={{ fontSize: 'var(--text-xs)', color: COLORS.textDim, margin: 0 }}>
-          On-chain execution will incur gas costs.
-        </p>
         {isStreaming && (
           <span style={{ fontSize: 'var(--text-xs)', color: COLORS.bronzeLight, fontStyle: 'italic' }}>
             Receiving live output...
@@ -289,7 +284,7 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
                 {result.execution.gasUsed !== undefined && (
                   <>
                     <dt style={{ color: COLORS.textDim, fontWeight: 'var(--fw-medium)' }}>Gas Used</dt>
-                    <dd style={{ margin: 0, color: COLORS.text }}>{result.execution.gasUsed}</dd>
+<dd style={{ margin: 0, color: COLORS.text }}>{String(result.execution.gasUsed)}</dd>
                   </>
                 )}
               </dl>

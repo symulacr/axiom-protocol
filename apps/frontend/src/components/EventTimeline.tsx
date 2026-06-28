@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { ReactElement, ReactNode } from 'react';
 import type { AxiomEvent } from '../hooks/useEventHistory.js';
 import { useMediaQuery } from '../hooks/useMediaQuery.js';
@@ -91,6 +91,7 @@ export const EventTimeline = React.memo(function EventTimeline({
   loadingState,
   isLoading = false,
 }: EventTimelineProps): ReactElement {
+  const [expanded, setExpanded] = useState(false);
   const isNarrow = useMediaQuery('(max-width: 479px)');
   const railWidth = isNarrow ? '4rem' : '10rem';
   const baseStyle: React.CSSProperties = {
@@ -121,10 +122,13 @@ export const EventTimeline = React.memo(function EventTimeline({
   }
 
   const formatter = getFormatter(locale, timeZone);
+  const EVENT_LIMIT = 50;
+  const hasMore = events.length > EVENT_LIMIT;
+  const displayed = expanded ? events : events.slice(0, EVENT_LIMIT);
 
   return (
     <section aria-label="Event timeline" style={baseStyle}>
-      {events.map((event, idx) => {
+      {displayed.map((event, idx) => {
         const timestamp = formatter.format(new Date(event.receivedAt));
         return (
           <EventRow
@@ -135,6 +139,25 @@ export const EventTimeline = React.memo(function EventTimeline({
           />
         );
       })}
+      {hasMore && !expanded && (
+        <div style={{ gridColumn: '1 / -1', textAlign: 'center' }}>
+          <button
+            type="button"
+            onClick={() => setExpanded(true)}
+            style={{
+              background: 'none',
+              border: `1px solid ${COLORS.border}`,
+              borderRadius: 'var(--radius-md)',
+              color: COLORS.teal,
+              cursor: 'pointer',
+              fontSize: 'var(--text-sm)',
+              padding: '0.375rem 1rem',
+            }}
+          >
+            Show all {events.length} events
+          </button>
+        </div>
+      )}
     </section>
   );
 });

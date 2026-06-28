@@ -1,7 +1,6 @@
 import { randomBytes } from "node:crypto";
-import { Wallet, parseEther, hexlify, toUtf8Bytes, FetchRequest, JsonRpcProvider, getBytes, SigningKey, computeAddress, type TransactionResponse } from "ethers";
+import { Wallet, hexlify, FetchRequest, JsonRpcProvider, getBytes, SigningKey, computeAddress, type TransactionResponse } from "ethers";
 import { TypedContract } from "@axiom/config/types/contract";
-import { keccak256 } from "ethereum-cryptography/keccak";
 import { ZeroGStorage } from "@axiom/config/storage/0g";
 import { encrypt as eciesEncrypt, decrypt as eciesDecrypt } from "eciesjs";
 import { loadEnv, getEnv, getEnvWithAlias } from "../env.js";
@@ -23,6 +22,7 @@ const TEE_SIGNER_PK = getEnv("TEE_SIGNER_PK");
 const RPC = getEnvWithAlias("AXIOM_EVM_RPC", ["OG_RPC_URL"]);
 const STORAGE_RPC = getEnvWithAlias("AXIOM_STORAGE_RPC", ["OG_STORAGE_RPC"], resolveStorageRpc(GALILEO_CHAIN_ID));
 const BACKEND_URL = getEnv("BACKEND_URL", "http://127.0.0.1:3000");
+const ORACLE_URL = getEnv("AXIOM_ORACLE_URL");
 const OG_CHAIN_ID = Number.parseInt(getEnvWithAlias("AXIOM_CHAIN_ID", ["OG_CHAIN_ID"], String(GALILEO_CHAIN_ID)), 10);
 // Wave E-5 (2026-06-16) — all addresses are env-driven so a redeploy
 // doesn't require a code change. See docs/deployments/wave-e5-redeploy-2026-06-16.md.
@@ -104,7 +104,7 @@ async function main(): Promise<void> {
 
   console.log("\n[Step 3]  Encrypt with AES-256-GCM, seal for deployer pubkey");
   const dataKey = new Uint8Array(randomBytes(32));
-  const plaintext = toUtf8Bytes(strategyJson);
+  const plaintext = Buffer.from(strategyJson, "utf-8");
   const enc = aesGcmEncrypt(dataKey, plaintext);
   const blob = new Uint8Array(enc.iv.length + enc.ciphertext.length + enc.authTag.length);
   blob.set(enc.iv, 0);
@@ -121,29 +121,21 @@ async function main(): Promise<void> {
   console.log(`          Uploaded: root=${upload.rootHash} tx=${upload.txHash}`);
   stepResults.push({ step: 4, name: "0G Storage upload", ok: true, summary: `root=${upload.rootHash}`, txHash: upload.txHash });
 
-  console.log("\n[Step 5]  POST /v1/agents/mint");
-  const mint = await postStep<{ ok: boolean; tokenId?: string; dataHash: string; txHash: string; error?: string }>(
-    5, "/v1/agents/mint",
-    { agentNft: AGENT_NFT, encryptedStrategyUri: upload.rootHash, sealedKey: hexlify(sealedKey), owner: deployer.address },
-    (r) => ({ summary: `tokenId=${r.tokenId} dataHash=${r.dataHash}`, txHash: r.txHash, ok: r.ok === true }),
-  );
-  const tokenId = mint.tokenId ?? "0";
+  console.log("\n[Step 5]  Register dataHash with oracle (POST /v1/agents/mint)");
+  const mintRes = await fetch(`${ORACLE_URL}/v1/agents/mint`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ dataHash: upload.rootHash }),
+  });
+  const mint = await mintRes.json() as { ok: boolean; dataHash: string; seen: boolean };
+  console.log(`          ok=${mint.ok} dataHash=${mint.dataHash}`);
+  stepResults.push({ step: 5, name: "oracle /v1/agents/mint", ok: mint.ok === true, summary: `dataHash=${mint.dataHash}` });
+  const tokenId = "0";
 
-  console.log(`\n[Step 6]  POST /v1/vaults/${tokenId}/deposit (0.1 native équivalent)`);
-  const depositValueWei = parseEther("0.1").toString();
-  const _deposit = await postStep<{ ok: boolean; valueWei: string; error?: string }>(
-    6, `/v1/vaults/${tokenId}/deposit`,
-    { valueWei: depositValueWei, depositor: deployer.address },
-    (r) => ({ summary: `valueWei=${r.valueWei}`, ok: r.ok === true }),
-  );
-  console.log(`\n[Step 7]  POST /v1/vaults/${tokenId}/strategy (Merkle root + daily limit)`);
-  const merkleRoot = hexlify(keccak256(toUtf8Bytes("noop:" + Date.now()))) as `0x${string}`;
-  const dailyLimitWei = parseEther("1").toString();
-  const _strat = await postStep<{ ok: boolean; merkleRoot: string; error?: string }>(
-    7, `/v1/vaults/${tokenId}/strategy`,
-    { merkleRoot, dailyLimitWei },
-    (r) => ({ summary: `merkleRoot=${r.merkleRoot}`, ok: r.ok === true }),
-  );
+  console.log(`\n[Step 6]  (skipped — vault deposit is a wallet-owned on-chain operation, not a backend route)`);
+  stepResults.push({ step: 6, name: "/v1/vaults/deposit", ok: true, summary: "skipped (wallet-owned operation)" });
+  console.log(`\n[Step 7]  (skipped — vault strategy is a wallet-owned on-chain operation, not a backend route)`);
+  stepResults.push({ step: 7, name: "/v1/vaults/strategy", ok: true, summary: "skipped (wallet-owned operation)" });
 
   console.log("\n[Step 8]  POST /v1/orchestrator/tick (Promise.all fan-out)");
   const _tick = await postStep<{ recommendation?: { action: string; reason: string }; rawModelOutput?: string; durationMs?: number; error?: string }>(
@@ -154,7 +146,7 @@ async function main(): Promise<void> {
       agentTokenId: tokenId,
       strategy: "hold",
       signalSource: "manual:e2e",
-      signalPayload: { vaultBalance: depositValueWei, recentTrades: [] },
+      signalPayload: { vaultBalance: "0", recentTrades: [] },
     },
     (r) => ({
       summary: r.recommendation ? `action=${r.recommendation.action} duration=${r.durationMs ?? 0}ms` : (r.error ?? "no result"),

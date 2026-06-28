@@ -34,7 +34,7 @@ export function ProviderCard({ provider }: { provider: Provider }): ReactElement
         style={{
           fontSize: 'var(--text-xs)',
           color: COLORS.textDim,
-          fontFamily: "'SF Mono', monospace",
+          fontFamily: 'var(--font-mono)',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap',

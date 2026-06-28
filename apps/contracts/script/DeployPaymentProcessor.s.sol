@@ -37,7 +37,7 @@ contract DeployPaymentProcessor is Script {
 
         bytes memory existing = targetAddress.code;
         if (existing.length != 0) {
-            console2.log("[DeployPaymentProcessor] NOTE: 0xEf1bA81... already has code; nothing to do.");
+            console2.log("[DeployPaymentProcessor] NOTE:", targetAddress, "already has code; nothing to do.");
             return;
         }
 

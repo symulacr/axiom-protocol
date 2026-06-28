@@ -1,9 +1,11 @@
 // Thin wrapper around the 0G Compute SDK's ReadOnlyInferenceBroker.
-// Results are cached for process lifetime so the RPC is called at most once.
+// Results are cached for up to CACHE_TTL_MS so the RPC is called at most once per window.
 
-import { ethers } from "ethers";
 import { createReadOnlyInferenceBroker } from "@0gfoundation/0g-compute-ts-sdk";
 import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
+import { createLogger } from "../utils/logger.js";
+
+const log = createLogger("compute");
 
 export interface ServiceInfo {
   provider: string;
@@ -13,17 +15,19 @@ export interface ServiceInfo {
 
 let _cachedProviders: ServiceInfo[] | null = null;
 let _cachePromise: Promise<ServiceInfo[]> | null = null;
+let _cacheTimestamp = 0;
+const CACHE_TTL_MS = 300_000; // 5 minutes
 
 /**
  * Discover compute providers via the SDK's ReadOnlyInferenceBroker.
- * The result is cached for the lifetime of the process.
+ * The result is cached for TTL (5 min) to tolerate dynamic provider registration.
  *
  * @param rpcUrl   JSON-RPC endpoint URL.
  * @param chainId  Optional chain ID (defaults to `AXIOM_CHAIN_ID` env or Galileo).
  * @returns        List of `ServiceInfo` records (empty on failure).
  */
 export async function discoverProviders(rpcUrl: string, chainId: number = GALILEO_CHAIN_ID): Promise<ServiceInfo[]> {
-  if (_cachedProviders) return _cachedProviders;
+  if (_cachedProviders && Date.now() - _cacheTimestamp < CACHE_TTL_MS) return _cachedProviders;
   if (_cachePromise) return _cachePromise;
 
   _cachePromise = (async (): Promise<ServiceInfo[]> => {
@@ -31,24 +35,23 @@ export async function discoverProviders(rpcUrl: string, chainId: number = GALILE
     const broker = await createReadOnlyInferenceBroker(rpcUrl, cid);
     const services = await broker.listService();
 
-    const mapped: ServiceInfo[] = services.map((s: any) => ({
-      provider: s.provider ?? s.appClientAddr,
+    const mapped: ServiceInfo[] = services.map((s: { provider?: string; appClientAddr?: string; model?: string }) => ({
+      provider: s.provider ?? s.appClientAddr ?? "",
       model: s.model ?? "unknown",
-      appClientAddr: s.appClientAddr ?? s.provider,
+      appClientAddr: s.appClientAddr ?? s.provider ?? "",
     }));
 
     _cachedProviders = mapped;
+    _cacheTimestamp = Date.now();
+    _cachePromise = null;
     return mapped;
   })();
 
   try {
     return await _cachePromise;
   } catch (err) {
-    // Reset so the next caller retries instead of getting a stale reject
     _cachePromise = null;
-    console.warn(
-      `[compute] Provider discovery failed: ${err instanceof Error ? err.message : String(err)}`,
-    );
+    log.warn("Provider discovery failed", { error: err instanceof Error ? err.message : String(err) });
     return [];
   }
 }
@@ -59,6 +62,7 @@ export async function discoverProviders(rpcUrl: string, chainId: number = GALILE
 export function invalidateProviderCache(): void {
   _cachedProviders = null;
   _cachePromise = null;
+  _cacheTimestamp = 0;
 }
 
 /**
@@ -74,7 +78,7 @@ export async function resolveProviderUrl(providerAddr: string, rpcUrl?: string):
     const cid = Number(process.env.AXIOM_CHAIN_ID) || GALILEO_CHAIN_ID;
     const broker = await createReadOnlyInferenceBroker(eRpc, cid);
     const services = await broker.listService();
-    const found = services.find((s: any) =>
+    const found = services.find((s: { provider?: string; appClientAddr?: string; url?: string }) =>
       (s.provider ?? "").toLowerCase() === providerAddr.toLowerCase() ||
       (s.appClientAddr ?? "").toLowerCase() === providerAddr.toLowerCase()
     );

@@ -39,12 +39,36 @@ export const eventBodySchema = z.object({
 });
 
 export const tickSchema = z.object({
-  vault: addressViem.optional(),
-  agentNft: addressViem.optional(),
-  agentTokenId: z.string().optional(),
+  vault: addressViem,
+  agentNft: addressViem,
+  agentTokenId: z.string().regex(/^\d+$/),
   computeModel: z.string().optional(),
   strategy: z.string().optional(),
   signalSource: z.string().optional(),
   signalPayload: z.unknown().optional(),
   stream: z.boolean().optional(),
+});
+
+export const archiveLookupSchema = z.object({
+  url: z.string().url(),
+  limit: z.number().int().min(1).max(500).optional(),
+});
+
+export const archiveAccountSchema = z.object({
+  handle: z.string().min(1).max(64),
+  limit: z.number().int().min(1).max(500).optional(),
+});
+
+export const archiveConfirmSchema = z.object({
+  url: z.string().url(),
+});
+
+export const archiveClosestSchema = z.object({
+  url: z.string().url(),
+  timestamp: z.string().optional(),
+});
+
+export const chatBodySchema = z.object({
+  messages: z.array(z.any()).nonempty(),
+  tools: z.array(z.any()).optional(),
 });
