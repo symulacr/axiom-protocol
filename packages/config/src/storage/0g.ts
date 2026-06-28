@@ -2,13 +2,13 @@ import { Indexer, MemData } from "@0gfoundation/0g-storage-ts-sdk";
 import { keccak256, type Signer } from "ethers";
 import type { Hex } from "viem";
 
-export interface UploadResult {
+interface UploadResult {
   rootHash: Hex;
   txHash: Hex;
   size: number;
 }
 
-export interface DownloadResult {
+interface DownloadResult {
   data: Uint8Array;
   rootHash: Hex;
   size: number;

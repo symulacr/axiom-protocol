@@ -8,8 +8,5 @@ export { ERC20_ABI } from "./erc20.js";
 // Generated full ABIs from forge artifacts (via wagmi CLI)
 export {
   axiomAgentNftAbi,
-  axiomMockUsdcAbi,
-  axiomPaymentProcessorAbi,
   axiomStrategyVaultAbi,
-  axiomTeeVerifierAbi,
 } from "./generated.js";

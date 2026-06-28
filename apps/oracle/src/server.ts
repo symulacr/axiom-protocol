@@ -123,7 +123,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: i
         validUntil: defaultValidUntil.toString(),
       });
     } catch (err) {
-      console.error("[oracle] /v1/transfer-validity error:", err);
+      console.log(JSON.stringify({ level: "error", msg: "/v1/transfer-validity error", error: err instanceof Error ? err.message : String(err), route: "/v1/transfer-validity" }));
       res.status(500).json({ error: "Transfer validity check failed" });
     }
   });
@@ -232,7 +232,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: i
       validUntil: validUntil.toString(),
     });
     } catch (err) {
-      console.error("[oracle] /v1/ownership error:", err);
+      console.log(JSON.stringify({ level: "error", msg: "/v1/ownership error", error: err instanceof Error ? err.message : String(err), route: "/v1/ownership" }));
       res.status(500).json({ error: "Internal server error" });
     }
   });
@@ -249,17 +249,15 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: i
 
   app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
     const message = err instanceof Error ? err.message : String(err);
-    console.error("[oracle] error:", err);
+    console.log(JSON.stringify({ level: "error", msg: "unhandled middleware error", error: err instanceof Error ? err.message : String(err), code: "INTERNAL_ERROR" }));
     // Sanitize: never leak internal details
     const safeMessage = message.length > 200 ? message.slice(0, 200) + "..." : message;
     res.status(500).json({ error: safeMessage, code: "INTERNAL_ERROR" });
   });
-
   const httpServer = app.listen(config.port, config.bind, () => {
-    console.log(`[oracle] listening on http://${config.bind}:${config.port}`);
-    console.log(`[oracle] TEE signer: ${signer.address}`);
-    console.log("[oracle] \u26A0 SIMULATED TEE: runs in Node.js with cleartext private key. Not Intel TDX/SEV.");
+    console.log(JSON.stringify({ level: "info", msg: "oracle listening", bind: config.bind, port: config.port }));
+    console.log(JSON.stringify({ level: "info", msg: "TEE signer", address: signer.address }));
+    console.log(JSON.stringify({ level: "warn", msg: "SIMULATED TEE: runs in Node.js with cleartext private key. Not Intel TDX/SEV." }));
   });
-
   return { app, httpServer };
 }

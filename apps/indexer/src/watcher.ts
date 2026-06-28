@@ -1,6 +1,5 @@
-import { ethers } from "ethers";
 import type { JsonRpcProvider, Log } from "ethers";
-import { decodeEventLog, getAddress, type AbiEvent, type Address } from "viem";
+import { decodeEventLog, getAddress, getEventSelector, type AbiEvent, type Address } from "viem";
 import { readFile, writeFile, rename, mkdir } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import { validateHex, type Hex } from "@axiom/config/types/hex";
@@ -17,58 +16,16 @@ export const POLL_INTERVAL_MS = 12_000;
 const CHECKPOINT_FILE = join(process.cwd(), "data", "checkpoint.json");
 
 export type EventTopicTable = { [K in EventName]: Hex };
-const TOPIC_TABLE: EventTopicTable = {
-  Transfer: validateHex(ethers.id("Transfer(address,address,uint256)")),
-  Updated: validateHex(ethers.id("Updated(uint256,(string,bytes32)[],(string,bytes32)[])")),
-  Authorization: validateHex(ethers.id("Authorization(address,address,uint256)")),
-  AuthorizationRevoked: validateHex(ethers.id("AuthorizationRevoked(uint256,address,address)")),
-  VerifierUpdated: validateHex(ethers.id("VerifierUpdated(address,address)")),
-  CreatorSet: validateHex(ethers.id("CreatorSet(uint256,address)")),
-  MintFeeUpdated: validateHex(ethers.id("MintFeeUpdated(uint256,uint256)")),
-  StorageInfoUpdated: validateHex(ethers.id("StorageInfoUpdated(string,string)")),
-  PublishedSealedKey: validateHex(ethers.id("PublishedSealedKey(address,uint256,bytes[])")),
-  DelegateAccess: validateHex(ethers.id("DelegateAccess(address,address)")),
-  Deposited: validateHex(ethers.id("Deposited(uint256,address,address,uint256)")),
-  Withdrawn: validateHex(ethers.id("Withdrawn(uint256,address,address,uint256)")),
-  StrategySet: validateHex(ethers.id("StrategySet(uint256,bytes32,uint256,uint64)")),
-  Executed: validateHex(ethers.id("Executed(uint256,bytes32,address,uint256,bytes)")),
-  RegistryUpdated: validateHex(ethers.id("RegistryUpdated(address)")),
-  // AxiomPaymentProcessor
-  PaymentProcessed: validateHex(ethers.id("PaymentProcessed(uint256,address,address,uint256,uint256,uint256)")),
-  ComputeProviderPaid: validateHex(ethers.id("ComputeProviderPaid(address,uint256)")),
-  EarningsWithdrawn: validateHex(ethers.id("EarningsWithdrawn(address,uint256)")),
-  RoyaltySet: validateHex(ethers.id("RoyaltySet(uint256,uint256)")),
-  ProtocolTreasuryUpdated: validateHex(ethers.id("ProtocolTreasuryUpdated(address,address)")),
-  ProtocolFeeBpsUpdated: validateHex(ethers.id("ProtocolFeeBpsUpdated(uint256,uint256)")),
-  PaymentTokenUpdated: validateHex(ethers.id("PaymentTokenUpdated(address,address)")),
-  // ERC7857Cloneable / AxiomAgentNFT metadata / AxiomTeeVerifier
-  Cloned: validateHex(ethers.id("Cloned(uint256,uint256,address,address)")),
-  MetadataJsonDecisionDocumented: validateHex(ethers.id("MetadataJsonDecisionDocumented(string,string,string)")),
-  SignerRegistered: validateHex(ethers.id("SignerRegistered(address,address)")),
-  // ERC-1967 proxy events
-  Upgraded: validateHex(ethers.id("Upgraded(address)")),
-  AdminChanged: validateHex(ethers.id("AdminChanged(address,address)")),
-  BeaconUpgraded: validateHex(ethers.id("BeaconUpgraded(address)")),
-  // OpenZeppelin Initializable
-  Initialized: validateHex(ethers.id("Initialized(uint64)")),
- };
+const TOPIC_TABLE: EventTopicTable = Object.fromEntries(
+  (Object.keys(EVENT_ABI) as EventName[]).map((n) => [
+    n,
+    validateHex(getEventSelector(EVENT_ABI[n])),
+  ])
+) as EventTopicTable;
 
 const TOPIC_TO_EVENT: Record<string, EventName> = {};
-{
-  // Must match EVENT_SIGNATURES keys in events.ts.
-  const eventNames: EventName[] = [
-    "Transfer", "Updated", "Authorization", "AuthorizationRevoked",
-    "VerifierUpdated", "CreatorSet", "MintFeeUpdated", "StorageInfoUpdated",
-    "PublishedSealedKey", "DelegateAccess", "Deposited", "Withdrawn",
-    "StrategySet", "Executed", "RegistryUpdated",
-    "PaymentProcessed", "ComputeProviderPaid", "EarningsWithdrawn", "RoyaltySet",
-    "ProtocolTreasuryUpdated", "ProtocolFeeBpsUpdated", "PaymentTokenUpdated",
-    "Cloned", "MetadataJsonDecisionDocumented", "SignerRegistered",
-    "Upgraded", "AdminChanged", "BeaconUpgraded", "Initialized",
-  ];
-  for (const n of eventNames) {
-    TOPIC_TO_EVENT[TOPIC_TABLE[n].toLowerCase()] = n;
-  }
+for (const n of Object.keys(TOPIC_TABLE) as EventName[]) {
+  TOPIC_TO_EVENT[TOPIC_TABLE[n].toLowerCase()] = n;
 }
 
 export type WatchedEvent = {

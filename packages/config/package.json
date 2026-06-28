@@ -37,7 +37,6 @@
     "@0gfoundation/0g-storage-ts-sdk": "^1.2.10",
     "ethers": "^6.16.0",
     "express": "^4.21.0",
-    "omnichron": "^0.3.1",
     "viem": "^2.21.45",
     "zod": "^4.4.3"
   },
