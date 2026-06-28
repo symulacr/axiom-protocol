@@ -8,8 +8,9 @@ const ORACLE_TIMEOUT_MS = 10_000;
 
 export interface OracleClientConfig {
   baseUrl: string; // e.g., "http://127.0.0.1:8787"
-  /** Timeout in milliseconds for each HTTP request. Defaults to 10_000. */
   timeoutMs?: number;
+  /** API key for authenticated endpoints (sent as x-api-key header). */
+  apiKey?: string;
 }
 
 /**
@@ -59,6 +60,12 @@ export class DefaultSignerOracleClient implements OracleClient {
     this.baseUrl = config.baseUrl.replace(/\/$/, "");
   }
 
+  private headers(extra?: Record<string, string>): Record<string, string> {
+    const h: Record<string, string> = { ...extra };
+    if (this.config.apiKey) h["x-api-key"] = this.config.apiKey;
+    return h;
+  }
+
   health() { return this.get<{ ok: boolean; signer: `0x${string}`; version: string }>("/health"); }
 
   transferValidity(input: TransferValidityInput): Promise<TransferValidityResult> {
@@ -80,7 +87,10 @@ export class DefaultSignerOracleClient implements OracleClient {
 
   private async get<T>(path: string): Promise<T> {
     const timeout = this.config.timeoutMs ?? ORACLE_TIMEOUT_MS;
-    const res = await fetch(`${this.baseUrl}${path}`, { signal: AbortSignal.timeout(timeout) });
+    const res = await fetch(`${this.baseUrl}${path}`, {
+      headers: this.headers(),
+      signal: AbortSignal.timeout(timeout),
+    });
     if (!res.ok) throw new Error(`Oracle ${path} returned ${res.status}`);
     return (await res.json()) as T;
   }
@@ -90,7 +100,7 @@ export class DefaultSignerOracleClient implements OracleClient {
     const body = JSON.stringify(input, bigintReplacer);
     const res = await fetch(`${this.baseUrl}${path}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: this.headers({ "Content-Type": "application/json" }),
       body,
       signal: AbortSignal.timeout(timeout),
     });
@@ -100,4 +110,5 @@ export class DefaultSignerOracleClient implements OracleClient {
     }
     return (await res.json()) as T;
   }
+
 }

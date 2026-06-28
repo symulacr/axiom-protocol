@@ -9,7 +9,6 @@ const log = createLogger("compute");
 export interface ServiceInfo {
   provider: string;
   model: string;
-  appClientAddr: string;
 }
 
 let _cachedProviders: ServiceInfo[] | null = null;
@@ -34,10 +33,9 @@ export async function discoverProviders(rpcUrl: string, chainId: number = GALILE
     const broker = await createReadOnlyInferenceBroker(rpcUrl, cid);
     const services = await broker.listService();
 
-    const mapped: ServiceInfo[] = services.map((s: { provider?: string; appClientAddr?: string; model?: string }) => ({
-      provider: s.provider ?? s.appClientAddr ?? "",
+    const mapped: ServiceInfo[] = services.map((s: { provider?: string; model?: string }) => ({
+      provider: s.provider ?? "",
       model: s.model ?? "unknown",
-      appClientAddr: s.appClientAddr ?? s.provider ?? "",
     }));
 
     _cachedProviders = mapped;
@@ -77,9 +75,8 @@ export async function resolveProviderUrl(providerAddr: string, rpcUrl?: string):
     const cid = Number(process.env.AXIOM_CHAIN_ID) || GALILEO_CHAIN_ID;
     const broker = await createReadOnlyInferenceBroker(eRpc, cid);
     const services = await broker.listService();
-    const found = services.find((s: { provider?: string; appClientAddr?: string; url?: string }) =>
-      (s.provider ?? "").toLowerCase() === providerAddr.toLowerCase() ||
-      (s.appClientAddr ?? "").toLowerCase() === providerAddr.toLowerCase()
+    const found = services.find((s: { provider?: string; url?: string }) =>
+      (s.provider ?? "").toLowerCase() === providerAddr.toLowerCase()
     );
     return found?.url ?? null;
   } catch {

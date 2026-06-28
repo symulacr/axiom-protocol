@@ -10,7 +10,7 @@ import { TypedContract } from "@axiom/config/types/contract";
 import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
 import { bigintReplacer } from "@axiom/config/types/bigint";
 
-import { getComputeBaseUrl, createRouterClient } from "./compute/router.js";
+import { getComputeBaseUrl, createRouterClient, resolveModel } from "./compute/router.js";
 import { discoverProviders } from "./compute/provider-discovery.js";
 import { AGENT_NFT_ABI } from "@axiom/config/abis";
 
@@ -83,7 +83,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
   app.set("json replacer", bigintReplacer);
 
   const ogChainId = config.env?.AXIOM_CHAIN_ID ?? GALILEO_CHAIN_ID;
-  const oracle = new DefaultSignerOracleClient({ baseUrl: config.oracleBaseUrl });
+  const oracle = new DefaultSignerOracleClient({ baseUrl: config.oracleBaseUrl, apiKey: config.env?.AXIOM_API_KEY });
   const eip712Domain: Eip712Domain = {
     chainId: BigInt(ogChainId),
     verifyingContract: config.addresses?.verifier ?? DEFAULT_EIP712_DOMAIN.verifyingContract,
@@ -95,7 +95,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
       try {
         orchestratorHandle = new StrategyRunner({
           evmRpc: config.evmRpc, signer: config.signer,
-          oracleBaseUrl: config.oracleBaseUrl, chainId: ogChainId, addresses: config.addresses,
+          oracleBaseUrl: config.oracleBaseUrl, apiKey: config.env?.AXIOM_API_KEY, chainId: ogChainId, addresses: config.addresses,
         });
       } catch (err) {
         log.warn(`StrategyRunner init failed: ${err instanceof Error ? err.message : err} — will retry on next tick`);
@@ -152,10 +152,11 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
 
   app.post("/v1/chat/completions", async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { messages, tools } = chatBodySchema.parse(req.body ?? {});
-      const client = await createRouterClient();
+      const { messages, tools, model: reqModel } = chatBodySchema.parse(req.body ?? {});
+      const resolvedModel = resolveModel(reqModel);
+      const client = await createRouterClient(resolvedModel);
       const openaiRes = await client.chat.completions.create({
-        model: config.env?.AXIOM_COMPUTE_MODEL ?? "qwen/qwen2.5-omni-7b",
+        model: resolvedModel,
         messages, tools, stream: true, max_tokens: 2048,
       });
       res.setHeader("Content-Type", "text/event-stream");
