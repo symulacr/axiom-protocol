@@ -25,7 +25,6 @@ export function useVaultDataBatch(tokenIds: readonly bigint[]): {
   const chainId = useChainId();
   const vaultAddr = getAxiomStrategyVaultAddress(chainId);
 
-  // Build multicall: 2 calls per token (balanceOf + strategyOf)
   const contracts = tokenIds.flatMap((tokenId) => [
     {
       address: vaultAddr,

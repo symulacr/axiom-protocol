@@ -17,10 +17,6 @@ export interface UsePerformanceResult {
 }
 
 
-/**
- * Fetches strategy performance metrics for an agent from the backend.
- * Uses usePolledApi for automatic polling.
- */
 export function usePerformance(tokenId: bigint | null): UsePerformanceResult {
   const enabled = tokenId !== null && tokenId > 0n;
   const url = enabled ? `/v1/agents/${tokenId.toString()}/performance` : '';

@@ -35,7 +35,6 @@ export interface UseEventHistoryOptions {
 const DEFAULT_POLL_INTERVAL_MS = 15_000;
 const MAX_EVENTS = 500;
 
-/** Group events by `eventName`, preserving first-occurrence order. */
 function groupByName(events: readonly AxiomEvent[]): Record<string, AxiomEvent[]> {
   const out: Record<string, AxiomEvent[]> = {};
   for (const ev of events) {
@@ -66,7 +65,6 @@ export function useEventHistory(
   // causing a re-render or query-key change that would flicker data.
   const lastTimestampRef = useRef(0);
 
-  // Getter: reads the latest cursor value at fetch time.
   const urlGetter = useCallback(() => {
     let path = `/v1/events?since=${lastTimestampRef.current}`;
     if (owner !== undefined) {
@@ -81,8 +79,6 @@ export function useEventHistory(
     queryKey: ['events', { owner }],
   });
 
-  // Advance the cursor after each successful fetch so the next poll
-  // only retrieves newer events.
   useEffect(() => {
     if (!query.data) return;
     const raw = Array.isArray(query.data.events) ? query.data.events : [];

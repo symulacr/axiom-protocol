@@ -84,7 +84,6 @@ export function useEventStream(
           setEvents(eventsRef.current);
         } catch (err) {
           console.warn('[useEventStream] WS connect failed:', err);
-          /* skip unparseable */
         }
       };
 

@@ -18,7 +18,6 @@ export function useAgentEvents(tokenId: bigint | null): UseAgentEventsResult {
   const { events, isLoading, error, refetch } = useEventHistory({ pollIntervalMs: 15_000 });
   const { events: wsEvents } = useEventStream({ topics: ['*'] });
 
-  // Debounced refetch on WS event
   useEffect(() => {
     if (wsEvents.length === 0) return;
     const t = setTimeout(refetch, 200);
