@@ -23,7 +23,7 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "cd apps/backend && npx tsc",
+    "build": "pnpm --filter @axiom/config build && pnpm --filter @axiom/oracle build && pnpm --filter @axiom/backend build",
     "start": "node apps/backend/dist/index.js",
     "test": "pnpm -r run test",
     "typecheck": "pnpm -r run typecheck",
