@@ -4,7 +4,6 @@ import { createZGComputeNetworkBroker } from "@0gfoundation/0g-compute-ts-sdk";
 import { pickOGNetwork, GALILEO_CHAIN_ID } from "@axiom/config/networks";
 import { resolveProviderUrl, acknowledgeProviderSigner } from "./provider-discovery.js";
 import { createLogger } from "../utils/logger.js";
-import { z } from "zod";
 
 /**
  * Resolve the 0G Compute Router base URL.

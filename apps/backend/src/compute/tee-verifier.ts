@@ -1,6 +1,5 @@
 import {
   CONTRACT_ADDRESSES,
-  TESTNET_CHAIN_ID,
   MAINNET_CHAIN_ID,
   HARDHAT_CHAIN_ID,
   createLedgerBroker,

@@ -46,6 +46,8 @@ export interface ServerConfig {
   env?: BackendEnv;
 }
 
+// FLAG: startServer is 237 lines — exceeds 100-line threshold. Consider refactoring route registrations into smaller helpers.
+
 export function startServer(config: ServerConfig): { app: Express; httpServer: HttpServer } {
   const app = express();
   app.use(express.json({ limit: "2mb" }));

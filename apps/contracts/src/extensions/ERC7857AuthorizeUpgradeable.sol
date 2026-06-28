@@ -12,7 +12,6 @@ import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {ERC7857Upgradeable} from "../ERC7857Upgradeable.sol";
 import {IERC7857Authorize} from "../interfaces/IERC7857Authorize.sol";
-import {IntelligentData} from "../interfaces/IERC7857Metadata.sol";
 
 /// @title ERC7857AuthorizeUpgradeable
 /// @notice Extension that lets the owner grant usage rights to other addresses (max 100, cleared on transfer)

@@ -7,7 +7,6 @@ pragma solidity ^0.8.20;
 // (EIP-712 domain binding per security fix F-03/F-04/F-12)
 // Reference uses 1-arg verifyTransferValidity — incompatible base contract
 //
-import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 import {ERC7857Upgradeable} from "../ERC7857Upgradeable.sol";
 import {IntelligentData} from "../interfaces/IERC7857Metadata.sol";

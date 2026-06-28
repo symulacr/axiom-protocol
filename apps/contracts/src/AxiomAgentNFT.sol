@@ -7,7 +7,6 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/Pau
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {ERC721Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
-import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 // UUPS upgradeability is mandated by the security report F-02.
 // Canonical references:
@@ -22,7 +21,6 @@ import {ERC7857Upgradeable} from "./ERC7857Upgradeable.sol";
 import {ERC7857CloneableUpgradeable} from "./extensions/ERC7857CloneableUpgradeable.sol";
 import {ERC7857AuthorizeUpgradeable} from "./extensions/ERC7857AuthorizeUpgradeable.sol";
 import {ERC7857IDataStorageUpgradeable} from "./extensions/ERC7857IDataStorageUpgradeable.sol";
-import {IERC7857DataVerifier} from "./interfaces/IERC7857DataVerifier.sol";
 import {IntelligentData} from "./interfaces/IERC7857Metadata.sol";
 import {AxiomMetadataJson} from "./extensions/AxiomMetadataJson.sol";
 
