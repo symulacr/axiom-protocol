@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Axiom TEE signer service — signs ERC-7857 OwnershipProofs and re-encrypts agent metadata",
+  "description": "Axiom TEE signer service \u2014 signs ERC-7857 OwnershipProofs and re-encrypts agent metadata",
   "main": "dist/index.js",
   "exports": {
     ".": "./dist/index.js",
@@ -56,5 +56,6 @@
   },
   "engines": {
     "node": ">=22.0.0"
-  }
+  },
+  "packageManager": "pnpm@11.5.1"
 }
