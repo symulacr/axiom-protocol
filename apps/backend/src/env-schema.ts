@@ -13,7 +13,8 @@ export const backendEnvSchema = sharedEnvSchema.merge(z.object({
   DEPLOYER_PK: hexString,
   AXIOM_COMPUTE_MODEL: z.string().optional(),
   AXIOM_PORT: z.coerce.number().int().positive().default(3000),
-  AXIOM_BIND: z.string().default("127.0.0.1"),
+  PORT: z.coerce.number().int().positive().optional(),
+  AXIOM_BIND: z.string().default("0.0.0.0"),
   // Canonical names (preferred — match .env.example)
   AXIOM_AGENT_NFT_ADDRESS: z.string().optional(),
   AXIOM_STRATEGY_VAULT_ADDRESS: z.string().optional(),

@@ -21,7 +21,7 @@ const provider = new JsonRpcProvider(
 const signer = new Wallet(env.DEPLOYER_PK, provider);
 const server = startServer({
   bind: env.AXIOM_BIND,
-  port: env.AXIOM_PORT,
+  port: env.AXIOM_PORT ?? env.PORT ?? 3000,
   env,
   evmRpc: env.AXIOM_EVM_RPC,
   storageRpc: env.AXIOM_STORAGE_RPC,
