@@ -114,9 +114,17 @@ library AxiomMetadataJson {
 
         json = string.concat(
             "{",
-            "\"name\":\"", collectionName, " #", _u256ToString(tokenId), "\",",
-            "\"description\":\"", _escapeJson(description), "\",",
-            "\"symbol\":\"", collectionSymbol, "\",",
+            "\"name\":\"",
+            collectionName,
+            " #",
+            _u256ToString(tokenId),
+            "\",",
+            "\"description\":\"",
+            _escapeJson(description),
+            "\",",
+            "\"symbol\":\"",
+            collectionSymbol,
+            "\",",
             "\"image\":\"\",",
             "\"external_url\":\"\",",
             "\"attributes\":[",
@@ -143,20 +151,19 @@ library AxiomMetadataJson {
         );
     }
 
-
     /// @dev Build the `attributes` array JSON for the OpenSea schema. The
     ///      first attribute is always `data_hash` (the first IntelligentData
     ///      dataHash, 0x-prefixed 64-hex). Subsequent dataHashes are
     ///      emitted as `data_hash_1`, `data_hash_2`, … so a 1-N iNFT
     ///      round-trips its full EIP-7857 metadata surface in the JSON view.
-    function _attributesJson(IntelligentData[] memory datas) private pure returns (string memory) {
+    function _attributesJson(
+        IntelligentData[] memory datas
+    ) private pure returns (string memory) {
         if (datas.length == 0) {
             return string.concat("{\"trait_type\":\"agent\",\"value\":\"empty\"}");
         }
         string memory out = string.concat(
-            "{\"trait_type\":\"data_hash\",\"value\":\"0x",
-            _bytes32ToHexString(datas[0].dataHash),
-            "\"}"
+            "{\"trait_type\":\"data_hash\",\"value\":\"0x", _bytes32ToHexString(datas[0].dataHash), "\"}"
         );
         for (uint256 i = 1; i < datas.length; i++) {
             out = string.concat(
@@ -177,7 +184,9 @@ library AxiomMetadataJson {
     ///      render and OpenSea's policy is to skip them). Non-ASCII bytes
     ///      are passed through verbatim — Solidity 0.8.20 treats `string`
     ///      as raw bytes and OpenSea's JSON parser is UTF-8.
-    function _escapeJson(string memory s) private pure returns (string memory) {
+    function _escapeJson(
+        string memory s
+    ) private pure returns (string memory) {
         bytes memory b = bytes(s);
         bytes memory buf = new bytes(0);
         for (uint256 i = 0; i < b.length; i++) {
@@ -196,14 +205,23 @@ library AxiomMetadataJson {
         return string(buf);
     }
 
-    function _appendBytes(bytes memory buf, bytes memory tail) private pure returns (bytes memory) {
+    function _appendBytes(
+        bytes memory buf,
+        bytes memory tail
+    ) private pure returns (bytes memory) {
         bytes memory res = new bytes(buf.length + tail.length);
-        for (uint256 i = 0; i < buf.length; i++) res[i] = buf[i];
-        for (uint256 i = 0; i < tail.length; i++) res[buf.length + i] = tail[i];
+        for (uint256 i = 0; i < buf.length; i++) {
+            res[i] = buf[i];
+        }
+        for (uint256 i = 0; i < tail.length; i++) {
+            res[buf.length + i] = tail[i];
+        }
         return res;
     }
 
-    function _u256ToString(uint256 v) private pure returns (string memory) {
+    function _u256ToString(
+        uint256 v
+    ) private pure returns (string memory) {
         if (v == 0) return "0";
         uint256 j = v;
         uint256 len;
@@ -221,7 +239,9 @@ library AxiomMetadataJson {
         return string(bstr);
     }
 
-    function _bytes32ToHexString(bytes32 b) private pure returns (string memory) {
+    function _bytes32ToHexString(
+        bytes32 b
+    ) private pure returns (string memory) {
         bytes memory hexChars = "0123456789abcdef";
         bytes memory out = new bytes(64);
         for (uint256 i = 0; i < 32; i++) {
@@ -236,7 +256,9 @@ library AxiomMetadataJson {
     ///      The `& 0x3F` mask guarantees the result fits in `uint8`, so the
     ///      forge-lint `unsafe-typecast` warnings on the index expression
     ///      are provably safe.
-    function _base64Encode(bytes memory data) private pure returns (string memory) {
+    function _base64Encode(
+        bytes memory data
+    ) private pure returns (string memory) {
         if (data.length == 0) return "";
 
         bytes memory alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -246,7 +268,8 @@ library AxiomMetadataJson {
         uint256 i;
         uint256 j;
         for (i = 0; i + 2 < data.length; i += 3) {
-            uint256 n = (uint256(uint8(data[i])) << 16) | (uint256(uint8(data[i + 1])) << 8) | uint256(uint8(data[i + 2]));
+            uint256 n =
+                (uint256(uint8(data[i])) << 16) | (uint256(uint8(data[i + 1])) << 8) | uint256(uint8(data[i + 2]));
             out[j] = _base64At(alphabet, n, 18);
             out[j + 1] = _base64At(alphabet, n, 12);
             out[j + 2] = _base64At(alphabet, n, 6);
@@ -274,7 +297,11 @@ library AxiomMetadataJson {
     /// @dev Look up the 6-bit value in the 64-byte base64 alphabet. Extracted
     ///      into a helper so the forge-lint `unsafe-typecast` warning is
     ///      isolated to a single, well-justified site.
-    function _base64At(bytes memory alphabet, uint256 n, uint256 shift) private pure returns (bytes1) {
+    function _base64At(
+        bytes memory alphabet,
+        uint256 n,
+        uint256 shift
+    ) private pure returns (bytes1) {
         return alphabet[SafeCast.toUint8((n >> shift) & 0x3F)];
     }
 }

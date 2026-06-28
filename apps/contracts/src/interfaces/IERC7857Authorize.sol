@@ -21,12 +21,20 @@ interface IERC7857Authorize is IERC7857 {
     /// @notice Authorize a user to use the token's private metadata
     /// @param _tokenId Token to authorize
     /// @param _user Address to authorize
-    function authorizeUsage(uint256 _tokenId, address _user) external;
+    function authorizeUsage(
+        uint256 _tokenId,
+        address _user
+    ) external;
 
     /// @notice Revoke a user's authorization
-    function revokeAuthorization(uint256 _tokenId, address _user) external;
+    function revokeAuthorization(
+        uint256 _tokenId,
+        address _user
+    ) external;
 
     /// @notice Get the list of users authorized for a token
     /// @return Array of authorized user addresses
-    function authorizedUsersOf(uint256 _tokenId) external view returns (address[] memory);
+    function authorizedUsersOf(
+        uint256 _tokenId
+    ) external view returns (address[] memory);
 }

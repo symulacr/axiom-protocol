@@ -36,7 +36,9 @@ abstract contract ERC7857AuthorizeUpgradeable is IERC7857Authorize, ERC7857Upgra
         }
     }
 
-    function authorizedUsersOf(uint256 tokenId) public view virtual returns (address[] memory) {
+    function authorizedUsersOf(
+        uint256 tokenId
+    ) public view virtual returns (address[] memory) {
         ERC7857AuthorizeStorage storage $ = _getERC7857AuthorizeStorage();
         if (_ownerOf(tokenId) == address(0)) {
             revert ERC721NonexistentToken(tokenId);
@@ -44,7 +46,10 @@ abstract contract ERC7857AuthorizeUpgradeable is IERC7857Authorize, ERC7857Upgra
         return $.authorizedUsers[tokenId].values();
     }
 
-    function _authorizeUsage(uint256 tokenId, address to) internal {
+    function _authorizeUsage(
+        uint256 tokenId,
+        address to
+    ) internal {
         ERC7857AuthorizeStorage storage $ = _getERC7857AuthorizeStorage();
 
         EnumerableSet.AddressSet storage authorizedUsers = $.authorizedUsers[tokenId];
@@ -62,7 +67,9 @@ abstract contract ERC7857AuthorizeUpgradeable is IERC7857Authorize, ERC7857Upgra
         emit Authorization(msg.sender, to, tokenId);
     }
 
-    function _clearAuthorized(uint256 tokenId) internal {
+    function _clearAuthorized(
+        uint256 tokenId
+    ) internal {
         ERC7857AuthorizeStorage storage $ = _getERC7857AuthorizeStorage();
         address[] memory values = $.authorizedUsers[tokenId].values();
         for (uint256 i = 0; i < values.length; ++i) {
@@ -70,7 +77,10 @@ abstract contract ERC7857AuthorizeUpgradeable is IERC7857Authorize, ERC7857Upgra
         }
     }
 
-    function authorizeUsage(uint256 tokenId, address to) public virtual {
+    function authorizeUsage(
+        uint256 tokenId,
+        address to
+    ) public virtual {
         if (to == address(0)) {
             revert ERC7857InvalidAuthorizedUser(address(0));
         }
@@ -82,7 +92,10 @@ abstract contract ERC7857AuthorizeUpgradeable is IERC7857Authorize, ERC7857Upgra
         _authorizeUsage(tokenId, to);
     }
 
-    function revokeAuthorization(uint256 tokenId, address user) public virtual {
+    function revokeAuthorization(
+        uint256 tokenId,
+        address user
+    ) public virtual {
         ERC7857AuthorizeStorage storage $ = _getERC7857AuthorizeStorage();
         if (_ownerOf(tokenId) != msg.sender) {
             revert ERC721InvalidSender(msg.sender);
@@ -98,12 +111,17 @@ abstract contract ERC7857AuthorizeUpgradeable is IERC7857Authorize, ERC7857Upgra
         emit AuthorizationRevoked(tokenId, msg.sender, user);
     }
 
-    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC7857Upgradeable, IERC165) returns (bool) {
-        return interfaceId == type(IERC7857Authorize).interfaceId
-            || super.supportsInterface(interfaceId);
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view virtual override(ERC7857Upgradeable, IERC165) returns (bool) {
+        return interfaceId == type(IERC7857Authorize).interfaceId || super.supportsInterface(interfaceId);
     }
 
-    function _update(address to, uint256 tokenId, address auth) internal virtual override returns (address) {
+    function _update(
+        address to,
+        uint256 tokenId,
+        address auth
+    ) internal virtual override returns (address) {
         address from = super._update(to, tokenId, auth);
         _clearAuthorized(tokenId);
         return from;

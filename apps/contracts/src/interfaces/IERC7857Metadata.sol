@@ -9,5 +9,7 @@ interface IERC7857Metadata is IERC7857MetadataBase {
     /// @notice Alias for intelligentDatasOf (EIP-7857 uses singular form)
     /// @param tokenId The token to query
     /// @return data The IntelligentData entries associated with the token
-    function intelligentDataOf(uint256 tokenId) external view returns (IntelligentData[] memory data);
+    function intelligentDataOf(
+        uint256 tokenId
+    ) external view returns (IntelligentData[] memory data);
 }

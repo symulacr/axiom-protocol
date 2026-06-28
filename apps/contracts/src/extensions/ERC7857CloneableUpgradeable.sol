@@ -56,9 +56,10 @@ abstract contract ERC7857CloneableUpgradeable is IERC7857Cloneable, ERC7857Upgra
         return newTokenId;
     }
 
-    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC7857Upgradeable, IERC165) returns (bool) {
-        return interfaceId == type(IERC7857Cloneable).interfaceId
-            || super.supportsInterface(interfaceId);
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view virtual override(ERC7857Upgradeable, IERC165) returns (bool) {
+        return interfaceId == type(IERC7857Cloneable).interfaceId || super.supportsInterface(interfaceId);
     }
 
     function iCloneFrom(
@@ -74,7 +75,11 @@ abstract contract ERC7857CloneableUpgradeable is IERC7857Cloneable, ERC7857Upgra
         return _clone(from, to, tokenId, proofs);
     }
 
-    function iClone(address to, uint256 tokenId, TransferValidityProof[] calldata proofs) public virtual returns (uint256 newTokenId) {
+    function iClone(
+        address to,
+        uint256 tokenId,
+        TransferValidityProof[] calldata proofs
+    ) public virtual returns (uint256 newTokenId) {
         address from = _ownerOf(tokenId);
         if (from == address(0)) revert ERC721NonexistentToken(tokenId);
         _checkAuthorized(from, _msgSender(), tokenId);

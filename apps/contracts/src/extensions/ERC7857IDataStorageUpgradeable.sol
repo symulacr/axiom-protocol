@@ -33,17 +33,24 @@ abstract contract ERC7857IDataStorageUpgradeable is ERC7857Upgradeable {
     /// @notice Emitted when a token's data is updated
     event Updated(uint256 indexed tokenId, IntelligentData[] oldDatas, IntelligentData[] newDatas);
 
-    function _intelligentDatasOf(uint256 tokenId) internal view virtual override returns (IntelligentData[] memory) {
+    function _intelligentDatasOf(
+        uint256 tokenId
+    ) internal view virtual override returns (IntelligentData[] memory) {
         ERC7857IDataStorageStorage storage $ = _getERC7857IDataStorageStorage();
         return $.iDatas[tokenId];
     }
 
-    function _intelligentDatasLengthOf(uint256 tokenId) internal view virtual override returns (uint256) {
+    function _intelligentDatasLengthOf(
+        uint256 tokenId
+    ) internal view virtual override returns (uint256) {
         ERC7857IDataStorageStorage storage $ = _getERC7857IDataStorageStorage();
         return $.iDatas[tokenId].length;
     }
 
-    function _updateData(uint256 tokenId, IntelligentData[] memory newDatas) internal virtual override {
+    function _updateData(
+        uint256 tokenId,
+        IntelligentData[] memory newDatas
+    ) internal virtual override {
         ERC7857IDataStorageStorage storage $ = _getERC7857IDataStorageStorage();
 
         IntelligentData[] memory oldDatas = new IntelligentData[]($.iDatas[tokenId].length);

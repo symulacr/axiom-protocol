@@ -15,7 +15,9 @@ abstract contract BaseVerifier is IERC7857DataVerifier {
     /// @dev Timestamp at which each proof nonce was first seen (for expiry)
     mapping(bytes32 => uint256) internal proofTimestamps;
 
-    function _checkAndMarkProof(bytes32 proofNonce) internal {
+    function _checkAndMarkProof(
+        bytes32 proofNonce
+    ) internal {
         if (usedProofs[proofNonce]) revert ProofAlreadyUsed(proofNonce);
         usedProofs[proofNonce] = true;
         proofTimestamps[proofNonce] = block.timestamp;
@@ -24,7 +26,9 @@ abstract contract BaseVerifier is IERC7857DataVerifier {
     function _getMaxProofAge() internal view virtual returns (uint256);
 
     /// @notice Clean expired proof records to save gas
-    function cleanExpiredProofs(bytes32[] calldata proofNonces) external {
+    function cleanExpiredProofs(
+        bytes32[] calldata proofNonces
+    ) external {
         uint256 maxAge = _getMaxProofAge();
         for (uint256 i = 0; i < proofNonces.length; i++) {
             bytes32 nonce = proofNonces[i];

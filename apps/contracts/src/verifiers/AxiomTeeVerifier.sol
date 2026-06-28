@@ -63,9 +63,8 @@ contract AxiomTeeVerifier is BaseVerifier, OwnableUpgradeable {
     ///      preventing cross-contract and cross-chain replay. Browser wallets sign
     ///      via signTypedData_v4, which produces raw ECDSA over the EIP-712 digest.
     ///      Reference: https://eips.ethereum.org/EIPS/eip-712
-    bytes32 private constant EIP712_DOMAIN_TYPEHASH = keccak256(
-        "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
-    );
+    bytes32 private constant EIP712_DOMAIN_TYPEHASH =
+        keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
     bytes32 private constant OWNERSHIP_PROOF_TYPEHASH = keccak256(
         "OwnershipProof(bytes32 dataHash,bytes sealedKey,bytes targetPubkey,address to,address nft,uint256 nonce,uint256 validUntil)"
     );
@@ -82,7 +81,11 @@ contract AxiomTeeVerifier is BaseVerifier, OwnableUpgradeable {
     ///      emits `OwnershipTransferred(address(0), initialOwner)`. Refs:
     ///        - https://docs.openzeppelin.com/contracts/5.x/api/access#Ownable-_transferOwnership-address-
     ///        - https://docs.openzeppelin.com/contracts/5.x/api/access#Ownable__Ownable_init_address-
-    constructor(address initialOwner, address signer_, uint256 maxProofAgeSeconds_) {
+    constructor(
+        address initialOwner,
+        address signer_,
+        uint256 maxProofAgeSeconds_
+    ) {
         require(signer_ != address(0), "Zero signer address");
         require(initialOwner != address(0), "Zero initial owner");
         _getAxiomTeeVerifierStorage().registeredSigner = signer_;
@@ -100,7 +103,9 @@ contract AxiomTeeVerifier is BaseVerifier, OwnableUpgradeable {
     ///      deploys via `ERC1967Proxy`). Calling both on the same contract will revert the
     ///      initializer (its `initializer` modifier can only run once).
     ///      Reference: https://docs.openzeppelin.com/contracts/5.x/api/access#Ownable__Ownable_init_address-
-    function initialize(address initialOwner) external initializer {
+    function initialize(
+        address initialOwner
+    ) external initializer {
         __Ownable_init(initialOwner);
     }
 
@@ -114,7 +119,9 @@ contract AxiomTeeVerifier is BaseVerifier, OwnableUpgradeable {
     ///      `AXIOM_DEPLOYER_ADDRESS` set at deploy time. Refs:
     ///        - https://docs.openzeppelin.com/contracts/5.x/access-control
     ///        - https://docs.openzeppelin.com/contracts/5.x/api/access#Ownable-onlyOwner--
-    function registerSigner(address newSigner) external onlyOwner {
+    function registerSigner(
+        address newSigner
+    ) external onlyOwner {
         require(newSigner != address(0), "Zero address");
         AxiomTeeVerifierStorage storage $ = _getAxiomTeeVerifierStorage();
         address old = $.registeredSigner;
@@ -134,7 +141,10 @@ contract AxiomTeeVerifier is BaseVerifier, OwnableUpgradeable {
     /// @dev Both proof legs are now EIP-712 typed-data digests (see _domainSeparator).
     ///      Browser wallets produce raw ECDSA over the EIP-712 digest via
     ///      signTypedData_v4, so no EIP-191 prefix is applied off-chain.
-    function _recoverSigner(bytes32 messageHash, bytes memory signature) internal pure returns (address) {
+    function _recoverSigner(
+        bytes32 messageHash,
+        bytes memory signature
+    ) internal pure returns (address) {
         if (signature.length != 65) revert AxiomInvalidSigner();
         address recovered = ECDSA.recover(messageHash, signature);
         if (recovered == address(0)) revert AxiomInvalidSigner();
@@ -146,13 +156,11 @@ contract AxiomTeeVerifier is BaseVerifier, OwnableUpgradeable {
     ///        keccak256(abi.encodePacked("\x19\x01", domainSeparator(), structHash))
     ///      Reference: https://eips.ethereum.org/EIPS/eip-712#definition-of-domainseparator
     function _domainSeparator() internal view returns (bytes32) {
-        return keccak256(abi.encode(
-            EIP712_DOMAIN_TYPEHASH,
-            keccak256("AxiomTeeVerifier"),
-            keccak256("1"),
-            block.chainid,
-            address(this)
-        ));
+        return keccak256(
+            abi.encode(
+                EIP712_DOMAIN_TYPEHASH, keccak256("AxiomTeeVerifier"), keccak256("1"), block.chainid, address(this)
+            )
+        );
     }
 
     function domainSeparator() public view returns (bytes32) {
@@ -197,10 +205,10 @@ contract AxiomTeeVerifier is BaseVerifier, OwnableUpgradeable {
             //     transfer. If the TEE-signed ownership leg and the receiver-signed
             //     access leg disagree on any shared field, the proof is invalid.
             if (
-                p.accessProof.dataHash != p.ownershipProof.dataHash ||
-                keccak256(p.accessProof.targetPubkey) != keccak256(p.ownershipProof.targetPubkey) ||
-                p.accessProof.nonce != p.ownershipProof.nonce ||
-                p.accessProof.validUntil != p.ownershipProof.validUntil
+                p.accessProof.dataHash != p.ownershipProof.dataHash
+                    || keccak256(p.accessProof.targetPubkey) != keccak256(p.ownershipProof.targetPubkey)
+                    || p.accessProof.nonce != p.ownershipProof.nonce
+                    || p.accessProof.validUntil != p.ownershipProof.validUntil
             ) {
                 revert ProofFieldMismatch();
             }
@@ -212,39 +220,47 @@ contract AxiomTeeVerifier is BaseVerifier, OwnableUpgradeable {
             //    Per EIP-712, `bytes`/`string` fields are pre-hashed to bytes32
             //    (https://eips.ethereum.org/EIPS/eip-712#definition-of-hashstruct)
             //    so browser wallets' signTypedData_v4 produces a matching digest.
-            bytes32 ownershipMessage = keccak256(abi.encodePacked(
-                "\x19\x01",
-                _domainSeparator(),
-                keccak256(abi.encode(
-                    OWNERSHIP_PROOF_TYPEHASH,
-                    p.ownershipProof.dataHash,
-                    keccak256(p.ownershipProof.sealedKey),
-                    keccak256(p.ownershipProof.targetPubkey),
-                    to,
-                    nft,
-                    p.ownershipProof.nonce,
-                    p.ownershipProof.validUntil
-                ))
-            ));
+            bytes32 ownershipMessage = keccak256(
+                abi.encodePacked(
+                    "\x19\x01",
+                    _domainSeparator(),
+                    keccak256(
+                        abi.encode(
+                            OWNERSHIP_PROOF_TYPEHASH,
+                            p.ownershipProof.dataHash,
+                            keccak256(p.ownershipProof.sealedKey),
+                            keccak256(p.ownershipProof.targetPubkey),
+                            to,
+                            nft,
+                            p.ownershipProof.nonce,
+                            p.ownershipProof.validUntil
+                        )
+                    )
+                )
+            );
             address recovered = _recoverSigner(ownershipMessage, p.ownershipProof.proof);
             if (recovered != expectedSigner) revert AxiomInvalidOwnershipProof();
 
             // 2. Verify AccessProof — signed by the receiver via EIP-712.
             //    Browser wallets use signTypedData_v4, producing raw ECDSA over
             //    this digest (targetPubkey is pre-hashed per EIP-712 hashstruct).
-            bytes32 accessMessage = keccak256(abi.encodePacked(
-                "\x19\x01",
-                _domainSeparator(),
-                keccak256(abi.encode(
-                    ACCESS_PROOF_TYPEHASH,
-                    p.accessProof.dataHash,
-                    keccak256(p.accessProof.targetPubkey),
-                    to,
-                    nft,
-                    p.accessProof.nonce,
-                    p.accessProof.validUntil
-                ))
-            ));
+            bytes32 accessMessage = keccak256(
+                abi.encodePacked(
+                    "\x19\x01",
+                    _domainSeparator(),
+                    keccak256(
+                        abi.encode(
+                            ACCESS_PROOF_TYPEHASH,
+                            p.accessProof.dataHash,
+                            keccak256(p.accessProof.targetPubkey),
+                            to,
+                            nft,
+                            p.accessProof.nonce,
+                            p.accessProof.validUntil
+                        )
+                    )
+                )
+            );
             address accessSigner = _recoverSigner(accessMessage, p.accessProof.proof);
             if (accessSigner == address(0)) revert AxiomInvalidAccessProof();
 
@@ -282,7 +298,11 @@ contract AxiomTeeVerifier is BaseVerifier, OwnableUpgradeable {
     ///        (also covers `validUntil = type(uint256).max` since the subtraction
     ///        is huge and definitely exceeds `maxAge`).
     ///      - Otherwise, the proof is valid for the current block.
-    function _checkValidUntil(uint256 validUntil, uint256 nowTs, uint256 maxAge) private pure {
+    function _checkValidUntil(
+        uint256 validUntil,
+        uint256 nowTs,
+        uint256 maxAge
+    ) private pure {
         if (validUntil < nowTs) {
             revert AxiomProofExpired(validUntil, nowTs);
         }

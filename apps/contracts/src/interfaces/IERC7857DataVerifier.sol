@@ -7,7 +7,10 @@ pragma solidity ^0.8.20;
 /// @dev This is the interface that the NFT contract calls during iTransferFrom / iCloneFrom
 
 /// @notice The type of oracle that signed the OwnershipProof
-enum OracleType {TEE, ZKP}
+enum OracleType {
+    TEE,
+    ZKP
+}
 
 /// @notice Signed by the receiver (or their access assistant) via EIP-712 typed data
 /// @dev The receiver signs via signTypedData_v4 (browser wallet) or the equivalent
@@ -21,10 +24,10 @@ enum OracleType {TEE, ZKP}
 ///      chainId, verifyingContract). Reference: https://eips.ethereum.org/EIPS/eip-712
 struct AccessProof {
     bytes32 dataHash;
-    bytes targetPubkey;       // 64-byte raw uncompressed X||Y (no 0x04 prefix)
+    bytes targetPubkey; // 64-byte raw uncompressed X||Y (no 0x04 prefix)
     uint256 nonce;
-    bytes proof;              // raw ECDSA signature over the EIP-712 digest
-    uint256 validUntil;       // unix-seconds deadline; proof is invalid once block.timestamp > validUntil
+    bytes proof; // raw ECDSA signature over the EIP-712 digest
+    uint256 validUntil; // unix-seconds deadline; proof is invalid once block.timestamp > validUntil
 }
 
 /// @notice Signed by the TEE/ZKP oracle via EIP-712 typed data
@@ -40,11 +43,11 @@ struct AccessProof {
 struct OwnershipProof {
     OracleType oracleType;
     bytes32 dataHash;
-    bytes sealedKey;          // Encryption key sealed for receiver (ECIES)
-    bytes targetPubkey;       // 64-byte raw uncompressed X||Y
+    bytes sealedKey; // Encryption key sealed for receiver (ECIES)
+    bytes targetPubkey; // 64-byte raw uncompressed X||Y
     uint256 nonce;
-    bytes proof;              // raw ECDSA signature over the EIP-712 digest
-    uint256 validUntil;       // unix-seconds deadline; proof is invalid once block.timestamp > validUntil
+    bytes proof; // raw ECDSA signature over the EIP-712 digest
+    uint256 validUntil; // unix-seconds deadline; proof is invalid once block.timestamp > validUntil
 }
 
 /// @notice A pair of proofs required to transfer a token
@@ -53,8 +56,8 @@ struct OwnershipProof {
 ///      signed by the registered TEE/ZKP oracle using raw ECDSA over the
 ///      EIP-712 digest. The verifier recovers raw ECDSA signatures for both legs.
 struct TransferValidityProof {
-    AccessProof accessProof;        // Signed by receiver (or access assistant)
-    OwnershipProof ownershipProof;  // Signed by TEE/ZKP oracle
+    AccessProof accessProof; // Signed by receiver (or access assistant)
+    OwnershipProof ownershipProof; // Signed by TEE/ZKP oracle
 }
 
 /// @notice Output of verifyTransferValidity, consumed by the NFT contract
@@ -62,8 +65,8 @@ struct TransferValidityProofOutput {
     bytes32 dataHash;
     bytes sealedKey;
     bytes targetPubkey;
-    bytes wantedKey;              // empty if receiver has no preference
-    address accessAssistant;      // recovered from AccessProof.signature
+    bytes wantedKey; // empty if receiver has no preference
+    address accessAssistant; // recovered from AccessProof.signature
     uint256 accessProofNonce;
     uint256 ownershipProofNonce;
 }

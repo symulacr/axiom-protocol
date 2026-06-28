@@ -45,13 +45,21 @@ interface IERC7857 is IERC721, IERC7857Metadata {
     /// @param _to The receiver address
     /// @param _tokenId The token to transfer
     /// @param _proofs Array of transfer validity proofs
-    function iTransfer(address _to, uint256 _tokenId, TransferValidityProof[] calldata _proofs) external;
+    function iTransfer(
+        address _to,
+        uint256 _tokenId,
+        TransferValidityProof[] calldata _proofs
+    ) external;
 
     /// @notice Delegate access-proof signing to an assistant address
     /// @param _assistant Address authorized to sign AccessProofs on behalf of msg.sender
-    function delegateAccess(address _assistant) external;
+    function delegateAccess(
+        address _assistant
+    ) external;
 
     /// @notice Get the access assistant for a user (or address(0) if none)
     /// @return The assistant address
-    function getDelegateAccess(address _user) external view returns (address);
+    function getDelegateAccess(
+        address _user
+    ) external view returns (address);
 }

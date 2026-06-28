@@ -28,5 +28,9 @@ interface IERC7857Cloneable is IERC7857 {
     /// @param _tokenId The source token to clone from
     /// @param _proofs Array of transfer validity proofs
     /// @return newTokenId The token identifier of the cloned token
-    function iClone(address _to, uint256 _tokenId, TransferValidityProof[] calldata _proofs) external returns (uint256 newTokenId);
+    function iClone(
+        address _to,
+        uint256 _tokenId,
+        TransferValidityProof[] calldata _proofs
+    ) external returns (uint256 newTokenId);
 }

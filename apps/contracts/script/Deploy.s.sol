@@ -51,8 +51,8 @@ contract Deploy is Script {
             address(nft),
             paymentTokenAddr,
             oracleAdmin, // treasury
-            100,         // 1% default protocol fee
-            oracleAdmin  // owner
+            100, // 1% default protocol fee
+            oracleAdmin // owner
         );
         console2.log("AxiomPaymentProcessor deployed at:", address(processor));
 
