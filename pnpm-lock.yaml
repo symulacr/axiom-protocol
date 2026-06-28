@@ -4,6 +4,10 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  '@0gfoundation/0g-storage-ts-sdk>ethers': 6.16.0
+  '@0gfoundation/0g-compute-ts-sdk>ethers': 6.16.0
+
 importers:
 
   .:
@@ -354,12 +358,12 @@ packages:
       '@types/crypto-js': ^4.2.2
       circomlibjs: ^0.1.6
       crypto-js: ^4.2.0
-      ethers: ^6.13.1
+      ethers: 6.16.0
 
   '@0gfoundation/0g-storage-ts-sdk@1.2.10':
     resolution: {integrity: sha512-Ry2VXsFAZMSQMkv0hX6QPA9CyF+Eed2z3BNHggaQDi/pZTc9WP55MzGVTGiqxbNhCMwyJRrhTRJBY0ZAGgkkAw==}
     peerDependencies:
-      ethers: 6.13.1
+      ethers: 6.16.0
 
   '@adraffy/ens-normalize@1.10.1':
     resolution: {integrity: sha512-96Z2IP3mYmF1Xg2cDm8f1gWGf/HUVedQ3FMifV4kG/PQ4yEP51xDtRAEfhVNt5f/uzpNkZHwWQuUcu6D6K+Ekw==}
