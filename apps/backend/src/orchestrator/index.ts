@@ -4,7 +4,7 @@ import { TypedContract } from "@axiom/config/types/contract";
 import type { TickResult } from "@axiom/config/types/orchestrator";
 import type OpenAI from "openai";
 import { ZeroGStorage, type Encryption } from "@axiom/config/storage/0g";
-import { createRouterClient } from "../compute/router.js";
+import { createRouterClient, decodeDirectKeyToken } from "../compute/router.js";
 import { verifyTeeResponse } from "../compute/tee-verifier.js";
 import { DefaultSignerOracleClient } from "../oracle/client.js";
 import { pickOGNetwork, GALILEO_CHAIN_ID } from "@axiom/config/networks";
@@ -211,19 +211,9 @@ export class StrategyRunner {
     let providerAddress: string | undefined;
 
     if (directKey) {
-      // Decode provider address from the direct key token (app-sk-* format).
-      if (directKey.startsWith("app-sk-")) {
-        try {
-          const b64 = directKey.slice("app-sk-".length);
-          const decoded = Buffer.from(b64, "base64").toString("utf-8");
-          const pipeIdx = decoded.lastIndexOf("|");
-          if (pipeIdx !== -1) {
-            const payload = JSON.parse(decoded.slice(0, pipeIdx));
-            providerAddress = payload.provider ?? payload.providerAddress;
-          }
-        } catch {
-          log.warn("TEE verification: cannot decode AXIOM_COMPUTE_DIRECT_KEY");
-        }
+      const tokenInfo = decodeDirectKeyToken(directKey);
+      if (tokenInfo) {
+        providerAddress = tokenInfo.provider;
       }
     }
 

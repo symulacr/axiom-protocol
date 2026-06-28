@@ -22,27 +22,48 @@ export function getComputeBaseUrl(): string {
   return network?.computeRouterUrl ?? "https://router-api-testnet.integratenetwork.work/v1";
 }
 
-function decodeDirectKeyToken(token: string): { provider: string; address: string } | null {
+
+
+const log = createLogger("compute");
+
+const B64_RE = /^[A-Za-z0-9+\/_-]*={0,2}$/;
+
+/**
+ * Decode an app-sk-* direct key token into provider and address fields.
+ *
+ * Token format: "app-sk-" + base64("JSON-payload|hex-signature").
+ * The JSON payload uses either the SDK's `provider`/`address` field names
+ * or the legacy `providerAddress`/`user` variants.
+ */
+export function decodeDirectKeyToken(token: string): { provider: string; address: string } | null {
   if (!token.startsWith("app-sk-")) return null;
   const b64 = token.slice("app-sk-".length);
+  if (!b64 || !B64_RE.test(b64)) {
+    log.warn("decodeDirectKeyToken: invalid base64 payload", { length: b64.length });
+    return null;
+  }
   try {
     const decoded = Buffer.from(b64, "base64").toString("utf-8");
     // Format: JSON payload || "|" || hex signature
     const pipeIdx = decoded.lastIndexOf("|");
-    if (pipeIdx === -1) return null;
+    if (pipeIdx === -1) {
+      log.warn("decodeDirectKeyToken: missing '|' separator in decoded payload");
+      return null;
+    }
     const payload = JSON.parse(decoded.slice(0, pipeIdx));
     // Field normalization for SDK format variation
     const provider: string | undefined = payload.provider ?? payload.providerAddress;
     const address: string | undefined = payload.address ?? payload.user;
-    if (!provider) return null;
+    if (typeof provider !== "string" || !provider) {
+      log.warn("decodeDirectKeyToken: decoded payload missing provider field");
+      return null;
+    }
     return { provider, address: address ?? "" };
-  } catch {
+  } catch (err) {
+    log.warn("decodeDirectKeyToken: failed to parse token", { error: err instanceof Error ? err.message : String(err) });
     return null;
   }
 }
-
-
-const log = createLogger("compute");
 const NEURON_PER_0G = 10n ** 18n;
 
 /**
