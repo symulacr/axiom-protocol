@@ -1,10 +1,10 @@
 import { Indexer } from "@0gfoundation/0g-storage-ts-sdk";
 import { ethers } from "ethers";
-import { loadEnv, getEnvWithAlias } from "./env.js";
+import { loadEnv } from "./env.js";
 import { fileURLToPath } from "node:url";
-import { GALILEO_CHAIN_ID, OG_NETWORKS } from "@axiom/config/networks";
 import { uploadToStorage } from "@axiom/config/storage/0g";
 import { bigintReplacer } from "@axiom/config/types/bigint";
+import { createServer } from "node:http";
 
 import {
   POLL_INTERVAL_MS,
@@ -13,25 +13,20 @@ import {
 } from "./watcher.js";
 import type { AxiomEvent } from "./events.js";
 import { postEvent } from "./sink.js";
+import { indexerEnvSchema } from "./env-schema.js";
 
 
 // Load shared .env before any env reads.
 loadEnv(fileURLToPath(new URL("../../.env", import.meta.url)));
+const env = indexerEnvSchema.parse(process.env);
 
-const DEFAULT_RPC_URL = OG_NETWORKS[GALILEO_CHAIN_ID]?.evmRpc ?? "https://evmrpc-testnet.0g.ai";
 
 function rpcUrl() {
-  return getEnvWithAlias("AXIOM_EVM_RPC", ["OG_RPC_URL", "RPC_URL"], DEFAULT_RPC_URL);
+  return env.AXIOM_EVM_RPC;
 }
 
 function chainId() {
-  const raw = getEnvWithAlias("AXIOM_CHAIN_ID", ["OG_CHAIN_ID"], String(GALILEO_CHAIN_ID));
-  if (raw === "") return GALILEO_CHAIN_ID;
-  const n = Number(raw);
-  if (!Number.isInteger(n) || n <= 0) {
-    throw new Error(`AXIOM_CHAIN_ID is not a positive integer: ${raw}`);
-  }
-  return n;
+  return env.AXIOM_CHAIN_ID;
 }
 
 function stdoutSink(event: AxiomEvent) {
@@ -52,8 +47,8 @@ function banner(cid: number) {
 }
 
 const eventBuffer: AxiomEvent[] = [];
-const BATCH_INTERVAL = parseInt(process.env["STORAGE_BATCH_INTERVAL_MS"] ?? "5000");
-const BATCH_MAX = parseInt(process.env["STORAGE_BATCH_MAX_EVENTS"] ?? "10");
+const BATCH_INTERVAL = env.STORAGE_BATCH_INTERVAL_MS;
+const BATCH_MAX = env.STORAGE_BATCH_MAX_EVENTS;
 
 let _storageIndexer: Indexer | undefined;
 let _storageSigner: ethers.Wallet | undefined;
@@ -168,6 +163,7 @@ function composeSinks(config: EventSinkConfig, extra: {
 }
 
 async function main() {
+  const startTime = Date.now();
   const cid = chainId();
   const url = rpcUrl();
 
@@ -197,13 +193,12 @@ async function main() {
 
   //   - INDEXER_DA_ENABLED gates DA (storage) submission.
   //   - BACKEND_URL routes events to POST /v1/events.
-  const daEnabled = process.env["INDEXER_DA_ENABLED"] === "1"
-    || process.env["INDEXER_DA_ENABLED"] === "true";
-  const backendUrl = process.env["BACKEND_URL"];
-
+  const daEnabled = env.INDEXER_DA_ENABLED === "1"
+    || env.INDEXER_DA_ENABLED === "true";
+  const backendUrl = env.AXIOM_BACKEND_URL;
   // 0G Storage setup (replaces DA sidecar for event permanence)
-  const ogStorageRpc = getEnvWithAlias("AXIOM_STORAGE_RPC", ["OG_STORAGE_RPC"], "");
-  const DEPLOYER_PK = process.env["DEPLOYER_PK"];
+  const ogStorageRpc = env.AXIOM_STORAGE_RPC ?? "";
+  const DEPLOYER_PK = env.DEPLOYER_PK;
   let storageIndexer: Indexer | undefined;
   let storageSigner: ethers.Wallet | undefined;
   if (ogStorageRpc && DEPLOYER_PK) {
@@ -234,6 +229,24 @@ async function main() {
   });
   // Graceful shutdown on SIGINT / SIGTERM. We use `Promise.withResolvers()`
   // per the project's `ts-promise-with-resolvers` rule — the explicit
+  // Health check server for Docker/k8s probes
+  const healthPort = env.INDEXER_HEALTH_PORT;
+  const healthServer = createServer((req, res) => {
+    if (req.url === "/health" && req.method === "GET") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({
+        status: "ok",
+        chainId: cid,
+        lastProcessedBlock: watcher.cursor.toString(),
+        uptime: Math.floor((Date.now() - startTime) / 1000),
+      }));
+    } else {
+      res.writeHead(404);
+      res.end();
+    }
+  });
+  healthServer.listen(healthPort);
+  process.stderr.write(JSON.stringify({ level: "info", msg: "health server listening", port: healthPort }) + "\n");
   // executor form is the documented exception, not the default.
   const { promise: shutdown, resolve: resolveShutdown } = Promise.withResolvers<void>();
   const onSignal = (sig: NodeJS.Signals): void => {
@@ -246,6 +259,8 @@ async function main() {
   const handle = watcher.start();
   await shutdown;
   await handle.stop();
+  // Close the health server
+  await new Promise<void>((resolve) => healthServer.close(() => resolve()));
   stopBatchTimer();
   await flushBuffer();
   process.stderr.write(JSON.stringify({ level: "info", msg: "stopped" }) + "\n");
