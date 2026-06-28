@@ -1,6 +1,6 @@
 import { ethers } from "ethers";
 import type { JsonRpcProvider, Log } from "ethers";
-import { decodeEventLog, getAddress, type Address } from "viem";
+import { decodeEventLog, getAddress, type AbiEvent, type Address } from "viem";
 import { readFile, writeFile, rename, mkdir } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import { validateHex, type Hex } from "@axiom/config/types/hex";
@@ -134,9 +134,170 @@ type BaseFields = {
   logIndex: number;
 };
 
-  // @fix F2-A4: Refactor — 302 lines, 29 cases, ~85% boilerplate duplication.
-  // Replace switch with event parser registry (Record<EventName, EventParser>).
-  // @audit-ref: V2-A6 confirmed — 29 cases, ~280-line switch body
+
+type EventParser = (log: Log, base: BaseFields) => AxiomEvent | null;
+
+function makeEventParser(
+  kind: AxiomEvent["kind"],
+  abi: AbiEvent,
+  extract: (args: Record<string, unknown>) => Record<string, unknown>,
+): EventParser {
+  return (log, base) => {
+    const d = decodeEventLog({
+      abi: [abi],
+      data: (log.data ?? "0x") as `0x${string}`,
+      topics: [
+        (log.topics[0] ?? "0x") as `0x${string}`,
+        ...log.topics.slice(1).map((t) => (t ?? "0x") as `0x${string}`),
+      ],
+      strict: true,
+    });
+    if (!d.args) return null;
+    return { kind, ...base, ...extract(d.args as Record<string, unknown>) } as AxiomEvent;
+  };
+}
+
+const EVENT_PARSERS: Record<string, EventParser> = {
+  // AxiomAgentNFT events
+  Transfer: makeEventParser("Transfer", EVENT_ABI.Transfer, (a) => ({
+    from: getAddress(a["from"] as string),
+    to: getAddress(a["to"] as string),
+    tokenId: a["tokenId"] as bigint,
+  })),
+  Updated: makeEventParser("Updated", EVENT_ABI.Updated, (a) => ({
+    tokenId: a["tokenId"] as bigint,
+    oldDatasCount: (a["oldDatas"] as unknown[]).length,
+    newDatasCount: (a["newDatas"] as unknown[]).length,
+  })),
+  Authorization: makeEventParser("Authorization", EVENT_ABI.Authorization, (a) => ({
+    tokenId: a["tokenId"] as bigint,
+    from: getAddress(a["from"] as string),
+    to: getAddress(a["to"] as string),
+  })),
+  AuthorizationRevoked: makeEventParser("AuthorizationRevoked", EVENT_ABI.AuthorizationRevoked, (a) => ({
+    tokenId: a["tokenId"] as bigint,
+    from: getAddress(a["from"] as string),
+    to: getAddress(a["to"] as string),
+  })),
+  VerifierUpdated: makeEventParser("VerifierUpdated", EVENT_ABI.VerifierUpdated, (a) => ({
+    oldVerifier: getAddress(a["oldVerifier"] as string),
+    newVerifier: getAddress(a["newVerifier"] as string),
+  })),
+  CreatorSet: makeEventParser("CreatorSet", EVENT_ABI.CreatorSet, (a) => ({
+    tokenId: a["tokenId"] as bigint,
+    creator: getAddress(a["creator"] as string),
+  })),
+  MintFeeUpdated: makeEventParser("MintFeeUpdated", EVENT_ABI.MintFeeUpdated, (a) => ({
+    oldFee: a["oldFee"] as bigint,
+    newFee: a["newFee"] as bigint,
+  })),
+  StorageInfoUpdated: makeEventParser("StorageInfoUpdated", EVENT_ABI.StorageInfoUpdated, (a) => ({
+    oldInfo: a["oldInfo"] as string,
+    newInfo: a["newInfo"] as string,
+  })),
+  PublishedSealedKey: makeEventParser("PublishedSealedKey", EVENT_ABI.PublishedSealedKey, (a) => ({
+    to: getAddress(a["to"] as string),
+    tokenId: a["tokenId"] as bigint,
+    sealedKeys: a["sealedKeys"] as readonly Hex[],
+  })),
+  DelegateAccess: makeEventParser("DelegateAccess", EVENT_ABI.DelegateAccess, (a) => ({
+    user: getAddress(a["user"] as string),
+    assistant: getAddress(a["assistant"] as string),
+  })),
+  // AxiomStrategyVault events
+  Deposited: makeEventParser("Deposited", EVENT_ABI.Deposited, (a) => ({
+    tokenId: a["tokenId"] as bigint,
+    from: getAddress(a["from"] as string),
+    asset: getAddress(a["asset"] as string),
+    amount: a["amount"] as bigint,
+  })),
+  Withdrawn: makeEventParser("Withdrawn", EVENT_ABI.Withdrawn, (a) => ({
+    tokenId: a["tokenId"] as bigint,
+    to: getAddress(a["to"] as string),
+    asset: getAddress(a["asset"] as string),
+    amount: a["amount"] as bigint,
+  })),
+  StrategySet: makeEventParser("StrategySet", EVENT_ABI.StrategySet, (a) => ({
+    tokenId: a["tokenId"] as bigint,
+    strategyRoot: a["strategyRoot"] as Hex,
+    dailyLimit: a["dailyLimit"] as bigint,
+    validUntilDay: a["validUntilDay"] as bigint,
+  })),
+  Executed: makeEventParser("Executed", EVENT_ABI.Executed, (a) => ({
+    tokenId: a["tokenId"] as bigint,
+    actionHash: a["actionHash"] as Hex,
+    target: getAddress(a["target"] as string),
+    value: a["value"] as bigint,
+    result: a["result"] as Hex,
+  })),
+  RegistryUpdated: makeEventParser("RegistryUpdated", EVENT_ABI.RegistryUpdated, (a) => ({
+    nft: getAddress(a["nft"] as string),
+  })),
+  // AxiomPaymentProcessor events
+  PaymentProcessed: makeEventParser("PaymentProcessed", EVENT_ABI.PaymentProcessed, (a) => ({
+    agentTokenId: a["agentTokenId"] as bigint,
+    payer: getAddress(a["payer"] as string),
+    creator: getAddress(a["creator"] as string),
+    amount: a["amount"] as bigint,
+    creatorCut: a["creatorCut"] as bigint,
+    protocolCut: a["protocolCut"] as bigint,
+  })),
+  ComputeProviderPaid: makeEventParser("ComputeProviderPaid", EVENT_ABI.ComputeProviderPaid, (a) => ({
+    provider: getAddress(a["provider"] as string),
+    amount: a["amount"] as bigint,
+  })),
+  EarningsWithdrawn: makeEventParser("EarningsWithdrawn", EVENT_ABI.EarningsWithdrawn, (a) => ({
+    creator: getAddress(a["creator"] as string),
+    amount: a["amount"] as bigint,
+  })),
+  RoyaltySet: makeEventParser("RoyaltySet", EVENT_ABI.RoyaltySet, (a) => ({
+    agentTokenId: a["agentTokenId"] as bigint,
+    bps: a["bps"] as bigint,
+  })),
+  ProtocolTreasuryUpdated: makeEventParser("ProtocolTreasuryUpdated", EVENT_ABI.ProtocolTreasuryUpdated, (a) => ({
+    oldTreasury: getAddress(a["oldTreasury"] as string),
+    newTreasury: getAddress(a["newTreasury"] as string),
+  })),
+  ProtocolFeeBpsUpdated: makeEventParser("ProtocolFeeBpsUpdated", EVENT_ABI.ProtocolFeeBpsUpdated, (a) => ({
+    oldBps: a["oldBps"] as bigint,
+    newBps: a["newBps"] as bigint,
+  })),
+  PaymentTokenUpdated: makeEventParser("PaymentTokenUpdated", EVENT_ABI.PaymentTokenUpdated, (a) => ({
+    oldToken: getAddress(a["oldToken"] as string),
+    newToken: getAddress(a["newToken"] as string),
+  })),
+  // ERC7857Cloneable / AxiomAgentNFT metadata / AxiomTeeVerifier
+  Cloned: makeEventParser("Cloned", EVENT_ABI.Cloned, (a) => ({
+    tokenId: a["tokenId"] as bigint,
+    newTokenId: a["newTokenId"] as bigint,
+    from: getAddress(a["from"] as string),
+    to: getAddress(a["to"] as string),
+  })),
+  MetadataJsonDecisionDocumented: makeEventParser("MetadataJsonDecisionDocumented", EVENT_ABI.MetadataJsonDecisionDocumented, (a) => ({
+    collectionName: a["collectionName"] as string,
+    collectionSymbol: a["collectionSymbol"] as string,
+    rationaleTag: a["rationaleTag"] as string,
+  })),
+  SignerRegistered: makeEventParser("SignerRegistered", EVENT_ABI.SignerRegistered, (a) => ({
+    oldSigner: getAddress(a["oldSigner"] as string),
+    newSigner: getAddress(a["newSigner"] as string),
+  })),
+  // ERC-1967 proxy events
+  Upgraded: makeEventParser("Upgraded", EVENT_ABI.Upgraded, (a) => ({
+    implementation: getAddress(a["implementation"] as string),
+  })),
+  AdminChanged: makeEventParser("AdminChanged", EVENT_ABI.AdminChanged, (a) => ({
+    previousAdmin: getAddress(a["previousAdmin"] as string),
+    newAdmin: getAddress(a["newAdmin"] as string),
+  })),
+  BeaconUpgraded: makeEventParser("BeaconUpgraded", EVENT_ABI.BeaconUpgraded, (a) => ({
+    beacon: getAddress(a["beacon"] as string),
+  })),
+  // OpenZeppelin Initializable
+  Initialized: makeEventParser("Initialized", EVENT_ABI.Initialized, (a) => ({
+    version: Number(a["version"]),
+  })),
+};
 
 export function decodeAxiomLog(log: Log) {
   const topic0 = log.topics[0];
@@ -145,301 +306,16 @@ export function decodeAxiomLog(log: Log) {
   const name = TOPIC_TO_EVENT[lowerTopic];
   if (name === undefined) return null;
 
-  // RPC responses are already hex-validated — skip redundant check (5 validations
-  // per log × 50+ events per poll tick = 250+ regex executions saved per tick).
   const base: BaseFields = {
     blockNumber: Number(log.blockNumber),
     txHash: (log.transactionHash ?? "0x") as `0x${string}`,
     logIndex: Number(log.index),
   };
 
-  const data = (log.data ?? "0x") as `0x${string}`;
-  const topics: [`0x${string}`, ...`0x${string}`[]] = [
-    (log.topics[0] ?? "0x") as `0x${string}`,
-    ...log.topics.slice(1).map(t => (t ?? "0x") as `0x${string}`),
-  ];
-
-  switch (name) {
-    case "Transfer": {
-      const d = decodeEventLog({ abi: [EVENT_ABI.Transfer], data, topics, strict: true });
-      return {
-        kind: "Transfer",
-        ...base,
-        from: getAddress(d.args.from),
-        to: getAddress(d.args.to),
-        tokenId: d.args.tokenId,
-      } satisfies Extract<AxiomEvent, { kind: "Transfer" }>;
-    }
-    case "Updated": {
-      const d = decodeEventLog({ abi: [EVENT_ABI.Updated], data, topics, strict: true });
-      return {
-        kind: "Updated",
-        ...base,
-        tokenId: d.args.tokenId,
-        oldDatasCount: d.args.oldDatas.length,
-        newDatasCount: d.args.newDatas.length,
-      } satisfies Extract<AxiomEvent, { kind: "Updated" }>;
-    }
-    case "Authorization": {
-      const d = decodeEventLog({ abi: [EVENT_ABI.Authorization], data, topics, strict: true });
-      return {
-        kind: "Authorization",
-        ...base,
-        tokenId: d.args.tokenId,
-        from: getAddress(d.args.from),
-        to: getAddress(d.args.to),
-      } satisfies Extract<AxiomEvent, { kind: "Authorization" }>;
-    }
-    case "AuthorizationRevoked": {
-      const d = decodeEventLog({ abi: [EVENT_ABI.AuthorizationRevoked], data, topics, strict: true });
-      return {
-        kind: "AuthorizationRevoked",
-        ...base,
-        tokenId: d.args.tokenId,
-        from: getAddress(d.args.from),
-        to: getAddress(d.args.to),
-      } satisfies Extract<AxiomEvent, { kind: "AuthorizationRevoked" }>;
-    }
-    case "VerifierUpdated": {
-      const d = decodeEventLog({ abi: [EVENT_ABI.VerifierUpdated], data, topics, strict: true });
-      return {
-        kind: "VerifierUpdated",
-        ...base,
-        oldVerifier: getAddress(d.args.oldVerifier),
-        newVerifier: getAddress(d.args.newVerifier),
-      } satisfies Extract<AxiomEvent, { kind: "VerifierUpdated" }>;
-    }
-    case "CreatorSet": {
-      const d = decodeEventLog({ abi: [EVENT_ABI.CreatorSet], data, topics, strict: true });
-      return {
-        kind: "CreatorSet",
-        ...base,
-        tokenId: d.args.tokenId,
-        creator: getAddress(d.args.creator),
-      } satisfies Extract<AxiomEvent, { kind: "CreatorSet" }>;
-    }
-    case "MintFeeUpdated": {
-      const d = decodeEventLog({ abi: [EVENT_ABI.MintFeeUpdated], data, topics, strict: true });
-      return {
-        kind: "MintFeeUpdated",
-        ...base,
-        oldFee: d.args.oldFee,
-        newFee: d.args.newFee,
-      } satisfies Extract<AxiomEvent, { kind: "MintFeeUpdated" }>;
-    }
-    case "StorageInfoUpdated": {
-      const d = decodeEventLog({ abi: [EVENT_ABI.StorageInfoUpdated], data, topics, strict: true });
-      return {
-        kind: "StorageInfoUpdated",
-        ...base,
-        oldInfo: d.args.oldInfo,
-        newInfo: d.args.newInfo,
-      } satisfies Extract<AxiomEvent, { kind: "StorageInfoUpdated" }>;
-    }
-    case "PublishedSealedKey": {
-      const d = decodeEventLog({ abi: [EVENT_ABI.PublishedSealedKey], data, topics, strict: true });
-      return {
-        kind: "PublishedSealedKey",
-        ...base,
-        to: getAddress(d.args.to),
-        tokenId: d.args.tokenId,
-        sealedKeys: d.args.sealedKeys,
-      } satisfies Extract<AxiomEvent, { kind: "PublishedSealedKey" }>;
-    }
-    case "DelegateAccess": {
-      const d = decodeEventLog({ abi: [EVENT_ABI.DelegateAccess], data, topics, strict: true });
-      return {
-        kind: "DelegateAccess",
-        ...base,
-        user: getAddress(d.args.user),
-        assistant: getAddress(d.args.assistant),
-      } satisfies Extract<AxiomEvent, { kind: "DelegateAccess" }>;
-    }
-    case "Deposited": {
-      const d = decodeEventLog({ abi: [EVENT_ABI.Deposited], data, topics, strict: true });
-      return {
-        kind: "Deposited",
-        ...base,
-        tokenId: d.args.tokenId,
-        from: getAddress(d.args.from),
-        asset: getAddress(d.args.asset),
-        amount: d.args.amount,
-      } satisfies Extract<AxiomEvent, { kind: "Deposited" }>;
-    }
-    case "Withdrawn": {
-      const d = decodeEventLog({ abi: [EVENT_ABI.Withdrawn], data, topics, strict: true });
-      return {
-        kind: "Withdrawn",
-        ...base,
-        tokenId: d.args.tokenId,
-        to: getAddress(d.args.to),
-        asset: getAddress(d.args.asset),
-        amount: d.args.amount,
-      } satisfies Extract<AxiomEvent, { kind: "Withdrawn" }>;
-    }
-    case "StrategySet": {
-      const d = decodeEventLog({ abi: [EVENT_ABI.StrategySet], data, topics, strict: true });
-      return {
-        kind: "StrategySet",
-        ...base,
-        tokenId: d.args.tokenId,
-        strategyRoot: d.args.strategyRoot,
-        dailyLimit: d.args.dailyLimit,
-        validUntilDay: d.args.validUntilDay,
-      } satisfies Extract<AxiomEvent, { kind: "StrategySet" }>;
-    }
-    case "Executed": {
-      const d = decodeEventLog({ abi: [EVENT_ABI.Executed], data, topics, strict: true });
-      return {
-        kind: "Executed",
-        ...base,
-        tokenId: d.args.tokenId,
-        actionHash: d.args.actionHash,
-        target: getAddress(d.args.target),
-        value: d.args.value,
-        result: d.args.result,
-      } satisfies Extract<AxiomEvent, { kind: "Executed" }>;
-    }
-    case "RegistryUpdated": {
-      const d = decodeEventLog({ abi: [EVENT_ABI.RegistryUpdated], data, topics, strict: true });
-      return {
-        kind: "RegistryUpdated",
-        ...base,
-        nft: getAddress(d.args.nft),
-      } satisfies Extract<AxiomEvent, { kind: "RegistryUpdated" }>;
-    }
-    case "PaymentProcessed": {
-      const d = decodeEventLog({ abi: [EVENT_ABI.PaymentProcessed], data, topics, strict: true });
-      return {
-        kind: "PaymentProcessed",
-        ...base,
-        agentTokenId: d.args.agentTokenId,
-        payer: getAddress(d.args.payer),
-        creator: getAddress(d.args.creator),
-        amount: d.args.amount,
-        creatorCut: d.args.creatorCut,
-        protocolCut: d.args.protocolCut,
-      } satisfies Extract<AxiomEvent, { kind: "PaymentProcessed" }>;
-    }
-    case "ComputeProviderPaid": {
-      const d = decodeEventLog({ abi: [EVENT_ABI.ComputeProviderPaid], data, topics, strict: true });
-      return {
-        kind: "ComputeProviderPaid",
-        ...base,
-        provider: getAddress(d.args.provider),
-        amount: d.args.amount,
-      } satisfies Extract<AxiomEvent, { kind: "ComputeProviderPaid" }>;
-    }
-    case "EarningsWithdrawn": {
-      const d = decodeEventLog({ abi: [EVENT_ABI.EarningsWithdrawn], data, topics, strict: true });
-      return {
-        kind: "EarningsWithdrawn",
-        ...base,
-        creator: getAddress(d.args.creator),
-        amount: d.args.amount,
-      } satisfies Extract<AxiomEvent, { kind: "EarningsWithdrawn" }>;
-    }
-    case "RoyaltySet": {
-      const d = decodeEventLog({ abi: [EVENT_ABI.RoyaltySet], data, topics, strict: true });
-      return {
-        kind: "RoyaltySet",
-        ...base,
-        agentTokenId: d.args.agentTokenId,
-        bps: d.args.bps,
-      } satisfies Extract<AxiomEvent, { kind: "RoyaltySet" }>;
-    }
-    case "ProtocolTreasuryUpdated": {
-      const d = decodeEventLog({ abi: [EVENT_ABI.ProtocolTreasuryUpdated], data, topics, strict: true });
-      return {
-        kind: "ProtocolTreasuryUpdated",
-        ...base,
-        oldTreasury: getAddress(d.args.oldTreasury),
-        newTreasury: getAddress(d.args.newTreasury),
-      } satisfies Extract<AxiomEvent, { kind: "ProtocolTreasuryUpdated" }>;
-    }
-    case "ProtocolFeeBpsUpdated": {
-      const d = decodeEventLog({ abi: [EVENT_ABI.ProtocolFeeBpsUpdated], data, topics, strict: true });
-      return {
-        kind: "ProtocolFeeBpsUpdated",
-        ...base,
-        oldBps: d.args.oldBps,
-        newBps: d.args.newBps,
-      } satisfies Extract<AxiomEvent, { kind: "ProtocolFeeBpsUpdated" }>;
-    }
-    case "PaymentTokenUpdated": {
-      const d = decodeEventLog({ abi: [EVENT_ABI.PaymentTokenUpdated], data, topics, strict: true });
-      return {
-        kind: "PaymentTokenUpdated",
-        ...base,
-        oldToken: getAddress(d.args.oldToken),
-        newToken: getAddress(d.args.newToken),
-      } satisfies Extract<AxiomEvent, { kind: "PaymentTokenUpdated" }>;
-    }
-    case "Cloned": {
-      const d = decodeEventLog({ abi: [EVENT_ABI.Cloned], data, topics, strict: true });
-      return {
-        kind: "Cloned",
-        ...base,
-        tokenId: d.args.tokenId,
-        newTokenId: d.args.newTokenId,
-        from: getAddress(d.args.from),
-        to: getAddress(d.args.to),
-      } satisfies Extract<AxiomEvent, { kind: "Cloned" }>;
-    }
-    case "MetadataJsonDecisionDocumented": {
-      const d = decodeEventLog({ abi: [EVENT_ABI.MetadataJsonDecisionDocumented], data, topics, strict: true });
-      return {
-        kind: "MetadataJsonDecisionDocumented",
-        ...base,
-        collectionName: d.args.collectionName,
-        collectionSymbol: d.args.collectionSymbol,
-        rationaleTag: d.args.rationaleTag,
-      } satisfies Extract<AxiomEvent, { kind: "MetadataJsonDecisionDocumented" }>;
-    }
-    case "SignerRegistered": {
-      const d = decodeEventLog({ abi: [EVENT_ABI.SignerRegistered], data, topics, strict: true });
-      return {
-        kind: "SignerRegistered",
-        ...base,
-        oldSigner: getAddress(d.args.oldSigner),
-        newSigner: getAddress(d.args.newSigner),
-      } satisfies Extract<AxiomEvent, { kind: "SignerRegistered" }>;
-    }
-    case "Upgraded": {
-      const d = decodeEventLog({ abi: [EVENT_ABI.Upgraded], data, topics, strict: true });
-      return {
-        kind: "Upgraded",
-        ...base,
-        implementation: getAddress(d.args.implementation),
-      } satisfies Extract<AxiomEvent, { kind: "Upgraded" }>;
-    }
-    case "AdminChanged": {
-      const d = decodeEventLog({ abi: [EVENT_ABI.AdminChanged], data, topics, strict: true });
-      return {
-        kind: "AdminChanged",
-        ...base,
-        previousAdmin: getAddress(d.args.previousAdmin),
-        newAdmin: getAddress(d.args.newAdmin),
-      } satisfies Extract<AxiomEvent, { kind: "AdminChanged" }>;
-    }
-    case "BeaconUpgraded": {
-      const d = decodeEventLog({ abi: [EVENT_ABI.BeaconUpgraded], data, topics, strict: true });
-      return {
-        kind: "BeaconUpgraded",
-        ...base,
-        beacon: getAddress(d.args.beacon),
-      } satisfies Extract<AxiomEvent, { kind: "BeaconUpgraded" }>;
-    }
-    case "Initialized": {
-      const d = decodeEventLog({ abi: [EVENT_ABI.Initialized], data, topics, strict: true });
-      return {
-        kind: "Initialized",
-        ...base,
-        version: Number(d.args.version),
-      } satisfies Extract<AxiomEvent, { kind: "Initialized" }>;
-    }
-   }
- }
+  const parser = EVENT_PARSERS[name];
+  if (!parser) return null;
+  return parser(log, base);
+}
 
 /** Run a single poll tick: fetch logs in `[fromBlock, fromBlock + window)`. */
 export async function pollOnce(

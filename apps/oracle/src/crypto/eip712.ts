@@ -1,30 +1,36 @@
 import { toUtf8Bytes, keccak256, AbiCoder, concat, getBytes, SigningKey, computeAddress } from "ethers";
 import type { Hex } from "viem";
+import {
+  type Eip712Domain,
+  EIP712_DOMAIN_NAME,
+  EIP712_DOMAIN_VERSION,
+  ACCESS_PROOF_TYPES,
+  OWNERSHIP_PROOF_TYPES,
+} from "@axiom/config/eip712";
+
+export { DEFAULT_EIP712_DOMAIN } from "@axiom/config/eip712";
+export type { Eip712Domain } from "@axiom/config/eip712";
+
+// ---------------------------------------------------------------------------
+// Helpers to build EIP-712 struct type strings from the canonical schemas.
+// ---------------------------------------------------------------------------
+
+function eip712TypeString(typeName: string, fields: ReadonlyArray<{ name: string; type: string }>): string {
+  return `${typeName}(${fields.map((f) => `${f.type} ${f.name}`).join(",")})`;
+}
 
 const EIP712_DOMAIN_TYPEHASH = keccak256(
   toUtf8Bytes("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
 );
 const OWNERSHIP_PROOF_TYPEHASH = keccak256(
-  toUtf8Bytes("OwnershipProof(bytes32 dataHash,bytes sealedKey,bytes targetPubkey,address to,address nft,uint256 nonce,uint256 validUntil)"),
+  toUtf8Bytes(eip712TypeString("OwnershipProof", OWNERSHIP_PROOF_TYPES.OwnershipProof)),
 );
 const ACCESS_PROOF_TYPEHASH = keccak256(
-  toUtf8Bytes("AccessProof(bytes32 dataHash,bytes targetPubkey,address to,address nft,uint256 nonce,uint256 validUntil)"),
+  toUtf8Bytes(eip712TypeString("AccessProof", ACCESS_PROOF_TYPES.AccessProof)),
 );
 
-const VERIFIER_NAME_HASH = keccak256(toUtf8Bytes("AxiomTeeVerifier"));
-const VERIFIER_VERSION_HASH = keccak256(toUtf8Bytes("1"));
-
-/** EIP-712 domain: binds signatures to specific chain + verifier contract. */
-export interface Eip712Domain {
-  chainId: bigint;
-  verifyingContract: `0x${string}`;
-}
-
-/** Default domain for Galileo testnet. Production MUST pass real chain id + verifier address. */
-export const DEFAULT_EIP712_DOMAIN: Eip712Domain = {
-  chainId: 16602n,
-  verifyingContract: "0xB27c73aD01f61Ec1FDC302dF2350326228F14c11",
-};
+const VERIFIER_NAME_HASH = keccak256(toUtf8Bytes(EIP712_DOMAIN_NAME));
+const VERIFIER_VERSION_HASH = keccak256(toUtf8Bytes(EIP712_DOMAIN_VERSION));
 
 const abiCoder = AbiCoder.defaultAbiCoder();
 

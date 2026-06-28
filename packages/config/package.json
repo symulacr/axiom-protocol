@@ -7,6 +7,7 @@
   "main": "./dist/index.js",
   "exports": {
     ".": "./dist/index.js",
+    "./eip712": "./dist/eip712.js",
     "./env": "./dist/env.js",
     "./networks": "./dist/networks.js",
     "./addresses": "./dist/addresses.js",
