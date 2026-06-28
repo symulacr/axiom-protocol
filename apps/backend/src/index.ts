@@ -50,3 +50,7 @@ startServer({
         : getAddress(DEPLOYED_ADDRESSES.paymentProcessor),
   },
 });
+
+// @fix F1-A3: Add SIGTERM/SIGINT handler to gracefully close HTTP server, WS, flush EventStore
+// @fix F1-A1: Add process.on('unhandledRejection') handler — zero across all apps
+// @audit-ref: V1-A4 (no SIGTERM), V1-A1 (no unhandledRejection)

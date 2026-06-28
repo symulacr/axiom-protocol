@@ -138,6 +138,9 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: i
     validUntil?: string | number;
   }
 
+// @fix F1-A2: Wrap entire handler body in outer try/catch — 80 lines of unprotected async code after Zod parse
+// @audit-ref: V1-A2 confirmed — only inner try/catch wraps schema.parse (lines 143-151)
+
   app.post("/v1/ownership", async (req: Request<Record<string, never>, unknown, OwnershipRequestBody>, res: Response) => {
     let parsedBody;
     try {

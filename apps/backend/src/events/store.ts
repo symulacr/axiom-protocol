@@ -260,6 +260,11 @@ export class EventStore {
     this.byTokenId.clear();
     this.total = 0;
   }
+
+  // @fix F1-A6: Add flush() method that resolves the debounce timer and persist() before shutdown.
+  // persistDebounced() uses setTimeout(2s) with no drain — in-flight events lost on crash/SIGKILL.
+  // Call flush() from new SIGTERM handler (F1-A3). See docs/audit/EXECUTION_ROADMAP.md.
+  // @audit-ref: V2-A7 confirmed — EventStore has no flush/drain mechanism
 }
 
 /**

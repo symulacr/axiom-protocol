@@ -49,3 +49,6 @@ process.on("SIGINT", () => {
   oracleHttp.closeAllConnections?.();
   oracleHttp.close(() => process.exit(0));
 });
+
+// @fix F1-A1: Add process.on('unhandledRejection') handler — oracle has SIGTERM but not rejection handler
+// @audit-ref: V1-A1 confirmed — zero across all apps
