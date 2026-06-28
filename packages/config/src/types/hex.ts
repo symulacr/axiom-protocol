@@ -8,7 +8,7 @@ export type Address = Hex & { readonly __address: unique symbol };
 /** Runtime validator + THE ONE sanctioned `as Hex` in the entire project. */
 export function validateHex(value: string, label = "value"): Hex {
   if (!HEX_REGEX.test(value)) throw new Error(`Invalid hex ${label}: ${value}`);
-  return value as Hex;  // ← THE ONE sanctioned as cast
+  return value as Hex;
 }
 
 export function validateAddress(value: string, label = "address"): Address {

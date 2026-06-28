@@ -1,11 +1,4 @@
-// ---------------------------------------------------------------------------
-// Canonical EIP-712 domain and type definitions for Axiom Protocol.
-//
-// This is the SINGLE source of truth. Both `@axiom/oracle` and `@axiom/frontend`
-// MUST import from here rather than duplicating type strings or schema objects.
-// ---------------------------------------------------------------------------
-
-/* ---- Domain ---- */
+// Canonical EIP-712 domain and type definitions for Axiom Protocol. Both @axiom/oracle and @axiom/frontend MUST import from here rather than duplicating type strings or schema objects.
 
 export const EIP712_DOMAIN_NAME = "AxiomTeeVerifier" as const;
 export const EIP712_DOMAIN_VERSION = "1" as const;
@@ -21,7 +14,6 @@ export const DEFAULT_EIP712_DOMAIN: Eip712Domain = {
   verifyingContract: "0xB27c73aD01f61Ec1FDC302dF2350326228F14c11",
 };
 
-/* ---- AccessProof ---- */
 
 export const ACCESS_PROOF_TYPES = {
   AccessProof: [
@@ -34,7 +26,6 @@ export const ACCESS_PROOF_TYPES = {
   ],
 } as const;
 
-/* ---- OwnershipProof ---- */
 
 export const OWNERSHIP_PROOF_TYPES = {
   OwnershipProof: [
