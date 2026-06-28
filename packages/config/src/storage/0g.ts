@@ -59,8 +59,6 @@ export class InMemoryStorage implements StorageAdapter {
   }
 }
 
-// Core upload/download helpers
-
 export async function uploadToStorage(
   indexer: Indexer,
   data: Uint8Array,
@@ -91,8 +89,6 @@ export async function downloadFromStorage(
 
   return { data, rootHash, size: data.length };
 }
-
-// Unified ZeroGStorage
 
 export class ZeroGStorage implements StorageAdapter {
   readonly indexer: Indexer;
