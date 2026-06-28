@@ -23,7 +23,7 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "pnpm --filter @axiom/config --filter @axiom/backend --filter @axiom/oracle --filter @axiom/indexer run build",
+    "build": "pnpm --filter @axiom/config build && pnpm --filter @axiom/oracle build && pnpm --filter @axiom/indexer build && pnpm --filter @axiom/backend build",
     "start": "node apps/backend/dist/index.js",
     "test": "pnpm -r run test",
     "typecheck": "pnpm -r run typecheck",
