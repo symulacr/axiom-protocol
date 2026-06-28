@@ -47,7 +47,6 @@ function validatePubKey(value: string): string | null {
   return null;
 }
 
-// ── Phase indicator ──────────────────────────────────────────────────────────
 
 function PhaseIndicator({ transferPhase }: { transferPhase: TransferPhase }): ReactElement {
   const phase = transferPhase;
@@ -64,7 +63,6 @@ function PhaseIndicator({ transferPhase }: { transferPhase: TransferPhase }): Re
   );
 }
 
-// ── Form phase (fill in transfer details) ────────────────────────────────────
 
 function TransferFormPhase({
   formId,
@@ -235,7 +233,6 @@ function TransferFormPhase({
   );
 }
 
-// ── Confirm phase (review + submit on-chain) ─────────────────────────────────
 
 function ConfirmTransferPhase({
   formId,
@@ -321,7 +318,6 @@ function ConfirmTransferPhase({
   );
 }
 
-// ── Main component ───────────────────────────────────────────────────────────
 
 export function TransferModal({
   tokenId,

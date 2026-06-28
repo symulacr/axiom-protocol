@@ -29,7 +29,6 @@ export function registerAgentRoutes(
   const agentCache = new Map<string, { data: unknown; timestamp: number }>();
   const AGENT_CACHE_TTL = 30_000;
 
-  // GET /v1/agents — list agents owned by address
   app.get("/v1/agents", async (req: Request, res: Response, next: NextFunction) => {
     try {
       const owner = typeof req.query.owner === "string" ? req.query.owner.toLowerCase() : undefined;
@@ -37,7 +36,6 @@ export function registerAgentRoutes(
         sendError(res, 400, "Valid owner address required");
         return;
       }
-      // Check cache
       const cached = agentCache.get(owner);
       if (cached && Date.now() - cached.timestamp < AGENT_CACHE_TTL) {
         res.json(cached.data);

@@ -50,7 +50,6 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
   const app = express();
   app.use(express.json({ limit: "2mb" }));
 
-  // Request ID + logging
   app.use((req, res, next) => {
     const requestId = crypto.randomUUID();
     res.setHeader("x-request-id", requestId);
@@ -66,7 +65,6 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
     next();
   });
 
-  // Security middleware
   const DEV_FRONTEND_ORIGIN = 'http://localhost:5173';
   app.use(helmet({
     contentSecurityPolicy: {
@@ -84,7 +82,6 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
   app.use(rateLimit({ windowMs: 60_000, max: 100, standardHeaders: true, legacyHeaders: false }));
   app.set("json replacer", bigintReplacer);
 
-  // Shared state
   const ogChainId = config.env?.AXIOM_CHAIN_ID ?? GALILEO_CHAIN_ID;
   const oracle = new DefaultSignerOracleClient({ baseUrl: config.oracleBaseUrl });
   const eip712Domain: Eip712Domain = {
@@ -119,10 +116,9 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
     return payment;
   }
 
-  // WebSocket heartbeat
   const HEARTBEAT_INTERVAL = 30_000;
   const MAX_MISSED_PINGS = 3;
-  const MAX_WS_CLIENTS = 1000; // imported from utils/constants.ts via broadcaster
+  const MAX_WS_CLIENTS = 1000;
   const heartbeatTimer = setInterval(() => {
     const wsClients = getClients();
     for (const c of wsClients) {
@@ -133,10 +129,8 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
     }
   }, HEARTBEAT_INTERVAL);
 
-  // Health router
   app.use(createHealthRouter(provider, oracle, config.signer.address, config.addresses));
 
-  // === Compute providers ===
   app.get("/v1/compute/providers", async (_req: Request, res: Response, next: NextFunction) => {
     try {
       const routerBaseUrl = getComputeBaseUrl();
@@ -156,7 +150,6 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
     } catch (err) { next(err); }
   });
 
-  // === Chat completions proxy ===
   app.post("/v1/chat/completions", async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { messages, tools } = chatBodySchema.parse(req.body ?? {});
@@ -174,13 +167,11 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
     } catch (err) { next(err); }
   });
 
-  // === Register route modules ===
   registerAgentRoutes(app, config, provider, oracle, eip712Domain);
   registerEventRoutes(app, config, getEventStore());
   registerPerformanceRoutes(app, config, getEventStore());
   registerOrchestratorRoutes(app, config, getOrCreateOrchestrator, ogChainId);
 
-// === Wayback / Internet Archive routes ===
 const archiveRouter = express.Router();
 
 createRoute(archiveRouter, {
@@ -216,7 +207,6 @@ createRoute(archiveRouter, {
 
 app.use(archiveRouter);
 
-// === Payment routes ===
 const paymentRouter = express.Router();
 createRoute(paymentRouter, {
   path: "/v1/agents/:id/earnings", method: "get", requireId: true,
@@ -257,7 +247,6 @@ createRoute(paymentRouter, {
   }, config);
   app.use(paymentRouter);
 
-  // === Error handler ===
   app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
     log.error("Unhandled error", { error: err.message, stack: err.stack });
     if (err instanceof z.ZodError) { res.status(400).json({ error: "Validation failed", details: err.issues, code: "VALIDATION_ERROR" }); return; }
@@ -268,7 +257,6 @@ createRoute(paymentRouter, {
     res.status(500).json({ error: "Internal server error", code: "INTERNAL_ERROR" });
   });
 
-  // === WebSocket server ===
   const httpServer = createServer(app);
   const wss = new WebSocketServer({ noServer: true });
   httpServer.on("upgrade", (req, socket, head) => {
