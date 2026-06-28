@@ -26,13 +26,9 @@ interface IERC7857 is IERC721, IERC7857Metadata {
     event PublishedSealedKey(address indexed to, uint256 indexed tokenId, bytes[] sealedKeys);
     event DelegateAccess(address indexed user, address indexed assistant);
 
-    /// @notice Get the verifier contract (TEE or ZKP oracle)
     function verifier() external view returns (IERC7857DataVerifier);
 
     /// @notice Transfer a token with re-encrypted metadata (ERC-7857 transfer)
-    /// @param _from Current owner
-    /// @param _to New owner
-    /// @param _tokenId Token to transfer
     /// @param _proofs One TransferValidityProof per IntelligentData entry on the token
     function iTransferFrom(
         address _from,
@@ -42,8 +38,6 @@ interface IERC7857 is IERC721, IERC7857Metadata {
     ) external;
 
     /// @notice Transfer a token with validity proofs (3-arg form per EIP-7857)
-    /// @param _to The receiver address
-    /// @param _tokenId The token to transfer
     /// @param _proofs Array of transfer validity proofs
     function iTransfer(
         address _to,
@@ -57,8 +51,7 @@ interface IERC7857 is IERC721, IERC7857Metadata {
         address _assistant
     ) external;
 
-    /// @notice Get the access assistant for a user (or address(0) if none)
-    /// @return The assistant address
+    /// @notice assistant for user; address(0) if none
     function getDelegateAccess(
         address _user
     ) external view returns (address);

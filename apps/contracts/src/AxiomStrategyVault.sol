@@ -109,7 +109,7 @@ contract AxiomStrategyVault is Ownable, Pausable, ReentrancyGuard {
         return _getVaults()[tokenId].balance;
     }
 
-    /// @notice Set the Merkle root of approved actions + daily value limit
+    /// @notice Set strategy Merkle root and daily limit
     function setStrategy(
         uint256 tokenId,
         bytes32 root,
@@ -143,7 +143,7 @@ contract AxiomStrategyVault is Ownable, Pausable, ReentrancyGuard {
         if (value > v.balance) revert ZeroAmount();
         if (target == address(0)) revert ZeroAddress();
 
-        // Daily-limit accounting with auto-reset on day rollover
+        // Auto-reset daily spend on day rollover
         uint64 today = uint64(block.timestamp / 1 days);
         if (today != v.resetDay) {
             v.dailySpent = 0;
@@ -151,7 +151,6 @@ contract AxiomStrategyVault is Ownable, Pausable, ReentrancyGuard {
         }
         if (v.dailySpent + value > v.dailyLimit) revert DailyLimitExceeded();
 
-        // Verify the action hash is in the strategy tree
         bytes32 actionHash = keccak256(abi.encode(target, value, keccak256(data)));
         if (!MerkleProof.verify(merkleProof, v.strategyRoot, actionHash)) revert InvalidMerkleProof();
 
@@ -159,7 +158,6 @@ contract AxiomStrategyVault is Ownable, Pausable, ReentrancyGuard {
         v.balance -= value;
         v.dailySpent += value;
 
-        // External call
         bytes memory result;
         bool ok;
         if (data.length == 0) {

@@ -196,7 +196,7 @@ contract AxiomPaymentProcessor is Ownable, Pausable, ReentrancyGuard {
         PaymentProcessorStorage storage $ = _getStorage();
         IERC20 token = $.paymentToken;
 
-        // Determine the creator and royalty bps (per-agent override, else default protocol fee)
+        // Per-agent override, else default protocol fee
         address creator = IAxiomAgentNFT(AXIOM_NFT).creatorOf(agentTokenId);
         if (creator == address(0)) revert AgentCreatorNotRegistered();
         uint256 creatorCut;
@@ -214,16 +214,10 @@ contract AxiomPaymentProcessor is Ownable, Pausable, ReentrancyGuard {
             $.agentEarnings[creator] += creatorCut;
         }
 
-        // External call: pull the full amount from the payer (one transferFrom is cheaper than
-        // two transfers, and we know exactly the amount the contract is taking custody of).
-        // SafeERC20 reverts with SafeERC20FailedOperation(token) on failure (e.g. insufficient
-        // allowance, insufficient balance, fee-on-transfer, or non-conforming ERC-20). The
-        // credited earnings will still be on the books, but the tx reverts, so atomicity
-        // is preserved at the call site.
+        // Single transferFrom is cheaper than splitting. SafeERC20 reverts on failure.
         // See: https://docs.openzeppelin.com/contracts/5.x/api/token/erc20#SafeERC20-safeTransferFrom-address-address-uint256-
         token.safeTransferFrom(msg.sender, address(this), amount);
 
-        // Forward the protocol's cut to the treasury in the same call.
         if (protocolCut > 0) {
             token.safeTransfer($.protocolTreasury, protocolCut);
         }
@@ -255,7 +249,6 @@ contract AxiomPaymentProcessor is Ownable, Pausable, ReentrancyGuard {
         // double-spend the same earnings.
         $.agentEarnings[msg.sender] = 0;
         emit EarningsWithdrawn(msg.sender, amount);
-        // Forward the payment token. See: https://docs.openzeppelin.com/contracts/5.x/api/token/erc20#SafeERC20-safeTransfer-address-uint256-
         $.paymentToken.safeTransfer(msg.sender, amount);
     }
 
