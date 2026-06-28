@@ -18,7 +18,7 @@ import "@0g-agent-nft/Utils.sol";
 /// @notice Base ERC-7857 implementation: token transfer with re-encrypted metadata
 /// @dev Adapted from the 0G Agentic ID reference (MIT)
 abstract contract ERC7857Upgradeable is IERC7857, ERC721Upgradeable {
-    /// @notice Emitted when a token is transferred with proof verification (EIP-7857)
+    /// @notice EIP-7857 transfer (with proof verification)
     event Transferred(uint256 _tokenId, address indexed _from, address indexed _to);
 
     /// @custom:storage-location erc7857:0g.storage.ERC7857

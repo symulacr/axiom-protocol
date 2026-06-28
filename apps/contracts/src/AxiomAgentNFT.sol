@@ -40,13 +40,9 @@ contract AxiomAgentNFT is
     ERC7857AuthorizeUpgradeable,
     ERC7857IDataStorageUpgradeable
 {
-    /// @notice Emitted when the verifier is updated
     event VerifierUpdated(address indexed oldVerifier, address indexed newVerifier);
-    /// @notice Emitted when a creator is set for a token
     event CreatorSet(uint256 indexed tokenId, address indexed creator);
-    /// @notice Emitted when the mint fee is updated
     event MintFeeUpdated(uint256 oldFee, uint256 newFee);
-    /// @notice Emitted when the storage info is updated
     event StorageInfoUpdated(string oldInfo, string newInfo);
     event MetadataJsonDecisionDocumented(string collectionName, string collectionSymbol, string rationaleTag);
 
