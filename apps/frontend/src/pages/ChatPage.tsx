@@ -1,3 +1,7 @@
+// @fix F2-A2: Refactor — 798 lines, 13 responsibilities, 147-line sendMessage, 154-line useToolHandlers
+// Extract SSE parser, tool handlers, message list, and streaming logic into separate modules
+// @audit-ref: V2-A5 confirmed (exact 798 lines, 13 distinct responsibilities)
+
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { useAccount, usePublicClient, useWriteContract } from 'wagmi';
 import { parseEther, formatEther } from 'viem';

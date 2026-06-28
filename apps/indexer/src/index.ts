@@ -258,3 +258,7 @@ main().catch((err: unknown) => {
   process.stderr.write(JSON.stringify({ level: "error", msg: "fatal", err: message }) + "\n");
   process.exit(1);
 });
+
+// @fix F1-A1: Add process.on('unhandledRejection') handler — currently only .catch() on main() promise,
+// does not catch rejections outside main() scope
+// @audit-ref: V1-A1 confirmed — zero global handlers across all apps

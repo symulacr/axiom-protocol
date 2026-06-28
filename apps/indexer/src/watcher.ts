@@ -134,6 +134,10 @@ type BaseFields = {
   logIndex: number;
 };
 
+  // @fix F2-A4: Refactor — 302 lines, 29 cases, ~85% boilerplate duplication.
+  // Replace switch with event parser registry (Record<EventName, EventParser>).
+  // @audit-ref: V2-A6 confirmed — 29 cases, ~280-line switch body
+
 export function decodeAxiomLog(log: Log) {
   const topic0 = log.topics[0];
   if (typeof topic0 !== "string") return null;
@@ -563,6 +567,9 @@ export class Watcher {
 
         // Range derived from clamped toBlock — tells pollOnce exactly what we want.
         const range = toBlock - fromBlock + 1n;
+        // @fix F1-A4: Individual log decode can throw and abort entire tick.
+        // Wrap decodeAxiomLog in per-log try/catch so one bad event doesn't lose the window.
+        // @audit-ref: V2-A7 confirmed — decodeAxiomLog has zero try/catch blocks internally.
         const logs = await pollOnce(this.provider, this.watchList, fromBlock, range);
         logs.sort(logsByChainOrder);
         for (const log of logs) {
@@ -588,6 +595,10 @@ export class Watcher {
         });
         // Back off on error to avoid hammering the RPC.
         const { promise, resolve } = Promise.withResolvers<void>();
+
+// @fix F1-A5: Add max-fail threshold + circuit breaker to retry loop.
+// Currently retries forever with no backoff escalation — permanent errors loop indefinitely.
+// @audit-ref: V2-A7 confirmed — while(true) loop at line 605 has no fail counter
         setTimeout(resolve, this.intervalMs);
         await promise;
       }
