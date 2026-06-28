@@ -41,7 +41,6 @@ export interface ExecutedPayload {
   value: string;
 }
 
-/** Union of all known event payloads. */
 export type EventPayload = TickPayload | TransferPayload | DepositedPayload | WithdrawnPayload | StrategySetPayload | ExecutedPayload | Record<string, unknown>;
 
 /** Safely extract a string field from an unknown payload. */

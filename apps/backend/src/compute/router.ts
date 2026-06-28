@@ -46,7 +46,6 @@ export async function createRouterClient(timeout = ROUTER_TIMEOUT_MS): Promise<O
     if (tokenInfo) {
       const providerUrl = await resolveProviderUrl(tokenInfo.provider);
       if (providerUrl) {
-        // Provider-specific inference endpoint from on-chain registry
         return new OpenAI({
           baseURL: `${providerUrl}/v1/proxy`,
           apiKey: directKey,

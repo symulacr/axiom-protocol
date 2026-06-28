@@ -11,7 +11,6 @@ export function registerEventRoutes(
   config: ServerConfig,
   events: EventStore,
 ): void {
-  // POST /v1/events — append event to store (indexer)
   createRoute(app, {
     method: "post", path: "/v1/events", schema: eventBodySchema,
     consumer: "sink.ts", description: "Append event to store (indexer)",
@@ -25,7 +24,6 @@ export function registerEventRoutes(
     return { stored };
   }, config);
 
-  // GET /v1/events — query events with optional filters
   createRoute(app, {
     method: "get", path: "/v1/events",
     consumer: "useEventHistory", description: "Query events with optional filters",

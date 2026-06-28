@@ -4,7 +4,6 @@ import { createLogger } from '../utils/logger.js';
 
 const log = createLogger("events");
 
-// In-memory event store for agent lifecycle events.
 
 
 /** Default retention: 1000 events per (source, eventName) pair. */
@@ -40,7 +39,6 @@ export interface AgentEventQuery {
 const byBlockThenLogReceived = (a: StoredEvent, b: StoredEvent) =>
   a.blockNumber - b.blockNumber || a.logIndex - b.logIndex || a.receivedAt - b.receivedAt;
 
-/** In-memory event store. One per server process. */
 export class EventStore {
   private readonly cap: number;
   /** Keyed by `${source}::${eventName}`. Insertion order preserved. */

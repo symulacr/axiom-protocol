@@ -9,7 +9,6 @@ export function registerPerformanceRoutes(
   config: ServerConfig,
   events: EventStore,
 ): void {
-  // GET /v1/agents/:id/performance — single agent performance metrics
   createRoute(app, {
     method: "get", path: "/v1/agents/:id/performance", requireId: true,
     consumer: "usePerformance", description: "Agent strategy performance metrics",
@@ -43,7 +42,6 @@ export function registerPerformanceRoutes(
     };
   }, config);
 
-  // GET /v1/agents/performance/batch — batch performance metrics
   createRoute(app, {
     method: "get", path: "/v1/agents/performance/batch",
     consumer: "usePerformanceBatch", description: "Batch agent performance metrics",

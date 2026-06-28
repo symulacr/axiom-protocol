@@ -43,7 +43,6 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
     }
   }, [selectedId, tokenIdProp]);
 
-  // When tokenIdProp is given, the panel is locked to that agent.
   const locked = tokenIdProp !== undefined;
   const activeId = locked ? tokenIdProp.toString() : selectedId;
   const activeBigint = useMemo(() => {
