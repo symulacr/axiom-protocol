@@ -9,6 +9,10 @@ import { oracleEnvSchema } from "./env-schema.js";
 import { toViemHex } from "@axiom/config/types/hex";
 
 loadEnv();
+// Railway compatibility: use PORT env var when set (Railway assigns a dynamic port)
+if (process.env.PORT) {
+  process.env.AXIOM_ORACLE_PORT = process.env.PORT;
+}
 
 const env = oracleEnvSchema.parse(process.env);
 

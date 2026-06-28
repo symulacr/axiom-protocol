@@ -1,10 +1,9 @@
 // Thin wrapper around the 0G Compute SDK's ReadOnlyInferenceBroker.
 // Results are cached for up to CACHE_TTL_MS so the RPC is called at most once per window.
-
-import { createReadOnlyInferenceBroker } from "@0gfoundation/0g-compute-ts-sdk";
+import { Wallet, JsonRpcProvider } from "ethers";
+import { createReadOnlyInferenceBroker, createZGComputeNetworkBroker } from "@0gfoundation/0g-compute-ts-sdk";
 import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
 import { createLogger } from "../utils/logger.js";
-
 const log = createLogger("compute");
 
 export interface ServiceInfo {
@@ -85,5 +84,49 @@ export async function resolveProviderUrl(providerAddr: string, rpcUrl?: string):
     return found?.url ?? null;
   } catch {
     return null;
+  }
+}
+/**
+ * Acknowledge the provider's TEE signer so the SDK can generate billing headers.
+ *
+ * Gated by the `AXIOM_COMPUTE_DEPOSIT_AMOUNT` env var (feature flag). When unset this is a
+ * no-op so the Router API path remains the primary path.
+ *
+ * Once acknowledged, `broker.inference.getRequestHeaders()` can be called to attach
+ * billing/settlement headers to inference requests sent directly to the provider.
+ *
+ * @param providerAddress  Provider address to acknowledge.
+ * @returns                `true` on success or already acknowledged, `false` when skipped or failed.
+ */
+export async function acknowledgeProviderSigner(providerAddress: string): Promise<boolean> {
+  const enabled = process.env.AXIOM_COMPUTE_DEPOSIT_AMOUNT;
+  if (enabled === undefined) return false;
+
+  const rpcUrl = process.env.AXIOM_EVM_RPC ?? "https://evmrpc-testnet.0g.ai";
+  const chainId = Number(process.env.AXIOM_CHAIN_ID) || GALILEO_CHAIN_ID;
+  const pk = process.env.DEPLOYER_PK;
+  if (!pk) {
+    log.warn("DEPLOYER_PK not set — cannot acknowledge provider signer");
+    return false;
+  }
+
+  try {
+    const provider = new JsonRpcProvider(rpcUrl, chainId, { staticNetwork: true });
+    const signer = new Wallet(pk, provider);
+    const broker = await createZGComputeNetworkBroker(signer);
+
+    // Check if already acknowledged to avoid unnecessary gas
+    const alreadyAcknowledged = await broker.inference.acknowledged(providerAddress);
+    if (alreadyAcknowledged) return true;
+
+    await broker.inference.acknowledgeProviderSigner(providerAddress);
+    log.info("Provider signer acknowledged", { provider: providerAddress });
+    return true;
+  } catch (err) {
+    log.warn("Failed to acknowledge provider signer", {
+      provider: providerAddress,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return false;
   }
 }

@@ -1,0 +1,9 @@
+{
+  "build": {
+    "command": "pnpm --filter @axiom/oracle build"
+  },
+  "deploy": {
+    "startCommand": "node dist/index.js",
+    "healthcheckPath": "/health"
+  }
+}
