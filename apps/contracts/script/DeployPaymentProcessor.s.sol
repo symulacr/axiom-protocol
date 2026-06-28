@@ -9,7 +9,10 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 contract AxiomMockUSDC is ERC20 {
     constructor() ERC20("Axiom Mock USDC", "axmUSDC") {}
 
-    function mint(address to, uint256 amount) external {
+    function mint(
+        address to,
+        uint256 amount
+    ) external {
         _mint(to, amount);
     }
 }
@@ -19,7 +22,7 @@ contract AxiomMockUSDC is ERC20 {
 ///         then the processor via plain CREATE.
 /// @dev AXIOM_ORACLE_ADMIN_PK=<pk> forge script script/DeployPaymentProcessor.s.sol --rpc-url https://evmrpc-testnet.0g.ai --chain-id 16602 --broadcast --priority-gas-price 2000000000 --legacy --slow
 contract DeployPaymentProcessor is Script {
-    uint256 internal constant GALILEO_CHAIN_ID = 16602;
+    uint256 internal constant GALILEO_CHAIN_ID = 16_602;
 
     error WrongChain(uint256 actual, uint256 expected);
 
@@ -64,8 +67,8 @@ contract DeployPaymentProcessor is Script {
             nftProxy,
             address(paymentToken),
             operator, // treasury
-            100,      // 1% protocol fee
-            operator  // owner
+            100, // 1% protocol fee
+            operator // owner
         );
         console2.log("[DeployPaymentProcessor] AxiomPaymentProcessor deployed at:", address(processor));
 

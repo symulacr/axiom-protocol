@@ -44,11 +44,11 @@ contract AxiomPaymentProcessor is Ownable, Pausable, ReentrancyGuard {
     /// @custom:storage-location erc7201:agent.storage.AxiomPaymentProcessor
     struct PaymentProcessorStorage {
         address protocolTreasury;
-        IERC20 paymentToken;               // ERC-20 stable (USDC.e / USDG); non-immutable for migration
-        uint256 protocolFeeBps;            // default protocol cut on every payForAgent
-        mapping(uint256 => uint256) agentRoyaltyBps;  // optional override per agent
-        mapping(uint256 => bool) agentRoyaltyBpsSet;  // whether royalty was explicitly set
-        mapping(address => uint256) agentEarnings;     // creator earnings (pull)
+        IERC20 paymentToken; // ERC-20 stable (USDC.e / USDG); non-immutable for migration
+        uint256 protocolFeeBps; // default protocol cut on every payForAgent
+        mapping(uint256 => uint256) agentRoyaltyBps; // optional override per agent
+        mapping(uint256 => bool) agentRoyaltyBpsSet; // whether royalty was explicitly set
+        mapping(address => uint256) agentEarnings; // creator earnings (pull)
     }
 
     // keccak256(abi.encode(uint256(keccak256("agent.storage.AxiomPaymentProcessor")) - 1)) & ~bytes32(uint256(0xff))
@@ -63,7 +63,9 @@ contract AxiomPaymentProcessor is Ownable, Pausable, ReentrancyGuard {
 
     IAxiomAgentNFT public immutable AXIOM_NFT;
 
-    modifier onlyAgentCreator(uint256 agentTokenId) {
+    modifier onlyAgentCreator(
+        uint256 agentTokenId
+    ) {
         address creator = IAxiomAgentNFT(AXIOM_NFT).creatorOf(agentTokenId);
         if (creator != msg.sender) revert NotCreator();
         _;
@@ -87,14 +89,18 @@ contract AxiomPaymentProcessor is Ownable, Pausable, ReentrancyGuard {
         $.paymentToken = IERC20(paymentTokenAddr);
     }
 
-    function setProtocolTreasury(address newTreasury) external onlyOwner {
+    function setProtocolTreasury(
+        address newTreasury
+    ) external onlyOwner {
         if (newTreasury == address(0)) revert ZeroAddress();
         address old = _getStorage().protocolTreasury;
         _getStorage().protocolTreasury = newTreasury;
         emit ProtocolTreasuryUpdated(old, newTreasury);
     }
 
-    function setProtocolFeeBps(uint256 newBps) external onlyOwner {
+    function setProtocolFeeBps(
+        uint256 newBps
+    ) external onlyOwner {
         if (newBps > BPS_DENOMINATOR) revert InvalidBps();
         uint256 old = _getStorage().protocolFeeBps;
         _getStorage().protocolFeeBps = newBps;
@@ -105,14 +111,19 @@ contract AxiomPaymentProcessor is Ownable, Pausable, ReentrancyGuard {
     /// @dev    The new token must be a real IERC20 implementation. No balance migration: the
     ///         owner is expected to first drain the old token (sweep earnings via a migration
     ///         payout to creators) before calling this. New payments go to the new token.
-    function setPaymentToken(address newPaymentToken) external onlyOwner {
+    function setPaymentToken(
+        address newPaymentToken
+    ) external onlyOwner {
         if (newPaymentToken == address(0)) revert ZeroAddress();
         IERC20 old = _getStorage().paymentToken;
         _getStorage().paymentToken = IERC20(newPaymentToken);
         emit PaymentTokenUpdated(address(old), newPaymentToken);
     }
 
-    function setRoyaltyBps(uint256 agentTokenId, uint256 newBps) external onlyAgentCreator(agentTokenId) {
+    function setRoyaltyBps(
+        uint256 agentTokenId,
+        uint256 newBps
+    ) external onlyAgentCreator(agentTokenId) {
         _setRoyaltyBps(agentTokenId, newBps);
     }
 
@@ -121,12 +132,18 @@ contract AxiomPaymentProcessor is Ownable, Pausable, ReentrancyGuard {
     ///         the tx directly (e.g. via wagmi). The `onlyAgentCreator` modifier
     ///         fails when the backend deployer wallet is the tx signer, so this
     ///         alternate entry point checks `ownerOf` instead.
-    function setRoyaltyBpsPermitted(uint256 agentTokenId, uint256 newBps) external {
+    function setRoyaltyBpsPermitted(
+        uint256 agentTokenId,
+        uint256 newBps
+    ) external {
         if (IAxiomAgentNFT(AXIOM_NFT).ownerOf(agentTokenId) != msg.sender) revert NotCreator();
         _setRoyaltyBps(agentTokenId, newBps);
     }
 
-    function _setRoyaltyBps(uint256 agentTokenId, uint256 newBps) internal {
+    function _setRoyaltyBps(
+        uint256 agentTokenId,
+        uint256 newBps
+    ) internal {
         if (newBps > BPS_DENOMINATOR) revert InvalidBps();
         PaymentProcessorStorage storage $ = _getStorage();
         $.agentRoyaltyBps[agentTokenId] = newBps;
@@ -146,18 +163,23 @@ contract AxiomPaymentProcessor is Ownable, Pausable, ReentrancyGuard {
         return address(_getStorage().paymentToken);
     }
 
-    function royaltyBpsOf(uint256 agentTokenId) external view returns (uint256) {
+    function royaltyBpsOf(
+        uint256 agentTokenId
+    ) external view returns (uint256) {
         return _getStorage().agentRoyaltyBps[agentTokenId];
     }
 
-    function royaltyBpsSet(uint256 agentTokenId) external view returns (bool) {
+    function royaltyBpsSet(
+        uint256 agentTokenId
+    ) external view returns (bool) {
         return _getStorage().agentRoyaltyBpsSet[agentTokenId];
     }
 
-    function agentEarningsOf(address creator) external view returns (uint256) {
+    function agentEarningsOf(
+        address creator
+    ) external view returns (uint256) {
         return _getStorage().agentEarnings[creator];
     }
-
 
     /// @notice Pay for an agent's service. Splits `amount` of `paymentToken` to the creator
     ///         (royalty, credited to their withdrawable balance) and to the protocol treasury
@@ -166,7 +188,10 @@ contract AxiomPaymentProcessor is Ownable, Pausable, ReentrancyGuard {
     ///         CEI ordering: state is updated (creator credited) BEFORE the external token call.
     ///         The external call uses OpenZeppelin SafeERC20, which reverts with a custom error
     ///         on failure. See: https://docs.openzeppelin.com/contracts/5.x/api/token/erc20#SafeERC20
-    function payForAgent(uint256 agentTokenId, uint256 amount) external nonReentrant whenNotPaused {
+    function payForAgent(
+        uint256 agentTokenId,
+        uint256 amount
+    ) external nonReentrant whenNotPaused {
         if (amount == 0) revert ZeroAmount();
         PaymentProcessorStorage storage $ = _getStorage();
         IERC20 token = $.paymentToken;
@@ -208,7 +233,10 @@ contract AxiomPaymentProcessor is Ownable, Pausable, ReentrancyGuard {
 
     /// @dev    The protocol operator approves this contract to spend `amount` of `paymentToken`,
     ///         then calls this function. The full `amount` is forwarded to `provider`.
-    function payComputeProvider(address provider, uint256 amount) external nonReentrant whenNotPaused {
+    function payComputeProvider(
+        address provider,
+        uint256 amount
+    ) external nonReentrant whenNotPaused {
         if (provider == address(0)) revert ZeroAddress();
         if (amount == 0) revert ZeroAmount();
         _getStorage().paymentToken.safeTransferFrom(msg.sender, provider, amount);

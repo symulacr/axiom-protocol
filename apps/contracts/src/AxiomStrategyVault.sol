@@ -31,21 +31,17 @@ contract AxiomStrategyVault is Ownable, Pausable, ReentrancyGuard {
     event Withdrawn(uint256 indexed tokenId, address indexed to, address indexed asset, uint256 amount);
     event StrategySet(uint256 indexed tokenId, bytes32 strategyRoot, uint256 dailyLimit, uint64 validUntilDay);
     event Executed(
-        uint256 indexed tokenId,
-        bytes32 indexed actionHash,
-        address indexed target,
-        uint256 value,
-        bytes result
+        uint256 indexed tokenId, bytes32 indexed actionHash, address indexed target, uint256 value, bytes result
     );
     event RegistryUpdated(address indexed nft);
 
     /// @custom:storage-location erc7201:agent.storage.AxiomStrategyVault
     struct Vault {
-        uint256 balance;        // native (OG) balance
-        uint256 dailyLimit;     // max value executable per UTC day
-        uint256 dailySpent;     // running spend in current day
-        uint64 resetDay;        // day number of last reset
-        bytes32 strategyRoot;   // Merkle root of approved action hashes
+        uint256 balance; // native (OG) balance
+        uint256 dailyLimit; // max value executable per UTC day
+        uint256 dailySpent; // running spend in current day
+        uint64 resetDay; // day number of last reset
+        bytes32 strategyRoot; // Merkle root of approved action hashes
     }
 
     // keccak256(abi.encode(uint256(keccak256("agent.storage.AxiomStrategyVault")) - 1)) & ~bytes32(uint256(0xff))
@@ -61,46 +57,64 @@ contract AxiomStrategyVault is Ownable, Pausable, ReentrancyGuard {
     /// @notice The AxiomAgentNFT contract whose tokens are vaults
     IAxiomAgentNFT public nft;
 
-    modifier onlyTokenOwner(uint256 tokenId) {
+    modifier onlyTokenOwner(
+        uint256 tokenId
+    ) {
         if (nft.ownerOf(tokenId) != msg.sender) revert NotTokenOwner();
         _;
     }
 
-    constructor(address nftAddr, address initialOwner) Ownable(initialOwner) {
+    constructor(
+        address nftAddr,
+        address initialOwner
+    ) Ownable(initialOwner) {
         if (nftAddr == address(0)) revert ZeroAddress();
         nft = IAxiomAgentNFT(nftAddr);
     }
 
     /// @notice Rotate the NFT contract (onlyOwner; e.g. after an upgrade)
-    function setNFT(address newNft) external onlyOwner {
+    function setNFT(
+        address newNft
+    ) external onlyOwner {
         if (newNft == address(0)) revert ZeroAddress();
         nft = IAxiomAgentNFT(newNft);
         emit RegistryUpdated(newNft);
     }
 
-    function deposit(uint256 tokenId) external payable whenNotPaused onlyTokenOwner(tokenId) {
+    function deposit(
+        uint256 tokenId
+    ) external payable whenNotPaused onlyTokenOwner(tokenId) {
         if (msg.value == 0) revert ZeroAmount();
         _getVaults()[tokenId].balance += msg.value;
         emit Deposited(tokenId, msg.sender, address(0), msg.value);
     }
 
-    function withdraw(uint256 tokenId, uint256 amount) external nonReentrant onlyTokenOwner(tokenId) {
+    function withdraw(
+        uint256 tokenId,
+        uint256 amount
+    ) external nonReentrant onlyTokenOwner(tokenId) {
         if (amount == 0) revert ZeroAmount();
         Vault storage v = _getVaults()[tokenId];
         if (v.balance < amount) revert ZeroAmount();
         // CEI: state update first, then external call
         v.balance -= amount;
         emit Withdrawn(tokenId, msg.sender, address(0), amount);
-        (bool ok, ) = payable(msg.sender).call{value: amount}("");
+        (bool ok,) = payable(msg.sender).call{value: amount}("");
         require(ok, "Transfer failed");
     }
 
-    function balanceOf(uint256 tokenId) external view returns (uint256) {
+    function balanceOf(
+        uint256 tokenId
+    ) external view returns (uint256) {
         return _getVaults()[tokenId].balance;
     }
 
     /// @notice Set the Merkle root of approved actions + daily value limit
-    function setStrategy(uint256 tokenId, bytes32 root, uint256 dailyLimit) external whenNotPaused onlyTokenOwner(tokenId) {
+    function setStrategy(
+        uint256 tokenId,
+        bytes32 root,
+        uint256 dailyLimit
+    ) external whenNotPaused onlyTokenOwner(tokenId) {
         Vault storage v = _getVaults()[tokenId];
         v.strategyRoot = root;
         v.dailyLimit = dailyLimit;
@@ -109,7 +123,9 @@ contract AxiomStrategyVault is Ownable, Pausable, ReentrancyGuard {
         emit StrategySet(tokenId, root, dailyLimit, v.resetDay);
     }
 
-    function strategyOf(uint256 tokenId) external view returns (bytes32 root, uint256 dailyLimit, uint256 dailySpent, uint64 resetDay) {
+    function strategyOf(
+        uint256 tokenId
+    ) external view returns (bytes32 root, uint256 dailyLimit, uint256 dailySpent, uint64 resetDay) {
         Vault storage v = _getVaults()[tokenId];
         return (v.strategyRoot, v.dailyLimit, v.dailySpent, v.resetDay);
     }
@@ -147,7 +163,7 @@ contract AxiomStrategyVault is Ownable, Pausable, ReentrancyGuard {
         bytes memory result;
         bool ok;
         if (data.length == 0) {
-            (ok, ) = target.call{value: value}("");
+            (ok,) = target.call{value: value}("");
         } else {
             (ok, result) = target.call{value: value}(data);
         }

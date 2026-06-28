@@ -21,8 +21,8 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 ///      Dry-run (Galileo): add AXIOM_LEGACY=1, point --rpc-url at https://evmrpc-testnet.0g.ai --chain-id 16602
 contract DeployAristotle is Script {
     /// @dev Only allowed when AXIOM_LEGACY=1.
-    uint256 internal constant GALILEO_CHAIN_ID = 16602;
-    uint256 internal constant ARISTOTLE_CHAIN_ID = 16661;
+    uint256 internal constant GALILEO_CHAIN_ID = 16_602;
+    uint256 internal constant ARISTOTLE_CHAIN_ID = 16_661;
     uint256 internal constant MAX_PROOF_AGE = 7 days;
 
     error WrongChain(uint256 actual, uint256 expected);
@@ -63,10 +63,15 @@ contract DeployAristotle is Script {
         uint256 deployerBalance = deployerAddr.balance;
         uint256 minBalance = 0.5 ether;
         if (deployerBalance < minBalance) {
-            revert(string.concat(
-                "Deployer balance too low: ", vm.toString(deployerBalance),
-                " wei (need >= ", vm.toString(minBalance), " wei / 0.5 OG). Fund from https://faucet.0g.ai"
-            ));
+            revert(
+                string.concat(
+                    "Deployer balance too low: ",
+                    vm.toString(deployerBalance),
+                    " wei (need >= ",
+                    vm.toString(minBalance),
+                    " wei / 0.5 OG). Fund from https://faucet.0g.ai"
+                )
+            );
         }
         console2.log("  Deployer balance:  ", deployerBalance, "wei");
 
@@ -103,8 +108,8 @@ contract DeployAristotle is Script {
             address(nft),
             paymentTokenAddr,
             oracleAdmin, // treasury
-            100,         // 1% default protocol fee
-            oracleAdmin  // owner
+            100, // 1% default protocol fee
+            oracleAdmin // owner
         );
         console2.log("AxiomPaymentProcessor deployed at:", address(processor));
 
@@ -159,17 +164,37 @@ contract DeployAristotle is Script {
             '  "explorer": "https://chainscan.0g.ai",\n',
             '  "storageIndexer": "https://indexer-storage-turbo.0g.ai",\n',
             '  "flowContract": "0x62D4144dB0F0a6fBBaeb6296c785C71B3D57C526",\n',
-            '  "deployedAt": "', date, 'T00:00:00Z",\n',
-            '  "deployedAtUnix": ', vm.toString(timestamp), ',\n',
-            '  "teeSigner": "', vm.toString(teeSigner), '",\n',
-            '  "oracleAdmin": "', vm.toString(oracleAdmin), '",\n',
-            '  "paymentToken": "', vm.toString(paymentTokenAddr), '",\n',
+            '  "deployedAt": "',
+            date,
+            'T00:00:00Z",\n',
+            '  "deployedAtUnix": ',
+            vm.toString(timestamp),
+            ",\n",
+            '  "teeSigner": "',
+            vm.toString(teeSigner),
+            '",\n',
+            '  "oracleAdmin": "',
+            vm.toString(oracleAdmin),
+            '",\n',
+            '  "paymentToken": "',
+            vm.toString(paymentTokenAddr),
+            '",\n',
             '  "contracts": {\n',
-            '    "AxiomTeeVerifier":         "', vm.toString(verifier),  '",\n',
-            '    "AxiomAgentNFT (proxy)":    "', vm.toString(nftProxy),   '",\n',
-            '    "AxiomAgentNFT (impl)":     "', vm.toString(nftImpl),    '",\n',
-            '    "AxiomStrategyVault":       "', vm.toString(vault),      '",\n',
-            '    "AxiomPaymentProcessor":    "', vm.toString(processor),  '"\n',
+            '    "AxiomTeeVerifier":         "',
+            vm.toString(verifier),
+            '",\n',
+            '    "AxiomAgentNFT (proxy)":    "',
+            vm.toString(nftProxy),
+            '",\n',
+            '    "AxiomAgentNFT (impl)":     "',
+            vm.toString(nftImpl),
+            '",\n',
+            '    "AxiomStrategyVault":       "',
+            vm.toString(vault),
+            '",\n',
+            '    "AxiomPaymentProcessor":    "',
+            vm.toString(processor),
+            '"\n',
             "  }\n",
             "}\n"
         );

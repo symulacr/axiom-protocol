@@ -9,8 +9,8 @@ import {AxiomTeeVerifier} from "../src/verifiers/AxiomTeeVerifier.sol";
 ///         via plain CREATE (original address has code). Proxy owner must rotate after.
 /// @dev AXIOM_ORACLE_ADMIN_PK=<pk> forge script script/RedeployTeeVerifier.s.sol --rpc-url https://evmrpc-testnet.0g.ai --chain-id 16602 --broadcast --priority-gas-price 3000000000 --legacy --slow
 contract RedeployTeeVerifier is Script {
-    uint256 internal constant MAX_PROOF_AGE_SECONDS = 604800;
-    uint256 internal constant GALILEO_CHAIN_ID = 16602;
+    uint256 internal constant MAX_PROOF_AGE_SECONDS = 604_800;
+    uint256 internal constant GALILEO_CHAIN_ID = 16_602;
 
     error WrongChain(uint256 actual, uint256 expected);
 

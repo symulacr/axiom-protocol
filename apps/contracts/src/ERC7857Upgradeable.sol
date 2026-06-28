@@ -6,7 +6,11 @@ import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 import {IERC7857} from "./interfaces/IERC7857.sol";
 import {IERC7857Metadata, IntelligentData} from "./interfaces/IERC7857Metadata.sol";
-import {IERC7857DataVerifier, TransferValidityProof, TransferValidityProofOutput} from "./interfaces/IERC7857DataVerifier.sol";
+import {
+    IERC7857DataVerifier,
+    TransferValidityProof,
+    TransferValidityProofOutput
+} from "./interfaces/IERC7857DataVerifier.sol";
 
 import "@0g-agent-nft/Utils.sol";
 
@@ -36,16 +40,24 @@ abstract contract ERC7857Upgradeable is IERC7857, ERC721Upgradeable {
         _disableInitializers();
     }
 
-    function __ERC7857_init(string memory name_, string memory symbol_, address verifier_) internal onlyInitializing {
+    function __ERC7857_init(
+        string memory name_,
+        string memory symbol_,
+        address verifier_
+    ) internal onlyInitializing {
         __ERC721_init(name_, symbol_);
         __ERC7857_init_unchained(verifier_);
     }
 
-    function __ERC7857_init_unchained(address verifier_) internal onlyInitializing {
+    function __ERC7857_init_unchained(
+        address verifier_
+    ) internal onlyInitializing {
         _setVerifier(verifier_);
     }
 
-    function _setVerifier(address verifier_) internal {
+    function _setVerifier(
+        address verifier_
+    ) internal {
         ERC7857Storage storage $ = _getERC7857Storage();
         $.verifier = IERC7857DataVerifier(verifier_);
     }
@@ -53,12 +65,13 @@ abstract contract ERC7857Upgradeable is IERC7857, ERC721Upgradeable {
     function supportsInterface(
         bytes4 interfaceId
     ) public view virtual override(ERC721Upgradeable, IERC165) returns (bool) {
-        return interfaceId == type(IERC7857).interfaceId
-            || interfaceId == type(IERC7857Metadata).interfaceId
+        return interfaceId == type(IERC7857).interfaceId || interfaceId == type(IERC7857Metadata).interfaceId
             || super.supportsInterface(interfaceId);
     }
 
-    function delegateAccess(address assistant) public virtual {
+    function delegateAccess(
+        address assistant
+    ) public virtual {
         if (assistant == address(0)) {
             revert ERC7857InvalidAssistant(assistant);
         }
@@ -67,7 +80,9 @@ abstract contract ERC7857Upgradeable is IERC7857, ERC721Upgradeable {
         emit DelegateAccess(msg.sender, assistant);
     }
 
-    function getDelegateAccess(address user) public view virtual returns (address) {
+    function getDelegateAccess(
+        address user
+    ) public view virtual returns (address) {
         ERC7857Storage storage $ = _getERC7857Storage();
         return $.accessAssistants[user];
     }
@@ -125,7 +140,12 @@ abstract contract ERC7857Upgradeable is IERC7857, ERC721Upgradeable {
         }
     }
 
-    function _transfer(address from, address to, uint256 tokenId, TransferValidityProof[] calldata proofs) internal {
+    function _transfer(
+        address from,
+        address to,
+        uint256 tokenId,
+        TransferValidityProof[] calldata proofs
+    ) internal {
         bytes[] memory sealedKeys = _proofCheck(from, to, tokenId, proofs);
         safeTransferFrom(from, to, tokenId);
         emit PublishedSealedKey(to, tokenId, sealedKeys);
@@ -141,24 +161,37 @@ abstract contract ERC7857Upgradeable is IERC7857, ERC721Upgradeable {
         _transfer(from, to, tokenId, proofs);
     }
 
-    function iTransfer(address to, uint256 tokenId, TransferValidityProof[] calldata proofs) public virtual {
+    function iTransfer(
+        address to,
+        uint256 tokenId,
+        TransferValidityProof[] calldata proofs
+    ) public virtual {
         address from = _ownerOf(tokenId);
         if (from == address(0)) revert ERC721NonexistentToken(tokenId);
         _checkAuthorized(from, _msgSender(), tokenId);
         _transfer(from, to, tokenId, proofs);
     }
 
-    function _intelligentDatasOf(uint256 /*tokenId*/) internal view virtual returns (IntelligentData[] memory) {
+    function _intelligentDatasOf(
+        uint256 /*tokenId*/
+    ) internal view virtual returns (IntelligentData[] memory) {
         return new IntelligentData[](0);
     }
 
-    function _intelligentDatasLengthOf(uint256 /*tokenId*/) internal view virtual returns (uint256) {
+    function _intelligentDatasLengthOf(
+        uint256 /*tokenId*/
+    ) internal view virtual returns (uint256) {
         return 0;
     }
 
-    function _updateData(uint256 tokenId, IntelligentData[] memory newDatas) internal virtual {}
+    function _updateData(
+        uint256 tokenId,
+        IntelligentData[] memory newDatas
+    ) internal virtual {}
 
-    function intelligentDatasOf(uint256 tokenId) public view virtual returns (IntelligentData[] memory) {
+    function intelligentDatasOf(
+        uint256 tokenId
+    ) public view virtual returns (IntelligentData[] memory) {
         if (_ownerOf(tokenId) == address(0)) {
             revert ERC721NonexistentToken(tokenId);
         }
@@ -166,7 +199,9 @@ abstract contract ERC7857Upgradeable is IERC7857, ERC721Upgradeable {
     }
 
     /// @notice Alias for intelligentDatasOf (EIP-7857 uses singular form)
-    function intelligentDataOf(uint256 tokenId) external view virtual returns (IntelligentData[] memory data) {
+    function intelligentDataOf(
+        uint256 tokenId
+    ) external view virtual returns (IntelligentData[] memory data) {
         return intelligentDatasOf(tokenId);
     }
 

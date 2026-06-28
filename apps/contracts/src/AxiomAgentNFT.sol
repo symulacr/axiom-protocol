@@ -25,6 +25,7 @@ import {ERC7857IDataStorageUpgradeable} from "./extensions/ERC7857IDataStorageUp
 import {IERC7857DataVerifier} from "./interfaces/IERC7857DataVerifier.sol";
 import {IntelligentData} from "./interfaces/IERC7857Metadata.sol";
 import {AxiomMetadataJson} from "./extensions/AxiomMetadataJson.sol";
+
 /// @notice Concrete ERC-7857 iNFT contract for the Axiom Protocol
 /// @dev Composes the canonical 3 ERC-7857 extensions (Cloneable + Authorize + IDataStorage)
 ///      + OZ AccessControl + ReentrancyGuard + Pausable + ERC721Upgradeable
@@ -47,11 +48,8 @@ contract AxiomAgentNFT is
     event MintFeeUpdated(uint256 oldFee, uint256 newFee);
     /// @notice Emitted when the storage info is updated
     event StorageInfoUpdated(string oldInfo, string newInfo);
-    event MetadataJsonDecisionDocumented(
-        string collectionName,
-        string collectionSymbol,
-        string rationaleTag
-    );
+    event MetadataJsonDecisionDocumented(string collectionName, string collectionSymbol, string rationaleTag);
+
     /// @custom:storage-location erc7201:agent.storage.AxiomAgentNFT
     struct AxiomAgentNFTStorage {
         string storageInfo;
@@ -108,39 +106,63 @@ contract AxiomAgentNFT is
         emit MetadataJsonDecisionDocumented(name(), symbol(), "2RH-REJECTED-v1");
     }
 
-    function _update(address to, uint256 tokenId, address auth) internal virtual override(ERC721Upgradeable, ERC7857AuthorizeUpgradeable) returns (address) {
+    function _update(
+        address to,
+        uint256 tokenId,
+        address auth
+    ) internal virtual override(ERC721Upgradeable, ERC7857AuthorizeUpgradeable) returns (address) {
         return super._update(to, tokenId, auth);
     }
 
-    function _intelligentDatasOf(uint256 tokenId) internal view virtual override(ERC7857Upgradeable, ERC7857IDataStorageUpgradeable) returns (IntelligentData[] memory) {
+    function _intelligentDatasOf(
+        uint256 tokenId
+    )
+        internal
+        view
+        virtual
+        override(ERC7857Upgradeable, ERC7857IDataStorageUpgradeable)
+        returns (IntelligentData[] memory)
+    {
         return ERC7857IDataStorageUpgradeable._intelligentDatasOf(tokenId);
     }
 
-    function _intelligentDatasLengthOf(uint256 tokenId) internal view virtual override(ERC7857Upgradeable, ERC7857IDataStorageUpgradeable) returns (uint256) {
+    function _intelligentDatasLengthOf(
+        uint256 tokenId
+    ) internal view virtual override(ERC7857Upgradeable, ERC7857IDataStorageUpgradeable) returns (uint256) {
         return ERC7857IDataStorageUpgradeable._intelligentDatasLengthOf(tokenId);
     }
 
-    function _updateData(uint256 tokenId, IntelligentData[] memory newDatas) internal virtual override(ERC7857Upgradeable, ERC7857IDataStorageUpgradeable) {
+    function _updateData(
+        uint256 tokenId,
+        IntelligentData[] memory newDatas
+    ) internal virtual override(ERC7857Upgradeable, ERC7857IDataStorageUpgradeable) {
         ERC7857IDataStorageUpgradeable._updateData(tokenId, newDatas);
     }
 
-    function supportsInterface(bytes4 interfaceId) public view virtual override(
-        AccessControlUpgradeable,
-        ERC7857Upgradeable,
-        ERC7857AuthorizeUpgradeable,
-        ERC7857CloneableUpgradeable
-    ) returns (bool) {
+    function supportsInterface(
+        bytes4 interfaceId
+    )
+        public
+        view
+        virtual
+        override(AccessControlUpgradeable, ERC7857Upgradeable, ERC7857AuthorizeUpgradeable, ERC7857CloneableUpgradeable)
+        returns (bool)
+    {
         return super.supportsInterface(interfaceId);
     }
 
-    function updateVerifier(address newVerifier) public virtual onlyRole(OPERATOR_ROLE) {
+    function updateVerifier(
+        address newVerifier
+    ) public virtual onlyRole(OPERATOR_ROLE) {
         require(newVerifier != address(0), "Zero address");
         address oldVerifier = address(verifier());
         _setVerifier(newVerifier);
         emit VerifierUpdated(oldVerifier, newVerifier);
     }
 
-    function setMintFee(uint256 newFee) external onlyRole(ADMIN_ROLE) {
+    function setMintFee(
+        uint256 newFee
+    ) external onlyRole(ADMIN_ROLE) {
         AxiomAgentNFTStorage storage $ = _getAxiomAgentNFTStorage();
         uint256 oldFee = $.mintFee;
         $.mintFee = newFee;
@@ -151,7 +173,9 @@ contract AxiomAgentNFT is
         return _getAxiomAgentNFTStorage().mintFee;
     }
 
-    function setStorageInfo(string memory newInfo) external onlyRole(ADMIN_ROLE) {
+    function setStorageInfo(
+        string memory newInfo
+    ) external onlyRole(ADMIN_ROLE) {
         AxiomAgentNFTStorage storage $ = _getAxiomAgentNFTStorage();
         string memory old = $.storageInfo;
         $.storageInfo = newInfo;
@@ -170,7 +194,10 @@ contract AxiomAgentNFT is
         _unpause();
     }
 
-    function update(uint256 tokenId, IntelligentData[] calldata newDatas) public virtual whenNotPaused {
+    function update(
+        uint256 tokenId,
+        IntelligentData[] calldata newDatas
+    ) public virtual whenNotPaused {
         require(_ownerOf(tokenId) == msg.sender, "Not owner");
         require(newDatas.length > 0, "Empty data array");
         _updateData(tokenId, newDatas);
@@ -184,9 +211,14 @@ contract AxiomAgentNFT is
     ///         implementation. We restrict upgrades to the owner (the same address that holds
     ///         DEFAULT_ADMIN_ROLE), which matches the deploy-time trust assumption in
     ///         script/Deploy.s.sol.
-    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
+    function _authorizeUpgrade(
+        address newImplementation
+    ) internal override onlyOwner {}
 
-    function mint(IntelligentData[] calldata iDatas, address to) public payable virtual whenNotPaused nonReentrant returns (uint256 tokenId) {
+    function mint(
+        IntelligentData[] calldata iDatas,
+        address to
+    ) public payable virtual whenNotPaused nonReentrant returns (uint256 tokenId) {
         require(to != address(0), "Zero address");
         require(iDatas.length > 0, "Empty data array");
         require(msg.value >= _getAxiomAgentNFTStorage().mintFee, "Insufficient mint fee");
@@ -199,7 +231,10 @@ contract AxiomAgentNFT is
         _refundExcess();
     }
 
-    function mintWithRole(IntelligentData[] calldata iDatas, address to) public virtual onlyRole(MINTER_ROLE) returns (uint256 tokenId) {
+    function mintWithRole(
+        IntelligentData[] calldata iDatas,
+        address to
+    ) public virtual onlyRole(MINTER_ROLE) returns (uint256 tokenId) {
         require(to != address(0), "Zero address");
         require(iDatas.length > 0, "Empty data array");
         tokenId = _incrementTokenId();
@@ -207,7 +242,11 @@ contract AxiomAgentNFT is
         _updateData(tokenId, iDatas);
     }
 
-    function mintWithRole(IntelligentData[] calldata iDatas, address to, address creator) public virtual onlyRole(MINTER_ROLE) returns (uint256 tokenId) {
+    function mintWithRole(
+        IntelligentData[] calldata iDatas,
+        address to,
+        address creator
+    ) public virtual onlyRole(MINTER_ROLE) returns (uint256 tokenId) {
         require(to != address(0), "Zero address");
         require(iDatas.length > 0, "Empty data array");
         tokenId = _incrementTokenId();
@@ -219,22 +258,26 @@ contract AxiomAgentNFT is
         }
     }
 
-    function creatorOf(uint256 tokenId) public view returns (address) {
+    function creatorOf(
+        uint256 tokenId
+    ) public view returns (address) {
         return _getAxiomAgentNFTStorage().creators[tokenId];
     }
 
     function _refundExcess() internal {
         uint256 fee = _getAxiomAgentNFTStorage().mintFee;
         if (msg.value > fee) {
-            (bool ok, ) = payable(msg.sender).call{value: msg.value - fee}("");
+            (bool ok,) = payable(msg.sender).call{value: msg.value - fee}("");
             require(ok, "Refund failed");
         }
     }
 
-    function withdrawMintFees(address payable to) external onlyRole(DEFAULT_ADMIN_ROLE) nonReentrant {
+    function withdrawMintFees(
+        address payable to
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) nonReentrant {
         require(to != address(0), "Zero address");
         uint256 balance = address(this).balance;
-        (bool ok, ) = to.call{value: balance}("");
+        (bool ok,) = to.call{value: balance}("");
         require(ok, "Withdraw failed");
     }
 }
