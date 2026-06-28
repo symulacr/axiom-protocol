@@ -5,6 +5,7 @@ import type { TickResult } from "@axiom/config/types/orchestrator";
 import type OpenAI from "openai";
 import { ZeroGStorage, type Encryption } from "@axiom/config/storage/0g";
 import { createRouterClient } from "../compute/router.js";
+import { verifyTeeResponse } from "../compute/tee-verifier.js";
 import { DefaultSignerOracleClient } from "../oracle/client.js";
 import { pickOGNetwork, GALILEO_CHAIN_ID } from "@axiom/config/networks";
 import { VAULT_ABI } from "@axiom/config/abis";
@@ -95,6 +96,13 @@ export class StrategyRunner {
         ? { rootHash: strategy.modelDataRoot, size: 0 }
         : this.fetchStoragePeek(strategy),
     ] as const);
+
+    // Optional TEE response verification — fire-and-forget, never blocks the tick.
+    if (process.env.AXIOM_COMPUTE_VERIFY_TEE === "true") {
+      this.verifyTeeAsync(rawModelOutput).catch((err) =>
+        log.warn("TEE verification threw unexpectedly", { error: err instanceof Error ? err.message : String(err) }),
+      );
+    }
 
     const recommendation = this.parseRecommendation(rawModelOutput);
 
@@ -190,6 +198,51 @@ export class StrategyRunner {
       result,
       gasUsed: receipt.gasUsed,
     };
+  }
+
+  /**
+   * Fire-and-forget TEE verification after a compute response.
+   * Decodes the provider address from AXIOM_COMPUTE_DIRECT_KEY when available.
+   */
+  private async verifyTeeAsync(rawModelOutput: string): Promise<void> {
+    const directKey = process.env.AXIOM_COMPUTE_DIRECT_KEY;
+    let providerAddress: string | undefined;
+
+    if (directKey) {
+      // Decode provider address from the direct key token (app-sk-* format).
+      if (directKey.startsWith("app-sk-")) {
+        try {
+          const b64 = directKey.slice("app-sk-".length);
+          const decoded = Buffer.from(b64, "base64").toString("utf-8");
+          const pipeIdx = decoded.lastIndexOf("|");
+          if (pipeIdx !== -1) {
+            const payload = JSON.parse(decoded.slice(0, pipeIdx));
+            providerAddress = payload.provider ?? payload.providerAddress;
+          }
+        } catch {
+          log.warn("TEE verification: cannot decode AXIOM_COMPUTE_DIRECT_KEY");
+        }
+      }
+    }
+
+    if (!providerAddress) {
+      log.info("TEE verification skipped: no provider address available "
+        + "(set AXIOM_COMPUTE_DIRECT_KEY with an app-sk-* token, or check chatId availability)");
+      return;
+    }
+
+    const result = await verifyTeeResponse(
+      this.chainId,
+      this.signer,
+      providerAddress,
+      rawModelOutput,
+    );
+
+    log.info("TEE verification", {
+      providerAddress,
+      result,
+      verified: result === true ? "yes" : result === false ? "no" : "skipped",
+    });
   }
 
   private async runInference(strategy: StrategySpec, signal: MarketSignal, onChunk?: StreamCallback): Promise<string> {
