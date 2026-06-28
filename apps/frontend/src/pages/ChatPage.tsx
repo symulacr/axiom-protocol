@@ -1,6 +1,3 @@
-// @fix F2-A2: Refactor — 798 lines, 13 responsibilities, 147-line sendMessage, 154-line useToolHandlers
-// Extract SSE parser, tool handlers, message list, and streaming logic into separate modules
-// @audit-ref: V2-A5 confirmed (exact 798 lines, 13 distinct responsibilities)
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { useAccount, usePublicClient, useWriteContract } from 'wagmi';
@@ -65,7 +62,6 @@ function formatToolResult(name: string, result: unknown): string {
   return lines.join('\n');
 }
 
-// ── Types ──
 type Message = {
   role: 'user' | 'assistant' | 'tool';
   content: string | null;
@@ -119,7 +115,6 @@ type ToolContext = {
   publicClient: ReturnType<typeof usePublicClient>;
 };
 
-// ── Tool Definitions ──
 const TOOLS: ToolDefinition[] = [
   {
     type: 'function',
@@ -270,7 +265,6 @@ const TOOLS: ToolDefinition[] = [
   },
 ];
 
-// ── Tool Handlers ──
 function useToolHandlers(ctx: ToolContext): Record<string, ToolHandler> {
   return useMemo(() => ({
     list_my_agents: async (_args, c) => {
@@ -426,7 +420,6 @@ function useToolHandlers(ctx: ToolContext): Record<string, ToolHandler> {
    }), [ctx.address, ctx.writeContractAsync, ctx.publicClient]);
 }
 
-// ── SSE Parser ──
 function parseSSEChunks(raw: string): SSEChunk[] {
   const chunks: SSEChunk[] = [];
   for (const line of raw.split('\n')) {
@@ -442,7 +435,6 @@ function parseSSEChunks(raw: string): SSEChunk[] {
   return chunks;
 }
 
-// ── ChatPage Component ──
 export function ChatPage(): ReactElement {
   const { address } = useAccount();
   const publicClient = usePublicClient();
