@@ -138,10 +138,10 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: i
     validUntil?: string | number;
   }
 
-// @fix F1-A2: Wrap entire handler body in outer try/catch — 80 lines of unprotected async code after Zod parse
-// @audit-ref: V1-A2 confirmed — only inner try/catch wraps schema.parse (lines 143-151)
+// @fix-done F1-A2: handler body wrapped in outer try/catch
 
   app.post("/v1/ownership", async (req: Request<Record<string, never>, unknown, OwnershipRequestBody>, res: Response) => {
+    try {
     let parsedBody;
     try {
       parsedBody = ownershipBodySchema.parse(req.body);
@@ -231,6 +231,10 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: i
       signer: signer.address,
       validUntil: validUntil.toString(),
     });
+    } catch (err) {
+      console.error("[oracle] /v1/ownership error:", err);
+      res.status(500).json({ error: "Internal server error" });
+    }
   });
 
   app.post("/v1/agents/mint", (req: Request, res: Response) => {
