@@ -3,10 +3,10 @@ import { validateHex } from "./types/hex.js";
 
 /** Hardcoded deployed addresses — last-resort fallback. */
 export const DEPLOYED_ADDRESSES = {
-  agentNft:         validateHex("0x9A83812008b62E6A94e5063db4d9B3B9bAbC938E", "AXIOM_AGENT_NFT_ADDRESS"),
-  strategyVault:    validateHex("0x6CEb5641945b0d554aA6987fC0354eF65F210Bd5", "AXIOM_STRATEGY_VAULT_ADDRESS"),
-  teeVerifier:      validateHex("0x50e9239EaDc2344394B8B6597A349C8b02b678EE", "AXIOM_TEE_VERIFIER_ADDRESS"),
-  paymentProcessor: validateHex("0x6B73E4f74E3A966b97468A2EA5C9B5b7C3Dfc6E8", "AXIOM_PAYMENT_PROCESSOR_ADDRESS"),
+  agentNft:         validateHex("0x6f82d061a903E48Ce1810F8d42536C6A837ed684", "AXIOM_AGENT_NFT_ADDRESS"),
+  strategyVault:    validateHex("0xB30061Ea93b60FCbAE11C2b06FE3Db3C84FAA367", "AXIOM_STRATEGY_VAULT_ADDRESS"),
+  teeVerifier:      validateHex("0x63Edfd4CD68A77AEdC4A56550Ae94e7F86d497B7", "AXIOM_TEE_VERIFIER_ADDRESS"),
+  paymentProcessor: validateHex("0x97a32707d948F91175706ca5509c7bfCC643a1dD", "AXIOM_PAYMENT_PROCESSOR_ADDRESS"),
   mockUsdc:         validateHex("0x354CA53bAB51C0666964fa050628d8351f8A7d19", "AXIOM_MOCK_USDC_ADDRESS"),
 } as const;
 
