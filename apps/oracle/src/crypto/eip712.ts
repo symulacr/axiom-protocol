@@ -11,10 +11,6 @@ import {
 export { DEFAULT_EIP712_DOMAIN } from "@axiom/config/eip712";
 export type { Eip712Domain } from "@axiom/config/eip712";
 
-// ---------------------------------------------------------------------------
-// Helpers to build EIP-712 struct type strings from the canonical schemas.
-// ---------------------------------------------------------------------------
-
 function eip712TypeString(typeName: string, fields: ReadonlyArray<{ name: string; type: string }>): string {
   return `${typeName}(${fields.map((f) => `${f.type} ${f.name}`).join(",")})`;
 }

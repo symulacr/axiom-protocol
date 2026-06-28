@@ -43,7 +43,6 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: i
     },
   }));
   app.use(cors({ origin: config.env?.AXIOM_FRONTEND_URL ?? 'http://localhost:5173' }));
-  // Optional API key auth — skip if AXIOM_API_KEY is not set (local dev)
   app.use(rateLimit({ windowMs: 60_000, max: 100 }));
   app.use(express.json({ limit: "1mb" }));
   const { signer, storage } = config;
@@ -138,7 +137,6 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: i
     validUntil?: string | number;
   }
 
-// @fix-done F1-A2: handler body wrapped in outer try/catch
 
   app.post("/v1/ownership", async (req: Request<Record<string, never>, unknown, OwnershipRequestBody>, res: Response) => {
     try {
@@ -250,7 +248,6 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: i
   app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
     const message = err instanceof Error ? err.message : String(err);
     console.log(JSON.stringify({ level: "error", msg: "unhandled middleware error", error: err instanceof Error ? err.message : String(err), code: "INTERNAL_ERROR" }));
-    // Sanitize: never leak internal details
     const safeMessage = message.length > 200 ? message.slice(0, 200) + "..." : message;
     res.status(500).json({ error: safeMessage, code: "INTERNAL_ERROR" });
   });
