@@ -1,3 +1,5 @@
+import * as Sentry from "@sentry/node";
+
 import { FetchRequest, JsonRpcProvider, Wallet } from "ethers";
 import { resolveAddress } from "@axiom/config/addresses";
 import { startServer } from "./server.js";
@@ -9,6 +11,9 @@ import { getEventStore } from "./events/store.js";
 loadEnv();
 
 export const env = backendEnvSchema.parse(process.env);
+if (env.AXIOM_SENTRY_DSN) {
+  Sentry.init({ dsn: env.AXIOM_SENTRY_DSN, environment: process.env.NODE_ENV ?? "development" });
+}
 
 const fetchReq = new FetchRequest(env.AXIOM_EVM_RPC);
 fetchReq.timeout = 10_000;

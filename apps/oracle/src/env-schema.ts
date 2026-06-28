@@ -13,6 +13,7 @@ const baseSchema = sharedEnvSchema.merge(z.object({
   AXIOM_ORACLE_BIND: z.string().default("127.0.0.1"),
   AXIOM_ORACLE_PORT: z.coerce.number().int().positive().default(8787),
   AXIOM_STORAGE_PRIVATE_KEY: hexString.optional(),
+  AXIOM_SENTRY_DSN: z.string().optional(),
 }));
 
 export const oracleEnvSchema = baseSchema.refine(

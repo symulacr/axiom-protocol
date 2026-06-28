@@ -1,3 +1,5 @@
+import * as Sentry from "@sentry/node";
+
 import { Wallet } from "ethers";
 
 import { TeeSigner, type Eip712Domain } from "./signer.js";
@@ -15,6 +17,9 @@ if (process.env.PORT) {
 }
 
 const env = oracleEnvSchema.parse(process.env);
+if (env.AXIOM_SENTRY_DSN) {
+  Sentry.init({ dsn: env.AXIOM_SENTRY_DSN, environment: process.env.NODE_ENV ?? "development" });
+}
 
 const teeVerifierRaw = env.AXIOM_TEE_VERIFIER_ADDRESS ?? env.AXIOM_TEE_VERIFIER;
 if (!teeVerifierRaw) throw new Error("Missing AXIOM_TEE_VERIFIER_ADDRESS or deprecated AXIOM_TEE_VERIFIER");
