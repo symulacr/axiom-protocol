@@ -1,5 +1,8 @@
 import { WebSocket } from "ws";
 import { bigintReplacer } from "@axiom/config/types/bigint";
+import { createLogger } from "../utils/logger.js";
+
+const log = createLogger("ws");
 
 export interface ConnectedClient {
   socket: WebSocket;
@@ -7,7 +10,6 @@ export interface ConnectedClient {
   missedPings: number;
 }
 
-export const MAX_WS_CLIENTS = 1000;
 
 const _clients = new Set<ConnectedClient>();
 const _clientIds = new WeakMap<WebSocket, string>();
@@ -21,7 +23,7 @@ export function broadcast(topic: string, payload: unknown): void {
     try {
       c.socket.send(msg);
     } catch (err) {
-      console.warn('[ws] broadcast send failed for client, removing:', err instanceof Error ? err.message : err);
+      log.warn("broadcast send failed for client, removing", { error: err instanceof Error ? err.message : String(err) });
       c.socket.terminate();
       unregisterClient(c);
     }
@@ -59,7 +61,7 @@ export function sendToTopic(topicPrefix: string, data: unknown): number {
         client.socket.send(msg);
         sent++;
       } catch (err) {
-        console.warn('[ws] sendToTopic failed for client, removing:', err instanceof Error ? err.message : err);
+        log.warn("sendToTopic failed for client, removing", { error: err instanceof Error ? err.message : String(err) });
         client.socket.terminate();
         unregisterClient(client);
       }

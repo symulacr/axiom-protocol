@@ -174,11 +174,15 @@ contract AxiomPaymentProcessor is Ownable, Pausable, ReentrancyGuard {
         // Determine the creator and royalty bps (per-agent override, else default protocol fee)
         address creator = IAxiomAgentNFT(AXIOM_NFT).creatorOf(agentTokenId);
         if (creator == address(0)) revert AgentCreatorNotRegistered();
-        uint256 royaltyBps = $.agentRoyaltyBps[agentTokenId];
-        if (!$.agentRoyaltyBpsSet[agentTokenId]) royaltyBps = $.protocolFeeBps;
-
-        uint256 creatorCut = (amount * royaltyBps) / BPS_DENOMINATOR;
-        uint256 protocolCut = amount - creatorCut;
+        uint256 creatorCut;
+        uint256 protocolCut;
+        if (!$.agentRoyaltyBpsSet[agentTokenId]) {
+            protocolCut = (amount * $.protocolFeeBps) / BPS_DENOMINATOR;
+            creatorCut = amount - protocolCut;
+        } else {
+            creatorCut = (amount * $.agentRoyaltyBps[agentTokenId]) / BPS_DENOMINATOR;
+            protocolCut = amount - creatorCut;
+        }
 
         // CEI: state update first (credit creator's withdrawable balance)
         if (creatorCut > 0) {

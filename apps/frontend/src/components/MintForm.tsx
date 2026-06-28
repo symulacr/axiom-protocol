@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useEffect,
   useState,
   type ChangeEvent,
   type FormEvent,
@@ -7,8 +8,8 @@ import {
 } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { useAccount, useReadContracts } from 'wagmi';
-import { formatEther, keccak256, parseAbi, toBytes, encodeFunctionData } from 'viem';
+import { useAccount, useReadContracts, useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
+import { formatEther, keccak256, parseAbi, toBytes } from 'viem';
 import { AGENT_NFT_ABI } from '@axiom/config/abis';
 
 const agentNftAbi = parseAbi(AGENT_NFT_ABI);
@@ -30,9 +31,10 @@ export type MintFormProps = {
 export function MintForm({ provider }: MintFormProps): ReactElement {
   const { address, isConnected } = useAccount();
   const navigate = useNavigate();
+  const { writeContractAsync, isPending } = useWriteContract();
+
   const [agentName, setAgentName] = useState('');
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [isBusy, setIsBusy] = useState(false);
 
   const feeQuery = useReadContracts({
     allowFailure: false,
@@ -53,40 +55,49 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
   const feeError = (feeQuery.error as Error | null) ?? null;
 
   const owner = address;
-  const canSubmit = isConnected && owner !== undefined && agentName.length > 0;
+  const canSubmit = isConnected && owner !== undefined && agentName.trim().length > 0 && !isPending;
+
+  const [pendingHash, setPendingHash] = useState<`0x${string}` | null>(null);
+  const receiptQuery = useWaitForTransactionReceipt({ hash: pendingHash ?? undefined, query: { enabled: pendingHash !== null } });
+
+  // After receipt arrives, extract tokenId and navigate
+  useEffect(() => {
+    if (receiptQuery.data && pendingHash) {
+      const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+      const ZERO_TOPIC = '0x0000000000000000000000000000000000000000000000000000000000000000';
+      const mintLog = receiptQuery.data.logs.find(
+        log => log.topics[0] === TRANSFER_TOPIC && log.topics[1] === ZERO_TOPIC,
+      );
+      setPendingHash(null);
+      if (mintLog?.topics[3]) {
+        const tokenId = BigInt(mintLog.topics[3]).toString();
+        navigate(`/agents/${tokenId}`);
+      } else {
+        navigate('/agents');
+      }
+    }
+  }, [receiptQuery.data, pendingHash, navigate]);
 
   const onSubmit = useCallback(async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
-    if (!canSubmit || !owner || mintFeeWei === undefined || isBusy) return;
+    if (!canSubmit || !owner || mintFeeWei === undefined || isPending) return;
     setSubmitError(null);
-    setIsBusy(true);
     try {
       const dataHash = keccak256(toBytes(`axiom:agent:${agentName}:${owner.toLowerCase()}`));
-      const data = encodeFunctionData({
+      const hash = await writeContractAsync({
+        address: getAxiomAgentNftAddress(),
         abi: agentNftAbi,
         functionName: 'mint',
         args: [[{ dataDescription: agentName, dataHash }], owner],
+        value: mintFeeWei,
       });
-      if (!window.ethereum) {
-        throw new Error('No wallet found. Install MetaMask or another web3 wallet.');
-      }
-      const hash = await window.ethereum.request({
-        method: 'eth_sendTransaction',
-        params: [{
-          from: owner,
-          to: getAxiomAgentNftAddress(),
-          data,
-          value: `0x${mintFeeWei.toString(16)}`,
-        }],
-      });
-      toast.success(`Agent "${agentName}" minted!`);
+      toast.success(`Agent "${agentName}" minted! Confirming on-chain…`);
       setAgentName('');
-      navigate('/agents');
+      setPendingHash(hash);
     } catch (err) {
-      setIsBusy(false);
       setSubmitError(err instanceof Error ? err.message : String(err));
     }
-  }, [canSubmit, agentName, owner, mintFeeWei, isBusy]);
+  }, [canSubmit, agentName, owner, mintFeeWei, isPending, writeContractAsync]);
 
   const onNameChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>): void => {
@@ -113,6 +124,7 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
             onChange={onNameChange}
             placeholder="My AI strategy"
             autoComplete="off"
+            maxLength={100}
             style={{ width: '100%', marginTop: 6, boxSizing: 'border-box' }}
             required
           />
@@ -126,7 +138,7 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
             ) : mintFeeWei === undefined ? (
               <span style={{ color: COLORS.textMuted }}>loading…</span>
             ) : (
-              <span style={{ fontFamily: "'SF Mono', monospace", color: COLORS.bronzeLight, fontWeight: 'var(--fw-semibold)' }}>
+              <span style={{ fontFamily: 'var(--font-mono)', color: COLORS.bronzeLight, fontWeight: 'var(--fw-semibold)' }}>
                 {formatEther(mintFeeWei)} 0G
               </span>
             )}
@@ -144,8 +156,8 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
           )}
 
           <div style={{ display: 'flex', gap: 'var(--space-sm)', justifyContent: 'flex-end', marginTop: 'var(--space-xl)' }}>
-            <Button variant="primary" type="submit" disabled={!canSubmit || isBusy}>
-              {isBusy ? 'Confirming…' : 'Mint agent'}
+            <Button variant="primary" type="submit" disabled={!canSubmit || isPending}>
+              {isPending ? 'Confirming…' : 'Mint agent'}
             </Button>
           </div>
         </form>

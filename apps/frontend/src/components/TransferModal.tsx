@@ -11,20 +11,11 @@ import { isAddress } from 'viem';
 import { toast } from 'sonner';
 import { useAccount } from 'wagmi';
 import { useTransfer, type TransferInput, type TransferPhase, type TransferResponse } from '../hooks/useTransfer.js';
-import { COLORS, Button, Alert, MonoLabel, Input, Modal, Card } from './ui.js';
+import { COLORS, Button, Alert, MonoLabel, Input, Modal, Card, Spinner } from './ui.js';
 
 const RECEIVER_PUBKEY_HEX_LENGTH = 130;
 
 
-const PHASE_LABELS: Record<string, string> = {
-  idle: 'Prepare Transfer',
-  challenge: 'Challenge',
-  signing: 'Sign in Wallet',
-  finalizing: 'Finalize',
-  confirming: 'Confirm on-chain',
-};
-
-const PHASES = (['idle', 'challenge', 'signing', 'finalizing', 'confirming'] as const);
 
 function freshNonceHex(byteLength = 32): `0x${string}` {
   const bytes = new Uint8Array(byteLength);
@@ -59,41 +50,17 @@ function validatePubKey(value: string): string | null {
 // ── Phase indicator ──────────────────────────────────────────────────────────
 
 function PhaseIndicator({ transferPhase }: { transferPhase: TransferPhase }): ReactElement {
+  const phase = transferPhase;
   return (
-    <div className="mb-lg flex items-center text-xs fw-medium" style={{ gap: 6 }}>
-      {PHASES.map((p, i, arr) => (
-        <span
-          key={p}
-          className="inline-flex items-center"
-          style={{
-            gap: 6,
-            color:
-              transferPhase === p
-                ? COLORS.bronzeLight
-                : arr.indexOf(transferPhase) > i
-                  ? COLORS.textMuted
-                  : COLORS.textDim,
-          }}
-        >
-          {i > 0 && (
-            <span className="text-dim text-xs">→</span>
-          )}
-          <span
-            style={{
-              background:
-                transferPhase === p
-                  ? 'rgba(191, 144, 86, 0.12)'
-                  : 'transparent',
-              padding: '2px 8px',
-              borderRadius: 'var(--radius-sm)',
-              fontWeight: transferPhase === p ? 'var(--fw-semibold)' : 'var(--fw-regular)',
-            }}
-          >
-            {PHASE_LABELS[p]}
-          </span>
-        </span>
-      ))}
-    </div>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-sm)', fontSize: 'var(--text-xs)', color: COLORS.textMuted }}>
+      <Spinner size={12} />
+      {phase === 'idle' ? 'Ready' :
+       phase === 'challenge' ? 'Generating challenge...' :
+       phase === 'signing' ? 'Waiting for signature...' :
+       phase === 'finalizing' ? 'Re-encrypting data...' :
+       phase === 'confirming' ? 'Confirming on-chain...' :
+       phase}
+    </span>
   );
 }
 
@@ -157,7 +124,8 @@ function TransferFormPhase({
         placeholder="0x\u2026"
         autoComplete="off"
         spellCheck={false}
-        className="w-full" style={{ boxSizing: 'border-box', fontFamily: "'SF Mono', monospace", marginTop: 6 }}
+        maxLength={42}
+        className="w-full" style={{ boxSizing: 'border-box', fontFamily: 'var(--font-mono)', marginTop: 6 }}
         required
       />
       {addressError !== null && (
@@ -165,7 +133,7 @@ function TransferFormPhase({
       )}
 
       <label htmlFor={`${formId}-pubkey`} className="block mt-lg fw-medium text-sm text-primary">
-        Receiver pubkey (64 raw bytes, no 0x04 prefix)
+        Receiver Public Key
       </label>
       <textarea
         id={`${formId}-pubkey`}
@@ -174,12 +142,13 @@ function TransferFormPhase({
         onChange={onPubKeyChange}
         rows={3}
         spellCheck={false}
+        maxLength={RECEIVER_PUBKEY_HEX_LENGTH}
         placeholder="0x\u2026  (128 hex chars)"
         style={{
           width: '100%',
           padding: '10px 14px',
           marginTop: 6,
-          fontFamily: "'SF Mono', monospace",
+          fontFamily: 'var(--font-mono)',
           fontSize: 'var(--text-sm)',
           border: `1px solid ${COLORS.borderStrong}`,
           borderRadius: 'var(--radius-md)',
@@ -190,22 +159,28 @@ function TransferFormPhase({
         }}
         required
       />
+      <p style={{ fontSize: 'var(--text-xs)', color: COLORS.textDim, margin: '4px 0 0' }}>
+        The receiver's public key (not their address). Found in their wallet's 'Export Public Key' or via ENS. Must be 128 hex characters without the 0x04 prefix.
+      </p>
       {pubKeyError !== null && (
         <Alert variant="error" style={{ marginTop: 4 }}>{pubKeyError}</Alert>
       )}
 
-      <label htmlFor={`${formId}-nonce`} className="block mt-lg fw-medium text-sm text-primary">
-        Access proof nonce
-      </label>
-      <Input
-        id={`${formId}-nonce`}
-        value={accessProofNonce}
-        readOnly
-        className="w-full" style={{ boxSizing: 'border-box', fontFamily: "'SF Mono', monospace", marginTop: 6, color: COLORS.bronzeLight }}
-      />
-      <p className="text-dim text-xs" style={{ margin: '4px 0 0', fontWeight: 'var(--fw-light)' }}>
-        32 random bytes generated locally. A new nonce is minted each time the modal opens.
-      </p>
+      <details style={{ fontSize: 'var(--text-xs)', color: COLORS.textDim }}>
+        <summary style={{ cursor: 'pointer' }}>Advanced: Access proof details</summary>
+        <label htmlFor={`${formId}-nonce`} className="block mt-sm fw-medium text-sm text-primary">
+          Access proof nonce
+        </label>
+        <Input
+          id={`${formId}-nonce`}
+          value={accessProofNonce}
+          readOnly
+          className="w-full" style={{ boxSizing: 'border-box', fontFamily: 'var(--font-mono)', marginTop: 6, color: COLORS.bronzeLight }}
+        />
+        <p className="text-dim text-xs" style={{ margin: '4px 0 0', fontWeight: 'var(--fw-light)' }}>
+          32 random bytes generated locally. A new nonce is minted each time the modal opens.
+        </p>
+      </details>
 
       <details className="mt-lg">
         <summary className="cursor-pointer text-sm fw-medium text-muted">
@@ -225,7 +200,8 @@ function TransferFormPhase({
           placeholder="base64 32-byte AES key"
           autoComplete="off"
           spellCheck={false}
-          className="w-full" style={{ boxSizing: 'border-box', fontFamily: "'SF Mono', monospace", marginTop: 6 }}
+          maxLength={256}
+          className="w-full" style={{ boxSizing: 'border-box', fontFamily: 'var(--font-mono)', marginTop: 6 }}
         />
         <label htmlFor={`${formId}-olduri`} className="block mt-sm fw-medium text-sm text-primary">
           Old data URI (0x&hellip;)
@@ -237,7 +213,8 @@ function TransferFormPhase({
           placeholder="0x\u2026 0G Storage root hash"
           autoComplete="off"
           spellCheck={false}
-          className="w-full" style={{ boxSizing: 'border-box', fontFamily: "'SF Mono', monospace", marginTop: 6 }}
+          maxLength={128}
+          className="w-full" style={{ boxSizing: 'border-box', fontFamily: 'var(--font-mono)', marginTop: 6 }}
         />
         {rekeyError !== null && (
           <Alert variant="error" style={{ marginTop: 4 }}>{rekeyError}</Alert>
@@ -331,9 +308,6 @@ function ConfirmTransferPhase({
 
       {mergedError}
 
-      <p className="text-dim text-xs" style={{ margin: '12px 0 0' }}>
-        The on-chain transfer will incur gas costs.
-      </p>
 
       <div className="flex justify-end" style={{ gap: 10, marginTop: 20 }}>
         <Button variant="secondary" onClick={onEdit} disabled={isLoading}>

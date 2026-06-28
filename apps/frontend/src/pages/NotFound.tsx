@@ -42,11 +42,11 @@ export function NotFound(): ReactElement {
             padding: '0.625rem 1.5rem',
             borderRadius: 'var(--radius-md)',
             background: COLORS.bronze,
-            color: '#0f0f0f',
+            color: COLORS.bg,
             textDecoration: 'none',
             fontSize: 'var(--text-sm)',
             fontWeight: 'var(--fw-semibold)',
-            transition: 'all 0.18s ease',
+            transition: 'color 0.18s ease, background 0.18s ease',
           }}
         >
           Back to Home

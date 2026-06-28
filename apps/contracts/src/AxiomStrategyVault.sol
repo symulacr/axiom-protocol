@@ -121,7 +121,7 @@ contract AxiomStrategyVault is Ownable, Pausable, ReentrancyGuard {
         uint256 value,
         bytes calldata data,
         bytes32[] calldata merkleProof
-    ) external payable nonReentrant whenNotPaused returns (bytes memory) {
+    ) external nonReentrant whenNotPaused returns (bytes memory) {
         Vault storage v = _getVaults()[tokenId];
         if (v.strategyRoot == bytes32(0)) revert NoStrategySet();
         if (value > v.balance) revert ZeroAmount();

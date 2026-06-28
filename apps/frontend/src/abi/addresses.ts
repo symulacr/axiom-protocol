@@ -25,5 +25,5 @@ export const getAxiomStrategyVaultAddress = (chainId?: number) => getContractAdd
 export const getAxiomAgentNftAddress = (chainId?: number) => getContractAddress('agentNft', chainId);
 export const getAxiomTeeVerifierAddress = (chainId?: number) => getContractAddress('teeVerifier', chainId);
 export const getAxiomPaymentProcessorAddress = (chainId?: number) => getContractAddress('paymentProcessor', chainId);
-export const getAxiomMockUsdcAddress = (chainId?: number) => getContractAddress('mockUsdc', chainId);
+
 

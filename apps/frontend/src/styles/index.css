@@ -38,21 +38,33 @@
   --radius-lg: 8px;
   --radius-xl: 12px;
 
-  /* ─── Colors ────────────────────────────────────────────────────── */
-  --c-bg: #0f0f0f;
-  --c-surface: #1a1a1a;
-  --c-border: #2a2a2a;
-  --c-border-strong: #3a3a3a;
-  --c-text: #f5f5f5;
-  --c-text-primary: #e5e5e5;
-  --c-text-muted: #8a8a8a;
-  --c-text-dim: #6a6a6a;
+  /* ─── Font stacks ──────────────────────────────────────────────── */
+  --font-mono: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+
+  /* ─── Colors — warm-tinted neutrals (The Vault palette) ────────── */
+  --c-bg: #10100e;              /* obsidian */
+  --c-surface: #1c1a17;         /* dark-carbon */
+  --c-surface-light: #f0ebe3;   /* parchment */
+  --c-border: #2d2a25;          /* warm-iron */
+  --c-border-strong: #383530;   /* aged-steel */
+  --c-text: #f5f0e8;            /* bright-nickel */
+  --c-text-primary: #e5dfd6;    /* polished-silver */
+  --c-text-muted: #9a9288;      /* warm-pewter */
+  --c-text-dim: #736b62;        /* tarnished-lead */
   --c-bronze: #b8976e;
   --c-bronze-light: #c5a880;
   --c-bronze-border: rgba(184, 151, 110, 0.25);
+  --c-teal: #5a8a8a;
+  --c-teal-light: #7aa8a8;
+  --c-teal-bg: rgba(90, 138, 138, 0.15);
+  --c-teal-border: rgba(90, 138, 138, 0.2);
   --c-danger: #c85a5a;
   --c-success: #6b9e6b;
   --c-warning: #c5a25a;
+
+  /* ─── Breakpoints (for reference; used in media queries below) ──── */
+  --bp-mobile: 640px;
+  --bp-tablet: 768px;
 
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
     Oxygen, Ubuntu, Cantarell, sans-serif;
@@ -89,7 +101,7 @@ p {
 
 /* ─── Code: monospace, no ligatures */
 code, pre {
-  font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-variant-ligatures: none;
 }
 
@@ -125,7 +137,7 @@ a:hover { color: var(--c-bronze); }
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: var(--c-bg); }
 ::-webkit-scrollbar-thumb { background: var(--c-border-strong); border-radius: var(--radius-sm); }
-::-webkit-scrollbar-thumb:hover { background: #4a4a4a; }
+::-webkit-scrollbar-thumb:hover { background: #55504a; }
 
 /* ─── Focus rings ─────────────────────────────────────────────────── */
 *:focus-visible {
@@ -152,13 +164,27 @@ input, textarea, select {
 
 
 /* ─── Responsive layout utilities ─────────────────────────────────── */
+/* Mobile */
 @media (max-width: 640px) {
-  .stack-on-mobile {
-    grid-template-columns: 1fr !important;
-  }
   .full-width-mobile {
     width: 100% !important;
     max-width: 100% !important;
+  }
+}
+
+/* Tablet & below: stack grids and side-by-side layouts */
+@media (max-width: 768px) {
+  .stack-on-mobile,
+  .stack-on-tablet {
+    flex-direction: column !important;
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ─── Touch targets ──────────────────────────────────────────────── */
+@media (pointer: coarse) {
+  button, [role="button"], a {
+    min-height: 44px;
   }
 }
 
@@ -189,10 +215,9 @@ input, textarea, select {
   white-space: normal;
   top: 0;
   left: 0;
-  z-index: 9999;
   background: var(--c-bronze);
-  color: #0f0f0f;
-  font-size: var(--text-sm);
+  color: var(--c-bg);
+  z-index: 1000; /* tooltip tier — above everything except modals */
   outline: 2px solid var(--c-bronze);
 }
 
@@ -213,11 +238,19 @@ input, textarea, select {
   }
 }
 
+/* ─── HelpTip tooltip ────────────────────────────────────────────── */
+.helptip { position: relative; }
+.helptip-content { opacity: 0; pointer-events: none; }
+.helptip:hover .helptip-content,
+.helptip:focus-within .helptip-content {
+  opacity: 1;
+}
+
 @media (prefers-contrast: more) {
   :root {
-    --c-border: #4a4a4a;
-    --c-text-muted: #b0b0b0;
-    --c-text-dim: #999999;
+    --c-border: #4a4540;
+    --c-text-muted: #b0a898;
+    --c-text-dim: #999088;
   }
 }
 
@@ -273,3 +306,14 @@ input, textarea, select {
 
 /* Cursor */
 .cursor-pointer { cursor: pointer; }
+
+/* ── Performance ──────────────────────────────── */
+/* Containment: isolate layout/paint for independent regions */
+.contain-content { contain: content; }
+.contain-layout  { contain: layout style; }
+
+/* Content-visibility: defer rendering of off-screen sections */
+.cv-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 300px;
+}

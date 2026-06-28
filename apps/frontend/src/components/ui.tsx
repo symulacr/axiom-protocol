@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { forwardRef, useCallback, useEffect, useRef } from 'react';
 import { useAccount } from 'wagmi';
 import type {
   ButtonHTMLAttributes,
@@ -9,27 +9,32 @@ import type {
 } from 'react';
 
 export const COLORS = {
-  // Backgrounds
-  bg: '#0f0f0f',
-  surface: '#1a1a1a',
+  // Backgrounds — warm-tinted near-blacks
+  bg: '#10100e',           // obsidian
+  surface: '#1c1a17',      // dark-carbon
+  surfaceLight: '#f0ebe3', // parchment (for reading contexts)
 
+  // Borders — warm-tinted
+  border: '#2d2a25',       // warm-iron
+  borderStrong: '#3d3932', // aged-steel
 
-  // Borders
-  border: '#2a2a2a',
-  borderStrong: '#3a3a3a',
-
-  // Text
-  text: '#f5f5f5',
-  textPrimary: '#e5e5e5',
-  textMuted: '#8a8a8a',
-  textDim: '#6a6a6a',  // intentionally dimmer than textMuted
+  // Text — warm-tinted near-whites
+  text: '#f5f0e8',         // bright-nickel
+  textPrimary: '#e5dfd6',  // polished-silver
+  textMuted: '#9a9288',    // warm-pewter
+  textDim: '#736b62',      // tarnished-lead
 
   // Accent — warm bronze / muted gold
   bronze: '#b8976e',
   bronzeLight: '#c5a880',
-
   bronzeBg: 'rgba(184, 151, 110, 0.08)',
   bronzeBorder: 'rgba(184, 151, 110, 0.25)',
+
+  // Secondary accent — oxidized teal
+  teal: '#5a8a8a',
+  tealLight: '#7aa8a8',
+  tealBg: 'rgba(90, 138, 138, 0.15)',
+  tealBorder: 'rgba(90, 138, 138, 0.2)',
 
   // Semantic — restrained, never neon
   danger: '#c85a5a',
@@ -41,11 +46,9 @@ export const COLORS = {
   warning: '#c5a25a',
   warningBg: 'rgba(197, 162, 90, 0.08)',
   warningBorder: 'rgba(197, 162, 90, 0.2)',
-
-
 } as const;
 
-const transition = 'all 0.18s cubic-bezier(0.4, 0, 0.2, 1)';
+const transition = 'color 0.18s cubic-bezier(0.4, 0, 0.2, 1), background 0.18s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.18s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.18s cubic-bezier(0.4, 0, 0.2, 1)';
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost';
 
@@ -66,7 +69,7 @@ const buttonVariants: Record<ButtonVariant, CSSProperties> = {
   primary: {
     ...buttonBase,
     background: COLORS.bronze,
-    color: '#0f0f0f',
+    color: '#10100e',
     borderColor: COLORS.bronze,
   },
   secondary: {
@@ -119,12 +122,25 @@ export const Card = React.memo(function Card({
 }): ReactElement {
   return (
     <div
+      role={hover ? 'button' : undefined}
+      tabIndex={hover ? 0 : undefined}
+      onKeyDown={
+        hover
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.currentTarget.click();
+              }
+            }
+          : undefined
+      }
       style={{
         background: COLORS.surface,
         border: `1px solid ${COLORS.border}`,
         borderRadius: 'var(--radius-xl)',
         padding: 'var(--space-xl)',
         transition,
+        overflow: 'hidden',
+        contain: 'layout style',
         ...(hover ? { cursor: 'pointer' } : {}),
         ...style,
       }}
@@ -134,12 +150,13 @@ export const Card = React.memo(function Card({
   );
 });
 
-export function Input({
-  style,
-  ...rest
-}: InputHTMLAttributes<HTMLInputElement>): ReactElement {
+export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function Input(
+  { style, ...rest },
+  ref,
+) {
   return (
     <input
+      ref={ref}
       {...rest}
       style={{
         padding: '0.625rem 0.875rem',
@@ -155,28 +172,40 @@ export function Input({
       }}
     />
   );
-}
+});
 
-type AlertVariant = 'error' | 'success';
+type AlertVariant = 'error' | 'success' | 'info';
 
 const alertStyles: Record<AlertVariant, CSSProperties> = {
   error: {
     padding: 'var(--space-md) var(--space-lg)',
-    background: COLORS.dangerBg,
+    background: 'rgba(200, 90, 90, 0.05)',
     border: `1px solid ${COLORS.dangerBorder}`,
     color: COLORS.danger,
     borderRadius: 'var(--radius-lg)',
     fontSize: 'var(--text-sm)',
     lineHeight: 'var(--lh-snug)',
+    overflowWrap: 'break-word',
   },
   success: {
     padding: 'var(--space-md) var(--space-lg)',
-    background: COLORS.successBg,
+    background: 'rgba(107, 158, 107, 0.05)',
     border: `1px solid ${COLORS.successBorder}`,
     color: COLORS.success,
     borderRadius: 'var(--radius-lg)',
     fontSize: 'var(--text-sm)',
     lineHeight: 'var(--lh-snug)',
+    overflowWrap: 'break-word',
+  },
+  info: {
+    padding: 'var(--space-md) var(--space-lg)',
+    background: 'rgba(90, 138, 138, 0.10)',
+    border: `1px solid ${COLORS.tealBorder}`,
+    color: COLORS.teal,
+    borderRadius: 'var(--radius-lg)',
+    fontSize: 'var(--text-sm)',
+    lineHeight: 'var(--lh-snug)',
+    overflowWrap: 'break-word',
   },
 };
 
@@ -250,13 +279,16 @@ export function PageHeader({
 }): ReactElement {
   return (
     <div className="flex items-baseline justify-between mb-2xl flex-wrap gap-md">
-      <div>
+      <div style={{ minWidth: 0, overflow: 'hidden' }}>
         <h1
-          className="text-xl fw-bold lh-tight"
+          className="text-xl fw-semibold lh-tight"
           style={{
             margin: '0 0 0.375rem',
             color: COLORS.text,
             letterSpacing: '-0.02em',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
           }}
         >
           {title}
@@ -273,16 +305,18 @@ export function PageHeader({
 export function SectionTitle({
   children,
   style,
+  spacing = 'compact',
 }: {
   children: ReactNode;
   style?: CSSProperties;
+  spacing?: 'compact' | 'spaced';
 }): ReactElement {
   return (
     <h2
-      className="text-xs fw-semibold text-dim lh-snug m-0 mb-lg"
+      className="text-sm fw-semibold text-dim lh-snug m-0 mb-lg"
       style={{
-        textTransform: 'uppercase',
-        letterSpacing: '0.08em',
+        letterSpacing: '0.02em',
+        marginTop: spacing === 'spaced' ? 'var(--space-2xl)' : undefined,
         ...style,
       }}
     >
@@ -304,12 +338,15 @@ export function MonoLabel({
     <code
       title={title}
       style={{
-        fontFamily: "'SF Mono', 'Fira Code', 'JetBrains Mono', monospace",
+        fontFamily: 'var(--font-mono)',
         fontSize: 'var(--text-sm)',
         color: COLORS.bronzeLight,
-        background: COLORS.bronzeBg,
+        background: 'rgba(184, 151, 110, 0.05)',
         padding: '0.125rem 0.5rem',
         borderRadius: 'var(--radius-sm)',
+        display: 'inline-block',
+        maxWidth: '100%',
+        overflow: 'hidden',
         wordBreak: 'break-all',
         ...style,
       }}
@@ -372,6 +409,8 @@ export const Modal = React.memo(function Modal({ open, onClose, title, children,
         borderRadius: 'var(--radius-xl)',
         maxWidth: 500,
         width: '90vw',
+        maxHeight: '90vh',
+        overflow: 'auto',
         background: COLORS.surface,
         color: COLORS.text,
         boxShadow: '0 24px 80px rgba(0,0,0,0.5)',
@@ -379,7 +418,7 @@ export const Modal = React.memo(function Modal({ open, onClose, title, children,
       }}
     >
       {title !== undefined && (
-        <h2 id="modal-title" className="mt-0 text-xl fw-bold" style={{ color: COLORS.text, letterSpacing: '-0.02em' }}>
+        <h2 id="modal-title" className="mt-0 text-xl fw-bold" style={{ color: COLORS.text, letterSpacing: '-0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {title}
         </h2>
       )}
@@ -394,12 +433,45 @@ export function ConnectedGuard({ children }: { children: React.ReactNode }): Rea
     return (
       <Card style={{ textAlign: 'center', padding: 'var(--space-3xl) var(--space-xl)' }}>
         <p className="text-muted text-sm fw-regular">
-          Connect your wallet to view this content.
+          Connect your wallet to view agents, manage vaults, and execute strategies.
         </p>
       </Card>
     );
   }
   return <>{children}</>;
+}
+
+export function HelpTip({ tip, children }: { tip: string; children?: ReactNode }): ReactElement {
+  return (
+    <span className="helptip" style={{ position: 'relative', cursor: 'help', borderBottom: `1px dotted ${COLORS.textDim}` }}>
+      {children}
+      <span
+        role="tooltip"
+        className="helptip-content"
+        style={{
+          position: 'absolute',
+          bottom: '100%',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: COLORS.surface,
+          border: `1px solid ${COLORS.border}`,
+          borderRadius: 'var(--radius-md)',
+          padding: '6px 10px',
+          fontSize: 'var(--text-xs)',
+          color: COLORS.text,
+          pointerEvents: 'none',
+          opacity: 0,
+          transition: 'opacity 0.15s ease',
+          zIndex: 100,
+          maxWidth: 280,
+          whiteSpace: 'normal',
+          lineHeight: 'var(--lh-snug)',
+        }}
+      >
+        {tip}
+      </span>
+    </span>
+  );
 }
 
 

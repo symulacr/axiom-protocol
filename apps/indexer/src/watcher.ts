@@ -20,7 +20,7 @@ export type EventTopicTable = { [K in EventName]: Hex };
 const TOPIC_TABLE: EventTopicTable = {
   Transfer: validateHex(ethers.id("Transfer(address,address,uint256)")),
   Updated: validateHex(ethers.id("Updated(uint256,(string,bytes32)[],(string,bytes32)[])")),
-  Authorization: validateHex(ethers.id("Authorization(uint256,address,address)")),
+  Authorization: validateHex(ethers.id("Authorization(address,address,uint256)")),
   AuthorizationRevoked: validateHex(ethers.id("AuthorizationRevoked(uint256,address,address)")),
   VerifierUpdated: validateHex(ethers.id("VerifierUpdated(address,address)")),
   CreatorSet: validateHex(ethers.id("CreatorSet(uint256,address)")),

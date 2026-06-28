@@ -1,17 +1,16 @@
-import { useCallback, useEffect, useState } from 'react';
 import { useAccount } from 'wagmi';
-import { useAsyncAction } from './useAsyncAction.js';
-import { apiFetch } from '../utils/apiFetch.js';
+import { usePolledApi } from './usePolledApi.js';
 
 export interface AgentInfo {
-  tokenId: string;
+  tokenId: bigint;
   owner: string;
   dataHash: string;
   uri: string;
+  dataDescription?: string;
 }
 
 interface AgentsApiResponse {
-  agents: AgentInfo[];
+  agents: { tokenId: string; owner: string; dataHash: string; uri: string; dataDescription?: string }[];
 }
 
 export function useAgents(): {
@@ -21,28 +20,15 @@ export function useAgents(): {
   refetch: () => void;
 } {
   const { address } = useAccount();
-  const { execute, isLoading, error } = useAsyncAction();
-  const [agents, setAgents] = useState<AgentInfo[]>([]);
+  const { data, isLoading, error, refetch } = usePolledApi<AgentsApiResponse>(
+    () => (address ? `/v1/agents?owner=${address}` : ''),
+    {
+      queryKey: ['agents', address],
+      enabled: Boolean(address),
+      refetchInterval: 30000,
+    },
+  );
 
-  const fetchAgents = useCallback(() => {
-    if (!address) {
-      setAgents([]);
-      return;
-    }
-    execute(async (signal) => {
-      const data = await apiFetch<AgentsApiResponse>(`/v1/agents?owner=${address}`, {
-        signal,
-        timeout: 10000,
-      });
-      setAgents(data.agents ?? []);
-    }).catch((err: unknown) => {
-      console.warn('[useAgents] fetch failed:', err);
-    });
-  }, [address, execute]);
-
-  useEffect(() => {
-    fetchAgents();
-  }, [fetchAgents]);
-
-  return { agents, isLoading, error, refetch: fetchAgents };
+  const agents: AgentInfo[] = (data?.agents ?? []).map(a => ({ ...a, tokenId: BigInt(a.tokenId) }));
+  return { agents, isLoading, error, refetch: () => void refetch() };
 }

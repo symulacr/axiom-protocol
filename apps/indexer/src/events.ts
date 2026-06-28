@@ -16,7 +16,7 @@ export const EVENT_SIGNATURES = {
   // Canonical signature without tuple syntax (viem parseAbiItem does not accept inline tuple).
   Updated: "Updated(uint256,(string,bytes32)[],(string,bytes32)[])" as const,
   Authorization:
-    "event Authorization(uint256 indexed tokenId, address indexed from, address indexed to)" as const,
+    "event Authorization(address indexed from, address indexed to, uint256 indexed tokenId)" as const,
   AuthorizationRevoked:
     "event AuthorizationRevoked(uint256 indexed tokenId, address indexed from, address indexed to)" as const,
 

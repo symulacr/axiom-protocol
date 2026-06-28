@@ -1,13 +1,16 @@
 import type { Wallet } from "ethers";
 import { AbiCoder, FetchRequest, JsonRpcProvider, keccak256, type TransactionReceipt, type TransactionResponse } from "ethers";
 import { TypedContract } from "@axiom/config/types/contract";
+import type { TickResult } from "@axiom/config/types/orchestrator";
 import type OpenAI from "openai";
 import { ZeroGStorage, type Encryption } from "@axiom/config/storage/0g";
 import { createRouterClient } from "../compute/router.js";
 import { DefaultSignerOracleClient } from "../oracle/client.js";
 import { pickOGNetwork, GALILEO_CHAIN_ID } from "@axiom/config/networks";
 import { VAULT_ABI } from "@axiom/config/abis";
+import { createLogger } from "../utils/logger.js";
 
+const log = createLogger("orchestrator");
 // Local contract types (avoid shared contract-types.ts drift).
 type StrategyVaultMethods = {
   balanceOf(tokenId: bigint): Promise<bigint>;
@@ -30,26 +33,12 @@ export interface StrategySpec {
   modelEncryption: Encryption | undefined;
 }
 
-export interface TickResult {
-  recommendation: { action: "buy" | "sell" | "hold"; amount?: number; reason: string };
-  rawModelOutput: string;
-  onchain: { vaultBalance: bigint; recentEvents: unknown[] };
-  storage: { rootHash: `0x${string}`; size: number };
-  execution?: {
-    txHash: `0x${string}`;
-    action: string;
-    target: `0x${string}`;
-    success: boolean;
-    result?: `0x${string}`;
-    gasUsed?: bigint;
-  };
-  durationMs: number;
-}
+export type { TickResult };
 
 export type StreamCallback = (
   chunk: { type: 'token'; content: string; index: number }
-    | { type: 'complete'; result: TickResult }
-    | { type: 'error'; error: string },
+  | { type: 'complete'; result: TickResult }
+  | { type: 'error'; error: string },
 ) => void;
 
 export interface OrchestratorConfig {
@@ -149,7 +138,7 @@ export class StrategyRunner {
         reason: typeof parsed.reason === "string" ? parsed.reason : "no reason provided",
       };
     } catch {
-      console.warn("[orchestrator] unparseable model output:", rawModelOutput.slice(0, 200));
+      log.warn("unparseable model output", { output: rawModelOutput.slice(0, 200) });
       return { action: "hold", reason: `Model output not parseable as JSON: ${rawModelOutput.slice(0, 80)}…` };
     }
   }

@@ -28,20 +28,6 @@ type TransferEvent = {
   };
 };
 
-const transferRowStyle: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: '80px 1fr 1fr 1fr',
-  gap: 10,
-  padding: '10px 14px',
-  border: `1px solid ${COLORS.border}`,
-  borderRadius: 'var(--radius-lg)',
-  fontSize: 'var(--text-xs)',
-  fontFamily: "'SF Mono', 'Fira Code', monospace",
-  background: COLORS.surface,
-  color: COLORS.textMuted,
-  transition: 'all 0.18s ease',
-};
-
 export function MarketPage(): ReactElement {
   const chainId = useChainId();
   const explorerBase = resolveBlockExplorerUrl(chainId);
@@ -55,6 +41,7 @@ export function MarketPage(): ReactElement {
 
   const [transfers, setTransfers] = useState<TransferEvent[]>([]);
   const [transfersError, setTransfersError] = useState<Error | null>(null);
+  const [showAllTransfers, setShowAllTransfers] = useState(false);
 
   const fetcher = useCallback(async (signal: AbortSignal): Promise<TransferEvent[]> => {
     const body = await apiFetch<{ events: unknown[] }>(
@@ -114,7 +101,12 @@ export function MarketPage(): ReactElement {
         title="Market"
       />
 
-      <SectionTitle>Compute Providers</SectionTitle>
+      <SectionTitle>Compute Providers ({providers.length})</SectionTitle>
+      {providers.length > 0 && (
+        <p style={{ color: COLORS.textMuted, fontSize: 'var(--text-sm)', margin: '0 0 var(--space-lg)', lineHeight: 'var(--lh-normal)' }}>
+          Decentralized GPU providers for AI inference on 0G Compute
+        </p>
+      )}
       {providersLoading ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <Skeleton height={80} />
@@ -152,29 +144,60 @@ export function MarketPage(): ReactElement {
           </p>
         </Card>
       ) : (
-        <ul aria-label="Recent iNFT transfers" style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
-          {transfers.map((tx) => (
-            <li
-              key={`${tx.txHash}-${tx.payload.tokenId}`}
-              style={transferRowStyle}
-            >
-              <span style={{ color: COLORS.bronzeLight }}>#{tx.blockNumber}</span>
-              <span>
-                {tx.payload.from.slice(0, 6)}&hellip;{tx.payload.from.slice(-4)} →&nbsp;
-                {tx.payload.to.slice(0, 6)}&hellip;{tx.payload.to.slice(-4)}
-              </span>
-              <span>token #{tx.payload.tokenId}</span>
-              <a
-                href={`${explorerBase}/tx/${tx.txHash}`}
-                target="_blank"
-                rel="noreferrer noopener"
-                style={{ color: COLORS.bronzeLight }}
+        <>
+          <ul aria-label="Recent iNFT transfers" style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+            {(showAllTransfers ? transfers : transfers.slice(0, 20)).map((tx) => (
+              <li
+                key={`${tx.txHash}-${tx.payload.tokenId}`}
+                style={{ listStyle: 'none' }}
               >
-                {tx.txHash.slice(0, 10)}&hellip;
-              </a>
-            </li>
-          ))}
-        </ul>
+                <Card hover style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))',
+                  gap: 10,
+                  padding: '10px 14px',
+                  fontSize: 'var(--text-xs)',
+                  fontFamily: 'var(--font-mono)',
+                  color: COLORS.textMuted,
+                }}>
+                  <span style={{ color: COLORS.bronzeLight }}>#{tx.blockNumber}</span>
+                  <span>
+                    {tx.payload.from.slice(0, 6)}&hellip;{tx.payload.from.slice(-4)} →&nbsp;
+                    {tx.payload.to.slice(0, 6)}&hellip;{tx.payload.to.slice(-4)}
+                  </span>
+                  <span>token #{tx.payload.tokenId}</span>
+                  <a
+                    href={`${explorerBase}/tx/${tx.txHash}`}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    style={{ color: COLORS.teal }}
+                  >
+                    {tx.txHash.slice(0, 10)}&hellip;
+                  </a>
+                </Card>
+              </li>
+            ))}
+          </ul>
+          {transfers.length > 20 && !showAllTransfers && (
+            <div style={{ textAlign: 'center', marginTop: 'var(--space-sm)' }}>
+              <button
+                type="button"
+                onClick={() => setShowAllTransfers(true)}
+                style={{
+                  background: 'none',
+                  border: `1px solid ${COLORS.border}`,
+                  borderRadius: 'var(--radius-md)',
+                  color: COLORS.teal,
+                  cursor: 'pointer',
+                  fontSize: 'var(--text-sm)',
+                  padding: '0.375rem 1rem',
+                }}
+              >
+                Show more ({transfers.length} total)
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       <SectionTitle style={{ marginTop: 'var(--space-2xl)' }}>Leaderboard</SectionTitle>
@@ -195,25 +218,27 @@ export function MarketPage(): ReactElement {
             <Link
               key={entry.tokenId}
               to={`/agents/${entry.tokenId}`}
-              style={{
+              style={{ textDecoration: 'none' }}
+            >
+              <Card hover style={{
                 display: 'grid',
-                gridTemplateColumns: '32px 1fr 80px 80px',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))',
                 gap: 10,
                 padding: '10px 14px',
-                border: `1px solid ${COLORS.border}`,
-                borderRadius: 'var(--radius-lg)',
                 fontSize: 'var(--text-xs)',
-                fontFamily: "'SF Mono', 'Fira Code', monospace",
-                background: COLORS.surface,
+                fontFamily: 'var(--font-mono)',
                 color: COLORS.textMuted,
-                textDecoration: 'none',
-                transition: 'all 0.18s ease',
-              }}
-            >
-              <span style={{ color: i < 3 ? COLORS.bronzeLight : COLORS.textDim }}>#{i + 1}</span>
-              <span style={{ color: COLORS.text }}>Agent #{entry.tokenId}</span>
-              <span style={{ color: entry.score > 0 ? '#6b9e6b' : '#c85a5a' }}>{entry.score.toFixed(1)}</span>
-              <span style={{ color: COLORS.textDim }}>{entry.total} ticks</span>
+              }}>
+                <span style={{ color: i < 3 ? COLORS.bronzeLight : COLORS.textDim }}>#{i + 1}</span>
+                <span style={{ color: COLORS.text }}>Agent #{entry.tokenId}</span>
+                <span style={{ color: entry.score > 0 ? COLORS.success : COLORS.danger }}>
+                  {entry.score.toFixed(1)}{' '}
+                  <span style={{ fontSize: 'var(--text-xs)', opacity: 0.8 }}>
+                    {entry.score > 5 ? 'High' : entry.score > 0 ? 'Medium' : 'Low'}
+                  </span>
+                </span>
+                <span style={{ color: COLORS.textDim }}>{entry.total} ticks</span>
+              </Card>
             </Link>
           ))}
         </div>

@@ -1,5 +1,5 @@
 import { useChainId, useReadContracts } from 'wagmi';
-import { parseAbi, type Address } from 'viem';
+import { parseAbi } from 'viem';
 import { getAxiomStrategyVaultAddress } from '../abi/addresses.js';
 import { axiomStrategyVaultAbi } from '../abi/axiomStrategyVault.js';
 
@@ -11,6 +11,7 @@ export type VaultData = {
   dailyLimitWei: bigint;
   isLoading: boolean;
   error: Error | null;
+  refetch: () => void;
 };
 
 export function useVaultData(tokenId: bigint): VaultData {
@@ -46,5 +47,6 @@ export function useVaultData(tokenId: bigint): VaultData {
     dailyLimitWei: data ? ((data[1] as readonly [`0x${string}`, bigint, bigint, bigint])[1] as bigint) : 0n,
     isLoading: query.isLoading,
     error: query.error as Error | null,
+    refetch: () => { query.refetch(); },
   };
 }

@@ -7,10 +7,6 @@ export function agentTransferPath(id: bigint | string): string {
   return agentPath(id, 'transfer');
 }
 
-export function agentPayPath(id: bigint | string): string {
-  return agentPath(id, 'pay');
-}
-
 export function agentEarningsPath(id: bigint | string): string {
   return agentPath(id, 'earnings');
 }
@@ -19,12 +15,4 @@ export function agentRoyaltyPath(id: bigint | string): string {
   return agentPath(id, 'royalty');
 }
 
-export function agentHistoryPath(id: bigint | string): string {
-  return agentPath(id, 'history');
-}
 
-export const queryKeys = {
-  events: (since?: number) => ['events', { since }] as const,
-  providers: () => ['providers'] as const,
-  health: () => ['health'] as const,
-};
