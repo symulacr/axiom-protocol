@@ -57,6 +57,8 @@ type AgentNFTMethods = {
 interface StepResult { step: number; name: string; ok: boolean; summary: string; txHash?: string; }
 const stepResults: StepResult[] = [];
 
+// FLAG: main() is 263 lines — exceeds 100-line threshold. Consider extracting step handlers.
+
 async function main(): Promise<void> {
   console.log("============================================");
   console.log("  Axiom Protocol — E2E CLI (MW14)");

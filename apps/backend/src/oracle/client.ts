@@ -66,7 +66,7 @@ export class DefaultSignerOracleClient implements OracleClient {
     return h;
   }
 
-  health() { return this.get<{ ok: boolean; signer: `0x${string}`; version: string }>("/health"); }
+  health(): Promise<{ ok: boolean; signer: `0x${string}`; version: string }> { return this.get<{ ok: boolean; signer: `0x${string}`; version: string }>("/health"); }
 
   transferValidity(input: TransferValidityInput): Promise<TransferValidityResult> {
     return this.post<TransferValidityResult>("/v1/transfer-validity", input);

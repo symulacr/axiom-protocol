@@ -11,7 +11,7 @@ import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {ERC7857Upgradeable} from "../ERC7857Upgradeable.sol";
 import {IERC7857Cloneable} from "../interfaces/IERC7857Cloneable.sol";
 import {IntelligentData} from "../interfaces/IERC7857Metadata.sol";
-import {IERC7857DataVerifier, TransferValidityProof} from "../interfaces/IERC7857DataVerifier.sol";
+import {TransferValidityProof} from "../interfaces/IERC7857DataVerifier.sol";
 
 /// @title ERC7857CloneableUpgradeable
 /// @notice Extension that allows cloning a token (new token with same metadata)

@@ -64,4 +64,3 @@ try {
 } catch {
   // process/process.on not available (browser environment)
 }
-// @fix F1-A1: unhandledRejection + uncaughtException handlers added above
