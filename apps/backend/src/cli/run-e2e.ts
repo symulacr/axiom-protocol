@@ -117,7 +117,7 @@ async function main(): Promise<void> {
 
   console.log("\n[Step 4]  Upload encrypted strategy to 0G Storage");
   const storage = new ZeroGStorage({ indexerRpc: STORAGE_RPC, evmRpc: RPC, signer: deployer });
-  const upload = await storage.uploadData(blob, { type: "aes256", key: dataKey });
+  const upload = await storage.uploadData(blob);
   console.log(`          Uploaded: root=${upload.rootHash} tx=${upload.txHash}`);
   stepResults.push({ step: 4, name: "0G Storage upload", ok: true, summary: `root=${upload.rootHash}`, txHash: upload.txHash });
 

@@ -120,7 +120,7 @@ export class ZeroGStorage implements StorageAdapter {
   }
 
   // Backward-compat methods (for backend consumers)
-  async uploadData(data: Uint8Array, _encryption?: Encryption): Promise<UploadResult> {
+  async uploadData(data: Uint8Array): Promise<UploadResult> {
     return uploadToStorage(this.indexer, data, this.config.evmRpc, this.config.signer);
   }
 

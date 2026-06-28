@@ -12,3 +12,6 @@ allowBuilds:
   blake-hash: true
   protobufjs: true
 strictDepBuilds: false
+overrides:
+  '@0gfoundation/0g-storage-ts-sdk>ethers': '6.16.0'
+  '@0gfoundation/0g-compute-ts-sdk>ethers': '6.16.0'
