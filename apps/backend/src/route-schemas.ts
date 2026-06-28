@@ -71,4 +71,5 @@ export const archiveClosestSchema = z.object({
 export const chatBodySchema = z.object({
   messages: z.array(z.any()).nonempty(),
   tools: z.array(z.any()).optional(),
+  model: z.string().optional(),
 });

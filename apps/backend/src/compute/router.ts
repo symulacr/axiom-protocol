@@ -4,6 +4,7 @@ import { createZGComputeNetworkBroker } from "@0gfoundation/0g-compute-ts-sdk";
 import { pickOGNetwork, GALILEO_CHAIN_ID } from "@axiom/config/networks";
 import { resolveProviderUrl, acknowledgeProviderSigner } from "./provider-discovery.js";
 import { createLogger } from "../utils/logger.js";
+import { z } from "zod";
 
 /**
  * Resolve the 0G Compute Router base URL.
@@ -88,9 +89,35 @@ async function fundComputeAccount(providerAddress: string): Promise<void> {
     });
   }
 }
+/**
+ * Resolve the active model from configuration.
+ *
+ * Precedence:
+ *   1. `requestedModel` parameter (explicit request override)
+ *   2. First model from `AXIOM_COMPUTE_MODELS` (comma-separated) if the requested model is omitted
+ *   3. `AXIOM_COMPUTE_MODEL` (singular, backward compat)
+ *   4. Hard-coded default
+ *
+ * Validates the requested model against the configured list when `AXIOM_COMPUTE_MODELS` is set.
+ */
+export function resolveModel(requestedModel?: string): string {
+  const modelsEnv = process.env.AXIOM_COMPUTE_MODELS;
+  if (modelsEnv) {
+    const models = modelsEnv.split(",").map(m => m.trim()).filter(Boolean);
+    if (models.length > 0) {
+      if (requestedModel && models.includes(requestedModel)) {
+        return requestedModel;
+      }
+      return models[0]!;
+    }
+  }
+  // Fallback: single model env var or default
+  return process.env.AXIOM_COMPUTE_MODEL ?? "qwen/qwen2.5-omni-7b";
+}
+
 const ROUTER_TIMEOUT_MS = 30_000;
 
-export async function createRouterClient(timeout = ROUTER_TIMEOUT_MS): Promise<OpenAI> {
+export async function createRouterClient(model?: string, timeout = ROUTER_TIMEOUT_MS): Promise<OpenAI> {
   const directKey = process.env.AXIOM_COMPUTE_DIRECT_KEY;
   if (directKey) {
     const tokenInfo = decodeDirectKeyToken(directKey);
@@ -111,6 +138,7 @@ export async function createRouterClient(timeout = ROUTER_TIMEOUT_MS): Promise<O
     }
     throw new Error("Cannot decode app-sk-* token. Check AXIOM_COMPUTE_DIRECT_KEY.");
   }
+  log.info("Creating router client", { model: resolveModel(model) });
   const routerKey = process.env.AXIOM_COMPUTE_API_KEY ?? process.env.OG_COMPUTE_API_KEY;
   if (routerKey) {
     return new OpenAI({ baseURL: getComputeBaseUrl(), apiKey: routerKey, timeout, maxRetries: 2 });

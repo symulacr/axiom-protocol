@@ -51,6 +51,8 @@ export interface OrchestratorConfig {
   };
   /** EIP-155 chain id (default 16602 = Galileo testnet). */
   chainId?: number;
+  /** API key for oracle authenticated endpoints (sent as x-api-key header). */
+  apiKey?: string;
 }
 
 export class StrategyRunner {
@@ -75,12 +77,12 @@ export class StrategyRunner {
     this.storage = new ZeroGStorage({ indexerRpc: network.storageRpc, evmRpc: config.evmRpc, signer: config.signer });
     // OpenAI client is lazily created — createRouterClient() only called on first
     // actual tick request, so missing compute credentials don't crash the server.
-    this.oracle = new DefaultSignerOracleClient({ baseUrl: config.oracleBaseUrl });
+    this.oracle = new DefaultSignerOracleClient({ baseUrl: config.oracleBaseUrl, apiKey: config.apiKey });
   }
 
-  private async getClient(): Promise<OpenAI> {
+  private async getClient(model?: string): Promise<OpenAI> {
     if (!this.openai) {
-      this.openai = await createRouterClient();
+      this.openai = await createRouterClient(model);
     }
     return this.openai;
   }
@@ -258,7 +260,7 @@ export class StrategyRunner {
       // response_format with stream: true would return 400 from OpenAI,
       // so we rely on the system prompt asking for JSON output —
       // parseRecommendation handles malformed JSON gracefully.
-      const client = await this.getClient();
+      const client = await this.getClient(strategy.computeModel);
       const stream = await client.chat.completions.create({
         model: strategy.computeModel,
         messages,
@@ -276,7 +278,7 @@ export class StrategyRunner {
     }
 
     // Non-streaming path: preserves response_format for JSON reliability.
-    const completion = await (await this.getClient()).chat.completions.create({
+    const completion = await (await this.getClient(strategy.computeModel)).chat.completions.create({
       model: strategy.computeModel,
       messages,
       response_format: { type: "json_object" },

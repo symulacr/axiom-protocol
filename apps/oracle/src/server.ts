@@ -45,6 +45,7 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: i
   app.use(cors({ origin: config.env?.AXIOM_FRONTEND_URL ?? 'http://localhost:5173' }));
   app.use(rateLimit({ windowMs: 60_000, max: 100 }));
   app.use(express.json({ limit: "1mb" }));
+  app.use(createApiKeyAuth(config.env?.AXIOM_API_KEY));
   const { signer, storage } = config;
 
   app.get("/health", (_req: Request, res: Response) => {
