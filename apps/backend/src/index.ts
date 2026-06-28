@@ -5,6 +5,7 @@ import { loadEnv } from "./env.js";
 import { backendEnvSchema } from "./env-schema.js";
 import { DEPLOYED_ADDRESSES } from "@axiom/config/addresses";
 import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
+import { getEventStore } from "./events/store.js";
 
 loadEnv();
 
@@ -19,7 +20,7 @@ const provider = new JsonRpcProvider(
   { staticNetwork: true },
 );
 const signer = new Wallet(env.DEPLOYER_PK, provider);
-startServer({
+const server = startServer({
   bind: env.AXIOM_BIND,
   port: env.AXIOM_PORT,
   env,
@@ -51,6 +52,22 @@ startServer({
   },
 });
 
-// @fix F1-A3: Add SIGTERM/SIGINT handler to gracefully close HTTP server, WS, flush EventStore
-// @fix F1-A1: Add process.on('unhandledRejection') handler — zero across all apps
-// @audit-ref: V1-A4 (no SIGTERM), V1-A1 (no unhandledRejection)
+const onSignal = (sig: NodeJS.Signals): void => {
+  console.log(JSON.stringify({ level: "info", msg: "shutdown", signal: sig }));
+  getEventStore().flush();
+  server.httpServer.closeAllConnections?.();
+  server.httpServer.close(() => process.exit(0));
+};
+process.on("SIGTERM", onSignal);
+process.on("SIGINT", onSignal);
+
+process.on("unhandledRejection", (reason: unknown) => {
+  const err = reason instanceof Error ? reason.stack ?? reason.message : String(reason);
+  console.error(JSON.stringify({ level: "error", msg: "unhandledRejection", err, pid: process.pid }));
+  process.exit(1);
+});
+process.on("uncaughtException", (err: Error) => {
+  console.error(JSON.stringify({ level: "error", msg: "uncaughtException", err: err.stack ?? err.message, pid: process.pid }));
+  process.exit(1);
+});
+// @fix F1-A1: unhandledRejection + uncaughtException handlers added above

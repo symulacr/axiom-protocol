@@ -51,6 +51,7 @@ export class EventStore {
   private readonly byTokenId: Map<string, StoredEvent[]>;
   /** Total appends since process start. */
   private total: number;
+  private debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(maxEventsPerSource: number = DEFAULT_MAX_EVENTS_PER_SOURCE) {
     if (!Number.isInteger(maxEventsPerSource) || maxEventsPerSource <= 0) {
@@ -246,13 +247,19 @@ export class EventStore {
   }
 
   /** Debounced (2s) variant — safe to call after every append. */
-  private persistDebounced = (() => {
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    return () => {
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => this.persist(), 2_000);
-    };
-  })();
+  private persistDebounced(): void {
+    if (this.debounceTimer) clearTimeout(this.debounceTimer);
+    this.debounceTimer = setTimeout(() => this.persist(), 2_000);
+  }
+
+  /** Force-flush pending events to disk. Call before shutdown. */
+  flush(): void {
+    if (this.debounceTimer) {
+      clearTimeout(this.debounceTimer);
+      this.debounceTimer = null;
+    }
+    this.persist();
+  }
 
   clear(): void {
     this.buckets.clear();
@@ -261,10 +268,6 @@ export class EventStore {
     this.total = 0;
   }
 
-  // @fix F1-A6: Add flush() method that resolves the debounce timer and persist() before shutdown.
-  // persistDebounced() uses setTimeout(2s) with no drain — in-flight events lost on crash/SIGKILL.
-  // Call flush() from new SIGTERM handler (F1-A3). See docs/audit/EXECUTION_ROADMAP.md.
-  // @audit-ref: V2-A7 confirmed — EventStore has no flush/drain mechanism
 }
 
 /**

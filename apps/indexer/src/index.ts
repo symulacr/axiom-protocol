@@ -259,6 +259,13 @@ main().catch((err: unknown) => {
   process.exit(1);
 });
 
-// @fix F1-A1: Add process.on('unhandledRejection') handler — currently only .catch() on main() promise,
-// does not catch rejections outside main() scope
-// @audit-ref: V1-A1 confirmed — zero global handlers across all apps
+process.on("unhandledRejection", (reason: unknown) => {
+  const err = reason instanceof Error ? reason.stack ?? reason.message : String(reason);
+  console.error(JSON.stringify({ level: "error", msg: "unhandledRejection", err, pid: process.pid }));
+  process.exit(1);
+});
+process.on("uncaughtException", (err: Error) => {
+  console.error(JSON.stringify({ level: "error", msg: "uncaughtException", err: err.stack ?? err.message, pid: process.pid }));
+  process.exit(1);
+});
+// @fix F1-A1: unhandledRejection + uncaughtException handlers added above

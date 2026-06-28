@@ -48,3 +48,20 @@ createRoot(rootEl).render(
     </WagmiProvider>
   </StrictMode>,
 );
+
+try {
+  if (typeof window !== "undefined" && typeof process !== "undefined") {
+    process.on("unhandledRejection", (reason: unknown) => {
+      const err = reason instanceof Error ? reason.stack ?? reason.message : String(reason);
+      console.error(JSON.stringify({ level: "error", msg: "unhandledRejection", err, pid: process.pid }));
+      process.exit(1);
+    });
+    process.on("uncaughtException", (err: Error) => {
+      console.error(JSON.stringify({ level: "error", msg: "uncaughtException", err: err.stack ?? err.message, pid: process.pid }));
+      process.exit(1);
+    });
+  }
+} catch {
+  // process/process.on not available (browser environment)
+}
+// @fix F1-A1: unhandledRejection + uncaughtException handlers added above

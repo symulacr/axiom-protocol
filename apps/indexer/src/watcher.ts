@@ -507,6 +507,8 @@ export class Watcher {
   readonly logger: (line: Record<string, unknown>) => void;
   private nextBlock: bigint;
   private running = false;
+  private consecutiveFailures = 0;
+  private maxConsecutiveFailures = 10;
 
   constructor(opts: WatcherOptions) {
     this.provider = opts.provider;
@@ -567,18 +569,27 @@ export class Watcher {
 
         // Range derived from clamped toBlock — tells pollOnce exactly what we want.
         const range = toBlock - fromBlock + 1n;
-        // @fix F1-A4: Individual log decode can throw and abort entire tick.
-        // Wrap decodeAxiomLog in per-log try/catch so one bad event doesn't lose the window.
-        // @audit-ref: V2-A7 confirmed — decodeAxiomLog has zero try/catch blocks internally.
         const logs = await pollOnce(this.provider, this.watchList, fromBlock, range);
         logs.sort(logsByChainOrder);
         for (const log of logs) {
-          const ev = decodeAxiomLog(log);
-          if (ev === null) continue;
-          await this.sink(ev);
+          try {
+            const ev = decodeAxiomLog(log);
+            if (ev === null) continue;
+            await this.sink(ev);
+          } catch (err) {
+            this.logger({
+              level: "error",
+              msg: "skipping bad log",
+              blockNumber: log.blockNumber?.toString(),
+              transactionHash: log.transactionHash,
+              logIndex: log.index,
+              err: err instanceof Error ? err.message : String(err),
+            });
+          }
         }
         this.nextBlock = toBlock + 1n;
         await saveCheckpoint(Number(this.nextBlock));
+        this.consecutiveFailures = 0;
         this.logger({
           msg: "poll tick",
           fromBlock: fromBlock.toString(),
@@ -588,18 +599,26 @@ export class Watcher {
           logCount: logs.length,
         });
       } catch (err) {
+        this.consecutiveFailures++;
         this.logger({
           level: "error",
           msg: "poll tick failed",
+          consecutiveFailures: this.consecutiveFailures,
+          maxConsecutiveFailures: this.maxConsecutiveFailures,
           err: err instanceof Error ? err.message : String(err),
         });
-        // Back off on error to avoid hammering the RPC.
+        if (this.consecutiveFailures >= this.maxConsecutiveFailures) {
+          this.logger({ level: "fatal", msg: "max consecutive failures reached — stopping" });
+          this.running = false;
+          const { promise, resolve } = Promise.withResolvers<void>();
+          setTimeout(resolve, this.intervalMs);
+          await promise;
+          return;
+        }
+        // Exponential backoff with 60s cap
+        const backoff = Math.min(this.intervalMs * Math.pow(2, this.consecutiveFailures), 60_000);
         const { promise, resolve } = Promise.withResolvers<void>();
-
-// @fix F1-A5: Add max-fail threshold + circuit breaker to retry loop.
-// Currently retries forever with no backoff escalation — permanent errors loop indefinitely.
-// @audit-ref: V2-A7 confirmed — while(true) loop at line 605 has no fail counter
-        setTimeout(resolve, this.intervalMs);
+        setTimeout(resolve, backoff);
         await promise;
       }
     };
