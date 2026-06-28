@@ -7,11 +7,6 @@ export const MAX_AGENT_ENUMERATION = 100 as const;
 /** Maximum concurrent WebSocket clients. */
 export const MAX_WS_CLIENTS = 1000 as const;
 
-/** Block range for chain event scanning. */
-export const BLOCK_SCAN_RANGE = 2000 as const;
-
 /** Default limit for event queries. */
 export const DEFAULT_EVENT_LIMIT = 1000 as const;
 
-/** Default LLM max tokens for chat completions. */
-export const DEFAULT_MAX_TOKENS = 2048 as const;

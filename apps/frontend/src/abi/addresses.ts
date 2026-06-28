@@ -8,7 +8,6 @@ const ADDRESSES = {
   agentNft: DEPLOYED_ADDRESSES.agentNft as Address,
   teeVerifier: DEPLOYED_ADDRESSES.teeVerifier as Address,
   paymentProcessor: DEPLOYED_ADDRESSES.paymentProcessor as Address,
-  mockUsdc: DEPLOYED_ADDRESSES.mockUsdc as Address,
 } as const;
 
 type ContractName = keyof typeof ADDRESSES;

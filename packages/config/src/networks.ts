@@ -3,13 +3,8 @@ export interface OGNetwork {
   readonly chainId: number;
   readonly evmRpc: string;
   readonly storageRpc: string;
-  readonly flowContract: `0x${string}`;
-
   readonly computeRouterUrl: string;
-  readonly computeDirectProxyUrl: string;
-  readonly daGrpcUrl: string;
   readonly blockExplorer: string;
-  readonly explorerApiUrl: string;
 }
 
 export const GALILEO_CHAIN_ID = 16602;
@@ -21,24 +16,16 @@ const _OG_NETWORKS = {
     chainId: 16602,
     evmRpc: "https://evmrpc-testnet.0g.ai",
     storageRpc: "https://indexer-storage-testnet-turbo.0g.ai",
-    flowContract: "0x22E03a6A89B950F1c82ec5e74F8eCa321a105296",
     computeRouterUrl: "https://router-api-testnet.integratenetwork.work/v1",
-    computeDirectProxyUrl: "https://compute-network-6.integratenetwork.work/v1/proxy",
-    daGrpcUrl: "dgrpc-testnet.0g.ai:9090",
     blockExplorer: "https://chainscan-galileo.0g.ai",
-    explorerApiUrl: "https://chainscan-galileo.0g.ai/api",
   },
   16661: {
     name: "aristotle",
     chainId: 16661,
     evmRpc: "https://evmrpc.0g.ai",
     storageRpc: "https://indexer-storage-turbo.0g.ai",
-    flowContract: "0x62D4144dB0F0a6fBBaeb6296c785C71B3D57C526",
     computeRouterUrl: "https://router-api.0g.ai/v1",
-    computeDirectProxyUrl: "https://compute-network-6.integratenetwork.work/v1/proxy",
-    daGrpcUrl: "dgrpc.0g.ai:9090",
     blockExplorer: "https://chainscan.0g.ai",
-    explorerApiUrl: "https://chainscan.0g.ai/api",
   },
 } as const satisfies Record<number, OGNetwork>;
 
