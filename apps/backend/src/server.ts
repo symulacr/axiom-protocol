@@ -1,6 +1,7 @@
 import { z } from "zod";
 import express, { type Request, type Response, type Express, type NextFunction } from "express";
 import helmet from "helmet";
+import * as Sentry from "@sentry/node";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
 import { createServer, type Server as HttpServer } from "node:http";
@@ -248,6 +249,8 @@ createRoute(paymentRouter, {
     paymentConfigCache = { data: result, timestamp: Date.now() };
     return result;
   }, config);
+  Sentry.setupExpressErrorHandler(app);
+
   app.use(paymentRouter);
 
   app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {

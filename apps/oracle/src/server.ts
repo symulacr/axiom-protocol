@@ -2,6 +2,7 @@ import { isHex } from "viem";
 
 import express, { type Request, type Response, type Express, type NextFunction } from "express";
 import helmet from "helmet";
+import * as Sentry from "@sentry/node";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
 import { hexToBytes } from "ethereum-cryptography/utils";
@@ -245,6 +246,8 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: i
     storage.markDataHashSeen(dataHash as `0x${string}`);
     res.json({ ok: true, dataHash, seen: true });
   });
+  Sentry.setupExpressErrorHandler(app);
+
 
   app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
     const message = err instanceof Error ? err.message : String(err);

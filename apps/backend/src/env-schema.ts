@@ -14,6 +14,7 @@ export const backendEnvSchema = sharedEnvSchema.merge(z.object({
   AXIOM_TEE_SIGNER_PK: hexString,
   DEPLOYER_PK: hexString,
   AXIOM_COMPUTE_MODELS: z.string().optional(),
+  AXIOM_SENTRY_DSN: z.string().optional(),
   AXIOM_COMPUTE_MODEL: z.string().optional(),
   AXIOM_PORT: z.coerce.number().int().positive().default(3000),
   PORT: z.coerce.number().int().positive().optional(),
