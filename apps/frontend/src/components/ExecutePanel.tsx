@@ -1,19 +1,34 @@
-import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react';
-import { useAccount } from 'wagmi';
-import { formatEther } from 'viem';
-import { toast } from 'sonner';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactElement,
+} from "react";
+import { useAccount } from "wagmi";
+import { formatEther } from "viem";
+import { toast } from "sonner";
 import {
   getAxiomAgentNftAddress,
   getAxiomStrategyVaultAddress,
-} from '../abi/addresses.js';
-import { useVaultData } from '../hooks/useVaultData.js';
-import { useAgents } from '../hooks/useAgents.js';
+} from "../abi/addresses.js";
+import { useVaultData } from "../hooks/useVaultData.js";
+import { useAgents } from "../hooks/useAgents.js";
 import {
   useOrchestratorTick,
   type TickResult,
-} from '../hooks/useOrchestratorTick.js';
-import { COLORS, Button, Card, SectionTitle, MonoLabel, Alert, HelpTip } from './ui.js';
-import { PLACEHOLDER } from '../utils/format.js';
+} from "../hooks/useOrchestratorTick.js";
+import {
+  COLORS,
+  Button,
+  Card,
+  SectionTitle,
+  MonoLabel,
+  Alert,
+  HelpTip,
+} from "./ui.js";
+import { PLACEHOLDER, humanizeError } from "../utils/format.js";
 
 const actionColor: Record<string, string> = {
   buy: COLORS.success,
@@ -21,27 +36,189 @@ const actionColor: Record<string, string> = {
   hold: COLORS.textMuted,
 };
 
+const TICK_STEPS = [
+  "Securing enclave channel via 0G Compute...",
+  "Retrieving encrypted strategy root from 0G Storage...",
+  "Attesting hardware execution signature (Intel SGX)...",
+  "Evaluating market pool metrics via LLM inference...",
+  "Generating EIP-712 AccessProof verification...",
+  "Submitting strategy transaction to 0G Chain...",
+];
+
+interface Particle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  color: string;
+  size: number;
+  alpha: number;
+  decay: number;
+}
+
+function SuccessCelebration() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let width = (canvas.width = canvas.offsetWidth);
+    let height = (canvas.height = canvas.offsetHeight);
+
+    const handleResize = () => {
+      if (!canvas) return;
+      width = canvas.width = canvas.offsetWidth;
+      height = canvas.height = canvas.offsetHeight;
+    };
+    window.addEventListener("resize", handleResize);
+
+    const colors = [
+      COLORS.bronze,
+      COLORS.bronzeLight,
+      COLORS.teal,
+      COLORS.tealLight,
+      COLORS.success,
+    ];
+    const particles: Particle[] = [];
+
+    const emit = (x: number, y: number, count = 60) => {
+      for (let i = 0; i < count; i++) {
+        const angle = Math.PI * 1.5 + (Math.random() - 0.5) * Math.PI * 0.4;
+        const speed = 2 + Math.random() * 6;
+        particles.push({
+          x,
+          y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          color:
+            colors[Math.floor(Math.random() * colors.length)] ?? COLORS.bronze,
+          size: 2 + Math.random() * 3,
+          alpha: 1,
+          decay: 0.012 + Math.random() * 0.015,
+        });
+      }
+    };
+
+    emit(width / 2, height);
+
+    let active = true;
+    let animationFrameId: number;
+
+    const render = () => {
+      if (!ctx || !active) return;
+      ctx.clearRect(0, 0, width, height);
+
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        if (p === undefined) continue;
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.07; // gravity
+        p.alpha -= p.decay;
+
+        if (p.alpha <= 0) {
+          particles.splice(i, 1);
+          continue;
+        }
+
+        ctx.save();
+        ctx.globalAlpha = p.alpha;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      if (particles.length > 0) {
+        animationFrameId = requestAnimationFrame(render);
+      }
+    };
+
+    render();
+
+    return () => {
+      active = false;
+      cancelAnimationFrame(animationFrameId);
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{
+        position: "absolute",
+        inset: 0,
+        width: "100%",
+        height: "100%",
+        pointerEvents: "none",
+        zIndex: 5,
+      }}
+    />
+  );
+}
+
 export type ExecutePanelProps = {
   /** Route token id; when provided the agent dropdown is hidden. */
   tokenId?: bigint;
 };
 
-export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): ReactElement {
+export function ExecutePanel({
+  tokenId: tokenIdProp,
+}: ExecutePanelProps): ReactElement {
   const { isConnected } = useAccount();
-  const { agents, isLoading: agentsLoading } = tokenIdProp === undefined ? useAgents() : { agents: [], isLoading: false };
-  const { tick, tickStream, cancelTick, isLoading, isStreaming, streamedTokens, streamingError, error, resetStream } = useOrchestratorTick();
+  const { agents, isLoading: agentsLoading } =
+    tokenIdProp === undefined ? useAgents() : { agents: [], isLoading: false };
+  const {
+    tick,
+    tickStream,
+    cancelTick,
+    isLoading,
+    isStreaming,
+    streamedTokens,
+    streamingError,
+    error,
+    resetStream,
+  } = useOrchestratorTick();
   const [selectedId, setSelectedId] = useState<string>(() => {
     if (tokenIdProp) return tokenIdProp.toString();
-    try { return localStorage.getItem('axiom:lastAgent') ?? ''; } catch { return ''; }
+    try {
+      return localStorage.getItem("axiom:lastAgent") ?? "";
+    } catch {
+      return "";
+    }
   });
   const [result, setResult] = useState<TickResult | null>(null);
   const [showRaw, setShowRaw] = useState(false);
   const [streamMode, setStreamMode] = useState(false);
+  const [loadingStep, setLoadingStep] = useState(0);
+  const [showCelebration, setShowCelebration] = useState(false);
+
   useEffect(() => {
     if (selectedId && !tokenIdProp) {
-      try { localStorage.setItem('axiom:lastAgent', selectedId); } catch {}
+      try {
+        localStorage.setItem("axiom:lastAgent", selectedId);
+      } catch {}
     }
   }, [selectedId, tokenIdProp]);
+
+  useEffect(() => {
+    if (!isLoading) {
+      setLoadingStep(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setLoadingStep((step) => {
+        if (step < TICK_STEPS.length - 1) return step + 1;
+        return step;
+      });
+    }, 2500);
+    return () => clearInterval(interval);
+  }, [isLoading]);
 
   const locked = tokenIdProp !== undefined;
   const activeId = locked ? tokenIdProp.toString() : selectedId;
@@ -49,20 +226,20 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
     try {
       return activeId ? BigInt(activeId) : 0n;
     } catch (err) {
-      console.warn('[ExecutePanel] Operation failed:', err);
+      console.warn("[ExecutePanel] Operation failed:", err);
       return 0n;
     }
   }, [activeId]);
 
   const vd = useVaultData(activeBigint);
-  const isReady = !vd.isLoading && activeId !== '';
+  const isReady = !vd.isLoading && activeId !== "";
   const depositsWei = isReady ? vd.depositsWei : undefined;
   const strategyRoot = isReady ? vd.strategyRoot : undefined;
   const dailyLimitWei = isReady ? vd.dailyLimitWei : undefined;
 
   if (!isConnected) {
     return (
-      <Card style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <Card style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <p>Connect wallet to execute a strategy tick.</p>
       </Card>
     );
@@ -73,10 +250,12 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
     setResult(null);
     setShowRaw(false);
     resetStream();
+    setShowCelebration(false);
     try {
+      let res: TickResult;
       if (streamMode) {
         // Strategy tick uses WSS streaming (via useOrchestratorTick's tickStream — SSE→WSS is transparent)
-        const res = await tickStream(
+        res = await tickStream(
           {
             vault: getAxiomStrategyVaultAddress(),
             agentNft: getAxiomAgentNftAddress(),
@@ -84,38 +263,61 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
           },
           {},
         );
-        setResult(res);
       } else {
-        const res = await tick({
+        res = await tick({
           vault: getAxiomStrategyVaultAddress(),
           agentNft: getAxiomAgentNftAddress(),
           agentTokenId: activeId,
         });
-        setResult(res);
       }
-      toast.success('Tick executed successfully');
+      setResult(res);
+      if (res.execution?.success) {
+        setShowCelebration(true);
+        setTimeout(() => setShowCelebration(false), 4000);
+      }
+      toast.success("Tick executed successfully");
       vd.refetch();
     } catch (err) {
+      const msg = humanizeError(err);
+      toast.error(`Strategy execution failed: ${msg}`);
       console.error("ExecutePanel: orchestrator tick failed", err);
     }
   }, [activeId, streamMode, tick, tickStream, resetStream, activeBigint]);
 
   return (
-    <Card style={{ display: 'flex', flexDirection: 'column', gap: 16 }} aria-label="Execute strategy tick">
+    <Card
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 16,
+        position: "relative",
+      }}
+      aria-label="Execute strategy tick"
+    >
+      {showCelebration && <SuccessCelebration />}
+
       {!locked && (
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <span style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--fw-semibold)', color: COLORS.textPrimary }}>Agent</span>
+        <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <span
+            style={{
+              fontSize: "var(--text-sm)",
+              fontWeight: "var(--fw-semibold)",
+              color: COLORS.textPrimary,
+            }}
+          >
+            Agent
+          </span>
           <select
             value={selectedId}
             onChange={(e): void => setSelectedId(e.target.value)}
             style={{
-              padding: '10px 14px',
-              borderRadius: 'var(--radius-md)',
+              padding: "10px 14px",
+              borderRadius: "var(--radius-md)",
               border: `1px solid ${COLORS.borderStrong}`,
               background: COLORS.bg,
               color: COLORS.text,
-              fontSize: 'var(--text-sm)',
-              fontFamily: 'inherit',
+              fontSize: "var(--text-sm)",
+              fontFamily: "inherit",
             }}
           >
             <option value="">Select an owned agent…</option>
@@ -126,7 +328,13 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
             ))}
           </select>
           {!agentsLoading && agents.length === 0 && (
-            <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: COLORS.textDim }}>
+            <p
+              style={{
+                margin: 0,
+                fontSize: "var(--text-sm)",
+                color: COLORS.textDim,
+              }}
+            >
               No agents found for the connected wallet.
             </p>
           )}
@@ -135,35 +343,91 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
 
       <div>
         <SectionTitle>Vault State</SectionTitle>
-        <dl className="stack-on-mobile" style={{ margin: 0, display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px 16px', fontSize: 'var(--text-sm)' }}>
-          <dt style={{ color: COLORS.textDim, fontWeight: 'var(--fw-medium)' }}>Balance</dt>
-          <dd style={{ margin: 0, color: COLORS.bronzeLight, fontWeight: 'var(--fw-semibold)' }}>
-            {depositsWei === undefined ? PLACEHOLDER : `${formatEther(depositsWei)} 0G`}
+        <dl
+          className="stack-on-mobile"
+          style={{
+            margin: 0,
+            display: "grid",
+            gridTemplateColumns: "120px 1fr",
+            gap: "8px 16px",
+            fontSize: "var(--text-sm)",
+          }}
+        >
+          <dt style={{ color: COLORS.textDim, fontWeight: "var(--fw-medium)" }}>
+            Balance
+          </dt>
+          <dd
+            style={{
+              margin: 0,
+              color: COLORS.bronzeLight,
+              fontWeight: "var(--fw-semibold)",
+            }}
+          >
+            {depositsWei === undefined
+              ? PLACEHOLDER
+              : `${formatEther(depositsWei)} 0G`}
           </dd>
-          <dt style={{ color: COLORS.textDim, fontWeight: 'var(--fw-medium)' }}><HelpTip tip="The on-chain address of the strategy contract controlling this agent's vault logic">Strategy Root</HelpTip></dt>
+          <dt style={{ color: COLORS.textDim, fontWeight: "var(--fw-medium)" }}>
+            <HelpTip tip="The on-chain address of the strategy contract controlling this agent's vault logic">
+              Strategy Root
+            </HelpTip>
+          </dt>
           <dd style={{ margin: 0 }}>
             {strategyRoot !== undefined ? (
-              <MonoLabel style={{ fontSize: 'var(--text-xs)' }}>{`${strategyRoot.slice(0, 10)}\u2026`}</MonoLabel>
-            ) : <span style={{ color: COLORS.textDim }}>{PLACEHOLDER}</span>}
+              <MonoLabel
+                style={{ fontSize: "var(--text-xs)" }}
+              >{`${strategyRoot.slice(0, 10)}\u2026`}</MonoLabel>
+            ) : (
+              <span style={{ color: COLORS.textDim }}>{PLACEHOLDER}</span>
+            )}
           </dd>
-          <dt style={{ color: COLORS.textDim, fontWeight: 'var(--fw-medium)' }}><HelpTip tip="Maximum amount the agent can spend per 24-hour cycle, enforced by the vault contract">Daily Limit</HelpTip></dt>
+          <dt style={{ color: COLORS.textDim, fontWeight: "var(--fw-medium)" }}>
+            <HelpTip tip="Maximum amount the agent can spend per 24-hour cycle, enforced by the vault contract">
+              Daily Limit
+            </HelpTip>
+          </dt>
           <dd style={{ margin: 0, color: COLORS.text }}>
-            {dailyLimitWei === undefined ? PLACEHOLDER : `${formatEther(dailyLimitWei)} 0G`}
+            {dailyLimitWei === undefined
+              ? PLACEHOLDER
+              : `${formatEther(dailyLimitWei)} 0G`}
           </dd>
         </dl>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'flex-start', flexDirection: 'column', gap: 8 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          flexDirection: "column",
+          gap: 8,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <Button
             variant="primary"
-            disabled={isLoading || activeId === ''}
+            disabled={isLoading || activeId === ""}
             title="This will consume gas to execute the strategy tick on-chain"
-            onClick={(): void => { void onExecute(); }}
+            onClick={(): void => {
+              void onExecute();
+            }}
           >
-            {isLoading ? (isStreaming ? 'Streaming…' : 'Running tick…') : 'Execute Tick'}
+            {isLoading
+              ? isStreaming
+                ? "Streaming…"
+                : "Running tick…"
+              : "Execute Tick"}
           </Button>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-sm)', cursor: 'pointer', color: COLORS.textMuted, userSelect: 'none' }}>
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              fontSize: "var(--text-sm)",
+              cursor: "pointer",
+              color: COLORS.textMuted,
+              userSelect: "none",
+            }}
+          >
             <input
               type="checkbox"
               checked={streamMode}
@@ -175,24 +439,126 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
           </label>
         </div>
         {isStreaming && (
-          <span style={{ fontSize: 'var(--text-xs)', color: COLORS.bronzeLight, fontStyle: 'italic' }}>
+          <span
+            style={{
+              fontSize: "var(--text-xs)",
+              color: COLORS.bronzeLight,
+              fontStyle: "italic",
+            }}
+          >
             Receiving live output...
           </span>
         )}
         {isStreaming && (
-          <Button variant="secondary" onClick={cancelTick}>Cancel</Button>
+          <Button variant="secondary" onClick={cancelTick}>
+            Cancel
+          </Button>
         )}
       </div>
 
-      {error !== null && (
-        <Alert variant="error">{error.message}</Alert>
+      {isLoading && (
+        <div
+          style={{
+            padding: "12px",
+            background: COLORS.bg,
+            border: `1px solid ${COLORS.border}`,
+            borderRadius: "var(--radius-lg)",
+            display: "flex",
+            flexDirection: "column",
+            gap: "8px",
+            animation: "axiom-fade-in 0.3s ease-out",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              marginBottom: "4px",
+            }}
+          >
+            <div
+              style={{
+                width: 12,
+                height: 12,
+                borderRadius: "50%",
+                border: `2px solid ${COLORS.border}`,
+                borderTopColor: COLORS.bronzeLight,
+                animation: "axiom-spin 0.8s linear infinite",
+              }}
+            />
+            <span
+              style={{
+                fontSize: "var(--text-xs)",
+                fontWeight: "var(--fw-semibold)",
+                color: COLORS.textMuted,
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+              }}
+            >
+              Enclave Pipeline Execution
+            </span>
+          </div>
+          {TICK_STEPS.map((step, idx) => {
+            const isCompleted = idx < loadingStep;
+            const isActive = idx === loadingStep;
+            const isUpcoming = idx > loadingStep;
+
+            let color: string = COLORS.textDim;
+            let icon = "○";
+            let fontWeight = "var(--fw-regular)";
+            let animationStyle: React.CSSProperties = {};
+
+            if (isCompleted) {
+              color = COLORS.success;
+              icon = "✓";
+            } else if (isActive) {
+              color = COLORS.bronzeLight;
+              icon = "●";
+              fontWeight = "var(--fw-semibold)";
+              animationStyle = {
+                animation: "axiom-pulse 1.5s ease-in-out infinite",
+              };
+            }
+
+            return (
+              <div
+                key={idx}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  fontSize: "var(--text-sm)",
+                  color,
+                  fontWeight,
+                  opacity: isUpcoming ? 0.4 : 1,
+                  transition: "all 0.3s ease",
+                  ...animationStyle,
+                }}
+              >
+                <span
+                  style={{
+                    fontFamily: "var(--font-mono)",
+                    minWidth: "16px",
+                    textAlign: "center",
+                  }}
+                >
+                  {icon}
+                </span>
+                <span>{step}</span>
+              </div>
+            );
+          })}
+        </div>
       )}
+
+      {error !== null && <Alert variant="error">{humanizeError(error)}</Alert>}
 
       {streamingError !== null && (
-        <Alert variant="error">{streamingError}</Alert>
+        <Alert variant="error">{humanizeError(streamingError)}</Alert>
       )}
 
-      {streamedTokens !== '' && (
+      {streamedTokens !== "" && (
         <div>
           <SectionTitle>Live Stream Output</SectionTitle>
           <pre
@@ -201,47 +567,77 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
               padding: 12,
               background: COLORS.bg,
               border: `1px solid ${COLORS.border}`,
-              borderRadius: 'var(--radius-lg)',
-              fontSize: 'var(--text-xs)',
-              overflowX: 'auto',
-              whiteSpace: 'pre-wrap',
+              borderRadius: "var(--radius-lg)",
+              fontSize: "var(--text-xs)",
+              overflowX: "auto",
+              whiteSpace: "pre-wrap",
               color: COLORS.textMuted,
               maxHeight: 200,
               opacity: isStreaming ? 0.9 : 0.7,
             }}
           >
             {streamedTokens}
-            {isStreaming && <span style={{ display: 'inline-block', marginLeft: 2, color: COLORS.bronzeLight }}>|</span>}
+            {isStreaming && (
+              <span
+                style={{
+                  display: "inline-block",
+                  marginLeft: 2,
+                  color: COLORS.bronzeLight,
+                }}
+              >
+                |
+              </span>
+            )}
           </pre>
         </div>
       )}
 
       {result !== null && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div>
             <SectionTitle>Recommendation</SectionTitle>
-            <p style={{ margin: 0, fontSize: 'var(--text-base)' }}>
+            <p style={{ margin: 0, fontSize: "var(--text-base)" }}>
               <strong
                 style={{
-                  color: actionColor[result.recommendation.action] ?? COLORS.text,
-                  fontSize: 'var(--text-base)',
-                  letterSpacing: '0.02em',
+                  color:
+                    actionColor[result.recommendation.action] ?? COLORS.text,
+                  fontSize: "var(--text-base)",
+                  letterSpacing: "0.02em",
                 }}
               >
                 {result.recommendation.action.toUpperCase()}
               </strong>
               {result.recommendation.amount !== undefined && (
-                <span style={{ color: COLORS.textMuted }}> · amount: {result.recommendation.amount}</span>
+                <span style={{ color: COLORS.textMuted }}>
+                  {" "}
+                  · amount: {result.recommendation.amount}
+                </span>
               )}
             </p>
-            <p style={{ margin: '6px 0 0', fontSize: 'var(--text-sm)', color: COLORS.textMuted, fontWeight: 'var(--fw-light)', lineHeight: 1.6 }}>
+            <p
+              style={{
+                margin: "6px 0 0",
+                fontSize: "var(--text-sm)",
+                color: COLORS.textMuted,
+                fontWeight: "var(--fw-light)",
+                lineHeight: 1.6,
+              }}
+            >
               {result.recommendation.reason}
             </p>
           </div>
 
           <div>
-            <Button variant="ghost" onClick={(): void => setShowRaw((v) => !v)} style={{ fontSize: 'var(--text-xs)', color: COLORS.bronzeLight, padding: 0 }}>
-              {showRaw ? '▼ Hide' : '▶ Show'} raw model output
+            <Button
+              variant="ghost"
+              onClick={(): void => setShowRaw((v) => !v)}
+              style={{
+                fontSize: "var(--text-xs)",
+                color: COLORS.bronzeLight,
+                padding: 0,
+              }}
+            >
+              {showRaw ? "▼ Hide" : "▶ Show"} raw model output
             </Button>
             {showRaw && (
               <pre
@@ -250,10 +646,10 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
                   padding: 12,
                   background: COLORS.bg,
                   border: `1px solid ${COLORS.border}`,
-                  borderRadius: 'var(--radius-lg)',
-                  fontSize: 'var(--text-xs)',
-                  overflowX: 'auto',
-                  whiteSpace: 'pre-wrap',
+                  borderRadius: "var(--radius-lg)",
+                  fontSize: "var(--text-xs)",
+                  overflowX: "auto",
+                  whiteSpace: "pre-wrap",
                   color: COLORS.textMuted,
                 }}
               >
@@ -265,32 +661,108 @@ export function ExecutePanel({ tokenId: tokenIdProp }: ExecutePanelProps): React
           {result.execution !== undefined && (
             <div>
               <SectionTitle>On-chain Execution</SectionTitle>
-              <dl className="stack-on-mobile" style={{ margin: 0, display: 'grid', gridTemplateColumns: '100px 1fr', gap: '8px 16px', fontSize: 'var(--text-sm)' }}>
-                <dt style={{ color: COLORS.textDim, fontWeight: 'var(--fw-medium)' }}>Success</dt>
+              <dl
+                className="stack-on-mobile"
+                style={{
+                  margin: 0,
+                  display: "grid",
+                  gridTemplateColumns: "100px 1fr",
+                  gap: "8px 16px",
+                  fontSize: "var(--text-sm)",
+                }}
+              >
+                <dt
+                  style={{
+                    color: COLORS.textDim,
+                    fontWeight: "var(--fw-medium)",
+                  }}
+                >
+                  Success
+                </dt>
                 <dd style={{ margin: 0 }}>
                   {result.execution.success ? (
-                    <span style={{ color: COLORS.success, fontWeight: 'var(--fw-semibold)' }}>yes</span>
+                    <span
+                      style={{
+                        color: COLORS.success,
+                        fontWeight: "var(--fw-semibold)",
+                      }}
+                    >
+                      yes
+                    </span>
                   ) : (
-                    <span style={{ color: COLORS.danger, fontWeight: 'var(--fw-semibold)' }}>no</span>
+                    <span
+                      style={{
+                        color: COLORS.danger,
+                        fontWeight: "var(--fw-semibold)",
+                      }}
+                    >
+                      no
+                    </span>
                   )}
                 </dd>
-                <dt style={{ color: COLORS.textDim, fontWeight: 'var(--fw-medium)' }}>Action</dt>
-                <dd style={{ margin: 0, color: COLORS.text }}>{result.execution.action}</dd>
-                <dt style={{ color: COLORS.textDim, fontWeight: 'var(--fw-medium)' }}>Target</dt>
-                <dd style={{ margin: 0 }}><MonoLabel style={{ fontSize: 'var(--text-xs)' }}>{result.execution.target}</MonoLabel></dd>
-                <dt style={{ color: COLORS.textDim, fontWeight: 'var(--fw-medium)' }}>Tx Hash</dt>
-                <dd style={{ margin: 0 }}><MonoLabel style={{ fontSize: 'var(--text-xs)' }}>{result.execution.txHash}</MonoLabel></dd>
+                <dt
+                  style={{
+                    color: COLORS.textDim,
+                    fontWeight: "var(--fw-medium)",
+                  }}
+                >
+                  Action
+                </dt>
+                <dd style={{ margin: 0, color: COLORS.text }}>
+                  {result.execution.action}
+                </dd>
+                <dt
+                  style={{
+                    color: COLORS.textDim,
+                    fontWeight: "var(--fw-medium)",
+                  }}
+                >
+                  Target
+                </dt>
+                <dd style={{ margin: 0 }}>
+                  <MonoLabel style={{ fontSize: "var(--text-xs)" }}>
+                    {result.execution.target}
+                  </MonoLabel>
+                </dd>
+                <dt
+                  style={{
+                    color: COLORS.textDim,
+                    fontWeight: "var(--fw-medium)",
+                  }}
+                >
+                  Tx Hash
+                </dt>
+                <dd style={{ margin: 0 }}>
+                  <MonoLabel style={{ fontSize: "var(--text-xs)" }}>
+                    {result.execution.txHash}
+                  </MonoLabel>
+                </dd>
                 {result.execution.gasUsed !== undefined && (
                   <>
-                    <dt style={{ color: COLORS.textDim, fontWeight: 'var(--fw-medium)' }}>Gas Used</dt>
-<dd style={{ margin: 0, color: COLORS.text }}>{String(result.execution.gasUsed)}</dd>
+                    <dt
+                      style={{
+                        color: COLORS.textDim,
+                        fontWeight: "var(--fw-medium)",
+                      }}
+                    >
+                      Gas Used
+                    </dt>
+                    <dd style={{ margin: 0, color: COLORS.text }}>
+                      {String(result.execution.gasUsed)}
+                    </dd>
                   </>
                 )}
               </dl>
             </div>
           )}
 
-          <p style={{ fontSize: 'var(--text-xs)', color: COLORS.textDim, margin: 0 }}>
+          <p
+            style={{
+              fontSize: "var(--text-xs)",
+              color: COLORS.textDim,
+              margin: 0,
+            }}
+          >
             Completed in {result.durationMs} ms
           </p>
         </div>
