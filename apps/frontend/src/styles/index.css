@@ -2,22 +2,24 @@
 
 /* ─── Spacing scale (4pt base: 4, 8, 12, 16, 24, 32, 48, 64) ─────── */
 :root {
-  --space-sm: 0.5rem;    /* 8px  */
-  --space-xs: 0.25rem;   /* 4px  */
-  --space-md: 0.75rem;   /* 12px */
-  --space-lg: 1rem;      /* 16px */
-  --space-xl: 1.5rem;    /* 24px */
-  --space-2xl: 2rem;     /* 32px */
-  --space-3xl: 3rem;     /* 48px */
-  --space-4xl: 4rem;     /* 64px */
+  --space-sm: 0.5rem; /* 8px  */
+  --space-xs: 0.25rem; /* 4px  */
+  --space-md: 0.75rem; /* 12px */
+  --space-lg: 1rem; /* 16px */
+  --space-xl: 1.5rem; /* 24px */
+  --space-2xl: 2rem; /* 32px */
+  --space-3xl: 3rem; /* 48px */
+  --space-4xl: 4rem; /* 64px */
 
-  /* ─── Type scale (1.2 ratio, rem-based for product UI) ──────────── */
-  --text-xs: 0.75rem;     /* 12px — captions, metadata */
-  --text-sm: 0.875rem;    /* 14px — secondary UI, labels */
-  --text-base: 1rem;      /* 16px — body text */
-  --text-lg: 1.25rem;     /* 20px — subheadings */
-  --text-xl: 1.5rem;      /* 24px — page headings */
-  --text-3xl: 2rem;       /* 32px — hero headings */
+  /* ─── Type scale (modular scale supporting dynamic --p-scale) ─────── */
+  --p-scale: 1;
+  /* Default is all-sans scale (fixed rem scale, 1.15 ratio) */
+  --text-xs: calc(var(--p-scale, 1) * 0.75rem);
+  --text-sm: calc(var(--p-scale, 1) * 0.875rem);
+  --text-base: calc(var(--p-scale, 1) * 1rem);
+  --text-lg: calc(var(--p-scale, 1) * 1.15rem);
+  --text-xl: calc(var(--p-scale, 1) * 1.35rem);
+  --text-3xl: calc(var(--p-scale, 1) * 1.6rem);
 
   /* ─── Font weights ──────────────────────────────────────────────── */
   --fw-light: 300;
@@ -27,10 +29,10 @@
   --fw-bold: 700;
 
   /* ─── Line heights ──────────────────────────────────────────────── */
-  --lh-tight: 1.2;        /* headings */
-  --lh-snug: 1.4;         /* subheadings, labels */
-  --lh-normal: 1.6;       /* body text (light-on-dark: +0.1) */
-  --lh-relaxed: 1.8;      /* loose — hero text, large sections */
+  --lh-tight: 1.15; /* headings */
+  --lh-snug: 1.35; /* subheadings, labels */
+  --lh-normal: 1.65; /* body text (light-on-dark compensation) */
+  --lh-relaxed: 1.85; /* loose — hero text, large sections */
 
   /* ─── Border radius ─────────────────────────────────────────────── */
   --radius-sm: 4px;
@@ -38,19 +40,25 @@
   --radius-lg: 8px;
   --radius-xl: 12px;
 
-  /* ─── Font stacks ──────────────────────────────────────────────── */
-  --font-mono: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+  /* ─── Font stacks (The Vault design system) ───────────────────── */
+  --font-display:
+    "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    sans-serif;
+  --font-body:
+    "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    sans-serif;
+  --font-mono: "Space Mono", "SF Mono", "Fira Code", monospace;
 
   /* ─── Colors — warm-tinted neutrals (The Vault palette) ────────── */
-  --c-bg: #10100e;              /* obsidian */
-  --c-surface: #1c1a17;         /* dark-carbon */
-  --c-surface-light: #f0ebe3;   /* parchment */
-  --c-border: #2d2a25;          /* warm-iron */
-  --c-border-strong: #383530;   /* aged-steel */
-  --c-text: #f5f0e8;            /* bright-nickel */
-  --c-text-primary: #e5dfd6;    /* polished-silver */
-  --c-text-muted: #9a9288;      /* warm-pewter */
-  --c-text-dim: #736b62;        /* tarnished-lead */
+  --c-bg: #10100e; /* obsidian */
+  --c-surface: #1c1a17; /* dark-carbon */
+  --c-surface-light: #f0ebe3; /* parchment */
+  --c-border: #2d2a25; /* warm-iron */
+  --c-border-strong: #383530; /* aged-steel */
+  --c-text: #f5f0e8; /* bright-nickel */
+  --c-text-primary: #e5dfd6; /* polished-silver */
+  --c-text-muted: #9a9288; /* warm-pewter */
+  --c-text-dim: #736b62; /* tarnished-lead */
   --c-bronze: #b8976e;
   --c-bronze-light: #c5a880;
   --c-bronze-border: rgba(184, 151, 110, 0.25);
@@ -66,8 +74,7 @@
   --bp-mobile: 640px;
   --bp-tablet: 768px;
 
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
-    Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-family: var(--font-body);
   font-size: var(--text-base);
   line-height: var(--lh-normal);
   color: var(--c-text);
@@ -75,23 +82,89 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-kerning: normal;
+  font-optical-sizing: auto;
+}
+
+/* ─── Font pairing branches (p-pairing contract) ────────────────── */
+/* data-p-pairing="serif display + sans body" */
+:root[data-p-pairing="serif display + sans body"],
+body[data-p-pairing="serif display + sans body"],
+:scope[data-p-pairing="serif display + sans body"] {
+  --font-display: "Playfair Display", serif;
+  --font-body: "Plus Jakarta Sans", sans-serif;
+  --font-mono: "Space Mono", monospace;
+  /* Fluid clamp() scale, >=1.25 ratio between steps */
+  --text-xs: clamp(0.6rem, calc(var(--p-scale, 1) * 0.64rem), 0.9rem);
+  --text-sm: clamp(0.75rem, calc(var(--p-scale, 1) * 0.8rem), 1.05rem);
+  --text-base: clamp(0.9rem, calc(var(--p-scale, 1) * 1rem), 1.25rem);
+  --text-lg: clamp(1.1rem, calc(var(--p-scale, 1) * 1.25rem), 1.6rem);
+  --text-xl: clamp(1.4rem, calc(var(--p-scale, 1) * 1.6rem), 2.2rem);
+  --text-3xl: clamp(1.8rem, calc(var(--p-scale, 1) * 2.1rem), 3.2rem);
+}
+
+/* data-p-pairing="mono display + sans body" */
+:root[data-p-pairing="mono display + sans body"],
+body[data-p-pairing="mono display + sans body"],
+:scope[data-p-pairing="mono display + sans body"] {
+  --font-display: "Space Mono", monospace;
+  --font-body: "Plus Jakarta Sans", sans-serif;
+  --font-mono: "Space Mono", monospace;
+  /* Fixed rem scale, 1.15 ratio */
+  --text-xs: calc(var(--p-scale, 1) * 0.75rem);
+  --text-sm: calc(var(--p-scale, 1) * 0.875rem);
+  --text-base: calc(var(--p-scale, 1) * 1rem);
+  --text-lg: calc(var(--p-scale, 1) * 1.15rem);
+  --text-xl: calc(var(--p-scale, 1) * 1.35rem);
+  --text-3xl: calc(var(--p-scale, 1) * 1.6rem);
+}
+
+/* data-p-pairing="all-sans" */
+:root[data-p-pairing="all-sans"],
+body[data-p-pairing="all-sans"],
+:scope[data-p-pairing="all-sans"] {
+  --font-display: "Space Grotesk", sans-serif;
+  --font-body: "Plus Jakarta Sans", sans-serif;
+  --font-mono: "Space Mono", monospace;
+  /* Fixed rem scale, 1.15 ratio */
+  --text-xs: calc(var(--p-scale, 1) * 0.75rem);
+  --text-sm: calc(var(--p-scale, 1) * 0.875rem);
+  --text-base: calc(var(--p-scale, 1) * 1rem);
+  --text-lg: calc(var(--p-scale, 1) * 1.15rem);
+  --text-xl: calc(var(--p-scale, 1) * 1.35rem);
+  --text-3xl: calc(var(--p-scale, 1) * 1.6rem);
 }
 
 body {
   margin: 0;
   min-height: 100vh;
   background: var(--c-bg);
+  font-family: var(--font-body);
 }
 
 /* ─── Headings: tighter line-height, negative tracking for large sizes */
-h1, h2, h3 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-display);
   line-height: var(--lh-tight);
   margin: 0;
   font-weight: var(--fw-bold);
 }
-h1 { font-size: var(--text-xl); letter-spacing: -0.02em; }
-h2 { font-size: var(--text-lg); letter-spacing: -0.01em; }
-h3 { font-size: var(--text-base); font-weight: var(--fw-semibold); }
+h1 {
+  font-size: var(--text-xl);
+  letter-spacing: -0.02em;
+}
+h2 {
+  font-size: var(--text-lg);
+  letter-spacing: -0.01em;
+}
+h3 {
+  font-size: var(--text-base);
+  font-weight: var(--fw-semibold);
+}
 
 /* ─── Body text: light-on-dark compensation */
 p {
@@ -100,24 +173,38 @@ p {
 }
 
 /* ─── Code: monospace, no ligatures */
-code, pre {
+code,
+pre {
   font-family: var(--font-mono);
   font-variant-ligatures: none;
 }
 
 /* ─── Animations ──────────────────────────────────────────────────── */
 @keyframes axiom-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
 }
 
 @keyframes axiom-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes axiom-fade-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ─── Links ───────────────────────────────────────────────────────── */
@@ -126,18 +213,30 @@ a {
   text-decoration: none;
   transition: color 0.15s ease;
 }
-a:hover { color: var(--c-bronze); }
+a:hover {
+  color: var(--c-bronze);
+}
 
 /* ─── RainbowKit dark theme overrides ─────────────────────────────── */
 [data-rk] {
-  --rk-font-family: 'Inter', -apple-system, sans-serif;
+  --rk-font-family: var(--font-body);
 }
 
 /* ─── Scrollbar ───────────────────────────────────────────────────── */
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: var(--c-bg); }
-::-webkit-scrollbar-thumb { background: var(--c-border-strong); border-radius: var(--radius-sm); }
-::-webkit-scrollbar-thumb:hover { background: #55504a; }
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--c-bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--c-border-strong);
+  border-radius: var(--radius-sm);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #55504a;
+}
 
 /* ─── Focus rings ─────────────────────────────────────────────────── */
 *:focus-visible {
@@ -147,7 +246,7 @@ a:hover { color: var(--c-bronze); }
 
 /* ─── Dialog backdrop ─────────────────────────────────────────────── */
 dialog::backdrop {
-  background: rgba(0,0,0,0.6);
+  background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(4px);
 }
 
@@ -157,11 +256,11 @@ button {
 }
 
 /* ─── Form elements inherit font */
-input, textarea, select {
+input,
+textarea,
+select {
   font-family: inherit;
 }
-
-
 
 /* ─── Responsive layout utilities ─────────────────────────────────── */
 /* Mobile */
@@ -183,14 +282,32 @@ input, textarea, select {
 
 /* ─── Touch targets ──────────────────────────────────────────────── */
 @media (pointer: coarse) {
-  button, [role="button"], a {
+  button,
+  [role="button"],
+  a {
     min-height: 44px;
   }
 }
 
 /* Font size utility classes */
-.text-xs { font-size: var(--text-xs, 0.75rem); }
-.text-sm { font-size: var(--text-sm, 0.875rem); }
+.text-xs {
+  font-size: var(--text-xs);
+}
+.text-sm {
+  font-size: var(--text-sm);
+}
+.text-base {
+  font-size: var(--text-base);
+}
+.text-lg {
+  font-size: var(--text-lg);
+}
+.text-xl {
+  font-size: var(--text-xl);
+}
+.text-3xl {
+  font-size: var(--text-3xl);
+}
 /* ─── Skip link (visually hidden until focused) ──────────────────── */
 .skip-link {
   position: absolute;
@@ -239,8 +356,13 @@ input, textarea, select {
 }
 
 /* ─── HelpTip tooltip ────────────────────────────────────────────── */
-.helptip { position: relative; }
-.helptip-content { opacity: 0; pointer-events: none; }
+.helptip {
+  position: relative;
+}
+.helptip-content {
+  opacity: 0;
+  pointer-events: none;
+}
 .helptip:hover .helptip-content,
 .helptip:focus-within .helptip-content {
   opacity: 1;
@@ -255,7 +377,11 @@ input, textarea, select {
 }
 
 @media (forced-colors: active) {
-  button, [role="button"], input, select, textarea {
+  button,
+  [role="button"],
+  input,
+  select,
+  textarea {
     border: 1px solid;
   }
 }
@@ -265,55 +391,197 @@ input, textarea, select {
    Migrate gradually — add className instead of style={{}} in new code. */
 
 /* Text */
-.text-muted  { color: var(--c-text-muted); }
-.text-dim    { color: var(--c-text-dim); }
-.text-primary { color: var(--c-text-primary); }
+.text-muted {
+  color: var(--c-text-muted);
+}
+.text-dim {
+  color: var(--c-text-dim);
+}
+.text-primary {
+  color: var(--c-text-primary);
+}
 
 /* Font weight */
-.fw-medium   { font-weight: var(--fw-medium); }
-.fw-semibold { font-weight: var(--fw-semibold); }
-.fw-bold     { font-weight: var(--fw-bold); }
+.fw-medium {
+  font-weight: var(--fw-medium);
+}
+.fw-semibold {
+  font-weight: var(--fw-semibold);
+}
+.fw-bold {
+  font-weight: var(--fw-bold);
+}
 
 /* Line height */
-.lh-tight { line-height: var(--lh-tight); }
-.lh-snug  { line-height: var(--lh-snug); }
+.lh-tight {
+  line-height: var(--lh-tight);
+}
+.lh-snug {
+  line-height: var(--lh-snug);
+}
 
 /* Spacing */
-.m-0 { margin: 0; }
-.mt-0 { margin-top: 0; }
-.mt-lg { margin-top: var(--space-lg); }
-.mb-md { margin-bottom: var(--space-md); }
-.mb-lg { margin-bottom: var(--space-lg); }
-.mb-2xl { margin-bottom: var(--space-2xl); }
+.m-0 {
+  margin: 0;
+}
+.mt-0 {
+  margin-top: 0;
+}
+.mt-xs {
+  margin-top: var(--space-xs);
+}
+.mt-sm {
+  margin-top: var(--space-sm);
+}
+.mt-md {
+  margin-top: var(--space-md);
+}
+.mt-lg {
+  margin-top: var(--space-lg);
+}
+.mb-md {
+  margin-bottom: var(--space-md);
+}
+.mb-lg {
+  margin-bottom: var(--space-lg);
+}
+.mb-2xl {
+  margin-bottom: var(--space-2xl);
+}
 
 /* Flex layout */
-.block        { display: block; }
-.flex         { display: flex; }
-.inline-flex  { display: inline-flex; }
-.flex-wrap    { flex-wrap: wrap; }
-.items-center { align-items: center; }
-.items-baseline { align-items: baseline; }
-.justify-between { justify-content: space-between; }
-.justify-end   { justify-content: flex-end; }
-.gap-sm  { gap: var(--space-sm); }
-
+.block {
+  display: block;
+}
+.flex {
+  display: flex;
+}
+.inline-flex {
+  display: inline-flex;
+}
+.flex-wrap {
+  flex-wrap: wrap;
+}
+.items-center {
+  align-items: center;
+}
+.items-baseline {
+  align-items: baseline;
+}
+.justify-between {
+  justify-content: space-between;
+}
+.justify-end {
+  justify-content: flex-end;
+}
+.gap-sm {
+  gap: var(--space-sm);
+}
 
 /* Width */
-.w-full { width: 100%; }
+.w-full {
+  width: 100%;
+}
 
 /* Border radius */
-.radius-md { border-radius: var(--radius-md); }
+.radius-md {
+  border-radius: var(--radius-md);
+}
 
 /* Cursor */
-.cursor-pointer { cursor: pointer; }
+.cursor-pointer {
+  cursor: pointer;
+}
 
 /* ── Performance ──────────────────────────────── */
 /* Containment: isolate layout/paint for independent regions */
-.contain-content { contain: content; }
-.contain-layout  { contain: layout style; }
+.contain-content {
+  contain: content;
+}
+.contain-layout {
+  contain: layout style;
+}
 
 /* Content-visibility: defer rendering of off-screen sections */
 .cv-auto {
   content-visibility: auto;
   contain-intrinsic-size: auto 300px;
+}
+
+/* ── Text overflow utilities ─────────────────── */
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.break-word {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Gap utilities (expanding beyond gap-sm) */
+.gap-md {
+  gap: var(--space-md);
+}
+.gap-lg {
+  gap: var(--space-lg);
+}
+.gap-xl {
+  gap: var(--space-xl);
+}
+
+/* ── Inline validation feedback ──────────────── */
+.field-error {
+  color: var(--c-danger);
+  font-size: var(--text-xs);
+  margin-top: 4px;
+  line-height: var(--lh-snug);
+}
+
+/* Invalid input border highlight */
+input[aria-invalid="true"],
+textarea[aria-invalid="true"],
+select[aria-invalid="true"] {
+  border-color: var(--c-danger) !important;
+}
+
+/* ── Character count indicator ───────────────── */
+.char-count {
+  font-size: var(--text-xs);
+  color: var(--c-text-dim);
+  text-align: right;
+  margin-top: 2px;
+}
+.char-count--warn {
+  color: var(--c-warning);
+}
+.char-count--over {
+  color: var(--c-danger);
+}
+
+/* ── Readability utilities ─────────────────── */
+.prose {
+  max-width: 65ch;
+  line-height: var(--lh-normal);
+}
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+.tracking-wide {
+  letter-spacing: 0.08em;
 }
