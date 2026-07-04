@@ -31,7 +31,6 @@ contract AxiomStrategyVault is Ownable, Pausable, ReentrancyGuard {
     );
     event RegistryUpdated(address indexed nft);
 
-    /// @custom:storage-location erc7201:agent.storage.AxiomStrategyVault
     struct Vault {
         uint256 balance; // native (OG) balance
         uint256 dailyLimit; // max value executable per UTC day
@@ -40,15 +39,7 @@ contract AxiomStrategyVault is Ownable, Pausable, ReentrancyGuard {
         bytes32 strategyRoot; // Merkle root of approved action hashes
     }
 
-    // keccak256(abi.encode(uint256(keccak256("agent.storage.AxiomStrategyVault")) - 1)) & ~bytes32(uint256(0xff))
-    // Canonical ERC-7201 formula (OZ v5).
-    bytes32 private constant STORAGE_LOCATION = 0x2c8500969106113efc78631b1915a4e278f67bc66ee84f8db9954bdec44ca100;
-
-    function _getVaults() private pure returns (mapping(uint256 => Vault) storage $) {
-        assembly {
-            $.slot := STORAGE_LOCATION
-        }
-    }
+    mapping(uint256 => Vault) public vaults;
 
     /// @notice The AxiomAgentNFT contract whose tokens are vaults
     IAxiomAgentNFT public nft;
@@ -81,7 +72,7 @@ contract AxiomStrategyVault is Ownable, Pausable, ReentrancyGuard {
         uint256 tokenId
     ) external payable whenNotPaused onlyTokenOwner(tokenId) {
         if (msg.value == 0) revert ZeroAmount();
-        _getVaults()[tokenId].balance += msg.value;
+        vaults[tokenId].balance += msg.value;
         emit Deposited(tokenId, msg.sender, address(0), msg.value);
     }
 
@@ -90,7 +81,7 @@ contract AxiomStrategyVault is Ownable, Pausable, ReentrancyGuard {
         uint256 amount
     ) external nonReentrant onlyTokenOwner(tokenId) {
         if (amount == 0) revert ZeroAmount();
-        Vault storage v = _getVaults()[tokenId];
+        Vault storage v = vaults[tokenId];
         if (v.balance < amount) revert ZeroAmount();
         // CEI: state update first, then external call
         v.balance -= amount;
@@ -102,7 +93,7 @@ contract AxiomStrategyVault is Ownable, Pausable, ReentrancyGuard {
     function balanceOf(
         uint256 tokenId
     ) external view returns (uint256) {
-        return _getVaults()[tokenId].balance;
+        return vaults[tokenId].balance;
     }
 
     /// @notice Set strategy Merkle root and daily limit
@@ -111,7 +102,7 @@ contract AxiomStrategyVault is Ownable, Pausable, ReentrancyGuard {
         bytes32 root,
         uint256 dailyLimit
     ) external whenNotPaused onlyTokenOwner(tokenId) {
-        Vault storage v = _getVaults()[tokenId];
+        Vault storage v = vaults[tokenId];
         v.strategyRoot = root;
         v.dailyLimit = dailyLimit;
         v.dailySpent = 0;
@@ -122,7 +113,7 @@ contract AxiomStrategyVault is Ownable, Pausable, ReentrancyGuard {
     function strategyOf(
         uint256 tokenId
     ) external view returns (bytes32 root, uint256 dailyLimit, uint256 dailySpent, uint64 resetDay) {
-        Vault storage v = _getVaults()[tokenId];
+        Vault storage v = vaults[tokenId];
         return (v.strategyRoot, v.dailyLimit, v.dailySpent, v.resetDay);
     }
 
@@ -134,7 +125,7 @@ contract AxiomStrategyVault is Ownable, Pausable, ReentrancyGuard {
         bytes calldata data,
         bytes32[] calldata merkleProof
     ) external nonReentrant whenNotPaused returns (bytes memory) {
-        Vault storage v = _getVaults()[tokenId];
+        Vault storage v = vaults[tokenId];
         if (v.strategyRoot == bytes32(0)) revert NoStrategySet();
         if (value > v.balance) revert ZeroAmount();
         if (target == address(0)) revert ZeroAddress();

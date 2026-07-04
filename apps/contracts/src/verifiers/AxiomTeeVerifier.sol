@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import "./BaseVerifier.sol";
 
 /// @title AxiomTeeVerifier
@@ -18,7 +18,7 @@ import "./BaseVerifier.sol";
 ///        - https://docs.openzeppelin.com/contracts/5.x/access-control (Ownable)
 ///        - https://docs.openzeppelin.com/contracts/5.x/api/access#Ownable-_transferOwnership-address-
 ///        - https://docs.openzeppelin.com/contracts/5.x/api/access#OwnableUpgradeable
-contract AxiomTeeVerifier is BaseVerifier, OwnableUpgradeable {
+contract AxiomTeeVerifier is BaseVerifier, Ownable {
     error AxiomInvalidSigner();
     error AxiomInvalidOwnershipProof();
     error AxiomInvalidAccessProof();
@@ -43,21 +43,7 @@ contract AxiomTeeVerifier is BaseVerifier, OwnableUpgradeable {
     ///      Reference: Solidity 0.8.20 — Immutable variables
     ///      https://docs.soliditylang.org/en/v0.8.20/contracts.html#immutable
     uint256 public immutable maxProofAgeSeconds;
-
-    /// @custom:storage-location erc7201:agent.storage.AxiomTeeVerifier
-    struct AxiomTeeVerifierStorage {
-        address registeredSigner;
-    }
-
-    // keccak256(abi.encode(uint256(keccak256("agent.storage.AxiomTeeVerifier")) - 1)) & ~bytes32(uint256(0xff))
-    // Canonical ERC-7201 formula (OZ v5).
-    bytes32 private constant STORAGE_LOCATION = 0xcdd50b252b44b49759effa27dcfb9f7db71e867632e96be05c00db87cfc30900;
-
-    function _getAxiomTeeVerifierStorage() private pure returns (AxiomTeeVerifierStorage storage $) {
-        assembly {
-            $.slot := STORAGE_LOCATION
-        }
-    }
+    address public registeredSigner;
 
     /// @dev Domain separator binds signatures to this contract instance and chain,
     ///      preventing cross-contract and cross-chain replay. Browser wallets sign
@@ -85,32 +71,10 @@ contract AxiomTeeVerifier is BaseVerifier, OwnableUpgradeable {
         address initialOwner,
         address signer_,
         uint256 maxProofAgeSeconds_
-    ) {
+    ) Ownable(initialOwner) {
         require(signer_ != address(0), "Zero signer address");
-        require(initialOwner != address(0), "Zero initial owner");
-        _getAxiomTeeVerifierStorage().registeredSigner = signer_;
+        registeredSigner = signer_;
         maxProofAgeSeconds = maxProofAgeSeconds_;
-        // _transferOwnership is `internal virtual` (no onlyInitializing), so it is safe to call
-        // from the constructor of a non-proxied contract. OZ OwnableUpgradeable storage lives
-        // at its own ERC-7201 slot, so there is no overlap with the verifier's struct storage.
-        _transferOwnership(initialOwner);
-    }
-
-    /// @notice Initializer for upgradeable (proxy) deployments. Sets the initial owner using
-    ///         OZ's canonical `__Ownable_init`, which validates `initialOwner != address(0)`
-    ///         (revert `OwnableInvalidOwner`) and forwards to `_transferOwnership`.
-    /// @dev Use EITHER the constructor (for direct deploys) OR this initializer (for proxy
-    ///      deploys via `ERC1967Proxy`). Calling both on the same contract will revert the
-    ///      initializer (its `initializer` modifier can only run once).
-    ///      Reference: https://docs.openzeppelin.com/contracts/5.x/api/access#Ownable__Ownable_init_address-
-    function initialize(
-        address initialOwner
-    ) external initializer {
-        __Ownable_init(initialOwner);
-    }
-
-    function registeredSigner() public view returns (address) {
-        return _getAxiomTeeVerifierStorage().registeredSigner;
     }
 
     /// @dev Restricted to the contract owner via OZ `onlyOwner` (OwnableUpgradeable).
@@ -123,9 +87,8 @@ contract AxiomTeeVerifier is BaseVerifier, OwnableUpgradeable {
         address newSigner
     ) external onlyOwner {
         require(newSigner != address(0), "Zero address");
-        AxiomTeeVerifierStorage storage $ = _getAxiomTeeVerifierStorage();
-        address old = $.registeredSigner;
-        $.registeredSigner = newSigner;
+        address old = registeredSigner;
+        registeredSigner = newSigner;
         emit SignerRegistered(old, newSigner);
     }
 
@@ -186,7 +149,7 @@ contract AxiomTeeVerifier is BaseVerifier, OwnableUpgradeable {
         address to,
         address nft
     ) external override returns (TransferValidityProofOutput[] memory outputs) {
-        address expectedSigner = registeredSigner();
+        address expectedSigner = registeredSigner;
         uint256 maxAge = maxProofAgeSeconds;
         uint256 nowTs = block.timestamp;
         outputs = new TransferValidityProofOutput[](proofs.length);

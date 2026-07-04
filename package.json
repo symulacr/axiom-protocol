@@ -2,7 +2,7 @@
   "name": "axiom-protocol",
   "version": "0.1.0",
   "private": true,
-  "description": "Axiom Protocol \u2014 verifiable intelligence layer for DeFi, built on 0G Chain. ERC-7857 iNFTs whose encrypted intelligence is re-keyed on every transfer via a real TEE-oracle, executing trading strategies via 0G Compute, persisting data on 0G Storage, settling on 0G Chain.",
+  "description": "Axiom Protocol — verifiable intelligence layer for DeFi, built on 0G Chain. ERC-7857 iNFTs whose encrypted intelligence is re-keyed on every transfer via a real TEE-oracle, executing trading strategies via 0G Compute, persisting data on 0G Storage, settling on 0G Chain.",
   "license": "MIT",
   "engines": {
     "node": ">=22.0.0",
@@ -16,12 +16,12 @@
       "keccak",
       "secp256k1",
       "utf-8-validate"
-    ]
+    ],
+    "overrides": {
+      "@0gfoundation/0g-storage-ts-sdk>ethers": "6.16.0",
+      "@0gfoundation/0g-compute-ts-sdk>ethers": "6.16.0"
+    }
   },
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
   "scripts": {
     "build": "pnpm --filter @axiom/config build && pnpm --filter @axiom/oracle build && pnpm --filter @axiom/backend build",
     "start": "node apps/backend/dist/index.js",

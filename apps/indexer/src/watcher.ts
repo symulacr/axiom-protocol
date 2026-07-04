@@ -1,10 +1,21 @@
 import type { JsonRpcProvider, Log } from "ethers";
-import { decodeEventLog, getAddress, getEventSelector, type AbiEvent, type Address } from "viem";
+import {
+  decodeEventLog,
+  getAddress,
+  getEventSelector,
+  type AbiEvent,
+  type Address,
+} from "viem";
 import { readFile, writeFile, rename, mkdir } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import { validateHex, type Hex } from "@axiom/config/types/hex";
 
-import { ADDRESSES, EVENT_ABI, type AxiomEvent, type EventName } from "./events.js";
+import {
+  ADDRESSES,
+  EVENT_ABI,
+  type AxiomEvent,
+  type EventName,
+} from "./events.js";
 
 export const POLL_WINDOW_BLOCKS = 50n;
 
@@ -13,14 +24,16 @@ export const POLL_INTERVAL_MS = 12_000;
 // 0G's eth_getLogs rejects ranges past chain head with -32000.
 // We bound the window to the live head on every tick.
 
-const CHECKPOINT_FILE = join(process.cwd(), "data", "checkpoint.json");
+function getCheckpointFile(chainId: bigint): string {
+  return join(process.cwd(), "data", `checkpoint-${chainId}.json`);
+}
 
 export type EventTopicTable = { [K in EventName]: Hex };
 const TOPIC_TABLE: EventTopicTable = Object.fromEntries(
   (Object.keys(EVENT_ABI) as EventName[]).map((n) => [
     n,
     validateHex(getEventSelector(EVENT_ABI[n])),
-  ])
+  ]),
 ) as EventTopicTable;
 
 const TOPIC_TO_EVENT: Record<string, EventName> = {};
@@ -56,11 +69,17 @@ export const DEFAULT_WATCH_LIST: readonly WatchedEvent[] = [
   { name: "ComputeProviderPaid", address: ADDRESSES.AXIOM_PAYMENT_PROCESSOR },
   { name: "EarningsWithdrawn", address: ADDRESSES.AXIOM_PAYMENT_PROCESSOR },
   { name: "RoyaltySet", address: ADDRESSES.AXIOM_PAYMENT_PROCESSOR },
-  { name: "ProtocolTreasuryUpdated", address: ADDRESSES.AXIOM_PAYMENT_PROCESSOR },
+  {
+    name: "ProtocolTreasuryUpdated",
+    address: ADDRESSES.AXIOM_PAYMENT_PROCESSOR,
+  },
   { name: "ProtocolFeeBpsUpdated", address: ADDRESSES.AXIOM_PAYMENT_PROCESSOR },
   { name: "PaymentTokenUpdated", address: ADDRESSES.AXIOM_PAYMENT_PROCESSOR },
   // AxiomAgentNFT (metadata decision + ERC7857Cloneable Cloned)
-  { name: "MetadataJsonDecisionDocumented", address: ADDRESSES.AXIOM_AGENT_NFT },
+  {
+    name: "MetadataJsonDecisionDocumented",
+    address: ADDRESSES.AXIOM_AGENT_NFT,
+  },
   { name: "Cloned", address: ADDRESSES.AXIOM_AGENT_NFT },
   // AxiomTeeVerifier
   { name: "SignerRegistered", address: ADDRESSES.AXIOM_TEE_VERIFIER },
@@ -91,7 +110,6 @@ type BaseFields = {
   logIndex: number;
 };
 
-
 type EventParser = (log: Log, base: BaseFields) => AxiomEvent | null;
 
 function makeEventParser(
@@ -110,7 +128,11 @@ function makeEventParser(
       strict: true,
     });
     if (!d.args) return null;
-    return { kind, ...base, ...extract(d.args as Record<string, unknown>) } as AxiomEvent;
+    return {
+      kind,
+      ...base,
+      ...extract(d.args as Record<string, unknown>),
+    } as AxiomEvent;
   };
 }
 
@@ -126,41 +148,69 @@ const EVENT_PARSERS: Record<string, EventParser> = {
     oldDatasCount: (a["oldDatas"] as unknown[]).length,
     newDatasCount: (a["newDatas"] as unknown[]).length,
   })),
-  Authorization: makeEventParser("Authorization", EVENT_ABI.Authorization, (a) => ({
-    tokenId: a["tokenId"] as bigint,
-    from: getAddress(a["from"] as string),
-    to: getAddress(a["to"] as string),
-  })),
-  AuthorizationRevoked: makeEventParser("AuthorizationRevoked", EVENT_ABI.AuthorizationRevoked, (a) => ({
-    tokenId: a["tokenId"] as bigint,
-    from: getAddress(a["from"] as string),
-    to: getAddress(a["to"] as string),
-  })),
-  VerifierUpdated: makeEventParser("VerifierUpdated", EVENT_ABI.VerifierUpdated, (a) => ({
-    oldVerifier: getAddress(a["oldVerifier"] as string),
-    newVerifier: getAddress(a["newVerifier"] as string),
-  })),
+  Authorization: makeEventParser(
+    "Authorization",
+    EVENT_ABI.Authorization,
+    (a) => ({
+      tokenId: a["tokenId"] as bigint,
+      from: getAddress(a["from"] as string),
+      to: getAddress(a["to"] as string),
+    }),
+  ),
+  AuthorizationRevoked: makeEventParser(
+    "AuthorizationRevoked",
+    EVENT_ABI.AuthorizationRevoked,
+    (a) => ({
+      tokenId: a["tokenId"] as bigint,
+      from: getAddress(a["from"] as string),
+      to: getAddress(a["to"] as string),
+    }),
+  ),
+  VerifierUpdated: makeEventParser(
+    "VerifierUpdated",
+    EVENT_ABI.VerifierUpdated,
+    (a) => ({
+      oldVerifier: getAddress(a["oldVerifier"] as string),
+      newVerifier: getAddress(a["newVerifier"] as string),
+    }),
+  ),
   CreatorSet: makeEventParser("CreatorSet", EVENT_ABI.CreatorSet, (a) => ({
     tokenId: a["tokenId"] as bigint,
     creator: getAddress(a["creator"] as string),
   })),
-  MintFeeUpdated: makeEventParser("MintFeeUpdated", EVENT_ABI.MintFeeUpdated, (a) => ({
-    oldFee: a["oldFee"] as bigint,
-    newFee: a["newFee"] as bigint,
-  })),
-  StorageInfoUpdated: makeEventParser("StorageInfoUpdated", EVENT_ABI.StorageInfoUpdated, (a) => ({
-    oldInfo: a["oldInfo"] as string,
-    newInfo: a["newInfo"] as string,
-  })),
-  PublishedSealedKey: makeEventParser("PublishedSealedKey", EVENT_ABI.PublishedSealedKey, (a) => ({
-    to: getAddress(a["to"] as string),
-    tokenId: a["tokenId"] as bigint,
-    sealedKeys: a["sealedKeys"] as readonly Hex[],
-  })),
-  DelegateAccess: makeEventParser("DelegateAccess", EVENT_ABI.DelegateAccess, (a) => ({
-    user: getAddress(a["user"] as string),
-    assistant: getAddress(a["assistant"] as string),
-  })),
+  MintFeeUpdated: makeEventParser(
+    "MintFeeUpdated",
+    EVENT_ABI.MintFeeUpdated,
+    (a) => ({
+      oldFee: a["oldFee"] as bigint,
+      newFee: a["newFee"] as bigint,
+    }),
+  ),
+  StorageInfoUpdated: makeEventParser(
+    "StorageInfoUpdated",
+    EVENT_ABI.StorageInfoUpdated,
+    (a) => ({
+      oldInfo: a["oldInfo"] as string,
+      newInfo: a["newInfo"] as string,
+    }),
+  ),
+  PublishedSealedKey: makeEventParser(
+    "PublishedSealedKey",
+    EVENT_ABI.PublishedSealedKey,
+    (a) => ({
+      to: getAddress(a["to"] as string),
+      tokenId: a["tokenId"] as bigint,
+      sealedKeys: a["sealedKeys"] as readonly Hex[],
+    }),
+  ),
+  DelegateAccess: makeEventParser(
+    "DelegateAccess",
+    EVENT_ABI.DelegateAccess,
+    (a) => ({
+      user: getAddress(a["user"] as string),
+      assistant: getAddress(a["assistant"] as string),
+    }),
+  ),
   // AxiomStrategyVault events
   Deposited: makeEventParser("Deposited", EVENT_ABI.Deposited, (a) => ({
     tokenId: a["tokenId"] as bigint,
@@ -187,42 +237,70 @@ const EVENT_PARSERS: Record<string, EventParser> = {
     value: a["value"] as bigint,
     result: a["result"] as Hex,
   })),
-  RegistryUpdated: makeEventParser("RegistryUpdated", EVENT_ABI.RegistryUpdated, (a) => ({
-    nft: getAddress(a["nft"] as string),
-  })),
+  RegistryUpdated: makeEventParser(
+    "RegistryUpdated",
+    EVENT_ABI.RegistryUpdated,
+    (a) => ({
+      nft: getAddress(a["nft"] as string),
+    }),
+  ),
   // AxiomPaymentProcessor events
-  PaymentProcessed: makeEventParser("PaymentProcessed", EVENT_ABI.PaymentProcessed, (a) => ({
-    agentTokenId: a["agentTokenId"] as bigint,
-    payer: getAddress(a["payer"] as string),
-    creator: getAddress(a["creator"] as string),
-    amount: a["amount"] as bigint,
-    creatorCut: a["creatorCut"] as bigint,
-    protocolCut: a["protocolCut"] as bigint,
-  })),
-  ComputeProviderPaid: makeEventParser("ComputeProviderPaid", EVENT_ABI.ComputeProviderPaid, (a) => ({
-    provider: getAddress(a["provider"] as string),
-    amount: a["amount"] as bigint,
-  })),
-  EarningsWithdrawn: makeEventParser("EarningsWithdrawn", EVENT_ABI.EarningsWithdrawn, (a) => ({
-    creator: getAddress(a["creator"] as string),
-    amount: a["amount"] as bigint,
-  })),
+  PaymentProcessed: makeEventParser(
+    "PaymentProcessed",
+    EVENT_ABI.PaymentProcessed,
+    (a) => ({
+      agentTokenId: a["agentTokenId"] as bigint,
+      payer: getAddress(a["payer"] as string),
+      creator: getAddress(a["creator"] as string),
+      amount: a["amount"] as bigint,
+      creatorCut: a["creatorCut"] as bigint,
+      protocolCut: a["protocolCut"] as bigint,
+    }),
+  ),
+  ComputeProviderPaid: makeEventParser(
+    "ComputeProviderPaid",
+    EVENT_ABI.ComputeProviderPaid,
+    (a) => ({
+      provider: getAddress(a["provider"] as string),
+      amount: a["amount"] as bigint,
+    }),
+  ),
+  EarningsWithdrawn: makeEventParser(
+    "EarningsWithdrawn",
+    EVENT_ABI.EarningsWithdrawn,
+    (a) => ({
+      creator: getAddress(a["creator"] as string),
+      amount: a["amount"] as bigint,
+    }),
+  ),
   RoyaltySet: makeEventParser("RoyaltySet", EVENT_ABI.RoyaltySet, (a) => ({
     agentTokenId: a["agentTokenId"] as bigint,
     bps: a["bps"] as bigint,
   })),
-  ProtocolTreasuryUpdated: makeEventParser("ProtocolTreasuryUpdated", EVENT_ABI.ProtocolTreasuryUpdated, (a) => ({
-    oldTreasury: getAddress(a["oldTreasury"] as string),
-    newTreasury: getAddress(a["newTreasury"] as string),
-  })),
-  ProtocolFeeBpsUpdated: makeEventParser("ProtocolFeeBpsUpdated", EVENT_ABI.ProtocolFeeBpsUpdated, (a) => ({
-    oldBps: a["oldBps"] as bigint,
-    newBps: a["newBps"] as bigint,
-  })),
-  PaymentTokenUpdated: makeEventParser("PaymentTokenUpdated", EVENT_ABI.PaymentTokenUpdated, (a) => ({
-    oldToken: getAddress(a["oldToken"] as string),
-    newToken: getAddress(a["newToken"] as string),
-  })),
+  ProtocolTreasuryUpdated: makeEventParser(
+    "ProtocolTreasuryUpdated",
+    EVENT_ABI.ProtocolTreasuryUpdated,
+    (a) => ({
+      oldTreasury: getAddress(a["oldTreasury"] as string),
+      newTreasury: getAddress(a["newTreasury"] as string),
+    }),
+  ),
+  ProtocolFeeBpsUpdated: makeEventParser(
+    "ProtocolFeeBpsUpdated",
+    EVENT_ABI.ProtocolFeeBpsUpdated,
+    (a) => ({
+      oldBps: a["oldBps"] as bigint,
+      newBps: a["newBps"] as bigint,
+    }),
+  ),
+  PaymentTokenUpdated: makeEventParser(
+    "PaymentTokenUpdated",
+    EVENT_ABI.PaymentTokenUpdated,
+    (a) => ({
+      oldToken: getAddress(a["oldToken"] as string),
+      newToken: getAddress(a["newToken"] as string),
+    }),
+  ),
   // ERC7857Cloneable / AxiomAgentNFT metadata / AxiomTeeVerifier
   Cloned: makeEventParser("Cloned", EVENT_ABI.Cloned, (a) => ({
     tokenId: a["tokenId"] as bigint,
@@ -230,26 +308,42 @@ const EVENT_PARSERS: Record<string, EventParser> = {
     from: getAddress(a["from"] as string),
     to: getAddress(a["to"] as string),
   })),
-  MetadataJsonDecisionDocumented: makeEventParser("MetadataJsonDecisionDocumented", EVENT_ABI.MetadataJsonDecisionDocumented, (a) => ({
-    collectionName: a["collectionName"] as string,
-    collectionSymbol: a["collectionSymbol"] as string,
-    rationaleTag: a["rationaleTag"] as string,
-  })),
-  SignerRegistered: makeEventParser("SignerRegistered", EVENT_ABI.SignerRegistered, (a) => ({
-    oldSigner: getAddress(a["oldSigner"] as string),
-    newSigner: getAddress(a["newSigner"] as string),
-  })),
+  MetadataJsonDecisionDocumented: makeEventParser(
+    "MetadataJsonDecisionDocumented",
+    EVENT_ABI.MetadataJsonDecisionDocumented,
+    (a) => ({
+      collectionName: a["collectionName"] as string,
+      collectionSymbol: a["collectionSymbol"] as string,
+      rationaleTag: a["rationaleTag"] as string,
+    }),
+  ),
+  SignerRegistered: makeEventParser(
+    "SignerRegistered",
+    EVENT_ABI.SignerRegistered,
+    (a) => ({
+      oldSigner: getAddress(a["oldSigner"] as string),
+      newSigner: getAddress(a["newSigner"] as string),
+    }),
+  ),
   // ERC-1967 proxy events
   Upgraded: makeEventParser("Upgraded", EVENT_ABI.Upgraded, (a) => ({
     implementation: getAddress(a["implementation"] as string),
   })),
-  AdminChanged: makeEventParser("AdminChanged", EVENT_ABI.AdminChanged, (a) => ({
-    previousAdmin: getAddress(a["previousAdmin"] as string),
-    newAdmin: getAddress(a["newAdmin"] as string),
-  })),
-  BeaconUpgraded: makeEventParser("BeaconUpgraded", EVENT_ABI.BeaconUpgraded, (a) => ({
-    beacon: getAddress(a["beacon"] as string),
-  })),
+  AdminChanged: makeEventParser(
+    "AdminChanged",
+    EVENT_ABI.AdminChanged,
+    (a) => ({
+      previousAdmin: getAddress(a["previousAdmin"] as string),
+      newAdmin: getAddress(a["newAdmin"] as string),
+    }),
+  ),
+  BeaconUpgraded: makeEventParser(
+    "BeaconUpgraded",
+    EVENT_ABI.BeaconUpgraded,
+    (a) => ({
+      beacon: getAddress(a["beacon"] as string),
+    }),
+  ),
   // OpenZeppelin Initializable
   Initialized: makeEventParser("Initialized", EVENT_ABI.Initialized, (a) => ({
     version: Number(a["version"]),
@@ -308,24 +402,36 @@ function logsByChainOrder(a: Log, b: Log) {
   return 0;
 }
 
-async function loadCheckpoint(): Promise<number | null> {
+async function loadCheckpoint(chainId: bigint): Promise<number | null> {
+  const checkpointFile = getCheckpointFile(chainId);
   try {
-    const data = await readFile(CHECKPOINT_FILE, "utf-8");
+    const data = await readFile(checkpointFile, "utf-8");
     const parsed = JSON.parse(data);
-    if (typeof parsed.nextBlock === "number" && Number.isInteger(parsed.nextBlock) && parsed.nextBlock > 0) {
+    if (
+      typeof parsed.nextBlock === "number" &&
+      Number.isInteger(parsed.nextBlock) &&
+      parsed.nextBlock > 0
+    ) {
       return parsed.nextBlock;
     }
-  } catch {
-  }
+  } catch {}
   return null;
 }
 
-async function saveCheckpoint(nextBlock: number): Promise<void> {
-  const tmp = CHECKPOINT_FILE + ".tmp";
+async function saveCheckpoint(
+  chainId: bigint,
+  nextBlock: number,
+): Promise<void> {
+  const checkpointFile = getCheckpointFile(chainId);
+  const tmp = checkpointFile + ".tmp";
   try {
-    await mkdir(dirname(CHECKPOINT_FILE), { recursive: true });
-    await writeFile(tmp, JSON.stringify({ nextBlock, updatedAt: Date.now() }), "utf-8");
-    await rename(tmp, CHECKPOINT_FILE);
+    await mkdir(dirname(checkpointFile), { recursive: true });
+    await writeFile(
+      tmp,
+      JSON.stringify({ nextBlock, updatedAt: Date.now() }),
+      "utf-8",
+    );
+    await rename(tmp, checkpointFile);
   } catch (err) {
     console.error("[watcher] failed to save checkpoint:", err);
   }
@@ -350,7 +456,8 @@ export class Watcher {
     this.intervalMs = opts.pollIntervalMs ?? POLL_INTERVAL_MS;
     this.sink = opts.sink;
     this.logger =
-      opts.logger ?? ((line) => console.error(JSON.stringify({ level: "info", ...line })));
+      opts.logger ??
+      ((line) => console.error(JSON.stringify({ level: "info", ...line })));
     this.nextBlock = opts.startBlock ?? 0n;
   }
 
@@ -361,10 +468,21 @@ export class Watcher {
   start() {
     if (this.running) throw new Error("Watcher already running");
     this.running = true;
-    const { promise: stopped, resolve: resolveStopped } = Promise.withResolvers<void>();
+    const { promise: stopped, resolve: resolveStopped } =
+      Promise.withResolvers<void>();
+    let chainId: bigint | null = null;
+
+    const getChainId = async (): Promise<bigint> => {
+      if (chainId !== null) return chainId;
+      const network = await this.provider.getNetwork();
+      chainId = network.chainId;
+      return chainId;
+    };
+
     const tick = async (): Promise<void> => {
       if (!this.running) return;
       try {
+        const id = await getChainId();
         // Fetch the live chain head on every tick so the window never
         // overshoots the chain head (0G rejects ranges past head with
         // error code -32000).
@@ -401,7 +519,12 @@ export class Watcher {
         }
 
         const range = toBlock - fromBlock + 1n;
-        const logs = await pollOnce(this.provider, this.watchList, fromBlock, range);
+        const logs = await pollOnce(
+          this.provider,
+          this.watchList,
+          fromBlock,
+          range,
+        );
         logs.sort(logsByChainOrder);
         for (const log of logs) {
           try {
@@ -420,7 +543,7 @@ export class Watcher {
           }
         }
         this.nextBlock = toBlock + 1n;
-        await saveCheckpoint(Number(this.nextBlock));
+        await saveCheckpoint(id, Number(this.nextBlock));
         this.consecutiveFailures = 0;
         this.logger({
           msg: "poll tick",
@@ -440,7 +563,10 @@ export class Watcher {
           err: err instanceof Error ? err.message : String(err),
         });
         if (this.consecutiveFailures >= this.maxConsecutiveFailures) {
-          this.logger({ level: "fatal", msg: "max consecutive failures reached — stopping" });
+          this.logger({
+            level: "fatal",
+            msg: "max consecutive failures reached — stopping",
+          });
           this.running = false;
           const { promise, resolve } = Promise.withResolvers<void>();
           setTimeout(resolve, this.intervalMs);
@@ -448,7 +574,10 @@ export class Watcher {
           return;
         }
         // Exponential backoff with 60s cap
-        const backoff = Math.min(this.intervalMs * Math.pow(2, this.consecutiveFailures), 60_000);
+        const backoff = Math.min(
+          this.intervalMs * Math.pow(2, this.consecutiveFailures),
+          60_000,
+        );
         const { promise, resolve } = Promise.withResolvers<void>();
         setTimeout(resolve, backoff);
         await promise;
@@ -458,10 +587,19 @@ export class Watcher {
     const loop = async (): Promise<void> => {
       // Load persisted checkpoint before first tick so we resume from
       // where we left off rather than falling back to head - window.
-      const savedBlock = await loadCheckpoint();
-      if (savedBlock !== null) {
-        console.log(`[watcher] resuming from checkpoint block ${savedBlock}`);
-        this.nextBlock = BigInt(savedBlock);
+      try {
+        const id = await getChainId();
+        const savedBlock = await loadCheckpoint(id);
+        if (savedBlock !== null) {
+          console.log(`[watcher] resuming from checkpoint block ${savedBlock}`);
+          this.nextBlock = BigInt(savedBlock);
+        }
+      } catch (err) {
+        this.logger({
+          level: "error",
+          msg: "failed to load checkpoint",
+          err: err instanceof Error ? err.message : String(err),
+        });
       }
 
       while (this.running) {
@@ -483,5 +621,3 @@ export class Watcher {
     };
   }
 }
-
-
