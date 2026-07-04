@@ -1,22 +1,28 @@
-import { useCallback, useEffect, useState } from 'react';
-import { useAccount, useSignTypedData, useWriteContract } from 'wagmi';
-import { type Hex } from 'viem';
+import { useCallback, useEffect, useState } from "react";
+import { useAccount, useSignTypedData, useWriteContract } from "wagmi";
+import { type Hex } from "viem";
 
-import { getAxiomAgentNftAddress } from '../abi/addresses.js';
-import { ITRANSFER_FROM_ABI } from '@axiom/config/abis';
+import { getAxiomAgentNftAddress } from "../abi/addresses.js";
+import { ITRANSFER_FROM_ABI } from "@axiom/config/abis";
 
-import { useAsyncAction } from './useAsyncAction.js';
-import { useEip712Domain, ACCESS_PROOF_TYPES } from '../abi/eip712.js';
-import { agentTransferPath } from '../utils/apiPaths.js';
-import { apiFetch, LONG_TIMEOUT } from '../utils/apiFetch.js';
+import { useAsyncAction } from "./useAsyncAction.js";
+import { useEip712Domain, ACCESS_PROOF_TYPES } from "../abi/eip712.js";
+import { agentTransferPath } from "../utils/apiPaths.js";
+import { apiFetch, LONG_TIMEOUT } from "../utils/apiFetch.js";
 import type {
   TransferInput,
   AccessProofStruct,
   OwnershipProofStruct,
   TransferResponse,
   TransferPhase,
-} from '@axiom/config/types/transfer';
-export type { TransferInput, AccessProofStruct, OwnershipProofStruct, TransferResponse, TransferPhase };
+} from "@axiom/config/types/transfer";
+export type {
+  TransferInput,
+  AccessProofStruct,
+  OwnershipProofStruct,
+  TransferResponse,
+  TransferPhase,
+};
 export type UseTransferResult = {
   prepare: (input: TransferInput) => Promise<TransferResponse>;
   confirm: (input: TransferInput) => Promise<Hex>;
@@ -39,33 +45,49 @@ function useWarnTimeout(message: string, delay: number, active: boolean): void {
 export function useTransfer(): UseTransferResult {
   const { address: from } = useAccount();
   const { signTypedDataAsync } = useSignTypedData();
-  const { writeContractAsync, isPending: isWritePending, error: writeError, reset: resetWrite } =
-    useWriteContract();
+  const {
+    writeContractAsync,
+    isPending: isWritePending,
+    error: writeError,
+    reset: resetWrite,
+  } = useWriteContract();
   const { domain } = useEip712Domain();
 
   const [signature, setSignature] = useState<TransferResponse | null>(null);
-  const [transferPhase, setTransferPhase] = useState<TransferPhase>('idle');
-  const { execute, isLoading: actionLoading, error: actionError, reset: resetAction } =
-    useAsyncAction();
+  const [transferPhase, setTransferPhase] = useState<TransferPhase>("idle");
+  const {
+    execute,
+    isLoading: actionLoading,
+    error: actionError,
+    reset: resetAction,
+  } = useAsyncAction();
   const isLoading = actionLoading || isWritePending;
-  useWarnTimeout('[transfer] Challenge phase is taking longer than expected. The oracle may be processing.', 30000, isLoading);
-  useWarnTimeout('[transfer] Finalization is taking longer than expected. The transaction may still complete.', 30000, isLoading);
+  useWarnTimeout(
+    "[transfer] Challenge phase is taking longer than expected. The oracle may be processing.",
+    30000,
+    isLoading,
+  );
+  useWarnTimeout(
+    "[transfer] Finalization is taking longer than expected. The transaction may still complete.",
+    30000,
+    isLoading,
+  );
 
   const prepare = useCallback(
     async (input: TransferInput): Promise<TransferResponse> => {
       if (!from) {
-        throw new Error('wallet not connected');
+        throw new Error("wallet not connected");
       }
       if (input.receiverPubKey64.length !== 130) {
         throw new Error(
-          'receiverPubKey64 must be 0x-prefixed 64 raw bytes (X||Y, no 0x04 prefix)',
+          "receiverPubKey64 must be 0x-prefixed 64 raw bytes (X||Y, no 0x04 prefix)",
         );
       }
 
       return execute(async (signal) => {
         const path = agentTransferPath(input.tokenId);
 
-        setTransferPhase('challenge');
+        setTransferPhase("challenge");
 
         // Step 1 — challenge (backend returns proof params).
         const challengeBody: Record<string, unknown> = {
@@ -78,13 +100,15 @@ export function useTransfer(): UseTransferResult {
           challengeBody.oldDataUri = input.oldDataUri;
         }
         const challenge = await apiFetch<TransferResponse>(path, {
-          method: 'POST',
+          method: "POST",
           body: JSON.stringify(challengeBody),
           signal,
           timeout: LONG_TIMEOUT,
         });
-        if (!challenge.ok || challenge.stage !== 'challenge') {
-          throw new Error('backend did not return a transfer challenge. Challenge failed — generate a new nonce and try again.');
+        if (!challenge.ok || challenge.stage !== "challenge") {
+          throw new Error(
+            "backend did not return a transfer challenge. Challenge failed — generate a new nonce and try again.",
+          );
         }
         if (
           !challenge.dataHash ||
@@ -92,21 +116,24 @@ export function useTransfer(): UseTransferResult {
           challenge.accessProofNonce === undefined ||
           challenge.validUntil === undefined
         ) {
-          throw new Error('incomplete transfer challenge from backend — generate a new nonce and start over');
+          throw new Error(
+            "incomplete transfer challenge from backend — generate a new nonce and start over",
+          );
         }
 
-        setTransferPhase('signing');
+        setTransferPhase("signing");
 
         // Step 2 — receiver signs EIP-712 AccessProof.
         const nonce = BigInt(challenge.accessProofNonce);
         const validUntil = BigInt(challenge.validUntil);
-        const proofDataHash = challenge.rekeyed && challenge.newDataHash
-          ? challenge.newDataHash
-          : challenge.dataHash;
+        const proofDataHash =
+          challenge.rekeyed && challenge.newDataHash
+            ? challenge.newDataHash
+            : challenge.dataHash;
         const accessSignature = await signTypedDataAsync({
           domain,
           types: ACCESS_PROOF_TYPES,
-          primaryType: 'AccessProof',
+          primaryType: "AccessProof",
           message: {
             dataHash: proofDataHash,
             targetPubkey: challenge.targetPubkey,
@@ -118,11 +145,11 @@ export function useTransfer(): UseTransferResult {
           account: from,
         });
 
-        setTransferPhase('finalizing');
+        setTransferPhase("finalizing");
 
         // Step 3 — finalize (backend builds on-chain structs from signed proof).
         let proof = await apiFetch<TransferResponse>(path, {
-          method: 'POST',
+          method: "POST",
           signal,
           timeout: LONG_TIMEOUT,
           body: JSON.stringify({
@@ -139,18 +166,27 @@ export function useTransfer(): UseTransferResult {
             },
           }),
         });
-        if (!proof.ok || proof.stage !== 'final') {
-          throw new Error('backend did not return final proof structs. Finalization failed — transaction was NOT submitted. Click "Prepare Transfer" to restart.');
+        if (!proof.ok || proof.stage !== "final") {
+          throw new Error(
+            'backend did not return final proof structs. Finalization failed — transaction was NOT submitted. Click "Prepare Transfer" to restart.',
+          );
         }
         if (!proof.accessProof || !proof.ownershipProof) {
-          throw new Error('incomplete proof structs from backend. Finalization failed — transaction was NOT submitted. Click "Prepare Transfer" to restart.');
+          throw new Error(
+            'incomplete proof structs from backend. Finalization failed — transaction was NOT submitted. Click "Prepare Transfer" to restart.',
+          );
         }
         // Carry re-key status forward for the modal.
         if (challenge.rekeyed) {
-          proof = { ...proof, rekeyed: true, newDataHash: challenge.newDataHash, newDataUri: challenge.newDataUri };
+          proof = {
+            ...proof,
+            rekeyed: true,
+            newDataHash: challenge.newDataHash,
+            newDataUri: challenge.newDataUri,
+          };
         }
         setSignature(proof);
-        setTransferPhase('idle');
+        setTransferPhase("idle");
         return proof;
       });
     },
@@ -160,17 +196,17 @@ export function useTransfer(): UseTransferResult {
   const confirm = useCallback(
     async (input: TransferInput): Promise<Hex> => {
       if (!from) {
-        throw new Error('wallet not connected');
+        throw new Error("wallet not connected");
       }
       if (!signature?.accessProof || !signature?.ownershipProof) {
-        throw new Error('no prepared proof — call prepare() first');
+        throw new Error("no prepared proof — call prepare() first");
       }
-      setTransferPhase('confirming');
+      setTransferPhase("confirming");
       try {
         const txHash = await writeContractAsync({
           address: getAxiomAgentNftAddress(),
           abi: ITRANSFER_FROM_ABI,
-          functionName: 'iTransferFrom',
+          functionName: "iTransferFrom",
           args: [
             from,
             input.to,
@@ -183,10 +219,10 @@ export function useTransfer(): UseTransferResult {
             ],
           ],
         });
-        setTransferPhase('idle');
+        setTransferPhase("idle");
         return txHash;
       } catch (err) {
-        setTransferPhase('idle');
+        setTransferPhase("idle");
         const msg = err instanceof Error ? err.message : String(err);
         throw new Error(
           `On-chain transaction failed: ${msg}. Your prepared proof is still valid — click "Edit" to restart the flow with a fresh nonce.`,
@@ -206,7 +242,7 @@ export function useTransfer(): UseTransferResult {
 
   const reset = useCallback((): void => {
     setSignature(null);
-    setTransferPhase('idle');
+    setTransferPhase("idle");
     resetAction();
     resetWrite();
   }, [resetAction, resetWrite]);

@@ -41,19 +41,32 @@ export interface ExecutedPayload {
   value: string;
 }
 
-export type EventPayload = TickPayload | TransferPayload | DepositedPayload | WithdrawnPayload | StrategySetPayload | ExecutedPayload | Record<string, unknown>;
+export type EventPayload =
+  | TickPayload
+  | TransferPayload
+  | DepositedPayload
+  | WithdrawnPayload
+  | StrategySetPayload
+  | ExecutedPayload
+  | Record<string, unknown>;
 
 /** Safely extract a string field from an unknown payload. */
-export function payloadField(payload: unknown, key: string): string | undefined {
-  if (payload && typeof payload === 'object' && key in payload) {
+export function payloadField(
+  payload: unknown,
+  key: string,
+): string | undefined {
+  if (payload && typeof payload === "object" && key in payload) {
     return String((payload as Record<string, unknown>)[key]);
   }
   return undefined;
 }
 
 /** Safely extract a number field from an unknown payload. */
-export function payloadNumber(payload: unknown, key: string): number | undefined {
-  if (payload && typeof payload === 'object' && key in payload) {
+export function payloadNumber(
+  payload: unknown,
+  key: string,
+): number | undefined {
+  if (payload && typeof payload === "object" && key in payload) {
     const val = (payload as Record<string, unknown>)[key];
     return val !== undefined && val !== null ? Number(val) : undefined;
   }

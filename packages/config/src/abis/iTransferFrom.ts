@@ -27,7 +27,11 @@ export const ITRANSFER_FROM_ABI = [
             internalType: "struct OwnershipProof",
             type: "tuple",
             components: [
-              { name: "oracleType", internalType: "enum OracleType", type: "uint8" },
+              {
+                name: "oracleType",
+                internalType: "enum OracleType",
+                type: "uint8",
+              },
               { name: "dataHash", internalType: "bytes32", type: "bytes32" },
               { name: "sealedKey", internalType: "bytes", type: "bytes" },
               { name: "targetPubkey", internalType: "bytes", type: "bytes" },

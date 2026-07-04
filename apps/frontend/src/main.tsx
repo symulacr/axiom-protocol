@@ -1,47 +1,49 @@
-import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { WagmiProvider } from 'wagmi';
-import { RainbowKitProvider, darkTheme } from '@rainbow-me/rainbowkit';
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { BrowserRouter } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { WagmiProvider } from "wagmi";
+import { RainbowKitProvider, darkTheme } from "@rainbow-me/rainbowkit";
 
-import { Toaster } from 'sonner';
-import { COLORS } from './components/ui.js';
-import { App } from './App';
-import { wagmiConfig } from './config/wagmi';
-import '@rainbow-me/rainbowkit/styles.css';
-import './styles/index.css';
+import { Toaster } from "sonner";
+import { COLORS } from "./components/ui.js";
+import { App } from "./App";
+import { wagmiConfig } from "./config/wagmi";
+import "@rainbow-me/rainbowkit/styles.css";
+import "./styles/index.css";
 
 const queryClient = new QueryClient();
 
-const rootEl = document.getElementById('root');
+const rootEl = document.getElementById("root");
 if (!rootEl) {
-  throw new Error('Root element #root not found in index.html');
+  throw new Error("Root element #root not found in index.html");
 }
 
 createRoot(rootEl).render(
   <StrictMode>
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider theme={darkTheme({
-          accentColor: COLORS.bronze,
-          accentColorForeground: COLORS.bg,
-          borderRadius: 'medium',
-          fontStack: 'system',
-          overlayBlur: 'small',
-        })}>
+        <RainbowKitProvider
+          theme={darkTheme({
+            accentColor: COLORS.bronze,
+            accentColorForeground: COLORS.bg,
+            borderRadius: "medium",
+            fontStack: "system",
+            overlayBlur: "small",
+          })}
+        >
           <BrowserRouter>
-              <App />
-              <Toaster
-                position="bottom-right"
-                toastOptions={{
-                  style: {
-                    background: COLORS.surface,
-                    color: COLORS.text,
-                    border: `1px solid ${COLORS.border}`,
-                  },
-                }}
-              />
+            <App />
+            <Toaster
+              position="bottom-right"
+              toastOptions={{
+                style: {
+                  background: COLORS.surface,
+                  color: COLORS.text,
+                  border: `1px solid ${COLORS.border}`,
+                },
+              }}
+            />
           </BrowserRouter>
         </RainbowKitProvider>
       </QueryClientProvider>
@@ -52,12 +54,29 @@ createRoot(rootEl).render(
 try {
   if (typeof window !== "undefined" && typeof process !== "undefined") {
     process.on("unhandledRejection", (reason: unknown) => {
-      const err = reason instanceof Error ? reason.stack ?? reason.message : String(reason);
-      console.error(JSON.stringify({ level: "error", msg: "unhandledRejection", err, pid: process.pid }));
+      const err =
+        reason instanceof Error
+          ? (reason.stack ?? reason.message)
+          : String(reason);
+      console.error(
+        JSON.stringify({
+          level: "error",
+          msg: "unhandledRejection",
+          err,
+          pid: process.pid,
+        }),
+      );
       process.exit(1);
     });
     process.on("uncaughtException", (err: Error) => {
-      console.error(JSON.stringify({ level: "error", msg: "uncaughtException", err: err.stack ?? err.message, pid: process.pid }));
+      console.error(
+        JSON.stringify({
+          level: "error",
+          msg: "uncaughtException",
+          err: err.stack ?? err.message,
+          pid: process.pid,
+        }),
+      );
       process.exit(1);
     });
   }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export interface UseAsyncActionResult {
   execute: <U>(fn: (signal: AbortSignal) => Promise<U>) => Promise<U>;
@@ -21,28 +21,31 @@ export function useAsyncAction(): UseAsyncActionResult {
     };
   }, []);
 
-  const execute = useCallback(async <U>(fn: (signal: AbortSignal) => Promise<U>): Promise<U> => {
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-    cancelledRef.current = false;
-    setIsLoading(true);
-    setError(null);
-    try {
-      return await fn(controller.signal);
-    } catch (err) {
-      if (cancelledRef.current) throw err;
-      // Skip AbortErrors — they're expected on unmount/rerun
-      if (err instanceof DOMException && err.name === 'AbortError') {
-        throw err; // still throw so the promise chain works, but don't setError
+  const execute = useCallback(
+    async <U>(fn: (signal: AbortSignal) => Promise<U>): Promise<U> => {
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+      cancelledRef.current = false;
+      setIsLoading(true);
+      setError(null);
+      try {
+        return await fn(controller.signal);
+      } catch (err) {
+        if (cancelledRef.current) throw err;
+        // Skip AbortErrors — they're expected on unmount/rerun
+        if (err instanceof DOMException && err.name === "AbortError") {
+          throw err; // still throw so the promise chain works, but don't setError
+        }
+        const wrapped = err instanceof Error ? err : new Error(String(err));
+        setError(wrapped);
+        throw wrapped;
+      } finally {
+        setIsLoading(false);
       }
-      const wrapped = err instanceof Error ? err : new Error(String(err));
-      setError(wrapped);
-      throw wrapped;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+    },
+    [],
+  );
 
   const cancel = useCallback(() => {
     abortRef.current?.abort();

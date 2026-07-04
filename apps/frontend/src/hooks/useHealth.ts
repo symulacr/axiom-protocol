@@ -1,14 +1,14 @@
-import { usePolledApi } from './usePolledApi.js';
+import { usePolledApi } from "./usePolledApi.js";
 
 export interface HealthResponse {
   ok: boolean;
   version: string;
   signer: string;
   chainHead: number;
-  oracle: 'up' | 'down';
+  oracle: "up" | "down";
   addresses: Record<string, string> | null;
 }
 
 export function useHealth() {
-  return usePolledApi<HealthResponse>('/health', { refetchInterval: 30_000 });
+  return usePolledApi<HealthResponse>("/health", { refetchInterval: 30_000 });
 }

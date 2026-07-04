@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
-import { usePolledApi } from './usePolledApi.js';
+import { useCallback, useEffect, useMemo, useRef } from "react";
+import { usePolledApi } from "./usePolledApi.js";
 
 /** Wire-format event from GET /v1/events (mirrors backend `StoredEvent`). */
 export interface AxiomEvent {
@@ -35,7 +35,9 @@ export interface UseEventHistoryOptions {
 const DEFAULT_POLL_INTERVAL_MS = 15_000;
 const MAX_EVENTS = 500;
 
-function groupByName(events: readonly AxiomEvent[]): Record<string, AxiomEvent[]> {
+function groupByName(
+  events: readonly AxiomEvent[],
+): Record<string, AxiomEvent[]> {
   const out: Record<string, AxiomEvent[]> = {};
   for (const ev of events) {
     const bucket = out[ev.eventName];
@@ -76,7 +78,7 @@ export function useEventHistory(
   const query = usePolledApi<EventsResponse>(urlGetter, {
     refetchInterval: interval,
     enabled,
-    queryKey: ['events', { owner }],
+    queryKey: ["events", { owner }],
   });
 
   useEffect(() => {

@@ -1,6 +1,6 @@
-import { useRef } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { apiFetch } from '../utils/apiFetch.js';
+import { useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { apiFetch } from "../utils/apiFetch.js";
 
 export interface PolledApiOptions {
   refetchInterval?: number;
@@ -32,7 +32,11 @@ export function usePolledApi<T>(
   urlOrGetter: string | (() => string),
   options: PolledApiOptions = {},
 ) {
-  const { refetchInterval = 30000, enabled = true, signal: externalSignal } = options;
+  const {
+    refetchInterval = 30000,
+    enabled = true,
+    signal: externalSignal,
+  } = options;
 
   // Always keep the freshest url/getter in a ref so queryFn reads
   // the latest value without causing the query key to change.
@@ -40,13 +44,13 @@ export function usePolledApi<T>(
   getterRef.current = urlOrGetter;
 
   const defaultKey: readonly unknown[] =
-    typeof urlOrGetter === 'string' ? [urlOrGetter] : ['polled-api'];
+    typeof urlOrGetter === "string" ? [urlOrGetter] : ["polled-api"];
 
   return useQuery<T, Error>({
     queryKey: options.queryKey ?? defaultKey,
     queryFn: async ({ signal: querySignal }) => {
       const url =
-        typeof getterRef.current === 'function'
+        typeof getterRef.current === "function"
           ? getterRef.current()
           : getterRef.current;
       const combined = externalSignal

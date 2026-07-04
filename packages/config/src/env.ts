@@ -1,7 +1,9 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-export function loadEnv(rootPath: string = join(process.cwd(), "../../.env")): void {
+export function loadEnv(
+  rootPath: string = join(process.cwd(), "../../.env"),
+): void {
   try {
     const content = readFileSync(rootPath, "utf-8");
     for (const line of content.split("\n")) {
@@ -38,11 +40,17 @@ export function getEnv(key: string, fallback?: string): string {
  *   DEPLOYER_PK, TEE_SIGNER_PK, ORACLE_ADMIN_PK
  */
 
-export function getEnvWithAlias(canonical: string, aliases: string[], fallback?: string): string {
+export function getEnvWithAlias(
+  canonical: string,
+  aliases: string[],
+  fallback?: string,
+): string {
   for (const key of [canonical, ...aliases]) {
     const val = process.env[key];
     if (val !== undefined && val !== "") return val;
   }
   if (fallback !== undefined) return fallback;
-  throw new Error(`Missing required env var: try ${canonical} (or one of ${aliases.join(", ")})`);
+  throw new Error(
+    `Missing required env var: try ${canonical} (or one of ${aliases.join(", ")})`,
+  );
 }

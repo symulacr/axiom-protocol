@@ -4,15 +4,13 @@ export function agentPath(id: bigint | string, resource?: string): string {
 }
 
 export function agentTransferPath(id: bigint | string): string {
-  return agentPath(id, 'transfer');
+  return agentPath(id, "transfer");
 }
 
 export function agentEarningsPath(id: bigint | string): string {
-  return agentPath(id, 'earnings');
+  return agentPath(id, "earnings");
 }
 
 export function agentRoyaltyPath(id: bigint | string): string {
-  return agentPath(id, 'royalty');
+  return agentPath(id, "royalty");
 }
-
-

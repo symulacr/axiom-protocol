@@ -6,20 +6,14 @@ import { uploadToStorage } from "@axiom/config/storage/0g";
 import { bigintReplacer } from "@axiom/config/types/bigint";
 import { createServer } from "node:http";
 
-import {
-  POLL_INTERVAL_MS,
-  POLL_WINDOW_BLOCKS,
-  Watcher,
-} from "./watcher.js";
+import { POLL_INTERVAL_MS, POLL_WINDOW_BLOCKS, Watcher } from "./watcher.js";
 import type { AxiomEvent } from "./events.js";
 import { postEvent } from "./sink.js";
 import { indexerEnvSchema } from "./env-schema.js";
 
-
 // Load shared .env before any env reads.
 loadEnv(fileURLToPath(new URL("../../.env", import.meta.url)));
 const env = indexerEnvSchema.parse(process.env);
-
 
 function rpcUrl() {
   return env.AXIOM_EVM_RPC;
@@ -61,7 +55,9 @@ async function flushBuffer(): Promise<void> {
   if (!_storageIndexer || !_storageSigner) return;
   const batch = eventBuffer.splice(0);
   try {
-    const payload = new TextEncoder().encode(JSON.stringify(batch, bigintReplacer));
+    const payload = new TextEncoder().encode(
+      JSON.stringify(batch, bigintReplacer),
+    );
     const result = await uploadToStorage(
       _storageIndexer,
       payload,
@@ -83,7 +79,9 @@ async function flushBuffer(): Promise<void> {
     for (const _ev of batch) {
       if (eventBuffer.length >= MAX_BUFFER_SIZE) {
         const dropped = eventBuffer.pop();
-        console.warn(`[indexer] event buffer full, dropping oldest event: ${dropped?.kind ?? "unknown"}`);
+        console.warn(
+          `[indexer] event buffer full, dropping oldest event: ${dropped?.kind ?? "unknown"}`,
+        );
       }
     }
     eventBuffer.unshift(...batch);
@@ -115,18 +113,27 @@ function stopBatchTimer(): void {
 
 type EventSinkConfig =
   | { readonly da: "disabled" }
-  | { readonly da: "storage"; storageIndexer: Indexer; storageSigner: ethers.Wallet };
+  | {
+      readonly da: "storage";
+      storageIndexer: Indexer;
+      storageSigner: ethers.Wallet;
+    };
 
-function composeSinks(config: EventSinkConfig, extra: {
-  backendUrl: string | undefined;
-  rpcUrl: string;
-}) {
+function composeSinks(
+  config: EventSinkConfig,
+  extra: {
+    backendUrl: string | undefined;
+    rpcUrl: string;
+  },
+) {
   return async (event: AxiomEvent) => {
     stdoutSink(event);
 
     if (extra.backendUrl !== undefined) {
       try {
-        const { status } = await postEvent(event, { backendUrl: extra.backendUrl });
+        const { status } = await postEvent(event, {
+          backendUrl: extra.backendUrl,
+        });
         if (status >= 400) {
           process.stderr.write(
             JSON.stringify({
@@ -193,8 +200,8 @@ async function main() {
 
   //   - INDEXER_DA_ENABLED gates DA (storage) submission.
   //   - BACKEND_URL routes events to POST /v1/events.
-  const daEnabled = env.INDEXER_DA_ENABLED === "1"
-    || env.INDEXER_DA_ENABLED === "true";
+  const daEnabled =
+    env.INDEXER_DA_ENABLED === "1" || env.INDEXER_DA_ENABLED === "true";
   const backendUrl = env.AXIOM_BACKEND_URL;
   // 0G Storage setup (replaces DA sidecar for event permanence)
   const ogStorageRpc = env.AXIOM_STORAGE_RPC ?? "";
@@ -214,9 +221,10 @@ async function main() {
   _storageSigner = storageSigner;
   _storageRpcUrl = url;
 
-  const daConfig: EventSinkConfig = daEnabled && storageIndexer && storageSigner
-    ? { da: "storage", storageIndexer, storageSigner }
-    : { da: "disabled" };
+  const daConfig: EventSinkConfig =
+    daEnabled && storageIndexer && storageSigner
+      ? { da: "storage", storageIndexer, storageSigner }
+      : { da: "disabled" };
 
   const composedSink = composeSinks(daConfig, {
     backendUrl,
@@ -232,25 +240,36 @@ async function main() {
   const healthServer = createServer((req, res) => {
     if (req.url === "/health" && req.method === "GET") {
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({
-        status: "ok",
-        chainId: cid,
-        lastProcessedBlock: watcher.cursor.toString(),
-        uptime: Math.floor((Date.now() - startTime) / 1000),
-      }));
+      res.end(
+        JSON.stringify({
+          status: "ok",
+          chainId: cid,
+          lastProcessedBlock: watcher.cursor.toString(),
+          uptime: Math.floor((Date.now() - startTime) / 1000),
+        }),
+      );
     } else {
       res.writeHead(404);
       res.end();
     }
   });
   healthServer.listen(healthPort);
-  process.stderr.write(JSON.stringify({ level: "info", msg: "health server listening", port: healthPort }) + "\n");
+  process.stderr.write(
+    JSON.stringify({
+      level: "info",
+      msg: "health server listening",
+      port: healthPort,
+    }) + "\n",
+  );
   // Graceful shutdown on SIGINT/SIGTERM. We use `Promise.withResolvers()`
   // per the project's `ts-promise-with-resolvers` rule — the explicit
   // executor form is the documented exception, not the default.
-  const { promise: shutdown, resolve: resolveShutdown } = Promise.withResolvers<void>();
+  const { promise: shutdown, resolve: resolveShutdown } =
+    Promise.withResolvers<void>();
   const onSignal = (sig: NodeJS.Signals): void => {
-    process.stderr.write(JSON.stringify({ level: "info", msg: "shutdown", signal: sig }) + "\n");
+    process.stderr.write(
+      JSON.stringify({ level: "info", msg: "shutdown", signal: sig }) + "\n",
+    );
     resolveShutdown();
   };
   process.on("SIGINT", onSignal);
@@ -262,23 +281,43 @@ async function main() {
   await new Promise<void>((resolve) => healthServer.close(() => resolve()));
   stopBatchTimer();
   await flushBuffer();
-  process.stderr.write(JSON.stringify({ level: "info", msg: "stopped" }) + "\n");
+  process.stderr.write(
+    JSON.stringify({ level: "info", msg: "stopped" }) + "\n",
+  );
 }
 
 // `main()` returns a Promise<void>; we attach a single error handler so
 // any unhandled rejection lands on stderr (not swallowed).
 main().catch((err: unknown) => {
-  const message = err instanceof Error ? err.stack ?? err.message : String(err);
-  process.stderr.write(JSON.stringify({ level: "error", msg: "fatal", err: message }) + "\n");
+  const message =
+    err instanceof Error ? (err.stack ?? err.message) : String(err);
+  process.stderr.write(
+    JSON.stringify({ level: "error", msg: "fatal", err: message }) + "\n",
+  );
   process.exit(1);
 });
 
 process.on("unhandledRejection", (reason: unknown) => {
-  const err = reason instanceof Error ? reason.stack ?? reason.message : String(reason);
-  console.error(JSON.stringify({ level: "error", msg: "unhandledRejection", err, pid: process.pid }));
+  const err =
+    reason instanceof Error ? (reason.stack ?? reason.message) : String(reason);
+  console.error(
+    JSON.stringify({
+      level: "error",
+      msg: "unhandledRejection",
+      err,
+      pid: process.pid,
+    }),
+  );
   process.exit(1);
 });
 process.on("uncaughtException", (err: Error) => {
-  console.error(JSON.stringify({ level: "error", msg: "uncaughtException", err: err.stack ?? err.message, pid: process.pid }));
+  console.error(
+    JSON.stringify({
+      level: "error",
+      msg: "uncaughtException",
+      err: err.stack ?? err.message,
+      pid: process.pid,
+    }),
+  );
   process.exit(1);
 });

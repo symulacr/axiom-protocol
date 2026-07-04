@@ -1,12 +1,19 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useAsyncAction } from './useAsyncAction.js';
-import { apiFetch, STREAM_TIMEOUT } from '../utils/apiFetch.js';
-import { BACKEND_URL } from '../config/env.js';
-import type { TickRequest, TickResult, TickStreamOptions } from '@axiom/config/types/orchestrator';
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useAsyncAction } from "./useAsyncAction.js";
+import { apiFetch, STREAM_TIMEOUT } from "../utils/apiFetch.js";
+import { BACKEND_URL } from "../config/env.js";
+import type {
+  TickRequest,
+  TickResult,
+  TickStreamOptions,
+} from "@axiom/config/types/orchestrator";
 export type { TickRequest, TickResult, TickStreamOptions };
 export function useOrchestratorTick(): {
   tick: (req: TickRequest) => Promise<TickResult>;
-  tickStream: (req: TickRequest, opts: TickStreamOptions) => Promise<TickResult>;
+  tickStream: (
+    req: TickRequest,
+    opts: TickStreamOptions,
+  ) => Promise<TickResult>;
   cancelTick: () => void;
   isLoading: boolean;
   isStreaming: boolean;
@@ -17,14 +24,14 @@ export function useOrchestratorTick(): {
 } {
   const { execute, isLoading, error } = useAsyncAction();
   const [isStreaming, setIsStreaming] = useState(false);
-  const [streamedTokens, setStreamedTokens] = useState('');
-  const streamedRef = useRef('');
+  const [streamedTokens, setStreamedTokens] = useState("");
+  const streamedRef = useRef("");
   const [streamingError, setStreamingError] = useState<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const resetStream = useCallback(() => {
-    setStreamedTokens('');
-    streamedRef.current = '';
+    setStreamedTokens("");
+    streamedRef.current = "";
     setStreamingError(null);
   }, []);
 
@@ -34,7 +41,7 @@ export function useOrchestratorTick(): {
     const flush = () => {
       const batch = streamedRef.current;
       if (batch) {
-        streamedRef.current = '';
+        streamedRef.current = "";
         const MAX_STREAMED_TOKENS = 50000;
         setStreamedTokens((prev) => {
           const next = prev + batch;
@@ -65,8 +72,8 @@ export function useOrchestratorTick(): {
 
       return execute(async (signal) => {
         const combinedSignal = AbortSignal.any([signal, controller.signal]);
-        const data = await apiFetch<TickResult>('/v1/orchestrator/tick', {
-          method: 'POST',
+        const data = await apiFetch<TickResult>("/v1/orchestrator/tick", {
+          method: "POST",
           body: JSON.stringify(req),
           signal: combinedSignal,
           timeout: 30000,
@@ -84,47 +91,51 @@ export function useOrchestratorTick(): {
       abortControllerRef.current = controller;
 
       setIsStreaming(true);
-      setStreamedTokens('');
-      streamedRef.current = '';
+      setStreamedTokens("");
+      streamedRef.current = "";
       setStreamingError(null);
       const onChunk = opts.onChunk ?? (() => {});
       try {
         return await execute(async (signal) => {
-          const signals: AbortSignal[] = [signal, controller.signal, AbortSignal.timeout(STREAM_TIMEOUT)];
+          const signals: AbortSignal[] = [
+            signal,
+            controller.signal,
+            AbortSignal.timeout(STREAM_TIMEOUT),
+          ];
           if (opts.signal) signals.push(opts.signal);
           const combinedSignal = AbortSignal.any(signals);
 
           const initRes = await apiFetch<{ ok: boolean; streamTopic: string }>(
-            '/v1/orchestrator/tick',
+            "/v1/orchestrator/tick",
             {
-              method: 'POST',
+              method: "POST",
               body: JSON.stringify({ ...req, stream: true }),
               signal: combinedSignal,
               timeout: 5000,
               headers: {
-                'content-type': 'application/json',
-                accept: 'application/json',
+                "content-type": "application/json",
+                accept: "application/json",
               },
             },
           );
 
-          if (!initRes.ok) throw new Error('Failed to start tick stream');
+          if (!initRes.ok) throw new Error("Failed to start tick stream");
           const topic = initRes.streamTopic;
 
-          const scheme = BACKEND_URL.startsWith('https://') ? 'wss' : 'ws';
+          const scheme = BACKEND_URL.startsWith("https://") ? "wss" : "ws";
           const wsUrl = new URL(
-            BACKEND_URL.replace(/^https?:\/\//, `${scheme}://`) + '/v1/stream',
+            BACKEND_URL.replace(/^https?:\/\//, `${scheme}://`) + "/v1/stream",
           );
-          wsUrl.searchParams.append('topic', topic);
+          wsUrl.searchParams.append("topic", topic);
 
           return await new Promise<TickResult>((resolve, reject) => {
             const ws = new WebSocket(wsUrl.toString());
             let accumulatedResult: Partial<TickResult> = {};
 
             if (combinedSignal) {
-              combinedSignal.addEventListener('abort', () => {
+              combinedSignal.addEventListener("abort", () => {
                 ws.close();
-                reject(new DOMException('Aborted', 'AbortError'));
+                reject(new DOMException("Aborted", "AbortError"));
               });
             }
 
@@ -134,31 +145,32 @@ export function useOrchestratorTick(): {
                 if (data.topic !== topic) return;
                 const payload = data.payload;
 
-                if (payload.type === 'token') {
+                if (payload.type === "token") {
                   onChunk(payload.content);
                   streamedRef.current += payload.content;
-                } else if (payload.type === 'complete') {
+                } else if (payload.type === "complete") {
                   accumulatedResult = { ...payload };
                   ws.close();
                   resolve(accumulatedResult as TickResult);
-                } else if (payload.type === 'error') {
+                } else if (payload.type === "error") {
                   setStreamingError(payload.error);
                   ws.close();
                   reject(new Error(payload.error));
                 }
               } catch {
-                console.warn('[useOrchestratorTick] Unparseable WS message:', msg.data);
+                console.warn(
+                  "[useOrchestratorTick] Unparseable WS message:",
+                  msg.data,
+                );
                 /* skip unparseable */
               }
             };
 
             ws.onerror = () => {
               ws.close();
-              reject(new Error('WebSocket connection failed for tick stream'));
+              reject(new Error("WebSocket connection failed for tick stream"));
             };
           });
-
-
         });
       } finally {
         setIsStreaming(false);
@@ -172,5 +184,15 @@ export function useOrchestratorTick(): {
     setIsStreaming(false);
   }, []);
 
-  return { tick, tickStream, cancelTick, isLoading, isStreaming, streamedTokens, streamingError, error, resetStream };
+  return {
+    tick,
+    tickStream,
+    cancelTick,
+    isLoading,
+    isStreaming,
+    streamedTokens,
+    streamingError,
+    error,
+    resetStream,
+  };
 }

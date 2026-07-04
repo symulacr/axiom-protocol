@@ -22,13 +22,17 @@ export const EVENT_SIGNATURES = {
 
   VerifierUpdated:
     "event VerifierUpdated(address indexed oldVerifier, address indexed newVerifier)" as const,
-  CreatorSet: "event CreatorSet(uint256 indexed tokenId, address indexed creator)" as const,
-  MintFeeUpdated: "event MintFeeUpdated(uint256 oldFee, uint256 newFee)" as const,
-  StorageInfoUpdated: "event StorageInfoUpdated(string oldInfo, string newInfo)" as const,
+  CreatorSet:
+    "event CreatorSet(uint256 indexed tokenId, address indexed creator)" as const,
+  MintFeeUpdated:
+    "event MintFeeUpdated(uint256 oldFee, uint256 newFee)" as const,
+  StorageInfoUpdated:
+    "event StorageInfoUpdated(string oldInfo, string newInfo)" as const,
 
   PublishedSealedKey:
     "event PublishedSealedKey(address indexed to, uint256 indexed tokenId, bytes[] sealedKeys)" as const,
-  DelegateAccess: "event DelegateAccess(address indexed user, address indexed assistant)" as const,
+  DelegateAccess:
+    "event DelegateAccess(address indexed user, address indexed assistant)" as const,
 
   Deposited:
     "event Deposited(uint256 indexed tokenId, address indexed from, address indexed asset, uint256 amount)" as const,
@@ -46,7 +50,8 @@ export const EVENT_SIGNATURES = {
     "event ComputeProviderPaid(address indexed provider, uint256 amount)" as const,
   EarningsWithdrawn:
     "event EarningsWithdrawn(address indexed creator, uint256 amount)" as const,
-  RoyaltySet: "event RoyaltySet(uint256 indexed agentTokenId, uint256 bps)" as const,
+  RoyaltySet:
+    "event RoyaltySet(uint256 indexed agentTokenId, uint256 bps)" as const,
   ProtocolTreasuryUpdated:
     "event ProtocolTreasuryUpdated(address indexed oldTreasury, address indexed newTreasury)" as const,
   ProtocolFeeBpsUpdated:
@@ -63,50 +68,267 @@ export const EVENT_SIGNATURES = {
   SignerRegistered:
     "event SignerRegistered(address indexed oldSigner, address indexed newSigner)" as const,
 
-  Upgraded:
-    "event Upgraded(address indexed implementation)" as const,
+  Upgraded: "event Upgraded(address indexed implementation)" as const,
   AdminChanged:
     "event AdminChanged(address previousAdmin, address newAdmin)" as const,
-  BeaconUpgraded:
-    "event BeaconUpgraded(address indexed beacon)" as const,
+  BeaconUpgraded: "event BeaconUpgraded(address indexed beacon)" as const,
 
   // uint64 matches OZ v5 (v4 used uint8).
-  Initialized:
-    "event Initialized(uint64 version)" as const,
- } as const;
+  Initialized: "event Initialized(uint64 version)" as const,
+} as const;
 
 export type EventName = keyof typeof EVENT_SIGNATURES;
 
 export type AxiomEvent =
-  | { kind: "Transfer"; blockNumber: number; txHash: Hex; logIndex: number; from: Address; to: Address; tokenId: bigint }
-  | { kind: "Updated"; blockNumber: number; txHash: Hex; logIndex: number; tokenId: bigint; oldDatasCount: number; newDatasCount: number }
-  | { kind: "Authorization"; blockNumber: number; txHash: Hex; logIndex: number; tokenId: bigint; from: Address; to: Address }
-  | { kind: "AuthorizationRevoked"; blockNumber: number; txHash: Hex; logIndex: number; tokenId: bigint; from: Address; to: Address }
-  | { kind: "VerifierUpdated"; blockNumber: number; txHash: Hex; logIndex: number; oldVerifier: Address; newVerifier: Address }
-  | { kind: "CreatorSet"; blockNumber: number; txHash: Hex; logIndex: number; tokenId: bigint; creator: Address }
-  | { kind: "MintFeeUpdated"; blockNumber: number; txHash: Hex; logIndex: number; oldFee: bigint; newFee: bigint }
-  | { kind: "StorageInfoUpdated"; blockNumber: number; txHash: Hex; logIndex: number; oldInfo: string; newInfo: string }
-  | { kind: "PublishedSealedKey"; blockNumber: number; txHash: Hex; logIndex: number; to: Address; tokenId: bigint; sealedKeys: readonly Hex[] }
-  | { kind: "DelegateAccess"; blockNumber: number; txHash: Hex; logIndex: number; user: Address; assistant: Address }
-  | { kind: "Deposited"; blockNumber: number; txHash: Hex; logIndex: number; tokenId: bigint; from: Address; asset: Address; amount: bigint }
-  | { kind: "Withdrawn"; blockNumber: number; txHash: Hex; logIndex: number; tokenId: bigint; to: Address; asset: Address; amount: bigint }
-  | { kind: "StrategySet"; blockNumber: number; txHash: Hex; logIndex: number; tokenId: bigint; strategyRoot: Hex; dailyLimit: bigint; validUntilDay: bigint }
-  | { kind: "Executed"; blockNumber: number; txHash: Hex; logIndex: number; tokenId: bigint; actionHash: Hex; target: Address; value: bigint; result: Hex }
-  | { kind: "RegistryUpdated"; blockNumber: number; txHash: Hex; logIndex: number; nft: Address }
-  | { kind: "PaymentProcessed"; blockNumber: number; txHash: Hex; logIndex: number; agentTokenId: bigint; payer: Address; creator: Address; amount: bigint; creatorCut: bigint; protocolCut: bigint }
-  | { kind: "ComputeProviderPaid"; blockNumber: number; txHash: Hex; logIndex: number; provider: Address; amount: bigint }
-  | { kind: "EarningsWithdrawn"; blockNumber: number; txHash: Hex; logIndex: number; creator: Address; amount: bigint }
-  | { kind: "RoyaltySet"; blockNumber: number; txHash: Hex; logIndex: number; agentTokenId: bigint; bps: bigint }
-  | { kind: "ProtocolTreasuryUpdated"; blockNumber: number; txHash: Hex; logIndex: number; oldTreasury: Address; newTreasury: Address }
-  | { kind: "ProtocolFeeBpsUpdated"; blockNumber: number; txHash: Hex; logIndex: number; oldBps: bigint; newBps: bigint }
-  | { kind: "PaymentTokenUpdated"; blockNumber: number; txHash: Hex; logIndex: number; oldToken: Address; newToken: Address }
-  | { kind: "Cloned"; blockNumber: number; txHash: Hex; logIndex: number; tokenId: bigint; newTokenId: bigint; from: Address; to: Address }
-  | { kind: "MetadataJsonDecisionDocumented"; blockNumber: number; txHash: Hex; logIndex: number; collectionName: string; collectionSymbol: string; rationaleTag: string }
-  | { kind: "SignerRegistered"; blockNumber: number; txHash: Hex; logIndex: number; oldSigner: Address; newSigner: Address }
-  | { kind: "Upgraded"; blockNumber: number; txHash: Hex; logIndex: number; implementation: Address }
-  | { kind: "AdminChanged"; blockNumber: number; txHash: Hex; logIndex: number; previousAdmin: Address; newAdmin: Address }
-  | { kind: "BeaconUpgraded"; blockNumber: number; txHash: Hex; logIndex: number; beacon: Address }
-  | { kind: "Initialized"; blockNumber: number; txHash: Hex; logIndex: number; version: number };
+  | {
+      kind: "Transfer";
+      blockNumber: number;
+      txHash: Hex;
+      logIndex: number;
+      from: Address;
+      to: Address;
+      tokenId: bigint;
+    }
+  | {
+      kind: "Updated";
+      blockNumber: number;
+      txHash: Hex;
+      logIndex: number;
+      tokenId: bigint;
+      oldDatasCount: number;
+      newDatasCount: number;
+    }
+  | {
+      kind: "Authorization";
+      blockNumber: number;
+      txHash: Hex;
+      logIndex: number;
+      tokenId: bigint;
+      from: Address;
+      to: Address;
+    }
+  | {
+      kind: "AuthorizationRevoked";
+      blockNumber: number;
+      txHash: Hex;
+      logIndex: number;
+      tokenId: bigint;
+      from: Address;
+      to: Address;
+    }
+  | {
+      kind: "VerifierUpdated";
+      blockNumber: number;
+      txHash: Hex;
+      logIndex: number;
+      oldVerifier: Address;
+      newVerifier: Address;
+    }
+  | {
+      kind: "CreatorSet";
+      blockNumber: number;
+      txHash: Hex;
+      logIndex: number;
+      tokenId: bigint;
+      creator: Address;
+    }
+  | {
+      kind: "MintFeeUpdated";
+      blockNumber: number;
+      txHash: Hex;
+      logIndex: number;
+      oldFee: bigint;
+      newFee: bigint;
+    }
+  | {
+      kind: "StorageInfoUpdated";
+      blockNumber: number;
+      txHash: Hex;
+      logIndex: number;
+      oldInfo: string;
+      newInfo: string;
+    }
+  | {
+      kind: "PublishedSealedKey";
+      blockNumber: number;
+      txHash: Hex;
+      logIndex: number;
+      to: Address;
+      tokenId: bigint;
+      sealedKeys: readonly Hex[];
+    }
+  | {
+      kind: "DelegateAccess";
+      blockNumber: number;
+      txHash: Hex;
+      logIndex: number;
+      user: Address;
+      assistant: Address;
+    }
+  | {
+      kind: "Deposited";
+      blockNumber: number;
+      txHash: Hex;
+      logIndex: number;
+      tokenId: bigint;
+      from: Address;
+      asset: Address;
+      amount: bigint;
+    }
+  | {
+      kind: "Withdrawn";
+      blockNumber: number;
+      txHash: Hex;
+      logIndex: number;
+      tokenId: bigint;
+      to: Address;
+      asset: Address;
+      amount: bigint;
+    }
+  | {
+      kind: "StrategySet";
+      blockNumber: number;
+      txHash: Hex;
+      logIndex: number;
+      tokenId: bigint;
+      strategyRoot: Hex;
+      dailyLimit: bigint;
+      validUntilDay: bigint;
+    }
+  | {
+      kind: "Executed";
+      blockNumber: number;
+      txHash: Hex;
+      logIndex: number;
+      tokenId: bigint;
+      actionHash: Hex;
+      target: Address;
+      value: bigint;
+      result: Hex;
+    }
+  | {
+      kind: "RegistryUpdated";
+      blockNumber: number;
+      txHash: Hex;
+      logIndex: number;
+      nft: Address;
+    }
+  | {
+      kind: "PaymentProcessed";
+      blockNumber: number;
+      txHash: Hex;
+      logIndex: number;
+      agentTokenId: bigint;
+      payer: Address;
+      creator: Address;
+      amount: bigint;
+      creatorCut: bigint;
+      protocolCut: bigint;
+    }
+  | {
+      kind: "ComputeProviderPaid";
+      blockNumber: number;
+      txHash: Hex;
+      logIndex: number;
+      provider: Address;
+      amount: bigint;
+    }
+  | {
+      kind: "EarningsWithdrawn";
+      blockNumber: number;
+      txHash: Hex;
+      logIndex: number;
+      creator: Address;
+      amount: bigint;
+    }
+  | {
+      kind: "RoyaltySet";
+      blockNumber: number;
+      txHash: Hex;
+      logIndex: number;
+      agentTokenId: bigint;
+      bps: bigint;
+    }
+  | {
+      kind: "ProtocolTreasuryUpdated";
+      blockNumber: number;
+      txHash: Hex;
+      logIndex: number;
+      oldTreasury: Address;
+      newTreasury: Address;
+    }
+  | {
+      kind: "ProtocolFeeBpsUpdated";
+      blockNumber: number;
+      txHash: Hex;
+      logIndex: number;
+      oldBps: bigint;
+      newBps: bigint;
+    }
+  | {
+      kind: "PaymentTokenUpdated";
+      blockNumber: number;
+      txHash: Hex;
+      logIndex: number;
+      oldToken: Address;
+      newToken: Address;
+    }
+  | {
+      kind: "Cloned";
+      blockNumber: number;
+      txHash: Hex;
+      logIndex: number;
+      tokenId: bigint;
+      newTokenId: bigint;
+      from: Address;
+      to: Address;
+    }
+  | {
+      kind: "MetadataJsonDecisionDocumented";
+      blockNumber: number;
+      txHash: Hex;
+      logIndex: number;
+      collectionName: string;
+      collectionSymbol: string;
+      rationaleTag: string;
+    }
+  | {
+      kind: "SignerRegistered";
+      blockNumber: number;
+      txHash: Hex;
+      logIndex: number;
+      oldSigner: Address;
+      newSigner: Address;
+    }
+  | {
+      kind: "Upgraded";
+      blockNumber: number;
+      txHash: Hex;
+      logIndex: number;
+      implementation: Address;
+    }
+  | {
+      kind: "AdminChanged";
+      blockNumber: number;
+      txHash: Hex;
+      logIndex: number;
+      previousAdmin: Address;
+      newAdmin: Address;
+    }
+  | {
+      kind: "BeaconUpgraded";
+      blockNumber: number;
+      txHash: Hex;
+      logIndex: number;
+      beacon: Address;
+    }
+  | {
+      kind: "Initialized";
+      blockNumber: number;
+      txHash: Hex;
+      logIndex: number;
+      version: number;
+    };
 
 export type EventAbiTable = {
   [K in EventName]: AbiEvent;
@@ -155,16 +377,20 @@ export const EVENT_ABI = {
   ComputeProviderPaid: parseAbiItem(EVENT_SIGNATURES.ComputeProviderPaid),
   EarningsWithdrawn: parseAbiItem(EVENT_SIGNATURES.EarningsWithdrawn),
   RoyaltySet: parseAbiItem(EVENT_SIGNATURES.RoyaltySet),
-  ProtocolTreasuryUpdated: parseAbiItem(EVENT_SIGNATURES.ProtocolTreasuryUpdated),
+  ProtocolTreasuryUpdated: parseAbiItem(
+    EVENT_SIGNATURES.ProtocolTreasuryUpdated,
+  ),
   ProtocolFeeBpsUpdated: parseAbiItem(EVENT_SIGNATURES.ProtocolFeeBpsUpdated),
   PaymentTokenUpdated: parseAbiItem(EVENT_SIGNATURES.PaymentTokenUpdated),
 
   Cloned: parseAbiItem(EVENT_SIGNATURES.Cloned),
-  MetadataJsonDecisionDocumented: parseAbiItem(EVENT_SIGNATURES.MetadataJsonDecisionDocumented),
+  MetadataJsonDecisionDocumented: parseAbiItem(
+    EVENT_SIGNATURES.MetadataJsonDecisionDocumented,
+  ),
   SignerRegistered: parseAbiItem(EVENT_SIGNATURES.SignerRegistered),
 
   Upgraded: parseAbiItem(EVENT_SIGNATURES.Upgraded),
   AdminChanged: parseAbiItem(EVENT_SIGNATURES.AdminChanged),
   BeaconUpgraded: parseAbiItem(EVENT_SIGNATURES.BeaconUpgraded),
   Initialized: parseAbiItem(EVENT_SIGNATURES.Initialized),
- } as const satisfies EventAbiTable;
+} as const satisfies EventAbiTable;

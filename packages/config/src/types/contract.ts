@@ -10,10 +10,16 @@ export class TypedContract<T> {
   /** Raw ethers Contract for advanced use (event parsing, interface). */
   readonly raw: Contract;
 
-  constructor(address: string, abi: string[] | readonly string[], runner: ContractRunner | null) {
+  constructor(
+    address: string,
+    abi: string[] | readonly string[],
+    runner: ContractRunner | null,
+  ) {
     this.raw = new Contract(address, abi, runner);
     this.contract = this.raw as unknown as T; // ← THE ONE sanctioned as for contracts
   }
 
-  get iface() { return this.raw.interface; }
+  get iface() {
+    return this.raw.interface;
+  }
 }

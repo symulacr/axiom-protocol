@@ -1,5 +1,5 @@
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
@@ -12,9 +12,9 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          'walletconnect': ['wagmi', 'viem'],
-          'rainbowkit': ['@rainbow-me/rainbowkit'],
-          'vendor': ['react', 'react-dom', 'react-router-dom'],
+          walletconnect: ["wagmi", "viem"],
+          rainbowkit: ["@rainbow-me/rainbowkit"],
+          vendor: ["react", "react-dom", "react-router-dom"],
         },
       },
     },

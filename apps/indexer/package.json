@@ -16,7 +16,6 @@
   "dependencies": {
     "@0gfoundation/0g-storage-ts-sdk": "^1.2.10",
     "@axiom/config": "workspace:*",
-
     "ethers": "^6.16.0",
     "viem": "^2.21.45"
   },

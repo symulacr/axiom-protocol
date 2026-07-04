@@ -1,7 +1,7 @@
 // On-chain contract addresses — re-exported from @axiom/config
 import { DEPLOYED_ADDRESSES } from "@axiom/config/addresses";
 import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
-import type { Address } from 'viem';
+import type { Address } from "viem";
 
 const ADDRESSES = {
   strategyVault: DEPLOYED_ADDRESSES.strategyVault as Address,
@@ -12,7 +12,10 @@ const ADDRESSES = {
 
 type ContractName = keyof typeof ADDRESSES;
 
-export function getContractAddress(contract: ContractName, chainId?: number): Address {
+export function getContractAddress(
+  contract: ContractName,
+  chainId?: number,
+): Address {
   if (chainId !== undefined && chainId !== GALILEO_CHAIN_ID) {
     throw new Error(`Contract ${contract} not deployed on chain ${chainId}`);
   }
@@ -20,9 +23,11 @@ export function getContractAddress(contract: ContractName, chainId?: number): Ad
 }
 
 // Backward-compatible named exports
-export const getAxiomStrategyVaultAddress = (chainId?: number) => getContractAddress('strategyVault', chainId);
-export const getAxiomAgentNftAddress = (chainId?: number) => getContractAddress('agentNft', chainId);
-export const getAxiomTeeVerifierAddress = (chainId?: number) => getContractAddress('teeVerifier', chainId);
-export const getAxiomPaymentProcessorAddress = (chainId?: number) => getContractAddress('paymentProcessor', chainId);
-
-
+export const getAxiomStrategyVaultAddress = (chainId?: number) =>
+  getContractAddress("strategyVault", chainId);
+export const getAxiomAgentNftAddress = (chainId?: number) =>
+  getContractAddress("agentNft", chainId);
+export const getAxiomTeeVerifierAddress = (chainId?: number) =>
+  getContractAddress("teeVerifier", chainId);
+export const getAxiomPaymentProcessorAddress = (chainId?: number) =>
+  getContractAddress("paymentProcessor", chainId);

@@ -3,7 +3,11 @@ import * as Sentry from "@sentry/node";
 import { Wallet } from "ethers";
 
 import { TeeSigner, type Eip712Domain } from "./signer.js";
-import { InMemoryStorage, ZeroGStorage, type StorageAdapter } from "@axiom/config/storage/0g";
+import {
+  InMemoryStorage,
+  ZeroGStorage,
+  type StorageAdapter,
+} from "@axiom/config/storage/0g";
 import { startServer } from "./server.js";
 export { startServer, type ServerConfig } from "./server.js";
 import { loadEnv } from "./env.js";
@@ -18,11 +22,17 @@ if (process.env.PORT) {
 
 const env = oracleEnvSchema.parse(process.env);
 if (env.AXIOM_SENTRY_DSN) {
-  Sentry.init({ dsn: env.AXIOM_SENTRY_DSN, environment: process.env.NODE_ENV ?? "development" });
+  Sentry.init({
+    dsn: env.AXIOM_SENTRY_DSN,
+    environment: process.env.NODE_ENV ?? "development",
+  });
 }
 
 const teeVerifierRaw = env.AXIOM_TEE_VERIFIER_ADDRESS ?? env.AXIOM_TEE_VERIFIER;
-if (!teeVerifierRaw) throw new Error("Missing AXIOM_TEE_VERIFIER_ADDRESS or deprecated AXIOM_TEE_VERIFIER");
+if (!teeVerifierRaw)
+  throw new Error(
+    "Missing AXIOM_TEE_VERIFIER_ADDRESS or deprecated AXIOM_TEE_VERIFIER",
+  );
 const teeVerifier: `0x${string}` = toViemHex(teeVerifierRaw);
 const chainId = BigInt(env.AXIOM_CHAIN_ID);
 const eip712Domain: Eip712Domain = { chainId, verifyingContract: teeVerifier };
@@ -32,7 +42,8 @@ const signer = new TeeSigner(env.AXIOM_TEE_SIGNER_PK, eip712Domain);
 // fall back to InMemoryStorage for dev/test (no 0G network dependency).
 let storage: StorageAdapter;
 if (env.AXIOM_STORAGE_INDEXER_RPC || process.env.AXIOM_STORAGE_RPC) {
-  const indexerRpc = env.AXIOM_STORAGE_INDEXER_RPC || process.env.AXIOM_STORAGE_RPC!;
+  const indexerRpc =
+    env.AXIOM_STORAGE_INDEXER_RPC || process.env.AXIOM_STORAGE_RPC!;
   const evmRpc = env.AXIOM_STORAGE_EVM_RPC || env.AXIOM_EVM_RPC;
   // Reuse the TEE signer's ethers Wallet for storage upload transactions,
   // unless AXIOM_STORAGE_PRIVATE_KEY is configured for key separation.
@@ -43,10 +54,18 @@ if (env.AXIOM_STORAGE_INDEXER_RPC || process.env.AXIOM_STORAGE_RPC) {
   console.log(`[oracle] storage: 0G Storage (${indexerRpc})`);
 } else {
   storage = new InMemoryStorage();
-  console.log("[oracle] storage: InMemoryStorage (no AXIOM_STORAGE_INDEXER_RPC/AXIOM_STORAGE_RPC configured)");
+  console.log(
+    "[oracle] storage: InMemoryStorage (no AXIOM_STORAGE_INDEXER_RPC/AXIOM_STORAGE_RPC configured)",
+  );
 }
 
-const { httpServer: oracleHttp } = startServer({ signer, storage, bind: env.AXIOM_ORACLE_BIND, port: env.AXIOM_ORACLE_PORT, env });
+const { httpServer: oracleHttp } = startServer({
+  signer,
+  storage,
+  bind: env.AXIOM_ORACLE_BIND,
+  port: env.AXIOM_ORACLE_PORT,
+  env,
+});
 
 process.on("SIGTERM", () => {
   console.log("[oracle] SIGTERM received — draining connections...");
@@ -60,11 +79,26 @@ process.on("SIGINT", () => {
 });
 
 process.on("unhandledRejection", (reason: unknown) => {
-  const err = reason instanceof Error ? reason.stack ?? reason.message : String(reason);
-  console.error(JSON.stringify({ level: "error", msg: "unhandledRejection", err, pid: process.pid }));
+  const err =
+    reason instanceof Error ? (reason.stack ?? reason.message) : String(reason);
+  console.error(
+    JSON.stringify({
+      level: "error",
+      msg: "unhandledRejection",
+      err,
+      pid: process.pid,
+    }),
+  );
   process.exit(1);
 });
 process.on("uncaughtException", (err: Error) => {
-  console.error(JSON.stringify({ level: "error", msg: "uncaughtException", err: err.stack ?? err.message, pid: process.pid }));
+  console.error(
+    JSON.stringify({
+      level: "error",
+      msg: "uncaughtException",
+      err: err.stack ?? err.message,
+      pid: process.pid,
+    }),
+  );
   process.exit(1);
 });
