@@ -1,5 +1,10 @@
 import { z } from "zod";
-import express, { type Request, type Response, type Express, type NextFunction } from "express";
+import express, {
+  type Request,
+  type Response,
+  type Express,
+  type NextFunction,
+} from "express";
 import helmet from "helmet";
 import * as Sentry from "@sentry/node";
 import cors from "cors";
@@ -11,13 +16,17 @@ import { TypedContract } from "@axiom/config/types/contract";
 import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
 import { bigintReplacer } from "@axiom/config/types/bigint";
 
-import { getComputeBaseUrl, createRouterClient, resolveModel } from "./compute/router.js";
+import {
+  getComputeBaseUrl,
+  createRouterClient,
+  resolveModel,
+} from "./compute/router.js";
 import { discoverProviders } from "./compute/provider-discovery.js";
-import { AGENT_NFT_ABI } from "@axiom/config/abis";
+import { AGENT_NFT_ABI, VAULT_ABI } from "@axiom/config/abis";
 
 import { StrategyRunner } from "./orchestrator/index.js";
 import { DefaultSignerOracleClient } from "./oracle/client.js";
-import { type Eip712Domain, DEFAULT_EIP712_DOMAIN } from "@axiom/oracle/signer";
+import { type Eip712Domain, DEFAULT_EIP712_DOMAIN } from "@axiom/config";
 import { getSharedProvider } from "./provider.js";
 import { createApiKeyAuth } from "@axiom/config/middleware/auth";
 import { getEventStore } from "./events/store.js";
@@ -29,10 +38,27 @@ import { registerAgentRoutes } from "./routers/agents.js";
 import { registerEventRoutes } from "./routers/events.js";
 import { registerPerformanceRoutes } from "./routers/performance.js";
 import { registerOrchestratorRoutes } from "./routers/orchestrator.js";
-import { chatBodySchema, royaltySchema, archiveLookupSchema, archiveAccountSchema, archiveConfirmSchema, archiveClosestSchema } from "./route-schemas.js";
-import { lookupSnapshots, lookupAccountTweets, confirmArchived, closestSnapshot } from "./services/wayback.js";
+import {
+  chatBodySchema,
+  royaltySchema,
+  archiveLookupSchema,
+  archiveAccountSchema,
+  archiveConfirmSchema,
+  archiveClosestSchema,
+} from "./route-schemas.js";
+import {
+  lookupSnapshots,
+  lookupAccountTweets,
+  confirmArchived,
+  closestSnapshot,
+} from "./services/wayback.js";
 import { createLogger } from "./utils/logger.js";
-import { getClients, registerClient, unregisterClient, type ConnectedClient } from "./ws/broadcaster.js";
+import {
+  getClients,
+  registerClient,
+  unregisterClient,
+  type ConnectedClient,
+} from "./ws/broadcaster.js";
 
 const log = createLogger("server");
 
@@ -43,13 +69,21 @@ export interface ServerConfig {
   storageRpc?: string;
   signer: Wallet;
   oracleBaseUrl: string;
-  addresses?: { agentNft: `0x${string}`; vault: `0x${string}`; verifier: `0x${string}`; paymentProcessor?: `0x${string}` };
+  addresses?: {
+    agentNft: `0x${string}`;
+    vault: `0x${string}`;
+    verifier: `0x${string}`;
+    paymentProcessor?: `0x${string}`;
+  };
   env?: BackendEnv;
 }
 
 // FLAG: startServer is 237 lines — exceeds 100-line threshold. Consider refactoring route registrations into smaller helpers.
 
-export function startServer(config: ServerConfig): { app: Express; httpServer: HttpServer } {
+export function startServer(config: ServerConfig): {
+  app: Express;
+  httpServer: HttpServer;
+} {
   const app = express();
   app.use(express.json({ limit: "2mb" }));
 
@@ -63,33 +97,56 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
   app.use((req, res, next) => {
     const start = Date.now();
     res.on("finish", () => {
-      log.info(`${req.method} ${req.originalUrl} ${res.statusCode}`, { duration: `${Date.now() - start}ms` });
+      log.info(`${req.method} ${req.originalUrl} ${res.statusCode}`, {
+        duration: `${Date.now() - start}ms`,
+      });
     });
     next();
   });
 
-  const DEV_FRONTEND_ORIGIN = 'http://localhost:5173';
-  app.use(helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        scriptSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        imgSrc: ["'self'", "data:"],
-        connectSrc: ["'self'", config.env?.AXIOM_FRONTEND_URL ?? DEV_FRONTEND_ORIGIN],
+  const DEV_FRONTEND_ORIGIN = "http://localhost:5173";
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          imgSrc: ["'self'", "data:"],
+          connectSrc: [
+            "'self'",
+            config.env?.AXIOM_FRONTEND_URL ?? DEV_FRONTEND_ORIGIN,
+          ],
+        },
       },
-    },
-  }));
-  app.use(cors({ origin: config.env?.AXIOM_FRONTEND_URL ?? DEV_FRONTEND_ORIGIN, methods: ["GET", "POST"] }));
+    }),
+  );
+  app.use(
+    cors({
+      origin: config.env?.AXIOM_FRONTEND_URL ?? DEV_FRONTEND_ORIGIN,
+      methods: ["GET", "POST"],
+    }),
+  );
   app.use(createApiKeyAuth(config.env?.AXIOM_API_KEY));
-  app.use(rateLimit({ windowMs: 60_000, max: 100, standardHeaders: true, legacyHeaders: false }));
+  app.use(
+    rateLimit({
+      windowMs: 60_000,
+      max: 100,
+      standardHeaders: true,
+      legacyHeaders: false,
+    }),
+  );
   app.set("json replacer", bigintReplacer);
 
   const ogChainId = config.env?.AXIOM_CHAIN_ID ?? GALILEO_CHAIN_ID;
-  const oracle = new DefaultSignerOracleClient({ baseUrl: config.oracleBaseUrl, apiKey: config.env?.AXIOM_API_KEY });
+  const oracle = new DefaultSignerOracleClient({
+    baseUrl: config.oracleBaseUrl,
+    apiKey: config.env?.AXIOM_API_KEY,
+  });
   const eip712Domain: Eip712Domain = {
     chainId: BigInt(ogChainId),
-    verifyingContract: config.addresses?.verifier ?? DEFAULT_EIP712_DOMAIN.verifyingContract,
+    verifyingContract:
+      config.addresses?.verifier ?? DEFAULT_EIP712_DOMAIN.verifyingContract,
   };
   let orchestratorHandle: StrategyRunner | null = null;
 
@@ -97,11 +154,17 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
     if (!orchestratorHandle) {
       try {
         orchestratorHandle = new StrategyRunner({
-          evmRpc: config.evmRpc, signer: config.signer,
-          oracleBaseUrl: config.oracleBaseUrl, apiKey: config.env?.AXIOM_API_KEY, chainId: ogChainId, addresses: config.addresses,
+          evmRpc: config.evmRpc,
+          signer: config.signer,
+          oracleBaseUrl: config.oracleBaseUrl,
+          apiKey: config.env?.AXIOM_API_KEY,
+          chainId: ogChainId,
+          addresses: config.addresses,
         });
       } catch (err) {
-        log.warn(`StrategyRunner init failed: ${err instanceof Error ? err.message : err} — will retry on next tick`);
+        log.warn(
+          `StrategyRunner init failed: ${err instanceof Error ? err.message : err} — will retry on next tick`,
+        );
       }
     }
     return orchestratorHandle;
@@ -113,9 +176,18 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
     if (payment) return payment;
     const addr = config.addresses?.paymentProcessor;
     if (!addr) throw new Error("PaymentProcessor address not configured");
-    const stub = new TypedContract<{ paymentToken: () => Promise<string> }>(addr, ["function paymentToken() view returns (address)"], provider);
+    const stub = new TypedContract<{ paymentToken: () => Promise<string> }>(
+      addr,
+      ["function paymentToken() view returns (address)"],
+      provider,
+    );
     const tokenAddr = await stub.contract.paymentToken();
-    payment = new PaymentProcessorClient({ address: addr, signer: config.signer, provider, paymentTokenAddress: tokenAddr });
+    payment = new PaymentProcessorClient({
+      address: addr,
+      signer: config.signer,
+      provider,
+      paymentTokenAddress: tokenAddr,
+    });
     return payment;
   }
 
@@ -126,158 +198,410 @@ export function startServer(config: ServerConfig): { app: Express; httpServer: H
     const wsClients = getClients();
     for (const c of wsClients) {
       if (c.socket.readyState !== c.socket.OPEN) continue;
-      if (c.missedPings >= MAX_MISSED_PINGS) { c.socket.terminate(); wsClients.delete(c); continue; }
+      if (c.missedPings >= MAX_MISSED_PINGS) {
+        c.socket.terminate();
+        wsClients.delete(c);
+        continue;
+      }
       c.missedPings++;
       c.socket.ping();
     }
   }, HEARTBEAT_INTERVAL);
 
-  app.use(createHealthRouter(provider, oracle, config.signer.address, config.addresses));
+  app.use(
+    createHealthRouter(
+      provider,
+      oracle,
+      config.signer.address,
+      config.addresses,
+    ),
+  );
 
-  app.get("/v1/compute/providers", async (_req: Request, res: Response, next: NextFunction) => {
-    try {
-      const routerBaseUrl = getComputeBaseUrl();
-      const resp = await fetch(`${routerBaseUrl}/models`, { headers: { 'X-Request-ID': res.locals.requestId as string } });
-      const raw = await resp.json();
-      const models = z.object({ data: z.array(z.record(z.string(), z.unknown())) }).parse(raw);
-      const onChainProviders = await discoverProviders(config.evmRpc);
-      const providerMap = new Map(onChainProviders.map(s => [s.model.toLowerCase(), s.provider]));
-      const services = models.data.map((m: Record<string, unknown>) => {
-        const id = String(m.id ?? "");
-        const address = providerMap.get(id.toLowerCase()) ?? ethers.keccak256(ethers.toUtf8Bytes(`model:${id}`)).slice(0, 42) as `0x${string}`;
-        const pricingRaw = m.pricing;
-        const price = pricingRaw && typeof pricingRaw === 'object' && 'prompt' in pricingRaw ? String((pricingRaw as Record<string, unknown>).prompt ?? '') : undefined;
-        return { address, model: id, endpoint: routerBaseUrl, price };
-      });
-      res.json({ services });
-    } catch (err) { next(err); }
-  });
+  app.get(
+    "/v1/compute/providers",
+    async (_req: Request, res: Response, next: NextFunction) => {
+      try {
+        const routerBaseUrl = getComputeBaseUrl();
+        const resp = await fetch(`${routerBaseUrl}/models`, {
+          headers: { "X-Request-ID": res.locals.requestId as string },
+        });
+        const raw = await resp.json();
+        const models = z
+          .object({ data: z.array(z.record(z.string(), z.unknown())) })
+          .parse(raw);
+        const onChainProviders = await discoverProviders(config.evmRpc);
+        const providerMap = new Map(
+          onChainProviders.map((s) => [s.model.toLowerCase(), s.provider]),
+        );
+        const services = models.data.map((m: Record<string, unknown>) => {
+          const id = String(m.id ?? "");
+          const address =
+            providerMap.get(id.toLowerCase()) ??
+            (ethers
+              .keccak256(ethers.toUtf8Bytes(`model:${id}`))
+              .slice(0, 42) as `0x${string}`);
+          const pricingRaw = m.pricing;
+          const price =
+            pricingRaw &&
+            typeof pricingRaw === "object" &&
+            "prompt" in pricingRaw
+              ? String((pricingRaw as Record<string, unknown>).prompt ?? "")
+              : undefined;
+          return { address, model: id, endpoint: routerBaseUrl, price };
+        });
+        res.json({ services });
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
 
-  app.post("/v1/chat/completions", async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { messages, tools, model: reqModel } = chatBodySchema.parse(req.body ?? {});
-      const resolvedModel = resolveModel(reqModel);
-      const client = await createRouterClient(resolvedModel);
-      const openaiRes = await client.chat.completions.create({
-        model: resolvedModel,
-        messages, tools, stream: true, max_tokens: 2048,
-      });
-      res.setHeader("Content-Type", "text/event-stream");
-      res.setHeader("Cache-Control", "no-cache");
-      res.setHeader("Connection", "keep-alive");
-      for await (const chunk of openaiRes) { res.write(`data: ${JSON.stringify(chunk)}\n\n`); }
-      res.write("data: [DONE]\n\n");
-      res.end();
-    } catch (err) { next(err); }
-  });
+  app.post(
+    "/v1/chat/completions",
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const {
+          messages,
+          tools,
+          model: reqModel,
+        } = chatBodySchema.parse(req.body ?? {});
+        const resolvedModel = resolveModel(reqModel);
+        const client = await createRouterClient(resolvedModel);
+        const openaiRes = await client.chat.completions.create({
+          model: resolvedModel,
+          messages,
+          tools,
+          stream: true,
+          max_tokens: 2048,
+        });
+        res.setHeader("Content-Type", "text/event-stream");
+        res.setHeader("Cache-Control", "no-cache");
+        res.setHeader("Connection", "keep-alive");
+        for await (const chunk of openaiRes) {
+          res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+        }
+        res.write("data: [DONE]\n\n");
+        res.end();
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
 
   registerAgentRoutes(app, config, provider, oracle, eip712Domain);
   registerEventRoutes(app, config, getEventStore());
   registerPerformanceRoutes(app, config, getEventStore());
   registerOrchestratorRoutes(app, config, getOrCreateOrchestrator, ogChainId);
 
-const archiveRouter = express.Router();
+  const archiveRouter = express.Router();
 
-createRoute(archiveRouter, {
-  path: "/v1/archive/snapshots", method: "get", schema: archiveLookupSchema,
-  consumer: "useArchive", description: "List all Wayback snapshots for a URL",
-}, async (parsed: { url: string; limit?: number }) => {
-  const snapshots = await lookupSnapshots(parsed.url, parsed.limit ?? 50);
-  return { url: parsed.url, count: snapshots.length, snapshots };
-}, config);
+  createRoute(
+    archiveRouter,
+    {
+      path: "/v1/archive/snapshots",
+      method: "get",
+      schema: archiveLookupSchema,
+      consumer: "useArchive",
+      description: "List all Wayback snapshots for a URL",
+    },
+    async (parsed: { url: string; limit?: number }) => {
+      const snapshots = await lookupSnapshots(parsed.url, parsed.limit ?? 50);
+      return { url: parsed.url, count: snapshots.length, snapshots };
+    },
+    config,
+  );
 
-createRoute(archiveRouter, {
-  path: "/v1/archive/account", method: "post", schema: archiveAccountSchema,
-  consumer: "useArchive", description: "List all archived tweets for an X/Twitter handle",
-}, async (parsed: { handle: string; limit?: number }) => {
-  const snapshots = await lookupAccountTweets(parsed.handle, parsed.limit ?? 100);
-  return { handle: parsed.handle, count: snapshots.length, snapshots };
-}, config);
+  createRoute(
+    archiveRouter,
+    {
+      path: "/v1/archive/account",
+      method: "post",
+      schema: archiveAccountSchema,
+      consumer: "useArchive",
+      description: "List all archived tweets for an X/Twitter handle",
+    },
+    async (parsed: { handle: string; limit?: number }) => {
+      const snapshots = await lookupAccountTweets(
+        parsed.handle,
+        parsed.limit ?? 100,
+      );
+      return { handle: parsed.handle, count: snapshots.length, snapshots };
+    },
+    config,
+  );
 
-createRoute(archiveRouter, {
-  path: "/v1/archive/confirm", method: "post", schema: archiveConfirmSchema,
-  consumer: "useArchive", description: "Confirm a URL was archived (deletion-evidence)",
-}, async (parsed: { url: string }) => {
-  return await confirmArchived(parsed.url);
-}, config);
+  createRoute(
+    archiveRouter,
+    {
+      path: "/v1/archive/confirm",
+      method: "post",
+      schema: archiveConfirmSchema,
+      consumer: "useArchive",
+      description: "Confirm a URL was archived (deletion-evidence)",
+    },
+    async (parsed: { url: string }) => {
+      return await confirmArchived(parsed.url);
+    },
+    config,
+  );
 
-createRoute(archiveRouter, {
-  path: "/v1/archive/closest", method: "get", schema: archiveClosestSchema,
-  consumer: "useArchive", description: "Closest Wayback snapshot to a timestamp",
-}, async (parsed: { url: string; timestamp?: string }) => {
-  const snapshot = await closestSnapshot(parsed.url, parsed.timestamp);
-  return { url: parsed.url, snapshot };
-}, config);
+  createRoute(
+    archiveRouter,
+    {
+      path: "/v1/archive/closest",
+      method: "get",
+      schema: archiveClosestSchema,
+      consumer: "useArchive",
+      description: "Closest Wayback snapshot to a timestamp",
+    },
+    async (parsed: { url: string; timestamp?: string }) => {
+      const snapshot = await closestSnapshot(parsed.url, parsed.timestamp);
+      return { url: parsed.url, snapshot };
+    },
+    config,
+  );
 
-app.use(archiveRouter);
+  app.use(archiveRouter);
 
-const paymentRouter = express.Router();
-createRoute(paymentRouter, {
-  path: "/v1/agents/:id/earnings", method: "get", requireId: true,
-  consumer: "usePayment", description: "Get agent earnings by token ID",
-  }, async (_parsed, _req, res, { id, config: cfg }) => {
-    const nftAddr = cfg.addresses?.agentNft;
-    if (!nftAddr) { res.status(500).json({ error: "AgentNFT address not configured" }); return; }
-    const nftTc = new TypedContract<{ creatorOf(tokenId: bigint): Promise<string> }>(nftAddr, AGENT_NFT_ABI, provider);
-    const creator = await nftTc.contract.creatorOf(BigInt(id));
-    if (!creator || creator === ethers.ZeroAddress) { res.status(404).json({ error: "Agent creator not registered for token" }); return; }
-    const client = await getPayment();
-    const earnings = await client.earningsOf(creator);
-    return { tokenId: id, creator, earnings };
-  }, config);
+  const paymentRouter = express.Router();
+  createRoute(
+    paymentRouter,
+    {
+      path: "/v1/agents/:id/earnings",
+      method: "get",
+      requireId: true,
+      consumer: "usePayment",
+      description: "Get agent earnings by token ID",
+    },
+    async (_parsed, _req, res, { id, config: cfg }) => {
+      const nftAddr = cfg.addresses?.agentNft;
+      if (!nftAddr) {
+        res.status(500).json({ error: "AgentNFT address not configured" });
+        return;
+      }
+      const nftTc = new TypedContract<{
+        creatorOf(tokenId: bigint): Promise<string>;
+      }>(nftAddr, AGENT_NFT_ABI, provider);
+      const creator = await nftTc.contract.creatorOf(BigInt(id));
+      if (!creator || creator === ethers.ZeroAddress) {
+        res
+          .status(404)
+          .json({ error: "Agent creator not registered for token" });
+        return;
+      }
+      const client = await getPayment();
+      const earnings = await client.earningsOf(creator);
+      return { tokenId: id, creator, earnings };
+    },
+    config,
+  );
 
-  createRoute(paymentRouter, {
-    path: "/v1/agents/:id/royalty", schema: royaltySchema, requireId: true,
-    consumer: "usePayment", description: "Encode royalty set transaction data",
-  }, async (parsed: { bps: number }, _req, _res, { id }) => {
-    const client = await getPayment();
-    const txData = await client.encodeSetRoyalty(BigInt(id), parsed.bps);
-    return { tokenId: id, bps: parsed.bps, ...txData };
-  }, config);
+  createRoute(
+    paymentRouter,
+    {
+      path: "/v1/agents/:id/royalty",
+      schema: royaltySchema,
+      requireId: true,
+      consumer: "usePayment",
+      description: "Encode royalty set transaction data",
+    },
+    async (parsed: { bps: number }, _req, _res, { id }) => {
+      const client = await getPayment();
+      const txData = await client.encodeSetRoyalty(BigInt(id), parsed.bps);
+      return { tokenId: id, bps: parsed.bps, ...txData };
+    },
+    config,
+  );
 
   let paymentConfigCache: { data: unknown; timestamp: number } | null = null;
   const PAYMENT_CONFIG_TTL = 300_000;
 
-  createRoute(paymentRouter, {
-    path: "/v1/payment/config", method: "get",
-    consumer: "usePayment", description: "Payment contract configuration (cached 5min)",
-  }, async () => {
-    if (paymentConfigCache && Date.now() - paymentConfigCache.timestamp < PAYMENT_CONFIG_TTL) return paymentConfigCache.data;
-    const client = await getPayment();
-    const [paymentToken, feeBps, treasury] = await Promise.all([client.paymentToken(), client.protocolFeeBps(), client.protocolTreasury()]);
-    const result = { paymentToken, protocolFeeBps: feeBps, protocolTreasury: treasury };
-    paymentConfigCache = { data: result, timestamp: Date.now() };
-    return result;
-  }, config);
+  createRoute(
+    paymentRouter,
+    {
+      path: "/v1/payment/config",
+      method: "get",
+      consumer: "usePayment",
+      description: "Payment contract configuration (cached 5min)",
+    },
+    async () => {
+      if (
+        paymentConfigCache &&
+        Date.now() - paymentConfigCache.timestamp < PAYMENT_CONFIG_TTL
+      )
+        return paymentConfigCache.data;
+      const client = await getPayment();
+      const [paymentToken, feeBps, treasury] = await Promise.all([
+        client.paymentToken(),
+        client.protocolFeeBps(),
+        client.protocolTreasury(),
+      ]);
+      const result = {
+        paymentToken,
+        protocolFeeBps: feeBps,
+        protocolTreasury: treasury,
+      };
+      paymentConfigCache = { data: result, timestamp: Date.now() };
+      return result;
+    },
+    config,
+  );
+  createRoute(
+    paymentRouter,
+    {
+      path: "/v1/vaults/:id/execute",
+      requireId: true,
+      consumer: "useVault",
+      description: "Execute a transaction from a strategy vault",
+    },
+    async (_parsed, req, res, { id, config: cfg }) => {
+      const vaultAddr = cfg.addresses?.vault;
+      if (!vaultAddr) {
+        res.status(500).json({ error: "Vault address not configured" });
+        return;
+      }
+      const { target, value, data, proof } = req.body ?? {};
+      if (!target || value === undefined || !data || !proof) {
+        res.status(400).json({
+          error: "Missing required fields (target, value, data, proof)",
+        });
+        return;
+      }
+      const vaultTc = new TypedContract<{
+        execute(
+          tokenId: bigint,
+          target: string,
+          value: bigint,
+          data: string,
+          proof: string[],
+        ): Promise<any>;
+      }>(vaultAddr, VAULT_ABI, cfg.signer);
+      const tx = await vaultTc.contract.execute(
+        BigInt(id),
+        target,
+        BigInt(value),
+        data,
+        proof,
+      );
+      const receipt = await tx.wait();
+      return { ok: true, txHash: tx.hash, status: receipt?.status };
+    },
+    config,
+  );
+
+  createRoute(
+    paymentRouter,
+    {
+      path: "/v1/agents/:id/metadata",
+      requireId: true,
+      consumer: "useAgent",
+      description: "Encode transaction to update agent metadata on-chain",
+    },
+    async (_parsed, req, res, { id, config: cfg }) => {
+      const nftAddr = cfg.addresses?.agentNft;
+      if (!nftAddr) {
+        res.status(500).json({ error: "AgentNFT address not configured" });
+        return;
+      }
+      const { datas } = req.body ?? {};
+      if (!datas || !Array.isArray(datas)) {
+        res.status(400).json({ error: "Missing or invalid datas array" });
+        return;
+      }
+      const nftTc = new TypedContract<any>(nftAddr, AGENT_NFT_ABI, provider);
+      const encoded = nftTc.iface.encodeFunctionData("update", [
+        BigInt(id),
+        datas,
+      ]);
+      return { to: nftAddr, data: encoded, value: "0" };
+    },
+    config,
+  );
+
   Sentry.setupExpressErrorHandler(app);
 
   app.use(paymentRouter);
 
   app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
     log.error("Unhandled error", { error: err.message, stack: err.stack });
-    if (err instanceof z.ZodError) { res.status(400).json({ error: "Validation failed", details: err.issues, code: "VALIDATION_ERROR" }); return; }
-    const status = typeof err === 'object' && err !== null && 'status' in err ? Number((err as Record<string, unknown>).status) : undefined;
-    if (status && status >= 400 && status < 600) { res.status(status).json({ error: err.message, code: `HTTP_${status}` }); return; }
+    if (err instanceof z.ZodError) {
+      res.status(400).json({
+        error: "Validation failed",
+        details: err.issues,
+        code: "VALIDATION_ERROR",
+      });
+      return;
+    }
+    const status =
+      typeof err === "object" && err !== null && "status" in err
+        ? Number((err as Record<string, unknown>).status)
+        : undefined;
+    if (status && status >= 400 && status < 600) {
+      res.status(status).json({ error: err.message, code: `HTTP_${status}` });
+      return;
+    }
     const msg = err.message ?? "";
-    if (/oracle|0g/i.test(msg)) { res.status(502).json({ error: "Upstream service error", code: "UPSTREAM_ERROR" }); return; }
-    res.status(500).json({ error: "Internal server error", code: "INTERNAL_ERROR" });
+    if (/oracle|0g/i.test(msg)) {
+      res
+        .status(502)
+        .json({ error: "Upstream service error", code: "UPSTREAM_ERROR" });
+      return;
+    }
+    res
+      .status(500)
+      .json({ error: "Internal server error", code: "INTERNAL_ERROR" });
   });
 
   const httpServer = createServer(app);
   const wss = new WebSocketServer({ noServer: true });
   httpServer.on("upgrade", (req, socket, head) => {
     const url = new URL(req.url ?? "/", "http://localhost");
-    if (url.pathname !== "/v1/stream") { socket.destroy(); return; }
+    if (url.pathname !== "/v1/stream") {
+      socket.destroy();
+      return;
+    }
+    const apiKeys = config.env?.AXIOM_API_KEY
+      ? config.env.AXIOM_API_KEY.split(",")
+          .map((k) => k.trim())
+          .filter(Boolean)
+      : [];
+    if (apiKeys.length > 0) {
+      const token = url.searchParams.get("token");
+      if (!token || !apiKeys.includes(token)) {
+        socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
+        socket.destroy();
+        return;
+      }
+    }
     wss.handleUpgrade(req, socket, head, (ws) => {
       const wsClients = getClients();
-      if (wsClients.size >= MAX_WS_CLIENTS) { ws.close(1013, "Too many connections"); socket.destroy(); return; }
+      if (wsClients.size >= MAX_WS_CLIENTS) {
+        ws.close(1013, "Too many connections");
+        socket.destroy();
+        return;
+      }
       const topics = new Set(url.searchParams.getAll("topic").slice(0, 20));
-      const client: ConnectedClient = { socket: ws as WebSocket, topics, missedPings: 0 };
+      const client: ConnectedClient = {
+        socket: ws as WebSocket,
+        topics,
+        missedPings: 0,
+      };
       registerClient(client);
-      ws.on("pong", () => { client.missedPings = 0; });
-      ws.send(JSON.stringify({ topic: "hello", payload: { topics: Array.from(topics) }, ts: Date.now() }));
+      ws.on("pong", () => {
+        client.missedPings = 0;
+      });
+      ws.send(
+        JSON.stringify({
+          topic: "hello",
+          payload: { topics: Array.from(topics) },
+          ts: Date.now(),
+        }),
+      );
       ws.on("close", () => unregisterClient(client));
-      ws.on("error", (err) => { log.warn("WebSocket client error", { error: (err as Error).message }); unregisterClient(client); });
+      ws.on("error", (err) => {
+        log.warn("WebSocket client error", { error: (err as Error).message });
+        unregisterClient(client);
+      });
     });
   });
 
@@ -285,7 +609,9 @@ createRoute(paymentRouter, {
     log.info(`Listening on http://${config.bind}:${config.port}`);
     log.info(`Signer: ${config.signer.address}`);
   });
-  httpServer.on("close", () => { clearInterval(heartbeatTimer); });
+  httpServer.on("close", () => {
+    clearInterval(heartbeatTimer);
+  });
 
   return { app, httpServer };
 }

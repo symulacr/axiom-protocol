@@ -1,6 +1,11 @@
-import type { OwnershipProofInput, OwnershipProofResult, AccessProofInput } from "@axiom/oracle/signer";
+import {
+  recoverAccessSigner,
+  type Eip712Domain,
+  type OwnershipProofInput,
+  type AccessProofInput,
+  type OwnershipProofResult,
+} from "@axiom/config";
 export type { OwnershipProofInput, OwnershipProofResult, AccessProofInput };
-import { recoverAccessSigner, type Eip712Domain } from "@axiom/oracle/signer";
 import { bigintReplacer } from "@axiom/config/types/bigint";
 
 // Default timeout for oracle HTTP requests (10 seconds, matches frontend).
@@ -48,9 +53,19 @@ export interface TransferValidityResult extends OwnershipProofResult {
 
 export interface OracleClient {
   health(): Promise<{ ok: boolean; signer: `0x${string}`; version: string }>;
-  transferValidity(input: TransferValidityInput): Promise<TransferValidityResult>;
-  signOwnership(input: OwnershipProofInput): Promise<{ signature: `0x${string}`; signer: `0x${string}`; validUntil: string }>;
-  recoverAccessSigner(signature: `0x${string}`, input: AccessProofInput, domain?: Eip712Domain): Promise<{ recovered: `0x${string}`; input: AccessProofInput }>;
+  transferValidity(
+    input: TransferValidityInput,
+  ): Promise<TransferValidityResult>;
+  signOwnership(input: OwnershipProofInput): Promise<{
+    signature: `0x${string}`;
+    signer: `0x${string}`;
+    validUntil: string;
+  }>;
+  recoverAccessSigner(
+    signature: `0x${string}`,
+    input: AccessProofInput,
+    domain?: Eip712Domain,
+  ): Promise<{ recovered: `0x${string}`; input: AccessProofInput }>;
 }
 
 export class DefaultSignerOracleClient implements OracleClient {
@@ -66,13 +81,23 @@ export class DefaultSignerOracleClient implements OracleClient {
     return h;
   }
 
-  health(): Promise<{ ok: boolean; signer: `0x${string}`; version: string }> { return this.get<{ ok: boolean; signer: `0x${string}`; version: string }>("/health"); }
+  health(): Promise<{ ok: boolean; signer: `0x${string}`; version: string }> {
+    return this.get<{ ok: boolean; signer: `0x${string}`; version: string }>(
+      "/health",
+    );
+  }
 
-  transferValidity(input: TransferValidityInput): Promise<TransferValidityResult> {
+  transferValidity(
+    input: TransferValidityInput,
+  ): Promise<TransferValidityResult> {
     return this.post<TransferValidityResult>("/v1/transfer-validity", input);
   }
 
-  signOwnership(input: OwnershipProofInput): Promise<{ signature: `0x${string}`; signer: `0x${string}`; validUntil: string }> {
+  signOwnership(input: OwnershipProofInput): Promise<{
+    signature: `0x${string}`;
+    signer: `0x${string}`;
+    validUntil: string;
+  }> {
     return this.post("/v1/ownership", input);
   }
 
@@ -81,8 +106,15 @@ export class DefaultSignerOracleClient implements OracleClient {
    * wallet; the backend recovers over the same hash the on-chain verifier
    * expects (`accessMessageHash`).
    */
-  recoverAccessSigner(signature: `0x${string}`, input: AccessProofInput, domain?: Eip712Domain) {
-    return Promise.resolve({ recovered: recoverAccessSigner(signature, input, domain), input });
+  recoverAccessSigner(
+    signature: `0x${string}`,
+    input: AccessProofInput,
+    domain?: Eip712Domain,
+  ) {
+    return Promise.resolve({
+      recovered: recoverAccessSigner(signature, input, domain),
+      input,
+    });
   }
 
   private async get<T>(path: string): Promise<T> {
@@ -106,9 +138,10 @@ export class DefaultSignerOracleClient implements OracleClient {
     });
     if (!res.ok) {
       const text = await res.text();
-      throw new Error(`Oracle ${path} returned ${res.status}: ${text.slice(0, 200)}`);
+      throw new Error(
+        `Oracle ${path} returned ${res.status}: ${text.slice(0, 200)}`,
+      );
     }
     return (await res.json()) as T;
   }
-
 }
