@@ -1,14 +1,14 @@
-import { useCallback } from 'react';
-import { parseAbi } from 'viem';
-import type { Address } from 'viem';
-import { useWriteContract } from 'wagmi';
-import { useAsyncAction } from './useAsyncAction.js';
-import { PAYMENT_PROCESSOR_ABI } from '@axiom/config/abis';
+import { useCallback } from "react";
+import { parseAbi } from "viem";
+import type { Address } from "viem";
+import { useWriteContract } from "wagmi";
+import { useAsyncAction } from "./useAsyncAction.js";
+import { PAYMENT_PROCESSOR_ABI } from "@axiom/config/abis";
 
 const paymentProcessorAbi = parseAbi(PAYMENT_PROCESSOR_ABI);
-import { getAxiomPaymentProcessorAddress } from '../abi/addresses.js';
-import { agentEarningsPath, agentRoyaltyPath } from '../utils/apiPaths.js';
-import { apiFetch } from '../utils/apiFetch.js';
+import { getAxiomPaymentProcessorAddress } from "../abi/addresses.js";
+import { agentEarningsPath, agentRoyaltyPath } from "../utils/apiPaths.js";
+import { apiFetch } from "../utils/apiFetch.js";
 
 export type PaymentConfig = {
   paymentToken: Address;
@@ -29,8 +29,6 @@ export type AgentPayResult = {
   txHash: `0x${string}`;
   payment: unknown;
 };
-
-
 
 export type RoyaltyResult = {
   ok: true;
@@ -66,17 +64,27 @@ export function usePayment(): UsePaymentResult {
   const earningsAction = useAsyncAction();
   const royaltyAction = useAsyncAction();
 
-  const { writeContractAsync, isPending: isPayLoading, error: payError } = useWriteContract();
+  const {
+    writeContractAsync,
+    isPending: isPayLoading,
+    error: payError,
+  } = useWriteContract();
 
   const payForAgent = useCallback(
     async (tokenId: bigint, amount: string): Promise<AgentPayResult> => {
       const txHash = await writeContractAsync({
         address: getAxiomPaymentProcessorAddress(),
         abi: paymentProcessorAbi,
-        functionName: 'payForAgent',
+        functionName: "payForAgent",
         args: [tokenId, BigInt(amount)],
       });
-      return { ok: true, tokenId: tokenId.toString(), amount, txHash, payment: null };
+      return {
+        ok: true,
+        tokenId: tokenId.toString(),
+        amount,
+        txHash,
+        payment: null,
+      };
     },
     [writeContractAsync],
   );
@@ -85,7 +93,7 @@ export function usePayment(): UsePaymentResult {
     (tokenId: bigint): Promise<EarningsInfo> =>
       earningsAction.execute((signal) =>
         apiFetch<EarningsInfo>(agentEarningsPath(tokenId), {
-          method: 'GET',
+          method: "GET",
           signal,
         }),
       ),
@@ -96,7 +104,7 @@ export function usePayment(): UsePaymentResult {
     (tokenId: bigint, bps: number): Promise<RoyaltyResult> =>
       royaltyAction.execute((signal) =>
         apiFetch<RoyaltyResult>(agentRoyaltyPath(tokenId), {
-          method: 'POST',
+          method: "POST",
           body: JSON.stringify({ bps }),
           signal,
         }),
@@ -107,8 +115,8 @@ export function usePayment(): UsePaymentResult {
   const getPaymentConfig = useCallback(
     (): Promise<PaymentConfig> =>
       fetchAction.execute((signal) =>
-        apiFetch<PaymentConfig>('/v1/payment/config', {
-          method: 'GET',
+        apiFetch<PaymentConfig>("/v1/payment/config", {
+          method: "GET",
           signal,
         }),
       ),

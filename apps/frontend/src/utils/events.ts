@@ -1,4 +1,4 @@
-import type { AxiomEvent } from '../hooks/useEventHistory.js';
+import type { AxiomEvent } from "../hooks/useEventHistory.js";
 
 /** Extract a typed field from an event payload. Returns undefined if missing. */
 export function eventField<T>(event: AxiomEvent, key: string): T | undefined {

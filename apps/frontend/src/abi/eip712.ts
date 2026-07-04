@@ -1,6 +1,10 @@
 import { useMemo } from "react";
 import { useChainId } from "wagmi";
-import { EIP712_DOMAIN_NAME, EIP712_DOMAIN_VERSION, ACCESS_PROOF_TYPES } from "@axiom/config/eip712";
+import {
+  EIP712_DOMAIN_NAME,
+  EIP712_DOMAIN_VERSION,
+  ACCESS_PROOF_TYPES,
+} from "@axiom/config/eip712";
 import { getAxiomTeeVerifierAddress } from "./addresses.js";
 
 // Re-export the canonical type definitions so existing imports continue to work.
@@ -17,7 +21,10 @@ const BASE_DOMAIN = {
  * address for the active network.
  */
 export function useEip712Domain(): {
-  domain: typeof BASE_DOMAIN & { chainId: number; verifyingContract: `0x${string}` };
+  domain: typeof BASE_DOMAIN & {
+    chainId: number;
+    verifyingContract: `0x${string}`;
+  };
 } {
   const chainId = useChainId();
   return useMemo(

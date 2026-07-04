@@ -10,20 +10,24 @@ export interface ConnectedClient {
   missedPings: number;
 }
 
-
 const _clients = new Set<ConnectedClient>();
 const _clientIds = new WeakMap<WebSocket, string>();
 const _clientMap = new Map<string, ConnectedClient>();
 
 export function broadcast(topic: string, payload: unknown): void {
-  const msg = JSON.stringify({ topic, payload, ts: Date.now() }, bigintReplacer);
+  const msg = JSON.stringify(
+    { topic, payload, ts: Date.now() },
+    bigintReplacer,
+  );
   for (const c of _clients) {
     if (c.socket.readyState !== c.socket.OPEN) continue;
     if (c.socket.bufferedAmount > 65536) continue;
     try {
       c.socket.send(msg);
     } catch (err) {
-      log.warn("broadcast send failed for client, removing", { error: err instanceof Error ? err.message : String(err) });
+      log.warn("broadcast send failed for client, removing", {
+        error: err instanceof Error ? err.message : String(err),
+      });
       c.socket.terminate();
       unregisterClient(c);
     }
@@ -52,16 +56,23 @@ export function getClients(): Set<ConnectedClient> {
 }
 
 export function sendToTopic(topicPrefix: string, data: unknown): number {
-  const msg = JSON.stringify({ topic: topicPrefix, payload: data, ts: Date.now() }, bigintReplacer);
+  const msg = JSON.stringify(
+    { topic: topicPrefix, payload: data, ts: Date.now() },
+    bigintReplacer,
+  );
   let sent = 0;
   for (const client of _clients) {
     if (client.socket.readyState !== WebSocket.OPEN) continue;
-    if ([...client.topics].some(t => topicPrefix.startsWith(t.replace('*', '')))) {
+    if (
+      [...client.topics].some((t) => topicPrefix.startsWith(t.replace("*", "")))
+    ) {
       try {
         client.socket.send(msg);
         sent++;
       } catch (err) {
-        log.warn("sendToTopic failed for client, removing", { error: err instanceof Error ? err.message : String(err) });
+        log.warn("sendToTopic failed for client, removing", {
+          error: err instanceof Error ? err.message : String(err),
+        });
         client.socket.terminate();
         unregisterClient(client);
       }

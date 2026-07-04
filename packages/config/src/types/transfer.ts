@@ -1,6 +1,11 @@
 /** Shared transfer types. Used by both backend (orchestrator) and frontend (hooks). */
 
-export type TransferPhase = 'idle' | 'challenge' | 'signing' | 'finalizing' | 'confirming';
+export type TransferPhase =
+  | "idle"
+  | "challenge"
+  | "signing"
+  | "finalizing"
+  | "confirming";
 
 export type TransferInput = {
   tokenId: bigint;
@@ -33,7 +38,7 @@ export type OwnershipProofStruct = {
 /** Backend response for the two-stage transfer protocol (challenge → final). */
 export type TransferResponse = {
   ok: boolean;
-  stage: 'challenge' | 'final';
+  stage: "challenge" | "final";
   tokenId: string;
   to: `0x${string}`;
   dataHash?: `0x${string}`;

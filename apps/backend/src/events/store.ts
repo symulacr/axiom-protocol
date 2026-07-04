@@ -1,16 +1,14 @@
-import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'node:fs';
-import { join } from 'node:path';
-import { createLogger } from '../utils/logger.js';
+import { writeFileSync, readFileSync, existsSync, mkdirSync } from "node:fs";
+import { join } from "node:path";
+import { createLogger } from "../utils/logger.js";
 
 const log = createLogger("events");
-
-
 
 /** Default retention: 1000 events per (source, eventName) pair. */
 export const DEFAULT_MAX_EVENTS_PER_SOURCE = 1000;
 
-const PERSIST_DIR = join(process.cwd(), '.data');
-const PERSIST_FILE = join(PERSIST_DIR, 'events.json');
+const PERSIST_DIR = join(process.cwd(), ".data");
+const PERSIST_FILE = join(PERSIST_DIR, "events.json");
 
 /**
  * Wire-format event from the indexer or orchestrator. payload is opaque to the store.
@@ -37,7 +35,9 @@ export interface AgentEventQuery {
 }
 
 const byBlockThenLogReceived = (a: StoredEvent, b: StoredEvent) =>
-  a.blockNumber - b.blockNumber || a.logIndex - b.logIndex || a.receivedAt - b.receivedAt;
+  a.blockNumber - b.blockNumber ||
+  a.logIndex - b.logIndex ||
+  a.receivedAt - b.receivedAt;
 
 export class EventStore {
   private readonly cap: number;
@@ -106,7 +106,8 @@ export class EventStore {
     if (bucket === undefined) return [];
     const matches: StoredEvent[] = [];
     for (const evt of bucket) {
-      if (query.eventName !== undefined && evt.eventName !== query.eventName) continue;
+      if (query.eventName !== undefined && evt.eventName !== query.eventName)
+        continue;
       if (query.source !== undefined && evt.source !== query.source) continue;
       matches.push(evt);
     }
@@ -114,12 +115,16 @@ export class EventStore {
     matches.sort(byBlockThenLogReceived);
     return query.limit !== undefined ? matches.slice(0, query.limit) : matches;
   }
-  getAll(limit?: number, since?: number, eventName?: string): readonly StoredEvent[] {
+  getAll(
+    limit?: number,
+    since?: number,
+    eventName?: string,
+  ): readonly StoredEvent[] {
     if (eventName !== undefined) {
       const bucket = this.byEventName.get(eventName);
       if (!bucket) return [];
       if (!since) return bucket;
-      return bucket.filter(e => e.timestamp > since);
+      return bucket.filter((e) => e.timestamp > since);
     }
     let all: StoredEvent[] = [];
     for (const bucket of this.buckets.values()) {
@@ -127,7 +132,7 @@ export class EventStore {
     }
     let results = all;
     if (since !== undefined) {
-      results = results.filter(e => e.timestamp > since);
+      results = results.filter((e) => e.timestamp > since);
     }
     results.sort(byBlockThenLogReceived);
     return limit !== undefined ? results.slice(0, limit) : results;
@@ -137,7 +142,10 @@ export class EventStore {
    * Find token IDs by owner address. Scans Transfer events for matching `to`.
    * Best-effort — authoritative once a database is added.
    */
-  getTokenIdsByOwner(owner: string, limit?: number): Array<{ tokenId: string; blockNumber: number }> {
+  getTokenIdsByOwner(
+    owner: string,
+    limit?: number,
+  ): Array<{ tokenId: string; blockNumber: number }> {
     const seen = new Map<string, number>();
     for (const bucket of this.buckets.values()) {
       for (const evt of bucket) {
@@ -179,7 +187,7 @@ export class EventStore {
   private load(): void {
     try {
       if (!existsSync(PERSIST_FILE)) return;
-      const raw = readFileSync(PERSIST_FILE, 'utf-8');
+      const raw = readFileSync(PERSIST_FILE, "utf-8");
       const data = JSON.parse(raw) as Record<string, StoredEvent[]>;
       this.buckets.clear();
       this.byEventName.clear();
@@ -236,11 +244,16 @@ export class EventStore {
     try {
       if (!existsSync(PERSIST_DIR)) mkdirSync(PERSIST_DIR, { recursive: true });
       const data = Object.fromEntries(this.buckets);
-      writeFileSync(PERSIST_FILE, JSON.stringify(data, (_key, value) =>
-        typeof value === 'bigint' ? value.toString() : value,
-      ));
+      writeFileSync(
+        PERSIST_FILE,
+        JSON.stringify(data, (_key, value) =>
+          typeof value === "bigint" ? value.toString() : value,
+        ),
+      );
     } catch (err) {
-      log.warn("persist failed", { error: err instanceof Error ? err.message : String(err) });
+      log.warn("persist failed", {
+        error: err instanceof Error ? err.message : String(err),
+      });
     }
   }
 
@@ -265,7 +278,6 @@ export class EventStore {
     this.byTokenId.clear();
     this.total = 0;
   }
-
 }
 
 /**
@@ -277,9 +289,14 @@ function tokenIdFromPayload(payload: Record<string, unknown>): string | null {
     const raw = payload[key];
     if (raw === undefined || raw === null || raw === "") continue;
     if (typeof raw === "bigint") return raw.toString();
-    if (typeof raw === "number" && Number.isFinite(raw)) return BigInt(raw).toString();
+    if (typeof raw === "number" && Number.isFinite(raw))
+      return BigInt(raw).toString();
     if (typeof raw === "string") {
-      try { return BigInt(raw).toString(); } catch { return null; }
+      try {
+        return BigInt(raw).toString();
+      } catch {
+        return null;
+      }
     }
   }
   return null;
@@ -292,4 +309,6 @@ export function getEventStore(): EventStore {
   return singleton;
 }
 /** Test-only: reset the singleton. Not exported from server.ts. */
-export function _resetEventStoreForTests(): void { singleton = undefined; }
+export function _resetEventStoreForTests(): void {
+  singleton = undefined;
+}

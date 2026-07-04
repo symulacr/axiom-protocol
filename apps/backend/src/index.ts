@@ -12,7 +12,10 @@ loadEnv();
 
 export const env = backendEnvSchema.parse(process.env);
 if (env.AXIOM_SENTRY_DSN) {
-  Sentry.init({ dsn: env.AXIOM_SENTRY_DSN, environment: process.env.NODE_ENV ?? "development" });
+  Sentry.init({
+    dsn: env.AXIOM_SENTRY_DSN,
+    environment: process.env.NODE_ENV ?? "development",
+  });
 }
 
 const fetchReq = new FetchRequest(env.AXIOM_EVM_RPC);
@@ -50,11 +53,26 @@ process.on("SIGTERM", onSignal);
 process.on("SIGINT", onSignal);
 
 process.on("unhandledRejection", (reason: unknown) => {
-  const err = reason instanceof Error ? reason.stack ?? reason.message : String(reason);
-  console.error(JSON.stringify({ level: "error", msg: "unhandledRejection", err, pid: process.pid }));
+  const err =
+    reason instanceof Error ? (reason.stack ?? reason.message) : String(reason);
+  console.error(
+    JSON.stringify({
+      level: "error",
+      msg: "unhandledRejection",
+      err,
+      pid: process.pid,
+    }),
+  );
   process.exit(1);
 });
 process.on("uncaughtException", (err: Error) => {
-  console.error(JSON.stringify({ level: "error", msg: "uncaughtException", err: err.stack ?? err.message, pid: process.pid }));
+  console.error(
+    JSON.stringify({
+      level: "error",
+      msg: "uncaughtException",
+      err: err.stack ?? err.message,
+      pid: process.pid,
+    }),
+  );
   process.exit(1);
 });

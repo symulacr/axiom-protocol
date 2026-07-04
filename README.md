@@ -39,14 +39,14 @@ Built on [0G Chain](https://0g.ai) (Galileo testnet, Aristotle mainnet).
 
 ## Architecture
 
-| Layer | Tech | Role |
-|-------|------|------|
-| **Contracts** | Solidity 0.8.20 + Foundry | ERC-7857 iNFT, strategy vault, TEE verifier, payment processor. UUPS upgradeable. |
-| **Indexer** | TypeScript + 0G Storage SDK | Polls chain events, stores audit trail to 0G Storage, forwards to backend. |
-| **Backend** | Express + ethers v6 + Zod | Orchestrates inference (0G Router API), on-chain settlement, storage encryption. Route registry at `GET /v1/admin/routes`. |
-| **Oracle** | Express + eciesjs | EIP-712 signing for ownership proofs, TEE re-encryption on transfer. Domain: `AxiomTeeVerifier`. |
-| **Frontend** | Vite + React + wagmi + RainbowKit | Mint/view/transfer iNFTs. ABI types generated from forge artifacts. Polling via `usePolledApi` (react-query). |
-| **Config** | Shared TS package | Env loading, network config, deployed addresses, Zod schemas, typed ABIs. |
+| Layer         | Tech                              | Role                                                                                                                       |
+| ------------- | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| **Contracts** | Solidity 0.8.20 + Foundry         | ERC-7857 iNFT, strategy vault, TEE verifier, payment processor. UUPS upgradeable.                                          |
+| **Indexer**   | TypeScript + 0G Storage SDK       | Polls chain events, stores audit trail to 0G Storage, forwards to backend.                                                 |
+| **Backend**   | Express + ethers v6 + Zod         | Orchestrates inference (0G Router API), on-chain settlement, storage encryption. Route registry at `GET /v1/admin/routes`. |
+| **Oracle**    | Express + eciesjs                 | EIP-712 signing for ownership proofs, TEE re-encryption on transfer. Domain: `AxiomTeeVerifier`.                           |
+| **Frontend**  | Vite + React + wagmi + RainbowKit | Mint/view/transfer iNFTs. ABI types generated from forge artifacts. Polling via `usePolledApi` (react-query).              |
+| **Config**    | Shared TS package                 | Env loading, network config, deployed addresses, Zod schemas, typed ABIs.                                                  |
 
 ---
 
@@ -97,26 +97,26 @@ cd apps/contracts && forge script script/DeployPaymentProcessor.s.sol --rpc-url 
 
 ## Deployments
 
-| Contract | Galileo (testnet) | Aristotle (mainnet) |
-|----------|-------------------|---------------------|
-| AxiomAgentNFT | Deployed | Not yet deployed |
-| AxiomStrategyVault | Deployed | Not yet deployed |
-| AxiomTeeVerifier | Deployed | Not yet deployed |
-| AxiomPaymentProcessor | Deployed | Not yet deployed |
-| MockUSDC | Deployed | Not yet deployed |
+| Contract              | Galileo (testnet) | Aristotle (mainnet) |
+| --------------------- | ----------------- | ------------------- |
+| AxiomAgentNFT         | Deployed          | Not yet deployed    |
+| AxiomStrategyVault    | Deployed          | Not yet deployed    |
+| AxiomTeeVerifier      | Deployed          | Not yet deployed    |
+| AxiomPaymentProcessor | Deployed          | Not yet deployed    |
+| MockUSDC              | Deployed          | Not yet deployed    |
 
 ---
 
 ## 0G Integration
 
-| Component | Status |
-|-----------|--------|
-| Chain (Galileo testnet) | ✅ Deployed and verified |
-| Chain (Aristotle mainnet) | ⏳ Not yet deployed |
-| Storage | ✅ Upload/download with Merkle proofs via `@0gfoundation/0g-storage-ts-sdk` |
-| Compute | ✅ Chat completions via Router API (OpenAI SDK) |
-| Agentic ID (ERC-7857) | ✅ On-chain + off-chain proof signing |
-| Data Availability | ✅ Event audit trail via 0G Storage (gRPC DA removed) |
+| Component                 | Status                                                                      |
+| ------------------------- | --------------------------------------------------------------------------- |
+| Chain (Galileo testnet)   | ✅ Deployed and verified                                                    |
+| Chain (Aristotle mainnet) | ⏳ Not yet deployed                                                         |
+| Storage                   | ✅ Upload/download with Merkle proofs via `@0gfoundation/0g-storage-ts-sdk` |
+| Compute                   | ✅ Chat completions via Router API (OpenAI SDK)                             |
+| Agentic ID (ERC-7857)     | ✅ On-chain + off-chain proof signing                                       |
+| Data Availability         | ✅ Event audit trail via 0G Storage (gRPC DA removed)                       |
 
 ---
 

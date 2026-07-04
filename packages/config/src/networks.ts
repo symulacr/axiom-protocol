@@ -29,7 +29,8 @@ const _OG_NETWORKS = {
   },
 } as const satisfies Record<number, OGNetwork>;
 
-export const OG_NETWORKS: Record<number, OGNetwork> = _OG_NETWORKS as unknown as Record<number, OGNetwork>;
+export const OG_NETWORKS: Record<number, OGNetwork> =
+  _OG_NETWORKS as unknown as Record<number, OGNetwork>;
 
 export function pickOGNetwork(chainId: number): OGNetwork | null {
   return OG_NETWORKS[chainId] ?? null;
@@ -37,7 +38,8 @@ export function pickOGNetwork(chainId: number): OGNetwork | null {
 
 /** Precedence: AXIOM_EVM_RPC → OG_RPC_URL → RPC_URL → chain default → Galileo fallback. */
 export function resolveRpcUrl(chainId?: number): string {
-  const varVal = process.env.AXIOM_EVM_RPC || process.env.OG_RPC_URL || process.env.RPC_URL;
+  const varVal =
+    process.env.AXIOM_EVM_RPC || process.env.OG_RPC_URL || process.env.RPC_URL;
   if (varVal) return varVal;
   const network = chainId ? pickOGNetwork(chainId) : null;
   return network?.evmRpc ?? "https://evmrpc-testnet.0g.ai";

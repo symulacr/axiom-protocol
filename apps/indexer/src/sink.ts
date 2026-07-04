@@ -28,9 +28,18 @@ function resolveUrl(backendUrl: string) {
   return `${backendUrl.replace(/\/+$/, "")}/v1/events`;
 }
 
-function buildBody(event: AxiomEvent, source: string, chainId: number): HttpEventBody {
-  const { blockNumber, txHash, logIndex, kind: eventName, ...rest } =
-    event as AxiomEvent & { kind: string };
+function buildBody(
+  event: AxiomEvent,
+  source: string,
+  chainId: number,
+): HttpEventBody {
+  const {
+    blockNumber,
+    txHash,
+    logIndex,
+    kind: eventName,
+    ...rest
+  } = event as AxiomEvent & { kind: string };
   return {
     source,
     chainId,
@@ -42,10 +51,7 @@ function buildBody(event: AxiomEvent, source: string, chainId: number): HttpEven
   };
 }
 
-export async function postEvent(
-  event: AxiomEvent,
-  opts: HttpEventSinkOptions,
-) {
+export async function postEvent(event: AxiomEvent, opts: HttpEventSinkOptions) {
   const fetchImpl: Fetcher = opts.fetcher ?? ((u, i) => fetch(u, i));
   const source = opts.source ?? "indexer";
   const timeoutMs = opts.timeoutMs ?? 5_000;
@@ -61,10 +67,10 @@ export async function postEvent(
   const res = await fetchImpl(url, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify(body, (_k, v) => (typeof v === "bigint" ? v.toString() : v)),
+    body: JSON.stringify(body, (_k, v) =>
+      typeof v === "bigint" ? v.toString() : v,
+    ),
     signal,
   });
   return { status: res.status };
 }
-
-

@@ -4,7 +4,12 @@ import type { OracleClient } from "../oracle/client.js";
 import { createLogger } from "../utils/logger.js";
 
 const log = createLogger("health");
-export function createHealthRouter(provider: JsonRpcProvider, oracle: OracleClient, signerAddress: string, addresses: Record<string, string> | null | undefined): Router {
+export function createHealthRouter(
+  provider: JsonRpcProvider,
+  oracle: OracleClient,
+  signerAddress: string,
+  addresses: Record<string, string> | null | undefined,
+): Router {
   const router = Router();
 
   router.get("/health", async (_req: Request, res: Response) => {
@@ -23,7 +28,9 @@ export function createHealthRouter(provider: JsonRpcProvider, oracle: OracleClie
         addresses: addresses ?? null,
       });
     } catch (err) {
-      log.error("health check failed", { error: err instanceof Error ? err.message : String(err) });
+      log.error("health check failed", {
+        error: err instanceof Error ? err.message : String(err),
+      });
       res.status(503).json({ ok: false, error: "Health check failed" });
     }
   });
