@@ -14,10 +14,15 @@ export interface EncryptedPayload {
   authTag: Uint8Array;
 }
 
-export function aesGcmEncrypt(key: Uint8Array, plaintext: Uint8Array): EncryptedPayload {
+export function aesGcmEncrypt(
+  key: Uint8Array,
+  plaintext: Uint8Array,
+): EncryptedPayload {
   if (key.length !== 32) throw new Error("AES-256-GCM requires a 32-byte key");
   const iv = randomBytes(IV_LENGTH);
-  const cipher = createCipheriv(ALGORITHM, key, iv, { authTagLength: AUTH_TAG_LENGTH });
+  const cipher = createCipheriv(ALGORITHM, key, iv, {
+    authTagLength: AUTH_TAG_LENGTH,
+  });
   const enc1 = cipher.update(plaintext);
   const enc2 = cipher.final();
   const ciphertext = new Uint8Array(enc1.length + enc2.length);
@@ -27,9 +32,14 @@ export function aesGcmEncrypt(key: Uint8Array, plaintext: Uint8Array): Encrypted
   return { iv, ciphertext, authTag };
 }
 
-export function aesGcmDecrypt(key: Uint8Array, payload: EncryptedPayload): Uint8Array {
+export function aesGcmDecrypt(
+  key: Uint8Array,
+  payload: EncryptedPayload,
+): Uint8Array {
   if (key.length !== 32) throw new Error("AES-256-GCM requires a 32-byte key");
-  const decipher = createDecipheriv(ALGORITHM, key, payload.iv, { authTagLength: AUTH_TAG_LENGTH });
+  const decipher = createDecipheriv(ALGORITHM, key, payload.iv, {
+    authTagLength: AUTH_TAG_LENGTH,
+  });
   decipher.setAuthTag(payload.authTag);
   const dec1 = decipher.update(payload.ciphertext);
   const dec2 = decipher.final();
@@ -40,11 +50,16 @@ export function aesGcmDecrypt(key: Uint8Array, payload: EncryptedPayload): Uint8
 }
 
 export function concatEncrypted(payload: EncryptedPayload) {
-  return new Uint8Array([...payload.iv, ...payload.ciphertext, ...payload.authTag]);
+  return new Uint8Array([
+    ...payload.iv,
+    ...payload.ciphertext,
+    ...payload.authTag,
+  ]);
 }
 
 export function parseEncrypted(blob: Uint8Array) {
-  if (blob.length < IV_LENGTH + AUTH_TAG_LENGTH) throw new Error("Encrypted blob too short");
+  if (blob.length < IV_LENGTH + AUTH_TAG_LENGTH)
+    throw new Error("Encrypted blob too short");
   const iv = blob.subarray(0, IV_LENGTH);
   const authTag = blob.subarray(blob.length - AUTH_TAG_LENGTH);
   const ciphertext = blob.subarray(IV_LENGTH, blob.length - AUTH_TAG_LENGTH);

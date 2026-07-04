@@ -14,11 +14,14 @@ export function publicKeyUncompressedFromPrivate(privateKey: Uint8Array) {
 }
 
 export function pubKeyToAddress(uncompressed: Uint8Array): `0x${string}` {
-  if (uncompressed.length !== 64) throw new Error("Uncompressed pubkey must be 64 bytes (X||Y)");
+  if (uncompressed.length !== 64)
+    throw new Error("Uncompressed pubkey must be 64 bytes (X||Y)");
   const hash = keccak256(new Uint8Array(uncompressed));
   return ("0x" + Buffer.from(hash).toString("hex").slice(-40)) as `0x${string}`;
 }
 
 export function deriveUncompressedPubkeyFromHex(privateKeyHex: string) {
-  return publicKeyUncompressedFromPrivate(Uint8Array.from(Buffer.from(privateKeyHex.replace(/^0x/, ""), "hex")));
+  return publicKeyUncompressedFromPrivate(
+    Uint8Array.from(Buffer.from(privateKeyHex.replace(/^0x/, ""), "hex")),
+  );
 }

@@ -1,7 +1,7 @@
 import { Wallet, SigningKey, computeAddress, getBytes } from "ethers";
 import type { Hex } from "viem";
 
-import { publicKeyUncompressedFromPrivate } from "./crypto/secp256k1.js";
+import { publicKeyUncompressedFromPrivate } from "@axiom/config/crypto/secp256k1";
 import {
   DEFAULT_EIP712_DOMAIN,
   accessMessageHash as eip712AccessMessageHash,
@@ -10,9 +10,12 @@ import {
   type Eip712Domain,
   type OwnershipProofInput,
   type AccessProofInput,
-} from "./crypto/eip712.js";
+} from "@axiom/config/eip712";
 
-export { pubKeyToAddress, deriveUncompressedPubkeyFromHex } from "./crypto/secp256k1.js";
+export {
+  pubKeyToAddress,
+  deriveUncompressedPubkeyFromHex,
+} from "@axiom/config/crypto/secp256k1";
 export {
   DEFAULT_EIP712_DOMAIN,
   domainSeparator,
@@ -21,22 +24,20 @@ export {
   type Eip712Domain,
   type OwnershipProofInput,
   type AccessProofInput,
-} from "./crypto/eip712.js";
+  type OwnershipProofResult,
+} from "@axiom/config/eip712";
 
-export interface OwnershipProofResult {
-  newDataUri: Hex;
-  newDataHash: Hex;
-  sealedKey: Hex;
-  ownershipSignature: Hex;
-  accessProofNonce?: number;
-  ownershipProofNonce?: number;
-}
-
-export function ownershipMessageHash(input: OwnershipProofInput, domain: Eip712Domain = DEFAULT_EIP712_DOMAIN): Hex {
+export function ownershipMessageHash(
+  input: OwnershipProofInput,
+  domain: Eip712Domain = DEFAULT_EIP712_DOMAIN,
+): Hex {
   return eip712OwnershipMessageHash(input, domain);
 }
 
-export function accessMessageHash(input: AccessProofInput, domain: Eip712Domain = DEFAULT_EIP712_DOMAIN): Hex {
+export function accessMessageHash(
+  input: AccessProofInput,
+  domain: Eip712Domain = DEFAULT_EIP712_DOMAIN,
+): Hex {
   return eip712AccessMessageHash(input, domain);
 }
 
@@ -60,11 +61,16 @@ export class TeeSigner {
   readonly uncompressedPubkey: Uint8Array;
   readonly domain: Eip712Domain;
 
-  constructor(privateKeyHex: string, domain: Eip712Domain = DEFAULT_EIP712_DOMAIN) {
+  constructor(
+    privateKeyHex: string,
+    domain: Eip712Domain = DEFAULT_EIP712_DOMAIN,
+  ) {
     this.wallet = new Wallet(privateKeyHex);
     this.address = this.wallet.address as Hex;
     this.domain = domain;
-    const priv = Uint8Array.from(Buffer.from(privateKeyHex.replace(/^0x/, ""), "hex"));
+    const priv = Uint8Array.from(
+      Buffer.from(privateKeyHex.replace(/^0x/, ""), "hex"),
+    );
     this.uncompressedPubkey = publicKeyUncompressedFromPrivate(priv);
   }
 
