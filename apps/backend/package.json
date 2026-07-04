@@ -19,7 +19,6 @@
   "dependencies": {
     "@0gfoundation/0g-compute-ts-sdk": "^0.8.4",
     "@axiom/config": "workspace:*",
-    "@axiom/oracle": "workspace:*",
     "cors": "^2.8.6",
     "ethers": "^6.16.0",
     "express": "^4.21.0",
@@ -32,6 +31,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@axiom/oracle": "workspace:*",
     "@types/cors": "^2.8.19",
     "@types/express": "^4.17.21",
     "@types/node": "^22.7.0",

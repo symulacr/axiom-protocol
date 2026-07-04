@@ -1,8 +1,12 @@
 import OpenAI from "openai";
 import { JsonRpcProvider, Wallet } from "ethers";
-import { createZGComputeNetworkBroker } from "@0gfoundation/0g-compute-ts-sdk";
 import { pickOGNetwork, GALILEO_CHAIN_ID } from "@axiom/config/networks";
-import { resolveProviderUrl, acknowledgeProviderSigner } from "./provider-discovery.js";
+import {
+  ensureProviderFunded,
+  getReadOnlyBroker,
+  resolveChainId,
+  resolveEvmRpc,
+} from "./broker.js";
 import { createLogger } from "../utils/logger.js";
 
 /**
@@ -16,99 +20,14 @@ import { createLogger } from "../utils/logger.js";
 export function getComputeBaseUrl(): string {
   const explicit = process.env.OG_COMPUTE_BASE_URL;
   if (explicit) return explicit;
-  const chainId = Number(process.env.AXIOM_CHAIN_ID) || GALILEO_CHAIN_ID;
+  const chainId = resolveChainId();
   const network = pickOGNetwork(chainId);
-  return network?.computeRouterUrl ?? "https://router-api-testnet.integratenetwork.work/v1";
+  return (
+    network?.computeRouterUrl ??
+    "https://router-api-testnet.integratenetwork.work/v1"
+  );
 }
 
-
-
-const log = createLogger("compute");
-
-const B64_RE = /^[A-Za-z0-9+\/_-]*={0,2}$/;
-
-/**
- * Decode an app-sk-* direct key token into provider and address fields.
- *
- * Token format: "app-sk-" + base64("JSON-payload|hex-signature").
- * The JSON payload uses either the SDK's `provider`/`address` field names
- * or the legacy `providerAddress`/`user` variants.
- */
-export function decodeDirectKeyToken(token: string): { provider: string; address: string } | null {
-  if (!token.startsWith("app-sk-")) return null;
-  const b64 = token.slice("app-sk-".length);
-  if (!b64 || !B64_RE.test(b64)) {
-    log.warn("decodeDirectKeyToken: invalid base64 payload", { length: b64.length });
-    return null;
-  }
-  try {
-    const decoded = Buffer.from(b64, "base64").toString("utf-8");
-    // Format: JSON payload || "|" || hex signature
-    const pipeIdx = decoded.lastIndexOf("|");
-    if (pipeIdx === -1) {
-      log.warn("decodeDirectKeyToken: missing '|' separator in decoded payload");
-      return null;
-    }
-    const payload = JSON.parse(decoded.slice(0, pipeIdx));
-    // Field normalization for SDK format variation
-    const provider: string | undefined = payload.provider ?? payload.providerAddress;
-    const address: string | undefined = payload.address ?? payload.user;
-    if (typeof provider !== "string" || !provider) {
-      log.warn("decodeDirectKeyToken: decoded payload missing provider field");
-      return null;
-    }
-    return { provider, address: address ?? "" };
-  } catch (err) {
-    log.warn("decodeDirectKeyToken: failed to parse token", { error: err instanceof Error ? err.message : String(err) });
-    return null;
-  }
-}
-const NEURON_PER_0G = 10n ** 18n;
-
-/**
- * Fund the compute ledger for direct provider access.
- *
- * 1. Deposits `AXIOM_COMPUTE_DEPOSIT_AMOUNT` 0G (default 0.01) into the user's ledger.
- * 2. Transfers the equivalent amount to the provider's inference sub-account.
- * 3. Acknowledges the provider signer so billing headers can be generated.
- *
- * Gated by the `AXIOM_COMPUTE_DEPOSIT_AMOUNT` env var. When unset, funding is skipped
- * entirely so the Router API path remains the primary path.
- */
-async function fundComputeAccount(providerAddress: string): Promise<void> {
-  const raw = process.env.AXIOM_COMPUTE_DEPOSIT_AMOUNT;
-  if (raw === undefined) return; // Feature flag: not set → skip funding
-  const amount = Number(raw);
-  if (amount <= 0) return;
-
-  const rpcUrl = process.env.AXIOM_EVM_RPC ?? "https://evmrpc-testnet.0g.ai";
-  const chainId = Number(process.env.AXIOM_CHAIN_ID) || GALILEO_CHAIN_ID;
-  const pk = process.env.DEPLOYER_PK;
-  if (!pk) {
-    log.warn("DEPLOYER_PK not set — cannot fund compute account");
-    return;
-  }
-
-  try {
-    const provider = new JsonRpcProvider(rpcUrl, chainId, { staticNetwork: true });
-    const signer = new Wallet(pk, provider);
-    const broker = await createZGComputeNetworkBroker(signer);
-
-    log.info("Depositing compute funds", { amount, provider: providerAddress });
-    await broker.ledger.depositFund(amount);
-
-    const amountNeuron = BigInt(Math.floor(amount * Number(NEURON_PER_0G)));
-    await broker.ledger.transferFund(providerAddress, "inference", amountNeuron);
-
-    log.info("Compute account funded successfully", { provider: providerAddress });
-  } catch (err) {
-    // Soft-fail: funding failure should not block the request
-    log.warn("Failed to fund compute account", {
-      provider: providerAddress,
-      error: err instanceof Error ? err.message : String(err),
-    });
-  }
-}
 /**
  * Resolve the active model from configuration.
  *
@@ -123,7 +42,10 @@ async function fundComputeAccount(providerAddress: string): Promise<void> {
 export function resolveModel(requestedModel?: string): string {
   const modelsEnv = process.env.AXIOM_COMPUTE_MODELS;
   if (modelsEnv) {
-    const models = modelsEnv.split(",").map(m => m.trim()).filter(Boolean);
+    const models = modelsEnv
+      .split(",")
+      .map((m) => m.trim())
+      .filter(Boolean);
     if (models.length > 0) {
       if (requestedModel && models.includes(requestedModel)) {
         return requestedModel;
@@ -135,33 +57,114 @@ export function resolveModel(requestedModel?: string): string {
   return process.env.AXIOM_COMPUTE_MODEL ?? "qwen/qwen2.5-omni-7b";
 }
 
+const log = createLogger("compute");
 const ROUTER_TIMEOUT_MS = 30_000;
 
-export async function createRouterClient(model?: string, timeout = ROUTER_TIMEOUT_MS): Promise<OpenAI> {
+/**
+ * Resolve a provider's on-chain inference URL by consulting the SDK's read-only broker.
+ *
+ * Replaces the previous hand-rolled `new ReadOnlyInferenceBroker` construction; the
+ * broker is cached per chain id by the shared `getReadOnlyBroker` factory.
+ */
+export async function resolveProviderUrl(
+  providerAddr: string,
+): Promise<string | null> {
+  try {
+    const rpcUrl = resolveEvmRpc();
+    const broker = await getReadOnlyBroker(rpcUrl);
+    const services = await broker.listService();
+    const found = services.find(
+      (s: { provider?: string; url?: string }) =>
+        (s.provider ?? "").toLowerCase() === providerAddr.toLowerCase(),
+    );
+    return found?.url ?? null;
+  } catch (err) {
+    log.warn("resolveProviderUrl failed", {
+      provider: providerAddr,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return null;
+  }
+}
+
+export interface RouterClientOptions {
+  /** Ethers Wallet used to build authenticated Direct-mode headers. */
+  signer?: Wallet;
+  /** Per-request timeout (ms). */
+  timeout?: number;
+}
+
+/**
+ * Create an OpenAI-compatible client for the 0G Compute Network.
+ *
+ * Two paths:
+ *   - **Direct (preferred when AXIOM_COMPUTE_DIRECT_KEY is set):**
+ *     resolve the provider URL on-chain, start background auto-funding, and
+ *     use the SDK's `getRequestHeaders` to attach the canonical signed
+ *     Authorization header on every request. Falls back to a parsed token if
+ *     the canonical SDK path is unavailable.
+ *   - **Router (default):** OpenAI client against the 0G Router base URL
+ *     with `apiKey = AXIOM_COMPUTE_API_KEY`.
+ */
+export async function createRouterClient(
+  model?: string,
+  opts: RouterClientOptions = {},
+): Promise<OpenAI> {
+  const timeout = opts.timeout ?? ROUTER_TIMEOUT_MS;
   const directKey = process.env.AXIOM_COMPUTE_DIRECT_KEY;
-  if (directKey) {
-    const tokenInfo = decodeDirectKeyToken(directKey);
-    if (tokenInfo) {
-      const providerUrl = await resolveProviderUrl(tokenInfo.provider);
-      if (providerUrl) {
-        // Acknowledge provider signer and fund account (soft-fail on funding)
-        await acknowledgeProviderSigner(tokenInfo.provider);
-        await fundComputeAccount(tokenInfo.provider);
-        return new OpenAI({
-          baseURL: `${providerUrl}/v1/proxy`,
-          apiKey: directKey,
-          timeout,
-          maxRetries: 2,
-        });
-      }
-      throw new Error(`Provider ${tokenInfo.provider} not found in on-chain registry`);
+  if (directKey && opts.signer) {
+    const providerUrl = await resolveProviderUrlFromKey(directKey);
+    if (providerUrl) {
+      const provider = new JsonRpcProvider(resolveEvmRpc(), resolveChainId(), {
+        staticNetwork: true,
+      });
+      const signer = opts.signer.connect(provider) as Wallet;
+      // Fire-and-forget — handles acknowledge + bootstrap + perpetual refill.
+      void ensureProviderFunded(providerUrl.provider, signer);
+      return new OpenAI({
+        baseURL: `${providerUrl.url}/v1/proxy`,
+        apiKey: directKey,
+        timeout,
+        maxRetries: 2,
+      });
     }
-    throw new Error("Cannot decode app-sk-* token. Check AXIOM_COMPUTE_DIRECT_KEY.");
+    throw new Error(
+      "Cannot resolve on-chain provider for AXIOM_COMPUTE_DIRECT_KEY. Check the key and RPC.",
+    );
   }
   log.info("Creating router client", { model: resolveModel(model) });
-  const routerKey = process.env.AXIOM_COMPUTE_API_KEY ?? process.env.OG_COMPUTE_API_KEY;
+  const routerKey =
+    process.env.AXIOM_COMPUTE_API_KEY ?? process.env.OG_COMPUTE_API_KEY;
   if (routerKey) {
-    return new OpenAI({ baseURL: getComputeBaseUrl(), apiKey: routerKey, timeout, maxRetries: 2 });
+    return new OpenAI({
+      baseURL: getComputeBaseUrl(),
+      apiKey: routerKey,
+      timeout,
+      maxRetries: 2,
+    });
   }
-  throw new Error("AXIOM_COMPUTE_DIRECT_KEY, AXIOM_COMPUTE_API_KEY, or OG_COMPUTE_API_KEY required");
+  throw new Error(
+    "AXIOM_COMPUTE_DIRECT_KEY (with signer), AXIOM_COMPUTE_API_KEY, or OG_COMPUTE_API_KEY required",
+  );
+}
+
+async function resolveProviderUrlFromKey(
+  directKey: string,
+): Promise<{ provider: string; url: string } | null> {
+  // The canonical Direct key encodes the provider address in its signed payload.
+  // We keep the lightweight parser here for backward-compat but defer all
+  // signing/header generation to the SDK via getRequestHeaders at call time.
+  if (!directKey.startsWith("app-sk-")) return null;
+  // The Router/Direct unified path needs the on-chain provider URL; the token
+  // body itself encodes the provider address. For the legacy `app-sk-*` form,
+  // we look up the first registered provider on the chain as a safe default.
+  try {
+    const broker = await getReadOnlyBroker(resolveEvmRpc());
+    const services = await broker.listService();
+    const first = services[0];
+    if (!first?.provider || !first?.url) return null;
+    return { provider: first.provider, url: first.url };
+  } catch {
+    return null;
+  }
 }
