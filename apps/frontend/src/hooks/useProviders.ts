@@ -1,4 +1,5 @@
-import { usePolledApi } from './usePolledApi.js';
+import { useMemo } from "react";
+import { usePolledApi } from "./usePolledApi.js";
 
 export type Provider = {
   address: `0x${string}`;
@@ -16,14 +17,23 @@ export function useProviders(): {
   refetch: () => void;
 } {
   const query = usePolledApi<{ services: Provider[] }>(
-    '/v1/compute/providers',
+    "/v1/compute/providers",
     { refetchInterval: POLL_INTERVAL_MS },
   );
 
-  return {
-    providers: query.data?.services ?? [],
-    isLoading: query.isFetching,
-    error: query.error,
-    refetch: () => void query.refetch(),
-  };
+  const emptyProviders = useMemo<Provider[]>(() => [], []);
+  const providers = query.data?.services ?? emptyProviders;
+  const refetch = query.refetch;
+
+  const result = useMemo(
+    () => ({
+      providers,
+      isLoading: query.isFetching,
+      error: query.error,
+      refetch: () => void refetch(),
+    }),
+    [providers, query.isFetching, query.error, refetch],
+  );
+
+  return result;
 }

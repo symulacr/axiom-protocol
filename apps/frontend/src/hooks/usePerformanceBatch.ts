@@ -1,11 +1,18 @@
-import { usePolledApi } from './usePolledApi.js';
-import type { PerformanceMetrics } from '@axiom/config/types/performance';
+import { useMemo } from "react";
+import { usePolledApi } from "./usePolledApi.js";
+import type { PerformanceMetrics } from "@axiom/config/types/performance";
 
 interface BatchPerformanceResponse {
   results: Record<string, PerformanceMetrics>;
 }
 
-const NULL_METRICS: PerformanceMetrics = { totalTicks: 0, buyCount: 0, sellCount: 0, holdCount: 0, winRate: 0 };
+const NULL_METRICS: PerformanceMetrics = {
+  totalTicks: 0,
+  buyCount: 0,
+  sellCount: 0,
+  holdCount: 0,
+  winRate: 0,
+};
 
 /**
  * Batch-fetch performance metrics for multiple agents in a single API call.
@@ -17,25 +24,29 @@ export function usePerformanceBatch(tokenIds: readonly bigint[]): {
   error: Error | null;
   refetch: () => void;
 } {
-  const ids = tokenIds.map(id => id.toString()).join(',');
+  const ids = tokenIds.map((id) => id.toString()).join(",");
   const enabled = tokenIds.length > 0;
-  const url = enabled ? `/v1/agents/performance/batch?ids=${ids}` : '';
+  const url = enabled ? `/v1/agents/performance/batch?ids=${ids}` : "";
 
-  const { data, isLoading, error, refetch } = usePolledApi<BatchPerformanceResponse>(url, {
-    refetchInterval: 30_000,
-    enabled,
-    queryKey: ['performance-batch', ids],
-  });
+  const { data, isLoading, error, refetch } =
+    usePolledApi<BatchPerformanceResponse>(url, {
+      refetchInterval: 30_000,
+      enabled,
+      queryKey: ["performance-batch", ids],
+    });
 
-  const map = new Map<string, PerformanceMetrics>();
-  if (data?.results) {
-    for (const [key, value] of Object.entries(data.results)) {
-      map.set(key, value ?? NULL_METRICS);
+  const dataMap = useMemo(() => {
+    const map = new Map<string, PerformanceMetrics>();
+    if (data?.results) {
+      for (const [key, value] of Object.entries(data.results)) {
+        map.set(key, value ?? NULL_METRICS);
+      }
     }
-  }
+    return map;
+  }, [data?.results]);
 
   return {
-    data: map,
+    data: dataMap,
     isLoading,
     error: error as Error | null,
     refetch,

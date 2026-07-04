@@ -1,15 +1,22 @@
 import { resolveBlockExplorerUrl } from "@axiom/config/networks";
-import type { ReactElement } from 'react';
-import { useCallback, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { useChainId } from 'wagmi';
-import { ProviderCard } from '../components/ProviderCard.js';
-import { useProviders } from '../hooks/useProviders.js';
-import { usePoll } from '../hooks/usePoll.js';
-import { usePolledApi } from '../hooks/usePolledApi.js';
-import { COLORS, Card, SectionTitle, ErrorAlert, PageHeader, Skeleton } from '../components/ui.js';
-import { apiFetch } from '../utils/apiFetch.js';
-import type { AxiomEvent } from '../hooks/useEventHistory.js';
+import type { ReactElement } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { useChainId } from "wagmi";
+import { ProviderCard } from "../components/ProviderCard.js";
+import { useProviders } from "../hooks/useProviders.js";
+import { usePolledApi } from "../hooks/usePolledApi.js";
+import {
+  COLORS,
+  Card,
+  SectionTitle,
+  ErrorAlert,
+  PageHeader,
+  Skeleton,
+} from "../components/ui.js";
+import { apiFetch } from "../utils/apiFetch.js";
+import type { AxiomEvent } from "../hooks/useEventHistory.js";
+import { humanizeError } from "../utils/format.js";
 
 /**
  * One row returned by `GET /v1/events?eventName=Transfer`. The backend
@@ -39,46 +46,59 @@ export function MarketPage(): ReactElement {
     refetch: refetchProviders,
   } = useProviders();
 
-  const [transfers, setTransfers] = useState<TransferEvent[]>([]);
-  const [transfersError, setTransfersError] = useState<Error | null>(null);
   const [showAllTransfers, setShowAllTransfers] = useState(false);
 
-  const fetcher = useCallback(async (signal: AbortSignal): Promise<TransferEvent[]> => {
-    const body = await apiFetch<{ events: unknown[] }>(
-      '/v1/events?eventName=Transfer',
-      { method: 'GET', signal, timeout: 10000 },
-    );
-    const allEvents = Array.isArray(body.events) ? body.events : [];
-    return allEvents.filter(
-      (e): e is TransferEvent =>
-        typeof e === 'object' &&
-        e !== null &&
-        (e as { eventName?: unknown }).eventName === 'Transfer',
-    );
-  }, []);
-
-  const { isLoading: transfersLoading, refetch: refetchTransfers } = usePoll(
-    fetcher,
-    setTransfers,
-    setTransfersError,
-    { intervalMs: 30000 },
+  const transfersQuery = usePolledApi<{ events: TransferEvent[] }>(
+    "/v1/events?eventName=Transfer",
+    {
+      refetchInterval: 30000,
+      queryKey: ["transfers"],
+    },
   );
 
-  const tickQuery = usePolledApi<{ events: AxiomEvent[] }>("/v1/events?eventName=Tick", {
-    refetchInterval: 30000,
-    enabled: true,
-    queryKey: ["leaderboard"],
-  });
+  const rawTransfers = transfersQuery.data?.events;
+  const transfers = useMemo(() => {
+    if (!rawTransfers) return [];
+    return rawTransfers.filter(
+      (e): e is TransferEvent =>
+        typeof e === "object" && e !== null && e.eventName === "Transfer",
+    );
+  }, [rawTransfers]);
+
+  const transfersLoading = transfersQuery.isLoading;
+  const transfersError = transfersQuery.error;
+  const refetchTransfers = transfersQuery.refetch;
+
+  const tickQuery = usePolledApi<{ events: AxiomEvent[] }>(
+    "/v1/events?eventName=Tick",
+    {
+      refetchInterval: 30000,
+      enabled: true,
+      queryKey: ["leaderboard"],
+    },
+  );
 
   const leaderboard = useMemo(() => {
     const raw = tickQuery.data?.events;
     if (!raw || raw.length === 0) return [];
-    const byAgent = new Map<string, { buys: number; sells: number; holds: number; total: number }>();
+    const byAgent = new Map<
+      string,
+      { buys: number; sells: number; holds: number; total: number }
+    >();
     for (const ev of raw) {
-      const tid = String((ev.payload as Record<string, unknown>)?.tokenId ?? "");
+      const tid = String(
+        (ev.payload as Record<string, unknown>)?.tokenId ?? "",
+      );
       if (!tid) continue;
-      const action = String((ev.payload as Record<string, unknown>)?.action ?? "");
-      const entry = byAgent.get(tid) ?? { buys: 0, sells: 0, holds: 0, total: 0 };
+      const action = String(
+        (ev.payload as Record<string, unknown>)?.action ?? "",
+      );
+      const entry = byAgent.get(tid) ?? {
+        buys: 0,
+        sells: 0,
+        holds: 0,
+        total: 0,
+      };
       if (action === "buy") entry.buys++;
       else if (action === "sell") entry.sells++;
       else entry.holds++;
@@ -96,101 +116,164 @@ export function MarketPage(): ReactElement {
   }, [tickQuery.data]);
 
   return (
-    <main>
-      <PageHeader
-        title="Market"
-      />
+    <div>
+      <PageHeader title="Market" />
 
       <SectionTitle>Compute Providers ({providers.length})</SectionTitle>
       {providers.length > 0 && (
-        <p style={{ color: COLORS.textMuted, fontSize: 'var(--text-sm)', margin: '0 0 var(--space-lg)', lineHeight: 'var(--lh-normal)' }}>
+        <p
+          style={{
+            color: COLORS.textMuted,
+            fontSize: "var(--text-sm)",
+            margin: "0 0 var(--space-lg)",
+            lineHeight: "var(--lh-normal)",
+          }}
+        >
           Decentralized GPU providers for AI inference on 0G Compute
         </p>
       )}
       {providersLoading ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <Skeleton height={80} />
           <Skeleton height={80} />
         </div>
       ) : providersError !== null ? (
-        <ErrorAlert message={`Couldn't load providers: ${providersError.message}`} onRetry={refetchProviders} />
+        <ErrorAlert
+          message={`Couldn't load providers: ${humanizeError(providersError)}`}
+          onRetry={refetchProviders}
+        />
       ) : providers.length === 0 ? (
-        <Card style={{ textAlign: 'center', padding: 'var(--space-3xl) var(--space-xl)' }}>
-          <p style={{ color: COLORS.textMuted, fontSize: 'var(--text-sm)', margin: 0, fontWeight: 'var(--fw-regular)', lineHeight: 'var(--lh-normal)' }}>
-            No compute providers registered yet. Providers appear here when they register on-chain.
+        <Card
+          style={{
+            textAlign: "center",
+            padding: "var(--space-3xl) var(--space-xl)",
+          }}
+        >
+          <p
+            style={{
+              color: COLORS.textMuted,
+              fontSize: "var(--text-sm)",
+              margin: 0,
+              fontWeight: "var(--fw-regular)",
+              lineHeight: "var(--lh-normal)",
+            }}
+          >
+            No compute providers registered yet. Providers appear here when they
+            register on-chain.
           </p>
         </Card>
       ) : (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-md)' }}>
+        <div
+          style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-md)" }}
+        >
           {providers.map((p) => (
             <ProviderCard key={p.address} provider={p} />
           ))}
         </div>
       )}
 
-      <SectionTitle style={{ marginTop: 'var(--space-2xl)' }}>Recent Transfers</SectionTitle>
+      <SectionTitle style={{ marginTop: "var(--space-2xl)" }}>
+        Recent Transfers
+      </SectionTitle>
       {transfersLoading ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <Skeleton height={42} />
           <Skeleton height={42} />
           <Skeleton height={42} />
         </div>
       ) : transfersError !== null ? (
-        <ErrorAlert message={`Couldn't load transfers: ${transfersError.message}`} onRetry={refetchTransfers} />
+        <ErrorAlert
+          message={`Couldn't load transfers: ${humanizeError(transfersError)}`}
+          onRetry={refetchTransfers}
+        />
       ) : transfers.length === 0 ? (
-        <Card style={{ textAlign: 'center', padding: 'var(--space-3xl) var(--space-xl)' }}>
-          <p style={{ color: COLORS.textMuted, fontSize: 'var(--text-sm)', margin: 0, fontWeight: 'var(--fw-regular)', lineHeight: 'var(--lh-normal)' }}>
-            No recent transfers recorded. iNFT transfers will appear here as they happen on-chain.
+        <Card
+          style={{
+            textAlign: "center",
+            padding: "var(--space-3xl) var(--space-xl)",
+          }}
+        >
+          <p
+            style={{
+              color: COLORS.textMuted,
+              fontSize: "var(--text-sm)",
+              margin: 0,
+              fontWeight: "var(--fw-regular)",
+              lineHeight: "var(--lh-normal)",
+            }}
+          >
+            No recent transfers recorded. iNFT transfers will appear here as
+            they happen on-chain.
           </p>
         </Card>
       ) : (
         <>
-          <ul aria-label="Recent iNFT transfers" style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
-            {(showAllTransfers ? transfers : transfers.slice(0, 20)).map((tx) => (
-              <li
-                key={`${tx.txHash}-${tx.payload.tokenId}`}
-                style={{ listStyle: 'none' }}
-              >
-                <Card hover style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))',
-                  gap: 10,
-                  padding: '10px 14px',
-                  fontSize: 'var(--text-xs)',
-                  fontFamily: 'var(--font-mono)',
-                  color: COLORS.textMuted,
-                }}>
-                  <span style={{ color: COLORS.bronzeLight }}>#{tx.blockNumber}</span>
-                  <span>
-                    {tx.payload.from.slice(0, 6)}&hellip;{tx.payload.from.slice(-4)} →&nbsp;
-                    {tx.payload.to.slice(0, 6)}&hellip;{tx.payload.to.slice(-4)}
-                  </span>
-                  <span>token #{tx.payload.tokenId}</span>
-                  <a
-                    href={`${explorerBase}/tx/${tx.txHash}`}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    style={{ color: COLORS.teal }}
+          <ul
+            aria-label="Recent iNFT transfers"
+            style={{
+              listStyle: "none",
+              padding: 0,
+              margin: 0,
+              display: "flex",
+              flexDirection: "column",
+              gap: "var(--space-sm)",
+            }}
+          >
+            {(showAllTransfers ? transfers : transfers.slice(0, 20)).map(
+              (tx) => (
+                <li
+                  key={`${tx.txHash}-${tx.payload.tokenId}`}
+                  style={{ listStyle: "none" }}
+                >
+                  <Card
+                    hover
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns:
+                        "repeat(auto-fit, minmax(min(100%, 200px), 1fr))",
+                      gap: 10,
+                      padding: "10px 14px",
+                      fontSize: "var(--text-xs)",
+                      fontFamily: "var(--font-mono)",
+                      color: COLORS.textMuted,
+                    }}
                   >
-                    {tx.txHash.slice(0, 10)}&hellip;
-                  </a>
-                </Card>
-              </li>
-            ))}
+                    <span style={{ color: COLORS.bronzeLight }}>
+                      #{tx.blockNumber}
+                    </span>
+                    <span>
+                      {tx.payload.from.slice(0, 6)}&hellip;
+                      {tx.payload.from.slice(-4)} →&nbsp;
+                      {tx.payload.to.slice(0, 6)}&hellip;
+                      {tx.payload.to.slice(-4)}
+                    </span>
+                    <span>token #{tx.payload.tokenId}</span>
+                    <a
+                      href={`${explorerBase}/tx/${tx.txHash}`}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      style={{ color: COLORS.teal }}
+                    >
+                      {tx.txHash.slice(0, 10)}&hellip;
+                    </a>
+                  </Card>
+                </li>
+              ),
+            )}
           </ul>
           {transfers.length > 20 && !showAllTransfers && (
-            <div style={{ textAlign: 'center', marginTop: 'var(--space-sm)' }}>
+            <div style={{ textAlign: "center", marginTop: "var(--space-sm)" }}>
               <button
                 type="button"
                 onClick={() => setShowAllTransfers(true)}
                 style={{
-                  background: 'none',
+                  background: "none",
                   border: `1px solid ${COLORS.border}`,
-                  borderRadius: 'var(--radius-md)',
+                  borderRadius: "var(--radius-md)",
                   color: COLORS.teal,
-                  cursor: 'pointer',
-                  fontSize: 'var(--text-sm)',
-                  padding: '0.375rem 1rem',
+                  cursor: "pointer",
+                  fontSize: "var(--text-sm)",
+                  padding: "0.375rem 1rem",
                 }}
               >
                 Show more ({transfers.length} total)
@@ -200,50 +283,92 @@ export function MarketPage(): ReactElement {
         </>
       )}
 
-      <SectionTitle style={{ marginTop: 'var(--space-2xl)' }}>Leaderboard</SectionTitle>
+      <SectionTitle style={{ marginTop: "var(--space-2xl)" }}>
+        Leaderboard
+      </SectionTitle>
       {tickQuery.isFetching && leaderboard.length === 0 ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <Skeleton height={42} />
           <Skeleton height={42} />
         </div>
       ) : leaderboard.length === 0 ? (
-        <Card style={{ textAlign: 'center', padding: 'var(--space-3xl) var(--space-xl)' }}>
-          <p style={{ color: COLORS.textMuted, fontSize: 'var(--text-sm)', margin: 0, fontWeight: 'var(--fw-regular)', lineHeight: 'var(--lh-normal)' }}>
-            No strategy ticks recorded yet. Run a strategy tick to appear on the leaderboard.
+        <Card
+          style={{
+            textAlign: "center",
+            padding: "var(--space-3xl) var(--space-xl)",
+          }}
+        >
+          <p
+            style={{
+              color: COLORS.textMuted,
+              fontSize: "var(--text-sm)",
+              margin: 0,
+              fontWeight: "var(--fw-regular)",
+              lineHeight: "var(--lh-normal)",
+            }}
+          >
+            No strategy ticks recorded yet. Run a strategy tick to appear on the
+            leaderboard.
           </p>
         </Card>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "var(--space-sm)",
+          }}
+        >
           {leaderboard.map((entry, i) => (
             <Link
               key={entry.tokenId}
               to={`/agents/${entry.tokenId}`}
-              style={{ textDecoration: 'none' }}
+              style={{ textDecoration: "none" }}
             >
-              <Card hover style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))',
-                gap: 10,
-                padding: '10px 14px',
-                fontSize: 'var(--text-xs)',
-                fontFamily: 'var(--font-mono)',
-                color: COLORS.textMuted,
-              }}>
-                <span style={{ color: i < 3 ? COLORS.bronzeLight : COLORS.textDim }}>#{i + 1}</span>
-                <span style={{ color: COLORS.text }}>Agent #{entry.tokenId}</span>
-                <span style={{ color: entry.score > 0 ? COLORS.success : COLORS.danger }}>
-                  {entry.score.toFixed(1)}{' '}
-                  <span style={{ fontSize: 'var(--text-xs)', opacity: 0.8 }}>
-                    {entry.score > 5 ? 'High' : entry.score > 0 ? 'Medium' : 'Low'}
+              <Card
+                hover
+                style={{
+                  display: "grid",
+                  gridTemplateColumns:
+                    "repeat(auto-fit, minmax(min(100%, 180px), 1fr))",
+                  gap: 10,
+                  padding: "10px 14px",
+                  fontSize: "var(--text-xs)",
+                  fontFamily: "var(--font-mono)",
+                  color: COLORS.textMuted,
+                }}
+              >
+                <span
+                  style={{ color: i < 3 ? COLORS.bronzeLight : COLORS.textDim }}
+                >
+                  #{i + 1}
+                </span>
+                <span style={{ color: COLORS.text }}>
+                  Agent #{entry.tokenId}
+                </span>
+                <span
+                  style={{
+                    color: entry.score > 0 ? COLORS.success : COLORS.danger,
+                  }}
+                >
+                  {entry.score.toFixed(1)}{" "}
+                  <span style={{ fontSize: "var(--text-xs)", opacity: 0.8 }}>
+                    {entry.score > 5
+                      ? "High"
+                      : entry.score > 0
+                        ? "Medium"
+                        : "Low"}
                   </span>
                 </span>
-                <span style={{ color: COLORS.textDim }}>{entry.total} ticks</span>
+                <span style={{ color: COLORS.textDim }}>
+                  {entry.total} ticks
+                </span>
               </Card>
             </Link>
           ))}
         </div>
       )}
-    </main>
+    </div>
   );
 }
 

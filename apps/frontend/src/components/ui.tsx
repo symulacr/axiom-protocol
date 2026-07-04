@@ -1,67 +1,68 @@
-import React, { forwardRef, useCallback, useEffect, useRef } from 'react';
-import { useAccount } from 'wagmi';
+import React, { forwardRef, useCallback, useEffect, useRef } from "react";
+import { useAccount } from "wagmi";
 import type {
   ButtonHTMLAttributes,
   CSSProperties,
   InputHTMLAttributes,
   ReactElement,
   ReactNode,
-} from 'react';
+} from "react";
 
 export const COLORS = {
   // Backgrounds — warm-tinted near-blacks
-  bg: '#10100e',           // obsidian
-  surface: '#1c1a17',      // dark-carbon
-  surfaceLight: '#f0ebe3', // parchment (for reading contexts)
+  bg: "#10100e", // obsidian
+  surface: "#1c1a17", // dark-carbon
+  surfaceLight: "#f0ebe3", // parchment (for reading contexts)
 
   // Borders — warm-tinted
-  border: '#2d2a25',       // warm-iron
-  borderStrong: '#3d3932', // aged-steel
+  border: "#2d2a25", // warm-iron
+  borderStrong: "#383530", // aged-steel
 
   // Text — warm-tinted near-whites
-  text: '#f5f0e8',         // bright-nickel
-  textPrimary: '#e5dfd6',  // polished-silver
-  textMuted: '#9a9288',    // warm-pewter
-  textDim: '#736b62',      // tarnished-lead
+  text: "#f5f0e8", // bright-nickel
+  textPrimary: "#e5dfd6", // polished-silver
+  textMuted: "#9a9288", // warm-pewter
+  textDim: "#736b62", // tarnished-lead
 
   // Accent — warm bronze / muted gold
-  bronze: '#b8976e',
-  bronzeLight: '#c5a880',
-  bronzeBg: 'rgba(184, 151, 110, 0.08)',
-  bronzeBorder: 'rgba(184, 151, 110, 0.25)',
+  bronze: "#b8976e",
+  bronzeLight: "#c5a880",
+  bronzeBg: "rgba(184, 151, 110, 0.08)",
+  bronzeBorder: "rgba(184, 151, 110, 0.25)",
 
   // Secondary accent — oxidized teal
-  teal: '#5a8a8a',
-  tealLight: '#7aa8a8',
-  tealBg: 'rgba(90, 138, 138, 0.15)',
-  tealBorder: 'rgba(90, 138, 138, 0.2)',
+  teal: "#5a8a8a",
+  tealLight: "#7aa8a8",
+  tealBg: "rgba(90, 138, 138, 0.15)",
+  tealBorder: "rgba(90, 138, 138, 0.2)",
 
   // Semantic — restrained, never neon
-  danger: '#c85a5a',
-  dangerBg: 'rgba(200, 90, 90, 0.08)',
-  dangerBorder: 'rgba(200, 90, 90, 0.2)',
-  success: '#6b9e6b',
-  successBg: 'rgba(107, 158, 107, 0.08)',
-  successBorder: 'rgba(107, 158, 107, 0.2)',
-  warning: '#c5a25a',
-  warningBg: 'rgba(197, 162, 90, 0.08)',
-  warningBorder: 'rgba(197, 162, 90, 0.2)',
+  danger: "#c85a5a",
+  dangerBg: "rgba(200, 90, 90, 0.08)",
+  dangerBorder: "rgba(200, 90, 90, 0.2)",
+  success: "#6b9e6b",
+  successBg: "rgba(107, 158, 107, 0.08)",
+  successBorder: "rgba(107, 158, 107, 0.2)",
+  warning: "#c5a25a",
+  warningBg: "rgba(197, 162, 90, 0.08)",
+  warningBorder: "rgba(197, 162, 90, 0.2)",
 } as const;
 
-const transition = 'color 0.18s cubic-bezier(0.4, 0, 0.2, 1), background 0.18s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.18s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.18s cubic-bezier(0.4, 0, 0.2, 1)';
+const transition =
+  "color 0.18s cubic-bezier(0.4, 0, 0.2, 1), background 0.18s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.18s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.18s cubic-bezier(0.4, 0, 0.2, 1)";
 
-type ButtonVariant = 'primary' | 'secondary' | 'ghost';
+type ButtonVariant = "primary" | "secondary" | "ghost";
 
 const buttonBase: CSSProperties = {
-  padding: '0.625rem 1.25rem',
-  borderRadius: 'var(--radius-md)',
-  fontSize: 'var(--text-sm)',
-  fontWeight: 'var(--fw-semibold)',
-  cursor: 'pointer',
-  border: '1px solid transparent',
+  padding: "0.625rem 1.25rem",
+  borderRadius: "var(--radius-md)",
+  fontSize: "var(--text-sm)",
+  fontWeight: "var(--fw-semibold)",
+  cursor: "pointer",
+  border: "1px solid transparent",
   transition,
-  fontFamily: 'inherit',
-  letterSpacing: '0.01em',
+  fontFamily: "inherit",
+  letterSpacing: "0.01em",
   lineHeight: 1,
 };
 
@@ -69,26 +70,26 @@ const buttonVariants: Record<ButtonVariant, CSSProperties> = {
   primary: {
     ...buttonBase,
     background: COLORS.bronze,
-    color: '#10100e',
+    color: "#10100e",
     borderColor: COLORS.bronze,
   },
   secondary: {
     ...buttonBase,
-    background: 'transparent',
+    background: "transparent",
     color: COLORS.textPrimary,
     borderColor: COLORS.borderStrong,
   },
   ghost: {
     ...buttonBase,
-    background: 'transparent',
+    background: "transparent",
     color: COLORS.textMuted,
-    borderColor: 'transparent',
-    padding: '0.5rem 0.75rem',
+    borderColor: "transparent",
+    padding: "0.5rem 0.75rem",
   },
 };
 
 export const Button = React.memo(function Button({
-  variant = 'primary',
+  variant = "primary",
   style,
   disabled,
   children,
@@ -102,7 +103,7 @@ export const Button = React.memo(function Button({
       disabled={disabled}
       style={{
         ...buttonVariants[variant],
-        ...(disabled ? { opacity: 0.4, cursor: 'not-allowed' } : {}),
+        ...(disabled ? { opacity: 0.4, cursor: "not-allowed" } : {}),
         ...style,
       }}
     >
@@ -122,12 +123,12 @@ export const Card = React.memo(function Card({
 }): ReactElement {
   return (
     <div
-      role={hover ? 'button' : undefined}
+      role={hover ? "button" : undefined}
       tabIndex={hover ? 0 : undefined}
       onKeyDown={
         hover
           ? (e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
+              if (e.key === "Enter" || e.key === " ") {
                 e.currentTarget.click();
               }
             }
@@ -136,12 +137,12 @@ export const Card = React.memo(function Card({
       style={{
         background: COLORS.surface,
         border: `1px solid ${COLORS.border}`,
-        borderRadius: 'var(--radius-xl)',
-        padding: 'var(--space-xl)',
+        borderRadius: "var(--radius-xl)",
+        padding: "var(--space-xl)",
         transition,
-        overflow: 'hidden',
-        contain: 'layout style',
-        ...(hover ? { cursor: 'pointer' } : {}),
+        overflow: "hidden",
+        contain: "layout style",
+        ...(hover ? { cursor: "pointer" } : {}),
         ...style,
       }}
     >
@@ -150,23 +151,23 @@ export const Card = React.memo(function Card({
   );
 });
 
-export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function Input(
-  { style, ...rest },
-  ref,
-) {
+export const Input = forwardRef<
+  HTMLInputElement,
+  InputHTMLAttributes<HTMLInputElement>
+>(function Input({ style, ...rest }, ref) {
   return (
     <input
       ref={ref}
       {...rest}
       style={{
-        padding: '0.625rem 0.875rem',
-        borderRadius: 'var(--radius-md)',
+        padding: "0.625rem 0.875rem",
+        borderRadius: "var(--radius-md)",
         border: `1px solid ${COLORS.borderStrong}`,
         background: COLORS.bg,
         color: COLORS.text,
-        fontSize: 'var(--text-sm)',
-        fontFamily: 'inherit',
-        minWidth: '0',
+        fontSize: "var(--text-sm)",
+        fontFamily: "inherit",
+        minWidth: "0",
         transition,
         ...style,
       }}
@@ -174,43 +175,43 @@ export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputE
   );
 });
 
-type AlertVariant = 'error' | 'success' | 'info';
+type AlertVariant = "error" | "success" | "info";
 
 const alertStyles: Record<AlertVariant, CSSProperties> = {
   error: {
-    padding: 'var(--space-md) var(--space-lg)',
-    background: 'rgba(200, 90, 90, 0.05)',
+    padding: "var(--space-md) var(--space-lg)",
+    background: "rgba(200, 90, 90, 0.05)",
     border: `1px solid ${COLORS.dangerBorder}`,
     color: COLORS.danger,
-    borderRadius: 'var(--radius-lg)',
-    fontSize: 'var(--text-sm)',
-    lineHeight: 'var(--lh-snug)',
-    overflowWrap: 'break-word',
+    borderRadius: "var(--radius-lg)",
+    fontSize: "var(--text-sm)",
+    lineHeight: "var(--lh-snug)",
+    overflowWrap: "break-word",
   },
   success: {
-    padding: 'var(--space-md) var(--space-lg)',
-    background: 'rgba(107, 158, 107, 0.05)',
+    padding: "var(--space-md) var(--space-lg)",
+    background: "rgba(107, 158, 107, 0.05)",
     border: `1px solid ${COLORS.successBorder}`,
     color: COLORS.success,
-    borderRadius: 'var(--radius-lg)',
-    fontSize: 'var(--text-sm)',
-    lineHeight: 'var(--lh-snug)',
-    overflowWrap: 'break-word',
+    borderRadius: "var(--radius-lg)",
+    fontSize: "var(--text-sm)",
+    lineHeight: "var(--lh-snug)",
+    overflowWrap: "break-word",
   },
   info: {
-    padding: 'var(--space-md) var(--space-lg)',
-    background: 'rgba(90, 138, 138, 0.10)',
+    padding: "var(--space-md) var(--space-lg)",
+    background: "rgba(90, 138, 138, 0.10)",
     border: `1px solid ${COLORS.tealBorder}`,
     color: COLORS.teal,
-    borderRadius: 'var(--radius-lg)',
-    fontSize: 'var(--text-sm)',
-    lineHeight: 'var(--lh-snug)',
-    overflowWrap: 'break-word',
+    borderRadius: "var(--radius-lg)",
+    fontSize: "var(--text-sm)",
+    lineHeight: "var(--lh-snug)",
+    overflowWrap: "break-word",
   },
 };
 
 export function Alert({
-  variant = 'error',
+  variant = "error",
   children,
   style,
 }: {
@@ -219,7 +220,10 @@ export function Alert({
   style?: CSSProperties;
 }): ReactElement {
   return (
-    <div role={variant === 'error' ? 'alert' : 'status'} style={{ ...alertStyles[variant], ...style }}>
+    <div
+      role={variant === "error" ? "alert" : "status"}
+      style={{ ...alertStyles[variant], ...style }}
+    >
       {children}
     </div>
   );
@@ -230,12 +234,20 @@ interface ErrorAlertProps {
   onRetry?: () => void;
 }
 
-export function ErrorAlert({ message, onRetry }: ErrorAlertProps): ReactElement {
+export function ErrorAlert({
+  message,
+  onRetry,
+}: ErrorAlertProps): ReactElement {
   return (
     <Alert variant="error">
-      <p>{message ?? 'An unexpected error occurred'}</p>
+      <p>{message ?? "An unexpected error occurred"}</p>
       {onRetry !== undefined && (
-        <Button variant="secondary" onClick={onRetry} className="text-xs" style={{ flexShrink: 0, minHeight: 44 }}>
+        <Button
+          variant="secondary"
+          onClick={onRetry}
+          className="text-xs"
+          style={{ flexShrink: 0, minHeight: 44 }}
+        >
           Retry
         </Button>
       )}
@@ -244,7 +256,7 @@ export function ErrorAlert({ message, onRetry }: ErrorAlertProps): ReactElement 
 }
 
 export function Skeleton({
-  width = '100%',
+  width = "100%",
   height = 20,
   style,
 }: {
@@ -260,8 +272,8 @@ export function Skeleton({
         width,
         height,
         background: COLORS.border,
-        borderRadius: 'var(--radius-sm)',
-        animation: 'axiom-pulse 1.5s ease-in-out infinite',
+        borderRadius: "var(--radius-sm)",
+        animation: "axiom-pulse 1.5s ease-in-out infinite",
         ...style,
       }}
     />
@@ -279,16 +291,16 @@ export function PageHeader({
 }): ReactElement {
   return (
     <div className="flex items-baseline justify-between mb-2xl flex-wrap gap-md">
-      <div style={{ minWidth: 0, overflow: 'hidden' }}>
+      <div style={{ minWidth: 0, overflow: "hidden" }}>
         <h1
           className="text-xl fw-semibold lh-tight"
           style={{
-            margin: '0 0 0.375rem',
+            margin: "0 0 0.375rem",
             color: COLORS.text,
-            letterSpacing: '-0.02em',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
+            letterSpacing: "-0.02em",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
           }}
         >
           {title}
@@ -305,18 +317,18 @@ export function PageHeader({
 export function SectionTitle({
   children,
   style,
-  spacing = 'compact',
+  spacing = "compact",
 }: {
   children: ReactNode;
   style?: CSSProperties;
-  spacing?: 'compact' | 'spaced';
+  spacing?: "compact" | "spaced";
 }): ReactElement {
   return (
     <h2
-      className="text-sm fw-semibold text-dim lh-snug m-0 mb-lg"
+      className="text-sm fw-semibold text-dim lh-snug m-0 mb-lg uppercase"
       style={{
-        letterSpacing: '0.02em',
-        marginTop: spacing === 'spaced' ? 'var(--space-2xl)' : undefined,
+        letterSpacing: "0.08em",
+        marginTop: spacing === "spaced" ? "var(--space-2xl)" : undefined,
         ...style,
       }}
     >
@@ -338,16 +350,16 @@ export function MonoLabel({
     <code
       title={title}
       style={{
-        fontFamily: 'var(--font-mono)',
-        fontSize: 'var(--text-sm)',
+        fontFamily: "var(--font-mono)",
+        fontSize: "var(--text-sm)",
         color: COLORS.bronzeLight,
-        background: 'rgba(184, 151, 110, 0.05)',
-        padding: '0.125rem 0.5rem',
-        borderRadius: 'var(--radius-sm)',
-        display: 'inline-block',
-        maxWidth: '100%',
-        overflow: 'hidden',
-        wordBreak: 'break-all',
+        background: "rgba(184, 151, 110, 0.05)",
+        padding: "0.125rem 0.5rem",
+        borderRadius: "var(--radius-sm)",
+        display: "inline-block",
+        maxWidth: "100%",
+        overflow: "hidden",
+        wordBreak: "break-all",
         ...style,
       }}
     >
@@ -356,18 +368,24 @@ export function MonoLabel({
   );
 }
 
-export function Spinner({ size = 20, style }: { size?: number; style?: CSSProperties }): ReactElement {
+export function Spinner({
+  size = 20,
+  style,
+}: {
+  size?: number;
+  style?: CSSProperties;
+}): ReactElement {
   return (
     <span
       role="status"
       style={{
-        display: 'inline-block',
+        display: "inline-block",
         width: size,
         height: size,
         border: `2px solid ${COLORS.border}`,
         borderTopColor: COLORS.bronze,
-        borderRadius: '50%',
-        animation: 'axiom-spin 0.8s linear infinite',
+        borderRadius: "50%",
+        animation: "axiom-spin 0.8s linear infinite",
         ...style,
       }}
       aria-label="Loading"
@@ -383,7 +401,13 @@ interface ModalProps {
   style?: CSSProperties;
 }
 
-export const Modal = React.memo(function Modal({ open, onClose, title, children, style }: ModalProps): ReactElement | null {
+export const Modal = React.memo(function Modal({
+  open,
+  onClose,
+  title,
+  children,
+  style,
+}: ModalProps): ReactElement | null {
   const dialogRef = useRef<HTMLDialogElement | null>(null);
 
   useEffect(() => {
@@ -402,23 +426,33 @@ export const Modal = React.memo(function Modal({ open, onClose, title, children,
     <dialog
       ref={dialogRef}
       onClose={handleClose}
-      aria-labelledby={title ? 'modal-title' : undefined}
+      aria-labelledby={title ? "modal-title" : undefined}
       style={{
         padding: 28,
         border: `1px solid ${COLORS.borderStrong}`,
-        borderRadius: 'var(--radius-xl)',
+        borderRadius: "var(--radius-xl)",
         maxWidth: 500,
-        width: '90vw',
-        maxHeight: '90vh',
-        overflow: 'auto',
+        width: "90vw",
+        maxHeight: "90vh",
+        overflow: "auto",
         background: COLORS.surface,
         color: COLORS.text,
-        boxShadow: '0 24px 80px rgba(0,0,0,0.5)',
+        boxShadow: "0 24px 80px rgba(0,0,0,0.5)",
         ...style,
       }}
     >
       {title !== undefined && (
-        <h2 id="modal-title" className="mt-0 text-xl fw-bold" style={{ color: COLORS.text, letterSpacing: '-0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <h2
+          id="modal-title"
+          className="mt-0 text-xl fw-bold"
+          style={{
+            color: COLORS.text,
+            letterSpacing: "-0.02em",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
           {title}
         </h2>
       )}
@@ -427,13 +461,23 @@ export const Modal = React.memo(function Modal({ open, onClose, title, children,
   );
 });
 
-export function ConnectedGuard({ children }: { children: React.ReactNode }): React.ReactElement | null {
+export function ConnectedGuard({
+  children,
+}: {
+  children: React.ReactNode;
+}): React.ReactElement | null {
   const { isConnected } = useAccount();
   if (!isConnected) {
     return (
-      <Card style={{ textAlign: 'center', padding: 'var(--space-3xl) var(--space-xl)' }}>
+      <Card
+        style={{
+          textAlign: "center",
+          padding: "var(--space-3xl) var(--space-xl)",
+        }}
+      >
         <p className="text-muted text-sm fw-regular">
-          Connect your wallet to view agents, manage vaults, and execute strategies.
+          Connect your wallet to view agents, manage vaults, and execute
+          strategies.
         </p>
       </Card>
     );
@@ -441,31 +485,44 @@ export function ConnectedGuard({ children }: { children: React.ReactNode }): Rea
   return <>{children}</>;
 }
 
-export function HelpTip({ tip, children }: { tip: string; children?: ReactNode }): ReactElement {
+export function HelpTip({
+  tip,
+  children,
+}: {
+  tip: string;
+  children?: ReactNode;
+}): ReactElement {
   return (
-    <span className="helptip" style={{ position: 'relative', cursor: 'help', borderBottom: `1px dotted ${COLORS.textDim}` }}>
+    <span
+      className="helptip"
+      style={{
+        position: "relative",
+        cursor: "help",
+        borderBottom: `1px dotted ${COLORS.textDim}`,
+      }}
+    >
       {children}
       <span
         role="tooltip"
         className="helptip-content"
         style={{
-          position: 'absolute',
-          bottom: '100%',
-          left: '50%',
-          transform: 'translateX(-50%)',
+          position: "absolute",
+          bottom: "100%",
+          left: "50%",
+          transform: "translateX(-50%)",
           background: COLORS.surface,
           border: `1px solid ${COLORS.border}`,
-          borderRadius: 'var(--radius-md)',
-          padding: '6px 10px',
-          fontSize: 'var(--text-xs)',
+          borderRadius: "var(--radius-md)",
+          padding: "6px 10px",
+          fontSize: "var(--text-xs)",
           color: COLORS.text,
-          pointerEvents: 'none',
+          pointerEvents: "none",
           opacity: 0,
-          transition: 'opacity 0.15s ease',
+          transition: "opacity 0.15s ease",
           zIndex: 100,
           maxWidth: 280,
-          whiteSpace: 'normal',
-          lineHeight: 'var(--lh-snug)',
+          whiteSpace: "normal",
+          lineHeight: "var(--lh-snug)",
         }}
       >
         {tip}
@@ -473,5 +530,3 @@ export function HelpTip({ tip, children }: { tip: string; children?: ReactNode }
     </span>
   );
 }
-
-

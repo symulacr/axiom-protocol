@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { BACKEND_URL } from '../config/env.js';
-import type { AxiomEvent } from './useEventHistory.js';
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { BACKEND_URL } from "../config/env.js";
+import type { AxiomEvent } from "./useEventHistory.js";
 
 export interface UseEventStreamResult {
   events: AxiomEvent[];
@@ -26,7 +26,7 @@ export function useEventStream(
   options: UseEventStreamOptions = {},
 ): UseEventStreamResult {
   const { topics = [], enabled = true } = options;
-  const topicsKey = useMemo(() => topics.join(','), [topics]);
+  const topicsKey = useMemo(() => topics.join(","), [topics]);
   const [events, setEvents] = useState<AxiomEvent[]>([]);
   const eventsRef = useRef<AxiomEvent[]>([]);
   const [isConnected, setIsConnected] = useState(false);
@@ -36,7 +36,9 @@ export function useEventStream(
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const maxReconnectDelay = 30000;
   const enabledRef = useRef(enabled);
-  useEffect(() => { enabledRef.current = enabled; }, [enabled]);
+  useEffect(() => {
+    enabledRef.current = enabled;
+  }, [enabled]);
 
   const connect = useCallback(() => {
     if (!enabled) return;
@@ -44,10 +46,12 @@ export function useEventStream(
     reconnectAttemptRef.current = 0;
 
     // Topic supports wildcards: 'tick.*' subscribes to all tick topics.
-    const scheme = BACKEND_URL.startsWith('https://') ? 'wss' : 'ws';
-    const url = new URL(BACKEND_URL.replace(/^https?:\/\//, `${scheme}://`) + '/v1/stream');
+    const scheme = BACKEND_URL.startsWith("https://") ? "wss" : "ws";
+    const url = new URL(
+      BACKEND_URL.replace(/^https?:\/\//, `${scheme}://`) + "/v1/stream",
+    );
     for (const t of topics) {
-      url.searchParams.append('topic', t);
+      url.searchParams.append("topic", t);
     }
 
     try {
@@ -63,13 +67,13 @@ export function useEventStream(
       ws.onmessage = (msg: MessageEvent) => {
         try {
           const data = JSON.parse(msg.data);
-          if (data.topic === 'hello') return; // connection handshake
+          if (data.topic === "hello") return; // connection handshake
 
           const event: AxiomEvent = {
-            source: data.payload?.source ?? 'ws',
+            source: data.payload?.source ?? "ws",
             chainId: data.payload?.chainId ?? 0,
             blockNumber: data.payload?.blockNumber ?? 0,
-            txHash: data.payload?.txHash ?? '',
+            txHash: data.payload?.txHash ?? "",
             logIndex: data.payload?.logIndex ?? 0,
             eventName: data.topic,
             payload: data.payload ?? {},
@@ -81,9 +85,9 @@ export function useEventStream(
           if (eventsRef.current.length > MAX_EVENTS) {
             eventsRef.current.length = MAX_EVENTS;
           }
-          setEvents(eventsRef.current);
+          setEvents([...eventsRef.current]);
         } catch (err) {
-          console.warn('[useEventStream] WS connect failed:', err);
+          console.warn("[useEventStream] WS connect failed:", err);
         }
       };
 
@@ -96,13 +100,16 @@ export function useEventStream(
         setIsConnected(false);
         wsRef.current = null;
         if (enabledRef.current) {
-          const delay = Math.min(1000 * Math.pow(2, reconnectAttemptRef.current), maxReconnectDelay);
+          const delay = Math.min(
+            1000 * Math.pow(2, reconnectAttemptRef.current),
+            maxReconnectDelay,
+          );
           reconnectAttemptRef.current++;
           reconnectTimerRef.current = setTimeout(connect, delay);
         }
       };
     } catch (err) {
-      setError(err instanceof Event ? err : new Event('connection failed'));
+      setError(err instanceof Event ? err : new Event("connection failed"));
     }
   }, [enabled, topicsKey]);
 

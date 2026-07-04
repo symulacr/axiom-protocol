@@ -1,19 +1,41 @@
-import { useCallback, useEffect, useState, type ReactElement } from 'react';
-import { useSendTransaction, useWriteContract } from 'wagmi';
-import { parseAbi, parseEther } from 'viem';
-import type { Address } from 'viem';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactElement,
+} from "react";
+import {
+  useSendTransaction,
+  useWriteContract,
+  useAccount,
+  usePublicClient,
+} from "wagmi";
+import { parseAbi, parseEther, parseUnits } from "viem";
+import type { Address } from "viem";
 
-import { PAYMENT_PROCESSOR_ABI } from '@axiom/config/abis';
+const erc20Abi = parseAbi([
+  "function decimals() view returns (uint8)",
+  "function allowance(address owner, address spender) view returns (uint256)",
+  "function approve(address spender, uint256 amount) returns (bool)",
+]);
+
+import { PAYMENT_PROCESSOR_ABI } from "@axiom/config/abis";
 
 const paymentProcessorAbi = parseAbi(PAYMENT_PROCESSOR_ABI);
-import { getAxiomPaymentProcessorAddress } from '../abi/addresses.js';
-import { PLACEHOLDER, truncateHex } from '../utils/format.js';
+import { getAxiomPaymentProcessorAddress } from "../abi/addresses.js";
+import {
+  PLACEHOLDER,
+  truncateHex,
+  humanizeError,
+  validateNumericInput,
+} from "../utils/format.js";
 import {
   usePayment,
   type PaymentConfig,
   type EarningsInfo,
-} from '../hooks/usePayment.js';
-import { toast } from 'sonner';
+} from "../hooks/usePayment.js";
+import { toast } from "sonner";
 import {
   COLORS,
   Card,
@@ -25,9 +47,9 @@ import {
   Modal,
   Spinner,
   ConnectedGuard,
-} from './ui.js';
+} from "./ui.js";
 
-type ActionStatus = 'idle' | 'pending' | 'success' | 'error';
+type ActionStatus = "idle" | "pending" | "success" | "error";
 
 function useAutoClear(
   status: ActionStatus,
@@ -35,8 +57,8 @@ function useAutoClear(
   ms = 6000,
 ): void {
   useEffect(() => {
-    if (status === 'success' || status === 'error') {
-      const timer = setTimeout(() => setStatus('idle'), ms);
+    if (status === "success" || status === "error") {
+      const timer = setTimeout(() => setStatus("idle"), ms);
       return () => clearTimeout(timer);
     }
   }, [status, setStatus, ms]);
@@ -53,7 +75,7 @@ function PaymentConfigDisplay({
 }): ReactElement {
   if (initError !== null) {
     return (
-      <Alert variant="error" style={{ marginBottom: 'var(--space-lg)' }}>
+      <Alert variant="error" style={{ marginBottom: "var(--space-lg)" }}>
         {initError}
       </Alert>
     );
@@ -63,13 +85,27 @@ function PaymentConfigDisplay({
   }
   const pct = (config.protocolFeeBps / 100).toFixed(2);
   return (
-    <p style={{ fontSize: 'var(--text-xs)', color: COLORS.textMuted, margin: 0 }}>
-      Protocol fee: {config.protocolFeeBps} bps ({pct}%){' '}
+    <p
+      style={{
+        fontSize: "var(--text-xs)",
+        color: COLORS.textMuted,
+        margin: 0,
+        display: "flex",
+        gap: "8px",
+        alignItems: "center",
+        flexWrap: "wrap",
+      }}
+    >
+      <span>
+        Protocol fee: {config.protocolFeeBps} bps ({pct}%)
+      </span>
+      <span>•</span>
       <span
         title={`Payment token: ${config.paymentToken}\nProtocol treasury: ${config.protocolTreasury}`}
-        style={{ cursor: 'help', borderBottom: `1px dotted ${COLORS.textDim}` }}
+        style={{ cursor: "help", borderBottom: `1px dotted ${COLORS.textDim}` }}
       >
-        details
+        Token: {config.paymentToken.slice(0, 6)}...
+        {config.paymentToken.slice(-4)}
       </span>
     </p>
   );
@@ -80,6 +116,7 @@ function PaymentForm({
   payAmount,
   payStatus,
   payError,
+  payAmountError,
   onPayAmountChange,
   onPay,
 }: {
@@ -87,6 +124,7 @@ function PaymentForm({
   payAmount: string;
   payStatus: ActionStatus;
   payError: string | null;
+  payAmountError: string | null;
   onPayAmountChange: (value: string) => void;
   onPay: () => void;
 }): ReactElement {
@@ -94,7 +132,8 @@ function PaymentForm({
     <>
       <h3>Pay for Agent</h3>
       <p className="text-xs text-muted">
-        Enter amount in tokens (e.g. &quot;10&quot;). Converted to smallest unit automatically.
+        Enter amount in tokens (e.g. &quot;10&quot;). Converted to smallest unit
+        automatically.
       </p>
       <div className={formRowClassName}>
         <Input
@@ -109,19 +148,33 @@ function PaymentForm({
             onPayAmountChange(e.target.value);
           }}
           style={{ flex: 1 }}
+          aria-invalid={payAmountError !== null}
+          aria-describedby="pay-amount-error"
         />
         <Button
           variant="primary"
-          disabled={isPayLoading || payStatus === 'pending' || payAmount === ''}
+          disabled={
+            isPayLoading ||
+            payStatus === "pending" ||
+            payAmount === "" ||
+            payAmountError !== null
+          }
           onClick={onPay}
-          style={{ minWidth: '140px' }}
+          style={{ minWidth: "140px" }}
         >
-          {payStatus === 'pending' ? <Spinner size={16} /> : 'Pay'}
+          {payStatus === "pending" ? <Spinner size={16} /> : "Pay"}
         </Button>
       </div>
-      {payStatus === 'success' && <Alert variant="success">Payment submitted.</Alert>}
-      {payStatus === 'error' && (
-        <Alert variant="error">{payError ?? 'Payment failed.'}</Alert>
+      {payAmountError !== null && (
+        <p id="pay-amount-error" className="field-error">
+          {payAmountError}
+        </p>
+      )}
+      {payStatus === "success" && (
+        <Alert variant="success">Payment submitted.</Alert>
+      )}
+      {payStatus === "error" && (
+        <Alert variant="error">{payError ?? "Payment failed."}</Alert>
       )}
     </>
   );
@@ -152,17 +205,36 @@ function EarningsSection({
       {earnings === null ? (
         <Spinner size={16} />
       ) : (
-        <dl>
-          <dt>Creator</dt>
-          <dd>
+        <dl
+          className="stack-on-mobile"
+          style={{
+            margin: "var(--space-md) 0",
+            display: "grid",
+            gridTemplateColumns: "140px 1fr",
+            gap: "8px 16px",
+            fontSize: "var(--text-sm)",
+          }}
+        >
+          <dt style={{ color: COLORS.textDim, fontWeight: "var(--fw-medium)" }}>
+            Creator
+          </dt>
+          <dd style={{ margin: 0 }}>
             <MonoLabel title={earnings.creator}>
               {earnings.creator === ethersZero
                 ? PLACEHOLDER
                 : truncateHex(earnings.creator)}
             </MonoLabel>
           </dd>
-          <dt>Accumulated Earnings</dt>
-          <dd>
+          <dt style={{ color: COLORS.textDim, fontWeight: "var(--fw-medium)" }}>
+            Accumulated Earnings
+          </dt>
+          <dd
+            style={{
+              margin: 0,
+              color: COLORS.bronzeLight,
+              fontWeight: "var(--fw-semibold)",
+            }}
+          >
             <MonoLabel>{earnings.earnings}</MonoLabel>
           </dd>
         </dl>
@@ -170,11 +242,11 @@ function EarningsSection({
       <div className={formRowClassName}>
         <Button
           variant="secondary"
-          disabled={isWithdrawPending || withdrawStatus === 'pending'}
+          disabled={isWithdrawPending || withdrawStatus === "pending"}
           onClick={onWithdrawRequest}
-          style={{ minWidth: '140px' }}
+          style={{ minWidth: "140px" }}
         >
-          {withdrawStatus === 'pending' ? <Spinner size={16} /> : 'Withdraw'}
+          {withdrawStatus === "pending" ? <Spinner size={16} /> : "Withdraw"}
         </Button>
       </div>
       <Modal
@@ -182,20 +254,30 @@ function EarningsSection({
         onClose={onWithdrawCancel}
         title="Confirm Withdrawal"
       >
-        <p>Withdraw all agent earnings? This will send funds to your wallet.</p>
+        <p style={{ marginBottom: "16px" }}>
+          Withdraw all agent earnings? This will send funds to your wallet.
+        </p>
+        <div
+          style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}
+        >
           <Button variant="secondary" onClick={onWithdrawCancel}>
             Cancel
           </Button>
-          <Button variant="primary" onClick={onWithdrawConfirm} disabled={isWithdrawPending || withdrawStatus === 'pending'}>
+          <Button
+            variant="primary"
+            onClick={onWithdrawConfirm}
+            disabled={isWithdrawPending || withdrawStatus === "pending"}
+          >
             Confirm
           </Button>
+        </div>
       </Modal>
-      {withdrawStatus === 'success' && (
+      {withdrawStatus === "success" && (
         <Alert variant="success">Withdrawal submitted.</Alert>
       )}
-      {withdrawStatus === 'error' && (
+      {withdrawStatus === "error" && (
         <Alert variant="error">
-          {withdrawActionError ?? 'Withdrawal failed.'}
+          {withdrawActionError ?? "Withdrawal failed."}
         </Alert>
       )}
     </>
@@ -207,6 +289,7 @@ function RoyaltySection({
   royaltyBps,
   royaltyStatus,
   royaltyError,
+  royaltyBpsError,
   onRoyaltyBpsChange,
   onSetRoyalty,
 }: {
@@ -214,6 +297,7 @@ function RoyaltySection({
   royaltyBps: string;
   royaltyStatus: ActionStatus;
   royaltyError: string | null;
+  royaltyBpsError: string | null;
   onRoyaltyBpsChange: (value: string) => void;
   onSetRoyalty: () => void;
 }): ReactElement {
@@ -221,8 +305,8 @@ function RoyaltySection({
     <>
       <h3>Royalty</h3>
       <p className="text-xs text-muted">
-        Basis points (0\u201310000). 250 = 2.5%. Only the agent creator
-        may set this on-chain.
+        Basis points (0\u201310000). 250 = 2.5%. Only the agent creator may set
+        this on-chain.
       </p>
       <div className={formRowClassName}>
         <Input
@@ -237,35 +321,47 @@ function RoyaltySection({
             onRoyaltyBpsChange(e.target.value);
           }}
           style={{ flex: 1 }}
+          aria-invalid={royaltyBpsError !== null}
+          aria-describedby="royalty-bps-error"
         />
         <Button
           variant="primary"
-          disabled={isRoyaltyLoading || royaltyStatus === 'pending' || royaltyBps === ''}
+          disabled={
+            isRoyaltyLoading ||
+            royaltyStatus === "pending" ||
+            royaltyBps === "" ||
+            royaltyBpsError !== null
+          }
           onClick={onSetRoyalty}
-          style={{ minWidth: '140px' }}
+          style={{ minWidth: "140px" }}
         >
-          {royaltyStatus === 'pending' ? <Spinner size={16} /> : 'Set Royalty'}
+          {royaltyStatus === "pending" ? <Spinner size={16} /> : "Set Royalty"}
         </Button>
       </div>
-      {royaltyStatus === 'success' && (
+      {royaltyBpsError !== null && (
+        <p id="royalty-bps-error" className="field-error">
+          {royaltyBpsError}
+        </p>
+      )}
+      {royaltyStatus === "success" && (
         <Alert variant="success">Royalty updated.</Alert>
       )}
-      {royaltyStatus === 'error' && (
+      {royaltyStatus === "error" && (
         <Alert variant="error">
-          {royaltyError ?? 'Royalty update failed.'}
+          {royaltyError ?? "Royalty update failed."}
         </Alert>
       )}
     </>
   );
 }
 
-
-
 export type PaymentPanelProps = {
   tokenId: bigint;
 };
 
 export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
+  const { address } = useAccount();
+  const publicClient = usePublicClient();
   const {
     payForAgent,
     getEarnings,
@@ -291,18 +387,48 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
   const [config, setConfig] = useState<PaymentConfig | null>(null);
   const [earnings, setEarnings] = useState<EarningsInfo | null>(null);
 
-  const [payAmount, setPayAmount] = useState('');
-  const [payStatus, setPayStatus] = useState<ActionStatus>('idle');
+  const [payAmount, setPayAmount] = useState("");
+  const [payStatus, setPayStatus] = useState<ActionStatus>("idle");
   const [payError, setPayError] = useState<string | null>(null);
 
-  const [royaltyBps, setRoyaltyBps] = useState('');
-  const [royaltyStatus, setRoyaltyStatus] = useState<ActionStatus>('idle');
+  const payAmountError = useMemo(() => {
+    const err = validateNumericInput(payAmount, {
+      label: "Amount",
+      min: 0,
+      allowDecimals: true,
+      maxDecimals: 18,
+    });
+    if (err !== null) return err;
+    if (payAmount !== "" && Number(payAmount) === 0)
+      return "Amount must be greater than zero.";
+    return null;
+  }, [payAmount]);
+
+  const [royaltyBps, setRoyaltyBps] = useState("");
+  const [royaltyStatus, setRoyaltyStatus] = useState<ActionStatus>("idle");
   const [royaltyError, setRoyaltyError] = useState<string | null>(null);
 
-  const [withdrawStatus, setWithdrawStatus] = useState<ActionStatus>('idle');
-  const [withdrawActionError, setWithdrawActionError] = useState<string | null>(null);
+  const royaltyBpsError = useMemo(
+    () =>
+      validateNumericInput(royaltyBps, {
+        label: "Royalty",
+        min: 0,
+        max: 10000,
+        allowDecimals: false,
+      }),
+    [royaltyBps],
+  );
+
+  const [withdrawStatus, setWithdrawStatus] = useState<ActionStatus>("idle");
+  const [withdrawActionError, setWithdrawActionError] = useState<string | null>(
+    null,
+  );
   const [showWithdrawConfirm, setShowWithdrawConfirm] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
+
+  const isCreator =
+    !earnings ||
+    (!!address && address.toLowerCase() === earnings.creator.toLowerCase());
 
   useAutoClear(payStatus, setPayStatus);
   useAutoClear(royaltyStatus, setRoyaltyStatus);
@@ -317,11 +443,13 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
         setConfig(cfg);
         setEarnings(earn);
       })
-      .catch(err => {
+      .catch((err) => {
         if (cancelled) return;
-        setInitError(err instanceof Error ? err.message : String(err));
+        setInitError(humanizeError(err));
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [tokenId, getPaymentConfig, getEarnings]);
 
   const refreshEarnings = useCallback(async (): Promise<void> => {
@@ -329,124 +457,192 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
       const earn = await getEarnings(tokenId);
       setEarnings(earn);
     } catch (err) {
-      console.warn('[PaymentPanel] Failed to refresh earnings:', err);
+      console.warn("[PaymentPanel] Failed to refresh earnings:", err);
     }
   }, [tokenId, getEarnings]);
 
   const handlePay = useCallback(async (): Promise<void> => {
-    if (payAmount === '') return;
-    setPayStatus('pending');
+    if (payAmount === "" || !config || !address || !publicClient) return;
+    setPayStatus("pending");
     try {
-      await payForAgent(tokenId, parseEther(payAmount).toString());
-      toast.success('Payment processed');
+      const decimals = (await publicClient.readContract({
+        address: config.paymentToken,
+        abi: erc20Abi,
+        functionName: "decimals",
+      })) as number;
+
+      const scaledAmount = parseUnits(payAmount, decimals);
+
+      const allowance = (await publicClient.readContract({
+        address: config.paymentToken,
+        abi: erc20Abi,
+        functionName: "allowance",
+        args: [address, getAxiomPaymentProcessorAddress()],
+      })) as bigint;
+
+      if (allowance < scaledAmount) {
+        toast.info("Approving token allowance...");
+        const approveTx = await writeContractAsync({
+          address: config.paymentToken,
+          abi: erc20Abi,
+          functionName: "approve",
+          args: [getAxiomPaymentProcessorAddress(), scaledAmount],
+        });
+        toast.info("Waiting for approval confirmation...");
+        await publicClient.waitForTransactionReceipt({ hash: approveTx });
+        toast.success("Allowance approved");
+      }
+
+      await payForAgent(tokenId, scaledAmount.toString());
+      toast.success("Payment processed");
       await refreshEarnings();
+      setPayStatus("success");
     } catch (err) {
-      setPayStatus('error');
-      setPayError(err instanceof Error ? err.message : String(err));
+      setPayStatus("error");
+      setPayError(humanizeError(err));
     }
-  }, [payAmount, payForAgent, tokenId, refreshEarnings]);
+  }, [
+    payAmount,
+    payForAgent,
+    tokenId,
+    refreshEarnings,
+    config,
+    address,
+    publicClient,
+    writeContractAsync,
+  ]);
 
   const handleSetRoyalty = useCallback(async (): Promise<void> => {
     const parsed = Number.parseInt(royaltyBps, 10);
     if (Number.isNaN(parsed) || parsed < 0 || parsed > 10_000) {
-      setRoyaltyStatus('error');
+      setRoyaltyStatus("error");
       return;
     }
-    setRoyaltyStatus('pending');
+    setRoyaltyStatus("pending");
     try {
       const result = await setRoyalty(tokenId, parsed);
       if (result?.to && result?.data) {
         await sendTransactionAsync({
           to: result.to,
           data: result.data,
-          value: BigInt(result.value ?? '0'),
+          value: BigInt(result.value ?? "0"),
         });
       }
-      setRoyaltyStatus('success');
-      toast.success('Royalty updated');
+      setRoyaltyStatus("success");
+      toast.success("Royalty updated");
     } catch (err) {
-      setRoyaltyStatus('error');
-      setRoyaltyError(err instanceof Error ? err.message : String(err));
+      setRoyaltyStatus("error");
+      setRoyaltyError(humanizeError(err));
     }
   }, [royaltyBps, setRoyalty, tokenId, sendTransactionAsync]);
 
   const handleWithdraw = useCallback(async (): Promise<void> => {
     setShowWithdrawConfirm(false);
-    setWithdrawStatus('pending');
+    setWithdrawStatus("pending");
     try {
       await writeContractAsync({
         address: getAxiomPaymentProcessorAddress(),
         abi: paymentProcessorAbi,
-        functionName: 'withdrawAgentEarnings',
+        functionName: "withdrawAgentEarnings",
         args: [],
       });
-      setWithdrawStatus('success');
-      toast.success('Withdrawal submitted');
+      setWithdrawStatus("success");
+      toast.success("Withdrawal submitted");
       await refreshEarnings();
     } catch (err) {
-      setWithdrawStatus('error');
-      setWithdrawActionError(err instanceof Error ? err.message : String(err));
+      setWithdrawStatus("error");
+      setWithdrawActionError(humanizeError(err));
     }
   }, [writeContractAsync, refreshEarnings]);
 
   return (
     <Card>
       <ConnectedGuard>
-      <SectionTitle>Payments</SectionTitle>
+        <SectionTitle>Payments</SectionTitle>
 
-      <PaymentConfigDisplay config={config} initError={initError} />
+        <PaymentConfigDisplay config={config} initError={initError} />
 
-      <PaymentForm
-        isPayLoading={isPayLoading}
-        payAmount={payAmount}
-        payStatus={payStatus}
-        payError={payError}
-        onPayAmountChange={(v): void => {
-          setPayAmount(v);
-          setPayStatus('idle');
-          setPayError(null);
-        }}
-        onPay={(): void => { void handlePay(); }}
-      />
+        <PaymentForm
+          isPayLoading={isPayLoading}
+          payAmount={payAmount}
+          payStatus={payStatus}
+          payError={payError}
+          payAmountError={payAmountError}
+          onPayAmountChange={(v): void => {
+            setPayAmount(v);
+            setPayStatus("idle");
+            setPayError(null);
+          }}
+          onPay={(): void => {
+            void handlePay();
+          }}
+        />
 
-      <EarningsSection
-        earnings={earnings}
-        isWithdrawPending={isWithdrawPending}
-        withdrawStatus={withdrawStatus}
-        showWithdrawConfirm={showWithdrawConfirm}
-        withdrawActionError={withdrawActionError}
-        onWithdrawRequest={(): void => { setShowWithdrawConfirm(true); }}
-        onWithdrawCancel={(): void => { setShowWithdrawConfirm(false); }}
-        onWithdrawConfirm={(): void => { void handleWithdraw(); }}
-      />
+        {isCreator && (
+          <>
+            <hr
+              style={{
+                border: 0,
+                borderTop: `1px solid ${COLORS.border}`,
+                margin: "var(--space-xl) 0",
+              }}
+            />
+            <EarningsSection
+              earnings={earnings}
+              isWithdrawPending={isWithdrawPending}
+              withdrawStatus={withdrawStatus}
+              showWithdrawConfirm={showWithdrawConfirm}
+              withdrawActionError={withdrawActionError}
+              onWithdrawRequest={(): void => {
+                setShowWithdrawConfirm(true);
+              }}
+              onWithdrawCancel={(): void => {
+                setShowWithdrawConfirm(false);
+              }}
+              onWithdrawConfirm={(): void => {
+                void handleWithdraw();
+              }}
+            />
 
-      <RoyaltySection
-        isRoyaltyLoading={isRoyaltyLoading}
-        royaltyBps={royaltyBps}
-        royaltyStatus={royaltyStatus}
-        royaltyError={royaltyError}
-        onRoyaltyBpsChange={(v): void => {
-          setRoyaltyBps(v);
-          setRoyaltyStatus('idle');
-          setRoyaltyError(null);
-        }}
-        onSetRoyalty={(): void => { void handleSetRoyalty(); }}
-      />
+            <hr
+              style={{
+                border: 0,
+                borderTop: `1px solid ${COLORS.border}`,
+                margin: "var(--space-xl) 0",
+              }}
+            />
+            <RoyaltySection
+              isRoyaltyLoading={isRoyaltyLoading}
+              royaltyBps={royaltyBps}
+              royaltyStatus={royaltyStatus}
+              royaltyError={royaltyError}
+              royaltyBpsError={royaltyBpsError}
+              onRoyaltyBpsChange={(v): void => {
+                setRoyaltyBps(v);
+                setRoyaltyStatus("idle");
+                setRoyaltyError(null);
+              }}
+              onSetRoyalty={(): void => {
+                void handleSetRoyalty();
+              }}
+            />
+          </>
+        )}
 
-      {fetchError !== null && (
-        <Alert variant="error">{fetchError.message}</Alert>
-      )}
-      {earningsError !== null && (
-        <Alert variant="error">{earningsError.message}</Alert>
-      )}
-      {withdrawError !== null && (
-        <Alert variant="error">{withdrawError.message}</Alert>
-      )}
+        {fetchError !== null && (
+          <Alert variant="error">{humanizeError(fetchError)}</Alert>
+        )}
+        {earningsError !== null && (
+          <Alert variant="error">{humanizeError(earningsError)}</Alert>
+        )}
+        {withdrawError !== null && (
+          <Alert variant="error">{humanizeError(withdrawError)}</Alert>
+        )}
       </ConnectedGuard>
     </Card>
   );
 }
 
-const ethersZero: Address = '0x0000000000000000000000000000000000000000';
+const ethersZero: Address = "0x0000000000000000000000000000000000000000";
 
 export default PaymentPanel;
