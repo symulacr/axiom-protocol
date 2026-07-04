@@ -1,6 +1,6 @@
-import { useEffect, useMemo } from 'react';
-import { useEventHistory, type AxiomEvent } from './useEventHistory.js';
-import { useEventStream } from './useEventStream.js';
+import { useEffect, useMemo } from "react";
+import { useEventHistory, type AxiomEvent } from "./useEventHistory.js";
+import { useEventStream } from "./useEventStream.js";
 
 export interface UseAgentEventsResult {
   events: AxiomEvent[];
@@ -15,8 +15,10 @@ export interface UseAgentEventsResult {
  * via WebSocket events.
  */
 export function useAgentEvents(tokenId: bigint | null): UseAgentEventsResult {
-  const { events, isLoading, error, refetch } = useEventHistory({ pollIntervalMs: 15_000 });
-  const { events: wsEvents } = useEventStream({ topics: ['*'] });
+  const { events, isLoading, error, refetch } = useEventHistory({
+    pollIntervalMs: 15_000,
+  });
+  const { events: wsEvents } = useEventStream({ topics: ["*"] });
 
   useEffect(() => {
     if (wsEvents.length === 0) return;
@@ -25,11 +27,26 @@ export function useAgentEvents(tokenId: bigint | null): UseAgentEventsResult {
   }, [wsEvents, refetch]);
 
   const agentEvents = useMemo(
-    () => tokenId === null
-      ? []
-      : events.filter(ev => String((ev.payload as Record<string, unknown>)?.tokenId) === tokenId.toString()),
+    () =>
+      tokenId === null
+        ? []
+        : events.filter(
+            (ev) =>
+              String((ev.payload as Record<string, unknown>)?.tokenId) ===
+              tokenId.toString(),
+          ),
     [events, tokenId],
   );
 
-  return { events: agentEvents, isLoading, error, refetch };
+  const result = useMemo(
+    () => ({
+      events: agentEvents,
+      isLoading,
+      error,
+      refetch,
+    }),
+    [agentEvents, isLoading, error, refetch],
+  );
+
+  return result;
 }

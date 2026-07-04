@@ -1,24 +1,28 @@
-import type { MouseEvent, ReactElement } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { getAddress } from 'viem';
+import type { MouseEvent, ReactElement } from "react";
+import { useNavigate } from "react-router-dom";
+import { getAddress } from "viem";
 
-import type { Provider } from '../hooks/useProviders';
-import { useMediaQuery } from '../hooks/useMediaQuery.js';
-import { Card, Button, MonoLabel, COLORS } from './ui.js';
+import type { Provider } from "../hooks/useProviders";
+import { useMediaQuery } from "../hooks/useMediaQuery.js";
+import { Card, Button, MonoLabel, COLORS } from "./ui.js";
 
 /** Best-effort EIP-55 checksum; falls back to the raw input on failure. */
 function formatAddress(raw: `0x${string}`): string {
   try {
     return getAddress(raw);
   } catch (err) {
-    console.warn('[ProviderCard] parse error:', err);
+    console.warn("[ProviderCard] parse error:", err);
     return raw;
   }
 }
 
-export function ProviderCard({ provider }: { provider: Provider }): ReactElement {
+export function ProviderCard({
+  provider,
+}: {
+  provider: Provider;
+}): ReactElement {
   const navigate = useNavigate();
-  const isMobile = useMediaQuery('(max-width: 640px)');
+  const isMobile = useMediaQuery("(max-width: 640px)");
   const addressLabel = formatAddress(provider.address);
 
   const onUse = (e: MouseEvent<HTMLButtonElement>): void => {
@@ -27,28 +31,50 @@ export function ProviderCard({ provider }: { provider: Provider }): ReactElement
   };
 
   return (
-    <Card hover style={isMobile ? { width: '100%' } : undefined}>
+    <Card
+      hover
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "var(--space-xs)",
+        width: isMobile ? "100%" : "260px",
+        boxSizing: "border-box",
+      }}
+    >
       <MonoLabel>{addressLabel}</MonoLabel>
-      <div style={{ fontSize: 'var(--text-sm)', color: COLORS.textPrimary, fontWeight: 'var(--fw-medium)' }}>{provider.model}</div>
       <div
         style={{
-          fontSize: 'var(--text-xs)',
+          fontSize: "var(--text-sm)",
+          color: COLORS.textPrimary,
+          fontWeight: "var(--fw-medium)",
+          marginTop: "2px",
+        }}
+      >
+        {provider.model}
+      </div>
+      <div
+        style={{
+          fontSize: "var(--text-xs)",
           color: COLORS.textDim,
-          fontFamily: 'var(--font-mono)',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
+          fontFamily: "var(--font-mono)",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
         }}
         title={provider.endpoint}
       >
         {provider.endpoint}
       </div>
       {provider.price && (
-        <div style={{ fontSize: 'var(--text-xs)', color: COLORS.textMuted }}>
+        <div style={{ fontSize: "var(--text-xs)", color: COLORS.textMuted }}>
           {provider.price} 0G/token
         </div>
       )}
-      <Button variant="secondary" onClick={onUse}>
+      <Button
+        variant="secondary"
+        onClick={onUse}
+        style={{ marginTop: "var(--space-sm)" }}
+      >
         Use this provider
       </Button>
     </Card>

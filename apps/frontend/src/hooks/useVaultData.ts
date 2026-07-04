@@ -1,7 +1,8 @@
-import { useChainId, useReadContracts } from 'wagmi';
-import { parseAbi } from 'viem';
-import { getAxiomStrategyVaultAddress } from '../abi/addresses.js';
-import { axiomStrategyVaultAbi } from '../abi/axiomStrategyVault.js';
+import { useMemo } from "react";
+import { useChainId, useReadContracts } from "wagmi";
+import { parseAbi } from "viem";
+import { getAxiomStrategyVaultAddress } from "../abi/addresses.js";
+import { axiomStrategyVaultAbi } from "../abi/axiomStrategyVault.js";
 
 const axiomStrategyVaultAbiParsed = parseAbi(axiomStrategyVaultAbi);
 
@@ -18,22 +19,28 @@ export function useVaultData(tokenId: bigint): VaultData {
   const chainId = useChainId();
   const vaultAddr = getAxiomStrategyVaultAddress(chainId);
 
+  const contracts = useMemo(
+    () =>
+      [
+        {
+          address: vaultAddr,
+          abi: axiomStrategyVaultAbiParsed,
+          functionName: "balanceOf",
+          args: [tokenId],
+        },
+        {
+          address: vaultAddr,
+          abi: axiomStrategyVaultAbiParsed,
+          functionName: "strategyOf",
+          args: [tokenId],
+        },
+      ] as const,
+    [tokenId, vaultAddr],
+  );
+
   const query = useReadContracts({
     allowFailure: false,
-    contracts: [
-      {
-        address: vaultAddr,
-        abi: axiomStrategyVaultAbiParsed,
-        functionName: 'balanceOf',
-        args: [tokenId],
-      },
-      {
-        address: vaultAddr,
-        abi: axiomStrategyVaultAbiParsed,
-        functionName: 'strategyOf',
-        args: [tokenId],
-      },
-    ] as const,
+    contracts,
     query: {
       staleTime: 30_000,
       enabled: tokenId >= 0n,
@@ -41,12 +48,39 @@ export function useVaultData(tokenId: bigint): VaultData {
   });
 
   const data = query.data;
-  return {
-    depositsWei: data ? (data[0] as bigint) : 0n,
-    strategyRoot: data ? ((data[1] as readonly [`0x${string}`, bigint, bigint, bigint])[0] as string) : '',
-    dailyLimitWei: data ? ((data[1] as readonly [`0x${string}`, bigint, bigint, bigint])[1] as bigint) : 0n,
-    isLoading: query.isLoading,
-    error: query.error as Error | null,
-    refetch: () => { query.refetch(); },
-  };
+  const depositsWei = data ? (data[0] as bigint) : 0n;
+  const strategyRoot = data
+    ? ((
+        data[1] as readonly [`0x${string}`, bigint, bigint, bigint]
+      )[0] as string)
+    : "";
+  const dailyLimitWei = data
+    ? ((
+        data[1] as readonly [`0x${string}`, bigint, bigint, bigint]
+      )[1] as bigint)
+    : 0n;
+  const refetch = query.refetch;
+
+  const result = useMemo(
+    () => ({
+      depositsWei,
+      strategyRoot,
+      dailyLimitWei,
+      isLoading: query.isLoading,
+      error: query.error as Error | null,
+      refetch: () => {
+        refetch();
+      },
+    }),
+    [
+      depositsWei,
+      strategyRoot,
+      dailyLimitWei,
+      query.isLoading,
+      query.error,
+      refetch,
+    ],
+  );
+
+  return result;
 }

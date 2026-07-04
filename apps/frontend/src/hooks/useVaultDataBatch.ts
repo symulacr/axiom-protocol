@@ -1,7 +1,8 @@
-import { useChainId, useReadContracts } from 'wagmi';
-import { parseAbi } from 'viem';
-import { getAxiomStrategyVaultAddress } from '../abi/addresses.js';
-import { axiomStrategyVaultAbi } from '../abi/axiomStrategyVault.js';
+import { useMemo } from "react";
+import { useChainId, useReadContracts } from "wagmi";
+import { parseAbi } from "viem";
+import { getAxiomStrategyVaultAddress } from "../abi/addresses.js";
+import { axiomStrategyVaultAbi } from "../abi/axiomStrategyVault.js";
 
 const abi = parseAbi(axiomStrategyVaultAbi);
 
@@ -25,20 +26,22 @@ export function useVaultDataBatch(tokenIds: readonly bigint[]): {
   const chainId = useChainId();
   const vaultAddr = getAxiomStrategyVaultAddress(chainId);
 
-  const contracts = tokenIds.flatMap((tokenId) => [
-    {
-      address: vaultAddr,
-      abi,
-      functionName: 'balanceOf' as const,
-      args: [tokenId] as const,
-    },
-    {
-      address: vaultAddr,
-      abi,
-      functionName: 'strategyOf' as const,
-      args: [tokenId] as const,
-    },
-  ]);
+  const contracts = useMemo(() => {
+    return tokenIds.flatMap((tokenId) => [
+      {
+        address: vaultAddr,
+        abi,
+        functionName: "balanceOf" as const,
+        args: [tokenId] as const,
+      },
+      {
+        address: vaultAddr,
+        abi,
+        functionName: "strategyOf" as const,
+        args: [tokenId] as const,
+      },
+    ]);
+  }, [tokenIds, vaultAddr]);
 
   const query = useReadContracts({
     contracts,
@@ -48,33 +51,62 @@ export function useVaultDataBatch(tokenIds: readonly bigint[]): {
     },
   });
 
-  const data = new Map<string, VaultDataEntry>();
-  for (let i = 0; i < tokenIds.length; i++) {
-    const tokenId = tokenIds[i];
-    if (tokenId === undefined) continue;
-    const balanceResult = query.data?.[i * 2];
-    const strategyResult = query.data?.[i * 2 + 1];
+  const data = useMemo(() => {
+    const map = new Map<string, VaultDataEntry>();
+    for (let i = 0; i < tokenIds.length; i++) {
+      const tokenId = tokenIds[i];
+      if (tokenId === undefined) continue;
+      const balanceResult = query.data?.[i * 2];
+      const strategyResult = query.data?.[i * 2 + 1];
 
-    let depositsWei = 0n;
-    if (balanceResult && balanceResult.status === 'success' && balanceResult.result !== undefined) {
-      depositsWei = balanceResult.result as bigint;
+      let depositsWei = 0n;
+      if (
+        balanceResult &&
+        balanceResult.status === "success" &&
+        balanceResult.result !== undefined
+      ) {
+        depositsWei = balanceResult.result as bigint;
+      }
+
+      let strategyRoot = "";
+      let dailyLimitWei = 0n;
+      if (
+        strategyResult &&
+        strategyResult.status === "success" &&
+        strategyResult.result !== undefined
+      ) {
+        const strategy = strategyResult.result as readonly [
+          `0x${string}`,
+          bigint,
+          bigint,
+          bigint,
+        ];
+        strategyRoot = strategy[0] as string;
+        dailyLimitWei = strategy[1] as bigint;
+      }
+
+      map.set(tokenId.toString(), {
+        tokenId,
+        depositsWei,
+        strategyRoot,
+        dailyLimitWei,
+      });
     }
+    return map;
+  }, [tokenIds, query.data]);
 
-    let strategyRoot = '';
-    let dailyLimitWei = 0n;
-    if (strategyResult && strategyResult.status === 'success' && strategyResult.result !== undefined) {
-      const strategy = strategyResult.result as readonly [`0x${string}`, bigint, bigint, bigint];
-      strategyRoot = strategy[0] as string;
-      dailyLimitWei = strategy[1] as bigint;
-    }
+  const refetch = query.refetch;
+  const result = useMemo(
+    () => ({
+      data,
+      isLoading: query.isLoading,
+      error: query.error as Error | null,
+      refetch: () => {
+        refetch();
+      },
+    }),
+    [data, query.isLoading, query.error, refetch],
+  );
 
-    data.set(tokenId.toString(), { tokenId, depositsWei, strategyRoot, dailyLimitWei });
-  }
-
-  return {
-    data,
-    isLoading: query.isLoading,
-    error: query.error as Error | null,
-    refetch: () => { query.refetch(); },
-  };
+  return result;
 }

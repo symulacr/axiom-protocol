@@ -1,5 +1,6 @@
-import { useAccount } from 'wagmi';
-import { usePolledApi } from './usePolledApi.js';
+import { useMemo } from "react";
+import { useAccount } from "wagmi";
+import { usePolledApi } from "./usePolledApi.js";
 
 export interface AgentInfo {
   tokenId: bigint;
@@ -10,7 +11,13 @@ export interface AgentInfo {
 }
 
 interface AgentsApiResponse {
-  agents: { tokenId: string; owner: string; dataHash: string; uri: string; dataDescription?: string }[];
+  agents: {
+    tokenId: string;
+    owner: string;
+    dataHash: string;
+    uri: string;
+    dataDescription?: string;
+  }[];
 }
 
 export function useAgents(): {
@@ -21,14 +28,20 @@ export function useAgents(): {
 } {
   const { address } = useAccount();
   const { data, isLoading, error, refetch } = usePolledApi<AgentsApiResponse>(
-    () => (address ? `/v1/agents?owner=${address}` : ''),
+    () => (address ? `/v1/agents?owner=${address}` : ""),
     {
-      queryKey: ['agents', address],
+      queryKey: ["agents", address],
       enabled: Boolean(address),
       refetchInterval: 30000,
     },
   );
 
-  const agents: AgentInfo[] = (data?.agents ?? []).map(a => ({ ...a, tokenId: BigInt(a.tokenId) }));
+  const agents = useMemo<AgentInfo[]>(() => {
+    return (data?.agents ?? []).map((a) => ({
+      ...a,
+      tokenId: BigInt(a.tokenId),
+    }));
+  }, [data?.agents]);
+
   return { agents, isLoading, error, refetch: () => void refetch() };
 }
