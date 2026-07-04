@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Axiom TEE signer service \u2014 signs ERC-7857 OwnershipProofs and re-encrypts agent metadata",
+  "description": "Axiom TEE signer service — signs ERC-7857 OwnershipProofs and re-encrypts agent metadata",
   "main": "dist/index.js",
   "exports": {
     ".": "./dist/index.js",
@@ -14,15 +14,6 @@
     "./signer": {
       "types": "./dist/signer.d.ts",
       "default": "./dist/signer.js"
-    },
-    "./crypto/*": "./dist/crypto/*",
-    "./crypto/aes-gcm": {
-      "types": "./dist/crypto/aes-gcm.d.ts",
-      "default": "./dist/crypto/aes-gcm.js"
-    },
-    "./crypto/secp256k1": {
-      "types": "./dist/crypto/secp256k1.d.ts",
-      "default": "./dist/crypto/secp256k1.js"
     }
   },
   "scripts": {
