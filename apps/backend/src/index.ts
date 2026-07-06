@@ -1,9 +1,11 @@
 import * as Sentry from "@sentry/node";
 
-import { FetchRequest, JsonRpcProvider, Wallet } from "ethers";
+import { Wallet } from "ethers";
 import { resolveAddress } from "@axiom/config/addresses";
+import { registerProcessHandlers } from "@axiom/config/process";
 import { startServer } from "./server.js";
 import { loadEnv } from "./env.js";
+import { getSharedProvider } from "./provider.js";
 import { backendEnvSchema } from "./env-schema.js";
 import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
 import { getEventStore } from "./events/store.js";
@@ -18,21 +20,13 @@ if (env.AXIOM_SENTRY_DSN) {
   });
 }
 
-const fetchReq = new FetchRequest(env.AXIOM_EVM_RPC);
-fetchReq.timeout = 10_000;
-
-const provider = new JsonRpcProvider(
-  fetchReq,
-  env.AXIOM_CHAIN_ID ?? GALILEO_CHAIN_ID,
-  { staticNetwork: true },
-);
+const provider = getSharedProvider(env.AXIOM_CHAIN_ID ?? GALILEO_CHAIN_ID);
 const signer = new Wallet(env.DEPLOYER_PK, provider);
 const server = startServer({
   bind: env.AXIOM_BIND,
   port: env.AXIOM_PORT ?? env.PORT ?? 3000,
   env,
   evmRpc: env.AXIOM_EVM_RPC,
-  storageRpc: env.AXIOM_STORAGE_RPC,
   signer,
   oracleBaseUrl: env.AXIOM_ORACLE_URL,
   addresses: {
@@ -43,36 +37,17 @@ const server = startServer({
   },
 });
 
+let shuttingDown = false;
 const onSignal = (sig: NodeJS.Signals): void => {
+  if (shuttingDown) return;
+  shuttingDown = true;
   console.log(JSON.stringify({ level: "info", msg: "shutdown", signal: sig }));
-  getEventStore().flush();
-  server.httpServer.closeAllConnections?.();
-  server.httpServer.close(() => process.exit(0));
+  void (async () => {
+    await getEventStore().flush();
+    server.httpServer.closeAllConnections?.();
+    server.httpServer.close(() => process.exit(0));
+  })();
 };
 process.on("SIGTERM", onSignal);
 process.on("SIGINT", onSignal);
-
-process.on("unhandledRejection", (reason: unknown) => {
-  const err =
-    reason instanceof Error ? (reason.stack ?? reason.message) : String(reason);
-  console.error(
-    JSON.stringify({
-      level: "error",
-      msg: "unhandledRejection",
-      err,
-      pid: process.pid,
-    }),
-  );
-  process.exit(1);
-});
-process.on("uncaughtException", (err: Error) => {
-  console.error(
-    JSON.stringify({
-      level: "error",
-      msg: "uncaughtException",
-      err: err.stack ?? err.message,
-      pid: process.pid,
-    }),
-  );
-  process.exit(1);
-});
+registerProcessHandlers();

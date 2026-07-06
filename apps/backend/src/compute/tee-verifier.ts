@@ -9,6 +9,7 @@
 import type { Wallet } from "ethers";
 import { getBroker } from "./broker.js";
 import { createLogger } from "../utils/logger.js";
+import { extractErrorMessage } from "../utils/response.js";
 
 const log = createLogger("tee-verifier");
 
@@ -47,7 +48,7 @@ export async function verifyTeeResponse(
   } catch (err) {
     log.warn("TEE verification error", {
       providerAddress,
-      error: err instanceof Error ? err.message : String(err),
+      error: extractErrorMessage(err),
     });
     return null;
   }

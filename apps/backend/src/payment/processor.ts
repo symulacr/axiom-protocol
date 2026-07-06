@@ -99,8 +99,9 @@ export class PaymentProcessorClient {
     event: PaymentProcessedEvent | null;
   }> {
     await this.ensureAllowance(amount);
-    const tx = await this.payment.contract.payForAgent(agentTokenId, amount);
-    const receipt = (await tx.wait()) as ContractTransactionReceipt;
+    const receipt = await this.sendAndWait(
+      this.payment.contract.payForAgent(agentTokenId, amount),
+    );
     const event = this.parsePaymentProcessed(receipt);
     return { receipt, event };
   }
@@ -118,8 +119,9 @@ export class PaymentProcessorClient {
     amount: bigint;
   }> {
     await this.ensureAllowance(amount);
-    const tx = await this.payment.contract.payComputeProvider(provider, amount);
-    const receipt = (await tx.wait()) as ContractTransactionReceipt;
+    const receipt = await this.sendAndWait(
+      this.payment.contract.payComputeProvider(provider, amount),
+    );
     return { receipt, provider, amount };
   }
 
@@ -130,19 +132,11 @@ export class PaymentProcessorClient {
     receipt: ContractTransactionReceipt;
     amount: bigint | null;
   }> {
-    const tx = await this.payment.contract.withdrawAgentEarnings();
-    const receipt = (await tx.wait()) as ContractTransactionReceipt;
-    const topic = this.payment.iface.getEvent("EarningsWithdrawn")?.topicHash;
-    const log = topic
-      ? receipt.logs.find((l: Log | EventLog) => l.topics[0] === topic)
-      : undefined;
-    let amount: bigint | null = null;
-    if (log) {
-      const parsed = this.payment.iface.parseLog(
-        log as unknown as { topics: string[]; data: string },
-      );
-      amount = (parsed?.args.amount as bigint) ?? null;
-    }
+    const receipt = await this.sendAndWait(
+      this.payment.contract.withdrawAgentEarnings(),
+    );
+    const parsed = this.findParsedEvent(receipt, "EarningsWithdrawn");
+    const amount = (parsed?.args.amount as bigint | undefined) ?? null;
     return { receipt, amount };
   }
 
@@ -201,17 +195,35 @@ export class PaymentProcessorClient {
     await tx.wait();
   }
 
-  private parsePaymentProcessed(
+  private async sendAndWait(
+    txPromise: Promise<TransactionResponse>,
+  ): Promise<ContractTransactionReceipt> {
+    const tx = await txPromise;
+    const receipt = await tx.wait();
+    if (!receipt) {
+      throw new Error(`tx ${tx.hash} returned no receipt`);
+    }
+    return receipt as ContractTransactionReceipt;
+  }
+
+  private findParsedEvent(
     receipt: ContractTransactionReceipt,
-  ): PaymentProcessedEvent | null {
-    const topic = this.payment.iface.getEvent("PaymentProcessed")?.topicHash;
+    eventName: string,
+  ) {
+    const topic = this.payment.iface.getEvent(eventName)?.topicHash;
     const log = topic
       ? receipt.logs.find((l: Log | EventLog) => l.topics[0] === topic)
       : undefined;
     if (!log) return null;
-    const parsed = this.payment.iface.parseLog(
+    return this.payment.iface.parseLog(
       log as unknown as { topics: string[]; data: string },
     );
+  }
+
+  private parsePaymentProcessed(
+    receipt: ContractTransactionReceipt,
+  ): PaymentProcessedEvent | null {
+    const parsed = this.findParsedEvent(receipt, "PaymentProcessed");
     if (!parsed) return null;
     const args = parsed.args as unknown as {
       agentTokenId: bigint;

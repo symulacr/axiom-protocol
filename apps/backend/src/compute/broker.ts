@@ -8,7 +8,7 @@
 // All workarounds for missing SDK features (custom token decoders, manual
 // depositFund/transferFund loops, hand-rolled JsonRpcProvider setup) belong
 // here. Callers should not import the underlying SDK directly.
-import { JsonRpcProvider, Wallet } from "ethers";
+import { FetchRequest, JsonRpcProvider, Wallet } from "ethers";
 import {
   CONTRACT_ADDRESSES,
   createReadOnlyInferenceBroker,
@@ -20,6 +20,7 @@ import {
 } from "@0gfoundation/0g-compute-ts-sdk";
 import { GALILEO_CHAIN_ID, pickOGNetwork } from "@axiom/config/networks";
 import { createLogger } from "../utils/logger.js";
+import { extractErrorMessage } from "../utils/response.js";
 
 const log = createLogger("compute-broker");
 
@@ -43,6 +44,21 @@ export function resolveEvmRpc(chainId?: number): string {
   return network?.evmRpc ?? "https://evmrpc-testnet.0g.ai";
 }
 
+/** Shared JsonRpcProvider with static network pinning. */
+export function createStaticProvider(
+  evmRpc: string,
+  chainId?: number,
+  opts?: { timeoutMs?: number },
+): JsonRpcProvider {
+  const cid = resolveChainId(chainId);
+  if (opts?.timeoutMs !== undefined) {
+    const fetchReq = new FetchRequest(evmRpc);
+    fetchReq.timeout = opts.timeoutMs;
+    return new JsonRpcProvider(fetchReq, cid, { staticNetwork: true });
+  }
+  return new JsonRpcProvider(evmRpc, cid, { staticNetwork: true });
+}
+
 /** Static factory for a one-shot JsonRpcProvider + Wallet pair. */
 export function createProviderAndSigner(
   config: Pick<BrokerConfig, "evmRpc" | "chainId" | "signer">,
@@ -50,10 +66,7 @@ export function createProviderAndSigner(
   provider: JsonRpcProvider;
   signer: Wallet;
 } {
-  const chainId = resolveChainId(config.chainId);
-  const provider = new JsonRpcProvider(config.evmRpc, chainId, {
-    staticNetwork: true,
-  });
+  const provider = createStaticProvider(config.evmRpc, config.chainId);
   return { provider, signer: config.signer.connect(provider) as Wallet };
 }
 
@@ -77,6 +90,17 @@ export async function getReadOnlyBroker(
 // --- Authenticated broker cache (per chain id) ---
 
 const _brokerCache = new Map<number, ZGComputeNetworkBroker>();
+
+/** Evict cached broker instances for one chain or the entire process. */
+export function clearBrokerCache(chainId?: number): void {
+  if (chainId !== undefined) {
+    _readOnlyCache.delete(chainId);
+    _brokerCache.delete(chainId);
+  } else {
+    _readOnlyCache.clear();
+    _brokerCache.clear();
+  }
+}
 
 /** Get (or lazily create) an authenticated broker that can fund, sign and verify. */
 export async function getBroker(
@@ -133,7 +157,7 @@ export async function ensureProviderFunded(
   } catch (err) {
     log.warn("Auto-funding failed", {
       provider: providerAddress,
-      error: err instanceof Error ? err.message : String(err),
+      error: extractErrorMessage(err),
     });
     return false;
   }
@@ -150,7 +174,7 @@ export async function stopAutoFunding(
     broker.inference.stopAutoFunding(provider);
   } catch (err) {
     log.warn("Stop auto-funding failed", {
-      error: err instanceof Error ? err.message : String(err),
+      error: extractErrorMessage(err),
     });
   }
 }
