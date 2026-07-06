@@ -50,6 +50,43 @@ export type EventPayload =
   | ExecutedPayload
   | Record<string, unknown>;
 
+/** Wire-format payload stored on {@link StoredEvent}. */
+export type StoredEventPayload = EventPayload;
+
+function isPlainObject(val: unknown): val is Record<string, unknown> {
+  return val !== null && typeof val === "object" && !Array.isArray(val);
+}
+
+function hasStringFields(
+  o: Record<string, unknown>,
+  keys: readonly string[],
+): boolean {
+  return keys.every((k) => typeof o[k] === "string");
+}
+
+/**
+ * Basic shape check for known event payload kinds; any plain object is accepted
+ * as an opaque {@link Record} fallback.
+ */
+export function isEventPayload(val: unknown): val is EventPayload {
+  if (!isPlainObject(val)) return false;
+
+  if (typeof val.tokenId === "string" && typeof val.action === "string") {
+    return true;
+  }
+  if (hasStringFields(val, ["tokenId", "from", "to"])) return true;
+  if (hasStringFields(val, ["tokenId", "from", "amount"])) return true;
+  if (hasStringFields(val, ["tokenId", "to", "amount"])) return true;
+  if (hasStringFields(val, ["tokenId", "strategyRoot", "dailyLimit"])) {
+    return true;
+  }
+  if (hasStringFields(val, ["tokenId", "actionHash", "target", "value"])) {
+    return true;
+  }
+
+  return true;
+}
+
 /** Safely extract a string field from an unknown payload. */
 export function payloadField(
   payload: unknown,
@@ -68,7 +105,9 @@ export function payloadNumber(
 ): number | undefined {
   if (payload && typeof payload === "object" && key in payload) {
     const val = (payload as Record<string, unknown>)[key];
-    return val !== undefined && val !== null ? Number(val) : undefined;
+    if (val === undefined || val === null) return undefined;
+    const n = Number(val);
+    return Number.isFinite(n) ? n : undefined;
   }
   return undefined;
 }

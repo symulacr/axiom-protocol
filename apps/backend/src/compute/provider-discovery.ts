@@ -4,19 +4,49 @@
 // Provider URL resolution and auto-funding live in `./broker.ts` (shared
 // factory) and `./router.ts` (OpenAI client construction). This file
 // exposes the discovery + cache invalidation surface only.
-import { getReadOnlyBroker } from "./broker.js";
+import {
+  clearBrokerCache,
+  getReadOnlyBroker,
+  resolveChainId,
+} from "./broker.js";
 import { createLogger } from "../utils/logger.js";
+import { extractErrorMessage } from "../utils/response.js";
 
-const log = createLogger("compute");
+const log = createLogger("provider-discovery");
 
 export interface ServiceInfo {
   provider: string;
   model: string;
 }
 
-let _cachedProviders: ServiceInfo[] | null = null;
-let _cachePromise: Promise<ServiceInfo[]> | null = null;
-let _cacheTimestamp = 0;
+export interface SelectProviderOptions {
+  /** Prefer provider registered for this model id. */
+  model?: string;
+}
+
+/** Pick a provider from the on-chain service list with explicit precedence. */
+export function selectProvider(
+  services: ServiceInfo[],
+  opts?: SelectProviderOptions,
+): ServiceInfo | undefined {
+  if (services.length === 0) return undefined;
+  if (opts?.model) {
+    const modelLower = opts.model.toLowerCase();
+    const byModel = services.find(
+      (s) => s.model.toLowerCase() === modelLower && s.provider,
+    );
+    if (byModel) return byModel;
+  }
+  return services.find((s) => s.provider) ?? services[0];
+}
+
+interface CacheEntry {
+  providers: ServiceInfo[];
+  timestamp: number;
+}
+
+const _cache = new Map<number, CacheEntry>();
+const _cachePromises = new Map<number, Promise<ServiceInfo[]>>();
 const CACHE_TTL_MS = 300_000; // 5 minutes
 
 /**
@@ -31,12 +61,16 @@ export async function discoverProviders(
   rpcUrl: string,
   chainId?: number,
 ): Promise<ServiceInfo[]> {
-  if (_cachedProviders && Date.now() - _cacheTimestamp < CACHE_TTL_MS)
-    return _cachedProviders;
-  if (_cachePromise) return _cachePromise;
+  const cid = resolveChainId(chainId);
+  const cached = _cache.get(cid);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS)
+    return cached.providers;
 
-  _cachePromise = (async (): Promise<ServiceInfo[]> => {
-    const broker = await getReadOnlyBroker(rpcUrl, chainId);
+  const inflight = _cachePromises.get(cid);
+  if (inflight) return inflight;
+
+  const promise = (async (): Promise<ServiceInfo[]> => {
+    const broker = await getReadOnlyBroker(rpcUrl, cid);
     const services = await broker.listService();
     const mapped: ServiceInfo[] = services.map(
       (s: { provider?: string; model?: string }) => ({
@@ -44,20 +78,24 @@ export async function discoverProviders(
         model: s.model ?? "unknown",
       }),
     );
-    _cachedProviders = mapped;
-    _cacheTimestamp = Date.now();
-    _cachePromise = null;
+    _cache.set(cid, { providers: mapped, timestamp: Date.now() });
     return mapped;
   })();
 
+  _cachePromises.set(cid, promise);
+
   try {
-    return await _cachePromise;
+    return await promise;
   } catch (err) {
-    _cachePromise = null;
+    _cachePromises.delete(cid);
     log.warn("Provider discovery failed", {
-      error: err instanceof Error ? err.message : String(err),
+      error: extractErrorMessage(err),
     });
     return [];
+  } finally {
+    if (_cachePromises.get(cid) === promise) {
+      _cachePromises.delete(cid);
+    }
   }
 }
 
@@ -65,7 +103,7 @@ export async function discoverProviders(
  * Invalidate the cached provider list so the next call re-fetches from chain.
  */
 export function invalidateProviderCache(): void {
-  _cachedProviders = null;
-  _cachePromise = null;
-  _cacheTimestamp = 0;
+  _cache.clear();
+  _cachePromises.clear();
+  clearBrokerCache();
 }

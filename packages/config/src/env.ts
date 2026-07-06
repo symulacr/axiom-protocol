@@ -12,7 +12,8 @@ export function loadEnv(
       const eq = trimmed.indexOf("=");
       if (eq < 0) continue;
       const key = trimmed.slice(0, eq).trim();
-      const val = trimmed.slice(eq + 1).trim();
+      const raw = trimmed.slice(eq + 1).trim();
+      const val = raw.replace(/^(['"])(.*)\1$/, "$2");
       if (!process.env[key]) process.env[key] = val;
     }
   } catch {
@@ -47,7 +48,14 @@ export function getEnvWithAlias(
 ): string {
   for (const key of [canonical, ...aliases]) {
     const val = process.env[key];
-    if (val !== undefined && val !== "") return val;
+    if (val !== undefined && val !== "") {
+      if (key !== canonical) {
+        console.warn(
+          `[config] DEPRECATED: env var "${key}" is deprecated, use "${canonical}"`,
+        );
+      }
+      return val;
+    }
   }
   if (fallback !== undefined) return fallback;
   throw new Error(

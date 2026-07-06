@@ -1,7 +1,6 @@
 import type { Wallet } from "ethers";
 import {
   AbiCoder,
-  FetchRequest,
   JsonRpcProvider,
   keccak256,
   type TransactionReceipt,
@@ -11,13 +10,23 @@ import { TypedContract } from "@axiom/config/types/contract";
 import type { TickResult } from "@axiom/config/types/orchestrator";
 import type OpenAI from "openai";
 import { ZeroGStorage, type Encryption } from "@axiom/config/storage/0g";
-import { createRouterClient } from "../compute/router.js";
-import { getReadOnlyBroker } from "../compute/broker.js";
+import {
+  clientChatIdMap,
+  createRouterClient,
+  setClientChatId,
+} from "../compute/router.js";
+import { createStaticProvider, resolveChainId } from "../compute/broker.js";
+import {
+  discoverProviders,
+  selectProvider,
+} from "../compute/provider-discovery.js";
 import { verifyTeeResponse } from "../compute/tee-verifier.js";
 import { DefaultSignerOracleClient } from "../oracle/client.js";
-import { pickOGNetwork, GALILEO_CHAIN_ID } from "@axiom/config/networks";
+import { pickOGNetwork } from "@axiom/config/networks";
 import { VAULT_ABI } from "@axiom/config/abis";
+import { ZERO_DATA_ROOT } from "../utils/constants.js";
 import { createLogger } from "../utils/logger.js";
+import { extractErrorMessage } from "../utils/response.js";
 
 const log = createLogger("orchestrator");
 // Local contract types (avoid shared contract-types.ts drift).
@@ -73,6 +82,7 @@ export interface OrchestratorConfig {
 export class StrategyRunner {
   private readonly storage: ZeroGStorage;
   private openai: OpenAI | null = null;
+  private openaiModel: string | undefined;
   private readonly oracle: DefaultSignerOracleClient;
   private readonly chainId: number;
   private readonly provider: JsonRpcProvider;
@@ -80,14 +90,14 @@ export class StrategyRunner {
   private readonly addresses: OrchestratorConfig["addresses"];
 
   private readonly signer: Wallet;
+  private vaultReadTc: TypedContract<StrategyVaultMethods> | null = null;
+  private vaultWriteTc: TypedContract<StrategyVaultMethods> | null = null;
 
   constructor(config: OrchestratorConfig) {
-    const chainId = config.chainId ?? GALILEO_CHAIN_ID;
+    const chainId = resolveChainId(config.chainId);
     this.chainId = chainId;
-    const fetchReq = new FetchRequest(config.evmRpc);
-    fetchReq.timeout = 10_000;
-    this.provider = new JsonRpcProvider(fetchReq, chainId, {
-      staticNetwork: true,
+    this.provider = createStaticProvider(config.evmRpc, chainId, {
+      timeoutMs: 10_000,
     });
     this.evmRpc = config.evmRpc;
     this.addresses = config.addresses;
@@ -108,9 +118,11 @@ export class StrategyRunner {
   }
 
   private async getClient(model?: string): Promise<OpenAI> {
-    if (!this.openai) {
-      this.openai = await createRouterClient(model);
+    if (this.openai && this.openaiModel === model) {
+      return this.openai;
     }
+    this.openai = await createRouterClient(model);
+    this.openaiModel = model;
     return this.openai;
   }
 
@@ -122,17 +134,40 @@ export class StrategyRunner {
   ): Promise<TickResult> {
     const start = Date.now();
 
-    const [rawModelOutput, onchain, storage] = await Promise.all([
-      this.runInference(strategy, signal, onChunk),
-      this.fetchOnchainState(strategy),
-      strategy.modelDataRoot === "0x" + "0".repeat(64)
-        ? { rootHash: strategy.modelDataRoot, size: 0 }
-        : this.fetchStoragePeek(strategy),
-    ] as const);
+    const [inferenceResult, onchainResult, storageResult] =
+      await Promise.allSettled([
+        this.runInference(strategy, signal, onChunk),
+        this.fetchOnchainState(strategy),
+        strategy.modelDataRoot === ZERO_DATA_ROOT
+          ? Promise.resolve({ rootHash: strategy.modelDataRoot, size: 0 })
+          : this.fetchStoragePeek(strategy),
+      ]);
 
-    // TEE response verification — blocks/aborts the tick if it fails.
+    const rawModelOutput =
+      inferenceResult.status === "fulfilled"
+        ? inferenceResult.value
+        : (() => {
+            throw new Error(
+              `Inference failed: ${extractErrorMessage(inferenceResult.reason)}`,
+            );
+          })();
+    const onchain =
+      onchainResult.status === "fulfilled"
+        ? onchainResult.value
+        : { vaultBalance: 0n, recentEvents: [] };
+    const storage =
+      storageResult.status === "fulfilled"
+        ? storageResult.value
+        : { rootHash: strategy.modelDataRoot, size: 0 };
+
     if (process.env.AXIOM_COMPUTE_VERIFY_TEE === "true") {
-      await this.verifyTeeAsync(rawModelOutput);
+      try {
+        await this.verifyTeeAsync(rawModelOutput, strategy.computeModel);
+      } catch (err) {
+        log.warn("TEE verification failed (best-effort, tick continues)", {
+          error: extractErrorMessage(err),
+        });
+      }
     }
 
     const recommendation = this.parseRecommendation(rawModelOutput);
@@ -150,7 +185,7 @@ export class StrategyRunner {
                 target: (this.addresses?.vault ?? "0x") as `0x${string}`,
                 success: false,
                 result:
-                  `0x${(err instanceof Error ? err.message : String(err)).slice(0, 64)}` as `0x${string}`,
+                  `0x${extractErrorMessage(err).slice(0, 128)}` as `0x${string}`,
               } satisfies NonNullable<TickResult["execution"]>;
             },
           );
@@ -184,9 +219,18 @@ export class StrategyRunner {
         parsed.action === "hold"
           ? parsed.action
           : "hold";
+      const rawAmount =
+        typeof parsed.amount === "number" ? parsed.amount : undefined;
+      const amount =
+        rawAmount !== undefined &&
+        Number.isFinite(rawAmount) &&
+        rawAmount >= 0 &&
+        rawAmount <= 1e18
+          ? rawAmount
+          : undefined;
       return {
         action,
-        amount: typeof parsed.amount === "number" ? parsed.amount : undefined,
+        amount,
         reason:
           typeof parsed.reason === "string"
             ? parsed.reason
@@ -215,6 +259,10 @@ export class StrategyRunner {
     const target = vaultAddr;
     const value = 0n;
     const data = "0x";
+    log.info("settleOnChain called", {
+      action,
+      tokenId: strategy.agentTokenId.toString(),
+    });
     // actionHash mirrors AxiomStrategyVault.execute(): keccak256(abi.encode(target, value, keccak256(data)))
     const innerHash = keccak256(data);
     const _actionHash = keccak256(
@@ -226,11 +274,7 @@ export class StrategyRunner {
     // Single-leaf Merkle tree: proof is empty, root == leaf.
     const proof: `0x${string}`[] = [];
 
-    const vaultTc = new TypedContract<StrategyVaultMethods>(
-      vaultAddr,
-      VAULT_ABI,
-      this.signer,
-    );
+    const vaultTc = this.getVaultContract("write");
     const tx = await vaultTc.contract.execute(
       strategy.agentTokenId,
       target,
@@ -274,30 +318,56 @@ export class StrategyRunner {
    * Uses the SDK's read-only broker to resolve the active provider on chain
    * (no custom app-sk-* token parser needed).
    */
-  private async verifyTeeAsync(rawModelOutput: string): Promise<void> {
+  private getVaultContract(
+    mode: "read" | "write",
+  ): TypedContract<StrategyVaultMethods> {
+    const vaultAddr = this.addresses?.vault;
+    if (!vaultAddr) {
+      throw new Error("Vault address not configured");
+    }
+    if (mode === "read") {
+      this.vaultReadTc ??= new TypedContract<StrategyVaultMethods>(
+        vaultAddr,
+        VAULT_ABI,
+        this.provider,
+      );
+      return this.vaultReadTc;
+    }
+    this.vaultWriteTc ??= new TypedContract<StrategyVaultMethods>(
+      vaultAddr,
+      VAULT_ABI,
+      this.signer,
+    );
+    return this.vaultWriteTc;
+  }
+
+  private async verifyTeeAsync(
+    rawModelOutput: string,
+    computeModel: string,
+  ): Promise<void> {
     let providerAddress: string | undefined;
     try {
-      const broker = await getReadOnlyBroker(this.evmRpc, this.chainId);
-      const services = await broker.listService();
-      providerAddress = services[0]?.provider;
+      const services = await discoverProviders(this.evmRpc, this.chainId);
+      providerAddress = selectProvider(services, {
+        model: computeModel,
+      })?.provider;
     } catch (err) {
-      log.info("TEE verification: provider discovery failed", {
-        error: err instanceof Error ? err.message : String(err),
-      });
-      throw new Error(
-        `TEE verification: provider discovery failed: ${err instanceof Error ? err.message : String(err)}`,
-      );
+      const msg = extractErrorMessage(err);
+      log.info("TEE verification: provider discovery failed", { error: msg });
+      throw new Error(`TEE verification: provider discovery failed: ${msg}`);
     }
 
     if (!providerAddress) {
       throw new Error("TEE verification failed: no provider on chain");
     }
 
+    const chatId = this.openai ? clientChatIdMap.get(this.openai) : undefined;
     const result = await verifyTeeResponse(
       this.chainId,
       this.signer,
       providerAddress,
       rawModelOutput,
+      chatId,
     );
 
     log.info("TEE verification", {
@@ -310,6 +380,33 @@ export class StrategyRunner {
       throw new Error(
         `TEE response verification failed for provider ${providerAddress}`,
       );
+    }
+  }
+
+  private captureChatIdFromResponse(
+    client: OpenAI,
+    response: { headers?: unknown } | undefined,
+  ): void {
+    const headers = response?.headers;
+    if (!headers) return;
+    let chatId: string | undefined;
+    if (typeof (headers as Headers).get === "function") {
+      const h = headers as Headers;
+      chatId = h.get("x-chat-id") ?? h.get("chat-id") ?? undefined;
+    } else if (typeof headers === "object") {
+      const rec = headers as Record<string, string | string[] | undefined>;
+      const pick = (key: string) => {
+        const val = rec[key] ?? rec[key.toLowerCase()];
+        return typeof val === "string"
+          ? val
+          : Array.isArray(val)
+            ? val[0]
+            : undefined;
+      };
+      chatId = pick("x-chat-id") ?? pick("chat-id");
+    }
+    if (chatId) {
+      setClientChatId(client, chatId);
     }
   }
 
@@ -332,11 +429,14 @@ export class StrategyRunner {
       // so we rely on the system prompt asking for JSON output —
       // parseRecommendation handles malformed JSON gracefully.
       const client = await this.getClient(strategy.computeModel);
-      const stream = await client.chat.completions.create({
-        model: strategy.computeModel,
-        messages,
-        stream: true,
-      });
+      const { data: stream, response } = await client.chat.completions
+        .create({
+          model: strategy.computeModel,
+          messages,
+          stream: true,
+        })
+        .withResponse();
+      this.captureChatIdFromResponse(client, response);
       let full = "";
       for await (const chunk of stream) {
         const delta = chunk.choices?.[0]?.delta?.content ?? "";
@@ -353,13 +453,15 @@ export class StrategyRunner {
     }
 
     // Non-streaming path: preserves response_format for JSON reliability.
-    const completion = await (
-      await this.getClient(strategy.computeModel)
-    ).chat.completions.create({
-      model: strategy.computeModel,
-      messages,
-      response_format: { type: "json_object" },
-    });
+    const client = await this.getClient(strategy.computeModel);
+    const { data: completion, response } = await client.chat.completions
+      .create({
+        model: strategy.computeModel,
+        messages,
+        response_format: { type: "json_object" },
+      })
+      .withResponse();
+    this.captureChatIdFromResponse(client, response);
     return completion.choices?.[0]?.message?.content ?? "";
   }
 
@@ -370,11 +472,7 @@ export class StrategyRunner {
     if (!vaultAddr) {
       return { vaultBalance: 0n, recentEvents: [] };
     }
-    const vaultTc = new TypedContract<StrategyVaultMethods>(
-      vaultAddr,
-      VAULT_ABI,
-      this.provider,
-    );
+    const vaultTc = this.getVaultContract("read");
     const tokenId = strategy.agentTokenId;
     if (!vaultTc.raw.filters?.StrategySet || !vaultTc.raw.filters?.Deposited) {
       return { vaultBalance: 0n, recentEvents: [] };
@@ -427,7 +525,7 @@ export class StrategyRunner {
   private async fetchStoragePeek(
     strategy: StrategySpec,
   ): Promise<TickResult["storage"]> {
-    if (strategy.modelDataRoot === "0x" + "0".repeat(64)) {
+    if (strategy.modelDataRoot === ZERO_DATA_ROOT) {
       return { rootHash: strategy.modelDataRoot, size: 0 };
     }
     // ECIES-encrypted blobs skipped in devnet (no receiver key). AES-256 uses symmetric key.

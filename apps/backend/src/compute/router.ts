@@ -1,13 +1,16 @@
 import OpenAI from "openai";
-import { JsonRpcProvider, Wallet } from "ethers";
-import { pickOGNetwork, GALILEO_CHAIN_ID } from "@axiom/config/networks";
+import type { Wallet } from "ethers";
+import { pickOGNetwork } from "@axiom/config/networks";
 import {
+  createProviderAndSigner,
   ensureProviderFunded,
   getReadOnlyBroker,
   resolveChainId,
   resolveEvmRpc,
 } from "./broker.js";
+import { selectProvider } from "./provider-discovery.js";
 import { createLogger } from "../utils/logger.js";
+import { extractErrorMessage } from "../utils/response.js";
 
 /**
  * Resolve the 0G Compute Router base URL.
@@ -57,8 +60,28 @@ export function resolveModel(requestedModel?: string): string {
   return process.env.AXIOM_COMPUTE_MODEL ?? "qwen/qwen2.5-omni-7b";
 }
 
-const log = createLogger("compute");
+const log = createLogger("compute-router");
 const ROUTER_TIMEOUT_MS = 30_000;
+
+/** Tracks the latest chat ID per OpenAI client (for TEE verification). */
+export const clientChatIdMap = new WeakMap<object, string>();
+
+export function setClientChatId(client: object, chatId: string): void {
+  clientChatIdMap.set(client, chatId);
+}
+
+function buildOpenAIClient(
+  baseURL: string,
+  apiKey: string,
+  timeout: number,
+): OpenAI {
+  return new OpenAI({
+    baseURL,
+    apiKey,
+    timeout,
+    maxRetries: 2,
+  });
+}
 
 /**
  * Resolve a provider's on-chain inference URL by consulting the SDK's read-only broker.
@@ -81,7 +104,7 @@ export async function resolveProviderUrl(
   } catch (err) {
     log.warn("resolveProviderUrl failed", {
       provider: providerAddr,
-      error: err instanceof Error ? err.message : String(err),
+      error: extractErrorMessage(err),
     });
     return null;
   }
@@ -115,18 +138,18 @@ export async function createRouterClient(
   if (directKey && opts.signer) {
     const providerUrl = await resolveProviderUrlFromKey(directKey);
     if (providerUrl) {
-      const provider = new JsonRpcProvider(resolveEvmRpc(), resolveChainId(), {
-        staticNetwork: true,
+      const { signer } = createProviderAndSigner({
+        evmRpc: resolveEvmRpc(),
+        chainId: resolveChainId(),
+        signer: opts.signer,
       });
-      const signer = opts.signer.connect(provider) as Wallet;
       // Fire-and-forget — handles acknowledge + bootstrap + perpetual refill.
       void ensureProviderFunded(providerUrl.provider, signer);
-      return new OpenAI({
-        baseURL: `${providerUrl.url}/v1/proxy`,
-        apiKey: directKey,
+      return buildOpenAIClient(
+        `${providerUrl.url}/v1/proxy`,
+        directKey,
         timeout,
-        maxRetries: 2,
-      });
+      );
     }
     throw new Error(
       "Cannot resolve on-chain provider for AXIOM_COMPUTE_DIRECT_KEY. Check the key and RPC.",
@@ -136,12 +159,7 @@ export async function createRouterClient(
   const routerKey =
     process.env.AXIOM_COMPUTE_API_KEY ?? process.env.OG_COMPUTE_API_KEY;
   if (routerKey) {
-    return new OpenAI({
-      baseURL: getComputeBaseUrl(),
-      apiKey: routerKey,
-      timeout,
-      maxRetries: 2,
-    });
+    return buildOpenAIClient(getComputeBaseUrl(), routerKey, timeout);
   }
   throw new Error(
     "AXIOM_COMPUTE_DIRECT_KEY (with signer), AXIOM_COMPUTE_API_KEY, or OG_COMPUTE_API_KEY required",
@@ -161,9 +179,19 @@ async function resolveProviderUrlFromKey(
   try {
     const broker = await getReadOnlyBroker(resolveEvmRpc());
     const services = await broker.listService();
-    const first = services[0];
-    if (!first?.provider || !first?.url) return null;
-    return { provider: first.provider, url: first.url };
+    const mapped = services.map(
+      (s: { provider?: string; model?: string; url?: string }) => ({
+        provider: s.provider ?? "",
+        model: s.model ?? "unknown",
+        url: s.url,
+      }),
+    );
+    const picked = selectProvider(
+      mapped.map((s) => ({ provider: s.provider, model: s.model })),
+    );
+    const match = mapped.find((s) => s.provider === picked?.provider);
+    if (!match?.provider || !match.url) return null;
+    return { provider: match.provider, url: match.url };
   } catch {
     return null;
   }

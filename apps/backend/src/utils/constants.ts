@@ -10,3 +10,9 @@ export const MAX_WS_CLIENTS = 1000 as const;
 
 /** Default limit for event queries. */
 export const DEFAULT_EVENT_LIMIT = 1000 as const;
+
+/** Maximum limit for GET /v1/events queries. */
+export const MAX_EVENT_QUERY_LIMIT = 500 as const;
+
+/** Zero bytes32 root hash sentinel (no model data on storage). */
+export const ZERO_DATA_ROOT = ("0x" + "0".repeat(64)) as `0x${string}`;

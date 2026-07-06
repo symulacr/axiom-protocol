@@ -1,13 +1,68 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { tickSchema } from "../route-schemas.js";
-import { broadcast, getClients, sendToTopic } from "../ws/broadcaster.js";
+import { getClients, sendToTopic } from "../ws/broadcaster.js";
+import { sendError, extractErrorMessage } from "../utils/response.js";
 import { getEventStore } from "../events/store.js";
 import type {
   StrategyRunner,
   StrategySpec,
   MarketSignal,
 } from "../orchestrator/index.js";
+import type { TickResult } from "@axiom/config/types/orchestrator";
+import type { EventStore } from "../events/store.js";
 import type { ServerConfig } from "../server.js";
+import { AGENT_NFT_ABI } from "@axiom/config/abis";
+import { TypedContract } from "@axiom/config/types/contract";
+import { getSharedProvider } from "../provider.js";
+import { ZERO_DATA_ROOT } from "../utils/constants.js";
+
+async function resolveModelDataRoot(
+  agentNft: `0x${string}`,
+  agentTokenId: string,
+  chainId: number,
+): Promise<`0x${string}`> {
+  try {
+    const provider = getSharedProvider(chainId);
+    const nftTc = new TypedContract<{ intelligentDatasOf(tokenId: bigint): Promise<Array<{ dataHash: string }>> }>(
+      agentNft,
+      AGENT_NFT_ABI,
+      provider,
+    );
+    const datas = await nftTc.contract.intelligentDatasOf(BigInt(agentTokenId));
+    const hash = datas?.[0]?.dataHash;
+    if (typeof hash === "string" && hash.startsWith("0x") && hash.length === 66) {
+      return hash as `0x${string}`;
+    }
+  } catch {
+    // Fall back to zero root when chain metadata is unavailable.
+  }
+  return ZERO_DATA_ROOT;
+}
+
+function appendTickEvent(
+  events: EventStore,
+  chainId: number,
+  spec: StrategySpec,
+  result: TickResult,
+): void {
+  events.append({
+    source: "orchestrator",
+    eventName: "Tick",
+    chainId,
+    blockNumber: 0,
+    txHash: ZERO_DATA_ROOT,
+    logIndex: 0,
+    payload: {
+      tokenId: spec.agentTokenId.toString(),
+      action: result.recommendation.action,
+      amount: result.recommendation.amount ?? null,
+      reason: result.recommendation.reason,
+      durationMs: result.durationMs,
+      executionSuccess: result.execution?.success ?? null,
+      vaultBalance: result.onchain.vaultBalance.toString(),
+    },
+  });
+}
 
 export function registerOrchestratorRoutes(
   app: Express,
@@ -34,6 +89,11 @@ export function registerOrchestratorRoutes(
         } = parsed;
         const DEFAULT_MODEL =
           config.env?.AXIOM_COMPUTE_MODEL ?? "qwen/qwen2.5-omni-7b";
+        const modelDataRoot = await resolveModelDataRoot(
+          agentNft,
+          agentTokenId,
+          chainId,
+        );
         const spec: StrategySpec = {
           agentTokenId: BigInt(agentTokenId),
           agentNft,
@@ -41,7 +101,7 @@ export function registerOrchestratorRoutes(
           computeModel: reqComputeModel ?? DEFAULT_MODEL,
           systemPrompt:
             "You are a crypto-native strategy assistant. Given the current vault balance and recent events, respond with a JSON object { action: 'buy' | 'sell' | 'hold', amount?: number, reason: string }.",
-          modelDataRoot: ("0x" + "0".repeat(64)) as `0x${string}`,
+          modelDataRoot,
           modelEncryption: undefined,
         };
         const signal: MarketSignal = {
@@ -51,7 +111,7 @@ export function registerOrchestratorRoutes(
         };
         const runner = getOrCreateOrchestrator();
         if (!runner) {
-          res.status(503).json({ error: "Orchestrator not available" });
+          sendError(res, 503, "Orchestrator not available");
           return;
         }
 
@@ -78,6 +138,7 @@ export function registerOrchestratorRoutes(
                 sendToTopic(`tick.${agentTokenId}`, chunk);
             })
             .then((result) => {
+              appendTickEvent(events, chainId, spec, result);
               sendToTopic(`tick.${agentTokenId}`, {
                 type: "complete",
                 ...result,
@@ -86,7 +147,7 @@ export function registerOrchestratorRoutes(
             .catch((err) => {
               sendToTopic(`tick.${agentTokenId}`, {
                 type: "error",
-                error: err instanceof Error ? err.message : String(err),
+                error: extractErrorMessage(err),
               });
             });
           res
@@ -96,26 +157,8 @@ export function registerOrchestratorRoutes(
         }
 
         const orchestratorResult = await runner.runTick(spec, signal);
-        events.append({
-          source: "orchestrator",
-          eventName: "Tick",
-          chainId,
-          blockNumber: 0,
-          txHash: "0x" + "0".repeat(64),
-          logIndex: 0,
-          payload: {
-            tokenId: spec.agentTokenId.toString(),
-            action: orchestratorResult.recommendation.action,
-            amount: orchestratorResult.recommendation.amount ?? null,
-            reason: orchestratorResult.recommendation.reason,
-            durationMs: orchestratorResult.durationMs,
-            executionSuccess: orchestratorResult.execution?.success ?? null,
-            vaultBalance: orchestratorResult.onchain.vaultBalance.toString(),
-          },
-          receivedAt: Date.now(),
-          timestamp: Date.now(),
-        });
-        broadcast("orchestrator.tick", {
+        appendTickEvent(events, chainId, spec, orchestratorResult);
+        sendToTopic("orchestrator.tick", {
           agentTokenId: spec.agentTokenId.toString(),
           recommendation: orchestratorResult.recommendation,
         });

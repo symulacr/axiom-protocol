@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createRoute } from "./route-factory.js";
+import { sendError } from "../utils/response.js";
 import type { EventStore } from "../events/store.js";
 import type { ServerConfig } from "../server.js";
 import { payloadField, payloadNumber } from "../events/payloads.js";
@@ -66,13 +67,15 @@ export function registerPerformanceRoutes(
       }
 
       const totalTicks = buyCount + sellCount + holdCount;
+      const buyRate = totalTicks > 0 ? buyCount / totalTicks : 0;
       return {
         metrics: {
           totalTicks,
           buyCount,
           sellCount,
           holdCount,
-          winRate: totalTicks > 0 ? buyCount / totalTicks : 0,
+          buyRate,
+          winRate: buyRate,
         },
         history: history.reverse(),
       };
@@ -88,15 +91,17 @@ export function registerPerformanceRoutes(
       consumer: "usePerformanceBatch",
       description: "Batch agent performance metrics",
     },
-    async (_parsed, req, _res) => {
+    async (_parsed, req, res) => {
       const idsRaw = typeof req.query.ids === "string" ? req.query.ids : "";
       const ids = idsRaw
         .split(",")
         .map((s) => s.trim())
         .filter((s) => /^\d+$/.test(s));
       if (ids.length === 0) return { results: {} };
-      if (ids.length > 50)
-        return { error: "Maximum 50 agents per batch request" };
+      if (ids.length > 50) {
+        sendError(res, 400, "Maximum 50 agents per batch request");
+        return;
+      }
 
       const results: Record<
         string,
@@ -105,6 +110,7 @@ export function registerPerformanceRoutes(
           buyCount: number;
           sellCount: number;
           holdCount: number;
+          buyRate: number;
           winRate: number;
         }
       > = {};
@@ -127,12 +133,14 @@ export function registerPerformanceRoutes(
           else holdCount++;
         }
         const totalTicks = buyCount + sellCount + holdCount;
+        const buyRate = totalTicks > 0 ? buyCount / totalTicks : 0;
         results[id] = {
           totalTicks,
           buyCount,
           sellCount,
           holdCount,
-          winRate: totalTicks > 0 ? buyCount / totalTicks : 0,
+          buyRate,
+          winRate: buyRate,
         };
       }
 
