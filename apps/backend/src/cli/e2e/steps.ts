@@ -1,8 +1,11 @@
-import { randomBytes } from "node:crypto";
+import { randomBytes, timingSafeEqual } from "node:crypto";
 import {
   Wallet,
   hexlify,
   getBytes,
+  parseEther,
+  parseUnits,
+  type Provider,
   type TransactionResponse,
 } from "ethers";
 import { TypedContract } from "@axiom/config/types/contract";
@@ -15,10 +18,22 @@ import {
   recoverAccessSigner,
   type Eip712Domain,
 } from "@axiom/config";
-import { ITRANSFER_FROM_ABI } from "@axiom/config/abis";
+import {
+  AGENT_NFT_ABI,
+  ERC20_ABI,
+  ITRANSFER_FROM_ABI,
+  PAYMENT_PROCESSOR_ABI,
+  VAULT_ABI,
+} from "@axiom/config/abis";
 import { TRANSFER_TOPIC } from "../../utils/constants.js";
 import type { fetchJson as fetchJsonFn } from "../../utils/fetch-json.js";
 import { postStep as postStepFn, stepResults } from "./http.js";
+import {
+  addressExplorerUrl,
+  assertContractDeployed,
+  assertReceiptOk,
+  recordOnChainStep,
+} from "./onchain.js";
 
 type FetchJson = typeof fetchJsonFn;
 type PostStep = typeof postStepFn;
@@ -53,6 +68,37 @@ export function printE2eBanner(deps: E2eBannerDeps): void {
   console.log(`Agent NFT:    ${deps.agentNft}`);
   console.log(`Vault:        ${deps.vault}`);
   console.log("");
+}
+
+export async function runContractsLiveStep(deps: {
+  provider: Provider;
+  chainId: number;
+  agentNft: string;
+  vault: string;
+  teeVerifier: string;
+  paymentProcessor: string;
+  paymentToken: string;
+}): Promise<void> {
+  console.log("\n[Step 1b] Verify deployed contracts have bytecode on-chain");
+  const checks: Array<{ address: string; label: string }> = [
+    { address: deps.agentNft, label: "AxiomAgentNFT" },
+    { address: deps.vault, label: "AxiomStrategyVault" },
+    { address: deps.teeVerifier, label: "AxiomTeeVerifier" },
+    { address: deps.paymentProcessor, label: "AxiomPaymentProcessor" },
+    { address: deps.paymentToken, label: "PaymentToken" },
+  ];
+  for (const { address, label } of checks) {
+    await assertContractDeployed(deps.provider, address, label);
+    console.log(
+      `          ${label} live at ${address} (${addressExplorerUrl(deps.chainId, address)})`,
+    );
+  }
+  stepResults.push({
+    step: 1,
+    name: "on-chain bytecode",
+    ok: true,
+    summary: `${checks.length} contracts verified`,
+  });
 }
 
 export async function runHealthStep(
@@ -134,6 +180,7 @@ export async function runUploadStep(deps: {
   rpc: string;
   signer: Wallet;
   blob: Uint8Array;
+  chainId: number;
 }): Promise<UploadStepResult> {
   console.log("\n[Step 4]  Upload encrypted strategy to 0G Storage");
   const storage = new ZeroGStorage({
@@ -145,17 +192,53 @@ export async function runUploadStep(deps: {
   console.log(
     `          Uploaded: root=${upload.rootHash} tx=${upload.txHash}`,
   );
-  stepResults.push({
+  recordOnChainStep({
     step: 4,
     name: "0G Storage upload",
     ok: true,
     summary: `root=${upload.rootHash}`,
     txHash: upload.txHash,
+    chainId: deps.chainId,
   });
   return { rootHash: upload.rootHash, txHash: upload.txHash };
 }
 
-export async function runMintStep(
+export async function runStorageVerifyStep(deps: {
+  storageRpc: string;
+  rpc: string;
+  signer: Wallet;
+  rootHash: `0x${string}`;
+  expectedBlob: Uint8Array;
+}): Promise<void> {
+  console.log("\n[Step 4b] Download from 0G Storage with Merkle proof");
+  const storage = new ZeroGStorage({
+    indexerRpc: deps.storageRpc,
+    evmRpc: deps.rpc,
+    signer: deps.signer,
+  });
+  const downloaded = await storage.downloadWithOpts(deps.rootHash, {
+    withProof: true,
+  });
+  if (downloaded.rootHash.toLowerCase() !== deps.rootHash.toLowerCase()) {
+    throw new Error(
+      `Storage root mismatch: expected ${deps.rootHash} got ${downloaded.rootHash}`,
+    );
+  }
+  if (
+    downloaded.data.length !== deps.expectedBlob.length ||
+    !timingSafeEqual(downloaded.data, deps.expectedBlob)
+  ) {
+    throw new Error("Downloaded bytes do not match uploaded ciphertext");
+  }
+  stepResults.push({
+    step: 4,
+    name: "0G Storage verify",
+    ok: true,
+    summary: `merkle ok size=${downloaded.size}B root=${downloaded.rootHash}`,
+  });
+}
+
+export async function runOracleRegisterStep(
   oracleUrl: string,
   dataHash: `0x${string}`,
   fetchJson: FetchJson,
@@ -172,35 +255,255 @@ export async function runMintStep(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ dataHash }),
   });
-  console.log(`          ok=${mint.ok} dataHash=${mint.dataHash}`);
+  const ok =
+    mint.ok === true && mint.dataHash.toLowerCase() === dataHash.toLowerCase();
+  console.log(`          ok=${mint.ok} dataHash=${mint.dataHash} seen=${mint.seen}`);
   stepResults.push({
     step: 5,
     name: "oracle /v1/agents/mint",
-    ok: mint.ok === true,
+    ok,
     summary: `dataHash=${mint.dataHash}`,
+  });
+  if (!ok) throw new Error("Oracle did not accept dataHash registration");
+}
+
+export interface OnChainMintResult {
+  tokenId: bigint;
+  txHash: string;
+  blockNumber: number;
+}
+
+type AgentNftMintMethods = {
+  mint(
+    iDatas: Array<{ dataDescription: string; dataHash: string }>,
+    to: string,
+    overrides?: { value?: bigint },
+  ): Promise<TransactionResponse>;
+  mintFee(): Promise<bigint>;
+  ownerOf(tokenId: bigint): Promise<string>;
+  creatorOf(tokenId: bigint): Promise<string>;
+  intelligentDatasOf(
+    tokenId: bigint,
+  ): Promise<Array<{ dataDescription: string; dataHash: string }>>;
+};
+
+export async function runOnChainMintStep(deps: {
+  agentNft: string;
+  deployer: Wallet;
+  dataHash: `0x${string}`;
+  chainId: number;
+}): Promise<OnChainMintResult> {
+  console.log("\n[Step 6]  Mint iNFT on-chain (AxiomAgentNFT.mint)");
+  const nftTc = new TypedContract<AgentNftMintMethods>(
+    deps.agentNft,
+    AGENT_NFT_ABI,
+    deps.deployer,
+  );
+  const mintFee = await nftTc.contract.mintFee();
+  const tx = await nftTc.contract.mint(
+    [{ dataDescription: "strategy", dataHash: deps.dataHash }],
+    deps.deployer.address,
+    { value: mintFee },
+  );
+  const receipt = assertReceiptOk(await tx.wait(), "mint");
+  const transferLog = receipt.logs.find((l) => l.topics[0] === TRANSFER_TOPIC);
+  if (!transferLog) throw new Error("mint: Transfer event not found");
+  const parsed = nftTc.iface.parseLog(transferLog);
+  if (!parsed) throw new Error("mint: failed to parse Transfer log");
+  const tokenId = parsed.args[2] as bigint;
+  const owner = await nftTc.contract.ownerOf(tokenId);
+  const creator = await nftTc.contract.creatorOf(tokenId);
+  if (owner.toLowerCase() !== deps.deployer.address.toLowerCase()) {
+    throw new Error(`mint: owner mismatch ${owner}`);
+  }
+  if (creator.toLowerCase() !== deps.deployer.address.toLowerCase()) {
+    throw new Error(`mint: creator mismatch ${creator}`);
+  }
+  const datas = await nftTc.contract.intelligentDatasOf(tokenId);
+  const onChainHash = datas[0]?.dataHash;
+  if (
+    !onChainHash ||
+    onChainHash.toLowerCase() !== deps.dataHash.toLowerCase()
+  ) {
+    throw new Error(`mint: on-chain dataHash ${onChainHash} != ${deps.dataHash}`);
+  }
+  recordOnChainStep({
+    step: 6,
+    name: "AxiomAgentNFT.mint",
+    ok: true,
+    summary: `tokenId=${tokenId} creator=${creator}`,
+    txHash: receipt.hash,
+    blockNumber: receipt.blockNumber,
+    chainId: deps.chainId,
+  });
+  return { tokenId, txHash: receipt.hash, blockNumber: receipt.blockNumber };
+}
+
+type VaultMethods = {
+  deposit(tokenId: bigint, overrides?: { value?: bigint }): Promise<TransactionResponse>;
+  balanceOf(tokenId: bigint): Promise<bigint>;
+  setStrategy(
+    tokenId: bigint,
+    root: string,
+    dailyLimit: bigint,
+    validUntilDay: bigint,
+  ): Promise<TransactionResponse>;
+  strategyOf(
+    tokenId: bigint,
+  ): Promise<[string, bigint, bigint, bigint, bigint]>;
+};
+
+export async function runVaultDepositStep(deps: {
+  vault: string;
+  deployer: Wallet;
+  tokenId: bigint;
+  chainId: number;
+  depositWei?: bigint;
+}): Promise<bigint> {
+  const amount = deps.depositWei ?? parseEther("0.001");
+  console.log(`\n[Step 7]  Vault deposit ${amount} wei (tokenId=${deps.tokenId})`);
+  const vaultTc = new TypedContract<VaultMethods>(
+    deps.vault,
+    VAULT_ABI,
+    deps.deployer,
+  );
+  const before = await vaultTc.contract.balanceOf(deps.tokenId);
+  const tx = await vaultTc.contract.deposit(deps.tokenId, { value: amount });
+  const receipt = assertReceiptOk(await tx.wait(), "vault deposit");
+  const after = await vaultTc.contract.balanceOf(deps.tokenId);
+  if (after < before + amount) {
+    throw new Error(
+      `vault deposit: balance ${after} < expected ${before + amount}`,
+    );
+  }
+  recordOnChainStep({
+    step: 7,
+    name: "AxiomStrategyVault.deposit",
+    ok: true,
+    summary: `balance=${after} wei (+${after - before})`,
+    txHash: receipt.hash,
+    blockNumber: receipt.blockNumber,
+    chainId: deps.chainId,
+  });
+  return after;
+}
+
+export async function runVaultStrategyStep(deps: {
+  vault: string;
+  deployer: Wallet;
+  tokenId: bigint;
+  strategyRoot: `0x${string}`;
+  chainId: number;
+}): Promise<void> {
+  console.log(`\n[Step 8]  Vault setStrategy (root=${deps.strategyRoot})`);
+  const dailyLimit = parseEther("0.1");
+  const vaultTc = new TypedContract<VaultMethods>(
+    deps.vault,
+    VAULT_ABI,
+    deps.deployer,
+  );
+  const tx = await vaultTc.contract.setStrategy(
+    deps.tokenId,
+    deps.strategyRoot,
+    dailyLimit,
+    0n,
+  );
+  const receipt = assertReceiptOk(await tx.wait(), "setStrategy");
+  const [root, limit, , , validUntil] = await vaultTc.contract.strategyOf(
+    deps.tokenId,
+  );
+  if (root.toLowerCase() !== deps.strategyRoot.toLowerCase()) {
+    throw new Error(`setStrategy: root on-chain ${root} != ${deps.strategyRoot}`);
+  }
+  if (limit !== dailyLimit) {
+    throw new Error(`setStrategy: dailyLimit on-chain ${limit} != ${dailyLimit}`);
+  }
+  if (validUntil !== 0n) {
+    throw new Error(`setStrategy: expected no expiry, got validUntilDay=${validUntil}`);
+  }
+  recordOnChainStep({
+    step: 8,
+    name: "AxiomStrategyVault.setStrategy",
+    ok: true,
+    summary: `root=${root} dailyLimit=${limit}`,
+    txHash: receipt.hash,
+    blockNumber: receipt.blockNumber,
+    chainId: deps.chainId,
   });
 }
 
-export function runSkippedVaultSteps(): void {
+type PaymentMethods = {
+  payForAgent(tokenId: bigint, amount: bigint): Promise<TransactionResponse>;
+  agentEarningsOf(creator: string): Promise<bigint>;
+};
+
+type Erc20Methods = {
+  approve(spender: string, amount: bigint): Promise<TransactionResponse>;
+  balanceOf(account: string): Promise<bigint>;
+  allowance(owner: string, spender: string): Promise<bigint>;
+};
+
+export async function runPaymentStep(deps: {
+  paymentProcessor: string;
+  paymentToken: string;
+  deployer: Wallet;
+  tokenId: bigint;
+  chainId: number;
+  payAmount?: bigint;
+}): Promise<void> {
+  const amount = deps.payAmount ?? parseUnits("1", 6);
   console.log(
-    `\n[Step 6]  (skipped — vault deposit is a wallet-owned on-chain operation, not a backend route)`,
+    `\n[Step 9b] payForAgent on-chain (tokenId=${deps.tokenId} amount=${amount})`,
   );
-  stepResults.push({
-    step: 6,
-    name: "/v1/vaults/deposit",
-    ok: true,
-    summary: "skipped (wallet-owned operation)",
-  });
-  console.log(
-    `\n[Step 7]  (skipped — vault strategy is a wallet-owned on-chain operation, not a backend route)`,
+  const tokenTc = new TypedContract<Erc20Methods>(
+    deps.paymentToken,
+    ERC20_ABI,
+    deps.deployer,
   );
-  stepResults.push({
-    step: 7,
-    name: "/v1/vaults/strategy",
+  const procTc = new TypedContract<PaymentMethods>(
+    deps.paymentProcessor,
+    PAYMENT_PROCESSOR_ABI,
+    deps.deployer,
+  );
+  const balance = await tokenTc.contract.balanceOf(deps.deployer.address);
+  if (balance < amount) {
+    throw new Error(
+      `payment: insufficient ${deps.paymentToken} balance ${balance} < ${amount}`,
+    );
+  }
+  const earningsBefore = await procTc.contract.agentEarningsOf(deps.deployer.address);
+  const allowance = await tokenTc.contract.allowance(
+    deps.deployer.address,
+    deps.paymentProcessor,
+  );
+  if (allowance < amount) {
+    const approveTx = await tokenTc.contract.approve(
+      deps.paymentProcessor,
+      amount,
+    );
+    assertReceiptOk(await approveTx.wait(), "ERC20 approve");
+  }
+  const tx = await procTc.contract.payForAgent(deps.tokenId, amount);
+  const receipt = assertReceiptOk(await tx.wait(), "payForAgent");
+  const earningsAfter = await procTc.contract.agentEarningsOf(deps.deployer.address);
+  if (earningsAfter <= earningsBefore) {
+    throw new Error(
+      `payForAgent: creator earnings did not increase (${earningsBefore} -> ${earningsAfter})`,
+    );
+  }
+  recordOnChainStep({
+    step: 9,
+    name: "AxiomPaymentProcessor.payForAgent",
     ok: true,
-    summary: "skipped (wallet-owned operation)",
+    summary: `earnings ${earningsBefore} -> ${earningsAfter}`,
+    txHash: receipt.hash,
+    blockNumber: receipt.blockNumber,
+    chainId: deps.chainId,
   });
 }
+
+/** @deprecated Use runOracleRegisterStep */
+export const runMintStep = runOracleRegisterStep;
 
 export async function runTickStep(deps: {
   backendUrl: string;
@@ -208,8 +511,9 @@ export async function runTickStep(deps: {
   vault: string;
   agentNft: string;
   tokenId: string;
+  vaultBalanceWei: bigint;
 }): Promise<void> {
-  console.log("\n[Step 8]  POST /v1/orchestrator/tick (Promise.all fan-out)");
+  console.log("\n[Step 9]  POST /v1/orchestrator/tick (live vault balance)");
   await deps.postStep<{
     recommendation?: { action: string; reason: string };
     rawModelOutput?: string;
@@ -217,7 +521,7 @@ export async function runTickStep(deps: {
     error?: string;
   }>(
     deps.backendUrl,
-    8,
+    9,
     "/v1/orchestrator/tick",
     {
       vault: deps.vault,
@@ -225,7 +529,10 @@ export async function runTickStep(deps: {
       agentTokenId: deps.tokenId,
       strategy: "hold",
       signalSource: "manual:e2e",
-      signalPayload: { vaultBalance: "0", recentTrades: [] },
+      signalPayload: {
+        vaultBalance: deps.vaultBalanceWei.toString(),
+        recentTrades: [],
+      },
     },
     (r) => ({
       summary: r.recommendation
@@ -301,11 +608,11 @@ export async function runTransferSteps(deps: {
     `\n[Step 8.5] Re-seal dataKey for receiver (${resealedKey.length}B)`,
   );
   console.log(
-    `\n[Step 9]  POST /v1/agents/${deps.tokenId}/transfer (two-stage challenge → personal_sign → final)`,
+    `\n[Step 10] POST /v1/agents/${deps.tokenId}/transfer (challenge → sign → final)`,
   );
   const challenge = await deps.postStep<ChallengeResponse>(
     deps.backendUrl,
-    9,
+    10,
     `/v1/agents/${deps.tokenId}/transfer`,
     {
       to: deps.to,
@@ -335,7 +642,7 @@ export async function runTransferSteps(deps: {
 
   const finalResp = await deps.postStep<FinalResponse>(
     deps.backendUrl,
-    9,
+    10,
     `/v1/agents/${deps.tokenId}/transfer`,
     {
       to: deps.to,
@@ -381,8 +688,9 @@ export async function runOnChainTransferStep(deps: {
   tokenId: string;
   finalResp: FinalResponse;
   eip712Domain: Eip712Domain;
+  chainId: number;
 }): Promise<void> {
-  console.log(`\n[Step 10] AxiomAgentNFT.iTransferFrom on Galileo`);
+  console.log(`\n[Step 11] AxiomAgentNFT.iTransferFrom on-chain (provable)`);
   const ITRANSFER_FROM_ABI_LOCAL = [
     ...ITRANSFER_FROM_ABI,
     "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)",
@@ -395,17 +703,18 @@ export async function runOnChainTransferStep(deps: {
   );
   const currentOwner = await nftTc.contract.ownerOf(BigInt(deps.tokenId));
   if (currentOwner.toLowerCase() !== deps.deployer.address.toLowerCase()) {
-    console.log(
-      `          Skip: tokenId=${deps.tokenId} already owned by ${currentOwner} (not deployer).`,
-    );
-    stepResults.push({
-      step: 10,
+    recordOnChainStep({
+      step: 11,
       name: "iTransferFrom on-chain",
-      ok: true,
-      summary: `skipped (owner=${currentOwner})`,
+      ok: false,
+      summary: `owner=${currentOwner} expected deployer ${deps.deployer.address}`,
+      chainId: deps.chainId,
     });
-  } else {
-    try {
+    throw new Error(
+      `iTransferFrom: tokenId=${deps.tokenId} owned by ${currentOwner}, not deployer`,
+    );
+  }
+  try {
       const proofs = [
         {
           accessProof: {
@@ -435,8 +744,8 @@ export async function runOnChainTransferStep(deps: {
         BigInt(deps.tokenId),
         proofs,
       );
-      const receipt = await tx.wait();
-      const transferLog = receipt?.logs.find(
+      const receipt = assertReceiptOk(await tx.wait(), "iTransferFrom");
+      const transferLog = receipt.logs.find(
         (l) => l.topics[0] === TRANSFER_TOPIC,
       );
       if (!transferLog) throw new Error("Transfer event not found");
@@ -469,38 +778,45 @@ export async function runOnChainTransferStep(deps: {
       );
       if (recoveredAddr.toLowerCase() !== deps.to.toLowerCase())
         throw new Error("access signer mismatch");
-      stepResults.push({
-        step: 10,
+      if (newOwner.toLowerCase() !== deps.to.toLowerCase()) {
+        throw new Error(`post-transfer owner ${newOwner} != receiver ${deps.to}`);
+      }
+      recordOnChainStep({
+        step: 11,
         name: "iTransferFrom on-chain",
         ok: true,
-        summary: `tx=${tx.hash} owner=${newOwner} accessSigner=${recoveredAddr}`,
-        txHash: tx.hash,
+        summary: `owner=${newOwner} accessSigner=${recoveredAddr}`,
+        txHash: receipt.hash,
+        blockNumber: receipt.blockNumber,
+        chainId: deps.chainId,
       });
-      console.log(
-        `          tx=${tx.hash} owner=${newOwner} accessSigner=${recoveredAddr}`,
-      );
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      console.log(
-        `          [WARN] iTransferFrom on-chain reverted: ${msg.slice(0, 200)}`,
-      );
-      stepResults.push({
-        step: 10,
-        name: "iTransferFrom on-chain",
-        ok: false,
-        summary: `reverted: ${msg.slice(0, 120)}`,
-      });
-    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    recordOnChainStep({
+      step: 11,
+      name: "iTransferFrom on-chain",
+      ok: false,
+      summary: `reverted: ${msg.slice(0, 120)}`,
+      chainId: deps.chainId,
+    });
+    throw e;
   }
 }
 
 export function printReport(): void {
   console.log("\n============================================");
-  console.log("  E2E Summary");
+  console.log("  E2E Summary (live + on-chain proofs)");
   console.log("============================================");
   for (const r of stepResults) {
     const flag = r.ok ? "[OK]" : "[FAIL]";
-    console.log(`  Step ${r.step} ${flag}  ${r.name.padEnd(20)}  ${r.summary}`);
+    const block =
+      r.blockNumber !== undefined ? ` block=${r.blockNumber}` : "";
+    console.log(
+      `  Step ${String(r.step).padStart(2)} ${flag}  ${r.name.padEnd(28)}  ${r.summary}${block}`,
+    );
+    if (r.explorerUrl) {
+      console.log(`        ↳ ${r.explorerUrl}`);
+    }
   }
   const passed = stepResults.filter((r) => r.ok).length;
   console.log(`\n  ${passed}/${stepResults.length} steps passed`);

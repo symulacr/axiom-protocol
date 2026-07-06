@@ -6,6 +6,8 @@ export interface StepResult {
   ok: boolean;
   summary: string;
   txHash?: string;
+  blockNumber?: number;
+  explorerUrl?: string;
 }
 
 export const stepResults: StepResult[] = [];
