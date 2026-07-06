@@ -16,7 +16,7 @@
     "lint:fix": "solhint --fix 'src/**/*.sol' 'test/**/*.sol' 'script/**/*.sol'",
     "lint": "forge fmt --check",
     "typecheck": "tsc --noEmit",
-    "deploy:galileo": "forge script script/Deploy.s.sol --rpc-url ${OG_RPC_URL:-https://evmrpc-testnet.0g.ai} --broadcast --slow",
+    "deploy:galileo": "forge script script/Deploy.s.sol --rpc-url ${OG_RPC_URL:-https://evmrpc-testnet.0g.ai} --chain-id 16602 --broadcast --priority-gas-price 3000000000 --legacy --slow",
     "verify:galileo": "hardhat verify --network galileo",
     "deploy:mainnet": "forge script script/Deploy.s.sol --rpc-url ${OG_RPC_URL:-https://evmrpc.0g.ai} --broadcast --slow",
     "verify:mainnet": "hardhat verify --network mainnet"
