@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from "express";
 import type { JsonRpcProvider } from "ethers";
 import type { OracleClient } from "../oracle/client.js";
 import { createLogger } from "../utils/logger.js";
+import { sendError, extractErrorMessage } from "../utils/response.js";
 
 const log = createLogger("health");
 export function createHealthRouter(
@@ -19,8 +20,9 @@ export function createHealthRouter(
         oracle.health().catch(() => null),
       ]);
       const healthy = chainHead > 0;
-      res.status(healthy ? 200 : 503).json({
-        ok: healthy,
+      const ok = healthy && oracleHealth?.ok === true;
+      res.status(ok ? 200 : 503).json({
+        ok,
         version: "0.1.0",
         signer: signerAddress,
         chainHead,
@@ -29,9 +31,9 @@ export function createHealthRouter(
       });
     } catch (err) {
       log.error("health check failed", {
-        error: err instanceof Error ? err.message : String(err),
+        error: extractErrorMessage(err),
       });
-      res.status(503).json({ ok: false, error: "Health check failed" });
+      sendError(res, 503, "Health check failed");
     }
   });
 

@@ -1,5 +1,6 @@
 import type { AxiomEvent } from "./events.js";
 import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
+import { bigintReplacer } from "@axiom/config/types/bigint";
 
 export interface HttpEventBody {
   source: string;
@@ -18,6 +19,9 @@ export interface HttpEventSinkOptions {
   fetcher?: Fetcher;
   source?: string;
   timeoutMs?: number;
+  chainId?: number;
+  apiKey?: string;
+  maxRetries?: number;
 }
 
 export interface HttpEventSinkResult {
@@ -56,21 +60,33 @@ export async function postEvent(event: AxiomEvent, opts: HttpEventSinkOptions) {
   const source = opts.source ?? "indexer";
   const timeoutMs = opts.timeoutMs ?? 5_000;
   const url = resolveUrl(opts.backendUrl);
+  const maxRetries = opts.maxRetries ?? 2;
 
-  // Re-read env at call time so chain id can be rotated without restart.
-  // 0G Galileo (testnet) = 16602; mainnet "Aristotle" = 16661.
-  const chainId = Number(process.env["OG_CHAIN_ID"] ?? GALILEO_CHAIN_ID);
+  // Prefer the validated chainId from the env schema; fall back to process.env
+  // only when the caller did not pass one (defensive — should not normally happen).
+  const chainId = opts.chainId ?? Number(process.env["OG_CHAIN_ID"] ?? GALILEO_CHAIN_ID);
   const body: HttpEventBody = buildBody(event, source, chainId);
 
-  // AbortSignal.timeout is safe in Node 22+
-  const signal = AbortSignal.timeout(timeoutMs);
-  const res = await fetchImpl(url, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body, (_k, v) =>
-      typeof v === "bigint" ? v.toString() : v,
-    ),
-    signal,
-  });
-  return { status: res.status };
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      // AbortSignal.timeout is safe in Node 22+
+      const signal = AbortSignal.timeout(timeoutMs);
+      const headers: Record<string, string> = { "content-type": "application/json" };
+      if (opts.apiKey) headers["x-api-key"] = opts.apiKey;
+      const res = await fetchImpl(url, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body, bigintReplacer),
+        signal,
+      });
+      if (res.status < 500 || attempt === maxRetries) {
+        return { status: res.status };
+      }
+    } catch (err) {
+      if (attempt === maxRetries) throw err;
+    }
+    // Exponential backoff: 500ms, 1000ms
+    await new Promise((r) => setTimeout(r, 500 * Math.pow(2, attempt)));
+  }
+  return { status: 500 };
 }

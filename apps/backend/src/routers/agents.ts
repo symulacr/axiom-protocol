@@ -1,24 +1,20 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { ethers } from "ethers";
-import { TypedContract } from "@axiom/config/types/contract";
-import { AGENT_NFT_ABI } from "@axiom/config/abis";
+import type { TypedContract, AgentNFTMethods } from "@axiom/config/types/contract";
 import type { ServerConfig } from "../server.js";
-import { sendError } from "../utils/response.js";
+import { sendError, extractErrorMessage } from "../utils/response.js";
+import { TTLCache } from "../utils/cache.js";
 import { TRANSFER_TOPIC, MAX_AGENT_ENUMERATION } from "../utils/constants.js";
 import type { DefaultSignerOracleClient } from "../oracle/client.js";
 import { createLogger } from "../utils/logger.js";
 
 const log = createLogger("agents");
-import type { Eip712Domain } from "@axiom/config";
-import { accessMessageHash, recoverAccessSigner } from "@axiom/config";
-import { transferBodySchema } from "../route-schemas.js";
 
-type AgentNFTMethods = {
-  intelligentDatasOf(
-    tokenId: bigint,
-  ): Promise<{ dataDescription: string; dataHash: string }[]>;
-  creatorOf(tokenId: bigint): Promise<string>;
-};
+/** Max block range when scanning Transfer logs for agent enumeration. */
+const AGENT_LOG_SCAN_BLOCKS = 50_000;
+import type { Eip712Domain } from "@axiom/config";
+import { recoverAccessSigner } from "@axiom/config";
+import { transferBodySchema } from "../route-schemas.js";
 
 export function registerAgentRoutes(
   app: Express,
@@ -26,10 +22,10 @@ export function registerAgentRoutes(
   provider: ethers.JsonRpcProvider,
   oracle: DefaultSignerOracleClient,
   eip712Domain: Eip712Domain,
+  nftTc: TypedContract<AgentNFTMethods> | null,
 ): void {
   // TTL cache for agent listing (30s per owner)
-  const agentCache = new Map<string, { data: unknown; timestamp: number }>();
-  const AGENT_CACHE_TTL = 30_000;
+  const agentCache = new TTLCache<unknown>(30_000);
 
   app.get(
     "/v1/agents",
@@ -44,8 +40,8 @@ export function registerAgentRoutes(
           return;
         }
         const cached = agentCache.get(owner);
-        if (cached && Date.now() - cached.timestamp < AGENT_CACHE_TTL) {
-          res.json(cached.data);
+        if (cached) {
+          res.json(cached);
           return;
         }
         const nftAddr = config.addresses?.agentNft;
@@ -71,9 +67,11 @@ export function registerAgentRoutes(
         const paddedOwner = ("0x" +
           "00".repeat(12) +
           owner.slice(2)) as `0x${string}`;
+        const latest = await provider.getBlockNumber();
+        const fromBlock = Math.max(0, latest - AGENT_LOG_SCAN_BLOCKS);
         const transferLogs = await provider.getLogs({
           address: nftAddr,
-          fromBlock: 0,
+          fromBlock,
           toBlock: "latest",
           topics: [TRANSFER_TOPIC, null, paddedOwner],
         });
@@ -126,7 +124,7 @@ export function registerAgentRoutes(
           }
         }
         const result = { owner, agents: tokens };
-        agentCache.set(owner, { data: result, timestamp: Date.now() });
+        agentCache.set(owner, result);
         res.json(result);
       } catch (err) {
         next(err);
@@ -161,13 +159,8 @@ export function registerAgentRoutes(
         } = transferBodySchema.parse(req.body);
 
         let dataHash = dataHashIn;
-        if (!dataHash && config.addresses?.agentNft) {
+        if (!dataHash && nftTc) {
           try {
-            const nftTc = new TypedContract<AgentNFTMethods>(
-              config.addresses.agentNft,
-              AGENT_NFT_ABI,
-              provider,
-            );
             const datas = await nftTc.contract.intelligentDatasOf(BigInt(id));
             dataHash = (datas as { dataHash: string }[])?.[0]?.dataHash as
               | `0x${string}`
@@ -175,7 +168,7 @@ export function registerAgentRoutes(
           } catch (err) {
             log.warn("intelligentDatasOf failed for token", {
               tokenId: id,
-              error: err instanceof Error ? err.message : String(err),
+              error: extractErrorMessage(err),
             });
           }
         }
