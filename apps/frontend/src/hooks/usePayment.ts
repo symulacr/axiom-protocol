@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { parseAbi } from "viem";
 import type { Address } from "viem";
-import { useWriteContract } from "wagmi";
+import { useChainId, useWriteContract } from "wagmi";
 import { useAsyncAction } from "./useAsyncAction.js";
 import { PAYMENT_PROCESSOR_ABI } from "@axiom/config/abis";
 
@@ -12,7 +12,7 @@ import { apiFetch } from "../utils/apiFetch.js";
 
 export type PaymentConfig = {
   paymentToken: Address;
-  protocolFeeBps: number;
+  protocolFeeBps: string;
   protocolTreasury: Address;
 };
 
@@ -60,6 +60,7 @@ export type UsePaymentResult = {
 };
 
 export function usePayment(): UsePaymentResult {
+  const chainId = useChainId();
   const fetchAction = useAsyncAction();
   const earningsAction = useAsyncAction();
   const royaltyAction = useAsyncAction();
@@ -68,12 +69,13 @@ export function usePayment(): UsePaymentResult {
     writeContractAsync,
     isPending: isPayLoading,
     error: payError,
+    reset: resetPayWrite,
   } = useWriteContract();
 
   const payForAgent = useCallback(
     async (tokenId: bigint, amount: string): Promise<AgentPayResult> => {
       const txHash = await writeContractAsync({
-        address: getAxiomPaymentProcessorAddress(),
+        address: getAxiomPaymentProcessorAddress(chainId),
         abi: paymentProcessorAbi,
         functionName: "payForAgent",
         args: [tokenId, BigInt(amount)],
@@ -83,10 +85,10 @@ export function usePayment(): UsePaymentResult {
         tokenId: tokenId.toString(),
         amount,
         txHash,
-        payment: null,
+        payment: { txHash },
       };
     },
-    [writeContractAsync],
+    [chainId, writeContractAsync],
   );
 
   const getEarnings = useCallback(
@@ -136,7 +138,7 @@ export function usePayment(): UsePaymentResult {
     fetchError: fetchAction.error,
     isEarningsLoading: earningsAction.isLoading,
     earningsError: earningsAction.error,
-    resetPay: () => {},
+    resetPay: resetPayWrite,
     resetRoyalty: royaltyAction.reset,
     resetFetch: fetchAction.reset,
     resetEarnings: earningsAction.reset,

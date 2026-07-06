@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { useWriteContract } from "wagmi";
+import { useChainId, useWriteContract } from "wagmi";
 import { parseAbi, parseEther } from "viem";
 import { toast } from "sonner";
 import { getAxiomStrategyVaultAddress } from "../abi/addresses.js";
@@ -10,8 +10,9 @@ import { humanizeError } from "../utils/format.js";
 const abi = parseAbi(axiomStrategyVaultAbi);
 
 export function useDeposit(tokenId: bigint, onSuccess?: () => void) {
+  const chainId = useChainId();
   const vd = useVaultData(tokenId);
-  const vaultAddr = getAxiomStrategyVaultAddress();
+  const vaultAddr = getAxiomStrategyVaultAddress(chainId);
   const [depositAmount, setDepositAmount] = useState("");
 
   const { writeContract: doDeposit, isPending: isDepositing } =
@@ -38,7 +39,7 @@ export function useDeposit(tokenId: bigint, onSuccess?: () => void) {
       args: [tokenId],
       value: parseEther(depositAmount),
     });
-  }, [depositAmount, vaultAddr, tokenId, doDeposit]);
+  }, [chainId, depositAmount, vaultAddr, tokenId, doDeposit]);
 
   const isValidDeposit =
     depositAmount.trim() !== "" &&

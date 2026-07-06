@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { useAccount, useSignTypedData, useWriteContract } from "wagmi";
+import {
+  useAccount,
+  useChainId,
+  useSignTypedData,
+  useWriteContract,
+} from "wagmi";
 import { type Hex } from "viem";
 
 import { getAxiomAgentNftAddress } from "../abi/addresses.js";
@@ -43,6 +48,7 @@ function useWarnTimeout(message: string, delay: number, active: boolean): void {
 }
 
 export function useTransfer(): UseTransferResult {
+  const chainId = useChainId();
   const { address: from } = useAccount();
   const { signTypedDataAsync } = useSignTypedData();
   const {
@@ -63,12 +69,7 @@ export function useTransfer(): UseTransferResult {
   } = useAsyncAction();
   const isLoading = actionLoading || isWritePending;
   useWarnTimeout(
-    "[transfer] Challenge phase is taking longer than expected. The oracle may be processing.",
-    30000,
-    isLoading,
-  );
-  useWarnTimeout(
-    "[transfer] Finalization is taking longer than expected. The transaction may still complete.",
+    "[transfer] Transfer is taking longer than expected.",
     30000,
     isLoading,
   );
@@ -85,112 +86,117 @@ export function useTransfer(): UseTransferResult {
       }
 
       return execute(async (signal) => {
-        const path = agentTransferPath(input.tokenId);
+        try {
+          const path = agentTransferPath(input.tokenId);
 
-        setTransferPhase("challenge");
+          setTransferPhase("challenge");
 
-        // Step 1 — challenge (backend returns proof params).
-        const challengeBody: Record<string, unknown> = {
-          to: input.to,
-          receiverPubKey64: input.receiverPubKey64,
-          accessProofNonce: BigInt(input.accessProofNonce).toString(),
-        };
-        if (input.oldDataEncryptionKey && input.oldDataUri) {
-          challengeBody.oldDataEncryptionKey = input.oldDataEncryptionKey;
-          challengeBody.oldDataUri = input.oldDataUri;
-        }
-        const challenge = await apiFetch<TransferResponse>(path, {
-          method: "POST",
-          body: JSON.stringify(challengeBody),
-          signal,
-          timeout: LONG_TIMEOUT,
-        });
-        if (!challenge.ok || challenge.stage !== "challenge") {
-          throw new Error(
-            "backend did not return a transfer challenge. Challenge failed — generate a new nonce and try again.",
-          );
-        }
-        if (
-          !challenge.dataHash ||
-          !challenge.targetPubkey ||
-          challenge.accessProofNonce === undefined ||
-          challenge.validUntil === undefined
-        ) {
-          throw new Error(
-            "incomplete transfer challenge from backend — generate a new nonce and start over",
-          );
-        }
-
-        setTransferPhase("signing");
-
-        // Step 2 — receiver signs EIP-712 AccessProof.
-        const nonce = BigInt(challenge.accessProofNonce);
-        const validUntil = BigInt(challenge.validUntil);
-        const proofDataHash =
-          challenge.rekeyed && challenge.newDataHash
-            ? challenge.newDataHash
-            : challenge.dataHash;
-        const accessSignature = await signTypedDataAsync({
-          domain,
-          types: ACCESS_PROOF_TYPES,
-          primaryType: "AccessProof",
-          message: {
-            dataHash: proofDataHash,
-            targetPubkey: challenge.targetPubkey,
-            to: input.to,
-            nft: getAxiomAgentNftAddress(),
-            nonce,
-            validUntil,
-          },
-          account: from,
-        });
-
-        setTransferPhase("finalizing");
-
-        // Step 3 — finalize (backend builds on-chain structs from signed proof).
-        let proof = await apiFetch<TransferResponse>(path, {
-          method: "POST",
-          signal,
-          timeout: LONG_TIMEOUT,
-          body: JSON.stringify({
+          // Step 1 — challenge (backend returns proof params).
+          const challengeBody: Record<string, unknown> = {
             to: input.to,
             receiverPubKey64: input.receiverPubKey64,
-            dataHash: proofDataHash,
-            sealedKey: challenge.sealedKey,
-            accessProof: {
+            accessProofNonce: BigInt(input.accessProofNonce).toString(),
+          };
+          if (input.oldDataEncryptionKey && input.oldDataUri) {
+            challengeBody.oldDataEncryptionKey = input.oldDataEncryptionKey;
+            challengeBody.oldDataUri = input.oldDataUri;
+          }
+          const challenge = await apiFetch<TransferResponse>(path, {
+            method: "POST",
+            body: JSON.stringify(challengeBody),
+            signal,
+            timeout: LONG_TIMEOUT,
+          });
+          if (!challenge.ok || challenge.stage !== "challenge") {
+            throw new Error(
+              "backend did not return a transfer challenge. Challenge failed — generate a new nonce and try again.",
+            );
+          }
+          if (
+            !challenge.dataHash ||
+            !challenge.targetPubkey ||
+            challenge.accessProofNonce === undefined ||
+            challenge.validUntil === undefined
+          ) {
+            throw new Error(
+              "incomplete transfer challenge from backend — generate a new nonce and start over",
+            );
+          }
+
+          setTransferPhase("signing");
+
+          // Step 2 — receiver signs EIP-712 AccessProof.
+          const nonce = BigInt(challenge.accessProofNonce);
+          const validUntil = BigInt(challenge.validUntil);
+          const proofDataHash =
+            challenge.rekeyed && challenge.newDataHash
+              ? challenge.newDataHash
+              : challenge.dataHash;
+          const accessSignature = await signTypedDataAsync({
+            domain,
+            types: ACCESS_PROOF_TYPES,
+            primaryType: "AccessProof",
+            message: {
               dataHash: proofDataHash,
               targetPubkey: challenge.targetPubkey,
-              nonce: nonce.toString(),
-              proof: accessSignature,
-              validUntil: validUntil.toString(),
+              to: input.to,
+              nft: getAxiomAgentNftAddress(chainId),
+              nonce,
+              validUntil,
             },
-          }),
-        });
-        if (!proof.ok || proof.stage !== "final") {
-          throw new Error(
-            'backend did not return final proof structs. Finalization failed — transaction was NOT submitted. Click "Prepare Transfer" to restart.',
-          );
+            account: from,
+          });
+
+          setTransferPhase("finalizing");
+
+          // Step 3 — finalize (backend builds on-chain structs from signed proof).
+          let proof = await apiFetch<TransferResponse>(path, {
+            method: "POST",
+            signal,
+            timeout: LONG_TIMEOUT,
+            body: JSON.stringify({
+              to: input.to,
+              receiverPubKey64: input.receiverPubKey64,
+              dataHash: proofDataHash,
+              sealedKey: challenge.sealedKey,
+              accessProof: {
+                dataHash: proofDataHash,
+                targetPubkey: challenge.targetPubkey,
+                nonce: nonce.toString(),
+                proof: accessSignature,
+                validUntil: validUntil.toString(),
+              },
+            }),
+          });
+          if (!proof.ok || proof.stage !== "final") {
+            throw new Error(
+              'backend did not return final proof structs. Finalization failed — transaction was NOT submitted. Click "Prepare Transfer" to restart.',
+            );
+          }
+          if (!proof.accessProof || !proof.ownershipProof) {
+            throw new Error(
+              'incomplete proof structs from backend. Finalization failed — transaction was NOT submitted. Click "Prepare Transfer" to restart.',
+            );
+          }
+          // Carry re-key status forward for the modal.
+          if (challenge.rekeyed) {
+            proof = {
+              ...proof,
+              rekeyed: true,
+              newDataHash: challenge.newDataHash,
+              newDataUri: challenge.newDataUri,
+            };
+          }
+          setSignature(proof);
+          setTransferPhase("idle");
+          return proof;
+        } catch (err) {
+          setTransferPhase("idle");
+          throw err;
         }
-        if (!proof.accessProof || !proof.ownershipProof) {
-          throw new Error(
-            'incomplete proof structs from backend. Finalization failed — transaction was NOT submitted. Click "Prepare Transfer" to restart.',
-          );
-        }
-        // Carry re-key status forward for the modal.
-        if (challenge.rekeyed) {
-          proof = {
-            ...proof,
-            rekeyed: true,
-            newDataHash: challenge.newDataHash,
-            newDataUri: challenge.newDataUri,
-          };
-        }
-        setSignature(proof);
-        setTransferPhase("idle");
-        return proof;
       });
     },
-    [from, domain, signTypedDataAsync, execute],
+    [chainId, from, domain, signTypedDataAsync, execute],
   );
 
   const confirm = useCallback(
@@ -204,7 +210,7 @@ export function useTransfer(): UseTransferResult {
       setTransferPhase("confirming");
       try {
         const txHash = await writeContractAsync({
-          address: getAxiomAgentNftAddress(),
+          address: getAxiomAgentNftAddress(chainId),
           abi: ITRANSFER_FROM_ABI,
           functionName: "iTransferFrom",
           args: [
@@ -229,7 +235,7 @@ export function useTransfer(): UseTransferResult {
         );
       }
     },
-    [from, signature, writeContractAsync],
+    [chainId, from, signature, writeContractAsync],
   );
 
   const transfer = useCallback(

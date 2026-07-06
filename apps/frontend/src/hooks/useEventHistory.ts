@@ -35,6 +35,18 @@ export interface UseEventHistoryOptions {
 const DEFAULT_POLL_INTERVAL_MS = 15_000;
 const MAX_EVENTS = 500;
 
+function eventDedupeKey(ev: AxiomEvent): string {
+  return `${ev.chainId}:${ev.txHash}:${ev.logIndex}`;
+}
+
+function sortEventsChronological(a: AxiomEvent, b: AxiomEvent): number {
+  return (
+    a.blockNumber - b.blockNumber ||
+    a.logIndex - b.logIndex ||
+    a.receivedAt - b.receivedAt
+  );
+}
+
 function groupByName(
   events: readonly AxiomEvent[],
 ): Record<string, AxiomEvent[]> {
@@ -66,6 +78,7 @@ export function useEventHistory(
   // Ref (not state) — updates after each successful fetch without
   // causing a re-render or query-key change that would flicker data.
   const lastTimestampRef = useRef(0);
+  const mergedEventsRef = useRef<AxiomEvent[]>([]);
 
   const urlGetter = useCallback(() => {
     let path = `/v1/events?since=${lastTimestampRef.current}`;
@@ -82,6 +95,11 @@ export function useEventHistory(
   });
 
   useEffect(() => {
+    mergedEventsRef.current = [];
+    lastTimestampRef.current = 0;
+  }, [owner, enabled]);
+
+  useEffect(() => {
     if (!query.data) return;
     const raw = Array.isArray(query.data.events) ? query.data.events : [];
     if (raw.length > 0) {
@@ -93,9 +111,26 @@ export function useEventHistory(
   }, [query.data]);
 
   const events = useMemo(() => {
-    if (!query.data?.events) return [];
+    if (!query.data?.events) return mergedEventsRef.current;
+
     const raw = Array.isArray(query.data.events) ? query.data.events : [];
-    return raw.length > MAX_EVENTS ? raw.slice(0, MAX_EVENTS) : raw;
+    if (raw.length === 0) return mergedEventsRef.current;
+
+    const seen = new Set(mergedEventsRef.current.map(eventDedupeKey));
+    const merged = [...mergedEventsRef.current];
+    for (const ev of raw) {
+      const key = eventDedupeKey(ev);
+      if (!seen.has(key)) {
+        seen.add(key);
+        merged.push(ev);
+      }
+    }
+
+    merged.sort(sortEventsChronological);
+    const capped =
+      merged.length > MAX_EVENTS ? merged.slice(-MAX_EVENTS) : merged;
+    mergedEventsRef.current = capped;
+    return capped;
   }, [query.data]);
 
   const byName = useMemo<Record<string, AxiomEvent[]>>(

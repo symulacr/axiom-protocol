@@ -6,7 +6,7 @@ import {
   useState,
   type ReactElement,
 } from "react";
-import { useAccount } from "wagmi";
+import { useChainId } from "wagmi";
 import { formatEther } from "viem";
 import { toast } from "sonner";
 import {
@@ -27,14 +27,11 @@ import {
   MonoLabel,
   Alert,
   HelpTip,
+  getActionColor,
+  DefinitionList,
+  ConnectedGuard,
 } from "./ui.js";
 import { PLACEHOLDER, humanizeError } from "../utils/format.js";
-
-const actionColor: Record<string, string> = {
-  buy: COLORS.success,
-  sell: COLORS.danger,
-  hold: COLORS.textMuted,
-};
 
 const TICK_STEPS = [
   "Securing enclave channel via 0G Compute...",
@@ -170,9 +167,8 @@ export type ExecutePanelProps = {
 export function ExecutePanel({
   tokenId: tokenIdProp,
 }: ExecutePanelProps): ReactElement {
-  const { isConnected } = useAccount();
-  const { agents, isLoading: agentsLoading } =
-    tokenIdProp === undefined ? useAgents() : { agents: [], isLoading: false };
+  const chainId = useChainId();
+  const { agents, isLoading: agentsLoading } = useAgents();
   const {
     tick,
     tickStream,
@@ -237,14 +233,6 @@ export function ExecutePanel({
   const strategyRoot = isReady ? vd.strategyRoot : undefined;
   const dailyLimitWei = isReady ? vd.dailyLimitWei : undefined;
 
-  if (!isConnected) {
-    return (
-      <Card style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        <p>Connect wallet to execute a strategy tick.</p>
-      </Card>
-    );
-  }
-
   const onExecute = useCallback(async (): Promise<void> => {
     if (!activeId) return;
     setResult(null);
@@ -257,16 +245,16 @@ export function ExecutePanel({
         // Strategy tick uses WSS streaming (via useOrchestratorTick's tickStream — SSE→WSS is transparent)
         res = await tickStream(
           {
-            vault: getAxiomStrategyVaultAddress(),
-            agentNft: getAxiomAgentNftAddress(),
+            vault: getAxiomStrategyVaultAddress(chainId),
+            agentNft: getAxiomAgentNftAddress(chainId),
             agentTokenId: activeId,
           },
           {},
         );
       } else {
         res = await tick({
-          vault: getAxiomStrategyVaultAddress(),
-          agentNft: getAxiomAgentNftAddress(),
+          vault: getAxiomStrategyVaultAddress(chainId),
+          agentNft: getAxiomAgentNftAddress(chainId),
           agentTokenId: activeId,
         });
       }
@@ -282,9 +270,10 @@ export function ExecutePanel({
       toast.error(`Strategy execution failed: ${msg}`);
       console.error("ExecutePanel: orchestrator tick failed", err);
     }
-  }, [activeId, streamMode, tick, tickStream, resetStream, activeBigint]);
+  }, [activeId, chainId, streamMode, tick, tickStream, resetStream, vd]);
 
   return (
+    <ConnectedGuard>
     <Card
       style={{
         display: "flex",
@@ -343,55 +332,48 @@ export function ExecutePanel({
 
       <div>
         <SectionTitle>Vault State</SectionTitle>
-        <dl
-          className="stack-on-mobile"
-          style={{
-            margin: 0,
-            display: "grid",
-            gridTemplateColumns: "120px 1fr",
-            gap: "8px 16px",
-            fontSize: "var(--text-sm)",
-          }}
-        >
-          <dt style={{ color: COLORS.textDim, fontWeight: "var(--fw-medium)" }}>
-            Balance
-          </dt>
-          <dd
-            style={{
-              margin: 0,
-              color: COLORS.bronzeLight,
-              fontWeight: "var(--fw-semibold)",
-            }}
-          >
-            {depositsWei === undefined
-              ? PLACEHOLDER
-              : `${formatEther(depositsWei)} 0G`}
-          </dd>
-          <dt style={{ color: COLORS.textDim, fontWeight: "var(--fw-medium)" }}>
-            <HelpTip tip="The on-chain address of the strategy contract controlling this agent's vault logic">
-              Strategy Root
-            </HelpTip>
-          </dt>
-          <dd style={{ margin: 0 }}>
-            {strategyRoot !== undefined ? (
-              <MonoLabel
-                style={{ fontSize: "var(--text-xs)" }}
-              >{`${strategyRoot.slice(0, 10)}\u2026`}</MonoLabel>
-            ) : (
-              <span style={{ color: COLORS.textDim }}>{PLACEHOLDER}</span>
-            )}
-          </dd>
-          <dt style={{ color: COLORS.textDim, fontWeight: "var(--fw-medium)" }}>
-            <HelpTip tip="Maximum amount the agent can spend per 24-hour cycle, enforced by the vault contract">
-              Daily Limit
-            </HelpTip>
-          </dt>
-          <dd style={{ margin: 0, color: COLORS.text }}>
-            {dailyLimitWei === undefined
-              ? PLACEHOLDER
-              : `${formatEther(dailyLimitWei)} 0G`}
-          </dd>
-        </dl>
+        <DefinitionList
+          items={[
+            {
+              term: "Balance",
+              detail:
+                depositsWei === undefined
+                  ? PLACEHOLDER
+                  : `${formatEther(depositsWei)} 0G`,
+              detailStyle: {
+                color: COLORS.bronzeLight,
+                fontWeight: "var(--fw-semibold)",
+              },
+            },
+            {
+              term: (
+                <HelpTip tip="The on-chain address of the strategy contract controlling this agent's vault logic">
+                  Strategy Root
+                </HelpTip>
+              ),
+              detail:
+                strategyRoot !== undefined ? (
+                  <MonoLabel
+                    style={{ fontSize: "var(--text-xs)" }}
+                  >{`${strategyRoot.slice(0, 10)}\u2026`}</MonoLabel>
+                ) : (
+                  <span style={{ color: COLORS.textDim }}>{PLACEHOLDER}</span>
+                ),
+            },
+            {
+              term: (
+                <HelpTip tip="Maximum amount the agent can spend per 24-hour cycle, enforced by the vault contract">
+                  Daily Limit
+                </HelpTip>
+              ),
+              detail:
+                dailyLimitWei === undefined
+                  ? PLACEHOLDER
+                  : `${formatEther(dailyLimitWei)} 0G`,
+              detailStyle: { color: COLORS.text },
+            },
+          ]}
+        />
       </div>
 
       <div
@@ -599,8 +581,7 @@ export function ExecutePanel({
             <p style={{ margin: 0, fontSize: "var(--text-base)" }}>
               <strong
                 style={{
-                  color:
-                    actionColor[result.recommendation.action] ?? COLORS.text,
+                  color: getActionColor(result.recommendation.action),
                   fontSize: "var(--text-base)",
                   letterSpacing: "0.02em",
                 }}
@@ -661,98 +642,63 @@ export function ExecutePanel({
           {result.execution !== undefined && (
             <div>
               <SectionTitle>On-chain Execution</SectionTitle>
-              <dl
-                className="stack-on-mobile"
-                style={{
-                  margin: 0,
-                  display: "grid",
-                  gridTemplateColumns: "100px 1fr",
-                  gap: "8px 16px",
-                  fontSize: "var(--text-sm)",
-                }}
-              >
-                <dt
-                  style={{
-                    color: COLORS.textDim,
-                    fontWeight: "var(--fw-medium)",
-                  }}
-                >
-                  Success
-                </dt>
-                <dd style={{ margin: 0 }}>
-                  {result.execution.success ? (
-                    <span
-                      style={{
-                        color: COLORS.success,
-                        fontWeight: "var(--fw-semibold)",
-                      }}
-                    >
-                      yes
-                    </span>
-                  ) : (
-                    <span
-                      style={{
-                        color: COLORS.danger,
-                        fontWeight: "var(--fw-semibold)",
-                      }}
-                    >
-                      no
-                    </span>
-                  )}
-                </dd>
-                <dt
-                  style={{
-                    color: COLORS.textDim,
-                    fontWeight: "var(--fw-medium)",
-                  }}
-                >
-                  Action
-                </dt>
-                <dd style={{ margin: 0, color: COLORS.text }}>
-                  {result.execution.action}
-                </dd>
-                <dt
-                  style={{
-                    color: COLORS.textDim,
-                    fontWeight: "var(--fw-medium)",
-                  }}
-                >
-                  Target
-                </dt>
-                <dd style={{ margin: 0 }}>
-                  <MonoLabel style={{ fontSize: "var(--text-xs)" }}>
-                    {result.execution.target}
-                  </MonoLabel>
-                </dd>
-                <dt
-                  style={{
-                    color: COLORS.textDim,
-                    fontWeight: "var(--fw-medium)",
-                  }}
-                >
-                  Tx Hash
-                </dt>
-                <dd style={{ margin: 0 }}>
-                  <MonoLabel style={{ fontSize: "var(--text-xs)" }}>
-                    {result.execution.txHash}
-                  </MonoLabel>
-                </dd>
-                {result.execution.gasUsed !== undefined && (
-                  <>
-                    <dt
-                      style={{
-                        color: COLORS.textDim,
-                        fontWeight: "var(--fw-medium)",
-                      }}
-                    >
-                      Gas Used
-                    </dt>
-                    <dd style={{ margin: 0, color: COLORS.text }}>
-                      {String(result.execution.gasUsed)}
-                    </dd>
-                  </>
-                )}
-              </dl>
+              <DefinitionList
+                labelWidth="100px"
+                items={[
+                  {
+                    term: "Success",
+                    detail: result.execution.success ? (
+                      <span
+                        style={{
+                          color: COLORS.success,
+                          fontWeight: "var(--fw-semibold)",
+                        }}
+                      >
+                        yes
+                      </span>
+                    ) : (
+                      <span
+                        style={{
+                          color: COLORS.danger,
+                          fontWeight: "var(--fw-semibold)",
+                        }}
+                      >
+                        no
+                      </span>
+                    ),
+                  },
+                  {
+                    term: "Action",
+                    detail: result.execution.action,
+                    detailStyle: { color: COLORS.text },
+                  },
+                  {
+                    term: "Target",
+                    detail: (
+                      <MonoLabel style={{ fontSize: "var(--text-xs)" }}>
+                        {result.execution.target}
+                      </MonoLabel>
+                    ),
+                  },
+                  {
+                    term: "Tx Hash",
+                    detail: (
+                      <MonoLabel style={{ fontSize: "var(--text-xs)" }}>
+                        {result.execution.txHash}
+                      </MonoLabel>
+                    ),
+                  },
+                  ...(result.execution.gasUsed !== undefined
+                    ? [
+                        {
+                          term: "Gas Used",
+                          detail: String(result.execution.gasUsed),
+                          detailStyle: { color: COLORS.text },
+                        },
+                      ]
+                    : []),
+                ]}
+              />
             </div>
           )}
 
@@ -768,6 +714,7 @@ export function ExecutePanel({
         </div>
       )}
     </Card>
+    </ConnectedGuard>
   );
 }
 
