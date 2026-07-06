@@ -6,6 +6,14 @@ import { axiomStrategyVaultAbi } from "../abi/axiomStrategyVault.js";
 
 const axiomStrategyVaultAbiParsed = parseAbi(axiomStrategyVaultAbi);
 
+type StrategyOfTuple = readonly [
+  `0x${string}`,
+  bigint,
+  bigint,
+  bigint,
+  bigint,
+];
+
 export type VaultData = {
   depositsWei: bigint;
   strategyRoot: string;
@@ -50,15 +58,9 @@ export function useVaultData(tokenId: bigint): VaultData {
   const data = query.data;
   const depositsWei = data ? (data[0] as bigint) : 0n;
   const strategyRoot = data
-    ? ((
-        data[1] as readonly [`0x${string}`, bigint, bigint, bigint]
-      )[0] as string)
+    ? ((data[1] as StrategyOfTuple)[0] as string)
     : "";
-  const dailyLimitWei = data
-    ? ((
-        data[1] as readonly [`0x${string}`, bigint, bigint, bigint]
-      )[1] as bigint)
-    : 0n;
+  const dailyLimitWei = data ? (data[1] as StrategyOfTuple)[1] : 0n;
   const refetch = query.refetch;
 
   const result = useMemo(
