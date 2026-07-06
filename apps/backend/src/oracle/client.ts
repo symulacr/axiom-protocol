@@ -4,6 +4,7 @@ import {
   type OwnershipProofInput,
   type AccessProofInput,
   type OwnershipProofResult,
+  type OwnershipProofResultWithMeta,
 } from "@axiom/config";
 export type { OwnershipProofInput, OwnershipProofResult, AccessProofInput };
 import { bigintReplacer } from "@axiom/config/types/bigint";
@@ -46,7 +47,7 @@ export interface TransferValidityInput {
  * validUntil the oracle used when signing (so the backend can build a matching
  * AccessProof challenge without clock-skew).
  */
-export interface TransferValidityResult extends OwnershipProofResult {
+export interface TransferValidityResult extends OwnershipProofResultWithMeta {
   /** Unix-seconds deadline the oracle used in the OwnershipProof signature. */
   validUntil?: string;
 }
@@ -117,23 +118,19 @@ export class DefaultSignerOracleClient implements OracleClient {
     });
   }
 
-  private async get<T>(path: string): Promise<T> {
+  private async request<T>(
+    method: "GET" | "POST",
+    path: string,
+    body?: object,
+  ): Promise<T> {
     const timeout = this.config.timeoutMs ?? ORACLE_TIMEOUT_MS;
+    const headers = this.headers(
+      method === "POST" ? { "Content-Type": "application/json" } : undefined,
+    );
     const res = await fetch(`${this.baseUrl}${path}`, {
-      headers: this.headers(),
-      signal: AbortSignal.timeout(timeout),
-    });
-    if (!res.ok) throw new Error(`Oracle ${path} returned ${res.status}`);
-    return (await res.json()) as T;
-  }
-
-  private async post<T>(path: string, input: object): Promise<T> {
-    const timeout = this.config.timeoutMs ?? ORACLE_TIMEOUT_MS;
-    const body = JSON.stringify(input, bigintReplacer);
-    const res = await fetch(`${this.baseUrl}${path}`, {
-      method: "POST",
-      headers: this.headers({ "Content-Type": "application/json" }),
-      body,
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body, bigintReplacer) : undefined,
       signal: AbortSignal.timeout(timeout),
     });
     if (!res.ok) {
@@ -143,5 +140,13 @@ export class DefaultSignerOracleClient implements OracleClient {
       );
     }
     return (await res.json()) as T;
+  }
+
+  private get<T>(path: string): Promise<T> {
+    return this.request<T>("GET", path);
+  }
+
+  private post<T>(path: string, input: object): Promise<T> {
+    return this.request<T>("POST", path, input);
   }
 }
