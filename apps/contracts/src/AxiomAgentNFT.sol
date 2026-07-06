@@ -28,6 +28,8 @@ import {AxiomMetadataJson} from "./extensions/AxiomMetadataJson.sol";
 /// @dev Composes the canonical 3 ERC-7857 extensions (Cloneable + Authorize + IDataStorage)
 ///      + OZ AccessControl + ReentrancyGuard + Pausable + ERC721Upgradeable
 /// @dev Adapted from https://github.com/0gfoundation/0g-agent-nft (MIT) — same composition
+/// @dev Integrators must use `iTransfer`/`iTransferFrom` with proofs; bare `transferFrom`/`safeTransferFrom`
+///      move ownership without `PublishedSealedKey` and may break decryptability.
 contract AxiomAgentNFT is
     AccessControlUpgradeable,
     ReentrancyGuardUpgradeable,
@@ -39,16 +41,24 @@ contract AxiomAgentNFT is
     ERC7857IDataStorageUpgradeable
 {
     event VerifierUpdated(address indexed oldVerifier, address indexed newVerifier);
+    event VerifierProposed(address indexed newVerifier, uint256 executableAt);
+    event VerifierProposalCancelled(address indexed cancelledVerifier);
     event CreatorSet(uint256 indexed tokenId, address indexed creator);
     event MintFeeUpdated(uint256 oldFee, uint256 newFee);
     event StorageInfoUpdated(string oldInfo, string newInfo);
     event MetadataJsonDecisionDocumented(string collectionName, string collectionSymbol, string rationaleTag);
+
+    error NoPendingVerifierProposal();
+    error VerifierDelayNotElapsed(uint256 executableAt, uint256 currentTime);
 
     /// @custom:storage-location erc7201:agent.storage.AxiomAgentNFT
     struct AxiomAgentNFTStorage {
         string storageInfo;
         uint256 mintFee;
         mapping(uint256 => address) creators;
+        address pendingVerifier;
+        uint256 pendingVerifierExecutableAt;
+        uint256[48] __gap;
     }
 
     using AxiomMetadataJson for uint256;
@@ -57,6 +67,9 @@ contract AxiomAgentNFT is
     bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     string public constant VERSION = "1.0.0";
+
+    /// @dev Minimum delay between proposing and executing a verifier rotation.
+    uint256 public constant ADMIN_DELAY = 1 days;
 
     // keccak256(abi.encode(uint256(keccak256("agent.storage.AxiomAgentNFT")) - 1)) & ~bytes32(uint256(0xff))
     // Canonical ERC-7201 formula (OZ v5).
@@ -145,13 +158,44 @@ contract AxiomAgentNFT is
         return super.supportsInterface(interfaceId);
     }
 
-    function updateVerifier(
+    /// @dev Restricted to `OPERATOR_ROLE`. Verifier rotation is two-step with `ADMIN_DELAY`
+    ///      so monitors can react before execution.
+    function proposeVerifier(
         address newVerifier
-    ) public virtual onlyRole(OPERATOR_ROLE) {
+    ) external onlyRole(OPERATOR_ROLE) {
         require(newVerifier != address(0), "Zero address");
+        AxiomAgentNFTStorage storage $ = _getAxiomAgentNFTStorage();
+        uint256 executableAt = block.timestamp + ADMIN_DELAY;
+        $.pendingVerifier = newVerifier;
+        $.pendingVerifierExecutableAt = executableAt;
+        emit VerifierProposed(newVerifier, executableAt);
+    }
+
+    /// @dev Finalize a previously proposed verifier rotation after `ADMIN_DELAY`.
+    function executeVerifier() external onlyRole(OPERATOR_ROLE) {
+        AxiomAgentNFTStorage storage $ = _getAxiomAgentNFTStorage();
+        address newVerifier = $.pendingVerifier;
+        if (newVerifier == address(0)) revert NoPendingVerifierProposal();
+        uint256 executableAt = $.pendingVerifierExecutableAt;
+        if (block.timestamp < executableAt) {
+            revert VerifierDelayNotElapsed(executableAt, block.timestamp);
+        }
+
         address oldVerifier = address(verifier());
         _setVerifier(newVerifier);
+        $.pendingVerifier = address(0);
+        $.pendingVerifierExecutableAt = 0;
         emit VerifierUpdated(oldVerifier, newVerifier);
+    }
+
+    /// @dev Cancel a pending verifier rotation before it is executed.
+    function cancelVerifierProposal() external onlyRole(OPERATOR_ROLE) {
+        AxiomAgentNFTStorage storage $ = _getAxiomAgentNFTStorage();
+        address cancelled = $.pendingVerifier;
+        if (cancelled == address(0)) revert NoPendingVerifierProposal();
+        $.pendingVerifier = address(0);
+        $.pendingVerifierExecutableAt = 0;
+        emit VerifierProposalCancelled(cancelled);
     }
 
     function setMintFee(
@@ -180,6 +224,14 @@ contract AxiomAgentNFT is
         return _getAxiomAgentNFTStorage().storageInfo;
     }
 
+    function pendingVerifier() public view returns (address) {
+        return _getAxiomAgentNFTStorage().pendingVerifier;
+    }
+
+    function pendingVerifierExecutableAt() public view returns (uint256) {
+        return _getAxiomAgentNFTStorage().pendingVerifierExecutableAt;
+    }
+
     function pause() external onlyRole(ADMIN_ROLE) {
         _pause();
     }
@@ -202,12 +254,11 @@ contract AxiomAgentNFT is
     ///         https://docs.openzeppelin.com/contracts/5.x/api/proxy#UUPSUpgradeable-_authorizeUpgrade-address-
     ///         The EIP-1967 implementation slot is rewritten by the upgrade; the security check
     ///         here is the only thing preventing an attacker from bricking or replacing the
-    ///         implementation. We restrict upgrades to the owner (the same address that holds
-    ///         DEFAULT_ADMIN_ROLE), which matches the deploy-time trust assumption in
-    ///         script/Deploy.s.sol.
+    ///         implementation. Upgrades are restricted to `DEFAULT_ADMIN_ROLE` so governance
+    ///         aligns with AccessControl rather than a separate Ownable surface.
     function _authorizeUpgrade(
         address newImplementation
-    ) internal override onlyOwner {}
+    ) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
 
     function mint(
         IntelligentData[] calldata iDatas,
@@ -218,10 +269,10 @@ contract AxiomAgentNFT is
         require(msg.value >= _getAxiomAgentNFTStorage().mintFee, "Insufficient mint fee");
 
         tokenId = _incrementTokenId();
+        _updateData(tokenId, iDatas);
         _safeMint(to, tokenId);
         _getAxiomAgentNFTStorage().creators[tokenId] = to;
         emit CreatorSet(tokenId, to);
-        _updateData(tokenId, iDatas);
         _refundExcess();
     }
 
@@ -232,8 +283,8 @@ contract AxiomAgentNFT is
         require(to != address(0), "Zero address");
         require(iDatas.length > 0, "Empty data array");
         tokenId = _incrementTokenId();
-        _safeMint(to, tokenId);
         _updateData(tokenId, iDatas);
+        _safeMint(to, tokenId);
     }
 
     function mintWithRole(
@@ -244,8 +295,8 @@ contract AxiomAgentNFT is
         require(to != address(0), "Zero address");
         require(iDatas.length > 0, "Empty data array");
         tokenId = _incrementTokenId();
-        _safeMint(to, tokenId);
         _updateData(tokenId, iDatas);
+        _safeMint(to, tokenId);
         if (creator != address(0)) {
             _getAxiomAgentNFTStorage().creators[tokenId] = creator;
             emit CreatorSet(tokenId, creator);
