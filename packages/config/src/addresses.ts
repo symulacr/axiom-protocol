@@ -4,19 +4,19 @@ import { validateHex } from "./types/hex.js";
 /** Hardcoded deployed addresses — last-resort fallback. */
 export const DEPLOYED_ADDRESSES = {
   agentNft: validateHex(
-    "0x6f82d061a903E48Ce1810F8d42536C6A837ed684",
+    "0xaBe9339b93320EC78400772802fc9103c56a4838",
     "AXIOM_AGENT_NFT_ADDRESS",
   ),
   strategyVault: validateHex(
-    "0xB30061Ea93b60FCbAE11C2b06FE3Db3C84FAA367",
+    "0x170271D189Fb039c2b546106F73a3049A8a7bC38",
     "AXIOM_STRATEGY_VAULT_ADDRESS",
   ),
   teeVerifier: validateHex(
-    "0x63Edfd4CD68A77AEdC4A56550Ae94e7F86d497B7",
+    "0x60B9d53F5410b6586D2D5395D4A309E3C9E5595A",
     "AXIOM_TEE_VERIFIER_ADDRESS",
   ),
   paymentProcessor: validateHex(
-    "0x97a32707d948F91175706ca5509c7bfCC643a1dD",
+    "0x670873887CaD7442F52027702538fb2e418b8576",
     "AXIOM_PAYMENT_PROCESSOR_ADDRESS",
   ),
   mockUsdc: validateHex(
