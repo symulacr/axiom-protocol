@@ -24,6 +24,7 @@ abstract contract ERC7857AuthorizeUpgradeable is IERC7857Authorize, ERC7857Upgra
     /// @custom:storage-location erc7857:0g.storage.ERC7857Authorize
     struct ERC7857AuthorizeStorage {
         mapping(uint256 tokenId => EnumerableSet.AddressSet) authorizedUsers;
+        uint256[50] __gap;
     }
 
     // keccak256(abi.encode(uint256(keccak256("0g.storage.ERC7857Authorize")) - 1)) & ~bytes32(uint256(0xff))

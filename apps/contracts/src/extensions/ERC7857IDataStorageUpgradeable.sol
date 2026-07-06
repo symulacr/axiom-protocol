@@ -18,6 +18,7 @@ abstract contract ERC7857IDataStorageUpgradeable is ERC7857Upgradeable {
     /// @custom:storage-location erc7857:0g.storage.ERC7857IDataStorage
     struct ERC7857IDataStorageStorage {
         mapping(uint256 tokenId => IntelligentData[]) iDatas;
+        uint256[50] __gap;
     }
 
     // keccak256(abi.encode(uint256(keccak256("0g.storage.ERC7857IDataStorage")) - 1)) & ~bytes32(uint256(0xff))
