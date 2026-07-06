@@ -5,17 +5,23 @@ import {
   buildEip712Domain,
   deriveUncompressedPubkeyFromHex,
 } from "@axiom/config";
+import { getAddresses } from "@axiom/config/addresses";
 import { resolveStorageRpc, GALILEO_CHAIN_ID } from "@axiom/config/networks";
 import { fetchJson } from "../utils/fetch-json.js";
 import { postStep } from "./e2e/http.js";
 import {
   printE2eBanner,
   runHealthStep,
+  runContractsLiveStep,
   runStrategyStep,
   runEncryptStep,
   runUploadStep,
-  runMintStep,
-  runSkippedVaultSteps,
+  runStorageVerifyStep,
+  runOracleRegisterStep,
+  runOnChainMintStep,
+  runVaultDepositStep,
+  runVaultStrategyStep,
+  runPaymentStep,
   runTickStep,
   runTransferSteps,
   runOnChainTransferStep,
@@ -23,8 +29,8 @@ import {
 } from "./e2e/steps.js";
 
 /**
- * End-to-end CLI for the Axiom Protocol on 0G Galileo testnet.
- * Per the `ts-no-dynamic-import` rule, all modules are static-imported.
+ * Live E2E on 0G Galileo: storage upload + merkle verify, on-chain mint/deposit/
+ * strategy/payment/transfer with receipt proofs and block explorer links.
  */
 
 loadEnv();
@@ -43,39 +49,53 @@ const OG_CHAIN_ID = Number.parseInt(
   getEnvWithAlias("AXIOM_CHAIN_ID", ["OG_CHAIN_ID"], String(GALILEO_CHAIN_ID)),
   10,
 );
-// Wave E-5 (2026-06-16) — all addresses are env-driven so a redeploy
-// doesn't require a code change. See docs/deployments/wave-e5-redeploy-2026-06-16.md.
-const TEE_VERIFIER = getEnv(
-  "AXIOM_TEE_VERIFIER",
-  "0xB27c73aD01f61Ec1FDC302dF2350326228F14c11",
+
+const addresses = getAddresses(process.env);
+const TEE_VERIFIER = getEnvWithAlias(
+  "AXIOM_TEE_VERIFIER_ADDRESS",
+  ["AXIOM_TEE_VERIFIER"],
+  addresses.teeVerifier,
 );
-const PAYMENT_PROCESSOR = getEnv(
-  "AXIOM_PAYMENT_PROCESSOR",
-  "0xe14F3d2f927E197916284B8399ade5FfFF12CB0c",
+const PAYMENT_PROCESSOR = getEnvWithAlias(
+  "AXIOM_PAYMENT_PROCESSOR_ADDRESS",
+  ["AXIOM_PAYMENT_PROCESSOR", "PAYMENT_PROCESSOR_ADDRESS"],
+  addresses.paymentProcessor,
 );
-const PAYMENT_TOKEN = getEnv(
+const PAYMENT_TOKEN = getEnvWithAlias(
   "AXIOM_PAYMENT_TOKEN",
-  "0x354CA53bAB51C0666964fa050628d8351f8A7d19",
+  ["AXIOM_MOCK_USDC_ADDRESS", "PAYMENT_TOKEN_ADDR"],
+  addresses.mockUsdc,
 );
-const AGENT_NFT = getEnv(
-  "AGENT_NFT_ADDRESS",
-  "0x5a89B0a41b2d9E7b661d2a4b1b06e43211b59379",
+const AGENT_NFT = getEnvWithAlias(
+  "AXIOM_AGENT_NFT_ADDRESS",
+  ["AGENT_NFT_ADDRESS", "AXIOM_AGENT_NFT"],
+  addresses.agentNft,
 );
-const VAULT = getEnv(
-  "VAULT_ADDRESS",
-  "0xE3f3Af712B379e2DE19ffB3a7375A15D1FC31979",
+const VAULT = getEnvWithAlias(
+  "AXIOM_STRATEGY_VAULT_ADDRESS",
+  ["VAULT_ADDRESS"],
+  addresses.strategyVault,
 );
 
 const provider = getSharedProvider(OG_CHAIN_ID);
 const deployer = new Wallet(DEPLOYER_PK, provider);
 const teeSigner = new Wallet(TEE_SIGNER_PK, provider);
-const RECEIVER_PK = getEnv("RECEIVER_PK");
+const RECEIVER_PK = getEnvWithAlias(
+  "RECEIVER_PK",
+  ["AXIOM_TEST_RECEIVER_1_PK"],
+  "",
+);
+if (!RECEIVER_PK) {
+  throw new Error("Missing RECEIVER_PK or AXIOM_TEST_RECEIVER_1_PK for transfer step");
+}
 const receiver = new Wallet(RECEIVER_PK, provider);
 const to = receiver.address as `0x${string}`;
 const receiverPubKey64 = hexlify(
   deriveUncompressedPubkeyFromHex(RECEIVER_PK),
 ) as `0x${string}`;
 const eip712Domain = buildEip712Domain(OG_CHAIN_ID, TEE_VERIFIER as `0x${string}`);
+
+const RUN_PAYMENT = getEnv("E2E_PAYMENT", "1") !== "0";
 
 async function main(): Promise<void> {
   printE2eBanner({
@@ -93,6 +113,16 @@ async function main(): Promise<void> {
   });
 
   await runHealthStep(BACKEND_URL, fetchJson);
+  await runContractsLiveStep({
+    provider,
+    chainId: OG_CHAIN_ID,
+    agentNft: AGENT_NFT,
+    vault: VAULT,
+    teeVerifier: TEE_VERIFIER,
+    paymentProcessor: PAYMENT_PROCESSOR,
+    paymentToken: PAYMENT_TOKEN,
+  });
+
   const strategyJson = runStrategyStep();
   const { blob, sealedKey } = runEncryptStep(DEPLOYER_PK, strategyJson);
   const upload = await runUploadStep({
@@ -100,17 +130,59 @@ async function main(): Promise<void> {
     rpc: RPC,
     signer: deployer,
     blob,
+    chainId: OG_CHAIN_ID,
   });
-  await runMintStep(ORACLE_URL, upload.rootHash, fetchJson);
-  runSkippedVaultSteps();
-  const tokenId = "0";
+  await runStorageVerifyStep({
+    storageRpc: STORAGE_RPC,
+    rpc: RPC,
+    signer: deployer,
+    rootHash: upload.rootHash,
+    expectedBlob: blob,
+  });
+  await runOracleRegisterStep(ORACLE_URL, upload.rootHash, fetchJson);
+
+  const mint = await runOnChainMintStep({
+    agentNft: AGENT_NFT,
+    deployer,
+    dataHash: upload.rootHash,
+    chainId: OG_CHAIN_ID,
+  });
+  const tokenId = mint.tokenId;
+  const tokenIdStr = tokenId.toString();
+
+  const vaultBalance = await runVaultDepositStep({
+    vault: VAULT,
+    deployer,
+    tokenId,
+    chainId: OG_CHAIN_ID,
+  });
+  await runVaultStrategyStep({
+    vault: VAULT,
+    deployer,
+    tokenId,
+    strategyRoot: upload.rootHash,
+    chainId: OG_CHAIN_ID,
+  });
+
+  if (RUN_PAYMENT) {
+    await runPaymentStep({
+      paymentProcessor: PAYMENT_PROCESSOR,
+      paymentToken: PAYMENT_TOKEN,
+      deployer,
+      tokenId,
+      chainId: OG_CHAIN_ID,
+    });
+  }
+
   await runTickStep({
     backendUrl: BACKEND_URL,
     postStep,
     vault: VAULT,
     agentNft: AGENT_NFT,
-    tokenId,
+    tokenId: tokenIdStr,
+    vaultBalanceWei: vaultBalance,
   });
+
   const finalResp = await runTransferSteps({
     backendUrl: BACKEND_URL,
     postStep,
@@ -118,7 +190,7 @@ async function main(): Promise<void> {
     receiver,
     receiverPubKey64,
     to,
-    tokenId,
+    tokenId: tokenIdStr,
     dataHash: upload.rootHash,
     sealedKey,
     agentNft: AGENT_NFT,
@@ -128,10 +200,12 @@ async function main(): Promise<void> {
     agentNft: AGENT_NFT,
     deployer,
     to,
-    tokenId,
+    tokenId: tokenIdStr,
     finalResp,
     eip712Domain,
+    chainId: OG_CHAIN_ID,
   });
+
   printReport();
 }
 
