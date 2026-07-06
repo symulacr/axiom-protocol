@@ -1,6 +1,4 @@
-import { BACKEND_URL } from "../config/env.js";
-
-const API_KEY = import.meta.env.VITE_API_KEY ?? "";
+import { API_KEY, BACKEND_URL } from "../config/env.js";
 
 export const DEFAULT_TIMEOUT = 10_000;
 export const LONG_TIMEOUT = 60_000; // on-chain tx wait
@@ -106,4 +104,61 @@ export async function apiFetch<T>(
   }
 
   throw lastError;
+}
+
+/**
+ * Like apiFetch but returns the raw Response — for SSE streams and other
+ * non-JSON responses. Does not set Accept: application/json.
+ */
+export async function apiFetchResponse(
+  path: string,
+  init: RequestInit & { timeout?: number } = {},
+): Promise<Response> {
+  const timeout = init.timeout ?? DEFAULT_TIMEOUT;
+
+  const timeoutSignal = AbortSignal.timeout(timeout);
+  const combinedSignal = init.signal
+    ? AbortSignal.any([init.signal, timeoutSignal])
+    : timeoutSignal;
+
+  try {
+    const res = await fetch(`${BACKEND_URL}${path}`, {
+      ...init,
+      signal: combinedSignal,
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": API_KEY,
+        ...((init.headers as Record<string, string>) ?? {}),
+      },
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(
+        `${path} failed: ${res.status} ${res.statusText}${text ? `: ${text}` : ""}`,
+      );
+    }
+
+    return res;
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw err;
+    }
+
+    if (err instanceof DOMException && err.name === "TimeoutError") {
+      throw new NetworkError(
+        "Request timed out. The server may be busy — please try again.",
+        err,
+      );
+    }
+
+    if (isNetworkError(err)) {
+      throw new NetworkError(
+        "Network error — check your internet connection and try again.",
+        err,
+      );
+    }
+
+    throw err;
+  }
 }

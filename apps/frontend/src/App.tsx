@@ -1,4 +1,11 @@
-import { lazy, Suspense, useEffect, useState, type ReactElement } from "react";
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useRef,
+  useState,
+  type ReactElement,
+} from "react";
 import {
   Link,
   NavLink,
@@ -11,7 +18,7 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
 
 import { ErrorBoundary } from "./components/ErrorBoundary.js";
 import { HealthBadge } from "./components/HealthBadge.js";
-import { COLORS } from "./components/ui.js";
+import { COLORS, ConnectedGuard } from "./components/ui.js";
 import { useMediaQuery } from "./hooks/useMediaQuery.js";
 
 const AgentDetail = lazy(() => import("./pages/AgentDetail.js"));
@@ -36,8 +43,13 @@ function navLinkStyle({
   };
 }
 
+function WalletRoute({ children }: { children: ReactElement }) {
+  return <ConnectedGuard>{children}</ConnectedGuard>;
+}
+
 function ShortcutHelp(): ReactElement | null {
   const [open, setOpen] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function show() {
@@ -54,6 +66,17 @@ function ShortcutHelp(): ReactElement | null {
     }
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const panel = panelRef.current;
+    if (!panel) return;
+    const focusable = panel.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    );
+    const first = focusable[0] ?? panel.querySelector<HTMLElement>("h2");
+    first?.focus();
   }, [open]);
 
   if (!open) return null;
@@ -84,7 +107,26 @@ function ShortcutHelp(): ReactElement | null {
       }}
     >
       <div
+        ref={panelRef}
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => {
+          if (e.key !== "Tab") return;
+          const focusable = e.currentTarget.querySelectorAll<HTMLElement>(
+            'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+          );
+          const first = focusable[0] ?? e.currentTarget.querySelector("h2");
+          const last =
+            focusable[focusable.length - 1] ??
+            e.currentTarget.querySelector("h2");
+          if (!first || !last) return;
+          if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+          } else if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        }}
         style={{
           background: COLORS.surface,
           border: `1px solid ${COLORS.border}`,
@@ -95,10 +137,12 @@ function ShortcutHelp(): ReactElement | null {
         }}
       >
         <h2
+          tabIndex={-1}
           style={{
             margin: "0 0 var(--space-lg)",
             fontSize: "var(--text-lg)",
             color: COLORS.text,
+            outline: "none",
           }}
         >
           Keyboard Shortcuts
@@ -161,18 +205,22 @@ export function App(): ReactElement {
       switch (e.key.toLowerCase()) {
         case "g":
           e.preventDefault();
+          setMenuOpen(false);
           navigate("/agents");
           break;
         case "m":
           e.preventDefault();
+          setMenuOpen(false);
           navigate("/market");
           break;
         case "c":
           e.preventDefault();
+          setMenuOpen(false);
           navigate("/chat");
           break;
         case "n":
           e.preventDefault();
+          setMenuOpen(false);
           navigate("/agents/new");
           break;
         case "?":
@@ -184,7 +232,7 @@ export function App(): ReactElement {
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [navigate]);
+  }, [navigate, setMenuOpen]);
 
   return (
     <>
@@ -403,10 +451,31 @@ export function App(): ReactElement {
             <Routes>
               <Route path="/" element={<Navigate to="/agents" replace />} />
               <Route path="/agents" element={<AgentsBrowser />} />
-              <Route path="/agents/new" element={<MintAgentPage />} />
-              <Route path="/agents/:tokenId" element={<AgentDetail />} />
+              <Route
+                path="/agents/new"
+                element={
+                  <WalletRoute>
+                    <MintAgentPage />
+                  </WalletRoute>
+                }
+              />
+              <Route
+                path="/agents/:tokenId"
+                element={
+                  <WalletRoute>
+                    <AgentDetail />
+                  </WalletRoute>
+                }
+              />
               <Route path="/market" element={<MarketPage />} />
-              <Route path="/chat" element={<ChatPage />} />
+              <Route
+                path="/chat"
+                element={
+                  <WalletRoute>
+                    <ChatPage />
+                  </WalletRoute>
+                }
+              />
               <Route path="/settings" element={<Navigate to="/" replace />} />
               <Route path="*" element={<NotFound />} />
             </Routes>

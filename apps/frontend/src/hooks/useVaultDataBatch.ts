@@ -11,6 +11,7 @@ export interface VaultDataEntry {
   depositsWei: bigint;
   strategyRoot: string;
   dailyLimitWei: bigint;
+  readError?: string | null;
 }
 
 /**
@@ -44,6 +45,7 @@ export function useVaultDataBatch(tokenIds: readonly bigint[]): {
   }, [tokenIds, vaultAddr]);
 
   const query = useReadContracts({
+    allowFailure: true,
     contracts,
     query: {
       staleTime: 30_000,
@@ -60,7 +62,11 @@ export function useVaultDataBatch(tokenIds: readonly bigint[]): {
       const strategyResult = query.data?.[i * 2 + 1];
 
       let depositsWei = 0n;
-      if (
+      let readError: string | null = null;
+
+      if (balanceResult?.status === "failure") {
+        readError = balanceResult.error.message;
+      } else if (
         balanceResult &&
         balanceResult.status === "success" &&
         balanceResult.result !== undefined
@@ -70,7 +76,10 @@ export function useVaultDataBatch(tokenIds: readonly bigint[]): {
 
       let strategyRoot = "";
       let dailyLimitWei = 0n;
-      if (
+      if (strategyResult?.status === "failure") {
+        const strategyErr = strategyResult.error.message;
+        readError = readError ? `${readError}; ${strategyErr}` : strategyErr;
+      } else if (
         strategyResult &&
         strategyResult.status === "success" &&
         strategyResult.result !== undefined
@@ -90,22 +99,35 @@ export function useVaultDataBatch(tokenIds: readonly bigint[]): {
         depositsWei,
         strategyRoot,
         dailyLimitWei,
+        ...(readError ? { readError } : {}),
       });
     }
     return map;
   }, [tokenIds, query.data]);
+
+  const aggregateError = useMemo((): Error | null => {
+    if (query.error) {
+      return query.error as Error;
+    }
+    for (const entry of data.values()) {
+      if (entry.readError) {
+        return new Error(entry.readError);
+      }
+    }
+    return null;
+  }, [data, query.error]);
 
   const refetch = query.refetch;
   const result = useMemo(
     () => ({
       data,
       isLoading: query.isLoading,
-      error: query.error as Error | null,
+      error: aggregateError,
       refetch: () => {
         refetch();
       },
     }),
-    [data, query.isLoading, query.error, refetch],
+    [data, query.isLoading, aggregateError, refetch],
   );
 
   return result;
