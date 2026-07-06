@@ -10,8 +10,8 @@ import "./BaseVerifier.sol";
 /// @dev Adapted from https://github.com/0gfoundation/0g-agent-nft (MIT) BaseVerifier pattern
 /// @dev In production, the registered signer is the public key of an Intel TDX/AMD SEV TEE.
 ///      For the buildathon/devnet, it's a TypeScript TEE signer service (apps/oracle) holding
-///      a secp256k1 keypair whose public key is registered via registerSigner().
-/// @dev Access control on `registerSigner` is provided by OpenZeppelin's upgradeable Ownable.
+///      a secp256k1 keypair whose public key is registered via `proposeSigner` + `executeSigner`.
+/// @dev Access control on signer rotation is provided by OpenZeppelin Ownable and a 1-day timelock.
 ///      The contract is currently deployed non-upgradeable (no proxy), but the upgrade-safe
 ///      variant is used so the same bytecode can be moved behind a proxy later without
 ///      rewriting the auth surface. References:
@@ -35,8 +35,15 @@ contract AxiomTeeVerifier is BaseVerifier, Ownable {
     ///      proofs and against overflow attacks where `validUntil` is
     ///      `type(uint256).max`.
     error AxiomValidUntilTooFar(uint256 validUntil, uint256 blockTimestamp, uint256 maxProofAgeSeconds);
+    error NoPendingSignerProposal();
+    error SignerDelayNotElapsed(uint256 executableAt, uint256 currentTime);
 
-    event SignerRegistered(address indexed oldSigner, address indexed newSigner);
+    event SignerProposed(address indexed newSigner, uint256 executableAt);
+    event SignerExecuted(address indexed oldSigner, address indexed newSigner);
+    event SignerProposalCancelled(address indexed cancelledSigner);
+
+    /// @dev Minimum delay between proposing and executing a signer rotation.
+    uint256 public constant ADMIN_DELAY = 1 days;
 
     /// @dev Set once at deployment; immutable so the value is baked into the deployed bytecode
     ///      and is part of the contract's ABI as a queryable getter (auto-generated `maxProofAgeSeconds()`).
@@ -44,6 +51,8 @@ contract AxiomTeeVerifier is BaseVerifier, Ownable {
     ///      https://docs.soliditylang.org/en/v0.8.20/contracts.html#immutable
     uint256 public immutable maxProofAgeSeconds;
     address public registeredSigner;
+    address public pendingSigner;
+    uint256 public pendingSignerExecutableAt;
 
     /// @dev Domain separator binds signatures to this contract instance and chain,
     ///      preventing cross-contract and cross-chain replay. Browser wallets sign
@@ -77,19 +86,41 @@ contract AxiomTeeVerifier is BaseVerifier, Ownable {
         maxProofAgeSeconds = maxProofAgeSeconds_;
     }
 
-    /// @dev Restricted to the contract owner via OZ `onlyOwner` (OwnableUpgradeable).
-    ///      Without this guard, any external caller could rotate the trusted TEE signer
-    ///      and steal every iNFT on the next transfer. Owner of the verifier is the
-    ///      `AXIOM_DEPLOYER_ADDRESS` set at deploy time. Refs:
-    ///        - https://docs.openzeppelin.com/contracts/5.x/access-control
-    ///        - https://docs.openzeppelin.com/contracts/5.x/api/access#Ownable-onlyOwner--
-    function registerSigner(
+    /// @dev Restricted to the contract owner via OZ `onlyOwner`. Signer rotation is
+    ///      two-step with `ADMIN_DELAY` so monitors can react before execution.
+    function proposeSigner(
         address newSigner
     ) external onlyOwner {
         require(newSigner != address(0), "Zero address");
+        uint256 executableAt = block.timestamp + ADMIN_DELAY;
+        pendingSigner = newSigner;
+        pendingSignerExecutableAt = executableAt;
+        emit SignerProposed(newSigner, executableAt);
+    }
+
+    /// @dev Finalize a previously proposed signer rotation after `ADMIN_DELAY`.
+    function executeSigner() external onlyOwner {
+        address newSigner = pendingSigner;
+        if (newSigner == address(0)) revert NoPendingSignerProposal();
+        uint256 executableAt = pendingSignerExecutableAt;
+        if (block.timestamp < executableAt) {
+            revert SignerDelayNotElapsed(executableAt, block.timestamp);
+        }
+
         address old = registeredSigner;
         registeredSigner = newSigner;
-        emit SignerRegistered(old, newSigner);
+        pendingSigner = address(0);
+        pendingSignerExecutableAt = 0;
+        emit SignerExecuted(old, newSigner);
+    }
+
+    /// @dev Cancel a pending signer rotation before it is executed.
+    function cancelSignerProposal() external onlyOwner {
+        address cancelled = pendingSigner;
+        if (cancelled == address(0)) revert NoPendingSignerProposal();
+        pendingSigner = address(0);
+        pendingSignerExecutableAt = 0;
+        emit SignerProposalCancelled(cancelled);
     }
 
     /// @dev ERC-7857 leaves the exact freshness window to the implementation; the canonical
