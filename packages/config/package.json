@@ -28,7 +28,8 @@
     "./storage/0g": "./dist/storage/0g.js",
     "./types/performance": "./dist/types/performance.js",
     "./types/orchestrator": "./dist/types/orchestrator.js",
-    "./types/transfer": "./dist/types/transfer.js"
+    "./types/transfer": "./dist/types/transfer.js",
+    "./process": "./dist/process.js"
   },
   "scripts": {
     "generate": "wagmi generate",

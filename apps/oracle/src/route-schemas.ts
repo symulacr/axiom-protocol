@@ -8,8 +8,8 @@ export const transferValiditySchema = z.object({
   accessProofNonce: z.union([z.string(), z.number()]),
   ownershipProofNonce: z.union([z.string(), z.number()]).optional(),
   oldDataEncryptionKey: z.string(),
-  to: addressViem.optional(),
-  nft: addressViem.optional(),
+  to: addressViem,
+  nft: addressViem,
 });
 
 export const ownershipBodySchema = z.object({

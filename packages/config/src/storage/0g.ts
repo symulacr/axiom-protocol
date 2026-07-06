@@ -20,7 +20,7 @@ interface DownloadResult {
 }
 
 export interface StorageAdapter {
-  upload(blob: Uint8Array): Promise<{ rootHash: Hex }>;
+  upload(blob: Uint8Array, encryption?: Encryption): Promise<{ rootHash: Hex }>;
   download(rootHash: Hex): Promise<Uint8Array>;
   markDataHashSeen(rootHash: Hex): void;
   hasSeenDataHash(rootHash: Hex): boolean;
@@ -61,8 +61,12 @@ export interface DownloadOptions {
 export class InMemoryStorage implements StorageAdapter {
   private store = new Map<string, Uint8Array>();
   private seenDataHashes = new Set<string>();
+  private readonly MAX_SEEN_HASHES = 10_000;
 
-  async upload(blob: Uint8Array): Promise<{ rootHash: Hex }> {
+  async upload(
+    blob: Uint8Array,
+    _encryption?: Encryption,
+  ): Promise<{ rootHash: Hex }> {
     const rootHash = keccak256(blob) as Hex;
     this.store.set(rootHash.toLowerCase(), new Uint8Array(blob));
     return { rootHash };
@@ -75,6 +79,14 @@ export class InMemoryStorage implements StorageAdapter {
   }
 
   markDataHashSeen(rootHash: Hex): void {
+    if (this.seenDataHashes.size >= this.MAX_SEEN_HASHES) {
+      const iter = this.seenDataHashes.values();
+      for (let i = 0; i < 1000; i++) {
+        const val = iter.next().value;
+        if (val !== undefined) this.seenDataHashes.delete(val);
+        else break;
+      }
+    }
     this.seenDataHashes.add(rootHash.toLowerCase());
   }
 
@@ -177,6 +189,7 @@ export class ZeroGStorage implements StorageAdapter {
   readonly indexer: Indexer;
   readonly config: ZeroGStorageConfig;
   private seenDataHashes = new Set<string>();
+  private readonly MAX_SEEN_HASHES = 10_000;
 
   constructor(config: ZeroGStorageConfig) {
     this.config = config;
@@ -206,6 +219,14 @@ export class ZeroGStorage implements StorageAdapter {
   }
 
   markDataHashSeen(rootHash: Hex): void {
+    if (this.seenDataHashes.size >= this.MAX_SEEN_HASHES) {
+      const iter = this.seenDataHashes.values();
+      for (let i = 0; i < 1000; i++) {
+        const val = iter.next().value;
+        if (val !== undefined) this.seenDataHashes.delete(val);
+        else break;
+      }
+    }
     this.seenDataHashes.add(rootHash.toLowerCase());
   }
 

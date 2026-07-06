@@ -61,3 +61,16 @@ export function resolveAddress(
   }
   return getAddress(DEPLOYED_ADDRESSES[name]);
 }
+
+export function getAddresses(
+  env: Record<string, unknown> = typeof process !== "undefined" && process.env
+    ? process.env
+    : {},
+) {
+  return Object.fromEntries(
+    (Object.keys(DEPLOYED_ADDRESSES) as AddressName[]).map((name) => [
+      name,
+      resolveAddress(name, env),
+    ]),
+  ) as Record<AddressName, `0x${string}`>;
+}
