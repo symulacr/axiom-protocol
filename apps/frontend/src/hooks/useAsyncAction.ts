@@ -48,6 +48,7 @@ export function useAsyncAction(): UseAsyncActionResult {
   );
 
   const cancel = useCallback(() => {
+    cancelledRef.current = true;
     abortRef.current?.abort();
   }, []);
 

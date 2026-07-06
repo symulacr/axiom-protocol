@@ -43,7 +43,7 @@ export function useVaultData(tokenId: bigint): VaultData {
     contracts,
     query: {
       staleTime: 30_000,
-      enabled: tokenId >= 0n,
+      enabled: tokenId > 0n,
     },
   });
 

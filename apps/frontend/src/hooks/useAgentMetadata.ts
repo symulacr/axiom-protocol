@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useReadContracts } from "wagmi";
+import { useChainId, useReadContracts } from "wagmi";
 import { parseAbi, type Address, type Hex } from "viem";
 import { getAxiomAgentNftAddress } from "../abi/addresses.js";
 import { axiomAgentNftAbi } from "../abi/axiomAgentNft.js";
@@ -17,58 +17,65 @@ export type AgentMetadata = {
   tokenUri: string;
 };
 
-export function useAgentMetadata(tokenId: bigint): {
+export function useAgentMetadata(
+  tokenId: bigint,
+  options?: { enabled?: boolean },
+): {
   data: AgentMetadata | null;
   isLoading: boolean;
   error: Error | null;
   refetch: () => void;
 } {
+  const chainId = useChainId();
+  const enabledOption = options?.enabled ?? true;
+  const agentNftAddr = getAxiomAgentNftAddress(chainId);
+
   const contracts = useMemo(
     () =>
       [
         {
-          address: getAxiomAgentNftAddress(),
+          address: agentNftAddr,
           abi: axiomAgentNftAbiParsed,
           functionName: "name",
         },
         {
-          address: getAxiomAgentNftAddress(),
+          address: agentNftAddr,
           abi: axiomAgentNftAbiParsed,
           functionName: "symbol",
         },
         {
-          address: getAxiomAgentNftAddress(),
+          address: agentNftAddr,
           abi: axiomAgentNftAbiParsed,
           functionName: "ownerOf",
           args: [tokenId],
         },
         {
-          address: getAxiomAgentNftAddress(),
+          address: agentNftAddr,
           abi: axiomAgentNftAbiParsed,
           functionName: "intelligentDatasOf",
           args: [tokenId],
         },
         {
-          address: getAxiomAgentNftAddress(),
+          address: agentNftAddr,
           abi: axiomAgentNftAbiParsed,
           functionName: "tokenURI",
           args: [tokenId],
         },
         {
-          address: getAxiomAgentNftAddress(),
+          address: agentNftAddr,
           abi: axiomAgentNftAbiParsed,
           functionName: "creatorOf",
           args: [tokenId],
         },
       ] as const,
-    [tokenId],
+    [tokenId, agentNftAddr],
   );
 
   const query = useReadContracts({
     allowFailure: false,
     contracts,
     query: {
-      enabled: Boolean(getAxiomAgentNftAddress()) && tokenId > 0n,
+      enabled: enabledOption && tokenId > 0n,
     },
   });
 

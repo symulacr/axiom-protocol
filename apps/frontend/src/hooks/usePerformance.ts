@@ -20,8 +20,16 @@ export interface UsePerformanceResult {
   refetch: () => void;
 }
 
-export function usePerformance(tokenId: bigint | null): UsePerformanceResult {
-  const enabled = tokenId !== null && tokenId > 0n;
+export interface UsePerformanceOptions {
+  enabled?: boolean;
+}
+
+export function usePerformance(
+  tokenId: bigint | null,
+  options?: UsePerformanceOptions,
+): UsePerformanceResult {
+  const { enabled: enabledOption = true } = options ?? {};
+  const enabled = enabledOption && tokenId !== null && tokenId > 0n;
   const url = enabled ? `/v1/agents/${tokenId.toString()}/performance` : "";
 
   const { data, isLoading, error, refetch } = usePolledApi<PerformanceResponse>(
