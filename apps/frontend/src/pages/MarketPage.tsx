@@ -1,6 +1,6 @@
 import { resolveBlockExplorerUrl } from "@axiom/config/networks";
 import type { ReactElement } from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useChainId } from "wagmi";
 import { ProviderCard } from "../components/ProviderCard.js";
@@ -14,7 +14,6 @@ import {
   PageHeader,
   Skeleton,
 } from "../components/ui.js";
-import { apiFetch } from "../utils/apiFetch.js";
 import type { AxiomEvent } from "../hooks/useEventHistory.js";
 import { humanizeError } from "../utils/format.js";
 

@@ -1,6 +1,13 @@
 import type { ReactElement } from "react";
 import type { PerformanceMetrics as Metrics } from "../hooks/usePerformance.js";
-import { COLORS, Card, SectionTitle, MonoLabel } from "./ui.js";
+import {
+  COLORS,
+  Card,
+  SectionTitle,
+  MonoLabel,
+  KeyValueGrid,
+  type KeyValueGridItem,
+} from "./ui.js";
 
 interface PerformanceMetricsProps {
   metrics: Metrics;
@@ -13,64 +20,76 @@ interface PerformanceMetricsProps {
 export function PerformanceMetrics({
   metrics,
 }: PerformanceMetricsProps): ReactElement {
-  const items = [
+  const buyRate = metrics.buyRate ?? metrics.winRate;
+
+  const items: KeyValueGridItem[] = [
     {
       label: "Total Ticks",
-      value: metrics.totalTicks.toString(),
-      color: COLORS.text,
+      value: (
+        <MonoLabel
+          style={{
+            color: COLORS.text,
+            fontSize: "var(--text-base)",
+            fontWeight: "var(--fw-semibold)",
+          }}
+        >
+          {metrics.totalTicks.toString()}
+        </MonoLabel>
+      ),
     },
     {
       label: "Buy / Sell / Hold",
-      value: `${metrics.buyCount} / ${metrics.sellCount} / ${metrics.holdCount}`,
-      color: COLORS.text,
+      value: (
+        <MonoLabel
+          style={{
+            color: COLORS.text,
+            fontSize: "var(--text-base)",
+            fontWeight: "var(--fw-semibold)",
+          }}
+        >
+          {`${metrics.buyCount} / ${metrics.sellCount} / ${metrics.holdCount}`}
+        </MonoLabel>
+      ),
     },
     {
-      label: "Win Rate",
-      value: `${(metrics.winRate * 100).toFixed(1)}%`,
-      color:
-        metrics.winRate > 0.5
-          ? COLORS.success
-          : metrics.winRate > 0
-            ? COLORS.warning
-            : COLORS.textMuted,
+      label: "Buy Rate",
+      value: (
+        <MonoLabel
+          style={{
+            color:
+              buyRate > 0.5
+                ? COLORS.success
+                : buyRate > 0
+                  ? COLORS.warning
+                  : COLORS.textMuted,
+            fontSize: "var(--text-base)",
+            fontWeight: "var(--fw-semibold)",
+          }}
+        >
+          {`${(buyRate * 100).toFixed(1)}%`}
+        </MonoLabel>
+      ),
     },
     {
       label: "Actions",
-      value: (metrics.buyCount + metrics.sellCount).toString(),
-      color: COLORS.text,
+      value: (
+        <MonoLabel
+          style={{
+            color: COLORS.text,
+            fontSize: "var(--text-base)",
+            fontWeight: "var(--fw-semibold)",
+          }}
+        >
+          {(metrics.buyCount + metrics.sellCount).toString()}
+        </MonoLabel>
+      ),
     },
   ];
 
   return (
     <Card style={{ marginBottom: "var(--space-xl)" }}>
       <SectionTitle>Performance Summary</SectionTitle>
-      <div
-        style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-lg)" }}
-      >
-        {items.map((item) => (
-          <div key={item.label} style={{ minWidth: "8rem" }}>
-            <div
-              style={{
-                fontSize: "var(--text-xs)",
-                color: COLORS.textDim,
-                marginBottom: "var(--space-xs)",
-                fontWeight: "var(--fw-medium)",
-              }}
-            >
-              {item.label}
-            </div>
-            <MonoLabel
-              style={{
-                color: item.color,
-                fontSize: "var(--text-base)",
-                fontWeight: "var(--fw-semibold)",
-              }}
-            >
-              {item.value}
-            </MonoLabel>
-          </div>
-        ))}
-      </div>
+      <KeyValueGrid items={items} />
     </Card>
   );
 }

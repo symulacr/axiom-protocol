@@ -36,7 +36,8 @@ interface AgentCardStatusProps {
 function AgentCardStatus({ vaultData, metrics }: AgentCardStatusProps) {
   if (!vaultData || vaultData.depositsWei === undefined) return null;
   const balance = formatEther(vaultData.depositsWei);
-  const hasBalance = parseFloat(balance) > 0;
+  const balanceNum = parseFloat(balance);
+  const hasBalance = balanceNum > 0;
   const lastAction =
     metrics && metrics.totalTicks > 0
       ? metrics.buyCount > metrics.sellCount
@@ -55,7 +56,7 @@ function AgentCardStatus({ vaultData, metrics }: AgentCardStatusProps) {
       }}
     >
       <span>
-        {hasBalance ? `${parseFloat(balance).toFixed(2)} 0G` : "No funds"}
+        {hasBalance ? `${balanceNum.toFixed(2)} 0G` : "No funds"}
       </span>
       {lastAction && (
         <span

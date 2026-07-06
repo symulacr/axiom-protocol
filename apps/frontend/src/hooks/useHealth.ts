@@ -9,6 +9,14 @@ export interface HealthResponse {
   addresses: Record<string, string> | null;
 }
 
-export function useHealth() {
-  return usePolledApi<HealthResponse>("/health", { refetchInterval: 30_000 });
+export interface UseHealthOptions {
+  enabled?: boolean;
+}
+
+export function useHealth(options?: UseHealthOptions) {
+  const { enabled = true } = options ?? {};
+  return usePolledApi<HealthResponse>("/health", {
+    refetchInterval: 30_000,
+    enabled,
+  });
 }
