@@ -42,8 +42,6 @@ export const EVENT_SIGNATURES = {
     "event StrategySet(uint256 indexed tokenId, bytes32 strategyRoot, uint256 dailyLimit, uint64 validUntilDay)" as const,
   Executed:
     "event Executed(uint256 indexed tokenId, bytes32 indexed actionHash, address indexed target, uint256 value, bytes result)" as const,
-  RegistryUpdated: "event RegistryUpdated(address indexed nft)" as const,
-
   PaymentProcessed:
     "event PaymentProcessed(uint256 indexed agentTokenId, address indexed payer, address indexed creator, uint256 amount, uint256 creatorCut, uint256 protocolCut)" as const,
   ComputeProviderPaid:
@@ -52,8 +50,12 @@ export const EVENT_SIGNATURES = {
     "event EarningsWithdrawn(address indexed creator, uint256 amount)" as const,
   RoyaltySet:
     "event RoyaltySet(uint256 indexed agentTokenId, uint256 bps)" as const,
+  ProtocolTreasuryProposed:
+    "event ProtocolTreasuryProposed(address indexed proposedTreasury, uint256 effectiveAt)" as const,
   ProtocolTreasuryUpdated:
     "event ProtocolTreasuryUpdated(address indexed oldTreasury, address indexed newTreasury)" as const,
+  ProtocolTreasuryProposalCancelled:
+    "event ProtocolTreasuryProposalCancelled(address indexed pendingTreasury)" as const,
   ProtocolFeeBpsUpdated:
     "event ProtocolFeeBpsUpdated(uint256 oldBps, uint256 newBps)" as const,
   PaymentTokenUpdated:
@@ -65,8 +67,12 @@ export const EVENT_SIGNATURES = {
   MetadataJsonDecisionDocumented:
     "event MetadataJsonDecisionDocumented(string collectionName, string collectionSymbol, string rationaleTag)" as const,
 
-  SignerRegistered:
-    "event SignerRegistered(address indexed oldSigner, address indexed newSigner)" as const,
+  SignerProposed:
+    "event SignerProposed(address indexed newSigner, uint256 executableAt)" as const,
+  SignerExecuted:
+    "event SignerExecuted(address indexed oldSigner, address indexed newSigner)" as const,
+  SignerProposalCancelled:
+    "event SignerProposalCancelled(address indexed cancelledSigner)" as const,
 
   Upgraded: "event Upgraded(address indexed implementation)" as const,
   AdminChanged:
@@ -207,13 +213,6 @@ export type AxiomEvent =
       result: Hex;
     }
   | {
-      kind: "RegistryUpdated";
-      blockNumber: number;
-      txHash: Hex;
-      logIndex: number;
-      nft: Address;
-    }
-  | {
       kind: "PaymentProcessed";
       blockNumber: number;
       txHash: Hex;
@@ -250,12 +249,27 @@ export type AxiomEvent =
       bps: bigint;
     }
   | {
+      kind: "ProtocolTreasuryProposed";
+      blockNumber: number;
+      txHash: Hex;
+      logIndex: number;
+      proposedTreasury: Address;
+      effectiveAt: bigint;
+    }
+  | {
       kind: "ProtocolTreasuryUpdated";
       blockNumber: number;
       txHash: Hex;
       logIndex: number;
       oldTreasury: Address;
       newTreasury: Address;
+    }
+  | {
+      kind: "ProtocolTreasuryProposalCancelled";
+      blockNumber: number;
+      txHash: Hex;
+      logIndex: number;
+      pendingTreasury: Address;
     }
   | {
       kind: "ProtocolFeeBpsUpdated";
@@ -293,12 +307,27 @@ export type AxiomEvent =
       rationaleTag: string;
     }
   | {
-      kind: "SignerRegistered";
+      kind: "SignerProposed";
+      blockNumber: number;
+      txHash: Hex;
+      logIndex: number;
+      newSigner: Address;
+      executableAt: bigint;
+    }
+  | {
+      kind: "SignerExecuted";
       blockNumber: number;
       txHash: Hex;
       logIndex: number;
       oldSigner: Address;
       newSigner: Address;
+    }
+  | {
+      kind: "SignerProposalCancelled";
+      blockNumber: number;
+      txHash: Hex;
+      logIndex: number;
+      cancelledSigner: Address;
     }
   | {
       kind: "Upgraded";
@@ -371,14 +400,18 @@ export const EVENT_ABI = {
   Withdrawn: parseAbiItem(EVENT_SIGNATURES.Withdrawn),
   StrategySet: parseAbiItem(EVENT_SIGNATURES.StrategySet),
   Executed: parseAbiItem(EVENT_SIGNATURES.Executed),
-  RegistryUpdated: parseAbiItem(EVENT_SIGNATURES.RegistryUpdated),
-
   PaymentProcessed: parseAbiItem(EVENT_SIGNATURES.PaymentProcessed),
   ComputeProviderPaid: parseAbiItem(EVENT_SIGNATURES.ComputeProviderPaid),
   EarningsWithdrawn: parseAbiItem(EVENT_SIGNATURES.EarningsWithdrawn),
   RoyaltySet: parseAbiItem(EVENT_SIGNATURES.RoyaltySet),
+  ProtocolTreasuryProposed: parseAbiItem(
+    EVENT_SIGNATURES.ProtocolTreasuryProposed,
+  ),
   ProtocolTreasuryUpdated: parseAbiItem(
     EVENT_SIGNATURES.ProtocolTreasuryUpdated,
+  ),
+  ProtocolTreasuryProposalCancelled: parseAbiItem(
+    EVENT_SIGNATURES.ProtocolTreasuryProposalCancelled,
   ),
   ProtocolFeeBpsUpdated: parseAbiItem(EVENT_SIGNATURES.ProtocolFeeBpsUpdated),
   PaymentTokenUpdated: parseAbiItem(EVENT_SIGNATURES.PaymentTokenUpdated),
@@ -387,7 +420,11 @@ export const EVENT_ABI = {
   MetadataJsonDecisionDocumented: parseAbiItem(
     EVENT_SIGNATURES.MetadataJsonDecisionDocumented,
   ),
-  SignerRegistered: parseAbiItem(EVENT_SIGNATURES.SignerRegistered),
+  SignerProposed: parseAbiItem(EVENT_SIGNATURES.SignerProposed),
+  SignerExecuted: parseAbiItem(EVENT_SIGNATURES.SignerExecuted),
+  SignerProposalCancelled: parseAbiItem(
+    EVENT_SIGNATURES.SignerProposalCancelled,
+  ),
 
   Upgraded: parseAbiItem(EVENT_SIGNATURES.Upgraded),
   AdminChanged: parseAbiItem(EVENT_SIGNATURES.AdminChanged),

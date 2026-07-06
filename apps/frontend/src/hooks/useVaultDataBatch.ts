@@ -89,6 +89,7 @@ export function useVaultDataBatch(tokenIds: readonly bigint[]): {
           bigint,
           bigint,
           bigint,
+          bigint,
         ];
         strategyRoot = strategy[0] as string;
         dailyLimitWei = strategy[1] as bigint;

@@ -145,6 +145,9 @@ apps/bench/
 __pycache__/
 *.pyc
 
+# ── Indexer runtime data ───────────────────────────────────
+apps/indexer/data/
+
 # ── Generated ABI artifacts (wagmi CLI codegen + forge intermediate) ──
 # Tracked in git since Railway needs them and lacks forge
 # packages/config/abis/*.json

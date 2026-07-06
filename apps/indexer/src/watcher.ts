@@ -66,14 +66,21 @@ export const DEFAULT_WATCH_LIST: readonly WatchedEvent[] = [
   { name: "Withdrawn", address: ADDRESSES.AXIOM_STRATEGY_VAULT },
   { name: "StrategySet", address: ADDRESSES.AXIOM_STRATEGY_VAULT },
   { name: "Executed", address: ADDRESSES.AXIOM_STRATEGY_VAULT },
-  { name: "RegistryUpdated", address: ADDRESSES.AXIOM_STRATEGY_VAULT },
   // AxiomPaymentProcessor
   { name: "PaymentProcessed", address: ADDRESSES.AXIOM_PAYMENT_PROCESSOR },
   { name: "ComputeProviderPaid", address: ADDRESSES.AXIOM_PAYMENT_PROCESSOR },
   { name: "EarningsWithdrawn", address: ADDRESSES.AXIOM_PAYMENT_PROCESSOR },
   { name: "RoyaltySet", address: ADDRESSES.AXIOM_PAYMENT_PROCESSOR },
   {
+    name: "ProtocolTreasuryProposed",
+    address: ADDRESSES.AXIOM_PAYMENT_PROCESSOR,
+  },
+  {
     name: "ProtocolTreasuryUpdated",
+    address: ADDRESSES.AXIOM_PAYMENT_PROCESSOR,
+  },
+  {
+    name: "ProtocolTreasuryProposalCancelled",
     address: ADDRESSES.AXIOM_PAYMENT_PROCESSOR,
   },
   { name: "ProtocolFeeBpsUpdated", address: ADDRESSES.AXIOM_PAYMENT_PROCESSOR },
@@ -85,7 +92,9 @@ export const DEFAULT_WATCH_LIST: readonly WatchedEvent[] = [
   },
   { name: "Cloned", address: ADDRESSES.AXIOM_AGENT_NFT },
   // AxiomTeeVerifier
-  { name: "SignerRegistered", address: ADDRESSES.AXIOM_TEE_VERIFIER },
+  { name: "SignerProposed", address: ADDRESSES.AXIOM_TEE_VERIFIER },
+  { name: "SignerExecuted", address: ADDRESSES.AXIOM_TEE_VERIFIER },
+  { name: "SignerProposalCancelled", address: ADDRESSES.AXIOM_TEE_VERIFIER },
   // ERC-1967 proxy events (emitted by the ERC1967Proxy at AXIOM_AGENT_NFT)
   { name: "Upgraded", address: ADDRESSES.AXIOM_AGENT_NFT },
   { name: "AdminChanged", address: ADDRESSES.AXIOM_AGENT_NFT },
@@ -240,13 +249,6 @@ const EVENT_PARSERS: Record<string, EventParser> = {
     value: a["value"] as bigint,
     result: a["result"] as Hex,
   })),
-  RegistryUpdated: makeEventParser(
-    "RegistryUpdated",
-    EVENT_ABI.RegistryUpdated,
-    (a) => ({
-      nft: getAddress(a["nft"] as string),
-    }),
-  ),
   // AxiomPaymentProcessor events
   PaymentProcessed: makeEventParser(
     "PaymentProcessed",
@@ -280,12 +282,27 @@ const EVENT_PARSERS: Record<string, EventParser> = {
     agentTokenId: a["agentTokenId"] as bigint,
     bps: a["bps"] as bigint,
   })),
+  ProtocolTreasuryProposed: makeEventParser(
+    "ProtocolTreasuryProposed",
+    EVENT_ABI.ProtocolTreasuryProposed,
+    (a) => ({
+      proposedTreasury: getAddress(a["proposedTreasury"] as string),
+      effectiveAt: a["effectiveAt"] as bigint,
+    }),
+  ),
   ProtocolTreasuryUpdated: makeEventParser(
     "ProtocolTreasuryUpdated",
     EVENT_ABI.ProtocolTreasuryUpdated,
     (a) => ({
       oldTreasury: getAddress(a["oldTreasury"] as string),
       newTreasury: getAddress(a["newTreasury"] as string),
+    }),
+  ),
+  ProtocolTreasuryProposalCancelled: makeEventParser(
+    "ProtocolTreasuryProposalCancelled",
+    EVENT_ABI.ProtocolTreasuryProposalCancelled,
+    (a) => ({
+      pendingTreasury: getAddress(a["pendingTreasury"] as string),
     }),
   ),
   ProtocolFeeBpsUpdated: makeEventParser(
@@ -320,12 +337,27 @@ const EVENT_PARSERS: Record<string, EventParser> = {
       rationaleTag: a["rationaleTag"] as string,
     }),
   ),
-  SignerRegistered: makeEventParser(
-    "SignerRegistered",
-    EVENT_ABI.SignerRegistered,
+  SignerProposed: makeEventParser(
+    "SignerProposed",
+    EVENT_ABI.SignerProposed,
+    (a) => ({
+      newSigner: getAddress(a["newSigner"] as string),
+      executableAt: a["executableAt"] as bigint,
+    }),
+  ),
+  SignerExecuted: makeEventParser(
+    "SignerExecuted",
+    EVENT_ABI.SignerExecuted,
     (a) => ({
       oldSigner: getAddress(a["oldSigner"] as string),
       newSigner: getAddress(a["newSigner"] as string),
+    }),
+  ),
+  SignerProposalCancelled: makeEventParser(
+    "SignerProposalCancelled",
+    EVENT_ABI.SignerProposalCancelled,
+    (a) => ({
+      cancelledSigner: getAddress(a["cancelledSigner"] as string),
     }),
   ),
   // ERC-1967 proxy events
