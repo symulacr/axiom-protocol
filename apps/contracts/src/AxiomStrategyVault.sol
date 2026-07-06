@@ -29,8 +29,6 @@ contract AxiomStrategyVault is Ownable, Pausable, ReentrancyGuard {
     event Executed(
         uint256 indexed tokenId, bytes32 indexed actionHash, address indexed target, uint256 value, bytes result
     );
-    event RegistryUpdated(address indexed nft);
-
     struct Vault {
         uint256 balance; // native (OG) balance
         uint256 dailyLimit; // max value executable per UTC day
@@ -42,7 +40,7 @@ contract AxiomStrategyVault is Ownable, Pausable, ReentrancyGuard {
     mapping(uint256 => Vault) public vaults;
 
     /// @notice The AxiomAgentNFT contract whose tokens are vaults
-    IAxiomAgentNFT public nft;
+    IAxiomAgentNFT public immutable nft;
 
     modifier onlyTokenOwner(
         uint256 tokenId
@@ -57,15 +55,6 @@ contract AxiomStrategyVault is Ownable, Pausable, ReentrancyGuard {
     ) Ownable(initialOwner) {
         if (nftAddr == address(0)) revert ZeroAddress();
         nft = IAxiomAgentNFT(nftAddr);
-    }
-
-    /// @notice Rotate the NFT contract (onlyOwner; e.g. after an upgrade)
-    function setNFT(
-        address newNft
-    ) external onlyOwner {
-        if (newNft == address(0)) revert ZeroAddress();
-        nft = IAxiomAgentNFT(newNft);
-        emit RegistryUpdated(newNft);
     }
 
     function deposit(

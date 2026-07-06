@@ -23,6 +23,7 @@ contract AxiomPaymentProcessor is Ownable, Pausable, ReentrancyGuard {
     error NotCreator();
     error InvalidBps();
     error AgentCreatorNotRegistered();
+    error MigrationBlocked();
 
     event PaymentProcessed(
         uint256 indexed agentTokenId,
@@ -49,6 +50,7 @@ contract AxiomPaymentProcessor is Ownable, Pausable, ReentrancyGuard {
         mapping(uint256 => uint256) agentRoyaltyBps; // optional override per agent
         mapping(uint256 => bool) agentRoyaltyBpsSet; // whether royalty was explicitly set
         mapping(address => uint256) agentEarnings; // creator earnings (pull)
+        uint256 totalOutstandingEarnings;
     }
 
     // keccak256(abi.encode(uint256(keccak256("agent.storage.AxiomPaymentProcessor")) - 1)) & ~bytes32(uint256(0xff))
@@ -115,8 +117,12 @@ contract AxiomPaymentProcessor is Ownable, Pausable, ReentrancyGuard {
         address newPaymentToken
     ) external onlyOwner {
         if (newPaymentToken == address(0)) revert ZeroAddress();
-        IERC20 old = _getStorage().paymentToken;
-        _getStorage().paymentToken = IERC20(newPaymentToken);
+        PaymentProcessorStorage storage $ = _getStorage();
+        IERC20 old = $.paymentToken;
+        if ($.totalOutstandingEarnings > 0 || old.balanceOf(address(this)) > 0) {
+            revert MigrationBlocked();
+        }
+        $.paymentToken = IERC20(newPaymentToken);
         emit PaymentTokenUpdated(address(old), newPaymentToken);
     }
 
@@ -212,6 +218,7 @@ contract AxiomPaymentProcessor is Ownable, Pausable, ReentrancyGuard {
         // CEI: state update first (credit creator's withdrawable balance)
         if (creatorCut > 0) {
             $.agentEarnings[creator] += creatorCut;
+            $.totalOutstandingEarnings += creatorCut;
         }
 
         // Single transferFrom is cheaper than splitting. SafeERC20 reverts on failure.
@@ -248,6 +255,7 @@ contract AxiomPaymentProcessor is Ownable, Pausable, ReentrancyGuard {
         // CEI: zero out the balance BEFORE the external call so a re-entrant callback cannot
         // double-spend the same earnings.
         $.agentEarnings[msg.sender] = 0;
+        $.totalOutstandingEarnings -= amount;
         emit EarningsWithdrawn(msg.sender, amount);
         $.paymentToken.safeTransfer(msg.sender, amount);
     }

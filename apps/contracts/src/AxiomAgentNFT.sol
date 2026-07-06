@@ -104,7 +104,7 @@ contract AxiomAgentNFT is
         address to,
         uint256 tokenId,
         address auth
-    ) internal virtual override(ERC721Upgradeable, ERC7857AuthorizeUpgradeable) returns (address) {
+    ) internal virtual override(ERC721Upgradeable, ERC7857AuthorizeUpgradeable) whenNotPaused returns (address) {
         return super._update(to, tokenId, auth);
     }
 

@@ -225,7 +225,7 @@ contract AxiomTeeVerifier is BaseVerifier, Ownable {
                 )
             );
             address accessSigner = _recoverSigner(accessMessage, p.accessProof.proof);
-            if (accessSigner == address(0)) revert AxiomInvalidAccessProof();
+            if (accessSigner == address(0) || accessSigner != to) revert AxiomInvalidAccessProof();
 
             // 3. Mark proof nonces as used (replay protection). The nonce is a
             //     canonical digest of the verified proof fields; because the
