@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
   useAccount,
+  useChainId,
   useReadContracts,
   useWaitForTransactionReceipt,
   useWriteContract,
@@ -27,7 +28,6 @@ import {
   Alert,
   PageHeader,
   Input,
-  ConnectedGuard,
 } from "./ui.js";
 
 const labelStyle: React.CSSProperties = {
@@ -44,6 +44,7 @@ export type MintFormProps = {
 
 export function MintForm({ provider }: MintFormProps): ReactElement {
   const { address, isConnected } = useAccount();
+  const chainId = useChainId();
   const navigate = useNavigate();
   const { writeContractAsync, isPending } = useWriteContract();
 
@@ -54,14 +55,14 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
     allowFailure: false,
     contracts: [
       {
-        address: getAxiomAgentNftAddress(),
+        address: getAxiomAgentNftAddress(chainId),
         abi: agentNftAbi,
         functionName: "mintFee",
         args: undefined,
       },
     ],
     query: {
-      enabled: Boolean(getAxiomAgentNftAddress()),
+      enabled: Boolean(getAxiomAgentNftAddress(chainId)),
     },
   });
 
@@ -122,7 +123,7 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
           toBytes(`axiom:agent:${trimmedName}:${owner.toLowerCase()}`),
         );
         const hash = await writeContractAsync({
-          address: getAxiomAgentNftAddress(),
+          address: getAxiomAgentNftAddress(chainId),
           abi: agentNftAbi,
           functionName: "mint",
           args: [[{ dataDescription: trimmedName, dataHash }], owner],
@@ -135,7 +136,15 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
         setSubmitError(humanizeError(err));
       }
     },
-    [canSubmit, agentName, owner, mintFeeWei, isPending, writeContractAsync],
+    [
+      canSubmit,
+      agentName,
+      owner,
+      mintFeeWei,
+      isPending,
+      writeContractAsync,
+      chainId,
+    ],
   );
 
   const onNameChange = useCallback(
@@ -147,7 +156,6 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
 
   return (
     <div style={{ maxWidth: "36rem", margin: "0 auto" }}>
-      <ConnectedGuard>
         <PageHeader title="Mint Agent" />
 
         <Card>
@@ -247,7 +255,6 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
             </div>
           </form>
         </Card>
-      </ConnectedGuard>
     </div>
   );
 }

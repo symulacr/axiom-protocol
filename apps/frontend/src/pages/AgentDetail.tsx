@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, type ReactElement } from "react";
+import { lazy, Suspense, useEffect, useState, type ReactElement } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useAccount } from "wagmi";
 import { useAgentMetadata } from "../hooks/useAgentMetadata.js";
@@ -52,36 +52,69 @@ import {
   ErrorAlert,
   PageHeader,
   HelpTip,
-  ConnectedGuard,
 } from "../components/ui.js";
 import { PLACEHOLDER, truncateHex, parseTokenId } from "../utils/format.js";
+
+const VALID_SECTIONS = [
+  "overview",
+  "execute",
+  "payments",
+  "activity",
+  "performance",
+] as const;
+
+type AgentSection = (typeof VALID_SECTIONS)[number];
+
+const AGENT_TABS: ReadonlyArray<{ id: AgentSection; label: string }> = [
+  { id: "overview", label: "Overview" },
+  { id: "execute", label: "Execute" },
+  { id: "payments", label: "Payments" },
+  { id: "activity", label: "Activity" },
+  { id: "performance", label: "Performance" },
+];
+
+function sectionFromHash(): AgentSection {
+  const hash = window.location.hash.slice(1);
+  return (VALID_SECTIONS as readonly string[]).includes(hash)
+    ? (hash as (typeof VALID_SECTIONS)[number])
+    : "overview";
+}
 
 export function AgentDetail(): ReactElement {
   const params = useParams<{ tokenId: string }>();
   const tokenId = parseTokenId(params.tokenId);
 
-  const { address, isConnected } = useAccount();
-
-  const metadata = useAgentMetadata(tokenId ?? 0n);
-  const { data, isLoading: metaLoading, error: metaError } = metadata;
-
-  const { events: agentEvents } = useAgentEvents(tokenId);
-  const { metrics, history: perfHistory } = usePerformance(tokenId);
-  const health = useHealth();
+  const { isConnected } = useAccount();
 
   const [transferOpen, setTransferOpen] = useState(false);
-  const [activeSection, setActiveSection] = useState(() => {
-    const hash = window.location.hash.slice(1);
-    return [
-      "overview",
-      "execute",
-      "payments",
-      "activity",
-      "performance",
-    ].includes(hash)
-      ? hash
-      : "overview";
+  const [activeSection, setActiveSection] = useState<AgentSection>(sectionFromHash);
+
+  useEffect(() => {
+    const syncFromHash = (): void => {
+      setActiveSection(sectionFromHash());
+    };
+    window.addEventListener("hashchange", syncFromHash);
+    window.addEventListener("popstate", syncFromHash);
+    return () => {
+      window.removeEventListener("hashchange", syncFromHash);
+      window.removeEventListener("popstate", syncFromHash);
+    };
+  }, []);
+
+  const hooksEnabled = tokenId !== null;
+
+  const metadata = useAgentMetadata(tokenId ?? 0n, {
+    enabled: hooksEnabled,
   });
+  const { data, isLoading: metaLoading, error: metaError } = metadata;
+
+  const { events: agentEvents } = useAgentEvents(tokenId, {
+    enabled: hooksEnabled && activeSection === "activity",
+  });
+  const { metrics, history: perfHistory } = usePerformance(tokenId, {
+    enabled: hooksEnabled && activeSection === "performance",
+  });
+  const health = useHealth({ enabled: activeSection === "overview" });
 
   const tokenIdBigInt = tokenId ?? 0n;
 
@@ -97,7 +130,6 @@ export function AgentDetail(): ReactElement {
 
   return (
     <div>
-      <ConnectedGuard>
         <div style={{ marginBottom: "var(--space-md)" }}>
           <Link
             to="/agents"
@@ -115,7 +147,8 @@ export function AgentDetail(): ReactElement {
           title={data?.dataDescription ?? `Agent #${tokenId.toString()}`}
         />
 
-        <nav
+        <div
+          role="tablist"
           aria-label="Agent sections"
           style={{
             display: "flex",
@@ -126,18 +159,17 @@ export function AgentDetail(): ReactElement {
             paddingBottom: "var(--space-sm)",
           }}
         >
-          {[
-            { id: "overview", label: "Overview" },
-            { id: "execute", label: "Execute" },
-            { id: "payments", label: "Payments" },
-            { id: "activity", label: "Activity" },
-            { id: "performance", label: "Performance" },
-          ].map((s) => {
+          {AGENT_TABS.map((s) => {
             const isActive = activeSection === s.id;
             return (
               <button
                 key={s.id}
                 type="button"
+                role="tab"
+                id={`tab-${s.id}`}
+                aria-selected={isActive}
+                aria-controls={`panel-${s.id}`}
+                tabIndex={isActive ? 0 : -1}
                 style={{
                   background: "none",
                   color: isActive ? COLORS.bronzeLight : COLORS.textMuted,
@@ -165,7 +197,7 @@ export function AgentDetail(): ReactElement {
               </button>
             );
           })}
-        </nav>
+        </div>
 
         {metaLoading && (
           <div
@@ -190,7 +222,13 @@ export function AgentDetail(): ReactElement {
         )}
 
         {/* Overview tab: metadata + deposit + transfer */}
-        {activeSection === "overview" && (
+        <div
+          role="tabpanel"
+          id="panel-overview"
+          aria-labelledby="tab-overview"
+          hidden={activeSection !== "overview"}
+        >
+          {activeSection === "overview" && (
           <Suspense
             fallback={
               <div style={{ padding: "var(--space-xl)" }}>
@@ -374,10 +412,17 @@ export function AgentDetail(): ReactElement {
               </Button>
             </Card>
           </Suspense>
-        )}
+          )}
+        </div>
 
         {/* Execute tab: execute */}
-        {activeSection === "execute" && (
+        <div
+          role="tabpanel"
+          id="panel-execute"
+          aria-labelledby="tab-execute"
+          hidden={activeSection !== "execute"}
+        >
+          {activeSection === "execute" && (
           <Suspense
             fallback={
               <div style={{ padding: "var(--space-xl)" }}>
@@ -387,10 +432,17 @@ export function AgentDetail(): ReactElement {
           >
             <ExecutePanel tokenId={tokenId} />
           </Suspense>
-        )}
+          )}
+        </div>
 
         {/* Payments tab */}
-        {activeSection === "payments" && (
+        <div
+          role="tabpanel"
+          id="panel-payments"
+          aria-labelledby="tab-payments"
+          hidden={activeSection !== "payments"}
+        >
+          {activeSection === "payments" && (
           <Suspense
             fallback={
               <div style={{ padding: "var(--space-xl)" }}>
@@ -400,10 +452,17 @@ export function AgentDetail(): ReactElement {
           >
             <PaymentPanel tokenId={tokenId} />
           </Suspense>
-        )}
+          )}
+        </div>
 
         {/* Activity tab */}
-        {activeSection === "activity" && (
+        <div
+          role="tabpanel"
+          id="panel-activity"
+          aria-labelledby="tab-activity"
+          hidden={activeSection !== "activity"}
+        >
+          {activeSection === "activity" && (
           <Suspense
             fallback={
               <div style={{ padding: "var(--space-xl)" }}>
@@ -474,10 +533,17 @@ export function AgentDetail(): ReactElement {
               </EmptyState>
             )}
           </Suspense>
-        )}
+          )}
+        </div>
 
         {/* Performance tab */}
-        {activeSection === "performance" && (
+        <div
+          role="tabpanel"
+          id="panel-performance"
+          aria-labelledby="tab-performance"
+          hidden={activeSection !== "performance"}
+        >
+          {activeSection === "performance" && (
           <Suspense
             fallback={
               <div style={{ padding: "var(--space-xl)" }}>
@@ -520,7 +586,8 @@ export function AgentDetail(): ReactElement {
               </EmptyState>
             )}
           </Suspense>
-        )}
+          )}
+        </div>
 
         {transferOpen && (
           <Suspense fallback={null}>
@@ -532,7 +599,6 @@ export function AgentDetail(): ReactElement {
             />
           </Suspense>
         )}
-      </ConnectedGuard>
     </div>
   );
 }

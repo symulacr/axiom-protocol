@@ -8,6 +8,9 @@ import type {
   TickStreamOptions,
 } from "@axiom/config/types/orchestrator";
 export type { TickRequest, TickResult, TickStreamOptions };
+
+const WS_CONNECTION_TIMEOUT_MS = 60_000;
+
 export function useOrchestratorTick(): {
   tick: (req: TickRequest) => Promise<TickResult>;
   tickStream: (
@@ -22,12 +25,20 @@ export function useOrchestratorTick(): {
   error: Error | null;
   resetStream: () => void;
 } {
-  const { execute, isLoading, error } = useAsyncAction();
+  const { execute, cancel, isLoading, error } = useAsyncAction();
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamedTokens, setStreamedTokens] = useState("");
   const streamedRef = useRef("");
   const [streamingError, setStreamingError] = useState<string | null>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+
+  useEffect(() => {
+    return () => {
+      wsRef.current?.close();
+      wsRef.current = null;
+      cancel();
+    };
+  }, [cancel]);
 
   const resetStream = useCallback(() => {
     setStreamedTokens("");
@@ -66,16 +77,11 @@ export function useOrchestratorTick(): {
 
   const tick = useCallback(
     async (req: TickRequest): Promise<TickResult> => {
-      abortControllerRef.current?.abort();
-      const controller = new AbortController();
-      abortControllerRef.current = controller;
-
       return execute(async (signal) => {
-        const combinedSignal = AbortSignal.any([signal, controller.signal]);
         const data = await apiFetch<TickResult>("/v1/orchestrator/tick", {
           method: "POST",
           body: JSON.stringify(req),
-          signal: combinedSignal,
+          signal,
           timeout: 30000,
         });
         return data;
@@ -86,10 +92,6 @@ export function useOrchestratorTick(): {
 
   const tickStream = useCallback(
     async (req: TickRequest, opts: TickStreamOptions): Promise<TickResult> => {
-      abortControllerRef.current?.abort();
-      const controller = new AbortController();
-      abortControllerRef.current = controller;
-
       setIsStreaming(true);
       setStreamedTokens("");
       streamedRef.current = "";
@@ -99,7 +101,6 @@ export function useOrchestratorTick(): {
         return await execute(async (signal) => {
           const signals: AbortSignal[] = [
             signal,
-            controller.signal,
             AbortSignal.timeout(STREAM_TIMEOUT),
           ];
           if (opts.signal) signals.push(opts.signal);
@@ -130,14 +131,62 @@ export function useOrchestratorTick(): {
 
           return await new Promise<TickResult>((resolve, reject) => {
             const ws = new WebSocket(wsUrl.toString());
+            wsRef.current = ws;
             let accumulatedResult: Partial<TickResult> = {};
+            let settled = false;
+            let connectionTimeoutId: ReturnType<typeof setTimeout> | undefined;
 
-            if (combinedSignal) {
-              combinedSignal.addEventListener("abort", () => {
+            const cleanup = () => {
+              if (connectionTimeoutId !== undefined) {
+                clearTimeout(connectionTimeoutId);
+                connectionTimeoutId = undefined;
+              }
+              if (wsRef.current === ws) {
+                wsRef.current = null;
+              }
+            };
+
+            const settle = (
+              action: "resolve" | "reject",
+              value: TickResult | Error,
+            ) => {
+              if (settled) return;
+              settled = true;
+              cleanup();
+              if (action === "resolve") {
+                resolve(value as TickResult);
+              } else {
+                reject(value);
+              }
+            };
+
+            connectionTimeoutId = setTimeout(() => {
+              if (ws.readyState === WebSocket.CONNECTING) {
                 ws.close();
-                reject(new DOMException("Aborted", "AbortError"));
-              });
-            }
+                settle(
+                  "reject",
+                  new Error(
+                    `WebSocket connection timed out after ${WS_CONNECTION_TIMEOUT_MS / 1000}s`,
+                  ),
+                );
+              }
+            }, WS_CONNECTION_TIMEOUT_MS);
+
+            combinedSignal.addEventListener(
+              "abort",
+              () => {
+                ws.close();
+                settle("reject", new DOMException("Aborted", "AbortError"));
+              },
+              { once: true },
+            );
+
+            ws.onopen = () => {
+              if (connectionTimeoutId !== undefined) {
+                clearTimeout(connectionTimeoutId);
+                connectionTimeoutId = undefined;
+              }
+            };
 
             ws.onmessage = (msg: MessageEvent) => {
               try {
@@ -151,11 +200,11 @@ export function useOrchestratorTick(): {
                 } else if (payload.type === "complete") {
                   accumulatedResult = { ...payload };
                   ws.close();
-                  resolve(accumulatedResult as TickResult);
+                  settle("resolve", accumulatedResult as TickResult);
                 } else if (payload.type === "error") {
                   setStreamingError(payload.error);
                   ws.close();
-                  reject(new Error(payload.error));
+                  settle("reject", new Error(payload.error));
                 }
               } catch {
                 console.warn(
@@ -168,7 +217,25 @@ export function useOrchestratorTick(): {
 
             ws.onerror = () => {
               ws.close();
-              reject(new Error("WebSocket connection failed for tick stream"));
+              settle(
+                "reject",
+                new Error("WebSocket connection failed for tick stream"),
+              );
+            };
+
+            ws.onclose = (event) => {
+              if (settled) return;
+              const detail = event.reason
+                ? `: ${event.reason}`
+                : event.code !== 1000
+                  ? ` (code ${event.code})`
+                  : "";
+              settle(
+                "reject",
+                new Error(
+                  `WebSocket closed before tick stream completed${detail}`,
+                ),
+              );
             };
           });
         });
@@ -180,9 +247,11 @@ export function useOrchestratorTick(): {
   );
 
   const cancelTick = useCallback(() => {
-    abortControllerRef.current?.abort();
+    cancel();
+    wsRef.current?.close();
+    wsRef.current = null;
     setIsStreaming(false);
-  }, []);
+  }, [cancel]);
 
   return {
     tick,
