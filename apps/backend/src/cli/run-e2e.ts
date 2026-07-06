@@ -27,6 +27,17 @@ import {
   runOnChainTransferStep,
   printReport,
 } from "./e2e/steps.js";
+import { initParityMatrix, markSkipped } from "./e2e/matrix.js";
+import {
+  runAuthorizeDelegateStep,
+  runMatrixViewSweepStep,
+  runPayComputeProviderStep,
+  runRoyaltyStep,
+  runTeeCleanupStep,
+  runUpdateDataStep,
+  runVaultWithdrawStep,
+  runWithdrawEarningsStep,
+} from "./e2e/coverage.js";
 
 /**
  * Live E2E on 0G Galileo: storage upload + merkle verify, on-chain mint/deposit/
@@ -96,8 +107,28 @@ const receiverPubKey64 = hexlify(
 const eip712Domain = buildEip712Domain(OG_CHAIN_ID, TEE_VERIFIER as `0x${string}`);
 
 const RUN_PAYMENT = getEnv("E2E_PAYMENT", "1") !== "0";
+const PARITY_MIN_PCT = Number.parseInt(getEnv("E2E_PARITY_MIN_PCT", "90"), 10);
 
 async function main(): Promise<void> {
+  initParityMatrix();
+  if (!RUN_PAYMENT) {
+    for (const fn of [
+      "payForAgent",
+      "payComputeProvider",
+      "withdrawAgentEarnings",
+      "setRoyaltyBpsPermitted",
+      "approve",
+      "allowance",
+      "transfer",
+    ] as const) {
+      const contract =
+        fn === "approve" || fn === "transfer" || fn === "allowance"
+          ? "MockUSDC"
+          : "AxiomPaymentProcessor";
+      markSkipped(contract, fn, "E2E_PAYMENT=0");
+    }
+  }
+
   printE2eBanner({
     networkName: getEnv("OG_NETWORK_NAME", "galileo"),
     rpc: RPC,
@@ -164,12 +195,66 @@ async function main(): Promise<void> {
     chainId: OG_CHAIN_ID,
   });
 
+  const vaultBalanceAfterWithdraw = await runVaultWithdrawStep({
+    vault: VAULT,
+    deployer,
+    tokenId,
+    chainId: OG_CHAIN_ID,
+  });
+
+  await runMatrixViewSweepStep({
+    agentNft: AGENT_NFT,
+    vault: VAULT,
+    paymentProcessor: PAYMENT_PROCESSOR,
+    teeVerifier: TEE_VERIFIER,
+    paymentToken: PAYMENT_TOKEN,
+    deployer,
+    tokenId,
+    chainId: OG_CHAIN_ID,
+    teeSignerAddress: teeSigner.address,
+  });
+
+  await runAuthorizeDelegateStep({
+    agentNft: AGENT_NFT,
+    deployer,
+    tokenId,
+    delegateAddress: teeSigner.address,
+    chainId: OG_CHAIN_ID,
+  });
+
+  await runUpdateDataStep({
+    agentNft: AGENT_NFT,
+    deployer,
+    tokenId,
+    dataHash: upload.rootHash,
+    chainId: OG_CHAIN_ID,
+  });
+
   if (RUN_PAYMENT) {
+    await runRoyaltyStep({
+      paymentProcessor: PAYMENT_PROCESSOR,
+      deployer,
+      tokenId,
+      chainId: OG_CHAIN_ID,
+    });
     await runPaymentStep({
       paymentProcessor: PAYMENT_PROCESSOR,
       paymentToken: PAYMENT_TOKEN,
       deployer,
       tokenId,
+      chainId: OG_CHAIN_ID,
+    });
+    await runPayComputeProviderStep({
+      paymentProcessor: PAYMENT_PROCESSOR,
+      paymentToken: PAYMENT_TOKEN,
+      deployer,
+      provider: receiver.address,
+      chainId: OG_CHAIN_ID,
+    });
+    await runWithdrawEarningsStep({
+      paymentProcessor: PAYMENT_PROCESSOR,
+      paymentToken: PAYMENT_TOKEN,
+      deployer,
       chainId: OG_CHAIN_ID,
     });
   }
@@ -180,7 +265,7 @@ async function main(): Promise<void> {
     vault: VAULT,
     agentNft: AGENT_NFT,
     tokenId: tokenIdStr,
-    vaultBalanceWei: vaultBalance,
+    vaultBalanceWei: vaultBalanceAfterWithdraw,
   });
 
   const finalResp = await runTransferSteps({
@@ -206,7 +291,14 @@ async function main(): Promise<void> {
     chainId: OG_CHAIN_ID,
   });
 
-  printReport();
+  await runTeeCleanupStep({
+    teeVerifier: TEE_VERIFIER,
+    deployer,
+    finalResp,
+    chainId: OG_CHAIN_ID,
+  });
+
+  printReport({ parityMinPct: PARITY_MIN_PCT });
 }
 
 void main();
