@@ -21,6 +21,9 @@ export const POLL_WINDOW_BLOCKS = 50n;
 
 export const POLL_INTERVAL_MS = 12_000;
 
+/** Blocks below the processed head treated as reorg-safe for finality (hook only). */
+export const REORG_SAFE_DEPTH = 10n;
+
 // 0G's eth_getLogs rejects ranges past chain head with -32000.
 // We bound the window to the live head on every tick.
 
@@ -542,6 +545,9 @@ export class Watcher {
             });
           }
         }
+        // Reorg-safe finality hook: only events in blocks <= safeBlock should be finalized.
+        // Full reorg handling (event invalidation / checkpoint rollback) is out of scope here.
+        const safeBlock = toBlock > REORG_SAFE_DEPTH ? toBlock - REORG_SAFE_DEPTH : 0n;
         this.nextBlock = toBlock + 1n;
         await saveCheckpoint(id, Number(this.nextBlock));
         this.consecutiveFailures = 0;
@@ -551,6 +557,7 @@ export class Watcher {
           toBlock: toBlock.toString(),
           latest: latest.toString(),
           nextBlock: this.nextBlock.toString(),
+          safeBlock: safeBlock.toString(),
           logCount: logs.length,
         });
       } catch (err) {
