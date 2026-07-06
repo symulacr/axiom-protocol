@@ -9,6 +9,7 @@ import {
   useSendTransaction,
   useWriteContract,
   useAccount,
+  useChainId,
   usePublicClient,
 } from "wagmi";
 import { parseAbi, parseEther, parseUnits } from "viem";
@@ -40,13 +41,14 @@ import {
   COLORS,
   Card,
   Button,
-  Input,
   Alert,
   SectionTitle,
   MonoLabel,
   Modal,
   Spinner,
   ConnectedGuard,
+  NumericActionRow,
+  DefinitionList,
 } from "./ui.js";
 
 type ActionStatus = "idle" | "pending" | "success" | "error";
@@ -83,7 +85,7 @@ function PaymentConfigDisplay({
   if (config === null) {
     return <Spinner size={16} />;
   }
-  const pct = (config.protocolFeeBps / 100).toFixed(2);
+  const pct = (Number(config.protocolFeeBps) / 100).toFixed(2);
   return (
     <p
       style={{
@@ -135,41 +137,29 @@ function PaymentForm({
         Enter amount in tokens (e.g. &quot;10&quot;). Converted to smallest unit
         automatically.
       </p>
-      <div className={formRowClassName}>
-        <Input
-          type="number"
-          inputMode="numeric"
-          min="0"
-          step="0.000001"
-          maxLength={78}
-          placeholder="amount (tokens)"
-          value={payAmount}
-          onChange={(e): void => {
-            onPayAmountChange(e.target.value);
-          }}
-          style={{ flex: 1 }}
-          aria-invalid={payAmountError !== null}
-          aria-describedby="pay-amount-error"
-        />
-        <Button
-          variant="primary"
-          disabled={
-            isPayLoading ||
-            payStatus === "pending" ||
-            payAmount === "" ||
-            payAmountError !== null
-          }
-          onClick={onPay}
-          style={{ minWidth: "140px" }}
-        >
-          {payStatus === "pending" ? <Spinner size={16} /> : "Pay"}
-        </Button>
-      </div>
-      {payAmountError !== null && (
-        <p id="pay-amount-error" className="field-error">
-          {payAmountError}
-        </p>
-      )}
+      <NumericActionRow
+        type="number"
+        inputMode="numeric"
+        min="0"
+        step="0.000001"
+        maxLength={78}
+        placeholder="amount (tokens)"
+        value={payAmount}
+        onChange={(e): void => {
+          onPayAmountChange(e.target.value);
+        }}
+        onSubmit={onPay}
+        buttonLabel="Pay"
+        loading={payStatus === "pending"}
+        disabled={
+          isPayLoading ||
+          payAmount === "" ||
+          payAmountError !== null
+        }
+        error={payAmountError}
+        errorId="pay-amount-error"
+        className="mt-sm"
+      />
       {payStatus === "success" && (
         <Alert variant="success">Payment submitted.</Alert>
       )}
@@ -205,39 +195,30 @@ function EarningsSection({
       {earnings === null ? (
         <Spinner size={16} />
       ) : (
-        <dl
-          className="stack-on-mobile"
-          style={{
-            margin: "var(--space-md) 0",
-            display: "grid",
-            gridTemplateColumns: "140px 1fr",
-            gap: "8px 16px",
-            fontSize: "var(--text-sm)",
-          }}
-        >
-          <dt style={{ color: COLORS.textDim, fontWeight: "var(--fw-medium)" }}>
-            Creator
-          </dt>
-          <dd style={{ margin: 0 }}>
-            <MonoLabel title={earnings.creator}>
-              {earnings.creator === ethersZero
-                ? PLACEHOLDER
-                : truncateHex(earnings.creator)}
-            </MonoLabel>
-          </dd>
-          <dt style={{ color: COLORS.textDim, fontWeight: "var(--fw-medium)" }}>
-            Accumulated Earnings
-          </dt>
-          <dd
-            style={{
-              margin: 0,
-              color: COLORS.bronzeLight,
-              fontWeight: "var(--fw-semibold)",
-            }}
-          >
-            <MonoLabel>{earnings.earnings}</MonoLabel>
-          </dd>
-        </dl>
+        <DefinitionList
+          labelWidth="140px"
+          style={{ margin: "var(--space-md) 0" }}
+          items={[
+            {
+              term: "Creator",
+              detail: (
+                <MonoLabel title={earnings.creator}>
+                  {earnings.creator === ethersZero
+                    ? PLACEHOLDER
+                    : truncateHex(earnings.creator)}
+                </MonoLabel>
+              ),
+            },
+            {
+              term: "Accumulated Earnings",
+              detail: <MonoLabel>{earnings.earnings}</MonoLabel>,
+              detailStyle: {
+                color: COLORS.bronzeLight,
+                fontWeight: "var(--fw-semibold)",
+              },
+            },
+          ]}
+        />
       )}
       <div className={formRowClassName}>
         <Button
@@ -308,41 +289,29 @@ function RoyaltySection({
         Basis points (0\u201310000). 250 = 2.5%. Only the agent creator may set
         this on-chain.
       </p>
-      <div className={formRowClassName}>
-        <Input
-          type="number"
-          inputMode="numeric"
-          min={0}
-          max={10000}
-          maxLength={5}
-          placeholder="bps (0\u201310000)"
-          value={royaltyBps}
-          onChange={(e): void => {
-            onRoyaltyBpsChange(e.target.value);
-          }}
-          style={{ flex: 1 }}
-          aria-invalid={royaltyBpsError !== null}
-          aria-describedby="royalty-bps-error"
-        />
-        <Button
-          variant="primary"
-          disabled={
-            isRoyaltyLoading ||
-            royaltyStatus === "pending" ||
-            royaltyBps === "" ||
-            royaltyBpsError !== null
-          }
-          onClick={onSetRoyalty}
-          style={{ minWidth: "140px" }}
-        >
-          {royaltyStatus === "pending" ? <Spinner size={16} /> : "Set Royalty"}
-        </Button>
-      </div>
-      {royaltyBpsError !== null && (
-        <p id="royalty-bps-error" className="field-error">
-          {royaltyBpsError}
-        </p>
-      )}
+      <NumericActionRow
+        type="number"
+        inputMode="numeric"
+        min={0}
+        max={10000}
+        maxLength={5}
+        placeholder="bps (0\u201310000)"
+        value={royaltyBps}
+        onChange={(e): void => {
+          onRoyaltyBpsChange(e.target.value);
+        }}
+        onSubmit={onSetRoyalty}
+        buttonLabel="Set Royalty"
+        loading={royaltyStatus === "pending"}
+        disabled={
+          isRoyaltyLoading ||
+          royaltyBps === "" ||
+          royaltyBpsError !== null
+        }
+        error={royaltyBpsError}
+        errorId="royalty-bps-error"
+        className="mt-sm"
+      />
       {royaltyStatus === "success" && (
         <Alert variant="success">Royalty updated.</Alert>
       )}
@@ -361,6 +330,7 @@ export type PaymentPanelProps = {
 
 export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
   const { address } = useAccount();
+  const chainId = useChainId();
   const publicClient = usePublicClient();
   const {
     payForAgent,
@@ -477,7 +447,7 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
         address: config.paymentToken,
         abi: erc20Abi,
         functionName: "allowance",
-        args: [address, getAxiomPaymentProcessorAddress()],
+        args: [address, getAxiomPaymentProcessorAddress(chainId)],
       })) as bigint;
 
       if (allowance < scaledAmount) {
@@ -486,7 +456,7 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
           address: config.paymentToken,
           abi: erc20Abi,
           functionName: "approve",
-          args: [getAxiomPaymentProcessorAddress(), scaledAmount],
+          args: [getAxiomPaymentProcessorAddress(chainId), scaledAmount],
         });
         toast.info("Waiting for approval confirmation...");
         await publicClient.waitForTransactionReceipt({ hash: approveTx });
@@ -510,6 +480,7 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
     address,
     publicClient,
     writeContractAsync,
+    chainId,
   ]);
 
   const handleSetRoyalty = useCallback(async (): Promise<void> => {
@@ -541,7 +512,7 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
     setWithdrawStatus("pending");
     try {
       await writeContractAsync({
-        address: getAxiomPaymentProcessorAddress(),
+        address: getAxiomPaymentProcessorAddress(chainId),
         abi: paymentProcessorAbi,
         functionName: "withdrawAgentEarnings",
         args: [],
@@ -553,7 +524,7 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
       setWithdrawStatus("error");
       setWithdrawActionError(humanizeError(err));
     }
-  }, [writeContractAsync, refreshEarnings]);
+  }, [writeContractAsync, refreshEarnings, chainId]);
 
   return (
     <Card>
