@@ -34,6 +34,7 @@ import {
   assertReceiptOk,
   recordOnChainStep,
 } from "./onchain.js";
+import { assertParityGate, markCovered, printParityMatrix } from "./matrix.js";
 
 type FetchJson = typeof fetchJsonFn;
 type PostStep = typeof postStepFn;
@@ -327,6 +328,11 @@ export async function runOnChainMintStep(deps: {
   ) {
     throw new Error(`mint: on-chain dataHash ${onChainHash} != ${deps.dataHash}`);
   }
+  markCovered("AxiomAgentNFT", "mint", "on-chain-mint");
+  markCovered("AxiomAgentNFT", "mintFee", "on-chain-mint");
+  markCovered("AxiomAgentNFT", "creatorOf", "on-chain-mint");
+  markCovered("AxiomAgentNFT", "ownerOf", "on-chain-mint");
+  markCovered("AxiomAgentNFT", "intelligentDatasOf", "on-chain-mint");
   recordOnChainStep({
     step: 6,
     name: "AxiomAgentNFT.mint",
@@ -376,6 +382,7 @@ export async function runVaultDepositStep(deps: {
       `vault deposit: balance ${after} < expected ${before + amount}`,
     );
   }
+  markCovered("AxiomStrategyVault", "deposit", "vault-deposit");
   recordOnChainStep({
     step: 7,
     name: "AxiomStrategyVault.deposit",
@@ -421,6 +428,8 @@ export async function runVaultStrategyStep(deps: {
   if (validUntil !== 0n) {
     throw new Error(`setStrategy: expected no expiry, got validUntilDay=${validUntil}`);
   }
+  markCovered("AxiomStrategyVault", "setStrategy", "vault-setStrategy");
+  markCovered("AxiomStrategyVault", "strategyOf", "vault-setStrategy");
   recordOnChainStep({
     step: 8,
     name: "AxiomStrategyVault.setStrategy",
@@ -476,12 +485,15 @@ export async function runPaymentStep(deps: {
     deps.deployer.address,
     deps.paymentProcessor,
   );
+  markCovered("MockUSDC", "balanceOf", "payForAgent");
+  markCovered("MockUSDC", "allowance", "payForAgent");
   if (allowance < amount) {
     const approveTx = await tokenTc.contract.approve(
       deps.paymentProcessor,
       amount,
     );
     assertReceiptOk(await approveTx.wait(), "ERC20 approve");
+    markCovered("MockUSDC", "approve", "payForAgent");
   }
   const tx = await procTc.contract.payForAgent(deps.tokenId, amount);
   const receipt = assertReceiptOk(await tx.wait(), "payForAgent");
@@ -491,6 +503,8 @@ export async function runPaymentStep(deps: {
       `payForAgent: creator earnings did not increase (${earningsBefore} -> ${earningsAfter})`,
     );
   }
+  markCovered("AxiomPaymentProcessor", "payForAgent", "payForAgent");
+  markCovered("AxiomPaymentProcessor", "agentEarningsOf", "payForAgent");
   recordOnChainStep({
     step: 9,
     name: "AxiomPaymentProcessor.payForAgent",
@@ -557,7 +571,7 @@ interface ChallengeResponse {
   error?: string;
 }
 
-interface FinalResponse {
+export interface FinalResponse {
   ok: boolean;
   stage: "final";
   tokenId: string;
@@ -781,6 +795,9 @@ export async function runOnChainTransferStep(deps: {
       if (newOwner.toLowerCase() !== deps.to.toLowerCase()) {
         throw new Error(`post-transfer owner ${newOwner} != receiver ${deps.to}`);
       }
+      markCovered("AxiomAgentNFT", "iTransferFrom", "iTransferFrom");
+      markCovered("AxiomAgentNFT", "ownerOf", "iTransferFrom");
+      markCovered("AxiomTeeVerifier", "verifyTransferValidity", "iTransferFrom");
       recordOnChainStep({
         step: 11,
         name: "iTransferFrom on-chain",
@@ -803,7 +820,7 @@ export async function runOnChainTransferStep(deps: {
   }
 }
 
-export function printReport(): void {
+export function printReport(options?: { parityMinPct?: number }): void {
   console.log("\n============================================");
   console.log("  E2E Summary (live + on-chain proofs)");
   console.log("============================================");
@@ -820,5 +837,15 @@ export function printReport(): void {
   }
   const passed = stepResults.filter((r) => r.ok).length;
   console.log(`\n  ${passed}/${stepResults.length} steps passed`);
+
+  const parity = printParityMatrix();
+  const minPct = options?.parityMinPct ?? 90;
   if (passed < stepResults.length) process.exit(1);
+  try {
+    assertParityGate(minPct);
+  } catch (e) {
+    console.error(`\n  ${e instanceof Error ? e.message : String(e)}`);
+    process.exit(1);
+  }
+  console.log(`\n  Parity gate passed (${parity.actionablePct}% >= ${minPct}%)`);
 }
