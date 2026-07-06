@@ -12,7 +12,7 @@ import rateLimit from "express-rate-limit";
 import { createServer, type Server as HttpServer } from "node:http";
 import { WebSocketServer, type WebSocket } from "ws";
 import { ethers, type Wallet } from "ethers";
-import { TypedContract } from "@axiom/config/types/contract";
+import { TypedContract, type AgentNFTMethods } from "@axiom/config/types/contract";
 import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
 import { bigintReplacer } from "@axiom/config/types/bigint";
 
@@ -26,14 +26,14 @@ import { AGENT_NFT_ABI, VAULT_ABI } from "@axiom/config/abis";
 
 import { StrategyRunner } from "./orchestrator/index.js";
 import { DefaultSignerOracleClient } from "./oracle/client.js";
-import { type Eip712Domain, DEFAULT_EIP712_DOMAIN } from "@axiom/config";
+import { type Eip712Domain, DEFAULT_EIP712_DOMAIN, buildEip712Domain } from "@axiom/config";
 import { getSharedProvider } from "./provider.js";
 import { createApiKeyAuth } from "@axiom/config/middleware/auth";
 import { getEventStore } from "./events/store.js";
 import { PaymentProcessorClient } from "./payment/processor.js";
 import type { BackendEnv } from "./env-schema.js";
 import { createHealthRouter } from "./routers/health.js";
-import { createRoute } from "./routers/route-factory.js";
+import { createRoute, REGISTERED_ROUTES } from "./routers/route-factory.js";
 import { registerAgentRoutes } from "./routers/agents.js";
 import { registerEventRoutes } from "./routers/events.js";
 import { registerPerformanceRoutes } from "./routers/performance.js";
@@ -41,6 +41,7 @@ import { registerOrchestratorRoutes } from "./routers/orchestrator.js";
 import {
   chatBodySchema,
   royaltySchema,
+  vaultExecuteSchema,
   archiveLookupSchema,
   archiveAccountSchema,
   archiveConfirmSchema,
@@ -53,12 +54,15 @@ import {
   closestSnapshot,
 } from "./services/wayback.js";
 import { createLogger } from "./utils/logger.js";
+import { sendError } from "./utils/response.js";
 import {
   getClients,
   registerClient,
   unregisterClient,
   type ConnectedClient,
 } from "./ws/broadcaster.js";
+import { MAX_WS_CLIENTS } from "./utils/constants.js";
+import { TTLCache } from "./utils/cache.js";
 
 const log = createLogger("server");
 
@@ -66,7 +70,6 @@ export interface ServerConfig {
   bind: string;
   port: number;
   evmRpc: string;
-  storageRpc?: string;
   signer: Wallet;
   oracleBaseUrl: string;
   addresses?: {
@@ -143,11 +146,10 @@ export function startServer(config: ServerConfig): {
     baseUrl: config.oracleBaseUrl,
     apiKey: config.env?.AXIOM_API_KEY,
   });
-  const eip712Domain: Eip712Domain = {
-    chainId: BigInt(ogChainId),
-    verifyingContract:
-      config.addresses?.verifier ?? DEFAULT_EIP712_DOMAIN.verifyingContract,
-  };
+  const eip712Domain: Eip712Domain = buildEip712Domain(
+    ogChainId,
+    config.addresses?.verifier ?? DEFAULT_EIP712_DOMAIN.verifyingContract,
+  );
   let orchestratorHandle: StrategyRunner | null = null;
 
   function getOrCreateOrchestrator(): StrategyRunner | null {
@@ -171,6 +173,12 @@ export function startServer(config: ServerConfig): {
   }
 
   const provider = getSharedProvider();
+
+  const nftAddr = config.addresses?.agentNft;
+  const nftTc = nftAddr
+    ? new TypedContract<AgentNFTMethods>(nftAddr, AGENT_NFT_ABI, provider)
+    : null;
+
   let payment: PaymentProcessorClient | null = null;
   async function getPayment(): Promise<PaymentProcessorClient> {
     if (payment) return payment;
@@ -193,14 +201,13 @@ export function startServer(config: ServerConfig): {
 
   const HEARTBEAT_INTERVAL = 30_000;
   const MAX_MISSED_PINGS = 3;
-  const MAX_WS_CLIENTS = 1000;
   const heartbeatTimer = setInterval(() => {
     const wsClients = getClients();
     for (const c of wsClients) {
       if (c.socket.readyState !== c.socket.OPEN) continue;
       if (c.missedPings >= MAX_MISSED_PINGS) {
         c.socket.terminate();
-        wsClients.delete(c);
+        unregisterClient(c);
         continue;
       }
       c.missedPings++;
@@ -225,6 +232,13 @@ export function startServer(config: ServerConfig): {
         const resp = await fetch(`${routerBaseUrl}/models`, {
           headers: { "X-Request-ID": res.locals.requestId as string },
         });
+        if (!resp.ok) {
+          res.status(502).json({
+            error: `Compute router returned ${resp.status}`,
+            code: "UPSTREAM_ERROR",
+          });
+          return;
+        }
         const raw = await resp.json();
         const models = z
           .object({ data: z.array(z.record(z.string(), z.unknown())) })
@@ -269,26 +283,33 @@ export function startServer(config: ServerConfig): {
         const client = await createRouterClient(resolvedModel);
         const openaiRes = await client.chat.completions.create({
           model: resolvedModel,
-          messages,
-          tools,
+          messages: messages as any,
+          tools: tools as any,
           stream: true,
           max_tokens: 2048,
         });
         res.setHeader("Content-Type", "text/event-stream");
         res.setHeader("Cache-Control", "no-cache");
         res.setHeader("Connection", "keep-alive");
+        let clientClosed = false;
+        req.on("close", () => {
+          clientClosed = true;
+        });
         for await (const chunk of openaiRes) {
+          if (clientClosed || res.writableEnded) break;
           res.write(`data: ${JSON.stringify(chunk)}\n\n`);
         }
-        res.write("data: [DONE]\n\n");
-        res.end();
+        if (!res.writableEnded) {
+          res.write("data: [DONE]\n\n");
+          res.end();
+        }
       } catch (err) {
         next(err);
       }
     },
   );
 
-  registerAgentRoutes(app, config, provider, oracle, eip712Domain);
+  registerAgentRoutes(app, config, provider, oracle, eip712Domain, nftTc);
   registerEventRoutes(app, config, getEventStore());
   registerPerformanceRoutes(app, config, getEventStore());
   registerOrchestratorRoutes(app, config, getOrCreateOrchestrator, ogChainId);
@@ -363,6 +384,10 @@ export function startServer(config: ServerConfig): {
 
   app.use(archiveRouter);
 
+  app.get("/v1/routes", (_req: Request, res: Response) => {
+    res.json({ routes: REGISTERED_ROUTES });
+  });
+
   const paymentRouter = express.Router();
   createRoute(
     paymentRouter,
@@ -370,13 +395,14 @@ export function startServer(config: ServerConfig): {
       path: "/v1/agents/:id/earnings",
       method: "get",
       requireId: true,
+      requireAddress: "paymentProcessor",
       consumer: "usePayment",
       description: "Get agent earnings by token ID",
     },
     async (_parsed, _req, res, { id, config: cfg }) => {
       const nftAddr = cfg.addresses?.agentNft;
       if (!nftAddr) {
-        res.status(500).json({ error: "AgentNFT address not configured" });
+        sendError(res, 500, "AgentNFT address not configured");
         return;
       }
       const nftTc = new TypedContract<{
@@ -384,9 +410,7 @@ export function startServer(config: ServerConfig): {
       }>(nftAddr, AGENT_NFT_ABI, provider);
       const creator = await nftTc.contract.creatorOf(BigInt(id));
       if (!creator || creator === ethers.ZeroAddress) {
-        res
-          .status(404)
-          .json({ error: "Agent creator not registered for token" });
+        sendError(res, 404, "Agent creator not registered for token");
         return;
       }
       const client = await getPayment();
@@ -402,6 +426,7 @@ export function startServer(config: ServerConfig): {
       path: "/v1/agents/:id/royalty",
       schema: royaltySchema,
       requireId: true,
+      requireAddress: "paymentProcessor",
       consumer: "usePayment",
       description: "Encode royalty set transaction data",
     },
@@ -413,23 +438,24 @@ export function startServer(config: ServerConfig): {
     config,
   );
 
-  let paymentConfigCache: { data: unknown; timestamp: number } | null = null;
-  const PAYMENT_CONFIG_TTL = 300_000;
+  const paymentConfigCache = new TTLCache<{
+    paymentToken: string;
+    protocolFeeBps: bigint;
+    protocolTreasury: string;
+  }>(300_000);
 
   createRoute(
     paymentRouter,
     {
       path: "/v1/payment/config",
       method: "get",
+      requireAddress: "paymentProcessor",
       consumer: "usePayment",
       description: "Payment contract configuration (cached 5min)",
     },
     async () => {
-      if (
-        paymentConfigCache &&
-        Date.now() - paymentConfigCache.timestamp < PAYMENT_CONFIG_TTL
-      )
-        return paymentConfigCache.data;
+      const cached = paymentConfigCache.get("config");
+      if (cached) return cached;
       const client = await getPayment();
       const [paymentToken, feeBps, treasury] = await Promise.all([
         client.paymentToken(),
@@ -441,7 +467,7 @@ export function startServer(config: ServerConfig): {
         protocolFeeBps: feeBps,
         protocolTreasury: treasury,
       };
-      paymentConfigCache = { data: result, timestamp: Date.now() };
+      paymentConfigCache.set("config", result);
       return result;
     },
     config,
@@ -450,23 +476,17 @@ export function startServer(config: ServerConfig): {
     paymentRouter,
     {
       path: "/v1/vaults/:id/execute",
+      schema: vaultExecuteSchema,
       requireId: true,
+      requireAddress: "vault",
       consumer: "useVault",
       description: "Execute a transaction from a strategy vault",
     },
-    async (_parsed, req, res, { id, config: cfg }) => {
-      const vaultAddr = cfg.addresses?.vault;
-      if (!vaultAddr) {
-        res.status(500).json({ error: "Vault address not configured" });
-        return;
-      }
-      const { target, value, data, proof } = req.body ?? {};
-      if (!target || value === undefined || !data || !proof) {
-        res.status(400).json({
-          error: "Missing required fields (target, value, data, proof)",
-        });
-        return;
-      }
+    async (parsed, _req, _res, { id, config: cfg }) => {
+      const vaultAddr = cfg.addresses?.vault!;
+      const { target, value, data, proof } = parsed as z.infer<
+        typeof vaultExecuteSchema
+      >;
       const vaultTc = new TypedContract<{
         execute(
           tokenId: bigint,
@@ -479,7 +499,7 @@ export function startServer(config: ServerConfig): {
       const tx = await vaultTc.contract.execute(
         BigInt(id),
         target,
-        BigInt(value),
+        BigInt(String(value)),
         data,
         proof,
       );
@@ -500,12 +520,12 @@ export function startServer(config: ServerConfig): {
     async (_parsed, req, res, { id, config: cfg }) => {
       const nftAddr = cfg.addresses?.agentNft;
       if (!nftAddr) {
-        res.status(500).json({ error: "AgentNFT address not configured" });
+        sendError(res, 500, "AgentNFT address not configured");
         return;
       }
       const { datas } = req.body ?? {};
       if (!datas || !Array.isArray(datas)) {
-        res.status(400).json({ error: "Missing or invalid datas array" });
+        sendError(res, 400, "Missing or invalid datas array");
         return;
       }
       const nftTc = new TypedContract<any>(nftAddr, AGENT_NFT_ABI, provider);
@@ -518,9 +538,9 @@ export function startServer(config: ServerConfig): {
     config,
   );
 
-  Sentry.setupExpressErrorHandler(app);
-
   app.use(paymentRouter);
+
+  Sentry.setupExpressErrorHandler(app);
 
   app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
     log.error("Unhandled error", { error: err.message, stack: err.stack });

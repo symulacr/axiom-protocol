@@ -8,6 +8,7 @@ import {
 import type { ServerConfig } from "../server.js";
 import type { z } from "zod";
 import { broadcast } from "../ws/broadcaster.js";
+import { sendError } from "../utils/response.js";
 
 export interface RouteRegistration {
   method: "GET" | "POST" | "DELETE" | "PUT";
@@ -72,7 +73,11 @@ export function createRoute<T = any>(
           const idParam =
             typeof req.params.id === "string" ? req.params.id : null;
           if (!idParam) {
-            res.status(400).json({ error: "Missing id" });
+            sendError(res, 400, "Missing id");
+            return;
+          }
+          if (!/^\d+$/.test(idParam)) {
+            sendError(res, 400, "Invalid id: must be numeric");
             return;
           }
         }

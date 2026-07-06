@@ -13,6 +13,8 @@
  *  - To view actual content, open the snapshot URL in a browser.
  */
 
+import { extractErrorMessage } from "../utils/response.js";
+
 export interface SnapshotSummary {
   url: string;
   timestamp: string;
@@ -21,16 +23,26 @@ export interface SnapshotSummary {
   digest?: string;
 }
 
+function waybackTimestampToIso(timestamp: string): string {
+  return new Date(
+    `${timestamp.slice(0, 4)}-${timestamp.slice(4, 6)}-${timestamp.slice(6, 8)}T${timestamp.slice(8, 10)}:${timestamp.slice(10, 12)}:${timestamp.slice(12, 14)}Z`,
+  ).toISOString();
+}
+
+async function fetchCdxRows(cdxUrl: string): Promise<string[][]> {
+  const resp = await fetch(cdxUrl, { signal: AbortSignal.timeout(20_000) });
+  if (!resp.ok) throw new Error(`CDX returned ${resp.status}`);
+  const rows = (await resp.json()) as string[][];
+  if (!Array.isArray(rows) || rows.length < 2) return [];
+  return rows.slice(1);
+}
+
 function normalizeCdxRow(originalUrl: string, row: string[]): SnapshotSummary {
   const [timestamp, orig, , , digest] = row;
   return {
     url: orig ?? originalUrl,
     timestamp: timestamp ?? "",
-    iso: timestamp
-      ? new Date(
-          `${timestamp.slice(0, 4)}-${timestamp.slice(4, 6)}-${timestamp.slice(6, 8)}T${timestamp.slice(8, 10)}:${timestamp.slice(10, 12)}:${timestamp.slice(12, 14)}Z`,
-        ).toISOString()
-      : "",
+    iso: timestamp ? waybackTimestampToIso(timestamp) : "",
     snapshotUrl: `https://web.archive.org/web/${timestamp}/${orig ?? originalUrl}`,
     digest,
   };
@@ -46,14 +58,11 @@ export async function lookupSnapshots(
 ): Promise<SnapshotSummary[]> {
   const cdxUrl = `https://web.archive.org/cdx/search/cdx?url=${encodeURIComponent(url)}&output=json&fl=timestamp,original,statuscode,mimetype,digest&collapse=urlkey&limit=${limit}`;
   try {
-    const resp = await fetch(cdxUrl, { signal: AbortSignal.timeout(20_000) });
-    if (!resp.ok) throw new Error(`CDX returned ${resp.status}`);
-    const rows = (await resp.json()) as string[][];
-    if (!Array.isArray(rows) || rows.length < 2) return [];
-    return rows.slice(1).map((row) => normalizeCdxRow(url, row));
+    const rows = await fetchCdxRows(cdxUrl);
+    return rows.map((row) => normalizeCdxRow(url, row));
   } catch (err) {
     throw new Error(
-      `Wayback lookup failed: ${err instanceof Error ? err.message : String(err)}`,
+      `Wayback lookup failed: ${extractErrorMessage(err)}`,
     );
   }
 }
@@ -70,14 +79,11 @@ export async function lookupAccountTweets(
   const baseUrl = `x.com/${cleanHandle}/status/`;
   const cdxUrl = `https://web.archive.org/cdx/search/cdx?url=${encodeURIComponent(baseUrl)}&matchType=prefix&output=json&fl=timestamp,original,statuscode,mimetype,digest&collapse=urlkey&limit=${limit}`;
   try {
-    const resp = await fetch(cdxUrl, { signal: AbortSignal.timeout(20_000) });
-    if (!resp.ok) throw new Error(`CDX returned ${resp.status}`);
-    const rows = (await resp.json()) as string[][];
-    if (!Array.isArray(rows) || rows.length < 2) return [];
-    return rows.slice(1).map((row) => normalizeCdxRow(baseUrl, row));
+    const rows = await fetchCdxRows(cdxUrl);
+    return rows.map((row) => normalizeCdxRow(baseUrl, row));
   } catch (err) {
     throw new Error(
-      `Wayback account lookup failed: ${err instanceof Error ? err.message : String(err)}`,
+      `Wayback account lookup failed: ${extractErrorMessage(err)}`,
     );
   }
 }
@@ -94,7 +100,7 @@ export async function confirmArchived(
     return { archived: true, snapshot: snapshots[0]! };
   } catch (err) {
     throw new Error(
-      `Wayback confirm failed: ${err instanceof Error ? err.message : String(err)}`,
+      `Wayback confirm failed: ${extractErrorMessage(err)}`,
     );
   }
 }
@@ -119,9 +125,7 @@ export async function closestSnapshot(
     return {
       url,
       timestamp: closest.timestamp,
-      iso: new Date(
-        `${closest.timestamp.slice(0, 4)}-${closest.timestamp.slice(4, 6)}-${closest.timestamp.slice(6, 8)}T${closest.timestamp.slice(8, 10)}:${closest.timestamp.slice(10, 12)}:${closest.timestamp.slice(12, 14)}Z`,
-      ).toISOString(),
+      iso: waybackTimestampToIso(closest.timestamp),
       snapshotUrl: closest.url,
     };
   } catch {

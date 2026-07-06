@@ -1,7 +1,10 @@
 import type { Express } from "express";
 import type { z } from "zod";
 import { createRoute } from "./route-factory.js";
-import { DEFAULT_EVENT_LIMIT } from "../utils/constants.js";
+import {
+  DEFAULT_EVENT_LIMIT,
+  MAX_EVENT_QUERY_LIMIT,
+} from "../utils/constants.js";
 import { eventBodySchema } from "../route-schemas.js";
 import type { EventStore } from "../events/store.js";
 import type { ServerConfig } from "../server.js";
@@ -30,8 +33,6 @@ export function registerEventRoutes(
         txHash: b.txHash,
         logIndex: b.logIndex,
         payload: b.payload,
-        receivedAt: Date.now(),
-        timestamp: Date.now(),
       });
       return { stored };
     },
@@ -53,8 +54,8 @@ export function registerEventRoutes(
           : undefined;
       const limit =
         limitRaw !== undefined && Number.isInteger(limitRaw) && limitRaw > 0
-          ? limitRaw
-          : DEFAULT_EVENT_LIMIT;
+          ? Math.min(limitRaw, MAX_EVENT_QUERY_LIMIT)
+          : Math.min(DEFAULT_EVENT_LIMIT, MAX_EVENT_QUERY_LIMIT);
       const sinceRaw =
         typeof req.query.since === "string"
           ? Number(req.query.since)

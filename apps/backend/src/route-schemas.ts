@@ -20,10 +20,6 @@ export const transferBodySchema = z.object({
   accessProof: accessProofSchema.optional(),
 });
 
-export const paySchema = z.object({
-  amount: z.string().min(1),
-});
-
 export const royaltySchema = z.object({
   bps: z.number().int().min(0).max(10000),
 });
@@ -31,11 +27,18 @@ export const royaltySchema = z.object({
 export const eventBodySchema = z.object({
   source: z.string().min(1),
   eventName: z.string().min(1),
-  chainId: z.number(),
-  blockNumber: z.number(),
-  txHash: z.string().min(1),
-  logIndex: z.number(),
+  chainId: z.number().int().positive(),
+  blockNumber: z.number().int().nonnegative(),
+  txHash: z.string().regex(/^0x[a-fA-F0-9]{64}$/),
+  logIndex: z.number().int().nonnegative(),
   payload: z.record(z.string(), z.unknown()),
+});
+
+export const vaultExecuteSchema = z.object({
+  target: addressViem,
+  value: z.union([z.string().regex(/^\d+$/), z.number().int().nonnegative()]),
+  data: hexViem,
+  proof: z.array(hexViem),
 });
 
 export const tickSchema = z.object({
@@ -69,7 +72,12 @@ export const archiveClosestSchema = z.object({
 });
 
 export const chatBodySchema = z.object({
-  messages: z.array(z.any()).nonempty(),
+  messages: z.array(
+    z.object({
+      role: z.enum(["system", "user", "assistant", "tool"]),
+      content: z.string(),
+    }),
+  ).nonempty(),
   tools: z.array(z.any()).optional(),
   model: z.string().optional(),
 });

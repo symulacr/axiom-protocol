@@ -1,6 +1,7 @@
 import { WebSocket } from "ws";
 import { bigintReplacer } from "@axiom/config/types/bigint";
 import { createLogger } from "../utils/logger.js";
+import { extractErrorMessage } from "../utils/response.js";
 
 const log = createLogger("ws");
 
@@ -26,7 +27,7 @@ export function broadcast(topic: string, payload: unknown): void {
       c.socket.send(msg);
     } catch (err) {
       log.warn("broadcast send failed for client, removing", {
-        error: err instanceof Error ? err.message : String(err),
+        error: extractErrorMessage(err),
       });
       c.socket.terminate();
       unregisterClient(c);
@@ -71,7 +72,7 @@ export function sendToTopic(topicPrefix: string, data: unknown): number {
         sent++;
       } catch (err) {
         log.warn("sendToTopic failed for client, removing", {
-          error: err instanceof Error ? err.message : String(err),
+          error: extractErrorMessage(err),
         });
         client.socket.terminate();
         unregisterClient(client);
