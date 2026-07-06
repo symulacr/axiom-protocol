@@ -2,54 +2,82 @@ import React, { forwardRef, useCallback, useEffect, useRef } from "react";
 import { useAccount } from "wagmi";
 import type {
   ButtonHTMLAttributes,
+  ChangeEvent,
   CSSProperties,
   InputHTMLAttributes,
   ReactElement,
   ReactNode,
+  SelectHTMLAttributes,
+  TextareaHTMLAttributes,
 } from "react";
 
 export const COLORS = {
   // Backgrounds — warm-tinted near-blacks
-  bg: "#10100e", // obsidian
-  surface: "#1c1a17", // dark-carbon
-  surfaceLight: "#f0ebe3", // parchment (for reading contexts)
+  bg: "var(--c-bg)",
+  surface: "var(--c-surface)",
+  surfaceLight: "var(--c-surface-light)",
 
   // Borders — warm-tinted
-  border: "#2d2a25", // warm-iron
-  borderStrong: "#383530", // aged-steel
+  border: "var(--c-border)",
+  borderStrong: "var(--c-border-strong)",
 
   // Text — warm-tinted near-whites
-  text: "#f5f0e8", // bright-nickel
-  textPrimary: "#e5dfd6", // polished-silver
-  textMuted: "#9a9288", // warm-pewter
-  textDim: "#736b62", // tarnished-lead
+  text: "var(--c-text)",
+  textPrimary: "var(--c-text-primary)",
+  textMuted: "var(--c-text-muted)",
+  textDim: "var(--c-text-dim)",
 
   // Accent — warm bronze / muted gold
-  bronze: "#b8976e",
-  bronzeLight: "#c5a880",
+  bronze: "var(--c-bronze)",
+  bronzeLight: "var(--c-bronze-light)",
   bronzeBg: "rgba(184, 151, 110, 0.08)",
-  bronzeBorder: "rgba(184, 151, 110, 0.25)",
+  bronzeBorder: "var(--c-bronze-border)",
 
   // Secondary accent — oxidized teal
-  teal: "#5a8a8a",
-  tealLight: "#7aa8a8",
+  teal: "var(--c-teal)",
+  tealLight: "var(--c-teal-light)",
   tealBg: "rgba(90, 138, 138, 0.15)",
-  tealBorder: "rgba(90, 138, 138, 0.2)",
+  tealBorder: "var(--c-teal-border)",
 
   // Semantic — restrained, never neon
-  danger: "#c85a5a",
+  danger: "var(--c-danger)",
   dangerBg: "rgba(200, 90, 90, 0.08)",
   dangerBorder: "rgba(200, 90, 90, 0.2)",
-  success: "#6b9e6b",
+  success: "var(--c-success)",
   successBg: "rgba(107, 158, 107, 0.08)",
   successBorder: "rgba(107, 158, 107, 0.2)",
-  warning: "#c5a25a",
+  warning: "var(--c-warning)",
   warningBg: "rgba(197, 162, 90, 0.08)",
   warningBorder: "rgba(197, 162, 90, 0.2)",
 } as const;
 
+export function getActionColor(action: string): string {
+  switch (action) {
+    case "buy":
+      return COLORS.success;
+    case "sell":
+      return COLORS.danger;
+    case "hold":
+      return COLORS.textMuted;
+    default:
+      return COLORS.textMuted;
+  }
+}
+
 const transition =
   "color 0.18s cubic-bezier(0.4, 0, 0.2, 1), background 0.18s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.18s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.18s cubic-bezier(0.4, 0, 0.2, 1)";
+
+const formFieldBase: CSSProperties = {
+  padding: "0.625rem 0.875rem",
+  borderRadius: "var(--radius-md)",
+  border: `1px solid ${COLORS.borderStrong}`,
+  background: COLORS.bg,
+  color: COLORS.text,
+  fontSize: "var(--text-sm)",
+  fontFamily: "inherit",
+  minWidth: "0",
+  transition,
+};
 
 type ButtonVariant = "primary" | "secondary" | "ghost";
 
@@ -70,7 +98,7 @@ const buttonVariants: Record<ButtonVariant, CSSProperties> = {
   primary: {
     ...buttonBase,
     background: COLORS.bronze,
-    color: "#10100e",
+    color: COLORS.bg,
     borderColor: COLORS.bronze,
   },
   secondary: {
@@ -160,20 +188,217 @@ export const Input = forwardRef<
       ref={ref}
       {...rest}
       style={{
-        padding: "0.625rem 0.875rem",
-        borderRadius: "var(--radius-md)",
-        border: `1px solid ${COLORS.borderStrong}`,
-        background: COLORS.bg,
-        color: COLORS.text,
-        fontSize: "var(--text-sm)",
-        fontFamily: "inherit",
-        minWidth: "0",
-        transition,
+        ...formFieldBase,
         ...style,
       }}
     />
   );
 });
+
+export const Textarea = forwardRef<
+  HTMLTextAreaElement,
+  TextareaHTMLAttributes<HTMLTextAreaElement>
+>(function Textarea({ style, ...rest }, ref) {
+  return (
+    <textarea
+      ref={ref}
+      {...rest}
+      style={{
+        ...formFieldBase,
+        width: "100%",
+        boxSizing: "border-box",
+        resize: "vertical",
+        ...style,
+      }}
+    />
+  );
+});
+
+export const Select = forwardRef<
+  HTMLSelectElement,
+  SelectHTMLAttributes<HTMLSelectElement>
+>(function Select({ style, ...rest }, ref) {
+  return (
+    <select
+      ref={ref}
+      {...rest}
+      style={{
+        ...formFieldBase,
+        ...style,
+      }}
+    />
+  );
+});
+
+export type DefinitionListItem = {
+  term: ReactNode;
+  detail: ReactNode;
+  detailStyle?: CSSProperties;
+};
+
+export type DefinitionListProps = {
+  items: DefinitionListItem[];
+  labelWidth?: string;
+  className?: string;
+  style?: CSSProperties;
+};
+
+export function DefinitionList({
+  items,
+  labelWidth = "120px",
+  className,
+  style,
+}: DefinitionListProps): ReactElement {
+  return (
+    <dl
+      className={["stack-on-mobile", className].filter(Boolean).join(" ") || undefined}
+      style={{
+        margin: 0,
+        display: "grid",
+        gridTemplateColumns: `${labelWidth} 1fr`,
+        gap: "8px 16px",
+        fontSize: "var(--text-sm)",
+        ...style,
+      }}
+    >
+      {items.map((item, index) => (
+        <React.Fragment key={index}>
+          <dt
+            className="text-dim"
+            style={{ fontWeight: "var(--fw-medium)" }}
+          >
+            {item.term}
+          </dt>
+          <dd style={{ margin: 0, ...item.detailStyle }}>{item.detail}</dd>
+        </React.Fragment>
+      ))}
+    </dl>
+  );
+}
+
+export type KeyValueGridItem = {
+  label: ReactNode;
+  value: ReactNode;
+  valueStyle?: CSSProperties;
+  labelStyle?: CSSProperties;
+};
+
+export type KeyValueGridProps = {
+  items: KeyValueGridItem[];
+  className?: string;
+  style?: CSSProperties;
+};
+
+export function KeyValueGrid({
+  items,
+  className,
+  style,
+}: KeyValueGridProps): ReactElement {
+  return (
+    <div
+      className={className}
+      style={{
+        display: "flex",
+        flexWrap: "wrap",
+        gap: "var(--space-lg)",
+        ...style,
+      }}
+    >
+      {items.map((item, index) => (
+        <div key={index} style={{ minWidth: "8rem" }}>
+          <div
+            className="text-dim"
+            style={{
+              fontSize: "var(--text-xs)",
+              marginBottom: "var(--space-xs)",
+              fontWeight: "var(--fw-medium)",
+              ...item.labelStyle,
+            }}
+          >
+            {item.label}
+          </div>
+          <div style={item.valueStyle}>{item.value}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export type NumericActionRowProps = {
+  value: string;
+  onChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  onSubmit: () => void;
+  placeholder?: string;
+  buttonLabel: string;
+  loading?: boolean;
+  disabled?: boolean;
+  error?: string | null;
+  errorId?: string;
+  className?: string;
+  style?: CSSProperties;
+  inputStyle?: CSSProperties;
+  buttonStyle?: CSSProperties;
+} & Omit<
+  InputHTMLAttributes<HTMLInputElement>,
+  "value" | "onChange" | "placeholder"
+>;
+
+export function NumericActionRow({
+  value,
+  onChange,
+  onSubmit,
+  placeholder,
+  buttonLabel,
+  loading = false,
+  disabled = false,
+  error,
+  errorId,
+  className,
+  style,
+  inputStyle,
+  buttonStyle,
+  ...inputProps
+}: NumericActionRowProps): ReactElement {
+  const hasError = error != null && error !== "";
+  const describedBy =
+    inputProps["aria-describedby"] ??
+    (hasError && errorId !== undefined ? errorId : undefined);
+
+  return (
+    <>
+      <div
+        className={["flex items-center gap-sm", className]
+          .filter(Boolean)
+          .join(" ")}
+        style={style}
+      >
+        <Input
+          {...inputProps}
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          disabled={disabled || loading}
+          aria-invalid={hasError || inputProps["aria-invalid"]}
+          aria-describedby={describedBy}
+          style={{ flex: 1, ...inputStyle }}
+        />
+        <Button
+          variant="primary"
+          disabled={disabled || loading}
+          onClick={onSubmit}
+          style={{ minWidth: "140px", ...buttonStyle }}
+        >
+          {loading ? <Spinner size={16} /> : buttonLabel}
+        </Button>
+      </div>
+      {hasError && errorId !== undefined && (
+        <p id={errorId} className="field-error">
+          {error}
+        </p>
+      )}
+    </>
+  );
+}
 
 type AlertVariant = "error" | "success" | "info";
 

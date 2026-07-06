@@ -22,6 +22,7 @@ import {
   Alert,
   MonoLabel,
   Input,
+  Textarea,
   Modal,
   Card,
   Spinner,
@@ -181,7 +182,7 @@ function TransferFormPhase({
       >
         Receiver Public Key
       </label>
-      <textarea
+      <Textarea
         id={`${formId}-pubkey`}
         name="receiverPubKey64"
         value={receiverPubKey}
@@ -190,18 +191,11 @@ function TransferFormPhase({
         spellCheck={false}
         maxLength={RECEIVER_PUBKEY_HEX_LENGTH}
         placeholder="0x\u2026  (128 hex chars)"
+        className="w-full"
         style={{
-          width: "100%",
-          padding: "10px 14px",
-          marginTop: 6,
-          fontFamily: "var(--font-mono)",
-          fontSize: "var(--text-sm)",
-          border: `1px solid ${COLORS.borderStrong}`,
-          borderRadius: "var(--radius-md)",
-          background: COLORS.bg,
-          color: COLORS.text,
           boxSizing: "border-box",
-          resize: "vertical",
+          fontFamily: "var(--font-mono)",
+          marginTop: 6,
         }}
         required
       />
