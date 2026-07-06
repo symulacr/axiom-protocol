@@ -7,35 +7,38 @@ import {
   resolveRpcUrl,
 } from "@axiom/config/networks";
 
-// Read from localStorage (Settings page), fall back to env vars / defaults.
-const storedWcProjectId =
-  typeof window !== "undefined" && window.localStorage
-    ? (window.localStorage.getItem("axiom.wcProjectId") ?? "")
-    : "";
-const storedRpcUrl =
-  typeof window !== "undefined" && window.localStorage
-    ? (window.localStorage.getItem("axiom.rpcUrl") ?? "")
-    : "";
+export function createWagmiConfig() {
+  const storedWcProjectId =
+    typeof window !== "undefined" && window.localStorage
+      ? (window.localStorage.getItem("axiom.wcProjectId") ?? "")
+      : "";
+  const storedRpcUrl =
+    typeof window !== "undefined" && window.localStorage
+      ? (window.localStorage.getItem("axiom.rpcUrl") ?? "")
+      : "";
 
-const galileoRpc = storedRpcUrl || resolveRpcUrl(GALILEO_CHAIN_ID);
-const aristotleRpc = storedRpcUrl || resolveRpcUrl(ARISTOTLE_CHAIN_ID);
+  const galileoRpc = storedRpcUrl || resolveRpcUrl(GALILEO_CHAIN_ID);
+  const aristotleRpc = storedRpcUrl || resolveRpcUrl(ARISTOTLE_CHAIN_ID);
 
-export const wagmiConfig = getDefaultConfig({
-  appName: "Axiom Protocol",
-  projectId:
-    storedWcProjectId ||
-    import.meta.env.VITE_WALLETCONNECT_PROJECT_ID ||
-    "00000000000000000000000000000000",
-  chains: [galileo, aristotle],
-  ssr: false,
-  transports: {
-    [galileo.id]: http(galileoRpc),
-    [aristotle.id]: http(aristotleRpc),
-  },
-});
+  return getDefaultConfig({
+    appName: "Axiom Protocol",
+    projectId:
+      storedWcProjectId ||
+      import.meta.env.VITE_WALLETCONNECT_PROJECT_ID ||
+      "00000000000000000000000000000000",
+    chains: [galileo, aristotle],
+    ssr: false,
+    transports: {
+      [galileo.id]: http(galileoRpc),
+      [aristotle.id]: http(aristotleRpc),
+    },
+  });
+}
+
+export const wagmiConfig = createWagmiConfig();
 
 declare module "wagmi" {
   interface Register {
-    config: typeof wagmiConfig;
+    config: ReturnType<typeof createWagmiConfig>;
   }
 }
