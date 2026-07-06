@@ -35,6 +35,9 @@ import {
   recordOnChainStep,
 } from "./onchain.js";
 import { assertParityGate, markCovered, printParityMatrix } from "./matrix.js";
+import { markScenarioCovered, printUsageScenarioMatrix } from "./scenarios.js";
+import { printFrictionReport } from "./friction.js";
+import { ensureErc20Allowance } from "./erc20.js";
 
 type FetchJson = typeof fetchJsonFn;
 type PostStep = typeof postStepFn;
@@ -193,6 +196,7 @@ export async function runUploadStep(deps: {
   console.log(
     `          Uploaded: root=${upload.rootHash} tx=${upload.txHash}`,
   );
+  markScenarioCovered("storage.upload", "upload", { txs: 1 });
   recordOnChainStep({
     step: 4,
     name: "0G Storage upload",
@@ -231,6 +235,7 @@ export async function runStorageVerifyStep(deps: {
   ) {
     throw new Error("Downloaded bytes do not match uploaded ciphertext");
   }
+  markScenarioCovered("storage.verify", "merkle-verify");
   stepResults.push({
     step: 4,
     name: "0G Storage verify",
@@ -266,6 +271,7 @@ export async function runOracleRegisterStep(
     summary: `dataHash=${mint.dataHash}`,
   });
   if (!ok) throw new Error("Oracle did not accept dataHash registration");
+  markScenarioCovered("oracle.preregister", "oracle-mint");
 }
 
 export interface OnChainMintResult {
@@ -328,6 +334,7 @@ export async function runOnChainMintStep(deps: {
   ) {
     throw new Error(`mint: on-chain dataHash ${onChainHash} != ${deps.dataHash}`);
   }
+  markScenarioCovered("agent.mint", "on-chain-mint", { txs: 1, reads: 4 });
   markCovered("AxiomAgentNFT", "mint", "on-chain-mint");
   markCovered("AxiomAgentNFT", "mintFee", "on-chain-mint");
   markCovered("AxiomAgentNFT", "creatorOf", "on-chain-mint");
@@ -382,6 +389,7 @@ export async function runVaultDepositStep(deps: {
       `vault deposit: balance ${after} < expected ${before + amount}`,
     );
   }
+  markScenarioCovered("vault.fund", "vault-deposit", { txs: 1, reads: 2 });
   markCovered("AxiomStrategyVault", "deposit", "vault-deposit");
   recordOnChainStep({
     step: 7,
@@ -428,6 +436,7 @@ export async function runVaultStrategyStep(deps: {
   if (validUntil !== 0n) {
     throw new Error(`setStrategy: expected no expiry, got validUntilDay=${validUntil}`);
   }
+  markScenarioCovered("vault.strategy", "vault-setStrategy", { txs: 1, reads: 1 });
   markCovered("AxiomStrategyVault", "setStrategy", "vault-setStrategy");
   markCovered("AxiomStrategyVault", "strategyOf", "vault-setStrategy");
   recordOnChainStep({
@@ -481,20 +490,13 @@ export async function runPaymentStep(deps: {
     );
   }
   const earningsBefore = await procTc.contract.agentEarningsOf(deps.deployer.address);
-  const allowance = await tokenTc.contract.allowance(
-    deps.deployer.address,
-    deps.paymentProcessor,
-  );
-  markCovered("MockUSDC", "balanceOf", "payForAgent");
-  markCovered("MockUSDC", "allowance", "payForAgent");
-  if (allowance < amount) {
-    const approveTx = await tokenTc.contract.approve(
-      deps.paymentProcessor,
-      amount,
-    );
-    assertReceiptOk(await approveTx.wait(), "ERC20 approve");
-    markCovered("MockUSDC", "approve", "payForAgent");
-  }
+  await ensureErc20Allowance({
+    token: deps.paymentToken,
+    owner: deps.deployer,
+    spender: deps.paymentProcessor,
+    amount,
+    step: "payForAgent",
+  });
   const tx = await procTc.contract.payForAgent(deps.tokenId, amount);
   const receipt = assertReceiptOk(await tx.wait(), "payForAgent");
   const earningsAfter = await procTc.contract.agentEarningsOf(deps.deployer.address);
@@ -503,6 +505,7 @@ export async function runPaymentStep(deps: {
       `payForAgent: creator earnings did not increase (${earningsBefore} -> ${earningsAfter})`,
     );
   }
+  markScenarioCovered("payment.agent", "payForAgent", { txs: 1, reads: 2 });
   markCovered("AxiomPaymentProcessor", "payForAgent", "payForAgent");
   markCovered("AxiomPaymentProcessor", "agentEarningsOf", "payForAgent");
   recordOnChainStep({
@@ -528,6 +531,7 @@ export async function runTickStep(deps: {
   vaultBalanceWei: bigint;
 }): Promise<void> {
   console.log("\n[Step 9]  POST /v1/orchestrator/tick (live vault balance)");
+  markScenarioCovered("orchestrator.tick", "tick");
   await deps.postStep<{
     recommendation?: { action: string; reason: string };
     rawModelOutput?: string;
@@ -621,6 +625,7 @@ export async function runTransferSteps(deps: {
   console.log(
     `\n[Step 8.5] Re-seal dataKey for receiver (${resealedKey.length}B)`,
   );
+  markScenarioCovered("transfer.proof", "transfer-api-prep");
   console.log(
     `\n[Step 10] POST /v1/agents/${deps.tokenId}/transfer (challenge → sign → final)`,
   );
@@ -682,6 +687,7 @@ export async function runTransferSteps(deps: {
   console.log(
     `          AccessProof signer ${finalResp.accessSigner} matches receiver ${deps.to}`,
   );
+  markScenarioCovered("transfer.proof", "transfer-api", { reads: 2 });
   return finalResp;
 }
 
@@ -795,6 +801,7 @@ export async function runOnChainTransferStep(deps: {
       if (newOwner.toLowerCase() !== deps.to.toLowerCase()) {
         throw new Error(`post-transfer owner ${newOwner} != receiver ${deps.to}`);
       }
+      markScenarioCovered("transfer.onchain", "iTransferFrom", { txs: 1, reads: 2 });
       markCovered("AxiomAgentNFT", "iTransferFrom", "iTransferFrom");
       markCovered("AxiomAgentNFT", "ownerOf", "iTransferFrom");
       markCovered("AxiomTeeVerifier", "verifyTransferValidity", "iTransferFrom");
@@ -838,7 +845,9 @@ export function printReport(options?: { parityMinPct?: number }): void {
   const passed = stepResults.filter((r) => r.ok).length;
   console.log(`\n  ${passed}/${stepResults.length} steps passed`);
 
+  printUsageScenarioMatrix();
   const parity = printParityMatrix();
+  printFrictionReport();
   const minPct = options?.parityMinPct ?? 90;
   if (passed < stepResults.length) process.exit(1);
   try {
