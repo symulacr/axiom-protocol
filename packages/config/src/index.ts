@@ -8,9 +8,20 @@ export {
   ARISTOTLE_CHAIN_ID,
 } from "./networks.js";
 export type { OGNetwork } from "./networks.js";
-export { DEPLOYED_ADDRESSES } from "./addresses.js";
+export { DEPLOYED_ADDRESSES, getAddresses } from "./addresses.js";
 export * from "./types/index.js";
 export * from "./eip712.js";
-export * from "./crypto/aes-gcm.js";
-export * from "./crypto/ecies.js";
-export * from "./crypto/secp256k1.js";
+export {
+  aesGcmEncrypt,
+  aesGcmDecrypt,
+  concatEncrypted,
+  parseEncrypted,
+  type EncryptedPayload,
+} from "./crypto/aes-gcm.js";
+export { sealKeyForReceiver, unsealKeyForReceiver } from "./crypto/ecies.js";
+export {
+  publicKeyUncompressedFromPrivate,
+  pubKeyToAddress,
+  deriveRawPubkeyFromHex,
+  deriveUncompressedPubkeyFromHex,
+} from "./crypto/secp256k1.js";
