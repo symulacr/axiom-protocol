@@ -1,6 +1,6 @@
 // Branded Hex type — one sanctioned `as` inside validateHex()
-const HEX_REGEX = /^0x[a-fA-F0-9]+$/;
-const ADDRESS_REGEX = /^0x[a-fA-F0-9]{40}$/;
+export const HEX_REGEX = /^0x[a-fA-F0-9]+$/;
+export const ADDRESS_REGEX = /^0x[a-fA-F0-9]{40}$/;
 
 export type Hex = string & { readonly __brand: unique symbol };
 export type Address = Hex & { readonly __address: unique symbol };
@@ -19,5 +19,5 @@ export function validateAddress(value: string, label = "address"): Address {
 
 /** Bridge to viem's `0x${string}` type — zero-cast boundary. */
 export function toViemHex(h: Hex): `0x${string}` {
-  return h as unknown as `0x${string}`;
+  return h as `0x${string}`;
 }

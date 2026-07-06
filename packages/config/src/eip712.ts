@@ -25,6 +25,17 @@ export const DEFAULT_EIP712_DOMAIN: Eip712Domain = {
   verifyingContract: "0xB27c73aD01f61Ec1FDC302dF2350326228F14c11",
 };
 
+/** Construct an Eip712Domain from a numeric chain id and verifier address. */
+export function buildEip712Domain(
+  chainId: number,
+  verifyingContract: `0x${string}`,
+): Eip712Domain {
+  return {
+    chainId: BigInt(chainId),
+    verifyingContract,
+  };
+}
+
 export const ACCESS_PROOF_TYPES = {
   AccessProof: [
     { name: "dataHash", type: "bytes32" as const },
@@ -117,8 +128,12 @@ export interface OwnershipProofResult {
   newDataHash: Hex;
   sealedKey: Hex;
   ownershipSignature: Hex;
+}
+
+export interface OwnershipProofResultWithMeta extends OwnershipProofResult {
   accessProofNonce?: number;
   ownershipProofNonce?: number;
+  signer?: Hex;
 }
 
 export function ownershipStructHash(input: OwnershipProofInput): Hex {

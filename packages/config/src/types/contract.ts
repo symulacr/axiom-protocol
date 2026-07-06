@@ -23,3 +23,8 @@ export class TypedContract<T> {
     return this.raw.interface;
   }
 }
+
+export type AgentNFTMethods = {
+  intelligentDatasOf(tokenId: bigint): Promise<{ dataDescription: string; dataHash: string }[]>;
+  creatorOf(tokenId: bigint): Promise<string>;
+};

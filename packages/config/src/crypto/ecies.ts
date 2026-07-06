@@ -21,9 +21,7 @@ function toCompressed(uncompressedOrFull: Uint8Array): Uint8Array {
     throw new Error(
       "Pubkey must be 64 (X||Y) or 33 (compressed) or 65 (0x04||X||Y) bytes",
     );
-  const point = secp256k1.ProjectivePoint.fromHex(
-    Buffer.from(full).toString("hex"),
-  );
+  const point = secp256k1.ProjectivePoint.fromHex(full);
   return point.toRawBytes(true);
 }
 

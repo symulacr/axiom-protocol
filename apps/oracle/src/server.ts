@@ -108,20 +108,6 @@ export function startServer(config: ServerConfig): {
         });
         return;
       }
-      if (!toIn || !isAddress(toIn)) {
-        res.status(400).json({
-          error:
-            "'to' address is required and must be a valid non-zero address",
-        });
-        return;
-      }
-      if (!nftIn || !isAddress(nftIn)) {
-        res.status(400).json({
-          error:
-            "'nft' address is required and must be a valid non-zero address",
-        });
-        return;
-      }
 
       const oldBlob = await storage.download(oldDataUri as `0x${string}`);
       const oldEnc = parseEncrypted(oldBlob);
@@ -312,15 +298,25 @@ export function startServer(config: ServerConfig): {
   );
 
   app.post("/v1/agents/mint", (req: Request, res: Response) => {
-    const { dataHash } = mintDataHashSchema.parse(req.body);
-    if (!/^0x[0-9a-fA-F]{64}$/.test(dataHash)) {
-      res.status(400).json({
-        error: "dataHash must be a 32-byte hex string (0x + 64 hex chars)",
-      });
-      return;
+    try {
+      const { dataHash } = mintDataHashSchema.parse(req.body);
+      if (!/^0x[0-9a-fA-F]{64}$/.test(dataHash)) {
+        res.status(400).json({
+          error: "dataHash must be a 32-byte hex string (0x + 64 hex chars)",
+        });
+        return;
+      }
+      storage.markDataHashSeen(dataHash as `0x${string}`);
+      res.json({ ok: true, dataHash, seen: true });
+    } catch (err) {
+      if (err instanceof ZodError) {
+        res
+          .status(400)
+          .json({ error: err.issues[0]?.message ?? "Validation error" });
+        return;
+      }
+      throw err;
     }
-    storage.markDataHashSeen(dataHash as `0x${string}`);
-    res.json({ ok: true, dataHash, seen: true });
   });
   Sentry.setupExpressErrorHandler(app);
 
