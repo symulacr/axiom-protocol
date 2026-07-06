@@ -16,6 +16,8 @@ import {
 } from "@axiom/config/abis";
 import { assertReceiptOk, recordOnChainStep } from "./onchain.js";
 import { markCovered } from "./matrix.js";
+import { markScenarioCovered } from "./scenarios.js";
+import { ensureErc20Allowance } from "./erc20.js";
 import type { FinalResponse } from "./steps.js";
 
 const AGENT_NFT_EXTENDED_ABI = [
@@ -197,6 +199,7 @@ export async function runMatrixViewSweepStep(deps: {
     ["MockUSDC", "balanceOf"],
   ];
   for (const [c, f] of marks) markCovered(c, f, "view-sweep");
+  markScenarioCovered("views.sweep", "view-sweep", { reads: marks.length });
 
   recordOnChainStep({
     step: 12,
@@ -225,6 +228,7 @@ export async function runVaultWithdrawStep(deps: {
   if (after !== before - amount) {
     throw new Error(`vault withdraw: balance ${after} != ${before - amount}`);
   }
+  markScenarioCovered("vault.withdraw", "vault-withdraw", { txs: 1, reads: 2 });
   markCovered("AxiomStrategyVault", "withdraw", "vault-withdraw");
   recordOnChainStep({
     step: 13,
@@ -259,6 +263,7 @@ export async function runRoyaltyStep(deps: {
   if (!(await pay.contract.royaltyBpsSet(deps.tokenId))) {
     throw new Error("royaltyBpsSet false after set");
   }
+  markScenarioCovered("payment.royalty", "royalty", { txs: 1, reads: 2 });
   markCovered("AxiomPaymentProcessor", "setRoyaltyBpsPermitted", "royalty");
   recordOnChainStep({
     step: 14,
@@ -288,24 +293,20 @@ export async function runPayComputeProviderStep(deps: {
     deps.deployer,
   );
   const balBefore = await token.contract.balanceOf(deps.provider);
-  const balance = await token.contract.balanceOf(deps.deployer.address);
-  if (balance < amount) throw new Error("insufficient token for payComputeProvider");
-  const allowance = await token.contract.allowance(
-    deps.deployer.address,
-    deps.paymentProcessor,
-  );
-  if (allowance < amount) {
-    const approveTx = await token.contract.approve(deps.paymentProcessor, amount);
-    assertReceiptOk(await approveTx.wait(), "approve compute");
-    markCovered("MockUSDC", "approve", "payComputeProvider");
-  }
-  markCovered("MockUSDC", "allowance", "payComputeProvider");
+  await ensureErc20Allowance({
+    token: deps.paymentToken,
+    owner: deps.deployer,
+    spender: deps.paymentProcessor,
+    amount,
+    step: "payComputeProvider",
+  });
   const tx = await pay.contract.payComputeProvider(deps.provider, amount);
   const receipt = assertReceiptOk(await tx.wait(), "payComputeProvider");
   const balAfter = await token.contract.balanceOf(deps.provider);
   if (balAfter < balBefore + amount) {
     throw new Error(`provider balance did not increase by ${amount}`);
   }
+  markScenarioCovered("payment.compute", "payComputeProvider", { txs: 1 });
   markCovered("AxiomPaymentProcessor", "payComputeProvider", "payComputeProvider");
   markCovered("MockUSDC", "transfer", "payComputeProvider");
   recordOnChainStep({
@@ -341,6 +342,7 @@ export async function runWithdrawEarningsStep(deps: {
   if (balAfter < balBefore + pending) {
     throw new Error(`withdraw did not credit ${pending} (got ${balAfter - balBefore})`);
   }
+  markScenarioCovered("payment.withdraw", "withdrawEarnings", { txs: 1, reads: 2 });
   markCovered("AxiomPaymentProcessor", "withdrawAgentEarnings", "withdrawEarnings");
   recordOnChainStep({
     step: 16,
@@ -372,6 +374,7 @@ export async function runAuthorizeDelegateStep(deps: {
   if (!users.map((a) => a.toLowerCase()).includes(deps.delegateAddress.toLowerCase())) {
     throw new Error("authorizedUsersOf missing delegate");
   }
+  markScenarioCovered("agent.authorize", "authorize", { txs: 1, reads: 1 });
   markCovered("AxiomAgentNFT", "authorizeUsage", "authorize");
   markCovered("AxiomAgentNFT", "authorizedUsersOf", "authorize");
 
@@ -381,6 +384,7 @@ export async function runAuthorizeDelegateStep(deps: {
   if (assistant.toLowerCase() !== deps.delegateAddress.toLowerCase()) {
     throw new Error(`getDelegateAccess ${assistant} != ${deps.delegateAddress}`);
   }
+  markScenarioCovered("agent.delegate", "delegateAccess", { txs: 1, reads: 1 });
   markCovered("AxiomAgentNFT", "delegateAccess", "delegateAccess");
   markCovered("AxiomAgentNFT", "getDelegateAccess", "delegateAccess");
 
@@ -390,6 +394,7 @@ export async function runAuthorizeDelegateStep(deps: {
   if (afterRevoke.length !== 0) {
     throw new Error(`authorizedUsersOf not cleared after revoke: ${afterRevoke.join(",")}`);
   }
+  markScenarioCovered("agent.revoke", "revokeAuthorization", { txs: 1, reads: 1 });
   markCovered("AxiomAgentNFT", "revokeAuthorization", "revokeAuthorization");
 
   recordOnChainStep({
@@ -426,6 +431,7 @@ export async function runUpdateDataStep(deps: {
   if (datas[0]?.dataDescription !== "strategy-v2") {
     throw new Error(`update description mismatch ${datas[0]?.dataDescription}`);
   }
+  markScenarioCovered("agent.update", "update-data", { txs: 1, reads: 1 });
   markCovered("AxiomAgentNFT", "update", "update-data");
   recordOnChainStep({
     step: 18,
@@ -466,6 +472,7 @@ export async function runTeeCleanupStep(deps: {
   const proofNonce = computeTransferProofNonce(deps.finalResp);
   const tx = await tee.contract.cleanExpiredProofs([proofNonce]);
   const receipt = assertReceiptOk(await tx.wait(), "cleanExpiredProofs");
+  markScenarioCovered("tee.cleanup", "tee-cleanup", { txs: 1 });
   markCovered("AxiomTeeVerifier", "cleanExpiredProofs", "tee-cleanup");
   recordOnChainStep({
     step: 19,
