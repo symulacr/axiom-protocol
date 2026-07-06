@@ -10,6 +10,8 @@ export const indexerEnvSchema = sharedEnvSchema.merge(
   z.object({
     /** EVM RPC URL for the 0G chain. */
     AXIOM_EVM_RPC: z.string().url(),
+    /** 0G chain id — Galileo testnet = 16602, Aristotle mainnet = 16661. */
+    AXIOM_CHAIN_ID: z.coerce.number().int().positive().default(16602),
     /** 0G Storage node RPC URL. */
     AXIOM_STORAGE_RPC: z.string().optional(),
     /** 0G Storage EVM RPC URL. */

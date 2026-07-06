@@ -11,6 +11,7 @@ const NULL_METRICS: PerformanceMetrics = {
   buyCount: 0,
   sellCount: 0,
   holdCount: 0,
+  buyRate: 0,
   winRate: 0,
 };
 

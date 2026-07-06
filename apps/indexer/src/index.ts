@@ -76,15 +76,15 @@ async function flushBuffer(): Promise<void> {
   } catch (err) {
     // Re-buffer on failure so events aren't lost
     const MAX_BUFFER_SIZE = 10000;
-    for (const _ev of batch) {
-      if (eventBuffer.length >= MAX_BUFFER_SIZE) {
-        const dropped = eventBuffer.pop();
-        console.warn(
-          `[indexer] event buffer full, dropping oldest event: ${dropped?.kind ?? "unknown"}`,
-        );
-      }
+    // Make room by dropping the OLDEST events (front of buffer)
+    while (eventBuffer.length + batch.length > MAX_BUFFER_SIZE && eventBuffer.length > 0) {
+      const dropped = eventBuffer.shift();
+      console.warn(
+        `[indexer] event buffer full, dropping oldest event: ${dropped?.kind ?? "unknown"}`,
+      );
     }
-    eventBuffer.unshift(...batch);
+    // Re-insert failed batch at the end (chronological order preserved)
+    eventBuffer.push(...batch);
     process.stderr.write(
       JSON.stringify({
         level: "warn",
