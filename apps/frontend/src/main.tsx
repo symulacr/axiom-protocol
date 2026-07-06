@@ -2,17 +2,24 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { WagmiProvider } from "wagmi";
 import { RainbowKitProvider, darkTheme } from "@rainbow-me/rainbowkit";
 
 import { Toaster } from "sonner";
 import { COLORS } from "./components/ui.js";
 import { App } from "./App";
-import { wagmiConfig } from "./config/wagmi";
+import { WagmiConfigProvider } from "./config/WagmiConfigProvider";
 import "@rainbow-me/rainbowkit/styles.css";
 import "./styles/index.css";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 10_000,
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
 const rootEl = document.getElementById("root");
 if (!rootEl) {
@@ -21,7 +28,7 @@ if (!rootEl) {
 
 createRoot(rootEl).render(
   <StrictMode>
-    <WagmiProvider config={wagmiConfig}>
+    <WagmiConfigProvider>
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider
           theme={darkTheme({
@@ -47,7 +54,7 @@ createRoot(rootEl).render(
           </BrowserRouter>
         </RainbowKitProvider>
       </QueryClientProvider>
-    </WagmiProvider>
+    </WagmiConfigProvider>
   </StrictMode>,
 );
 
