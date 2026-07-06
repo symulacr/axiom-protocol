@@ -1,18 +1,22 @@
+import { resolveBlockExplorerUrl } from "@axiom/config/networks";
 import type { ReactElement } from "react";
+import { useChainId } from "wagmi";
 import type { TradeHistoryEntry } from "../hooks/usePerformance.js";
-import { COLORS, Card, SectionTitle } from "./ui.js";
+import { COLORS, Card, SectionTitle, getActionColor } from "./ui.js";
 import { EmptyState } from "./EmptyState.js";
 
 interface TradeHistoryProps {
   history: TradeHistoryEntry[];
 }
-import { EXPLORER_BASE } from "../utils/constants.js";
 
 /**
  * Displays trade history as a compact list. Reuses Card and MonoLabel.
  * Each entry shows timestamp, action (color-coded), amount, and reason.
  */
 export function TradeHistory({ history }: TradeHistoryProps): ReactElement {
+  const chainId = useChainId();
+  const explorerBase = resolveBlockExplorerUrl(chainId);
+
   if (history.length === 0) {
     return (
       <EmptyState>
@@ -35,12 +39,7 @@ export function TradeHistory({ history }: TradeHistoryProps): ReactElement {
       <SectionTitle>Trade History</SectionTitle>
       <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
         {history.map((entry, i) => {
-          const actionColor =
-            entry.action === "buy"
-              ? COLORS.success
-              : entry.action === "sell"
-                ? COLORS.danger
-                : COLORS.textMuted;
+          const actionColor = getActionColor(entry.action);
           const date = new Date(entry.timestamp);
           const timeStr = date.toLocaleString(undefined, {
             month: "short",
@@ -109,7 +108,7 @@ export function TradeHistory({ history }: TradeHistoryProps): ReactElement {
                 {entry.reason}
               </span>
               <a
-                href={`${EXPLORER_BASE}/tx/${entry.txHash}`}
+                href={`${explorerBase}/tx/${entry.txHash}`}
                 target="_blank"
                 rel="noreferrer noopener"
                 style={{
