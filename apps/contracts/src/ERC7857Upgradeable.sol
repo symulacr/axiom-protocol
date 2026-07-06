@@ -25,6 +25,7 @@ abstract contract ERC7857Upgradeable is IERC7857, ERC721Upgradeable {
     struct ERC7857Storage {
         mapping(address owner => address) accessAssistants;
         IERC7857DataVerifier verifier;
+        uint256[50] __gap;
     }
 
     // keccak256(abi.encode(uint256(keccak256("0g.storage.ERC7857")) - 1)) & ~bytes32(uint256(0xff))
@@ -146,6 +147,7 @@ abstract contract ERC7857Upgradeable is IERC7857, ERC721Upgradeable {
         uint256 tokenId,
         TransferValidityProof[] calldata proofs
     ) internal {
+        _checkAuthorized(from, _msgSender(), tokenId);
         bytes[] memory sealedKeys = _proofCheck(from, to, tokenId, proofs);
         safeTransferFrom(from, to, tokenId);
         emit PublishedSealedKey(to, tokenId, sealedKeys);

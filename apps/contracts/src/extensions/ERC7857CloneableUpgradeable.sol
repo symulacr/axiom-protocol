@@ -20,6 +20,7 @@ abstract contract ERC7857CloneableUpgradeable is IERC7857Cloneable, ERC7857Upgra
     /// @custom:storage-location erc7857:0g.storage.ERC7857Cloneable
     struct ERC7857CloneableStorage {
         uint256 nextTokenId;
+        uint256[50] __gap;
     }
 
     // keccak256(abi.encode(uint256(keccak256("0g.storage.ERC7857Cloneable")) - 1)) & ~bytes32(uint256(0xff))
@@ -46,9 +47,9 @@ abstract contract ERC7857CloneableUpgradeable is IERC7857Cloneable, ERC7857Upgra
         bytes[] memory sealedKeys = _proofCheck(from, to, tokenId, proofs);
 
         uint256 newTokenId = _incrementTokenId();
-        _safeMint(to, newTokenId);
         IntelligentData[] memory datas = _intelligentDatasOf(tokenId);
         _updateData(newTokenId, datas);
+        _safeMint(to, newTokenId);
 
         emit Cloned(tokenId, newTokenId, from, to);
         emit PublishedSealedKey(to, newTokenId, sealedKeys);
