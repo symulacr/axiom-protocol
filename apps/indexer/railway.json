@@ -1,10 +1,10 @@
 {
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
-    "buildCommand": "pnpm --filter @axiom/config build && pnpm --filter @axiom/indexer build"
+    "buildCommand": "bash scripts/railway-build.sh"
   },
   "deploy": {
-    "startCommand": "node apps/indexer/dist/index.js",
+    "startCommand": "bash scripts/railway-start.sh",
     "healthcheckPath": "/health",
     "healthcheckTimeout": 120
   }
