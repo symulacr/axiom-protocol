@@ -11,9 +11,11 @@ import type {
 import type { TickResult } from "@axiom/config/types/orchestrator";
 import type { EventStore } from "../events/store.js";
 import type { ServerConfig } from "../server.js";
+import { REGISTERED_ROUTES } from "./route-factory.js";
 import { AGENT_NFT_ABI } from "@axiom/config/abis";
 import { TypedContract } from "@axiom/config/types/contract";
 import { getSharedProvider } from "../provider.js";
+import { keccak256, solidityPacked } from "ethers";
 import { ZERO_DATA_ROOT } from "../utils/constants.js";
 
 async function resolveModelDataRoot(
@@ -45,12 +47,20 @@ function appendTickEvent(
   spec: StrategySpec,
   result: TickResult,
 ): void {
+  // Synthetic ticks share no on-chain tx; use a unique dedupe key per append
+  // (store dedupes on chainId:txHash:logIndex — a fixed zero hash collapsed all ticks).
+  const tickTxHash = keccak256(
+    solidityPacked(
+      ["uint256", "uint64", "string"],
+      [spec.agentTokenId, BigInt(Date.now()), result.recommendation.action],
+    ),
+  ) as `0x${string}`;
   events.append({
     source: "orchestrator",
     eventName: "Tick",
     chainId,
     blockNumber: 0,
-    txHash: ZERO_DATA_ROOT,
+    txHash: tickTxHash,
     logIndex: 0,
     payload: {
       tokenId: spec.agentTokenId.toString(),
@@ -71,6 +81,13 @@ export function registerOrchestratorRoutes(
   chainId: number,
 ): void {
   const events = getEventStore();
+
+  REGISTERED_ROUTES.push({
+    method: "POST",
+    path: "/v1/orchestrator/tick",
+    consumer: "useOrchestratorTick",
+    description: "AI orchestrator tick (strategy recommendation)",
+  });
 
   app.post(
     "/v1/orchestrator/tick",

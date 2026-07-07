@@ -29,7 +29,8 @@
     "./types/performance": "./dist/types/performance.js",
     "./types/orchestrator": "./dist/types/orchestrator.js",
     "./types/transfer": "./dist/types/transfer.js",
-    "./process": "./dist/process.js"
+    "./process": "./dist/process.js",
+    "./chat-tools": "./dist/chat-tools.js"
   },
   "scripts": {
     "generate": "wagmi generate",

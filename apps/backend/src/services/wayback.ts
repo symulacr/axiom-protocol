@@ -60,10 +60,9 @@ export async function lookupSnapshots(
   try {
     const rows = await fetchCdxRows(cdxUrl);
     return rows.map((row) => normalizeCdxRow(url, row));
-  } catch (err) {
-    throw new Error(
-      `Wayback lookup failed: ${extractErrorMessage(err)}`,
-    );
+  } catch {
+    const closest = await closestSnapshot(url);
+    return closest ? [closest] : [];
   }
 }
 

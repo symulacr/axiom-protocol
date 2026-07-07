@@ -3,19 +3,7 @@ pragma solidity ^0.8.20;
 
 import {Script, console2} from "forge-std/Script.sol";
 import {AxiomPaymentProcessor} from "../src/AxiomPaymentProcessor.sol";
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-
-/// @title AxiomMockUSDC — mintable ERC-20 for Galileo (no real USDC.e exists)
-contract AxiomMockUSDC is ERC20 {
-    constructor() ERC20("Axiom Mock USDC", "axmUSDC") {}
-
-    function mint(
-        address to,
-        uint256 amount
-    ) external {
-        _mint(to, amount);
-    }
-}
+import {AxiomMockUSDC} from "../src/mocks/AxiomMockUSDC.sol";
 
 /// @title DeployPaymentProcessor.s.sol — Redeploy AxiomPaymentProcessor on Galileo
 /// @notice Original broadcast was left pending (never mined). Deploys mock USDC first,

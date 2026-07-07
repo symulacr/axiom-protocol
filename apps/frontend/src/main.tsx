@@ -59,7 +59,11 @@ createRoot(rootEl).render(
 );
 
 try {
-  if (typeof window !== "undefined" && typeof process !== "undefined") {
+  if (
+    typeof window !== "undefined" &&
+    typeof process !== "undefined" &&
+    typeof process.on === "function"
+  ) {
     process.on("unhandledRejection", (reason: unknown) => {
       const err =
         reason instanceof Error

@@ -24,8 +24,11 @@ export function registerAgentRoutes(
   eip712Domain: Eip712Domain,
   nftTc: TypedContract<AgentNFTMethods> | null,
 ): void {
-  // TTL cache for agent listing (30s per owner)
-  const agentCache = new TTLCache<unknown>(30_000);
+  const agentListTtlMs = (() => {
+    const n = Number.parseInt(process.env.AXIOM_AGENT_LIST_CACHE_MS ?? "", 10);
+    return Number.isFinite(n) && n > 0 ? n : 120_000;
+  })();
+  const agentCache = new TTLCache<unknown>(agentListTtlMs);
 
   app.get(
     "/v1/agents",
@@ -39,10 +42,16 @@ export function registerAgentRoutes(
           sendError(res, 400, "Valid owner address required");
           return;
         }
-        const cached = agentCache.get(owner);
-        if (cached) {
-          res.json(cached);
-          return;
+        const bypassCache =
+          req.query.fresh === "1" ||
+          req.query.nocache === "1" ||
+          req.get("cache-control")?.includes("no-cache");
+        if (!bypassCache) {
+          const cached = agentCache.get(owner);
+          if (cached) {
+            res.json(cached);
+            return;
+          }
         }
         const nftAddr = config.addresses?.agentNft;
         if (!nftAddr) {

@@ -11,6 +11,7 @@ import {
   useChainId,
   usePublicClient,
   useWriteContract,
+  useWalletClient,
 } from "wagmi";
 import { toast } from "sonner";
 import {
@@ -18,13 +19,21 @@ import {
   STREAM_TIMEOUT,
 } from "../utils/apiFetch.js";
 import { humanizeError } from "../utils/format.js";
+import { buildSystemPrompt, groupParallelTools } from "@axiom/chat-runtime";
+import { ChatSessionProvider, useChatSession } from "../chat/ChatSessionProvider.js";
+import { ToolResultBody } from "../chat/ToolResultBody.js";
+import { waitingMessageForElapsed } from "../chat/waitingMessages.js";
 import {
   TOOLS,
   TOOL_LABELS,
-  formatToolResult,
+  CHAT_TOOL_CLASS_LABELS,
+  toolClass,
+  toolHint,
   useToolHandlers,
   type ToolContext,
 } from "../chat/tools.js";
+import { CHAT_MODEL } from "../config/env.js";
+import { galileo, aristotle } from "../config/chains.js";
 import {
   COLORS,
   Card,
@@ -68,38 +77,76 @@ type SSEChunk = {
   }>;
 };
 
-function parseSSEChunks(raw: string): SSEChunk[] {
+const SUPPORTED_CHAIN_IDS = new Set([galileo.id, aristotle.id]);
+const CHAT_MESSAGES_KEY = "axiom:chat-messages";
+const MAX_TOOL_LOOPS = 5;
+
+function consumeSseLines(buffer: string): {
+  chunks: SSEChunk[];
+  rest: string;
+  done: boolean;
+} {
   const chunks: SSEChunk[] = [];
-  for (const line of raw.split("\n")) {
+  let done = false;
+  const lines = buffer.split("\n");
+  const rest = lines.pop() ?? "";
+  for (const line of lines) {
     if (!line.startsWith("data: ")) continue;
     const payload = line.slice(6).trim();
-    if (payload === "[DONE]") break;
+    if (payload === "[DONE]") {
+      done = true;
+      break;
+    }
     try {
       chunks.push(JSON.parse(payload) as SSEChunk);
     } catch {
       // skip malformed lines
     }
   }
-  return chunks;
+  return { chunks, rest, done };
 }
 
-const CHAT_WAITING_MESSAGES = [
-  "Securing enclave channel via 0G Compute...",
-  "Retrieving encrypted strategy root from 0G Storage...",
-  "Attesting hardware execution signature (Intel SGX)...",
-  "Evaluating pool metrics via TEE-attested LLM...",
-  "Generating EIP-712 AccessProof challenge...",
-  "Running Monte Carlo risk checks in secure enclave...",
-  "Syncing computational state on 0G Storage...",
-];
+function ToolClassBadge({ name }: { name: string }): ReactElement | null {
+  const cls = toolClass(name);
+  if (!cls) return null;
+  return (
+    <span
+      aria-label={`Tool class: ${CHAT_TOOL_CLASS_LABELS[cls]}`}
+      title={toolHint(name)}
+      style={{
+        marginLeft: 6,
+        fontSize: "var(--text-xs)",
+        fontWeight: "var(--fw-medium)",
+        color: COLORS.textDim,
+        textTransform: "lowercase",
+        letterSpacing: "0.02em",
+      }}
+    >
+      ({CHAT_TOOL_CLASS_LABELS[cls]})
+    </span>
+  );
+}
 
-export function ChatPage(): ReactElement {
+function loadStoredMessages(): Message[] {
+  try {
+    const raw = sessionStorage.getItem(CHAT_MESSAGES_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as Message[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function ChatPageInner(): ReactElement {
   const { address } = useAccount();
   const chainId = useChainId();
+  const { session, recordToolResult } = useChatSession();
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
+  const { data: walletClient } = useWalletClient();
 
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>(loadStoredMessages);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamText, setStreamText] = useState("");
@@ -148,15 +195,33 @@ export function ChatPage(): ReactElement {
     () => ({
       address,
       chainId,
+      lastTokenId: session.lastTokenId,
       writeContractAsync: (writeContractAsync ??
         (async () => {
           throw new Error("Wallet not connected");
         })) as ToolContext["writeContractAsync"],
+      sendTransactionAsync: walletClient
+        ? async ({ to, data, value }) =>
+            walletClient.sendTransaction({ to, data, value })
+        : undefined,
       publicClient,
     }),
-    [address, chainId, writeContractAsync, publicClient],
+    [address, chainId, session.lastTokenId, writeContractAsync, walletClient, publicClient],
   );
   const handlers = useToolHandlers(toolCtx);
+  const chainSupported = SUPPORTED_CHAIN_IDS.has(chainId);
+
+  useEffect(() => {
+    try {
+      if (messages.length === 0) {
+        sessionStorage.removeItem(CHAT_MESSAGES_KEY);
+      } else {
+        sessionStorage.setItem(CHAT_MESSAGES_KEY, JSON.stringify(messages));
+      }
+    } catch {
+      // quota / private mode
+    }
+  }, [messages]);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -195,15 +260,16 @@ export function ChatPage(): ReactElement {
         setHasUsedChat(true);
         try {
           localStorage.setItem("axiom:hasUsedChat", "true");
-        } catch {}
+        } catch {
+          void 0;
+        }
       }
 
       const controller = new AbortController();
       abortRef.current = controller;
 
-      // Multi-turn tool loop
       let loopCount = 0;
-      const MAX_TOOL_LOOPS = 5;
+      let hitToolLoopCap = false;
 
       try {
         while (loopCount < MAX_TOOL_LOOPS) {
@@ -212,8 +278,11 @@ export function ChatPage(): ReactElement {
           const response = await apiFetchResponse("/v1/chat/completions", {
             method: "POST",
             body: JSON.stringify({
-              model: "qwen/qwen2.5-omni-7b",
-              messages: currentMessages.map(({ id: _id, ...msg }) => msg),
+              model: CHAT_MODEL,
+              messages: [
+                { role: "system", content: buildSystemPrompt(session) },
+                ...currentMessages.map(({ id: _id, ...msg }) => msg),
+              ],
               tools: TOOLS,
               stream: true,
             }),
@@ -229,14 +298,17 @@ export function ChatPage(): ReactElement {
           let buffer = "";
           let assistantContent = "";
           const pendingToolCalls: ToolCall[] = [];
+          let streamDone = false;
 
-          while (true) {
+          while (!streamDone) {
             const { done, value } = await reader.read();
             if (done) break;
             buffer += decoder.decode(value, { stream: true });
-            const chunks = parseSSEChunks(buffer);
+            const parsed = consumeSseLines(buffer);
+            buffer = parsed.rest;
+            streamDone = parsed.done;
 
-            for (const chunk of chunks) {
+            for (const chunk of parsed.chunks) {
               const delta = chunk.choices?.[0]?.delta;
               if (!delta) continue;
 
@@ -298,43 +370,77 @@ export function ChatPage(): ReactElement {
           setMessages(currentMessages);
           flushAndClearStreamText();
 
-          // Execute each tool call
-          for (const tc of toolCallList) {
-            const handler = handlers[tc.function.name];
-            let result: string;
-            if (!handler) {
-              result = JSON.stringify({
-                error: `Unknown tool: ${tc.function.name}`,
-              });
-            } else {
-              try {
-                const args = JSON.parse(tc.function.arguments);
-                result = await handler(args, toolCtx);
-              } catch (err: unknown) {
-                result = JSON.stringify({
-                  error:
-                    err instanceof Error
-                      ? err.message
-                      : "Tool execution failed",
-                });
-              }
+          const batches = groupParallelTools(toolCallList);
+          for (const batch of batches) {
+            const batchResults = await Promise.all(
+              batch.map(async (tc) => {
+                const handler = handlers[tc.function.name];
+                if (!handler) {
+                  return {
+                    tc,
+                    result: JSON.stringify({
+                      error: `Unknown tool: ${tc.function.name}`,
+                    }),
+                  };
+                }
+                try {
+                  const args = JSON.parse(tc.function.arguments);
+                  const result = await handler(args, toolCtx);
+                  recordToolResult(tc.function.name, result);
+                  return { tc, result };
+                } catch (err: unknown) {
+                  return {
+                    tc,
+                    result: JSON.stringify({
+                      error:
+                        err instanceof Error
+                          ? err.message
+                          : "Tool execution failed",
+                    }),
+                  };
+                }
+              }),
+            );
+            for (const { tc, result } of batchResults) {
+              currentMessages = [
+                ...currentMessages,
+                createMessage({
+                  role: "tool",
+                  tool_call_id: tc.id,
+                  name: tc.function.name,
+                  content: result,
+                }),
+              ];
             }
-            const toolMsg = createMessage({
-              role: "tool",
-              tool_call_id: tc.id,
-              name: tc.function.name,
-              content: result,
-            });
-            currentMessages = [...currentMessages, toolMsg];
           }
           setMessages(currentMessages);
-          // Loop continues to next LLM call with tool results appended
+        }
+
+        if (loopCount >= MAX_TOOL_LOOPS) {
+          hitToolLoopCap = true;
+        }
+
+        if (hitToolLoopCap) {
+          currentMessages = [
+            ...currentMessages,
+            createMessage({
+              role: "assistant",
+              content:
+                "This request needed more tool steps than allowed in one turn. Please send a follow-up message to continue.",
+            }),
+          ];
+          setMessages(currentMessages);
         }
       } catch (err: unknown) {
         if (err instanceof DOMException && err.name === "AbortError") {
           // User cancelled
         } else {
-          toast.error(humanizeError(err));
+          const msg = humanizeError(err);
+          if (msg.includes("429") || msg.toLowerCase().includes("rate limit")) {
+            toast.error("Rate limited — wait a moment and try again.");
+          } else {
+            toast.error(msg);
+          }
           setMessages([
             ...currentMessages,
             createMessage({
@@ -354,6 +460,8 @@ export function ChatPage(): ReactElement {
       isStreaming,
       handlers,
       toolCtx,
+      session,
+      recordToolResult,
       hasUsedChat,
       flushAndClearStreamText,
       scheduleStreamTextUpdate,
@@ -378,6 +486,11 @@ export function ChatPage(): ReactElement {
                 onClick={() => {
                   setMessages([]);
                   setHasUsedChat(false);
+                  try {
+                    sessionStorage.removeItem(CHAT_MESSAGES_KEY);
+                  } catch {
+          void 0;
+        }
                 }}
                 style={{ fontSize: "var(--text-sm)" }}
               >
@@ -386,6 +499,22 @@ export function ChatPage(): ReactElement {
             ) : undefined
           }
         />
+
+        {!chainSupported && (
+          <Card
+            style={{
+              marginBottom: "var(--space-md)",
+              padding: "var(--space-md) var(--space-lg)",
+              borderColor: COLORS.warningBorder,
+              background: COLORS.warningBg,
+            }}
+          >
+            <p style={{ margin: 0, fontSize: "var(--text-sm)", color: COLORS.text }}>
+              Unsupported network (chain {chainId}). Switch to 0G Galileo or Aristotle in
+              your wallet.
+            </p>
+          </Card>
+        )}
 
         {/* Welcome / empty state — always show chips when no messages */}
         {messages.length === 0 && !isStreaming && (
@@ -503,10 +632,19 @@ export function ChatPage(): ReactElement {
                     : msg.role === "tool"
                       ? (TOOL_LABELS[msg.name ?? ""] ?? msg.name ?? "Tool")
                       : "Assistant"}
+                  {msg.role === "tool" && msg.name ? (
+                    <ToolClassBadge name={msg.name} />
+                  ) : null}
                 </span>
               </div>
               {msg.role === "tool" ? (
                 <div
+                  role="region"
+                  aria-label={
+                    toolHint(msg.name ?? "") ??
+                    TOOL_LABELS[msg.name ?? ""] ??
+                    "Tool result"
+                  }
                   style={{
                     background: COLORS.bg,
                     border: `1px solid ${COLORS.border}`,
@@ -517,18 +655,7 @@ export function ChatPage(): ReactElement {
                     marginTop: "var(--space-xs)",
                   }}
                 >
-                  <pre
-                    style={{
-                      fontSize: "var(--text-xs)",
-                      margin: 0,
-                      whiteSpace: "pre-wrap",
-                      wordBreak: "break-word",
-                      lineHeight: "var(--lh-normal)",
-                      fontFamily: "inherit",
-                    }}
-                  >
-                    {formatToolResult(msg.name ?? "", msg.content)}
-                  </pre>
+                  <ToolResultBody name={msg.name ?? ""} content={msg.content} />
                 </div>
               ) : msg.tool_calls ? (
                 <div
@@ -550,6 +677,7 @@ export function ChatPage(): ReactElement {
                       <strong style={{ color: COLORS.bronzeLight }}>
                         {TOOL_LABELS[tc.function.name] ?? tc.function.name}
                       </strong>
+                      <ToolClassBadge name={tc.function.name} />
                     </div>
                   ))}
                 </div>
@@ -634,12 +762,7 @@ export function ChatPage(): ReactElement {
                       }}
                     />
                     <span style={{ color: COLORS.bronzeLight }}>
-                      {CHAT_WAITING_MESSAGES[
-                        Math.min(
-                          Math.floor(elapsed / 3),
-                          CHAT_WAITING_MESSAGES.length - 1,
-                        )
-                      ] ?? "Thinking..."}
+                      {waitingMessageForElapsed(elapsed)}
                     </span>
                     <span
                       style={{
@@ -697,4 +820,10 @@ export function ChatPage(): ReactElement {
   );
 }
 
-export default ChatPage;
+export default function ChatPage(): ReactElement {
+  return (
+    <ChatSessionProvider>
+      <ChatPageInner />
+    </ChatSessionProvider>
+  );
+}

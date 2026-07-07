@@ -232,6 +232,7 @@ export function useTransfer(): UseTransferResult {
         const msg = err instanceof Error ? err.message : String(err);
         throw new Error(
           `On-chain transaction failed: ${msg}. Your prepared proof is still valid — click "Edit" to restart the flow with a fresh nonce.`,
+          { cause: err },
         );
       }
     },

@@ -20,6 +20,25 @@ export {
 } from "./crypto/aes-gcm.js";
 export { sealKeyForReceiver, unsealKeyForReceiver } from "./crypto/ecies.js";
 export {
+  CHAT_TOOL_CATALOG,
+  CHAT_BENCH_ALL_TOOL_NAMES,
+  CHAT_BENCH_READ_TOOLS,
+  CHAT_BENCH_ENCODE_TOOLS,
+  CHAT_BENCH_ARCHIVE_TOOLS,
+  CHAT_BENCH_ORCHESTRATE_TOOLS,
+  chatToolLabels,
+  getChatToolSpec,
+  classOfTool,
+  CHAT_TOOL_CLASS_LABELS,
+  isEncodeTool,
+  isReadTool,
+  toolsByClass,
+  type ChatToolClass,
+  type ChatToolFriction,
+  type ChatToolName,
+  type ChatToolSpec,
+} from "./chat-tools.js";
+export {
   publicKeyUncompressedFromPrivate,
   pubKeyToAddress,
   deriveRawPubkeyFromHex,

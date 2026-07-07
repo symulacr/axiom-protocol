@@ -13,12 +13,18 @@
     "test": "node --import tsx --test src/**/*.test.ts",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
-    "pre-run-e2e": "pnpm --filter @axiom/oracle build && pnpm build",
-    "run-e2e": "pnpm --filter @axiom/oracle build && pnpm build && node --import tsx src/cli/run-e2e.ts",
-    "provision-e2e-wallet": "node --import tsx src/cli/provision-e2e-wallet.ts"
+    "pre-run-e2e": "pnpm --filter @axiom/oracle build && pnpm --filter @axiom/chat-runtime build && pnpm build",
+    "run-e2e": "node --import tsx src/cli/run-e2e.ts",
+    "run-chat-bench": "node --import tsx src/cli/run-chat-bench.ts",
+    "run-chat-bench:live": "E2E_LIVE_COMPUTE=1 node --import tsx src/cli/run-chat-bench.ts",
+    "run-load-bench": "node --import tsx src/cli/run-load-bench.ts",
+    "coverage-status": "node --import tsx src/cli/coverage-status.ts",
+    "provision-e2e-wallet": "node --import tsx src/cli/provision-e2e-wallet.ts",
+    "fund-e2e-usdc": "node --import tsx src/cli/fund-e2e-usdc.ts"
   },
   "dependencies": {
     "@0gfoundation/0g-compute-ts-sdk": "^0.8.4",
+    "@axiom/chat-runtime": "workspace:*",
     "@axiom/config": "workspace:*",
     "cors": "^2.8.6",
     "ethers": "^6.16.0",
