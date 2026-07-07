@@ -30,6 +30,10 @@ export const indexerEnvSchema = sharedEnvSchema.merge(
     INDEXER_HEALTH_PORT: z.coerce.number().int().positive().default(9091),
     /** Railway / platform HTTP port (overrides INDEXER_HEALTH_PORT when set). */
     PORT: z.coerce.number().int().positive().optional(),
+    /** Resume / backfill from this block when no local checkpoint exists. */
+    INDEXER_START_BLOCK: z.coerce.number().int().nonnegative().optional(),
+    /** Blocks per eth_getLogs window (default 500 for faster catch-up). */
+    INDEXER_POLL_WINDOW_BLOCKS: z.coerce.number().int().positive().default(500),
   }),
 );
 

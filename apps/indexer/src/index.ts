@@ -6,7 +6,12 @@ import { uploadToStorage } from "@axiom/config/storage/0g";
 import { bigintReplacer } from "@axiom/config/types/bigint";
 import { createServer } from "node:http";
 
-import { POLL_INTERVAL_MS, POLL_WINDOW_BLOCKS, Watcher } from "./watcher.js";
+import {
+  POLL_INTERVAL_MS,
+  Watcher,
+  buildDefaultWatchList,
+} from "./watcher.js";
+import { resolveIndexerAddresses } from "./events.js";
 import type { AxiomEvent } from "./events.js";
 import { postEvent } from "./sink.js";
 import { indexerEnvSchema } from "./env-schema.js";
@@ -27,14 +32,14 @@ function stdoutSink(event: AxiomEvent) {
   console.log(JSON.stringify(event, bigintReplacer));
 }
 
-function banner(cid: number) {
+function banner(cid: number, pollWindow: bigint) {
   process.stderr.write(
     JSON.stringify({
       level: "info",
       msg: "axiom-indexer starting",
       rpcUrl: rpcUrl(),
       chainId: cid,
-      pollWindowBlocks: POLL_WINDOW_BLOCKS.toString(),
+      pollWindowBlocks: pollWindow.toString(),
       pollIntervalMs: POLL_INTERVAL_MS,
     }) + "\n",
   );
@@ -182,7 +187,8 @@ async function main() {
   const provider = new ethers.JsonRpcProvider(fetchReq, cid, {
     staticNetwork: true,
   });
-  banner(cid);
+  const pollWindow = BigInt(env.INDEXER_POLL_WINDOW_BLOCKS);
+  banner(cid, pollWindow);
 
   // Verify the RPC is actually answering on the expected chain
   const liveChainId = Number((await provider.getNetwork()).chainId);
@@ -232,9 +238,26 @@ async function main() {
     chainId: cid,
   });
 
+  const contractAddresses = resolveIndexerAddresses(
+    process.env as Record<string, unknown>,
+  );
+  process.stderr.write(
+    JSON.stringify({
+      level: "info",
+      msg: "indexer contract addresses",
+      agentNft: contractAddresses.AXIOM_AGENT_NFT,
+      strategyVault: contractAddresses.AXIOM_STRATEGY_VAULT,
+    }) + "\n",
+  );
+
   const watcher = new Watcher({
     provider,
     sink: composedSink,
+    watchList: buildDefaultWatchList(contractAddresses),
+    pollWindow,
+    ...(env.INDEXER_START_BLOCK !== undefined
+      ? { startBlock: BigInt(env.INDEXER_START_BLOCK) }
+      : {}),
   });
   // Health check server for Docker/k8s probes
   const healthPort = env.PORT ?? env.INDEXER_HEALTH_PORT;

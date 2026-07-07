@@ -18,7 +18,7 @@
     "@axiom/config": "workspace:*",
     "ethers": "^6.16.0",
     "viem": "^2.21.45",
-    "zod": "^3.24.2"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^22.7.0",
