@@ -1,0 +1,10 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "buildCommand": "pnpm --filter @axiom/config build && pnpm --filter @axiom/chat-runtime build && pnpm --filter @axiom/backend build"
+  },
+  "deploy": {
+    "startCommand": "node apps/backend/dist/index.js",
+    "healthcheckPath": "/health/live"
+  }
+}

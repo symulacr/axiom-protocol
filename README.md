@@ -24,11 +24,32 @@
 | Oracle | https://oracle-production-47ab.up.railway.app |
 
 ```bash
+curl -s https://backend-production-4e2b.up.railway.app/health/live
 curl -s https://backend-production-4e2b.up.railway.app/health
 curl -s https://oracle-production-47ab.up.railway.app/health
 ```
 
-**Deploy:** Vercel (`axiom-protocol`, monorepo root). Railway project `axiom-backend` — run `railway up` from repo root for `backend` and `oracle`.
+**Deploy**
+
+| Platform | Project | Notes |
+| -------- | ------- | ----- |
+| Vercel | `axiom-protocol` | Monorepo root; frontend only |
+| Railway | `axiom-backend` | Shared pnpm workspace — deploy from repo root |
+
+**Railway services** (monorepo root, no `rootDirectory`):
+
+| Service | Build | Start | Healthcheck |
+| ------- | ----- | ----- | ----------- |
+| `backend` | `pnpm --filter @axiom/config build && pnpm --filter @axiom/chat-runtime build && pnpm --filter @axiom/backend build` | `node apps/backend/dist/index.js` | `/health/live` |
+| `oracle` | `pnpm --filter @axiom/config build && pnpm --filter @axiom/oracle build` | `node apps/oracle/dist/index.js` | `/health` |
+
+```bash
+railway link --project axiom-backend
+railway up --service backend --detach
+railway up --service oracle --detach
+```
+
+Root `railway.json` is the **backend** config. Oracle settings live in `apps/oracle/railway.json` (set per-service in the Railway dashboard or via `railway environment edit`).
 
 ---
 
