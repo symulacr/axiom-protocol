@@ -83,6 +83,8 @@ export function startServer(config: ServerConfig): {
   httpServer: HttpServer;
 } {
   const app = express();
+  // Railway (and other reverse proxies) set X-Forwarded-For; required for express-rate-limit.
+  app.set("trust proxy", 1);
   app.use(express.json({ limit: "2mb" }));
 
   app.use((req, res, next) => {
