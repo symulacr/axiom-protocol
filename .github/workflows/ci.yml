@@ -89,11 +89,12 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @axiom/config build
       - run: pnpm --filter @axiom/chat-runtime build
+      - run: pnpm --filter @axiom/backend build
       - name: Start backend
         run: |
           cd apps/backend
           AXIOM_RATE_LIMIT_MAX=50000 AXIOM_HEALTH_CACHE_MS=3000 \
-            node --import tsx src/index.ts > /tmp/backend.log 2>&1 &
+            node dist/index.js > /tmp/backend.log 2>&1 &
           echo $! > /tmp/backend.pid
           for i in $(seq 1 45); do
             curl -sf http://127.0.0.1:3000/health/live && exit 0
