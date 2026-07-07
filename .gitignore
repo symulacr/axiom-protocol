@@ -325,6 +325,8 @@ packages/config/README.md
 
 # ── Audit docs — not source ──────────────────────────────
 docs/
+!docs/assets/
+!docs/assets/**
 
 # ── Generated ABI (regenerable via forge) ────────────────
 
