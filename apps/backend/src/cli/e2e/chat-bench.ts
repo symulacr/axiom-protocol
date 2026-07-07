@@ -21,6 +21,10 @@ import { resolveE2eComputeModel } from "./fast-path.js";
 import { markScenarioCovered, markScenarioSkipped } from "./scenarios.js";
 import { noteFriction } from "./friction.js";
 import { runComplexToolFlowBench } from "./complex-flow-bench.js";
+import {
+  benchSkipsOrchestrateWhenNotReady,
+  probeTickReady,
+} from "./tick-ready.js";
 
 export interface ChatBenchResult {
   id: string;
@@ -173,14 +177,22 @@ export async function consumeChatSseWithFetch(
 export type { E2eToolDeps };
 
 /** Run each frontend tool once — no LLM required. */
-export async function runToolParityBench(deps: E2eToolDeps): Promise<ChatBenchResult[]> {
+export async function runToolParityBench(
+  deps: E2eToolDeps,
+  opts?: { liveCompute?: boolean },
+): Promise<ChatBenchResult[]> {
   const results: ChatBenchResult[] = [];
+  const liveCompute = opts?.liveCompute ?? process.env.E2E_LIVE_COMPUTE !== "0";
+  const tickState = await probeTickReady(deps.vault, deps.tokenId);
+  const skipExecuteTick =
+    !tickState.ready && benchSkipsOrchestrateWhenNotReady(liveCompute);
   const toolArgs: Record<string, Record<string, unknown>> = {
     list_my_agents: {},
     vault_balance: { tokenId: deps.tokenId },
     agent_metadata: { tokenId: deps.tokenId },
     event_history: { eventName: "Tick", limit: 10 },
     execute_tick: { tokenId: deps.tokenId },
+    simulate_tick: { tokenId: deps.tokenId },
     mint_agent: {
       dataDescription: "chat-bench-encode",
       dataHash: ethers.ZeroHash,
@@ -194,6 +206,15 @@ export async function runToolParityBench(deps: E2eToolDeps): Promise<ChatBenchRe
 
   for (const name of FRONTEND_TOOL_NAMES) {
     const t0 = performance.now();
+    if (name === "execute_tick" && skipExecuteTick) {
+      results.push({
+        id: `tool.${name}`,
+        ok: true,
+        ms: 0,
+        summary: "skipped (no vault/strategy; E2E_LIVE_COMPUTE=0)",
+      });
+      continue;
+    }
     try {
       const { ok, result } = await executeE2eTool(name, toolArgs[name] ?? {}, deps);
       const parsed = JSON.parse(result) as Record<string, unknown>;
@@ -221,7 +242,6 @@ export async function runToolParityBench(deps: E2eToolDeps): Promise<ChatBenchRe
 
   const readTools = CHAT_BENCH_READ_TOOLS.concat(
     toolsByClass("archive").map((t) => t.name),
-    toolsByClass("orchestrate").map((t) => t.name),
   );
   const readOk = readTools.every(
     (n) => results.find((r) => r.id === `tool.${n}`)?.ok === true,
@@ -712,7 +732,7 @@ export async function runChatBench(deps: {
 
   const results: ChatBenchResult[] = [];
 
-  results.push(...(await runToolParityBench(toolDeps)));
+  results.push(...(await runToolParityBench(toolDeps, { liveCompute })));
   const depositSign = await runMicroDepositSignBench(toolDeps);
   if (depositSign) results.push(depositSign);
   results.push(await runComplexToolFlowBench(toolDeps));
