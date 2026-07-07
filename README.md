@@ -45,8 +45,28 @@ Built on [0G Chain](https://0g.ai) (Galileo testnet, Aristotle mainnet).
 | **Indexer**   | TypeScript + 0G Storage SDK       | Polls chain events, stores audit trail to 0G Storage, forwards to backend.                                                 |
 | **Backend**   | Express + ethers v6 + Zod         | Orchestrates inference (0G Router API), on-chain settlement, storage encryption. Route registry at `GET /v1/admin/routes`. |
 | **Oracle**    | Express + eciesjs                 | EIP-712 signing for ownership proofs, TEE re-encryption on transfer. Domain: `AxiomTeeVerifier`.                           |
-| **Frontend**  | Vite + React + wagmi + RainbowKit | Mint/view/transfer iNFTs. ABI types generated from forge artifacts. Polling via `usePolledApi` (react-query).              |
+| **Frontend**  | Vite + React + wagmi + RainbowKit | Mint/view/transfer iNFTs, chat UI, vault panels. Deployed on Vercel.                                                      |
+| **Chat runtime** | Shared TS package (`@axiom/chat-runtime`) | Tool dispatcher + executors (read, encode, archive, orchestrate). Used by frontend chat and backend benches.            |
 | **Config**    | Shared TS package                 | Env loading, network config, deployed addresses, Zod schemas, typed ABIs.                                                  |
+
+---
+
+## Live (Galileo demo)
+
+| Service  | URL | Health |
+| -------- | --- | ------ |
+| Frontend | https://axiom-protocol-nine.vercel.app | static |
+| Backend  | https://backend-production-4e2b.up.railway.app | `GET /health` |
+| Oracle   | https://oracle-production-47ab.up.railway.app | `GET /health` |
+
+Frontend env (Vercel production): `VITE_BACKEND_URL`, `VITE_ORACLE_URL`, `VITE_WALLETCONNECT_PROJECT_ID`.
+
+Railway project: `axiom-backend` (services: `backend`, `oracle`). Deploy from **monorepo root** so workspace packages resolve.
+
+```bash
+curl -s https://backend-production-4e2b.up.railway.app/health | jq .
+curl -s https://oracle-production-47ab.up.railway.app/health | jq .
+```
 
 ---
 
@@ -131,8 +151,11 @@ apps/
   indexer/     — On-chain event watcher
   bench/       — Benchmarks and stress tests
 packages/
-  config/      — Shared env, networks, ABIs, types, storage client
+  config/        — Shared env, networks, ABIs, types, storage client
+  chat-runtime/  — Shared chat tool runtime (format, transport, executors)
 ```
+
+CI: `.github/workflows/ci.yml` (typecheck, build, unit tests, chat-bench). Nightly live benches need GitHub secrets (`DEPLOYER_PK`, `E2E_*`, `AXIOM_COMPUTE_DIRECT_KEY`).
 
 ---
 
