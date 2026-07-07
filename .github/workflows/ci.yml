@@ -110,7 +110,8 @@ jobs:
           cat /tmp/backend.log
           exit 1
       - name: Chat bench (CI mode)
-        run: pnpm --filter @axiom/backend run run-chat-bench
+        run: node dist/cli/run-chat-bench.js
+        working-directory: apps/backend
         env:
           E2E_LIVE_COMPUTE: "0"
           BACKEND_URL: http://127.0.0.1:3000
