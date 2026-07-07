@@ -208,7 +208,10 @@ apps/oracle/railway.json
 vercel.json
 
 # ── Backend CLI — E2E / bench / local ops (not shipped) ────
-apps/backend/src/cli/
+apps/backend/src/cli/*
+!apps/backend/src/cli/run-chat-bench.ts
+!apps/backend/src/cli/e2e/
+!apps/backend/src/cli/e2e/**
 
 # ── Forge gas benchmarks (local perf only) ─────────────────
 apps/contracts/test/GasBenchmark.t.sol

@@ -1,0 +1,63 @@
+import { fetchJson } from "../../utils/fetch-json.js";
+import { resolveModel } from "../../compute/router.js";
+
+/** Resolve a chat-capable model from the backend provider catalog. */
+export async function resolveE2eComputeModel(
+  backendUrl: string,
+  explicit?: string,
+): Promise<string> {
+  if (explicit) return resolveModel(explicit);
+  const { data, ok } = await fetchJson<{
+    services?: Array<{ model: string }>;
+  }>(`${backendUrl}/v1/compute/providers`);
+  const services = ok ? (data.services ?? []) : [];
+  const prefer = [
+    "qwen2.5-omni",
+    "qwen2.5-omni-7b",
+    "qwen/qwen2.5-omni-7b",
+    "qwen2.5-7b-instruct",
+  ];
+  for (const id of prefer) {
+    const hit = services.find(
+      (s) => s.model.toLowerCase() === id.toLowerCase(),
+    );
+    if (hit) return resolveModel(hit.model);
+  }
+  return resolveModel(process.env.AXIOM_COMPUTE_MODEL ?? "qwen2.5-omni-7b");
+}
+
+export function e2eFastEnabled(): boolean {
+  return process.env.E2E_FAST !== "0";
+}
+
+export function e2eLiveComputeEnabled(): boolean {
+  return process.env.E2E_LIVE_COMPUTE !== "0";
+}
+
+export function e2eStrictComputeEnabled(): boolean {
+  return process.env.E2E_STRICT_COMPUTE !== "0";
+}
+
+/** Sequential nonce send + parallel receipt wait for same-wallet txs. */
+export function e2ePipelineTxEnabled(): boolean {
+  return process.env.E2E_PIPELINE_TX !== "0" && e2eFastEnabled();
+}
+
+/** Skip partial vault withdraw to save ~1 block (opt-in E2E_SKIP_VAULT_WITHDRAW=1). */
+export function e2eSkipVaultWithdrawEnabled(): boolean {
+  if (process.env.E2E_FULL_VAULT === "1") return false;
+  return process.env.E2E_SKIP_VAULT_WITHDRAW === "1";
+}
+
+/** Mega-pipeline: withdraw + authorize block + update/royalty in one nonce lane. */
+export function e2eMegaPipelineEnabled(): boolean {
+  return process.env.E2E_MEGA_PIPELINE !== "0" && e2ePipelineTxEnabled();
+}
+
+/** Full E2E but skip transfer so operator keeps token for E2E_REUSE_TOKEN. */
+export function e2eKeepTokenEnabled(): boolean {
+  return process.env.E2E_KEEP_TOKEN === "1";
+}
+
+/** Minimum MockUSDC (6 dec) for micro-split payForAgent + payComputeProvider. */
+export const E2E_PAYMENT_MICRO_MIN_TOTAL = 20_000n;
