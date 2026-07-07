@@ -15,6 +15,7 @@ import {
   EVENT_ABI,
   type AxiomEvent,
   type EventName,
+  type IndexerContractAddresses,
 } from "./events.js";
 
 export const POLL_WINDOW_BLOCKS = 50n;
@@ -49,58 +50,64 @@ export type WatchedEvent = {
   address: Address;
 };
 
-export const DEFAULT_WATCH_LIST: readonly WatchedEvent[] = [
+export function buildDefaultWatchList(
+  addresses: IndexerContractAddresses = ADDRESSES,
+): readonly WatchedEvent[] {
+  return [
   // AxiomAgentNFT
-  { name: "Transfer", address: ADDRESSES.AXIOM_AGENT_NFT },
-  { name: "Updated", address: ADDRESSES.AXIOM_AGENT_NFT },
-  { name: "Authorization", address: ADDRESSES.AXIOM_AGENT_NFT },
-  { name: "AuthorizationRevoked", address: ADDRESSES.AXIOM_AGENT_NFT },
-  { name: "VerifierUpdated", address: ADDRESSES.AXIOM_AGENT_NFT },
-  { name: "CreatorSet", address: ADDRESSES.AXIOM_AGENT_NFT },
-  { name: "MintFeeUpdated", address: ADDRESSES.AXIOM_AGENT_NFT },
-  { name: "StorageInfoUpdated", address: ADDRESSES.AXIOM_AGENT_NFT },
-  { name: "PublishedSealedKey", address: ADDRESSES.AXIOM_AGENT_NFT },
-  { name: "DelegateAccess", address: ADDRESSES.AXIOM_AGENT_NFT },
+  { name: "Transfer", address: addresses.AXIOM_AGENT_NFT },
+  { name: "Updated", address: addresses.AXIOM_AGENT_NFT },
+  { name: "Authorization", address: addresses.AXIOM_AGENT_NFT },
+  { name: "AuthorizationRevoked", address: addresses.AXIOM_AGENT_NFT },
+  { name: "VerifierUpdated", address: addresses.AXIOM_AGENT_NFT },
+  { name: "CreatorSet", address: addresses.AXIOM_AGENT_NFT },
+  { name: "MintFeeUpdated", address: addresses.AXIOM_AGENT_NFT },
+  { name: "StorageInfoUpdated", address: addresses.AXIOM_AGENT_NFT },
+  { name: "PublishedSealedKey", address: addresses.AXIOM_AGENT_NFT },
+  { name: "DelegateAccess", address: addresses.AXIOM_AGENT_NFT },
   // AxiomStrategyVault
-  { name: "Deposited", address: ADDRESSES.AXIOM_STRATEGY_VAULT },
-  { name: "Withdrawn", address: ADDRESSES.AXIOM_STRATEGY_VAULT },
-  { name: "StrategySet", address: ADDRESSES.AXIOM_STRATEGY_VAULT },
-  { name: "Executed", address: ADDRESSES.AXIOM_STRATEGY_VAULT },
+  { name: "Deposited", address: addresses.AXIOM_STRATEGY_VAULT },
+  { name: "Withdrawn", address: addresses.AXIOM_STRATEGY_VAULT },
+  { name: "StrategySet", address: addresses.AXIOM_STRATEGY_VAULT },
+  { name: "Executed", address: addresses.AXIOM_STRATEGY_VAULT },
   // AxiomPaymentProcessor
-  { name: "PaymentProcessed", address: ADDRESSES.AXIOM_PAYMENT_PROCESSOR },
-  { name: "ComputeProviderPaid", address: ADDRESSES.AXIOM_PAYMENT_PROCESSOR },
-  { name: "EarningsWithdrawn", address: ADDRESSES.AXIOM_PAYMENT_PROCESSOR },
-  { name: "RoyaltySet", address: ADDRESSES.AXIOM_PAYMENT_PROCESSOR },
+  { name: "PaymentProcessed", address: addresses.AXIOM_PAYMENT_PROCESSOR },
+  { name: "ComputeProviderPaid", address: addresses.AXIOM_PAYMENT_PROCESSOR },
+  { name: "EarningsWithdrawn", address: addresses.AXIOM_PAYMENT_PROCESSOR },
+  { name: "RoyaltySet", address: addresses.AXIOM_PAYMENT_PROCESSOR },
   {
     name: "ProtocolTreasuryProposed",
-    address: ADDRESSES.AXIOM_PAYMENT_PROCESSOR,
+    address: addresses.AXIOM_PAYMENT_PROCESSOR,
   },
   {
     name: "ProtocolTreasuryUpdated",
-    address: ADDRESSES.AXIOM_PAYMENT_PROCESSOR,
+    address: addresses.AXIOM_PAYMENT_PROCESSOR,
   },
   {
     name: "ProtocolTreasuryProposalCancelled",
-    address: ADDRESSES.AXIOM_PAYMENT_PROCESSOR,
+    address: addresses.AXIOM_PAYMENT_PROCESSOR,
   },
-  { name: "ProtocolFeeBpsUpdated", address: ADDRESSES.AXIOM_PAYMENT_PROCESSOR },
-  { name: "PaymentTokenUpdated", address: ADDRESSES.AXIOM_PAYMENT_PROCESSOR },
+  { name: "ProtocolFeeBpsUpdated", address: addresses.AXIOM_PAYMENT_PROCESSOR },
+  { name: "PaymentTokenUpdated", address: addresses.AXIOM_PAYMENT_PROCESSOR },
   // AxiomAgentNFT (metadata decision + ERC7857Cloneable Cloned)
   {
     name: "MetadataJsonDecisionDocumented",
-    address: ADDRESSES.AXIOM_AGENT_NFT,
+    address: addresses.AXIOM_AGENT_NFT,
   },
-  { name: "Cloned", address: ADDRESSES.AXIOM_AGENT_NFT },
+  { name: "Cloned", address: addresses.AXIOM_AGENT_NFT },
   // AxiomTeeVerifier
-  { name: "SignerProposed", address: ADDRESSES.AXIOM_TEE_VERIFIER },
-  { name: "SignerExecuted", address: ADDRESSES.AXIOM_TEE_VERIFIER },
-  { name: "SignerProposalCancelled", address: ADDRESSES.AXIOM_TEE_VERIFIER },
+  { name: "SignerProposed", address: addresses.AXIOM_TEE_VERIFIER },
+  { name: "SignerExecuted", address: addresses.AXIOM_TEE_VERIFIER },
+  { name: "SignerProposalCancelled", address: addresses.AXIOM_TEE_VERIFIER },
   // ERC-1967 proxy events (emitted by the ERC1967Proxy at AXIOM_AGENT_NFT)
-  { name: "Upgraded", address: ADDRESSES.AXIOM_AGENT_NFT },
-  { name: "AdminChanged", address: ADDRESSES.AXIOM_AGENT_NFT },
-  { name: "BeaconUpgraded", address: ADDRESSES.AXIOM_AGENT_NFT },
-  { name: "Initialized", address: ADDRESSES.AXIOM_AGENT_NFT },
+  { name: "Upgraded", address: addresses.AXIOM_AGENT_NFT },
+  { name: "AdminChanged", address: addresses.AXIOM_AGENT_NFT },
+  { name: "BeaconUpgraded", address: addresses.AXIOM_AGENT_NFT },
+  { name: "Initialized", address: addresses.AXIOM_AGENT_NFT },
 ];
+}
+
+export const DEFAULT_WATCH_LIST = buildDefaultWatchList();
 
 export type EventSink = (event: AxiomEvent) => void | Promise<void>;
 

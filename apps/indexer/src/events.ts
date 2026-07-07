@@ -1,13 +1,28 @@
 import { parseAbiItem, type AbiEvent, type Address, type Hex } from "viem";
-import { toViemHex } from "@axiom/config/types/hex";
-import { DEPLOYED_ADDRESSES } from "@axiom/config/addresses";
+import { getAddresses } from "@axiom/config/addresses";
 
-export const ADDRESSES = {
-  AXIOM_AGENT_NFT: toViemHex(DEPLOYED_ADDRESSES.agentNft),
-  AXIOM_STRATEGY_VAULT: toViemHex(DEPLOYED_ADDRESSES.strategyVault),
-  AXIOM_TEE_VERIFIER: toViemHex(DEPLOYED_ADDRESSES.teeVerifier),
-  AXIOM_PAYMENT_PROCESSOR: toViemHex(DEPLOYED_ADDRESSES.paymentProcessor),
-} as const;
+export type IndexerContractAddresses = {
+  readonly AXIOM_AGENT_NFT: Address;
+  readonly AXIOM_STRATEGY_VAULT: Address;
+  readonly AXIOM_TEE_VERIFIER: Address;
+  readonly AXIOM_PAYMENT_PROCESSOR: Address;
+};
+
+/** Resolve watch targets from env (Wave E-6 on prod) with hardcoded fallback. */
+export function resolveIndexerAddresses(
+  env: Record<string, unknown> = process.env as Record<string, unknown>,
+): IndexerContractAddresses {
+  const a = getAddresses(env);
+  return {
+    AXIOM_AGENT_NFT: a.agentNft,
+    AXIOM_STRATEGY_VAULT: a.strategyVault,
+    AXIOM_TEE_VERIFIER: a.teeVerifier,
+    AXIOM_PAYMENT_PROCESSOR: a.paymentProcessor,
+  };
+}
+
+/** Default addresses (dev / tests without env overrides). */
+export const ADDRESSES = resolveIndexerAddresses({});
 
 export const EVENT_SIGNATURES = {
   Transfer:
