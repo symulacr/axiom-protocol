@@ -6,6 +6,10 @@ import { ethers } from "ethers";
 import { executeE2eTool, type E2eToolDeps } from "./transport-node.js";
 import { markScenarioCovered, markScenarioSkipped } from "./scenarios.js";
 import type { ChatBenchResult } from "./chat-bench.js";
+import {
+  benchSkipsOrchestrateWhenNotReady,
+  probeTickReady,
+} from "./tick-ready.js";
 
 export async function runComplexToolFlowBench(
   deps: E2eToolDeps,
@@ -37,13 +41,19 @@ export async function runComplexToolFlowBench(
     steps.push("events");
     if (!events.ok) throw new Error("event_history failed");
 
-    const tick = await executeE2eTool(
-      "execute_tick",
-      { tokenId: deps.tokenId },
-      deps,
-    );
-    steps.push("tick");
-    if (!tick.ok) throw new Error("execute_tick failed");
+    const liveCompute = process.env.E2E_LIVE_COMPUTE !== "0";
+    const tickState = await probeTickReady(deps.vault, deps.tokenId);
+    if (!tickState.ready && benchSkipsOrchestrateWhenNotReady(liveCompute)) {
+      steps.push("tick-skipped");
+    } else {
+      const tick = await executeE2eTool(
+        "execute_tick",
+        { tokenId: deps.tokenId },
+        deps,
+      );
+      steps.push("tick");
+      if (!tick.ok) throw new Error("execute_tick failed");
+    }
 
     const encode = await executeE2eTool(
       "mint_agent",

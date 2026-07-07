@@ -68,7 +68,21 @@ export async function runOrchestrateTool(
       }),
       readStrategyRoot(ctx, vault, tokenId),
     ]);
-    if (!balance || balance === 0n || !root || root === "0x" + "0".repeat(64)) {
+    const zeroRoot = "0x" + "0".repeat(64);
+    const ready =
+      balance > 0n && !!root && root !== zeroRoot;
+
+    if (!ready) {
+      if (dryRun) {
+        return success({
+          ok: true,
+          simulated: true,
+          ready: false,
+          tokenId,
+          balance: balance.toString(),
+          strategyRoot: root ?? zeroRoot,
+        });
+      }
       return fail("NOT_READY: vault balance or strategy missing");
     }
 
@@ -76,6 +90,7 @@ export async function runOrchestrateTool(
       return success({
         ok: true,
         simulated: true,
+        ready: true,
         tokenId,
         balance: balance.toString(),
         strategyRoot: root,
