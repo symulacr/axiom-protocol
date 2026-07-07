@@ -1,6 +1,9 @@
 # ── Local agent skills (not project source) ───────────────
 .agents/
 
+# ── GitHub Actions workflows (managed locally, not in repo) ─
+.github/
+
 # ── Dependencies ───────────────────────────────────────────
 node_modules/
 .pnpm-store/
