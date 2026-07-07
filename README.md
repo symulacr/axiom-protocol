@@ -51,6 +51,8 @@ railway up --service oracle --detach
 
 Root `railway.json` is the **backend** config. Oracle settings live in `apps/oracle/railway.json` (set per-service in the Railway dashboard or via `railway environment edit`).
 
+**Prod env (Railway):** backend needs `AXIOM_COMPUTE_DIRECT_KEY` (chat uses Direct mode, not `OG_COMPUTE_API_KEY` alone); oracle needs `AXIOM_FRONTEND_URL=https://axiom-protocol-nine.vercel.app` for browser CORS.
+
 ---
 
 ## Stack
