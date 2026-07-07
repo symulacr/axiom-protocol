@@ -79,6 +79,12 @@ jobs:
     name: Chat tool parity
     runs-on: ubuntu-latest
     needs: [typecheck, unit-tests]
+    env:
+      AXIOM_EVM_RPC: https://evmrpc-testnet.0g.ai
+      AXIOM_ORACLE_URL: http://127.0.0.1:8080
+      DEPLOYER_PK: "0xac0974bec39a17e36ba4a6b4d0d2a04e1c3c8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8"
+      RECEIVER_PK: "0x59c6995e998f97a5a0044966f0945389fc9e8b18e8fb14f1c6f6f0d9c8b7b7b7b0"
+      AXIOM_TEE_SIGNER_PK: "0x59c6995e998f97a5a0044966f0945389fc9e8b18e8fb14f1c6f6f0d9c8b7b7b7b0"
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
