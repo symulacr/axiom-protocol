@@ -36,10 +36,18 @@ export function pickOGNetwork(chainId: number): OGNetwork | null {
   return OG_NETWORKS[chainId] ?? null;
 }
 
+function envVar(...keys: string[]): string | undefined {
+  if (typeof process === "undefined" || !process.env) return undefined;
+  for (const key of keys) {
+    const val = process.env[key];
+    if (val) return val;
+  }
+  return undefined;
+}
+
 /** Precedence: AXIOM_EVM_RPC → OG_RPC_URL → RPC_URL → chain default → Galileo fallback. */
 export function resolveRpcUrl(chainId?: number): string {
-  const varVal =
-    process.env.AXIOM_EVM_RPC || process.env.OG_RPC_URL || process.env.RPC_URL;
+  const varVal = envVar("AXIOM_EVM_RPC", "OG_RPC_URL", "RPC_URL");
   if (varVal) return varVal;
   const network = chainId ? pickOGNetwork(chainId) : null;
   return network?.evmRpc ?? "https://evmrpc-testnet.0g.ai";
@@ -47,7 +55,7 @@ export function resolveRpcUrl(chainId?: number): string {
 
 /** Precedence: AXIOM_STORAGE_RPC → OG_STORAGE_RPC → chain default → Galileo fallback. */
 export function resolveStorageRpc(chainId?: number): string {
-  const varVal = process.env.AXIOM_STORAGE_RPC || process.env.OG_STORAGE_RPC;
+  const varVal = envVar("AXIOM_STORAGE_RPC", "OG_STORAGE_RPC");
   if (varVal) return varVal;
   const network = chainId ? pickOGNetwork(chainId) : null;
   return network?.storageRpc ?? "https://indexer-storage-testnet-turbo.0g.ai";

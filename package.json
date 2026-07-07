@@ -9,19 +9,7 @@
     "pnpm": ">=9.0.0"
   },
   "packageManager": "pnpm@11.5.1",
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "bufferutil",
-      "esbuild",
-      "keccak",
-      "secp256k1",
-      "utf-8-validate"
-    ],
-    "overrides": {
-      "@0gfoundation/0g-storage-ts-sdk>ethers": "6.16.0",
-      "@0gfoundation/0g-compute-ts-sdk>ethers": "6.16.0"
-    }
-  },
+
   "scripts": {
     "build": "pnpm --filter @axiom/config build && pnpm --filter @axiom/oracle build && pnpm --filter @axiom/backend build",
     "start": "node apps/backend/dist/index.js",

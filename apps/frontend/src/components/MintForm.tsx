@@ -13,14 +13,14 @@ import {
   useChainId,
   useReadContracts,
   useWaitForTransactionReceipt,
-  useWriteContract,
+  useWalletClient,
 } from "wagmi";
-import { formatEther, keccak256, parseAbi, toBytes } from "viem";
+import { formatEther, parseAbi } from "viem";
 import { humanizeError } from "../utils/format.js";
 import { AGENT_NFT_ABI } from "@axiom/config/abis";
-
-const agentNftAbi = parseAbi(AGENT_NFT_ABI);
+import { apiFetch } from "../utils/apiFetch.js";
 import { getAxiomAgentNftAddress } from "../abi/addresses.js";
+import { useMintWizard } from "../hooks/useMintWizard.js";
 import {
   COLORS,
   Card,
@@ -28,7 +28,10 @@ import {
   Alert,
   PageHeader,
   Input,
+  Textarea,
 } from "./ui.js";
+
+const agentNftAbi = parseAbi(AGENT_NFT_ABI);
 
 const labelStyle: React.CSSProperties = {
   display: "block",
@@ -46,10 +49,11 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const navigate = useNavigate();
-  const { writeContractAsync, isPending } = useWriteContract();
-
-  const [agentName, setAgentName] = useState("");
+  const { data: walletClient } = useWalletClient();
+  const wizard = useMintWizard();
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [mintPending, setMintPending] = useState(false);
+  const [pendingHash, setPendingHash] = useState<`0x${string}` | null>(null);
 
   const feeQuery = useReadContracts({
     allowFailure: false,
@@ -66,25 +70,15 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
     },
   });
 
-  const mintFeeWei: bigint | undefined = feeQuery.data?.[0] as
-    | bigint
-    | undefined;
+  const mintFeeWei: bigint | undefined = feeQuery.data?.[0] as bigint | undefined;
   const feeError = (feeQuery.error as Error | null) ?? null;
-
   const owner = address;
-  const canSubmit =
-    isConnected &&
-    owner !== undefined &&
-    agentName.trim().length > 0 &&
-    !isPending;
 
-  const [pendingHash, setPendingHash] = useState<`0x${string}` | null>(null);
   const receiptQuery = useWaitForTransactionReceipt({
     hash: pendingHash ?? undefined,
     query: { enabled: pendingHash !== null },
   });
 
-  // After receipt arrives, extract tokenId and navigate
   useEffect(() => {
     if (receiptQuery.data && pendingHash) {
       const TRANSFER_TOPIC =
@@ -105,156 +99,179 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
     }
   }, [receiptQuery.data, pendingHash, navigate]);
 
-  const onSubmit = useCallback(
-    async (event: FormEvent<HTMLFormElement>): Promise<void> => {
-      event.preventDefault();
-      const trimmedName = agentName.trim();
-      if (
-        !canSubmit ||
-        !owner ||
-        mintFeeWei === undefined ||
-        isPending ||
-        trimmedName.length === 0
-      )
-        return;
-      setSubmitError(null);
-      try {
-        const dataHash = keccak256(
-          toBytes(`axiom:agent:${trimmedName}:${owner.toLowerCase()}`),
-        );
-        const hash = await writeContractAsync({
-          address: getAxiomAgentNftAddress(chainId),
-          abi: agentNftAbi,
-          functionName: "mint",
-          args: [[{ dataDescription: trimmedName, dataHash }], owner],
-          value: mintFeeWei,
-        });
-        toast.success(`Agent "${agentName}" minted! Confirming on-chain…`);
-        setAgentName("");
-        setPendingHash(hash);
-      } catch (err) {
-        setSubmitError(humanizeError(err));
-      }
-    },
-    [
-      canSubmit,
-      agentName,
-      owner,
-      mintFeeWei,
-      isPending,
-      writeContractAsync,
-      chainId,
-    ],
-  );
+  const onMintChain = useCallback(async (): Promise<void> => {
+    if (!owner || !walletClient || mintFeeWei === undefined) return;
+    setSubmitError(null);
+    setMintPending(true);
+    try {
+      const dataHash = wizard.dataHash || wizard.deriveDataHash();
+      const encoded = await apiFetch<{
+        to: `0x${string}`;
+        data: `0x${string}`;
+        value: string;
+      }>("/v1/agents/mint/encode", {
+        method: "POST",
+        body: JSON.stringify({
+          dataDescription: wizard.agentName.trim(),
+          dataHash,
+          to: owner,
+        }),
+      });
+      const hash = await walletClient.sendTransaction({
+        to: encoded.to,
+        data: encoded.data,
+        value: BigInt(encoded.value),
+        chain: walletClient.chain,
+      });
+      toast.success("Mint submitted — confirming on-chain…");
+      setPendingHash(hash);
+    } catch (err) {
+      setSubmitError(humanizeError(err));
+    } finally {
+      setMintPending(false);
+    }
+  }, [owner, walletClient, mintFeeWei, wizard]);
 
-  const onNameChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>): void => {
-      setAgentName(event.target.value);
-    },
-    [],
-  );
+  const onNameChange = useCallback((event: ChangeEvent<HTMLInputElement>): void => {
+    wizard.setAgentName(event.target.value);
+  }, [wizard]);
 
   return (
     <div style={{ maxWidth: "36rem", margin: "0 auto" }}>
-        <PageHeader title="Mint Agent" />
+      <PageHeader title="Mint Agent" />
 
-        <Card>
-          <form onSubmit={onSubmit}>
+      <Card>
+        <p style={{ fontSize: "var(--text-sm)", color: COLORS.textMuted, marginTop: 0 }}>
+          Step {wizard.step === "describe" ? 1 : wizard.step === "oracle" ? 2 : 3} of 3:
+          {" "}
+          {wizard.step === "describe"
+            ? "Describe agent & payload"
+            : wizard.step === "oracle"
+              ? "Register with oracle"
+              : "Mint on-chain"}
+        </p>
+
+        {wizard.step === "describe" && (
+          <>
             <label htmlFor="agent-name" style={labelStyle}>
               Agent name
             </label>
             <Input
               id="agent-name"
-              name="agentName"
-              type="text"
-              value={agentName}
+              value={wizard.agentName}
               onChange={onNameChange}
               placeholder="My AI strategy"
-              autoComplete="off"
               maxLength={100}
-              style={{ width: "100%", marginTop: 6, boxSizing: "border-box" }}
+              style={{ width: "100%", marginTop: 6 }}
               required
-              aria-describedby="agent-name-count"
             />
-            <div
-              id="agent-name-count"
-              className={`char-count${agentName.length > 80 ? " char-count--warn" : ""}${agentName.length > 100 ? " char-count--over" : ""}`}
+            <label htmlFor="agent-payload" style={labelStyle}>
+              Strategy / metadata payload (hashed for dataHash)
+            </label>
+            <Textarea
+              id="agent-payload"
+              value={wizard.payloadText}
+              onChange={(e) => wizard.setPayloadText(e.target.value)}
+              placeholder="Paste strategy JSON or description bytes…"
+              rows={4}
+              style={{ width: "100%", marginTop: 6 }}
+            />
+            <Button
+              variant="primary"
+              style={{ marginTop: "var(--space-lg)" }}
+              disabled={wizard.agentName.trim().length === 0}
+              onClick={() => {
+                wizard.deriveDataHash();
+                wizard.setStep("oracle");
+              }}
             >
-              {agentName.length}/100
-            </div>
+              Next: register oracle
+            </Button>
+          </>
+        )}
 
+        {wizard.step === "oracle" && (
+          <>
+            <p style={{ fontSize: "var(--text-sm)", color: COLORS.textMuted }}>
+              dataHash: <code>{wizard.dataHash || wizard.deriveDataHash()}</code>
+            </p>
+            {wizard.error ? (
+              <Alert variant="error">{wizard.error}</Alert>
+            ) : null}
+            <div style={{ display: "flex", gap: "var(--space-sm)", marginTop: "var(--space-lg)" }}>
+              <Button variant="secondary" onClick={() => wizard.setStep("describe")}>
+                Back
+              </Button>
+              <Button
+                variant="primary"
+                disabled={wizard.busy}
+                onClick={() => void wizard.registerOracle()}
+              >
+                {wizard.busy ? "Registering…" : "Register with oracle"}
+              </Button>
+            </div>
+          </>
+        )}
+
+        {wizard.step === "mint" && (
+          <form
+            onSubmit={(e: FormEvent) => {
+              e.preventDefault();
+              void onMintChain();
+            }}
+          >
+            <Alert variant="success" style={{ marginBottom: "var(--space-md)" }}>
+              Oracle registered for {wizard.dataHash}
+            </Alert>
             <div
               style={{
-                marginTop: "var(--space-lg)",
-                padding: "var(--space-md) var(--space-lg)",
+                padding: "var(--space-md)",
                 background: COLORS.bg,
                 border: `1px solid ${COLORS.border}`,
                 borderRadius: "var(--radius-lg)",
                 fontSize: "var(--text-sm)",
               }}
             >
-              <span
-                style={{
-                  fontWeight: "var(--fw-medium)",
-                  color: COLORS.textPrimary,
-                }}
-              >
-                Fee:{" "}
-              </span>
-              {feeError !== null ? (
-                <span style={{ color: COLORS.danger }}>
-                  unavailable ({humanizeError(feeError)})
-                </span>
-              ) : mintFeeWei === undefined ? (
-                <span style={{ color: COLORS.textMuted }}>loading…</span>
+              Fee:{" "}
+              {mintFeeWei === undefined ? (
+                "loading…"
               ) : (
-                <span
-                  style={{
-                    fontFamily: "var(--font-mono)",
-                    color: COLORS.bronzeLight,
-                    fontWeight: "var(--fw-semibold)",
-                  }}
-                >
-                  {formatEther(mintFeeWei)} 0G
-                </span>
+                <strong>{formatEther(mintFeeWei)} 0G</strong>
               )}
-              {provider !== undefined && (
-                <span
-                  style={{
-                    color: COLORS.textDim,
-                    marginLeft: "var(--space-md)",
-                    fontSize: "var(--text-xs)",
-                  }}
-                >
-                  {provider.slice(0, 10)}…
-                </span>
-              )}
+              {feeError ? ` (${humanizeError(feeError)})` : null}
             </div>
-
-            {submitError !== null && (
+            {submitError ? (
               <Alert variant="error" style={{ marginTop: "var(--space-md)" }}>
                 {submitError}
               </Alert>
-            )}
-
-            <div
-              style={{
-                display: "flex",
-                gap: "var(--space-sm)",
-                justifyContent: "flex-end",
-                marginTop: "var(--space-xl)",
-              }}
-            >
+            ) : null}
+            <div style={{ display: "flex", gap: "var(--space-sm)", marginTop: "var(--space-xl)" }}>
+              <Button variant="secondary" type="button" onClick={() => wizard.setStep("oracle")}>
+                Back
+              </Button>
               <Button
                 variant="primary"
                 type="submit"
-                disabled={!canSubmit || isPending}
+                disabled={
+                  !isConnected ||
+                  !owner ||
+                  mintPending ||
+                  mintFeeWei === undefined ||
+                  !wizard.oracleOk
+                }
               >
-                {isPending ? "Confirming…" : "Mint agent"}
+                {mintPending ? "Confirming…" : "Mint agent"}
               </Button>
             </div>
           </form>
-        </Card>
+        )}
+
+        {provider !== undefined && (
+          <p style={{ fontSize: "var(--text-xs)", color: COLORS.textDim, marginTop: 12 }}>
+            Provider hint: {provider.slice(0, 10)}…
+          </p>
+        )}
+      </Card>
     </div>
   );
 }

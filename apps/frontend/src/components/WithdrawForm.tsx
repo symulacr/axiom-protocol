@@ -1,0 +1,82 @@
+import type { ReactElement } from "react";
+import { formatEther } from "viem";
+import { useWithdraw } from "../hooks/useWithdraw.js";
+import { COLORS, Button, Input, Spinner, MonoLabel } from "./ui.js";
+
+interface WithdrawFormProps {
+  tokenId: bigint;
+  onSuccess?: () => void;
+}
+
+export function WithdrawForm({
+  tokenId,
+  onSuccess,
+}: WithdrawFormProps): ReactElement | null {
+  const {
+    withdrawAmount,
+    setWithdrawAmount,
+    isWithdrawing,
+    isValidWithdraw,
+    withdrawError,
+    handleWithdraw,
+    vaultData: vd,
+  } = useWithdraw(tokenId, onSuccess);
+
+  if (vd.isLoading || vd.depositsWei === undefined) return null;
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "var(--space-sm)",
+        marginBottom: "var(--space-lg)",
+        fontSize: "var(--text-sm)",
+        flexWrap: "wrap",
+      }}
+    >
+      <span
+        style={{
+          color: COLORS.textDim,
+          fontWeight: "var(--fw-medium)",
+          whiteSpace: "nowrap",
+        }}
+      >
+        Withdraw from vault
+      </span>
+      <Input
+        type="text"
+        inputMode="decimal"
+        placeholder="0.0"
+        value={withdrawAmount}
+        onChange={(e) => setWithdrawAmount(e.target.value)}
+        disabled={isWithdrawing}
+        aria-label="Withdraw amount in 0G"
+        aria-invalid={withdrawError !== null}
+        style={{ flex: "0 1 10rem", fontSize: "var(--text-sm)" }}
+      />
+      <span style={{ color: COLORS.textDim, fontSize: "var(--text-xs)" }}>
+        available: <MonoLabel>{formatEther(vd.depositsWei)} 0G</MonoLabel>
+      </span>
+      {withdrawError !== null && (
+        <p className="field-error" style={{ width: "100%" }}>
+          {withdrawError}
+        </p>
+      )}
+      <Button
+        variant="secondary"
+        disabled={!isValidWithdraw || isWithdrawing}
+        onClick={() => void handleWithdraw()}
+        style={{ fontSize: "var(--text-sm)", padding: "0.375rem 0.75rem" }}
+      >
+        {isWithdrawing ? (
+          <>
+            <Spinner size={14} /> Withdrawing…
+          </>
+        ) : (
+          "Withdraw"
+        )}
+      </Button>
+    </div>
+  );
+}

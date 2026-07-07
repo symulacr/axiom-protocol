@@ -1,18 +1,16 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "./dist",
-    "rootDir": ".",
     "module": "CommonJS",
     "moduleResolution": "Node",
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
-    "types": ["node", "mocha", "chai"]
+    "types": ["node"]
   },
-  "include": ["./script", "./hardhat.config.cjs"],
-  "exclude": ["node_modules", "out", "cache", "broadcast"]
+  "include": ["hardhat.config.cjs"],
+  "exclude": ["node_modules", "out", "cache", "cache_hardhat", "artifacts", "lib", "broadcast"]
 }

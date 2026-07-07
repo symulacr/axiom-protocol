@@ -42,7 +42,16 @@ export function getComputeBaseUrl(): string {
  *
  * Validates the requested model against the configured list when `AXIOM_COMPUTE_MODELS` is set.
  */
+/** Router catalog IDs → provider-accepted model slugs (Direct mode). */
+const MODEL_ALIASES: Record<string, string> = {
+  "qwen2.5-omni": "qwen2.5-omni-7b",
+  "qwen/qwen2.5-omni-7b": "qwen2.5-omni-7b",
+};
+
 export function resolveModel(requestedModel?: string): string {
+  if (requestedModel && MODEL_ALIASES[requestedModel]) {
+    return MODEL_ALIASES[requestedModel]!;
+  }
   const modelsEnv = process.env.AXIOM_COMPUTE_MODELS;
   if (modelsEnv) {
     const models = modelsEnv

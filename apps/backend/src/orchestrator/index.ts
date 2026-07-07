@@ -23,7 +23,12 @@ import {
 import { verifyTeeResponse } from "../compute/tee-verifier.js";
 import { DefaultSignerOracleClient } from "../oracle/client.js";
 import { pickOGNetwork } from "@axiom/config/networks";
-import { VAULT_ABI } from "@axiom/config/abis";
+import { VAULT_ABI, VAULT_ABI_LEGACY } from "@axiom/config/abis";
+import {
+  detectVaultAbiVariant,
+  vaultAbiFor,
+  type VaultAbiVariant,
+} from "../vault-compat.js";
 import { ZERO_DATA_ROOT } from "../utils/constants.js";
 import { createLogger } from "../utils/logger.js";
 import { extractErrorMessage } from "../utils/response.js";
@@ -92,6 +97,7 @@ export class StrategyRunner {
   private readonly signer: Wallet;
   private vaultReadTc: TypedContract<StrategyVaultMethods> | null = null;
   private vaultWriteTc: TypedContract<StrategyVaultMethods> | null = null;
+  private vaultAbiVariant: VaultAbiVariant | null = null;
 
   constructor(config: OrchestratorConfig) {
     const chainId = resolveChainId(config.chainId);
@@ -121,7 +127,7 @@ export class StrategyRunner {
     if (this.openai && this.openaiModel === model) {
       return this.openai;
     }
-    this.openai = await createRouterClient(model);
+    this.openai = await createRouterClient(model, { signer: this.signer });
     this.openaiModel = model;
     return this.openai;
   }
@@ -134,9 +140,22 @@ export class StrategyRunner {
   ): Promise<TickResult> {
     const start = Date.now();
 
+    const skipInference =
+      signal.source === "manual:e2e" ||
+      signal.source === "manual:e2e-mock" ||
+      signal.source === "manual:e2e-availability";
+    const inferenceTask = skipInference
+      ? Promise.resolve(
+          JSON.stringify({
+            action: "hold",
+            reason: "E2E mock tick (compute inference skipped)",
+          }),
+        )
+      : this.runInference(strategy, signal, onChunk);
+
     const [inferenceResult, onchainResult, storageResult] =
       await Promise.allSettled([
-        this.runInference(strategy, signal, onChunk),
+        inferenceTask,
         this.fetchOnchainState(strategy),
         strategy.modelDataRoot === ZERO_DATA_ROOT
           ? Promise.resolve({ rootHash: strategy.modelDataRoot, size: 0 })
@@ -318,8 +337,17 @@ export class StrategyRunner {
    * Uses the SDK's read-only broker to resolve the active provider on chain
    * (no custom app-sk-* token parser needed).
    */
+  private async resolveVaultAbiVariant(): Promise<VaultAbiVariant> {
+    const vaultAddr = this.addresses?.vault;
+    if (!vaultAddr) return "current";
+    if (this.vaultAbiVariant) return this.vaultAbiVariant;
+    this.vaultAbiVariant = await detectVaultAbiVariant(this.provider, vaultAddr);
+    return this.vaultAbiVariant;
+  }
+
   private getVaultContract(
     mode: "read" | "write",
+    readAbi: typeof VAULT_ABI | typeof VAULT_ABI_LEGACY = VAULT_ABI,
   ): TypedContract<StrategyVaultMethods> {
     const vaultAddr = this.addresses?.vault;
     if (!vaultAddr) {
@@ -328,7 +356,7 @@ export class StrategyRunner {
     if (mode === "read") {
       this.vaultReadTc ??= new TypedContract<StrategyVaultMethods>(
         vaultAddr,
-        VAULT_ABI,
+        readAbi,
         this.provider,
       );
       return this.vaultReadTc;
@@ -472,7 +500,10 @@ export class StrategyRunner {
     if (!vaultAddr) {
       return { vaultBalance: 0n, recentEvents: [] };
     }
-    const vaultTc = this.getVaultContract("read");
+    const vaultVariant = await this.resolveVaultAbiVariant();
+    const readAbi = vaultAbiFor(vaultVariant);
+    if (this.vaultReadTc) this.vaultReadTc = null;
+    const vaultTc = this.getVaultContract("read", readAbi);
     const tokenId = strategy.agentTokenId;
     if (!vaultTc.raw.filters?.StrategySet || !vaultTc.raw.filters?.Deposited) {
       return { vaultBalance: 0n, recentEvents: [] };

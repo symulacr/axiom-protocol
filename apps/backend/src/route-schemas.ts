@@ -24,6 +24,16 @@ export const royaltySchema = z.object({
   bps: z.number().int().min(0).max(10000),
 });
 
+/** Native OG amount for vault deposit (ether string, e.g. "0.001"). */
+export const vaultDepositEncodeSchema = z.object({
+  amount: z.string().regex(/^\d+(\.\d+)?$/),
+});
+
+/** Native OG amount for vault withdraw (ether string, e.g. "0.001"). */
+export const vaultWithdrawEncodeSchema = z.object({
+  amount: z.string().regex(/^\d+(\.\d+)?$/),
+});
+
 export const eventBodySchema = z.object({
   source: z.string().min(1),
   eventName: z.string().min(1),
@@ -54,7 +64,7 @@ export const tickSchema = z.object({
 
 export const archiveLookupSchema = z.object({
   url: z.string().url(),
-  limit: z.number().int().min(1).max(500).optional(),
+  limit: z.coerce.number().int().min(1).max(500).optional(),
 });
 
 export const archiveAccountSchema = z.object({

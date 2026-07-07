@@ -38,21 +38,16 @@ import { registerAgentRoutes } from "./routers/agents.js";
 import { registerEventRoutes } from "./routers/events.js";
 import { registerPerformanceRoutes } from "./routers/performance.js";
 import { registerOrchestratorRoutes } from "./routers/orchestrator.js";
+import { createMintEncodeRouter } from "./routers/mint-encode.js";
+import { createArchiveQueryRouter } from "./routers/archive-query.js";
+import { createArchiveJobsRouter } from "./routers/archive-jobs.js";
 import {
   chatBodySchema,
   royaltySchema,
+  vaultDepositEncodeSchema,
+  vaultWithdrawEncodeSchema,
   vaultExecuteSchema,
-  archiveLookupSchema,
-  archiveAccountSchema,
-  archiveConfirmSchema,
-  archiveClosestSchema,
 } from "./route-schemas.js";
-import {
-  lookupSnapshots,
-  lookupAccountTweets,
-  confirmArchived,
-  closestSnapshot,
-} from "./services/wayback.js";
 import { createLogger } from "./utils/logger.js";
 import { sendError } from "./utils/response.js";
 import {
@@ -131,10 +126,14 @@ export function startServer(config: ServerConfig): {
     }),
   );
   app.use(createApiKeyAuth(config.env?.AXIOM_API_KEY));
+  const rateLimitMax = Number.parseInt(
+    process.env.AXIOM_RATE_LIMIT_MAX ?? "100",
+    10,
+  );
   app.use(
     rateLimit({
       windowMs: 60_000,
-      max: 100,
+      max: Number.isFinite(rateLimitMax) && rateLimitMax > 0 ? rateLimitMax : 100,
       standardHeaders: true,
       legacyHeaders: false,
     }),
@@ -280,7 +279,9 @@ export function startServer(config: ServerConfig): {
           model: reqModel,
         } = chatBodySchema.parse(req.body ?? {});
         const resolvedModel = resolveModel(reqModel);
-        const client = await createRouterClient(resolvedModel);
+        const client = await createRouterClient(resolvedModel, {
+          signer: config.signer,
+        });
         const openaiRes = await client.chat.completions.create({
           model: resolvedModel,
           messages: messages as any,
@@ -310,79 +311,13 @@ export function startServer(config: ServerConfig): {
   );
 
   registerAgentRoutes(app, config, provider, oracle, eip712Domain, nftTc);
+  app.use(createMintEncodeRouter(config, provider));
   registerEventRoutes(app, config, getEventStore());
   registerPerformanceRoutes(app, config, getEventStore());
   registerOrchestratorRoutes(app, config, getOrCreateOrchestrator, ogChainId);
 
-  const archiveRouter = express.Router();
-
-  createRoute(
-    archiveRouter,
-    {
-      path: "/v1/archive/snapshots",
-      method: "get",
-      schema: archiveLookupSchema,
-      consumer: "useArchive",
-      description: "List all Wayback snapshots for a URL",
-    },
-    async (parsed: { url: string; limit?: number }) => {
-      const snapshots = await lookupSnapshots(parsed.url, parsed.limit ?? 50);
-      return { url: parsed.url, count: snapshots.length, snapshots };
-    },
-    config,
-  );
-
-  createRoute(
-    archiveRouter,
-    {
-      path: "/v1/archive/account",
-      method: "post",
-      schema: archiveAccountSchema,
-      consumer: "useArchive",
-      description: "List all archived tweets for an X/Twitter handle",
-    },
-    async (parsed: { handle: string; limit?: number }) => {
-      const snapshots = await lookupAccountTweets(
-        parsed.handle,
-        parsed.limit ?? 100,
-      );
-      return { handle: parsed.handle, count: snapshots.length, snapshots };
-    },
-    config,
-  );
-
-  createRoute(
-    archiveRouter,
-    {
-      path: "/v1/archive/confirm",
-      method: "post",
-      schema: archiveConfirmSchema,
-      consumer: "useArchive",
-      description: "Confirm a URL was archived (deletion-evidence)",
-    },
-    async (parsed: { url: string }) => {
-      return await confirmArchived(parsed.url);
-    },
-    config,
-  );
-
-  createRoute(
-    archiveRouter,
-    {
-      path: "/v1/archive/closest",
-      method: "get",
-      schema: archiveClosestSchema,
-      consumer: "useArchive",
-      description: "Closest Wayback snapshot to a timestamp",
-    },
-    async (parsed: { url: string; timestamp?: string }) => {
-      const snapshot = await closestSnapshot(parsed.url, parsed.timestamp);
-      return { url: parsed.url, snapshot };
-    },
-    config,
-  );
-
-  app.use(archiveRouter);
+  app.use(createArchiveQueryRouter(config));
+  app.use(createArchiveJobsRouter(config));
 
   app.get("/v1/routes", (_req: Request, res: Response) => {
     res.json({ routes: REGISTERED_ROUTES });
@@ -505,6 +440,62 @@ export function startServer(config: ServerConfig): {
       );
       const receipt = await tx.wait();
       return { ok: true, txHash: tx.hash, status: receipt?.status };
+    },
+    config,
+  );
+
+  createRoute(
+    paymentRouter,
+    {
+      path: "/v1/agents/:id/deposit",
+      schema: vaultDepositEncodeSchema,
+      requireId: true,
+      requireAddress: "vault",
+      consumer: "useVault",
+      description: "Encode vault deposit transaction (value = native OG amount)",
+    },
+    async (parsed: { amount: string }, _req, _res, { id, config: cfg }) => {
+      const vaultAddr = cfg.addresses?.vault!;
+      const iface = new ethers.Interface([
+        "function deposit(uint256 tokenId) payable",
+      ]);
+      const data = iface.encodeFunctionData("deposit", [BigInt(id)]);
+      const value = ethers.parseEther(parsed.amount);
+      return {
+        tokenId: id,
+        to: vaultAddr,
+        data,
+        value: value.toString(),
+        amount: parsed.amount,
+      };
+    },
+    config,
+  );
+
+  createRoute(
+    paymentRouter,
+    {
+      path: "/v1/agents/:id/withdraw",
+      schema: vaultWithdrawEncodeSchema,
+      requireId: true,
+      requireAddress: "vault",
+      consumer: "useVault",
+      description: "Encode vault withdraw transaction (amount in native OG)",
+    },
+    async (parsed: { amount: string }, _req, _res, { id, config: cfg }) => {
+      const vaultAddr = cfg.addresses?.vault!;
+      const iface = new ethers.Interface([
+        "function withdraw(uint256 tokenId, uint256 amount)",
+      ]);
+      const amountWei = ethers.parseEther(parsed.amount);
+      const data = iface.encodeFunctionData("withdraw", [BigInt(id), amountWei]);
+      return {
+        tokenId: id,
+        to: vaultAddr,
+        data,
+        value: "0",
+        amount: parsed.amount,
+      };
     },
     config,
   );

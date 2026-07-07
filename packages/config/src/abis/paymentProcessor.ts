@@ -14,6 +14,8 @@ export const PAYMENT_PROCESSOR_ABI = [
   "function royaltyBpsOf(uint256) view returns (uint256)",
   "function royaltyBpsSet(uint256) view returns (bool)",
   "function agentEarningsOf(address) view returns (uint256)",
+  "function totalOutstandingEarnings() view returns (uint256)",
+  "function pendingTreasuryEffectiveAt() view returns (uint256)",
   "event PaymentProcessed(uint256 indexed agentTokenId, address indexed payer, address indexed creator, uint256 amount, uint256 creatorCut, uint256 protocolCut)",
   "event ComputeProviderPaid(address indexed provider, uint256 amount)",
   "event EarningsWithdrawn(address indexed creator, uint256 amount)",

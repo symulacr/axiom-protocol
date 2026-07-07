@@ -32,14 +32,11 @@ import {
   ConnectedGuard,
 } from "./ui.js";
 import { PLACEHOLDER, humanizeError } from "../utils/format.js";
+import { NEUTRAL_WAITING_MESSAGES } from "../chat/waitingMessages.js";
 
 const TICK_STEPS = [
-  "Securing enclave channel via 0G Compute...",
-  "Retrieving encrypted strategy root from 0G Storage...",
-  "Attesting hardware execution signature (Intel SGX)...",
-  "Evaluating market pool metrics via LLM inference...",
-  "Generating EIP-712 AccessProof verification...",
-  "Submitting strategy transaction to 0G Chain...",
+  ...NEUTRAL_WAITING_MESSAGES,
+  "Submitting strategy transaction to 0G Chain…",
 ];
 
 interface Particle {
@@ -198,7 +195,9 @@ export function ExecutePanel({
     if (selectedId && !tokenIdProp) {
       try {
         localStorage.setItem("axiom:lastAgent", selectedId);
-      } catch {}
+      } catch {
+        void 0;
+      }
     }
   }, [selectedId, tokenIdProp]);
 

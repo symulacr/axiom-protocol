@@ -30,6 +30,21 @@ const DepositForm = lazy(() =>
     default: m.DepositForm,
   })),
 );
+const WithdrawForm = lazy(() =>
+  import("../components/WithdrawForm.js").then((m) => ({
+    default: m.WithdrawForm,
+  })),
+);
+const StrategyPanel = lazy(() =>
+  import("../components/StrategyPanel.js").then((m) => ({
+    default: m.StrategyPanel,
+  })),
+);
+const DelegatePanel = lazy(() =>
+  import("../components/DelegatePanel.js").then((m) => ({
+    default: m.DelegatePanel,
+  })),
+);
 const PerformanceMetrics = lazy(() =>
   import("../components/PerformanceMetrics.js").then((m) => ({
     default: m.PerformanceMetrics,
@@ -236,7 +251,14 @@ export function AgentDetail(): ReactElement {
               </div>
             }
           >
-            {isConnected && <DepositForm tokenId={tokenIdBigInt} />}
+            {isConnected && (
+              <>
+                <DepositForm tokenId={tokenIdBigInt} />
+                <WithdrawForm tokenId={tokenIdBigInt} />
+                <StrategyPanel tokenId={tokenIdBigInt} />
+                <DelegatePanel tokenId={tokenIdBigInt} />
+              </>
+            )}
 
             {data !== null && (
               <Card style={{ marginBottom: "var(--space-xl)" }}>

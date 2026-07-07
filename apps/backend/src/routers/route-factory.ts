@@ -88,7 +88,11 @@ export function createRoute<T = any>(
           return;
         }
         const parsed = opts.schema
-          ? opts.schema.parse(req.body ?? req.query)
+          ? opts.schema.parse(
+              method === "get"
+                ? req.query
+                : (req.body ?? req.query),
+            )
           : undefined;
         const id = req.params.id ?? "";
         const result = await handler(parsed as T, req, res, { id, config });

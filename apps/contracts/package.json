@@ -9,6 +9,7 @@
     "build": "forge build",
     "test": "forge test -vv",
     "generate-abis": "forge inspect AxiomAgentNFT abi --json > ../../packages/config/abis/agentNft.json && forge inspect AxiomStrategyVault abi --json > ../../packages/config/abis/vault.json && forge inspect AxiomPaymentProcessor abi --json > ../../packages/config/abis/paymentProcessor.json && forge inspect AxiomTeeVerifier abi --json > ../../packages/config/abis/teeVerifier.json && forge inspect AxiomMockUSDC abi --json > ../../packages/config/abis/mockUsdc.json",
+    "mint-e2e-usdc": "forge script script/MintE2eUsdc.s.sol --rpc-url ${OG_RPC_URL:-https://evmrpc-testnet.0g.ai} --chain-id 16602 --broadcast --priority-gas-price 2000000000 --legacy --slow",
     "coverage": "forge coverage",
     "format": "forge fmt",
     "format:check": "forge fmt --check",
