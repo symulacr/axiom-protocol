@@ -64,7 +64,13 @@ export async function postEvent(event: AxiomEvent, opts: HttpEventSinkOptions) {
 
   // Prefer the validated chainId from the env schema; fall back to process.env
   // only when the caller did not pass one (defensive — should not normally happen).
-  const chainId = opts.chainId ?? Number(process.env["OG_CHAIN_ID"] ?? GALILEO_CHAIN_ID);
+  const chainId =
+    opts.chainId ??
+    Number(
+      process.env["AXIOM_CHAIN_ID"] ??
+        process.env["OG_CHAIN_ID"] ??
+        GALILEO_CHAIN_ID,
+    );
   const body: HttpEventBody = buildBody(event, source, chainId);
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {

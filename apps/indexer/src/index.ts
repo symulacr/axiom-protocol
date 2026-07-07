@@ -124,6 +124,7 @@ function composeSinks(
   extra: {
     backendUrl: string | undefined;
     rpcUrl: string;
+    chainId: number;
   },
 ) {
   return async (event: AxiomEvent) => {
@@ -133,6 +134,7 @@ function composeSinks(
       try {
         const { status } = await postEvent(event, {
           backendUrl: extra.backendUrl,
+          chainId: extra.chainId,
         });
         if (status >= 400) {
           process.stderr.write(
@@ -187,15 +189,13 @@ async function main() {
   if (liveChainId !== cid) {
     process.stderr.write(
       JSON.stringify({
-        level: "error",
-        msg: "RPC chainId mismatch",
+        level: "warn",
+        msg: "RPC chainId mismatch — continuing with configured chainId",
         expected: cid,
         actual: liveChainId,
         rpcUrl: url,
       }) + "\n",
     );
-    // Don't crash — let the watcher continue or gracefully degrade
-    return;
   }
 
   //   - INDEXER_DA_ENABLED gates DA (storage) submission.
@@ -229,6 +229,7 @@ async function main() {
   const composedSink = composeSinks(daConfig, {
     backendUrl,
     rpcUrl: url,
+    chainId: cid,
   });
 
   const watcher = new Watcher({

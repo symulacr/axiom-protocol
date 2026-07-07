@@ -45,6 +45,47 @@ export function applyToolResult(
 
 const MAX_TOOL_CHARS = 1200;
 
+/** Wire-format message for POST /v1/chat/completions (OpenAI-compatible). */
+export type ChatApiMessage = {
+  role: "user" | "assistant" | "tool";
+  content: string | null;
+  tool_calls?: Array<{
+    id: string;
+    type: "function";
+    function: { name: string; arguments: string };
+  }>;
+  tool_call_id?: string;
+  name?: string;
+};
+
+/** Map UI message history to API payload; keeps tool context for multi-turn chat. */
+export function toChatApiMessages(
+  messages: ReadonlyArray<{
+    role: "user" | "assistant" | "tool";
+    content: string | null;
+    tool_calls?: ChatApiMessage["tool_calls"];
+    tool_call_id?: string;
+    name?: string;
+  }>,
+): ChatApiMessage[] {
+  return messages.map((msg, index) => {
+    const keepFullTool =
+      msg.role !== "tool" || index >= messages.length - 6;
+    const content =
+      msg.role === "tool" && !keepFullTool
+        ? compressToolContent(msg.content)
+        : msg.content;
+    const api: ChatApiMessage = {
+      role: msg.role,
+      content: content ?? null,
+    };
+    if (msg.tool_calls?.length) api.tool_calls = msg.tool_calls;
+    if (msg.tool_call_id) api.tool_call_id = msg.tool_call_id;
+    if (msg.name) api.name = msg.name;
+    return api;
+  });
+}
+
 /** Compress old tool JSON in message history for context growth stability. */
 export function compressToolContent(content: string | null): string | null {
   if (!content || content.length <= MAX_TOOL_CHARS) return content;

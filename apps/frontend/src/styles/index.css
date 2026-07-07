@@ -308,37 +308,28 @@ select {
 .text-3xl {
   font-size: var(--text-3xl);
 }
-/* ─── Skip link (off-screen until Tab focus) ─────────────────────── */
+/* ─── Skip link (visually hidden until keyboard focus) ───────────── */
 .skip-link {
-  position: fixed;
-  left: -10000px;
+  position: absolute;
   top: 0;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: 0;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  clip-path: inset(50%);
-  white-space: nowrap;
-  border: 0;
+  left: 0;
   z-index: 1000;
+  padding: 8px 16px;
+  background: var(--c-bronze);
+  color: var(--c-bg);
+  text-decoration: none;
+  transform: translateY(-120%);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.15s ease, opacity 0.15s ease;
 }
 
 .skip-link:focus,
 .skip-link:focus-visible {
-  left: 0;
-  width: auto;
-  height: auto;
-  padding: 8px 16px;
-  overflow: visible;
-  clip: auto;
-  clip-path: none;
-  white-space: normal;
-  background: var(--c-bronze);
-  color: var(--c-bg);
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
   outline: 2px solid var(--c-bronze);
-  text-decoration: none;
 }
 
 /* ─── Agent card ──────────────────────────────────────────────────── */
