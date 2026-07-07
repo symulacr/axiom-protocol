@@ -274,7 +274,10 @@ importers:
         version: 6.16.0(bufferutil@4.1.0)(utf-8-validate@5.0.10)
       viem:
         specifier: ^2.21.45
-        version: 2.52.2(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.4.3)
+        version: 2.52.2(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76)
+      zod:
+        specifier: ^3.24.2
+        version: 3.25.76
     devDependencies:
       '@types/node':
         specifier: ^22.7.0
