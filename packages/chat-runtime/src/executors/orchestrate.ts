@@ -1,3 +1,4 @@
+import { humanAbi } from "../abi.js";
 import { fetchJson } from "../http-json.js";
 import type { ToolRuntime } from "../transport.js";
 import type { ToolResult } from "../types.js";
@@ -21,7 +22,7 @@ async function readStrategyRoot(
   try {
     const current = await read<readonly [string, bigint, bigint, bigint, bigint]>({
       address: vault,
-      abi: STRATEGY_OF_CURRENT,
+      abi: humanAbi(STRATEGY_OF_CURRENT),
       functionName: "strategyOf",
       args: [id],
     });
@@ -30,7 +31,7 @@ async function readStrategyRoot(
     try {
       const legacy = await read<readonly [string, bigint, bigint, bigint]>({
         address: vault,
-        abi: STRATEGY_OF_LEGACY,
+        abi: humanAbi(STRATEGY_OF_LEGACY),
         functionName: "strategyOf",
         args: [id],
       });
@@ -61,7 +62,7 @@ export async function runOrchestrateTool(
     const [balance, root] = await Promise.all([
       ctx.chain.readContract<bigint>({
         address: vault,
-        abi: ["function balanceOf(uint256) view returns (uint256)"],
+        abi: humanAbi(["function balanceOf(uint256) view returns (uint256)"]),
         functionName: "balanceOf",
         args: [BigInt(tokenId)],
       }),

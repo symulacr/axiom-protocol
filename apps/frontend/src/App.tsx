@@ -236,7 +236,7 @@ export function App(): ReactElement {
 
   return (
     <>
-      <a href="#main-content" className="skip-link">
+      <a href="#main-content" className="skip-link" tabIndex={0}>
         Skip to content
       </a>
       <header

@@ -1,3 +1,4 @@
+export { humanAbi } from "./abi.js";
 export { runTool } from "./run-tool.js";
 export { formatToolResult } from "./format.js";
 export { groupParallelTools } from "./parallel.js";

@@ -1,4 +1,5 @@
 import { getChatToolSpec } from "@axiom/config/chat-tools";
+import { humanAbi } from "../abi.js";
 import { fetchJson } from "../http-json.js";
 import type { ToolRuntime } from "../transport.js";
 import type { ToolResult } from "../types.js";
@@ -31,14 +32,14 @@ export async function runEncodeTool(
     name === "mint_agent" && ctx.chain?.readContract && ctx.session.addresses?.agentNft
       ? ctx.chain.readContract<bigint>({
           address: ctx.session.addresses.agentNft,
-          abi: ["function mintFee() view returns (uint256)"],
+          abi: humanAbi(["function mintFee() view returns (uint256)"]),
           functionName: "mintFee",
         })
       : Promise.resolve(null),
     tokenId && ctx.chain?.readContract && ctx.session.addresses?.vault
       ? ctx.chain.readContract<bigint>({
           address: ctx.session.addresses.vault,
-          abi: ["function balanceOf(uint256) view returns (uint256)"],
+          abi: humanAbi(["function balanceOf(uint256) view returns (uint256)"]),
           functionName: "balanceOf",
           args: [BigInt(tokenId)],
         })

@@ -81,13 +81,28 @@ export const archiveClosestSchema = z.object({
   timestamp: z.string().optional(),
 });
 
+const chatMessageSchema = z.object({
+  role: z.enum(["system", "user", "assistant", "tool"]),
+  content: z.union([z.string(), z.null()]).optional(),
+  tool_calls: z
+    .array(
+      z.object({
+        id: z.string(),
+        type: z.literal("function").optional(),
+        function: z.object({
+          name: z.string(),
+          arguments: z.string(),
+        }),
+      }),
+    )
+    .optional(),
+  tool_call_id: z.string().optional(),
+  name: z.string().optional(),
+});
+
 export const chatBodySchema = z.object({
-  messages: z.array(
-    z.object({
-      role: z.enum(["system", "user", "assistant", "tool"]),
-      content: z.string(),
-    }),
-  ).nonempty(),
+  messages: z.array(chatMessageSchema).nonempty(),
   tools: z.array(z.any()).optional(),
   model: z.string().optional(),
+  stream: z.boolean().optional(),
 });

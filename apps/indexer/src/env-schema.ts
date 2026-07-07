@@ -28,6 +28,8 @@ export const indexerEnvSchema = sharedEnvSchema.merge(
     STORAGE_BATCH_MAX_EVENTS: z.coerce.number().int().positive().default(10),
     /** Health check server port for Docker/k8s probes. */
     INDEXER_HEALTH_PORT: z.coerce.number().int().positive().default(9091),
+    /** Railway / platform HTTP port (overrides INDEXER_HEALTH_PORT when set). */
+    PORT: z.coerce.number().int().positive().optional(),
   }),
 );
 
