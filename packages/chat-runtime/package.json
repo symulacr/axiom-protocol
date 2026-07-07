@@ -14,7 +14,8 @@
     "test": "node --import tsx --test src/parallel.test.ts src/format.test.ts"
   },
   "dependencies": {
-    "@axiom/config": "workspace:*"
+    "@axiom/config": "workspace:*",
+    "viem": "^2.21.45"
   },
   "devDependencies": {
     "@types/node": "^22.7.0",

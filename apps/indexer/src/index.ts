@@ -236,7 +236,7 @@ async function main() {
     sink: composedSink,
   });
   // Health check server for Docker/k8s probes
-  const healthPort = env.INDEXER_HEALTH_PORT;
+  const healthPort = env.PORT ?? env.INDEXER_HEALTH_PORT;
   const healthServer = createServer((req, res) => {
     if (req.url === "/health" && req.method === "GET") {
       res.writeHead(200, { "Content-Type": "application/json" });

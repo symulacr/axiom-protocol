@@ -1,3 +1,4 @@
+import { humanAbi } from "../abi.js";
 import { fetchJson } from "../http-json.js";
 import type { ToolRuntime } from "../transport.js";
 import type { ToolResult } from "../types.js";
@@ -34,7 +35,7 @@ export async function runReadTool(
       if (!vault) return err("Vault address not configured");
       const balance = (await ctx.chain.readContract<bigint>({
         address: vault,
-        abi: ["function balanceOf(uint256) view returns (uint256)"],
+        abi: humanAbi(["function balanceOf(uint256) view returns (uint256)"]),
         functionName: "balanceOf",
         args: [BigInt(tokenId)],
       })) as bigint;
@@ -47,11 +48,22 @@ export async function runReadTool(
       if (!nft) return err("Agent NFT address not configured");
       const results = await ctx.chain.multicall({
         contracts: [
-          { address: nft, abi: ["function name() view returns (string)"], functionName: "name" },
-          { address: nft, abi: ["function ownerOf(uint256) view returns (address)"], functionName: "ownerOf", args: [BigInt(tokenId)] },
           {
             address: nft,
-            abi: ["function intelligentDatasOf(uint256) view returns ((string dataDescription, bytes32 dataHash)[])"],
+            abi: humanAbi(["function name() view returns (string)"]),
+            functionName: "name",
+          },
+          {
+            address: nft,
+            abi: humanAbi(["function ownerOf(uint256) view returns (address)"]),
+            functionName: "ownerOf",
+            args: [BigInt(tokenId)],
+          },
+          {
+            address: nft,
+            abi: humanAbi([
+              "function intelligentDatasOf(uint256) view returns ((string dataDescription, bytes32 dataHash)[])",
+            ]),
             functionName: "intelligentDatasOf",
             args: [BigInt(tokenId)],
           },

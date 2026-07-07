@@ -1,9 +1,11 @@
 import {
   createSession,
+  humanAbi,
   runTool,
   type ToolChain,
   type ToolRuntime,
 } from "@axiom/chat-runtime";
+import type { Abi } from "viem";
 import { API_KEY, BACKEND_URL } from "../config/env.js";
 import {
   getAxiomAgentNftAddress,
@@ -18,6 +20,13 @@ export async function runBrowserTool(
 ): Promise<string> {
   const result = await runTool(name, args, buildBrowserRuntime(ctx));
   return result.content;
+}
+
+function toViemAbi(abi: readonly string[] | Abi): Abi {
+  if (abi.length > 0 && typeof abi[0] === "string") {
+    return humanAbi(abi as readonly string[]);
+  }
+  return abi as Abi;
 }
 
 function buildBrowserRuntime(ctx: ToolContext): ToolRuntime {
@@ -53,7 +62,7 @@ function buildBrowserRuntime(ctx: ToolContext): ToolRuntime {
           readContract: async (req) =>
             publicClient.readContract({
               address: req.address,
-              abi: req.abi as readonly [],
+              abi: toViemAbi(req.abi),
               functionName: req.functionName as never,
               args: (req.args ?? []) as never,
             }),
@@ -61,7 +70,7 @@ function buildBrowserRuntime(ctx: ToolContext): ToolRuntime {
             const results = await publicClient.multicall({
               contracts: args.contracts.map((c) => ({
                 address: c.address,
-                abi: c.abi as readonly [],
+                abi: toViemAbi(c.abi),
                 functionName: c.functionName as never,
                 args: (c.args ?? []) as never,
               })),
