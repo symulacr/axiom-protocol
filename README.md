@@ -33,7 +33,7 @@ curl -s https://oracle-production-47ab.up.railway.app/health
 
 | Platform | Project | Notes |
 | -------- | ------- | ----- |
-| Vercel | `axiom-protocol` | Monorepo root; frontend only |
+| Vercel | `axiom-protocol` | Monorepo root; frontend only — `vercel --prod` after backend deploy |
 | Railway | `axiom-backend` | Shared pnpm workspace — deploy from repo root |
 
 **Railway services** (monorepo root, no `rootDirectory`):
