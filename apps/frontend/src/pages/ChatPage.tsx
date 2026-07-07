@@ -19,7 +19,11 @@ import {
   STREAM_TIMEOUT,
 } from "../utils/apiFetch.js";
 import { humanizeError } from "../utils/format.js";
-import { buildSystemPrompt, groupParallelTools } from "@axiom/chat-runtime";
+import {
+  buildSystemPrompt,
+  groupParallelTools,
+  toChatApiMessages,
+} from "@axiom/chat-runtime";
 import { ChatSessionProvider, useChatSession } from "../chat/ChatSessionProvider.js";
 import { ToolResultBody } from "../chat/ToolResultBody.js";
 import { waitingMessageForElapsed } from "../chat/waitingMessages.js";
@@ -160,6 +164,7 @@ function ChatPageInner(): ReactElement {
   const [streamStartTime, setStreamStartTime] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
+  const messagesRef = useRef<Message[]>(messages);
   const listRef = useRef<HTMLDivElement>(null);
   const streamTextRef = useRef("");
   const streamThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -212,6 +217,7 @@ function ChatPageInner(): ReactElement {
   const chainSupported = SUPPORTED_CHAIN_IDS.has(chainId);
 
   useEffect(() => {
+    messagesRef.current = messages;
     try {
       if (messages.length === 0) {
         sessionStorage.removeItem(CHAT_MESSAGES_KEY);
@@ -252,7 +258,8 @@ function ChatPageInner(): ReactElement {
       setInput("");
 
       const userMsg = createMessage({ role: "user", content: userText });
-      let currentMessages = [...messages, userMsg];
+      let currentMessages = [...messagesRef.current, userMsg];
+      messagesRef.current = currentMessages;
       setMessages(currentMessages);
       setIsStreaming(true);
       flushAndClearStreamText();
@@ -281,7 +288,7 @@ function ChatPageInner(): ReactElement {
               model: CHAT_MODEL,
               messages: [
                 { role: "system", content: buildSystemPrompt(session) },
-                ...currentMessages.map(({ id: _id, ...msg }) => msg),
+                ...toChatApiMessages(currentMessages),
               ],
               tools: TOOLS,
               stream: true,
@@ -355,6 +362,7 @@ function ChatPageInner(): ReactElement {
               content: assistantContent,
             });
             currentMessages = [...currentMessages, assistantMsg];
+            messagesRef.current = currentMessages;
             setMessages(currentMessages);
             flushAndClearStreamText();
             break;
@@ -367,6 +375,7 @@ function ChatPageInner(): ReactElement {
             tool_calls: toolCallList,
           });
           currentMessages = [...currentMessages, assistantMsg];
+          messagesRef.current = currentMessages;
           setMessages(currentMessages);
           flushAndClearStreamText();
 
@@ -413,6 +422,7 @@ function ChatPageInner(): ReactElement {
               ];
             }
           }
+          messagesRef.current = currentMessages;
           setMessages(currentMessages);
         }
 
@@ -429,6 +439,7 @@ function ChatPageInner(): ReactElement {
                 "This request needed more tool steps than allowed in one turn. Please send a follow-up message to continue.",
             }),
           ];
+          messagesRef.current = currentMessages;
           setMessages(currentMessages);
         }
       } catch (err: unknown) {
@@ -441,13 +452,15 @@ function ChatPageInner(): ReactElement {
           } else {
             toast.error(msg);
           }
-          setMessages([
+          const withError = [
             ...currentMessages,
             createMessage({
               role: "assistant",
               content: `Error: ${humanizeError(err)}`,
             }),
-          ]);
+          ];
+          messagesRef.current = withError;
+          setMessages(withError);
         }
       } finally {
         setIsStreaming(false);
@@ -456,7 +469,6 @@ function ChatPageInner(): ReactElement {
       }
     },
     [
-      messages,
       isStreaming,
       handlers,
       toolCtx,

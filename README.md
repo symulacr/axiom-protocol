@@ -42,14 +42,26 @@ curl -s https://oracle-production-47ab.up.railway.app/health
 | ------- | ----- | ----- | ----------- |
 | `backend` | `pnpm --filter @axiom/config build && pnpm --filter @axiom/chat-runtime build && pnpm --filter @axiom/backend build` | `node apps/backend/dist/index.js` | `/health/live` |
 | `oracle` | `pnpm --filter @axiom/config build && pnpm --filter @axiom/oracle build` | `node apps/oracle/dist/index.js` | `/health` |
+| `indexer` | `pnpm --filter @axiom/config build && pnpm --filter @axiom/indexer build` | `node apps/indexer/dist/index.js` | `/health` |
 
 ```bash
 railway link --project axiom-backend
 railway up --service backend --detach
 railway up --service oracle --detach
+railway up --service indexer --detach
 ```
 
-Root `railway.json` is the **backend** config. Oracle settings live in `apps/oracle/railway.json` (set per-service in the Railway dashboard or via `railway environment edit`).
+Root `railway.json` is the **backend** config. Oracle and indexer settings live in `apps/oracle/railway.json` and `apps/indexer/railway.json` — set per-service via `railway environment edit` (see below).
+
+**Indexer service (production):** point deploy at the indexer binary, not backend:
+
+```bash
+railway environment edit \
+  --service-config indexer build.buildCommand "pnpm --filter @axiom/config build && pnpm --filter @axiom/indexer build" \
+  --service-config indexer deploy.startCommand "node apps/indexer/dist/index.js" \
+  --service-config indexer deploy.healthcheckPath "/health" \
+  -m "indexer: correct build/start"
+```
 
 **Prod env (Railway):** backend needs `AXIOM_COMPUTE_DIRECT_KEY` (chat uses Direct mode, not `OG_COMPUTE_API_KEY` alone); oracle needs `AXIOM_FRONTEND_URL=https://axiom-protocol-nine.vercel.app` for browser CORS.
 

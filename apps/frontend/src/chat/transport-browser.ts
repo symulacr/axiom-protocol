@@ -22,7 +22,7 @@ export async function runBrowserTool(
   return result.content;
 }
 
-function toViemAbi(abi: readonly string[] | Abi): Abi {
+function toViemAbi(abi: readonly unknown[] | Abi): Abi {
   if (abi.length > 0 && typeof abi[0] === "string") {
     return humanAbi(abi as readonly string[]);
   }
