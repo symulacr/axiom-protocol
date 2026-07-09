@@ -3,7 +3,6 @@ import { useChainId } from "wagmi";
 import {
   EIP712_DOMAIN_NAME,
   EIP712_DOMAIN_VERSION,
-  ACCESS_PROOF_TYPES,
 } from "@axiom/config/eip712";
 import { getAxiomTeeVerifierAddress } from "./addresses.js";
 

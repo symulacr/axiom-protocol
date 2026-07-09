@@ -22,8 +22,8 @@ export async function probeTickReady(
   const provider = getSharedProvider();
   const contract = new ethers.Contract(vault, VAULT_ABI, provider);
   const id = BigInt(tokenId);
-  let balance = 0n;
-  let strategyRoot: string | null = null;
+  let balance: bigint;
+  let strategyRoot: string | null;
   try {
     balance = (await contract.getFunction("balanceOf")(id)) as bigint;
   } catch {

@@ -12,7 +12,7 @@ import {
   useChainId,
   usePublicClient,
 } from "wagmi";
-import { parseAbi, parseEther, parseUnits } from "viem";
+import { parseAbi, parseUnits } from "viem";
 import type { Address } from "viem";
 
 const erc20Abi = parseAbi([

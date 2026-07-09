@@ -922,7 +922,8 @@ contract FuzzAxiomTeeVerifierTest is StdInvariant, Test {
             // has a bug and skips expired entries). We treat such a
             // revert as a test failure and let forge's counter-example
             // surfacing point to the regression.
-            TransferValidityProofOutput[] memory outs = verifier.verifyTransferValidity(fresh, randomReceiver, address(0));
+            TransferValidityProofOutput[] memory outs =
+                verifier.verifyTransferValidity(fresh, randomReceiver, address(0));
             assertEq(outs.length, 1, "resubmit after clean succeeded");
         }
     }

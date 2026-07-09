@@ -105,6 +105,7 @@ contract AxiomPaymentProcessor is Ownable, Pausable, ReentrancyGuard {
         PaymentProcessorStorage storage $ = _getStorage();
         $.pendingProtocolTreasury = newTreasury;
         uint256 effectiveAt = block.timestamp + TREASURY_TIMELOCK_DELAY;
+        require(effectiveAt <= type(uint48).max, "treasury effectiveAt overflows uint48");
         $.pendingTreasuryEffectiveAt = uint48(effectiveAt);
         emit ProtocolTreasuryProposed(newTreasury, effectiveAt);
     }
@@ -134,6 +135,7 @@ contract AxiomPaymentProcessor is Ownable, Pausable, ReentrancyGuard {
         uint256 newBps
     ) external onlyOwner {
         if (newBps > BPS_DENOMINATOR) revert InvalidBps();
+        require(newBps <= type(uint16).max, "fee bps overflows uint16");
         PaymentProcessorStorage storage $ = _getStorage();
         uint256 old = $.protocolFeeBps;
         $.protocolFeeBps = uint16(newBps);

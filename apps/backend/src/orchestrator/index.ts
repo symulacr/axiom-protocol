@@ -316,7 +316,7 @@ export class StrategyRunner {
     // Capture the Executed event from the receipt logs.
     const executedEvent = vaultTc.iface.getEvent("Executed");
     let result: `0x${string}` | undefined;
-    let success = receipt.status === 1;
+    const success = receipt.status === 1;
     if (executedEvent) {
       const executedLog = receipt.logs.find(
         (log) => log.topics[0] === executedEvent.topicHash,
@@ -389,7 +389,7 @@ export class StrategyRunner {
     } catch (err) {
       const msg = extractErrorMessage(err);
       log.info("TEE verification: provider discovery failed", { error: msg });
-      throw new Error(`TEE verification: provider discovery failed: ${msg}`);
+      throw new Error(`TEE verification: provider discovery failed: ${msg}`, { cause: err });
     }
 
     if (!providerAddress) {

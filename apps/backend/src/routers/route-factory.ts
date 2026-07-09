@@ -19,22 +19,20 @@ export interface RouteRegistration {
 
 export const REGISTERED_ROUTES: RouteRegistration[] = [];
 
+type AddressKey = keyof NonNullable<ServerConfig["addresses"]>;
 export type RouteHandler<T> = (
   parsed: T,
   req: Request,
   res: Response,
   helpers: { id: string; config: ServerConfig },
 ) => Promise<unknown>;
-
-type AddressKey = keyof NonNullable<ServerConfig["addresses"]>;
-
-export interface RouteOptions {
+export interface RouteOptions<S extends z.ZodTypeAny | undefined = undefined> {
   /** Route path (e.g., "/v1/agents/mint") */
   path: string;
   /** HTTP method */
   method?: "get" | "post";
   /** Zod schema for request body validation */
-  schema?: z.ZodSchema;
+  schema?: S;
   /** If true, req.params.id is required (sets id in helpers) */
   requireId?: boolean;
   /** If set, checks config.addresses[key] exists (e.g. "vault", "agentNft") */
@@ -51,10 +49,10 @@ export interface RouteOptions {
  * Creates an Express route with standardized error handling,
  * address validation, schema parsing, and optional broadcast.
  */
-export function createRoute<T = any>(
+export function createRoute<S extends z.ZodTypeAny | undefined = undefined>(
   app: Router | Express,
-  opts: RouteOptions,
-  handler: RouteHandler<T>,
+  opts: RouteOptions<S>,
+  handler: RouteHandler<S extends z.ZodTypeAny ? z.infer<S> : unknown>,
   config: ServerConfig,
 ): void {
   const method = opts.method ?? "post";
@@ -95,7 +93,12 @@ export function createRoute<T = any>(
             )
           : undefined;
         const id = req.params.id ?? "";
-        const result = await handler(parsed as T, req, res, { id, config });
+        const result = await handler(
+          parsed as S extends z.ZodTypeAny ? z.infer<S> : undefined,
+          req,
+          res,
+          { id, config },
+        );
         if (opts.broadcast && result) {
           broadcast(opts.broadcast, result);
         }

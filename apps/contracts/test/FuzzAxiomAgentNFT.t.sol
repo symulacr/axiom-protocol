@@ -449,7 +449,9 @@ contract FuzzAxiomAgentNFTSanity is LiveForkTest {
         assertGt(nextId, 0, "live proxy nextTokenId must be > 0");
     }
 
-    function _probeLiveProxy(address nftAddr) external view returns (bool) {
+    function _probeLiveProxy(
+        address nftAddr
+    ) external view returns (bool) {
         AxiomAgentNFT liveNft = AxiomAgentNFT(nftAddr);
         return bytes(liveNft.name()).length > 0 && bytes(liveNft.symbol()).length > 0;
     }

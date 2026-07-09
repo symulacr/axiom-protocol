@@ -2,9 +2,8 @@ import { Router } from "express";
 import { z } from "zod";
 import type { ServerConfig } from "../server.js";
 import { createRoute } from "./route-factory.js";
-import { TTLCache, createLogger, ser } from "../skills/shared.js";
+import { TTLCache, ser } from "../skills/shared.js";
 
-const log = createLogger("osint");
 const cache = new TTLCache<unknown>(5 * 60 * 1000);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
