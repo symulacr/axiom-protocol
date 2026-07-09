@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAsyncAction } from "./useAsyncAction.js";
 import { apiFetch, STREAM_TIMEOUT } from "../utils/apiFetch.js";
-import { BACKEND_URL } from "../config/env.js";
+import { API_KEY, BACKEND_URL } from "../config/env.js";
 import type {
   TickRequest,
   TickResult,
@@ -128,6 +128,7 @@ export function useOrchestratorTick(): {
             BACKEND_URL.replace(/^https?:\/\//, `${scheme}://`) + "/v1/stream",
           );
           wsUrl.searchParams.append("topic", topic);
+          wsUrl.searchParams.append("token", API_KEY);
 
           return await new Promise<TickResult>((resolve, reject) => {
             const ws = new WebSocket(wsUrl.toString());

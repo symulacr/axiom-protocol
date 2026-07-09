@@ -5,6 +5,7 @@ import { runReadTool } from "./executors/read.js";
 import { runEncodeTool } from "./executors/encode.js";
 import { runOrchestrateTool } from "./executors/orchestrate.js";
 import { runArchiveTool } from "./executors/archive.js";
+import { runSkillTool } from "./executors/skill.js";
 
 export async function runTool(
   name: string,
@@ -24,6 +25,8 @@ export async function runTool(
       return runOrchestrateTool(name, args, ctx);
     case "archive":
       return runArchiveTool(name, args, ctx);
+    case "skill":
+      return runSkillTool(name, args, ctx);
     default:
       return { ok: false, content: JSON.stringify({ error: `Unhandled class: ${spec.class}` }) };
   }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BACKEND_URL } from "../config/env.js";
+import { API_KEY, BACKEND_URL } from "../config/env.js";
 import type { AxiomEvent } from "./useEventHistory.js";
 
 export interface UseEventStreamResult {
@@ -53,6 +53,7 @@ export function useEventStream(
     for (const t of topics) {
       url.searchParams.append("topic", t);
     }
+    url.searchParams.append("token", API_KEY);
 
     try {
       const ws = new WebSocket(url.toString());

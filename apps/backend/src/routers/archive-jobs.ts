@@ -21,7 +21,7 @@ export function createArchiveJobsRouter(config: ServerConfig): Router {
       path: "/v1/archive/jobs/account",
       method: "post",
       schema: archiveJobCreateSchema,
-      consumer: "useArchive",
+      consumer: "chat-runtime",
       description: "Start async account tweet archive job (poll GET /v1/archive/jobs/:id)",
     },
     async (parsed: { handle: string; limit?: number }) => {
@@ -40,7 +40,7 @@ export function createArchiveJobsRouter(config: ServerConfig): Router {
     {
       path: "/v1/archive/jobs/:id",
       method: "get",
-      consumer: "useArchive",
+      consumer: "chat-runtime",
       description: "Poll async archive job status",
     },
     async (_parsed, req) => {

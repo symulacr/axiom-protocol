@@ -58,7 +58,7 @@ export type ToolContext = {
   publicClient: ReturnType<typeof usePublicClient>;
 };
 
-export const TOOLS: ToolDefinition[] = [
+const TOOLS_BASE: ToolDefinition[] = [
   {
     type: "function",
     function: {
@@ -259,6 +259,51 @@ export const TOOLS: ToolDefinition[] = [
     },
   },
 ];
+
+const SKILL_TOOLS: ToolDefinition[] = [
+  "evm_wallet|Manage EVM wallet balance, address, and network",
+  "evm_multichain|Query and interact across multiple EVM chains",
+  "evm_tx|Build, sign, and broadcast EVM transactions",
+  "evm_token|Query ERC-20/721 token balances, metadata, and transfers",
+  "evm_gas|Estimate gas prices and optimize transaction fees",
+  "evm_whale|Track large EVM wallet movements and whale activity",
+  "evm_contract|Read and write to EVM smart contracts via ABI",
+  "evm_allowance|Check and manage ERC-20 token approvals and allowances",
+  "unbroker_simulate|Simulate an unbroker trade before execution",
+  "unbroker_route|Find optimal swap routes across DEX aggregators",
+  "unbroker_analyze|Analyze swap quotes, slippage, and MEV risk",
+  "unbroker_execute|Execute an unbroker swap on-chain",
+  "stocks_quote|Get real-time stock price quotes",
+  "stocks_search|Search for stock tickers and company names",
+  "stocks_history|Fetch historical OHLCV price data for equities",
+  "stocks_compare|Compare fundamentals and performance across tickers",
+  "stocks_crypto|Get cryptocurrency price quotes and market data",
+  "osint_sec_edgar|Search SEC filings, 10-K, 10-Q, and 8-K via EDGAR",
+  "osint_usaspending|Query US federal spending and contract awards",
+  "osint_ofac_sdn|Check entities against OFAC sanctions (SDN) list",
+  "osint_opencorporates|Look up corporate registration and officer data",
+  "osint_entity_resolve|Resolve and cross-reference entities across OSINT sources",
+  "osint_courtlistener|Search US federal and state court opinions and filings",
+  "oss_forensics_investigate|Investigate an open-source project for supply-chain risks",
+  "oss_forensics_commits|Analyze commit history for suspicious patterns",
+  "oss_forensics_ioc|Extract indicators of compromise from repositories",
+  "oss_forensics_audit|Full supply-chain audit of dependencies and transitive deps",
+].map((entry) => {
+  const [name, description] = entry.split("|") as [string, string];
+  return {
+    type: "function" as const,
+    function: {
+      name,
+      description,
+      parameters: { type: "object", properties: {}, additionalProperties: true },
+    },
+  };
+});
+
+export const TOOLS: ToolDefinition[] = [
+  ...TOOLS_BASE,
+  ...SKILL_TOOLS,
+ ];
 
 export function useToolHandlers(
   ctx: ToolContext,

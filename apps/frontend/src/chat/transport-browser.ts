@@ -48,7 +48,7 @@ function buildBrowserRuntime(ctx: ToolContext): ToolRuntime {
           headers: {
             "content-type": "application/json",
             accept: "application/json",
-            "x-api-key": API_KEY,
+            ...(API_KEY ? { "x-api-key": API_KEY } : {}),
             ...(init?.headers ?? {}),
           },
           body,
