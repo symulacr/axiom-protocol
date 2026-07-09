@@ -8,15 +8,22 @@ import {IAxiomAgentNFT} from "../src/interfaces/IAxiomAgentNFT.sol";
 contract MockAxiomAgentNFT is IAxiomAgentNFT {
     mapping(uint256 => address) internal _owners;
 
-    function setOwner(uint256 tokenId, address owner) external {
+    function setOwner(
+        uint256 tokenId,
+        address owner
+    ) external {
         _owners[tokenId] = owner;
     }
 
-    function ownerOf(uint256 tokenId) external view override returns (address) {
+    function ownerOf(
+        uint256 tokenId
+    ) external view override returns (address) {
         return _owners[tokenId];
     }
 
-    function creatorOf(uint256) external pure override returns (address) {
+    function creatorOf(
+        uint256
+    ) external pure override returns (address) {
         return address(0);
     }
 }

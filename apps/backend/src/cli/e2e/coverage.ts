@@ -17,7 +17,6 @@ import {
 import {
   assertReceiptOk,
   recordOnChainStep,
-  waitReceiptWithRetry,
 } from "./onchain.js";
 import { pipelineWalletTxs } from "./tx-pipeline.js";
 import { markCovered, markSkipped } from "./matrix.js";
@@ -152,7 +151,6 @@ export async function runMatrixViewSweepStep(deps: {
     domain,
     signer,
     tokenBal,
-    mintFee,
     creator,
     owner,
   ] = await Promise.all([
@@ -172,7 +170,6 @@ export async function runMatrixViewSweepStep(deps: {
     tee.contract.domainSeparator(),
     tee.contract.registeredSigner(),
     token.contract.balanceOf(deps.deployer.address),
-    nft.contract.mintFee(),
     hasContractFunction(provider, deps.agentNft, "function creatorOf(uint256) view returns (address)").then((ok) => (ok ? nft.contract.creatorOf(deps.tokenId) : null)),
     nft.contract.ownerOf(deps.tokenId),
   ]);

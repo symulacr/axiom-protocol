@@ -181,7 +181,7 @@ export class EventStore {
       if (!since) return [...bucket];
       return bucket.filter((e) => e.timestamp > since);
     }
-    let all: StoredEvent[] = [];
+    const all: StoredEvent[] = [];
     for (const bucket of this.buckets.values()) {
       all.push(...bucket);
     }

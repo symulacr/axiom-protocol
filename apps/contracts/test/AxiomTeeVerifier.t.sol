@@ -195,9 +195,7 @@ contract AxiomTeeVerifierTest is Test {
                 "\x19\x01",
                 _domainSeparator(),
                 keccak256(
-                    abi.encode(
-                        ACCESS_PROOF_TYPEHASH, dataHash, keccak256(pub), to, address(0xBEEF), nonce, validUntil
-                    )
+                    abi.encode(ACCESS_PROOF_TYPEHASH, dataHash, keccak256(pub), to, address(0xBEEF), nonce, validUntil)
                 )
             )
         );

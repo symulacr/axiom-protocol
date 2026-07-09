@@ -456,7 +456,9 @@ async function loadCheckpoint(chainId: bigint): Promise<number | null> {
     ) {
       return parsed.nextBlock;
     }
-  } catch {}
+  } catch (err) {
+    console.warn("[watcher] failed to load checkpoint:", err);
+  }
   return null;
 }
 

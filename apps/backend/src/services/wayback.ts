@@ -83,6 +83,7 @@ export async function lookupAccountTweets(
   } catch (err) {
     throw new Error(
       `Wayback account lookup failed: ${extractErrorMessage(err)}`,
+      { cause: err },
     );
   }
 }
@@ -100,6 +101,7 @@ export async function confirmArchived(
   } catch (err) {
     throw new Error(
       `Wayback confirm failed: ${extractErrorMessage(err)}`,
+      { cause: err },
     );
   }
 }

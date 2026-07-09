@@ -4,7 +4,6 @@ import { markScenarioCovered, markScenarioSkipped } from "./scenarios.js";
 import {
   e2eFastEnabled,
   e2eStrictComputeEnabled,
-  resolveE2eComputeModel,
 } from "./fast-path.js";
 
 const VAULT_BALANCE_TOOL = {

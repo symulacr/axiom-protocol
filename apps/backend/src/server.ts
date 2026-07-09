@@ -12,6 +12,7 @@ import rateLimit from "express-rate-limit";
 import { createServer, type Server as HttpServer } from "node:http";
 import { WebSocketServer, type WebSocket } from "ws";
 import { ethers, type Wallet } from "ethers";
+import { type ChatCompletionMessageParam, type ChatCompletionTool } from "openai/resources/chat/completions";
 import { TypedContract, type AgentNFTMethods } from "@axiom/config/types/contract";
 import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
 import { bigintReplacer } from "@axiom/config/types/bigint";
@@ -297,8 +298,8 @@ export function startServer(config: ServerConfig): {
         });
         const openaiRes = await client.chat.completions.create({
           model: resolvedModel,
-          messages: messages as any,
-          tools: tools as any,
+          messages: messages as ChatCompletionMessageParam[],
+          tools: tools as ChatCompletionTool[] | undefined,
           stream: true,
           max_tokens: 2048,
         });
@@ -437,7 +438,11 @@ export function startServer(config: ServerConfig): {
       description: "Execute a transaction from a strategy vault",
     },
     async (parsed, _req, _res, { id, config: cfg }) => {
-      const vaultAddr = cfg.addresses?.vault!;
+      const vaultAddr = cfg.addresses?.vault;
+      if (!vaultAddr) {
+        _res.status(500).json({ error: "vault address not configured" });
+        return;
+      }
       const { target, value, data, proof } = parsed as z.infer<
         typeof vaultExecuteSchema
       >;
@@ -448,7 +453,7 @@ export function startServer(config: ServerConfig): {
           value: bigint,
           data: string,
           proof: string[],
-        ): Promise<any>;
+        ): Promise<{ hash: string; wait(): Promise<{ status?: number } | null> }>;
       }>(vaultAddr, VAULT_ABI, cfg.signer);
       const tx = await vaultTc.contract.execute(
         BigInt(id),
@@ -474,7 +479,11 @@ export function startServer(config: ServerConfig): {
       description: "Encode vault deposit transaction (value = native OG amount)",
     },
     async (parsed: { amount: string }, _req, _res, { id, config: cfg }) => {
-      const vaultAddr = cfg.addresses?.vault!;
+      const vaultAddr = cfg.addresses?.vault;
+      if (!vaultAddr) {
+        _res.status(500).json({ error: "vault address not configured" });
+        return;
+      }
       const iface = new ethers.Interface([
         "function deposit(uint256 tokenId) payable",
       ]);
@@ -502,7 +511,11 @@ export function startServer(config: ServerConfig): {
       description: "Encode vault withdraw transaction (amount in native OG)",
     },
     async (parsed: { amount: string }, _req, _res, { id, config: cfg }) => {
-      const vaultAddr = cfg.addresses?.vault!;
+      const vaultAddr = cfg.addresses?.vault;
+      if (!vaultAddr) {
+        _res.status(500).json({ error: "vault address not configured" });
+        return;
+      }
       const iface = new ethers.Interface([
         "function withdraw(uint256 tokenId, uint256 amount)",
       ]);
@@ -538,7 +551,9 @@ export function startServer(config: ServerConfig): {
         sendError(res, 400, "Missing or invalid datas array");
         return;
       }
-      const nftTc = new TypedContract<any>(nftAddr, AGENT_NFT_ABI, provider);
+      const nftTc = new TypedContract<{
+        update(tokenId: bigint, datas: unknown[]): Promise<unknown>;
+      }>(nftAddr, AGENT_NFT_ABI, provider);
       const encoded = nftTc.iface.encodeFunctionData("update", [
         BigInt(id),
         datas,
