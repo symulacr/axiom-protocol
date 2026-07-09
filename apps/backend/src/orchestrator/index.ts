@@ -27,6 +27,7 @@ import { VAULT_ABI, VAULT_ABI_LEGACY } from "@axiom/config/abis";
 import {
   detectVaultAbiVariant,
   vaultAbiFor,
+  readVaultStrategy,
   type VaultAbiVariant,
 } from "../vault-compat.js";
 import { ZERO_DATA_ROOT } from "../utils/constants.js";
@@ -293,6 +294,12 @@ export class StrategyRunner {
     // Single-leaf Merkle tree: proof is empty, root == leaf.
     const proof: `0x${string}`[] = [];
 
+    // G9: skip on-chain settle if the vault has no strategy bound —
+    const strat = await readVaultStrategy(this.provider, vaultAddr, strategy.agentTokenId);
+    if (strat.root === '0x0000000000000000000000000000000000000000000000000000000000000000') {
+      log.warn('settleOnChain skipped: no strategy set on vault', { tokenId: strategy.agentTokenId.toString() });
+      return { status: 'skipped', reason: 'no strategy set on vault' };
+    }
     const vaultTc = this.getVaultContract("write");
     const tx = await vaultTc.contract.execute(
       strategy.agentTokenId,

@@ -19,14 +19,15 @@ export interface TickStorageInfo {
 }
 
 export interface TickExecution {
-  success: boolean;
+  success?: boolean;
+  status?: "success" | "skipped";
+  reason?: string;
   txHash?: `0x${string}`;
   action?: string;
   target?: `0x${string}`;
   result?: `0x${string}`;
   gasUsed?: bigint;
 }
-
 export interface TickResult {
   recommendation: TickRecommendation;
   rawModelOutput: string;

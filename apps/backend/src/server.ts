@@ -41,6 +41,11 @@ import { registerOrchestratorRoutes } from "./routers/orchestrator.js";
 import { createMintEncodeRouter } from "./routers/mint-encode.js";
 import { createArchiveQueryRouter } from "./routers/archive-query.js";
 import { createArchiveJobsRouter } from "./routers/archive-jobs.js";
+import { createSkillEvmRouter } from "./routers/skill-evm.js";
+import { createSkillStocksRouter } from "./routers/skill-stocks.js";
+import { createSkillOsintRouter } from "./routers/skill-osint.js";
+import { createSkillUnbrokerRouter } from "./routers/skill-unbroker.js";
+import { createSkillOssForensicsRouter } from "./routers/skill-oss-forensics.js";
 import {
   chatBodySchema,
   royaltySchema,
@@ -127,7 +132,13 @@ export function startServer(config: ServerConfig): {
       methods: ["GET", "POST"],
     }),
   );
-  app.use(createApiKeyAuth(config.env?.AXIOM_API_KEY));
+  app.use(
+    createApiKeyAuth(
+      config.env?.AXIOM_API_KEY,
+      ["/health"],
+      process.env.NODE_ENV !== "production",
+    ),
+  );
   const rateLimitMax = Number.parseInt(
     process.env.AXIOM_RATE_LIMIT_MAX ?? "100",
     10,
@@ -320,6 +331,11 @@ export function startServer(config: ServerConfig): {
 
   app.use(createArchiveQueryRouter(config));
   app.use(createArchiveJobsRouter(config));
+  app.use(createSkillEvmRouter(config));
+  app.use(createSkillStocksRouter(config));
+  app.use(createSkillOsintRouter(config));
+  app.use(createSkillUnbrokerRouter(config));
+  app.use(createSkillOssForensicsRouter(config));
 
   app.get("/v1/routes", (_req: Request, res: Response) => {
     res.json({ routes: REGISTERED_ROUTES });
@@ -409,6 +425,7 @@ export function startServer(config: ServerConfig): {
     },
     config,
   );
+  // NOTE: no frontend hook consumes this; backend/bench-only vault execution encode.
   createRoute(
     paymentRouter,
     {
@@ -416,7 +433,7 @@ export function startServer(config: ServerConfig): {
       schema: vaultExecuteSchema,
       requireId: true,
       requireAddress: "vault",
-      consumer: "useVault",
+      consumer: "cli-only",
       description: "Execute a transaction from a strategy vault",
     },
     async (parsed, _req, _res, { id, config: cfg }) => {
@@ -453,7 +470,7 @@ export function startServer(config: ServerConfig): {
       schema: vaultDepositEncodeSchema,
       requireId: true,
       requireAddress: "vault",
-      consumer: "useVault",
+      consumer: "chat-runtime",
       description: "Encode vault deposit transaction (value = native OG amount)",
     },
     async (parsed: { amount: string }, _req, _res, { id, config: cfg }) => {
@@ -481,7 +498,7 @@ export function startServer(config: ServerConfig): {
       schema: vaultWithdrawEncodeSchema,
       requireId: true,
       requireAddress: "vault",
-      consumer: "useVault",
+      consumer: "chat-runtime",
       description: "Encode vault withdraw transaction (amount in native OG)",
     },
     async (parsed: { amount: string }, _req, _res, { id, config: cfg }) => {
@@ -501,13 +518,13 @@ export function startServer(config: ServerConfig): {
     },
     config,
   );
+  // NOTE: no frontend hook consumes this; agent_metadata is read on-chain via chat-runtime, not this route.
 
   createRoute(
     paymentRouter,
     {
       path: "/v1/agents/:id/metadata",
-      requireId: true,
-      consumer: "useAgent",
+      consumer: "cli-only",
       description: "Encode transaction to update agent metadata on-chain",
     },
     async (_parsed, req, res, { id, config: cfg }) => {

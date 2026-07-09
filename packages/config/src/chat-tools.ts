@@ -7,7 +7,8 @@ export type ChatToolClass =
   | "read"
   | "encode"
   | "orchestrate"
-  | "archive";
+  | "archive"
+  | "skill";
 
 export type ChatToolFriction = "low" | "medium" | "high";
 
@@ -23,6 +24,39 @@ export interface ChatToolSpec {
   encodeOnly?: boolean;
   friction: ChatToolFriction;
 }
+
+/** Skill tool definitions — compact: name, label, hint, wallet/token flags, friction. */
+const SKILL_TOOL_DEFS = [
+  { name: "evm_wallet",                label: "EVM Wallet",         hint: "Manage EVM wallet balance, address, and network",             requiresWallet: false, requiresTokenId: false, friction: "low" as const },
+  { name: "evm_multichain",            label: "EVM Multichain",     hint: "Query and interact across multiple EVM chains",               requiresWallet: false, requiresTokenId: false, friction: "medium" as const },
+  { name: "evm_tx",                    label: "EVM Transaction",    hint: "Build, sign, and broadcast EVM transactions",                 requiresWallet: true,  requiresTokenId: false, friction: "medium" as const },
+  { name: "evm_token",                 label: "EVM Token",          hint: "Query ERC-20/721 token balances, metadata, and transfers",    requiresWallet: false, requiresTokenId: false, friction: "low" as const },
+  { name: "evm_gas",                   label: "EVM Gas",            hint: "Estimate gas prices and optimize transaction fees",           requiresWallet: false, requiresTokenId: false, friction: "low" as const },
+  { name: "evm_whale",                 label: "EVM Whale",          hint: "Track large EVM wallet movements and whale activity",         requiresWallet: false, requiresTokenId: false, friction: "medium" as const },
+  { name: "evm_contract",              label: "EVM Contract",       hint: "Read and write to EVM smart contracts via ABI",               requiresWallet: false, requiresTokenId: false, friction: "medium" as const },
+  { name: "evm_allowance",             label: "EVM Allowance",      hint: "Check and manage ERC-20 token approvals and allowances",      requiresWallet: true,  requiresTokenId: false, friction: "medium" as const },
+  { name: "unbroker_simulate",         label: "Unbroker Simulate",  hint: "Simulate an unbroker trade before execution",                 requiresWallet: false, requiresTokenId: false, friction: "low" as const },
+  { name: "unbroker_route",            label: "Unbroker Route",     hint: "Find optimal swap routes across DEX aggregators",             requiresWallet: false, requiresTokenId: false, friction: "low" as const },
+  { name: "unbroker_analyze",          label: "Unbroker Analyze",   hint: "Analyze swap quotes, slippage, and MEV risk",                 requiresWallet: false, requiresTokenId: false, friction: "medium" as const },
+  { name: "unbroker_execute",          label: "Unbroker Execute",   hint: "Execute an unbroker swap on-chain",                           requiresWallet: true,  requiresTokenId: false, friction: "high" as const },
+  { name: "stocks_quote",              label: "Stocks Quote",       hint: "Get real-time stock price quotes",                            requiresWallet: false, requiresTokenId: false, friction: "low" as const },
+  { name: "stocks_search",             label: "Stocks Search",      hint: "Search for stock tickers and company names",                  requiresWallet: false, requiresTokenId: false, friction: "low" as const },
+  { name: "stocks_history",            label: "Stocks History",     hint: "Fetch historical OHLCV price data for equities",              requiresWallet: false, requiresTokenId: false, friction: "low" as const },
+  { name: "stocks_compare",            label: "Stocks Compare",     hint: "Compare fundamentals and performance across tickers",         requiresWallet: false, requiresTokenId: false, friction: "medium" as const },
+  { name: "stocks_crypto",             label: "Stocks Crypto",      hint: "Get cryptocurrency price quotes and market data",             requiresWallet: false, requiresTokenId: false, friction: "low" as const },
+  { name: "osint_sec_edgar",           label: "SEC EDGAR",          hint: "Search SEC filings, 10-K, 10-Q, and 8-K via EDGAR",          requiresWallet: false, requiresTokenId: false, friction: "low" as const },
+  { name: "osint_usaspending",         label: "USAspending",        hint: "Query US federal spending and contract awards",               requiresWallet: false, requiresTokenId: false, friction: "medium" as const },
+  { name: "osint_ofac_sdn",            label: "OFAC SDN",           hint: "Check entities against OFAC sanctions (SDN) list",            requiresWallet: false, requiresTokenId: false, friction: "low" as const },
+  { name: "osint_opencorporates",      label: "OpenCorporates",     hint: "Look up corporate registration and officer data",             requiresWallet: false, requiresTokenId: false, friction: "low" as const },
+  { name: "osint_entity_resolve",      label: "Entity Resolve",     hint: "Resolve and cross-reference entities across OSINT sources",   requiresWallet: false, requiresTokenId: false, friction: "medium" as const },
+  { name: "osint_courtlistener",       label: "CourtListener",      hint: "Search US federal and state court opinions and filings",      requiresWallet: false, requiresTokenId: false, friction: "medium" as const },
+  { name: "oss_forensics_investigate", label: "OSS Investigate",    hint: "Investigate an open-source project for supply-chain risks",   requiresWallet: false, requiresTokenId: false, friction: "medium" as const },
+  { name: "oss_forensics_commits",     label: "OSS Commits",        hint: "Analyze commit history for suspicious patterns",              requiresWallet: false, requiresTokenId: false, friction: "low" as const },
+  { name: "oss_forensics_ioc",         label: "OSS IOC",            hint: "Extract indicators of compromise from repositories",         requiresWallet: false, requiresTokenId: false, friction: "medium" as const },
+  { name: "oss_forensics_audit",       label: "OSS Audit",          hint: "Full supply-chain audit of dependencies and transitive deps", requiresWallet: false, requiresTokenId: false, friction: "high" as const },
+] as const;
+
+const SKILL_TOOLS: ChatToolSpec[] = SKILL_TOOL_DEFS.map((t) => ({ ...t, class: "skill" as const }));
 
 export const CHAT_TOOL_CATALOG: readonly ChatToolSpec[] = [
   {
@@ -136,6 +170,7 @@ export const CHAT_TOOL_CATALOG: readonly ChatToolSpec[] = [
     requiresTokenId: false,
     friction: "medium",
   },
+  ...SKILL_TOOLS,
 ] as const;
 
 export type ChatToolName = (typeof CHAT_TOOL_CATALOG)[number]["name"];
@@ -158,6 +193,7 @@ export const CHAT_TOOL_CLASS_LABELS: Record<ChatToolClass, string> = {
   encode: "Encode",
   orchestrate: "Orchestrate",
   archive: "Archive",
+  skill: "Hermes Skills (EVM, DeFi, OSINT, Forensics)",
 };
 
 export function toolsByClass(
@@ -178,6 +214,10 @@ export function isReadTool(name: string): boolean {
   return getChatToolSpec(name)?.class === "read";
 }
 
+export function isSkillTool(name: string): boolean {
+  return getChatToolSpec(name)?.class === "skill";
+}
+
 export function chatToolLabels(): Record<string, string> {
   return Object.fromEntries(
     CHAT_TOOL_CATALOG.map((t) => [t.name, t.label]),
@@ -189,4 +229,5 @@ export const CHAT_BENCH_READ_TOOLS = toolNamesByClass("read");
 export const CHAT_BENCH_ENCODE_TOOLS = toolNamesByClass("encode");
 export const CHAT_BENCH_ARCHIVE_TOOLS = toolNamesByClass("archive");
 export const CHAT_BENCH_ORCHESTRATE_TOOLS = toolNamesByClass("orchestrate");
+export const CHAT_BENCH_SKILL_TOOLS = toolNamesByClass("skill");
 export const CHAT_BENCH_ALL_TOOL_NAMES = CHAT_TOOL_CATALOG.map((t) => t.name);

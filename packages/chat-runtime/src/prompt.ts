@@ -22,6 +22,8 @@ export function buildSystemPrompt(session: ChatSessionContext): string {
     `ENCODE — ${CHAT_TOOL_CLASS_LABELS.encode} (wallet signs):\n${byClass("encode")}`,
     `ORCHESTRATE — ${CHAT_TOOL_CLASS_LABELS.orchestrate}:\n${byClass("orchestrate")}`,
     `ARCHIVE — ${CHAT_TOOL_CLASS_LABELS.archive} (use archive_confirm_deletion before full lookup):\n${byClass("archive")}`,
+    `SKILL — ${CHAT_TOOL_CLASS_LABELS.skill}:\n${byClass("skill")}`,
+    "Skills: EVM reads across 8 chains; Stocks via Yahoo Finance; OSINT cross-references public records; OSS Forensics investigates supply chain; Unbroker verifies transfers.",
     "Prefer /closest-style archive tools for single URLs; use simulate_tick before execute_tick when unsure.",
   ]
     .filter(Boolean)

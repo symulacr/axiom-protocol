@@ -20,7 +20,7 @@ export function registerEventRoutes(
       method: "post",
       path: "/v1/events",
       schema: eventBodySchema,
-      consumer: "sink.ts",
+      consumer: "indexer",
       description: "Append event to store (indexer)",
     },
     async (parsed, _req, _res) => {

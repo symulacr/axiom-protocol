@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { keccak256, toBytes, toHex } from "viem";
-import { ORACLE_URL } from "../config/env.js";
+import { API_KEY, ORACLE_URL } from "../config/env.js";
 import { humanizeError } from "../utils/format.js";
 
 export type MintWizardStep = "describe" | "oracle" | "mint";
@@ -28,7 +28,7 @@ export function useMintWizard() {
       const hash = dataHash || deriveDataHash();
       const res = await fetch(`${ORACLE_URL}/v1/agents/mint`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", ...(API_KEY ? { "x-api-key": API_KEY } : {}) },
         body: JSON.stringify({ dataHash: hash }),
       });
       if (!res.ok) {

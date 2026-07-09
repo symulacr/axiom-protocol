@@ -16,7 +16,6 @@ export const AGENT_NFT_ABI = [
   "function intelligentDataOf(uint256 tokenId) view returns ((string dataDescription, bytes32 dataHash)[])",
   "function verifier() view returns (address)",
   "function storageInfo() view returns (string)",
-  "function updateVerifier(address newVerifier)",
   "function setMintFee(uint256 newFee)",
   "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)",
   "event VerifierUpdated(address indexed oldVerifier, address indexed newVerifier)",

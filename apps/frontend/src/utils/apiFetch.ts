@@ -56,7 +56,7 @@ export async function apiFetch<T>(
         headers: {
           "content-type": "application/json",
           accept: "application/json",
-          "x-api-key": API_KEY,
+          ...(API_KEY ? { "x-api-key": API_KEY } : {}),
           ...((init.headers as Record<string, string>) ?? {}),
         },
       });
@@ -125,11 +125,11 @@ export async function apiFetchResponse(
     const res = await fetch(`${BACKEND_URL}${path}`, {
       ...init,
       signal: combinedSignal,
-      headers: {
-        "content-type": "application/json",
-        "x-api-key": API_KEY,
-        ...((init.headers as Record<string, string>) ?? {}),
-      },
+        headers: {
+          "content-type": "application/json",
+          ...(API_KEY ? { "x-api-key": API_KEY } : {}),
+          ...((init.headers as Record<string, string>) ?? {}),
+        },
     });
 
     if (!res.ok) {

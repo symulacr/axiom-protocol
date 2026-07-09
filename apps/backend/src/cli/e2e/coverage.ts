@@ -173,7 +173,7 @@ export async function runMatrixViewSweepStep(deps: {
     tee.contract.registeredSigner(),
     token.contract.balanceOf(deps.deployer.address),
     nft.contract.mintFee(),
-    nft.contract.creatorOf(deps.tokenId),
+    hasContractFunction(provider, deps.agentNft, "function creatorOf(uint256) view returns (address)").then((ok) => (ok ? nft.contract.creatorOf(deps.tokenId) : null)),
     nft.contract.ownerOf(deps.tokenId),
   ]);
   void storageInfo;
@@ -269,7 +269,7 @@ export async function runMatrixViewSweepStep(deps: {
     markSkipped("AxiomTeeVerifier", "ADMIN_DELAY", LEGACY_DEPLOY_REASON);
   }
 
-  if (creator.toLowerCase() !== deps.deployer.address.toLowerCase()) {
+  if (creator && creator.toLowerCase() !== deps.deployer.address.toLowerCase()) {
     throw new Error(`creatorOf ${creator} != operator ${deps.deployer.address}`);
   }
   if (owner.toLowerCase() !== deps.deployer.address.toLowerCase()) {

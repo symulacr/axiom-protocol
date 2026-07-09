@@ -22,7 +22,9 @@ export interface Eip712Domain {
 /** Default domain for Galileo testnet. Production MUST pass real chain id + verifier address. */
 export const DEFAULT_EIP712_DOMAIN: Eip712Domain = {
   chainId: 16602n,
-  verifyingContract: "0xB27c73aD01f61Ec1FDC302dF2350326228F14c11",
+  // Canonical Galileo testnet verifier (confirmed from DEPLOYED_ADDRESSES.teeVerifier in addresses.ts).
+  // Production MUST override this default via buildEip712Domain(config.addresses.verifier).
+  verifyingContract: "0x60B9d53F5410b6586D2D5395D4A309E3C9E5595A",
 };
 
 /** Construct an Eip712Domain from a numeric chain id and verifier address. */
