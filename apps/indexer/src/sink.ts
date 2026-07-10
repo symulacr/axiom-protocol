@@ -24,10 +24,6 @@ export interface HttpEventSinkOptions {
   maxRetries?: number;
 }
 
-export interface HttpEventSinkResult {
-  status: number;
-}
-
 function resolveUrl(backendUrl: string) {
   return `${backendUrl.replace(/\/+$/, "")}/v1/events`;
 }

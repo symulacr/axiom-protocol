@@ -51,36 +51,6 @@ export type EventPayload =
 
 export type StoredEventPayload = EventPayload;
 
-function isPlainObject(val: unknown): val is Record<string, unknown> {
-  return val !== null && typeof val === "object" && !Array.isArray(val);
-}
-
-function hasStringFields(
-  o: Record<string, unknown>,
-  keys: readonly string[],
-): boolean {
-  return keys.every((k) => typeof o[k] === "string");
-}
-
-export function isEventPayload(val: unknown): val is EventPayload {
-  if (!isPlainObject(val)) return false;
-
-  if (typeof val.tokenId === "string" && typeof val.action === "string") {
-    return true;
-  }
-  if (hasStringFields(val, ["tokenId", "from", "to"])) return true;
-  if (hasStringFields(val, ["tokenId", "from", "amount"])) return true;
-  if (hasStringFields(val, ["tokenId", "to", "amount"])) return true;
-  if (hasStringFields(val, ["tokenId", "strategyRoot", "dailyLimit"])) {
-    return true;
-  }
-  if (hasStringFields(val, ["tokenId", "actionHash", "target", "value"])) {
-    return true;
-  }
-
-  return true;
-}
-
 export function payloadField(
   payload: unknown,
   key: string,

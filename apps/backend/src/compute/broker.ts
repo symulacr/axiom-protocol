@@ -1,10 +1,7 @@
 import { FetchRequest, JsonRpcProvider, Wallet } from "ethers";
 import {
-  CONTRACT_ADDRESSES,
   createReadOnlyInferenceBroker,
   createZGComputeNetworkBroker,
-  HARDHAT_CHAIN_ID,
-  MAINNET_CHAIN_ID,
   type ReadOnlyInferenceBroker,
   type ZGComputeNetworkBroker,
 } from "@0gfoundation/0g-compute-ts-sdk";
@@ -74,16 +71,6 @@ export async function getReadOnlyBroker(
 
 const _brokerCache = new Map<number, ZGComputeNetworkBroker>();
 
-export function clearBrokerCache(chainId?: number): void {
-  if (chainId !== undefined) {
-    _readOnlyCache.delete(chainId);
-    _brokerCache.delete(chainId);
-  } else {
-    _readOnlyCache.clear();
-    _brokerCache.clear();
-  }
-}
-
 export async function getBroker(
   signer: Wallet,
   chainId?: number,
@@ -94,18 +81,6 @@ export async function getBroker(
   const broker = await createZGComputeNetworkBroker(signer);
   _brokerCache.set(cid, broker);
   return broker;
-}
-
-
-export function getContractAddressesForChain(chainId: number): {
-  ledger: string;
-  inference: string;
-  fineTuning: string;
-} {
-  if (chainId === Number(MAINNET_CHAIN_ID)) return CONTRACT_ADDRESSES.mainnet;
-  if (chainId === Number(HARDHAT_CHAIN_ID)) return CONTRACT_ADDRESSES.hardhat;
-  if (chainId === GALILEO_CHAIN_ID) return CONTRACT_ADDRESSES.testnet;
-  return CONTRACT_ADDRESSES.testnet;
 }
 
 export async function ensureProviderFunded(
