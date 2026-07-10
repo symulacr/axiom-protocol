@@ -1,28 +1,17 @@
+import { Router } from "express";
 import { ethers } from "ethers";
-import {
-  createRoute,
-  type RouteOptions,
-  type RouteHandler,
-} from "./route-factory.js";
-import { getSharedProvider, ser, createLogger } from "../skills/shared.js";
-import { AGENT_NFT_ABI } from "@axiom/config/abis";
 import { z } from "zod";
+import { AGENT_NFT_ABI } from "@axiom/config/abis";
+import { HTTP } from "@axiom/config";
+import { getSharedProvider, ser, createLogger, createSkillRouter } from "../skills/shared.js";
 import { sendError } from "../utils/response.js";
 import type { ServerConfig } from "../server.js";
-import { Router } from "express";
 const log = createLogger("skills:unbroker");
 
 export function createSkillUnbrokerRouter(config: ServerConfig): Router {
-  const router = Router();
+  const { router, route } = createSkillRouter(config);
   const provider = getSharedProvider();
   const getNft = (address: string) => new ethers.Contract(address, AGENT_NFT_ABI, provider);
-
-  const route = <S extends z.ZodTypeAny | undefined = undefined>(
-    opts: RouteOptions<S>,
-    handler: RouteHandler<S extends z.ZodTypeAny ? z.infer<S> : unknown>,
-  ): void => {
-    createRoute(router, { consumer: "chat-runtime", ...opts }, handler, config);
-  };
 
   const unbrokerSchema = z.object({
     tokenId: z.string().regex(/^\d+$/),
@@ -38,10 +27,10 @@ export function createSkillUnbrokerRouter(config: ServerConfig): Router {
       schema: unbrokerSchema,
       description: "Simulate an ERC-7857 transfer without sending",
     },
-    async (parsed: { tokenId: string; to: string }, _req, res) => {
+    async (parsed: z.infer<typeof unbrokerSchema>, _req, res) => {
       const { tokenId, to } = parsed;
       const nftAddr = config.addresses?.agentNft;
-      if (!nftAddr) { sendError(res, 503, "AgentNFT address not configured"); return; }
+      if (!nftAddr) { sendError(res, HTTP.SERVICE_UNAVAILABLE, "AgentNFT address not configured"); return; }
       const nft = getNft(nftAddr);
       const [owner, data] = await Promise.all([
         nft.ownerOf!(BigInt(tokenId)),
@@ -61,7 +50,7 @@ export function createSkillUnbrokerRouter(config: ServerConfig): Router {
       schema: unbrokerSchema,
       description: "Compare transfer path options",
     },
-    async (parsed: { tokenId: string; to: string }) => {
+    async (parsed: z.infer<typeof unbrokerSchema>) => {
       return ser({
         tokenId: parsed.tokenId, to: parsed.to,
         directGas: "25000", oracleGas: "45000",
@@ -77,10 +66,10 @@ export function createSkillUnbrokerRouter(config: ServerConfig): Router {
       schema: unbrokerAnalyzeSchema,
       description: "Validate transfer proof and compute safety score",
     },
-    async (parsed: { tokenId: string; to: string; accessProof?: { dataHash: string; validUntil: number } }, _req, res) => {
+    async (parsed: z.infer<typeof unbrokerAnalyzeSchema>, _req, res) => {
       const { tokenId, to, accessProof } = parsed;
       const nftAddr = config.addresses?.agentNft;
-      if (!nftAddr) { sendError(res, 503, "AgentNFT address not configured"); return; }
+      if (!nftAddr) { sendError(res, HTTP.SERVICE_UNAVAILABLE, "AgentNFT address not configured"); return; }
       const nft = getNft(nftAddr);
       let score = 100;
       const issues: string[] = [];
@@ -106,7 +95,7 @@ export function createSkillUnbrokerRouter(config: ServerConfig): Router {
       schema: unbrokerSchema,
       description: "Execute verified transfer",
     },
-    async (parsed: { tokenId: string; to: string }) => {
+    async (parsed: z.infer<typeof unbrokerSchema>) => {
       return ser({ tokenId: parsed.tokenId, to: parsed.to, status: "queued", note: "Transfer execution requires wallet signing via encode tools" });
     },
   );

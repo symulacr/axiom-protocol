@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import type { ReactElement, ReactNode } from "react";
 import type { AxiomEvent } from "../hooks/useEventHistory.js";
 import { useMediaQuery } from "../hooks/useMediaQuery.js";
-import { COLORS } from "./ui.js";
+import { COLORS, Button } from "./ui.js";
 
 export type EventRenderer = (
   event: AxiomEvent,
@@ -148,21 +148,9 @@ export const EventTimeline = React.memo(function EventTimeline({
       })}
       {hasMore && !expanded && (
         <div style={{ gridColumn: "1 / -1", textAlign: "center" }}>
-          <button
-            type="button"
-            onClick={() => setExpanded(true)}
-            style={{
-              background: "none",
-              border: `1px solid ${COLORS.border}`,
-              borderRadius: "var(--radius-md)",
-              color: COLORS.teal,
-              cursor: "pointer",
-              fontSize: "var(--text-sm)",
-              padding: "0.375rem 1rem",
-            }}
-          >
+          <Button variant="teal" onClick={() => setExpanded(true)}>
             Show all {events.length} events
-          </button>
+          </Button>
         </div>
       )}
     </section>

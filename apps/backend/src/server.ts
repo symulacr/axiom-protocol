@@ -8,8 +8,10 @@ import express, {
 import helmet from "helmet";
 import * as Sentry from "@sentry/node";
 import cors from "cors";
+import compression from "compression";
 import rateLimit from "express-rate-limit";
 import { createServer, type Server as HttpServer } from "node:http";
+import { readFileSync } from "node:fs";
 import { WebSocketServer, type WebSocket } from "ws";
 import { ethers, type Wallet } from "ethers";
 import { type ChatCompletionMessageParam, type ChatCompletionTool } from "openai/resources/chat/completions";
@@ -27,7 +29,7 @@ import { AGENT_NFT_ABI, VAULT_ABI } from "@axiom/config/abis";
 
 import { StrategyRunner } from "./orchestrator/index.js";
 import { DefaultSignerOracleClient } from "./oracle/client.js";
-import { type Eip712Domain, DEFAULT_EIP712_DOMAIN, buildEip712Domain } from "@axiom/config";
+import { HTTP, type Eip712Domain, DEFAULT_EIP712_DOMAIN, buildEip712Domain } from "@axiom/config";
 import { getSharedProvider } from "./provider.js";
 import { createApiKeyAuth } from "@axiom/config/middleware/auth";
 import { getEventStore } from "./events/store.js";
@@ -67,6 +69,39 @@ import { TTLCache } from "./utils/cache.js";
 
 const log = createLogger("server");
 
+const PKG_VERSION = (JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { version: string }).version;
+
+function shortSigner(addr: string): string {
+  return addr.length > 10 ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : addr;
+}
+
+REGISTERED_ROUTES.push(
+  { method: "GET", path: "/v1/compute/providers", consumer: "useCompute", description: "List compute providers" },
+  { method: "POST", path: "/v1/chat/completions", consumer: "chat-runtime", description: "Stream chat completions" },
+  { method: "GET", path: "/v1/routes", consumer: "meta", description: "List mounted routes" },
+  { method: "GET", path: "/health", consumer: "health", description: "Health check" },
+  { method: "GET", path: "/health/live", consumer: "health", description: "Liveness probe" },
+  { method: "GET", path: "/v1/stream", consumer: "ws", description: "WebSocket event stream (upgrade)" },
+);
+
+function isUpstreamTransportError(err: unknown): boolean {
+  const e = err as { code?: string; cause?: { code?: string } } | null;
+  const code = e?.code ?? e?.cause?.code;
+  if (typeof code !== "string") return false;
+  return [
+    "ECONNREFUSED",
+    "ENOTFOUND",
+    "ECONNRESET",
+    "ETIMEDOUT",
+    "ETIME",
+    "EAI_AGAIN",
+    "ECONNABORTED",
+    "UND_ERR_CONNECT_TIMEOUT",
+    "UND_ERR_SOCKET",
+    "UND_ERR_HEADERS_TIMEOUT",
+  ].includes(code);
+}
+
 export interface ServerConfig {
   bind: string;
   port: number;
@@ -90,6 +125,18 @@ export function startServer(config: ServerConfig): {
   const app = express();
   app.set("trust proxy", 1);
   app.use(express.json({ limit: "2mb" }));
+  app.use(
+    compression({
+      filter: (req, res) => {
+        if (req.headers["x-no-compression"] !== undefined) return false;
+        const type = res.getHeader("Content-Type");
+        if (typeof type === "string" && type.includes("text/event-stream")) {
+          return false;
+        }
+        return true;
+      },
+    }),
+  );
 
   app.use((req, res, next) => {
     const requestId = crypto.randomUUID();
@@ -103,6 +150,7 @@ export function startServer(config: ServerConfig): {
     res.on("finish", () => {
       log.info(`${req.method} ${req.originalUrl} ${res.statusCode}`, {
         duration: `${Date.now() - start}ms`,
+        requestId: res.locals.requestId,
       });
     });
     next();
@@ -131,11 +179,12 @@ export function startServer(config: ServerConfig): {
       methods: ["GET", "POST"],
     }),
   );
+  // Auth is required by default; only AXIOM_DISABLE_AUTH=true opts out (never NODE_ENV).
   app.use(
     createApiKeyAuth(
       config.env?.AXIOM_API_KEY,
       ["/health"],
-      process.env.NODE_ENV !== "production",
+      process.env.AXIOM_DISABLE_AUTH === "true",
     ),
   );
   const rateLimitMax = Number.parseInt(
@@ -153,6 +202,7 @@ export function startServer(config: ServerConfig): {
   app.set("json replacer", bigintReplacer);
 
   const ogChainId = config.env?.AXIOM_CHAIN_ID ?? GALILEO_CHAIN_ID;
+  const startedAt = Date.now();
   const oracle = new DefaultSignerOracleClient({
     baseUrl: config.oracleBaseUrl,
     apiKey: config.env?.AXIOM_API_KEY,
@@ -191,23 +241,34 @@ export function startServer(config: ServerConfig): {
     : null;
 
   let payment: PaymentProcessorClient | null = null;
+  let paymentPromise: Promise<PaymentProcessorClient> | null = null;
   async function getPayment(): Promise<PaymentProcessorClient> {
     if (payment) return payment;
-    const addr = config.addresses?.paymentProcessor;
-    if (!addr) throw new Error("PaymentProcessor address not configured");
-    const stub = new TypedContract<{ paymentToken: () => Promise<string> }>(
-      addr,
-      ["function paymentToken() view returns (address)"],
-      provider,
-    );
-    const tokenAddr = await stub.contract.paymentToken();
-    payment = new PaymentProcessorClient({
-      address: addr,
-      signer: config.signer,
-      provider,
-      paymentTokenAddress: tokenAddr,
-    });
-    return payment;
+    if (!paymentPromise) {
+      paymentPromise = (async () => {
+        const addr = config.addresses?.paymentProcessor;
+        if (!addr) throw new Error("PaymentProcessor address not configured");
+        const stub = new TypedContract<{ paymentToken: () => Promise<string> }>(
+          addr,
+          ["function paymentToken() view returns (address)"],
+          provider,
+        );
+        const tokenAddr = await stub.contract.paymentToken();
+        const client = new PaymentProcessorClient({
+          address: addr,
+          signer: config.signer,
+          provider,
+          paymentTokenAddress: tokenAddr,
+        });
+        payment = client;
+        paymentPromise = null;
+        return client;
+      })().catch((err) => {
+        paymentPromise = null;
+        throw err;
+      });
+    }
+    return paymentPromise;
   }
 
   const HEARTBEAT_INTERVAL = 30_000;
@@ -242,9 +303,10 @@ export function startServer(config: ServerConfig): {
         const routerBaseUrl = getComputeBaseUrl();
         const resp = await fetch(`${routerBaseUrl}/models`, {
           headers: { "X-Request-ID": res.locals.requestId as string },
+          signal: AbortSignal.timeout(10_000),
         });
         if (!resp.ok) {
-          res.status(502).json({
+          res.status(HTTP.BAD_GATEWAY).json({
             error: `Compute router returned ${resp.status}`,
             code: "UPSTREAM_ERROR",
           });
@@ -294,29 +356,56 @@ export function startServer(config: ServerConfig): {
         const client = await createRouterClient(resolvedModel, {
           signer: config.signer,
         });
-        const openaiRes = await client.chat.completions.create({
-          model: resolvedModel,
-          messages: messages as ChatCompletionMessageParam[],
-          tools: tools as ChatCompletionTool[] | undefined,
-          stream: true,
-          max_tokens: 2048,
-        });
+        const streamAbort = new AbortController();
+        const streamTimeoutMs = Number.parseInt(
+          process.env.AXIOM_CHAT_STREAM_TIMEOUT_MS ?? "",
+          10,
+        );
+        const upstreamSignal =
+          Number.isFinite(streamTimeoutMs) && streamTimeoutMs > 0
+            ? AbortSignal.timeout(streamTimeoutMs)
+            : undefined;
+        const streamSignal = upstreamSignal
+          ? AbortSignal.any([streamAbort.signal, upstreamSignal])
+          : streamAbort.signal;
+        const openaiRes = await client.chat.completions.create(
+          {
+            model: resolvedModel,
+            messages: messages as ChatCompletionMessageParam[],
+            tools: tools as ChatCompletionTool[] | undefined,
+            stream: true,
+            max_tokens: 2048,
+          },
+          { signal: streamSignal },
+        );
         res.setHeader("Content-Type", "text/event-stream");
         res.setHeader("Cache-Control", "no-cache");
         res.setHeader("Connection", "keep-alive");
-        let clientClosed = false;
-        req.on("close", () => {
-          clientClosed = true;
-        });
+        res.flushHeaders();
+        req.on("close", () => streamAbort.abort());
+        const writeChunk = (chunk: string): boolean => {
+          try {
+            return res.write(chunk);
+          } catch {
+            streamAbort.abort();
+            req.destroy();
+            return false;
+          }
+        };
         for await (const chunk of openaiRes) {
-          if (clientClosed || res.writableEnded) break;
-          res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+          if (res.writableEnded) break;
+          if (!writeChunk(`data: ${JSON.stringify(chunk)}\n\n`)) break;
         }
         if (!res.writableEnded) {
-          res.write("data: [DONE]\n\n");
+          writeChunk("data: [DONE]\n\n");
           res.end();
         }
       } catch (err) {
+        if (res.headersSent || res.writableEnded) {
+          res.end();
+          req.destroy();
+          return;
+        }
         next(err);
       }
     },
@@ -337,7 +426,16 @@ export function startServer(config: ServerConfig): {
   app.use(createSkillOssForensicsRouter(config));
 
   app.get("/v1/routes", (_req: Request, res: Response) => {
-    res.json({ routes: REGISTERED_ROUTES });
+    res.json({
+      routes: REGISTERED_ROUTES,
+      meta: {
+        version: PKG_VERSION,
+        chainId: ogChainId,
+        signer: shortSigner(config.signer.address),
+        startedAt,
+        uptimeMs: Date.now() - startedAt,
+      },
+    });
   });
 
   const paymentRouter = express.Router();
@@ -351,18 +449,15 @@ export function startServer(config: ServerConfig): {
       consumer: "usePayment",
       description: "Get agent earnings by token ID",
     },
-    async (_parsed, _req, res, { id, config: cfg }) => {
-      const nftAddr = cfg.addresses?.agentNft;
-      if (!nftAddr) {
-        sendError(res, 500, "AgentNFT address not configured");
+    async (_parsed, _req, res, { id }) => {
+      res.setHeader("Cache-Control", "public, max-age=300");
+      if (!nftTc) {
+        sendError(res, HTTP.SERVICE_UNAVAILABLE, "AgentNFT address not configured");
         return;
       }
-      const nftTc = new TypedContract<{
-        creatorOf(tokenId: bigint): Promise<string>;
-      }>(nftAddr, AGENT_NFT_ABI, provider);
       const creator = await nftTc.contract.creatorOf(BigInt(id));
       if (!creator || creator === ethers.ZeroAddress) {
-        sendError(res, 404, "Agent creator not registered for token");
+        sendError(res, HTTP.NOT_FOUND, "Agent creator not registered for token");
         return;
       }
       const client = await getPayment();
@@ -405,7 +500,8 @@ export function startServer(config: ServerConfig): {
       consumer: "usePayment",
       description: "Payment contract configuration (cached 5min)",
     },
-    async () => {
+    async (_parsed, _req, res) => {
+      res.setHeader("Cache-Control", "public, max-age=300");
       const cached = paymentConfigCache.get("config");
       if (cached) return cached;
       const client = await getPayment();
@@ -437,7 +533,7 @@ export function startServer(config: ServerConfig): {
     async (parsed, _req, _res, { id, config: cfg }) => {
       const vaultAddr = cfg.addresses?.vault;
       if (!vaultAddr) {
-        _res.status(500).json({ error: "vault address not configured" });
+        sendError(_res, HTTP.INTERNAL, "vault address not configured", "VAULT_NOT_CONFIGURED");
         return;
       }
       const { target, value, data, proof } = parsed as z.infer<
@@ -478,7 +574,7 @@ export function startServer(config: ServerConfig): {
     async (parsed: { amount: string }, _req, _res, { id, config: cfg }) => {
       const vaultAddr = cfg.addresses?.vault;
       if (!vaultAddr) {
-        _res.status(500).json({ error: "vault address not configured" });
+        sendError(_res, HTTP.INTERNAL, "vault address not configured", "VAULT_NOT_CONFIGURED");
         return;
       }
       const iface = new ethers.Interface([
@@ -510,7 +606,7 @@ export function startServer(config: ServerConfig): {
     async (parsed: { amount: string }, _req, _res, { id, config: cfg }) => {
       const vaultAddr = cfg.addresses?.vault;
       if (!vaultAddr) {
-        _res.status(500).json({ error: "vault address not configured" });
+        sendError(_res, HTTP.INTERNAL, "vault address not configured", "VAULT_NOT_CONFIGURED");
         return;
       }
       const iface = new ethers.Interface([
@@ -539,12 +635,12 @@ export function startServer(config: ServerConfig): {
     async (_parsed, req, res, { id, config: cfg }) => {
       const nftAddr = cfg.addresses?.agentNft;
       if (!nftAddr) {
-        sendError(res, 500, "AgentNFT address not configured");
+        sendError(res, HTTP.INTERNAL, "AgentNFT address not configured");
         return;
       }
       const { datas } = req.body ?? {};
       if (!datas || !Array.isArray(datas)) {
-        sendError(res, 400, "Missing or invalid datas array");
+        sendError(res, HTTP.BAD_REQUEST, "Missing or invalid datas array");
         return;
       }
       const nftTc = new TypedContract<{
@@ -561,15 +657,24 @@ export function startServer(config: ServerConfig): {
 
   app.use(paymentRouter);
 
+  app.use((req: Request, res: Response) => {
+    if (req.path.startsWith("/v1/") || req.path.startsWith("/health")) {
+      sendError(res, HTTP.NOT_FOUND, `No ${req.method} route for ${req.path}`);
+      return;
+    }
+  });
+
   Sentry.setupExpressErrorHandler(app);
 
   app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-    log.error("Unhandled error", { error: err.message, stack: err.stack });
+    const requestId = res.locals.requestId;
+    log.error("Unhandled error", { error: err.message, stack: err.stack, requestId });
     if (err instanceof z.ZodError) {
-      res.status(400).json({
+      res.status(HTTP.BAD_REQUEST).json({
         error: "Validation failed",
         details: err.issues,
         code: "VALIDATION_ERROR",
+        requestId,
       });
       return;
     }
@@ -578,19 +683,20 @@ export function startServer(config: ServerConfig): {
         ? Number((err as Record<string, unknown>).status)
         : undefined;
     if (status && status >= 400 && status < 600) {
-      res.status(status).json({ error: err.message, code: `HTTP_${status}` });
+      res.status(status).json({ error: err.message, code: `HTTP_${status}`, requestId });
       return;
     }
-    const msg = err.message ?? "";
-    if (/oracle|0g/i.test(msg)) {
-      res
-        .status(502)
-        .json({ error: "Upstream service error", code: "UPSTREAM_ERROR" });
+    if (isUpstreamTransportError(err)) {
+      res.status(HTTP.BAD_GATEWAY).json({
+        error: "Upstream service error",
+        code: "UPSTREAM_ERROR",
+        requestId,
+      });
       return;
     }
     res
-      .status(500)
-      .json({ error: "Internal server error", code: "INTERNAL_ERROR" });
+      .status(HTTP.INTERNAL)
+      .json({ error: "Internal server error", code: "INTERNAL_ERROR", requestId });
   });
 
   const httpServer = createServer(app);
@@ -606,7 +712,14 @@ export function startServer(config: ServerConfig): {
           .map((k) => k.trim())
           .filter(Boolean)
       : [];
-    if (apiKeys.length > 0) {
+    // Fail closed: a missing API key denies WS upgrades unless auth is explicitly disabled.
+    if (apiKeys.length === 0) {
+      if (process.env.AXIOM_DISABLE_AUTH !== "true") {
+        socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
+        socket.destroy();
+        return;
+      }
+    } else {
       const token = url.searchParams.get("token");
       if (!token || !apiKeys.includes(token)) {
         socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
@@ -649,6 +762,7 @@ export function startServer(config: ServerConfig): {
   httpServer.listen(config.port, config.bind, () => {
     log.info(`Listening on http://${config.bind}:${config.port}`);
     log.info(`Signer: ${config.signer.address}`);
+    log.info(`Axiom backend v${PKG_VERSION} — ${REGISTERED_ROUTES.length} routes mounted, WS /v1/stream`);
   });
   httpServer.on("close", () => {
     clearInterval(heartbeatTimer);

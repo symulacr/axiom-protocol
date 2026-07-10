@@ -3,10 +3,10 @@ import assert from "node:assert/strict";
 import { recordReceipt } from "./onchain.js";
 import { stepResults } from "./http.js";
 
-// Drives the real Wave-4 dedup extraction `recordReceipt`, which collapsed 22
-// inline `recordOnChainStep({...})` blocks. No mock of the function under test:
-// it really pushes to `stepResults` and derives `explorerUrl` via the config's
-// `resolveBlockExplorerUrl(chainId)`.
+
+
+
+
 test("recordReceipt records an ok on-chain step with explorer url", () => {
   const before = stepResults.length;
   recordReceipt(

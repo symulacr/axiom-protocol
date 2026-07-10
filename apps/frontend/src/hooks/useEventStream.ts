@@ -6,29 +6,23 @@ export interface UseEventStreamResult {
   events: AxiomEvent[];
   isConnected: boolean;
   error: Event | null;
+  reconnect: () => void;
 }
 
 export interface UseEventStreamOptions {
-  /** Topic sub-string filters forwarded as `?topic=` query params. */
   topics?: string[];
-  /** When `false`, the hook neither connects nor schedules any
-   *  reconnect. Default `true`. */
   enabled?: boolean;
 }
 
 const MAX_EVENTS = 500;
+const MAX_RECONNECT_ATTEMPTS = 8;
 
-/**
- * Subscribe to the backend WebSocket event stream.
- * Forwards incoming JSON into the standard `AxiomEvent` shape.
- */
 export function useEventStream(
   options: UseEventStreamOptions = {},
 ): UseEventStreamResult {
   const { topics = [], enabled = true } = options;
   const topicsKey = useMemo(() => topics.join(","), [topics]);
   const [events, setEvents] = useState<AxiomEvent[]>([]);
-  const eventsRef = useRef<AxiomEvent[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<Event | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -45,7 +39,6 @@ export function useEventStream(
     if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
     reconnectAttemptRef.current = 0;
 
-    // Topic supports wildcards: 'tick.*' subscribes to all tick topics.
     const scheme = BACKEND_URL.startsWith("https://") ? "wss" : "ws";
     const url = new URL(
       BACKEND_URL.replace(/^https?:\/\//, `${scheme}://`) + "/v1/stream",
@@ -82,13 +75,14 @@ export function useEventStream(
             timestamp: data.ts ?? Date.now(),
           };
 
-          eventsRef.current.unshift(event);
-          if (eventsRef.current.length > MAX_EVENTS) {
-            eventsRef.current.length = MAX_EVENTS;
-          }
-          setEvents([...eventsRef.current]);
-        } catch (err) {
-          console.warn("[useEventStream] WS connect failed:", err);
+          setEvents((prev) => {
+            const next = [event, ...prev];
+            return next.length > MAX_EVENTS
+              ? next.slice(0, MAX_EVENTS)
+              : next;
+          });
+        } catch {
+          return;
         }
       };
 
@@ -97,22 +91,39 @@ export function useEventStream(
         wsRef.current = null;
       };
 
-      ws.onclose = () => {
+      ws.onclose = (e: CloseEvent) => {
         setIsConnected(false);
         wsRef.current = null;
-        if (enabledRef.current) {
-          const delay = Math.min(
-            1000 * Math.pow(2, reconnectAttemptRef.current),
-            maxReconnectDelay,
-          );
-          reconnectAttemptRef.current++;
-          reconnectTimerRef.current = setTimeout(connect, delay);
+        if (!enabledRef.current) return;
+
+        // Auth failures (1008 policy / 4401 custom) must not retry forever.
+        const isAuthClose = e.code === 1008 || e.code === 4401;
+        if (isAuthClose) {
+          setError(new Event("WebSocket closed: unauthorized"));
+          return;
         }
+        if (reconnectAttemptRef.current >= MAX_RECONNECT_ATTEMPTS) {
+          setError(new Event("WebSocket connection failed after retries"));
+          return;
+        }
+
+        const delay = Math.min(
+          1000 * Math.pow(2, reconnectAttemptRef.current),
+          maxReconnectDelay,
+        );
+        reconnectAttemptRef.current++;
+        reconnectTimerRef.current = setTimeout(connect, delay);
       };
     } catch (err) {
       setError(err instanceof Event ? err : new Event("connection failed"));
     }
   }, [enabled, topicsKey]);
+
+  const reconnect = useCallback(() => {
+    reconnectAttemptRef.current = 0;
+    setError(null);
+    connect();
+  }, [connect]);
 
   useEffect(() => {
     connect();
@@ -123,5 +134,5 @@ export function useEventStream(
     };
   }, [connect]);
 
-  return { events, isConnected, error };
+  return { events, isConnected, error, reconnect };
 }

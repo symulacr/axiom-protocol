@@ -44,6 +44,7 @@ import {
   Button,
   Input,
   PageHeader,
+  ErrorRef,
 } from "../components/ui.js";
 
 type Message = {
@@ -166,6 +167,9 @@ function ChatPageInner(): ReactElement {
   const listRef = useRef<HTMLDivElement>(null);
   const streamTextRef = useRef("");
   const streamThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [queue, setQueue] = useState<string[]>([]);
+  const queueRef = useRef<string[]>([]);
+  const isStreamingRef = useRef(false);
 
   const cancelStreamThrottle = useCallback(() => {
     if (streamThrottleRef.current !== null) {
@@ -247,10 +251,11 @@ function ChatPageInner(): ReactElement {
     return () => clearInterval(interval);
   }, [streamStartTime]);
 
-  const sendMessage = useCallback(
+  const runAgent = useCallback(
     async (userText: string) => {
-      if (!userText.trim() || isStreaming) return;
-      setInput("");
+      if (!userText.trim()) return;
+      isStreamingRef.current = true;
+      setIsStreaming(true);
 
       const userMsg = createMessage({ role: "user", content: userText });
       let currentMessages = [...messagesRef.current, userMsg];
@@ -321,22 +326,16 @@ function ChatPageInner(): ReactElement {
 
               if (delta.tool_calls) {
                 for (const tc of delta.tool_calls) {
-                  const existing = pendingToolCalls[tc.index];
-                  if (!existing) {
-                    pendingToolCalls[tc.index] = {
-                      id: tc.id ?? "",
+                  const call =
+                    pendingToolCalls[tc.index] ??
+                    (pendingToolCalls[tc.index] = {
+                      id: "",
                       type: "function",
                       function: { name: "", arguments: "" },
-                    };
-                  }
-                  const entry = pendingToolCalls[tc.index];
-                  if (entry) {
-                    if (tc.id) entry.id = tc.id;
-                    if (tc.function?.name)
-                      entry.function.name += tc.function.name;
-                    if (tc.function?.arguments)
-                      entry.function.arguments += tc.function.arguments;
-                  }
+                    });
+                  if (tc.id) call.id = tc.id;
+                  call.function.name += tc.function?.name ?? "";
+                  call.function.arguments += tc.function?.arguments ?? "";
                 }
               }
             }
@@ -437,10 +436,15 @@ function ChatPageInner(): ReactElement {
       } catch (err: unknown) {
         if (err instanceof DOMException && err.name === "AbortError") { /* aborted — ignore */ } else {
           const msg = humanizeError(err);
+          const ref = err as { code?: string; requestId?: string } | null;
+          const refDesc =
+            ref && (ref.code !== undefined || ref.requestId !== undefined)
+              ? <ErrorRef code={ref.code} requestId={ref.requestId} />
+              : undefined;
           if (msg.includes("429") || msg.toLowerCase().includes("rate limit")) {
-            toast.error("Rate limited — wait a moment and try again.");
+            toast.error("Rate limited — wait a moment and try again.", refDesc ? { description: refDesc } : undefined);
           } else {
-            toast.error(msg);
+            toast.error(msg, refDesc ? { description: refDesc } : undefined);
           }
           const withError = [
             ...currentMessages,
@@ -453,13 +457,13 @@ function ChatPageInner(): ReactElement {
           setMessages(withError);
         }
       } finally {
+        isStreamingRef.current = false;
         setIsStreaming(false);
         flushAndClearStreamText();
         abortRef.current = null;
       }
     },
     [
-      isStreaming,
       handlers,
       toolCtx,
       session,
@@ -470,6 +474,30 @@ function ChatPageInner(): ReactElement {
       cancelStreamThrottle,
     ],
   );
+
+  const processQueue = useCallback(() => {
+    if (isStreamingRef.current) return;
+    const next = queueRef.current.shift();
+    if (next === undefined) return;
+    setQueue([...queueRef.current]);
+    void runAgent(next);
+  }, [runAgent]);
+
+  const sendMessage = useCallback(
+    (userText: string) => {
+      const text = userText.trim();
+      if (!text) return;
+      setInput("");
+      queueRef.current = [...queueRef.current, text];
+      setQueue(queueRef.current);
+      processQueue();
+    },
+    [processQueue],
+  );
+
+  useEffect(() => {
+    if (!isStreaming) processQueue();
+  }, [isStreaming, processQueue]);
 
   const cancelStream = useCallback(() => {
     abortRef.current?.abort();
@@ -487,6 +515,8 @@ function ChatPageInner(): ReactElement {
                 onClick={() => {
                   setMessages([]);
                   setHasUsedChat(false);
+                  setQueue([]);
+                  queueRef.current = [];
                   try {
                     sessionStorage.removeItem(CHAT_MESSAGES_KEY);
                   } catch {
@@ -552,24 +582,13 @@ function ChatPageInner(): ReactElement {
                 "What's my vault balance?",
                 "Execute a strategy",
               ].map((prompt) => (
-                <button
-                  type="button"
+                <Button
                   key={prompt}
+                  variant="ghost"
                   onClick={() => sendMessage(prompt)}
-                  style={{
-                    background: COLORS.bronzeBg,
-                    border: `1px solid ${COLORS.bronzeBorder}`,
-                    borderRadius: "var(--radius-lg)",
-                    padding: "0.5rem 1rem",
-                    color: COLORS.bronzeLight,
-                    fontSize: "var(--text-sm)",
-                    cursor: "pointer",
-                    fontFamily: "inherit",
-                    transition: "all 0.15s ease",
-                  }}
                 >
                   {prompt}
-                </button>
+                </Button>
               ))}
             </div>
           </Card>
@@ -780,6 +799,34 @@ function ChatPageInner(): ReactElement {
           )}
         </div>
 
+        {/* Queued messages — injected without stopping the agent */}
+        {queue.length > 0 && (
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "var(--space-xs)",
+              marginBottom: "var(--space-sm)",
+            }}
+          >
+            {queue.map((q, i) => (
+              <span
+                key={i}
+                title={q}
+                style={{
+                  fontSize: "var(--text-xs)",
+                  color: COLORS.textDim,
+                  border: `1px solid ${COLORS.border}`,
+                  borderRadius: 999,
+                  padding: "2px 10px",
+                }}
+              >
+                {q.length > 40 ? `${q.slice(0, 40)}…` : q}
+              </span>
+            ))}
+          </div>
+        )}
+
         {/* Input bar */}
         <div style={{ display: "flex", gap: "var(--space-sm)" }}>
           <Input
@@ -794,28 +841,26 @@ function ChatPageInner(): ReactElement {
             }}
             placeholder={
               isStreaming
-                ? "Waiting for response..."
-                : "Ask about your agents, vaults, or strategies..."
+                ? "Type to queue a message…"
+                : "Ask about your agents, vaults, or strategies…"
             }
-            disabled={isStreaming}
             maxLength={4000}
             style={{
               flex: 1,
             }}
           />
-          {isStreaming ? (
+          {isStreaming && (
             <Button variant="secondary" onClick={cancelStream}>
               Stop
             </Button>
-          ) : (
-            <Button
-              variant="primary"
-              onClick={() => sendMessage(input)}
-              disabled={!input.trim()}
-            >
-              Send
-            </Button>
           )}
+          <Button
+            variant={isStreaming ? "secondary" : "primary"}
+            onClick={() => sendMessage(input)}
+            disabled={!input.trim()}
+          >
+            {isStreaming ? "Queue" : "Send"}
+          </Button>
         </div>
     </div>
   );

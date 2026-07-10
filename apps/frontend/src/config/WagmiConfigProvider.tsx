@@ -1,8 +1,27 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { WagmiProvider } from "wagmi";
 import { createWagmiConfig } from "./wagmi";
+import { COLORS } from "../components/ui.js";
+
+const RainbowKitProvider = lazy(() =>
+  import("@rainbow-me/rainbowkit").then((m) => {
+    const Provider = m.RainbowKitProvider;
+    const theme = m.darkTheme({
+      accentColor: COLORS.bronze,
+      accentColorForeground: COLORS.bg,
+      borderRadius: "medium",
+      fontStack: "system",
+      overlayBlur: "small",
+    });
+    return {
+      default: ({ children }: { children: ReactNode }) => (
+        <Provider theme={theme}>{children}</Provider>
+      ),
+    };
+  }),
+);
 
 const WATCHED_KEYS = new Set(["axiom.wcProjectId", "axiom.rpcUrl"]);
 
@@ -29,5 +48,11 @@ export function WagmiConfigProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  return <WagmiProvider config={config}>{children}</WagmiProvider>;
+  return (
+    <WagmiProvider config={config}>
+      <Suspense fallback={null}>
+        <RainbowKitProvider>{children}</RainbowKitProvider>
+      </Suspense>
+    </WagmiProvider>
+  );
 }

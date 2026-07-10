@@ -1,8 +1,8 @@
-import { useMemo, type ReactElement } from "react";
+import { useEffect, useMemo, useRef, useCallback, type ReactElement } from "react";
 import { formatEther } from "viem";
 import { useDeposit } from "../hooks/useDeposit.js";
-import { validateNumericInput } from "../utils/format.js";
-import { COLORS, Button, Input, Spinner, MonoLabel } from "./ui.js";
+import { humanizeError, validateNumericInput } from "../utils/format.js";
+import { COLORS, Button, Input, Spinner, MonoLabel, ErrorAlert } from "./ui.js";
 
 interface DepositFormProps {
   tokenId: bigint;
@@ -15,6 +15,26 @@ export function DepositForm({
   onSuccess,
   variant = "default",
 }: DepositFormProps): ReactElement | null {
+  const balanceRef = useRef<HTMLSpanElement>(null);
+  const confirmTimer = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => () => {
+    if (confirmTimer.current !== undefined) clearTimeout(confirmTimer.current);
+  }, []);
+
+  const handleSuccess = useCallback(() => {
+    const el = balanceRef.current;
+    if (el) {
+      el.classList.add("axiom-confirm");
+      if (confirmTimer.current !== undefined) clearTimeout(confirmTimer.current);
+      confirmTimer.current = setTimeout(
+        () => el.classList.remove("axiom-confirm"),
+        1500,
+      );
+    }
+    onSuccess?.();
+  }, [onSuccess]);
+
   const {
     depositAmount,
     setDepositAmount,
@@ -22,7 +42,7 @@ export function DepositForm({
     isValidDeposit,
     handleDeposit,
     vaultData: vd,
-  } = useDeposit(tokenId, onSuccess);
+  } = useDeposit(tokenId, handleSuccess);
 
   const depositError = useMemo(() => {
     const err = validateNumericInput(depositAmount, {
@@ -30,6 +50,7 @@ export function DepositForm({
       min: 0,
       allowDecimals: true,
       maxDecimals: 18,
+      max: 1e12,
     });
     if (err !== null) return err;
     if (depositAmount.trim() !== "" && Number(depositAmount) === 0)
@@ -37,7 +58,16 @@ export function DepositForm({
     return null;
   }, [depositAmount]);
 
-  if (vd.isLoading || vd.depositsWei === undefined) return null;
+  if (vd.isLoading) return null;
+  if (vd.error !== null) {
+    return (
+      <ErrorAlert
+        message={humanizeError(vd.error)}
+        onRetry={() => void vd.refetch()}
+      />
+    );
+  }
+  if (vd.depositsWei === undefined) return null;
 
   const isWarning = variant === "warning" && vd.depositsWei === 0n;
 
@@ -57,6 +87,7 @@ export function DepositForm({
       }}
     >
       <span
+        ref={balanceRef}
         style={{
           color: COLORS.textDim,
           fontWeight: "var(--fw-medium)",

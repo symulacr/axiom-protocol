@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useChainId, useReadContracts } from "wagmi";
+import { useAccount, useChainId, useReadContracts } from "wagmi";
 import { parseAbi, type Address, type Hex } from "viem";
 import { getAxiomAgentNftAddress } from "../abi/addresses.js";
 import { axiomAgentNftAbi } from "../abi/axiomAgentNft.js";
@@ -27,6 +27,7 @@ export function useAgentMetadata(
   refetch: () => void;
 } {
   const chainId = useChainId();
+  const { isConnected } = useAccount();
   const enabledOption = options?.enabled ?? true;
   const agentNftAddr = getAxiomAgentNftAddress(chainId);
 
@@ -75,7 +76,7 @@ export function useAgentMetadata(
     allowFailure: false,
     contracts,
     query: {
-      enabled: enabledOption && tokenId > 0n,
+      enabled: enabledOption && isConnected && tokenId > 0n,
     },
   });
 

@@ -1,5 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
-import { COLORS } from "./ui.js";
+import { Button, COLORS } from "./ui.js";
 import { humanizeError } from "../utils/format.js";
 
 interface Props {
@@ -69,36 +69,15 @@ export class ErrorBoundary extends Component<Props, State> {
                 : "An unexpected error occurred."}
           </p>
           <div style={{ display: "flex", gap: 8 }}>
-            <button
-              onClick={this.resetErrorBoundary}
-              style={{
-                padding: "6px 16px",
-                background: COLORS.danger,
-                color: COLORS.text,
-                border: "none",
-                borderRadius: "var(--radius-sm)",
-                cursor: "pointer",
-                fontFamily: "inherit",
-                fontSize: "var(--text-sm)",
-              }}
-            >
+            <Button variant="secondary" onClick={this.resetErrorBoundary}>
               Try again
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="secondary"
               onClick={() => window.location.reload()}
-              style={{
-                padding: "6px 16px",
-                background: "transparent",
-                color: COLORS.danger,
-                border: `1px solid ${COLORS.dangerBorder}`,
-                borderRadius: "var(--radius-sm)",
-                cursor: "pointer",
-                fontFamily: "inherit",
-                fontSize: "var(--text-sm)",
-              }}
             >
               Reload page
-            </button>
+            </Button>
           </div>
         </div>
       );

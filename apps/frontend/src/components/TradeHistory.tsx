@@ -2,7 +2,7 @@ import { resolveBlockExplorerUrl } from "@axiom/config/networks";
 import type { ReactElement } from "react";
 import { useChainId } from "wagmi";
 import type { TradeHistoryEntry } from "../hooks/usePerformance.js";
-import { COLORS, Card, SectionTitle, getActionColor } from "./ui.js";
+import { COLORS, Card, SectionTitle, getActionColor, CopyButton } from "./ui.js";
 import { EmptyState } from "./EmptyState.js";
 
 interface TradeHistoryProps {
@@ -117,6 +117,7 @@ export function TradeHistory({ history }: TradeHistoryProps): ReactElement {
               >
                 {entry.txHash.slice(0, 10)}…
               </a>
+              <CopyButton text={entry.txHash} />
             </div>
           );
         })}

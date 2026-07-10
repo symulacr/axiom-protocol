@@ -25,19 +25,31 @@ export function useDeposit(tokenId: bigint, onSuccess?: () => void) {
           onSuccess?.();
         },
         onError(err) {
-          toast.error(humanizeError(err));
+          const ref = err as { code?: string; requestId?: string } | null;
+          const refStr =
+            ref && (ref.code !== undefined || ref.requestId !== undefined)
+              ? `Ref · ${[ref.requestId, ref.code].filter((x): x is string => x !== undefined).join(" · ")}`
+              : null;
+          toast.error(humanizeError(err), refStr ? { description: refStr } : undefined);
         },
       },
     });
 
   const handleDeposit = useCallback(() => {
     if (!depositAmount) return;
+    let value: bigint;
+    try {
+      value = parseEther(depositAmount);
+    } catch {
+      toast.error("Amount too large or invalid");
+      return;
+    }
     doDeposit({
       address: vaultAddr,
       abi,
       functionName: "deposit",
       args: [tokenId],
-      value: parseEther(depositAmount),
+      value,
     });
   }, [chainId, depositAmount, vaultAddr, tokenId, doDeposit]);
 

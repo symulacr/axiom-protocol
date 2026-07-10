@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   useAccount,
   useChainId,
@@ -39,14 +39,6 @@ export type UseTransferResult = {
   transferPhase: TransferPhase;
 };
 
-function useWarnTimeout(message: string, delay: number, active: boolean): void {
-  useEffect(() => {
-    if (!active) return;
-    const timer = setTimeout(() => console.warn(message), delay);
-    return () => clearTimeout(timer);
-  }, [message, delay, active]);
-}
-
 export function useTransfer(): UseTransferResult {
   const chainId = useChainId();
   const { address: from } = useAccount();
@@ -67,13 +59,6 @@ export function useTransfer(): UseTransferResult {
     error: actionError,
     reset: resetAction,
   } = useAsyncAction();
-  const isLoading = actionLoading || isWritePending;
-  useWarnTimeout(
-    "[transfer] Transfer is taking longer than expected.",
-    30000,
-    isLoading,
-  );
-
   const prepare = useCallback(
     async (input: TransferInput): Promise<TransferResponse> => {
       if (!from) {
@@ -91,10 +76,16 @@ export function useTransfer(): UseTransferResult {
 
           setTransferPhase("challenge");
 
+          let nonceBig: bigint;
+          try {
+            nonceBig = BigInt(input.accessProofNonce);
+          } catch {
+            throw new Error("Invalid access proof nonce");
+          }
           const challengeBody: Record<string, unknown> = {
             to: input.to,
             receiverPubKey64: input.receiverPubKey64,
-            accessProofNonce: BigInt(input.accessProofNonce).toString(),
+            accessProofNonce: nonceBig.toString(),
           };
           if (input.oldDataEncryptionKey && input.oldDataUri) {
             challengeBody.oldDataEncryptionKey = input.oldDataEncryptionKey;

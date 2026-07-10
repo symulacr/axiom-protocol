@@ -1,4 +1,4 @@
-import React, { forwardRef, useCallback, useEffect, useRef } from "react";
+import React, { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import { useAccount } from "wagmi";
 import type {
   ButtonHTMLAttributes,
@@ -73,46 +73,12 @@ const formFieldBase: CSSProperties = {
   transition,
 };
 
-type ButtonVariant = "primary" | "secondary" | "ghost";
-
-const buttonBase: CSSProperties = {
-  padding: "0.625rem 1.25rem",
-  borderRadius: "var(--radius-md)",
-  fontSize: "var(--text-sm)",
-  fontWeight: "var(--fw-semibold)",
-  cursor: "pointer",
-  border: "1px solid transparent",
-  transition,
-  fontFamily: "inherit",
-  letterSpacing: "0.01em",
-  lineHeight: 1,
-};
-
-const buttonVariants: Record<ButtonVariant, CSSProperties> = {
-  primary: {
-    ...buttonBase,
-    background: COLORS.bronze,
-    color: COLORS.bg,
-    borderColor: COLORS.bronze,
-  },
-  secondary: {
-    ...buttonBase,
-    background: "transparent",
-    color: COLORS.textPrimary,
-    borderColor: COLORS.borderStrong,
-  },
-  ghost: {
-    ...buttonBase,
-    background: "transparent",
-    color: COLORS.textMuted,
-    borderColor: "transparent",
-    padding: "0.5rem 0.75rem",
-  },
-};
+type ButtonVariant = "primary" | "secondary" | "ghost" | "teal";
 
 export const Button = React.memo(function Button({
   variant = "primary",
   style,
+  className,
   disabled,
   children,
   ...rest
@@ -122,12 +88,13 @@ export const Button = React.memo(function Button({
   return (
     <button
       {...rest}
+      data-axiom-btn=""
       disabled={disabled}
-      style={{
-        ...buttonVariants[variant],
-        ...(disabled ? { opacity: 0.4, cursor: "not-allowed" } : {}),
-        ...style,
-      }}
+      className={
+        ["btn", `btn-${variant}`, className].filter(Boolean).join(" ") ||
+        undefined
+      }
+      style={style}
     >
       {children}
     </button>
@@ -399,7 +366,7 @@ type AlertVariant = "error" | "success" | "info";
 const alertStyles: Record<AlertVariant, CSSProperties> = {
   error: {
     padding: "var(--space-md) var(--space-lg)",
-    background: "rgba(200, 90, 90, 0.05)",
+    background: COLORS.dangerBg,
     border: `1px solid ${COLORS.dangerBorder}`,
     color: COLORS.danger,
     borderRadius: "var(--radius-lg)",
@@ -409,7 +376,7 @@ const alertStyles: Record<AlertVariant, CSSProperties> = {
   },
   success: {
     padding: "var(--space-md) var(--space-lg)",
-    background: "rgba(107, 158, 107, 0.05)",
+    background: COLORS.successBg,
     border: `1px solid ${COLORS.successBorder}`,
     color: COLORS.success,
     borderRadius: "var(--radius-lg)",
@@ -419,7 +386,7 @@ const alertStyles: Record<AlertVariant, CSSProperties> = {
   },
   info: {
     padding: "var(--space-md) var(--space-lg)",
-    background: "rgba(90, 138, 138, 0.10)",
+    background: COLORS.tealBg,
     border: `1px solid ${COLORS.tealBorder}`,
     color: COLORS.teal,
     borderRadius: "var(--radius-lg)",
@@ -450,16 +417,22 @@ export function Alert({
 
 interface ErrorAlertProps {
   message?: string;
+  error?: unknown;
   onRetry?: () => void;
 }
 
 export function ErrorAlert({
   message,
+  error,
   onRetry,
 }: ErrorAlertProps): ReactElement {
+  const err = error as { code?: string; requestId?: string } | undefined;
   return (
     <Alert variant="error">
       <p>{message ?? "An unexpected error occurred"}</p>
+      {err?.code !== undefined || err?.requestId !== undefined ? (
+        <ErrorRef code={err?.code} requestId={err?.requestId} />
+      ) : null}
       {onRetry !== undefined && (
         <Button
           variant="secondary"
@@ -471,6 +444,30 @@ export function ErrorAlert({
         </Button>
       )}
     </Alert>
+  );
+}
+
+export function ErrorRef({
+  code,
+  requestId,
+}: {
+  code?: string;
+  requestId?: string;
+}): ReactElement {
+  if (code === undefined && requestId === undefined) return <></>;
+  const ref = [requestId, code].filter(Boolean).join(" · ");
+  return (
+    <span
+      style={{
+        display: "block",
+        marginTop: "var(--space-xs)",
+        fontFamily: "var(--font-mono)",
+        fontSize: "var(--text-xs)",
+        color: COLORS.textDim,
+      }}
+    >
+      Ref · {ref}
+    </span>
   );
 }
 
@@ -512,7 +509,7 @@ export function PageHeader({
     <div className="flex items-baseline justify-between mb-2xl flex-wrap gap-md">
       <div style={{ minWidth: 0, overflow: "hidden" }}>
         <h1
-          className="text-xl fw-semibold lh-tight"
+          className="text-xl fw-bold lh-tight"
           style={{
             margin: "0 0 0.375rem",
             color: COLORS.text,
@@ -556,23 +553,109 @@ export function SectionTitle({
   );
 }
 
+export function CopyButton({
+  text,
+  style,
+}: {
+  text: string;
+  style?: CSSProperties;
+}): ReactElement {
+  const [copied, setCopied] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current !== undefined) clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  const copy = useCallback(async () => {
+    try {
+      const clipboard = navigator.clipboard;
+      if (clipboard?.writeText) {
+        await clipboard.writeText(text);
+      } else {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      }
+      setCopied(true);
+      if (timerRef.current !== undefined) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => setCopied(false), 1200);
+    } catch {
+      void 0;
+    }
+  }, [text]);
+
+  return (
+    <button
+      type="button"
+      onClick={() => void copy()}
+      aria-label={copied ? "Copied to clipboard" : "Copy to clipboard"}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 4,
+        background: "transparent",
+        color: COLORS.bronzeLight,
+        border: `1px solid ${COLORS.bronzeBorder}`,
+        borderRadius: "var(--radius-sm)",
+        padding: "2px 6px",
+        fontFamily: "inherit",
+        fontSize: "var(--text-xs)",
+        lineHeight: 1,
+        cursor: "pointer",
+        ...style,
+      }}
+    >
+      {copied ? "✓ Copied" : "Copy"}
+    </button>
+  );
+}
+
+export function withViewTransition(update: () => void): void {
+  const prefersReducedMotion =
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const canViewTransition =
+    typeof document !== "undefined" && "startViewTransition" in document;
+  if (prefersReducedMotion || !canViewTransition) {
+    update();
+    return;
+  }
+  const doc = document as Document & {
+    startViewTransition: (cb: () => void) => { finished: Promise<void> };
+  };
+  doc.startViewTransition(update);
+}
+
 export function MonoLabel({
   children,
   title,
   style,
+  copyable,
+  text,
 }: {
   children: ReactNode;
   title?: string;
   style?: CSSProperties;
+  copyable?: boolean;
+  text?: string;
 }): ReactElement {
-  return (
+  const label = (
     <code
       title={title}
       style={{
         fontFamily: "var(--font-mono)",
         fontSize: "var(--text-sm)",
         color: COLORS.bronzeLight,
-        background: "rgba(184, 151, 110, 0.05)",
+        background: COLORS.bronzeBg,
         padding: "0.125rem 0.5rem",
         borderRadius: "var(--radius-sm)",
         display: "inline-block",
@@ -584,6 +667,44 @@ export function MonoLabel({
     >
       {children}
     </code>
+  );
+  if (!copyable) return label;
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "6px",
+        maxWidth: "100%",
+      }}
+    >
+      {label}
+      <CopyButton text={text ?? String(children)} />
+    </span>
+  );
+}
+
+export function Kbd({
+  children,
+  style,
+}: {
+  children: ReactNode;
+  style?: CSSProperties;
+}): ReactElement {
+  return (
+    <kbd
+      style={{
+        fontFamily: "var(--font-mono)",
+        fontSize: "var(--text-xs)",
+        padding: "2px 6px",
+        borderRadius: 3,
+        border: `1px solid ${COLORS.borderStrong}`,
+        color: COLORS.text,
+        ...style,
+      }}
+    >
+      {children}
+    </kbd>
   );
 }
 

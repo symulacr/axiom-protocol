@@ -423,8 +423,8 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
     try {
       const earn = await getEarnings(tokenId);
       setEarnings(earn);
-    } catch (err) {
-      console.warn("[PaymentPanel] Failed to refresh earnings:", err);
+    } catch {
+      return;
     }
   }, [tokenId, getEarnings]);
 

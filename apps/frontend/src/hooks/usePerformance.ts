@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useAccount } from "wagmi";
 import { usePolledApi } from "./usePolledApi.js";
 import type {
   PerformanceMetrics,
@@ -28,8 +29,9 @@ export function usePerformance(
   tokenId: bigint | null,
   options?: UsePerformanceOptions,
 ): UsePerformanceResult {
+  const { isConnected } = useAccount();
   const { enabled: enabledOption = true } = options ?? {};
-  const enabled = enabledOption && tokenId !== null && tokenId > 0n;
+  const enabled = enabledOption && isConnected && tokenId !== null && tokenId > 0n;
   const url = enabled ? `/v1/agents/${tokenId.toString()}/performance` : "";
 
   const { data, isLoading, error, refetch } = usePolledApi<PerformanceResponse>(

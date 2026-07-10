@@ -1,7 +1,4 @@
-/**
- * Shared helpers extracted from the E2E suite to remove cross-file duplication.
- * All helpers are behavior-preserving and imported by their original call sites.
- */
+
 
 export interface ChatCompletionSse {
   chunks: unknown[];
@@ -11,12 +8,7 @@ export interface ChatCompletionSse {
   ttftMs: number;
 }
 
-/**
- * Reads an SSE stream of `/v1/chat/completions` chunks from `reader`, parsing
- * each `data: ` payload and accumulating text + tool-call signals.
- * When `startTime` (performance.now() at request start) is provided, `ttftMs`
- * records wall-clock time to the first content/tool-call token.
- */
+
 export async function readChatCompletionsSse(
   reader: ReadableStreamDefaultReader<Uint8Array>,
   startTime?: number,
@@ -95,7 +87,7 @@ export interface ChatSseResult {
   ms: number;
 }
 
-// Posts a chat-completions request, retries 429s with backoff, and reads the SSE.
+
 export async function postChatCompletionsSse(
   backendUrl: string,
   body: unknown,

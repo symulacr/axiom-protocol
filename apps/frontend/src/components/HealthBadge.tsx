@@ -17,13 +17,13 @@ export function HealthBadge(): ReactElement {
         style={{
           display: "inline-flex",
           alignItems: "center",
-          gap: 7,
-          padding: "5px 10px",
+          gap: "var(--space-sm)",
+          padding: "var(--space-xs) var(--space-md)",
           borderRadius: "var(--radius-xl)",
           fontSize: "var(--text-xs)",
           fontWeight: "var(--fw-medium)",
           color: COLORS.textMuted,
-          background: "rgba(184, 151, 110, 0.04)",
+          background: COLORS.bronzeBg,
           border: `1px solid ${COLORS.border}`,
         }}
       >

@@ -1,4 +1,4 @@
-import type { ReactElement } from "react";
+import { useEffect, useRef, useCallback, type ReactElement } from "react";
 import { formatEther } from "viem";
 import { useWithdraw } from "../hooks/useWithdraw.js";
 import { COLORS, Button, Input, Spinner, MonoLabel } from "./ui.js";
@@ -12,6 +12,26 @@ export function WithdrawForm({
   tokenId,
   onSuccess,
 }: WithdrawFormProps): ReactElement | null {
+  const balanceRef = useRef<HTMLSpanElement>(null);
+  const confirmTimer = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => () => {
+    if (confirmTimer.current !== undefined) clearTimeout(confirmTimer.current);
+  }, []);
+
+  const handleSuccess = useCallback(() => {
+    const el = balanceRef.current;
+    if (el) {
+      el.classList.add("axiom-confirm");
+      if (confirmTimer.current !== undefined) clearTimeout(confirmTimer.current);
+      confirmTimer.current = setTimeout(
+        () => el.classList.remove("axiom-confirm"),
+        1500,
+      );
+    }
+    onSuccess?.();
+  }, [onSuccess]);
+
   const {
     withdrawAmount,
     setWithdrawAmount,
@@ -20,7 +40,7 @@ export function WithdrawForm({
     withdrawError,
     handleWithdraw,
     vaultData: vd,
-  } = useWithdraw(tokenId, onSuccess);
+  } = useWithdraw(tokenId, handleSuccess);
 
   if (vd.isLoading || vd.depositsWei === undefined) return null;
 
@@ -55,7 +75,10 @@ export function WithdrawForm({
         aria-invalid={withdrawError !== null}
         style={{ flex: "0 1 10rem", fontSize: "var(--text-sm)" }}
       />
-      <span style={{ color: COLORS.textDim, fontSize: "var(--text-xs)" }}>
+      <span
+        ref={balanceRef}
+        style={{ color: COLORS.textDim, fontSize: "var(--text-xs)" }}
+      >
         available: <MonoLabel>{formatEther(vd.depositsWei)} 0G</MonoLabel>
       </span>
       {withdrawError !== null && (

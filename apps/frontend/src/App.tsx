@@ -14,12 +14,11 @@ import {
   Routes,
   useNavigate,
 } from "react-router-dom";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
-
 import { ErrorBoundary } from "./components/ErrorBoundary.js";
 import { HealthBadge } from "./components/HealthBadge.js";
-import { COLORS, ConnectedGuard } from "./components/ui.js";
+import { COLORS, ConnectedGuard, Kbd } from "./components/ui.js";
 import { useMediaQuery } from "./hooks/useMediaQuery.js";
+import { useFocusTrap } from "./hooks/useFocusTrap.js";
 
 const AgentDetail = lazy(() => import("./pages/AgentDetail.js"));
 const MarketPage = lazy(() => import("./pages/MarketPage.js"));
@@ -27,6 +26,19 @@ const AgentsBrowser = lazy(() => import("./pages/AgentsBrowser.js"));
 const MintAgentPage = lazy(() => import("./pages/MintAgentPage.js"));
 const ChatPage = lazy(() => import("./pages/ChatPage.js"));
 const NotFound = lazy(() => import("./pages/NotFound.js"));
+const HomePage = lazy(() => import("./pages/HomePage.js"));
+
+const ConnectButton = lazy(() =>
+  import("@rainbow-me/rainbowkit").then((m) => ({ default: m.ConnectButton })),
+);
+
+function WalletButton(): ReactElement {
+  return (
+    <Suspense fallback={null}>
+      <ConnectButton />
+    </Suspense>
+  );
+}
 
 function navLinkStyle({
   isActive,
@@ -68,16 +80,7 @@ function ShortcutHelp(): ReactElement | null {
     return () => document.removeEventListener("keydown", handleKey);
   }, [open]);
 
-  useEffect(() => {
-    if (!open) return;
-    const panel = panelRef.current;
-    if (!panel) return;
-    const focusable = panel.querySelectorAll<HTMLElement>(
-      'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
-    );
-    const first = focusable[0] ?? panel.querySelector<HTMLElement>("h2");
-    first?.focus();
-  }, [open]);
+  useFocusTrap(panelRef, open);
 
   if (!open) return null;
 
@@ -100,7 +103,7 @@ function ShortcutHelp(): ReactElement | null {
         position: "fixed",
         inset: 0,
         zIndex: 1000,
-        background: "rgba(0,0,0,0.6)",
+        background: "var(--c-overlay)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -109,24 +112,6 @@ function ShortcutHelp(): ReactElement | null {
       <div
         ref={panelRef}
         onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => {
-          if (e.key !== "Tab") return;
-          const focusable = e.currentTarget.querySelectorAll<HTMLElement>(
-            'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
-          );
-          const first = focusable[0] ?? e.currentTarget.querySelector("h2");
-          const last =
-            focusable[focusable.length - 1] ??
-            e.currentTarget.querySelector("h2");
-          if (!first || !last) return;
-          if (e.shiftKey && document.activeElement === first) {
-            e.preventDefault();
-            last.focus();
-          } else if (!e.shiftKey && document.activeElement === last) {
-            e.preventDefault();
-            first.focus();
-          }
-        }}
         style={{
           background: COLORS.surface,
           border: `1px solid ${COLORS.border}`,
@@ -164,18 +149,7 @@ function ShortcutHelp(): ReactElement | null {
                 {s.label}
               </dt>
               <dd style={{ margin: 0 }}>
-                <kbd
-                  style={{
-                    fontSize: "var(--text-xs)",
-                    padding: "2px 6px",
-                    borderRadius: 3,
-                    border: `1px solid ${COLORS.borderStrong}`,
-                    color: COLORS.text,
-                    fontFamily: "var(--font-mono)",
-                  }}
-                >
-                  {s.key}
-                </kbd>
+                <Kbd>{s.key}</Kbd>
               </dd>
             </div>
           ))}
@@ -189,6 +163,8 @@ export function App(): ReactElement {
   const isMobile = useMediaQuery("(max-width: 640px)");
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
+  const mobileNavRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(mobileNavRef, isMobile && menuOpen);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -243,7 +219,7 @@ export function App(): ReactElement {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "0.875rem 2rem",
+          padding: "var(--space-md) var(--space-2xl)",
           borderBottom: "1px solid var(--c-border)",
           background: "var(--c-bg)",
           position: "sticky",
@@ -253,7 +229,7 @@ export function App(): ReactElement {
       >
         <nav
           aria-label="Primary"
-          style={{ display: "flex", gap: "1.75rem", alignItems: "center" }}
+          style={{ display: "flex", gap: "var(--space-2xl)", alignItems: "center" }}
         >
           <Link
             to="/"
@@ -271,9 +247,9 @@ export function App(): ReactElement {
             <>
               <NavLink to="/agents" style={navLinkStyle}>
                 Agents{" "}
-                <kbd
+                <Kbd
                   style={{
-                    fontSize: "0.625rem",
+                    fontSize: "var(--text-xs)",
                     opacity: 0.5,
                     marginLeft: 4,
                     padding: "1px 4px",
@@ -283,13 +259,13 @@ export function App(): ReactElement {
                   }}
                 >
                   G
-                </kbd>
+                </Kbd>
               </NavLink>
               <NavLink to="/market" style={navLinkStyle}>
                 Market{" "}
-                <kbd
+                <Kbd
                   style={{
-                    fontSize: "0.625rem",
+                    fontSize: "var(--text-xs)",
                     opacity: 0.5,
                     marginLeft: 4,
                     padding: "1px 4px",
@@ -299,13 +275,13 @@ export function App(): ReactElement {
                   }}
                 >
                   M
-                </kbd>
+                </Kbd>
               </NavLink>
               <NavLink to="/chat" style={navLinkStyle}>
                 Chat{" "}
-                <kbd
+                <Kbd
                   style={{
-                    fontSize: "0.625rem",
+                    fontSize: "var(--text-xs)",
                     opacity: 0.5,
                     marginLeft: 4,
                     padding: "1px 4px",
@@ -315,12 +291,12 @@ export function App(): ReactElement {
                   }}
                 >
                   C
-                </kbd>
+                </Kbd>
               </NavLink>
             </>
           )}
         </nav>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.875rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-md)" }}>
           {isMobile && (
             <button
               onClick={() => setMenuOpen(!menuOpen)}
@@ -354,40 +330,26 @@ export function App(): ReactElement {
           )}
 
           <HealthBadge />
-          <ConnectButton />
+          <WalletButton />
         </div>
       </header>
       {isMobile && menuOpen && (
         <div
           id="mobile-nav-menu"
-          onKeyDown={(e) => {
-            if (e.key !== "Tab") return;
-            const focusable = e.currentTarget.querySelectorAll(
-              "a[href], button:not([disabled])",
-            );
-            const first = focusable[0] as HTMLElement;
-            const last = focusable[focusable.length - 1] as HTMLElement;
-            if (e.shiftKey && document.activeElement === first) {
-              e.preventDefault();
-              last.focus();
-            } else if (!e.shiftKey && document.activeElement === last) {
-              e.preventDefault();
-              first.focus();
-            }
-          }}
+          ref={mobileNavRef}
           style={{
             position: "fixed",
-            top: "3.25rem",
+            top: "var(--nav-h)",
             left: 0,
             right: 0,
-            background: "var(--c-bg)",
+            background: "var(--c-surface)",
             borderBottom: "1px solid var(--c-border)",
             padding: "var(--space-md) var(--space-xl)",
             display: "flex",
             flexDirection: "column",
             gap: "0.5rem",
             zIndex: 99,
-            boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+            borderTop: "1px solid var(--c-border-strong)",
           }}
         >
           <NavLink
@@ -417,9 +379,9 @@ export function App(): ReactElement {
         id="main-content"
         style={{
           padding: "var(--space-2xl) var(--space-xl)",
-          maxWidth: "68rem",
+          maxWidth: "var(--content-max)",
           margin: "0 auto",
-          minHeight: "calc(100vh - 3.25rem)",
+          minHeight: "calc(100vh - var(--nav-h))",
           contain: "layout style",
         }}
       >
@@ -448,7 +410,7 @@ export function App(): ReactElement {
             }
           >
             <Routes>
-              <Route path="/" element={<Navigate to="/agents" replace />} />
+              <Route path="/" element={<HomePage />} />
               <Route path="/agents" element={<AgentsBrowser />} />
               <Route
                 path="/agents/new"

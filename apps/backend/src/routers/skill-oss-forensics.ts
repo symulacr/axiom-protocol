@@ -2,15 +2,11 @@ import { Router } from "express";
 import { z } from "zod";
 import { ethers } from "ethers";
 import type { ServerConfig } from "../server.js";
-import {
-  createRoute,
-  type RouteOptions,
-  type RouteHandler,
-} from "./route-factory.js";
-import { TTLCache, ser, createLogger } from "../skills/shared.js";
+import { TTLCache, ser, createLogger, createSkillRouter, cachedJsonGet } from "../skills/shared.js";
 
 const CACHE_TTL_MS = 120_000;
 const cache = new TTLCache<unknown>(CACHE_TTL_MS);
+const ghGet = cachedJsonGet("https://api.github.com", { ttlMs: CACHE_TTL_MS });
 const log = createLogger("oss-forensics");
 
 function ghHeaders(): Record<string, string> {
@@ -21,14 +17,7 @@ function ghHeaders(): Record<string, string> {
 }
 
 async function ghFetch(path: string): Promise<unknown> {
-  const key = `gh:${path}`;
-  const cached = cache.get(key);
-  if (cached) return cached;
-  const res = await fetch(`https://api.github.com${path}`, { headers: ghHeaders() });
-  if (!res.ok) throw new Error(`GitHub ${res.status}: ${path}`);
-  const data = await res.json();
-  cache.set(key, data);
-  return data;
+  return ghGet(`gh:${path}`, path, { headers: ghHeaders() });
 }
 
 const investigateSchema = z.object({
@@ -174,14 +163,7 @@ async function auditDeps(owner: string, repo: string) {
 }
 
 export function createSkillOssForensicsRouter(config: ServerConfig): Router {
-  const router = Router();
-
-  const route = <S extends z.ZodTypeAny | undefined = undefined>(
-    opts: RouteOptions<S>,
-    handler: RouteHandler<S extends z.ZodTypeAny ? z.infer<S> : unknown>,
-  ): void => {
-    createRoute(router, { consumer: "chat-runtime", ...opts }, handler, config);
-  };
+  const { router, route } = createSkillRouter(config);
 
   route({ path: "/v1/skills/oss-forensics/investigate", schema: investigateSchema, description: "GitHub repo forensics + optional keccak256 bytecode comparison" },
     async (parsed) => {

@@ -18,11 +18,7 @@ export interface UseAgentEventsResult {
   refetch: () => void;
 }
 
-/**
- * Filters useEventHistory events by tokenId. Shared by AgentDetail
- * (Activity tab) and the Performance tab. Keeps the timeline fresh
- * via WebSocket events.
- */
+
 export function useAgentEvents(
   tokenId: bigint | null,
   options: UseAgentEventsOptions = {},

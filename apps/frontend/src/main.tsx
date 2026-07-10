@@ -2,7 +2,6 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { RainbowKitProvider, darkTheme } from "@rainbow-me/rainbowkit";
 
 import { Toaster } from "sonner";
 import { COLORS } from "./components/ui.js";
@@ -26,35 +25,26 @@ if (!rootEl) {
   throw new Error("Root element #root not found in index.html");
 }
 
+// QueryClientProvider must wrap WagmiConfigProvider so RainbowKit's react-query hooks resolve.
 createRoot(rootEl).render(
   <StrictMode>
-    <WagmiConfigProvider>
-      <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider
-          theme={darkTheme({
-            accentColor: COLORS.bronze,
-            accentColorForeground: COLORS.bg,
-            borderRadius: "medium",
-            fontStack: "system",
-            overlayBlur: "small",
-          })}
-        >
-          <BrowserRouter>
-            <App />
-            <Toaster
-              position="bottom-right"
-              toastOptions={{
-                style: {
-                  background: COLORS.surface,
-                  color: COLORS.text,
-                  border: `1px solid ${COLORS.border}`,
-                },
-              }}
-            />
-          </BrowserRouter>
-        </RainbowKitProvider>
-      </QueryClientProvider>
-    </WagmiConfigProvider>
+    <QueryClientProvider client={queryClient}>
+      <WagmiConfigProvider>
+        <BrowserRouter>
+          <App />
+          <Toaster
+            position="bottom-right"
+            toastOptions={{
+              style: {
+                background: COLORS.surface,
+                color: COLORS.text,
+                border: `1px solid ${COLORS.border}`,
+              },
+            }}
+          />
+        </BrowserRouter>
+      </WagmiConfigProvider>
+    </QueryClientProvider>
   </StrictMode>,
 );
 

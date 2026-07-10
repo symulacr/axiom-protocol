@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useChainId, useReadContracts } from "wagmi";
+import { useAccount, useChainId, useReadContracts } from "wagmi";
 import { parseAbi } from "viem";
 import { getAxiomStrategyVaultAddress } from "../abi/addresses.js";
 import { axiomStrategyVaultAbi } from "../abi/axiomStrategyVault.js";
@@ -14,10 +14,7 @@ export interface VaultDataEntry {
   readError?: string | null;
 }
 
-/**
- * Batch-fetch vault data for multiple token IDs in a single multicall.
- * Replaces N individual useVaultData calls with one useReadContracts call.
- */
+
 export function useVaultDataBatch(tokenIds: readonly bigint[]): {
   data: Map<string, VaultDataEntry>;
   isLoading: boolean;
@@ -25,6 +22,7 @@ export function useVaultDataBatch(tokenIds: readonly bigint[]): {
   refetch: () => void;
 } {
   const chainId = useChainId();
+  const { isConnected } = useAccount();
   const vaultAddr = getAxiomStrategyVaultAddress(chainId);
 
   const contracts = useMemo(() => {
@@ -49,7 +47,7 @@ export function useVaultDataBatch(tokenIds: readonly bigint[]): {
     contracts,
     query: {
       staleTime: 30_000,
-      enabled: tokenIds.length > 0,
+      enabled: isConnected && tokenIds.length > 0,
     },
   });
 

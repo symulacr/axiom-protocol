@@ -2,7 +2,7 @@ import { resolveBlockExplorerUrl } from "@axiom/config/networks";
 import type { ReactElement } from "react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { useChainId } from "wagmi";
+import { useAccount, useChainId } from "wagmi";
 import { ProviderCard } from "../components/ProviderCard.js";
 import { useProviders } from "../hooks/useProviders.js";
 import { usePolledApi } from "../hooks/usePolledApi.js";
@@ -13,8 +13,11 @@ import {
   ErrorAlert,
   PageHeader,
   Skeleton,
+  Button,
 } from "../components/ui.js";
 import type { AxiomEvent } from "../hooks/useEventHistory.js";
+import { useEventStream } from "../hooks/useEventStream.js";
+import { eventDedupeKey } from "../utils/events.js";
 import { humanizeError } from "../utils/format.js";
 
 type TransferEvent = {
@@ -29,8 +32,13 @@ type TransferEvent = {
   };
 };
 
-export function MarketPage(): ReactElement {
+export function MarketPage({
+  showLeaderboard = true,
+}: {
+  showLeaderboard?: boolean;
+}): ReactElement {
   const chainId = useChainId();
+  const { isConnected: walletConnected } = useAccount();
   const explorerBase = resolveBlockExplorerUrl(chainId);
 
   const {
@@ -46,6 +54,7 @@ export function MarketPage(): ReactElement {
     "/v1/events?eventName=Transfer",
     {
       refetchInterval: 30000,
+      enabled: walletConnected,
       queryKey: ["transfers"],
     },
   );
@@ -67,13 +76,51 @@ export function MarketPage(): ReactElement {
     "/v1/events?eventName=Tick",
     {
       refetchInterval: 30000,
-      enabled: true,
+      enabled: walletConnected && showLeaderboard,
       queryKey: ["leaderboard"],
     },
   );
 
+  const { events: liveEvents, isConnected } = useEventStream({
+    topics: ["transfer", "tick.*"],
+    enabled: walletConnected,
+  });
+
+  const liveTransfers = useMemo<TransferEvent[]>(() => {
+    return liveEvents
+      .filter((ev) => ev.eventName.toLowerCase() === "transfer")
+      .map((ev) => {
+        const p = ev.payload as Record<string, unknown>;
+        return {
+          source: ev.source,
+          blockNumber: ev.blockNumber,
+          txHash: ev.txHash,
+          eventName: "Transfer",
+          payload: {
+            from: String(p.from ?? "") as `0x${string}`,
+            to: String(p.to ?? "") as `0x${string}`,
+            tokenId: String(p.tokenId ?? ""),
+          },
+        } satisfies TransferEvent;
+      });
+  }, [liveEvents]);
+
+  const mergedTransfers = useMemo<TransferEvent[]>(() => {
+    const seen = new Set(transfers.map((t) => t.txHash));
+    return [...liveTransfers.filter((t) => !seen.has(t.txHash)), ...transfers];
+  }, [transfers, liveTransfers]);
+
+  const mergedTicks = useMemo<AxiomEvent[]>(() => {
+    const base = tickQuery.data?.events ?? [];
+    const seen = new Set(base.map(eventDedupeKey));
+    const liveTicks = liveEvents.filter((ev) =>
+      ev.eventName.toLowerCase().startsWith("tick"),
+    );
+    return [...base, ...liveTicks.filter((ev) => !seen.has(eventDedupeKey(ev)))];
+  }, [tickQuery.data, liveEvents]);
+
   const leaderboard = useMemo(() => {
-    const raw = tickQuery.data?.events;
+    const raw = mergedTicks;
     if (!raw || raw.length === 0) return [];
     const byAgent = new Map<
       string,
@@ -107,7 +154,21 @@ export function MarketPage(): ReactElement {
       }))
       .sort((a, b) => b.score - a.score)
       .slice(0, 10);
-  }, [tickQuery.data]);
+  }, [mergedTicks]);
+
+  const liveTxHashes = useMemo(
+    () => new Set(liveTransfers.map((t) => t.txHash)),
+    [liveTransfers],
+  );
+  const liveTickTokens = useMemo(
+    () =>
+      new Set(
+        liveEvents
+          .filter((ev) => ev.eventName.toLowerCase().startsWith("tick"))
+          .map((ev) => String((ev.payload as Record<string, unknown>).tokenId ?? "")),
+      ),
+    [liveEvents],
+  );
 
   return (
     <div>
@@ -167,7 +228,14 @@ export function MarketPage(): ReactElement {
       )}
 
       <SectionTitle style={{ marginTop: "var(--space-2xl)" }}>
-        Recent Transfers
+        Recent Transfers{" "}
+        <span
+          className="live-pill"
+          data-live={isConnected ? "true" : "false"}
+          style={{ marginLeft: "var(--space-sm)" }}
+        >
+          {isConnected ? "LIVE" : "OFFLINE"}
+        </span>
       </SectionTitle>
       {transfersLoading ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -180,7 +248,7 @@ export function MarketPage(): ReactElement {
           message={`Couldn't load transfers: ${humanizeError(transfersError)}`}
           onRetry={refetchTransfers}
         />
-      ) : transfers.length === 0 ? (
+      ) : mergedTransfers.length === 0 ? (
         <Card
           style={{
             textAlign: "center",
@@ -213,12 +281,22 @@ export function MarketPage(): ReactElement {
               gap: "var(--space-sm)",
             }}
           >
-            {(showAllTransfers ? transfers : transfers.slice(0, 20)).map(
-              (tx) => (
-                <li
-                  key={`${tx.txHash}-${tx.payload.tokenId}`}
-                  style={{ listStyle: "none" }}
-                >
+            {(showAllTransfers
+              ? mergedTransfers
+              : mergedTransfers.slice(0, 20)
+            ).map((tx) => (
+              <li
+                key={`${tx.txHash}-${tx.payload.tokenId}`}
+                style={{
+                  listStyle: "none",
+                  ...(liveTxHashes.has(tx.txHash)
+                    ? {
+                        animation:
+                          "axiom-fade-in 0.18s cubic-bezier(0.4, 0, 0.2, 1)",
+                      }
+                    : {}),
+                }}
+              >
                   <Card
                     hover
                     style={{
@@ -255,30 +333,27 @@ export function MarketPage(): ReactElement {
               ),
             )}
           </ul>
-          {transfers.length > 20 && !showAllTransfers && (
+          {mergedTransfers.length > 20 && !showAllTransfers && (
             <div style={{ textAlign: "center", marginTop: "var(--space-sm)" }}>
-              <button
-                type="button"
-                onClick={() => setShowAllTransfers(true)}
-                style={{
-                  background: "none",
-                  border: `1px solid ${COLORS.border}`,
-                  borderRadius: "var(--radius-md)",
-                  color: COLORS.teal,
-                  cursor: "pointer",
-                  fontSize: "var(--text-sm)",
-                  padding: "0.375rem 1rem",
-                }}
-              >
-                Show more ({transfers.length} total)
-              </button>
+              <Button variant="teal" onClick={() => setShowAllTransfers(true)}>
+                Show more ({mergedTransfers.length} total)
+              </Button>
             </div>
           )}
         </>
       )}
 
-      <SectionTitle style={{ marginTop: "var(--space-2xl)" }}>
-        Leaderboard
+      {showLeaderboard && (
+        <>
+          <SectionTitle style={{ marginTop: "var(--space-2xl)" }}>
+            Leaderboard{" "}
+        <span
+          className="live-pill"
+          data-live={isConnected ? "true" : "false"}
+          style={{ marginLeft: "var(--space-sm)" }}
+        >
+          {isConnected ? "LIVE" : "OFFLINE"}
+        </span>
       </SectionTitle>
       {tickQuery.isFetching && leaderboard.length === 0 ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -330,6 +405,12 @@ export function MarketPage(): ReactElement {
                   fontSize: "var(--text-xs)",
                   fontFamily: "var(--font-mono)",
                   color: COLORS.textMuted,
+                  ...(liveTickTokens.has(entry.tokenId)
+                    ? {
+                        animation:
+                          "axiom-fade-in 0.18s cubic-bezier(0.4, 0, 0.2, 1)",
+                      }
+                    : {}),
                 }}
               >
                 <span
@@ -355,6 +436,11 @@ export function MarketPage(): ReactElement {
                   </span>
                 </span>
                 <span style={{ color: COLORS.textDim }}>
+                  <span style={{ color: COLORS.success }}>▲{entry.buys}</span>{" "}
+                  <span style={{ color: COLORS.teal }}>▼{entry.sells}</span>{" "}
+                  <span style={{ color: COLORS.textDim }}>•{entry.holds}</span>
+                </span>
+                <span style={{ color: COLORS.textDim }}>
                   {entry.total} ticks
                 </span>
               </Card>
@@ -362,6 +448,7 @@ export function MarketPage(): ReactElement {
           ))}
         </div>
       )}
+      </>)}
     </div>
   );
 }

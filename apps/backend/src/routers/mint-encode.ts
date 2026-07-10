@@ -8,7 +8,7 @@ import type { ServerConfig } from "../server.js";
 import { createRoute } from "./route-factory.js";
 
 const mintEncodeSchema = z.object({
-  dataDescription: z.string(),
+  dataDescription: z.string().min(1).max(1024),
   dataHash: hexViem,
   to: addressViem,
 });

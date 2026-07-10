@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useAccount } from "wagmi";
 import { usePolledApi } from "./usePolledApi.js";
 
 export type Provider = {
@@ -16,9 +17,10 @@ export function useProviders(): {
   error: Error | null;
   refetch: () => void;
 } {
+  const { isConnected } = useAccount();
   const query = usePolledApi<{ services: Provider[] }>(
     "/v1/compute/providers",
-    { refetchInterval: POLL_INTERVAL_MS },
+    { enabled: isConnected, refetchInterval: POLL_INTERVAL_MS },
   );
 
   const emptyProviders = useMemo<Provider[]>(() => [], []);

@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import type { JsonRpcProvider } from "ethers";
 import type { OracleClient } from "../oracle/client.js";
+import { HTTP } from "@axiom/config";
 import { createLogger } from "../utils/logger.js";
 import { sendError, extractErrorMessage } from "../utils/response.js";
 
@@ -79,13 +80,13 @@ export function createHealthRouter(
   }
 
   router.get("/health/live", (_req: Request, res: Response) => {
-    res.status(200).json({ ok: true, live: true });
+    res.status(HTTP.OK).json({ ok: true, live: true });
   });
 
   router.get("/health", async (_req: Request, res: Response) => {
     try {
       const s = await resolveSnapshot();
-      res.status(s.ok ? 200 : 503).json({
+      res.status(s.ok ? HTTP.OK : HTTP.SERVICE_UNAVAILABLE).json({
         ok: s.ok,
         version: "0.1.0",
         signer: signerAddress,
@@ -97,7 +98,7 @@ export function createHealthRouter(
       log.error("health check failed", {
         error: extractErrorMessage(err),
       });
-      sendError(res, 503, "Health check failed");
+      sendError(res, HTTP.SERVICE_UNAVAILABLE, "Health check failed");
     }
   });
 

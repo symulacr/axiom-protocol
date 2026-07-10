@@ -23,6 +23,7 @@ export function useWithdraw(tokenId: bigint, onSuccess?: () => void) {
     min: 0,
     allowDecimals: true,
     maxDecimals: 18,
+    max: 1e12,
   });
 
   const handleWithdraw = useCallback(async () => {
@@ -47,7 +48,12 @@ export function useWithdraw(tokenId: bigint, onSuccess?: () => void) {
       await vd.refetch();
       onSuccess?.();
     } catch (err) {
-      toast.error(humanizeError(err));
+      const ref = err as { code?: string; requestId?: string } | null;
+      const refStr =
+        ref && (ref.code !== undefined || ref.requestId !== undefined)
+          ? `Ref · ${[ref.requestId, ref.code].filter((x): x is string => x !== undefined).join(" · ")}`
+          : null;
+      toast.error(humanizeError(err), refStr ? { description: refStr } : undefined);
     } finally {
       setIsWithdrawing(false);
     }
