@@ -9,8 +9,7 @@ import { Card, Button, MonoLabel, COLORS } from "./ui.js";
 function formatAddress(raw: `0x${string}`): string {
   try {
     return getAddress(raw);
-  } catch (err) {
-    console.warn("[ProviderCard] parse error:", err);
+  } catch {
     return raw;
   }
 }

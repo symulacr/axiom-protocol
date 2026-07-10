@@ -12,7 +12,7 @@ const log = createLogger("agents");
 
 const AGENT_LOG_SCAN_BLOCKS = 50_000;
 import type { Eip712Domain } from "@axiom/config";
-import { recoverAccessSigner } from "@axiom/config";
+import { recoverAccessSigner, HTTP } from "@axiom/config";
 import { transferBodySchema } from "../route-schemas.js";
 
 export function registerAgentRoutes(
@@ -38,9 +38,10 @@ export function registerAgentRoutes(
             ? req.query.owner.toLowerCase()
             : undefined;
         if (!owner || !/^0x[0-9a-f]{40}$/i.test(owner)) {
-          sendError(res, 400, "Valid owner address required");
+          sendError(res, HTTP.BAD_REQUEST, "Valid owner address required");
           return;
         }
+        res.setHeader("Cache-Control", "public, max-age=120");
         const bypassCache =
           req.query.fresh === "1" ||
           req.query.nocache === "1" ||
@@ -54,7 +55,7 @@ export function registerAgentRoutes(
         }
         const nftAddr = config.addresses?.agentNft;
         if (!nftAddr) {
-          sendError(res, 503, "Agent NFT address not configured");
+          sendError(res, HTTP.SERVICE_UNAVAILABLE, "Agent NFT address not configured");
           return;
         }
         const iface = new ethers.Interface([
@@ -146,11 +147,11 @@ export function registerAgentRoutes(
       try {
         const id = req.params.id;
         if (!id) {
-          sendError(res, 400, "Missing id");
+          sendError(res, HTTP.BAD_REQUEST, "Missing id");
           return;
         }
         if (!config.addresses?.agentNft) {
-          sendError(res, 500, "AgentNFT address not configured");
+          sendError(res, HTTP.INTERNAL, "AgentNFT address not configured");
           return;
         }
         const nft = config.addresses.agentNft;
@@ -180,15 +181,23 @@ export function registerAgentRoutes(
           }
         }
         if (!dataHash) {
-          sendError(res, 400, "Cannot determine dataHash for token");
+          sendError(res, HTTP.BAD_REQUEST, "Cannot determine dataHash for token");
           return;
         }
 
         let pk = receiverPubKey64;
-        if (pk.length === 130 && pk.startsWith("0x04")) {
-          pk = ("0x" + pk.slice(4)) as `0x${string}`;
-        } else if (ethers.getBytes(pk).length === 65) {
-          pk = ethers.hexlify(ethers.getBytes(pk).slice(1)) as `0x${string}`;
+        try {
+          if (pk.length === 130 && pk.startsWith("0x04")) {
+            pk = ("0x" + pk.slice(4)) as `0x${string}`;
+          } else {
+            const pubBytes = ethers.getBytes(pk);
+            if (pubBytes.length === 65) {
+              pk = ethers.hexlify(pubBytes.slice(1)) as `0x${string}`;
+            }
+          }
+        } catch {
+          sendError(res, HTTP.BAD_REQUEST, "Invalid receiverPubKey64 hex");
+          return;
         }
 
         const canRekey = !!(oldDataEncryptionKey && oldDataUri);
@@ -234,7 +243,7 @@ export function registerAgentRoutes(
           ) as `0x${string}`;
           if (!sealedKeyIn || sealedKeyIn.length < 2) {
             if (process.env.NODE_ENV === "production") {
-              sendError(res, 400, "sealedKey is required in production");
+              sendError(res, HTTP.BAD_REQUEST, "sealedKey is required in production");
               return;
             }
             log.warn(
@@ -271,11 +280,11 @@ export function registerAgentRoutes(
         const proofDataHash = accessProof.dataHash;
         const proofTargetPubkey = accessProof.targetPubkey;
         if (proofDataHash.toLowerCase() !== dataHash.toLowerCase()) {
-          sendError(res, 400, "accessProof dataHash mismatch");
+          sendError(res, HTTP.BAD_REQUEST, "accessProof dataHash mismatch");
           return;
         }
         if (proofTargetPubkey.toLowerCase() !== pk.toLowerCase()) {
-          sendError(res, 400, "accessProof targetPubkey mismatch");
+          sendError(res, HTTP.BAD_REQUEST, "accessProof targetPubkey mismatch");
           return;
         }
 
@@ -307,7 +316,7 @@ export function registerAgentRoutes(
         ) as `0x${string}`;
         if (!sealedKeyIn || sealedKeyIn.length < 2) {
           if (process.env.NODE_ENV === "production") {
-            sendError(res, 400, "sealedKey is required in production");
+            sendError(res, HTTP.BAD_REQUEST, "sealedKey is required in production");
             return;
           }
           log.warn(

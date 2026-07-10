@@ -3,14 +3,12 @@ import { COLORS, Card } from "./ui.js";
 
 interface EmptyStateProps {
   children: ReactNode;
-  icon?: string;
   title?: string;
   action?: ReactNode;
 }
 
 export function EmptyState({
   children,
-  icon,
   title,
   action,
 }: EmptyStateProps): ReactElement {
@@ -25,15 +23,6 @@ export function EmptyState({
         gap: "var(--space-md)",
       }}
     >
-      {icon !== undefined && (
-        <span
-          role="img"
-          aria-hidden="true"
-          style={{ fontSize: "var(--text-3xl)", lineHeight: 1, opacity: 0.6 }}
-        >
-          {icon}
-        </span>
-      )}
       {title !== undefined && (
         <h3
           style={{

@@ -21,6 +21,7 @@ import {
   Button,
   Alert,
   MonoLabel,
+  ErrorRef,
   Input,
   Textarea,
   Modal,
@@ -376,7 +377,11 @@ function ConfirmTransferPhase({
             <>
               <br />
               New data hash:{" "}
-              <MonoLabel style={{ fontSize: "var(--text-xs)" }}>
+              <MonoLabel
+                copyable
+                text={signature.newDataHash}
+                style={{ fontSize: "var(--text-xs)" }}
+              >
                 {signature.newDataHash}
               </MonoLabel>
             </>
@@ -399,7 +404,11 @@ function ConfirmTransferPhase({
           (TEE-signed)
           <br />
           Signer:{" "}
-          <MonoLabel style={{ fontSize: "var(--text-xs)" }}>
+          <MonoLabel
+            copyable
+            text={signature.signer ?? ""}
+            style={{ fontSize: "var(--text-xs)" }}
+          >
             {signature.signer ?? "\u2014"}
           </MonoLabel>
           {signature.ownershipProof !== undefined && (
@@ -436,7 +445,11 @@ function ConfirmTransferPhase({
           (receiver-signed)
           <br />
           Recovered signer:{" "}
-          <MonoLabel style={{ fontSize: "var(--text-xs)" }}>
+          <MonoLabel
+            copyable
+            text={signature.accessSigner}
+            style={{ fontSize: "var(--text-xs)" }}
+          >
             {signature.accessSigner}
           </MonoLabel>
         </Card>
@@ -677,6 +690,14 @@ export function TransferModal({
             {retryGuidance}
           </>
         )}
+        {(error as { code?: string; requestId?: string }).code !== undefined ||
+        (error as { code?: string; requestId?: string }).requestId !==
+          undefined ? (
+          <ErrorRef
+            code={(error as { code?: string }).code}
+            requestId={(error as { requestId?: string }).requestId}
+          />
+        ) : null}
       </Alert>
     ) : null;
 
@@ -692,6 +713,7 @@ export function TransferModal({
         open={open}
         onClose={cancel}
         title={`Transfer iNFT #${tokenId.toString()}`}
+        style={{ viewTransitionName: "transfer-dialog" }}
       >
         <PhaseIndicator transferPhase={transferPhase} />
 

@@ -208,10 +208,7 @@ export function useOrchestratorTick(): {
                   settle("reject", new Error(payload.error));
                 }
               } catch {
-                console.warn(
-                  "[useOrchestratorTick] Unparseable WS message:",
-                  msg.data,
-                );
+                return;
               }
             };
 

@@ -12,7 +12,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          walletconnect: ["wagmi", "viem"],
+          wagmi: ["wagmi", "viem"],
           rainbowkit: ["@rainbow-me/rainbowkit"],
           vendor: ["react", "react-dom", "react-router-dom"],
         },

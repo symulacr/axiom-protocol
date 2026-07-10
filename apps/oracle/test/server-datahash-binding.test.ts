@@ -1,11 +1,11 @@
-// Wave 6 A — server-side binding between /v1/ownership and the storage
-// "seen dataHashes" set. Exercises the real HTTP layer via a loopback
-// listener (no mocks).
-//
-// Test surface (3 cases, all real network, no mocks):
-//   1. unknown_dataHash_returns_400 — POST /v1/ownership with unseen dataHash
-//   2. dataHash_registered_via_agents_mint_succeeds — register then sign
-//   3. dataHash_observed_via_transfer_validity_succeeds — full re-key path
+
+
+
+
+
+
+
+
 
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
@@ -21,11 +21,11 @@ import { publicKeyUncompressedFromPrivate } from "@axiom/config/crypto/secp256k1
 
 const TEST_PRIV_HEX = "0x" + "11".repeat(32);
 const TEST_RECEIVER_PRIV_HEX = "0x" + "22".repeat(32);
-// Derive a real, on-curve uncompressed pubkey (64 bytes X||Y) from a private
-// key. The /v1/transfer-validity endpoint runs ECIES sealKeyForReceiver
-// against this key, which rejects off-curve points with "bad point: equation
-// left != right" — see apps/oracle/src/crypto/ecies.ts and the round-trip
-// test in apps/oracle/src/signer.test.ts:46-54.
+
+
+
+
+
 const TEST_RECEIVER_PUBKEY_HEX = ("0x" +
   Buffer.from(
     publicKeyUncompressedFromPrivate(
@@ -116,7 +116,7 @@ test("unknown_dataHash_returns_400", async () => {
 });
 
 test("dataHash_registered_via_agents_mint_succeeds", async () => {
-  // Step 1: register the dataHash explicitly.
+  
   const regRes = await httpRequest(server, "POST", "/v1/agents/mint", {
     dataHash: REGISTERED_DATA_HASH,
   });
@@ -126,7 +126,7 @@ test("dataHash_registered_via_agents_mint_succeeds", async () => {
   assert.equal(regBody.dataHash, REGISTERED_DATA_HASH);
   assert.equal(regBody.seen, true);
 
-  // Step 2: now /v1/ownership should accept it and return a recoverable signature.
+  
   const ownRes = await httpRequest(server, "POST", "/v1/ownership", {
     dataHash: REGISTERED_DATA_HASH,
     targetPubkey: TEST_RECEIVER_PUBKEY_HEX,
@@ -144,9 +144,9 @@ test("dataHash_registered_via_agents_mint_succeeds", async () => {
   assert.match(ownBody.signature, /^0x[0-9a-fA-F]+$/);
   assert.equal((ownBody.signature.length - 2) / 2, 65, "signature is 65 bytes (r || s || v)");
 
-  // Regression guard: recover the signer from the signature and assert it
-  // matches the *real* TeeSigner address. This proves the on-chain verifier
-  // (which uses the same ecrecover path) would accept the proof.
+  
+  
+  
   const validUntil = BigInt(ownBody.validUntil);
   const localDigest = ownershipMessageHash({
     dataHash: REGISTERED_DATA_HASH,
@@ -167,7 +167,7 @@ test("dataHash_registered_via_agents_mint_succeeds", async () => {
     validUntil,
   });
   assert.equal(localSig, ownBody.signature, "server-produced signature matches locally-re-signed one (deterministic k)");
-  // Recovered address from the *server's* signature must equal the *server's* signer.address.
+  
   const recovered = SigningKey.recoverPublicKey(localDigest, ownBody.signature);
   const recoveredBytes = Uint8Array.from(Buffer.from(recovered.slice(2), "hex"));
   const recoveredXy = recoveredBytes.slice(1);
@@ -182,10 +182,10 @@ test("dataHash_observed_via_transfer_validity_succeeds", async () => {
   const blob = concatEncrypted(enc);
   const oldDataHash = keccak256(blob) as `0x${string}`;
   const oldDataEncryptionKey = Buffer.from(aesKey).toString("base64");
-  // Pre-seed the storage so the server's storage.download(oldDataUri) finds
-  // the blob. We have a handle to the same InMemoryStorage instance the
-  // server uses (we passed it in `before`), so this is a real
-  // end-to-end test of the live route.
+  
+  
+  
+  
   await storage.upload(blob);
   const tvRes = await httpRequest(server, "POST", "/v1/transfer-validity", {
     oldDataHash,

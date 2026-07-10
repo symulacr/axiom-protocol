@@ -4,10 +4,10 @@ import type { Request, Response, NextFunction } from "express";
 export function createApiKeyAuth(
   apiKey: string | undefined,
   publicPaths: string[] = ["/health"],
-  devMode = false,
+  disableAuth = false,
 ) {
   if (!apiKey) {
-    if (!devMode) {
+    if (!disableAuth) {
       return (_req: Request, res: Response, _next: NextFunction) => {
         res.status(503).json({ error: "service unavailable: API key not configured" });
       };

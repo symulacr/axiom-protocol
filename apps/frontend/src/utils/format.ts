@@ -13,7 +13,6 @@ export function parseTokenId(raw: string | undefined): bigint | null {
   try {
     return BigInt(raw);
   } catch {
-    console.warn("[format] Fallback parse failed for value:", raw);
     return null;
   }
 }

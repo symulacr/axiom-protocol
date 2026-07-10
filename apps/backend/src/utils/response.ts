@@ -8,6 +8,13 @@ export function sendError(
   res: Response,
   status: number,
   message: string,
+  code?: string,
 ): void {
-  res.status(status).json({ error: message });
+  const body: { error: string; code?: string; requestId?: string } = {
+    error: message,
+  };
+  if (code !== undefined) body.code = code;
+  const requestId = (res.locals as { requestId?: string }).requestId;
+  if (requestId !== undefined) body.requestId = requestId;
+  res.status(status).json(body);
 }

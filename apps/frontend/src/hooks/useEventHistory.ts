@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useAccount } from "wagmi";
 import { usePolledApi } from "./usePolledApi.js";
 import { eventDedupeKey, sortEventsChronological } from "../utils/events.js";
 
-/** Wire-format event from GET /v1/events (mirrors backend `StoredEvent`). */
+
 export interface AxiomEvent {
   source: string;
   chainId: number;
@@ -51,21 +52,16 @@ function groupByName(
   return out;
 }
 
-/**
- * Polled event history — fetches `GET /v1/events` on cadence. In-flight
- * requests are aborted on unmount or when key options change.
- *
- * Uses cursor-based incremental polling: only events *after* the most-recent
- * known timestamp are fetched on subsequent polls.
- */
+
 export function useEventHistory(
   options: UseEventHistoryOptions = {},
 ): UseEventHistoryResult {
   const { pollIntervalMs, owner, enabled = true } = options;
+  const { isConnected } = useAccount();
   const interval = pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
 
-  // Ref (not state) — updates after each successful fetch without
-  // causing a re-render or query-key change that would flicker data.
+  
+  
   const lastTimestampRef = useRef(0);
   const mergedEventsRef = useRef<AxiomEvent[]>([]);
 
@@ -79,7 +75,7 @@ export function useEventHistory(
 
   const query = usePolledApi<EventsResponse>(urlGetter, {
     refetchInterval: interval,
-    enabled,
+    enabled: enabled && isConnected,
     queryKey: ["events", { owner }],
   });
 

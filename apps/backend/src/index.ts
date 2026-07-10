@@ -4,6 +4,7 @@ import { Wallet } from "ethers";
 import { resolveAddress } from "@axiom/config/addresses";
 import { registerProcessHandlers } from "@axiom/config/process";
 import { startServer } from "./server.js";
+import { createLogger } from "./utils/logger.js";
 import { loadEnv } from "./env.js";
 import { getSharedProvider } from "./provider.js";
 import { backendEnvSchema } from "./env-schema.js";
@@ -41,7 +42,7 @@ let shuttingDown = false;
 const onSignal = (sig: NodeJS.Signals): void => {
   if (shuttingDown) return;
   shuttingDown = true;
-  console.log(JSON.stringify({ level: "info", msg: "shutdown", signal: sig }));
+  createLogger("server").info("shutdown", { signal: sig });
   void (async () => {
     await getEventStore().flush();
     server.httpServer.closeAllConnections?.();

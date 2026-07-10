@@ -1,12 +1,10 @@
 import { Router } from "express";
 import { z } from "zod";
 import type { ServerConfig } from "../server.js";
-import { createRoute } from "./route-factory.js";
-import { TTLCache, ser } from "../skills/shared.js";
-
-const quoteCache = new TTLCache<unknown>(30_000);
+import { createSkillRouter, cachedJsonGet, ser } from "../skills/shared.js";
 
 const YAHOO_BASE = "https://query2.finance.yahoo.com";
+const yahooGet = cachedJsonGet(YAHOO_BASE, { ttlMs: 30_000 });
 let crumb = "";
 let cookie = "";
 
@@ -66,11 +64,8 @@ async function yahooFetch<T>(
 ): Promise<T> {
   await ensureCrumb();
   const qs = new URLSearchParams({ ...params, crumb }).toString();
-  const resp = await fetch(`${YAHOO_BASE}${path}?${qs}`, {
-    headers: { Cookie: cookie },
-  });
-  if (!resp.ok) throw new Error(`Yahoo ${resp.status}: ${await resp.text()}`);
-  return (await resp.json()) as T;
+  const full = `${path}?${qs}`;
+  return (await yahooGet(full, full, { headers: { Cookie: cookie }, signal: AbortSignal.timeout(15_000) })) as T;
 }
 
 function extractQuote(result: YahooChartResponse) {
@@ -98,25 +93,21 @@ const cryptoSchema = z.object({ symbol: z.string().min(1).max(12).default("BTC-U
 
 
 export function createSkillStocksRouter(config: ServerConfig): Router {
-  const router = Router();
+  const { router, route } = createSkillRouter(config);
 
-  createRoute(router, { path: "/v1/skills/stocks/quote", schema: symbolSchema, consumer: "chat-runtime", description: "Real-time stock quote" },
+  route({ path: "/v1/skills/stocks/quote", schema: symbolSchema, description: "Real-time stock quote" },
     async (parsed: z.infer<typeof symbolSchema>) => {
-      const cached = quoteCache.get(parsed.symbol);
-      if (cached) return cached;
       const data = await yahooFetch<YahooChartResponse>(`/v8/finance/chart/${parsed.symbol}`, { range: "1d", interval: "1d" });
-      const quote = extractQuote(data);
-      quoteCache.set(parsed.symbol, quote);
-      return quote;
-    }, config);
+      return extractQuote(data);
+    });
 
-  createRoute(router, { path: "/v1/skills/stocks/search", schema: searchSchema, consumer: "chat-runtime", description: "Yahoo Finance symbol search" },
+  route({ path: "/v1/skills/stocks/search", schema: searchSchema, description: "Yahoo Finance symbol search" },
     async (parsed: z.infer<typeof searchSchema>) => {
       const data = await yahooFetch<YahooSearchResponse>(`/v1/finance/search`, { q: parsed.query, quotesCount: "8", newsCount: "0" });
       return ser({ results: (data.quotes ?? []).map((q) => ({ symbol: q.symbol, name: q.shortname ?? q.longname, type: q.quoteType, exchange: q.exchange })) });
-    }, config);
+    });
 
-  createRoute(router, { path: "/v1/skills/stocks/history", schema: historySchema, consumer: "chat-runtime", description: "Historical price data" },
+  route({ path: "/v1/skills/stocks/history", schema: historySchema, description: "Historical price data" },
     async (parsed: z.infer<typeof historySchema>) => {
       const data = await yahooFetch<YahooChartResponse>(`/v8/finance/chart/${parsed.symbol}`, { range: parsed.range, interval: parsed.interval });
       const result = data.chart?.result?.[0];
@@ -127,30 +118,22 @@ export function createSkillStocksRouter(config: ServerConfig): Router {
         open: quote.open?.[i], high: quote.high?.[i], low: quote.low?.[i], close: quote.close?.[i], volume: quote.volume?.[i],
       }));
       return ser({ symbol: parsed.symbol, range: parsed.range, interval: parsed.interval, count: points.length, data: points });
-    }, config);
+    });
 
-  createRoute(router, { path: "/v1/skills/stocks/compare", schema: compareSchema, consumer: "chat-runtime", description: "Compare multiple stock quotes" },
+  route({ path: "/v1/skills/stocks/compare", schema: compareSchema, description: "Compare multiple stock quotes" },
     async (parsed: z.infer<typeof compareSchema>) => {
       const results = await Promise.allSettled(parsed.symbols.map(async (s) => {
-        const cached = quoteCache.get(s);
-        if (cached) return cached;
         const data = await yahooFetch<YahooChartResponse>(`/v8/finance/chart/${s}`, { range: "1d", interval: "1d" });
-        const quote = extractQuote(data);
-        quoteCache.set(s, quote);
-        return quote;
+        return extractQuote(data);
       }));
       return ser({ quotes: results.map((r, i) => r.status === "fulfilled" ? r.value : { symbol: parsed.symbols[i], error: r.reason?.message ?? "failed" }) });
-    }, config);
+    });
 
-  createRoute(router, { path: "/v1/skills/stocks/crypto", schema: cryptoSchema, consumer: "chat-runtime", description: "Crypto pair quote (e.g. BTC-USD)" },
+  route({ path: "/v1/skills/stocks/crypto", schema: cryptoSchema, description: "Crypto pair quote (e.g. BTC-USD)" },
     async (parsed: z.infer<typeof cryptoSchema>) => {
-      const cached = quoteCache.get(`crypto:${parsed.symbol}`);
-      if (cached) return cached;
       const data = await yahooFetch<YahooChartResponse>(`/v8/finance/chart/${parsed.symbol}`, { range: "1d", interval: "5m" });
-      const quote = extractQuote(data);
-      quoteCache.set(`crypto:${parsed.symbol}`, quote);
-      return quote;
-    }, config);
+      return extractQuote(data);
+    });
 
   return router;
 }

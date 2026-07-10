@@ -5,6 +5,7 @@ import {
   type Router,
   type Express,
 } from "express";
+import { HTTP } from "@axiom/config";
 import type { ServerConfig } from "../server.js";
 import type { z } from "zod";
 import { broadcast } from "../ws/broadcaster.js";
@@ -59,18 +60,21 @@ export function createRoute<S extends z.ZodTypeAny | undefined = undefined>(
           const idParam =
             typeof req.params.id === "string" ? req.params.id : null;
           if (!idParam) {
-            sendError(res, 400, "Missing id");
+            sendError(res, HTTP.BAD_REQUEST, "Missing id");
             return;
           }
           if (!/^\d+$/.test(idParam)) {
-            sendError(res, 400, "Invalid id: must be numeric");
+            sendError(res, HTTP.BAD_REQUEST, "Invalid id: must be numeric");
             return;
           }
         }
         if (opts.requireAddress && !config.addresses?.[opts.requireAddress]) {
-          res
-            .status(500)
-            .json({ error: `${opts.requireAddress} address not configured` });
+          sendError(
+            res,
+            HTTP.SERVICE_UNAVAILABLE,
+            `${opts.requireAddress} address not configured`,
+            "ADDRESS_NOT_CONFIGURED",
+          );
           return;
         }
         const parsed = opts.schema

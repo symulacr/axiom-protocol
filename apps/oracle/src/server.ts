@@ -15,6 +15,7 @@ import { hexlify, isAddress } from "ethers";
 import { randomBytes } from "node:crypto";
 import { ZodError } from "zod";
 import { createApiKeyAuth } from "@axiom/config/middleware/auth";
+import { HTTP } from "@axiom/config";
 
 import {
   aesGcmDecrypt,
@@ -44,8 +45,11 @@ function logRouteError(route: string, err: unknown): void {
 }
 
 function badRequest(res: Response, message: string): void {
-  res.status(400).json({ error: message });
+  res.status(HTTP.BAD_REQUEST).json({ error: message });
 }
+
+// Caps issued ownership proofs so they cannot be valid far into the future.
+const MAX_OWNERSHIP_VALIDITY_SECONDS = 10n * 365n * 24n * 3600n;
 
 export interface ServerConfig {
   signer: TeeSigner;
@@ -81,7 +85,7 @@ export function startServer(config: ServerConfig): {
   );
   app.use(rateLimit({ windowMs: 60_000, max: 100 }));
   app.use(express.json({ limit: "1mb" }));
-  app.use(createApiKeyAuth(config.env?.AXIOM_API_KEY));
+  app.use(createApiKeyAuth(config.env?.AXIOM_API_KEY, ["/health"], process.env.AXIOM_DISABLE_AUTH === "true"));
   const { signer, storage } = config;
 
   app.get("/health", (_req: Request, res: Response) => {
@@ -122,12 +126,20 @@ export function startServer(config: ServerConfig): {
         );
       }
 
-      const oldBlob = await storage.download(oldDataUri as `0x${string}`);
+      const oldBlob = await Promise.race([
+        storage.download(oldDataUri as `0x${string}`),
+        new Promise<Uint8Array>((_, reject) =>
+          setTimeout(
+            () => reject(new Error("storage.download timed out after 20000ms")),
+            20_000,
+          ),
+        ),
+      ]);
       const oldEnc = parseEncrypted(oldBlob);
 
       const oldDataKey = Buffer.from(oldDataEncryptionKey, "base64");
       if (oldDataKey.length !== 32) {
-        res.status(400).json({
+        res.status(HTTP.BAD_REQUEST).json({
           error: "oldDataEncryptionKey must be 32 bytes (base64-encoded)",
         });
         return;
@@ -165,7 +177,7 @@ export function startServer(config: ServerConfig): {
       });
     } catch (err) {
       logRouteError("/v1/transfer-validity", err);
-      res.status(500).json({ error: "Transfer validity check failed" });
+      res.status(HTTP.INTERNAL).json({ error: "Transfer validity check failed" });
     }
   });
 
@@ -192,7 +204,7 @@ export function startServer(config: ServerConfig): {
         } catch (err) {
           if (err instanceof ZodError) {
             res
-              .status(400)
+              .status(HTTP.BAD_REQUEST)
               .json({ error: err.issues[0]?.message ?? "Validation error" });
             return;
           }
@@ -213,7 +225,7 @@ export function startServer(config: ServerConfig): {
         }
 
         if (!storage.hasSeenDataHash(dataHash as `0x${string}`)) {
-          res.status(400).json({
+          res.status(HTTP.BAD_REQUEST).json({
             error: `Unknown dataHash: not previously seen by oracle. POST {dataHash} to /v1/agents/mint first.`,
             dataHash,
           });
@@ -266,7 +278,10 @@ export function startServer(config: ServerConfig): {
           if (parsed === null) {
             return badRequest(res, "Invalid validUntil");
           }
-          validUntil = parsed;
+          const maxValidUntil =
+            BigInt(Math.floor(Date.now() / 1000)) +
+            MAX_OWNERSHIP_VALIDITY_SECONDS;
+          validUntil = parsed > maxValidUntil ? maxValidUntil : parsed;
         }
 
         const ownershipSignature = signer.signOwnership({
@@ -285,7 +300,7 @@ export function startServer(config: ServerConfig): {
         });
       } catch (err) {
         logRouteError("/v1/ownership", err);
-        res.status(500).json({ error: "Internal server error" });
+        res.status(HTTP.INTERNAL).json({ error: "Internal server error" });
       }
     },
   );
@@ -304,7 +319,7 @@ export function startServer(config: ServerConfig): {
     } catch (err) {
       if (err instanceof ZodError) {
         res
-          .status(400)
+          .status(HTTP.BAD_REQUEST)
           .json({ error: err.issues[0]?.message ?? "Validation error" });
         return;
       }
@@ -325,7 +340,7 @@ export function startServer(config: ServerConfig): {
     );
     const safeMessage =
       message.length > 200 ? message.slice(0, 200) + "..." : message;
-    res.status(500).json({ error: safeMessage, code: "INTERNAL_ERROR" });
+    res.status(HTTP.INTERNAL).json({ error: safeMessage, code: "INTERNAL_ERROR" });
   });
   const httpServer = app.listen(config.port, config.bind, () => {
     console.log(

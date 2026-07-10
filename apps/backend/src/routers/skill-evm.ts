@@ -3,12 +3,14 @@ import { ethers } from "ethers";
 import { z } from "zod";
 import type { ServerConfig } from "../server.js";
 import {
-  createRoute,
-  type RouteOptions,
-  type RouteHandler,
-} from "./route-factory.js";
-import { getSharedProvider, TTLCache, ser, getLogsChunked, createLogger } from "../skills/shared.js";
-const logger = createLogger("skills:evm");
+  createSkillRouter,
+  cachedJsonGet,
+  getSharedProvider,
+  ser,
+  getLogsChunked,
+  createLogger,
+} from "../skills/shared.js";
+const log = createLogger("skills:evm");
 
 const ERC20_ABI = [
   "function balanceOf(address) view returns (uint256)",
@@ -39,36 +41,22 @@ const CHAINS: { name: string; rpc: string }[] = [
   { name: "gnosis", rpc: "https://rpc.gnosischain.com" },
 ];
 
-const priceCache = new TTLCache<number>(60_000);
+const priceGet = cachedJsonGet("https://api.coingecko.com", { ttlMs: 60_000 });
 
 async function fetchPrice(id: string): Promise<number> {
-  const cached = priceCache.get(id);
-  if (cached !== undefined) return cached;
-  const r = await fetch(
-    `https://api.coingecko.com/api/v3/simple/price?ids=${id}&vs_currencies=usd`,
-  );
-  const j = (await r.json()) as Record<string, { usd?: number }>;
-  const price = j[id]?.usd ?? 0;
-  priceCache.set(id, price);
-  return price;
+  const j = await priceGet(id, `/api/v3/simple/price?ids=${id}&vs_currencies=usd`) as Record<string, { usd?: number }>;
+  return j[id]?.usd ?? 0;
 }
 
 export function createSkillEvmRouter(config: ServerConfig): Router {
-  const router = Router();
+  const { router, route } = createSkillRouter(config);
   const provider = getSharedProvider();
-
-  const route = <S extends z.ZodTypeAny | undefined = undefined>(
-    opts: RouteOptions<S>,
-    handler: RouteHandler<S extends z.ZodTypeAny ? z.infer<S> : unknown>,
-  ): void => {
-    createRoute(router, { consumer: "chat-runtime", ...opts }, handler, config);
-  };
 
   const address = z.object({ address: z.string() });
   const token = z.object({ address: z.string(), token: z.string() });
 
   route(
-    { path: "/v1/skills/evm/wallet", schema: address },
+    { path: "/v1/skills/evm/wallet", schema: address, description: "Query EVM wallet native and ERC-20 balances" },
     async (parsed) => {
       const [native, tokenContract] = await Promise.all([
         provider.getBalance(parsed.address),
@@ -78,7 +66,7 @@ export function createSkillEvmRouter(config: ServerConfig): Router {
       ]);
       const erc20Balance = tokenContract
         ? await tokenContract.balanceOf!(parsed.address).catch((err) => {
-            logger.warn("evm wallet balanceOf failed", { err });
+            log.warn("evm wallet balanceOf failed", { err });
             return 0n;
           })
         : 0n;
@@ -87,7 +75,7 @@ export function createSkillEvmRouter(config: ServerConfig): Router {
   );
 
   route(
-    { path: "/v1/skills/evm/multichain", schema: address },
+    { path: "/v1/skills/evm/multichain", schema: address, description: "Query wallet balances across multiple EVM chains" },
     async (parsed) => {
       const results = await Promise.allSettled(
         CHAINS.map(async ({ name, rpc }) => {
@@ -107,7 +95,7 @@ export function createSkillEvmRouter(config: ServerConfig): Router {
   );
 
   route(
-    { path: "/v1/skills/evm/tx", schema: z.object({ hash: z.string() }) },
+    { path: "/v1/skills/evm/tx", schema: z.object({ hash: z.string() }), description: "Fetch an EVM transaction and its receipt" },
     async (parsed) => {
       const [tx, receipt] = await Promise.all([
         provider.getTransaction(parsed.hash),
@@ -121,6 +109,7 @@ export function createSkillEvmRouter(config: ServerConfig): Router {
     {
       path: "/v1/skills/evm/token",
       schema: z.object({ address: z.string(), coingeckoId: z.string().optional() }),
+      description: "ERC-20 token metadata and price",
     },
     async (parsed) => {
       const c = new ethers.Contract(parsed.address, ERC20_ABI, provider);
@@ -140,6 +129,7 @@ export function createSkillEvmRouter(config: ServerConfig): Router {
     {
       path: "/v1/skills/evm/gas",
       schema: z.object({ gasLimit: z.number().optional() }),
+      description: "Estimate EVM gas cost for a transaction",
     },
     async (parsed) => {
       const feeData = await provider.getFeeData();
@@ -168,6 +158,7 @@ export function createSkillEvmRouter(config: ServerConfig): Router {
         fromBlock: z.number(),
         toBlock: z.number(),
       }),
+      description: "Scan for large (whale) ERC-20 transfers",
     },
     async (parsed) => {
       const minValue = BigInt(parsed.minValue);
@@ -196,7 +187,7 @@ export function createSkillEvmRouter(config: ServerConfig): Router {
   );
 
   route(
-    { path: "/v1/skills/evm/contract", schema: address },
+    { path: "/v1/skills/evm/contract", schema: address, description: "Inspect contract code and proxy implementation" },
     async (parsed) => {
       const code = await provider.getCode(parsed.address);
       const isContract = code !== "0x";
@@ -216,7 +207,7 @@ export function createSkillEvmRouter(config: ServerConfig): Router {
   );
 
   route(
-    { path: "/v1/skills/evm/allowance", schema: token },
+    { path: "/v1/skills/evm/allowance", schema: token, description: "Check ERC-20 allowances for known DEX spenders" },
     async (parsed) => {
       const c = new ethers.Contract(parsed.token, ERC20_ABI, provider);
       const entries = await Promise.all(

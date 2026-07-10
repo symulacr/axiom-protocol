@@ -1,4 +1,5 @@
-import { lazy, Suspense, useEffect, useState, type ReactElement } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, type ReactElement } from "react";
+import { flushSync } from "react-dom";
 import { Link, useParams } from "react-router-dom";
 import { useAccount } from "wagmi";
 import { useAgentMetadata } from "../hooks/useAgentMetadata.js";
@@ -67,6 +68,7 @@ import {
   ErrorAlert,
   PageHeader,
   HelpTip,
+  withViewTransition,
 } from "../components/ui.js";
 import { PLACEHOLDER, truncateHex, parseTokenId } from "../utils/format.js";
 
@@ -102,6 +104,7 @@ export function AgentDetail(): ReactElement {
   const { isConnected } = useAccount();
 
   const [transferOpen, setTransferOpen] = useState(false);
+  const transferBtnRef = useRef<HTMLSpanElement>(null);
   const [activeSection, setActiveSection] = useState<AgentSection>(sectionFromHash);
 
   useEffect(() => {
@@ -158,9 +161,11 @@ export function AgentDetail(): ReactElement {
           </Link>
         </div>
 
-        <PageHeader
-          title={data?.dataDescription ?? `Agent #${tokenId.toString()}`}
-        />
+        <div style={{ viewTransitionName: "agent-card" }}>
+          <PageHeader
+            title={data?.dataDescription ?? `Agent #${tokenId.toString()}`}
+          />
+        </div>
 
         <div
           role="tablist"
@@ -306,7 +311,7 @@ export function AgentDetail(): ReactElement {
                     Owner
                   </dt>
                   <dd style={{ margin: 0, overflow: "hidden" }}>
-                    <MonoLabel>{data.owner}</MonoLabel>
+                    <MonoLabel copyable text={data.owner}>{data.owner}</MonoLabel>
                   </dd>
                   <dt
                     style={{
@@ -318,7 +323,7 @@ export function AgentDetail(): ReactElement {
                   </dt>
                   <dd style={{ margin: 0, overflow: "hidden" }}>
                     {data.creator !== undefined ? (
-                      <MonoLabel>{data.creator}</MonoLabel>
+                      <MonoLabel copyable text={data.creator}>{data.creator}</MonoLabel>
                     ) : (
                       <span style={{ color: COLORS.textDim }}>
                         {PLACEHOLDER}
@@ -334,7 +339,7 @@ export function AgentDetail(): ReactElement {
                     Data Hash
                   </dt>
                   <dd style={{ margin: 0, overflow: "hidden" }}>
-                    <MonoLabel title={data.dataHash}>
+                    <MonoLabel copyable text={data.dataHash} title={data.dataHash}>
                       {truncateHex(data.dataHash)}
                     </MonoLabel>
                   </dd>
@@ -376,7 +381,7 @@ export function AgentDetail(): ReactElement {
                         {PLACEHOLDER}
                       </span>
                     ) : (
-                      <MonoLabel>{data.tokenUri}</MonoLabel>
+                      <MonoLabel copyable text={data.tokenUri}>{data.tokenUri}</MonoLabel>
                     )}
                   </dd>
                   <dt
@@ -392,6 +397,8 @@ export function AgentDetail(): ReactElement {
                   <dd style={{ margin: 0, overflow: "hidden" }}>
                     {health.data ? (
                       <MonoLabel
+                        copyable
+                        text={`TEE ${health.data.oracle === "up" ? "Up ✓" : "Down ✗"}`}
                         style={{
                           color:
                             health.data.oracle === "up"
@@ -426,12 +433,28 @@ export function AgentDetail(): ReactElement {
                 agent's encrypted intelligence is re-keyed on 0G Storage, and
                 the receiver unwraps the sealed key inside a TEE.
               </p>
-              <Button
-                variant="primary"
-                onClick={(): void => setTransferOpen(true)}
+              <span
+                ref={transferBtnRef}
+                style={{ display: "inline-block" }}
               >
-                Transfer Agent
-              </Button>
+                <Button
+                  variant="primary"
+                  onClick={(): void => {
+                    transferBtnRef.current?.style.setProperty(
+                      "view-transition-name",
+                      "transfer-dialog",
+                    );
+                    withViewTransition(() => {
+                      flushSync(() => setTransferOpen(true));
+                    });
+                    transferBtnRef.current?.style.removeProperty(
+                      "view-transition-name",
+                    );
+                  }}
+                >
+                  Transfer Agent
+                </Button>
+              </span>
             </Card>
           </Suspense>
           )}
@@ -575,7 +598,7 @@ export function AgentDetail(): ReactElement {
           >
             {metrics !== null && metrics.totalTicks > 0 ? (
               <>
-                <PerformanceMetrics metrics={metrics} />
+                <PerformanceMetrics metrics={metrics} history={perfHistory} />
                 <TradeHistory history={perfHistory} />
               </>
             ) : (
@@ -588,21 +611,13 @@ export function AgentDetail(): ReactElement {
                   }}
                 >
                   No strategy executions yet.{" "}
-                  <button
-                    type="button"
+                  <Button
+                    variant="ghost"
+                    style={{ padding: 0, textDecoration: "underline" }}
                     onClick={() => setActiveSection("execute")}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      color: COLORS.bronzeLight,
-                      cursor: "pointer",
-                      fontFamily: "inherit",
-                      fontSize: "inherit",
-                      textDecoration: "underline",
-                    }}
                   >
                     Execute a strategy
-                  </button>{" "}
+                  </Button>{" "}
                   to see performance data here.
                 </p>
               </EmptyState>

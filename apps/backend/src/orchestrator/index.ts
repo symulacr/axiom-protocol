@@ -1,8 +1,6 @@
 import type { Wallet } from "ethers";
 import {
-  AbiCoder,
   JsonRpcProvider,
-  keccak256,
   type TransactionReceipt,
   type TransactionResponse,
 } from "ethers";
@@ -23,6 +21,7 @@ import {
 import { verifyTeeResponse } from "../compute/tee-verifier.js";
 import { DefaultSignerOracleClient } from "../oracle/client.js";
 import { pickOGNetwork } from "@axiom/config/networks";
+import { EVENT_NAMES } from "@axiom/config";
 import { VAULT_ABI, VAULT_ABI_LEGACY } from "@axiom/config/abis";
 import {
   detectVaultAbiVariant,
@@ -275,13 +274,6 @@ export class StrategyRunner {
       action,
       tokenId: strategy.agentTokenId.toString(),
     });
-    const innerHash = keccak256(data);
-    const _actionHash = keccak256(
-      AbiCoder.defaultAbiCoder().encode(
-        ["address", "uint256", "bytes32"],
-        [target, value, innerHash],
-      ),
-    );
     const proof: `0x${string}`[] = [];
 
     const strat = await readVaultStrategy(this.provider, vaultAddr, strategy.agentTokenId);
@@ -302,7 +294,7 @@ export class StrategyRunner {
       throw new Error(`vault.execute() tx ${tx.hash} returned no receipt`);
     }
 
-    const executedEvent = vaultTc.iface.getEvent("Executed");
+    const executedEvent = vaultTc.iface.getEvent(EVENT_NAMES.Executed);
     let result: `0x${string}` | undefined;
     const success = receipt.status === 1;
     if (executedEvent) {
@@ -500,8 +492,8 @@ export class StrategyRunner {
     const fromBlock = Math.max(0, latest - 2000);
     const strategyFilter = vaultTc.raw.filters.StrategySet(tokenId);
     const depositFilter = vaultTc.raw.filters.Deposited(tokenId);
-    const strategyEvent = vaultTc.iface.getEvent("StrategySet");
-    const depositEvent = vaultTc.iface.getEvent("Deposited");
+    const strategyEvent = vaultTc.iface.getEvent(EVENT_NAMES.StrategySet);
+    const depositEvent = vaultTc.iface.getEvent(EVENT_NAMES.Deposited);
     if (!strategyEvent || !depositEvent) {
       return { vaultBalance: 0n, recentEvents: [] };
     }
@@ -518,10 +510,10 @@ export class StrategyRunner {
         const topic0 = log.topics[0];
         const name =
           topic0 === strategyTopic
-            ? "StrategySet"
+            ? EVENT_NAMES.StrategySet
             : topic0 === depositTopic
-              ? "Deposited"
-              : "Unknown";
+              ? EVENT_NAMES.Deposited
+              : EVENT_NAMES.Unknown;
         return {
           blockNumber: BigInt(log.blockNumber),
           txHash: log.transactionHash as `0x${string}`,
@@ -534,9 +526,6 @@ export class StrategyRunner {
   private async fetchStoragePeek(
     strategy: StrategySpec,
   ): Promise<TickResult["storage"]> {
-    if (strategy.modelDataRoot === ZERO_DATA_ROOT) {
-      return { rootHash: strategy.modelDataRoot, size: 0 };
-    }
     const opts =
       strategy.modelEncryption?.type === "aes256"
         ? { symmetricKey: strategy.modelEncryption.key, withProof: true }

@@ -39,17 +39,27 @@ export function loadBuckets(): Map<string, unknown[]> {
   }
 }
 
+const bigintReplacer = (_key: string, value: unknown): unknown =>
+  typeof value === "bigint" ? value.toString() : value;
+
 export async function saveBuckets(
   buckets: Map<string, unknown[]>,
+  serialized: Map<string, string>,
+  dirty: Set<string>,
 ): Promise<void> {
   await ensurePersistDir();
-  const data = Object.fromEntries(buckets);
+  const parts: string[] = [];
+  for (const [key, events] of buckets) {
+    let json = serialized.get(key);
+    if (dirty.has(key) || json === undefined) {
+      json = JSON.stringify(events, bigintReplacer);
+      serialized.set(key, json);
+    }
+    parts.push(`${JSON.stringify(key)}:${json}`);
+  }
+  dirty.clear();
+  const data = `{${parts.join(",")}}`;
   const tmp = `${PERSIST_FILE}.tmp`;
-  await writeFile(
-    tmp,
-    JSON.stringify(data, (_key, value) =>
-      typeof value === "bigint" ? value.toString() : value,
-    ),
-  );
+  await writeFile(tmp, data);
   await rename(tmp, PERSIST_FILE);
 }

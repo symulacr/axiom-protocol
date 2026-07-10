@@ -13,6 +13,7 @@ import type { EventStore } from "../events/store.js";
 import type { ServerConfig } from "../server.js";
 import { REGISTERED_ROUTES } from "./route-factory.js";
 import { AGENT_NFT_ABI } from "@axiom/config/abis";
+import { HTTP } from "@axiom/config";
 import { TypedContract } from "@axiom/config/types/contract";
 import { getSharedProvider } from "../provider.js";
 import { keccak256, solidityPacked } from "ethers";
@@ -124,7 +125,7 @@ export function registerOrchestratorRoutes(
         };
         const runner = getOrCreateOrchestrator();
         if (!runner) {
-          sendError(res, 503, "Orchestrator not available");
+          sendError(res, HTTP.SERVICE_UNAVAILABLE, "Orchestrator not available");
           return;
         }
 
@@ -138,7 +139,7 @@ export function registerOrchestratorRoutes(
             }
           }
           if (!hasSubscribers) {
-            res.status(400).json({
+            res.status(HTTP.BAD_REQUEST).json({
               error: "No WebSocket subscriber for streaming",
               code: "NO_WS_SUBSCRIBER",
             });
@@ -164,7 +165,7 @@ export function registerOrchestratorRoutes(
               });
             });
           res
-            .status(202)
+            .status(HTTP.ACCEPTED)
             .json({ ok: true, streamTopic: `tick.${agentTokenId}` });
           return;
         }
@@ -175,7 +176,7 @@ export function registerOrchestratorRoutes(
           agentTokenId: spec.agentTokenId.toString(),
           recommendation: orchestratorResult.recommendation,
         });
-        res.status(200).json(orchestratorResult);
+        res.status(HTTP.OK).json(orchestratorResult);
       } catch (err) {
         next(err);
       }

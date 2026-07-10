@@ -265,7 +265,6 @@ export function ExecutePanel({
     } catch (err) {
       const msg = humanizeError(err);
       toast.error(`Strategy execution failed: ${msg}`);
-      console.error("ExecutePanel: orchestrator tick failed", err);
     }
   }, [activeId, chainId, streamMode, tick, tickStream, resetStream, vd]);
 

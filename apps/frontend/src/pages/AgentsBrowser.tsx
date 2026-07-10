@@ -6,10 +6,10 @@ import {
   type ChangeEvent,
   type ReactElement,
 } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAccount } from "wagmi";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { formatEther } from "viem";
+import { flushSync } from "react-dom";
 import { useAgents } from "../hooks/useAgents.js";
 import {
   useVaultDataBatch,
@@ -26,6 +26,7 @@ import {
   ConnectedGuard,
   Input,
   Button,
+  withViewTransition,
 } from "../components/ui.js";
 
 interface AgentCardStatusProps {
@@ -72,6 +73,7 @@ function AgentCardStatus({ vaultData, metrics }: AgentCardStatusProps) {
 
 export function AgentsBrowser(): ReactElement {
   const { isConnected } = useAccount();
+  const navigate = useNavigate();
   const { agents, isLoading, error } = useAgents();
   const tokenIds = useMemo(() => agents.map((a) => a.tokenId), [agents]);
   const { data: vaultDataMap } = useVaultDataBatch(tokenIds);
@@ -136,7 +138,7 @@ export function AgentsBrowser(): ReactElement {
     return (
       <div>
         <PageHeader title="Your Agents" />
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-md)" }}>
           <Skeleton height={48} />
           <Skeleton height={48} />
           <Skeleton height={48} />
@@ -165,9 +167,6 @@ export function AgentsBrowser(): ReactElement {
             >
               Connect your wallet to get started
             </p>
-            <div style={{ display: "flex", justifyContent: "center" }}>
-              <ConnectButton />
-            </div>
           </Card>
         ) : (
           <Card
@@ -275,7 +274,7 @@ export function AgentsBrowser(): ReactElement {
             {filteredAgents.map((agent) => (
               <div
                 key={agent.tokenId}
-                className="agent-card"
+                className="agent-card cv-auto"
                 style={{
                   padding: "12px 16px",
                   borderRadius: "var(--radius-lg)",
@@ -293,6 +292,22 @@ export function AgentsBrowser(): ReactElement {
               >
                 <Link
                   to={`/agents/${agent.tokenId}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const card = e.currentTarget.closest(
+                      ".agent-card",
+                    ) as HTMLElement | null;
+                    card?.style.setProperty(
+                      "view-transition-name",
+                      "agent-card",
+                    );
+                    withViewTransition(() => {
+                      flushSync(() =>
+                        navigate(`/agents/${agent.tokenId}`),
+                      );
+                    });
+                    card?.style.removeProperty("view-transition-name");
+                  }}
                   style={{
                     overflow: "hidden",
                     minWidth: 0,
@@ -319,7 +334,7 @@ export function AgentsBrowser(): ReactElement {
                   <span
                     style={{
                       color: COLORS.textMuted,
-                      fontSize: "0.875rem",
+                      fontSize: "var(--text-sm)",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
                       whiteSpace: "nowrap",
@@ -342,7 +357,7 @@ export function AgentsBrowser(): ReactElement {
                     flexShrink: 0,
                   }}
                 >
-                  <span style={{ color: COLORS.textDim, fontSize: "0.875rem" }}>
+                  <span style={{ color: COLORS.textDim, fontSize: "var(--text-sm)" }}>
                     {agent.owner?.slice(0, 6)}...{agent.owner?.slice(-4)}
                   </span>
                   <Link to={`/agents/${agent.tokenId}#execute`}>

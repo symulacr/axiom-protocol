@@ -1,5 +1,6 @@
 import { parseAbiItem, type AbiEvent, type Address, type Hex } from "viem";
 import { getAddresses } from "@axiom/config/addresses";
+import { EVENT_NAMES } from "@axiom/config";
 
 export type IndexerContractAddresses = {
   readonly AXIOM_AGENT_NFT: Address;
@@ -98,7 +99,7 @@ export type EventName = keyof typeof EVENT_SIGNATURES;
 
 export type AxiomEvent =
   | {
-      kind: "Transfer";
+      kind: typeof EVENT_NAMES.Transfer;
       blockNumber: number;
       txHash: Hex;
       logIndex: number;
@@ -183,7 +184,7 @@ export type AxiomEvent =
       assistant: Address;
     }
   | {
-      kind: "Deposited";
+      kind: typeof EVENT_NAMES.Deposited;
       blockNumber: number;
       txHash: Hex;
       logIndex: number;
@@ -193,7 +194,7 @@ export type AxiomEvent =
       amount: bigint;
     }
   | {
-      kind: "Withdrawn";
+      kind: typeof EVENT_NAMES.Withdrawn;
       blockNumber: number;
       txHash: Hex;
       logIndex: number;
@@ -203,7 +204,7 @@ export type AxiomEvent =
       amount: bigint;
     }
   | {
-      kind: "StrategySet";
+      kind: typeof EVENT_NAMES.StrategySet;
       blockNumber: number;
       txHash: Hex;
       logIndex: number;
@@ -213,7 +214,7 @@ export type AxiomEvent =
       validUntilDay: bigint;
     }
   | {
-      kind: "Executed";
+      kind: typeof EVENT_NAMES.Executed;
       blockNumber: number;
       txHash: Hex;
       logIndex: number;

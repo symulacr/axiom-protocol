@@ -14,6 +14,35 @@ export interface ConnectedClient {
 const _clients = new Set<ConnectedClient>();
 const _clientIds = new WeakMap<WebSocket, string>();
 const _clientMap = new Map<string, ConnectedClient>();
+// Reverse index: subscription prefix -> subscribed clients, for cheap fan-out.
+const _topicIndex = new Map<string, Set<ConnectedClient>>();
+
+function topicPrefixOf(topic: string): string {
+  return topic.replace("*", "");
+}
+
+function indexAdd(client: ConnectedClient): void {
+  for (const topic of client.topics) {
+    const prefix = topicPrefixOf(topic);
+    let set = _topicIndex.get(prefix);
+    if (!set) {
+      set = new Set();
+      _topicIndex.set(prefix, set);
+    }
+    set.add(client);
+  }
+}
+
+function indexRemove(client: ConnectedClient): void {
+  for (const topic of client.topics) {
+    const prefix = topicPrefixOf(topic);
+    const set = _topicIndex.get(prefix);
+    if (set) {
+      set.delete(client);
+      if (set.size === 0) _topicIndex.delete(prefix);
+    }
+  }
+}
 
 export function broadcast(topic: string, payload: unknown): void {
   const msg = JSON.stringify(
@@ -40,10 +69,12 @@ export function registerClient(client: ConnectedClient): string {
   _clients.add(client);
   _clientIds.set(client.socket, id);
   _clientMap.set(id, client);
+  indexAdd(client);
   return id;
 }
 
 export function unregisterClient(client: ConnectedClient): void {
+  indexRemove(client);
   _clients.delete(client);
   const id = _clientIds.get(client.socket);
   if (id) {
@@ -62,14 +93,16 @@ export function sendToTopic(topicPrefix: string, data: unknown): number {
     bigintReplacer,
   );
   let sent = 0;
-  for (const client of _clients) {
-    if (client.socket.readyState !== WebSocket.OPEN) continue;
-    if (
-      [...client.topics].some((t) => topicPrefix.startsWith(t.replace("*", "")))
-    ) {
+  const seen = new Set<ConnectedClient>();
+  for (const [prefix, clients] of _topicIndex) {
+    if (!topicPrefix.startsWith(prefix)) continue;
+    for (const client of clients) {
+      if (seen.has(client)) continue;
+      if (client.socket.readyState !== WebSocket.OPEN) continue;
       try {
         client.socket.send(msg);
         sent++;
+        seen.add(client);
       } catch (err) {
         log.warn("sendToTopic failed for client, removing", {
           error: extractErrorMessage(err),

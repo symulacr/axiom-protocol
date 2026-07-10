@@ -35,11 +35,46 @@ function withTimeout(init: RequestInit, timeout: number): RequestInit {
   return { ...init, signal };
 }
 
-async function buildHttpError(path: string, res: Response): Promise<Error> {
+type HttpError = Error & { retryAfter?: number; code?: string; requestId?: string };
+
+async function buildHttpError(path: string, res: Response): Promise<HttpError> {
   const text = await res.text();
-  return new Error(
-    `${path} failed: ${res.status} ${res.statusText}${text ? `: ${text}` : ""}`,
-  );
+  let parsed: { error?: string; code?: string; requestId?: string } | null = null;
+  if (text) {
+    try {
+      const j: unknown = JSON.parse(text);
+      if (j && typeof j === "object") {
+        parsed = j as { error?: string; code?: string; requestId?: string };
+      }
+    } catch {
+      parsed = null;
+    }
+  }
+  if (res.status === 401 || res.status === 403) {
+    const err = new Error(
+      "Session expired or unauthorized — reconnect your wallet.",
+    ) as HttpError;
+    if (parsed?.code !== undefined) err.code = parsed.code;
+    if (parsed?.requestId !== undefined) err.requestId = parsed.requestId;
+    return err;
+  }
+  if (res.status === 429) {
+    const raw = res.headers.get("Retry-After");
+    const parsedSecs = raw ? Number(raw) : NaN;
+    const secs = Number.isFinite(parsedSecs) && parsedSecs > 0 ? parsedSecs : 30;
+    const err = new Error(`Rate limited — retry in ${secs}s.`) as HttpError;
+    err.retryAfter = secs;
+    if (parsed?.code !== undefined) err.code = parsed.code;
+    if (parsed?.requestId !== undefined) err.requestId = parsed.requestId;
+    return err;
+  }
+  const message =
+    parsed?.error ??
+    `${path} failed: ${res.status} ${res.statusText}${text ? `: ${text}` : ""}`;
+  const err = new Error(message) as HttpError;
+  if (parsed?.code !== undefined) err.code = parsed.code;
+  if (parsed?.requestId !== undefined) err.requestId = parsed.requestId;
+  return err;
 }
 
 function wrapFetchError(err: unknown): never {
@@ -91,6 +126,15 @@ export async function apiFetch<T>(
     } catch (err) {
       lastError = err;
       if (err instanceof DOMException && err.name === "AbortError") throw err;
+      const retryAfter = (err as HttpError)?.retryAfter;
+      if (
+        retryAfter !== undefined &&
+        method === "GET" &&
+        attempt < maxRetries
+      ) {
+        await delay(retryAfter * 1000);
+        continue;
+      }
       if (isNetworkError(err) && attempt < maxRetries) {
         const backoff = Math.min(1000 * 2 ** attempt, 4000);
         await delay(backoff);

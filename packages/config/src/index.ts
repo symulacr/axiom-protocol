@@ -47,3 +47,5 @@ export {
   deriveRawPubkeyFromHex,
   deriveUncompressedPubkeyFromHex,
 } from "./crypto/secp256k1.js";
+export * from "./http.js";
+export * from "./events.js";

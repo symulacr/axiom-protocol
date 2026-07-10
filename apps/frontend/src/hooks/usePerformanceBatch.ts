@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useAccount } from "wagmi";
 import { usePolledApi } from "./usePolledApi.js";
 import type { PerformanceMetrics } from "@axiom/config/types/performance";
 
@@ -21,8 +22,9 @@ export function usePerformanceBatch(tokenIds: readonly bigint[]): {
   error: Error | null;
   refetch: () => void;
 } {
+  const { isConnected } = useAccount();
   const ids = tokenIds.map((id) => id.toString()).join(",");
-  const enabled = tokenIds.length > 0;
+  const enabled = isConnected && tokenIds.length > 0;
   const url = enabled ? `/v1/agents/performance/batch?ids=${ids}` : "";
 
   const { data, isLoading, error, refetch } =

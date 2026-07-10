@@ -4,7 +4,16 @@ export { getSharedProvider } from "../provider.js";
 export { TTLCache } from "../utils/cache.js";
 export { createLogger } from "../utils/logger.js";
 
+import { Router } from "express";
+import type { z } from "zod";
+import type { ServerConfig } from "../server.js";
+import {
+  createRoute,
+  type RouteOptions,
+  type RouteHandler,
+} from "../routers/route-factory.js";
 import { getSharedProvider } from "../provider.js";
+import { TTLCache } from "../utils/cache.js";
 import { createLogger } from "../utils/logger.js";
 
 const log = createLogger("skills:shared");
@@ -89,4 +98,48 @@ export async function* getLogsChunked(
 
     from = to + 1;
   }
+}
+
+export interface SkillRouter {
+  router: Router;
+  route: <S extends z.ZodTypeAny | undefined = undefined>(
+    opts: RouteOptions<S>,
+    handler: RouteHandler<S extends z.ZodTypeAny ? z.infer<S> : unknown>,
+  ) => void;
+}
+
+export function createSkillRouter(config: ServerConfig): SkillRouter {
+  const router = Router();
+  const route = <S extends z.ZodTypeAny | undefined = undefined>(
+    opts: RouteOptions<S>,
+    handler: RouteHandler<S extends z.ZodTypeAny ? z.infer<S> : unknown>,
+  ): void => {
+    createRoute(router, { consumer: "chat-runtime", ...opts }, handler, config);
+  };
+  return { router, route };
+}
+
+export interface CachedJsonGetOptions {
+  headers?: Record<string, string>;
+  ttlMs: number;
+}
+
+export function cachedJsonGet(
+  baseUrl: string,
+  opts: CachedJsonGetOptions,
+): (key: string, path: string, init?: RequestInit) => Promise<unknown> {
+  const cache = new TTLCache<unknown>(opts.ttlMs);
+  const baseHeaders = opts.headers ?? {};
+  return async (key, path, init) => {
+    const hit = cache.get(key);
+    if (hit !== undefined) return hit;
+    const res = await fetch(`${baseUrl}${path}`, {
+      ...init,
+      headers: { ...baseHeaders, ...init?.headers },
+    });
+    if (!res.ok) throw new Error(`Upstream ${res.status}: ${path}`);
+    const data = await res.json();
+    cache.set(key, data);
+    return data;
+  };
 }

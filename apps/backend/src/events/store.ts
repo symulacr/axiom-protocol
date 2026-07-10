@@ -1,4 +1,5 @@
 import { createLogger } from "../utils/logger.js";
+import { EVENT_NAMES } from "@axiom/config";
 import { DEFAULT_EVENT_LIMIT } from "../utils/constants.js";
 import { extractErrorMessage } from "../utils/response.js";
 import type { StoredEventPayload } from "./payloads.js";
@@ -76,6 +77,8 @@ export class EventStore {
   private readonly byTransferTo: Map<string, Map<string, number>>;
   private readonly indexPositions = new WeakMap<StoredEvent, IndexPositions>();
   private readonly seenKeys = new Set<string>();
+  private readonly serialized = new Map<string, string>();
+  private readonly dirty = new Set<string>();
   private total: number;
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
   private persistChain: Promise<void> = Promise.resolve();
@@ -123,6 +126,7 @@ export class EventStore {
     const tid = tokenIdFromPayload(stored.payload);
     if (tid !== null) this.addToTokenIdIndex(tid, stored);
     this.updateTransferToIndex(stored);
+    this.dirty.add(bucketKey);
     this.total += 1;
     this.persistDebounced();
     return stored;
@@ -293,7 +297,7 @@ export class EventStore {
   }
 
   private updateTransferToIndex(evt: StoredEvent): void {
-    if (evt.eventName !== "Transfer") return;
+    if (evt.eventName !== EVENT_NAMES.Transfer) return;
     const payload = evt.payload;
     if (!("to" in payload) || typeof payload.to !== "string") return;
     const tid = tokenIdFromPayload(payload);
@@ -312,7 +316,7 @@ export class EventStore {
   }
 
   private removeFromTransferToIndex(evt: StoredEvent): void {
-    if (evt.eventName !== "Transfer") return;
+    if (evt.eventName !== EVENT_NAMES.Transfer) return;
     const payload = evt.payload;
     if (!("to" in payload) || typeof payload.to !== "string") return;
     const tid = tokenIdFromPayload(payload);
@@ -323,7 +327,7 @@ export class EventStore {
     if (!ownerMap || ownerMap.get(tid) !== evt.blockNumber) return;
 
     let max: number | undefined;
-    const transferBucket = this.byEventName.get("Transfer");
+    const transferBucket = this.byEventName.get(EVENT_NAMES.Transfer);
     if (transferBucket) {
       for (const e of transferBucket) {
         if (e === evt) continue;
@@ -345,7 +349,7 @@ export class EventStore {
 
   private enqueuePersist(): Promise<void> {
     this.persistChain = this.persistChain
-      .then(() => saveBuckets(this.buckets))
+      .then(() => saveBuckets(this.buckets, this.serialized, this.dirty))
       .catch((err) => {
         log.warn("persist failed", { error: extractErrorMessage(err) });
       });
@@ -353,6 +357,7 @@ export class EventStore {
   }
 
   private persistDebounced(): void {
+    if (this.dirty.size === 0) return;
     if (this.debounceTimer) clearTimeout(this.debounceTimer);
     this.debounceTimer = setTimeout(() => {
       this.debounceTimer = null;
@@ -365,6 +370,7 @@ export class EventStore {
       clearTimeout(this.debounceTimer);
       this.debounceTimer = null;
     }
+    for (const key of this.buckets.keys()) this.dirty.add(key);
     await this.enqueuePersist();
   }
 
@@ -374,6 +380,8 @@ export class EventStore {
     this.byTokenId.clear();
     this.byTransferTo.clear();
     this.seenKeys.clear();
+    this.serialized.clear();
+    this.dirty.clear();
     this.total = 0;
     void this.enqueuePersist();
   }

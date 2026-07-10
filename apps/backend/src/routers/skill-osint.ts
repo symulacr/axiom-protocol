@@ -2,25 +2,18 @@ import { Router } from "express";
 import { z } from "zod";
 import type { ServerConfig } from "../server.js";
 import {
-  createRoute,
-  type RouteOptions,
-  type RouteHandler,
-} from "./route-factory.js";
-import { TTLCache, ser } from "../skills/shared.js";
+  createSkillRouter,
+  cachedJsonGet,
+  ser,
+} from "../skills/shared.js";
 
-const cache = new TTLCache<unknown>(5 * 60 * 1000);
+const cachedGet = cachedJsonGet("", {
+  headers: { "User-Agent": "AxiomAgent/1.0", Accept: "application/json" },
+  ttlMs: 5 * 60 * 1000,
+});
 
 async function cachedFetch(key: string, url: string, init?: RequestInit): Promise<unknown> {
-  const hit = cache.get(key);
-  if (hit) return hit;
-  const res = await fetch(url, {
-    ...init,
-    headers: { "User-Agent": "AxiomAgent/1.0", Accept: "application/json", ...init?.headers },
-  });
-  if (!res.ok) throw new Error(`Upstream ${res.status}: ${url}`);
-  const data = await res.json() as Record<string, unknown>;
-  cache.set(key, data);
-  return data;
+  return cachedGet(key, url, { ...init, signal: init?.signal ?? AbortSignal.timeout(15_000) });
 }
 
 function tokenScore(a: string, b: string): number {
@@ -52,17 +45,10 @@ const courtSchema = z.object({
 });
 
 export function createSkillOsintRouter(config: ServerConfig): Router {
-  const router = Router();
-
-  const route = <S extends z.ZodTypeAny | undefined = undefined>(
-    opts: RouteOptions<S>,
-    handler: RouteHandler<S extends z.ZodTypeAny ? z.infer<S> : unknown>,
-  ): void => {
-    createRoute(router, { consumer: "chat-runtime", ...opts }, handler, config);
-  };
+  const { router, route } = createSkillRouter(config);
 
   route(
-    { path: "/v1/skills/osint/sec_edgar", schema: cikSchema },
+    { path: "/v1/skills/osint/sec_edgar", schema: cikSchema, description: "SEC EDGAR company submissions lookup" },
     async (parsed: z.infer<typeof cikSchema>) => {
       const cik = parsed.cik.padStart(10, "0");
       return cachedFetch(`edgar:${cik}`, `https://data.sec.gov/submissions/CIK${cik}.json`);
@@ -70,7 +56,7 @@ export function createSkillOsintRouter(config: ServerConfig): Router {
   );
 
   route(
-    { path: "/v1/skills/osint/usaspending", schema: usaspendingSchema },
+    { path: "/v1/skills/osint/usaspending", schema: usaspendingSchema, description: "USASpending.gov federal award search" },
     async (parsed: z.infer<typeof usaspendingSchema>) => {
       return cachedFetch(`spend:${JSON.stringify(parsed.filters)}`, "https://api.usaspending.gov/api/v2/search/spending_by_award/", {
         method: "POST",
@@ -86,7 +72,7 @@ export function createSkillOsintRouter(config: ServerConfig): Router {
   );
 
   route(
-    { path: "/v1/skills/osint/ofac_sdn", schema: ofacSchema },
+    { path: "/v1/skills/osint/ofac_sdn", schema: ofacSchema, description: "OFAC SDN list name search" },
     async (parsed: z.infer<typeof ofacSchema>) => {
       const q = encodeURIComponent(parsed.name);
       return cachedFetch(`ofac:${parsed.name}`, `https://sanctionssearch.ofac.treas.gov/Details.aspx?id=0&name=${q}&program=SDN`);
@@ -94,7 +80,7 @@ export function createSkillOsintRouter(config: ServerConfig): Router {
   );
 
   route(
-    { path: "/v1/skills/osint/opencorporates", schema: opencorpSchema },
+    { path: "/v1/skills/osint/opencorporates", schema: opencorpSchema, description: "OpenCorporates company search" },
     async (parsed: z.infer<typeof opencorpSchema>) => {
       const q = encodeURIComponent(parsed.query);
       return cachedFetch(`ocorp:${parsed.jurisdiction}:${parsed.query}`, `https://api.opencorporates.com/v0.4/companies/search?q=${q}&jurisdiction_code=${parsed.jurisdiction}`);
@@ -102,7 +88,7 @@ export function createSkillOsintRouter(config: ServerConfig): Router {
   );
 
   route(
-    { path: "/v1/skills/osint/entity_resolve", schema: entitySchema },
+    { path: "/v1/skills/osint/entity_resolve", schema: entitySchema, description: "Resolve whether entity names refer to the same company" },
     async (parsed: z.infer<typeof entitySchema>) => {
       const { entities } = parsed;
       const scores: Array<{ pair: [string, string]; score: number }> = [];
@@ -117,7 +103,7 @@ export function createSkillOsintRouter(config: ServerConfig): Router {
   );
 
   route(
-    { path: "/v1/skills/osint/courtlistener", schema: courtSchema },
+    { path: "/v1/skills/osint/courtlistener", schema: courtSchema, description: "CourtListener opinions and RECAP search" },
     async (parsed: z.infer<typeof courtSchema>) => {
       const q = encodeURIComponent(parsed.query);
       const type = parsed.type ?? "o";
