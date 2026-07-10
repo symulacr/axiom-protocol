@@ -17,6 +17,7 @@ import {
 import {
   assertReceiptOk,
   recordOnChainStep,
+  recordReceipt,
 } from "./onchain.js";
 import { pipelineWalletTxs } from "./tx-pipeline.js";
 import { markCovered, markSkipped } from "./matrix.js";
@@ -331,15 +332,7 @@ export async function runVaultWithdrawStep(deps: {
   }
   markScenarioCovered("vault.withdraw", "vault-withdraw", { txs: 1, reads: 2 });
   markCovered("AxiomStrategyVault", "withdraw", "vault-withdraw");
-  recordOnChainStep({
-    step: 13,
-    name: "AxiomStrategyVault.withdraw",
-    ok: true,
-    summary: `balance ${before} -> ${after}`,
-    txHash: receipt.hash,
-    blockNumber: receipt.blockNumber,
-    chainId: deps.chainId,
-  });
+  recordReceipt(13, "AxiomStrategyVault.withdraw", `balance ${before} -> ${after}`, receipt, deps.chainId);
   return after;
 }
 
@@ -421,24 +414,8 @@ export async function runPaymentPipelineStep(deps: {
   markCovered("AxiomPaymentProcessor", "agentEarningsOf", "payForAgent");
   markCovered("AxiomPaymentProcessor", "payComputeProvider", "payComputeProvider");
   markCovered("MockUSDC", "transfer", "payComputeProvider");
-  recordOnChainStep({
-    step: 9,
-    name: "AxiomPaymentProcessor.payForAgent",
-    ok: true,
-    summary: `earnings ${earningsBefore} -> ${earningsAfter}`,
-    txHash: payReceipt!.hash,
-    blockNumber: payReceipt!.blockNumber,
-    chainId: deps.chainId,
-  });
-  recordOnChainStep({
-    step: 15,
-    name: "payComputeProvider",
-    ok: true,
-    summary: `provider +${providerBalAfter - providerBalBefore}`,
-    txHash: computeReceipt!.hash,
-    blockNumber: computeReceipt!.blockNumber,
-    chainId: deps.chainId,
-  });
+  recordReceipt(9, "AxiomPaymentProcessor.payForAgent", `earnings ${earningsBefore} -> ${earningsAfter}`, payReceipt!, deps.chainId);
+  recordReceipt(15, "payComputeProvider", `provider +${providerBalAfter - providerBalBefore}`, computeReceipt!, deps.chainId);
 }
 
 export async function runRoyaltyStep(deps: {
@@ -464,15 +441,7 @@ export async function runRoyaltyStep(deps: {
   }
   markScenarioCovered("payment.royalty", "royalty", { txs: 1, reads: 2 });
   markCovered("AxiomPaymentProcessor", "setRoyaltyBpsPermitted", "royalty");
-  recordOnChainStep({
-    step: 14,
-    name: "setRoyaltyBpsPermitted",
-    ok: true,
-    summary: `royaltyBps=${onChain}`,
-    txHash: receipt.hash,
-    blockNumber: receipt.blockNumber,
-    chainId: deps.chainId,
-  });
+  recordReceipt(14, "setRoyaltyBpsPermitted", `royaltyBps=${onChain}`, receipt, deps.chainId);
 }
 
 export async function runPayComputeProviderStep(deps: {
@@ -508,15 +477,7 @@ export async function runPayComputeProviderStep(deps: {
   markScenarioCovered("payment.compute", "payComputeProvider", { txs: 1 });
   markCovered("AxiomPaymentProcessor", "payComputeProvider", "payComputeProvider");
   markCovered("MockUSDC", "transfer", "payComputeProvider");
-  recordOnChainStep({
-    step: 15,
-    name: "payComputeProvider",
-    ok: true,
-    summary: `provider +${balAfter - balBefore}`,
-    txHash: receipt.hash,
-    blockNumber: receipt.blockNumber,
-    chainId: deps.chainId,
-  });
+  recordReceipt(15, "payComputeProvider", `provider +${balAfter - balBefore}`, receipt, deps.chainId);
 }
 
 export async function runWithdrawEarningsStep(deps: {
@@ -543,15 +504,7 @@ export async function runWithdrawEarningsStep(deps: {
   }
   markScenarioCovered("payment.withdraw", "withdrawEarnings", { txs: 1, reads: 2 });
   markCovered("AxiomPaymentProcessor", "withdrawAgentEarnings", "withdrawEarnings");
-  recordOnChainStep({
-    step: 16,
-    name: "withdrawAgentEarnings",
-    ok: true,
-    summary: `withdrew ${pending}`,
-    txHash: receipt.hash,
-    blockNumber: receipt.blockNumber,
-    chainId: deps.chainId,
-  });
+  recordReceipt(16, "withdrawAgentEarnings", `withdrew ${pending}`, receipt, deps.chainId);
 }
 
 async function buildAuthorizeDelegatePipelineSteps(
@@ -627,15 +580,7 @@ export async function runAuthorizeDelegateStep(deps: {
   markScenarioCovered("agent.revoke", "revokeAuthorization", { txs: 1, reads: 1 });
   markCovered("AxiomAgentNFT", "revokeAuthorization", "revokeAuthorization");
 
-  recordOnChainStep({
-    step: 17,
-    name: "authorize/delegate/revoke",
-    ok: true,
-    summary: `delegate=${deps.delegateAddress.slice(0, 10)}…`,
-    txHash: revReceipt.hash,
-    blockNumber: revReceipt.blockNumber,
-    chainId: deps.chainId,
-  });
+  recordReceipt(17, "authorize/delegate/revoke", `delegate=${deps.delegateAddress.slice(0, 10)}…`, revReceipt, deps.chainId);
 }
 
 export async function runUpdateRoyaltyPipelineStep(deps: {
@@ -694,24 +639,8 @@ export async function runUpdateRoyaltyPipelineStep(deps: {
   markScenarioCovered("payment.royalty", "royalty", { txs: 1, reads: 2 });
   markCovered("AxiomAgentNFT", "update", "update-data");
   markCovered("AxiomPaymentProcessor", "setRoyaltyBpsPermitted", "royalty");
-  recordOnChainStep({
-    step: 18,
-    name: "AxiomAgentNFT.update",
-    ok: true,
-    summary: "description=strategy-v2",
-    txHash: updateReceipt.hash,
-    blockNumber: updateReceipt.blockNumber,
-    chainId: deps.chainId,
-  });
-  recordOnChainStep({
-    step: 14,
-    name: "setRoyaltyBpsPermitted",
-    ok: true,
-    summary: `royaltyBps=${onChain}`,
-    txHash: royaltyReceipt.hash,
-    blockNumber: royaltyReceipt.blockNumber,
-    chainId: deps.chainId,
-  });
+  recordReceipt(18, "AxiomAgentNFT.update", "description=strategy-v2", updateReceipt, deps.chainId);
+  recordReceipt(14, "setRoyaltyBpsPermitted", `royaltyBps=${onChain}`, royaltyReceipt, deps.chainId);
 }
 
 export async function runUpdateDataStep(deps: {
@@ -737,15 +666,7 @@ export async function runUpdateDataStep(deps: {
   }
   markScenarioCovered("agent.update", "update-data", { txs: 1, reads: 1 });
   markCovered("AxiomAgentNFT", "update", "update-data");
-  recordOnChainStep({
-    step: 18,
-    name: "AxiomAgentNFT.update",
-    ok: true,
-    summary: "description=strategy-v2",
-    txHash: receipt.hash,
-    blockNumber: receipt.blockNumber,
-    chainId: deps.chainId,
-  });
+  recordReceipt(18, "AxiomAgentNFT.update", "description=strategy-v2", receipt, deps.chainId);
 }
 
 export async function runPostVaultCoveragePipeline(deps: {
@@ -837,15 +758,7 @@ export async function runPostVaultCoveragePipeline(deps: {
     }
     markScenarioCovered("vault.withdraw", "vault-withdraw", { txs: 1, reads: 2 });
     markCovered("AxiomStrategyVault", "withdraw", "vault-withdraw");
-    recordOnChainStep({
-      step: 13,
-      name: "AxiomStrategyVault.withdraw",
-      ok: true,
-      summary: `balance ${balanceBefore} -> ${vaultBal}`,
-      txHash: receipts[0]!.hash,
-      blockNumber: receipts[0]!.blockNumber,
-      chainId: deps.chainId,
-    });
+    recordReceipt(13, "AxiomStrategyVault.withdraw", `balance ${balanceBefore} -> ${vaultBal}`, receipts[0]!, deps.chainId);
   }
 
   const assistant = await nft.contract.getDelegateAccess(deps.deployer.address);
@@ -890,37 +803,13 @@ export async function runPostVaultCoveragePipeline(deps: {
   const revokeReceipt = receiptFor("revokeAuthorization");
   const updateReceipt = receiptFor("AxiomAgentNFT.update");
   if (revokeReceipt) {
-    recordOnChainStep({
-      step: 17,
-      name: "authorize/delegate/revoke",
-      ok: true,
-      summary: `delegate=${deps.delegateAddress.slice(0, 10)}…`,
-      txHash: revokeReceipt.hash,
-      blockNumber: revokeReceipt.blockNumber,
-      chainId: deps.chainId,
-    });
+    recordReceipt(17, "authorize/delegate/revoke", `delegate=${deps.delegateAddress.slice(0, 10)}…`, revokeReceipt, deps.chainId);
   }
   if (updateReceipt) {
-    recordOnChainStep({
-      step: 18,
-      name: "AxiomAgentNFT.update",
-      ok: true,
-      summary: "description=strategy-v2",
-      txHash: updateReceipt.hash,
-      blockNumber: updateReceipt.blockNumber,
-      chainId: deps.chainId,
-    });
+    recordReceipt(18, "AxiomAgentNFT.update", "description=strategy-v2", updateReceipt, deps.chainId);
   }
   if (withRoyalty) {
-    recordOnChainStep({
-      step: 14,
-      name: "setRoyaltyBpsPermitted",
-      ok: true,
-      summary: `royaltyBps=${bps}`,
-      txHash: lastReceipt.hash,
-      blockNumber: lastReceipt.blockNumber,
-      chainId: deps.chainId,
-    });
+    recordReceipt(14, "setRoyaltyBpsPermitted", `royaltyBps=${bps}`, lastReceipt, deps.chainId);
   }
 
   return vaultBal;
@@ -955,14 +844,6 @@ export async function runTeeCleanupStep(deps: {
   const receipt = assertReceiptOk(await tx.wait(), "cleanExpiredProofs");
   markScenarioCovered("tee.cleanup", "tee-cleanup", { txs: 1 });
   markCovered("AxiomTeeVerifier", "cleanExpiredProofs", "tee-cleanup");
-  recordOnChainStep({
-    step: 19,
-    name: "cleanExpiredProofs",
-    ok: true,
-    summary: `nonce=${proofNonce.slice(0, 14)}…`,
-    txHash: receipt.hash,
-    blockNumber: receipt.blockNumber,
-    chainId: deps.chainId,
-  });
+  recordReceipt(19, "cleanExpiredProofs", `nonce=${proofNonce.slice(0, 14)}…`, receipt, deps.chainId);
 }
 

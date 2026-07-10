@@ -2,8 +2,12 @@ import { Router } from "express";
 import { z } from "zod";
 import { ethers } from "ethers";
 import type { ServerConfig } from "../server.js";
+import {
+  createRoute,
+  type RouteOptions,
+  type RouteHandler,
+} from "./route-factory.js";
 import { TTLCache, ser, createLogger } from "../skills/shared.js";
-import { createRoute } from "./route-factory.js";
 
 const CACHE_TTL_MS = 120_000;
 const cache = new TTLCache<unknown>(CACHE_TTL_MS);
@@ -27,7 +31,6 @@ async function ghFetch(path: string): Promise<unknown> {
   return data;
 }
 
-
 const investigateSchema = z.object({
   owner: z.string().min(1),
   repo: z.string().min(1),
@@ -45,7 +48,6 @@ async function compareBytecode(bytecode: string) {
   const hash = ethers.keccak256(bytecode.startsWith("0x") ? bytecode : `0x${bytecode}`);
   return { bytecodeHash: hash, length: bytecode.length };
 }
-
 
 const commitsSchema = z.object({
   owner: z.string().min(1),
@@ -70,7 +72,6 @@ async function fetchCommits(owner: string, repo: string, sha?: string, perPage =
   }
   return { commits: list, forcePushSuspects };
 }
-
 
 const iocSchema = z.object({
   owner: z.string().min(1),
@@ -122,7 +123,6 @@ async function scanIocs(owner: string, repo: string, path?: string) {
   return { scanned: Math.min(textFiles.length, limit), totalFiles: textFiles.length, hits };
 }
 
-
 const auditSchema = z.object({
   owner: z.string().min(1),
   repo: z.string().min(1),
@@ -173,45 +173,31 @@ async function auditDeps(owner: string, repo: string) {
   return { deps, storageLayout };
 }
 
-
 export function createSkillOssForensicsRouter(config: ServerConfig): Router {
   const router = Router();
 
-  createRoute(
-    router,
-    { path: "/v1/skills/oss-forensics/investigate", method: "post", schema: investigateSchema,
-      consumer: "chat-runtime", description: "GitHub repo forensics + optional keccak256 bytecode comparison" },
+  const route = <S extends z.ZodTypeAny | undefined = undefined>(
+    opts: RouteOptions<S>,
+    handler: RouteHandler<S extends z.ZodTypeAny ? z.infer<S> : unknown>,
+  ): void => {
+    createRoute(router, { consumer: "chat-runtime", ...opts }, handler, config);
+  };
+
+  route({ path: "/v1/skills/oss-forensics/investigate", schema: investigateSchema, description: "GitHub repo forensics + optional keccak256 bytecode comparison" },
     async (parsed) => {
       const base = await investigateRepo(parsed.owner, parsed.repo);
       const bytecode = parsed.bytecode ? await compareBytecode(parsed.bytecode) : null;
       return ser({ ...base, bytecode });
-    },
-    config,
-  );
+    });
 
-  createRoute(
-    router,
-    { path: "/v1/skills/oss-forensics/commits", method: "post", schema: commitsSchema,
-      consumer: "chat-runtime", description: "Commit history with force-push detection" },
-    async (parsed) => ser(await fetchCommits(parsed.owner, parsed.repo, parsed.sha, parsed.perPage)),
-    config,
-  );
+  route({ path: "/v1/skills/oss-forensics/commits", schema: commitsSchema, description: "Commit history with force-push detection" },
+    async (parsed) => ser(await fetchCommits(parsed.owner, parsed.repo, parsed.sha, parsed.perPage)));
 
-  createRoute(
-    router,
-    { path: "/v1/skills/oss-forensics/ioc", method: "post", schema: iocSchema,
-      consumer: "chat-runtime", description: "IOC regex scan: AWS keys, tokens, private keys, IPs, domains" },
-    async (parsed) => ser(await scanIocs(parsed.owner, parsed.repo, parsed.path)),
-    config,
-  );
+  route({ path: "/v1/skills/oss-forensics/ioc", schema: iocSchema, description: "IOC regex scan: AWS keys, tokens, private keys, IPs, domains" },
+    async (parsed) => ser(await scanIocs(parsed.owner, parsed.repo, parsed.path)));
 
-  createRoute(
-    router,
-    { path: "/v1/skills/oss-forensics/audit", method: "post", schema: auditSchema,
-      consumer: "chat-runtime", description: "Dependency manifest audit + storage layout detection" },
-    async (parsed) => ser(await auditDeps(parsed.owner, parsed.repo)),
-    config,
-  );
+  route({ path: "/v1/skills/oss-forensics/audit", schema: auditSchema, description: "Dependency manifest audit + storage layout detection" },
+    async (parsed) => ser(await auditDeps(parsed.owner, parsed.repo)));
 
   return router;
 }

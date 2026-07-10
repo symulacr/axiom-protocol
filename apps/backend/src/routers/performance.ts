@@ -5,6 +5,16 @@ import type { EventStore } from "../events/store.js";
 import type { ServerConfig } from "../server.js";
 import { payloadField, payloadNumber } from "../events/payloads.js";
 
+type ActionCounts = { buyCount: number; sellCount: number; holdCount: number };
+
+function recordAction(payload: unknown, counts: ActionCounts): string {
+  const action = (payloadField(payload, "action") ?? "").toLowerCase();
+  if (action === "buy") counts.buyCount++;
+  else if (action === "sell") counts.sellCount++;
+  else counts.holdCount++;
+  return action;
+}
+
 export function registerPerformanceRoutes(
   app: Express,
   config: ServerConfig,
@@ -34,9 +44,7 @@ export function registerPerformanceRoutes(
         limit,
       });
 
-      let buyCount = 0,
-        sellCount = 0,
-        holdCount = 0;
+      const counts: ActionCounts = { buyCount: 0, sellCount: 0, holdCount: 0 };
       const history: Array<{
         timestamp: number;
         action: string;
@@ -48,12 +56,7 @@ export function registerPerformanceRoutes(
       }> = [];
 
       for (const evt of ticks) {
-        const action = (
-          payloadField(evt.payload, "action") ?? ""
-        ).toLowerCase();
-        if (action === "buy") buyCount++;
-        else if (action === "sell") sellCount++;
-        else holdCount++;
+        const action = recordAction(evt.payload, counts);
 
         history.push({
           timestamp: evt.receivedAt,
@@ -66,14 +69,14 @@ export function registerPerformanceRoutes(
         });
       }
 
-      const totalTicks = buyCount + sellCount + holdCount;
-      const buyRate = totalTicks > 0 ? buyCount / totalTicks : 0;
+      const totalTicks = counts.buyCount + counts.sellCount + counts.holdCount;
+      const buyRate = totalTicks > 0 ? counts.buyCount / totalTicks : 0;
       return {
         metrics: {
           totalTicks,
-          buyCount,
-          sellCount,
-          holdCount,
+          buyCount: counts.buyCount,
+          sellCount: counts.sellCount,
+          holdCount: counts.holdCount,
           buyRate,
           winRate: buyRate,
         },
@@ -121,24 +124,17 @@ export function registerPerformanceRoutes(
           eventName: "Tick",
           limit: 500,
         });
-        let buyCount = 0,
-          sellCount = 0,
-          holdCount = 0;
+        const counts: ActionCounts = { buyCount: 0, sellCount: 0, holdCount: 0 };
         for (const evt of ticks) {
-          const action = (
-            payloadField(evt.payload, "action") ?? ""
-          ).toLowerCase();
-          if (action === "buy") buyCount++;
-          else if (action === "sell") sellCount++;
-          else holdCount++;
+          recordAction(evt.payload, counts);
         }
-        const totalTicks = buyCount + sellCount + holdCount;
-        const buyRate = totalTicks > 0 ? buyCount / totalTicks : 0;
+        const totalTicks = counts.buyCount + counts.sellCount + counts.holdCount;
+        const buyRate = totalTicks > 0 ? counts.buyCount / totalTicks : 0;
         results[id] = {
           totalTicks,
-          buyCount,
-          sellCount,
-          holdCount,
+          buyCount: counts.buyCount,
+          sellCount: counts.sellCount,
+          holdCount: counts.holdCount,
           buyRate,
           winRate: buyRate,
         };

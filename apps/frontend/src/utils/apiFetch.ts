@@ -27,6 +27,38 @@ export class NetworkError extends Error {
   }
 }
 
+function withTimeout(init: RequestInit, timeout: number): RequestInit {
+  const timeoutSignal = AbortSignal.timeout(timeout);
+  const signal = init.signal
+    ? AbortSignal.any([init.signal, timeoutSignal])
+    : timeoutSignal;
+  return { ...init, signal };
+}
+
+async function buildHttpError(path: string, res: Response): Promise<Error> {
+  const text = await res.text();
+  return new Error(
+    `${path} failed: ${res.status} ${res.statusText}${text ? `: ${text}` : ""}`,
+  );
+}
+
+function wrapFetchError(err: unknown): never {
+  if (err instanceof DOMException && err.name === "AbortError") throw err;
+  if (err instanceof DOMException && err.name === "TimeoutError") {
+    throw new NetworkError(
+      "Request timed out. The server may be busy — please try again.",
+      err,
+    );
+  }
+  if (isNetworkError(err)) {
+    throw new NetworkError(
+      "Network error — check your internet connection and try again.",
+      err,
+    );
+  }
+  throw err;
+}
+
 export async function apiFetch<T>(
   path: string,
   init: RequestInit & { timeout?: number; retries?: number } = {},
@@ -35,61 +67,36 @@ export async function apiFetch<T>(
   const method = (init.method ?? "GET").toUpperCase();
   const maxRetries = init.retries ?? (method === "GET" ? 1 : 0);
 
-  const timeoutSignal = AbortSignal.timeout(timeout);
-  const combinedSignal = init.signal
-    ? AbortSignal.any([init.signal, timeoutSignal])
-    : timeoutSignal;
-
   let lastError: unknown;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      const res = await fetch(`${BACKEND_URL}${path}`, {
-        ...init,
-        signal: combinedSignal,
-        headers: {
-          "content-type": "application/json",
-          accept: "application/json",
-          ...(API_KEY ? { "x-api-key": API_KEY } : {}),
-          ...((init.headers as Record<string, string>) ?? {}),
-        },
-      });
-
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(
-          `${path} failed: ${res.status} ${res.statusText}${text ? `: ${text}` : ""}`,
-        );
-      }
+      const res = await fetch(
+        `${BACKEND_URL}${path}`,
+        withTimeout(
+          {
+            ...init,
+            headers: {
+              "content-type": "application/json",
+              accept: "application/json",
+              ...(API_KEY ? { "x-api-key": API_KEY } : {}),
+              ...((init.headers as Record<string, string>) ?? {}),
+            },
+          },
+          timeout,
+        ),
+      );
+      if (!res.ok) throw await buildHttpError(path, res);
       return res.json() as Promise<T>;
     } catch (err) {
       lastError = err;
-
-      if (err instanceof DOMException && err.name === "AbortError") {
-        throw err;
-      }
-
-      if (err instanceof DOMException && err.name === "TimeoutError") {
-        throw new NetworkError(
-          "Request timed out. The server may be busy — please try again.",
-          err,
-        );
-      }
-
+      if (err instanceof DOMException && err.name === "AbortError") throw err;
       if (isNetworkError(err) && attempt < maxRetries) {
         const backoff = Math.min(1000 * 2 ** attempt, 4000);
         await delay(backoff);
         continue;
       }
-
-      if (isNetworkError(err)) {
-        throw new NetworkError(
-          "Network error — check your internet connection and try again.",
-          err,
-        );
-      }
-
-      throw err;
+      wrapFetchError(err);
     }
   }
 
@@ -101,50 +108,24 @@ export async function apiFetchResponse(
   init: RequestInit & { timeout?: number } = {},
 ): Promise<Response> {
   const timeout = init.timeout ?? DEFAULT_TIMEOUT;
-
-  const timeoutSignal = AbortSignal.timeout(timeout);
-  const combinedSignal = init.signal
-    ? AbortSignal.any([init.signal, timeoutSignal])
-    : timeoutSignal;
-
   try {
-    const res = await fetch(`${BACKEND_URL}${path}`, {
-      ...init,
-      signal: combinedSignal,
-        headers: {
-          "content-type": "application/json",
-          ...(API_KEY ? { "x-api-key": API_KEY } : {}),
-          ...((init.headers as Record<string, string>) ?? {}),
+    const res = await fetch(
+      `${BACKEND_URL}${path}`,
+      withTimeout(
+        {
+          ...init,
+          headers: {
+            "content-type": "application/json",
+            ...(API_KEY ? { "x-api-key": API_KEY } : {}),
+            ...((init.headers as Record<string, string>) ?? {}),
+          },
         },
-    });
-
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(
-        `${path} failed: ${res.status} ${res.statusText}${text ? `: ${text}` : ""}`,
-      );
-    }
-
+        timeout,
+      ),
+    );
+    if (!res.ok) throw await buildHttpError(path, res);
     return res;
   } catch (err) {
-    if (err instanceof DOMException && err.name === "AbortError") {
-      throw err;
-    }
-
-    if (err instanceof DOMException && err.name === "TimeoutError") {
-      throw new NetworkError(
-        "Request timed out. The server may be busy — please try again.",
-        err,
-      );
-    }
-
-    if (isNetworkError(err)) {
-      throw new NetworkError(
-        "Network error — check your internet connection and try again.",
-        err,
-      );
-    }
-
-    throw err;
+    wrapFetchError(err);
   }
 }

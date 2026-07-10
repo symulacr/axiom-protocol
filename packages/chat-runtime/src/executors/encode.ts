@@ -1,5 +1,4 @@
 import { getChatToolSpec } from "@axiom/config/chat-tools";
-import { humanAbi } from "../abi.js";
 import { fetchJson } from "../http-json.js";
 import type { ToolRuntime } from "../transport.js";
 import type { ToolResult } from "../types.js";
@@ -21,32 +20,6 @@ export async function runEncodeTool(
   if (spec.requiresTokenId && !tokenId) {
     return fail("tokenId required");
   }
-
-  const preflight = await Promise.all([
-    spec.requiresWallet && ctx.http
-      ? fetchJson<{ agents: unknown[] }>(
-          ctx.http,
-          `/v1/agents?owner=${ctx.wallet!.address}`,
-        ).catch(() => ({ ok: false, data: { agents: [] }, status: 0 }))
-      : Promise.resolve(null),
-    name === "mint_agent" && ctx.chain?.readContract && ctx.session.addresses?.agentNft
-      ? ctx.chain.readContract<bigint>({
-          address: ctx.session.addresses.agentNft,
-          abi: humanAbi(["function mintFee() view returns (uint256)"]),
-          functionName: "mintFee",
-        })
-      : Promise.resolve(null),
-    tokenId && ctx.chain?.readContract && ctx.session.addresses?.vault
-      ? ctx.chain.readContract<bigint>({
-          address: ctx.session.addresses.vault,
-          abi: humanAbi(["function balanceOf(uint256) view returns (uint256)"]),
-          functionName: "balanceOf",
-          args: [BigInt(tokenId)],
-        })
-      : Promise.resolve(null),
-  ]);
-
-  void preflight;
 
   switch (name) {
     case "mint_agent":

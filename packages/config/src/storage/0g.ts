@@ -47,6 +47,18 @@ export interface DownloadOptions {
 }
 
 
+function trackDataHashSeen(seen: Set<string>, max: number, rootHash: Hex): void {
+  if (seen.size >= max) {
+    const iter = seen.values();
+    for (let i = 0; i < 1000; i++) {
+      const val = iter.next().value;
+      if (val !== undefined) seen.delete(val);
+      else break;
+    }
+  }
+  seen.add(rootHash.toLowerCase());
+}
+
 export class InMemoryStorage implements StorageAdapter {
   private store = new Map<string, Uint8Array>();
   private seenDataHashes = new Set<string>();
@@ -68,15 +80,7 @@ export class InMemoryStorage implements StorageAdapter {
   }
 
   markDataHashSeen(rootHash: Hex): void {
-    if (this.seenDataHashes.size >= this.MAX_SEEN_HASHES) {
-      const iter = this.seenDataHashes.values();
-      for (let i = 0; i < 1000; i++) {
-        const val = iter.next().value;
-        if (val !== undefined) this.seenDataHashes.delete(val);
-        else break;
-      }
-    }
-    this.seenDataHashes.add(rootHash.toLowerCase());
+    trackDataHashSeen(this.seenDataHashes, this.MAX_SEEN_HASHES, rootHash);
   }
 
   hasSeenDataHash(rootHash: Hex): boolean {
@@ -183,15 +187,7 @@ export class ZeroGStorage implements StorageAdapter {
   }
 
   markDataHashSeen(rootHash: Hex): void {
-    if (this.seenDataHashes.size >= this.MAX_SEEN_HASHES) {
-      const iter = this.seenDataHashes.values();
-      for (let i = 0; i < 1000; i++) {
-        const val = iter.next().value;
-        if (val !== undefined) this.seenDataHashes.delete(val);
-        else break;
-      }
-    }
-    this.seenDataHashes.add(rootHash.toLowerCase());
+    trackDataHashSeen(this.seenDataHashes, this.MAX_SEEN_HASHES, rootHash);
   }
 
   hasSeenDataHash(rootHash: Hex): boolean {

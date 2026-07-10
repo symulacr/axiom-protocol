@@ -2,7 +2,11 @@ import { Router } from "express";
 import { ethers } from "ethers";
 import { z } from "zod";
 import type { ServerConfig } from "../server.js";
-import { createRoute } from "./route-factory.js";
+import {
+  createRoute,
+  type RouteOptions,
+  type RouteHandler,
+} from "./route-factory.js";
 import { getSharedProvider, TTLCache, ser, getLogsChunked, createLogger } from "../skills/shared.js";
 const logger = createLogger("skills:evm");
 
@@ -53,12 +57,18 @@ export function createSkillEvmRouter(config: ServerConfig): Router {
   const router = Router();
   const provider = getSharedProvider();
 
+  const route = <S extends z.ZodTypeAny | undefined = undefined>(
+    opts: RouteOptions<S>,
+    handler: RouteHandler<S extends z.ZodTypeAny ? z.infer<S> : unknown>,
+  ): void => {
+    createRoute(router, { consumer: "chat-runtime", ...opts }, handler, config);
+  };
+
   const address = z.object({ address: z.string() });
   const token = z.object({ address: z.string(), token: z.string() });
 
-  createRoute(
-    router,
-    { method: "post", path: "/v1/skills/evm/wallet", consumer: "chat-runtime", schema: address },
+  route(
+    { path: "/v1/skills/evm/wallet", schema: address },
     async (parsed) => {
       const [native, tokenContract] = await Promise.all([
         provider.getBalance(parsed.address),
@@ -74,12 +84,10 @@ export function createSkillEvmRouter(config: ServerConfig): Router {
         : 0n;
       return ser({ native, erc20Balance });
     },
-    config,
   );
 
-  createRoute(
-    router,
-    { method: "post", path: "/v1/skills/evm/multichain", consumer: "chat-runtime", schema: address },
+  route(
+    { path: "/v1/skills/evm/multichain", schema: address },
     async (parsed) => {
       const results = await Promise.allSettled(
         CHAINS.map(async ({ name, rpc }) => {
@@ -96,16 +104,10 @@ export function createSkillEvmRouter(config: ServerConfig): Router {
         ),
       );
     },
-    config,
   );
 
-  createRoute(
-    router,
-    {
-      method: "post",
-      path: "/v1/skills/evm/tx", consumer: "chat-runtime",
-      schema: z.object({ hash: z.string() }),
-    },
+  route(
+    { path: "/v1/skills/evm/tx", schema: z.object({ hash: z.string() }) },
     async (parsed) => {
       const [tx, receipt] = await Promise.all([
         provider.getTransaction(parsed.hash),
@@ -113,14 +115,11 @@ export function createSkillEvmRouter(config: ServerConfig): Router {
       ]);
       return ser({ tx, receipt });
     },
-    config,
   );
 
-  createRoute(
-    router,
+  route(
     {
-      method: "post",
-      path: "/v1/skills/evm/token", consumer: "chat-runtime",
+      path: "/v1/skills/evm/token",
       schema: z.object({ address: z.string(), coingeckoId: z.string().optional() }),
     },
     async (parsed) => {
@@ -135,14 +134,11 @@ export function createSkillEvmRouter(config: ServerConfig): Router {
         : null;
       return ser({ name, symbol, decimals, price });
     },
-    config,
   );
 
-  createRoute(
-    router,
+  route(
     {
-      method: "post",
-      path: "/v1/skills/evm/gas", consumer: "chat-runtime",
+      path: "/v1/skills/evm/gas",
       schema: z.object({ gasLimit: z.number().optional() }),
     },
     async (parsed) => {
@@ -161,14 +157,11 @@ export function createSkillEvmRouter(config: ServerConfig): Router {
         estCostUsd,
       });
     },
-    config,
   );
 
-  createRoute(
-    router,
+  route(
     {
-      method: "post",
-      path: "/v1/skills/evm/whale", consumer: "chat-runtime",
+      path: "/v1/skills/evm/whale",
       schema: z.object({
         token: z.string(),
         minValue: z.string(),
@@ -200,12 +193,10 @@ export function createSkillEvmRouter(config: ServerConfig): Router {
       }
       return ser({ transfers, count: transfers.length });
     },
-    config,
   );
 
-  createRoute(
-    router,
-    { method: "post", path: "/v1/skills/evm/contract", consumer: "chat-runtime", schema: address },
+  route(
+    { path: "/v1/skills/evm/contract", schema: address },
     async (parsed) => {
       const code = await provider.getCode(parsed.address);
       const isContract = code !== "0x";
@@ -222,12 +213,10 @@ export function createSkillEvmRouter(config: ServerConfig): Router {
       }
       return ser({ isContract, codeLength: (code.length - 2) / 2, proxyImpl: impl });
     },
-    config,
   );
 
-  createRoute(
-    router,
-    { method: "post", path: "/v1/skills/evm/allowance", consumer: "chat-runtime", schema: token },
+  route(
+    { path: "/v1/skills/evm/allowance", schema: token },
     async (parsed) => {
       const c = new ethers.Contract(parsed.token, ERC20_ABI, provider);
       const entries = await Promise.all(
@@ -238,7 +227,6 @@ export function createSkillEvmRouter(config: ServerConfig): Router {
       );
       return ser({ allowances: entries });
     },
-    config,
   );
 
   return router;

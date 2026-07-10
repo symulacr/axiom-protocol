@@ -84,3 +84,22 @@ export function recordOnChainStep(deps: {
     );
   }
 }
+
+// Records a successful on-chain step that has a mined receipt.
+export function recordReceipt(
+  step: number,
+  name: string,
+  summary: string,
+  receipt: { hash: string; blockNumber: number },
+  chainId: number,
+): void {
+  recordOnChainStep({
+    step,
+    name,
+    ok: true,
+    summary,
+    txHash: receipt.hash,
+    blockNumber: receipt.blockNumber,
+    chainId,
+  });
+}

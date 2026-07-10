@@ -212,7 +212,6 @@ export function useOrchestratorTick(): {
                   "[useOrchestratorTick] Unparseable WS message:",
                   msg.data,
                 );
-                /* skip unparseable */
               }
             };
 

@@ -11,6 +11,7 @@ import {
   toolsByClass,
 } from "@axiom/config/chat-tools";
 import { resolveE2eComputeModel } from "./fast-path.js";
+import { percentile, postChatCompletionsSse, sleep } from "./shared.js";
 import { markScenarioCovered, markScenarioSkipped } from "./scenarios.js";
 import { noteFriction } from "./friction.js";
 import { runComplexToolFlowBench } from "./complex-flow-bench.js";
@@ -35,134 +36,18 @@ export interface ChatBenchReport {
   liveCompute: boolean;
 }
 
-type KeepAliveFetch = (
-  url: string,
-  init?: RequestInit,
-) => Promise<Response>;
-
 const FRONTEND_TOOL_NAMES = CHAT_BENCH_ALL_TOOL_NAMES;
 
 const ARCHIVE_PROBE_URL = "https://example.com";
 
 const WRITE_ENCODE_TOOLS = CHAT_BENCH_ENCODE_TOOLS;
 
-function percentile(sorted: number[], p: number): number {
-  if (sorted.length === 0) return 0;
-  const idx = Math.min(
-    sorted.length - 1,
-    Math.max(0, Math.ceil((p / 100) * sorted.length) - 1),
-  );
-  return sorted[idx]!;
-}
-
-export function createKeepAliveFetch(): {
-  fetch: KeepAliveFetch;
-  close: () => void;
-} {
-  const fetchFn: KeepAliveFetch = (url, init) =>
-    fetch(url, { ...init, keepalive: true } as RequestInit);
-  return { fetch: fetchFn, close: () => {} };
-}
-
-async function sleep(ms: number): Promise<void> {
-  await new Promise((r) => setTimeout(r, ms));
-}
-
 function chatBenchCooldownMs(): number {
   const n = Number.parseInt(process.env.CHAT_BENCH_COOLDOWN_MS ?? "2000", 10);
   return Number.isFinite(n) && n >= 0 ? n : 2000;
 }
 
-export async function consumeChatSseWithFetch(
-  fetchFn: KeepAliveFetch,
-  backendUrl: string,
-  body: unknown,
-  opts?: { retries?: number },
-): Promise<{
-  chunks: unknown[];
-  toolCallSeen: boolean;
-  toolNames: string[];
-  text: string;
-  ms: number;
-  ttftMs: number;
-}> {
-  const retries = opts?.retries ?? 2;
-  const t0 = performance.now();
-  let res: Response | undefined;
-  let lastErr = "";
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    res = await fetchFn(`${backendUrl}/v1/chat/completions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (res.ok) break;
-    const text = await res.text();
-    lastErr = `chat completions ${res.status}: ${text.slice(0, 200)}`;
-    if (res.status === 429 && attempt < retries) {
-      await sleep(7_000 * (attempt + 1));
-      continue;
-    }
-    throw new Error(lastErr);
-  }
-  if (!res?.ok) throw new Error(lastErr || "chat completions failed");
-  const reader = res.body?.getReader();
-  if (!reader) throw new Error("chat completions: no response body");
 
-  const decoder = new TextDecoder();
-  let buffer = "";
-  const chunks: unknown[] = [];
-  let toolCallSeen = false;
-  const toolNames: string[] = [];
-  let text = "";
-  let ttftMs = 0;
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() ?? "";
-    for (const line of lines) {
-      if (!line.startsWith("data: ")) continue;
-      const payload = line.slice(6).trim();
-      if (payload === "[DONE]") continue;
-      try {
-        const chunk = JSON.parse(payload) as {
-          choices?: Array<{
-            delta?: {
-              content?: string;
-              tool_calls?: Array<{ function?: { name?: string } }>;
-            };
-          }>;
-        };
-        chunks.push(chunk);
-        const delta = chunk.choices?.[0]?.delta;
-        if (ttftMs === 0 && (delta?.content || delta?.tool_calls?.length)) {
-          ttftMs = Math.round(performance.now() - t0);
-        }
-        if (delta?.content) text += delta.content;
-        if (delta?.tool_calls?.length) {
-          toolCallSeen = true;
-          for (const tc of delta.tool_calls) {
-            const n = tc.function?.name;
-            if (n && !toolNames.includes(n)) toolNames.push(n);
-          }
-        }
-      } catch {
-      }
-    }
-  }
-  const totalMs = Math.round(performance.now() - t0);
-  return {
-    chunks,
-    toolCallSeen,
-    toolNames,
-    text,
-    ms: totalMs,
-    ttftMs: ttftMs > 0 ? ttftMs : totalMs,
-  };
-}
 
 export type { E2eToolDeps };
 
@@ -364,30 +249,25 @@ export async function runKeepAliveBench(deps: {
     };
   }
 
-  const { fetch: kaFetch, close } = createKeepAliveFetch();
   const latencies: number[] = [];
   const ttfts: number[] = [];
   let failures = 0;
 
-  try {
-    for (let i = 0; i < deps.rounds; i++) {
-      try {
-        const r = await consumeChatSseWithFetch(kaFetch, deps.backendUrl, {
-          model: deps.computeModel,
-          messages: [
-            { role: "user", content: `Reply with exactly: pong-${i}` },
-          ],
-          max_tokens: 16,
-        });
-        latencies.push(r.ms);
-        ttfts.push(r.ttftMs);
-        if (r.chunks.length === 0) failures++;
-      } catch {
-        failures++;
-      }
+  for (let i = 0; i < deps.rounds; i++) {
+    try {
+      const r = await postChatCompletionsSse(deps.backendUrl, {
+        model: deps.computeModel,
+        messages: [
+          { role: "user", content: `Reply with exactly: pong-${i}` },
+        ],
+        max_tokens: 16,
+      }, { keepAlive: true });
+      latencies.push(r.ms);
+      ttfts.push(r.ttftMs);
+      if (r.chunks.length === 0) failures++;
+    } catch {
+      failures++;
     }
-  } finally {
-    close();
   }
 
   const sorted = [...latencies].sort((a, b) => a - b);
@@ -431,7 +311,6 @@ export async function runContextGrowthBench(deps: {
     };
   }
 
-  const { fetch: kaFetch, close } = createKeepAliveFetch();
   const messages: Array<{ role: string; content: string }> = [
     {
       role: "system",
@@ -443,35 +322,31 @@ export async function runContextGrowthBench(deps: {
   let ok = true;
   let lastError: string | undefined;
 
-  try {
-    for (let i = 0; i < deps.rounds; i++) {
-      messages.push({
-        role: "user",
-        content: `Round ${i + 1}: reply with only the digit ${i + 1}.`,
-      });
-      try {
-        const r = await consumeChatSseWithFetch(kaFetch, deps.backendUrl, {
-          model: deps.computeModel,
-          messages,
-          max_tokens: 32,
-        });
-        latencies.push(r.ms);
-        ttfts.push(r.ttftMs);
-        const reply = r.text.trim() || `round-${i + 1}`;
-        messages.push({ role: "assistant", content: reply });
-        if (r.chunks.length === 0) {
-          ok = false;
-          lastError = "empty SSE chunks";
-          break;
-        }
-      } catch (err) {
+  for (let i = 0; i < deps.rounds; i++) {
+    messages.push({
+      role: "user",
+      content: `Round ${i + 1}: reply with only the digit ${i + 1}.`,
+    });
+    try {
+      const r = await postChatCompletionsSse(deps.backendUrl, {
+        model: deps.computeModel,
+        messages,
+        max_tokens: 32,
+      }, { keepAlive: true });
+      latencies.push(r.ms);
+      ttfts.push(r.ttftMs);
+      const reply = r.text.trim() || `round-${i + 1}`;
+      messages.push({ role: "assistant", content: reply });
+      if (r.chunks.length === 0) {
         ok = false;
-        lastError = err instanceof Error ? err.message : String(err);
+        lastError = "empty SSE chunks";
         break;
       }
+    } catch (err) {
+      ok = false;
+      lastError = err instanceof Error ? err.message : String(err);
+      break;
     }
-  } finally {
-    close();
   }
 
   if (ok) {
@@ -521,32 +396,27 @@ export async function runModelSwitchBench(deps: {
     };
   }
 
-  const { fetch: kaFetch, close } = createKeepAliveFetch();
   const used: string[] = [];
   let ok = true;
   let lastError: string | undefined;
 
-  try {
-    for (const model of deps.models.slice(0, 2)) {
-      if (used.length > 0) await sleep(chatBenchCooldownMs());
-      try {
-        const r = await consumeChatSseWithFetch(kaFetch, deps.backendUrl, {
-          model,
-          messages: [{ role: "user", content: "Say hi in 3 words." }],
-          max_tokens: 24,
-        });
-        used.push(model);
-        if (r.chunks.length === 0) {
-          ok = false;
-          lastError = "empty SSE chunks";
-        }
-      } catch (err) {
+  for (const model of deps.models.slice(0, 2)) {
+    if (used.length > 0) await sleep(chatBenchCooldownMs());
+    try {
+      const r = await postChatCompletionsSse(deps.backendUrl, {
+        model,
+        messages: [{ role: "user", content: "Say hi in 3 words." }],
+        max_tokens: 24,
+      }, { keepAlive: true });
+      used.push(model);
+      if (r.chunks.length === 0) {
         ok = false;
-        lastError = err instanceof Error ? err.message : String(err);
+        lastError = "empty SSE chunks";
       }
+    } catch (err) {
+      ok = false;
+      lastError = err instanceof Error ? err.message : String(err);
     }
-  } finally {
-    close();
   }
 
   if (ok) {
@@ -603,28 +473,22 @@ export async function runLiveChatToolsBench(deps: {
 
   const t0 = performance.now();
   try {
-    const { fetch: kaFetch, close } = createKeepAliveFetch();
-    let r;
-    try {
-      r = await consumeChatSseWithFetch(kaFetch, deps.backendUrl, {
-        model: deps.computeModel,
-        messages: [
-          {
-            role: "system",
-            content:
-              "You have tools. When asked to list agents, call list_my_agents.",
-          },
-          {
-            role: "user",
-            content: "List my agents using the list_my_agents tool.",
-          },
-        ],
-        tools,
-        max_tokens: 256,
-      });
-    } finally {
-      close();
-    }
+    const r = await postChatCompletionsSse(deps.backendUrl, {
+      model: deps.computeModel,
+      messages: [
+        {
+          role: "system",
+          content:
+            "You have tools. When asked to list agents, call list_my_agents.",
+        },
+        {
+          role: "user",
+          content: "List my agents using the list_my_agents tool.",
+        },
+      ],
+      tools,
+      max_tokens: 256,
+    }, { keepAlive: true });
 
     const ok = r.chunks.length > 0 && (r.toolCallSeen || r.text.length > 0);
     if (ok) {
