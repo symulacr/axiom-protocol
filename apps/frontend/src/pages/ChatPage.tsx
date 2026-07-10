@@ -103,8 +103,7 @@ function consumeSseLines(buffer: string): {
     }
     try {
       chunks.push(JSON.parse(payload) as SSEChunk);
-    } catch {
-    }
+    } catch { /* malformed SSE chunk — skip */ }
   }
   return { chunks, rest, done };
 }
@@ -223,8 +222,7 @@ function ChatPageInner(): ReactElement {
       } else {
         sessionStorage.setItem(CHAT_MESSAGES_KEY, JSON.stringify(messages));
       }
-    } catch {
-    }
+    } catch { /* sessionStorage may be unavailable */ }
   }, [messages]);
 
   useEffect(() => {
@@ -437,8 +435,7 @@ function ChatPageInner(): ReactElement {
           setMessages(currentMessages);
         }
       } catch (err: unknown) {
-        if (err instanceof DOMException && err.name === "AbortError") {
-        } else {
+        if (err instanceof DOMException && err.name === "AbortError") { /* aborted — ignore */ } else {
           const msg = humanizeError(err);
           if (msg.includes("429") || msg.toLowerCase().includes("rate limit")) {
             toast.error("Rate limited — wait a moment and try again.");

@@ -1,4 +1,4 @@
-import { Wallet, SigningKey, computeAddress, getBytes } from "ethers";
+import { Wallet } from "ethers";
 import type { Hex } from "viem";
 
 import { publicKeyUncompressedFromPrivate } from "@axiom/config/crypto/secp256k1";
@@ -41,14 +41,6 @@ export function accessMessageHash(
   return eip712AccessMessageHash(input, domain);
 }
 
-export function recoverAccessSigner(
-  signature: Hex,
-  input: AccessProofInput,
-  domain: Eip712Domain = DEFAULT_EIP712_DOMAIN,
-): Hex {
-  return eip712RecoverAccessSigner(signature, input, domain);
-}
-
 export class TeeSigner {
   readonly wallet: Wallet;
   readonly address: Hex;
@@ -74,8 +66,6 @@ export class TeeSigner {
   }
 
   recoverAccessSigner(signature: Hex, input: AccessProofInput): Hex {
-    const digest = accessMessageHash(input, this.domain);
-    const recovered = SigningKey.recoverPublicKey(getBytes(digest), signature);
-    return computeAddress(recovered) as Hex;
+    return eip712RecoverAccessSigner(signature, input, this.domain);
   }
 }

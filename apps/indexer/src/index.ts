@@ -208,8 +208,7 @@ async function main() {
     try {
       storageSigner = new ethers.Wallet(DEPLOYER_PK, provider);
       storageIndexer = new Indexer(ogStorageRpc);
-    } catch {
-    }
+    } catch { /* storage signer setup failed — skip */ }
   }
 
   _storageIndexer = storageIndexer;

@@ -142,8 +142,7 @@ export async function runEventStreamStep(deps: {
           ws.close();
           resolve();
         }
-      } catch {
-      }
+      } catch { /* ignore */ }
     });
 
     ws.on("close", () => {

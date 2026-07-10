@@ -91,5 +91,4 @@ try {
       process.exit(1);
     });
   }
-} catch {
-}
+} catch { /* sessionStorage may be unavailable */ }

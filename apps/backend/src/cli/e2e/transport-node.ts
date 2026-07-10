@@ -118,8 +118,7 @@ export async function executeE2eTool(
   try {
     const parsed = JSON.parse(result.content) as { error?: string };
     if (parsed.error !== undefined) ok = false;
-  } catch {
-  }
+  } catch { /* ignore */ }
   return { ok, result: result.content };
 }
 

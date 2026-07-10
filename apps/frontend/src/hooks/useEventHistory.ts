@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { usePolledApi } from "./usePolledApi.js";
+import { eventDedupeKey, sortEventsChronological } from "../utils/events.js";
 
 /** Wire-format event from GET /v1/events (mirrors backend `StoredEvent`). */
 export interface AxiomEvent {
@@ -34,18 +35,6 @@ export interface UseEventHistoryOptions {
 
 const DEFAULT_POLL_INTERVAL_MS = 15_000;
 const MAX_EVENTS = 500;
-
-function eventDedupeKey(ev: AxiomEvent): string {
-  return `${ev.chainId}:${ev.txHash}:${ev.logIndex}`;
-}
-
-function sortEventsChronological(a: AxiomEvent, b: AxiomEvent): number {
-  return (
-    a.blockNumber - b.blockNumber ||
-    a.logIndex - b.logIndex ||
-    a.receivedAt - b.receivedAt
-  );
-}
 
 function groupByName(
   events: readonly AxiomEvent[],

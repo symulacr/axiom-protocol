@@ -35,8 +35,7 @@ async function resolveModelDataRoot(
     if (typeof hash === "string" && hash.startsWith("0x") && hash.length === 66) {
       return hash as `0x${string}`;
     }
-  } catch {
-  }
+  } catch { /* ignore */ }
   return ZERO_DATA_ROOT;
 }
 

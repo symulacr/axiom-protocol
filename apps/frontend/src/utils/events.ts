@@ -10,3 +10,18 @@ export function eventTokenId(event: AxiomEvent): string | null {
   const tid = payload?.tokenId ?? payload?.agentTokenId ?? payload?._tokenId;
   return tid !== undefined && tid !== null ? String(tid) : null;
 }
+
+export function eventDedupeKey(ev: AxiomEvent): string {
+  return `${ev.chainId}:${ev.txHash}:${ev.logIndex}`;
+}
+
+export function sortEventsChronological(
+  a: AxiomEvent,
+  b: AxiomEvent,
+): number {
+  return (
+    a.blockNumber - b.blockNumber ||
+    a.logIndex - b.logIndex ||
+    a.receivedAt - b.receivedAt
+  );
+}

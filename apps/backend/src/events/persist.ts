@@ -33,8 +33,7 @@ export function loadBuckets(): Map<string, unknown[]> {
     if (existsSync(PERSIST_FILE)) {
       try {
         renameSync(PERSIST_FILE, `${PERSIST_FILE}.bak`);
-      } catch {
-      }
+      } catch { /* ignore */ }
     }
     return new Map();
   }

@@ -5,6 +5,7 @@ import {
   e2eFastEnabled,
   e2eStrictComputeEnabled,
 } from "./fast-path.js";
+import { postChatCompletionsSse, sleep } from "./shared.js";
 
 const VAULT_BALANCE_TOOL = {
   type: "function" as const,
@@ -14,62 +15,6 @@ const VAULT_BALANCE_TOOL = {
     parameters: { type: "object", properties: {}, required: [] as string[] },
   },
 };
-
-async function consumeChatSse(
-  backendUrl: string,
-  body: unknown,
-): Promise<{
-  chunks: unknown[];
-  toolCallSeen: boolean;
-  text: string;
-}> {
-  const res = await fetch(`${backendUrl}/v1/chat/completions`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`chat completions ${res.status}: ${text.slice(0, 200)}`);
-  }
-  const reader = res.body?.getReader();
-  if (!reader) throw new Error("chat completions: no response body");
-
-  const decoder = new TextDecoder();
-  let buffer = "";
-  const chunks: unknown[] = [];
-  let toolCallSeen = false;
-  let text = "";
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() ?? "";
-    for (const line of lines) {
-      if (!line.startsWith("data: ")) continue;
-      const payload = line.slice(6).trim();
-      if (payload === "[DONE]") continue;
-      try {
-        const chunk = JSON.parse(payload) as {
-          choices?: Array<{
-            delta?: {
-              content?: string;
-              tool_calls?: Array<{ function?: { name?: string } }>;
-            };
-          }>;
-        };
-        chunks.push(chunk);
-        const delta = chunk.choices?.[0]?.delta;
-        if (delta?.content) text += delta.content;
-        if (delta?.tool_calls?.length) toolCallSeen = true;
-      } catch {
-      }
-    }
-  }
-  return { chunks, toolCallSeen, text };
-}
 
 export async function runComputeProvidersStep(deps: {
   backendUrl: string;
@@ -102,10 +47,6 @@ export async function runComputeProvidersStep(deps: {
     reads = 2;
   }
   markScenarioCovered("compute.providers", "compute-providers", { reads });
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export async function runAgentPostMintOpsStep(deps: {
@@ -303,7 +244,7 @@ export async function runChatToolCallStep(deps: {
   const model = deps.computeModel;
   console.log(`\n[Compute] POST /v1/chat/completions (tools, model=${model})`);
   try {
-    const { chunks, toolCallSeen, text } = await consumeChatSse(
+    const { chunks, toolCallSeen, text } = await postChatCompletionsSse(
       deps.backendUrl,
       {
         model,
@@ -321,6 +262,7 @@ export async function runChatToolCallStep(deps: {
         ],
         tools: [VAULT_BALANCE_TOOL],
       },
+      { retries: 0 },
     );
     const ok = chunks.length > 0 && (toolCallSeen || text.length > 0);
     console.log(

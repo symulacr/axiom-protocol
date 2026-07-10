@@ -32,6 +32,21 @@ import {
 } from "./route-schemas.js";
 import type { OracleEnv } from "./env-schema.js";
 
+function logRouteError(route: string, err: unknown): void {
+  console.log(
+    JSON.stringify({
+      level: "error",
+      msg: `${route} error`,
+      error: err instanceof Error ? err.message : String(err),
+      route,
+    }),
+  );
+}
+
+function badRequest(res: Response, message: string): void {
+  res.status(400).json({ error: message });
+}
+
 export interface ServerConfig {
   signer: TeeSigner;
   storage: StorageAdapter;
@@ -92,21 +107,19 @@ export function startServer(config: ServerConfig): {
       } = transferValiditySchema.parse(req.body);
 
       if (!oldDataHash || !oldDataUri || !targetPubkey64) {
-        res.status(400).json({ error: "Missing required field" });
-        return;
+        return badRequest(res, "Missing required field");
       }
       if (targetPubkey64.length !== 130) {
-        res
-          .status(400)
-          .json({ error: "targetPubkey64 must be 64 bytes (128 hex chars)" });
-        return;
+        return badRequest(
+          res,
+          "targetPubkey64 must be 64 bytes (128 hex chars)",
+        );
       }
       if (!oldDataEncryptionKey) {
-        res.status(400).json({
-          error:
-            "oldDataEncryptionKey (base64) is required for devnet shortcut",
-        });
-        return;
+        return badRequest(
+          res,
+          "oldDataEncryptionKey (base64) is required for devnet shortcut",
+        );
       }
 
       const oldBlob = await storage.download(oldDataUri as `0x${string}`);
@@ -151,14 +164,7 @@ export function startServer(config: ServerConfig): {
         validUntil: defaultValidUntil.toString(),
       });
     } catch (err) {
-      console.log(
-        JSON.stringify({
-          level: "error",
-          msg: "/v1/transfer-validity error",
-          error: err instanceof Error ? err.message : String(err),
-          route: "/v1/transfer-validity",
-        }),
-      );
+      logRouteError("/v1/transfer-validity", err);
       res.status(500).json({ error: "Transfer validity check failed" });
     }
   });
@@ -203,8 +209,7 @@ export function startServer(config: ServerConfig): {
           validUntil: rawValidUntil,
         } = parsedBody;
         if (!dataHash || !targetPubkey || !sealedKey) {
-          res.status(400).json({ error: "Missing required field" });
-          return;
+          return badRequest(res, "Missing required field");
         }
 
         if (!storage.hasSeenDataHash(dataHash as `0x${string}`)) {
@@ -216,18 +221,16 @@ export function startServer(config: ServerConfig): {
         }
 
         if (!toIn || !isAddress(toIn)) {
-          res.status(400).json({
-            error:
-              "'to' address is required and must be a valid non-zero address",
-          });
-          return;
+          return badRequest(
+            res,
+            "'to' address is required and must be a valid non-zero address",
+          );
         }
         if (!nftIn || !isAddress(nftIn)) {
-          res.status(400).json({
-            error:
-              "'nft' address is required and must be a valid non-zero address",
-          });
-          return;
+          return badRequest(
+            res,
+            "'nft' address is required and must be a valid non-zero address",
+          );
         }
 
         const defaultValidUntil =
@@ -261,8 +264,7 @@ export function startServer(config: ServerConfig): {
             }
           }
           if (parsed === null) {
-            res.status(400).json({ error: "Invalid validUntil" });
-            return;
+            return badRequest(res, "Invalid validUntil");
           }
           validUntil = parsed;
         }
@@ -282,14 +284,7 @@ export function startServer(config: ServerConfig): {
           validUntil: validUntil.toString(),
         });
       } catch (err) {
-        console.log(
-          JSON.stringify({
-            level: "error",
-            msg: "/v1/ownership error",
-            error: err instanceof Error ? err.message : String(err),
-            route: "/v1/ownership",
-          }),
-        );
+        logRouteError("/v1/ownership", err);
         res.status(500).json({ error: "Internal server error" });
       }
     },
@@ -299,10 +294,10 @@ export function startServer(config: ServerConfig): {
     try {
       const { dataHash } = mintDataHashSchema.parse(req.body);
       if (!/^0x[0-9a-fA-F]{64}$/.test(dataHash)) {
-        res.status(400).json({
-          error: "dataHash must be a 32-byte hex string (0x + 64 hex chars)",
-        });
-        return;
+        return badRequest(
+          res,
+          "dataHash must be a 32-byte hex string (0x + 64 hex chars)",
+        );
       }
       storage.markDataHashSeen(dataHash as `0x${string}`);
       res.json({ ok: true, dataHash, seen: true });

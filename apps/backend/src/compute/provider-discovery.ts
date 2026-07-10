@@ -1,5 +1,4 @@
 import {
-  clearBrokerCache,
   getReadOnlyBroker,
   resolveChainId,
 } from "./broker.js";
@@ -81,10 +80,4 @@ export async function discoverProviders(
       _cachePromises.delete(cid);
     }
   }
-}
-
-export function invalidateProviderCache(): void {
-  _cache.clear();
-  _cachePromises.clear();
-  clearBrokerCache();
 }

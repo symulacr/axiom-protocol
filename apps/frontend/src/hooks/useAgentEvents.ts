@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useEventHistory, type AxiomEvent } from "./useEventHistory.js";
 import { useEventStream } from "./useEventStream.js";
-import { eventTokenId } from "../utils/events.js";
+import {
+  eventTokenId,
+  eventDedupeKey,
+  sortEventsChronological,
+} from "../utils/events.js";
 
 export interface UseAgentEventsOptions {
   enabled?: boolean;
@@ -12,18 +16,6 @@ export interface UseAgentEventsResult {
   isLoading: boolean;
   error: Error | null;
   refetch: () => void;
-}
-
-function eventDedupeKey(ev: AxiomEvent): string {
-  return `${ev.chainId}:${ev.txHash}:${ev.logIndex}`;
-}
-
-function sortEventsChronological(a: AxiomEvent, b: AxiomEvent): number {
-  return (
-    a.blockNumber - b.blockNumber ||
-    a.logIndex - b.logIndex ||
-    a.receivedAt - b.receivedAt
-  );
 }
 
 /**

@@ -38,6 +38,7 @@ import {
   assertContractDeployed,
   assertReceiptOk,
   recordOnChainStep,
+  recordReceipt,
 } from "./onchain.js";
 import { markCovered, printParityMatrix } from "./matrix.js";
 import { markScenarioCovered, printUsageScenarioMatrix } from "./scenarios.js";
@@ -353,15 +354,7 @@ export async function runOnChainMintStep(deps: {
   markCovered("AxiomAgentNFT", "creatorOf", "on-chain-mint");
   markCovered("AxiomAgentNFT", "ownerOf", "on-chain-mint");
   markCovered("AxiomAgentNFT", "intelligentDatasOf", "on-chain-mint");
-  recordOnChainStep({
-    step: 6,
-    name: "AxiomAgentNFT.mint",
-    ok: true,
-    summary: `tokenId=${tokenId} creator=${creator}`,
-    txHash: receipt.hash,
-    blockNumber: receipt.blockNumber,
-    chainId: deps.chainId,
-  });
+  recordReceipt(6, "AxiomAgentNFT.mint", `tokenId=${tokenId} creator=${creator}`, receipt, deps.chainId);
   return { tokenId, txHash: receipt.hash, blockNumber: receipt.blockNumber };
 }
 
@@ -442,24 +435,8 @@ export async function runVaultDepositStrategyPipeline(deps: {
   markCovered("AxiomStrategyVault", "deposit", "vault-deposit");
   markCovered("AxiomStrategyVault", "setStrategy", "vault-setStrategy");
   markCovered("AxiomStrategyVault", "strategyOf", "vault-setStrategy");
-  recordOnChainStep({
-    step: 7,
-    name: "AxiomStrategyVault.deposit",
-    ok: true,
-    summary: `balance=${after} wei (+${after - before})`,
-    txHash: depReceipt.hash,
-    blockNumber: depReceipt.blockNumber,
-    chainId: deps.chainId,
-  });
-  recordOnChainStep({
-    step: 8,
-    name: "AxiomStrategyVault.setStrategy",
-    ok: true,
-    summary: `root=${root} dailyLimit=${limit}`,
-    txHash: stratReceipt.hash,
-    blockNumber: stratReceipt.blockNumber,
-    chainId: deps.chainId,
-  });
+  recordReceipt(7, "AxiomStrategyVault.deposit", `balance=${after} wei (+${after - before})`, depReceipt, deps.chainId);
+  recordReceipt(8, "AxiomStrategyVault.setStrategy", `root=${root} dailyLimit=${limit}`, stratReceipt, deps.chainId);
   void validUntil;
   return after;
 }
@@ -489,15 +466,7 @@ export async function runVaultDepositStep(deps: {
   }
   markScenarioCovered("vault.fund", "vault-deposit", { txs: 1, reads: 2 });
   markCovered("AxiomStrategyVault", "deposit", "vault-deposit");
-  recordOnChainStep({
-    step: 7,
-    name: "AxiomStrategyVault.deposit",
-    ok: true,
-    summary: `balance=${after} wei (+${after - before})`,
-    txHash: receipt.hash,
-    blockNumber: receipt.blockNumber,
-    chainId: deps.chainId,
-  });
+  recordReceipt(7, "AxiomStrategyVault.deposit", `balance=${after} wei (+${after - before})`, receipt, deps.chainId);
   return after;
 }
 
@@ -549,15 +518,7 @@ export async function runVaultStrategyStep(deps: {
   markScenarioCovered("vault.strategy", "vault-setStrategy", { txs: 1, reads: 1 });
   markCovered("AxiomStrategyVault", "setStrategy", "vault-setStrategy");
   markCovered("AxiomStrategyVault", "strategyOf", "vault-setStrategy");
-  recordOnChainStep({
-    step: 8,
-    name: "AxiomStrategyVault.setStrategy",
-    ok: true,
-    summary: `root=${root} dailyLimit=${limit}`,
-    txHash: receipt.hash,
-    blockNumber: receipt.blockNumber,
-    chainId: deps.chainId,
-  });
+  recordReceipt(8, "AxiomStrategyVault.setStrategy", `root=${root} dailyLimit=${limit}`, receipt, deps.chainId);
 }
 
 type PaymentMethods = {
@@ -618,15 +579,7 @@ export async function runPaymentStep(deps: {
   markScenarioCovered("payment.agent", "payForAgent", { txs: 1, reads: 2 });
   markCovered("AxiomPaymentProcessor", "payForAgent", "payForAgent");
   markCovered("AxiomPaymentProcessor", "agentEarningsOf", "payForAgent");
-  recordOnChainStep({
-    step: 9,
-    name: "AxiomPaymentProcessor.payForAgent",
-    ok: true,
-    summary: `earnings ${earningsBefore} -> ${earningsAfter}`,
-    txHash: receipt.hash,
-    blockNumber: receipt.blockNumber,
-    chainId: deps.chainId,
-  });
+  recordReceipt(9, "AxiomPaymentProcessor.payForAgent", `earnings ${earningsBefore} -> ${earningsAfter}`, receipt, deps.chainId);
 }
 
 export const runMintStep = runOracleRegisterStep;
@@ -914,15 +867,7 @@ export async function runOnChainTransferStep(deps: {
       markCovered("AxiomAgentNFT", "iTransferFrom", "iTransferFrom");
       markCovered("AxiomAgentNFT", "ownerOf", "iTransferFrom");
       markCovered("AxiomTeeVerifier", "verifyTransferValidity", "iTransferFrom");
-      recordOnChainStep({
-        step: 11,
-        name: "iTransferFrom on-chain",
-        ok: true,
-        summary: `owner=${newOwner} accessSigner=${recoveredAddr}`,
-        txHash: receipt.hash,
-        blockNumber: receipt.blockNumber,
-        chainId: deps.chainId,
-      });
+      recordReceipt(11, "iTransferFrom on-chain", `owner=${newOwner} accessSigner=${recoveredAddr}`, receipt, deps.chainId);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     recordOnChainStep({

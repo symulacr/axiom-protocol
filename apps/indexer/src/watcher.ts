@@ -24,6 +24,9 @@ export const POLL_INTERVAL_MS = 12_000;
 
 export const REORG_SAFE_DEPTH = 10n;
 
+const wait = (ms: number): Promise<void> =>
+  new Promise<void>((resolve) => setTimeout(resolve, ms));
+
 
 function getCheckpointFile(chainId: bigint): string {
   return join(process.cwd(), "data", `checkpoint-${chainId}.json`);
@@ -582,9 +585,7 @@ export class Watcher {
             msg: "max consecutive failures reached — stopping",
           });
           this.running = false;
-          const { promise, resolve } = Promise.withResolvers<void>();
-          setTimeout(resolve, this.intervalMs);
-          await promise;
+          await wait(this.intervalMs);
           return;
         }
         const backoff = Math.min(
@@ -616,9 +617,7 @@ export class Watcher {
       while (this.running) {
         await tick();
         if (!this.running) break;
-        const { promise, resolve } = Promise.withResolvers<void>();
-        setTimeout(resolve, this.intervalMs);
-        await promise;
+        await wait(this.intervalMs);
       }
       resolveStopped();
     };
