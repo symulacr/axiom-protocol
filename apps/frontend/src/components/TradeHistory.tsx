@@ -9,10 +9,6 @@ interface TradeHistoryProps {
   history: TradeHistoryEntry[];
 }
 
-/**
- * Displays trade history as a compact list. Reuses Card and MonoLabel.
- * Each entry shows timestamp, action (color-coded), amount, and reason.
- */
 export function TradeHistory({ history }: TradeHistoryProps): ReactElement {
   const chainId = useChainId();
   const explorerBase = resolveBlockExplorerUrl(chainId);

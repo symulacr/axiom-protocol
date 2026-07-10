@@ -157,7 +157,6 @@ function SuccessCelebration() {
 }
 
 export type ExecutePanelProps = {
-  /** Route token id; when provided the agent dropdown is hidden. */
   tokenId?: bigint;
 };
 
@@ -241,7 +240,6 @@ export function ExecutePanel({
     try {
       let res: TickResult;
       if (streamMode) {
-        // Strategy tick uses WSS streaming (via useOrchestratorTick's tickStream — SSE→WSS is transparent)
         res = await tickStream(
           {
             vault: getAxiomStrategyVaultAddress(chainId),

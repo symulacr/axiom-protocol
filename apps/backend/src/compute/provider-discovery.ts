@@ -1,9 +1,3 @@
-// Thin wrapper around the 0G Compute SDK's ReadOnlyInferenceBroker.
-// Results are cached for up to CACHE_TTL_MS so the RPC is called at most once per window.
-//
-// Provider URL resolution and auto-funding live in `./broker.ts` (shared
-// factory) and `./router.ts` (OpenAI client construction). This file
-// exposes the discovery + cache invalidation surface only.
 import {
   clearBrokerCache,
   getReadOnlyBroker,
@@ -20,11 +14,9 @@ export interface ServiceInfo {
 }
 
 export interface SelectProviderOptions {
-  /** Prefer provider registered for this model id. */
   model?: string;
 }
 
-/** Pick a provider from the on-chain service list with explicit precedence. */
 export function selectProvider(
   services: ServiceInfo[],
   opts?: SelectProviderOptions,
@@ -47,16 +39,8 @@ interface CacheEntry {
 
 const _cache = new Map<number, CacheEntry>();
 const _cachePromises = new Map<number, Promise<ServiceInfo[]>>();
-const CACHE_TTL_MS = 300_000; // 5 minutes
+const CACHE_TTL_MS = 300_000;
 
-/**
- * Discover compute providers via the SDK's ReadOnlyInferenceBroker.
- * The result is cached for TTL (5 min) to tolerate dynamic provider registration.
- *
- * @param rpcUrl   JSON-RPC endpoint URL.
- * @param chainId  Optional chain ID (defaults to `AXIOM_CHAIN_ID` env or Galileo).
- * @returns        List of `ServiceInfo` records (empty on failure).
- */
 export async function discoverProviders(
   rpcUrl: string,
   chainId?: number,
@@ -99,9 +83,6 @@ export async function discoverProviders(
   }
 }
 
-/**
- * Invalidate the cached provider list so the next call re-fetches from chain.
- */
 export function invalidateProviderCache(): void {
   _cache.clear();
   _cachePromises.clear();

@@ -92,5 +92,4 @@ try {
     });
   }
 } catch {
-  // process/process.on not available (browser environment)
 }

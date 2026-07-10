@@ -10,7 +10,6 @@ import { createLogger } from "../utils/logger.js";
 
 const log = createLogger("agents");
 
-/** Max block range when scanning Transfer logs for agent enumeration. */
 const AGENT_LOG_SCAN_BLOCKS = 50_000;
 import type { Eip712Domain } from "@axiom/config";
 import { recoverAccessSigner } from "@axiom/config";
@@ -141,7 +140,6 @@ export function registerAgentRoutes(
     },
   );
 
-  // POST /v1/agents/:id/transfer — two-phase transfer (challenge + finalize)
   app.post(
     "/v1/agents/:id/transfer",
     async (req: Request, res: Response, next: NextFunction) => {
@@ -193,7 +191,6 @@ export function registerAgentRoutes(
           pk = ethers.hexlify(ethers.getBytes(pk).slice(1)) as `0x${string}`;
         }
 
-        // Challenge stage
         const canRekey = !!(oldDataEncryptionKey && oldDataUri);
         if (!accessProof) {
           const nonce = BigInt(accessProofNonce ?? 0);
@@ -269,7 +266,6 @@ export function registerAgentRoutes(
           return;
         }
 
-        // Finalize stage
         const nonce = BigInt(accessProof.nonce);
         const validUntil = BigInt(accessProof.validUntil);
         const proofDataHash = accessProof.dataHash;

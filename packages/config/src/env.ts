@@ -17,7 +17,6 @@ export function loadEnv(
       if (!process.env[key]) process.env[key] = val;
     }
   } catch {
-    // .env is optional
   }
 }
 
@@ -28,18 +27,6 @@ export function getEnv(key: string, fallback?: string): string {
   throw new Error(`Missing required env var ${key}`);
 }
 
-/**
- * # Backward-compat aliases (read on fallback, warn if used):
- *   OG_STORAGE_RPC   → AXIOM_STORAGE_RPC
- *   OG_EVM_RPC       → AXIOM_EVM_RPC
- *   RPC_URL          → AXIOM_EVM_RPC
- *   ORACLE_BASE_URL  → AXIOM_ORACLE_URL
- *   OG_CHAIN_ID      → AXIOM_CHAIN_ID
- *   TEE_SIGNER_PK    → AXIOM_TEE_SIGNER_PK
- *
- * Private keys (NEVER hardcode):
- *   DEPLOYER_PK, TEE_SIGNER_PK, ORACLE_ADMIN_PK
- */
 
 export function getEnvWithAlias(
   canonical: string,

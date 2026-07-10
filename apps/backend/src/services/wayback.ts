@@ -1,17 +1,3 @@
-/**
- * Wayback Machine service — queries Internet Archive's Wayback Machine for
- * archived snapshots of URLs (profile pages, tweet URLs, any web page).
- *
- * Capabilities:
- *  - List all snapshots for a URL via CDX API
- *  - Confirm whether a tweet URL was ever archived
- *  - Find the closest snapshot to a given timestamp
- *
- * LIMITATIONS (must be communicated to callers):
- *  - Twitter/X is JS-rendered; Wayback captures only the HTML shell.
- *  - Bio text and tweet text are NOT extractable from snapshot HTML.
- *  - To view actual content, open the snapshot URL in a browser.
- */
 
 import { extractErrorMessage } from "../utils/response.js";
 
@@ -48,10 +34,6 @@ function normalizeCdxRow(originalUrl: string, row: string[]): SnapshotSummary {
   };
 }
 
-/**
- * Look up all Wayback snapshots for a URL.
- * Uses direct CDX API for predictable performance.
- */
 export async function lookupSnapshots(
   url: string,
   limit = 50,
@@ -66,10 +48,6 @@ export async function lookupSnapshots(
   }
 }
 
-/**
- * Find archived snapshots for all tweets of an X/Twitter account.
- * Uses CDX prefix query: x.com/{handle}/status/
- */
 export async function lookupAccountTweets(
   handle: string,
   limit = 100,
@@ -88,9 +66,6 @@ export async function lookupAccountTweets(
   }
 }
 
-/**
- * Confirm whether a specific tweet URL was ever archived.
- */
 export async function confirmArchived(
   tweetUrl: string,
 ): Promise<{ archived: boolean; snapshot: SnapshotSummary | null }> {
@@ -106,9 +81,6 @@ export async function confirmArchived(
   }
 }
 
-/**
- * Get the closest snapshot to a given timestamp (for time-travel queries).
- */
 export async function closestSnapshot(
   url: string,
   timestamp?: string,

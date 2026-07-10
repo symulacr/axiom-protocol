@@ -9,25 +9,6 @@ export interface PolledApiOptions {
   queryKey?: readonly unknown[];
 }
 
-/**
- * Polled HTTP fetch backed by `@tanstack/react-query`.
- *
- * Accept a static URL **string** or a **getter function** (for dynamic URLs,
- * e.g. cursor-based incremental polling). When a getter is used you **must**
- * supply a stable `queryKey` so that the query identity doesn't change on
- * every render.
- *
- * @example
- *   // static URL — simplest case
- *   usePolledApi<{ services: Provider[] }>('/v1/compute/providers', { refetchInterval: 30_000 })
- *
- * @example
- *   // getter function + explicit queryKey (incremental / cursor polling)
- *   usePolledApi<EventsResponse>(() => `/v1/events?since=${cursorRef.current}`, {
- *     queryKey: ['events', { owner }],
- *     refetchInterval: 15_000,
- *   })
- */
 export function usePolledApi<T>(
   urlOrGetter: string | (() => string),
   options: PolledApiOptions = {},
@@ -38,8 +19,6 @@ export function usePolledApi<T>(
     signal: externalSignal,
   } = options;
 
-  // Always keep the freshest url/getter in a ref so queryFn reads
-  // the latest value without causing the query key to change.
   const getterRef = useRef(urlOrGetter);
   getterRef.current = urlOrGetter;
 

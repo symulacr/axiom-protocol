@@ -6,7 +6,6 @@ import { TTLCache, ser } from "../skills/shared.js";
 
 const cache = new TTLCache<unknown>(5 * 60 * 1000);
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
 
 async function cachedFetch(key: string, url: string, init?: RequestInit): Promise<unknown> {
   const hit = cache.get(key);
@@ -21,7 +20,6 @@ async function cachedFetch(key: string, url: string, init?: RequestInit): Promis
   return data;
 }
 
-/** Simple token-bag overlap scoring for entity resolution. */
 function tokenScore(a: string, b: string): number {
   const tokA = new Set(a.toLowerCase().split(/\s+/).filter(Boolean));
   const tokB = new Set(b.toLowerCase().split(/\s+/).filter(Boolean));
@@ -31,7 +29,6 @@ function tokenScore(a: string, b: string): number {
   return overlap / Math.max(tokA.size, tokB.size);
 }
 
-// ── Schemas ───────────────────────────────────────────────────────────────────
 
 const cikSchema = z.object({ cik: z.string().min(1).max(12) });
 const usaspendingSchema = z.object({
@@ -52,7 +49,6 @@ const courtSchema = z.object({
   limit: z.coerce.number().int().min(1).max(20).optional(),
 });
 
-// ── Router ────────────────────────────────────────────────────────────────────
 
 export function createSkillOsintRouter(config: ServerConfig): Router {
   const router = Router();

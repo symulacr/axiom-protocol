@@ -13,7 +13,6 @@ const STRATEGY_OF_LEGACY = [
   "function strategyOf(uint256) view returns (bytes32, uint256, uint256, uint64)",
 ] as const;
 
-/** Detect whether the deployed vault uses legacy (3-arg) or current (4-arg) setStrategy. */
 export async function detectVaultAbiVariant(
   provider: Provider,
   vaultAddress: string,

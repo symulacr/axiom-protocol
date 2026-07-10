@@ -24,12 +24,10 @@ export const royaltySchema = z.object({
   bps: z.number().int().min(0).max(10000),
 });
 
-/** Native OG amount for vault deposit (ether string, e.g. "0.001"). */
 export const vaultDepositEncodeSchema = z.object({
   amount: z.string().regex(/^\d+(\.\d+)?$/),
 });
 
-/** Native OG amount for vault withdraw (ether string, e.g. "0.001"). */
 export const vaultWithdrawEncodeSchema = z.object({
   amount: z.string().regex(/^\d+(\.\d+)?$/),
 });

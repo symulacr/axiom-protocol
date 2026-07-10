@@ -4,10 +4,6 @@ export interface FetchJsonResult<T> {
   data: T;
 }
 
-/**
- * Fetch a URL and parse the response body as JSON.
- * HTTP failures are returned structurally (`ok: false`); invalid JSON throws.
- */
 export async function fetchJson<T>(
   url: string,
   init?: RequestInit,

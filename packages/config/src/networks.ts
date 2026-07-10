@@ -45,7 +45,6 @@ function envVar(...keys: string[]): string | undefined {
   return undefined;
 }
 
-/** Precedence: AXIOM_EVM_RPC → OG_RPC_URL → RPC_URL → chain default → Galileo fallback. */
 export function resolveRpcUrl(chainId?: number): string {
   const varVal = envVar("AXIOM_EVM_RPC", "OG_RPC_URL", "RPC_URL");
   if (varVal) return varVal;
@@ -53,7 +52,6 @@ export function resolveRpcUrl(chainId?: number): string {
   return network?.evmRpc ?? "https://evmrpc-testnet.0g.ai";
 }
 
-/** Precedence: AXIOM_STORAGE_RPC → OG_STORAGE_RPC → chain default → Galileo fallback. */
 export function resolveStorageRpc(chainId?: number): string {
   const varVal = envVar("AXIOM_STORAGE_RPC", "OG_STORAGE_RPC");
   if (varVal) return varVal;

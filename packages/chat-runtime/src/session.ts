@@ -38,14 +38,12 @@ export function applyToolResult(
       (session as ChatSessionContext & { lastUrl?: string }).lastUrl = String(obj.url);
     }
   } catch {
-    // ignore non-json
   }
   return session;
 }
 
 const MAX_TOOL_CHARS = 1200;
 
-/** Wire-format message for POST /v1/chat/completions (OpenAI-compatible). */
 export type ChatApiMessage = {
   role: "user" | "assistant" | "tool";
   content: string | null;
@@ -58,7 +56,6 @@ export type ChatApiMessage = {
   name?: string;
 };
 
-/** Map UI message history to API payload; keeps tool context for multi-turn chat. */
 export function toChatApiMessages(
   messages: ReadonlyArray<{
     role: "user" | "assistant" | "tool";
@@ -86,7 +83,6 @@ export function toChatApiMessages(
   });
 }
 
-/** Compress old tool JSON in message history for context growth stability. */
 export function compressToolContent(content: string | null): string | null {
   if (!content || content.length <= MAX_TOOL_CHARS) return content;
   try {

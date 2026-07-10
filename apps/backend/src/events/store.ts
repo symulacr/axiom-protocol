@@ -6,9 +6,6 @@ import { loadBuckets, saveBuckets } from "./persist.js";
 
 const log = createLogger("events");
 
-/**
- * Wire-format event from the indexer or orchestrator. payload is opaque to the store.
- */
 export interface StoredEvent {
   source: string;
   chainId: number;
@@ -18,17 +15,14 @@ export interface StoredEvent {
   eventName: string;
   payload: StoredEventPayload;
   receivedAt: number;
-  /** Monotonic timestamp (ms) set when the event is appended to the store. Used for cursor-based pull. */
   timestamp: number;
 }
 
-/** Input type for append() — receivedAt and timestamp are auto-filled if omitted. */
 export type StoredEventInput = Omit<StoredEvent, "receivedAt" | "timestamp"> & {
   receivedAt?: number;
   timestamp?: number;
 };
 
-/** Query filter — all fields optional, ANDed together. */
 export interface AgentEventQuery {
   tokenId: string;
   eventName?: string;
@@ -76,19 +70,12 @@ function isStoredEvent(val: unknown): val is StoredEvent {
 
 export class EventStore {
   private readonly cap: number;
-  /** Keyed by `${source}::${eventName}`. Insertion order preserved. */
   private readonly buckets: Map<string, StoredEvent[]>;
-  /** Index by eventName. */
   private readonly byEventName: Map<string, StoredEvent[]>;
-  /** Index by tokenId (extracted from payload). */
   private readonly byTokenId: Map<string, StoredEvent[]>;
-  /** Transfer index: owner lowercase → tokenId → latest blockNumber. */
   private readonly byTransferTo: Map<string, Map<string, number>>;
-  /** O(1) index positions for swap-with-last removal. */
   private readonly indexPositions = new WeakMap<StoredEvent, IndexPositions>();
-  /** Dedup keys for (chainId, txHash, logIndex). */
   private readonly seenKeys = new Set<string>();
-  /** Total appends since process start. */
   private total: number;
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
   private persistChain: Promise<void> = Promise.resolve();
@@ -108,11 +95,6 @@ export class EventStore {
     this.load();
   }
 
-  /**
-   * Append a new event. Shallow-clones top-level fields and payload keys so
-   * callers cannot mutate stored data via their input object. Evicts oldest
-   * (FIFO) when the bucket exceeds cap. Returns the stored copy.
-   */
   append(evt: StoredEventInput): StoredEvent {
     const dedupe = dedupeKey(evt);
     const existing = this.findByDedupeKey(dedupe);
@@ -152,9 +134,6 @@ export class EventStore {
     return [...bucket];
   }
 
-  /**
-   * Return every event with matching tokenId in payload. Uses the byTokenId index.
-   */
   queryByAgent(query: AgentEventQuery): readonly StoredEvent[] {
     const target = BigInt(query.tokenId).toString();
     const bucket = this.byTokenId.get(target);
@@ -166,7 +145,6 @@ export class EventStore {
       if (query.source !== undefined && evt.source !== query.source) continue;
       matches.push(evt);
     }
-    // Stable order: by (blockNumber, logIndex) then receivedAt.
     matches.sort(byBlockThenLogReceived);
     return query.limit !== undefined ? matches.slice(0, query.limit) : matches;
   }
@@ -193,10 +171,6 @@ export class EventStore {
     return limit !== undefined ? results.slice(0, limit) : results;
   }
 
-  /**
-   * Find token IDs by owner address via the Transfer `to` index.
-   * Best-effort — authoritative once a database is added.
-   */
   getTokenIdsByOwner(
     owner: string,
     limit?: number,
@@ -223,10 +197,6 @@ export class EventStore {
     return this.total;
   }
 
-  /**
-   * Load persisted events from disk. Silently no-ops if the file doesn't exist
-   * or is corrupt — data loss is acceptable for this in-memory store.
-   */
   private load(): void {
     const rawBuckets = loadBuckets();
     this.buckets.clear();
@@ -382,7 +352,6 @@ export class EventStore {
     return this.persistChain;
   }
 
-  /** Debounced (2s) variant — safe to call after every append. */
   private persistDebounced(): void {
     if (this.debounceTimer) clearTimeout(this.debounceTimer);
     this.debounceTimer = setTimeout(() => {
@@ -391,7 +360,6 @@ export class EventStore {
     }, 2_000);
   }
 
-  /** Force-flush pending events to disk. Call before shutdown. */
   async flush(): Promise<void> {
     if (this.debounceTimer) {
       clearTimeout(this.debounceTimer);
@@ -419,10 +387,6 @@ export class EventStore {
   }
 }
 
-/**
- * Extract tokenId-shaped field from an opaque payload. Supports
- * tokenId, agentTokenId, _tokenId. Returns decimal string or null.
- */
 function tokenIdFromPayload(payload: StoredEventPayload): string | null {
   const record = payload as Record<string, unknown>;
   for (const key of ["tokenId", "agentTokenId", "_tokenId"] as const) {
@@ -442,13 +406,11 @@ function tokenIdFromPayload(payload: StoredEventPayload): string | null {
   return null;
 }
 
-/** Lazy-initialized singleton. Tests construct their own. */
 let singleton: EventStore | undefined;
 export function getEventStore(): EventStore {
   singleton ??= new EventStore();
   return singleton;
 }
-/** Test-only: reset the singleton. Not exported from server.ts. */
 export function _resetEventStoreForTests(): void {
   singleton = undefined;
 }

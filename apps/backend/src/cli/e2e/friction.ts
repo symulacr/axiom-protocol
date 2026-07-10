@@ -1,6 +1,3 @@
-/**
- * Friction / waste / duplication detector for live E2E runs.
- */
 
 export type FrictionSeverity = "info" | "warn" | "waste";
 
@@ -25,7 +22,6 @@ export function getFrictionFindings(): readonly FrictionFinding[] {
   return findings;
 }
 
-/** Record step wall time — flags slow hops for prod UX. */
 export function recordStepDuration(name: string, ms: number): void {
   stepDurationsMs.push({ name, ms });
   if (ms > 25_000) {
@@ -47,7 +43,6 @@ export function noteFriction(f: Omit<FrictionFinding, "id"> & { id?: string }): 
   });
 }
 
-/** Built-in static friction points in the E2E design */
 export function seedKnownFriction(deps: {
   walletSource: "e2e-dedicated" | "legacy-env";
   sameKeyOperatorAndTee: boolean;
@@ -132,7 +127,6 @@ export function seedKnownFriction(deps: {
   }
 }
 
-/** Gaps between frontend click-paths and full protocol E2E coverage. */
 export function seedFrontendFriction(): void {
   noteFriction({
     id: "ui-mint-skips-storage",

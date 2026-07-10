@@ -1,4 +1,3 @@
-/** AxiomMockUSDC — mintable testnet payment token (Galileo). */
 export const MOCK_USDC_ABI = [
   "function mint(address to, uint256 amount)",
   "function balanceOf(address account) view returns (uint256)",

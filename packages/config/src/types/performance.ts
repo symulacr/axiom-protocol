@@ -3,9 +3,7 @@ export interface PerformanceMetrics {
   buyCount: number;
   sellCount: number;
   holdCount: number;
-  /** Fraction of ticks that recommended buy (not profitability). */
   buyRate: number;
-  /** @deprecated Use buyRate — kept for backward compatibility. */
   winRate: number;
 }
 

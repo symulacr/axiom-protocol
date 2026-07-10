@@ -1,4 +1,3 @@
-/** Shared orchestrator types. Used by both backend (orchestrator) and frontend (hooks). */
 
 export type TickAction = "buy" | "sell" | "hold";
 

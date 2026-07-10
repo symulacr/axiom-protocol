@@ -22,7 +22,6 @@ function pushStepResult(
   stepResults.push({ step, name, ok, summary, txHash });
 }
 
-/** GET JSON endpoint and record a step result. */
 export async function getStep<T>(
   backendUrl: string,
   step: number,
@@ -42,11 +41,6 @@ export async function getStep<T>(
   return res;
 }
 
-/**
- * Run one HTTP step: build the request, fire it, parse JSON, log + push
- * a `StepResult`. The `summary` callback is given the typed response so
- * the caller can pick the fields it wants to surface in the report.
- */
 export async function postStep<T>(
   backendUrl: string,
   step: number,

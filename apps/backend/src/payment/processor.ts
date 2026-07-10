@@ -9,7 +9,6 @@ import {
 import { TypedContract } from "@axiom/config/types/contract";
 import { PAYMENT_PROCESSOR_ABI, ERC20_ABI } from "@axiom/config/abis";
 
-// Local contract method types derived from the ABIs above (avoid shared contract-types.ts drift).
 type PaymentProcessorMethods = {
   payForAgent(
     agentTokenId: bigint,
@@ -39,13 +38,9 @@ type ERC20Methods = {
 };
 
 export interface PaymentConfig {
-  /** AxiomPaymentProcessor proxy address. */
   readonly address: string;
-  /** Signer for write paths (payForAgent, payComputeProvider, withdraw, setRoyalty). */
   readonly signer: Wallet;
-  /** Provider for read-only clients / view calls. */
   readonly provider: JsonRpcProvider;
-  /** ERC-20 payment token (USDC.e / USDG). Required for approval pre-flight. */
   readonly paymentTokenAddress: string;
 }
 
@@ -58,10 +53,6 @@ export interface PaymentProcessedEvent {
   readonly protocolCut: bigint;
 }
 
-/**
- * Thin wrapper over AxiomPaymentProcessor. Write methods wait for
- * one confirmation; read methods hit the chain directly.
- */
 export class PaymentProcessorClient {
   readonly address: string;
   readonly paymentTokenAddress: string;
@@ -85,12 +76,6 @@ export class PaymentProcessorClient {
     );
   }
 
-  /**
-   * Pay for an agent. Pulls amount from the backend signer and splits
-   * between creator (credited) and treasury.
-   *
-   * Pre-flight: approve processor if allowance is below amount.
-   */
   async payForAgent(
     agentTokenId: bigint,
     amount: bigint,
@@ -106,10 +91,6 @@ export class PaymentProcessorClient {
     return { receipt, event };
   }
 
-  /**
-   * Protocol-level compute provider payout. Pulls amount from backend
-   * signer and forwards to provider.
-   */
   async payComputeProvider(
     provider: string,
     amount: bigint,
@@ -125,9 +106,6 @@ export class PaymentProcessorClient {
     return { receipt, provider, amount };
   }
 
-  /**
-   * Withdraw backend signer's accumulated creator earnings.
-   */
   async withdrawEarnings(): Promise<{
     receipt: ContractTransactionReceipt;
     amount: bigint | null;
@@ -140,13 +118,6 @@ export class PaymentProcessorClient {
     return { receipt, amount };
   }
 
-  /**
-   * Encode setRoyaltyBpsPermitted call for frontend submission via
-   * useWriteContract. Backend signer cannot call setRoyaltyBps directly
-   * (it is creator-only).
-   *
-   * @returns { to, data, value } — pass to useWriteContract.
-   */
   async encodeSetRoyalty(
     agentTokenId: bigint,
     bps: number,
@@ -182,9 +153,6 @@ export class PaymentProcessorClient {
     return await this.payment.contract.paymentToken();
   }
 
-  /**
-   * Grant processor allowance covering amount if current allowance insufficient.
-   */
   private async ensureAllowance(amount: bigint): Promise<void> {
     const current = await this.token.contract.allowance(
       this.signer.address,

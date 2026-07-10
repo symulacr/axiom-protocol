@@ -1,6 +1,3 @@
-/**
- * Complex multi-tool flow — mirrors ChatPage tool loop with parallel read batch.
- */
 
 import { ethers } from "ethers";
 import { executeE2eTool, type E2eToolDeps } from "./transport-node.js";

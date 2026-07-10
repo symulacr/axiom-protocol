@@ -2,7 +2,6 @@ import { getChatToolSpec } from "@axiom/config/chat-tools";
 
 export type ToolCallLike = { function: { name: string } };
 
-/** Group tool calls into parallel-safe batches (encode/orchestrate sign lane stays serial). */
 export function groupParallelTools<T extends ToolCallLike>(calls: T[]): T[][] {
   const batches: T[][] = [];
   let walletLane: T[] = [];

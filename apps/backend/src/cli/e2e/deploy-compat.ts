@@ -6,7 +6,6 @@ function cacheKey(address: string, signature: string): string {
   return `${address.toLowerCase()}::${signature}`;
 }
 
-/** Return true when `signature` is callable on the deployed contract at `address`. */
 export async function hasContractFunction(
   provider: Provider,
   address: string,

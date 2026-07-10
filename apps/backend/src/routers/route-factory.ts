@@ -27,28 +27,16 @@ export type RouteHandler<T> = (
   helpers: { id: string; config: ServerConfig },
 ) => Promise<unknown>;
 export interface RouteOptions<S extends z.ZodTypeAny | undefined = undefined> {
-  /** Route path (e.g., "/v1/agents/mint") */
   path: string;
-  /** HTTP method */
   method?: "get" | "post";
-  /** Zod schema for request body validation */
   schema?: S;
-  /** If true, req.params.id is required (sets id in helpers) */
   requireId?: boolean;
-  /** If set, checks config.addresses[key] exists (e.g. "vault", "agentNft") */
   requireAddress?: AddressKey;
-  /** Event name to broadcast on success */
   broadcast?: string;
-  /** Frontend hook or consumer name for route registry */
   consumer?: string;
-  /** Human-readable description for route registry */
   description?: string;
 }
 
-/**
- * Creates an Express route with standardized error handling,
- * address validation, schema parsing, and optional broadcast.
- */
 export function createRoute<S extends z.ZodTypeAny | undefined = undefined>(
   app: Router | Express,
   opts: RouteOptions<S>,

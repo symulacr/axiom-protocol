@@ -8,7 +8,6 @@ export type IndexerContractAddresses = {
   readonly AXIOM_PAYMENT_PROCESSOR: Address;
 };
 
-/** Resolve watch targets from env (Wave E-6 on prod) with hardcoded fallback. */
 export function resolveIndexerAddresses(
   env: Record<string, unknown> = process.env as Record<string, unknown>,
 ): IndexerContractAddresses {
@@ -21,14 +20,12 @@ export function resolveIndexerAddresses(
   };
 }
 
-/** Default addresses (dev / tests without env overrides). */
 export const ADDRESSES = resolveIndexerAddresses({});
 
 export const EVENT_SIGNATURES = {
   Transfer:
     "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)" as const,
 
-  // Canonical signature without tuple syntax (viem parseAbiItem does not accept inline tuple).
   Updated: "Updated(uint256,(string,bytes32)[],(string,bytes32)[])" as const,
   Authorization:
     "event Authorization(address indexed from, address indexed to, uint256 indexed tokenId)" as const,
@@ -94,7 +91,6 @@ export const EVENT_SIGNATURES = {
     "event AdminChanged(address previousAdmin, address newAdmin)" as const,
   BeaconUpgraded: "event BeaconUpgraded(address indexed beacon)" as const,
 
-  // uint64 matches OZ v5 (v4 used uint8).
   Initialized: "event Initialized(uint64 version)" as const,
 } as const;
 

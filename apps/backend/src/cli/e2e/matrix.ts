@@ -1,7 +1,3 @@
-/**
- * On-chain function parity matrix for live E2E.
- * Tracks which contract surfaces are exercised vs intentionally skipped.
- */
 
 export type CoverageKind = "view" | "write";
 export type CoverageStatus = "pending" | "covered" | "skipped";
@@ -40,7 +36,6 @@ function register(
   }
 }
 
-/** Seed the full contract × function inventory (actionable + documented skips). */
 export function initParityMatrix(): void {
   entries.clear();
 
@@ -50,7 +45,6 @@ export function initParityMatrix(): void {
   const tee = "AxiomTeeVerifier";
   const erc20 = "MockUSDC";
 
-  // --- AxiomAgentNFT (user-facing) ---
   for (const fn of [
     "mint",
     "update",
@@ -97,7 +91,6 @@ export function initParityMatrix(): void {
     register(agentNft, fn, "write", "skipped", reason);
   }
 
-  // --- Vault ---
   for (const fn of ["deposit", "withdraw", "balanceOf", "setStrategy", "strategyOf"] as const) {
     register(vault, fn, fn === "balanceOf" || fn === "strategyOf" ? "view" : "write");
   }
@@ -110,7 +103,6 @@ export function initParityMatrix(): void {
     register(vault, fn, "write", "skipped", reason);
   }
 
-  // --- Payment ---
   for (const fn of [
     "payForAgent",
     "payComputeProvider",
@@ -152,7 +144,6 @@ export function initParityMatrix(): void {
     register(payment, fn, "write", "skipped", reason);
   }
 
-  // --- TEE verifier ---
   for (const fn of [
     "verifyTransferValidity",
     "domainSeparator",
@@ -174,7 +165,6 @@ export function initParityMatrix(): void {
     register(tee, fn, "write", "skipped", reason);
   }
 
-  // --- ERC20 (payment token) ---
   for (const fn of ["approve", "balanceOf", "allowance", "transfer"] as const) {
     register(erc20, fn, fn === "balanceOf" || fn === "allowance" ? "view" : "write");
   }

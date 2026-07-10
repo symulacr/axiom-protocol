@@ -1,12 +1,6 @@
 import { secp256k1 } from "ethereum-cryptography/secp256k1";
 import { keccak256 } from "ethereum-cryptography/keccak";
 
-/**
- * secp256k1 helpers for the Axiom oracle and backend.
- *
- * These mirror the on-chain `Utils.pubKeyToAddress` layout in
- * 0g-agent-nft/Utils.sol: `address(uint160(uint256(keccak256(pubKey))))`.
- */
 
 export function publicKeyUncompressedFromPrivate(privateKey: Uint8Array) {
   const pub = secp256k1.getPublicKey(privateKey, false);
@@ -20,12 +14,10 @@ export function pubKeyToAddress(uncompressed: Uint8Array): `0x${string}` {
   return ("0x" + Buffer.from(hash).toString("hex").slice(-40)) as `0x${string}`;
 }
 
-/** Derives the 64-byte raw public key (X||Y, no 0x04 prefix) from a private key hex. */
 export function deriveRawPubkeyFromHex(privateKeyHex: string) {
   return publicKeyUncompressedFromPrivate(
     Uint8Array.from(Buffer.from(privateKeyHex.replace(/^0x/, ""), "hex")),
   );
 }
 
-/** @deprecated Use `deriveRawPubkeyFromHex` — name reflects 64-byte X||Y, not 65-byte 0x04||X||Y. */
 export const deriveUncompressedPubkeyFromHex = deriveRawPubkeyFromHex;

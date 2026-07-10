@@ -376,7 +376,6 @@ type VaultMethods = {
   ): Promise<TransactionResponse>;
 };
 
-/** Pipeline deposit + setStrategy — one nonce lane, batch receipt wait. */
 export async function runVaultDepositStrategyPipeline(deps: {
   vault: string;
   deployer: Wallet;
@@ -630,7 +629,6 @@ export async function runPaymentStep(deps: {
   });
 }
 
-/** @deprecated Use runOracleRegisterStep */
 export const runMintStep = runOracleRegisterStep;
 
 export async function runTickStep(deps: {

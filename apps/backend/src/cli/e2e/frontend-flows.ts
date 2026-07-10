@@ -6,7 +6,6 @@ import { noteFriction } from "./friction.js";
 
 const ARCHIVE_PROBE_URL = "https://example.com";
 
-/** Route registry surfaced to API consumers and chat tools. */
 export async function runRoutesRegistryStep(deps: {
   backendUrl: string;
 }): Promise<void> {
@@ -33,7 +32,6 @@ export async function runRoutesRegistryStep(deps: {
   markScenarioCovered("api.routes", "routes-registry", { reads: 1 });
 }
 
-/** Activity tab + Market page polled history. */
 export async function runEventsFeedStep(deps: {
   backendUrl: string;
   tokenId?: string;
@@ -63,7 +61,6 @@ export async function runEventsFeedStep(deps: {
   markScenarioCovered("events.feed", "events-feed", { reads: 1 });
 }
 
-/** Agents browser batch metrics (usePerformanceBatch). */
 export async function runPerformanceBatchStep(deps: {
   backendUrl: string;
   tokenId: string;
@@ -88,7 +85,6 @@ export async function runPerformanceBatchStep(deps: {
   markScenarioCovered("agent.performance-batch", "performance-batch", { reads: 1 });
 }
 
-/** PaymentPanel royalty encode — frontend builds tx from this response. */
 export async function runRoyaltyEncodeStep(deps: {
   backendUrl: string;
   tokenId: string;
@@ -109,7 +105,6 @@ export async function runRoyaltyEncodeStep(deps: {
   markScenarioCovered("payment.royalty-encode", "royalty-encode", { reads: 1 });
 }
 
-/** WebSocket stream — Activity tab live updates (hello handshake). */
 export async function runEventStreamStep(deps: {
   backendUrl: string;
   topics?: string[];
@@ -148,7 +143,6 @@ export async function runEventStreamStep(deps: {
           resolve();
         }
       } catch {
-        // ignore
       }
     });
 
@@ -169,7 +163,6 @@ export async function runEventStreamStep(deps: {
   markScenarioCovered("api.stream", "event-stream", { reads: 1 });
 }
 
-/** Archive API — uses fast /closest (CDX /snapshots can exceed 20s). */
 export async function runArchiveProbeStep(deps: {
   backendUrl: string;
 }): Promise<void> {
@@ -202,7 +195,6 @@ export async function runArchiveProbeStep(deps: {
   markScenarioCovered("archive.closest", "archive-closest", { reads: 1 });
 }
 
-/** Bundle of frontend-critical HTTP surfaces after ticks populate the event store. */
 export async function runFrontendPostTickBundle(deps: {
   backendUrl: string;
   tokenId: string;

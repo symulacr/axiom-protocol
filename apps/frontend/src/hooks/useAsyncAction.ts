@@ -33,7 +33,6 @@ export function useAsyncAction(): UseAsyncActionResult {
         return await fn(controller.signal);
       } catch (err) {
         if (cancelledRef.current) throw err;
-        // Skip AbortErrors — they're expected on unmount/rerun
         if (err instanceof DOMException && err.name === "AbortError") {
           throw err; // still throw so the promise chain works, but don't setError
         }

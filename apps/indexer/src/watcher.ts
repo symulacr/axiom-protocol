@@ -22,11 +22,8 @@ export const POLL_WINDOW_BLOCKS = 50n;
 
 export const POLL_INTERVAL_MS = 12_000;
 
-/** Blocks below the processed head treated as reorg-safe for finality (hook only). */
 export const REORG_SAFE_DEPTH = 10n;
 
-// 0G's eth_getLogs rejects ranges past chain head with -32000.
-// We bound the window to the live head on every tick.
 
 function getCheckpointFile(chainId: bigint): string {
   return join(process.cwd(), "data", `checkpoint-${chainId}.json`);
@@ -54,7 +51,6 @@ export function buildDefaultWatchList(
   addresses: IndexerContractAddresses = ADDRESSES,
 ): readonly WatchedEvent[] {
   return [
-  // AxiomAgentNFT
   { name: "Transfer", address: addresses.AXIOM_AGENT_NFT },
   { name: "Updated", address: addresses.AXIOM_AGENT_NFT },
   { name: "Authorization", address: addresses.AXIOM_AGENT_NFT },
@@ -65,12 +61,10 @@ export function buildDefaultWatchList(
   { name: "StorageInfoUpdated", address: addresses.AXIOM_AGENT_NFT },
   { name: "PublishedSealedKey", address: addresses.AXIOM_AGENT_NFT },
   { name: "DelegateAccess", address: addresses.AXIOM_AGENT_NFT },
-  // AxiomStrategyVault
   { name: "Deposited", address: addresses.AXIOM_STRATEGY_VAULT },
   { name: "Withdrawn", address: addresses.AXIOM_STRATEGY_VAULT },
   { name: "StrategySet", address: addresses.AXIOM_STRATEGY_VAULT },
   { name: "Executed", address: addresses.AXIOM_STRATEGY_VAULT },
-  // AxiomPaymentProcessor
   { name: "PaymentProcessed", address: addresses.AXIOM_PAYMENT_PROCESSOR },
   { name: "ComputeProviderPaid", address: addresses.AXIOM_PAYMENT_PROCESSOR },
   { name: "EarningsWithdrawn", address: addresses.AXIOM_PAYMENT_PROCESSOR },
@@ -89,17 +83,14 @@ export function buildDefaultWatchList(
   },
   { name: "ProtocolFeeBpsUpdated", address: addresses.AXIOM_PAYMENT_PROCESSOR },
   { name: "PaymentTokenUpdated", address: addresses.AXIOM_PAYMENT_PROCESSOR },
-  // AxiomAgentNFT (metadata decision + ERC7857Cloneable Cloned)
   {
     name: "MetadataJsonDecisionDocumented",
     address: addresses.AXIOM_AGENT_NFT,
   },
   { name: "Cloned", address: addresses.AXIOM_AGENT_NFT },
-  // AxiomTeeVerifier
   { name: "SignerProposed", address: addresses.AXIOM_TEE_VERIFIER },
   { name: "SignerExecuted", address: addresses.AXIOM_TEE_VERIFIER },
   { name: "SignerProposalCancelled", address: addresses.AXIOM_TEE_VERIFIER },
-  // ERC-1967 proxy events (emitted by the ERC1967Proxy at AXIOM_AGENT_NFT)
   { name: "Upgraded", address: addresses.AXIOM_AGENT_NFT },
   { name: "AdminChanged", address: addresses.AXIOM_AGENT_NFT },
   { name: "BeaconUpgraded", address: addresses.AXIOM_AGENT_NFT },
@@ -117,9 +108,7 @@ export type WatcherOptions = {
   pollWindow?: bigint;
   pollIntervalMs?: number;
   sink: EventSink;
-  /** Block number to start from. Defaults to "latest - window". */
   startBlock?: bigint;
-  /** Logger sink for non-event status lines (one JSON line per message). */
   logger?: (line: Record<string, unknown>) => void;
 };
 
@@ -156,7 +145,6 @@ function makeEventParser(
 }
 
 const EVENT_PARSERS: Record<string, EventParser> = {
-  // AxiomAgentNFT events
   Transfer: makeEventParser("Transfer", EVENT_ABI.Transfer, (a) => ({
     from: getAddress(a["from"] as string),
     to: getAddress(a["to"] as string),
@@ -230,7 +218,6 @@ const EVENT_PARSERS: Record<string, EventParser> = {
       assistant: getAddress(a["assistant"] as string),
     }),
   ),
-  // AxiomStrategyVault events
   Deposited: makeEventParser("Deposited", EVENT_ABI.Deposited, (a) => ({
     tokenId: a["tokenId"] as bigint,
     from: getAddress(a["from"] as string),
@@ -256,7 +243,6 @@ const EVENT_PARSERS: Record<string, EventParser> = {
     value: a["value"] as bigint,
     result: a["result"] as Hex,
   })),
-  // AxiomPaymentProcessor events
   PaymentProcessed: makeEventParser(
     "PaymentProcessed",
     EVENT_ABI.PaymentProcessed,
@@ -328,7 +314,6 @@ const EVENT_PARSERS: Record<string, EventParser> = {
       newToken: getAddress(a["newToken"] as string),
     }),
   ),
-  // ERC7857Cloneable / AxiomAgentNFT metadata / AxiomTeeVerifier
   Cloned: makeEventParser("Cloned", EVENT_ABI.Cloned, (a) => ({
     tokenId: a["tokenId"] as bigint,
     newTokenId: a["newTokenId"] as bigint,
@@ -367,7 +352,6 @@ const EVENT_PARSERS: Record<string, EventParser> = {
       cancelledSigner: getAddress(a["cancelledSigner"] as string),
     }),
   ),
-  // ERC-1967 proxy events
   Upgraded: makeEventParser("Upgraded", EVENT_ABI.Upgraded, (a) => ({
     implementation: getAddress(a["implementation"] as string),
   })),
@@ -386,7 +370,6 @@ const EVENT_PARSERS: Record<string, EventParser> = {
       beacon: getAddress(a["beacon"] as string),
     }),
   ),
-  // OpenZeppelin Initializable
   Initialized: makeEventParser("Initialized", EVENT_ABI.Initialized, (a) => ({
     version: Number(a["version"]),
   })),
@@ -410,7 +393,6 @@ export function decodeAxiomLog(log: Log) {
   return parser(log, base);
 }
 
-/** Run a single poll tick: fetch logs in `[fromBlock, fromBlock + window)`. */
 export async function pollOnce(
   provider: JsonRpcProvider,
   watchList: readonly WatchedEvent[],
@@ -419,7 +401,6 @@ export async function pollOnce(
 ) {
   const toBlock = fromBlock + window - 1n;
 
-  // One call per (event, address) pair — cheap to error-isolate.
   const allLogs: Log[] = [];
   for (const { name, address } of watchList) {
     const filter = {
@@ -527,31 +508,18 @@ export class Watcher {
       if (!this.running) return;
       try {
         const id = await getChainId();
-        // Fetch the live chain head on every tick so the window never
-        // overshoots the chain head (0G rejects ranges past head with
-        // error code -32000).
         const head = await this.provider.getBlockNumber();
         const latest = BigInt(head);
 
-        // First-run seed: look back one window so the first tick has data.
         if (this.nextBlock === 0n) {
           this.nextBlock = latest >= this.window ? latest - this.window : 0n;
         }
 
-        // Clamp a stale cursor that has run past the head back to `latest`.
-        // Without this, a tick that fires after the loop was paused longer
-        // than `window / blockTime` would set `from > latest` and trip the
-        // same "invalid block range params" error.
         const fromBlock = this.nextBlock < latest ? this.nextBlock : latest;
 
-        // Cap `toBlock` at the live head so the query window is always a
-        // subset of `[0, latest]`. This is the load-bearing fix.
         const windowEnd = fromBlock + this.window - 1n;
         const toBlock = windowEnd > latest ? latest : windowEnd;
 
-        // If the chain hasn't moved (or `latest` is 0), there's nothing to
-        // query yet — skip the tick without advancing the cursor so the
-        // next tick can retry.
         if (toBlock < fromBlock) {
           this.logger({
             msg: "poll tick skipped",
@@ -586,8 +554,6 @@ export class Watcher {
             });
           }
         }
-        // Reorg-safe finality hook: only events in blocks <= safeBlock should be finalized.
-        // Full reorg handling (event invalidation / checkpoint rollback) is out of scope here.
         const safeBlock = toBlock > REORG_SAFE_DEPTH ? toBlock - REORG_SAFE_DEPTH : 0n;
         this.nextBlock = toBlock + 1n;
         await saveCheckpoint(id, Number(this.nextBlock));
@@ -621,7 +587,6 @@ export class Watcher {
           await promise;
           return;
         }
-        // Exponential backoff with 60s cap
         const backoff = Math.min(
           this.intervalMs * Math.pow(2, this.consecutiveFailures),
           60_000,
@@ -633,8 +598,6 @@ export class Watcher {
     };
 
     const loop = async (): Promise<void> => {
-      // Load persisted checkpoint before first tick so we resume from
-      // where we left off rather than falling back to head - window.
       try {
         const id = await getChainId();
         const savedBlock = await loadCheckpoint(id);

@@ -343,7 +343,6 @@ export async function runVaultWithdrawStep(deps: {
   return after;
 }
 
-/** Pipeline payForAgent + payComputeProvider after a single approve (saves ~1 block). */
 export async function runPaymentPipelineStep(deps: {
   paymentProcessor: string;
   paymentToken: string;
@@ -639,7 +638,6 @@ export async function runAuthorizeDelegateStep(deps: {
   });
 }
 
-/** Pipeline update + royalty — sequential send, parallel wait (~1 block saved). */
 export async function runUpdateRoyaltyPipelineStep(deps: {
   agentNft: string;
   paymentProcessor: string;
@@ -750,11 +748,6 @@ export async function runUpdateDataStep(deps: {
   });
 }
 
-/**
- * Mega post-vault lane: sequential nonce send, batch receipt wait.
- * Combines withdraw (optional) + authorize block + update/royalty when pipelining.
- * Returns vault balance after withdraw (or current balance if withdraw skipped).
- */
 export async function runPostVaultCoveragePipeline(deps: {
   vault: string;
   agentNft: string;
@@ -933,7 +926,6 @@ export async function runPostVaultCoveragePipeline(deps: {
   return vaultBal;
 }
 
-/** Recompute the proof nonce the verifier marks on iTransfer (matches AxiomTeeVerifier.sol). */
 export function computeTransferProofNonce(finalResp: FinalResponse): `0x${string}` {
   const coder = AbiCoder.defaultAbiCoder();
   return keccak256(

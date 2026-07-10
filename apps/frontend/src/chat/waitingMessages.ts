@@ -1,4 +1,3 @@
-/** Neutral progress copy for chat + execute (no implied TEE/SGX on devnet). */
 export const NEUTRAL_WAITING_MESSAGES = [
   "Connecting to 0G Compute…",
   "Loading agent context…",

@@ -343,9 +343,6 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
     fetchError,
   } = usePayment();
 
-  // On-chain withdraw — backend has no route, so the connected
-  // wallet signs `withdrawAgentEarnings()` directly. This mirrors
-  // `useTransfer`'s on-chain submit pattern.
   const {
     writeContractAsync,
     isPending: isWithdrawPending,

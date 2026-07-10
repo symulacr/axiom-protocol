@@ -9,46 +9,26 @@ import {
 export type { OwnershipProofInput, OwnershipProofResult, AccessProofInput };
 import { bigintReplacer } from "@axiom/config/types/bigint";
 
-// Default timeout for oracle HTTP requests (10 seconds, matches frontend).
 const ORACLE_TIMEOUT_MS = 10_000;
 
 export interface OracleClientConfig {
   baseUrl: string; // e.g., "http://127.0.0.1:8787"
   timeoutMs?: number;
-  /** API key for authenticated endpoints (sent as x-api-key header). */
   apiKey?: string;
 }
 
-/**
- * Request body for /v1/transfer-validity (full re-key).
- * Mirrors apps/oracle/src/server.ts POST /v1/transfer-validity handler.
- */
 export interface TransferValidityInput {
-  /** 32-byte hex dataHash of the existing ciphertext (the on-chain iData hash). */
   oldDataHash: `0x${string}`;
-  /** 0G Storage root hash / blob identifier of the existing ciphertext. */
   oldDataUri: `0x${string}`;
-  /** Receiver's 64-byte uncompressed public key (X||Y, no 0x04 prefix; 0x + 128 hex). */
   targetPubkey64: `0x${string}`;
-  /** Nonce for the AccessProof (receiver's signature). */
   accessProofNonce: string | number;
-  /** Nonce for the OwnershipProof (TEE signature). Defaults to accessProofNonce. */
   ownershipProofNonce?: string | number;
-  /** Base64-encoded 32-byte AES-256 key that decrypts the old ciphertext. */
   oldDataEncryptionKey: string;
-  /** Receiver's address (0x-prefixed, 20 bytes). */
   to: `0x${string}`;
-  /** NFT contract address. */
   nft: `0x${string}`;
 }
 
-/**
- * Response from /v1/transfer-validity. Extends OwnershipProofResult with the
- * validUntil the oracle used when signing (so the backend can build a matching
- * AccessProof challenge without clock-skew).
- */
 export interface TransferValidityResult extends OwnershipProofResultWithMeta {
-  /** Unix-seconds deadline the oracle used in the OwnershipProof signature. */
   validUntil?: string;
 }
 
@@ -102,11 +82,6 @@ export class DefaultSignerOracleClient implements OracleClient {
     return this.post("/v1/ownership", input);
   }
 
-  /**
-   * Performed locally (not via the oracle) — the receiver signs in their
-   * wallet; the backend recovers over the same hash the on-chain verifier
-   * expects (`accessMessageHash`).
-   */
   recoverAccessSigner(
     signature: `0x${string}`,
     input: AccessProofInput,

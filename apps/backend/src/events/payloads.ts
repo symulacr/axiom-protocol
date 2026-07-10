@@ -1,4 +1,3 @@
-/** Typed event payload interfaces. Eliminates `as Record<string, unknown>` casts. */
 
 export interface TickPayload {
   tokenId: string;
@@ -50,7 +49,6 @@ export type EventPayload =
   | ExecutedPayload
   | Record<string, unknown>;
 
-/** Wire-format payload stored on {@link StoredEvent}. */
 export type StoredEventPayload = EventPayload;
 
 function isPlainObject(val: unknown): val is Record<string, unknown> {
@@ -64,10 +62,6 @@ function hasStringFields(
   return keys.every((k) => typeof o[k] === "string");
 }
 
-/**
- * Basic shape check for known event payload kinds; any plain object is accepted
- * as an opaque {@link Record} fallback.
- */
 export function isEventPayload(val: unknown): val is EventPayload {
   if (!isPlainObject(val)) return false;
 
@@ -87,7 +81,6 @@ export function isEventPayload(val: unknown): val is EventPayload {
   return true;
 }
 
-/** Safely extract a string field from an unknown payload. */
 export function payloadField(
   payload: unknown,
   key: string,
@@ -98,7 +91,6 @@ export function payloadField(
   return undefined;
 }
 
-/** Safely extract a number field from an unknown payload. */
 export function payloadNumber(
   payload: unknown,
   key: string,

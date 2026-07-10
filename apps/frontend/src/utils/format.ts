@@ -18,15 +18,10 @@ export function parseTokenId(raw: string | undefined): bigint | null {
   }
 }
 
-/**
- * Translate raw blockchain/wallet/network errors into messages
- * that a non-technical user can act on.
- */
 export function humanizeError(err: unknown): string {
   const raw = err instanceof Error ? err.message : String(err);
   const lower = raw.toLowerCase();
 
-  // Wallet rejections
   if (
     lower.includes("user rejected") ||
     lower.includes("user denied") ||
@@ -35,7 +30,6 @@ export function humanizeError(err: unknown): string {
     return "Transaction cancelled — you rejected the request in your wallet.";
   }
 
-  // Insufficient funds
   if (
     lower.includes("insufficient funds") ||
     lower.includes("exceeds the balance")
@@ -43,7 +37,6 @@ export function humanizeError(err: unknown): string {
     return "Insufficient balance to complete this transaction. Please add funds and try again.";
   }
 
-  // Gas estimation failures
   if (
     lower.includes("gas required exceeds") ||
     lower.includes("cannot estimate gas")
@@ -51,7 +44,6 @@ export function humanizeError(err: unknown): string {
     return "Transaction would fail on-chain. Check your inputs and wallet balance.";
   }
 
-  // Contract reverts — extract reason if present
   if (lower.includes("execution reverted") || lower.includes("revert")) {
     const reasonMatch =
       raw.match(/reason:\s*(.+?)(?:\n|$)/i) ??
@@ -63,7 +55,6 @@ export function humanizeError(err: unknown): string {
       : "Transaction reverted by the contract. Check your inputs and permissions.";
   }
 
-  // Network errors
   if (
     lower.includes("failed to fetch") ||
     lower.includes("networkerror") ||
@@ -74,7 +65,6 @@ export function humanizeError(err: unknown): string {
     return "Network error — check your internet connection and try again.";
   }
 
-  // Timeout
   if (
     lower.includes("timeout") ||
     lower.includes("timed out") ||
@@ -83,17 +73,14 @@ export function humanizeError(err: unknown): string {
     return "Request timed out. The network may be congested — please try again.";
   }
 
-  // Nonce conflicts
   if (lower.includes("nonce") && lower.includes("too low")) {
     return "Transaction nonce conflict. Please wait for pending transactions to confirm.";
   }
 
-  // Fallback: truncate to something readable
   const capped = raw.length > 200 ? `${raw.slice(0, 200)}…` : raw;
   return capped;
 }
 
-/** Validate a numeric string for financial inputs. Returns error message or null. */
 export function validateNumericInput(
   value: string,
   opts: {
@@ -114,7 +101,6 @@ export function validateNumericInput(
   const trimmed = value.trim();
   if (trimmed === "") return null; // empty is not an error (handled by required)
 
-  // Reject scientific notation
   if (/[eE]/.test(trimmed)) {
     return `${label} cannot use scientific notation.`;
   }

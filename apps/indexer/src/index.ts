@@ -16,7 +16,6 @@ import type { AxiomEvent } from "./events.js";
 import { postEvent } from "./sink.js";
 import { indexerEnvSchema } from "./env-schema.js";
 
-// Load shared .env before any env reads.
 loadEnv(fileURLToPath(new URL("../../.env", import.meta.url)));
 const env = indexerEnvSchema.parse(process.env);
 
@@ -79,16 +78,13 @@ async function flushBuffer(): Promise<void> {
       }) + "\n",
     );
   } catch (err) {
-    // Re-buffer on failure so events aren't lost
     const MAX_BUFFER_SIZE = 10000;
-    // Make room by dropping the OLDEST events (front of buffer)
     while (eventBuffer.length + batch.length > MAX_BUFFER_SIZE && eventBuffer.length > 0) {
       const dropped = eventBuffer.shift();
       console.warn(
         `[indexer] event buffer full, dropping oldest event: ${dropped?.kind ?? "unknown"}`,
       );
     }
-    // Re-insert failed batch at the end (chronological order preserved)
     eventBuffer.push(...batch);
     process.stderr.write(
       JSON.stringify({
@@ -163,7 +159,6 @@ function composeSinks(
       }
     }
 
-    // 0G Storage upload (batched, best-effort)
     if (config.da === "storage") {
       eventBuffer.push(event);
       if (eventBuffer.length >= BATCH_MAX) {
@@ -181,7 +176,6 @@ async function main() {
   const cid = chainId();
   const url = rpcUrl();
 
-  // Explicit chainId avoids eth_chainId round-trip.
   const fetchReq = new ethers.FetchRequest(url);
   fetchReq.timeout = 10_000;
   const provider = new ethers.JsonRpcProvider(fetchReq, cid, {
@@ -190,7 +184,6 @@ async function main() {
   const pollWindow = BigInt(env.INDEXER_POLL_WINDOW_BLOCKS);
   banner(cid, pollWindow);
 
-  // Verify the RPC is actually answering on the expected chain
   const liveChainId = Number((await provider.getNetwork()).chainId);
   if (liveChainId !== cid) {
     process.stderr.write(
@@ -204,12 +197,9 @@ async function main() {
     );
   }
 
-  //   - INDEXER_DA_ENABLED gates DA (storage) submission.
-  //   - BACKEND_URL routes events to POST /v1/events.
   const daEnabled =
     env.INDEXER_DA_ENABLED === "1" || env.INDEXER_DA_ENABLED === "true";
   const backendUrl = env.AXIOM_BACKEND_URL;
-  // 0G Storage setup (replaces DA sidecar for event permanence)
   const ogStorageRpc = env.AXIOM_STORAGE_RPC ?? "";
   const DEPLOYER_PK = env.DEPLOYER_PK;
   let storageIndexer: Indexer | undefined;
@@ -219,7 +209,6 @@ async function main() {
       storageSigner = new ethers.Wallet(DEPLOYER_PK, provider);
       storageIndexer = new Indexer(ogStorageRpc);
     } catch {
-      // non-fatal — storage is best-effort
     }
   }
 
@@ -259,7 +248,6 @@ async function main() {
       ? { startBlock: BigInt(env.INDEXER_START_BLOCK) }
       : {}),
   });
-  // Health check server for Docker/k8s probes
   const healthPort = env.PORT ?? env.INDEXER_HEALTH_PORT;
   const healthServer = createServer((req, res) => {
     if (req.url === "/health" && req.method === "GET") {
@@ -285,9 +273,6 @@ async function main() {
       port: healthPort,
     }) + "\n",
   );
-  // Graceful shutdown on SIGINT/SIGTERM. We use `Promise.withResolvers()`
-  // per the project's `ts-promise-with-resolvers` rule — the explicit
-  // executor form is the documented exception, not the default.
   const { promise: shutdown, resolve: resolveShutdown } =
     Promise.withResolvers<void>();
   const onSignal = (sig: NodeJS.Signals): void => {
@@ -310,8 +295,6 @@ async function main() {
   );
 }
 
-// `main()` returns a Promise<void>; we attach a single error handler so
-// any unhandled rejection lands on stderr (not swallowed).
 main().catch((err: unknown) => {
   const message =
     err instanceof Error ? (err.stack ?? err.message) : String(err);

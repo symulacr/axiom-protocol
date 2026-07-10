@@ -1,13 +1,3 @@
-// Shared broker factory for the 0G Compute SDK.
-//
-// Centralises the three patterns our code needs:
-//   1. ReadOnly broker — list services, resolve provider URLs (no wallet).
-//   2. Authenticated broker — request headers, auto-funding, TEE verification.
-//   3. Per-chain-id instance caching to avoid re-initialisation on every tick.
-//
-// All workarounds for missing SDK features (custom token decoders, manual
-// depositFund/transferFund loops, hand-rolled JsonRpcProvider setup) belong
-// here. Callers should not import the underlying SDK directly.
 import { FetchRequest, JsonRpcProvider, Wallet } from "ethers";
 import {
   CONTRACT_ADDRESSES,
@@ -30,21 +20,18 @@ export interface BrokerConfig {
   signer: Wallet;
 }
 
-/** Resolve the 0G chain id from explicit config or env (defaults to Galileo). */
 export function resolveChainId(chainId?: number): number {
   if (chainId !== undefined) return chainId;
   const env = Number(process.env.AXIOM_CHAIN_ID);
   return Number.isFinite(env) && env > 0 ? env : GALILEO_CHAIN_ID;
 }
 
-/** Pull the EVM RPC URL from explicit config or env (falls back to the network's default). */
 export function resolveEvmRpc(chainId?: number): string {
   if (process.env.AXIOM_EVM_RPC) return process.env.AXIOM_EVM_RPC;
   const network = pickOGNetwork(resolveChainId(chainId));
   return network?.evmRpc ?? "https://evmrpc-testnet.0g.ai";
 }
 
-/** Shared JsonRpcProvider with static network pinning. */
 export function createStaticProvider(
   evmRpc: string,
   chainId?: number,
@@ -59,7 +46,6 @@ export function createStaticProvider(
   return new JsonRpcProvider(evmRpc, cid, { staticNetwork: true });
 }
 
-/** Static factory for a one-shot JsonRpcProvider + Wallet pair. */
 export function createProviderAndSigner(
   config: Pick<BrokerConfig, "evmRpc" | "chainId" | "signer">,
 ): {
@@ -70,11 +56,9 @@ export function createProviderAndSigner(
   return { provider, signer: config.signer.connect(provider) as Wallet };
 }
 
-// --- Read-only broker cache (per chain id) ---
 
 const _readOnlyCache = new Map<number, ReadOnlyInferenceBroker>();
 
-/** Get (or lazily create) a read-only inference broker for the given chain id. */
 export async function getReadOnlyBroker(
   rpcUrl: string,
   chainId?: number,
@@ -87,11 +71,9 @@ export async function getReadOnlyBroker(
   return broker;
 }
 
-// --- Authenticated broker cache (per chain id) ---
 
 const _brokerCache = new Map<number, ZGComputeNetworkBroker>();
 
-/** Evict cached broker instances for one chain or the entire process. */
 export function clearBrokerCache(chainId?: number): void {
   if (chainId !== undefined) {
     _readOnlyCache.delete(chainId);
@@ -102,7 +84,6 @@ export function clearBrokerCache(chainId?: number): void {
   }
 }
 
-/** Get (or lazily create) an authenticated broker that can fund, sign and verify. */
 export async function getBroker(
   signer: Wallet,
   chainId?: number,
@@ -115,9 +96,7 @@ export async function getBroker(
   return broker;
 }
 
-// --- Contract address helpers ---
 
-/** SDK's contract address set for the given chain id, falling back to testnet. */
 export function getContractAddressesForChain(chainId: number): {
   ledger: string;
   inference: string;
@@ -126,19 +105,9 @@ export function getContractAddressesForChain(chainId: number): {
   if (chainId === Number(MAINNET_CHAIN_ID)) return CONTRACT_ADDRESSES.mainnet;
   if (chainId === Number(HARDHAT_CHAIN_ID)) return CONTRACT_ADDRESSES.hardhat;
   if (chainId === GALILEO_CHAIN_ID) return CONTRACT_ADDRESSES.testnet;
-  // Unknown chain — keep behaviour parity with the previous tee-verifier path.
   return CONTRACT_ADDRESSES.testnet;
 }
 
-/**
- * Best-effort auto-funding for a single provider. The SDK handles both the
- * sub-account bootstrap and the background funding loop, so callers do not
- * need to manage `depositFund` + `transferFund` or check `acknowledged` themselves.
- *
- * Returns `true` once the background funding timer is started; `false` if the
- * preconditions (signer, deposit amount) are not met. Errors are downgraded
- * to warnings so a Direct-mode failure never blocks a Router-mode request.
- */
 export async function ensureProviderFunded(
   providerAddress: string,
   signer: Wallet,
@@ -163,7 +132,6 @@ export async function ensureProviderFunded(
   }
 }
 
-/** Stop background auto-funding timers for one provider (or all when omitted). */
 export async function stopAutoFunding(
   signer: Wallet,
   chainId?: number,

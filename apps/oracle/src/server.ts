@@ -125,7 +125,6 @@ export function startServer(config: ServerConfig): {
       const newEnc = aesGcmEncrypt(newDataKey, oldPlaintext);
       const newBlob = concatEncrypted(newEnc);
       const { rootHash: newDataHash } = await storage.upload(newBlob);
-      // Auto-register the uploaded dataHash so /v1/ownership succeeds without a separate round trip.
       storage.markDataHashSeen(newDataHash);
 
       const targetPubkeyBytes = hexToBytes(targetPubkey64 as `0x${string}`);
@@ -208,7 +207,6 @@ export function startServer(config: ServerConfig): {
           return;
         }
 
-        // Block signatures for unseen dataHashes (storage+chain binding).
         if (!storage.hasSeenDataHash(dataHash as `0x${string}`)) {
           res.status(400).json({
             error: `Unknown dataHash: not previously seen by oracle. POST {dataHash} to /v1/agents/mint first.`,

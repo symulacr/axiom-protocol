@@ -1,7 +1,3 @@
-/**
- * Parallel load / reliability bench for Axiom backend core (HTTP + WS disjoint lanes).
- * Run: node --import tsx src/cli/run-load-bench.ts
- */
 
 import WebSocket from "ws";
 import { fetchJson } from "../../utils/fetch-json.js";

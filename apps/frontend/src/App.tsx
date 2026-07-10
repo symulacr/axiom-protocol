@@ -225,7 +225,6 @@ export function App(): ReactElement {
           break;
         case "?":
           e.preventDefault();
-          // Toggle shortcut help — show a brief overlay
           document.dispatchEvent(new CustomEvent("axiom:show-shortcuts"));
           break;
       }

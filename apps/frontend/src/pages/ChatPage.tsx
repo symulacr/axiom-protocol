@@ -104,7 +104,6 @@ function consumeSseLines(buffer: string): {
     try {
       chunks.push(JSON.parse(payload) as SSEChunk);
     } catch {
-      // skip malformed lines
     }
   }
   return { chunks, rest, done };
@@ -225,11 +224,9 @@ function ChatPageInner(): ReactElement {
         sessionStorage.setItem(CHAT_MESSAGES_KEY, JSON.stringify(messages));
       }
     } catch {
-      // quota / private mode
     }
   }, [messages]);
 
-  // Auto-scroll to bottom
   useEffect(() => {
     if (listRef.current) {
       listRef.current.scrollTop = listRef.current.scrollHeight;
@@ -297,7 +294,6 @@ function ChatPageInner(): ReactElement {
             timeout: STREAM_TIMEOUT,
           });
 
-          // Read SSE stream
           const body = response.body;
           if (!body) throw new Error("No response body from chat service");
           const reader = body.getReader();
@@ -356,7 +352,6 @@ function ChatPageInner(): ReactElement {
           );
 
           if (toolCallList.length === 0) {
-            // No tool calls — assistant response is final
             const assistantMsg = createMessage({
               role: "assistant",
               content: assistantContent,
@@ -368,7 +363,6 @@ function ChatPageInner(): ReactElement {
             break;
           }
 
-          // Add assistant message with tool calls
           const assistantMsg = createMessage({
             role: "assistant",
             content: assistantContent || null,
@@ -444,7 +438,6 @@ function ChatPageInner(): ReactElement {
         }
       } catch (err: unknown) {
         if (err instanceof DOMException && err.name === "AbortError") {
-          // User cancelled
         } else {
           const msg = humanizeError(err);
           if (msg.includes("429") || msg.toLowerCase().includes("rate limit")) {
@@ -485,7 +478,6 @@ function ChatPageInner(): ReactElement {
     abortRef.current?.abort();
   }, []);
 
-  // ── Render ──
   return (
     <div>
         <PageHeader

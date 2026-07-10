@@ -1,4 +1,3 @@
-/** Wave E-6 and earlier deploys: 3-arg setStrategy, 4-tuple strategyOf (no validUntilDay). */
 export const VAULT_ABI_LEGACY = [
   "function deposit(uint256 tokenId) payable",
   "function withdraw(uint256 tokenId, uint256 amount)",
@@ -13,7 +12,6 @@ export const VAULT_ABI_LEGACY = [
   "event Executed(uint256 indexed tokenId, bytes32 indexed actionHash, address indexed target, uint256 value, bytes result)",
 ] as const;
 
-/** Current deploys: 4-arg setStrategy with optional strategy expiry day. */
 export const VAULT_ABI = [
   "function deposit(uint256 tokenId) payable",
   "function withdraw(uint256 tokenId, uint256 amount)",

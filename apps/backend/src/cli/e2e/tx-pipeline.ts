@@ -6,11 +6,6 @@ export interface PipelinedTx {
   send: () => Promise<TransactionResponse>;
 }
 
-/**
- * Same-wallet on-chain pipeline: sequential nonce send (no conflict),
- * parallel receipt wait (saves idle RPC polling between blocks).
- * Each tx still proves inclusion via receipt.status === 1.
- */
 export async function pipelineWalletTxs(
   label: string,
   steps: PipelinedTx[],

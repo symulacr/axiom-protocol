@@ -35,7 +35,6 @@ import { createLogger } from "../utils/logger.js";
 import { extractErrorMessage } from "../utils/response.js";
 
 const log = createLogger("orchestrator");
-// Local contract types (avoid shared contract-types.ts drift).
 type StrategyVaultMethods = {
   balanceOf(tokenId: bigint): Promise<bigint>;
   execute(
@@ -79,9 +78,7 @@ export interface OrchestratorConfig {
   addresses?: {
     vault?: `0x${string}`;
   };
-  /** EIP-155 chain id (default 16602 = Galileo testnet). */
   chainId?: number;
-  /** API key for oracle authenticated endpoints (sent as x-api-key header). */
   apiKey?: string;
 }
 
@@ -116,8 +113,6 @@ export class StrategyRunner {
       evmRpc: config.evmRpc,
       signer: config.signer,
     });
-    // OpenAI client is lazily created — createRouterClient() only called on first
-    // actual tick request, so missing compute credentials don't crash the server.
     this.oracle = new DefaultSignerOracleClient({
       baseUrl: config.oracleBaseUrl,
       apiKey: config.apiKey,
@@ -133,7 +128,6 @@ export class StrategyRunner {
     return this.openai;
   }
 
-  /** Run a single strategy tick: fan out to compute, on-chain reads, and storage. */
   async runTick(
     strategy: StrategySpec,
     signal: MarketSignal,
@@ -197,8 +191,6 @@ export class StrategyRunner {
         ? undefined
         : await this.settleOnChain(strategy, recommendation.action).catch(
             (err) => {
-              // Settlement failure must not poison the tick — return a failed
-              // execution record so the caller can see the recommendation still.
               return {
                 txHash: "0x" as `0x${string}`,
                 action: recommendation.action,
@@ -283,7 +275,6 @@ export class StrategyRunner {
       action,
       tokenId: strategy.agentTokenId.toString(),
     });
-    // actionHash mirrors AxiomStrategyVault.execute(): keccak256(abi.encode(target, value, keccak256(data)))
     const innerHash = keccak256(data);
     const _actionHash = keccak256(
       AbiCoder.defaultAbiCoder().encode(
@@ -291,10 +282,8 @@ export class StrategyRunner {
         [target, value, innerHash],
       ),
     );
-    // Single-leaf Merkle tree: proof is empty, root == leaf.
     const proof: `0x${string}`[] = [];
 
-    // G9: skip on-chain settle if the vault has no strategy bound —
     const strat = await readVaultStrategy(this.provider, vaultAddr, strategy.agentTokenId);
     if (strat.root === '0x0000000000000000000000000000000000000000000000000000000000000000') {
       log.warn('settleOnChain skipped: no strategy set on vault', { tokenId: strategy.agentTokenId.toString() });
@@ -313,7 +302,6 @@ export class StrategyRunner {
       throw new Error(`vault.execute() tx ${tx.hash} returned no receipt`);
     }
 
-    // Capture the Executed event from the receipt logs.
     const executedEvent = vaultTc.iface.getEvent("Executed");
     let result: `0x${string}` | undefined;
     const success = receipt.status === 1;
@@ -339,11 +327,6 @@ export class StrategyRunner {
     };
   }
 
-  /**
-   * Fire-and-forget TEE verification after a compute response.
-   * Uses the SDK's read-only broker to resolve the active provider on chain
-   * (no custom app-sk-* token parser needed).
-   */
   private async resolveVaultAbiVariant(): Promise<VaultAbiVariant> {
     const vaultAddr = this.addresses?.vault;
     if (!vaultAddr) return "current";
@@ -459,10 +442,6 @@ export class StrategyRunner {
     ];
 
     if (onChunk) {
-      // Streaming path: emit tokens as they arrive from OpenAI.
-      // response_format with stream: true would return 400 from OpenAI,
-      // so we rely on the system prompt asking for JSON output —
-      // parseRecommendation handles malformed JSON gracefully.
       const client = await this.getClient(strategy.computeModel);
       const { data: stream, response } = await client.chat.completions
         .create({
@@ -487,7 +466,6 @@ export class StrategyRunner {
       return full;
     }
 
-    // Non-streaming path: preserves response_format for JSON reliability.
     const client = await this.getClient(strategy.computeModel);
     const { data: completion, response } = await client.chat.completions
       .create({
@@ -553,20 +531,12 @@ export class StrategyRunner {
     return { vaultBalance, recentEvents };
   }
 
-  /**
-   * Peek at the stored model data on 0G.
-   * NOTE: modelDataRoot is always the zero-hash in current production usage
-   * (see server.ts where StrategySpec.modelDataRoot is set to zero-hash).
-   * The storage download path below is dead code until modelDataRoot is
-   * populated with a real root hash (e.g. after on-chain model registration).
-   */
   private async fetchStoragePeek(
     strategy: StrategySpec,
   ): Promise<TickResult["storage"]> {
     if (strategy.modelDataRoot === ZERO_DATA_ROOT) {
       return { rootHash: strategy.modelDataRoot, size: 0 };
     }
-    // ECIES-encrypted blobs skipped in devnet (no receiver key). AES-256 uses symmetric key.
     const opts =
       strategy.modelEncryption?.type === "aes256"
         ? { symmetricKey: strategy.modelEncryption.key, withProof: true }

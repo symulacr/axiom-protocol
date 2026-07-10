@@ -1,7 +1,3 @@
-/**
- * Chat tool taxonomy — single catalog for frontend, backend bench, and docs.
- * Class drives UX grouping, bench lanes, and friction expectations.
- */
 
 export type ChatToolClass =
   | "read"
@@ -16,16 +12,13 @@ export interface ChatToolSpec {
   name: string;
   class: ChatToolClass;
   label: string;
-  /** Short hint for chat UI / a11y */
   hint: string;
   requiresWallet: boolean;
   requiresTokenId: boolean;
-  /** Bench: encode-only (backend returns calldata, no on-chain tx in CI) */
   encodeOnly?: boolean;
   friction: ChatToolFriction;
 }
 
-/** Skill tool definitions — compact: name, label, hint, wallet/token flags, friction. */
 const SKILL_TOOL_DEFS = [
   { name: "evm_wallet",                label: "EVM Wallet",         hint: "Manage EVM wallet balance, address, and network",             requiresWallet: false, requiresTokenId: false, friction: "low" as const },
   { name: "evm_multichain",            label: "EVM Multichain",     hint: "Query and interact across multiple EVM chains",               requiresWallet: false, requiresTokenId: false, friction: "medium" as const },
@@ -183,7 +176,6 @@ export function getChatToolSpec(name: string): ChatToolSpec | undefined {
   return byName.get(name);
 }
 
-/** Alias for callers that want `classOfTool("mint_agent")` → `"encode"`. */
 export function classOfTool(name: string): ChatToolClass | undefined {
   return getChatToolSpec(name)?.class;
 }
@@ -224,7 +216,6 @@ export function chatToolLabels(): Record<string, string> {
   );
 }
 
-/** Bench lanes derived from class — less duplicated friction in E2E. */
 export const CHAT_BENCH_READ_TOOLS = toolNamesByClass("read");
 export const CHAT_BENCH_ENCODE_TOOLS = toolNamesByClass("encode");
 export const CHAT_BENCH_ARCHIVE_TOOLS = toolNamesByClass("archive");

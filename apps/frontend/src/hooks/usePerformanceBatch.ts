@@ -15,10 +15,6 @@ const NULL_METRICS: PerformanceMetrics = {
   winRate: 0,
 };
 
-/**
- * Batch-fetch performance metrics for multiple agents in a single API call.
- * Replaces N individual usePerformance calls with one request.
- */
 export function usePerformanceBatch(tokenIds: readonly bigint[]): {
   data: Map<string, PerformanceMetrics>;
   isLoading: boolean;

@@ -1,4 +1,3 @@
-// On-chain contract addresses — re-exported from @axiom/config
 import { DEPLOYED_ADDRESSES } from "@axiom/config/addresses";
 import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
 import type { Address } from "viem";
@@ -22,7 +21,6 @@ export function getContractAddress(
   return ADDRESSES[contract];
 }
 
-// Backward-compatible named exports
 export const getAxiomStrategyVaultAddress = (chainId?: number) =>
   getContractAddress("strategyVault", chainId);
 export const getAxiomAgentNftAddress = (chainId?: number) =>

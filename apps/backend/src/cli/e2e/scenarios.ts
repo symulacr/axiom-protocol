@@ -1,6 +1,3 @@
-/**
- * Usage-scenario registry for live E2E — maps real user journeys to on-chain surfaces.
- */
 
 export type ScenarioActor = "operator" | "receiver" | "tee-oracle" | "backend" | "any";
 
@@ -10,7 +7,6 @@ export interface UsageScenario {
   actor: ScenarioActor;
   contracts: string[];
   functions: string[];
-  /** Human-readable intent */
   intent: string;
   status: "pending" | "covered" | "skipped";
   step?: string;
@@ -414,7 +410,6 @@ export function getUsageScenarios(): UsageScenario[] {
   return [...scenarios.values()];
 }
 
-/** Covered this run with at least one HTTP read or on-chain tx recorded. */
 export function hasLiveProof(s: UsageScenario): boolean {
   return s.status === "covered" && s.txCount + s.readCount > 0;
 }

@@ -49,12 +49,6 @@ export function recoverAccessSigner(
   return eip712RecoverAccessSigner(signature, input, domain);
 }
 
-/**
- * TEE signer service holding a secp256k1 keypair for EIP-712 typed-data signing.
- * In production the key would live in Intel TDX / AMD SEV; here it's a cleartext Node process for devnet.
- *
- * The domain binds signatures to a specific AxiomTeeVerifier deployment to prevent replay.
- */
 export class TeeSigner {
   readonly wallet: Wallet;
   readonly address: Hex;

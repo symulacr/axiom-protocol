@@ -47,7 +47,6 @@ function persistTokenId(lastTokenId: string | undefined): void {
       sessionStorage.removeItem(STORAGE_KEY);
     }
   } catch {
-    // ignore quota / private mode
   }
 }
 

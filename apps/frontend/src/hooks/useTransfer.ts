@@ -91,7 +91,6 @@ export function useTransfer(): UseTransferResult {
 
           setTransferPhase("challenge");
 
-          // Step 1 — challenge (backend returns proof params).
           const challengeBody: Record<string, unknown> = {
             to: input.to,
             receiverPubKey64: input.receiverPubKey64,
@@ -125,7 +124,6 @@ export function useTransfer(): UseTransferResult {
 
           setTransferPhase("signing");
 
-          // Step 2 — receiver signs EIP-712 AccessProof.
           const nonce = BigInt(challenge.accessProofNonce);
           const validUntil = BigInt(challenge.validUntil);
           const proofDataHash =
@@ -149,7 +147,6 @@ export function useTransfer(): UseTransferResult {
 
           setTransferPhase("finalizing");
 
-          // Step 3 — finalize (backend builds on-chain structs from signed proof).
           let proof = await apiFetch<TransferResponse>(path, {
             method: "POST",
             signal,
@@ -178,7 +175,6 @@ export function useTransfer(): UseTransferResult {
               'incomplete proof structs from backend. Finalization failed — transaction was NOT submitted. Click "Prepare Transfer" to restart.',
             );
           }
-          // Carry re-key status forward for the modal.
           if (challenge.rekeyed) {
             proof = {
               ...proof,

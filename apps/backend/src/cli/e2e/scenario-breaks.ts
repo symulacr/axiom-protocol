@@ -1,7 +1,3 @@
-/**
- * Per-scenario failure modes + improvement targets for backend / contracts / ops.
- * Printed at end of E2E — use for chaos/fault-injection planning.
- */
 
 export type BreakLayer = "backend" | "contract" | "storage" | "compute" | "oracle" | "ops";
 
