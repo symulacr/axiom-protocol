@@ -25,24 +25,38 @@ The iNFT lifecycle flows through the monorepo — `apps/{contracts,backend,oracl
 
 ```mermaid
 sequenceDiagram
-    actor U as User
-    participant FE as Frontend
-    participant BE as Backend
-    participant OR as Oracle
-    participant CH as 0G Chain
+    autonumber
+    actor User
+    box "Client" #E8F0FE
+        participant FE as Frontend
+    end
+    box "Services" #FEF7E0
+        participant BE as Backend
+        participant OR as Oracle (TEE)
+    end
+    box "Chain" #E6F4EA
+        participant CH as 0G Chain
+    end
 
-    U->>FE: Connect wallet (RainbowKit)
-    U->>FE: Mint iNFT (strategy + encrypted metadata)
+    Note over User,CH: 1) Mint — tokenize an AI strategy as an ERC-7857 iNFT
+    User->>FE: Connect wallet (RainbowKit)
+    User->>FE: Mint iNFT (strategy + encrypted metadata)
     FE->>BE: POST /mint (VITE_API_KEY)
     BE->>CH: Deploy ERC-7857 iNFT (AXIOM_EVM_RPC)
-    U->>FE: Execute tick / deposit / transfer
-    FE->>BE: Strategy tick (VITE_CHAT_MODEL)
+
+    Note over User,CH: 2) Run — ticks, deposits, transfers re-key metadata
+    User->>FE: Execute tick / deposit / transfer
+    FE->>BE: Strategy tick (VITE_CHAT_MODEL on chat)
     BE->>OR: Ownership proof (AXIOM_ORACLE_URL)
     OR->>OR: Re-key metadata (AXIOM_TEE_SIGNER_PK, simulated TEE)
     OR->>CH: EIP-712 TEE-signed proof
-    U->>FE: Chat assistant
-    FE->>BE: SSE /v1/chat/completions
-    FE->>CH: Market WebSocket (VITE_BACKEND_URL) — transfers + leaderboard
+
+    Note over User,CH: 3) Chat — streaming assistant with on-chain tools
+    User->>FE: Open chat assistant
+    FE->>BE: SSE /v1/chat/completions (VITE_BACKEND_URL)
+    BE-->>FE: Streamed response
+    FE->>CH: Market WebSocket — transfers + leaderboard
+
     Note over BE,OR: Local dev: AXIOM_DISABLE_AUTH=true
 ```
 
