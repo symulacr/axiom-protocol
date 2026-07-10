@@ -328,6 +328,21 @@ docs/
 !docs/assets/
 !docs/assets/**
 
+# ── Agent analysis / audit reports — not source ──────────
+analysis_reports/
+frontend_analysis_reports/
+onchain_analysis_reports/
+research-0g-docs-exhaustive.md
+
+# ── Root scratch / one-off files — not source ────────────
+DEDUP.md
+fixing_completion_report.md
+hermes-security-skills-report.md
+report/
+skills-lock.json
+Dockerfile
+.dockerignore
+
 # ── Generated ABI (regenerable via forge) ────────────────
 
 # ── Codegen config — output is tracked ──────────────────
