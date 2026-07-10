@@ -411,6 +411,3 @@ export function getEventStore(): EventStore {
   singleton ??= new EventStore();
   return singleton;
 }
-export function _resetEventStoreForTests(): void {
-  singleton = undefined;
-}

@@ -35,8 +35,6 @@ export function createWagmiConfig() {
   });
 }
 
-export const wagmiConfig = createWagmiConfig();
-
 declare module "wagmi" {
   interface Register {
     config: ReturnType<typeof createWagmiConfig>;

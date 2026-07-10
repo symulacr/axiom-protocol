@@ -19,5 +19,3 @@ export const indexerEnvSchema = sharedEnvSchema.merge(
     INDEXER_POLL_WINDOW_BLOCKS: z.coerce.number().int().positive().default(500),
   }),
 );
-
-export type IndexerEnv = z.infer<typeof indexerEnvSchema>;
