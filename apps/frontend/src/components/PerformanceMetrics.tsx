@@ -13,10 +13,6 @@ interface PerformanceMetricsProps {
   metrics: Metrics;
 }
 
-/**
- * Displays key strategy performance metrics in a compact grid.
- * Uses existing Card and MonoLabel components.
- */
 export function PerformanceMetrics({
   metrics,
 }: PerformanceMetricsProps): ReactElement {

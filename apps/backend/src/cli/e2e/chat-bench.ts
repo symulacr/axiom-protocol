@@ -1,10 +1,3 @@
-/**
- * Chat + tool parity bench — mirrors frontend ChatPage tool loop against
- * backend HTTP + on-chain reads. Exercises SSE keep-alive reuse, context
- * growth, model switching, and cache hits for compute/catalog endpoints.
- *
- * Run: node --import tsx src/cli/run-chat-bench.ts
- */
 
 import { ethers, type Wallet } from "ethers";
 import { fetchJson } from "../../utils/fetch-json.js";
@@ -62,7 +55,6 @@ function percentile(sorted: number[], p: number): number {
   return sorted[idx]!;
 }
 
-/** Reuse TCP connections via fetch keepalive (Node pools same-origin by default). */
 export function createKeepAliveFetch(): {
   fetch: KeepAliveFetch;
   close: () => void;
@@ -81,7 +73,6 @@ function chatBenchCooldownMs(): number {
   return Number.isFinite(n) && n >= 0 ? n : 2000;
 }
 
-/** Consume SSE from POST /v1/chat/completions until [DONE]. */
 export async function consumeChatSseWithFetch(
   fetchFn: KeepAliveFetch,
   backendUrl: string,
@@ -159,7 +150,6 @@ export async function consumeChatSseWithFetch(
           }
         }
       } catch {
-        // ignore malformed SSE lines
       }
     }
   }
@@ -176,7 +166,6 @@ export async function consumeChatSseWithFetch(
 
 export type { E2eToolDeps };
 
-/** Run each frontend tool once — no LLM required. */
 export async function runToolParityBench(
   deps: E2eToolDeps,
   opts?: { liveCompute?: boolean },
@@ -266,7 +255,6 @@ export async function runToolParityBench(
   return results;
 }
 
-/** Operator signs micro-deposit after backend encode (strategy B+C on-chain proof). */
 export async function runMicroDepositSignBench(deps: E2eToolDeps): Promise<ChatBenchResult | null> {
   if (process.env.CHAT_BENCH_SIGN_DEPOSIT !== "1" || !deps.operatorSigner) {
     return null;
@@ -301,7 +289,6 @@ export async function runMicroDepositSignBench(deps: E2eToolDeps): Promise<ChatB
 
 export { runComplexToolFlowBench } from "./complex-flow-bench.js";
 
-/** Measure TTL cache hits on catalog endpoints. */
 export async function runCacheHitBench(deps: {
   backendUrl: string;
   operatorAddress: string;
@@ -361,7 +348,6 @@ export async function runCacheHitBench(deps: {
   return { results, deltas };
 }
 
-/** Sequential SSE chats on one keep-alive pool — measures connection reuse. */
 export async function runKeepAliveBench(deps: {
   backendUrl: string;
   computeModel: string;
@@ -429,7 +415,6 @@ export async function runKeepAliveBench(deps: {
   };
 }
 
-/** Growing message context — each round appends prior assistant reply. */
 export async function runContextGrowthBench(deps: {
   backendUrl: string;
   computeModel: string;
@@ -509,7 +494,6 @@ export async function runContextGrowthBench(deps: {
   };
 }
 
-/** Switch models between sequential chat calls. */
 export async function runModelSwitchBench(deps: {
   backendUrl: string;
   models: string[];
@@ -580,7 +564,6 @@ export async function runModelSwitchBench(deps: {
   };
 }
 
-/** Live SSE + tool definitions (backend proxy — tool execution is client-side). */
 export async function runLiveChatToolsBench(deps: {
   backendUrl: string;
   computeModel: string;

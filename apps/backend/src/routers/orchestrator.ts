@@ -36,7 +36,6 @@ async function resolveModelDataRoot(
       return hash as `0x${string}`;
     }
   } catch {
-    // Fall back to zero root when chain metadata is unavailable.
   }
   return ZERO_DATA_ROOT;
 }
@@ -47,8 +46,6 @@ function appendTickEvent(
   spec: StrategySpec,
   result: TickResult,
 ): void {
-  // Synthetic ticks share no on-chain tx; use a unique dedupe key per append
-  // (store dedupes on chainId:txHash:logIndex — a fixed zero hash collapsed all ticks).
   const tickTxHash = keccak256(
     solidityPacked(
       ["uint256", "uint64", "string"],

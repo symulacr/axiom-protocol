@@ -1,9 +1,5 @@
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 
-/**
- * AES-256-GCM symmetric encryption (Node crypto, no mocks).
- * Output layout: iv (12 bytes) || ciphertext || authTag (16 bytes).
- */
 const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 12;
 const AUTH_TAG_LENGTH = 16;

@@ -4,15 +4,10 @@ export const DEFAULT_TIMEOUT = 10_000;
 export const LONG_TIMEOUT = 60_000; // on-chain tx wait
 export const STREAM_TIMEOUT = 120_000; // LLM streaming
 
-/** Delay utility for retry backoff */
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/**
- * Check if an error is a network-level failure (offline, DNS, CORS, etc.)
- * as opposed to a server-side HTTP error.
- */
 function isNetworkError(err: unknown): boolean {
   if (err instanceof TypeError) return true; // "Failed to fetch"
   if (err instanceof DOMException && err.name === "AbortError") return false;
@@ -38,7 +33,6 @@ export async function apiFetch<T>(
 ): Promise<T> {
   const timeout = init.timeout ?? DEFAULT_TIMEOUT;
   const method = (init.method ?? "GET").toUpperCase();
-  // Only retry idempotent reads by default
   const maxRetries = init.retries ?? (method === "GET" ? 1 : 0);
 
   const timeoutSignal = AbortSignal.timeout(timeout);
@@ -71,12 +65,10 @@ export async function apiFetch<T>(
     } catch (err) {
       lastError = err;
 
-      // Never retry user-initiated aborts
       if (err instanceof DOMException && err.name === "AbortError") {
         throw err;
       }
 
-      // Never retry timeout signals (they've already exhausted their budget)
       if (err instanceof DOMException && err.name === "TimeoutError") {
         throw new NetworkError(
           "Request timed out. The server may be busy — please try again.",
@@ -84,14 +76,12 @@ export async function apiFetch<T>(
         );
       }
 
-      // Retry on network errors with exponential backoff
       if (isNetworkError(err) && attempt < maxRetries) {
         const backoff = Math.min(1000 * 2 ** attempt, 4000);
         await delay(backoff);
         continue;
       }
 
-      // Wrap network errors in a user-friendly class
       if (isNetworkError(err)) {
         throw new NetworkError(
           "Network error — check your internet connection and try again.",
@@ -106,10 +96,6 @@ export async function apiFetch<T>(
   throw lastError;
 }
 
-/**
- * Like apiFetch but returns the raw Response — for SSE streams and other
- * non-JSON responses. Does not set Accept: application/json.
- */
 export async function apiFetchResponse(
   path: string,
   init: RequestInit & { timeout?: number } = {},

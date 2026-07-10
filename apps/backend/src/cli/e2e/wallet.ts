@@ -77,7 +77,7 @@ export async function runWalletPreflight(deps: {
   minOperatorOgWei?: bigint;
   minOperatorUsdc?: bigint;
 }): Promise<PreflightResult> {
-  const minOg = deps.minOperatorOgWei ?? 50_000_000_000_000_000n; // 0.05 OG
+  const minOg = deps.minOperatorOgWei ?? 50_000_000_000_000_000n;
   const minUsdc = deps.minOperatorUsdc ?? E2E_PAYMENT_MICRO_MIN_TOTAL;
   const warnings: string[] = [];
 
@@ -136,7 +136,6 @@ export async function runWalletPreflight(deps: {
   };
 }
 
-/** Generate fresh E2E operator + receiver keypairs and append to repo .env */
 export function provisionE2eWalletsToEnv(): {
   operatorAddress: string;
   receiverAddress: string;

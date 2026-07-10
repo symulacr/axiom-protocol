@@ -11,7 +11,6 @@ type Erc20 = {
   balanceOf(account: string): Promise<bigint>;
 };
 
-/** Single approve per spender per run — avoids duplicate approve txs (friction F-duplicate). */
 const approvedSpend = new Map<string, bigint>();
 
 export function resetErc20AllowanceCache(): void {

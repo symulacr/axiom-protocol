@@ -20,12 +20,10 @@ export const backendEnvSchema = sharedEnvSchema.merge(
     AXIOM_PORT: z.coerce.number().int().positive().default(3000),
     PORT: z.coerce.number().int().positive().optional(),
     AXIOM_BIND: z.string().default("0.0.0.0"),
-    // Canonical names (preferred — match .env.example)
     AXIOM_AGENT_NFT_ADDRESS: z.string().optional(),
     AXIOM_STRATEGY_VAULT_ADDRESS: z.string().optional(),
     AXIOM_TEE_VERIFIER_ADDRESS: z.string().optional(),
     AXIOM_PAYMENT_PROCESSOR_ADDRESS: z.string().optional(),
-    // Deprecated aliases (fallback)
     AGENT_NFT_ADDRESS: z.string().optional(),
     VAULT_ADDRESS: z.string().optional(),
     AXIOM_TEE_VERIFIER: z.string().optional(),

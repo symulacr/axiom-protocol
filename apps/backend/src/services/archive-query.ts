@@ -15,7 +15,6 @@ export interface ArchiveQueryInput {
   handle?: string;
   limit?: number;
   timestamp?: string;
-  /** When false (default), lookup uses closest-first fast path. */
   fullList?: boolean;
 }
 

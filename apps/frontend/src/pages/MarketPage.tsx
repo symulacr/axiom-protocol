@@ -17,11 +17,6 @@ import {
 import type { AxiomEvent } from "../hooks/useEventHistory.js";
 import { humanizeError } from "../utils/format.js";
 
-/**
- * One row returned by `GET /v1/events?eventName=Transfer`. The backend
- * returns `StoredEvent`-shaped objects where transfer-specific fields are
- * nested inside a `payload` object.
- */
 type TransferEvent = {
   source: string;
   blockNumber: number;

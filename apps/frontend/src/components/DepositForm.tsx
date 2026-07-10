@@ -10,13 +10,6 @@ interface DepositFormProps {
   variant?: "default" | "warning";
 }
 
-/**
- * Compact inline deposit form. Shows vault balance + input + deposit button.
- * Uses the shared useDeposit hook internally.
- *
- * variant='warning' highlights the bar when balance is 0 (for Execute tab).
- * variant='default' is the plain version (for Overview tab).
- */
 export function DepositForm({
   tokenId,
   onSuccess,

@@ -1,7 +1,6 @@
 import { getAddress } from "viem";
 import { validateHex } from "./types/hex.js";
 
-/** Hardcoded deployed addresses — last-resort fallback. */
 export const DEPLOYED_ADDRESSES = {
   agentNft: validateHex(
     "0xaBe9339b93320EC78400772802fc9103c56a4838",
@@ -27,10 +26,6 @@ export const DEPLOYED_ADDRESSES = {
 
 type AddressName = keyof typeof DEPLOYED_ADDRESSES;
 
-/**
- * Canonical (preferred) env var → deprecated aliases for each address.
- * First defined non-empty string wins.
- */
 const ENV_VAR_NAMES: Record<AddressName, string[]> = {
   agentNft: ["AXIOM_AGENT_NFT_ADDRESS", "AGENT_NFT_ADDRESS"],
   strategyVault: ["AXIOM_STRATEGY_VAULT_ADDRESS", "VAULT_ADDRESS"],
@@ -43,13 +38,6 @@ const ENV_VAR_NAMES: Record<AddressName, string[]> = {
   mockUsdc: ["AXIOM_MOCK_USDC_ADDRESS", "AXIOM_PAYMENT_TOKEN"],
 };
 
-/**
- * Resolve a contract address: env override (canonical, then deprecated) → hardcoded fallback.
- * Returns a viem-checksummed address.
- *
- * @param name - Address name matching DEPLOYED_ADDRESSES keys
- * @param env - Object mapping env var names to values (e.g. zod-parsed env or process.env)
- */
 export function resolveAddress(
   name: AddressName,
   env: Record<string, unknown>,

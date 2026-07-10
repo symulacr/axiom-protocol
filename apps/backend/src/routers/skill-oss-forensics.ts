@@ -5,7 +5,7 @@ import type { ServerConfig } from "../server.js";
 import { TTLCache, ser, createLogger } from "../skills/shared.js";
 import { createRoute } from "./route-factory.js";
 
-const CACHE_TTL_MS = 120_000; // 2 min
+const CACHE_TTL_MS = 120_000;
 const cache = new TTLCache<unknown>(CACHE_TTL_MS);
 const log = createLogger("oss-forensics");
 
@@ -27,7 +27,6 @@ async function ghFetch(path: string): Promise<unknown> {
   return data;
 }
 
-// ── /v1/skills/oss-forensics/investigate ──────────────────────────────────────
 
 const investigateSchema = z.object({
   owner: z.string().min(1),
@@ -47,7 +46,6 @@ async function compareBytecode(bytecode: string) {
   return { bytecodeHash: hash, length: bytecode.length };
 }
 
-// ── /v1/skills/oss-forensics/commits ─────────────────────────────────────────
 
 const commitsSchema = z.object({
   owner: z.string().min(1),
@@ -59,7 +57,6 @@ const commitsSchema = z.object({
 async function fetchCommits(owner: string, repo: string, sha?: string, perPage = 30) {
   const q = sha ? `?sha=${sha}&per_page=${perPage}` : `?per_page=${perPage}`;
   const commits = await ghFetch(`/repos/${owner}/${repo}/commits${q}`);
-  // Force-push detection: check parent chain continuity
   const list = Array.isArray(commits) ? commits : [];
   const forcePushSuspects: string[] = [];
   for (let i = 1; i < list.length; i++) {
@@ -74,7 +71,6 @@ async function fetchCommits(owner: string, repo: string, sha?: string, perPage =
   return { commits: list, forcePushSuspects };
 }
 
-// ── /v1/skills/oss-forensics/ioc ─────────────────────────────────────────────
 
 const iocSchema = z.object({
   owner: z.string().min(1),
@@ -126,7 +122,6 @@ async function scanIocs(owner: string, repo: string, path?: string) {
   return { scanned: Math.min(textFiles.length, limit), totalFiles: textFiles.length, hits };
 }
 
-// ── /v1/skills/oss-forensics/audit ───────────────────────────────────────────
 
 const auditSchema = z.object({
   owner: z.string().min(1),
@@ -151,11 +146,9 @@ async function auditDeps(owner: string, repo: string) {
       }
     } catch (err) {
       log.warn("auditDeps: failed to read manifest", { err, owner, repo, manifest });
-      /* file doesn't exist */
     }
   }
 
-  // Storage layout detection (Solidity / Foundry projects)
   let storageLayout: unknown = null;
   try {
     const key = `layout:${owner}/${repo}`;
@@ -175,13 +168,11 @@ async function auditDeps(owner: string, repo: string) {
     }
   } catch (err) {
     log.warn("auditDeps: no storage layout dir", { err, owner, repo });
-    /* no out dir */
   }
 
   return { deps, storageLayout };
 }
 
-// ── Router ───────────────────────────────────────────────────────────────────
 
 export function createSkillOssForensicsRouter(config: ServerConfig): Router {
   const router = Router();

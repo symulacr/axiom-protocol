@@ -1,7 +1,3 @@
-/**
- * Extract tokenId-shaped field from an opaque payload. Supports
- * tokenId, agentTokenId, _tokenId, newTokenId. Returns decimal string or null.
- */
 export function tokenIdFromPayload(payload: unknown): string | null {
   if (!payload || typeof payload !== "object") return null;
   const record = payload as Record<string, unknown>;
@@ -15,7 +11,6 @@ export function tokenIdFromPayload(payload: unknown): string | null {
       try {
         return BigInt(raw).toString();
       } catch {
-        // Ignored, try next key
       }
     }
   }

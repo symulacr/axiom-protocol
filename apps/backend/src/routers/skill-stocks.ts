@@ -85,7 +85,6 @@ function extractQuote(result: YahooChartResponse) {
   });
 }
 
-// ── Schemas ───────────────────────────────────────────────────────────────────
 
 const symbolSchema = z.object({ symbol: z.string().min(1).max(12) });
 const searchSchema = z.object({ query: z.string().min(1).max(64) });
@@ -97,7 +96,6 @@ const historySchema = z.object({
 const compareSchema = z.object({ symbols: z.array(z.string().min(1).max(12)).min(1).max(10) });
 const cryptoSchema = z.object({ symbol: z.string().min(1).max(12).default("BTC-USD") });
 
-// ── Router ────────────────────────────────────────────────────────────────────
 
 export function createSkillStocksRouter(config: ServerConfig): Router {
   const router = Router();

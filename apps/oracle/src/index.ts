@@ -15,7 +15,6 @@ import { oracleEnvSchema } from "./env-schema.js";
 import { toViemHex } from "@axiom/config/types/hex";
 
 loadEnv();
-// Railway compatibility: use PORT env var when set (Railway assigns a dynamic port)
 if (process.env.PORT) {
   process.env.AXIOM_ORACLE_PORT = process.env.PORT;
 }
@@ -38,16 +37,11 @@ const chainId = BigInt(env.AXIOM_CHAIN_ID);
 const eip712Domain: Eip712Domain = { chainId, verifyingContract: teeVerifier };
 const signer = new TeeSigner(env.AXIOM_TEE_SIGNER_PK, eip712Domain);
 
-// Use real 0G Storage when the indexer RPC + EVM RPC are configured;
-// fall back to InMemoryStorage for dev/test (no 0G network dependency).
 let storage: StorageAdapter;
 if (env.AXIOM_STORAGE_INDEXER_RPC || process.env.AXIOM_STORAGE_RPC) {
   const indexerRpc =
     env.AXIOM_STORAGE_INDEXER_RPC || process.env.AXIOM_STORAGE_RPC!;
   const evmRpc = env.AXIOM_STORAGE_EVM_RPC || env.AXIOM_EVM_RPC;
-  // Reuse the TEE signer's ethers Wallet for storage upload transactions,
-  // unless AXIOM_STORAGE_PRIVATE_KEY is configured for key separation.
-  // In production this wallet must hold 0G tokens for gas.
   const storagePk = env.AXIOM_STORAGE_PRIVATE_KEY ?? env.AXIOM_TEE_SIGNER_PK;
   const wallet = new Wallet(storagePk);
   storage = new ZeroGStorage({ indexerRpc, evmRpc, signer: wallet });

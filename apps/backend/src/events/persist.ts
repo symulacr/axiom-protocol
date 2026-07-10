@@ -13,10 +13,6 @@ export async function ensurePersistDir(): Promise<void> {
   await mkdir(PERSIST_DIR, { recursive: true });
 }
 
-/**
- * Load persisted bucket arrays from disk. Returns an empty Map when the file
- * is missing, corrupt, or unreadable (corrupt files are quarantined to `.bak`).
- */
 export function loadBuckets(): Map<string, unknown[]> {
   try {
     if (!existsSync(PERSIST_FILE)) return new Map();
@@ -38,7 +34,6 @@ export function loadBuckets(): Map<string, unknown[]> {
       try {
         renameSync(PERSIST_FILE, `${PERSIST_FILE}.bak`);
       } catch {
-        // Best-effort quarantine; continue with empty store.
       }
     }
     return new Map();

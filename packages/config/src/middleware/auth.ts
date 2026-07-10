@@ -7,9 +7,6 @@ export function createApiKeyAuth(
   devMode = false,
 ) {
   if (!apiKey) {
-    // No API key configured. In production this is a misconfiguration: fail
-    // closed so the service never runs unauthenticated. Dev/local runs may opt
-    // in to the pass-through via devMode.
     if (!devMode) {
       return (_req: Request, res: Response, _next: NextFunction) => {
         res.status(503).json({ error: "service unavailable: API key not configured" });

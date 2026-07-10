@@ -62,8 +62,6 @@ export async function postEvent(event: AxiomEvent, opts: HttpEventSinkOptions) {
   const url = resolveUrl(opts.backendUrl);
   const maxRetries = opts.maxRetries ?? 2;
 
-  // Prefer the validated chainId from the env schema; fall back to process.env
-  // only when the caller did not pass one (defensive — should not normally happen).
   const chainId =
     opts.chainId ??
     Number(
@@ -75,7 +73,6 @@ export async function postEvent(event: AxiomEvent, opts: HttpEventSinkOptions) {
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      // AbortSignal.timeout is safe in Node 22+
       const signal = AbortSignal.timeout(timeoutMs);
       const headers: Record<string, string> = { "content-type": "application/json" };
       if (opts.apiKey) headers["x-api-key"] = opts.apiKey;
@@ -91,7 +88,6 @@ export async function postEvent(event: AxiomEvent, opts: HttpEventSinkOptions) {
     } catch (err) {
       if (attempt === maxRetries) throw err;
     }
-    // Exponential backoff: 500ms, 1000ms
     await new Promise((r) => setTimeout(r, 500 * Math.pow(2, attempt)));
   }
   return { status: 500 };

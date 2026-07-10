@@ -47,7 +47,6 @@ export type TransferModalProps = {
   triggerLabel?: string;
   open?: boolean;
   onClose?: () => void;
-  /** Called when the on-chain write resolves. Aliased as `onSuccess` for back-compat. */
   onTransferred?: (txHash: `0x${string}`) => void;
   onSuccess?: (txHash: `0x${string}`) => void;
 };

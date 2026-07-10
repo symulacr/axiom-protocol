@@ -1,9 +1,4 @@
-/**
- * Shared skills infrastructure — re-exports common utilities and provides
- * reusable analytics/graph/data-fetching helpers for skill implementations.
- */
 
-// ── Re-exports ───────────────────────────────────────────────────────────────
 
 export { getSharedProvider } from "../provider.js";
 export { TTLCache } from "../utils/cache.js";
@@ -14,12 +9,7 @@ import { createLogger } from "../utils/logger.js";
 
 const log = createLogger("skills:shared");
 
-// ── BigInt serializer ────────────────────────────────────────────────────────
 
-/**
- * Deep-clone a value, converting every `bigint` to a JSON-safe `string`.
- * Arrays, plain objects, and primitive scalars are preserved.
- */
 export function ser(v: unknown): unknown {
   if (typeof v === "bigint") return v.toString();
   if (Array.isArray(v)) return v.map(ser);
@@ -33,21 +23,12 @@ export function ser(v: unknown): unknown {
   return v;
 }
 
-// ── OnlineStats (Welford's algorithm) ────────────────────────────────────────
 
-/**
- * Running mean / variance / stddev using Welford's online algorithm.
- * Also exposes `sharpe` for financial time-series.
- */
 export class OnlineStats {
-  /** Number of samples seen. */
   n = 0;
-  /** Running mean. */
   mean = 0;
-  /** Sum of squares of differences from the current mean. */
   private m2 = 0;
 
-  /** Add a single observation. */
   update(x: number): void {
     this.n++;
     const delta = x - this.mean;
@@ -56,35 +37,20 @@ export class OnlineStats {
     this.m2 += delta * delta2;
   }
 
-  /** Population variance (returns 0 when n < 2). */
   get variance(): number {
     return this.n < 2 ? 0 : this.m2 / this.n;
   }
 
-  /** Population standard deviation. */
   get stddev(): number {
     return Math.sqrt(this.variance);
   }
 
-  /**
-   * Sharpe ratio = mean / stddev  (risk-free rate assumed 0).
-   * Returns 0 when stddev is 0.
-   */
   get sharpe(): number {
     return this.stddev === 0 ? 0 : this.mean / this.stddev;
   }
 }
 
-// ── boundedBfs generator ─────────────────────────────────────────────────────
 
-/**
- * Breadth-first traversal that yields `(node, depth)` tuples and stops after
- * visiting `maxNodes` nodes.  Guard against infinite / enormous graphs.
- *
- * @param start     - starting node
- * @param neighbors - returns the adjacent nodes for a given node
- * @param maxNodes  - hard cap on total nodes visited (default 5000)
- */
 export function* boundedBfs<T>(
   start: T,
   neighbors: (node: T) => Iterable<T>,
@@ -108,32 +74,21 @@ export function* boundedBfs<T>(
   }
 }
 
-// ── ZScoreDetector ───────────────────────────────────────────────────────────
 
-/**
- * Streaming z-score anomaly detector over a fixed-size rolling window.
- * A value is flagged anomalous when |z| ≥ `threshold`.
- */
 export class ZScoreDetector {
   private readonly window: number[] = [];
   private readonly maxSize: number;
   private readonly threshold: number;
 
-  /**
-   * @param windowSize - number of recent values kept (default 100)
-   * @param threshold  - z-score cutoff for anomaly (default 3.0)
-   */
   constructor(windowSize = 100, threshold = 3.0) {
     this.maxSize = windowSize;
     this.threshold = threshold;
   }
 
-  /** Number of values currently in the rolling window. */
   get size(): number {
     return this.window.length;
   }
 
-  /** Current window mean (0 when empty). */
   get mean(): number {
     if (this.window.length === 0) return 0;
     let s = 0;
@@ -141,7 +96,6 @@ export class ZScoreDetector {
     return s / this.window.length;
   }
 
-  /** Current window population stddev (0 when fewer than 2 values). */
   get stddev(): number {
     const n = this.window.length;
     if (n < 2) return 0;
@@ -151,10 +105,6 @@ export class ZScoreDetector {
     return Math.sqrt(ss / n);
   }
 
-  /**
-   * Push a new value into the window and return its z-score.
-   * Returns `null` when stddev is 0 (not enough spread to score).
-   */
   push(value: number): number | null {
     this.window.push(value);
     if (this.window.length > this.maxSize) this.window.shift();
@@ -163,14 +113,12 @@ export class ZScoreDetector {
     return (value - this.mean) / sd;
   }
 
-  /** Convenience: push and check anomaly in one call. */
   isAnomaly(value: number): { z: number | null; anomaly: boolean } {
     const z = this.push(value);
     return { z, anomaly: z !== null && Math.abs(z) >= this.threshold };
   }
 }
 
-// ── getLogsChunked generator ─────────────────────────────────────────────────
 
 interface LogFilter {
   address?: string;
@@ -191,11 +139,6 @@ interface RpcLog {
   removed: boolean;
 }
 
-/**
- * Paginated `eth_getLogs` generator.  Splits `[fromBlock, toBlock]` into
- * chunks when the provider returns an error (typically "block range exceeds
- * limit" or response-size errors), halving until each chunk succeeds.
- */
 export async function* getLogsChunked(
   filter: LogFilter,
   chunkSize = 2_000,
@@ -223,14 +166,12 @@ export async function* getLogsChunked(
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         if (to === from) {
-          // Single-block range failed — skip this block and warn.
           log.warn("eth_getLogs failed on single block, skipping", {
             block: from,
             error: msg,
           });
           success = true;
         } else {
-          // Halve the chunk and retry.
           const mid = Math.floor((from + to) / 2);
           log.debug("eth_getLogs chunk too large, halving", {
             from,

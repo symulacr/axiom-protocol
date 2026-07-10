@@ -78,7 +78,6 @@ export function createHealthRouter(
     return inflight;
   }
 
-  /** Liveness only — no RPC/oracle probe (load bench / k8s startup). */
   router.get("/health/live", (_req: Request, res: Response) => {
     res.status(200).json({ ok: true, live: true });
   });

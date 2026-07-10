@@ -10,7 +10,6 @@ export function addressExplorerUrl(chainId: number, address: string): string {
   return `${resolveBlockExplorerUrl(chainId)}/address/${address}`;
 }
 
-/** Wait for receipt with retries — 0G RPC sometimes returns transient "no matching receipts". */
 export async function waitReceiptWithRetry(
   tx: TransactionResponse,
   label: string,

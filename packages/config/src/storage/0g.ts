@@ -32,31 +32,20 @@ export interface ZeroGStorageConfig {
   signer: Signer;
 }
 
-/**
- * Encryption payload for 0G Storage uploads and downloads.
- * Re-exports the SDK's `EncryptionOption` so callers don't import from the
- * SDK directly. Encrypted uploads are auto-decrypted on download when the
- * matching key is supplied to `downloadFromStorage`.
- */
 export type Encryption = EncryptionOption;
 
 export interface UploadOptions {
-  /** Encrypt the upload with the matching symmetric key (AES-256) or ECIES recipient pubkey. */
   encryption?: Encryption;
-  /** Number of replicas to fan out to (default: SDK default = 1). */
   expectedReplica?: number;
-  /** Override the per-task chunk size (default: SDK default = 10). */
   taskSize?: number;
 }
 
 export interface DownloadOptions {
   symmetricKey?: Uint8Array;
   privateKey?: Uint8Array | string;
-  /** Force-enable merkle proof verification on download (default: true). */
   withProof?: boolean;
 }
 
-// In-memory storage for dev/test
 
 export class InMemoryStorage implements StorageAdapter {
   private store = new Map<string, Uint8Array>();
@@ -95,16 +84,6 @@ export class InMemoryStorage implements StorageAdapter {
   }
 }
 
-/**
- * Upload raw bytes to 0G Storage.
- *
- * Calls `memData.merkleTree()` before upload per the SDK's documented pattern
- * so the file is fully fragmented and the merkle root is computed up-front.
- * The upload itself also computes the tree internally — the pre-call is a
- * defensive alignment with the v1.2 SDK recommendation.
- *
- * Encryption is forwarded to the SDK's `UploadOption.encryption` field.
- */
 export async function uploadToStorage(
   indexer: Indexer,
   data: Uint8Array,
@@ -137,13 +116,6 @@ export async function uploadToStorage(
   return { rootHash, txHash, size: data.length };
 }
 
-/**
- * Download bytes from 0G Storage.
- *
- * Decryption keys (symmetric or ECIES private) are forwarded to the SDK's
- * `DownloadOption.decryption` field. The SDK auto-detects the encryption
- * header on the file and applies the matching cipher.
- */
 export async function downloadFromStorage(
   indexer: Indexer,
   rootHash: Hex,
@@ -167,13 +139,6 @@ export async function downloadFromStorage(
   return { data, rootHash, size: data.length };
 }
 
-/**
- * Inspect the first bytes of a stored file to detect its encryption header
- * without paying for a full download. Returns the parsed header on match, or
- * `null` if the file is unencrypted or the header is malformed.
- *
- * Use this to render a "key required" prompt before the actual download.
- */
 export async function peekStorageHeader(
   indexer: Indexer,
   rootHash: Hex,
@@ -196,7 +161,6 @@ export class ZeroGStorage implements StorageAdapter {
     this.indexer = new Indexer(config.indexerRpc);
   }
 
-  // StorageAdapter interface (for oracle compat)
   async upload(
     blob: Uint8Array,
     encryption?: Encryption,
@@ -234,7 +198,6 @@ export class ZeroGStorage implements StorageAdapter {
     return this.seenDataHashes.has(rootHash.toLowerCase());
   }
 
-  // Backward-compat methods (for backend consumers)
   async uploadData(
     data: Uint8Array,
     options: UploadOptions = {},

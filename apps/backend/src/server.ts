@@ -82,14 +82,12 @@ export interface ServerConfig {
   env?: BackendEnv;
 }
 
-// FLAG: startServer is 237 lines — exceeds 100-line threshold. Consider refactoring route registrations into smaller helpers.
 
 export function startServer(config: ServerConfig): {
   app: Express;
   httpServer: HttpServer;
 } {
   const app = express();
-  // Railway (and other reverse proxies) set X-Forwarded-For; required for express-rate-limit.
   app.set("trust proxy", 1);
   app.use(express.json({ limit: "2mb" }));
 
@@ -426,7 +424,6 @@ export function startServer(config: ServerConfig): {
     },
     config,
   );
-  // NOTE: no frontend hook consumes this; backend/bench-only vault execution encode.
   createRoute(
     paymentRouter,
     {
@@ -531,7 +528,6 @@ export function startServer(config: ServerConfig): {
     },
     config,
   );
-  // NOTE: no frontend hook consumes this; agent_metadata is read on-chain via chat-runtime, not this route.
 
   createRoute(
     paymentRouter,

@@ -6,7 +6,6 @@ import type { Provider } from "../hooks/useProviders";
 import { useMediaQuery } from "../hooks/useMediaQuery.js";
 import { Card, Button, MonoLabel, COLORS } from "./ui.js";
 
-/** Best-effort EIP-55 checksum; falls back to the raw input on failure. */
 function formatAddress(raw: `0x${string}`): string {
   try {
     return getAddress(raw);

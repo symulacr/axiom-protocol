@@ -1,6 +1,3 @@
-/**
- * E2E eval — chat bench scoring + live-only path gate (no synthetic skip credit).
- */
 
 import {
   computeLiveGate,

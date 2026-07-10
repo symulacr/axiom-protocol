@@ -12,34 +12,28 @@ import type {
 } from "react";
 
 export const COLORS = {
-  // Backgrounds — warm-tinted near-blacks
   bg: "var(--c-bg)",
   surface: "var(--c-surface)",
   surfaceLight: "var(--c-surface-light)",
 
-  // Borders — warm-tinted
   border: "var(--c-border)",
   borderStrong: "var(--c-border-strong)",
 
-  // Text — warm-tinted near-whites
   text: "var(--c-text)",
   textPrimary: "var(--c-text-primary)",
   textMuted: "var(--c-text-muted)",
   textDim: "var(--c-text-dim)",
 
-  // Accent — warm bronze / muted gold
   bronze: "var(--c-bronze)",
   bronzeLight: "var(--c-bronze-light)",
   bronzeBg: "rgba(184, 151, 110, 0.08)",
   bronzeBorder: "var(--c-bronze-border)",
 
-  // Secondary accent — oxidized teal
   teal: "var(--c-teal)",
   tealLight: "var(--c-teal-light)",
   tealBg: "rgba(90, 138, 138, 0.15)",
   tealBorder: "var(--c-teal-border)",
 
-  // Semantic — restrained, never neon
   danger: "var(--c-danger)",
   dangerBg: "rgba(200, 90, 90, 0.08)",
   dangerBorder: "rgba(200, 90, 90, 0.2)",

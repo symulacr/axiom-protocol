@@ -56,7 +56,6 @@ export function createSkillEvmRouter(config: ServerConfig): Router {
   const address = z.object({ address: z.string() });
   const token = z.object({ address: z.string(), token: z.string() });
 
-  // 1. wallet — native + ERC-20 balance multicall
   createRoute(
     router,
     { method: "post", path: "/v1/skills/evm/wallet", consumer: "chat-runtime", schema: address },
@@ -78,7 +77,6 @@ export function createSkillEvmRouter(config: ServerConfig): Router {
     config,
   );
 
-  // 2. multichain — balances across 8 chains
   createRoute(
     router,
     { method: "post", path: "/v1/skills/evm/multichain", consumer: "chat-runtime", schema: address },
@@ -101,7 +99,6 @@ export function createSkillEvmRouter(config: ServerConfig): Router {
     config,
   );
 
-  // 3. tx — getTransaction + receipt
   createRoute(
     router,
     {
@@ -119,7 +116,6 @@ export function createSkillEvmRouter(config: ServerConfig): Router {
     config,
   );
 
-  // 4. token — ERC-20 metadata + CoinGecko price
   createRoute(
     router,
     {
@@ -142,7 +138,6 @@ export function createSkillEvmRouter(config: ServerConfig): Router {
     config,
   );
 
-  // 5. gas — fee data + USD estimate
   createRoute(
     router,
     {
@@ -169,7 +164,6 @@ export function createSkillEvmRouter(config: ServerConfig): Router {
     config,
   );
 
-  // 6. whale — Transfer log scan filtered by minValue
   createRoute(
     router,
     {
@@ -209,7 +203,6 @@ export function createSkillEvmRouter(config: ServerConfig): Router {
     config,
   );
 
-  // 7. contract — getCode + EIP-1967 proxy slot check
   createRoute(
     router,
     { method: "post", path: "/v1/skills/evm/contract", consumer: "chat-runtime", schema: address },
@@ -232,7 +225,6 @@ export function createSkillEvmRouter(config: ServerConfig): Router {
     config,
   );
 
-  // 8. allowance — ERC-20 allowance for known DEX spenders
   createRoute(
     router,
     { method: "post", path: "/v1/skills/evm/allowance", consumer: "chat-runtime", schema: token },

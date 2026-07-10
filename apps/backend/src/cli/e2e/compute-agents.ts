@@ -15,7 +15,6 @@ const VAULT_BALANCE_TOOL = {
   },
 };
 
-/** Consume SSE from POST /v1/chat/completions until [DONE]. */
 async function consumeChatSse(
   backendUrl: string,
   body: unknown,
@@ -66,14 +65,12 @@ async function consumeChatSse(
         if (delta?.content) text += delta.content;
         if (delta?.tool_calls?.length) toolCallSeen = true;
       } catch {
-        // ignore malformed SSE lines
       }
     }
   }
   return { chunks, toolCallSeen, text };
 }
 
-/** Discover 0G Compute models + on-chain provider mapping. */
 export async function runComputeProvidersStep(deps: {
   backendUrl: string;
 }): Promise<void> {
@@ -111,7 +108,6 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/** Agent HTTP surfaces immediately after on-chain mint. */
 export async function runAgentPostMintOpsStep(deps: {
   backendUrl: string;
   operatorAddress: string;
@@ -191,7 +187,6 @@ export async function runAgentPostMintOpsStep(deps: {
   markScenarioCovered("agent.earnings", "agent-earnings", { reads: 1 });
 }
 
-/** Payment config TTL cache (5 min) — second call should be fast/consistency. */
 export async function runPaymentConfigCacheStep(deps: {
   backendUrl: string;
 }): Promise<void> {
@@ -233,7 +228,6 @@ function handleComputeFailure(id: string, stepName: string, step: number, msg: s
   markScenarioSkipped(id, msg.slice(0, 120));
 }
 
-/** Live 0G Compute inference via orchestrator (not mock). */
 export async function runLiveComputeTickStep(deps: {
   backendUrl: string;
   vault: string;
@@ -302,7 +296,6 @@ export async function runLiveComputeTickStep(deps: {
   }
 }
 
-/** Streaming chat with tool definitions — exercises 0G Compute router + tools. */
 export async function runChatToolCallStep(deps: {
   backendUrl: string;
   computeModel: string;
@@ -352,7 +345,6 @@ export async function runChatToolCallStep(deps: {
   }
 }
 
-/** Prove storage root from tick matches uploaded data (data availability). */
 export async function runDataAvailabilityStep(deps: {
   backendUrl: string;
   vault: string;
@@ -400,7 +392,6 @@ export async function runDataAvailabilityStep(deps: {
 
 
 
-/** Performance metrics from event store (populated after tick). */
 export async function runAgentPerformanceStep(deps: {
   backendUrl: string;
   tokenId: string;
