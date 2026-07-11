@@ -467,7 +467,7 @@ export function AgentDetail(): ReactElement {
           )}
         </div>
 
-        {/* Execute tab: execute */}
+        {/* Execute tab */}
         <div
           role="tabpanel"
           id="panel-execute"

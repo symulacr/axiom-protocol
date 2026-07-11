@@ -60,8 +60,7 @@ contract AxiomPaymentProcessor is Ownable, Pausable, ReentrancyGuard {
         mapping(address => uint256) agentEarnings;
     }
 
-    // keccak256(abi.encode(uint256(keccak256("agent.storage.AxiomPaymentProcessor")) - 1)) & ~bytes32(uint256(0xff))
-    // Canonical ERC-7201 formula (OZ v5).
+    // ERC-7201 storage location (OZ v5): keccak256(abi.encode(keccak256("agent.storage.AxiomPaymentProcessor") - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant STORAGE_LOCATION = 0xb6e9ac8ab7d5307044651d01576943b58a3563d54e8f2be64d1601b1a6cebc00;
 
     function _getStorage() private pure returns (PaymentProcessorStorage storage $) {

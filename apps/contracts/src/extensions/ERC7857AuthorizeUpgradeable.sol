@@ -27,7 +27,7 @@ abstract contract ERC7857AuthorizeUpgradeable is IERC7857Authorize, ERC7857Upgra
         uint256[50] __gap;
     }
 
-    // keccak256(abi.encode(uint256(keccak256("0g.storage.ERC7857Authorize")) - 1)) & ~bytes32(uint256(0xff))
+    // ERC-7201 storage location: keccak256(abi.encode(keccak256("0g.storage.ERC7857Authorize") - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant STORAGE_LOCATION = 0xf386e9faca35fbde2fe950510f665060c1dd15a136a76c268b6e6459b9945700;
 
     function _getERC7857AuthorizeStorage() private pure returns (ERC7857AuthorizeStorage storage $) {

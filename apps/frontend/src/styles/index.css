@@ -1,6 +1,6 @@
 /* Axiom Protocol — dark, grounded, spiritual-tech aesthetic. */
 
-/* ─── Spacing scale (4pt base: 4, 8, 12, 16, 24, 32, 48, 64) ─────── */
+/* Spacing scale */
 :root {
   --space-sm: 0.5rem; /* 8px  */
   --space-xs: 0.25rem; /* 4px  */
@@ -11,7 +11,7 @@
   --space-3xl: 3rem; /* 48px */
   --space-4xl: 4rem; /* 64px */
 
-  /* ─── Type scale (fixed rem scale, 1.15 ratio) ──────────────────── */
+  /* Type scale */
   --text-xs: 0.75rem; /* caption 12px */
   --text-sm: 0.875rem; /* label 14px */
   --text-base: 1rem; /* body 16px */
@@ -19,33 +19,33 @@
   --text-xl: 1.5rem; /* page-heading 24px */
   --text-3xl: 2rem; /* hero/404 */
 
-  /* ─── Font weights ──────────────────────────────────────────────── */
+  /* Font weights */
   --fw-light: 300;
   --fw-regular: 400;
   --fw-medium: 500;
   --fw-semibold: 600;
   --fw-bold: 700;
 
-  /* ─── Line heights ──────────────────────────────────────────────── */
+  /* Line heights */
   --lh-tight: 1.15; /* headings */
   --lh-snug: 1.35; /* subheadings, labels */
   --lh-normal: 1.65; /* body text (light-on-dark compensation) */
   --lh-relaxed: 1.85; /* loose — hero text, large sections */
 
-  /* ─── Border radius ─────────────────────────────────────────────── */
+  /* Border radius */
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 8px;
   --radius-xl: 12px;
 
-  /* ─── Font stacks (single Inter family + system mono) ─────────── */
+  /* Font stacks */
   --font-display:
     "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-body:
     "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: ui-monospace, "SF Mono", "Fira Code", "JetBrains Mono", monospace;
 
-  /* ─── Colors — warm-tinted neutrals (The Vault palette) ────────── */
+  /* Colors */
   --c-bg: #10100e; /* obsidian */
   --c-surface: #1c1a17; /* dark-carbon */
   --c-surface-light: #f0ebe3; /* parchment */
@@ -72,7 +72,7 @@
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
   --transition: color 0.18s var(--ease-out), background 0.18s var(--ease-out), border-color 0.18s var(--ease-out), opacity 0.18s var(--ease-out);
 
-  /* ─── Breakpoints (for reference; used in media queries below) ──── */
+  /* Breakpoints */
   --bp-mobile: 640px;
   --bp-tablet: 768px;
   --nav-h: 3.25rem; /* header height — single source of truth */
@@ -96,7 +96,7 @@ body {
   font-family: var(--font-body);
 }
 
-/* ─── Headings: tighter line-height, negative tracking for large sizes */
+/* Headings: tighter line-height, negative tracking for large sizes */
 h1,
 h2,
 h3,
@@ -121,20 +121,20 @@ h3 {
   font-weight: var(--fw-semibold);
 }
 
-/* ─── Body text: light-on-dark compensation */
+/* Body text: light-on-dark compensation */
 p {
   margin: 0;
   line-height: var(--lh-normal);
 }
 
-/* ─── Code: monospace, no ligatures */
+/* Code: monospace, no ligatures */
 code,
 pre {
   font-family: var(--font-mono);
   font-variant-ligatures: none;
 }
 
-/* ─── Animations ──────────────────────────────────────────────────── */
+/* Animations */
 @keyframes axiom-pulse {
   0%,
   100% {
@@ -185,7 +185,7 @@ pre {
   animation: axiom-fade-in 200ms var(--ease-out) both;
 }
 
-/* ─── Links ───────────────────────────────────────────────────────── */
+/* Links */
 a {
   color: var(--c-bronze-light);
   text-decoration: none;
@@ -197,12 +197,12 @@ a {
   }
 }
 
-/* ─── RainbowKit dark theme overrides ─────────────────────────────── */
+/* RainbowKit dark theme overrides */
 [data-rk] {
   --rk-font-family: var(--font-body);
 }
 
-/* ─── Scrollbar ───────────────────────────────────────────────────── */
+/* Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -218,19 +218,19 @@ a {
   background: var(--c-scrollbar-hover);
 }
 
-/* ─── Focus rings ─────────────────────────────────────────────────── */
+/* Focus rings */
 *:focus-visible {
   outline: 2px solid var(--c-bronze);
   outline-offset: 2px;
 }
 
-/* ─── Dialog backdrop ─────────────────────────────────────────────── */
+/* Dialog backdrop */
 dialog::backdrop {
   background: var(--c-overlay);
   backdrop-filter: blur(4px);
 }
 
-/* ─── Button system (variants + interaction states) ────────────── */
+/* Button system */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -311,19 +311,19 @@ dialog::backdrop {
   }
 }
 
-/* ─── Button base reset (for raw <button> elements not using Button) */
+/* Button base reset */
 button {
   font-family: inherit;
 }
 
-/* ─── Form elements inherit font */
+/* Form elements inherit font */
 input,
 textarea,
 select {
   font-family: inherit;
 }
 
-/* ─── Responsive layout utilities ─────────────────────────────────── */
+/* Responsive layout utilities */
 /* Tablet & below: stack grids and side-by-side layouts */
 @media (max-width: 768px) {
   .stack-on-mobile {
@@ -332,7 +332,7 @@ select {
   }
 }
 
-/* ─── Touch targets ──────────────────────────────────────────────── */
+/* Touch targets */
 @media (pointer: coarse) {
   button,
   [role="button"],
@@ -351,7 +351,7 @@ select {
 .text-xl {
   font-size: var(--text-xl);
 }
-/* ─── Skip link (visually hidden until keyboard focus) ───────────── */
+/* Skip link (visually hidden until keyboard focus) */
 .skip-link {
   position: absolute;
   top: 0;
@@ -375,7 +375,7 @@ select {
   outline: 2px solid var(--c-bronze);
 }
 
-/* ─── Agent card ──────────────────────────────────────────────────── */
+/* Agent card */
 .agent-card {
   transition: border-color 0.18s var(--ease-out), transform 160ms var(--ease-out);
 }
@@ -385,7 +385,7 @@ select {
   }
 }
 
-/* ─── Reduced motion ──────────────────────────────────────────────── */
+/* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
@@ -430,7 +430,7 @@ select {
   }
 }
 
-/* ─── HelpTip tooltip ────────────────────────────────────────────── */
+/* HelpTip tooltip */
 .helptip {
   position: relative;
 }
@@ -464,7 +464,7 @@ select {
   }
 }
 
-/* ── Utility classes ──────────────────────────── */
+/* Utility classes */
 /* These replace the most common inline style={{}} patterns.
    Migrate gradually — add className instead of style={{}} in new code. */
 
@@ -554,7 +554,7 @@ select {
   cursor: pointer;
 }
 
-/* ── Performance ──────────────────────────────── */
+/* Performance */
 /* Content-visibility: defer rendering of off-screen sections */
 .cv-auto {
   content-visibility: auto;
@@ -568,7 +568,7 @@ select {
   gap: var(--space-md);
 }
 
-/* ── Inline validation feedback ──────────────── */
+/* Inline validation feedback */
 .field-error {
   color: var(--c-danger);
   font-size: var(--text-xs);
@@ -583,12 +583,12 @@ select[aria-invalid="true"] {
   border-color: var(--c-danger) !important;
 }
 
-/* ── Readability utilities ─────────────────── */
+/* Readability utilities */
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }
 
-/* ── Chat markdown (rendered assistant messages) ─────────────── */
+/* Chat markdown */
 .chat-md > :first-child { margin-top: 0; }
 .chat-md > :last-child { margin-bottom: 0; }
 .chat-md p { margin: 0 0 var(--space-sm); }
