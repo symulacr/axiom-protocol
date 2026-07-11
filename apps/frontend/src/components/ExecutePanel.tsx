@@ -2,7 +2,6 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type ReactElement,
 } from "react";
@@ -38,123 +37,6 @@ const TICK_STEPS = [
   ...NEUTRAL_WAITING_MESSAGES,
   "Submitting strategy transaction to 0G Chain…",
 ];
-
-interface Particle {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  color: string;
-  size: number;
-  alpha: number;
-  decay: number;
-}
-
-function SuccessCelebration() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    let width = (canvas.width = canvas.offsetWidth);
-    let height = (canvas.height = canvas.offsetHeight);
-
-    const handleResize = () => {
-      if (!canvas) return;
-      width = canvas.width = canvas.offsetWidth;
-      height = canvas.height = canvas.offsetHeight;
-    };
-    window.addEventListener("resize", handleResize);
-
-    const colors = [
-      COLORS.bronze,
-      COLORS.bronzeLight,
-      COLORS.teal,
-      COLORS.tealLight,
-      COLORS.success,
-    ];
-    const particles: Particle[] = [];
-
-    const emit = (x: number, y: number, count = 60) => {
-      for (let i = 0; i < count; i++) {
-        const angle = Math.PI * 1.5 + (Math.random() - 0.5) * Math.PI * 0.4;
-        const speed = 2 + Math.random() * 6;
-        particles.push({
-          x,
-          y,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed,
-          color:
-            colors[Math.floor(Math.random() * colors.length)] ?? COLORS.bronze,
-          size: 2 + Math.random() * 3,
-          alpha: 1,
-          decay: 0.012 + Math.random() * 0.015,
-        });
-      }
-    };
-
-    emit(width / 2, height);
-
-    let active = true;
-    let animationFrameId: number;
-
-    const render = () => {
-      if (!ctx || !active) return;
-      ctx.clearRect(0, 0, width, height);
-
-      for (let i = particles.length - 1; i >= 0; i--) {
-        const p = particles[i];
-        if (p === undefined) continue;
-        p.x += p.vx;
-        p.y += p.vy;
-        p.vy += 0.07; // gravity
-        p.alpha -= p.decay;
-
-        if (p.alpha <= 0) {
-          particles.splice(i, 1);
-          continue;
-        }
-
-        ctx.save();
-        ctx.globalAlpha = p.alpha;
-        ctx.fillStyle = p.color;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-      }
-
-      if (particles.length > 0) {
-        animationFrameId = requestAnimationFrame(render);
-      }
-    };
-
-    render();
-
-    return () => {
-      active = false;
-      cancelAnimationFrame(animationFrameId);
-      window.removeEventListener("resize", handleResize);
-    };
-  }, []);
-
-  return (
-    <canvas
-      ref={canvasRef}
-      style={{
-        position: "absolute",
-        inset: 0,
-        width: "100%",
-        height: "100%",
-        pointerEvents: "none",
-        zIndex: 5,
-      }}
-    />
-  );
-}
 
 function RawOutput({ raw }: { raw: string }): ReactElement {
   const [shown, setShown] = useState(false);
@@ -224,7 +106,6 @@ export function ExecutePanel({
   const [showRaw, setShowRaw] = useState(false);
   const [streamMode, setStreamMode] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
-  const [showCelebration, setShowCelebration] = useState(false);
 
   useEffect(() => {
     if (selectedId && !tokenIdProp) {
@@ -272,7 +153,6 @@ export function ExecutePanel({
     setResult(null);
     setShowRaw(false);
     resetStream();
-    setShowCelebration(false);
     try {
       let res: TickResult;
       if (streamMode) {
@@ -292,10 +172,6 @@ export function ExecutePanel({
         });
       }
       setResult(res);
-      if (res.execution?.success) {
-        setShowCelebration(true);
-        setTimeout(() => setShowCelebration(false), 4000);
-      }
       toast.success("Tick executed successfully");
       vd.refetch();
     } catch (err) {
@@ -315,8 +191,6 @@ export function ExecutePanel({
       }}
       aria-label="Execute strategy tick"
     >
-      {showCelebration && <SuccessCelebration />}
-
       {!locked && (
         <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <span
