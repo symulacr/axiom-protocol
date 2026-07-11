@@ -17,7 +17,7 @@ interface PerformanceMetricsProps {
   history?: TradeHistoryEntry[];
 }
 
-const EASE = "cubic-bezier(0.4, 0, 0.2, 1)";
+const EASE = "var(--ease-out)";
 const SPARK_H = 64;
 
 export function PerformanceMetrics({
