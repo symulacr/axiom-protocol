@@ -375,3 +375,7 @@ packages/config/wagmi.config.ts
 .kimchi/
 audit-reports/
 .env*
+
+# ── Untracked root folders (kept on disk) ──────────────
+.github/
+scripts/
