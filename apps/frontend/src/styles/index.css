@@ -377,8 +377,10 @@ select {
 .agent-card {
   transition: border-color 0.18s ease;
 }
-.agent-card:hover {
-  border-color: var(--c-bronze-border);
+@media (hover: hover) and (pointer: fine) {
+  .agent-card:hover {
+    border-color: var(--c-bronze-border);
+  }
 }
 
 /* ─── Reduced motion ──────────────────────────────────────────────── */
