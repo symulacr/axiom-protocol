@@ -52,7 +52,7 @@ export function NotFound(): ReactElement {
             textDecoration: "none",
             fontSize: "var(--text-sm)",
             fontWeight: "var(--fw-semibold)",
-            transition: "color 0.18s ease, background 0.18s ease",
+            transition: "color 0.18s var(--ease-out), background 0.18s var(--ease-out)",
           }}
         >
           Back to Home

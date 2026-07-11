@@ -58,8 +58,7 @@ export function getActionColor(action: string): string {
   }
 }
 
-const transition =
-  "color 0.18s var(--ease-out), background 0.18s var(--ease-out), border-color 0.18s var(--ease-out), opacity 0.18s var(--ease-out)";
+const transition = "var(--transition)";
 
 const formFieldBase: CSSProperties = {
   padding: "0.625rem 0.875rem",
@@ -746,15 +745,18 @@ const MODAL_CSS = `
     opacity: 0;
     transform: scale(0.96);
     transform-origin: center;
-    transition: opacity 240ms var(--ease-out), transform 240ms var(--ease-out);
+    pointer-events: none;
+    transition: opacity 240ms var(--ease-out), transform 240ms var(--ease-out),
+      display 240ms allow-discrete, overlay 240ms allow-discrete;
   }
   [data-axiom-modal][open] {
     opacity: 1;
     transform: scale(1);
+    pointer-events: auto;
   }
   [data-axiom-modal]::backdrop {
     opacity: 0;
-    transition: opacity 240ms var(--ease-out);
+    transition: opacity 240ms var(--ease-out), overlay 240ms allow-discrete;
   }
   [data-axiom-modal][open]::backdrop {
     opacity: 1;

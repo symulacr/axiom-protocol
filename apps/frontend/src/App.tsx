@@ -52,7 +52,7 @@ function navLinkStyle({
     fontSize: "var(--text-sm)",
     fontWeight: "var(--fw-medium)",
     padding: "0.75rem 0.5rem",
-    transition: "color 0.18s ease",
+    transition: "color 0.18s var(--ease-out)",
   };
 }
 

@@ -163,25 +163,32 @@ function RawOutput({ raw }: { raw: string }): ReactElement {
     return () => cancelAnimationFrame(id);
   }, []);
   return (
-    <pre
+    <div
       style={{
-        marginTop: 8,
-        padding: 12,
-        background: COLORS.bg,
-        border: `1px solid ${COLORS.border}`,
-        borderRadius: "var(--radius-lg)",
-        fontSize: "var(--text-xs)",
-        whiteSpace: "pre-wrap",
-        color: COLORS.textMuted,
+        display: "grid",
+        gridTemplateRows: shown ? "1fr" : "0fr",
         opacity: shown ? 1 : 0,
-        maxHeight: shown ? 2000 : 0,
-        overflow: "hidden",
+        marginTop: 8,
         transition:
-          "opacity 200ms var(--ease-out), max-height 200ms var(--ease-out)",
+          "grid-template-rows 200ms var(--ease-out), opacity 200ms var(--ease-out)",
       }}
     >
-      {raw}
-    </pre>
+      <pre
+        style={{
+          minHeight: 0,
+          overflow: "hidden",
+          padding: 12,
+          background: COLORS.bg,
+          border: `1px solid ${COLORS.border}`,
+          borderRadius: "var(--radius-lg)",
+          fontSize: "var(--text-xs)",
+          whiteSpace: "pre-wrap",
+          color: COLORS.textMuted,
+        }}
+      >
+        {raw}
+      </pre>
+    </div>
   );
 }
 
@@ -465,7 +472,6 @@ export function ExecutePanel({
 
       {isLoading && (
         <div
-          className="stagger"
           style={{
             padding: "12px",
             background: COLORS.bg,
