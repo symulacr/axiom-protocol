@@ -284,7 +284,6 @@ export function AgentsBrowser(): ReactElement {
                   justifyContent: "space-between",
                   alignItems: "center",
                   border: `1px solid ${COLORS.border}`,
-                  transition: "border-color 0.18s ease",
                   overflow: "hidden",
                   minWidth: 0,
                   gap: "var(--space-md)",

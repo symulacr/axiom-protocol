@@ -93,7 +93,7 @@ export function HealthBadge(): ReactElement {
           borderRadius: "50%",
           background: dotColor,
           boxShadow: `0 0 6px ${dotColor}66`,
-          transition: "background 0.3s var(--ease-out), box-shadow 0.3s var(--ease-out)",
+          transition: "background 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out)",
         }}
       />
       <span
