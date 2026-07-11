@@ -68,7 +68,7 @@ sequenceDiagram
 
 ```bash
 pnpm install
-cp .env.galileo.example .env        # no .env.example exists; use the galileo template
+cp .env.example .env                # canonical template; fill in deployed addresses + secrets
 pnpm --filter @axiom/config build
 pnpm --filter @axiom/chat-runtime build   # required before backend/oracle dev
 pnpm --filter @axiom/oracle dev            # :8787
