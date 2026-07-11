@@ -12,7 +12,6 @@ import {
   Navigate,
   Route,
   Routes,
-  useLocation,
   useNavigate,
 } from "react-router-dom";
 import { ErrorBoundary } from "./components/ErrorBoundary.js";
