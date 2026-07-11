@@ -17,7 +17,7 @@ import {
 } from "react-router-dom";
 import { ErrorBoundary } from "./components/ErrorBoundary.js";
 import { HealthBadge } from "./components/HealthBadge.js";
-import { COLORS, ConnectedGuard, Kbd } from "./components/ui.js";
+import { COLORS, ConnectedGuard, Kbd, Spinner } from "./components/ui.js";
 import { useMediaQuery } from "./hooks/useMediaQuery.js";
 import { useFocusTrap } from "./hooks/useFocusTrap.js";
 
@@ -416,26 +416,11 @@ export function App(): ReactElement {
                   padding: "4rem",
                 }}
               >
-                <div
-                  style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: "50%",
-                    border: `3px solid ${COLORS.border}`,
-                    borderTopColor: COLORS.bronze,
-                    animation: "axiom-spin 0.8s linear infinite",
-                  }}
-                />
+                <Spinner size={32} />
               </div>
             }
           >
-            <div
-              key={location.pathname}
-              style={{
-                animation:
-                  "axiom-fade-in 200ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1))",
-              }}
-            >
+            <div key={location.pathname} className="fade-enter">
               <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/agents" element={<AgentsBrowser />} />

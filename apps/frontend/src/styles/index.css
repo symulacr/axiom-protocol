@@ -190,6 +190,10 @@ pre {
 .stagger > *:nth-child(5) { animation-delay: 200ms; }
 .stagger > *:nth-child(n+6) { animation-delay: 200ms; }
 
+.fade-enter {
+  animation: axiom-fade-in 200ms var(--ease-out) both;
+}
+
 /* ─── Links ───────────────────────────────────────────────────────── */
 a {
   color: var(--c-bronze-light);

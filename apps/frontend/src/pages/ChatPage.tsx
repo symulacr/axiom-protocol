@@ -49,6 +49,7 @@ import {
   Input,
   PageHeader,
   ErrorRef,
+  Spinner,
 } from "../components/ui.js";
 
 type Message = {
@@ -664,11 +665,10 @@ function ChatPageInner(): ReactElement {
           {messages.map((msg) => (
             <div
               key={msg.id}
+              className="fade-enter"
               style={{
                 padding: "var(--space-md) var(--space-lg)",
                 borderBottom: `1px solid ${COLORS.border}`,
-                animation:
-                  "axiom-fade-in 180ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1))",
               }}
             >
               <div
@@ -772,11 +772,10 @@ function ChatPageInner(): ReactElement {
           {/* Streaming in-progress indicator */}
           {isStreaming && (
             <div
+              className="fade-enter"
               style={{
                 padding: "var(--space-md) var(--space-lg)",
                 borderBottom: `1px solid ${COLORS.border}`,
-                animation:
-                  "axiom-fade-in 180ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1))",
               }}
             >
               <div
@@ -834,17 +833,7 @@ function ChatPageInner(): ReactElement {
                       gap: 8,
                     }}
                   >
-                    <span
-                      style={{
-                        display: "inline-block",
-                        width: 14,
-                        height: 14,
-                        borderRadius: "50%",
-                        border: `2px solid ${COLORS.border}`,
-                        borderTopColor: COLORS.bronze,
-                        animation: "axiom-spin 0.8s linear infinite",
-                      }}
-                    />
+                    <Spinner size={14} />
                     <span style={{ color: COLORS.bronzeLight }}>
                       {waitingMessageForElapsed(elapsed)}
                     </span>

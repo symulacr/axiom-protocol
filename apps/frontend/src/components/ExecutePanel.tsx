@@ -29,6 +29,7 @@ import {
   getActionColor,
   DefinitionList,
   ConnectedGuard,
+  Spinner,
 } from "./ui.js";
 import { PLACEHOLDER, humanizeError } from "../utils/format.js";
 import { NEUTRAL_WAITING_MESSAGES } from "../chat/waitingMessages.js";
@@ -365,15 +366,9 @@ export function ExecutePanel({
               marginBottom: "4px",
             }}
           >
-            <div
-              style={{
-                width: 12,
-                height: 12,
-                borderRadius: "50%",
-                border: `2px solid ${COLORS.border}`,
-                borderTopColor: COLORS.bronzeLight,
-                animation: "axiom-spin 0.6s linear infinite",
-              }}
+            <Spinner
+              size={12}
+              style={{ borderTopColor: COLORS.bronzeLight, animation: "axiom-spin 0.6s linear infinite" }}
             />
             <span
               style={{

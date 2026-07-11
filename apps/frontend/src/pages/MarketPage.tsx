@@ -287,10 +287,9 @@ export function MarketPage({
             ).map((tx, i) => (
               <li
                 key={`${tx.txHash}-${tx.payload.tokenId}`}
+                className="fade-enter"
                 style={{
                   listStyle: "none",
-                  animation:
-                    "axiom-fade-in 200ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1))",
                   animationDelay: `${Math.min(i, 10) * 40}ms`,
                 }}
               >
@@ -402,8 +401,7 @@ export function MarketPage({
                   fontSize: "var(--text-xs)",
                   fontFamily: "var(--font-mono)",
                   color: COLORS.textMuted,
-                  animation:
-                    "axiom-fade-in 200ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1))",
+                  animation: "axiom-fade-in 200ms var(--ease-out)",
                   animationDelay: `${Math.min(i, 10) * 40}ms`,
                 }}
               >

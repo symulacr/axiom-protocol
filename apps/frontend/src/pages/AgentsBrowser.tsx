@@ -274,7 +274,7 @@ export function AgentsBrowser(): ReactElement {
             {filteredAgents.map((agent, i) => (
               <div
                 key={agent.tokenId}
-                className="agent-card cv-auto"
+                className="agent-card cv-auto fade-enter"
                 style={{
                   padding: "12px 16px",
                   borderRadius: "var(--radius-lg)",
@@ -287,7 +287,6 @@ export function AgentsBrowser(): ReactElement {
                   overflow: "hidden",
                   minWidth: 0,
                   gap: "var(--space-md)",
-                  animation: "axiom-fade-in 200ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1))",
                   animationDelay: `${Math.min(i, 10) * 40}ms`,
                 }}
               >
