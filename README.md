@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  ERC-7857 iNFT agents on <a href="https://0g.ai">0G Chain</a> — mint, trade, and run on-chain AI strategies.
+  ERC-7857 Agentic ID iNFTs on <a href="https://0g.ai">0G</a> — trade on 0G Chain, run via 0G Compute, store on 0G Storage.
 </p>
 
 <p align="center">
@@ -18,6 +18,14 @@ Axiom Protocol turns an AI strategy into an **ERC-7857 Intelligent NFT (iNFT)**:
 transferable on-chain asset whose encrypted metadata is re-keyed on every transfer by a
 **TEE-style signer** (simulated TEE today — a Node signer with a cleartext key, not Intel TDX/SEV).
 Agents run vaults, execute strategy ticks, and trade on a live 0G Chain market.
+
+## 0G Integration
+
+Axiom Protocol is built on 0G's modular stack:
+
+- **0G Chain** — ERC-7857 iNFT contracts (AgentNFT, StrategyVault, TeeVerifier, PaymentProcessor, MockUSDC) deployed and executed on 0G Chain.
+- **0G Compute** — AI strategy inference and the TEE-style signer that re-keys encrypted metadata on every transfer.
+- **0G Storage** — encrypted iNFT payloads uploaded to 0G Storage; the Merkle dataHash is registered on-chain.
 
 ## Architecture
 
