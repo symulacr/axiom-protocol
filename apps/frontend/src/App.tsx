@@ -133,7 +133,7 @@ function ShortcutHelp(): ReactElement | null {
           opacity: entered ? 1 : 0,
           transform: entered ? "scale(1)" : "scale(0.96)",
           transition:
-            "opacity 200ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1)), transform 200ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1))",
+            "opacity 200ms var(--ease-out), transform 200ms var(--ease-out)",
         }}
       >
         <h2

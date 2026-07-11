@@ -209,7 +209,7 @@ export function AgentDetail(): ReactElement {
                   fontFamily: "inherit",
                   transform: pressed === s.id ? "scale(0.97)" : "none",
                   transition:
-                    "color 0.18s var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1)), border-color 0.18s var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1)), transform 0.12s var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1))",
+                    "color 0.18s var(--ease-out), border-color 0.18s var(--ease-out), transform 0.12s var(--ease-out)",
                 }}
                 onPointerDown={() => setPressed(s.id)}
                 onPointerUp={() => setPressed(null)}
