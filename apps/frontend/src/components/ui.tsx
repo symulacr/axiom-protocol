@@ -59,7 +59,7 @@ export function getActionColor(action: string): string {
 }
 
 const transition =
-  "color 0.18s cubic-bezier(0.4, 0, 0.2, 1), background 0.18s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.18s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.18s cubic-bezier(0.4, 0, 0.2, 1)";
+  "color 0.18s var(--ease-out), background 0.18s var(--ease-out), border-color 0.18s var(--ease-out), opacity 0.18s var(--ease-out)";
 
 const formFieldBase: CSSProperties = {
   padding: "0.625rem 0.875rem",
