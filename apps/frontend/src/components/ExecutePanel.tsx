@@ -492,7 +492,7 @@ export function ExecutePanel({
                 borderRadius: "50%",
                 border: `2px solid ${COLORS.border}`,
                 borderTopColor: COLORS.bronzeLight,
-                animation: "axiom-spin 0.8s linear infinite",
+                animation: "axiom-spin 0.6s linear infinite",
               }}
             />
             <span
