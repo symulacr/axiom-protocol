@@ -345,6 +345,28 @@ Dockerfile
 packages/config/abis/*.json
 apps/frontend/scripts/contrast-budget.mjs
 
+# ── Build / dev artifact hardening (regenerable, never source) ─
+gas-report.txt
+lcov.info
+.prettiercache
+.prettier-cache/
+*.iml
+.tmp/
+*.tmp
+*.bak
+*.orig
+*.rej
+*.log.*
+build-logs/
+*.sqlite
+*.sqlite3
+*.db
+.direnv/
+.fleet/
+*.code-workspace
+*.sublime-workspace
+*.sublime-project
+
 # ── Generated ABI (regenerable via forge) ────────────────
 
 # ── Codegen config — output is tracked ──────────────────
