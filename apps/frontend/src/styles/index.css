@@ -179,7 +179,7 @@ pre {
 }
 
 .axiom-confirm {
-  animation: axiom-confirm 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: axiom-confirm 260ms var(--ease-out);
 }
 
 /* ─── Links ───────────────────────────────────────────────────────── */
