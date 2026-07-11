@@ -247,13 +247,7 @@ export function AgentDetail(): ReactElement {
           />
         )}
 
-        <div
-          key={activeSection}
-          style={{
-            animation:
-              "axiom-fade-in 150ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1))",
-          }}
-        >
+        <div key={activeSection} className="fade-enter">
         {/* Overview tab: metadata + deposit + transfer */}
         <div
           role="tabpanel"
