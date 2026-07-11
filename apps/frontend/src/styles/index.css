@@ -435,11 +435,14 @@ select {
 .helptip-content {
   opacity: 0;
   pointer-events: none;
+  transform: translateX(-50%) scale(0.96);
+  transform-origin: bottom center;
+  transition: opacity 150ms var(--ease-out), transform 150ms var(--ease-out);
 }
-.helptip:hover .helptip-content,
-.helptip:focus-within .helptip-content {
-  opacity: 1;
+@media (hover: hover) and (pointer: fine) {
+  .helptip:hover .helptip-content { opacity: 1; transform: translateX(-50%) scale(1); }
 }
+.helptip:focus-within .helptip-content { opacity: 1; transform: translateX(-50%) scale(1); }
 
 @media (prefers-contrast: more) {
   :root {
