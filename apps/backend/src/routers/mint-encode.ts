@@ -2,7 +2,7 @@ import { Router } from "express";
 import type { JsonRpcProvider } from "ethers";
 import { z } from "zod";
 import { AGENT_NFT_ABI } from "@axiom/config/abis";
-import { addressViem, hexViem } from "@axiom/config/types/schemas";
+import { addressViem, hexViem } from "@axiom/config/types/hex";
 import { TypedContract } from "@axiom/config/types/contract";
 import type { ServerConfig } from "../server.js";
 import { createRoute } from "./route-factory.js";

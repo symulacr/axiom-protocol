@@ -23,7 +23,7 @@ import {
   concatEncrypted,
   parseEncrypted,
 } from "@axiom/config/crypto/aes-gcm";
-import { sealKeyForReceiver } from "@axiom/config/crypto/ecies";
+import { sealKeyForReceiver } from "@axiom/config/crypto/keys";
 import type { TeeSigner } from "./signer.js";
 import type { StorageAdapter } from "@axiom/config/storage/0g";
 import {

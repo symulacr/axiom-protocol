@@ -17,7 +17,7 @@ import {
 } from "../components/ui.js";
 import type { AxiomEvent } from "../hooks/useEventHistory.js";
 import { useEventStream } from "../hooks/useEventStream.js";
-import { eventDedupeKey } from "../utils/events.js";
+import { eventDedupeKey } from "../hooks/useEventHistory.js";
 import { humanizeError } from "../utils/format.js";
 
 type TransferEvent = {

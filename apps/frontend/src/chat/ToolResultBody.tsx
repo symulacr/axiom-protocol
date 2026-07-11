@@ -2,8 +2,7 @@ import type { ReactElement } from "react";
 import { classOfTool } from "@axiom/config/chat-tools";
 import { formatToolResult } from "@axiom/chat-runtime";
 import { ArchiveResultCard } from "./ArchiveResultCard.js";
-import { EncodePreviewCard } from "./EncodePreviewCard.js";
-import { hasEncodePreview } from "./encodePreview.js";
+import { EncodePreviewCard, hasEncodePreview } from "./EncodePreviewCard.js";
 import { COLORS } from "../components/ui.js";
 
 export function ToolResultBody({

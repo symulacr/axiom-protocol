@@ -19,7 +19,14 @@ export {
   parseEncrypted,
   type EncryptedPayload,
 } from "./crypto/aes-gcm.js";
-export { sealKeyForReceiver, unsealKeyForReceiver } from "./crypto/ecies.js";
+export {
+  sealKeyForReceiver,
+  unsealKeyForReceiver,
+  publicKeyUncompressedFromPrivate,
+  pubKeyToAddress,
+  deriveRawPubkeyFromHex,
+  deriveUncompressedPubkeyFromHex,
+} from "./crypto/keys.js";
 export {
   CHAT_TOOL_CATALOG,
   CHAT_BENCH_ALL_TOOL_NAMES,
@@ -42,12 +49,5 @@ export {
   type ChatToolName,
   type ChatToolSpec,
 } from "./chat-tools.js";
-export {
-  publicKeyUncompressedFromPrivate,
-  pubKeyToAddress,
-  deriveRawPubkeyFromHex,
-  deriveUncompressedPubkeyFromHex,
-} from "./crypto/secp256k1.js";
-export * from "./http.js";
 export * from "./events.js";
 export * from "./models.js";

@@ -3,6 +3,7 @@ import { writeFile, rename, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { createLogger } from "../utils/logger.js";
 import { extractErrorMessage } from "../utils/response.js";
+import { bigintReplacer } from "@axiom/config/types/bigint";
 
 const log = createLogger("events");
 
@@ -38,9 +39,6 @@ export function loadBuckets(): Map<string, unknown[]> {
     return new Map();
   }
 }
-
-const bigintReplacer = (_key: string, value: unknown): unknown =>
-  typeof value === "bigint" ? value.toString() : value;
 
 export async function saveBuckets(
   buckets: Map<string, unknown[]>,

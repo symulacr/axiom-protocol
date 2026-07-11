@@ -12,8 +12,7 @@ import { ITRANSFER_FROM_ABI } from "@axiom/config/abis";
 
 import { useAsyncAction } from "./useAsyncAction.js";
 import { useEip712Domain, ACCESS_PROOF_TYPES } from "../abi/eip712.js";
-import { agentTransferPath } from "../utils/apiPaths.js";
-import { apiFetch, LONG_TIMEOUT } from "../utils/apiFetch.js";
+import { agentTransferPath, apiFetch, LONG_TIMEOUT } from "../utils/apiFetch.js";
 import type {
   TransferInput,
   AccessProofStruct,

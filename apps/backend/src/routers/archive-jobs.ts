@@ -5,7 +5,7 @@ import { createRoute } from "./route-factory.js";
 import {
   createAccountArchiveJob,
   getArchiveJob,
-} from "../services/archive-jobs.js";
+} from "../services/archive.js";
 
 const archiveJobCreateSchema = z.object({
   handle: z.string().min(1).max(64),

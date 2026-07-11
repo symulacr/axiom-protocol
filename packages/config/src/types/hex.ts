@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 export const HEX_REGEX = /^0x[a-fA-F0-9]+$/;
 export const ADDRESS_REGEX = /^0x[a-fA-F0-9]{40}$/;
 
@@ -18,3 +20,17 @@ export function validateAddress(value: string, label = "address"): Address {
 export function toViemHex(h: Hex): `0x${string}` {
   return h as `0x${string}`;
 }
+
+export const hexString = z
+  .string()
+  .regex(HEX_REGEX, "Invalid hex")
+  .transform((v) => validateHex(v));
+
+export const address = z
+  .string()
+  .regex(ADDRESS_REGEX, "Invalid address")
+  .transform((v) => validateAddress(v));
+
+export const hexViem = hexString.transform((v) => toViemHex(v));
+
+export const addressViem = address.transform((v) => toViemHex(v));

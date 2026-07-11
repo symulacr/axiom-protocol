@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { hexString, address } from "@axiom/config/types/schemas";
+import { hexString, address } from "@axiom/config/types/hex";
 import { sharedEnvSchema } from "@axiom/config/env-schema";
 
 const baseSchema = sharedEnvSchema.merge(

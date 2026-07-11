@@ -17,7 +17,7 @@ import { InMemoryStorage } from "@axiom/config/storage/0g";
 import { TeeSigner, ownershipMessageHash } from "../src/signer.js";
 import { startServer } from "../src/server.js";
 import { aesGcmEncrypt, concatEncrypted } from "@axiom/config/crypto/aes-gcm";
-import { publicKeyUncompressedFromPrivate } from "@axiom/config/crypto/secp256k1";
+import { publicKeyUncompressedFromPrivate } from "@axiom/config/crypto/keys";
 
 const TEST_PRIV_HEX = "0x" + "11".repeat(32);
 const TEST_RECEIVER_PRIV_HEX = "0x" + "22".repeat(32);

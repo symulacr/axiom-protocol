@@ -14,7 +14,7 @@ import {
   lookupAccountTweets,
   lookupSnapshots,
 } from "../services/wayback.js";
-import { queryArchive } from "../services/archive-query.js";
+import { queryArchive } from "../services/archive.js";
 
 export const archiveQuerySchema = z.object({
   intent: z.enum(["lookup", "confirm", "account", "closest"]),

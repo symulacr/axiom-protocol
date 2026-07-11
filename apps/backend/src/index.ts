@@ -5,7 +5,7 @@ import { resolveAddress } from "@axiom/config/addresses";
 import { registerProcessHandlers } from "@axiom/config/process";
 import { startServer } from "./server.js";
 import { createLogger } from "./utils/logger.js";
-import { loadEnv } from "./env.js";
+import { loadEnv } from "@axiom/config/env";
 import { getSharedProvider } from "./provider.js";
 import { backendEnvSchema } from "./env-schema.js";
 import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
