@@ -12,6 +12,7 @@ import {
   Navigate,
   Route,
   Routes,
+  useLocation,
   useNavigate,
 } from "react-router-dom";
 import { ErrorBoundary } from "./components/ErrorBoundary.js";
@@ -61,7 +62,17 @@ function WalletRoute({ children }: { children: ReactElement }) {
 
 function ShortcutHelp(): ReactElement | null {
   const [open, setOpen] = useState(false);
+  const [entered, setEntered] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) {
+      setEntered(false);
+      return;
+    }
+    const id = requestAnimationFrame(() => setEntered(true));
+    return () => cancelAnimationFrame(id);
+  }, [open]);
 
   useEffect(() => {
     function show() {
@@ -119,6 +130,10 @@ function ShortcutHelp(): ReactElement | null {
           padding: "var(--space-2xl)",
           maxWidth: 380,
           width: "90vw",
+          opacity: entered ? 1 : 0,
+          transform: entered ? "scale(1)" : "scale(0.96)",
+          transition:
+            "opacity 200ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1)), transform 200ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1))",
         }}
       >
         <h2
@@ -333,7 +348,7 @@ export function App(): ReactElement {
           <WalletButton />
         </div>
       </header>
-      {isMobile && menuOpen && (
+      {isMobile && (
         <div
           id="mobile-nav-menu"
           ref={mobileNavRef}
@@ -350,6 +365,11 @@ export function App(): ReactElement {
             gap: "0.5rem",
             zIndex: 99,
             borderTop: "1px solid var(--c-border-strong)",
+            transform: menuOpen ? "translateY(0)" : "translateY(-12px)",
+            opacity: menuOpen ? 1 : 0,
+            pointerEvents: menuOpen ? "auto" : "none",
+            transition:
+              "transform 250ms var(--ease-drawer, cubic-bezier(0.32, 0.72, 0, 1)), opacity 250ms var(--ease-drawer, cubic-bezier(0.32, 0.72, 0, 1))",
           }}
         >
           <NavLink
@@ -409,7 +429,14 @@ export function App(): ReactElement {
               </div>
             }
           >
-            <Routes>
+            <div
+              key={location.pathname}
+              style={{
+                animation:
+                  "axiom-fade-in 200ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1))",
+              }}
+            >
+              <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/agents" element={<AgentsBrowser />} />
               <Route
@@ -440,6 +467,7 @@ export function App(): ReactElement {
               <Route path="/settings" element={<Navigate to="/" replace />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
+            </div>
           </Suspense>
         </ErrorBoundary>
       </main>

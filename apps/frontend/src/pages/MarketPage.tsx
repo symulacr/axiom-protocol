@@ -284,17 +284,14 @@ export function MarketPage({
             {(showAllTransfers
               ? mergedTransfers
               : mergedTransfers.slice(0, 20)
-            ).map((tx) => (
+            ).map((tx, i) => (
               <li
                 key={`${tx.txHash}-${tx.payload.tokenId}`}
                 style={{
                   listStyle: "none",
-                  ...(liveTxHashes.has(tx.txHash)
-                    ? {
-                        animation:
-                          "axiom-fade-in 0.18s cubic-bezier(0.4, 0, 0.2, 1)",
-                      }
-                    : {}),
+                  animation:
+                    "axiom-fade-in 200ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1))",
+                  animationDelay: `${Math.min(i, 10) * 40}ms`,
                 }}
               >
                   <Card
@@ -405,12 +402,9 @@ export function MarketPage({
                   fontSize: "var(--text-xs)",
                   fontFamily: "var(--font-mono)",
                   color: COLORS.textMuted,
-                  ...(liveTickTokens.has(entry.tokenId)
-                    ? {
-                        animation:
-                          "axiom-fade-in 0.18s cubic-bezier(0.4, 0, 0.2, 1)",
-                      }
-                    : {}),
+                  animation:
+                    "axiom-fade-in 200ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1))",
+                  animationDelay: `${Math.min(i, 10) * 40}ms`,
                 }}
               >
                 <span
