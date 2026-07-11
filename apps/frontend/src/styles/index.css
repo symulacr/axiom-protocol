@@ -249,7 +249,7 @@ dialog::backdrop {
   line-height: 1;
   border: 1px solid transparent;
   cursor: pointer;
-  transition: var(--transition);
+  transition: var(--transition), transform 160ms var(--ease-out);
 }
 .btn:disabled {
   opacity: 0.4;
