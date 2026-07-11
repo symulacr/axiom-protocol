@@ -394,7 +394,7 @@ select {
 }
 
 [data-axiom-btn]:active {
-  transform: translateY(1px);
+  transform: scale(0.97);
 }
 @media (prefers-reduced-motion: reduce) {
   [data-axiom-btn]:active {
