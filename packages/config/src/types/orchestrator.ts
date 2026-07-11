@@ -1,9 +1,10 @@
 
-export type TickAction = "buy" | "sell" | "hold";
+export type TickAction = "act" | "hold";
 
 export interface TickRecommendation {
   action: TickAction;
   amount?: number;
+  confidence?: number;
   reason: string;
 }
 

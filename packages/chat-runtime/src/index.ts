@@ -7,6 +7,8 @@ export {
   createSession,
   buildSessionContext,
   toChatApiMessages,
+  fitToContext,
+  compactHistory,
 } from "./session.js";
 export type { ChatApiMessage } from "./session.js";
 export { buildSystemPrompt } from "./prompt.js";

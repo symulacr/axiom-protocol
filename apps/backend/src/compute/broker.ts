@@ -11,12 +11,6 @@ import { extractErrorMessage } from "../utils/response.js";
 
 const log = createLogger("compute-broker");
 
-export interface BrokerConfig {
-  evmRpc: string;
-  chainId?: number;
-  signer: Wallet;
-}
-
 export function resolveChainId(chainId?: number): number {
   if (chainId !== undefined) return chainId;
   const env = Number(process.env.AXIOM_CHAIN_ID);
@@ -42,17 +36,6 @@ export function createStaticProvider(
   }
   return new JsonRpcProvider(evmRpc, cid, { staticNetwork: true });
 }
-
-export function createProviderAndSigner(
-  config: Pick<BrokerConfig, "evmRpc" | "chainId" | "signer">,
-): {
-  provider: JsonRpcProvider;
-  signer: Wallet;
-} {
-  const provider = createStaticProvider(config.evmRpc, config.chainId);
-  return { provider, signer: config.signer.connect(provider) as Wallet };
-}
-
 
 const _readOnlyCache = new Map<number, ReadOnlyInferenceBroker>();
 

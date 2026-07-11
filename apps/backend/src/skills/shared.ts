@@ -137,8 +137,12 @@ export function cachedJsonGet(
       ...init,
       headers: { ...baseHeaders, ...init?.headers },
     });
-    if (!res.ok) throw new Error(`Upstream ${res.status}: ${path}`);
-    const data = await res.json();
+    if (!res.ok) {
+      throw Object.assign(new Error(`Upstream ${res.status} for ${path}`), { status: 502 });
+    }
+    const data = await res.json().catch(() =>
+      Object.assign(new Error(`Upstream returned non-JSON body for ${path}`), { status: 502 }),
+    );
     cache.set(key, data);
     return data;
   };

@@ -55,6 +55,7 @@ export const tickSchema = z.object({
   agentTokenId: z.string().regex(/^\d+$/),
   computeModel: z.string().optional(),
   strategy: z.string().optional(),
+  systemPrompt: z.string().optional(),
   signalSource: z.string().optional(),
   signalPayload: z.unknown().optional(),
   stream: z.boolean().optional(),

@@ -1,30 +1,11 @@
 import { getAddress } from "viem";
-import { validateHex } from "./types/hex.js";
 
-export const DEPLOYED_ADDRESSES = {
-  agentNft: validateHex(
-    "0xaBe9339b93320EC78400772802fc9103c56a4838",
-    "AXIOM_AGENT_NFT_ADDRESS",
-  ),
-  strategyVault: validateHex(
-    "0x170271D189Fb039c2b546106F73a3049A8a7bC38",
-    "AXIOM_STRATEGY_VAULT_ADDRESS",
-  ),
-  teeVerifier: validateHex(
-    "0x60B9d53F5410b6586D2D5395D4A309E3C9E5595A",
-    "AXIOM_TEE_VERIFIER_ADDRESS",
-  ),
-  paymentProcessor: validateHex(
-    "0x670873887CaD7442F52027702538fb2e418b8576",
-    "AXIOM_PAYMENT_PROCESSOR_ADDRESS",
-  ),
-  mockUsdc: validateHex(
-    "0x354CA53bAB51C0666964fa050628d8351f8A7d19",
-    "AXIOM_MOCK_USDC_ADDRESS",
-  ),
-} as const;
-
-type AddressName = keyof typeof DEPLOYED_ADDRESSES;
+export type AddressName =
+  | "agentNft"
+  | "strategyVault"
+  | "teeVerifier"
+  | "paymentProcessor"
+  | "mockUsdc";
 
 const ENV_VAR_NAMES: Record<AddressName, string[]> = {
   agentNft: ["AXIOM_AGENT_NFT_ADDRESS", "AGENT_NFT_ADDRESS"],
@@ -38,6 +19,8 @@ const ENV_VAR_NAMES: Record<AddressName, string[]> = {
   mockUsdc: ["AXIOM_MOCK_USDC_ADDRESS", "AXIOM_PAYMENT_TOKEN"],
 };
 
+const ADDRESS_NAMES = Object.keys(ENV_VAR_NAMES) as AddressName[];
+
 export function resolveAddress(
   name: AddressName,
   env: Record<string, unknown>,
@@ -47,18 +30,17 @@ export function resolveAddress(
     const val = env[varName];
     if (typeof val === "string" && val) return getAddress(val);
   }
-  return getAddress(DEPLOYED_ADDRESSES[name]);
+  throw new Error(
+    `Missing deployed-address env var for "${name}" — set one of: ${varNames.join(", ")}`,
+  );
 }
 
 export function getAddresses(
   env: Record<string, unknown> = typeof process !== "undefined" && process.env
     ? process.env
     : {},
-) {
+): Record<AddressName, `0x${string}`> {
   return Object.fromEntries(
-    (Object.keys(DEPLOYED_ADDRESSES) as AddressName[]).map((name) => [
-      name,
-      resolveAddress(name, env),
-    ]),
+    ADDRESS_NAMES.map((name) => [name, resolveAddress(name, env)]),
   ) as Record<AddressName, `0x${string}`>;
 }

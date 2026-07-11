@@ -33,14 +33,27 @@ export async function runSkillTool(
   });
 
   if (!res.ok) {
+    let details: unknown = null;
+    try { details = await res.json(); } catch { details = await res.text(); }
     return {
       ok: false,
       content: JSON.stringify({
         error: `Skill ${name} failed: ${res.status}`,
+        details,
       }),
     };
   }
 
   const data = await res.json();
-  return { ok: true, content: JSON.stringify(data) };
+  return { ok: true, content: JSON.stringify(capArrays(data, 20)) };
+}
+
+function capArrays(v: unknown, n: number): unknown {
+  if (Array.isArray(v)) return v.slice(0, n);
+  if (v && typeof v === "object") {
+    return Object.fromEntries(
+      Object.entries(v as Record<string, unknown>).map(([k, x]) => [k, capArrays(x, n)]),
+    );
+  }
+  return v;
 }

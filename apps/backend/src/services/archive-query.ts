@@ -67,18 +67,14 @@ export async function queryArchive(input: ArchiveQueryInput): Promise<unknown> {
       if (!input.url) throw new Error("url required for lookup intent");
       const useFullList = input.fullList === true || (input.limit ?? 0) > 1;
       if (!useFullList) {
-        const snapshot = await closestSnapshot(input.url, input.timestamp);
+        const snapshots = await lookupSnapshots(input.url, 1);
         result = {
           url: input.url,
-          count: snapshot ? 1 : 0,
-          snapshots: snapshot
-            ? [
-                {
-                  archivedAt: snapshot.iso,
-                  snapshotUrl: snapshot.snapshotUrl,
-                },
-              ]
-            : [],
+          count: snapshots.length,
+          snapshots: snapshots.map((s) => ({
+            archivedAt: s.iso,
+            snapshotUrl: s.snapshotUrl,
+          })),
           note: "closest-first fast path",
         };
       } else {

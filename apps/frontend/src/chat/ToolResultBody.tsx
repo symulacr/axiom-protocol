@@ -9,12 +9,24 @@ import { COLORS } from "../components/ui.js";
 export function ToolResultBody({
   name,
   content,
+  sendTransactionAsync,
 }: {
   name: string;
   content: string | null;
+  sendTransactionAsync?: (a: {
+    to: `0x${string}`;
+    data?: `0x${string}`;
+    value?: bigint;
+  }) => Promise<`0x${string}`>;
 }): ReactElement | null {
   if (hasEncodePreview(content)) {
-    return <EncodePreviewCard content={content} toolName={name} />;
+    return (
+      <EncodePreviewCard
+        content={content}
+        toolName={name}
+        onSign={sendTransactionAsync}
+      />
+    );
   }
 
   if (classOfTool(name) === "archive") {

@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { ethers } from "ethers";
 import type { TypedContract, AgentNFTMethods } from "@axiom/config/types/contract";
-import type { ServerConfig } from "../server.js";
+import { type ServerConfig, isUpstreamTransportError } from "../server.js";
 import { sendError, extractErrorMessage } from "../utils/response.js";
 import { TTLCache } from "../utils/cache.js";
 import { TRANSFER_TOPIC, MAX_AGENT_ENUMERATION } from "../utils/constants.js";
@@ -78,12 +78,23 @@ export function registerAgentRoutes(
           owner.slice(2)) as `0x${string}`;
         const latest = await provider.getBlockNumber();
         const fromBlock = Math.max(0, latest - AGENT_LOG_SCAN_BLOCKS);
-        const transferLogs = await provider.getLogs({
+        let transferLogs = await provider.getLogs({
           address: nftAddr,
           fromBlock,
           toBlock: "latest",
           topics: [TRANSFER_TOPIC, null, paddedOwner],
         });
+        if (transferLogs.length === 0) {
+          try {
+            transferLogs = await provider.getLogs({
+              address: nftAddr,
+              fromBlock: 0,
+              toBlock: "latest",
+              topics: [TRANSFER_TOPIC, null, paddedOwner],
+            });
+          } catch {
+          }
+        }
         const seen = new Set<bigint>();
         const tokens: {
           tokenId: string;
@@ -358,6 +369,15 @@ export function registerAgentRoutes(
           },
         });
       } catch (err) {
+        if (isUpstreamTransportError(err)) {
+          sendError(
+            res,
+            HTTP.SERVICE_UNAVAILABLE,
+            `TEE oracle at ${config.oracleBaseUrl} is unreachable; deploy the oracle service or set AXIOM_ORACLE_URL`,
+            "ORACLE_UNAVAILABLE",
+          );
+          return;
+        }
         next(err);
       }
     },

@@ -21,7 +21,7 @@ import {
 import { verifyTeeResponse } from "../compute/tee-verifier.js";
 import { DefaultSignerOracleClient } from "../oracle/client.js";
 import { pickOGNetwork } from "@axiom/config/networks";
-import { EVENT_NAMES } from "@axiom/config";
+import { EVENT_NAMES, resolveChatModel } from "@axiom/config";
 import { VAULT_ABI, VAULT_ABI_LEGACY } from "@axiom/config/abis";
 import {
   detectVaultAbiVariant,
@@ -122,7 +122,7 @@ export class StrategyRunner {
     if (this.openai && this.openaiModel === model) {
       return this.openai;
     }
-    this.openai = await createRouterClient(model, { signer: this.signer });
+    this.openai = await createRouterClient(model);
     this.openaiModel = model;
     return this.openai;
   }
@@ -138,6 +138,7 @@ export class StrategyRunner {
       signal.source === "manual:e2e" ||
       signal.source === "manual:e2e-mock" ||
       signal.source === "manual:e2e-availability";
+    const onchainTask = this.fetchOnchainState(strategy);
     const inferenceTask = skipInference
       ? Promise.resolve(
           JSON.stringify({
@@ -145,15 +146,13 @@ export class StrategyRunner {
             reason: "E2E mock tick (compute inference skipped)",
           }),
         )
-      : this.runInference(strategy, signal, onChunk);
+      : this.runInference(strategy, signal, onchainTask, onChunk);
 
     const [inferenceResult, onchainResult, storageResult] =
       await Promise.allSettled([
         inferenceTask,
-        this.fetchOnchainState(strategy),
-        strategy.modelDataRoot === ZERO_DATA_ROOT
-          ? Promise.resolve({ rootHash: strategy.modelDataRoot, size: 0 })
-          : this.fetchStoragePeek(strategy),
+        onchainTask,
+        Promise.resolve({ rootHash: strategy.modelDataRoot, size: 0 }),
       ]);
 
     const rawModelOutput =
@@ -225,9 +224,7 @@ export class StrategyRunner {
         rawModelOutput.trim(),
       ) as TickResult["recommendation"];
       const action =
-        parsed.action === "buy" ||
-        parsed.action === "sell" ||
-        parsed.action === "hold"
+        parsed.action === "act" || parsed.action === "hold"
           ? parsed.action
           : "hold";
       const rawAmount =
@@ -239,9 +236,15 @@ export class StrategyRunner {
         rawAmount <= 1e18
           ? rawAmount
           : undefined;
+      const rawConfidence = typeof parsed.confidence === "number" ? parsed.confidence : undefined;
+      const confidence =
+        rawConfidence !== undefined && Number.isFinite(rawConfidence)
+          ? Math.min(1, Math.max(0, rawConfidence))
+          : undefined;
       return {
         action,
         amount,
+        confidence,
         reason:
           typeof parsed.reason === "string"
             ? parsed.reason
@@ -423,11 +426,15 @@ export class StrategyRunner {
   private async runInference(
     strategy: StrategySpec,
     signal: MarketSignal,
+    onchainPromise: Promise<TickResult["onchain"]>,
     onChunk?: StreamCallback,
   ): Promise<string> {
+    const onchain = await onchainPromise;
     const userPrompt =
-      `Vault state: ${JSON.stringify(signal.payload)}\n` +
-      `Provide a JSON recommendation: {"action":"buy|sell|hold","amount":number,"reason":"…"}`;
+      `Vault balance: ${onchain.vaultBalance.toString()}\n` +
+      `Recent events: ${JSON.stringify(onchain.recentEvents)}\n` +
+      `Market signal: ${JSON.stringify(signal.payload)}\n` +
+      `Provide a JSON recommendation: {"action":"act|hold","confidence":number,"reason":"…"}`;
     const messages = [
       { role: "system" as const, content: strategy.systemPrompt },
       { role: "user" as const, content: userPrompt },
@@ -479,7 +486,6 @@ export class StrategyRunner {
     }
     const vaultVariant = await this.resolveVaultAbiVariant();
     const readAbi = vaultAbiFor(vaultVariant);
-    if (this.vaultReadTc) this.vaultReadTc = null;
     const vaultTc = this.getVaultContract("read", readAbi);
     const tokenId = strategy.agentTokenId;
     if (!vaultTc.raw.filters?.StrategySet || !vaultTc.raw.filters?.Deposited) {
@@ -523,17 +529,4 @@ export class StrategyRunner {
     return { vaultBalance, recentEvents };
   }
 
-  private async fetchStoragePeek(
-    strategy: StrategySpec,
-  ): Promise<TickResult["storage"]> {
-    const opts =
-      strategy.modelEncryption?.type === "aes256"
-        ? { symmetricKey: strategy.modelEncryption.key, withProof: true }
-        : { withProof: true };
-    const blob = await this.storage.downloadWithOpts(
-      strategy.modelDataRoot,
-      opts,
-    );
-    return { rootHash: strategy.modelDataRoot, size: blob.size };
-  }
 }
