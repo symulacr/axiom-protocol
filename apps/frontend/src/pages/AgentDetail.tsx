@@ -106,6 +106,7 @@ export function AgentDetail(): ReactElement {
   const [transferOpen, setTransferOpen] = useState(false);
   const transferBtnRef = useRef<HTMLSpanElement>(null);
   const [activeSection, setActiveSection] = useState<AgentSection>(sectionFromHash);
+  const [pressed, setPressed] = useState<AgentSection | null>(null);
 
   useEffect(() => {
     const syncFromHash = (): void => {
@@ -206,8 +207,13 @@ export function AgentDetail(): ReactElement {
                     : "2px solid transparent",
                   cursor: "pointer",
                   fontFamily: "inherit",
-                  transition: "color 0.18s ease, border-color 0.18s ease",
+                  transform: pressed === s.id ? "scale(0.97)" : "none",
+                  transition:
+                    "color 0.18s var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1)), border-color 0.18s var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1)), transform 0.12s var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1))",
                 }}
+                onPointerDown={() => setPressed(s.id)}
+                onPointerUp={() => setPressed(null)}
+                onPointerLeave={() => setPressed(null)}
                 onClick={() => {
                   setActiveSection(s.id);
                   window.history.replaceState(null, "", `#${s.id}`);
@@ -241,6 +247,13 @@ export function AgentDetail(): ReactElement {
           />
         )}
 
+        <div
+          key={activeSection}
+          style={{
+            animation:
+              "axiom-fade-in 150ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1))",
+          }}
+        >
         {/* Overview tab: metadata + deposit + transfer */}
         <div
           role="tabpanel"
@@ -626,6 +639,7 @@ export function AgentDetail(): ReactElement {
           )}
         </div>
 
+        </div>
         {transferOpen && (
           <Suspense fallback={null}>
             <TransferModal
