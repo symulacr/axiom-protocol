@@ -741,6 +741,35 @@ export function Spinner({
   );
 }
 
+const MODAL_CSS = `
+  [data-axiom-modal] {
+    opacity: 0;
+    transform: scale(0.96);
+    transform-origin: center;
+    transition: opacity 240ms var(--ease-out), transform 240ms var(--ease-out);
+  }
+  [data-axiom-modal][open] {
+    opacity: 1;
+    transform: scale(1);
+  }
+  [data-axiom-modal]::backdrop {
+    opacity: 0;
+    transition: opacity 240ms var(--ease-out);
+  }
+  [data-axiom-modal][open]::backdrop {
+    opacity: 1;
+  }
+  @starting-style {
+    [data-axiom-modal][open] {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+    [data-axiom-modal][open]::backdrop {
+      opacity: 0;
+    }
+  }
+`;
+
 interface ModalProps {
   open: boolean;
   onClose: () => void;
@@ -771,11 +800,14 @@ export const Modal = React.memo(function Modal({
   const handleClose = useCallback(() => onClose(), [onClose]);
 
   return (
-    <dialog
-      ref={dialogRef}
-      onClose={handleClose}
-      aria-labelledby={title ? "modal-title" : undefined}
-      style={{
+    <>
+      <style>{MODAL_CSS}</style>
+      <dialog
+        ref={dialogRef}
+        onClose={handleClose}
+        aria-labelledby={title ? "modal-title" : undefined}
+        data-axiom-modal=""
+        style={{
         padding: 28,
         border: `1px solid ${COLORS.borderStrong}`,
         borderRadius: "var(--radius-xl)",
@@ -805,7 +837,8 @@ export const Modal = React.memo(function Modal({
         </h2>
       )}
       {children}
-    </dialog>
+      </dialog>
+    </>
   );
 });
 
