@@ -540,7 +540,7 @@ export function ExecutePanel({
                   color,
                   fontWeight,
                   opacity: isUpcoming ? 0.4 : 1,
-                  transition: "all 0.3s ease",
+                  transition: "opacity 0.2s var(--ease-out), color 0.18s var(--ease-out)",
                   ...animationStyle,
                 }}
               >
