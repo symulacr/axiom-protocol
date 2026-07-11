@@ -8,7 +8,7 @@ export function NotFound(): ReactElement {
       style={{
         padding: "var(--space-4xl) var(--space-xl)",
         textAlign: "center",
-        animation: "axiom-fade-in 0.4s cubic-bezier(0.25, 1, 0.5, 1)",
+        animation: "axiom-fade-in 300ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1))",
       }}
     >
       <Card
