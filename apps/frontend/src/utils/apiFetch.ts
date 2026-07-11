@@ -1,5 +1,22 @@
 import { API_KEY, BACKEND_URL } from "../config/env.js";
 
+export function agentPath(id: bigint | string, resource?: string): string {
+  const base = `/v1/agents/${id.toString()}`;
+  return resource ? `${base}/${resource}` : base;
+}
+
+export function agentTransferPath(id: bigint | string): string {
+  return agentPath(id, "transfer");
+}
+
+export function agentEarningsPath(id: bigint | string): string {
+  return agentPath(id, "earnings");
+}
+
+export function agentRoyaltyPath(id: bigint | string): string {
+  return agentPath(id, "royalty");
+}
+
 export const DEFAULT_TIMEOUT = 10_000;
 export const LONG_TIMEOUT = 60_000; // on-chain tx wait
 export const STREAM_TIMEOUT = 120_000; // LLM streaming

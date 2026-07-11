@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef } from "react";
-import { useEventHistory, type AxiomEvent } from "./useEventHistory.js";
-import { useEventStream } from "./useEventStream.js";
 import {
+  useEventHistory,
   eventTokenId,
   eventDedupeKey,
   sortEventsChronological,
-} from "../utils/events.js";
+  type AxiomEvent,
+} from "./useEventHistory.js";
+import { useEventStream } from "./useEventStream.js";
 
 export interface UseAgentEventsOptions {
   enabled?: boolean;

@@ -43,11 +43,7 @@ import { registerOrchestratorRoutes } from "./routers/orchestrator.js";
 import { createMintEncodeRouter } from "./routers/mint-encode.js";
 import { createArchiveQueryRouter } from "./routers/archive-query.js";
 import { createArchiveJobsRouter } from "./routers/archive-jobs.js";
-import { createSkillEvmRouter } from "./routers/skill-evm.js";
-import { createSkillStocksRouter } from "./routers/skill-stocks.js";
-import { createSkillOsintRouter } from "./routers/skill-osint.js";
-import { createSkillUnbrokerRouter } from "./routers/skill-unbroker.js";
-import { createSkillOssForensicsRouter } from "./routers/skill-oss-forensics.js";
+import { createSkillRouters } from "./skills/routers.js";
 import {
   chatBodySchema,
   royaltySchema,
@@ -452,11 +448,7 @@ export function startServer(config: ServerConfig): {
 
   app.use(createArchiveQueryRouter(config));
   app.use(createArchiveJobsRouter(config));
-  app.use(createSkillEvmRouter(config));
-  app.use(createSkillStocksRouter(config));
-  app.use(createSkillOsintRouter(config));
-  app.use(createSkillUnbrokerRouter(config));
-  app.use(createSkillOssForensicsRouter(config));
+  app.use(createSkillRouters(config));
 
   app.get("/v1/routes", (_req: Request, res: Response) => {
     res.json({

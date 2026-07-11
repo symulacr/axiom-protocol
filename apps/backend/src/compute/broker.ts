@@ -104,3 +104,34 @@ export async function stopAutoFunding(
     });
   }
 }
+
+const teeLog = createLogger("tee-verifier");
+
+export async function verifyTeeResponse(
+  chainId: number,
+  signer: Wallet,
+  providerAddress: string,
+  content: string,
+  chatId?: string,
+): Promise<boolean | null> {
+  try {
+    const broker = await getBroker(signer, chainId);
+    const result = await broker.inference.processResponse(
+      providerAddress,
+      chatId,
+      content,
+    );
+    teeLog.info("TEE processResponse completed", {
+      providerAddress,
+      chatId: chatId ?? "(none)",
+      result,
+    });
+    return result;
+  } catch (err) {
+    teeLog.warn("TEE verification error", {
+      providerAddress,
+      error: extractErrorMessage(err),
+    });
+    return null;
+  }
+}

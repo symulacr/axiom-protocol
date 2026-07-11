@@ -1,7 +1,7 @@
 import { readFileSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadEnv, getEnv } from "../env.js";
+import { loadEnv, getEnv } from "@axiom/config/env";
 import { initUsageScenarios } from "./e2e/scenarios.js";
 import { resetFrictionFindings } from "./e2e/friction.js";
 import { buildChatEval, printChatEval } from "./e2e/eval.js";

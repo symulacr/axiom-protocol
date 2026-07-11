@@ -7,8 +7,7 @@ import { PAYMENT_PROCESSOR_ABI } from "@axiom/config/abis";
 
 const paymentProcessorAbi = parseAbi(PAYMENT_PROCESSOR_ABI);
 import { getAxiomPaymentProcessorAddress } from "../abi/addresses.js";
-import { agentEarningsPath, agentRoyaltyPath } from "../utils/apiPaths.js";
-import { apiFetch } from "../utils/apiFetch.js";
+import { agentEarningsPath, agentRoyaltyPath, apiFetch } from "../utils/apiFetch.js";
 
 export type PaymentConfig = {
   paymentToken: Address;

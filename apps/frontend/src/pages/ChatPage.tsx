@@ -41,7 +41,7 @@ import {
   type ToolContext,
 } from "../chat/tools.js";
 import { CHAT_MODEL, BACKEND_URL } from "../config/env.js";
-import { galileo, aristotle } from "../config/chains.js";
+import { galileo, aristotle } from "../config/wagmi.js";
 import {
   COLORS,
   Card,

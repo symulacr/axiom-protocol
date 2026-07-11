@@ -1,7 +1,7 @@
 import { Wallet } from "ethers";
 import type { Hex } from "viem";
 
-import { publicKeyUncompressedFromPrivate } from "@axiom/config/crypto/secp256k1";
+import { publicKeyUncompressedFromPrivate } from "@axiom/config/crypto/keys";
 import {
   DEFAULT_EIP712_DOMAIN,
   accessMessageHash as eip712AccessMessageHash,
@@ -15,7 +15,7 @@ import {
 export {
   pubKeyToAddress,
   deriveUncompressedPubkeyFromHex,
-} from "@axiom/config/crypto/secp256k1";
+} from "@axiom/config/crypto/keys";
 export {
   DEFAULT_EIP712_DOMAIN,
   domainSeparator,
