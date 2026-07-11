@@ -561,11 +561,14 @@ export function CopyButton({
   style?: CSSProperties;
 }): ReactElement {
   const [copied, setCopied] = useState(false);
+  const [pulse, setPulse] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const pulseRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     return () => {
       if (timerRef.current !== undefined) clearTimeout(timerRef.current);
+      if (pulseRef.current !== undefined) clearTimeout(pulseRef.current);
     };
   }, []);
 
@@ -585,8 +588,11 @@ export function CopyButton({
         document.body.removeChild(ta);
       }
       setCopied(true);
+      setPulse(true);
       if (timerRef.current !== undefined) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => setCopied(false), 1200);
+      if (pulseRef.current !== undefined) clearTimeout(pulseRef.current);
+      pulseRef.current = setTimeout(() => setPulse(false), 130);
     } catch {
       void 0;
     }
@@ -610,6 +616,8 @@ export function CopyButton({
         fontSize: "var(--text-xs)",
         lineHeight: 1,
         cursor: "pointer",
+        transform: pulse ? "scale(0.97)" : "scale(1)",
+        transition: "transform 120ms var(--ease-out)",
         ...style,
       }}
     >
