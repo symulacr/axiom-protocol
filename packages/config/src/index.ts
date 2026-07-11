@@ -8,7 +8,8 @@ export {
   ARISTOTLE_CHAIN_ID,
 } from "./networks.js";
 export type { OGNetwork } from "./networks.js";
-export { DEPLOYED_ADDRESSES, getAddresses } from "./addresses.js";
+export { getAddresses } from "./addresses.js";
+export type { AddressName } from "./addresses.js";
 export * from "./types/index.js";
 export * from "./eip712.js";
 export {
@@ -49,3 +50,4 @@ export {
 } from "./crypto/secp256k1.js";
 export * from "./http.js";
 export * from "./events.js";
+export * from "./models.js";

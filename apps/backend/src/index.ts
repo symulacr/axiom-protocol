@@ -25,7 +25,7 @@ const provider = getSharedProvider(env.AXIOM_CHAIN_ID ?? GALILEO_CHAIN_ID);
 const signer = new Wallet(env.DEPLOYER_PK, provider);
 const server = startServer({
   bind: env.AXIOM_BIND,
-  port: env.AXIOM_PORT ?? env.PORT ?? 3000,
+  port: env.PORT ?? env.AXIOM_PORT ?? 3000,
   env,
   evmRpc: env.AXIOM_EVM_RPC,
   signer,

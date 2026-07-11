@@ -133,6 +133,7 @@ async function auditDeps(owner: string, repo: string) {
         content = Buffer.from(b64, "base64").toString("utf-8");
         cache.set(key, content);
       }
+      deps[manifest] = content;
     } catch (err) {
       log.warn("auditDeps: failed to read manifest", { err, owner, repo, manifest });
     }

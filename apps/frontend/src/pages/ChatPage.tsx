@@ -13,6 +13,8 @@ import {
   useWriteContract,
   useWalletClient,
 } from "wagmi";
+import { marked } from "marked";
+import DOMPurify from "dompurify";
 import { toast } from "sonner";
 import {
   apiFetchResponse,
@@ -21,8 +23,10 @@ import {
 import { humanizeError } from "../utils/format.js";
 import {
   buildSystemPrompt,
+  formatToolResult,
   groupParallelTools,
-  toChatApiMessages,
+  fitToContext,
+  compactHistory,
 } from "@axiom/chat-runtime";
 import { ChatSessionProvider, useChatSession } from "../chat/ChatSessionProvider.js";
 import { ToolResultBody } from "../chat/ToolResultBody.js";
@@ -36,7 +40,7 @@ import {
   useToolHandlers,
   type ToolContext,
 } from "../chat/tools.js";
-import { CHAT_MODEL } from "../config/env.js";
+import { CHAT_MODEL, BACKEND_URL } from "../config/env.js";
 import { galileo, aristotle } from "../config/chains.js";
 import {
   COLORS,
@@ -58,6 +62,25 @@ type Message = {
 
 function createMessage(msg: Omit<Message, "id">): Message {
   return { ...msg, id: crypto.randomUUID() };
+}
+
+const COMPACTION_RECENT_KEEP = 6;
+
+function buildHeuristicSummary(msgs: Message[]): string {
+  if (msgs.length <= COMPACTION_RECENT_KEEP) return "";
+  const oldest = msgs.slice(0, msgs.length - COMPACTION_RECENT_KEEP);
+  let out = "";
+  for (const m of oldest) {
+    const text = (m.content ?? "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 200);
+    if (!text) continue;
+    const line = `[${m.role}] ${text}\n`;
+    if (out.length + line.length > 800) break;
+    out += line;
+  }
+  return out.trim();
 }
 
 type ToolCall = {
@@ -141,6 +164,23 @@ function loadStoredMessages(): Message[] {
   }
 }
 
+function renderMarkdown(src: string | null): string {
+  return DOMPurify.sanitize(
+    marked.parse(src ?? "", { gfm: true, breaks: true }) as string,
+    { FORBID_TAGS: ["style", "iframe"] },
+  );
+}
+
+const dedupeToolCalls = (calls: ToolCall[]): ToolCall[] =>
+  calls.filter(
+    (c, i) =>
+      calls.findIndex(
+        (x) =>
+          x.function.name === c.function.name &&
+          x.function.arguments === c.function.arguments,
+      ) === i,
+  );
+
 function ChatPageInner(): ReactElement {
   const { address } = useAccount();
   const chainId = useChainId();
@@ -150,6 +190,7 @@ function ChatPageInner(): ReactElement {
   const { data: walletClient } = useWalletClient();
 
   const [messages, setMessages] = useState<Message[]>(loadStoredMessages);
+  const [contextWindow, setContextWindow] = useState<number | undefined>(undefined);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamText, setStreamText] = useState("");
@@ -244,6 +285,13 @@ function ChatPageInner(): ReactElement {
   }, [isStreaming, streamStartTime]);
 
   useEffect(() => {
+    fetch(`${BACKEND_URL}/v1/config`)
+      .then((r) => r.json())
+      .then((d) => setContextWindow(d?.contextWindow))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
     if (streamStartTime === null) return;
     const interval = setInterval(() => {
       setElapsed(Math.floor((Date.now() - streamStartTime) / 1000));
@@ -259,6 +307,8 @@ function ChatPageInner(): ReactElement {
 
       const userMsg = createMessage({ role: "user", content: userText });
       let currentMessages = [...messagesRef.current, userMsg];
+      const summary = buildHeuristicSummary(messagesRef.current);
+      currentMessages = compactHistory(currentMessages, summary);
       messagesRef.current = currentMessages;
       setMessages(currentMessages);
       setIsStreaming(true);
@@ -279,6 +329,8 @@ function ChatPageInner(): ReactElement {
       let hitToolLoopCap = false;
 
       try {
+        const systemContent = buildSystemPrompt(session);
+
         while (loopCount < MAX_TOOL_LOOPS) {
           loopCount++;
 
@@ -287,8 +339,13 @@ function ChatPageInner(): ReactElement {
             body: JSON.stringify({
               model: CHAT_MODEL,
               messages: [
-                { role: "system", content: buildSystemPrompt(session) },
-                ...toChatApiMessages(currentMessages),
+                { role: "system", content: systemContent },
+                ...fitToContext(currentMessages, {
+                  model: CHAT_MODEL,
+                  system: systemContent,
+                  tools: TOOLS,
+                  contextWindow,
+                }),
               ],
               tools: TOOLS,
               stream: true,
@@ -384,19 +441,14 @@ function ChatPageInner(): ReactElement {
                   };
                 }
                 try {
-                  const args = JSON.parse(tc.function.arguments);
+                  const args = JSON.parse(tc.function.arguments?.trim() || "{}");
                   const result = await handler(args, toolCtx);
                   recordToolResult(tc.function.name, result);
                   return { tc, result };
                 } catch (err: unknown) {
                   return {
                     tc,
-                    result: JSON.stringify({
-                      error:
-                        err instanceof Error
-                          ? err.message
-                          : "Tool execution failed",
-                    }),
+                    result: JSON.stringify({ error: "could not parse tool arguments" }),
                   };
                 }
               }),
@@ -408,7 +460,7 @@ function ChatPageInner(): ReactElement {
                   role: "tool",
                   tool_call_id: tc.id,
                   name: tc.function.name,
-                  content: result,
+                  content: formatToolResult(tc.function.name, result),
                 }),
               ];
             }
@@ -675,7 +727,7 @@ function ChatPageInner(): ReactElement {
                     marginTop: "var(--space-xs)",
                   }}
                 >
-                  <ToolResultBody name={msg.name ?? ""} content={msg.content} />
+                  <ToolResultBody name={msg.name ?? ""} content={msg.content} sendTransactionAsync={toolCtx.sendTransactionAsync} />
                 </div>
               ) : msg.tool_calls ? (
                 <div
@@ -684,7 +736,7 @@ function ChatPageInner(): ReactElement {
                     color: COLORS.textMuted,
                   }}
                 >
-                  {msg.tool_calls.map((tc) => (
+                  {dedupeToolCalls(msg.tool_calls).map((tc) => (
                     <div key={tc.id}>
                       <span
                         style={{
@@ -702,17 +754,15 @@ function ChatPageInner(): ReactElement {
                   ))}
                 </div>
               ) : (
-                <p
+                <div
+                  className="chat-md"
                   style={{
                     fontSize: "var(--text-sm)",
                     color: COLORS.text,
-                    margin: 0,
                     lineHeight: "var(--lh-normal)",
-                    whiteSpace: "pre-wrap",
                   }}
-                >
-                  {msg.content}
-                </p>
+                  dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }}
+                />
               )}
             </div>
           ))}
@@ -753,16 +803,26 @@ function ChatPageInner(): ReactElement {
                   Assistant
                 </span>
               </div>
-              <p
-                style={{
-                  fontSize: "var(--text-sm)",
-                  color: COLORS.text,
-                  margin: 0,
-                  lineHeight: "var(--lh-normal)",
-                  whiteSpace: "pre-wrap",
-                }}
-              >
-                {streamText || (
+              {streamText ? (
+                <div
+                  className="chat-md"
+                  style={{
+                    fontSize: "var(--text-sm)",
+                    color: COLORS.text,
+                    lineHeight: "var(--lh-normal)",
+                  }}
+                  dangerouslySetInnerHTML={{ __html: renderMarkdown(streamText) }}
+                />
+              ) : (
+                <p
+                  style={{
+                    fontSize: "var(--text-sm)",
+                    color: COLORS.text,
+                    margin: 0,
+                    lineHeight: "var(--lh-normal)",
+                    whiteSpace: "pre-wrap",
+                  }}
+                >
                   <span
                     style={{
                       display: "inline-flex",
@@ -793,8 +853,8 @@ function ChatPageInner(): ReactElement {
                       {elapsed > 0 && `(${elapsed}s)`}
                     </span>
                   </span>
-                )}
-              </p>
+                </p>
+              )}
             </div>
           )}
         </div>

@@ -1,4 +1,4 @@
-import type { ReactElement } from "react";
+import { useState, type ReactElement } from "react";
 import { formatEther } from "viem";
 import { COLORS } from "../components/ui.js";
 import { parseEncodePreview } from "./encodePreview.js";
@@ -14,12 +14,32 @@ function formatNativeValue(weiStr: string): string {
 export function EncodePreviewCard({
   content,
   toolName,
+  onSign,
 }: {
   content: string | null;
   toolName?: string;
+  onSign?: (a: {
+    to: `0x${string}`;
+    data?: `0x${string}`;
+    value?: bigint;
+  }) => Promise<`0x${string}`>;
 }): ReactElement | null {
   const preview = parseEncodePreview(content);
   if (!preview) return null;
+  const [signedHash, setSignedHash] = useState<string | null>(null);
+  const handleSign = async () => {
+    if (!onSign || !preview.to) return;
+    try {
+      const hash = await onSign({
+        to: preview.to as `0x${string}`,
+        data: (preview.data as `0x${string}`) ?? undefined,
+        value: preview.value ? BigInt(preview.value) : undefined,
+      });
+      setSignedHash(hash);
+    } catch {
+      /* signing rejected or failed */
+    }
+  };
 
   const amountLabel =
     toolName === "withdraw" || toolName === "deposit"
@@ -28,7 +48,7 @@ export function EncodePreviewCard({
         ? `${preview.amount}${preview.amountUnit ? ` ${preview.amountUnit}` : ""}`
         : null;
 
-  if (preview.txHash) {
+  if (preview.txHash ?? signedHash) {
     return (
       <div
         style={{
@@ -42,7 +62,7 @@ export function EncodePreviewCard({
       >
         <strong style={{ color: COLORS.bronzeLight }}>Signed</strong>
         <div style={{ color: COLORS.textMuted, marginTop: 4, wordBreak: "break-all" }}>
-          {preview.txHash}
+          {preview.txHash ?? signedHash}
         </div>
       </div>
     );
@@ -73,6 +93,11 @@ export function EncodePreviewCard({
           data: {preview.data.slice(0, 66)}
           {preview.data.length > 66 ? "…" : ""}
         </div>
+      ) : null}
+      {onSign && preview.to && !signedHash ? (
+        <button className="btn btn-primary" style={{ marginTop: 8 }} onClick={handleSign}>
+          Sign in wallet
+        </button>
       ) : null}
     </div>
   );

@@ -1,4 +1,5 @@
 import type { ChatToolName } from "@axiom/config/chat-tools";
+import { resolveContextWindow } from "@axiom/config";
 import type { ChatSessionContext, ToolResult } from "./types.js";
 
 export function createSession(
@@ -43,6 +44,7 @@ export function applyToolResult(
 }
 
 const MAX_TOOL_CHARS = 1200;
+const HARD_TOOL_CHARS = 6000;
 
 export type ChatApiMessage = {
   role: "user" | "assistant" | "tool";
@@ -66,10 +68,8 @@ export function toChatApiMessages(
   }>,
 ): ChatApiMessage[] {
   return messages.map((msg, index) => {
-    const keepFullTool =
-      msg.role !== "tool" || index >= messages.length - 6;
     const content =
-      msg.role === "tool" && !keepFullTool
+      msg.role === "tool"
         ? compressToolContent(msg.content)
         : msg.content;
     const api: ChatApiMessage = {
@@ -84,7 +84,11 @@ export function toChatApiMessages(
 }
 
 export function compressToolContent(content: string | null): string | null {
-  if (!content || content.length <= MAX_TOOL_CHARS) return content;
+  if (!content) return content;
+  if (content.length > HARD_TOOL_CHARS) {
+    return content.slice(0, HARD_TOOL_CHARS) + "…";
+  }
+  if (content.length <= MAX_TOOL_CHARS) return content;
   try {
     const obj = JSON.parse(content) as Record<string, unknown>;
     const keys = Object.keys(obj).slice(0, 6);
@@ -94,4 +98,55 @@ export function compressToolContent(content: string | null): string | null {
   } catch {
     return content.slice(0, MAX_TOOL_CHARS) + "…";
   }
+}
+
+const OUTPUT_RESERVE_TOKENS = 4096;
+const SAFETY_MARGIN_TOKENS = 1024;
+const RECENT_KEEP = 6;
+
+export function estimateTokens(text: string): number {
+  return Math.ceil(text.length / 4);
+}
+
+export function fitToContext(
+  messages: ChatApiMessage[],
+  opts: {
+    model: string;
+    system: string;
+    tools?: unknown;
+    recentKeep?: number;
+    contextWindow?: number;
+  },
+): ChatApiMessage[] {
+  const window = opts.contextWindow ?? resolveContextWindow(opts.model);
+  const budget = window - OUTPUT_RESERVE_TOKENS - SAFETY_MARGIN_TOKENS;
+  const keep = opts.recentKeep ?? RECENT_KEEP;
+  const overheadTokens =
+    estimateTokens(opts.system) + estimateTokens(JSON.stringify(opts.tools ?? []));
+  const maxHistoryTokens = Math.max(0, budget - overheadTokens);
+  let history = toChatApiMessages(messages);
+  while (history.length > keep) {
+    if (estimateTokens(JSON.stringify(history)) <= maxHistoryTokens) break;
+    history = history.slice(1);
+  }
+  return history;
+}
+
+export function compactHistory<T extends ChatApiMessage>(
+  messages: T[],
+  summary: string | null,
+  recentKeep = RECENT_KEEP,
+): T[] {
+  if (!summary || messages.length === 0) return messages;
+  const keep = Math.min(recentKeep, messages.length);
+  const recent = messages.slice(messages.length - keep);
+  const summaryMsg = {
+    ...recent[0],
+    role: "user" as const,
+    content: `[Earlier conversation summary]\n${summary}`,
+    tool_calls: undefined,
+    tool_call_id: undefined,
+    name: undefined,
+  } as unknown as T;
+  return [summaryMsg, ...recent];
 }

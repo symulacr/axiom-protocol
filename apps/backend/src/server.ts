@@ -22,14 +22,13 @@ import { bigintReplacer } from "@axiom/config/types/bigint";
 import {
   getComputeBaseUrl,
   createRouterClient,
-  resolveModel,
 } from "./compute/router.js";
 import { discoverProviders } from "./compute/provider-discovery.js";
 import { AGENT_NFT_ABI, VAULT_ABI } from "@axiom/config/abis";
 
 import { StrategyRunner } from "./orchestrator/index.js";
 import { DefaultSignerOracleClient } from "./oracle/client.js";
-import { HTTP, type Eip712Domain, DEFAULT_EIP712_DOMAIN, buildEip712Domain } from "@axiom/config";
+import { HTTP, type Eip712Domain, DEFAULT_EIP712_DOMAIN, buildEip712Domain, resolveChatModel, resolveContextWindow } from "@axiom/config";
 import { getSharedProvider } from "./provider.js";
 import { createApiKeyAuth } from "@axiom/config/middleware/auth";
 import { getEventStore } from "./events/store.js";
@@ -84,7 +83,7 @@ REGISTERED_ROUTES.push(
   { method: "GET", path: "/v1/stream", consumer: "ws", description: "WebSocket event stream (upgrade)" },
 );
 
-function isUpstreamTransportError(err: unknown): boolean {
+export function isUpstreamTransportError(err: unknown): boolean {
   const e = err as { code?: string; cause?: { code?: string } } | null;
   const code = e?.code ?? e?.cause?.code;
   if (typeof code !== "string") return false;
@@ -343,6 +342,41 @@ export function startServer(config: ServerConfig): {
     },
   );
 
+  async function fetchModelWindows(): Promise<Record<string, number>> {
+    try {
+      const resp = await fetch(`${getComputeBaseUrl()}/models`, {
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (!resp.ok) return {};
+      const raw = await resp.json();
+      const parsed = z
+        .object({ data: z.array(z.record(z.string(), z.unknown())) })
+        .parse(raw);
+      const out: Record<string, number> = {};
+      for (const m of parsed.data) {
+        const id = String(m.id ?? "");
+        const cw = m.context_window;
+        if (id && typeof cw === "number") out[id] = cw;
+      }
+      return out;
+    } catch {
+      return {};
+    }
+  }
+
+  app.get(
+    "/v1/config",
+    async (_req: Request, res: Response, next: NextFunction) => {
+      try {
+        const model = resolveChatModel(config.env?.AXIOM_COMPUTE_MODEL);
+        const windows = await fetchModelWindows();
+        res.json({ model, contextWindow: resolveContextWindow(model, windows) });
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
+
   app.post(
     "/v1/chat/completions",
     async (req: Request, res: Response, next: NextFunction) => {
@@ -352,10 +386,9 @@ export function startServer(config: ServerConfig): {
           tools,
           model: reqModel,
         } = chatBodySchema.parse(req.body ?? {});
-        const resolvedModel = resolveModel(reqModel);
-        const client = await createRouterClient(resolvedModel, {
-          signer: config.signer,
-        });
+        const DEFAULT_MODEL = resolveChatModel(config.env?.AXIOM_COMPUTE_MODEL);
+        const resolvedModel = reqModel ?? DEFAULT_MODEL;
+        const client = await createRouterClient(resolvedModel);
         const streamAbort = new AbortController();
         const streamTimeoutMs = Number.parseInt(
           process.env.AXIOM_CHAT_STREAM_TIMEOUT_MS ?? "",
@@ -374,7 +407,7 @@ export function startServer(config: ServerConfig): {
             messages: messages as ChatCompletionMessageParam[],
             tools: tools as ChatCompletionTool[] | undefined,
             stream: true,
-            max_tokens: 2048,
+            max_tokens: 4096,
           },
           { signal: streamSignal },
         );

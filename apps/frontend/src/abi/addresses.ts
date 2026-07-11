@@ -1,12 +1,27 @@
-import { DEPLOYED_ADDRESSES } from "@axiom/config/addresses";
+import { getAddresses } from "@axiom/config/addresses";
 import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
 import type { Address } from "viem";
 
+const env: Record<string, unknown> = {
+  AXIOM_AGENT_NFT_ADDRESS: import.meta.env.VITE_AGENT_NFT_ADDRESS,
+  AGENT_NFT_ADDRESS: import.meta.env.VITE_AGENT_NFT_ADDRESS,
+  AXIOM_STRATEGY_VAULT_ADDRESS: import.meta.env.VITE_STRATEGY_VAULT_ADDRESS,
+  VAULT_ADDRESS: import.meta.env.VITE_STRATEGY_VAULT_ADDRESS,
+  AXIOM_TEE_VERIFIER_ADDRESS: import.meta.env.VITE_TEE_VERIFIER_ADDRESS,
+  AXIOM_TEE_VERIFIER: import.meta.env.VITE_TEE_VERIFIER_ADDRESS,
+  AXIOM_PAYMENT_PROCESSOR_ADDRESS: import.meta.env.VITE_PAYMENT_PROCESSOR_ADDRESS,
+  PAYMENT_PROCESSOR_ADDRESS: import.meta.env.VITE_PAYMENT_PROCESSOR_ADDRESS,
+  AXIOM_PAYMENT_PROCESSOR: import.meta.env.VITE_PAYMENT_PROCESSOR_ADDRESS,
+  AXIOM_MOCK_USDC_ADDRESS: import.meta.env.VITE_MOCK_USDC_ADDRESS,
+  AXIOM_PAYMENT_TOKEN: import.meta.env.VITE_MOCK_USDC_ADDRESS,
+};
+
+const A = getAddresses(env);
 const ADDRESSES = {
-  strategyVault: DEPLOYED_ADDRESSES.strategyVault as Address,
-  agentNft: DEPLOYED_ADDRESSES.agentNft as Address,
-  teeVerifier: DEPLOYED_ADDRESSES.teeVerifier as Address,
-  paymentProcessor: DEPLOYED_ADDRESSES.paymentProcessor as Address,
+  strategyVault: A.strategyVault as Address,
+  agentNft: A.agentNft as Address,
+  teeVerifier: A.teeVerifier as Address,
+  paymentProcessor: A.paymentProcessor as Address,
 } as const;
 
 type ContractName = keyof typeof ADDRESSES;

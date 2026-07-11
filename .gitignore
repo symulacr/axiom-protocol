@@ -377,7 +377,6 @@ audit-reports/
 .env*
 
 # ── Untracked root config (kept on disk) ──────────────
-pnpm-workspace.yaml
 
 # ── Track centralized env template ──────────────────────
 !.env.example

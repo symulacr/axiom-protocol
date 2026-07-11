@@ -19,11 +19,16 @@ import { getSharedProvider } from "../provider.js";
 import { keccak256, solidityPacked } from "ethers";
 import { ZERO_DATA_ROOT } from "../utils/constants.js";
 
+const modelDataRootCache = new Map<string, `0x${string}`>();
+
 async function resolveModelDataRoot(
   agentNft: `0x${string}`,
   agentTokenId: string,
   chainId: number,
 ): Promise<`0x${string}`> {
+  const cacheKey = `${agentNft}:${agentTokenId}`;
+  const cached = modelDataRootCache.get(cacheKey);
+  if (cached) return cached;
   try {
     const provider = getSharedProvider(chainId);
     const nftTc = new TypedContract<{ intelligentDatasOf(tokenId: bigint): Promise<Array<{ dataHash: string }>> }>(
@@ -34,7 +39,9 @@ async function resolveModelDataRoot(
     const datas = await nftTc.contract.intelligentDatasOf(BigInt(agentTokenId));
     const hash = datas?.[0]?.dataHash;
     if (typeof hash === "string" && hash.startsWith("0x") && hash.length === 66) {
-      return hash as `0x${string}`;
+      const root = hash as `0x${string}`;
+      modelDataRootCache.set(cacheKey, root);
+      return root;
     }
   } catch { /* ignore */ }
   return ZERO_DATA_ROOT;
@@ -63,6 +70,7 @@ function appendTickEvent(
       tokenId: spec.agentTokenId.toString(),
       action: result.recommendation.action,
       amount: result.recommendation.amount ?? null,
+      confidence: result.recommendation.confidence ?? null,
       reason: result.recommendation.reason,
       durationMs: result.durationMs,
       executionSuccess: result.execution?.success ?? null,
@@ -114,6 +122,7 @@ export function registerOrchestratorRoutes(
           vault,
           computeModel: reqComputeModel ?? DEFAULT_MODEL,
           systemPrompt:
+            parsed.systemPrompt ??
             "You are a crypto-native strategy assistant. Given the current vault balance and recent events, respond with a JSON object { action: 'buy' | 'sell' | 'hold', amount?: number, reason: string }.",
           modelDataRoot,
           modelEncryption: undefined,

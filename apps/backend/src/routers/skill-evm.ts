@@ -31,8 +31,8 @@ const DEX_SPENDERS: Record<string, string> = {
 };
 
 const CHAINS: { name: string; rpc: string }[] = [
-  { name: "ethereum", rpc: "https://eth.llamarpc.com" },
-  { name: "polygon", rpc: "https://polygon-rpc.com" },
+  { name: "ethereum", rpc: "https://ethereum-rpc.publicnode.com" },
+  { name: "polygon", rpc: "https://polygon-bor-rpc.publicnode.com" },
   { name: "arbitrum", rpc: "https://arb1.arbitrum.io/rpc" },
   { name: "optimism", rpc: "https://mainnet.optimism.io" },
   { name: "base", rpc: "https://mainnet.base.org" },
