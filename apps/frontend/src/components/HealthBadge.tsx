@@ -82,7 +82,7 @@ export function HealthBadge(): ReactElement {
         background: "rgba(184, 151, 110, 0.04)",
         border: `1px solid ${COLORS.border}`,
         transition:
-          "color 0.2s ease, background 0.2s ease, border-color 0.2s ease",
+          "color 0.2s var(--ease-out), background 0.2s var(--ease-out), border-color 0.2s var(--ease-out)",
       }}
     >
       <span
@@ -93,10 +93,15 @@ export function HealthBadge(): ReactElement {
           borderRadius: "50%",
           background: dotColor,
           boxShadow: `0 0 6px ${dotColor}66`,
-          transition: "background 0.3s ease, box-shadow 0.3s ease",
+          transition: "background 0.3s var(--ease-out), box-shadow 0.3s var(--ease-out)",
         }}
       />
-      <span>{statusText}</span>
+      <span
+        key={status}
+        style={{ animation: "axiom-fade-in 200ms var(--ease-out)" }}
+      >
+        {statusText}
+      </span>
       {data && (
         <>
           <span
