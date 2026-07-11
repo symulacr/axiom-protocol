@@ -34,6 +34,7 @@ createRoot(rootEl).render(
           <App />
           <Toaster
             position="bottom-right"
+            duration={3000}
             toastOptions={{
               style: {
                 background: COLORS.surface,

@@ -271,7 +271,7 @@ export function AgentsBrowser(): ReactElement {
           </p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {filteredAgents.map((agent) => (
+            {filteredAgents.map((agent, i) => (
               <div
                 key={agent.tokenId}
                 className="agent-card cv-auto"
@@ -288,6 +288,8 @@ export function AgentsBrowser(): ReactElement {
                   overflow: "hidden",
                   minWidth: 0,
                   gap: "var(--space-md)",
+                  animation: "axiom-fade-in 200ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1))",
+                  animationDelay: `${Math.min(i, 10) * 40}ms`,
                 }}
               >
                 <Link

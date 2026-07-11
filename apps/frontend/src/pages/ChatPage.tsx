@@ -667,6 +667,8 @@ function ChatPageInner(): ReactElement {
               style={{
                 padding: "var(--space-md) var(--space-lg)",
                 borderBottom: `1px solid ${COLORS.border}`,
+                animation:
+                  "axiom-fade-in 180ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1))",
               }}
             >
               <div
@@ -773,6 +775,8 @@ function ChatPageInner(): ReactElement {
               style={{
                 padding: "var(--space-md) var(--space-lg)",
                 borderBottom: `1px solid ${COLORS.border}`,
+                animation:
+                  "axiom-fade-in 180ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1))",
               }}
             >
               <div
