@@ -465,6 +465,7 @@ export function ExecutePanel({
 
       {isLoading && (
         <div
+          className="stagger"
           style={{
             padding: "12px",
             background: COLORS.bg,
@@ -473,7 +474,7 @@ export function ExecutePanel({
             display: "flex",
             flexDirection: "column",
             gap: "8px",
-            animation: "axiom-fade-in 0.3s ease-out",
+            animation: "axiom-fade-in 200ms var(--ease-out)",
           }}
         >
           <div
