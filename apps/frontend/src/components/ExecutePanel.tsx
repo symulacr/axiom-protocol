@@ -156,6 +156,35 @@ function SuccessCelebration() {
   );
 }
 
+function RawOutput({ raw }: { raw: string }): ReactElement {
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setShown(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+  return (
+    <pre
+      style={{
+        marginTop: 8,
+        padding: 12,
+        background: COLORS.bg,
+        border: `1px solid ${COLORS.border}`,
+        borderRadius: "var(--radius-lg)",
+        fontSize: "var(--text-xs)",
+        whiteSpace: "pre-wrap",
+        color: COLORS.textMuted,
+        opacity: shown ? 1 : 0,
+        maxHeight: shown ? 2000 : 0,
+        overflow: "hidden",
+        transition:
+          "opacity 200ms var(--ease-out), max-height 200ms var(--ease-out)",
+      }}
+    >
+      {raw}
+    </pre>
+  );
+}
+
 export type ExecutePanelProps = {
   tokenId?: bigint;
 };
@@ -436,6 +465,7 @@ export function ExecutePanel({
 
       {isLoading && (
         <div
+          className="stagger"
           style={{
             padding: "12px",
             background: COLORS.bg,
@@ -444,7 +474,7 @@ export function ExecutePanel({
             display: "flex",
             flexDirection: "column",
             gap: "8px",
-            animation: "axiom-fade-in 0.3s ease-out",
+            animation: "axiom-fade-in 200ms var(--ease-out)",
           }}
         >
           <div
@@ -462,7 +492,7 @@ export function ExecutePanel({
                 borderRadius: "50%",
                 border: `2px solid ${COLORS.border}`,
                 borderTopColor: COLORS.bronzeLight,
-                animation: "axiom-spin 0.8s linear infinite",
+                animation: "axiom-spin 0.6s linear infinite",
               }}
             />
             <span
@@ -510,7 +540,7 @@ export function ExecutePanel({
                   color,
                   fontWeight,
                   opacity: isUpcoming ? 0.4 : 1,
-                  transition: "all 0.3s ease",
+                  transition: "opacity 0.2s var(--ease-out), color 0.18s var(--ease-out)",
                   ...animationStyle,
                 }}
               >
@@ -616,23 +646,7 @@ export function ExecutePanel({
             >
               {showRaw ? "▼ Hide" : "▶ Show"} raw model output
             </Button>
-            {showRaw && (
-              <pre
-                style={{
-                  marginTop: 8,
-                  padding: 12,
-                  background: COLORS.bg,
-                  border: `1px solid ${COLORS.border}`,
-                  borderRadius: "var(--radius-lg)",
-                  fontSize: "var(--text-xs)",
-                  overflowX: "auto",
-                  whiteSpace: "pre-wrap",
-                  color: COLORS.textMuted,
-                }}
-              >
-                {result.rawModelOutput}
-              </pre>
-            )}
+            {showRaw && <RawOutput raw={result.rawModelOutput} />}
           </div>
 
           {result.execution !== undefined && (
