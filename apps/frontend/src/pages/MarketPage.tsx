@@ -156,20 +156,6 @@ export function MarketPage({
       .slice(0, 10);
   }, [mergedTicks]);
 
-  const liveTxHashes = useMemo(
-    () => new Set(liveTransfers.map((t) => t.txHash)),
-    [liveTransfers],
-  );
-  const liveTickTokens = useMemo(
-    () =>
-      new Set(
-        liveEvents
-          .filter((ev) => ev.eventName.toLowerCase().startsWith("tick"))
-          .map((ev) => String((ev.payload as Record<string, unknown>).tokenId ?? "")),
-      ),
-    [liveEvents],
-  );
-
   return (
     <div>
       <PageHeader title="Market" />

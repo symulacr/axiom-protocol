@@ -446,7 +446,7 @@ function ChatPageInner(): ReactElement {
                   const result = await handler(args, toolCtx);
                   recordToolResult(tc.function.name, result);
                   return { tc, result };
-                } catch (err: unknown) {
+                } catch {
                   return {
                     tc,
                     result: JSON.stringify({ error: "could not parse tool arguments" }),
