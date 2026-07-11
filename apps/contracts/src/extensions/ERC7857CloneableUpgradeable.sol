@@ -23,7 +23,7 @@ abstract contract ERC7857CloneableUpgradeable is IERC7857Cloneable, ERC7857Upgra
         uint256[50] __gap;
     }
 
-    // keccak256(abi.encode(uint256(keccak256("0g.storage.ERC7857Cloneable")) - 1)) & ~bytes32(uint256(0xff))
+    // ERC-7201 storage location: keccak256(abi.encode(keccak256("0g.storage.ERC7857Cloneable") - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant STORAGE_LOCATION = 0x03de6cf14ecf4575e0ed0cc2fdb9b7ee13500cb3c0c403254fc893bf6e0c8000;
 
     function _getERC7857CloneableStorage() private pure returns (ERC7857CloneableStorage storage $) {

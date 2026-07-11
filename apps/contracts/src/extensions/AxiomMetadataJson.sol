@@ -66,17 +66,6 @@ import {IntelligentData} from "../interfaces/IERC7857Metadata.sol";
 ///         that returns the canonical triple so the caller can emit the
 ///         event itself.
 library AxiomMetadataJson {
-    // NOTE: The `MetadataJsonDecisionDocumented` event used to live here.
-    // It was MOVED to AxiomAgentNFT (the only contract that ever emits
-    // it) during the Wave 10 C abstract→library conversion. See the
-    // file header for the rationale (libraries cannot emit
-    // contract-scoped events on a third-party contract under
-    // `using … for *;` and even then the event is indexed under the
-    // caller's ABI — keeping it on the contract that owns the
-    // deployment is the idiomatic choice). The library exposes a
-    // public pure helper `documentMetadataJsonDecision(...)` that
-    // returns the canonical triple for callers that want to emit it
-    // themselves.
     /// @notice Pure-function view: build an OpenSea-compatible JSON metadata
     ///         blob for a token from its on-chain state.
     /// @dev    Returns the raw JSON string (NOT a `data:` URI; the caller
@@ -104,12 +93,8 @@ library AxiomMetadataJson {
         string memory collectionName,
         string memory collectionSymbol
     ) public pure returns (string memory json) {
-        // The image URL is intentionally left empty: per the DECISION
-        // block above, the JSON is reconstructed from on-chain state, and
-        // on-chain state does not store an image URL. A frontend that
-        // wants an image calls the 0G Storage client with the first
-        // dataHash (which is what the Wave 9-A verify-data-hash.ts helper
-        // does for integrity).
+        // Image URL intentionally left empty: JSON is reconstructed from on-chain state, which
+        // holds no image URL. A frontend fetches the image from 0G Storage via the first dataHash.
         string memory description = datas.length > 0 ? datas[0].dataDescription : collectionName;
 
         json = string.concat(

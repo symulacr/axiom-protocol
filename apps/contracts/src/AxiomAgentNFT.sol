@@ -8,15 +8,10 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {ERC721Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 
-// UUPS upgradeability is mandated by the security report F-02.
-// Canonical references:
-//   - https://docs.openzeppelin.com/contracts/5.x/upgradeable#upgradeable-proxy
-//   - https://docs.openzeppelin.com/contracts/5.x/api/proxy#UUPSUpgradeable
-//   - https://eips.ethereum.org/EIPS/eip-1967
-// Per OZ guidance, the implementation behind an ERC1967 proxy MUST inherit UUPSUpgradeable
-// and override _authorizeUpgrade with an access check; otherwise the proxy is effectively
-// non-upgradeable (the EIP-1967 slot writes from a UUPS upgrade would all revert on the
-// missing proxiableUUID security check).
+// UUPS upgradeability is mandated by security report F-02.
+// OZ ERC1967 proxies must inherit UUPSUpgradeable and override _authorizeUpgrade with an
+// access check, or upgrades revert on the missing proxiableUUID security check.
+// Refs: https://docs.openzeppelin.com/contracts/5.x/api/proxy#UUPSUpgradeable , EIP-1967.
 import {ERC7857Upgradeable} from "./ERC7857Upgradeable.sol";
 import {ERC7857CloneableUpgradeable} from "./extensions/ERC7857CloneableUpgradeable.sol";
 import {ERC7857AuthorizeUpgradeable} from "./extensions/ERC7857AuthorizeUpgradeable.sol";
@@ -71,8 +66,7 @@ contract AxiomAgentNFT is
     /// @dev Minimum delay between proposing and executing a verifier rotation.
     uint256 public constant ADMIN_DELAY = 1 days;
 
-    // keccak256(abi.encode(uint256(keccak256("agent.storage.AxiomAgentNFT")) - 1)) & ~bytes32(uint256(0xff))
-    // Canonical ERC-7201 formula (OZ v5).
+    // ERC-7201 storage location (OZ v5): keccak256(abi.encode(keccak256("agent.storage.AxiomAgentNFT") - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant STORAGE_LOCATION = 0xe982fe9a44d6409dbf89634fae06be5c796203a5c100b2ec87b395d27194a900;
 
     function _getAxiomAgentNFTStorage() private pure returns (AxiomAgentNFTStorage storage $) {
@@ -249,13 +243,11 @@ contract AxiomAgentNFT is
         _updateData(tokenId, newDatas);
     }
 
-    /// @dev    Required by UUPSUpgradeable. Without this override, UUPSUpgradeable._authorizeUpgrade
-    ///         reverts with "UUPSUnauthorizedCallContext". Per OZ docs, the canonical override is:
-    ///         https://docs.openzeppelin.com/contracts/5.x/api/proxy#UUPSUpgradeable-_authorizeUpgrade-address-
-    ///         The EIP-1967 implementation slot is rewritten by the upgrade; the security check
-    ///         here is the only thing preventing an attacker from bricking or replacing the
-    ///         implementation. Upgrades are restricted to `DEFAULT_ADMIN_ROLE` so governance
-    ///         aligns with AccessControl rather than a separate Ownable surface.
+    /// @dev    Required by UUPSUpgradeable (otherwise _authorizeUpgrade reverts with
+    ///         "UUPSUnauthorizedCallContext"). The EIP-1967 implementation slot is rewritten by the
+    ///         upgrade; this access check is the only thing preventing an attacker from bricking or
+    ///         replacing the implementation. Restricted to `DEFAULT_ADMIN_ROLE` so governance aligns
+    ///         with AccessControl rather than a separate Ownable surface.
     function _authorizeUpgrade(
         address newImplementation
     ) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}

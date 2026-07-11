@@ -21,7 +21,7 @@ abstract contract ERC7857IDataStorageUpgradeable is ERC7857Upgradeable {
         uint256[50] __gap;
     }
 
-    // keccak256(abi.encode(uint256(keccak256("0g.storage.ERC7857IDataStorage")) - 1)) & ~bytes32(uint256(0xff))
+    // ERC-7201 storage location: keccak256(abi.encode(keccak256("0g.storage.ERC7857IDataStorage") - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant STORAGE_LOCATION = 0xcee27158032fdbe7e1246476ff878669b520bc82ee1a949d22135b88cc5f5b00;
 
     function _getERC7857IDataStorageStorage() private pure returns (ERC7857IDataStorageStorage storage $) {

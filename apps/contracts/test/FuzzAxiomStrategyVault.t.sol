@@ -312,8 +312,6 @@ contract FuzzAxiomStrategyVaultTest is StdInvariant, Test {
         (uint256 tid, address owner) = _randomTokenId(tokenIndex);
         // Target must have a receive() so the call doesn't fail for the wrong reason.
 
-        // Setup: fund + set a strategy.
-        // Strategy root differs from action hash so the merkle check fails.
         address target = address(maliciousReceiver);
         bytes memory data = new bytes(0);
 
