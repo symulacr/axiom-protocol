@@ -59,7 +59,7 @@ export function getActionColor(action: string): string {
 }
 
 const transition =
-  "color 0.18s cubic-bezier(0.4, 0, 0.2, 1), background 0.18s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.18s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.18s cubic-bezier(0.4, 0, 0.2, 1)";
+  "color 0.18s var(--ease-out), background 0.18s var(--ease-out), border-color 0.18s var(--ease-out), opacity 0.18s var(--ease-out)";
 
 const formFieldBase: CSSProperties = {
   padding: "0.625rem 0.875rem",
@@ -561,11 +561,14 @@ export function CopyButton({
   style?: CSSProperties;
 }): ReactElement {
   const [copied, setCopied] = useState(false);
+  const [pulse, setPulse] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const pulseRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     return () => {
       if (timerRef.current !== undefined) clearTimeout(timerRef.current);
+      if (pulseRef.current !== undefined) clearTimeout(pulseRef.current);
     };
   }, []);
 
@@ -585,8 +588,11 @@ export function CopyButton({
         document.body.removeChild(ta);
       }
       setCopied(true);
+      setPulse(true);
       if (timerRef.current !== undefined) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => setCopied(false), 1200);
+      if (pulseRef.current !== undefined) clearTimeout(pulseRef.current);
+      pulseRef.current = setTimeout(() => setPulse(false), 130);
     } catch {
       void 0;
     }
@@ -610,6 +616,8 @@ export function CopyButton({
         fontSize: "var(--text-xs)",
         lineHeight: 1,
         cursor: "pointer",
+        transform: pulse ? "scale(0.97)" : "scale(1)",
+        transition: "transform 120ms var(--ease-out)",
         ...style,
       }}
     >
@@ -733,6 +741,35 @@ export function Spinner({
   );
 }
 
+const MODAL_CSS = `
+  [data-axiom-modal] {
+    opacity: 0;
+    transform: scale(0.96);
+    transform-origin: center;
+    transition: opacity 240ms var(--ease-out), transform 240ms var(--ease-out);
+  }
+  [data-axiom-modal][open] {
+    opacity: 1;
+    transform: scale(1);
+  }
+  [data-axiom-modal]::backdrop {
+    opacity: 0;
+    transition: opacity 240ms var(--ease-out);
+  }
+  [data-axiom-modal][open]::backdrop {
+    opacity: 1;
+  }
+  @starting-style {
+    [data-axiom-modal][open] {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+    [data-axiom-modal][open]::backdrop {
+      opacity: 0;
+    }
+  }
+`;
+
 interface ModalProps {
   open: boolean;
   onClose: () => void;
@@ -763,11 +800,14 @@ export const Modal = React.memo(function Modal({
   const handleClose = useCallback(() => onClose(), [onClose]);
 
   return (
-    <dialog
-      ref={dialogRef}
-      onClose={handleClose}
-      aria-labelledby={title ? "modal-title" : undefined}
-      style={{
+    <>
+      <style>{MODAL_CSS}</style>
+      <dialog
+        ref={dialogRef}
+        onClose={handleClose}
+        aria-labelledby={title ? "modal-title" : undefined}
+        data-axiom-modal=""
+        style={{
         padding: 28,
         border: `1px solid ${COLORS.borderStrong}`,
         borderRadius: "var(--radius-xl)",
@@ -797,7 +837,8 @@ export const Modal = React.memo(function Modal({
         </h2>
       )}
       {children}
-    </dialog>
+      </dialog>
+    </>
   );
 });
 
@@ -849,7 +890,6 @@ export function HelpTip({
           position: "absolute",
           bottom: "100%",
           left: "50%",
-          transform: "translateX(-50%)",
           background: COLORS.surface,
           border: `1px solid ${COLORS.border}`,
           borderRadius: "var(--radius-md)",
@@ -857,8 +897,6 @@ export function HelpTip({
           fontSize: "var(--text-xs)",
           color: COLORS.text,
           pointerEvents: "none",
-          opacity: 0,
-          transition: "opacity 0.15s ease",
           zIndex: 100,
           maxWidth: 280,
           whiteSpace: "normal",
