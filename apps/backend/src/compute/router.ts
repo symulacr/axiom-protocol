@@ -133,6 +133,7 @@ export async function createRouterClient(
 ): Promise<OpenAI> {
   const timeout = opts.timeout ?? ROUTER_TIMEOUT_MS;
   log.info("Creating router client", { model });
+  log.info("branch check", { hasSigner: !!opts.signer, signerAddr: opts.signer?.address, hasDirect: !!process.env.AXIOM_COMPUTE_DIRECT_KEY, hasRouterKey: !!(process.env.AXIOM_COMPUTE_API_KEY || process.env.OG_COMPUTE_API_KEY) });
 
   const directKey = process.env.AXIOM_COMPUTE_DIRECT_KEY;
   if (directKey) {
