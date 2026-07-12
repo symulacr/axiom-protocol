@@ -21,6 +21,12 @@ async function archiveQuery(
   return success(data);
 }
 
+function clampLimit(n: unknown, fallback: number): number {
+  const v = Number(n);
+  if (!Number.isFinite(v)) return fallback;
+  return Math.min(Math.max(Math.trunc(v), 1), 200);
+}
+
 export async function runArchiveTool(
   name: string,
   args: Record<string, unknown>,
@@ -44,7 +50,7 @@ async function archiveLookup(
 ): Promise<ToolResult> {
   const url = String(args.url ?? "");
   if (!url) return fail("url required");
-  const limit = Number(args.limit ?? 50);
+  const limit = clampLimit(args.limit, 50);
   return archiveQuery(ctx, {
     intent: "lookup" satisfies ArchiveIntent,
     url,
@@ -62,7 +68,7 @@ async function archiveAccount(
   const result = await archiveQuery(ctx, {
     intent: "account" satisfies ArchiveIntent,
     handle,
-    limit: Number(args.limit ?? 100),
+    limit: clampLimit(args.limit, 100),
   });
   if (!result.ok) return result;
   try {
