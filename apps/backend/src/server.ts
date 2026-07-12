@@ -384,7 +384,10 @@ export function startServer(config: ServerConfig): {
         } = chatBodySchema.parse(req.body ?? {});
         const DEFAULT_MODEL = resolveChatModel(config.env?.AXIOM_COMPUTE_MODEL);
         const resolvedModel = reqModel ?? DEFAULT_MODEL;
-        const client = await createRouterClient(resolvedModel);
+        const client = await createRouterClient(resolvedModel, {
+          signer: config.signer,
+          evmRpc: config.evmRpc,
+        });
         const streamAbort = new AbortController();
         const streamTimeoutMs = Number.parseInt(
           process.env.AXIOM_CHAT_STREAM_TIMEOUT_MS ?? "",

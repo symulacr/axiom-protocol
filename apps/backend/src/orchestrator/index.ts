@@ -180,7 +180,10 @@ export class StrategyRunner {
     if (this.openai && this.openaiModel === model) {
       return this.openai;
     }
-    this.openai = await createRouterClient(model);
+    this.openai = await createRouterClient(model, {
+      signer: this.signer,
+      evmRpc: this.evmRpc,
+    });
     this.openaiModel = model;
     return this.openai;
   }
