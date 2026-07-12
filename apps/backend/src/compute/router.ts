@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import { Wallet } from "ethers";
 import { pickOGNetwork } from "@axiom/config/networks";
-import { resolveChainId, getBroker } from "./broker.js";
+import { resolveChainId, getBroker, createStaticProvider } from "./broker.js";
 import { createLogger } from "../utils/logger.js";
 
 export function getComputeBaseUrl(): string {
@@ -98,7 +98,6 @@ function streamFromEndpoint(
             try {
               yield JSON.parse(data) as DirectChunk;
             } catch {
-              /* skip keep-alive */
             }
           }
         }
@@ -127,6 +126,12 @@ function createSignedSessionClient(
   };
 }
 
+export function buildSigner(opts: RouterClientOptions): Wallet | undefined {
+  return opts.signerPk
+    ? new Wallet(opts.signerPk, createStaticProvider(opts.evmRpc ?? process.env.AXIOM_EVM_RPC ?? "https://evmrpc-testnet.0g.ai"))
+    : opts.signer;
+}
+
 export async function createRouterClient(
   model?: string,
   opts: RouterClientOptions = {},
@@ -140,7 +145,7 @@ export async function createRouterClient(
     log.info("Using direct compute provider", { directBase, model });
     return createSignedSessionClient(directBase, `Bearer ${directKey}`) as unknown as OpenAI;
   }
-  const signer = opts.signerPk ? new Wallet(opts.signerPk) : opts.signer;
+  const signer = buildSigner(opts);
   if (signer) {
     const broker = await getBroker(signer);
     const provider =

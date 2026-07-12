@@ -5,7 +5,7 @@ import {
   type ReadOnlyInferenceBroker,
   type ZGComputeNetworkBroker,
 } from "@0gfoundation/0g-compute-ts-sdk";
-import { GALILEO_CHAIN_ID, pickOGNetwork } from "@axiom/config/networks";
+import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
 import { createLogger } from "../utils/logger.js";
 import { extractErrorMessage } from "../utils/response.js";
 
@@ -15,12 +15,6 @@ export function resolveChainId(chainId?: number): number {
   if (chainId !== undefined) return chainId;
   const env = Number(process.env.AXIOM_CHAIN_ID);
   return Number.isFinite(env) && env > 0 ? env : GALILEO_CHAIN_ID;
-}
-
-export function resolveEvmRpc(chainId?: number): string {
-  if (process.env.AXIOM_EVM_RPC) return process.env.AXIOM_EVM_RPC;
-  const network = pickOGNetwork(resolveChainId(chainId));
-  return network?.evmRpc ?? "https://evmrpc-testnet.0g.ai";
 }
 
 export function createStaticProvider(
@@ -87,21 +81,6 @@ export async function ensureProviderFunded(
       error: extractErrorMessage(err),
     });
     return false;
-  }
-}
-
-export async function stopAutoFunding(
-  signer: Wallet,
-  chainId?: number,
-  provider?: string,
-): Promise<void> {
-  try {
-    const broker = await getBroker(signer, chainId);
-    broker.inference.stopAutoFunding(provider);
-  } catch (err) {
-    log.warn("Stop auto-funding failed", {
-      error: extractErrorMessage(err),
-    });
   }
 }
 
