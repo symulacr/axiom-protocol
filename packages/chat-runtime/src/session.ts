@@ -35,9 +35,6 @@ export function applyToolResult(
       const first = obj.agents[0] as Record<string, unknown>;
       if (first.tokenId !== undefined) session.lastTokenId = String(first.tokenId);
     }
-    if (obj.url !== undefined) {
-      (session as ChatSessionContext & { lastUrl?: string }).lastUrl = String(obj.url);
-    }
   } catch {
   }
   return session;
@@ -124,7 +121,7 @@ export function fitToContext(
   const overheadTokens =
     estimateTokens(opts.system) + estimateTokens(JSON.stringify(opts.tools ?? []));
   const maxHistoryTokens = Math.max(0, budget - overheadTokens);
-  let history = toChatApiMessages(messages);
+  let history = messages;
   while (history.length > keep) {
     if (estimateTokens(JSON.stringify(history)) <= maxHistoryTokens) break;
     history = history.slice(1);

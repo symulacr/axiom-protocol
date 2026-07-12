@@ -36,4 +36,18 @@ describe("groupParallelTools", () => {
     assert.equal(batches.length, 2);
     assert.equal(batches[1]![0]!.function.name, "execute_tick");
   });
+
+  it("groups reads and isolates wallet tools", () => {
+    const calls = [
+      { function: { name: "list_my_agents" } },
+      { function: { name: "vault_balance" } },
+      { function: { name: "deposit" } },
+      { function: { name: "agent_metadata" } },
+    ];
+    const batches = groupParallelTools(calls);
+    assert.equal(batches.length, 3);
+    assert.equal(batches[0]!.length, 2);
+    assert.equal(batches[1]![0]!.function.name, "deposit");
+    assert.equal(batches[2]![0]!.function.name, "agent_metadata");
+  });
 });

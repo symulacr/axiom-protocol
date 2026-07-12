@@ -128,14 +128,6 @@ export function formatToolResult(name: string, result: unknown): string {
       })
       .join("\n");
   }
-  if (obj.wasArchived !== undefined || obj.archived !== undefined) {
-    const archiveText = formatArchiveResult("archive_confirm_deletion", obj);
-    if (archiveText) return archiveText;
-  }
-  if (obj.archivedTweetCount !== undefined || (obj.handle && obj.tweets)) {
-    const archiveText = formatArchiveResult("archive_account_tweets", obj);
-    if (archiveText) return archiveText;
-  }
 
   const lines = Object.entries(obj)
     .filter(([k]) => k !== "ok" && k !== "encodeOnly")

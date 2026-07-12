@@ -4,7 +4,7 @@ import type { ToolResult } from "../types.js";
 
 const ARCHIVE_PROBE = "https://example.com";
 
-type ArchiveIntent = "lookup" | "confirm" | "account" | "closest";
+type ArchiveIntent = "lookup" | "confirm" | "account";
 
 async function archiveQuery(
   ctx: ToolRuntime,
