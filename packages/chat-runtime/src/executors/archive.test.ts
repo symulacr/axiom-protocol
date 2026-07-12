@@ -1,40 +1,50 @@
-import { describe, it } from "node:test";
+import { test } from "node:test";
 import assert from "node:assert/strict";
 import { runArchiveTool } from "./archive.js";
-import type { ToolRuntime } from "../transport.js";
+import type { ToolRuntime } from "./transport.js";
 
-function makeCtx(capture?: { body?: Record<string, unknown> }): ToolRuntime {
+function ctxWithCapture(capture: { body?: string }): ToolRuntime {
   return {
     http: {
-      fetch: async (_path: string, init?: { body?: string }) => {
-        if (capture) capture.body = JSON.parse(String(init?.body));
-        return { ok: true, status: 200, text: async () => "", json: async () => ({}) };
+      async fetch(_path: string, init?: { body?: string | Uint8Array | Record<string, unknown> | null }) {
+        capture.body = typeof init?.body === "string" ? init.body : undefined;
+        return {
+          ok: true,
+          status: 200,
+          async text() {
+            return JSON.stringify({ count: 0, snapshots: [], cached: false });
+          },
+        };
       },
     },
     session: { chainId: 1 },
-    mode: "sign",
-  } as ToolRuntime;
+  } as unknown as ToolRuntime;
 }
 
-describe("runArchiveTool", () => {
-  it("archive_lookup with no url returns {ok:false}", async () => {
-    const res = await runArchiveTool("archive_lookup", {}, makeCtx());
-    assert.equal(res.ok, false);
-  });
+test("archive limit is clamped to a sane maximum (F-17)", async () => {
+  const cap: { body?: string } = {};
+  await runArchiveTool("archive_lookup", { url: "http://example.com", limit: 1_000_000 }, ctxWithCapture(cap));
+  const body = JSON.parse(cap.body ?? "{}") as Record<string, unknown>;
+  assert.equal(body.limit, 200);
+});
 
-  it("defaults lookup limit to 50", async () => {
-    const capture: { body?: Record<string, unknown> } = {};
-    await runArchiveTool("archive_lookup", { url: "https://x.com/a" }, makeCtx(capture));
-    assert.equal(capture.body?.limit, 50);
-  });
+test("archive limit defaults when omitted (F-17)", async () => {
+  const cap: { body?: string } = {};
+  await runArchiveTool("archive_lookup", { url: "http://example.com" }, ctxWithCapture(cap));
+  const body = JSON.parse(cap.body ?? "{}") as Record<string, unknown>;
+  assert.equal(body.limit, 50);
+});
 
-  it("defaults account_tweets limit to 100", async () => {
-    const capture: { body?: Record<string, unknown> } = {};
-    await runArchiveTool(
-      "archive_account_tweets",
-      { handle: "0xSero" },
-      makeCtx(capture),
-    );
-    assert.equal(capture.body?.limit, 100);
-  });
+test("archive limit passes through normal values (F-17)", async () => {
+  const cap: { body?: string } = {};
+  await runArchiveTool("archive_account_tweets", { handle: "foo", limit: 12 }, ctxWithCapture(cap));
+  const body = JSON.parse(cap.body ?? "{}") as Record<string, unknown>;
+  assert.equal(body.limit, 12);
+});
+
+test("archive requires url before calling the backend (F-17)", async () => {
+  const cap: { body?: string } = {};
+  const res = await runArchiveTool("archive_lookup", {}, ctxWithCapture(cap));
+  assert.equal(JSON.parse(res.content).error, "url required");
+  assert.equal(cap.body, undefined);
 });

@@ -44,4 +44,31 @@ describe("formatToolResult", () => {
     assert.match(text, /symbol: AAPL/);
     assert.doesNotMatch(text, /\[details\]/);
   });
+
+  it("always shows the transaction hash for a successful broadcast (F-11)", () => {
+    assert.equal(
+      formatToolResult("mint_agent", JSON.stringify({ ok: true, txHash: "0xdead" })),
+      "Transaction sent: 0xdead",
+    );
+    assert.equal(
+      formatToolResult("deposit", JSON.stringify({ ok: true, txHash: "0xbeef", amount: "1.5" })),
+      "Transaction sent: 0xbeef",
+    );
+  });
+
+  it("renders the first items of skill array results, not '(N items)' (F-12)", () => {
+    const text = formatToolResult(
+      "evm_multichain",
+      JSON.stringify({
+        balances: [
+          { chain: "galileo", wei: "1" },
+          { chain: "aristotle", wei: "2" },
+          { chain: "testnet", wei: "3" },
+        ],
+      }),
+    );
+    assert.match(text, /balances: /);
+    assert.match(text, /galileo/);
+    assert.doesNotMatch(text, /\(3 items\)/);
+  });
 });

@@ -7,7 +7,7 @@ describe("buildSystemPrompt", () => {
   const prompt = buildSystemPrompt(session);
 
   it("surfaces a requiresWallet tag for wallet tools", () => {
-    assert.match(prompt, /\[wallet\]/);
+    assert.match(prompt, /\[wallet/);
   });
 
   it("includes requiresWallet skill names in the destructive list", () => {

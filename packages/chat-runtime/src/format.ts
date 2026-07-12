@@ -28,7 +28,7 @@ function formatArchiveResult(name: string, obj: Record<string, unknown>): string
     const tweets = obj.tweets ?? obj.snapshots;
     const lines = [`@${String(handle)} — ${String(count)} archived tweet URL(s)`];
     if (Array.isArray(tweets)) {
-      for (const t of tweets.slice(0, 20)) {
+      for (const t of tweets.slice(0, 50)) {
         if (typeof t === "string") lines.push(`• ${t}`);
         else if (t && typeof t === "object") {
           const row = t as Record<string, unknown>;
@@ -37,7 +37,7 @@ function formatArchiveResult(name: string, obj: Record<string, unknown>): string
           lines.push(`• ${url ?? JSON.stringify(row)}${ts ? ` (${String(ts)})` : ""}`);
         }
       }
-      if (tweets.length > 20) lines.push(`… and ${tweets.length - 20} more`);
+      if (tweets.length > 50) lines.push(`… and ${tweets.length - 50} more`);
     }
     return lines.join("\n");
   }
@@ -47,7 +47,7 @@ function formatArchiveResult(name: string, obj: Record<string, unknown>): string
     const snapshots = obj.snapshots;
     if (Array.isArray(snapshots)) {
       const lines = [`Snapshots for ${String(url ?? "URL")} (${snapshots.length})`];
-      for (const s of snapshots.slice(0, 15)) {
+      for (const s of snapshots.slice(0, 30)) {
         if (s && typeof s === "object") {
           const row = s as Record<string, unknown>;
           lines.push(
@@ -55,7 +55,7 @@ function formatArchiveResult(name: string, obj: Record<string, unknown>): string
           );
         }
       }
-      if (snapshots.length > 15) lines.push(`… and ${snapshots.length - 15} more`);
+      if (snapshots.length > 30) lines.push(`… and ${snapshots.length - 30} more`);
       return lines.join("\n");
     }
     if (obj.snapshot && typeof obj.snapshot === "object") {
@@ -103,10 +103,6 @@ export function formatToolResult(name: string, result: unknown): string {
   }
 
   if (obj.ok === true && obj.txHash !== undefined) {
-    const keys = Object.keys(obj).filter((k) => k !== "ok" && k !== "txHash");
-    if (keys.length === 0 || (keys.length === 1 && keys[0] === "amount")) {
-      return "";
-    }
     return `Transaction sent: ${String(obj.txHash)}`;
   }
 
@@ -119,7 +115,10 @@ export function formatToolResult(name: string, result: unknown): string {
     return Object.entries(obj)
       .filter(([k]) => k !== "ok" && k !== "encodeOnly")
       .map(([k, v]) => {
-        if (Array.isArray(v)) return `${k}: (${v.length} items)`;
+        if (Array.isArray(v)) {
+          const head = v.slice(0, 5);
+          return `${k}: ${head.map((x) => (x && typeof x === "object" ? JSON.stringify(x) : String(x))).join(", ")}${v.length > 5 ? `, +${v.length - 5} more` : ""}`;
+        }
         if (v && typeof v === "object") return `${k}: ${JSON.stringify(v)}`;
         return `${k}: ${String(v)}`;
       })
@@ -159,7 +158,10 @@ export function formatToolResult(name: string, result: unknown): string {
   const lines = Object.entries(obj)
     .filter(([k]) => k !== "ok" && k !== "encodeOnly")
     .map(([k, v]) => {
-      if (Array.isArray(v)) return `${k}: (${v.length} items)`;
+      if (Array.isArray(v)) {
+        const head = v.slice(0, 5);
+        return `${k}: ${head.map((x) => (x && typeof x === "object" ? JSON.stringify(x) : String(x))).join(", ")}${v.length > 5 ? `, +${v.length - 5} more` : ""}`;
+      }
       if (v && typeof v === "object") return `${k}: [details]`;
       return `${k}: ${String(v)}`;
     });
