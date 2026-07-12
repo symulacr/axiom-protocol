@@ -12,8 +12,10 @@ import {
   Navigate,
   Route,
   Routes,
+  useLocation,
   useNavigate,
 } from "react-router-dom";
+import { useAccount } from "wagmi";
 import { ErrorBoundary } from "./components/ErrorBoundary.js";
 import { HealthBadge } from "./components/HealthBadge.js";
 import { COLORS, ConnectedGuard, Kbd, Spinner } from "./components/ui.js";
@@ -27,6 +29,7 @@ const MintAgentPage = lazy(() => import("./pages/MintAgentPage.js"));
 const ChatPage = lazy(() => import("./pages/ChatPage.js"));
 const NotFound = lazy(() => import("./pages/NotFound.js"));
 const HomePage = lazy(() => import("./pages/HomePage.js"));
+const LandingPage = lazy(() => import("./features/landing/LandingPage.js"));
 
 const ConnectButton = lazy(() =>
   import("@rainbow-me/rainbowkit").then((m) => ({ default: m.ConnectButton })),
@@ -49,8 +52,7 @@ function navLinkStyle({
     color: isActive ? COLORS.bronzeLight : COLORS.textMuted,
     textDecoration: "none",
     fontSize: "var(--text-sm)",
-    fontWeight: "var(--fw-medium)",
-    padding: "0.75rem 0.5rem",
+    fontWeight: isActive ? "var(--fw-semibold)" : "var(--fw-medium)",
     transition: "color 0.18s var(--ease-out)",
   };
 }
@@ -95,6 +97,7 @@ function ShortcutHelp(): ReactElement | null {
   if (!open) return null;
 
   const shortcuts = [
+    { key: "D", label: "Go to Dashboard" },
     { key: "G", label: "Go to Agents" },
     { key: "M", label: "Go to Market" },
     { key: "C", label: "Go to Chat" },
@@ -177,8 +180,22 @@ export function App(): ReactElement {
   const isMobile = useMediaQuery("(max-width: 640px)");
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const isLanding = location.pathname === "/";
+  const { isConnected } = useAccount();
+  const wasConnected = useRef(false);
   const mobileNavRef = useRef<HTMLDivElement>(null);
   useFocusTrap(mobileNavRef, isMobile && menuOpen);
+
+  // Auto-redirect to the app when the wallet connects on the landing page.
+  // Only fires on the disconnected → connected transition so a connected user
+  // who manually visits "/" can still see the landing page.
+  useEffect(() => {
+    if (isConnected && !wasConnected.current && isLanding) {
+      navigate("/app", { replace: true });
+    }
+    wasConnected.current = isConnected;
+  }, [isConnected, isLanding, navigate]);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -193,6 +210,11 @@ export function App(): ReactElement {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
 
       switch (e.key.toLowerCase()) {
+        case "d":
+          e.preventDefault();
+          setMenuOpen(false);
+          navigate("/app");
+          break;
         case "g":
           e.preventDefault();
           setMenuOpen(false);
@@ -243,7 +265,7 @@ export function App(): ReactElement {
       >
         <nav
           aria-label="Primary"
-          style={{ display: "flex", gap: "var(--space-2xl)", alignItems: "center" }}
+          style={{ display: "flex", gap: "var(--space-xl)", alignItems: "center" }}
         >
           <Link
             to="/"
@@ -251,14 +273,18 @@ export function App(): ReactElement {
               fontWeight: "var(--fw-bold)",
               textDecoration: "none",
               fontSize: "var(--text-lg)",
-              color: "var(--c-text)",
+              color: "var(--c-text-primary)",
               letterSpacing: "-0.01em",
             }}
           >
             Axiom Protocol
           </Link>
-          {!isMobile && (
+          {/* App navigation — hidden on the public landing page */}
+          {!isLanding && !isMobile && (
             <>
+              <NavLink to="/app" style={navLinkStyle}>
+                Dashboard
+              </NavLink>
               <NavLink to="/agents" style={navLinkStyle}>
                 Agents{" "}
                 <Kbd
@@ -267,7 +293,7 @@ export function App(): ReactElement {
                     opacity: 0.5,
                     marginLeft: 4,
                     padding: "1px 4px",
-                    borderRadius: 3,
+                    borderRadius: 0,
                     border: `1px solid ${COLORS.border}`,
                     lineHeight: 1,
                   }}
@@ -283,7 +309,7 @@ export function App(): ReactElement {
                     opacity: 0.5,
                     marginLeft: 4,
                     padding: "1px 4px",
-                    borderRadius: 3,
+                    borderRadius: 0,
                     border: `1px solid ${COLORS.border}`,
                     lineHeight: 1,
                   }}
@@ -299,7 +325,7 @@ export function App(): ReactElement {
                     opacity: 0.5,
                     marginLeft: 4,
                     padding: "1px 4px",
-                    borderRadius: 3,
+                    borderRadius: 0,
                     border: `1px solid ${COLORS.border}`,
                     lineHeight: 1,
                   }}
@@ -309,9 +335,25 @@ export function App(): ReactElement {
               </NavLink>
             </>
           )}
+          {/* Marketing CTA on the landing page only */}
+          {isLanding && (
+            <Link
+              to="/app"
+              style={{
+                fontSize: "var(--text-sm)",
+                fontWeight: "var(--fw-semibold)",
+                color: "var(--c-bronze)",
+                textDecoration: "none",
+                marginLeft: "var(--space-sm)",
+              }}
+            >
+              Launch app →
+            </Link>
+          )}
         </nav>
         <div style={{ display: "flex", alignItems: "center", gap: "var(--space-md)" }}>
-          {isMobile && (
+          {/* Mobile menu toggle — app routes only, not on the landing page */}
+          {!isLanding && isMobile && (
             <button
               onClick={() => setMenuOpen(!menuOpen)}
               aria-label="Toggle navigation menu"
@@ -330,7 +372,8 @@ export function App(): ReactElement {
               {menuOpen ? "✕" : "☰"}
             </button>
           )}
-          {!isMobile && (
+          {/* Keyboard shortcuts hint — app routes only */}
+          {!isLanding && !isMobile && (
             <span
               style={{
                 fontSize: "var(--text-xs)",
@@ -343,11 +386,13 @@ export function App(): ReactElement {
             </span>
           )}
 
-          <HealthBadge />
+          {/* Health indicator — app routes only (meaningless on a public page) */}
+          {!isLanding && <HealthBadge />}
           <WalletButton />
         </div>
       </header>
-      {isMobile && (
+      {/* Mobile nav menu — app routes only */}
+      {!isLanding && isMobile && (
         <div
           id="mobile-nav-menu"
           ref={mobileNavRef}
@@ -371,6 +416,13 @@ export function App(): ReactElement {
               "transform 250ms var(--ease-drawer, cubic-bezier(0.32, 0.72, 0, 1)), opacity 250ms var(--ease-drawer, cubic-bezier(0.32, 0.72, 0, 1))",
           }}
         >
+          <NavLink
+            to="/app"
+            style={navLinkStyle}
+            onClick={() => setMenuOpen(false)}
+          >
+            Dashboard
+          </NavLink>
           <NavLink
             to="/agents"
             style={navLinkStyle}
@@ -396,13 +448,20 @@ export function App(): ReactElement {
       )}
       <main
         id="main-content"
-        style={{
-          padding: "var(--space-2xl) var(--space-xl)",
-          maxWidth: "var(--content-max)",
-          margin: "0 auto",
-          minHeight: "calc(100vh - var(--nav-h))",
-          contain: "layout style",
-        }}
+        style={
+          isLanding
+            ? {
+                minHeight: "calc(100vh - var(--nav-h))",
+                contain: "layout style",
+              }
+            : {
+                padding: "var(--space-2xl) var(--space-xl)",
+                maxWidth: "var(--content-max)",
+                margin: "0 auto",
+                minHeight: "calc(100vh - var(--nav-h))",
+                contain: "layout style",
+              }
+        }
       >
         <ErrorBoundary>
           <Suspense
@@ -421,7 +480,8 @@ export function App(): ReactElement {
           >
             <div key={location.pathname} className="fade-enter">
               <Routes>
-              <Route path="/" element={<HomePage />} />
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/app" element={<HomePage />} />
               <Route path="/agents" element={<AgentsBrowser />} />
               <Route
                 path="/agents/new"
@@ -457,103 +517,141 @@ export function App(): ReactElement {
       </main>
       <footer
         style={{
-          maxWidth: "68rem",
-          margin: "0 auto",
-          padding: "var(--space-xl)",
-          borderTop: `1px solid ${COLORS.border}`,
+          background: "var(--c-bronze)",
+          color: "#ffffff",
+          marginTop: "var(--space-5xl)",
         }}
       >
-        <details style={{ fontSize: "var(--text-xs)", color: COLORS.textDim }}>
-          <summary
+        <div
+          style={{
+            maxWidth: "var(--content-max)",
+            margin: "0 auto",
+            padding: "var(--space-3xl) var(--space-xl)",
+          }}
+        >
+          <div
             style={{
-              cursor: "pointer",
-              color: COLORS.textMuted,
-              marginBottom: "var(--space-sm)",
+              display: "flex",
+              alignItems: "baseline",
+              justifyContent: "space-between",
+              flexWrap: "wrap",
+              gap: "var(--space-md)",
+              marginBottom: "var(--space-2xl)",
             }}
           >
-            Key Terms
-          </summary>
-          <dl
-            style={{
-              margin: 0,
-              display: "grid",
-              gridTemplateColumns: "auto 1fr",
-              gap: "4px var(--space-lg)",
-            }}
-          >
-            <dt
+            <span
               style={{
-                color: COLORS.textMuted,
+                fontWeight: "var(--fw-bold)",
+                fontSize: "var(--text-lg)",
+                letterSpacing: "-0.01em",
+              }}
+            >
+              Axiom Protocol
+            </span>
+            <span style={{ fontSize: "var(--text-xs)", opacity: 0.7 }}>
+              Intelligent NFTs · TEE-attested agents · 0G network
+            </span>
+          </div>
+          <details style={{ fontSize: "var(--text-xs)", color: "#ffffff" }}>
+            <summary
+              style={{
+                cursor: "pointer",
+                color: "#ffffff",
+                opacity: 0.85,
+                marginBottom: "var(--space-sm)",
                 fontWeight: "var(--fw-medium)",
               }}
             >
-              iNFT
-            </dt>
-            <dd style={{ margin: 0 }}>
-              Intelligent NFT — an ERC-7857 token tied to encrypted AI agent
-              metadata
-            </dd>
-            <dt
+              Key Terms
+            </summary>
+            <dl
               style={{
-                color: COLORS.textMuted,
-                fontWeight: "var(--fw-medium)",
+                margin: 0,
+                display: "grid",
+                gridTemplateColumns: "auto 1fr",
+                gap: "4px var(--space-lg)",
               }}
             >
-              TEE
-            </dt>
-            <dd style={{ margin: 0 }}>
-              Trusted Execution Environment — hardware-isolated secure enclave
-              for signing proofs
-            </dd>
-            <dt
-              style={{
-                color: COLORS.textMuted,
-                fontWeight: "var(--fw-medium)",
-              }}
-            >
-              Strategy Root
-            </dt>
-            <dd style={{ margin: 0 }}>
-              Merkle root that cryptographically verifies which strategies an
-              agent can execute
-            </dd>
-            <dt
-              style={{
-                color: COLORS.textMuted,
-                fontWeight: "var(--fw-medium)",
-              }}
-            >
-              Daily Limit
-            </dt>
-            <dd style={{ margin: 0 }}>
-              Maximum 0G an agent can spend per day, resets at midnight UTC
-            </dd>
-            <dt
-              style={{
-                color: COLORS.textMuted,
-                fontWeight: "var(--fw-medium)",
-              }}
-            >
-              0G Storage
-            </dt>
-            <dd style={{ margin: 0 }}>
-              Decentralized storage where encrypted agent data is persisted with
-              Merkle proof verification
-            </dd>
-            <dt
-              style={{
-                color: COLORS.textMuted,
-                fontWeight: "var(--fw-medium)",
-              }}
-            >
-              0G Compute
-            </dt>
-            <dd style={{ margin: 0 }}>
-              Decentralized inference network where agents run trading
-              strategies via TEE-attested LLMs
-            </dd>
-          </dl>
-        </details>
+              <dt
+                style={{
+                  color: "#ffffff",
+                  opacity: 0.7,
+                  fontWeight: "var(--fw-medium)",
+                }}
+              >
+                iNFT
+              </dt>
+              <dd style={{ margin: 0, opacity: 0.9 }}>
+                Intelligent NFT — an ERC-7857 token tied to encrypted AI agent
+                metadata
+              </dd>
+              <dt
+                style={{
+                  color: "#ffffff",
+                  opacity: 0.7,
+                  fontWeight: "var(--fw-medium)",
+                }}
+              >
+                TEE
+              </dt>
+              <dd style={{ margin: 0, opacity: 0.9 }}>
+                Trusted Execution Environment — hardware-isolated secure enclave
+                for signing proofs
+              </dd>
+              <dt
+                style={{
+                  color: "#ffffff",
+                  opacity: 0.7,
+                  fontWeight: "var(--fw-medium)",
+                }}
+              >
+                Strategy Root
+              </dt>
+              <dd style={{ margin: 0, opacity: 0.9 }}>
+                Merkle root that cryptographically verifies which strategies an
+                agent can execute
+              </dd>
+              <dt
+                style={{
+                  color: "#ffffff",
+                  opacity: 0.7,
+                  fontWeight: "var(--fw-medium)",
+                }}
+              >
+                Daily Limit
+              </dt>
+              <dd style={{ margin: 0, opacity: 0.9 }}>
+                Maximum 0G an agent can spend per day, resets at midnight UTC
+              </dd>
+              <dt
+                style={{
+                  color: "#ffffff",
+                  opacity: 0.7,
+                  fontWeight: "var(--fw-medium)",
+                }}
+              >
+                0G Storage
+              </dt>
+              <dd style={{ margin: 0, opacity: 0.9 }}>
+                Decentralized storage where encrypted agent data is persisted
+                with Merkle proof verification
+              </dd>
+              <dt
+                style={{
+                  color: "#ffffff",
+                  opacity: 0.7,
+                  fontWeight: "var(--fw-medium)",
+                }}
+              >
+                0G Compute
+              </dt>
+              <dd style={{ margin: 0, opacity: 0.9 }}>
+                Decentralized inference network where agents run trading
+                strategies via TEE-attested LLMs
+              </dd>
+            </dl>
+          </details>
+        </div>
       </footer>
       <ShortcutHelp />
     </>

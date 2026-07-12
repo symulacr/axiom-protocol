@@ -1,23 +1,33 @@
-/* Axiom Protocol — dark, grounded, spiritual-tech aesthetic. */
+/*
+ * Axiom Protocol — TypeUI · Atlas (Enhanced).
+ * One white content surface. Saturated indigo brand (#1313BA) reserved for
+ * hero & footer only. Square (0px) corners on every shell. Hairline #E8E8F8
+ * borders instead of shadows. Inter at a compact 14px baseline.
+ * Crisp, precise, quietly confident — never rounded, shadowed, or floating.
+ */
 
-/* Spacing scale */
+/* ─── Spacing scale (4pt grid — Atlas spacing) ─── */
 :root {
-  --space-sm: 0.5rem; /* 8px  */
-  --space-xs: 0.25rem; /* 4px  */
-  --space-md: 0.75rem; /* 12px */
-  --space-lg: 1rem; /* 16px */
-  --space-xl: 1.5rem; /* 24px */
-  --space-2xl: 2rem; /* 32px */
-  --space-3xl: 3rem; /* 48px */
-  --space-4xl: 4rem; /* 64px */
+  --space-xs: 0.25rem; /* 4px   spacing-1 */
+  --space-sm: 0.5rem; /* 8px   spacing-2 */
+  --space-md: 0.75rem; /* 12px  spacing-3 */
+  --space-lg: 1rem; /* 16px  spacing-4 */
+  --space-xl: 1.5rem; /* 24px  spacing-6 */
+  --space-2xl: 2rem; /* 32px  spacing-8 */
+  --space-3xl: 3rem; /* 48px  spacing-12 */
+  --space-4xl: 4rem; /* 64px  spacing-16 */
+  --space-5xl: 6rem; /* 96px  spacing-24 — landing section spacing */
+  --space-6xl: 8rem; /* 128px spacing-32 */
 
-  /* Type scale */
-  --text-xs: 0.75rem; /* caption 12px */
-  --text-sm: 0.875rem; /* label 14px */
-  --text-base: 1rem; /* body 16px */
-  --text-lg: 1.25rem; /* subheading 20px */
-  --text-xl: 1.5rem; /* page-heading 24px */
-  --text-3xl: 2rem; /* hero/404 */
+  /* ─── Type scale (Atlas — Inter, 14px body baseline) ─── */
+  --text-xs: 0.75rem; /* 12px font-size-xs */
+  --text-sm: 0.875rem; /* 14px font-size-sm — Atlas body baseline */
+  --text-base: 1rem; /* 16px font-size-md */
+  --text-lg: 1.25rem; /* 20px font-size-xl */
+  --text-xl: 1.5625rem; /* 25px font-size-3xl — app h2 */
+  --text-2xl: 1.75rem; /* 28px font-size-4xl — app h1 ceiling */
+  --text-3xl: 2.5rem; /* 40px font-size-7xl — section heading */
+  --text-4xl: clamp(3rem, 7vw, 4.5rem); /* 72px font-size-hero — hero h1 */
 
   /* Font weights */
   --fw-light: 300;
@@ -26,60 +36,119 @@
   --fw-semibold: 600;
   --fw-bold: 700;
 
-  /* Line heights */
-  --lh-tight: 1.15; /* headings */
-  --lh-snug: 1.35; /* subheadings, labels */
-  --lh-normal: 1.65; /* body text (light-on-dark compensation) */
-  --lh-relaxed: 1.85; /* loose — hero text, large sections */
+  /* Line heights (Atlas) */
+  --lh-tight: 1.3; /* line-height-heading */
+  --lh-snug: 1.3; /* line-height-component / detail */
+  --lh-normal: 1.5; /* line-height-body */
+  --lh-relaxed: 1.5;
 
-  /* Border radius */
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
-  --radius-xl: 12px;
+  /* Border radius — Atlas Enhanced: 0px (square) on every shell.
+     Only functionally-round controls (toggle, avatar, radio, status dot)
+     use 999px — set inline where needed. */
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
 
-  /* Font stacks */
+  /* Font stacks (Atlas — Inter) */
   --font-display:
-    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
   --font-body:
-    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-mono: ui-monospace, "SF Mono", "Fira Code", "JetBrains Mono", monospace;
+    "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+  --font-mono: SFMono-Regular, Menlo, Monaco, Consolas, "Roboto Mono",
+    "Ubuntu Mono", "Lucida Console", "Courier New", monospace;
 
-  /* Colors */
-  --c-bg: #10100e; /* obsidian */
-  --c-surface: #1c1a17; /* dark-carbon */
-  --c-surface-light: #f0ebe3; /* parchment */
-  --c-border: #2d2a25; /* warm-iron */
-  --c-border-strong: #383530; /* aged-steel */
-  --c-text: #f5f0e8; /* bright-nickel */
-  --c-text-primary: #e5dfd6; /* polished-silver */
-  --c-text-muted: #9a9288; /* warm-pewter */
-  --c-text-dim: #8a8175; /* tarnished-lead (WCAG AA on bg) */
-  --c-bronze: #b8976e;
-  --c-bronze-light: #c5a880;
-  --c-bronze-border: rgba(184, 151, 110, 0.25);
-  --c-teal: #5a8a8a;
-  --c-teal-light: #7aa8a8;
-  --c-teal-bg: rgba(90, 138, 138, 0.15);
-  --c-teal-border: rgba(90, 138, 138, 0.2);
-  --c-danger: #d06a6a; /* WCAG AA body-text on surface */
-  --c-success: #6b9e6b;
-  --c-signal-green: #8fbf8f;
-  --c-warning: #c5a25a;
-  --c-overlay: rgba(0, 0, 0, 0.6); /* dialog/modal scrim */
-  --c-scrollbar-hover: #55504a;
+  /* ─── Colors — TypeUI · Atlas ─── */
+  /* One white content surface; brand indigo reserved for hero/footer only. */
+  --c-bg: #ffffff; /* neutral-secondary-soft — page background */
+  --c-surface: #ffffff; /* cards, panels — same as section (never a fill shift) */
+  --c-surface-raised: #ffffff; /* no raised fill — Atlas cards match their section */
+  --c-surface-light: #ffffff;
+
+  --c-border: #e8e8f8; /* default — the hairline that separates everything */
+  --c-border-strong: #d6d6ee; /* default-strong — genuine dividers */
+  --c-border-glow: #cacaf0; /* brand-soft — hover border deepen */
+  --c-border-glow-strong: #1313ba; /* brand — active/focus edge */
+
+  --c-text: #6363c6; /* body — indigo-tinted */
+  --c-text-primary: #1313ba; /* heading — brand indigo */
+  --c-text-muted: #6363c6; /* body */
+  --c-text-dim: #9090ce; /* body-subtle */
+
+  /* Brand — saturated indigo (#1313BA). Hero/footer surface + primary actions. */
+  --c-bronze: #1313ba; /* brand */
+  --c-bronze-light: #1313ba; /* fg-brand — links on neutral surfaces */
+  --c-bronze-dark: #0e0e8c; /* brand-strong — button hover/active */
+  --c-bronze-bg: #e8e8f8; /* brand-softer — soft fill for badges/accents */
+  --c-bronze-border: #cacaf0; /* brand-soft */
+
+  /* Accent — remapped to brand indigo (Atlas has no cyan).
+     Kept as an alias so legacy `variant="teal"` buttons render as brand actions. */
+  --c-teal: #1313ba; /* brand */
+  --c-teal-light: #0e0e8c; /* brand-strong */
+  --c-teal-bg: #e8e8f8; /* brand-softer */
+  --c-teal-border: #cacaf0; /* brand-soft */
+
+  /* Live signal — decorative; brand-tinted so it reads on white */
+  --c-phosphor: #1313ba;
+  --c-phosphor-dim: rgba(19, 19, 186, 0.18);
+  --c-phosphor-bronze: #1313ba;
+
+  /* Status — Atlas semantic (real state only, never decoration) */
+  --c-danger: #be123c;
+  --c-danger-bg: #fff1f2;
+  --c-danger-border: #fecdd3;
+  --c-success: #15a34a;
+  --c-success-bg: #ecfdf3;
+  --c-success-border: #bbf7d0;
+  --c-warning: #f97316;
+  --c-warning-bg: #fffaf5;
+  --c-warning-border: #fed7aa;
+  --c-signal-green: #15a34a;
+
+  /* No surface gradients — Atlas is flat; separation is the border alone */
+  --grad-surface: none;
+  --grad-hero: none;
+
+  /* Scrim — dark-backdrop tinted */
+  --c-overlay: rgba(12, 12, 46, 0.5);
+  --c-scrollbar-hover: #c4c4e0;
+
+  /* ─── Easing ─── */
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
-  --transition: color 0.18s var(--ease-out), background 0.18s var(--ease-out), border-color 0.18s var(--ease-out), opacity 0.18s var(--ease-out);
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ─── Durations ─── */
+  --dur-press: 120ms;
+  --dur-tooltip: 150ms;
+  --dur-dropdown: 200ms;
+  --dur-card-hover: 150ms;
+  --dur-modal: 240ms;
+  --dur-toast: 400ms;
+  --dur-msg-in: 250ms;
+  --dur-landing: 400ms;
+  --dur-stagger: 60ms;
+
+  /* ─── Standard transition shorthand ─── */
+  --transition: color var(--dur-card-hover) var(--ease-out),
+    background var(--dur-card-hover) var(--ease-out),
+    border-color var(--dur-card-hover) var(--ease-out),
+    opacity var(--dur-card-hover) var(--ease-out);
+  --transition-transform: transform var(--dur-card-hover) var(--ease-out);
 
   /* Breakpoints */
   --bp-mobile: 640px;
   --bp-tablet: 768px;
-  --nav-h: 3.25rem; /* header height — single source of truth */
-  --content-max: 68rem; /* content max-width */
+  --nav-h: 3.25rem;
+  --content-max: 80rem; /* 1280px — Atlas section max-width */
 
   font-family: var(--font-body);
-  font-size: var(--text-base);
+  font-size: 100%; /* keep 1rem = 16px; body text set to 14px below */
   line-height: var(--lh-normal);
   color: var(--c-text);
   background: var(--c-bg);
@@ -87,6 +156,7 @@
   -moz-osx-font-smoothing: grayscale;
   font-kerning: normal;
   font-optical-sizing: auto;
+  color-scheme: light;
 }
 
 body {
@@ -94,9 +164,11 @@ body {
   min-height: 100vh;
   background: var(--c-bg);
   font-family: var(--font-body);
+  font-size: var(--text-sm); /* 14px — Atlas body baseline */
+  color: var(--c-text);
 }
 
-/* Headings: tighter line-height, negative tracking for large sizes */
+/* Headings: Atlas — heading color (brand indigo), 1.3 leading, negative tracking on large */
 h1,
 h2,
 h3,
@@ -107,21 +179,22 @@ h6 {
   line-height: var(--lh-tight);
   margin: 0;
   font-weight: var(--fw-bold);
+  color: var(--c-text-primary);
 }
 h1 {
-  font-size: var(--text-xl);
+  font-size: var(--text-2xl);
   letter-spacing: -0.02em;
 }
 h2 {
-  font-size: var(--text-lg);
+  font-size: var(--text-xl);
   letter-spacing: -0.01em;
 }
 h3 {
-  font-size: var(--text-base);
+  font-size: var(--text-lg);
   font-weight: var(--fw-semibold);
 }
 
-/* Body text: light-on-dark compensation */
+/* Body text */
 p {
   margin: 0;
   line-height: var(--lh-normal);
@@ -185,6 +258,189 @@ pre {
   animation: axiom-fade-in 200ms var(--ease-out) both;
 }
 
+/* ─── New keyframes: LCD, scroll reveal, stagger, phosphor ─── */
+
+@keyframes axiom-reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes axiom-reveal-scale {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes axiom-clip-reveal {
+  from {
+    clip-path: inset(0 0 100% 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes axiom-phosphor-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@keyframes axiom-seal-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes axiom-blink {
+  0%, 49% {
+    opacity: 1;
+  }
+  50%, 100% {
+    opacity: 0;
+  }
+}
+
+@keyframes axiom-beam {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes axiom-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes axiom-count-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ─── Landing utility classes ─── */
+
+.landing-section {
+  padding: var(--space-5xl) var(--space-xl);
+  max-width: var(--content-max);
+  margin: 0 auto;
+}
+
+/* Scroll reveal — driven by IntersectionObserver setting data-revealed */
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity var(--dur-landing) var(--ease-out),
+    transform var(--dur-landing) var(--ease-out);
+  will-change: opacity, transform;
+}
+[data-reveal][data-revealed="true"] {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Stagger children — set --stagger-index on each child */
+[data-stagger] > * {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity var(--dur-landing) var(--ease-out),
+    transform var(--dur-landing) var(--ease-out);
+  transition-delay: calc(var(--stagger-index, 0) * var(--dur-stagger));
+}
+[data-stagger][data-revealed="true"] > * {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* SVG clip-path reveal on scroll */
+[data-svg-reveal] {
+  clip-path: inset(0 0 100% 0);
+  transition: clip-path 600ms var(--ease-in-out);
+}
+[data-svg-reveal][data-revealed="true"] {
+  clip-path: inset(0 0 0 0);
+}
+
+/* SVG draw-on — stroke-dashoffset animation */
+[data-svg-draw] {
+  stroke-dasharray: var(--dash, 1000);
+  stroke-dashoffset: var(--dash, 1000);
+  transition: stroke-dashoffset 1.2s var(--ease-in-out);
+}
+[data-svg-draw][data-revealed="true"] {
+  stroke-dashoffset: 0;
+}
+
+/* Phosphor pulse — LCD "live" signal (decorative) */
+.phosphor-pulse {
+  animation: axiom-phosphor-pulse 2s var(--ease-in-out) infinite;
+}
+
+/* Seal rotation — slow decorative spin */
+.seal-rotate {
+  animation: axiom-seal-rotate 20s linear infinite;
+  transform-origin: center;
+}
+
+/* Streaming caret blink */
+.caret-blink {
+  animation: axiom-blink 1s step-end infinite;
+}
+
+/* Beam — traveling light along a path */
+.beam {
+  animation: axiom-beam 3s linear infinite;
+}
+
+/* Prompt card — landing/chat clickable cards */
+.prompt-card {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-xl) var(--space-lg);
+  cursor: pointer;
+  transition: border-color var(--dur-card-hover) var(--ease-out),
+    transform var(--dur-card-hover) var(--ease-out),
+    background var(--dur-card-hover) var(--ease-out);
+  text-align: left;
+  display: block;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+}
+@media (hover: hover) and (pointer: fine) {
+  .prompt-card:hover {
+    border-color: var(--c-border-glow-strong);
+  }
+}
+.prompt-card:focus-visible {
+  outline: 2px solid var(--c-bronze);
+  outline-offset: 2px;
+}
+
 /* Links */
 a {
   color: var(--c-bronze-light);
@@ -245,7 +501,10 @@ dialog::backdrop {
   line-height: 1;
   border: 1px solid transparent;
   cursor: pointer;
-  transition: var(--transition), transform 160ms var(--ease-out);
+  transition: background var(--dur-card-hover) var(--ease-out),
+    border-color var(--dur-card-hover) var(--ease-out),
+    color var(--dur-card-hover) var(--ease-out),
+    transform var(--dur-press) var(--ease-out);
 }
 .btn:disabled {
   opacity: 0.4;
@@ -257,18 +516,18 @@ dialog::backdrop {
 }
 .btn-primary {
   background: var(--c-bronze);
-  color: var(--c-bg);
+  color: #ffffff;
   border-color: var(--c-bronze);
 }
 
 .btn-primary:active {
-  background: var(--c-bronze-light);
-  border-color: var(--c-bronze-light);
+  background: var(--c-bronze-dark);
+  border-color: var(--c-bronze-dark);
 }
 .btn-secondary {
   background: transparent;
   color: var(--c-text-primary);
-  border-color: var(--c-border-strong);
+  border: 2px solid var(--c-border-strong);
 }
 
 .btn-secondary:active {
@@ -296,8 +555,8 @@ dialog::backdrop {
 }
 @media (hover: hover) and (pointer: fine) {
   .btn-primary:hover {
-    background: var(--c-bronze-light);
-    border-color: var(--c-bronze-light);
+    background: var(--c-bronze-dark);
+    border-color: var(--c-bronze-dark);
   }
   .btn-secondary:hover {
     border-color: var(--c-bronze);
@@ -375,23 +634,33 @@ select {
   outline: 2px solid var(--c-bronze);
 }
 
-/* Agent card */
-.agent-card {
-  transition: border-color 0.18s var(--ease-out), transform 160ms var(--ease-out);
-}
-@media (hover: hover) and (pointer: fine) {
-  .agent-card:hover {
-    border-color: var(--c-bronze-border);
-  }
-}
-
-/* Reduced motion */
+/* Reduced motion — gentler, not zero. Keep opacity/color, drop movement. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     transition-property: opacity, color, background-color, border-color !important;
+  }
+  /* Landing scroll-reveal: show immediately, no transform */
+  [data-reveal],
+  [data-stagger] > * {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  /* SVG reveals: show immediately */
+  [data-svg-reveal] {
+    clip-path: none !important;
+  }
+  [data-svg-draw] {
+    stroke-dashoffset: 0 !important;
+  }
+  /* Decorative infinite animations: stop */
+  .phosphor-pulse,
+  .seal-rotate,
+  .caret-blink,
+  .beam {
+    animation: none !important;
   }
 }
 
@@ -404,6 +673,17 @@ select {
   }
 }
 
+/* Agent card — Atlas: border deepen on hover, no lift, no shadow */
+.agent-card {
+  transition: border-color var(--dur-card-hover) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .agent-card:hover {
+    border-color: var(--c-border-glow-strong);
+  }
+}
+
+/* Live status pill */
 .live-pill {
   display: inline-flex;
   align-items: center;
@@ -416,8 +696,8 @@ select {
   background: transparent;
 }
 .live-pill[data-live="true"] {
-  color: var(--c-teal);
-  border-color: var(--c-teal-border);
+  color: var(--c-success);
+  border-color: var(--c-success-border);
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -448,9 +728,10 @@ select {
 
 @media (prefers-contrast: more) {
   :root {
-    --c-border: #4a4540;
-    --c-text-muted: #b0a898;
-    --c-text-dim: #999088;
+    --c-border: #c8c8d8;
+    --c-border-strong: #a8a8c0;
+    --c-text-muted: #4a4a55;
+    --c-text-dim: #5a5a68;
   }
 }
 

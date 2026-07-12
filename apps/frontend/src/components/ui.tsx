@@ -14,10 +14,13 @@ import type {
 export const COLORS = {
   bg: "var(--c-bg)",
   surface: "var(--c-surface)",
+  surfaceRaised: "var(--c-surface-raised)",
   surfaceLight: "var(--c-surface-light)",
 
   border: "var(--c-border)",
   borderStrong: "var(--c-border-strong)",
+  borderGlow: "var(--c-border-glow)",
+  borderGlowStrong: "var(--c-border-glow-strong)",
 
   text: "var(--c-text)",
   textPrimary: "var(--c-text-primary)",
@@ -26,23 +29,27 @@ export const COLORS = {
 
   bronze: "var(--c-bronze)",
   bronzeLight: "var(--c-bronze-light)",
-  bronzeBg: "rgba(184, 151, 110, 0.08)",
+  bronzeDark: "var(--c-bronze-dark)",
+  bronzeBg: "var(--c-bronze-bg)",
   bronzeBorder: "var(--c-bronze-border)",
 
   teal: "var(--c-teal)",
   tealLight: "var(--c-teal-light)",
-  tealBg: "rgba(90, 138, 138, 0.15)",
+  tealBg: "var(--c-teal-bg)",
   tealBorder: "var(--c-teal-border)",
 
+  phosphor: "var(--c-phosphor)",
+  phosphorDim: "var(--c-phosphor-dim)",
+
   danger: "var(--c-danger)",
-  dangerBg: "rgba(200, 90, 90, 0.08)",
-  dangerBorder: "rgba(200, 90, 90, 0.2)",
+  dangerBg: "var(--c-danger-bg)",
+  dangerBorder: "var(--c-danger-border)",
   success: "var(--c-success)",
-  successBg: "rgba(107, 158, 107, 0.08)",
-  successBorder: "rgba(107, 158, 107, 0.2)",
+  successBg: "var(--c-success-bg)",
+  successBorder: "var(--c-success-border)",
   warning: "var(--c-warning)",
-  warningBg: "rgba(197, 162, 90, 0.08)",
-  warningBorder: "rgba(197, 162, 90, 0.2)",
+  warningBg: "var(--c-warning-bg)",
+  warningBorder: "var(--c-warning-border)",
 } as const;
 
 export function getActionColor(action: string): string {
@@ -104,10 +111,12 @@ export const Card = React.memo(function Card({
   children,
   style,
   hover = false,
+  raised = false,
 }: {
   children: ReactNode;
   style?: CSSProperties;
   hover?: boolean;
+  raised?: boolean;
 }): ReactElement {
   return (
     <div
@@ -123,11 +132,11 @@ export const Card = React.memo(function Card({
           : undefined
       }
       style={{
-        background: COLORS.surface,
+        background: raised ? COLORS.surfaceRaised : COLORS.surface,
         border: `1px solid ${COLORS.border}`,
         borderRadius: "var(--radius-xl)",
         padding: "var(--space-xl)",
-        transition,
+        transition: `border-color var(--dur-card-hover) var(--ease-out), transform var(--dur-card-hover) var(--ease-out), background var(--dur-card-hover) var(--ease-out)`,
         overflow: "hidden",
         contain: "layout style",
         ...(hover ? { cursor: "pointer" } : {}),

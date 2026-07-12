@@ -51,6 +51,7 @@ import {
   ErrorRef,
   Spinner,
 } from "../components/ui.js";
+import { AgentTick } from "../components/illustrations/index.js";
 
 type Message = {
   id: string;
@@ -600,51 +601,120 @@ function ChatPageInner(): ReactElement {
           </Card>
         )}
 
-        {/* Welcome / empty state — always show chips when no messages */}
+        {/* Welcome / empty state — visual, illustration-driven, prompt cards */}
         {messages.length === 0 && !isStreaming && (
-          <Card
+          <div
+            className="fade-enter"
             style={{
               marginBottom: "var(--space-lg)",
-              padding: "var(--space-2xl)",
+              padding: "var(--space-3xl) var(--space-2xl)",
               textAlign: "center",
+              border: "1px solid var(--c-border)",
+              borderRadius: "var(--radius-xl)",
+              background: "var(--c-surface)",
             }}
           >
-            <p
-              style={{
-                color: COLORS.textMuted,
-                fontSize: "var(--text-sm)",
-                lineHeight: "var(--lh-normal)",
-                margin: "0 0 var(--space-md)",
-              }}
-            >
-              {hasUsedChat
-                ? "Start a new conversation."
-                : "Ask me anything about your agents, vaults, or the protocol."}
-            </p>
+            {/* Live signal illustration */}
             <div
               style={{
                 display: "flex",
-                flexWrap: "wrap",
-                gap: "var(--space-sm)",
-                justifyContent: "center",
-                margin: "var(--space-lg) 0",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: "var(--space-md)",
+                marginBottom: "var(--space-xl)",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: "var(--text-xs)",
+                  fontFamily: "var(--font-mono)",
+                  color: "var(--c-text-dim)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.1em",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "var(--space-sm)",
+                }}
+              >
+                <span
+                  className="phosphor-pulse"
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: "50%",
+                    background: "var(--c-phosphor)",
+                  }}
+                />
+                {hasUsedChat ? "Ready" : "Vault online"}
+              </span>
+              <AgentTick width={280} height={64} />
+            </div>
+
+            <h2
+              style={{
+                fontSize: "var(--text-xl)",
+                color: "var(--c-text-primary)",
+                marginBottom: "var(--space-xs)",
+                fontWeight: "var(--fw-semibold)",
+              }}
+            >
+              {hasUsedChat ? "Start a new conversation" : "Ask your vault"}
+            </h2>
+            <p
+              style={{
+                color: "var(--c-text-muted)",
+                fontSize: "var(--text-sm)",
+                maxWidth: "36ch",
+                margin: "0 auto var(--space-xl)",
+              }}
+            >
+              {hasUsedChat
+                ? "Pick a prompt below or type your own."
+                : "Agents, balances, strategies — one question away."}
+            </p>
+
+            {/* Prompt cards — clickable, animated via .prompt-card CSS */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                gap: "var(--space-md)",
+                maxWidth: 640,
+                margin: "0 auto",
               }}
             >
               {[
-                "List my agents",
-                "What's my vault balance?",
-                "Execute a strategy",
-              ].map((prompt) => (
-                <Button
-                  key={prompt}
-                  variant="ghost"
-                  onClick={() => sendMessage(prompt)}
+                { label: "List my agents", hint: "See what you own" },
+                { label: "What's my vault balance?", hint: "Check 0G holdings" },
+                { label: "Execute a strategy", hint: "Run a trade now" },
+              ].map((p) => (
+                <button
+                  key={p.label}
+                  className="prompt-card"
+                  onClick={() => sendMessage(p.label)}
                 >
-                  {prompt}
-                </Button>
+                  <div
+                    style={{
+                      fontSize: "var(--text-sm)",
+                      fontWeight: "var(--fw-semibold)",
+                      color: "var(--c-text)",
+                      marginBottom: 2,
+                    }}
+                  >
+                    {p.label}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "var(--text-xs)",
+                      color: "var(--c-text-dim)",
+                    }}
+                  >
+                    {p.hint}
+                  </div>
+                </button>
               ))}
             </div>
-          </Card>
+          </div>
         )}
 
         {/* Message list */}
@@ -657,7 +727,7 @@ function ChatPageInner(): ReactElement {
             overflowY: "auto",
             display: "flex",
             flexDirection: "column",
-            gap: "var(--space-sm)",
+            gap: "var(--space-md)",
             marginBottom: "var(--space-md)",
             paddingRight: "var(--space-sm)",
           }}
@@ -668,7 +738,9 @@ function ChatPageInner(): ReactElement {
               className="fade-enter"
               style={{
                 padding: "var(--space-md) var(--space-lg)",
-                borderBottom: `1px solid ${COLORS.border}`,
+                borderRadius: "var(--radius-lg)",
+                border: `1px solid ${msg.role === "user" ? "var(--c-bronze-border)" : COLORS.border}`,
+                background: msg.role === "user" ? "var(--c-bronze-bg)" : msg.role === "tool" ? "var(--c-bg)" : "var(--c-surface)",
               }}
             >
               <div
@@ -775,7 +847,9 @@ function ChatPageInner(): ReactElement {
               className="fade-enter"
               style={{
                 padding: "var(--space-md) var(--space-lg)",
-                borderBottom: `1px solid ${COLORS.border}`,
+                borderRadius: "var(--radius-lg)",
+                border: `1px solid ${COLORS.border}`,
+                background: "var(--c-surface)",
               }}
             >
               <div
@@ -808,14 +882,26 @@ function ChatPageInner(): ReactElement {
               </div>
               {streamText ? (
                 <div
-                  className="chat-md"
-                  style={{
-                    fontSize: "var(--text-sm)",
-                    color: COLORS.text,
-                    lineHeight: "var(--lh-normal)",
-                  }}
-                  dangerouslySetInnerHTML={{ __html: renderMarkdown(streamText) }}
-                />
+                  style={{ fontSize: "var(--text-sm)", color: COLORS.text, lineHeight: "var(--lh-normal)" }}
+                >
+                  <span
+                    className="chat-md"
+                    style={{ display: "inline" }}
+                    dangerouslySetInnerHTML={{ __html: renderMarkdown(streamText) }}
+                  />
+                  <span
+                    className="caret-blink"
+                    aria-hidden="true"
+                    style={{
+                      display: "inline-block",
+                      width: 2,
+                      height: "1em",
+                      background: "var(--c-phosphor)",
+                      marginLeft: 2,
+                      verticalAlign: "text-bottom",
+                    }}
+                  />
+                </div>
               ) : (
                 <p
                   style={{
@@ -870,7 +956,7 @@ function ChatPageInner(): ReactElement {
                   fontSize: "var(--text-xs)",
                   color: COLORS.textDim,
                   border: `1px solid ${COLORS.border}`,
-                  borderRadius: 999,
+                  borderRadius: 0,
                   padding: "2px 10px",
                 }}
               >
@@ -880,8 +966,17 @@ function ChatPageInner(): ReactElement {
           </div>
         )}
 
-        {/* Input bar */}
-        <div style={{ display: "flex", gap: "var(--space-sm)" }}>
+        {/* Input bar — prominent, rounded */}
+        <div
+          style={{
+            display: "flex",
+            gap: "var(--space-sm)",
+            padding: "var(--space-sm)",
+            border: `1px solid ${COLORS.border}`,
+            borderRadius: "var(--radius-xl)",
+            background: "var(--c-surface)",
+          }}
+        >
           <Input
             aria-label="Chat input"
             value={input}
@@ -900,6 +995,8 @@ function ChatPageInner(): ReactElement {
             maxLength={4000}
             style={{
               flex: 1,
+              border: "none",
+              background: "transparent",
             }}
           />
           {isStreaming && (
