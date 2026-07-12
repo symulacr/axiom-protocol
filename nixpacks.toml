@@ -1,0 +1,6 @@
+[phases.setup]
+nixPkgs = ["nodejs_22", "pnpm"]
+[phases.install]
+cmds = ["corepack enable", "pnpm install --frozen-lockfile"]
+[phases.build]
+cacheDirectives = ["node_modules", "packages/config/dist", "apps/backend/dist", "apps/oracle/dist", "apps/indexer/dist"]
