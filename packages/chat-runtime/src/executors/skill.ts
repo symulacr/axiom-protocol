@@ -1,3 +1,4 @@
+import { getChatToolSpec } from "@axiom/config/chat-tools";
 import type { ToolResult } from "../types.js";
 import type { ToolRuntime } from "../transport.js";
 
@@ -9,11 +10,10 @@ const PREFIX_MAP: Record<string, string> = {
   oss_forensics_: "/v1/skills/oss-forensics/",
 };
 
-function resolveEndpoint(name: string): string {
+export function resolveEndpoint(name: string): string {
   for (const [prefix, base] of Object.entries(PREFIX_MAP)) {
     if (name.startsWith(prefix)) {
-      const action = name.slice(prefix.length).replace(/_/g, "-");
-      return `${base}${action}`;
+      return `${base}${name.slice(prefix.length)}`;
     }
   }
   throw new Error(`Unknown skill tool: ${name}`);
@@ -24,17 +24,43 @@ export async function runSkillTool(
   args: Record<string, unknown>,
   ctx: ToolRuntime,
 ): Promise<ToolResult> {
-  const endpoint = resolveEndpoint(name);
+  const spec = getChatToolSpec(name);
+  if (spec?.requiresWallet && !ctx.wallet?.address) {
+    return fail("Wallet not connected");
+  }
+  if (spec?.requiresTokenId && !args.tokenId && !ctx.session.lastTokenId) {
+    return fail("tokenId required");
+  }
+
+  let endpoint: string;
+  try {
+    endpoint = resolveEndpoint(name);
+  } catch {
+    return fail(`Unknown skill tool: ${name}`);
+  }
 
   const res = await ctx.http.fetch(endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(args),
+    body: JSON.stringify({
+      ...args,
+      context: {
+        chainId: ctx.session.chainId,
+        walletAddress: ctx.wallet?.address ?? ctx.session.walletAddress,
+        agentNft: ctx.session.addresses?.agentNft,
+        vault: ctx.session.addresses?.vault,
+        lastTokenId: ctx.session.lastTokenId,
+      },
+    }),
   });
 
   if (!res.ok) {
     let details: unknown = null;
-    try { details = await res.json(); } catch { details = await res.text(); }
+    try {
+      details = await res.json();
+    } catch {
+      details = await res.text();
+    }
     return {
       ok: false,
       content: JSON.stringify({
@@ -48,12 +74,18 @@ export async function runSkillTool(
   return { ok: true, content: JSON.stringify(capArrays(data, 20)) };
 }
 
-function capArrays(v: unknown, n: number): unknown {
-  if (Array.isArray(v)) return v.slice(0, n);
+export function capArrays(v: unknown, n: number): unknown {
+  if (Array.isArray(v)) {
+    return { truncated: v.length > n, data: v.slice(0, n) };
+  }
   if (v && typeof v === "object") {
     return Object.fromEntries(
       Object.entries(v as Record<string, unknown>).map(([k, x]) => [k, capArrays(x, n)]),
     );
   }
   return v;
+}
+
+function fail(message: string): ToolResult {
+  return { ok: false, content: JSON.stringify({ error: message }) };
 }

@@ -3,12 +3,16 @@ import assert from "node:assert/strict";
 import { formatToolResult } from "./format.js";
 
 describe("formatToolResult", () => {
-  it("hides encode-only payloads", () => {
+  it("surfaces encode-only calldata", () => {
     const text = formatToolResult(
       "deposit",
-      JSON.stringify({ ok: true, encodeOnly: true, to: "0x1", data: "0x" }),
+      JSON.stringify({ ok: true, encodeOnly: true, to: "0x1", data: "0xabc", value: "1000", amount: "1.5" }),
     );
-    assert.equal(text, "");
+    assert.ok(text.length > 0);
+    assert.match(text, /to: 0x1/);
+    assert.match(text, /data: 0xabc/);
+    assert.match(text, /value: 1000/);
+    assert.match(text, /amount: 1\.5/);
   });
 
   it("formats archive confirm", () => {
@@ -30,5 +34,14 @@ describe("formatToolResult", () => {
       JSON.stringify({ balance: "1500000000000000000" }),
     );
     assert.equal(text, "Balance: 1.5 0G");
+  });
+
+  it("formats skill-shaped results readably", () => {
+    const text = formatToolResult(
+      "stocks_quote",
+      JSON.stringify({ symbol: "AAPL", price: 150, currency: "USD" }),
+    );
+    assert.match(text, /symbol: AAPL/);
+    assert.doesNotMatch(text, /\[details\]/);
   });
 });

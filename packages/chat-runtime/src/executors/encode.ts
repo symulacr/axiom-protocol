@@ -40,9 +40,12 @@ async function encodeMint(
   const to = ctx.wallet?.address;
   if (!to) return fail("Wallet not connected");
 
+  if (!args.dataDescription) return fail("dataDescription required");
+  if (!args.dataHash) return fail("dataHash required");
+
   const body = {
-    dataDescription: String(args.dataDescription ?? ""),
-    dataHash: String(args.dataHash ?? "0x"),
+    dataDescription: String(args.dataDescription),
+    dataHash: String(args.dataHash),
     to,
   };
 
@@ -86,7 +89,9 @@ async function encodeVaultOp(
   args: Record<string, unknown>,
   ctx: ToolRuntime,
 ): Promise<ToolResult> {
-  const amount = String(args.amount ?? (op === "deposit" ? "0" : "1"));
+  if (!args.amount) return fail("amount required");
+  const amount = String(args.amount);
+
   const { ok: httpOk, data } = await fetchJson<{
     to: string;
     data: string;

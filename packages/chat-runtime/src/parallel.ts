@@ -25,6 +25,7 @@ function isWalletBound(tc: ToolCallLike): boolean {
   const spec = getChatToolSpec(tc.function.name);
   return (
     spec?.class === "encode" ||
-    (spec?.class === "orchestrate" && tc.function.name === "execute_tick")
+    (spec?.class === "orchestrate" && tc.function.name === "execute_tick") ||
+    (spec?.class === "skill" && spec?.requiresWallet === true)
   );
 }

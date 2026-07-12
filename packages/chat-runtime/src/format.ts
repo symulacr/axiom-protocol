@@ -1,3 +1,5 @@
+import { getChatToolSpec } from "@axiom/config/chat-tools";
+
 function formatWei(wei: bigint): string {
   const s = wei.toString().padStart(19, "0");
   const whole = s.slice(0, -18) || "0";
@@ -84,7 +86,14 @@ export function formatToolResult(name: string, result: unknown): string {
   const obj = r as Record<string, unknown>;
   if (obj.error !== undefined) return `Error: ${String(obj.error)}`;
 
-  if (obj.encodeOnly === true) return "";
+  if (obj.encodeOnly === true) {
+    const lines = ["Calldata (encode-only):"];
+    if (obj.to !== undefined) lines.push(`to: ${String(obj.to)}`);
+    if (obj.data !== undefined) lines.push(`data: ${String(obj.data)}`);
+    if (obj.value !== undefined) lines.push(`value: ${String(obj.value)}`);
+    if (obj.amount !== undefined) lines.push(`amount: ${String(obj.amount)}`);
+    return lines.join("\n");
+  }
 
   if (obj.ok === true && obj.txHash !== undefined) {
     const keys = Object.keys(obj).filter((k) => k !== "ok" && k !== "txHash");
@@ -97,6 +106,17 @@ export function formatToolResult(name: string, result: unknown): string {
   if (name.startsWith("archive_")) {
     const archiveText = formatArchiveResult(name, obj);
     if (archiveText) return archiveText;
+  }
+
+  if (getChatToolSpec(name)?.class === "skill") {
+    return Object.entries(obj)
+      .filter(([k]) => k !== "ok" && k !== "encodeOnly")
+      .map(([k, v]) => {
+        if (Array.isArray(v)) return `${k}: (${v.length} items)`;
+        if (v && typeof v === "object") return `${k}: ${JSON.stringify(v)}`;
+        return `${k}: ${String(v)}`;
+      })
+      .join("\n");
   }
 
   if (obj.balance !== undefined) {
