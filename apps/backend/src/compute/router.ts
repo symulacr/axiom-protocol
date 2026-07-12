@@ -141,7 +141,7 @@ export async function createRouterClient(
     log.info("Using direct compute provider", { directBase, model });
     return createSignedSessionClient(directBase, `Bearer ${directKey}`) as unknown as OpenAI;
   }
-  const signer = opts.signer ?? (opts.signerPk ? new Wallet(opts.signerPk) : undefined);
+  const signer = opts.signerPk ? new Wallet(opts.signerPk) : opts.signer;
   if (signer) {
     const broker = await getBroker(signer);
     const cid = resolveChainId();
