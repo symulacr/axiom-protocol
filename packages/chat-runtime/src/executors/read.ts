@@ -7,7 +7,8 @@ function resolveTokenId(
   args: Record<string, unknown>,
   ctx: ToolRuntime,
 ): string {
-  return String(args.tokenId ?? ctx.session.lastTokenId ?? "0");
+  const id = args.tokenId ?? ctx.session.lastTokenId;
+  return id === undefined || id === null ? "" : String(id);
 }
 
 export async function runReadTool(
@@ -30,6 +31,7 @@ export async function runReadTool(
     }
     case "vault_balance": {
       const tokenId = resolveTokenId(args, ctx);
+      if (!tokenId) return err("tokenId required");
       if (!ctx.chain?.readContract) return err("No chain connection");
       const vault = ctx.session.addresses?.vault;
       if (!vault) return err("Vault address not configured");
@@ -43,6 +45,7 @@ export async function runReadTool(
     }
     case "agent_metadata": {
       const tokenId = resolveTokenId(args, ctx);
+      if (!tokenId) return err("tokenId required");
       if (!ctx.chain?.multicall) return err("No chain connection");
       const nft = ctx.session.addresses?.agentNft;
       if (!nft) return err("Agent NFT address not configured");

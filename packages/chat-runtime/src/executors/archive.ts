@@ -2,8 +2,6 @@ import { fetchJson } from "../http-json.js";
 import type { ToolRuntime } from "../transport.js";
 import type { ToolResult } from "../types.js";
 
-const ARCHIVE_PROBE = "https://example.com";
-
 type ArchiveIntent = "lookup" | "confirm" | "account";
 
 async function archiveQuery(
@@ -44,13 +42,14 @@ async function archiveLookup(
   args: Record<string, unknown>,
   ctx: ToolRuntime,
 ): Promise<ToolResult> {
-  const url = String(args.url ?? ARCHIVE_PROBE);
-  const fullList = Number(args.limit ?? 0) > 1;
+  const url = String(args.url ?? "");
+  if (!url) return fail("url required");
+  const limit = Number(args.limit ?? 50);
   return archiveQuery(ctx, {
     intent: "lookup" satisfies ArchiveIntent,
     url,
-    limit: Number(args.limit ?? (fullList ? 5 : 1)),
-    fullList,
+    limit,
+    fullList: limit > 1,
   });
 }
 
@@ -58,11 +57,12 @@ async function archiveAccount(
   args: Record<string, unknown>,
   ctx: ToolRuntime,
 ): Promise<ToolResult> {
-  const handle = String(args.handle ?? "0g_labs");
+  const handle = String(args.handle ?? "");
+  if (!handle) return fail("handle required");
   const result = await archiveQuery(ctx, {
     intent: "account" satisfies ArchiveIntent,
     handle,
-    limit: Number(args.limit ?? 10),
+    limit: Number(args.limit ?? 100),
   });
   if (!result.ok) return result;
   try {
@@ -82,7 +82,8 @@ async function archiveConfirm(
   args: Record<string, unknown>,
   ctx: ToolRuntime,
 ): Promise<ToolResult> {
-  const url = String(args.url ?? ARCHIVE_PROBE);
+  const url = String(args.url ?? "");
+  if (!url) return fail("url required");
   const result = await archiveQuery(ctx, {
     intent: "confirm" satisfies ArchiveIntent,
     url,

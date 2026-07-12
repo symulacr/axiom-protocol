@@ -50,4 +50,15 @@ describe("groupParallelTools", () => {
     assert.equal(batches[1]![0]!.function.name, "deposit");
     assert.equal(batches[2]![0]!.function.name, "agent_metadata");
   });
+
+  it("places a requiresWallet skill tool in its own serial batch", () => {
+    const calls = [
+      { function: { name: "vault_balance" } },
+      { function: { name: "evm_tx" } },
+      { function: { name: "agent_metadata" } },
+    ];
+    const batches = groupParallelTools(calls);
+    assert.equal(batches.length, 3);
+    assert.equal(batches[1]![0]!.function.name, "evm_tx");
+  });
 });
