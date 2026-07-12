@@ -37,6 +37,8 @@ function buildOpenAIClient(baseURL: string, apiKey: string, timeout: number): Op
 
 export interface RouterClientOptions {
   timeout?: number;
+  signer?: Wallet;
+  evmRpc?: string;
 }
 
 interface DirectChunk {
@@ -105,27 +107,9 @@ function streamFromEndpoint(
   })();
 }
 
-function createDirectClient(baseUrl: string, apiKey: string): DirectClient {
-  const endpoint = `${baseUrl.replace(/\/$/, "")}/chat/completions`;
-  return {
-    chat: {
-      completions: {
-        create: (body, reqOpts) =>
-          streamFromEndpoint(
-            endpoint,
-            { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-            body,
-            reqOpts,
-          ),
-      },
-    },
-  };
-}
-
 function createSignedSessionClient(
   baseUrl: string,
   authHeader: string,
-  timeout: number,
 ): DirectClient {
   const endpoint = `${baseUrl.replace(/\/$/, "")}/chat/completions`;
   return {
@@ -150,25 +134,24 @@ export async function createRouterClient(
   const timeout = opts.timeout ?? ROUTER_TIMEOUT_MS;
   log.info("Creating router client", { model });
 
-  const envOpPk = process.env.AXIOM_OPERATOR_PK;
-  const operatorPk = envOpPk && !envOpPk.includes("<") ? envOpPk : process.env.E2E_OPERATOR_PK;
-  if (operatorPk) {
-    const signer = new Wallet(operatorPk);
-    const broker = await getBroker(signer);
-    const cid = resolveChainId();
-    const services = await discoverProviders(process.env.AXIOM_EVM_RPC ?? "", cid);
-    const provider = selectProvider(services, { model })?.provider;
-    if (!provider) throw new Error(`No 0G provider for model ${model}`);
-    const { Authorization } = await broker.inference.getRequestHeaders(provider);
-    log.info("Using wallet-signed compute session", { provider, model });
-    return createSignedSessionClient(getComputeBaseUrl(), Authorization, timeout) as unknown as OpenAI;
-  }
-
   const directKey = process.env.AXIOM_COMPUTE_DIRECT_KEY;
   if (directKey) {
     const directBase = process.env.AXIOM_COMPUTE_DIRECT_URL ?? "https://compute-network-6.integratenetwork.work/v1/proxy";
     log.info("Using direct compute provider", { directBase, model });
-    return createDirectClient(directBase, directKey) as unknown as OpenAI;
+    return createSignedSessionClient(directBase, `Bearer ${directKey}`) as unknown as OpenAI;
+  }
+
+  const signer = opts.signer;
+  if (signer) {
+    const broker = await getBroker(signer);
+    const cid = resolveChainId();
+    const evmRpc = opts.evmRpc ?? process.env.AXIOM_EVM_RPC ?? "";
+    const services = await discoverProviders(evmRpc, cid);
+    const provider = selectProvider(services, { model })?.provider;
+    if (!provider) throw new Error(`No 0G provider for model ${model}`);
+    const { Authorization } = await broker.inference.getRequestHeaders(provider);
+    log.info("Using wallet-signed compute session", { provider, model });
+    return createSignedSessionClient(getComputeBaseUrl(), Authorization) as unknown as OpenAI;
   }
 
   const routerKey = process.env.AXIOM_COMPUTE_API_KEY ?? process.env.OG_COMPUTE_API_KEY;
