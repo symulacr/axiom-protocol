@@ -52,32 +52,20 @@ interface DirectChunk {
     finish_reason?: string | null;
   }>;
 }
-
-/**
- * Direct compute path: streams from a 0G provider's OpenAI-compatible proxy
- * (e.g. <host>/v1/proxy/chat/completions) authenticated with an app-sk-* direct
- * key. Yields OpenAI-shaped chunks so the chat handler forwards them unchanged.
- * Takes priority over the Router when AXIOM_COMPUTE_DIRECT_KEY is set.
- */
-function createDirectClient(baseUrl: string, apiKey: string, timeout: number) {
+type DirectClient = {
+  chat: { completions: { create: (body: Record<string, unknown>, reqOpts?: { signal?: AbortSignal }) => AsyncGenerator<DirectChunk> } };
+};
+function createDirectClient(baseUrl: string, apiKey: string): DirectClient {
   const endpoint = `${baseUrl.replace(/\/$/, "")}/chat/completions`;
   return {
     chat: {
       completions: {
-        async *create(
-          body: Record<string, unknown>,
-          reqOpts?: { signal?: AbortSignal },
-        ): AsyncGenerator<DirectChunk> {
+        async *create(body, reqOpts) {
           const res = await fetch(endpoint, {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${apiKey}`,
-            },
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
             body: JSON.stringify({ ...body, stream: true }),
             signal: reqOpts?.signal,
-            // @ts-expect-error node fetch timeout option
-            timeout,
           });
           if (!res.ok || !res.body) {
             const text = await res.text().catch(() => "");
@@ -97,11 +85,7 @@ function createDirectClient(baseUrl: string, apiKey: string, timeout: number) {
               if (line.startsWith("data:")) {
                 const data = line.slice(5).trim();
                 if (data !== "[DONE]") {
-                  try {
-                    yield JSON.parse(data) as DirectChunk;
-                  } catch {
-                    /* ignore malformed keep-alive lines */
-                  }
+                  try { yield JSON.parse(data) as DirectChunk; } catch { /* skip keep-alive */ }
                 }
               }
             }
@@ -111,27 +95,19 @@ function createDirectClient(baseUrl: string, apiKey: string, timeout: number) {
     },
   };
 }
-
 export async function createRouterClient(
   model?: string,
   opts: RouterClientOptions = {},
 ): Promise<OpenAI> {
   const timeout = opts.timeout ?? ROUTER_TIMEOUT_MS;
   log.info("Creating router client", { model });
-
   const directKey = process.env.AXIOM_COMPUTE_DIRECT_KEY;
   if (directKey) {
-    const directBase =
-      process.env.AXIOM_COMPUTE_DIRECT_URL ??
-      "https://compute-network-6.integratenetwork.work/v1/proxy";
+    const directBase = process.env.AXIOM_COMPUTE_DIRECT_URL ?? "https://compute-network-6.integratenetwork.work/v1/proxy";
     log.info("Using direct compute provider", { directBase, model });
-    return createDirectClient(directBase, directKey, timeout) as unknown as OpenAI;
+    return createDirectClient(directBase, directKey) as unknown as OpenAI;
   }
-
-  const routerKey =
-    process.env.AXIOM_COMPUTE_API_KEY ?? process.env.OG_COMPUTE_API_KEY;
-  if (routerKey) {
-    return buildOpenAIClient(getComputeBaseUrl(), routerKey, timeout);
-  }
+  const routerKey = process.env.AXIOM_COMPUTE_API_KEY ?? process.env.OG_COMPUTE_API_KEY;
+  if (routerKey) return buildOpenAIClient(getComputeBaseUrl(), routerKey, timeout);
   throw new Error("AXIOM_COMPUTE_API_KEY or OG_COMPUTE_API_KEY required");
 }
