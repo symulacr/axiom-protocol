@@ -14,6 +14,15 @@ describe("buildSystemPrompt", () => {
     assert.match(prompt, /Destructive\/on-chain actions \([^)]*evm_tx/);
   });
 
+  it("includes execute_tick in the destructive list (F-20)", () => {
+    assert.match(prompt, /Destructive\/on-chain actions \([^)]*execute_tick/);
+  });
+
+  it("surfaces capabilities metadata to the model (F-19)", () => {
+    assert.match(prompt, /caps:evm,wallet/);
+    assert.match(prompt, /caps:forensics,supply-chain/);
+  });
+
   it("does not claim all EVM skills read 8 chains", () => {
     assert.doesNotMatch(prompt, /8 chains/);
     assert.match(prompt, /evm_multichain/);

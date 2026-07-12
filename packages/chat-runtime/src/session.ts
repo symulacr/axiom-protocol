@@ -147,3 +147,36 @@ export function compactHistory<T extends ChatApiMessage>(
   } as unknown as T;
   return [summaryMsg, ...recent];
 }
+
+export const MAX_TOOL_LOOPS = 5;
+
+export function summarizeConversation<T extends { role: string; content: string | null }>(
+  msgs: T[],
+  recentKeep = RECENT_KEEP,
+): string {
+  if (msgs.length <= recentKeep) return "";
+  const oldest = msgs.slice(0, msgs.length - recentKeep);
+  let out = "";
+  for (const m of oldest) {
+    const text = (m.content ?? "").replace(/\s+/g, " ").trim().slice(0, 200);
+    if (!text) continue;
+    const line = `[${m.role}] ${text}\n`;
+    if (out.length + line.length > 800) break;
+    out += line;
+  }
+  return out.trim();
+}
+
+export type ContinueSignal = { type: "continue"; reason: "tool_loop_budget_exceeded" } | null;
+
+export function evaluateContinue(
+  loopCount: number,
+  maxLoops = MAX_TOOL_LOOPS,
+): { exhausted: boolean; signal: ContinueSignal } {
+  if (loopCount < maxLoops) return { exhausted: false, signal: null };
+  return { exhausted: true, signal: { type: "continue", reason: "tool_loop_budget_exceeded" } };
+}
+
+export function shouldAutoContinue(signal: ContinueSignal, criticalRequest: boolean): boolean {
+  return signal !== null && !criticalRequest;
+}

@@ -86,6 +86,13 @@ export function formatToolResult(name: string, result: unknown): string {
   const obj = r as Record<string, unknown>;
   if (obj.error !== undefined) return `Error: ${String(obj.error)}`;
 
+  if (obj.ask === true) {
+    const q = typeof obj.question === "string" ? obj.question : "Question";
+    const opts = Array.isArray(obj.options) ? obj.options.map(String).filter(Boolean) : [];
+    const body = opts.length ? opts.map((o, i) => `${i + 1}. ${o}`).join("\n") : "";
+    return `Ask user: ${q}${body ? `\n${body}` : ""}`;
+  }
+
   if (obj.encodeOnly === true) {
     const lines = ["Calldata (encode-only):"];
     if (obj.to !== undefined) lines.push(`to: ${String(obj.to)}`);

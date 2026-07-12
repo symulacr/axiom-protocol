@@ -15,6 +15,7 @@ export function buildSystemPrompt(session: ChatSessionContext): string {
         if (t.requiresTokenId) tags.push("token");
         if (t.encodeOnly) tags.push("sign");
         if (t.friction !== "low") tags.push(t.friction);
+        if (t.capabilities?.length) tags.push(`caps:${t.capabilities.join(",")}`);
         const metaBits = [t.os, t.context, t.requiresApiKey].filter(
           Boolean,
         ) as string[];
@@ -24,9 +25,9 @@ export function buildSystemPrompt(session: ChatSessionContext): string {
       })
       .join(", ");
 
-  const walletActionTools = CHAT_TOOL_CATALOG.filter((t) => t.requiresWallet).map(
-    (t) => t.name,
-  );
+  const walletActionTools = CHAT_TOOL_CATALOG.filter(
+    (t) => t.requiresWallet || t.name === "execute_tick",
+  ).map((t) => t.name);
 
   const ctx = buildSessionContext(session);
 

@@ -1,0 +1,48 @@
+import type { ToolResult } from "../types.js";
+import type { ToolRuntime } from "../transport.js";
+
+export interface AskUserPrompt {
+  question: string;
+  options: string[];
+  multiSelect: boolean;
+  selectable: true;
+}
+
+const MAX_OPTIONS = 4;
+const MAX_LABEL = 80;
+
+export function buildAskUserPrompt(args: Record<string, unknown>): AskUserPrompt {
+  const question = typeof args.question === "string" ? args.question.trim() : "";
+  if (!question) throw new Error("ask_user requires a 'question'");
+  const raw = Array.isArray(args.options) ? args.options : [];
+  const options = raw
+    .map((o) =>
+      typeof o === "string"
+        ? o
+        : o && typeof o === "object"
+          ? String((o as { label?: unknown }).label ?? "")
+          : "",
+    )
+    .map((o) => o.trim())
+    .filter(Boolean)
+    .slice(0, MAX_OPTIONS)
+    .map((o) => (o.length > MAX_LABEL ? o.slice(0, MAX_LABEL) + "…" : o));
+  return { question, options, multiSelect: args.multiSelect === true, selectable: true };
+}
+
+export async function runAskTool(
+  _name: string,
+  args: Record<string, unknown>,
+  _ctx: ToolRuntime,
+): Promise<ToolResult> {
+  return { ok: true, content: JSON.stringify({ ask: true, ...buildAskUserPrompt(args) }) };
+}
+
+export function isAskUserResult(result: ToolResult): boolean {
+  if (!result.ok) return false;
+  try {
+    return (JSON.parse(result.content) as Record<string, unknown>).ask === true;
+  } catch {
+    return false;
+  }
+}
