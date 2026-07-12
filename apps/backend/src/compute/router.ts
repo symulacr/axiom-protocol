@@ -150,7 +150,8 @@ export async function createRouterClient(
   const timeout = opts.timeout ?? ROUTER_TIMEOUT_MS;
   log.info("Creating router client", { model });
 
-  const operatorPk = process.env.AXIOM_OPERATOR_PK;
+  const envOpPk = process.env.AXIOM_OPERATOR_PK;
+  const operatorPk = envOpPk && !envOpPk.includes("<") ? envOpPk : process.env.E2E_OPERATOR_PK;
   if (operatorPk) {
     const signer = new Wallet(operatorPk);
     const broker = await getBroker(signer);
