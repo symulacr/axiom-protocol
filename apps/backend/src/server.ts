@@ -430,12 +430,12 @@ export function startServer(config: ServerConfig): {
           res.end();
         }
       } catch (err) {
+        log.error("chat completions upstream failed", { err });
         if (res.headersSent || res.writableEnded) {
-          res.end();
-          req.destroy();
+          res.destroy();
           return;
         }
-        next(err);
+        res.status(502).json({ error: "compute upstream error" });
       }
     },
   );
