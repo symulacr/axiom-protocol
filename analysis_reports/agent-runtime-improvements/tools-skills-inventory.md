@@ -86,10 +86,10 @@ Values pulled directly from `packages/config/src/chat-tools.ts`. `capabilities`/
 ### READ (4)
 | name | class | requiresWallet | requiresTokenId | capabilities | os | context | requiresApiKey |
 |---|---|---|---|---|---|---|---|
-| list_my_agents | read | true | false | — | — | — | — |
-| vault_balance | read | false | true | — | — | — | — |
-| agent_metadata | read | false | true | — | — | — | — |
-| event_history | read | false | false | — | — | — | — |
+| list_my_agents | read | true | false | read,agents | — | on-chain read | — |
+| vault_balance | read | false | true | read,vault | — | on-chain read (vault) | — |
+| agent_metadata | read | false | true | read,metadata | — | on-chain read (metadata) | — |
+| event_history | read | false | false | read,events | — | on-chain read (events) | — |
 
 ### ENCODE (3)
 | name | class | requiresWallet | requiresTokenId | capabilities | os | context | requiresApiKey |
