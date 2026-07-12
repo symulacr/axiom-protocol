@@ -2,6 +2,9 @@
 set -euo pipefail
 
 pnpm --filter @axiom/config build
+# Force a real recompile: nixpacks caches *.tsbuildinfo across deploys,
+# so tsc --incremental skips emitting changed source.
+find apps -name "tsconfig.tsbuildinfo" -delete 2>/dev/null || true
 
 case "${RAILWAY_SERVICE_NAME:-backend}" in
   indexer)
