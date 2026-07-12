@@ -121,7 +121,7 @@ export function fitToContext(
   const overheadTokens =
     estimateTokens(opts.system) + estimateTokens(JSON.stringify(opts.tools ?? []));
   const maxHistoryTokens = Math.max(0, budget - overheadTokens);
-  let history = messages;
+  let history = toChatApiMessages(messages);
   while (history.length > keep) {
     if (estimateTokens(JSON.stringify(history)) <= maxHistoryTokens) break;
     history = history.slice(1);
