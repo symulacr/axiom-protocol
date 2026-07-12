@@ -70,7 +70,7 @@ sequenceDiagram
 
 ## Prerequisites
 
-- Node ≥ 22, pnpm 11.5.1, Foundry (`forge`) for contracts.
+- Node ≥ 22 (Railway pins 22, Vercel uses 24.x), pnpm 11.5.1, Foundry (`forge`) for contracts.
 
 ## Quick start (local)
 
@@ -88,10 +88,27 @@ Contracts: `cd apps/contracts && pnpm build && pnpm test`
 
 ## Deploy
 
-Railway + Vercel. Root `railway.json` is backend; oracle/indexer use their own.
-Railway runs `scripts/railway-build.sh` / `scripts/railway-start.sh` (branch by
-`RAILWAY_SERVICE_NAME`); equivalent manual builds are `pnpm --filter @axiom/<svc> build`.
-Vercel deploys the frontend only (after backend is up): `vercel --prod`.
+Two platforms, deployed in order so the frontend is wired to the live backend.
+
+**1. Railway — backend, oracle, indexer.** Each service has its own `railway.json`
+(`apps/backend`, `apps/oracle`, `apps/indexer`) with build
+(`pnpm --filter @axiom/config build && pnpm --filter @axiom/<svc> build`), start
+(`node apps/<svc>/dist/index.js`), `/health` healthcheck, and `ON_FAILURE` restart. A root
+`nixpacks.toml` pins Node 22 + pnpm, installs with `--frozen-lockfile`, and caches `dist`
+outputs. (The old root `railway.json` and `scripts/railway-*.sh` were removed — configuration is
+now per-service config-as-code.) Connect each service to its folder in the Railway dashboard, or
+`railway up` per service.
+
+**2. Vercel — frontend.** Root `vercel.json` builds `@axiom/config` + `@axiom/frontend` to
+`apps/frontend/dist`, sets the SPA rewrite and a CSP that allows Google Fonts. Before deploying,
+set these **Production** env vars in the Vercel project: `VITE_BACKEND_URL` → your Railway backend
+URL, `VITE_ORACLE_URL` → your Railway oracle URL, `VITE_CHAT_MODEL` → `qwen/qwen2.5-omni-7b`. Then
+`vercel --prod --yes` from repo root.
+
+**Wiring order:** Railway first (exposes the URLs) → set the Vercel env vars → Vercel deploy. The
+bundle is built against those URLs, so the frontend never calls localhost in prod. Note: the Vercel
+project is CLI-deployed with no connected Git repo, so Preview/Development env vars must be added in
+the dashboard; Railway auto-deploy is off until enabled in its dashboard.
 
 ## Docs & links
 
