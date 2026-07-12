@@ -1,5 +1,5 @@
 import type { ChatToolName } from "@axiom/config/chat-tools";
-import { resolveContextWindow } from "@axiom/config";
+import { resolveContextWindow } from "@axiom/config/models";
 import type { ChatSessionContext, ToolResult } from "./types.js";
 
 export function createSession(
