@@ -38,6 +38,7 @@ function buildOpenAIClient(baseURL: string, apiKey: string, timeout: number): Op
 export interface RouterClientOptions {
   timeout?: number;
   signer?: Wallet;
+  signerPk?: string;
   evmRpc?: string;
 }
 
@@ -140,8 +141,7 @@ export async function createRouterClient(
     log.info("Using direct compute provider", { directBase, model });
     return createSignedSessionClient(directBase, `Bearer ${directKey}`) as unknown as OpenAI;
   }
-
-  const signer = opts.signer;
+  const signer = opts.signer ?? (opts.signerPk ? new Wallet(opts.signerPk) : undefined);
   if (signer) {
     const broker = await getBroker(signer);
     const cid = resolveChainId();

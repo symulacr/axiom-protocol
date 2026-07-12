@@ -386,6 +386,7 @@ export function startServer(config: ServerConfig): {
         const resolvedModel = reqModel ?? DEFAULT_MODEL;
         const client = await createRouterClient(resolvedModel, {
           signer: config.signer,
+          signerPk: process.env.AXIOM_COMPUTE_SIGNER_PK,
           evmRpc: config.evmRpc,
         });
         const streamAbort = new AbortController();
