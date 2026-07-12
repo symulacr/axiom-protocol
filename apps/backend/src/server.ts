@@ -421,11 +421,14 @@ export function startServer(config: ServerConfig): {
             return false;
           }
         };
+        let n = 0;
         for await (const chunk of openaiRes) {
           if (res.writableEnded) break;
           if (!writeChunk(`data: ${JSON.stringify(chunk)}\n\n`)) break;
+          n++;
         }
         if (!res.writableEnded) {
+          if (n === 0) log.warn("chat upstream yielded 0 chunks", { model: resolvedModel });
           writeChunk("data: [DONE]\n\n");
           res.end();
         }
