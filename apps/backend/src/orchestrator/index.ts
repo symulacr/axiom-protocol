@@ -182,6 +182,7 @@ export class StrategyRunner {
     }
     this.openai = await createRouterClient(model, {
       signer: this.signer,
+      signerPk: process.env.AXIOM_COMPUTE_SIGNER_PK,
       evmRpc: this.evmRpc,
     });
     this.openaiModel = model;
