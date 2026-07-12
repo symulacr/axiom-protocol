@@ -2,7 +2,6 @@ import OpenAI from "openai";
 import { Wallet } from "ethers";
 import { pickOGNetwork } from "@axiom/config/networks";
 import { resolveChainId, getBroker } from "./broker.js";
-import { discoverProviders, selectProvider } from "./provider-discovery.js";
 import { createLogger } from "../utils/logger.js";
 
 export function getComputeBaseUrl(): string {
@@ -144,11 +143,9 @@ export async function createRouterClient(
   const signer = opts.signerPk ? new Wallet(opts.signerPk) : opts.signer;
   if (signer) {
     const broker = await getBroker(signer);
-    const cid = resolveChainId();
-    const evmRpc = opts.evmRpc ?? process.env.AXIOM_EVM_RPC ?? "";
-    const services = await discoverProviders(evmRpc, cid);
-    const provider = selectProvider(services, { model })?.provider;
-    if (!provider) throw new Error(`No 0G provider for model ${model}`);
+    const provider =
+      process.env.AXIOM_COMPUTE_PROVIDER ??
+      "0xa48f01287233509FD694a22Bf840225062E67836";
     const { Authorization } = await broker.inference.getRequestHeaders(provider);
     log.info("Using wallet-signed compute session", { provider, model });
     return createSignedSessionClient(getComputeBaseUrl(), Authorization) as unknown as OpenAI;
