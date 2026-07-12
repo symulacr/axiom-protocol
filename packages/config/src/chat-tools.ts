@@ -4,6 +4,7 @@ export type ChatToolClass =
   | "encode"
   | "orchestrate"
   | "archive"
+  | "ask"
   | "skill";
 
 export type ChatToolFriction = "low" | "medium" | "high";
@@ -81,6 +82,7 @@ export const CHAT_TOOL_CATALOG = [
   tool({ name: "archive_lookup", class: "archive", label: "Archive Lookup", hint: "Look up all Wayback Machine (Internet Archive) snapshots for a URL. Returns list of timestamps where the URL was archived. Use to find snapshotted posts of an account, confirm if a specific URL was ever archived, or get the snapshot URL to view in a browser. NOTE: Twitter/X is JS-rendered; snapshots only contain the HTML shell, not the actual bio or tweet text.", friction: "medium", parameters: { type: "object", properties: { url: { type: "string", description: "Full URL to look up (e.g. https://x.com/handle/status/123)" }, limit: { type: "number", description: "Max snapshots to return (default 50)" } }, required: ["url"] } }),
   tool({ name: "archive_account_tweets", class: "archive", label: "Archived Tweets", hint: "List all archived tweets for an X/Twitter account handle. Returns all tweet URLs that were captured by the Wayback Machine, with timestamps. Use to research an account's snapshotted history.", friction: "high", parameters: { type: "object", properties: { handle: { type: "string", description: "X/Twitter handle without @ (e.g. \"0xSero\")" }, limit: { type: "number", description: "Max snapshots to return (default 100)" } }, required: ["handle"] } }),
   tool({ name: "archive_confirm_deletion", class: "archive", label: "Confirm Archived", hint: "Check if a specific tweet URL was ever archived by the Wayback Machine. Returns { archived, snapshot, snapshotUrl } — useful as evidence that a post existed at a specific time even if it is now deleted. Does NOT extract tweet content.", friction: "medium", parameters: { type: "object", properties: { url: { type: "string", description: "Full tweet URL (e.g. https://x.com/handle/status/1234567890)" } }, required: ["url"] } }),
+  tool({ name: "ask_user", class: "ask", label: "Ask User", hint: "Ask the user a concise, selectable question and wait for their answer before continuing. Use when a parameter is ambiguous or a decision needs human input — never invent the answer.", requiresWallet: false, requiresTokenId: false, friction: "low", parameters: { type: "object", properties: { question: { type: "string", description: "The question to ask the user" }, options: { type: "array", description: "2-4 short selectable answer options" }, multiSelect: { type: "boolean", description: "Allow more than one selection (default false)" } }, required: ["question"] } }),
   ...SKILL_TOOL_DEFS,
 ] as const;
 
@@ -103,6 +105,7 @@ export const CHAT_TOOL_CLASS_LABELS: Record<ChatToolClass, string> = {
   encode: "Encode",
   orchestrate: "Orchestrate",
   archive: "Archive",
+  ask: "Ask User",
   skill: "Hermes Skills (EVM, DeFi, OSINT, Forensics)",
 };
 

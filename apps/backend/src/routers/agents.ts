@@ -15,6 +15,18 @@ import type { Eip712Domain } from "@axiom/config";
 import { recoverAccessSigner, HTTP } from "@axiom/config";
 import { transferBodySchema } from "../route-schemas.js";
 
+function resolveSealedKey(sealedKeyIn: string | undefined): {
+  key: `0x${string}`;
+  missing: boolean;
+} {
+  const key = (
+    sealedKeyIn && sealedKeyIn.length >= 2
+      ? sealedKeyIn
+      : "0x" + "00".repeat(32)
+  ) as `0x${string}`;
+  return { key, missing: !sealedKeyIn || sealedKeyIn.length < 2 };
+}
+
 export function registerAgentRoutes(
   app: Express,
   config: ServerConfig,
@@ -247,20 +259,13 @@ export function registerAgentRoutes(
             return;
           }
           const validUntil = BigInt(Math.floor(Date.now() / 1000)) + 86400n;
-          const sealedKeyOrDefault: `0x${string}` = (
-            sealedKeyIn && sealedKeyIn.length >= 2
-              ? sealedKeyIn
-              : "0x" + "00".repeat(32)
-          ) as `0x${string}`;
-          if (!sealedKeyIn || sealedKeyIn.length < 2) {
+          const { key: sealedKeyOrDefault, missing } = resolveSealedKey(sealedKeyIn);
+          if (missing) {
             if (process.env.NODE_ENV === "production") {
               sendError(res, HTTP.BAD_REQUEST, "sealedKey is required in production");
               return;
             }
-            log.warn(
-              "No sealedKey provided, using zero-padded fallback (devnet only)",
-              { tokenId: id },
-            );
+            log.warn("No sealedKey provided, using zero-padded fallback (devnet only)", { tokenId: id });
           }
           const tee = await oracle.signOwnership({
             dataHash,

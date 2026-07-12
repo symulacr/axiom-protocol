@@ -9,7 +9,14 @@ export {
   toChatApiMessages,
   fitToContext,
   compactHistory,
+  MAX_TOOL_LOOPS,
+  summarizeConversation,
+  evaluateContinue,
+  shouldAutoContinue,
 } from "./session.js";
+export type { ContinueSignal } from "./session.js";
+export { runAskTool, buildAskUserPrompt, isAskUserResult } from "./executors/ask.js";
+export type { AskUserPrompt } from "./executors/ask.js";
 export type { ChatApiMessage } from "./session.js";
 export { buildSystemPrompt } from "./prompt.js";
 export type { ToolChain, ToolRuntime } from "./transport.js";

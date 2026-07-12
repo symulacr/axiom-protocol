@@ -27,6 +27,11 @@ import {
   groupParallelTools,
   fitToContext,
   compactHistory,
+  MAX_TOOL_LOOPS,
+  summarizeConversation,
+  evaluateContinue,
+  shouldAutoContinue,
+  isAskUserResult,
 } from "@axiom/chat-runtime";
 import { ChatSessionProvider, useChatSession } from "../chat/ChatSessionProvider.js";
 import { ToolResultBody } from "../chat/ToolResultBody.js";
@@ -66,25 +71,6 @@ function createMessage(msg: Omit<Message, "id">): Message {
   return { ...msg, id: crypto.randomUUID() };
 }
 
-const COMPACTION_RECENT_KEEP = 6;
-
-function buildHeuristicSummary(msgs: Message[]): string {
-  if (msgs.length <= COMPACTION_RECENT_KEEP) return "";
-  const oldest = msgs.slice(0, msgs.length - COMPACTION_RECENT_KEEP);
-  let out = "";
-  for (const m of oldest) {
-    const text = (m.content ?? "")
-      .replace(/\s+/g, " ")
-      .trim()
-      .slice(0, 200);
-    if (!text) continue;
-    const line = `[${m.role}] ${text}\n`;
-    if (out.length + line.length > 800) break;
-    out += line;
-  }
-  return out.trim();
-}
-
 type ToolCall = {
   id: string;
   type: "function";
@@ -109,7 +95,6 @@ type SSEChunk = {
 
 const SUPPORTED_CHAIN_IDS = new Set([galileo.id, aristotle.id]);
 const CHAT_MESSAGES_KEY = "axiom:chat-messages";
-const MAX_TOOL_LOOPS = 5;
 
 function consumeSseLines(buffer: string): {
   chunks: SSEChunk[];
@@ -152,6 +137,47 @@ function ToolClassBadge({ name }: { name: string }): ReactElement | null {
     >
       ({CHAT_TOOL_CLASS_LABELS[cls]})
     </span>
+  );
+}
+
+function AskUserCard({
+  content,
+  onAnswer,
+}: {
+  content: string;
+  onAnswer: (answer: string) => void;
+}): ReactElement | null {
+  let data: { ask?: boolean; question?: string; options?: string[] } | null = null;
+  try {
+    data = JSON.parse(content);
+  } catch {
+    return null;
+  }
+  if (!data || data.ask !== true) return null;
+  const question = data.question ?? "Question";
+  const options = Array.isArray(data.options) ? data.options : [];
+  if (options.length === 0) return null;
+  return (
+    <div
+      style={{
+        background: COLORS.bg,
+        border: `1px solid ${COLORS.border}`,
+        borderRadius: "var(--radius-md)",
+        padding: "var(--space-sm) var(--space-md)",
+        marginTop: "var(--space-xs)",
+      }}
+    >
+      <p style={{ margin: "0 0 8px", fontSize: "var(--text-sm)", color: COLORS.text }}>
+        {question}
+      </p>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        {options.map((o, i) => (
+          <Button key={i} variant="secondary" onClick={() => onAnswer(o)}>
+            {o}
+          </Button>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -309,7 +335,7 @@ function ChatPageInner(): ReactElement {
 
       const userMsg = createMessage({ role: "user", content: userText });
       let currentMessages = [...messagesRef.current, userMsg];
-      const summary = buildHeuristicSummary(messagesRef.current);
+      const summary = summarizeConversation(messagesRef.current);
       currentMessages = compactHistory(currentMessages, summary);
       messagesRef.current = currentMessages;
       setMessages(currentMessages);
@@ -328,7 +354,6 @@ function ChatPageInner(): ReactElement {
       abortRef.current = controller;
 
       let loopCount = 0;
-      let hitToolLoopCap = false;
 
       try {
         const systemContent = buildSystemPrompt(session);
@@ -429,6 +454,7 @@ function ChatPageInner(): ReactElement {
           setMessages(currentMessages);
           flushAndClearStreamText();
 
+          let sawAsk = false;
           const batches = groupParallelTools(toolCallList);
           for (const batch of batches) {
             const batchResults = await Promise.all(
@@ -456,36 +482,43 @@ function ChatPageInner(): ReactElement {
               }),
             );
             for (const { tc, result } of batchResults) {
+              const isAsk = isAskUserResult({ ok: true, content: result });
+              if (isAsk) sawAsk = true;
               currentMessages = [
                 ...currentMessages,
                 createMessage({
                   role: "tool",
                   tool_call_id: tc.id,
                   name: tc.function.name,
-                  content: formatToolResult(tc.function.name, result),
+                  content: isAsk ? result : formatToolResult(tc.function.name, result),
                 }),
               ];
             }
           }
           messagesRef.current = currentMessages;
           setMessages(currentMessages);
+          if (sawAsk) break;
         }
 
-        if (loopCount >= MAX_TOOL_LOOPS) {
-          hitToolLoopCap = true;
-        }
-
-        if (hitToolLoopCap) {
+        const { exhausted, signal } = evaluateContinue(loopCount);
+        if (exhausted) {
           currentMessages = [
             ...currentMessages,
             createMessage({
               role: "assistant",
-              content:
-                "This request needed more tool steps than allowed in one turn. Please send a follow-up message to continue.",
+              content: JSON.stringify({
+                continue: true,
+                reason: signal?.reason,
+                message:
+                  "This request needed more tool steps than allowed in one turn. Send a follow-up message to continue.",
+              }),
             }),
           ];
           messagesRef.current = currentMessages;
           setMessages(currentMessages);
+          if (shouldAutoContinue(signal, false)) {
+            window.dispatchEvent(new CustomEvent("axiom:autoContinue", { detail: signal }));
+          }
         }
       } catch (err: unknown) {
         if (err instanceof DOMException && err.name === "AbortError") { /* aborted — ignore */ } else {
@@ -784,6 +817,9 @@ function ChatPageInner(): ReactElement {
                 </span>
               </div>
               {msg.role === "tool" ? (
+                msg.name === "ask_user" ? (
+                  <AskUserCard content={msg.content ?? ""} onAnswer={sendMessage} />
+                ) : (
                 <div
                   role="region"
                   aria-label={
@@ -803,6 +839,7 @@ function ChatPageInner(): ReactElement {
                 >
                   <ToolResultBody name={msg.name ?? ""} content={msg.content} sendTransactionAsync={toolCtx.sendTransactionAsync} />
                 </div>
+                )
               ) : msg.tool_calls ? (
                 <div
                   style={{
