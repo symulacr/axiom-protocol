@@ -53,6 +53,7 @@ export async function getBroker(
   chainId?: number,
 ): Promise<ZGComputeNetworkBroker> {
   const cid = resolveChainId(chainId);
+  if (!signer.provider) signer = signer.connect(createStaticProvider(process.env.AXIOM_EVM_RPC ?? "https://evmrpc-testnet.0g.ai", cid));
   const cached = _brokerCache.get(cid);
   if (cached) return cached;
   const broker = await createZGComputeNetworkBroker(signer);
