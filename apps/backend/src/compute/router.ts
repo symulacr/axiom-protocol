@@ -146,6 +146,9 @@ export async function createRouterClient(
     const provider =
       process.env.AXIOM_COMPUTE_PROVIDER ??
       "0xa48f01287233509FD694a22Bf840225062E67836";
+    await broker.inference.acknowledgeProviderSigner(provider).catch((e) => {
+      log.warn("provider acknowledge skipped", { provider, error: String(e) });
+    });
     const { Authorization } = await broker.inference.getRequestHeaders(provider);
     log.info("Using wallet-signed compute session", { provider, model });
     return createSignedSessionClient(getComputeBaseUrl(), Authorization) as unknown as OpenAI;
