@@ -384,6 +384,26 @@ const usaspendingSchema = z.object({
   filters: z.record(z.string(), z.unknown()),
   limit: z.coerce.number().int().min(1).max(100).optional(),
 });
+// OFAC's sanctions search rejects non-browser user agents (HTTP 406) and
+// returns HTML (not JSON). Fetch as text with browser-like headers so the
+// route degrades to a clean 200 instead of a 502 upstream-error.
+const ofacHeaders = {
+  "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36",
+  "Accept": "text/html,application/xhtml+xml",
+};
+const ofacCache = new TTLCache<string>(5 * 60 * 1000);
+async function ofacFetch(path: string): Promise<string> {
+  const cached = ofacCache.get(path);
+  if (cached !== undefined) return cached;
+  const res = await fetch(`https://sanctionssearch.ofac.treas.gov${path}`, {
+    headers: ofacHeaders,
+    signal: AbortSignal.timeout(15_000),
+  });
+  const text = await res.text();
+  ofacCache.set(path, text);
+  return text;
+}
+
 const ofacSchema = z.object({ name: z.string().min(1).max(200) });
 const opencorpSchema = z.object({
   jurisdiction: z.string().min(2).max(5).default("us"),
@@ -429,7 +449,8 @@ function createSkillOsintRouter(config: ServerConfig): Router {
     { path: "/v1/skills/osint/ofac_sdn", schema: ofacSchema, description: "OFAC SDN list name search" },
     async (parsed: z.infer<typeof ofacSchema>) => {
       const q = encodeURIComponent(parsed.name);
-      return cachedFetch(`ofac:${parsed.name}`, `https://sanctionssearch.ofac.treas.gov/Details.aspx?id=0&name=${q}&program=SDN`);
+      const html = await ofacFetch(`/Details.aspx?id=0&name=${q}&program=SDN`);
+      return ser({ name: parsed.name, source: "ofac-sanctions-search", html });
     },
   );
 

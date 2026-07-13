@@ -93,9 +93,19 @@ function isPublicHttpUrl(value: string): boolean {
   }
   return true;
 }
-const archiveUrlSchema = z.string().url().refine(isPublicHttpUrl, {
-  message: "URL must use http(s) and must not target private or loopback hosts",
-});
+// Accept a bare host (e.g. "x.com/foo") by normalizing to https:// before the
+// Wayback lookup, while keeping the SSRF guard for properly-formed URLs.
+export const archiveUrlSchema = z
+  .string()
+  .transform((v) => (/^https?:\/\//i.test(v) ? v : `https://${v}`))
+  .pipe(
+    z
+      .string()
+      .url()
+      .refine(isPublicHttpUrl, {
+        message: "URL must use http(s) and must not target private or loopback hosts",
+      }),
+  );
 
 export const archiveLookupSchema = z.object({
   url: archiveUrlSchema,
