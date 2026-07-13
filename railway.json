@@ -4,7 +4,7 @@
     "buildCommand": "pnpm --filter @axiom/config build && pnpm --filter @axiom/chat-runtime build && pnpm --filter @axiom/frontend build"
   },
   "deploy": {
-    "startCommand": "pnpm --filter @axiom/frontend preview --host 0.0.0.0 --port $PORT",
+    "startCommand": "node apps/frontend/server.mjs",
     "healthcheckPath": "/",
     "healthcheckTimeout": 120,
     "restartPolicy": "ON_FAILURE"
