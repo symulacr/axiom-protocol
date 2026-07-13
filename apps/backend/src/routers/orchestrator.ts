@@ -13,7 +13,7 @@ import type { EventStore } from "../events/store.js";
 import type { ServerConfig } from "../server.js";
 import { REGISTERED_ROUTES } from "./route-factory.js";
 import { AGENT_NFT_ABI } from "@axiom/config/abis";
-import { HTTP } from "@axiom/config";
+import { HTTP, resolveChatModel } from "@axiom/config";
 import { TypedContract } from "@axiom/config/types/contract";
 import { getSharedProvider } from "../provider.js";
 import { keccak256, solidityPacked } from "ethers";
@@ -109,8 +109,7 @@ export function registerOrchestratorRoutes(
           signalPayload,
           stream: shouldStream,
         } = parsed;
-        const DEFAULT_MODEL =
-          config.env?.AXIOM_COMPUTE_MODEL ?? "qwen/qwen2.5-omni-7b";
+        const DEFAULT_MODEL = resolveChatModel(config.env?.AXIOM_COMPUTE_MODEL);
         const modelDataRoot = await resolveModelDataRoot(
           agentNft,
           agentTokenId,

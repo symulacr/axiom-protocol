@@ -1,4 +1,4 @@
-export const DEFAULT_CHAT_MODEL = "qwen/qwen2.5-omni-7b";
+export const DEFAULT_CHAT_MODEL = "deepseek-v4-flash";
 
 export function resolveChatModel(override?: string): string {
   return override?.trim() || DEFAULT_CHAT_MODEL;
@@ -6,6 +6,7 @@ export function resolveChatModel(override?: string): string {
 
 export const FALLBACK_CONTEXT_WINDOWS: Record<string, number> = {
   "qwen/qwen2.5-omni-7b": 32768,
+  "deepseek-v4-flash": 131072,
 };
 
 export function resolveContextWindow(
