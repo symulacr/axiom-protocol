@@ -1,5 +1,4 @@
 import { getAddresses } from "@axiom/config/addresses";
-import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
 import type { Address } from "viem";
 
 const env: Record<string, unknown> = {
@@ -28,11 +27,9 @@ type ContractName = keyof typeof ADDRESSES;
 
 export function getContractAddress(
   contract: ContractName,
-  chainId?: number,
+  _chainId?: number,
 ): Address {
-  if (chainId !== undefined && chainId !== GALILEO_CHAIN_ID) {
-    throw new Error(`Contract ${contract} not deployed on chain ${chainId}`);
-  }
+  // Chain-agnostic: addresses are env-sourced, so there is no chain gate.
   return ADDRESSES[contract];
 }
 
