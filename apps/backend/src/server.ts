@@ -407,7 +407,7 @@ export function startServer(config: ServerConfig): {
             messages: messages as ChatCompletionMessageParam[],
             tools: tools as ChatCompletionTool[] | undefined,
             stream: true,
-            max_tokens: 4096,
+            max_tokens: 2048,
           },
           { signal: streamSignal },
         );
