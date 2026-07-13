@@ -7,6 +7,9 @@ script = "script"
 cache_path = "cache"
 broadcast = "broadcast"
 
+# Allow deployment scripts to write the deployment manifest to ../../docs/deployments/
+fs_permissions = [{ access = "write", path = "../.." }]
+
 # Cancun mandatory on 0G Chain
 evm_version = "cancun"
 
