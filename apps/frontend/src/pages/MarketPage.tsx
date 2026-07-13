@@ -1,4 +1,3 @@
-import { resolveBlockExplorerUrl } from "@axiom/config/networks";
 import type { ReactElement } from "react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
@@ -37,9 +36,8 @@ export function MarketPage({
 }: {
   showLeaderboard?: boolean;
 }): ReactElement {
-  const chainId = useChainId();
   const { isConnected: walletConnected } = useAccount();
-  const explorerBase = resolveBlockExplorerUrl(chainId);
+  const explorerBase = "https://chainscan.0g.ai";
 
   const {
     providers,

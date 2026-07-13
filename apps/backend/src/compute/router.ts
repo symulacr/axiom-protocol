@@ -12,7 +12,7 @@ export function getComputeBaseUrl(): string {
   const network = pickOGNetwork(chainId);
   return (
     network?.computeRouterUrl ??
-    "https://router-api-testnet.integratenetwork.work/v1"
+    "https://router-api.0g.ai/v1"
   );
 }
 
@@ -128,7 +128,7 @@ function createSignedSessionClient(
 
 export function buildSigner(opts: RouterClientOptions): Wallet | undefined {
   return opts.signerPk
-    ? new Wallet(opts.signerPk, createStaticProvider(opts.evmRpc ?? process.env.AXIOM_EVM_RPC ?? "https://evmrpc-testnet.0g.ai"))
+    ? new Wallet(opts.signerPk, createStaticProvider(opts.evmRpc ?? process.env.AXIOM_EVM_RPC ?? "https://evmrpc.0g.ai"))
     : opts.signer;
 }
 

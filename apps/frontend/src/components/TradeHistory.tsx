@@ -1,4 +1,3 @@
-import { resolveBlockExplorerUrl } from "@axiom/config/networks";
 import type { ReactElement } from "react";
 import { useChainId } from "wagmi";
 import type { TradeHistoryEntry } from "../hooks/usePerformance.js";
@@ -10,8 +9,7 @@ interface TradeHistoryProps {
 }
 
 export function TradeHistory({ history }: TradeHistoryProps): ReactElement {
-  const chainId = useChainId();
-  const explorerBase = resolveBlockExplorerUrl(chainId);
+  const explorerBase = "https://chainscan.0g.ai";
 
   if (history.length === 0) {
     return (
