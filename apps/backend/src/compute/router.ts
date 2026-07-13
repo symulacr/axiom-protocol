@@ -145,6 +145,16 @@ export async function createRouterClient(
     log.info("Using direct compute provider", { directBase, model });
     return createSignedSessionClient(directBase, `Bearer ${directKey}`) as unknown as OpenAI;
   }
+
+  // Prefer the API-key router path (AXIOM_COMPUTE_API_KEY / OG_COMPUTE_API_KEY)
+  // over the wallet-signed path, which requires a registered 0G compute provider
+  // that the backend's signer wallet does not currently have.
+  const routerKey = process.env.AXIOM_COMPUTE_API_KEY ?? process.env.OG_COMPUTE_API_KEY;
+  if (routerKey) {
+    log.info("Using API-key compute router", { model });
+    return buildOpenAIClient(getComputeBaseUrl(), routerKey, timeout);
+  }
+
   const signer = buildSigner(opts);
   if (signer) {
     const broker = await getBroker(signer);
@@ -159,7 +169,5 @@ export async function createRouterClient(
     return createSignedSessionClient(getComputeBaseUrl(), Authorization) as unknown as OpenAI;
   }
 
-  const routerKey = process.env.AXIOM_COMPUTE_API_KEY ?? process.env.OG_COMPUTE_API_KEY;
-  if (routerKey) return buildOpenAIClient(getComputeBaseUrl(), routerKey, timeout);
   throw new Error("AXIOM_COMPUTE_API_KEY or OG_COMPUTE_API_KEY required");
 }
