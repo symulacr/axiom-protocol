@@ -32,6 +32,12 @@ export async function runSkillTool(
     return fail("tokenId required");
   }
 
+  // Auto-inject the wallet address for address-scoped EVM tools when the model
+  // omits it. Keeps behaviour unchanged when an address IS provided.
+  if (name.startsWith("evm_") && spec?.parameters?.required?.includes("address")) {
+    args.address ??= ctx.wallet?.address ?? ctx.session.walletAddress;
+  }
+
   let endpoint: string;
   try {
     endpoint = resolveEndpoint(name);

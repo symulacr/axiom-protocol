@@ -7,6 +7,7 @@ import {
   archiveClosestSchema,
   archiveConfirmSchema,
   archiveLookupSchema,
+  archiveUrlSchema,
 } from "../route-schemas.js";
 import {
   closestSnapshot,
@@ -17,8 +18,8 @@ import {
 import { queryArchive } from "../services/archive.js";
 
 export const archiveQuerySchema = z.object({
-  intent: z.enum(["lookup", "confirm", "account", "closest"]),
-  url: z.string().url().optional(),
+  intent: z.enum(["lookup", "confirm", "account", "closest"]).default("lookup"),
+  url: archiveUrlSchema.optional(),
   handle: z.string().min(1).max(64).optional(),
   limit: z.coerce.number().int().min(1).max(500).optional(),
   timestamp: z.string().optional(),

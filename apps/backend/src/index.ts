@@ -1,9 +1,9 @@
 import * as Sentry from "@sentry/node";
 
-import { Wallet } from "ethers";
+import { ethers, Wallet } from "ethers";
 import { resolveAddress } from "@axiom/config/addresses";
 import { registerProcessHandlers } from "@axiom/config/process";
-import { startServer } from "./server.js";
+import { startServer, type ServerConfig } from "./server.js";
 import { createLogger } from "./utils/logger.js";
 import { loadEnv } from "@axiom/config/env";
 import { getSharedProvider } from "./provider.js";
@@ -23,32 +23,65 @@ if (env.AXIOM_SENTRY_DSN) {
 
 const provider = getSharedProvider(env.AXIOM_CHAIN_ID ?? GALILEO_CHAIN_ID);
 const signer = new Wallet(env.DEPLOYER_PK, provider);
-const server = startServer({
-  bind: env.AXIOM_BIND,
-  port: env.PORT ?? env.AXIOM_PORT ?? 3000,
-  env,
-  evmRpc: env.AXIOM_EVM_RPC,
-  signer,
-  oracleBaseUrl: env.AXIOM_ORACLE_URL,
-  addresses: {
-    agentNft: resolveAddress("agentNft", env),
-    vault: resolveAddress("strategyVault", env),
-    verifier: resolveAddress("teeVerifier", env),
-    paymentProcessor: resolveAddress("paymentProcessor", env),
-  },
-});
 
-let shuttingDown = false;
-const onSignal = (sig: NodeJS.Signals): void => {
-  if (shuttingDown) return;
-  shuttingDown = true;
-  createLogger("server").info("shutdown", { signal: sig });
-  void (async () => {
-    await getEventStore().flush();
-    server.httpServer.closeAllConnections?.();
-    server.httpServer.close(() => process.exit(0));
-  })();
-};
-process.on("SIGTERM", onSignal);
-process.on("SIGINT", onSignal);
-registerProcessHandlers();
+// On the live chain (0G mainnet), contracts deployed only on testnet have no
+// bytecode, so on-chain reads revert and crash with a 500. Omit any address
+// whose code is empty on the live chain so the existing guards return a clean
+// 503 ("address not configured") instead of a 500 revert.
+async function resolveLiveAddresses(
+  chainProvider: ethers.JsonRpcProvider,
+  backendEnv: typeof env,
+): Promise<Partial<NonNullable<ServerConfig["addresses"]>>> {
+  const resolved = {
+    agentNft: resolveAddress("agentNft", backendEnv),
+    vault: resolveAddress("strategyVault", backendEnv),
+    verifier: resolveAddress("teeVerifier", backendEnv),
+    paymentProcessor: resolveAddress("paymentProcessor", backendEnv),
+  };
+  const live: Partial<typeof resolved> = {};
+  await Promise.all(
+    (Object.keys(resolved) as (keyof typeof resolved)[]).map(async (key) => {
+      const addr = resolved[key];
+      try {
+        const code = await chainProvider.getCode(addr);
+        if (code && code !== "0x") live[key] = addr;
+      } catch {
+        // Unverifiable on the live chain → omit to degrade gracefully.
+      }
+    }),
+  );
+  return live;
+}
+
+async function main(): Promise<void> {
+  const addresses = await resolveLiveAddresses(provider, env);
+  const server = startServer({
+    bind: env.AXIOM_BIND,
+    port: env.PORT ?? env.AXIOM_PORT ?? 3000,
+    env,
+    evmRpc: env.AXIOM_EVM_RPC,
+    signer,
+    oracleBaseUrl: env.AXIOM_ORACLE_URL,
+    addresses: addresses as ServerConfig["addresses"],
+  });
+
+  let shuttingDown = false;
+  const onSignal = (sig: NodeJS.Signals): void => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    createLogger("server").info("shutdown", { signal: sig });
+    void (async () => {
+      await getEventStore().flush();
+      server.httpServer.closeAllConnections?.();
+      server.httpServer.close(() => process.exit(0));
+    })();
+  };
+  process.on("SIGTERM", onSignal);
+  process.on("SIGINT", onSignal);
+  registerProcessHandlers();
+}
+
+void main().catch((err) => {
+  createLogger("server").error("Fatal startup error", { err });
+  process.exit(1);
+});
