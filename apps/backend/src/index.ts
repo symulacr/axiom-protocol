@@ -8,7 +8,7 @@ import { createLogger } from "./utils/logger.js";
 import { loadEnv } from "@axiom/config/env";
 import { getSharedProvider } from "./provider.js";
 import { backendEnvSchema } from "./env-schema.js";
-import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
+import { ARISTOTLE_CHAIN_ID } from "@axiom/config/networks";
 import { getEventStore } from "./events/store.js";
 
 loadEnv();
@@ -21,7 +21,7 @@ if (env.AXIOM_SENTRY_DSN) {
   });
 }
 
-const provider = getSharedProvider(env.AXIOM_CHAIN_ID ?? GALILEO_CHAIN_ID);
+const provider = getSharedProvider(env.AXIOM_CHAIN_ID ?? ARISTOTLE_CHAIN_ID);
 const signer = new Wallet(env.DEPLOYER_PK, provider);
 
 // On the live chain (0G mainnet), contracts deployed only on testnet have no

@@ -5,7 +5,7 @@ import {
   type ReadOnlyInferenceBroker,
   type ZGComputeNetworkBroker,
 } from "@0gfoundation/0g-compute-ts-sdk";
-import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
+import { ARISTOTLE_CHAIN_ID } from "@axiom/config/networks";
 import { createLogger } from "../utils/logger.js";
 import { extractErrorMessage } from "../utils/response.js";
 
@@ -14,7 +14,7 @@ const log = createLogger("compute-broker");
 export function resolveChainId(chainId?: number): number {
   if (chainId !== undefined) return chainId;
   const env = Number(process.env.AXIOM_CHAIN_ID);
-  return Number.isFinite(env) && env > 0 ? env : GALILEO_CHAIN_ID;
+  return Number.isFinite(env) && env > 0 ? env : ARISTOTLE_CHAIN_ID;
 }
 
 export function createStaticProvider(
@@ -53,7 +53,7 @@ export async function getBroker(
   chainId?: number,
 ): Promise<ZGComputeNetworkBroker> {
   const cid = resolveChainId(chainId);
-  if (!signer.provider) signer = signer.connect(createStaticProvider(process.env.AXIOM_EVM_RPC ?? "https://evmrpc-testnet.0g.ai", cid));
+  if (!signer.provider) signer = signer.connect(createStaticProvider(process.env.AXIOM_EVM_RPC ?? "https://evmrpc.0g.ai", cid));
   const cached = _brokerCache.get(cid);
   if (cached) return cached;
   const broker = await createZGComputeNetworkBroker(signer);

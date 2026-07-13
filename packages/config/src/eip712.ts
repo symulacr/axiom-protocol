@@ -19,8 +19,8 @@ export interface Eip712Domain {
 }
 
 export const DEFAULT_EIP712_DOMAIN: Eip712Domain = {
-  chainId: 16602n,
-  verifyingContract: "0x60B9d53F5410b6586D2D5395D4A309E3C9E5595A",
+  chainId: 16661n,
+  verifyingContract: "0xDfbA9B8e3d63dFf3a1Fc21F2cCD2850285Dab943",
 };
 
 export function buildEip712Domain(

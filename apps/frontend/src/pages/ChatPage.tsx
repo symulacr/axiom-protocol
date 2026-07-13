@@ -628,7 +628,7 @@ function ChatPageInner(): ReactElement {
             }}
           >
             <p style={{ margin: 0, fontSize: "var(--text-sm)", color: COLORS.text }}>
-              Unsupported network (chain {chainId}). Switch to 0G Galileo or Aristotle in
+              Unsupported network (chain {chainId}). Switch to 0G Mainnet (Aristotle) in
               your wallet.
             </p>
           </Card>

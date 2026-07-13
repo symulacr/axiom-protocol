@@ -16,7 +16,7 @@ import { WebSocketServer, type WebSocket } from "ws";
 import { ethers, type Wallet } from "ethers";
 import { type ChatCompletionMessageParam, type ChatCompletionTool } from "openai/resources/chat/completions";
 import { TypedContract, type AgentNFTMethods } from "@axiom/config/types/contract";
-import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
+import { ARISTOTLE_CHAIN_ID } from "@axiom/config/networks";
 import { bigintReplacer } from "@axiom/config/types/bigint";
 
 import {
@@ -196,7 +196,7 @@ export function startServer(config: ServerConfig): {
   );
   app.set("json replacer", bigintReplacer);
 
-  const ogChainId = config.env?.AXIOM_CHAIN_ID ?? GALILEO_CHAIN_ID;
+  const ogChainId = config.env?.AXIOM_CHAIN_ID ?? ARISTOTLE_CHAIN_ID;
   const startedAt = Date.now();
   const oracle = new DefaultSignerOracleClient({
     baseUrl: config.oracleBaseUrl,

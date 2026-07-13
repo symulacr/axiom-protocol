@@ -1,28 +1,30 @@
 import { createConfig, http } from "wagmi";
 import { injected, walletConnect } from "wagmi/connectors";
 import { defineChain } from "viem";
-import {
-  GALILEO_CHAIN_ID,
-  ARISTOTLE_CHAIN_ID,
-  resolveRpcUrl,
-} from "@axiom/config/networks";
+import { ARISTOTLE_CHAIN_ID } from "@axiom/config/networks";
 
+// 0G Mainnet RPC (chainId 16661). Hardcoded to guarantee mainnet-only,
+// no testnet fallback. The user may still override via localStorage "axiom.rpcUrl".
+const MAINNET_RPC = "https://evmrpc.0g.ai";
+
+// Repurposed mainnet alias (kept exported for import compatibility).
+// 0G Mainnet — chainId 16661, RPC https://evmrpc.0g.ai, explorer https://chainscan.0g.ai.
 export const galileo = defineChain({
-  id: GALILEO_CHAIN_ID,
-  name: "0G Galileo Testnet",
+  id: ARISTOTLE_CHAIN_ID,
+  name: "0G Mainnet",
   nativeCurrency: { name: "0G", symbol: "0G", decimals: 18 },
   rpcUrls: {
     default: {
-      http: ["https://evmrpc-testnet.0g.ai"],
+      http: ["https://evmrpc.0g.ai"],
     },
   },
   blockExplorers: {
     default: {
       name: "0G Explorer",
-      url: "https://chainscan-galileo.0g.ai",
+      url: "https://chainscan.0g.ai",
     },
   },
-  testnet: true,
+  testnet: false,
 });
 
 export const aristotle = defineChain({
@@ -53,8 +55,7 @@ export function createWagmiConfig() {
       ? (window.localStorage.getItem("axiom.rpcUrl") ?? "")
       : "";
 
-  const galileoRpc = storedRpcUrl || resolveRpcUrl(GALILEO_CHAIN_ID);
-  const aristotleRpc = storedRpcUrl || resolveRpcUrl(ARISTOTLE_CHAIN_ID);
+  const aristotleRpc = storedRpcUrl || MAINNET_RPC;
 
   const projectId =
     storedWcProjectId ||
@@ -62,10 +63,9 @@ export function createWagmiConfig() {
     "00000000000000000000000000000000";
 
   return createConfig({
-    chains: [galileo, aristotle],
+    chains: [aristotle],
     ssr: false,
     transports: {
-      [galileo.id]: http(galileoRpc),
       [aristotle.id]: http(aristotleRpc),
     },
     connectors: [injected({ target: "metaMask" }), walletConnect({ projectId })],

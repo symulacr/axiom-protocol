@@ -49,17 +49,17 @@ export function resolveRpcUrl(chainId?: number): string {
   const varVal = envVar("AXIOM_EVM_RPC", "OG_RPC_URL", "RPC_URL");
   if (varVal) return varVal;
   const network = chainId ? pickOGNetwork(chainId) : null;
-  return network?.evmRpc ?? "https://evmrpc-testnet.0g.ai";
+  return network?.evmRpc ?? "https://evmrpc.0g.ai";
 }
 
 export function resolveStorageRpc(chainId?: number): string {
   const varVal = envVar("AXIOM_STORAGE_RPC", "OG_STORAGE_RPC");
   if (varVal) return varVal;
   const network = chainId ? pickOGNetwork(chainId) : null;
-  return network?.storageRpc ?? "https://indexer-storage-testnet-turbo.0g.ai";
+  return network?.storageRpc ?? "https://indexer-storage-turbo.0g.ai";
 }
 
 export function resolveBlockExplorerUrl(chainId?: number): string {
   const network = chainId ? pickOGNetwork(chainId) : null;
-  return network?.blockExplorer ?? "https://chainscan-galileo.0g.ai";
+  return network?.blockExplorer ?? "https://chainscan.0g.ai";
 }
