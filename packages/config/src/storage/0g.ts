@@ -1,7 +1,6 @@
 import {
   Indexer,
   MemData,
-  EncryptionHeader,
 } from "@0gfoundation/0g-storage-ts-sdk";
 import type { EncryptionOption } from "@0gfoundation/0g-storage-ts-sdk";
 import { keccak256, type Signer } from "ethers";
@@ -210,17 +209,6 @@ export async function downloadFromStorage(
   const data = new Uint8Array(await blob.arrayBuffer());
 
   return { data, rootHash, size: data.length };
-}
-
-export async function peekStorageHeader(
-  indexer: Indexer,
-  rootHash: Hex,
-): Promise<EncryptionHeader | null> {
-  const [header, err] = await indexer.peekHeader(rootHash);
-  if (err) {
-    throw new Error(`0G peekHeader failed: ${err.message ?? String(err)}`);
-  }
-  return header;
 }
 
 export class ZeroGStorage implements StorageAdapter {
