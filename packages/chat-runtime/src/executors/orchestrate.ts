@@ -106,11 +106,7 @@ export async function runOrchestrateTool(
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        vault,
-        agentNft,
-        agentTokenId: tokenId,
-      }),
+      body: JSON.stringify(buildTickBody(args, ctx)),
     },
   );
 
@@ -120,6 +116,34 @@ export async function runOrchestrateTool(
 
 function success(obj: Record<string, unknown>): ToolResult {
   return { ok: true, content: JSON.stringify(obj) };
+}
+
+export function buildTickBody(
+  args: Record<string, unknown>,
+  ctx: ToolRuntime,
+): {
+  vault: `0x${string}` | undefined;
+  agentNft: `0x${string}` | undefined;
+  agentTokenId: string;
+  computeModel?: string;
+} {
+  const vault = ctx.session.addresses?.vault;
+  const agentNft = ctx.session.addresses?.agentNft;
+  const agentTokenId = String(args.tokenId ?? ctx.session.lastTokenId ?? "");
+  const body: {
+    vault: `0x${string}` | undefined;
+    agentNft: `0x${string}` | undefined;
+    agentTokenId: string;
+    computeModel?: string;
+  } = { vault, agentNft, agentTokenId };
+
+  const computeModel =
+    typeof args.computeModel === "string" && args.computeModel.trim()
+      ? args.computeModel.trim()
+      : undefined;
+  if (computeModel) body.computeModel = computeModel;
+
+  return body;
 }
 
 function fail(message: string): ToolResult {
