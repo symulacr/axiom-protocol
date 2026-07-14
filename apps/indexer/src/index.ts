@@ -127,6 +127,7 @@ function composeSinks(
     rpcUrl: string;
     chainId: number;
     apiKey: string | undefined;
+    indexerKey: string | undefined;
   },
 ) {
   return async (event: AxiomEvent) => {
@@ -227,6 +228,7 @@ async function main() {
     rpcUrl: url,
     chainId: cid,
     apiKey: env.AXIOM_API_KEY,
+    indexerKey: env.AXIOM_INDEXER_API_KEY,
   });
 
   const contractAddresses = resolveIndexerAddresses(

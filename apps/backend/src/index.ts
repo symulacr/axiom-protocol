@@ -84,6 +84,10 @@ async function main(): Promise<void> {
 }
 
 void main().catch((err) => {
-  createLogger("server").error("Fatal startup error", { err });
+  const e = err instanceof Error ? err : new Error(String(err));
+  createLogger("server").error("Fatal startup error", {
+    message: e.message,
+    stack: e.stack,
+  });
   process.exit(1);
 });
