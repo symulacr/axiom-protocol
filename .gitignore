@@ -177,6 +177,7 @@ wallets/ADDRESSES.md
 # ── TS tests — ignore orphans; allow project suites ────────
 *.test.ts
 !packages/chat-runtime/**/*.test.ts
+!packages/config/**/*.test.ts
 !apps/oracle/test/**/*.test.ts
 *.spec.ts
 !apps/frontend/e2e/**/*.spec.ts
