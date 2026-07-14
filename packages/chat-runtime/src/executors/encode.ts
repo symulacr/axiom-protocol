@@ -68,12 +68,6 @@ async function encodeMint(
 
   if (!httpOk || !data.to) return fail("mint encode fail");
 
-  // Register the (possibly derived) dataHash with the oracle so the minted
-  // agent is later readable/transferable. The oracle rejects unknown
-  // dataHashes on read/transfer, so missing this step is exactly the bug that
-  // makes chat-minted agents unusable. Mirrors the frontend wizard's
-  // registerOracle step. Degrades gracefully — a failed oracle must NOT break
-  // the on-chain mint; the call is always attempted when an oracle URL exists.
   await registerDataHashWithOracle(ctx, dataHash, to);
 
   if (ctx.mode === "encode-only" || !ctx.wallet?.signAndSend) {
@@ -146,16 +140,6 @@ function success(obj: Record<string, unknown>): ToolResult {
   return { ok: true, content: JSON.stringify(obj) };
 }
 
-/**
- * Best-effort registration of a minted agent's dataHash with the TEE oracle.
- * Corresponds to the frontend wizard's registerOracle() call
- * (POST ${ORACLE_URL}/v1/agents/mint). The oracle marks the dataHash as seen,
- * which is required before the agent can be read/transferred.
- *
- * This call MUST always be attempted when an oracleUrl is configured. A
- * failure (unreachable oracle, non-2xx, network error) is non-fatal: we log a
- * warning and continue so the actual on-chain mint is never blocked.
- */
 async function registerDataHashWithOracle(
   ctx: ToolRuntime,
   dataHash: string,

@@ -49,22 +49,6 @@ export interface DownloadOptions {
 }
 
 
-/**
- * Durable "seen dataHash" registry.
- *
- * Historically this lived in an in-memory Set capped at 10k entries. That was
- * the oracle's single biggest silent-data-loss risk: on any restart the set
- * was wiped (every previously-minted asset became untransferable) and, even
- * without a restart, the oldest ~1k entries were evicted once the cap was hit.
- *
- * It is now backed by a JSON file under the oracle's data dir
- * (`${AXIOM_DATA_DIR ?? cwd}/.data/oracle-seen-hashes.json`), mirroring the
- * durable persistence pattern in apps/backend/src/events/persist.ts. On
- * construction the file is loaded; every mark is flushed synchronously so a
- * subsequent process (or a simulated restart in tests) observes it. There is
- * no cap: the registry is durable and correctness matters more than a few
- * kilobytes of disk per 10k mints.
- */
 const ORACLE_SEEN_HASHES_FILE = join(
   process.env.AXIOM_DATA_DIR ?? process.cwd(),
   ".data",
@@ -72,7 +56,6 @@ const ORACLE_SEEN_HASHES_FILE = join(
 );
 
 export interface SeenHashesOptions {
-  /** Override the backing file for the durable "seen dataHash" registry. */
   seenHashesFile?: string;
 }
 
@@ -96,8 +79,6 @@ function loadSeenDataHashes(file: string): Set<string> {
     }
     return seen;
   } catch {
-    // Corrupt or unreadable file: start fresh but keep a backup so the data
-    // is recoverable by hand instead of being silently dropped.
     if (existsSync(file)) {
       try {
         renameSync(file, `${file}.bak`);
@@ -111,9 +92,6 @@ function loadSeenDataHashes(file: string): Set<string> {
 
 function persistSeenDataHashes(file: string, seen: Set<string>): void {
   mkdirSync(dirname(file), { recursive: true });
-  // Unique temp name per write so concurrent writers (e.g. parallel test
-  // files, or a future multi-process oracle) never rename each other's
-  // temp file away — that collision produced ENOENT on the final rename.
   const tmp = `${file}.${process.pid}.${randomUUID()}.tmp`;
   writeFileSync(tmp, JSON.stringify({ seenDataHashes: [...seen] }));
   renameSync(tmp, file);
