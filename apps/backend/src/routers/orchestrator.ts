@@ -122,9 +122,8 @@ export function registerOrchestratorRoutes(
           computeModel: reqComputeModel ?? DEFAULT_MODEL,
           systemPrompt:
             parsed.systemPrompt ??
-            "You are a crypto-native strategy assistant. Given the current vault balance and recent events, respond with a JSON object { action: 'buy' | 'sell' | 'hold', amount?: number, reason: string }.",
+            "You are a crypto-native strategy assistant. Given the current vault balance and recent events, respond with a JSON object { action: 'act' | 'hold', amount?: number, reason: string }.",
           modelDataRoot,
-          modelEncryption: undefined,
         };
         const signal: MarketSignal = {
           source: signalSource ?? "manual:user",

@@ -3,13 +3,11 @@ import {
   Contract,
   JsonRpcProvider,
   type Provider,
-  type TransactionReceipt,
   type TransactionResponse,
 } from "ethers";
 import { TypedContract } from "@axiom/config/types/contract";
 import type { TickResult } from "@axiom/config/types/orchestrator";
 import type OpenAI from "openai";
-import { ZeroGStorage, type Encryption } from "@axiom/config/storage/0g";
 import {
   clientChatIdMap,
   createRouterClient,
@@ -20,7 +18,6 @@ import {
   discoverProviders,
   selectProvider,
 } from "../compute/provider-discovery.js";
-import { DefaultSignerOracleClient } from "../oracle/client.js";
 import { pickOGNetwork } from "@axiom/config/networks";
 import { EVENT_NAMES } from "@axiom/config";
 import { VAULT_ABI, VAULT_ABI_LEGACY } from "@axiom/config/abis";
@@ -115,7 +112,6 @@ export interface StrategySpec {
   computeModel: string;
   systemPrompt: string;
   modelDataRoot: `0x${string}`;
-  modelEncryption: Encryption | undefined;
 }
 
 export type { TickResult };
@@ -139,10 +135,8 @@ export interface OrchestratorConfig {
 }
 
 export class StrategyRunner {
-  private readonly storage: ZeroGStorage;
   private openai: OpenAI | null = null;
   private openaiModel: string | undefined;
-  private readonly oracle: DefaultSignerOracleClient;
   private readonly chainId: number;
   private readonly provider: JsonRpcProvider;
   private readonly evmRpc: string;
@@ -164,15 +158,6 @@ export class StrategyRunner {
     this.signer = config.signer;
     const network = pickOGNetwork(chainId);
     if (!network) throw new Error(`Unsupported chainId ${chainId}`);
-    this.storage = new ZeroGStorage({
-      indexerRpc: network.storageRpc,
-      evmRpc: config.evmRpc,
-      signer: config.signer,
-    });
-    this.oracle = new DefaultSignerOracleClient({
-      baseUrl: config.oracleBaseUrl,
-      apiKey: config.apiKey,
-    });
   }
 
   private async getClient(model?: string): Promise<OpenAI> {
@@ -243,7 +228,7 @@ export class StrategyRunner {
       }
     }
 
-    const recommendation = this.parseRecommendation(rawModelOutput);
+    const recommendation = parseRecommendation(rawModelOutput);
 
     const execution =
       recommendation.action === "hold"
@@ -277,51 +262,6 @@ export class StrategyRunner {
     return result;
   }
 
-  private parseRecommendation(
-    rawModelOutput: string,
-  ): TickResult["recommendation"] {
-    try {
-      const parsed = JSON.parse(
-        rawModelOutput.trim(),
-      ) as TickResult["recommendation"];
-      const action =
-        parsed.action === "act" || parsed.action === "hold"
-          ? parsed.action
-          : "hold";
-      const rawAmount =
-        typeof parsed.amount === "number" ? parsed.amount : undefined;
-      const amount =
-        rawAmount !== undefined &&
-        Number.isFinite(rawAmount) &&
-        rawAmount >= 0 &&
-        rawAmount <= 1e18
-          ? rawAmount
-          : undefined;
-      const rawConfidence = typeof parsed.confidence === "number" ? parsed.confidence : undefined;
-      const confidence =
-        rawConfidence !== undefined && Number.isFinite(rawConfidence)
-          ? Math.min(1, Math.max(0, rawConfidence))
-          : undefined;
-      return {
-        action,
-        amount,
-        confidence,
-        reason:
-          typeof parsed.reason === "string"
-            ? parsed.reason
-            : "no reason provided",
-      };
-    } catch {
-      log.warn("unparseable model output", {
-        output: rawModelOutput.slice(0, 200),
-      });
-      return {
-        action: "hold",
-        reason: `Model output not parseable as JSON: ${rawModelOutput.slice(0, 80)}…`,
-      };
-    }
-  }
-
   private async settleOnChain(
     strategy: StrategySpec,
     action: string,
@@ -331,55 +271,19 @@ export class StrategyRunner {
       throw new Error("No vault address configured for on-chain settlement");
     }
 
-    const target = vaultAddr;
-    const value = 0n;
-    const data = "0x";
-    log.info("settleOnChain called", {
+    const strat = await readVaultStrategy(
+      this.provider,
+      vaultAddr,
+      strategy.agentTokenId,
+    );
+    log.info("settleOnChain skipped", {
       action,
       tokenId: strategy.agentTokenId.toString(),
+      root: strat.root,
     });
-    const proof: `0x${string}`[] = [];
-
-    const strat = await readVaultStrategy(this.provider, vaultAddr, strategy.agentTokenId);
-    if (strat.root === '0x0000000000000000000000000000000000000000000000000000000000000000') {
-      log.warn('settleOnChain skipped: no strategy set on vault', { tokenId: strategy.agentTokenId.toString() });
-      return { status: 'skipped', reason: 'no strategy set on vault' };
-    }
-    const vaultTc = this.getVaultContract("write");
-    const tx = await vaultTc.contract.execute(
-      strategy.agentTokenId,
-      target,
-      value,
-      data,
-      proof,
-    );
-    const receipt: TransactionReceipt | null = await tx.wait();
-    if (!receipt) {
-      throw new Error(`vault.execute() tx ${tx.hash} returned no receipt`);
-    }
-
-    const executedEvent = vaultTc.iface.getEvent(EVENT_NAMES.Executed);
-    let result: `0x${string}` | undefined;
-    const success = receipt.status === 1;
-    if (executedEvent) {
-      const executedLog = receipt.logs.find(
-        (log) => log.topics[0] === executedEvent.topicHash,
-      );
-      if (executedLog) {
-        const parsed = vaultTc.iface.parseLog(executedLog);
-        if (parsed && parsed.args.result) {
-          result = parsed.args.result as `0x${string}`;
-        }
-      }
-    }
-
     return {
-      txHash: receipt.hash as `0x${string}`,
-      action,
-      target,
-      success,
-      result,
-      gasUsed: receipt.gasUsed,
+      status: "skipped",
+      reason: settlementSkipReason(strat.root),
     };
   }
 
@@ -590,4 +494,56 @@ export class StrategyRunner {
     return { vaultBalance, recentEvents };
   }
 
+}
+
+export function settlementSkipReason(root: string): string {
+  if (root === "0x0000000000000000000000000000000000000000000000000000000000000000") {
+    return "no strategy set on vault";
+  }
+  return "settlement requires an off-chain Merkle proof producer (not available)";
+}
+
+export function parseRecommendation(
+  rawModelOutput: string,
+): TickResult["recommendation"] {
+  try {
+    const parsed = JSON.parse(
+      rawModelOutput.trim(),
+    ) as TickResult["recommendation"];
+    const action =
+      parsed.action === "act" || parsed.action === "hold"
+        ? parsed.action
+        : "hold";
+    const rawAmount =
+      typeof parsed.amount === "number" ? parsed.amount : undefined;
+    const amount =
+      rawAmount !== undefined &&
+      Number.isFinite(rawAmount) &&
+      rawAmount >= 0 &&
+      rawAmount <= 1e18
+        ? rawAmount
+        : undefined;
+    const rawConfidence = typeof parsed.confidence === "number" ? parsed.confidence : undefined;
+    const confidence =
+      rawConfidence !== undefined && Number.isFinite(rawConfidence)
+        ? Math.min(1, Math.max(0, rawConfidence))
+        : undefined;
+    return {
+      action,
+      amount,
+      confidence,
+      reason:
+        typeof parsed.reason === "string"
+          ? parsed.reason
+          : "no reason provided",
+    };
+  } catch {
+    log.warn("unparseable model output", {
+      output: rawModelOutput.slice(0, 200),
+    });
+    return {
+      action: "hold",
+      reason: `Model output not parseable as JSON: ${rawModelOutput.slice(0, 80)}…`,
+    };
+  }
 }
