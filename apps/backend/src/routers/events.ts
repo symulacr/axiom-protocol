@@ -12,11 +12,8 @@ import { sendError } from "../utils/response.js";
 import type { EventStore } from "../events/store.js";
 import type { ServerConfig } from "../server.js";
 
-/** Trusted producers allowed to append events. Extend at runtime via the
- *  comma-separated AXIOM_EVENT_SOURCES env var (e.g. "indexer,oracle"). */
 export const DEFAULT_EVENT_SOURCES = ["indexer"] as const;
 
-/** Resolve the set of allowed event sources (base allowlist + optional env extension). */
 export function resolveEventSources(extra?: string): Set<string> {
   const allowed = new Set<string>(DEFAULT_EVENT_SOURCES);
   const raw = extra ?? process.env.AXIOM_EVENT_SOURCES ?? "";
@@ -27,12 +24,10 @@ export function resolveEventSources(extra?: string): Set<string> {
   return allowed;
 }
 
-/** Constant-time key comparison so authentication can't be brute-forced via timing. */
 export function isAuthorizedKey(
   provided: string | undefined,
   expected: string | undefined,
 ): boolean {
-  // Fail closed: with no expected key configured, nothing authenticates.
   if (!expected) return false;
   const p = Buffer.from(typeof provided === "string" ? provided : "", "utf-8");
   const e = Buffer.from(expected, "utf-8");
@@ -43,16 +38,8 @@ export type EventPostAuth =
   | { ok: true }
   | { ok: false; status: number; code: string; message: string };
 
-/** Header carrying the DEDICATED indexer key for POST /v1/events. It is kept
- *  distinct from `x-api-key` (the general AXIOM_API_KEY) so this route is
- *  gated by its own credential without touching the global api-key middleware
- *  that protects every other route. */
 export const INDEXER_KEY_HEADER = "x-indexer-key" as const;
 
-/** Pure gate for POST /v1/events: the `source` must be allowlisted AND the
- *  request must authenticate with the DEDICATED indexer key (distinct from the
- *  general AXIOM_API_KEY). Returns an actionable error otherwise. This is the
- *  micro-change that stops untrusted sources from poisoning the event store. */
 export function authorizeEventPost(opts: {
   source: string;
   indexerKey: string | undefined;

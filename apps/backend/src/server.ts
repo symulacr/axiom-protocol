@@ -112,15 +112,6 @@ export interface ServerConfig {
   env?: BackendEnv;
 }
 
-/**
- * Refuses to start the backend when API-key auth is explicitly disabled in
- * production. In any non-production environment (NODE_ENV unset, "test",
- * "development", "dev") the legacy AXIOM_DISABLE_AUTH opt-out is still allowed
- * so local/test runs keep working.
- *
- * Pure and unit-testable: it only inspects the supplied env record, so the real
- * startup path passes `process.env` while tests can pass a fixture.
- */
 export function assertStartupAuthNotDisabledInProduction(
   env: Record<string, string | undefined>,
 ): void {
@@ -138,8 +129,6 @@ export function startServer(config: ServerConfig): {
   app: Express;
   httpServer: HttpServer;
 } {
-  // Security guard: never boot with auth disabled in production. Checked first
-  // so we refuse before listening or wiring any routes.
   assertStartupAuthNotDisabledInProduction(process.env);
 
   const app = express();
