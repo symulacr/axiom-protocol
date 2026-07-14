@@ -101,7 +101,7 @@ export function registerEventRoutes(
         eventName: b.eventName,
         chainId: b.chainId,
         blockNumber: b.blockNumber,
-        txHash: b.txHash,
+        txHash: b.txHash ?? null,
         logIndex: b.logIndex,
         payload: b.payload,
       });

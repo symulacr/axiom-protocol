@@ -11,7 +11,7 @@ export interface StoredEvent {
   source: string;
   chainId: number;
   blockNumber: number;
-  txHash: string;
+  txHash: string | null;
   logIndex: number;
   eventName: string;
   payload: StoredEventPayload;
@@ -56,7 +56,7 @@ function isStoredEvent(val: unknown): val is StoredEvent {
     Number.isFinite(e.chainId) &&
     typeof e.blockNumber === "number" &&
     Number.isFinite(e.blockNumber) &&
-    typeof e.txHash === "string" &&
+    (typeof e.txHash === "string" || e.txHash === null) &&
     typeof e.logIndex === "number" &&
     Number.isFinite(e.logIndex) &&
     typeof e.eventName === "string" &&

@@ -37,7 +37,7 @@ export const eventBodySchema = z.object({
   eventName: z.string().min(1).max(128),
   chainId: z.number().int().positive(),
   blockNumber: z.number().int().nonnegative(),
-  txHash: z.string().regex(/^0x[a-fA-F0-9]{64}$/),
+  txHash: z.string().regex(/^0x[a-fA-F0-9]+$/).optional(),
   logIndex: z.number().int().nonnegative(),
   payload: z.record(z.string(), z.unknown()),
 });

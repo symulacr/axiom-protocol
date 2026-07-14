@@ -35,7 +35,11 @@ export async function runAskTool(
   args: Record<string, unknown>,
   _ctx: ToolRuntime,
 ): Promise<ToolResult> {
-  return { ok: true, content: JSON.stringify({ ask: true, ...buildAskUserPrompt(args) }) };
+  try {
+    return { ok: true, content: JSON.stringify({ ask: true, ...buildAskUserPrompt(args) }) };
+  } catch (err) {
+    return { ok: false, content: "", error: err instanceof Error ? err.message : String(err) };
+  }
 }
 
 export function isAskUserResult(result: ToolResult): boolean {

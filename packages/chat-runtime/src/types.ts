@@ -12,6 +12,7 @@ export interface EncodeCalldata {
 export interface ToolResult {
   ok: boolean;
   content: string;
+  error?: string;
 }
 
 export interface ChatSessionContext {
