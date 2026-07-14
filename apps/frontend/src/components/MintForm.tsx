@@ -18,7 +18,7 @@ import {
 import { formatEther, parseAbi } from "viem";
 import { humanizeError } from "../utils/format.js";
 import { AGENT_NFT_ABI } from "@axiom/config/abis";
-import { TRANSFER_TOPIC, ZERO_DATA_ROOT } from "@axiom/config";
+import { TRANSFER_TOPIC, ZERO_DATA_ROOT } from "@axiom/config/constants";
 import { apiFetch } from "../utils/apiFetch.js";
 import { getAxiomAgentNftAddress } from "../abi/addresses.js";
 import { useMintWizard } from "../hooks/useMintWizard.js";
