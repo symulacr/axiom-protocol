@@ -1,5 +1,5 @@
 import type { AxiomEvent } from "./events.js";
-import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
+import { ARISTOTLE_CHAIN_ID } from "@axiom/config/networks";
 import { bigintReplacer } from "@axiom/config/types/bigint";
 
 export interface HttpEventBody {
@@ -63,7 +63,7 @@ export async function postEvent(event: AxiomEvent, opts: HttpEventSinkOptions) {
     Number(
       process.env["AXIOM_CHAIN_ID"] ??
         process.env["OG_CHAIN_ID"] ??
-        GALILEO_CHAIN_ID,
+        ARISTOTLE_CHAIN_ID,
     );
   const body: HttpEventBody = buildBody(event, source, chainId);
 
