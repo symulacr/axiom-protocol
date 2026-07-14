@@ -21,6 +21,7 @@ export interface HttpEventSinkOptions {
   timeoutMs?: number;
   chainId?: number;
   apiKey?: string;
+  indexerKey?: string;
   maxRetries?: number;
 }
 
@@ -72,6 +73,7 @@ export async function postEvent(event: AxiomEvent, opts: HttpEventSinkOptions) {
       const signal = AbortSignal.timeout(timeoutMs);
       const headers: Record<string, string> = { "content-type": "application/json" };
       if (opts.apiKey) headers["x-api-key"] = opts.apiKey;
+      if (opts.indexerKey) headers["x-indexer-key"] = opts.indexerKey;
       const res = await fetchImpl(url, {
         method: "POST",
         headers,

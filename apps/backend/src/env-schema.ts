@@ -6,6 +6,7 @@ export const backendEnvSchema = sharedEnvSchema.merge(
   z.object({
     AXIOM_EVM_RPC: z.string().url(),
     AXIOM_ORACLE_URL: z.string().url(),
+    AXIOM_INDEXER_API_KEY: z.string().optional(),
     AXIOM_STORAGE_RPC: z.string().url().optional(),
     AXIOM_COMPUTE_API_KEY: z.string().optional(),
     AXIOM_COMPUTE_VERIFY_TEE: z.string().optional(),
