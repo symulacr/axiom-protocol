@@ -1,5 +1,6 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { ethers } from "ethers";
+import type { Hex } from "viem";
 import type { TypedContract, AgentNFTMethods } from "@axiom/config/types/contract";
 import { type ServerConfig, isUpstreamTransportError } from "../server.js";
 import { sendError, extractErrorMessage } from "../utils/response.js";
@@ -11,8 +12,12 @@ import { createLogger } from "../utils/logger.js";
 const log = createLogger("agents");
 
 const AGENT_LOG_SCAN_BLOCKS = 50_000;
-import type { Eip712Domain } from "@axiom/config";
-import { recoverAccessSigner, HTTP } from "@axiom/config";
+import type { Eip712Domain, OwnershipProofInput } from "@axiom/config";
+import {
+  recoverAccessSigner,
+  recoverOwnershipSigner,
+  HTTP,
+} from "@axiom/config";
 import { transferBodySchema } from "../route-schemas.js";
 
 function resolveSealedKey(sealedKeyIn: string | undefined): {
@@ -25,6 +30,30 @@ function resolveSealedKey(sealedKeyIn: string | undefined): {
       : "0x" + "00".repeat(32)
   ) as `0x${string}`;
   return { key, missing: !sealedKeyIn || sealedKeyIn.length < 2 };
+}
+
+// The oracle returns a claimed signer + signature; recover the signer from the
+// signature (using the same EIP-712 domain the oracle signed with) and refuse
+// to trust it unless it matches the claimed signer. This catches a swapped or
+// misconfigured oracle before we relay its proof to the client/on-chain.
+function assertTrustedOracleSigner(
+  res: Response,
+  signature: Hex,
+  input: OwnershipProofInput,
+  claimedSigner: Hex,
+  domain: Eip712Domain,
+): boolean {
+  const recovered = recoverOwnershipSigner(signature, input, domain);
+  if (recovered.toLowerCase() !== claimedSigner.toLowerCase()) {
+    sendError(
+      res,
+      HTTP.BAD_GATEWAY,
+      "oracle ownership signature signer does not match claimed signer",
+      "ORACLE_SIGNATURE_INVALID",
+    );
+    return false;
+  }
+  return true;
 }
 
 export function registerAgentRoutes(
@@ -276,6 +305,17 @@ export function registerAgentRoutes(
             nonce,
             validUntil,
           });
+          if (
+            !assertTrustedOracleSigner(
+              res,
+              tee.signature,
+              { dataHash, sealedKey: sealedKeyOrDefault, targetPubkey: pk, to, nft, nonce, validUntil },
+              tee.signer,
+              eip712Domain,
+            )
+          ) {
+            return;
+          }
           res.json({
             ok: true,
             stage: "challenge",
@@ -349,6 +389,17 @@ export function registerAgentRoutes(
           nonce,
           validUntil,
         });
+        if (
+          !assertTrustedOracleSigner(
+            res,
+            tee.signature,
+            { dataHash: proofDataHash, sealedKey: sealedKeyOrDefault, targetPubkey: proofTargetPubkey, to, nft, nonce, validUntil },
+            tee.signer,
+            eip712Domain,
+          )
+        ) {
+          return;
+        }
         res.json({
           ok: true,
           stage: "final",

@@ -1,5 +1,6 @@
 import { getChatToolSpec } from "@axiom/config/chat-tools";
 import { fetchJson } from "../http-json.js";
+import { keccak256, toHex } from "viem";
 import type { ToolRuntime } from "../transport.js";
 import type { ToolResult } from "../types.js";
 
@@ -41,11 +42,17 @@ async function encodeMint(
   if (!to) return fail("Wallet not connected");
 
   if (!args.dataDescription) return fail("dataDescription required");
-  if (!args.dataHash) return fail("dataHash required");
+  // dataHash is optional for first-time users. When omitted, derive a stable
+  // placeholder hash from the agent name so minting works without manual
+  // metadata hashing; real sealed data can be associated later via update().
+  const dataHash =
+    typeof args.dataHash === "string" && args.dataHash.length > 0
+      ? String(args.dataHash)
+      : keccak256(toHex(String(args.dataDescription)));
 
   const body = {
     dataDescription: String(args.dataDescription),
-    dataHash: String(args.dataHash),
+    dataHash,
     to,
   };
 

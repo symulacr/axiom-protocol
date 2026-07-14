@@ -211,3 +211,15 @@ export function recoverAccessSigner(
   );
   return computeAddress(recovered) as Hex;
 }
+
+export function recoverOwnershipSigner(
+  signature: Hex,
+  input: OwnershipProofInput,
+  domain?: Eip712Domain,
+): Hex {
+  const recovered = SigningKey.recoverPublicKey(
+    getBytes(ownershipMessageHash(input, domain)),
+    signature,
+  );
+  return computeAddress(recovered) as Hex;
+}
