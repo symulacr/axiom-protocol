@@ -13,6 +13,7 @@ export const backendEnvSchema = sharedEnvSchema.merge(
     OG_COMPUTE_API_KEY: z.string().optional(),
     AXIOM_TEE_SIGNER_PK: hexString,
     DEPLOYER_PK: hexString,
+    AXIOM_RUNTIME_SIGNER_PK: z.string().optional(),
     AXIOM_OPERATOR_PK: z.string().optional(),
     AXIOM_COMPUTE_SIGNER_PK: z.string().optional(),
     AXIOM_SENTRY_DSN: z.string().optional(),
