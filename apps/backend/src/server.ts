@@ -296,6 +296,48 @@ export function startServer(config: ServerConfig): {
     }
   }, HEARTBEAT_INTERVAL);
 
+  registerHealthRoutes(app, config, provider, oracle);
+  registerComputeRoutes(app, config);
+
+  registerChatRoutes(app, config);
+
+  registerAgentRoutes(app, config, provider, oracle, eip712Domain, nftTc);
+  registerMintEncodeRoutes(app, config, provider);
+  registerEventRoutes(app, config, getEventStore());
+  registerPerformanceRoutes(app, config, getEventStore());
+  registerOrchestratorRoutes(app, config, getOrCreateOrchestrator, ogChainId);
+  registerArchiveRoutes(app, config);
+  registerSkillRoutes(app, config);
+  registerMetaRoutes(app, config, ogChainId, startedAt);
+
+  registerPaymentRoutes(app, config, nftTc, provider, getPayment);
+
+  registerNotFoundHandler(app);
+  registerErrorHandlers(app);
+
+  const httpServer = createServer(app);
+  setupWebSocketServer(httpServer, config);
+
+  httpServer.listen(config.port, config.bind, () => {
+    log.info(`Listening on http://${config.bind}:${config.port}`);
+    log.info(`Signer: ${config.signer.address}`);
+    log.info(`Axiom backend v${PKG_VERSION} — ${REGISTERED_ROUTES.length} routes mounted, WS /v1/stream`);
+  });
+  httpServer.on("close", () => {
+    clearInterval(heartbeatTimer);
+  });
+
+  return { app, httpServer };
+}
+
+type SharedProvider = ReturnType<typeof getSharedProvider>;
+
+function registerHealthRoutes(
+  app: Express,
+  config: ServerConfig,
+  provider: SharedProvider,
+  oracle: DefaultSignerOracleClient,
+): void {
   app.use(
     createHealthRouter(
       provider,
@@ -304,7 +346,9 @@ export function startServer(config: ServerConfig): {
       config.addresses,
     ),
   );
+}
 
+function registerComputeRoutes(app: Express, config: ServerConfig): void {
   app.get(
     "/v1/compute/providers",
     async (_req: Request, res: Response, next: NextFunction) => {
@@ -386,7 +430,9 @@ export function startServer(config: ServerConfig): {
       }
     },
   );
+}
 
+function registerChatRoutes(app: Express, config: ServerConfig): void {
   app.post(
     "/v1/chat/completions",
     async (req: Request, res: Response, _next: NextFunction) => {
@@ -461,17 +507,31 @@ export function startServer(config: ServerConfig): {
       }
     },
   );
+}
 
-  registerAgentRoutes(app, config, provider, oracle, eip712Domain, nftTc);
+function registerMintEncodeRoutes(
+  app: Express,
+  config: ServerConfig,
+  provider: SharedProvider,
+): void {
   app.use(createMintEncodeRouter(config, provider));
-  registerEventRoutes(app, config, getEventStore());
-  registerPerformanceRoutes(app, config, getEventStore());
-  registerOrchestratorRoutes(app, config, getOrCreateOrchestrator, ogChainId);
+}
 
+function registerArchiveRoutes(app: Express, config: ServerConfig): void {
   app.use(createArchiveQueryRouter(config));
   app.use(createArchiveJobsRouter(config));
-  app.use(createSkillRouters(config));
+}
 
+function registerSkillRoutes(app: Express, config: ServerConfig): void {
+  app.use(createSkillRouters(config));
+}
+
+function registerMetaRoutes(
+  app: Express,
+  config: ServerConfig,
+  ogChainId: number,
+  startedAt: number,
+): void {
   app.get("/v1/routes", (_req: Request, res: Response) => {
     res.json({
       routes: REGISTERED_ROUTES,
@@ -484,7 +544,15 @@ export function startServer(config: ServerConfig): {
       },
     });
   });
+}
 
+function registerPaymentRoutes(
+  app: Express,
+  config: ServerConfig,
+  nftTc: TypedContract<AgentNFTMethods> | null,
+  provider: SharedProvider,
+  getPayment: () => Promise<PaymentProcessorClient>,
+): void {
   const paymentRouter = express.Router();
   createRoute(
     paymentRouter,
@@ -641,14 +709,18 @@ export function startServer(config: ServerConfig): {
   );
 
   app.use(paymentRouter);
+}
 
+function registerNotFoundHandler(app: Express): void {
   app.use((req: Request, res: Response) => {
     if (req.path.startsWith("/v1/") || req.path.startsWith("/health")) {
       sendError(res, HTTP.NOT_FOUND, `No ${req.method} route for ${req.path}`);
       return;
     }
   });
+}
 
+function registerErrorHandlers(app: Express): void {
   Sentry.setupExpressErrorHandler(app);
 
   app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
@@ -683,8 +755,12 @@ export function startServer(config: ServerConfig): {
       .status(HTTP.INTERNAL)
       .json({ error: "Internal server error", code: "INTERNAL_ERROR", requestId });
   });
+}
 
-  const httpServer = createServer(app);
+function setupWebSocketServer(
+  httpServer: HttpServer,
+  config: ServerConfig,
+): void {
   const wss = new WebSocketServer({ noServer: true });
   httpServer.on("upgrade", (req, socket, head) => {
     const url = new URL(req.url ?? "/", "http://localhost");
@@ -743,15 +819,4 @@ export function startServer(config: ServerConfig): {
       });
     });
   });
-
-  httpServer.listen(config.port, config.bind, () => {
-    log.info(`Listening on http://${config.bind}:${config.port}`);
-    log.info(`Signer: ${config.signer.address}`);
-    log.info(`Axiom backend v${PKG_VERSION} — ${REGISTERED_ROUTES.length} routes mounted, WS /v1/stream`);
-  });
-  httpServer.on("close", () => {
-    clearInterval(heartbeatTimer);
-  });
-
-  return { app, httpServer };
 }
