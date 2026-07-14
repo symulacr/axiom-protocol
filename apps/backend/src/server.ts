@@ -194,6 +194,7 @@ export function startServer(config: ServerConfig): {
       config.env?.AXIOM_API_KEY,
       ["/health"],
       process.env.AXIOM_DISABLE_AUTH === "true",
+      process.env.AXIOM_CLIENT_API_KEY,
     ),
   );
   const rateLimitMax = Number.parseInt(
@@ -768,11 +769,17 @@ function setupWebSocketServer(
       socket.destroy();
       return;
     }
-    const apiKeys = config.env?.AXIOM_API_KEY
+    const serverKeys = config.env?.AXIOM_API_KEY
       ? config.env.AXIOM_API_KEY.split(",")
           .map((k) => k.trim())
           .filter(Boolean)
       : [];
+    const clientKeys = process.env.AXIOM_CLIENT_API_KEY
+      ? process.env.AXIOM_CLIENT_API_KEY.split(",")
+          .map((k) => k.trim())
+          .filter(Boolean)
+      : [];
+    const apiKeys = [...serverKeys, ...clientKeys];
     // Fail closed: a missing API key denies WS upgrades unless auth is explicitly disabled.
     if (apiKeys.length === 0) {
       if (process.env.AXIOM_DISABLE_AUTH !== "true") {
