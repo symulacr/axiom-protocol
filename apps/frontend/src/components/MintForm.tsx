@@ -18,6 +18,7 @@ import {
 import { formatEther, parseAbi } from "viem";
 import { humanizeError } from "../utils/format.js";
 import { AGENT_NFT_ABI } from "@axiom/config/abis";
+import { TRANSFER_TOPIC, ZERO_DATA_ROOT } from "@axiom/config";
 import { apiFetch } from "../utils/apiFetch.js";
 import { getAxiomAgentNftAddress } from "../abi/addresses.js";
 import { useMintWizard } from "../hooks/useMintWizard.js";
@@ -81,13 +82,9 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
 
   useEffect(() => {
     if (receiptQuery.data && pendingHash) {
-      const TRANSFER_TOPIC =
-        "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
-      const ZERO_TOPIC =
-        "0x0000000000000000000000000000000000000000000000000000000000000000";
       const mintLog = receiptQuery.data.logs.find(
         (log) =>
-          log.topics[0] === TRANSFER_TOPIC && log.topics[1] === ZERO_TOPIC,
+          log.topics[0] === TRANSFER_TOPIC && log.topics[1] === ZERO_DATA_ROOT,
       );
       setPendingHash(null);
       if (mintLog?.topics[3]) {

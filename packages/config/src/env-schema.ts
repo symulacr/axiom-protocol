@@ -12,5 +12,3 @@ export const sharedEnvSchema = z.object({
   AXIOM_CHAIN_ID: z.coerce.number().int().positive().default(16661),
   OG_COMPUTE_BASE_URL: z.string().url().optional(),
 });
-
-export type SharedEnv = z.infer<typeof sharedEnvSchema>;

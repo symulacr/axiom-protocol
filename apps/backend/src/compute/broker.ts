@@ -9,8 +9,6 @@ import { ARISTOTLE_CHAIN_ID } from "@axiom/config/networks";
 import { createLogger } from "../utils/logger.js";
 import { extractErrorMessage } from "../utils/response.js";
 
-const log = createLogger("compute-broker");
-
 export function resolveChainId(chainId?: number): number {
   if (chainId !== undefined) return chainId;
   const env = Number(process.env.AXIOM_CHAIN_ID);
@@ -59,30 +57,6 @@ export async function getBroker(
   const broker = await createZGComputeNetworkBroker(signer);
   _brokerCache.set(cid, broker);
   return broker;
-}
-
-export async function ensureProviderFunded(
-  providerAddress: string,
-  signer: Wallet,
-  chainId?: number,
-): Promise<boolean> {
-  const raw = process.env.AXIOM_COMPUTE_DEPOSIT_AMOUNT;
-  if (raw === undefined) return false;
-  const amount = Number(raw);
-  if (!Number.isFinite(amount) || amount <= 0) return false;
-
-  try {
-    const broker = await getBroker(signer, chainId);
-    await broker.inference.startAutoFunding(providerAddress);
-    log.info("Auto-funding started", { provider: providerAddress, amount });
-    return true;
-  } catch (err) {
-    log.warn("Auto-funding failed", {
-      provider: providerAddress,
-      error: extractErrorMessage(err),
-    });
-    return false;
-  }
 }
 
 const teeLog = createLogger("tee-verifier");

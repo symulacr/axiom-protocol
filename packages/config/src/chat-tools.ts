@@ -118,18 +118,6 @@ export function toolNamesByClass(cls: ChatToolClass): string[] {
   return toolsByClass(cls).map((t) => t.name);
 }
 
-export function isEncodeTool(name: string): boolean {
-  return getChatToolSpec(name)?.class === "encode";
-}
-
-export function isReadTool(name: string): boolean {
-  return getChatToolSpec(name)?.class === "read";
-}
-
-export function isSkillTool(name: string): boolean {
-  return getChatToolSpec(name)?.class === "skill";
-}
-
 export function chatToolLabels(): Record<string, string> {
   return Object.fromEntries(
     CHAT_TOOL_CATALOG.map((t) => [t.name, t.label]),
@@ -138,7 +126,4 @@ export function chatToolLabels(): Record<string, string> {
 
 export const CHAT_BENCH_READ_TOOLS = toolNamesByClass("read");
 export const CHAT_BENCH_ENCODE_TOOLS = toolNamesByClass("encode");
-export const CHAT_BENCH_ARCHIVE_TOOLS = toolNamesByClass("archive");
-export const CHAT_BENCH_ORCHESTRATE_TOOLS = toolNamesByClass("orchestrate");
-export const CHAT_BENCH_SKILL_TOOLS = toolNamesByClass("skill");
 export const CHAT_BENCH_ALL_TOOL_NAMES = CHAT_TOOL_CATALOG.map((t) => t.name);
