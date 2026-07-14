@@ -98,6 +98,7 @@ function streamFromEndpoint(
             try {
               yield JSON.parse(data) as DirectChunk;
             } catch {
+              // ignore malformed SSE chunks
             }
           }
         }

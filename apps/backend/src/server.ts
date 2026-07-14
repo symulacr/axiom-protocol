@@ -376,7 +376,7 @@ export function startServer(config: ServerConfig): {
 
   app.post(
     "/v1/chat/completions",
-    async (req: Request, res: Response, next: NextFunction) => {
+    async (req: Request, res: Response, _next: NextFunction) => {
       try {
         const {
           messages,

@@ -36,6 +36,7 @@ export function applyToolResult(
       if (first.tokenId !== undefined) session.lastTokenId = String(first.tokenId);
     }
   } catch {
+    // best-effort: a malformed tool result body is ignored
   }
   return session;
 }
@@ -64,7 +65,7 @@ export function toChatApiMessages(
     name?: string;
   }>,
 ): ChatApiMessage[] {
-  return messages.map((msg, index) => {
+  return messages.map((msg) => {
     const content =
       msg.role === "tool"
         ? compressToolContent(msg.content)

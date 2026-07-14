@@ -22,9 +22,8 @@ import {
 } from "../compute/provider-discovery.js";
 import { DefaultSignerOracleClient } from "../oracle/client.js";
 import { pickOGNetwork } from "@axiom/config/networks";
-import { EVENT_NAMES, resolveChatModel } from "@axiom/config";
+import { EVENT_NAMES } from "@axiom/config";
 import { VAULT_ABI, VAULT_ABI_LEGACY } from "@axiom/config/abis";
-import { ZERO_DATA_ROOT } from "../utils/constants.js";
 import { createLogger } from "../utils/logger.js";
 import { extractErrorMessage } from "../utils/response.js";
 

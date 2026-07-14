@@ -76,7 +76,7 @@ export async function runSkillTool(
   });
 
   if (!res.ok) {
-    let details: unknown = null;
+    let details: unknown;
     try {
       details = await res.json();
     } catch {

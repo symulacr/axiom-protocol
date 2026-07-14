@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { useAccount, useChainId } from "wagmi";
+import { useAccount } from "wagmi";
 import { ProviderCard } from "../components/ProviderCard.js";
 import { useProviders } from "../hooks/useProviders.js";
 import { usePolledApi } from "../hooks/usePolledApi.js";

@@ -17,6 +17,7 @@ export function loadEnv(
       if (!process.env[key]) process.env[key] = val;
     }
   } catch {
+    // a malformed or unreadable .env line is skipped, not fatal
   }
 }
 

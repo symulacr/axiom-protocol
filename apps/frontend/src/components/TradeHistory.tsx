@@ -1,5 +1,4 @@
 import type { ReactElement } from "react";
-import { useChainId } from "wagmi";
 import type { TradeHistoryEntry } from "../hooks/usePerformance.js";
 import { COLORS, Card, SectionTitle, getActionColor, CopyButton } from "./ui.js";
 import { EmptyState } from "./EmptyState.js";
