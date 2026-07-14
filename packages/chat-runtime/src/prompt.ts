@@ -13,7 +13,7 @@ export function buildSystemPrompt(session: ChatSessionContext): string {
         const tags: string[] = [];
         if (t.requiresWallet) tags.push("wallet");
         if (t.requiresTokenId) tags.push("token");
-        if (t.encodeOnly) tags.push("sign");
+        if (t.class === "encode") tags.push("sign");
         if (t.friction !== "low") tags.push(t.friction);
         if (t.capabilities?.length) tags.push(`caps:${t.capabilities.join(",")}`);
         const metaBits = [t.os, t.context, t.requiresApiKey].filter(

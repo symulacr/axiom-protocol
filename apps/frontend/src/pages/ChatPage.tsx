@@ -32,6 +32,7 @@ import {
   evaluateContinue,
   shouldAutoContinue,
   isAskUserResult,
+  type ChatSessionContext,
 } from "@axiom/chat-runtime";
 import { ChatSessionProvider, useChatSession } from "../chat/ChatSessionProvider.js";
 import { ToolResultBody } from "../chat/ToolResultBody.js";
@@ -240,6 +241,19 @@ function ChatPageInner(): ReactElement {
   const queueRef = useRef<string[]>([]);
   const isStreamingRef = useRef(false);
 
+  // Live refs keep turn-local values (tokenId, address, chainId, and the
+  // wallet accessors) current WITHIN a single agent turn. React state
+  // updates (e.g. setLastTokenId) only propagate on the next render, but the
+  // in-flight runAgent closure would otherwise keep a stale snapshot, so a
+  // tool later in the same turn (deposit/withdraw/unbroker_*) would not see
+  // a tokenId produced by an earlier tool (mint) in that turn.
+  const lastTokenIdRef = useRef<string | undefined>(session.lastTokenId);
+  const liveAddressRef = useRef<string | undefined>(address);
+  const liveChainIdRef = useRef<number>(chainId);
+  const writeContractAsyncRef = useRef(writeContractAsync);
+  const walletClientRef = useRef(walletClient);
+  const publicClientRef = useRef(publicClient);
+
   const cancelStreamThrottle = useCallback(() => {
     if (streamThrottleRef.current !== null) {
       clearTimeout(streamThrottleRef.current);
@@ -269,7 +283,7 @@ function ChatPageInner(): ReactElement {
 
   const toolCtx: ToolContext = useMemo(
     () => ({
-      address,
+      address: address?.toLowerCase(),
       chainId,
       lastTokenId: session.lastTokenId,
       writeContractAsync: (writeContractAsync ??
@@ -286,6 +300,20 @@ function ChatPageInner(): ReactElement {
   );
   const handlers = useToolHandlers(toolCtx);
   const chainSupported = SUPPORTED_CHAIN_IDS.has(chainId);
+
+  // Keep the live refs in sync with the latest props/state. This covers
+  // cross-turn refreshes (e.g. once React re-renders after setLastTokenId)
+  // and keeps the wallet address/chainId live. Within-turn propagation is
+  // handled by updating lastTokenIdRef directly as each tool result is
+  // recorded (see runAgent).
+  useEffect(() => {
+    lastTokenIdRef.current = session.lastTokenId;
+    liveAddressRef.current = address;
+    liveChainIdRef.current = chainId;
+    writeContractAsyncRef.current = writeContractAsync;
+    walletClientRef.current = walletClient;
+    publicClientRef.current = publicClient;
+  }, [session.lastTokenId, address, chainId, writeContractAsync, walletClient, publicClient]);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -357,10 +385,36 @@ function ChatPageInner(): ReactElement {
       let loopCount = 0;
 
       try {
-        const systemContent = buildSystemPrompt(session);
-
         while (loopCount < MAX_TOOL_LOOPS) {
           loopCount++;
+
+          // Rebuild the tool context and session from LIVE refs on every
+          // iteration so values produced earlier in this same turn (e.g. a
+          // tokenId from a mint) are visible to later tools
+          // (deposit/withdraw/unbroker_*) without waiting for a React
+          // re-render.
+          const liveToolCtx: ToolContext = {
+            address: liveAddressRef.current?.toLowerCase(),
+            chainId: liveChainIdRef.current,
+            lastTokenId: lastTokenIdRef.current,
+            writeContractAsync: (writeContractAsyncRef.current ??
+              (async () => {
+                throw new Error("Wallet not connected");
+              })) as ToolContext["writeContractAsync"],
+            sendTransactionAsync: walletClientRef.current
+              ? async ({ to, data, value }) =>
+                  walletClientRef.current!.sendTransaction({ to, data, value })
+              : undefined,
+            publicClient: publicClientRef.current,
+          };
+          const liveSession: ChatSessionContext = {
+            ...session,
+            chainId: liveChainIdRef.current,
+            walletAddress: (liveAddressRef.current?.toLowerCase() ??
+              session.walletAddress) as `0x${string}` | undefined,
+            lastTokenId: lastTokenIdRef.current,
+          };
+          const systemContent = buildSystemPrompt(liveSession);
 
           const response = await apiFetchResponse("/v1/chat/completions", {
             method: "POST",
@@ -471,8 +525,22 @@ function ChatPageInner(): ReactElement {
                 }
                 try {
                   const args = JSON.parse(tc.function.arguments?.trim() || "{}");
-                  const result = await handler(args, toolCtx);
+                  const result = await handler(args, liveToolCtx);
                   recordToolResult(tc.function.name, result);
+                  // Capture any tokenId this tool produced so a later tool in
+                  // the SAME turn sees it immediately (mirrors applyToolResult).
+                  try {
+                    const parsed = JSON.parse(result) as {
+                      tokenId?: unknown;
+                      agents?: Array<{ tokenId?: unknown }>;
+                    };
+                    const tok = parsed.tokenId ?? parsed.agents?.[0]?.tokenId;
+                    if (tok !== undefined) {
+                      lastTokenIdRef.current = String(tok);
+                    }
+                  } catch {
+                    /* result not JSON — nothing to capture */
+                  }
                   return { tc, result };
                 } catch {
                   return {
