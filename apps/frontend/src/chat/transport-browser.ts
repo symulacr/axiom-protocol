@@ -6,7 +6,7 @@ import {
   type ToolRuntime,
 } from "@axiom/chat-runtime";
 import type { Abi } from "viem";
-import { API_KEY, BACKEND_URL } from "../config/env.js";
+import { API_KEY, BACKEND_URL, ORACLE_URL } from "../config/env.js";
 import {
   getAxiomAgentNftAddress,
   getAxiomStrategyVaultAddress,
@@ -34,6 +34,7 @@ function buildBrowserRuntime(ctx: ToolContext): ToolRuntime {
 
   return {
     mode: "sign",
+    oracleUrl: ORACLE_URL,
     http: {
       fetch: async (path, init) => {
         const url = path.startsWith("http")

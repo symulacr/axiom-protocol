@@ -68,6 +68,14 @@ async function encodeMint(
 
   if (!httpOk || !data.to) return fail("mint encode fail");
 
+  // Register the (possibly derived) dataHash with the oracle so the minted
+  // agent is later readable/transferable. The oracle rejects unknown
+  // dataHashes on read/transfer, so missing this step is exactly the bug that
+  // makes chat-minted agents unusable. Mirrors the frontend wizard's
+  // registerOracle step. Degrades gracefully — a failed oracle must NOT break
+  // the on-chain mint; the call is always attempted when an oracle URL exists.
+  await registerDataHashWithOracle(ctx, dataHash, to);
+
   if (ctx.mode === "encode-only" || !ctx.wallet?.signAndSend) {
     return success({
       ok: true,
@@ -136,6 +144,45 @@ async function encodeVaultOp(
 
 function success(obj: Record<string, unknown>): ToolResult {
   return { ok: true, content: JSON.stringify(obj) };
+}
+
+/**
+ * Best-effort registration of a minted agent's dataHash with the TEE oracle.
+ * Corresponds to the frontend wizard's registerOracle() call
+ * (POST ${ORACLE_URL}/v1/agents/mint). The oracle marks the dataHash as seen,
+ * which is required before the agent can be read/transferred.
+ *
+ * This call MUST always be attempted when an oracleUrl is configured. A
+ * failure (unreachable oracle, non-2xx, network error) is non-fatal: we log a
+ * warning and continue so the actual on-chain mint is never blocked.
+ */
+async function registerDataHashWithOracle(
+  ctx: ToolRuntime,
+  dataHash: string,
+  to: string,
+): Promise<void> {
+  const oracleUrl = ctx.oracleUrl;
+  if (!oracleUrl) return;
+
+  const url = `${oracleUrl.replace(/\/$/, "")}/v1/agents/mint`;
+  try {
+    const { ok } = await fetchJson<{ ok?: boolean }>(ctx.http, url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ dataHash, to }),
+    });
+    if (!ok) {
+      console.warn(
+        `[mint_agent] oracle registration returned ok:false for dataHash=${dataHash} (non-fatal)`,
+      );
+    }
+  } catch (e) {
+    console.warn(
+      `[mint_agent] oracle registration failed for dataHash=${dataHash} (non-fatal): ${
+        e instanceof Error ? e.message : String(e)
+      }`,
+    );
+  }
 }
 
 function fail(message: string): ToolResult {

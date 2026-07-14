@@ -186,6 +186,7 @@ wallets/ADDRESSES.md
 # ── Local runtime / CI artifacts (not source) ──────────────
 apps/backend/.coverage/
 apps/backend/.data/
+apps/oracle/.data/
 apps/frontend/test-results/
 playwright-report/
 blob-report/
