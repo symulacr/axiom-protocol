@@ -31,15 +31,16 @@ function resolveAristotleRpc(): string {
   if (!stored) return MAINNET_RPC;
 
   const candidate = stored.trim();
-  let allowed = false;
-  try {
-    const url = new URL(candidate);
-    const normalized =
-      url.origin + (url.pathname === "/" || url.pathname === "" ? "" : url.pathname);
-    allowed = url.protocol === "https:" && MAINNET_RPC_ALLOWLIST.has(normalized);
-  } catch {
-    allowed = false;
-  }
+  const allowed = (() => {
+    try {
+      const url = new URL(candidate);
+      const normalized =
+        url.origin + (url.pathname === "/" || url.pathname === "" ? "" : url.pathname);
+      return url.protocol === "https:" && MAINNET_RPC_ALLOWLIST.has(normalized);
+    } catch {
+      return false;
+    }
+  })();
 
   if (allowed) return candidate;
 

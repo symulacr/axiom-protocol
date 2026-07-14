@@ -134,6 +134,7 @@ export function registerAgentRoutes(
               topics: [TRANSFER_TOPIC, null, paddedOwner],
             });
           } catch {
+            // best-effort: a log fetch failure must not abort the owner lookup
           }
         }
         const seen = new Set<bigint>();

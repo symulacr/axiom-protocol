@@ -148,7 +148,7 @@ function AskUserCard({
   content: string;
   onAnswer: (answer: string) => void;
 }): ReactElement | null {
-  let data: { ask?: boolean; question?: string; options?: string[] } | null = null;
+  let data: { ask?: boolean; question?: string; options?: string[] } | null;
   try {
     data = JSON.parse(content);
   } catch {
