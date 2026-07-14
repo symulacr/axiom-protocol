@@ -12,6 +12,7 @@ import {
   TTLCache,
 } from "../skills/shared.js";
 import { sendError } from "../utils/response.js";
+import { TRANSFER_TOPIC } from "../utils/constants.js";
 import { AGENT_NFT_ABI } from "@axiom/config/abis";
 import { HTTP } from "@axiom/config";
 
@@ -26,8 +27,6 @@ const ERC20_ABI = [
   "function transfer(address to, uint256 amount) returns (bool)",
   "event Transfer(address indexed from, address indexed to, uint256 value)",
 ];
-
-const TRANSFER_TOPIC = ethers.id("Transfer(address,address,uint256)");
 
 const DEX_SPENDERS: Record<string, string> = {
   uniswapV3: "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45",
