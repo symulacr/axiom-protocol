@@ -58,11 +58,8 @@ export async function lookupAccountTweets(
   try {
     const rows = await fetchCdxRows(cdxUrl);
     return rows.map((row) => normalizeCdxRow(baseUrl, row));
-  } catch (err) {
-    throw new Error(
-      `Wayback account lookup failed: ${extractErrorMessage(err)}`,
-      { cause: err },
-    );
+  } catch {
+    return [];
   }
 }
 

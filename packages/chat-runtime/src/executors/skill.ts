@@ -32,10 +32,25 @@ export async function runSkillTool(
     return fail("tokenId required");
   }
 
-  // Auto-inject the wallet address for address-scoped EVM tools when the model
-  // omits it. Keeps behaviour unchanged when an address IS provided.
   if (name.startsWith("evm_") && spec?.parameters?.required?.includes("address")) {
     args.address ??= ctx.wallet?.address ?? ctx.session.walletAddress;
+  }
+
+  const requiredParams = spec?.parameters?.required ?? [];
+  const missingParams = requiredParams.filter(
+    (p) => args[p] === undefined || args[p] === null || args[p] === "",
+  );
+  if (missingParams.length > 0) {
+    const needsWallet = name.startsWith("evm_") && missingParams.includes("address");
+    const guidance = needsWallet
+      ? "Connect the wallet (or provide an address) before calling this tool."
+      : `Ask the user to provide it (use the Ask User tool) before calling ${name}.`;
+    return {
+      ok: false,
+      content: JSON.stringify({
+        error: `Missing required parameter(s): ${missingParams.join(", ")}. ${guidance}`,
+      }),
+    };
   }
 
   let endpoint: string;
