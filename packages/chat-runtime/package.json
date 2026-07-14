@@ -11,7 +11,7 @@
   "scripts": {
     "build": "tsc --project tsconfig.json",
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test src/parallel.test.ts src/format.test.ts"
+    "test": "node --import tsx --test src/parallel.test.ts src/format.test.ts src/executors/ask.test.ts"
   },
   "dependencies": {
     "@axiom/config": "workspace:*",

@@ -566,7 +566,7 @@ function createSkillUnbrokerRouter(config: ServerConfig): Router {
         } else { score -= 40; issues.push("No access proof provided"); }
         return ser({ tokenId, to, owner, dataHash, safetyScore: Math.max(0, score), rating: score >= 80 ? "SAFE" : score >= 50 ? "CAUTION" : "UNSAFE", issues });
       } catch (err) {
-        logUnbroker.warn("unbroker analyze failed", { err });
+        logUnbroker.warn("unbroker analyze failed", { err: err instanceof Error ? err.message : String(err) });
         return ser({ tokenId, to, safetyScore: 0, rating: "UNSAFE", issues: ["Failed to validate on-chain state"] });
       }
     },

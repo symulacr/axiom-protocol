@@ -64,7 +64,7 @@ export function registerPerformanceRoutes(
         reason: string;
         durationMs: number | null;
         blockNumber: number;
-        txHash: string;
+        txHash: string | null;
       }> = [];
 
       for (const evt of ticks) {
