@@ -178,6 +178,7 @@ wallets/ADDRESSES.md
 *.test.ts
 !packages/chat-runtime/**/*.test.ts
 !packages/config/**/*.test.ts
+!apps/backend/src/**/*.test.ts
 !apps/oracle/test/**/*.test.ts
 *.spec.ts
 !apps/frontend/e2e/**/*.spec.ts

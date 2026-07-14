@@ -32,23 +32,26 @@ function resolveSealedKey(sealedKeyIn: string | undefined): {
   return { key, missing: !sealedKeyIn || sealedKeyIn.length < 2 };
 }
 
-// The oracle returns a claimed signer + signature; recover the signer from the
-// signature (using the same EIP-712 domain the oracle signed with) and refuse
-// to trust it unless it matches the claimed signer. This catches a swapped or
-// misconfigured oracle before we relay its proof to the client/on-chain.
-function assertTrustedOracleSigner(
+// The oracle returns a signature it produced with its TEE key. We MUST verify
+// that signature against the SERVER-CONFIGURED trusted TEE signer
+// (AXIOM_TEE_SIGNER_PK) — NOT the signer the oracle claims for itself. A
+// malicious or swapped oracle could sign with any key and report that same key
+// as `tee.signer`, which would trivially pass a self-comparison. Recovering the
+// signer from the signature and comparing it to the configured address catches
+// oracle swaps / misconfiguration before we relay the proof to the client.
+export function assertTrustedOracleSigner(
   res: Response,
   signature: Hex,
   input: OwnershipProofInput,
-  claimedSigner: Hex,
+  trustedSigner: Hex,
   domain: Eip712Domain,
 ): boolean {
   const recovered = recoverOwnershipSigner(signature, input, domain);
-  if (recovered.toLowerCase() !== claimedSigner.toLowerCase()) {
+  if (recovered.toLowerCase() !== trustedSigner.toLowerCase()) {
     sendError(
       res,
       HTTP.BAD_GATEWAY,
-      "oracle ownership signature signer does not match claimed signer",
+      "oracle ownership signature is not from the configured trusted TEE signer",
       "ORACLE_SIGNATURE_INVALID",
     );
     return false;
@@ -69,6 +72,14 @@ export function registerAgentRoutes(
     return Number.isFinite(n) && n > 0 ? n : 120_000;
   })();
   const agentCache = new TTLCache<unknown>(agentListTtlMs);
+
+  // Trust anchor for oracle ownership proofs: the TEE signer this backend is
+  // configured to trust. Derived once from env so every proof is checked
+  // against a server-controlled address, never the oracle's self-claimed
+  // `tee.signer` (which a malicious oracle could forge to match its own key).
+  const trustedSigner = config.env
+    ? (ethers.computeAddress(config.env.AXIOM_TEE_SIGNER_PK) as Hex)
+    : ("0x0000000000000000000000000000000000000000" as Hex);
 
   app.get(
     "/v1/agents",
@@ -311,7 +322,7 @@ export function registerAgentRoutes(
               res,
               tee.signature,
               { dataHash, sealedKey: sealedKeyOrDefault, targetPubkey: pk, to, nft, nonce, validUntil },
-              tee.signer,
+              trustedSigner,
               eip712Domain,
             )
           ) {
@@ -395,7 +406,7 @@ export function registerAgentRoutes(
             res,
             tee.signature,
             { dataHash: proofDataHash, sealedKey: sealedKeyOrDefault, targetPubkey: proofTargetPubkey, to, nft, nonce, validUntil },
-            tee.signer,
+            trustedSigner,
             eip712Domain,
           )
         ) {
