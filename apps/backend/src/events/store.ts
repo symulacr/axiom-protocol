@@ -132,12 +132,6 @@ export class EventStore {
     return stored;
   }
 
-  queryBySource(source: string, eventName: string): readonly StoredEvent[] {
-    const bucket = this.buckets.get(`${source}::${eventName}`);
-    if (bucket === undefined) return [];
-    return [...bucket];
-  }
-
   queryByAgent(query: AgentEventQuery): readonly StoredEvent[] {
     const target = BigInt(query.tokenId).toString();
     const bucket = this.byTokenId.get(target);
@@ -175,30 +169,10 @@ export class EventStore {
     return limit !== undefined ? results.slice(0, limit) : results;
   }
 
-  getTokenIdsByOwner(
-    owner: string,
-    limit?: number,
-  ): Array<{ tokenId: string; blockNumber: number }> {
-    const ownerMap = this.byTransferTo.get(owner.toLowerCase());
-    if (!ownerMap) return [];
-    const sorted = Array.from(ownerMap.entries())
-      .map(([tokenId, blockNumber]) => ({ tokenId, blockNumber }))
-      .sort((a, b) => b.blockNumber - a.blockNumber);
-    return limit !== undefined ? sorted.slice(0, limit) : sorted;
-  }
-
-  get bucketCount(): number {
-    return this.buckets.size;
-  }
-
   get size(): number {
     let n = 0;
     for (const bucket of this.buckets.values()) n += bucket.length;
     return n;
-  }
-
-  get totalAppends(): number {
-    return this.total;
   }
 
   private load(): void {
@@ -372,18 +346,6 @@ export class EventStore {
     }
     for (const key of this.buckets.keys()) this.dirty.add(key);
     await this.enqueuePersist();
-  }
-
-  clear(): void {
-    this.buckets.clear();
-    this.byEventName.clear();
-    this.byTokenId.clear();
-    this.byTransferTo.clear();
-    this.seenKeys.clear();
-    this.serialized.clear();
-    this.dirty.clear();
-    this.total = 0;
-    void this.enqueuePersist();
   }
 
   private findByDedupeKey(key: string): StoredEvent | undefined {
