@@ -151,7 +151,9 @@ export function startServer(config: ServerConfig): {
     next();
   });
 
-  const DEV_FRONTEND_ORIGIN = "http://localhost:5173";
+  const frontendOrigin = config.env?.AXIOM_FRONTEND_URL;
+  const connectSrc = ["'self'"];
+  if (frontendOrigin) connectSrc.push(frontendOrigin);
   app.use(
     helmet({
       contentSecurityPolicy: {
@@ -160,17 +162,16 @@ export function startServer(config: ServerConfig): {
           scriptSrc: ["'self'"],
           styleSrc: ["'self'", "'unsafe-inline'"],
           imgSrc: ["'self'", "data:"],
-          connectSrc: [
-            "'self'",
-            config.env?.AXIOM_FRONTEND_URL ?? DEV_FRONTEND_ORIGIN,
-          ],
+          connectSrc,
         },
       },
     }),
   );
+  // CORS is fail-closed: allow only the configured frontend origin; if unset,
+  // deny cross-origin requests rather than falling back to a dev default.
   app.use(
     cors({
-      origin: config.env?.AXIOM_FRONTEND_URL ?? DEV_FRONTEND_ORIGIN,
+      origin: frontendOrigin ?? false,
       methods: ["GET", "POST"],
     }),
   );

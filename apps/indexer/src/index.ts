@@ -126,6 +126,7 @@ function composeSinks(
     backendUrl: string | undefined;
     rpcUrl: string;
     chainId: number;
+    apiKey: string | undefined;
   },
 ) {
   return async (event: AxiomEvent) => {
@@ -136,6 +137,7 @@ function composeSinks(
         const { status } = await postEvent(event, {
           backendUrl: extra.backendUrl,
           chainId: extra.chainId,
+          apiKey: extra.apiKey,
         });
         if (status >= 400) {
           process.stderr.write(
@@ -224,6 +226,7 @@ async function main() {
     backendUrl,
     rpcUrl: url,
     chainId: cid,
+    apiKey: env.AXIOM_API_KEY,
   });
 
   const contractAddresses = resolveIndexerAddresses(
