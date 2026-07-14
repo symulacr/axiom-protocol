@@ -53,4 +53,10 @@ export interface ToolRuntime {
   wallet?: ToolWallet;
   session: ChatSessionContext;
   mode: ToolMode;
+  /**
+   * Optional base URL of the TEE oracle. When set, mint executors register
+   * derived dataHashes with the oracle (POST /v1/agents/mint) so chat-minted
+   * agents are later readable/transferable. Mirrors the frontend wizard.
+   */
+  oracleUrl?: string;
 }

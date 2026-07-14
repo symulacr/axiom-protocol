@@ -6,6 +6,9 @@ import {
 import type { EncryptionOption } from "@0gfoundation/0g-storage-ts-sdk";
 import { keccak256, type Signer } from "ethers";
 import type { Hex } from "viem";
+import { existsSync, readFileSync, renameSync, writeFileSync, mkdirSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { randomUUID } from "node:crypto";
 
 interface UploadResult {
   rootHash: Hex;
@@ -47,22 +50,85 @@ export interface DownloadOptions {
 }
 
 
-function trackDataHashSeen(seen: Set<string>, max: number, rootHash: Hex): void {
-  if (seen.size >= max) {
-    const iter = seen.values();
-    for (let i = 0; i < 1000; i++) {
-      const val = iter.next().value;
-      if (val !== undefined) seen.delete(val);
-      else break;
+/**
+ * Durable "seen dataHash" registry.
+ *
+ * Historically this lived in an in-memory Set capped at 10k entries. That was
+ * the oracle's single biggest silent-data-loss risk: on any restart the set
+ * was wiped (every previously-minted asset became untransferable) and, even
+ * without a restart, the oldest ~1k entries were evicted once the cap was hit.
+ *
+ * It is now backed by a JSON file under the oracle's data dir
+ * (`${AXIOM_DATA_DIR ?? cwd}/.data/oracle-seen-hashes.json`), mirroring the
+ * durable persistence pattern in apps/backend/src/events/persist.ts. On
+ * construction the file is loaded; every mark is flushed synchronously so a
+ * subsequent process (or a simulated restart in tests) observes it. There is
+ * no cap: the registry is durable and correctness matters more than a few
+ * kilobytes of disk per 10k mints.
+ */
+const ORACLE_SEEN_HASHES_FILE = join(
+  process.env.AXIOM_DATA_DIR ?? process.cwd(),
+  ".data",
+  "oracle-seen-hashes.json",
+);
+
+export interface SeenHashesOptions {
+  /** Override the backing file for the durable "seen dataHash" registry. */
+  seenHashesFile?: string;
+}
+
+function loadSeenDataHashes(file: string): Set<string> {
+  try {
+    if (!existsSync(file)) return new Set();
+    const raw = readFileSync(file, "utf-8");
+    const parsed = JSON.parse(raw) as { seenDataHashes?: unknown };
+    if (
+      !parsed ||
+      typeof parsed !== "object" ||
+      !Array.isArray(parsed.seenDataHashes)
+    ) {
+      throw new Error(
+        "oracle seen-hashes file root is missing a string array",
+      );
     }
+    const seen = new Set<string>();
+    for (const item of parsed.seenDataHashes) {
+      if (typeof item === "string") seen.add(item.toLowerCase());
+    }
+    return seen;
+  } catch {
+    // Corrupt or unreadable file: start fresh but keep a backup so the data
+    // is recoverable by hand instead of being silently dropped.
+    if (existsSync(file)) {
+      try {
+        renameSync(file, `${file}.bak`);
+      } catch {
+        /* ignore — backup is best-effort */
+      }
+    }
+    return new Set();
   }
-  seen.add(rootHash.toLowerCase());
+}
+
+function persistSeenDataHashes(file: string, seen: Set<string>): void {
+  mkdirSync(dirname(file), { recursive: true });
+  // Unique temp name per write so concurrent writers (e.g. parallel test
+  // files, or a future multi-process oracle) never rename each other's
+  // temp file away — that collision produced ENOENT on the final rename.
+  const tmp = `${file}.${process.pid}.${randomUUID()}.tmp`;
+  writeFileSync(tmp, JSON.stringify({ seenDataHashes: [...seen] }));
+  renameSync(tmp, file);
 }
 
 export class InMemoryStorage implements StorageAdapter {
   private store = new Map<string, Uint8Array>();
-  private seenDataHashes = new Set<string>();
-  private readonly MAX_SEEN_HASHES = 10_000;
+  private seenDataHashes: Set<string>;
+  private readonly seenHashesFile: string;
+
+  constructor(options: SeenHashesOptions = {}) {
+    this.seenHashesFile = options.seenHashesFile ?? ORACLE_SEEN_HASHES_FILE;
+    this.seenDataHashes = loadSeenDataHashes(this.seenHashesFile);
+  }
 
   async upload(
     blob: Uint8Array,
@@ -80,7 +146,10 @@ export class InMemoryStorage implements StorageAdapter {
   }
 
   markDataHashSeen(rootHash: Hex): void {
-    trackDataHashSeen(this.seenDataHashes, this.MAX_SEEN_HASHES, rootHash);
+    const hash = rootHash.toLowerCase();
+    if (this.seenDataHashes.has(hash)) return;
+    this.seenDataHashes.add(hash);
+    persistSeenDataHashes(this.seenHashesFile, this.seenDataHashes);
   }
 
   hasSeenDataHash(rootHash: Hex): boolean {
@@ -157,12 +226,14 @@ export async function peekStorageHeader(
 export class ZeroGStorage implements StorageAdapter {
   readonly indexer: Indexer;
   readonly config: ZeroGStorageConfig;
-  private seenDataHashes = new Set<string>();
-  private readonly MAX_SEEN_HASHES = 10_000;
+  private seenDataHashes: Set<string>;
+  private readonly seenHashesFile: string;
 
-  constructor(config: ZeroGStorageConfig) {
+  constructor(config: ZeroGStorageConfig, options: SeenHashesOptions = {}) {
     this.config = config;
     this.indexer = new Indexer(config.indexerRpc);
+    this.seenHashesFile = options.seenHashesFile ?? ORACLE_SEEN_HASHES_FILE;
+    this.seenDataHashes = loadSeenDataHashes(this.seenHashesFile);
   }
 
   async upload(
@@ -187,7 +258,10 @@ export class ZeroGStorage implements StorageAdapter {
   }
 
   markDataHashSeen(rootHash: Hex): void {
-    trackDataHashSeen(this.seenDataHashes, this.MAX_SEEN_HASHES, rootHash);
+    const hash = rootHash.toLowerCase();
+    if (this.seenDataHashes.has(hash)) return;
+    this.seenDataHashes.add(hash);
+    persistSeenDataHashes(this.seenHashesFile, this.seenDataHashes);
   }
 
   hasSeenDataHash(rootHash: Hex): boolean {
