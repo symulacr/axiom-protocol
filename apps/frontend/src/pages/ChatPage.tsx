@@ -46,7 +46,7 @@ import {
   type ToolContext,
 } from "../chat/tools.js";
 import { CHAT_MODEL, BACKEND_URL } from "../config/env.js";
-import { galileo, aristotle } from "../config/wagmi.js";
+import { aristotle } from "../config/wagmi.js";
 import {
   COLORS,
   Card,
@@ -93,7 +93,7 @@ type SSEChunk = {
   }>;
 };
 
-const SUPPORTED_CHAIN_IDS = new Set([galileo.id, aristotle.id]);
+const SUPPORTED_CHAIN_IDS = new Set([aristotle.id]);
 const CHAT_MESSAGES_KEY = "axiom:chat-messages";
 
 function consumeSseLines(buffer: string): {
@@ -330,6 +330,7 @@ function ChatPageInner(): ReactElement {
   const runAgent = useCallback(
     async (userText: string) => {
       if (!userText.trim()) return;
+      if (!chainSupported) return;
       isStreamingRef.current = true;
       setIsStreaming(true);
 
@@ -559,6 +560,7 @@ function ChatPageInner(): ReactElement {
       flushAndClearStreamText,
       scheduleStreamTextUpdate,
       cancelStreamThrottle,
+      chainSupported,
     ],
   );
 
@@ -574,6 +576,7 @@ function ChatPageInner(): ReactElement {
     (userText: string) => {
       const text = userText.trim();
       if (!text) return;
+      if (!chainSupported) return;
       setInput("");
       queueRef.current = [...queueRef.current, text];
       setQueue(queueRef.current);
@@ -1044,7 +1047,7 @@ function ChatPageInner(): ReactElement {
           <Button
             variant={isStreaming ? "secondary" : "primary"}
             onClick={() => sendMessage(input)}
-            disabled={!input.trim()}
+            disabled={!input.trim() || !chainSupported}
           >
             {isStreaming ? "Queue" : "Send"}
           </Button>

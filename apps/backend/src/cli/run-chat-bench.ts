@@ -8,7 +8,7 @@ import { buildChatEval, printChatEval } from "./e2e/eval.js";
 import { runChatBench, printChatBenchReport } from "./e2e/chat-bench.js";
 import { resolveE2eWallets } from "./e2e/wallet.js";
 import { getSharedProvider } from "../provider.js";
-import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
+import { ARISTOTLE_CHAIN_ID } from "@axiom/config/networks";
 
 loadEnv();
 
@@ -32,7 +32,7 @@ async function main(): Promise<void> {
   initUsageScenarios();
   resetFrictionFindings();
 
-  const { operator } = resolveE2eWallets(getSharedProvider(GALILEO_CHAIN_ID));
+  const { operator } = resolveE2eWallets(getSharedProvider(ARISTOTLE_CHAIN_ID));
   const liveCompute = process.env.E2E_LIVE_COMPUTE !== "0";
   const contextRounds = Number.parseInt(process.env.CHAT_BENCH_CONTEXT_ROUNDS ?? "4", 10);
   const keepAliveRounds = Number.parseInt(process.env.CHAT_BENCH_KEEPALIVE_ROUNDS ?? "3", 10);

@@ -1,5 +1,5 @@
 export interface OGNetwork {
-  readonly name: "galileo" | "aristotle";
+  readonly name: "aristotle";
   readonly chainId: number;
   readonly evmRpc: string;
   readonly storageRpc: string;
@@ -7,18 +7,9 @@ export interface OGNetwork {
   readonly blockExplorer: string;
 }
 
-export const GALILEO_CHAIN_ID = 16602;
 export const ARISTOTLE_CHAIN_ID = 16661;
 
 const _OG_NETWORKS = {
-  16602: {
-    name: "galileo",
-    chainId: 16602,
-    evmRpc: "https://evmrpc-testnet.0g.ai",
-    storageRpc: "https://indexer-storage-testnet-turbo.0g.ai",
-    computeRouterUrl: "https://router-api-testnet.integratenetwork.work/v1",
-    blockExplorer: "https://chainscan-galileo.0g.ai",
-  },
   16661: {
     name: "aristotle",
     chainId: 16661,
