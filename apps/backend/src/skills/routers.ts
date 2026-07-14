@@ -1,9 +1,10 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import { ethers } from "ethers";
 import { z } from "zod";
 import type { ServerConfig } from "../server.js";
 import {
   createSkillRouter,
+  type SkillRouter,
   cachedJsonGet,
   getSharedProvider,
   ser,
@@ -45,6 +46,12 @@ const CHAINS: { name: string; rpc: string }[] = [
   { name: "gnosis", rpc: "https://rpc.gnosischain.com" },
 ];
 
+// Reasonable default scan window for evm_whale so the tool is callable without
+// all 4 params (audit §6: "requires 4 numeric params w/ no defaults"). The
+// caller-supplied values still win; these are only fallbacks.
+const WHALE_DEFAULT_FROM_BLOCK = 19_900_000;
+const WHALE_DEFAULT_TO_BLOCK = 20_000_000;
+
 const priceGet = cachedJsonGet("https://api.coingecko.com", { ttlMs: 60_000 });
 
 async function fetchPrice(id: string): Promise<number> {
@@ -52,180 +59,82 @@ async function fetchPrice(id: string): Promise<number> {
   return j[id]?.usd ?? 0;
 }
 
-function createSkillEvmRouter(config: ServerConfig): Router {
-  const { router, route } = createSkillRouter(config);
-  const provider = getSharedProvider();
+// ---------------------------------------------------------------------------
+// Shared skill-router scaffolding
+//
+// Every skill route is wired through `skill(...)` + `registerSkillRoutes(...)`.
+// This keeps path / schema / description / handler / auth in one place and
+// removes the per-group boilerplate that previously lived in five near-identical
+// factory functions.
+// ---------------------------------------------------------------------------
 
-  const address = z.object({ address: z.string() });
-  const token = z.object({ address: z.string(), token: z.string() });
+type SkillHandlerFn<S extends z.ZodTypeAny> = (
+  parsed: z.infer<S>,
+  req: Request,
+  res: Response,
+  helpers: { id: string; config: ServerConfig },
+) => Promise<unknown>;
 
-  route(
-    { path: "/v1/skills/evm/wallet", schema: address, description: "Query EVM wallet native and ERC-20 balances" },
-    async (parsed) => {
-      const [native, tokenContract] = await Promise.all([
-        provider.getBalance(parsed.address),
-        parsed.address
-          ? new ethers.Contract(parsed.address, ERC20_ABI, provider)
-          : null,
-      ]);
-      const erc20Balance = tokenContract
-        ? await tokenContract.balanceOf!(parsed.address).catch((err) => {
-            logEvm.warn("evm wallet balanceOf failed", { err });
-            return 0n;
-          })
-        : 0n;
-      return ser({ native, erc20Balance });
-    },
-  );
-
-  route(
-    { path: "/v1/skills/evm/multichain", schema: address, description: "Query wallet balances across multiple EVM chains" },
-    async (parsed) => {
-      const results = await Promise.allSettled(
-        CHAINS.map(async ({ name, rpc }) => {
-          const p = new ethers.JsonRpcProvider(rpc);
-          const bal = await p.getBalance(parsed.address);
-          return { chain: name, balance: bal.toString() };
-        }),
-      );
-      return ser(
-        results.map((r, i) =>
-          r.status === "fulfilled"
-            ? r.value
-            : { chain: CHAINS[i]?.name, error: String(r.reason) },
-        ),
-      );
-    },
-  );
-
-  route(
-    { path: "/v1/skills/evm/tx", schema: z.object({ hash: z.string() }), description: "Fetch an EVM transaction and its receipt" },
-    async (parsed) => {
-      const [tx, receipt] = await Promise.all([
-        provider.getTransaction(parsed.hash),
-        provider.getTransactionReceipt(parsed.hash),
-      ]);
-      return ser({ tx, receipt });
-    },
-  );
-
-  route(
-    {
-      path: "/v1/skills/evm/token",
-      schema: z.object({ address: z.string(), coingeckoId: z.string().optional() }),
-      description: "ERC-20 token metadata and price",
-    },
-    async (parsed) => {
-      const c = new ethers.Contract(parsed.address, ERC20_ABI, provider);
-      const [name, symbol, decimals] = await Promise.all([
-        c.name!(),
-        c.symbol!(),
-        c.decimals!(),
-      ]);
-      const price = parsed.coingeckoId
-        ? await fetchPrice(parsed.coingeckoId)
-        : null;
-      return ser({ name, symbol, decimals, price });
-    },
-  );
-
-  route(
-    {
-      path: "/v1/skills/evm/gas",
-      schema: z.object({ gasLimit: z.number().optional() }),
-      description: "Estimate EVM gas cost for a transaction",
-    },
-    async (parsed) => {
-      const feeData = await provider.getFeeData();
-      const gasLimit = BigInt(parsed.gasLimit ?? 21_000);
-      const gasPrice = feeData.gasPrice ?? 0n;
-      const estCostWei = gasPrice * gasLimit;
-      const ethPrice = await fetchPrice("ethereum");
-      const estCostUsd =
-        Number(ethers.formatEther(estCostWei)) * ethPrice;
-      return ser({
-        gasPrice: gasPrice.toString(),
-        maxFeePerGas: feeData.maxFeePerGas?.toString(),
-        maxPriorityFeePerGas: feeData.maxPriorityFeePerGas?.toString(),
-        estCostWei: estCostWei.toString(),
-        estCostUsd,
-      });
-    },
-  );
-
-  route(
-    {
-      path: "/v1/skills/evm/whale",
-      schema: z.object({
-        token: z.string(),
-        minValue: z.string(),
-        fromBlock: z.number(),
-        toBlock: z.number(),
-      }),
-      description: "Scan for large (whale) ERC-20 transfers",
-    },
-    async (parsed) => {
-      const minValue = BigInt(parsed.minValue);
-      const transfers: unknown[] = [];
-      for await (const logs of getLogsChunked({
-        address: parsed.token,
-        topics: [TRANSFER_TOPIC],
-        fromBlock: parsed.fromBlock,
-        toBlock: parsed.toBlock,
-      })) {
-        for (const log of logs) {
-          const value = BigInt(log.data);
-          if (value >= minValue) {
-            transfers.push({
-              from: ethers.getAddress("0x" + (log.topics[1]?.slice(26) ?? "")),
-              to: ethers.getAddress("0x" + (log.topics[2]?.slice(26) ?? "")),
-              value: value.toString(),
-              txHash: log.transactionHash,
-              block: parseInt(log.blockNumber, 16),
-            });
-          }
-        }
-      }
-      return ser({ transfers, count: transfers.length });
-    },
-  );
-
-  route(
-    { path: "/v1/skills/evm/contract", schema: address, description: "Inspect contract code and proxy implementation" },
-    async (parsed) => {
-      const code = await provider.getCode(parsed.address);
-      const isContract = code !== "0x";
-      let impl: string | null = null;
-      if (isContract) {
-        const slot = await provider.getStorage(
-          parsed.address,
-          "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc",
-        );
-        const slotBytes = ethers.zeroPadValue(slot, 32);
-        if (slotBytes !== ethers.ZeroHash) {
-          impl = ethers.getAddress("0x" + slotBytes.slice(26));
-        }
-      }
-      return ser({ isContract, codeLength: (code.length - 2) / 2, proxyImpl: impl });
-    },
-  );
-
-  route(
-    { path: "/v1/skills/evm/allowance", schema: token, description: "Check ERC-20 allowances for known DEX spenders" },
-    async (parsed) => {
-      const c = new ethers.Contract(parsed.token, ERC20_ABI, provider);
-      const entries = await Promise.all(
-        Object.entries(DEX_SPENDERS).map(async ([dex, spender]) => {
-          const allowance: bigint = await c.allowance!(parsed.address, spender);
-          return { dex, spender, allowance: allowance.toString() };
-        }),
-      );
-      return ser({ allowances: entries });
-    },
-  );
-
-  return router;
+interface SkillRouteDef<S extends z.ZodTypeAny = z.ZodTypeAny> {
+  path: string;
+  schema: S;
+  description: string;
+  handler: SkillHandlerFn<S>;
+  /** When true the handler is guarded behind a configured GITHUB_TOKEN. */
+  requiresGithubToken?: boolean;
 }
+
+function skill<S extends z.ZodTypeAny>(
+  path: string,
+  schema: S,
+  description: string,
+  handler: SkillHandlerFn<S>,
+  requiresGithubToken = false,
+): SkillRouteDef<S> {
+  return { path, schema, description, handler, requiresGithubToken };
+}
+
+function registerSkillRoutes(
+  route: SkillRouter["route"],
+  registrations: SkillRouteDef[],
+): void {
+  for (const r of registrations) {
+    const handler: SkillHandlerFn<z.ZodTypeAny> = r.requiresGithubToken
+      ? async (parsed, req, res, helpers) => {
+          if (!process.env.GITHUB_TOKEN) {
+            return {
+              ok: false,
+              error:
+                "GITHUB_TOKEN is not configured on the server; OSS forensics requires a GitHub token",
+            };
+          }
+          return r.handler(parsed, req, res, helpers);
+        }
+      : r.handler;
+    route(
+      { path: r.path, schema: r.schema, description: r.description },
+      handler,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// EVM skills
+// ---------------------------------------------------------------------------
+
+const address = z.object({ address: z.string() });
+const token = z.object({ address: z.string(), token: z.string() });
+
+export const whaleSchema = z.object({
+  token: z.string(),
+  minValue: z.string().default("0"),
+  fromBlock: z.number().default(WHALE_DEFAULT_FROM_BLOCK),
+  toBlock: z.number().default(WHALE_DEFAULT_TO_BLOCK),
+});
+
+// ---------------------------------------------------------------------------
+// Stocks skills
+// ---------------------------------------------------------------------------
 
 const YAHOO_BASE = "https://query2.finance.yahoo.com";
 const yahooGet = cachedJsonGet(YAHOO_BASE, { ttlMs: 30_000 });
@@ -314,51 +223,9 @@ const historySchema = z.object({
 const compareSchema = z.object({ symbols: z.array(z.string().min(1).max(12)).min(1).max(10) });
 const cryptoSchema = z.object({ symbol: z.string().min(1).max(12).default("BTC-USD") });
 
-function createSkillStocksRouter(config: ServerConfig): Router {
-  const { router, route } = createSkillRouter(config);
-
-  route({ path: "/v1/skills/stocks/quote", schema: symbolSchema, description: "Real-time stock quote" },
-    async (parsed: z.infer<typeof symbolSchema>) => {
-      const data = await yahooFetch<YahooChartResponse>(`/v8/finance/chart/${parsed.symbol}`, { range: "1d", interval: "1d" });
-      return extractQuote(data);
-    });
-
-  route({ path: "/v1/skills/stocks/search", schema: searchSchema, description: "Yahoo Finance symbol search" },
-    async (parsed: z.infer<typeof searchSchema>) => {
-      const data = await yahooFetch<YahooSearchResponse>(`/v1/finance/search`, { q: parsed.query, quotesCount: "8", newsCount: "0" });
-      return ser({ results: (data.quotes ?? []).map((q) => ({ symbol: q.symbol, name: q.shortname ?? q.longname, type: q.quoteType, exchange: q.exchange })) });
-    });
-
-  route({ path: "/v1/skills/stocks/history", schema: historySchema, description: "Historical price data" },
-    async (parsed: z.infer<typeof historySchema>) => {
-      const data = await yahooFetch<YahooChartResponse>(`/v8/finance/chart/${parsed.symbol}`, { range: parsed.range, interval: parsed.interval });
-      const result = data.chart?.result?.[0];
-      const timestamps = result?.timestamp ?? [];
-      const quote = result?.indicators?.quote?.[0] ?? {};
-      const points = timestamps.map((t: number, i: number) => ({
-        date: new Date(t * 1000).toISOString().slice(0, 10),
-        open: quote.open?.[i], high: quote.high?.[i], low: quote.low?.[i], close: quote.close?.[i], volume: quote.volume?.[i],
-      }));
-      return ser({ symbol: parsed.symbol, range: parsed.range, interval: parsed.interval, count: points.length, data: points });
-    });
-
-  route({ path: "/v1/skills/stocks/compare", schema: compareSchema, description: "Compare multiple stock quotes" },
-    async (parsed: z.infer<typeof compareSchema>) => {
-      const results = await Promise.allSettled(parsed.symbols.map(async (s) => {
-        const data = await yahooFetch<YahooChartResponse>(`/v8/finance/chart/${s}`, { range: "1d", interval: "1d" });
-        return extractQuote(data);
-      }));
-      return ser({ quotes: results.map((r, i) => r.status === "fulfilled" ? r.value : { symbol: parsed.symbols[i], error: r.reason?.message ?? "failed" }) });
-    });
-
-  route({ path: "/v1/skills/stocks/crypto", schema: cryptoSchema, description: "Crypto pair quote (e.g. BTC-USD)" },
-    async (parsed: z.infer<typeof cryptoSchema>) => {
-      const data = await yahooFetch<YahooChartResponse>(`/v8/finance/chart/${parsed.symbol}`, { range: "1d", interval: "5m" });
-      return extractQuote(data);
-    });
-
-  return router;
-}
+// ---------------------------------------------------------------------------
+// OSINT skills
+// ---------------------------------------------------------------------------
 
 const cachedGet = cachedJsonGet("", {
   headers: { "User-Agent": "AxiomAgent/1.0", Accept: "application/json" },
@@ -417,174 +284,23 @@ const courtSchema = z.object({
   limit: z.coerce.number().int().min(1).max(20).optional(),
 });
 
-function createSkillOsintRouter(config: ServerConfig): Router {
-  const { router, route } = createSkillRouter(config);
-
-  route(
-    { path: "/v1/skills/osint/sec_edgar", schema: cikSchema, description: "SEC EDGAR company submissions lookup" },
-    async (parsed: z.infer<typeof cikSchema>) => {
-      const cik = parsed.cik.padStart(10, "0");
-      return cachedFetch(`edgar:${cik}`, `https://data.sec.gov/submissions/CIK${cik}.json`);
-    },
-  );
-
-  route(
-    { path: "/v1/skills/osint/usaspending", schema: usaspendingSchema, description: "USASpending.gov federal award search" },
-    async (parsed: z.infer<typeof usaspendingSchema>) => {
-      return cachedFetch(`spend:${JSON.stringify(parsed.filters)}`, "https://api.usaspending.gov/api/v2/search/spending_by_award/", {
-        method: "POST",
-        body: JSON.stringify({
-          filters: parsed.filters,
-          fields: ["Award ID", "Recipient Name", "Award Amount", "Award Type"],
-          limit: parsed.limit ?? 10,
-          sort: "Award Amount",
-          order: "desc",
-        }),
-      });
-    },
-  );
-
-  route(
-    { path: "/v1/skills/osint/ofac_sdn", schema: ofacSchema, description: "OFAC SDN list name search" },
-    async (parsed: z.infer<typeof ofacSchema>) => {
-      const q = encodeURIComponent(parsed.name);
-      const html = await ofacFetch(`/Details.aspx?id=0&name=${q}&program=SDN`);
-      return ser({ name: parsed.name, source: "ofac-sanctions-search", html });
-    },
-  );
-
-  route(
-    { path: "/v1/skills/osint/opencorporates", schema: opencorpSchema, description: "OpenCorporates company search" },
-    async (parsed: z.infer<typeof opencorpSchema>) => {
-      const q = encodeURIComponent(parsed.query);
-      return cachedFetch(`ocorp:${parsed.jurisdiction}:${parsed.query}`, `https://api.opencorporates.com/v0.4/companies/search?q=${q}&jurisdiction_code=${parsed.jurisdiction}`);
-    },
-  );
-
-  route(
-    { path: "/v1/skills/osint/entity_resolve", schema: entitySchema, description: "Resolve whether entity names refer to the same company" },
-    async (parsed: z.infer<typeof entitySchema>) => {
-      const { entities } = parsed;
-      const scores: Array<{ pair: [string, string]; score: number }> = [];
-      for (let i = 0; i < entities.length; i++) {
-        for (let j = i + 1; j < entities.length; j++) {
-          scores.push({ pair: [entities[i]!, entities[j]!], score: tokenScore(entities[i]!, entities[j]!) });
-        }
-      }
-      scores.sort((a, b) => b.score - a.score);
-      return ser({ matches: scores });
-    },
-  );
-
-  route(
-    { path: "/v1/skills/osint/courtlistener", schema: courtSchema, description: "CourtListener opinions and RECAP search" },
-    async (parsed: z.infer<typeof courtSchema>) => {
-      const q = encodeURIComponent(parsed.query);
-      const type = parsed.type ?? "o";
-      const endpoint = type === "o" ? "search" : "recap";
-      return cachedFetch(`court:${type}:${parsed.query}`, `https://www.courtlistener.com/api/rest/v3/${endpoint}/?q=${q}&page_size=${parsed.limit ?? 10}`);
-    },
-  );
-
-  return router;
-}
+// ---------------------------------------------------------------------------
+// Unbroker skills
+// ---------------------------------------------------------------------------
 
 const logUnbroker = createLogger("skills:unbroker");
 
-function createSkillUnbrokerRouter(config: ServerConfig): Router {
-  const { router, route } = createSkillRouter(config);
-  const provider = getSharedProvider();
-  const getNft = (address: string) => new ethers.Contract(address, AGENT_NFT_ABI, provider);
+const unbrokerSchema = z.object({
+  tokenId: z.string().regex(/^\d+$/),
+  to: z.string(),
+});
+const unbrokerAnalyzeSchema = unbrokerSchema.extend({
+  accessProof: z.object({ dataHash: z.string(), validUntil: z.number() }).optional(),
+});
 
-  const unbrokerSchema = z.object({
-    tokenId: z.string().regex(/^\d+$/),
-    to: z.string(),
-  });
-  const unbrokerAnalyzeSchema = unbrokerSchema.extend({
-    accessProof: z.object({ dataHash: z.string(), validUntil: z.number() }).optional(),
-  });
-
-  route(
-    {
-      path: "/v1/skills/unbroker/simulate",
-      schema: unbrokerSchema,
-      description: "Simulate an ERC-7857 transfer without sending",
-    },
-    async (parsed: z.infer<typeof unbrokerSchema>, _req, res) => {
-      const { tokenId, to } = parsed;
-      const nftAddr = config.addresses?.agentNft;
-      if (!nftAddr) { sendError(res, HTTP.SERVICE_UNAVAILABLE, "AgentNFT address not configured"); return; }
-      const nft = getNft(nftAddr);
-      const [owner, data] = await Promise.all([
-        nft.ownerOf!(BigInt(tokenId)),
-        nft.intelligentDatasOf!(BigInt(tokenId)),
-      ]);
-      return ser({
-        tokenId, to, owner,
-        dataHash: data[0]?.dataHash ?? null,
-        canTransfer: owner !== ethers.ZeroAddress,
-      });
-    },
-  );
-
-  route(
-    {
-      path: "/v1/skills/unbroker/route",
-      schema: unbrokerSchema,
-      description: "Compare transfer path options",
-    },
-    async (parsed: z.infer<typeof unbrokerSchema>) => {
-      return ser({
-        tokenId: parsed.tokenId, to: parsed.to,
-        directGas: "25000", oracleGas: "45000",
-        recommended: "direct",
-        note: "Use oracle path if encrypted metadata re-keying is required",
-      });
-    },
-  );
-
-  route(
-    {
-      path: "/v1/skills/unbroker/analyze",
-      schema: unbrokerAnalyzeSchema,
-      description: "Validate transfer proof and compute safety score",
-    },
-    async (parsed: z.infer<typeof unbrokerAnalyzeSchema>, _req, res) => {
-      const { tokenId, to, accessProof } = parsed;
-      const nftAddr = config.addresses?.agentNft;
-      if (!nftAddr) { sendError(res, HTTP.SERVICE_UNAVAILABLE, "AgentNFT address not configured"); return; }
-      const nft = getNft(nftAddr);
-      let score = 100;
-      const issues: string[] = [];
-      try {
-        const owner = await nft.ownerOf!(BigInt(tokenId));
-        const data = await nft.intelligentDatasOf!(BigInt(tokenId));
-        const dataHash = data[0]?.dataHash;
-        if (accessProof) {
-          if (accessProof.dataHash !== dataHash) { score -= 30; issues.push("Data hash mismatch"); }
-          if (accessProof.validUntil < Date.now() / 1000) { score -= 25; issues.push("Proof expired"); }
-        } else { score -= 40; issues.push("No access proof provided"); }
-        return ser({ tokenId, to, owner, dataHash, safetyScore: Math.max(0, score), rating: score >= 80 ? "SAFE" : score >= 50 ? "CAUTION" : "UNSAFE", issues });
-      } catch (err) {
-        logUnbroker.warn("unbroker analyze failed", { err: err instanceof Error ? err.message : String(err) });
-        return ser({ tokenId, to, safetyScore: 0, rating: "UNSAFE", issues: ["Failed to validate on-chain state"] });
-      }
-    },
-  );
-
-  route(
-    {
-      path: "/v1/skills/unbroker/execute",
-      schema: unbrokerSchema,
-      description: "Execute verified transfer",
-    },
-    async (parsed: z.infer<typeof unbrokerSchema>) => {
-      return ser({ tokenId: parsed.tokenId, to: parsed.to, status: "queued", note: "Transfer execution requires wallet signing via encode tools" });
-    },
-  );
-
-  return router;
-}
+// ---------------------------------------------------------------------------
+// OSS forensics skills
+// ---------------------------------------------------------------------------
 
 const CACHE_TTL_MS = 120_000;
 const cache = new TTLCache<unknown>(CACHE_TTL_MS);
@@ -745,34 +461,300 @@ async function auditDeps(owner: string, repo: string) {
   return { deps, storageLayout };
 }
 
-function createSkillOssForensicsRouter(config: ServerConfig): Router {
-  const { router, route } = createSkillRouter(config);
-
-  route({ path: "/v1/skills/oss-forensics/investigate", schema: investigateSchema, description: "GitHub repo forensics + optional keccak256 bytecode comparison" },
-    async (parsed) => {
-      const base = await investigateRepo(parsed.owner, parsed.repo);
-      const bytecode = parsed.bytecode ? await compareBytecode(parsed.bytecode) : null;
-      return ser({ ...base, bytecode });
-    });
-
-  route({ path: "/v1/skills/oss-forensics/commits", schema: commitsSchema, description: "Commit history with force-push detection" },
-    async (parsed) => ser(await fetchCommits(parsed.owner, parsed.repo, parsed.sha, parsed.perPage)));
-
-  route({ path: "/v1/skills/oss-forensics/ioc", schema: iocSchema, description: "IOC regex scan: AWS keys, tokens, private keys, IPs, domains" },
-    async (parsed) => ser(await scanIocs(parsed.owner, parsed.repo, parsed.path)));
-
-  route({ path: "/v1/skills/oss-forensics/audit", schema: auditSchema, description: "Dependency manifest audit + storage layout detection" },
-    async (parsed) => ser(await auditDeps(parsed.owner, parsed.repo)));
-
-  return router;
-}
+// ---------------------------------------------------------------------------
+// Skill router registration
+// ---------------------------------------------------------------------------
 
 export function createSkillRouters(config: ServerConfig): Router {
-  const router = Router();
-  router.use(createSkillEvmRouter(config));
-  router.use(createSkillStocksRouter(config));
-  router.use(createSkillOsintRouter(config));
-  router.use(createSkillUnbrokerRouter(config));
-  router.use(createSkillOssForensicsRouter(config));
+  const { router, route } = createSkillRouter(config);
+  const provider = getSharedProvider();
+  const getNft = (addr: string) => new ethers.Contract(addr, AGENT_NFT_ABI, provider);
+
+  registerSkillRoutes(route, [
+    // EVM
+    skill("/v1/skills/evm/wallet", address, "Query EVM wallet native and ERC-20 balances",
+      async (parsed) => {
+        const [native, tokenContract] = await Promise.all([
+          provider.getBalance(parsed.address),
+          parsed.address
+            ? new ethers.Contract(parsed.address, ERC20_ABI, provider)
+            : null,
+        ]);
+        const erc20Balance = tokenContract
+          ? await tokenContract.balanceOf!(parsed.address).catch((err) => {
+              logEvm.warn("evm wallet balanceOf failed", { err });
+              return 0n;
+            })
+          : 0n;
+        return ser({ native, erc20Balance });
+      }),
+    skill("/v1/skills/evm/multichain", address, "Query wallet balances across multiple EVM chains",
+      async (parsed) => {
+        const results = await Promise.allSettled(
+          CHAINS.map(async ({ name, rpc }) => {
+            const p = new ethers.JsonRpcProvider(rpc);
+            const bal = await p.getBalance(parsed.address);
+            return { chain: name, balance: bal.toString() };
+          }),
+        );
+        return ser(
+          results.map((r, i) =>
+            r.status === "fulfilled"
+              ? r.value
+              : { chain: CHAINS[i]?.name, error: String(r.reason) },
+          ),
+        );
+      }),
+    skill("/v1/skills/evm/tx", z.object({ hash: z.string() }), "Fetch an EVM transaction and its receipt",
+      async (parsed) => {
+        const [tx, receipt] = await Promise.all([
+          provider.getTransaction(parsed.hash),
+          provider.getTransactionReceipt(parsed.hash),
+        ]);
+        return ser({ tx, receipt });
+      }),
+    skill("/v1/skills/evm/token",
+      z.object({ address: z.string(), coingeckoId: z.string().optional() }),
+      "ERC-20 token metadata and price",
+      async (parsed) => {
+        const c = new ethers.Contract(parsed.address, ERC20_ABI, provider);
+        const [name, symbol, decimals] = await Promise.all([
+          c.name!(),
+          c.symbol!(),
+          c.decimals!(),
+        ]);
+        const price = parsed.coingeckoId
+          ? await fetchPrice(parsed.coingeckoId)
+          : null;
+        return ser({ name, symbol, decimals, price });
+      }),
+    skill("/v1/skills/evm/gas",
+      z.object({ gasLimit: z.number().optional() }),
+      "Estimate EVM gas cost for a transaction",
+      async (parsed) => {
+        const feeData = await provider.getFeeData();
+        const gasLimit = BigInt(parsed.gasLimit ?? 21_000);
+        const gasPrice = feeData.gasPrice ?? 0n;
+        const estCostWei = gasPrice * gasLimit;
+        const ethPrice = await fetchPrice("ethereum");
+        const estCostUsd =
+          Number(ethers.formatEther(estCostWei)) * ethPrice;
+        return ser({
+          gasPrice: gasPrice.toString(),
+          maxFeePerGas: feeData.maxFeePerGas?.toString(),
+          maxPriorityFeePerGas: feeData.maxPriorityFeePerGas?.toString(),
+          estCostWei: estCostWei.toString(),
+          estCostUsd,
+        });
+      }),
+    skill("/v1/skills/evm/whale", whaleSchema, "Scan for large (whale) ERC-20 transfers",
+      async (parsed) => {
+        const minValue = BigInt(parsed.minValue);
+        const transfers: unknown[] = [];
+        for await (const logs of getLogsChunked({
+          address: parsed.token,
+          topics: [TRANSFER_TOPIC],
+          fromBlock: parsed.fromBlock,
+          toBlock: parsed.toBlock,
+        })) {
+          for (const log of logs) {
+            const value = BigInt(log.data);
+            if (value >= minValue) {
+              transfers.push({
+                from: ethers.getAddress("0x" + (log.topics[1]?.slice(26) ?? "")),
+                to: ethers.getAddress("0x" + (log.topics[2]?.slice(26) ?? "")),
+                value: value.toString(),
+                txHash: log.transactionHash,
+                block: parseInt(log.blockNumber, 16),
+              });
+            }
+          }
+        }
+        return ser({ transfers, count: transfers.length });
+      }),
+    skill("/v1/skills/evm/contract", address, "Inspect contract code and proxy implementation",
+      async (parsed) => {
+        const code = await provider.getCode(parsed.address);
+        const isContract = code !== "0x";
+        let impl: string | null = null;
+        if (isContract) {
+          const slot = await provider.getStorage(
+            parsed.address,
+            "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc",
+          );
+          const slotBytes = ethers.zeroPadValue(slot, 32);
+          if (slotBytes !== ethers.ZeroHash) {
+            impl = ethers.getAddress("0x" + slotBytes.slice(26));
+          }
+        }
+        return ser({ isContract, codeLength: (code.length - 2) / 2, proxyImpl: impl });
+      }),
+    skill("/v1/skills/evm/allowance", token, "Check ERC-20 allowances for known DEX spenders",
+      async (parsed) => {
+        const c = new ethers.Contract(parsed.token, ERC20_ABI, provider);
+        const entries = await Promise.all(
+          Object.entries(DEX_SPENDERS).map(async ([dex, spender]) => {
+            const allowance: bigint = await c.allowance!(parsed.address, spender);
+            return { dex, spender, allowance: allowance.toString() };
+          }),
+        );
+        return ser({ allowances: entries });
+      }),
+
+    // Stocks
+    skill("/v1/skills/stocks/quote", symbolSchema, "Real-time stock quote",
+      async (parsed) => {
+        const data = await yahooFetch<YahooChartResponse>(`/v8/finance/chart/${parsed.symbol}`, { range: "1d", interval: "1d" });
+        return extractQuote(data);
+      }),
+    skill("/v1/skills/stocks/search", searchSchema, "Yahoo Finance symbol search",
+      async (parsed) => {
+        const data = await yahooFetch<YahooSearchResponse>(`/v1/finance/search`, { q: parsed.query, quotesCount: "8", newsCount: "0" });
+        return ser({ results: (data.quotes ?? []).map((q) => ({ symbol: q.symbol, name: q.shortname ?? q.longname, type: q.quoteType, exchange: q.exchange })) });
+      }),
+    skill("/v1/skills/stocks/history", historySchema, "Historical price data",
+      async (parsed) => {
+        const data = await yahooFetch<YahooChartResponse>(`/v8/finance/chart/${parsed.symbol}`, { range: parsed.range, interval: parsed.interval });
+        const result = data.chart?.result?.[0];
+        const timestamps = result?.timestamp ?? [];
+        const quote = result?.indicators?.quote?.[0] ?? {};
+        const points = timestamps.map((t: number, i: number) => ({
+          date: new Date(t * 1000).toISOString().slice(0, 10),
+          open: quote.open?.[i], high: quote.high?.[i], low: quote.low?.[i], close: quote.close?.[i], volume: quote.volume?.[i],
+        }));
+        return ser({ symbol: parsed.symbol, range: parsed.range, interval: parsed.interval, count: points.length, data: points });
+      }),
+    skill("/v1/skills/stocks/compare", compareSchema, "Compare multiple stock quotes",
+      async (parsed) => {
+        const results = await Promise.allSettled(parsed.symbols.map(async (s) => {
+          const data = await yahooFetch<YahooChartResponse>(`/v8/finance/chart/${s}`, { range: "1d", interval: "1d" });
+          return extractQuote(data);
+        }));
+        return ser({ quotes: results.map((r, i) => r.status === "fulfilled" ? r.value : { symbol: parsed.symbols[i], error: r.reason?.message ?? "failed" }) });
+      }),
+    skill("/v1/skills/stocks/crypto", cryptoSchema, "Crypto pair quote (e.g. BTC-USD)",
+      async (parsed) => {
+        const data = await yahooFetch<YahooChartResponse>(`/v8/finance/chart/${parsed.symbol}`, { range: "1d", interval: "5m" });
+        return extractQuote(data);
+      }),
+
+    // OSINT
+    skill("/v1/skills/osint/sec_edgar", cikSchema, "SEC EDGAR company submissions lookup",
+      async (parsed) => {
+        const cik = parsed.cik.padStart(10, "0");
+        return cachedFetch(`edgar:${cik}`, `https://data.sec.gov/submissions/CIK${cik}.json`);
+      }),
+    skill("/v1/skills/osint/usaspending", usaspendingSchema, "USASpending.gov federal award search",
+      async (parsed) => {
+        return cachedFetch(`spend:${JSON.stringify(parsed.filters)}`, "https://api.usaspending.gov/api/v2/search/spending_by_award/", {
+          method: "POST",
+          body: JSON.stringify({
+            filters: parsed.filters,
+            fields: ["Award ID", "Recipient Name", "Award Amount", "Award Type"],
+            limit: parsed.limit ?? 10,
+            sort: "Award Amount",
+            order: "desc",
+          }),
+        });
+      }),
+    skill("/v1/skills/osint/ofac_sdn", ofacSchema, "OFAC SDN list name search",
+      async (parsed) => {
+        const q = encodeURIComponent(parsed.name);
+        const html = await ofacFetch(`/Details.aspx?id=0&name=${q}&program=SDN`);
+        return ser({ name: parsed.name, source: "ofac-sanctions-search", html });
+      }),
+    skill("/v1/skills/osint/opencorporates", opencorpSchema, "OpenCorporates company search",
+      async (parsed) => {
+        const q = encodeURIComponent(parsed.query);
+        return cachedFetch(`ocorp:${parsed.jurisdiction}:${parsed.query}`, `https://api.opencorporates.com/v0.4/companies/search?q=${q}&jurisdiction_code=${parsed.jurisdiction}`);
+      }),
+    skill("/v1/skills/osint/entity_resolve", entitySchema, "Resolve whether entity names refer to the same company",
+      async (parsed) => {
+        const { entities } = parsed;
+        const scores: Array<{ pair: [string, string]; score: number }> = [];
+        for (let i = 0; i < entities.length; i++) {
+          for (let j = i + 1; j < entities.length; j++) {
+            scores.push({ pair: [entities[i]!, entities[j]!], score: tokenScore(entities[i]!, entities[j]!) });
+          }
+        }
+        scores.sort((a, b) => b.score - a.score);
+        return ser({ matches: scores });
+      }),
+    skill("/v1/skills/osint/courtlistener", courtSchema, "CourtListener opinions and RECAP search",
+      async (parsed) => {
+        const q = encodeURIComponent(parsed.query);
+        const type = parsed.type ?? "o";
+        const endpoint = type === "o" ? "search" : "recap";
+        return cachedFetch(`court:${type}:${parsed.query}`, `https://www.courtlistener.com/api/rest/v3/${endpoint}/?q=${q}&page_size=${parsed.limit ?? 10}`);
+      }),
+
+    // Unbroker
+    skill("/v1/skills/unbroker/simulate", unbrokerSchema, "Simulate an ERC-7857 transfer without sending",
+      async (parsed, _req, res) => {
+        const { tokenId, to } = parsed;
+        const nftAddr = config.addresses?.agentNft;
+        if (!nftAddr) { sendError(res, HTTP.SERVICE_UNAVAILABLE, "AgentNFT address not configured"); return; }
+        const nft = getNft(nftAddr);
+        const [owner, data] = await Promise.all([
+          nft.ownerOf!(BigInt(tokenId)),
+          nft.intelligentDatasOf!(BigInt(tokenId)),
+        ]);
+        return ser({
+          tokenId, to, owner,
+          dataHash: data[0]?.dataHash ?? null,
+          canTransfer: owner !== ethers.ZeroAddress,
+        });
+      }),
+    skill("/v1/skills/unbroker/route", unbrokerSchema, "Compare transfer path options",
+      async (parsed) => {
+        return ser({
+          tokenId: parsed.tokenId, to: parsed.to,
+          directGas: "25000", oracleGas: "45000",
+          recommended: "direct",
+          note: "Use oracle path if encrypted metadata re-keying is required",
+        });
+      }),
+    skill("/v1/skills/unbroker/analyze", unbrokerAnalyzeSchema, "Validate transfer proof and compute safety score",
+      async (parsed, _req, res) => {
+        const { tokenId, to, accessProof } = parsed;
+        const nftAddr = config.addresses?.agentNft;
+        if (!nftAddr) { sendError(res, HTTP.SERVICE_UNAVAILABLE, "AgentNFT address not configured"); return; }
+        const nft = getNft(nftAddr);
+        let score = 100;
+        const issues: string[] = [];
+        try {
+          const owner = await nft.ownerOf!(BigInt(tokenId));
+          const data = await nft.intelligentDatasOf!(BigInt(tokenId));
+          const dataHash = data[0]?.dataHash;
+          if (accessProof) {
+            if (accessProof.dataHash !== dataHash) { score -= 30; issues.push("Data hash mismatch"); }
+            if (accessProof.validUntil < Date.now() / 1000) { score -= 25; issues.push("Proof expired"); }
+          } else { score -= 40; issues.push("No access proof provided"); }
+          return ser({ tokenId, to, owner, dataHash, safetyScore: Math.max(0, score), rating: score >= 80 ? "SAFE" : score >= 50 ? "CAUTION" : "UNSAFE", issues });
+        } catch (err) {
+          logUnbroker.warn("unbroker analyze failed", { err: err instanceof Error ? err.message : String(err) });
+          return ser({ tokenId, to, safetyScore: 0, rating: "UNSAFE", issues: ["Failed to validate on-chain state"] });
+        }
+      }),
+    skill("/v1/skills/unbroker/execute", unbrokerSchema, "Execute verified transfer",
+      async (parsed) => {
+        return ser({ tokenId: parsed.tokenId, to: parsed.to, status: "queued", note: "Transfer execution requires wallet signing via encode tools" });
+      }),
+
+    // OSS forensics (env-gated behind GITHUB_TOKEN — audit §6)
+    skill("/v1/skills/oss-forensics/investigate", investigateSchema, "GitHub repo forensics + optional keccak256 bytecode comparison",
+      async (parsed) => {
+        const base = await investigateRepo(parsed.owner, parsed.repo);
+        const bytecode = parsed.bytecode ? await compareBytecode(parsed.bytecode) : null;
+        return ser({ ...base, bytecode });
+      }, true),
+    skill("/v1/skills/oss-forensics/commits", commitsSchema, "Commit history with force-push detection",
+      async (parsed) => ser(await fetchCommits(parsed.owner, parsed.repo, parsed.sha, parsed.perPage)), true),
+    skill("/v1/skills/oss-forensics/ioc", iocSchema, "IOC regex scan: AWS keys, tokens, private keys, IPs, domains",
+      async (parsed) => ser(await scanIocs(parsed.owner, parsed.repo, parsed.path)), true),
+    skill("/v1/skills/oss-forensics/audit", auditSchema, "Dependency manifest audit + storage layout detection",
+      async (parsed) => ser(await auditDeps(parsed.owner, parsed.repo)), true),
+  ]);
+
   return router;
 }
