@@ -204,7 +204,6 @@ onchain_analysis_reports/
 research-0g-docs-exhaustive.md
 
 # ── Platform deploy configs (local / Railway / Vercel) ─────
-apps/oracle/railway.json
 vercel.json
 
 # ── Backend CLI — E2E / bench / local ops (not shipped) ────
