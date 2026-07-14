@@ -1,4 +1,7 @@
-export { loadEnv, getEnv, getEnvWithAlias } from "./env.js";
+// NOTE: `loadEnv`/`getEnv`/`getEnvWithAlias` intentionally live in
+// `@axiom/config/env` (a Node-only subpath) and are NOT re-exported here, so
+// browser consumers (e.g. the frontend Vite build) don't pull `node:fs`/
+// `node:path` into the bundle. Server-side code imports them from the subpath.
 export {
   OG_NETWORKS,
   pickOGNetwork,
