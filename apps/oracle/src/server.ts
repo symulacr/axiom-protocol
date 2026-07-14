@@ -85,7 +85,7 @@ export function startServer(config: ServerConfig): {
   );
   app.use(rateLimit({ windowMs: 60_000, max: 100 }));
   app.use(express.json({ limit: "1mb" }));
-  app.use(createApiKeyAuth(config.env?.AXIOM_API_KEY, ["/health"], process.env.AXIOM_DISABLE_AUTH === "true"));
+  app.use(createApiKeyAuth(config.env?.AXIOM_API_KEY, ["/health"], process.env.AXIOM_DISABLE_AUTH === "true", process.env.AXIOM_CLIENT_API_KEY));
   const { signer, storage } = config;
 
   app.get("/health", (_req: Request, res: Response) => {
