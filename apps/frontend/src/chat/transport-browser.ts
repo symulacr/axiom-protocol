@@ -81,7 +81,7 @@ function buildBrowserRuntime(ctx: ToolContext): ToolRuntime {
       : undefined,
     wallet: ctx.address
       ? {
-          address: ctx.address as `0x${string}`,
+          address: ctx.address ? (ctx.address.toLowerCase() as `0x${string}`) : undefined,
           signAndSend: ctx.sendTransactionAsync
             ? async (calldata) =>
                 ctx.sendTransactionAsync!({
@@ -104,7 +104,7 @@ function buildBrowserRuntime(ctx: ToolContext): ToolRuntime {
       : undefined,
     session: createSession({
       chainId: ctx.chainId,
-      walletAddress: ctx.address as `0x${string}` | undefined,
+      walletAddress: ctx.address ? (ctx.address.toLowerCase() as `0x${string}` | undefined) : undefined,
       lastTokenId: ctx.lastTokenId,
       addresses: {
         vault: getAxiomStrategyVaultAddress(ctx.chainId),
