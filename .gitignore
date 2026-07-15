@@ -174,14 +174,11 @@ apps/contracts/test/BUGS.md
 # ── Testnet wallet addresses — operational, not source ─────
 wallets/ADDRESSES.md
 
-# ── TS tests — ignore orphans; allow project suites ────────
+# ── TS/TSX test & spec files — always ignore, never committed ──
 *.test.ts
-!packages/chat-runtime/**/*.test.ts
-!packages/config/**/*.test.ts
-!apps/backend/src/**/*.test.ts
-!apps/oracle/test/**/*.test.ts
+*.test.tsx
 *.spec.ts
-!apps/frontend/e2e/**/*.spec.ts
+*.spec.tsx
 
 # ── Local runtime / CI artifacts (not source) ──────────────
 apps/backend/.coverage/
