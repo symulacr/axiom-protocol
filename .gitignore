@@ -142,9 +142,8 @@ apps/contracts/lib/
 apps/bench/
 .nyc_output/
 
-# ── Forge tests — allow ONLY apps/contracts/test/ ─────────
+# ── Forge tests (.t.sol) — always ignore, never committed ──
 *.t.sol
-!apps/contracts/test/**/*.t.sol
 __pycache__/
 *.pyc
 
@@ -174,11 +173,15 @@ apps/contracts/test/BUGS.md
 # ── Testnet wallet addresses — operational, not source ─────
 wallets/ADDRESSES.md
 
-# ── TS/TSX test & spec files — always ignore, never committed ──
+# ── TS/TSX/JS test & spec files — always ignore, never committed ──
 *.test.ts
 *.test.tsx
+*.test.js
+*.test.jsx
 *.spec.ts
 *.spec.tsx
+*.spec.js
+*.spec.jsx
 
 # ── Local runtime / CI artifacts (not source) ──────────────
 apps/backend/.coverage/
