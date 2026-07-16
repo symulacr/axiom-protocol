@@ -519,7 +519,7 @@ export function AgentDetail(): ReactElement {
                     margin: 0,
                   }}
                 >
-                  No activity yet. Execute a strategy to see events here.
+                  No events yet. Run a tick first.
                 </p>
               </EmptyState>
             )}
@@ -556,15 +556,14 @@ export function AgentDetail(): ReactElement {
                     margin: 0,
                   }}
                 >
-                  No strategy executions yet.{" "}
+                  No ticks yet.{" "}
                   <Button
                     variant="ghost"
                     style={{ padding: 0, textDecoration: "underline" }}
                     onClick={() => setActiveSection("execute")}
                   >
-                    Execute a strategy
-                  </Button>{" "}
-                  to see performance data here.
+                    Run tick
+                  </Button>
                 </p>
               </EmptyState>
             )}
