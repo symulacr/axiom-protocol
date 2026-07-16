@@ -1,3 +1,7 @@
+/** User-facing assistant name (UI + system prompt). Not the compute model id. */
+export const AXIOM_ASSISTANT_NAME = "Axiom";
+
+/** Underlying 0G Compute model id (provider router). */
 export const DEFAULT_CHAT_MODEL = "deepseek-v4-flash";
 
 export function resolveChatModel(override?: string): string {

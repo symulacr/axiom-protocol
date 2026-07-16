@@ -432,7 +432,11 @@ function registerComputeRoutes(app: Express, config: ServerConfig): void {
       try {
         const model = resolveChatModel(config.env?.AXIOM_COMPUTE_MODEL);
         const windows = await fetchModelWindows();
-        res.json({ model, contextWindow: resolveContextWindow(model, windows) });
+        res.json({
+          model,
+          assistantName: "Axiom",
+          contextWindow: resolveContextWindow(model, windows),
+        });
       } catch (err) {
         next(err);
       }

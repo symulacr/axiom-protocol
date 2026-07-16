@@ -10,17 +10,22 @@ describe("buildSystemPrompt", () => {
     assert.match(prompt, /\[wallet/);
   });
 
-  it("includes requiresWallet skill names in the destructive list", () => {
-    assert.match(prompt, /Destructive\/on-chain actions \([^)]*evm_tx/);
+  it("includes requiresWallet skill names in the on-chain list", () => {
+    assert.match(prompt, /On-chain \/ wallet actions \([^)]*evm_tx/);
   });
 
-  it("includes execute_tick in the destructive list (F-20)", () => {
-    assert.match(prompt, /Destructive\/on-chain actions \([^)]*execute_tick/);
+  it("includes execute_tick in the on-chain list (F-20)", () => {
+    assert.match(prompt, /On-chain \/ wallet actions \([^)]*execute_tick/);
   });
 
   it("surfaces capabilities metadata to the model (F-19)", () => {
     assert.match(prompt, /caps:evm,wallet/);
     assert.match(prompt, /caps:forensics,supply-chain/);
+  });
+
+  it("identifies as Axiom, not a vendor model name", () => {
+    assert.match(prompt, /You are Axiom/);
+    assert.doesNotMatch(prompt, /You are (DeepSeek|GPT|Claude)/i);
   });
 
   it("does not claim all EVM skills read 8 chains", () => {

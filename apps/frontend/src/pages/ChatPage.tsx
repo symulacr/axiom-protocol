@@ -49,6 +49,7 @@ import {
 } from "../chat/tools.js";
 import { CHAT_MODEL } from "../config/env.js";
 import { aristotle } from "../config/wagmi.js";
+import { AXIOM_ASSISTANT_NAME } from "@axiom/config/models";
 import {
   COLORS,
   Card,
@@ -673,8 +674,8 @@ function ChatPageInner(): ReactElement {
   return (
     <div>
         <PageHeader
-          title="AI Chat"
-          subtitle="Ask about your agents, vaults, or the protocol"
+          title={AXIOM_ASSISTANT_NAME}
+          subtitle="Your Axiom Protocol intelligence — mint, vaults, ticks, market tools"
           action={
             messages.length > 0 ? (
               <Button
@@ -758,7 +759,7 @@ function ChatPageInner(): ReactElement {
                     background: "var(--c-phosphor)",
                   }}
                 />
-                {hasUsedChat ? "Ready" : "Vault online"}
+                {hasUsedChat ? "Ready" : `${AXIOM_ASSISTANT_NAME} online`}
               </span>
               <AgentTick width={280} height={64} />
             </div>
@@ -771,19 +772,21 @@ function ChatPageInner(): ReactElement {
                 fontWeight: "var(--fw-semibold)",
               }}
             >
-              {hasUsedChat ? "Start a new conversation" : "Ask your vault"}
+              {hasUsedChat
+                ? "Continue with Axiom"
+                : `Hi — I'm ${AXIOM_ASSISTANT_NAME}`}
             </h2>
             <p
               style={{
                 color: "var(--c-text-muted)",
                 fontSize: "var(--text-sm)",
-                maxWidth: "36ch",
+                maxWidth: "40ch",
                 margin: "0 auto var(--space-xl)",
               }}
             >
               {hasUsedChat
-                ? "Pick a prompt below or type your own."
-                : "Agents, balances, strategies — one question away."}
+                ? "Pick a prompt or type your own. I can mint, fund, tick, and more."
+                : "Mint agents, check vaults, run ticks — wallet signs when needed."}
             </p>
 
             {/* Prompt cards — clickable, animated via .prompt-card CSS */}
@@ -792,14 +795,27 @@ function ChatPageInner(): ReactElement {
                 display: "grid",
                 gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
                 gap: "var(--space-md)",
-                maxWidth: 640,
+                maxWidth: 720,
                 margin: "0 auto",
               }}
             >
               {[
-                { label: "List my agents", hint: "See what you own" },
-                { label: "What's my vault balance?", hint: "Check 0G holdings" },
-                { label: "Execute a strategy", hint: "Run a trade now" },
+                {
+                  label: "List my agents",
+                  hint: "See what you own",
+                },
+                {
+                  label: "Mint a new agent named Scout",
+                  hint: "Create an iNFT (wallet signs)",
+                },
+                {
+                  label: "What's my vault balance?",
+                  hint: "Check 0G holdings",
+                },
+                {
+                  label: "Simulate a strategy tick",
+                  hint: "Safe dry-run first",
+                },
               ].map((p) => (
                 <button
                   key={p.label}
@@ -1107,7 +1123,7 @@ function ChatPageInner(): ReactElement {
             placeholder={
               isStreaming
                 ? "Type to queue a message…"
-                : "Ask about your agents, vaults, or strategies…"
+                : `Message ${AXIOM_ASSISTANT_NAME}… (try: mint an agent named Scout)`
             }
             maxLength={4000}
             style={{
