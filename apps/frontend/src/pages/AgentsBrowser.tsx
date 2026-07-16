@@ -224,7 +224,7 @@ export function AgentsBrowser({
               Mint your first iNFT to tokenize an AI strategy as an ownable,
               transferable on-chain asset.
             </p>
-            <Link to="/agents/new">
+            <Link to="/app?mint=1">
               <Button variant="primary">Mint your first agent</Button>
             </Link>
           </Card>
@@ -240,7 +240,7 @@ export function AgentsBrowser({
           <PageHeader
             title="Your Agents"
             action={
-              <Link to="/agents/new">
+              <Link to="/app?mint=1">
                 <Button variant="secondary">+ Mint</Button>
               </Link>
             }

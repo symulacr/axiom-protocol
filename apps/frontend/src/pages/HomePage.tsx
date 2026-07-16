@@ -27,7 +27,7 @@ export function HomePage(): ReactElement {
         title="Home"
         subtitle="Your agents, vaults, and next steps — mint, fund, tick, or ask Axiom."
         action={
-          <Link to="/agents/new" style={{ textDecoration: "none" }}>
+          <Link to="/app?mint=1" style={{ textDecoration: "none" }}>
             <Button variant="primary">Mint agent</Button>
           </Link>
         }

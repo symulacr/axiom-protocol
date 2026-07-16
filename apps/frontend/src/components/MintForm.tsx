@@ -44,9 +44,16 @@ const labelStyle: React.CSSProperties = {
 
 export type MintFormProps = {
   provider?: `0x${string}` | undefined;
+  /** Hide page chrome when embedded in a modal */
+  compact?: boolean;
+  onClose?: () => void;
 };
 
-export function MintForm({ provider }: MintFormProps): ReactElement {
+export function MintForm({
+  provider,
+  compact = false,
+  onClose,
+}: MintFormProps): ReactElement {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const navigate = useNavigate();
@@ -89,12 +96,14 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
       setPendingHash(null);
       if (mintLog?.topics[3]) {
         const tokenId = BigInt(mintLog.topics[3]).toString();
+        onClose?.();
         navigate(`/agents/${tokenId}`);
       } else {
-        navigate("/agents");
+        onClose?.();
+        navigate("/app");
       }
     }
-  }, [receiptQuery.data, pendingHash, navigate]);
+  }, [receiptQuery.data, pendingHash, navigate, onClose]);
 
   const onMintChain = useCallback(async (): Promise<void> => {
     if (!owner || !walletClient || mintFeeWei === undefined) return;
@@ -134,8 +143,24 @@ export function MintForm({ provider }: MintFormProps): ReactElement {
   }, [wizard]);
 
   return (
-    <div style={{ maxWidth: "36rem", margin: "0 auto" }}>
-      <PageHeader title="Mint Agent" />
+    <div style={{ maxWidth: compact ? "100%" : "36rem", margin: compact ? 0 : "0 auto" }}>
+      {!compact && <PageHeader title="Mint agent" />}
+      {compact && (
+        <p
+          style={{
+            margin: "0 0 var(--space-md)",
+            fontSize: "var(--text-sm)",
+            color: COLORS.textMuted,
+          }}
+        >
+          Create an iNFT agent on 0G. Wallet will sign the mint fee.
+          {provider ? (
+            <span style={{ display: "block", marginTop: 4 }}>
+              Provider hint: {provider.slice(0, 10)}…
+            </span>
+          ) : null}
+        </p>
+      )}
 
       <Card>
         <p style={{ fontSize: "var(--text-sm)", color: COLORS.textMuted, marginTop: 0 }}>
