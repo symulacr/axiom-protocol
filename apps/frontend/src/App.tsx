@@ -532,7 +532,7 @@ export function App(): ReactElement {
       <Modal
         open={mintOpen}
         onClose={closeMint}
-        title="Mint agent"
+        title="Mint agent — name only"
         style={{ maxWidth: 520 }}
       >
         {isConnected ? (

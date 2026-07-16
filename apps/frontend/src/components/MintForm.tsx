@@ -29,18 +29,9 @@ import {
   Alert,
   PageHeader,
   Input,
-  Textarea,
 } from "./ui.js";
 
 const agentNftAbi = parseAbi(AGENT_NFT_ABI);
-
-const labelStyle: React.CSSProperties = {
-  display: "block",
-  marginTop: 16,
-  fontWeight: "var(--fw-medium)",
-  fontSize: "var(--text-sm)",
-  color: COLORS.textPrimary,
-};
 
 export type MintFormProps = {
   provider?: `0x${string}` | undefined;
@@ -49,6 +40,10 @@ export type MintFormProps = {
   onClose?: () => void;
 };
 
+/**
+ * One-field mint: name only.
+ * Auto-builds strategy payload → registers dataHash with oracle → wallet signs mint fee.
+ */
 export function MintForm({
   provider,
   compact = false,
@@ -62,6 +57,9 @@ export function MintForm({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [mintPending, setMintPending] = useState(false);
   const [pendingHash, setPendingHash] = useState<`0x${string}` | null>(null);
+  const [phase, setPhase] = useState<"idle" | "oracle" | "chain" | "confirm">(
+    "idle",
+  );
 
   const feeQuery = useReadContracts({
     allowFailure: false,
@@ -94,8 +92,10 @@ export function MintForm({
           log.topics[0] === TRANSFER_TOPIC && log.topics[1] === ZERO_DATA_ROOT,
       );
       setPendingHash(null);
+      setPhase("idle");
       if (mintLog?.topics[3]) {
         const tokenId = BigInt(mintLog.topics[3]).toString();
+        toast.success(`Agent #${tokenId} minted`);
         onClose?.();
         navigate(`/agents/${tokenId}`);
       } else {
@@ -105,12 +105,10 @@ export function MintForm({
     }
   }, [receiptQuery.data, pendingHash, navigate, onClose]);
 
-  const onMintChain = useCallback(async (): Promise<void> => {
-    if (!owner || !walletClient || mintFeeWei === undefined) return;
-    setSubmitError(null);
-    setMintPending(true);
-    try {
-      const dataHash = wizard.dataHash || wizard.deriveDataHash();
+  const onMintChain = useCallback(
+    async (dataHash: `0x${string}`): Promise<void> => {
+      if (!owner || !walletClient || mintFeeWei === undefined) return;
+      setPhase("chain");
       const encoded = await apiFetch<{
         to: `0x${string}`;
         data: `0x${string}`;
@@ -123,6 +121,7 @@ export function MintForm({
           to: owner,
         }),
       });
+      setPhase("confirm");
       const hash = await walletClient.sendTransaction({
         to: encoded.to,
         data: encoded.data,
@@ -131,19 +130,78 @@ export function MintForm({
       });
       toast.success("Mint submitted — confirming on-chain…");
       setPendingHash(hash);
-    } catch (err) {
-      setSubmitError(humanizeError(err));
-    } finally {
-      setMintPending(false);
-    }
-  }, [owner, walletClient, mintFeeWei, wizard]);
+    },
+    [owner, walletClient, mintFeeWei, wizard.agentName],
+  );
 
-  const onNameChange = useCallback((event: ChangeEvent<HTMLInputElement>): void => {
-    wizard.setAgentName(event.target.value);
-  }, [wizard]);
+  /** Single path: name → auto payload → oracle → wallet mint */
+  const onCompleteMint = useCallback(
+    async (e?: FormEvent): Promise<void> => {
+      e?.preventDefault();
+      if (!wizard.agentName.trim()) return;
+      if (!isConnected || !owner || !walletClient) {
+        setSubmitError("Connect a wallet to mint.");
+        return;
+      }
+      if (mintFeeWei === undefined) {
+        setSubmitError("Mint fee still loading — try again in a moment.");
+        return;
+      }
+      setSubmitError(null);
+      setMintPending(true);
+      try {
+        setPhase("oracle");
+        const hash = await wizard.registerOracle(wizard.agentName);
+        await onMintChain(hash);
+      } catch (err) {
+        setSubmitError(humanizeError(err));
+        setPhase("idle");
+      } finally {
+        setMintPending(false);
+      }
+    },
+    [
+      wizard,
+      isConnected,
+      owner,
+      walletClient,
+      mintFeeWei,
+      onMintChain,
+    ],
+  );
+
+  const onNameChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>): void => {
+      wizard.setAgentName(event.target.value);
+      setSubmitError(null);
+    },
+    [wizard],
+  );
+
+  const busy =
+    mintPending ||
+    wizard.busy ||
+    pendingHash !== null ||
+    phase === "oracle" ||
+    phase === "chain" ||
+    phase === "confirm";
+
+  const phaseLabel =
+    phase === "oracle"
+      ? "Registering with oracle…"
+      : phase === "chain"
+        ? "Preparing mint transaction…"
+        : phase === "confirm" || pendingHash
+          ? "Confirm in wallet / on-chain…"
+          : null;
 
   return (
-    <div style={{ maxWidth: compact ? "100%" : "36rem", margin: compact ? 0 : "0 auto" }}>
+    <div
+      style={{
+        maxWidth: compact ? "100%" : "36rem",
+        margin: compact ? 0 : "0 auto",
+      }}
+    >
       {!compact && <PageHeader title="Mint agent" />}
       {compact && (
         <p
@@ -153,146 +211,118 @@ export function MintForm({
             color: COLORS.textMuted,
           }}
         >
-          Create an iNFT agent on 0G. Wallet will sign the mint fee.
-          {provider ? (
-            <span style={{ display: "block", marginTop: 4 }}>
-              Provider hint: {provider.slice(0, 10)}…
-            </span>
-          ) : null}
+          Name your agent — we seal a default strategy payload, register the
+          oracle, then your wallet pays the mint fee on 0G.
         </p>
       )}
 
       <Card>
-        <p style={{ fontSize: "var(--text-sm)", color: COLORS.textMuted, marginTop: 0 }}>
-          Step {wizard.step === "describe" ? 1 : wizard.step === "oracle" ? 2 : 3} of 3:
-          {" "}
-          {wizard.step === "describe"
-            ? "Describe agent & payload"
-            : wizard.step === "oracle"
-              ? "Register with oracle"
-              : "Mint on-chain"}
-        </p>
-
-        {wizard.step === "describe" && (
-          <>
-            <label htmlFor="agent-name" style={labelStyle}>
-              Agent name
-            </label>
-            <Input
-              id="agent-name"
-              value={wizard.agentName}
-              onChange={onNameChange}
-              placeholder="My AI strategy"
-              maxLength={100}
-              style={{ width: "100%", marginTop: 6 }}
-              required
-            />
-            <label htmlFor="agent-payload" style={labelStyle}>
-              Strategy / metadata payload (hashed for dataHash)
-            </label>
-            <Textarea
-              id="agent-payload"
-              value={wizard.payloadText}
-              onChange={(e) => wizard.setPayloadText(e.target.value)}
-              placeholder="Paste strategy JSON or description bytes…"
-              rows={4}
-              style={{ width: "100%", marginTop: 6 }}
-            />
-            <Button
-              variant="primary"
-              style={{ marginTop: "var(--space-lg)" }}
-              disabled={wizard.agentName.trim().length === 0}
-              onClick={() => {
-                wizard.deriveDataHash();
-                wizard.setStep("oracle");
-              }}
-            >
-              Next: register oracle
-            </Button>
-          </>
-        )}
-
-        {wizard.step === "oracle" && (
-          <>
-            <p style={{ fontSize: "var(--text-sm)", color: COLORS.textMuted }}>
-              dataHash: <code>{wizard.dataHash || wizard.deriveDataHash()}</code>
-            </p>
-            {wizard.error ? (
-              <Alert variant="error">{wizard.error}</Alert>
-            ) : null}
-            <div style={{ display: "flex", gap: "var(--space-sm)", marginTop: "var(--space-lg)" }}>
-              <Button variant="secondary" onClick={() => wizard.setStep("describe")}>
-                Back
-              </Button>
-              <Button
-                variant="primary"
-                disabled={wizard.busy}
-                onClick={() => void wizard.registerOracle()}
-              >
-                {wizard.busy ? "Registering…" : "Register with oracle"}
-              </Button>
-            </div>
-          </>
-        )}
-
-        {wizard.step === "mint" && (
-          <form
-            onSubmit={(e: FormEvent) => {
-              e.preventDefault();
-              void onMintChain();
+        <form onSubmit={(e) => void onCompleteMint(e)}>
+          <label
+            htmlFor="agent-name"
+            style={{
+              display: "block",
+              fontWeight: "var(--fw-medium)",
+              fontSize: "var(--text-sm)",
+              color: COLORS.textPrimary,
             }}
           >
-            <Alert variant="success" style={{ marginBottom: "var(--space-md)" }}>
-              Oracle registered for {wizard.dataHash}
+            Agent name
+          </label>
+          <Input
+            id="agent-name"
+            value={wizard.agentName}
+            onChange={onNameChange}
+            placeholder="e.g. Scout, Atlas, Night Run"
+            maxLength={100}
+            autoFocus
+            disabled={busy}
+            style={{ width: "100%", marginTop: 8 }}
+            required
+            aria-describedby="mint-name-help"
+          />
+          <p
+            id="mint-name-help"
+            style={{
+              margin: "8px 0 0",
+              fontSize: "var(--text-xs)",
+              color: COLORS.textDim,
+              lineHeight: 1.5,
+            }}
+          >
+            We auto-build encrypted metadata from this name (no JSON to paste).
+            Oracle registration and on-chain mint run when you continue.
+          </p>
+
+          <div
+            className="surface-lcd"
+            style={{
+              marginTop: "var(--space-lg)",
+              padding: "var(--space-md)",
+              fontSize: "var(--text-xs)",
+            }}
+          >
+            <div style={{ opacity: 0.75, marginBottom: 4 }}>Mint fee</div>
+            <div style={{ fontSize: "var(--text-sm)", color: "var(--c-phosphor)" }}>
+              {mintFeeWei === undefined ? (
+                "Loading…"
+              ) : (
+                <>
+                  {formatEther(mintFeeWei)} 0G
+                  {feeError ? (
+                    <span style={{ color: COLORS.warning }}>
+                      {" "}
+                      ({humanizeError(feeError)})
+                    </span>
+                  ) : null}
+                </>
+              )}
+            </div>
+          </div>
+
+          {phaseLabel ? (
+            <Alert variant="info" style={{ marginTop: "var(--space-md)" }}>
+              {phaseLabel}
             </Alert>
-            <div
+          ) : null}
+
+          {wizard.error || submitError ? (
+            <Alert variant="error" style={{ marginTop: "var(--space-md)" }}>
+              {submitError ?? wizard.error}
+            </Alert>
+          ) : null}
+
+          <Button
+            variant="primary"
+            type="submit"
+            disabled={
+              busy ||
+              wizard.agentName.trim().length === 0 ||
+              !isConnected ||
+              mintFeeWei === undefined
+            }
+            style={{ width: "100%", marginTop: "var(--space-xl)" }}
+          >
+            {busy
+              ? phaseLabel ?? "Working…"
+              : !isConnected
+                ? "Connect wallet to mint"
+                : "Mint agent"}
+          </Button>
+
+          {provider !== undefined && (
+            <p
               style={{
-                padding: "var(--space-md)",
-                background: COLORS.bg,
-                border: `1px solid ${COLORS.border}`,
-                borderRadius: "var(--radius-lg)",
-                fontSize: "var(--text-sm)",
+                fontSize: "var(--text-xs)",
+                color: COLORS.textDim,
+                marginTop: 12,
+                marginBottom: 0,
               }}
             >
-              Fee:{" "}
-              {mintFeeWei === undefined ? (
-                "loading…"
-              ) : (
-                <strong>{formatEther(mintFeeWei)} 0G</strong>
-              )}
-              {feeError ? ` (${humanizeError(feeError)})` : null}
-            </div>
-            {submitError ? (
-              <Alert variant="error" style={{ marginTop: "var(--space-md)" }}>
-                {submitError}
-              </Alert>
-            ) : null}
-            <div style={{ display: "flex", gap: "var(--space-sm)", marginTop: "var(--space-xl)" }}>
-              <Button variant="secondary" type="button" onClick={() => wizard.setStep("oracle")}>
-                Back
-              </Button>
-              <Button
-                variant="primary"
-                type="submit"
-                disabled={
-                  !isConnected ||
-                  !owner ||
-                  mintPending ||
-                  mintFeeWei === undefined ||
-                  !wizard.oracleOk
-                }
-              >
-                {mintPending ? "Confirming…" : "Mint agent"}
-              </Button>
-            </div>
-          </form>
-        )}
-
-        {provider !== undefined && (
-          <p style={{ fontSize: "var(--text-xs)", color: COLORS.textDim, marginTop: 12 }}>
-            Provider hint: {provider.slice(0, 10)}…
-          </p>
-        )}
+              Provider hint: {provider.slice(0, 10)}…
+            </p>
+          )}
+        </form>
       </Card>
     </div>
   );
