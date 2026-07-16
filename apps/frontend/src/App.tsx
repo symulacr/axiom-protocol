@@ -333,6 +333,16 @@ export function App(): ReactElement {
                   C
                 </Kbd>
               </NavLink>
+              <Link
+                to="/agents/new"
+                style={{
+                  ...navLinkStyle({ isActive: false }),
+                  color: COLORS.bronzeLight,
+                  fontWeight: "var(--fw-semibold)",
+                }}
+              >
+                Mint
+              </Link>
             </>
           )}
           {/* Marketing CTA on the landing page only */}
