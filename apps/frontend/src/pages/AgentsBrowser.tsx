@@ -215,8 +215,8 @@ export function AgentsBrowser({
                 lineHeight: "var(--lh-normal)",
               }}
             >
-              Mint your first iNFT to tokenize an AI strategy as an ownable,
-              transferable on-chain asset.
+              Name an agent and mint — default payload is automatic. Fund the
+              vault from agent detail when you are ready.
             </p>
             <Link to="/app?mint=1">
               <Button variant="primary">Mint your first agent</Button>

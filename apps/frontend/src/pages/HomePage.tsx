@@ -52,7 +52,7 @@ export function HomePage(): ReactElement {
         <div style={{ flex: 1, minWidth: "12rem" }}>
           <PageHeader
             title="Home"
-            subtitle="Portfolio and agents — mint, fund, tick, or ask Axiom. Agent detail is the deep workspace."
+            subtitle="Your agents and vault totals. Mint, fund, open detail to tick or transfer — or ask Axiom in Chat."
             action={
               <Link to="/app?mint=1" style={{ textDecoration: "none" }}>
                 <Button variant="primary">Mint agent</Button>
@@ -109,17 +109,20 @@ function HomeBody(): ReactElement {
   return (
     <>
       <div
-        className="dashboard-grid home-stats"
+        className="dashboard-grid home-stats stagger-in"
         style={{ marginBottom: "var(--space-lg)" }}
         aria-label="Portfolio stats"
       >
-        <div className="dashboard-stat">
+        <div className="dashboard-stat" style={{ ["--i" as string]: 0 }}>
           <div className="dashboard-stat__label">Agents</div>
           <div className="dashboard-stat__value">
             {loading ? <Skeleton width={40} height={28} /> : agents.length}
           </div>
         </div>
-        <div className="dashboard-stat dashboard-stat--vault">
+        <div
+          className="dashboard-stat dashboard-stat--vault"
+          style={{ ["--i" as string]: 1 }}
+        >
           <div className="dashboard-stat__label">Total vault</div>
           <div
             className="dashboard-stat__value"
@@ -132,7 +135,7 @@ function HomeBody(): ReactElement {
             )}
           </div>
         </div>
-        <div className="dashboard-stat">
+        <div className="dashboard-stat" style={{ ["--i" as string]: 2 }}>
           <div className="dashboard-stat__label">Needs funding</div>
           <div className="dashboard-stat__value">
             {loading ? <Skeleton width={32} height={28} /> : unfunded.length}
@@ -142,6 +145,7 @@ function HomeBody(): ReactElement {
           className={`dashboard-stat${
             health?.oracle === "up" ? " dashboard-stat--live" : ""
           }`}
+          style={{ ["--i" as string]: 3 }}
         >
           <div className="dashboard-stat__label">Oracle</div>
           <div
@@ -256,7 +260,7 @@ function HomeBody(): ReactElement {
         {address
           ? `${address.slice(0, 6)}…${address.slice(-4)} · `
           : ""}
-        Software TEE oracle · agent detail for vault / tick / transfer
+        Software oracle · open an agent for vault, tick, transfer
       </p>
     </>
   );

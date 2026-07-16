@@ -675,7 +675,7 @@ function ChatPageInner(): ReactElement {
     <div>
         <PageHeader
           title={AXIOM_ASSISTANT_NAME}
-          subtitle="Axiom Protocol assistant — mint, vaults, ticks, and agent tools in one place"
+          subtitle="Protocol tools: mint, vault reads, ticks. Needs wallet + backend."
           action={
             messages.length > 0 ? (
               <Button
@@ -739,7 +739,7 @@ function ChatPageInner(): ReactElement {
                 fontFamily: "var(--font-mono)",
               }}
             >
-              Protocol assistant · single identity
+              Online when backend + compute are up
             </div>
           </div>
         </div>
