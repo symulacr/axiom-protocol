@@ -1,4 +1,4 @@
-import { getAddresses } from "@axiom/config/addresses";
+import { resolveAddress } from "@axiom/config/addresses";
 import type { Address } from "viem";
 
 const env: Record<string, unknown> = {
@@ -11,16 +11,18 @@ const env: Record<string, unknown> = {
   AXIOM_PAYMENT_PROCESSOR_ADDRESS: import.meta.env.VITE_PAYMENT_PROCESSOR_ADDRESS,
   PAYMENT_PROCESSOR_ADDRESS: import.meta.env.VITE_PAYMENT_PROCESSOR_ADDRESS,
   AXIOM_PAYMENT_PROCESSOR: import.meta.env.VITE_PAYMENT_PROCESSOR_ADDRESS,
+  // Mock USDC only used by payment flows — resolved on demand if needed
   AXIOM_MOCK_USDC_ADDRESS: import.meta.env.VITE_MOCK_USDC_ADDRESS,
   AXIOM_PAYMENT_TOKEN: import.meta.env.VITE_MOCK_USDC_ADDRESS,
 };
 
-const A = getAddresses(env);
+// Resolve only contracts required for app shell / agents / vault — do not
+// call getAddresses() which hard-requires mockUsdc and crashes the SPA.
 const ADDRESSES = {
-  strategyVault: A.strategyVault as Address,
-  agentNft: A.agentNft as Address,
-  teeVerifier: A.teeVerifier as Address,
-  paymentProcessor: A.paymentProcessor as Address,
+  strategyVault: resolveAddress("strategyVault", env) as Address,
+  agentNft: resolveAddress("agentNft", env) as Address,
+  teeVerifier: resolveAddress("teeVerifier", env) as Address,
+  paymentProcessor: resolveAddress("paymentProcessor", env) as Address,
 } as const;
 
 type ContractName = keyof typeof ADDRESSES;
