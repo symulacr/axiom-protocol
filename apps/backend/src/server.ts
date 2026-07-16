@@ -515,7 +515,40 @@ function registerChatRoutes(app: Express, config: ServerConfig): void {
           res.destroy();
           return;
         }
-        res.status(502).json({ error: "compute upstream error" });
+        // Surface payment/auth failures clearly (0G router 402 insufficient_balance)
+        const e = err as {
+          status?: number;
+          code?: string;
+          error?: { message?: string; code?: string };
+          message?: string;
+        };
+        const status = e?.status;
+        const code = e?.code ?? e?.error?.code;
+        const msg = e?.error?.message ?? e?.message ?? "";
+        if (
+          status === 402 ||
+          code === "insufficient_balance" ||
+          /insufficient balance/i.test(String(msg))
+        ) {
+          res.status(402).json({
+            error:
+              "Compute account has no balance. Fund the 0G Compute provider account linked to AXIOM_COMPUTE_API_KEY, then retry.",
+            code: "insufficient_balance",
+          });
+          return;
+        }
+        if (status === 401 || status === 403) {
+          res.status(502).json({
+            error: "Compute auth failed. Check AXIOM_COMPUTE_API_KEY.",
+            code: "compute_auth",
+          });
+          return;
+        }
+        res.status(502).json({
+          error: msg
+            ? `Compute upstream: ${String(msg).slice(0, 200)}`
+            : "compute upstream error",
+        });
       }
     },
   );
