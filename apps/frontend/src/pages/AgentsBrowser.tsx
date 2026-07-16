@@ -71,7 +71,12 @@ function AgentCardStatus({ vaultData, metrics }: AgentCardStatusProps) {
   );
 }
 
-export function AgentsBrowser(): ReactElement {
+export function AgentsBrowser({
+  embedded = false,
+}: {
+  /** When true (Home), hide page chrome — parent already has header/stats. */
+  embedded?: boolean;
+} = {}): ReactElement {
   const { isConnected } = useAccount();
   const navigate = useNavigate();
   const { agents, isLoading, error } = useAgents();
@@ -125,7 +130,7 @@ export function AgentsBrowser(): ReactElement {
   if (error !== null) {
     return (
       <div>
-        <PageHeader title="Your Agents" />
+        {!embedded && <PageHeader title="Your Agents" />}
         <ErrorAlert
           message="Couldn't load your agents from the chain. Check your connection and try again."
           onRetry={() => window.location.reload()}
@@ -137,7 +142,7 @@ export function AgentsBrowser(): ReactElement {
   if (isLoading) {
     return (
       <div>
-        <PageHeader title="Your Agents" />
+        {!embedded && <PageHeader title="Your Agents" />}
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-md)" }}>
           <Skeleton height={48} />
           <Skeleton height={48} />
@@ -150,7 +155,7 @@ export function AgentsBrowser(): ReactElement {
   if (count === 0) {
     return (
       <div>
-        <PageHeader title="Your Agents" />
+        {!embedded && <PageHeader title="Your Agents" />}
         {!isConnected ? (
           <Card
             style={{
@@ -231,19 +236,32 @@ export function AgentsBrowser(): ReactElement {
   return (
     <div>
       <ConnectedGuard>
-        <PageHeader
-          title="Your Agents"
-          action={
-            <Link to="/agents/new">
-              <Button variant="secondary">+ Mint</Button>
-            </Link>
-          }
-        />
+        {!embedded && (
+          <PageHeader
+            title="Your Agents"
+            action={
+              <Link to="/agents/new">
+                <Button variant="secondary">+ Mint</Button>
+              </Link>
+            }
+          />
+        )}
+        {embedded && (
+          <h2
+            style={{
+              margin: "0 0 var(--space-md)",
+              fontSize: "var(--text-base)",
+              color: COLORS.textPrimary,
+            }}
+          >
+            Your agents
+          </h2>
+        )}
         <Input
           id="agent-search"
           ref={searchRef}
           type="text"
-          placeholder="Search agents by ID or owner... (⌘K)"
+          placeholder="Search by ID, name, or owner… (⌘K)"
           value={searchTerm}
           onChange={handleSearchChange}
           aria-label="Search agents"

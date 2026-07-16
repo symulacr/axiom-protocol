@@ -24,7 +24,6 @@ import { useFocusTrap } from "./hooks/useFocusTrap.js";
 
 const AgentDetail = lazy(() => import("./pages/AgentDetail.js"));
 const MarketPage = lazy(() => import("./pages/MarketPage.js"));
-const AgentsBrowser = lazy(() => import("./pages/AgentsBrowser.js"));
 const MintAgentPage = lazy(() => import("./pages/MintAgentPage.js"));
 const ChatPage = lazy(() => import("./pages/ChatPage.js"));
 const NotFound = lazy(() => import("./pages/NotFound.js"));
@@ -97,12 +96,11 @@ function ShortcutHelp(): ReactElement | null {
   if (!open) return null;
 
   const shortcuts = [
-    { key: "D", label: "Go to Dashboard" },
-    { key: "G", label: "Go to Agents" },
-    { key: "M", label: "Go to Market" },
-    { key: "C", label: "Go to Axiom chat" },
-    { key: "N", label: "Mint new agent" },
-    { key: "⌘K", label: "Focus search (on Agents page)" },
+    { key: "H / D / G", label: "Home (agents + portfolio)" },
+    { key: "M", label: "Market" },
+    { key: "A / C", label: "Axiom chat" },
+    { key: "N", label: "Mint agent" },
+    { key: "⌘K", label: "Search agents on Home" },
     { key: "?", label: "Show this help" },
     { key: "Esc", label: "Close dialogs / this help" },
   ];
@@ -210,21 +208,19 @@ export function App(): ReactElement {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
 
       switch (e.key.toLowerCase()) {
+        case "h":
         case "d":
-          e.preventDefault();
-          setMenuOpen(false);
-          navigate("/app");
-          break;
         case "g":
           e.preventDefault();
           setMenuOpen(false);
-          navigate("/agents");
+          navigate("/app");
           break;
         case "m":
           e.preventDefault();
           setMenuOpen(false);
           navigate("/market");
           break;
+        case "a":
         case "c":
           e.preventDefault();
           setMenuOpen(false);
@@ -280,25 +276,23 @@ export function App(): ReactElement {
             Axiom Protocol
           </Link>
           {/* App navigation — hidden on the public landing page */}
+          {/* 3 destinations + Mint CTA (not a 5-way split) */}
           {!isLanding && !isMobile && (
             <>
-              <NavLink to="/app" style={navLinkStyle}>
-                Dashboard
-              </NavLink>
-              <NavLink to="/agents" style={navLinkStyle}>
-                Agents{" "}
+              <NavLink to="/app" style={navLinkStyle} end>
+                Home{" "}
                 <Kbd
                   style={{
                     fontSize: "var(--text-xs)",
                     opacity: 0.5,
                     marginLeft: 4,
                     padding: "1px 4px",
-                    borderRadius: 0,
+                    borderRadius: "var(--radius-sm)",
                     border: `1px solid ${COLORS.border}`,
                     lineHeight: 1,
                   }}
                 >
-                  G
+                  H
                 </Kbd>
               </NavLink>
               <NavLink to="/market" style={navLinkStyle}>
@@ -309,7 +303,7 @@ export function App(): ReactElement {
                     opacity: 0.5,
                     marginLeft: 4,
                     padding: "1px 4px",
-                    borderRadius: 0,
+                    borderRadius: "var(--radius-sm)",
                     border: `1px solid ${COLORS.border}`,
                     lineHeight: 1,
                   }}
@@ -325,20 +319,26 @@ export function App(): ReactElement {
                     opacity: 0.5,
                     marginLeft: 4,
                     padding: "1px 4px",
-                    borderRadius: 0,
+                    borderRadius: "var(--radius-sm)",
                     border: `1px solid ${COLORS.border}`,
                     lineHeight: 1,
                   }}
                 >
-                  C
+                  A
                 </Kbd>
               </NavLink>
               <Link
                 to="/agents/new"
                 style={{
-                  ...navLinkStyle({ isActive: false }),
-                  color: COLORS.bronzeLight,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  padding: "0.35rem 0.75rem",
+                  borderRadius: "var(--radius-md)",
+                  background: "var(--c-bronze)",
+                  color: "#fff",
+                  fontSize: "var(--text-sm)",
                   fontWeight: "var(--fw-semibold)",
+                  textDecoration: "none",
                 }}
               >
                 Mint
@@ -431,14 +431,7 @@ export function App(): ReactElement {
             style={navLinkStyle}
             onClick={() => setMenuOpen(false)}
           >
-            Dashboard
-          </NavLink>
-          <NavLink
-            to="/agents"
-            style={navLinkStyle}
-            onClick={() => setMenuOpen(false)}
-          >
-            Agents
+            Home
           </NavLink>
           <NavLink
             to="/market"
@@ -499,7 +492,8 @@ export function App(): ReactElement {
               <Routes>
               <Route path="/" element={<LandingPage />} />
               <Route path="/app" element={<HomePage />} />
-              <Route path="/agents" element={<AgentsBrowser />} />
+              {/* Agents list lives on Home — keep deep link /agents as redirect */}
+              <Route path="/agents" element={<Navigate to="/app" replace />} />
               <Route
                 path="/agents/new"
                 element={
@@ -525,7 +519,7 @@ export function App(): ReactElement {
                   </WalletRoute>
                 }
               />
-              <Route path="/settings" element={<Navigate to="/" replace />} />
+              <Route path="/settings" element={<Navigate to="/app" replace />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
             </div>
