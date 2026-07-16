@@ -397,15 +397,15 @@ export function AgentDetail(): ReactElement {
                       fontWeight: "var(--fw-medium)",
                     }}
                   >
-                    <HelpTip tip="Trusted Execution Environment — the secure enclave that signs ownership proofs and re-encrypts agent data on transfer">
-                      TEE / Oracle
+                    <HelpTip tip="Simulated TEE oracle (software signer) — re-keys agent data and signs ownership proofs. Not hardware TDX/SEV.">
+                      Oracle (sim. TEE)
                     </HelpTip>
                   </dt>
                   <dd style={{ margin: 0, overflow: "hidden" }}>
                     {health.data ? (
                       <MonoLabel
                         copyable
-                        text={`TEE ${health.data.oracle === "up" ? "Up ✓" : "Down ✗"}`}
+                        text={`Oracle ${health.data.oracle === "up" ? "Up ✓" : "Down ✗"}`}
                         style={{
                           color:
                             health.data.oracle === "up"
@@ -413,7 +413,7 @@ export function AgentDetail(): ReactElement {
                               : COLORS.danger,
                         }}
                       >
-                        TEE {health.data.oracle === "up" ? "Up ✓" : "Down ✗"}
+                        Oracle {health.data.oracle === "up" ? "Up ✓" : "Down ✗"}
                       </MonoLabel>
                     ) : (
                       <span style={{ color: COLORS.textDim }}>

@@ -23,9 +23,7 @@ export interface TransferValidityInput {
   targetPubkey64: `0x${string}`;
   accessProofNonce: string | number;
   ownershipProofNonce?: string | number;
-  /** @deprecated cleartext — only for AXIOM_ALLOW_CLEARTEXT_DEK test mode */
-  oldDataEncryptionKey?: string;
-  /** ECIES-sealed DEK to oracle pubkey (preferred) */
+  /** ECIES-sealed DEK to oracle pubkey (required for re-key) */
   sealedDataEncryptionKey?: string;
   to: `0x${string}`;
   nft: `0x${string}`;

@@ -70,7 +70,7 @@ sequenceDiagram
 
 ## Prerequisites
 
-- Node ≥ 22 (Railway pins 22, Vercel uses 24.x), pnpm 11.5.1, Foundry (`forge`) for contracts.
+- Node ≥ 22 (Railway pins 22, Vercel uses 24.x), pnpm 10.22.0, Foundry (`forge`) for contracts.
 
 ## Quick start (local)
 

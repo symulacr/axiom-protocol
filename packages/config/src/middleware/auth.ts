@@ -26,11 +26,58 @@ function timingSafeMatch(presented: string, candidates: string[]): boolean {
 }
 
 /**
+ * Browser/client keys may only hit these path prefixes (method-aware where needed).
+ * Everything else requires the server API key.
+ */
+export const CLIENT_ALLOWED_ROUTES: ReadonlyArray<{
+  methods?: readonly string[];
+  match: (path: string) => boolean;
+}> = [
+  { match: (p) => p === "/health" || p.startsWith("/health/") },
+  { match: (p) => p === "/v1/routes" || p === "/v1/config" },
+  { match: (p) => p === "/v1/compute/providers" },
+  { match: (p) => p === "/v1/payment/config" },
+  {
+    methods: ["GET"],
+    match: (p) => p === "/v1/events" || p.startsWith("/v1/events?"),
+  },
+  {
+    methods: ["GET", "POST"],
+    match: (p) =>
+      p.startsWith("/v1/agents") ||
+      p.startsWith("/v1/archive/") ||
+      p === "/v1/chat/completions" ||
+      p === "/v1/orchestrator/tick",
+  },
+  // Public market data skills only — not forensics, not unbroker execute
+  {
+    match: (p) =>
+      p.startsWith("/v1/skills/evm/") ||
+      p.startsWith("/v1/skills/stocks/") ||
+      p.startsWith("/v1/skills/osint/"),
+  },
+];
+
+export function isClientPathAllowed(
+  method: string,
+  path: string,
+): boolean {
+  const m = method.toUpperCase();
+  // Strip query string for matching
+  const pathOnly = path.split("?")[0] ?? path;
+  return CLIENT_ALLOWED_ROUTES.some((rule) => {
+    if (rule.methods && !rule.methods.includes(m)) return false;
+    return rule.match(pathOnly);
+  });
+}
+
+/**
  * API-key auth with capability split:
  * - server key (`AXIOM_API_KEY`): full access
- * - client key (`AXIOM_CLIENT_API_KEY`): browser-safe surface only
+ * - client key (`AXIOM_CLIENT_API_KEY`): only CLIENT_ALLOWED_ROUTES
  *
- * Use `requireServerAuth` on operator routes (vault execute, etc.).
+ * Use `requireServerAuth` on operator routes; `enforceClientPathAllowlist`
+ * must be mounted after createApiKeyAuth.
  */
 export function createApiKeyAuth(
   apiKey: string | undefined,
@@ -76,7 +123,29 @@ export function createApiKeyAuth(
   };
 }
 
-/** Operator-only: vault execute, privileged payment, etc. */
+/** Deny client-key access outside the allowlist. Server/disabled/none pass. */
+export function enforceClientPathAllowlist(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
+  const principal = (req as AuthRequest).authPrincipal;
+  if (principal !== "client") {
+    next();
+    return;
+  }
+  if (isClientPathAllowed(req.method, req.path)) {
+    next();
+    return;
+  }
+  res.status(403).json({
+    error: "forbidden: client API key cannot access this route",
+    code: "CLIENT_PATH_DENIED",
+    path: req.path,
+  });
+}
+
+/** Operator-only: vault execute, privileged payment, forensics, etc. */
 export function requireServerAuth(
   req: Request,
   res: Response,

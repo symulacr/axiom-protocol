@@ -232,8 +232,10 @@ export class StrategyRunner {
       try {
         await this.verifyTeeAsync(rawModelOutput, strategy.computeModel);
       } catch (err) {
+        // Default fail-closed when verification is enabled; set
+        // AXIOM_COMPUTE_TEE_FAIL_CLOSED=false only for deliberate best-effort mode.
         const failClosed =
-          process.env.AXIOM_COMPUTE_TEE_FAIL_CLOSED === "true";
+          process.env.AXIOM_COMPUTE_TEE_FAIL_CLOSED !== "false";
         log.warn("TEE verification failed", {
           error: extractErrorMessage(err),
           failClosed,

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Axiom on-chain event indexer — polls 0G Galileo testnet for AxiomAgentNFT + AxiomStrategyVault events and emits them to a sink. Starter for the MW17 DA indexer (future: submit events to 0G DA).",
+  "description": "Axiom on-chain event indexer — polls 0G Aristotle mainnet (16661) for AxiomAgentNFT + AxiomStrategyVault events and sinks them to the backend EventStore (optional 0G Storage batch).",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc --project tsconfig.json",

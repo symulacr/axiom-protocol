@@ -82,6 +82,8 @@ interface SkillRouteDef<S extends z.ZodTypeAny = z.ZodTypeAny> {
   handler: SkillHandlerFn<S>;
   /** When true the handler is guarded behind a configured GITHUB_TOKEN. */
   requiresGithubToken?: boolean;
+  /** When true only server API key may call (forensics / destructive skills). */
+  requiresServerAuth?: boolean;
 }
 
 function skill<S extends z.ZodTypeAny>(
@@ -90,8 +92,16 @@ function skill<S extends z.ZodTypeAny>(
   description: string,
   handler: SkillHandlerFn<S>,
   requiresGithubToken = false,
+  requiresServerAuth = false,
 ): SkillRouteDef<S> {
-  return { path, schema, description, handler, requiresGithubToken };
+  return {
+    path,
+    schema,
+    description,
+    handler,
+    requiresGithubToken,
+    requiresServerAuth,
+  };
 }
 
 function registerSkillRoutes(
@@ -99,23 +109,45 @@ function registerSkillRoutes(
   registrations: SkillRouteDef[],
 ): void {
   for (const r of registrations) {
-    const handler: SkillHandlerFn<z.ZodTypeAny> = r.requiresGithubToken
-      ? async (parsed, req, res, helpers) => {
-          if (!process.env.GITHUB_TOKEN) {
-            return {
-              ok: false,
-              error:
-                "GITHUB_TOKEN is not configured on the server; OSS forensics requires a GitHub token",
-            };
-          }
-          return r.handler(parsed, req, res, helpers);
+    const handler: SkillHandlerFn<z.ZodTypeAny> = async (
+      parsed,
+      req,
+      res,
+      helpers,
+    ) => {
+      if (r.requiresServerAuth) {
+        const principal = (req as { authPrincipal?: string }).authPrincipal;
+        if (principal === "client") {
+          return {
+            ok: false,
+            error: "forbidden: server API key required for this skill",
+            code: "SERVER_KEY_REQUIRED",
+          };
         }
-      : r.handler;
+      }
+      if (r.requiresGithubToken && !process.env.GITHUB_TOKEN) {
+        return {
+          ok: false,
+          error:
+            "GITHUB_TOKEN is not configured on the server; OSS forensics requires a GitHub token",
+        };
+      }
+      return r.handler(parsed, req, res, helpers);
+    };
     route(
       { path: r.path, schema: r.schema, description: r.description },
       handler,
     );
   }
+}
+
+/** Never return full secret material to API clients. */
+export function redactIocMatch(raw: string, patternName: string): string {
+  if (patternName === "ipv4" || patternName === "domain") {
+    return raw; // not secrets
+  }
+  if (raw.length <= 8) return `[redacted:${patternName}]`;
+  return `${raw.slice(0, 4)}…${raw.slice(-4)} [redacted:${patternName}]`;
 }
 
 // ---------------------------------------------------------------------------
@@ -403,7 +435,11 @@ async function scanIocs(owner: string, repo: string, path?: string) {
     for (const [patternName, re] of Object.entries(IOC_PATTERNS)) {
       const reInst = new RegExp(re.source, re.flags);
       for (const m of content.matchAll(reInst)) {
-        hits.push({ file: fp, pattern: patternName, match: m[0] });
+        hits.push({
+          file: fp,
+          pattern: patternName,
+          match: redactIocMatch(m[0], patternName),
+        });
       }
     }
   }
@@ -736,24 +772,70 @@ export function createSkillRouters(config: ServerConfig): Router {
           return ser({ tokenId, to, safetyScore: 0, rating: "UNSAFE", issues: ["Failed to validate on-chain state"] });
         }
       }),
-    skill("/v1/skills/unbroker/execute", unbrokerSchema, "Execute verified transfer",
+    skill(
+      "/v1/skills/unbroker/execute",
+      unbrokerSchema,
+      "Execute verified transfer (server key only)",
       async (parsed) => {
-        return ser({ tokenId: parsed.tokenId, to: parsed.to, status: "queued", note: "Transfer execution requires wallet signing via encode tools" });
-      }),
+        return ser({
+          tokenId: parsed.tokenId,
+          to: parsed.to,
+          status: "queued",
+          note: "Transfer execution requires wallet signing via encode tools",
+        });
+      },
+      false,
+      true,
+    ),
 
-    // OSS forensics (env-gated behind GITHUB_TOKEN — audit §6)
-    skill("/v1/skills/oss-forensics/investigate", investigateSchema, "GitHub repo forensics + optional keccak256 bytecode comparison",
+    // OSS forensics: server key + GITHUB_TOKEN; IOC matches redacted
+    skill(
+      "/v1/skills/oss-forensics/investigate",
+      investigateSchema,
+      "GitHub repo forensics + optional keccak256 bytecode comparison",
       async (parsed) => {
         const base = await investigateRepo(parsed.owner, parsed.repo);
-        const bytecode = parsed.bytecode ? await compareBytecode(parsed.bytecode) : null;
+        const bytecode = parsed.bytecode
+          ? await compareBytecode(parsed.bytecode)
+          : null;
         return ser({ ...base, bytecode });
-      }, true),
-    skill("/v1/skills/oss-forensics/commits", commitsSchema, "Commit history with force-push detection",
-      async (parsed) => ser(await fetchCommits(parsed.owner, parsed.repo, parsed.sha, parsed.perPage)), true),
-    skill("/v1/skills/oss-forensics/ioc", iocSchema, "IOC regex scan: AWS keys, tokens, private keys, IPs, domains",
-      async (parsed) => ser(await scanIocs(parsed.owner, parsed.repo, parsed.path)), true),
-    skill("/v1/skills/oss-forensics/audit", auditSchema, "Dependency manifest audit + storage layout detection",
-      async (parsed) => ser(await auditDeps(parsed.owner, parsed.repo)), true),
+      },
+      true,
+      true,
+    ),
+    skill(
+      "/v1/skills/oss-forensics/commits",
+      commitsSchema,
+      "Commit history with force-push detection",
+      async (parsed) =>
+        ser(
+          await fetchCommits(
+            parsed.owner,
+            parsed.repo,
+            parsed.sha,
+            parsed.perPage,
+          ),
+        ),
+      true,
+      true,
+    ),
+    skill(
+      "/v1/skills/oss-forensics/ioc",
+      iocSchema,
+      "IOC regex scan (secret matches redacted)",
+      async (parsed) =>
+        ser(await scanIocs(parsed.owner, parsed.repo, parsed.path)),
+      true,
+      true,
+    ),
+    skill(
+      "/v1/skills/oss-forensics/audit",
+      auditSchema,
+      "Dependency manifest audit + storage layout detection",
+      async (parsed) => ser(await auditDeps(parsed.owner, parsed.repo)),
+      true,
+      true,
+    ),
   ]);
 
   return router;

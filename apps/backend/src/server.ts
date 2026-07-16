@@ -32,6 +32,7 @@ import { HTTP, type Eip712Domain, DEFAULT_EIP712_DOMAIN, buildEip712Domain, reso
 import { getSharedProvider } from "./provider.js";
 import {
   createApiKeyAuth,
+  enforceClientPathAllowlist,
   requireServerAuth,
   timingSafeTokenInList,
 } from "@axiom/config/middleware/auth";
@@ -196,11 +197,13 @@ export function startServer(config: ServerConfig): {
   app.use(
     createApiKeyAuth(
       config.env?.AXIOM_API_KEY,
-      ["/health"],
+      ["/health", "/health/live"],
       process.env.AXIOM_DISABLE_AUTH === "true",
       process.env.AXIOM_CLIENT_API_KEY,
     ),
   );
+  // Browser keys only reach an explicit allowlist (not vault execute, forensics, event inject).
+  app.use(enforceClientPathAllowlist);
   const rateLimitMax = Number.parseInt(
     process.env.AXIOM_RATE_LIMIT_MAX ?? "100",
     10,

@@ -115,6 +115,18 @@ export function registerOrchestratorRoutes(
           agentTokenId,
           chainId,
         );
+        // Client keys may request ticks, but must not supply Merkle execute plans
+        // (server-signed vault settlement).
+        const principal = (req as { authPrincipal?: string }).authPrincipal;
+        if (parsed.executionPlan && principal === "client") {
+          sendError(
+            res,
+            HTTP.FORBIDDEN,
+            "executionPlan requires server API key",
+            "SERVER_KEY_REQUIRED",
+          );
+          return;
+        }
         const spec: StrategySpec = {
           agentTokenId: BigInt(agentTokenId),
           agentNft,
