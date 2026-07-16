@@ -79,7 +79,7 @@ function streamFromEndpoint(
     });
     if (!res.ok || !res.body) {
       const text = await res.text().catch(() => "");
-      throw new Error(`Compute error ${res.status}: ${text.slice(0, 300)}`);
+      throw Object.assign(new Error(text.slice(0, 300)), { status: res.status, code: "COMPUTE_ERROR" });
     }
     const reader = res.body.getReader();
     const decoder = new TextDecoder();

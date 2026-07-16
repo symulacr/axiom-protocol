@@ -31,7 +31,6 @@ import {
   MAX_TOOL_LOOPS,
   summarizeConversation,
   evaluateContinue,
-  shouldAutoContinue,
   isAskUserResult,
   type ChatSessionContext,
 } from "@axiom/chat-runtime";
@@ -629,9 +628,6 @@ function ChatPageInner(): ReactElement {
           ];
           messagesRef.current = currentMessages;
           setMessages(currentMessages);
-          if (shouldAutoContinue(signal, false)) {
-            window.dispatchEvent(new CustomEvent("axiom:autoContinue", { detail: signal }));
-          }
         }
       } catch (err: unknown) {
         if (err instanceof DOMException && err.name === "AbortError") { /* aborted — ignore */ } else {
