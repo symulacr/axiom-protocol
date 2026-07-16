@@ -265,10 +265,17 @@ export function registerAgentRoutes(
           return;
         }
 
-        const canRekey = !!(
-          oldDataUri &&
-          (sealedDataEncryptionKey || oldDataEncryptionKey)
-        );
+        // Never accept or forward cleartext DEK — only ECIES-sealed to oracle.
+        if (oldDataEncryptionKey && !sealedDataEncryptionKey) {
+          sendError(
+            res,
+            HTTP.BAD_REQUEST,
+            "cleartext oldDataEncryptionKey rejected; send sealedDataEncryptionKey (ECIES to oracle pubkey from GET {oracle}/health)",
+            "CLEARTEXT_DEK_REJECTED",
+          );
+          return;
+        }
+        const canRekey = !!(oldDataUri && sealedDataEncryptionKey);
         if (!accessProof) {
           const nonce = BigInt(accessProofNonce ?? 0);
           if (canRekey) {
@@ -277,7 +284,6 @@ export function registerAgentRoutes(
               oldDataUri: oldDataUri!,
               targetPubkey64: pk,
               accessProofNonce: nonce.toString(),
-              oldDataEncryptionKey,
               sealedDataEncryptionKey,
               to,
               nft,

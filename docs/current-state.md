@@ -42,9 +42,11 @@ Axiom tokenizes AI trading strategies as **ERC-7857 Intelligent NFTs (iNFTs)** o
 
 ## Auth model
 
-- Server API key: `AXIOM_API_KEY` (operator / trusted services)
-- Client/browser key: `AXIOM_CLIENT_API_KEY` / `VITE_API_KEY` — **capability-limited** (read + encode + chat; not vault execute)
+- Server API key: `AXIOM_API_KEY` (full access including vault execute, forensics, event inject)
+- Client/browser key: `AXIOM_CLIENT_API_KEY` / `VITE_API_KEY` — **hard allowlist only**: agents/chat/encode/tick/read skills (evm/stocks/osint). Denied: vault execute, oss-forensics, unbroker execute, POST /v1/events, executionPlan on tick
+- Cleartext DEK rejected on backend transfer **and** oracle (only `sealedDataEncryptionKey`)
 - `AXIOM_DISABLE_AUTH=true` refused when `NODE_ENV=production`
+- EventStore exclusive file lock (set `AXIOM_ALLOW_MULTI_INSTANCE=true` only if you accept split-brain)
 
 ## Deploy
 

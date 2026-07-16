@@ -3,6 +3,8 @@ import test from "node:test";
 import type { Request, Response } from "express";
 import {
   createApiKeyAuth,
+  enforceClientPathAllowlist,
+  isClientPathAllowed,
   requireServerAuth,
   timingSafeTokenInList,
   type AuthRequest,
@@ -74,4 +76,52 @@ test("requireServerAuth allows server principal", () => {
 test("timingSafeTokenInList matches", () => {
   assert.equal(timingSafeTokenInList("abc", ["x", "abc"]), true);
   assert.equal(timingSafeTokenInList("nope", ["x", "abc"]), false);
+});
+
+test("isClientPathAllowed: chat and agents ok; vault execute and forensics denied", () => {
+  assert.equal(isClientPathAllowed("POST", "/v1/chat/completions"), true);
+  assert.equal(isClientPathAllowed("POST", "/v1/agents/1/transfer"), true);
+  assert.equal(isClientPathAllowed("GET", "/v1/skills/evm/wallet"), true);
+  assert.equal(isClientPathAllowed("POST", "/v1/vaults/1/execute"), false);
+  assert.equal(
+    isClientPathAllowed("POST", "/v1/skills/oss-forensics/ioc"),
+    false,
+  );
+  assert.equal(isClientPathAllowed("POST", "/v1/events"), false);
+  assert.equal(
+    isClientPathAllowed("POST", "/v1/skills/unbroker/execute"),
+    false,
+  );
+});
+
+test("enforceClientPathAllowlist blocks client on vault execute path", () => {
+  const req = {
+    authPrincipal: "client",
+    method: "POST",
+    path: "/v1/vaults/1/execute",
+  } as AuthRequest;
+  const { res, state } = mockRes();
+  let next = false;
+  enforceClientPathAllowlist(req as Request, res, () => {
+    next = true;
+  });
+  assert.equal(next, false);
+  assert.equal(state.statusCode, 403);
+  assert.equal(
+    (state.body as { code?: string }).code,
+    "CLIENT_PATH_DENIED",
+  );
+});
+
+test("enforceClientPathAllowlist allows client on chat path", () => {
+  const req = {
+    authPrincipal: "client",
+    method: "POST",
+    path: "/v1/chat/completions",
+  } as AuthRequest;
+  let next = false;
+  enforceClientPathAllowlist(req as Request, mockRes().res, () => {
+    next = true;
+  });
+  assert.equal(next, true);
 });

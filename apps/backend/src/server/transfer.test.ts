@@ -13,6 +13,7 @@ import { fetchJson } from "../utils/fetch-json.js";
 import { startServer as startOracleServer } from "@axiom/oracle/server";
 import { TeeSigner } from "@axiom/oracle/signer";
 import { accessMessageHash, deriveUncompressedPubkeyFromHex, buildEip712Domain, ARISTOTLE_CHAIN_ID, aesGcmEncrypt, concatEncrypted, unsealKeyForReceiver } from "@axiom/config";
+import { sealKeyForReceiver } from "@axiom/config/crypto/keys";
 import { InMemoryStorage } from "@axiom/config/storage/0g";
 
 const ORACLE_PRIV = "0x" + "11".repeat(32);
@@ -259,6 +260,14 @@ test("POST /v1/agents/:id/transfer challenge triggers full re-key via /v1/transf
     const uncompressed = deriveUncompressedPubkeyFromHex(RECEIVER_PRIV);
     const receiverPubkey64 = ("0x" + Buffer.from(uncompressed).toString("hex")) as `0x${string}`;
 
+    // Seal DEK to oracle TEE pubkey (cleartext rejected on backend + oracle).
+    const sealedDek = sealKeyForReceiver(
+      oracleSigner.uncompressedPubkey,
+      oldDataKey,
+    );
+    const sealedDataEncryptionKey =
+      "0x" + Buffer.from(sealedDek).toString("hex");
+
     const {
       ok: rekeyChallengeOk,
       status: rekeyChallengeStatus,
@@ -285,7 +294,7 @@ test("POST /v1/agents/:id/transfer challenge triggers full re-key via /v1/transf
         accessProofNonce: 7,
         dataHash: oldDataUri,
         oldDataUri,
-        oldDataEncryptionKey: Buffer.from(oldDataKey).toString("base64"),
+        sealedDataEncryptionKey,
       }),
     });
     assert.equal(rekeyChallengeStatus, 200);

@@ -595,8 +595,8 @@ export function App(): ReactElement {
                 TEE
               </dt>
               <dd style={{ margin: 0, opacity: 0.9 }}>
-                Trusted Execution Environment — hardware-isolated secure enclave
-                for signing proofs
+                Oracle TEE signer — software-simulated enclave (Node secp256k1)
+                that signs ownership proofs; not Intel TDX/SEV hardware
               </dd>
               <dt
                 style={{

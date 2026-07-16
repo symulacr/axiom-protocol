@@ -4,6 +4,7 @@ import { DEFAULT_EVENT_LIMIT } from "../utils/constants.js";
 import { extractErrorMessage } from "../utils/response.js";
 import type { StoredEventPayload } from "./payloads.js";
 import { loadBuckets, saveBuckets } from "./persist.js";
+import { acquireEventStoreLock } from "./instance-lock.js";
 
 const log = createLogger("events");
 
@@ -378,7 +379,19 @@ function tokenIdFromPayload(payload: StoredEventPayload): string | null {
 }
 
 let singleton: EventStore | undefined;
+let lockRelease: (() => void) | undefined;
+
 export function getEventStore(): EventStore {
-  singleton ??= new EventStore();
+  if (!singleton) {
+    lockRelease = acquireEventStoreLock();
+    singleton = new EventStore();
+  }
   return singleton;
+}
+
+/** Test helper: drop singleton + lock (tests that call getEventStore). */
+export function resetEventStoreForTests(): void {
+  lockRelease?.();
+  lockRelease = undefined;
+  singleton = undefined;
 }
