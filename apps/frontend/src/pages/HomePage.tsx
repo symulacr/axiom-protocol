@@ -52,10 +52,10 @@ export function HomePage(): ReactElement {
         <div style={{ flex: 1, minWidth: "12rem" }}>
           <PageHeader
             title="Home"
-            subtitle="Your agents and vault totals. Mint, fund, open detail to tick or transfer — or ask Axiom in Chat."
+            subtitle="Agents and vaults. Open detail to fund, tick, or transfer."
             action={
               <Link to="/app?mint=1" style={{ textDecoration: "none" }}>
-                <Button variant="primary">Mint agent</Button>
+                <Button variant="primary">Mint</Button>
               </Link>
             }
           />
@@ -165,13 +165,9 @@ function HomeBody(): ReactElement {
         </div>
       </div>
 
-      {/* Short task rail — not a second nav */}
       <div className="action-rail" aria-label="Quick actions">
         <Link to="/chat" style={{ textDecoration: "none" }}>
-          <Button variant="secondary">Ask Axiom</Button>
-        </Link>
-        <Link to="/app?mint=1" style={{ textDecoration: "none" }}>
-          <Button variant="ghost">Mint agent</Button>
+          <Button variant="secondary">Chat</Button>
         </Link>
       </div>
 
@@ -195,28 +191,39 @@ function HomeBody(): ReactElement {
       )}
 
       {(unfunded.length > 0 || unbound.length > 0) && (
-        <Card style={{ marginBottom: "var(--space-xl)" }}>
-          <h2
+        <div
+          className="home-attention"
+          style={{
+            marginBottom: "var(--space-xl)",
+            padding: "var(--space-md) 0",
+            borderTop: `1px solid ${COLORS.border}`,
+            borderBottom: `1px solid ${COLORS.border}`,
+          }}
+        >
+          <div
             style={{
-              margin: "0 0 var(--space-md)",
-              fontSize: "var(--text-base)",
-              color: COLORS.textPrimary,
+              marginBottom: "var(--space-sm)",
+              fontSize: "var(--text-xs)",
+              fontFamily: "var(--font-mono)",
+              color: COLORS.textDim,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
             }}
           >
             Needs attention
-          </h2>
+          </div>
           <ul
             style={{
               margin: 0,
-              paddingLeft: "1.25rem",
+              paddingLeft: "1.15rem",
               color: COLORS.textMuted,
               fontSize: "var(--text-sm)",
-              lineHeight: 1.6,
+              lineHeight: 1.55,
             }}
           >
-            {unfunded.slice(0, 4).map((a) => (
+            {unfunded.slice(0, 3).map((a) => (
               <li key={`f-${a.tokenId}`}>
-                #{a.tokenId.toString()} zero vault —{" "}
+                #{a.tokenId.toString()} empty vault —{" "}
                 <Link
                   to={`/agents/${a.tokenId}`}
                   style={{ color: COLORS.bronzeLight }}
@@ -225,7 +232,7 @@ function HomeBody(): ReactElement {
                 </Link>
               </li>
             ))}
-            {unbound.slice(0, 4).map((a) => (
+            {unbound.slice(0, 3).map((a) => (
               <li key={`s-${a.tokenId}`}>
                 #{a.tokenId.toString()} no strategy —{" "}
                 <Link
@@ -237,7 +244,7 @@ function HomeBody(): ReactElement {
               </li>
             ))}
           </ul>
-        </Card>
+        </div>
       )}
 
       <Suspense
@@ -260,7 +267,7 @@ function HomeBody(): ReactElement {
         {address
           ? `${address.slice(0, 6)}…${address.slice(-4)} · `
           : ""}
-        Software oracle · open an agent for vault, tick, transfer
+        Open an agent to fund, tick, or transfer
       </p>
     </>
   );

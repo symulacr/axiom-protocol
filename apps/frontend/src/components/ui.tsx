@@ -82,6 +82,7 @@ const formFieldBase: CSSProperties = {
   fontFamily: "inherit",
   minWidth: "0",
   transition,
+  // focus ring via CSS class on inputs
 };
 
 type ButtonVariant = "primary" | "secondary" | "ghost" | "teal";
@@ -165,6 +166,7 @@ export const Input = forwardRef<
     <input
       ref={ref}
       {...rest}
+      className={["axiom-field", rest.className].filter(Boolean).join(" ")}
       style={{
         ...formFieldBase,
         ...style,
@@ -181,6 +183,7 @@ export const Textarea = forwardRef<
     <textarea
       ref={ref}
       {...rest}
+      className={["axiom-field", rest.className].filter(Boolean).join(" ")}
       style={{
         ...formFieldBase,
         width: "100%",
@@ -200,6 +203,7 @@ export const Select = forwardRef<
     <select
       ref={ref}
       {...rest}
+      className={["axiom-field", rest.className].filter(Boolean).join(" ")}
       style={{
         ...formFieldBase,
         ...style,
@@ -417,14 +421,17 @@ export function Alert({
   variant = "error",
   children,
   style,
+  className,
 }: {
   variant?: AlertVariant;
   children: ReactNode;
   style?: CSSProperties;
+  className?: string;
 }): ReactElement {
   return (
     <div
       role={variant === "error" ? "alert" : "status"}
+      className={className}
       style={{ ...alertStyles[variant], ...style }}
     >
       {children}
@@ -501,12 +508,12 @@ export function Skeleton({
     <div
       role="status"
       aria-label="Loading content"
+      data-axiom-skeleton=""
+      className="skeleton"
       style={{
         width,
         height,
-        background: COLORS.border,
         borderRadius: "var(--radius-sm)",
-        animation: "axiom-pulse 1.5s ease-in-out infinite",
         ...style,
       }}
     />
@@ -888,8 +895,7 @@ export function ConnectedGuard({
             fontSize: "var(--text-sm)",
           }}
         >
-          Connect a wallet on 0G Aristotle (chain 16661) to mint agents, fund
-          vaults, and run strategy ticks.
+          Connect wallet (0G Aristotle) to mint, fund, and tick.
         </p>
         <React.Suspense fallback={<Spinner />}>
           <LazyConnectButton />

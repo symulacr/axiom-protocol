@@ -285,7 +285,11 @@ export function MintForm({
           ) : null}
 
           {wizard.error || submitError ? (
-            <Alert variant="error" style={{ marginTop: "var(--space-md)" }}>
+            <Alert
+              variant="error"
+              className="axiom-error-shake"
+              style={{ marginTop: "var(--space-md)" }}
+            >
               {submitError ?? wizard.error}
             </Alert>
           ) : null}

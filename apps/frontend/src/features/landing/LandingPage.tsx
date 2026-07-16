@@ -3,22 +3,15 @@ import { Link } from "react-router-dom";
 import { BRAND } from "../../brand/assets.js";
 
 /**
- * Public landing — dark, scannable, honest.
- * No card dumps, no scroll-reveal theater, no claims the app cannot keep.
- *
- * Product truth (aligned with Home / Chat / Mint):
- * - Mint an iNFT agent (name → auto payload → oracle + wallet)
- * - Fund vault, run ticks, transfer with re-key
- * - Chat with Axiom assistant for protocol tools
- * - Oracle is software TEE signer, not hardware enclave
+ * Landing — short, use-case first, same story as Home / Chat / Mint.
  */
 export function LandingPage(): ReactElement {
   return (
     <article className="landing-root">
       <Hero />
-      <WhatYouDo />
+      <Uses />
       <Limits />
-      <FooterCta />
+      <Cta />
     </article>
   );
 }
@@ -30,27 +23,26 @@ function Hero(): ReactElement {
         <div className="landing-hero__copy">
           <p className="landing-eyebrow">
             <span className="landing-dot" aria-hidden />
-            ERC-7857 · 0G Aristotle · software oracle
+            0G · ERC-7857 · software oracle
           </p>
           <h1 className="landing-h1">
-            Agents you mint,
+            Mint an agent.
             <br />
-            <span className="landing-h1-accent">own, and run.</span>
+            <span className="landing-h1-accent">Own it on-chain.</span>
           </h1>
           <p className="landing-lead">
-            Axiom is a wallet app for intelligent NFTs on 0G: mint an agent,
-            fund its vault, run strategy ticks, transfer with re-key. Chat with
-            Axiom when you want the assistant to drive those tools.
+            Use Axiom to mint an iNFT agent, fund its vault, run ticks, transfer
+            with re-key, or chat tools with Axiom.
           </p>
           <div className="landing-cta-row">
             <Link to="/app?mint=1" className="btn btn-primary landing-btn">
-              Mint an agent
+              Mint
             </Link>
             <Link to="/app" className="btn btn-secondary landing-btn">
-              Open app
+              Home
             </Link>
             <Link to="/chat" className="landing-text-link">
-              Chat with Axiom →
+              Chat →
             </Link>
           </div>
         </div>
@@ -69,32 +61,34 @@ function Hero(): ReactElement {
   );
 }
 
-function WhatYouDo(): ReactElement {
+function Uses(): ReactElement {
   const items = [
     {
       title: "Mint",
-      body: "Name the agent. We build a default payload, register the dataHash with the oracle, and your wallet pays the mint fee.",
+      body: "Name the agent. Wallet pays the mint fee. Payload is auto-built.",
     },
     {
-      title: "Fund & tick",
-      body: "Deposit 0G into the agent vault, bind a strategy root when you have one, run ticks via 0G Compute from agent detail.",
+      title: "Fund",
+      body: "Deposit 0G on agent detail. Bind a strategy root when you have one.",
+    },
+    {
+      title: "Tick",
+      body: "Run strategy ticks from Execute. Needs vault funds and 0G Compute.",
     },
     {
       title: "Transfer",
-      body: "iTransfer re-keys sealed intelligence for the new owner through the oracle. Old access does not travel with a bare transfer.",
+      body: "iTransfer re-keys sealed data for the buyer via the software oracle.",
     },
     {
-      title: "Ask Axiom",
-      body: "Chat can call protocol tools (mint, vault reads, ticks, market-style queries) while you stay connected with a wallet.",
+      title: "Chat",
+      body: "Ask Axiom to mint, read vaults, or tick — wallet required.",
     },
   ];
 
   return (
     <section className="landing-block">
-      <h2 className="landing-h2">What you can do here</h2>
-      <p className="landing-sub">
-        Same product as Home and Chat — not a marketplace brochure.
-      </p>
+      <h2 className="landing-h2">What Axiom is for</h2>
+      <p className="landing-sub">Same flows as Home and Chat. No extra product.</p>
       <ul className="landing-list">
         {items.map((item, i) => (
           <li
@@ -115,37 +109,27 @@ function Limits(): ReactElement {
   return (
     <section className="landing-block landing-block--tight">
       <div className="landing-note">
-        <h2 className="landing-h3">What this is not</h2>
+        <h2 className="landing-h3">Limits</h2>
         <ul className="landing-plain-list">
+          <li>No marketplace page — transfer lives on agent detail.</li>
           <li>
-            Not a full open marketplace UI — transfer and tools live in the app;
-            there is no peer “Market” destination.
+            Oracle is a <strong>software</strong> signer, not hardware TEE.
           </li>
-          <li>
-            Oracle re-key uses a <strong>software</strong> TEE signer (process
-            key), not Intel TDX / AMD SEV hardware.
-          </li>
-          <li>
-            Ticks and chat need backend, compute, and wallet; mint needs chain
-            fee in 0G.
-          </li>
+          <li>Chat and ticks need backend + compute keys.</li>
         </ul>
       </div>
     </section>
   );
 }
 
-function FooterCta(): ReactElement {
+function Cta(): ReactElement {
   return (
     <section className="landing-block landing-cta-end">
       <h2 className="landing-h2">Start with a name</h2>
-      <p className="landing-sub">
-        One field on mint. Then Home for portfolio, Chat for Axiom, agent detail
-        for vault and ticks.
-      </p>
+      <p className="landing-sub">Mint → Home list → detail for vault and ticks.</p>
       <div className="landing-cta-row landing-cta-row--center">
         <Link to="/app?mint=1" className="btn btn-primary landing-btn">
-          Mint an agent
+          Mint
         </Link>
         <Link to="/app" className="btn btn-secondary landing-btn">
           Open Home
