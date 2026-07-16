@@ -21,7 +21,7 @@
     "start": "node dist/index.js",
     "prestart": "pnpm build",
     "dev": "node --import tsx src/index.ts",
-    "test": "AXIOM_DISABLE_AUTH=true node --import tsx --test src/**/*.test.ts test/**/*.test.ts",
+    "test": "AXIOM_DISABLE_AUTH=true AXIOM_ALLOW_CLEARTEXT_DEK=true node --import tsx --test $(find src test -name \"*.test.ts\" 2>/dev/null | sort)",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit"
   },
@@ -48,5 +48,6 @@
   "engines": {
     "node": ">=22.0.0"
   },
-  "packageManager": "pnpm@11.5.1"
+  "packageManager": "pnpm@10.22.0",
+  "license": "MIT"
 }

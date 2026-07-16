@@ -1,0 +1,12 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "corepack enable && corepack prepare pnpm@10.22.0 --activate && pnpm install",
+  "buildCommand": "pnpm --filter @axiom/config build && pnpm --filter @axiom/chat-runtime build && pnpm --filter @axiom/frontend build",
+  "outputDirectory": "apps/frontend/dist",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

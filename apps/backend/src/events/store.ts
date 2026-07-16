@@ -119,6 +119,7 @@ export class EventStore {
       const evicted = bucket.shift()!;
       this.seenKeys.delete(dedupeKey(evicted));
       this.removeFromIndex(evicted);
+      if (this.total > 0) this.total -= 1;
     }
     bucket.push(stored);
     this.seenKeys.add(dedupe);

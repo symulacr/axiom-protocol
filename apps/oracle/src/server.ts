@@ -23,7 +23,10 @@ import {
   concatEncrypted,
   parseEncrypted,
 } from "@axiom/config/crypto/aes-gcm";
-import { sealKeyForReceiver } from "@axiom/config/crypto/keys";
+import {
+  sealKeyForReceiver,
+  unsealKeyForReceiver,
+} from "@axiom/config/crypto/keys";
 import type { TeeSigner } from "./signer.js";
 import type { StorageAdapter } from "@axiom/config/storage/0g";
 import {
@@ -119,10 +122,45 @@ export function startServer(config: ServerConfig): {
           "targetPubkey64 must be 64 bytes (128 hex chars)",
         );
       }
-      if (!oldDataEncryptionKey) {
+      // Bind URI to claimed hash (storage root identity).
+      const normHash = String(oldDataHash).toLowerCase().replace(/^0x/, "");
+      const normUri = String(oldDataUri).toLowerCase().replace(/^0x/, "");
+      if (normHash !== normUri) {
         return badRequest(
           res,
-          "oldDataEncryptionKey (base64) is required for devnet shortcut",
+          "oldDataUri must equal oldDataHash (blob root binding)",
+        );
+      }
+
+      const sealedDek = (req.body as { sealedDataEncryptionKey?: string })
+        ?.sealedDataEncryptionKey;
+      const allowCleartext =
+        process.env.AXIOM_ALLOW_CLEARTEXT_DEK === "true" &&
+        process.env.NODE_ENV !== "production";
+
+      let oldDataKey: Buffer;
+      if (typeof sealedDek === "string" && sealedDek.length > 0) {
+        // ECIES-sealed DEK to the TEE/oracle private key (preferred).
+        const sealedBytes = Buffer.from(
+          sealedDek.startsWith("0x") ? sealedDek.slice(2) : sealedDek,
+          sealedDek.startsWith("0x") ? "hex" : "base64",
+        );
+        const opened = unsealKeyForReceiver(
+          signer.privateKeyBytes,
+          new Uint8Array(sealedBytes),
+        );
+        oldDataKey = Buffer.from(opened);
+      } else if (oldDataEncryptionKey && allowCleartext) {
+        oldDataKey = Buffer.from(oldDataEncryptionKey, "base64");
+      } else if (oldDataEncryptionKey && !allowCleartext) {
+        return badRequest(
+          res,
+          "cleartext oldDataEncryptionKey rejected; send sealedDataEncryptionKey (ECIES to oracle pubkey from GET /health)",
+        );
+      } else {
+        return badRequest(
+          res,
+          "sealedDataEncryptionKey is required (ECIES-seal the 32-byte DEK to oracle uncompressed pubkey)",
         );
       }
 
@@ -137,10 +175,9 @@ export function startServer(config: ServerConfig): {
       ]);
       const oldEnc = parseEncrypted(oldBlob);
 
-      const oldDataKey = Buffer.from(oldDataEncryptionKey, "base64");
       if (oldDataKey.length !== 32) {
         res.status(HTTP.BAD_REQUEST).json({
-          error: "oldDataEncryptionKey must be 32 bytes (base64-encoded)",
+          error: "data encryption key must be 32 bytes after unseal",
         });
         return;
       }

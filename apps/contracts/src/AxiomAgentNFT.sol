@@ -111,7 +111,7 @@ contract AxiomAgentNFT is
         address to,
         uint256 tokenId,
         address auth
-    ) internal virtual override(ERC721Upgradeable, ERC7857AuthorizeUpgradeable) whenNotPaused returns (address) {
+    ) internal virtual override(ERC7857Upgradeable, ERC7857AuthorizeUpgradeable) whenNotPaused returns (address) {
         return super._update(to, tokenId, auth);
     }
 
@@ -271,7 +271,7 @@ contract AxiomAgentNFT is
     function mintWithRole(
         IntelligentData[] calldata iDatas,
         address to
-    ) public virtual onlyRole(MINTER_ROLE) returns (uint256 tokenId) {
+    ) public virtual onlyRole(MINTER_ROLE) whenNotPaused nonReentrant returns (uint256 tokenId) {
         require(to != address(0), "Zero address");
         require(iDatas.length > 0, "Empty data array");
         tokenId = _incrementTokenId();
@@ -283,7 +283,7 @@ contract AxiomAgentNFT is
         IntelligentData[] calldata iDatas,
         address to,
         address creator
-    ) public virtual onlyRole(MINTER_ROLE) returns (uint256 tokenId) {
+    ) public virtual onlyRole(MINTER_ROLE) whenNotPaused nonReentrant returns (uint256 tokenId) {
         require(to != address(0), "Zero address");
         require(iDatas.length > 0, "Empty data array");
         tokenId = _incrementTokenId();

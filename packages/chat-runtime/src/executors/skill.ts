@@ -62,7 +62,7 @@ export async function runSkillTool(
 
   const res = await ctx.http.fetch(endpoint, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "content-type": "application/json" },
     body: JSON.stringify({
       ...args,
       context: {

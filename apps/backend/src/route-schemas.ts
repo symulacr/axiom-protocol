@@ -16,6 +16,7 @@ export const transferBodySchema = z.object({
   dataHash: hexViem.optional(),
   sealedKey: hexViem.optional(),
   oldDataEncryptionKey: z.string().optional(),
+  sealedDataEncryptionKey: z.string().optional(),
   oldDataUri: hexViem.optional(),
   accessProof: accessProofSchema.optional(),
 });
@@ -59,6 +60,14 @@ export const tickSchema = z.object({
   signalSource: z.string().optional(),
   signalPayload: z.unknown().optional(),
   stream: z.boolean().optional(),
+  executionPlan: z
+    .object({
+      target: addressViem,
+      value: z.union([z.string(), z.number()]).optional(),
+      data: hexViem.optional(),
+      merkleProof: z.array(hexViem).min(1).max(32),
+    })
+    .optional(),
 });
 
 // SSRF guard: http(s) only, and never private/loopback hosts.

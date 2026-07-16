@@ -116,10 +116,10 @@ export function useTransfer(): UseTransferResult {
 
           const nonce = BigInt(challenge.accessProofNonce);
           const validUntil = BigInt(challenge.validUntil);
-          const proofDataHash =
-            challenge.rekeyed && challenge.newDataHash
-              ? challenge.newDataHash
-              : challenge.dataHash;
+          // On-chain intelligentDatas must match the proof dataHash at iTransfer
+          // time (old hash). Re-key uploads a new blob; sealedKey delivers the
+          // new AES key — do NOT put newDataHash into AccessProof / OwnershipProof.
+          const proofDataHash = challenge.dataHash;
           const accessSignature = await signTypedDataAsync({
             domain,
             types: ACCESS_PROOF_TYPES,

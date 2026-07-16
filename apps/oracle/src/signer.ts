@@ -45,6 +45,7 @@ export class TeeSigner {
   readonly wallet: Wallet;
   readonly address: Hex;
   readonly uncompressedPubkey: Uint8Array;
+  readonly privateKeyBytes: Uint8Array;
   readonly domain: Eip712Domain;
 
   constructor(
@@ -57,6 +58,7 @@ export class TeeSigner {
     const priv = Uint8Array.from(
       Buffer.from(privateKeyHex.replace(/^0x/, ""), "hex"),
     );
+    this.privateKeyBytes = priv;
     this.uncompressedPubkey = publicKeyUncompressedFromPrivate(priv);
   }
 

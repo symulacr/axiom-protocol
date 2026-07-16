@@ -30,7 +30,11 @@ import { StrategyRunner } from "./orchestrator/index.js";
 import { DefaultSignerOracleClient } from "./oracle/client.js";
 import { HTTP, type Eip712Domain, DEFAULT_EIP712_DOMAIN, buildEip712Domain, resolveChatModel, resolveContextWindow } from "@axiom/config";
 import { getSharedProvider } from "./provider.js";
-import { createApiKeyAuth } from "@axiom/config/middleware/auth";
+import {
+  createApiKeyAuth,
+  requireServerAuth,
+  timingSafeTokenInList,
+} from "@axiom/config/middleware/auth";
 import { getEventStore } from "./events/store.js";
 import { PaymentProcessorClient } from "./payment/processor.js";
 import type { BackendEnv } from "./env-schema.js";
@@ -636,6 +640,8 @@ function registerPaymentRoutes(
     },
     config,
   );
+  // Operator-only: client/browser API keys must not drive server-signed vault execute.
+  paymentRouter.use("/v1/vaults/:id/execute", requireServerAuth);
   createRoute(
     paymentRouter,
     {
@@ -644,7 +650,8 @@ function registerPaymentRoutes(
       requireId: true,
       requireAddress: "vault",
       consumer: "cli-only",
-      description: "Execute a transaction from a strategy vault",
+      description:
+        "Execute a transaction from a strategy vault (server API key only)",
     },
     async (parsed, _req, _res, { id, config: cfg }) => {
       const vaultAddr = cfg.addresses?.vault;
@@ -788,8 +795,8 @@ function setupWebSocketServer(
         return;
       }
     } else {
-      const token = url.searchParams.get("token");
-      if (!token || !apiKeys.includes(token)) {
+      const token = url.searchParams.get("token") ?? "";
+      if (!token || !timingSafeTokenInList(token, apiKeys)) {
         socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
         socket.destroy();
         return;

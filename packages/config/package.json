@@ -40,7 +40,7 @@
     "build": "tsc --project tsconfig.json",
     "typecheck": "tsc --noEmit",
     "watch:contracts": "wagmi generate --watch",
-    "test": "node --import tsx --test src/**/*.test.ts"
+    "test": "node --import tsx --test $(find src test -name '*.test.ts' 2>/dev/null | sort)"
   },
   "dependencies": {
     "@0gfoundation/0g-storage-ts-sdk": "^1.2.10",
@@ -60,5 +60,6 @@
   },
   "engines": {
     "node": ">=22.0.0"
-  }
+  },
+  "license": "MIT"
 }

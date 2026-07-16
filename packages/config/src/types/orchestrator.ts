@@ -20,7 +20,7 @@ export interface TickStorageInfo {
 
 export interface TickExecution {
   success?: boolean;
-  status?: "success" | "skipped";
+  status?: "success" | "skipped" | "executed" | "failed";
   reason?: string;
   txHash?: `0x${string}`;
   action?: string;
@@ -46,6 +46,13 @@ export interface TickRequest {
   signalSource?: string;
   signalPayload?: unknown;
   stream?: boolean;
+  /** Optional Merkle-backed vault execute plan (server-key settlement) */
+  executionPlan?: {
+    target: `0x${string}`;
+    value?: string | number;
+    data?: `0x${string}`;
+    merkleProof: `0x${string}`[];
+  };
 }
 
 export interface TickStreamOptions {

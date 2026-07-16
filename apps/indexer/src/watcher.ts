@@ -1,7 +1,7 @@
 import type { JsonRpcProvider } from "ethers";
 import { EVENT_NAMES } from "@axiom/config";
 import {
-  ADDRESSES,
+  resolveIndexerAddresses,
   type AxiomEvent,
   type IndexerContractAddresses,
 } from "./events.js";
@@ -19,57 +19,56 @@ const wait = (ms: number): Promise<void> =>
   new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 export function buildDefaultWatchList(
-  addresses: IndexerContractAddresses = ADDRESSES,
+  addresses?: IndexerContractAddresses,
 ): readonly WatchedEvent[] {
+  const resolved = addresses ?? resolveIndexerAddresses();
   return [
-  { name: EVENT_NAMES.Transfer, address: addresses.AXIOM_AGENT_NFT },
-  { name: "Updated", address: addresses.AXIOM_AGENT_NFT },
-  { name: "Authorization", address: addresses.AXIOM_AGENT_NFT },
-  { name: "AuthorizationRevoked", address: addresses.AXIOM_AGENT_NFT },
-  { name: "VerifierUpdated", address: addresses.AXIOM_AGENT_NFT },
-  { name: "CreatorSet", address: addresses.AXIOM_AGENT_NFT },
-  { name: "MintFeeUpdated", address: addresses.AXIOM_AGENT_NFT },
-  { name: "StorageInfoUpdated", address: addresses.AXIOM_AGENT_NFT },
-  { name: "PublishedSealedKey", address: addresses.AXIOM_AGENT_NFT },
-  { name: "DelegateAccess", address: addresses.AXIOM_AGENT_NFT },
-  { name: EVENT_NAMES.Deposited, address: addresses.AXIOM_STRATEGY_VAULT },
-  { name: EVENT_NAMES.Withdrawn, address: addresses.AXIOM_STRATEGY_VAULT },
-  { name: EVENT_NAMES.StrategySet, address: addresses.AXIOM_STRATEGY_VAULT },
-  { name: EVENT_NAMES.Executed, address: addresses.AXIOM_STRATEGY_VAULT },
-  { name: "PaymentProcessed", address: addresses.AXIOM_PAYMENT_PROCESSOR },
-  { name: "ComputeProviderPaid", address: addresses.AXIOM_PAYMENT_PROCESSOR },
-  { name: "EarningsWithdrawn", address: addresses.AXIOM_PAYMENT_PROCESSOR },
-  { name: "RoyaltySet", address: addresses.AXIOM_PAYMENT_PROCESSOR },
+  { name: EVENT_NAMES.Transfer, address: resolved.AXIOM_AGENT_NFT },
+  { name: "Updated", address: resolved.AXIOM_AGENT_NFT },
+  { name: "Authorization", address: resolved.AXIOM_AGENT_NFT },
+  { name: "AuthorizationRevoked", address: resolved.AXIOM_AGENT_NFT },
+  { name: "VerifierUpdated", address: resolved.AXIOM_AGENT_NFT },
+  { name: "CreatorSet", address: resolved.AXIOM_AGENT_NFT },
+  { name: "MintFeeUpdated", address: resolved.AXIOM_AGENT_NFT },
+  { name: "StorageInfoUpdated", address: resolved.AXIOM_AGENT_NFT },
+  { name: "PublishedSealedKey", address: resolved.AXIOM_AGENT_NFT },
+  { name: "DelegateAccess", address: resolved.AXIOM_AGENT_NFT },
+  { name: EVENT_NAMES.Deposited, address: resolved.AXIOM_STRATEGY_VAULT },
+  { name: EVENT_NAMES.Withdrawn, address: resolved.AXIOM_STRATEGY_VAULT },
+  { name: EVENT_NAMES.StrategySet, address: resolved.AXIOM_STRATEGY_VAULT },
+  { name: EVENT_NAMES.Executed, address: resolved.AXIOM_STRATEGY_VAULT },
+  { name: "PaymentProcessed", address: resolved.AXIOM_PAYMENT_PROCESSOR },
+  { name: "ComputeProviderPaid", address: resolved.AXIOM_PAYMENT_PROCESSOR },
+  { name: "EarningsWithdrawn", address: resolved.AXIOM_PAYMENT_PROCESSOR },
+  { name: "RoyaltySet", address: resolved.AXIOM_PAYMENT_PROCESSOR },
   {
     name: "ProtocolTreasuryProposed",
-    address: addresses.AXIOM_PAYMENT_PROCESSOR,
+    address: resolved.AXIOM_PAYMENT_PROCESSOR,
   },
   {
     name: "ProtocolTreasuryUpdated",
-    address: addresses.AXIOM_PAYMENT_PROCESSOR,
+    address: resolved.AXIOM_PAYMENT_PROCESSOR,
   },
   {
     name: "ProtocolTreasuryProposalCancelled",
-    address: addresses.AXIOM_PAYMENT_PROCESSOR,
+    address: resolved.AXIOM_PAYMENT_PROCESSOR,
   },
-  { name: "ProtocolFeeBpsUpdated", address: addresses.AXIOM_PAYMENT_PROCESSOR },
-  { name: "PaymentTokenUpdated", address: addresses.AXIOM_PAYMENT_PROCESSOR },
+  { name: "ProtocolFeeBpsUpdated", address: resolved.AXIOM_PAYMENT_PROCESSOR },
+  { name: "PaymentTokenUpdated", address: resolved.AXIOM_PAYMENT_PROCESSOR },
   {
     name: "MetadataJsonDecisionDocumented",
-    address: addresses.AXIOM_AGENT_NFT,
+    address: resolved.AXIOM_AGENT_NFT,
   },
-  { name: "Cloned", address: addresses.AXIOM_AGENT_NFT },
-  { name: "SignerProposed", address: addresses.AXIOM_TEE_VERIFIER },
-  { name: "SignerExecuted", address: addresses.AXIOM_TEE_VERIFIER },
-  { name: "SignerProposalCancelled", address: addresses.AXIOM_TEE_VERIFIER },
-  { name: "Upgraded", address: addresses.AXIOM_AGENT_NFT },
-  { name: "AdminChanged", address: addresses.AXIOM_AGENT_NFT },
-  { name: "BeaconUpgraded", address: addresses.AXIOM_AGENT_NFT },
-  { name: "Initialized", address: addresses.AXIOM_AGENT_NFT },
+  { name: "Cloned", address: resolved.AXIOM_AGENT_NFT },
+  { name: "SignerProposed", address: resolved.AXIOM_TEE_VERIFIER },
+  { name: "SignerExecuted", address: resolved.AXIOM_TEE_VERIFIER },
+  { name: "SignerProposalCancelled", address: resolved.AXIOM_TEE_VERIFIER },
+  { name: "Upgraded", address: resolved.AXIOM_AGENT_NFT },
+  { name: "AdminChanged", address: resolved.AXIOM_AGENT_NFT },
+  { name: "BeaconUpgraded", address: resolved.AXIOM_AGENT_NFT },
+  { name: "Initialized", address: resolved.AXIOM_AGENT_NFT },
 ];
 }
-
-export const DEFAULT_WATCH_LIST = buildDefaultWatchList();
 
 export type EventSink = (event: AxiomEvent) => void | Promise<void>;
 
@@ -98,7 +97,7 @@ export class Watcher {
 
   constructor(opts: WatcherOptions) {
     this.provider = opts.provider;
-    this.watchList = opts.watchList ?? DEFAULT_WATCH_LIST;
+    this.watchList = opts.watchList ?? buildDefaultWatchList();
     this.window = opts.pollWindow ?? POLL_WINDOW_BLOCKS;
     this.intervalMs = opts.pollIntervalMs ?? POLL_INTERVAL_MS;
     this.sink = opts.sink;
@@ -169,8 +168,10 @@ export class Watcher {
           });
         }
       }
-      const safeBlock = toBlock > REORG_SAFE_DEPTH ? toBlock - REORG_SAFE_DEPTH : 0n;
-      this.nextBlock = toBlock + 1n;
+      // Only advance past reorg-safe head so a shallow reorg can re-scan.
+      const safeBlock =
+        toBlock > REORG_SAFE_DEPTH ? toBlock - REORG_SAFE_DEPTH : 0n;
+      this.nextBlock = safeBlock + 1n;
       await saveCheckpoint(id, Number(this.nextBlock));
       this.consecutiveFailures = 0;
       this.logger({

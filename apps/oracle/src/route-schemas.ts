@@ -7,7 +7,10 @@ export const transferValiditySchema = z.object({
   targetPubkey64: hexViem,
   accessProofNonce: z.union([z.string(), z.number()]),
   ownershipProofNonce: z.union([z.string(), z.number()]).optional(),
-  oldDataEncryptionKey: z.string(),
+  /** @deprecated cleartext; only when AXIOM_ALLOW_CLEARTEXT_DEK=true and non-production */
+  oldDataEncryptionKey: z.string().optional(),
+  /** ECIES-sealed 32-byte DEK to oracle TEE pubkey (preferred) */
+  sealedDataEncryptionKey: z.string().optional(),
   to: addressViem,
   nft: addressViem,
 });

@@ -7,6 +7,24 @@ export default defineConfig({
     port: 5173,
     strictPort: false,
     cors: true,
+    // Mirror apps/frontend/server.mjs: route same-origin /api and /oracle
+    // to the local backend (=:3000) and oracle (=:8787) so `vite dev`
+    // works with the relative BACKEND_URL="/api" / ORACLE_URL="/oracle"
+    // defaults and never needs hardcoded localhost URLs.
+    proxy: {
+      "/api": {
+        target: "http://127.0.0.1:3000",
+        changeOrigin: true,
+        ws: true,
+        rewrite: (p) => p.replace(/^\/api/, ""),
+      },
+      "/oracle": {
+        target: "http://127.0.0.1:8787",
+        changeOrigin: true,
+        ws: true,
+        rewrite: (p) => p.replace(/^\/oracle/, ""),
+      },
+    },
   },
   build: {
     rollupOptions: {

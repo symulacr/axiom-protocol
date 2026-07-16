@@ -10,7 +10,7 @@
     "start": "node dist/index.js",
     "prestart": "pnpm build",
     "dev": "node --import tsx src/index.ts",
-    "test": "node --import tsx --test src/**/*.test.ts",
+    "test": "node --import tsx --test $(find src test -name '*.test.ts' 2>/dev/null | sort)",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
     "pre-run-e2e": "pnpm --filter @axiom/oracle build && pnpm --filter @axiom/chat-runtime build && pnpm build",
@@ -52,5 +52,6 @@
   },
   "engines": {
     "node": ">=22.0.0"
-  }
+  },
+  "license": "MIT"
 }

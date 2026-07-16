@@ -62,7 +62,7 @@ async function encodeMint(
     value: string;
   }>(ctx.http, "/v1/agents/mint/encode", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   });
 
@@ -107,7 +107,7 @@ async function encodeVaultOp(
     value: string;
   }>(ctx.http, `/v1/agents/${tokenId}/${op}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "content-type": "application/json" },
     body: JSON.stringify({ amount }),
   });
 
@@ -152,7 +152,7 @@ async function registerDataHashWithOracle(
   try {
     const { ok } = await fetchJson<{ ok?: boolean }>(ctx.http, url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "content-type": "application/json" },
       body: JSON.stringify({ dataHash, to }),
     });
     if (!ok) {

@@ -105,7 +105,7 @@ export async function runOrchestrateTool(
     "/v1/orchestrator/tick",
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "content-type": "application/json" },
       body: JSON.stringify(buildTickBody(args, ctx)),
     },
   );
