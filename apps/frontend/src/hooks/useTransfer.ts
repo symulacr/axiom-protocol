@@ -9,10 +9,12 @@ import { type Hex } from "viem";
 
 import { getAxiomAgentNftAddress } from "../abi/addresses.js";
 import { ITRANSFER_FROM_ABI } from "@axiom/config/abis";
+import { sealKeyForReceiver } from "@axiom/config/crypto/keys";
 
 import { useAsyncAction } from "./useAsyncAction.js";
 import { useEip712Domain, ACCESS_PROOF_TYPES } from "../abi/eip712.js";
 import { agentTransferPath, apiFetch, LONG_TIMEOUT } from "../utils/apiFetch.js";
+import { ORACLE_URL, API_KEY } from "../config/env.js";
 import type {
   TransferInput,
   AccessProofStruct,
@@ -37,6 +39,64 @@ export type UseTransferResult = {
   reset: () => void;
   transferPhase: TransferPhase;
 };
+
+function hexToBytes(hex: string): Uint8Array {
+  const h = hex.replace(/^0x/, "");
+  if (h.length % 2 !== 0) throw new Error("invalid hex");
+  const out = new Uint8Array(h.length / 2);
+  for (let i = 0; i < out.length; i++) {
+    out[i] = parseInt(h.slice(i * 2, i * 2 + 2), 16);
+  }
+  return out;
+}
+
+function bytesToHex(bytes: Uint8Array): string {
+  let s = "0x";
+  for (const b of bytes) s += b.toString(16).padStart(2, "0");
+  return s;
+}
+
+function base64ToBytes(b64: string): Uint8Array {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+/** Fetch oracle uncompressed pubkey and ECIES-seal a base64 32-byte DEK. */
+export async function sealDekForOracle(
+  oldDataEncryptionKeyB64: string,
+  signal?: AbortSignal,
+): Promise<string> {
+  const healthUrl = `${ORACLE_URL.replace(/\/$/, "")}/health`;
+  const headers: Record<string, string> = {};
+  if (API_KEY) headers["x-api-key"] = API_KEY;
+  const res = await fetch(healthUrl, { signal, headers });
+  if (!res.ok) {
+    throw new Error(`oracle health failed (${res.status}) — cannot seal DEK`);
+  }
+  const body = (await res.json()) as {
+    uncompressedPubkey?: string | number[];
+  };
+  let pubBytes: Uint8Array;
+  if (typeof body.uncompressedPubkey === "string") {
+    pubBytes = hexToBytes(body.uncompressedPubkey);
+  } else if (Array.isArray(body.uncompressedPubkey)) {
+    pubBytes = Uint8Array.from(body.uncompressedPubkey);
+  } else {
+    throw new Error("oracle health missing uncompressedPubkey");
+  }
+  // sealKeyForReceiver expects 64-byte X||Y (no 0x04) or compressed.
+  if (pubBytes.length === 65 && pubBytes[0] === 0x04) {
+    pubBytes = pubBytes.subarray(1);
+  }
+  const dek = base64ToBytes(oldDataEncryptionKeyB64);
+  if (dek.length !== 32) {
+    throw new Error("oldDataEncryptionKey must be 32 bytes base64");
+  }
+  const sealed = sealKeyForReceiver(pubBytes, dek);
+  return bytesToHex(sealed instanceof Uint8Array ? sealed : new Uint8Array(sealed));
+}
 
 export function useTransfer(): UseTransferResult {
   const chainId = useChainId();
@@ -86,9 +146,17 @@ export function useTransfer(): UseTransferResult {
             receiverPubKey64: input.receiverPubKey64,
             accessProofNonce: nonceBig.toString(),
           };
-          if (input.oldDataEncryptionKey && input.oldDataUri) {
-            challengeBody.oldDataEncryptionKey = input.oldDataEncryptionKey;
+          if (input.oldDataUri && (input.sealedDataEncryptionKey || input.oldDataEncryptionKey)) {
             challengeBody.oldDataUri = input.oldDataUri;
+            // Prefer pre-sealed; otherwise ECIES-seal DEK to oracle TEE pubkey (no cleartext on wire).
+            if (input.sealedDataEncryptionKey) {
+              challengeBody.sealedDataEncryptionKey = input.sealedDataEncryptionKey;
+            } else if (input.oldDataEncryptionKey) {
+              challengeBody.sealedDataEncryptionKey = await sealDekForOracle(
+                input.oldDataEncryptionKey,
+                signal,
+              );
+            }
           }
           const challenge = await apiFetch<TransferResponse>(path, {
             method: "POST",

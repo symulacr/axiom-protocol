@@ -1,6 +1,6 @@
 /**
- * Structural test: FE re-key proofs must use on-chain (old) dataHash.
- * Regression for deep-dive C2.
+ * Structural test: FE re-key proofs must use on-chain (old) dataHash (C2)
+ * and seal DEK for oracle (C1) instead of sending cleartext on the wire.
  */
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -18,5 +18,15 @@ test("useTransfer always binds AccessProof dataHash to challenge.dataHash (old)"
   assert.doesNotMatch(
     src,
     /challenge\.rekeyed && challenge\.newDataHash\s*\?\s*challenge\.newDataHash/,
+  );
+});
+
+test("useTransfer seals DEK for oracle (no cleartext oldDataEncryptionKey on wire)", () => {
+  assert.match(src, /sealDekForOracle|sealedDataEncryptionKey/);
+  assert.match(src, /sealedDataEncryptionKey/);
+  // Must not assign cleartext key into challenge body.
+  assert.doesNotMatch(
+    src,
+    /challengeBody\.oldDataEncryptionKey\s*=\s*input\.oldDataEncryptionKey/,
   );
 });

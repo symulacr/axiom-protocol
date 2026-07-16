@@ -11,7 +11,10 @@ export type TransferInput = {
   to: `0x${string}`;
   receiverPubKey64: `0x${string}`;
   accessProofNonce: `0x${string}`;
+  /** Base64 32-byte AES key; FE seals to oracle pubkey before wire (never cleartext). */
   oldDataEncryptionKey?: string;
+  /** Optional pre-sealed DEK (hex 0x…); if set, used instead of sealing oldDataEncryptionKey. */
+  sealedDataEncryptionKey?: string;
   oldDataUri?: `0x${string}`;
 };
 
