@@ -550,7 +550,7 @@ export function App(): ReactElement {
         ) : (
           <ConnectedGuard>
             <p style={{ margin: 0, color: "var(--c-text-muted)", fontSize: "var(--text-sm)" }}>
-              Connect a wallet to mint an iNFT agent.
+              Connect wallet to mint.
             </p>
           </ConnectedGuard>
         )}

@@ -313,16 +313,15 @@ export function AgentDetail(): ReactElement {
                     borderColor: "var(--c-copper-border)",
                   }}
                 >
-                  <SectionTitle>Vault & capital</SectionTitle>
+                  <SectionTitle>Vault</SectionTitle>
                   <p
                     style={{
                       margin: "0 0 var(--space-md)",
                       fontSize: "var(--text-xs)",
-                      color: COLORS.textDim,
+                      color: COLORS.textMuted,
                     }}
                   >
-                    Deposit 0G, withdraw, bind strategy root, or delegate access.
-                    Run ticks from the Execute tab.
+                    Deposit, withdraw, strategy root, delegate. Ticks on Execute.
                   </p>
                   <DepositForm tokenId={tokenIdBigInt} />
                   <WithdrawForm tokenId={tokenIdBigInt} />
@@ -496,9 +495,7 @@ export function AgentDetail(): ReactElement {
                   fontWeight: "var(--fw-regular)",
                 }}
               >
-                Transfer ownership with cryptographic proof of integrity. The
-                agent's encrypted intelligence is re-keyed on 0G Storage, and
-                the receiver unwraps the sealed key inside a TEE.
+                iTransfer re-keys sealed data for the new owner (software oracle).
               </p>
               <span
                 ref={transferBtnRef}

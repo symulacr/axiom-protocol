@@ -215,8 +215,7 @@ export function AgentsBrowser({
                 lineHeight: "var(--lh-normal)",
               }}
             >
-              Name an agent and mint — default payload is automatic. Fund the
-              vault from agent detail when you are ready.
+              Name an agent and mint. Fund later on agent detail.
             </p>
             <Link to="/app?mint=1">
               <Button variant="primary">Mint your first agent</Button>
