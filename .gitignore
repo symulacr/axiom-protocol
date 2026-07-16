@@ -139,11 +139,9 @@ lib-cov
 apps/contracts/lib/
 
 # ── Testing / benchmark infrastructure ─────────────────────
-apps/bench/
+# apps/bench sources are tracked; ignore generated results only (below)
 .nyc_output/
 
-# ── Forge tests (.t.sol) — always ignore, never committed ──
-*.t.sol
 __pycache__/
 *.pyc
 
@@ -154,34 +152,12 @@ apps/indexer/data/
 # Tracked in git since Railway needs them and lacks forge
 # packages/config/abis/*.json
 
-# ── Generated docs — benchmark / brand / security ──────────
-docs/bench/
-docs/brand/
-docs/security/
-docs/research/
-docs/demo-script*
-docs/demo-script-frames*
-
-# ── Superseded deployment / audit records ──────────────────
-docs/deployments/galileo-2026-06-14.md
-docs/deployments/payment-processor-galileo-2026-06-14.md
-docs/submit-akindo.md
-
 # ── Generated fuzz bug log ─────────────────────────────────
 apps/contracts/test/BUGS.md
 
-# ── Testnet wallet addresses — operational, not source ─────
-wallets/ADDRESSES.md
-
-# ── TS/TSX/JS test & spec files — always ignore, never committed ──
-*.test.ts
-*.test.tsx
-*.test.js
-*.test.jsx
-*.spec.ts
-*.spec.tsx
-*.spec.js
-*.spec.jsx
+# ── Testnet wallet private keys only (never commit secrets) ─
+wallets/*.json
+!wallets/.gitkeep
 
 # ── Local runtime / CI artifacts (not source) ──────────────
 apps/backend/.coverage/
@@ -191,27 +167,11 @@ apps/frontend/test-results/
 playwright-report/
 blob-report/
 
-# ── Agent session plans / discovery notes (local only) ─────
-apps/backend/CHAT-RUNTIME-PLAN.md
-apps/backend/COVERAGE-TODO.md
-apps/backend/COVERAGE-WEEK-PLAN.md
-apps/backend/E2E-DISCOVERIES.md
-
-# ── Audit / research — local only, never track or commit ───
+# ── Audit / research dumps — local only ────────────────────
 analysis_reports/
 frontend_analysis_reports/
 onchain_analysis_reports/
 research-0g-docs-exhaustive.md
-
-# ── Platform deploy configs (local / Railway / Vercel) ─────
-vercel.json
-
-# ── Backend CLI — E2E / bench / local ops (not shipped) ────
-apps/backend/src/cli/*
-!apps/backend/src/cli/run-chat-bench.ts
-
-# ── Forge gas benchmarks (local perf only) ─────────────────
-apps/contracts/test/GasBenchmark.t.sol
 
 # ── Bench test artifacts (generated binary/sweep/perf data) ─
 .storage-sweep*/
@@ -259,34 +219,11 @@ docker-compose.yml
 .gitmodules
 .gitmodules.disabled
 
-# Documentation — not source code
-docs/adr/
-docs/architecture/
-docs/deployments/
-docs/diagrams/
-docs/integration/
-docs/release-notes-v1.0.0.md
-docs/runbook.md
-
-# Orphaned test files — not run by any test script or CI
-apps/backend/test/
-apps/contracts/src/test/
-
 # Migration-completed notes
 **/STORAGE_DEP.md
 
-# Extra readme/docs within app directories
-apps/indexer/README.md
-apps/contracts/README-aristotle.md
-apps/frontend/vercel-deploy.md
-
 # Foundry lockfile (regenerable on forge build)
 apps/contracts/foundry.lock
-
-# Editor .gitignore files — root .gitignore is canonical
-apps/backend/.gitignore
-apps/contracts/.gitignore
-apps/indexer/.gitignore
 apps/oracle/.gitignore
 wallets/.gitignore
 /.gitignore

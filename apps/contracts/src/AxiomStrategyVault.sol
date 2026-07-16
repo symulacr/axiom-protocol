@@ -27,6 +27,7 @@ contract AxiomStrategyVault is Ownable, Pausable, ReentrancyGuard {
     error LimitOverflow();
     error TransferFailed();
     error CallFailed();
+    error ActionAlreadyUsed();
 
     event Deposited(uint256 indexed tokenId, address indexed from, address indexed asset, uint256 amount);
     event Withdrawn(uint256 indexed tokenId, address indexed to, address indexed asset, uint256 amount);
@@ -45,6 +46,9 @@ contract AxiomStrategyVault is Ownable, Pausable, ReentrancyGuard {
     }
 
     mapping(uint256 => Vault) public vaults;
+
+    /// @notice One-shot action leaves: same actionHash cannot be re-executed for a tokenId
+    mapping(uint256 => mapping(bytes32 => bool)) public usedActions;
 
     /// @notice Sum of all per-token tracked balances (for excess-native recovery)
     uint256 public totalTrackedBalance;
@@ -163,8 +167,10 @@ contract AxiomStrategyVault is Ownable, Pausable, ReentrancyGuard {
 
         bytes32 actionHash = keccak256(abi.encode(target, value, keccak256(data)));
         if (!MerkleProof.verify(merkleProof, v.strategyRoot, actionHash)) revert InvalidMerkleProof();
+        if (usedActions[tokenId][actionHash]) revert ActionAlreadyUsed();
 
         // CEI: state update first
+        usedActions[tokenId][actionHash] = true;
         v.balance -= value;
         v.dailySpent += spend;
         totalTrackedBalance -= value;

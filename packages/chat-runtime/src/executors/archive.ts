@@ -13,7 +13,7 @@ async function archiveQuery(
     "/v1/archive/query",
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
     },
   );

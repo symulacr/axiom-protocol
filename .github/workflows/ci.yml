@@ -17,6 +17,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
+        with:
+          version: 10.22.0
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -29,6 +31,16 @@ jobs:
       - run: pnpm --filter @axiom/frontend typecheck
       - run: pnpm --filter @axiom/frontend lint
       - run: pnpm --filter @axiom/contracts typecheck
+      - name: Prove tests are tracked (C0)
+        run: |
+          set -euo pipefail
+          n_ts=$(git ls-files '*.test.ts' '*.spec.ts' | wc -l)
+          n_sol=$(git ls-files '*.t.sol' | wc -l)
+          echo "tracked test.ts/spec.ts=$n_ts t.sol=$n_sol"
+          test "$n_ts" -ge 20
+          test "$n_sol" -ge 5
+          git check-ignore -v apps/backend/src/server/disable-auth.test.ts && exit 1 || true
+          git check-ignore -v apps/contracts/test/AxiomAgentNFT.t.sol && exit 1 || true
 
   frontend-build:
     name: Frontend build
@@ -37,6 +49,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
+        with:
+          version: 10.22.0
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -52,6 +66,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
+        with:
+          version: 10.22.0
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -59,9 +75,11 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @axiom/config build
       - run: pnpm --filter @axiom/chat-runtime build
+      - run: pnpm --filter @axiom/config test
+      - run: pnpm --filter @axiom/chat-runtime test
       - run: pnpm --filter @axiom/backend test
       - run: pnpm --filter @axiom/oracle test
-      - run: pnpm --filter @axiom/chat-runtime test
+      - run: pnpm --filter @axiom/indexer test
 
   contracts:
     name: Forge tests (local)
@@ -83,7 +101,6 @@ jobs:
     env:
       AXIOM_EVM_RPC: https://evmrpc-testnet.0g.ai
       AXIOM_ORACLE_URL: http://127.0.0.1:8080
-      # Anvil test keys via repo secrets (public testnet only — never fund mainnet)
       DEPLOYER_PK: ${{ secrets.DEPLOYER_PK }}
       E2E_RECEIVER_PK: ${{ secrets.E2E_RECEIVER_PK }}
       RECEIVER_PK: ${{ secrets.RECEIVER_PK }}
@@ -91,6 +108,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
+        with:
+          version: 10.22.0
       - uses: actions/setup-node@v4
         with:
           node-version: "22"

@@ -105,6 +105,14 @@ export interface MarketSignal {
   emittedAt: number;
 }
 
+export interface VaultExecutionPlan {
+  target: `0x${string}`;
+  value?: string | number | bigint;
+  data?: `0x${string}`;
+  /** Merkle proof of keccak256(abi.encode(target, value, keccak256(data))) */
+  merkleProof: `0x${string}`[];
+}
+
 export interface StrategySpec {
   agentTokenId: bigint;
   agentNft: `0x${string}`;
@@ -112,6 +120,8 @@ export interface StrategySpec {
   computeModel: string;
   systemPrompt: string;
   modelDataRoot: `0x${string}`;
+  /** When set and action is act, vault.execute is invoked with this plan */
+  executionPlan?: VaultExecutionPlan;
 }
 
 export type { TickResult };
@@ -222,9 +232,17 @@ export class StrategyRunner {
       try {
         await this.verifyTeeAsync(rawModelOutput, strategy.computeModel);
       } catch (err) {
-        log.warn("TEE verification failed (best-effort, tick continues)", {
+        const failClosed =
+          process.env.AXIOM_COMPUTE_TEE_FAIL_CLOSED === "true";
+        log.warn("TEE verification failed", {
           error: extractErrorMessage(err),
+          failClosed,
         });
+        if (failClosed) {
+          throw new Error(
+            `TEE verification failed (fail-closed): ${extractErrorMessage(err)}`,
+          );
+        }
       }
     }
 
@@ -262,6 +280,11 @@ export class StrategyRunner {
     return result;
   }
 
+  /**
+   * On-chain settlement: executes vault action when strategy.executionPlan is
+   * provided (target, value, data, merkleProof). Without a plan, returns an
+   * explicit skip — inference alone never spends vault funds.
+   */
   private async settleOnChain(
     strategy: StrategySpec,
     action: string,
@@ -276,14 +299,54 @@ export class StrategyRunner {
       vaultAddr,
       strategy.agentTokenId,
     );
-    log.info("settleOnChain skipped", {
+
+    const plan = strategy.executionPlan;
+    if (
+      !plan ||
+      !plan.target ||
+      !Array.isArray(plan.merkleProof) ||
+      plan.merkleProof.length === 0
+    ) {
+      log.info("settleOnChain skipped (no executionPlan / Merkle proof)", {
+        action,
+        tokenId: strategy.agentTokenId.toString(),
+        root: strat.root,
+      });
+      return {
+        status: "skipped",
+        reason: settlementSkipReason(strat.root),
+      };
+    }
+
+    if (strat.root === "0x" + "0".repeat(64) || BigInt(strat.root) === 0n) {
+      return {
+        status: "skipped",
+        reason: "no strategy root set on vault",
+      };
+    }
+
+    const vaultTc = this.getVaultContract("write");
+    const tx = await vaultTc.contract.execute(
+      strategy.agentTokenId,
+      plan.target,
+      BigInt(plan.value ?? 0),
+      plan.data ?? "0x",
+      plan.merkleProof,
+    );
+    const receipt = await tx.wait();
+    log.info("settleOnChain executed", {
       action,
       tokenId: strategy.agentTokenId.toString(),
-      root: strat.root,
+      txHash: tx.hash,
+      status: receipt?.status,
     });
     return {
-      status: "skipped",
-      reason: settlementSkipReason(strat.root),
+      status: receipt?.status === 1 ? "executed" : "failed",
+      txHash: tx.hash as `0x${string}`,
+      action,
+      target: plan.target as `0x${string}`,
+      success: receipt?.status === 1,
+      result: "0x" as `0x${string}`,
     };
   }
 

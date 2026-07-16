@@ -226,6 +226,7 @@ export function registerAgentRoutes(
           dataHash: dataHashIn,
           sealedKey: sealedKeyIn,
           oldDataEncryptionKey,
+          sealedDataEncryptionKey,
           oldDataUri,
           accessProof,
         } = transferBodySchema.parse(req.body);
@@ -264,7 +265,10 @@ export function registerAgentRoutes(
           return;
         }
 
-        const canRekey = !!(oldDataEncryptionKey && oldDataUri);
+        const canRekey = !!(
+          oldDataUri &&
+          (sealedDataEncryptionKey || oldDataEncryptionKey)
+        );
         if (!accessProof) {
           const nonce = BigInt(accessProofNonce ?? 0);
           if (canRekey) {
@@ -273,7 +277,8 @@ export function registerAgentRoutes(
               oldDataUri: oldDataUri!,
               targetPubkey64: pk,
               accessProofNonce: nonce.toString(),
-              oldDataEncryptionKey: oldDataEncryptionKey!,
+              oldDataEncryptionKey,
+              sealedDataEncryptionKey,
               to,
               nft,
             });

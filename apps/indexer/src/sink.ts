@@ -80,6 +80,12 @@ export async function postEvent(event: AxiomEvent, opts: HttpEventSinkOptions) {
         body: JSON.stringify(body, bigintReplacer),
         signal,
       });
+      // 4xx: permanent for this payload — throw so watcher does not advance checkpoint.
+      if (res.status >= 400 && res.status < 500) {
+        throw new Error(
+          `event sink rejected with ${res.status} (not advancing checkpoint)`,
+        );
+      }
       if (res.status < 500 || attempt === maxRetries) {
         return { status: res.status };
       }

@@ -141,6 +141,11 @@ abstract contract ERC7857Upgradeable is IERC7857, ERC721Upgradeable {
         }
     }
 
+    /// @dev Non-zero while iTransfer path runs; bare ERC-721 transfers blocked via `_update`.
+    uint256 private _iTransferDepth;
+
+    error UseITransferWithProofs();
+
     function _transfer(
         address from,
         address to,
@@ -149,9 +154,25 @@ abstract contract ERC7857Upgradeable is IERC7857, ERC721Upgradeable {
     ) internal {
         _checkAuthorized(from, _msgSender(), tokenId);
         bytes[] memory sealedKeys = _proofCheck(from, to, tokenId, proofs);
+        _iTransferDepth += 1;
         safeTransferFrom(from, to, tokenId);
+        _iTransferDepth -= 1;
         emit PublishedSealedKey(to, tokenId, sealedKeys);
         emit Transferred(tokenId, from, to);
+    }
+
+    /// @dev Block marketplace-style bare transfers; mint/burn and iTransfer still work.
+    function _update(address to, uint256 tokenId, address auth)
+        internal
+        virtual
+        override
+        returns (address)
+    {
+        address from = _ownerOf(tokenId);
+        if (from != address(0) && to != address(0) && _iTransferDepth == 0) {
+            revert UseITransferWithProofs();
+        }
+        return super._update(to, tokenId, auth);
     }
 
     function iTransferFrom(

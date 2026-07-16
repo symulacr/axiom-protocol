@@ -124,6 +124,14 @@ export function registerOrchestratorRoutes(
             parsed.systemPrompt ??
             "You are a crypto-native strategy assistant. Given the current vault balance and recent events, respond with a JSON object { action: 'act' | 'hold', amount?: number, reason: string }.",
           modelDataRoot,
+          executionPlan: parsed.executionPlan
+            ? {
+                target: parsed.executionPlan.target as `0x${string}`,
+                value: parsed.executionPlan.value,
+                data: parsed.executionPlan.data as `0x${string}` | undefined,
+                merkleProof: parsed.executionPlan.merkleProof as `0x${string}`[],
+              }
+            : undefined,
         };
         const signal: MarketSignal = {
           source: signalSource ?? "manual:user",

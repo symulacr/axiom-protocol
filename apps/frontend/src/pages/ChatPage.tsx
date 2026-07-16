@@ -17,6 +17,7 @@ import { marked } from "marked";
 import DOMPurify from "dompurify";
 import { toast } from "sonner";
 import {
+  apiFetch,
   apiFetchResponse,
   STREAM_TIMEOUT,
 } from "../utils/apiFetch.js";
@@ -46,7 +47,7 @@ import {
   useToolHandlers,
   type ToolContext,
 } from "../chat/tools.js";
-import { CHAT_MODEL, BACKEND_URL } from "../config/env.js";
+import { CHAT_MODEL } from "../config/env.js";
 import { aristotle } from "../config/wagmi.js";
 import {
   COLORS,
@@ -341,10 +342,18 @@ function ChatPageInner(): ReactElement {
   }, [isStreaming, streamStartTime]);
 
   useEffect(() => {
-    fetch(`${BACKEND_URL}/v1/config`)
-      .then((r) => r.json())
-      .then((d) => setContextWindow(d?.contextWindow))
+    let cancelled = false;
+    // Use apiFetch (not a bare fetch) so the API key is attached; /v1/config
+    // is auth-gated, so an unauthenticated call 401s and the context
+    // window is never set.
+    apiFetch<{ contextWindow?: number }>("/v1/config")
+      .then((d) => {
+        if (!cancelled) setContextWindow(d?.contextWindow);
+      })
       .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {

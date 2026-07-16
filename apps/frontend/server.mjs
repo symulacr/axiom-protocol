@@ -3,8 +3,8 @@
 //  1. Serves static files from dist/ with SPA fallback to index.html.
 //  2. Reverse-proxies API traffic so the browser only ever talks to this
 //     server's own origin (no CORS, works behind Railway/Vercel):
-//       /api/*     -> backend  (PROXY_BACKEND_URL, default live backend)
-//       /oracle/*  -> oracle   (PROXY_ORACLE_URL,  default live oracle)
+//       /api/*     -> backend  (PROXY_BACKEND_URL — required in production)
+//       /oracle/*  -> oracle   (PROXY_ORACLE_URL — required in production)
 //     Both HTTP and WebSocket upgrades are proxied, so chat streaming works.
 //
 // Binds 0.0.0.0:$PORT (Railway injects PORT). Path to dist is resolved from
@@ -22,12 +22,26 @@ const DIST = path.join(__dirname, "dist");
 const PORT = Number(process.env.PORT) || 3000;
 const HOST = "0.0.0.0";
 
-const BACKEND_URL =
-  process.env.PROXY_BACKEND_URL ||
-  "https://axiom-backend-production-7bfc.up.railway.app";
-const ORACLE_URL =
-  process.env.PROXY_ORACLE_URL ||
-  "https://oracle-production-9f7d.up.railway.app";
+function requireProxyUrl(name, fallbackDev) {
+  const v = process.env[name]?.trim();
+  if (v) return v;
+  if (process.env.NODE_ENV === "production") {
+    console.error(
+      `[frontend] ${name} is required in production (no hardcoded upstreams).`,
+    );
+    process.exit(1);
+  }
+  return fallbackDev;
+}
+
+const BACKEND_URL = requireProxyUrl(
+  "PROXY_BACKEND_URL",
+  "http://127.0.0.1:3000",
+);
+const ORACLE_URL = requireProxyUrl(
+  "PROXY_ORACLE_URL",
+  "http://127.0.0.1:8787",
+);
 
 const MIME = {
   ".html": "text/html; charset=utf-8",

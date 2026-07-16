@@ -21,8 +21,6 @@ export function resolveIndexerAddresses(
   };
 }
 
-export const ADDRESSES = resolveIndexerAddresses({});
-
 export const EVENT_SIGNATURES = {
   Transfer:
     "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)" as const,
