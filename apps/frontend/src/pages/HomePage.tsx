@@ -23,15 +23,44 @@ const AgentsBrowser = lazy(() => import("./AgentsBrowser.js"));
 export function HomePage(): ReactElement {
   return (
     <div>
-      <PageHeader
-        title="Home"
-        subtitle="Your agents, vaults, and next steps — mint, fund, tick, or ask Axiom."
-        action={
-          <Link to="/app?mint=1" style={{ textDecoration: "none" }}>
-            <Button variant="primary">Mint agent</Button>
-          </Link>
-        }
-      />
+      <div
+        className="home-hero-row"
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          gap: "var(--space-xl)",
+          marginBottom: "var(--space-md)",
+          flexWrap: "wrap",
+        }}
+      >
+        <img
+          src="/brand/hero-seal-512.jpg"
+          alt=""
+          width={72}
+          height={72}
+          className="home-hero-seal"
+          style={{
+            width: 72,
+            height: 72,
+            borderRadius: "var(--radius-lg)",
+            border: "1px solid var(--c-border)",
+            objectFit: "cover",
+            boxShadow: "var(--shadow-1)",
+            flexShrink: 0,
+          }}
+        />
+        <div style={{ flex: 1, minWidth: "12rem" }}>
+          <PageHeader
+            title="Home"
+            subtitle="Portfolio and agents — mint, fund, tick, or ask Axiom. Agent detail is the deep workspace."
+            action={
+              <Link to="/app?mint=1" style={{ textDecoration: "none" }}>
+                <Button variant="primary">Mint agent</Button>
+              </Link>
+            }
+          />
+        </div>
+      </div>
       <ConnectedGuard>
         <HomeBody />
       </ConnectedGuard>
@@ -79,14 +108,18 @@ function HomeBody(): ReactElement {
 
   return (
     <>
-      <div className="dashboard-grid" style={{ marginBottom: "var(--space-lg)" }}>
+      <div
+        className="dashboard-grid home-stats"
+        style={{ marginBottom: "var(--space-lg)" }}
+        aria-label="Portfolio stats"
+      >
         <div className="dashboard-stat">
           <div className="dashboard-stat__label">Agents</div>
           <div className="dashboard-stat__value">
             {loading ? <Skeleton width={40} height={28} /> : agents.length}
           </div>
         </div>
-        <div className="dashboard-stat">
+        <div className="dashboard-stat dashboard-stat--vault">
           <div className="dashboard-stat__label">Total vault</div>
           <div
             className="dashboard-stat__value"
@@ -105,7 +138,11 @@ function HomeBody(): ReactElement {
             {loading ? <Skeleton width={32} height={28} /> : unfunded.length}
           </div>
         </div>
-        <div className="dashboard-stat">
+        <div
+          className={`dashboard-stat${
+            health?.oracle === "up" ? " dashboard-stat--live" : ""
+          }`}
+        >
           <div className="dashboard-stat__label">Oracle</div>
           <div
             className="dashboard-stat__value"
@@ -125,12 +162,12 @@ function HomeBody(): ReactElement {
       </div>
 
       {/* Short task rail — not a second nav */}
-      <div className="action-rail">
+      <div className="action-rail" aria-label="Quick actions">
         <Link to="/chat" style={{ textDecoration: "none" }}>
           <Button variant="secondary">Ask Axiom</Button>
         </Link>
-        <Link to="/market" style={{ textDecoration: "none" }}>
-          <Button variant="ghost">Market activity</Button>
+        <Link to="/app?mint=1" style={{ textDecoration: "none" }}>
+          <Button variant="ghost">Mint agent</Button>
         </Link>
       </div>
 

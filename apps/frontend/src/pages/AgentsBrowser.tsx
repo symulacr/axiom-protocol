@@ -17,6 +17,7 @@ import {
 } from "../hooks/useVaultDataBatch.js";
 import { usePerformanceBatch } from "../hooks/usePerformanceBatch.js";
 import type { PerformanceMetrics } from "@axiom/config/types/performance";
+import { BRAND } from "../brand/assets.js";
 import {
   COLORS,
   Skeleton,
@@ -180,34 +181,27 @@ export function AgentsBrowser({
               padding: "var(--space-3xl) var(--space-xl)",
             }}
           >
-            <div
+            <img
+              src="/brand/empty-agents-960.jpg"
+              alt=""
+              width={320}
+              height={180}
               style={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: "3rem",
-                height: "3rem",
-                borderRadius: "50%",
-                background: COLORS.bronzeBg,
-                border: `1px solid ${COLORS.bronzeBorder}`,
-                marginBottom: "var(--space-lg)",
+                width: "min(100%, 20rem)",
+                height: "auto",
+                borderRadius: "var(--radius-md)",
+                marginBottom: "var(--space-md)",
+                border: `1px solid ${COLORS.border}`,
+                objectFit: "cover",
               }}
-            >
-              <span
-                style={{
-                  fontSize: "var(--text-lg)",
-                  color: COLORS.bronzeLight,
-                }}
-              >
-                +
-              </span>
-            </div>
+            />
             <p
               style={{
                 color: COLORS.textPrimary,
                 fontSize: "var(--text-base)",
                 margin: "0 0 0.5rem",
                 fontWeight: "var(--fw-semibold)",
+                fontFamily: "var(--font-display)",
               }}
             >
               No agents yet
@@ -292,7 +286,7 @@ export function AgentsBrowser({
             {filteredAgents.map((agent, i) => (
               <div
                 key={agent.tokenId}
-                className="agent-card cv-auto fade-enter"
+                className="agent-card cv-auto fade-enter card-layered"
                 style={{
                   padding: "12px 16px",
                   borderRadius: "var(--radius-lg)",
@@ -306,8 +300,32 @@ export function AgentsBrowser({
                   minWidth: 0,
                   gap: "var(--space-md)",
                   animationDelay: `${Math.min(i, 10) * 40}ms`,
+                  backgroundImage: `linear-gradient(120deg, rgba(79,70,229,0.08), transparent 42%, rgba(196,122,58,0.05)), url(${BRAND.agentLattice})`,
+                  backgroundSize: "cover, 56px 56px",
+                  backgroundPosition: "center, right 8px center",
+                  backgroundRepeat: "no-repeat, no-repeat",
+                  transition:
+                    "transform 150ms var(--ease-out), border-color 150ms var(--ease-out), box-shadow 150ms var(--ease-out)",
                 }}
               >
+                <img
+                  src={BRAND.agentLattice}
+                  alt=""
+                  width={40}
+                  height={40}
+                  loading="lazy"
+                  decoding="async"
+                  className="agent-card__motif"
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: "var(--radius-md)",
+                    border: `1px solid ${COLORS.border}`,
+                    objectFit: "cover",
+                    flexShrink: 0,
+                    opacity: 0.9,
+                  }}
+                />
                 <Link
                   to={`/agents/${agent.tokenId}`}
                   onClick={(e) => {
