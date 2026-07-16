@@ -83,11 +83,20 @@ const VALID_SECTIONS = [
 type AgentSection = (typeof VALID_SECTIONS)[number];
 
 const AGENT_TABS: ReadonlyArray<{ id: AgentSection; label: string }> = [
-  { id: "overview", label: "Overview" },
-  { id: "execute", label: "Execute" },
-  { id: "payments", label: "Payments" },
-  { id: "activity", label: "Activity" },
-  { id: "performance", label: "Performance" },
+  { id: "overview", label: "Vault" },
+  { id: "execute", label: "Tick" },
+  { id: "payments", label: "Pay" },
+  { id: "activity", label: "Log" },
+  { id: "performance", label: "Stats" },
+];
+
+type VaultTool = "deposit" | "withdraw" | "strategy" | "delegate";
+
+const VAULT_TOOLS: ReadonlyArray<{ id: VaultTool; label: string }> = [
+  { id: "deposit", label: "Fund" },
+  { id: "withdraw", label: "Withdraw" },
+  { id: "strategy", label: "Strategy" },
+  { id: "delegate", label: "Delegate" },
 ];
 
 function sectionFromHash(): AgentSection {
@@ -107,6 +116,8 @@ export function AgentDetail(): ReactElement {
   const transferBtnRef = useRef<HTMLSpanElement>(null);
   const [activeSection, setActiveSection] = useState<AgentSection>(sectionFromHash);
   const [pressed, setPressed] = useState<AgentSection | null>(null);
+  const [vaultTool, setVaultTool] = useState<VaultTool>("deposit");
+  const [showMeta, setShowMeta] = useState(false);
 
   useEffect(() => {
     const syncFromHash = (): void => {
@@ -171,14 +182,7 @@ export function AgentDetail(): ReactElement {
         <div
           role="tablist"
           aria-label="Agent sections"
-          style={{
-            display: "flex",
-            gap: "var(--space-sm)",
-            marginBottom: "var(--space-xl)",
-            flexWrap: "wrap",
-            borderBottom: `1px solid ${COLORS.border}`,
-            paddingBottom: "var(--space-sm)",
-          }}
+          className="agent-tabs"
         >
           {AGENT_TABS.map((s) => {
             const isActive = activeSection === s.id;
@@ -191,29 +195,14 @@ export function AgentDetail(): ReactElement {
                 aria-selected={isActive}
                 aria-controls={`panel-${s.id}`}
                 tabIndex={isActive ? 0 : -1}
-                style={{
-                  background: "none",
-                  color: isActive ? COLORS.bronzeLight : COLORS.textMuted,
-                  textDecoration: "none",
-                  fontSize: "var(--text-sm)",
-                  fontWeight: isActive
-                    ? "var(--fw-semibold)"
-                    : "var(--fw-medium)",
-                  padding: "0.5rem 0.75rem",
-                  borderRadius: "var(--radius-md) var(--radius-md) 0 0",
-                  border: "none",
-                  borderBottom: isActive
-                    ? `2px solid ${COLORS.bronzeLight}`
-                    : "2px solid transparent",
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                  transform: pressed === s.id ? "scale(0.97)" : "none",
-                  transition:
-                    "color 0.18s var(--ease-out), border-color 0.18s var(--ease-out), transform 0.12s var(--ease-out)",
-                }}
+                className={`agent-tabs__btn${isActive ? " is-active" : ""}`}
+                data-axiom-btn=""
                 onPointerDown={() => setPressed(s.id)}
                 onPointerUp={() => setPressed(null)}
                 onPointerLeave={() => setPressed(null)}
+                style={{
+                  transform: pressed === s.id ? "scale(0.97)" : undefined,
+                }}
                 onClick={() => {
                   setActiveSection(s.id);
                   window.history.replaceState(null, "", `#${s.id}`);
@@ -242,7 +231,7 @@ export function AgentDetail(): ReactElement {
 
         {metaError !== null && (
           <ErrorAlert
-            message="Couldn't load agent metadata from the chain. Check your connection and try refreshing the page."
+            message="Couldn't load agent metadata. Retry."
             onRetry={metadata.refetch}
           />
         )}
@@ -268,7 +257,6 @@ export function AgentDetail(): ReactElement {
                 <div
                   className="action-rail agent-quick-actions"
                   aria-label="Primary agent actions"
-                  style={{ marginBottom: "var(--space-lg)" }}
                 >
                   <Button
                     variant="primary"
@@ -278,248 +266,142 @@ export function AgentDetail(): ReactElement {
                       window.history.replaceState(null, "", "#execute");
                     }}
                   >
-                    Run tick
+                    Tick
                   </Button>
                   <Button
                     variant="secondary"
                     type="button"
-                    onClick={() => {
-                      setActiveSection("overview");
-                      window.history.replaceState(null, "", "#overview");
-                      document
-                        .getElementById("panel-overview")
-                        ?.scrollIntoView({ behavior: "smooth", block: "start" });
-                    }}
+                    onClick={() => setVaultTool("deposit")}
                   >
-                    Fund vault
+                    Fund
                   </Button>
-                  <Button
-                    variant="ghost"
-                    type="button"
-                    onClick={() => setTransferOpen(true)}
-                  >
-                    Transfer
-                  </Button>
+                  <span ref={transferBtnRef} style={{ display: "inline-block" }}>
+                    <Button
+                      variant="ghost"
+                      type="button"
+                      onClick={(): void => {
+                        transferBtnRef.current?.style.setProperty(
+                          "view-transition-name",
+                          "transfer-dialog",
+                        );
+                        withViewTransition(() => {
+                          flushSync(() => setTransferOpen(true));
+                        });
+                        transferBtnRef.current?.style.removeProperty(
+                          "view-transition-name",
+                        );
+                      }}
+                    >
+                      Transfer
+                    </Button>
+                  </span>
                   <Link to="/chat" style={{ textDecoration: "none" }}>
                     <Button variant="ghost" type="button">
-                      Ask Axiom
+                      Chat
                     </Button>
                   </Link>
                 </div>
-                <Card
-                  className="surface-copper"
-                  style={{
-                    marginBottom: "var(--space-xl)",
-                    borderColor: "var(--c-copper-border)",
-                  }}
-                >
-                  <SectionTitle>Vault</SectionTitle>
-                  <p
-                    style={{
-                      margin: "0 0 var(--space-md)",
-                      fontSize: "var(--text-xs)",
-                      color: COLORS.textMuted,
-                    }}
+
+                <div className="agent-tool">
+                  <div
+                    className="agent-tool__switch"
+                    role="tablist"
+                    aria-label="Vault tools"
                   >
-                    Deposit, withdraw, strategy root, delegate. Ticks on Execute.
-                  </p>
-                  <DepositForm tokenId={tokenIdBigInt} />
-                  <WithdrawForm tokenId={tokenIdBigInt} />
-                  <StrategyPanel tokenId={tokenIdBigInt} />
-                  <DelegatePanel tokenId={tokenIdBigInt} />
-                </Card>
+                    {VAULT_TOOLS.map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={vaultTool === t.id}
+                        className={`agent-tool__btn${
+                          vaultTool === t.id ? " is-active" : ""
+                        }`}
+                        data-axiom-btn=""
+                        onClick={() => setVaultTool(t.id)}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div
+                    key={vaultTool}
+                    className="agent-tool__panel fade-enter"
+                  >
+                    {vaultTool === "deposit" && (
+                      <DepositForm tokenId={tokenIdBigInt} />
+                    )}
+                    {vaultTool === "withdraw" && (
+                      <WithdrawForm tokenId={tokenIdBigInt} />
+                    )}
+                    {vaultTool === "strategy" && (
+                      <StrategyPanel tokenId={tokenIdBigInt} />
+                    )}
+                    {vaultTool === "delegate" && (
+                      <DelegatePanel tokenId={tokenIdBigInt} />
+                    )}
+                  </div>
+                </div>
               </>
             )}
 
             {data !== null && (
-              <Card style={{ marginBottom: "var(--space-xl)" }}>
-                <SectionTitle>Metadata</SectionTitle>
-                <dl
-                  className="stack-on-mobile"
-                  style={{
-                    margin: 0,
-                    display: "grid",
-                    gridTemplateColumns: "8.75rem 1fr",
-                    gap: "var(--space-md) var(--space-lg)",
-                    fontSize: "var(--text-sm)",
-                    minWidth: 0,
-                  }}
+              <div className="agent-meta">
+                <button
+                  type="button"
+                  className="agent-meta__toggle"
+                  aria-expanded={showMeta}
+                  onClick={() => setShowMeta((v) => !v)}
                 >
-                  <dt
-                    style={{
-                      color: COLORS.textDim,
-                      fontWeight: "var(--fw-medium)",
-                    }}
-                  >
-                    Collection
-                  </dt>
-                  <dd
-                    style={{
-                      margin: 0,
-                      color: COLORS.text,
-                      overflow: "hidden",
-                      overflowWrap: "break-word",
-                    }}
-                  >
-                    {data.name === "" ? PLACEHOLDER : data.name}{" "}
-                    {data.symbol !== "" && (
-                      <span style={{ color: COLORS.textMuted }}>
-                        ({data.symbol})
-                      </span>
-                    )}
-                  </dd>
-                  <dt
-                    style={{
-                      color: COLORS.textDim,
-                      fontWeight: "var(--fw-medium)",
-                    }}
-                  >
-                    Owner
-                  </dt>
-                  <dd style={{ margin: 0, overflow: "hidden" }}>
-                    <MonoLabel copyable text={data.owner}>{data.owner}</MonoLabel>
-                  </dd>
-                  <dt
-                    style={{
-                      color: COLORS.textDim,
-                      fontWeight: "var(--fw-medium)",
-                    }}
-                  >
-                    Creator
-                  </dt>
-                  <dd style={{ margin: 0, overflow: "hidden" }}>
-                    {data.creator !== undefined ? (
-                      <MonoLabel copyable text={data.creator}>{data.creator}</MonoLabel>
-                    ) : (
-                      <span style={{ color: COLORS.textDim }}>
-                        {PLACEHOLDER}
-                      </span>
-                    )}
-                  </dd>
-                  <dt
-                    style={{
-                      color: COLORS.textDim,
-                      fontWeight: "var(--fw-medium)",
-                    }}
-                  >
-                    Data Hash
-                  </dt>
-                  <dd style={{ margin: 0, overflow: "hidden" }}>
-                    <MonoLabel copyable text={data.dataHash} title={data.dataHash}>
-                      {truncateHex(data.dataHash)}
-                    </MonoLabel>
-                  </dd>
-                  <dt
-                    style={{
-                      color: COLORS.textDim,
-                      fontWeight: "var(--fw-medium)",
-                    }}
-                  >
-                    Description
-                  </dt>
-                  <dd
-                    style={{
-                      margin: 0,
-                      color: COLORS.text,
-                      overflow: "hidden",
-                      overflowWrap: "break-word",
-                    }}
-                  >
-                    {data.dataDescription === "" ? (
-                      <span style={{ color: COLORS.textDim }}>
-                        {PLACEHOLDER}
-                      </span>
-                    ) : (
-                      data.dataDescription
-                    )}
-                  </dd>
-                  <dt
-                    style={{
-                      color: COLORS.textDim,
-                      fontWeight: "var(--fw-medium)",
-                    }}
-                  >
-                    Token URI
-                  </dt>
-                  <dd style={{ margin: 0, overflow: "hidden" }}>
-                    {data.tokenUri === "" ? (
-                      <span style={{ color: COLORS.textDim }}>
-                        {PLACEHOLDER}
-                      </span>
-                    ) : (
-                      <MonoLabel copyable text={data.tokenUri}>{data.tokenUri}</MonoLabel>
-                    )}
-                  </dd>
-                  <dt
-                    style={{
-                      color: COLORS.textDim,
-                      fontWeight: "var(--fw-medium)",
-                    }}
-                  >
-                    <HelpTip tip="Simulated TEE oracle (software signer) — re-keys agent data and signs ownership proofs. Not hardware TDX/SEV.">
-                      Oracle (sim. TEE)
-                    </HelpTip>
-                  </dt>
-                  <dd style={{ margin: 0, overflow: "hidden" }}>
-                    {health.data ? (
+                  {showMeta ? "Hide details" : "Details"}
+                </button>
+                {showMeta && (
+                  <dl className="agent-meta__grid fade-enter">
+                    <dt>Owner</dt>
+                    <dd>
+                      <MonoLabel copyable text={data.owner}>
+                        {data.owner}
+                      </MonoLabel>
+                    </dd>
+                    <dt>Data hash</dt>
+                    <dd>
                       <MonoLabel
                         copyable
-                        text={`Oracle ${health.data.oracle === "up" ? "Up ✓" : "Down ✗"}`}
-                        style={{
-                          color:
-                            health.data.oracle === "up"
-                              ? COLORS.success
-                              : COLORS.danger,
-                        }}
+                        text={data.dataHash}
+                        title={data.dataHash}
                       >
-                        Oracle {health.data.oracle === "up" ? "Up ✓" : "Down ✗"}
+                        {truncateHex(data.dataHash)}
                       </MonoLabel>
-                    ) : (
-                      <span style={{ color: COLORS.textDim }}>
-                        {PLACEHOLDER}
-                      </span>
-                    )}
-                  </dd>
-                </dl>
-              </Card>
+                    </dd>
+                    <dt>Name</dt>
+                    <dd>
+                      {data.dataDescription === ""
+                        ? PLACEHOLDER
+                        : data.dataDescription}
+                    </dd>
+                    <dt>
+                      <HelpTip tip="Software oracle signer — not hardware TEE.">
+                        Oracle
+                      </HelpTip>
+                    </dt>
+                    <dd
+                      style={{
+                        color:
+                          health.data?.oracle === "up"
+                            ? COLORS.success
+                            : COLORS.textDim,
+                      }}
+                    >
+                      {health.data
+                        ? health.data.oracle === "up"
+                          ? "Up"
+                          : "Down"
+                        : PLACEHOLDER}
+                    </dd>
+                  </dl>
+                )}
+              </div>
             )}
-
-            <Card style={{ marginBottom: "var(--space-xl)" }}>
-              <SectionTitle>Transfer</SectionTitle>
-              <p
-                style={{
-                  color: COLORS.textMuted,
-                  fontSize: "var(--text-sm)",
-                  lineHeight: "var(--lh-normal)",
-                  margin: "0 0 var(--space-lg)",
-                  fontWeight: "var(--fw-regular)",
-                }}
-              >
-                iTransfer re-keys sealed data for the new owner (software oracle).
-              </p>
-              <span
-                ref={transferBtnRef}
-                style={{ display: "inline-block" }}
-              >
-                <Button
-                  variant="primary"
-                  onClick={(): void => {
-                    transferBtnRef.current?.style.setProperty(
-                      "view-transition-name",
-                      "transfer-dialog",
-                    );
-                    withViewTransition(() => {
-                      flushSync(() => setTransferOpen(true));
-                    });
-                    transferBtnRef.current?.style.removeProperty(
-                      "view-transition-name",
-                    );
-                  }}
-                >
-                  Transfer Agent
-                </Button>
-              </span>
-            </Card>
           </Suspense>
           )}
         </div>

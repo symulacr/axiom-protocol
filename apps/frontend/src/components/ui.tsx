@@ -719,12 +719,15 @@ export function MonoLabel({
 export function Kbd({
   children,
   style,
+  className,
 }: {
   children: ReactNode;
   style?: CSSProperties;
+  className?: string;
 }): ReactElement {
   return (
     <kbd
+      className={className}
       style={{
         fontFamily: "var(--font-mono)",
         fontSize: "var(--text-xs)",
