@@ -52,14 +52,11 @@ import { aristotle } from "../config/wagmi.js";
 import { AXIOM_ASSISTANT_NAME } from "@axiom/config/models";
 import {
   COLORS,
-  Card,
   Button,
   Input,
-  PageHeader,
   ErrorRef,
   Spinner,
 } from "../components/ui.js";
-import { AgentTick } from "../components/illustrations/index.js";
 
 type Message = {
   id: string;
