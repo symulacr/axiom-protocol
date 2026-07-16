@@ -29,6 +29,7 @@ import {
 } from "./components/ui.js";
 import { useMediaQuery } from "./hooks/useMediaQuery.js";
 import { useFocusTrap } from "./hooks/useFocusTrap.js";
+import { useTheme } from "./hooks/useTheme.js";
 import {
   APP_CHAT,
   APP_HOME,
@@ -58,18 +59,8 @@ function WalletButton(): ReactElement {
   );
 }
 
-function navLinkStyle({
-  isActive,
-}: {
-  isActive: boolean;
-}): React.CSSProperties {
-  return {
-    color: isActive ? COLORS.bronzeLight : COLORS.textMuted,
-    textDecoration: "none",
-    fontSize: "var(--text-sm)",
-    fontWeight: isActive ? "var(--fw-semibold)" : "var(--fw-medium)",
-    transition: "color 0.18s var(--ease-out)",
-  };
+function navLinkClass({ isActive }: { isActive: boolean }): string {
+  return ["shell-nav__link", isActive ? "is-active" : ""].filter(Boolean).join(" ");
 }
 
 function WalletRoute({ children }: { children: ReactElement }) {
@@ -199,6 +190,7 @@ export function App(): ReactElement {
   const mintOpen = isMintOpen(searchParams);
   const mintProvider = searchParams.get("provider") ?? undefined;
   const { isConnected } = useAccount();
+  const { theme, toggle: toggleTheme } = useTheme();
   const wasConnected = useRef(false);
   const mobileNavRef = useRef<HTMLDivElement>(null);
   useFocusTrap(mobileNavRef, isMobile && menuOpen);
@@ -271,172 +263,134 @@ export function App(): ReactElement {
   }, [navigate, openMint]);
 
   return (
-    <>
+    <div className="shell">
       <a href="#main-content" className="skip-link">
         Skip to content
       </a>
-      <header
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "var(--space-md) var(--space-2xl)",
-          borderBottom: "1px solid var(--c-border)",
-          background: "var(--c-bg)",
-          position: "sticky",
-          top: 0,
-          zIndex: 100,
-        }}
-      >
-        <nav
-          aria-label="Primary"
-          style={{ display: "flex", gap: "var(--space-xl)", alignItems: "center" }}
-        >
-          <Link
-            to="/"
-            style={{
-              fontWeight: "var(--fw-bold)",
-              textDecoration: "none",
-              fontSize: "var(--text-lg)",
-              color: "var(--c-text-primary)",
-              letterSpacing: "-0.01em",
-            }}
-          >
-            Axiom Protocol
-          </Link>
-          {/* Primary IA: Home · Chat · Mint (action) — no Market/Agents peers */}
-          {!isLanding && !isMobile && (
-            <>
-              {PRIMARY_NAV.filter((item) => item.kind === "link").map((item) => (
-                <NavLink
-                  key={item.id}
-                  to={item.path!}
-                  style={navLinkStyle}
-                  end={item.id === "home"}
-                >
-                  {item.label}{" "}
-                  <Kbd
-                    style={{
-                      fontSize: "var(--text-xs)",
-                      opacity: 0.5,
-                      marginLeft: 4,
-                      padding: "1px 4px",
-                      borderRadius: "var(--radius-sm)",
-                      border: `1px solid ${COLORS.border}`,
-                      lineHeight: 1,
-                    }}
-                  >
-                    {item.shortcut}
-                  </Kbd>
-                </NavLink>
-              ))}
+      <header className="shell-header">
+        <div className="shell-header__inner">
+          <nav className="shell-nav" aria-label="Primary">
+            <Link to="/" className="shell-brand" aria-label="Axiom home">
+              <img
+                src="/brand/chat-avatar-128.jpg"
+                alt=""
+                width={28}
+                height={28}
+                className="shell-brand__mark"
+              />
+              <span className="shell-brand__text">
+                Axiom
+                <span className="shell-brand__sub">Protocol</span>
+              </span>
+            </Link>
+
+            {!isLanding && !isMobile && (
+              <div className="shell-nav__pill" role="list">
+                {PRIMARY_NAV.filter((item) => item.kind === "link").map(
+                  (item) => (
+                    <NavLink
+                      key={item.id}
+                      to={item.path!}
+                      className={navLinkClass}
+                      end={item.id === "home"}
+                      role="listitem"
+                    >
+                      {item.label}
+                      <Kbd className="shell-nav__kbd">{item.shortcut}</Kbd>
+                    </NavLink>
+                  ),
+                )}
+              </div>
+            )}
+
+            {isLanding && (
+              <div className="shell-nav__landing">
+                <Link to="/app" className="shell-nav__text-link">
+                  Home
+                </Link>
+                <Link to="/chat" className="shell-nav__text-link">
+                  Chat
+                </Link>
+              </div>
+            )}
+          </nav>
+
+          <div className="shell-header__actions">
+            {!isLanding && isMobile && (
+              <button
+                type="button"
+                className="shell-icon-btn"
+                onClick={() => setMenuOpen(!menuOpen)}
+                aria-label="Menu"
+                aria-expanded={menuOpen}
+                aria-controls="mobile-nav-menu"
+              >
+                {menuOpen ? "✕" : "☰"}
+              </button>
+            )}
+            <button
+              type="button"
+              className="shell-icon-btn"
+              onClick={toggleTheme}
+              aria-label={
+                theme === "dark" ? "Switch to light theme" : "Switch to dark theme"
+              }
+              title={theme === "dark" ? "Light" : "Dark"}
+            >
+              {theme === "dark" ? (
+                <span aria-hidden className="shell-icon">
+                  ☀
+                </span>
+              ) : (
+                <span aria-hidden className="shell-icon">
+                  ◐
+                </span>
+              )}
+            </button>
+            {!isLanding && !isMobile && (
+              <button
+                type="button"
+                className="shell-icon-btn"
+                title="Shortcuts (?)"
+                aria-label="Keyboard shortcuts"
+                onClick={() =>
+                  document.dispatchEvent(new CustomEvent("axiom:show-shortcuts"))
+                }
+              >
+                <span aria-hidden className="shell-icon">
+                  ?
+                </span>
+              </button>
+            )}
+            {!isLanding && <HealthBadge />}
+            {(isLanding || !isMobile) && (
               <button
                 type="button"
                 onClick={openMint}
-                className="nav-mint-cta"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  padding: "0.35rem 0.75rem",
-                  borderRadius: "var(--radius-md)",
-                  background: "var(--c-bronze)",
-                  color: "#fff",
-                  fontSize: "var(--text-sm)",
-                  fontWeight: "var(--fw-semibold)",
-                  border: "none",
-                  cursor: "pointer",
-                }}
+                className="shell-mint-btn"
+                data-axiom-btn=""
               >
                 Mint
               </button>
-            </>
-          )}
-          {/* Marketing CTA on the landing page only */}
-          {isLanding && (
-            <Link
-              to="/app"
-              style={{
-                fontSize: "var(--text-sm)",
-                fontWeight: "var(--fw-semibold)",
-                color: "var(--c-bronze)",
-                textDecoration: "none",
-                marginLeft: "var(--space-sm)",
-              }}
-            >
-              Launch app →
-            </Link>
-          )}
-        </nav>
-        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-md)" }}>
-          {/* Mobile menu toggle — app routes only, not on the landing page */}
-          {!isLanding && isMobile && (
-            <button
-              onClick={() => setMenuOpen(!menuOpen)}
-              aria-label="Toggle navigation menu"
-              aria-expanded={menuOpen}
-              aria-controls="mobile-nav-menu"
-              style={{
-                background: "none",
-                border: "none",
-                color: "var(--c-text-muted)",
-                fontSize: "1.5rem",
-                cursor: "pointer",
-                padding: "0.25rem",
-                lineHeight: 1,
-              }}
-            >
-              {menuOpen ? "✕" : "☰"}
-            </button>
-          )}
-          {/* Keyboard shortcuts hint — app routes only */}
-          {!isLanding && !isMobile && (
-            <span
-              style={{
-                fontSize: "var(--text-xs)",
-                color: COLORS.textDim,
-                cursor: "help",
-              }}
-              title="Press ? for keyboard shortcuts"
-            >
-              ? shortcuts
-            </span>
-          )}
-
-          {/* Health indicator — app routes only (meaningless on a public page) */}
-          {!isLanding && <HealthBadge />}
-          <WalletButton />
+            )}
+            <div className="shell-wallet">
+              <WalletButton />
+            </div>
+          </div>
         </div>
       </header>
-      {/* Mobile nav menu — app routes only */}
+
       {!isLanding && isMobile && (
         <div
           id="mobile-nav-menu"
           ref={mobileNavRef}
-          style={{
-            position: "fixed",
-            top: "var(--nav-h)",
-            left: 0,
-            right: 0,
-            background: "var(--c-surface)",
-            borderBottom: "1px solid var(--c-border)",
-            padding: "var(--space-md) var(--space-xl)",
-            display: "flex",
-            flexDirection: "column",
-            gap: "0.5rem",
-            zIndex: 99,
-            borderTop: "1px solid var(--c-border-strong)",
-            transform: menuOpen ? "translateY(0)" : "translateY(-12px)",
-            opacity: menuOpen ? 1 : 0,
-            pointerEvents: menuOpen ? "auto" : "none",
-            transition:
-              "transform 250ms var(--ease-drawer, cubic-bezier(0.32, 0.72, 0, 1)), opacity 250ms var(--ease-drawer, cubic-bezier(0.32, 0.72, 0, 1))",
-          }}
+          className={`shell-drawer${menuOpen ? " is-open" : ""}`}
         >
           {PRIMARY_NAV.filter((item) => item.kind === "link").map((item) => (
             <NavLink
               key={item.id}
               to={item.path!}
-              style={navLinkStyle}
+              className={navLinkClass}
               onClick={() => setMenuOpen(false)}
             >
               {item.label}
@@ -444,38 +398,18 @@ export function App(): ReactElement {
           ))}
           <button
             type="button"
+            className="shell-mint-btn shell-mint-btn--block"
             onClick={openMint}
-            style={{
-              textAlign: "left",
-              background: "none",
-              border: "none",
-              color: "var(--c-bronze-light)",
-              fontWeight: "var(--fw-semibold)",
-              fontSize: "var(--text-sm)",
-              padding: "0.5rem 0",
-              cursor: "pointer",
-            }}
+            data-axiom-btn=""
           >
             Mint agent
           </button>
         </div>
       )}
+
       <main
         id="main-content"
-        style={
-          isLanding
-            ? {
-                minHeight: "calc(100vh - var(--nav-h))",
-                contain: "layout style",
-              }
-            : {
-                padding: "var(--space-2xl) var(--space-xl)",
-                maxWidth: "var(--content-max)",
-                margin: "0 auto",
-                minHeight: "calc(100vh - var(--nav-h))",
-                contain: "layout style",
-              }
-        }
+        className={isLanding ? "shell-main shell-main--landing" : "shell-main"}
       >
         <ErrorBoundary>
           <Suspense
@@ -556,16 +490,26 @@ export function App(): ReactElement {
         )}
       </Modal>
 
-      <footer className="app-footer">
-        <div className="app-footer__inner">
-          <span className="app-footer__brand">Axiom Protocol</span>
-          <span className="app-footer__meta">
-            ERC-7857 on 0G · software oracle · Home · Chat · Mint
-          </span>
+      <footer className="shell-footer">
+        <div className="shell-footer__inner">
+          <div className="shell-footer__brand-block">
+            <span className="shell-footer__brand">Axiom</span>
+            <p className="shell-footer__tag">
+              Mint, fund, tick, transfer · software oracle on 0G
+            </p>
+          </div>
+          <nav className="shell-footer__links" aria-label="Footer">
+            <Link to="/app">Home</Link>
+            <Link to="/chat">Chat</Link>
+            <button type="button" onClick={openMint} className="shell-footer__mint">
+              Mint
+            </button>
+            <Link to="/">About</Link>
+          </nav>
         </div>
       </footer>
       <ShortcutHelp />
-    </>
+    </div>
   );
 }
 
