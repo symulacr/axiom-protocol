@@ -505,13 +505,17 @@ function registerChatRoutes(app: Express, config: ServerConfig): void {
           n++;
         }
         if (!res.writableEnded) {
-          if (n === 0) log.warn("chat upstream yielded 0 chunks", { model: resolvedModel });
+          if (n === 0) {
+            writeChunk(`data: ${JSON.stringify({choices:[{delta:{content:"⚠ 0G Compute returned an empty response. Try again or check model availability."}}]})}\n\n`);
+          }
           writeChunk("data: [DONE]\n\n");
           res.end();
         }
       } catch (err) {
         log.error("chat completions upstream failed", { err });
+        const errMsg = err instanceof Error ? err.message : String(err);
         if (res.headersSent || res.writableEnded) {
+          try { res.write(`data: ${JSON.stringify({error:errMsg,code:"STREAM_ERROR"})}\n\ndata: [DONE]\n\n`); } catch {}
           res.destroy();
           return;
         }
