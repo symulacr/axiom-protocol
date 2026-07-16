@@ -5,6 +5,22 @@
   "outputDirectory": "apps/frontend/dist",
   "rewrites": [
     {
+      "source": "/api/:path*",
+      "destination": "https://axiom-backend-production-7bfc.up.railway.app/:path*"
+    },
+    {
+      "source": "/api",
+      "destination": "https://axiom-backend-production-7bfc.up.railway.app/"
+    },
+    {
+      "source": "/oracle/:path*",
+      "destination": "https://oracle-production-9f7d.up.railway.app/:path*"
+    },
+    {
+      "source": "/oracle",
+      "destination": "https://oracle-production-9f7d.up.railway.app/"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

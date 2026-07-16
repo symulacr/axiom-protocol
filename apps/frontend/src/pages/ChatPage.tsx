@@ -675,7 +675,7 @@ function ChatPageInner(): ReactElement {
     <div>
         <PageHeader
           title={AXIOM_ASSISTANT_NAME}
-          subtitle="Your Axiom Protocol intelligence — mint, vaults, ticks, market tools"
+          subtitle="Axiom Protocol assistant — mint, vaults, ticks, and agent tools in one place"
           action={
             messages.length > 0 ? (
               <Button
@@ -698,6 +698,51 @@ function ChatPageInner(): ReactElement {
             ) : undefined
           }
         />
+        <div
+          className="axiom-chat-identity"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "var(--space-md)",
+            marginBottom: "var(--space-lg)",
+          }}
+        >
+          <img
+            src="/brand/chat-avatar-128.jpg"
+            alt=""
+            width={40}
+            height={40}
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: "50%",
+              border: "1px solid var(--c-border-strong)",
+              boxShadow: "0 0 16px rgba(52, 245, 160, 0.2)",
+              objectFit: "cover",
+            }}
+          />
+          <div style={{ minWidth: 0 }}>
+            <div
+              style={{
+                fontFamily: "var(--font-display)",
+                fontWeight: "var(--fw-semibold)",
+                color: "var(--c-text-primary)",
+                fontSize: "var(--text-sm)",
+              }}
+            >
+              {AXIOM_ASSISTANT_NAME}
+            </div>
+            <div
+              style={{
+                fontSize: "var(--text-xs)",
+                color: "var(--c-phosphor)",
+                fontFamily: "var(--font-mono)",
+              }}
+            >
+              Protocol assistant · single identity
+            </div>
+          </div>
+        </div>
 
         {!chainSupported && (
           <Card

@@ -41,6 +41,11 @@ export const COLORS = {
   phosphor: "var(--c-phosphor)",
   phosphorDim: "var(--c-phosphor-dim)",
 
+  copper: "var(--c-copper)",
+  copperLight: "var(--c-copper-light)",
+  copperBg: "var(--c-copper-bg)",
+  copperBorder: "var(--c-copper-border)",
+
   danger: "var(--c-danger)",
   dangerBg: "var(--c-danger-bg)",
   dangerBorder: "var(--c-danger-border)",

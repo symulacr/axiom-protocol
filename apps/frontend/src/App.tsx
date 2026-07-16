@@ -29,10 +29,15 @@ import {
 } from "./components/ui.js";
 import { useMediaQuery } from "./hooks/useMediaQuery.js";
 import { useFocusTrap } from "./hooks/useFocusTrap.js";
+import {
+  APP_CHAT,
+  APP_HOME,
+  PRIMARY_NAV,
+  isMintOpen,
+  withMintOpen,
+} from "./navigation/ia.js";
 
 const AgentDetail = lazy(() => import("./pages/AgentDetail.js"));
-const MarketPage = lazy(() => import("./pages/MarketPage.js"));
-const MintAgentPage = lazy(() => import("./pages/MintAgentPage.js"));
 const MintForm = lazy(() =>
   import("./components/MintForm.js").then((m) => ({ default: m.MintForm })),
 );
@@ -108,7 +113,6 @@ function ShortcutHelp(): ReactElement | null {
 
   const shortcuts = [
     { key: "H", label: "Home — portfolio + agents" },
-    { key: "M", label: "Market activity" },
     { key: "A", label: "Chat with Axiom" },
     { key: "N", label: "Mint agent (modal)" },
     { key: "⌘K", label: "Search agents on Home" },
@@ -192,7 +196,8 @@ export function App(): ReactElement {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const isLanding = location.pathname === "/";
-  const mintOpen = searchParams.get("mint") === "1";
+  const mintOpen = isMintOpen(searchParams);
+  const mintProvider = searchParams.get("provider") ?? undefined;
   const { isConnected } = useAccount();
   const wasConnected = useRef(false);
   const mobileNavRef = useRef<HTMLDivElement>(null);
@@ -200,19 +205,17 @@ export function App(): ReactElement {
 
   const openMint = useCallback(() => {
     setMenuOpen(false);
-    if (!isConnected) {
-      navigate("/agents/new");
+    // Stay on shell when possible; open mint modal in place
+    if (isLanding) {
+      navigate(`${APP_HOME}?mint=1`);
       return;
     }
-    // Prefer modal on app shell — shorter path, stay in context
-    const next = new URLSearchParams(searchParams);
-    next.set("mint", "1");
-    setSearchParams(next, { replace: false });
-  }, [isConnected, navigate, searchParams, setSearchParams]);
+    setSearchParams(withMintOpen(searchParams, true), { replace: false });
+  }, [isLanding, navigate, searchParams, setSearchParams]);
 
   const closeMint = useCallback(() => {
-    const next = new URLSearchParams(searchParams);
-    next.delete("mint");
+    const next = withMintOpen(searchParams, false);
+    next.delete("provider");
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams]);
 
@@ -244,20 +247,16 @@ export function App(): ReactElement {
         case "g":
           e.preventDefault();
           setMenuOpen(false);
-          navigate("/app");
-          break;
-        case "m":
-          e.preventDefault();
-          setMenuOpen(false);
-          navigate("/market");
+          navigate(APP_HOME);
           break;
         case "a":
         case "c":
           e.preventDefault();
           setMenuOpen(false);
-          navigate("/chat");
+          navigate(APP_CHAT);
           break;
         case "n":
+        case "m":
           e.preventDefault();
           openMint();
           break;
@@ -305,61 +304,36 @@ export function App(): ReactElement {
           >
             Axiom Protocol
           </Link>
-          {/* App navigation — hidden on the public landing page */}
-          {/* 3 destinations + Mint CTA (not a 5-way split) */}
+          {/* Primary IA: Home · Chat · Mint (action) — no Market/Agents peers */}
           {!isLanding && !isMobile && (
             <>
-              <NavLink to="/app" style={navLinkStyle} end>
-                Home{" "}
-                <Kbd
-                  style={{
-                    fontSize: "var(--text-xs)",
-                    opacity: 0.5,
-                    marginLeft: 4,
-                    padding: "1px 4px",
-                    borderRadius: "var(--radius-sm)",
-                    border: `1px solid ${COLORS.border}`,
-                    lineHeight: 1,
-                  }}
+              {PRIMARY_NAV.filter((item) => item.kind === "link").map((item) => (
+                <NavLink
+                  key={item.id}
+                  to={item.path!}
+                  style={navLinkStyle}
+                  end={item.id === "home"}
                 >
-                  H
-                </Kbd>
-              </NavLink>
-              <NavLink to="/market" style={navLinkStyle}>
-                Market{" "}
-                <Kbd
-                  style={{
-                    fontSize: "var(--text-xs)",
-                    opacity: 0.5,
-                    marginLeft: 4,
-                    padding: "1px 4px",
-                    borderRadius: "var(--radius-sm)",
-                    border: `1px solid ${COLORS.border}`,
-                    lineHeight: 1,
-                  }}
-                >
-                  M
-                </Kbd>
-              </NavLink>
-              <NavLink to="/chat" style={navLinkStyle}>
-                Chat{" "}
-                <Kbd
-                  style={{
-                    fontSize: "var(--text-xs)",
-                    opacity: 0.5,
-                    marginLeft: 4,
-                    padding: "1px 4px",
-                    borderRadius: "var(--radius-sm)",
-                    border: `1px solid ${COLORS.border}`,
-                    lineHeight: 1,
-                  }}
-                >
-                  A
-                </Kbd>
-              </NavLink>
+                  {item.label}{" "}
+                  <Kbd
+                    style={{
+                      fontSize: "var(--text-xs)",
+                      opacity: 0.5,
+                      marginLeft: 4,
+                      padding: "1px 4px",
+                      borderRadius: "var(--radius-sm)",
+                      border: `1px solid ${COLORS.border}`,
+                      lineHeight: 1,
+                    }}
+                  >
+                    {item.shortcut}
+                  </Kbd>
+                </NavLink>
+              ))}
               <button
                 type="button"
                 onClick={openMint}
+                className="nav-mint-cta"
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
@@ -458,27 +432,16 @@ export function App(): ReactElement {
               "transform 250ms var(--ease-drawer, cubic-bezier(0.32, 0.72, 0, 1)), opacity 250ms var(--ease-drawer, cubic-bezier(0.32, 0.72, 0, 1))",
           }}
         >
-          <NavLink
-            to="/app"
-            style={navLinkStyle}
-            onClick={() => setMenuOpen(false)}
-          >
-            Home
-          </NavLink>
-          <NavLink
-            to="/market"
-            style={navLinkStyle}
-            onClick={() => setMenuOpen(false)}
-          >
-            Market
-          </NavLink>
-          <NavLink
-            to="/chat"
-            style={navLinkStyle}
-            onClick={() => setMenuOpen(false)}
-          >
-            Chat
-          </NavLink>
+          {PRIMARY_NAV.filter((item) => item.kind === "link").map((item) => (
+            <NavLink
+              key={item.id}
+              to={item.path!}
+              style={navLinkStyle}
+              onClick={() => setMenuOpen(false)}
+            >
+              {item.label}
+            </NavLink>
+          ))}
           <button
             type="button"
             onClick={openMint}
@@ -532,17 +495,15 @@ export function App(): ReactElement {
             <div key={location.pathname} className="fade-enter">
               <Routes>
               <Route path="/" element={<LandingPage />} />
-              <Route path="/app" element={<HomePage />} />
-              {/* Agents list lives on Home — keep deep link /agents as redirect */}
-              <Route path="/agents" element={<Navigate to="/app" replace />} />
+              <Route path={APP_HOME} element={<HomePage />} />
+              {/* List peers fold into Home; mint is modal-only */}
+              <Route path="/agents" element={<Navigate to={APP_HOME} replace />} />
               <Route
                 path="/agents/new"
-                element={
-                  <WalletRoute>
-                    <MintAgentPage />
-                  </WalletRoute>
-                }
+                element={<Navigate to={`${APP_HOME}?mint=1`} replace />}
               />
+              <Route path="/market" element={<Navigate to={APP_HOME} replace />} />
+              <Route path="/dashboard" element={<Navigate to={APP_HOME} replace />} />
               <Route
                 path="/agents/:tokenId"
                 element={
@@ -551,16 +512,15 @@ export function App(): ReactElement {
                   </WalletRoute>
                 }
               />
-              <Route path="/market" element={<MarketPage />} />
               <Route
-                path="/chat"
+                path={APP_CHAT}
                 element={
                   <WalletRoute>
                     <ChatPage />
                   </WalletRoute>
                 }
               />
-              <Route path="/settings" element={<Navigate to="/app" replace />} />
+              <Route path="/settings" element={<Navigate to={APP_HOME} replace />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
             </div>
@@ -577,11 +537,21 @@ export function App(): ReactElement {
       >
         {isConnected ? (
           <Suspense fallback={<Spinner />}>
-            <MintForm compact onClose={closeMint} />
+            <MintForm
+              compact
+              onClose={closeMint}
+              provider={
+                mintProvider && /^0x[a-fA-F0-9]{40}$/.test(mintProvider)
+                  ? (mintProvider as `0x${string}`)
+                  : undefined
+              }
+            />
           </Suspense>
         ) : (
           <ConnectedGuard>
-            <p style={{ margin: 0 }} />
+            <p style={{ margin: 0, color: "var(--c-text-muted)", fontSize: "var(--text-sm)" }}>
+              Connect a wallet to mint an iNFT agent.
+            </p>
           </ConnectedGuard>
         )}
       </Modal>

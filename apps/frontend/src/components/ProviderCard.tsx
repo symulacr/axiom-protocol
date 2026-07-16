@@ -25,7 +25,7 @@ export function ProviderCard({
 
   const onUse = (e: MouseEvent<HTMLButtonElement>): void => {
     e.preventDefault();
-    navigate(`/agents/new?provider=${provider.address}`);
+    navigate(`/app?mint=1&provider=${provider.address}`);
   };
 
   return (

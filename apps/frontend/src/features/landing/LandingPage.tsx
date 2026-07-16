@@ -121,7 +121,7 @@ export function LandingPage(): ReactElement {
             }}
           >
             <Link
-              to="/agents/new"
+              to="/app?mint=1"
               style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -140,7 +140,7 @@ export function LandingPage(): ReactElement {
               Mint an agent
             </Link>
             <Link
-              to="/market"
+              to="/app"
               style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -156,7 +156,7 @@ export function LandingPage(): ReactElement {
                 lineHeight: 1,
               }}
             >
-              Explore market
+              Open app
             </Link>
             <Link
               to="/chat"
@@ -496,7 +496,7 @@ function CTASection(): ReactElement {
             justifyContent: "center",
           }}
         >
-          <Link to="/agents/new" className="btn btn-primary">
+          <Link to="/app?mint=1" className="btn btn-primary">
             Mint an agent
           </Link>
           <Link to="/app" className="btn btn-secondary">

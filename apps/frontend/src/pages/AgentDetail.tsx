@@ -151,14 +151,14 @@ export function AgentDetail(): ReactElement {
     <div>
         <div style={{ marginBottom: "var(--space-md)" }}>
           <Link
-            to="/agents"
+            to="/app"
             style={{
               color: COLORS.textMuted,
               fontSize: "var(--text-sm)",
               textDecoration: "none",
             }}
           >
-            ← Agents
+            ← Home
           </Link>
         </div>
 
@@ -264,23 +264,72 @@ export function AgentDetail(): ReactElement {
             }
           >
             {isConnected && (
-              <Card style={{ marginBottom: "var(--space-xl)" }}>
-                <SectionTitle>Vault & capital</SectionTitle>
-                <p
+              <>
+                <div
+                  className="action-rail agent-quick-actions"
+                  aria-label="Primary agent actions"
+                  style={{ marginBottom: "var(--space-lg)" }}
+                >
+                  <Button
+                    variant="primary"
+                    type="button"
+                    onClick={() => {
+                      setActiveSection("execute");
+                      window.history.replaceState(null, "", "#execute");
+                    }}
+                  >
+                    Run tick
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    type="button"
+                    onClick={() => {
+                      setActiveSection("overview");
+                      window.history.replaceState(null, "", "#overview");
+                      document
+                        .getElementById("panel-overview")
+                        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }}
+                  >
+                    Fund vault
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    type="button"
+                    onClick={() => setTransferOpen(true)}
+                  >
+                    Transfer
+                  </Button>
+                  <Link to="/chat" style={{ textDecoration: "none" }}>
+                    <Button variant="ghost" type="button">
+                      Ask Axiom
+                    </Button>
+                  </Link>
+                </div>
+                <Card
+                  className="surface-copper"
                   style={{
-                    margin: "0 0 var(--space-md)",
-                    fontSize: "var(--text-xs)",
-                    color: COLORS.textDim,
+                    marginBottom: "var(--space-xl)",
+                    borderColor: "var(--c-copper-border)",
                   }}
                 >
-                  Deposit 0G, withdraw, bind strategy root, or delegate access.
-                  Run ticks from the Execute tab.
-                </p>
-                <DepositForm tokenId={tokenIdBigInt} />
-                <WithdrawForm tokenId={tokenIdBigInt} />
-                <StrategyPanel tokenId={tokenIdBigInt} />
-                <DelegatePanel tokenId={tokenIdBigInt} />
-              </Card>
+                  <SectionTitle>Vault & capital</SectionTitle>
+                  <p
+                    style={{
+                      margin: "0 0 var(--space-md)",
+                      fontSize: "var(--text-xs)",
+                      color: COLORS.textDim,
+                    }}
+                  >
+                    Deposit 0G, withdraw, bind strategy root, or delegate access.
+                    Run ticks from the Execute tab.
+                  </p>
+                  <DepositForm tokenId={tokenIdBigInt} />
+                  <WithdrawForm tokenId={tokenIdBigInt} />
+                  <StrategyPanel tokenId={tokenIdBigInt} />
+                  <DelegatePanel tokenId={tokenIdBigInt} />
+                </Card>
+              </>
             )}
 
             {data !== null && (
