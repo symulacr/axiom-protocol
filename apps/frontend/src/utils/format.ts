@@ -30,10 +30,22 @@ export function humanizeError(err: unknown): string {
   }
 
   if (
+    lower.includes("insufficient_balance") ||
+    lower.includes("compute account has no balance") ||
+    (lower.includes("insufficient balance") && lower.includes("compute"))
+  ) {
+    return "0G Compute is out of credits. Fund the compute account for AXIOM_COMPUTE_API_KEY, then retry.";
+  }
+
+  if (
     lower.includes("insufficient funds") ||
     lower.includes("exceeds the balance")
   ) {
     return "Insufficient balance to complete this transaction. Please add funds and try again.";
+  }
+
+  if (lower.includes("compute upstream")) {
+    return "Compute is unavailable right now. Check backend compute keys and balance.";
   }
 
   if (

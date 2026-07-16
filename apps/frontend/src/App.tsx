@@ -187,6 +187,7 @@ export function App(): ReactElement {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const isLanding = location.pathname === "/";
+  const isChat = location.pathname === "/chat" || location.pathname.startsWith("/chat/");
   const mintOpen = isMintOpen(searchParams);
   const mintProvider = searchParams.get("provider") ?? undefined;
   const { isConnected } = useAccount();
@@ -409,7 +410,13 @@ export function App(): ReactElement {
 
       <main
         id="main-content"
-        className={isLanding ? "shell-main shell-main--landing" : "shell-main"}
+        className={
+          isLanding
+            ? "shell-main shell-main--landing"
+            : isChat
+              ? "shell-main shell-main--chat"
+              : "shell-main"
+        }
       >
         <ErrorBoundary>
           <Suspense
@@ -490,7 +497,7 @@ export function App(): ReactElement {
         )}
       </Modal>
 
-      <footer className="shell-footer">
+      <footer className={`shell-footer${isChat ? " shell-footer--hidden" : ""}`}>
         <div className="shell-footer__inner">
           <div className="shell-footer__brand-block">
             <span className="shell-footer__brand">Axiom</span>

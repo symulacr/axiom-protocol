@@ -98,6 +98,39 @@ type SSEChunk = {
 
 const SUPPORTED_CHAIN_IDS = new Set([aristotle.id]);
 const CHAT_MESSAGES_KEY = "axiom:chat-messages";
+const CHAT_THREADS_KEY = "axiom:chat-threads";
+
+type ChatThread = {
+  id: string;
+  title: string;
+  updatedAt: number;
+  messages: Message[];
+};
+
+function loadThreads(): ChatThread[] {
+  try {
+    const raw = localStorage.getItem(CHAT_THREADS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as ChatThread[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveThreads(threads: ChatThread[]): void {
+  try {
+    localStorage.setItem(CHAT_THREADS_KEY, JSON.stringify(threads.slice(0, 40)));
+  } catch {
+    /* ignore */
+  }
+}
+
+function titleFromMessages(msgs: Message[]): string {
+  const first = msgs.find((m) => m.role === "user" && m.content);
+  const t = (first?.content ?? "New chat").trim().replace(/\s+/g, " ");
+  return t.length > 42 ? `${t.slice(0, 42)}…` : t || "New chat";
+}
 
 function consumeSseLines(buffer: string): {
   chunks: SSEChunk[];
@@ -242,6 +275,10 @@ function ChatPageInner(): ReactElement {
   const [queue, setQueue] = useState<string[]>([]);
   const queueRef = useRef<string[]>([]);
   const isStreamingRef = useRef(false);
+  const [threads, setThreads] = useState<ChatThread[]>(loadThreads);
+  const [threadId, setThreadId] = useState<string>(() => crypto.randomUUID());
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [computeHint, setComputeHint] = useState<string | null>(null);
 
   // Live refs keep turn-local values (tokenId, address, chainId, and the
   // wallet accessors) current WITHIN a single agent turn. React state
@@ -607,6 +644,12 @@ function ChatPageInner(): ReactElement {
             ref && (ref.code !== undefined || ref.requestId !== undefined)
               ? <ErrorRef code={ref.code} requestId={ref.requestId} />
               : undefined;
+          if (
+            msg.toLowerCase().includes("compute") ||
+            msg.toLowerCase().includes("credits")
+          ) {
+            setComputeHint(msg);
+          }
           if (msg.includes("429") || msg.toLowerCase().includes("rate limit")) {
             toast.error("Rate limited — wait a moment and try again.", refDesc ? { description: refDesc } : undefined);
           } else {
@@ -616,7 +659,7 @@ function ChatPageInner(): ReactElement {
             ...currentMessages,
             createMessage({
               role: "assistant",
-              content: `Error: ${humanizeError(err)}`,
+              content: msg,
             }),
           ];
           messagesRef.current = withError;
@@ -667,195 +710,166 @@ function ChatPageInner(): ReactElement {
     if (!isStreaming) processQueue();
   }, [isStreaming, processQueue]);
 
+  // Persist active thread + thread list (history sidebar)
+  useEffect(() => {
+    if (messages.length === 0) return;
+    const next: ChatThread = {
+      id: threadId,
+      title: titleFromMessages(messages),
+      updatedAt: Date.now(),
+      messages,
+    };
+    setThreads((prev) => {
+      const others = prev.filter((t) => t.id !== threadId);
+      const merged = [next, ...others].sort((a, b) => b.updatedAt - a.updatedAt);
+      saveThreads(merged);
+      return merged;
+    });
+  }, [messages, threadId]);
+
+  const startNewChat = useCallback(() => {
+    setMessages([]);
+    messagesRef.current = [];
+    setQueue([]);
+    queueRef.current = [];
+    setThreadId(crypto.randomUUID());
+    setComputeHint(null);
+    setSidebarOpen(false);
+    try {
+      sessionStorage.removeItem(CHAT_MESSAGES_KEY);
+    } catch {
+      void 0;
+    }
+  }, []);
+
+  const openThread = useCallback((t: ChatThread) => {
+    setThreadId(t.id);
+    setMessages(t.messages);
+    messagesRef.current = t.messages;
+    setComputeHint(null);
+    setSidebarOpen(false);
+  }, []);
+
   const cancelStream = useCallback(() => {
     abortRef.current?.abort();
   }, []);
 
   return (
-    <div>
-        <PageHeader
-          title={AXIOM_ASSISTANT_NAME}
-          subtitle="Mint, vault, tick tools. Wallet + backend required."
-          action={
-            messages.length > 0 ? (
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setMessages([]);
-                  setHasUsedChat(false);
-                  setQueue([]);
-                  queueRef.current = [];
-                  try {
-                    sessionStorage.removeItem(CHAT_MESSAGES_KEY);
-                  } catch {
-          void 0;
-        }
-                }}
-                style={{ fontSize: "var(--text-sm)" }}
+    <div className={`chat-layout${sidebarOpen ? " is-sidebar-open" : ""}`}>
+      <aside className="chat-sidebar" aria-label="Chat history">
+        <div className="chat-sidebar__head">
+          <h2 className="chat-sidebar__title">Chats</h2>
+          <Button variant="ghost" onClick={startNewChat} style={{ fontSize: "var(--text-xs)" }}>
+            New
+          </Button>
+        </div>
+        <div className="chat-sidebar__list">
+          {threads.length === 0 ? (
+            <p className="chat-sidebar__empty">No history yet. Send a message.</p>
+          ) : (
+            threads.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                className={`chat-sidebar__item${t.id === threadId ? " is-active" : ""}`}
+                onClick={() => openThread(t)}
               >
-                New chat
-              </Button>
-            ) : undefined
-          }
-        />
-        <div
-          className="axiom-chat-identity"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "var(--space-md)",
-            marginBottom: "var(--space-lg)",
-          }}
-        >
+                {t.title}
+              </button>
+            ))
+          )}
+        </div>
+      </aside>
+
+      <div className="chat-main">
+        <div className="chat-topbar">
+          <button
+            type="button"
+            className="shell-icon-btn chat-sidebar-toggle"
+            aria-label="History"
+            onClick={() => setSidebarOpen((v) => !v)}
+          >
+            ☰
+          </button>
           <img
             src="/brand/chat-avatar-128.jpg"
             alt=""
-            width={40}
-            height={40}
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: "50%",
-              border: "1px solid var(--c-border-strong)",
-              boxShadow: "0 0 16px rgba(52, 245, 160, 0.2)",
-              objectFit: "cover",
-            }}
+            width={32}
+            height={32}
+            className="chat-topbar__mark"
           />
-          <div style={{ minWidth: 0 }}>
-            <div
-              style={{
-                fontFamily: "var(--font-display)",
-                fontWeight: "var(--fw-semibold)",
-                color: "var(--c-text-primary)",
-                fontSize: "var(--text-sm)",
-              }}
-            >
-              {AXIOM_ASSISTANT_NAME}
-            </div>
-            <div
-              style={{
-                fontSize: "var(--text-xs)",
-                color: "var(--c-phosphor)",
-                fontFamily: "var(--font-mono)",
-              }}
-            >
-              Backend + compute
+          <div className="chat-topbar__meta">
+            <div className="chat-topbar__name">{AXIOM_ASSISTANT_NAME}</div>
+            <div className="chat-topbar__status">
+              {chainSupported ? "Mint · vault · tick tools" : `Switch to 0G (${chainId})`}
             </div>
           </div>
+          <Button variant="ghost" onClick={startNewChat} style={{ fontSize: "var(--text-xs)" }}>
+            New chat
+          </Button>
         </div>
 
-        {!chainSupported && (
-          <Card
-            style={{
-              marginBottom: "var(--space-md)",
-              padding: "var(--space-md) var(--space-lg)",
-              borderColor: COLORS.warningBorder,
-              background: COLORS.warningBg,
-            }}
-          >
-            <p style={{ margin: 0, fontSize: "var(--text-sm)", color: COLORS.text }}>
-              Unsupported network (chain {chainId}). Switch to 0G Mainnet (Aristotle) in
-              your wallet.
-            </p>
-          </Card>
+        {computeHint && (
+          <div className="chat-banner" role="status">
+            {computeHint}
+          </div>
         )}
 
-        {/* Welcome / empty state — visual, illustration-driven, prompt cards */}
+        {!chainSupported && (
+          <div className="chat-banner" role="status">
+            Wrong network. Switch wallet to 0G Aristotle.
+          </div>
+        )}
+
+        <div className="chat-messages" ref={listRef}>
         {messages.length === 0 && !isStreaming && (
           <div
             className="fade-enter"
             style={{
-              marginBottom: "var(--space-lg)",
-              padding: "var(--space-3xl) var(--space-2xl)",
+              margin: "auto",
+              padding: "var(--space-2xl)",
               textAlign: "center",
-              border: "1px solid var(--c-border)",
-              borderRadius: "var(--radius-xl)",
-              background: "var(--c-surface)",
+              maxWidth: 520,
             }}
           >
-            {/* Live signal illustration */}
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: "var(--space-md)",
-                marginBottom: "var(--space-xl)",
-              }}
-            >
-              <span
-                style={{
-                  fontSize: "var(--text-xs)",
-                  fontFamily: "var(--font-mono)",
-                  color: "var(--c-text-dim)",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.1em",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "var(--space-sm)",
-                }}
-              >
-                <span
-                  className="phosphor-pulse"
-                  style={{
-                    width: 6,
-                    height: 6,
-                    borderRadius: "50%",
-                    background: "var(--c-phosphor)",
-                  }}
-                />
-                {hasUsedChat ? "Ready" : `${AXIOM_ASSISTANT_NAME} online`}
-              </span>
-              <AgentTick width={280} height={64} />
-            </div>
-
             <h2
               style={{
                 fontSize: "var(--text-xl)",
                 color: "var(--c-text-primary)",
-                marginBottom: "var(--space-xs)",
-                fontWeight: "var(--fw-semibold)",
+                marginBottom: "var(--space-sm)",
+                fontFamily: "var(--font-display)",
               }}
             >
-              {hasUsedChat
-                ? "Continue with Axiom"
-                : `Hi — I'm ${AXIOM_ASSISTANT_NAME}`}
+              {AXIOM_ASSISTANT_NAME}
             </h2>
             <p
               style={{
                 color: "var(--c-text-muted)",
                 fontSize: "var(--text-sm)",
-                maxWidth: "40ch",
-                margin: "0 auto var(--space-xl)",
+                margin: "0 auto var(--space-lg)",
               }}
             >
-              {hasUsedChat
-                ? "Pick a prompt or type your own. I can mint, fund, tick, and more."
-                : "Mint agents, check vaults, run ticks — wallet signs when needed."}
+              Mint, list agents, vault, ticks. Wallet signs when needed.
             </p>
-
-            {/* Prompt cards — clickable, animated via .prompt-card CSS */}
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-                gap: "var(--space-md)",
-                maxWidth: 720,
-                margin: "0 auto",
+                gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+                gap: "var(--space-sm)",
               }}
             >
               {[
                 {
                   label: "List my agents",
-                  hint: "See what you own",
+                  hint: "What you own",
                 },
                 {
-                  label: "Mint a new agent named Scout",
-                  hint: "Create an iNFT (wallet signs)",
+                  label: "Mint agent named Scout",
+                  hint: "Wallet signs",
                 },
                 {
-                  label: "What's my vault balance?",
-                  hint: "Check 0G holdings",
+                  label: "Vault balance?",
+                  hint: "0G holdings",
                 },
                 {
                   label: "Simulate a strategy tick",
@@ -891,21 +905,6 @@ function ChatPageInner(): ReactElement {
           </div>
         )}
 
-        {/* Message list */}
-        <div
-          ref={listRef}
-          role="log"
-          aria-live="polite"
-          style={{
-            maxHeight: "calc(100vh - 22rem)",
-            overflowY: "auto",
-            display: "flex",
-            flexDirection: "column",
-            gap: "var(--space-md)",
-            marginBottom: "var(--space-md)",
-            paddingRight: "var(--space-sm)",
-          }}
-        >
           {messages.map((msg) => (
             <div
               key={msg.id}
@@ -1116,14 +1115,13 @@ function ChatPageInner(): ReactElement {
           )}
         </div>
 
-        {/* Queued messages — injected without stopping the agent */}
         {queue.length > 0 && (
           <div
             style={{
               display: "flex",
               flexWrap: "wrap",
               gap: "var(--space-xs)",
-              marginBottom: "var(--space-sm)",
+              padding: "0 var(--space-lg) var(--space-sm)",
             }}
           >
             {queue.map((q, i) => (
@@ -1134,7 +1132,7 @@ function ChatPageInner(): ReactElement {
                   fontSize: "var(--text-xs)",
                   color: COLORS.textDim,
                   border: `1px solid ${COLORS.border}`,
-                  borderRadius: 0,
+                  borderRadius: "var(--radius-sm)",
                   padding: "2px 10px",
                 }}
               >
@@ -1144,52 +1142,40 @@ function ChatPageInner(): ReactElement {
           </div>
         )}
 
-        {/* Input bar — prominent, rounded */}
-        <div
-          style={{
-            display: "flex",
-            gap: "var(--space-sm)",
-            padding: "var(--space-sm)",
-            border: `1px solid ${COLORS.border}`,
-            borderRadius: "var(--radius-xl)",
-            background: "var(--c-surface)",
-          }}
-        >
-          <Input
-            aria-label="Chat input"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage(input);
+        <div className="chat-composer">
+          <div className="chat-composer__row">
+            <Input
+              aria-label="Chat input"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  sendMessage(input);
+                }
+              }}
+              placeholder={
+                isStreaming
+                  ? "Queue a follow-up…"
+                  : `Message ${AXIOM_ASSISTANT_NAME}…`
               }
-            }}
-            placeholder={
-              isStreaming
-                ? "Type to queue a message…"
-                : `Message ${AXIOM_ASSISTANT_NAME}… (try: mint an agent named Scout)`
-            }
-            maxLength={4000}
-            style={{
-              flex: 1,
-              border: "none",
-              background: "transparent",
-            }}
-          />
-          {isStreaming && (
-            <Button variant="secondary" onClick={cancelStream}>
-              Stop
+              maxLength={4000}
+            />
+            {isStreaming && (
+              <Button variant="secondary" onClick={cancelStream}>
+                Stop
+              </Button>
+            )}
+            <Button
+              variant={isStreaming ? "secondary" : "primary"}
+              onClick={() => sendMessage(input)}
+              disabled={!input.trim() || !chainSupported}
+            >
+              {isStreaming ? "Queue" : "Send"}
             </Button>
-          )}
-          <Button
-            variant={isStreaming ? "secondary" : "primary"}
-            onClick={() => sendMessage(input)}
-            disabled={!input.trim() || !chainSupported}
-          >
-            {isStreaming ? "Queue" : "Send"}
-          </Button>
+          </div>
         </div>
+      </div>
     </div>
   );
 }
