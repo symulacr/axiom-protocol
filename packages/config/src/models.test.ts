@@ -1,6 +1,10 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { DEFAULT_CHAT_MODEL, resolveChatModel } from "./models.js";
+import {
+  AXIOM_ASSISTANT_NAME,
+  DEFAULT_CHAT_MODEL,
+  resolveChatModel,
+} from "./models.js";
 
 describe("resolveChatModel", () => {
   it("returns the override when provided", () => {
@@ -14,5 +18,9 @@ describe("resolveChatModel", () => {
 
   it("returns the default when override is undefined", () => {
     assert.equal(resolveChatModel(undefined), DEFAULT_CHAT_MODEL);
+  });
+
+  it("brands the assistant as Axiom", () => {
+    assert.equal(AXIOM_ASSISTANT_NAME, "Axiom");
   });
 });

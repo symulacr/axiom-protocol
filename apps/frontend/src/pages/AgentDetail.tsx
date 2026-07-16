@@ -264,12 +264,23 @@ export function AgentDetail(): ReactElement {
             }
           >
             {isConnected && (
-              <>
+              <Card style={{ marginBottom: "var(--space-xl)" }}>
+                <SectionTitle>Vault & capital</SectionTitle>
+                <p
+                  style={{
+                    margin: "0 0 var(--space-md)",
+                    fontSize: "var(--text-xs)",
+                    color: COLORS.textDim,
+                  }}
+                >
+                  Deposit 0G, withdraw, bind strategy root, or delegate access.
+                  Run ticks from the Execute tab.
+                </p>
                 <DepositForm tokenId={tokenIdBigInt} />
                 <WithdrawForm tokenId={tokenIdBigInt} />
                 <StrategyPanel tokenId={tokenIdBigInt} />
                 <DelegatePanel tokenId={tokenIdBigInt} />
-              </>
+              </Card>
             )}
 
             {data !== null && (

@@ -100,7 +100,7 @@ function ShortcutHelp(): ReactElement | null {
     { key: "D", label: "Go to Dashboard" },
     { key: "G", label: "Go to Agents" },
     { key: "M", label: "Go to Market" },
-    { key: "C", label: "Go to Chat" },
+    { key: "C", label: "Go to Axiom chat" },
     { key: "N", label: "Mint new agent" },
     { key: "⌘K", label: "Focus search (on Agents page)" },
     { key: "?", label: "Show this help" },
@@ -318,7 +318,7 @@ export function App(): ReactElement {
                 </Kbd>
               </NavLink>
               <NavLink to="/chat" style={navLinkStyle}>
-                Chat{" "}
+                Axiom{" "}
                 <Kbd
                   style={{
                     fontSize: "var(--text-xs)",
@@ -452,7 +452,14 @@ export function App(): ReactElement {
             style={navLinkStyle}
             onClick={() => setMenuOpen(false)}
           >
-            Chat
+            Axiom
+          </NavLink>
+          <NavLink
+            to="/agents/new"
+            style={navLinkStyle}
+            onClick={() => setMenuOpen(false)}
+          >
+            Mint
           </NavLink>
         </div>
       )}
