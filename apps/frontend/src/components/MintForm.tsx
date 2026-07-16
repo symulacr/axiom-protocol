@@ -211,8 +211,7 @@ export function MintForm({
             color: COLORS.textMuted,
           }}
         >
-          Name your agent — we seal a default strategy payload, register the
-          oracle, then your wallet pays the mint fee on 0G.
+          Name only — default payload + oracle, then wallet pays the 0G mint fee.
         </p>
       )}
 
@@ -233,7 +232,7 @@ export function MintForm({
             id="agent-name"
             value={wizard.agentName}
             onChange={onNameChange}
-            placeholder="e.g. Scout, Atlas, Night Run"
+            placeholder="e.g. Scout"
             maxLength={100}
             autoFocus
             disabled={busy}
@@ -246,12 +245,11 @@ export function MintForm({
             style={{
               margin: "8px 0 0",
               fontSize: "var(--text-xs)",
-              color: COLORS.textDim,
+              color: COLORS.textMuted,
               lineHeight: 1.5,
             }}
           >
-            We auto-build encrypted metadata from this name (no JSON to paste).
-            Oracle registration and on-chain mint run when you continue.
+            No JSON to paste. Connect wallet, then mint.
           </p>
 
           <div

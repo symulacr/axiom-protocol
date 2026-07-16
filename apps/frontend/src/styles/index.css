@@ -65,10 +65,11 @@
   --c-border-glow: rgba(99, 102, 241, 0.45);
   --c-border-glow-strong: #6366f1;
 
-  --c-text: #c4c4e4;
-  --c-text-primary: #f4f4ff;
-  --c-text-muted: #9090b8;
-  --c-text-dim: #5c5c88;
+  /* Readable dark body — muted is still AA-ish on void */
+  --c-text: #d4d4ec;
+  --c-text-primary: #f6f6ff;
+  --c-text-muted: #a8a8c8;
+  --c-text-dim: #7a7a9e;
 
   /* Indigo — primary actions (aliases --c-bronze* for JS COLORS) */
   --c-bronze: #4f46e5;
@@ -141,23 +142,26 @@
     0 16px 48px rgba(0, 0, 0, 0.5);
   --blur-glass: 16px;
 
-  /* ─── Easing ─── */
-  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
-  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  /* ─── Easing (product: no bounce/elastic) ─── */
+  --ease-out: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
   --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* legacy alias — do not use for new motion */
+  --ease-spring: var(--ease-out-quint);
 
-  /* ─── Durations ─── */
+  /* ─── Durations (100 / 200 / 300 product budget) ─── */
   --dur-press: 120ms;
   --dur-tooltip: 150ms;
   --dur-dropdown: 200ms;
   --dur-card-hover: 150ms;
-  --dur-modal: 240ms;
-  --dur-toast: 400ms;
-  --dur-msg-in: 250ms;
-  --dur-landing: 400ms;
-  --dur-stagger: 60ms;
+  --dur-modal: 220ms;
+  --dur-toast: 280ms;
+  --dur-msg-in: 200ms;
+  --dur-landing: 280ms;
+  --dur-stagger: 40ms;
+  --dur-route: 180ms;
 
   /* ─── Standard transition shorthand ─── */
   --transition: color var(--dur-card-hover) var(--ease-out),
@@ -381,7 +385,50 @@ pre {
 }
 
 .fade-enter {
-  animation: axiom-fade-in 200ms var(--ease-out) both;
+  animation: axiom-fade-in var(--dur-route) var(--ease-out) both;
+}
+
+/* Product button press — feedback, not decoration */
+[data-axiom-btn] {
+  transition:
+    transform var(--dur-press) var(--ease-out),
+    background-color var(--dur-card-hover) var(--ease-out),
+    border-color var(--dur-card-hover) var(--ease-out),
+    box-shadow var(--dur-card-hover) var(--ease-out),
+    opacity var(--dur-card-hover) var(--ease-out);
+}
+[data-axiom-btn]:active:not(:disabled) {
+  transform: scale(0.97);
+}
+@media (hover: hover) and (pointer: fine) {
+  [data-axiom-btn].btn-primary:hover:not(:disabled) {
+    box-shadow: 0 0 0 1px var(--c-bronze-border), 0 8px 24px rgba(79, 70, 229, 0.25);
+  }
+}
+
+/* Modal open — state, not page choreography */
+[data-axiom-modal] {
+  animation: axiom-modal-in var(--dur-modal) var(--ease-out) both;
+}
+[data-axiom-modal]::backdrop {
+  background: var(--c-overlay);
+  animation: axiom-fade-in var(--dur-modal) var(--ease-out) both;
+}
+@keyframes axiom-modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* List / stat stagger — use --i, cap via CSS max index in markup */
+.stagger-in > * {
+  animation: axiom-fade-in var(--dur-msg-in) var(--ease-out) both;
+  animation-delay: calc(min(var(--i, 0), 8) * var(--dur-stagger));
 }
 
 /* ─── New keyframes: LCD, scroll reveal, stagger, phosphor ─── */
@@ -467,36 +514,275 @@ pre {
   }
 }
 
-/* ─── Landing utility classes ─── */
+/* ─── Landing (lean, dark, readable — no scroll-reveal trap) ─── */
 
-.landing-section {
-  padding: var(--space-5xl) var(--space-xl);
+.landing-root {
+  background: var(--c-bg);
+  color: var(--c-text);
+}
+
+.landing-hero {
+  padding: var(--space-5xl) var(--space-xl) var(--space-4xl);
+  border-bottom: 1px solid var(--c-border);
+  background-image: var(--grad-hero);
+}
+
+.landing-hero__grid {
   max-width: var(--content-max);
   margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--space-3xl);
+  align-items: center;
 }
 
-/* Scroll reveal — driven by IntersectionObserver setting data-revealed */
-[data-reveal] {
-  opacity: 0;
-  transform: translateY(24px);
-  transition: opacity var(--dur-landing) var(--ease-out),
-    transform var(--dur-landing) var(--ease-out);
-  will-change: opacity, transform;
+.landing-hero__copy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
 }
-[data-reveal][data-revealed="true"] {
+
+.landing-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--c-phosphor);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.landing-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--c-phosphor);
+  box-shadow: 0 0 10px rgba(52, 245, 160, 0.45);
+}
+
+.landing-h1 {
+  font-family: var(--font-display);
+  font-size: var(--text-4xl);
+  font-weight: var(--fw-bold);
+  color: var(--c-text-primary);
+  letter-spacing: -0.03em;
+  line-height: var(--lh-tight);
+  margin: 0;
+}
+
+.landing-h1-accent {
+  color: var(--c-bronze-light);
+}
+
+.landing-lead {
+  margin: 0;
+  font-size: var(--text-lg);
+  color: var(--c-text-muted);
+  max-width: 40ch;
+  line-height: var(--lh-snug);
+}
+
+.landing-cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  align-items: center;
+}
+
+.landing-cta-row--center {
+  justify-content: center;
+}
+
+.landing-btn {
+  text-decoration: none;
+}
+
+.landing-text-link {
+  color: var(--c-bronze-light);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-medium);
+  text-decoration: none;
+}
+
+.landing-text-link:hover {
+  text-decoration: underline;
+}
+
+.landing-hero__visual {
+  display: flex;
+  justify-content: center;
+}
+
+.landing-seal {
+  width: min(100%, 280px);
+  height: auto;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--c-border-strong);
+  box-shadow: var(--shadow-2);
+}
+
+.landing-block {
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: var(--space-4xl) var(--space-xl);
+}
+
+.landing-block--tight {
+  padding-top: 0;
+}
+
+.landing-h2 {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  color: var(--c-text-primary);
+  margin: 0 0 var(--space-sm);
+  letter-spacing: -0.02em;
+}
+
+.landing-h3 {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  color: var(--c-text-primary);
+  margin: 0 0 var(--space-md);
+}
+
+.landing-sub {
+  margin: 0 0 var(--space-xl);
+  color: var(--c-text-muted);
+  font-size: var(--text-base);
+  max-width: 48ch;
+}
+
+.landing-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0;
+  border-top: 1px solid var(--c-border);
+}
+
+.landing-list__item {
+  padding: var(--space-lg) 0;
+  border-bottom: 1px solid var(--c-border);
+}
+
+.landing-list__title {
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+  color: var(--c-bronze-light);
+  margin: 0 0 var(--space-xs);
+}
+
+.landing-list__body {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--c-text-muted);
+  line-height: var(--lh-snug);
+  max-width: 58ch;
+}
+
+.landing-note {
+  border-left: 3px solid var(--c-warning);
+  padding: var(--space-lg) var(--space-xl);
+  background: var(--c-surface);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+.landing-plain-list {
+  margin: 0;
+  padding-left: 1.15rem;
+  color: var(--c-text-muted);
+  font-size: var(--text-sm);
+  line-height: 1.65;
+  max-width: 62ch;
+}
+
+.landing-plain-list strong {
+  color: var(--c-text-primary);
+  font-weight: var(--fw-semibold);
+}
+
+.landing-cta-end {
+  text-align: center;
+  border-top: 1px solid var(--c-border);
+  padding-bottom: var(--space-6xl);
+}
+
+.landing-cta-end .landing-sub {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* App footer — quiet, not a term dump */
+.app-footer {
+  margin-top: var(--space-4xl);
+  border-top: 1px solid var(--c-border);
+  background: var(--c-surface);
+  color: var(--c-text-muted);
+}
+.app-footer__inner {
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: var(--space-xl);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  align-items: baseline;
+  justify-content: space-between;
+}
+.app-footer__brand {
+  font-family: var(--font-display);
+  font-weight: var(--fw-semibold);
+  color: var(--c-text-primary);
+  font-size: var(--text-sm);
+}
+.app-footer__meta {
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+  color: var(--c-text-dim);
+}
+
+/* Hero entrance once — product load, not every section */
+@media (prefers-reduced-motion: no-preference) {
+  .landing-hero--enter .landing-hero__copy {
+    animation: axiom-fade-in var(--dur-landing) var(--ease-out) both;
+  }
+  .landing-hero--enter .landing-seal {
+    animation: axiom-fade-in 320ms var(--ease-out) both;
+    animation-delay: 60ms;
+  }
+  .landing-list__item {
+    animation: axiom-fade-in var(--dur-msg-in) var(--ease-out) both;
+    animation-delay: calc(min(var(--i, 0), 6) * var(--dur-stagger));
+  }
+}
+
+/* Scroll reveal — opt-in only; default visible (no opacity:0 trap) */
+[data-reveal][data-reveal-anim] {
+  opacity: 0;
+  transform: translateY(12px);
+  transition:
+    opacity var(--dur-landing) var(--ease-out),
+    transform var(--dur-landing) var(--ease-out);
+}
+[data-reveal][data-reveal-anim][data-revealed="true"] {
   opacity: 1;
   transform: translateY(0);
 }
 
-/* Stagger children — set --stagger-index on each child */
-[data-stagger] > * {
+/* Stagger children — set --stagger-index; only when parent revealed */
+[data-stagger][data-reveal-anim] > * {
   opacity: 0;
-  transform: translateY(16px);
-  transition: opacity var(--dur-landing) var(--ease-out),
-    transform var(--dur-landing) var(--ease-out);
-  transition-delay: calc(var(--stagger-index, 0) * var(--dur-stagger));
+  transform: translateY(10px);
+  transition:
+    opacity var(--dur-msg-in) var(--ease-out),
+    transform var(--dur-msg-in) var(--ease-out);
+  transition-delay: calc(min(var(--stagger-index, 0), 8) * var(--dur-stagger));
 }
-[data-stagger][data-revealed="true"] > * {
+[data-stagger][data-reveal-anim][data-revealed="true"] > * {
   opacity: 1;
   transform: translateY(0);
 }
@@ -790,22 +1076,38 @@ select {
   }
 }
 
-[data-axiom-btn]:active {
-  transform: scale(0.97);
-}
 @media (prefers-reduced-motion: reduce) {
   [data-axiom-btn]:active {
     transform: none;
   }
+  [data-axiom-modal],
+  [data-axiom-modal]::backdrop {
+    animation: none !important;
+  }
+  .landing-hero--enter .landing-hero__copy,
+  .landing-hero--enter .landing-seal,
+  .landing-list__item {
+    animation: none !important;
+  }
 }
 
-/* Agent card — Atlas: border deepen on hover, no lift, no shadow */
+/* Agent card — border deepen + slight lift on hover (state affordance) */
 .agent-card {
-  transition: border-color var(--dur-card-hover) var(--ease-out);
+  transition:
+    border-color var(--dur-card-hover) var(--ease-out),
+    transform var(--dur-card-hover) var(--ease-out),
+    box-shadow var(--dur-card-hover) var(--ease-out);
 }
 @media (hover: hover) and (pointer: fine) {
   .agent-card:hover {
     border-color: var(--c-border-glow-strong);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .agent-card:hover {
+    transform: none;
   }
 }
 
@@ -854,10 +1156,12 @@ select {
 
 @media (prefers-contrast: more) {
   :root {
-    --c-border: #c8c8d8;
-    --c-border-strong: #a8a8c0;
-    --c-text-muted: #4a4a55;
-    --c-text-dim: #5a5a68;
+    --c-border: rgba(220, 220, 255, 0.28);
+    --c-border-strong: rgba(220, 220, 255, 0.4);
+    --c-text: #ececf8;
+    --c-text-primary: #ffffff;
+    --c-text-muted: #c8c8e0;
+    --c-text-dim: #a0a0c0;
   }
 }
 

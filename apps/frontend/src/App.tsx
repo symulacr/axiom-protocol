@@ -532,7 +532,7 @@ export function App(): ReactElement {
       <Modal
         open={mintOpen}
         onClose={closeMint}
-        title="Mint agent — name only"
+        title="Mint agent"
         style={{ maxWidth: 520 }}
       >
         {isConnected ? (
@@ -556,142 +556,12 @@ export function App(): ReactElement {
         )}
       </Modal>
 
-      <footer
-        style={{
-          background: "var(--c-bronze)",
-          color: "#ffffff",
-          marginTop: "var(--space-5xl)",
-        }}
-      >
-        <div
-          style={{
-            maxWidth: "var(--content-max)",
-            margin: "0 auto",
-            padding: "var(--space-3xl) var(--space-xl)",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "baseline",
-              justifyContent: "space-between",
-              flexWrap: "wrap",
-              gap: "var(--space-md)",
-              marginBottom: "var(--space-2xl)",
-            }}
-          >
-            <span
-              style={{
-                fontWeight: "var(--fw-bold)",
-                fontSize: "var(--text-lg)",
-                letterSpacing: "-0.01em",
-              }}
-            >
-              Axiom Protocol
-            </span>
-            <span style={{ fontSize: "var(--text-xs)", opacity: 0.7 }}>
-              Intelligent NFTs · software TEE oracle · 0G network
-            </span>
-          </div>
-          <details style={{ fontSize: "var(--text-xs)", color: "#ffffff" }}>
-            <summary
-              style={{
-                cursor: "pointer",
-                color: "#ffffff",
-                opacity: 0.85,
-                marginBottom: "var(--space-sm)",
-                fontWeight: "var(--fw-medium)",
-              }}
-            >
-              Key Terms
-            </summary>
-            <dl
-              style={{
-                margin: 0,
-                display: "grid",
-                gridTemplateColumns: "auto 1fr",
-                gap: "4px var(--space-lg)",
-              }}
-            >
-              <dt
-                style={{
-                  color: "#ffffff",
-                  opacity: 0.7,
-                  fontWeight: "var(--fw-medium)",
-                }}
-              >
-                iNFT
-              </dt>
-              <dd style={{ margin: 0, opacity: 0.9 }}>
-                Intelligent NFT — an ERC-7857 token tied to encrypted AI agent
-                metadata
-              </dd>
-              <dt
-                style={{
-                  color: "#ffffff",
-                  opacity: 0.7,
-                  fontWeight: "var(--fw-medium)",
-                }}
-              >
-                TEE
-              </dt>
-              <dd style={{ margin: 0, opacity: 0.9 }}>
-                Oracle TEE signer — software-simulated enclave (Node secp256k1)
-                that signs ownership proofs; not Intel TDX/SEV hardware
-              </dd>
-              <dt
-                style={{
-                  color: "#ffffff",
-                  opacity: 0.7,
-                  fontWeight: "var(--fw-medium)",
-                }}
-              >
-                Strategy Root
-              </dt>
-              <dd style={{ margin: 0, opacity: 0.9 }}>
-                Merkle root that cryptographically verifies which strategies an
-                agent can execute
-              </dd>
-              <dt
-                style={{
-                  color: "#ffffff",
-                  opacity: 0.7,
-                  fontWeight: "var(--fw-medium)",
-                }}
-              >
-                Daily Limit
-              </dt>
-              <dd style={{ margin: 0, opacity: 0.9 }}>
-                Maximum 0G an agent can spend per day, resets at midnight UTC
-              </dd>
-              <dt
-                style={{
-                  color: "#ffffff",
-                  opacity: 0.7,
-                  fontWeight: "var(--fw-medium)",
-                }}
-              >
-                0G Storage
-              </dt>
-              <dd style={{ margin: 0, opacity: 0.9 }}>
-                Decentralized storage where encrypted agent data is persisted
-                with Merkle proof verification
-              </dd>
-              <dt
-                style={{
-                  color: "#ffffff",
-                  opacity: 0.7,
-                  fontWeight: "var(--fw-medium)",
-                }}
-              >
-                0G Compute
-              </dt>
-              <dd style={{ margin: 0, opacity: 0.9 }}>
-                Decentralized inference network where agents run trading
-                strategies via 0G Compute (Axiom assistant)
-              </dd>
-            </dl>
-          </details>
+      <footer className="app-footer">
+        <div className="app-footer__inner">
+          <span className="app-footer__brand">Axiom Protocol</span>
+          <span className="app-footer__meta">
+            ERC-7857 on 0G · software oracle · Home · Chat · Mint
+          </span>
         </div>
       </footer>
       <ShortcutHelp />
