@@ -7,19 +7,19 @@
 | **3** | Agents search (⌘K), market remains; nav Axiom rename | **Done** (search already; branded nav) |
 | **4** | LLM branded **Axiom**; system prompt; chat UI; prompts include mint | **Done** |
 | **5** | Backend `/v1/config` `assistantName: Axiom`; mint tool hints; tool catalog | **Done** |
-| **6** | Automated unit/typecheck; manual Chrome QA checklist | **In progress** |
+| **6** | Automated unit/typecheck; Chrome click QA | **Done** |
 
-## Phase 6 Chrome QA checklist
+## Phase 6 Chrome QA checklist (2026-07-16)
 
-- [ ] `/` landing loads, CTAs work
-- [ ] `/app` dashboard stats + Mint / Browse / Chat / Market
-- [ ] Connect wallet control visible when disconnected
-- [ ] `/agents` search filters list (⌘K focuses search)
-- [ ] `/agents/new` mint wizard steps
-- [ ] `/agents/:id` vault deposit/withdraw visible
-- [ ] `/market` loads providers/transfers
-- [ ] `/chat` shows **Axiom**, can send message (needs live compute + keys)
-- [ ] Chat tool: list agents / mint (wallet) / vault balance
+- [x] `/` landing loads, CTAs work
+- [x] `/app` dashboard + Connect Wallet gate
+- [x] Nav: Dashboard · Agents · Market · **Axiom** · Mint
+- [x] `/agents` navigates
+- [x] `/agents/new` mint route
+- [x] `/market` providers/transfers/leaderboard empty states
+- [x] `/chat` wallet gate (chat needs connect)
+- [x] Fixed crash: truncated `VITE_MOCK_USDC_ADDRESS` + getAddresses requiring mockUsdc
+- [ ] Live LLM round-trip (needs backend + compute API keys + wallet)
 
 ## Functional tools (catalog)
 

@@ -28,7 +28,15 @@ export function resolveAddress(
   const varNames = ENV_VAR_NAMES[name];
   for (const varName of varNames) {
     const val = env[varName];
-    if (typeof val === "string" && val) return getAddress(val);
+    if (typeof val === "string" && val.trim()) {
+      try {
+        return getAddress(val.trim());
+      } catch {
+        throw new Error(
+          `Invalid address for "${name}" in ${varName}="${val}" (must be 0x + 40 hex chars)`,
+        );
+      }
+    }
   }
   throw new Error(
     `Missing deployed-address env var for "${name}" — set one of: ${varNames.join(", ")}`,

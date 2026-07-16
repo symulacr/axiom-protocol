@@ -566,7 +566,7 @@ export function App(): ReactElement {
               Axiom Protocol
             </span>
             <span style={{ fontSize: "var(--text-xs)", opacity: 0.7 }}>
-              Intelligent NFTs · TEE-attested agents · 0G network
+              Intelligent NFTs · software TEE oracle · 0G network
             </span>
           </div>
           <details style={{ fontSize: "var(--text-xs)", color: "#ffffff" }}>
@@ -664,7 +664,7 @@ export function App(): ReactElement {
               </dt>
               <dd style={{ margin: 0, opacity: 0.9 }}>
                 Decentralized inference network where agents run trading
-                strategies via TEE-attested LLMs
+                strategies via 0G Compute (Axiom assistant)
               </dd>
             </dl>
           </details>
