@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
     "coverage-status": "pnpm --filter @axiom/backend exec node --import tsx src/cli/coverage-status.ts --manifest frontend-prod",
+    "test": "node --test src/hooks/useTransfer.dataHash.test.ts",
     "test:e2e": "playwright test"
   },
   "dependencies": {

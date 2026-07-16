@@ -29,7 +29,7 @@ Axiom tokenizes AI trading strategies as **ERC-7857 Intelligent NFTs (iNFTs)** o
 
 | Claim | Reality |
 |-------|---------|
-| “Real TEE” | Software `TeeSigner` with cleartext process key; production path uses sealed DEK transport (see Wave 2+) |
+| “Real TEE” | Software `TeeSigner` with process key; browser re-key **ECIES-seals** the DEK to the oracle pubkey (`GET /health` → `sealedDataEncryptionKey`); cleartext DEK rejected unless test flag |
 | “Ticks settle on-chain” | Orchestrator may skip or require Merkle proof producer — see `settleOnChain` |
 | Galileo testnet is primary | **Aristotle mainnet `16661` is the default** in `packages/config` and frontend wagmi |
 | Vault execute is owner-only | On-chain `execute` is **permissionless** given valid Merkle leaf + daily limit |

@@ -15,6 +15,18 @@ export const POLL_INTERVAL_MS = 12_000;
 
 export const REORG_SAFE_DEPTH = 10n;
 
+/**
+ * Next block to poll after processing up through `toBlock`.
+ * Stays reorgDepth behind head so shallow reorgs are re-scanned.
+ */
+export function nextCheckpointBlock(
+  toBlock: bigint,
+  reorgDepth: bigint = REORG_SAFE_DEPTH,
+): bigint {
+  const safeBlock = toBlock > reorgDepth ? toBlock - reorgDepth : 0n;
+  return safeBlock + 1n;
+}
+
 const wait = (ms: number): Promise<void> =>
   new Promise<void>((resolve) => setTimeout(resolve, ms));
 
@@ -152,15 +164,19 @@ export class Watcher {
         range,
       );
       logs.sort(logsByChainOrder);
+      let sinkFailures = 0;
+      let lastSinkError: unknown;
       for (const log of logs) {
         try {
           const ev = decodeAxiomLog(log);
           if (ev === null) continue;
           await this.sink(ev);
         } catch (err) {
+          sinkFailures += 1;
+          lastSinkError = err;
           this.logger({
             level: "error",
-            msg: "skipping bad log",
+            msg: "sink delivery failed — not advancing checkpoint past this window",
             blockNumber: log.blockNumber?.toString(),
             transactionHash: log.transactionHash,
             logIndex: log.index,
@@ -168,10 +184,18 @@ export class Watcher {
           });
         }
       }
+      if (sinkFailures > 0) {
+        // Do not advance nextBlock / checkpoint when any event failed delivery.
+        throw lastSinkError instanceof Error
+          ? lastSinkError
+          : new Error(
+              `sink failed for ${sinkFailures} log(s) in window ${fromBlock}-${toBlock}`,
+            );
+      }
       // Only advance past reorg-safe head so a shallow reorg can re-scan.
       const safeBlock =
         toBlock > REORG_SAFE_DEPTH ? toBlock - REORG_SAFE_DEPTH : 0n;
-      this.nextBlock = safeBlock + 1n;
+      this.nextBlock = nextCheckpointBlock(toBlock, REORG_SAFE_DEPTH);
       await saveCheckpoint(id, Number(this.nextBlock));
       this.consecutiveFailures = 0;
       this.logger({

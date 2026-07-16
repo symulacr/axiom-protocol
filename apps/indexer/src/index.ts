@@ -134,30 +134,16 @@ function composeSinks(
     stdoutSink(event);
 
     if (extra.backendUrl !== undefined) {
-      try {
-        const { status } = await postEvent(event, {
-          backendUrl: extra.backendUrl,
-          chainId: extra.chainId,
-          apiKey: extra.apiKey,
-        });
-        if (status >= 400) {
-          process.stderr.write(
-            JSON.stringify({
-              level: "warn",
-              msg: "backend rejected event",
-              status,
-              kind: event.kind,
-              txHash: event.txHash,
-            }) + "\n",
-          );
-        }
-      } catch (err) {
-        process.stderr.write(
-          JSON.stringify({
-            level: "error",
-            msg: "http sink failed",
-            err: err instanceof Error ? err.message : String(err),
-          }) + "\n",
+      // Rethrow on failure so the watcher does not advance past undelivered blocks.
+      const { status } = await postEvent(event, {
+        backendUrl: extra.backendUrl,
+        chainId: extra.chainId,
+        apiKey: extra.apiKey,
+        indexerKey: extra.indexerKey,
+      });
+      if (status >= 400) {
+        throw new Error(
+          `backend rejected event status=${status} kind=${event.kind} tx=${event.txHash}`,
         );
       }
     }
