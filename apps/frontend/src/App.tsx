@@ -1,6 +1,7 @@
 import {
   lazy,
   Suspense,
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -14,17 +15,27 @@ import {
   Routes,
   useLocation,
   useNavigate,
+  useSearchParams,
 } from "react-router-dom";
 import { useAccount } from "wagmi";
 import { ErrorBoundary } from "./components/ErrorBoundary.js";
 import { HealthBadge } from "./components/HealthBadge.js";
-import { COLORS, ConnectedGuard, Kbd, Spinner } from "./components/ui.js";
+import {
+  COLORS,
+  ConnectedGuard,
+  Kbd,
+  Modal,
+  Spinner,
+} from "./components/ui.js";
 import { useMediaQuery } from "./hooks/useMediaQuery.js";
 import { useFocusTrap } from "./hooks/useFocusTrap.js";
 
 const AgentDetail = lazy(() => import("./pages/AgentDetail.js"));
 const MarketPage = lazy(() => import("./pages/MarketPage.js"));
 const MintAgentPage = lazy(() => import("./pages/MintAgentPage.js"));
+const MintForm = lazy(() =>
+  import("./components/MintForm.js").then((m) => ({ default: m.MintForm })),
+);
 const ChatPage = lazy(() => import("./pages/ChatPage.js"));
 const NotFound = lazy(() => import("./pages/NotFound.js"));
 const HomePage = lazy(() => import("./pages/HomePage.js"));
@@ -96,13 +107,13 @@ function ShortcutHelp(): ReactElement | null {
   if (!open) return null;
 
   const shortcuts = [
-    { key: "H / D / G", label: "Home (agents + portfolio)" },
-    { key: "M", label: "Market" },
-    { key: "A / C", label: "Axiom chat" },
-    { key: "N", label: "Mint agent" },
+    { key: "H", label: "Home — portfolio + agents" },
+    { key: "M", label: "Market activity" },
+    { key: "A", label: "Chat with Axiom" },
+    { key: "N", label: "Mint agent (modal)" },
     { key: "⌘K", label: "Search agents on Home" },
     { key: "?", label: "Show this help" },
-    { key: "Esc", label: "Close dialogs / this help" },
+    { key: "Esc", label: "Close dialogs" },
   ];
 
   return (
@@ -179,11 +190,31 @@ export function App(): ReactElement {
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isLanding = location.pathname === "/";
+  const mintOpen = searchParams.get("mint") === "1";
   const { isConnected } = useAccount();
   const wasConnected = useRef(false);
   const mobileNavRef = useRef<HTMLDivElement>(null);
   useFocusTrap(mobileNavRef, isMobile && menuOpen);
+
+  const openMint = useCallback(() => {
+    setMenuOpen(false);
+    if (!isConnected) {
+      navigate("/agents/new");
+      return;
+    }
+    // Prefer modal on app shell — shorter path, stay in context
+    const next = new URLSearchParams(searchParams);
+    next.set("mint", "1");
+    setSearchParams(next, { replace: false });
+  }, [isConnected, navigate, searchParams, setSearchParams]);
+
+  const closeMint = useCallback(() => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("mint");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   // Auto-redirect to the app when the wallet connects on the landing page.
   // Only fires on the disconnected → connected transition so a connected user
@@ -228,8 +259,7 @@ export function App(): ReactElement {
           break;
         case "n":
           e.preventDefault();
-          setMenuOpen(false);
-          navigate("/agents/new");
+          openMint();
           break;
         case "?":
           e.preventDefault();
@@ -239,7 +269,7 @@ export function App(): ReactElement {
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [navigate, setMenuOpen]);
+  }, [navigate, openMint]);
 
   return (
     <>
@@ -312,7 +342,7 @@ export function App(): ReactElement {
                 </Kbd>
               </NavLink>
               <NavLink to="/chat" style={navLinkStyle}>
-                Axiom{" "}
+                Chat{" "}
                 <Kbd
                   style={{
                     fontSize: "var(--text-xs)",
@@ -327,8 +357,9 @@ export function App(): ReactElement {
                   A
                 </Kbd>
               </NavLink>
-              <Link
-                to="/agents/new"
+              <button
+                type="button"
+                onClick={openMint}
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
@@ -338,11 +369,12 @@ export function App(): ReactElement {
                   color: "#fff",
                   fontSize: "var(--text-sm)",
                   fontWeight: "var(--fw-semibold)",
-                  textDecoration: "none",
+                  border: "none",
+                  cursor: "pointer",
                 }}
               >
                 Mint
-              </Link>
+              </button>
             </>
           )}
           {/* Marketing CTA on the landing page only */}
@@ -445,15 +477,24 @@ export function App(): ReactElement {
             style={navLinkStyle}
             onClick={() => setMenuOpen(false)}
           >
-            Axiom
+            Chat
           </NavLink>
-          <NavLink
-            to="/agents/new"
-            style={navLinkStyle}
-            onClick={() => setMenuOpen(false)}
+          <button
+            type="button"
+            onClick={openMint}
+            style={{
+              textAlign: "left",
+              background: "none",
+              border: "none",
+              color: "var(--c-bronze-light)",
+              fontWeight: "var(--fw-semibold)",
+              fontSize: "var(--text-sm)",
+              padding: "0.5rem 0",
+              cursor: "pointer",
+            }}
           >
-            Mint
-          </NavLink>
+            Mint agent
+          </button>
         </div>
       )}
       <main
@@ -526,6 +567,25 @@ export function App(): ReactElement {
           </Suspense>
         </ErrorBoundary>
       </main>
+
+      {/* Mint stays in context — modal, not a 5th app section */}
+      <Modal
+        open={mintOpen}
+        onClose={closeMint}
+        title="Mint agent"
+        style={{ maxWidth: 520 }}
+      >
+        {isConnected ? (
+          <Suspense fallback={<Spinner />}>
+            <MintForm compact onClose={closeMint} />
+          </Suspense>
+        ) : (
+          <ConnectedGuard>
+            <p style={{ margin: 0 }} />
+          </ConnectedGuard>
+        )}
+      </Modal>
+
       <footer
         style={{
           background: "var(--c-bronze)",
