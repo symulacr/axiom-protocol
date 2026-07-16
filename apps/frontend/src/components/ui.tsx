@@ -112,16 +112,19 @@ export const Card = React.memo(function Card({
   style,
   hover = false,
   raised = false,
+  className,
 }: {
   children: ReactNode;
   style?: CSSProperties;
   hover?: boolean;
   raised?: boolean;
+  className?: string;
 }): ReactElement {
   return (
     <div
       role={hover ? "button" : undefined}
       tabIndex={hover ? 0 : undefined}
+      className={["surface-glass", className].filter(Boolean).join(" ") || undefined}
       onKeyDown={
         hover
           ? (e) => {
@@ -136,6 +139,7 @@ export const Card = React.memo(function Card({
         border: `1px solid ${COLORS.border}`,
         borderRadius: "var(--radius-xl)",
         padding: "var(--space-xl)",
+        boxShadow: "var(--shadow-1)",
         transition: `border-color var(--dur-card-hover) var(--ease-out), transform var(--dur-card-hover) var(--ease-out), background var(--dur-card-hover) var(--ease-out)`,
         overflow: "hidden",
         contain: "layout style",
@@ -853,6 +857,10 @@ export const Modal = React.memo(function Modal({
   );
 });
 
+const LazyConnectButton = React.lazy(() =>
+  import("@rainbow-me/rainbowkit").then((m) => ({ default: m.ConnectButton })),
+);
+
 export function ConnectedGuard({
   children,
 }: {
@@ -862,15 +870,25 @@ export function ConnectedGuard({
   if (!isConnected) {
     return (
       <Card
+        className="surface-glass"
         style={{
           textAlign: "center",
           padding: "var(--space-3xl) var(--space-xl)",
         }}
       >
-        <p className="text-muted text-sm fw-regular">
-          Connect your wallet to view agents, manage vaults, and execute
-          strategies.
+        <p
+          style={{
+            margin: "0 0 var(--space-lg)",
+            color: COLORS.textMuted,
+            fontSize: "var(--text-sm)",
+          }}
+        >
+          Connect a wallet on 0G Aristotle (chain 16661) to mint agents, fund
+          vaults, and run strategy ticks.
         </p>
+        <React.Suspense fallback={<Spinner />}>
+          <LazyConnectButton />
+        </React.Suspense>
       </Card>
     );
   }

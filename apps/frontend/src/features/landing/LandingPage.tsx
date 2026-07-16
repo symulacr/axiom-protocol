@@ -195,15 +195,15 @@ function WhySection(): ReactElement {
   const principles = [
     {
       title: "Own the key",
-      desc: "The encryption key lives inside the token, not on a server. No one can read your agent's mind without your signature.",
+      desc: "Agent intelligence is sealed off-chain; ownership and dataHash live on the iNFT. You control transfer and vault capital.",
     },
     {
-      title: "Verify the strategy",
-      desc: "Every trade is signed inside a TEE and checked against a Merkle root sealed at mint. The strategy can't drift. The proof is on-chain.",
+      title: "Bound the strategy",
+      desc: "Vault actions check a Merkle strategy root and daily limit on-chain. Ticks can recommend and settle only with a valid proof plan.",
     },
     {
-      title: "Transfer the agent",
-      desc: "Sell it, gift it, move it. The old key dies. A new one is forged for the buyer — automatically, atomically, no shared secrets.",
+      title: "Transfer with re-key",
+      desc: "iTransfer re-encrypts for the receiver via the oracle (software TEE signer today) and publishes a sealed key — no shared plaintext DEK on the wire.",
     },
   ];
 
@@ -324,7 +324,7 @@ function HowSection(): ReactElement {
     },
     {
       title: "Run",
-      desc: "The agent executes inside a TEE on 0G Compute. Every action is signed and verified against the Merkle root. No drift, no tampering.",
+      desc: "Strategy ticks run via 0G Compute inference; vault actions verify Merkle proofs and daily limits on-chain. Settlement requires a proof plan.",
     },
     {
       title: "Trade",
@@ -433,7 +433,7 @@ function HowSection(): ReactElement {
       >
         <span>0G Chain — settlement · ownership</span>
         <span style={{ color: "var(--c-border-strong)" }}>·</span>
-        <span>0G Compute — TEE-attested inference</span>
+        <span>0G Compute — router inference (software oracle for re-key)</span>
         <span style={{ color: "var(--c-border-strong)" }}>·</span>
         <span>0G Storage — encrypted payloads · Merkle proofs</span>
       </div>
