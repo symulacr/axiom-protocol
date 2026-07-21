@@ -1,16 +1,9 @@
 import { parseAbi } from "viem";
-import { fetchJson } from "../http-json.js";
+import { success, fail } from "../result.js";
+import { fetchJson } from "../transport.js";
 import type { ToolRuntime } from "../transport.js";
 import { ZERO_DATA_ROOT } from "@axiom/config";
 import type { ToolResult } from "../types.js";
-
-function success(obj: Record<string, unknown>): ToolResult {
-  return { ok: true, content: JSON.stringify(obj) };
-}
-
-function fail(message: string): ToolResult {
-  return { ok: false, content: JSON.stringify({ error: message }) };
-}
 
 const STRATEGY_OF_CURRENT = [
   "function strategyOf(uint256) view returns (bytes32, uint256, uint256, uint64, uint64)",

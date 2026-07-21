@@ -7,7 +7,7 @@ import {
   type FormEvent,
   type ReactElement,
 } from "react";
-import { isAddress } from "viem";
+import { isAddress, toHex } from "viem";
 import { toast } from "sonner";
 import { useAccount } from "wagmi";
 import {
@@ -31,16 +31,10 @@ import {
 import { humanizeError } from "../utils/format.js";
 
 const RECEIVER_PUBKEY_HEX_LENGTH = 130;
-
 function freshNonceHex(byteLength = 32): `0x${string}` {
   const bytes = new Uint8Array(byteLength);
   crypto.getRandomValues(bytes);
-  let hex = "";
-  for (let i = 0; i < bytes.length; i += 1) {
-    const byte = bytes[i] ?? 0;
-    hex += byte.toString(16).padStart(2, "0");
-  }
-  return `0x${hex}` as `0x${string}`;
+  return toHex(bytes);
 }
 
 export type TransferModalProps = {
