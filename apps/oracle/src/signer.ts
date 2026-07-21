@@ -12,11 +12,6 @@ import {
   type AccessProofInput,
 } from "@axiom/config/eip712";
 
-export {
-  type Eip712Domain,
-  type OwnershipProofInput,
-  type AccessProofInput,
-} from "@axiom/config/eip712";
 
 export function ownershipMessageHash(
   input: OwnershipProofInput,

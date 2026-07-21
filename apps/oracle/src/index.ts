@@ -2,7 +2,8 @@ import * as Sentry from "@sentry/node";
 
 import { Wallet } from "ethers";
 
-import { TeeSigner, type Eip712Domain } from "./signer.js";
+import { TeeSigner } from "./signer.js";
+import { type Eip712Domain } from "@axiom/config";
 import {
   InMemoryStorage,
   ZeroGStorage,
