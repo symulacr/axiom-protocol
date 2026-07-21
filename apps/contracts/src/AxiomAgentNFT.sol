@@ -20,6 +20,8 @@ import {ERC7857IDataStorageUpgradeable} from "./extensions/ERC7857IDataStorageUp
 import {IntelligentData} from "./interfaces/IERC7857Metadata.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {AxiomMetadataJson} from "./extensions/AxiomMetadataJson.sol";
+import {TimelockManager} from "./libraries/TimelockManager.sol";
+using TimelockManager for TimelockManager.State;
 
 /// @notice Concrete ERC-7857 iNFT contract for the Axiom Protocol
 /// @dev Composes the canonical 3 ERC-7857 extensions (Cloneable + Authorize + IDataStorage)
@@ -38,23 +40,20 @@ contract AxiomAgentNFT is
     ERC7857IDataStorageUpgradeable
 {
     event VerifierUpdated(address indexed oldVerifier, address indexed newVerifier);
-    event VerifierProposed(address indexed newVerifier, uint256 executableAt);
-    event VerifierProposalCancelled(address indexed cancelledVerifier);
+    event VerifierProposed(address indexed newVerifier);
+    event VerifierProposalCancelled();
     event CreatorSet(uint256 indexed tokenId, address indexed creator);
     event MintFeeUpdated(uint256 oldFee, uint256 newFee);
     event StorageInfoUpdated(string oldInfo, string newInfo);
     event MetadataJsonDecisionDocumented(string collectionName, string collectionSymbol, string rationaleTag);
 
-    error NoPendingVerifierProposal();
-    error VerifierDelayNotElapsed(uint256 executableAt, uint256 currentTime);
 
     /// @custom:storage-location erc7201:agent.storage.AxiomAgentNFT
     struct AxiomAgentNFTStorage {
         string storageInfo;
         uint256 mintFee;
         mapping(uint256 => address) creators;
-        address pendingVerifier;
-        uint256 pendingVerifierExecutableAt;
+        TimelockManager.State verifierTimelock;
         uint256[48] __gap;
     }
 
@@ -65,9 +64,6 @@ contract AxiomAgentNFT is
     bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     string public constant VERSION = "1.0.0";
-
-    /// @dev Minimum delay between proposing and executing a verifier rotation.
-    uint256 public constant ADMIN_DELAY = 1 days;
 
     // ERC-7201 storage location (OZ v5): keccak256(abi.encode(keccak256("agent.storage.AxiomAgentNFT") - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant STORAGE_LOCATION = 0xe982fe9a44d6409dbf89634fae06be5c796203a5c100b2ec87b395d27194a900;
@@ -155,44 +151,26 @@ contract AxiomAgentNFT is
         return super.supportsInterface(interfaceId);
     }
 
-    /// @dev Restricted to `OPERATOR_ROLE`. Verifier rotation is two-step with `ADMIN_DELAY`
-    ///      so monitors can react before execution.
+    /// @dev Restricted to `ADMIN_ROLE`. Verifier rotation is two-step with
+    ///      a 1-day timelock so monitors can react before execution.
     function proposeVerifier(
         address newVerifier
-    ) external onlyRole(OPERATOR_ROLE) {
-        require(newVerifier != address(0), "Zero address");
+    ) external onlyRole(ADMIN_ROLE) {
         AxiomAgentNFTStorage storage $ = _getAxiomAgentNFTStorage();
-        uint256 executableAt = block.timestamp + ADMIN_DELAY;
-        $.pendingVerifier = newVerifier;
-        $.pendingVerifierExecutableAt = executableAt;
-        emit VerifierProposed(newVerifier, executableAt);
+        $.verifierTimelock.propose(newVerifier);
+        emit VerifierProposed(newVerifier);
     }
 
-    /// @dev Finalize a previously proposed verifier rotation after `ADMIN_DELAY`.
-    function executeVerifier() external onlyRole(OPERATOR_ROLE) {
+    function executeVerifier() external onlyRole(ADMIN_ROLE) {
         AxiomAgentNFTStorage storage $ = _getAxiomAgentNFTStorage();
-        address newVerifier = $.pendingVerifier;
-        if (newVerifier == address(0)) revert NoPendingVerifierProposal();
-        uint256 executableAt = $.pendingVerifierExecutableAt;
-        if (block.timestamp < executableAt) {
-            revert VerifierDelayNotElapsed(executableAt, block.timestamp);
-        }
-
-        address oldVerifier = address(verifier());
-        _setVerifier(newVerifier);
-        $.pendingVerifier = address(0);
-        $.pendingVerifierExecutableAt = 0;
-        emit VerifierUpdated(oldVerifier, newVerifier);
+        address result = $.verifierTimelock.execute();
+        _setVerifier(result);
     }
 
-    /// @dev Cancel a pending verifier rotation before it is executed.
-    function cancelVerifierProposal() external onlyRole(OPERATOR_ROLE) {
+    function cancelVerifierProposal() external onlyRole(ADMIN_ROLE) {
         AxiomAgentNFTStorage storage $ = _getAxiomAgentNFTStorage();
-        address cancelled = $.pendingVerifier;
-        if (cancelled == address(0)) revert NoPendingVerifierProposal();
-        $.pendingVerifier = address(0);
-        $.pendingVerifierExecutableAt = 0;
-        emit VerifierProposalCancelled(cancelled);
+        $.verifierTimelock.cancel();
+        emit VerifierProposalCancelled();
     }
 
     function setMintFee(
@@ -222,11 +200,20 @@ contract AxiomAgentNFT is
     }
 
     function pendingVerifier() public view returns (address) {
-        return _getAxiomAgentNFTStorage().pendingVerifier;
+        return _getAxiomAgentNFTStorage().verifierTimelock.proposed;
     }
 
     function pendingVerifierExecutableAt() public view returns (uint256) {
-        return _getAxiomAgentNFTStorage().pendingVerifierExecutableAt;
+        return _getAxiomAgentNFTStorage().verifierTimelock.proposedAt + TimelockManager.DELAY;
+    }
+
+    function authorizeAndDelegate(
+        address delegate,
+        uint256 tokenId,
+        uint256 validUntil
+    ) external whenNotPaused {
+        _authorizeUsage(tokenId, delegate);
+        delegateAccess(delegate);
     }
 
     function pause() external onlyRole(ADMIN_ROLE) {

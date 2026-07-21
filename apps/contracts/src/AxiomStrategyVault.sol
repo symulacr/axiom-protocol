@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 import {IAxiomAgentNFT} from "./interfaces/IAxiomAgentNFT.sol";
@@ -14,7 +16,7 @@ import {IAxiomAgentNFT} from "./interfaces/IAxiomAgentNFT.sol";
 ///      The agent itself executes the actions via `execute()`, which verifies each action
 ///      against the current strategy root and enforces a daily value limit
 /// @dev Standalone, non-upgradeable (holds user funds)
-contract AxiomStrategyVault is Ownable, Pausable, ReentrancyGuard {
+contract AxiomStrategyVault is Initializable, OwnableUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable, UUPSUpgradeable {
     error NotTokenOwner();
     error InvalidMerkleProof();
     error DailyLimitExceeded();
@@ -54,7 +56,9 @@ contract AxiomStrategyVault is Ownable, Pausable, ReentrancyGuard {
     uint256 public totalTrackedBalance;
 
     /// @notice The AxiomAgentNFT contract whose tokens are vaults (immutable at deploy)
-    IAxiomAgentNFT public immutable nft;
+    IAxiomAgentNFT public nft;
+    /// @dev Storage gap for upgradeable contract
+    uint256[49] private __gap;
 
     modifier onlyTokenOwner(
         uint256 tokenId
@@ -63,12 +67,17 @@ contract AxiomStrategyVault is Ownable, Pausable, ReentrancyGuard {
         _;
     }
 
-    constructor(
-        address nftAddr,
-        address initialOwner
-    ) Ownable(initialOwner) {
-        if (nftAddr == address(0)) revert ZeroAddress();
-        nft = IAxiomAgentNFT(nftAddr);
+    constructor() {
+        _disableInitializers();
+    }
+    /// @notice Initialize the upgradeable contract
+    /// @param _nft The AxiomAgentNFT contract address
+    /// @param _owner The initial owner
+    function initialize(IAxiomAgentNFT _nft, address _owner) external initializer {
+        __Ownable_init(_owner);
+        __Pausable_init();
+        __ReentrancyGuard_init();
+        nft = _nft;
     }
 
     /// @notice Reject direct native transfers; funds must enter via `deposit()`
@@ -205,4 +214,6 @@ contract AxiomStrategyVault is Ownable, Pausable, ReentrancyGuard {
     function unpause() external onlyOwner {
         _unpause();
     }
+    /// @notice Authorize upgrades (only owner)
+    function _authorizeUpgrade(address) internal override onlyOwner {}
 }

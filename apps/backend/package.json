@@ -23,7 +23,7 @@
     "fund-e2e-usdc": "node --import tsx src/cli/fund-e2e-usdc.ts"
   },
   "dependencies": {
-    "@0gfoundation/0g-compute-ts-sdk": "^0.9.0",
+    "@0gfoundation/0g-compute-ts-sdk": "^1.4.0",
     "@axiom/chat-runtime": "workspace:*",
     "@axiom/config": "workspace:*",
     "compression": "^1.7.4",
