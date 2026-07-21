@@ -151,23 +151,6 @@ export class InMemoryStorage implements StorageAdapter {
     return this.seenDataHashes.has(rootHash.toLowerCase());
   }
 }
-function extractUploadResult(
-  result: unknown,
-  dataLength: number,
-): UploadResult {
-  if (!result || typeof result !== "object") {
-    throw new Error("0G Storage upload returned no transaction");
-  }
-  const tx = result as Record<string, unknown>;
-  if ("rootHash" in tx && "txHash" in tx) {
-    return { rootHash: tx.rootHash as Hex, txHash: tx.txHash as Hex, size: dataLength };
-  }
-  if (tx.rootHashes && Array.isArray(tx.rootHashes) && tx.txHashes && Array.isArray(tx.txHashes)) {
-    return { rootHash: tx.rootHashes[0] as Hex, txHash: tx.txHashes[0] as Hex, size: dataLength };
-  }
-  throw new Error("0G Storage upload returned unrecognized result format");
-}
-
 export async function uploadToStorage(
   indexer: Indexer,
   data: Uint8Array,
@@ -183,7 +166,9 @@ export async function uploadToStorage(
   };
   const [tx, err] = await indexer.upload(memData, evmRpc, signer, uploadOpts);
   if (err) throw new Error(`0G upload failed: ${err.message ?? String(err)}`);
-  return extractUploadResult(tx, data.length);
+  const result = tx as { rootHash: string; txHash: string };
+  if (!result.rootHash) throw new Error("SDK upload returned unexpected format");
+  return { rootHash: result.rootHash as Hex, txHash: result.txHash as Hex, size: data.length };
 }
 
 export async function downloadFromStorage(
