@@ -13,6 +13,7 @@ export { startServer, type ServerConfig } from "./server.js";
 import { loadEnv } from "./env.js";
 import { oracleEnvSchema } from "./env-schema.js";
 import { toViemHex } from "@axiom/config/types/hex";
+import { registerProcessHandlers } from "@axiom/config/process";
 
 loadEnv();
 if (process.env.PORT) {
@@ -72,27 +73,4 @@ process.on("SIGINT", () => {
   oracleHttp.close(() => process.exit(0));
 });
 
-process.on("unhandledRejection", (reason: unknown) => {
-  const err =
-    reason instanceof Error ? (reason.stack ?? reason.message) : String(reason);
-  console.error(
-    JSON.stringify({
-      level: "error",
-      msg: "unhandledRejection",
-      err,
-      pid: process.pid,
-    }),
-  );
-  process.exit(1);
-});
-process.on("uncaughtException", (err: Error) => {
-  console.error(
-    JSON.stringify({
-      level: "error",
-      msg: "uncaughtException",
-      err: err.stack ?? err.message,
-      pid: process.pid,
-    }),
-  );
-  process.exit(1);
-});
+registerProcessHandlers();

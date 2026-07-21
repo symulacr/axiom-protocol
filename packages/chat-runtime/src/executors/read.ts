@@ -2,6 +2,7 @@ import { humanAbi } from "../abi.js";
 import { fetchJson } from "../http-json.js";
 import type { ToolRuntime } from "../transport.js";
 import type { ToolResult } from "../types.js";
+import { success, fail } from "../tool-result.js";
 
 function resolveTokenId(
   args: Record<string, unknown>,
@@ -20,35 +21,35 @@ export async function runReadTool(
     case "list_my_agents": {
       const owner = ctx.session.walletAddress;
       if (!owner) {
-        return err("Wallet not connected");
+        return fail("Wallet not connected");
       }
       const { ok, data } = await fetchJson<{ agents: unknown[] }>(
         ctx.http,
         `/v1/agents?owner=${owner}`,
       );
-      if (!ok) return err("agents http fail");
-      return okJson({ agents: data.agents ?? [] });
+      if (!ok) return fail("agents http fail");
+      return success({ agents: data.agents ?? [] });
     }
     case "vault_balance": {
       const tokenId = resolveTokenId(args, ctx);
-      if (!tokenId) return err("tokenId required");
-      if (!ctx.chain?.readContract) return err("No chain connection");
+      if (!tokenId) return fail("tokenId required");
+      if (!ctx.chain?.readContract) return fail("No chain connection");
       const vault = ctx.session.addresses?.vault;
-      if (!vault) return err("Vault address not configured");
+      if (!vault) return fail("Vault address not configured");
       const balance = (await ctx.chain.readContract<bigint>({
         address: vault,
         abi: humanAbi(["function balanceOf(uint256) view returns (uint256)"]),
         functionName: "balanceOf",
         args: [BigInt(tokenId)],
       })) as bigint;
-      return okJson({ tokenId, balance: balance.toString() });
+      return success({ tokenId, balance: balance.toString() });
     }
     case "agent_metadata": {
       const tokenId = resolveTokenId(args, ctx);
-      if (!tokenId) return err("tokenId required");
-      if (!ctx.chain?.multicall) return err("No chain connection");
+      if (!tokenId) return fail("tokenId required");
+      if (!ctx.chain?.multicall) return fail("No chain connection");
       const nft = ctx.session.addresses?.agentNft;
-      if (!nft) return err("Agent NFT address not configured");
+      if (!nft) return fail("Agent NFT address not configured");
       const results = await ctx.chain.multicall({
         contracts: [
           {
@@ -76,7 +77,7 @@ export async function runReadTool(
         dataDescription: string;
         dataHash: string;
       }>;
-      return okJson({
+      return success({
         tokenId,
         name: String(results[0]?.result ?? ""),
         owner: String(results[1]?.result ?? ""),
@@ -91,18 +92,11 @@ export async function runReadTool(
         path += `&eventName=${encodeURIComponent(String(args.eventName))}`;
       }
       const { ok, data } = await fetchJson<{ events: unknown[] }>(ctx.http, path);
-      if (!ok) return err("events http fail");
-      return okJson({ events: data.events ?? [] });
+      if (!ok) return fail("events http fail");
+      return success({ events: data.events ?? [] });
     }
     default:
-      return err(`Unknown read tool: ${name}`);
+      return fail(`Unknown read tool: ${name}`);
   }
 }
 
-function okJson(obj: Record<string, unknown>): ToolResult {
-  return { ok: true, content: JSON.stringify(obj) };
-}
-
-function err(message: string): ToolResult {
-  return { ok: false, content: JSON.stringify({ error: message }) };
-}
