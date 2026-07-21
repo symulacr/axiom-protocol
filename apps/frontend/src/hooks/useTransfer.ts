@@ -197,7 +197,7 @@ export function useTransfer(): UseTransferResult {
               targetPubkey: challenge.targetPubkey,
               to: input.to,
               nft: getAxiomAgentNftAddress(chainId),
-              nonce,
+              nonce: (challenge.accessProofNonce ?? `0x${nonce.toString(16)}`) as `0x${string}`,
               validUntil,
             },
             account: from,

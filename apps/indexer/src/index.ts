@@ -1,6 +1,6 @@
 import { Indexer } from "@0gfoundation/0g-storage-ts-sdk";
 import { ethers } from "ethers";
-import { loadEnv } from "./env.js";
+import { loadEnv } from "@axiom/config/env";
 import { join } from "node:path";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";

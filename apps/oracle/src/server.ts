@@ -11,11 +11,11 @@ import * as Sentry from "@sentry/node";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
 import { hexToBytes } from "ethereum-cryptography/utils";
-import { hexlify, isAddress } from "ethers";
 import { randomBytes } from "node:crypto";
+import { hexlify, isAddress, toBeHex } from "ethers";
+import { HTTP } from "@axiom/config";
 import { ZodError } from "zod";
 import { createApiKeyAuth } from "@axiom/config/middleware/auth";
-import { HTTP } from "@axiom/config";
 
 import {
   aesGcmDecrypt,
@@ -199,7 +199,7 @@ export function startServer(config: ServerConfig): {
         targetPubkey: targetPubkey64 as `0x${string}`,
         to: toIn as `0x${string}`,
         nft: nftIn as `0x${string}`,
-        nonce: BigInt(ownershipProofNonce ?? accessProofNonce ?? 0),
+        nonce: toBeHex(BigInt(ownershipProofNonce ?? accessProofNonce ?? 0)) as `0x${string}`,
         validUntil: defaultValidUntil,
       });
 
@@ -327,7 +327,7 @@ export function startServer(config: ServerConfig): {
           targetPubkey: targetPubkey as `0x${string}`,
           to: toIn as `0x${string}`,
           nft: nftIn as `0x${string}`,
-          nonce: BigInt(nonce ?? 0),
+          nonce: toBeHex(BigInt(nonce ?? 0)) as `0x${string}`,
           validUntil,
         });
         res.json({
