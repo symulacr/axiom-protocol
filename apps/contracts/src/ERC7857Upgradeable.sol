@@ -19,7 +19,7 @@ import "@0g-agent-nft/Utils.sol";
 /// @dev Adapted from the 0G Agentic ID reference (MIT)
 abstract contract ERC7857Upgradeable is IERC7857, ERC721Upgradeable {
     /// @notice EIP-7857 transfer (with proof verification)
-    event Transferred(uint256 _tokenId, address indexed _from, address indexed _to);
+    event Transferred(uint256 indexed _tokenId, address indexed _from, address indexed _to);
 
     /// @custom:storage-location erc7857:0g.storage.ERC7857
     struct ERC7857Storage {
