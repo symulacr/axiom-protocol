@@ -37,6 +37,8 @@ export interface UploadOptions {
   encryption?: Encryption;
   expectedReplica?: number;
   taskSize?: number;
+  retryCount?: number;
+  retryDelay?: number;
 }
 
 export interface DownloadOptions {
