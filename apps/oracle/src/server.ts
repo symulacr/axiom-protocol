@@ -86,13 +86,9 @@ export function startServer(config: ServerConfig): {
   app.use(
     cors({ origin: config.env?.AXIOM_FRONTEND_URL ?? "http://localhost:5173" }),
   );
-  const rateLimitMax = Number.parseInt(
-    process.env.AXIOM_RATE_LIMIT_MAX ?? "100",
-    10,
-  );
-  app.use(rateLimit({ windowMs: 60_000, max: rateLimitMax }));
+  const rateLimitMax = config.env?.AXIOM_RATE_LIMIT_MAX ?? 100;
   app.use(express.json({ limit: "1mb" }));
-  app.use(createApiKeyAuth(config.env?.AXIOM_API_KEY, ["/health"], process.env.AXIOM_DISABLE_AUTH === "true", process.env.AXIOM_CLIENT_API_KEY));
+  app.use(createApiKeyAuth(config.env?.AXIOM_API_KEY, ["/health"], config.env?.AXIOM_DISABLE_AUTH === "true", config.env?.AXIOM_CLIENT_API_KEY));
   const { signer, storage } = config;
 
   app.get("/health", (_req: Request, res: Response) => {
@@ -139,7 +135,7 @@ export function startServer(config: ServerConfig): {
       const sealedDek = (req.body as { sealedDataEncryptionKey?: string })
         ?.sealedDataEncryptionKey;
       const allowCleartext =
-        process.env.AXIOM_ALLOW_CLEARTEXT_DEK === "true" &&
+        config.env?.AXIOM_ALLOW_CLEARTEXT_DEK === "true" &&
         process.env.NODE_ENV !== "production";
 
       let oldDataKey: Buffer;
