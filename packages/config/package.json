@@ -25,8 +25,10 @@
     "./abis/vault": "./dist/abis/vault.js",
     "./abis/paymentProcessor": "./dist/abis/paymentProcessor.js",
     "./abis/iTransferFrom": "./dist/abis/iTransferFrom.js",
+    "./abis/erc20": "./dist/abis/erc20.js",
     "./middleware/auth": "./dist/middleware/auth.js",
     "./env-schema": "./dist/env-schema.js",
+<<<<<<< Updated upstream
     "./storage/0g": "./dist/storage/0g.js",
     "./types/performance": "./dist/types/performance.js",
     "./types/orchestrator": "./dist/types/orchestrator.js",
@@ -34,6 +36,12 @@
     "./process": "./dist/process.js",
     "./chat-tools": "./dist/chat-tools.js",
     "./models": "./dist/models.js"
+=======
+    "./api/responses": "./dist/api/responses.js",
+    "./api/routes": "./dist/api/routes.js",
+    "./api": "./dist/api/index.js",
+    "./storage/0g": "./dist/storage/0g.js"
+>>>>>>> Stashed changes
   },
   "scripts": {
     "generate": "wagmi generate",
@@ -44,8 +52,11 @@
   },
   "dependencies": {
     "@0gfoundation/0g-storage-ts-sdk": "^1.2.10",
-    "eciesjs": "^0.4.14",
+<<<<<<< Updated upstream
+    "eciesjs": "^0.4.18",
     "ethereum-cryptography": "^2.2.1",
+=======
+>>>>>>> Stashed changes
     "ethers": "^6.16.0",
     "express": "^4.21.0",
     "viem": "^2.21.45",

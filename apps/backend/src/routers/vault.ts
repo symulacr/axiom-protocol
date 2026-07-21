@@ -1,3 +1,10 @@
+const VAULT_DEPOSIT_IFACE = new ethers.Interface([
+  "function deposit(uint256 tokenId) payable",
+]);
+const VAULT_WITHDRAW_IFACE = new ethers.Interface([
+  "function withdraw(uint256 tokenId, uint256 amount)",
+]);
+
 import type { Router } from "express";
 import { ethers } from "ethers";
 import { createRoute } from "./route-factory.js";
@@ -29,10 +36,7 @@ export function registerVaultRoutes(
         sendError(_res, HTTP.INTERNAL, "vault address not configured", "VAULT_NOT_CONFIGURED");
         return;
       }
-      const iface = new ethers.Interface([
-        "function deposit(uint256 tokenId) payable",
-      ]);
-      const data = iface.encodeFunctionData("deposit", [BigInt(id)]);
+      const data = VAULT_DEPOSIT_IFACE.encodeFunctionData("deposit", [BigInt(id)]);
       const value = ethers.parseEther(parsed.amount);
       return {
         tokenId: id,
@@ -61,11 +65,8 @@ export function registerVaultRoutes(
         sendError(_res, HTTP.INTERNAL, "vault address not configured", "VAULT_NOT_CONFIGURED");
         return;
       }
-      const iface = new ethers.Interface([
-        "function withdraw(uint256 tokenId, uint256 amount)",
-      ]);
       const amountWei = ethers.parseEther(parsed.amount);
-      const data = iface.encodeFunctionData("withdraw", [BigInt(id), amountWei]);
+      const data = VAULT_WITHDRAW_IFACE.encodeFunctionData("withdraw", [BigInt(id), amountWei]);
       return {
         tokenId: id,
         to: vaultAddr,

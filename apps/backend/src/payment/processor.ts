@@ -7,6 +7,7 @@ import {
   type EventLog,
 } from "ethers";
 import { TypedContract } from "@axiom/config/types/contract";
+<<<<<<< Updated upstream
 import { PAYMENT_PROCESSOR_ABI, ERC20_ABI } from "@axiom/config/abis";
 
 type PaymentProcessorMethods = {
@@ -37,6 +38,12 @@ type ERC20Methods = {
   balanceOf(account: string): Promise<bigint>;
 };
 
+=======
+import { PAYMENT_PROCESSOR_ABI } from "@axiom/config/abis/paymentProcessor.js";
+import { ERC20_ABI } from "@axiom/config/abis/erc20.js";
+import type { PaymentProcessorMethods, ERC20Methods } from "../contract-types.js";
+
+>>>>>>> Stashed changes
 export interface PaymentConfig {
   readonly address: string;
   readonly signer: Wallet;

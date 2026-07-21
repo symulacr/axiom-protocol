@@ -1,3 +1,10 @@
+const AGENT_NFT_IFACE = new ethers.Interface([
+  "function balanceOf(address) view returns (uint256)",
+  "function ownerOf(uint256) view returns (address)",
+  "function intelligentDatasOf(uint256) view returns (tuple(string dataDescription, bytes32 dataHash)[])",
+  "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)",
+]);
+
 import type { Express, Request, Response, NextFunction } from "express";
 import { ethers } from "ethers";
 import type { Hex } from "viem";
@@ -110,12 +117,7 @@ export function registerAgentRoutes(
           sendError(res, HTTP.SERVICE_UNAVAILABLE, "Agent NFT address not configured");
           return;
         }
-        const iface = new ethers.Interface([
-          "function balanceOf(address) view returns (uint256)",
-          "function ownerOf(uint256) view returns (address)",
-          "function intelligentDatasOf(uint256) view returns (tuple(string dataDescription, bytes32 dataHash)[])",
-          "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)",
-        ]);
+        const iface = AGENT_NFT_IFACE;
         const balanceHex = await provider.call({
           to: nftAddr,
           data: iface.encodeFunctionData("balanceOf", [owner]),

@@ -1,6 +1,8 @@
 import { humanAbi } from "../abi.js";
 import { fetchJson } from "../http-json.js";
 import type { ToolRuntime } from "../transport.js";
+import { ZERO_DATA_ROOT } from "@axiom/config";
+
 import type { ToolResult } from "../types.js";
 
 const STRATEGY_OF_CURRENT = [
@@ -68,9 +70,8 @@ export async function runOrchestrateTool(
       }),
       readStrategyRoot(ctx, vault, tokenId),
     ]);
-    const zeroRoot = "0x" + "0".repeat(64);
     const ready =
-      balance > 0n && !!root && root !== zeroRoot;
+      balance > 0n && !!root && root !== ZERO_DATA_ROOT;
 
     if (!ready) {
       if (dryRun) {
@@ -80,7 +81,7 @@ export async function runOrchestrateTool(
           ready: false,
           tokenId,
           balance: balance.toString(),
-          strategyRoot: root ?? zeroRoot,
+          strategyRoot: root ?? ZERO_DATA_ROOT,
         });
       }
       return fail("NOT_READY: vault balance or strategy missing");

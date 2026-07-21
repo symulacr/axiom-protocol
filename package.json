@@ -41,8 +41,7 @@
       "prettier --write"
     ],
     "*.sol": [
-      "solhint",
-      "prettier --write"
+      "solhint"
     ],
     "*.md": [
       "markdownlint-cli2 --fix",

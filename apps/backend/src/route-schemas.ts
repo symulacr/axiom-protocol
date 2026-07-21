@@ -1,5 +1,24 @@
 import { z } from "zod";
+<<<<<<< Updated upstream
 import { hexViem, addressViem } from "@axiom/config/types/hex";
+=======
+import { hexViem, addressViem } from "@axiom/config/types/schemas.js";
+
+export const chatCompletionsSchema = z.object({
+  model: z.string().min(1),
+  messages: z.array(z.object({ role: z.enum(["user", "assistant", "system"]), content: z.string() })).min(1),
+  max_tokens: z.number().int().positive().optional(),
+  temperature: z.number().optional(),
+  stream: z.boolean().optional(),
+});
+
+export const mintSchema = z.object({
+  agentNft: addressViem,
+  encryptedStrategyUri: hexViem,
+  sealedKey: hexViem,
+  owner: addressViem,
+});
+>>>>>>> Stashed changes
 
 export const accessProofSchema = z.object({
   dataHash: hexViem,
