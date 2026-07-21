@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import {Script, console2} from "forge-std/Script.sol";
 import {AxiomTeeVerifier} from "../src/verifiers/AxiomTeeVerifier.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 /// @title RedeployTeeVerifier.s.sol — Redeploy AxiomTeeVerifier on Galileo
 /// @notice Pre-fix verifier lacked the validUntil gate. Re-deploys from current source
@@ -35,7 +36,12 @@ contract RedeployTeeVerifier is Script {
         console2.log("    maxProofAgeSeconds  =", MAX_PROOF_AGE_SECONDS);
 
         vm.startBroadcast(operatorKey);
-        AxiomTeeVerifier verifier = new AxiomTeeVerifier(operatorAddr, teeSigner, MAX_PROOF_AGE_SECONDS);
+        AxiomTeeVerifier verifierImpl = new AxiomTeeVerifier();
+        ERC1967Proxy verifierProxy = new ERC1967Proxy(
+            address(verifierImpl),
+            abi.encodeWithSelector(verifierImpl.initialize.selector, operatorAddr, teeSigner, MAX_PROOF_AGE_SECONDS)
+        );
+        AxiomTeeVerifier verifier = AxiomTeeVerifier(address(verifierProxy));
         vm.stopBroadcast();
         console2.log("[RedeployTeeVerifier] AxiomTeeVerifier deployed at:", address(verifier));
 
