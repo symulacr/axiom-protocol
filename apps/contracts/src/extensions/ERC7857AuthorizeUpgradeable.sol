@@ -108,7 +108,7 @@ abstract contract ERC7857AuthorizeUpgradeable is IERC7857Authorize, ERC7857Upgra
             revert ERC7857NotAuthorized();
         }
 
-        emit AuthorizationRevoked(tokenId, msg.sender, user);
+        emit AuthorizationRevoked(msg.sender, user, tokenId);
     }
 
     function supportsInterface(

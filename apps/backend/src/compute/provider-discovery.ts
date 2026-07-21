@@ -10,6 +10,8 @@ const log = createLogger("provider-discovery");
 export interface ServiceInfo {
   provider: string;
   model: string;
+  uptime?: number;
+  latency?: number;
 }
 
 export interface SelectProviderOptions {
@@ -54,11 +56,12 @@ export async function discoverProviders(
 
   const promise = (async (): Promise<ServiceInfo[]> => {
     const broker = await getReadOnlyBroker(rpcUrl, cid);
-    const services = await broker.listService();
+    const services = await broker.listServiceWithDetail();
     const mapped: ServiceInfo[] = services.map(
-      (s: { provider?: string; model?: string }) => ({
+      (s: { provider?: string; model?: string; health?: { uptime: number; latency: number } }) => ({
         provider: s.provider ?? "",
         model: s.model ?? "unknown",
+        ...(s.health ? { uptime: s.health.uptime, latency: s.health.latency } : {}),
       }),
     );
     _cache.set(cid, { providers: mapped, timestamp: Date.now() });

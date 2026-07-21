@@ -74,8 +74,12 @@ struct TransferValidityProofOutput {
 interface IERC7857DataVerifier {
     /// @notice Verify a batch of transfer validity proofs
     /// @param _proofs Array of proofs (one per data item in the token)
+    /// @param _to The intended recipient address
+    /// @param _nft The NFT contract address
     /// @return outputs Array of proof outputs (one per proof)
     function verifyTransferValidity(
-        TransferValidityProof[] calldata _proofs
+        TransferValidityProof[] calldata _proofs,
+        address _to,
+        address _nft
     ) external returns (TransferValidityProofOutput[] memory outputs);
 }

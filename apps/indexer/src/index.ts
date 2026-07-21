@@ -46,6 +46,8 @@ function banner(cid: number, pollWindow: bigint) {
   );
 }
 
+// TODO: Consider replacing with @0gfoundation/0g-da-ts-sdk DaClient.upload()
+// to eliminate custom batch timer, add availability proofs, and reduce ~96 LOC.
 const eventBuffer: AxiomEvent[] = [];
 const BATCH_INTERVAL = env.STORAGE_BATCH_INTERVAL_MS;
 const BATCH_MAX = env.STORAGE_BATCH_MAX_EVENTS;

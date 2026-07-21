@@ -133,6 +133,24 @@ export function buildSigner(opts: RouterClientOptions): Wallet | undefined {
     : opts.signer;
 }
 
+export async function fundProviderAccount(
+  providerAddress: string,
+  minBalance: number = 0,
+): Promise<void> {
+  const signer = buildSigner({});
+  if (!signer) return;
+  const broker = await getBroker(signer);
+  const ledger = await broker.ledger.getLedger().catch(() => null);
+  if (!ledger) {
+    log.info("No ledger found, funding provider account", { providerAddress });
+    await broker.ledger.depositFund(minBalance > 0 ? minBalance : 1_000_000);
+  }
+  await broker.inference.startAutoFunding(providerAddress, {
+    bufferMultiplier: 3,
+  });
+  log.info("Auto-funding started for provider", { providerAddress });
+}
+
 export async function createRouterClient(
   model?: string,
   opts: RouterClientOptions = {},
@@ -159,12 +177,25 @@ export async function createRouterClient(
   const signer = buildSigner(opts);
   if (signer) {
     const broker = await getBroker(signer);
+    // Check ledger has funds before attempting provider session
+    const ledgerResp = await broker.ledger.getLedger().catch(() => null);
+    const balance: bigint | null = ledgerResp && typeof ledgerResp === "object" && "balance" in ledgerResp
+      ? (ledgerResp as { balance: bigint }).balance
+      : null;
+    if (balance !== null && balance < 100_000n) {
+      log.warn("Ledger balance low", { balance });
+    }
     const provider =
       process.env.AXIOM_COMPUTE_PROVIDER ??
       "0xa48f01287233509FD694a22Bf840225062E67836";
-    await broker.inference.acknowledgeProviderSigner(provider).catch((e) => {
-      log.warn("provider acknowledge skipped", { provider, error: String(e) });
-    });
+    await Promise.all([
+      broker.inference.acknowledgeProviderSigner(provider).catch((e) => {
+        log.warn("provider acknowledge skipped", { provider, error: String(e) });
+      }),
+      fundProviderAccount(provider).catch((e) => {
+        log.warn("auto-funding skipped", { provider, error: String(e) });
+      }),
+    ]);
     const { Authorization } = await broker.inference.getRequestHeaders(provider);
     log.info("Using wallet-signed compute session", { provider, model });
     return createSignedSessionClient(getComputeBaseUrl(), Authorization) as unknown as OpenAI;
