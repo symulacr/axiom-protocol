@@ -185,6 +185,8 @@ contract AxiomTeeVerifier is BaseVerifier, Ownable {
         uint256 nowTs = block.timestamp;
         outputs = new TransferValidityProofOutput[](proofs.length);
 
+        bytes32 domainSep = _domainSeparator();
+
         for (uint256 i = 0; i < proofs.length; i++) {
             TransferValidityProof calldata p = proofs[i];
 
@@ -217,7 +219,7 @@ contract AxiomTeeVerifier is BaseVerifier, Ownable {
             bytes32 ownershipMessage = keccak256(
                 abi.encodePacked(
                     "\x19\x01",
-                    _domainSeparator(),
+                    domainSep,
                     keccak256(
                         abi.encode(
                             OWNERSHIP_PROOF_TYPEHASH,
@@ -241,7 +243,7 @@ contract AxiomTeeVerifier is BaseVerifier, Ownable {
             bytes32 accessMessage = keccak256(
                 abi.encodePacked(
                     "\x19\x01",
-                    _domainSeparator(),
+                    domainSep,
                     keccak256(
                         abi.encode(
                             ACCESS_PROOF_TYPEHASH,
