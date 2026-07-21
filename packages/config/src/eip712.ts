@@ -125,8 +125,8 @@ export interface OwnershipProofResult {
 }
 
 export interface OwnershipProofResultWithMeta extends OwnershipProofResult {
-  accessProofNonce?: number;
-  ownershipProofNonce?: number;
+  accessProofNonce?: Hex;
+  ownershipProofNonce?: Hex;
   signer?: Hex;
 }
 
@@ -140,7 +140,7 @@ export function ownershipStructHash(input: OwnershipProofInput): Hex {
         "bytes32",
         "address",
         "address",
-        "bytes",
+        "bytes32",
         "uint256",
       ],
       [
@@ -150,7 +150,7 @@ export function ownershipStructHash(input: OwnershipProofInput): Hex {
         keccak256(input.targetPubkey),
         input.to,
         input.nft,
-        input.nonce,
+        keccak256(input.nonce),
         input.validUntil,
       ],
     ),
@@ -166,7 +166,7 @@ export function accessStructHash(input: AccessProofInput): Hex {
         "bytes32",
         "address",
         "address",
-        "bytes",
+        "bytes32",
         "uint256",
       ],
       [
@@ -175,7 +175,7 @@ export function accessStructHash(input: AccessProofInput): Hex {
         keccak256(input.targetPubkey),
         input.to,
         input.nft,
-        input.nonce,
+        keccak256(input.nonce),
         input.validUntil,
       ],
     ),

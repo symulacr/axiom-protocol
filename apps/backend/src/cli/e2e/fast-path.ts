@@ -1,11 +1,10 @@
 import { fetchJson } from "../../utils/fetch-json.js";
-import { resolveModel } from "../../compute/router.js";
 
 export async function resolveE2eComputeModel(
   backendUrl: string,
   explicit?: string,
 ): Promise<string> {
-  if (explicit) return resolveModel(explicit);
+  if (explicit) return explicit;
   const { data, ok } = await fetchJson<{
     services?: Array<{ model: string }>;
   }>(`${backendUrl}/v1/compute/providers`);
@@ -20,9 +19,9 @@ export async function resolveE2eComputeModel(
     const hit = services.find(
       (s) => s.model.toLowerCase() === id.toLowerCase(),
     );
-    if (hit) return resolveModel(hit.model);
+    if (hit) return hit.model;
   }
-  return resolveModel(process.env.AXIOM_COMPUTE_MODEL ?? "qwen2.5-omni-7b");
+  return process.env.AXIOM_COMPUTE_MODEL ?? "qwen2.5-omni-7b";
 }
 
 export function e2eFastEnabled(): boolean {

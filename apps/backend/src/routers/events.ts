@@ -10,9 +10,9 @@ import type { ServerConfig } from "../server.js";
 
 const MAX_EVENT_QUERY_LIMIT = 500 as const;
 const DEFAULT_EVENT_LIMIT = MAX_EVENT_QUERY_LIMIT;
-export const DEFAULT_EVENT_SOURCES = ["indexer"] as const;
+const DEFAULT_EVENT_SOURCES = ["indexer"] as const;
 
-export function resolveEventSources(extra?: string): Set<string> {
+function resolveEventSources(extra?: string): Set<string> {
   const allowed = new Set<string>(DEFAULT_EVENT_SOURCES);
   const raw = extra ?? process.env.AXIOM_EVENT_SOURCES ?? "";
   for (const part of raw.split(",")) {
@@ -22,7 +22,7 @@ export function resolveEventSources(extra?: string): Set<string> {
   return allowed;
 }
 
-export function isAuthorizedKey(
+function isAuthorizedKey(
   provided: string | undefined,
   expected: string | undefined,
 ): boolean {
@@ -32,7 +32,7 @@ export function isAuthorizedKey(
   return p.length === e.length && timingSafeEqual(p, e);
 }
 
-export type EventPostAuth =
+type EventPostAuth =
   | { ok: true }
   | { ok: false; status: number; code: string; message: string };
 

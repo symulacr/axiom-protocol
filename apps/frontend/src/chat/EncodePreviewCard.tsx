@@ -12,7 +12,7 @@ export type EncodePreview = {
   txHash?: string;
 };
 
-export function parseEncodePreview(content: string | null): EncodePreview | null {
+function parseEncodePreview(content: string | null): EncodePreview | null {
   if (!content) return null;
   try {
     const obj = JSON.parse(content) as EncodePreview & { error?: string };

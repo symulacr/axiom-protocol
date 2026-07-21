@@ -9,4 +9,4 @@ export const BRAND = {
   emptyAgents: "/brand/empty-agents-960.jpg",
 } as const;
 
-export type BrandAssetKey = keyof typeof BRAND;
+type BrandAssetKey = keyof typeof BRAND;

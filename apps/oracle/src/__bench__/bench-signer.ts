@@ -1,6 +1,7 @@
 // Bench: TeeSigner signing + message hash throughput
 // Run: cd apps/oracle && node ../../node_modules/.pnpm/tsx@4.22.4/node_modules/tsx/dist/cli.mjs src/__bench__/bench-signer.ts
 import { TeeSigner, ownershipMessageHash } from '../signer.ts';
+import { toBeHex } from "ethers";
 import { performance } from 'node:perf_hooks';
 
 const TEST_PK = '0x' + '11'.repeat(32);
@@ -10,7 +11,7 @@ const input = {
   targetPubkey: ('0x' + 'cc'.repeat(64)) as `0x${string}`,
   to: '0x0000000000000000000000000000000000000001' as `0x${string}`,
   nft: '0x0000000000000000000000000000000000000002' as `0x${string}`,
-  nonce: 42n,
+  nonce: toBeHex(42n) as `0x${string}`,
   validUntil: 99999999999n,
 };
 

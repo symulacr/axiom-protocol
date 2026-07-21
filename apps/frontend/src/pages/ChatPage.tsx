@@ -41,12 +41,12 @@ import { waitingMessageForElapsed } from "../chat/waitingMessages.js";
 import {
   TOOLS,
   TOOL_LABELS,
-  CHAT_TOOL_CLASS_LABELS,
   toolClass,
   toolHint,
   useToolHandlers,
   type ToolContext,
 } from "../chat/tools.js";
+import { CHAT_TOOL_CLASS_LABELS } from "@axiom/config/chat-tools";
 import { CHAT_MODEL } from "../config/env.js";
 import { aristotle } from "../config/wagmi.js";
 import { AXIOM_ASSISTANT_NAME } from "@axiom/config";
@@ -227,7 +227,7 @@ function loadStoredMessages(): Message[] {
 
 function renderMarkdown(src: string | null): string {
   return DOMPurify.sanitize(
-    marked.parse(src ?? "", { gfm: true, breaks: true }) as string,
+    marked.parse(src ?? "", { async: false, gfm: true, breaks: true }) as string,
     { FORBID_TAGS: ["style", "iframe"] },
   );
 }

@@ -1546,51 +1546,6 @@ html[data-theme="light"] .landing-root {
   }
 }
 
-/* Scroll reveal — opt-in only; default visible (no opacity:0 trap) */
-[data-reveal][data-reveal-anim] {
-  opacity: 0;
-  transform: translateY(12px);
-  transition:
-    opacity var(--dur-landing) var(--ease-out),
-    transform var(--dur-landing) var(--ease-out);
-}
-[data-reveal][data-reveal-anim][data-revealed="true"] {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-/* Stagger children — set --stagger-index; only when parent revealed */
-[data-stagger][data-reveal-anim] > * {
-  opacity: 0;
-  transform: translateY(10px);
-  transition:
-    opacity var(--dur-msg-in) var(--ease-out),
-    transform var(--dur-msg-in) var(--ease-out);
-  transition-delay: calc(min(var(--stagger-index, 0), 8) * var(--dur-stagger));
-}
-[data-stagger][data-reveal-anim][data-revealed="true"] > * {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-/* SVG clip-path reveal on scroll */
-[data-svg-reveal] {
-  clip-path: inset(0 0 100% 0);
-  transition: clip-path 600ms var(--ease-in-out);
-}
-[data-svg-reveal][data-revealed="true"] {
-  clip-path: inset(0 0 0 0);
-}
-
-/* SVG draw-on — stroke-dashoffset animation */
-[data-svg-draw] {
-  stroke-dasharray: var(--dash, 1000);
-  stroke-dashoffset: var(--dash, 1000);
-  transition: stroke-dashoffset 1.2s var(--ease-in-out);
-}
-[data-svg-draw][data-revealed="true"] {
-  stroke-dashoffset: 0;
-}
 
 /* Phosphor pulse — LCD "live" signal (decorative) */
 .phosphor-pulse {

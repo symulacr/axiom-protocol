@@ -13,18 +13,9 @@ import {
 } from "@axiom/config/eip712";
 
 export {
-  pubKeyToAddress,
-  deriveUncompressedPubkeyFromHex,
-} from "@axiom/config/crypto/keys";
-export {
-  DEFAULT_EIP712_DOMAIN,
-  domainSeparator,
-  ownershipStructHash,
-  accessStructHash,
   type Eip712Domain,
   type OwnershipProofInput,
   type AccessProofInput,
-  type OwnershipProofResult,
 } from "@axiom/config/eip712";
 
 export function ownershipMessageHash(
