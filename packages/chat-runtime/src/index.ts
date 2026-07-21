@@ -1,20 +1,9 @@
 export { runTool } from "./run-tool.js";
 export { formatToolResult } from "./format.js";
 export { groupParallelTools } from "./parallel.js";
-export {
-  applyToolResult,
-  createSession,
-  buildSessionContext,
-  toChatApiMessages,
-  fitToContext,
-  compactHistory,
-  MAX_TOOL_LOOPS,
-  summarizeConversation,
-  evaluateContinue,
-  shouldAutoContinue,
-} from "./session.js";
+export { applyToolResult, createSession, fitToContext, compactHistory, MAX_TOOL_LOOPS, summarizeConversation, evaluateContinue, shouldAutoContinue } from "./session.js";
 export type { ContinueSignal } from "./session.js";
-export { runAskTool, buildAskUserPrompt, isAskUserResult } from "./executors/ask.js";
+export { runAskTool, isAskUserResult } from "./executors/ask.js";
 export type { AskUserPrompt } from "./executors/ask.js";
 export type { ChatApiMessage } from "./session.js";
 export { buildSystemPrompt } from "./prompt.js";
