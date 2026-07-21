@@ -200,8 +200,8 @@ async function main() {
     );
   }
 
-  const daEnabled =
-    env.INDEXER_DA_ENABLED === "1" || env.INDEXER_DA_ENABLED === "true";
+  const storageEnabled =
+    env.INDEXER_STORAGE_ENABLED === "1" || env.INDEXER_STORAGE_ENABLED === "true";
   const backendUrl = env.AXIOM_BACKEND_URL;
   const ogStorageRpc = env.AXIOM_STORAGE_RPC ?? "";
   const DEPLOYER_PK = env.DEPLOYER_PK;
@@ -219,7 +219,7 @@ async function main() {
   _storageRpcUrl = url;
 
   const daConfig: EventSinkConfig =
-    daEnabled && storageIndexer && storageSigner
+    storageEnabled && storageIndexer && storageSigner
       ? { da: "storage", storageIndexer, storageSigner }
       : { da: "disabled" };
 
