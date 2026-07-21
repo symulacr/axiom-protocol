@@ -217,13 +217,15 @@ export class Watcher {
         err: err instanceof Error ? err.message : String(err),
       });
       if (this.consecutiveFailures >= this.maxConsecutiveFailures) {
+        const cooldown = Math.min(this.intervalMs * 10, 300_000);
         this.logger({
-          level: "fatal",
-          msg: "max consecutive failures reached — stopping",
+          level: "warn",
+          msg: "max consecutive failures reached — cooling down before retry",
+          cooldownMs: cooldown,
         });
-        this.running = false;
-        await wait(this.intervalMs);
-        return;
+        this.consecutiveFailures = 5; // partial reset so backoff is shorter next time
+        await wait(cooldown);
+        return; // continue poll loop
       }
       const backoff = Math.min(
         this.intervalMs * Math.pow(2, this.consecutiveFailures),
