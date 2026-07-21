@@ -17,7 +17,6 @@ import {ERC7857CloneableUpgradeable} from "./extensions/ERC7857CloneableUpgradea
 import {ERC7857AuthorizeUpgradeable} from "./extensions/ERC7857AuthorizeUpgradeable.sol";
 import {ERC7857IDataStorageUpgradeable} from "./extensions/ERC7857IDataStorageUpgradeable.sol";
 import {IntelligentData} from "./interfaces/IERC7857Metadata.sol";
-import {AxiomMetadataJson} from "./extensions/AxiomMetadataJson.sol";
 
 /// @notice Concrete ERC-7857 iNFT contract for the Axiom Protocol
 /// @dev Composes the canonical 3 ERC-7857 extensions (Cloneable + Authorize + IDataStorage)
@@ -56,7 +55,7 @@ contract AxiomAgentNFT is
         uint256[48] __gap;
     }
 
-    using AxiomMetadataJson for uint256;
+    // using AxiomMetadataJson for uint256; -- removed, library was never called
 
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");

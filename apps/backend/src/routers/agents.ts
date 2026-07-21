@@ -149,27 +149,29 @@ export function registerAgentRoutes(
           }
         }
         const seen = new Set<bigint>();
-        const tokens: {
-          tokenId: string;
-          owner: string;
-          dataDescription?: string;
-        }[] = [];
+        const uniqueTokenIds: bigint[] = [];
         for (const log of transferLogs) {
           const rawTid = log.topics[3];
           if (!rawTid) continue;
           const tokenId = BigInt(rawTid);
           if (seen.has(tokenId)) continue;
           seen.add(tokenId);
-          const ownerHex = await provider.call({
-            to: nftAddr,
-            data: iface.encodeFunctionData("ownerOf", [tokenId]),
-          });
-          const currentOwner = ethers.getAddress("0x" + ownerHex.slice(26));
-          if (currentOwner.toLowerCase() === owner) {
-            tokens.push({ tokenId: tokenId.toString(), owner });
-          }
-          if (tokens.length >= MAX_AGENT_ENUMERATION) break;
+          uniqueTokenIds.push(tokenId);
         }
+        const ownerResults = await Promise.all(
+          uniqueTokenIds.slice(0, MAX_AGENT_ENUMERATION).map(async (tokenId) => {
+            const ownerHex = await provider.call({
+              to: nftAddr,
+              data: iface.encodeFunctionData("ownerOf", [tokenId]),
+            });
+            const currentOwner = ethers.getAddress("0x" + ownerHex.slice(26));
+            return currentOwner.toLowerCase() === owner
+              ? { tokenId: tokenId.toString(), owner }
+              : null;
+          }),
+        );
+        const tokens: { tokenId: string; owner: string; dataDescription?: string }[] =
+          ownerResults.filter((t): t is NonNullable<typeof t> => t !== null);
         const metadataResults = await Promise.allSettled(
           tokens.map(async (t) => {
             try {
