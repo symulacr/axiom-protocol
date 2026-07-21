@@ -7,6 +7,7 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/Pau
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {ERC721Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
+import {IERC721Metadata} from "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 
 // UUPS upgradeability is mandated by security report F-02.
 // OZ ERC1967 proxies must inherit UUPSUpgradeable and override _authorizeUpgrade with an
@@ -17,6 +18,8 @@ import {ERC7857CloneableUpgradeable} from "./extensions/ERC7857CloneableUpgradea
 import {ERC7857AuthorizeUpgradeable} from "./extensions/ERC7857AuthorizeUpgradeable.sol";
 import {ERC7857IDataStorageUpgradeable} from "./extensions/ERC7857IDataStorageUpgradeable.sol";
 import {IntelligentData} from "./interfaces/IERC7857Metadata.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import {AxiomMetadataJson} from "./extensions/AxiomMetadataJson.sol";
 
 /// @notice Concrete ERC-7857 iNFT contract for the Axiom Protocol
 /// @dev Composes the canonical 3 ERC-7857 extensions (Cloneable + Authorize + IDataStorage)
@@ -55,7 +58,8 @@ contract AxiomAgentNFT is
         uint256[48] __gap;
     }
 
-    // using AxiomMetadataJson for uint256; -- removed, library was never called
+    using AxiomMetadataJson for uint256;
+    using Strings for uint256;
 
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
@@ -315,5 +319,10 @@ contract AxiomAgentNFT is
         uint256 balance = address(this).balance;
         (bool ok,) = to.call{value: balance}("");
         require(ok, "Withdraw failed");
+    }
+
+    function tokenURI(uint256 tokenId) public view virtual override(ERC721Upgradeable, IERC721Metadata) returns (string memory) {
+        _requireOwned(tokenId);
+        return tokenId.buildMetadataJsonDataUri(_intelligentDatasOf(tokenId), name(), symbol());
     }
 }

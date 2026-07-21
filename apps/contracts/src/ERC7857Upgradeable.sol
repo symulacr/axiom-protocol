@@ -114,13 +114,14 @@ abstract contract ERC7857Upgradeable is IERC7857, ERC721Upgradeable {
         }
 
         sealedKeys = new bytes[](proofOutput.length);
+        address accessAssistant = $.accessAssistants[to];
 
         for (uint256 i = 0; i < proofOutput.length; i++) {
             if (proofOutput[i].dataHash != datas[i].dataHash) {
                 revert ERC7857DataHashMismatch();
             }
 
-            if (proofOutput[i].accessAssistant != $.accessAssistants[to] && proofOutput[i].accessAssistant != to) {
+            if (proofOutput[i].accessAssistant != accessAssistant && proofOutput[i].accessAssistant != to) {
                 revert ERC7857AccessAssistantMismatch();
             }
 
