@@ -54,3 +54,11 @@ export function resolveBlockExplorerUrl(chainId?: number): string {
   const network = chainId ? pickOGNetwork(chainId) : null;
   return network?.blockExplorer ?? "https://chainscan.0g.ai";
 }
+
+import { defineChain } from "viem";
+export const zeroGMainnet = defineChain({
+  id: ARISTOTLE_CHAIN_ID,
+  name: "0G Aristotle",
+  nativeCurrency: { name: "A0GI", symbol: "A0GI", decimals: 18 },
+  rpcUrls: { default: { http: [resolveRpcUrl()] } },
+});

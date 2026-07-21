@@ -1,13 +1,13 @@
 import { useCallback, useState, type ReactElement } from "react";
 import { useChainId, useWriteContract } from "wagmi";
-import { isAddress, parseAbi } from "viem";
+import { isAddress } from "viem";
 import { toast } from "sonner";
 import { AGENT_NFT_ABI } from "@axiom/config/abis";
 import { getAxiomAgentNftAddress } from "../abi/addresses.js";
 import { humanizeError } from "../utils/format.js";
 import { COLORS, Card, Button, Input, SectionTitle, Alert } from "./ui.js";
 
-const agentAbi = parseAbi(AGENT_NFT_ABI);
+const agentAbi = AGENT_NFT_ABI;
 
 export function DelegatePanel({ tokenId }: { tokenId: bigint }): ReactElement {
   const chainId = useChainId();

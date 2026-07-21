@@ -23,7 +23,7 @@ const erc20Abi = parseAbi([
 
 import { PAYMENT_PROCESSOR_ABI } from "@axiom/config/abis";
 
-const paymentProcessorAbi = parseAbi(PAYMENT_PROCESSOR_ABI);
+const paymentProcessorAbi = PAYMENT_PROCESSOR_ABI;
 import { getAxiomPaymentProcessorAddress } from "../abi/addresses.js";
 import {
   PLACEHOLDER,

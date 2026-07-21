@@ -1,13 +1,13 @@
 import { useCallback, useState } from "react";
 import { useChainId, useWriteContract } from "wagmi";
-import { parseAbi, parseEther } from "viem";
+import { parseEther } from "viem";
 import { toast } from "sonner";
 import { getAxiomStrategyVaultAddress } from "../abi/addresses.js";
-import { axiomStrategyVaultAbi } from "../abi/axiomStrategyVault.js";
+import { VAULT_ABI } from "@axiom/config/abis";
 import { useVaultData } from "./useVaultData.js";
 import { humanizeError } from "../utils/format.js";
 
-const abi = parseAbi(axiomStrategyVaultAbi);
+const abi = VAULT_ABI;
 
 export function useDeposit(tokenId: bigint, onSuccess?: () => void) {
   const chainId = useChainId();
