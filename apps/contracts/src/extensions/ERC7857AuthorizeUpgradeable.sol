@@ -17,6 +17,7 @@ import {IERC7857Authorize} from "../interfaces/IERC7857Authorize.sol";
 /// @notice Extension that lets the owner grant usage rights to other addresses (max 100, cleared on transfer)
 /// @dev Adapted from the 0G Agentic ID reference (MIT)
 abstract contract ERC7857AuthorizeUpgradeable is IERC7857Authorize, ERC7857Upgradeable {
+    error UnauthorizedUsage(address caller);
     using EnumerableSet for EnumerableSet.AddressSet;
 
     uint256 public constant MAX_AUTHORIZED_USERS = 100;
@@ -86,7 +87,7 @@ abstract contract ERC7857AuthorizeUpgradeable is IERC7857Authorize, ERC7857Upgra
         }
 
         if (_ownerOf(tokenId) != msg.sender) {
-            revert ERC721IncorrectOwner(msg.sender, tokenId, _ownerOf(tokenId));
+            revert UnauthorizedUsage(msg.sender);
         }
 
         _authorizeUsage(tokenId, to);

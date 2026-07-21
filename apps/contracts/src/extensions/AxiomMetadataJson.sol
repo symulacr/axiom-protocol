@@ -163,45 +163,42 @@ library AxiomMetadataJson {
         return out;
     }
 
-    /// @dev Escape the three characters that must be escaped in a JSON string
-    ///      per RFC 8259 §7: backslash, double-quote. Control characters
-    ///      (< 0x20) are dropped (they have no place in a marketplace
-    ///      render and OpenSea's policy is to skip them). Non-ASCII bytes
-    ///      are passed through verbatim — Solidity 0.8.20 treats `string`
-    ///      as raw bytes and OpenSea's JSON parser is UTF-8.
+    /// @dev Escape characters that must be escaped in a JSON string per
+    ///      RFC 8259 §7: backslash, double-quote, solidus, and control
+    ///      characters (< 0x20). Control characters are hex-escaped as
+    ///      `\uXXXX`. Non-ASCII bytes are passed through verbatim —
+    ///      Solidity 0.8.20 treats `string` as raw bytes and OpenSea's
+    ///      JSON parser is UTF-8.
     function _escapeJson(
         string memory s
     ) private pure returns (string memory) {
         bytes memory b = bytes(s);
-        bytes memory buf = new bytes(0);
-        for (uint256 i = 0; i < b.length; i++) {
-            bytes1 c = b[i];
-            if (c == 0x22) {
-                buf = _appendBytes(buf, bytes('\\"'));
-            } else if (c == 0x5C) {
-                buf = _appendBytes(buf, bytes("\\\\"));
-            } else if (uint8(c) < 0x20) {
-                // Drop control chars; they cannot appear in valid marketplace JSON.
-                continue;
-            } else {
-                buf = _appendBytes(buf, abi.encodePacked(c));
+        string memory out;
+        unchecked {
+            for (uint256 i = 0; i < b.length; i++) {
+                bytes1 char = b[i];
+                if (char == '"') { out = string.concat(out, '\\"'); }
+                else if (char == '\\') { out = string.concat(out, '\\\\'); }
+                else if (char == '/') { out = string.concat(out, '\\/'); }
+                else if (char == '\x08') { out = string.concat(out, '\\b'); }
+                else if (char == '\x0c') { out = string.concat(out, '\\f'); }
+                else if (char == '\n') { out = string.concat(out, '\\n'); }
+                else if (char == '\r') { out = string.concat(out, '\\r'); }
+                else if (char == '\t') { out = string.concat(out, '\\t'); }
+                else if (char < 0x20) {
+                    out = string.concat(out, '\\u', string(abi.encodePacked(_hexDigit(uint8(char) >> 4))), string(abi.encodePacked(_hexDigit(uint8(char) & 0x0F))));
+                } else {
+                    out = string.concat(out, string(abi.encodePacked(char)));
+                }
             }
         }
-        return string(buf);
+        return out;
     }
 
-    function _appendBytes(
-        bytes memory buf,
-        bytes memory tail
-    ) private pure returns (bytes memory) {
-        bytes memory res = new bytes(buf.length + tail.length);
-        for (uint256 i = 0; i < buf.length; i++) {
-            res[i] = buf[i];
-        }
-        for (uint256 i = 0; i < tail.length; i++) {
-            res[buf.length + i] = tail[i];
-        }
-        return res;
+    /// @dev Convert a 4-bit value to its lowercase hex character (0–f).
+    function _hexDigit(uint8 x) private pure returns (bytes1) {
+        if (x < 10) return bytes1(uint8(48 + x));
+        return bytes1(uint8(87 + x));
     }
 
     function _u256ToString(
