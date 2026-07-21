@@ -1,4 +1,3 @@
-<<<<<<< Updated upstream
 import * as Sentry from "@sentry/node";
 
 import { ethers, Wallet } from "ethers";
@@ -8,12 +7,6 @@ import { startServer, type ServerConfig } from "./server.js";
 import { createLogger } from "./utils/logger.js";
 import { loadEnv } from "@axiom/config/env";
 import { getSharedProvider } from "./provider.js";
-=======
-import { Wallet, JsonRpcProvider } from "ethers";
-import { getAddress } from "viem";
-import { startServer } from "./server.js";
-import { loadEnv } from "@axiom/config/env";
->>>>>>> Stashed changes
 import { backendEnvSchema } from "./env-schema.js";
 import { ARISTOTLE_CHAIN_ID } from "@axiom/config/networks";
 import { getEventStore } from "./events/store.js";
