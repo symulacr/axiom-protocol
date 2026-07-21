@@ -1,10 +1,6 @@
-import {
-  createSession,
-  humanAbi,
-  runTool,
-  type ToolChain,
-  type ToolRuntime,
-} from "@axiom/chat-runtime";
+import { createSession, runTool } from "@axiom/chat-runtime";
+import type { ToolChain, ToolRuntime } from "@axiom/chat-runtime";
+import { parseAbi } from "viem";
 import type { Abi } from "viem";
 import { API_KEY, BACKEND_URL, ORACLE_URL } from "../config/env.js";
 import {
@@ -24,7 +20,7 @@ export async function runBrowserTool(
 
 function toViemAbi(abi: readonly unknown[] | Abi): Abi {
   if (abi.length > 0 && typeof abi[0] === "string") {
-    return humanAbi(abi as readonly string[]);
+    return parseAbi(abi as readonly string[]);
   }
   return abi as Abi;
 }

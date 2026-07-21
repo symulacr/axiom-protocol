@@ -30,7 +30,7 @@ import {
   readVaultStrategy,
   vaultAbiFor,
 } from "./vault-compat.js";
-import { TRANSFER_TOPIC } from "../../utils/constants.js";
+import { TRANSFER_TOPIC } from "@axiom/config";
 import type { fetchJson as fetchJsonFn } from "../../utils/fetch-json.js";
 import { postStep as postStepFn, stepResults } from "./http.js";
 import {

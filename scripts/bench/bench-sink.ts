@@ -1,7 +1,7 @@
 // Bench: Indexer sink throughput
 // Run: pnpm exec tsx scripts/bench/bench-sink.ts
 import { postEvent, type HttpEventSinkOptions, type Fetcher } from '../../apps/indexer/src/sink.ts';
-import { bigintReplacer } from '@axiom/config/types/bigint';
+import { bigintReplacer } from "@axiom/config";
 import { performance } from 'node:perf_hooks';
 
 const sampleEvent = {

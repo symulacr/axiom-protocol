@@ -4,7 +4,7 @@ import {
   AXIOM_ASSISTANT_NAME,
   DEFAULT_CHAT_MODEL,
   resolveChatModel,
-} from "./models.js";
+} from "./chat-tools.js";
 
 describe("resolveChatModel", () => {
   it("returns the override when provided", () => {

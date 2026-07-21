@@ -49,7 +49,7 @@ import {
 } from "../chat/tools.js";
 import { CHAT_MODEL } from "../config/env.js";
 import { aristotle } from "../config/wagmi.js";
-import { AXIOM_ASSISTANT_NAME } from "@axiom/config/models";
+import { AXIOM_ASSISTANT_NAME } from "@axiom/config";
 import {
   COLORS,
   Button,

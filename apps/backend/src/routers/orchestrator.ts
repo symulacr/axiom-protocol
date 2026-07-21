@@ -17,7 +17,7 @@ import { HTTP, resolveChatModel } from "@axiom/config";
 import { TypedContract } from "@axiom/config/types/contract";
 import { getSharedProvider } from "../provider.js";
 import { keccak256, solidityPacked } from "ethers";
-import { ZERO_DATA_ROOT } from "../utils/constants.js";
+import { ZERO_DATA_ROOT } from "@axiom/config";
 
 import { LRUCache } from "lru-cache";
 

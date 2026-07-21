@@ -1,4 +1,4 @@
-import { resolveChatModel } from "@axiom/config/models";
+import { resolveChatModel } from "@axiom/config";
 
 // Default to SAME-ORIGIN proxy paths. The production static servers proxy
 // these to the backend / oracle:

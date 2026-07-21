@@ -46,5 +46,4 @@ export {
   type ChatToolSpec,
 } from "./chat-tools.js";
 export * from "./events.js";
-export * from "./models.js";
 export { TRANSFER_TOPIC, ZERO_DATA_ROOT } from "./constants.js";

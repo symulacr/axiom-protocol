@@ -1,10 +1,10 @@
 import { createLogger } from "../utils/logger.js";
 import { EVENT_NAMES } from "@axiom/config";
-import { DEFAULT_EVENT_LIMIT } from "../utils/constants.js";
 import { extractErrorMessage } from "../utils/response.js";
 import type { StoredEventPayload } from "./payloads.js";
 import { loadBuckets, saveBuckets } from "./persist.js";
 import { acquireEventStoreLock } from "./instance-lock.js";
+const DEFAULT_EVENT_LIMIT = 500 as const;
 
 const log = createLogger("events");
 

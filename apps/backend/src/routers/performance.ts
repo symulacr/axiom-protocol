@@ -6,7 +6,7 @@ import type { EventStore } from "../events/store.js";
 import type { ServerConfig } from "../server.js";
 import { payloadField, payloadNumber } from "../events/payloads.js";
 import { TTLCache } from "../utils/cache.js";
-import { DEFAULT_EVENT_LIMIT } from "../utils/constants.js";
+const DEFAULT_EVENT_LIMIT = 500 as const;
 
 const perfCache = new TTLCache<unknown>(30_000);
 const leaderboardCache = new TTLCache<unknown>(10_000);

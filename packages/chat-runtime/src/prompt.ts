@@ -3,7 +3,7 @@ import {
   CHAT_TOOL_CLASS_LABELS,
   type ChatToolClass,
 } from "@axiom/config/chat-tools";
-import { AXIOM_ASSISTANT_NAME } from "@axiom/config/models";
+import { AXIOM_ASSISTANT_NAME } from "@axiom/config";
 import { buildSessionContext } from "./session.js";
 import type { ChatSessionContext } from "./types.js";
 

@@ -1,7 +1,7 @@
 // Bench: Indexer sink + JSON serialization throughput
 // Run: cd apps/indexer && node ../../node_modules/.pnpm/tsx@4.22.4/node_modules/tsx/dist/cli.mjs src/__bench__/bench-sink.ts
 import { postEvent } from '../sink.ts';
-import { bigintReplacer } from '@axiom/config/types/bigint';
+import { bigintReplacer } from "@axiom/config";
 import { performance } from 'node:perf_hooks';
 
 const sampleEvent = {
