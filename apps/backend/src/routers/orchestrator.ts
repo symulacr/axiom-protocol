@@ -19,7 +19,12 @@ import { getSharedProvider } from "../provider.js";
 import { keccak256, solidityPacked } from "ethers";
 import { ZERO_DATA_ROOT } from "../utils/constants.js";
 
-const modelDataRootCache = new Map<string, `0x${string}`>();
+import { LRUCache } from "lru-cache";
+
+const modelDataRootCache = new LRUCache<string, `0x${string}`>({
+  max: 1000,
+  ttl: 5 * 60 * 1000,
+});
 
 async function resolveModelDataRoot(
   agentNft: `0x${string}`,

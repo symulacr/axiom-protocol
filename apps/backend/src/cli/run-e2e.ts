@@ -1,5 +1,5 @@
 import { Wallet, hexlify } from "ethers";
-import { loadEnv, getEnv, getEnvWithAlias } from "../env.js";
+import { loadEnv, getEnv, getEnvWithAlias } from "@axiom/config/env";
 import { createLogger } from "../utils/logger.js";
 
 const log = createLogger("run-e2e");

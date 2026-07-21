@@ -1,5 +1,5 @@
 import { parseUnits, Wallet } from "ethers";
-import { loadEnv, getEnv, getEnvWithAlias } from "../env.js";
+import { loadEnv, getEnv, getEnvWithAlias } from "@axiom/config/env";
 import { createLogger } from "../utils/logger.js";
 
 const log = createLogger("fund-e2e-usdc");

@@ -1,6 +1,8 @@
 import { Indexer } from "@0gfoundation/0g-storage-ts-sdk";
 import { ethers } from "ethers";
 import { loadEnv } from "./env.js";
+import { join } from "node:path";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { uploadToStorage } from "@axiom/config/storage/0g";
 import { bigintReplacer } from "@axiom/config/types/bigint";
@@ -52,11 +54,15 @@ let _storageIndexer: Indexer | undefined;
 let _storageSigner: ethers.Wallet | undefined;
 let _storageRpcUrl = "";
 
+let _flushLock = false;
+
 let batchTimer: ReturnType<typeof setTimeout> | null = null;
 
 async function flushBuffer(): Promise<void> {
+  if (_flushLock) return;
   if (eventBuffer.length === 0) return;
   if (!_storageIndexer || !_storageSigner) return;
+  _flushLock = true;
   const batch = eventBuffer.splice(0);
   try {
     const payload = new TextEncoder().encode(
@@ -81,6 +87,12 @@ async function flushBuffer(): Promise<void> {
     const MAX_BUFFER_SIZE = 10000;
     while (eventBuffer.length + batch.length > MAX_BUFFER_SIZE && eventBuffer.length > 0) {
       const dropped = eventBuffer.shift();
+      try {
+        const dlqDir = join(".data", "dlq");
+        mkdirSync(dlqDir, { recursive: true });
+        const dlqFile = join(dlqDir, `dropped-${Date.now()}-${Math.random().toString(36).slice(2)}.json`);
+        writeFileSync(dlqFile, JSON.stringify(dropped, bigintReplacer));
+      } catch { /* best-effort */ }
       console.warn(
         `[indexer] event buffer full, dropping oldest event: ${dropped?.kind ?? "unknown"}`,
       );
@@ -94,6 +106,8 @@ async function flushBuffer(): Promise<void> {
         batchSize: batch.length,
       }) + "\n",
     );
+  } finally {
+    _flushLock = false;
   }
 }
 

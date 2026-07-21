@@ -10,13 +10,16 @@ export async function pollOnce(
   const toBlock = fromBlock + window - 1n;
 
   const allLogs: Log[] = [];
+  // Group by contract address for multi-topic batching (4 calls vs 31)
+  const byAddress = new Map<string, string[]>();
   for (const { name, address } of watchList) {
-    const filter = {
-      address,
-      topics: [TOPIC_TABLE[name]],
-      fromBlock,
-      toBlock,
-    };
+    const key = address.toLowerCase();
+    const list = byAddress.get(key);
+    if (list) { list.push(TOPIC_TABLE[name]); }
+    else { byAddress.set(key, [TOPIC_TABLE[name]]); }
+  }
+  for (const [addr, topics] of byAddress) {
+    const filter = { address: addr, topics: [topics], fromBlock, toBlock };
     const logs = await provider.getLogs(filter);
     for (const log of logs) allLogs.push(log);
   }

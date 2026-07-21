@@ -1,4 +1,4 @@
-import { loadEnv } from "../env.js";
+import { loadEnv } from "@axiom/config/env";
 import { provisionE2eWalletsToEnv } from "./e2e/wallet.js";
 
 loadEnv();

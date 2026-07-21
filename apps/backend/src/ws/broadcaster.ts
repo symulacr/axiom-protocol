@@ -49,7 +49,11 @@ export function broadcast(topic: string, payload: unknown): void {
     { topic, payload, ts: Date.now() },
     bigintReplacer,
   );
-  for (const c of _clients) {
+  const prefix = topicPrefixOf(topic);
+  const subscribed = _topicIndex.get(prefix);
+  if (!subscribed || subscribed.size === 0) return;
+
+  for (const c of subscribed) {
     if (c.socket.readyState !== c.socket.OPEN) continue;
     if (c.socket.bufferedAmount > 65536) continue;
     try {
