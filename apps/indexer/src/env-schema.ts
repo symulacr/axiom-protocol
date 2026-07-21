@@ -10,8 +10,6 @@ export const indexerEnvSchema = sharedEnvSchema.merge(
     INDEXER_STORAGE_ENABLED: z.string().optional(),
     AXIOM_EVM_RPC: z.string().url(),
     DEPLOYER_PK: hexString.optional(),
-    STORAGE_BATCH_INTERVAL_MS: z.coerce.number().int().positive().default(5000),
-    STORAGE_BATCH_MAX_EVENTS: z.coerce.number().int().positive().default(10),
     INDEXER_HEALTH_PORT: z.coerce.number().int().positive().default(9091),
     PORT: z.coerce.number().int().positive().optional(),
     INDEXER_START_BLOCK: z.coerce.number().int().nonnegative().optional(),

@@ -1,10 +1,7 @@
-import { Indexer } from "@0gfoundation/0g-storage-ts-sdk";
+import { Indexer, MemData } from "@0gfoundation/0g-storage-ts-sdk";
 import { ethers } from "ethers";
 import { loadEnv } from "@axiom/config/env";
-import { join } from "node:path";
-import { mkdirSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { uploadToStorage } from "@axiom/config/storage/0g";
 import { bigintReplacer } from "@axiom/config";
 import { createServer } from "node:http";
 
@@ -46,87 +43,6 @@ function banner(cid: number, pollWindow: bigint) {
   );
 }
 
-// TODO: Consider replacing with @0gfoundation/0g-da-ts-sdk DaClient.upload()
-// to eliminate custom batch timer, add availability proofs, and reduce ~96 LOC.
-const eventBuffer: AxiomEvent[] = [];
-const BATCH_INTERVAL = env.STORAGE_BATCH_INTERVAL_MS;
-const BATCH_MAX = env.STORAGE_BATCH_MAX_EVENTS;
-
-let _storageIndexer: Indexer | undefined;
-let _storageSigner: ethers.Wallet | undefined;
-let _storageRpcUrl = "";
-
-let _flushLock = false;
-
-let batchTimer: ReturnType<typeof setTimeout> | null = null;
-
-async function flushBuffer(): Promise<void> {
-  if (_flushLock) return;
-  if (eventBuffer.length === 0) return;
-  if (!_storageIndexer || !_storageSigner) return;
-  _flushLock = true;
-  const batch = eventBuffer.splice(0);
-  try {
-    const payload = new TextEncoder().encode(
-      JSON.stringify(batch, bigintReplacer),
-    );
-    const result = await uploadToStorage(
-      _storageIndexer,
-      payload,
-      _storageRpcUrl,
-      _storageSigner,
-    );
-    process.stderr.write(
-      JSON.stringify({
-        level: "debug",
-        msg: "batch stored to 0G Storage",
-        rootHash: result.rootHash,
-        batchSize: batch.length,
-        txHash: result.txHash,
-      }) + "\n",
-    );
-  } catch (err) {
-    const MAX_BUFFER_SIZE = 10000;
-    while (eventBuffer.length + batch.length > MAX_BUFFER_SIZE && eventBuffer.length > 0) {
-      const dropped = eventBuffer.shift();
-      try {
-        const dlqDir = join(".data", "dlq");
-        mkdirSync(dlqDir, { recursive: true });
-        const dlqFile = join(dlqDir, `dropped-${Date.now()}-${Math.random().toString(36).slice(2)}.json`);
-        writeFileSync(dlqFile, JSON.stringify(dropped, bigintReplacer));
-      } catch { /* best-effort */ }
-      console.warn(
-        `[indexer] event buffer full, dropping oldest event: ${dropped?.kind ?? "unknown"}`,
-      );
-    }
-    eventBuffer.push(...batch);
-    process.stderr.write(
-      JSON.stringify({
-        level: "warn",
-        msg: "batch storage upload failed, events re-buffered",
-        err: err instanceof Error ? err.message : String(err),
-        batchSize: batch.length,
-      }) + "\n",
-    );
-  } finally {
-    _flushLock = false;
-  }
-}
-
-function startBatchTimer(): void {
-  if (batchTimer !== null) return;
-  batchTimer = setTimeout(async () => {
-    stopBatchTimer();
-    await flushBuffer();
-  }, BATCH_INTERVAL);
-}
-
-function stopBatchTimer(): void {
-  if (batchTimer !== null) {
-    clearTimeout(batchTimer);
-    batchTimer = null;
-  }
-}
 
 type EventSinkConfig =
   | { readonly da: "disabled" }
@@ -165,12 +81,16 @@ function composeSinks(
     }
 
     if (config.da === "storage") {
-      eventBuffer.push(event);
-      if (eventBuffer.length >= BATCH_MAX) {
-        stopBatchTimer();
-        await flushBuffer();
-      } else if (batchTimer === null) {
-        startBatchTimer();
+      const payload = new TextEncoder().encode(JSON.stringify(event, bigintReplacer));
+      const memData = new MemData(payload);
+      const [tx, err] = await config.storageIndexer.upload(memData, extra.rpcUrl, config.storageSigner);
+      if (err) {
+        console.warn(`[indexer] storage upload failed for event ${event.kind}: ${err}`);
+      } else if ("rootHash" in tx) {
+        process.stderr.write(JSON.stringify({
+          level: "debug", msg: "event stored",
+          rootHash: tx.rootHash, kind: event.kind,
+        }) + "\n");
       }
     }
   };
@@ -216,9 +136,6 @@ async function main() {
     } catch { /* storage signer setup failed — skip */ }
   }
 
-  _storageIndexer = storageIndexer;
-  _storageSigner = storageSigner;
-  _storageRpcUrl = url;
 
   const daConfig: EventSinkConfig =
     storageEnabled && storageIndexer && storageSigner
@@ -294,8 +211,6 @@ async function main() {
   await shutdown;
   await handle.stop();
   await new Promise<void>((resolve) => healthServer.close(() => resolve()));
-  stopBatchTimer();
-  await flushBuffer();
   process.stderr.write(
     JSON.stringify({ level: "info", msg: "stopped" }) + "\n",
   );
