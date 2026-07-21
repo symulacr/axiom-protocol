@@ -24,15 +24,9 @@ export const clientChatIdMap = new WeakMap<object, string>();
 export function setClientChatId(client: object, chatId: string): void {
   clientChatIdMap.set(client, chatId);
 }
+/** Dev-only fallback — set AXIOM_COMPUTE_PROVIDER in production */
+const HARDCODED_PROVIDER = "0xa48f01287233509FD694a22Bf840225062E67836";
 
-function buildOpenAIClient(baseURL: string, apiKey: string, timeout: number): OpenAI {
-  return new OpenAI({
-    baseURL,
-    apiKey,
-    timeout,
-    maxRetries: 0,
-  });
-}
 
 export interface RouterClientOptions {
   timeout?: number;
@@ -41,91 +35,6 @@ export interface RouterClientOptions {
   evmRpc?: string;
 }
 
-interface DirectChunk {
-  id?: string;
-  object?: string;
-  created?: number;
-  model?: string;
-  choices?: Array<{
-    index?: number;
-    delta?: { role?: string; content?: string };
-    finish_reason?: string | null;
-  }>;
-}
-
-type DirectClient = {
-  chat: {
-    completions: {
-      create: (
-        body: Record<string, unknown>,
-        reqOpts?: { signal?: AbortSignal },
-      ) => AsyncGenerator<DirectChunk>;
-    };
-  };
-};
-
-function streamFromEndpoint(
-  endpoint: string,
-  headers: Record<string, string>,
-  body: Record<string, unknown>,
-  reqOpts?: { signal?: AbortSignal },
-): AsyncGenerator<DirectChunk> {
-  return (async function* () {
-    const res = await fetch(endpoint, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ ...body, stream: true }),
-      signal: reqOpts?.signal,
-    });
-    if (!res.ok || !res.body) {
-      const text = await res.text().catch(() => "");
-      throw Object.assign(new Error(text.slice(0, 300)), { status: res.status, code: "COMPUTE_ERROR" });
-    }
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      let nl: number;
-      while ((nl = buffer.indexOf("\n")) >= 0) {
-        const line = buffer.slice(0, nl).trim();
-        buffer = buffer.slice(nl + 1);
-        if (line.startsWith("data:")) {
-          const data = line.slice(5).trim();
-          if (data !== "[DONE]") {
-            try {
-              yield JSON.parse(data) as DirectChunk;
-            } catch {
-              // ignore malformed SSE chunks
-            }
-          }
-        }
-      }
-    }
-  })();
-}
-
-function createSignedSessionClient(
-  baseUrl: string,
-  authHeader: string,
-): DirectClient {
-  const endpoint = `${baseUrl.replace(/\/$/, "")}/chat/completions`;
-  return {
-    chat: {
-      completions: {
-        create: (body, reqOpts) =>
-          streamFromEndpoint(
-            endpoint,
-            { "Content-Type": "application/json", Authorization: authHeader },
-            body,
-            reqOpts,
-          ),
-      },
-    },
-  };
-}
 
 export function buildSigner(opts: RouterClientOptions): Wallet | undefined {
   return opts.signerPk
@@ -150,7 +59,6 @@ export async function fundProviderAccount(
   });
   log.info("Auto-funding started for provider", { providerAddress });
 }
-
 export async function createRouterClient(
   model?: string,
   opts: RouterClientOptions = {},
@@ -158,26 +66,25 @@ export async function createRouterClient(
   const timeout = opts.timeout ?? ROUTER_TIMEOUT_MS;
   log.info("Creating router client", { model });
 
+  // Fast path: direct API key with explicit provider URL
   const directKey = process.env.AXIOM_COMPUTE_DIRECT_KEY;
   if (directKey) {
     const directBase = process.env.AXIOM_COMPUTE_DIRECT_URL ?? "https://compute-network-6.integratenetwork.work/v1/proxy";
     log.info("Using direct compute provider", { directBase, model });
-    return createSignedSessionClient(directBase, `Bearer ${directKey}`) as unknown as OpenAI;
+    return new OpenAI({ baseURL: directBase, apiKey: directKey, timeout, maxRetries: 0 });
   }
 
-  // Prefer the API-key router path (AXIOM_COMPUTE_API_KEY / OG_COMPUTE_API_KEY)
-  // over the wallet-signed path, which requires a registered 0G compute provider
-  // that the backend's signer wallet does not currently have.
+  // Prefer the API-key router path over the wallet-signed path
   const routerKey = process.env.AXIOM_COMPUTE_API_KEY ?? process.env.OG_COMPUTE_API_KEY;
   if (routerKey) {
     log.info("Using API-key compute router", { model });
-    return buildOpenAIClient(getComputeBaseUrl(), routerKey, timeout);
+    return new OpenAI({ baseURL: getComputeBaseUrl(), apiKey: routerKey, timeout, maxRetries: 0 });
   }
 
+  // Wallet-signed path: use broker SDK to get request headers
   const signer = buildSigner(opts);
   if (signer) {
     const broker = await getBroker(signer);
-    // Check ledger has funds before attempting provider session
     const ledgerResp = await broker.ledger.getLedger().catch(() => null);
     const balance: bigint | null = ledgerResp && typeof ledgerResp === "object" && "balance" in ledgerResp
       ? (ledgerResp as { balance: bigint }).balance
@@ -185,9 +92,7 @@ export async function createRouterClient(
     if (balance !== null && balance < 100_000n) {
       log.warn("Ledger balance low", { balance });
     }
-    const provider =
-      process.env.AXIOM_COMPUTE_PROVIDER ??
-      "0xa48f01287233509FD694a22Bf840225062E67836";
+    const provider = process.env.AXIOM_COMPUTE_PROVIDER ?? HARDCODED_PROVIDER;
     await Promise.all([
       broker.inference.acknowledgeProviderSigner(provider).catch((e) => {
         log.warn("provider acknowledge skipped", { provider, error: String(e) });
@@ -198,7 +103,7 @@ export async function createRouterClient(
     ]);
     const { Authorization } = await broker.inference.getRequestHeaders(provider);
     log.info("Using wallet-signed compute session", { provider, model });
-    return createSignedSessionClient(getComputeBaseUrl(), Authorization) as unknown as OpenAI;
+    return new OpenAI({ baseURL: getComputeBaseUrl(), apiKey: Authorization.replace(/^Bearer\s+/i, ""), timeout, maxRetries: 0 });
   }
 
   throw new Error("AXIOM_COMPUTE_API_KEY or OG_COMPUTE_API_KEY required");
