@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import {Test} from "forge-std/Test.sol";
 import {AxiomStrategyVault} from "../src/AxiomStrategyVault.sol";
 import {IAxiomAgentNFT} from "../src/interfaces/IAxiomAgentNFT.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract MockAxiomAgentNFT is IAxiomAgentNFT {
     mapping(uint256 => address) internal _owners;
@@ -48,7 +49,12 @@ contract AxiomStrategyVaultTest is Test {
     function setUp() public {
         nft = new MockAxiomAgentNFT();
         nft.setOwner(TOKEN_ID, tokenOwner);
-        vault = new AxiomStrategyVault(address(nft), owner);
+        AxiomStrategyVault vaultImpl = new AxiomStrategyVault();
+        ERC1967Proxy vaultProxy = new ERC1967Proxy(
+            address(vaultImpl),
+            abi.encodeWithSelector(vaultImpl.initialize.selector, address(nft), owner)
+        );
+        vault = AxiomStrategyVault(payable(address(vaultProxy)));
     }
 
     function test_directSend_reverts() public {

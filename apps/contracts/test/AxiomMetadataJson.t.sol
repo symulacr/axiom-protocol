@@ -87,9 +87,14 @@ contract AxiomMetadataJsonTest is Test {
 
     function setUp() public {
         address teeSigner = makeAddr("teeSigner");
-        verifier = new AxiomTeeVerifier(admin, teeSigner, 7 days);
-        MetadataJsonNFT implementation = new MetadataJsonNFT();
+        AxiomTeeVerifier impl = new AxiomTeeVerifier();
         ERC1967Proxy proxy = new ERC1967Proxy(
+            address(impl),
+            abi.encodeWithSelector(impl.initialize.selector, admin, teeSigner, 7 days)
+        );
+        verifier = AxiomTeeVerifier(address(proxy));
+        MetadataJsonNFT implementation = new MetadataJsonNFT();
+        ERC1967Proxy proxy2 = new ERC1967Proxy(
             address(implementation),
             abi.encodeWithSelector(
                 AxiomAgentNFT.initialize.selector,
@@ -100,7 +105,7 @@ contract AxiomMetadataJsonTest is Test {
                 admin
             )
         );
-        nft = MetadataJsonNFT(address(proxy));
+        nft = MetadataJsonNFT(address(proxy2));
     }
 
     function _mintOne(

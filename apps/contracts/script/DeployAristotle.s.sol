@@ -80,7 +80,12 @@ contract DeployAristotle is Script {
 
         vm.startBroadcast(deployerKey);
 
-        AxiomTeeVerifier verifier = new AxiomTeeVerifier(axiomDeployer, teeSigner, MAX_PROOF_AGE);
+        AxiomTeeVerifier verifierImpl = new AxiomTeeVerifier();
+        ERC1967Proxy verifierProxy = new ERC1967Proxy(
+            address(verifierImpl),
+            abi.encodeWithSelector(verifierImpl.initialize.selector, axiomDeployer, teeSigner, MAX_PROOF_AGE)
+        );
+        AxiomTeeVerifier verifier = AxiomTeeVerifier(payable(address(verifierProxy)));
         console2.log("AxiomTeeVerifier deployed at:", address(verifier));
 
         AxiomAgentNFT implementation = new AxiomAgentNFT();
