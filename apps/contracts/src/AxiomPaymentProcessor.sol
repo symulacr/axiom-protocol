@@ -164,6 +164,7 @@ contract AxiomPaymentProcessor is Ownable, Pausable, ReentrancyGuard {
     }
 
     /// @notice Alias for setRoyaltyBps (frontend-compatible entry point).
+    /// @dev Alias for setRoyaltyBps. Remove after frontend migration is confirmed complete.
     function setRoyaltyBpsPermitted(
         uint256 agentTokenId,
         uint256 newBps

@@ -625,6 +625,99 @@ contract AxiomAgentNFTTest is Test {
         vm.prank(alice);
         nft.iTransferFrom(alice, bob, tokenId, proofs);
     }
+
+    // ─── EIP-712 transfer proof tests ───────────────────────────────
+
+    function test_ITransferFrom_WithRealEIP712Proof() public {
+        // 1. Mint token to alice
+        uint256 tokenId = _mintTo(alice);
+        bytes32 dataHash = nft.intelligentDatasOf(tokenId)[0].dataHash;
+
+        // 2. Build EIP-712 typed-data proofs explicitly — signed with
+        //    real secp256k1 keys via vm.sign, not a test helper.
+        bytes memory bobPub = _pubKeyOf(bob);
+        bytes memory sealedKey = new bytes(64);
+        uint256 validUntil = block.timestamp + 1 days;
+        uint256 nonce = 300;
+
+        // OwnershipProof: signed by TEE_SIGNER_KEY (the oracle).
+        bytes32 ownershipMsg = _ownershipDigest(dataHash, sealedKey, bobPub, bob, address(nft), nonce, validUntil);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(TEE_SIGNER_KEY, ownershipMsg);
+        bytes memory ownershipSig = abi.encodePacked(r, s, v);
+
+        // AccessProof: signed by the receiver (bob) via EIP-712.
+        // The verifier checks accessSigner == to, so the receiver must
+        // sign to grant/accept the transfer.
+        bytes32 accessMsg = _accessDigest(dataHash, bobPub, bob, address(nft), nonce, validUntil);
+        (v, r, s) = vm.sign(BOB_KEY, accessMsg);
+        bytes memory accessSig = abi.encodePacked(r, s, v);
+
+        TransferValidityProof[] memory proofs = new TransferValidityProof[](1);
+        proofs[0] = TransferValidityProof({
+            accessProof: AccessProof({
+                dataHash: dataHash,
+                targetPubkey: bobPub,
+                nonce: abi.encode(nonce),
+                proof: accessSig,
+                validUntil: validUntil
+            }),
+            ownershipProof: OwnershipProof({
+                oracleType: OracleType.TEE,
+                dataHash: dataHash,
+                sealedKey: sealedKey,
+                targetPubkey: bobPub,
+                nonce: abi.encode(nonce),
+                proof: ownershipSig,
+                validUntil: validUntil
+            })
+        });
+
+        // 4. Call iTransferFrom — token 1 (ID 0) → bob
+        vm.prank(alice);
+        nft.iTransferFrom(alice, bob, tokenId, proofs);
+
+        // 5. Assert owner is now bob
+        assertEq(nft.ownerOf(tokenId), bob);
+    }
+
+    // ─── Deterministic clone tests ───────────────────────────────────
+
+    function test_IClone_Deterministic() public {
+        // 1. Mint token to alice
+        uint256 tokenId = _mintTo(alice);
+        bytes32 dataHash = nft.intelligentDatasOf(tokenId)[0].dataHash;
+
+        // Use iClone (3-arg form) — it determines the from address
+        // by looking up the token owner internally.
+        TransferValidityProof[] memory proofs = _makeProofs(alice, alice, dataHash, 301);
+
+        // 2. First clone succeeds with deterministic token ID
+        vm.prank(alice);
+        uint256 clonedTokenId = nft.iClone(alice, tokenId, proofs);
+        assertEq(clonedTokenId, 1, "clone tokenId must be deterministic (1)");
+        assertEq(nft.ownerOf(clonedTokenId), alice, "clone owner must be alice");
+
+        // 3. Reuse same proofs → nonce replay revert
+        vm.prank(alice);
+        vm.expectRevert();
+        nft.iClone(alice, tokenId, proofs);
+
+        // 4. Clone has same owner as original
+        assertEq(nft.ownerOf(tokenId), alice, "original owner unchanged");
+        assertEq(nft.ownerOf(clonedTokenId), alice, "clone owner matches original");
+    }
+
+    function test_ICloneFrom_NonOwnerReverts() public {
+        // 1. Mint token to alice
+        uint256 tokenId = _mintTo(alice);
+
+        // 2. bob tries to iCloneFrom(alice, bob, tokenId, ...) —
+        //    reverts in _checkAuthorized before proof verification.
+        TransferValidityProof[] memory emptyProofs;
+        vm.prank(bob);
+        vm.expectRevert();
+        nft.iCloneFrom(alice, bob, tokenId, emptyProofs);
+    }
 }
 
 /// @notice Minimal UUPS-compatible "V2" implementation used solely to exercise the

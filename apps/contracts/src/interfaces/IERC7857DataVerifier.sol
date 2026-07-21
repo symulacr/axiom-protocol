@@ -65,6 +65,7 @@ struct TransferValidityProofOutput {
     bytes32 dataHash;
     bytes sealedKey;
     bytes targetPubkey;
+    /// @dev `wantedKey` is intentionally always empty — wanted-key flow is unused by design.
     bytes wantedKey; // empty if receiver has no preference
     address accessAssistant; // recovered from AccessProof.signature
     bytes accessProofNonce;
