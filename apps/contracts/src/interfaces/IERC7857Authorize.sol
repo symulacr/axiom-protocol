@@ -16,7 +16,7 @@ interface IERC7857Authorize is IERC7857 {
     ///      Current form indexes `tokenId` only (not `to`). This is NOT spec-compliant.
     ///      Fix deferred to next major version — changing indexed params is ABI-breaking.
     event Authorization(address indexed from, address indexed to, uint256 indexed tokenId);
-    event AuthorizationRevoked(uint256 indexed tokenId, address indexed from, address indexed to);
+    event AuthorizationRevoked(uint256 indexed tokenId, address indexed assistant);
 
     /// @notice Authorize a user to use the token's private metadata
     /// @param _tokenId Token to authorize

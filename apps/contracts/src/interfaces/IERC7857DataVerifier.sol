@@ -19,13 +19,13 @@ enum OracleType {
 ///              keccak256(abi.encode(ACCESS_PROOF_TYPEHASH,
 ///                  dataHash, targetPubkey, to, nft, nonce, validUntil))))
 ///      where ACCESS_PROOF_TYPEHASH =
-///          keccak256("AccessProof(bytes32 dataHash,bytes targetPubkey,address to,address nft,uint256 nonce,uint256 validUntil)")
+///          keccak256("AccessProof(bytes32 dataHash,bytes targetPubkey,address to,address nft,bytes nonce,uint256 validUntil)")
 ///      and the domain separator binds to (name="AxiomTeeVerifier", version="1",
 ///      chainId, verifyingContract). Reference: https://eips.ethereum.org/EIPS/eip-712
 struct AccessProof {
     bytes32 dataHash;
     bytes targetPubkey; // 64-byte raw uncompressed X||Y (no 0x04 prefix)
-    uint256 nonce;
+    bytes nonce;
     bytes proof; // raw ECDSA signature over the EIP-712 digest
     uint256 validUntil; // unix-seconds deadline; proof is invalid once block.timestamp > validUntil
 }
@@ -36,7 +36,7 @@ struct AccessProof {
 ///              keccak256(abi.encode(OWNERSHIP_PROOF_TYPEHASH,
 ///                  dataHash, sealedKey, targetPubkey, to, nft, nonce, validUntil))))
 ///      where OWNERSHIP_PROOF_TYPEHASH =
-///          keccak256("OwnershipProof(bytes32 dataHash,bytes sealedKey,bytes targetPubkey,address to,address nft,uint256 nonce,uint256 validUntil)")
+///          keccak256("OwnershipProof(bytes32 dataHash,bytes sealedKey,bytes targetPubkey,address to,address nft,bytes nonce,uint256 validUntil)")
 ///      The `validUntil` deadline field is enforced on-chain: the verifier rejects
 ///      any proof where `block.timestamp > validUntil` (expired) or
 ///      `validUntil - block.timestamp > maxProofAgeSeconds` (too far future).
@@ -45,7 +45,7 @@ struct OwnershipProof {
     bytes32 dataHash;
     bytes sealedKey; // Encryption key sealed for receiver (ECIES)
     bytes targetPubkey; // 64-byte raw uncompressed X||Y
-    uint256 nonce;
+    bytes nonce;
     bytes proof; // raw ECDSA signature over the EIP-712 digest
     uint256 validUntil; // unix-seconds deadline; proof is invalid once block.timestamp > validUntil
 }
@@ -67,19 +67,15 @@ struct TransferValidityProofOutput {
     bytes targetPubkey;
     bytes wantedKey; // empty if receiver has no preference
     address accessAssistant; // recovered from AccessProof.signature
-    uint256 accessProofNonce;
-    uint256 ownershipProofNonce;
+    bytes accessProofNonce;
+    bytes ownershipProofNonce;
 }
 
 interface IERC7857DataVerifier {
     /// @notice Verify a batch of transfer validity proofs
     /// @param _proofs Array of proofs (one per data item in the token)
-    /// @param to The intended receiver address (binds proof to one recipient, preventing MEV replay)
-    /// @param nft The NFT contract address (binds proof to one contract, preventing cross-contract replay)
     /// @return outputs Array of proof outputs (one per proof)
     function verifyTransferValidity(
-        TransferValidityProof[] calldata _proofs,
-        address to,
-        address nft
+        TransferValidityProof[] calldata _proofs
     ) external returns (TransferValidityProofOutput[] memory outputs);
 }

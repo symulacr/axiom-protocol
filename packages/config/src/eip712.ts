@@ -39,7 +39,7 @@ export const ACCESS_PROOF_TYPES = {
     { name: "targetPubkey", type: "bytes" as const },
     { name: "to", type: "address" as const },
     { name: "nft", type: "address" as const },
-    { name: "nonce", type: "uint256" as const },
+    { name: "nonce", type: "bytes" as const },
     { name: "validUntil", type: "uint256" as const },
   ],
 } as const;
@@ -51,7 +51,7 @@ export const OWNERSHIP_PROOF_TYPES = {
     { name: "targetPubkey", type: "bytes" as const },
     { name: "to", type: "address" as const },
     { name: "nft", type: "address" as const },
-    { name: "nonce", type: "uint256" as const },
+    { name: "nonce", type: "bytes" as const },
     { name: "validUntil", type: "uint256" as const },
   ],
 } as const;
@@ -104,7 +104,7 @@ export interface OwnershipProofInput {
   targetPubkey: Hex;
   to: Hex;
   nft: Hex;
-  nonce: bigint;
+  nonce: Hex;
   validUntil: bigint;
 }
 
@@ -113,7 +113,7 @@ export interface AccessProofInput {
   targetPubkey: Hex;
   to: Hex;
   nft: Hex;
-  nonce: bigint;
+  nonce: Hex;
   validUntil: bigint;
 }
 
@@ -140,7 +140,7 @@ export function ownershipStructHash(input: OwnershipProofInput): Hex {
         "bytes32",
         "address",
         "address",
-        "uint256",
+        "bytes",
         "uint256",
       ],
       [
@@ -166,7 +166,7 @@ export function accessStructHash(input: AccessProofInput): Hex {
         "bytes32",
         "address",
         "address",
-        "uint256",
+        "bytes",
         "uint256",
       ],
       [
