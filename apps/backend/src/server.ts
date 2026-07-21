@@ -11,7 +11,6 @@ import cors from "cors";
 import compression from "compression";
 import rateLimit from "express-rate-limit";
 import { createServer, type Server as HttpServer } from "node:http";
-import { readFileSync } from "node:fs";
 import { WebSocketServer, type WebSocket } from "ws";
 import { ethers, type Wallet } from "ethers";
 import { type ChatCompletionMessageParam, type ChatCompletionTool } from "openai/resources/chat/completions";
@@ -65,10 +64,12 @@ import {
 } from "./ws/broadcaster.js";
 import { MAX_WS_CLIENTS } from "./utils/constants.js";
 import { TTLCache } from "./utils/cache.js";
+import pkg from "../package.json" with { type: "json" };
+
 
 const log = createLogger("server");
 
-const PKG_VERSION = (JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { version: string }).version;
+const PKG_VERSION = pkg.version;
 
 function shortSigner(addr: string): string {
   return addr.length > 10 ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : addr;

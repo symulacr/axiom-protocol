@@ -508,12 +508,12 @@ export function createSkillRouters(config: ServerConfig): Router {
 
   registerSkillRoutes(route, [
     // EVM
-    skill("/v1/skills/evm/wallet", address, "Query EVM wallet native and ERC-20 balances",
+    skill("/v1/skills/evm/wallet", token, "Query EVM wallet native and ERC-20 balances",
       async (parsed) => {
         const [native, tokenContract] = await Promise.all([
           provider.getBalance(parsed.address),
-          parsed.address
-            ? new ethers.Contract(parsed.address, ERC20_ABI, provider)
+          parsed.token
+            ? new ethers.Contract(parsed.token, ERC20_ABI, provider)
             : null,
         ]);
         const erc20Balance = tokenContract

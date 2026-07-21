@@ -1,7 +1,7 @@
 import { readFileSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadEnv, getEnv } from "../env.js";
+import { loadEnv, getEnv } from "@axiom/config/env";
 import { runAxiomCoreLoadBench } from "./e2e/load-bench.js";
 
 loadEnv();

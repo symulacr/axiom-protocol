@@ -17,7 +17,7 @@ const RainbowKitProvider = lazy(() =>
     });
     return {
       default: ({ children }: { children: ReactNode }) => (
-        <Provider theme={theme}>{children}</Provider>
+        <Provider theme={theme} locale="en">{children}</Provider>
       ),
     };
   }),

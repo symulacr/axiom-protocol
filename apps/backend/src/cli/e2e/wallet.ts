@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { Wallet, type Provider } from "ethers";
-import { getEnv, getEnvWithAlias } from "../../env.js";
+import { getEnv, getEnvWithAlias } from "@axiom/config/env";
 import { addressExplorerUrl } from "./onchain.js";
 import { E2E_PAYMENT_MICRO_MIN_TOTAL } from "./fast-path.js";
 

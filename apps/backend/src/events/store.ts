@@ -351,6 +351,7 @@ export class EventStore {
   }
 
   private findByDedupeKey(key: string): StoredEvent | undefined {
+    if (!this.seenKeys.has(key)) return undefined;
     for (const bucket of this.buckets.values()) {
       const found = bucket.find((e) => dedupeKey(e) === key);
       if (found) return found;

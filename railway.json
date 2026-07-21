@@ -37,5 +37,18 @@
       },
       "watchPatterns": ["apps/oracle/**", "packages/config/**"]
     }
+    },
+    "axiom-indexer": {
+      "build": {
+        "buildCommand": "pnpm --filter @axiom/config build && pnpm --filter @axiom/indexer build"
+      },
+      "deploy": {
+        "startCommand": "node apps/indexer/dist/index.js",
+        "healthcheckPath": "/health",
+        "healthcheckTimeout": 120,
+        "restartPolicy": "ON_FAILURE"
+      },
+      "watchPatterns": ["apps/indexer/**", "packages/config/**"]
+    }
   }
 }
