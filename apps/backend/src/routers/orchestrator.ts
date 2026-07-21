@@ -1,4 +1,5 @@
-import type { Express, Request, Response, NextFunction } from "express";
+import { z } from "zod";
+import type { Express, Request, Response } from "express";
 import { tickSchema } from "../route-schemas.js";
 import { getClients, sendToTopic } from "../ws/broadcaster.js";
 import { sendError, extractErrorMessage } from "../utils/response.js";
@@ -11,7 +12,7 @@ import type {
 import type { TickResult } from "@axiom/config/types/orchestrator";
 import type { EventStore } from "../events/store.js";
 import type { ServerConfig } from "../server.js";
-import { REGISTERED_ROUTES } from "./route-factory.js";
+import { createRoute } from "./route-factory.js";
 import { AGENT_NFT_ABI } from "@axiom/config/abis";
 import { HTTP, resolveChatModel } from "@axiom/config";
 import { TypedContract } from "@axiom/config/types/contract";
@@ -92,126 +93,119 @@ export function registerOrchestratorRoutes(
 ): void {
   const events = getEventStore();
 
-  REGISTERED_ROUTES.push({
-    method: "POST",
+  createRoute(app, {
     path: "/v1/orchestrator/tick",
+    method: "post",
+    schema: tickSchema,
     consumer: "useOrchestratorTick",
     description: "AI orchestrator tick (strategy recommendation)",
-  });
-
-  app.post(
-    "/v1/orchestrator/tick",
-    async (req: Request, res: Response, next: NextFunction) => {
-      try {
-        const parsed = tickSchema.parse(req.body ?? {});
-        const {
-          vault,
-          agentNft,
-          agentTokenId,
-          computeModel: reqComputeModel,
-          strategy: strategyHint,
-          signalSource,
-          signalPayload,
-          stream: shouldStream,
-        } = parsed;
-        const DEFAULT_MODEL = resolveChatModel(config.env?.AXIOM_COMPUTE_MODEL);
-        const modelDataRoot = await resolveModelDataRoot(
-          agentNft,
-          agentTokenId,
-          chainId,
-        );
-        // Client keys may request ticks, but must not supply Merkle execute plans
-        // (server-signed vault settlement).
-        const principal = (req as { authPrincipal?: string }).authPrincipal;
-        if (parsed.executionPlan && principal === "client") {
-          sendError(
-            res,
-            HTTP.FORBIDDEN,
-            "executionPlan requires server API key",
-            "SERVER_KEY_REQUIRED",
-          );
-          return;
-        }
-        const spec: StrategySpec = {
-          agentTokenId: BigInt(agentTokenId),
-          agentNft,
-          vault,
-          computeModel: reqComputeModel ?? DEFAULT_MODEL,
-          systemPrompt:
-            parsed.systemPrompt ??
-            "You are a crypto-native strategy assistant. Given the current vault balance and recent events, respond with a JSON object { action: 'act' | 'hold', amount?: number, reason: string }.",
-          modelDataRoot,
-          executionPlan: parsed.executionPlan
-            ? {
-                target: parsed.executionPlan.target as `0x${string}`,
-                value: parsed.executionPlan.value,
-                data: parsed.executionPlan.data as `0x${string}` | undefined,
-                merkleProof: parsed.executionPlan.merkleProof as `0x${string}`[],
-              }
-            : undefined,
-        };
-        const signal: MarketSignal = {
-          source: signalSource ?? "manual:user",
-          payload: signalPayload ?? { strategyHint: strategyHint ?? "hold" },
-          emittedAt: Date.now(),
-        };
-        const runner = getOrCreateOrchestrator();
-        if (!runner) {
-          sendError(res, HTTP.SERVICE_UNAVAILABLE, "Orchestrator not available");
-          return;
-        }
-
-        if (shouldStream) {
-          const topic = `tick.${agentTokenId}`;
-          let hasSubscribers = false;
-          for (const c of getClients()) {
-            if (c.topics.has(topic) || c.topics.has("*")) {
-              hasSubscribers = true;
-              break;
-            }
+  }, async (parsed: z.infer<typeof tickSchema>, req: Request, res: Response) => {
+    const {
+      vault,
+      agentNft,
+      agentTokenId,
+      computeModel: reqComputeModel,
+      strategy: strategyHint,
+      signalSource,
+      signalPayload,
+      stream: shouldStream,
+      executionPlan,
+      systemPrompt,
+    } = parsed;
+    const DEFAULT_MODEL = resolveChatModel(config.env?.AXIOM_COMPUTE_MODEL);
+    const modelDataRoot = await resolveModelDataRoot(
+      agentNft,
+      agentTokenId,
+      chainId,
+    );
+    // Client keys may request ticks, but must not supply Merkle execute plans
+    // (server-signed vault settlement).
+    const principal = (req as { authPrincipal?: string }).authPrincipal;
+    if (executionPlan && principal === "client") {
+      sendError(
+        res,
+        HTTP.FORBIDDEN,
+        "executionPlan requires server API key",
+        "SERVER_KEY_REQUIRED",
+      );
+      return;
+    }
+    const spec: StrategySpec = {
+      agentTokenId: BigInt(agentTokenId),
+      agentNft,
+      vault,
+      computeModel: reqComputeModel ?? DEFAULT_MODEL,
+      systemPrompt:
+        systemPrompt ??
+        "You are a crypto-native strategy assistant. Given the current vault balance and recent events, respond with a JSON object { action: 'act' | 'hold', amount?: number, reason: string }.",
+      modelDataRoot,
+      executionPlan: executionPlan
+        ? {
+            target: executionPlan.target as `0x${string}`,
+            value: executionPlan.value,
+            data: executionPlan.data as `0x${string}` | undefined,
+            merkleProof: executionPlan.merkleProof as `0x${string}`[],
           }
-          if (!hasSubscribers) {
-            res.status(HTTP.BAD_REQUEST).json({
-              error: "No WebSocket subscriber for streaming",
-              code: "NO_WS_SUBSCRIBER",
-            });
-            return;
-          }
+        : undefined,
+    };
+    const signal: MarketSignal = {
+      source: signalSource ?? "manual:user",
+      payload: signalPayload ?? { strategyHint: strategyHint ?? "hold" },
+      emittedAt: Date.now(),
+    };
+    const runner = getOrCreateOrchestrator();
+    if (!runner) {
+      sendError(res, HTTP.SERVICE_UNAVAILABLE, "Orchestrator not available");
+      return;
+    }
 
-          runner
-            .runTick(spec, signal, (chunk) => {
-              if (chunk.type === "token")
-                sendToTopic(`tick.${agentTokenId}`, chunk);
-            })
-            .then((result) => {
-              appendTickEvent(events, chainId, spec, result);
-              sendToTopic(`tick.${agentTokenId}`, {
-                type: "complete",
-                ...result,
-              });
-            })
-            .catch((err) => {
-              sendToTopic(`tick.${agentTokenId}`, {
-                type: "error",
-                error: extractErrorMessage(err),
-              });
-            });
-          res
-            .status(HTTP.ACCEPTED)
-            .json({ ok: true, streamTopic: `tick.${agentTokenId}` });
-          return;
+    if (shouldStream) {
+      const topic = `tick.${agentTokenId}`;
+      let hasSubscribers = false;
+      for (const c of getClients()) {
+        if (c.topics.has(topic) || c.topics.has("*")) {
+          hasSubscribers = true;
+          break;
         }
-
-        const orchestratorResult = await runner.runTick(spec, signal);
-        appendTickEvent(events, chainId, spec, orchestratorResult);
-        sendToTopic("orchestrator.tick", {
-          agentTokenId: spec.agentTokenId.toString(),
-          recommendation: orchestratorResult.recommendation,
-        });
-        res.status(HTTP.OK).json(orchestratorResult);
-      } catch (err) {
-        next(err);
       }
-    },
-  );
+      if (!hasSubscribers) {
+        res.status(HTTP.BAD_REQUEST).json({
+          error: "No WebSocket subscriber for streaming",
+          code: "NO_WS_SUBSCRIBER",
+        });
+        return;
+      }
+
+      runner
+        .runTick(spec, signal, (chunk) => {
+          if (chunk.type === "token")
+            sendToTopic(`tick.${agentTokenId}`, chunk);
+        })
+        .then((result) => {
+          appendTickEvent(events, chainId, spec, result);
+          sendToTopic(`tick.${agentTokenId}`, {
+            type: "complete",
+            ...result,
+          });
+        })
+        .catch((err) => {
+          sendToTopic(`tick.${agentTokenId}`, {
+            type: "error",
+            error: extractErrorMessage(err),
+          });
+        });
+      res
+        .status(HTTP.ACCEPTED)
+        .json({ ok: true, streamTopic: `tick.${agentTokenId}` });
+      return;
+    }
+
+    const orchestratorResult = await runner.runTick(spec, signal);
+    appendTickEvent(events, chainId, spec, orchestratorResult);
+    sendToTopic("orchestrator.tick", {
+      agentTokenId: spec.agentTokenId.toString(),
+      recommendation: orchestratorResult.recommendation,
+    });
+    res.status(HTTP.OK).json(orchestratorResult);
+  }, config);
 }

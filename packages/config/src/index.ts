@@ -45,5 +45,12 @@ export {
   type ChatToolName,
   type ChatToolSpec,
 } from "./chat-tools.js";
+export {
+  AXIOM_ASSISTANT_NAME,
+  DEFAULT_CHAT_MODEL,
+  FALLBACK_CONTEXT_WINDOWS,
+  resolveChatModel,
+  resolveContextWindow,
+} from "./chat-tools.js";
 export * from "./events.js";
 export { TRANSFER_TOPIC, ZERO_DATA_ROOT } from "./constants.js";

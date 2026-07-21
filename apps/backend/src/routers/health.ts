@@ -4,6 +4,8 @@ import type { OracleClient } from "../oracle/client.js";
 import { HTTP } from "@axiom/config";
 import { createLogger } from "../utils/logger.js";
 import { sendError, extractErrorMessage } from "../utils/response.js";
+import type { ServerConfig } from "../server.js";
+import { createRoute } from "./route-factory.js";
 
 const log = createLogger("health");
 
@@ -25,10 +27,11 @@ function probeTtlMs(): number {
 export function createHealthRouter(
   provider: JsonRpcProvider,
   oracle: OracleClient,
-  signerAddress: string,
-  addresses: Record<string, string> | null | undefined,
+  config: ServerConfig,
 ): Router {
   const router = Router();
+  const signerAddress = config.signer.address;
+  const addresses = config.addresses;
   let snapshot: HealthSnapshot | null = null;
   let inflight: Promise<HealthSnapshot> | null = null;
 
@@ -79,11 +82,21 @@ export function createHealthRouter(
     return inflight;
   }
 
-  router.get("/health/live", (_req: Request, res: Response) => {
+  createRoute(router, {
+    path: "/health/live",
+    method: "get",
+    consumer: "health",
+    description: "Liveness probe",
+  }, async (_parsed: unknown, _req: Request, res: Response) => {
     res.status(HTTP.OK).json({ ok: true, live: true });
-  });
+  }, config);
 
-  router.get("/health", async (_req: Request, res: Response) => {
+  createRoute(router, {
+    path: "/health",
+    method: "get",
+    consumer: "health",
+    description: "Health check",
+  }, async (_parsed: unknown, _req: Request, res: Response) => {
     try {
       const s = await resolveSnapshot();
       res.status(s.ok ? HTTP.OK : HTTP.SERVICE_UNAVAILABLE).json({
@@ -100,7 +113,7 @@ export function createHealthRouter(
       });
       sendError(res, HTTP.SERVICE_UNAVAILABLE, "Health check failed");
     }
-  });
+  }, config);
 
   return router;
 }
