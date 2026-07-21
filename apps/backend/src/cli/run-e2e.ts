@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 import { Wallet, hexlify } from "ethers";
 import { loadEnv, getEnv, getEnvWithAlias } from "@axiom/config/env";
 import { createLogger } from "../utils/logger.js";
@@ -82,6 +83,19 @@ import {
 import { runFrontendPostTickBundle } from "./e2e/frontend-flows.js";
 import { runChatBench, printChatBenchReport } from "./e2e/chat-bench.js";
 import { buildChatEval, printChatEval } from "./e2e/eval.js";
+=======
+import { randomBytes } from "node:crypto";
+import { Wallet, parseEther, hexlify, toUtf8Bytes, JsonRpcProvider, getBytes, SigningKey, computeAddress } from "ethers";
+import { TypedContract } from "@axiom/config/types/contract";
+import type { AgentNFTMethods } from "../contract-types.js";
+import { keccak256 } from "ethereum-cryptography/keccak";
+import { ZeroGStorage } from "../storage/0g.js";
+import { encrypt as eciesEncrypt, decrypt as eciesDecrypt } from "eciesjs";
+import { loadEnv, getEnv } from "@axiom/config/env";
+import { aesGcmEncrypt } from "@axiom/oracle/crypto/aes-gcm.js";
+import { accessMessageHash, type Eip712Domain } from "@axiom/oracle/signer";
+import { deriveUncompressedPubkeyFromHex } from "@axiom/oracle/crypto/secp256k1";
+>>>>>>> Stashed changes
 
 
 loadEnv();

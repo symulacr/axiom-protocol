@@ -9,6 +9,12 @@ import { decodeAxiomLog, type WatchedEvent } from "./events/parser.js";
 import { pollOnce, logsByChainOrder } from "./watcher/poll.js";
 import { loadCheckpoint, saveCheckpoint } from "./watcher/checkpoint.js";
 
+<<<<<<< Updated upstream
+=======
+import { ADDRESSES, EVENT_ABI, EVENT_SIGNATURES, type AxiomEvent, type EventName } from "./events.js";
+
+/** Block range per eth_getLogs call. */
+>>>>>>> Stashed changes
 export const POLL_WINDOW_BLOCKS = 50n;
 
 export const POLL_INTERVAL_MS = 12_000;
@@ -19,12 +25,32 @@ export const REORG_SAFE_DEPTH = 10n;
  * Next block to poll after processing up through `toBlock`.
  * Stays reorgDepth behind head so shallow reorgs are re-scanned.
  */
+<<<<<<< Updated upstream
 export function nextCheckpointBlock(
   toBlock: bigint,
   reorgDepth: bigint = REORG_SAFE_DEPTH,
 ): bigint {
   const safeBlock = toBlock > reorgDepth ? toBlock - reorgDepth : 0n;
   return safeBlock + 1n;
+=======
+
+/** Checkpoint file (stores nextBlock cursor). */
+const CHECKPOINT_FILE = join(process.cwd(), "data", "checkpoint.json");
+
+/** Topic-0 for every event. */
+export type EventTopicTable = { [K in EventName]: Hex };
+const TOPIC_TABLE: EventTopicTable = Object.fromEntries(
+  Object.entries(EVENT_SIGNATURES).map(([name, sig]) => [
+    name,
+    validateHex(ethers.id(sig)),
+  ]),
+) as EventTopicTable;
+
+/** topic-0 hex → event name. */
+const TOPIC_TO_EVENT: Record<string, EventName> = {};
+for (const name of Object.keys(TOPIC_TABLE) as EventName[]) {
+  TOPIC_TO_EVENT[TOPIC_TABLE[name].toLowerCase()] = name;
+>>>>>>> Stashed changes
 }
 
 const wait = (ms: number): Promise<void> =>

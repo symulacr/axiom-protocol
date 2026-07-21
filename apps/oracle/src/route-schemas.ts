@@ -1,5 +1,9 @@
 import { z } from "zod";
+<<<<<<< Updated upstream
 import { hexViem, addressViem } from "@axiom/config/types/hex";
+=======
+import { hexViem, addressViem } from "@axiom/config/types/schemas.js";
+>>>>>>> Stashed changes
 
 export const transferValiditySchema = z.object({
   oldDataHash: hexViem,

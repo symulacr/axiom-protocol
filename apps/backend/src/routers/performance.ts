@@ -90,7 +90,7 @@ export function registerPerformanceRoutes(
           sellCount: counts.sellCount,
           holdCount: counts.holdCount,
           buyRate,
-          winRate: buyRate,
+          winRate: totalTicks > 0 ? (counts.buyCount + counts.sellCount) / totalTicks : 0,
         },
         history: history.reverse(),
       };
