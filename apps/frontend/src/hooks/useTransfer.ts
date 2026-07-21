@@ -5,7 +5,7 @@ import {
   useSignTypedData,
   useWriteContract,
 } from "wagmi";
-import { type Hex } from "viem";
+import { type Hex, toHex } from "viem";
 
 import { getAxiomAgentNftAddress } from "../abi/addresses.js";
 import { ITRANSFER_FROM_ABI } from "@axiom/config/abis";
@@ -50,12 +50,6 @@ function hexToBytes(hex: string): Uint8Array {
   return out;
 }
 
-function bytesToHex(bytes: Uint8Array): string {
-  let s = "0x";
-  for (const b of bytes) s += b.toString(16).padStart(2, "0");
-  return s;
-}
-
 function base64ToBytes(b64: string): Uint8Array {
   const bin = atob(b64);
   const out = new Uint8Array(bin.length);
@@ -95,7 +89,7 @@ async function sealDekForOracle(
     throw new Error("oldDataEncryptionKey must be 32 bytes base64");
   }
   const sealed = sealKeyForReceiver(pubBytes, dek);
-  return bytesToHex(sealed instanceof Uint8Array ? sealed : new Uint8Array(sealed));
+  return toHex(sealed instanceof Uint8Array ? sealed : new Uint8Array(sealed));
 }
 
 export function useTransfer(): UseTransferResult {
