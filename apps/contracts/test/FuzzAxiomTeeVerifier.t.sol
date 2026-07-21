@@ -979,7 +979,7 @@ contract FuzzAxiomTeeVerifierTest is StdInvariant, Test {
     ) internal {
         vm.prank(owner);
         verifier.proposeSigner(newSigner);
-        vm.warp(block.timestamp + verifier.ADMIN_DELAY());
+        vm.warp(block.timestamp + 1 days);
         vm.prank(owner);
         verifier.executeSigner();
     }

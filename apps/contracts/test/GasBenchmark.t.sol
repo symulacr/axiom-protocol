@@ -69,7 +69,7 @@ contract GasBenchmark is Test {
                 admin
             )
         );
-        vault = AxiomStrategyVault(address(vaultProxy));
+        vault = AxiomStrategyVault(payable(address(vaultProxy)));
 
         // Deploy Payment Processor (UUPS proxy pattern)
         AxiomPaymentProcessor ppImpl = new AxiomPaymentProcessor();

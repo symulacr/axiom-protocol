@@ -105,6 +105,11 @@ contract AxiomTeeVerifier is Initializable, BaseVerifier, OwnableUpgradeable, UU
         emit SignerProposalCancelled(cancelled);
     }
 
+    /// @notice Returns the currently pending signer, or address(0) if none.
+    function pendingSigner() external view returns (address) {
+        return _signerTimelock.proposed;
+    }
+
     /// @dev ERC-7857 leaves the exact freshness window to the implementation; the canonical
     ///      0G reference uses a 7-day expiry (replay protection is enforced via
     ///      `usedProofs` regardless). Override the value per deployment to tighten or relax.

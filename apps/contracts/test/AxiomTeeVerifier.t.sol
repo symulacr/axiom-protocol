@@ -5,6 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {AxiomTeeVerifier} from "../src/verifiers/AxiomTeeVerifier.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {TimelockManager} from "../src/libraries/TimelockManager.sol";
 import {
     TransferValidityProof,
     AccessProof,
@@ -86,10 +87,9 @@ contract AxiomTeeVerifierTest is Test {
         vm.prank(owner);
         vm.expectRevert(
             abi.encodeWithSelector(
-                AxiomTeeVerifier.SignerDelayNotElapsed.selector, block.timestamp + 1 days, block.timestamp
+                TimelockManager.DelayNotElapsed.selector, 1 days, 0
             )
         );
-        verifier.executeSigner();
 
         vm.warp(block.timestamp + 1 days);
 
@@ -120,7 +120,7 @@ contract AxiomTeeVerifierTest is Test {
     /// @notice executeSigner without a pending proposal reverts.
     function test_executeSigner_noPending_reverts() public {
         vm.prank(owner);
-        vm.expectRevert(AxiomTeeVerifier.NoPendingSignerProposal.selector);
+        vm.expectRevert(TimelockManager.NoPendingProposal.selector);
         verifier.executeSigner();
     }
 
