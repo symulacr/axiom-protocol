@@ -15,6 +15,7 @@ import {
 } from "wagmi";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
+import { BRAND } from "../brand/assets.js";
 import { toast } from "sonner";
 import {
   apiFetch,
@@ -785,7 +786,7 @@ function ChatPageInner(): ReactElement {
             ☰
           </button>
           <img
-            src="/brand/chat-avatar-128.jpg"
+            src={BRAND.chatAvatar}
             alt=""
             width={32}
             height={32}

@@ -19,6 +19,7 @@ import {
 } from "react-router-dom";
 import { useAccount } from "wagmi";
 import { ErrorBoundary } from "./components/ErrorBoundary.js";
+import { BRAND } from "./brand/assets.js";
 import { HealthBadge } from "./components/HealthBadge.js";
 import {
   COLORS,
@@ -273,7 +274,7 @@ export function App(): ReactElement {
           <nav className="shell-nav" aria-label="Primary">
             <Link to="/" className="shell-brand" aria-label="Axiom home">
               <img
-                src="/brand/chat-avatar-128.jpg"
+                src={BRAND.chatAvatar}
                 alt=""
                 width={28}
                 height={28}

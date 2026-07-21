@@ -163,13 +163,6 @@ contract AxiomPaymentProcessor is Ownable, Pausable, ReentrancyGuard {
         _setRoyaltyBps(agentTokenId, newBps);
     }
 
-    /// @notice Set royalty override as the agent creator (frontend-directed path).
-    function setRoyaltyBpsPermitted(
-        uint256 agentTokenId,
-        uint256 newBps
-    ) external onlyAgentCreator(agentTokenId) {
-        _setRoyaltyBps(agentTokenId, newBps);
-    }
 
     function _setRoyaltyBps(
         uint256 agentTokenId,
