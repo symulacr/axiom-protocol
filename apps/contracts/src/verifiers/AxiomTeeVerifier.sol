@@ -61,10 +61,10 @@ contract AxiomTeeVerifier is BaseVerifier, Ownable {
     bytes32 private constant EIP712_DOMAIN_TYPEHASH =
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
     bytes32 private constant OWNERSHIP_PROOF_TYPEHASH = keccak256(
-        "OwnershipProof(bytes32 dataHash,bytes sealedKey,bytes targetPubkey,address to,address nft,uint256 nonce,uint256 validUntil)"
+        "OwnershipProof(bytes32 dataHash,bytes sealedKey,bytes targetPubkey,address to,address nft,bytes nonce,uint256 validUntil)"
     );
     bytes32 private constant ACCESS_PROOF_TYPEHASH = keccak256(
-        "AccessProof(bytes32 dataHash,bytes targetPubkey,address to,address nft,uint256 nonce,uint256 validUntil)"
+        "AccessProof(bytes32 dataHash,bytes targetPubkey,address to,address nft,bytes nonce,uint256 validUntil)"
     );
 
     /// @notice Deploy the verifier directly (non-proxied). The initial owner is wired into
@@ -203,7 +203,7 @@ contract AxiomTeeVerifier is BaseVerifier, Ownable {
             if (
                 p.accessProof.dataHash != p.ownershipProof.dataHash
                     || keccak256(p.accessProof.targetPubkey) != keccak256(p.ownershipProof.targetPubkey)
-                    || p.accessProof.nonce != p.ownershipProof.nonce
+                    || keccak256(p.accessProof.nonce) != keccak256(p.ownershipProof.nonce)
                     || p.accessProof.validUntil != p.ownershipProof.validUntil
             ) {
                 revert ProofFieldMismatch();
@@ -228,7 +228,7 @@ contract AxiomTeeVerifier is BaseVerifier, Ownable {
                             keccak256(p.ownershipProof.targetPubkey),
                             to,
                             nft,
-                            p.ownershipProof.nonce,
+                            keccak256(p.ownershipProof.nonce),
                             p.ownershipProof.validUntil
                         )
                     )
@@ -251,7 +251,7 @@ contract AxiomTeeVerifier is BaseVerifier, Ownable {
                             keccak256(p.accessProof.targetPubkey),
                             to,
                             nft,
-                            p.accessProof.nonce,
+                            keccak256(p.accessProof.nonce),
                             p.accessProof.validUntil
                         )
                     )

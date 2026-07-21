@@ -1,5 +1,24 @@
-import { Indexer, MemData } from "@0gfoundation/0g-storage-ts-sdk";
+import {
+  Indexer,
+  MemData,
+  KvClient,
+  Batcher,
+  HotRouterClient,
+  ZgFile,
+  EncryptedFile,
+  MerkleTree,
+} from "@0gfoundation/0g-storage-ts-sdk";
 import type { EncryptionOption } from "@0gfoundation/0g-storage-ts-sdk";
+
+// Re-export SDK classes for consumers that need direct access
+export {
+  KvClient,
+  Batcher,
+  HotRouterClient,
+  ZgFile,
+  EncryptedFile,
+  MerkleTree,
+};
 import { keccak256, type Signer } from "ethers";
 import type { Hex } from "viem";
 import { existsSync, readFileSync, renameSync, writeFileSync, mkdirSync } from "node:fs";
@@ -188,6 +207,11 @@ export async function downloadFromStorage(
   const data = new Uint8Array(await blob.arrayBuffer());
 
   return { data, rootHash, size: data.length };
+}
+
+
+export function createKvClient(indexerRpc: string): KvClient {
+  return new KvClient(indexerRpc);
 }
 
 export class ZeroGStorage implements StorageAdapter {

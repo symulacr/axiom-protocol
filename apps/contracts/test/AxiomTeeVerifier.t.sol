@@ -36,10 +36,10 @@ contract AxiomTeeVerifierTest is Test {
     bytes32 internal constant EIP712_DOMAIN_TYPEHASH =
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
     bytes32 internal constant OWNERSHIP_PROOF_TYPEHASH = keccak256(
-        "OwnershipProof(bytes32 dataHash,bytes sealedKey,bytes targetPubkey,address to,address nft,uint256 nonce,uint256 validUntil)"
+        "OwnershipProof(bytes32 dataHash,bytes sealedKey,bytes targetPubkey,address to,address nft,bytes nonce,uint256 validUntil)"
     );
     bytes32 internal constant ACCESS_PROOF_TYPEHASH = keccak256(
-        "AccessProof(bytes32 dataHash,bytes targetPubkey,address to,address nft,uint256 nonce,uint256 validUntil)"
+        "AccessProof(bytes32 dataHash,bytes targetPubkey,address to,address nft,bytes nonce,uint256 validUntil)"
     );
 
     address internal owner;
@@ -181,7 +181,7 @@ contract AxiomTeeVerifierTest is Test {
                         keccak256(pub),
                         to,
                         address(0xBEEF),
-                        nonce,
+                        keccak256(abi.encode(nonce)),
                         validUntil
                     )
                 )
@@ -195,7 +195,7 @@ contract AxiomTeeVerifierTest is Test {
                 "\x19\x01",
                 _domainSeparator(),
                 keccak256(
-                    abi.encode(ACCESS_PROOF_TYPEHASH, dataHash, keccak256(pub), to, address(0xBEEF), nonce, validUntil)
+                    abi.encode(ACCESS_PROOF_TYPEHASH, dataHash, keccak256(pub), to, address(0xBEEF), keccak256(abi.encode(nonce)), validUntil)
                 )
             )
         );
@@ -205,14 +205,14 @@ contract AxiomTeeVerifierTest is Test {
         proofs = new TransferValidityProof[](1);
         proofs[0] = TransferValidityProof({
             accessProof: AccessProof({
-                dataHash: dataHash, targetPubkey: pub, nonce: nonce, proof: accessSig, validUntil: validUntil
+                dataHash: dataHash, targetPubkey: pub, nonce: abi.encode(nonce), proof: accessSig, validUntil: validUntil
             }),
             ownershipProof: OwnershipProof({
                 oracleType: OracleType.TEE,
                 dataHash: dataHash,
                 sealedKey: sealedKey,
                 targetPubkey: pub,
-                nonce: nonce,
+                nonce: abi.encode(nonce),
                 proof: ownershipSig,
                 validUntil: validUntil
             })
