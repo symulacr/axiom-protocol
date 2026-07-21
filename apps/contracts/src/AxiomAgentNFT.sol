@@ -253,7 +253,7 @@ contract AxiomAgentNFT is
     ///         with AccessControl rather than a separate Ownable surface.
     function _authorizeUpgrade(
         address newImplementation
-    ) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
+    ) internal virtual override onlyRole(DEFAULT_ADMIN_ROLE) {}
 
     function mint(
         IntelligentData[] calldata iDatas,
