@@ -3,7 +3,7 @@ import { writeFile, rename, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { createLogger } from "../utils/logger.js";
 import { extractErrorMessage } from "../utils/response.js";
-import { bigintReplacer } from "@axiom/config/types/bigint";
+import { bigintReplacer } from "@axiom/config";
 
 const log = createLogger("events");
 

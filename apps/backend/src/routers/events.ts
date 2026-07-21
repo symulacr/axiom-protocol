@@ -2,16 +2,14 @@ import type { Express } from "express";
 import type { z } from "zod";
 import { timingSafeEqual } from "node:crypto";
 import { createRoute } from "./route-factory.js";
-import {
-  DEFAULT_EVENT_LIMIT,
-  MAX_EVENT_QUERY_LIMIT,
-} from "../utils/constants.js";
 import { eventBodySchema } from "../route-schemas.js";
 import { HTTP } from "@axiom/config";
 import { sendError } from "../utils/response.js";
 import type { EventStore } from "../events/store.js";
 import type { ServerConfig } from "../server.js";
 
+const MAX_EVENT_QUERY_LIMIT = 500 as const;
+const DEFAULT_EVENT_LIMIT = MAX_EVENT_QUERY_LIMIT;
 export const DEFAULT_EVENT_SOURCES = ["indexer"] as const;
 
 export function resolveEventSources(extra?: string): Set<string> {

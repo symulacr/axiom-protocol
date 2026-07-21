@@ -13,7 +13,7 @@ import {
   TTLCache,
 } from "../skills/shared.js";
 import { sendError } from "../utils/response.js";
-import { TRANSFER_TOPIC } from "../utils/constants.js";
+import { TRANSFER_TOPIC } from "@axiom/config";
 import { AGENT_NFT_ABI } from "@axiom/config/abis";
 import { HTTP } from "@axiom/config";
 

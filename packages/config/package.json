@@ -15,7 +15,6 @@
     "./networks": "./dist/networks.js",
     "./addresses": "./dist/addresses.js",
     "./types/hex": "./dist/types/hex.js",
-    "./types/bigint": "./dist/types/bigint.js",
     "./types/contract": "./dist/types/contract.js",
     "./abis": "./dist/abis/index.js",
     "./middleware/auth": "./dist/middleware/auth.js",
@@ -25,8 +24,7 @@
     "./types/orchestrator": "./dist/types/orchestrator.js",
     "./types/transfer": "./dist/types/transfer.js",
     "./process": "./dist/process.js",
-    "./chat-tools": "./dist/chat-tools.js",
-    "./models": "./dist/models.js"
+    "./chat-tools": "./dist/chat-tools.js"
   },
   "scripts": {
     "generate": "wagmi generate",

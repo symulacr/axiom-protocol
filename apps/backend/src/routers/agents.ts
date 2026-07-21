@@ -12,12 +12,13 @@ import type { TypedContract, AgentNFTMethods } from "@axiom/config/types/contrac
 import { type ServerConfig, isUpstreamTransportError } from "../server.js";
 import { sendError, extractErrorMessage } from "../utils/response.js";
 import { TTLCache } from "../utils/cache.js";
-import { TRANSFER_TOPIC, MAX_AGENT_ENUMERATION } from "../utils/constants.js";
+import { TRANSFER_TOPIC } from "@axiom/config";
 import type { DefaultSignerOracleClient } from "../oracle/client.js";
 import { createLogger } from "../utils/logger.js";
 
 const log = createLogger("agents");
 
+const MAX_AGENT_ENUMERATION = 100 as const;
 const AGENT_LOG_SCAN_BLOCKS = 50_000;
 import type { Eip712Domain, OwnershipProofInput } from "@axiom/config";
 import {

@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { uploadToStorage } from "@axiom/config/storage/0g";
-import { bigintReplacer } from "@axiom/config/types/bigint";
+import { bigintReplacer } from "@axiom/config";
 import { createServer } from "node:http";
 
 import {

@@ -16,7 +16,7 @@ import { ethers, type Wallet } from "ethers";
 import { type ChatCompletionMessageParam, type ChatCompletionTool } from "openai/resources/chat/completions";
 import { TypedContract, type AgentNFTMethods } from "@axiom/config/types/contract";
 import { ARISTOTLE_CHAIN_ID } from "@axiom/config/networks";
-import { bigintReplacer } from "@axiom/config/types/bigint";
+import { bigintReplacer } from "@axiom/config";
 
 import {
   getComputeBaseUrl,
@@ -62,14 +62,13 @@ import {
   unregisterClient,
   type ConnectedClient,
 } from "./ws/broadcaster.js";
-import { MAX_WS_CLIENTS } from "./utils/constants.js";
 import { TTLCache } from "./utils/cache.js";
 import pkg from "../package.json" with { type: "json" };
-
-
 const log = createLogger("server");
-
 const PKG_VERSION = pkg.version;
+const MAX_WS_CLIENTS = 1000 as const;
+
+
 
 function shortSigner(addr: string): string {
   return addr.length > 10 ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : addr;

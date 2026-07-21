@@ -3,7 +3,14 @@ import { fetchJson } from "../http-json.js";
 import { keccak256, toHex } from "viem";
 import type { ToolRuntime } from "../transport.js";
 import type { ToolResult } from "../types.js";
-import { success, fail } from "../tool-result.js";
+
+function success(obj: Record<string, unknown>): ToolResult {
+  return { ok: true, content: JSON.stringify(obj) };
+}
+
+function fail(message: string): ToolResult {
+  return { ok: false, content: JSON.stringify({ error: message }) };
+}
 
 export async function runEncodeTool(
   name: string,

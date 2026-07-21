@@ -1,6 +1,6 @@
 import type { AxiomEvent } from "./events.js";
 import { ARISTOTLE_CHAIN_ID } from "@axiom/config/networks";
-import { bigintReplacer } from "@axiom/config/types/bigint";
+import { bigintReplacer } from "@axiom/config";
 
 export interface HttpEventBody {
   source: string;

@@ -1,7 +1,14 @@
 import { fetchJson } from "../http-json.js";
 import type { ToolRuntime } from "../transport.js";
 import type { ToolResult } from "../types.js";
-import { success, fail } from "../tool-result.js";
+
+function success(obj: Record<string, unknown>): ToolResult {
+  return { ok: true, content: JSON.stringify(obj) };
+}
+
+function fail(message: string): ToolResult {
+  return { ok: false, content: JSON.stringify({ error: message }) };
+}
 
 type ArchiveIntent = "lookup" | "confirm" | "account";
 

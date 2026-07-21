@@ -1,8 +1,15 @@
-import { humanAbi } from "../abi.js";
+import { parseAbi } from "viem";
 import { fetchJson } from "../http-json.js";
 import type { ToolRuntime } from "../transport.js";
 import type { ToolResult } from "../types.js";
-import { success, fail } from "../tool-result.js";
+
+function success(obj: Record<string, unknown>): ToolResult {
+  return { ok: true, content: JSON.stringify(obj) };
+}
+
+function fail(message: string): ToolResult {
+  return { ok: false, content: JSON.stringify({ error: message }) };
+}
 
 function resolveTokenId(
   args: Record<string, unknown>,
@@ -38,7 +45,7 @@ export async function runReadTool(
       if (!vault) return fail("Vault address not configured");
       const balance = (await ctx.chain.readContract<bigint>({
         address: vault,
-        abi: humanAbi(["function balanceOf(uint256) view returns (uint256)"]),
+        abi: parseAbi(["function balanceOf(uint256) view returns (uint256)"]),
         functionName: "balanceOf",
         args: [BigInt(tokenId)],
       })) as bigint;
@@ -54,18 +61,18 @@ export async function runReadTool(
         contracts: [
           {
             address: nft,
-            abi: humanAbi(["function name() view returns (string)"]),
+            abi: parseAbi(["function name() view returns (string)"]),
             functionName: "name",
           },
           {
             address: nft,
-            abi: humanAbi(["function ownerOf(uint256) view returns (address)"]),
+            abi: parseAbi(["function ownerOf(uint256) view returns (address)"]),
             functionName: "ownerOf",
             args: [BigInt(tokenId)],
           },
           {
             address: nft,
-            abi: humanAbi([
+            abi: parseAbi([
               "function intelligentDatasOf(uint256) view returns ((string dataDescription, bytes32 dataHash)[])",
             ]),
             functionName: "intelligentDatasOf",
@@ -99,4 +106,3 @@ export async function runReadTool(
       return fail(`Unknown read tool: ${name}`);
   }
 }
-

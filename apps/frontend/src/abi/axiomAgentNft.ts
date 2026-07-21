@@ -1,3 +1,0 @@
-import { AGENT_NFT_ABI } from "@axiom/config/abis";
-
-export const axiomAgentNftAbi = AGENT_NFT_ABI;
