@@ -95,24 +95,33 @@ contract DeployAristotle is Script {
                 oracleAdmin
             )
         );
-        AxiomAgentNFT nft = AxiomAgentNFT(address(proxy));
+        AxiomAgentNFT nft = AxiomAgentNFT(payable(address(proxy)));
         console2.log("AxiomAgentNFT proxy deployed at:", address(nft));
         console2.log("AxiomAgentNFT implementation at:", address(implementation));
 
-        AxiomStrategyVault vault = new AxiomStrategyVault(address(nft), oracleAdmin);
+        AxiomStrategyVault vaultImpl = new AxiomStrategyVault();
+        ERC1967Proxy vaultProxy = new ERC1967Proxy(
+            address(vaultImpl),
+            abi.encodeWithSelector(vaultImpl.initialize.selector, address(nft), oracleAdmin)
+        );
+        AxiomStrategyVault vault = AxiomStrategyVault(payable(address(vaultProxy)));
         console2.log("AxiomStrategyVault deployed at:", address(vault));
 
-        // paymentTokenAddr is read from the PAYMENT_TOKEN_ADDR env var (e.g. USDC.e / USDG on 0G).
         address paymentTokenAddr = vm.envAddress("PAYMENT_TOKEN_ADDR");
-        AxiomPaymentProcessor processor = new AxiomPaymentProcessor(
-            address(nft),
-            paymentTokenAddr,
-            oracleAdmin, // treasury
-            100, // 1% default protocol fee
-            oracleAdmin // owner
+        AxiomPaymentProcessor processorImpl = new AxiomPaymentProcessor();
+        ERC1967Proxy processorProxy = new ERC1967Proxy(
+            address(processorImpl),
+            abi.encodeWithSelector(
+                processorImpl.initialize.selector,
+                address(nft),
+                paymentTokenAddr,
+                oracleAdmin, // treasury
+                100, // 1% default protocol fee
+                oracleAdmin // owner
+            )
         );
+        AxiomPaymentProcessor processor = AxiomPaymentProcessor(payable(address(processorProxy)));
         console2.log("AxiomPaymentProcessor deployed at:", address(processor));
-
         vm.stopBroadcast();
 
         string memory jsonPath = string.concat("../../docs/deployments/aristotle-", deployDate, ".json");

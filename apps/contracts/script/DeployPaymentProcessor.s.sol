@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import {Script, console2} from "forge-std/Script.sol";
 import {AxiomPaymentProcessor} from "../src/AxiomPaymentProcessor.sol";
 import {AxiomMockUSDC} from "../src/mocks/AxiomMockUSDC.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 /// @title DeployPaymentProcessor.s.sol — Redeploy AxiomPaymentProcessor on Galileo
 /// @notice Original broadcast was left pending (never mined). Deploys mock USDC first,
@@ -36,28 +37,22 @@ contract DeployPaymentProcessor is Script {
         AxiomMockUSDC paymentToken = new AxiomMockUSDC();
         console2.log("[DeployPaymentProcessor] AxiomMockUSDC deployed at:", address(paymentToken));
 
-        bytes32 salt = keccak256("AxiomPaymentProcessor.galileo.2026-06-14");
-        bytes memory initCode = abi.encodePacked(
-            type(AxiomPaymentProcessor).creationCode,
-            abi.encode(nftProxy, address(paymentToken), operator, uint256(100), operator)
+        // Deploy implementation and wrap in ERC1967Proxy
+        AxiomPaymentProcessor processorImpl = new AxiomPaymentProcessor();
+        ERC1967Proxy processorProxy = new ERC1967Proxy(
+            address(processorImpl),
+            abi.encodeWithSelector(
+                AxiomPaymentProcessor.initialize.selector,
+                nftProxy,
+                address(paymentToken),
+                operator, // treasury
+                uint256(100), // 1% protocol fee
+                operator // owner
+            )
         );
-        address create2Predicted = vm.computeCreate2Address(salt, keccak256(initCode), operator);
-        console2.log("[DeployPaymentProcessor] CREATE2 predicted address :", create2Predicted);
-        console2.log("[DeployPaymentProcessor] Target (docs) address      :", targetAddress);
-
-        if (create2Predicted == targetAddress) {
-            console2.log("[DeployPaymentProcessor] CREATE2 predicted == TARGET.");
-        } else {
-            console2.log("[DeployPaymentProcessor] CREATE2 predicted != TARGET -- using plain CREATE.");
-        }
-
-        AxiomPaymentProcessor processor = new AxiomPaymentProcessor(
-            nftProxy,
-            address(paymentToken),
-            operator, // treasury
-            100, // 1% protocol fee
-            operator // owner
-        );
+        AxiomPaymentProcessor processor = AxiomPaymentProcessor(address(processorProxy));
+        console2.log("[DeployPaymentProcessor] AxiomPaymentProcessor impl at:", address(processorImpl));
+        console2.log("[DeployPaymentProcessor] AxiomPaymentProcessor proxy at:", address(processor));
         console2.log("[DeployPaymentProcessor] AxiomPaymentProcessor deployed at:", address(processor));
 
         address storedNft = address(processor.AXIOM_NFT());
