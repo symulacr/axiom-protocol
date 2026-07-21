@@ -4,6 +4,7 @@ import type { ToolRuntime } from "../transport.js";
 import { ZERO_DATA_ROOT } from "@axiom/config";
 
 import type { ToolResult } from "../types.js";
+import { success, fail } from "../tool-result.js";
 
 const STRATEGY_OF_CURRENT = [
   "function strategyOf(uint256) view returns (bytes32, uint256, uint256, uint64, uint64)",
@@ -115,9 +116,6 @@ export async function runOrchestrateTool(
   return success(data);
 }
 
-function success(obj: Record<string, unknown>): ToolResult {
-  return { ok: true, content: JSON.stringify(obj) };
-}
 
 export function buildTickBody(
   args: Record<string, unknown>,
@@ -145,8 +143,4 @@ export function buildTickBody(
   if (computeModel) body.computeModel = computeModel;
 
   return body;
-}
-
-function fail(message: string): ToolResult {
-  return { ok: false, content: JSON.stringify({ error: message }) };
 }

@@ -1,6 +1,7 @@
 import { getChatToolSpec } from "@axiom/config/chat-tools";
 import type { ToolResult } from "../types.js";
 import type { ToolRuntime } from "../transport.js";
+import { fail } from "../tool-result.js";
 
 const PREFIX_MAP: Record<string, string> = {
   evm_: "/v1/skills/evm/",
@@ -107,6 +108,3 @@ export function capArrays(v: unknown, n: number): unknown {
   return v;
 }
 
-function fail(message: string): ToolResult {
-  return { ok: false, content: JSON.stringify({ error: message }) };
-}
