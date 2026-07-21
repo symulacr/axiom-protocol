@@ -613,7 +613,7 @@ contract AxiomAgentNFTTest is Test {
 
     // ─── Transferred event test ─────────────────────────────────────
 
-    event Transferred(uint256 _tokenId, address indexed _from, address indexed _to);
+    event Transferred(uint256 indexed _tokenId, address indexed _from, address indexed _to);
 
     function testTransferredEvent_emitted() public {
         uint256 tokenId = _mintTo(alice);
