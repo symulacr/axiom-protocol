@@ -1,12 +1,8 @@
 import { Indexer } from "@0gfoundation/0g-storage-ts-sdk";
 import { ethers } from "ethers";
-<<<<<<< Updated upstream
 import { loadEnv } from "./env.js";
 import { join } from "node:path";
 import { mkdirSync, writeFileSync } from "node:fs";
-=======
-import { loadEnv } from "@axiom/config/env";
->>>>>>> Stashed changes
 import { fileURLToPath } from "node:url";
 import { uploadToStorage } from "@axiom/config/storage/0g";
 import { bigintReplacer } from "@axiom/config/types/bigint";

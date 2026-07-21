@@ -13,7 +13,6 @@ import rateLimit from "express-rate-limit";
 import { createServer, type Server as HttpServer } from "node:http";
 import { WebSocketServer, type WebSocket } from "ws";
 import { ethers, type Wallet } from "ethers";
-<<<<<<< Updated upstream
 import { type ChatCompletionMessageParam, type ChatCompletionTool } from "openai/resources/chat/completions";
 import { TypedContract, type AgentNFTMethods } from "@axiom/config/types/contract";
 import { ARISTOTLE_CHAIN_ID } from "@axiom/config/networks";
@@ -36,23 +35,6 @@ import {
   requireServerAuth,
   timingSafeTokenInList,
 } from "@axiom/config/middleware/auth";
-=======
-import { TypedContract } from "@axiom/config/types/contract";
-import { GALILEO_CHAIN_ID } from "@axiom/config/networks";
-import { bigintReplacer, stringifyBigIntSafe, bigIntSafe } from "@axiom/config/types/bigint";
-import { AGENT_NFT_ABI } from "@axiom/config/abis/agentNft.js";
-import { VAULT_ABI } from "@axiom/config/abis/vault.js";
-import type { AgentNFTMethods, StrategyVaultMethods } from "./contract-types.js";
-import { ZeroGStorage, pickOGNetwork } from "./storage/0g.js";
-// Compute via 0G Router API — see compute/router.ts
-import { getComputeBaseUrl } from "./compute/router.js";
-import type OpenAI from "openai";
-import { StrategyRunner, type StrategySpec, type MarketSignal, type TickResult } from "./orchestrator/index.js";
-import { DefaultSignerOracleClient } from "./oracle/client.js";
-import { accessMessageHash, type AccessProofInput, type Eip712Domain, DEFAULT_EIP712_DOMAIN } from "@axiom/oracle/signer";
-import { loadEnv } from "@axiom/config/env";
-import { createApiKeyAuth } from "@axiom/config/middleware/auth";
->>>>>>> Stashed changes
 import { getEventStore } from "./events/store.js";
 import { PaymentProcessorClient } from "./payment/processor.js";
 import type { BackendEnv } from "./env-schema.js";
@@ -84,7 +66,6 @@ import { MAX_WS_CLIENTS } from "./utils/constants.js";
 import { TTLCache } from "./utils/cache.js";
 import pkg from "../package.json" with { type: "json" };
 
-<<<<<<< Updated upstream
 
 const log = createLogger("server");
 
@@ -120,10 +101,6 @@ export function isUpstreamTransportError(err: unknown): boolean {
     "UND_ERR_HEADERS_TIMEOUT",
   ].includes(code);
 }
-=======
-/** HTTP + WebSocket server. */
-loadEnv();
->>>>>>> Stashed changes
 
 export interface ServerConfig {
   bind: string;

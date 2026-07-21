@@ -6,7 +6,6 @@ import {
   type TransactionResponse,
 } from "ethers";
 import { TypedContract } from "@axiom/config/types/contract";
-<<<<<<< Updated upstream
 import type { TickResult } from "@axiom/config/types/orchestrator";
 import type OpenAI from "openai";
 import {
@@ -99,15 +98,6 @@ type StrategyVaultMethods = {
     proof: string[],
   ): Promise<TransactionResponse>;
 };
-=======
-import { VAULT_ABI } from "@axiom/config/abis/vault.js";
-import type { StrategyVaultMethods } from "../contract-types.js";
-import type OpenAI from "openai";
-import { ZeroGStorage, type Encryption } from "../storage/0g.js";
-import { createRouterClient } from "../compute/router.js";
-import { DefaultSignerOracleClient } from "../oracle/client.js";
-import { pickOGNetwork } from "../storage/0g.js";
->>>>>>> Stashed changes
 
 export interface MarketSignal {
   source: string;

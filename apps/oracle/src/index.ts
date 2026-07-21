@@ -9,12 +9,8 @@ import {
   type StorageAdapter,
 } from "@axiom/config/storage/0g";
 import { startServer } from "./server.js";
-<<<<<<< Updated upstream
 export { startServer, type ServerConfig } from "./server.js";
 import { loadEnv } from "./env.js";
-=======
-import { loadEnv } from "@axiom/config/env";
->>>>>>> Stashed changes
 import { oracleEnvSchema } from "./env-schema.js";
 import { toViemHex } from "@axiom/config/types/hex";
 
