@@ -10,7 +10,7 @@ import {
 } from "@axiom/config/storage/0g";
 import { startServer } from "./server.js";
 export { startServer, type ServerConfig } from "./server.js";
-import { loadEnv } from "./env.js";
+import { loadEnv } from "@axiom/config/env";
 import { oracleEnvSchema } from "./env-schema.js";
 import { toViemHex } from "@axiom/config/types/hex";
 import { registerProcessHandlers } from "@axiom/config/process";
