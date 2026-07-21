@@ -33,6 +33,9 @@ jobs:
       - run: pnpm --filter @axiom/frontend typecheck
       - run: pnpm --filter @axiom/frontend lint
       - run: pnpm --filter @axiom/contracts typecheck
+      - run: pnpm --filter @axiom/indexer typecheck
+      - name: Dependency audit
+        run: pnpm audit --audit-level=high || true
       - name: Prove tests are tracked (C0)
         run: |
           set -euo pipefail
