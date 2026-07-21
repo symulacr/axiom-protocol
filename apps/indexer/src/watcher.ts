@@ -9,7 +9,7 @@ import { decodeAxiomLog, type WatchedEvent } from "./events/parser.js";
 import { pollOnce, logsByChainOrder } from "./watcher/poll.js";
 import { loadCheckpoint, saveCheckpoint } from "./watcher/checkpoint.js";
 
-export const POLL_WINDOW_BLOCKS = 50n;
+const POLL_WINDOW_BLOCKS = 50n;
 
 export const POLL_INTERVAL_MS = 12_000;
 

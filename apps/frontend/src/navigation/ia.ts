@@ -34,7 +34,7 @@ export const PRIMARY_NAV: readonly PrimaryNavItem[] = [
 ] as const;
 
 /** Paths that must never appear as equal-weight primary nav peers. */
-export const REDUNDANT_PEER_PATHS = [
+const REDUNDANT_PEER_PATHS = [
   "/agents",
   "/market",
   "/dashboard",
@@ -81,6 +81,6 @@ export function withMintOpen(
 }
 
 /** Labels that primary nav must expose (for structural tests / a11y). */
-export function primaryNavLabels(): string[] {
+function primaryNavLabels(): string[] {
   return PRIMARY_NAV.map((n) => n.label);
 }

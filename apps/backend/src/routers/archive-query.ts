@@ -17,7 +17,7 @@ import {
 } from "../services/wayback.js";
 import { queryArchive } from "../services/archive.js";
 
-export const archiveQuerySchema = z.object({
+const archiveQuerySchema = z.object({
   intent: z.enum(["lookup", "confirm", "account", "closest"]).default("lookup"),
   url: archiveUrlSchema.optional(),
   handle: z.string().min(1).max(64).optional(),

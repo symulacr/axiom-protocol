@@ -64,7 +64,7 @@ function base64ToBytes(b64: string): Uint8Array {
 }
 
 /** Fetch oracle uncompressed pubkey and ECIES-seal a base64 32-byte DEK. */
-export async function sealDekForOracle(
+async function sealDekForOracle(
   oldDataEncryptionKeyB64: string,
   signal?: AbortSignal,
 ): Promise<string> {

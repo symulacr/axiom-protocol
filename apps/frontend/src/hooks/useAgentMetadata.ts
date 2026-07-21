@@ -73,7 +73,7 @@ export function useAgentMetadata(
   );
 
   const query = useReadContracts({
-    allowFailure: false,
+    allowFailure: true,
     contracts,
     query: {
       enabled: enabledOption && isConnected && tokenId > 0n,
@@ -81,22 +81,22 @@ export function useAgentMetadata(
   });
 
   const intelligentDatas =
-    (query.data?.[3] as
-      | ReadonlyArray<{ dataDescription: string; dataHash: Hex }>
-      | undefined) ?? undefined;
+    ((query.data?.[3] as
+      | { result?: ReadonlyArray<{ dataDescription: string; dataHash: Hex }>; error?: Error }
+      | undefined)?.result) ?? undefined;
   const firstData = intelligentDatas?.[0];
 
   const data = useMemo<AgentMetadata | null>(() => {
     if (!query.data) return null;
     return {
       tokenId,
-      name: (query.data[0] as string) || "",
-      symbol: (query.data[1] as string) || "",
-      owner: (query.data[2] as Address) ?? "0x0",
-      creator: (query.data[5] as Address | undefined) ?? undefined,
+      name: ((query.data[0] as { result?: string; error?: Error } | undefined)?.result) ?? "",
+      symbol: ((query.data[1] as { result?: string; error?: Error } | undefined)?.result) ?? "",
+      owner: ((query.data[2] as { result?: Address; error?: Error } | undefined)?.result) ?? "0x0",
+      creator: ((query.data[5] as { result?: Address; error?: Error } | undefined)?.result) as Address | undefined,
       dataHash: firstData?.dataHash ?? "0x",
       dataDescription: firstData?.dataDescription ?? "",
-      tokenUri: (query.data[4] as string) ?? "",
+      tokenUri: ((query.data[4] as { result?: string; error?: Error } | undefined)?.result) ?? "",
     };
   }, [query.data, tokenId, firstData]);
 

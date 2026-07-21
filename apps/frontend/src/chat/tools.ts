@@ -12,7 +12,6 @@ import {
 import { runBrowserTool } from "./transport-browser.js";
 
 export const TOOL_LABELS: Record<string, string> = chatToolLabels();
-export { classOfTool, CHAT_TOOL_CLASS_LABELS };
 
 export function toolClass(name: string): ChatToolClass | undefined {
   return classOfTool(name);
@@ -22,9 +21,6 @@ export function toolHint(name: string): string | undefined {
   return getChatToolSpec(name)?.hint;
 }
 
-export function formatToolResult(name: string, result: unknown): string {
-  return formatToolResultRuntime(name, result);
-}
 
 export type ToolDefinition = {
   type: "function";
