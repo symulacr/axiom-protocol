@@ -117,7 +117,6 @@ contract AxiomStrategyVault is Ownable, Pausable, ReentrancyGuard {
         if (dailyLimit > type(uint128).max) revert LimitOverflow();
         Vault storage v = vaults[tokenId];
         v.strategyRoot = root;
-        require(dailyLimit <= type(uint128).max, "dailyLimit overflows uint128");
         v.dailyLimit = uint128(dailyLimit);
         v.dailySpent = 0;
         v.resetDay = uint64(block.timestamp / 1 days);

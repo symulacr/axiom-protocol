@@ -8,16 +8,20 @@ import "../interfaces/IERC7857DataVerifier.sol";
 /// @dev Copied verbatim from https://github.com/0gfoundation/0g-agent-nft (MIT)
 abstract contract BaseVerifier is IERC7857DataVerifier {
     error ProofAlreadyUsed(bytes32 proofHash);
-    mapping(bytes32 => bool) internal usedProofs;
 
-    mapping(bytes32 => uint256) internal proofTimestamps;
+    struct ProofRecord {
+        bool used;
+        uint256 timestamp;
+    }
+    mapping(bytes32 => ProofRecord) internal proofs;
 
     function _checkAndMarkProof(
         bytes32 proofNonce
     ) internal {
-        if (usedProofs[proofNonce]) revert ProofAlreadyUsed(proofNonce);
-        usedProofs[proofNonce] = true;
-        proofTimestamps[proofNonce] = block.timestamp;
+        ProofRecord storage rec = proofs[proofNonce];
+        if (rec.used) revert ProofAlreadyUsed(proofNonce);
+        rec.used = true;
+        rec.timestamp = block.timestamp;
     }
 
     function _getMaxProofAge() internal view virtual returns (uint256);
@@ -29,9 +33,9 @@ abstract contract BaseVerifier is IERC7857DataVerifier {
         uint256 maxAge = _getMaxProofAge();
         for (uint256 i = 0; i < proofNonces.length; i++) {
             bytes32 nonce = proofNonces[i];
-            if (usedProofs[nonce] && block.timestamp > proofTimestamps[nonce] + maxAge) {
-                delete usedProofs[nonce];
-                delete proofTimestamps[nonce];
+            ProofRecord storage rec = proofs[nonce];
+            if (rec.used && block.timestamp > rec.timestamp + maxAge) {
+                delete proofs[nonce];
             }
         }
     }
