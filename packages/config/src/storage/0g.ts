@@ -1,7 +1,4 @@
-import {
-  Indexer,
-  MemData,
-} from "@0gfoundation/0g-storage-ts-sdk";
+import { Indexer, MemData } from "@0gfoundation/0g-storage-ts-sdk";
 import type { EncryptionOption } from "@0gfoundation/0g-storage-ts-sdk";
 import { keccak256, type Signer } from "ethers";
 import type { Hex } from "viem";
@@ -133,6 +130,22 @@ export class InMemoryStorage implements StorageAdapter {
     return this.seenDataHashes.has(rootHash.toLowerCase());
   }
 }
+function extractUploadResult(
+  result: unknown,
+  dataLength: number,
+): UploadResult {
+  if (!result || typeof result !== "object") {
+    throw new Error("0G Storage upload returned no transaction");
+  }
+  const tx = result as Record<string, unknown>;
+  if ("rootHash" in tx && "txHash" in tx) {
+    return { rootHash: tx.rootHash as Hex, txHash: tx.txHash as Hex, size: dataLength };
+  }
+  if (tx.rootHashes && Array.isArray(tx.rootHashes) && tx.txHashes && Array.isArray(tx.txHashes)) {
+    return { rootHash: tx.rootHashes[0] as Hex, txHash: tx.txHashes[0] as Hex, size: dataLength };
+  }
+  throw new Error("0G Storage upload returned unrecognized result format");
+}
 
 export async function uploadToStorage(
   indexer: Indexer,
@@ -142,28 +155,14 @@ export async function uploadToStorage(
   options: UploadOptions = {},
 ): Promise<UploadResult> {
   const memData = new MemData(data);
-  const [tree, treeErr] = await memData.merkleTree();
-  if (treeErr)
-    throw new Error(
-      `0G merkle tree computation failed: ${treeErr.message ?? String(treeErr)}`,
-    );
-  if (!tree) throw new Error("0G merkle tree computation returned null");
-
   const uploadOpts: Parameters<typeof indexer.upload>[3] = {
     expectedReplica: options.expectedReplica,
     taskSize: options.taskSize,
     encryption: options.encryption,
   };
-
   const [tx, err] = await indexer.upload(memData, evmRpc, signer, uploadOpts);
   if (err) throw new Error(`0G upload failed: ${err.message ?? String(err)}`);
-  if (!tx) throw new Error("0G Storage upload returned no transaction");
-  const rootHash =
-    "rootHash" in tx ? (tx.rootHash as Hex) : (tx.rootHashes[0] as Hex);
-  const txHash = "txHash" in tx ? (tx.txHash as Hex) : (tx.txHashes[0] as Hex);
-  if (!rootHash || !txHash)
-    throw new Error("0G Storage upload returned empty hashes");
-  return { rootHash, txHash, size: data.length };
+  return extractUploadResult(tx, data.length);
 }
 
 export async function downloadFromStorage(
