@@ -168,6 +168,7 @@ export class StrategyRunner {
     this.signer = config.signer;
     const network = pickOGNetwork(chainId);
     if (!network) throw new Error(`Unsupported chainId ${chainId}`);
+    // network held for type narrowing (used implicitly by guard)
   }
 
   private async getClient(model?: string): Promise<OpenAI> {

@@ -370,7 +370,6 @@ function seed(): void {
   }
 }
 
-seed();
 
 export function initUsageScenarios(): void {
   seed();

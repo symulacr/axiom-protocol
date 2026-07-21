@@ -121,6 +121,3 @@ export async function executeE2eTool(
   } catch { /* ignore */ }
   return { ok, result: result.content };
 }
-
-void AGENT_NFT_ABI;
-void VAULT_ABI;
