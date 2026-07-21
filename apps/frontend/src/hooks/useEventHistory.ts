@@ -1,6 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useAccount } from "wagmi";
 import { usePolledApi } from "./usePolledApi.js";
+import type { Hex } from "viem";
+
+export interface AxiomEvent {
+  blockNumber: number;
+  logIndex: number;
+  txHash: Hex;
+  chainId: number;
+  receivedAt: number;
+  transactionHash?: Hex;
+  eventName: string;
+  payload?: Record<string, unknown>;
+  source?: string;
+  timestamp?: number;
+}
+
 export function eventTokenId(event: AxiomEvent): string | null {
   const payload = event.payload as Record<string, unknown>;
   const tid = payload?.tokenId ?? payload?.agentTokenId ?? payload?._tokenId;
@@ -23,17 +38,6 @@ export function sortEventsChronological(
 }
 
 
-export interface AxiomEvent {
-  source: string;
-  chainId: number;
-  blockNumber: number;
-  txHash: string;
-  logIndex: number;
-  eventName: string;
-  payload: Record<string, unknown>;
-  receivedAt: number;
-  timestamp: number;
-}
 
 interface EventsResponse {
   events: AxiomEvent[];
