@@ -2,7 +2,11 @@
 pragma solidity ^0.8.20;
 
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {TimelockManager} from "../libraries/TimelockManager.sol";
+using TimelockManager for TimelockManager.State;
 import "./BaseVerifier.sol";
 
 /// @title AxiomTeeVerifier
@@ -18,7 +22,7 @@ import "./BaseVerifier.sol";
 ///        - https://docs.openzeppelin.com/contracts/5.x/access-control (Ownable)
 ///        - https://docs.openzeppelin.com/contracts/5.x/api/access#Ownable-_transferOwnership-address-
 ///        - https://docs.openzeppelin.com/contracts/5.x/api/access#OwnableUpgradeable
-contract AxiomTeeVerifier is BaseVerifier, Ownable {
+contract AxiomTeeVerifier is Initializable, BaseVerifier, OwnableUpgradeable, UUPSUpgradeable {
     error AxiomInvalidSigner();
     error AxiomInvalidOwnershipProof();
     error AxiomInvalidAccessProof();
@@ -35,24 +39,19 @@ contract AxiomTeeVerifier is BaseVerifier, Ownable {
     ///      proofs and against overflow attacks where `validUntil` is
     ///      `type(uint256).max`.
     error AxiomValidUntilTooFar(uint256 validUntil, uint256 blockTimestamp, uint256 maxProofAgeSeconds);
-    error NoPendingSignerProposal();
-    error SignerDelayNotElapsed(uint256 executableAt, uint256 currentTime);
 
     event SignerProposed(address indexed newSigner, uint256 executableAt);
     event SignerExecuted(address indexed oldSigner, address indexed newSigner);
     event SignerProposalCancelled(address indexed cancelledSigner);
 
-    /// @dev Minimum delay between proposing and executing a signer rotation.
-    uint256 public constant ADMIN_DELAY = 1 days;
 
     /// @dev Set once at deployment; immutable so the value is baked into the deployed bytecode
     ///      and is part of the contract's ABI as a queryable getter (auto-generated `maxProofAgeSeconds()`).
     ///      Reference: Solidity 0.8.20 — Immutable variables
     ///      https://docs.soliditylang.org/en/v0.8.20/contracts.html#immutable
-    uint256 public immutable maxProofAgeSeconds;
+    uint256 public maxProofAgeSeconds;
     address public registeredSigner;
-    address public pendingSigner;
-    uint256 public pendingSignerExecutableAt;
+    TimelockManager.State private _signerTimelock;
 
     /// @dev Domain separator binds signatures to this contract instance and chain,
     ///      preventing cross-contract and cross-chain replay. Browser wallets sign
@@ -67,59 +66,42 @@ contract AxiomTeeVerifier is BaseVerifier, Ownable {
         "AccessProof(bytes32 dataHash,bytes targetPubkey,address to,address nft,bytes nonce,uint256 validUntil)"
     );
 
-    /// @notice Deploy the verifier directly (non-proxied). The initial owner is wired into
-    ///         OZ Ownable's ERC-7201 storage via the canonical `_transferOwnership` helper.
-    /// @dev Use the constructor when the contract is deployed as a standalone (no proxy). The
-    ///      signer is registered at construction so the first block of proofs can already be
-    ///      verified. For the upgradeable path (proxy deployment), call `initialize(initialOwner)`
-    ///      via the proxy's initializer; `__Ownable_init` rejects zero owners and `_transferOwnership`
-    ///      emits `OwnershipTransferred(address(0), initialOwner)`. Refs:
-    ///        - https://docs.openzeppelin.com/contracts/5.x/api/access#Ownable-_transferOwnership-address-
-    ///        - https://docs.openzeppelin.com/contracts/5.x/api/access#Ownable__Ownable_init_address-
-    constructor(
-        address initialOwner,
-        address signer_,
-        uint256 maxProofAgeSeconds_
-    ) Ownable(initialOwner) {
-        require(signer_ != address(0), "Zero signer address");
-        registeredSigner = signer_;
-        maxProofAgeSeconds = maxProofAgeSeconds_;
+    /// @notice Disable initializers for direct (non-proxied) deployments.
+    /// @dev When deployed behind a proxy, call `initialize(...)` instead.
+    constructor() {
+        _disableInitializers();
     }
 
-    /// @dev Restricted to the contract owner via OZ `onlyOwner`. Signer rotation is
-    ///      two-step with `ADMIN_DELAY` so monitors can react before execution.
+    /// @notice Initialize the upgradeable contract (replaces constructor for proxy deployments).
+    /// @param _owner   Address that will own the contract (onlyOwner).
+    /// @param _signer  Initial TEE signer public key as an address.
+    /// @param _maxProofAge  Maximum proof age in seconds.
+    function initialize(address _owner, address _signer, uint256 _maxProofAge) external initializer {
+        __Ownable_init(_owner);
+        maxProofAgeSeconds = _maxProofAge;
+        registeredSigner = _signer;
+    }
+
+    /// @dev Restricted to the contract owner. Signer rotation is
+    ///      two-step with a 1-day timelock so monitors can react before execution.
     function proposeSigner(
         address newSigner
     ) external onlyOwner {
-        require(newSigner != address(0), "Zero address");
-        uint256 executableAt = block.timestamp + ADMIN_DELAY;
-        pendingSigner = newSigner;
-        pendingSignerExecutableAt = executableAt;
-        emit SignerProposed(newSigner, executableAt);
+        _signerTimelock.propose(newSigner);
+        emit SignerProposed(newSigner, block.timestamp + 1 days);
     }
 
-    /// @dev Finalize a previously proposed signer rotation after `ADMIN_DELAY`.
+    /// @dev Finalize a previously proposed signer rotation after the timelock delay.
     function executeSigner() external onlyOwner {
-        address newSigner = pendingSigner;
-        if (newSigner == address(0)) revert NoPendingSignerProposal();
-        uint256 executableAt = pendingSignerExecutableAt;
-        if (block.timestamp < executableAt) {
-            revert SignerDelayNotElapsed(executableAt, block.timestamp);
-        }
-
+        address newSigner = _signerTimelock.execute();
         address old = registeredSigner;
         registeredSigner = newSigner;
-        pendingSigner = address(0);
-        pendingSignerExecutableAt = 0;
         emit SignerExecuted(old, newSigner);
     }
-
     /// @dev Cancel a pending signer rotation before it is executed.
     function cancelSignerProposal() external onlyOwner {
-        address cancelled = pendingSigner;
-        if (cancelled == address(0)) revert NoPendingSignerProposal();
-        pendingSigner = address(0);
-        pendingSignerExecutableAt = 0;
+        address cancelled = _signerTimelock.proposed;
+        _signerTimelock.cancel();
         emit SignerProposalCancelled(cancelled);
     }
 
@@ -307,4 +289,9 @@ contract AxiomTeeVerifier is BaseVerifier, Ownable {
             revert AxiomValidUntilTooFar(validUntil, nowTs, maxAge);
         }
     }
+    /// @dev UUPS: only the owner may authorize an upgrade.
+    function _authorizeUpgrade(address) internal override onlyOwner {}
+
+    /// @dev Storage gap for future upgrades (reserve 50 slots).
+    uint256[50] private __gap;
 }

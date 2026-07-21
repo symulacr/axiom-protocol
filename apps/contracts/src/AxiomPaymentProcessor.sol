@@ -3,18 +3,21 @@ pragma solidity ^0.8.20;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {IAxiomAgentNFT} from "./interfaces/IAxiomAgentNFT.sol";
+import {TimelockManager} from "./libraries/TimelockManager.sol";
+using TimelockManager for TimelockManager.State;
 
 /// @title AxiomPaymentProcessor
 /// @notice Routes payments to agent creators, compute providers, and the protocol treasury.
 /// @dev Pay-for-agent pulls a configurable ERC-20 stable (USDC.e / USDG) from the payer and
 ///      credits the creator's withdrawable balance. The creator pulls funds via
-///      `withdrawAgentEarnings()`. Standalone, non-upgradeable.
-contract AxiomPaymentProcessor is Ownable, Pausable, ReentrancyGuard {
+///      `withdrawAgentEarnings()`. Standalone, upgradeable via UUPS.
+contract AxiomPaymentProcessor is Initializable, OwnableUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable, UUPSUpgradeable {
     using SafeERC20 for IERC20;
 
     error ZeroAddress();
@@ -26,7 +29,6 @@ contract AxiomPaymentProcessor is Ownable, Pausable, ReentrancyGuard {
     error MigrationBlocked();
     error TransferAmountMismatch(uint256 expected, uint256 received);
     error NoPendingProposal();
-    error TimelockNotExpired();
 
     event PaymentProcessed(
         uint256 indexed agentTokenId,
@@ -46,18 +48,18 @@ contract AxiomPaymentProcessor is Ownable, Pausable, ReentrancyGuard {
     event PaymentTokenUpdated(address indexed oldToken, address indexed newToken);
 
     uint256 public constant BPS_DENOMINATOR = 10_000;
-    uint256 public constant TREASURY_TIMELOCK_DELAY = 1 days;
 
     /// @custom:storage-location erc7201:agent.storage.AxiomPaymentProcessor
     struct PaymentProcessorStorage {
         address protocolTreasury;
         address paymentToken;
         uint16 protocolFeeBps;
-        address pendingProtocolTreasury;
-        uint48 pendingTreasuryEffectiveAt;
         uint256 totalOutstandingEarnings;
         mapping(uint256 => uint256) agentRoyaltyStored; // sentinel: 0 = unset, else bps + 1
         mapping(address => uint256) agentEarnings;
+        IAxiomAgentNFT axiomNft;
+        TimelockManager.State treasuryTimelock;
+        uint256[49] __gap;
     }
 
     // ERC-7201 storage location (OZ v5): keccak256(abi.encode(keccak256("agent.storage.AxiomPaymentProcessor") - 1)) & ~bytes32(uint256(0xff))
@@ -69,29 +71,35 @@ contract AxiomPaymentProcessor is Ownable, Pausable, ReentrancyGuard {
         }
     }
 
-    IAxiomAgentNFT public immutable AXIOM_NFT;
 
     modifier onlyAgentCreator(
         uint256 agentTokenId
     ) {
-        address creator = IAxiomAgentNFT(AXIOM_NFT).creatorOf(agentTokenId);
+        PaymentProcessorStorage storage $ = _getStorage();
+        address creator = $.axiomNft.creatorOf(agentTokenId);
         if (creator != msg.sender) revert NotCreator();
         _;
     }
 
-    constructor(
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(
         address nftAddr,
         address paymentTokenAddr,
         address treasuryAddr,
         uint256 protocolFeeBps_,
         address initialOwner
-    ) Ownable(initialOwner) {
+    ) external initializer {
         if (nftAddr == address(0)) revert ZeroAddress();
         if (paymentTokenAddr == address(0)) revert ZeroAddress();
         if (treasuryAddr == address(0)) revert ZeroAddress();
         if (protocolFeeBps_ > BPS_DENOMINATOR) revert InvalidBps();
-        AXIOM_NFT = IAxiomAgentNFT(nftAddr);
+        __Ownable_init(initialOwner);
         PaymentProcessorStorage storage $ = _getStorage();
+        $.axiomNft = IAxiomAgentNFT(nftAddr);
         $.protocolTreasury = treasuryAddr;
         $.protocolFeeBps = uint16(protocolFeeBps_);
         $.paymentToken = paymentTokenAddr;
@@ -102,31 +110,22 @@ contract AxiomPaymentProcessor is Ownable, Pausable, ReentrancyGuard {
     ) external onlyOwner {
         if (newTreasury == address(0)) revert ZeroAddress();
         PaymentProcessorStorage storage $ = _getStorage();
-        $.pendingProtocolTreasury = newTreasury;
-        uint256 effectiveAt = block.timestamp + TREASURY_TIMELOCK_DELAY;
-        require(effectiveAt <= type(uint48).max, "treasury effectiveAt overflows uint48");
-        $.pendingTreasuryEffectiveAt = uint48(effectiveAt);
-        emit ProtocolTreasuryProposed(newTreasury, effectiveAt);
+        $.treasuryTimelock.propose(newTreasury);
+        emit ProtocolTreasuryProposed(newTreasury, block.timestamp + 1 days);
     }
 
     function executeProtocolTreasury() external onlyOwner {
         PaymentProcessorStorage storage $ = _getStorage();
-        address pending = $.pendingProtocolTreasury;
-        if (pending == address(0)) revert NoPendingProposal();
-        if (block.timestamp < $.pendingTreasuryEffectiveAt) revert TimelockNotExpired();
         address old = $.protocolTreasury;
-        $.protocolTreasury = pending;
-        $.pendingProtocolTreasury = address(0);
-        $.pendingTreasuryEffectiveAt = 0;
-        emit ProtocolTreasuryUpdated(old, pending);
+        $.protocolTreasury = $.treasuryTimelock.execute();
+        emit ProtocolTreasuryUpdated(old, $.protocolTreasury);
     }
 
     function cancelProtocolTreasuryProposal() external onlyOwner {
         PaymentProcessorStorage storage $ = _getStorage();
-        address pending = $.pendingProtocolTreasury;
+        address pending = $.treasuryTimelock.proposed;
         if (pending == address(0)) revert NoPendingProposal();
-        $.pendingProtocolTreasury = address(0);
-        $.pendingTreasuryEffectiveAt = 0;
+        $.treasuryTimelock.cancel();
         emit ProtocolTreasuryProposalCancelled(pending);
     }
 
@@ -206,11 +205,13 @@ contract AxiomPaymentProcessor is Ownable, Pausable, ReentrancyGuard {
     }
 
     function pendingProtocolTreasury() external view returns (address) {
-        return _getStorage().pendingProtocolTreasury;
+        return _getStorage().treasuryTimelock.proposed;
     }
 
     function pendingTreasuryEffectiveAt() external view returns (uint256) {
-        return _getStorage().pendingTreasuryEffectiveAt;
+        PaymentProcessorStorage storage $ = _getStorage();
+        if ($.treasuryTimelock.proposed == address(0)) return 0;
+        return $.treasuryTimelock.proposedAt + 1 days;
     }
 
     function protocolFeeBps() external view returns (uint256) {
@@ -257,7 +258,7 @@ contract AxiomPaymentProcessor is Ownable, Pausable, ReentrancyGuard {
         PaymentProcessorStorage storage $ = _getStorage();
         IERC20 token = IERC20($.paymentToken);
 
-        address creator = IAxiomAgentNFT(AXIOM_NFT).creatorOf(agentTokenId);
+        address creator = $.axiomNft.creatorOf(agentTokenId);
         if (creator == address(0)) revert AgentCreatorNotRegistered();
 
         uint256 balanceBefore = token.balanceOf(address(this));
@@ -323,4 +324,10 @@ contract AxiomPaymentProcessor is Ownable, Pausable, ReentrancyGuard {
     function unpause() external onlyOwner {
         _unpause();
     }
+
+    function AXIOM_NFT() external view returns (IAxiomAgentNFT) {
+        return _getStorage().axiomNft;
+    }
+
+    function _authorizeUpgrade(address) internal override onlyOwner {}
 }
