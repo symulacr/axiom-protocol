@@ -1,13 +1,12 @@
 import { useCallback, useState, type FormEvent, type ReactElement } from "react";
 import { useChainId, useWriteContract } from "wagmi";
-import { parseAbi } from "viem";
 import { toast } from "sonner";
 import { VAULT_ABI } from "@axiom/config/abis";
 import { getAxiomStrategyVaultAddress } from "../abi/addresses.js";
 import { humanizeError } from "../utils/format.js";
 import { COLORS, Card, Button, Input, SectionTitle, Alert } from "./ui.js";
 
-const vaultAbi = parseAbi(VAULT_ABI);
+const vaultAbi = VAULT_ABI;
 
 export function StrategyPanel({ tokenId }: { tokenId: bigint }): ReactElement {
   const chainId = useChainId();

@@ -1,11 +1,10 @@
 import { useCallback } from "react";
-import { parseAbi } from "viem";
 import type { Address } from "viem";
 import { useChainId, useWriteContract } from "wagmi";
 import { useAsyncAction } from "./useAsyncAction.js";
 import { PAYMENT_PROCESSOR_ABI } from "@axiom/config/abis";
 
-const paymentProcessorAbi = parseAbi(PAYMENT_PROCESSOR_ABI);
+const paymentProcessorAbi = PAYMENT_PROCESSOR_ABI;
 import { getAxiomPaymentProcessorAddress } from "../abi/addresses.js";
 import { agentEarningsPath, agentRoyaltyPath, apiFetch } from "../utils/apiFetch.js";
 

@@ -1,10 +1,10 @@
 import { useMemo } from "react";
 import { useAccount, useChainId, useReadContracts } from "wagmi";
-import { parseAbi, type Address, type Hex } from "viem";
+import { type Address, type Hex } from "viem";
 import { getAxiomAgentNftAddress } from "../abi/addresses.js";
-import { axiomAgentNftAbi } from "../abi/axiomAgentNft.js";
+import { AGENT_NFT_ABI } from "@axiom/config/abis";
 
-const axiomAgentNftAbiParsed = parseAbi(axiomAgentNftAbi);
+const axiomAgentNftAbiParsed = AGENT_NFT_ABI;
 
 export type AgentMetadata = {
   tokenId: bigint;

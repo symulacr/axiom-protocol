@@ -15,7 +15,7 @@ import {
   useWaitForTransactionReceipt,
   useWalletClient,
 } from "wagmi";
-import { formatEther, parseAbi } from "viem";
+import { formatEther } from "viem";
 import { humanizeError } from "../utils/format.js";
 import { AGENT_NFT_ABI } from "@axiom/config/abis";
 import { TRANSFER_TOPIC, ZERO_DATA_ROOT } from "@axiom/config/constants";
@@ -31,7 +31,7 @@ import {
   Input,
 } from "./ui.js";
 
-const agentNftAbi = parseAbi(AGENT_NFT_ABI);
+const agentNftAbi = AGENT_NFT_ABI;
 
 export type MintFormProps = {
   provider?: `0x${string}` | undefined;
