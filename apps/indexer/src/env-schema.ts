@@ -4,13 +4,12 @@ import { sharedEnvSchema } from "@axiom/config/env-schema";
 
 export const indexerEnvSchema = sharedEnvSchema.merge(
   z.object({
-    AXIOM_EVM_RPC: z.string().url(),
-    AXIOM_CHAIN_ID: z.coerce.number().int().positive().default(16661),
     AXIOM_STORAGE_RPC: z.string().optional(),
     AXIOM_STORAGE_EVM_RPC: z.string().optional(),
     AXIOM_BACKEND_URL: z.string().url().optional(),
     AXIOM_INDEXER_API_KEY: z.string().optional(),
     INDEXER_DA_ENABLED: z.string().optional(),
+    AXIOM_EVM_RPC: z.string().url(),
     DEPLOYER_PK: hexString.optional(),
     STORAGE_BATCH_INTERVAL_MS: z.coerce.number().int().positive().default(5000),
     STORAGE_BATCH_MAX_EVENTS: z.coerce.number().int().positive().default(10),

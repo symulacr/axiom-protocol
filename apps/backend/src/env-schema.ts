@@ -4,20 +4,20 @@ import { sharedEnvSchema } from "@axiom/config/env-schema";
 
 export const backendEnvSchema = sharedEnvSchema.merge(
   z.object({
-    AXIOM_EVM_RPC: z.string().url(),
     AXIOM_ORACLE_URL: z.string().url(),
     AXIOM_INDEXER_API_KEY: z.string().optional(),
+    AXIOM_EVM_RPC: z.string().url(),
+    AXIOM_SENTRY_DSN: z.string().optional(),
     AXIOM_STORAGE_RPC: z.string().url().optional(),
     AXIOM_COMPUTE_API_KEY: z.string().optional(),
     AXIOM_COMPUTE_VERIFY_TEE: z.string().optional(),
     AXIOM_ENCRYPTION_ALGORITHM: z.string().optional(),
     OG_COMPUTE_API_KEY: z.string().optional(),
-    AXIOM_TEE_SIGNER_PK: hexString,
+    AXIOM_TEE_SIGNER_PK: z.string(),
     DEPLOYER_PK: hexString,
     AXIOM_RUNTIME_SIGNER_PK: z.string().optional(),
     AXIOM_OPERATOR_PK: z.string().optional(),
     AXIOM_COMPUTE_SIGNER_PK: z.string().optional(),
-    AXIOM_SENTRY_DSN: z.string().optional(),
     AXIOM_COMPUTE_MODEL: z.string().optional(),
     AXIOM_PORT: z.coerce.number().int().positive().default(3000),
     PORT: z.coerce.number().int().positive().optional(),
