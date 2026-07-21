@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import {Test} from "forge-std/Test.sol";
 import {StdInvariant} from "forge-std/StdInvariant.sol";
 import {AxiomTeeVerifier} from "../src/verifiers/AxiomTeeVerifier.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {BaseVerifier} from "../src/verifiers/BaseVerifier.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {
@@ -62,8 +63,13 @@ contract FuzzAxiomTeeVerifierTest is StdInvariant, Test {
         stranger = vm.addr(STRANGER_KEY);
         teeSigner = vm.addr(TEE_KEY);
 
-        // A clean, locally-deployed verifier for unit-level fuzz.
-        verifier = new AxiomTeeVerifier(owner, teeSigner, 7 days);
+        // A clean, locally-deployed verifier (UUPS proxy) for unit-level fuzz.
+        AxiomTeeVerifier impl = new AxiomTeeVerifier();
+        ERC1967Proxy proxy = new ERC1967Proxy(
+            address(impl),
+            abi.encodeWithSelector(impl.initialize.selector, owner, teeSigner, 7 days)
+        );
+        verifier = AxiomTeeVerifier(address(proxy));
 
         // Check if the fork is archive-viable (non-archive RPC causes
         // invariant framework setup and state queries to fail).

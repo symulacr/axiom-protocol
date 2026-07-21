@@ -32,7 +32,17 @@ contract GasBenchmark is Test {
         benchData[0] = IntelligentData({dataDescription: "v1", dataHash: keccak256("test-data")});
 
         // Deploy Verifier
-        verifier = new AxiomTeeVerifier(admin, teeSigner, 7 days);
+        AxiomTeeVerifier verifierImpl = new AxiomTeeVerifier();
+        ERC1967Proxy verifierProxy = new ERC1967Proxy(
+            address(verifierImpl),
+            abi.encodeWithSelector(
+                AxiomTeeVerifier.initialize.selector,
+                admin,
+                teeSigner,
+                7 days
+            )
+        );
+        verifier = AxiomTeeVerifier(address(verifierProxy));
 
         // Deploy NFT (UUPS proxy pattern)
         AxiomAgentNFT implementation = new AxiomAgentNFT();
@@ -50,23 +60,46 @@ contract GasBenchmark is Test {
         nft = AxiomAgentNFT(address(proxy));
 
         // Deploy Strategy Vault
-        vault = new AxiomStrategyVault(address(nft), admin);
-
-        // Deploy Payment Processor
-        // constructor(nftAddr, paymentTokenAddr, treasuryAddr, protocolFeeBps_, initialOwner)
-        paymentProcessor = new AxiomPaymentProcessor(
-            address(nft),
-            mockUsdc,
-            treasury,
-            100, // 1% protocol fee
-            admin
+        AxiomStrategyVault vaultImpl = new AxiomStrategyVault();
+        ERC1967Proxy vaultProxy = new ERC1967Proxy(
+            address(vaultImpl),
+            abi.encodeWithSelector(
+                AxiomStrategyVault.initialize.selector,
+                address(nft),
+                admin
+            )
         );
+        vault = AxiomStrategyVault(address(vaultProxy));
+
+        // Deploy Payment Processor (UUPS proxy pattern)
+        AxiomPaymentProcessor ppImpl = new AxiomPaymentProcessor();
+        ERC1967Proxy ppProxy = new ERC1967Proxy(
+            address(ppImpl),
+            abi.encodeWithSelector(
+                AxiomPaymentProcessor.initialize.selector,
+                address(nft),
+                mockUsdc,
+                treasury,
+                100, // 1% protocol fee
+                admin
+            )
+        );
+        paymentProcessor = AxiomPaymentProcessor(address(ppProxy));
     }
 
     // ── Deploy gas ──────────────────────────────────────────────────
 
     function testGas_deployVerifier() public {
-        new AxiomTeeVerifier(admin, teeSigner, 7 days);
+        AxiomTeeVerifier impl = new AxiomTeeVerifier();
+        new ERC1967Proxy(
+            address(impl),
+            abi.encodeWithSelector(
+                AxiomTeeVerifier.initialize.selector,
+                admin,
+                teeSigner,
+                7 days
+            )
+        );
     }
 
     function testGas_deployNFTImplementation() public {
@@ -89,11 +122,30 @@ contract GasBenchmark is Test {
     }
 
     function testGas_deployStrategyVault() public {
-        new AxiomStrategyVault(address(nft), admin);
+        AxiomStrategyVault impl = new AxiomStrategyVault();
+        new ERC1967Proxy(
+            address(impl),
+            abi.encodeWithSelector(
+                AxiomStrategyVault.initialize.selector,
+                address(nft),
+                admin
+            )
+        );
     }
 
     function testGas_deployPaymentProcessor() public {
-        new AxiomPaymentProcessor(address(nft), mockUsdc, treasury, 100, admin);
+        AxiomPaymentProcessor impl = new AxiomPaymentProcessor();
+        new ERC1967Proxy(
+            address(impl),
+            abi.encodeWithSelector(
+                AxiomPaymentProcessor.initialize.selector,
+                address(nft),
+                mockUsdc,
+                treasury,
+                100,
+                admin
+            )
+        );
     }
 
     // ── NFT functions ───────────────────────────────────────────────

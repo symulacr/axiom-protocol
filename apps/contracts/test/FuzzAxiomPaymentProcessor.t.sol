@@ -5,6 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {StdInvariant} from "forge-std/StdInvariant.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import {AxiomPaymentProcessor} from "../src/AxiomPaymentProcessor.sol";
 import {IAxiomAgentNFT} from "../src/interfaces/IAxiomAgentNFT.sol";
@@ -114,7 +115,12 @@ contract FuzzAxiomPaymentProcessorUnit is Test {
         // Real OZ ERC20, wrapped in MockERC20 for the test-only `mint` helper.
         token = new MockERC20("Mock USDC", "mUSDC");
         nft = new StubAxiomAgentNFT(creator);
-        processor = new AxiomPaymentProcessor(address(nft), address(token), treasury, PROTOCOL_FEE_BPS, owner);
+        AxiomPaymentProcessor impl = new AxiomPaymentProcessor();
+        ERC1967Proxy proxy = new ERC1967Proxy(
+            address(impl),
+            abi.encodeWithSelector(impl.initialize.selector, address(nft), address(token), treasury, PROTOCOL_FEE_BPS, owner)
+        );
+        processor = AxiomPaymentProcessor(address(proxy));
     }
 
     // ─── 1. Fuzz setPaymentToken ──────────────────────────────────────
@@ -573,7 +579,12 @@ contract FuzzAxiomPaymentProcessorInvariants is StdInvariant, Test {
     function setUp() public {
         token = new MockERC20("Mock USDC", "mUSDC");
         nft = new StubAxiomAgentNFT(creator);
-        processor = new AxiomPaymentProcessor(address(nft), address(token), treasury, PROTOCOL_FEE_BPS, owner);
+        AxiomPaymentProcessor impl = new AxiomPaymentProcessor();
+        ERC1967Proxy proxy = new ERC1967Proxy(
+            address(impl),
+            abi.encodeWithSelector(impl.initialize.selector, address(nft), address(token), treasury, PROTOCOL_FEE_BPS, owner)
+        );
+        processor = AxiomPaymentProcessor(address(proxy));
         handler = new ProcessorHandler(processor, token, creator);
 
         // Limit the fuzzer to the three user-facing handler functions.

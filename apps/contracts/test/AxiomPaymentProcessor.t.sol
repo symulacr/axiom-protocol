@@ -4,7 +4,9 @@ pragma solidity ^0.8.20;
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {AxiomPaymentProcessor} from "../src/AxiomPaymentProcessor.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IAxiomAgentNFT} from "../src/interfaces/IAxiomAgentNFT.sol";
+import {TimelockManager} from "../src/libraries/TimelockManager.sol";
 
 /// @dev Minimal ERC-20 used in the processor tests. Wraps OZ's ERC20 so we exercise the
 ///      real OZ code path that the production payment token (USDC.e / USDG) uses.
@@ -115,7 +117,12 @@ contract AxiomPaymentProcessorTest is Test {
         token = new MockERC20("Mock USDC", "mUSDC");
         nft = new MockAxiomAgentNFT();
         nft.setCreator(AGENT_TOKEN_ID, creator);
-        processor = new AxiomPaymentProcessor(address(nft), address(token), treasury, PROTOCOL_FEE_BPS, owner);
+        AxiomPaymentProcessor impl = new AxiomPaymentProcessor();
+        ERC1967Proxy proxy = new ERC1967Proxy(
+            address(impl),
+            abi.encodeWithSelector(impl.initialize.selector, address(nft), address(token), treasury, PROTOCOL_FEE_BPS, owner)
+        );
+        processor = AxiomPaymentProcessor(address(proxy));
     }
 
     // ─── payForAgent ───────────────────────────────────────────────
@@ -161,8 +168,12 @@ contract AxiomPaymentProcessorTest is Test {
 
     function test_payForAgent_revertsOnFeeOnTransferToken() public {
         MockFeeOnTransferERC20 feeToken = new MockFeeOnTransferERC20();
-        AxiomPaymentProcessor feeProcessor =
-            new AxiomPaymentProcessor(address(nft), address(feeToken), treasury, PROTOCOL_FEE_BPS, owner);
+        AxiomPaymentProcessor feeProcessorImpl = new AxiomPaymentProcessor();
+        ERC1967Proxy feeProxy = new ERC1967Proxy(
+            address(feeProcessorImpl),
+            abi.encodeWithSelector(feeProcessorImpl.initialize.selector, address(nft), address(feeToken), treasury, PROTOCOL_FEE_BPS, owner)
+        );
+        AxiomPaymentProcessor feeProcessor = AxiomPaymentProcessor(address(feeProxy));
 
         uint256 amount = 1000e6;
         feeToken.mint(payer, amount);
@@ -214,8 +225,12 @@ contract AxiomPaymentProcessorTest is Test {
 
     // ─── setRoyaltyBps / setRoyaltyBpsPermitted ───────────────────
     function test_setRoyaltyBps_revertsWhenRoyaltyExceedsCap() public {
-        AxiomPaymentProcessor cappedProcessor =
-            new AxiomPaymentProcessor(address(nft), address(token), treasury, 100, owner);
+        AxiomPaymentProcessor cappedImpl = new AxiomPaymentProcessor();
+        ERC1967Proxy capProxy = new ERC1967Proxy(
+            address(cappedImpl),
+            abi.encodeWithSelector(cappedImpl.initialize.selector, address(nft), address(token), treasury, 100, owner)
+        );
+        AxiomPaymentProcessor cappedProcessor = AxiomPaymentProcessor(address(capProxy));
 
         vm.prank(creator);
         vm.expectRevert(AxiomPaymentProcessor.InvalidBps.selector);
@@ -370,7 +385,7 @@ contract AxiomPaymentProcessorTest is Test {
     // ─── protocol treasury timelock ───────────────────────────────────
     function test_proposeProtocolTreasury_emitsEvent() public {
         address newTreasury = address(0xBEEF);
-        uint256 expectedEffectiveAt = block.timestamp + processor.TREASURY_TIMELOCK_DELAY();
+        uint256 expectedEffectiveAt = block.timestamp + 1 days;
 
         vm.expectEmit(true, false, false, true);
         emit ProtocolTreasuryProposed(newTreasury, expectedEffectiveAt);
@@ -389,7 +404,7 @@ contract AxiomPaymentProcessorTest is Test {
         processor.proposeProtocolTreasury(newTreasury);
 
         vm.prank(owner);
-        vm.expectRevert(AxiomPaymentProcessor.TimelockNotExpired.selector);
+        vm.expectRevert(TimelockManager.DelayNotElapsed.selector);
         processor.executeProtocolTreasury();
     }
 
@@ -398,7 +413,7 @@ contract AxiomPaymentProcessorTest is Test {
         vm.prank(owner);
         processor.proposeProtocolTreasury(newTreasury);
 
-        vm.warp(block.timestamp + processor.TREASURY_TIMELOCK_DELAY());
+        vm.warp(block.timestamp + 1 days);
 
         vm.expectEmit(true, true, false, true);
         emit ProtocolTreasuryUpdated(treasury, newTreasury);
@@ -455,7 +470,7 @@ contract AxiomPaymentProcessorTest is Test {
         address newTreasury = address(0xBEEF);
         vm.prank(owner);
         processor.proposeProtocolTreasury(newTreasury);
-        vm.warp(block.timestamp + processor.TREASURY_TIMELOCK_DELAY());
+        vm.warp(block.timestamp + 1 days);
 
         vm.prank(payer);
         vm.expectRevert();
@@ -481,7 +496,7 @@ contract AxiomPaymentProcessorTest is Test {
 
         vm.prank(owner);
         processor.proposeProtocolTreasury(newTreasury);
-        vm.warp(block.timestamp + processor.TREASURY_TIMELOCK_DELAY());
+        vm.warp(block.timestamp + 1 days);
         vm.prank(owner);
         processor.executeProtocolTreasury();
 

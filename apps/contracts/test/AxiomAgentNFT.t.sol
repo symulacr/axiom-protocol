@@ -16,6 +16,7 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {TimelockManager} from "../src/libraries/TimelockManager.sol";
 
 contract AxiomAgentNFTTest is Test {
     AxiomAgentNFT public nft;
@@ -50,7 +51,12 @@ contract AxiomAgentNFTTest is Test {
         carol = vm.addr(CAROL_KEY);
         teeSigner = vm.addr(TEE_SIGNER_KEY);
 
-        verifier = new AxiomTeeVerifier(admin, teeSigner, 7 days);
+        AxiomTeeVerifier verifierImpl = new AxiomTeeVerifier();
+        ERC1967Proxy verifierProxy = new ERC1967Proxy(
+            address(verifierImpl),
+            abi.encodeWithSelector(verifierImpl.initialize.selector, admin, teeSigner, 7 days)
+        );
+        verifier = AxiomTeeVerifier(address(verifierProxy));
         AxiomAgentNFT implementation = new AxiomAgentNFT();
         ERC1967Proxy proxy = new ERC1967Proxy(
             address(implementation),
@@ -345,14 +351,19 @@ contract AxiomAgentNFTTest is Test {
     }
 
     function test_proposeVerifier_executeVerifier_onlyOperator() public {
-        AxiomTeeVerifier newVerifier = new AxiomTeeVerifier(admin, teeSigner, 7 days);
+        AxiomTeeVerifier newVerifierImpl = new AxiomTeeVerifier();
+        ERC1967Proxy newVerifierProxy = new ERC1967Proxy(
+            address(newVerifierImpl),
+            abi.encodeWithSelector(newVerifierImpl.initialize.selector, admin, teeSigner, 7 days)
+        );
+        AxiomTeeVerifier newVerifier = AxiomTeeVerifier(address(newVerifierProxy));
         vm.prank(admin);
         nft.proposeVerifier(address(newVerifier));
         assertEq(nft.pendingVerifier(), address(newVerifier));
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                AxiomAgentNFT.VerifierDelayNotElapsed.selector, block.timestamp + 1 days, block.timestamp
+                TimelockManager.DelayNotElapsed.selector, block.timestamp + 1 days, block.timestamp
             )
         );
         vm.prank(admin);
@@ -365,14 +376,24 @@ contract AxiomAgentNFTTest is Test {
     }
 
     function test_proposeVerifier_revertNotOperator() public {
-        AxiomTeeVerifier newVerifier = new AxiomTeeVerifier(admin, teeSigner, 7 days);
+        AxiomTeeVerifier teeImpl = new AxiomTeeVerifier();
+        ERC1967Proxy teeProxy = new ERC1967Proxy(
+            address(teeImpl),
+            abi.encodeWithSelector(teeImpl.initialize.selector, admin, teeSigner, 7 days)
+        );
+        AxiomTeeVerifier newVerifier = AxiomTeeVerifier(address(teeProxy));
         vm.prank(alice);
         vm.expectRevert();
         nft.proposeVerifier(address(newVerifier));
     }
 
     function test_cancelVerifierProposal_onlyOperator() public {
-        AxiomTeeVerifier newVerifier = new AxiomTeeVerifier(admin, teeSigner, 7 days);
+        AxiomTeeVerifier teeImpl = new AxiomTeeVerifier();
+        ERC1967Proxy teeProxy = new ERC1967Proxy(
+            address(teeImpl),
+            abi.encodeWithSelector(teeImpl.initialize.selector, admin, teeSigner, 7 days)
+        );
+        AxiomTeeVerifier newVerifier = AxiomTeeVerifier(address(teeProxy));
         vm.prank(admin);
         nft.proposeVerifier(address(newVerifier));
         assertEq(nft.pendingVerifier(), address(newVerifier));

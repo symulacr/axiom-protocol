@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import {Test} from "forge-std/Test.sol";
 import {AxiomTeeVerifier} from "../src/verifiers/AxiomTeeVerifier.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {
     TransferValidityProof,
@@ -55,9 +56,14 @@ contract AxiomTeeVerifierTest is Test {
         teeSigner = vm.addr(TEE_KEY);
         newTeeSigner = vm.addr(NEW_TEE_KEY);
 
-        // Deploy verifier with owner as the explicit initial owner. This is the path the
-        // production scripts (Deploy.s.sol, DeployAristotle.s.sol) follow.
-        verifier = new AxiomTeeVerifier(owner, teeSigner, MAX_PROOF_AGE);
+        // Deploy verifier via UUPS proxy. Implementation is instantiated first, then
+        // an ERC1967 proxy is deployed with an initialize() call targeting the impl.
+        AxiomTeeVerifier impl = new AxiomTeeVerifier();
+        ERC1967Proxy proxy = new ERC1967Proxy(
+            address(impl),
+            abi.encodeWithSelector(impl.initialize.selector, owner, teeSigner, MAX_PROOF_AGE)
+        );
+        verifier = AxiomTeeVerifier(address(proxy));
     }
 
     // ─── F-01 negative case ────────────────────────────────────────────────────
