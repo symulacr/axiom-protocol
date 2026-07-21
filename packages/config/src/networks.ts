@@ -1,5 +1,5 @@
 export interface OGNetwork {
-  readonly name: "aristotle";
+  readonly name: string;
   readonly chainId: number;
   readonly evmRpc: string;
   readonly storageRpc: string;
@@ -17,6 +17,14 @@ const _OG_NETWORKS = {
     storageRpc: "https://indexer-storage-turbo.0g.ai",
     computeRouterUrl: "https://router-api.0g.ai/v1",
     blockExplorer: "https://chainscan.0g.ai",
+  },
+  16602: {
+    name: "galileo",
+    chainId: 16602,
+    evmRpc: "https://evmrpc-testnet.0g.ai",
+    storageRpc: "https://indexer-storage-testnet-turbo.0g.ai",
+    computeRouterUrl: "https://router-api-testnet.0g.ai/v1",
+    blockExplorer: "https://chainscan-testnet.0g.ai",
   },
 } as const satisfies Record<number, OGNetwork>;
 
@@ -59,6 +67,6 @@ import { defineChain } from "viem";
 export const zeroGMainnet = defineChain({
   id: ARISTOTLE_CHAIN_ID,
   name: "0G Aristotle",
-  nativeCurrency: { name: "A0GI", symbol: "A0GI", decimals: 18 },
+  nativeCurrency: { name: "0G", symbol: "0G", decimals: 18 },
   rpcUrls: { default: { http: [resolveRpcUrl()] } },
 });
