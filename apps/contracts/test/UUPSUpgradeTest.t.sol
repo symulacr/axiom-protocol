@@ -45,7 +45,12 @@ contract UUPSUpgradeTest is Test {
     function setUp() public {
         // Deploy minimal verifier (mint does not interact with it, but initialize
         // requires a non-zero verifier address).
-        verifier = new AxiomTeeVerifier(admin, teeSigner, 7 days);
+        AxiomTeeVerifier verifierImpl = new AxiomTeeVerifier();
+        ERC1967Proxy verifierProxy = new ERC1967Proxy(
+            address(verifierImpl),
+            abi.encodeWithSelector(verifierImpl.initialize.selector, admin, teeSigner, 7 days)
+        );
+        verifier = AxiomTeeVerifier(address(verifierProxy));
 
         // Deploy v1 implementation + proxy, then initialize through the proxy.
         AxiomAgentNFT implementation = new AxiomAgentNFT();

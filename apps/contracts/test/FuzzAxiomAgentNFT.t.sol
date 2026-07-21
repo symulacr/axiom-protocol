@@ -502,7 +502,12 @@ contract FuzzAxiomAgentNFTLocal is Test {
         carol = vm.addr(CAROL_KEY);
         teeSigner = vm.addr(TEE_SIGNER_KEY);
 
-        verifier = new AxiomTeeVerifier(admin, teeSigner, 7 days);
+        AxiomTeeVerifier verifierImpl = new AxiomTeeVerifier();
+        ERC1967Proxy verifierProxy = new ERC1967Proxy(
+            address(verifierImpl),
+            abi.encodeWithSelector(verifierImpl.initialize.selector, admin, teeSigner, 7 days)
+        );
+        verifier = AxiomTeeVerifier(address(verifierProxy));
         AxiomAgentNFT implementation = new AxiomAgentNFT();
         ERC1967Proxy proxy = new ERC1967Proxy(
             address(implementation),
