@@ -1,7 +1,0 @@
-node_modules/
-dist/
-.env
-.env.local
-*.log
-.k6-cache/
-summary.json
