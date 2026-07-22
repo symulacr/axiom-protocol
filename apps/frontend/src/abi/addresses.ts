@@ -1,5 +1,12 @@
 import { resolveAddress } from "@axiom/config/addresses";
 import type { Address } from "viem";
+//
+// The single source of truth for deployed addresses is
+// packages/config/deployed.json. This frontend reads via VITE_ env
+// variables because Vite bundles at build time — it does not have
+// filesystem access to deployed.json at runtime. The env values are
+// populated from deployed.json by the deployment pipeline.
+//
 
 const env: Record<string, unknown> = {
   AXIOM_AGENT_NFT_ADDRESS: import.meta.env.VITE_AGENT_NFT_ADDRESS,
