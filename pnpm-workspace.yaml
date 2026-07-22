@@ -5,7 +5,6 @@ packages:
 overrides:
   ethers: 6.16.0
   "@0gfoundation/0g-storage-ts-sdk>ethers": 6.16.0
-  "@0gfoundation/0g-compute-ts-sdk>ethers": 6.16.0
 
 allowBuilds:
   esbuild: true

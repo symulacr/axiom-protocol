@@ -1,9 +1,5 @@
-import {
-  getReadOnlyBroker,
-  resolveChainId,
-} from "./broker.js";
+import { getComputeBaseUrl } from "./router.js";
 import { createLogger } from "../utils/logger.js";
-import { extractErrorMessage } from "../utils/response.js";
 
 const log = createLogger("provider-discovery");
 
@@ -33,54 +29,20 @@ export function selectProvider(
   return services.find((s) => s.provider) ?? services[0];
 }
 
-interface CacheEntry {
-  providers: ServiceInfo[];
-  timestamp: number;
-}
-
-const _cache = new Map<number, CacheEntry>();
-const _cachePromises = new Map<number, Promise<ServiceInfo[]>>();
-const CACHE_TTL_MS = 300_000;
-
-export async function discoverProviders(
-  rpcUrl: string,
-  chainId?: number,
-): Promise<ServiceInfo[]> {
-  const cid = resolveChainId(chainId);
-  const cached = _cache.get(cid);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS)
-    return cached.providers;
-
-  const inflight = _cachePromises.get(cid);
-  if (inflight) return inflight;
-
-  const promise = (async (): Promise<ServiceInfo[]> => {
-    const broker = await getReadOnlyBroker(rpcUrl, cid);
-    const services = await broker.listServiceWithDetail();
-    const mapped: ServiceInfo[] = services.map(
-      (s: { provider?: string; model?: string; health?: { uptime: number; latency: number } }) => ({
-        provider: s.provider ?? "",
-        model: s.model ?? "unknown",
-        ...(s.health ? { uptime: s.health.uptime, latency: s.health.latency } : {}),
-      }),
-    );
-    _cache.set(cid, { providers: mapped, timestamp: Date.now() });
-    return mapped;
-  })();
-
-  _cachePromises.set(cid, promise);
-
-  try {
-    return await promise;
-  } catch (err) {
-    _cachePromises.delete(cid);
-    log.warn("Provider discovery failed", {
-      error: extractErrorMessage(err),
-    });
+export async function discoverProviders(): Promise<ServiceInfo[]> {
+  const baseUrl = getComputeBaseUrl();
+  const res = await fetch(`${baseUrl}/v1/providers`);
+  if (!res.ok) {
+    log.warn("Provider discovery failed", { status: res.status });
     return [];
-  } finally {
-    if (_cachePromises.get(cid) === promise) {
-      _cachePromises.delete(cid);
-    }
   }
+  const services = (await res.json()) as Array<{ provider?: string; model?: string; health?: { uptime: number; latency: number } }>;
+  const mapped: ServiceInfo[] = (services ?? []).map(
+    (s: { provider?: string; model?: string; health?: { uptime: number; latency: number } }) => ({
+      provider: s.provider ?? "",
+      model: s.model ?? "unknown",
+      ...(s.health ? { uptime: s.health.uptime, latency: s.health.latency } : {}),
+    }),
+  );
+  return mapped;
 }

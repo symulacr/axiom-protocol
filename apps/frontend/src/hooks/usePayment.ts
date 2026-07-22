@@ -1,6 +1,7 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import type { Address } from "viem";
-import { useChainId, useWriteContract } from "wagmi";
+import { useChainId } from "wagmi";
+import { useGenericWrite } from "./useGenericWrite.js";
 import { useAsyncAction } from "./useAsyncAction.js";
 import { PAYMENT_PROCESSOR_ABI } from "@axiom/config/abis";
 
@@ -63,30 +64,37 @@ export function usePayment(): UsePaymentResult {
   const earningsAction = useAsyncAction();
   const royaltyAction = useAsyncAction();
 
-  const {
-    writeContractAsync,
-    isPending: isPayLoading,
-    error: payError,
-    reset: resetPayWrite,
-  } = useWriteContract();
+  const { write } = useGenericWrite();
+  const [isPayLoading, setPayLoading] = useState(false);
+  const [payError, setPayError] = useState<Error | null>(null);
+  const resetPay = useCallback(() => { setPayLoading(false); setPayError(null); }, []);
 
   const payForAgent = useCallback(
     async (tokenId: bigint, amount: string): Promise<AgentPayResult> => {
-      const txHash = await writeContractAsync({
-        address: getAxiomPaymentProcessorAddress(chainId),
-        abi: paymentProcessorAbi,
-        functionName: "payForAgent",
-        args: [tokenId, BigInt(amount)],
-      });
-      return {
-        ok: true,
-        tokenId: tokenId.toString(),
-        amount,
-        txHash,
-        payment: { txHash },
-      };
+      setPayLoading(true);
+      setPayError(null);
+      try {
+        const txHash = await write({
+          to: getAxiomPaymentProcessorAddress(chainId),
+          abi: paymentProcessorAbi,
+          functionName: "payForAgent",
+          args: [tokenId, BigInt(amount)],
+        });
+        setPayLoading(false);
+        return {
+          ok: true,
+          tokenId: tokenId.toString(),
+          amount,
+          txHash,
+          payment: { txHash },
+        };
+      } catch (err) {
+        setPayLoading(false);
+        setPayError(err instanceof Error ? err : new Error(String(err)));
+        throw err;
+      }
     },
-    [chainId, writeContractAsync],
+    [chainId, write],
   );
 
   const getEarnings = useCallback(
@@ -136,7 +144,7 @@ export function usePayment(): UsePaymentResult {
     fetchError: fetchAction.error,
     isEarningsLoading: earningsAction.isLoading,
     earningsError: earningsAction.error,
-    resetPay: resetPayWrite,
+    resetPay,
     resetRoyalty: royaltyAction.reset,
     resetFetch: fetchAction.reset,
     resetEarnings: earningsAction.reset,
