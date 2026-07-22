@@ -1,0 +1,44 @@
+# Dependencies (rebuilt inside Docker)
+node_modules
+apps/*/node_modules
+packages/*/node_modules
+
+# Git
+.git
+.gitignore
+
+# Foundry build artifacts (rebuilt in foundry-builder stage)
+apps/contracts/out
+apps/contracts/cache
+apps/contracts/broadcast
+apps/contracts/artifacts
+
+# Node build artifacts (rebuilt in builder stage)
+apps/*/dist
+packages/*/dist
+
+# IDE / editor
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Test / fuzz output
+apps/contracts/cache
+coverage
+*.log
+
+# CI / docs
+.github
+*.md
+LICENSE
