@@ -11,8 +11,9 @@ import type OpenAI from "openai";
 import {
   createRouterClient,
   setClientChatId,
-} from "../compute/router.js";
-import { createStaticProvider, resolveChainId } from "../compute/broker.js";
+  createStaticProvider,
+  resolveChainId,
+} from "../compute/index.js";
 import { pickOGNetwork } from "@axiom/config/networks";
 import { EVENT_NAMES } from "@axiom/config";
 import { VAULT_ABI, VAULT_ABI_LEGACY } from "@axiom/config/abis";
