@@ -61,7 +61,10 @@ contract DeployAristotle is Script {
         console2.log("  Oracle admin:      ", oracleAdmin);
 
         uint256 deployerBalance = deployerAddr.balance;
-        uint256 minBalance = 0.5 ether;
+        // 0G has 0 base fee — balance check is a safety floor, not a cost estimate.
+        // Previous broadcast data shows ~10.8M gas total for all 8 CREATEs.
+        // With 0 gwei gas, actual cost is near zero. 0.1 OG is a generous safety margin.
+        uint256 minBalance = 0.1 ether;
         if (deployerBalance < minBalance) {
             revert(
                 string.concat(
@@ -69,11 +72,11 @@ contract DeployAristotle is Script {
                     vm.toString(deployerBalance),
                     " wei (need >= ",
                     vm.toString(minBalance),
-                    " wei / 0.5 OG). Fund from https://faucet.0g.ai"
+                    " wei / 0.1 OG). 0G has zero gas fees - fund minimally from https://faucet.0g.ai"
                 )
             );
         }
-        console2.log("  Deployer balance:  ", deployerBalance, "wei");
+        console2.log("  Deployer balance:  ", deployerBalance, "wei (min 0.1 OG)");
 
         // registerSigner is gated on AXIOM_DEPLOYER_ADDRESS via OZ Ownable.
         address axiomDeployer = vm.envAddress("AXIOM_DEPLOYER_ADDRESS");
