@@ -10,6 +10,7 @@ import { getSharedProvider } from "./provider.js";
 import { backendEnvSchema } from "./env-schema.js";
 import { ARISTOTLE_CHAIN_ID } from "@axiom/config/networks";
 import { getEventStore } from "./events/store.js";
+import { IndexerService } from "./indexer/index.js";
 
 loadEnv();
 
@@ -66,6 +67,9 @@ async function main(): Promise<void> {
     oracleBaseUrl: env.AXIOM_ORACLE_URL,
     addresses: addresses as ServerConfig["addresses"],
   });
+  // Start background indexer (polls chain events → EventStore)
+  const indexer = new IndexerService({ provider, env });
+  indexer.start();
 
   let shuttingDown = false;
   const onSignal = (sig: NodeJS.Signals): void => {
@@ -73,6 +77,7 @@ async function main(): Promise<void> {
     shuttingDown = true;
     createLogger("server").info("shutdown", { signal: sig });
     void (async () => {
+      indexer.stop();
       await getEventStore().flush();
       server.httpServer.closeAllConnections?.();
       server.httpServer.close(() => process.exit(0));

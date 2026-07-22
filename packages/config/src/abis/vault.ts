@@ -56,6 +56,11 @@ export const VAULT_ABI = [
   "error ZeroAddress()",
   "error ZeroAmount()"
 ] as const;
+
+// ── VAULT_ABI_LEGACY — old vault interface (before validUntilDay) ──
+// Used by backend orchestrator for backward-compatible vault reads.
+// This file is auto-appended by generate-abis.sh after the forge-exported VAULT_ABI.
+// Update manually when the old contract interface changes.
 export const VAULT_ABI_LEGACY = [
   "function deposit(uint256 tokenId) payable",
   "function withdraw(uint256 tokenId, uint256 amount)",

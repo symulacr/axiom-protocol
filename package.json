@@ -13,7 +13,7 @@
 
   "scripts": {
     "build": "pnpm --filter @axiom/config build && pnpm --filter @axiom/chat-runtime build && pnpm --filter @axiom/oracle build && pnpm --filter @axiom/backend build",
-    "build:all": "pnpm build && pnpm --filter @axiom/indexer build && pnpm --filter @axiom/frontend build",
+    "build:all": "pnpm build && pnpm --filter @axiom/frontend build",
     "start": "node apps/backend/dist/index.js",
     "test": "pnpm -r run test",
     "typecheck": "pnpm -r run typecheck",

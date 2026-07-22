@@ -1,0 +1,54 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "services": {
+    "axiom-frontend": {
+      "build": {
+        "buildCommand": "pnpm --filter @axiom/config build && pnpm --filter @axiom/chat-runtime build && pnpm --filter @axiom/frontend build"
+      },
+      "deploy": {
+        "startCommand": "node apps/frontend/server.mjs",
+        "healthcheckPath": "/",
+        "healthcheckTimeout": 120,
+        "restartPolicy": "ON_FAILURE"
+      },
+      "watchPatterns": ["apps/frontend/**", "packages/config/**", "packages/chat-runtime/**"]
+    },
+    "axiom-backend": {
+      "build": {
+        "buildCommand": "pnpm --filter @axiom/config build && pnpm --filter @axiom/chat-runtime build && pnpm --filter @axiom/backend build"
+      },
+      "deploy": {
+        "startCommand": "node apps/backend/dist/index.js",
+        "healthcheckPath": "/health",
+        "healthcheckTimeout": 120,
+        "restartPolicy": "ON_FAILURE"
+      },
+      "watchPatterns": ["apps/backend/**", "packages/config/**", "packages/chat-runtime/**"]
+    },
+    "oracle": {
+      "build": {
+        "buildCommand": "pnpm --filter @axiom/config build && pnpm --filter @axiom/oracle build"
+      },
+      "deploy": {
+        "startCommand": "node apps/oracle/dist/index.js",
+        "healthcheckPath": "/health",
+        "healthcheckTimeout": 120,
+        "restartPolicy": "ON_FAILURE"
+      },
+      "watchPatterns": ["apps/oracle/**", "packages/config/**"]
+    }
+    },
+    "axiom-indexer": {
+      "build": {
+        "buildCommand": "pnpm --filter @axiom/config build && pnpm --filter @axiom/indexer build"
+      },
+      "deploy": {
+        "startCommand": "node apps/indexer/dist/index.js",
+        "healthcheckPath": "/health",
+        "healthcheckTimeout": 120,
+        "restartPolicy": "ON_FAILURE"
+      },
+      "watchPatterns": ["apps/indexer/**", "packages/config/**"]
+    }
+  }
+}

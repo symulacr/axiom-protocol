@@ -126,11 +126,8 @@ preflight() {
 
 # Run precompile if available
 auto_precompile() {
- local script="$CONTRACTS_DIR/scripts/precompile-artifacts.sh"
- if [ -f "$script" ]; then
-  echo -e "${YELLOW}[precompile] Running $script...${NC}"
-  (cd "$CONTRACTS_DIR" && bash "$script")
- fi
+ echo -e "${YELLOW}[precompile] Building contracts...${NC}"
+ (cd "$CONTRACTS_DIR" && $FORGE build --skip test/)
 }
 
 # Run ABI generation if available

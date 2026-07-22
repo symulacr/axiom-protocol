@@ -1,0 +1,18 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+overrides:
+  ethers: 6.16.0
+  "@0gfoundation/0g-storage-ts-sdk>ethers": 6.16.0
+
+allowBuilds:
+  esbuild: true
+  keccak: true
+  secp256k1: true
+  bufferutil: true
+  es5-ext: true
+  utf-8-validate: true
+  blake-hash: true
+  protobufjs: true
+strictDepBuilds: false

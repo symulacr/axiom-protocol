@@ -1,0 +1,28 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "corepack enable && corepack prepare pnpm@10.22.0 --activate && pnpm install",
+  "buildCommand": "pnpm --filter @axiom/config build && pnpm --filter @axiom/chat-runtime build && pnpm --filter @axiom/frontend build",
+  "outputDirectory": "apps/frontend/dist",
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://axiom-backend-production-7bfc.up.railway.app/:path*"
+    },
+    {
+      "source": "/api",
+      "destination": "https://axiom-backend-production-7bfc.up.railway.app/"
+    },
+    {
+      "source": "/oracle/:path*",
+      "destination": "https://oracle-production-9f7d.up.railway.app/:path*"
+    },
+    {
+      "source": "/oracle",
+      "destination": "https://oracle-production-9f7d.up.railway.app/"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
