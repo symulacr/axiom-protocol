@@ -1,5 +1,5 @@
 
-export interface TickPayload {
+interface TickPayload {
   tokenId: string;
   action: string;
   amount: number | null;
@@ -9,38 +9,38 @@ export interface TickPayload {
   vaultBalance: string;
 }
 
-export interface TransferPayload {
+interface TransferPayload {
   tokenId: string;
   from: string;
   to: string;
 }
 
-export interface DepositedPayload {
+interface DepositedPayload {
   tokenId: string;
   from: string;
   amount: string;
 }
 
-export interface WithdrawnPayload {
+interface WithdrawnPayload {
   tokenId: string;
   to: string;
   amount: string;
 }
 
-export interface StrategySetPayload {
+interface StrategySetPayload {
   tokenId: string;
   strategyRoot: string;
   dailyLimit: string;
 }
 
-export interface ExecutedPayload {
+interface ExecutedPayload {
   tokenId: string;
   actionHash: string;
   target: string;
   value: string;
 }
 
-export type EventPayload =
+type EventPayload =
   | TickPayload
   | TransferPayload
   | DepositedPayload

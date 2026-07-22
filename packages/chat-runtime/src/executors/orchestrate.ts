@@ -1,5 +1,4 @@
 import { parseAbi } from "viem";
-import { success, fail } from "../result.js";
 import { fetchJson } from "../transport.js";
 import type { ToolRuntime } from "../transport.js";
 import { ZERO_DATA_ROOT } from "@axiom/config";
@@ -22,22 +21,22 @@ async function readStrategyRoot(
   if (!read) return null;
   const id = BigInt(tokenId);
   try {
-    const current = await read<readonly [string, bigint, bigint, bigint, bigint]>({
+    const result = await read<readonly [string, bigint, bigint, bigint, bigint]>({
       address: vault,
       abi: parseAbi(STRATEGY_OF_CURRENT),
       functionName: "strategyOf",
       args: [id],
     });
-    return current[0] ?? null;
+    return result[0];
   } catch {
     try {
-      const legacy = await read<readonly [string, bigint, bigint, bigint]>({
+      const result = await read<readonly [string, bigint, bigint, bigint]>({
         address: vault,
         abi: parseAbi(STRATEGY_OF_LEGACY),
         functionName: "strategyOf",
         args: [id],
       });
-      return legacy[0] ?? null;
+      return result[0];
     } catch {
       return null;
     }
@@ -50,11 +49,11 @@ export async function runOrchestrateTool(
   ctx: ToolRuntime,
 ): Promise<ToolResult> {
   if (name !== "execute_tick" && name !== "simulate_tick") {
-    return fail(`Unknown orchestrate tool: ${name}`);
+    return { ok: false as const, content: JSON.stringify({ error: `Unknown orchestrate tool: ${name}` }) };
   }
 
   const tokenId = String(args.tokenId ?? ctx.session.lastTokenId ?? "");
-  if (!tokenId) return fail("tokenId required");
+  if (!tokenId) return { ok: false as const, content: JSON.stringify({ error: "tokenId required" }) };
 
   const dryRun = name === "simulate_tick" || args.dryRun === true;
   const vault = ctx.session.addresses?.vault;
@@ -75,30 +74,30 @@ export async function runOrchestrateTool(
 
     if (!ready) {
       if (dryRun) {
-        return success({
+        return { ok: true as const, content: JSON.stringify({
           ok: true,
           simulated: true,
           ready: false,
           tokenId,
           balance: balance.toString(),
           strategyRoot: root ?? ZERO_DATA_ROOT,
-        });
+        }) };
       }
-      return fail("NOT_READY: vault balance or strategy missing");
+      return { ok: false as const, content: JSON.stringify({ error: "NOT_READY: vault balance or strategy missing" }) };
     }
 
     if (dryRun) {
-      return success({
+      return { ok: true as const, content: JSON.stringify({
         ok: true,
         simulated: true,
         ready: true,
         tokenId,
         balance: balance.toString(),
         strategyRoot: root,
-      });
+      }) };
     }
   } else if (dryRun) {
-    return success({ ok: true, simulated: true, tokenId });
+    return { ok: true as const, content: JSON.stringify({ ok: true, simulated: true, tokenId }) };
   }
 
   const { ok: httpOk, data } = await fetchJson<Record<string, unknown>>(
@@ -111,12 +110,12 @@ export async function runOrchestrateTool(
     },
   );
 
-  if (!httpOk) return fail("tick http fail");
-  return success(data);
+  if (!httpOk) return { ok: false as const, content: JSON.stringify({ error: "tick http fail" }) };
+  return { ok: true as const, content: JSON.stringify(data) };
 }
 
 
-export function buildTickBody(
+function buildTickBody(
   args: Record<string, unknown>,
   ctx: ToolRuntime,
 ): {

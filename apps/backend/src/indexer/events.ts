@@ -21,7 +21,7 @@ export function resolveIndexerAddresses(
   };
 }
 
-export const EVENT_SIGNATURES = {
+const EVENT_SIGNATURES = {
   Transfer:
     "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)" as const,
   Updated: "event Updated(uint256 indexed tokenId, string uri)" as const,
@@ -123,7 +123,7 @@ export type AxiomEvent =
   | { kind: "BeaconUpgraded"; blockNumber: number; txHash: string; logIndex: number; beacon: string }
   | { kind: "Initialized"; blockNumber: number; txHash: string; logIndex: number; version: number };
 
-export type EventAbiTable = {
+type EventAbiTable = {
   [K in EventName]: AbiEvent;
 };
 

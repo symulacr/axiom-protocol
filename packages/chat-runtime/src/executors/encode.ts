@@ -1,5 +1,4 @@
 import { getChatToolSpec } from "@axiom/config/chat-tools";
-import { success, fail } from "../result.js";
 import { fetchJson } from "../transport.js";
 import { keccak256, toHex } from "viem";
 import type { ToolRuntime } from "../transport.js";
@@ -11,16 +10,16 @@ export async function runEncodeTool(
   ctx: ToolRuntime,
 ): Promise<ToolResult> {
   const spec = getChatToolSpec(name);
-  if (!spec) return fail(`Unknown encode tool: ${name}`);
+  if (!spec) return { ok: false as const, content: JSON.stringify({ error: `Unknown encode tool: ${name}` }) };
 
   if (spec.requiresWallet && !ctx.wallet?.address) {
-    return fail("Wallet not connected");
+    return { ok: false as const, content: JSON.stringify({ error: "Wallet not connected" }) };
   }
 
   const tokenId = String(args.tokenId ?? ctx.session.lastTokenId ?? "");
 
   if (spec.requiresTokenId && !tokenId) {
-    return fail("tokenId required");
+    return { ok: false as const, content: JSON.stringify({ error: "tokenId required" }) };
   }
 
   switch (name) {
@@ -31,7 +30,7 @@ export async function runEncodeTool(
     case "withdraw":
       return encodeVaultOp("withdraw", tokenId, args, ctx);
     default:
-      return fail(`Unhandled encode tool: ${name}`);
+      return { ok: false as const, content: JSON.stringify({ error: `Unhandled encode tool: ${name}` }) };
   }
 }
 
@@ -40,9 +39,9 @@ async function encodeMint(
   ctx: ToolRuntime,
 ): Promise<ToolResult> {
   const to = ctx.wallet?.address;
-  if (!to) return fail("Wallet not connected");
+  if (!to) return { ok: false as const, content: JSON.stringify({ error: "Wallet not connected" }) };
 
-  if (!args.dataDescription) return fail("dataDescription required");
+  if (!args.dataDescription) return { ok: false as const, content: JSON.stringify({ error: "dataDescription required" }) };
   // dataHash is optional for first-time users. When omitted, derive a stable
   // placeholder hash from the agent name so minting works without manual
   // metadata hashing; real sealed data can be associated later via update().
@@ -67,18 +66,18 @@ async function encodeMint(
     body: JSON.stringify(body),
   });
 
-  if (!httpOk || !data.to) return fail("mint encode fail");
+  if (!httpOk || !data.to) return { ok: false as const, content: JSON.stringify({ error: "mint encode fail" }) };
 
   await registerDataHashWithOracle(ctx, dataHash, to);
 
   if (ctx.mode === "encode-only" || !ctx.wallet?.signAndSend) {
-    return success({
+    return { ok: true as const, content: JSON.stringify({
       ok: true,
       encodeOnly: true,
       to: data.to,
       data: data.data,
       value: data.value,
-    });
+    }) };
   }
 
   try {
@@ -87,9 +86,9 @@ async function encodeMint(
       data: data.data as `0x${string}`,
       value: BigInt(data.value),
     });
-    return success({ ok: true, txHash });
+    return { ok: true as const, content: JSON.stringify({ ok: true, txHash }) };
   } catch (e) {
-    return fail(e instanceof Error ? e.message : "mint sign failed");
+    return { ok: false as const, content: JSON.stringify({ error: e instanceof Error ? e.message : "mint sign failed" }) };
   }
 }
 
@@ -99,7 +98,7 @@ async function encodeVaultOp(
   args: Record<string, unknown>,
   ctx: ToolRuntime,
 ): Promise<ToolResult> {
-  if (!args.amount) return fail("amount required");
+  if (!args.amount) return { ok: false as const, content: JSON.stringify({ error: "amount required" }) };
   const amount = String(args.amount);
 
   const { ok: httpOk, data } = await fetchJson<{
@@ -112,17 +111,17 @@ async function encodeVaultOp(
     body: JSON.stringify({ amount }),
   });
 
-  if (!httpOk || !data.to) return fail(`${op} encode fail`);
+  if (!httpOk || !data.to) return { ok: false as const, content: JSON.stringify({ error: `${op} encode fail` }) };
 
   if (ctx.mode === "encode-only" || !ctx.wallet?.signAndSend) {
-    return success({
+    return { ok: true as const, content: JSON.stringify({
       ok: true,
       encodeOnly: true,
       to: data.to,
       data: data.data,
       value: data.value,
       amount,
-    });
+    }) };
   }
 
   try {
@@ -131,9 +130,9 @@ async function encodeVaultOp(
       data: data.data as `0x${string}`,
       value: BigInt(data.value || "0"),
     });
-    return success({ ok: true, txHash, amount });
+    return { ok: true as const, content: JSON.stringify({ ok: true, txHash, amount }) };
   } catch (e) {
-    return fail(e instanceof Error ? e.message : `${op} sign failed`);
+    return { ok: false as const, content: JSON.stringify({ error: e instanceof Error ? e.message : `${op} sign failed` }) };
   }
 }
 
@@ -166,4 +165,3 @@ async function registerDataHashWithOracle(
     );
   }
 }
-

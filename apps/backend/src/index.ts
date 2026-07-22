@@ -14,7 +14,7 @@ import { IndexerService } from "./indexer/index.js";
 
 loadEnv();
 
-export const env = backendEnvSchema.parse(process.env);
+const env = backendEnvSchema.parse(process.env);
 if (env.AXIOM_SENTRY_DSN) {
   Sentry.init({
     dsn: env.AXIOM_SENTRY_DSN,

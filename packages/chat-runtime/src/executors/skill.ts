@@ -14,7 +14,7 @@ const PREFIX_MAP: Record<string, string> = {
   oss_forensics_: "/v1/skills/oss-forensics/",
 };
 
-export function resolveEndpoint(name: string): string {
+function resolveEndpoint(name: string): string {
   for (const [prefix, base] of Object.entries(PREFIX_MAP)) {
     if (name.startsWith(prefix)) {
       return `${base}${name.slice(prefix.length)}`;
@@ -99,7 +99,7 @@ export async function runSkillTool(
   return { ok: true, content: JSON.stringify(capArrays(data, 20)) };
 }
 
-export function capArrays(v: unknown, n: number): unknown {
+function capArrays(v: unknown, n: number): unknown {
   if (Array.isArray(v)) {
     return { truncated: v.length > n, data: v.slice(0, n) };
   }

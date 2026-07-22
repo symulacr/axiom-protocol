@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import { usePublicClient } from "wagmi";
-import { formatToolResult as formatToolResultRuntime } from "@axiom/chat-runtime";
 import {
   chatToolLabels,
   CHAT_TOOL_CATALOG,

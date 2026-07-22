@@ -11,7 +11,8 @@ export interface AskUserPrompt {
 const MAX_OPTIONS = 4;
 const MAX_LABEL = 80;
 
-export function buildAskUserPrompt(args: Record<string, unknown>): AskUserPrompt {
+// internal — used by runAskTool
+function buildAskUserPrompt(args: Record<string, unknown>): AskUserPrompt {
   const question = typeof args.question === "string" ? args.question.trim() : "";
   if (!question) throw new Error("ask_user requires a 'question'");
   const raw = Array.isArray(args.options) ? args.options : [];

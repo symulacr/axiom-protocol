@@ -18,7 +18,7 @@ export function getComputeBaseUrl(): string {
 const log = createLogger("compute-router");
 const ROUTER_TIMEOUT_MS = 30_000;
 
-export const clientChatIdMap = new WeakMap<object, string>();
+const clientChatIdMap = new WeakMap<object, string>();
 
 export function setClientChatId(client: object, chatId: string): void {
   clientChatIdMap.set(client, chatId);
