@@ -36,66 +36,10 @@ check_prereqs() {
  fi
 }
 
-# ─── deploy ────────────────────────────────────────────
-run_deploy() {
- local mode_flags="$1"
- local verify_flag="${2:-}"
-
- echo -e "${YELLOW}[deploy] Submitting all 8 CREATEs...${NC}"
- echo -e "${YELLOW}  0G has 0 gwei gas + 0.5s block time — confirm in ~4s${NC}"
- AXIOM_DEPLOYER_PK="$AXIOM_DEPLOYER_PK" \
-  AXIOM_TEE_SIGNER_PK="$AXIOM_TEE_SIGNER_PK" \
-  AXIOM_ORACLE_ADMIN_PK="$AXIOM_ORACLE_ADMIN_PK" \
-  AXIOM_DEPLOY_DATE="${AXIOM_DEPLOY_DATE:-$(date +%Y-%m-%d)}" \
-  AXIOM_DEPLOYER_ADDRESS="$AXIOM_DEPLOYER_ADDRESS" \
-  PAYMENT_TOKEN_ADDR="${PAYMENT_TOKEN_ADDR:-0x1f3AA82227281cA364bFb3d253B0f1af1Da6473E}" \
-  forge script script/DeployAristotle.s.sol \
-  --rpc-url "$RPC_URL" \
-  --chain-id "$CHAIN_ID" \
-  $mode_flags \
-  $verify_flag \
-  --verifier custom \
-  --verifier-url "$VERIFIER_URL" \
-  --verifier-api-key "$CHAINSCAN_API_KEY"
-}
-
-# ─── verify all (parallel) ─────────────────────────────
-verify_all() {
- echo -e "${YELLOW}Verifying all contracts in parallel...${NC}"
-
- : "${VERIFIER_PROXY:?Must set VERIFIER_PROXY}"
- : "${NFT_PROXY:?Must set NFT_PROXY}"
- : "${VAULT_PROXY:?Must set VAULT_PROXY}"
- : "${PROCESSOR_PROXY:?Must set PROCESSOR_PROXY}"
-
- verify_one() {
-  local addr=$1 file=$2 contract=$3
-  forge verify-contract \
-   --chain-id "$CHAIN_ID" \
-   --num-of-optimizations 300 \
-   --compiler-version "v0.8.20" \
-   --verifier custom \
-   --verifier-url "$VERIFIER_URL" \
-   --verifier-api-key "$CHAINSCAN_API_KEY" \
-   --watch "$addr" "$file:$contract"
- }
-
- # Run 4 verifications in parallel — they're independent HTTP POSTs
- verify_one "$VERIFIER_PROXY" "src/verifiers/AxiomTeeVerifier.sol" AxiomTeeVerifier &
- verify_one "$NFT_PROXY" "src/AxiomAgentNFT.sol" AxiomAgentNFT &
- verify_one "$VAULT_PROXY" "src/AxiomStrategyVault.sol" AxiomStrategyVault &
- verify_one "$PROCESSOR_PROXY" "src/AxiomPaymentProcessor.sol" AxiomPaymentProcessor &
- wait
-
- echo -e "${GREEN}All verifications submitted.${NC}"
-}
-
 # ─── dry-run on Galileo ────────────────────────────────
 dry_run_galileo() {
  echo -e "${YELLOW}[dry-run] Testing against Galileo testnet...${NC}"
  echo "  RPC: https://evmrpc-testnet.0g.ai | Chain: 16602"
- echo "  Note: 0G has 0 gas fees. Balance check is 0.1 OG minimum."
-
  AXIOM_DEPLOYER_PK="$AXIOM_DEPLOYER_PK" \
   AXIOM_TEE_SIGNER_PK="$AXIOM_TEE_SIGNER_PK" \
   AXIOM_ORACLE_ADMIN_PK="$AXIOM_ORACLE_ADMIN_PK" \
@@ -109,8 +53,7 @@ dry_run_galileo() {
   --verifier custom \
   --verifier-url "https://chainscan-testnet.0g.ai/open/api" \
   --verifier-api-key "$CHAINSCAN_API_KEY"
-
- echo -e "${GREEN}[dry-run] Simulation complete. Review output above.${NC}"
+ echo -e "${GREEN}[dry-run] Simulation complete.${NC}"
 }
 
 # ─── main ──────────────────────────────────────────────
@@ -122,36 +65,51 @@ main() {
   dry_run_galileo
   ;;
  --deploy)
-  echo -e "${YELLOW}Step 1: Deploying to Aristotle mainnet (8 txns, ~4s)...${NC}"
-  run_deploy "--broadcast"
-  echo -e "${GREEN}Deploy complete. Now verifying...${NC}"
-  echo -e "${YELLOW}Step 2: Set VERIFIER_PROXY NFT_PROXY VAULT_PROXY PROCESSOR_PROXY from broadcast output${NC}"
-  echo -e "${YELLOW}      then run: $0 --verify-only${NC}"
-  ;;
- --deploy-slow)
-  echo -e "${YELLOW}Deploying with --slow (safe mode, ~60s)...${NC}"
-  run_deploy "--broadcast --slow" "--verify"
-  echo -e "${GREEN}Deploy + verify complete.${NC}"
-  ;;
- --resume)
-  echo -e "${YELLOW}Resuming failed deploy...${NC}"
-  run_deploy "--broadcast --resume"
+  echo -e "${YELLOW}[deploy] Submitting 8 CREATEs to Aristotle mainnet...${NC}"
+  echo -e "${YELLOW}  0G: 0 gwei gas, 0.5s block — confirms in ~4s${NC}"
+  AXIOM_DEPLOYER_PK="$AXIOM_DEPLOYER_PK" \
+   AXIOM_TEE_SIGNER_PK="$AXIOM_TEE_SIGNER_PK" \
+   AXIOM_ORACLE_ADMIN_PK="$AXIOM_ORACLE_ADMIN_PK" \
+   AXIOM_DEPLOY_DATE="${AXIOM_DEPLOY_DATE:-$(date +%Y-%m-%d)}" \
+   AXIOM_DEPLOYER_ADDRESS="$AXIOM_DEPLOYER_ADDRESS" \
+   PAYMENT_TOKEN_ADDR="${PAYMENT_TOKEN_ADDR:-0x1f3AA82227281cA364bFb3d253B0f1af1Da6473E}" \
+   forge script script/DeployAristotle.s.sol \
+   --rpc-url "https://evmrpc.0g.ai" --chain-id 16661 --broadcast
+  echo ""
+  echo -e "${GREEN}Deploy broadcast complete.${NC}"
+  echo -e "${YELLOW}Set proxy addresses and verify:${NC}"
+  echo "  export VERIFIER_PROXY=<addr> NFT_PROXY=<addr> VAULT_PROXY=<addr> PROCESSOR_PROXY=<addr>"
+  echo "  $0 --verify-only"
   ;;
  --verify-only)
-  verify_all
+  : "${VERIFIER_PROXY:?}"
+  : "${NFT_PROXY:?}"
+  : "${VAULT_PROXY:?}"
+  : "${PROCESSOR_PROXY:?}"
+  echo -e "${YELLOW}Verifying 4 contracts in parallel...${NC}"
+  verify_one() {
+   forge verify-contract --chain-id 16661 --num-of-optimizations 300 \
+    --compiler-version "v0.8.20" --verifier custom \
+    --verifier-url "https://chainscan.0g.ai/open/api" \
+    --verifier-api-key "$CHAINSCAN_API_KEY" \
+    --watch "$1" "$2:$3"
+  }
+  verify_one "$VERIFIER_PROXY" "src/verifiers/AxiomTeeVerifier.sol" AxiomTeeVerifier &
+  verify_one "$NFT_PROXY" "src/AxiomAgentNFT.sol" AxiomAgentNFT &
+  verify_one "$VAULT_PROXY" "src/AxiomStrategyVault.sol" AxiomStrategyVault &
+  verify_one "$PROCESSOR_PROXY" "src/AxiomPaymentProcessor.sol" AxiomPaymentProcessor &
+  wait
+  echo -e "${GREEN}All verifications submitted.${NC}"
   ;;
  *)
-  echo "Usage: $0 [--dry-run|--deploy|--deploy-slow|--resume|--verify-only]"
+  echo "Usage: $0 [--dry-run|--deploy|--verify-only]"
   echo ""
-  echo "  --deploy        Fast mode: all 8 txns submitted at once (~4s)"
-  echo "  --deploy-slow   Safe mode: 1 txn at a time with --slow (~60s)"
-  echo "  --dry-run       Simulate on Galileo testnet (no broadcast)"
-  echo "  --resume        Resume failed deploy"
-  echo "  --verify-only   Verify already-deployed contracts (requires PROXY vars)"
+  echo "  --deploy       Deploy 8 contracts in ~4s (no --slow)"
+  echo "  --dry-run      Simulate on Galileo testnet"
+  echo "  --verify-only  Verify deployed contracts (requires PROXY addrs)"
   echo ""
-  echo "0G Chain: 0 gwei gas. 0.5s block time. 8 CREATEs fit in 1-2 blocks."
-  echo "Required env: AXIOM_DEPLOYER_PK, AXIOM_TEE_SIGNER_PK,"
-  echo "              AXIOM_ORACLE_ADMIN_PK, AXIOM_DEPLOYER_ADDRESS, CHAINSCAN_API_KEY"
+  echo "Required: AXIOM_DEPLOYER_PK, AXIOM_TEE_SIGNER_PK,"
+  echo "          AXIOM_ORACLE_ADMIN_PK, AXIOM_DEPLOYER_ADDRESS, CHAINSCAN_API_KEY"
   ;;
  esac
 }
