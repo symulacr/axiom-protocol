@@ -1,0 +1,14 @@
+{
+  "network": "0G Aristotle mainnet",
+  "chainId": 16661,
+  "rpc": "https://evmrpc.0g.ai",
+  "deployedAt": "2026-07-13T00:00:00Z",
+  "contracts": {
+    "agentNft": "0x2467e049c8284D658a64ee5B4b3C9f49E2B6f852",
+    "agentNftImpl": "0xE83E4e613B6EaFD6846b4e903E04b17c7f6d2eaf",
+    "strategyVault": "0x3695C527d2973e8699e836204389881f563A130A",
+    "teeVerifier": "0xDfbA9B8e3d63dFf3a1Fc21F2cCD2850285Dab943",
+    "paymentProcessor": "0x0A4f233b95854eCD648772c96e117e1D25FB12aD",
+    "mockUsdc": "0x1f3AA82227281cA364bFb3d253B0f1af1Da6473e"
+  }
+}
