@@ -323,7 +323,10 @@ main() {
    PAYMENT_TOKEN_ADDR="$PAYMENT_TOKEN_ADDR" \
    $FORGE script "$CONTRACTS_DIR/script/DeployAristotle.s.sol" \
    --root "$CONTRACTS_DIR" \
-   --rpc-url "$RPC" --chain-id "$CHAIN" --broadcast
+   --rpc-url "$RPC" --chain-id "$CHAIN" --broadcast \
+   --private-key "$AXIOM_DEPLOYER_PK" \
+   --slow \
+   --verify --verifier custom --verifier-url "$VERIFIER_URL" --verifier-api-key "$CHAINSCAN_API_KEY"
   echo
   echo -e "${GREEN}Deploy broadcast complete.${NC}"
 
