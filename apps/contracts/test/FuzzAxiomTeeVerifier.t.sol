@@ -50,15 +50,19 @@ contract FuzzAxiomTeeVerifierTest is StdInvariant, Test {
     bytes32 internal constant ACCESS_PROOF_TYPEHASH = keccak256(
         "AccessProof(bytes32 dataHash,bytes targetPubkey,address to,address nft,bytes nonce,uint256 validUntil)"
     );
-    uint256 internal constant GALILEO_FORK_BLOCK = 38_748_015;
+    // Fork at latest block. Pinned block 38,748,015 was previously used but the RPC
+    // is non-archive (~25 block retention), causing 'missing trie node' errors.
+    // Tests deploy local contracts and don't read live fork state.
+    uint256 internal constant GALILEO_FORK_BLOCK = 0;
     // Whether the fork supports archive queries (false = non-archive RPC)
     bool internal _forkViable;
 
     function setUp() public {
-        // Select the live Galileo fork. EVERY test runs against real on-chain state.
-        forkId = vm.createSelectFork(RPC, GALILEO_FORK_BLOCK);
+        // Fork at latest block. The pinned 38_748_015 is outside the RPC's ~25 block
+        // retention window (non-archive node), causing 'missing trie node' errors.
+        // Tests deploy local contracts — fork is only for chain context.
+        forkId = vm.createSelectFork(RPC);
         assertEq(block.chainid, 16_602, "Galileo testnet (chainId 16602)");
-
         owner = vm.addr(OWNER_KEY);
         stranger = vm.addr(STRANGER_KEY);
         teeSigner = vm.addr(TEE_KEY);
@@ -711,7 +715,7 @@ contract FuzzAxiomTeeVerifierTest is StdInvariant, Test {
         uint8 seed
     ) public {
         vm.prank(owner);
-        vm.expectRevert(bytes("Zero address"));
+        vm.expectRevert(AxiomTeeVerifier.ZeroAddress.selector);
         verifier.proposeSigner(address(0));
 
         assertEq(verifier.registeredSigner(), teeSigner, "signer unchanged after revert");
