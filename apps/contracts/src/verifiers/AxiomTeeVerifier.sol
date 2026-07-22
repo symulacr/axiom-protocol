@@ -26,6 +26,7 @@ contract AxiomTeeVerifier is Initializable, BaseVerifier, OwnableUpgradeable, UU
     error AxiomInvalidSigner();
     error AxiomInvalidOwnershipProof();
     error AxiomInvalidAccessProof();
+    error ZeroAddress();
     /// @dev Thrown when the accessProof and ownershipProof fields that must
     ///      be identical (dataHash, targetPubkey, nonce, validUntil) do not match.
     error ProofFieldMismatch();
@@ -87,6 +88,7 @@ contract AxiomTeeVerifier is Initializable, BaseVerifier, OwnableUpgradeable, UU
     function proposeSigner(
         address newSigner
     ) external onlyOwner {
+        if (newSigner == address(0)) revert ZeroAddress();
         _signerTimelock.propose(newSigner);
         emit SignerProposed(newSigner, block.timestamp + 1 days);
     }

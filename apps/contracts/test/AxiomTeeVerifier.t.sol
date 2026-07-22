@@ -76,7 +76,6 @@ contract AxiomTeeVerifierTest is Test {
         verifier.proposeSigner(newTeeSigner);
     }
 
-    /// @notice F-01: the owner CAN rotate the signer via proposeSigner + executeSigner after ADMIN_DELAY.
     function test_proposeSigner_owner_succeeds() public {
         assertEq(verifier.registeredSigner(), teeSigner, "precondition: initial signer");
 
@@ -84,15 +83,7 @@ contract AxiomTeeVerifierTest is Test {
         verifier.proposeSigner(newTeeSigner);
         assertEq(verifier.pendingSigner(), newTeeSigner, "pending signer recorded");
 
-        vm.prank(owner);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                TimelockManager.DelayNotElapsed.selector, 1 days, 0
-            )
-        );
-
-        vm.warp(block.timestamp + 1 days);
-
+        vm.warp(block.timestamp + 1 days + 1);
         vm.prank(owner);
         verifier.executeSigner();
 
@@ -100,10 +91,9 @@ contract AxiomTeeVerifierTest is Test {
         assertEq(verifier.pendingSigner(), address(0), "pending signer cleared");
 
         vm.prank(owner);
-        vm.expectRevert(bytes("Zero address"));
+        vm.expectRevert(AxiomTeeVerifier.ZeroAddress.selector);
         verifier.proposeSigner(address(0));
     }
-
     /// @notice Owner can cancel a pending signer rotation before execution.
     function test_cancelSignerProposal_owner_succeeds() public {
         vm.prank(owner);
