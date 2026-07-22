@@ -9,4 +9,4 @@ cmds = [
   "pnpm --filter @axiom/oracle build",
   "pnpm --filter @axiom/backend build"
 ]
-cacheDirectives = ["node_modules", "packages/config/dist", "packages/chat-runtime/dist", "apps/backend/dist", "apps/oracle/dist", "apps/indexer/dist"]
+cacheDirectives = ["node_modules", "packages/config/dist", "packages/chat-runtime/dist", "apps/backend/dist", "apps/oracle/dist"]
