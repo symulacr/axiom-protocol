@@ -361,15 +361,11 @@ contract AxiomAgentNFTTest is Test {
         nft.proposeVerifier(address(newVerifier));
         assertEq(nft.pendingVerifier(), address(newVerifier));
 
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                TimelockManager.DelayNotElapsed.selector, block.timestamp + 1 days, block.timestamp
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(TimelockManager.DelayNotElapsed.selector, 1 days));
         vm.prank(admin);
         nft.executeVerifier();
 
-        vm.warp(block.timestamp + 1 days);
+        vm.warp(block.timestamp + 1 days + 1);
         vm.prank(admin);
         nft.executeVerifier();
         assertEq(address(nft.verifier()), address(newVerifier));

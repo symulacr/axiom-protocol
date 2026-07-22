@@ -404,7 +404,7 @@ contract AxiomPaymentProcessorTest is Test {
         processor.proposeProtocolTreasury(newTreasury);
 
         vm.prank(owner);
-        vm.expectRevert(TimelockManager.DelayNotElapsed.selector);
+        vm.expectRevert(abi.encodeWithSelector(TimelockManager.DelayNotElapsed.selector, 1 days));
         processor.executeProtocolTreasury();
     }
 
