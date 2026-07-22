@@ -5,7 +5,6 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
-import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 import {IAxiomAgentNFT} from "./interfaces/IAxiomAgentNFT.sol";
@@ -16,7 +15,7 @@ import {IAxiomAgentNFT} from "./interfaces/IAxiomAgentNFT.sol";
 ///      The agent itself executes the actions via `execute()`, which verifies each action
 ///      against the current strategy root and enforces a daily value limit
 /// @dev Standalone, non-upgradeable (holds user funds)
-contract AxiomStrategyVault is Initializable, OwnableUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable, UUPSUpgradeable {
+contract AxiomStrategyVault is Initializable, OwnableUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable {
     error NotTokenOwner();
     error InvalidMerkleProof();
     error DailyLimitExceeded();
@@ -214,6 +213,4 @@ contract AxiomStrategyVault is Initializable, OwnableUpgradeable, PausableUpgrad
     function unpause() external onlyOwner {
         _unpause();
     }
-    /// @notice Authorize upgrades (only owner)
-    function _authorizeUpgrade(address) internal override onlyOwner {}
 }

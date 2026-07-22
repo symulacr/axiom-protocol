@@ -5,7 +5,6 @@ import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/acce
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {ERC721Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import {IERC721Metadata} from "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 
@@ -33,7 +32,6 @@ contract AxiomAgentNFT is
     AccessControlUpgradeable,
     ReentrancyGuardUpgradeable,
     PausableUpgradeable,
-    OwnableUpgradeable,
     UUPSUpgradeable,
     ERC7857CloneableUpgradeable,
     ERC7857AuthorizeUpgradeable,
@@ -90,7 +88,6 @@ contract AxiomAgentNFT is
         require(admin_ != address(0), "Zero admin address");
 
         __AccessControl_init();
-        __Ownable_init(admin_);
         __ReentrancyGuard_init();
         __Pausable_init();
         __UUPSUpgradeable_init();

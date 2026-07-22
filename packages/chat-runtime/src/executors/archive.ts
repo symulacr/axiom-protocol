@@ -1,4 +1,3 @@
-import { success, fail } from "../result.js";
 import { fetchJson } from "../transport.js";
 import type { ToolRuntime } from "../transport.js";
 import type { ToolResult } from "../types.js";
@@ -18,8 +17,8 @@ async function archiveQuery(
       body: JSON.stringify(body),
     },
   );
-  if (!httpOk) return fail("archive query fail");
-  return success(data);
+  if (!httpOk) return { ok: false as const, content: JSON.stringify({ error: "archive query fail" }) };
+  return { ok: true as const, content: JSON.stringify(data) };
 }
 
 function clampLimit(n: unknown, fallback: number): number {
@@ -41,7 +40,7 @@ export async function runArchiveTool(
     case "archive_confirm_deletion":
       return archiveConfirm(args, ctx);
     default:
-      return fail(`Unknown archive tool: ${name}`);
+      return { ok: false as const, content: JSON.stringify({ error: `Unknown archive tool: ${name}` }) };
   }
 }
 
@@ -50,7 +49,7 @@ async function archiveLookup(
   ctx: ToolRuntime,
 ): Promise<ToolResult> {
   const url = String(args.url ?? "");
-  if (!url) return fail("url required");
+  if (!url) return { ok: false as const, content: JSON.stringify({ error: "url required" }) };
   const limit = clampLimit(args.limit, 50);
   return archiveQuery(ctx, {
     intent: "lookup" satisfies ArchiveIntent,
@@ -65,7 +64,7 @@ async function archiveAccount(
   ctx: ToolRuntime,
 ): Promise<ToolResult> {
   const handle = String(args.handle ?? "");
-  if (!handle) return fail("handle required");
+  if (!handle) return { ok: false as const, content: JSON.stringify({ error: "handle required" }) };
   const result = await archiveQuery(ctx, {
     intent: "account" satisfies ArchiveIntent,
     handle,
@@ -74,12 +73,12 @@ async function archiveAccount(
   if (!result.ok) return result;
   try {
     const obj = JSON.parse(result.content) as Record<string, unknown>;
-    return success({
+    return { ok: true as const, content: JSON.stringify({
       handle: obj.handle,
       archivedTweetCount: obj.count,
       tweets: obj.snapshots,
       cached: obj.cached,
-    });
+    }) };
   } catch {
     return result;
   }
@@ -90,7 +89,7 @@ async function archiveConfirm(
   ctx: ToolRuntime,
 ): Promise<ToolResult> {
   const url = String(args.url ?? "");
-  if (!url) return fail("url required");
+  if (!url) return { ok: false as const, content: JSON.stringify({ error: "url required" }) };
   const result = await archiveQuery(ctx, {
     intent: "confirm" satisfies ArchiveIntent,
     url,
@@ -103,7 +102,7 @@ async function archiveConfirm(
       cached?: boolean;
     };
     const wasArchived = obj.archived === true;
-    return success({
+    return { ok: true as const, content: JSON.stringify({
       url,
       wasArchived,
       snapshotUrl: obj.snapshot?.snapshotUrl ?? null,
@@ -112,9 +111,8 @@ async function archiveConfirm(
         ? `Wayback captured this URL on ${obj.snapshot?.iso}.`
         : "No Wayback snapshot for this URL.",
       cached: obj.cached,
-    });
+    }) };
   } catch {
     return result;
   }
 }
-

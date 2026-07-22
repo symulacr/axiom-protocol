@@ -162,14 +162,6 @@ contract AxiomPaymentProcessor is Initializable, OwnableUpgradeable, PausableUpg
         _setRoyaltyBps(agentTokenId, newBps);
     }
 
-    /// @notice Alias for setRoyaltyBps (frontend-compatible entry point).
-    /// @dev Alias for setRoyaltyBps. Remove after frontend migration is confirmed complete.
-    function setRoyaltyBpsPermitted(
-        uint256 agentTokenId,
-        uint256 newBps
-    ) external onlyAgentCreator(agentTokenId) {
-        _setRoyaltyBps(agentTokenId, newBps);
-    }
 
 
     function _setRoyaltyBps(

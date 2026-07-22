@@ -15,7 +15,7 @@ import {
   type EventName,
 } from "../events.js";
 
-export type EventTopicTable = { [K in EventName]: Hex };
+type EventTopicTable = { [K in EventName]: Hex };
 export const TOPIC_TABLE: EventTopicTable = Object.fromEntries(
   (Object.keys(EVENT_ABI) as EventName[]).map((n) => [
     n,
@@ -23,7 +23,7 @@ export const TOPIC_TABLE: EventTopicTable = Object.fromEntries(
   ]),
 ) as EventTopicTable;
 
-export const TOPIC_TO_EVENT: Record<string, EventName> = {};
+const TOPIC_TO_EVENT: Record<string, EventName> = {};
 for (const n of Object.keys(TOPIC_TABLE) as EventName[]) {
   TOPIC_TO_EVENT[TOPIC_TABLE[n].toLowerCase()] = n;
 }

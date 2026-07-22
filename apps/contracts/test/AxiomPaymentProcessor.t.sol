@@ -223,7 +223,7 @@ contract AxiomPaymentProcessorTest is Test {
         assertEq(token.balanceOf(address(processor)), 0, "processor holds no funds");
     }
 
-    // ─── setRoyaltyBps / setRoyaltyBpsPermitted ───────────────────
+    // ─── setRoyaltyBps ───────────────────
     function test_setRoyaltyBps_revertsWhenRoyaltyExceedsCap() public {
         AxiomPaymentProcessor cappedImpl = new AxiomPaymentProcessor();
         ERC1967Proxy capProxy = new ERC1967Proxy(
@@ -237,13 +237,13 @@ contract AxiomPaymentProcessorTest is Test {
         cappedProcessor.setRoyaltyBps(AGENT_TOKEN_ID, 10_000);
     }
 
-    function test_setRoyaltyBpsPermitted_revertsWhenOwnerNotCreator() public {
+    function test_setRoyaltyBps_revertsWhenOwnerNotCreator() public {
         address nftOwner = address(0xFEED);
         nft.setOwner(AGENT_TOKEN_ID, nftOwner);
 
         vm.prank(nftOwner);
         vm.expectRevert(AxiomPaymentProcessor.NotCreator.selector);
-        processor.setRoyaltyBpsPermitted(AGENT_TOKEN_ID, 5000);
+        processor.setRoyaltyBps(AGENT_TOKEN_ID, 5000);
     }
 
     function test_setRoyaltyBps_acceptsMaxAllowedRoyalty() public {

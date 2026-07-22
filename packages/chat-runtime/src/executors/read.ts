@@ -1,5 +1,4 @@
 import { parseAbi } from "viem";
-import { success, fail } from "../result.js";
 import { fetchJson } from "../transport.js";
 import type { ToolRuntime } from "../transport.js";
 import type { ToolResult } from "../types.js";
@@ -21,35 +20,35 @@ export async function runReadTool(
     case "list_my_agents": {
       const owner = ctx.session.walletAddress;
       if (!owner) {
-        return fail("Wallet not connected");
+        return { ok: false as const, content: JSON.stringify({ error: "Wallet not connected" }) };
       }
       const { ok, data } = await fetchJson<{ agents: unknown[] }>(
         ctx.http,
         `/v1/agents?owner=${owner}`,
       );
-      if (!ok) return fail("agents http fail");
-      return success({ agents: data.agents ?? [] });
+      if (!ok) return { ok: false as const, content: JSON.stringify({ error: "agents http fail" }) };
+      return { ok: true as const, content: JSON.stringify({ agents: data.agents ?? [] }) };
     }
     case "vault_balance": {
       const tokenId = resolveTokenId(args, ctx);
-      if (!tokenId) return fail("tokenId required");
-      if (!ctx.chain?.readContract) return fail("No chain connection");
+      if (!tokenId) return { ok: false as const, content: JSON.stringify({ error: "tokenId required" }) };
+      if (!ctx.chain?.readContract) return { ok: false as const, content: JSON.stringify({ error: "No chain connection" }) };
       const vault = ctx.session.addresses?.vault;
-      if (!vault) return fail("Vault address not configured");
+      if (!vault) return { ok: false as const, content: JSON.stringify({ error: "Vault address not configured" }) };
       const balance = (await ctx.chain.readContract<bigint>({
         address: vault,
         abi: parseAbi(["function balanceOf(uint256) view returns (uint256)"]),
         functionName: "balanceOf",
         args: [BigInt(tokenId)],
       })) as bigint;
-      return success({ tokenId, balance: balance.toString() });
+      return { ok: true as const, content: JSON.stringify({ tokenId, balance: balance.toString() }) };
     }
     case "agent_metadata": {
       const tokenId = resolveTokenId(args, ctx);
-      if (!tokenId) return fail("tokenId required");
-      if (!ctx.chain?.multicall) return fail("No chain connection");
+      if (!tokenId) return { ok: false as const, content: JSON.stringify({ error: "tokenId required" }) };
+      if (!ctx.chain?.multicall) return { ok: false as const, content: JSON.stringify({ error: "No chain connection" }) };
       const nft = ctx.session.addresses?.agentNft;
-      if (!nft) return fail("Agent NFT address not configured");
+      if (!nft) return { ok: false as const, content: JSON.stringify({ error: "Agent NFT address not configured" }) };
       const results = await ctx.chain.multicall({
         contracts: [
           {
@@ -77,13 +76,13 @@ export async function runReadTool(
         dataDescription: string;
         dataHash: string;
       }>;
-      return success({
+      return { ok: true as const, content: JSON.stringify({
         tokenId,
         name: String(results[0]?.result ?? ""),
         owner: String(results[1]?.result ?? ""),
         dataDescription: datas[0]?.dataDescription ?? "",
         dataHash: datas[0]?.dataHash ?? "",
-      });
+      }) };
     }
     case "event_history": {
       const limit = Number(args.limit ?? 20);
@@ -92,10 +91,10 @@ export async function runReadTool(
         path += `&eventName=${encodeURIComponent(String(args.eventName))}`;
       }
       const { ok, data } = await fetchJson<{ events: unknown[] }>(ctx.http, path);
-      if (!ok) return fail("events http fail");
-      return success({ events: data.events ?? [] });
+      if (!ok) return { ok: false as const, content: JSON.stringify({ error: "events http fail" }) };
+      return { ok: true as const, content: JSON.stringify({ events: data.events ?? [] }) };
     }
     default:
-      return fail(`Unknown read tool: ${name}`);
+      return { ok: false as const, content: JSON.stringify({ error: `Unknown read tool: ${name}` }) };
   }
 }
