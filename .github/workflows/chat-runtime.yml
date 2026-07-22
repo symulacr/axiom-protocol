@@ -1,0 +1,30 @@
+name: Chat Runtime (path filter)
+
+on:
+  pull_request:
+    branches: [master, main]
+    paths:
+      - "packages/chat-runtime/**"
+      - "packages/config/src/chat-tools.ts"
+      - "packages/config/src/abis/**"
+      - "apps/frontend/src/chat/**"
+      - "apps/backend/src/cli/e2e/transport-node.ts"
+      - "apps/backend/src/cli/e2e/complex-flow-bench.ts"
+      - "apps/backend/src/cli/e2e/chat-bench.ts"
+  workflow_dispatch:
+
+jobs:
+  chat-runtime:
+    name: chat-runtime build + test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @axiom/config build
+      - run: pnpm --filter @axiom/chat-runtime build
+      - run: pnpm --filter @axiom/chat-runtime test

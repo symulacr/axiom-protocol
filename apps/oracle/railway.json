@@ -1,0 +1,13 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "buildCommand": "pnpm --filter @axiom/config build && pnpm --filter @axiom/oracle build"
+  },
+  "deploy": {
+    "startCommand": "node apps/oracle/dist/index.js",
+    "healthcheckPath": "/health",
+    "healthcheckTimeout": 120,
+    "restartPolicy": "ON_FAILURE"
+  },
+  "watchPatterns": ["apps/oracle/**", "packages/config/**"]
+}
