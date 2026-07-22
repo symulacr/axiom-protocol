@@ -373,7 +373,7 @@ function registerComputeRoutes(app: Express, config: ServerConfig): void {
     const models = z
       .object({ data: z.array(z.record(z.string(), z.unknown())) })
       .parse(raw);
-    const onChainProviders = await discoverProviders(config.evmRpc);
+    const onChainProviders = await discoverProviders();
     const providerMap = new Map(
       onChainProviders.map((s) => [s.model.toLowerCase(), s.provider]),
     );
@@ -449,11 +449,7 @@ function registerChatRoutes(app: Express, config: ServerConfig): void {
       } = parsed;
       const DEFAULT_MODEL = resolveChatModel(config.env?.AXIOM_COMPUTE_MODEL);
       const resolvedModel = reqModel ?? DEFAULT_MODEL;
-      const client = await createRouterClient(resolvedModel, {
-        signer: config.signer,
-        signerPk: process.env.AXIOM_COMPUTE_SIGNER_PK,
-        evmRpc: config.evmRpc,
-      });
+      const client = await createRouterClient(resolvedModel);
       const streamAbort = new AbortController();
       const streamTimeoutMs = Number.parseInt(
         process.env.AXIOM_CHAT_STREAM_TIMEOUT_MS ?? "",

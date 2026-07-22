@@ -9,15 +9,10 @@ import { TypedContract } from "@axiom/config/types/contract";
 import type { TickResult } from "@axiom/config/types/orchestrator";
 import type OpenAI from "openai";
 import {
-  clientChatIdMap,
   createRouterClient,
   setClientChatId,
 } from "../compute/router.js";
-import { createStaticProvider, resolveChainId, verifyTeeResponse } from "../compute/broker.js";
-import {
-  discoverProviders,
-  selectProvider,
-} from "../compute/provider-discovery.js";
+import { createStaticProvider, resolveChainId } from "../compute/broker.js";
 import { pickOGNetwork } from "@axiom/config/networks";
 import { EVENT_NAMES } from "@axiom/config";
 import { VAULT_ABI, VAULT_ABI_LEGACY } from "@axiom/config/abis";
@@ -176,9 +171,7 @@ export class StrategyRunner {
       return this.openai;
     }
     this.openai = await createRouterClient(model, {
-      signer: this.signer,
-      signerPk: process.env.AXIOM_COMPUTE_SIGNER_PK,
-      evmRpc: this.evmRpc,
+      timeout: undefined,
     });
     this.openaiModel = model;
     return this.openai;
@@ -188,7 +181,7 @@ export class StrategyRunner {
     strategy: StrategySpec,
     signal: MarketSignal,
     onChunk?: StreamCallback,
-  ): Promise<TickResult> {
+): Promise<TickResult> {
     const start = Date.now();
 
     const skipInference =
@@ -229,25 +222,6 @@ export class StrategyRunner {
         ? storageResult.value
         : { rootHash: strategy.modelDataRoot, size: 0 };
 
-    if (process.env.AXIOM_COMPUTE_VERIFY_TEE === "true") {
-      try {
-        await this.verifyTeeAsync(rawModelOutput, strategy.computeModel);
-      } catch (err) {
-        // Default fail-closed when verification is enabled; set
-        // AXIOM_COMPUTE_TEE_FAIL_CLOSED=false only for deliberate best-effort mode.
-        const failClosed =
-          process.env.AXIOM_COMPUTE_TEE_FAIL_CLOSED !== "false";
-        log.warn("TEE verification failed", {
-          error: extractErrorMessage(err),
-          failClosed,
-        });
-        if (failClosed) {
-          throw new Error(
-            `TEE verification failed (fail-closed): ${extractErrorMessage(err)}`,
-          );
-        }
-      }
-    }
 
     const recommendation = parseRecommendation(rawModelOutput);
 
@@ -385,47 +359,6 @@ export class StrategyRunner {
     return this.vaultWriteTc;
   }
 
-  private async verifyTeeAsync(
-    rawModelOutput: string,
-    computeModel: string,
-  ): Promise<void> {
-    let providerAddress: string | undefined;
-    try {
-      const services = await discoverProviders(this.evmRpc, this.chainId);
-      providerAddress = selectProvider(services, {
-        model: computeModel,
-      })?.provider;
-    } catch (err) {
-      const msg = extractErrorMessage(err);
-      log.info("TEE verification: provider discovery failed", { error: msg });
-      throw new Error(`TEE verification: provider discovery failed: ${msg}`, { cause: err });
-    }
-
-    if (!providerAddress) {
-      throw new Error("TEE verification failed: no provider on chain");
-    }
-
-    const chatId = this.openai ? clientChatIdMap.get(this.openai) : undefined;
-    const result = await verifyTeeResponse(
-      this.chainId,
-      this.signer,
-      providerAddress,
-      rawModelOutput,
-      chatId,
-    );
-
-    log.info("TEE verification", {
-      providerAddress,
-      result,
-      verified: result === true ? "yes" : result === false ? "no" : "skipped",
-    });
-
-    if (result === false) {
-      throw new Error(
-        `TEE response verification failed for provider ${providerAddress}`,
-      );
-    }
-  }
 
   private captureChatIdFromResponse(
     client: OpenAI,

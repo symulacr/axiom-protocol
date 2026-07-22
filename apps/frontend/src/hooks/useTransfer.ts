@@ -3,7 +3,6 @@ import {
   useAccount,
   useChainId,
   useSignTypedData,
-  useWriteContract,
 } from "wagmi";
 import { type Hex, toHex } from "viem";
 
@@ -15,6 +14,7 @@ import { useAsyncAction } from "./useAsyncAction.js";
 import { useEip712Domain, ACCESS_PROOF_TYPES } from "../abi/eip712.js";
 import { agentTransferPath, apiFetch, LONG_TIMEOUT } from "../utils/apiFetch.js";
 import { ORACLE_URL, API_KEY } from "../config/env.js";
+import { useGenericWrite } from "./useGenericWrite.js";
 import type {
   TransferInput,
   AccessProofStruct,
@@ -96,12 +96,9 @@ export function useTransfer(): UseTransferResult {
   const chainId = useChainId();
   const { address: from } = useAccount();
   const { signTypedDataAsync } = useSignTypedData();
-  const {
-    writeContractAsync,
-    isPending: isWritePending,
-    error: writeError,
-    reset: resetWrite,
-  } = useWriteContract();
+  const { write } = useGenericWrite();
+  const [isWritePending, setWritePending] = useState(false);
+  const [writeError, setWriteError] = useState<Error | null>(null);
   const { domain } = useEip712Domain();
 
   const [signature, setSignature] = useState<TransferResponse | null>(null);
@@ -256,9 +253,11 @@ export function useTransfer(): UseTransferResult {
         throw new Error("no prepared proof — call prepare() first");
       }
       setTransferPhase("confirming");
+      setWritePending(true);
+      setWriteError(null);
       try {
-        const txHash = await writeContractAsync({
-          address: getAxiomAgentNftAddress(chainId),
+        const txHash = await write({
+          to: getAxiomAgentNftAddress(chainId),
           abi: ITRANSFER_FROM_ABI,
           functionName: "iTransferFrom",
           args: [
@@ -273,9 +272,11 @@ export function useTransfer(): UseTransferResult {
             ],
           ],
         });
+        setWritePending(false);
         setTransferPhase("idle");
         return txHash;
       } catch (err) {
+        setWritePending(false);
         setTransferPhase("idle");
         const msg = err instanceof Error ? err.message : String(err);
         throw new Error(
@@ -284,7 +285,7 @@ export function useTransfer(): UseTransferResult {
         );
       }
     },
-    [chainId, from, signature, writeContractAsync],
+    [chainId, from, signature, write],
   );
 
   const transfer = useCallback(
@@ -299,8 +300,9 @@ export function useTransfer(): UseTransferResult {
     setSignature(null);
     setTransferPhase("idle");
     resetAction();
-    resetWrite();
-  }, [resetAction, resetWrite]);
+    setWritePending(false);
+    setWriteError(null);
+  }, [resetAction]);
 
   return {
     prepare,
