@@ -94,18 +94,16 @@ export async function createRouterClient(
     }
     const provider = process.env.AXIOM_COMPUTE_PROVIDER ?? HARDCODED_PROVIDER;
     await Promise.all([
-      broker.inference.acknowledgeProviderAsync(provider).catch((e) => {
+      broker.inference.acknowledgeProviderSigner(provider).catch((e) => {
         log.warn("provider acknowledge skipped", { provider, error: String(e) });
       }),
       fundProviderAccount(provider).catch((e) => {
         log.warn("auto-funding skipped", { provider, error: String(e) });
       }),
     ]);
-    // v1.4: use getServiceMetadata + generateSessionToken instead of deprecated getRequestHeaders
-    const { endpoint } = await broker.inference.getServiceMetadata(provider);
-    const sessionToken = await broker.inference.responseProcessor.generateSessionToken(provider);
-    log.info("Using wallet-signed compute session", { provider, model, endpoint });
-    return new OpenAI({ baseURL: endpoint, apiKey: sessionToken, timeout, maxRetries: 0 });
+    const { Authorization } = await broker.inference.getRequestHeaders(provider);
+    log.info("Using wallet-signed compute session", { provider, model });
+    return new OpenAI({ baseURL: getComputeBaseUrl(), apiKey: Authorization.replace(/^Bearer\s+/i, ""), timeout, maxRetries: 0 });
   }
 
   throw new Error("AXIOM_COMPUTE_API_KEY or OG_COMPUTE_API_KEY required");

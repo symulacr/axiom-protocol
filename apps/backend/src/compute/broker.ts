@@ -38,7 +38,7 @@ export async function getReadOnlyBroker(
   const cid = resolveChainId(chainId);
   const cached = _readOnlyCache.get(cid);
   if (cached) return cached;
-  const broker = await createReadOnlyInferenceBroker({ rpcUrl, networkId: cid });
+  const broker = await createReadOnlyInferenceBroker(rpcUrl, cid);
   _readOnlyCache.set(cid, broker);
   return broker;
 }
@@ -54,7 +54,7 @@ export async function getBroker(
   const cid = resolveChainId(chainId);
   const cached = _brokerCache.get(cid);
   if (cached) return cached;
-  const broker = await createZGComputeNetworkBroker(signer, { networkId: cid, skipAttestation: true });
+  const broker = await createZGComputeNetworkBroker(signer);
   _brokerCache.set(cid, broker);
   return broker;
 }
@@ -70,8 +70,7 @@ export async function verifyTeeResponse(
 ): Promise<boolean | null> {
   try {
     const broker = await getBroker(signer, chainId);
-    // v1.4: processResponse → responseProcessor.process (old processResponse still works but deprecated)
-    const result = await broker.inference.responseProcessor.process(
+    const result = await broker.inference.processResponse(
       providerAddress,
       chatId,
       content,

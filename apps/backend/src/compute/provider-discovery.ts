@@ -56,7 +56,7 @@ export async function discoverProviders(
 
   const promise = (async (): Promise<ServiceInfo[]> => {
     const broker = await getReadOnlyBroker(rpcUrl, cid);
-    const services = await broker.listAvailableProviders();
+    const services = await broker.listServiceWithDetail();
     const mapped: ServiceInfo[] = services.map(
       (s: { provider?: string; model?: string; health?: { uptime: number; latency: number } }) => ({
         provider: s.provider ?? "",
