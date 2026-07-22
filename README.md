@@ -79,39 +79,32 @@ pnpm install
 cp .env.example .env                # canonical template; fill in deployed addresses + secrets
 pnpm --filter @axiom/config build
 pnpm --filter @axiom/chat-runtime build   # required before backend/oracle dev
-pnpm --filter @axiom/oracle dev            # :8787
-pnpm --filter @axiom/backend dev           # :3000
-pnpm --filter @axiom/frontend dev          # :5173
+pnpm --filter @axiom/oracle dev                       # :8787
+pnpm --filter @axiom/backend dev                      # :3000 (includes indexer)
+pnpm --filter @axiom/frontend dev                     # :5173
 ```
 
 Contracts: `cd apps/contracts && pnpm build && pnpm test`
 
-## Deploy
+## Deployment
 
-Two platforms, deployed in order so the frontend is wired to the live backend.
+### Live URLs
 
-**1. Railway — backend, oracle, indexer.** Each service has its own `railway.json`
-(`apps/backend`, `apps/oracle`, `apps/indexer`) with build
-(`pnpm --filter @axiom/config build && pnpm --filter @axiom/<svc> build`), start
-(`node apps/<svc>/dist/index.js`), `/health` healthcheck, and `ON_FAILURE` restart. A root
-`nixpacks.toml` pins Node 22 + pnpm, installs with `--frozen-lockfile`, and caches `dist`
-outputs. (The old root `railway.json` and `scripts/railway-*.sh` were removed — configuration is
-now per-service config-as-code.) Connect each service to its folder in the Railway dashboard, or
-`railway up` per service.
+| Service | URL |
+|---------|-----|
+| Backend API | `https://axiom-backend-production-2cf5.up.railway.app` |
+| Oracle (TEE signer) | `https://oracle-production-9f7d.up.railway.app` |
+| Frontend | `https://axiom-protocol.vercel.app` |
 
-**2. Vercel — frontend.** Root `vercel.json` builds `@axiom/config` + `@axiom/frontend` to
-`apps/frontend/dist`, sets the SPA rewrite and a CSP that allows Google Fonts. Before deploying,
-set these **Production** env vars in the Vercel project: `VITE_BACKEND_URL` → your Railway backend
-URL, `VITE_ORACLE_URL` → your Railway oracle URL, `VITE_CHAT_MODEL` → `qwen/qwen2.5-omni-7b`. Then
-`vercel --prod --yes` from repo root.
+### Contracts (Aristotle mainnet, chain 16661)
 
-**Wiring order:** Railway first (exposes the URLs) → set the Vercel env vars → Vercel deploy. The
-bundle is built against those URLs, so the frontend never calls localhost in prod. Note: the Vercel
-project is CLI-deployed with no connected Git repo, so Preview/Development env vars must be added in
-the dashboard; Railway auto-deploy is off until enabled in its dashboard.
+| Contract | Address | Explorer |
+|----------|---------|---------|
+| AxiomTeeVerifier (proxy) | `0x7490D693364A31E0513bcef8E346397cc4BA9E9c` | [chainscan](https://chainscan.0g.ai/address/0x7490D693364A31E0513bcef8E346397cc4BA9E9c) |
+| AxiomAgentNFT (proxy) | `0x4938F10B12051CE8DCd70E3F7555E71adb432545` | [chainscan](https://chainscan.0g.ai/address/0x4938F10B12051CE8DCd70E3F7555E71adb432545) |
+| AxiomStrategyVault (proxy) | `0xe32f87C6F8070C89a82D51BDd3fab578C0d7be6f` | [chainscan](https://chainscan.0g.ai/address/0xe32f87C6F8070C89a82D51BDd3fab578C0d7be6f) |
+| AxiomPaymentProcessor (proxy) | `0xe8B3B31E5CE0436cCfD19a47351943CcB7703722` | [chainscan](https://chainscan.0g.ai/address/0xe8B3B31E5CE0436cCfD19a47351943CcB7703722) |
+| MockUSDC (payment token) | `0x354CA53bAB51C0666964fa050628d8351f8A7d19` | — |
 
-## Docs & links
+All 8 contracts (impl + proxy for each) verified on chainscan.
 
-- `docs/README.md` — architecture, security, API.
-- `docs/env-vars.md` — full environment-variable table.
-- [0G Bridge by AKINDO](https://app.akindo.io/wave-hacks/xKOgjd91kCmrN3ORz/) · https://github.com/symulacr/axiom-protocol
