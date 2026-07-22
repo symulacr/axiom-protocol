@@ -1,0 +1,28 @@
+{
+  "name": "@axiom/bench",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Axiom Protocol — k6 load-test scripts and harnesses for the backend HTTP+WS API. The k6 binary itself is installed system-wide or via Homebrew; this package only owns the .js scripts and the dev tooling (tsx, @types/k6) used to typecheck helpers.",
+  "scripts": {
+    "bench:tick": "k6 run scripts/orchestrator-tick.js",
+    "bench:health": "k6 run scripts/health.js",
+    "bench:transfer": "k6 run scripts/transfer.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/k6": "^0.54.2",
+    "ts-prune": "^0.10.3",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.4"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "@0gfoundation/0g-storage-ts-sdk": "^1.2.10",
+    "@axiom/config": "workspace:*",
+    "ethers": "6.16.0"
+  },
+  "license": "MIT"
+}

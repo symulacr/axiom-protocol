@@ -21,8 +21,8 @@ import { bigintReplacer } from "@axiom/config";
 import {
   getComputeBaseUrl,
   createRouterClient,
-} from "./compute/router.js";
-import { discoverProviders } from "./compute/provider-discovery.js";
+  discoverProviders,
+} from "./compute/index.js";
 import { AGENT_NFT_ABI, VAULT_ABI } from "@axiom/config/abis";
 
 import { StrategyRunner } from "./orchestrator/index.js";
@@ -46,8 +46,7 @@ import { registerVaultRoutes } from "./routers/vault.js";
 import { registerPerformanceRoutes } from "./routers/performance.js";
 import { registerOrchestratorRoutes } from "./routers/orchestrator.js";
 import { createMintEncodeRouter } from "./routers/mint-encode.js";
-import { createArchiveQueryRouter } from "./routers/archive-query.js";
-import { createArchiveJobsRouter } from "./routers/archive-jobs.js";
+import { createArchiveRouter } from "./routers/archive.js";
 import { createSkillRouters } from "./skills/routers.js";
 import {
   chatBodySchema,
@@ -555,8 +554,7 @@ function registerMintEncodeRoutes(
 }
 
 function registerArchiveRoutes(app: Express, config: ServerConfig): void {
-  app.use(createArchiveQueryRouter(config));
-  app.use(createArchiveJobsRouter(config));
+  app.use(createArchiveRouter(config));
 }
 
 function registerSkillRoutes(app: Express, config: ServerConfig): void {

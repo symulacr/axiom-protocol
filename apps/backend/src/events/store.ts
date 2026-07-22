@@ -2,8 +2,19 @@ import { createLogger } from "../utils/logger.js";
 import { EVENT_NAMES } from "@axiom/config";
 import { extractErrorMessage } from "../utils/response.js";
 import type { StoredEventPayload } from "./payloads.js";
-import { loadBuckets, saveBuckets } from "./persist.js";
-import { acquireEventStoreLock } from "./instance-lock.js";
+import {
+  openSync,
+  writeFileSync,
+  closeSync,
+  unlinkSync,
+  existsSync,
+  readFileSync,
+  renameSync,
+  mkdirSync,
+} from "node:fs";
+import { writeFile, rename, mkdir } from "node:fs/promises";
+import { join } from "node:path";
+import { bigintReplacer } from "@axiom/config";
 const DEFAULT_EVENT_LIMIT = 500 as const;
 
 const log = createLogger("events");
@@ -395,4 +406,125 @@ export function resetEventStoreForTests(): void {
   lockRelease?.();
   lockRelease = undefined;
   singleton = undefined;
+}
+
+// ── Merged from persist.ts ──────────────────────────────────────────
+const PERSIST_DIR = join(process.env.AXIOM_DATA_DIR ?? process.cwd(), ".data");
+export const PERSIST_FILE = join(PERSIST_DIR, "events.json");
+
+const persistLog = createLogger("events");
+
+export async function ensurePersistDir(): Promise<void> {
+  await mkdir(PERSIST_DIR, { recursive: true });
+}
+
+export function loadBuckets(): Map<string, unknown[]> {
+  try {
+    if (!existsSync(PERSIST_FILE)) return new Map();
+    const raw = readFileSync(PERSIST_FILE, "utf-8");
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    if (!parsed || typeof parsed !== "object") {
+      throw new Error("persist file root is not an object");
+    }
+    const buckets = new Map<string, unknown[]>();
+    for (const [bucketKey, events] of Object.entries(parsed)) {
+      if (Array.isArray(events)) buckets.set(bucketKey, events);
+    }
+    return buckets;
+  } catch (err) {
+    persistLog.warn("persist file corrupt or unreadable, starting fresh", {
+      error: extractErrorMessage(err),
+    });
+    if (existsSync(PERSIST_FILE)) {
+      try {
+        renameSync(PERSIST_FILE, `${PERSIST_FILE}.bak`);
+      } catch { /* ignore */ }
+    }
+    return new Map();
+  }
+}
+
+export async function saveBuckets(
+  buckets: Map<string, unknown[]>,
+  serialized: Map<string, string>,
+  dirty: Set<string>,
+): Promise<void> {
+  await ensurePersistDir();
+  const parts: string[] = [];
+  for (const [key, events] of buckets) {
+    let json = serialized.get(key);
+    if (dirty.has(key) || json === undefined) {
+      json = JSON.stringify(events, bigintReplacer);
+      serialized.set(key, json);
+    }
+    parts.push(`${JSON.stringify(key)}:${json}`);
+  }
+  dirty.clear();
+  const data = `{${parts.join(",")}}`;
+  const tmp = `${PERSIST_FILE}.tmp`;
+  await writeFile(tmp, data);
+  await rename(tmp, PERSIST_FILE);
+}
+
+// ── Merged from instance-lock.ts ────────────────────────────────────
+const lockLog = createLogger("events-lock");
+
+/**
+ * Exclusive process lock for EventStore file persistence.
+ * Prevents silent multi-instance split-brain on the same AXIOM_DATA_DIR.
+ * Set AXIOM_ALLOW_MULTI_INSTANCE=true only for intentional multi-replica deploys
+ * with external coordination (not supported for local JSON EventStore).
+ */
+export function acquireEventStoreLock(
+  dataDir: string = process.env.AXIOM_DATA_DIR ?? process.cwd(),
+): () => void {
+  if (process.env.AXIOM_ALLOW_MULTI_INSTANCE === "true") {
+    lockLog.warn(
+      "AXIOM_ALLOW_MULTI_INSTANCE=true — EventStore file lock skipped (unsafe for JSON store)",
+    );
+    return () => {};
+  }
+
+  const lockPath = join(dataDir, ".data", "event-store.lock");
+  mkdirSync(join(dataDir, ".data"), { recursive: true });
+
+  try {
+    const fd = openSync(lockPath, "wx");
+    writeFileSync(fd, `${process.pid}\n${new Date().toISOString()}\n`);
+    closeSync(fd);
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code;
+    if (code === "EEXIST") {
+      let holder = "unknown";
+      try {
+        holder = readFileSync(lockPath, "utf-8").trim().split("\n")[0] ?? holder;
+      } catch {
+        /* ignore */
+      }
+      throw new Error(
+        `EventStore lock held (pid ${holder}) at ${lockPath}. ` +
+          `Refuse multi-instance on the same data dir. ` +
+          `Stop the other process, delete the stale lock, or set AXIOM_ALLOW_MULTI_INSTANCE=true (unsafe).`,
+      );
+    }
+    throw err;
+  }
+
+  const release = () => {
+    try {
+      if (existsSync(lockPath)) unlinkSync(lockPath);
+    } catch {
+      /* best-effort */
+    }
+  };
+
+  process.once("exit", release);
+  process.once("SIGINT", () => {
+    release();
+  });
+  process.once("SIGTERM", () => {
+    release();
+  });
+
+  return release;
 }
