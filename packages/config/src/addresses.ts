@@ -1,6 +1,4 @@
 import { getAddress } from "viem";
-import { readFileSync, existsSync } from "node:fs";
-import { join } from "node:path";
 
 export type AddressName =
   | "agentNft"
@@ -23,23 +21,10 @@ const ENV_VAR_NAMES: Record<AddressName, string[]> = {
 
 const ADDRESS_NAMES = Object.keys(ENV_VAR_NAMES) as AddressName[];
 
-// Try to load from deployed.json as fallback
-let deployedAddresses: Record<string, string> | null = null;
-try {
-  const p = join(import.meta.dirname, "../deployed.json");
-  if (existsSync(p)) {
-    const data = JSON.parse(readFileSync(p, "utf8"));
-    deployedAddresses = data.contracts;
-  }
-} catch {
-  // Not available at build time for frontend — that's fine
-}
-
 export function resolveAddress(
   name: AddressName,
   env: Record<string, unknown>,
 ): `0x${string}` {
-  // 1. Try env vars first (highest priority — used in production)
   const varNames = ENV_VAR_NAMES[name];
   for (const varName of varNames) {
     const val = env[varName];
@@ -51,14 +36,6 @@ export function resolveAddress(
           `Invalid address for "${name}" in ${varName}="${val}" (must be 0x + 40 hex chars)`,
         );
       }
-    }
-  }
-  // 2. Fallback to deployed.json for local dev / CI
-  if (deployedAddresses?.[name]) {
-    try {
-      return getAddress(deployedAddresses[name]);
-    } catch {
-      // fall through to error below
     }
   }
   throw new Error(
