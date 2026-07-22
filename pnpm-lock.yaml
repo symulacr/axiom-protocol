@@ -75,6 +75,9 @@ importers:
       helmet:
         specifier: ^8.2.0
         version: 8.2.0
+      lru-cache:
+        specifier: ^11.5.1
+        version: 11.5.1
       openai:
         specifier: ^4.104.0
         version: 4.104.0(ws@8.20.1(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.4.3)
@@ -253,24 +256,6 @@ importers:
       vite:
         specifier: ^5.4.10
         version: 5.4.21(@types/node@22.20.1)
-
-  apps/indexer:
-    dependencies:
-      '@0gfoundation/0g-storage-ts-sdk':
-        specifier: ^1.2.10
-        version: 1.2.10(bufferutil@4.1.0)(ethers@6.16.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
-      '@axiom/config':
-        specifier: workspace:*
-        version: link:../../packages/config
-      ethers:
-        specifier: 6.16.0
-        version: 6.16.0(bufferutil@4.1.0)(utf-8-validate@5.0.10)
-      viem:
-        specifier: ^2.21.45
-        version: 2.52.2(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.4.3)
-      zod:
-        specifier: ^4.4.3
-        version: 4.4.3
 
   apps/oracle:
     dependencies:
@@ -7286,7 +7271,7 @@ snapshots:
       debug: 4.4.3(supports-color@8.1.1)
       lodash: 4.18.1
       pony-cause: 2.1.11
-      semver: 7.8.4
+      semver: 7.8.5
       uuid: 9.0.1
     transitivePeerDependencies:
       - supports-color
