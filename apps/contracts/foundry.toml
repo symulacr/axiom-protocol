@@ -16,9 +16,9 @@ evm_version = "cancun"
 # Solidity 0.8.20 (per 0G reference repo)
 solc = "0.8.20"
 
-# Optimizer on, 300 runs (max safe global value for all contracts under 24KB)
-optimizer = true
-optimizer_runs = 300
+# Min runs = smallest bytecode. 0G has zero gas fees, so runtime gas cost is irrelevant.
+optimizer_runs = 1
+bytecode_hash = "none"
 
 # viaIR on (per 0G docs)
 via_ir = true
