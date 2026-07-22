@@ -397,3 +397,5 @@ packages/config/src/models.test.ts
 .husky/
 .solhint.json
 .vercelignore
+apps/contracts/script/
+scripts/
