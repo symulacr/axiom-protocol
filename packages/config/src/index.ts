@@ -52,5 +52,5 @@ export {
   resolveChatModel,
   resolveContextWindow,
 } from "./chat-tools.js";
-export { HTTP, EVENT_NAMES, TRANSFER_TOPIC, ZERO_DATA_ROOT, bigintReplacer } from "./constants.js";
+export { HTTP, EVENT_NAMES, TRANSFER_TOPIC, ZERO_DATA_ROOT, bigintReplacer, DEFAULT_EVENT_LIMIT, MAX_EVENT_QUERY_LIMIT } from "./constants.js";
 export type { EventName } from "./constants.js";

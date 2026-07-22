@@ -8,6 +8,7 @@ export interface IndexerServiceConfig {
   provider: ethers.JsonRpcProvider;
   env: {
     AXIOM_STORAGE_RPC?: string;
+    INDEXER_POLL_WINDOW_BLOCKS?: number;
     INDEXER_START_BLOCK?: number;
     AXIOM_INDEXER_API_KEY?: string;
     AXIOM_EVM_RPC: string;
@@ -48,11 +49,11 @@ export class IndexerService {
       });
       this.lastProcessedBlock = Math.max(this.lastProcessedBlock, blockNumber);
     };
-
     this.watcher = new Watcher({
       provider,
       sink,
       watchList,
+      pollWindow: BigInt(env.INDEXER_POLL_WINDOW_BLOCKS ?? 500),
       ...(env.INDEXER_START_BLOCK !== undefined
         ? { startBlock: BigInt(env.INDEXER_START_BLOCK) }
         : {}),

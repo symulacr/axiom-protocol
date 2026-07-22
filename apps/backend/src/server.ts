@@ -45,7 +45,6 @@ import { registerEventRoutes } from "./routers/events.js";
 import { registerVaultRoutes } from "./routers/vault.js";
 import { registerPerformanceRoutes } from "./routers/performance.js";
 import { registerOrchestratorRoutes } from "./routers/orchestrator.js";
-import { createMintEncodeRouter } from "./routers/mint-encode.js";
 import { createArchiveRouter } from "./routers/archive.js";
 import { createSkillRouters } from "./skills/routers.js";
 import {
@@ -304,7 +303,6 @@ export function startServer(config: ServerConfig): {
   registerChatRoutes(app, config);
 
   registerAgentRoutes(app, config, provider, oracle, eip712Domain, nftTc);
-  registerMintEncodeRoutes(app, config, provider);
   registerEventRoutes(app, config, getEventStore());
   registerPerformanceRoutes(app, config, getEventStore());
   registerOrchestratorRoutes(app, config, getOrCreateOrchestrator, ogChainId);
@@ -543,14 +541,6 @@ function registerChatRoutes(app: Express, config: ServerConfig): void {
       });
     }
   }, config);
-}
-
-function registerMintEncodeRoutes(
-  app: Express,
-  config: ServerConfig,
-  provider: SharedProvider,
-): void {
-  app.use(createMintEncodeRouter(config, provider));
 }
 
 function registerArchiveRoutes(app: Express, config: ServerConfig): void {

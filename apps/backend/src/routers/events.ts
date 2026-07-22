@@ -3,13 +3,11 @@ import type { z } from "zod";
 import { timingSafeEqual } from "node:crypto";
 import { createRoute } from "./route-factory.js";
 import { eventBodySchema } from "../route-schemas.js";
-import { HTTP } from "@axiom/config";
+import { HTTP, DEFAULT_EVENT_LIMIT, MAX_EVENT_QUERY_LIMIT } from "@axiom/config";
 import { sendError } from "../utils/response.js";
 import type { EventStore } from "../events/store.js";
 import type { ServerConfig } from "../server.js";
 
-const MAX_EVENT_QUERY_LIMIT = 500 as const;
-const DEFAULT_EVENT_LIMIT = MAX_EVENT_QUERY_LIMIT;
 const DEFAULT_EVENT_SOURCES = ["indexer"] as const;
 
 function resolveEventSources(extra?: string): Set<string> {

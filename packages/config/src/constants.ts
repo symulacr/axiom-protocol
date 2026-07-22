@@ -7,6 +7,9 @@ export function bigintReplacer(_key: string, value: unknown): unknown {
   return typeof value === "bigint" ? value.toString() : value;
 }
 
+export const DEFAULT_EVENT_LIMIT = 500 as const;
+export const MAX_EVENT_QUERY_LIMIT = 500 as const;
+
 export const HTTP = {
   OK: 200,
   ACCEPTED: 202,

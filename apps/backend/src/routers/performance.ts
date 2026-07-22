@@ -1,12 +1,11 @@
 import type { Express } from "express";
-import { HTTP, EVENT_NAMES } from "@axiom/config";
+import { HTTP, EVENT_NAMES, DEFAULT_EVENT_LIMIT } from "@axiom/config";
 import { createRoute } from "./route-factory.js";
 import { sendError } from "../utils/response.js";
 import type { EventStore } from "../events/store.js";
 import type { ServerConfig } from "../server.js";
 import { payloadField, payloadNumber } from "../events/payloads.js";
 import { TTLCache } from "../utils/cache.js";
-const DEFAULT_EVENT_LIMIT = 500 as const;
 
 const perfCache = new TTLCache<unknown>(30_000);
 const leaderboardCache = new TTLCache<unknown>(10_000);

@@ -1,5 +1,5 @@
 import { createLogger } from "../utils/logger.js";
-import { EVENT_NAMES } from "@axiom/config";
+import { EVENT_NAMES, DEFAULT_EVENT_LIMIT, bigintReplacer } from "@axiom/config";
 import { extractErrorMessage } from "../utils/response.js";
 import type { StoredEventPayload } from "./payloads.js";
 import { broadcast } from "../ws/broadcaster.js";
@@ -9,8 +9,6 @@ import {
 } from "node:fs";
 import { writeFile, rename, mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import { bigintReplacer } from "@axiom/config";
-const DEFAULT_EVENT_LIMIT = 500 as const;
 
 const log = createLogger("events");
 

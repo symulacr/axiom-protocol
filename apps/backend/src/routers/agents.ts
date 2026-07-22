@@ -4,11 +4,13 @@ const AGENT_NFT_IFACE = new ethers.Interface([
   "function intelligentDatasOf(uint256) view returns (tuple(string dataDescription, bytes32 dataHash)[])",
   "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)",
 ]);
+import { hexViem, addressViem } from "@axiom/config/types/hex";
+import { AGENT_NFT_ABI } from "@axiom/config/abis";
 import { z } from "zod";
 import type { Express, Request, Response } from "express";
 import { ethers } from "ethers";
 import type { Hex } from "viem";
-import type { TypedContract, AgentNFTMethods } from "@axiom/config/types/contract";
+import { TypedContract, type AgentNFTMethods } from "@axiom/config/types/contract";
 import { type ServerConfig, isUpstreamTransportError } from "../server.js";
 import { sendError, extractErrorMessage } from "../utils/response.js";
 import { TTLCache } from "../utils/cache.js";
@@ -21,6 +23,18 @@ const log = createLogger("agents");
 
 const MAX_AGENT_ENUMERATION = 100 as const;
 const AGENT_LOG_SCAN_BLOCKS = 50_000;
+
+const mintEncodeSchema = z.object({
+  dataDescription: z.string().min(1).max(1024),
+  dataHash: hexViem,
+  to: addressViem,
+});
+
+type MintEncodeBody = z.infer<typeof mintEncodeSchema>;
+
+type AgentNftMintEncodeMethods = {
+  mintFee(): Promise<bigint>;
+};
 import type { Eip712Domain, OwnershipProofInput } from "@axiom/config";
 import {
   recoverAccessSigner,
@@ -471,4 +485,31 @@ export function registerAgentRoutes(
       throw err;
     }
   }, config);
+
+  createRoute(
+    app,
+    {
+      method: "post",
+      path: "/v1/agents/mint/encode",
+      schema: mintEncodeSchema,
+      requireAddress: "agentNft",
+      consumer: "useMintEncode",
+      description: "Encode AxiomAgentNFT mint transaction (value = on-chain mintFee)",
+    },
+    async (parsed: MintEncodeBody, _req, _res, { config: cfg }) => {
+      const nftAddr = cfg.addresses!.agentNft;
+      const nftTc = new TypedContract<AgentNftMintEncodeMethods>(
+        nftAddr,
+        AGENT_NFT_ABI,
+        provider,
+      );
+      const mintFee = await nftTc.contract.mintFee();
+      const data = nftTc.iface.encodeFunctionData("mint", [
+        [{ dataDescription: parsed.dataDescription, dataHash: parsed.dataHash }],
+        parsed.to,
+      ]);
+      return { to: nftAddr, data, value: mintFee.toString() };
+    },
+    config,
+  );
 }
