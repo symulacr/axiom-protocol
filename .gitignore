@@ -390,3 +390,10 @@ packages/config/src/abis/vault.legacy.ts
 packages/config/src/eip712.test.ts
 packages/config/src/middleware/auth.test.ts
 packages/config/src/models.test.ts
+
+# ── Previously tracked, git rm'd — silence from untracked status ──
+.github/
+.gitleaks.toml
+.husky/
+.solhint.json
+.vercelignore
