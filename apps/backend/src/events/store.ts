@@ -2,15 +2,10 @@ import { createLogger } from "../utils/logger.js";
 import { EVENT_NAMES } from "@axiom/config";
 import { extractErrorMessage } from "../utils/response.js";
 import type { StoredEventPayload } from "./payloads.js";
+import { broadcast } from "../ws/broadcaster.js";
 import {
-  openSync,
-  writeFileSync,
-  closeSync,
-  unlinkSync,
-  existsSync,
-  readFileSync,
-  renameSync,
-  mkdirSync,
+  openSync, writeFileSync, closeSync, unlinkSync, existsSync,
+  readFileSync, renameSync, mkdirSync,
 } from "node:fs";
 import { writeFile, rename, mkdir } from "node:fs/promises";
 import { join } from "node:path";
@@ -142,6 +137,8 @@ export class EventStore {
     this.dirty.add(bucketKey);
     this.total += 1;
     this.persistDebounced();
+    // Broadcast to WebSocket subscribers in real-time
+    try { broadcast(stored.eventName, stored); } catch { /* WS errors are non-fatal */ }
     return stored;
   }
 
