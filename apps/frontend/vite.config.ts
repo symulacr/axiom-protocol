@@ -28,6 +28,7 @@ export default defineConfig({
   },
   build: {
     rollupOptions: {
+      external: ["node:crypto", "node:fs", "node:path"],
       output: {
         manualChunks: {
           wagmi: ["wagmi", "viem"],
