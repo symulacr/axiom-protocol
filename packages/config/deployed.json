@@ -2,13 +2,17 @@
   "network": "0G Aristotle mainnet",
   "chainId": 16661,
   "rpc": "https://evmrpc.0g.ai",
-  "deployedAt": "2026-07-13T00:00:00Z",
+  "deployedAt": "2026-07-22T00:00:00Z",
+  "deployedAtUnix": 1784692736,
+  "teeSigner": "0x0553f58a0209Fb8DcE201fCD9406Be56da890D73",
+  "oracleAdmin": "0x437371dB1FBD534Bd01BD3f4E66DfA1675952F91",
+  "paymentToken": "0x354CA53bAB51C0666964fa050628d8351f8A7d19",
   "contracts": {
-    "agentNft": "0x2467e049c8284D658a64ee5B4b3C9f49E2B6f852",
-    "agentNftImpl": "0xE83E4e613B6EaFD6846b4e903E04b17c7f6d2eaf",
-    "strategyVault": "0x3695C527d2973e8699e836204389881f563A130A",
-    "teeVerifier": "0xDfbA9B8e3d63dFf3a1Fc21F2cCD2850285Dab943",
-    "paymentProcessor": "0x0A4f233b95854eCD648772c96e117e1D25FB12aD",
-    "mockUsdc": "0x1f3AA82227281cA364bFb3d253B0f1af1Da6473e"
+    "agentNft": "0x72a381226E09b9AAe15D9309A656d7e5DD2bFbb2",
+    "agentNftImpl": "0xFC8723F4fAe66EaA7cbb9f653cc7171d8c042159",
+    "strategyVault": "0xdBB2e63807a13272789B716692fbe0d09E010097",
+    "teeVerifier": "0xB7085c7725736ed2b1fdDEa2321530bb9b7eE40a",
+    "paymentProcessor": "0x4607D749a7b8BBD2593742F8432410231C805c57",
+    "mockUsdc": "0x354CA53bAB51C0666964fa050628d8351f8A7d19"
   }
 }
