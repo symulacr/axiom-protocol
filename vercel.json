@@ -6,11 +6,11 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://axiom-backend-production-7bfc.up.railway.app/:path*"
+      "destination": "https://axiom-backend-production-2cf5.up.railway.app/:path*"
     },
     {
       "source": "/api",
-      "destination": "https://axiom-backend-production-7bfc.up.railway.app/"
+      "destination": "https://axiom-backend-production-2cf5.up.railway.app/"
     },
     {
       "source": "/oracle/:path*",
