@@ -1,0 +1,18 @@
+# Commit message conventions
+# ==========================
+# Format: <type>: <subject>
+#   type: feat | fix | refactor | chore | docs | test | build | perf | style
+#   subject: Capitalized, ≤72 chars, present tense, no period
+#
+# Body (if needed): blank line then bullet points explaining WHAT + WHY
+#   No numbered hierarchies (P0/P1/W1/W2).
+#   No AI-style structured bodies for trivial changes.
+#
+# Bad:   "fix: P0 crashes/gating — ask_user ok:false, BigInt-safe logger, events POST over-gating"
+# Good:  "fix: handle ask_user returning ok:false in chat runtime"
+#
+# Bad:   "w3: indexer — replace batch buffer with per-event SDK upload, fix watcher stop"
+# Good:  "feat: upload indexer events individually instead of batching"
+#
+# Good:  "fix: validate oracle signer before accepting transfer proofs"
+# Good:  "chore: remove dead exports from backend event payloads"
