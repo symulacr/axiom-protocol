@@ -69,4 +69,11 @@ import { zeroGMainnet as _viemZeroGMainnet } from "viem/chains";
 export const zeroGMainnet = {
   ..._viemZeroGMainnet,
   rpcUrls: { default: { http: [resolveRpcUrl()] } },
+  contracts: {
+    ..._viemZeroGMainnet.contracts,
+    multicall3: {
+      address: "0xcA11bde05977b3631167028862bE2a173976CA11",
+      blockCreated: 0,
+    },
+  },
 };
