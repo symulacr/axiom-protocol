@@ -1,14 +1,21 @@
 import type { ReactElement } from "react";
 import type { TradeHistoryEntry } from "../hooks/usePerformance.js";
-import { COLORS, Card, SectionTitle, getActionColor, CopyButton } from "./ui.js";
+import {
+  COLORS,
+  Card,
+  SectionTitle,
+  getActionColor,
+  CopyButton,
+} from "./ui.js";
 import { EmptyState } from "./EmptyState.js";
+import { resolveBlockExplorerUrl } from "@axiom/config/networks";
 
 interface TradeHistoryProps {
   history: TradeHistoryEntry[];
 }
 
 export function TradeHistory({ history }: TradeHistoryProps): ReactElement {
-  const explorerBase = "https://chainscan.0g.ai";
+  const explorerBase = resolveBlockExplorerUrl();
 
   if (history.length === 0) {
     return (

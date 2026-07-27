@@ -13,8 +13,14 @@ import rateLimit from "express-rate-limit";
 import { createServer, type Server as HttpServer } from "node:http";
 import { WebSocketServer, type WebSocket } from "ws";
 import { ethers, type Wallet } from "ethers";
-import { type ChatCompletionMessageParam, type ChatCompletionTool } from "openai/resources/chat/completions";
-import { TypedContract, type AgentNFTMethods } from "@axiom/config/types/contract";
+import {
+  type ChatCompletionMessageParam,
+  type ChatCompletionTool,
+} from "openai/resources/chat/completions";
+import {
+  TypedContract,
+  type AgentNFTMethods,
+} from "@axiom/config/types/contract";
 import { ARISTOTLE_CHAIN_ID } from "@axiom/config/networks";
 import { bigintReplacer } from "@axiom/config";
 
@@ -27,7 +33,14 @@ import { AGENT_NFT_ABI, VAULT_ABI } from "@axiom/config/abis";
 
 import { StrategyRunner } from "./orchestrator/index.js";
 import { DefaultSignerOracleClient } from "./oracle/client.js";
-import { HTTP, type Eip712Domain, DEFAULT_EIP712_DOMAIN, buildEip712Domain, resolveChatModel, resolveContextWindow } from "@axiom/config";
+import {
+  HTTP,
+  type Eip712Domain,
+  DEFAULT_EIP712_DOMAIN,
+  buildEip712Domain,
+  resolveChatModel,
+  resolveContextWindow,
+} from "@axiom/config";
 import { getSharedProvider } from "./provider.js";
 import {
   createApiKeyAuth,
@@ -66,15 +79,16 @@ const log = createLogger("server");
 const PKG_VERSION = pkg.version;
 const MAX_WS_CLIENTS = 1000 as const;
 
-
-
 function shortSigner(addr: string): string {
   return addr.length > 10 ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : addr;
 }
 
-REGISTERED_ROUTES.push(
-  { method: "GET", path: "/v1/stream", consumer: "ws", description: "WebSocket event stream (upgrade)" },
-);
+REGISTERED_ROUTES.push({
+  method: "GET",
+  path: "/v1/stream",
+  consumer: "ws",
+  description: "WebSocket event stream (upgrade)",
+});
 
 export function isUpstreamTransportError(err: unknown): boolean {
   const e = err as { code?: string; cause?: { code?: string } } | null;
@@ -120,7 +134,6 @@ export function assertStartupAuthNotDisabledInProduction(
     );
   }
 }
-
 
 export function startServer(config: ServerConfig): {
   app: Express;
@@ -204,7 +217,8 @@ export function startServer(config: ServerConfig): {
   app.use(
     rateLimit({
       windowMs: 60_000,
-      max: Number.isFinite(rateLimitMax) && rateLimitMax > 0 ? rateLimitMax : 100,
+      max:
+        Number.isFinite(rateLimitMax) && rateLimitMax > 0 ? rateLimitMax : 100,
       standardHeaders: true,
       legacyHeaders: false,
     }),
@@ -321,7 +335,9 @@ export function startServer(config: ServerConfig): {
   httpServer.listen(config.port, config.bind, () => {
     log.info(`Listening on http://${config.bind}:${config.port}`);
     log.info(`Signer: ${config.signer.address}`);
-    log.info(`Axiom backend v${PKG_VERSION} — ${REGISTERED_ROUTES.length} routes mounted, WS /v1/stream`);
+    log.info(
+      `Axiom backend v${PKG_VERSION} — ${REGISTERED_ROUTES.length} routes mounted, WS /v1/stream`,
+    );
   });
   httpServer.on("close", () => {
     clearInterval(heartbeatTimer);
@@ -338,73 +354,72 @@ function registerHealthRoutes(
   provider: SharedProvider,
   oracle: DefaultSignerOracleClient,
 ): void {
-  app.use(
-    createHealthRouter(
-      provider,
-      oracle,
-      config,
-    ),
-  );
+  app.use(createHealthRouter(provider, oracle, config));
 }
 
 function registerComputeRoutes(app: Express, config: ServerConfig): void {
-  createRoute(app, {
-    path: "/v1/compute/providers",
-    method: "get",
-    consumer: "useCompute",
-    description: "List compute providers",
-  }, async (_parsed: unknown, _req: Request, res: Response) => {
+  async function fetchRouterModels(
+    requestId?: string,
+  ): Promise<Record<string, unknown>[]> {
     const routerBaseUrl = getComputeBaseUrl();
     const resp = await fetch(`${routerBaseUrl}/models`, {
-      headers: { "X-Request-ID": res.locals.requestId as string },
+      ...(requestId ? { headers: { "X-Request-ID": requestId } } : {}),
       signal: AbortSignal.timeout(10_000),
     });
-    if (!resp.ok) {
-      res.status(HTTP.BAD_GATEWAY).json({
-        error: `Compute router returned ${resp.status}`,
-        code: "UPSTREAM_ERROR",
-      });
-      return;
-    }
+    if (!resp.ok) return [];
     const raw = await resp.json();
-    const models = z
+    const parsed = z
       .object({ data: z.array(z.record(z.string(), z.unknown())) })
       .parse(raw);
-    const onChainProviders = await discoverProviders();
-    const providerMap = new Map(
-      onChainProviders.map((s) => [s.model.toLowerCase(), s.provider]),
-    );
-    const services = models.data.map((m: Record<string, unknown>) => {
-      const id = String(m.id ?? "");
-      const address =
-        providerMap.get(id.toLowerCase()) ??
-        (ethers
-          .keccak256(ethers.toUtf8Bytes(`model:${id}`))
-          .slice(0, 42) as `0x${string}`);
-      const pricingRaw = m.pricing;
-      const price =
-        pricingRaw &&
-        typeof pricingRaw === "object" &&
-        "prompt" in pricingRaw
-          ? String((pricingRaw as Record<string, unknown>).prompt ?? "")
-          : undefined;
-      return { address, model: id, endpoint: routerBaseUrl, price };
-    });
-    res.json({ services });
-  }, config);
+    return parsed.data;
+  }
+
+  createRoute(
+    app,
+    {
+      path: "/v1/compute/providers",
+      method: "get",
+      consumer: "useCompute",
+      description: "List compute providers",
+    },
+    async (_parsed: unknown, _req: Request, res: Response) => {
+      const routerBaseUrl = getComputeBaseUrl();
+      const models = await fetchRouterModels(res.locals.requestId as string);
+      if (models.length === 0) {
+        res.status(HTTP.BAD_GATEWAY).json({
+          error: "Compute router returned no models",
+          code: "UPSTREAM_ERROR",
+        });
+        return;
+      }
+      const onChainProviders = await discoverProviders();
+      const providerMap = new Map(
+        onChainProviders.map((s) => [s.model.toLowerCase(), s.provider]),
+      );
+      const services = models.map((m: Record<string, unknown>) => {
+        const id = String(m.id ?? "");
+        const address =
+          providerMap.get(id.toLowerCase()) ??
+          (ethers
+            .keccak256(ethers.toUtf8Bytes(`model:${id}`))
+            .slice(0, 42) as `0x${string}`);
+        const pricingRaw = m.pricing;
+        const price =
+          pricingRaw && typeof pricingRaw === "object" && "prompt" in pricingRaw
+            ? String((pricingRaw as Record<string, unknown>).prompt ?? "")
+            : undefined;
+        return { address, model: id, endpoint: routerBaseUrl, price };
+      });
+      res.json({ services });
+    },
+    config,
+  );
 
   async function fetchModelWindows(): Promise<Record<string, number>> {
     try {
-      const resp = await fetch(`${getComputeBaseUrl()}/models`, {
-        signal: AbortSignal.timeout(10_000),
-      });
-      if (!resp.ok) return {};
-      const raw = await resp.json();
-      const parsed = z
-        .object({ data: z.array(z.record(z.string(), z.unknown())) })
-        .parse(raw);
+      const models = await fetchRouterModels();
       const out: Record<string, number> = {};
-      for (const m of parsed.data) {
+      for (const m of models) {
         const id = String(m.id ?? "");
         const cw = m.context_window;
         if (id && typeof cw === "number") out[id] = cw;
@@ -415,132 +430,150 @@ function registerComputeRoutes(app: Express, config: ServerConfig): void {
     }
   }
 
-  createRoute(app, {
-    path: "/v1/config",
-    method: "get",
-    consumer: "config",
-    description: "Backend configuration",
-  }, async (_parsed: unknown, _req: Request, res: Response) => {
-    const model = resolveChatModel(config.env?.AXIOM_COMPUTE_MODEL);
-    const windows = await fetchModelWindows();
-    res.json({
-      model,
-      assistantName: "Axiom",
-      contextWindow: resolveContextWindow(model, windows),
-    });
-  }, config);
+  createRoute(
+    app,
+    {
+      path: "/v1/config",
+      method: "get",
+      consumer: "config",
+      description: "Backend configuration",
+    },
+    async (_parsed: unknown, _req: Request, res: Response) => {
+      const model = resolveChatModel(config.env?.AXIOM_COMPUTE_MODEL);
+      const windows = await fetchModelWindows();
+      res.json({
+        model,
+        assistantName: "Axiom",
+        contextWindow: resolveContextWindow(model, windows),
+      });
+    },
+    config,
+  );
 }
 function registerChatRoutes(app: Express, config: ServerConfig): void {
-  createRoute(app, {
-    path: "/v1/chat/completions",
-    method: "post",
-    schema: chatBodySchema,
-    consumer: "chat-runtime",
-    description: "Stream chat completions",
-  }, async (parsed: z.infer<typeof chatBodySchema>, req: Request, res: Response) => {
-    try {
-      const {
-        messages,
-        tools,
-        model: reqModel,
-      } = parsed;
-      const DEFAULT_MODEL = resolveChatModel(config.env?.AXIOM_COMPUTE_MODEL);
-      const resolvedModel = reqModel ?? DEFAULT_MODEL;
-      const client = await createRouterClient(resolvedModel);
-      const streamAbort = new AbortController();
-      const streamTimeoutMs = Number.parseInt(
-        process.env.AXIOM_CHAT_STREAM_TIMEOUT_MS ?? "",
-        10,
-      );
-      const upstreamSignal =
-        Number.isFinite(streamTimeoutMs) && streamTimeoutMs > 0
-          ? AbortSignal.timeout(streamTimeoutMs)
-          : undefined;
-      const streamSignal = upstreamSignal
-        ? AbortSignal.any([streamAbort.signal, upstreamSignal])
-        : streamAbort.signal;
-      const openaiRes = await client.chat.completions.create(
-        {
-          model: resolvedModel,
-          messages: messages as ChatCompletionMessageParam[],
-          tools: tools as ChatCompletionTool[] | undefined,
-          stream: true,
-          max_tokens: 2048,
-        },
-        { signal: streamSignal },
-      );
-      res.setHeader("Content-Type", "text/event-stream");
-      res.setHeader("Cache-Control", "no-cache");
-      res.setHeader("Connection", "keep-alive");
-      res.setHeader("X-Accel-Buffering", "no");
-      res.flushHeaders();
-      req.on("close", () => streamAbort.abort());
-      const writeChunk = (chunk: string): boolean => {
-        try {
-          return res.write(chunk);
-        } catch {
-          streamAbort.abort();
-          req.destroy();
-          return false;
+  createRoute(
+    app,
+    {
+      path: "/v1/chat/completions",
+      method: "post",
+      schema: chatBodySchema,
+      consumer: "chat-runtime",
+      description: "Stream chat completions",
+    },
+    async (
+      parsed: z.infer<typeof chatBodySchema>,
+      req: Request,
+      res: Response,
+    ) => {
+      try {
+        const { messages, tools, model: reqModel } = parsed;
+        const DEFAULT_MODEL = resolveChatModel(config.env?.AXIOM_COMPUTE_MODEL);
+        const resolvedModel = reqModel ?? DEFAULT_MODEL;
+        const client = await createRouterClient(resolvedModel);
+        const streamAbort = new AbortController();
+        const streamTimeoutMs = Number.parseInt(
+          process.env.AXIOM_CHAT_STREAM_TIMEOUT_MS ?? "",
+          10,
+        );
+        const upstreamSignal =
+          Number.isFinite(streamTimeoutMs) && streamTimeoutMs > 0
+            ? AbortSignal.timeout(streamTimeoutMs)
+            : undefined;
+        const streamSignal = upstreamSignal
+          ? AbortSignal.any([streamAbort.signal, upstreamSignal])
+          : streamAbort.signal;
+        const openaiRes = await client.chat.completions.create(
+          {
+            model: resolvedModel,
+            messages: messages as ChatCompletionMessageParam[],
+            tools: tools as ChatCompletionTool[] | undefined,
+            stream: true,
+            max_tokens: 2048,
+          },
+          { signal: streamSignal },
+        );
+        res.setHeader("Content-Type", "text/event-stream");
+        res.setHeader("Cache-Control", "no-cache");
+        res.setHeader("Connection", "keep-alive");
+        res.setHeader("X-Accel-Buffering", "no");
+        res.flushHeaders();
+        req.on("close", () => streamAbort.abort());
+        const writeChunk = (chunk: string): boolean => {
+          try {
+            return res.write(chunk);
+          } catch {
+            streamAbort.abort();
+            req.destroy();
+            return false;
+          }
+        };
+        let n = 0;
+        for await (const chunk of openaiRes) {
+          if (res.writableEnded) break;
+          if (!writeChunk(`data: ${JSON.stringify(chunk)}\n\n`)) break;
+          n++;
         }
-      };
-      let n = 0;
-      for await (const chunk of openaiRes) {
-        if (res.writableEnded) break;
-        if (!writeChunk(`data: ${JSON.stringify(chunk)}\n\n`)) break;
-        n++;
-      }
-      if (!res.writableEnded) {
-        if (n === 0) {
-          writeChunk(`data: ${JSON.stringify({choices:[{delta:{content:"⚠ 0G Compute returned an empty response. Try again or check model availability."}}]})}\n\n`);
+        if (!res.writableEnded) {
+          if (n === 0) {
+            writeChunk(
+              `data: ${JSON.stringify({ choices: [{ delta: { content: "⚠ 0G Compute returned an empty response. Try again or check model availability." } }] })}\n\n`,
+            );
+          }
+          writeChunk("data: [DONE]\n\n");
+          res.end();
         }
-        writeChunk("data: [DONE]\n\n");
-        res.end();
-      }
-    } catch (err) {
-      log.error("chat completions upstream failed", { err });
-      const errMsg = err instanceof Error ? err.message : String(err);
-      if (res.headersSent || res.writableEnded) {
-        try { res.write(`data: ${JSON.stringify({error:errMsg,code:"STREAM_ERROR"})}\n\ndata: [DONE]\n\n`); } catch {}
-        res.destroy();
-        return;
-      }
-      // Surface payment/auth failures clearly (0G router 402 insufficient_balance)
-      const e = err as {
-        status?: number;
-        code?: string;
-        error?: { message?: string; code?: string };
-        message?: string;
-      };
-      const status = e?.status;
-      const code = e?.code ?? e?.error?.code;
-      const msg = e?.error?.message ?? e?.message ?? "";
-      if (
-        status === 402 ||
-        code === "insufficient_balance" ||
-        /insufficient balance/i.test(String(msg))
-      ) {
-        res.status(402).json({
-          error:
-            "Compute account has no balance. Fund the 0G Compute provider account linked to AXIOM_COMPUTE_API_KEY, then retry.",
-          code: "insufficient_balance",
-        });
-        return;
-      }
-      if (status === 401 || status === 403) {
+      } catch (err) {
+        log.error("chat completions upstream failed", { err });
+        const errMsg = err instanceof Error ? err.message : String(err);
+        if (res.headersSent || res.writableEnded) {
+          try {
+            res.write(
+              `data: ${JSON.stringify({ error: errMsg, code: "STREAM_ERROR" })}\n\ndata: [DONE]\n\n`,
+            );
+          } catch {
+            /* socket already closed */
+          }
+          res.destroy();
+          return;
+        }
+        // Surface payment/auth failures clearly (0G router 402 insufficient_balance)
+        const e = err as {
+          status?: number;
+          code?: string;
+          error?: { message?: string; code?: string };
+          message?: string;
+        };
+        const status = e?.status;
+        const code = e?.code ?? e?.error?.code;
+        const msg = e?.error?.message ?? e?.message ?? "";
+        if (
+          status === 402 ||
+          code === "insufficient_balance" ||
+          /insufficient balance/i.test(String(msg))
+        ) {
+          res.status(402).json({
+            error:
+              "Compute account has no balance. Fund the 0G Compute provider account linked to AXIOM_COMPUTE_API_KEY, then retry.",
+            code: "insufficient_balance",
+          });
+          return;
+        }
+        if (status === 401 || status === 403) {
+          res.status(502).json({
+            error: "Compute auth failed. Check AXIOM_COMPUTE_API_KEY.",
+            code: "compute_auth",
+          });
+          return;
+        }
         res.status(502).json({
-          error: "Compute auth failed. Check AXIOM_COMPUTE_API_KEY.",
-          code: "compute_auth",
+          error: msg
+            ? `Compute upstream: ${String(msg).slice(0, 200)}`
+            : "compute upstream error",
         });
-        return;
       }
-      res.status(502).json({
-        error: msg
-          ? `Compute upstream: ${String(msg).slice(0, 200)}`
-          : "compute upstream error",
-      });
-    }
-  }, config);
+    },
+    config,
+  );
 }
 
 function registerArchiveRoutes(app: Express, config: ServerConfig): void {
@@ -557,23 +590,28 @@ function registerMetaRoutes(
   ogChainId: number,
   startedAt: number,
 ): void {
-  createRoute(app, {
-    path: "/v1/routes",
-    method: "get",
-    consumer: "meta",
-    description: "List mounted routes",
-  }, async (_parsed: unknown, _req: Request, res: Response) => {
-    res.json({
-      routes: REGISTERED_ROUTES,
-      meta: {
-        version: PKG_VERSION,
-        chainId: ogChainId,
-        signer: shortSigner(config.signer.address),
-        startedAt,
-        uptimeMs: Date.now() - startedAt,
-      },
-    });
-  }, config);
+  createRoute(
+    app,
+    {
+      path: "/v1/routes",
+      method: "get",
+      consumer: "meta",
+      description: "List mounted routes",
+    },
+    async (_parsed: unknown, _req: Request, res: Response) => {
+      res.json({
+        routes: REGISTERED_ROUTES,
+        meta: {
+          version: PKG_VERSION,
+          chainId: ogChainId,
+          signer: shortSigner(config.signer.address),
+          startedAt,
+          uptimeMs: Date.now() - startedAt,
+        },
+      });
+    },
+    config,
+  );
 }
 
 function registerPaymentRoutes(
@@ -597,12 +635,20 @@ function registerPaymentRoutes(
     async (_parsed, _req, res, { id }) => {
       res.setHeader("Cache-Control", "public, max-age=300");
       if (!nftTc) {
-        sendError(res, HTTP.SERVICE_UNAVAILABLE, "AgentNFT address not configured");
+        sendError(
+          res,
+          HTTP.SERVICE_UNAVAILABLE,
+          "AgentNFT address not configured",
+        );
         return;
       }
       const creator = await nftTc.contract.creatorOf(BigInt(id));
       if (!creator || creator === ethers.ZeroAddress) {
-        sendError(res, HTTP.NOT_FOUND, "Agent creator not registered for token");
+        sendError(
+          res,
+          HTTP.NOT_FOUND,
+          "Agent creator not registered for token",
+        );
         return;
       }
       const client = await getPayment();
@@ -681,7 +727,12 @@ function registerPaymentRoutes(
     async (parsed, _req, _res, { id, config: cfg }) => {
       const vaultAddr = cfg.addresses?.vault;
       if (!vaultAddr) {
-        sendError(_res, HTTP.INTERNAL, "vault address not configured", "VAULT_NOT_CONFIGURED");
+        sendError(
+          _res,
+          HTTP.INTERNAL,
+          "vault address not configured",
+          "VAULT_NOT_CONFIGURED",
+        );
         return;
       }
       const { target, value, data, proof } = parsed as z.infer<
@@ -694,7 +745,10 @@ function registerPaymentRoutes(
           value: bigint,
           data: string,
           proof: string[],
-        ): Promise<{ hash: string; wait(): Promise<{ status?: number } | null> }>;
+        ): Promise<{
+          hash: string;
+          wait(): Promise<{ status?: number } | null>;
+        }>;
       }>(vaultAddr, VAULT_ABI, cfg.signer);
       const tx = await vaultTc.contract.execute(
         BigInt(id),
@@ -758,7 +812,11 @@ function registerErrorHandlers(app: Express): void {
 
   app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
     const requestId = res.locals.requestId;
-    log.error("Unhandled error", { error: err.message, stack: err.stack, requestId });
+    log.error("Unhandled error", {
+      error: err.message,
+      stack: err.stack,
+      requestId,
+    });
     if (err instanceof z.ZodError) {
       res.status(HTTP.BAD_REQUEST).json({
         error: "Validation failed",
@@ -773,7 +831,9 @@ function registerErrorHandlers(app: Express): void {
         ? Number((err as Record<string, unknown>).status)
         : undefined;
     if (status && status >= 400 && status < 600) {
-      res.status(status).json({ error: err.message, code: `HTTP_${status}`, requestId });
+      res
+        .status(status)
+        .json({ error: err.message, code: `HTTP_${status}`, requestId });
       return;
     }
     if (isUpstreamTransportError(err)) {
@@ -786,7 +846,11 @@ function registerErrorHandlers(app: Express): void {
     }
     res
       .status(HTTP.INTERNAL)
-      .json({ error: "Internal server error", code: "INTERNAL_ERROR", requestId });
+      .json({
+        error: "Internal server error",
+        code: "INTERNAL_ERROR",
+        requestId,
+      });
   });
 }
 

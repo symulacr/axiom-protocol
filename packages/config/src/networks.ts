@@ -63,10 +63,10 @@ export function resolveBlockExplorerUrl(chainId?: number): string {
   return network?.blockExplorer ?? "https://chainscan.0g.ai";
 }
 
-import { defineChain } from "viem";
-export const zeroGMainnet = defineChain({
-  id: ARISTOTLE_CHAIN_ID,
-  name: "0G Aristotle",
-  nativeCurrency: { name: "0G", symbol: "0G", decimals: 18 },
+import { zeroGMainnet as _viemZeroGMainnet } from "viem/chains";
+
+/** 0G Mainnet chain (viem built-in) with dynamic RPC override for env-based endpoint selection. */
+export const zeroGMainnet = {
+  ..._viemZeroGMainnet,
   rpcUrls: { default: { http: [resolveRpcUrl()] } },
-});
+};

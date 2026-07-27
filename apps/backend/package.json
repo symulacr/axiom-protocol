@@ -32,7 +32,7 @@
     "express-rate-limit": "^7.5.1",
     "helmet": "^8.2.0",
     "openai": "^4.104.0",
-    "viem": "^2.21.45",
+    "viem": "^2.22.0",
     "@sentry/node": "^10.62.0",
     "ws": "^8.18.0",
     "lru-cache": "^11.5.1",

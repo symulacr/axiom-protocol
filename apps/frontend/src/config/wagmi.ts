@@ -1,7 +1,6 @@
 import { createConfig, http } from "wagmi";
 import { injected, walletConnect } from "wagmi/connectors";
-import { defineChain } from "viem";
-import { ARISTOTLE_CHAIN_ID } from "@axiom/config/networks";
+import { zeroGMainnet } from "viem/chains";
 
 // 0G Mainnet RPC (chainId 16661). Hardcoded to guarantee mainnet-only,
 // no testnet fallback. The user may still override via localStorage "axiom.rpcUrl",
@@ -35,7 +34,8 @@ function resolveAristotleRpc(): string {
     try {
       const url = new URL(candidate);
       const normalized =
-        url.origin + (url.pathname === "/" || url.pathname === "" ? "" : url.pathname);
+        url.origin +
+        (url.pathname === "/" || url.pathname === "" ? "" : url.pathname);
       return url.protocol === "https:" && MAINNET_RPC_ALLOWLIST.has(normalized);
     } catch {
       return false;
@@ -53,23 +53,8 @@ function resolveAristotleRpc(): string {
   return MAINNET_RPC;
 }
 
-export const aristotle = defineChain({
-  id: ARISTOTLE_CHAIN_ID,
-  name: "0G Aristotle Mainnet",
-  nativeCurrency: { name: "0G", symbol: "0G", decimals: 18 },
-  rpcUrls: {
-    default: {
-      http: ["https://evmrpc.0g.ai"],
-    },
-  },
-  blockExplorers: {
-    default: {
-      name: "0G Explorer",
-      url: "https://chainscan.0g.ai",
-    },
-  },
-  testnet: false,
-});
+/** 0G Mainnet (Aristotle 16661) — uses viem's built-in chain definition. */
+export const aristotle = zeroGMainnet;
 
 export function createWagmiConfig() {
   const storedWcProjectId =
@@ -90,7 +75,10 @@ export function createWagmiConfig() {
     transports: {
       [aristotle.id]: http(aristotleRpc),
     },
-    connectors: [injected({ target: "metaMask" }), walletConnect({ projectId })],
+    connectors: [
+      injected({ target: "metaMask" }),
+      walletConnect({ projectId }),
+    ],
   });
 }
 

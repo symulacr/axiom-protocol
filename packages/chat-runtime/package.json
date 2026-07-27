@@ -16,7 +16,7 @@
   "license": "MIT",
   "dependencies": {
     "@axiom/config": "workspace:*",
-    "viem": "^2.21.45"
+    "viem": "^2.22.0"
   },
   "devDependencies": {
   },
