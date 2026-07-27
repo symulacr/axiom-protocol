@@ -100,14 +100,32 @@ function persistSeenDataHashes(file: string, seen: Set<string>): void {
   renameSync(tmp, file);
 }
 
-export class InMemoryStorage implements StorageAdapter {
+abstract class SeenHashesMixin {
+  protected seenDataHashes: Set<string>;
+  protected readonly seenHashesFile: string;
+
+  constructor(seenHashesFile: string) {
+    this.seenHashesFile = seenHashesFile;
+    this.seenDataHashes = loadSeenDataHashes(seenHashesFile);
+  }
+
+  markDataHashSeen(rootHash: Hex): void {
+    const hash = rootHash.toLowerCase();
+    if (this.seenDataHashes.has(hash)) return;
+    this.seenDataHashes.add(hash);
+    persistSeenDataHashes(this.seenHashesFile, this.seenDataHashes);
+  }
+
+  hasSeenDataHash(rootHash: Hex): boolean {
+    return this.seenDataHashes.has(rootHash.toLowerCase());
+  }
+}
+
+export class InMemoryStorage extends SeenHashesMixin implements StorageAdapter {
   private store = new Map<string, Uint8Array>();
-  private seenDataHashes: Set<string>;
-  private readonly seenHashesFile: string;
 
   constructor(options: SeenHashesOptions = {}) {
-    this.seenHashesFile = options.seenHashesFile ?? ORACLE_SEEN_HASHES_FILE;
-    this.seenDataHashes = loadSeenDataHashes(this.seenHashesFile);
+    super(options.seenHashesFile ?? ORACLE_SEEN_HASHES_FILE);
   }
 
   async upload(
@@ -123,17 +141,6 @@ export class InMemoryStorage implements StorageAdapter {
     const blob = this.store.get(rootHash.toLowerCase());
     if (!blob) throw new Error(`Blob not found: ${rootHash}`);
     return new Uint8Array(blob);
-  }
-
-  markDataHashSeen(rootHash: Hex): void {
-    const hash = rootHash.toLowerCase();
-    if (this.seenDataHashes.has(hash)) return;
-    this.seenDataHashes.add(hash);
-    persistSeenDataHashes(this.seenHashesFile, this.seenDataHashes);
-  }
-
-  hasSeenDataHash(rootHash: Hex): boolean {
-    return this.seenDataHashes.has(rootHash.toLowerCase());
   }
 }
 export async function uploadToStorage(
@@ -184,17 +191,14 @@ export async function downloadFromStorage(
   return { data, rootHash, size: data.length };
 }
 
-export class ZeroGStorage implements StorageAdapter {
+export class ZeroGStorage extends SeenHashesMixin implements StorageAdapter {
   readonly indexer: Indexer;
   readonly config: ZeroGStorageConfig;
-  private seenDataHashes: Set<string>;
-  private readonly seenHashesFile: string;
 
   constructor(config: ZeroGStorageConfig, options: SeenHashesOptions = {}) {
+    super(options.seenHashesFile ?? ORACLE_SEEN_HASHES_FILE);
     this.config = config;
     this.indexer = new Indexer(config.indexerRpc);
-    this.seenHashesFile = options.seenHashesFile ?? ORACLE_SEEN_HASHES_FILE;
-    this.seenDataHashes = loadSeenDataHashes(this.seenHashesFile);
   }
 
   async upload(
@@ -213,20 +217,9 @@ export class ZeroGStorage implements StorageAdapter {
 
   async download(rootHash: Hex): Promise<Uint8Array> {
     const result = await downloadFromStorage(this.indexer, rootHash, {
-      withProof: false,
+      withProof: true,
     });
     return result.data;
-  }
-
-  markDataHashSeen(rootHash: Hex): void {
-    const hash = rootHash.toLowerCase();
-    if (this.seenDataHashes.has(hash)) return;
-    this.seenDataHashes.add(hash);
-    persistSeenDataHashes(this.seenHashesFile, this.seenDataHashes);
-  }
-
-  hasSeenDataHash(rootHash: Hex): boolean {
-    return this.seenDataHashes.has(rootHash.toLowerCase());
   }
 
   async uploadData(
