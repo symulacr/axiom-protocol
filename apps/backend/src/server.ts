@@ -486,16 +486,18 @@ function registerChatRoutes(app: Express, config: ServerConfig): void {
         const streamSignal = upstreamSignal
           ? AbortSignal.any([streamAbort.signal, upstreamSignal])
           : streamAbort.signal;
-        const openaiRes = await client.chat.completions.create(
-          {
-            model: resolvedModel,
-            messages: messages as ChatCompletionMessageParam[],
-            tools: tools as ChatCompletionTool[] | undefined,
-            stream: true,
-            max_tokens: 2048,
-          },
-          { signal: streamSignal },
-        );
+        const { data: openaiRes, response } = await client.chat.completions
+          .create(
+            {
+              model: resolvedModel,
+              messages: messages as ChatCompletionMessageParam[],
+              tools: tools as ChatCompletionTool[] | undefined,
+              stream: true,
+              max_tokens: 2048,
+            },
+            { signal: streamSignal },
+          )
+          .withResponse();
         res.setHeader("Content-Type", "text/event-stream");
         res.setHeader("Cache-Control", "no-cache");
         res.setHeader("Connection", "keep-alive");
@@ -522,6 +524,25 @@ function registerChatRoutes(app: Express, config: ServerConfig): void {
             writeChunk(
               `data: ${JSON.stringify({ choices: [{ delta: { content: "⚠ 0G Compute returned an empty response. Try again or check model availability." } }] })}\n\n`,
             );
+          }
+          // Forward 0G router billing metadata if present
+          const traceHeader =
+            response?.headers?.get?.("x_0g_trace") ??
+            (response?.headers as unknown as Record<string, string>)?.[
+              "x_0g_trace"
+            ];
+          if (traceHeader) {
+            try {
+              const trace =
+                typeof traceHeader === "string"
+                  ? JSON.parse(traceHeader)
+                  : traceHeader;
+              writeChunk(
+                `data: ${JSON.stringify({ type: "trace", trace })}\n\n`,
+              );
+            } catch {
+              // trace header not JSON — skip
+            }
           }
           writeChunk("data: [DONE]\n\n");
           res.end();

@@ -35,51 +35,54 @@ export function buildDefaultWatchList(
 ): readonly WatchedEvent[] {
   const resolved = addresses ?? resolveIndexerAddresses();
   return [
-  { name: EVENT_NAMES.Transfer, address: resolved.AXIOM_AGENT_NFT },
-  { name: "Updated", address: resolved.AXIOM_AGENT_NFT },
-  { name: "Authorization", address: resolved.AXIOM_AGENT_NFT },
-  { name: "AuthorizationRevoked", address: resolved.AXIOM_AGENT_NFT },
-  { name: "VerifierUpdated", address: resolved.AXIOM_AGENT_NFT },
-  { name: "CreatorSet", address: resolved.AXIOM_AGENT_NFT },
-  { name: "MintFeeUpdated", address: resolved.AXIOM_AGENT_NFT },
-  { name: "StorageInfoUpdated", address: resolved.AXIOM_AGENT_NFT },
-  { name: "PublishedSealedKey", address: resolved.AXIOM_AGENT_NFT },
-  { name: "DelegateAccess", address: resolved.AXIOM_AGENT_NFT },
-  { name: EVENT_NAMES.Deposited, address: resolved.AXIOM_STRATEGY_VAULT },
-  { name: EVENT_NAMES.Withdrawn, address: resolved.AXIOM_STRATEGY_VAULT },
-  { name: EVENT_NAMES.StrategySet, address: resolved.AXIOM_STRATEGY_VAULT },
-  { name: EVENT_NAMES.Executed, address: resolved.AXIOM_STRATEGY_VAULT },
-  { name: "PaymentProcessed", address: resolved.AXIOM_PAYMENT_PROCESSOR },
-  { name: "ComputeProviderPaid", address: resolved.AXIOM_PAYMENT_PROCESSOR },
-  { name: "EarningsWithdrawn", address: resolved.AXIOM_PAYMENT_PROCESSOR },
-  { name: "RoyaltySet", address: resolved.AXIOM_PAYMENT_PROCESSOR },
-  {
-    name: "ProtocolTreasuryProposed",
-    address: resolved.AXIOM_PAYMENT_PROCESSOR,
-  },
-  {
-    name: "ProtocolTreasuryUpdated",
-    address: resolved.AXIOM_PAYMENT_PROCESSOR,
-  },
-  {
-    name: "ProtocolTreasuryProposalCancelled",
-    address: resolved.AXIOM_PAYMENT_PROCESSOR,
-  },
-  { name: "ProtocolFeeBpsUpdated", address: resolved.AXIOM_PAYMENT_PROCESSOR },
-  { name: "PaymentTokenUpdated", address: resolved.AXIOM_PAYMENT_PROCESSOR },
-  {
-    name: "MetadataJsonDecisionDocumented",
-    address: resolved.AXIOM_AGENT_NFT,
-  },
-  { name: "Cloned", address: resolved.AXIOM_AGENT_NFT },
-  { name: "SignerProposed", address: resolved.AXIOM_TEE_VERIFIER },
-  { name: "SignerExecuted", address: resolved.AXIOM_TEE_VERIFIER },
-  { name: "SignerProposalCancelled", address: resolved.AXIOM_TEE_VERIFIER },
-  { name: "Upgraded", address: resolved.AXIOM_AGENT_NFT },
-  { name: "AdminChanged", address: resolved.AXIOM_AGENT_NFT },
-  { name: "BeaconUpgraded", address: resolved.AXIOM_AGENT_NFT },
-  { name: "Initialized", address: resolved.AXIOM_AGENT_NFT },
-];
+    { name: EVENT_NAMES.Transfer, address: resolved.AXIOM_AGENT_NFT },
+    { name: "Updated", address: resolved.AXIOM_AGENT_NFT },
+    { name: "Authorization", address: resolved.AXIOM_AGENT_NFT },
+    { name: "AuthorizationRevoked", address: resolved.AXIOM_AGENT_NFT },
+    { name: "VerifierUpdated", address: resolved.AXIOM_AGENT_NFT },
+    { name: "CreatorSet", address: resolved.AXIOM_AGENT_NFT },
+    { name: "MintFeeUpdated", address: resolved.AXIOM_AGENT_NFT },
+    { name: "StorageInfoUpdated", address: resolved.AXIOM_AGENT_NFT },
+    { name: "PublishedSealedKey", address: resolved.AXIOM_AGENT_NFT },
+    { name: "DelegateAccess", address: resolved.AXIOM_AGENT_NFT },
+    { name: EVENT_NAMES.Deposited, address: resolved.AXIOM_STRATEGY_VAULT },
+    { name: EVENT_NAMES.Withdrawn, address: resolved.AXIOM_STRATEGY_VAULT },
+    { name: EVENT_NAMES.StrategySet, address: resolved.AXIOM_STRATEGY_VAULT },
+    { name: EVENT_NAMES.Executed, address: resolved.AXIOM_STRATEGY_VAULT },
+    { name: "PaymentProcessed", address: resolved.AXIOM_PAYMENT_PROCESSOR },
+    { name: "ComputeProviderPaid", address: resolved.AXIOM_PAYMENT_PROCESSOR },
+    { name: "EarningsWithdrawn", address: resolved.AXIOM_PAYMENT_PROCESSOR },
+    { name: "RoyaltySet", address: resolved.AXIOM_PAYMENT_PROCESSOR },
+    {
+      name: "ProtocolTreasuryProposed",
+      address: resolved.AXIOM_PAYMENT_PROCESSOR,
+    },
+    {
+      name: "ProtocolTreasuryUpdated",
+      address: resolved.AXIOM_PAYMENT_PROCESSOR,
+    },
+    {
+      name: "ProtocolTreasuryProposalCancelled",
+      address: resolved.AXIOM_PAYMENT_PROCESSOR,
+    },
+    {
+      name: "ProtocolFeeBpsUpdated",
+      address: resolved.AXIOM_PAYMENT_PROCESSOR,
+    },
+    { name: "PaymentTokenUpdated", address: resolved.AXIOM_PAYMENT_PROCESSOR },
+    {
+      name: "MetadataJsonDecisionDocumented",
+      address: resolved.AXIOM_AGENT_NFT,
+    },
+    { name: "Cloned", address: resolved.AXIOM_AGENT_NFT },
+    { name: "SignerProposed", address: resolved.AXIOM_TEE_VERIFIER },
+    { name: "SignerExecuted", address: resolved.AXIOM_TEE_VERIFIER },
+    { name: "SignerProposalCancelled", address: resolved.AXIOM_TEE_VERIFIER },
+    { name: "Upgraded", address: resolved.AXIOM_AGENT_NFT },
+    { name: "AdminChanged", address: resolved.AXIOM_AGENT_NFT },
+    { name: "BeaconUpgraded", address: resolved.AXIOM_AGENT_NFT },
+    { name: "Initialized", address: resolved.AXIOM_AGENT_NFT },
+  ];
 }
 
 export type EventSink = (event: AxiomEvent) => void | Promise<void>;
@@ -102,6 +105,7 @@ export class Watcher {
   readonly sink: EventSink;
   readonly logger: (line: Record<string, unknown>) => void;
   private nextBlock: bigint;
+  private lastBlockHash: string | null = null;
   private running = false;
   private chainId: bigint | null = null;
   private consecutiveFailures = 0;
@@ -136,6 +140,34 @@ export class Watcher {
       const id = await this.resolveChainId();
       const head = await this.provider.getBlockNumber();
       const latest = BigInt(head);
+
+      // Reorg detection: verify last processed block hash is still canonical
+      if (this.lastBlockHash && this.nextBlock > 0n) {
+        const checkBlock = this.nextBlock - 1n;
+        if (checkBlock > 0n) {
+          try {
+            const block = await this.provider.getBlock(Number(checkBlock));
+            if (block && block.hash && block.hash !== this.lastBlockHash) {
+              this.logger({
+                level: "warn",
+                msg: "reorg detected — block hash mismatch",
+                blockNumber: checkBlock.toString(),
+                expectedHash: this.lastBlockHash,
+                actualHash: block.hash,
+              });
+              // Roll back to reorg-safe depth before the diverged block
+              const rollbackTarget =
+                checkBlock > REORG_SAFE_DEPTH * 2n
+                  ? checkBlock - REORG_SAFE_DEPTH * 2n
+                  : 0n;
+              this.nextBlock = rollbackTarget;
+              this.lastBlockHash = null;
+            }
+          } catch {
+            // Block might not exist yet — skip hash check
+          }
+        }
+      }
 
       if (this.nextBlock === 0n) {
         this.nextBlock = latest >= this.window ? latest - this.window : 0n;
@@ -196,6 +228,13 @@ export class Watcher {
       const safeBlock =
         toBlock > REORG_SAFE_DEPTH ? toBlock - REORG_SAFE_DEPTH : 0n;
       this.nextBlock = nextCheckpointBlock(toBlock, REORG_SAFE_DEPTH);
+      // Save the hash of the last processed block for reorg detection
+      try {
+        const lastBlock = await this.provider.getBlock(Number(toBlock));
+        this.lastBlockHash = lastBlock?.hash ?? null;
+      } catch {
+        this.lastBlockHash = null;
+      }
       await saveCheckpoint(id, Number(this.nextBlock));
       this.consecutiveFailures = 0;
       this.logger({
