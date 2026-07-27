@@ -95,6 +95,8 @@ export type WatcherOptions = {
   sink: EventSink;
   startBlock?: bigint;
   logger?: (line: Record<string, unknown>) => void;
+  /** Called when a reorg is detected and the cursor is rolled back. */
+  onReorg?: (rolledBackBlock: bigint) => void;
 };
 
 export class Watcher {
@@ -104,6 +106,7 @@ export class Watcher {
   readonly intervalMs: number;
   readonly sink: EventSink;
   readonly logger: (line: Record<string, unknown>) => void;
+  private readonly onReorg: ((rolledBackBlock: bigint) => void) | null;
   private nextBlock: bigint;
   private lastBlockHash: string | null = null;
   private running = false;
@@ -121,6 +124,7 @@ export class Watcher {
       opts.logger ??
       ((line) => console.error(JSON.stringify({ level: "info", ...line })));
     this.nextBlock = opts.startBlock ?? 0n;
+    this.onReorg = opts.onReorg ?? null;
   }
 
   get cursor(): bigint {
@@ -162,6 +166,7 @@ export class Watcher {
                   : 0n;
               this.nextBlock = rollbackTarget;
               this.lastBlockHash = null;
+              this.onReorg?.(checkBlock);
             }
           } catch {
             // Block might not exist yet — skip hash check

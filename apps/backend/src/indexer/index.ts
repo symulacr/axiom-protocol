@@ -53,6 +53,12 @@ export class IndexerService {
       ...(env.INDEXER_START_BLOCK !== undefined
         ? { startBlock: BigInt(env.INDEXER_START_BLOCK) }
         : {}),
+      onReorg: (rolledBackBlock: bigint) => {
+        const removed = getEventStore().rollbackToBlock(rolledBackBlock);
+        console.warn(
+          `[indexer] reorg rollback: removed ${removed} events at or above block ${rolledBackBlock}`,
+        );
+      },
     });
 
     this.startedAt = Date.now();

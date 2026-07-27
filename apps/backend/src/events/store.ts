@@ -1,11 +1,21 @@
 import { createLogger } from "../utils/logger.js";
-import { EVENT_NAMES, DEFAULT_EVENT_LIMIT, bigintReplacer } from "@axiom/config";
+import {
+  EVENT_NAMES,
+  DEFAULT_EVENT_LIMIT,
+  bigintReplacer,
+} from "@axiom/config";
 import { extractErrorMessage } from "../utils/response.js";
 import type { StoredEventPayload } from "./payloads.js";
 import { broadcast } from "../ws/broadcaster.js";
 import {
-  openSync, writeFileSync, closeSync, unlinkSync, existsSync,
-  readFileSync, renameSync, mkdirSync,
+  openSync,
+  writeFileSync,
+  closeSync,
+  unlinkSync,
+  existsSync,
+  readFileSync,
+  renameSync,
+  mkdirSync,
 } from "node:fs";
 import { writeFile, rename, mkdir } from "node:fs/promises";
 import { join } from "node:path";
@@ -136,7 +146,11 @@ export class EventStore {
     this.total += 1;
     this.persistDebounced();
     // Broadcast to WebSocket subscribers in real-time
-    try { broadcast(stored.eventName, stored); } catch { /* WS errors are non-fatal */ }
+    try {
+      broadcast(stored.eventName, stored);
+    } catch {
+      /* WS errors are non-fatal */
+    }
     return stored;
   }
 
@@ -355,6 +369,70 @@ export class EventStore {
     for (const key of this.buckets.keys()) this.dirty.add(key);
     await this.enqueuePersist();
   }
+  /**
+   * Remove all events at or above the given block number (reorg rollback).
+   * Rebuilds all secondary indexes (byEventName, byTokenId, byTransferTo)
+   * and clears dedup entries for removed events.
+   * @returns number of events removed
+   */
+  rollbackToBlock(blockNumber: bigint): number {
+    const cutoff = Number(blockNumber);
+    if (!Number.isFinite(cutoff)) {
+      log.warn("rollbackToBlock ignored — non-finite block number", {
+        blockNumber: blockNumber.toString(),
+      });
+      return 0;
+    }
+    let removed = 0;
+    const remaining = new Map<string, StoredEvent[]>();
+    for (const [bucketKey, bucket] of this.buckets) {
+      const kept: StoredEvent[] = [];
+      for (const evt of bucket) {
+        if (evt.blockNumber >= cutoff) {
+          removed += 1;
+          this.seenKeys.delete(dedupeKey(evt));
+        } else {
+          kept.push(evt);
+        }
+      }
+      if (kept.length > 0) {
+        remaining.set(bucketKey, kept);
+      } else {
+        this.dirty.add(bucketKey);
+      }
+    }
+    if (removed === 0) return 0;
+
+    // Rebuild primary buckets and all secondary indexes from the kept events.
+    // Note: indexPositions is a WeakMap — entries for removed events are
+    // garbage-collected once those StoredEvent objects are dereferenced,
+    // and kept events get their positions overwritten by addToEventNameIndex /
+    // addToTokenIdIndex below (mirrors the load() rebuild pattern).
+    this.buckets.clear();
+    this.byEventName.clear();
+    this.byTokenId.clear();
+    this.byTransferTo.clear();
+    this.total = 0;
+    for (const [bucketKey, kept] of remaining) {
+      this.buckets.set(bucketKey, kept);
+      this.total += kept.length;
+      for (const evt of kept) {
+        this.seenKeys.add(dedupeKey(evt));
+        this.addToEventNameIndex(evt);
+        const tid = tokenIdFromPayload(evt.payload);
+        if (tid !== null) this.addToTokenIdIndex(tid, evt);
+        this.updateTransferToIndex(evt);
+      }
+      this.dirty.add(bucketKey);
+    }
+    this.persistDebounced();
+    log.info("rollbackToBlock complete", {
+      cutoff,
+      removed,
+      remaining: this.total,
+    });
+    return removed;
+  }
 
   private findByDedupeKey(key: string): StoredEvent | undefined {
     if (!this.seenKeys.has(key)) return undefined;
@@ -433,7 +511,9 @@ export function loadBuckets(): Map<string, unknown[]> {
     if (existsSync(PERSIST_FILE)) {
       try {
         renameSync(PERSIST_FILE, `${PERSIST_FILE}.bak`);
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
     return new Map();
   }
@@ -492,7 +572,8 @@ export function acquireEventStoreLock(
     if (code === "EEXIST") {
       let holder = "unknown";
       try {
-        holder = readFileSync(lockPath, "utf-8").trim().split("\n")[0] ?? holder;
+        holder =
+          readFileSync(lockPath, "utf-8").trim().split("\n")[0] ?? holder;
       } catch {
         /* ignore */
       }
@@ -500,6 +581,7 @@ export function acquireEventStoreLock(
         `EventStore lock held (pid ${holder}) at ${lockPath}. ` +
           `Refuse multi-instance on the same data dir. ` +
           `Stop the other process, delete the stale lock, or set AXIOM_ALLOW_MULTI_INSTANCE=true (unsafe).`,
+        { cause: err },
       );
     }
     throw err;

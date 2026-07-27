@@ -27,10 +27,8 @@
     "./chat-tools": "./dist/chat-tools.js"
   },
   "scripts": {
-    "generate": "wagmi generate",
     "build": "tsc --project tsconfig.json",
     "typecheck": "tsc --noEmit",
-    "watch:contracts": "wagmi generate --watch",
     "test": "node --import tsx --test $(find src test -name '*.test.ts' 2>/dev/null | sort)"
   },
   "dependencies": {
@@ -43,8 +41,7 @@
   },
   "devDependencies": {
     "@types/express": "^4.17.21",
-    "express": "^4.21.0",
-    "@wagmi/cli": "^2.10.0"
+    "express": "^4.21.0"
   },
   "engines": {
     "node": ">=22.0.0"
