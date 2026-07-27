@@ -358,9 +358,12 @@ function registerHealthRoutes(
 }
 
 function registerComputeRoutes(app: Express, config: ServerConfig): void {
+  const modelsCache = new TTLCache<Record<string, unknown>[]>(60_000);
   async function fetchRouterModels(
     requestId?: string,
   ): Promise<Record<string, unknown>[]> {
+    const cached = modelsCache.get("models");
+    if (cached) return cached;
     const routerBaseUrl = getComputeBaseUrl();
     const resp = await fetch(`${routerBaseUrl}/models`, {
       ...(requestId ? { headers: { "X-Request-ID": requestId } } : {}),
@@ -371,6 +374,7 @@ function registerComputeRoutes(app: Express, config: ServerConfig): void {
     const parsed = z
       .object({ data: z.array(z.record(z.string(), z.unknown())) })
       .parse(raw);
+    modelsCache.set("models", parsed.data);
     return parsed.data;
   }
 
@@ -844,13 +848,11 @@ function registerErrorHandlers(app: Express): void {
       });
       return;
     }
-    res
-      .status(HTTP.INTERNAL)
-      .json({
-        error: "Internal server error",
-        code: "INTERNAL_ERROR",
-        requestId,
-      });
+    res.status(HTTP.INTERNAL).json({
+      error: "Internal server error",
+      code: "INTERNAL_ERROR",
+      requestId,
+    });
   });
 }
 

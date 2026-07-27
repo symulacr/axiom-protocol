@@ -8,6 +8,7 @@ import {
 import { TypedContract } from "@axiom/config/types/contract";
 import type { TickResult } from "@axiom/config/types/orchestrator";
 import type OpenAI from "openai";
+import { z } from "zod";
 import {
   createRouterClient,
   createStaticProvider,
@@ -18,6 +19,18 @@ import { EVENT_NAMES } from "@axiom/config";
 import { VAULT_ABI, VAULT_ABI_LEGACY } from "@axiom/config/abis";
 import { createLogger } from "../utils/logger.js";
 import { extractErrorMessage } from "../utils/response.js";
+/**
+ * Zod schema for model recommendations. `.catch()` on each field mirrors the
+ * graceful-degradation behavior previously implemented by hand in
+ * `parseRecommendation`: invalid/missing values fall back to safe defaults
+ * instead of rejecting the whole payload.
+ */
+const RecommendationSchema = z.object({
+  action: z.enum(["act", "hold"]).catch("hold"),
+  amount: z.number().min(0).max(1e18).optional().catch(undefined),
+  confidence: z.number().min(0).max(1).optional().catch(undefined),
+  reason: z.string().catch("no reason provided"),
+});
 
 export type VaultAbiVariant = "legacy" | "current";
 
@@ -393,6 +406,7 @@ export class StrategyRunner {
           model: strategy.computeModel,
           messages,
           stream: true,
+          response_format: { type: "json_object" },
         })
         .withResponse();
       let full = "";
@@ -416,6 +430,12 @@ export class StrategyRunner {
         model: strategy.computeModel,
         messages,
         response_format: { type: "json_object" },
+        // 0G router extension: suppress reasoning tokens for deterministic JSON.
+        // Not in OpenAI SDK types — cast to bypass type check.
+        ...({ chat_template_kwargs: { enable_thinking: false } } as Record<
+          string,
+          unknown
+        >),
       })
       .withResponse();
     return completion.choices?.[0]?.message?.content ?? "";
@@ -488,37 +508,8 @@ export function parseRecommendation(
   rawModelOutput: string,
 ): TickResult["recommendation"] {
   try {
-    const parsed = JSON.parse(
-      rawModelOutput.trim(),
-    ) as TickResult["recommendation"];
-    const action =
-      parsed.action === "act" || parsed.action === "hold"
-        ? parsed.action
-        : "hold";
-    const rawAmount =
-      typeof parsed.amount === "number" ? parsed.amount : undefined;
-    const amount =
-      rawAmount !== undefined &&
-      Number.isFinite(rawAmount) &&
-      rawAmount >= 0 &&
-      rawAmount <= 1e18
-        ? rawAmount
-        : undefined;
-    const rawConfidence =
-      typeof parsed.confidence === "number" ? parsed.confidence : undefined;
-    const confidence =
-      rawConfidence !== undefined && Number.isFinite(rawConfidence)
-        ? Math.min(1, Math.max(0, rawConfidence))
-        : undefined;
-    return {
-      action,
-      amount,
-      confidence,
-      reason:
-        typeof parsed.reason === "string"
-          ? parsed.reason
-          : "no reason provided",
-    };
+    const parsed = JSON.parse(rawModelOutput.trim());
+    return RecommendationSchema.parse(parsed) as TickResult["recommendation"];
   } catch {
     log.warn("unparseable model output", {
       output: rawModelOutput.slice(0, 200),

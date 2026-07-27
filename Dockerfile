@@ -36,7 +36,6 @@ WORKDIR /app
 # Copy workspace manifests for dependency resolution
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/backend/package.json    apps/backend/package.json
-COPY apps/indexer/package.json    apps/indexer/package.json
 COPY apps/oracle/package.json     apps/oracle/package.json
 COPY apps/frontend/package.json   apps/frontend/package.json
 COPY packages/chat-runtime/package.json  packages/chat-runtime/package.json
