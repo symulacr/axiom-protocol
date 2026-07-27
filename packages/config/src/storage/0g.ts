@@ -11,7 +11,7 @@ import {
   mkdirSync,
 } from "node:fs";
 import { join, dirname } from "node:path";
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 
 interface UploadResult {
   rootHash: Hex;
@@ -194,11 +194,21 @@ export async function downloadFromStorage(
 export class ZeroGStorage extends SeenHashesMixin implements StorageAdapter {
   readonly indexer: Indexer;
   readonly config: ZeroGStorageConfig;
+  /**
+   * Random 32-byte AES-256 key used for SDK transport-layer encryption.
+   * Generated once per ZeroGStorage instance. If the process restarts, a new
+   * key is generated — blobs encrypted with the old key are no longer
+   * decryptable via this instance. This is acceptable because the oracle
+   * re-encrypts payloads (AES-GCM application layer) on every transfer.
+   */
+  private readonly storageKey: Uint8Array;
 
   constructor(config: ZeroGStorageConfig, options: SeenHashesOptions = {}) {
     super(options.seenHashesFile ?? ORACLE_SEEN_HASHES_FILE);
     this.config = config;
     this.indexer = new Indexer(config.indexerRpc);
+    // Generate a random 32-byte AES key for SDK transport-layer encryption.
+    this.storageKey = randomBytes(32);
   }
 
   async upload(
@@ -210,7 +220,9 @@ export class ZeroGStorage extends SeenHashesMixin implements StorageAdapter {
       blob,
       this.config.evmRpc,
       this.config.signer,
-      { encryption },
+      {
+        encryption: encryption ?? { type: "aes256", key: this.storageKey },
+      },
     );
     return { rootHash: result.rootHash };
   }
@@ -218,6 +230,7 @@ export class ZeroGStorage extends SeenHashesMixin implements StorageAdapter {
   async download(rootHash: Hex): Promise<Uint8Array> {
     const result = await downloadFromStorage(this.indexer, rootHash, {
       withProof: true,
+      symmetricKey: this.storageKey,
     });
     return result.data;
   }
@@ -231,7 +244,13 @@ export class ZeroGStorage extends SeenHashesMixin implements StorageAdapter {
       data,
       this.config.evmRpc,
       this.config.signer,
-      options,
+      {
+        ...options,
+        encryption: options.encryption ?? {
+          type: "aes256",
+          key: this.storageKey,
+        },
+      },
     );
   }
 
@@ -239,6 +258,9 @@ export class ZeroGStorage extends SeenHashesMixin implements StorageAdapter {
     rootHash: Hex,
     opts: DownloadOptions = {},
   ): Promise<DownloadResult> {
-    return downloadFromStorage(this.indexer, rootHash, opts);
+    return downloadFromStorage(this.indexer, rootHash, {
+      ...opts,
+      symmetricKey: opts.symmetricKey ?? this.storageKey,
+    });
   }
 }
