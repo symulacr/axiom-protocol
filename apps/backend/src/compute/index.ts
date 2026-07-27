@@ -91,20 +91,11 @@ export function getComputeBaseUrl(): string {
   if (explicit) return explicit;
   const chainId = resolveChainId();
   const network = pickOGNetwork(chainId);
-  return (
-    network?.computeRouterUrl ??
-    "https://router-api.0g.ai/v1"
-  );
+  return network?.computeRouterUrl ?? "https://router-api.0g.ai/v1";
 }
 
 const logRouter = createLogger("compute-router");
 const ROUTER_TIMEOUT_MS = 30_000;
-
-const clientChatIdMap = new WeakMap<object, string>();
-
-export function setClientChatId(client: object, chatId: string): void {
-  clientChatIdMap.set(client, chatId);
-}
 
 export interface RouterClientOptions {
   timeout?: number;

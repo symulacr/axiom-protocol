@@ -12,7 +12,7 @@ WORKDIR /build
 RUN forge install foundry-rs/forge-std@v1.16.1 --no-git \
     && forge install OpenZeppelin/openzeppelin-contracts@v5.0.2 --no-git \
     && forge install OpenZeppelin/openzeppelin-contracts-upgradeable@v5.0.2 --no-git \
-    && mkdir -p lib/0g-agent-nft && cp -r vendor/0g-agent-nft/* lib/0g-agent-nft/
+    && forge install 0glabs/0g-agent-nft --no-git
 
 # Compile all contracts
 RUN forge build --out /artifacts

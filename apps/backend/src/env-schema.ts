@@ -11,7 +11,6 @@ export const backendEnvSchema = sharedEnvSchema.merge(
     AXIOM_STORAGE_RPC: z.string().url().optional(),
     INDEXER_POLL_WINDOW_BLOCKS: z.coerce.number().int().positive().default(500),
     INDEXER_START_BLOCK: z.coerce.number().int().nonnegative().optional(),
-    INDEXER_STORAGE_ENABLED: z.string().optional(),
     AXIOM_COMPUTE_API_KEY: z.string().optional(),
     AXIOM_COMPUTE_VERIFY_TEE: z.string().optional(),
     AXIOM_ENCRYPTION_ALGORITHM: z.string().optional(),

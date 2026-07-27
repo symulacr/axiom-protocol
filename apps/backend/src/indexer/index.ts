@@ -14,8 +14,6 @@ export interface IndexerServiceConfig {
     AXIOM_EVM_RPC: string;
     DEPLOYER_PK?: string;
     AXIOM_CHAIN_ID?: string | number;
-    INDEXER_STORAGE_ENABLED?: string;
-    AXIOM_STORAGE_ENABLED?: string;
     AXIOM_DATA_DIR?: string;
   };
 }
@@ -31,9 +29,7 @@ export class IndexerService {
   start(): void {
     const { provider, env } = this.config;
 
-    const addresses = resolveIndexerAddresses(
-      env as Record<string, unknown>,
-    );
+    const addresses = resolveIndexerAddresses(env as Record<string, unknown>);
     const watchList = buildDefaultWatchList(addresses);
 
     const sink = (event: AxiomEvent) => {

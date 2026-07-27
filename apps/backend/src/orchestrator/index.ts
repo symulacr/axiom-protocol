@@ -10,7 +10,6 @@ import type { TickResult } from "@axiom/config/types/orchestrator";
 import type OpenAI from "openai";
 import {
   createRouterClient,
-  setClientChatId,
   createStaticProvider,
   resolveChainId,
 } from "../compute/index.js";
@@ -40,14 +39,22 @@ export async function detectVaultAbiVariant(
   const cached = variantCache.get(key);
   if (cached) return cached;
 
-  const currentProbe = new Contract(vaultAddress, STRATEGY_OF_CURRENT, provider);
+  const currentProbe = new Contract(
+    vaultAddress,
+    STRATEGY_OF_CURRENT,
+    provider,
+  );
   const currentStrategyOf = currentProbe.getFunction("strategyOf");
   try {
     await currentStrategyOf.staticCall(0n);
     variantCache.set(key, "current");
     return "current";
   } catch {
-    const legacyProbe = new Contract(vaultAddress, STRATEGY_OF_LEGACY, provider);
+    const legacyProbe = new Contract(
+      vaultAddress,
+      STRATEGY_OF_LEGACY,
+      provider,
+    );
     await legacyProbe.getFunction("strategyOf").staticCall(0n);
     variantCache.set(key, "legacy");
     return "legacy";
@@ -78,8 +85,8 @@ export async function readVaultStrategy(
     return { root, dailyLimit, validUntilDay: 0n };
   }
   const vault = new Contract(vaultAddress, STRATEGY_OF_CURRENT, provider);
-  const [root, dailyLimit, , , validUntilDay] = await vault
-    .getFunction("strategyOf")(tokenId);
+  const [root, dailyLimit, , , validUntilDay] =
+    await vault.getFunction("strategyOf")(tokenId);
   return { root, dailyLimit, validUntilDay };
 }
 
@@ -182,7 +189,7 @@ export class StrategyRunner {
     strategy: StrategySpec,
     signal: MarketSignal,
     onChunk?: StreamCallback,
-): Promise<TickResult> {
+  ): Promise<TickResult> {
     const start = Date.now();
 
     const skipInference =
@@ -222,7 +229,6 @@ export class StrategyRunner {
       storageResult.status === "fulfilled"
         ? storageResult.value
         : { rootHash: strategy.modelDataRoot, size: 0 };
-
 
     const recommendation = parseRecommendation(rawModelOutput);
 
@@ -332,7 +338,10 @@ export class StrategyRunner {
     const vaultAddr = this.addresses?.vault;
     if (!vaultAddr) return "current";
     if (this.vaultAbiVariant) return this.vaultAbiVariant;
-    this.vaultAbiVariant = await detectVaultAbiVariant(this.provider, vaultAddr);
+    this.vaultAbiVariant = await detectVaultAbiVariant(
+      this.provider,
+      vaultAddr,
+    );
     return this.vaultAbiVariant;
   }
 
@@ -360,34 +369,6 @@ export class StrategyRunner {
     return this.vaultWriteTc;
   }
 
-
-  private captureChatIdFromResponse(
-    client: OpenAI,
-    response: { headers?: unknown } | undefined,
-  ): void {
-    const headers = response?.headers;
-    if (!headers) return;
-    let chatId: string | undefined;
-    if (typeof (headers as Headers).get === "function") {
-      const h = headers as Headers;
-      chatId = h.get("x-chat-id") ?? h.get("chat-id") ?? undefined;
-    } else if (typeof headers === "object") {
-      const rec = headers as Record<string, string | string[] | undefined>;
-      const pick = (key: string) => {
-        const val = rec[key] ?? rec[key.toLowerCase()];
-        return typeof val === "string"
-          ? val
-          : Array.isArray(val)
-            ? val[0]
-            : undefined;
-      };
-      chatId = pick("x-chat-id") ?? pick("chat-id");
-    }
-    if (chatId) {
-      setClientChatId(client, chatId);
-    }
-  }
-
   private async runInference(
     strategy: StrategySpec,
     signal: MarketSignal,
@@ -407,14 +388,13 @@ export class StrategyRunner {
 
     if (onChunk) {
       const client = await this.getClient(strategy.computeModel);
-      const { data: stream, response } = await client.chat.completions
+      const { data: stream } = await client.chat.completions
         .create({
           model: strategy.computeModel,
           messages,
           stream: true,
         })
         .withResponse();
-      this.captureChatIdFromResponse(client, response);
       let full = "";
       for await (const chunk of stream) {
         const delta = chunk.choices?.[0]?.delta?.content ?? "";
@@ -431,14 +411,13 @@ export class StrategyRunner {
     }
 
     const client = await this.getClient(strategy.computeModel);
-    const { data: completion, response } = await client.chat.completions
+    const { data: completion } = await client.chat.completions
       .create({
         model: strategy.computeModel,
         messages,
         response_format: { type: "json_object" },
       })
       .withResponse();
-    this.captureChatIdFromResponse(client, response);
     return completion.choices?.[0]?.message?.content ?? "";
   }
 
@@ -493,11 +472,13 @@ export class StrategyRunner {
       });
     return { vaultBalance, recentEvents };
   }
-
 }
 
 export function settlementSkipReason(root: string): string {
-  if (root === "0x0000000000000000000000000000000000000000000000000000000000000000") {
+  if (
+    root ===
+    "0x0000000000000000000000000000000000000000000000000000000000000000"
+  ) {
     return "no strategy set on vault";
   }
   return "settlement requires an off-chain Merkle proof producer (not available)";
@@ -523,7 +504,8 @@ export function parseRecommendation(
       rawAmount <= 1e18
         ? rawAmount
         : undefined;
-    const rawConfidence = typeof parsed.confidence === "number" ? parsed.confidence : undefined;
+    const rawConfidence =
+      typeof parsed.confidence === "number" ? parsed.confidence : undefined;
     const confidence =
       rawConfidence !== undefined && Number.isFinite(rawConfidence)
         ? Math.min(1, Math.max(0, rawConfidence))
