@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "../utils/apiFetch.js";
 
-export interface PolledApiOptions {
+interface PolledApiOptions {
   refetchInterval?: number;
   enabled?: boolean;
   signal?: AbortSignal;

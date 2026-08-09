@@ -1,7 +1,7 @@
 import { useAccount } from "wagmi";
 import { usePolledApi } from "./usePolledApi.js";
 
-export interface HealthResponse {
+interface HealthResponse {
   ok: boolean;
   version: string;
   signer: string;
@@ -10,7 +10,7 @@ export interface HealthResponse {
   addresses: Record<string, string> | null;
 }
 
-export interface UseHealthOptions {
+interface UseHealthOptions {
   enabled?: boolean;
 }
 

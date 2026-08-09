@@ -8,6 +8,7 @@ import {
 import { TypedContract } from "@axiom/config/types/contract";
 import type { TickResult } from "@axiom/config/types/orchestrator";
 import type OpenAI from "openai";
+import type { OgChatParams } from "@axiom/chat-runtime";
 import { z } from "zod";
 import {
 	createRouterClient,
@@ -402,10 +403,9 @@ export class StrategyRunner {
 					stream: true,
 					response_format: { type: "json_object" },
 					// 0G router extension: suppress reasoning tokens for deterministic JSON.
-					...({ chat_template_kwargs: { enable_thinking: false } } as Record<
-						string,
-						unknown
-					>),
+					...({
+						chat_template_kwargs: { enable_thinking: false },
+					} satisfies OgChatParams),
 				})
 				.withResponse();
 			let full = "";
@@ -430,11 +430,10 @@ export class StrategyRunner {
 				messages,
 				response_format: { type: "json_object" },
 				// 0G router extension: suppress reasoning tokens for deterministic JSON.
-				// Not in OpenAI SDK types — cast to bypass type check.
-				...({ chat_template_kwargs: { enable_thinking: false } } as Record<
-					string,
-					unknown
-				>),
+				// Officially documented — typed via OgChatParams instead of casting.
+				...({
+					chat_template_kwargs: { enable_thinking: false },
+				} satisfies OgChatParams),
 			})
 			.withResponse();
 		return completion.choices?.[0]?.message?.content ?? "";

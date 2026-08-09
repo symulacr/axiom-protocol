@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useAccount } from "wagmi";
 import { usePolledApi } from "./usePolledApi.js";
 
-export interface AgentInfo {
+interface AgentInfo {
   tokenId: bigint;
   owner: string;
   dataHash: string;

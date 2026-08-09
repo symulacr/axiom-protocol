@@ -34,7 +34,7 @@
     "express": "^4.21.0",
     "express-rate-limit": "^7.5.1",
     "helmet": "^8.2.0",
-    "viem": "^2.22.0",
+    "viem": "^2.55.11",
     "zod": "^4.4.3"
   },
   "devDependencies": {

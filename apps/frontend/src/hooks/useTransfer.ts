@@ -37,7 +37,7 @@ export type {
   TransferResponse,
   TransferPhase,
 };
-export type UseTransferResult = {
+type UseTransferResult = {
   prepare: (input: TransferInput) => Promise<TransferResponse>;
   confirm: (input: TransferInput) => Promise<Hex>;
   transfer: (input: TransferInput) => Promise<Hex>;

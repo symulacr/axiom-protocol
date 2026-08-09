@@ -2,7 +2,7 @@ import { useState, type ReactElement } from "react";
 import { formatEther } from "viem";
 import { COLORS } from "../components/ui.js";
 
-export type EncodePreview = {
+type EncodePreview = {
   encodeOnly?: boolean;
   to?: string;
   data?: string;

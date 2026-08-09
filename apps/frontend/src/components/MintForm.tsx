@@ -25,7 +25,7 @@ import { COLORS, Card, Button, Alert, PageHeader, Input } from "./ui.js";
 
 const agentNftAbi = AGENT_NFT_ABI;
 
-export type MintFormProps = {
+type MintFormProps = {
 	provider?: `0x${string}` | undefined;
 	/** Hide page chrome when embedded in a modal */
 	compact?: boolean;

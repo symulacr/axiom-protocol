@@ -34,7 +34,7 @@ const ADDRESSES = {
 
 type ContractName = keyof typeof ADDRESSES;
 
-export function getContractAddress(
+function getContractAddress(
   contract: ContractName,
   _chainId?: number,
 ): Address {

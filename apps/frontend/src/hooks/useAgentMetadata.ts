@@ -6,7 +6,7 @@ import { AGENT_NFT_ABI } from "@axiom/config/abis";
 
 const axiomAgentNftAbiParsed = AGENT_NFT_ABI;
 
-export type AgentMetadata = {
+type AgentMetadata = {
   tokenId: bigint;
   name: string;
   symbol: string;

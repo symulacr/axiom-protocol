@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-export interface UseAsyncActionResult {
+interface UseAsyncActionResult {
   execute: <U>(fn: (signal: AbortSignal) => Promise<U>) => Promise<U>;
   cancel: () => void;
   isLoading: boolean;

@@ -37,7 +37,7 @@ function freshNonceHex(byteLength = 32): `0x${string}` {
   return toHex(bytes);
 }
 
-export type TransferModalProps = {
+type TransferModalProps = {
   tokenId: bigint;
   triggerLabel?: string;
   open?: boolean;

@@ -2,7 +2,7 @@ import { useWalletClient } from "wagmi";
 import { encodeFunctionData, type Hex } from "viem";
 import { useCallback } from "react";
 
-export interface WriteCall {
+interface WriteCall {
   to: Hex;
   abi: readonly unknown[];
   functionName: string;

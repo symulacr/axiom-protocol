@@ -4,12 +4,12 @@ import type { AxiomEvent } from "../hooks/useEventHistory.js";
 import { useMediaQuery } from "../hooks/useMediaQuery.js";
 import { COLORS, Button } from "./ui.js";
 
-export type EventRenderer = (
+type EventRenderer = (
   event: AxiomEvent,
   formattedTimestamp: string,
 ) => ReactNode;
 
-export interface EventTimelineProps {
+interface EventTimelineProps {
   events: readonly AxiomEvent[];
   renderEvent: EventRenderer;
   locale?: string;

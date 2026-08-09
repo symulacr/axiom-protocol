@@ -324,7 +324,7 @@ function RoyaltySection({
   );
 }
 
-export type PaymentPanelProps = {
+type PaymentPanelProps = {
   tokenId: bigint;
 };
 

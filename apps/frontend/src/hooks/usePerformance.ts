@@ -13,7 +13,7 @@ interface PerformanceResponse {
   history: TradeHistoryEntry[];
 }
 
-export interface UsePerformanceResult {
+interface UsePerformanceResult {
   metrics: PerformanceMetrics | null;
   history: TradeHistoryEntry[];
   isLoading: boolean;
@@ -21,7 +21,7 @@ export interface UsePerformanceResult {
   refetch: () => void;
 }
 
-export interface UsePerformanceOptions {
+interface UsePerformanceOptions {
   enabled?: boolean;
 }
 

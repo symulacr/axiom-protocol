@@ -2,14 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { API_KEY, backendWsBase, backendWsPathPrefix } from "../config/env.js";
 import type { AxiomEvent } from "./useEventHistory.js";
 
-export interface UseEventStreamResult {
+interface UseEventStreamResult {
   events: AxiomEvent[];
   isConnected: boolean;
   error: Event | null;
   reconnect: () => void;
 }
 
-export interface UseEventStreamOptions {
+interface UseEventStreamOptions {
   topics?: string[];
   enabled?: boolean;
 }

@@ -1,6 +1,6 @@
 import { useVaultDataBatch } from "./useVaultDataBatch.js";
 
-export type VaultData = {
+type VaultData = {
   depositsWei: bigint | undefined;
   strategyRoot: string;
   dailyLimitWei: bigint;

@@ -75,7 +75,7 @@ function RawOutput({ raw }: { raw: string }): ReactElement {
   );
 }
 
-export type ExecutePanelProps = {
+type ExecutePanelProps = {
   tokenId?: bigint;
 };
 

@@ -8,11 +8,11 @@ import {
 } from "./useEventHistory.js";
 import { useEventStream } from "./useEventStream.js";
 
-export interface UseAgentEventsOptions {
+interface UseAgentEventsOptions {
   enabled?: boolean;
 }
 
-export interface UseAgentEventsResult {
+interface UseAgentEventsResult {
   events: AxiomEvent[];
   isLoading: boolean;
   error: Error | null;

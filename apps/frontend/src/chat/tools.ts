@@ -21,7 +21,7 @@ export function toolHint(name: string): string | undefined {
 }
 
 
-export type ToolDefinition = {
+type ToolDefinition = {
   type: "function";
   function: {
     name: string;
@@ -30,7 +30,7 @@ export type ToolDefinition = {
   };
 };
 
-export type ToolHandler = (
+type ToolHandler = (
   args: Record<string, unknown>,
   ctx: ToolContext,
 ) => Promise<string>;

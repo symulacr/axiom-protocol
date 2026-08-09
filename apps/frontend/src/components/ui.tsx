@@ -212,13 +212,13 @@ export const Select = forwardRef<
   );
 });
 
-export type DefinitionListItem = {
+type DefinitionListItem = {
   term: ReactNode;
   detail: ReactNode;
   detailStyle?: CSSProperties;
 };
 
-export type DefinitionListProps = {
+type DefinitionListProps = {
   items: DefinitionListItem[];
   labelWidth?: string;
   className?: string;
@@ -265,7 +265,7 @@ export type KeyValueGridItem = {
   labelStyle?: CSSProperties;
 };
 
-export type KeyValueGridProps = {
+type KeyValueGridProps = {
   items: KeyValueGridItem[];
   className?: string;
   style?: CSSProperties;
@@ -306,7 +306,7 @@ export function KeyValueGrid({
   );
 }
 
-export type NumericActionRowProps = {
+type NumericActionRowProps = {
   value: string;
   onChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onSubmit: () => void;

@@ -21,7 +21,7 @@ export type EarningsInfo = {
   earnings: string;
 };
 
-export type AgentPayResult = {
+type AgentPayResult = {
   ok: true;
   tokenId: string;
   amount: string;
@@ -29,7 +29,7 @@ export type AgentPayResult = {
   payment: unknown;
 };
 
-export type RoyaltyResult = {
+type RoyaltyResult = {
   ok: true;
   tokenId: string;
   bps: number;
@@ -38,7 +38,7 @@ export type RoyaltyResult = {
   value: string;
 };
 
-export type UsePaymentResult = {
+type UsePaymentResult = {
   payForAgent: (tokenId: bigint, amount: string) => Promise<AgentPayResult>;
 
   getEarnings: (tokenId: bigint) => Promise<EarningsInfo>;

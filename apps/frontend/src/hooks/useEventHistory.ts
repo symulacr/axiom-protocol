@@ -43,7 +43,7 @@ interface EventsResponse {
   events: AxiomEvent[];
 }
 
-export interface UseEventHistoryResult {
+interface UseEventHistoryResult {
   events: AxiomEvent[];
   byName: Record<string, AxiomEvent[]>;
   isLoading: boolean;
@@ -51,7 +51,7 @@ export interface UseEventHistoryResult {
   refetch: () => void;
 }
 
-export interface UseEventHistoryOptions {
+interface UseEventHistoryOptions {
   pollIntervalMs?: number;
   owner?: `0x${string}` | undefined;
   enabled?: boolean;

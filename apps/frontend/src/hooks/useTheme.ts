@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
-export type ThemeMode = "dark" | "light";
+type ThemeMode = "dark" | "light";
 
 const STORAGE_KEY = "axiom-theme";
 
