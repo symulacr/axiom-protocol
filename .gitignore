@@ -398,3 +398,4 @@ packages/config/src/models.test.ts
 .vercelignore
 apps/contracts/script/
 scripts/
+report/campaign/
