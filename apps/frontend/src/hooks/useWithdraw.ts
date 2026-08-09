@@ -2,7 +2,11 @@ import { useCallback, useState } from "react";
 import { useChainId, useWalletClient } from "wagmi";
 import { toast } from "sonner";
 import { apiFetch, type EncodeResponse } from "../utils/apiFetch.js";
-import { humanizeError, validateNumericInput } from "../utils/format.js";
+import {
+	errorRefString,
+	humanizeError,
+	validateNumericInput,
+} from "../utils/format.js";
 import { useVaultData } from "./useVaultData.js";
 
 export function useWithdraw(tokenId: bigint, onSuccess?: () => void) {
@@ -42,11 +46,7 @@ export function useWithdraw(tokenId: bigint, onSuccess?: () => void) {
 			await vd.refetch();
 			onSuccess?.();
 		} catch (err) {
-			const ref = err as { code?: string; requestId?: string } | null;
-			const refStr =
-				ref && (ref.code !== undefined || ref.requestId !== undefined)
-					? `Ref · ${[ref.requestId, ref.code].filter((x): x is string => x !== undefined).join(" · ")}`
-					: null;
+			const refStr = errorRefString(err);
 			toast.error(
 				humanizeError(err),
 				refStr ? { description: refStr } : undefined,

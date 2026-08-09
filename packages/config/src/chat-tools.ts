@@ -57,6 +57,11 @@ function tool<N extends string>(
 	};
 }
 
+const tokenTransferProps = {
+	tokenId: { type: "string", description: "Agent token ID (numeric)" },
+	to: { type: "string", description: "Recipient address" },
+} as const;
+
 const SKILL_TOOL_DEFS = [
 	skill({
 		name: "evm_wallet",
@@ -198,8 +203,7 @@ const SKILL_TOOL_DEFS = [
 		parameters: {
 			type: "object",
 			properties: {
-				tokenId: { type: "string", description: "Agent token ID (numeric)" },
-				to: { type: "string", description: "Recipient address" },
+				...tokenTransferProps,
 			},
 			required: ["tokenId", "to"],
 		},
@@ -213,8 +217,7 @@ const SKILL_TOOL_DEFS = [
 		parameters: {
 			type: "object",
 			properties: {
-				tokenId: { type: "string", description: "Agent token ID (numeric)" },
-				to: { type: "string", description: "Recipient address" },
+				...tokenTransferProps,
 			},
 			required: ["tokenId", "to"],
 		},
@@ -228,8 +231,7 @@ const SKILL_TOOL_DEFS = [
 		parameters: {
 			type: "object",
 			properties: {
-				tokenId: { type: "string", description: "Agent token ID (numeric)" },
-				to: { type: "string", description: "Recipient address" },
+				...tokenTransferProps,
 				accessProof: {
 					type: "object",
 					description: "Optional access proof { dataHash, validUntil }",
@@ -248,8 +250,7 @@ const SKILL_TOOL_DEFS = [
 		parameters: {
 			type: "object",
 			properties: {
-				tokenId: { type: "string", description: "Agent token ID (numeric)" },
-				to: { type: "string", description: "Recipient address" },
+				...tokenTransferProps,
 			},
 			required: ["tokenId", "to"],
 		},
