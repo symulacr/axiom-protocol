@@ -1,9 +1,9 @@
 import { TTLCache } from "../utils/cache.js";
 import { extractErrorMessage } from "../utils/response.js";
 
-export type ArchiveQueryIntent = "lookup" | "confirm" | "account" | "closest";
+type ArchiveQueryIntent = "lookup" | "confirm" | "account" | "closest";
 
-export interface ArchiveQueryInput {
+interface ArchiveQueryInput {
 	intent: ArchiveQueryIntent;
 	url?: string;
 	handle?: string;
@@ -99,7 +99,7 @@ function asRecord(value: unknown): Record<string, unknown> {
 	return { value };
 }
 
-export interface SnapshotSummary {
+interface SnapshotSummary {
 	url: string;
 	timestamp: string;
 	iso: string;
@@ -132,7 +132,7 @@ function normalizeCdxRow(originalUrl: string, row: string[]): SnapshotSummary {
 	};
 }
 
-export async function lookupSnapshots(
+async function lookupSnapshots(
 	url: string,
 	limit = 50,
 ): Promise<SnapshotSummary[]> {
@@ -146,7 +146,7 @@ export async function lookupSnapshots(
 	}
 }
 
-export async function lookupAccountTweets(
+async function lookupAccountTweets(
 	handle: string,
 	limit = 100,
 ): Promise<SnapshotSummary[]> {
@@ -161,7 +161,7 @@ export async function lookupAccountTweets(
 	}
 }
 
-export async function confirmArchived(
+async function confirmArchived(
 	tweetUrl: string,
 ): Promise<{ archived: boolean; snapshot: SnapshotSummary | null }> {
 	try {
@@ -175,7 +175,7 @@ export async function confirmArchived(
 	}
 }
 
-export async function closestSnapshot(
+async function closestSnapshot(
 	url: string,
 	timestamp?: string,
 ): Promise<SnapshotSummary | null> {

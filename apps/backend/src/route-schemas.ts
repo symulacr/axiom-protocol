@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { hexViem, addressViem } from "@axiom/config/types/hex";
 
-export const accessProofSchema = z.object({
+const accessProofSchema = z.object({
 	dataHash: hexViem,
 	targetPubkey: hexViem,
 	nonce: z.union([z.string().max(128), z.number()]),

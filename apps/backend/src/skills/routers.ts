@@ -1,82 +1,85 @@
-import { Router, type Request, type Response } from "express";
+import type { Router, Request, Response } from "express";
 import { ethers } from "ethers";
 import { z } from "zod";
 import type { ServerConfig } from "../server.js";
 import {
-  createSkillRouter,
-  type SkillRouter,
-  cachedJsonGet,
-  getSharedProvider,
-  ser,
-  getLogsChunked,
-  createLogger,
-  TTLCache,
+	createSkillRouter,
+	type SkillRouter,
+	cachedJsonGet,
+	getSharedProvider,
+	ser,
+	getLogsChunked,
+	createLogger,
+	TTLCache,
 } from "../skills/shared.js";
 import { sendError } from "../utils/response.js";
 import { TRANSFER_TOPIC } from "@axiom/config";
 import { AGENT_NFT_ABI } from "@axiom/config/abis";
 import { HTTP } from "@axiom/config";
 import {
-  evmAddressSchema,
-  evmTokenOwnerSchema,
-  evmTxSchema,
-  evmTokenSchema,
-  evmGasSchema,
-  evmWhaleSchema,
-  evmAllowanceSchema,
-  stocksQuoteSchema,
-  stocksSearchSchema,
-  stocksHistorySchema,
-  stocksCompareSchema,
-  stocksCryptoSchema,
-  osintSecEdgarSchema,
-  osintUsaspendingSchema,
-  osintOfacSdnSchema,
-  osintOpencorporatesSchema,
-  osintEntityResolveSchema,
-  osintCourtlistenerSchema,
-  unbrokerSchema,
-  unbrokerAnalyzeSchema,
-  ossInvestigateSchema,
-  ossCommitsSchema,
-  ossIocSchema,
-  ossAuditSchema,
+	evmAddressSchema,
+	evmTokenOwnerSchema,
+	evmTxSchema,
+	evmTokenSchema,
+	evmGasSchema,
+	evmWhaleSchema,
+	evmAllowanceSchema,
+	stocksQuoteSchema,
+	stocksSearchSchema,
+	stocksHistorySchema,
+	stocksCompareSchema,
+	stocksCryptoSchema,
+	osintSecEdgarSchema,
+	osintUsaspendingSchema,
+	osintOfacSdnSchema,
+	osintOpencorporatesSchema,
+	osintEntityResolveSchema,
+	osintCourtlistenerSchema,
+	unbrokerSchema,
+	unbrokerAnalyzeSchema,
+	ossInvestigateSchema,
+	ossCommitsSchema,
+	ossIocSchema,
+	ossAuditSchema,
 } from "@axiom/config/skills/schemas";
 
 const logEvm = createLogger("skills:evm");
 
 const ERC20_ABI = [
-  "function balanceOf(address) view returns (uint256)",
-  "function name() view returns (string)",
-  "function symbol() view returns (string)",
-  "function decimals() view returns (uint8)",
-  "function allowance(address owner, address spender) view returns (uint256)",
-  "function transfer(address to, uint256 amount) returns (bool)",
-  "event Transfer(address indexed from, address indexed to, uint256 value)",
+	"function balanceOf(address) view returns (uint256)",
+	"function name() view returns (string)",
+	"function symbol() view returns (string)",
+	"function decimals() view returns (uint8)",
+	"function allowance(address owner, address spender) view returns (uint256)",
+	"function transfer(address to, uint256 amount) returns (bool)",
+	"event Transfer(address indexed from, address indexed to, uint256 value)",
 ];
 
 const DEX_SPENDERS: Record<string, string> = {
-  uniswapV3: "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45",
-  sushiswap: "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F",
-  oneInch: "0x1111111254fb6c44bAC0beD2854e76F90643097d",
+	uniswapV3: "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45",
+	sushiswap: "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F",
+	oneInch: "0x1111111254fb6c44bAC0beD2854e76F90643097d",
 };
 
 const CHAINS: { name: string; rpc: string }[] = [
-  { name: "ethereum", rpc: "https://ethereum-rpc.publicnode.com" },
-  { name: "polygon", rpc: "https://polygon-bor-rpc.publicnode.com" },
-  { name: "arbitrum", rpc: "https://arb1.arbitrum.io/rpc" },
-  { name: "optimism", rpc: "https://mainnet.optimism.io" },
-  { name: "base", rpc: "https://mainnet.base.org" },
-  { name: "bsc", rpc: "https://bsc-dataseed.binance.org" },
-  { name: "avalanche", rpc: "https://api.avax.network/ext/bc/C/rpc" },
-  { name: "gnosis", rpc: "https://rpc.gnosischain.com" },
+	{ name: "ethereum", rpc: "https://ethereum-rpc.publicnode.com" },
+	{ name: "polygon", rpc: "https://polygon-bor-rpc.publicnode.com" },
+	{ name: "arbitrum", rpc: "https://arb1.arbitrum.io/rpc" },
+	{ name: "optimism", rpc: "https://mainnet.optimism.io" },
+	{ name: "base", rpc: "https://mainnet.base.org" },
+	{ name: "bsc", rpc: "https://bsc-dataseed.binance.org" },
+	{ name: "avalanche", rpc: "https://api.avax.network/ext/bc/C/rpc" },
+	{ name: "gnosis", rpc: "https://rpc.gnosischain.com" },
 ];
 
 const priceGet = cachedJsonGet("https://api.coingecko.com", { ttlMs: 60_000 });
 
 async function fetchPrice(id: string): Promise<number> {
-  const j = await priceGet(id, `/api/v3/simple/price?ids=${id}&vs_currencies=usd`) as Record<string, { usd?: number }>;
-  return j[id]?.usd ?? 0;
+	const j = (await priceGet(
+		id,
+		`/api/v3/simple/price?ids=${id}&vs_currencies=usd`,
+	)) as Record<string, { usd?: number }>;
+	return j[id]?.usd ?? 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -89,85 +92,85 @@ async function fetchPrice(id: string): Promise<number> {
 // ---------------------------------------------------------------------------
 
 type SkillHandlerFn<S extends z.ZodTypeAny> = (
-  parsed: z.infer<S>,
-  req: Request,
-  res: Response,
-  helpers: { id: string; config: ServerConfig },
+	parsed: z.infer<S>,
+	req: Request,
+	res: Response,
+	helpers: { id: string; config: ServerConfig },
 ) => Promise<unknown>;
 
 interface SkillRouteDef<S extends z.ZodTypeAny = z.ZodTypeAny> {
-  path: string;
-  schema: S;
-  description: string;
-  handler: SkillHandlerFn<S>;
-  /** When true the handler is guarded behind a configured GITHUB_TOKEN. */
-  requiresGithubToken?: boolean;
-  /** When true only server API key may call (forensics / destructive skills). */
-  requiresServerAuth?: boolean;
+	path: string;
+	schema: S;
+	description: string;
+	handler: SkillHandlerFn<S>;
+	/** When true the handler is guarded behind a configured GITHUB_TOKEN. */
+	requiresGithubToken?: boolean;
+	/** When true only server API key may call (forensics / destructive skills). */
+	requiresServerAuth?: boolean;
 }
 
 function skill<S extends z.ZodTypeAny>(
-  path: string,
-  schema: S,
-  description: string,
-  handler: SkillHandlerFn<S>,
-  requiresGithubToken = false,
-  requiresServerAuth = false,
+	path: string,
+	schema: S,
+	description: string,
+	handler: SkillHandlerFn<S>,
+	requiresGithubToken = false,
+	requiresServerAuth = false,
 ): SkillRouteDef<S> {
-  return {
-    path,
-    schema,
-    description,
-    handler,
-    requiresGithubToken,
-    requiresServerAuth,
-  };
+	return {
+		path,
+		schema,
+		description,
+		handler,
+		requiresGithubToken,
+		requiresServerAuth,
+	};
 }
 
 function registerSkillRoutes(
-  route: SkillRouter["route"],
-  registrations: SkillRouteDef[],
+	route: SkillRouter["route"],
+	registrations: SkillRouteDef[],
 ): void {
-  for (const r of registrations) {
-    const handler: SkillHandlerFn<z.ZodTypeAny> = async (
-      parsed,
-      req,
-      res,
-      helpers,
-    ) => {
-      if (r.requiresServerAuth) {
-        const principal = (req as { authPrincipal?: string }).authPrincipal;
-        if (principal === "client") {
-          return {
-            ok: false,
-            error: "forbidden: server API key required for this skill",
-            code: "SERVER_KEY_REQUIRED",
-          };
-        }
-      }
-      if (r.requiresGithubToken && !process.env.GITHUB_TOKEN) {
-        return {
-          ok: false,
-          error:
-            "GITHUB_TOKEN is not configured on the server; OSS forensics requires a GitHub token",
-        };
-      }
-      return r.handler(parsed, req, res, helpers);
-    };
-    route(
-      { path: r.path, schema: r.schema, description: r.description },
-      handler,
-    );
-  }
+	for (const r of registrations) {
+		const handler: SkillHandlerFn<z.ZodTypeAny> = async (
+			parsed,
+			req,
+			res,
+			helpers,
+		) => {
+			if (r.requiresServerAuth) {
+				const principal = (req as { authPrincipal?: string }).authPrincipal;
+				if (principal === "client") {
+					return {
+						ok: false,
+						error: "forbidden: server API key required for this skill",
+						code: "SERVER_KEY_REQUIRED",
+					};
+				}
+			}
+			if (r.requiresGithubToken && !process.env.GITHUB_TOKEN) {
+				return {
+					ok: false,
+					error:
+						"GITHUB_TOKEN is not configured on the server; OSS forensics requires a GitHub token",
+				};
+			}
+			return r.handler(parsed, req, res, helpers);
+		};
+		route(
+			{ path: r.path, schema: r.schema, description: r.description },
+			handler,
+		);
+	}
 }
 
 /** Never return full secret material to API clients. */
 export function redactIocMatch(raw: string, patternName: string): string {
-  if (patternName === "ipv4" || patternName === "domain") {
-    return raw; // not secrets
-  }
-  if (raw.length <= 8) return `[redacted:${patternName}]`;
-  return `${raw.slice(0, 4)}…${raw.slice(-4)} [redacted:${patternName}]`;
+	if (patternName === "ipv4" || patternName === "domain") {
+		return raw; // not secrets
+	}
+	if (raw.length <= 8) return `[redacted:${patternName}]`;
+	return `${raw.slice(0, 4)}…${raw.slice(-4)} [redacted:${patternName}]`;
 }
 
 // ---------------------------------------------------------------------------
@@ -191,75 +194,78 @@ let crumb = "";
 let cookie = "";
 
 async function ensureCrumb(): Promise<void> {
-  if (crumb && cookie) return;
-  const resp = await fetch(`${YAHOO_BASE}/v1/test/getcrumb`, {
-    headers: cookie ? { Cookie: cookie } : {},
-  });
-  const setCookie = resp.headers.get("set-cookie");
-  if (setCookie) cookie = setCookie.split(";")[0] ?? "";
-  crumb = await resp.text();
+	if (crumb && cookie) return;
+	const resp = await fetch(`${YAHOO_BASE}/v1/test/getcrumb`, {
+		headers: cookie ? { Cookie: cookie } : {},
+	});
+	const setCookie = resp.headers.get("set-cookie");
+	if (setCookie) cookie = setCookie.split(";")[0] ?? "";
+	crumb = await resp.text();
 }
 
 interface YahooChartMeta {
-  symbol?: string;
-  regularMarketPrice?: unknown;
-  chartPreviousClose?: unknown;
-  previousClose?: unknown;
-  currency?: string;
-  exchangeName?: string;
-  marketState?: string;
+	symbol?: string;
+	regularMarketPrice?: unknown;
+	chartPreviousClose?: unknown;
+	previousClose?: unknown;
+	currency?: string;
+	exchangeName?: string;
+	marketState?: string;
 }
 
 interface YahooQuotePoint {
-  open?: Array<number | null>;
-  high?: Array<number | null>;
-  low?: Array<number | null>;
-  close?: Array<number | null>;
-  volume?: Array<number | null>;
+	open?: Array<number | null>;
+	high?: Array<number | null>;
+	low?: Array<number | null>;
+	close?: Array<number | null>;
+	volume?: Array<number | null>;
 }
 
 interface YahooChartResult {
-  meta: YahooChartMeta;
-  timestamp?: number[];
-  indicators: { quote: YahooQuotePoint[] };
+	meta: YahooChartMeta;
+	timestamp?: number[];
+	indicators: { quote: YahooQuotePoint[] };
 }
 
 interface YahooChartResponse {
-  chart: { result?: YahooChartResult[] };
+	chart: { result?: YahooChartResult[] };
 }
 
 interface YahooSearchQuote {
-  symbol?: string;
-  shortname?: string;
-  longname?: string;
-  quoteType?: string;
-  exchange?: string;
+	symbol?: string;
+	shortname?: string;
+	longname?: string;
+	quoteType?: string;
+	exchange?: string;
 }
 
 interface YahooSearchResponse {
-  quotes?: YahooSearchQuote[];
+	quotes?: YahooSearchQuote[];
 }
 
 async function yahooFetch<T>(
-  path: string,
-  params: Record<string, string> = {},
+	path: string,
+	params: Record<string, string> = {},
 ): Promise<T> {
-  await ensureCrumb();
-  const qs = new URLSearchParams({ ...params, crumb }).toString();
-  const full = `${path}?${qs}`;
-  return (await yahooGet(full, full, { headers: { Cookie: cookie }, signal: AbortSignal.timeout(15_000) })) as T;
+	await ensureCrumb();
+	const qs = new URLSearchParams({ ...params, crumb }).toString();
+	const full = `${path}?${qs}`;
+	return (await yahooGet(full, full, {
+		headers: { Cookie: cookie },
+		signal: AbortSignal.timeout(15_000),
+	})) as T;
 }
 
 function extractQuote(result: YahooChartResponse) {
-  const meta: YahooChartMeta = result.chart?.result?.[0]?.meta ?? {};
-  return ser({
-    symbol: meta.symbol,
-    price: meta.regularMarketPrice,
-    previousClose: meta.chartPreviousClose ?? meta.previousClose,
-    currency: meta.currency,
-    exchange: meta.exchangeName,
-    marketState: meta.marketState,
-  });
+	const meta: YahooChartMeta = result.chart?.result?.[0]?.meta ?? {};
+	return ser({
+		symbol: meta.symbol,
+		price: meta.regularMarketPrice,
+		previousClose: meta.chartPreviousClose ?? meta.previousClose,
+		currency: meta.currency,
+		exchange: meta.exchangeName,
+		marketState: meta.marketState,
+	});
 }
 
 const symbolSchema = stocksQuoteSchema;
@@ -273,21 +279,28 @@ const cryptoSchema = stocksCryptoSchema;
 // ---------------------------------------------------------------------------
 
 const cachedGet = cachedJsonGet("", {
-  headers: { "User-Agent": "AxiomAgent/1.0", Accept: "application/json" },
-  ttlMs: 5 * 60 * 1000,
+	headers: { "User-Agent": "AxiomAgent/1.0", Accept: "application/json" },
+	ttlMs: 5 * 60 * 1000,
 });
 
-async function cachedFetch(key: string, url: string, init?: RequestInit): Promise<unknown> {
-  return cachedGet(key, url, { ...init, signal: init?.signal ?? AbortSignal.timeout(15_000) });
+async function cachedFetch(
+	key: string,
+	url: string,
+	init?: RequestInit,
+): Promise<unknown> {
+	return cachedGet(key, url, {
+		...init,
+		signal: init?.signal ?? AbortSignal.timeout(15_000),
+	});
 }
 
 function tokenScore(a: string, b: string): number {
-  const tokA = new Set(a.toLowerCase().split(/\s+/).filter(Boolean));
-  const tokB = new Set(b.toLowerCase().split(/\s+/).filter(Boolean));
-  if (tokA.size === 0 || tokB.size === 0) return 0;
-  let overlap = 0;
-  for (const t of tokA) if (tokB.has(t)) overlap++;
-  return overlap / Math.max(tokA.size, tokB.size);
+	const tokA = new Set(a.toLowerCase().split(/\s+/).filter(Boolean));
+	const tokB = new Set(b.toLowerCase().split(/\s+/).filter(Boolean));
+	if (tokA.size === 0 || tokB.size === 0) return 0;
+	let overlap = 0;
+	for (const t of tokA) if (tokB.has(t)) overlap++;
+	return overlap / Math.max(tokA.size, tokB.size);
 }
 
 const cikSchema = osintSecEdgarSchema;
@@ -296,20 +309,20 @@ const usaspendingSchema = osintUsaspendingSchema;
 // returns HTML (not JSON). Fetch as text with browser-like headers so the
 // route degrades to a clean 200 instead of a 502 upstream-error.
 const ofacHeaders = {
-  "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36",
-  "Accept": "text/html,application/xhtml+xml",
+	"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36",
+	Accept: "text/html,application/xhtml+xml",
 };
 const ofacCache = new TTLCache<string>(5 * 60 * 1000);
 async function ofacFetch(path: string): Promise<string> {
-  const cached = ofacCache.get(path);
-  if (cached !== undefined) return cached;
-  const res = await fetch(`https://sanctionssearch.ofac.treas.gov${path}`, {
-    headers: ofacHeaders,
-    signal: AbortSignal.timeout(15_000),
-  });
-  const text = await res.text();
-  ofacCache.set(path, text);
-  return text;
+	const cached = ofacCache.get(path);
+	if (cached !== undefined) return cached;
+	const res = await fetch(`https://sanctionssearch.ofac.treas.gov${path}`, {
+		headers: ofacHeaders,
+		signal: AbortSignal.timeout(15_000),
+	});
+	const text = await res.text();
+	ofacCache.set(path, text);
+	return text;
 }
 
 const ofacSchema = osintOfacSdnSchema;
@@ -323,7 +336,6 @@ const courtSchema = osintCourtlistenerSchema;
 
 const logUnbroker = createLogger("skills:unbroker");
 
-
 // ---------------------------------------------------------------------------
 // OSS forensics skills
 // ---------------------------------------------------------------------------
@@ -334,161 +346,171 @@ const ghGet = cachedJsonGet("https://api.github.com", { ttlMs: CACHE_TTL_MS });
 const logForensics = createLogger("oss-forensics");
 
 function ghHeaders(): Record<string, string> {
-  const h: Record<string, string> = { Accept: "application/vnd.github+json" };
-  const token = process.env.GITHUB_TOKEN;
-  if (token) h.Authorization = `Bearer ${token}`;
-  return h;
+	const h: Record<string, string> = { Accept: "application/vnd.github+json" };
+	const token = process.env.GITHUB_TOKEN;
+	if (token) h.Authorization = `Bearer ${token}`;
+	return h;
 }
 
 async function ghFetch(path: string): Promise<unknown> {
-  return ghGet(`gh:${path}`, path, { headers: ghHeaders() });
+	return ghGet(`gh:${path}`, path, { headers: ghHeaders() });
 }
 
-const investigateSchema = z.object({
-  owner: z.string().min(1),
-  repo: z.string().min(1),
-  bytecode: z.string().optional(),
-});
+/**
+ * Fetch a file's UTF-8 text content from a GitHub repo (base64-decoded),
+ * cached under `cacheKey`. Returns null when the file is missing/empty.
+ * Shared by scanIocs() and auditDeps() so both paths hit the same cache.
+ */
+async function fetchGithubText(
+	owner: string,
+	repo: string,
+	filePath: string,
+	cacheKey: string,
+): Promise<string | null> {
+	const cached = cache.get(cacheKey);
+	if (cached !== undefined) return cached as string;
+	const blob = await ghFetch(`/repos/${owner}/${repo}/contents/${filePath}`);
+	const b64 = (blob as Record<string, unknown>).content as string;
+	if (!b64) return null;
+	const content = Buffer.from(b64, "base64").toString("utf-8");
+	cache.set(cacheKey, content);
+	return content;
+}
 
 async function investigateRepo(owner: string, repo: string) {
-  const info = await ghFetch(`/repos/${owner}/${repo}`);
-  const languages = await ghFetch(`/repos/${owner}/${repo}/languages`);
-  const contributors = await ghFetch(`/repos/${owner}/${repo}/contributors?per_page=10`);
-  return { info, languages, contributors };
+	const info = await ghFetch(`/repos/${owner}/${repo}`);
+	const languages = await ghFetch(`/repos/${owner}/${repo}/languages`);
+	const contributors = await ghFetch(
+		`/repos/${owner}/${repo}/contributors?per_page=10`,
+	);
+	return { info, languages, contributors };
 }
 
 async function compareBytecode(bytecode: string) {
-  const hash = ethers.keccak256(bytecode.startsWith("0x") ? bytecode : `0x${bytecode}`);
-  return { bytecodeHash: hash, length: bytecode.length };
+	const hash = ethers.keccak256(
+		bytecode.startsWith("0x") ? bytecode : `0x${bytecode}`,
+	);
+	return { bytecodeHash: hash, length: bytecode.length };
 }
 
-const commitsSchema = z.object({
-  owner: z.string().min(1),
-  repo: z.string().min(1),
-  sha: z.string().optional(),
-  perPage: z.coerce.number().int().min(1).max(100).optional(),
-});
-
-async function fetchCommits(owner: string, repo: string, sha?: string, perPage = 30) {
-  const q = sha ? `?sha=${sha}&per_page=${perPage}` : `?per_page=${perPage}`;
-  const commits = await ghFetch(`/repos/${owner}/${repo}/commits${q}`);
-  const list = Array.isArray(commits) ? commits : [];
-  const forcePushSuspects: string[] = [];
-  for (let i = 1; i < list.length; i++) {
-    const curr = list[i] as Record<string, unknown>;
-    const prev = list[i - 1] as Record<string, unknown>;
-    const currParents = (curr.parents as Array<{ sha: string }>) ?? [];
-    const prevSha = (prev as { sha: string }).sha;
-    if (currParents.length > 0 && currParents[0]?.sha !== prevSha) {
-      forcePushSuspects.push(curr.sha as string);
-    }
-  }
-  return { commits: list, forcePushSuspects };
+async function fetchCommits(
+	owner: string,
+	repo: string,
+	sha?: string,
+	perPage = 30,
+) {
+	const q = sha ? `?sha=${sha}&per_page=${perPage}` : `?per_page=${perPage}`;
+	const commits = await ghFetch(`/repos/${owner}/${repo}/commits${q}`);
+	const list = Array.isArray(commits) ? commits : [];
+	const forcePushSuspects: string[] = [];
+	for (let i = 1; i < list.length; i++) {
+		const curr = list[i] as Record<string, unknown>;
+		const prev = list[i - 1] as Record<string, unknown>;
+		const currParents = (curr.parents as Array<{ sha: string }>) ?? [];
+		const prevSha = (prev as { sha: string }).sha;
+		if (currParents.length > 0 && currParents[0]?.sha !== prevSha) {
+			forcePushSuspects.push(curr.sha as string);
+		}
+	}
+	return { commits: list, forcePushSuspects };
 }
-
-const iocSchema = z.object({
-  owner: z.string().min(1),
-  repo: z.string().min(1),
-  path: z.string().optional(),
-});
 
 const IOC_PATTERNS: Record<string, RegExp> = {
-  awsAccessKey: /\bAKIA[0-9A-Z]{16}\b/g,
-  stripeSecretKey: /\bsk_(?:live|test)_[0-9a-zA-Z]{24,}\b/g,
-  githubPat: /\bghp_[0-9a-zA-Z]{36,}\b/g,
-  privateKey: /-----BEGIN (?:RSA |EC )?PRIVATE KEY-----/g,
-  ipv4: /\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\b/g,
-  domain: /\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:com|net|org|io|xyz|tk|ru|cn)\b/gi,
+	awsAccessKey: /\bAKIA[0-9A-Z]{16}\b/g,
+	stripeSecretKey: /\bsk_(?:live|test)_[0-9a-zA-Z]{24,}\b/g,
+	githubPat: /\bghp_[0-9a-zA-Z]{36,}\b/g,
+	privateKey: /-----BEGIN (?:RSA |EC )?PRIVATE KEY-----/g,
+	ipv4: /\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\b/g,
+	domain:
+		/\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:com|net|org|io|xyz|tk|ru|cn)\b/gi,
 };
 
 async function scanIocs(owner: string, repo: string, path?: string) {
-  const treePath = path ?? "";
-  const tree = await ghFetch(`/repos/${owner}/${repo}/git/trees/HEAD?recursive=1`);
-  const entries = ((tree as Record<string, unknown>).tree as Array<Record<string, unknown>>) ?? [];
-  const textFiles = entries.filter(
-    (e) => e.type === "blob" && /\.(?:js|ts|json|env|yaml|yml|toml|cfg|conf|txt|md)$/i.test(e.path as string),
-  );
+	const treePath = path ?? "";
+	const tree = await ghFetch(
+		`/repos/${owner}/${repo}/git/trees/HEAD?recursive=1`,
+	);
+	const entries =
+		((tree as Record<string, unknown>).tree as Array<
+			Record<string, unknown>
+		>) ?? [];
+	const textFiles = entries.filter(
+		(e) =>
+			e.type === "blob" &&
+			/\.(?:js|ts|json|env|yaml|yml|toml|cfg|conf|txt|md)$/i.test(
+				e.path as string,
+			),
+	);
 
-  const hits: Array<{ file: string; pattern: string; match: string }> = [];
-  const limit = path ? 1 : 20;
-  for (const entry of textFiles.slice(0, limit)) {
-    const fp = entry.path as string;
-    if (treePath && !fp.startsWith(treePath)) continue;
-    const key = `blob:${owner}/${repo}/${fp}`;
-    let content: string;
-    const cached = cache.get(key);
-    if (cached) {
-      content = cached as string;
-    } else {
-      const blob = await ghFetch(`/repos/${owner}/${repo}/contents/${fp}`);
-      const b64 = (blob as Record<string, unknown>).content as string;
-      if (!b64) continue;
-      content = Buffer.from(b64, "base64").toString("utf-8");
-      cache.set(key, content);
-    }
-    for (const [patternName, re] of Object.entries(IOC_PATTERNS)) {
-      const reInst = new RegExp(re.source, re.flags);
-      for (const m of content.matchAll(reInst)) {
-        hits.push({
-          file: fp,
-          pattern: patternName,
-          match: redactIocMatch(m[0], patternName),
-        });
-      }
-    }
-  }
-  return { scanned: Math.min(textFiles.length, limit), totalFiles: textFiles.length, hits };
+	const hits: Array<{ file: string; pattern: string; match: string }> = [];
+	const limit = path ? 1 : 20;
+	for (const entry of textFiles.slice(0, limit)) {
+		const fp = entry.path as string;
+		if (treePath && !fp.startsWith(treePath)) continue;
+		const key = `blob:${owner}/${repo}/${fp}`;
+		const content = await fetchGithubText(owner, repo, fp, key);
+		if (content === null) continue;
+		for (const [patternName, re] of Object.entries(IOC_PATTERNS)) {
+			const reInst = new RegExp(re.source, re.flags);
+			for (const m of content.matchAll(reInst)) {
+				hits.push({
+					file: fp,
+					pattern: patternName,
+					match: redactIocMatch(m[0], patternName),
+				});
+			}
+		}
+	}
+	return {
+		scanned: Math.min(textFiles.length, limit),
+		totalFiles: textFiles.length,
+		hits,
+	};
 }
 
-const auditSchema = z.object({
-  owner: z.string().min(1),
-  repo: z.string().min(1),
-});
-
 async function auditDeps(owner: string, repo: string) {
-  const deps: Record<string, unknown> = {};
-  for (const manifest of ["package.json", "Cargo.toml", "requirements.txt"]) {
-    try {
-      const key = `dep:${owner}/${repo}/${manifest}`;
-      let content: string;
-      const cached = cache.get(key);
-      if (cached) {
-        content = cached as string;
-      } else {
-        const blob = await ghFetch(`/repos/${owner}/${repo}/contents/${manifest}`);
-        const b64 = (blob as Record<string, unknown>).content as string;
-        if (!b64) continue;
-        content = Buffer.from(b64, "base64").toString("utf-8");
-        cache.set(key, content);
-      }
-      deps[manifest] = content;
-    } catch (err) {
-      logForensics.warn("auditDeps: failed to read manifest", { err, owner, repo, manifest });
-    }
-  }
+	const deps: Record<string, unknown> = {};
+	for (const manifest of ["package.json", "Cargo.toml", "requirements.txt"]) {
+		try {
+			const key = `dep:${owner}/${repo}/${manifest}`;
+			const content = await fetchGithubText(owner, repo, manifest, key);
+			if (content === null) continue;
+			deps[manifest] = content;
+		} catch (err) {
+			logForensics.warn("auditDeps: failed to read manifest", {
+				err,
+				owner,
+				repo,
+				manifest,
+			});
+		}
+	}
 
-  let storageLayout: unknown = null;
-  try {
-    const key = `layout:${owner}/${repo}`;
-    const cached = cache.get(key);
-    if (cached) {
-      storageLayout = cached;
-    } else {
-      const layout = await ghFetch(`/repos/${owner}/${repo}/contents/out`);
-      const items = Array.isArray(layout) ? layout : [];
-      const slotFile = items.find((i: Record<string, unknown>) =>
-        (i.name as string)?.includes("storage-layout"),
-      );
-      if (slotFile) {
-        storageLayout = { found: true, file: (slotFile as Record<string, unknown>).name };
-        cache.set(key, storageLayout);
-      }
-    }
-  } catch (err) {
-    logForensics.warn("auditDeps: no storage layout dir", { err, owner, repo });
-  }
+	let storageLayout: unknown = null;
+	try {
+		const key = `layout:${owner}/${repo}`;
+		const cached = cache.get(key);
+		if (cached) {
+			storageLayout = cached;
+		} else {
+			const layout = await ghFetch(`/repos/${owner}/${repo}/contents/out`);
+			const items = Array.isArray(layout) ? layout : [];
+			const slotFile = items.find((i: Record<string, unknown>) =>
+				(i.name as string)?.includes("storage-layout"),
+			);
+			if (slotFile) {
+				storageLayout = {
+					found: true,
+					file: (slotFile as Record<string, unknown>).name,
+				};
+				cache.set(key, storageLayout);
+			}
+		}
+	} catch (err) {
+		logForensics.warn("auditDeps: no storage layout dir", { err, owner, repo });
+	}
 
-  return { deps, storageLayout };
+	return { deps, storageLayout };
 }
 
 // ---------------------------------------------------------------------------
@@ -496,341 +518,547 @@ async function auditDeps(owner: string, repo: string) {
 // ---------------------------------------------------------------------------
 
 export function createSkillRouters(config: ServerConfig): Router {
-  const { router, route } = createSkillRouter(config);
-  const provider = getSharedProvider();
-  const getNft = (addr: string) => new ethers.Contract(addr, AGENT_NFT_ABI, provider);
+	const { router, route } = createSkillRouter(config);
+	const provider = getSharedProvider();
+	const getNft = (addr: string) =>
+		new ethers.Contract(addr, AGENT_NFT_ABI, provider);
 
-  registerSkillRoutes(route, [
-    // EVM
-    skill("/v1/skills/evm/wallet", token, "Query EVM wallet native and ERC-20 balances",
-      async (parsed) => {
-        const [native, tokenContract] = await Promise.all([
-          provider.getBalance(parsed.address),
-          parsed.token
-            ? new ethers.Contract(parsed.token, ERC20_ABI, provider)
-            : null,
-        ]);
-        const erc20Balance = tokenContract
-          ? await tokenContract.balanceOf!(parsed.address).catch((err) => {
-              logEvm.warn("evm wallet balanceOf failed", { err });
-              return 0n;
-            })
-          : 0n;
-        return ser({ native, erc20Balance });
-      }),
-    skill("/v1/skills/evm/multichain", address, "Query wallet balances across multiple EVM chains",
-      async (parsed) => {
-        const results = await Promise.allSettled(
-          CHAINS.map(async ({ name, rpc }) => {
-            const p = new ethers.JsonRpcProvider(rpc);
-            const bal = await p.getBalance(parsed.address);
-            return { chain: name, balance: bal.toString() };
-          }),
-        );
-        return ser(
-          results.map((r, i) =>
-            r.status === "fulfilled"
-              ? r.value
-              : { chain: CHAINS[i]?.name, error: String(r.reason) },
-          ),
-        );
-      }),
-    skill("/v1/skills/evm/tx", z.object({ hash: z.string() }), "Fetch an EVM transaction and its receipt",
-      async (parsed) => {
-        const [tx, receipt] = await Promise.all([
-          provider.getTransaction(parsed.hash),
-          provider.getTransactionReceipt(parsed.hash),
-        ]);
-        return ser({ tx, receipt });
-      }),
-    skill("/v1/skills/evm/token",
-      z.object({ address: z.string(), coingeckoId: z.string().optional() }),
-      "ERC-20 token metadata and price",
-      async (parsed) => {
-        const c = new ethers.Contract(parsed.address, ERC20_ABI, provider);
-        const [name, symbol, decimals] = await Promise.all([
-          c.name!(),
-          c.symbol!(),
-          c.decimals!(),
-        ]);
-        const price = parsed.coingeckoId
-          ? await fetchPrice(parsed.coingeckoId)
-          : null;
-        return ser({ name, symbol, decimals, price });
-      }),
-    skill("/v1/skills/evm/gas",
-      z.object({ gasLimit: z.number().optional() }),
-      "Estimate EVM gas cost for a transaction",
-      async (parsed) => {
-        const feeData = await provider.getFeeData();
-        const gasLimit = BigInt(parsed.gasLimit ?? 21_000);
-        const gasPrice = feeData.gasPrice ?? 0n;
-        const estCostWei = gasPrice * gasLimit;
-        const ethPrice = await fetchPrice("ethereum");
-        const estCostUsd =
-          Number(ethers.formatEther(estCostWei)) * ethPrice;
-        return ser({
-          gasPrice: gasPrice.toString(),
-          maxFeePerGas: feeData.maxFeePerGas?.toString(),
-          maxPriorityFeePerGas: feeData.maxPriorityFeePerGas?.toString(),
-          estCostWei: estCostWei.toString(),
-          estCostUsd,
-        });
-      }),
-    skill("/v1/skills/evm/whale", whaleSchema, "Scan for large (whale) ERC-20 transfers",
-      async (parsed) => {
-        const minValue = BigInt(parsed.minValue);
-        const transfers: unknown[] = [];
-        for await (const logs of getLogsChunked({
-          address: parsed.token,
-          topics: [TRANSFER_TOPIC],
-          fromBlock: parsed.fromBlock,
-          toBlock: parsed.toBlock,
-        })) {
-          for (const log of logs) {
-            const value = BigInt(log.data);
-            if (value >= minValue) {
-              transfers.push({
-                from: ethers.getAddress("0x" + (log.topics[1]?.slice(26) ?? "")),
-                to: ethers.getAddress("0x" + (log.topics[2]?.slice(26) ?? "")),
-                value: value.toString(),
-                txHash: log.transactionHash,
-                block: parseInt(log.blockNumber, 16),
-              });
-            }
-          }
-        }
-        return ser({ transfers, count: transfers.length });
-      }),
-    skill("/v1/skills/evm/contract", address, "Inspect contract code and proxy implementation",
-      async (parsed) => {
-        const code = await provider.getCode(parsed.address);
-        const isContract = code !== "0x";
-        let impl: string | null = null;
-        if (isContract) {
-          const slot = await provider.getStorage(
-            parsed.address,
-            "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc",
-          );
-          const slotBytes = ethers.zeroPadValue(slot, 32);
-          if (slotBytes !== ethers.ZeroHash) {
-            impl = ethers.getAddress("0x" + slotBytes.slice(26));
-          }
-        }
-        return ser({ isContract, codeLength: (code.length - 2) / 2, proxyImpl: impl });
-      }),
-    skill("/v1/skills/evm/allowance", token, "Check ERC-20 allowances for known DEX spenders",
-      async (parsed) => {
-        const c = new ethers.Contract(parsed.token, ERC20_ABI, provider);
-        const entries = await Promise.all(
-          Object.entries(DEX_SPENDERS).map(async ([dex, spender]) => {
-            const allowance: bigint = await c.allowance!(parsed.address, spender);
-            return { dex, spender, allowance: allowance.toString() };
-          }),
-        );
-        return ser({ allowances: entries });
-      }),
+	registerSkillRoutes(route, [
+		// EVM
+		skill(
+			"/v1/skills/evm/wallet",
+			token,
+			"Query EVM wallet native and ERC-20 balances",
+			async (parsed) => {
+				const [native, tokenContract] = await Promise.all([
+					provider.getBalance(parsed.address),
+					parsed.token
+						? new ethers.Contract(parsed.token, ERC20_ABI, provider)
+						: null,
+				]);
+				const erc20Balance = tokenContract
+					? await tokenContract.balanceOf!(parsed.address).catch((err) => {
+							logEvm.warn("evm wallet balanceOf failed", { err });
+							return 0n;
+						})
+					: 0n;
+				return ser({ native, erc20Balance });
+			},
+		),
+		skill(
+			"/v1/skills/evm/multichain",
+			address,
+			"Query wallet balances across multiple EVM chains",
+			async (parsed) => {
+				const results = await Promise.allSettled(
+					CHAINS.map(async ({ name, rpc }) => {
+						const p = new ethers.JsonRpcProvider(rpc);
+						const bal = await p.getBalance(parsed.address);
+						return { chain: name, balance: bal.toString() };
+					}),
+				);
+				return ser(
+					results.map((r, i) =>
+						r.status === "fulfilled"
+							? r.value
+							: { chain: CHAINS[i]?.name, error: String(r.reason) },
+					),
+				);
+			},
+		),
+		skill(
+			"/v1/skills/evm/tx",
+			evmTxSchema,
+			"Fetch an EVM transaction and its receipt",
+			async (parsed) => {
+				const [tx, receipt] = await Promise.all([
+					provider.getTransaction(parsed.hash),
+					provider.getTransactionReceipt(parsed.hash),
+				]);
+				return ser({ tx, receipt });
+			},
+		),
+		skill(
+			"/v1/skills/evm/token",
+			evmTokenSchema,
+			"ERC-20 token metadata and price",
+			async (parsed) => {
+				const c = new ethers.Contract(parsed.address, ERC20_ABI, provider);
+				const [name, symbol, decimals] = await Promise.all([
+					c.name!(),
+					c.symbol!(),
+					c.decimals!(),
+				]);
+				const price = parsed.coingeckoId
+					? await fetchPrice(parsed.coingeckoId)
+					: null;
+				return ser({ name, symbol, decimals, price });
+			},
+		),
+		skill(
+			"/v1/skills/evm/gas",
+			evmGasSchema,
+			"Estimate EVM gas cost for a transaction",
+			async (parsed) => {
+				const feeData = await provider.getFeeData();
+				const gasLimit = BigInt(parsed.gasLimit ?? 21_000);
+				const gasPrice = feeData.gasPrice ?? 0n;
+				const estCostWei = gasPrice * gasLimit;
+				const ethPrice = await fetchPrice("ethereum");
+				const estCostUsd = Number(ethers.formatEther(estCostWei)) * ethPrice;
+				return ser({
+					gasPrice: gasPrice.toString(),
+					maxFeePerGas: feeData.maxFeePerGas?.toString(),
+					maxPriorityFeePerGas: feeData.maxPriorityFeePerGas?.toString(),
+					estCostWei: estCostWei.toString(),
+					estCostUsd,
+				});
+			},
+		),
+		skill(
+			"/v1/skills/evm/whale",
+			whaleSchema,
+			"Scan for large (whale) ERC-20 transfers",
+			async (parsed) => {
+				const minValue = BigInt(parsed.minValue);
+				const transfers: unknown[] = [];
+				for await (const logs of getLogsChunked({
+					address: parsed.token,
+					topics: [TRANSFER_TOPIC],
+					fromBlock: parsed.fromBlock,
+					toBlock: parsed.toBlock,
+				})) {
+					for (const log of logs) {
+						const value = BigInt(log.data);
+						if (value >= minValue) {
+							transfers.push({
+								from: ethers.getAddress(
+									"0x" + (log.topics[1]?.slice(26) ?? ""),
+								),
+								to: ethers.getAddress("0x" + (log.topics[2]?.slice(26) ?? "")),
+								value: value.toString(),
+								txHash: log.transactionHash,
+								block: parseInt(log.blockNumber, 16),
+							});
+						}
+					}
+				}
+				return ser({ transfers, count: transfers.length });
+			},
+		),
+		skill(
+			"/v1/skills/evm/contract",
+			address,
+			"Inspect contract code and proxy implementation",
+			async (parsed) => {
+				const code = await provider.getCode(parsed.address);
+				const isContract = code !== "0x";
+				let impl: string | null = null;
+				if (isContract) {
+					const slot = await provider.getStorage(
+						parsed.address,
+						"0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc",
+					);
+					const slotBytes = ethers.zeroPadValue(slot, 32);
+					if (slotBytes !== ethers.ZeroHash) {
+						impl = ethers.getAddress("0x" + slotBytes.slice(26));
+					}
+				}
+				return ser({
+					isContract,
+					codeLength: (code.length - 2) / 2,
+					proxyImpl: impl,
+				});
+			},
+		),
+		skill(
+			"/v1/skills/evm/allowance",
+			evmAllowanceSchema,
+			"Check ERC-20 allowances for known DEX spenders",
+			async (parsed) => {
+				const c = new ethers.Contract(parsed.token, ERC20_ABI, provider);
+				const entries = await Promise.all(
+					Object.entries(DEX_SPENDERS).map(async ([dex, spender]) => {
+						const allowance: bigint = await c.allowance!(
+							parsed.address,
+							spender,
+						);
+						return { dex, spender, allowance: allowance.toString() };
+					}),
+				);
+				return ser({ allowances: entries });
+			},
+		),
 
-    // Stocks
-    skill("/v1/skills/stocks/quote", symbolSchema, "Real-time stock quote",
-      async (parsed) => {
-        const data = await yahooFetch<YahooChartResponse>(`/v8/finance/chart/${parsed.symbol}`, { range: "1d", interval: "1d" });
-        return extractQuote(data);
-      }),
-    skill("/v1/skills/stocks/search", searchSchema, "Yahoo Finance symbol search",
-      async (parsed) => {
-        const data = await yahooFetch<YahooSearchResponse>(`/v1/finance/search`, { q: parsed.query, quotesCount: "8", newsCount: "0" });
-        return ser({ results: (data.quotes ?? []).map((q) => ({ symbol: q.symbol, name: q.shortname ?? q.longname, type: q.quoteType, exchange: q.exchange })) });
-      }),
-    skill("/v1/skills/stocks/history", historySchema, "Historical price data",
-      async (parsed) => {
-        const data = await yahooFetch<YahooChartResponse>(`/v8/finance/chart/${parsed.symbol}`, { range: parsed.range, interval: parsed.interval });
-        const result = data.chart?.result?.[0];
-        const timestamps = result?.timestamp ?? [];
-        const quote = result?.indicators?.quote?.[0] ?? {};
-        const points = timestamps.map((t: number, i: number) => ({
-          date: new Date(t * 1000).toISOString().slice(0, 10),
-          open: quote.open?.[i], high: quote.high?.[i], low: quote.low?.[i], close: quote.close?.[i], volume: quote.volume?.[i],
-        }));
-        return ser({ symbol: parsed.symbol, range: parsed.range, interval: parsed.interval, count: points.length, data: points });
-      }),
-    skill("/v1/skills/stocks/compare", compareSchema, "Compare multiple stock quotes",
-      async (parsed) => {
-        const results = await Promise.allSettled(parsed.symbols.map(async (s) => {
-          const data = await yahooFetch<YahooChartResponse>(`/v8/finance/chart/${s}`, { range: "1d", interval: "1d" });
-          return extractQuote(data);
-        }));
-        return ser({ quotes: results.map((r, i) => r.status === "fulfilled" ? r.value : { symbol: parsed.symbols[i], error: r.reason?.message ?? "failed" }) });
-      }),
-    skill("/v1/skills/stocks/crypto", cryptoSchema, "Crypto pair quote (e.g. BTC-USD)",
-      async (parsed) => {
-        const data = await yahooFetch<YahooChartResponse>(`/v8/finance/chart/${parsed.symbol}`, { range: "1d", interval: "5m" });
-        return extractQuote(data);
-      }),
+		// Stocks
+		skill(
+			"/v1/skills/stocks/quote",
+			symbolSchema,
+			"Real-time stock quote",
+			async (parsed) => {
+				const data = await yahooFetch<YahooChartResponse>(
+					`/v8/finance/chart/${parsed.symbol}`,
+					{ range: "1d", interval: "1d" },
+				);
+				return extractQuote(data);
+			},
+		),
+		skill(
+			"/v1/skills/stocks/search",
+			searchSchema,
+			"Yahoo Finance symbol search",
+			async (parsed) => {
+				const data = await yahooFetch<YahooSearchResponse>(
+					`/v1/finance/search`,
+					{ q: parsed.query, quotesCount: "8", newsCount: "0" },
+				);
+				return ser({
+					results: (data.quotes ?? []).map((q) => ({
+						symbol: q.symbol,
+						name: q.shortname ?? q.longname,
+						type: q.quoteType,
+						exchange: q.exchange,
+					})),
+				});
+			},
+		),
+		skill(
+			"/v1/skills/stocks/history",
+			historySchema,
+			"Historical price data",
+			async (parsed) => {
+				const data = await yahooFetch<YahooChartResponse>(
+					`/v8/finance/chart/${parsed.symbol}`,
+					{ range: parsed.range, interval: parsed.interval },
+				);
+				const result = data.chart?.result?.[0];
+				const timestamps = result?.timestamp ?? [];
+				const quote = result?.indicators?.quote?.[0] ?? {};
+				const points = timestamps.map((t: number, i: number) => ({
+					date: new Date(t * 1000).toISOString().slice(0, 10),
+					open: quote.open?.[i],
+					high: quote.high?.[i],
+					low: quote.low?.[i],
+					close: quote.close?.[i],
+					volume: quote.volume?.[i],
+				}));
+				return ser({
+					symbol: parsed.symbol,
+					range: parsed.range,
+					interval: parsed.interval,
+					count: points.length,
+					data: points,
+				});
+			},
+		),
+		skill(
+			"/v1/skills/stocks/compare",
+			compareSchema,
+			"Compare multiple stock quotes",
+			async (parsed) => {
+				const results = await Promise.allSettled(
+					parsed.symbols.map(async (s) => {
+						const data = await yahooFetch<YahooChartResponse>(
+							`/v8/finance/chart/${s}`,
+							{ range: "1d", interval: "1d" },
+						);
+						return extractQuote(data);
+					}),
+				);
+				return ser({
+					quotes: results.map((r, i) =>
+						r.status === "fulfilled"
+							? r.value
+							: {
+									symbol: parsed.symbols[i],
+									error: r.reason?.message ?? "failed",
+								},
+					),
+				});
+			},
+		),
+		skill(
+			"/v1/skills/stocks/crypto",
+			cryptoSchema,
+			"Crypto pair quote (e.g. BTC-USD)",
+			async (parsed) => {
+				const data = await yahooFetch<YahooChartResponse>(
+					`/v8/finance/chart/${parsed.symbol}`,
+					{ range: "1d", interval: "5m" },
+				);
+				return extractQuote(data);
+			},
+		),
 
-    // OSINT
-    skill("/v1/skills/osint/sec_edgar", cikSchema, "SEC EDGAR company submissions lookup",
-      async (parsed) => {
-        const cik = parsed.cik.padStart(10, "0");
-        return cachedFetch(`edgar:${cik}`, `https://data.sec.gov/submissions/CIK${cik}.json`);
-      }),
-    skill("/v1/skills/osint/usaspending", usaspendingSchema, "USASpending.gov federal award search",
-      async (parsed) => {
-        return cachedFetch(`spend:${JSON.stringify(parsed.filters)}`, "https://api.usaspending.gov/api/v2/search/spending_by_award/", {
-          method: "POST",
-          body: JSON.stringify({
-            filters: parsed.filters,
-            fields: ["Award ID", "Recipient Name", "Award Amount", "Award Type"],
-            limit: parsed.limit ?? 10,
-            sort: "Award Amount",
-            order: "desc",
-          }),
-        });
-      }),
-    skill("/v1/skills/osint/ofac_sdn", ofacSchema, "OFAC SDN list name search",
-      async (parsed) => {
-        const q = encodeURIComponent(parsed.name);
-        const html = await ofacFetch(`/Details.aspx?id=0&name=${q}&program=SDN`);
-        return ser({ name: parsed.name, source: "ofac-sanctions-search", html });
-      }),
-    skill("/v1/skills/osint/opencorporates", opencorpSchema, "OpenCorporates company search",
-      async (parsed) => {
-        const q = encodeURIComponent(parsed.query);
-        return cachedFetch(`ocorp:${parsed.jurisdiction}:${parsed.query}`, `https://api.opencorporates.com/v0.4/companies/search?q=${q}&jurisdiction_code=${parsed.jurisdiction}`);
-      }),
-    skill("/v1/skills/osint/entity_resolve", entitySchema, "Resolve whether entity names refer to the same company",
-      async (parsed) => {
-        const { entities } = parsed;
-        const scores: Array<{ pair: [string, string]; score: number }> = [];
-        for (let i = 0; i < entities.length; i++) {
-          for (let j = i + 1; j < entities.length; j++) {
-            scores.push({ pair: [entities[i]!, entities[j]!], score: tokenScore(entities[i]!, entities[j]!) });
-          }
-        }
-        scores.sort((a, b) => b.score - a.score);
-        return ser({ matches: scores });
-      }),
-    skill("/v1/skills/osint/courtlistener", courtSchema, "CourtListener opinions and RECAP search",
-      async (parsed) => {
-        const q = encodeURIComponent(parsed.query);
-        const type = parsed.type ?? "o";
-        const endpoint = type === "o" ? "search" : "recap";
-        return cachedFetch(`court:${type}:${parsed.query}`, `https://www.courtlistener.com/api/rest/v3/${endpoint}/?q=${q}&page_size=${parsed.limit ?? 10}`);
-      }),
+		// OSINT
+		skill(
+			"/v1/skills/osint/sec_edgar",
+			cikSchema,
+			"SEC EDGAR company submissions lookup",
+			async (parsed) => {
+				const cik = parsed.cik.padStart(10, "0");
+				return cachedFetch(
+					`edgar:${cik}`,
+					`https://data.sec.gov/submissions/CIK${cik}.json`,
+				);
+			},
+		),
+		skill(
+			"/v1/skills/osint/usaspending",
+			usaspendingSchema,
+			"USASpending.gov federal award search",
+			async (parsed) => {
+				return cachedFetch(
+					`spend:${JSON.stringify(parsed.filters)}`,
+					"https://api.usaspending.gov/api/v2/search/spending_by_award/",
+					{
+						method: "POST",
+						body: JSON.stringify({
+							filters: parsed.filters,
+							fields: [
+								"Award ID",
+								"Recipient Name",
+								"Award Amount",
+								"Award Type",
+							],
+							limit: parsed.limit ?? 10,
+							sort: "Award Amount",
+							order: "desc",
+						}),
+					},
+				);
+			},
+		),
+		skill(
+			"/v1/skills/osint/ofac_sdn",
+			ofacSchema,
+			"OFAC SDN list name search",
+			async (parsed) => {
+				const q = encodeURIComponent(parsed.name);
+				const html = await ofacFetch(
+					`/Details.aspx?id=0&name=${q}&program=SDN`,
+				);
+				return ser({
+					name: parsed.name,
+					source: "ofac-sanctions-search",
+					html,
+				});
+			},
+		),
+		skill(
+			"/v1/skills/osint/opencorporates",
+			opencorpSchema,
+			"OpenCorporates company search",
+			async (parsed) => {
+				const q = encodeURIComponent(parsed.query);
+				return cachedFetch(
+					`ocorp:${parsed.jurisdiction}:${parsed.query}`,
+					`https://api.opencorporates.com/v0.4/companies/search?q=${q}&jurisdiction_code=${parsed.jurisdiction}`,
+				);
+			},
+		),
+		skill(
+			"/v1/skills/osint/entity_resolve",
+			entitySchema,
+			"Resolve whether entity names refer to the same company",
+			async (parsed) => {
+				const { entities } = parsed;
+				const scores: Array<{ pair: [string, string]; score: number }> = [];
+				for (let i = 0; i < entities.length; i++) {
+					for (let j = i + 1; j < entities.length; j++) {
+						scores.push({
+							pair: [entities[i]!, entities[j]!],
+							score: tokenScore(entities[i]!, entities[j]!),
+						});
+					}
+				}
+				scores.sort((a, b) => b.score - a.score);
+				return ser({ matches: scores });
+			},
+		),
+		skill(
+			"/v1/skills/osint/courtlistener",
+			courtSchema,
+			"CourtListener opinions and RECAP search",
+			async (parsed) => {
+				const q = encodeURIComponent(parsed.query);
+				const type = parsed.type ?? "o";
+				const endpoint = type === "o" ? "search" : "recap";
+				return cachedFetch(
+					`court:${type}:${parsed.query}`,
+					`https://www.courtlistener.com/api/rest/v3/${endpoint}/?q=${q}&page_size=${parsed.limit ?? 10}`,
+				);
+			},
+		),
 
-    // Unbroker
-    skill("/v1/skills/unbroker/simulate", unbrokerSchema, "Simulate an ERC-7857 transfer without sending",
-      async (parsed, _req, res) => {
-        const { tokenId, to } = parsed;
-        const nftAddr = config.addresses?.agentNft;
-        if (!nftAddr) { sendError(res, HTTP.SERVICE_UNAVAILABLE, "AgentNFT address not configured"); return; }
-        const nft = getNft(nftAddr);
-        const [owner, data] = await Promise.all([
-          nft.ownerOf!(BigInt(tokenId)),
-          nft.intelligentDatasOf!(BigInt(tokenId)),
-        ]);
-        return ser({
-          tokenId, to, owner,
-          dataHash: data[0]?.dataHash ?? null,
-          canTransfer: owner !== ethers.ZeroAddress,
-        });
-      }),
-    skill("/v1/skills/unbroker/route", unbrokerSchema, "Compare transfer path options",
-      async (parsed) => {
-        return ser({
-          tokenId: parsed.tokenId, to: parsed.to,
-          directGas: "25000", oracleGas: "45000",
-          recommended: "direct",
-          note: "Use oracle path if encrypted metadata re-keying is required",
-        });
-      }),
-    skill("/v1/skills/unbroker/analyze", unbrokerAnalyzeSchema, "Validate transfer proof and compute safety score",
-      async (parsed, _req, res) => {
-        const { tokenId, to, accessProof } = parsed;
-        const nftAddr = config.addresses?.agentNft;
-        if (!nftAddr) { sendError(res, HTTP.SERVICE_UNAVAILABLE, "AgentNFT address not configured"); return; }
-        const nft = getNft(nftAddr);
-        let score = 100;
-        const issues: string[] = [];
-        try {
-          const owner = await nft.ownerOf!(BigInt(tokenId));
-          const data = await nft.intelligentDatasOf!(BigInt(tokenId));
-          const dataHash = data[0]?.dataHash;
-          if (accessProof) {
-            if (accessProof.dataHash !== dataHash) { score -= 30; issues.push("Data hash mismatch"); }
-            if (accessProof.validUntil < Date.now() / 1000) { score -= 25; issues.push("Proof expired"); }
-          } else { score -= 40; issues.push("No access proof provided"); }
-          return ser({ tokenId, to, owner, dataHash, safetyScore: Math.max(0, score), rating: score >= 80 ? "SAFE" : score >= 50 ? "CAUTION" : "UNSAFE", issues });
-        } catch (err) {
-          logUnbroker.warn("unbroker analyze failed", { err: err instanceof Error ? err.message : String(err) });
-          return ser({ tokenId, to, safetyScore: 0, rating: "UNSAFE", issues: ["Failed to validate on-chain state"] });
-        }
-      }),
-    skill(
-      "/v1/skills/unbroker/execute",
-      unbrokerSchema,
-      "Execute verified transfer (server key only)",
-      async (parsed) => {
-        return ser({
-          tokenId: parsed.tokenId,
-          to: parsed.to,
-          status: "queued",
-          note: "Transfer execution requires wallet signing via encode tools",
-        });
-      },
-      false,
-      true,
-    ),
+		// Unbroker
+		skill(
+			"/v1/skills/unbroker/simulate",
+			unbrokerSchema,
+			"Simulate an ERC-7857 transfer without sending",
+			async (parsed, _req, res) => {
+				const { tokenId, to } = parsed;
+				const nftAddr = config.addresses?.agentNft;
+				if (!nftAddr) {
+					sendError(
+						res,
+						HTTP.SERVICE_UNAVAILABLE,
+						"AgentNFT address not configured",
+					);
+					return;
+				}
+				const nft = getNft(nftAddr);
+				const [owner, data] = await Promise.all([
+					nft.ownerOf!(BigInt(tokenId)),
+					nft.intelligentDatasOf!(BigInt(tokenId)),
+				]);
+				return ser({
+					tokenId,
+					to,
+					owner,
+					dataHash: data[0]?.dataHash ?? null,
+					canTransfer: owner !== ethers.ZeroAddress,
+				});
+			},
+		),
+		skill(
+			"/v1/skills/unbroker/route",
+			unbrokerSchema,
+			"Compare transfer path options",
+			async (parsed) => {
+				return ser({
+					tokenId: parsed.tokenId,
+					to: parsed.to,
+					directGas: "25000",
+					oracleGas: "45000",
+					recommended: "direct",
+					note: "Use oracle path if encrypted metadata re-keying is required",
+				});
+			},
+		),
+		skill(
+			"/v1/skills/unbroker/analyze",
+			unbrokerAnalyzeSchema,
+			"Validate transfer proof and compute safety score",
+			async (parsed, _req, res) => {
+				const { tokenId, to, accessProof } = parsed;
+				const nftAddr = config.addresses?.agentNft;
+				if (!nftAddr) {
+					sendError(
+						res,
+						HTTP.SERVICE_UNAVAILABLE,
+						"AgentNFT address not configured",
+					);
+					return;
+				}
+				const nft = getNft(nftAddr);
+				let score = 100;
+				const issues: string[] = [];
+				try {
+					const owner = await nft.ownerOf!(BigInt(tokenId));
+					const data = await nft.intelligentDatasOf!(BigInt(tokenId));
+					const dataHash = data[0]?.dataHash;
+					if (accessProof) {
+						if (accessProof.dataHash !== dataHash) {
+							score -= 30;
+							issues.push("Data hash mismatch");
+						}
+						if (accessProof.validUntil < Date.now() / 1000) {
+							score -= 25;
+							issues.push("Proof expired");
+						}
+					} else {
+						score -= 40;
+						issues.push("No access proof provided");
+					}
+					return ser({
+						tokenId,
+						to,
+						owner,
+						dataHash,
+						safetyScore: Math.max(0, score),
+						rating: score >= 80 ? "SAFE" : score >= 50 ? "CAUTION" : "UNSAFE",
+						issues,
+					});
+				} catch (err) {
+					logUnbroker.warn("unbroker analyze failed", {
+						err: err instanceof Error ? err.message : String(err),
+					});
+					return ser({
+						tokenId,
+						to,
+						safetyScore: 0,
+						rating: "UNSAFE",
+						issues: ["Failed to validate on-chain state"],
+					});
+				}
+			},
+		),
+		skill(
+			"/v1/skills/unbroker/execute",
+			unbrokerSchema,
+			"Execute verified transfer (server key only)",
+			async (parsed) => {
+				return ser({
+					tokenId: parsed.tokenId,
+					to: parsed.to,
+					status: "queued",
+					note: "Transfer execution requires wallet signing via encode tools",
+				});
+			},
+			false,
+			true,
+		),
 
-    // OSS forensics: server key + GITHUB_TOKEN; IOC matches redacted
-    skill(
-      "/v1/skills/oss-forensics/investigate",
-      investigateSchema,
-      "GitHub repo forensics + optional keccak256 bytecode comparison",
-      async (parsed) => {
-        const base = await investigateRepo(parsed.owner, parsed.repo);
-        const bytecode = parsed.bytecode
-          ? await compareBytecode(parsed.bytecode)
-          : null;
-        return ser({ ...base, bytecode });
-      },
-      true,
-      true,
-    ),
-    skill(
-      "/v1/skills/oss-forensics/commits",
-      commitsSchema,
-      "Commit history with force-push detection",
-      async (parsed) =>
-        ser(
-          await fetchCommits(
-            parsed.owner,
-            parsed.repo,
-            parsed.sha,
-            parsed.perPage,
-          ),
-        ),
-      true,
-      true,
-    ),
-    skill(
-      "/v1/skills/oss-forensics/ioc",
-      iocSchema,
-      "IOC regex scan (secret matches redacted)",
-      async (parsed) =>
-        ser(await scanIocs(parsed.owner, parsed.repo, parsed.path)),
-      true,
-      true,
-    ),
-    skill(
-      "/v1/skills/oss-forensics/audit",
-      auditSchema,
-      "Dependency manifest audit + storage layout detection",
-      async (parsed) => ser(await auditDeps(parsed.owner, parsed.repo)),
-      true,
-      true,
-    ),
-  ]);
+		// OSS forensics: server key + GITHUB_TOKEN; IOC matches redacted
+		skill(
+			"/v1/skills/oss-forensics/investigate",
+			ossInvestigateSchema,
+			"GitHub repo forensics + optional keccak256 bytecode comparison",
+			async (parsed) => {
+				const base = await investigateRepo(parsed.owner, parsed.repo);
+				const bytecode = parsed.bytecode
+					? await compareBytecode(parsed.bytecode)
+					: null;
+				return ser({ ...base, bytecode });
+			},
+			true,
+			true,
+		),
+		skill(
+			"/v1/skills/oss-forensics/commits",
+			ossCommitsSchema,
+			"Commit history with force-push detection",
+			async (parsed) =>
+				ser(
+					await fetchCommits(
+						parsed.owner,
+						parsed.repo,
+						parsed.sha,
+						parsed.perPage,
+					),
+				),
+			true,
+			true,
+		),
+		skill(
+			"/v1/skills/oss-forensics/ioc",
+			ossIocSchema,
+			"IOC regex scan (secret matches redacted)",
+			async (parsed) =>
+				ser(await scanIocs(parsed.owner, parsed.repo, parsed.path)),
+			true,
+			true,
+		),
+		skill(
+			"/v1/skills/oss-forensics/audit",
+			ossAuditSchema,
+			"Dependency manifest audit + storage layout detection",
+			async (parsed) => ser(await auditDeps(parsed.owner, parsed.repo)),
+			true,
+			true,
+		),
+	]);
 
-  return router;
+	return router;
 }

@@ -2,7 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import type { Request, Response, NextFunction } from "express";
 
 /** Who presented a valid API key. Client keys are intentionally weaker. */
-export type AuthPrincipal = "none" | "server" | "client" | "disabled";
+type AuthPrincipal = "none" | "server" | "client" | "disabled";
 
 export type AuthRequest = Request & {
 	authPrincipal?: AuthPrincipal;
@@ -29,7 +29,7 @@ function timingSafeMatch(presented: string, candidates: string[]): boolean {
  * Browser/client keys may only hit these path prefixes (method-aware where needed).
  * Everything else requires the server API key.
  */
-export const CLIENT_ALLOWED_ROUTES: ReadonlyArray<{
+const CLIENT_ALLOWED_ROUTES: ReadonlyArray<{
 	methods?: readonly string[];
 	match: (path: string) => boolean;
 }> = [

@@ -39,7 +39,7 @@ export function getComputeBaseUrl(): string {
 const logRouter = createLogger("compute-router");
 const ROUTER_TIMEOUT_MS = 30_000;
 
-export interface RouterClientOptions {
+interface RouterClientOptions {
 	timeout?: number;
 }
 
