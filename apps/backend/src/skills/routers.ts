@@ -1,6 +1,6 @@
 import type { Router, Request, Response } from "express";
 import { ethers } from "ethers";
-import { z } from "zod";
+import type { z } from "zod";
 import type { ServerConfig } from "../server.js";
 import {
 	createSkillRouter,
@@ -998,13 +998,20 @@ export function createSkillRouters(config: ServerConfig): Router {
 			"/v1/skills/unbroker/execute",
 			unbrokerSchema,
 			"Execute verified transfer (server key only)",
-			async (parsed) => {
-				return ser({
-					tokenId: parsed.tokenId,
-					to: parsed.to,
-					status: "queued",
-					note: "Transfer execution requires wallet signing via encode tools",
-				});
+			// NOT IMPLEMENTED by design: there is NO unbroker/pdd.py integration
+			// in this repo (no pdd executable, no broker ledger, no signing
+			// path), so returning fake {status:"queued"} data would mislead
+			// callers into believing a transfer was executed. Real transfer
+			// execution happens through the wallet-signing flow
+			// (/v1/agents/:id/transfer + iTransferFrom) — not through this
+			// skill. Wire a genuine 501 so clients see a truthful error.
+			async (_parsed, _req, res) => {
+				sendError(
+					res,
+					HTTP.NOT_IMPLEMENTED,
+					"unbroker execute is not implemented (no unbroker/pdd integration in this repo); use the wallet-signing transfer flow (/v1/agents/:id/transfer) instead",
+					"NOT_IMPLEMENTED",
+				);
 			},
 			false,
 			true,

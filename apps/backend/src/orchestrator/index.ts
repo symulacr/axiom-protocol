@@ -214,6 +214,13 @@ export class StrategyRunner {
 				)
 			: this.runInference(strategy, signal, onchainTask, onChunk);
 
+		// Storage read is intentionally stubbed: a real 0G storage read would
+		// return the Merkle root + byte size of the uploaded encrypted payload,
+		// but no payload upload path exists for strategy data yet
+		// (docs/current-state.md — "Merkle proofs required"). Keep the configured
+		// modelDataRoot and size 0 so Tick events honestly report that storage
+		// was NOT measured; settlement skip reasons already state this
+		// (settlementSkipReason, tested in orchestrator/settle-parse.test.ts).
 		const [inferenceResult, onchainResult, storageResult] =
 			await Promise.allSettled([
 				inferenceTask,

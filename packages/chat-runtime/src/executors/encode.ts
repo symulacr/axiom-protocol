@@ -81,16 +81,26 @@ async function encodeMint(
 			ok: false as const,
 			content: JSON.stringify({ error: "dataDescription required" }),
 		};
+	// Canonical mint dataHash: keccak256(toHex(description)) — identical to the
+	// UI mint wizard derivation (apps/frontend/src/hooks/useMintWizard.ts). The
+	// contract stores this 32-byte value verbatim and the oracle only signs
+	// ownership proofs for hashes it has SEEN, so both mint paths MUST derive
+	// the same hash for the same agent name. The real dataHash is the 0G storage
+	// Merkle root of the uploaded payload (docs/current-state.md); until the
+	// payload is uploaded this deterministic name hash is used. The description
+	// is trimmed so " Foo " derives the same hash as "Foo" (frontend normalizes
+	// the same way).
+	const description = String(args.dataDescription).trim();
 	// dataHash is optional for first-time users. When omitted, derive a stable
 	// placeholder hash from the agent name so minting works without manual
 	// metadata hashing; real sealed data can be associated later via update().
 	const dataHash =
 		typeof args.dataHash === "string" && args.dataHash.length > 0
 			? String(args.dataHash)
-			: keccak256(toHex(String(args.dataDescription)));
+			: keccak256(toHex(description));
 
 	const body = {
-		dataDescription: String(args.dataDescription),
+		dataDescription: description,
 		dataHash,
 		to,
 	};

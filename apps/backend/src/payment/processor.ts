@@ -154,6 +154,14 @@ export class PaymentProcessorClient {
 	}
 
 	private async ensureAllowance(amount: bigint): Promise<void> {
+		// Exact-amount allowance semantics: approve just `amount` when the
+		// current allowance is insufficient. Deliberately NOT MaxUint256/
+		// infinity — the contract only needs `amount` (AxiomPaymentProcessor
+		// "The payer must approve this contract for `amount`"), and an exact
+		// approval never leaves unlimited spending power on the processor.
+		// The frontend direct-write path (usePayment.payForAgent) mirrors this
+		// exact-amount behavior; infinity approvals exist only in the E2E
+		// harness (cli/e2e/erc20.ts).
 		const current = await this.token.contract.allowance(
 			this.signer.address,
 			this.address,

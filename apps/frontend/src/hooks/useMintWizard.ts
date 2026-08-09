@@ -34,13 +34,21 @@ export function useMintWizard() {
 
 	const deriveDataHash = useCallback(
 		(name?: string) => {
-			const payload = ensurePayload(name);
-			const bytes = toBytes(payload);
-			const hash = keccak256(bytes);
+			const n = (name ?? agentName).trim() || "Axiom agent";
+			// Canonical mint dataHash: keccak256(toHex(name)) — identical to the
+			// chat mint_agent derivation (packages/chat-runtime/src/executors/
+			// encode.ts). The contract stores this 32-byte value verbatim and the
+			// oracle only signs ownership proofs for hashes it has SEEN, so both
+			// mint paths MUST derive the same hash for the same agent name. The
+			// real dataHash is the 0G storage Merkle root of the uploaded payload
+			// (docs/current-state.md "Merkle root = dataHash"); until the payload
+			// is uploaded this deterministic name hash is used.
+			const hash = keccak256(toHex(n));
+			ensurePayload(name); // keep the metadata preview in sync
 			setDataHash(hash);
 			return hash;
 		},
-		[ensurePayload],
+		[agentName, ensurePayload],
 	);
 
 	/** POST to oracle: register the mint dataHash. */
@@ -105,7 +113,8 @@ export function useMintWizard() {
 		async (dataHash: `0x${string}`): Promise<`0x${string}`> =>
 			encodeMutation.mutateAsync({
 				dataHash,
-				description: agentName.trim(),
+				// Must match the name used in deriveDataHash (keccak256(toHex(name)))
+				description: agentName.trim() || "Axiom agent",
 			}),
 		[encodeMutation, agentName],
 	);

@@ -88,6 +88,9 @@ export function registerPerformanceRoutes(
 					sellCount: counts.sellCount,
 					holdCount: counts.holdCount,
 					buyRate,
+					// Canonical winRate: fraction of ticks with a non-hold action
+					// (buyCount + sellCount) / totalTicks. The batch endpoint uses
+					// the identical formula — never alias this to buyRate.
 					winRate:
 						totalTicks > 0
 							? (counts.buyCount + counts.sellCount) / totalTicks
@@ -156,13 +159,21 @@ export function registerPerformanceRoutes(
 				const totalTicks =
 					counts.buyCount + counts.sellCount + counts.holdCount;
 				const buyRate = totalTicks > 0 ? counts.buyCount / totalTicks : 0;
+				// winRate MUST use the same formula as the single-agent handler
+				// above: fraction of ticks with a non-hold action (buy OR sell).
+				// It is NOT an alias for buyRate — keeping the two identical here
+				// made batch responses diverge from per-agent responses.
+				const winRate =
+					totalTicks > 0
+						? (counts.buyCount + counts.sellCount) / totalTicks
+						: 0;
 				results[id] = {
 					totalTicks,
 					buyCount: counts.buyCount,
 					sellCount: counts.sellCount,
 					holdCount: counts.holdCount,
 					buyRate,
-					winRate: buyRate,
+					winRate,
 				};
 			}
 

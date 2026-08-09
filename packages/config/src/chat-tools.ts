@@ -243,7 +243,7 @@ const SKILL_TOOL_DEFS = [
 	skill({
 		name: "unbroker_execute",
 		label: "Unbroker Execute",
-		hint: "Execute an unbroker swap on-chain",
+		hint: "NOT IMPLEMENTED — backend returns 501 (no unbroker/pdd integration in this repo). Do NOT call or present as executable; transfers require the wallet-signing flow (/v1/agents/:id/transfer + iTransferFrom).",
 		requiresWallet: true,
 		requiresTokenId: true,
 		friction: "high",

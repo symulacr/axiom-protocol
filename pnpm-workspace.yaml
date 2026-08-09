@@ -3,8 +3,8 @@ packages:
   - "packages/*"
 
 overrides:
-  ethers: 6.16.0
-  "@0gfoundation/0g-storage-ts-sdk>ethers": 6.16.0
+  ethers: 6.17.0
+  "@0gfoundation/0g-storage-ts-sdk>ethers": 6.17.0
 
 allowBuilds:
   esbuild: true
