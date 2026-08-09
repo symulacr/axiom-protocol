@@ -102,8 +102,8 @@ const OUTPUT_RESERVE_TOKENS = 4096;
 const SAFETY_MARGIN_TOKENS = 1024;
 const RECENT_KEEP = 6;
 
-function estimateTokens(text: string): number {
-	return Math.ceil(text.length / 4);
+function estimateTokens(text: string | number): number {
+	return Math.ceil((typeof text === "string" ? text.length : text) / 4);
 }
 
 export function fitToContext(
@@ -123,12 +123,25 @@ export function fitToContext(
 		estimateTokens(opts.system) +
 		estimateTokens(JSON.stringify(opts.tools ?? []));
 	const maxHistoryTokens = Math.max(0, budget - overheadTokens);
-	let history = toChatApiMessages(messages);
-	while (history.length > keep) {
-		if (estimateTokens(JSON.stringify(history)) <= maxHistoryTokens) break;
-		history = history.slice(1);
+	const history = toChatApiMessages(messages);
+	if (history.length <= keep) return history;
+	// Common case: the history already fits — one stringify, same cost as before.
+	if (estimateTokens(JSON.stringify(history)) <= maxHistoryTokens)
+		return history;
+	// Tight budget: the exact serialized array length is `"[" + Σ serialized_i +
+	// "," separators + "]"` (Σ|s| + k + 1), so per-message lengths are precomputed
+	// once and messages are dropped by arithmetic instead of re-stringifying the
+	// whole array on every iteration (O(n²) allocations → O(n)).
+	const serialized = history.map((m) => JSON.stringify(m));
+	let totalLen =
+		serialized.reduce((a, s) => a + s.length, 0) + serialized.length + 1;
+	let drop = 0;
+	while (history.length - drop > keep) {
+		if (estimateTokens(totalLen) <= maxHistoryTokens) break;
+		totalLen -= serialized[drop]!.length + 1; // oldest message + its separator comma
+		drop++;
 	}
-	return history;
+	return history.slice(drop);
 }
 
 export function compactHistory<T extends ChatApiMessage>(

@@ -1,0 +1,16 @@
+# Bun-native port — P0 prep (Cycle 3). Bun is a co-runtime with Node; pnpm
+# remains the canonical package manager / lockfile for CI until Phase 5
+# hardening. See report/campaign/cycle-03/AGENT_B_BUNPORT.md.
+
+# Opt out of anonymous usage telemetry (top-level setting, verified on
+# bun 1.4.0-canary; equivalent env: DO_NOT_TRACK=1).
+telemetry = false
+
+[install]
+# Never let `bun install` mutate pnpm-lock.yaml or write a bun.lock
+# implicitly. Repo has no bun.lock; this keeps bun installs read-only.
+frozenLockfile = true
+
+[test]
+# `bun test` runs TS natively — a drop-in for `node --import tsx --test`
+# at packages/config and packages/chat-runtime (parity verified in P1).

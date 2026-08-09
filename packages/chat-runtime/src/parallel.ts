@@ -20,7 +20,7 @@ export function groupParallelTools<T extends ToolCallLike>(calls: T[]): T[][] {
 	}
 	if (open && open.length) batches.push(open);
 
-	return batches.filter((b) => b.length > 0);
+	return batches;
 }
 
 function isWalletBound(tc: ToolCallLike): boolean {
