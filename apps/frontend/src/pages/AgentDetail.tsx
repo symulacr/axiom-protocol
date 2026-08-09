@@ -80,7 +80,12 @@ import {
 	HelpTip,
 	withViewTransition,
 } from "../components/ui.js";
-import { PLACEHOLDER, truncateHex, parseTokenId } from "../utils/format.js";
+import {
+	PLACEHOLDER,
+	truncateHex,
+	truncateAddress,
+	parseTokenId,
+} from "../utils/format.js";
 
 const VALID_SECTIONS = [
 	"overview",
@@ -149,10 +154,17 @@ export function AgentDetail(): ReactElement {
 	});
 	const { data, isLoading: metaLoading, error: metaError } = metadata;
 
-	const { events: agentEvents } = useAgentEvents(tokenId, {
-		enabled: hooksEnabled && activeSection === "activity",
-	});
-	const { metrics, history: perfHistory } = usePerformance(tokenId, {
+	const { events: agentEvents, isLoading: eventsLoading } = useAgentEvents(
+		tokenId,
+		{
+			enabled: hooksEnabled && activeSection === "activity",
+		},
+	);
+	const {
+		metrics,
+		history: perfHistory,
+		isLoading: perfLoading,
+	} = usePerformance(tokenId, {
 		enabled: hooksEnabled && activeSection === "performance",
 	});
 	const health = useHealth({ enabled: activeSection === "overview" });
@@ -165,6 +177,43 @@ export function AgentDetail(): ReactElement {
 				<Alert variant="error" style={{ marginBottom: "var(--space-lg)" }}>
 					Invalid token ID in the URL. The ID must be a positive integer.
 				</Alert>
+			</div>
+		);
+	}
+
+	// Confirmed nonexistent: metadata loaded, ownerOf reverted (the canonical
+	// on-chain "this token does not exist" signal), no query-level error.
+	const tokenNotFound =
+		hooksEnabled &&
+		isConnected &&
+		!metaLoading &&
+		metaError === null &&
+		data === null;
+
+	if (tokenNotFound) {
+		return (
+			<div>
+				<div style={{ marginBottom: "var(--space-md)" }}>
+					<Link
+						to="/app"
+						style={{
+							color: COLORS.textMuted,
+							fontSize: "var(--text-sm)",
+							textDecoration: "none",
+						}}
+					>
+						← Home
+					</Link>
+				</div>
+				<EmptyState title={`Agent #${tokenId.toString()} not found`}>
+					<p style={{ margin: 0 }}>
+						No agent with this ID exists on the current chain. The ID may be
+						wrong, or the agent may have been minted on another network.
+					</p>
+					<Link to="/app" style={{ textDecoration: "none" }}>
+						<Button variant="primary">Back to your agents</Button>
+					</Link>
+				</EmptyState>
 			</div>
 		);
 	}
@@ -413,8 +462,12 @@ export function AgentDetail(): ReactElement {
 										<dl className="agent-meta__grid fade-enter">
 											<dt>Owner</dt>
 											<dd>
-												<MonoLabel copyable text={data.owner}>
-													{data.owner}
+												<MonoLabel
+													copyable
+													text={data.owner}
+													title={data.owner}
+												>
+													{truncateAddress(data.owner)}
 												</MonoLabel>
 											</dd>
 											<dt>Data hash</dt>
@@ -515,7 +568,11 @@ export function AgentDetail(): ReactElement {
 								</div>
 							}
 						>
-							{agentEvents.length > 0 ? (
+							{eventsLoading && agentEvents.length === 0 ? (
+								<Card style={{ marginBottom: "var(--space-xl)" }}>
+									<Skeleton height={96} />
+								</Card>
+							) : agentEvents.length > 0 ? (
 								<Card style={{ marginBottom: "var(--space-xl)" }}>
 									<SectionTitle>Agent Activity</SectionTitle>
 									<EventTimeline
@@ -555,7 +612,11 @@ export function AgentDetail(): ReactElement {
 								</div>
 							}
 						>
-							{metrics !== null && metrics.totalTicks > 0 ? (
+							{perfLoading && metrics === null ? (
+								<Card style={{ marginBottom: "var(--space-xl)" }}>
+									<Skeleton height={96} />
+								</Card>
+							) : metrics !== null && metrics.totalTicks > 0 ? (
 								<>
 									<PerformanceMetrics metrics={metrics} history={perfHistory} />
 									<TradeHistory history={perfHistory} />

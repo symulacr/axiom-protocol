@@ -10,7 +10,7 @@
     "start": "node dist/index.js",
     "prestart": "pnpm build",
     "dev": "node --import tsx src/index.ts",
-    "test": "node --import tsx --test $(find src test -name '*.test.ts' 2>/dev/null | sort)",
+    "test": "node --import tsx --test --test-concurrency=1 --test-force-exit $(find src test -name '*.test.ts' 2>/dev/null | sort)",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
     "pre-run-e2e": "pnpm --filter @axiom/oracle build && pnpm --filter @axiom/chat-runtime build && pnpm build",
@@ -25,6 +25,7 @@
   "dependencies": {
     "@axiom/chat-runtime": "workspace:*",
     "@axiom/config": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "compression": "^1.7.4",
     "cors": "^2.8.6",
     "ethers": "^6.17.0",

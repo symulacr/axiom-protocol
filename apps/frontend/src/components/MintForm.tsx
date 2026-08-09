@@ -15,8 +15,7 @@ import {
 	useWaitForTransactionReceipt,
 	useWalletClient,
 } from "wagmi";
-import { formatEther } from "viem";
-import { humanizeError } from "../utils/format.js";
+import { formatTokenAmount, humanizeError } from "../utils/format.js";
 import { AGENT_NFT_ABI } from "@axiom/config/abis";
 import { TRANSFER_TOPIC, ZERO_DATA_ROOT } from "@axiom/config/constants";
 import { getAxiomAgentNftAddress } from "../abi/addresses.js";
@@ -238,7 +237,7 @@ export function MintForm({
 								"Loading…"
 							) : (
 								<>
-									{formatEther(mintFeeWei)} 0G
+									{formatTokenAmount(mintFeeWei)} 0G
 									{feeError ? (
 										<span style={{ color: COLORS.warning }}>
 											{" "}

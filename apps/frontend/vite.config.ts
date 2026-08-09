@@ -1,7 +1,12 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import { resolve } from "node:path";
 
 export default defineConfig({
+	// Single source of truth: the root /home/eya/og/.env holds every VITE_*
+	// var (deployed addresses, API key, URLs). Read it from there instead of
+	// the stale apps/frontend/.env (which had pre-July-22 testnet addresses).
+	envDir: resolve(import.meta.dirname, "../.."),
 	plugins: [react()],
 	server: {
 		port: 5173,

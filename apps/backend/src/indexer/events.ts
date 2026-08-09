@@ -1,5 +1,5 @@
 import { parseAbiItem, type AbiEvent, type Address } from "viem";
-import { getAddresses } from "@axiom/config/addresses";
+import { resolveAddress } from "@axiom/config/addresses";
 
 export type IndexerContractAddresses = {
 	readonly AXIOM_AGENT_NFT: Address;
@@ -11,12 +11,14 @@ export type IndexerContractAddresses = {
 export function resolveIndexerAddresses(
 	env: Record<string, unknown> = process.env as Record<string, unknown>,
 ): IndexerContractAddresses {
-	const a = getAddresses(env);
+	// Resolve only the four contracts the indexer watches. `getAddresses()`
+	// also requires AXIOM_MOCK_USDC_ADDRESS, which backend env-schema strips —
+	// resolving all five here made `src/index.ts` fail to boot locally.
 	return {
-		AXIOM_AGENT_NFT: a.agentNft,
-		AXIOM_STRATEGY_VAULT: a.strategyVault,
-		AXIOM_TEE_VERIFIER: a.teeVerifier,
-		AXIOM_PAYMENT_PROCESSOR: a.paymentProcessor,
+		AXIOM_AGENT_NFT: resolveAddress("agentNft", env),
+		AXIOM_STRATEGY_VAULT: resolveAddress("strategyVault", env),
+		AXIOM_TEE_VERIFIER: resolveAddress("teeVerifier", env),
+		AXIOM_PAYMENT_PROCESSOR: resolveAddress("paymentProcessor", env),
 	};
 }
 

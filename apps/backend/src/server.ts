@@ -56,6 +56,7 @@ import { registerPerformanceRoutes } from "./routers/performance.js";
 import { registerOrchestratorRoutes } from "./routers/orchestrator.js";
 import { createArchiveRouter } from "./routers/archive.js";
 import { createSkillRouters } from "./skills/routers.js";
+import { createMcpRouter } from "./mcp/server.js";
 import { chatBodySchema, royaltySchema } from "./route-schemas.js";
 import { createLogger } from "./utils/logger.js";
 import { sendError } from "./utils/response.js";
@@ -219,6 +220,9 @@ export function startServer(config: ServerConfig): {
 
 	const ogChainId = config.env?.AXIOM_CHAIN_ID ?? ARISTOTLE_CHAIN_ID;
 	const startedAt = Date.now();
+	// Resolved once the server is listening so MCP tools can self-call the
+	// REST surface even when bound to an ephemeral port (tests use port 0).
+	let mcpBaseUrl: string | null = null;
 	const oracle = new DefaultSignerOracleClient({
 		baseUrl: config.oracleBaseUrl,
 		apiKey: config.env?.AXIOM_API_KEY,
@@ -318,6 +322,12 @@ export function startServer(config: ServerConfig): {
 
 	registerPaymentRoutes(app, config, nftTc, getPayment);
 
+	registerMcpRoutes(
+		app,
+		config,
+		() => mcpBaseUrl ?? `http://127.0.0.1:${config.port}`,
+	);
+
 	registerNotFoundHandler(app);
 	registerErrorHandlers(app);
 
@@ -325,6 +335,10 @@ export function startServer(config: ServerConfig): {
 	setupWebSocketServer(httpServer, config);
 
 	httpServer.listen(config.port, config.bind, () => {
+		const addr = httpServer.address();
+		if (addr && typeof addr === "object") {
+			mcpBaseUrl = `http://127.0.0.1:${addr.port}`;
+		}
 		log.info(`Listening on http://${config.bind}:${config.port}`);
 		log.info(`Signer: ${config.signer.address}`);
 		log.info(
@@ -588,6 +602,20 @@ function registerMetaRoutes(
 		},
 		config,
 	);
+}
+
+function registerMcpRoutes(
+	app: Express,
+	config: ServerConfig,
+	getBaseUrl: () => string,
+): void {
+	REGISTERED_ROUTES.push({
+		method: "POST",
+		path: "/mcp",
+		consumer: "mcp",
+		description: "MCP streamable HTTP endpoint (read-only tools)",
+	});
+	app.use("/mcp", createMcpRouter(config, { baseUrl: getBaseUrl }));
 }
 
 function registerPaymentRoutes(

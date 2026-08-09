@@ -1,3 +1,5 @@
+import { formatUnits } from "viem";
+
 export const PLACEHOLDER = "\u2014";
 const ELLIPSIS = "\u2026";
 
@@ -6,6 +8,33 @@ export function truncateHex(value: string, head = 10, tail = 6): string {
 		return value;
 	}
 	return `${value.slice(0, head)}${ELLIPSIS}${value.slice(-tail)}`;
+}
+
+/**
+ * Shortens an EVM address to the familiar 0x1234…abcd form (0x + 4 chars + 4 chars).
+ * Returns the input unchanged when it is not long enough to shorten.
+ */
+export function truncateAddress(value: string, head = 6, tail = 4): string {
+	if (!value.startsWith("0x") || value.length <= head + tail + 2) {
+		return value;
+	}
+	return `${value.slice(0, head)}${ELLIPSIS}${value.slice(-tail)}`;
+}
+
+/**
+ * Formats a wei amount as a readable token string with trailing zeros trimmed
+ * (up to `maxFractionDigits` decimals) — never raw 18-decimal noise.
+ */
+export function formatTokenAmount(
+	wei: bigint,
+	decimals = 18,
+	maxFractionDigits = 6,
+): string {
+	const value = Number(formatUnits(wei, decimals));
+	if (!Number.isFinite(value)) return "0";
+	return value.toLocaleString(undefined, {
+		maximumFractionDigits: maxFractionDigits,
+	});
 }
 
 export function parseTokenId(raw: string | undefined): bigint | null {
