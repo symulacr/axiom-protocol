@@ -1,5 +1,5 @@
 import type { JsonRpcProvider } from "ethers";
-import { EVENT_NAMES } from "@axiom/config";
+import { EVENT_NAMES, getRuntimeConfig } from "@axiom/config";
 import {
   resolveIndexerAddresses,
   type AxiomEvent,
@@ -9,11 +9,13 @@ import { decodeAxiomLog, type WatchedEvent } from "./events/parser.js";
 import { pollOnce, logsByChainOrder } from "./watcher/poll.js";
 import { loadCheckpoint, saveCheckpoint } from "./watcher/checkpoint.js";
 
-const POLL_WINDOW_BLOCKS = 50n;
+const runtimeConfig = getRuntimeConfig();
 
-export const POLL_INTERVAL_MS = 12_000;
+const POLL_WINDOW_BLOCKS = BigInt(runtimeConfig.indexerPollWindowBlocks);
 
-export const REORG_SAFE_DEPTH = 10n;
+const POLL_INTERVAL_MS = runtimeConfig.indexerPollIntervalMs;
+
+const REORG_SAFE_DEPTH = runtimeConfig.indexerReorgSafeDepth;
 
 /**
  * Next block to poll after processing up through `toBlock`.
@@ -272,7 +274,7 @@ export class Watcher {
         return; // continue poll loop
       }
       const backoff = Math.min(
-        this.intervalMs * Math.pow(2, this.consecutiveFailures),
+        this.intervalMs * 2 ** this.consecutiveFailures,
         60_000,
       );
       const { promise, resolve } = Promise.withResolvers<void>();

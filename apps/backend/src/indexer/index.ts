@@ -1,5 +1,6 @@
-import { ethers } from "ethers";
+import type { ethers } from "ethers";
 import { getEventStore } from "../events/store.js";
+import { RUNTIME_DEFAULTS } from "@axiom/config";
 import { Watcher, buildDefaultWatchList } from "./watcher.js";
 import { resolveIndexerAddresses } from "./events.js";
 import type { AxiomEvent } from "./events.js";
@@ -49,7 +50,10 @@ export class IndexerService {
       provider,
       sink,
       watchList,
-      pollWindow: BigInt(env.INDEXER_POLL_WINDOW_BLOCKS ?? 500),
+      pollWindow: BigInt(
+        env.INDEXER_POLL_WINDOW_BLOCKS ??
+          RUNTIME_DEFAULTS.indexerPollWindowBlocks,
+      ),
       ...(env.INDEXER_START_BLOCK !== undefined
         ? { startBlock: BigInt(env.INDEXER_START_BLOCK) }
         : {}),

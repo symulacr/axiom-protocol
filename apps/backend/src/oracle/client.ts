@@ -7,9 +7,9 @@ import {
   type OwnershipProofResultWithMeta,
 } from "@axiom/config";
 export type { OwnershipProofInput, OwnershipProofResult, AccessProofInput };
-import { bigintReplacer } from "@axiom/config";
+import { bigintReplacer, getRuntimeConfig } from "@axiom/config";
 
-const ORACLE_TIMEOUT_MS = 10_000;
+const ORACLE_TIMEOUT_MS = getRuntimeConfig().oracleTimeoutMs;
 
 export interface OracleClientConfig {
   baseUrl: string; // e.g., "http://127.0.0.1:8787"

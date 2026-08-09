@@ -1,4 +1,4 @@
-import { API_KEY, BACKEND_URL } from "../config/env.js";
+import { API_KEY, BACKEND_URL, ORACLE_URL } from "../config/env.js";
 
 export function agentPath(id: bigint | string, resource?: string): string {
   const base = `/v1/agents/${id.toString()}`;
@@ -186,6 +186,35 @@ export async function apiFetchResponse(
     );
     if (!res.ok) throw await buildHttpError(path, res);
     return res;
+  } catch (err) {
+    wrapFetchError(err);
+  }
+}
+
+/** apiFetch equivalent for the oracle service (ORACLE_URL base). */
+export async function oracleFetch<T>(
+  path: string,
+  init: RequestInit & { timeout?: number } = {},
+): Promise<T> {
+  const timeout = init.timeout ?? DEFAULT_TIMEOUT;
+  try {
+    const res = await fetch(
+      `${ORACLE_URL.replace(/\/$/, "")}${path}`,
+      withTimeout(
+        {
+          ...init,
+          headers: {
+            "content-type": "application/json",
+            accept: "application/json",
+            ...(API_KEY ? { "x-api-key": API_KEY } : {}),
+            ...((init.headers as Record<string, string>) ?? {}),
+          },
+        },
+        timeout,
+      ),
+    );
+    if (!res.ok) throw await buildHttpError(path, res);
+    return res.json() as Promise<T>;
   } catch (err) {
     wrapFetchError(err);
   }

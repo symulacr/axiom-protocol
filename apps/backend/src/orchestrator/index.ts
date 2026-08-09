@@ -1,7 +1,7 @@
 import type { Wallet } from "ethers";
 import {
   Contract,
-  JsonRpcProvider,
+  type JsonRpcProvider,
   type Provider,
   type TransactionResponse,
 } from "ethers";
@@ -15,7 +15,7 @@ import {
   resolveChainId,
 } from "../compute/index.js";
 import { pickOGNetwork } from "@axiom/config/networks";
-import { EVENT_NAMES } from "@axiom/config";
+import { EVENT_NAMES, getRuntimeConfig } from "@axiom/config";
 import { VAULT_ABI, VAULT_ABI_LEGACY } from "@axiom/config/abis";
 import { createLogger } from "../utils/logger.js";
 import { extractErrorMessage } from "../utils/response.js";
@@ -177,7 +177,7 @@ export class StrategyRunner {
     const chainId = resolveChainId(config.chainId);
     this.chainId = chainId;
     this.provider = createStaticProvider(config.evmRpc, chainId, {
-      timeoutMs: 10_000,
+      timeoutMs: getRuntimeConfig().orchestratorProviderTimeoutMs,
     });
     this.evmRpc = config.evmRpc;
     this.addresses = config.addresses;
@@ -407,6 +407,8 @@ export class StrategyRunner {
           messages,
           stream: true,
           response_format: { type: "json_object" },
+          // 0G router extension: suppress reasoning tokens for deterministic JSON.
+          ...({ chat_template_kwargs: { enable_thinking: false } } as Record<string, unknown>),
         })
         .withResponse();
       let full = "";
@@ -459,7 +461,10 @@ export class StrategyRunner {
     const vaultBalance = rawBalance ?? 0n;
 
     const latest = await this.provider.getBlockNumber();
-    const fromBlock = Math.max(0, latest - 2000);
+    const fromBlock = Math.max(
+      0,
+      latest - getRuntimeConfig().orchestratorEventScanBlocks,
+    );
     const strategyFilter = vaultTc.raw.filters.StrategySet(tokenId);
     const depositFilter = vaultTc.raw.filters.Deposited(tokenId);
     const strategyEvent = vaultTc.iface.getEvent(EVENT_NAMES.StrategySet);

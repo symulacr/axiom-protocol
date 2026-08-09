@@ -1,11 +1,19 @@
 import { useCallback, useState } from "react";
+import { useAccount, useWalletClient } from "wagmi";
+import { useMutation } from "@tanstack/react-query";
 import { keccak256, toBytes, toHex } from "viem";
-import { API_KEY, ORACLE_URL } from "../config/env.js";
 import { humanizeError } from "../utils/format.js";
+import { apiFetch, oracleFetch } from "../utils/apiFetch.js";
 import { buildDefaultPayload } from "./mintPayload.js";
 
 export type MintWizardStep = "name" | "minting" | "ready";
 export { buildDefaultPayload } from "./mintPayload.js";
+
+type EncodeResponse = {
+  to: `0x${string}`;
+  data: `0x${string}`;
+  value: string;
+};
 
 export function useMintWizard() {
   const [step, setStep] = useState<MintWizardStep>("name");
@@ -14,7 +22,8 @@ export function useMintWizard() {
   const [dataHash, setDataHash] = useState<`0x${string}` | "">("");
   const [oracleOk, setOracleOk] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const { address: owner } = useAccount();
+  const { data: walletClient } = useWalletClient();
 
   const ensurePayload = useCallback(
     (name?: string) => {
@@ -37,26 +46,50 @@ export function useMintWizard() {
     [ensurePayload],
   );
 
+  /** POST to oracle: register the mint dataHash. */
+  const oracleMutation = useMutation({
+    retry: false,
+    mutationFn: (hash: `0x${string}`) =>
+      oracleFetch<{ ok?: boolean; dataHash?: string }>("/v1/agents/mint", {
+        method: "POST",
+        body: JSON.stringify({ dataHash: hash }),
+      }),
+  });
+
+  /** POST /v1/agents/mint/encode, then submit the mint tx from the wallet. */
+  const encodeMutation = useMutation({
+    retry: false,
+    mutationFn: async (input: {
+      dataHash: `0x${string}`;
+      description: string;
+    }) => {
+      if (!owner || !walletClient) {
+        throw new Error("wallet not connected");
+      }
+      const encoded = await apiFetch<EncodeResponse>("/v1/agents/mint/encode", {
+        method: "POST",
+        body: JSON.stringify({
+          dataDescription: input.description,
+          dataHash: input.dataHash,
+          to: owner,
+        }),
+      });
+      return walletClient.sendTransaction({
+        to: encoded.to,
+        data: encoded.data,
+        value: BigInt(encoded.value),
+        chain: walletClient.chain,
+      });
+    },
+  });
+
   const registerOracle = useCallback(
-    async (name?: string) => {
-      setBusy(true);
+    async (name?: string): Promise<`0x${string}`> => {
       setError(null);
       setStep("minting");
       try {
         const hash = deriveDataHash(name);
-        const res = await fetch(`${ORACLE_URL}/v1/agents/mint`, {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-            ...(API_KEY ? { "x-api-key": API_KEY } : {}),
-          },
-          body: JSON.stringify({ dataHash: hash }),
-        });
-        if (!res.ok) {
-          const text = await res.text();
-          throw new Error(text || `Oracle mint failed: ${res.status}`);
-        }
-        const body = (await res.json()) as { ok?: boolean; dataHash?: string };
+        const body = await oracleMutation.mutateAsync(hash);
         if (body.ok !== true) throw new Error("Oracle did not accept dataHash");
         setOracleOk(true);
         setStep("ready");
@@ -65,11 +98,19 @@ export function useMintWizard() {
         setError(humanizeError(err));
         setStep("name");
         throw err;
-      } finally {
-        setBusy(false);
       }
     },
-    [deriveDataHash],
+    [deriveDataHash, oracleMutation],
+  );
+
+  /** Encode + submit the mint transaction; resolves with the on-chain hash. */
+  const chainMint = useCallback(
+    async (dataHash: `0x${string}`): Promise<`0x${string}`> =>
+      encodeMutation.mutateAsync({
+        dataHash,
+        description: agentName.trim(),
+      }),
+    [encodeMutation, agentName],
   );
 
   return {
@@ -84,8 +125,12 @@ export function useMintWizard() {
     ensurePayload,
     oracleOk,
     registerOracle,
+    chainMint,
     error,
-    busy,
+    busy:
+      oracleMutation.isPending ||
+      encodeMutation.isPending ||
+      step === "minting",
     setError,
     payloadPreview: payloadText.trim()
       ? toHex(toBytes(payloadText.trim())).slice(0, 42) + "…"

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { hexString } from "@axiom/config/types/hex";
 import { sharedEnvSchema } from "@axiom/config/env-schema";
+import { RUNTIME_DEFAULTS } from "@axiom/config";
 
 export const backendEnvSchema = sharedEnvSchema.merge(
   z.object({
@@ -9,7 +10,11 @@ export const backendEnvSchema = sharedEnvSchema.merge(
     AXIOM_EVM_RPC: z.string().url(),
     AXIOM_SENTRY_DSN: z.string().optional(),
     AXIOM_STORAGE_RPC: z.string().url().optional(),
-    INDEXER_POLL_WINDOW_BLOCKS: z.coerce.number().int().positive().default(500),
+    INDEXER_POLL_WINDOW_BLOCKS: z
+      .coerce.number()
+      .int()
+      .positive()
+      .default(RUNTIME_DEFAULTS.indexerPollWindowBlocks),
     INDEXER_START_BLOCK: z.coerce.number().int().nonnegative().optional(),
     AXIOM_COMPUTE_API_KEY: z.string().optional(),
     AXIOM_COMPUTE_VERIFY_TEE: z.string().optional(),

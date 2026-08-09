@@ -1,19 +1,27 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   useAccount,
   useChainId,
   useSignTypedData,
 } from "wagmi";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { type Hex, toHex } from "viem";
 
 import { getAxiomAgentNftAddress } from "../abi/addresses.js";
 import { ITRANSFER_FROM_ABI } from "@axiom/config/abis";
 import { sealKeyForReceiver } from "@axiom/config/crypto/keys";
 
-import { useAsyncAction } from "./useAsyncAction.js";
 import { useEip712Domain, ACCESS_PROOF_TYPES } from "../abi/eip712.js";
-import { agentTransferPath, apiFetch, LONG_TIMEOUT } from "../utils/apiFetch.js";
-import { ORACLE_URL, API_KEY } from "../config/env.js";
+import {
+  agentTransferPath,
+  apiFetch,
+  oracleFetch,
+  LONG_TIMEOUT,
+} from "../utils/apiFetch.js";
 import { useGenericWrite } from "./useGenericWrite.js";
 import type {
   TransferInput,
@@ -40,6 +48,14 @@ export type UseTransferResult = {
   transferPhase: TransferPhase;
 };
 
+/** Challenge response after backend validation (required fields narrowed). */
+type TransferChallenge = TransferResponse & {
+  dataHash: `0x${string}`;
+  targetPubkey: `0x${string}`;
+  accessProofNonce: number | string;
+  validUntil: string;
+};
+
 function hexToBytes(hex: string): Uint8Array {
   const h = hex.replace(/^0x/, "");
   if (h.length % 2 !== 0) throw new Error("invalid hex");
@@ -62,16 +78,10 @@ async function sealDekForOracle(
   oldDataEncryptionKeyB64: string,
   signal?: AbortSignal,
 ): Promise<string> {
-  const healthUrl = `${ORACLE_URL.replace(/\/$/, "")}/health`;
-  const headers: Record<string, string> = {};
-  if (API_KEY) headers["x-api-key"] = API_KEY;
-  const res = await fetch(healthUrl, { signal, headers });
-  if (!res.ok) {
-    throw new Error(`oracle health failed (${res.status}) — cannot seal DEK`);
-  }
-  const body = (await res.json()) as {
-    uncompressedPubkey?: string | number[];
-  };
+  const body = await oracleFetch<{ uncompressedPubkey?: string | number[] }>(
+    "/health",
+    { signal },
+  );
   let pubBytes: Uint8Array;
   if (typeof body.uncompressedPubkey === "string") {
     pubBytes = hexToBytes(body.uncompressedPubkey);
@@ -100,15 +110,157 @@ export function useTransfer(): UseTransferResult {
   const [isWritePending, setWritePending] = useState(false);
   const [writeError, setWriteError] = useState<Error | null>(null);
   const { domain } = useEip712Domain();
+  const queryClient = useQueryClient();
 
   const [signature, setSignature] = useState<TransferResponse | null>(null);
   const [transferPhase, setTransferPhase] = useState<TransferPhase>("idle");
-  const {
-    execute,
-    isLoading: actionLoading,
-    error: actionError,
-    reset: resetAction,
-  } = useAsyncAction();
+  const [isPreparing, setIsPreparing] = useState(false);
+  const [prepareError, setPrepareError] = useState<Error | null>(null);
+  // Set when a transfer intent starts; each prepare() bumps `attempt` so a
+  // fresh challenge is always fetched (nonces are single-use).
+  const [intent, setIntent] = useState<{
+    input: TransferInput;
+    attempt: number;
+  } | null>(null);
+  const intentRef = useRef(intent);
+  intentRef.current = intent;
+  const attemptRef = useRef(0);
+
+  /** POST /v1/agents/:id/transfer — step 1: backend issues the challenge. */
+  const runChallenge = useCallback(
+    async ({
+      input,
+      signal,
+    }: {
+      input: TransferInput;
+      signal?: AbortSignal;
+    }): Promise<TransferChallenge> => {
+      const path = agentTransferPath(input.tokenId);
+
+      let nonceBig: bigint;
+      try {
+        nonceBig = BigInt(input.accessProofNonce);
+      } catch {
+        throw new Error("Invalid access proof nonce");
+      }
+      const challengeBody: Record<string, unknown> = {
+        to: input.to,
+        receiverPubKey64: input.receiverPubKey64,
+        accessProofNonce: nonceBig.toString(),
+      };
+      if (
+        input.oldDataUri &&
+        (input.sealedDataEncryptionKey || input.oldDataEncryptionKey)
+      ) {
+        challengeBody.oldDataUri = input.oldDataUri;
+        // Prefer pre-sealed; otherwise ECIES-seal DEK to oracle TEE pubkey (no cleartext on wire).
+        if (input.sealedDataEncryptionKey) {
+          challengeBody.sealedDataEncryptionKey = input.sealedDataEncryptionKey;
+        } else if (input.oldDataEncryptionKey) {
+          challengeBody.sealedDataEncryptionKey = await sealDekForOracle(
+            input.oldDataEncryptionKey,
+            signal,
+          );
+        }
+      }
+      const challenge = await apiFetch<TransferResponse>(path, {
+        method: "POST",
+        body: JSON.stringify(challengeBody),
+        signal,
+        timeout: LONG_TIMEOUT,
+      });
+      if (!challenge.ok || challenge.stage !== "challenge") {
+        throw new Error(
+          "backend did not return a transfer challenge. Challenge failed — generate a new nonce and try again.",
+        );
+      }
+      if (
+        !challenge.dataHash ||
+        !challenge.targetPubkey ||
+        challenge.accessProofNonce === undefined ||
+        challenge.validUntil === undefined
+      ) {
+        throw new Error(
+          "incomplete transfer challenge from backend — generate a new nonce and start over",
+        );
+      }
+      return challenge as TransferChallenge;
+    },
+    [],
+  );
+
+  // Challenge fetch fires when a transfer intent starts; prepare() awaits the
+  // same cache entry via fetchQuery, so signing/finalizing stay sequential.
+  const challengeQuery = useQuery<TransferChallenge, Error>({
+    queryKey: ["transfer-challenge", intent?.attempt ?? -1],
+    enabled: intent !== null,
+    staleTime: Infinity,
+    retry: false,
+    queryFn: ({ signal }) => {
+      const current = intentRef.current;
+      if (!current) throw new Error("no transfer intent");
+      return runChallenge({ input: current.input, signal });
+    },
+  });
+
+  /** POST /v1/agents/:id/transfer — step 2: submit the signed access proof. */
+  const finalizeMutation = useMutation<
+    TransferResponse,
+    Error,
+    {
+      input: TransferInput;
+      challenge: TransferChallenge;
+      accessSignature: `0x${string}`;
+    }
+  >({
+    retry: false,
+    mutationFn: async ({ input, challenge, accessSignature }) => {
+      const path = agentTransferPath(input.tokenId);
+      const nonce = BigInt(challenge.accessProofNonce);
+      const validUntil = BigInt(challenge.validUntil);
+      // On-chain intelligentDatas must match the proof dataHash at iTransfer
+      // time (old hash). Re-key uploads a new blob; sealedKey delivers the
+      // new AES key — do NOT put newDataHash into AccessProof / OwnershipProof.
+      const proofDataHash = challenge.dataHash;
+      let proof = await apiFetch<TransferResponse>(path, {
+        method: "POST",
+        timeout: LONG_TIMEOUT,
+        body: JSON.stringify({
+          to: input.to,
+          receiverPubKey64: input.receiverPubKey64,
+          dataHash: proofDataHash,
+          sealedKey: challenge.sealedKey,
+          accessProof: {
+            dataHash: proofDataHash,
+            targetPubkey: challenge.targetPubkey,
+            nonce: nonce.toString(),
+            proof: accessSignature,
+            validUntil: validUntil.toString(),
+          },
+        }),
+      });
+      if (!proof.ok || proof.stage !== "final") {
+        throw new Error(
+          'backend did not return final proof structs. Finalization failed — transaction was NOT submitted. Click "Prepare Transfer" to restart.',
+        );
+      }
+      if (!proof.accessProof || !proof.ownershipProof) {
+        throw new Error(
+          'incomplete proof structs from backend. Finalization failed — transaction was NOT submitted. Click "Prepare Transfer" to restart.',
+        );
+      }
+      if (challenge.rekeyed) {
+        proof = {
+          ...proof,
+          rekeyed: true,
+          newDataHash: challenge.newDataHash,
+          newDataUri: challenge.newDataUri,
+        };
+      }
+      return proof;
+    },
+  });
+
   const prepare = useCallback(
     async (input: TransferInput): Promise<TransferResponse> => {
       if (!from) {
@@ -120,128 +272,73 @@ export function useTransfer(): UseTransferResult {
         );
       }
 
-      return execute(async (signal) => {
-        try {
-          const path = agentTransferPath(input.tokenId);
+      setPrepareError(null);
+      setIsPreparing(true);
+      const attempt = attemptRef.current + 1;
+      attemptRef.current = attempt;
+      setIntent({ input, attempt });
+      setTransferPhase("challenge");
+      try {
+        const challenge = await queryClient.fetchQuery({
+          queryKey: ["transfer-challenge", attempt],
+          queryFn: ({ signal }) => runChallenge({ input, signal }),
+          staleTime: Infinity,
+          retry: false,
+        });
 
-          setTransferPhase("challenge");
+        setTransferPhase("signing");
 
-          let nonceBig: bigint;
-          try {
-            nonceBig = BigInt(input.accessProofNonce);
-          } catch {
-            throw new Error("Invalid access proof nonce");
-          }
-          const challengeBody: Record<string, unknown> = {
+        const nonce = BigInt(challenge.accessProofNonce);
+        const validUntil = BigInt(challenge.validUntil);
+        // On-chain intelligentDatas must match the proof dataHash at iTransfer
+        // time (old hash). Re-key uploads a new blob; sealedKey delivers the
+        // new AES key — do NOT put newDataHash into AccessProof / OwnershipProof.
+        const proofDataHash = challenge.dataHash;
+        const accessSignature = await signTypedDataAsync({
+          domain,
+          types: ACCESS_PROOF_TYPES,
+          primaryType: "AccessProof",
+          message: {
+            dataHash: proofDataHash,
+            targetPubkey: challenge.targetPubkey,
             to: input.to,
-            receiverPubKey64: input.receiverPubKey64,
-            accessProofNonce: nonceBig.toString(),
-          };
-          if (input.oldDataUri && (input.sealedDataEncryptionKey || input.oldDataEncryptionKey)) {
-            challengeBody.oldDataUri = input.oldDataUri;
-            // Prefer pre-sealed; otherwise ECIES-seal DEK to oracle TEE pubkey (no cleartext on wire).
-            if (input.sealedDataEncryptionKey) {
-              challengeBody.sealedDataEncryptionKey = input.sealedDataEncryptionKey;
-            } else if (input.oldDataEncryptionKey) {
-              challengeBody.sealedDataEncryptionKey = await sealDekForOracle(
-                input.oldDataEncryptionKey,
-                signal,
-              );
-            }
-          }
-          const challenge = await apiFetch<TransferResponse>(path, {
-            method: "POST",
-            body: JSON.stringify(challengeBody),
-            signal,
-            timeout: LONG_TIMEOUT,
-          });
-          if (!challenge.ok || challenge.stage !== "challenge") {
-            throw new Error(
-              "backend did not return a transfer challenge. Challenge failed — generate a new nonce and try again.",
-            );
-          }
-          if (
-            !challenge.dataHash ||
-            !challenge.targetPubkey ||
-            challenge.accessProofNonce === undefined ||
-            challenge.validUntil === undefined
-          ) {
-            throw new Error(
-              "incomplete transfer challenge from backend — generate a new nonce and start over",
-            );
-          }
+            nft: getAxiomAgentNftAddress(chainId),
+            nonce: (challenge.accessProofNonce ??
+              `0x${nonce.toString(16)}`) as `0x${string}`,
+            validUntil,
+          },
+          account: from,
+        });
 
-          setTransferPhase("signing");
+        setTransferPhase("finalizing");
 
-          const nonce = BigInt(challenge.accessProofNonce);
-          const validUntil = BigInt(challenge.validUntil);
-          // On-chain intelligentDatas must match the proof dataHash at iTransfer
-          // time (old hash). Re-key uploads a new blob; sealedKey delivers the
-          // new AES key — do NOT put newDataHash into AccessProof / OwnershipProof.
-          const proofDataHash = challenge.dataHash;
-          const accessSignature = await signTypedDataAsync({
-            domain,
-            types: ACCESS_PROOF_TYPES,
-            primaryType: "AccessProof",
-            message: {
-              dataHash: proofDataHash,
-              targetPubkey: challenge.targetPubkey,
-              to: input.to,
-              nft: getAxiomAgentNftAddress(chainId),
-              nonce: (challenge.accessProofNonce ?? `0x${nonce.toString(16)}`) as `0x${string}`,
-              validUntil,
-            },
-            account: from,
-          });
+        const proof = await finalizeMutation.mutateAsync({
+          input,
+          challenge,
+          accessSignature,
+        });
 
-          setTransferPhase("finalizing");
-
-          let proof = await apiFetch<TransferResponse>(path, {
-            method: "POST",
-            signal,
-            timeout: LONG_TIMEOUT,
-            body: JSON.stringify({
-              to: input.to,
-              receiverPubKey64: input.receiverPubKey64,
-              dataHash: proofDataHash,
-              sealedKey: challenge.sealedKey,
-              accessProof: {
-                dataHash: proofDataHash,
-                targetPubkey: challenge.targetPubkey,
-                nonce: nonce.toString(),
-                proof: accessSignature,
-                validUntil: validUntil.toString(),
-              },
-            }),
-          });
-          if (!proof.ok || proof.stage !== "final") {
-            throw new Error(
-              'backend did not return final proof structs. Finalization failed — transaction was NOT submitted. Click "Prepare Transfer" to restart.',
-            );
-          }
-          if (!proof.accessProof || !proof.ownershipProof) {
-            throw new Error(
-              'incomplete proof structs from backend. Finalization failed — transaction was NOT submitted. Click "Prepare Transfer" to restart.',
-            );
-          }
-          if (challenge.rekeyed) {
-            proof = {
-              ...proof,
-              rekeyed: true,
-              newDataHash: challenge.newDataHash,
-              newDataUri: challenge.newDataUri,
-            };
-          }
-          setSignature(proof);
-          setTransferPhase("idle");
-          return proof;
-        } catch (err) {
-          setTransferPhase("idle");
-          throw err;
-        }
-      });
+        setSignature(proof);
+        setTransferPhase("idle");
+        return proof;
+      } catch (err) {
+        setTransferPhase("idle");
+        const wrapped = err instanceof Error ? err : new Error(String(err));
+        setPrepareError(wrapped);
+        throw wrapped;
+      } finally {
+        setIsPreparing(false);
+      }
     },
-    [chainId, from, domain, signTypedDataAsync, execute],
+    [
+      chainId,
+      from,
+      domain,
+      signTypedDataAsync,
+      queryClient,
+      runChallenge,
+      finalizeMutation,
+    ],
   );
 
   const confirm = useCallback(
@@ -299,17 +396,24 @@ export function useTransfer(): UseTransferResult {
   const reset = useCallback((): void => {
     setSignature(null);
     setTransferPhase("idle");
-    resetAction();
+    setIntent(null);
+    setPrepareError(null);
+    setIsPreparing(false);
     setWritePending(false);
     setWriteError(null);
-  }, [resetAction]);
+    // Drop any cached/errored challenge so the observer starts clean.
+    queryClient.removeQueries({ queryKey: ["transfer-challenge"] });
+  }, [queryClient]);
 
   return {
     prepare,
     confirm,
     transfer,
-    isLoading: actionLoading || isWritePending,
-    error: actionError ?? (writeError as Error | null),
+    isLoading: isPreparing || challengeQuery.isFetching || isWritePending,
+    error:
+      prepareError ??
+      (challengeQuery.error ?? null) ??
+      (writeError as Error | null),
     signature,
     reset,
     transferPhase,

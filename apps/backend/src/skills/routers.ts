@@ -16,6 +16,32 @@ import { sendError } from "../utils/response.js";
 import { TRANSFER_TOPIC } from "@axiom/config";
 import { AGENT_NFT_ABI } from "@axiom/config/abis";
 import { HTTP } from "@axiom/config";
+import {
+  evmAddressSchema,
+  evmTokenOwnerSchema,
+  evmTxSchema,
+  evmTokenSchema,
+  evmGasSchema,
+  evmWhaleSchema,
+  evmAllowanceSchema,
+  stocksQuoteSchema,
+  stocksSearchSchema,
+  stocksHistorySchema,
+  stocksCompareSchema,
+  stocksCryptoSchema,
+  osintSecEdgarSchema,
+  osintUsaspendingSchema,
+  osintOfacSdnSchema,
+  osintOpencorporatesSchema,
+  osintEntityResolveSchema,
+  osintCourtlistenerSchema,
+  unbrokerSchema,
+  unbrokerAnalyzeSchema,
+  ossInvestigateSchema,
+  ossCommitsSchema,
+  ossIocSchema,
+  ossAuditSchema,
+} from "@axiom/config/skills/schemas";
 
 const logEvm = createLogger("skills:evm");
 
@@ -45,12 +71,6 @@ const CHAINS: { name: string; rpc: string }[] = [
   { name: "avalanche", rpc: "https://api.avax.network/ext/bc/C/rpc" },
   { name: "gnosis", rpc: "https://rpc.gnosischain.com" },
 ];
-
-// Reasonable default scan window for evm_whale so the tool is callable without
-// all 4 params (audit §6: "requires 4 numeric params w/ no defaults"). The
-// caller-supplied values still win; these are only fallbacks.
-const WHALE_DEFAULT_FROM_BLOCK = 19_900_000;
-const WHALE_DEFAULT_TO_BLOCK = 20_000_000;
 
 const priceGet = cachedJsonGet("https://api.coingecko.com", { ttlMs: 60_000 });
 
@@ -154,15 +174,12 @@ export function redactIocMatch(raw: string, patternName: string): string {
 // EVM skills
 // ---------------------------------------------------------------------------
 
-const address = z.object({ address: z.string() });
-const token = z.object({ address: z.string(), token: z.string() });
-
-export const whaleSchema = z.object({
-  token: z.string(),
-  minValue: z.string().default("0"),
-  fromBlock: z.number().default(WHALE_DEFAULT_FROM_BLOCK),
-  toBlock: z.number().default(WHALE_DEFAULT_TO_BLOCK),
-});
+// EVM skill schemas live in @axiom/config/skills/schemas (single source of
+// truth, shared with chat-tools.ts). Local aliases keep the route handlers
+// below readable.
+const address = evmAddressSchema;
+const token = evmTokenOwnerSchema;
+export const whaleSchema = evmWhaleSchema;
 
 // ---------------------------------------------------------------------------
 // Stocks skills
@@ -245,15 +262,11 @@ function extractQuote(result: YahooChartResponse) {
   });
 }
 
-const symbolSchema = z.object({ symbol: z.string().min(1).max(12) });
-const searchSchema = z.object({ query: z.string().min(1).max(64) });
-const historySchema = z.object({
-  symbol: z.string().min(1).max(12),
-  range: z.enum(["1d", "5d", "1mo", "3mo", "6mo", "1y", "5y", "max"]).default("1y"),
-  interval: z.enum(["1m", "5m", "15m", "1d", "1wk", "1mo"]).default("1d"),
-});
-const compareSchema = z.object({ symbols: z.array(z.string().min(1).max(12)).min(1).max(10) });
-const cryptoSchema = z.object({ symbol: z.string().min(1).max(12).default("BTC-USD") });
+const symbolSchema = stocksQuoteSchema;
+const searchSchema = stocksSearchSchema;
+const historySchema = stocksHistorySchema;
+const compareSchema = stocksCompareSchema;
+const cryptoSchema = stocksCryptoSchema;
 
 // ---------------------------------------------------------------------------
 // OSINT skills
@@ -277,11 +290,8 @@ function tokenScore(a: string, b: string): number {
   return overlap / Math.max(tokA.size, tokB.size);
 }
 
-const cikSchema = z.object({ cik: z.string().min(1).max(12) });
-const usaspendingSchema = z.object({
-  filters: z.record(z.string(), z.unknown()),
-  limit: z.coerce.number().int().min(1).max(100).optional(),
-});
+const cikSchema = osintSecEdgarSchema;
+const usaspendingSchema = osintUsaspendingSchema;
 // OFAC's sanctions search rejects non-browser user agents (HTTP 406) and
 // returns HTML (not JSON). Fetch as text with browser-like headers so the
 // route degrades to a clean 200 instead of a 502 upstream-error.
@@ -302,19 +312,10 @@ async function ofacFetch(path: string): Promise<string> {
   return text;
 }
 
-const ofacSchema = z.object({ name: z.string().min(1).max(200) });
-const opencorpSchema = z.object({
-  jurisdiction: z.string().min(2).max(5).default("us"),
-  query: z.string().min(1).max(200),
-});
-const entitySchema = z.object({
-  entities: z.array(z.string().min(1)).min(2).max(20),
-});
-const courtSchema = z.object({
-  query: z.string().min(1).max(200),
-  type: z.enum(["o", "r"]).optional(),
-  limit: z.coerce.number().int().min(1).max(20).optional(),
-});
+const ofacSchema = osintOfacSdnSchema;
+const opencorpSchema = osintOpencorporatesSchema;
+const entitySchema = osintEntityResolveSchema;
+const courtSchema = osintCourtlistenerSchema;
 
 // ---------------------------------------------------------------------------
 // Unbroker skills
@@ -322,13 +323,6 @@ const courtSchema = z.object({
 
 const logUnbroker = createLogger("skills:unbroker");
 
-const unbrokerSchema = z.object({
-  tokenId: z.string().regex(/^\d+$/),
-  to: z.string(),
-});
-const unbrokerAnalyzeSchema = unbrokerSchema.extend({
-  accessProof: z.object({ dataHash: z.string(), validUntil: z.number() }).optional(),
-});
 
 // ---------------------------------------------------------------------------
 // OSS forensics skills

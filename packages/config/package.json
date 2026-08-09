@@ -24,7 +24,8 @@
     "./types/orchestrator": "./dist/types/orchestrator.js",
     "./types/transfer": "./dist/types/transfer.js",
     "./process": "./dist/process.js",
-    "./chat-tools": "./dist/chat-tools.js"
+    "./chat-tools": "./dist/chat-tools.js",
+    "./skills/schemas": "./dist/skills/schemas.js"
   },
   "scripts": {
     "build": "tsc --project tsconfig.json",

@@ -392,7 +392,6 @@ packages/config/src/middleware/auth.test.ts
 packages/config/src/models.test.ts
 
 # ── Previously tracked, git rm'd — silence from untracked status ──
-.github/
 .gitleaks.toml
 .husky/
 .solhint.json
