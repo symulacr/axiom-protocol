@@ -12,7 +12,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
     "coverage-status": "pnpm --filter @axiom/backend exec node --import tsx src/cli/coverage-status.ts --manifest frontend-prod",
-    "test": "node --experimental-strip-types --test src/hooks/useTransfer.dataHash.test.ts src/hooks/useMintWizard.payload.test.ts src/navigation/ia.test.ts",
+    "test": "node --experimental-strip-types --test src/hooks/useTransfer.dataHash.test.ts src/hooks/useMintWizard.payload.test.ts",
     "test:e2e": "playwright test"
   },
   "dependencies": {

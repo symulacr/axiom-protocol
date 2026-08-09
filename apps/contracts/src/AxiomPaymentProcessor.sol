@@ -259,15 +259,16 @@ contract AxiomPaymentProcessor is Initializable, OwnableUpgradeable, PausableUpg
         if (received != amount) revert TransferAmountMismatch(amount, received);
 
         (uint256 royaltyBps, bool royaltyIsSet) = _effectiveRoyaltyBps($, agentTokenId);
+        uint256 feeBps = $.protocolFeeBps;
         uint256 creatorCut;
         uint256 protocolCut;
         if (!royaltyIsSet) {
-            protocolCut = (received * $.protocolFeeBps) / BPS_DENOMINATOR;
+            protocolCut = (received * feeBps) / BPS_DENOMINATOR;
             creatorCut = received - protocolCut;
         } else {
             creatorCut = (received * royaltyBps) / BPS_DENOMINATOR;
             protocolCut = received - creatorCut;
-            uint256 minProtocolCut = (received * $.protocolFeeBps) / BPS_DENOMINATOR;
+            uint256 minProtocolCut = (received * feeBps) / BPS_DENOMINATOR;
             if (protocolCut < minProtocolCut) {
                 protocolCut = minProtocolCut;
                 creatorCut = received - protocolCut;

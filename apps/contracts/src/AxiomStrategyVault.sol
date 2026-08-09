@@ -157,7 +157,8 @@ contract AxiomStrategyVault is Initializable, OwnableUpgradeable, PausableUpgrad
     ) external nonReentrant whenNotPaused returns (bytes memory) {
         Vault storage v = vaults[tokenId];
         if (v.strategyRoot == bytes32(0)) revert NoStrategySet();
-        if (value > v.balance) revert ZeroAmount();
+        uint256 balance = v.balance;
+        if (value > balance) revert ZeroAmount();
         if (target == address(0)) revert ZeroAddress();
 
         uint64 today = uint64(block.timestamp / 1 days);
@@ -178,7 +179,7 @@ contract AxiomStrategyVault is Initializable, OwnableUpgradeable, PausableUpgrad
 
         // CEI: state update first
         usedActions[tokenId][actionHash] = true;
-        v.balance -= value;
+        v.balance = balance - value;
         v.dailySpent += spend;
         totalTrackedBalance -= value;
 

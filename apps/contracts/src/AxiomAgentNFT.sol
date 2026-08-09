@@ -245,14 +245,15 @@ contract AxiomAgentNFT is
     ) public payable virtual whenNotPaused nonReentrant returns (uint256 tokenId) {
         require(to != address(0), "Zero address");
         require(iDatas.length > 0, "Empty data array");
-        require(msg.value >= _getAxiomAgentNFTStorage().mintFee, "Insufficient mint fee");
+        uint256 fee = _getAxiomAgentNFTStorage().mintFee;
+        require(msg.value >= fee, "Insufficient mint fee");
 
         tokenId = _incrementTokenId();
         _updateData(tokenId, iDatas);
         _safeMint(to, tokenId);
         _getAxiomAgentNFTStorage().creators[tokenId] = to;
         emit CreatorSet(tokenId, to);
-        _refundExcess();
+        _refundExcess(fee);
     }
 
     function mintWithRole(
@@ -288,8 +289,7 @@ contract AxiomAgentNFT is
         return _getAxiomAgentNFTStorage().creators[tokenId];
     }
 
-    function _refundExcess() internal {
-        uint256 fee = _getAxiomAgentNFTStorage().mintFee;
+    function _refundExcess(uint256 fee) internal {
         if (msg.value > fee) {
             (bool ok,) = payable(msg.sender).call{value: msg.value - fee}("");
             require(ok, "Refund failed");

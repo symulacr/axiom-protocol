@@ -52,15 +52,20 @@ abstract contract ERC7857IDataStorageUpgradeable is ERC7857Upgradeable {
         IntelligentData[] memory newDatas
     ) internal virtual override {
         ERC7857IDataStorageStorage storage $ = _getERC7857IDataStorageStorage();
+        // Storage pointer + length cached: avoids re-hashing the mapping and re-SLOADing
+        // `$.iDatas[tokenId]` on every loop iteration. `delete` must still target the
+        // mapping value (delete on a storage pointer is not allowed by the compiler).
+        IntelligentData[] storage stored = $.iDatas[tokenId];
+        uint256 oldLen = stored.length;
 
-        IntelligentData[] memory oldDatas = new IntelligentData[]($.iDatas[tokenId].length);
-        for (uint256 i = 0; i < $.iDatas[tokenId].length; i++) {
-            oldDatas[i] = $.iDatas[tokenId][i];
+        IntelligentData[] memory oldDatas = new IntelligentData[](oldLen);
+        for (uint256 i = 0; i < oldLen; i++) {
+            oldDatas[i] = stored[i];
         }
 
         delete $.iDatas[tokenId];
         for (uint256 i = 0; i < newDatas.length; i++) {
-            $.iDatas[tokenId].push(newDatas[i]);
+            stored.push(newDatas[i]);
         }
 
         emit Updated(tokenId, oldDatas, newDatas);

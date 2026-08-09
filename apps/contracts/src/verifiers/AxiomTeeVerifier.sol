@@ -186,13 +186,22 @@ contract AxiomTeeVerifier is Initializable, BaseVerifier, OwnableUpgradeable, UU
             _checkValidUntil(p.ownershipProof.validUntil, nowTs, maxAge);
             _checkValidUntil(p.accessProof.validUntil, nowTs, maxAge);
 
+            // 0.4 Pre-hash the variable-length calldata fields once per proof. Each is used
+            //     both in the consistency check and in one or both EIP-712 struct hashes
+            //     below; computing them in locals avoids re-hashing the same bytes.
+            bytes32 accessTargetPubkeyHash = keccak256(p.accessProof.targetPubkey);
+            bytes32 ownershipTargetPubkeyHash = keccak256(p.ownershipProof.targetPubkey);
+            bytes32 accessNonceHash = keccak256(p.accessProof.nonce);
+            bytes32 ownershipNonceHash = keccak256(p.ownershipProof.nonce);
+            bytes32 sealedKeyHash = keccak256(p.ownershipProof.sealedKey);
+
             // 0.5 Cross-proof consistency: the two proofs must describe the same
             //     transfer. If the TEE-signed ownership leg and the receiver-signed
             //     access leg disagree on any shared field, the proof is invalid.
             if (
                 p.accessProof.dataHash != p.ownershipProof.dataHash
-                    || keccak256(p.accessProof.targetPubkey) != keccak256(p.ownershipProof.targetPubkey)
-                    || keccak256(p.accessProof.nonce) != keccak256(p.ownershipProof.nonce)
+                    || accessTargetPubkeyHash != ownershipTargetPubkeyHash
+                    || accessNonceHash != ownershipNonceHash
                     || p.accessProof.validUntil != p.ownershipProof.validUntil
             ) {
                 revert ProofFieldMismatch();
@@ -213,11 +222,11 @@ contract AxiomTeeVerifier is Initializable, BaseVerifier, OwnableUpgradeable, UU
                         abi.encode(
                             OWNERSHIP_PROOF_TYPEHASH,
                             p.ownershipProof.dataHash,
-                            keccak256(p.ownershipProof.sealedKey),
-                            keccak256(p.ownershipProof.targetPubkey),
+                            sealedKeyHash,
+                            ownershipTargetPubkeyHash,
                             to,
                             nft,
-                            keccak256(p.ownershipProof.nonce),
+                            ownershipNonceHash,
                             p.ownershipProof.validUntil
                         )
                     )
@@ -237,10 +246,10 @@ contract AxiomTeeVerifier is Initializable, BaseVerifier, OwnableUpgradeable, UU
                         abi.encode(
                             ACCESS_PROOF_TYPEHASH,
                             p.accessProof.dataHash,
-                            keccak256(p.accessProof.targetPubkey),
+                            accessTargetPubkeyHash,
                             to,
                             nft,
-                            keccak256(p.accessProof.nonce),
+                            accessNonceHash,
                             p.accessProof.validUntil
                         )
                     )
