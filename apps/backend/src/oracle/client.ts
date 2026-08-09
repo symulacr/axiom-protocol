@@ -3,7 +3,6 @@ import {
 	type Eip712Domain,
 	type OwnershipProofInput,
 	type AccessProofInput,
-	type OwnershipProofResult,
 	type OwnershipProofResultWithMeta,
 } from "@axiom/config";
 import { bigintReplacer, getRuntimeConfig } from "@axiom/config";

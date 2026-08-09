@@ -126,7 +126,7 @@ export interface AccessProofInput {
 	validUntil: bigint;
 }
 
-export interface OwnershipProofResult {
+interface OwnershipProofResult {
 	newDataUri: Hex;
 	newDataHash: Hex;
 	sealedKey: Hex;

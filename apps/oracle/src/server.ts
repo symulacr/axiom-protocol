@@ -172,15 +172,16 @@ export function startServer(config: ServerConfig): {
 				);
 			}
 
+			let downloadTimer: NodeJS.Timeout | undefined;
 			const oldBlob = await Promise.race([
 				storage.download(oldDataUri as `0x${string}`),
-				new Promise<Uint8Array>((_, reject) =>
-					setTimeout(
+				new Promise<Uint8Array>((_, reject) => {
+					downloadTimer = setTimeout(
 						() => reject(new Error("storage.download timed out after 20000ms")),
 						20_000,
-					),
-				),
-			]);
+					);
+				}),
+			]).finally(() => clearTimeout(downloadTimer));
 			const oldEnc = parseEncrypted(oldBlob);
 
 			if (oldDataKey.length !== 32) {

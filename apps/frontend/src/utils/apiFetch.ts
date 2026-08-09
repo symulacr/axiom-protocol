@@ -44,7 +44,7 @@ function isNetworkError(err: unknown): boolean {
 	);
 }
 
-export class NetworkError extends Error {
+class NetworkError extends Error {
 	constructor(message: string, originalError?: unknown) {
 		super(message, originalError ? { cause: originalError } : undefined);
 		this.name = "NetworkError";

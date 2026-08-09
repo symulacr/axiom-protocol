@@ -250,7 +250,7 @@ export function registerAgentRoutes(
 		},
 		async (
 			parsed: z.infer<typeof transferBodySchema>,
-			req: Request,
+			_req: Request,
 			res: Response,
 			helpers,
 		) => {
