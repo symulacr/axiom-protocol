@@ -65,6 +65,11 @@ export function startServer(config: ServerConfig): {
 	app: Express;
 	httpServer: import("node:http").Server;
 } {
+	// Embedders/tests may omit `env`; fall back to process.env so
+	// AXIOM_DISABLE_AUTH / AXIOM_CLIENT_API_KEY / cleartext flag behave like
+	// the pre-`config.env` contract. Production (src/index.ts) always passes
+	// an explicit parsed env, so this fallback is inert there.
+	const env = config.env ?? process.env;
 	const app = express();
 	app.use(
 		helmet({
@@ -76,22 +81,20 @@ export function startServer(config: ServerConfig): {
 					imgSrc: ["'self'", "data:"],
 					connectSrc: [
 						"'self'",
-						config.env?.AXIOM_FRONTEND_URL ?? "http://localhost:5173",
+						env?.AXIOM_FRONTEND_URL ?? "http://localhost:5173",
 					],
 				},
 			},
 		}),
 	);
-	app.use(
-		cors({ origin: config.env?.AXIOM_FRONTEND_URL ?? "http://localhost:5173" }),
-	);
+	app.use(cors({ origin: env?.AXIOM_FRONTEND_URL ?? "http://localhost:5173" }));
 	app.use(express.json({ limit: "1mb" }));
 	app.use(
 		createApiKeyAuth(
-			config.env?.AXIOM_API_KEY,
+			env?.AXIOM_API_KEY,
 			["/health"],
-			config.env?.AXIOM_DISABLE_AUTH === "true",
-			config.env?.AXIOM_CLIENT_API_KEY,
+			env?.AXIOM_DISABLE_AUTH === "true",
+			env?.AXIOM_CLIENT_API_KEY,
 		),
 	);
 	const { signer, storage } = config;
@@ -140,7 +143,7 @@ export function startServer(config: ServerConfig): {
 			const sealedDek = (req.body as { sealedDataEncryptionKey?: string })
 				?.sealedDataEncryptionKey;
 			const allowCleartext =
-				config.env?.AXIOM_ALLOW_CLEARTEXT_DEK === "true" &&
+				env?.AXIOM_ALLOW_CLEARTEXT_DEK === "true" &&
 				process.env.NODE_ENV !== "production";
 
 			let oldDataKey: Buffer;

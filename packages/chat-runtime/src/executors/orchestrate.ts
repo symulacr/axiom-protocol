@@ -12,6 +12,15 @@ const STRATEGY_OF_LEGACY = [
 	"function strategyOf(uint256) view returns (bytes32, uint256, uint256, uint64)",
 ] as const;
 
+const BALANCE_OF_ABI = parseAbi([
+	"function balanceOf(uint256) view returns (uint256)",
+]);
+
+// viem's parseAbi is ~10µs/call; hoist the parsed ABIs to module scope so the
+// per-tick chain reads reuse them instead of re-parsing on every invocation.
+const STRATEGY_OF_CURRENT_ABI = parseAbi(STRATEGY_OF_CURRENT);
+const STRATEGY_OF_LEGACY_ABI = parseAbi(STRATEGY_OF_LEGACY);
+
 async function readStrategyRoot(
 	ctx: ToolRuntime,
 	vault: `0x${string}`,
@@ -25,7 +34,7 @@ async function readStrategyRoot(
 			readonly [string, bigint, bigint, bigint, bigint]
 		>({
 			address: vault,
-			abi: parseAbi(STRATEGY_OF_CURRENT),
+			abi: STRATEGY_OF_CURRENT_ABI,
 			functionName: "strategyOf",
 			args: [id],
 		});
@@ -34,7 +43,7 @@ async function readStrategyRoot(
 		try {
 			const result = await read<readonly [string, bigint, bigint, bigint]>({
 				address: vault,
-				abi: parseAbi(STRATEGY_OF_LEGACY),
+				abi: STRATEGY_OF_LEGACY_ABI,
 				functionName: "strategyOf",
 				args: [id],
 			});
@@ -72,7 +81,7 @@ export async function runOrchestrateTool(
 		const [balance, root] = await Promise.all([
 			ctx.chain.readContract<bigint>({
 				address: vault,
-				abi: parseAbi(["function balanceOf(uint256) view returns (uint256)"]),
+				abi: BALANCE_OF_ABI,
 				functionName: "balanceOf",
 				args: [BigInt(tokenId)],
 			}),
