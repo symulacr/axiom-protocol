@@ -36,6 +36,7 @@ import {
 	buildEip712Domain,
 	resolveChatModel,
 	resolveContextWindow,
+	getRuntimeConfig,
 } from "@axiom/config";
 import { getSharedProvider } from "./provider.js";
 import {
@@ -68,7 +69,7 @@ import { TTLCache } from "./utils/cache.js";
 import pkg from "../package.json" with { type: "json" };
 const log = createLogger("server");
 const PKG_VERSION = pkg.version;
-const MAX_WS_CLIENTS = 1000 as const;
+const MAX_WS_CLIENTS = getRuntimeConfig().wsMaxClients;
 
 function shortSigner(addr: string): string {
 	return addr.length > 10 ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : addr;
@@ -286,8 +287,8 @@ export function startServer(config: ServerConfig): {
 		return paymentPromise;
 	}
 
-	const HEARTBEAT_INTERVAL = 30_000;
-	const MAX_MISSED_PINGS = 3;
+	const HEARTBEAT_INTERVAL = getRuntimeConfig().wsHeartbeatIntervalMs;
+	const MAX_MISSED_PINGS = getRuntimeConfig().wsMaxMissedPings;
 	const heartbeatTimer = setInterval(() => {
 		const wsClients = getClients();
 		for (const c of wsClients) {
