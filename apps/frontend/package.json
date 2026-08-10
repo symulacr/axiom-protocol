@@ -4,11 +4,11 @@
   "private": true,
   "type": "module",
   "packageManager": "bun@1.4.0",
-  "description": "Axiom Protocol iNFT agent dashboard — Vite + React 18 + wagmi v2 + RainbowKit v2",
+  "description": "Axiom Protocol iNFT agent dashboard — Bun + React 18 + wagmi v2 + RainbowKit v2",
   "scripts": {
-    "dev": "bunx --bun vite",
-    "build": "tsc --project tsconfig.json && vite build",
-    "preview": "bunx --bun vite preview",
+    "dev": "bun --hot run dev.mjs",
+    "build": "tsc --project tsconfig.json && bun build.mjs",
+    "preview": "bun dev.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
     "coverage-status": "bun run --filter @axiom/backend src/cli/coverage-status.ts --manifest frontend-prod",
@@ -34,10 +34,8 @@
     "@playwright/test": "^1.62.1",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
-    "@vitejs/plugin-react": "^4.3.3",
     "eslint": "^9.39.5",
-    "typescript-eslint": "^8.66.0",
-    "vite": "^5.4.10"
+    "typescript-eslint": "^8.66.0"
   },
   "license": "MIT"
 }

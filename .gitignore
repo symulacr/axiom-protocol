@@ -374,7 +374,7 @@ apps/frontend/server.mjs
 apps/frontend/src/hooks/useMintWizard.payload.test.ts
 apps/frontend/src/hooks/useTransfer.dataHash.test.ts
 apps/frontend/src/navigation/ia.test.ts
-apps/frontend/src/vite-env.d.ts
+apps/frontend/src/env.d.ts
 apps/oracle/src/__bench__/
 apps/oracle/src/server-access-proof.test.ts
 apps/oracle/src/server.test.ts

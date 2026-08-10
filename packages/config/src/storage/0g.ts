@@ -11,7 +11,6 @@ import {
 	mkdirSync,
 } from "node:fs";
 import { join, dirname } from "node:path";
-import { randomBytes, randomUUID } from "node:crypto";
 
 interface UploadResult {
 	rootHash: Hex;
@@ -95,7 +94,7 @@ function loadSeenDataHashes(file: string): Set<string> {
 
 function persistSeenDataHashes(file: string, seen: Set<string>): void {
 	mkdirSync(dirname(file), { recursive: true });
-	const tmp = `${file}.${process.pid}.${randomUUID()}.tmp`;
+	const tmp = `${file}.${process.pid}.${crypto.randomUUID()}.tmp`;
 	writeFileSync(tmp, JSON.stringify({ seenDataHashes: [...seen] }));
 	renameSync(tmp, file);
 }
@@ -208,7 +207,7 @@ export class ZeroGStorage extends SeenHashesMixin implements StorageAdapter {
 		this.config = config;
 		this.indexer = new Indexer(config.indexerRpc);
 		// Generate a random 32-byte AES key for SDK transport-layer encryption.
-		this.storageKey = randomBytes(32);
+		this.storageKey = crypto.getRandomValues(new Uint8Array(32));
 	}
 
 	async upload(

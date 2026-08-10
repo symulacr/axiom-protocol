@@ -1,4 +1,4 @@
-import { readFile, writeFile, rename, mkdir } from "node:fs/promises";
+import { rename, mkdir } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import { getEnv } from "@axiom/config/env";
 
@@ -13,7 +13,7 @@ export async function loadCheckpoint(
 ): Promise<number | null> {
   const checkpointFile = getCheckpointFile(chainId);
   try {
-    const data = await readFile(checkpointFile, "utf-8");
+    const data = await Bun.file(checkpointFile).text();
     const parsed = JSON.parse(data);
     if (
       typeof parsed.nextBlock === "number" &&
@@ -36,11 +36,9 @@ export async function saveCheckpoint(
   const tmp = checkpointFile + ".tmp";
   try {
     await mkdir(dirname(checkpointFile), { recursive: true });
-    await writeFile(
-      tmp,
-      JSON.stringify({ nextBlock, updatedAt: Date.now() }),
-      "utf-8",
-    );
+    // Bun.write uses the fastest syscall; rename/mkdir stay node:fs/promises
+    // (Bun docs route directory ops to node:fs).
+    await Bun.write(tmp, JSON.stringify({ nextBlock, updatedAt: Date.now() }));
     await rename(tmp, checkpointFile);
   } catch (err) {
     console.error("[watcher] failed to save checkpoint:", err);

@@ -10,7 +10,6 @@ import helmet from "helmet";
 import * as Sentry from "@sentry/node";
 import cors from "cors";
 import { hexToBytes } from "ethereum-cryptography/utils";
-import { randomBytes } from "node:crypto";
 import { hexlify, isAddress, toBeHex } from "ethers";
 import { HTTP } from "@axiom/config";
 import { ZodError } from "zod";
@@ -192,7 +191,7 @@ export function startServer(config: ServerConfig): {
 			}
 			const oldPlaintext = aesGcmDecrypt(oldDataKey, oldEnc);
 
-			const newDataKey = new Uint8Array(randomBytes(32));
+			const newDataKey = crypto.getRandomValues(new Uint8Array(32));
 			const newEnc = aesGcmEncrypt(newDataKey, oldPlaintext);
 			const newBlob = concatEncrypted(newEnc);
 			const { rootHash: newDataHash } = await storage.upload(newBlob);

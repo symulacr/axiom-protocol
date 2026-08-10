@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { Router, type Request, type Response } from "express";
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -245,7 +244,7 @@ export function createMcpRouter(
 					return;
 				}
 				const created = new StreamableHTTPServerTransport({
-					sessionIdGenerator: () => randomUUID(),
+					sessionIdGenerator: () => crypto.randomUUID(),
 					// Respond with direct JSON to POST requests (clients must
 					// accept both application/json and text/event-stream per
 					// spec; the GET SSE stream remains available unchanged).
