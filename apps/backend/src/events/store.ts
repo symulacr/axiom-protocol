@@ -478,19 +478,25 @@ export function getEventStore(): EventStore {
 }
 
 // ── Merged from persist.ts ──────────────────────────────────────────
-const PERSIST_DIR = join(process.env.AXIOM_DATA_DIR ?? process.cwd(), ".data");
-const PERSIST_FILE = join(PERSIST_DIR, "events.json");
+// Resolved at call time (not module load) so AXIOM_DATA_DIR set after import
+// takes effect — matches acquireEventStoreLock's call-time env resolution and
+// lets parallel test workers use per-file data dirs.
+function persistPaths(): { dir: string; file: string } {
+	const dir = join(process.env.AXIOM_DATA_DIR ?? process.cwd(), ".data");
+	return { dir, file: join(dir, "events.json") };
+}
 
 const persistLog = createLogger("events");
 
 async function ensurePersistDir(): Promise<void> {
-	await mkdir(PERSIST_DIR, { recursive: true });
+	await mkdir(persistPaths().dir, { recursive: true });
 }
 
 function loadBuckets(): Map<string, unknown[]> {
 	try {
-		if (!existsSync(PERSIST_FILE)) return new Map();
-		const raw = readFileSync(PERSIST_FILE, "utf-8");
+		const { file } = persistPaths();
+		if (!existsSync(file)) return new Map();
+		const raw = readFileSync(file, "utf-8");
 		const parsed = JSON.parse(raw) as Record<string, unknown>;
 		if (!parsed || typeof parsed !== "object") {
 			throw new Error("persist file root is not an object");
@@ -504,9 +510,9 @@ function loadBuckets(): Map<string, unknown[]> {
 		persistLog.warn("persist file corrupt or unreadable, starting fresh", {
 			error: extractErrorMessage(err),
 		});
-		if (existsSync(PERSIST_FILE)) {
+		if (existsSync(persistPaths().file)) {
 			try {
-				renameSync(PERSIST_FILE, `${PERSIST_FILE}.bak`);
+				renameSync(persistPaths().file, `${persistPaths().file}.bak`);
 			} catch {
 				/* ignore */
 			}
@@ -532,9 +538,9 @@ async function saveBuckets(
 	}
 	dirty.clear();
 	const data = `{${parts.join(",")}}`;
-	const tmp = `${PERSIST_FILE}.tmp`;
+	const tmp = `${persistPaths().file}.tmp`;
 	await writeFile(tmp, data);
-	await rename(tmp, PERSIST_FILE);
+	await rename(tmp, persistPaths().file);
 }
 
 // ── Merged from instance-lock.ts ────────────────────────────────────

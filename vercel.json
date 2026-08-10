@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "corepack enable && corepack prepare pnpm@10.22.0 --activate && pnpm install",
-  "buildCommand": "pnpm --filter @axiom/config build && pnpm --filter @axiom/chat-runtime build && pnpm --filter @axiom/frontend build",
+  "installCommand": "bun install --frozen-lockfile",
+  "buildCommand": "bun run --filter @axiom/config build && bun run --filter @axiom/chat-runtime build && bun run --filter @axiom/frontend build",
   "outputDirectory": "apps/frontend/dist",
   "rewrites": [
     {

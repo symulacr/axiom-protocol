@@ -36,14 +36,13 @@ jobs:
     needs: [require-secrets]
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: oven-sh/setup-bun@v2
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @axiom/config build
-      - run: pnpm --filter @axiom/chat-runtime build
+      - run: bun install --frozen-lockfile
+      - run: bun run --filter @axiom/config build
+      - run: bun run --filter @axiom/chat-runtime build
       - name: Start backend
         env:
           DEPLOYER_PK: ${{ secrets.DEPLOYER_PK }}
@@ -54,7 +53,7 @@ jobs:
           AXIOM_RATE_LIMIT_MAX: "50000"
         run: |
           cd apps/backend
-          node --import tsx src/index.ts > /tmp/backend.log 2>&1 &
+          bun src/index.ts > /tmp/backend.log 2>&1 &
           echo $! > /tmp/backend.pid
           for i in $(seq 1 45); do
             curl -sf http://127.0.0.1:3000/health/live && exit 0
@@ -71,7 +70,7 @@ jobs:
           OG_COMPUTE_API_KEY: ${{ secrets.OG_COMPUTE_API_KEY }}
           E2E_LIVE_COMPUTE: "1"
           BACKEND_URL: http://127.0.0.1:3000
-        run: pnpm --filter @axiom/backend run run-chat-bench:live
+        run: bun run --filter @axiom/backend run-chat-bench:live
       - name: Stop backend
         if: always()
         run: |
@@ -83,19 +82,18 @@ jobs:
     needs: [require-secrets]
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: oven-sh/setup-bun@v2
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      - run: bun install --frozen-lockfile
       - name: Start backend
         env:
           DEPLOYER_PK: ${{ secrets.DEPLOYER_PK }}
           AXIOM_RATE_LIMIT_MAX: "50000"
         run: |
           cd apps/backend
-          node --import tsx src/index.ts > /tmp/backend.log 2>&1 &
+          bun src/index.ts > /tmp/backend.log 2>&1 &
           echo $! > /tmp/backend.pid
           for i in $(seq 1 45); do
             curl -sf http://127.0.0.1:3000/health/live && exit 0
@@ -109,7 +107,7 @@ jobs:
           BENCH_CONCURRENCY: "1"
           LOAD_BENCH_CHAT: "0"
           BACKEND_URL: http://127.0.0.1:3000
-        run: pnpm --filter @axiom/backend run run-load-bench
+        run: bun run --filter @axiom/backend run-load-bench
       - name: Stop backend
         if: always()
         run: |

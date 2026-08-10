@@ -16,25 +16,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10.22.0
+      - uses: oven-sh/setup-bun@v2
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @axiom/config build && pnpm --filter @axiom/config typecheck
-      - run: pnpm --filter @axiom/chat-runtime build && pnpm --filter
-          @axiom/chat-runtime typecheck
-      - run: pnpm --filter @axiom/oracle build && pnpm --filter @axiom/oracle typecheck
-      - run: pnpm --filter @axiom/backend build && pnpm --filter @axiom/backend
+      - run: bun install --frozen-lockfile
+      - run:
+          bun run --filter @axiom/config build && bun run --filter @axiom/config
           typecheck
-      - run: pnpm --filter @axiom/frontend typecheck
-      - run: pnpm --filter @axiom/frontend lint
-      - run: pnpm --filter @axiom/contracts typecheck
+      - run: bun run --filter @axiom/chat-runtime build && bun run --filter
+          @axiom/chat-runtime typecheck
+      - run:
+          bun run --filter @axiom/oracle build && bun run --filter @axiom/oracle
+          typecheck
+      - run:
+          bun run --filter @axiom/backend build && bun run --filter @axiom/backend
+          typecheck
+      - run: bun run --filter @axiom/frontend typecheck
+      - run: bun run --filter @axiom/frontend lint
+      - run: bun run --filter @axiom/contracts typecheck
       - name: Dependency audit
-        run: pnpm audit --audit-level=high || true
+        run: bun audit || true
       - name: Prove tests are tracked (C0)
         run: |
           set -euo pipefail
@@ -52,36 +54,30 @@ jobs:
     needs: [typecheck]
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10.22.0
+      - uses: oven-sh/setup-bun@v2
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @axiom/config build
-      - run: pnpm --filter @axiom/chat-runtime build
-      - run: pnpm --filter @axiom/frontend build
+      - run: bun install --frozen-lockfile
+      - run: bun run --filter @axiom/config build
+      - run: bun run --filter @axiom/chat-runtime build
+      - run: bun run --filter @axiom/frontend build
 
   unit-tests:
     name: Unit tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10.22.0
+      - uses: oven-sh/setup-bun@v2
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @axiom/config build
-      - run: pnpm --filter @axiom/chat-runtime build
-      - run: pnpm --filter @axiom/config test
-      - run: pnpm --filter @axiom/chat-runtime test
-      - run: pnpm --filter @axiom/oracle test
+      - run: bun install --frozen-lockfile
+      - run: bun run --filter @axiom/config build
+      - run: bun run --filter @axiom/chat-runtime build
+      - run: bun run --filter @axiom/config test
+      - run: bun run --filter @axiom/chat-runtime test
+      - run: bun run --filter @axiom/oracle test
 
   contracts:
     name: Forge tests (local)
@@ -109,22 +105,19 @@ jobs:
       AXIOM_TEE_SIGNER_PK: ${{ secrets.AXIOM_TEE_SIGNER_PK }}
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10.22.0
+      - uses: oven-sh/setup-bun@v2
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @axiom/config build
-      - run: pnpm --filter @axiom/chat-runtime build
-      - run: pnpm --filter @axiom/backend build
+      - run: bun install --frozen-lockfile
+      - run: bun run --filter @axiom/config build
+      - run: bun run --filter @axiom/chat-runtime build
+      - run: bun run --filter @axiom/backend build
       - name: Start backend
         run: |
           cd apps/backend
           AXIOM_RATE_LIMIT_MAX=50000 AXIOM_HEALTH_CACHE_MS=3000 \
-            node dist/index.js > /tmp/backend.log 2>&1 &
+            bun dist/index.js > /tmp/backend.log 2>&1 &
           echo $! > /tmp/backend.pid
           for i in $(seq 1 45); do
             curl -sf http://127.0.0.1:3000/health/live && exit 0
@@ -134,7 +127,7 @@ jobs:
           cat /tmp/backend.log
           exit 1
       - name: Chat bench (CI mode)
-        run: node dist/cli/run-chat-bench.js
+        run: bun dist/cli/run-chat-bench.js
         working-directory: apps/backend
         env:
           E2E_LIVE_COMPUTE: "0"

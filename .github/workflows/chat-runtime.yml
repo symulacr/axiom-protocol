@@ -19,12 +19,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: oven-sh/setup-bun@v2
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @axiom/config build
-      - run: pnpm --filter @axiom/chat-runtime build
-      - run: pnpm --filter @axiom/chat-runtime test
+      - run: bun install --frozen-lockfile
+      - run: bun run --filter @axiom/config build
+      - run: bun run --filter @axiom/chat-runtime build
+      - run: bun run --filter @axiom/chat-runtime test

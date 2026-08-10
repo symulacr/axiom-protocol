@@ -1,10 +1,10 @@
 {
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
-    "buildCommand": "pnpm --filter @axiom/config build && pnpm --filter @axiom/chat-runtime build && pnpm --filter @axiom/backend build"
+    "buildCommand": "bun run --filter @axiom/config build && bun run --filter @axiom/chat-runtime build && bun run --filter @axiom/backend build"
   },
   "deploy": {
-    "startCommand": "node apps/backend/dist/index.js",
+    "startCommand": "bun apps/backend/dist/index.js",
     "healthcheckPath": "/health",
     "healthcheckTimeout": 120,
     "restartPolicy": "ON_FAILURE"

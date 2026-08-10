@@ -7,27 +7,24 @@
   "license": "MIT",
   "engines": {
     "node": ">=22.0.0",
-    "pnpm": ">=10.22.0",
     "bun": ">=1.4.0"
   },
-  "packageManager": "pnpm@10.22.0",
-
+  "packageManager": "bun@1.4.0",
   "scripts": {
-    "build": "pnpm --filter @axiom/config build && pnpm --filter @axiom/chat-runtime build && pnpm --filter @axiom/oracle build && pnpm --filter @axiom/backend build",
-    "build:all": "pnpm build && pnpm --filter @axiom/frontend build",
-    "start": "node apps/backend/dist/index.js",
+    "build": "bun run --filter @axiom/config build && bun run --filter @axiom/chat-runtime build && bun run --filter @axiom/oracle build && bun run --filter @axiom/backend build",
+    "build:all": "bun run build && bun run --filter @axiom/frontend build",
+    "start": "bun apps/backend/dist/index.js",
     "start:bun": "bun run apps/backend/src/index.ts",
-    "test": "pnpm -r run test",
-    "typecheck": "pnpm -r run typecheck",
-    "lint": "pnpm -r run lint",
+    "test": "bun run --filter @axiom/config test && bun run --filter @axiom/chat-runtime test && bun run --filter @axiom/oracle test && bun run --filter @axiom/backend test && bun run --filter @axiom/frontend test",
+    "typecheck": "bun run --filter @axiom/config typecheck && bun run --filter @axiom/chat-runtime typecheck && bun run --filter @axiom/oracle typecheck && bun run --filter @axiom/backend typecheck && bun run --filter @axiom/frontend typecheck",
+    "lint": "bun run --filter @axiom/backend lint && bun run --filter @axiom/frontend lint && bun run --filter @axiom/oracle lint",
     "format": "prettier --write \"**/*.{ts,tsx,sol,md,json,yml,yaml}\" --ignore-path .gitignore",
     "format:check": "prettier --check \"**/*.{ts,tsx,sol,md,json,yml,yaml}\" --ignore-path .gitignore",
-    "clean": "pnpm -r exec rm -rf dist build out cache .turbo node_modules/.cache",
+    "clean": "rm -rf apps/*/dist apps/*/build apps/*/out apps/*/cache packages/*/dist packages/*/build packages/*/out packages/*/cache .turbo node_modules/.cache",
     "prepare": "husky || true"
   },
   "devDependencies": {
     "@types/node": "^22.20.1",
-    "tsx": "^4.23.11",
     "typescript": "^5.9.3",
     "prettier": "^3.9.6",
     "eslint": "^9.39.5",
@@ -50,5 +47,14 @@
       "markdownlint-cli2 --fix",
       "prettier --write"
     ]
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "overrides": {
+    "ethers": "6.17.0",
+    "@0gfoundation/0g-storage-ts-sdk>ethers": "6.17.0",
+    "@types/express": "4.17.25"
   }
 }

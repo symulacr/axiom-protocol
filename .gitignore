@@ -329,6 +329,7 @@ wallets/
 
 # ── Runtime data ─────────────────────────────────────
 .data/
+apps/backend/data/
 
 # ── Dev-only untracked files (keep on disk, out of git status) ──
 .gitmessage
