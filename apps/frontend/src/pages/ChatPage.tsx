@@ -104,6 +104,14 @@ const chatMsgStyle: CSSProperties = {
   lineHeight: "var(--lh-normal)",
 };
 
+const insetCardStyle: CSSProperties = {
+  background: COLORS.bg,
+  border: `1px solid ${COLORS.border}`,
+  borderRadius: "var(--radius-md)",
+  padding: "var(--space-sm) var(--space-md)",
+  marginTop: "var(--space-xs)",
+};
+
 type ChatThread = {
   id: string;
   title: string;
@@ -111,15 +119,19 @@ type ChatThread = {
   messages: Message[];
 };
 
-function loadThreads(): ChatThread[] {
+function loadJsonArray<T>(storage: Storage, key: string): T[] {
   try {
-    const raw = localStorage.getItem(CHAT_THREADS_KEY);
+    const raw = storage.getItem(key);
     if (!raw) return [];
-    const parsed = JSON.parse(raw) as ChatThread[];
+    const parsed = JSON.parse(raw) as T[];
     return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
   }
+}
+
+function loadThreads(): ChatThread[] {
+  return loadJsonArray<ChatThread>(localStorage, CHAT_THREADS_KEY);
 }
 
 function saveThreads(threads: ChatThread[]): void {
@@ -224,6 +236,14 @@ function StatusDot({
   );
 }
 
+function ChatBanner({ children }: { children: ReactNode }): ReactElement {
+  return (
+    <div className="chat-banner" role="status">
+      {children}
+    </div>
+  );
+}
+
 function AskUserCard({
   content,
   onAnswer,
@@ -242,15 +262,7 @@ function AskUserCard({
   const options = Array.isArray(data.options) ? data.options : [];
   if (options.length === 0) return null;
   return (
-    <div
-      style={{
-        background: COLORS.bg,
-        border: `1px solid ${COLORS.border}`,
-        borderRadius: "var(--radius-md)",
-        padding: "var(--space-sm) var(--space-md)",
-        marginTop: "var(--space-xs)",
-      }}
-    >
+    <div style={insetCardStyle}>
       <p
         style={{
           margin: "0 0 8px",
@@ -272,14 +284,7 @@ function AskUserCard({
 }
 
 function loadStoredMessages(): Message[] {
-  try {
-    const raw = sessionStorage.getItem(CHAT_MESSAGES_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as Message[];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+  return loadJsonArray<Message>(sessionStorage, CHAT_MESSAGES_KEY);
 }
 
 function renderMarkdown(src: string | null): string {
@@ -480,8 +485,7 @@ function ChatPageInner(): ReactElement {
 
   const runAgent = useCallback(
     async (userText: string) => {
-      if (!userText.trim()) return;
-      if (!chainSupported) return;
+      if (!userText.trim() || !chainSupported) return;
       isStreamingRef.current = true;
       setIsStreaming(true);
 
@@ -780,8 +784,7 @@ function ChatPageInner(): ReactElement {
   const sendMessage = useCallback(
     (userText: string) => {
       const text = userText.trim();
-      if (!text) return;
-      if (!chainSupported) return;
+      if (!text || !chainSupported) return;
       setInput("");
       queueRef.current = [...queueRef.current, text];
       setQueue(queueRef.current);
@@ -907,16 +910,10 @@ function ChatPageInner(): ReactElement {
           </Button>
         </div>
 
-        {computeHint && (
-          <div className="chat-banner" role="status">
-            {computeHint}
-          </div>
-        )}
+        {computeHint && <ChatBanner>{computeHint}</ChatBanner>}
 
         {!chainSupported && (
-          <div className="chat-banner" role="status">
-            Wrong network. Switch wallet to 0G Aristotle.
-          </div>
+          <ChatBanner>Wrong network. Switch wallet to 0G Aristotle.</ChatBanner>
         )}
 
         <div className="chat-messages" ref={listRef}>
@@ -1052,13 +1049,9 @@ function ChatPageInner(): ReactElement {
                       "Tool result"
                     }
                     style={{
-                      background: COLORS.bg,
-                      border: `1px solid ${COLORS.border}`,
-                      borderRadius: "var(--radius-md)",
-                      padding: "var(--space-sm) var(--space-md)",
+                      ...insetCardStyle,
                       fontSize: "var(--text-sm)",
                       color: COLORS.textMuted,
-                      marginTop: "var(--space-xs)",
                     }}
                   >
                     <ToolResultBody
@@ -1140,13 +1133,7 @@ function ChatPageInner(): ReactElement {
                 </div>
               ) : (
                 <p
-                  style={{
-                    fontSize: "var(--text-sm)",
-                    color: COLORS.text,
-                    margin: 0,
-                    lineHeight: "var(--lh-normal)",
-                    whiteSpace: "pre-wrap",
-                  }}
+                  style={{ ...chatMsgStyle, margin: 0, whiteSpace: "pre-wrap" }}
                 >
                   <span
                     style={{

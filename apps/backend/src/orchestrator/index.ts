@@ -45,6 +45,9 @@ const STRATEGY_OF_LEGACY = [
 	"function strategyOf(uint256) view returns (bytes32, uint256, uint256, uint64)",
 ] as const;
 
+const ZERO_ROOT =
+	"0x0000000000000000000000000000000000000000000000000000000000000000";
+
 export async function detectVaultAbiVariant(
 	provider: Provider,
 	vaultAddress: string,
@@ -177,12 +180,8 @@ export class StrategyRunner {
 	}
 
 	private async getClient(model?: string): Promise<OpenAI> {
-		if (this.openai && this.openaiModel === model) {
-			return this.openai;
-		}
-		this.openai = await createRouterClient(model, {
-			timeout: undefined,
-		});
+		if (this.openai && this.openaiModel === model) return this.openai;
+		this.openai = await createRouterClient(model, { timeout: undefined });
 		this.openaiModel = model;
 		return this.openai;
 	}
@@ -245,16 +244,15 @@ export class StrategyRunner {
 			recommendation.action === "hold"
 				? undefined
 				: await this.settleOnChain(strategy, recommendation.action).catch(
-						(err) => {
-							return {
+						(err) =>
+							({
 								txHash: "0x" as `0x${string}`,
 								action: recommendation.action,
 								target: (this.addresses?.vault ?? "0x") as `0x${string}`,
 								success: false,
 								result:
 									`0x${extractErrorMessage(err).slice(0, 128)}` as `0x${string}`,
-							} satisfies NonNullable<TickResult["execution"]>;
-						},
+							}) satisfies NonNullable<TickResult["execution"]>,
 					);
 
 		const result: TickResult = {
@@ -311,7 +309,7 @@ export class StrategyRunner {
 			};
 		}
 
-		if (strat.root === "0x" + "0".repeat(64) || BigInt(strat.root) === 0n) {
+		if (strat.root === ZERO_ROOT || BigInt(strat.root) === 0n) {
 			return {
 				status: "skipped",
 				reason: "no strategy root set on vault",
@@ -346,8 +344,7 @@ export class StrategyRunner {
 	private async resolveVaultAbiVariant(): Promise<VaultAbiVariant> {
 		const vaultAddr = this.addresses?.vault;
 		if (!vaultAddr) return "current";
-		if (this.vaultAbiVariant) return this.vaultAbiVariant;
-		this.vaultAbiVariant = await detectVaultAbiVariant(
+		this.vaultAbiVariant ??= await detectVaultAbiVariant(
 			this.provider,
 			vaultAddr,
 		);
@@ -444,16 +441,13 @@ export class StrategyRunner {
 		strategy: StrategySpec,
 	): Promise<TickResult["onchain"]> {
 		const vaultAddr = this.addresses?.vault;
-		if (!vaultAddr) {
-			return { vaultBalance: 0n, recentEvents: [] };
-		}
+		if (!vaultAddr) return { vaultBalance: 0n, recentEvents: [] };
 		const vaultVariant = await this.resolveVaultAbiVariant();
 		const readAbi = vaultAbiFor(vaultVariant);
 		const vaultTc = this.getVaultContract("read", readAbi);
 		const tokenId = strategy.agentTokenId;
-		if (!vaultTc.raw.filters?.StrategySet || !vaultTc.raw.filters?.Deposited) {
+		if (!vaultTc.raw.filters?.StrategySet || !vaultTc.raw.filters?.Deposited)
 			return { vaultBalance: 0n, recentEvents: [] };
-		}
 		const rawBalance = await vaultTc.contract.balanceOf(tokenId);
 		const vaultBalance = rawBalance ?? 0n;
 
@@ -466,9 +460,8 @@ export class StrategyRunner {
 		const depositFilter = vaultTc.raw.filters.Deposited(tokenId);
 		const strategyEvent = vaultTc.iface.getEvent(EVENT_NAMES.StrategySet);
 		const depositEvent = vaultTc.iface.getEvent(EVENT_NAMES.Deposited);
-		if (!strategyEvent || !depositEvent) {
+		if (!strategyEvent || !depositEvent)
 			return { vaultBalance: 0n, recentEvents: [] };
-		}
 		const strategyTopic = strategyEvent.topicHash;
 		const depositTopic = depositEvent.topicHash;
 		const [strategyLogs, depositLogs] = await Promise.all([
@@ -497,10 +490,7 @@ export class StrategyRunner {
 }
 
 export function settlementSkipReason(root: string): string {
-	if (
-		root ===
-		"0x0000000000000000000000000000000000000000000000000000000000000000"
-	) {
+	if (root === ZERO_ROOT) {
 		return "no strategy set on vault";
 	}
 	return "settlement requires an off-chain Merkle proof producer (not available)";

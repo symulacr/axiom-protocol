@@ -7,6 +7,7 @@ import {
   type ChangeEvent,
   type FormEvent,
   type ReactElement,
+  type ReactNode,
 } from "react";
 import { isAddress, toHex } from "viem";
 import { toast } from "sonner";
@@ -45,6 +46,33 @@ const confirmTextStyle: CSSProperties = {
   marginBottom: 20,
 };
 
+const PHASE_LABELS: Record<TransferPhase, string> = {
+  idle: "Ready",
+  challenge: "Generating challenge...",
+  signing: "Waiting for signature...",
+  finalizing: "Re-encrypting data...",
+  confirming: "Confirming on-chain...",
+};
+
+const PHASE_RETRY: Partial<Record<TransferPhase, string>> = {
+  challenge:
+    "The challenge request to the oracle failed. The nonce has been consumed — generate a new nonce and try again.",
+  signing:
+    'The wallet signature was rejected or failed. The nonce has been consumed — click "Edit" to restart from the beginning.',
+  finalizing:
+    "Finalization with the oracle failed. The transaction was NOT submitted. Generate a new nonce and restart.",
+  confirming:
+    'The on-chain transaction failed. Click "Edit" to restart the flow with a fresh nonce.',
+};
+
+const proofCardStyle: CSSProperties = {
+  background: COLORS.bg,
+  padding: "12px 16px",
+  borderRadius: "var(--radius-lg)",
+  fontSize: "var(--text-xs)",
+  color: COLORS.textMuted,
+};
+
 function freshNonceHex(byteLength = 32): `0x${string}` {
   const bytes = new Uint8Array(byteLength);
   crypto.getRandomValues(bytes);
@@ -74,7 +102,6 @@ function PhaseIndicator({
 }: {
   transferPhase: TransferPhase;
 }): ReactElement {
-  const phase = transferPhase;
   return (
     <span
       style={{
@@ -86,18 +113,39 @@ function PhaseIndicator({
       }}
     >
       <Spinner size={12} />
-      {phase === "idle"
-        ? "Ready"
-        : phase === "challenge"
-          ? "Generating challenge..."
-          : phase === "signing"
-            ? "Waiting for signature..."
-            : phase === "finalizing"
-              ? "Re-encrypting data..."
-              : phase === "confirming"
-                ? "Confirming on-chain..."
-                : phase}
+      {PHASE_LABELS[transferPhase] ?? transferPhase}
     </span>
+  );
+}
+
+function FieldLabel({
+  htmlFor,
+  children,
+  spacing = "lg",
+}: {
+  htmlFor: string;
+  children: ReactNode;
+  spacing?: "lg" | "sm";
+}): ReactElement {
+  return (
+    <label
+      htmlFor={htmlFor}
+      className={`block mt-${spacing} fw-medium text-sm text-primary`}
+    >
+      {children}
+    </label>
+  );
+}
+
+function FieldError({
+  children,
+}: {
+  children: ReactNode;
+}): ReactElement | null {
+  return children === null ? null : (
+    <Alert variant="error" style={{ marginTop: 4 }}>
+      {children}
+    </Alert>
   );
 }
 
@@ -149,12 +197,7 @@ function TransferFormPhase({
         transaction in the next step.
       </p>
 
-      <label
-        htmlFor={`${formId}-to`}
-        className="block mt-lg fw-medium text-sm text-primary"
-      >
-        Receiver address
-      </label>
+      <FieldLabel htmlFor={`${formId}-to`}>Receiver address</FieldLabel>
       <Input
         id={`${formId}-to`}
         value={receiverAddress}
@@ -167,18 +210,9 @@ function TransferFormPhase({
         style={monoFieldStyle}
         required
       />
-      {addressError !== null && (
-        <Alert variant="error" style={{ marginTop: 4 }}>
-          {addressError}
-        </Alert>
-      )}
+      <FieldError>{addressError}</FieldError>
 
-      <label
-        htmlFor={`${formId}-pubkey`}
-        className="block mt-lg fw-medium text-sm text-primary"
-      >
-        Receiver Public Key
-      </label>
+      <FieldLabel htmlFor={`${formId}-pubkey`}>Receiver Public Key</FieldLabel>
       <Textarea
         id={`${formId}-pubkey`}
         name="receiverPubKey64"
@@ -203,33 +237,21 @@ function TransferFormPhase({
         'Export Public Key' or via ENS. Must be 128 hex characters without the
         0x04 prefix.
       </p>
-      {pubKeyError !== null && (
-        <Alert variant="error" style={{ marginTop: 4 }}>
-          {pubKeyError}
-        </Alert>
-      )}
+      <FieldError>{pubKeyError}</FieldError>
 
       <details style={{ fontSize: "var(--text-xs)", color: COLORS.textDim }}>
         <summary style={{ cursor: "pointer" }}>
           Advanced: Access proof details
         </summary>
-        <label
-          htmlFor={`${formId}-nonce`}
-          className="block mt-sm fw-medium text-sm text-primary"
-        >
+        <FieldLabel htmlFor={`${formId}-nonce`} spacing="sm">
           Access proof nonce
-        </label>
+        </FieldLabel>
         <Input
           id={`${formId}-nonce`}
           value={accessProofNonce}
           readOnly
           className="w-full"
-          style={{
-            boxSizing: "border-box",
-            fontFamily: "var(--font-mono)",
-            marginTop: 6,
-            color: COLORS.bronzeLight,
-          }}
+          style={{ ...monoFieldStyle, color: COLORS.bronzeLight }}
         />
         <p
           className="text-dim text-xs"
@@ -252,12 +274,9 @@ function TransferFormPhase({
           re-key. The oracle re-encrypts and seals a fresh key. Leave blank for
           sign-only.
         </p>
-        <label
-          htmlFor={`${formId}-oldkey`}
-          className="block mt-sm fw-medium text-sm text-primary"
-        >
+        <FieldLabel htmlFor={`${formId}-oldkey`} spacing="sm">
           Old data encryption key (base64)
-        </label>
+        </FieldLabel>
         <Input
           id={`${formId}-oldkey`}
           value={oldDataEncryptionKey}
@@ -269,12 +288,9 @@ function TransferFormPhase({
           className="w-full"
           style={monoFieldStyle}
         />
-        <label
-          htmlFor={`${formId}-olduri`}
-          className="block mt-sm fw-medium text-sm text-primary"
-        >
+        <FieldLabel htmlFor={`${formId}-olduri`} spacing="sm">
           Old data URI (0x&hellip;)
-        </label>
+        </FieldLabel>
         <Input
           id={`${formId}-olduri`}
           value={oldDataUri}
@@ -286,11 +302,7 @@ function TransferFormPhase({
           className="w-full"
           style={monoFieldStyle}
         />
-        {rekeyError !== null && (
-          <Alert variant="error" style={{ marginTop: 4 }}>
-            {rekeyError}
-          </Alert>
-        )}
+        <FieldError>{rekeyError}</FieldError>
       </details>
 
       {mergedError}
@@ -368,16 +380,7 @@ function ConfirmTransferPhase({
       )}
 
       {signature !== null && (
-        <Card
-          style={{
-            background: COLORS.bg,
-            padding: "12px 16px",
-            borderRadius: "var(--radius-lg)",
-            marginTop: 12,
-            fontSize: "var(--text-xs)",
-            color: COLORS.textMuted,
-          }}
-        >
+        <Card style={{ ...proofCardStyle, marginTop: 12 }}>
           <strong style={{ color: COLORS.text }}>OwnershipProof</strong>{" "}
           (TEE-signed)
           <br />
@@ -409,16 +412,7 @@ function ConfirmTransferPhase({
       )}
 
       {signature !== null && signature.accessSigner !== undefined && (
-        <Card
-          style={{
-            background: COLORS.bg,
-            padding: "12px 16px",
-            borderRadius: "var(--radius-lg)",
-            marginTop: 8,
-            fontSize: "var(--text-xs)",
-            color: COLORS.textMuted,
-          }}
-        >
+        <Card style={{ ...proofCardStyle, marginTop: 8 }}>
           <strong style={{ color: COLORS.text }}>AccessProof</strong>{" "}
           (receiver-signed)
           <br />
@@ -472,22 +466,12 @@ export function TransferModal({
     transferPhase,
   } = useTransfer();
 
-  const retryGuidance = useMemo<string | null>(() => {
+  const retryGuidance = useMemo(() => {
     if (!error) return null;
     const msg = error.message.toLowerCase();
 
-    if (transferPhase === "challenge") {
-      return "The challenge request to the oracle failed. The nonce has been consumed — generate a new nonce and try again.";
-    }
-    if (transferPhase === "signing") {
-      return 'The wallet signature was rejected or failed. The nonce has been consumed — click "Edit" to restart from the beginning.';
-    }
-    if (transferPhase === "finalizing") {
-      return "Finalization with the oracle failed. The transaction was NOT submitted. Generate a new nonce and restart.";
-    }
-    if (transferPhase === "confirming") {
-      return 'The on-chain transaction failed. Click "Edit" to restart the flow with a fresh nonce.';
-    }
+    const phaseHint = PHASE_RETRY[transferPhase];
+    if (phaseHint !== undefined) return phaseHint;
 
     if (msg.includes("challenge")) {
       return "The challenge request failed. Generate a new nonce and try again.";
@@ -653,6 +637,7 @@ export function TransferModal({
     setOpen(false);
   }, [setOpen]);
 
+  const errObj = error as { code?: string; requestId?: string } | null;
   const mergedError =
     submitError !== null ? (
       <Alert variant="error" style={{ marginTop: 16 }}>
@@ -668,13 +653,8 @@ export function TransferModal({
             {retryGuidance}
           </>
         )}
-        {(error as { code?: string; requestId?: string }).code !== undefined ||
-        (error as { code?: string; requestId?: string }).requestId !==
-          undefined ? (
-          <ErrorRef
-            code={(error as { code?: string }).code}
-            requestId={(error as { requestId?: string }).requestId}
-          />
+        {errObj?.code !== undefined || errObj?.requestId !== undefined ? (
+          <ErrorRef code={errObj?.code} requestId={errObj?.requestId} />
         ) : null}
       </Alert>
     ) : null;

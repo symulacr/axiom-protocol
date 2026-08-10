@@ -140,21 +140,19 @@ function registerSkillRoutes(
 		) => {
 			if (r.requiresServerAuth) {
 				const principal = (req as { authPrincipal?: string }).authPrincipal;
-				if (principal === "client") {
+				if (principal === "client")
 					return {
 						ok: false,
 						error: "forbidden: server API key required for this skill",
 						code: "SERVER_KEY_REQUIRED",
 					};
-				}
 			}
-			if (r.requiresGithubToken && !process.env.GITHUB_TOKEN) {
+			if (r.requiresGithubToken && !process.env.GITHUB_TOKEN)
 				return {
 					ok: false,
 					error:
 						"GITHUB_TOKEN is not configured on the server; OSS forensics requires a GitHub token",
 				};
-			}
 			return r.handler(parsed, req, res, helpers);
 		};
 		route(
@@ -178,10 +176,7 @@ export function redactIocMatch(raw: string, patternName: string): string {
 // ---------------------------------------------------------------------------
 
 // EVM skill schemas live in @axiom/config/skills/schemas (single source of
-// truth, shared with chat-tools.ts). Local aliases keep the route handlers
-// below readable.
-const address = evmAddressSchema;
-const token = evmTokenOwnerSchema;
+// truth, shared with chat-tools.ts).
 export const whaleSchema = evmWhaleSchema;
 
 // ---------------------------------------------------------------------------
@@ -268,11 +263,13 @@ function extractQuote(result: YahooChartResponse) {
 	});
 }
 
-const symbolSchema = stocksQuoteSchema;
-const searchSchema = stocksSearchSchema;
-const historySchema = stocksHistorySchema;
-const compareSchema = stocksCompareSchema;
-const cryptoSchema = stocksCryptoSchema;
+async function chartQuote(symbol: string, range: string, interval: string) {
+	const data = await yahooFetch<YahooChartResponse>(
+		`/v8/finance/chart/${symbol}`,
+		{ range, interval },
+	);
+	return extractQuote(data);
+}
 
 // ---------------------------------------------------------------------------
 // OSINT skills
@@ -303,8 +300,6 @@ function tokenScore(a: string, b: string): number {
 	return overlap / Math.max(tokA.size, tokB.size);
 }
 
-const cikSchema = osintSecEdgarSchema;
-const usaspendingSchema = osintUsaspendingSchema;
 // OFAC's sanctions search rejects non-browser user agents (HTTP 406) and
 // returns HTML (not JSON). Fetch as text with browser-like headers so the
 // route degrades to a clean 200 instead of a 502 upstream-error.
@@ -324,11 +319,6 @@ async function ofacFetch(path: string): Promise<string> {
 	ofacCache.set(path, text);
 	return text;
 }
-
-const ofacSchema = osintOfacSdnSchema;
-const opencorpSchema = osintOpencorporatesSchema;
-const entitySchema = osintEntityResolveSchema;
-const courtSchema = osintCourtlistenerSchema;
 
 // ---------------------------------------------------------------------------
 // Unbroker skills
@@ -489,10 +479,8 @@ async function auditDeps(owner: string, repo: string) {
 	let storageLayout: unknown = null;
 	try {
 		const key = `layout:${owner}/${repo}`;
-		const cached = cache.get(key);
-		if (cached) {
-			storageLayout = cached;
-		} else {
+		storageLayout = cache.get(key);
+		if (!storageLayout) {
 			const layout = await ghFetch(`/repos/${owner}/${repo}/contents/out`);
 			const items = Array.isArray(layout) ? layout : [];
 			const slotFile = items.find((i: Record<string, unknown>) =>
@@ -540,7 +528,7 @@ export function createSkillRouters(config: ServerConfig): Router {
 		// EVM
 		skill(
 			"/v1/skills/evm/wallet",
-			token,
+			evmTokenOwnerSchema,
 			"Query EVM wallet native and ERC-20 balances",
 			async (parsed) => {
 				const [native, tokenContract] = await Promise.all([
@@ -560,7 +548,7 @@ export function createSkillRouters(config: ServerConfig): Router {
 		),
 		skill(
 			"/v1/skills/evm/multichain",
-			address,
+			evmAddressSchema,
 			"Query wallet balances across multiple EVM chains",
 			async (parsed) => {
 				const results = await Promise.allSettled(
@@ -630,7 +618,7 @@ export function createSkillRouters(config: ServerConfig): Router {
 		),
 		skill(
 			"/v1/skills/evm/whale",
-			whaleSchema,
+			evmWhaleSchema,
 			"Scan for large (whale) ERC-20 transfers",
 			async (parsed) => {
 				const minValue = BigInt(parsed.minValue);
@@ -661,7 +649,7 @@ export function createSkillRouters(config: ServerConfig): Router {
 		),
 		skill(
 			"/v1/skills/evm/contract",
-			address,
+			evmAddressSchema,
 			"Inspect contract code and proxy implementation",
 			async (parsed) => {
 				const code = await provider.getCode(parsed.address);
@@ -706,19 +694,13 @@ export function createSkillRouters(config: ServerConfig): Router {
 		// Stocks
 		skill(
 			"/v1/skills/stocks/quote",
-			symbolSchema,
+			stocksQuoteSchema,
 			"Real-time stock quote",
-			async (parsed) => {
-				const data = await yahooFetch<YahooChartResponse>(
-					`/v8/finance/chart/${parsed.symbol}`,
-					{ range: "1d", interval: "1d" },
-				);
-				return extractQuote(data);
-			},
+			async (parsed) => chartQuote(parsed.symbol, "1d", "1d"),
 		),
 		skill(
 			"/v1/skills/stocks/search",
-			searchSchema,
+			stocksSearchSchema,
 			"Yahoo Finance symbol search",
 			async (parsed) => {
 				const data = await yahooFetch<YahooSearchResponse>(
@@ -737,7 +719,7 @@ export function createSkillRouters(config: ServerConfig): Router {
 		),
 		skill(
 			"/v1/skills/stocks/history",
-			historySchema,
+			stocksHistorySchema,
 			"Historical price data",
 			async (parsed) => {
 				const data = await yahooFetch<YahooChartResponse>(
@@ -766,17 +748,11 @@ export function createSkillRouters(config: ServerConfig): Router {
 		),
 		skill(
 			"/v1/skills/stocks/compare",
-			compareSchema,
+			stocksCompareSchema,
 			"Compare multiple stock quotes",
 			async (parsed) => {
 				const results = await Promise.allSettled(
-					parsed.symbols.map(async (s) => {
-						const data = await yahooFetch<YahooChartResponse>(
-							`/v8/finance/chart/${s}`,
-							{ range: "1d", interval: "1d" },
-						);
-						return extractQuote(data);
-					}),
+					parsed.symbols.map(async (s) => chartQuote(s, "1d", "1d")),
 				);
 				return ser({
 					quotes: results.map((r, i) =>
@@ -792,21 +768,15 @@ export function createSkillRouters(config: ServerConfig): Router {
 		),
 		skill(
 			"/v1/skills/stocks/crypto",
-			cryptoSchema,
+			stocksCryptoSchema,
 			"Crypto pair quote (e.g. BTC-USD)",
-			async (parsed) => {
-				const data = await yahooFetch<YahooChartResponse>(
-					`/v8/finance/chart/${parsed.symbol}`,
-					{ range: "1d", interval: "5m" },
-				);
-				return extractQuote(data);
-			},
+			async (parsed) => chartQuote(parsed.symbol, "1d", "5m"),
 		),
 
 		// OSINT
 		skill(
 			"/v1/skills/osint/sec_edgar",
-			cikSchema,
+			osintSecEdgarSchema,
 			"SEC EDGAR company submissions lookup",
 			async (parsed) => {
 				const cik = parsed.cik.padStart(10, "0");
@@ -818,7 +788,7 @@ export function createSkillRouters(config: ServerConfig): Router {
 		),
 		skill(
 			"/v1/skills/osint/usaspending",
-			usaspendingSchema,
+			osintUsaspendingSchema,
 			"USASpending.gov federal award search",
 			async (parsed) => {
 				return cachedFetch(
@@ -844,7 +814,7 @@ export function createSkillRouters(config: ServerConfig): Router {
 		),
 		skill(
 			"/v1/skills/osint/ofac_sdn",
-			ofacSchema,
+			osintOfacSdnSchema,
 			"OFAC SDN list name search",
 			async (parsed) => {
 				const q = encodeURIComponent(parsed.name);
@@ -860,7 +830,7 @@ export function createSkillRouters(config: ServerConfig): Router {
 		),
 		skill(
 			"/v1/skills/osint/opencorporates",
-			opencorpSchema,
+			osintOpencorporatesSchema,
 			"OpenCorporates company search",
 			async (parsed) => {
 				const q = encodeURIComponent(parsed.query);
@@ -872,7 +842,7 @@ export function createSkillRouters(config: ServerConfig): Router {
 		),
 		skill(
 			"/v1/skills/osint/entity_resolve",
-			entitySchema,
+			osintEntityResolveSchema,
 			"Resolve whether entity names refer to the same company",
 			async (parsed) => {
 				const { entities } = parsed;
@@ -891,7 +861,7 @@ export function createSkillRouters(config: ServerConfig): Router {
 		),
 		skill(
 			"/v1/skills/osint/courtlistener",
-			courtSchema,
+			osintCourtlistenerSchema,
 			"CourtListener opinions and RECAP search",
 			async (parsed) => {
 				const q = encodeURIComponent(parsed.query);

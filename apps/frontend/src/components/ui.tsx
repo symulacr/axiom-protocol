@@ -92,6 +92,14 @@ export const emptyCardStyle = {
   padding: "var(--space-3xl) var(--space-xl)",
 } as const;
 
+const ellipsisTitleStyle: CSSProperties = {
+  color: COLORS.text,
+  letterSpacing: "-0.02em",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+
 export function getActionColor(action: string): string {
   switch (action) {
     case "buy":
@@ -420,36 +428,32 @@ export function NumericActionRow({
 
 type AlertVariant = "error" | "success" | "info";
 
+const alertBase: CSSProperties = {
+  padding: "var(--space-md) var(--space-lg)",
+  borderRadius: "var(--radius-lg)",
+  fontSize: "var(--text-sm)",
+  lineHeight: "var(--lh-snug)",
+  overflowWrap: "break-word",
+};
+
 const alertStyles: Record<AlertVariant, CSSProperties> = {
   error: {
-    padding: "var(--space-md) var(--space-lg)",
+    ...alertBase,
     background: COLORS.dangerBg,
     border: `1px solid ${COLORS.dangerBorder}`,
     color: COLORS.danger,
-    borderRadius: "var(--radius-lg)",
-    fontSize: "var(--text-sm)",
-    lineHeight: "var(--lh-snug)",
-    overflowWrap: "break-word",
   },
   success: {
-    padding: "var(--space-md) var(--space-lg)",
+    ...alertBase,
     background: COLORS.successBg,
     border: `1px solid ${COLORS.successBorder}`,
     color: COLORS.success,
-    borderRadius: "var(--radius-lg)",
-    fontSize: "var(--text-sm)",
-    lineHeight: "var(--lh-snug)",
-    overflowWrap: "break-word",
   },
   info: {
-    padding: "var(--space-md) var(--space-lg)",
+    ...alertBase,
     background: COLORS.tealBg,
     border: `1px solid ${COLORS.tealBorder}`,
     color: COLORS.teal,
-    borderRadius: "var(--radius-lg)",
-    fontSize: "var(--text-sm)",
-    lineHeight: "var(--lh-snug)",
-    overflowWrap: "break-word",
   },
 };
 
@@ -570,14 +574,7 @@ export function PageHeader({
       <div style={{ minWidth: 0, overflow: "hidden" }}>
         <h1
           className="text-xl fw-bold lh-tight"
-          style={{
-            margin: "0 0 0.375rem",
-            color: COLORS.text,
-            letterSpacing: "-0.02em",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
+          style={{ ...ellipsisTitleStyle, margin: "0 0 0.375rem" }}
         >
           {title}
         </h1>
@@ -891,13 +888,7 @@ export const Modal = React.memo(function Modal({
           <h2
             id="modal-title"
             className="mt-0 text-xl fw-bold"
-            style={{
-              color: COLORS.text,
-              letterSpacing: "-0.02em",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
+            style={ellipsisTitleStyle}
           >
             {title}
           </h2>

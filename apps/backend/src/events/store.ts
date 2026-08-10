@@ -62,25 +62,33 @@ function dedupeKey(
 	return `${evt.chainId}:${evt.txHash}:${evt.logIndex}`;
 }
 
+function getOrCreate<K, V>(map: Map<K, V>, key: K, create: () => V): V {
+	let v = map.get(key);
+	if (v === undefined) {
+		v = create();
+		map.set(key, v);
+	}
+	return v;
+}
+
+function isNum(x: unknown): boolean {
+	return typeof x === "number" && Number.isFinite(x);
+}
+
 function isStoredEvent(val: unknown): val is StoredEvent {
 	if (!val || typeof val !== "object") return false;
 	const e = val as Record<string, unknown>;
 	return (
 		typeof e.source === "string" &&
-		typeof e.chainId === "number" &&
-		Number.isFinite(e.chainId) &&
-		typeof e.blockNumber === "number" &&
-		Number.isFinite(e.blockNumber) &&
+		isNum(e.chainId) &&
+		isNum(e.blockNumber) &&
 		(typeof e.txHash === "string" || e.txHash === null) &&
-		typeof e.logIndex === "number" &&
-		Number.isFinite(e.logIndex) &&
+		isNum(e.logIndex) &&
 		typeof e.eventName === "string" &&
 		typeof e.payload === "object" &&
 		e.payload !== null &&
-		typeof e.receivedAt === "number" &&
-		Number.isFinite(e.receivedAt) &&
-		typeof e.timestamp === "number" &&
-		Number.isFinite(e.timestamp)
+		isNum(e.receivedAt) &&
+		isNum(e.timestamp)
 	);
 }
 
@@ -125,11 +133,7 @@ export class EventStore {
 			timestamp: Date.now(),
 		};
 		const bucketKey = `${stored.source}::${stored.eventName}`;
-		let bucket = this.buckets.get(bucketKey);
-		if (bucket === undefined) {
-			bucket = [];
-			this.buckets.set(bucketKey, bucket);
-		}
+		const bucket = getOrCreate(this.buckets, bucketKey, () => []);
 		if (bucket.length >= this.cap) {
 			const evicted = bucket.shift()!;
 			this.seenKeys.delete(dedupeKey(evicted));
@@ -154,13 +158,11 @@ export class EventStore {
 		const target = BigInt(query.tokenId).toString();
 		const bucket = this.byTokenId.get(target);
 		if (bucket === undefined) return [];
-		const matches: StoredEvent[] = [];
-		for (const evt of bucket) {
-			if (query.eventName !== undefined && evt.eventName !== query.eventName)
-				continue;
-			if (query.source !== undefined && evt.source !== query.source) continue;
-			matches.push(evt);
-		}
+		const matches = bucket.filter(
+			(evt) =>
+				(query.eventName === undefined || evt.eventName === query.eventName) &&
+				(query.source === undefined || evt.source === query.source),
+		);
 		matches.sort(byBlockThenLogReceived);
 		return query.limit !== undefined ? matches.slice(0, query.limit) : matches;
 	}
@@ -203,9 +205,9 @@ export class EventStore {
 		dedupe: string = dedupeKey(evt),
 	): void {
 		this.seenKeys.add(dedupe);
-		this.addToEventNameIndex(evt);
+		this.addToIndex(this.byEventName, evt.eventName, evt, "nameIdx", 0);
 		const tid = tokenIdFromPayload(evt.payload);
-		if (tid !== null) this.addToTokenIdIndex(tid, evt);
+		if (tid !== null) this.addToIndex(this.byTokenId, tid, evt, "tokenIdx", -1);
 		this.updateTransferToIndex(evt);
 	}
 
@@ -235,27 +237,17 @@ export class EventStore {
 		}
 	}
 
-	private addToEventNameIndex(evt: StoredEvent): void {
-		let bucket = this.byEventName.get(evt.eventName);
-		if (!bucket) {
-			bucket = [];
-			this.byEventName.set(evt.eventName, bucket);
-		}
+	private addToIndex(
+		map: Map<string, StoredEvent[]>,
+		key: string,
+		evt: StoredEvent,
+		field: "nameIdx" | "tokenIdx",
+		defaultNameIdx: number,
+	): void {
+		const bucket = getOrCreate(map, key, () => []);
 		bucket.push(evt);
-		const pos = this.indexPositions.get(evt) ?? { nameIdx: 0 };
-		pos.nameIdx = bucket.length - 1;
-		this.indexPositions.set(evt, pos);
-	}
-
-	private addToTokenIdIndex(tokenId: string, evt: StoredEvent): void {
-		let bucket = this.byTokenId.get(tokenId);
-		if (!bucket) {
-			bucket = [];
-			this.byTokenId.set(tokenId, bucket);
-		}
-		bucket.push(evt);
-		const pos = this.indexPositions.get(evt) ?? { nameIdx: -1 };
-		pos.tokenIdx = bucket.length - 1;
+		const pos = this.indexPositions.get(evt) ?? { nameIdx: defaultNameIdx };
+		pos[field] = bucket.length - 1;
 		this.indexPositions.set(evt, pos);
 	}
 
@@ -315,11 +307,7 @@ export class EventStore {
 		const key = this.transferIndexKey(evt);
 		if (!key) return;
 
-		let ownerMap = this.byTransferTo.get(key.owner);
-		if (!ownerMap) {
-			ownerMap = new Map();
-			this.byTransferTo.set(key.owner, ownerMap);
-		}
+		const ownerMap = getOrCreate(this.byTransferTo, key.owner, () => new Map());
 		const existing = ownerMap.get(key.tid);
 		if (existing === undefined || evt.blockNumber > existing) {
 			ownerMap.set(key.tid, evt.blockNumber);
@@ -417,8 +405,8 @@ export class EventStore {
 		// Rebuild primary buckets and all secondary indexes from the kept events.
 		// Note: indexPositions is a WeakMap — entries for removed events are
 		// garbage-collected once those StoredEvent objects are dereferenced,
-		// and kept events get their positions overwritten by addToEventNameIndex /
-		// addToTokenIdIndex below (mirrors the load() rebuild pattern).
+		// and kept events get their positions overwritten by addToIndex /
+		// reindexEvent below (mirrors the load() rebuild pattern).
 		this.buckets.clear();
 		this.byEventName.clear();
 		this.byTokenId.clear();
