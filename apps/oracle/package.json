@@ -20,7 +20,7 @@
     "build": "tsc --project tsconfig.json",
     "build:binary": "NODE_ENV=production bun build src/index.ts --compile --target=bun --minify --outfile=../../dist/axiom-oracle",
     "start": "bun dist/index.js",
-    "start:binary": "bun dist/axiom-oracle",
+    "start:binary": "BUN_DISABLE_NODE_API=1 bun dist/axiom-oracle",
     "prestart": "bun run build",
     "dev": "bun run src/index.ts",
     "test": "AXIOM_DISABLE_AUTH=true AXIOM_ALLOW_CLEARTEXT_DEK=true bun test --max-concurrency=1",

@@ -9,7 +9,7 @@
     "build": "tsc --project tsconfig.json",
     "build:binary": "NODE_ENV=production bun build src/index.ts --compile --target=bun --minify --outfile=../../dist/axiom-backend",
     "start": "bun dist/index.js",
-    "start:binary": "bun dist/axiom-backend",
+    "start:binary": "BUN_DISABLE_NODE_API=1 bun dist/axiom-backend",
     "prestart": "bun run build",
     "dev": "bun run src/index.ts",
     "test": "bun test --parallel --max-concurrency=1",

@@ -4,7 +4,7 @@
     "buildCommand": "bun run --filter @axiom/oracle build:binary"
   },
   "deploy": {
-    "startCommand": "./dist/axiom-oracle",
+    "startCommand": "BUN_DISABLE_NODE_API=1 ./dist/axiom-oracle",
     "healthcheckPath": "/health",
     "healthcheckTimeout": 120,
     "restartPolicy": "ON_FAILURE"

@@ -4,7 +4,7 @@
     "buildCommand": "bun run --filter @axiom/backend build:binary"
   },
   "deploy": {
-    "startCommand": "./dist/axiom-backend",
+    "startCommand": "BUN_DISABLE_NODE_API=1 ./dist/axiom-backend",
     "healthcheckPath": "/health",
     "healthcheckTimeout": 120,
     "restartPolicy": "ON_FAILURE"
