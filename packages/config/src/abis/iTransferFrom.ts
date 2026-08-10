@@ -1,3 +1,10 @@
+const PROOF_TAIL_FIELDS = [
+  { name: "targetPubkey", internalType: "bytes", type: "bytes" },
+  { name: "nonce", internalType: "uint256", type: "uint256" },
+  { name: "proof", internalType: "bytes", type: "bytes" },
+  { name: "validUntil", internalType: "uint256", type: "uint256" },
+] as const;
+
 export const ITRANSFER_FROM_ABI = [
   {
     type: "function",
@@ -16,10 +23,7 @@ export const ITRANSFER_FROM_ABI = [
             type: "tuple",
             components: [
               { name: "dataHash", internalType: "bytes32", type: "bytes32" },
-              { name: "targetPubkey", internalType: "bytes", type: "bytes" },
-              { name: "nonce", internalType: "uint256", type: "uint256" },
-              { name: "proof", internalType: "bytes", type: "bytes" },
-              { name: "validUntil", internalType: "uint256", type: "uint256" },
+              ...PROOF_TAIL_FIELDS,
             ],
           },
           {
@@ -34,10 +38,7 @@ export const ITRANSFER_FROM_ABI = [
               },
               { name: "dataHash", internalType: "bytes32", type: "bytes32" },
               { name: "sealedKey", internalType: "bytes", type: "bytes" },
-              { name: "targetPubkey", internalType: "bytes", type: "bytes" },
-              { name: "nonce", internalType: "uint256", type: "uint256" },
-              { name: "proof", internalType: "bytes", type: "bytes" },
-              { name: "validUntil", internalType: "uint256", type: "uint256" },
+              ...PROOF_TAIL_FIELDS,
             ],
           },
         ],

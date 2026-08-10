@@ -274,7 +274,11 @@ export function createMcpRouter(
 		}
 	});
 
-	router.get("/", async (req: Request, res: Response) => {
+	async function handleMcpSession(
+		req: Request,
+		res: Response,
+		method: "GET" | "DELETE",
+	): Promise<void> {
 		const sessionId =
 			typeof req.headers["mcp-session-id"] === "string"
 				? (req.headers["mcp-session-id"] as string)
@@ -287,31 +291,19 @@ export function createMcpRouter(
 			const transport = transports.get(sessionId);
 			if (transport) await transport.handleRequest(req, res);
 		} catch (err) {
-			log.error("MCP GET handler failed", {
+			log.error(`MCP ${method} handler failed`, {
 				error: err instanceof Error ? err.message : String(err),
 			});
 			if (!res.headersSent) res.status(500).send("Internal server error");
 		}
+	}
+
+	router.get("/", async (req: Request, res: Response) => {
+		await handleMcpSession(req, res, "GET");
 	});
 
 	router.delete("/", async (req: Request, res: Response) => {
-		const sessionId =
-			typeof req.headers["mcp-session-id"] === "string"
-				? (req.headers["mcp-session-id"] as string)
-				: undefined;
-		if (!sessionId || !transports.has(sessionId)) {
-			res.status(400).send("Invalid or missing session ID");
-			return;
-		}
-		try {
-			const transport = transports.get(sessionId);
-			if (transport) await transport.handleRequest(req, res);
-		} catch (err) {
-			log.error("MCP DELETE handler failed", {
-				error: err instanceof Error ? err.message : String(err),
-			});
-			if (!res.headersSent) res.status(500).send("Internal server error");
-		}
+		await handleMcpSession(req, res, "DELETE");
 	});
 
 	return router;

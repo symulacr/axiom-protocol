@@ -1,4 +1,5 @@
-import { useEffect, useRef, useCallback, type ReactElement } from "react";
+import { type ReactElement } from "react";
+import { useConfirmTimer } from "../hooks/useConfirmTimer.js";
 import { useWithdraw } from "../hooks/useWithdraw.js";
 import { formatTokenAmount } from "../utils/format.js";
 import { COLORS, Button, Input, Spinner, MonoLabel } from "./ui.js";
@@ -12,30 +13,7 @@ export function WithdrawForm({
 	tokenId,
 	onSuccess,
 }: WithdrawFormProps): ReactElement | null {
-	const balanceRef = useRef<HTMLSpanElement>(null);
-	const confirmTimer = useRef<ReturnType<typeof setTimeout>>();
-
-	useEffect(
-		() => () => {
-			if (confirmTimer.current !== undefined)
-				clearTimeout(confirmTimer.current);
-		},
-		[],
-	);
-
-	const handleSuccess = useCallback(() => {
-		const el = balanceRef.current;
-		if (el) {
-			el.classList.add("axiom-confirm");
-			if (confirmTimer.current !== undefined)
-				clearTimeout(confirmTimer.current);
-			confirmTimer.current = setTimeout(
-				() => el.classList.remove("axiom-confirm"),
-				1500,
-			);
-		}
-		onSuccess?.();
-	}, [onSuccess]);
+	const { balanceRef, handleSuccess } = useConfirmTimer(onSuccess);
 
 	const {
 		withdrawAmount,

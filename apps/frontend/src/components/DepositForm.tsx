@@ -1,10 +1,5 @@
-import {
-	useEffect,
-	useMemo,
-	useRef,
-	useCallback,
-	type ReactElement,
-} from "react";
+import { useMemo, type ReactElement } from "react";
+import { useConfirmTimer } from "../hooks/useConfirmTimer.js";
 import { useDeposit } from "../hooks/useDeposit.js";
 import {
 	humanizeError,
@@ -24,30 +19,7 @@ export function DepositForm({
 	onSuccess,
 	variant = "default",
 }: DepositFormProps): ReactElement | null {
-	const balanceRef = useRef<HTMLSpanElement>(null);
-	const confirmTimer = useRef<ReturnType<typeof setTimeout>>();
-
-	useEffect(
-		() => () => {
-			if (confirmTimer.current !== undefined)
-				clearTimeout(confirmTimer.current);
-		},
-		[],
-	);
-
-	const handleSuccess = useCallback(() => {
-		const el = balanceRef.current;
-		if (el) {
-			el.classList.add("axiom-confirm");
-			if (confirmTimer.current !== undefined)
-				clearTimeout(confirmTimer.current);
-			confirmTimer.current = setTimeout(
-				() => el.classList.remove("axiom-confirm"),
-				1500,
-			);
-		}
-		onSuccess?.();
-	}, [onSuccess]);
+	const { balanceRef, handleSuccess } = useConfirmTimer(onSuccess);
 
 	const {
 		depositAmount,

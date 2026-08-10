@@ -32,14 +32,18 @@ export function buildEip712Domain(
 	};
 }
 
+const PROOF_COMMON_FIELDS = [
+	{ name: "targetPubkey", type: "bytes" as const },
+	{ name: "to", type: "address" as const },
+	{ name: "nft", type: "address" as const },
+	{ name: "nonce", type: "bytes" as const },
+	{ name: "validUntil", type: "uint256" as const },
+] as const;
+
 export const ACCESS_PROOF_TYPES = {
 	AccessProof: [
 		{ name: "dataHash", type: "bytes32" as const },
-		{ name: "targetPubkey", type: "bytes" as const },
-		{ name: "to", type: "address" as const },
-		{ name: "nft", type: "address" as const },
-		{ name: "nonce", type: "bytes" as const },
-		{ name: "validUntil", type: "uint256" as const },
+		...PROOF_COMMON_FIELDS,
 	],
 } as const;
 
@@ -47,11 +51,7 @@ const OWNERSHIP_PROOF_TYPES = {
 	OwnershipProof: [
 		{ name: "dataHash", type: "bytes32" as const },
 		{ name: "sealedKey", type: "bytes" as const },
-		{ name: "targetPubkey", type: "bytes" as const },
-		{ name: "to", type: "address" as const },
-		{ name: "nft", type: "address" as const },
-		{ name: "nonce", type: "bytes" as const },
-		{ name: "validUntil", type: "uint256" as const },
+		...PROOF_COMMON_FIELDS,
 	],
 } as const;
 

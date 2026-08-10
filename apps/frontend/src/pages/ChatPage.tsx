@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
   type ReactElement,
+  type ReactNode,
 } from "react";
 import {
   useAccount,
@@ -174,6 +175,45 @@ function ToolClassBadge({ name }: { name: string }): ReactElement | null {
     >
       ({CHAT_TOOL_CLASS_LABELS[cls]})
     </span>
+  );
+}
+
+function StatusDot({
+  color,
+  children,
+}: {
+  color: string;
+  children: ReactNode;
+}): ReactElement {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        marginBottom: "var(--space-xs)",
+      }}
+    >
+      <span
+        style={{
+          display: "inline-block",
+          width: 6,
+          height: 6,
+          borderRadius: "50%",
+          background: color,
+        }}
+      />
+      <span
+        style={{
+          fontWeight: "var(--fw-semibold)",
+          fontSize: "var(--text-xs)",
+          color: COLORS.textDim,
+          textTransform: "uppercase",
+        }}
+      >
+        {children}
+      </span>
+    </div>
   );
 }
 
@@ -972,46 +1012,24 @@ function ChatPageInner(): ReactElement {
                       : "var(--c-surface)",
               }}
             >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  marginBottom: "var(--space-xs)",
-                }}
-              >
-                <span
-                  style={{
-                    display: "inline-block",
-                    width: 6,
-                    height: 6,
-                    borderRadius: "50%",
-                    background:
-                      msg.role === "user"
-                        ? COLORS.bronzeLight
-                        : msg.role === "tool"
-                          ? COLORS.textDim
-                          : COLORS.text,
-                  }}
-                />
-                <span
-                  style={{
-                    fontWeight: "var(--fw-semibold)",
-                    fontSize: "var(--text-xs)",
-                    color: COLORS.textDim,
-                    textTransform: "uppercase",
-                  }}
-                >
-                  {msg.role === "user"
-                    ? "You"
+              <StatusDot
+                color={
+                  msg.role === "user"
+                    ? COLORS.bronzeLight
                     : msg.role === "tool"
-                      ? (TOOL_LABELS[msg.name ?? ""] ?? msg.name ?? "Tool")
-                      : "Assistant"}
-                  {msg.role === "tool" && msg.name ? (
-                    <ToolClassBadge name={msg.name} />
-                  ) : null}
-                </span>
-              </div>
+                      ? COLORS.textDim
+                      : COLORS.text
+                }
+              >
+                {msg.role === "user"
+                  ? "You"
+                  : msg.role === "tool"
+                    ? (TOOL_LABELS[msg.name ?? ""] ?? msg.name ?? "Tool")
+                    : "Assistant"}
+                {msg.role === "tool" && msg.name ? (
+                  <ToolClassBadge name={msg.name} />
+                ) : null}
+              </StatusDot>
               {msg.role === "tool" ? (
                 msg.name === "ask_user" ? (
                   <AskUserCard
@@ -1094,34 +1112,7 @@ function ChatPageInner(): ReactElement {
                 background: "var(--c-surface)",
               }}
             >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  marginBottom: "var(--space-xs)",
-                }}
-              >
-                <span
-                  style={{
-                    display: "inline-block",
-                    width: 6,
-                    height: 6,
-                    borderRadius: "50%",
-                    background: COLORS.text,
-                  }}
-                />
-                <span
-                  style={{
-                    fontWeight: "var(--fw-semibold)",
-                    fontSize: "var(--text-xs)",
-                    color: COLORS.textDim,
-                    textTransform: "uppercase",
-                  }}
-                >
-                  Assistant
-                </span>
-              </div>
+              <StatusDot color={COLORS.text}>Assistant</StatusDot>
               {streamText ? (
                 <div
                   style={{

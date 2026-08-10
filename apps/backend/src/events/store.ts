@@ -300,35 +300,38 @@ export class EventStore {
 		this.removeFromTransferToIndex(evt);
 	}
 
-	private updateTransferToIndex(evt: StoredEvent): void {
-		if (evt.eventName !== EVENT_NAMES.Transfer) return;
+	private transferIndexKey(
+		evt: StoredEvent,
+	): { owner: string; tid: string } | null {
+		if (evt.eventName !== EVENT_NAMES.Transfer) return null;
 		const payload = evt.payload;
-		if (!("to" in payload) || typeof payload.to !== "string") return;
+		if (!("to" in payload) || typeof payload.to !== "string") return null;
 		const tid = tokenIdFromPayload(payload);
-		if (tid === null) return;
+		if (tid === null) return null;
+		return { owner: payload.to.toLowerCase(), tid };
+	}
 
-		const owner = payload.to.toLowerCase();
-		let ownerMap = this.byTransferTo.get(owner);
+	private updateTransferToIndex(evt: StoredEvent): void {
+		const key = this.transferIndexKey(evt);
+		if (!key) return;
+
+		let ownerMap = this.byTransferTo.get(key.owner);
 		if (!ownerMap) {
 			ownerMap = new Map();
-			this.byTransferTo.set(owner, ownerMap);
+			this.byTransferTo.set(key.owner, ownerMap);
 		}
-		const existing = ownerMap.get(tid);
+		const existing = ownerMap.get(key.tid);
 		if (existing === undefined || evt.blockNumber > existing) {
-			ownerMap.set(tid, evt.blockNumber);
+			ownerMap.set(key.tid, evt.blockNumber);
 		}
 	}
 
 	private removeFromTransferToIndex(evt: StoredEvent): void {
-		if (evt.eventName !== EVENT_NAMES.Transfer) return;
-		const payload = evt.payload;
-		if (!("to" in payload) || typeof payload.to !== "string") return;
-		const tid = tokenIdFromPayload(payload);
-		if (tid === null) return;
+		const key = this.transferIndexKey(evt);
+		if (!key) return;
 
-		const owner = payload.to.toLowerCase();
-		const ownerMap = this.byTransferTo.get(owner);
-		if (!ownerMap || ownerMap.get(tid) !== evt.blockNumber) return;
+		const ownerMap = this.byTransferTo.get(key.owner);
+		if (!ownerMap || ownerMap.get(key.tid) !== evt.blockNumber) return;
 
 		let max: number | undefined;
 		const transferBucket = this.byEventName.get(EVENT_NAMES.Transfer);
@@ -336,18 +339,18 @@ export class EventStore {
 			for (const e of transferBucket) {
 				if (e === evt) continue;
 				if (!("to" in e.payload) || typeof e.payload.to !== "string") continue;
-				if (e.payload.to.toLowerCase() !== owner) continue;
+				if (e.payload.to.toLowerCase() !== key.owner) continue;
 				const eTid = tokenIdFromPayload(e.payload);
-				if (eTid !== tid) continue;
+				if (eTid !== key.tid) continue;
 				if (max === undefined || e.blockNumber > max) max = e.blockNumber;
 			}
 		}
 
 		if (max === undefined) {
-			ownerMap.delete(tid);
-			if (ownerMap.size === 0) this.byTransferTo.delete(owner);
+			ownerMap.delete(key.tid);
+			if (ownerMap.size === 0) this.byTransferTo.delete(key.owner);
 		} else {
-			ownerMap.set(tid, max);
+			ownerMap.set(key.tid, max);
 		}
 	}
 

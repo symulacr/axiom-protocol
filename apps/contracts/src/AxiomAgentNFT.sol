@@ -259,11 +259,7 @@ contract AxiomAgentNFT is
         IntelligentData[] calldata iDatas,
         address to
     ) public virtual onlyRole(MINTER_ROLE) whenNotPaused nonReentrant returns (uint256 tokenId) {
-        require(to != address(0), "Zero address");
-        require(iDatas.length > 0, "Empty data array");
-        tokenId = _incrementTokenId();
-        _updateData(tokenId, iDatas);
-        _safeMint(to, tokenId);
+        return _mintWithRole(iDatas, to, address(0));
     }
 
     function mintWithRole(
@@ -271,6 +267,14 @@ contract AxiomAgentNFT is
         address to,
         address creator
     ) public virtual onlyRole(MINTER_ROLE) whenNotPaused nonReentrant returns (uint256 tokenId) {
+        return _mintWithRole(iDatas, to, creator);
+    }
+
+    function _mintWithRole(
+        IntelligentData[] calldata iDatas,
+        address to,
+        address creator
+    ) internal returns (uint256 tokenId) {
         require(to != address(0), "Zero address");
         require(iDatas.length > 0, "Empty data array");
         tokenId = _incrementTokenId();

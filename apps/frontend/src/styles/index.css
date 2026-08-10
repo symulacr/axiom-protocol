@@ -818,7 +818,8 @@ pre {
   color: var(--c-text-primary);
 }
 
-.shell-nav__link.is-active {
+.shell-nav__link.is-active,
+.agent-tabs__btn.is-active {
   color: var(--c-text-primary);
   background: var(--c-bronze-bg);
   box-shadow: inset 0 0 0 1px var(--c-bronze-border);
@@ -1317,26 +1318,24 @@ html[data-theme="light"] .chat-topbar {
   background: rgba(12, 12, 24, 0.45);
   flex-wrap: wrap;
 }
-.agent-tabs__btn {
-  flex: 1 1 auto;
-  min-width: 4rem;
-  padding: 0.45rem 0.75rem;
+.agent-tabs__btn,
+.agent-tool__btn {
   border: none;
-  border-radius: 999px;
   background: transparent;
   color: var(--c-text-muted);
   font-size: var(--text-sm);
   font-weight: var(--fw-medium);
   font-family: inherit;
   cursor: pointer;
+}
+.agent-tabs__btn {
+  flex: 1 1 auto;
+  min-width: 4rem;
+  padding: 0.45rem 0.75rem;
+  border-radius: 999px;
   transition:
     color var(--dur-card-hover) var(--ease-out),
     background var(--dur-card-hover) var(--ease-out);
-}
-.agent-tabs__btn.is-active {
-  color: var(--c-text-primary);
-  background: var(--c-bronze-bg);
-  box-shadow: inset 0 0 0 1px var(--c-bronze-border);
 }
 .agent-tabs__btn:hover:not(.is-active) {
   color: var(--c-text-primary);
@@ -1364,13 +1363,6 @@ html[data-theme="light"] .chat-topbar {
 .agent-tool__btn {
   flex: 1 1 auto;
   padding: 0.65rem 0.75rem;
-  border: none;
-  background: transparent;
-  color: var(--c-text-muted);
-  font-size: var(--text-sm);
-  font-weight: var(--fw-medium);
-  font-family: inherit;
-  cursor: pointer;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
   transition:
