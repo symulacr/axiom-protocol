@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, type RefObject } from "react";
 
 /** Opaque handle for a pending timer. */
-export type TimerHandle = ReturnType<typeof setTimeout>;
+type TimerHandle = ReturnType<typeof setTimeout>;
 
 export function useConfirmTimer(onSuccess?: () => void): {
 	balanceRef: RefObject<HTMLSpanElement>;
