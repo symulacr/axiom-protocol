@@ -35,7 +35,10 @@ import {
   isAskUserResult,
   type ChatSessionContext,
 } from "@axiom/chat-runtime";
-import { ChatSessionProvider, useChatSession } from "../chat/ChatSessionProvider.js";
+import {
+  ChatSessionProvider,
+  useChatSession,
+} from "../chat/ChatSessionProvider.js";
 import { ToolResultBody } from "../chat/ToolResultBody.js";
 import { waitingMessageForElapsed } from "../chat/waitingMessages.js";
 import {
@@ -46,17 +49,13 @@ import {
   useToolHandlers,
   type ToolContext,
 } from "../chat/tools.js";
-import { CHAT_TOOL_CLASS_LABELS } from "@axiom/config/chat-tools";
+import {
+  CHAT_TOOL_CLASS_LABELS,
+  AXIOM_ASSISTANT_NAME,
+} from "@axiom/config/chat-tools";
 import { CHAT_MODEL } from "../config/env.js";
 import { aristotle } from "../config/wagmi.js";
-import { AXIOM_ASSISTANT_NAME } from "@axiom/config";
-import {
-  COLORS,
-  Button,
-  Input,
-  ErrorRef,
-  Spinner,
-} from "../components/ui.js";
+import { COLORS, Button, Input, ErrorRef, Spinner } from "../components/ui.js";
 
 type Message = {
   id: string;
@@ -117,7 +116,10 @@ function loadThreads(): ChatThread[] {
 
 function saveThreads(threads: ChatThread[]): void {
   try {
-    localStorage.setItem(CHAT_THREADS_KEY, JSON.stringify(threads.slice(0, 40)));
+    localStorage.setItem(
+      CHAT_THREADS_KEY,
+      JSON.stringify(threads.slice(0, 40)),
+    );
   } catch {
     /* ignore */
   }
@@ -147,7 +149,9 @@ function consumeSseLines(buffer: string): {
     }
     try {
       chunks.push(JSON.parse(payload) as SSEChunk);
-    } catch { /* malformed SSE chunk — skip */ }
+    } catch {
+      /* malformed SSE chunk — skip */
+    }
   }
   return { chunks, rest, done };
 }
@@ -200,7 +204,13 @@ function AskUserCard({
         marginTop: "var(--space-xs)",
       }}
     >
-      <p style={{ margin: "0 0 8px", fontSize: "var(--text-sm)", color: COLORS.text }}>
+      <p
+        style={{
+          margin: "0 0 8px",
+          fontSize: "var(--text-sm)",
+          color: COLORS.text,
+        }}
+      >
         {question}
       </p>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -227,7 +237,11 @@ function loadStoredMessages(): Message[] {
 
 function renderMarkdown(src: string | null): string {
   return DOMPurify.sanitize(
-    marked.parse(src ?? "", { async: false, gfm: true, breaks: true }) as string,
+    marked.parse(src ?? "", {
+      async: false,
+      gfm: true,
+      breaks: true,
+    }) as string,
     { FORBID_TAGS: ["style", "iframe"] },
   );
 }
@@ -251,7 +265,9 @@ function ChatPageInner(): ReactElement {
   const { data: walletClient } = useWalletClient();
 
   const [messages, setMessages] = useState<Message[]>(loadStoredMessages);
-  const [contextWindow, setContextWindow] = useState<number | undefined>(undefined);
+  const [contextWindow, setContextWindow] = useState<number | undefined>(
+    undefined,
+  );
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamText, setStreamText] = useState("");
@@ -332,7 +348,14 @@ function ChatPageInner(): ReactElement {
         : undefined,
       publicClient,
     }),
-    [address, chainId, session.lastTokenId, writeContractAsync, walletClient, publicClient],
+    [
+      address,
+      chainId,
+      session.lastTokenId,
+      writeContractAsync,
+      walletClient,
+      publicClient,
+    ],
   );
   const handlers = useToolHandlers(toolCtx);
   const chainSupported = SUPPORTED_CHAIN_IDS.has(chainId);
@@ -349,7 +372,14 @@ function ChatPageInner(): ReactElement {
     writeContractAsyncRef.current = writeContractAsync;
     walletClientRef.current = walletClient;
     publicClientRef.current = publicClient;
-  }, [session.lastTokenId, address, chainId, writeContractAsync, walletClient, publicClient]);
+  }, [
+    session.lastTokenId,
+    address,
+    chainId,
+    writeContractAsync,
+    walletClient,
+    publicClient,
+  ]);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -359,7 +389,9 @@ function ChatPageInner(): ReactElement {
       } else {
         sessionStorage.setItem(CHAT_MESSAGES_KEY, JSON.stringify(messages));
       }
-    } catch { /* sessionStorage may be unavailable */ }
+    } catch {
+      /* sessionStorage may be unavailable */
+    }
   }, [messages]);
 
   useEffect(() => {
@@ -568,7 +600,9 @@ function ChatPageInner(): ReactElement {
                   };
                 }
                 try {
-                  const args = JSON.parse(tc.function.arguments?.trim() || "{}");
+                  const args = JSON.parse(
+                    tc.function.arguments?.trim() || "{}",
+                  );
                   const result = await handler(args, liveToolCtx);
                   recordToolResult(tc.function.name, result);
                   // Capture any tokenId this tool produced so a later tool in
@@ -589,7 +623,9 @@ function ChatPageInner(): ReactElement {
                 } catch {
                   return {
                     tc,
-                    result: JSON.stringify({ error: "could not parse tool arguments" }),
+                    result: JSON.stringify({
+                      error: "could not parse tool arguments",
+                    }),
                   };
                 }
               }),
@@ -603,7 +639,9 @@ function ChatPageInner(): ReactElement {
                   role: "tool",
                   tool_call_id: tc.id,
                   name: tc.function.name,
-                  content: isAsk ? result : formatToolResult(tc.function.name, result),
+                  content: isAsk
+                    ? result
+                    : formatToolResult(tc.function.name, result),
                 }),
               ];
             }
@@ -631,13 +669,15 @@ function ChatPageInner(): ReactElement {
           setMessages(currentMessages);
         }
       } catch (err: unknown) {
-        if (err instanceof DOMException && err.name === "AbortError") { /* aborted — ignore */ } else {
+        if (err instanceof DOMException && err.name === "AbortError") {
+          /* aborted — ignore */
+        } else {
           const msg = humanizeError(err);
           const ref = err as { code?: string; requestId?: string } | null;
           const refDesc =
-            ref && (ref.code !== undefined || ref.requestId !== undefined)
-              ? <ErrorRef code={ref.code} requestId={ref.requestId} />
-              : undefined;
+            ref && (ref.code !== undefined || ref.requestId !== undefined) ? (
+              <ErrorRef code={ref.code} requestId={ref.requestId} />
+            ) : undefined;
           if (
             msg.toLowerCase().includes("compute") ||
             msg.toLowerCase().includes("credits")
@@ -645,7 +685,10 @@ function ChatPageInner(): ReactElement {
             setComputeHint(msg);
           }
           if (msg.includes("429") || msg.toLowerCase().includes("rate limit")) {
-            toast.error("Rate limited — wait a moment and try again.", refDesc ? { description: refDesc } : undefined);
+            toast.error(
+              "Rate limited — wait a moment and try again.",
+              refDesc ? { description: refDesc } : undefined,
+            );
           } else {
             toast.error(msg, refDesc ? { description: refDesc } : undefined);
           }
@@ -715,7 +758,9 @@ function ChatPageInner(): ReactElement {
     };
     setThreads((prev) => {
       const others = prev.filter((t) => t.id !== threadId);
-      const merged = [next, ...others].sort((a, b) => b.updatedAt - a.updatedAt);
+      const merged = [next, ...others].sort(
+        (a, b) => b.updatedAt - a.updatedAt,
+      );
       saveThreads(merged);
       return merged;
     });
@@ -753,13 +798,19 @@ function ChatPageInner(): ReactElement {
       <aside className="chat-sidebar" aria-label="Chat history">
         <div className="chat-sidebar__head">
           <h2 className="chat-sidebar__title">Chats</h2>
-          <Button variant="ghost" onClick={startNewChat} style={{ fontSize: "var(--text-xs)" }}>
+          <Button
+            variant="ghost"
+            onClick={startNewChat}
+            style={{ fontSize: "var(--text-xs)" }}
+          >
             New
           </Button>
         </div>
         <div className="chat-sidebar__list">
           {threads.length === 0 ? (
-            <p className="chat-sidebar__empty">No history yet. Send a message.</p>
+            <p className="chat-sidebar__empty">
+              No history yet. Send a message.
+            </p>
           ) : (
             threads.map((t) => (
               <button
@@ -795,10 +846,16 @@ function ChatPageInner(): ReactElement {
           <div className="chat-topbar__meta">
             <div className="chat-topbar__name">{AXIOM_ASSISTANT_NAME}</div>
             <div className="chat-topbar__status">
-              {chainSupported ? "Mint · vault · tick tools" : `Switch to 0G (${chainId})`}
+              {chainSupported
+                ? "Mint · vault · tick tools"
+                : `Switch to 0G (${chainId})`}
             </div>
           </div>
-          <Button variant="ghost" onClick={startNewChat} style={{ fontSize: "var(--text-xs)" }}>
+          <Button
+            variant="ghost"
+            onClick={startNewChat}
+            style={{ fontSize: "var(--text-xs)" }}
+          >
             New chat
           </Button>
         </div>
@@ -816,88 +873,88 @@ function ChatPageInner(): ReactElement {
         )}
 
         <div className="chat-messages" ref={listRef}>
-        {messages.length === 0 && !isStreaming && (
-          <div
-            className="fade-enter"
-            style={{
-              margin: "auto",
-              padding: "var(--space-2xl)",
-              textAlign: "center",
-              maxWidth: 520,
-            }}
-          >
-            <h2
-              style={{
-                fontSize: "var(--text-xl)",
-                color: "var(--c-text-primary)",
-                marginBottom: "var(--space-sm)",
-                fontFamily: "var(--font-display)",
-              }}
-            >
-              {AXIOM_ASSISTANT_NAME}
-            </h2>
-            <p
-              style={{
-                color: "var(--c-text-muted)",
-                fontSize: "var(--text-sm)",
-                margin: "0 auto var(--space-lg)",
-              }}
-            >
-              Mint, list agents, vault, ticks. Wallet signs when needed.
-            </p>
+          {messages.length === 0 && !isStreaming && (
             <div
+              className="fade-enter"
               style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-                gap: "var(--space-sm)",
+                margin: "auto",
+                padding: "var(--space-2xl)",
+                textAlign: "center",
+                maxWidth: 520,
               }}
             >
-              {[
-                {
-                  label: "List my agents",
-                  hint: "What you own",
-                },
-                {
-                  label: "Mint agent named Scout",
-                  hint: "Wallet signs",
-                },
-                {
-                  label: "Vault balance?",
-                  hint: "0G holdings",
-                },
-                {
-                  label: "Simulate a strategy tick",
-                  hint: "Safe dry-run first",
-                },
-              ].map((p) => (
-                <button
-                  key={p.label}
-                  className="prompt-card"
-                  onClick={() => sendMessage(p.label)}
-                >
-                  <div
-                    style={{
-                      fontSize: "var(--text-sm)",
-                      fontWeight: "var(--fw-semibold)",
-                      color: "var(--c-text)",
-                      marginBottom: 2,
-                    }}
+              <h2
+                style={{
+                  fontSize: "var(--text-xl)",
+                  color: "var(--c-text-primary)",
+                  marginBottom: "var(--space-sm)",
+                  fontFamily: "var(--font-display)",
+                }}
+              >
+                {AXIOM_ASSISTANT_NAME}
+              </h2>
+              <p
+                style={{
+                  color: "var(--c-text-muted)",
+                  fontSize: "var(--text-sm)",
+                  margin: "0 auto var(--space-lg)",
+                }}
+              >
+                Mint, list agents, vault, ticks. Wallet signs when needed.
+              </p>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+                  gap: "var(--space-sm)",
+                }}
+              >
+                {[
+                  {
+                    label: "List my agents",
+                    hint: "What you own",
+                  },
+                  {
+                    label: "Mint agent named Scout",
+                    hint: "Wallet signs",
+                  },
+                  {
+                    label: "Vault balance?",
+                    hint: "0G holdings",
+                  },
+                  {
+                    label: "Simulate a strategy tick",
+                    hint: "Safe dry-run first",
+                  },
+                ].map((p) => (
+                  <button
+                    key={p.label}
+                    className="prompt-card"
+                    onClick={() => sendMessage(p.label)}
                   >
-                    {p.label}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: "var(--text-xs)",
-                      color: "var(--c-text-dim)",
-                    }}
-                  >
-                    {p.hint}
-                  </div>
-                </button>
-              ))}
+                    <div
+                      style={{
+                        fontSize: "var(--text-sm)",
+                        fontWeight: "var(--fw-semibold)",
+                        color: "var(--c-text)",
+                        marginBottom: 2,
+                      }}
+                    >
+                      {p.label}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: "var(--text-xs)",
+                        color: "var(--c-text-dim)",
+                      }}
+                    >
+                      {p.hint}
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
           {messages.map((msg) => (
             <div
@@ -907,7 +964,12 @@ function ChatPageInner(): ReactElement {
                 padding: "var(--space-md) var(--space-lg)",
                 borderRadius: "var(--radius-lg)",
                 border: `1px solid ${msg.role === "user" ? "var(--c-bronze-border)" : COLORS.border}`,
-                background: msg.role === "user" ? "var(--c-bronze-bg)" : msg.role === "tool" ? "var(--c-bg)" : "var(--c-surface)",
+                background:
+                  msg.role === "user"
+                    ? "var(--c-bronze-bg)"
+                    : msg.role === "tool"
+                      ? "var(--c-bg)"
+                      : "var(--c-surface)",
               }}
             >
               <div
@@ -952,27 +1014,34 @@ function ChatPageInner(): ReactElement {
               </div>
               {msg.role === "tool" ? (
                 msg.name === "ask_user" ? (
-                  <AskUserCard content={msg.content ?? ""} onAnswer={sendMessage} />
+                  <AskUserCard
+                    content={msg.content ?? ""}
+                    onAnswer={sendMessage}
+                  />
                 ) : (
-                <div
-                  role="region"
-                  aria-label={
-                    toolHint(msg.name ?? "") ??
-                    TOOL_LABELS[msg.name ?? ""] ??
-                    "Tool result"
-                  }
-                  style={{
-                    background: COLORS.bg,
-                    border: `1px solid ${COLORS.border}`,
-                    borderRadius: "var(--radius-md)",
-                    padding: "var(--space-sm) var(--space-md)",
-                    fontSize: "var(--text-sm)",
-                    color: COLORS.textMuted,
-                    marginTop: "var(--space-xs)",
-                  }}
-                >
-                  <ToolResultBody name={msg.name ?? ""} content={msg.content} sendTransactionAsync={toolCtx.sendTransactionAsync} />
-                </div>
+                  <div
+                    role="region"
+                    aria-label={
+                      toolHint(msg.name ?? "") ??
+                      TOOL_LABELS[msg.name ?? ""] ??
+                      "Tool result"
+                    }
+                    style={{
+                      background: COLORS.bg,
+                      border: `1px solid ${COLORS.border}`,
+                      borderRadius: "var(--radius-md)",
+                      padding: "var(--space-sm) var(--space-md)",
+                      fontSize: "var(--text-sm)",
+                      color: COLORS.textMuted,
+                      marginTop: "var(--space-xs)",
+                    }}
+                  >
+                    <ToolResultBody
+                      name={msg.name ?? ""}
+                      content={msg.content}
+                      sendTransactionAsync={toolCtx.sendTransactionAsync}
+                    />
+                  </div>
                 )
               ) : msg.tool_calls ? (
                 <div
@@ -1006,7 +1075,9 @@ function ChatPageInner(): ReactElement {
                     color: COLORS.text,
                     lineHeight: "var(--lh-normal)",
                   }}
-                  dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }}
+                  dangerouslySetInnerHTML={{
+                    __html: renderMarkdown(msg.content),
+                  }}
                 />
               )}
             </div>
@@ -1053,12 +1124,18 @@ function ChatPageInner(): ReactElement {
               </div>
               {streamText ? (
                 <div
-                  style={{ fontSize: "var(--text-sm)", color: COLORS.text, lineHeight: "var(--lh-normal)" }}
+                  style={{
+                    fontSize: "var(--text-sm)",
+                    color: COLORS.text,
+                    lineHeight: "var(--lh-normal)",
+                  }}
                 >
                   <span
                     className="chat-md"
                     style={{ display: "inline" }}
-                    dangerouslySetInnerHTML={{ __html: renderMarkdown(streamText) }}
+                    dangerouslySetInnerHTML={{
+                      __html: renderMarkdown(streamText),
+                    }}
                   />
                   <span
                     className="caret-blink"

@@ -1,4 +1,4 @@
-import { resolveChatModel } from "@axiom/config";
+import { resolveChatModel } from "@axiom/config/chat-tools";
 
 // Default to SAME-ORIGIN proxy paths. The production static servers proxy
 // these to the backend / oracle:
@@ -12,13 +12,11 @@ import { resolveChatModel } from "@axiom/config";
 // Override per-deploy with the VITE_BACKEND_URL / VITE_ORACLE_URL build env
 // vars ONLY if you want the browser to call the services directly (you must
 // then also allow the frontend origin in each service's CORS / CSP config).
-export const BACKEND_URL =
-  import.meta.env.VITE_BACKEND_URL ?? "/api";
+export const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? "/api";
 
 export const API_KEY = import.meta.env.VITE_API_KEY ?? "";
 
-export const ORACLE_URL =
-  import.meta.env.VITE_ORACLE_URL ?? "/oracle";
+export const ORACLE_URL = import.meta.env.VITE_ORACLE_URL ?? "/oracle";
 
 export const CHAT_MODEL = resolveChatModel(import.meta.env.VITE_CHAT_MODEL);
 

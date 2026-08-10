@@ -1,19 +1,19 @@
 import { parseAbi } from "viem";
 import { fetchJson } from "../transport.js";
 import type { ToolRuntime } from "../transport.js";
-import { ZERO_DATA_ROOT } from "@axiom/config";
+import { ZERO_DATA_ROOT } from "@axiom/config/constants";
 import type { ToolResult } from "../types.js";
 
 const STRATEGY_OF_CURRENT = [
-	"function strategyOf(uint256) view returns (bytes32, uint256, uint256, uint64, uint64)",
+  "function strategyOf(uint256) view returns (bytes32, uint256, uint256, uint64, uint64)",
 ] as const;
 
 const STRATEGY_OF_LEGACY = [
-	"function strategyOf(uint256) view returns (bytes32, uint256, uint256, uint64)",
+  "function strategyOf(uint256) view returns (bytes32, uint256, uint256, uint64)",
 ] as const;
 
 const BALANCE_OF_ABI = parseAbi([
-	"function balanceOf(uint256) view returns (uint256)",
+  "function balanceOf(uint256) view returns (uint256)",
 ]);
 
 // viem's parseAbi is ~10µs/call; hoist the parsed ABIs to module scope so the
@@ -22,157 +22,157 @@ const STRATEGY_OF_CURRENT_ABI = parseAbi(STRATEGY_OF_CURRENT);
 const STRATEGY_OF_LEGACY_ABI = parseAbi(STRATEGY_OF_LEGACY);
 
 async function readStrategyRoot(
-	ctx: ToolRuntime,
-	vault: `0x${string}`,
-	tokenId: string,
+  ctx: ToolRuntime,
+  vault: `0x${string}`,
+  tokenId: string,
 ): Promise<string | null> {
-	const read = ctx.chain?.readContract;
-	if (!read) return null;
-	const id = BigInt(tokenId);
-	try {
-		const result = await read<
-			readonly [string, bigint, bigint, bigint, bigint]
-		>({
-			address: vault,
-			abi: STRATEGY_OF_CURRENT_ABI,
-			functionName: "strategyOf",
-			args: [id],
-		});
-		return result[0];
-	} catch {
-		try {
-			const result = await read<readonly [string, bigint, bigint, bigint]>({
-				address: vault,
-				abi: STRATEGY_OF_LEGACY_ABI,
-				functionName: "strategyOf",
-				args: [id],
-			});
-			return result[0];
-		} catch {
-			return null;
-		}
-	}
+  const read = ctx.chain?.readContract;
+  if (!read) return null;
+  const id = BigInt(tokenId);
+  try {
+    const result = await read<
+      readonly [string, bigint, bigint, bigint, bigint]
+    >({
+      address: vault,
+      abi: STRATEGY_OF_CURRENT_ABI,
+      functionName: "strategyOf",
+      args: [id],
+    });
+    return result[0];
+  } catch {
+    try {
+      const result = await read<readonly [string, bigint, bigint, bigint]>({
+        address: vault,
+        abi: STRATEGY_OF_LEGACY_ABI,
+        functionName: "strategyOf",
+        args: [id],
+      });
+      return result[0];
+    } catch {
+      return null;
+    }
+  }
 }
 
 export async function runOrchestrateTool(
-	name: string,
-	args: Record<string, unknown>,
-	ctx: ToolRuntime,
+  name: string,
+  args: Record<string, unknown>,
+  ctx: ToolRuntime,
 ): Promise<ToolResult> {
-	if (name !== "execute_tick" && name !== "simulate_tick") {
-		return {
-			ok: false as const,
-			content: JSON.stringify({ error: `Unknown orchestrate tool: ${name}` }),
-		};
-	}
+  if (name !== "execute_tick" && name !== "simulate_tick") {
+    return {
+      ok: false as const,
+      content: JSON.stringify({ error: `Unknown orchestrate tool: ${name}` }),
+    };
+  }
 
-	const tokenId = String(args.tokenId ?? ctx.session.lastTokenId ?? "");
-	if (!tokenId)
-		return {
-			ok: false as const,
-			content: JSON.stringify({ error: "tokenId required" }),
-		};
+  const tokenId = String(args.tokenId ?? ctx.session.lastTokenId ?? "");
+  if (!tokenId)
+    return {
+      ok: false as const,
+      content: JSON.stringify({ error: "tokenId required" }),
+    };
 
-	const dryRun = name === "simulate_tick" || args.dryRun === true;
-	const vault = ctx.session.addresses?.vault;
-	const agentNft = ctx.session.addresses?.agentNft;
+  const dryRun = name === "simulate_tick" || args.dryRun === true;
+  const vault = ctx.session.addresses?.vault;
+  const agentNft = ctx.session.addresses?.agentNft;
 
-	if (ctx.chain?.readContract && vault && agentNft) {
-		const [balance, root] = await Promise.all([
-			ctx.chain.readContract<bigint>({
-				address: vault,
-				abi: BALANCE_OF_ABI,
-				functionName: "balanceOf",
-				args: [BigInt(tokenId)],
-			}),
-			readStrategyRoot(ctx, vault, tokenId),
-		]);
-		const ready = balance > 0n && !!root && root !== ZERO_DATA_ROOT;
+  if (ctx.chain?.readContract && vault && agentNft) {
+    const [balance, root] = await Promise.all([
+      ctx.chain.readContract<bigint>({
+        address: vault,
+        abi: BALANCE_OF_ABI,
+        functionName: "balanceOf",
+        args: [BigInt(tokenId)],
+      }),
+      readStrategyRoot(ctx, vault, tokenId),
+    ]);
+    const ready = balance > 0n && !!root && root !== ZERO_DATA_ROOT;
 
-		if (!ready) {
-			if (dryRun) {
-				return {
-					ok: true as const,
-					content: JSON.stringify({
-						ok: true,
-						simulated: true,
-						ready: false,
-						tokenId,
-						balance: balance.toString(),
-						strategyRoot: root ?? ZERO_DATA_ROOT,
-					}),
-				};
-			}
-			return {
-				ok: false as const,
-				content: JSON.stringify({
-					error: "NOT_READY: vault balance or strategy missing",
-				}),
-			};
-		}
+    if (!ready) {
+      if (dryRun) {
+        return {
+          ok: true as const,
+          content: JSON.stringify({
+            ok: true,
+            simulated: true,
+            ready: false,
+            tokenId,
+            balance: balance.toString(),
+            strategyRoot: root ?? ZERO_DATA_ROOT,
+          }),
+        };
+      }
+      return {
+        ok: false as const,
+        content: JSON.stringify({
+          error: "NOT_READY: vault balance or strategy missing",
+        }),
+      };
+    }
 
-		if (dryRun) {
-			return {
-				ok: true as const,
-				content: JSON.stringify({
-					ok: true,
-					simulated: true,
-					ready: true,
-					tokenId,
-					balance: balance.toString(),
-					strategyRoot: root,
-				}),
-			};
-		}
-	} else if (dryRun) {
-		return {
-			ok: true as const,
-			content: JSON.stringify({ ok: true, simulated: true, tokenId }),
-		};
-	}
+    if (dryRun) {
+      return {
+        ok: true as const,
+        content: JSON.stringify({
+          ok: true,
+          simulated: true,
+          ready: true,
+          tokenId,
+          balance: balance.toString(),
+          strategyRoot: root,
+        }),
+      };
+    }
+  } else if (dryRun) {
+    return {
+      ok: true as const,
+      content: JSON.stringify({ ok: true, simulated: true, tokenId }),
+    };
+  }
 
-	const { ok: httpOk, data } = await fetchJson<Record<string, unknown>>(
-		ctx.http,
-		"/v1/orchestrator/tick",
-		{
-			method: "POST",
-			headers: { "content-type": "application/json" },
-			body: JSON.stringify(buildTickBody(args, ctx)),
-		},
-	);
+  const { ok: httpOk, data } = await fetchJson<Record<string, unknown>>(
+    ctx.http,
+    "/v1/orchestrator/tick",
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(buildTickBody(args, ctx)),
+    },
+  );
 
-	if (!httpOk)
-		return {
-			ok: false as const,
-			content: JSON.stringify({ error: "tick http fail" }),
-		};
-	return { ok: true as const, content: JSON.stringify(data) };
+  if (!httpOk)
+    return {
+      ok: false as const,
+      content: JSON.stringify({ error: "tick http fail" }),
+    };
+  return { ok: true as const, content: JSON.stringify(data) };
 }
 
 export function buildTickBody(
-	args: Record<string, unknown>,
-	ctx: ToolRuntime,
+  args: Record<string, unknown>,
+  ctx: ToolRuntime,
 ): {
-	vault: `0x${string}` | undefined;
-	agentNft: `0x${string}` | undefined;
-	agentTokenId: string;
-	computeModel?: string;
+  vault: `0x${string}` | undefined;
+  agentNft: `0x${string}` | undefined;
+  agentTokenId: string;
+  computeModel?: string;
 } {
-	const vault = ctx.session.addresses?.vault;
-	const agentNft = ctx.session.addresses?.agentNft;
-	const agentTokenId = String(args.tokenId ?? ctx.session.lastTokenId ?? "");
-	const body: {
-		vault: `0x${string}` | undefined;
-		agentNft: `0x${string}` | undefined;
-		agentTokenId: string;
-		computeModel?: string;
-	} = { vault, agentNft, agentTokenId };
+  const vault = ctx.session.addresses?.vault;
+  const agentNft = ctx.session.addresses?.agentNft;
+  const agentTokenId = String(args.tokenId ?? ctx.session.lastTokenId ?? "");
+  const body: {
+    vault: `0x${string}` | undefined;
+    agentNft: `0x${string}` | undefined;
+    agentTokenId: string;
+    computeModel?: string;
+  } = { vault, agentNft, agentTokenId };
 
-	const computeModel =
-		typeof args.computeModel === "string" && args.computeModel.trim()
-			? args.computeModel.trim()
-			: undefined;
-	if (computeModel) body.computeModel = computeModel;
+  const computeModel =
+    typeof args.computeModel === "string" && args.computeModel.trim()
+      ? args.computeModel.trim()
+      : undefined;
+  if (computeModel) body.computeModel = computeModel;
 
-	return body;
+  return body;
 }
