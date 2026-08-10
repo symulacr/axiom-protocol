@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import {IERC721} from "@openzeppelin/contracts/interfaces/IERC721.sol";
 import {IERC7857DataVerifier, TransferValidityProof} from "./IERC7857DataVerifier.sol";
-import {IERC7857Metadata, IntelligentData} from "./IERC7857Metadata.sol";
+import {IERC7857Metadata} from "./IERC7857Metadata.sol";
 
 /// @title IERC7857
 /// @notice Re-implementation of the ERC-7857 standard interface (FINAL, 2025-01-02)

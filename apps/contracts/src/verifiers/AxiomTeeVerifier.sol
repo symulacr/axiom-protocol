@@ -7,7 +7,12 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {TimelockManager} from "../libraries/TimelockManager.sol";
 using TimelockManager for TimelockManager.State;
-import "./BaseVerifier.sol";
+import {BaseVerifier} from "./BaseVerifier.sol";
+import {
+    IERC7857DataVerifier,
+    TransferValidityProof,
+    TransferValidityProofOutput
+} from "../interfaces/IERC7857DataVerifier.sol";
 
 /// @title AxiomTeeVerifier
 /// @notice TEE-based verifier for ERC-7857 transfer validity proofs

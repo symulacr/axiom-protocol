@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "../interfaces/IERC7857DataVerifier.sol";
+import {IERC7857DataVerifier} from "../interfaces/IERC7857DataVerifier.sol";
 
 /// @title BaseVerifier
 /// @notice Abstract base for ERC-7857 verifiers with replay protection + expiry

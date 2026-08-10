@@ -18,7 +18,7 @@
   },
   "scripts": {
     "build": "tsc --project tsconfig.json",
-    "build:binary": "bun build src/index.ts --compile --target=bun --outfile=../../dist/axiom-oracle",
+    "build:binary": "bun build src/index.ts --compile --target=bun --minify --outfile=../../dist/axiom-oracle",
     "start": "bun dist/index.js",
     "start:binary": "bun dist/axiom-oracle",
     "prestart": "bun run build",

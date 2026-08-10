@@ -14,7 +14,7 @@ import {
     TransferValidityProofOutput
 } from "./interfaces/IERC7857DataVerifier.sol";
 
-import "@0g-agent-nft/Utils.sol";
+import {Utils} from "@0g-agent-nft/Utils.sol";
 
 /// @title ERC7857Upgradeable
 /// @notice Base ERC-7857 implementation: token transfer with re-encrypted metadata

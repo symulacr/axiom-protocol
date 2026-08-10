@@ -49,7 +49,6 @@ export default defineConfig({
             return "rainbowkit-css";
           }
           if (id.includes("@rainbow-me/rainbowkit")) return "rainbowkit";
-          if (id.includes("/zod/")) return "zod";
           if (
             id.includes("/react-router") ||
             id.includes("/react-dom/") ||
