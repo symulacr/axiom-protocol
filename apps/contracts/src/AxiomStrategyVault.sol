@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
-import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 import {IAxiomAgentNFT} from "./interfaces/IAxiomAgentNFT.sol";
@@ -15,7 +15,7 @@ import {IAxiomAgentNFT} from "./interfaces/IAxiomAgentNFT.sol";
 ///      The agent itself executes the actions via `execute()`, which verifies each action
 ///      against the current strategy root and enforces a daily value limit
 /// @dev Standalone, non-upgradeable (holds user funds)
-contract AxiomStrategyVault is Initializable, OwnableUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable {
+contract AxiomStrategyVault is Initializable, OwnableUpgradeable, PausableUpgradeable, ReentrancyGuard {
     error NotTokenOwner();
     error InvalidMerkleProof();
     error DailyLimitExceeded();
@@ -75,7 +75,6 @@ contract AxiomStrategyVault is Initializable, OwnableUpgradeable, PausableUpgrad
     function initialize(IAxiomAgentNFT _nft, address _owner) external initializer {
         __Ownable_init(_owner);
         __Pausable_init();
-        __ReentrancyGuard_init();
         nft = _nft;
     }
 

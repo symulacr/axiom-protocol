@@ -6,7 +6,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
-import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {IAxiomAgentNFT} from "./interfaces/IAxiomAgentNFT.sol";
 import {TimelockManager} from "./libraries/TimelockManager.sol";
@@ -17,7 +17,7 @@ using TimelockManager for TimelockManager.State;
 /// @dev Pay-for-agent pulls a configurable ERC-20 stable (USDC.e / USDG) from the payer and
 ///      credits the creator's withdrawable balance. The creator pulls funds via
 ///      `withdrawAgentEarnings()`. Standalone, upgradeable via UUPS.
-contract AxiomPaymentProcessor is Initializable, OwnableUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable, UUPSUpgradeable {
+contract AxiomPaymentProcessor is Initializable, OwnableUpgradeable, PausableUpgradeable, ReentrancyGuard, UUPSUpgradeable {
     using SafeERC20 for IERC20;
 
     error ZeroAddress();

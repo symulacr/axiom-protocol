@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {ERC721Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
@@ -30,7 +30,7 @@ using TimelockManager for TimelockManager.State;
 ///      move ownership without `PublishedSealedKey` and may break decryptability.
 contract AxiomAgentNFT is
     AccessControlUpgradeable,
-    ReentrancyGuardUpgradeable,
+    ReentrancyGuard,
     PausableUpgradeable,
     UUPSUpgradeable,
     ERC7857CloneableUpgradeable,
@@ -88,7 +88,6 @@ contract AxiomAgentNFT is
         require(admin_ != address(0), "Zero admin address");
 
         __AccessControl_init();
-        __ReentrancyGuard_init();
         __Pausable_init();
         __UUPSUpgradeable_init();
         __ERC7857_init(name_, symbol_, verifierAddr);

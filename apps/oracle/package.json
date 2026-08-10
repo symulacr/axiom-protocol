@@ -29,7 +29,7 @@
     "@axiom/config": "workspace:*",
     "@sentry/node": "^10.69.0",
     "cors": "^2.8.6",
-    "ethereum-cryptography": "^2.2.1",
+    "ethereum-cryptography": "^3.2.0",
     "ethers": "^6.17.0",
     "express": "^4.21.0",
     "helmet": "^8.3.0",

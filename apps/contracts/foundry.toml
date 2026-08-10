@@ -13,8 +13,8 @@ fs_permissions = [{ access = "write", path = "../.." }]
 # Cancun mandatory on 0G Chain
 evm_version = "cancun"
 
-# Solidity 0.8.20 (per 0G reference repo)
-solc = "0.8.20"
+# Solidity 0.8.24 (min required by OpenZeppelin 5.5+; 0G reference repo comment kept for provenance)
+solc = "0.8.24"
 
 # Min runs = smallest bytecode. 0G has zero gas fees, so runtime gas cost is irrelevant.
 optimizer_runs = 1
