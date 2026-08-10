@@ -13,6 +13,7 @@
   "scripts": {
     "build": "bun run --filter @axiom/config build && bun run --filter @axiom/chat-runtime build && bun run --filter @axiom/oracle build && bun run --filter @axiom/backend build",
     "build:all": "bun run build && bun run --filter @axiom/frontend build",
+    "build:binaries": "bun scripts/build-binaries.mjs",
     "start": "bun apps/backend/dist/index.js",
     "start:bun": "bun run apps/backend/src/index.ts",
     "test": "bun run --filter @axiom/config test && bun run --filter @axiom/chat-runtime test && bun run --filter @axiom/oracle test && bun run --filter @axiom/backend test && bun run --filter @axiom/frontend test",

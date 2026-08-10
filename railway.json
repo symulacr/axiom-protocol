@@ -3,10 +3,10 @@
   "services": {
     "axiom-backend": {
       "build": {
-        "buildCommand": "bun run --filter @axiom/config build && bun run --filter @axiom/chat-runtime build && bun run --filter @axiom/backend build"
+        "buildCommand": "bun scripts/build-binaries.mjs"
       },
       "deploy": {
-        "startCommand": "bun apps/backend/dist/index.js",
+        "startCommand": "./dist/axiom-backend",
         "healthcheckPath": "/health",
         "healthcheckTimeout": 120,
         "restartPolicy": "ON_FAILURE"
@@ -19,7 +19,7 @@
     },
     "axiom-frontend": {
       "build": {
-        "buildCommand": "bun run --filter @axiom/config build && bun run --filter @axiom/chat-runtime build && bun run --filter @axiom/frontend build"
+        "buildCommand": "bun run --filter @axiom/chat-runtime build && bun run --filter @axiom/frontend build"
       },
       "deploy": {
         "startCommand": "bun apps/frontend/server.mjs",
@@ -35,10 +35,10 @@
     },
     "oracle": {
       "build": {
-        "buildCommand": "bun run --filter @axiom/config build && bun run --filter @axiom/oracle build"
+        "buildCommand": "bun scripts/build-binaries.mjs"
       },
       "deploy": {
-        "startCommand": "bun apps/oracle/dist/index.js",
+        "startCommand": "./dist/axiom-oracle",
         "healthcheckPath": "/health",
         "healthcheckTimeout": 120,
         "restartPolicy": "ON_FAILURE"
