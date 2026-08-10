@@ -12,9 +12,40 @@ import {
 	vaultDepositEncodeSchema,
 	vaultWithdrawEncodeSchema,
 } from "../route-schemas.js";
+import type { z } from "zod";
 import { HTTP } from "@axiom/config";
 import { sendError } from "../utils/response.js";
 import type { ServerConfig } from "../server.js";
+
+type VaultActionRoute = {
+	path: string;
+	schema: z.ZodType<{ amount: string }>;
+	description: string;
+	encode: (tokenId: string, amountWei: bigint) => string;
+	valueOf: (amountWei: bigint) => string;
+};
+
+const VAULT_ACTION_ROUTES: VaultActionRoute[] = [
+	{
+		path: "/v1/agents/:id/deposit",
+		schema: vaultDepositEncodeSchema,
+		description: "Encode vault deposit transaction (value = native OG amount)",
+		encode: (id) =>
+			VAULT_DEPOSIT_IFACE.encodeFunctionData("deposit", [BigInt(id)]),
+		valueOf: (amountWei) => amountWei.toString(),
+	},
+	{
+		path: "/v1/agents/:id/withdraw",
+		schema: vaultWithdrawEncodeSchema,
+		description: "Encode vault withdraw transaction (amount in native OG)",
+		encode: (id, amountWei) =>
+			VAULT_WITHDRAW_IFACE.encodeFunctionData("withdraw", [
+				BigInt(id),
+				amountWei,
+			]),
+		valueOf: () => "0",
+	},
+];
 
 /** Resolve the configured vault address or emit a 500 and return undefined. */
 function requireVaultAddress(
@@ -38,61 +69,31 @@ export function registerVaultRoutes(
 	paymentRouter: Router,
 	config: ServerConfig,
 ): void {
-	createRoute(
-		paymentRouter,
-		{
-			path: "/v1/agents/:id/deposit",
-			schema: vaultDepositEncodeSchema,
-			requireId: true,
-			requireAddress: "vault",
-			consumer: "chat-runtime",
-			description:
-				"Encode vault deposit transaction (value = native OG amount)",
-		},
-		async (parsed: { amount: string }, _req, _res, { id, config: cfg }) => {
-			const vaultAddr = requireVaultAddress(cfg, _res);
-			if (!vaultAddr) return;
-			const data = VAULT_DEPOSIT_IFACE.encodeFunctionData("deposit", [
-				BigInt(id),
-			]);
-			const value = ethers.parseEther(parsed.amount);
-			return {
-				tokenId: id,
-				to: vaultAddr,
-				data,
-				value: value.toString(),
-				amount: parsed.amount,
-			};
-		},
-		config,
-	);
-
-	createRoute(
-		paymentRouter,
-		{
-			path: "/v1/agents/:id/withdraw",
-			schema: vaultWithdrawEncodeSchema,
-			requireId: true,
-			requireAddress: "vault",
-			consumer: "chat-runtime",
-			description: "Encode vault withdraw transaction (amount in native OG)",
-		},
-		async (parsed: { amount: string }, _req, _res, { id, config: cfg }) => {
-			const vaultAddr = requireVaultAddress(cfg, _res);
-			if (!vaultAddr) return;
-			const amountWei = ethers.parseEther(parsed.amount);
-			const data = VAULT_WITHDRAW_IFACE.encodeFunctionData("withdraw", [
-				BigInt(id),
-				amountWei,
-			]);
-			return {
-				tokenId: id,
-				to: vaultAddr,
-				data,
-				value: "0",
-				amount: parsed.amount,
-			};
-		},
-		config,
-	);
+	for (const route of VAULT_ACTION_ROUTES) {
+		createRoute(
+			paymentRouter,
+			{
+				path: route.path,
+				schema: route.schema,
+				requireId: true,
+				requireAddress: "vault",
+				consumer: "chat-runtime",
+				description: route.description,
+			},
+			async (parsed: { amount: string }, _req, _res, { id, config: cfg }) => {
+				const vaultAddr = requireVaultAddress(cfg, _res);
+				if (!vaultAddr) return;
+				const amountWei = ethers.parseEther(parsed.amount);
+				const data = route.encode(id, amountWei);
+				return {
+					tokenId: id,
+					to: vaultAddr,
+					data,
+					value: route.valueOf(amountWei),
+					amount: parsed.amount,
+				};
+			},
+			config,
+		);
+	}
 }

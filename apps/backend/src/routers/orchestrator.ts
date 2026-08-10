@@ -1,4 +1,4 @@
-import { z } from "zod";
+import type { z } from "zod";
 import type { Express, Request, Response } from "express";
 import { tickSchema } from "../route-schemas.js";
 import { getClients, sendToTopic } from "../ws/broadcaster.js";
@@ -161,13 +161,9 @@ export function registerOrchestratorRoutes(
 
     if (shouldStream) {
       const topic = `tick.${agentTokenId}`;
-      let hasSubscribers = false;
-      for (const c of getClients()) {
-        if (c.topics.has(topic) || c.topics.has("*")) {
-          hasSubscribers = true;
-          break;
-        }
-      }
+      const hasSubscribers = [...getClients()].some(
+        (c) => c.topics.has(topic) || c.topics.has("*"),
+      );
       if (!hasSubscribers) {
         res.status(HTTP.BAD_REQUEST).json({
           error: "No WebSocket subscriber for streaming",

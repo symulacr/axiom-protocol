@@ -4,6 +4,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type ReactElement,
   type ReactNode,
 } from "react";
@@ -96,6 +97,12 @@ type SSEChunk = {
 const SUPPORTED_CHAIN_IDS = new Set([aristotle.id]);
 const CHAT_MESSAGES_KEY = "axiom:chat-messages";
 const CHAT_THREADS_KEY = "axiom:chat-threads";
+
+const chatMsgStyle: CSSProperties = {
+  fontSize: "var(--text-sm)",
+  color: COLORS.text,
+  lineHeight: "var(--lh-normal)",
+};
 
 type ChatThread = {
   id: string;
@@ -1088,11 +1095,7 @@ function ChatPageInner(): ReactElement {
               ) : (
                 <div
                   className="chat-md"
-                  style={{
-                    fontSize: "var(--text-sm)",
-                    color: COLORS.text,
-                    lineHeight: "var(--lh-normal)",
-                  }}
+                  style={chatMsgStyle}
                   dangerouslySetInnerHTML={{
                     __html: renderMarkdown(msg.content),
                   }}
@@ -1114,13 +1117,7 @@ function ChatPageInner(): ReactElement {
             >
               <StatusDot color={COLORS.text}>Assistant</StatusDot>
               {streamText ? (
-                <div
-                  style={{
-                    fontSize: "var(--text-sm)",
-                    color: COLORS.text,
-                    lineHeight: "var(--lh-normal)",
-                  }}
-                >
+                <div style={chatMsgStyle}>
                   <span
                     className="chat-md"
                     style={{ display: "inline" }}

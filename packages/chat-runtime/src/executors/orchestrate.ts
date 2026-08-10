@@ -1,5 +1,5 @@
 import { parseAbi } from "viem";
-import { fetchJson } from "../transport.js";
+import { fetchJson, toolFail } from "../transport.js";
 import type { ToolRuntime } from "../transport.js";
 import { ZERO_DATA_ROOT } from "@axiom/config/constants";
 import type { ToolResult } from "../types.js";
@@ -60,18 +60,12 @@ export async function runOrchestrateTool(
   ctx: ToolRuntime,
 ): Promise<ToolResult> {
   if (name !== "execute_tick" && name !== "simulate_tick") {
-    return {
-      ok: false as const,
-      content: JSON.stringify({ error: `Unknown orchestrate tool: ${name}` }),
-    };
+    return toolFail(`Unknown orchestrate tool: ${name}`);
   }
 
   const tokenId = String(args.tokenId ?? ctx.session.lastTokenId ?? "");
   if (!tokenId)
-    return {
-      ok: false as const,
-      content: JSON.stringify({ error: "tokenId required" }),
-    };
+    return toolFail("tokenId required");
 
   const dryRun = name === "simulate_tick" || args.dryRun === true;
   const vault = ctx.session.addresses?.vault;
@@ -103,12 +97,7 @@ export async function runOrchestrateTool(
           }),
         };
       }
-      return {
-        ok: false as const,
-        content: JSON.stringify({
-          error: "NOT_READY: vault balance or strategy missing",
-        }),
-      };
+      return toolFail("NOT_READY: vault balance or strategy missing");
     }
 
     if (dryRun) {
@@ -142,10 +131,7 @@ export async function runOrchestrateTool(
   );
 
   if (!httpOk)
-    return {
-      ok: false as const,
-      content: JSON.stringify({ error: "tick http fail" }),
-    };
+    return toolFail("tick http fail");
   return { ok: true as const, content: JSON.stringify(data) };
 }
 

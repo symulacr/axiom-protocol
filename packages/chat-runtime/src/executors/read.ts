@@ -1,5 +1,5 @@
 import { parseAbi } from "viem";
-import { fetchJson } from "../transport.js";
+import { fetchJson, toolFail } from "../transport.js";
 import type { ToolRuntime } from "../transport.js";
 import type { ToolResult } from "../types.js";
 
@@ -20,21 +20,21 @@ export async function runReadTool(
     case "list_my_agents": {
       const owner = ctx.session.walletAddress;
       if (!owner) {
-        return { ok: false as const, content: JSON.stringify({ error: "Wallet not connected" }) };
+        return toolFail("Wallet not connected");
       }
       const { ok, data } = await fetchJson<{ agents: unknown[] }>(
         ctx.http,
         `/v1/agents?owner=${owner}`,
       );
-      if (!ok) return { ok: false as const, content: JSON.stringify({ error: "agents http fail" }) };
+      if (!ok) return toolFail("agents http fail");
       return { ok: true as const, content: JSON.stringify({ agents: data.agents ?? [] }) };
     }
     case "vault_balance": {
       const tokenId = resolveTokenId(args, ctx);
-      if (!tokenId) return { ok: false as const, content: JSON.stringify({ error: "tokenId required" }) };
-      if (!ctx.chain?.readContract) return { ok: false as const, content: JSON.stringify({ error: "No chain connection" }) };
+      if (!tokenId) return toolFail("tokenId required");
+      if (!ctx.chain?.readContract) return toolFail("No chain connection");
       const vault = ctx.session.addresses?.vault;
-      if (!vault) return { ok: false as const, content: JSON.stringify({ error: "Vault address not configured" }) };
+      if (!vault) return toolFail("Vault address not configured");
       const balance = (await ctx.chain.readContract<bigint>({
         address: vault,
         abi: parseAbi(["function balanceOf(uint256) view returns (uint256)"]),
@@ -45,10 +45,10 @@ export async function runReadTool(
     }
     case "agent_metadata": {
       const tokenId = resolveTokenId(args, ctx);
-      if (!tokenId) return { ok: false as const, content: JSON.stringify({ error: "tokenId required" }) };
-      if (!ctx.chain?.multicall) return { ok: false as const, content: JSON.stringify({ error: "No chain connection" }) };
+      if (!tokenId) return toolFail("tokenId required");
+      if (!ctx.chain?.multicall) return toolFail("No chain connection");
       const nft = ctx.session.addresses?.agentNft;
-      if (!nft) return { ok: false as const, content: JSON.stringify({ error: "Agent NFT address not configured" }) };
+      if (!nft) return toolFail("Agent NFT address not configured");
       const results = await ctx.chain.multicall({
         contracts: [
           {
@@ -91,10 +91,10 @@ export async function runReadTool(
         path += `&eventName=${encodeURIComponent(String(args.eventName))}`;
       }
       const { ok, data } = await fetchJson<{ events: unknown[] }>(ctx.http, path);
-      if (!ok) return { ok: false as const, content: JSON.stringify({ error: "events http fail" }) };
+      if (!ok) return toolFail("events http fail");
       return { ok: true as const, content: JSON.stringify({ events: data.events ?? [] }) };
     }
     default:
-      return { ok: false as const, content: JSON.stringify({ error: `Unknown read tool: ${name}` }) };
+      return toolFail(`Unknown read tool: ${name}`);
   }
 }

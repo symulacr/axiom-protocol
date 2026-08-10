@@ -3,6 +3,7 @@ import {
   useEffect,
   useMemo,
   useState,
+  type CSSProperties,
   type ReactElement,
 } from "react";
 import {
@@ -67,6 +68,12 @@ function useAutoClear(
 }
 
 const formRowClassName = "flex items-center gap-sm mt-sm";
+
+const hrDividerStyle: CSSProperties = {
+  border: 0,
+  borderTop: `1px solid ${COLORS.border}`,
+  margin: "var(--space-xl) 0",
+};
 
 function PaymentConfigDisplay({
   config,
@@ -151,11 +158,7 @@ function PaymentForm({
         onSubmit={onPay}
         buttonLabel="Pay"
         loading={payStatus === "pending"}
-        disabled={
-          isPayLoading ||
-          payAmount === "" ||
-          payAmountError !== null
-        }
+        disabled={isPayLoading || payAmount === "" || payAmountError !== null}
         error={payAmountError}
         errorId="pay-amount-error"
         className="mt-sm"
@@ -304,9 +307,7 @@ function RoyaltySection({
         buttonLabel="Set Royalty"
         loading={royaltyStatus === "pending"}
         disabled={
-          isRoyaltyLoading ||
-          royaltyBps === "" ||
-          royaltyBpsError !== null
+          isRoyaltyLoading || royaltyBps === "" || royaltyBpsError !== null
         }
         error={royaltyBpsError}
         errorId="royalty-bps-error"
@@ -548,13 +549,7 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
 
         {isCreator && (
           <>
-            <hr
-              style={{
-                border: 0,
-                borderTop: `1px solid ${COLORS.border}`,
-                margin: "var(--space-xl) 0",
-              }}
-            />
+            <hr style={hrDividerStyle} />
             <EarningsSection
               earnings={earnings}
               isWithdrawPending={isWithdrawPending}
@@ -572,13 +567,7 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
               }}
             />
 
-            <hr
-              style={{
-                border: 0,
-                borderTop: `1px solid ${COLORS.border}`,
-                margin: "var(--space-xl) 0",
-              }}
-            />
+            <hr style={hrDividerStyle} />
             <RoyaltySection
               isRoyaltyLoading={isRoyaltyLoading}
               royaltyBps={royaltyBps}

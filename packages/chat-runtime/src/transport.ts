@@ -1,4 +1,9 @@
-import type { ChatSessionContext, EncodeCalldata, ToolMode } from "./types.js";
+import type {
+	ChatSessionContext,
+	EncodeCalldata,
+	ToolMode,
+	ToolResult,
+} from "./types.js";
 
 interface ToolHttpInit {
 	method?: string;
@@ -69,4 +74,9 @@ export async function fetchJson<T>(
 		return { ok: false, data: { error: text } as T, status: res.status };
 	}
 	return { ok: res.ok, data, status: res.status };
+}
+
+/** Error envelope shared by every tool executor: `{ ok: false, content: {"error": msg} }`. */
+export function toolFail(message: string): ToolResult {
+	return { ok: false, content: JSON.stringify({ error: message }) };
 }

@@ -522,6 +522,19 @@ export function createSkillRouters(config: ServerConfig): Router {
 	const provider = getSharedProvider();
 	const getNft = (addr: string) =>
 		new ethers.Contract(addr, AGENT_NFT_ABI, provider);
+	/** Resolve the AgentNFT contract or 503 when the address is not configured. */
+	const requireNft = (res: Response): ethers.Contract | null => {
+		const nftAddr = config.addresses?.agentNft;
+		if (!nftAddr) {
+			sendError(
+				res,
+				HTTP.SERVICE_UNAVAILABLE,
+				"AgentNFT address not configured",
+			);
+			return null;
+		}
+		return getNft(nftAddr);
+	};
 
 	registerSkillRoutes(route, [
 		// EVM
@@ -898,16 +911,8 @@ export function createSkillRouters(config: ServerConfig): Router {
 			"Simulate an ERC-7857 transfer without sending",
 			async (parsed, _req, res) => {
 				const { tokenId, to } = parsed;
-				const nftAddr = config.addresses?.agentNft;
-				if (!nftAddr) {
-					sendError(
-						res,
-						HTTP.SERVICE_UNAVAILABLE,
-						"AgentNFT address not configured",
-					);
-					return;
-				}
-				const nft = getNft(nftAddr);
+				const nft = requireNft(res);
+				if (!nft) return;
 				const [owner, data] = await Promise.all([
 					nft.ownerOf!(BigInt(tokenId)),
 					nft.intelligentDatasOf!(BigInt(tokenId)),
@@ -942,16 +947,8 @@ export function createSkillRouters(config: ServerConfig): Router {
 			"Validate transfer proof and compute safety score",
 			async (parsed, _req, res) => {
 				const { tokenId, to, accessProof } = parsed;
-				const nftAddr = config.addresses?.agentNft;
-				if (!nftAddr) {
-					sendError(
-						res,
-						HTTP.SERVICE_UNAVAILABLE,
-						"AgentNFT address not configured",
-					);
-					return;
-				}
-				const nft = getNft(nftAddr);
+				const nft = requireNft(res);
+				if (!nft) return;
 				let score = 100;
 				const issues: string[] = [];
 				try {

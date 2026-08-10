@@ -4,6 +4,7 @@ import {
 	useRef,
 	useState,
 	type ChangeEvent,
+	type CSSProperties,
 	type ReactElement,
 } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -29,7 +30,18 @@ import {
 	Input,
 	Button,
 	withViewTransition,
+	emptyCardStyle,
 } from "../components/ui.js";
+
+const emptyHintStyle: CSSProperties = {
+	color: COLORS.textDim,
+	textAlign: "center",
+	margin: "var(--space-2xl) 0",
+};
+const pillButtonStyle: CSSProperties = {
+	fontSize: "var(--text-xs)",
+	padding: "0.25rem 0.5rem",
+};
 
 interface AgentCardStatusProps {
 	vaultData: VaultDataEntry | undefined;
@@ -163,12 +175,7 @@ export function AgentsBrowser({
 			<div>
 				{!embedded && <PageHeader title="Your Agents" />}
 				{!isConnected ? (
-					<Card
-						style={{
-							textAlign: "center",
-							padding: "var(--space-3xl) var(--space-xl)",
-						}}
-					>
+					<Card style={emptyCardStyle}>
 						<p
 							style={{
 								color: COLORS.textMuted,
@@ -180,12 +187,7 @@ export function AgentsBrowser({
 						</p>
 					</Card>
 				) : (
-					<Card
-						style={{
-							textAlign: "center",
-							padding: "var(--space-3xl) var(--space-xl)",
-						}}
-					>
+					<Card style={emptyCardStyle}>
 						<img
 							src="/brand/empty-agents-960.jpg"
 							alt=""
@@ -266,25 +268,9 @@ export function AgentsBrowser({
 					style={{ width: "100%", marginBottom: 16, boxSizing: "border-box" }}
 				/>
 				{agents.length === 0 ? (
-					<p
-						style={{
-							color: COLORS.textDim,
-							textAlign: "center",
-							margin: "var(--space-2xl) 0",
-						}}
-					>
-						No agents found for this wallet
-					</p>
+					<p style={emptyHintStyle}>No agents found for this wallet</p>
 				) : filteredAgents.length === 0 ? (
-					<p
-						style={{
-							color: COLORS.textDim,
-							textAlign: "center",
-							margin: "var(--space-2xl) 0",
-						}}
-					>
-						No agents match your search
-					</p>
+					<p style={emptyHintStyle}>No agents match your search</p>
 				) : (
 					<div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
 						{filteredAgents.map((agent, i) => (
@@ -404,24 +390,12 @@ export function AgentsBrowser({
 										{truncateAddress(agent.owner ?? "")}
 									</span>
 									<Link to={`/agents/${agent.tokenId}#execute`}>
-										<Button
-											variant="ghost"
-											style={{
-												fontSize: "var(--text-xs)",
-												padding: "0.25rem 0.5rem",
-											}}
-										>
+										<Button variant="ghost" style={pillButtonStyle}>
 											Execute ▶
 										</Button>
 									</Link>
 									<Link to={`/agents/${agent.tokenId}#payments`}>
-										<Button
-											variant="ghost"
-											style={{
-												fontSize: "var(--text-xs)",
-												padding: "0.25rem 0.5rem",
-											}}
-										>
+										<Button variant="ghost" style={pillButtonStyle}>
 											Payments
 										</Button>
 									</Link>

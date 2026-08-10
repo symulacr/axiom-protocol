@@ -53,25 +53,19 @@ export async function detectVaultAbiVariant(
 	const cached = variantCache.get(key);
 	if (cached) return cached;
 
-	const currentProbe = new Contract(
-		vaultAddress,
-		STRATEGY_OF_CURRENT,
-		provider,
-	);
-	const currentStrategyOf = currentProbe.getFunction("strategyOf");
+	const probe = async (
+		abi: typeof STRATEGY_OF_CURRENT | typeof STRATEGY_OF_LEGACY,
+		variant: VaultAbiVariant,
+	): Promise<VaultAbiVariant> => {
+		const c = new Contract(vaultAddress, abi, provider);
+		await c.getFunction("strategyOf").staticCall(0n);
+		variantCache.set(key, variant);
+		return variant;
+	};
 	try {
-		await currentStrategyOf.staticCall(0n);
-		variantCache.set(key, "current");
-		return "current";
+		return await probe(STRATEGY_OF_CURRENT, "current");
 	} catch {
-		const legacyProbe = new Contract(
-			vaultAddress,
-			STRATEGY_OF_LEGACY,
-			provider,
-		);
-		await legacyProbe.getFunction("strategyOf").staticCall(0n);
-		variantCache.set(key, "legacy");
-		return "legacy";
+		return await probe(STRATEGY_OF_LEGACY, "legacy");
 	}
 }
 
@@ -384,6 +378,22 @@ export class StrategyRunner {
 		return this.vaultWriteTc;
 	}
 
+	/** Shared OpenAI-compat request params for the streaming and non-streaming paths. */
+	private chatParams(
+		model: string,
+		messages: Array<{ role: "system" | "user"; content: string }>,
+	) {
+		return {
+			model,
+			messages,
+			response_format: { type: "json_object" as const },
+			// 0G router extension: suppress reasoning tokens for deterministic JSON.
+			...({
+				chat_template_kwargs: { enable_thinking: false },
+			} satisfies OgChatParams),
+		};
+	}
+
 	private async runInference(
 		strategy: StrategySpec,
 		signal: MarketSignal,
@@ -401,18 +411,12 @@ export class StrategyRunner {
 			{ role: "user" as const, content: userPrompt },
 		];
 
+		const client = await this.getClient(strategy.computeModel);
 		if (onChunk) {
-			const client = await this.getClient(strategy.computeModel);
 			const { data: stream } = await client.chat.completions
 				.create({
-					model: strategy.computeModel,
-					messages,
+					...this.chatParams(strategy.computeModel, messages),
 					stream: true,
-					response_format: { type: "json_object" },
-					// 0G router extension: suppress reasoning tokens for deterministic JSON.
-					...({
-						chat_template_kwargs: { enable_thinking: false },
-					} satisfies OgChatParams),
 				})
 				.withResponse();
 			let full = "";
@@ -430,18 +434,8 @@ export class StrategyRunner {
 			return full;
 		}
 
-		const client = await this.getClient(strategy.computeModel);
 		const { data: completion } = await client.chat.completions
-			.create({
-				model: strategy.computeModel,
-				messages,
-				response_format: { type: "json_object" },
-				// 0G router extension: suppress reasoning tokens for deterministic JSON.
-				// Officially documented — typed via OgChatParams instead of casting.
-				...({
-					chat_template_kwargs: { enable_thinking: false },
-				} satisfies OgChatParams),
-			})
+			.create(this.chatParams(strategy.computeModel, messages))
 			.withResponse();
 		return completion.choices?.[0]?.message?.content ?? "";
 	}

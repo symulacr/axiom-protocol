@@ -6,7 +6,16 @@ import {
 	validateNumericInput,
 	formatTokenAmount,
 } from "../utils/format.js";
-import { COLORS, Button, Input, Spinner, MonoLabel, ErrorAlert } from "./ui.js";
+import {
+	COLORS,
+	Button,
+	Input,
+	Spinner,
+	MonoLabel,
+	ErrorAlert,
+	textDimMediumNoWrap,
+	amountInputStyle,
+} from "./ui.js";
 
 interface DepositFormProps {
 	tokenId: bigint;
@@ -72,14 +81,7 @@ export function DepositForm({
 				border: isWarning ? `1px solid ${COLORS.warningBorder}` : "none",
 			}}
 		>
-			<span
-				ref={balanceRef}
-				style={{
-					color: COLORS.textDim,
-					fontWeight: "var(--fw-medium)",
-					whiteSpace: "nowrap",
-				}}
-			>
+			<span ref={balanceRef} style={textDimMediumNoWrap}>
 				Vault: <MonoLabel>{formatTokenAmount(vd.depositsWei)} 0G</MonoLabel>
 			</span>
 			<Input
@@ -92,7 +94,7 @@ export function DepositForm({
 				aria-label="Deposit amount in 0G"
 				aria-invalid={depositError !== null}
 				aria-describedby="deposit-error"
-				style={{ flex: "0 1 10rem", fontSize: "var(--text-sm)" }}
+				style={amountInputStyle}
 			/>
 			{depositError !== null && (
 				<p id="deposit-error" className="field-error" style={{ width: "100%" }}>

@@ -6,6 +6,7 @@ import {
   SectionTitle,
   getActionColor,
   CopyButton,
+  mutedTextSm,
 } from "./ui.js";
 import { EmptyState } from "./EmptyState.js";
 import { resolveBlockExplorerUrl } from "@axiom/config/networks";
@@ -20,13 +21,7 @@ export function TradeHistory({ history }: TradeHistoryProps): ReactElement {
   if (history.length === 0) {
     return (
       <EmptyState>
-        <p
-          style={{
-            color: COLORS.textMuted,
-            fontSize: "var(--text-sm)",
-            margin: 0,
-          }}
-        >
+        <p style={mutedTextSm}>
           No strategy executions yet. Execute a strategy to see trade history
           here.
         </p>

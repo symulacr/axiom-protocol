@@ -19,6 +19,25 @@ function recordAction(payload: unknown, counts: ActionCounts): string {
 	return action;
 }
 
+/**
+ * Derive the canonical metrics object from raw action counts. Shared by the
+ * per-agent and batch handlers so both always agree.
+ * winRate = fraction of ticks with a non-hold action (buy OR sell) — it is
+ * NOT an alias for buyRate.
+ */
+function summarizeCounts(counts: ActionCounts) {
+	const totalTicks = counts.buyCount + counts.sellCount + counts.holdCount;
+	return {
+		totalTicks,
+		buyCount: counts.buyCount,
+		sellCount: counts.sellCount,
+		holdCount: counts.holdCount,
+		buyRate: totalTicks > 0 ? counts.buyCount / totalTicks : 0,
+		winRate:
+			totalTicks > 0 ? (counts.buyCount + counts.sellCount) / totalTicks : 0,
+	};
+}
+
 export function registerPerformanceRoutes(
 	app: Express,
 	config: ServerConfig,
@@ -79,23 +98,8 @@ export function registerPerformanceRoutes(
 				});
 			}
 
-			const totalTicks = counts.buyCount + counts.sellCount + counts.holdCount;
-			const buyRate = totalTicks > 0 ? counts.buyCount / totalTicks : 0;
 			const result = {
-				metrics: {
-					totalTicks,
-					buyCount: counts.buyCount,
-					sellCount: counts.sellCount,
-					holdCount: counts.holdCount,
-					buyRate,
-					// Canonical winRate: fraction of ticks with a non-hold action
-					// (buyCount + sellCount) / totalTicks. The batch endpoint uses
-					// the identical formula — never alias this to buyRate.
-					winRate:
-						totalTicks > 0
-							? (counts.buyCount + counts.sellCount) / totalTicks
-							: 0,
-				},
+				metrics: summarizeCounts(counts),
 				history: history.reverse(),
 			};
 			perfCache.set(cacheKey, result);
@@ -156,25 +160,7 @@ export function registerPerformanceRoutes(
 				for (const evt of ticks) {
 					recordAction(evt.payload, counts);
 				}
-				const totalTicks =
-					counts.buyCount + counts.sellCount + counts.holdCount;
-				const buyRate = totalTicks > 0 ? counts.buyCount / totalTicks : 0;
-				// winRate MUST use the same formula as the single-agent handler
-				// above: fraction of ticks with a non-hold action (buy OR sell).
-				// It is NOT an alias for buyRate — keeping the two identical here
-				// made batch responses diverge from per-agent responses.
-				const winRate =
-					totalTicks > 0
-						? (counts.buyCount + counts.sellCount) / totalTicks
-						: 0;
-				results[id] = {
-					totalTicks,
-					buyCount: counts.buyCount,
-					sellCount: counts.sellCount,
-					holdCount: counts.holdCount,
-					buyRate,
-					winRate,
-				};
+				results[id] = summarizeCounts(counts);
 			}
 
 			const result = { results };

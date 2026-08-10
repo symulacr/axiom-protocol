@@ -2,7 +2,15 @@ import { type ReactElement } from "react";
 import { useConfirmTimer } from "../hooks/useConfirmTimer.js";
 import { useWithdraw } from "../hooks/useWithdraw.js";
 import { formatTokenAmount } from "../utils/format.js";
-import { COLORS, Button, Input, Spinner, MonoLabel } from "./ui.js";
+import {
+	COLORS,
+	Button,
+	Input,
+	Spinner,
+	MonoLabel,
+	textDimMediumNoWrap,
+	amountInputStyle,
+} from "./ui.js";
 
 interface WithdrawFormProps {
 	tokenId: bigint;
@@ -38,15 +46,7 @@ export function WithdrawForm({
 				flexWrap: "wrap",
 			}}
 		>
-			<span
-				style={{
-					color: COLORS.textDim,
-					fontWeight: "var(--fw-medium)",
-					whiteSpace: "nowrap",
-				}}
-			>
-				Withdraw from vault
-			</span>
+			<span style={textDimMediumNoWrap}>Withdraw from vault</span>
 			<Input
 				type="text"
 				inputMode="decimal"
@@ -56,7 +56,7 @@ export function WithdrawForm({
 				disabled={isWithdrawing}
 				aria-label="Withdraw amount in 0G"
 				aria-invalid={withdrawError !== null}
-				style={{ flex: "0 1 10rem", fontSize: "var(--text-sm)" }}
+				style={amountInputStyle}
 			/>
 			<span
 				ref={balanceRef}

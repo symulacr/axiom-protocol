@@ -1,4 +1,10 @@
-import { useEffect, useMemo, useRef, type ReactElement } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  type CSSProperties,
+  type ReactElement,
+} from "react";
 import type {
   PerformanceMetrics as Metrics,
   TradeHistoryEntry,
@@ -19,6 +25,12 @@ interface PerformanceMetricsProps {
 
 const EASE = "var(--ease-out)";
 const SPARK_H = 64;
+
+const metricValueStyle: CSSProperties = {
+  color: COLORS.text,
+  fontSize: "var(--text-base)",
+  fontWeight: "var(--fw-semibold)",
+};
 
 export function PerformanceMetrics({
   metrics,
@@ -102,11 +114,7 @@ export function PerformanceMetrics({
       canvas.height = Math.round(SPARK_H * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, w, SPARK_H);
-      const drawLine = (
-        data: number[],
-        color: string,
-        width: number,
-      ): void => {
+      const drawLine = (data: number[], color: string, width: number): void => {
         if (data.length === 0) return;
         const max = Math.max(1, ...data);
         ctx.beginPath();
@@ -149,13 +157,7 @@ export function PerformanceMetrics({
       label: "Total Ticks",
       value: (
         <span ref={(el) => (valRefs.current[0] = el)}>
-          <MonoLabel
-            style={{
-              color: COLORS.text,
-              fontSize: "var(--text-base)",
-              fontWeight: "var(--fw-semibold)",
-            }}
-          >
+          <MonoLabel style={metricValueStyle}>
             {metrics.totalTicks.toString()}
           </MonoLabel>
         </span>
@@ -165,13 +167,7 @@ export function PerformanceMetrics({
       label: "Buy / Sell / Hold",
       value: (
         <span ref={(el) => (valRefs.current[1] = el)}>
-          <MonoLabel
-            style={{
-              color: COLORS.text,
-              fontSize: "var(--text-base)",
-              fontWeight: "var(--fw-semibold)",
-            }}
-          >
+          <MonoLabel style={metricValueStyle}>
             {`${metrics.buyCount} / ${metrics.sellCount} / ${metrics.holdCount}`}
           </MonoLabel>
         </span>
@@ -197,13 +193,7 @@ export function PerformanceMetrics({
       label: "Actions",
       value: (
         <span ref={(el) => (valRefs.current[3] = el)}>
-          <MonoLabel
-            style={{
-              color: COLORS.text,
-              fontSize: "var(--text-base)",
-              fontWeight: "var(--fw-semibold)",
-            }}
-          >
+          <MonoLabel style={metricValueStyle}>
             {(metrics.buyCount + metrics.sellCount).toString()}
           </MonoLabel>
         </span>

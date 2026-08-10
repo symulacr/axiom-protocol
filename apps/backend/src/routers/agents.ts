@@ -58,6 +58,30 @@ function resolveSealedKey(sealedKeyIn: string | undefined): {
 	return { key, missing: !sealedKeyIn || sealedKeyIn.length < 2 };
 }
 
+/** Resolve sealedKey with production guard; returns key or undefined after sending an error. */
+function resolveSealedKeyGuard(
+	sealedKeyIn: string | undefined,
+	res: Response,
+	tokenId: string,
+): `0x${string}` | undefined {
+	const { key: sealedKeyOrDefault, missing } = resolveSealedKey(sealedKeyIn);
+	if (missing) {
+		if (process.env.NODE_ENV === "production") {
+			sendError(
+				res,
+				HTTP.BAD_REQUEST,
+				"sealedKey is required in production",
+			);
+			return undefined;
+		}
+		log.warn(
+			"No sealedKey provided, using zero-padded fallback (devnet only)",
+			{ tokenId },
+		);
+	}
+	return sealedKeyOrDefault;
+}
+
 // The oracle returns a signature it produced with its TEE key. We MUST verify
 // that signature against the SERVER-CONFIGURED trusted TEE signer
 // (AXIOM_TEE_SIGNER_PK) — NOT the signer the oracle claims for itself. A
@@ -369,22 +393,12 @@ export function registerAgentRoutes(
 						return;
 					}
 					const validUntil = BigInt(Math.floor(Date.now() / 1000)) + 86400n;
-					const { key: sealedKeyOrDefault, missing } =
-						resolveSealedKey(sealedKeyIn);
-					if (missing) {
-						if (process.env.NODE_ENV === "production") {
-							sendError(
-								res,
-								HTTP.BAD_REQUEST,
-								"sealedKey is required in production",
-							);
-							return;
-						}
-						log.warn(
-							"No sealedKey provided, using zero-padded fallback (devnet only)",
-							{ tokenId: id },
-						);
-					}
+					const sealedKeyOrDefault = resolveSealedKeyGuard(
+						sealedKeyIn,
+						res,
+						id,
+					);
+					if (!sealedKeyOrDefault) return;
 					const nonceHex = ethers.toBeHex(nonce) as `0x${string}`;
 					const tee = await oracle.signOwnership({
 						dataHash,
@@ -464,25 +478,12 @@ export function registerAgentRoutes(
 					);
 					return;
 				}
-				const sealedKeyOrDefault: `0x${string}` = (
-					sealedKeyIn && sealedKeyIn.length >= 2
-						? sealedKeyIn
-						: "0x" + "00".repeat(32)
-				) as `0x${string}`;
-				if (!sealedKeyIn || sealedKeyIn.length < 2) {
-					if (process.env.NODE_ENV === "production") {
-						sendError(
-							res,
-							HTTP.BAD_REQUEST,
-							"sealedKey is required in production",
-						);
-						return;
-					}
-					log.warn(
-						"No sealedKey provided, using zero-padded fallback (devnet only)",
-						{ tokenId: id },
-					);
-				}
+				const sealedKeyOrDefault = resolveSealedKeyGuard(
+					sealedKeyIn,
+					res,
+					id,
+				);
+				if (!sealedKeyOrDefault) return;
 				const tee = await oracle.signOwnership({
 					dataHash: proofDataHash,
 					sealedKey: sealedKeyOrDefault,

@@ -1,4 +1,4 @@
-import { fetchJson } from "../transport.js";
+import { fetchJson, toolFail } from "../transport.js";
 import type { ToolRuntime } from "../transport.js";
 import type { ToolResult } from "../types.js";
 
@@ -17,11 +17,7 @@ async function archiveQuery(
 			body: JSON.stringify(body),
 		},
 	);
-	if (!httpOk)
-		return {
-			ok: false as const,
-			content: JSON.stringify({ error: "archive query fail" }),
-		};
+	if (!httpOk) return toolFail("archive query fail");
 	return { ok: true as const, content: JSON.stringify(data) };
 }
 
@@ -34,11 +30,7 @@ function clampLimit(n: unknown, fallback: number): number {
 /** Coerce args.url; returns the url string or a "url required" error result. */
 function requireUrl(args: Record<string, unknown>): string | ToolResult {
 	const url = String(args.url ?? "");
-	if (!url)
-		return {
-			ok: false as const,
-			content: JSON.stringify({ error: "url required" }),
-		};
+	if (!url) return toolFail("url required");
 	return url;
 }
 
@@ -82,11 +74,7 @@ async function archiveAccount(
 	ctx: ToolRuntime,
 ): Promise<ToolResult> {
 	const handle = String(args.handle ?? "");
-	if (!handle)
-		return {
-			ok: false as const,
-			content: JSON.stringify({ error: "handle required" }),
-		};
+	if (!handle) return toolFail("handle required");
 	const result = await archiveQuery(ctx, {
 		intent: "account" satisfies ArchiveIntent,
 		handle,

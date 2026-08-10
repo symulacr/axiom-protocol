@@ -57,8 +57,37 @@ function tool<N extends string>(
 	};
 }
 
+type ToolParam = { type: string; description?: string };
+
+/** `{ type: "object", properties, required? }` — the repeated tool-spec schema shape. */
+function params(
+	properties: Record<string, ToolParam>,
+	required?: readonly string[],
+): ChatToolJsonSchema {
+	return required === undefined
+		? { type: "object", properties }
+		: { type: "object", properties, required };
+}
+
+const addressParam = {
+	type: "string",
+	description: "EOA wallet address",
+} as const;
+const tokenIdParam = {
+	type: "string",
+	description: "Agent token ID (numeric)",
+} as const;
+const ownerRepoParams = {
+	owner: { type: "string", description: "GitHub owner" },
+	repo: { type: "string", description: "GitHub repo" },
+} as const;
+const networkEgress = {
+	os: "linux",
+	context: "network egress",
+} as const;
+
 const tokenTransferProps = {
-	tokenId: { type: "string", description: "Agent token ID (numeric)" },
+	tokenId: tokenIdParam,
 	to: { type: "string", description: "Recipient address" },
 } as const;
 
@@ -68,13 +97,7 @@ const SKILL_TOOL_DEFS = [
 		label: "EVM Wallet",
 		hint: "Manage EVM wallet balance/network for an EOA (you have the wallet address)",
 		friction: "low",
-		parameters: {
-			type: "object",
-			properties: {
-				address: { type: "string", description: "EOA wallet address" },
-			},
-			required: ["address"],
-		},
+		parameters: params({ address: addressParam }, ["address"]),
 		capabilities: ["evm", "wallet"],
 		context: "reads default provider chain",
 	}),
@@ -83,13 +106,7 @@ const SKILL_TOOL_DEFS = [
 		label: "EVM Multichain",
 		hint: "Query and interact across multiple EVM chains",
 		friction: "medium",
-		parameters: {
-			type: "object",
-			properties: {
-				address: { type: "string", description: "EOA wallet address" },
-			},
-			required: ["address"],
-		},
+		parameters: params({ address: addressParam }, ["address"]),
 		capabilities: ["evm", "multichain"],
 		context: "reads multiple EVM chains",
 	}),
@@ -99,11 +116,10 @@ const SKILL_TOOL_DEFS = [
 		hint: "Build, sign, and broadcast EVM transactions",
 		requiresWallet: true,
 		friction: "medium",
-		parameters: {
-			type: "object",
-			properties: { hash: { type: "string", description: "Transaction hash" } },
-			required: ["hash"],
-		},
+		parameters: params(
+			{ hash: { type: "string", description: "Transaction hash" } },
+			["hash"],
+		),
 		capabilities: ["evm", "tx"],
 		context: "reads default provider chain",
 	}),
@@ -112,17 +128,16 @@ const SKILL_TOOL_DEFS = [
 		label: "EVM Token",
 		hint: "ERC-20/721 balances & transfers when you have the TOKEN contract address",
 		friction: "low",
-		parameters: {
-			type: "object",
-			properties: {
+		parameters: params(
+			{
 				address: { type: "string", description: "ERC-20/721 contract address" },
 				coingeckoId: {
 					type: "string",
 					description: "Optional CoinGecko id for price",
 				},
 			},
-			required: ["address"],
-		},
+			["address"],
+		),
 		capabilities: ["evm", "token"],
 		context: "reads default provider chain",
 	}),
@@ -131,16 +146,15 @@ const SKILL_TOOL_DEFS = [
 		label: "EVM Gas",
 		hint: "Estimate gas prices and optimize transaction fees",
 		friction: "low",
-		parameters: {
-			type: "object",
-			properties: {
+		parameters: params(
+			{
 				gasLimit: {
 					type: "number",
 					description: "Optional gas limit (default 21000)",
 				},
 			},
-			required: [],
-		},
+			[],
+		),
 		capabilities: ["evm", "gas"],
 		context: "reads default provider chain",
 	}),
@@ -149,16 +163,15 @@ const SKILL_TOOL_DEFS = [
 		label: "EVM Whale",
 		hint: "Track large EVM wallet movements and whale activity",
 		friction: "medium",
-		parameters: {
-			type: "object",
-			properties: {
+		parameters: params(
+			{
 				token: { type: "string", description: "ERC-20 contract address" },
 				minValue: { type: "string", description: "Min transfer value in wei" },
 				fromBlock: { type: "number", description: "Start block number" },
 				toBlock: { type: "number", description: "End block number" },
 			},
-			required: ["token", "minValue", "fromBlock", "toBlock"],
-		},
+			["token", "minValue", "fromBlock", "toBlock"],
+		),
 		capabilities: ["evm", "whale"],
 		context: "reads default provider chain",
 	}),
@@ -167,13 +180,10 @@ const SKILL_TOOL_DEFS = [
 		label: "EVM Contract",
 		hint: "Read and write to EVM smart contracts via ABI",
 		friction: "medium",
-		parameters: {
-			type: "object",
-			properties: {
-				address: { type: "string", description: "Contract address" },
-			},
-			required: ["address"],
-		},
+		parameters: params(
+			{ address: { type: "string", description: "Contract address" } },
+			["address"],
+		),
 		capabilities: ["evm", "contract"],
 		context: "reads default provider chain",
 	}),
@@ -183,14 +193,13 @@ const SKILL_TOOL_DEFS = [
 		hint: "ERC-20 approvals/allowances for a token+owner pair (owner address required)",
 		requiresWallet: true,
 		friction: "medium",
-		parameters: {
-			type: "object",
-			properties: {
+		parameters: params(
+			{
 				address: { type: "string", description: "Owner address" },
 				token: { type: "string", description: "ERC-20 token contract address" },
 			},
-			required: ["address", "token"],
-		},
+			["address", "token"],
+		),
 		capabilities: ["evm", "allowance"],
 		context: "reads default provider chain",
 	}),
@@ -200,13 +209,7 @@ const SKILL_TOOL_DEFS = [
 		hint: "Simulate an unbroker trade before execution",
 		requiresTokenId: true,
 		friction: "low",
-		parameters: {
-			type: "object",
-			properties: {
-				...tokenTransferProps,
-			},
-			required: ["tokenId", "to"],
-		},
+		parameters: params({ ...tokenTransferProps }, ["tokenId", "to"]),
 	}),
 	skill({
 		name: "unbroker_route",
@@ -214,13 +217,7 @@ const SKILL_TOOL_DEFS = [
 		hint: "Find optimal swap routes across DEX aggregators",
 		requiresTokenId: true,
 		friction: "low",
-		parameters: {
-			type: "object",
-			properties: {
-				...tokenTransferProps,
-			},
-			required: ["tokenId", "to"],
-		},
+		parameters: params({ ...tokenTransferProps }, ["tokenId", "to"]),
 	}),
 	skill({
 		name: "unbroker_analyze",
@@ -228,17 +225,16 @@ const SKILL_TOOL_DEFS = [
 		hint: "Analyze swap quotes, slippage, and MEV risk",
 		requiresTokenId: true,
 		friction: "medium",
-		parameters: {
-			type: "object",
-			properties: {
+		parameters: params(
+			{
 				...tokenTransferProps,
 				accessProof: {
 					type: "object",
 					description: "Optional access proof { dataHash, validUntil }",
 				},
 			},
-			required: ["tokenId", "to"],
-		},
+			["tokenId", "to"],
+		),
 	}),
 	skill({
 		name: "unbroker_execute",
@@ -247,44 +243,35 @@ const SKILL_TOOL_DEFS = [
 		requiresWallet: true,
 		requiresTokenId: true,
 		friction: "high",
-		parameters: {
-			type: "object",
-			properties: {
-				...tokenTransferProps,
-			},
-			required: ["tokenId", "to"],
-		},
+		parameters: params({ ...tokenTransferProps }, ["tokenId", "to"]),
 	}),
 	skill({
 		name: "stocks_quote",
 		label: "Stocks Quote",
 		hint: "Get real-time stock price quotes. You MUST pass a `symbol` (e.g. BTC-USD, AAPL). Never leave it blank.",
 		friction: "low",
-		parameters: {
-			type: "object",
-			properties: { symbol: { type: "string", description: "Ticker symbol" } },
-			required: ["symbol"],
-		},
+		parameters: params(
+			{ symbol: { type: "string", description: "Ticker symbol" } },
+			["symbol"],
+		),
 	}),
 	skill({
 		name: "stocks_search",
 		label: "Stocks Search",
 		hint: "Search for stock tickers and company names. You MUST pass a `query` (e.g. 'Tesla'). Never leave it blank.",
 		friction: "low",
-		parameters: {
-			type: "object",
-			properties: { query: { type: "string", description: "Search query" } },
-			required: ["query"],
-		},
+		parameters: params(
+			{ query: { type: "string", description: "Search query" } },
+			["query"],
+		),
 	}),
 	skill({
 		name: "stocks_history",
 		label: "Stocks History",
 		hint: "Fetch historical OHLCV price data for equities. You MUST pass a `symbol` (e.g. AAPL). Never leave it blank.",
 		friction: "low",
-		parameters: {
-			type: "object",
-			properties: {
+		parameters: params(
+			{
 				symbol: { type: "string", description: "Ticker symbol" },
 				range: {
 					type: "string",
@@ -295,51 +282,48 @@ const SKILL_TOOL_DEFS = [
 					description: "1m,5m,15m,1d,1wk,1mo (default 1d)",
 				},
 			},
-			required: ["symbol"],
-		},
+			["symbol"],
+		),
 	}),
 	skill({
 		name: "stocks_compare",
 		label: "Stocks Compare",
 		hint: "Compare fundamentals and performance across tickers. You MUST pass `symbols` as a non-empty array (e.g. ['AAPL','MSFT']). Never leave it blank.",
 		friction: "medium",
-		parameters: {
-			type: "object",
-			properties: {
+		parameters: params(
+			{
 				symbols: {
 					type: "array",
 					description: "List of ticker symbols (1-10)",
 				},
 			},
-			required: ["symbols"],
-		},
+			["symbols"],
+		),
 	}),
 	skill({
 		name: "stocks_crypto",
 		label: "Stocks Crypto",
 		hint: "Get cryptocurrency price quotes and market data",
 		friction: "low",
-		parameters: {
-			type: "object",
-			properties: {
+		parameters: params(
+			{
 				symbol: {
 					type: "string",
 					description: "Crypto pair (default BTC-USD)",
 				},
 			},
-			required: [],
-		},
+			[],
+		),
 	}),
 	skill({
 		name: "osint_sec_edgar",
 		label: "SEC EDGAR",
 		hint: "Search SEC filings, 10-K, 10-Q, and 8-K via EDGAR",
 		friction: "low",
-		parameters: {
-			type: "object",
-			properties: { cik: { type: "string", description: "SEC CIK number" } },
-			required: ["cik"],
-		},
+		parameters: params(
+			{ cik: { type: "string", description: "SEC CIK number" } },
+			["cik"],
+		),
 		capabilities: ["osint", "edgar"],
 		context: "external OSINT APIs",
 	}),
@@ -348,17 +332,16 @@ const SKILL_TOOL_DEFS = [
 		label: "USAspending",
 		hint: "Query US federal spending and contract awards",
 		friction: "medium",
-		parameters: {
-			type: "object",
-			properties: {
+		parameters: params(
+			{
 				filters: {
 					type: "object",
 					description: "USASpending search filter object",
 				},
 				limit: { type: "number", description: "1-100 (default 10)" },
 			},
-			required: ["filters"],
-		},
+			["filters"],
+		),
 		capabilities: ["osint", "usaspending"],
 		context: "external OSINT APIs",
 	}),
@@ -367,11 +350,10 @@ const SKILL_TOOL_DEFS = [
 		label: "OFAC SDN",
 		hint: "Check entities against OFAC sanctions (SDN) list. You MUST pass a `name` (e.g. 'Gazprom'). Never leave it blank.",
 		friction: "low",
-		parameters: {
-			type: "object",
-			properties: { name: { type: "string", description: "Entity name" } },
-			required: ["name"],
-		},
+		parameters: params(
+			{ name: { type: "string", description: "Entity name" } },
+			["name"],
+		),
 		capabilities: ["osint", "ofac"],
 		context: "external OSINT APIs",
 	}),
@@ -380,17 +362,16 @@ const SKILL_TOOL_DEFS = [
 		label: "OpenCorporates",
 		hint: "Look up corporate registration and officer data. You MUST pass a `query` (e.g. 'Acme Corp'). Never leave it blank.",
 		friction: "low",
-		parameters: {
-			type: "object",
-			properties: {
+		parameters: params(
+			{
 				jurisdiction: {
 					type: "string",
 					description: "Jurisdiction code (default us)",
 				},
 				query: { type: "string", description: "Company query" },
 			},
-			required: ["query"],
-		},
+			["query"],
+		),
 		capabilities: ["osint", "opencorporates"],
 		context: "external OSINT APIs",
 	}),
@@ -399,13 +380,12 @@ const SKILL_TOOL_DEFS = [
 		label: "Entity Resolve",
 		hint: "Resolve and cross-reference entities across OSINT sources",
 		friction: "medium",
-		parameters: {
-			type: "object",
-			properties: {
+		parameters: params(
+			{
 				entities: { type: "array", description: "List of entity names (2-20)" },
 			},
-			required: ["entities"],
-		},
+			["entities"],
+		),
 		capabilities: ["osint", "entity-resolve"],
 		context: "external OSINT APIs",
 	}),
@@ -414,9 +394,8 @@ const SKILL_TOOL_DEFS = [
 		label: "CourtListener",
 		hint: "Search US federal and state court opinions and filings. You MUST pass a `query` (e.g. 'fraud injunction'). Never leave it blank.",
 		friction: "medium",
-		parameters: {
-			type: "object",
-			properties: {
+		parameters: params(
+			{
 				query: { type: "string", description: "Search query" },
 				type: {
 					type: "string",
@@ -424,8 +403,8 @@ const SKILL_TOOL_DEFS = [
 				},
 				limit: { type: "number", description: "1-20 (default 10)" },
 			},
-			required: ["query"],
-		},
+			["query"],
+		),
 		capabilities: ["osint", "courtlistener"],
 		context: "external OSINT APIs",
 	}),
@@ -434,79 +413,62 @@ const SKILL_TOOL_DEFS = [
 		label: "OSS Investigate",
 		hint: "Investigate an open-source project for supply-chain risks",
 		friction: "medium",
-		parameters: {
-			type: "object",
-			properties: {
-				owner: { type: "string", description: "GitHub owner" },
-				repo: { type: "string", description: "GitHub repo" },
+		parameters: params(
+			{
+				...ownerRepoParams,
 				bytecode: {
 					type: "string",
 					description: "Optional hex bytecode for keccak256 comparison",
 				},
 			},
-			required: ["owner", "repo"],
-		},
+			["owner", "repo"],
+		),
 		capabilities: ["forensics", "supply-chain"],
 		requiresApiKey: "GITHUB_TOKEN",
-		os: "linux",
-		context: "network egress",
+		...networkEgress,
 	}),
 	skill({
 		name: "oss_forensics_commits",
 		label: "OSS Commits",
 		hint: "Analyze commit history for suspicious patterns",
 		friction: "low",
-		parameters: {
-			type: "object",
-			properties: {
-				owner: { type: "string", description: "GitHub owner" },
-				repo: { type: "string", description: "GitHub repo" },
+		parameters: params(
+			{
+				...ownerRepoParams,
 				sha: { type: "string", description: "Optional branch/commit SHA" },
 				perPage: { type: "number", description: "1-100 (default 30)" },
 			},
-			required: ["owner", "repo"],
-		},
+			["owner", "repo"],
+		),
 		capabilities: ["forensics", "commits"],
 		requiresApiKey: "GITHUB_TOKEN",
-		os: "linux",
-		context: "network egress",
+		...networkEgress,
 	}),
 	skill({
 		name: "oss_forensics_ioc",
 		label: "OSS IOC",
 		hint: "Extract indicators of compromise from repositories",
 		friction: "medium",
-		parameters: {
-			type: "object",
-			properties: {
-				owner: { type: "string", description: "GitHub owner" },
-				repo: { type: "string", description: "GitHub repo" },
+		parameters: params(
+			{
+				...ownerRepoParams,
 				path: { type: "string", description: "Optional path filter" },
 			},
-			required: ["owner", "repo"],
-		},
+			["owner", "repo"],
+		),
 		capabilities: ["forensics", "ioc"],
 		requiresApiKey: "GITHUB_TOKEN",
-		os: "linux",
-		context: "network egress",
+		...networkEgress,
 	}),
 	skill({
 		name: "oss_forensics_audit",
 		label: "OSS Audit",
 		hint: "Full supply-chain audit of dependencies and transitive deps",
 		friction: "high",
-		parameters: {
-			type: "object",
-			properties: {
-				owner: { type: "string", description: "GitHub owner" },
-				repo: { type: "string", description: "GitHub repo" },
-			},
-			required: ["owner", "repo"],
-		},
+		parameters: params({ ...ownerRepoParams }, ["owner", "repo"]),
 		capabilities: ["forensics", "audit"],
 		requiresApiKey: "GITHUB_TOKEN",
-		os: "linux",
-		context: "network egress",
+		...networkEgress,
 	}),
 ] as const;
 
@@ -520,7 +482,7 @@ export const CHAT_TOOL_CATALOG = [
 		context: "on-chain read",
 		capabilities: ["read", "agents"],
 		friction: "low",
-		parameters: { type: "object", properties: {} },
+		parameters: params({}),
 	}),
 	tool({
 		name: "vault_balance",
@@ -531,13 +493,7 @@ export const CHAT_TOOL_CATALOG = [
 		context: "on-chain read (vault)",
 		capabilities: ["read", "vault"],
 		friction: "low",
-		parameters: {
-			type: "object",
-			properties: {
-				tokenId: { type: "string", description: "Agent token ID (numeric)" },
-			},
-			required: ["tokenId"],
-		},
+		parameters: params({ tokenId: tokenIdParam }, ["tokenId"]),
 	}),
 	tool({
 		name: "agent_metadata",
@@ -548,13 +504,7 @@ export const CHAT_TOOL_CATALOG = [
 		context: "on-chain read (metadata)",
 		capabilities: ["read", "metadata"],
 		friction: "low",
-		parameters: {
-			type: "object",
-			properties: {
-				tokenId: { type: "string", description: "Agent token ID (numeric)" },
-			},
-			required: ["tokenId"],
-		},
+		parameters: params({ tokenId: tokenIdParam }, ["tokenId"]),
 	}),
 	tool({
 		name: "event_history",
@@ -564,16 +514,13 @@ export const CHAT_TOOL_CATALOG = [
 		context: "on-chain read (events)",
 		capabilities: ["read", "events"],
 		friction: "low",
-		parameters: {
-			type: "object",
-			properties: {
-				eventName: {
-					type: "string",
-					description: "Filter by event name (Tick, Transfer)",
-				},
-				limit: { type: "number", description: "Max events (default 20)" },
+		parameters: params({
+			eventName: {
+				type: "string",
+				description: "Filter by event name (Tick, Transfer)",
 			},
-		},
+			limit: { type: "number", description: "Max events (default 20)" },
+		}),
 	}),
 	tool({
 		name: "execute_tick",
@@ -582,16 +529,13 @@ export const CHAT_TOOL_CATALOG = [
 		hint: "Execute a strategy tick for an agent (simulation via orchestrator). tokenId optional; defaults to the session's last agent",
 		requiresTokenId: false,
 		friction: "high",
-		parameters: {
-			type: "object",
-			properties: {
-				tokenId: {
-					type: "string",
-					description:
-						"Agent token ID (optional; defaults to session last agent)",
-				},
+		parameters: params({
+			tokenId: {
+				type: "string",
+				description:
+					"Agent token ID (optional; defaults to session last agent)",
 			},
-		},
+		}),
 	}),
 	tool({
 		name: "simulate_tick",
@@ -600,16 +544,13 @@ export const CHAT_TOOL_CATALOG = [
 		hint: "Dry-run tick preflight (vault balance + strategy) without live compute. tokenId optional; defaults to the session's last agent",
 		requiresTokenId: false,
 		friction: "low",
-		parameters: {
-			type: "object",
-			properties: {
-				tokenId: {
-					type: "string",
-					description:
-						"Agent token ID (optional; defaults to session last agent)",
-				},
+		parameters: params({
+			tokenId: {
+				type: "string",
+				description:
+					"Agent token ID (optional; defaults to session last agent)",
 			},
-		},
+		}),
 	}),
 	tool({
 		name: "mint_agent",
@@ -618,9 +559,8 @@ export const CHAT_TOOL_CATALOG = [
 		hint: "Mint a new Axiom iNFT agent. Requires dataDescription (agent name). Opens MetaMask. dataHash optional — derived from name if omitted. Registers dataHash with the oracle when possible.",
 		requiresWallet: true,
 		friction: "medium",
-		parameters: {
-			type: "object",
-			properties: {
+		parameters: params(
+			{
 				dataDescription: {
 					type: "string",
 					description: "Human-readable agent name (required)",
@@ -630,8 +570,8 @@ export const CHAT_TOOL_CATALOG = [
 					description: "Optional 0x-prefixed hash. Omitted → keccak of name.",
 				},
 			},
-			required: ["dataDescription"],
-		},
+			["dataDescription"],
+		),
 	}),
 	tool({
 		name: "deposit",
@@ -641,14 +581,13 @@ export const CHAT_TOOL_CATALOG = [
 		requiresWallet: true,
 		requiresTokenId: true,
 		friction: "medium",
-		parameters: {
-			type: "object",
-			properties: {
+		parameters: params(
+			{
 				tokenId: { type: "string", description: "Agent token ID" },
 				amount: { type: "string", description: "Amount in 0G (e.g. 1.5)" },
 			},
-			required: ["tokenId", "amount"],
-		},
+			["tokenId", "amount"],
+		),
 	}),
 	tool({
 		name: "withdraw",
@@ -658,27 +597,24 @@ export const CHAT_TOOL_CATALOG = [
 		requiresWallet: true,
 		requiresTokenId: true,
 		friction: "medium",
-		parameters: {
-			type: "object",
-			properties: {
+		parameters: params(
+			{
 				tokenId: { type: "string", description: "Agent token ID" },
 				amount: { type: "string", description: "Amount in 0G (e.g. 0.5)" },
 			},
-			required: ["tokenId", "amount"],
-		},
+			["tokenId", "amount"],
+		),
 	}),
 	tool({
 		name: "archive_lookup",
 		class: "archive",
 		label: "Archive Lookup",
 		hint: "Look up all Wayback Machine (Internet Archive) snapshots for a URL. Returns list of timestamps where the URL was archived. Use to find snapshotted posts of an account, confirm if a specific URL was ever archived, or get the snapshot URL to view in a browser. NOTE: Twitter/X is JS-rendered; snapshots only contain the HTML shell, not the actual bio or tweet text.",
-		context: "network egress",
-		os: "linux",
+		...networkEgress,
 		capabilities: ["archive", "wayback"],
 		friction: "medium",
-		parameters: {
-			type: "object",
-			properties: {
+		parameters: params(
+			{
 				url: {
 					type: "string",
 					description:
@@ -689,21 +625,19 @@ export const CHAT_TOOL_CATALOG = [
 					description: "Max snapshots to return (default 50)",
 				},
 			},
-			required: ["url"],
-		},
+			["url"],
+		),
 	}),
 	tool({
 		name: "archive_account_tweets",
 		class: "archive",
 		label: "Archived Tweets",
 		hint: "List all archived tweets for an X/Twitter account handle. Returns all tweet URLs that were captured by the Wayback Machine, with timestamps. Use to research an account's snapshotted history.",
-		context: "network egress",
-		os: "linux",
+		...networkEgress,
 		capabilities: ["archive", "wayback"],
 		friction: "high",
-		parameters: {
-			type: "object",
-			properties: {
+		parameters: params(
+			{
 				handle: {
 					type: "string",
 					description: 'X/Twitter handle without @ (e.g. "0xSero")',
@@ -713,29 +647,27 @@ export const CHAT_TOOL_CATALOG = [
 					description: "Max snapshots to return (default 100)",
 				},
 			},
-			required: ["handle"],
-		},
+			["handle"],
+		),
 	}),
 	tool({
 		name: "archive_confirm_deletion",
 		class: "archive",
 		label: "Confirm Archived",
 		hint: "Check if a specific tweet URL was ever archived by the Wayback Machine. Returns { archived, snapshot, snapshotUrl } — useful as evidence that a post existed at a specific time even if it is now deleted. Does NOT extract tweet content.",
-		context: "network egress",
-		os: "linux",
+		...networkEgress,
 		capabilities: ["archive", "wayback"],
 		friction: "medium",
-		parameters: {
-			type: "object",
-			properties: {
+		parameters: params(
+			{
 				url: {
 					type: "string",
 					description:
 						"Full tweet URL (e.g. https://x.com/handle/status/1234567890)",
 				},
 			},
-			required: ["url"],
-		},
+			["url"],
+		),
 	}),
 	tool({
 		name: "ask_user",
@@ -745,9 +677,8 @@ export const CHAT_TOOL_CATALOG = [
 		requiresWallet: false,
 		requiresTokenId: false,
 		friction: "low",
-		parameters: {
-			type: "object",
-			properties: {
+		parameters: params(
+			{
 				question: {
 					type: "string",
 					description: "The question to ask the user",
@@ -761,8 +692,8 @@ export const CHAT_TOOL_CATALOG = [
 					description: "Allow more than one selection (default false)",
 				},
 			},
-			required: ["question"],
-		},
+			["question"],
+		),
 	}),
 	...SKILL_TOOL_DEFS,
 ] as const;

@@ -79,6 +79,8 @@ import {
 	PageHeader,
 	HelpTip,
 	withViewTransition,
+	backLinkStyle,
+	mutedTextSm,
 } from "../components/ui.js";
 import {
 	PLACEHOLDER,
@@ -120,6 +122,20 @@ function sectionFromHash(): AgentSection {
 		? (hash as (typeof VALID_SECTIONS)[number])
 		: "overview";
 }
+
+const BackLink = (): ReactElement => (
+	<div style={{ marginBottom: "var(--space-md)" }}>
+		<Link to="/app" style={backLinkStyle}>
+			← Home
+		</Link>
+	</div>
+);
+
+const skeletonFallback = (
+	<div style={{ padding: "var(--space-xl)" }}>
+		<Skeleton height={200} />
+	</div>
+);
 
 export function AgentDetail(): ReactElement {
 	const params = useParams<{ tokenId: string }>();
@@ -193,18 +209,7 @@ export function AgentDetail(): ReactElement {
 	if (tokenNotFound) {
 		return (
 			<div>
-				<div style={{ marginBottom: "var(--space-md)" }}>
-					<Link
-						to="/app"
-						style={{
-							color: COLORS.textMuted,
-							fontSize: "var(--text-sm)",
-							textDecoration: "none",
-						}}
-					>
-						← Home
-					</Link>
-				</div>
+				<BackLink />
 				<EmptyState title={`Agent #${tokenId.toString()} not found`}>
 					<p style={{ margin: 0 }}>
 						No agent with this ID exists on the current chain. The ID may be
@@ -264,18 +269,7 @@ export function AgentDetail(): ReactElement {
 
 	return (
 		<div>
-			<div style={{ marginBottom: "var(--space-md)" }}>
-				<Link
-					to="/app"
-					style={{
-						color: COLORS.textMuted,
-						fontSize: "var(--text-sm)",
-						textDecoration: "none",
-					}}
-				>
-					← Home
-				</Link>
-			</div>
+			<BackLink />
 
 			<div style={{ viewTransitionName: "agent-card" }}>
 				<PageHeader
@@ -345,13 +339,7 @@ export function AgentDetail(): ReactElement {
 					hidden={activeSection !== "overview"}
 				>
 					{activeSection === "overview" && (
-						<Suspense
-							fallback={
-								<div style={{ padding: "var(--space-xl)" }}>
-									<Skeleton height={200} />
-								</div>
-							}
-						>
+						<Suspense fallback={skeletonFallback}>
 							{isConnected && (
 								<>
 									<div
@@ -521,13 +509,7 @@ export function AgentDetail(): ReactElement {
 					hidden={activeSection !== "execute"}
 				>
 					{activeSection === "execute" && (
-						<Suspense
-							fallback={
-								<div style={{ padding: "var(--space-xl)" }}>
-									<Skeleton height={200} />
-								</div>
-							}
-						>
+						<Suspense fallback={skeletonFallback}>
 							<ExecutePanel tokenId={tokenId} />
 						</Suspense>
 					)}
@@ -541,13 +523,7 @@ export function AgentDetail(): ReactElement {
 					hidden={activeSection !== "payments"}
 				>
 					{activeSection === "payments" && (
-						<Suspense
-							fallback={
-								<div style={{ padding: "var(--space-xl)" }}>
-									<Skeleton height={200} />
-								</div>
-							}
-						>
+						<Suspense fallback={skeletonFallback}>
 							<PaymentPanel tokenId={tokenId} />
 						</Suspense>
 					)}
@@ -561,13 +537,7 @@ export function AgentDetail(): ReactElement {
 					hidden={activeSection !== "activity"}
 				>
 					{activeSection === "activity" && (
-						<Suspense
-							fallback={
-								<div style={{ padding: "var(--space-xl)" }}>
-									<Skeleton height={200} />
-								</div>
-							}
-						>
+						<Suspense fallback={skeletonFallback}>
 							{eventsLoading && agentEvents.length === 0 ? (
 								<Card style={{ marginBottom: "var(--space-xl)" }}>
 									<Skeleton height={96} />
@@ -582,15 +552,7 @@ export function AgentDetail(): ReactElement {
 								</Card>
 							) : (
 								<EmptyState>
-									<p
-										style={{
-											color: COLORS.textMuted,
-											fontSize: "var(--text-sm)",
-											margin: 0,
-										}}
-									>
-										No events yet. Run a tick first.
-									</p>
+									<p style={mutedTextSm}>No events yet. Run a tick first.</p>
 								</EmptyState>
 							)}
 						</Suspense>
@@ -605,13 +567,7 @@ export function AgentDetail(): ReactElement {
 					hidden={activeSection !== "performance"}
 				>
 					{activeSection === "performance" && (
-						<Suspense
-							fallback={
-								<div style={{ padding: "var(--space-xl)" }}>
-									<Skeleton height={200} />
-								</div>
-							}
-						>
+						<Suspense fallback={skeletonFallback}>
 							{perfLoading && metrics === null ? (
 								<Card style={{ marginBottom: "var(--space-xl)" }}>
 									<Skeleton height={96} />
@@ -623,13 +579,7 @@ export function AgentDetail(): ReactElement {
 								</>
 							) : (
 								<EmptyState>
-									<p
-										style={{
-											color: COLORS.textMuted,
-											fontSize: "var(--text-sm)",
-											margin: 0,
-										}}
-									>
+									<p style={mutedTextSm}>
 										No ticks yet.{" "}
 										<Button
 											variant="ghost"

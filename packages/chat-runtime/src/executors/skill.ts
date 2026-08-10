@@ -1,10 +1,7 @@
 import { getChatToolSpec } from "@axiom/config/chat-tools";
+import { toolFail } from "../transport.js";
 import type { ToolResult } from "../types.js";
 import type { ToolRuntime } from "../transport.js";
-
-function fail(message: string): ToolResult {
-	return { ok: false, content: JSON.stringify({ error: message }) };
-}
 
 const PREFIX_MAP: Record<string, string> = {
 	evm_: "/v1/skills/evm/",
@@ -30,10 +27,10 @@ export async function runSkillTool(
 ): Promise<ToolResult> {
 	const spec = getChatToolSpec(name);
 	if (spec?.requiresWallet && !ctx.wallet?.address) {
-		return fail("Wallet not connected");
+		return toolFail("Wallet not connected");
 	}
 	if (spec?.requiresTokenId && !args.tokenId && !ctx.session.lastTokenId) {
-		return fail("tokenId required");
+		return toolFail("tokenId required");
 	}
 
 	if (
@@ -65,7 +62,7 @@ export async function runSkillTool(
 	try {
 		endpoint = resolveEndpoint(name);
 	} catch {
-		return fail(`Unknown skill tool: ${name}`);
+		return toolFail(`Unknown skill tool: ${name}`);
 	}
 
 	const res = await ctx.http.fetch(endpoint, {

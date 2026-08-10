@@ -3,6 +3,7 @@ import {
   useId,
   useMemo,
   useState,
+  type CSSProperties,
   type ChangeEvent,
   type FormEvent,
   type ReactElement,
@@ -31,6 +32,19 @@ import {
 import { humanizeError } from "../utils/format.js";
 
 const RECEIVER_PUBKEY_HEX_LENGTH = 130;
+
+const monoFieldStyle: CSSProperties = {
+  boxSizing: "border-box",
+  fontFamily: "var(--font-mono)",
+  marginTop: 6,
+};
+
+const confirmTextStyle: CSSProperties = {
+  lineHeight: 1.6,
+  fontWeight: "var(--fw-light)",
+  marginBottom: 20,
+};
+
 function freshNonceHex(byteLength = 32): `0x${string}` {
   const bytes = new Uint8Array(byteLength);
   crypto.getRandomValues(bytes);
@@ -128,14 +142,7 @@ function TransferFormPhase({
 }): ReactElement {
   return (
     <form onSubmit={onSubmit}>
-      <p
-        className="text-muted text-sm"
-        style={{
-          lineHeight: 1.6,
-          fontWeight: "var(--fw-light)",
-          marginBottom: 20,
-        }}
-      >
+      <p className="text-muted text-sm" style={confirmTextStyle}>
         The receiver signs an EIP-712 AccessProof and the TEE oracle signs the
         OwnershipProof. You'll confirm the on-chain
         <code style={{ color: COLORS.bronzeLight }}> iTransferFrom </code>
@@ -157,11 +164,7 @@ function TransferFormPhase({
         spellCheck={false}
         maxLength={42}
         className="w-full"
-        style={{
-          boxSizing: "border-box",
-          fontFamily: "var(--font-mono)",
-          marginTop: 6,
-        }}
+        style={monoFieldStyle}
         required
       />
       {addressError !== null && (
@@ -186,11 +189,7 @@ function TransferFormPhase({
         maxLength={RECEIVER_PUBKEY_HEX_LENGTH}
         placeholder="0x\u2026  (128 hex chars)"
         className="w-full"
-        style={{
-          boxSizing: "border-box",
-          fontFamily: "var(--font-mono)",
-          marginTop: 6,
-        }}
+        style={monoFieldStyle}
         required
       />
       <p
@@ -268,11 +267,7 @@ function TransferFormPhase({
           spellCheck={false}
           maxLength={256}
           className="w-full"
-          style={{
-            boxSizing: "border-box",
-            fontFamily: "var(--font-mono)",
-            marginTop: 6,
-          }}
+          style={monoFieldStyle}
         />
         <label
           htmlFor={`${formId}-olduri`}
@@ -289,11 +284,7 @@ function TransferFormPhase({
           spellCheck={false}
           maxLength={128}
           className="w-full"
-          style={{
-            boxSizing: "border-box",
-            fontFamily: "var(--font-mono)",
-            marginTop: 6,
-          }}
+          style={monoFieldStyle}
         />
         {rekeyError !== null && (
           <Alert variant="error" style={{ marginTop: 4 }}>
@@ -350,14 +341,7 @@ function ConfirmTransferPhase({
         Confirm Transfer
       </h2>
 
-      <p
-        className="text-muted text-sm"
-        style={{
-          lineHeight: 1.6,
-          fontWeight: "var(--fw-light)",
-          marginBottom: 20,
-        }}
-      >
+      <p className="text-muted text-sm" style={confirmTextStyle}>
         Review the proof details, then submit the on-chain
         <code style={{ color: COLORS.bronzeLight }}> iTransferFrom </code>
         transaction. Your wallet will ask for the final signature.

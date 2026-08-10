@@ -1,4 +1,10 @@
-import React, { forwardRef, useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useAccount } from "wagmi";
 import type {
   ButtonHTMLAttributes,
@@ -55,6 +61,35 @@ export const COLORS = {
   warning: "var(--c-warning)",
   warningBg: "var(--c-warning-bg)",
   warningBorder: "var(--c-warning-border)",
+} as const;
+
+/** Shared inline styles (deduped cycle-3). */
+export const textDimMediumNoWrap = {
+  color: COLORS.textDim,
+  fontWeight: "var(--fw-medium)",
+  whiteSpace: "nowrap",
+} as const;
+
+export const amountInputStyle = {
+  flex: "0 1 10rem",
+  fontSize: "var(--text-sm)",
+} as const;
+
+export const mutedTextSm = {
+  color: COLORS.textMuted,
+  fontSize: "var(--text-sm)",
+  margin: 0,
+} as const;
+
+export const backLinkStyle = {
+  color: COLORS.textMuted,
+  fontSize: "var(--text-sm)",
+  textDecoration: "none",
+} as const;
+
+export const emptyCardStyle = {
+  textAlign: "center",
+  padding: "var(--space-3xl) var(--space-xl)",
 } as const;
 
 export function getActionColor(action: string): string {
@@ -130,7 +165,9 @@ export const Card = React.memo(function Card({
     <div
       role={hover ? "button" : undefined}
       tabIndex={hover ? 0 : undefined}
-      className={["surface-glass", className].filter(Boolean).join(" ") || undefined}
+      className={
+        ["surface-glass", className].filter(Boolean).join(" ") || undefined
+      }
       onKeyDown={
         hover
           ? (e) => {
@@ -233,7 +270,9 @@ export function DefinitionList({
 }: DefinitionListProps): ReactElement {
   return (
     <dl
-      className={["stack-on-mobile", className].filter(Boolean).join(" ") || undefined}
+      className={
+        ["stack-on-mobile", className].filter(Boolean).join(" ") || undefined
+      }
       style={{
         margin: 0,
         display: "grid",
@@ -245,10 +284,7 @@ export function DefinitionList({
     >
       {items.map((item, index) => (
         <React.Fragment key={index}>
-          <dt
-            className="text-dim"
-            style={{ fontWeight: "var(--fw-medium)" }}
-          >
+          <dt className="text-dim" style={{ fontWeight: "var(--fw-medium)" }}>
             {item.term}
           </dt>
           <dd style={{ margin: 0, ...item.detailStyle }}>{item.detail}</dd>
@@ -838,35 +874,35 @@ export const Modal = React.memo(function Modal({
         aria-labelledby={title ? "modal-title" : undefined}
         data-axiom-modal=""
         style={{
-        padding: 28,
-        border: `1px solid ${COLORS.borderStrong}`,
-        borderRadius: "var(--radius-xl)",
-        maxWidth: 500,
-        width: "90vw",
-        maxHeight: "90vh",
-        overflow: "auto",
-        background: COLORS.surface,
-        color: COLORS.text,
-        boxShadow: "0 24px 80px rgba(0,0,0,0.5)",
-        ...style,
-      }}
-    >
-      {title !== undefined && (
-        <h2
-          id="modal-title"
-          className="mt-0 text-xl fw-bold"
-          style={{
-            color: COLORS.text,
-            letterSpacing: "-0.02em",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {title}
-        </h2>
-      )}
-      {children}
+          padding: 28,
+          border: `1px solid ${COLORS.borderStrong}`,
+          borderRadius: "var(--radius-xl)",
+          maxWidth: 500,
+          width: "90vw",
+          maxHeight: "90vh",
+          overflow: "auto",
+          background: COLORS.surface,
+          color: COLORS.text,
+          boxShadow: "0 24px 80px rgba(0,0,0,0.5)",
+          ...style,
+        }}
+      >
+        {title !== undefined && (
+          <h2
+            id="modal-title"
+            className="mt-0 text-xl fw-bold"
+            style={{
+              color: COLORS.text,
+              letterSpacing: "-0.02em",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {title}
+          </h2>
+        )}
+        {children}
       </dialog>
     </>
   );
@@ -884,13 +920,7 @@ export function ConnectedGuard({
   const { isConnected } = useAccount();
   if (!isConnected) {
     return (
-      <Card
-        className="surface-glass"
-        style={{
-          textAlign: "center",
-          padding: "var(--space-3xl) var(--space-xl)",
-        }}
-      >
+      <Card className="surface-glass" style={emptyCardStyle}>
         <p
           style={{
             margin: "0 0 var(--space-lg)",

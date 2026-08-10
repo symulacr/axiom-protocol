@@ -1,5 +1,5 @@
 import { getChatToolSpec } from "@axiom/config/chat-tools";
-import { fetchJson } from "../transport.js";
+import { fetchJson, toolFail } from "../transport.js";
 import { keccak256, toHex } from "viem";
 import type { ToolRuntime } from "../transport.js";
 import type { ToolResult } from "../types.js";
@@ -28,26 +28,16 @@ export async function runEncodeTool(
 	ctx: ToolRuntime,
 ): Promise<ToolResult> {
 	const spec = getChatToolSpec(name);
-	if (!spec)
-		return {
-			ok: false as const,
-			content: JSON.stringify({ error: `Unknown encode tool: ${name}` }),
-		};
+	if (!spec) return toolFail(`Unknown encode tool: ${name}`);
 
 	if (spec.requiresWallet && !ctx.wallet?.address) {
-		return {
-			ok: false as const,
-			content: JSON.stringify({ error: "Wallet not connected" }),
-		};
+		return toolFail("Wallet not connected");
 	}
 
 	const tokenId = String(args.tokenId ?? ctx.session.lastTokenId ?? "");
 
 	if (spec.requiresTokenId && !tokenId) {
-		return {
-			ok: false as const,
-			content: JSON.stringify({ error: "tokenId required" }),
-		};
+		return toolFail("tokenId required");
 	}
 
 	switch (name) {
@@ -70,17 +60,9 @@ async function encodeMint(
 	ctx: ToolRuntime,
 ): Promise<ToolResult> {
 	const to = ctx.wallet?.address;
-	if (!to)
-		return {
-			ok: false as const,
-			content: JSON.stringify({ error: "Wallet not connected" }),
-		};
+	if (!to) return toolFail("Wallet not connected");
 
-	if (!args.dataDescription)
-		return {
-			ok: false as const,
-			content: JSON.stringify({ error: "dataDescription required" }),
-		};
+	if (!args.dataDescription) return toolFail("dataDescription required");
 	// Canonical mint dataHash: keccak256(toHex(description)) — identical to the
 	// UI mint wizard derivation (apps/frontend/src/hooks/useMintWizard.ts). The
 	// contract stores this 32-byte value verbatim and the oracle only signs
@@ -115,11 +97,7 @@ async function encodeMint(
 		body: JSON.stringify(body),
 	});
 
-	if (!httpOk || !data.to)
-		return {
-			ok: false as const,
-			content: JSON.stringify({ error: "mint encode fail" }),
-		};
+	if (!httpOk || !data.to) return toolFail("mint encode fail");
 
 	await registerDataHashWithOracle(ctx, dataHash, to);
 
@@ -135,12 +113,7 @@ async function encodeMint(
 		});
 		return { ok: true as const, content: JSON.stringify({ ok: true, txHash }) };
 	} catch (e) {
-		return {
-			ok: false as const,
-			content: JSON.stringify({
-				error: e instanceof Error ? e.message : "mint sign failed",
-			}),
-		};
+		return toolFail(e instanceof Error ? e.message : "mint sign failed");
 	}
 }
 
@@ -150,11 +123,7 @@ async function encodeVaultOp(
 	args: Record<string, unknown>,
 	ctx: ToolRuntime,
 ): Promise<ToolResult> {
-	if (!args.amount)
-		return {
-			ok: false as const,
-			content: JSON.stringify({ error: "amount required" }),
-		};
+	if (!args.amount) return toolFail("amount required");
 	const amount = String(args.amount);
 
 	const { ok: httpOk, data } = await fetchJson<{
@@ -167,11 +136,7 @@ async function encodeVaultOp(
 		body: JSON.stringify({ amount }),
 	});
 
-	if (!httpOk || !data.to)
-		return {
-			ok: false as const,
-			content: JSON.stringify({ error: `${op} encode fail` }),
-		};
+	if (!httpOk || !data.to) return toolFail(`${op} encode fail`);
 
 	if (ctx.mode === "encode-only" || !ctx.wallet?.signAndSend) {
 		return encodeOnlyResult(data, { amount });
@@ -188,12 +153,7 @@ async function encodeVaultOp(
 			content: JSON.stringify({ ok: true, txHash, amount }),
 		};
 	} catch (e) {
-		return {
-			ok: false as const,
-			content: JSON.stringify({
-				error: e instanceof Error ? e.message : `${op} sign failed`,
-			}),
-		};
+		return toolFail(e instanceof Error ? e.message : `${op} sign failed`);
 	}
 }
 

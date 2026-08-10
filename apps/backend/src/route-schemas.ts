@@ -25,13 +25,12 @@ export const royaltySchema = z.object({
 	bps: z.number().int().min(0).max(10000),
 });
 
-export const vaultDepositEncodeSchema = z.object({
+const amountStringSchema = z.object({
 	amount: z.string().regex(/^\d+(\.\d+)?$/),
 });
 
-export const vaultWithdrawEncodeSchema = z.object({
-	amount: z.string().regex(/^\d+(\.\d+)?$/),
-});
+export const vaultDepositEncodeSchema = amountStringSchema;
+export const vaultWithdrawEncodeSchema = amountStringSchema;
 
 export const eventBodySchema = z.object({
 	source: z.string().min(1).max(128),
