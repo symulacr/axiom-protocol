@@ -1,10 +1,10 @@
 {
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
-    "buildCommand": "bun run --filter @axiom/config build && bun run --filter @axiom/oracle build"
+    "buildCommand": "bun run --filter @axiom/oracle build:binary"
   },
   "deploy": {
-    "startCommand": "bun apps/oracle/dist/index.js",
+    "startCommand": "./dist/axiom-oracle",
     "healthcheckPath": "/health",
     "healthcheckTimeout": 120,
     "restartPolicy": "ON_FAILURE"

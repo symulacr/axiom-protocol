@@ -7,7 +7,9 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc --project tsconfig.json",
+    "build:binary": "bun build src/index.ts --compile --target=bun --outfile=../../dist/axiom-backend",
     "start": "bun dist/index.js",
+    "start:binary": "bun dist/axiom-backend",
     "prestart": "bun run build",
     "dev": "bun run src/index.ts",
     "test": "bun test --parallel --max-concurrency=1",
