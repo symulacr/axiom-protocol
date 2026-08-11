@@ -60,7 +60,7 @@ export function useEventStream(
       ws.onmessage = (msg: MessageEvent) => {
         try {
           const data = JSON.parse(msg.data);
-					if (data.topic === "hello") return;
+          if (data.topic === "hello") return;
 
           const event: AxiomEvent = {
             source: data.payload?.source ?? "ws",
@@ -76,7 +76,7 @@ export function useEventStream(
 
           setEvents((prev) => {
             const next = [event, ...prev];
-						return next.length > MAX_EVENTS ? next.slice(0, MAX_EVENTS) : next;
+            return next.length > MAX_EVENTS ? next.slice(0, MAX_EVENTS) : next;
           });
         } catch {
           return;

@@ -8,7 +8,7 @@ export const transferValiditySchema = z.object({
   accessProofNonce: z.union([z.string(), z.number()]),
   ownershipProofNonce: z.union([z.string(), z.number()]).optional(),
   oldDataEncryptionKey: z.string().optional(),
-	sealedDataEncryptionKey: z.string().optional(), // ECIES-sealed 32-byte DEK to oracle TEE pubkey (preferred over cleartext)
+  sealedDataEncryptionKey: z.string().optional(), // ECIES-sealed 32-byte DEK to oracle TEE pubkey (preferred over cleartext)
   to: addressViem,
   nft: addressViem,
 });

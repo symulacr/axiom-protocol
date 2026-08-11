@@ -38,7 +38,7 @@ export function applyToolResult(
         session.lastTokenId = String(first.tokenId);
     }
   } catch {
-		// malformed tool result body parsing is best-effort and silently ignored
+    // malformed tool result body parsing is best-effort and silently ignored
   }
   return session;
 }
@@ -127,7 +127,7 @@ export function fitToContext(
   if (history.length <= keep) return history;
   if (estimateTokens(JSON.stringify(history)) <= maxHistoryTokens)
     return history;
-	// Exact array length is Σ|s| + k + 1 (brackets + k commas); precomputed so drops avoid re-stringifying (O(n²) → O(n)).
+  // Exact array length is Σ|s| + k + 1 (brackets + k commas); precomputed so drops avoid re-stringifying (O(n²) → O(n)).
   const serialized = history.map((m) => JSON.stringify(m));
   let totalLen =
     serialized.reduce((a, s) => a + s.length, 0) + serialized.length + 1;
@@ -135,7 +135,7 @@ export function fitToContext(
   for (const s of serialized) {
     if (history.length - drop <= keep) break;
     if (estimateTokens(totalLen) <= maxHistoryTokens) break;
-		totalLen -= s.length + 1;
+    totalLen -= s.length + 1;
     drop++;
   }
   return history.slice(drop);

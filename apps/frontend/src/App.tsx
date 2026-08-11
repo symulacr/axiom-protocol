@@ -75,7 +75,7 @@ function readTheme(): ThemeMode {
     const v = localStorage.getItem(STORAGE_KEY);
     if (v === "light" || v === "dark") return v;
   } catch {
-		void 0;
+    void 0;
   }
   return "dark";
 }
@@ -104,7 +104,7 @@ function useTheme(): {
     try {
       localStorage.setItem(STORAGE_KEY, theme);
     } catch {
-			void 0;
+      void 0;
     }
   }, [theme]);
 
@@ -192,7 +192,7 @@ function HealthBadge(): ReactElement {
       : "down";
 
   const label =
-		status === "ok" ? "Online" : status === "down" ? "Offline" : "…";
+    status === "ok" ? "Online" : status === "down" ? "Offline" : "…";
 
   const title = data
     ? `API ${label} · oracle ${data.oracle} · block #${data.chainHead}`
@@ -349,7 +349,7 @@ export function App(): ReactElement {
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams]);
 
-	// Auto-redirect to the app on the disconnected→connected transition; a connected user may still view "/"
+  // Auto-redirect to the app on the disconnected→connected transition; a connected user may still view "/"
   useEffect(() => {
     if (isConnected && !wasConnected.current && isLanding) {
       navigate("/app", { replace: true });
@@ -567,17 +567,17 @@ export function App(): ReactElement {
           >
             <div key={location.pathname} className="fade-enter">
               <Routes>
-              <Route path="/" element={<LandingPage />} />
-              <Route path={APP_HOME} element={<HomePage />} />
-								{/* List peers fold into Home; mint is modal-only, never a separate page */}
+                <Route path="/" element={<LandingPage />} />
+                <Route path={APP_HOME} element={<HomePage />} />
+                {/* List peers fold into Home; mint is modal-only, never a separate page */}
                 <Route
                   path="/agents"
                   element={<Navigate to={APP_HOME} replace />}
                 />
-              <Route
-                path="/agents/new"
-                element={<Navigate to={`${APP_HOME}?mint=1`} replace />}
-              />
+                <Route
+                  path="/agents/new"
+                  element={<Navigate to={`${APP_HOME}?mint=1`} replace />}
+                />
                 <Route
                   path="/market"
                   element={<Navigate to={APP_HOME} replace />}
@@ -586,21 +586,21 @@ export function App(): ReactElement {
                   path="/dashboard"
                   element={<Navigate to={APP_HOME} replace />}
                 />
-              <Route
-                path="/agents/:tokenId"
-                element={
-                  <WalletRoute>
-                    <AgentDetail />
-                  </WalletRoute>
-                }
-              />
-								<Route path={APP_CHAT} element={<ChatPage />} />
+                <Route
+                  path="/agents/:tokenId"
+                  element={
+                    <WalletRoute>
+                      <AgentDetail />
+                    </WalletRoute>
+                  }
+                />
+                <Route path={APP_CHAT} element={<ChatPage />} />
                 <Route
                   path="/settings"
                   element={<Navigate to={APP_HOME} replace />}
                 />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+                <Route path="*" element={<NotFound />} />
+              </Routes>
             </div>
           </Suspense>
         </ErrorBoundary>

@@ -1,17 +1,13 @@
 export type TransferPhase =
-  | "idle"
-  | "challenge"
-  | "signing"
-  | "finalizing"
-  | "confirming";
+  "idle" | "challenge" | "signing" | "finalizing" | "confirming";
 
 export type TransferInput = {
   tokenId: bigint;
   to: `0x${string}`;
   receiverPubKey64: `0x${string}`;
   accessProofNonce: `0x${string}`;
-	oldDataEncryptionKey?: string; // Base64 32-byte AES key; FE seals to oracle pubkey before wire (never cleartext)
-	sealedDataEncryptionKey?: string; // optional pre-sealed DEK; when set, wins over sealing the oldDataEncryptionKey
+  oldDataEncryptionKey?: string; // Base64 32-byte AES key; FE seals to oracle pubkey before wire (never cleartext)
+  sealedDataEncryptionKey?: string; // optional pre-sealed DEK; when set, wins over sealing the oldDataEncryptionKey
   oldDataUri?: `0x${string}`;
 };
 

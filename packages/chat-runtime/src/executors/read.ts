@@ -27,7 +27,10 @@ export async function runReadTool(
         `/v1/agents?owner=${owner}`,
       );
       if (!ok) return toolFail("agents http fail");
-      return { ok: true as const, content: JSON.stringify({ agents: data.agents ?? [] }) };
+      return {
+        ok: true as const,
+        content: JSON.stringify({ agents: data.agents ?? [] }),
+      };
     }
     case "vault_balance": {
       const tokenId = resolveTokenId(args, ctx);
@@ -41,7 +44,10 @@ export async function runReadTool(
         functionName: "balanceOf",
         args: [BigInt(tokenId)],
       })) as bigint;
-      return { ok: true as const, content: JSON.stringify({ tokenId, balance: balance.toString() }) };
+      return {
+        ok: true as const,
+        content: JSON.stringify({ tokenId, balance: balance.toString() }),
+      };
     }
     case "agent_metadata": {
       const tokenId = resolveTokenId(args, ctx);
@@ -76,13 +82,16 @@ export async function runReadTool(
         dataDescription: string;
         dataHash: string;
       }>;
-      return { ok: true as const, content: JSON.stringify({
-        tokenId,
-        name: String(results[0]?.result ?? ""),
-        owner: String(results[1]?.result ?? ""),
-        dataDescription: datas[0]?.dataDescription ?? "",
-        dataHash: datas[0]?.dataHash ?? "",
-      }) };
+      return {
+        ok: true as const,
+        content: JSON.stringify({
+          tokenId,
+          name: String(results[0]?.result ?? ""),
+          owner: String(results[1]?.result ?? ""),
+          dataDescription: datas[0]?.dataDescription ?? "",
+          dataHash: datas[0]?.dataHash ?? "",
+        }),
+      };
     }
     case "event_history": {
       const limit = Number(args.limit ?? 20);
@@ -90,9 +99,15 @@ export async function runReadTool(
       if (args.eventName) {
         path += `&eventName=${encodeURIComponent(String(args.eventName))}`;
       }
-      const { ok, data } = await fetchJson<{ events: unknown[] }>(ctx.http, path);
+      const { ok, data } = await fetchJson<{ events: unknown[] }>(
+        ctx.http,
+        path,
+      );
       if (!ok) return toolFail("events http fail");
-      return { ok: true as const, content: JSON.stringify({ events: data.events ?? [] }) };
+      return {
+        ok: true as const,
+        content: JSON.stringify({ events: data.events ?? [] }),
+      };
     }
     default:
       return toolFail(`Unknown read tool: ${name}`);

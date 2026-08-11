@@ -1,11 +1,11 @@
 import {
-	useEffect,
-	useMemo,
-	useRef,
-	useState,
-	type ChangeEvent,
-	type CSSProperties,
-	type ReactElement,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type CSSProperties,
+  type ReactElement,
 } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAccount } from "wagmi";
@@ -13,399 +13,399 @@ import { formatEther } from "viem";
 import { flushSync } from "react-dom";
 import { useAgents } from "../hooks/useAgents.js";
 import {
-	useVaultDataBatch,
-	type VaultDataEntry,
+  useVaultDataBatch,
+  type VaultDataEntry,
 } from "../hooks/useVaultDataBatch.js";
 import { usePerformanceBatch } from "../hooks/usePerformanceBatch.js";
 import type { PerformanceMetrics } from "@axiom/config/types/performance";
 import { truncateAddress } from "../utils/format.js";
 import { BRAND } from "../brand/assets.js";
 import {
-	COLORS,
-	Skeleton,
-	Card,
-	ErrorAlert,
-	PageHeader,
-	ConnectedGuard,
-	Input,
-	Button,
-	withViewTransition,
-	emptyCardStyle,
+  COLORS,
+  Skeleton,
+  Card,
+  ErrorAlert,
+  PageHeader,
+  ConnectedGuard,
+  Input,
+  Button,
+  withViewTransition,
+  emptyCardStyle,
 } from "../components/ui.js";
 
 const emptyHintStyle: CSSProperties = {
-	color: COLORS.textDim,
-	textAlign: "center",
-	margin: "var(--space-2xl) 0",
+  color: COLORS.textDim,
+  textAlign: "center",
+  margin: "var(--space-2xl) 0",
 };
 const pillButtonStyle: CSSProperties = {
-	fontSize: "var(--text-xs)",
-	padding: "0.25rem 0.5rem",
+  fontSize: "var(--text-xs)",
+  padding: "0.25rem 0.5rem",
 };
 
 interface AgentCardStatusProps {
-	vaultData: VaultDataEntry | undefined;
-	metrics: PerformanceMetrics | undefined;
+  vaultData: VaultDataEntry | undefined;
+  metrics: PerformanceMetrics | undefined;
 }
 
 function AgentCardStatus({ vaultData, metrics }: AgentCardStatusProps) {
-	if (!vaultData || vaultData.depositsWei === undefined) return null;
-	const balance = formatEther(vaultData.depositsWei);
-	const balanceNum = parseFloat(balance);
-	const hasBalance = balanceNum > 0;
-	const lastAction =
-		metrics && metrics.totalTicks > 0
-			? metrics.buyCount > metrics.sellCount
-				? "Mostly buy"
-				: metrics.sellCount > metrics.buyCount
-					? "Mostly sell"
-					: "Mixed"
-			: null;
-	return (
-		<span
-			style={{
-				fontSize: "var(--text-xs)",
-				color: COLORS.textDim,
-				display: "flex",
-				gap: "var(--space-sm)",
-			}}
-		>
-			<span>{hasBalance ? `${balanceNum.toFixed(2)} 0G` : "No funds"}</span>
-			{lastAction && (
-				<span
-					style={{ color: COLORS.textMuted }}
-					title="Summary of all historical ticks; for the latest action, open the agent detail."
-				>
-					· {lastAction}
-				</span>
-			)}
-		</span>
-	);
+  if (!vaultData || vaultData.depositsWei === undefined) return null;
+  const balance = formatEther(vaultData.depositsWei);
+  const balanceNum = parseFloat(balance);
+  const hasBalance = balanceNum > 0;
+  const lastAction =
+    metrics && metrics.totalTicks > 0
+      ? metrics.buyCount > metrics.sellCount
+        ? "Mostly buy"
+        : metrics.sellCount > metrics.buyCount
+          ? "Mostly sell"
+          : "Mixed"
+      : null;
+  return (
+    <span
+      style={{
+        fontSize: "var(--text-xs)",
+        color: COLORS.textDim,
+        display: "flex",
+        gap: "var(--space-sm)",
+      }}
+    >
+      <span>{hasBalance ? `${balanceNum.toFixed(2)} 0G` : "No funds"}</span>
+      {lastAction && (
+        <span
+          style={{ color: COLORS.textMuted }}
+          title="Summary of all historical ticks; for the latest action, open the agent detail."
+        >
+          · {lastAction}
+        </span>
+      )}
+    </span>
+  );
 }
 
 export function AgentsBrowser({
-	embedded = false,
+  embedded = false,
 }: {
-	embedded?: boolean;
+  embedded?: boolean;
 } = {}): ReactElement {
-	const { isConnected } = useAccount();
-	const navigate = useNavigate();
-	const { agents, isLoading, error } = useAgents();
-	const tokenIds = useMemo(() => agents.map((a) => a.tokenId), [agents]);
-	const { data: vaultDataMap } = useVaultDataBatch(tokenIds);
-	const { data: perfMap } = usePerformanceBatch(tokenIds);
-	const count = agents.length;
-	const [searchTerm, setSearchTerm] = useState("");
-	const searchRef = useRef<HTMLInputElement>(null);
-	const debounceTimerRef = useRef<ReturnType<typeof setTimeout>>();
-	const [debouncedSearch, setDebouncedSearch] = useState("");
+  const { isConnected } = useAccount();
+  const navigate = useNavigate();
+  const { agents, isLoading, error } = useAgents();
+  const tokenIds = useMemo(() => agents.map((a) => a.tokenId), [agents]);
+  const { data: vaultDataMap } = useVaultDataBatch(tokenIds);
+  const { data: perfMap } = usePerformanceBatch(tokenIds);
+  const count = agents.length;
+  const [searchTerm, setSearchTerm] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
-	useEffect(() => {
-		function handleKeyDown(e: KeyboardEvent) {
-			if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-				e.preventDefault();
-				searchRef.current?.focus();
-			}
-		}
-		document.addEventListener("keydown", handleKeyDown);
-		return () => document.removeEventListener("keydown", handleKeyDown);
-	}, []);
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        searchRef.current?.focus();
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
-	function handleSearchChange(e: ChangeEvent<HTMLInputElement>) {
-		setSearchTerm(e.target.value);
-		clearTimeout(debounceTimerRef.current);
-		debounceTimerRef.current = setTimeout(
-			() => setDebouncedSearch(e.target.value),
-			200,
-		);
-	}
+  function handleSearchChange(e: ChangeEvent<HTMLInputElement>) {
+    setSearchTerm(e.target.value);
+    clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = setTimeout(
+      () => setDebouncedSearch(e.target.value),
+      200,
+    );
+  }
 
-	useEffect(() => () => clearTimeout(debounceTimerRef.current), []);
+  useEffect(() => () => clearTimeout(debounceTimerRef.current), []);
 
-	const filteredAgents = useMemo(
-		() =>
-			debouncedSearch
-				? agents.filter(
-						(a) =>
-							a.tokenId?.toString().includes(debouncedSearch) ||
-							a.owner?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-							(a.dataDescription &&
-								a.dataDescription
-									.toLowerCase()
-									.includes(debouncedSearch.toLowerCase())),
-					)
-				: agents,
-		[debouncedSearch, agents],
-	);
+  const filteredAgents = useMemo(
+    () =>
+      debouncedSearch
+        ? agents.filter(
+            (a) =>
+              a.tokenId?.toString().includes(debouncedSearch) ||
+              a.owner?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+              (a.dataDescription &&
+                a.dataDescription
+                  .toLowerCase()
+                  .includes(debouncedSearch.toLowerCase())),
+          )
+        : agents,
+    [debouncedSearch, agents],
+  );
 
-	if (error !== null) {
-		return (
-			<div>
-				{!embedded && <PageHeader title="Your Agents" />}
-				<ErrorAlert
-					message="Couldn't load your agents from the chain. Check your connection and try again."
-					onRetry={() => window.location.reload()}
-				/>
-			</div>
-		);
-	}
+  if (error !== null) {
+    return (
+      <div>
+        {!embedded && <PageHeader title="Your Agents" />}
+        <ErrorAlert
+          message="Couldn't load your agents from the chain. Check your connection and try again."
+          onRetry={() => window.location.reload()}
+        />
+      </div>
+    );
+  }
 
-	if (isLoading) {
-		return (
-			<div>
-				{!embedded && <PageHeader title="Your Agents" />}
-				<div
-					style={{
-						display: "flex",
-						flexDirection: "column",
-						gap: "var(--space-md)",
-					}}
-				>
-					<Skeleton height={48} />
-					<Skeleton height={48} />
-					<Skeleton height={48} />
-				</div>
-			</div>
-		);
-	}
+  if (isLoading) {
+    return (
+      <div>
+        {!embedded && <PageHeader title="Your Agents" />}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "var(--space-md)",
+          }}
+        >
+          <Skeleton height={48} />
+          <Skeleton height={48} />
+          <Skeleton height={48} />
+        </div>
+      </div>
+    );
+  }
 
-	if (count === 0) {
-		return (
-			<div>
-				{!embedded && <PageHeader title="Your Agents" />}
-				{!isConnected ? (
-					<Card style={emptyCardStyle}>
-						<p
-							style={{
-								color: COLORS.textMuted,
-								fontSize: "var(--text-sm)",
-								marginBottom: "var(--space-lg)",
-							}}
-						>
-							Connect your wallet to get started
-						</p>
-					</Card>
-				) : (
-					<Card style={emptyCardStyle}>
-						<img
-							src="/brand/empty-agents-960.jpg"
-							alt=""
-							width={320}
-							height={180}
-							style={{
-								width: "min(100%, 20rem)",
-								height: "auto",
-								borderRadius: "var(--radius-md)",
-								marginBottom: "var(--space-md)",
-								border: `1px solid ${COLORS.border}`,
-								objectFit: "cover",
-							}}
-						/>
-						<p
-							style={{
-								color: COLORS.textPrimary,
-								fontSize: "var(--text-base)",
-								margin: "0 0 0.5rem",
-								fontWeight: "var(--fw-semibold)",
-								fontFamily: "var(--font-display)",
-							}}
-						>
-							No agents yet
-						</p>
-						<p
-							style={{
-								color: COLORS.textMuted,
-								fontSize: "var(--text-sm)",
-								margin: "0 0 var(--space-lg)",
-								fontWeight: "var(--fw-regular)",
-								lineHeight: "var(--lh-normal)",
-							}}
-						>
-							Name an agent and mint. Fund later on agent detail.
-						</p>
-						<Link to="/app?mint=1">
-							<Button variant="primary">Mint your first agent</Button>
-						</Link>
-					</Card>
-				)}
-			</div>
-		);
-	}
+  if (count === 0) {
+    return (
+      <div>
+        {!embedded && <PageHeader title="Your Agents" />}
+        {!isConnected ? (
+          <Card style={emptyCardStyle}>
+            <p
+              style={{
+                color: COLORS.textMuted,
+                fontSize: "var(--text-sm)",
+                marginBottom: "var(--space-lg)",
+              }}
+            >
+              Connect your wallet to get started
+            </p>
+          </Card>
+        ) : (
+          <Card style={emptyCardStyle}>
+            <img
+              src="/brand/empty-agents-960.jpg"
+              alt=""
+              width={320}
+              height={180}
+              style={{
+                width: "min(100%, 20rem)",
+                height: "auto",
+                borderRadius: "var(--radius-md)",
+                marginBottom: "var(--space-md)",
+                border: `1px solid ${COLORS.border}`,
+                objectFit: "cover",
+              }}
+            />
+            <p
+              style={{
+                color: COLORS.textPrimary,
+                fontSize: "var(--text-base)",
+                margin: "0 0 0.5rem",
+                fontWeight: "var(--fw-semibold)",
+                fontFamily: "var(--font-display)",
+              }}
+            >
+              No agents yet
+            </p>
+            <p
+              style={{
+                color: COLORS.textMuted,
+                fontSize: "var(--text-sm)",
+                margin: "0 0 var(--space-lg)",
+                fontWeight: "var(--fw-regular)",
+                lineHeight: "var(--lh-normal)",
+              }}
+            >
+              Name an agent and mint. Fund later on agent detail.
+            </p>
+            <Link to="/app?mint=1">
+              <Button variant="primary">Mint your first agent</Button>
+            </Link>
+          </Card>
+        )}
+      </div>
+    );
+  }
 
-	return (
-		<div>
-			<ConnectedGuard>
-				{!embedded && (
-					<PageHeader
-						title="Your Agents"
-						action={
-							<Link to="/app?mint=1">
-								<Button variant="secondary">+ Mint</Button>
-							</Link>
-						}
-					/>
-				)}
-				{embedded && (
-					<h2
-						style={{
-							margin: "0 0 var(--space-md)",
-							fontSize: "var(--text-base)",
-							color: COLORS.textPrimary,
-						}}
-					>
-						Your agents
-					</h2>
-				)}
-				<Input
-					id="agent-search"
-					ref={searchRef}
-					type="text"
-					placeholder="Search by ID, name, or owner… (⌘K)"
-					value={searchTerm}
-					onChange={handleSearchChange}
-					aria-label="Search agents"
-					style={{ width: "100%", marginBottom: 16, boxSizing: "border-box" }}
-				/>
-				{agents.length === 0 ? (
-					<p style={emptyHintStyle}>No agents found for this wallet</p>
-				) : filteredAgents.length === 0 ? (
-					<p style={emptyHintStyle}>No agents match your search</p>
-				) : (
-					<div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-						{filteredAgents.map((agent, i) => (
-							<div
-								key={agent.tokenId}
-								className="agent-card cv-auto fade-enter card-layered"
-								style={{
-									padding: "12px 16px",
-									borderRadius: "var(--radius-lg)",
-									background: COLORS.surface,
-									color: COLORS.text,
-									display: "flex",
-									justifyContent: "space-between",
-									alignItems: "center",
-									border: `1px solid ${COLORS.border}`,
-									overflow: "hidden",
-									minWidth: 0,
-									gap: "var(--space-md)",
-									animationDelay: `${Math.min(i, 10) * 40}ms`,
-									backgroundImage: `linear-gradient(120deg, rgba(79,70,229,0.08), transparent 42%, rgba(196,122,58,0.05)), url(${BRAND.agentLattice})`,
-									backgroundSize: "cover, 56px 56px",
-									backgroundPosition: "center, right 8px center",
-									backgroundRepeat: "no-repeat, no-repeat",
-									transition:
-										"transform 150ms var(--ease-out), border-color 150ms var(--ease-out), box-shadow 150ms var(--ease-out)",
-								}}
-							>
-								<img
-									src={BRAND.agentLattice}
-									alt=""
-									width={40}
-									height={40}
-									loading="lazy"
-									decoding="async"
-									className="agent-card__motif"
-									style={{
-										width: 40,
-										height: 40,
-										borderRadius: "var(--radius-md)",
-										border: `1px solid ${COLORS.border}`,
-										objectFit: "cover",
-										flexShrink: 0,
-										opacity: 0.9,
-									}}
-								/>
-								<Link
-									to={`/agents/${agent.tokenId}`}
-									onClick={(e) => {
-										e.preventDefault();
-										const card = e.currentTarget.closest(
-											".agent-card",
-										) as HTMLElement | null;
-										card?.style.setProperty(
-											"view-transition-name",
-											"agent-card",
-										);
-										withViewTransition(() => {
-											flushSync(() => navigate(`/agents/${agent.tokenId}`));
-										});
-										card?.style.removeProperty("view-transition-name");
-									}}
-									style={{
-										overflow: "hidden",
-										minWidth: 0,
-										textDecoration: "none",
-										color: "inherit",
-										flex: 1,
-									}}
-								>
-									{agent.dataDescription && agent.dataDescription !== "" && (
-										<span
-											style={{
-												color: COLORS.text,
-												fontWeight: "var(--fw-semibold)",
-												overflow: "hidden",
-												textOverflow: "ellipsis",
-												whiteSpace: "nowrap",
-												display: "block",
-												minWidth: 0,
-											}}
-										>
-											{agent.dataDescription}
-										</span>
-									)}
-									<span
-										style={{
-											color: COLORS.textMuted,
-											fontSize: "var(--text-sm)",
-											overflow: "hidden",
-											textOverflow: "ellipsis",
-											whiteSpace: "nowrap",
-											display: "block",
-											minWidth: 0,
-										}}
-									>
-										Agent #{agent.tokenId.toString()}
-									</span>
-									<AgentCardStatus
-										vaultData={vaultDataMap.get(agent.tokenId.toString())}
-										metrics={perfMap.get(agent.tokenId.toString())}
-									/>
-								</Link>
-								<div
-									style={{
-										display: "flex",
-										alignItems: "center",
-										gap: "var(--space-sm)",
-										flexShrink: 0,
-									}}
-								>
-									<span
-										style={{
-											color: COLORS.textDim,
-											fontSize: "var(--text-sm)",
-										}}
-									>
-										{truncateAddress(agent.owner ?? "")}
-									</span>
-									<Link to={`/agents/${agent.tokenId}#execute`}>
-										<Button variant="ghost" style={pillButtonStyle}>
-											Execute ▶
-										</Button>
-									</Link>
-									<Link to={`/agents/${agent.tokenId}#payments`}>
-										<Button variant="ghost" style={pillButtonStyle}>
-											Payments
-										</Button>
-									</Link>
-								</div>
-							</div>
-						))}
-					</div>
-				)}
-			</ConnectedGuard>
-		</div>
-	);
+  return (
+    <div>
+      <ConnectedGuard>
+        {!embedded && (
+          <PageHeader
+            title="Your Agents"
+            action={
+              <Link to="/app?mint=1">
+                <Button variant="secondary">+ Mint</Button>
+              </Link>
+            }
+          />
+        )}
+        {embedded && (
+          <h2
+            style={{
+              margin: "0 0 var(--space-md)",
+              fontSize: "var(--text-base)",
+              color: COLORS.textPrimary,
+            }}
+          >
+            Your agents
+          </h2>
+        )}
+        <Input
+          id="agent-search"
+          ref={searchRef}
+          type="text"
+          placeholder="Search by ID, name, or owner… (⌘K)"
+          value={searchTerm}
+          onChange={handleSearchChange}
+          aria-label="Search agents"
+          style={{ width: "100%", marginBottom: 16, boxSizing: "border-box" }}
+        />
+        {agents.length === 0 ? (
+          <p style={emptyHintStyle}>No agents found for this wallet</p>
+        ) : filteredAgents.length === 0 ? (
+          <p style={emptyHintStyle}>No agents match your search</p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {filteredAgents.map((agent, i) => (
+              <div
+                key={agent.tokenId}
+                className="agent-card cv-auto fade-enter card-layered"
+                style={{
+                  padding: "12px 16px",
+                  borderRadius: "var(--radius-lg)",
+                  background: COLORS.surface,
+                  color: COLORS.text,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  border: `1px solid ${COLORS.border}`,
+                  overflow: "hidden",
+                  minWidth: 0,
+                  gap: "var(--space-md)",
+                  animationDelay: `${Math.min(i, 10) * 40}ms`,
+                  backgroundImage: `linear-gradient(120deg, rgba(79,70,229,0.08), transparent 42%, rgba(196,122,58,0.05)), url(${BRAND.agentLattice})`,
+                  backgroundSize: "cover, 56px 56px",
+                  backgroundPosition: "center, right 8px center",
+                  backgroundRepeat: "no-repeat, no-repeat",
+                  transition:
+                    "transform 150ms var(--ease-out), border-color 150ms var(--ease-out), box-shadow 150ms var(--ease-out)",
+                }}
+              >
+                <img
+                  src={BRAND.agentLattice}
+                  alt=""
+                  width={40}
+                  height={40}
+                  loading="lazy"
+                  decoding="async"
+                  className="agent-card__motif"
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: "var(--radius-md)",
+                    border: `1px solid ${COLORS.border}`,
+                    objectFit: "cover",
+                    flexShrink: 0,
+                    opacity: 0.9,
+                  }}
+                />
+                <Link
+                  to={`/agents/${agent.tokenId}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const card = e.currentTarget.closest(
+                      ".agent-card",
+                    ) as HTMLElement | null;
+                    card?.style.setProperty(
+                      "view-transition-name",
+                      "agent-card",
+                    );
+                    withViewTransition(() => {
+                      flushSync(() => navigate(`/agents/${agent.tokenId}`));
+                    });
+                    card?.style.removeProperty("view-transition-name");
+                  }}
+                  style={{
+                    overflow: "hidden",
+                    minWidth: 0,
+                    textDecoration: "none",
+                    color: "inherit",
+                    flex: 1,
+                  }}
+                >
+                  {agent.dataDescription && agent.dataDescription !== "" && (
+                    <span
+                      style={{
+                        color: COLORS.text,
+                        fontWeight: "var(--fw-semibold)",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        display: "block",
+                        minWidth: 0,
+                      }}
+                    >
+                      {agent.dataDescription}
+                    </span>
+                  )}
+                  <span
+                    style={{
+                      color: COLORS.textMuted,
+                      fontSize: "var(--text-sm)",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      display: "block",
+                      minWidth: 0,
+                    }}
+                  >
+                    Agent #{agent.tokenId.toString()}
+                  </span>
+                  <AgentCardStatus
+                    vaultData={vaultDataMap.get(agent.tokenId.toString())}
+                    metrics={perfMap.get(agent.tokenId.toString())}
+                  />
+                </Link>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "var(--space-sm)",
+                    flexShrink: 0,
+                  }}
+                >
+                  <span
+                    style={{
+                      color: COLORS.textDim,
+                      fontSize: "var(--text-sm)",
+                    }}
+                  >
+                    {truncateAddress(agent.owner ?? "")}
+                  </span>
+                  <Link to={`/agents/${agent.tokenId}#execute`}>
+                    <Button variant="ghost" style={pillButtonStyle}>
+                      Execute ▶
+                    </Button>
+                  </Link>
+                  <Link to={`/agents/${agent.tokenId}#payments`}>
+                    <Button variant="ghost" style={pillButtonStyle}>
+                      Payments
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </ConnectedGuard>
+    </div>
+  );
 }
 
 export default AgentsBrowser;

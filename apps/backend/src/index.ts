@@ -24,9 +24,9 @@ if (env.AXIOM_SENTRY_DSN) {
 
 const provider = getSharedProvider(env.AXIOM_CHAIN_ID ?? ARISTOTLE_CHAIN_ID);
 const signer = new Wallet(
-	// runtime signer must not be the deployer/upgrader key; dedicated key in prod, DEPLOYER_PK only for local dev
-	env.AXIOM_RUNTIME_SIGNER_PK ?? env.DEPLOYER_PK,
-	provider,
+  // runtime signer must not be the deployer/upgrader key; dedicated key in prod, DEPLOYER_PK only for local dev
+  env.AXIOM_RUNTIME_SIGNER_PK ?? env.DEPLOYER_PK,
+  provider,
 );
 
 // Testnet-only contracts have no live-chain bytecode, so on-chain reads revert (500); omit empty-code addresses so existing guards return a clean 503 ("address not configured").
@@ -51,7 +51,7 @@ async function resolveLiveAddresses(
           return true;
         }
       } catch {
-				/* unverifiable on live chain — omit to degrade gracefully */
+        /* unverifiable on live chain — omit to degrade gracefully */
       }
       return false;
     }),

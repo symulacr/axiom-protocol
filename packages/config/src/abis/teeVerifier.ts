@@ -43,5 +43,5 @@ export const TEE_VERIFIER_ABI = [
   "error ProofFieldMismatch()",
   "error UUPSUnauthorizedCallContext()",
   "error UUPSUnsupportedProxiableUUID(bytes32 slot)",
-  "error ZeroAddress()"
+  "error ZeroAddress()",
 ] as const;

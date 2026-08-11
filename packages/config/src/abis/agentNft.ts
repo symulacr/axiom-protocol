@@ -125,5 +125,5 @@ export const AGENT_NFT_ABI = [
   "error UUPSUnauthorizedCallContext()",
   "error UUPSUnsupportedProxiableUUID(bytes32 slot)",
   "error UnauthorizedUsage(address caller)",
-  "error UseITransferWithProofs()"
+  "error UseITransferWithProofs()",
 ] as const;

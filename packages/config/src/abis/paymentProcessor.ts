@@ -69,5 +69,5 @@ export const PAYMENT_PROCESSOR_ABI = [
   "error UUPSUnauthorizedCallContext()",
   "error UUPSUnsupportedProxiableUUID(bytes32 slot)",
   "error ZeroAddress()",
-  "error ZeroAmount()"
+  "error ZeroAmount()",
 ] as const;

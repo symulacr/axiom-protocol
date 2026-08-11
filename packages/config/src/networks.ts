@@ -68,7 +68,7 @@ export function resolveBlockExplorerUrl(chainId?: number): string {
 import { zeroGMainnet as _viemZeroGMainnet } from "viem/chains";
 
 export const zeroGMainnet = {
-	// exports viem built-in 0G Mainnet chain, with env-based dynamic RPC override
+  // exports viem built-in 0G Mainnet chain, with env-based dynamic RPC override
   ..._viemZeroGMainnet,
   rpcUrls: { default: { http: [resolveRpcUrl()] } },
   contracts: {

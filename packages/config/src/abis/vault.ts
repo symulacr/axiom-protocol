@@ -54,7 +54,7 @@ export const VAULT_ABI = [
   "error UUPSUnsupportedProxiableUUID(bytes32 slot)",
   "error UseDeposit()",
   "error ZeroAddress()",
-	"error ZeroAmount()",
+  "error ZeroAmount()",
 ] as const;
 
 // Legacy pre-validUntilDay vault interface, kept for backward-compatible orchestrator reads of old contracts;

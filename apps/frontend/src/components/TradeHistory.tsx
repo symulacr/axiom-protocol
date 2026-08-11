@@ -14,7 +14,7 @@ export function TradeHistory({ history }: TradeHistoryProps): ReactElement {
   if (history.length === 0) {
     return (
       <EmptyState>
-				<p style={mutedTextSm}>No executions yet.</p>
+        <p style={mutedTextSm}>No executions yet.</p>
       </EmptyState>
     );
   }
@@ -33,17 +33,17 @@ export function TradeHistory({ history }: TradeHistoryProps): ReactElement {
           });
 
           return (
-						<div key={`${entry.txHash}-${i}`} className="trade-row">
-							<span className="trade-time tabular-nums">{timeStr}</span>
-							<strong className={`trade-action trade-action--${entry.action}`}>
+            <div key={`${entry.txHash}-${i}`} className="trade-row">
+              <span className="trade-time tabular-nums">{timeStr}</span>
+              <strong className={`trade-action trade-action--${entry.action}`}>
                 {entry.action}
               </strong>
               {entry.amount !== null && (
-								<span className="trade-amount tabular-nums">
+                <span className="trade-amount tabular-nums">
                   amt: {entry.amount}
                 </span>
               )}
-							<span className="trade-reason">{entry.reason}</span>
+              <span className="trade-reason">{entry.reason}</span>
               <a
                 href={`${explorerBase}/tx/${entry.txHash}`}
                 target="_blank"

@@ -26,18 +26,13 @@ export function eventDedupeKey(ev: AxiomEvent): string {
   return `${ev.chainId}:${ev.txHash}:${ev.logIndex}`;
 }
 
-export function sortEventsChronological(
-  a: AxiomEvent,
-  b: AxiomEvent,
-): number {
+export function sortEventsChronological(a: AxiomEvent, b: AxiomEvent): number {
   return (
     a.blockNumber - b.blockNumber ||
     a.logIndex - b.logIndex ||
     a.receivedAt - b.receivedAt
   );
 }
-
-
 
 interface EventsResponse {
   events: AxiomEvent[];
@@ -75,7 +70,6 @@ function groupByName(
   return out;
 }
 
-
 export function useEventHistory(
   options: UseEventHistoryOptions = {},
 ): UseEventHistoryResult {
@@ -83,8 +77,6 @@ export function useEventHistory(
   const { isConnected } = useAccount();
   const interval = pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
 
-  
-  
   const lastTimestampRef = useRef(0);
   const mergedEventsRef = useRef<AxiomEvent[]>([]);
 

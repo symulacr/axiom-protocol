@@ -30,22 +30,22 @@ function toViemAbi(abi: readonly unknown[] | Abi): Abi {
 
 function buildWallet(
   address: string | undefined,
-	sendTransactionAsync:
-		| ((args: {
-    to: `0x${string}`;
-    data?: `0x${string}`;
-    value?: bigint;
-		  }) => Promise<`0x${string}`>)
-		| undefined,
-	writeContractAsync:
-		| ((args: {
-    address: `0x${string}`;
-    abi: readonly unknown[];
-    functionName: string;
-    args: unknown[];
-    value?: bigint;
-		  }) => Promise<`0x${string}`>)
-		| undefined,
+  sendTransactionAsync:
+    | ((args: {
+        to: `0x${string}`;
+        data?: `0x${string}`;
+        value?: bigint;
+      }) => Promise<`0x${string}`>)
+    | undefined,
+  writeContractAsync:
+    | ((args: {
+        address: `0x${string}`;
+        abi: readonly unknown[];
+        functionName: string;
+        args: unknown[];
+        value?: bigint;
+      }) => Promise<`0x${string}`>)
+    | undefined,
 ): NonNullable<ToolRuntime["wallet"]> | undefined {
   if (!address) return undefined;
   return {
@@ -100,12 +100,12 @@ function buildBrowserRuntime(ctx: ToolContext): ToolRuntime {
           url = `${BACKEND_URL}${suffix}`;
         }
         const body =
-					init?.body &&
-					typeof init.body === "object" &&
-					!(init.body instanceof Uint8Array)
+          init?.body &&
+          typeof init.body === "object" &&
+          !(init.body instanceof Uint8Array)
             ? JSON.stringify(init.body)
             : (init?.body as BodyInit | null | undefined);
-				const timeoutSignal = AbortSignal.timeout(TOOL_FETCH_TIMEOUT_MS);
+        const timeoutSignal = AbortSignal.timeout(TOOL_FETCH_TIMEOUT_MS);
         return fetch(url, {
           method: init?.method,
           headers: {
@@ -115,9 +115,9 @@ function buildBrowserRuntime(ctx: ToolContext): ToolRuntime {
             ...(init?.headers ?? {}),
           },
           body,
-					signal: init?.signal
-						? AbortSignal.any([init.signal, timeoutSignal])
-						: timeoutSignal,
+          signal: init?.signal
+            ? AbortSignal.any([init.signal, timeoutSignal])
+            : timeoutSignal,
         });
       },
     },
@@ -147,9 +147,9 @@ function buildBrowserRuntime(ctx: ToolContext): ToolRuntime {
     wallet: buildWallet(address, sendTransactionAsync, writeContractAsync),
     session: createSession({
       chainId: ctx.chainId,
-			walletAddress: ctx.address
-				? (ctx.address.toLowerCase() as `0x${string}` | undefined)
-				: undefined,
+      walletAddress: ctx.address
+        ? (ctx.address.toLowerCase() as `0x${string}` | undefined)
+        : undefined,
       lastTokenId: ctx.lastTokenId,
       addresses: {
         vault: getAxiomStrategyVaultAddress(ctx.chainId),

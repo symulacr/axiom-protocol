@@ -48,17 +48,17 @@ const confirmTextStyle: CSSProperties = {
 
 const PHASE_LABELS: Record<TransferPhase, string> = {
   idle: "Ready",
-	challenge: "Generating challenge…",
-	signing: "Waiting for signature…",
-	finalizing: "Re-encrypting data…",
-	confirming: "Confirming on-chain…",
+  challenge: "Generating challenge…",
+  signing: "Waiting for signature…",
+  finalizing: "Re-encrypting data…",
+  confirming: "Confirming on-chain…",
 };
 
 const PHASE_RETRY: Partial<Record<TransferPhase, string>> = {
-	challenge: "Failed. Tap Edit to retry with a fresh nonce.",
-	signing: "Failed. Tap Edit to retry with a fresh nonce.",
-	finalizing: "Failed. Tap Edit to retry with a fresh nonce.",
-	confirming: "Failed. Tap Edit to retry with a fresh nonce.",
+  challenge: "Failed. Tap Edit to retry with a fresh nonce.",
+  signing: "Failed. Tap Edit to retry with a fresh nonce.",
+  finalizing: "Failed. Tap Edit to retry with a fresh nonce.",
+  confirming: "Failed. Tap Edit to retry with a fresh nonce.",
 };
 
 const proofCardStyle: CSSProperties = {
@@ -187,7 +187,7 @@ function TransferFormPhase({
   return (
     <form onSubmit={onSubmit}>
       <p className="text-muted text-sm" style={confirmTextStyle}>
-				You'll sign once to authorize, then confirm the on-chain transfer.
+        You'll sign once to authorize, then confirm the on-chain transfer.
       </p>
 
       <FieldLabel htmlFor={`${formId}-to`}>Receiver address</FieldLabel>
@@ -205,37 +205,37 @@ function TransferFormPhase({
       />
       <FieldError>{addressError}</FieldError>
 
-			<details className="mt-lg">
-				<summary className="cursor-pointer text-sm fw-medium text-muted">
-					Advanced
-				</summary>
-				<FieldLabel htmlFor={`${formId}-pubkey`} spacing="sm">
-					Receiver public key
-				</FieldLabel>
-      <Textarea
-        id={`${formId}-pubkey`}
-        name="receiverPubKey64"
-        value={receiverPubKey}
-        onChange={onPubKeyChange}
-        rows={3}
-        spellCheck={false}
-        maxLength={RECEIVER_PUBKEY_HEX_LENGTH}
-        placeholder="0x\u2026  (128 hex chars)"
-        className="w-full"
-        style={monoFieldStyle}
-        required
-      />
-      <p
-        style={{
-          fontSize: "var(--text-xs)",
-          color: COLORS.textDim,
-          margin: "4px 0 0",
-        }}
-      >
-					128 hex chars, no 0x04 prefix. Get it from the receiver's wallet
-					'Export Public Key'.
-      </p>
-      <FieldError>{pubKeyError}</FieldError>
+      <details className="mt-lg">
+        <summary className="cursor-pointer text-sm fw-medium text-muted">
+          Advanced
+        </summary>
+        <FieldLabel htmlFor={`${formId}-pubkey`} spacing="sm">
+          Receiver public key
+        </FieldLabel>
+        <Textarea
+          id={`${formId}-pubkey`}
+          name="receiverPubKey64"
+          value={receiverPubKey}
+          onChange={onPubKeyChange}
+          rows={3}
+          spellCheck={false}
+          maxLength={RECEIVER_PUBKEY_HEX_LENGTH}
+          placeholder="0x\u2026  (128 hex chars)"
+          className="w-full"
+          style={monoFieldStyle}
+          required
+        />
+        <p
+          style={{
+            fontSize: "var(--text-xs)",
+            color: COLORS.textDim,
+            margin: "4px 0 0",
+          }}
+        >
+          128 hex chars, no 0x04 prefix. Get it from the receiver's wallet
+          'Export Public Key'.
+        </p>
+        <FieldError>{pubKeyError}</FieldError>
 
         <FieldLabel htmlFor={`${formId}-nonce`} spacing="sm">
           Access proof nonce
@@ -251,51 +251,51 @@ function TransferFormPhase({
           className="text-dim text-xs"
           style={{ margin: "4px 0 0", fontWeight: "var(--fw-light)" }}
         >
-					32 random bytes, regenerated each time the modal opens.
+          32 random bytes, regenerated each time the modal opens.
         </p>
 
-      <details className="mt-lg">
-        <summary className="cursor-pointer text-sm fw-medium text-muted">
-						Re-encrypt for receiver (optional)
-        </summary>
-        <p
-          className="text-dim text-xs"
-          style={{ margin: "8px 0", fontWeight: "var(--fw-light)" }}
-        >
-						Optional: AES key + storage URI to re-key data for the receiver.
-						Blank = sign-only.
-        </p>
-        <FieldLabel htmlFor={`${formId}-oldkey`} spacing="sm">
-          Old data encryption key (base64)
-        </FieldLabel>
-        <Input
-          id={`${formId}-oldkey`}
-          value={oldDataEncryptionKey}
-          onChange={onOldDataKeyChange}
-          placeholder="base64 32-byte AES key"
-          autoComplete="off"
-          spellCheck={false}
-          maxLength={256}
-          className="w-full"
-          style={monoFieldStyle}
-        />
-        <FieldLabel htmlFor={`${formId}-olduri`} spacing="sm">
-          Old data URI (0x&hellip;)
-        </FieldLabel>
-        <Input
-          id={`${formId}-olduri`}
-          value={oldDataUri}
-          onChange={onOldDataUriChange}
-          placeholder="0x\u2026 0G Storage root hash"
-          autoComplete="off"
-          spellCheck={false}
-          maxLength={128}
-          className="w-full"
-          style={monoFieldStyle}
-        />
-        <FieldError>{rekeyError}</FieldError>
+        <details className="mt-lg">
+          <summary className="cursor-pointer text-sm fw-medium text-muted">
+            Re-encrypt for receiver (optional)
+          </summary>
+          <p
+            className="text-dim text-xs"
+            style={{ margin: "8px 0", fontWeight: "var(--fw-light)" }}
+          >
+            Optional: AES key + storage URI to re-key data for the receiver.
+            Blank = sign-only.
+          </p>
+          <FieldLabel htmlFor={`${formId}-oldkey`} spacing="sm">
+            Old data encryption key (base64)
+          </FieldLabel>
+          <Input
+            id={`${formId}-oldkey`}
+            value={oldDataEncryptionKey}
+            onChange={onOldDataKeyChange}
+            placeholder="base64 32-byte AES key"
+            autoComplete="off"
+            spellCheck={false}
+            maxLength={256}
+            className="w-full"
+            style={monoFieldStyle}
+          />
+          <FieldLabel htmlFor={`${formId}-olduri`} spacing="sm">
+            Old data URI (0x&hellip;)
+          </FieldLabel>
+          <Input
+            id={`${formId}-olduri`}
+            value={oldDataUri}
+            onChange={onOldDataUriChange}
+            placeholder="0x\u2026 0G Storage root hash"
+            autoComplete="off"
+            spellCheck={false}
+            maxLength={128}
+            className="w-full"
+            style={monoFieldStyle}
+          />
+          <FieldError>{rekeyError}</FieldError>
+        </details>
       </details>
-			</details>
 
       {mergedError}
 
@@ -346,7 +346,7 @@ function ConfirmTransferPhase({
       </h2>
 
       <p className="text-muted text-sm" style={confirmTextStyle}>
-				Confirm — your wallet will ask for the final signature.
+        Confirm — your wallet will ask for the final signature.
       </p>
 
       {signature !== null && signature.rekeyed === true && (
@@ -491,7 +491,7 @@ export function TransferModal({
   );
   const handleTransferred = useCallback(
     (txHash: `0x${string}`): void => {
-			toast.success(`Transfer ${txHash.slice(0, 10)}… confirmed`);
+      toast.success(`Transfer ${txHash.slice(0, 10)}… confirmed`);
       onTransferred?.(txHash);
       onSuccess?.(txHash);
     },

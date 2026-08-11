@@ -46,7 +46,7 @@ export function useOrchestratorTick(): {
     setStreamingError(null);
   }, []);
 
-	// Debounced 50ms flush of ref→state so individual WebSocket tokens don't each trigger a re-render
+  // Debounced 50ms flush of ref→state so individual WebSocket tokens don't each trigger a re-render
   useEffect(() => {
     const flush = () => {
       const batch = streamedRef.current;

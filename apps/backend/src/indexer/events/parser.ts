@@ -9,11 +9,7 @@ import {
 import { validateHex, type Hex } from "@axiom/config/types/hex";
 import { EVENT_NAMES } from "@axiom/config";
 
-import {
-  EVENT_ABI,
-  type AxiomEvent,
-  type EventName,
-} from "../events.js";
+import { EVENT_ABI, type AxiomEvent, type EventName } from "../events.js";
 
 type EventTopicTable = { [K in EventName]: Hex };
 export const TOPIC_TABLE: EventTopicTable = Object.fromEntries(
@@ -139,24 +135,36 @@ const EVENT_PARSERS: Record<string, EventParser> = {
       assistant: getAddress(a["assistant"] as string),
     }),
   ),
-  Deposited: makeEventParser(EVENT_NAMES.Deposited, EVENT_ABI.Deposited, (a) => ({
-    tokenId: a["tokenId"] as bigint,
-    from: getAddress(a["from"] as string),
-    asset: getAddress(a["asset"] as string),
-    amount: a["amount"] as bigint,
-  })),
-  Withdrawn: makeEventParser(EVENT_NAMES.Withdrawn, EVENT_ABI.Withdrawn, (a) => ({
-    tokenId: a["tokenId"] as bigint,
-    to: getAddress(a["to"] as string),
-    asset: getAddress(a["asset"] as string),
-    amount: a["amount"] as bigint,
-  })),
-  StrategySet: makeEventParser(EVENT_NAMES.StrategySet, EVENT_ABI.StrategySet, (a) => ({
-    tokenId: a["tokenId"] as bigint,
-    strategyRoot: a["strategyRoot"] as Hex,
-    dailyLimit: a["dailyLimit"] as bigint,
-    validUntilDay: a["validUntilDay"] as bigint,
-  })),
+  Deposited: makeEventParser(
+    EVENT_NAMES.Deposited,
+    EVENT_ABI.Deposited,
+    (a) => ({
+      tokenId: a["tokenId"] as bigint,
+      from: getAddress(a["from"] as string),
+      asset: getAddress(a["asset"] as string),
+      amount: a["amount"] as bigint,
+    }),
+  ),
+  Withdrawn: makeEventParser(
+    EVENT_NAMES.Withdrawn,
+    EVENT_ABI.Withdrawn,
+    (a) => ({
+      tokenId: a["tokenId"] as bigint,
+      to: getAddress(a["to"] as string),
+      asset: getAddress(a["asset"] as string),
+      amount: a["amount"] as bigint,
+    }),
+  ),
+  StrategySet: makeEventParser(
+    EVENT_NAMES.StrategySet,
+    EVENT_ABI.StrategySet,
+    (a) => ({
+      tokenId: a["tokenId"] as bigint,
+      strategyRoot: a["strategyRoot"] as Hex,
+      dailyLimit: a["dailyLimit"] as bigint,
+      validUntilDay: a["validUntilDay"] as bigint,
+    }),
+  ),
   Executed: makeEventParser(EVENT_NAMES.Executed, EVENT_ABI.Executed, (a) => ({
     tokenId: a["tokenId"] as bigint,
     actionHash: a["actionHash"] as Hex,

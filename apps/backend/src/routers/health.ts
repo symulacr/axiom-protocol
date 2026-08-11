@@ -82,38 +82,48 @@ export function createHealthRouter(
     return inflight;
   }
 
-  createRoute(router, {
-    path: "/health/live",
-    method: "get",
-    consumer: "health",
-    description: "Liveness probe",
-  }, async (_parsed: unknown, _req: Request, res: Response) => {
-    res.status(HTTP.OK).json({ ok: true, live: true });
-  }, config);
+  createRoute(
+    router,
+    {
+      path: "/health/live",
+      method: "get",
+      consumer: "health",
+      description: "Liveness probe",
+    },
+    async (_parsed: unknown, _req: Request, res: Response) => {
+      res.status(HTTP.OK).json({ ok: true, live: true });
+    },
+    config,
+  );
 
-  createRoute(router, {
-    path: "/health",
-    method: "get",
-    consumer: "health",
-    description: "Health check",
-  }, async (_parsed: unknown, _req: Request, res: Response) => {
-    try {
-      const s = await resolveSnapshot();
-      res.status(s.ok ? HTTP.OK : HTTP.SERVICE_UNAVAILABLE).json({
-        ok: s.ok,
-        version: "0.1.0",
-        signer: signerAddress,
-        chainHead: s.chainHead,
-        oracle: s.oracleUp ? "up" : "down",
-        addresses: addresses ?? null,
-      });
-    } catch (err) {
-      log.error("health check failed", {
-        error: extractErrorMessage(err),
-      });
-      sendError(res, HTTP.SERVICE_UNAVAILABLE, "Health check failed");
-    }
-  }, config);
+  createRoute(
+    router,
+    {
+      path: "/health",
+      method: "get",
+      consumer: "health",
+      description: "Health check",
+    },
+    async (_parsed: unknown, _req: Request, res: Response) => {
+      try {
+        const s = await resolveSnapshot();
+        res.status(s.ok ? HTTP.OK : HTTP.SERVICE_UNAVAILABLE).json({
+          ok: s.ok,
+          version: "0.1.0",
+          signer: signerAddress,
+          chainHead: s.chainHead,
+          oracle: s.oracleUp ? "up" : "down",
+          addresses: addresses ?? null,
+        });
+      } catch (err) {
+        log.error("health check failed", {
+          error: extractErrorMessage(err),
+        });
+        sendError(res, HTTP.SERVICE_UNAVAILABLE, "Health check failed");
+      }
+    },
+    config,
+  );
 
   return router;
 }

@@ -12,7 +12,6 @@ import {
   type AccessProofInput,
 } from "@axiom/config/eip712";
 
-
 export const ownershipMessageHash = (
   input: OwnershipProofInput,
   domain: Eip712Domain = DEFAULT_EIP712_DOMAIN,

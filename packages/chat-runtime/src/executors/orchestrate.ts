@@ -62,7 +62,7 @@ export async function runOrchestrateTool(
   }
 
   const tokenId = String(args.tokenId ?? ctx.session.lastTokenId ?? "");
-	if (!tokenId) return toolFail("tokenId required");
+  if (!tokenId) return toolFail("tokenId required");
 
   const dryRun = name === "simulate_tick" || args.dryRun === true;
   const vault = ctx.session.addresses?.vault;
@@ -127,7 +127,7 @@ export async function runOrchestrateTool(
     },
   );
 
-	if (!httpOk) return toolFail("tick http fail");
+  if (!httpOk) return toolFail("tick http fail");
   return { ok: true as const, content: JSON.stringify(data) };
 }
 

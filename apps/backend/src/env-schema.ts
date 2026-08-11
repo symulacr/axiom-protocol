@@ -9,8 +9,8 @@ export const backendEnvSchema = sharedEnvSchema.merge(
     AXIOM_INDEXER_API_KEY: z.string().optional(),
     AXIOM_EVM_RPC: z.string().url(),
     AXIOM_STORAGE_RPC: z.string().url().optional(),
-    INDEXER_POLL_WINDOW_BLOCKS: z
-      .coerce.number()
+    INDEXER_POLL_WINDOW_BLOCKS: z.coerce
+      .number()
       .int()
       .positive()
       .default(RUNTIME_DEFAULTS.indexerPollWindowBlocks),

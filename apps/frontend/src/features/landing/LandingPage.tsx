@@ -86,9 +86,9 @@ function Uses(): ReactElement {
   return (
     <section className="landing-block">
       <h2 className="landing-h2">What Axiom is for</h2>
-			<p className="landing-sub">
-				Same flows as Home and Chat. No extra product.
-			</p>
+      <p className="landing-sub">
+        Same flows as Home and Chat. No extra product.
+      </p>
       <ul className="landing-list">
         {items.map((item, i) => (
           <li
@@ -126,9 +126,9 @@ function Cta(): ReactElement {
   return (
     <section className="landing-block landing-cta-end">
       <h2 className="landing-h2">Start with a name</h2>
-			<p className="landing-sub">
-				Mint → Home list → detail for vault and ticks.
-			</p>
+      <p className="landing-sub">
+        Mint → Home list → detail for vault and ticks.
+      </p>
       <div className="landing-cta-row landing-cta-row--center">
         <Link to="/app?mint=1" className="btn btn-primary landing-btn">
           Mint

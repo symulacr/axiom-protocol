@@ -15,7 +15,10 @@ export async function runTool(
 ): Promise<ToolResult> {
   const spec = getChatToolSpec(name);
   if (!spec) {
-    return { ok: false, content: JSON.stringify({ error: `Unknown tool: ${name}` }) };
+    return {
+      ok: false,
+      content: JSON.stringify({ error: `Unknown tool: ${name}` }),
+    };
   }
   switch (spec.class) {
     case "read":
@@ -31,6 +34,9 @@ export async function runTool(
     case "skill":
       return runSkillTool(name, args, ctx);
     default:
-      return { ok: false, content: JSON.stringify({ error: `Unhandled class: ${spec.class}` }) };
+      return {
+        ok: false,
+        content: JSON.stringify({ error: `Unhandled class: ${spec.class}` }),
+      };
   }
 }

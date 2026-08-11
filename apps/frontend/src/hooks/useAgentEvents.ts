@@ -19,7 +19,6 @@ interface UseAgentEventsResult {
   refetch: () => void;
 }
 
-
 export function useAgentEvents(
   tokenId: bigint | null,
   options: UseAgentEventsOptions = {},

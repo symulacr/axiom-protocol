@@ -14,7 +14,6 @@ export interface VaultDataEntry {
   readError?: string | null;
 }
 
-
 export function useVaultDataBatch(tokenIds: readonly bigint[]): {
   data: Map<string, VaultDataEntry>;
   isLoading: boolean;

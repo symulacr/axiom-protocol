@@ -31,7 +31,8 @@ export function usePerformance(
 ): UsePerformanceResult {
   const { isConnected } = useAccount();
   const { enabled: enabledOption = true } = options ?? {};
-  const enabled = enabledOption && isConnected && tokenId !== null && tokenId > 0n;
+  const enabled =
+    enabledOption && isConnected && tokenId !== null && tokenId > 0n;
   const url = enabled ? `/v1/agents/${tokenId.toString()}/performance` : "";
 
   const { data, isLoading, error, refetch } = usePolledApi<PerformanceResponse>(
