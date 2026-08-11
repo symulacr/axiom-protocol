@@ -10,10 +10,6 @@ export function truncateHex(value: string, head = 10, tail = 6): string {
 	return `${value.slice(0, head)}${ELLIPSIS}${value.slice(-tail)}`;
 }
 
-/**
- * Shortens an EVM address to the familiar 0x1234…abcd form (0x + 4 chars + 4 chars).
- * Returns the input unchanged when it is not long enough to shorten.
- */
 export function truncateAddress(value: string, head = 6, tail = 4): string {
 	if (!value.startsWith("0x") || value.length <= head + tail + 2) {
 		return value;
@@ -21,10 +17,7 @@ export function truncateAddress(value: string, head = 6, tail = 4): string {
 	return `${value.slice(0, head)}${ELLIPSIS}${value.slice(-tail)}`;
 }
 
-/**
- * Formats a wei amount as a readable token string with trailing zeros trimmed
- * (up to `maxFractionDigits` decimals) — never raw 18-decimal noise.
- */
+/** Readable token string with trailing zeros trimmed — never raw 18-decimal noise. */
 export function formatTokenAmount(
 	wei: bigint,
 	decimals = 18,
@@ -120,7 +113,6 @@ export function humanizeError(err: unknown): string {
 	return raw.length > 200 ? `${raw.slice(0, 200)}…` : raw;
 }
 
-/** Builds the "Ref · requestId · code" description string for a toast, or null when absent. */
 export function errorRefString(err: unknown): string | null {
 	const ref = err as { code?: string; requestId?: string } | null;
 	return ref && (ref.code !== undefined || ref.requestId !== undefined)
@@ -146,7 +138,7 @@ export function validateNumericInput(
 		maxDecimals = 18,
 	} = opts;
 	const trimmed = value.trim();
-	if (trimmed === "") return null; // empty is not an error (handled by required)
+	if (trimmed === "") return null; // empty is not an error — the required-field check handles it separately
 
 	if (/[eE]/.test(trimmed)) {
 		return `${label} cannot use scientific notation.`;

@@ -7,7 +7,6 @@ function formatWei(wei: bigint): string {
 	return frac ? `${whole}.${frac}` : whole;
 }
 
-/** Render an object's entries as "key: value" lines; arrays show head + "+N more". */
 function formatObjectLines(
 	obj: Record<string, unknown>,
 	objectRender: (v: unknown) => string,

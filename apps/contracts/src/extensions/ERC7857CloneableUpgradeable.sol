@@ -1,21 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-// Derived from 0G Agentic ID reference (MIT)
-// https://github.com/0gfoundation/0g-agent-nft
-// Forked because Axiom's ERC7857Upgradeable uses 3-arg verifyTransferValidity
-// (EIP-712 domain binding per security fix F-03/F-04/F-12)
-// Reference uses 1-arg verifyTransferValidity — incompatible base contract
-//
+// Forked from 0G reference (MIT): Axiom's base uses 3-arg verifyTransferValidity (EIP-712 domain binding, fixes F-03/F-04/F-12); the reference's 1-arg form is incompatible.
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {ERC7857Upgradeable} from "../ERC7857Upgradeable.sol";
 import {IERC7857Cloneable} from "../interfaces/IERC7857Cloneable.sol";
 import {IntelligentData} from "../interfaces/IERC7857Metadata.sol";
 import {TransferValidityProof} from "../interfaces/IERC7857DataVerifier.sol";
 
-/// @title ERC7857CloneableUpgradeable
-/// @notice Extension that allows cloning a token (new token with same metadata)
-/// @dev Adapted from the 0G Agentic ID reference (MIT)
+/// @title ERC7857CloneableUpgradeable — clone a token into a new id carrying the same metadata (0G reference MIT)
 abstract contract ERC7857CloneableUpgradeable is IERC7857Cloneable, ERC7857Upgradeable {
     /// @custom:storage-location erc7857:0g.storage.ERC7857Cloneable
     struct ERC7857CloneableStorage {
@@ -23,7 +16,6 @@ abstract contract ERC7857CloneableUpgradeable is IERC7857Cloneable, ERC7857Upgra
         uint256[50] __gap;
     }
 
-    // ERC-7201 storage location: keccak256(abi.encode(keccak256("0g.storage.ERC7857Cloneable") - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant STORAGE_LOCATION = 0x03de6cf14ecf4575e0ed0cc2fdb9b7ee13500cb3c0c403254fc893bf6e0c8000;
 
     function _getERC7857CloneableStorage() private pure returns (ERC7857CloneableStorage storage $) {

@@ -3,9 +3,7 @@ pragma solidity ^0.8.20;
 
 import {IERC7857DataVerifier} from "../interfaces/IERC7857DataVerifier.sol";
 
-/// @title BaseVerifier
-/// @notice Abstract base for ERC-7857 verifiers with replay protection + expiry
-/// @dev Copied verbatim from https://github.com/0gfoundation/0g-agent-nft (MIT)
+/// @title BaseVerifier — abstract ERC-7857 verifier base with replay protection + expiry (copied verbatim from 0G reference, MIT)
 abstract contract BaseVerifier is IERC7857DataVerifier {
     error ProofAlreadyUsed(bytes32 proofHash);
 
@@ -26,7 +24,7 @@ abstract contract BaseVerifier is IERC7857DataVerifier {
 
     function _getMaxProofAge() internal view virtual returns (uint256);
 
-    /// @notice Reclaim storage from expired proofs
+    /// @notice Reclaim storage from proofs that have exceeded their max age
     function cleanExpiredProofs(
         bytes32[] calldata proofNonces
     ) external {

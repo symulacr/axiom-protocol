@@ -19,12 +19,7 @@ function recordAction(payload: unknown, counts: ActionCounts): string {
 	return action;
 }
 
-/**
- * Derive the canonical metrics object from raw action counts. Shared by the
- * per-agent and batch handlers so both always agree.
- * winRate = fraction of ticks with a non-hold action (buy OR sell) — it is
- * NOT an alias for buyRate.
- */
+/** Canonical metrics shared by per-agent and batch handlers so both agree; winRate = non-hold ticks (buy OR sell), NOT buyRate. */
 function summarizeCounts(counts: ActionCounts) {
 	const totalTicks = counts.buyCount + counts.sellCount + counts.holdCount;
 	return {

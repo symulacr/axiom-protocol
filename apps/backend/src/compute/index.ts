@@ -3,8 +3,6 @@ import { FetchRequest, JsonRpcProvider } from "ethers";
 import { ARISTOTLE_CHAIN_ID, pickOGNetwork } from "@axiom/config/networks";
 import { createLogger } from "../utils/logger.js";
 
-// ── broker.ts ────────────────────────────────────────────────────────────────
-
 export function resolveChainId(chainId?: number): number {
 	if (chainId !== undefined) return chainId;
 	const env = Number(process.env.AXIOM_CHAIN_ID);
@@ -25,9 +23,6 @@ export function createStaticProvider(
 	return new JsonRpcProvider(evmRpc, cid, { staticNetwork: true });
 }
 
-// ── router.ts ────────────────────────────────────────────────────────────────
-
-// 0G compute-router base used when no network override is configured.
 const ROUTER_API_BASE_URL = "https://router-api.0g.ai/v1";
 // Direct proxy base used when AXIOM_COMPUTE_DIRECT_KEY is set without a URL.
 const DIRECT_PROXY_BASE_URL =
@@ -56,7 +51,6 @@ export async function createRouterClient(
 	const timeout = opts.timeout ?? ROUTER_TIMEOUT_MS;
 	logRouter.info("Creating router client", { model });
 
-	// Fast path: direct API key with explicit provider URL
 	const directKey = process.env.AXIOM_COMPUTE_DIRECT_KEY;
 	if (directKey) {
 		const directBase =
@@ -70,7 +64,7 @@ export async function createRouterClient(
 		});
 	}
 
-	// Prefer the API-key router path over the wallet-signed path
+	// Prefer the API-key router path over the wallet-signed path when a key is configured
 	const routerKey =
 		process.env.AXIOM_COMPUTE_API_KEY ?? process.env.OG_COMPUTE_API_KEY;
 	if (routerKey) {

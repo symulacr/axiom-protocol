@@ -192,8 +192,6 @@ const EventRow = React.memo(function EventRow({
 });
 
 function eventKey(event: AxiomEvent): string {
-	// Stable per event: events are deduped upstream by chainId:txHash:logIndex,
-	// so this key is unique within the timeline. NO positional suffix — with
-	// one, every new WS event shifts all indices and React remounts every row.
+	// Stable per event: deduped upstream by chainId:txHash:logIndex; no positional suffix or every new WS event remounts every row
 	return `${event.chainId}:${event.txHash}:${event.logIndex}`;
 }

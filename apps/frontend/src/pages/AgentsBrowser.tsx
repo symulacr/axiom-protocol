@@ -86,7 +86,6 @@ function AgentCardStatus({ vaultData, metrics }: AgentCardStatusProps) {
 export function AgentsBrowser({
 	embedded = false,
 }: {
-	/** When true (Home), hide page chrome — parent already has header/stats. */
 	embedded?: boolean;
 } = {}): ReactElement {
 	const { isConnected } = useAccount();

@@ -1,6 +1,4 @@
-// Shared HTTP/infra helpers: response envelope, TTL cache, JSON fetch.
-// (cache + response + fetch-json merged into one module for LOC.)
-
+// Shared HTTP/infra helpers: response envelope, TTL cache, JSON fetch (merged into one module for LOC).
 export class TTLCache<T> {
   private readonly cache = new Map<string, { data: T; timestamp: number }>();
 
@@ -74,4 +72,3 @@ export async function fetchJson<T>(
 
 	return { ok: res.ok, status: res.status, data };
 }
-

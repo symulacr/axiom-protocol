@@ -65,7 +65,7 @@ export const tickSchema = z.object({
 		.optional(),
 });
 
-// SSRF guard: http(s) only, and never private/loopback hosts.
+// SSRF guard: http(s) only, and never private or loopback hosts.
 const BLOCKED_HOSTS = new Set(["localhost", "0.0.0.0", "::1"]);
 const PRIVATE_IPV4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
 function isPublicHttpUrl(value: string): boolean {
@@ -101,8 +101,7 @@ function isPublicHttpUrl(value: string): boolean {
 	}
 	return true;
 }
-// Accept a bare host (e.g. "x.com/foo") by normalizing to https:// before the
-// Wayback lookup, while keeping the SSRF guard for properly-formed URLs.
+// Bare hosts normalize to https:// before the Wayback lookup; the SSRF guard still applies to fully-formed URLs.
 export const archiveUrlSchema = z
 	.string()
 	.transform((v) => (/^https?:\/\//i.test(v) ? v : `https://${v}`))

@@ -9,12 +9,7 @@ import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProo
 
 import {IAxiomAgentNFT} from "./interfaces/IAxiomAgentNFT.sol";
 
-/// @title AxiomStrategyVault
-/// @notice Per-token vault that holds agent-controlled funds and executes Merkle-verified strategies
-/// @dev Only the owner of the underlying AxiomAgentNFT token can setStrategy/withdraw
-///      The agent itself executes the actions via `execute()`, which verifies each action
-///      against the current strategy root and enforces a daily value limit
-/// @dev Standalone, non-upgradeable (holds user funds)
+/// @title AxiomStrategyVault — per-token vault; only the NFT owner sets strategy/withdraws, while `execute()` verifies each action against the Merkle root and enforces a daily limit. Non-upgradeable (holds user funds).
 contract AxiomStrategyVault is Initializable, OwnableUpgradeable, PausableUpgradeable, ReentrancyGuard {
     error NotTokenOwner();
     error InvalidMerkleProof();
@@ -38,12 +33,12 @@ contract AxiomStrategyVault is Initializable, OwnableUpgradeable, PausableUpgrad
     );
 
     struct Vault {
-        uint256 balance; // native (OG) balance
-        bytes32 strategyRoot; // Merkle root of approved action hashes
-        uint128 dailyLimit; // max value executable per UTC day
-        uint128 dailySpent; // running spend in current day
-        uint64 resetDay; // day number of last reset
-        uint64 validUntilDay; // last UTC day (inclusive) strategy remains valid; 0 = no expiry
+        uint256 balance;
+        bytes32 strategyRoot;
+        uint128 dailyLimit;
+        uint128 dailySpent;
+        uint64 resetDay;
+        uint64 validUntilDay; // last valid UTC day inclusive; 0 sentinel means no expiry
     }
 
     mapping(uint256 => Vault) public vaults;
@@ -54,9 +49,7 @@ contract AxiomStrategyVault is Initializable, OwnableUpgradeable, PausableUpgrad
     /// @notice Sum of all per-token tracked balances (for excess-native recovery)
     uint256 public totalTrackedBalance;
 
-    /// @notice The AxiomAgentNFT contract whose tokens are vaults (immutable at deploy)
     IAxiomAgentNFT public nft;
-    /// @dev Storage gap for upgradeable contract
     uint256[49] private __gap;
 
     modifier onlyTokenOwner(
@@ -69,9 +62,6 @@ contract AxiomStrategyVault is Initializable, OwnableUpgradeable, PausableUpgrad
     constructor() {
         _disableInitializers();
     }
-    /// @notice Initialize the upgradeable contract
-    /// @param _nft The AxiomAgentNFT contract address
-    /// @param _owner The initial owner
     function initialize(IAxiomAgentNFT _nft, address _owner) external initializer {
         __Ownable_init(_owner);
         __Pausable_init();
@@ -99,7 +89,7 @@ contract AxiomStrategyVault is Initializable, OwnableUpgradeable, PausableUpgrad
         if (amount == 0) revert ZeroAmount();
         Vault storage v = vaults[tokenId];
         if (v.balance < amount) revert ZeroAmount();
-        // CEI: state update first, then external call
+        // CEI ordering: state update precedes the external call to prevent reentrancy
         v.balance -= amount;
         totalTrackedBalance -= amount;
         emit Withdrawn(tokenId, msg.sender, address(0), amount);
@@ -113,8 +103,6 @@ contract AxiomStrategyVault is Initializable, OwnableUpgradeable, PausableUpgrad
         return vaults[tokenId].balance;
     }
 
-    /// @notice Set strategy Merkle root, daily limit, and optional expiry day
-    /// @param validUntilDay Last UTC day (inclusive) the strategy may execute; 0 = no expiry
     function setStrategy(
         uint256 tokenId,
         bytes32 root,
@@ -142,11 +130,7 @@ contract AxiomStrategyVault is Initializable, OwnableUpgradeable, PausableUpgrad
         return (v.strategyRoot, v.dailyLimit, v.dailySpent, v.resetDay, v.validUntilDay);
     }
 
-    /// @notice Execute an action whose hash is in the strategy Merkle tree
-    /// @dev Permissionless: any caller may invoke; relayers or adversaries can front-run public
-    ///      mempool submissions (MEV). Use private relays or ordered execution when ordering matters.
-    /// @dev Liveness: state debits occur before the external call; a reverting target rolls back the
-    ///      entire transaction (no partial debit), but griefing via gas-heavy revert targets is possible.
+    /// @dev Permissionless — use private relays when ordering matters (MEV); state debits precede the external call so a reverting target rolls back atomically, though gas-heavy targets can grief.
     function execute(
         uint256 tokenId,
         address target,
@@ -163,7 +147,6 @@ contract AxiomStrategyVault is Initializable, OwnableUpgradeable, PausableUpgrad
         uint64 today = uint64(block.timestamp / 1 days);
         if (v.validUntilDay != 0 && today > v.validUntilDay) revert StrategyExpired();
 
-        // Auto-reset daily spend on day rollover
         if (today != v.resetDay) {
             v.dailySpent = 0;
             v.resetDay = today;
@@ -176,7 +159,6 @@ contract AxiomStrategyVault is Initializable, OwnableUpgradeable, PausableUpgrad
         if (!MerkleProof.verify(merkleProof, v.strategyRoot, actionHash)) revert InvalidMerkleProof();
         if (usedActions[tokenId][actionHash]) revert ActionAlreadyUsed();
 
-        // CEI: state update first
         usedActions[tokenId][actionHash] = true;
         v.balance = balance - value;
         v.dailySpent += spend;
@@ -195,7 +177,6 @@ contract AxiomStrategyVault is Initializable, OwnableUpgradeable, PausableUpgrad
         return result;
     }
 
-    /// @notice Sweep native OG that was sent without `deposit()` (excess over tracked balances)
     function recoverExcessNative(
         address to
     ) external onlyOwner {

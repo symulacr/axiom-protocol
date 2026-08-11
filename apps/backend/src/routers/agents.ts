@@ -58,7 +58,6 @@ function resolveSealedKey(sealedKeyIn: string | undefined): {
 	return { key, missing: !sealedKeyIn || sealedKeyIn.length < 2 };
 }
 
-/** Resolve sealedKey with production guard; returns key or undefined after sending an error. */
 function resolveSealedKeyGuard(
 	sealedKeyIn: string | undefined,
 	res: Response,
@@ -78,13 +77,7 @@ function resolveSealedKeyGuard(
 	return sealedKeyOrDefault;
 }
 
-// The oracle returns a signature it produced with its TEE key. We MUST verify
-// that signature against the SERVER-CONFIGURED trusted TEE signer
-// (AXIOM_TEE_SIGNER_PK) — NOT the signer the oracle claims for itself. A
-// malicious or swapped oracle could sign with any key and report that same key
-// as `tee.signer`, which would trivially pass a self-comparison. Recovering the
-// signer from the signature and comparing it to the configured address catches
-// oracle swaps / misconfiguration before we relay the proof to the client.
+// Verify against the SERVER-CONFIGURED trusted TEE signer (AXIOM_TEE_SIGNER_PK), never the oracle's self-claimed tee.signer: recovering and comparing the actual signer catches a swapped or forged oracle.
 export function assertTrustedOracleSigner(
 	res: Response,
 	signature: Hex,
@@ -119,10 +112,6 @@ export function registerAgentRoutes(
 	})();
 	const agentCache = new TTLCache<unknown>(agentListTtlMs);
 
-	// Trust anchor for oracle ownership proofs: the TEE signer this backend is
-	// configured to trust. Derived once from env so every proof is checked
-	// against a server-controlled address, never the oracle's self-claimed
-	// `tee.signer` (which a malicious oracle could forge to match its own key).
 	const trustedSigner = config.env
 		? (ethers.computeAddress(config.env.AXIOM_TEE_SIGNER_PK) as Hex)
 		: ("0x0000000000000000000000000000000000000000" as Hex);
@@ -282,9 +271,7 @@ export function registerAgentRoutes(
 					return;
 				}
 				if (!config.addresses?.agentNft) {
-					// Same condition as GET /v1/agents and route-factory requireAddress:
-					// a missing configured address is a deployment-state problem (503
-					// ADDRESS_NOT_CONFIGURED), not an internal error (500).
+					// missing configured address = deployment-state problem (503 ADDRESS_NOT_CONFIGURED), not an internal 500
 					sendError(
 						res,
 						HTTP.SERVICE_UNAVAILABLE,
@@ -557,9 +544,6 @@ export function registerAgentRoutes(
 		},
 		async (parsed: MintEncodeBody, _req, res, { config: cfg }) => {
 			if (!cfg.addresses?.agentNft) {
-				// Same condition as route-factory requireAddress: a missing
-				// configured address is a deployment-state problem (503
-				// ADDRESS_NOT_CONFIGURED), not an internal error (500).
 				sendError(
 					res,
 					HTTP.SERVICE_UNAVAILABLE,

@@ -12,21 +12,11 @@ const log = createLogger("mcp");
 const PKG_VERSION = pkg.version;
 const MCP_CALL_TIMEOUT_MS = 15_000;
 
-/**
- * Read-only MCP facade over the Axiom REST API.
- *
- * Each tool maps 1:1 to an existing GET route and is executed by the backend
- * calling its own HTTP surface with the server API key (an MCP client is a
- * server-privileged consumer of the REST API, mirroring the repo's consumer
- * tags). No write tools (transfer/mint/pay) are exposed — this is a discovery
- * surface only. Mounted at POST /mcp with server-API-key auth only.
- */
-
+// Read-only facade: each tool maps 1:1 to a GET route the backend self-calls with the server API key (MCP client = server-privileged REST consumer); no write tools exposed.
 interface McpToolDef {
 	name: string;
 	title: string;
 	description: string;
-	/** zod raw shape; empty object = zero-argument tool */
 	schema: Record<string, z.ZodTypeAny>;
 	buildUrl: (args: Record<string, unknown>) => string;
 }
@@ -206,11 +196,7 @@ function sendJsonRpcError(
 	});
 }
 
-/**
- * MCP streamable-HTTP router. Mount at /mcp; server API key required
- * (client keys are denied by `requireServerAuth` + the global client
- * allowlist — /mcp is deliberately NOT in CLIENT_ALLOWED_ROUTES).
- */
+/** Mount at /mcp, server API key only: /mcp is deliberately absent from CLIENT_ALLOWED_ROUTES, so client keys are denied. */
 export function createMcpRouter(
 	config: ServerConfig,
 	opts: { baseUrl: () => string },
@@ -229,7 +215,7 @@ export function createMcpRouter(
 			if (sessionId) {
 				transport = transports.get(sessionId);
 				if (!transport) {
-					// Unknown/stale session id → 404 per MCP spec
+					// Unknown or stale session id gets a 404 per the MCP streamable-HTTP spec
 					sendJsonRpcError(res, 404, "Unknown session ID");
 					return;
 				}
@@ -245,9 +231,7 @@ export function createMcpRouter(
 				}
 				const created = new StreamableHTTPServerTransport({
 					sessionIdGenerator: () => crypto.randomUUID(),
-					// Respond with direct JSON to POST requests (clients must
-					// accept both application/json and text/event-stream per
-					// spec; the GET SSE stream remains available unchanged).
+					// enableJsonResponse: POST returns direct JSON while the GET SSE stream stays unchanged; clients must accept both per spec
 					enableJsonResponse: true,
 					onsessioninitialized: (sid: string) => {
 						transports.set(sid, created);

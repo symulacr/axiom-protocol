@@ -23,17 +23,13 @@ if (env.AXIOM_SENTRY_DSN) {
 }
 
 const provider = getSharedProvider(env.AXIOM_CHAIN_ID ?? ARISTOTLE_CHAIN_ID);
-// The backend runtime signer must NOT be the deployer/upgrader key. Use a
-// dedicated key in production; fall back to DEPLOYER_PK only for local dev.
 const signer = new Wallet(
+	// runtime signer must not be the deployer/upgrader key; dedicated key in prod, DEPLOYER_PK only for local dev
 	env.AXIOM_RUNTIME_SIGNER_PK ?? env.DEPLOYER_PK,
 	provider,
 );
 
-// On the live chain (0G mainnet), contracts deployed only on testnet have no
-// bytecode, so on-chain reads revert and crash with a 500. Omit any address
-// whose code is empty on the live chain so the existing guards return a clean
-// 503 ("address not configured") instead of a 500 revert.
+// Testnet-only contracts have no live-chain bytecode, so on-chain reads revert (500); omit empty-code addresses so existing guards return a clean 503 ("address not configured").
 async function resolveLiveAddresses(
   chainProvider: ethers.JsonRpcProvider,
   backendEnv: typeof env,
@@ -55,7 +51,7 @@ async function resolveLiveAddresses(
           return true;
         }
       } catch {
-        // Unverifiable on the live chain → omit to degrade gracefully.
+				/* unverifiable on live chain — omit to degrade gracefully */
       }
       return false;
     }),
@@ -74,7 +70,6 @@ async function main(): Promise<void> {
     oracleBaseUrl: env.AXIOM_ORACLE_URL,
     addresses: addresses as ServerConfig["addresses"],
   });
-  // Start background indexer (polls chain events → EventStore)
   const indexer = new IndexerService({ provider, env });
   indexer.start();
 

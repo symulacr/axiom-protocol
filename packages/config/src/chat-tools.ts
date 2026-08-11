@@ -59,7 +59,6 @@ function tool<N extends string>(
 
 type ToolParam = { type: string; description?: string };
 
-/** `{ type: "object", properties, required? }` — the repeated tool-spec schema shape. */
 function params(
 	properties: Record<string, ToolParam>,
 	required?: readonly string[],
@@ -737,10 +736,10 @@ export const CHAT_BENCH_READ_TOOLS = toolNamesByClass("read");
 export const CHAT_BENCH_ENCODE_TOOLS = toolNamesByClass("encode");
 export const CHAT_BENCH_ALL_TOOL_NAMES = CHAT_TOOL_CATALOG.map((t) => t.name);
 
-/** User-facing assistant name (UI + system prompt). Not the compute model id. */
+/** UI/system-prompt display name, distinct from the compute model id below. */
 export const AXIOM_ASSISTANT_NAME = "Axiom";
 
-/** Underlying 0G Compute model id (provider router). */
+/** 0G Compute model id used by the provider router, not the assistant name. */
 export const DEFAULT_CHAT_MODEL = "deepseek-v4-flash";
 
 export function resolveChatModel(override?: string): string {

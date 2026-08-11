@@ -16,11 +16,9 @@ import {
 
 import {Utils} from "@0g-agent-nft/Utils.sol";
 
-/// @title ERC7857Upgradeable
-/// @notice Base ERC-7857 implementation: token transfer with re-encrypted metadata
-/// @dev Adapted from the 0G Agentic ID reference (MIT)
+/// @title ERC7857Upgradeable — base ERC-7857: token transfer with re-encrypted metadata (0G reference, MIT)
 abstract contract ERC7857Upgradeable is IERC7857, ERC721Upgradeable {
-    /// @notice EIP-7857 transfer (with proof verification)
+    /// @notice EIP-7857 transfer with re-encrypted metadata after proof verification succeeds
     event Transferred(uint256 indexed _tokenId, address indexed _from, address indexed _to);
 
     /// @custom:storage-location erc7857:0g.storage.ERC7857
@@ -30,7 +28,6 @@ abstract contract ERC7857Upgradeable is IERC7857, ERC721Upgradeable {
         uint256[50] __gap;
     }
 
-    // ERC-7201 storage location: keccak256(abi.encode(keccak256("0g.storage.ERC7857") - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant STORAGE_LOCATION = 0xa2b40c657abdbf180a6038c081d3a0af6206dcea36f4558f991bf8c787ef3c00;
 
     function _getERC7857Storage() private pure returns (ERC7857Storage storage $) {
@@ -240,7 +237,7 @@ abstract contract ERC7857Upgradeable is IERC7857, ERC721Upgradeable {
         return _intelligentDatasOf(tokenId);
     }
 
-    /// @notice Alias for intelligentDatasOf (EIP-7857 uses singular form)
+    /// @notice Alias for intelligentDatasOf, since EIP-7857 specifies the singular function form
     function intelligentDataOf(
         uint256 tokenId
     ) external view virtual returns (IntelligentData[] memory data) {

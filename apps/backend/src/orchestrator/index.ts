@@ -20,12 +20,7 @@ import { EVENT_NAMES, getRuntimeConfig } from "@axiom/config";
 import { VAULT_ABI, VAULT_ABI_LEGACY } from "@axiom/config/abis";
 import { createLogger } from "../utils/logger.js";
 import { extractErrorMessage } from "../utils/response.js";
-/**
- * Zod schema for model recommendations. `.catch()` on each field mirrors the
- * graceful-degradation behavior previously implemented by hand in
- * `parseRecommendation`: invalid/missing values fall back to safe defaults
- * instead of rejecting the whole payload.
- */
+// .catch() per field mirrors parseRecommendation's hand-rolled graceful degradation: invalid/missing values fall back to safe defaults, never rejecting the whole payload.
 const RecommendationSchema = z.object({
 	action: z.enum(["act", "hold"]).catch("hold"),
 	amount: z.number().min(0).max(1e18).optional().catch(undefined),
@@ -123,7 +118,7 @@ interface VaultExecutionPlan {
 	target: `0x${string}`;
 	value?: string | number | bigint;
 	data?: `0x${string}`;
-	/** Merkle proof of keccak256(abi.encode(target, value, keccak256(data))) */
+	/** Merkle proof of the leaf keccak256(abi.encode(target, value, keccak256(data))) — one leaf per execution plan */
 	merkleProof: `0x${string}`[];
 }
 
@@ -134,7 +129,6 @@ export interface StrategySpec {
 	computeModel: string;
 	systemPrompt: string;
 	modelDataRoot: `0x${string}`;
-	/** When set and action is act, vault.execute is invoked with this plan */
 	executionPlan?: VaultExecutionPlan;
 }
 
@@ -174,9 +168,8 @@ export class StrategyRunner {
 		});
 		this.addresses = config.addresses;
 		this.signer = config.signer;
-		const network = pickOGNetwork(chainId);
+		const network = pickOGNetwork(chainId); // network const exists only for the unsupported-chain guard's type narrowing
 		if (!network) throw new Error(`Unsupported chainId ${chainId}`);
-		// network held for type narrowing (used implicitly by guard)
 	}
 
 	private async getClient(model?: string): Promise<OpenAI> {
@@ -207,13 +200,7 @@ export class StrategyRunner {
 				)
 			: this.runInference(strategy, signal, onchainTask, onChunk);
 
-		// Storage read is intentionally stubbed: a real 0G storage read would
-		// return the Merkle root + byte size of the uploaded encrypted payload,
-		// but no payload upload path exists for strategy data yet
-		// (docs/current-state.md — "Merkle proofs required"). Keep the configured
-		// modelDataRoot and size 0 so Tick events honestly report that storage
-		// was NOT measured; settlement skip reasons already state this
-		// (settlementSkipReason, tested in orchestrator/settle-parse.test.ts).
+		// Storage read deliberately stubbed (no 0G payload-upload path exists — docs/current-state.md "Merkle proofs required"); report configured modelDataRoot with size 0 so Tick events honestly say storage was NOT measured.
 		const [inferenceResult, onchainResult, storageResult] =
 			await Promise.allSettled([
 				inferenceTask,
@@ -271,11 +258,7 @@ export class StrategyRunner {
 		return result;
 	}
 
-	/**
-	 * On-chain settlement: executes vault action when strategy.executionPlan is
-	 * provided (target, value, data, merkleProof). Without a plan, returns an
-	 * explicit skip — inference alone never spends vault funds.
-	 */
+	/** Settles only when executionPlan is present (target/value/data/merkleProof); without one, explicit skip — inference alone never spends vault funds. */
 	private async settleOnChain(
 		strategy: StrategySpec,
 		action: string,
@@ -375,7 +358,6 @@ export class StrategyRunner {
 		return this.vaultWriteTc;
 	}
 
-	/** Shared OpenAI-compat request params for the streaming and non-streaming paths. */
 	private chatParams(
 		model: string,
 		messages: Array<{ role: "system" | "user"; content: string }>,
@@ -384,8 +366,8 @@ export class StrategyRunner {
 			model,
 			messages,
 			response_format: { type: "json_object" as const },
-			// 0G router extension: suppress reasoning tokens for deterministic JSON.
 			...({
+				// 0G router extension: suppress reasoning tokens so JSON output stays deterministic for parsing
 				chat_template_kwargs: { enable_thinking: false },
 			} satisfies OgChatParams),
 		};

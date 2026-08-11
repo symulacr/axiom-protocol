@@ -36,7 +36,7 @@ export function pickOGNetwork(chainId: number): OGNetwork | null {
   return OG_NETWORKS[chainId] ?? null;
 }
 
-// Browser-safe guard: `process` is undefined in bundles; typeof avoids ReferenceError.
+// Browser-safe guard: `process` is undefined in browser bundles, so typeof avoids a ReferenceError.
 function envVar(...keys: string[]): string | undefined {
   if (typeof process === "undefined" || !process.env) return undefined;
   for (const key of keys) {
@@ -67,8 +67,8 @@ export function resolveBlockExplorerUrl(chainId?: number): string {
 
 import { zeroGMainnet as _viemZeroGMainnet } from "viem/chains";
 
-/** 0G Mainnet chain (viem built-in) with dynamic RPC override for env-based endpoint selection. */
 export const zeroGMainnet = {
+	// exports viem built-in 0G Mainnet chain, with env-based dynamic RPC override
   ..._viemZeroGMainnet,
   rpcUrls: { default: { http: [resolveRpcUrl()] } },
   contracts: {

@@ -9,7 +9,11 @@ import {
 	type EventName,
 	type IndexerContractAddresses,
 } from "./events.js";
-import { TOPIC_TABLE, decodeAxiomLog, type WatchedEvent } from "./events/parser.js";
+import {
+	TOPIC_TABLE,
+	decodeAxiomLog,
+	type WatchedEvent,
+} from "./events/parser.js";
 
 function getCheckpointFile(chainId: bigint): string {
 	const dataDir = getEnv("AXIOM_DATA_DIR") || "data";
@@ -41,8 +45,7 @@ export async function saveCheckpoint(
 	const tmp = checkpointFile + ".tmp";
 	try {
 		await mkdir(dirname(checkpointFile), { recursive: true });
-		// Bun.write uses the fastest syscall; rename/mkdir stay node:fs/promises
-		// (Bun docs route directory ops to node:fs).
+		// Bun.write for speed; tmp+rename keeps the checkpoint write atomic; dir ops stay node:fs/promises (Bun routes those there)
 		await Bun.write(tmp, JSON.stringify({ nextBlock, updatedAt: Date.now() }));
 		await rename(tmp, checkpointFile);
 	} catch (err) {
@@ -63,8 +66,11 @@ export async function pollOnce(
   for (const { name, address } of watchList) {
     const key = address.toLowerCase();
     const list = byAddress.get(key);
-    if (list) { list.push(TOPIC_TABLE[name]); }
-    else { byAddress.set(key, [TOPIC_TABLE[name]]); }
+		if (list) {
+			list.push(TOPIC_TABLE[name]);
+		} else {
+			byAddress.set(key, [TOPIC_TABLE[name]]);
+		}
   }
   for (const [addr, topics] of byAddress) {
     const filter = { address: addr, topics: [topics], fromBlock, toBlock };
@@ -94,7 +100,6 @@ const REORG_SAFE_DEPTH = runtimeConfig.indexerReorgSafeDepth;
 const wait = (ms: number): Promise<void> =>
 	new Promise<void>((resolve) => setTimeout(resolve, ms));
 
-/** Default watch list as [event name, address key] pairs (same order as before). */
 const DEFAULT_WATCH: ReadonlyArray<
 	readonly [name: EventName, addrKey: keyof IndexerContractAddresses]
 > = [
@@ -152,7 +157,6 @@ type WatcherOptions = {
 	sink: EventSink;
 	startBlock?: bigint;
 	logger?: (line: Record<string, unknown>) => void;
-	/** Called when a reorg is detected and the cursor is rolled back. */
 	onReorg?: (rolledBackBlock: bigint) => void;
 };
 
@@ -202,7 +206,7 @@ export class Watcher {
 			const head = await this.provider.getBlockNumber();
 			const latest = BigInt(head);
 
-			// Reorg detection: verify last processed block hash is still canonical
+			// Reorg-safe cursor: verify the last processed block hash is still canonical; on mismatch roll back past REORG_SAFE_DEPTH×2 before the diverged block
 			if (this.lastBlockHash && this.nextBlock > 1n) {
 				const checkBlock = this.nextBlock - 1n;
 				try {
@@ -215,7 +219,6 @@ export class Watcher {
 							expectedHash: this.lastBlockHash,
 							actualHash: block.hash,
 						});
-						// Roll back to reorg-safe depth before the diverged block
 						const rollbackTarget =
 							checkBlock > REORG_SAFE_DEPTH * 2n
 								? checkBlock - REORG_SAFE_DEPTH * 2n
@@ -225,7 +228,7 @@ export class Watcher {
 						this.onReorg?.(checkBlock);
 					}
 				} catch {
-					// Block might not exist yet — skip hash check
+					/* block may not exist yet — skip hash check */
 				}
 			}
 
@@ -285,11 +288,9 @@ export class Watcher {
 							`sink failed for ${sinkFailures} log(s) in window ${fromBlock}-${toBlock}`,
 						);
 			}
-			// Only advance past reorg-safe head so a shallow reorg can re-scan.
 			const safeBlock =
 				toBlock > REORG_SAFE_DEPTH ? toBlock - REORG_SAFE_DEPTH : 0n;
 			this.nextBlock = safeBlock + 1n;
-			// Save the hash of the last processed block for reorg detection
 			try {
 				const lastBlock = await this.provider.getBlock(Number(toBlock));
 				this.lastBlockHash = lastBlock?.hash ?? null;
@@ -323,9 +324,9 @@ export class Watcher {
 					msg: "max consecutive failures reached — cooling down before retry",
 					cooldownMs: cooldown,
 				});
-				this.consecutiveFailures = 5; // partial reset so backoff is shorter next time
+				this.consecutiveFailures = 5; // partial reset so the next backoff retries sooner than a full reset would
 				await wait(cooldown);
-				return; // continue poll loop
+				return;
 			}
 			const backoff = Math.min(
 				this.intervalMs * 2 ** this.consecutiveFailures,

@@ -2,9 +2,7 @@ import { type CSSProperties, type ReactElement } from "react";
 import { Link } from "react-router-dom";
 import { BRAND } from "../../brand/assets.js";
 
-/**
- * Landing — short, use-case first, same story as Home / Chat / Mint.
- */
+/** Landing — short, use-case first, telling the same story as Home / Chat / Mint. */
 function LandingPage(): ReactElement {
   return (
     <article className="landing-root">
@@ -88,7 +86,9 @@ function Uses(): ReactElement {
   return (
     <section className="landing-block">
       <h2 className="landing-h2">What Axiom is for</h2>
-      <p className="landing-sub">Same flows as Home and Chat. No extra product.</p>
+			<p className="landing-sub">
+				Same flows as Home and Chat. No extra product.
+			</p>
       <ul className="landing-list">
         {items.map((item, i) => (
           <li
@@ -126,7 +126,9 @@ function Cta(): ReactElement {
   return (
     <section className="landing-block landing-cta-end">
       <h2 className="landing-h2">Start with a name</h2>
-      <p className="landing-sub">Mint → Home list → detail for vault and ticks.</p>
+			<p className="landing-sub">
+				Mint → Home list → detail for vault and ticks.
+			</p>
       <div className="landing-cta-row landing-cta-row--center">
         <Link to="/app?mint=1" className="btn btn-primary landing-btn">
           Mint

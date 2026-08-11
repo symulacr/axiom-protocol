@@ -3,14 +3,9 @@ export interface PerformanceMetrics {
 	buyCount: number;
 	sellCount: number;
 	holdCount: number;
-	/** Fraction of ticks that were buys (buyCount / totalTicks) */
 	buyRate: number;
-	/**
-	 * Fraction of ticks with a non-hold action (buyCount + sellCount) / totalTicks.
-	 * NOT an alias for buyRate: the backend single-agent and batch endpoints
-	 * both compute this formula (see apps/backend/src/routers/performance.ts).
-	 * The frontend displays buyRate; winRate is the trade-action rate.
-	 */
+	// (buyCount + sellCount) / totalTicks — trade-action rate, NOT an alias for buyRate;
+	// backend single-agent and batch endpoints compute this identically (see routers/performance.ts).
 	winRate: number;
 }
 

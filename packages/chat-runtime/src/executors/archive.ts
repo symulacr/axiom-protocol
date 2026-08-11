@@ -27,7 +27,6 @@ function clampLimit(n: unknown, fallback: number): number {
 	return Math.min(Math.max(Math.trunc(v), 1), 200);
 }
 
-/** Coerce args.url; returns the url string or a "url required" error result. */
 function requireUrl(args: Record<string, unknown>): string | ToolResult {
 	const url = String(args.url ?? "");
 	if (!url) return toolFail("url required");

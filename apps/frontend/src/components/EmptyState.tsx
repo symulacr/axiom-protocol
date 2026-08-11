@@ -6,7 +6,6 @@ interface EmptyStateProps {
   children: ReactNode;
   title?: string;
   action?: ReactNode;
-  /** When true, shows agent-lattice empty motif. */
   illustrated?: boolean;
   imageSrc?: string;
   imageAlt?: string;

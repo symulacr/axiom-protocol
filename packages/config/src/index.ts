@@ -1,7 +1,4 @@
-// NOTE: `loadEnv`/`getEnv`/`getEnvWithAlias` intentionally live in
-// `@axiom/config/env` (a Node-only subpath) and are NOT re-exported here, so
-// browser consumers (e.g. the frontend Vite build) don't pull `node:fs`/
-// `node:path` into the bundle. Server-side code imports them from the subpath.
+// env helpers stay in the Node-only @axiom/config/env subpath (not re-exported here) so browser bundles skip node:fs/node:path
 export {
   OG_NETWORKS,
   pickOGNetwork,
@@ -49,6 +46,15 @@ export {
   type ChatToolName,
   type ChatToolSpec,
 } from "./chat-tools.js";
-export { HTTP, EVENT_NAMES, TRANSFER_TOPIC, ZERO_DATA_ROOT, bigintReplacer, DEFAULT_EVENT_LIMIT, RUNTIME_DEFAULTS, getRuntimeConfig } from "./constants.js";
+export {
+	HTTP,
+	EVENT_NAMES,
+	TRANSFER_TOPIC,
+	ZERO_DATA_ROOT,
+	bigintReplacer,
+	DEFAULT_EVENT_LIMIT,
+	RUNTIME_DEFAULTS,
+	getRuntimeConfig,
+} from "./constants.js";
 export * from "./skills/schemas.js";
 export type { EventName, RuntimeConfig } from "./constants.js";

@@ -7,14 +7,7 @@ export function bigintReplacer(_key: string, value: unknown): unknown {
 	return typeof value === "bigint" ? value.toString() : value;
 }
 
-/**
- * Single source of truth for runtime tuning values (polling cadence, WS
- * limits, timeouts). Consumers read them via `getRuntimeConfig()` so env-var
- * overrides (e.g. `INDEXER_POLL_WINDOW_BLOCKS=100`) apply at startup.
- *
- * Browser-safe: no `node:` imports; `getRuntimeConfig()` falls back to these
- * defaults when `process.env` is unavailable (e.g. the Vite frontend).
- */
+// Single source of runtime tuning values; getRuntimeConfig() layers env overrides (INDEXER_POLL_WINDOW_BLOCKS=100) at startup; browser-safe when process.env is unavailable
 export const RUNTIME_DEFAULTS = {
 	indexerPollWindowBlocks: 500,
 	indexerPollIntervalMs: 12_000,
@@ -58,15 +51,7 @@ function defaultRuntimeEnv(): EnvLike {
 	return typeof process !== "undefined" ? (process.env as EnvLike) : {};
 }
 
-/**
- * Resolve runtime tuning values, layering env-var overrides (e.g.
- * `INDEXER_POLL_WINDOW_BLOCKS=100`) on top of `RUNTIME_DEFAULTS`.
- *
- * The resolved config is memoized per env object (process.env keeps a stable
- * identity in Node), so repeated calls — e.g. per orchestrator tick — reuse
- * one object instead of rebuilding all 14 entries. Env overrides are read at
- * startup, matching the documented "applies at startup" contract.
- */
+// Memoized per env object (process.env identity is stable in Node) so per-tick calls reuse one config; overrides are read once at startup
 const runtimeConfigCache = new WeakMap<object, RuntimeConfig>();
 
 export function getRuntimeConfig(

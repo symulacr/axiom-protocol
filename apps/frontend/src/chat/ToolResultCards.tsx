@@ -3,8 +3,6 @@ import { COLORS } from "../components/ui.js";
 import { formatEther } from "viem";
 import { formatToolResult } from "@axiom/chat-runtime";
 
-
-
 type EncodePreview = {
   encodeOnly?: boolean;
   to?: string;
@@ -65,7 +63,7 @@ export function EncodePreviewCard({
       });
       setSignedHash(hash);
     } catch {
-      /* signing rejected or failed */
+			void 0;
     }
   };
 
@@ -89,7 +87,13 @@ export function EncodePreviewCard({
         }}
       >
         <strong style={{ color: COLORS.bronzeLight }}>Signed</strong>
-        <div style={{ color: COLORS.textMuted, marginTop: 4, wordBreak: "break-all" }}>
+				<div
+					style={{
+						color: COLORS.textMuted,
+						marginTop: 4,
+						wordBreak: "break-all",
+					}}
+				>
           {preview.txHash ?? signedHash}
         </div>
       </div>
@@ -108,7 +112,13 @@ export function EncodePreviewCard({
         color: COLORS.textMuted,
       }}
     >
-      <div style={{ fontWeight: "var(--fw-semibold)", color: COLORS.text, marginBottom: 6 }}>
+			<div
+				style={{
+					fontWeight: "var(--fw-semibold)",
+					color: COLORS.text,
+					marginBottom: 6,
+				}}
+			>
         Encode preview — confirm in wallet
       </div>
       {preview.to ? <div>to: {preview.to}</div> : null}
@@ -123,14 +133,17 @@ export function EncodePreviewCard({
         </div>
       ) : null}
       {onSign && preview.to && !signedHash ? (
-        <button className="btn btn-primary" style={{ marginTop: 8 }} onClick={handleSign}>
+				<button
+					className="btn btn-primary"
+					style={{ marginTop: 8 }}
+					onClick={handleSign}
+				>
           Sign in wallet
         </button>
       ) : null}
     </div>
   );
 }
-
 
 const preBlockStyle: CSSProperties = {
   fontSize: "var(--text-xs)",
@@ -157,11 +170,7 @@ function LinkLine({
 }): ReactElement {
   return (
     <div className="archive-link-line">
-      <a
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-      >
+			<a href={href} target="_blank" rel="noopener noreferrer">
         {label}
       </a>
     </div>
@@ -192,21 +201,23 @@ export function ArchiveResultCard({
           : "";
     return (
       <div className="archive-result">
-        <strong className={archived ? "archive-result strong--success" : "archive-result strong--muted"}>
+				<strong
+					className={
+						archived
+							? "archive-result strong--success"
+							: "archive-result strong--muted"
+					}
+				>
           {archived ? "Was archived" : "Not archived"}
         </strong>
         {obj.archivedAt ? (
-          <div className="archive-muted-top">
-            {String(obj.archivedAt)}
-          </div>
+					<div className="archive-muted-top">{String(obj.archivedAt)}</div>
         ) : null}
         {snapshotUrl ? (
           <LinkLine href={snapshotUrl} label={snapshotUrl} />
         ) : null}
         {obj.interpretation ? (
-          <div
-            className="archive-muted-top-xs"
-          >
+					<div className="archive-muted-top-xs">
             {String(obj.interpretation)}
           </div>
         ) : null}

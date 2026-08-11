@@ -10,7 +10,7 @@ import { bigintReplacer, getRuntimeConfig } from "@axiom/config";
 const ORACLE_TIMEOUT_MS = getRuntimeConfig().oracleTimeoutMs;
 
 interface OracleClientConfig {
-	baseUrl: string; // e.g., "http://127.0.0.1:8787"
+	baseUrl: string;
 	timeoutMs?: number;
 	apiKey?: string;
 }
@@ -21,7 +21,7 @@ interface TransferValidityInput {
 	targetPubkey64: `0x${string}`;
 	accessProofNonce: string | number;
 	ownershipProofNonce?: string | number;
-	/** ECIES-sealed DEK to oracle pubkey (required for re-key) */
+	/** ECIES-sealed DEK to the oracle pubkey, required for the re-keying path */
 	sealedDataEncryptionKey?: string;
 	to: `0x${string}`;
 	nft: `0x${string}`;

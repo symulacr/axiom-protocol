@@ -198,8 +198,7 @@ export function AgentDetail(): ReactElement {
 		);
 	}
 
-	// Confirmed nonexistent: metadata loaded, ownerOf reverted (the canonical
-	// on-chain "this token does not exist" signal), no query-level error.
+	// tokenNotFound: metadata loaded, ownerOf reverted (canonical "does not exist" signal), no query error
 	const tokenNotFound =
 		hooksEnabled &&
 		isConnected &&
@@ -224,9 +223,7 @@ export function AgentDetail(): ReactElement {
 		);
 	}
 
-	// Stable renderer for the memoized EventTimeline/EventRow. Its identity must
-	// not change per render or every row re-renders (and the per-row memo is
-	// defeated) on each live WS event.
+	// Stable identity for the memoized EventTimeline — a per-render callback defeats the per-row memo on each live WS event
 	const renderAgentEvent = useCallback((ev: AxiomEvent): ReactNode => {
 		if (ev.eventName === "Tick") {
 			const p = ev.payload as Record<string, unknown>;
@@ -332,7 +329,6 @@ export function AgentDetail(): ReactElement {
 			)}
 
 			<div key={activeSection} className="fade-enter">
-				{/* Overview tab: metadata + deposit + transfer */}
 				<div
 					role="tabpanel"
 					id="panel-overview"
@@ -502,7 +498,6 @@ export function AgentDetail(): ReactElement {
 					)}
 				</div>
 
-				{/* Execute tab */}
 				<div
 					role="tabpanel"
 					id="panel-execute"
@@ -518,7 +513,6 @@ export function AgentDetail(): ReactElement {
 					)}
 				</div>
 
-				{/* Payments tab */}
 				<div
 					role="tabpanel"
 					id="panel-payments"
@@ -534,7 +528,6 @@ export function AgentDetail(): ReactElement {
 					)}
 				</div>
 
-				{/* Activity tab */}
 				<div
 					role="tabpanel"
 					id="panel-activity"
@@ -564,7 +557,6 @@ export function AgentDetail(): ReactElement {
 					)}
 				</div>
 
-				{/* Performance tab */}
 				<div
 					role="tabpanel"
 					id="panel-performance"

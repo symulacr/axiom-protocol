@@ -16,10 +16,7 @@ import { formatTokenAmount, truncateAddress } from "../utils/format.js";
 
 const AgentsBrowser = lazy(() => import("./AgentsBrowser.js"));
 
-/**
- * Home = portfolio KPIs + full agent list (search/actions).
- * Replaces separate Dashboard vs Agents nav destinations.
- */
+/** Home = portfolio KPIs + full agent list; merges the old Dashboard and Agents destinations. */
 function HomePage(): ReactElement {
 	return (
 		<div>

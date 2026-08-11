@@ -37,19 +37,23 @@ async function resolveModelDataRoot(
   if (cached) return cached;
   try {
     const provider = getSharedProvider(chainId);
-    const nftTc = new TypedContract<{ intelligentDatasOf(tokenId: bigint): Promise<Array<{ dataHash: string }>> }>(
-      agentNft,
-      AGENT_NFT_ABI,
-      provider,
-    );
+		const nftTc = new TypedContract<{
+			intelligentDatasOf(tokenId: bigint): Promise<Array<{ dataHash: string }>>;
+		}>(agentNft, AGENT_NFT_ABI, provider);
     const datas = await nftTc.contract.intelligentDatasOf(BigInt(agentTokenId));
     const hash = datas?.[0]?.dataHash;
-    if (typeof hash === "string" && hash.startsWith("0x") && hash.length === 66) {
+		if (
+			typeof hash === "string" &&
+			hash.startsWith("0x") &&
+			hash.length === 66
+		) {
       const root = hash as `0x${string}`;
       modelDataRootCache.set(cacheKey, root);
       return root;
     }
-  } catch { /* ignore */ }
+	} catch {
+		/* ignore */
+	}
   return ZERO_DATA_ROOT;
 }
 
@@ -93,13 +97,16 @@ export function registerOrchestratorRoutes(
 ): void {
   const events = getEventStore();
 
-  createRoute(app, {
+	createRoute(
+		app,
+		{
     path: "/v1/orchestrator/tick",
     method: "post",
     schema: tickSchema,
     consumer: "useOrchestratorTick",
     description: "AI orchestrator tick (strategy recommendation)",
-  }, async (parsed: z.infer<typeof tickSchema>, req: Request, res: Response) => {
+		},
+		async (parsed: z.infer<typeof tickSchema>, req: Request, res: Response) => {
     const {
       vault,
       agentNft,
@@ -118,8 +125,7 @@ export function registerOrchestratorRoutes(
       agentTokenId,
       chainId,
     );
-    // Client keys may request ticks, but must not supply Merkle execute plans
-    // (server-signed vault settlement).
+			// Client keys may tick but must not supply Merkle execute plans (server-signed vault settlement).
     const principal = (req as { authPrincipal?: string }).authPrincipal;
     if (executionPlan && principal === "client") {
       sendError(
@@ -203,5 +209,7 @@ export function registerOrchestratorRoutes(
       recommendation: orchestratorResult.recommendation,
     });
     res.status(HTTP.OK).json(orchestratorResult);
-  }, config);
+		},
+		config,
+	);
 }

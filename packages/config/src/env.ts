@@ -1,14 +1,11 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-// Default fallback kept for backwards compat when no repo-root .env is found.
 const LEGACY_DEFAULT = join(process.cwd(), "../../.env");
 const MAX_UPSTREAM_LEVELS = 4;
 
-// Resolve the repo-root .env deterministically: walk up from this module's own
-// location (dist/ or src/ under packages/config) until a .env is found. The old
-// default join(process.cwd(), "../../.env") resolves to ~/.env when cwd is the
-// repo root, silently missing the single-source root .env.
+// Walk up from this module's dir (dist/ or src/ under packages/config) to the repo-root .env; the old
+// cwd-based ../../.env default resolves to ~/.env when cwd is the repo root, silently missing it.
 function resolveRepoRootEnv(): string {
 	let dir = import.meta.dirname ?? process.cwd();
 	for (let level = 0; level < MAX_UPSTREAM_LEVELS; level++) {
@@ -55,8 +52,7 @@ export function getEnvWithAlias(
 		const val = process.env[key];
 		if (val !== undefined && val !== "") {
 			if (key !== canonical) {
-				// Sanctioned console.warn: one-time deprecation notice when an
-				// alias env var is used (kept for backward compat).
+				// sanctioned deprecation notice: alias env vars kept for backward compat
 				console.warn(
 					`[config] DEPRECATED: env var "${key}" is deprecated, use "${canonical}"`,
 				);

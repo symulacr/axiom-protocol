@@ -202,7 +202,6 @@ async function closestSnapshot(
 	}
 }
 
-// ── Express router (thin registration; logic above) ──
 import { Router } from "express";
 import { z } from "zod";
 import type { ServerConfig } from "../server.js";

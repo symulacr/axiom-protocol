@@ -91,10 +91,7 @@ export function useAgentMetadata(
 		)?.result ?? undefined;
 	const firstData = intelligentDatas?.[0];
 
-	// ownerOf reverting is the canonical on-chain signal that the token does
-	// not exist. Treat that as "confirmed not found" (data === null after
-	// load) instead of an empty shell page. Network-level failures do not
-	// carry the revert message, so they keep the previous behavior.
+	// ownerOf revert is the canonical on-chain "token does not exist" signal — treat as confirmed null; network failures don't carry the revert message
 	const ownerOfError = (query.data?.[2] as { error?: Error } | undefined)
 		?.error;
 	const ownerOfReverted =

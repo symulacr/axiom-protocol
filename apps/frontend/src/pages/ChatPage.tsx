@@ -61,7 +61,13 @@ import {
 } from "@axiom/config/chat-tools";
 import { CHAT_MODEL } from "../config/env.js";
 import { aristotle } from "../config/wagmi.js";
-import { COLORS, Button, Textarea, ErrorRef, Spinner } from "../components/ui.js";
+import {
+	COLORS,
+	Button,
+	Textarea,
+	ErrorRef,
+	Spinner,
+} from "../components/ui.js";
 
 type Message = {
   id: string;
@@ -109,7 +115,7 @@ type SSEChunk = {
     };
     finish_reason?: string | null;
   }>;
-  /** Backend metadata frame ({type:"trace",trace}) and mid-stream error frames. */
+	/** Backend metadata frame ({type:"trace",trace}); mid-stream error frames may also arrive with code (STREAM_ERROR). */
   type?: string;
   trace?: Record<string, unknown>;
   error?: string;
@@ -163,7 +169,7 @@ function saveThreads(threads: ChatThread[]): void {
       JSON.stringify(threads.slice(0, 40)),
     );
   } catch {
-    /* ignore */
+		void 0;
   }
 }
 
@@ -192,7 +198,7 @@ function consumeSseLines(buffer: string): {
     try {
       chunks.push(JSON.parse(payload) as SSEChunk);
     } catch {
-      /* malformed SSE chunk — skip */
+			void 0;
     }
   }
   return { chunks, rest, done };
@@ -366,8 +372,7 @@ function ChatPageInner(): ReactElement {
   const streamThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [queue, setQueue] = useState<string[]>([]);
   const queueRef = useRef<string[]>([]);
-  // Live tool-execution progress: callId -> run state (drives ToolCallCard UI)
-  const [toolRuns, setToolRuns] = useState<Record<string, ToolRun>>({});
+	const [toolRuns, setToolRuns] = useState<Record<string, ToolRun>>({}); // callId -> ToolRun map powering the ToolCallCard live progress UI
   const toolRunsRef = useRef<Record<string, ToolRun>>({});
   const markToolRun = (id: string, patch: Partial<ToolRun>): void => {
     const cur = toolRunsRef.current[id];
@@ -384,12 +389,7 @@ function ChatPageInner(): ReactElement {
   const [threadSearch, setThreadSearch] = useState("");
   const [computeHint, setComputeHint] = useState<string | null>(null);
 
-  // Live refs keep turn-local values (tokenId, address, chainId, and the
-  // wallet accessors) current WITHIN a single agent turn. React state
-  // updates (e.g. setLastTokenId) only propagate on the next render, but the
-  // in-flight runAgent closure would otherwise keep a stale snapshot, so a
-  // tool later in the same turn (deposit/withdraw/unbroker_*) would not see
-  // a tokenId produced by an earlier tool (mint) in that turn.
+	// Live refs: state updates land only on the next render, so same-turn tools must see earlier-set values (mint tokenId -> deposit); synced each render here, within-turn writes in runAgent
   const lastTokenIdRef = useRef<string | undefined>(session.lastTokenId);
   const liveAddressRef = useRef<string | undefined>(address);
   const liveChainIdRef = useRef<number>(chainId);
@@ -451,11 +451,6 @@ function ChatPageInner(): ReactElement {
   const handlers = useToolHandlers(toolCtx);
   const chainSupported = SUPPORTED_CHAIN_IDS.has(chainId);
 
-  // Keep the live refs in sync with the latest props/state. This covers
-  // cross-turn refreshes (e.g. once React re-renders after setLastTokenId)
-  // and keeps the wallet address/chainId live. Within-turn propagation is
-  // handled by updating lastTokenIdRef directly as each tool result is
-  // recorded (see runAgent).
   useEffect(() => {
     lastTokenIdRef.current = session.lastTokenId;
     liveAddressRef.current = address;
@@ -479,23 +474,21 @@ function ChatPageInner(): ReactElement {
         sessionStorage.removeItem(CHAT_MESSAGES_KEY);
       } else {
         sessionStorage.setItem(CHAT_MESSAGES_KEY, JSON.stringify(messages));
-        // Also persist to localStorage so a refresh restores the active thread
         localStorage.setItem(
           `axiom:thread:${threadId}`,
           JSON.stringify(messages),
         );
       }
     } catch {
-      /* sessionStorage may be unavailable */
+			void 0;
     }
   }, [messages, threadId]);
 
   useEffect(() => {
     const el = listRef.current;
     if (!el) return;
-    // Only auto-scroll while the user is at/near the bottom; reading up is
-    // never hijacked mid-stream.
     if (stickToBottomRef.current) {
+			// Auto-scroll only while stick-to-bottom holds true; never hijack reading-up mid-stream
       el.scrollTop = el.scrollHeight;
     }
   }, [messages, streamText]);
@@ -510,10 +503,7 @@ function ChatPageInner(): ReactElement {
 
   useEffect(() => {
     let cancelled = false;
-    // Use apiFetch (not a bare fetch) so the API key is attached; /v1/config
-    // is auth-gated, so an unauthenticated call 401s and the context
-    // window is never set.
-    apiFetch<{ contextWindow?: number }>("/v1/config")
+		apiFetch<{ contextWindow?: number }>("/v1/config") // attaches API key; /v1/config is auth-gated so no key -> 401, context stays unset
       .then((d) => {
         if (!cancelled) setContextWindow(d?.contextWindow);
       })
@@ -568,12 +558,8 @@ function ChatPageInner(): ReactElement {
         while (loopCount < MAX_TOOL_LOOPS) {
           loopCount++;
 
-          // Rebuild the tool context and session from LIVE refs on every
-          // iteration so values produced earlier in this same turn (e.g. a
-          // tokenId from a mint) are visible to later tools
-          // (deposit/withdraw/unbroker_*) without waiting for a React
-          // re-render.
           const liveToolCtx: ToolContext = {
+						// rebuilt from live refs each loop so same-turn tool values are visible without a React re-render
             address: liveAddressRef.current?.toLowerCase(),
             chainId: liveChainIdRef.current,
             lastTokenId: lastTokenIdRef.current,
@@ -596,9 +582,7 @@ function ChatPageInner(): ReactElement {
           };
           const systemContent = buildSystemPrompt(liveSession);
 
-          // 429 Retry-After backoff: up to 2 retries, capped delay.
-          // apiFetchResponse throws HttpError (with retryAfter) on non-ok.
-          let response: Response;
+					let response: Response; // 429 Retry-After backoff: up to 2 retries, capped; apiFetchResponse throws HttpError with retryAfter on non-ok
           let attempt = 0;
           for (;;) {
             try {
@@ -627,10 +611,7 @@ function ChatPageInner(): ReactElement {
               break;
             } catch (err) {
               const retryAfter = (err as { retryAfter?: number })?.retryAfter;
-              if (
-                err instanceof DOMException &&
-                err.name === "AbortError"
-              ) {
+							if (err instanceof DOMException && err.name === "AbortError") {
                 throw err;
               }
               if (retryAfter === undefined || attempt >= 2) throw err;
@@ -751,7 +732,7 @@ function ChatPageInner(): ReactElement {
             try {
               parsedArgs = JSON.parse(tc.function.arguments?.trim() || "{}");
             } catch {
-              /* keep empty args */
+							void 0;
             }
             toolRunsRef.current[id] = {
               name: tc.function.name,
@@ -785,9 +766,8 @@ function ChatPageInner(): ReactElement {
                   );
                   const result = await handler(args, liveToolCtx);
                   recordToolResult(tc.function.name, result);
-                  // Capture any tokenId this tool produced so a later tool in
-                  // the SAME turn sees it immediately (mirrors applyToolResult).
                   try {
+										// capture produced tokenId so a later same-turn tool sees it (mirrors applyToolResult)
                     const parsed = JSON.parse(result) as {
                       tokenId?: unknown;
                       agents?: Array<{ tokenId?: unknown }>;
@@ -797,7 +777,7 @@ function ChatPageInner(): ReactElement {
                       lastTokenIdRef.current = String(tok);
                     }
                   } catch {
-                    /* result not JSON — nothing to capture */
+										void 0;
                   }
                   if (tc.id) {
                     markToolRun(tc.id, { status: "success", result });
@@ -857,7 +837,7 @@ function ChatPageInner(): ReactElement {
         }
       } catch (err: unknown) {
         if (err instanceof DOMException && err.name === "AbortError") {
-          /* aborted — ignore */
+					void 0;
         } else {
           const msg = humanizeError(err);
           const ref = err as { code?: string; requestId?: string } | null;
@@ -879,8 +859,8 @@ function ChatPageInner(): ReactElement {
           } else {
             toast.error(msg, refDesc ? { description: refDesc } : undefined);
           }
-          // UI-only error card (meta.error) — never sent to the model as context
           const withError = [
+						// meta.error card is UI-only — never sent to the model as context
             ...currentMessages,
             createMessage({
               role: "assistant",
@@ -935,7 +915,6 @@ function ChatPageInner(): ReactElement {
     if (!isStreaming) processQueue();
   }, [isStreaming, processQueue]);
 
-  // Persist active thread + thread list (history sidebar)
   useEffect(() => {
     if (messages.length === 0) return;
     const next: ChatThread = {
@@ -977,16 +956,13 @@ function ChatPageInner(): ReactElement {
     setSidebarOpen(false);
   }, []);
 
-  const deleteThread = useCallback(
-    (id: string) => {
+	const deleteThread = useCallback((id: string) => {
       setThreads((prev) => {
         const next = prev.filter((t) => t.id !== id);
         saveThreads(next);
         return next;
       });
-    },
-    [],
-  );
+	}, []);
 
   const cancelStream = useCallback(() => {
     abortRef.current?.abort();
@@ -1244,10 +1220,7 @@ function ChatPageInner(): ReactElement {
                 {msg.role === "tool" && msg.name ? (
                   <ToolClassBadge name={msg.name} />
                 ) : null}
-                <span
-                  className="msg-actions"
-                  style={{ marginLeft: "auto" }}
-                >
+								<span className="msg-actions" style={{ marginLeft: "auto" }}>
                   {msg.role === "user" ? (
                     <button
                       type="button"
@@ -1287,7 +1260,8 @@ function ChatPageInner(): ReactElement {
                             .find((m) => m.role === "user");
                           messagesRef.current = trimmed;
                           setMessages(trimmed);
-                          if (lastUser?.content) void runAgent(lastUser.content);
+													if (lastUser?.content)
+														void runAgent(lastUser.content);
                         }
                       }}
                     >
@@ -1334,7 +1308,12 @@ function ChatPageInner(): ReactElement {
                   </div>
                 )
               ) : msg.tool_calls ? (
-                <div style={{ fontSize: "var(--text-sm)", color: COLORS.textMuted }}>
+								<div
+									style={{
+										fontSize: "var(--text-sm)",
+										color: COLORS.textMuted,
+									}}
+								>
                   {dedupeToolCalls(msg.tool_calls).map((tc) => {
                     const run = tc.id ? toolRuns[tc.id] : undefined;
                     return (
@@ -1385,7 +1364,6 @@ function ChatPageInner(): ReactElement {
             </div>
           ))}
 
-          {/* Inline stream-error card (mid-stream upstream failure / empty response) */}
           {streamError !== null && (
             <div
               role="alert"
@@ -1405,7 +1383,9 @@ function ChatPageInner(): ReactElement {
                   gap: "var(--space-md)",
                 }}
               >
-                <span style={{ fontSize: "var(--text-sm)", color: COLORS.text }}>
+								<span
+									style={{ fontSize: "var(--text-sm)", color: COLORS.text }}
+								>
                   {streamError}
                 </span>
                 <span
@@ -1440,7 +1420,6 @@ function ChatPageInner(): ReactElement {
             </div>
           )}
 
-          {/* Streaming in-progress indicator */}
           {isStreaming && (
             <div
               className="fade-enter"
@@ -1457,7 +1436,6 @@ function ChatPageInner(): ReactElement {
               <StatusDot color={COLORS.text}>Assistant</StatusDot>
               {streamText ? (
                 <div style={{ ...chatMsgStyle, whiteSpace: "pre-wrap" }}>
-                  {/* Stream raw text; full markdown renders once on the committed message */}
                   <span style={{ whiteSpace: "pre-wrap" }}>{streamText}</span>
                   <span
                     className="caret-blink"
@@ -1570,7 +1548,6 @@ function ChatPageInner(): ReactElement {
               rows={1}
               onChange={(e) => {
                 setInput(e.target.value);
-                // autosize up to 6 rows
                 const el = e.target;
                 el.style.height = "auto";
                 el.style.height = `${Math.min(el.scrollHeight, 6 * 22)}px`;
@@ -1614,9 +1591,7 @@ function phaseLabel(
 ): string {
   const running = Object.values(runs).filter((r) => r.status === "running");
   if (running.length > 0) {
-    const names = running
-      .map((r) => TOOL_LABELS[r.name] ?? r.name)
-      .join(", ");
+		const names = running.map((r) => TOOL_LABELS[r.name] ?? r.name).join(", ");
     return `Running ${names}… (${elapsedSec}s)`;
   }
   if (streamText) return `Streaming response… (${elapsedSec}s)`;
@@ -1630,9 +1605,14 @@ function traceUsageLabel(
   if (!trace) return undefined;
   const parts: string[] = [];
   const usage = trace.usage as
-    | { total_tokens?: number; prompt_tokens?: number; completion_tokens?: number }
+		| {
+				total_tokens?: number;
+				prompt_tokens?: number;
+				completion_tokens?: number;
+		  }
     | undefined;
-  if (usage?.total_tokens) parts.push(`${usage.total_tokens.toLocaleString()} tokens`);
+	if (usage?.total_tokens)
+		parts.push(`${usage.total_tokens.toLocaleString()} tokens`);
   const cost = trace.cost ?? trace.amount;
   if (typeof cost === "number" && cost > 0) parts.push(`≈$${cost.toFixed(4)}`);
   if (parts.length === 0) return "compute billed";
@@ -1649,7 +1629,10 @@ function ToolCallCard({
   onToggle: () => void;
 }): ReactElement {
   const label = TOOL_LABELS[run.name] ?? run.name;
-  const elapsedSec = Math.max(0, Math.floor((Date.now() - run.startedAt) / 1000));
+	const elapsedSec = Math.max(
+		0,
+		Math.floor((Date.now() - run.startedAt) / 1000),
+	);
   return (
     <div
       style={{

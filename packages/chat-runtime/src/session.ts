@@ -38,7 +38,7 @@ export function applyToolResult(
         session.lastTokenId = String(first.tokenId);
     }
   } catch {
-    // best-effort: a malformed tool result body is ignored
+		// malformed tool result body parsing is best-effort and silently ignored
   }
   return session;
 }
@@ -125,13 +125,9 @@ export function fitToContext(
   const maxHistoryTokens = Math.max(0, budget - overheadTokens);
   const history = toChatApiMessages(messages);
   if (history.length <= keep) return history;
-  // Common case: the history already fits — one stringify, same cost as before.
   if (estimateTokens(JSON.stringify(history)) <= maxHistoryTokens)
     return history;
-  // Tight budget: the exact serialized array length is `"[" + Σ serialized_i +
-  // "," separators + "]"` (Σ|s| + k + 1), so per-message lengths are precomputed
-  // once and messages are dropped by arithmetic instead of re-stringifying the
-  // whole array on every iteration (O(n²) allocations → O(n)).
+	// Exact array length is Σ|s| + k + 1 (brackets + k commas); precomputed so drops avoid re-stringifying (O(n²) → O(n)).
   const serialized = history.map((m) => JSON.stringify(m));
   let totalLen =
     serialized.reduce((a, s) => a + s.length, 0) + serialized.length + 1;
@@ -139,7 +135,7 @@ export function fitToContext(
   for (const s of serialized) {
     if (history.length - drop <= keep) break;
     if (estimateTokens(totalLen) <= maxHistoryTokens) break;
-    totalLen -= s.length + 1; // oldest message + its separator comma
+		totalLen -= s.length + 1;
     drop++;
   }
   return history.slice(drop);

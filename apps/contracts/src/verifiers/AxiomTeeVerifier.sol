@@ -14,36 +14,17 @@ import {
     TransferValidityProofOutput
 } from "../interfaces/IERC7857DataVerifier.sol";
 
-/// @title AxiomTeeVerifier
-/// @notice TEE-based verifier for ERC-7857 transfer validity proofs
-/// @dev Adapted from https://github.com/0gfoundation/0g-agent-nft (MIT) BaseVerifier pattern
-/// @dev In production, the registered signer is the public key of an Intel TDX/AMD SEV TEE.
-///      For the buildathon/devnet, it's a TypeScript TEE signer service (apps/oracle) holding
-///      a secp256k1 keypair whose public key is registered via `proposeSigner` + `executeSigner`.
-/// @dev Access control on signer rotation is provided by OpenZeppelin Ownable and a 1-day timelock.
-///      The contract is currently deployed non-upgradeable (no proxy), but the upgrade-safe
-///      variant is used so the same bytecode can be moved behind a proxy later without
-///      rewriting the auth surface. References:
-///        - https://docs.openzeppelin.com/contracts/5.x/access-control (Ownable)
-///        - https://docs.openzeppelin.com/contracts/5.x/api/access#Ownable-_transferOwnership-address-
-///        - https://docs.openzeppelin.com/contracts/5.x/api/access#OwnableUpgradeable
+/// @title AxiomTeeVerifier — TEE-based verifier for ERC-7857 transfer validity proofs (0G reference, MIT)
+/// @dev Registered signer is an Intel TDX/AMD SEV TEE in production; for buildathon it is the TS signer service (apps/oracle), registered via proposeSigner + executeSigner.
+/// @dev Signer rotation is Ownable + 1-day timelock; deployed non-upgradeable but upgrade-safe so the same bytecode can move behind a proxy later.
 contract AxiomTeeVerifier is Initializable, BaseVerifier, OwnableUpgradeable, UUPSUpgradeable {
     error AxiomInvalidSigner();
     error AxiomInvalidOwnershipProof();
     error AxiomInvalidAccessProof();
     error ZeroAddress();
-    /// @dev Thrown when the accessProof and ownershipProof fields that must
-    ///      be identical (dataHash, targetPubkey, nonce, validUntil) do not match.
     error ProofFieldMismatch();
-    /// @dev Thrown when a proof's `validUntil` deadline is in the past
-    ///      (i.e. `block.timestamp > validUntil`). The proof is expired
-    ///      and can no longer be used.
     error AxiomProofExpired(uint256 validUntil, uint256 blockTimestamp);
-    /// @dev Thrown when a proof's `validUntil` is too far in the future
-    ///      (i.e. `validUntil - block.timestamp > maxProofAgeSeconds`).
-    ///      This guards against a TEE signer minting arbitrarily long-lived
-    ///      proofs and against overflow attacks where `validUntil` is
-    ///      `type(uint256).max`.
+    /// @dev Thrown when `validUntil` is too far ahead — guards against long-lived TEE proofs and overflow attacks (validUntil = type(uint256).max).
     error AxiomValidUntilTooFar(uint256 validUntil, uint256 blockTimestamp, uint256 maxProofAgeSeconds);
 
     event SignerProposed(address indexed newSigner, uint256 executableAt);
@@ -51,18 +32,11 @@ contract AxiomTeeVerifier is Initializable, BaseVerifier, OwnableUpgradeable, UU
     event SignerProposalCancelled(address indexed cancelledSigner);
 
 
-    /// @dev Set once at deployment; immutable so the value is baked into the deployed bytecode
-    ///      and is part of the contract's ABI as a queryable getter (auto-generated `maxProofAgeSeconds()`).
-    ///      Reference: Solidity 0.8.20 — Immutable variables
-    ///      https://docs.soliditylang.org/en/v0.8.20/contracts.html#immutable
     uint256 public maxProofAgeSeconds;
     address public registeredSigner;
     TimelockManager.State private _signerTimelock;
 
-    /// @dev Domain separator binds signatures to this contract instance and chain,
-    ///      preventing cross-contract and cross-chain replay. Browser wallets sign
-    ///      via signTypedData_v4, which produces raw ECDSA over the EIP-712 digest.
-    ///      Reference: https://eips.ethereum.org/EIPS/eip-712
+    /// @dev Domain separator binds signatures to this instance and chain, preventing cross-contract/cross-chain replay; signTypedData_v4 yields raw ECDSA over the digest.
     bytes32 private constant EIP712_DOMAIN_TYPEHASH =
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
     bytes32 private constant OWNERSHIP_PROOF_TYPEHASH = keccak256(
@@ -72,24 +46,17 @@ contract AxiomTeeVerifier is Initializable, BaseVerifier, OwnableUpgradeable, UU
         "AccessProof(bytes32 dataHash,bytes targetPubkey,address to,address nft,bytes nonce,uint256 validUntil)"
     );
 
-    /// @notice Disable initializers for direct (non-proxied) deployments.
-    /// @dev When deployed behind a proxy, call `initialize(...)` instead.
     constructor() {
         _disableInitializers();
     }
 
-    /// @notice Initialize the upgradeable contract (replaces constructor for proxy deployments).
-    /// @param _owner   Address that will own the contract (onlyOwner).
-    /// @param _signer  Initial TEE signer public key as an address.
-    /// @param _maxProofAge  Maximum proof age in seconds.
+    /// @notice Replaces the constructor for proxy deployments; sets owner, initial TEE signer, and max proof age.
     function initialize(address _owner, address _signer, uint256 _maxProofAge) external initializer {
         __Ownable_init(_owner);
         maxProofAgeSeconds = _maxProofAge;
         registeredSigner = _signer;
     }
 
-    /// @dev Restricted to the contract owner. Signer rotation is
-    ///      two-step with a 1-day timelock so monitors can react before execution.
     function proposeSigner(
         address newSigner
     ) external onlyOwner {
@@ -98,37 +65,28 @@ contract AxiomTeeVerifier is Initializable, BaseVerifier, OwnableUpgradeable, UU
         emit SignerProposed(newSigner, block.timestamp + 1 days);
     }
 
-    /// @dev Finalize a previously proposed signer rotation after the timelock delay.
     function executeSigner() external onlyOwner {
         address newSigner = _signerTimelock.execute();
         address old = registeredSigner;
         registeredSigner = newSigner;
         emit SignerExecuted(old, newSigner);
     }
-    /// @dev Cancel a pending signer rotation before it is executed.
     function cancelSignerProposal() external onlyOwner {
         address cancelled = _signerTimelock.proposed;
         _signerTimelock.cancel();
         emit SignerProposalCancelled(cancelled);
     }
 
-    /// @notice Returns the currently pending signer, or address(0) if none.
     function pendingSigner() external view returns (address) {
         return _signerTimelock.proposed;
     }
 
-    /// @dev ERC-7857 leaves the exact freshness window to the implementation; the canonical
-    ///      0G reference uses a 7-day expiry (replay protection is enforced via
-    ///      `usedProofs` regardless). Override the value per deployment to tighten or relax.
-    ///      Reference: EIP-7857 (FINAL) — `verifyTransferValidity` and Security Considerations
-    ///      https://eips.ethereum.org/EIPS/eip-7857
+    /// @dev ERC-7857 leaves the freshness window to the implementation; the 0G reference uses 7-day expiry, but replay protection is enforced via `usedProofs` regardless.
     function _getMaxProofAge() internal view override returns (uint256) {
         return maxProofAgeSeconds;
     }
 
-    /// @dev Both proof legs are now EIP-712 typed-data digests (see _domainSeparator).
-    ///      Browser wallets produce raw ECDSA over the EIP-712 digest via
-    ///      signTypedData_v4, so no EIP-191 prefix is applied off-chain.
+    /// @dev Both proof legs are EIP-712 typed-data digests; signTypedData_v4 yields raw ECDSA, so no EIP-191 prefix is applied off-chain.
     function _recoverSigner(
         bytes32 messageHash,
         bytes memory signature
@@ -139,10 +97,7 @@ contract AxiomTeeVerifier is Initializable, BaseVerifier, OwnableUpgradeable, UU
         return recovered;
     }
 
-    /// @dev Off-chain signers (backend, oracle, browser wallet via signTypedData_v4)
-    ///      MUST compute the same digest:
-    ///        keccak256(abi.encodePacked("\x19\x01", domainSeparator(), structHash))
-    ///      Reference: https://eips.ethereum.org/EIPS/eip-712#definition-of-domainseparator
+    /// @dev Off-chain signers MUST compute keccak256("\x19\x01" || domainSeparator() || structHash) to match.
     function _domainSeparator() internal view returns (bytes32) {
         return keccak256(
             abi.encode(
@@ -156,19 +111,9 @@ contract AxiomTeeVerifier is Initializable, BaseVerifier, OwnableUpgradeable, UU
     }
 
     /// @inheritdoc IERC7857DataVerifier
-    /// @dev Verifies a batch of AccessProof + OwnershipProof pairs against the registered TEE signer.
-    ///      For each proof:
-    ///        1. Check that the OwnershipProof's `validUntil` is `>= block.timestamp`
-    ///           (i.e. the proof has not expired) and `validUntil - block.timestamp
-    ///           <= maxProofAgeSeconds` (i.e. the TEE is not allowed to set arbitrarily
-    ///           long-lived deadlines).
-    ///        2. Check the same for the AccessProof's `validUntil`.
-    ///        3. Verify the OwnershipProof EIP-712 digest (OWNERSHIP_PROOF_TYPEHASH struct hash
-    ///           wrapped with the domain separator — see https://eips.ethereum.org/EIPS/eip-712).
-    ///        4. Verify the AccessProof EIP-712 digest (ACCESS_PROOF_TYPEHASH struct hash
-    ///           wrapped with the domain separator).
-    ///        5. Mark the proof nonce as used (replay protection).
-    ///        6. Populate the output struct.
+    /// @dev Per proof: enforce both validUntil deadlines (expiry + maxProofAgeSeconds),
+    ///      verify OwnershipProof (TEE) then AccessProof (receiver) EIP-712 digests,
+    ///      mark the nonce used (replay protection), populate the output.
     function verifyTransferValidity(
         TransferValidityProof[] calldata proofs,
         address to,
@@ -184,25 +129,18 @@ contract AxiomTeeVerifier is Initializable, BaseVerifier, OwnableUpgradeable, UU
         for (uint256 i = 0; i < proofs.length; i++) {
             TransferValidityProof calldata p = proofs[i];
 
-            // 0. Timestamp gate (EIP-712 deadline). The TEE / receiver signer chose
-            //    `validUntil` at signing time; it must be in the future and within
-            //    `maxAge` of `now`. Overflow-safe: `validUntil >= now` guarantees the
-            //    subtraction is safe; `validUntil < now` is the expired branch.
+            // Timestamp gate: validUntil must be future and within maxAge; validUntil >= now keeps the subtraction overflow-safe.
             _checkValidUntil(p.ownershipProof.validUntil, nowTs, maxAge);
             _checkValidUntil(p.accessProof.validUntil, nowTs, maxAge);
 
-            // 0.4 Pre-hash the variable-length calldata fields once per proof. Each is used
-            //     both in the consistency check and in one or both EIP-712 struct hashes
-            //     below; computing them in locals avoids re-hashing the same bytes.
+            // Pre-hash variable-length calldata fields once, reused in the checks below
             bytes32 accessTargetPubkeyHash = keccak256(p.accessProof.targetPubkey);
             bytes32 ownershipTargetPubkeyHash = keccak256(p.ownershipProof.targetPubkey);
             bytes32 accessNonceHash = keccak256(p.accessProof.nonce);
             bytes32 ownershipNonceHash = keccak256(p.ownershipProof.nonce);
             bytes32 sealedKeyHash = keccak256(p.ownershipProof.sealedKey);
 
-            // 0.5 Cross-proof consistency: the two proofs must describe the same
-            //     transfer. If the TEE-signed ownership leg and the receiver-signed
-            //     access leg disagree on any shared field, the proof is invalid.
+            // Cross-proof consistency: TEE and receiver legs must agree on every shared field.
             if (
                 p.accessProof.dataHash != p.ownershipProof.dataHash
                     || accessTargetPubkeyHash != ownershipTargetPubkeyHash
@@ -212,13 +150,7 @@ contract AxiomTeeVerifier is Initializable, BaseVerifier, OwnableUpgradeable, UU
                 revert ProofFieldMismatch();
             }
 
-            // 1. Verify OwnershipProof — signed by the TEE oracle via EIP-712.
-            //    Digest: keccak256("\x19\x01" || domainSeparator || structHash)
-            //    structHash = keccak256(abi.encode(TYPEHASH, dataHash,
-            //      keccak256(sealedKey), keccak256(targetPubkey), nonce, validUntil)).
-            //    Per EIP-712, `bytes`/`string` fields are pre-hashed to bytes32
-            //    (https://eips.ethereum.org/EIPS/eip-712#definition-of-hashstruct)
-            //    so browser wallets' signTypedData_v4 produces a matching digest.
+            // Verify OwnershipProof (TEE oracle): bytes fields pre-hashed per EIP-712 hashstruct so signTypedData_v4 digests match.
             bytes32 ownershipMessage = keccak256(
                 abi.encodePacked(
                     "\x19\x01",
@@ -240,9 +172,7 @@ contract AxiomTeeVerifier is Initializable, BaseVerifier, OwnableUpgradeable, UU
             address recovered = _recoverSigner(ownershipMessage, p.ownershipProof.proof);
             if (recovered != expectedSigner) revert AxiomInvalidOwnershipProof();
 
-            // 2. Verify AccessProof — signed by the receiver via EIP-712.
-            //    Browser wallets use signTypedData_v4, producing raw ECDSA over
-            //    this digest (targetPubkey is pre-hashed per EIP-712 hashstruct).
+            // Verify AccessProof (receiver via signTypedData_v4); recovered signer must equal `to`.
             bytes32 accessMessage = keccak256(
                 abi.encodePacked(
                     "\x19\x01",
@@ -263,10 +193,7 @@ contract AxiomTeeVerifier is Initializable, BaseVerifier, OwnableUpgradeable, UU
             address accessSigner = _recoverSigner(accessMessage, p.accessProof.proof);
             if (accessSigner == address(0) || accessSigner != to) revert AxiomInvalidAccessProof();
 
-            // 3. Mark proof nonces as used (replay protection). The nonce is a
-            //     canonical digest of the verified proof fields; because the
-            //     consistency check above guarantees the access/ownership legs
-            //     agree on the shared fields, we use the accessProof side.
+            // Mark nonce used (replay protection); the consistency check lets us derive it from the accessProof side.
             bytes32 proofNonce = keccak256(
                 abi.encode(
                     p.accessProof.dataHash,
@@ -278,12 +205,11 @@ contract AxiomTeeVerifier is Initializable, BaseVerifier, OwnableUpgradeable, UU
             );
             _checkAndMarkProof(proofNonce);
 
-            // 4. Populate the output struct
             outputs[i] = TransferValidityProofOutput({
                 dataHash: p.ownershipProof.dataHash,
                 sealedKey: p.ownershipProof.sealedKey,
                 targetPubkey: p.ownershipProof.targetPubkey,
-                wantedKey: "", // no wanted-key in the canonical flow
+                wantedKey: "",
                 accessAssistant: accessSigner,
                 accessProofNonce: p.accessProof.nonce,
                 ownershipProofNonce: p.ownershipProof.nonce
@@ -291,12 +217,7 @@ contract AxiomTeeVerifier is Initializable, BaseVerifier, OwnableUpgradeable, UU
         }
     }
 
-    /// @dev Enforce the EIP-712 `validUntil` deadline. Overflow-safe.
-    ///      - If `validUntil < now`            => revert `AxiomProofExpired`.
-    ///      - If `validUntil - now > maxAge`   => revert `AxiomValidUntilTooFar`
-    ///        (also covers `validUntil = type(uint256).max` since the subtraction
-    ///        is huge and definitely exceeds `maxAge`).
-    ///      - Otherwise, the proof is valid for the current block.
+    /// @dev Enforce the EIP-712 deadline, overflow-safe: expired if validUntil < now; too far if validUntil - now > maxAge (covers type(uint256).max).
     function _checkValidUntil(
         uint256 validUntil,
         uint256 nowTs,
@@ -305,14 +226,12 @@ contract AxiomTeeVerifier is Initializable, BaseVerifier, OwnableUpgradeable, UU
         if (validUntil < nowTs) {
             revert AxiomProofExpired(validUntil, nowTs);
         }
-        // validUntil >= nowTs, so subtraction is safe (no underflow).
         if (validUntil - nowTs > maxAge) {
             revert AxiomValidUntilTooFar(validUntil, nowTs, maxAge);
         }
     }
-    /// @dev UUPS: only the owner may authorize an upgrade.
+    /// @dev UUPS upgrade gate: only the owner may authorize an upgrade.
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
-    /// @dev Storage gap for future upgrades (reserve 50 slots).
     uint256[50] private __gap;
 }

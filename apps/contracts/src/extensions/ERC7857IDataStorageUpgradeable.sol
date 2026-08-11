@@ -1,19 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-// Derived from 0G Agentic ID reference (MIT)
-// https://github.com/0gfoundation/0g-agent-nft
-// Forked because Axiom's ERC7857Upgradeable uses 3-arg verifyTransferValidity
-// (EIP-712 domain binding per security fix F-03/F-04/F-12)
-// Reference uses 1-arg verifyTransferValidity — incompatible base contract
-//
+// Forked from 0G reference (MIT): Axiom's base uses 3-arg verifyTransferValidity (EIP-712 domain binding, fixes F-03/F-04/F-12); the reference's 1-arg form is incompatible.
 
 import {ERC7857Upgradeable} from "../ERC7857Upgradeable.sol";
 import {IntelligentData} from "../interfaces/IERC7857Metadata.sol";
 
-/// @title ERC7857IDataStorageUpgradeable
-/// @notice Extension that stores IntelligentData[] per token
-/// @dev Adapted from the 0G Agentic ID reference (MIT)
+/// @title ERC7857IDataStorageUpgradeable — stores IntelligentData[] per token (0G reference MIT)
 abstract contract ERC7857IDataStorageUpgradeable is ERC7857Upgradeable {
     /// @custom:storage-location erc7857:0g.storage.ERC7857IDataStorage
     struct ERC7857IDataStorageStorage {
@@ -21,7 +14,6 @@ abstract contract ERC7857IDataStorageUpgradeable is ERC7857Upgradeable {
         uint256[50] __gap;
     }
 
-    // ERC-7201 storage location: keccak256(abi.encode(keccak256("0g.storage.ERC7857IDataStorage") - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant STORAGE_LOCATION = 0xcee27158032fdbe7e1246476ff878669b520bc82ee1a949d22135b88cc5f5b00;
 
     function _getERC7857IDataStorageStorage() private pure returns (ERC7857IDataStorageStorage storage $) {
@@ -30,7 +22,7 @@ abstract contract ERC7857IDataStorageUpgradeable is ERC7857Upgradeable {
         }
     }
 
-    /// @notice Emitted when a token's data is updated
+    /// @notice Emitted whenever a token's stored IntelligentData array is replaced wholesale
     event Updated(uint256 indexed tokenId, IntelligentData[] oldDatas, IntelligentData[] newDatas);
 
     function _intelligentDatasOf(
@@ -52,9 +44,7 @@ abstract contract ERC7857IDataStorageUpgradeable is ERC7857Upgradeable {
         IntelligentData[] memory newDatas
     ) internal virtual override {
         ERC7857IDataStorageStorage storage $ = _getERC7857IDataStorageStorage();
-        // Storage pointer + length cached: avoids re-hashing the mapping and re-SLOADing
-        // `$.iDatas[tokenId]` on every loop iteration. `delete` must still target the
-        // mapping value (delete on a storage pointer is not allowed by the compiler).
+        // Cache pointer + length to avoid re-hashing the mapping per loop; delete must target the mapping value, not the pointer (compiler forbids pointer delete).
         IntelligentData[] storage stored = $.iDatas[tokenId];
         uint256 oldLen = stored.length;
 

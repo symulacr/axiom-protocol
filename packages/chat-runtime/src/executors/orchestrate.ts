@@ -16,9 +16,7 @@ const BALANCE_OF_ABI = parseAbi([
   "function balanceOf(uint256) view returns (uint256)",
 ]);
 
-// viem's parseAbi is ~10µs/call; hoist the parsed ABIs to module scope so the
-// per-tick chain reads reuse them instead of re-parsing on every invocation.
-const STRATEGY_OF_CURRENT_ABI = parseAbi(STRATEGY_OF_CURRENT);
+const STRATEGY_OF_CURRENT_ABI = parseAbi(STRATEGY_OF_CURRENT); // parseAbi ~10µs/call; hoisted to module scope so per-tick reads reuse, never re-parse
 const STRATEGY_OF_LEGACY_ABI = parseAbi(STRATEGY_OF_LEGACY);
 
 async function readStrategyRoot(
@@ -64,8 +62,7 @@ export async function runOrchestrateTool(
   }
 
   const tokenId = String(args.tokenId ?? ctx.session.lastTokenId ?? "");
-  if (!tokenId)
-    return toolFail("tokenId required");
+	if (!tokenId) return toolFail("tokenId required");
 
   const dryRun = name === "simulate_tick" || args.dryRun === true;
   const vault = ctx.session.addresses?.vault;
@@ -130,8 +127,7 @@ export async function runOrchestrateTool(
     },
   );
 
-  if (!httpOk)
-    return toolFail("tick http fail");
+	if (!httpOk) return toolFail("tick http fail");
   return { ok: true as const, content: JSON.stringify(data) };
 }
 

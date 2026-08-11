@@ -4,97 +4,17 @@ pragma solidity ^0.8.20;
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {IntelligentData} from "../interfaces/IERC7857Metadata.sol";
 
-/// @title  AxiomMetadataJson
-/// @notice Optional iNFT metadata extension for AxiomAgentNFT
-/// @dev    ─────────────────────  DECISION  ─────────────────────
-///         The 2-root-hash metadata pattern (store an additional, unencrypted
-///         ERC-721-style JSON metadata blob on 0G Storage and record its root
-///         hash on-chain as a second `metadataHash`) is **explicitly REJECTED**
-///         for the Axiom Agent NFT. Rationale:
-///
-///         1. EIP-7857 §Metadata Interface already defines a richer
-///            `intelligentDatasOf(tokenId) → IntelligentData[]{description, dataHash}`
-///            accessor. The `dataHash` is the root hash of the encrypted blob
-///            stored on 0G Storage; the description is human-readable
-///            per-data-slice metadata. Together they cover every field an
-///            ERC-721-style JSON would carry except for an HTTP image URL.
-///            See: https://eips.ethereum.org/EIPS/eip-7857#metadata-interface
-///
-///         2. EIP-7857's whole motivation is *private* metadata. Storing an
-///            *unencrypted* second JSON in 0G Storage that links capabilities
-///            to a public root hash would defeat the encryption guarantee —
-///            the JSON itself (description, image, attributes) becomes
-///            plaintext-readable to anyone with the root hash, which is
-///            exactly what EIP-7857 §Abstract warns against ("Metadata
-///            represents agent capabilities and requires privacy protection").
-///
-///         3. The 0G cross-layer pattern (storage + chain) is already
-///            applied: encrypted blob → 0G Storage, single `dataHash` → chain.
-///            A second JSON would be a third layer with no purpose; the
-///            recovery path (any integrator can fetch `intelligentDatasOf`
-///            and render an OpenSea-compatible JSON off-chain) is sufficient
-///            for marketplaces.
-///            See: https://docs.0g.ai/developer-hub/building-on-0g/agentic-id/erc7857
-///
-///         4. The 0G cross-layer Storage+Chain skill is the same one that
-///            produced the per-blob `dataHash` on-chain. Storing a 2nd hash
-///            would be the same skill repeated, doubling storage per token
-///            and a 2nd upload cost on every `update()` for no privacy or
-///            integrity gain (the original `dataHash` is the integrity anchor
-///            per EIP-7857 §Data Verification System).
-///            See: https://github.com/0gfoundation/0g-agent-skills
-///
-///         ───────────────────  WHAT THIS EXTENSION ADDS  ───────────────────
-///         This extension is therefore **non-additive**: it introduces NO new
-///         storage layout, NO new write functions, NO new roles, and NO new
-///         on-chain bytes per token. It exposes a single pure-function view
-///         that reconstructs an OpenSea-compatible JSON metadata string from
-///         the on-chain EIP-7857 state (name(), symbol(), intelligentDatasOf).
-///         Off-chain renderers (wallets, marketplaces, the Axiom indexer in
-///         apps/indexer) can call this view to obtain a standards-conformant
-///         JSON without needing to talk to 0G Storage at all; if the renderer
-///         wants the full payload, it follows the `dataHash` to 0G Storage
-///         using the per-hash client (the same path Wave 9-A's
-///         verify-data-hash.ts uses for integrity checks).
-/// @dev    Adapted from https://github.com/0gfoundation/0g-agent-nft (MIT)
-
-/// @dev    The sentinel event `MetadataJsonDecisionDocumented` lives on
-///         `AxiomAgentNFT` because libraries cannot emit contract-scoped
-///         events on a third-party contract under `using … for *;`. The
-///         library exposes a public pure helper
-///         `documentMetadataJsonDecision(name, symbol, rationaleTag)`
-///         that returns the canonical triple so the caller can emit the
-///         event itself.
+/// @title AxiomMetadataJson — non-additive iNFT metadata extension for the AxiomAgentNFT contract
+/// @dev 2-root-hash metadata pattern REJECTED: EIP-7857's `intelligentDatasOf` already carries description + dataHash, and an unencrypted JSON blob would defeat the standard's privacy guarantee. Adds no storage/roles/bytes — a pure view rebuilds OpenSea JSON from on-chain state. 0G reference (MIT); the sentinel event lives on AxiomAgentNFT because libraries cannot emit contract-scoped events.
 library AxiomMetadataJson {
-    /// @notice Pure-function view: build an OpenSea-compatible JSON metadata
-    ///         blob for a token from its on-chain state.
-    /// @dev    Returns the raw JSON string (NOT a `data:` URI; the caller
-    ///         decides whether to base64-wrap it for an inline `tokenURI()`).
-    ///         No storage writes; no external calls; safe to call from any
-    ///         off-chain renderer (wallet, marketplace, IPFS gateway, the
-    ///         Axiom indexer).
-    /// @param  tokenId         The token to build metadata for
-    /// @param  datas           The on-chain IntelligentData[] for the token
-    /// @param  collectionName  The collection's name() (passed by the
-    ///                         inheriting concrete to keep this contract
-    ///                         storage-free and inheritance-isolated)
-    /// @param  collectionSymbol The collection's symbol()
-    /// @return json            OpenSea-shaped JSON string with the collection
-    ///                         name, symbol, the first IntelligentData
-    ///                         .dataDescription, and a `data_hash` trait
-    ///                         carrying the first dataHash (0x-prefixed
-    ///                         64-char hex). Subsequent IntelligentData
-    ///                         entries are appended as `data_hash_N` traits
-    ///                         so the full EIP-7857 metadata surface
-    ///                         round-trips.
+    /// @notice Build OpenSea-compatible JSON from on-chain state; raw string (not a data: URI), no storage writes, safe for any off-chain renderer. Emits name/symbol, first dataDescription, and data_hash traits (0x-prefixed 64-hex; extras as data_hash_N).
     function buildMetadataJson(
         uint256 tokenId,
         IntelligentData[] memory datas,
         string memory collectionName,
         string memory collectionSymbol
     ) public pure returns (string memory json) {
-        // Image URL intentionally left empty: JSON is reconstructed from on-chain state, which
-        // holds no image URL. A frontend fetches the image from 0G Storage via the first dataHash.
+        // Image URL intentionally empty — on-chain state holds none; frontends fetch it via the first dataHash from 0G Storage.
         string memory description = datas.length > 0 ? datas[0].dataDescription : collectionName;
 
         json = string.concat(
@@ -119,11 +39,7 @@ library AxiomMetadataJson {
         );
     }
 
-    /// @notice Convenience: build the OpenSea JSON wrapped in a
-    ///         `data:application/json;base64,…` URI suitable for an inline
-    ///         ERC-721 `tokenURI()` implementation. Off-chain indexers can
-    ///         call either form depending on whether they need a raw JSON
-    ///         blob or a URI they can pass straight to OpenSea.
+    /// @notice buildMetadataJson wrapped as a `data:application/json;base64,…` URI for an inline ERC-721 tokenURI().
     function buildMetadataJsonDataUri(
         uint256 tokenId,
         IntelligentData[] memory datas,
@@ -136,11 +52,7 @@ library AxiomMetadataJson {
         );
     }
 
-    /// @dev Build the `attributes` array JSON for the OpenSea schema. The
-    ///      first attribute is always `data_hash` (the first IntelligentData
-    ///      dataHash, 0x-prefixed 64-hex). Subsequent dataHashes are
-    ///      emitted as `data_hash_1`, `data_hash_2`, … so a 1-N iNFT
-    ///      round-trips its full EIP-7857 metadata surface in the JSON view.
+    /// @dev data_hash trait for the first dataHash, then data_hash_1..N so a 1-N iNFT round-trips its full metadata surface.
     function _attributesJson(
         IntelligentData[] memory datas
     ) private pure returns (string memory) {
@@ -163,12 +75,7 @@ library AxiomMetadataJson {
         return out;
     }
 
-    /// @dev Escape characters that must be escaped in a JSON string per
-    ///      RFC 8259 §7: backslash, double-quote, solidus, and control
-    ///      characters (< 0x20). Control characters are hex-escaped as
-    ///      `\uXXXX`. Non-ASCII bytes are passed through verbatim —
-    ///      Solidity 0.8.20 treats `string` as raw bytes and OpenSea's
-    ///      JSON parser is UTF-8.
+    /// @dev Escape RFC 8259 §7 characters; control bytes become \uXXXX while non-ASCII passes through (Solidity string is raw bytes; OpenSea parses UTF-8).
     function _escapeJson(
         string memory s
     ) private pure returns (string memory) {
@@ -195,7 +102,6 @@ library AxiomMetadataJson {
         return out;
     }
 
-    /// @dev Convert a 4-bit value to its lowercase hex character (0–f).
     function _hexDigit(uint8 x) private pure returns (bytes1) {
         if (x < 10) return bytes1(uint8(48 + x));
         return bytes1(uint8(87 + x));
@@ -233,11 +139,7 @@ library AxiomMetadataJson {
         return string(out);
     }
 
-    /// @dev Minimal RFC 4648 §4 base64 encoder. Pads with `=` to a multiple
-    ///      of 4. No newlines. Alphabet: A–Z, a–z, 0–9, +, /.
-    ///      The `& 0x3F` mask guarantees the result fits in `uint8`, so the
-    ///      forge-lint `unsafe-typecast` warnings on the index expression
-    ///      are provably safe.
+    /// @dev Minimal RFC 4648 §4 base64 (pads `=`, no newlines); the & 0x3F mask makes the forge-lint unsafe-typecast site provably safe.
     function _base64Encode(
         bytes memory data
     ) private pure returns (string memory) {
@@ -264,7 +166,7 @@ library AxiomMetadataJson {
             uint256 n = uint256(uint8(data[i])) << 16;
             out[j] = _base64At(alphabet, n, 18);
             out[j + 1] = _base64At(alphabet, n, 12);
-            out[j + 2] = 0x3D; // '='
+            out[j + 2] = 0x3D;
             out[j + 3] = 0x3D;
         } else if (rem == 2) {
             uint256 n = (uint256(uint8(data[i])) << 16) | (uint256(uint8(data[i + 1])) << 8);
@@ -276,9 +178,6 @@ library AxiomMetadataJson {
         return string(out);
     }
 
-    /// @dev Look up the 6-bit value in the 64-byte base64 alphabet. Extracted
-    ///      into a helper so the forge-lint `unsafe-typecast` warning is
-    ///      isolated to a single, well-justified site.
     function _base64At(
         bytes memory alphabet,
         uint256 n,

@@ -1,10 +1,5 @@
-/*
- * Axiom Protocol — Cyber-luxury LCD terminal.
- * Void base · indigo actions · warm copper vault · phosphor mint live.
- * Display face for titles · LCD mono for protocol data.
- */
+/* Axiom — cyber-luxury LCD terminal: void base, indigo actions, copper vault, phosphor-mint live. */
 
-/* ─── Spacing scale (4pt grid) ─── */
 :root {
   --space-xs: 0.25rem;
   --space-sm: 0.5rem;
@@ -17,7 +12,6 @@
   --space-5xl: 6rem;
   --space-6xl: 8rem;
 
-  /* ─── Type scale ─── */
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
   --text-base: 1rem;
@@ -43,7 +37,7 @@
   --radius-lg: 12px;
   --radius-xl: 16px;
 
-  /* Display = Syne; body = Inter; LCD = JetBrains Mono */
+	/* Font assignments: display = Syne, body = Inter, LCD mono = JetBrains Mono */
   --font-display:
     "Syne", "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
     sans-serif;
@@ -54,7 +48,6 @@
     "JetBrains Mono", "SF Mono", SFMono-Regular, Menlo, Monaco, Consolas,
     "Roboto Mono", monospace;
 
-  /* ─── Void base ─── */
   --c-bg: #05050c;
   --c-surface: rgba(12, 12, 24, 0.82);
   --c-surface-raised: rgba(18, 18, 36, 0.92);
@@ -65,13 +58,13 @@
   --c-border-glow: rgba(99, 102, 241, 0.45);
   --c-border-glow-strong: #6366f1;
 
-  /* Readable dark body — muted is still AA-ish on void */
+	/* Readable dark body — muted text is still AA-ish on the void background */
   --c-text: #d4d4ec;
   --c-text-primary: #f6f6ff;
   --c-text-muted: #a8a8c8;
   --c-text-dim: #7a7a9e;
 
-  /* Indigo — primary actions (aliases --c-bronze* for JS COLORS) */
+	/* Indigo — primary actions; --c-bronze* alias exists so JS COLORS and CSS stay in sync */
   --c-bronze: #4f46e5;
   --c-bronze-light: #818cf8;
   --c-bronze-dark: #3730a3;
@@ -94,7 +87,7 @@
   --c-teal-bg: rgba(79, 70, 229, 0.12);
   --c-teal-border: rgba(79, 70, 229, 0.35);
 
-  /* Phosphor mint — live / online only */
+	/* Phosphor mint — reserved exclusively for live/online indicators, never a decorative accent */
   --c-phosphor: #34f5a0;
   --c-phosphor-dim: rgba(52, 245, 160, 0.16);
   --c-phosphor-bronze: #818cf8;
@@ -117,7 +110,8 @@
     rgba(196, 122, 58, 0.05) 72%,
     rgba(52, 245, 160, 0.04) 100%
   );
-  --grad-hero: radial-gradient(
+	--grad-hero:
+		radial-gradient(
       ellipse 80% 60% at 50% 0%,
       rgba(79, 70, 229, 0.34),
       transparent 70%
@@ -136,22 +130,22 @@
   --c-overlay: rgba(4, 4, 12, 0.75);
   --c-scrollbar-hover: rgba(200, 200, 255, 0.28);
 
-  --shadow-1: 0 1px 0 rgba(255, 255, 255, 0.04) inset,
-    0 8px 24px rgba(0, 0, 0, 0.4);
-  --shadow-2: 0 1px 0 rgba(255, 255, 255, 0.06) inset,
-    0 16px 48px rgba(0, 0, 0, 0.5);
+	--shadow-1:
+		0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 8px 24px rgba(0, 0, 0, 0.4);
+	--shadow-2:
+		0 1px 0 rgba(255, 255, 255, 0.06) inset, 0 16px 48px rgba(0, 0, 0, 0.5);
   --blur-glass: 16px;
 
-  /* ─── Easing (product: no bounce/elastic) ─── */
+	/* Easing — product rule: never bounce or elastic, only standard ease */
   --ease-out: cubic-bezier(0.25, 1, 0.5, 1);
   --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
   --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
-  /* legacy alias — do not use for new motion */
+	/* legacy alias — do not use for new motion; kept for old call sites */
   --ease-spring: var(--ease-out-quint);
 
-  /* ─── Durations (100 / 200 / 300 product budget) ─── */
+	/* Durations — 100 / 200 / 300 ms product budget, nothing slower than that */
   --dur-press: 120ms;
   --dur-tooltip: 150ms;
   --dur-dropdown: 200ms;
@@ -163,21 +157,15 @@
   --dur-stagger: 40ms;
   --dur-route: 180ms;
 
-  /* ─── Standard transition shorthand ─── */
-  --transition: color var(--dur-card-hover) var(--ease-out),
-    background var(--dur-card-hover) var(--ease-out),
-    border-color var(--dur-card-hover) var(--ease-out),
-    opacity var(--dur-card-hover) var(--ease-out);
   --transition-transform: transform var(--dur-card-hover) var(--ease-out);
 
-  /* Breakpoints */
   --bp-mobile: 640px;
   --bp-tablet: 768px;
   --nav-h: 3.25rem;
-  --content-max: 80rem; /* 1280px — Atlas section max-width */
+	--content-max: 80rem;
 
   font-family: var(--font-body);
-  font-size: 100%; /* keep 1rem = 16px; body text set to 14px below */
+	font-size: 100%;
   line-height: var(--lh-normal);
   color: var(--c-text);
   background: var(--c-bg);
@@ -188,7 +176,6 @@
   color-scheme: dark;
 }
 
-/* Glass surface utility for production chrome */
 .surface-glass {
   background: var(--c-surface);
   background-image: var(--grad-surface);
@@ -225,7 +212,9 @@
 }
 .card-layered:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-2), 0 0 24px rgba(79, 70, 229, 0.12);
+	box-shadow:
+		var(--shadow-2),
+		0 0 24px rgba(79, 70, 229, 0.12);
   border-color: var(--c-border-strong);
 }
 
@@ -298,7 +287,6 @@ body {
   color: var(--c-text);
 }
 
-/* Headings: display face + strong hierarchy */
 h1,
 h2,
 h3,
@@ -324,20 +312,17 @@ h3 {
   font-weight: var(--fw-semibold);
 }
 
-/* Body text */
 p {
   margin: 0;
   line-height: var(--lh-normal);
 }
 
-/* Code: monospace, no ligatures */
 code,
 pre {
   font-family: var(--font-mono);
   font-variant-ligatures: none;
 }
 
-/* Animations */
 @keyframes axiom-pulse {
   0%,
   100% {
@@ -388,7 +373,7 @@ pre {
   animation: axiom-fade-in var(--dur-route) var(--ease-out) both;
 }
 
-/* Product button press — feedback, not decoration */
+/* Button press — tactile feedback, not decoration; must stay instant */
 [data-axiom-btn] {
   transition:
     transform var(--dur-press) var(--ease-out),
@@ -402,11 +387,13 @@ pre {
 }
 @media (hover: hover) and (pointer: fine) {
   [data-axiom-btn].btn-primary:hover:not(:disabled) {
-    box-shadow: 0 0 0 1px var(--c-bronze-border), 0 8px 24px rgba(79, 70, 229, 0.25);
+		box-shadow:
+			0 0 0 1px var(--c-bronze-border),
+			0 8px 24px rgba(79, 70, 229, 0.25);
   }
 }
 
-/* Modal open — state, not page choreography */
+/* Modal open — treat as a state change, never page-level choreography */
 [data-axiom-modal] {
   animation: axiom-modal-in var(--dur-modal) var(--ease-out) both;
 }
@@ -430,8 +417,6 @@ pre {
   animation: axiom-fade-in var(--dur-msg-in) var(--ease-out) both;
   animation-delay: calc(min(var(--i, 0), 8) * var(--dur-stagger));
 }
-
-/* ─── New keyframes: LCD, scroll reveal, stagger, phosphor ─── */
 
 @keyframes axiom-reveal-up {
   from {
@@ -465,7 +450,8 @@ pre {
 }
 
 @keyframes axiom-phosphor-pulse {
-  0%, 100% {
+	0%,
+	100% {
     opacity: 1;
   }
   50% {
@@ -480,10 +466,12 @@ pre {
 }
 
 @keyframes axiom-blink {
-  0%, 49% {
+	0%,
+	49% {
     opacity: 1;
   }
-  50%, 100% {
+	50%,
+	100% {
     opacity: 0;
   }
 }
@@ -514,7 +502,7 @@ pre {
   }
 }
 
-/* ─── Landing (lean, dark, readable — no scroll-reveal trap) ─── */
+/* Landing — lean, dark, readable; deliberately avoids any scroll-reveal trap */
 
 .landing-root {
   background: var(--c-bg);
@@ -715,8 +703,6 @@ pre {
   margin-left: auto;
   margin-right: auto;
 }
-
-/* ─── Shell: header + footer (all pages) ─── */
 
 .shell {
   min-height: 100vh;
@@ -927,7 +913,7 @@ pre {
 .shell-wallet {
   display: flex;
   align-items: center;
-  /* RainbowKit button sits here — keep compact */
+	/* RainbowKit wallet button sits here — keep it compact so it fits the header */
   transform: scale(0.92);
   transform-origin: right center;
 }
@@ -979,7 +965,6 @@ pre {
   margin: 0;
 }
 
-/* Chat = full-height app panel (no page padding / footer) */
 .shell-main--chat {
   max-width: none;
   width: 100%;
@@ -994,7 +979,6 @@ pre {
   display: none;
 }
 
-/* ─── Chat layout (sidebar + fixed composer) ─── */
 .chat-layout {
   display: flex;
   flex: 1;
@@ -1266,7 +1250,6 @@ html[data-theme="light"] .chat-topbar {
   line-height: 1;
 }
 
-/* Compact header status */
 .shell-status {
   display: inline-flex;
   align-items: center;
@@ -1307,7 +1290,7 @@ html[data-theme="light"] .chat-topbar {
   }
 }
 
-/* Agent detail — 2-layer tools, not form walls */
+/* Agent detail — 2-layer tools layout, not heavy stacked form walls */
 .agent-tabs {
   display: flex;
   gap: 2px;
@@ -1458,7 +1441,6 @@ html[data-theme="light"] .landing-root {
   background: var(--c-bg);
 }
 
-/* Form focus — feedback, not decoration */
 .axiom-field {
   outline: none;
 }
@@ -1475,7 +1457,6 @@ html[data-theme="light"] .landing-root {
   }
 }
 
-/* Error shake — validation feedback */
 @keyframes axiom-shake {
   0%,
   100% {
@@ -1497,7 +1478,6 @@ html[data-theme="light"] .landing-root {
   }
 }
 
-/* Skeleton shimmer — loading state */
 @keyframes axiom-shimmer {
   0% {
     background-position: 100% 0;
@@ -1523,7 +1503,6 @@ html[data-theme="light"] .landing-root {
   }
 }
 
-/* Hero entrance once — product load, not every section */
 @media (prefers-reduced-motion: no-preference) {
   .landing-hero--enter .landing-hero__copy {
     animation: axiom-fade-in var(--dur-landing) var(--ease-out) both;
@@ -1538,36 +1517,31 @@ html[data-theme="light"] .landing-root {
   }
 }
 
-
-/* Phosphor pulse — LCD "live" signal (decorative) */
 .phosphor-pulse {
   animation: axiom-phosphor-pulse 2s var(--ease-in-out) infinite;
 }
 
-/* Seal rotation — slow decorative spin */
 .seal-rotate {
   animation: axiom-seal-rotate 20s linear infinite;
   transform-origin: center;
 }
 
-/* Streaming caret blink */
 .caret-blink {
   animation: axiom-blink 1s step-end infinite;
 }
 
-/* Beam — traveling light along a path */
 .beam {
   animation: axiom-beam 3s linear infinite;
 }
 
-/* Prompt card — landing/chat clickable cards */
 .prompt-card {
   background: var(--c-surface);
   border: 1px solid var(--c-border);
   border-radius: var(--radius-xl);
   padding: var(--space-xl) var(--space-lg);
   cursor: pointer;
-  transition: border-color var(--dur-card-hover) var(--ease-out),
+	transition:
+		border-color var(--dur-card-hover) var(--ease-out),
     transform var(--dur-card-hover) var(--ease-out),
     background var(--dur-card-hover) var(--ease-out);
   text-align: left;
@@ -1586,7 +1560,6 @@ html[data-theme="light"] .landing-root {
   outline-offset: 2px;
 }
 
-/* Links */
 a {
   color: var(--c-bronze-light);
   text-decoration: none;
@@ -1598,12 +1571,10 @@ a {
   }
 }
 
-/* RainbowKit dark theme overrides */
 [data-rk] {
   --rk-font-family: var(--font-body);
 }
 
-/* Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -1619,19 +1590,16 @@ a {
   background: var(--c-scrollbar-hover);
 }
 
-/* Focus rings */
 *:focus-visible {
   outline: 2px solid var(--c-bronze);
   outline-offset: 2px;
 }
 
-/* Dialog backdrop */
 dialog::backdrop {
   background: var(--c-overlay);
   backdrop-filter: blur(4px);
 }
 
-/* Button system */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -1646,7 +1614,8 @@ dialog::backdrop {
   line-height: 1;
   border: 1px solid transparent;
   cursor: pointer;
-  transition: background var(--dur-card-hover) var(--ease-out),
+	transition:
+		background var(--dur-card-hover) var(--ease-out),
     border-color var(--dur-card-hover) var(--ease-out),
     color var(--dur-card-hover) var(--ease-out),
     transform var(--dur-press) var(--ease-out);
@@ -1715,20 +1684,16 @@ dialog::backdrop {
   }
 }
 
-/* Button base reset */
 button {
   font-family: inherit;
 }
 
-/* Form elements inherit font */
 input,
 textarea,
 select {
   font-family: inherit;
 }
 
-/* Responsive layout utilities */
-/* Tablet & below: stack grids and side-by-side layouts */
 @media (max-width: 768px) {
   .stack-on-mobile {
     flex-direction: column !important;
@@ -1736,7 +1701,6 @@ select {
   }
 }
 
-/* Touch targets */
 @media (pointer: coarse) {
   button,
   [role="button"],
@@ -1745,7 +1709,6 @@ select {
   }
 }
 
-/* Font size utility classes */
 .text-xs {
   font-size: var(--text-xs);
 }
@@ -1755,7 +1718,6 @@ select {
 .text-xl {
   font-size: var(--text-xl);
 }
-/* Skip link (visually hidden until keyboard focus) */
 .skip-link {
   position: absolute;
   top: 0;
@@ -1768,7 +1730,9 @@ select {
   transform: translateY(-120%);
   opacity: 0;
   pointer-events: none;
-  transition: transform 0.15s var(--ease-out), opacity 0.15s var(--ease-out);
+	transition:
+		transform 0.15s var(--ease-out),
+		opacity 0.15s var(--ease-out);
 }
 
 .skip-link:focus,
@@ -1781,11 +1745,14 @@ select {
 
 /* Reduced motion — gentler, not zero. Keep opacity/color, drop movement. */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+	*,
+	*::before,
+	*::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
-    transition-property: opacity, color, background-color, border-color !important;
+		transition-property:
+			opacity, color, background-color, border-color !important;
   }
   /* Landing scroll-reveal: show immediately, no transform */
   [data-reveal],
@@ -1844,7 +1811,6 @@ select {
   }
 }
 
-/* Live status pill */
 .live-pill {
   display: inline-flex;
   align-items: center;
@@ -1871,7 +1837,6 @@ select {
   }
 }
 
-/* HelpTip tooltip */
 .helptip {
   position: relative;
 }
@@ -1880,12 +1845,20 @@ select {
   pointer-events: none;
   transform: translateX(-50%) scale(0.96);
   transform-origin: bottom center;
-  transition: opacity 150ms var(--ease-out), transform 150ms var(--ease-out);
+	transition:
+		opacity 150ms var(--ease-out),
+		transform 150ms var(--ease-out);
 }
 @media (hover: hover) and (pointer: fine) {
-  .helptip:hover .helptip-content { opacity: 1; transform: translateX(-50%) scale(1); }
+	.helptip:hover .helptip-content {
+		opacity: 1;
+		transform: translateX(-50%) scale(1);
+	}
 }
-.helptip:focus-within .helptip-content { opacity: 1; transform: translateX(-50%) scale(1); }
+.helptip:focus-within .helptip-content {
+	opacity: 1;
+	transform: translateX(-50%) scale(1);
+}
 
 @media (prefers-contrast: more) {
   :root {
@@ -1908,11 +1881,8 @@ select {
   }
 }
 
-/* Utility classes */
-/* These replace the most common inline style={{}} patterns.
-   Migrate gradually — add className instead of style={{}} in new code. */
+/* Utility classes — replace common inline style={{}} patterns; add className instead of style={{}} in new code */
 
-/* Text */
 .text-muted {
   color: var(--c-text-muted);
 }
@@ -1923,7 +1893,6 @@ select {
   color: var(--c-text-primary);
 }
 
-/* Font weight */
 .fw-medium {
   font-weight: var(--fw-medium);
 }
@@ -1934,7 +1903,6 @@ select {
   font-weight: var(--fw-bold);
 }
 
-/* Line height */
 .lh-tight {
   line-height: var(--lh-tight);
 }
@@ -1942,7 +1910,6 @@ select {
   line-height: var(--lh-snug);
 }
 
-/* Spacing */
 .m-0 {
   margin: 0;
 }
@@ -1962,7 +1929,6 @@ select {
   margin-bottom: var(--space-2xl);
 }
 
-/* Flex layout */
 .block {
   display: block;
 }
@@ -1988,31 +1954,24 @@ select {
   gap: var(--space-sm);
 }
 
-/* Width */
 .w-full {
   width: 100%;
 }
 
-/* Cursor */
 .cursor-pointer {
   cursor: pointer;
 }
 
-/* Performance */
-/* Content-visibility: defer rendering of off-screen sections */
+/* Content-visibility — defer rendering of off-screen sections for scroll perf gains */
 .cv-auto {
   content-visibility: auto;
   contain-intrinsic-size: auto 300px;
 }
 
-
-
-/* Gap utilities (expanding beyond gap-sm) */
 .gap-md {
   gap: var(--space-md);
 }
 
-/* Inline validation feedback */
 .field-error {
   color: var(--c-danger);
   font-size: var(--text-xs);
@@ -2020,29 +1979,42 @@ select {
   line-height: var(--lh-snug);
 }
 
-/* Invalid input border highlight */
 input[aria-invalid="true"],
 textarea[aria-invalid="true"],
 select[aria-invalid="true"] {
   border-color: var(--c-danger) !important;
 }
 
-/* Readability utilities */
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }
 
-/* Chat markdown */
-.chat-md > :first-child { margin-top: 0; }
-.chat-md > :last-child { margin-bottom: 0; }
-.chat-md p { margin: 0 0 var(--space-sm); }
+.chat-md > :first-child {
+	margin-top: 0;
+}
+.chat-md > :last-child {
+	margin-bottom: 0;
+}
+.chat-md p {
+	margin: 0 0 var(--space-sm);
+}
 .chat-md h1,
 .chat-md h2,
-.chat-md h3 { margin: var(--space-md) 0 var(--space-xs); }
+.chat-md h3 {
+	margin: var(--space-md) 0 var(--space-xs);
+}
 .chat-md ul,
-.chat-md ol { margin: 0 0 var(--space-sm); padding-left: 1.25rem; }
-.chat-md li { margin: 2px 0; }
-.chat-md a { color: var(--c-bronze-light); text-decoration: underline; }
+.chat-md ol {
+	margin: 0 0 var(--space-sm);
+	padding-left: 1.25rem;
+}
+.chat-md li {
+	margin: 2px 0;
+}
+.chat-md a {
+	color: var(--c-bronze-light);
+	text-decoration: underline;
+}
 .chat-md code {
   font-family: var(--font-mono);
   background: var(--c-surface);
@@ -2058,7 +2030,11 @@ select[aria-invalid="true"] {
   padding: var(--space-sm) var(--space-md);
   overflow-x: auto;
 }
-.chat-md pre code { background: none; border: 0; padding: 0; }
+.chat-md pre code {
+	background: none;
+	border: 0;
+	padding: 0;
+}
 .chat-md blockquote {
   margin: 0 0 var(--space-sm);
   padding: 2px 0 2px var(--space-md);
@@ -2077,9 +2053,11 @@ select[aria-invalid="true"] {
   padding: 6px 10px;
   text-align: left;
 }
-.chat-md th { background: var(--c-surface); font-weight: var(--fw-semibold); }
+.chat-md th {
+	background: var(--c-surface);
+	font-weight: var(--fw-semibold);
+}
 
-/* Shortcut-help dialog (App.tsx ShortcutHelp) */
 .shortcut-overlay {
 	position: fixed;
 	inset: 0;
@@ -2098,7 +2076,9 @@ select[aria-invalid="true"] {
 	width: 90vw;
 	opacity: 0;
 	transform: scale(0.96);
-	transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
+	transition:
+		opacity 200ms var(--ease-out),
+		transform 200ms var(--ease-out);
 }
 .shortcut-panel--entered {
 	opacity: 1;
@@ -2138,7 +2118,6 @@ select[aria-invalid="true"] {
 	font-size: var(--text-sm);
 }
 
-/* TradeHistory rows (TradeHistory.tsx) */
 .trade-list {
 	display: flex;
 	flex-direction: column;
@@ -2194,7 +2173,6 @@ select[aria-invalid="true"] {
 	font-family: var(--font-mono);
 }
 
-/* ArchiveResultCard (chat/ArchiveResultCard.tsx) */
 .archive-link-line {
 	margin-top: 4px;
 }
@@ -2228,7 +2206,6 @@ select[aria-invalid="true"] {
 	margin-bottom: 6px;
 }
 
-/* Per-message hover actions (ChatPage) */
 .msg-actions {
   display: inline-flex;
   gap: var(--space-xs);

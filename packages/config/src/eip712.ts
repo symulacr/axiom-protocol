@@ -81,10 +81,8 @@ const VERIFIER_VERSION_HASH = keccak256(toUtf8Bytes(EIP712_DOMAIN_VERSION));
 
 const abiCoder = AbiCoder.defaultAbiCoder();
 
-// Domain separators are pure functions of an immutable domain object; the TEE
-// oracle signs many proofs against one domain (one per TeeSigner instance), so
-// memoize per domain object instead of re-encoding + hashing on every signature
-// (~60µs/op saved; ~16% of the full sign path).
+// Separators are pure per immutable domain; the oracle signs many proofs against one domain per
+// TeeSigner, so memoize per domain (~60µs/op, ~16% of sign path) instead of re-hashing each time.
 const domainSeparatorCache = new WeakMap<Eip712Domain, Hex>();
 
 export function domainSeparator(domain?: Eip712Domain): Hex {

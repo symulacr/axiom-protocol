@@ -4,7 +4,6 @@ import { keccak256, toHex } from "viem";
 import type { ToolRuntime } from "../transport.js";
 import type { ToolResult } from "../types.js";
 
-/** encode-only mode: return calldata instead of signing, plus any extras. */
 function encodeOnlyResult(
 	data: { to: string; data: string; value: string },
 	extra?: Record<string, unknown>,
@@ -63,19 +62,9 @@ async function encodeMint(
 	if (!to) return toolFail("Wallet not connected");
 
 	if (!args.dataDescription) return toolFail("dataDescription required");
-	// Canonical mint dataHash: keccak256(toHex(description)) — identical to the
-	// UI mint wizard derivation (apps/frontend/src/hooks/useMintWizard.ts). The
-	// contract stores this 32-byte value verbatim and the oracle only signs
-	// ownership proofs for hashes it has SEEN, so both mint paths MUST derive
-	// the same hash for the same agent name. The real dataHash is the 0G storage
-	// Merkle root of the uploaded payload (docs/current-state.md); until the
-	// payload is uploaded this deterministic name hash is used. The description
-	// is trimmed so " Foo " derives the same hash as "Foo" (frontend normalizes
-	// the same way).
+	// dataHash must match the UI mint wizard: keccak256(toHex(trimmed description)); the oracle signs only hashes it has seen, so both mint paths MUST derive identically — until upload, this name hash stands in for the payload's 0G Merkle root.
 	const description = String(args.dataDescription).trim();
-	// dataHash is optional for first-time users. When omitted, derive a stable
-	// placeholder hash from the agent name so minting works without manual
-	// metadata hashing; real sealed data can be associated later via update().
+	// dataHash omitted → name-derived placeholder keeps first-time mints working; real sealed data attaches later via update().
 	const dataHash =
 		typeof args.dataHash === "string" && args.dataHash.length > 0
 			? String(args.dataHash)
@@ -166,9 +155,8 @@ async function registerDataHashWithOracle(
 	if (!oracleUrl) return;
 
 	const url = `${oracleUrl.replace(/\/$/, "")}/v1/agents/mint`;
-	// Best-effort, non-fatal: the mint proceeds regardless, so failures are
-	// logged (console.warn) instead of thrown — sanctioned console sites.
 	try {
+		// non-fatal: mint proceeds regardless — warn instead of throw (sanctioned console site)
 		const { ok } = await fetchJson<{ ok?: boolean }>(ctx.http, url, {
 			method: "POST",
 			headers: { "content-type": "application/json" },

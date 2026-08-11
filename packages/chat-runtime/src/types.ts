@@ -1,14 +1,10 @@
 import type { ChatToolName } from "@axiom/config/chat-tools";
 
-/** 0G Router chat-completions request extension (official, docs.0g.ai router/features/chat-completions).
- *  `chat_template_kwargs: {"enable_thinking": false}` suppresses reasoning tokens for
- *  GLM-5-class thinking models; the Router strips it before forwarding to the provider. */
 export interface OgChatParams {
+	// enable_thinking:false suppresses reasoning tokens on GLM-5-class models; Router strips it before forwarding
 	chat_template_kwargs?: { enable_thinking?: boolean };
 }
 
-/** 0G Router `x_0g_trace` payload — always present on Router chat responses
- *  (docs.0g.ai router/features/chat-completions). Billing costs are exact neuron amounts. */
 export interface OgTrace {
 	request_id: string;
 	provider: string;
@@ -20,7 +16,6 @@ export interface OgTrace {
 	tee_verified?: boolean;
 }
 
-/** SSE event the backend relay emits alongside OpenAI chunks to forward 0G billing metadata. */
 export interface ChatTraceEvent {
 	type: "trace";
 	trace: OgTrace;

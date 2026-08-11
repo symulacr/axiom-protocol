@@ -62,7 +62,6 @@ export const COLORS = {
   warningBorder: "var(--c-warning-border)",
 } as const;
 
-/** Shared inline styles (deduped cycle-3). */
 export const textDimMediumNoWrap = {
   color: COLORS.textDim,
   fontWeight: "var(--fw-medium)",
@@ -124,7 +123,7 @@ const formFieldBase: CSSProperties = {
   fontFamily: "inherit",
   minWidth: "0",
   transition,
-  // focus ring via CSS class on inputs
+	// focus ring comes from a CSS class on inputs, not inline styles
 };
 
 type ButtonVariant = "primary" | "secondary" | "ghost" | "teal";

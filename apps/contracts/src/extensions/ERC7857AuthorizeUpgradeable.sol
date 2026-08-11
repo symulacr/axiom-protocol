@@ -1,21 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-// Derived from 0G Agentic ID reference (MIT)
-// https://github.com/0gfoundation/0g-agent-nft
-// Forked because Axiom's ERC7857Upgradeable uses 3-arg verifyTransferValidity
-// (EIP-712 domain binding per security fix F-03/F-04/F-12)
-// Reference uses 1-arg verifyTransferValidity — incompatible base contract
-//
+// Forked from 0G reference (MIT): Axiom's base uses 3-arg verifyTransferValidity (EIP-712 domain binding, fixes F-03/F-04/F-12); the reference's 1-arg form is incompatible.
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {ERC7857Upgradeable} from "../ERC7857Upgradeable.sol";
 import {IERC7857Authorize} from "../interfaces/IERC7857Authorize.sol";
 
-/// @title ERC7857AuthorizeUpgradeable
-/// @notice Extension that lets the owner grant usage rights to other addresses (max 100, cleared on transfer)
-/// @dev Adapted from the 0G Agentic ID reference (MIT)
+/// @title ERC7857AuthorizeUpgradeable — owner grants usage rights to other addresses (max 100, cleared on transfer; 0G reference MIT)
 abstract contract ERC7857AuthorizeUpgradeable is IERC7857Authorize, ERC7857Upgradeable {
     error UnauthorizedUsage(address caller);
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -28,7 +21,6 @@ abstract contract ERC7857AuthorizeUpgradeable is IERC7857Authorize, ERC7857Upgra
         uint256[50] __gap;
     }
 
-    // ERC-7201 storage location: keccak256(abi.encode(keccak256("0g.storage.ERC7857Authorize") - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant STORAGE_LOCATION = 0xf386e9faca35fbde2fe950510f665060c1dd15a136a76c268b6e6459b9945700;
 
     function _getERC7857AuthorizeStorage() private pure returns (ERC7857AuthorizeStorage storage $) {

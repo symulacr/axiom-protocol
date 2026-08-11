@@ -45,8 +45,8 @@ export interface TickRequest {
 	signalSource?: string;
 	signalPayload?: unknown;
 	stream?: boolean;
-	/** Optional Merkle-backed vault execute plan (server-key settlement) */
 	executionPlan?: {
+		// Optional Merkle-backed vault execute plan; uses server-key settlement, not client key
 		target: `0x${string}`;
 		value?: string | number;
 		data?: `0x${string}`;

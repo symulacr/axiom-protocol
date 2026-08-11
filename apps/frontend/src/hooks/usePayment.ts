@@ -95,14 +95,7 @@ export function usePayment(): UsePaymentResult {
 			setPayError(null);
 			try {
 				const processor = getAxiomPaymentProcessorAddress(chainId);
-				// Allowance semantics — mirrors backend PaymentProcessorClient.
-				// ensureAllowance (apps/backend/src/payment/processor.ts): approve the
-				// EXACT amount — never MaxUint256/infinity — whenever the current
-				// allowance is insufficient, wait for the approval receipt, then pay.
-				// Exact approval matches the contract's own requirement ("The payer
-				// must approve this contract for `amount`") and never grants the
-				// processor unlimited spending power (infinity approvals exist only in
-				// the E2E harness, apps/backend/src/cli/e2e/erc20.ts).
+				// Exact-amount approval mirrors backend ensureAllowance — never MaxUint256; matches the contract's "approve for amount" requirement (infinity approvals only in the E2E harness)
 				if (address && publicClient) {
 					const config = await getPaymentConfig();
 					const allowance = (await publicClient.readContract({

@@ -12,11 +12,7 @@ import {IAxiomAgentNFT} from "./interfaces/IAxiomAgentNFT.sol";
 import {TimelockManager} from "./libraries/TimelockManager.sol";
 using TimelockManager for TimelockManager.State;
 
-/// @title AxiomPaymentProcessor
-/// @notice Routes payments to agent creators, compute providers, and the protocol treasury.
-/// @dev Pay-for-agent pulls a configurable ERC-20 stable (USDC.e / USDG) from the payer and
-///      credits the creator's withdrawable balance. The creator pulls funds via
-///      `withdrawAgentEarnings()`. Standalone, upgradeable via UUPS.
+/// @title AxiomPaymentProcessor — routes payments to creators, compute providers, and the protocol treasury; payers approve an ERC-20 stable, creators pull via `withdrawAgentEarnings()`. UUPS-upgradeable.
 contract AxiomPaymentProcessor is Initializable, OwnableUpgradeable, PausableUpgradeable, ReentrancyGuard, UUPSUpgradeable {
     using SafeERC20 for IERC20;
 
@@ -55,14 +51,13 @@ contract AxiomPaymentProcessor is Initializable, OwnableUpgradeable, PausableUpg
         address paymentToken;
         uint16 protocolFeeBps;
         uint256 totalOutstandingEarnings;
-        mapping(uint256 => uint256) agentRoyaltyStored; // sentinel: 0 = unset, else bps + 1
+        mapping(uint256 => uint256) agentRoyaltyStored; // sentinel: 0 = unset, otherwise stores bps + 1 to disambiguate
         mapping(address => uint256) agentEarnings;
         IAxiomAgentNFT axiomNft;
         TimelockManager.State treasuryTimelock;
         uint256[49] __gap;
     }
 
-    // ERC-7201 storage location (OZ v5): keccak256(abi.encode(keccak256("agent.storage.AxiomPaymentProcessor") - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant STORAGE_LOCATION = 0xb6e9ac8ab7d5307044651d01576943b58a3563d54e8f2be64d1601b1a6cebc00;
 
     function _getStorage() private pure returns (PaymentProcessorStorage storage $) {
@@ -140,9 +135,7 @@ contract AxiomPaymentProcessor is Initializable, OwnableUpgradeable, PausableUpg
         emit ProtocolFeeBpsUpdated(old, newBps);
     }
 
-    /// @notice Rotate the payment ERC-20 (e.g. migrate from USDC.e to USDG). Only callable by owner.
-    /// @dev    Blocked while outstanding creator earnings exist or the contract still holds the
-    ///         old token. Drain earnings and sweep the old balance before migrating.
+    /// @notice Rotate the payment ERC-20; blocked while outstanding earnings exist or the old token balance remains — drain both before migrating.
     function setPaymentToken(
         address newPaymentToken
     ) external onlyOwner {
@@ -237,11 +230,7 @@ contract AxiomPaymentProcessor is Initializable, OwnableUpgradeable, PausableUpg
         return _getStorage().agentEarnings[creator];
     }
 
-    /// @notice Pay for an agent's service. Splits `amount` of `paymentToken` to the creator
-    ///         (royalty, credited to their withdrawable balance) and to the protocol treasury
-    ///         (protocolCut, forwarded immediately to the treasury address).
-    /// @dev    The payer must approve this contract for `amount` of `paymentToken` before calling.
-    ///         Splits are computed on the actual tokens received (fee-on-transfer tokens revert).
+    /// @notice Split `amount` between creator (royalty credited to withdrawable balance) and treasury (forwarded immediately); approve first; splits use actual received tokens, so fee-on-transfer tokens revert.
     function payForAgent(
         uint256 agentTokenId,
         uint256 amount
@@ -287,8 +276,7 @@ contract AxiomPaymentProcessor is Initializable, OwnableUpgradeable, PausableUpg
         emit PaymentProcessed(agentTokenId, msg.sender, creator, amount, creatorCut, protocolCut);
     }
 
-    /// @dev    The protocol operator approves this contract to spend `amount` of `paymentToken`,
-    ///         then calls this function. The full `amount` is forwarded to `provider`.
+    /// @dev Operator approves this contract to spend `amount`, then the full amount is forwarded to `provider`.
     function payComputeProvider(
         address provider,
         uint256 amount
@@ -299,7 +287,7 @@ contract AxiomPaymentProcessor is Initializable, OwnableUpgradeable, PausableUpg
         emit ComputeProviderPaid(provider, amount);
     }
 
-    /// @notice Creator withdraws accumulated earnings in the configured payment token.
+    /// @notice Creator pulls accumulated earnings in the configured payment token (not native).
     function withdrawAgentEarnings() external nonReentrant {
         PaymentProcessorStorage storage $ = _getStorage();
         uint256 amount = $.agentEarnings[msg.sender];

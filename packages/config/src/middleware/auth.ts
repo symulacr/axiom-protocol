@@ -1,7 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import type { Request, Response, NextFunction } from "express";
 
-/** Who presented a valid API key. Client keys are intentionally weaker. */
 type AuthPrincipal = "none" | "server" | "client" | "disabled";
 
 export type AuthRequest = Request & {
@@ -17,7 +16,10 @@ function splitKeys(raw: string | undefined): string[] {
 		.filter(Boolean);
 }
 
-export function timingSafeMatch(presented: string, candidates: string[]): boolean {
+export function timingSafeMatch(
+	presented: string,
+	candidates: string[],
+): boolean {
 	const keyBuf = Buffer.from(presented, "utf-8");
 	return candidates.some((api) => {
 		const apiBuf = Buffer.from(api, "utf-8");
@@ -25,10 +27,7 @@ export function timingSafeMatch(presented: string, candidates: string[]): boolea
 	});
 }
 
-/**
- * Browser/client keys may only hit these path prefixes (method-aware where needed).
- * Everything else requires the server API key.
- */
+// client keys may only hit these prefixes (method-aware); everything else needs the server key
 const CLIENT_ALLOWED_ROUTES: ReadonlyArray<{
 	methods?: readonly string[];
 	match: (path: string) => boolean;
@@ -59,7 +58,6 @@ const CLIENT_ALLOWED_ROUTES: ReadonlyArray<{
 
 export function isClientPathAllowed(method: string, path: string): boolean {
 	const m = method.toUpperCase();
-	// Strip query string for matching
 	const pathOnly = path.split("?")[0] ?? path;
 	return CLIENT_ALLOWED_ROUTES.some((rule) => {
 		if (rule.methods && !rule.methods.includes(m)) return false;
@@ -67,14 +65,7 @@ export function isClientPathAllowed(method: string, path: string): boolean {
 	});
 }
 
-/**
- * API-key auth with capability split:
- * - server key (`AXIOM_API_KEY`): full access
- * - client key (`AXIOM_CLIENT_API_KEY`): only CLIENT_ALLOWED_ROUTES
- *
- * Use `requireServerAuth` on operator routes; `enforceClientPathAllowlist`
- * must be mounted after createApiKeyAuth.
- */
+// server key (AXIOM_API_KEY) full access; client key (AXIOM_CLIENT_API_KEY) only CLIENT_ALLOWED_ROUTES; requireServerAuth guards operator routes
 export function createApiKeyAuth(
 	apiKey: string | undefined,
 	publicPaths: string[] = ["/health"],
@@ -121,7 +112,6 @@ export function createApiKeyAuth(
 	};
 }
 
-/** Deny client-key access outside the allowlist. Server/disabled/none pass. */
 export function enforceClientPathAllowlist(
 	req: Request,
 	res: Response,
@@ -143,7 +133,6 @@ export function enforceClientPathAllowlist(
 	});
 }
 
-/** Operator-only: vault execute, privileged payment, forensics, etc. */
 export function requireServerAuth(
 	req: Request,
 	res: Response,
@@ -160,7 +149,6 @@ export function requireServerAuth(
 	});
 }
 
-/** Timing-safe membership test for WebSocket tokens (server or client keys). */
 export function timingSafeTokenInList(
 	token: string,
 	candidates: string[],

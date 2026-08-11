@@ -93,7 +93,6 @@ export function payloadNumber(
 	return undefined;
 }
 
-
 const log = createLogger("events");
 
 interface StoredEvent {
@@ -209,8 +208,7 @@ export class EventStore {
 		const bucketKey = `${stored.source}::${stored.eventName}`;
 		const bucket = getOrCreate(this.buckets, bucketKey, () => []);
 		if (bucket.length >= this.cap) {
-			// cap is validated positive, so the bucket is non-empty here.
-			const evicted = bucket.shift();
+			const evicted = bucket.shift(); // cap validated positive, so the bucket is non-empty here and shift cannot be undefined
 			if (!evicted) throw new Error("EventStore cap bucket empty");
 			this.seenKeys.delete(dedupeKey(evicted));
 			this.removeFromIndex(evicted);
@@ -221,11 +219,10 @@ export class EventStore {
 		this.dirty.add(bucketKey);
 		this.total += 1;
 		this.persistDebounced();
-		// Broadcast to WebSocket subscribers in real-time
 		try {
 			broadcast(stored.eventName, stored);
 		} catch {
-			/* WS errors are non-fatal */
+			/* WS broadcast errors are non-fatal; a dead subscriber must not break ingestion */
 		}
 		return stored;
 	}
@@ -271,11 +268,7 @@ export class EventStore {
 		return n;
 	}
 
-	/**
-	 * Rebuild secondary indexes for one event. Shared by append(), load() and
-	 * rollbackToBlock() so every insertion path maintains identical indexes.
-	 * append() passes its precomputed dedupe key to avoid recomputing it.
-	 */
+	/** Single indexer shared by append(), load() and rollbackToBlock() so every insertion path keeps identical indexes; append() passes its precomputed dedupe key. */
 	private reindexEvent(
 		evt: StoredEvent,
 		dedupe: string = dedupeKey(evt),
@@ -334,7 +327,6 @@ export class EventStore {
 	): void {
 		const last = bucket.length - 1;
 		if (idx !== last) {
-			// idx is a present index (< last), so the last slot is defined.
 			const swapped = bucket[last];
 			if (!swapped) throw new Error("EventStore swap slot empty");
 			bucket[idx] = swapped;
@@ -446,12 +438,6 @@ export class EventStore {
 		for (const key of this.buckets.keys()) this.dirty.add(key);
 		await this.enqueuePersist();
 	}
-	/**
-	 * Remove all events at or above the given block number (reorg rollback).
-	 * Rebuilds all secondary indexes (byEventName, byTokenId, byTransferTo)
-	 * and clears dedup entries for removed events.
-	 * @returns number of events removed
-	 */
 	rollbackToBlock(blockNumber: bigint): number {
 		const cutoff = Number(blockNumber);
 		if (!Number.isFinite(cutoff)) {
@@ -480,11 +466,7 @@ export class EventStore {
 		}
 		if (removed === 0) return 0;
 
-		// Rebuild primary buckets and all secondary indexes from the kept events.
-		// Note: indexPositions is a WeakMap — entries for removed events are
-		// garbage-collected once those StoredEvent objects are dereferenced,
-		// and kept events get their positions overwritten by addToIndex /
-		// reindexEvent below (mirrors the load() rebuild pattern).
+		// indexPositions is a WeakMap: removed-event entries GC once dereferenced; kept events get positions overwritten below (mirrors load()).
 		this.buckets.clear();
 		this.byEventName.clear();
 		this.byTokenId.clear();
@@ -546,10 +528,7 @@ export function getEventStore(): EventStore {
 	return singleton;
 }
 
-// ── Merged from persist.ts ──────────────────────────────────────────
-// Resolved at call time (not module load) so AXIOM_DATA_DIR set after import
-// takes effect — matches acquireEventStoreLock's call-time env resolution and
-// lets parallel test workers use per-file data dirs.
+// Resolved at call time (not module load) so AXIOM_DATA_DIR set after import takes effect — matches acquireEventStoreLock and lets parallel test workers use per-file data dirs.
 function persistPaths(): { dir: string; file: string } {
 	const dir = join(process.env.AXIOM_DATA_DIR ?? process.cwd(), ".data");
 	return { dir, file: join(dir, "events.json") };
@@ -612,15 +591,9 @@ async function saveBuckets(
 	await rename(tmp, persistPaths().file);
 }
 
-// ── Merged from instance-lock.ts ────────────────────────────────────
+/** Prevents silent multi-instance split-brain on one data dir; AXIOM_ALLOW_MULTI_INSTANCE escapes for externally-coordinated replicas only. */
 const lockLog = createLogger("events-lock");
 
-/**
- * Exclusive process lock for EventStore file persistence.
- * Prevents silent multi-instance split-brain on the same AXIOM_DATA_DIR.
- * Set AXIOM_ALLOW_MULTI_INSTANCE=true only for intentional multi-replica deploys
- * with external coordination (not supported for local JSON EventStore).
- */
 export function acquireEventStoreLock(
 	dataDir: string = process.env.AXIOM_DATA_DIR ?? process.cwd(),
 ): () => void {

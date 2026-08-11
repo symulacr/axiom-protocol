@@ -8,10 +8,7 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 import {ERC721Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import {IERC721Metadata} from "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 
-// UUPS upgradeability is mandated by security report F-02.
-// OZ ERC1967 proxies must inherit UUPSUpgradeable and override _authorizeUpgrade with an
-// access check, or upgrades revert on the missing proxiableUUID security check.
-// Refs: https://docs.openzeppelin.com/contracts/5.x/api/proxy#UUPSUpgradeable , EIP-1967.
+// UUPS mandated by security report F-02: without an _authorizeUpgrade override, OZ proxy upgrades revert.
 import {ERC7857Upgradeable} from "./ERC7857Upgradeable.sol";
 import {ERC7857CloneableUpgradeable} from "./extensions/ERC7857CloneableUpgradeable.sol";
 import {ERC7857AuthorizeUpgradeable} from "./extensions/ERC7857AuthorizeUpgradeable.sol";
@@ -22,12 +19,8 @@ import {AxiomMetadataJson} from "./extensions/AxiomMetadataJson.sol";
 import {TimelockManager} from "./libraries/TimelockManager.sol";
 using TimelockManager for TimelockManager.State;
 
-/// @notice Concrete ERC-7857 iNFT contract for the Axiom Protocol
-/// @dev Composes the canonical 3 ERC-7857 extensions (Cloneable + Authorize + IDataStorage)
-///      + OZ AccessControl + ReentrancyGuard + Pausable + ERC721Upgradeable
-/// @dev Adapted from https://github.com/0gfoundation/0g-agent-nft (MIT) — same composition
-/// @dev Integrators must use `iTransfer`/`iTransferFrom` with proofs; bare `transferFrom`/`safeTransferFrom`
-///      move ownership without `PublishedSealedKey` and may break decryptability.
+/// @notice Concrete ERC-7857 iNFT composing the 3 canonical extensions + OZ AccessControl/ReentrancyGuard/Pausable/ERC721 (0G reference, MIT)
+/// @dev Integrators must use `iTransfer`/`iTransferFrom` with proofs — bare ERC-721 transfers skip `PublishedSealedKey` and break decryptability.
 contract AxiomAgentNFT is
     AccessControlUpgradeable,
     ReentrancyGuard,
@@ -63,7 +56,6 @@ contract AxiomAgentNFT is
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     string public constant VERSION = "1.0.0";
 
-    // ERC-7201 storage location (OZ v5): keccak256(abi.encode(keccak256("agent.storage.AxiomAgentNFT") - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant STORAGE_LOCATION = 0xe982fe9a44d6409dbf89634fae06be5c796203a5c100b2ec87b395d27194a900;
 
     function _getAxiomAgentNFTStorage() private pure returns (AxiomAgentNFTStorage storage $) {
@@ -147,8 +139,7 @@ contract AxiomAgentNFT is
         return super.supportsInterface(interfaceId);
     }
 
-    /// @dev Restricted to `ADMIN_ROLE`. Verifier rotation is two-step with
-    ///      a 1-day timelock so monitors can react before execution.
+    /// @dev Verifier rotation is two-step with a 1-day timelock so monitors can react before execution.
     function proposeVerifier(
         address newVerifier
     ) external onlyRole(ADMIN_ROLE) {
@@ -229,11 +220,7 @@ contract AxiomAgentNFT is
         _updateData(tokenId, newDatas);
     }
 
-    /// @dev    Required by UUPSUpgradeable (otherwise _authorizeUpgrade reverts with
-    ///         "UUPSUnauthorizedCallContext"). The EIP-1967 implementation slot is rewritten by the
-    ///         upgrade; this access check is the only thing preventing an attacker from bricking or
-    ///         replacing the implementation. Restricted to `DEFAULT_ADMIN_ROLE` so governance aligns
-    ///         with AccessControl rather than a separate Ownable surface.
+    /// @dev UUPS gate: the EIP-1967 impl-slot rewrite is protected only by this check; DEFAULT_ADMIN_ROLE keeps governance in AccessControl.
     function _authorizeUpgrade(
         address newImplementation
     ) internal virtual override onlyRole(DEFAULT_ADMIN_ROLE) {}

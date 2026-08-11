@@ -26,14 +26,10 @@ import { BRAND } from "./brand/assets.js";
 import { ConnectedGuard, Kbd, Modal, Spinner } from "./components/ui.js";
 import { useMediaQuery } from "./hooks/useMediaQuery.js";
 
-/**
- * Axiom Protocol — primary information architecture (single source of truth).
- * Primary shell: Home · Chat · Mint (modal action); deep page: Agent Detail.
- */
+/** IA source of truth: Home · Chat · Mint (modal action); deep page: Agent Detail. */
 const APP_HOME = "/app" as const;
 const APP_CHAT = "/chat" as const;
 
-/** Query flag that opens the mint modal over the current route. */
 const MINT_QUERY = "mint" as const;
 const MINT_OPEN_VALUE = "1" as const;
 
@@ -79,7 +75,7 @@ function readTheme(): ThemeMode {
     const v = localStorage.getItem(STORAGE_KEY);
     if (v === "light" || v === "dark") return v;
   } catch {
-    /* ignore */
+		void 0;
   }
   return "dark";
 }
@@ -108,7 +104,7 @@ function useTheme(): {
     try {
       localStorage.setItem(STORAGE_KEY, theme);
     } catch {
-      /* ignore */
+			void 0;
     }
   }, [theme]);
 
@@ -166,10 +162,7 @@ function useFocusTrap(
   }, [ref, active]);
 }
 
-/**
- * Compact status pill for the shell header.
- * Detail lives in title tooltip — not a second status bar.
- */
+/** Compact header pill — detail lives in the title tooltip, not a second status bar. */
 function HealthBadge(): ReactElement {
   const { data, isLoading } = useHealth();
 
@@ -199,11 +192,7 @@ function HealthBadge(): ReactElement {
       : "down";
 
   const label =
-    status === "ok"
-      ? "Online"
-      : status === "down"
-        ? "Offline"
-        : "…";
+		status === "ok" ? "Online" : status === "down" ? "Offline" : "…";
 
   const title = data
     ? `API ${label} · oracle ${data.oracle} · block #${data.chainHead}`
@@ -347,7 +336,6 @@ export function App(): ReactElement {
 
   const openMint = useCallback(() => {
     setMenuOpen(false);
-    // Stay on shell when possible; open mint modal in place
     if (isLanding) {
       navigate(`${APP_HOME}?mint=1`);
       return;
@@ -361,9 +349,7 @@ export function App(): ReactElement {
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams]);
 
-  // Auto-redirect to the app when the wallet connects on the landing page.
-  // Only fires on the disconnected → connected transition so a connected user
-  // who manually visits "/" can still see the landing page.
+	// Auto-redirect to the app on the disconnected→connected transition; a connected user may still view "/"
   useEffect(() => {
     if (isConnected && !wasConnected.current && isLanding) {
       navigate("/app", { replace: true });
@@ -583,7 +569,7 @@ export function App(): ReactElement {
               <Routes>
               <Route path="/" element={<LandingPage />} />
               <Route path={APP_HOME} element={<HomePage />} />
-              {/* List peers fold into Home; mint is modal-only */}
+								{/* List peers fold into Home; mint is modal-only, never a separate page */}
                 <Route
                   path="/agents"
                   element={<Navigate to={APP_HOME} replace />}
@@ -627,7 +613,6 @@ export function App(): ReactElement {
         </ErrorBoundary>
       </main>
 
-      {/* Mint stays in context — modal, not a 5th app section */}
       <Modal
         open={mintOpen}
         onClose={closeMint}

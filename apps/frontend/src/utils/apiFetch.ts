@@ -18,10 +18,9 @@ export function agentRoyaltyPath(id: bigint | string): string {
 }
 
 const DEFAULT_TIMEOUT = 10_000;
-export const LONG_TIMEOUT = 60_000; // on-chain tx wait
-export const STREAM_TIMEOUT = 120_000; // LLM streaming
+export const LONG_TIMEOUT = 60_000;
+export const STREAM_TIMEOUT = 120_000;
 
-/** Response of the backend tx-encode endpoints (/v1/agents/mint/encode, /v1/agents/:id/withdraw). */
 export type EncodeResponse = {
 	to: `0x${string}`;
 	data: `0x${string}`;
@@ -33,7 +32,7 @@ function delay(ms: number): Promise<void> {
 }
 
 function isNetworkError(err: unknown): boolean {
-	if (err instanceof TypeError) return true; // "Failed to fetch"
+	if (err instanceof TypeError) return true; // TypeError is what browsers throw for failed fetch — treat as network error
 	if (err instanceof DOMException && err.name === "AbortError") return false;
 	const msg = err instanceof Error ? err.message.toLowerCase() : "";
 	return (
@@ -124,7 +123,6 @@ function wrapFetchError(err: unknown): never {
 	throw err;
 }
 
-/** Merge JSON headers + API key into init and apply the timeout wrapper. */
 function requestWithHeaders(
 	init: RequestInit,
 	timeout: number,
@@ -211,7 +209,6 @@ export async function apiFetchResponse(
 	}
 }
 
-/** apiFetch equivalent for the oracle service (ORACLE_URL base). */
 export async function oracleFetch<T>(
 	path: string,
 	init: RequestInit & { timeout?: number } = {},

@@ -6,15 +6,17 @@ import {
 import { buildSessionContext } from "./session.js";
 import type { ChatSessionContext } from "./types.js";
 
-// Per-class guidance (1 line each). Exact tool specs ride in the `tools`
-// API parameter — duplicating the full catalog here doubled context cost.
 const CLASS_GUIDANCE: Record<ChatToolClass, string> = {
+	// one line/class; exact specs ride in `tools` API param — full catalog here doubled context cost
   read: "Read on-chain state (agents, vaults, balances, events) — prefer over guessing.",
-  encode: "Wallet-signs actions (mint, deposit, withdraw, transfer, pay) — confirm intent first.",
-  orchestrate: "Vault strategy ticks — prefer simulate_tick before execute_tick when unsure.",
+	encode:
+		"Wallet-signs actions (mint, deposit, withdraw, transfer, pay) — confirm intent first.",
+	orchestrate:
+		"Vault strategy ticks — prefer simulate_tick before execute_tick when unsure.",
   archive: "Web archive lookups via Wayback Machine.",
   ask: "Pause and ask the user when input is missing or ambiguous.",
-  skill: "Composed multi-step skills (server-key gated for oss_forensics_*/unbroker_execute).",
+	skill:
+		"Composed multi-step skills (server-key gated for oss_forensics_*/unbroker_execute).",
 };
 
 const PROMPT_HEAD = [

@@ -10,7 +10,7 @@ export class TypedContract<T> {
     runner: ContractRunner | null,
   ) {
     this.raw = new Contract(address, abi, runner);
-    this.contract = this.raw as unknown as T; // ← THE ONE sanctioned as for contracts
+		this.contract = this.raw as unknown as T; // the one sanctioned `as` cast in this codebase — typed contract access
   }
 
   get iface() {
@@ -19,6 +19,8 @@ export class TypedContract<T> {
 }
 
 export type AgentNFTMethods = {
-  intelligentDatasOf(tokenId: bigint): Promise<{ dataDescription: string; dataHash: string }[]>;
+	intelligentDatasOf(
+		tokenId: bigint,
+	): Promise<{ dataDescription: string; dataHash: string }[]>;
   creatorOf(tokenId: bigint): Promise<string>;
 };

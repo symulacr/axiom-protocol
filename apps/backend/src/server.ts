@@ -71,7 +71,6 @@ import pkg from "../package.json" with { type: "json" };
 const log = createLogger("server");
 const PKG_VERSION = pkg.version;
 const MAX_WS_CLIENTS = getRuntimeConfig().wsMaxClients;
-// Base for parsing relative WS upgrade paths (host is ignored here).
 const LOCAL_BASE_URL = "http://localhost";
 
 function shortSigner(addr: string): string {
@@ -186,15 +185,13 @@ export function startServer(config: ServerConfig): {
 			},
 		}),
 	);
-	// CORS is fail-closed: allow only the configured frontend origin; if unset,
-	// deny cross-origin requests rather than falling back to a dev default.
+	// CORS is fail-closed: only the configured frontend origin is allowed; unset denies cross-origin rather than a dev default.
 	app.use(
 		cors({
 			origin: frontendOrigin ?? false,
 			methods: ["GET", "POST"],
 		}),
 	);
-	// Auth is required by default; only AXIOM_DISABLE_AUTH=true opts out (never NODE_ENV).
 	app.use(
 		createApiKeyAuth(
 			config.env?.AXIOM_API_KEY,
@@ -222,8 +219,7 @@ export function startServer(config: ServerConfig): {
 
 	const ogChainId = config.env?.AXIOM_CHAIN_ID ?? ARISTOTLE_CHAIN_ID;
 	const startedAt = Date.now();
-	// Resolved once the server is listening so MCP tools can self-call the
-	// REST surface even when bound to an ephemeral port (tests use port 0).
+	// Resolved post-listen so MCP self-calls work even on ephemeral ports (tests bind port 0).
 	let mcpBaseUrl: string | null = null;
 	const oracle = new DefaultSignerOracleClient({
 		baseUrl: config.oracleBaseUrl,
@@ -492,7 +488,6 @@ function registerChatRoutes(app: Express, config: ServerConfig): void {
 							`data: ${JSON.stringify({ choices: [{ delta: { content: "⚠ 0G Compute returned an empty response. Try again or check model availability." } }] })}\n\n`,
 						);
 					}
-					// Forward 0G router billing metadata if present
 					const traceHeader =
 						response?.headers?.get?.("x_0g_trace") ??
 						(response?.headers as unknown as Record<string, string>)?.[
@@ -508,7 +503,7 @@ function registerChatRoutes(app: Express, config: ServerConfig): void {
 								`data: ${JSON.stringify({ type: "trace", trace })}\n\n`,
 							);
 						} catch {
-							// trace header not JSON — skip
+							/* trace header not JSON — skip */
 						}
 					}
 					writeChunk("data: [DONE]\n\n");
@@ -528,7 +523,7 @@ function registerChatRoutes(app: Express, config: ServerConfig): void {
 					res.destroy();
 					return;
 				}
-				// Surface payment/auth failures clearly (0G router 402 insufficient_balance)
+				// Surface payment/auth failures clearly (0G router returns a 402 insufficient_balance code)
 				const e = err as {
 					status?: number;
 					code?: string;

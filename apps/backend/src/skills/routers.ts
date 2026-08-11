@@ -44,10 +44,9 @@ import {
 
 const logEvm = createLogger("skills:evm");
 
-// The untyped ethers.Contract types every ABI method as possibly-undefined.
-// These routes use constant ABIs, so a missing method is a programming error:
-// fail loudly rather than mask it with optional chaining.
 function mustMethod<T extends (...args: never[]) => unknown>(
+	// Constant ABIs make a missing method a programming error: fail loudly, don't mask it with optional chaining.
+
 	fn: T | undefined,
 	what: string,
 ): T {
@@ -82,7 +81,6 @@ const CHAINS: { name: string; rpc: string }[] = [
 	{ name: "gnosis", rpc: "https://rpc.gnosischain.com" },
 ];
 
-// CoinGecko price API base (fetchPrice).
 const COINGECKO_API = "https://api.coingecko.com";
 const priceGet = cachedJsonGet(COINGECKO_API, { ttlMs: 60_000 });
 
@@ -93,15 +91,6 @@ async function fetchPrice(id: string): Promise<number> {
 	)) as Record<string, { usd?: number }>;
 	return j[id]?.usd ?? 0;
 }
-
-// ---------------------------------------------------------------------------
-// Shared skill-router scaffolding
-//
-// Every skill route is wired through `skill(...)` + `registerSkillRoutes(...)`.
-// This keeps path / schema / description / handler / auth in one place and
-// removes the per-group boilerplate that previously lived in five near-identical
-// factory functions.
-// ---------------------------------------------------------------------------
 
 type SkillHandlerFn<S extends z.ZodTypeAny> = (
 	parsed: z.infer<S>,
@@ -115,15 +104,11 @@ interface SkillRouteDef<S extends z.ZodTypeAny = z.ZodTypeAny> {
 	schema: S;
 	description: string;
 	handler: SkillHandlerFn<S>;
-	/** When true the handler is guarded behind a configured GITHUB_TOKEN. */
 	requiresGithubToken?: boolean;
 	/** When true only server API key may call (forensics / destructive skills). */
 	requiresServerAuth?: boolean;
 }
 
-// Private module factory (28 internal call sites). Last two params are
-// optional flags; converting to an options object would churn all call sites
-// with no readability gain for a 6-arg internal helper.
 function skill<S extends z.ZodTypeAny>(
 	path: string,
 	schema: S,
@@ -146,6 +131,7 @@ function registerSkillRoutes(
 	route: SkillRouter["route"],
 	registrations: SkillRouteDef[],
 ): void {
+	// One registration indirection keeps path/schema/handler/auth together, replacing five near-identical factories; positional flags stay (an options object would churn 28 call sites).
 	for (const r of registrations) {
 		const handler: SkillHandlerFn<z.ZodTypeAny> = async (
 			parsed,
@@ -177,28 +163,16 @@ function registerSkillRoutes(
 	}
 }
 
-/** Never return full secret material to API clients. */
 export function redactIocMatch(raw: string, patternName: string): string {
 	if (patternName === "ipv4" || patternName === "domain") {
-		return raw; // not secrets
+		return raw; // ipv4/domain matches are public data, not secrets — no redaction needed
 	}
 	if (raw.length <= 8) return `[redacted:${patternName}]`;
 	return `${raw.slice(0, 4)}…${raw.slice(-4)} [redacted:${patternName}]`;
 }
 
-// ---------------------------------------------------------------------------
-// EVM skills
-// ---------------------------------------------------------------------------
-
-// EVM skill schemas live in @axiom/config/skills/schemas (single source of
-// truth, shared with chat-tools.ts).
 export const whaleSchema = evmWhaleSchema;
 
-// ---------------------------------------------------------------------------
-// Stocks skills
-// ---------------------------------------------------------------------------
-
-// Yahoo Finance quote API base (stocks skills).
 const YAHOO_BASE = "https://query2.finance.yahoo.com";
 const yahooGet = cachedJsonGet(YAHOO_BASE, { ttlMs: 30_000 });
 let crumb = "";
@@ -287,10 +261,6 @@ async function chartQuote(symbol: string, range: string, interval: string) {
 	return extractQuote(data);
 }
 
-// ---------------------------------------------------------------------------
-// OSINT skills
-// ---------------------------------------------------------------------------
-
 const cachedGet = cachedJsonGet("", {
 	headers: { "User-Agent": "AxiomAgent/1.0", Accept: "application/json" },
 	ttlMs: 5 * 60 * 1000,
@@ -316,15 +286,12 @@ function tokenScore(a: string, b: string): number {
 	return overlap / Math.max(tokA.size, tokB.size);
 }
 
-// OFAC's sanctions search rejects non-browser user agents (HTTP 406) and
-// returns HTML (not JSON). Fetch as text with browser-like headers so the
-// route degrades to a clean 200 instead of a 502 upstream-error.
 const ofacHeaders = {
+	// OFAC rejects non-browser UAs (406) and returns HTML; browser headers keep this a 200, not a 502
 	"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36",
 	Accept: "text/html,application/xhtml+xml",
 };
 const ofacCache = new TTLCache<string>(5 * 60 * 1000);
-// OFAC sanctions search base (HTML, browser-UA only).
 const OFAC_BASE_URL = "https://sanctionssearch.ofac.treas.gov";
 async function ofacFetch(path: string): Promise<string> {
 	const cached = ofacCache.get(path);
@@ -338,19 +305,10 @@ async function ofacFetch(path: string): Promise<string> {
 	return text;
 }
 
-// ---------------------------------------------------------------------------
-// Unbroker skills
-// ---------------------------------------------------------------------------
-
 const logUnbroker = createLogger("skills:unbroker");
-
-// ---------------------------------------------------------------------------
-// OSS forensics skills
-// ---------------------------------------------------------------------------
 
 const CACHE_TTL_MS = 120_000;
 const cache = new TTLCache<unknown>(CACHE_TTL_MS);
-// GitHub REST API base (OSS forensics skills).
 const GITHUB_API = "https://api.github.com";
 const ghGet = cachedJsonGet(GITHUB_API, { ttlMs: CACHE_TTL_MS });
 const logForensics = createLogger("oss-forensics");
@@ -366,12 +324,8 @@ async function ghFetch(path: string): Promise<unknown> {
 	return ghGet(`gh:${path}`, path, { headers: ghHeaders() });
 }
 
-/**
- * Fetch a file's UTF-8 text content from a GitHub repo (base64-decoded),
- * cached under `cacheKey`. Returns null when the file is missing/empty.
- * Shared by scanIocs() and auditDeps() so both paths hit the same cache.
- */
 async function fetchGithubText(
+	// shared by scanIocs() and auditDeps(); GitHub content is base64-decoded, null when absent
 	owner: string,
 	repo: string,
 	filePath: string,
@@ -521,16 +475,11 @@ async function auditDeps(owner: string, repo: string) {
 	return { deps, storageLayout };
 }
 
-// ---------------------------------------------------------------------------
-// Skill router registration
-// ---------------------------------------------------------------------------
-
 export function createSkillRouters(config: ServerConfig): Router {
 	const { router, route } = createSkillRouter(config);
 	const provider = getSharedProvider();
 	const getNft = (addr: string) =>
 		new ethers.Contract(addr, AGENT_NFT_ABI, provider);
-	/** Resolve the AgentNFT contract or 503 when the address is not configured. */
 	const requireNft = (res: Response): ethers.Contract | null => {
 		const nftAddr = config.addresses?.agentNft;
 		if (!nftAddr) {
@@ -545,7 +494,6 @@ export function createSkillRouters(config: ServerConfig): Router {
 	};
 
 	registerSkillRoutes(route, [
-		// EVM
 		skill(
 			"/v1/skills/evm/wallet",
 			evmTokenOwnerSchema,
@@ -714,7 +662,6 @@ export function createSkillRouters(config: ServerConfig): Router {
 			},
 		),
 
-		// Stocks
 		skill(
 			"/v1/skills/stocks/quote",
 			stocksQuoteSchema,
@@ -796,7 +743,6 @@ export function createSkillRouters(config: ServerConfig): Router {
 			async (parsed) => chartQuote(parsed.symbol, "1d", "5m"),
 		),
 
-		// OSINT
 		skill(
 			"/v1/skills/osint/sec_edgar",
 			osintSecEdgarSchema,
@@ -901,7 +847,6 @@ export function createSkillRouters(config: ServerConfig): Router {
 			},
 		),
 
-		// Unbroker
 		skill(
 			"/v1/skills/unbroker/simulate",
 			unbrokerSchema,
@@ -1005,13 +950,7 @@ export function createSkillRouters(config: ServerConfig): Router {
 			"/v1/skills/unbroker/execute",
 			unbrokerSchema,
 			"Execute verified transfer (server key only)",
-			// NOT IMPLEMENTED by design: there is NO unbroker/pdd.py integration
-			// in this repo (no pdd executable, no broker ledger, no signing
-			// path), so returning fake {status:"queued"} data would mislead
-			// callers into believing a transfer was executed. Real transfer
-			// execution happens through the wallet-signing flow
-			// (/v1/agents/:id/transfer + iTransferFrom) — not through this
-			// skill. Wire a genuine 501 so clients see a truthful error.
+			// No unbroker/pdd.py integration exists here (no pdd binary, ledger, or signing path), so a fake {status:"queued"} would mislead callers: truthful 501; real transfers flow via wallet signing (/v1/agents/:id/transfer).
 			async (_parsed, _req, res) => {
 				sendError(
 					res,
@@ -1024,8 +963,8 @@ export function createSkillRouters(config: ServerConfig): Router {
 			true,
 		),
 
-		// OSS forensics: server key + GITHUB_TOKEN; IOC matches redacted
 		skill(
+			// OSS forensics: server key + GITHUB_TOKEN required; IOC matches redacted
 			"/v1/skills/oss-forensics/investigate",
 			ossInvestigateSchema,
 			"GitHub repo forensics + optional keccak256 bytecode comparison",

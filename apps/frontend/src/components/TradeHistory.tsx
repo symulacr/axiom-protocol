@@ -1,11 +1,6 @@
 import type { ReactElement } from "react";
 import type { TradeHistoryEntry } from "../hooks/usePerformance.js";
-import {
-  Card,
-  SectionTitle,
-  CopyButton,
-  mutedTextSm,
-} from "./ui.js";
+import { Card, SectionTitle, CopyButton, mutedTextSm } from "./ui.js";
 import { EmptyState } from "./EmptyState.js";
 import { resolveBlockExplorerUrl } from "@axiom/config/networks";
 
@@ -41,32 +36,17 @@ export function TradeHistory({ history }: TradeHistoryProps): ReactElement {
           });
 
           return (
-            <div
-              key={`${entry.txHash}-${i}`}
-              className="trade-row"
-            >
-              <span
-                className="trade-time tabular-nums"
-              >
-                {timeStr}
-              </span>
-              <strong
-                className={`trade-action trade-action--${entry.action}`}
-              >
+						<div key={`${entry.txHash}-${i}`} className="trade-row">
+							<span className="trade-time tabular-nums">{timeStr}</span>
+							<strong className={`trade-action trade-action--${entry.action}`}>
                 {entry.action}
               </strong>
               {entry.amount !== null && (
-                <span
-                  className="trade-amount tabular-nums"
-                >
+								<span className="trade-amount tabular-nums">
                   amt: {entry.amount}
                 </span>
               )}
-              <span
-                className="trade-reason"
-              >
-                {entry.reason}
-              </span>
+							<span className="trade-reason">{entry.reason}</span>
               <a
                 href={`${explorerBase}/tx/${entry.txHash}`}
                 target="_blank"

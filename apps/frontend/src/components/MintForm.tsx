@@ -26,15 +26,11 @@ const agentNftAbi = AGENT_NFT_ABI;
 
 type MintFormProps = {
 	provider?: `0x${string}` | undefined;
-	/** Hide page chrome when embedded in a modal */
 	compact?: boolean;
 	onClose?: () => void;
 };
 
-/**
- * One-field mint: name only.
- * Auto-builds strategy payload → registers dataHash with oracle → wallet signs mint fee.
- */
+/** One-field mint (name only): auto strategy payload → oracle dataHash → wallet signs the mint fee. */
 export function MintForm({
 	provider,
 	compact = false,
@@ -109,7 +105,6 @@ export function MintForm({
 		[wizard],
 	);
 
-	/** Single path: name → auto payload → oracle → wallet mint */
 	const onCompleteMint = useCallback(
 		async (e?: FormEvent): Promise<void> => {
 			e?.preventDefault();
@@ -300,4 +295,3 @@ export function MintForm({
 		</div>
 	);
 }
-

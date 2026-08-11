@@ -9,7 +9,6 @@ import {
 	type EncodeResponse,
 } from "../utils/apiFetch.js";
 
-/** Auto strategy payload — user only picks a name. */
 export function buildDefaultPayload(agentName: string): string {
   const name = agentName.trim() || "Axiom agent";
   return JSON.stringify({
@@ -47,23 +46,15 @@ export function useMintWizard() {
 	const deriveDataHash = useCallback(
 		(name?: string) => {
 			const n = (name ?? agentName).trim() || "Axiom agent";
-			// Canonical mint dataHash: keccak256(toHex(name)) — identical to the
-			// chat mint_agent derivation (packages/chat-runtime/src/executors/
-			// encode.ts). The contract stores this 32-byte value verbatim and the
-			// oracle only signs ownership proofs for hashes it has SEEN, so both
-			// mint paths MUST derive the same hash for the same agent name. The
-			// real dataHash is the 0G storage Merkle root of the uploaded payload
-			// (docs/current-state.md "Merkle root = dataHash"); until the payload
-			// is uploaded this deterministic name hash is used.
+			// dataHash = keccak256(toHex(name)) must match the chat mint_agent derivation (oracle signs only hashes it has SEEN); real hash is the 0G Merkle root once the payload uploads
 			const hash = keccak256(toHex(n));
-			ensurePayload(name); // keep the metadata preview in sync
+			ensurePayload(name); // keeps the metadata preview in sync with the chosen name
 			setDataHash(hash);
 			return hash;
 		},
 		[agentName, ensurePayload],
 	);
 
-	/** POST to oracle: register the mint dataHash. */
 	const oracleMutation = useMutation({
 		retry: false,
 		mutationFn: (hash: `0x${string}`) =>
@@ -73,7 +64,6 @@ export function useMintWizard() {
 			}),
 	});
 
-	/** POST /v1/agents/mint/encode, then submit the mint tx from the wallet. */
 	const encodeMutation = useMutation({
 		retry: false,
 		mutationFn: async (input: {
@@ -120,13 +110,11 @@ export function useMintWizard() {
 		[deriveDataHash, oracleMutation],
 	);
 
-	/** Encode + submit the mint transaction; resolves with the on-chain hash. */
 	const chainMint = useCallback(
 		async (dataHash: `0x${string}`): Promise<`0x${string}`> =>
 			encodeMutation.mutateAsync({
 				dataHash,
-				// Must match the name used in deriveDataHash (keccak256(toHex(name)))
-				description: agentName.trim() || "Axiom agent",
+				description: agentName.trim() || "Axiom agent", // must match the name derived in deriveDataHash via keccak256(toHex(name)) so chat mint agrees
 			}),
 		[encodeMutation, agentName],
 	);

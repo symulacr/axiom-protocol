@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-/// @notice Shared 1-day timelock for sensitive parameter changes
-/// @dev Each caller stores its own State in its storage namespace.
-///      Provides propose → wait 1 day → execute cycle with cancel.
+/// @notice Shared 1-day timelock (propose → wait 1 day → execute, with cancel); each caller stores its own State in its storage namespace.
 library TimelockManager {
     struct State {
         address proposed;

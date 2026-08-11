@@ -11,9 +11,7 @@ export type IndexerContractAddresses = {
 export function resolveIndexerAddresses(
 	env: Record<string, unknown> = process.env as Record<string, unknown>,
 ): IndexerContractAddresses {
-	// Resolve only the four contracts the indexer watches. `getAddresses()`
-	// also requires AXIOM_MOCK_USDC_ADDRESS, which backend env-schema strips —
-	// resolving all five here made `src/index.ts` fail to boot locally.
+	// Only the four watched contracts; getAddresses() needs AXIOM_MOCK_USDC_ADDRESS (env-schema strips it), which broke local boot when all five resolved.
 	return {
 		AXIOM_AGENT_NFT: resolveAddress("agentNft", env),
 		AXIOM_STRATEGY_VAULT: resolveAddress("strategyVault", env),

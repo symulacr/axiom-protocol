@@ -1,14 +1,6 @@
 import { useCallback, useRef, useState } from "react";
-import {
-  useAccount,
-  useChainId,
-  useSignTypedData,
-} from "wagmi";
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useAccount, useChainId, useSignTypedData } from "wagmi";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type Hex, toHex } from "viem";
 
 import { getAxiomAgentNftAddress } from "../abi/addresses.js";
@@ -48,7 +40,6 @@ type UseTransferResult = {
   transferPhase: TransferPhase;
 };
 
-/** Challenge response after backend validation (required fields narrowed). */
 type TransferChallenge = TransferResponse & {
   dataHash: `0x${string}`;
   targetPubkey: `0x${string}`;
@@ -73,7 +64,6 @@ function base64ToBytes(b64: string): Uint8Array {
   return out;
 }
 
-/** Fetch oracle uncompressed pubkey and ECIES-seal a base64 32-byte DEK. */
 async function sealDekForOracle(
   oldDataEncryptionKeyB64: string,
   signal?: AbortSignal,
@@ -90,7 +80,7 @@ async function sealDekForOracle(
   } else {
     throw new Error("oracle health missing uncompressedPubkey");
   }
-  // sealKeyForReceiver expects 64-byte X||Y (no 0x04) or compressed.
+	// sealKeyForReceiver expects 64-byte X||Y (no 0x04 prefix) or compressed pubkey format
   if (pubBytes.length === 65 && pubBytes[0] === 0x04) {
     pubBytes = pubBytes.subarray(1);
   }
@@ -116,8 +106,7 @@ export function useTransfer(): UseTransferResult {
   const [transferPhase, setTransferPhase] = useState<TransferPhase>("idle");
   const [isPreparing, setIsPreparing] = useState(false);
   const [prepareError, setPrepareError] = useState<Error | null>(null);
-  // Set when a transfer intent starts; each prepare() bumps `attempt` so a
-  // fresh challenge is always fetched (nonces are single-use).
+	// intent-start marker; each prepare() bumps attempt so a fresh challenge is always fetched (nonces are single-use)
   const [intent, setIntent] = useState<{
     input: TransferInput;
     attempt: number;
@@ -126,7 +115,6 @@ export function useTransfer(): UseTransferResult {
   intentRef.current = intent;
   const attemptRef = useRef(0);
 
-  /** POST /v1/agents/:id/transfer — step 1: backend issues the challenge. */
   const runChallenge = useCallback(
     async ({
       input,
@@ -153,8 +141,8 @@ export function useTransfer(): UseTransferResult {
         (input.sealedDataEncryptionKey || input.oldDataEncryptionKey)
       ) {
         challengeBody.oldDataUri = input.oldDataUri;
-        // Prefer pre-sealed; otherwise ECIES-seal DEK to oracle TEE pubkey (no cleartext on wire).
         if (input.sealedDataEncryptionKey) {
+					// prefer pre-sealed; else ECIES-seal DEK to oracle TEE pubkey (no cleartext on wire)
           challengeBody.sealedDataEncryptionKey = input.sealedDataEncryptionKey;
         } else if (input.oldDataEncryptionKey) {
           challengeBody.sealedDataEncryptionKey = await sealDekForOracle(
@@ -189,8 +177,7 @@ export function useTransfer(): UseTransferResult {
     [],
   );
 
-  // Challenge fetch fires when a transfer intent starts; prepare() awaits the
-  // same cache entry via fetchQuery, so signing/finalizing stay sequential.
+	// Challenge fetch fires on transfer intent; prepare() awaits the same fetchQuery cache entry so signing/finalizing stay sequential
   const challengeQuery = useQuery<TransferChallenge, Error>({
     queryKey: ["transfer-challenge", intent?.attempt ?? -1],
     enabled: intent !== null,
@@ -203,7 +190,6 @@ export function useTransfer(): UseTransferResult {
     },
   });
 
-  /** POST /v1/agents/:id/transfer — step 2: submit the signed access proof. */
   const finalizeMutation = useMutation<
     TransferResponse,
     Error,
@@ -218,9 +204,7 @@ export function useTransfer(): UseTransferResult {
       const path = agentTransferPath(input.tokenId);
       const nonce = BigInt(challenge.accessProofNonce);
       const validUntil = BigInt(challenge.validUntil);
-      // On-chain intelligentDatas must match the proof dataHash at iTransfer
-      // time (old hash). Re-key uploads a new blob; sealedKey delivers the
-      // new AES key — do NOT put newDataHash into AccessProof / OwnershipProof.
+			// iTransfer validates proof dataHash against the OLD on-chain hash; re-key uploads a new blob, sealedKey delivers the new AES key — never put newDataHash into the proofs
       const proofDataHash = challenge.dataHash;
       let proof = await apiFetch<TransferResponse>(path, {
         method: "POST",
@@ -290,9 +274,6 @@ export function useTransfer(): UseTransferResult {
 
         const nonce = BigInt(challenge.accessProofNonce);
         const validUntil = BigInt(challenge.validUntil);
-        // On-chain intelligentDatas must match the proof dataHash at iTransfer
-        // time (old hash). Re-key uploads a new blob; sealedKey delivers the
-        // new AES key — do NOT put newDataHash into AccessProof / OwnershipProof.
         const proofDataHash = challenge.dataHash;
         const accessSignature = await signTypedDataAsync({
           domain,
@@ -401,7 +382,6 @@ export function useTransfer(): UseTransferResult {
     setIsPreparing(false);
     setWritePending(false);
     setWriteError(null);
-    // Drop any cached/errored challenge so the observer starts clean.
     queryClient.removeQueries({ queryKey: ["transfer-challenge"] });
   }, [queryClient]);
 

@@ -49,7 +49,6 @@ function badRequest(res: Response, message: string): void {
 	res.status(HTTP.BAD_REQUEST).json({ error: message });
 }
 
-// Caps issued ownership proofs so they cannot be valid far into the future.
 const MAX_OWNERSHIP_VALIDITY_SECONDS = 10n * 365n * 24n * 3600n;
 
 export interface ServerConfig {
@@ -64,11 +63,7 @@ export function startServer(config: ServerConfig): {
 	app: Express;
 	httpServer: import("node:http").Server;
 } {
-	// Embedders/tests may omit `env`; fall back to process.env so
-	// AXIOM_DISABLE_AUTH / AXIOM_CLIENT_API_KEY / cleartext flag behave like
-	// the pre-`config.env` contract. Production (src/index.ts) always passes
-	// an explicit parsed env, so this fallback is inert there.
-	const env = config.env ?? process.env;
+	const env = config.env ?? process.env; // embedders/tests omit env so auth/cleartext flags read process.env; production always passes parsed env, so this fallback is inert
 	const app = express();
 	app.use(
 		helmet({
@@ -129,7 +124,6 @@ export function startServer(config: ServerConfig): {
 					"targetPubkey64 must be 64 bytes (128 hex chars)",
 				);
 			}
-			// Bind URI to claimed hash (storage root identity).
 			const normHash = String(oldDataHash).toLowerCase().replace(/^0x/, "");
 			const normUri = String(oldDataUri).toLowerCase().replace(/^0x/, "");
 			if (normHash !== normUri) {
@@ -147,7 +141,6 @@ export function startServer(config: ServerConfig): {
 
 			let oldDataKey: Buffer;
 			if (typeof sealedDek === "string" && sealedDek.length > 0) {
-				// ECIES-sealed DEK to the TEE/oracle private key (preferred).
 				const sealedBytes = Buffer.from(
 					sealedDek.startsWith("0x") ? sealedDek.slice(2) : sealedDek,
 					sealedDek.startsWith("0x") ? "hex" : "base64",
@@ -159,9 +152,8 @@ export function startServer(config: ServerConfig): {
 				oldDataKey = Buffer.from(opened);
 			} else if (oldDataEncryptionKey && allowCleartext) {
 				oldDataKey = Buffer.from(oldDataEncryptionKey, "base64");
-			// else-if chain: earlier branches assign oldDataKey (no return),
-			// so the trailing else is required — not redundant after return.
 			} else if (oldDataEncryptionKey && !allowCleartext) {
+				// earlier branches assign oldDataKey without returning, so this trailing else is required — not dead code
 				return badRequest(
 					res,
 					"cleartext oldDataEncryptionKey rejected; send sealedDataEncryptionKey (ECIES to oracle pubkey from GET /health)",
@@ -396,7 +388,6 @@ export function startServer(config: ServerConfig): {
 			.json({ error: safeMessage, code: "INTERNAL_ERROR" });
 	});
 	const httpServer = app.listen(config.port, config.bind, () => {
-		// Startup info channel: structured JSON on stdout, sanctioned for process banners.
 		console.log(
 			JSON.stringify({
 				level: "info",

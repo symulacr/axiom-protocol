@@ -48,7 +48,6 @@ if (env.AXIOM_STORAGE_INDEXER_RPC || process.env.AXIOM_STORAGE_RPC) {
 	const storagePk = env.AXIOM_STORAGE_PRIVATE_KEY ?? env.AXIOM_TEE_SIGNER_PK;
 	const wallet = new Wallet(storagePk);
 	storage = new ZeroGStorage({ indexerRpc, evmRpc, signer: wallet });
-	// Startup info banner — sanctioned process banner channel.
 	console.log(`[oracle] storage: 0G Storage (${indexerRpc})`);
 } else {
 	storage = new InMemoryStorage();

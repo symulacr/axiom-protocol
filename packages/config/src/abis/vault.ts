@@ -54,13 +54,11 @@ export const VAULT_ABI = [
   "error UUPSUnsupportedProxiableUUID(bytes32 slot)",
   "error UseDeposit()",
   "error ZeroAddress()",
-  "error ZeroAmount()"
+	"error ZeroAmount()",
 ] as const;
 
-// ── VAULT_ABI_LEGACY — old vault interface (before validUntilDay) ──
-// Used by backend orchestrator for backward-compatible vault reads.
-// This file is auto-appended by generate-abis.sh after the forge-exported VAULT_ABI.
-// Update manually when the old contract interface changes.
+// Legacy pre-validUntilDay vault interface, kept for backward-compatible orchestrator reads of old contracts;
+// auto-appended by generate-abis.sh — update manually if the old contract changes.
 export const VAULT_ABI_LEGACY = [
   "function deposit(uint256 tokenId) payable",
   "function withdraw(uint256 tokenId, uint256 amount)",

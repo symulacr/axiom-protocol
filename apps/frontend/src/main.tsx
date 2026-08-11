@@ -25,7 +25,7 @@ if (!rootEl) {
   throw new Error("Root element #root not found in index.html");
 }
 
-// QueryClientProvider must wrap WagmiConfigProvider so RainbowKit's react-query hooks resolve.
+// QueryClientProvider must wrap WagmiConfigProvider so RainbowKit's react-query hooks resolve their client
 createRoot(rootEl).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
@@ -82,4 +82,6 @@ try {
       process.exit(1);
     });
   }
-} catch { /* sessionStorage may be unavailable */ }
+} catch {
+	void 0;
+}

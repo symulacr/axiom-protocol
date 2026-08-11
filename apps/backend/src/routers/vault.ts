@@ -47,7 +47,6 @@ const VAULT_ACTION_ROUTES: VaultActionRoute[] = [
 	},
 ];
 
-/** Resolve the configured vault address or emit a 500 and return undefined. */
 function requireVaultAddress(
 	cfg: ServerConfig,
 	res: Response,

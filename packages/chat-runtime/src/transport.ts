@@ -76,7 +76,7 @@ export async function fetchJson<T>(
 	return { ok: res.ok, data, status: res.status };
 }
 
-/** Error envelope shared by every tool executor: `{ ok: false, content: {"error": msg} }`. */
 export function toolFail(message: string): ToolResult {
+	// shared envelope: every executor fails with ok:false + content {error: message}
 	return { ok: false, content: JSON.stringify({ error: message }) };
 }

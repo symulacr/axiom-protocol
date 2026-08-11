@@ -46,7 +46,9 @@ function persistTokenId(lastTokenId: string | undefined): void {
     } else {
       sessionStorage.removeItem(STORAGE_KEY);
     }
-  } catch { /* sessionStorage may be unavailable */ }
+	} catch {
+		void 0;
+	}
 }
 
 export function ChatSessionProvider({

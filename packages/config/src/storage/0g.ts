@@ -85,7 +85,7 @@ function loadSeenDataHashes(file: string): Set<string> {
 			try {
 				renameSync(file, `${file}.bak`);
 			} catch {
-				/* ignore — backup is best-effort */
+				/* ignore — backup is best-effort; a failed rename must not block startup */
 			}
 		}
 		return new Set();
@@ -193,20 +193,14 @@ async function downloadFromStorage(
 export class ZeroGStorage extends SeenHashesMixin implements StorageAdapter {
 	readonly indexer: Indexer;
 	readonly config: ZeroGStorageConfig;
-	/**
-	 * Random 32-byte AES-256 key used for SDK transport-layer encryption.
-	 * Generated once per ZeroGStorage instance. If the process restarts, a new
-	 * key is generated — blobs encrypted with the old key are no longer
-	 * decryptable via this instance. This is acceptable because the oracle
-	 * re-encrypts payloads (AES-GCM application layer) on every transfer.
-	 */
+	// Per-instance 32-byte AES key for SDK transport encryption; regenerated on restart so old blobs
+	// are undecryptable via this instance — acceptable: oracle re-encrypts (AES-GCM) every transfer.
 	private readonly storageKey: Uint8Array;
 
 	constructor(config: ZeroGStorageConfig, options: SeenHashesOptions = {}) {
 		super(options.seenHashesFile ?? ORACLE_SEEN_HASHES_FILE);
 		this.config = config;
 		this.indexer = new Indexer(config.indexerRpc);
-		// Generate a random 32-byte AES key for SDK transport-layer encryption.
 		this.storageKey = crypto.getRandomValues(new Uint8Array(32));
 	}
 
