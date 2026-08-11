@@ -72,3 +72,13 @@ export const VAULT_ABI_LEGACY = [
   "event StrategySet(uint256 indexed tokenId, bytes32 strategyRoot, uint256 dailyLimit)",
   "event Executed(uint256 indexed tokenId, bytes32 indexed actionHash, address indexed target, uint256 value, bytes result)",
 ] as const;
+
+// Minimal strategyOf fragments shared by the chat-runtime executor and the backend orchestrator
+// for variant probing (current 5-tuple vs legacy 4-tuple returns).
+export const STRATEGY_OF_CURRENT = [
+  "function strategyOf(uint256) view returns (bytes32, uint256, uint256, uint64, uint64)",
+] as const;
+
+export const STRATEGY_OF_LEGACY = [
+  "function strategyOf(uint256) view returns (bytes32, uint256, uint256, uint64)",
+] as const;

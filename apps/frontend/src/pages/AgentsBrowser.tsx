@@ -11,12 +11,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAccount } from "wagmi";
 import { formatEther } from "viem";
 import { flushSync } from "react-dom";
-import { useAgents } from "../hooks/useAgents.js";
-import {
-  useVaultDataBatch,
-  type VaultDataEntry,
-} from "../hooks/useVaultDataBatch.js";
-import { usePerformanceBatch } from "../hooks/usePerformanceBatch.js";
+import { usePortfolio } from "../hooks/usePortfolio.js";
+import type { VaultDataEntry } from "../hooks/useVaultDataBatch.js";
 import type { PerformanceMetrics } from "@axiom/config/types/performance";
 import { truncateAddress } from "../utils/format.js";
 import { BRAND } from "../brand/assets.js";
@@ -25,7 +21,6 @@ import {
   Skeleton,
   Card,
   ErrorAlert,
-  PageHeader,
   ConnectedGuard,
   Input,
   Button,
@@ -70,30 +65,30 @@ function AgentCardStatus({ vaultData, metrics }: AgentCardStatusProps) {
         gap: "var(--space-sm)",
       }}
     >
-      <span>{hasBalance ? `${balanceNum.toFixed(2)} 0G` : "No funds"}</span>
+      {hasBalance && <span>{balanceNum.toFixed(2)} 0G</span>}
       {lastAction && (
         <span
           style={{ color: COLORS.textMuted }}
           title="Summary of all historical ticks; for the latest action, open the agent detail."
         >
-          · {lastAction}
+          {hasBalance ? "· " : ""}
+          {lastAction}
         </span>
       )}
     </span>
   );
 }
 
-export function AgentsBrowser({
-  embedded = false,
-}: {
-  embedded?: boolean;
-} = {}): ReactElement {
+export function AgentsBrowser(): ReactElement {
   const { isConnected } = useAccount();
   const navigate = useNavigate();
-  const { agents, isLoading, error } = useAgents();
-  const tokenIds = useMemo(() => agents.map((a) => a.tokenId), [agents]);
-  const { data: vaultDataMap } = useVaultDataBatch(tokenIds);
-  const { data: perfMap } = usePerformanceBatch(tokenIds);
+  const {
+    agents,
+    isLoading,
+    error,
+    vaultMap: vaultDataMap,
+    perfMap,
+  } = usePortfolio();
   const count = agents.length;
   const [searchTerm, setSearchTerm] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
@@ -141,7 +136,6 @@ export function AgentsBrowser({
   if (error !== null) {
     return (
       <div>
-        {!embedded && <PageHeader title="Your Agents" />}
         <ErrorAlert
           message="Couldn't load your agents from the chain. Check your connection and try again."
           onRetry={() => window.location.reload()}
@@ -153,7 +147,6 @@ export function AgentsBrowser({
   if (isLoading) {
     return (
       <div>
-        {!embedded && <PageHeader title="Your Agents" />}
         <div
           style={{
             display: "flex",
@@ -172,7 +165,6 @@ export function AgentsBrowser({
   if (count === 0) {
     return (
       <div>
-        {!embedded && <PageHeader title="Your Agents" />}
         {!isConnected ? (
           <Card style={emptyCardStyle}>
             <p
@@ -235,27 +227,15 @@ export function AgentsBrowser({
   return (
     <div>
       <ConnectedGuard>
-        {!embedded && (
-          <PageHeader
-            title="Your Agents"
-            action={
-              <Link to="/app?mint=1">
-                <Button variant="secondary">+ Mint</Button>
-              </Link>
-            }
-          />
-        )}
-        {embedded && (
-          <h2
-            style={{
-              margin: "0 0 var(--space-md)",
-              fontSize: "var(--text-base)",
-              color: COLORS.textPrimary,
-            }}
-          >
-            Your agents
-          </h2>
-        )}
+        <h2
+          style={{
+            margin: "0 0 var(--space-md)",
+            fontSize: "var(--text-base)",
+            color: COLORS.textPrimary,
+          }}
+        >
+          Your agents
+        </h2>
         <Input
           id="agent-search"
           ref={searchRef}
@@ -389,12 +369,12 @@ export function AgentsBrowser({
                     {truncateAddress(agent.owner ?? "")}
                   </span>
                   <Link to={`/agents/${agent.tokenId}#execute`}>
-                    <Button variant="ghost" style={pillButtonStyle}>
+                    <Button variant="secondary" style={pillButtonStyle}>
                       Execute ▶
                     </Button>
                   </Link>
                   <Link to={`/agents/${agent.tokenId}#payments`}>
-                    <Button variant="ghost" style={pillButtonStyle}>
+                    <Button variant="secondary" style={pillButtonStyle}>
                       Payments
                     </Button>
                   </Link>

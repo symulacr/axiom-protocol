@@ -23,7 +23,13 @@ import { useAccount } from "wagmi";
 import { useHealth } from "./hooks/useHealth.js";
 import { ErrorBoundary } from "./components/ErrorBoundary.js";
 import { BRAND } from "./brand/assets.js";
-import { ConnectedGuard, Kbd, Modal, Spinner } from "./components/ui.js";
+import {
+  COLORS,
+  ConnectedGuard,
+  Kbd,
+  Modal,
+  Spinner,
+} from "./components/ui.js";
 import { useMediaQuery } from "./hooks/useMediaQuery.js";
 
 /** IA source of truth: Home · Chat · Mint (modal action); deep page: Agent Detail. */
@@ -279,9 +285,9 @@ function ShortcutHelp(): ReactElement | null {
   if (!open) return null;
 
   const shortcuts = [
-    { key: "H", label: "Home — portfolio + agents" },
-    { key: "A", label: "Chat with Axiom" },
-    { key: "N", label: "Mint agent (modal)" },
+    { key: "H", label: "Home — portfolio + agents (H, D, G)" },
+    { key: "A", label: "Chat with Axiom (A, C)" },
+    { key: "N", label: "Mint agent — modal (N, M)" },
     { key: "⌘K", label: "Search agents on Home" },
     { key: "?", label: "Show this help" },
     { key: "Esc", label: "Close dialogs" },
@@ -319,7 +325,6 @@ function ShortcutHelp(): ReactElement | null {
 
 export function App(): ReactElement {
   const isMobile = useMediaQuery("(max-width: 640px)");
-  const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -331,11 +336,8 @@ export function App(): ReactElement {
   const { isConnected } = useAccount();
   const { theme, toggle: toggleTheme } = useTheme();
   const wasConnected = useRef(false);
-  const mobileNavRef = useRef<HTMLDivElement>(null);
-  useFocusTrap(mobileNavRef, isMobile && menuOpen);
 
   const openMint = useCallback(() => {
-    setMenuOpen(false);
     if (isLanding) {
       navigate(`${APP_HOME}?mint=1`);
       return;
@@ -374,13 +376,11 @@ export function App(): ReactElement {
         case "d":
         case "g":
           e.preventDefault();
-          setMenuOpen(false);
           navigate(APP_HOME);
           break;
         case "a":
         case "c":
           e.preventDefault();
-          setMenuOpen(false);
           navigate(APP_CHAT);
           break;
         case "n":
@@ -452,18 +452,6 @@ export function App(): ReactElement {
           </nav>
 
           <div className="shell-header__actions">
-            {!isLanding && isMobile && (
-              <button
-                type="button"
-                className="shell-icon-btn"
-                onClick={() => setMenuOpen(!menuOpen)}
-                aria-label="Menu"
-                aria-expanded={menuOpen}
-                aria-controls="mobile-nav-menu"
-              >
-                {menuOpen ? "✕" : "☰"}
-              </button>
-            )}
             <button
               type="button"
               className="shell-icon-btn"
@@ -521,34 +509,81 @@ export function App(): ReactElement {
       </header>
 
       {!isLanding && isMobile && (
-        <div
-          id="mobile-nav-menu"
-          ref={mobileNavRef}
-          className={`shell-drawer${menuOpen ? " is-open" : ""}`}
+        <nav
+          aria-label="Primary"
+          style={{
+            position: "fixed",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 40,
+            display: "flex",
+            gap: "var(--space-sm)",
+            padding: "var(--space-xs) var(--space-sm)",
+            borderTop: `1px solid ${COLORS.borderStrong}`,
+            background: COLORS.surface,
+            boxShadow: "0 -8px 24px rgba(0, 0, 0, 0.25)",
+          }}
         >
-          {PRIMARY_NAV.filter((item) => item.kind === "link").map((item) => (
-            <NavLink
-              key={item.id}
-              to={item.path!}
-              className={navLinkClass}
-              onClick={() => setMenuOpen(false)}
-            >
-              {item.label}
-            </NavLink>
-          ))}
-          <button
-            type="button"
-            className="shell-mint-btn shell-mint-btn--block"
-            onClick={openMint}
-            data-axiom-btn=""
-          >
-            Mint agent
-          </button>
-        </div>
+          {PRIMARY_NAV.map((item) =>
+            item.kind === "link" ? (
+              <NavLink
+                key={item.id}
+                to={item.path!}
+                end={item.id === "home"}
+                style={({ isActive }) => ({
+                  flex: 1,
+                  textAlign: "center",
+                  textDecoration: "none",
+                  borderRadius: "var(--radius-md)",
+                  padding: "0.6rem 0.5rem",
+                  fontSize: "var(--text-sm)",
+                  fontWeight: "var(--fw-medium)",
+                  color: isActive ? COLORS.textPrimary : COLORS.textMuted,
+                  background: isActive ? COLORS.surfaceRaised : "transparent",
+                  border: `1px solid ${
+                    isActive ? COLORS.borderStrong : "transparent"
+                  }`,
+                })}
+              >
+                {item.label}
+              </NavLink>
+            ) : (
+              <button
+                key={item.id}
+                type="button"
+                onClick={openMint}
+                data-axiom-btn=""
+                style={{
+                  flex: 1,
+                  textAlign: "center",
+                  borderRadius: "var(--radius-md)",
+                  padding: "0.6rem 0.5rem",
+                  fontSize: "var(--text-sm)",
+                  fontWeight: "var(--fw-semibold)",
+                  color: COLORS.bronzeLight,
+                  background: COLORS.surfaceRaised,
+                  border: `1px solid ${COLORS.borderStrong}`,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                {item.label}
+              </button>
+            ),
+          )}
+        </nav>
       )}
 
       <main
         id="main-content"
+        style={
+          !isLanding && isMobile
+            ? {
+                paddingBottom: "calc(5rem + env(safe-area-inset-bottom))",
+              }
+            : undefined
+        }
         className={
           isLanding
             ? "shell-main shell-main--landing"
@@ -573,10 +608,6 @@ export function App(): ReactElement {
                 <Route
                   path="/agents"
                   element={<Navigate to={APP_HOME} replace />}
-                />
-                <Route
-                  path="/agents/new"
-                  element={<Navigate to={`${APP_HOME}?mint=1`} replace />}
                 />
                 <Route
                   path="/market"
@@ -616,7 +647,13 @@ export function App(): ReactElement {
           <Suspense fallback={<Spinner />}>
             <MintForm
               compact
-              onClose={closeMint}
+              onClose={() => {
+                closeMint();
+                // MintForm calls onClose only once the tx confirms, so this
+                // fires exactly on a successful mint. HomePage listens and
+                // shows an optimistic pending row until the agents poll lands.
+                window.dispatchEvent(new CustomEvent("axiom:mint-complete"));
+              }}
               provider={
                 mintProvider && /^0x[a-fA-F0-9]{40}$/.test(mintProvider)
                   ? (mintProvider as `0x${string}`)
@@ -633,6 +670,7 @@ export function App(): ReactElement {
 
       <footer
         className={`shell-footer${isChat ? " shell-footer--hidden" : ""}`}
+        style={!isLanding && isMobile ? { display: "none" } : undefined}
       >
         <div className="shell-footer__inner">
           <div className="shell-footer__brand-block">
@@ -642,15 +680,13 @@ export function App(): ReactElement {
             </p>
           </div>
           <nav className="shell-footer__links" aria-label="Footer">
-            <Link to="/app">Home</Link>
-            <Link to="/chat">Chat</Link>
-            <button
-              type="button"
-              onClick={openMint}
-              className="shell-footer__mint"
-            >
-              Mint
-            </button>
+            {/* Primary destinations derive from PRIMARY_NAV; the Mint action
+                stays in the header / bottom bar (single trigger set). */}
+            {PRIMARY_NAV.filter((item) => item.kind === "link").map((item) => (
+              <Link key={item.id} to={item.path!}>
+                {item.label}
+              </Link>
+            ))}
             <Link to="/">About</Link>
           </nav>
         </div>

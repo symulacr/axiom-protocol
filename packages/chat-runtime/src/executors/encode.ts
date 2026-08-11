@@ -1,5 +1,5 @@
 import { getChatToolSpec } from "@axiom/config/chat-tools";
-import { fetchJson, toolFail } from "../transport.js";
+import { fetchJson, resolveTokenId, toolFail } from "../transport.js";
 import { keccak256, toHex } from "viem";
 import type { ToolRuntime } from "../transport.js";
 import type { ToolResult } from "../types.js";
@@ -33,7 +33,7 @@ export async function runEncodeTool(
     return toolFail("Wallet not connected");
   }
 
-  const tokenId = String(args.tokenId ?? ctx.session.lastTokenId ?? "");
+  const tokenId = resolveTokenId(args, ctx);
 
   if (spec.requiresTokenId && !tokenId) {
     return toolFail("tokenId required");

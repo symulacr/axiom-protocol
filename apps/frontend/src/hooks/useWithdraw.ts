@@ -1,13 +1,9 @@
 import { useCallback, useState } from "react";
 import { useChainId, useWalletClient } from "wagmi";
-import { toast } from "sonner";
 import { apiFetch, type EncodeResponse } from "../utils/apiFetch.js";
-import {
-  errorRefString,
-  humanizeError,
-  validateNumericInput,
-} from "../utils/format.js";
+import { validateNumericInput } from "../utils/format.js";
 import { useVaultData } from "./useVaultData.js";
+import { useWriteToast } from "./useWriteToast.js";
 
 export function useWithdraw(tokenId: bigint, onSuccess?: () => void) {
   const chainId = useChainId();
@@ -15,6 +11,7 @@ export function useWithdraw(tokenId: bigint, onSuccess?: () => void) {
   const { data: walletClient } = useWalletClient();
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const { success: toastSuccess, error: toastError } = useWriteToast();
 
   const withdrawError = validateNumericInput(withdrawAmount, {
     label: "Withdraw",
@@ -41,16 +38,12 @@ export function useWithdraw(tokenId: bigint, onSuccess?: () => void) {
         value: BigInt(encoded.value || "0"),
         chain: walletClient.chain,
       });
-      toast.success(`Withdraw submitted (${hash.slice(0, 10)}…)`);
+      toastSuccess(`Withdraw submitted (${hash.slice(0, 10)}…)`);
       setWithdrawAmount("");
       await vd.refetch();
       onSuccess?.();
     } catch (err) {
-      const refStr = errorRefString(err);
-      toast.error(
-        humanizeError(err),
-        refStr ? { description: refStr } : undefined,
-      );
+      toastError(err);
     } finally {
       setIsWithdrawing(false);
     }
@@ -62,6 +55,8 @@ export function useWithdraw(tokenId: bigint, onSuccess?: () => void) {
     vd,
     onSuccess,
     chainId,
+    toastSuccess,
+    toastError,
   ]);
 
   const isValidWithdraw =

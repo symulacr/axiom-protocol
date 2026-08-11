@@ -80,3 +80,12 @@ export function toolFail(message: string): ToolResult {
   // shared envelope: every executor fails with ok:false + content {error: message}
   return { ok: false, content: JSON.stringify({ error: message }) };
 }
+
+/** Shared tokenId resolution: explicit args.tokenId wins, else the session's lastTokenId. */
+export function resolveTokenId(
+  args: Record<string, unknown>,
+  ctx: ToolRuntime,
+): string {
+  const id = args.tokenId ?? ctx.session.lastTokenId;
+  return id === undefined || id === null ? "" : String(id);
+}

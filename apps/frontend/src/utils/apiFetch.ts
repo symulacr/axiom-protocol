@@ -27,6 +27,11 @@ export type EncodeResponse = {
   value: string;
 };
 
+/** Shared auth header for backend/oracle calls; no-op when no API key is configured. */
+export function apiKeyHeader(): Record<string, string> {
+  return API_KEY ? { "x-api-key": API_KEY } : {};
+}
+
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -134,7 +139,7 @@ function requestWithHeaders(
       headers: {
         "content-type": "application/json",
         ...(acceptJson ? { accept: "application/json" } : {}),
-        ...(API_KEY ? { "x-api-key": API_KEY } : {}),
+        ...apiKeyHeader(),
         ...((init.headers as Record<string, string>) ?? {}),
       },
     },

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAsyncAction } from "./useAsyncAction.js";
 import { apiFetch, STREAM_TIMEOUT } from "../utils/apiFetch.js";
-import { API_KEY, backendWsBase, backendWsPathPrefix } from "../config/env.js";
+import { buildStreamWsUrl } from "../config/env.js";
 import type {
   TickRequest,
   TickResult,
@@ -121,11 +121,7 @@ export function useOrchestratorTick(): {
           if (!initRes.ok) throw new Error("Failed to start tick stream");
           const topic = initRes.streamTopic;
 
-          const wsUrl = new URL(
-            `${backendWsBase()}${backendWsPathPrefix()}/v1/stream`,
-          );
-          wsUrl.searchParams.append("topic", topic);
-          wsUrl.searchParams.append("token", API_KEY);
+          const wsUrl = buildStreamWsUrl(topic);
 
           return await new Promise<TickResult>((resolve, reject) => {
             const ws = new WebSocket(wsUrl.toString());

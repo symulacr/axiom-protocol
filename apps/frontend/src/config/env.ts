@@ -29,3 +29,13 @@ export function backendWsBase(): string {
 export function backendWsPathPrefix(): string {
   return BACKEND_URL.startsWith("/") ? BACKEND_URL : "";
 }
+
+// Single shared WS handshake for event streams and orchestrator tick streams:
+// backend /v1/stream endpoint + topic(s) + auth token.
+export function buildStreamWsUrl(topics: string | string[]): string {
+  const url = new URL(`${backendWsBase()}${backendWsPathPrefix()}/v1/stream`);
+  const list = Array.isArray(topics) ? topics : [topics];
+  for (const t of list) url.searchParams.append("topic", t);
+  url.searchParams.append("token", API_KEY);
+  return url.toString();
+}

@@ -1,12 +1,11 @@
 import { useCallback, useState } from "react";
 import { useChainId } from "wagmi";
 import { parseEther } from "viem";
-import { toast } from "sonner";
 import { getAxiomStrategyVaultAddress } from "../abi/addresses.js";
 import { VAULT_ABI } from "@axiom/config/abis";
 import { useVaultData } from "./useVaultData.js";
-import { errorRefString, humanizeError } from "../utils/format.js";
 import { useGenericWrite } from "./useGenericWrite.js";
+import { useWriteToast } from "./useWriteToast.js";
 
 const abi = VAULT_ABI;
 
@@ -17,6 +16,7 @@ export function useDeposit(tokenId: bigint, onSuccess?: () => void) {
   const [depositAmount, setDepositAmount] = useState("");
 
   const { write } = useGenericWrite();
+  const { success: toastSuccess, error: toastError } = useWriteToast();
   const [isDepositing, setIsDepositing] = useState(false);
 
   const handleDeposit = useCallback(() => {
@@ -25,7 +25,7 @@ export function useDeposit(tokenId: bigint, onSuccess?: () => void) {
     try {
       value = parseEther(depositAmount);
     } catch {
-      toast.error("Amount too large or invalid");
+      toastError("Amount too large or invalid");
       return;
     }
     setIsDepositing(true);
@@ -37,20 +37,24 @@ export function useDeposit(tokenId: bigint, onSuccess?: () => void) {
       value,
     })
       .then(() => {
-        toast.success("Deposit successful");
+        toastSuccess("Deposit successful");
         setDepositAmount("");
         vd.refetch();
         onSuccess?.();
       })
-      .catch((err) => {
-        const refStr = errorRefString(err);
-        toast.error(
-          humanizeError(err),
-          refStr ? { description: refStr } : undefined,
-        );
-      })
+      .catch(toastError)
       .finally(() => setIsDepositing(false));
-  }, [vaultAddr, abi, tokenId, depositAmount, write, vd.refetch, onSuccess]);
+  }, [
+    vaultAddr,
+    abi,
+    tokenId,
+    depositAmount,
+    write,
+    vd.refetch,
+    onSuccess,
+    toastError,
+    toastSuccess,
+  ]);
 
   const isValidDeposit =
     depositAmount.trim() !== "" &&

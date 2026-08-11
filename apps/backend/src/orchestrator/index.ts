@@ -16,8 +16,13 @@ import {
   resolveChainId,
 } from "../compute/index.js";
 import { pickOGNetwork } from "@axiom/config/networks";
-import { EVENT_NAMES, getRuntimeConfig } from "@axiom/config";
-import { VAULT_ABI, VAULT_ABI_LEGACY } from "@axiom/config/abis";
+import { EVENT_NAMES, getRuntimeConfig, ZERO_DATA_ROOT } from "@axiom/config";
+import {
+  STRATEGY_OF_CURRENT,
+  STRATEGY_OF_LEGACY,
+  VAULT_ABI,
+  VAULT_ABI_LEGACY,
+} from "@axiom/config/abis";
 import { createLogger } from "../utils/logger.js";
 import { extractErrorMessage } from "../utils/response.js";
 // .catch() per field mirrors parseRecommendation's hand-rolled graceful degradation: invalid/missing values fall back to safe defaults, never rejecting the whole payload.
@@ -31,17 +36,6 @@ const RecommendationSchema = z.object({
 type VaultAbiVariant = "legacy" | "current";
 
 const variantCache = new Map<string, VaultAbiVariant>();
-
-const STRATEGY_OF_CURRENT = [
-  "function strategyOf(uint256) view returns (bytes32, uint256, uint256, uint64, uint64)",
-] as const;
-
-const STRATEGY_OF_LEGACY = [
-  "function strategyOf(uint256) view returns (bytes32, uint256, uint256, uint64)",
-] as const;
-
-const ZERO_ROOT =
-  "0x0000000000000000000000000000000000000000000000000000000000000000";
 
 export async function detectVaultAbiVariant(
   provider: Provider,
@@ -292,7 +286,10 @@ export class StrategyRunner {
       };
     }
 
-    if (vaultStrategy.root === ZERO_ROOT || BigInt(vaultStrategy.root) === 0n) {
+    if (
+      vaultStrategy.root === ZERO_DATA_ROOT ||
+      BigInt(vaultStrategy.root) === 0n
+    ) {
       return {
         status: "skipped",
         reason: "no strategy root set on vault",
@@ -474,7 +471,7 @@ export class StrategyRunner {
 }
 
 export function settlementSkipReason(root: string): string {
-  if (root === ZERO_ROOT) {
+  if (root === ZERO_DATA_ROOT) {
     return "no strategy set on vault";
   }
   return "settlement requires an off-chain Merkle proof producer (not available)";

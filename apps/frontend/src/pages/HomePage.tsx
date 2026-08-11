@@ -1,4 +1,12 @@
-import { lazy, Suspense, useMemo, type ReactElement } from "react";
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactElement,
+} from "react";
 import { Link } from "react-router-dom";
 import { useAccount } from "wagmi";
 import {
@@ -9,12 +17,19 @@ import {
   Skeleton,
   ConnectedGuard,
 } from "../components/ui.js";
-import { useAgents } from "../hooks/useAgents.js";
-import { useVaultDataBatch } from "../hooks/useVaultDataBatch.js";
-import { useHealth } from "../hooks/useHealth.js";
+import { usePortfolio } from "../hooks/usePortfolio.js";
+import { useMediaQuery } from "../hooks/useMediaQuery.js";
 import { formatTokenAmount, truncateAddress } from "../utils/format.js";
 
 const AgentsBrowser = lazy(() => import("./AgentsBrowser.js"));
+
+/** Fired by the app-shell mint modal on confirmed mint (see App.tsx). */
+const MINT_COMPLETE_EVENT = "axiom:mint-complete";
+
+// Module-scoped mint tracker: survives route unmounts so a just-minted agent
+// shows a pending row on Home until the agents poll picks it up.
+let lastMintAt: number | null = null;
+let lastMintCount: number | null = null;
 
 /** Home = portfolio KPIs + full agent list; merges the old Dashboard and Agents destinations. */
 function HomePage(): ReactElement {
@@ -30,22 +45,7 @@ function HomePage(): ReactElement {
           flexWrap: "wrap",
         }}
       >
-        <img
-          src="/brand/hero-seal-512.jpg"
-          alt=""
-          width={72}
-          height={72}
-          className="home-hero-seal"
-          style={{
-            width: 72,
-            height: 72,
-            borderRadius: "var(--radius-lg)",
-            border: "1px solid var(--c-border)",
-            objectFit: "cover",
-            boxShadow: "var(--shadow-1)",
-            flexShrink: 0,
-          }}
-        />
+        <HomeSeal />
         <div style={{ flex: 1, minWidth: "12rem" }}>
           <PageHeader
             title="Home"
@@ -65,13 +65,34 @@ function HomePage(): ReactElement {
   );
 }
 
+/** Decorative seal; hidden on mobile so the agent list stays above the fold. */
+function HomeSeal(): ReactElement | null {
+  const isMobile = useMediaQuery("(max-width: 640px)");
+  if (isMobile) return null;
+  return (
+    <img
+      src="/brand/hero-seal-512.jpg"
+      alt=""
+      width={72}
+      height={72}
+      className="home-hero-seal"
+      style={{
+        width: 72,
+        height: 72,
+        borderRadius: "var(--radius-lg)",
+        border: "1px solid var(--c-border)",
+        objectFit: "cover",
+        boxShadow: "var(--shadow-1)",
+        flexShrink: 0,
+      }}
+    />
+  );
+}
+
 function HomeBody(): ReactElement {
   const { address } = useAccount();
-  const { agents, isLoading: agentsLoading, error: agentsError } = useAgents();
-  const tokenIds = useMemo(() => agents.map((a) => a.tokenId), [agents]);
-  const { data: vaultMap, isLoading: vaultLoading } =
-    useVaultDataBatch(tokenIds);
-  const { data: health } = useHealth();
+  const isMobile = useMediaQuery("(max-width: 640px)");
+  const { agents, error: agentsError, vaultMap, loading } = usePortfolio();
 
   const totalVaultWei = useMemo(() => {
     let sum = 0n;
@@ -101,16 +122,66 @@ function HomeBody(): ReactElement {
     });
   }, [agents, vaultMap]);
 
-  const loading = agentsLoading || vaultLoading;
+  // Optimistic mint row: a confirmed mint shows a pending card until the
+  // agents poll returns the new agent (then the real card replaces it).
+  const agentsCountRef = useRef(agents.length);
+  agentsCountRef.current = agents.length;
+  const [mintPending, setMintPending] = useState<boolean>(() => {
+    return (
+      lastMintAt !== null &&
+      Date.now() - lastMintAt < 90_000 &&
+      agents.length === lastMintCount
+    );
+  });
+
+  useEffect(() => {
+    function onMintComplete(): void {
+      lastMintAt = Date.now();
+      lastMintCount = agentsCountRef.current;
+      setMintPending(true);
+    }
+    window.addEventListener(MINT_COMPLETE_EVENT, onMintComplete);
+    return () =>
+      window.removeEventListener(MINT_COMPLETE_EVENT, onMintComplete);
+  }, []);
+
+  useEffect(() => {
+    if (!mintPending) return;
+    const resolved =
+      (lastMintCount !== null && agents.length !== lastMintCount) ||
+      (lastMintAt !== null && Date.now() - lastMintAt > 120_000);
+    if (resolved) {
+      setMintPending(false);
+      lastMintAt = null;
+      lastMintCount = null;
+    }
+  }, [mintPending, agents.length]);
+
+  const mobileStatStyle = isMobile
+    ? { flex: "0 0 auto", minWidth: "8.5rem", padding: "var(--space-md)" }
+    : {};
 
   return (
     <>
       <div
         className="dashboard-grid home-stats stagger-in"
-        style={{ marginBottom: "var(--space-lg)" }}
+        style={{
+          marginBottom: "var(--space-lg)",
+          ...(isMobile
+            ? {
+                display: "flex",
+                overflowX: "auto",
+                WebkitOverflowScrolling: "touch",
+                scrollbarWidth: "none",
+              }
+            : {}),
+        }}
         aria-label="Portfolio stats"
       >
-        <div className="dashboard-stat" style={{ ["--i" as string]: 0 }}>
+        <div
+          className="dashboard-stat"
+          style={{ ["--i" as string]: 0, ...mobileStatStyle }}
+        >
           <div className="dashboard-stat__label">Agents</div>
           <div className="dashboard-stat__value">
             {loading ? <Skeleton width={40} height={28} /> : agents.length}
@@ -118,7 +189,7 @@ function HomeBody(): ReactElement {
         </div>
         <div
           className="dashboard-stat dashboard-stat--vault"
-          style={{ ["--i" as string]: 1 }}
+          style={{ ["--i" as string]: 1, ...mobileStatStyle }}
         >
           <div className="dashboard-stat__label">Total vault</div>
           <div
@@ -132,27 +203,13 @@ function HomeBody(): ReactElement {
             )}
           </div>
         </div>
-        <div className="dashboard-stat" style={{ ["--i" as string]: 2 }}>
+        <div
+          className="dashboard-stat"
+          style={{ ["--i" as string]: 2, ...mobileStatStyle }}
+        >
           <div className="dashboard-stat__label">Needs funding</div>
           <div className="dashboard-stat__value">
             {loading ? <Skeleton width={32} height={28} /> : unfunded.length}
-          </div>
-        </div>
-        <div
-          className={`dashboard-stat${
-            health?.oracle === "up" ? " dashboard-stat--live" : ""
-          }`}
-          style={{ ["--i" as string]: 3 }}
-        >
-          <div className="dashboard-stat__label">Oracle</div>
-          <div
-            className="dashboard-stat__value"
-            style={{
-              fontSize: "var(--text-sm)",
-              color: health?.oracle === "up" ? COLORS.success : COLORS.warning,
-            }}
-          >
-            {health ? (health.oracle === "up" ? "Online" : "Down") : "—"}
           </div>
         </div>
       </div>
@@ -182,7 +239,7 @@ function HomeBody(): ReactElement {
         </Card>
       )}
 
-      {(unfunded.length > 0 || unbound.length > 0) && (
+      {loading || unfunded.length > 0 || unbound.length > 0 ? (
         <div
           className="home-attention"
           style={{
@@ -204,39 +261,92 @@ function HomeBody(): ReactElement {
           >
             Needs attention
           </div>
-          <ul
+          {loading ? (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "var(--space-sm)",
+              }}
+            >
+              <Skeleton width="55%" height={14} />
+              <Skeleton width="40%" height={14} />
+            </div>
+          ) : (
+            <ul
+              style={{
+                margin: 0,
+                paddingLeft: "1.15rem",
+                color: COLORS.textMuted,
+                fontSize: "var(--text-sm)",
+                lineHeight: 1.55,
+              }}
+            >
+              {unfunded.slice(0, 3).map((a) => (
+                <li key={`f-${a.tokenId}`}>
+                  #{a.tokenId.toString()} empty vault —{" "}
+                  <Link
+                    to={`/agents/${a.tokenId}`}
+                    style={{ color: COLORS.bronzeLight }}
+                  >
+                    fund
+                  </Link>
+                </li>
+              ))}
+              {unbound.slice(0, 3).map((a) => (
+                <li key={`s-${a.tokenId}`}>
+                  #{a.tokenId.toString()} no strategy —{" "}
+                  <Link
+                    to={`/agents/${a.tokenId}`}
+                    style={{ color: COLORS.bronzeLight }}
+                  >
+                    bind
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ) : null}
+
+      {mintPending && (
+        <Card style={{ marginBottom: "var(--space-md)" }}>
+          <div
             style={{
-              margin: 0,
-              paddingLeft: "1.15rem",
-              color: COLORS.textMuted,
-              fontSize: "var(--text-sm)",
-              lineHeight: 1.55,
+              display: "flex",
+              alignItems: "center",
+              gap: "var(--space-md)",
             }}
           >
-            {unfunded.slice(0, 3).map((a) => (
-              <li key={`f-${a.tokenId}`}>
-                #{a.tokenId.toString()} empty vault —{" "}
-                <Link
-                  to={`/agents/${a.tokenId}`}
-                  style={{ color: COLORS.bronzeLight }}
-                >
-                  fund
-                </Link>
-              </li>
-            ))}
-            {unbound.slice(0, 3).map((a) => (
-              <li key={`s-${a.tokenId}`}>
-                #{a.tokenId.toString()} no strategy —{" "}
-                <Link
-                  to={`/agents/${a.tokenId}`}
-                  style={{ color: COLORS.bronzeLight }}
-                >
-                  bind
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
+            <Skeleton
+              width={40}
+              height={40}
+              style={{ borderRadius: "var(--radius-md)", flexShrink: 0 }}
+            />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div
+                style={{
+                  fontWeight: "var(--fw-semibold)",
+                  fontSize: "var(--text-sm)",
+                  color: COLORS.textPrimary,
+                  marginBottom: 6,
+                }}
+              >
+                Your new agent
+              </div>
+              <Skeleton width="45%" height={12} />
+            </div>
+            <span
+              style={{
+                fontSize: "var(--text-xs)",
+                color: COLORS.textDim,
+                flexShrink: 0,
+              }}
+            >
+              minting…
+            </span>
+          </div>
+        </Card>
       )}
 
       <Suspense
@@ -246,19 +356,20 @@ function HomeBody(): ReactElement {
           </Card>
         }
       >
-        <AgentsBrowser embedded />
+        <AgentsBrowser />
       </Suspense>
 
-      <p
-        style={{
-          marginTop: "var(--space-xl)",
-          fontSize: "var(--text-xs)",
-          color: COLORS.textDim,
-        }}
-      >
-        {address ? `${truncateAddress(address)} · ` : ""}
-        Open an agent to fund, tick, or transfer
-      </p>
+      {address ? (
+        <p
+          style={{
+            marginTop: "var(--space-xl)",
+            fontSize: "var(--text-xs)",
+            color: COLORS.textDim,
+          }}
+        >
+          {truncateAddress(address)}
+        </p>
+      ) : null}
     </>
   );
 }

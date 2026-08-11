@@ -1,16 +1,9 @@
 import { parseAbi } from "viem";
-import { fetchJson, toolFail } from "../transport.js";
+import { fetchJson, resolveTokenId, toolFail } from "../transport.js";
 import type { ToolRuntime } from "../transport.js";
+import { STRATEGY_OF_CURRENT, STRATEGY_OF_LEGACY } from "@axiom/config/abis";
 import { ZERO_DATA_ROOT } from "@axiom/config/constants";
 import type { ToolResult } from "../types.js";
-
-const STRATEGY_OF_CURRENT = [
-  "function strategyOf(uint256) view returns (bytes32, uint256, uint256, uint64, uint64)",
-] as const;
-
-const STRATEGY_OF_LEGACY = [
-  "function strategyOf(uint256) view returns (bytes32, uint256, uint256, uint64)",
-] as const;
 
 const BALANCE_OF_ABI = parseAbi([
   "function balanceOf(uint256) view returns (uint256)",
@@ -61,7 +54,7 @@ export async function runOrchestrateTool(
     return toolFail(`Unknown orchestrate tool: ${name}`);
   }
 
-  const tokenId = String(args.tokenId ?? ctx.session.lastTokenId ?? "");
+  const tokenId = resolveTokenId(args, ctx);
   if (!tokenId) return toolFail("tokenId required");
 
   const dryRun = name === "simulate_tick" || args.dryRun === true;
@@ -142,7 +135,7 @@ export function buildTickBody(
 } {
   const vault = ctx.session.addresses?.vault;
   const agentNft = ctx.session.addresses?.agentNft;
-  const agentTokenId = String(args.tokenId ?? ctx.session.lastTokenId ?? "");
+  const agentTokenId = resolveTokenId(args, ctx);
   const body: {
     vault: `0x${string}` | undefined;
     agentNft: `0x${string}` | undefined;

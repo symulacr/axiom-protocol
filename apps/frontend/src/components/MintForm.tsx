@@ -201,19 +201,7 @@ export function MintForm({
             disabled={busy}
             style={{ width: "100%", marginTop: 8 }}
             required
-            aria-describedby="mint-name-help"
           />
-          <p
-            id="mint-name-help"
-            style={{
-              margin: "8px 0 0",
-              fontSize: "var(--text-xs)",
-              color: COLORS.textMuted,
-              lineHeight: 1.5,
-            }}
-          >
-            No JSON to paste. Connect wallet, then mint.
-          </p>
 
           <div
             className="surface-lcd"

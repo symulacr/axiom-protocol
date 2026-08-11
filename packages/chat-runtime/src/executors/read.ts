@@ -1,15 +1,7 @@
 import { parseAbi } from "viem";
-import { fetchJson, toolFail } from "../transport.js";
+import { fetchJson, resolveTokenId, toolFail } from "../transport.js";
 import type { ToolRuntime } from "../transport.js";
 import type { ToolResult } from "../types.js";
-
-function resolveTokenId(
-  args: Record<string, unknown>,
-  ctx: ToolRuntime,
-): string {
-  const id = args.tokenId ?? ctx.session.lastTokenId;
-  return id === undefined || id === null ? "" : String(id);
-}
 
 export async function runReadTool(
   name: string,

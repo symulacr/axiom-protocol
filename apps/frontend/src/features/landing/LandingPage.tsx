@@ -8,8 +8,6 @@ function LandingPage(): ReactElement {
     <article className="landing-root">
       <Hero />
       <Uses />
-      <Limits />
-      <Cta />
     </article>
   );
 }
@@ -29,8 +27,8 @@ function Hero(): ReactElement {
             <span className="landing-h1-accent">Own it on-chain.</span>
           </h1>
           <p className="landing-lead">
-            Use Axiom to mint an iNFT agent, fund its vault, run ticks, transfer
-            with re-key, or chat tools with Axiom.
+            Mint, fund, tick, and transfer on-chain agents — or just ask Axiom
+            in chat.
           </p>
           <div className="landing-cta-row">
             <Link to="/app?mint=1" className="btn btn-primary landing-btn">
@@ -87,7 +85,7 @@ function Uses(): ReactElement {
     <section className="landing-block">
       <h2 className="landing-h2">What Axiom is for</h2>
       <p className="landing-sub">
-        Same flows as Home and Chat. No extra product.
+        One page for every agent action — mint, fund, tick, transfer, and chat.
       </p>
       <ul className="landing-list">
         {items.map((item, i) => (
@@ -101,42 +99,6 @@ function Uses(): ReactElement {
           </li>
         ))}
       </ul>
-    </section>
-  );
-}
-
-function Limits(): ReactElement {
-  return (
-    <section className="landing-block landing-block--tight">
-      <div className="landing-note">
-        <h2 className="landing-h3">Limits</h2>
-        <ul className="landing-plain-list">
-          <li>No marketplace page — transfer lives on agent detail.</li>
-          <li>
-            Oracle is a <strong>software</strong> signer, not hardware TEE.
-          </li>
-          <li>Chat and ticks need backend + compute keys.</li>
-        </ul>
-      </div>
-    </section>
-  );
-}
-
-function Cta(): ReactElement {
-  return (
-    <section className="landing-block landing-cta-end">
-      <h2 className="landing-h2">Start with a name</h2>
-      <p className="landing-sub">
-        Mint → Home list → detail for vault and ticks.
-      </p>
-      <div className="landing-cta-row landing-cta-row--center">
-        <Link to="/app?mint=1" className="btn btn-primary landing-btn">
-          Mint
-        </Link>
-        <Link to="/app" className="btn btn-secondary landing-btn">
-          Open Home
-        </Link>
-      </div>
     </section>
   );
 }

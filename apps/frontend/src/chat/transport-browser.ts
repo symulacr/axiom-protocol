@@ -2,7 +2,8 @@ import { createSession, runTool } from "@axiom/chat-runtime";
 import type { ToolChain, ToolRuntime } from "@axiom/chat-runtime";
 import { parseAbi } from "viem";
 import type { Abi } from "viem";
-import { API_KEY, BACKEND_URL, ORACLE_URL } from "../config/env.js";
+import { BACKEND_URL, ORACLE_URL } from "../config/env.js";
+import { apiKeyHeader } from "../utils/apiFetch.js";
 import {
   getAxiomAgentNftAddress,
   getAxiomStrategyVaultAddress,
@@ -111,7 +112,7 @@ function buildBrowserRuntime(ctx: ToolContext): ToolRuntime {
           headers: {
             "content-type": "application/json",
             accept: "application/json",
-            ...(API_KEY ? { "x-api-key": API_KEY } : {}),
+            ...apiKeyHeader(),
             ...(init?.headers ?? {}),
           },
           body,

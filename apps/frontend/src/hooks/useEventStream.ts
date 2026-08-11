@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { API_KEY, backendWsBase, backendWsPathPrefix } from "../config/env.js";
+import { buildStreamWsUrl } from "../config/env.js";
 import type { AxiomEvent } from "./useEventHistory.js";
 
 interface UseEventStreamResult {
@@ -40,15 +40,9 @@ export function useEventStream(
     reconnectAttemptRef.current = 0;
 
     try {
-      const url = new URL(
-        `${backendWsBase()}${backendWsPathPrefix()}/v1/stream`,
-      );
-      for (const t of topics) {
-        url.searchParams.append("topic", t);
-      }
-      url.searchParams.append("token", API_KEY);
+      const url = buildStreamWsUrl(topics);
 
-      const ws = new WebSocket(url.toString());
+      const ws = new WebSocket(url);
       wsRef.current = ws;
 
       ws.onopen = () => {
