@@ -1436,7 +1436,6 @@ function ChatPageInner(): ReactElement {
                           {CHAT_TOOL_CLASS_LABELS[g.cls]}
                         </div>
                         {g.tools.map((t) => {
-                          const gated = t.requiresApiKey !== undefined;
                           const hint =
                             t.hint.length > 90
                               ? `${t.hint.slice(0, 90)}…`
@@ -1445,21 +1444,19 @@ function ChatPageInner(): ReactElement {
                             <button
                               key={t.name}
                               type="button"
-                              disabled={gated}
                               onClick={() => setInput(t.name)}
-                              title={gated ? `${t.name} — server key` : t.hint}
+                              title={t.hint}
                               style={{
                                 display: "block",
                                 width: "100%",
                                 textAlign: "left",
                                 border: "none",
                                 background: "none",
-                                cursor: gated ? "not-allowed" : "pointer",
+                                cursor: "pointer",
                                 padding: "3px 0",
                                 font: "inherit",
                                 fontSize: "var(--text-xs)",
-                                color: gated ? COLORS.textDim : COLORS.text,
-                                opacity: gated ? 0.55 : 1,
+                                color: COLORS.text,
                               }}
                             >
                               <code
@@ -1474,12 +1471,6 @@ function ChatPageInner(): ReactElement {
                                 {" — "}
                                 {hint}
                               </span>
-                              {gated ? (
-                                <span style={{ color: COLORS.textDim }}>
-                                  {" "}
-                                  (server key)
-                                </span>
-                              ) : null}
                             </button>
                           );
                         })}
