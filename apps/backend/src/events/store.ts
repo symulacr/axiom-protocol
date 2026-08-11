@@ -340,16 +340,14 @@ export class EventStore {
     }
 
     const tid = tokenIdFromPayload(evt.payload);
-    if (tid !== null && pos?.tokenIdx !== undefined) {
-      const tidBucket = this.byTokenId.get(tid);
-      if (tidBucket) {
-        this.removeFromIndexAt(tidBucket, pos.tokenIdx, (swapped, newIdx) => {
-          const swappedPos = this.indexPositions.get(swapped);
-          if (swappedPos) swappedPos.tokenIdx = newIdx;
-        });
-        if (tidBucket.length === 0) this.byTokenId.delete(tid);
-      }
-    }
+    if (tid === null || pos?.tokenIdx === undefined) return;
+    const tidBucket = this.byTokenId.get(tid);
+    if (!tidBucket) return;
+    this.removeFromIndexAt(tidBucket, pos.tokenIdx, (swapped, newIdx) => {
+      const swappedPos = this.indexPositions.get(swapped);
+      if (swappedPos) swappedPos.tokenIdx = newIdx;
+    });
+    if (tidBucket.length === 0) this.byTokenId.delete(tid);
   }
 
   private enqueuePersist(): Promise<void> {

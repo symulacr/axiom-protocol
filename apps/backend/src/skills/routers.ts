@@ -126,7 +126,7 @@ function registerSkillRoutes(
 ): void {
   // One registration indirection keeps path/schema/handler/auth together, replacing five near-identical factories; positional flags stay (an options object would churn 28 call sites).
   for (const r of registrations) {
-    const handler: SkillHandlerFn<z.ZodTypeAny> = async (
+    const handler: SkillHandlerFn<z.ZodTypeAny> = (
       parsed,
       req,
       res,
@@ -135,11 +135,11 @@ function registerSkillRoutes(
       if (r.requiresServerAuth) {
         const principal = (req as { authPrincipal?: string }).authPrincipal;
         if (principal === "client")
-          return {
+          return Promise.resolve({
             ok: false,
             error: "forbidden: server API key required for this skill",
             code: "SERVER_KEY_REQUIRED",
-          };
+          });
       }
       return r.handler(parsed, req, res, helpers);
     };
@@ -558,7 +558,7 @@ export function createSkillRouters(config: ServerConfig): Router {
       "/v1/skills/osint/sec_edgar",
       osintSecEdgarSchema,
       "SEC EDGAR company submissions lookup",
-      async (parsed) => {
+      (parsed) => {
         const cik = parsed.cik.padStart(10, "0");
         return cachedFetch(
           `edgar:${cik}`,
@@ -570,7 +570,7 @@ export function createSkillRouters(config: ServerConfig): Router {
       "/v1/skills/osint/usaspending",
       osintUsaspendingSchema,
       "USASpending.gov federal award search",
-      async (parsed) => {
+      (parsed) => {
         return cachedFetch(
           `spend:${JSON.stringify(parsed.filters)}`,
           "https://api.usaspending.gov/api/v2/search/spending_by_award/",
@@ -612,7 +612,7 @@ export function createSkillRouters(config: ServerConfig): Router {
       "/v1/skills/osint/opencorporates",
       osintOpencorporatesSchema,
       "OpenCorporates company search",
-      async (parsed) => {
+      (parsed) => {
         const q = encodeURIComponent(parsed.query);
         return cachedFetch(
           `ocorp:${parsed.jurisdiction}:${parsed.query}`,
@@ -624,7 +624,7 @@ export function createSkillRouters(config: ServerConfig): Router {
       "/v1/skills/osint/entity_resolve",
       osintEntityResolveSchema,
       "Resolve whether entity names refer to the same company",
-      async (parsed) => {
+      (parsed) => {
         const { entities } = parsed;
         const scores: Array<{ pair: [string, string]; score: number }> = [];
         for (let i = 0; i < entities.length; i++) {
@@ -640,14 +640,14 @@ export function createSkillRouters(config: ServerConfig): Router {
           }
         }
         scores.sort((a, b) => b.score - a.score);
-        return serialize({ matches: scores });
+        return Promise.resolve(serialize({ matches: scores }));
       },
     ),
     skill(
       "/v1/skills/osint/courtlistener",
       osintCourtlistenerSchema,
       "CourtListener opinions and RECAP search",
-      async (parsed) => {
+      (parsed) => {
         const q = encodeURIComponent(parsed.query);
         const type = parsed.type ?? "o";
         const endpoint = type === "o" ? "search" : "recap";

@@ -53,10 +53,10 @@ export async function runArchiveTool(
   }
 }
 
-async function archiveLookup(
+function archiveLookup(
   args: Record<string, unknown>,
   ctx: ToolRuntime,
-): Promise<ToolResult> {
+): Promise<ToolResult> | ToolResult {
   const url = requireUrl(args);
   if (typeof url !== "string") return url;
   const limit = clampLimit(args.limit, 50);

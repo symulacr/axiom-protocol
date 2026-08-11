@@ -139,7 +139,7 @@ export function startServer(config: ServerConfig): {
         env?.AXIOM_ALLOW_CLEARTEXT_DEK === "true" &&
         process.env.NODE_ENV !== "production";
 
-      let oldDataKey: Buffer;
+      let oldDataKey: Buffer | undefined;
       if (typeof sealedDek === "string" && sealedDek.length > 0) {
         const sealedBytes = Buffer.from(
           sealedDek.startsWith("0x") ? sealedDek.slice(2) : sealedDek,
@@ -152,16 +152,14 @@ export function startServer(config: ServerConfig): {
         oldDataKey = Buffer.from(opened);
       } else if (oldDataEncryptionKey && allowCleartext) {
         oldDataKey = Buffer.from(oldDataEncryptionKey, "base64");
-      } else if (oldDataEncryptionKey && !allowCleartext) {
-        // earlier branches assign oldDataKey without returning, so this trailing else is required — not dead code
+      }
+      if (oldDataKey === undefined) {
+        // Assign-only branches above: a missing key means DEK present but cleartext not allowed, or no DEK at all.
         return badRequest(
           res,
-          "cleartext oldDataEncryptionKey rejected; send sealedDataEncryptionKey (ECIES to oracle pubkey from GET /health)",
-        );
-      } else {
-        return badRequest(
-          res,
-          "sealedDataEncryptionKey is required (ECIES-seal the 32-byte DEK to oracle uncompressed pubkey)",
+          oldDataEncryptionKey
+            ? "cleartext oldDataEncryptionKey rejected; send sealedDataEncryptionKey (ECIES to oracle pubkey from GET /health)"
+            : "sealedDataEncryptionKey is required (ECIES-seal the 32-byte DEK to oracle uncompressed pubkey)",
         );
       }
 

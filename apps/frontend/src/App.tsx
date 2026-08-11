@@ -189,16 +189,21 @@ function HealthBadge(): ReactElement {
     );
   }
 
-  const status = !data
-    ? isLoading
-      ? "unknown"
-      : "down"
-    : data.ok
-      ? "ok"
-      : "down";
+  let status: "ok" | "down" | "unknown";
+  if (!data) {
+    status = isLoading ? "unknown" : "down";
+  } else {
+    status = data.ok ? "ok" : "down";
+  }
 
-  const label =
-    status === "ok" ? "Online" : status === "down" ? "Offline" : "…";
+  let label: string;
+  if (status === "ok") {
+    label = "Online";
+  } else if (status === "down") {
+    label = "Offline";
+  } else {
+    label = "…";
+  }
 
   const title = data
     ? `API ${label} · oracle ${data.oracle} · block #${data.chainHead}`

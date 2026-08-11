@@ -67,12 +67,15 @@ export function EncodePreviewCard({
     }
   };
 
-  const amountLabel =
-    toolName === "withdraw" || toolName === "deposit"
-      ? `${preview.amount ?? "?"} 0G`
-      : preview.amount
-        ? `${preview.amount}${preview.amountUnit ? ` ${preview.amountUnit}` : ""}`
-        : null;
+  const amountLabel = ((): string | null => {
+    if (toolName === "withdraw" || toolName === "deposit") {
+      return `${preview.amount ?? "?"} 0G`;
+    }
+    if (preview.amount) {
+      return `${preview.amount}${preview.amountUnit ? ` ${preview.amountUnit}` : ""}`;
+    }
+    return null;
+  })();
 
   if (preview.txHash ?? signedHash) {
     return (

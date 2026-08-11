@@ -85,7 +85,7 @@ export const backLinkStyle = {
   textDecoration: "none",
 } as const;
 
-export const emptyCardStyle = {
+const emptyCardStyle = {
   textAlign: "center",
   padding: "var(--space-3xl) var(--space-xl)",
 } as const;

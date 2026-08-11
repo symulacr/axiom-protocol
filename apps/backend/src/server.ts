@@ -77,6 +77,19 @@ function shortSigner(addr: string): string {
   return addr.length > 10 ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : addr;
 }
 
+function emitTraceChunk(
+  writeChunk: (chunk: string) => boolean,
+  traceHeader: unknown,
+): void {
+  try {
+    const trace =
+      typeof traceHeader === "string" ? JSON.parse(traceHeader) : traceHeader;
+    writeChunk(`data: ${JSON.stringify({ type: "trace", trace })}\n\n`);
+  } catch {
+    /* trace header not JSON — skip */
+  }
+}
+
 REGISTERED_ROUTES.push({
   method: "GET",
   path: "/v1/stream",
@@ -493,19 +506,7 @@ function registerChatRoutes(app: Express, config: ServerConfig): void {
             (response?.headers as unknown as Record<string, string>)?.[
               "x_0g_trace"
             ];
-          if (traceHeader) {
-            try {
-              const trace =
-                typeof traceHeader === "string"
-                  ? JSON.parse(traceHeader)
-                  : traceHeader;
-              writeChunk(
-                `data: ${JSON.stringify({ type: "trace", trace })}\n\n`,
-              );
-            } catch {
-              /* trace header not JSON — skip */
-            }
-          }
+          if (traceHeader) emitTraceChunk(writeChunk, traceHeader);
           writeChunk("data: [DONE]\n\n");
           res.end();
         }

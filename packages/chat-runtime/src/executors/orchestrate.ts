@@ -73,33 +73,19 @@ export async function runOrchestrateTool(
     ]);
     const ready = balance > 0n && root !== ZERO_DATA_ROOT;
 
-    if (!ready) {
-      if (dryRun) {
-        return {
-          ok: true as const,
-          content: JSON.stringify({
-            ok: true,
-            simulated: true,
-            ready: false,
-            tokenId,
-            balance: balance.toString(),
-            strategyRoot: root ?? ZERO_DATA_ROOT,
-          }),
-        };
-      }
+    if (!ready && !dryRun) {
       return toolFail("NOT_READY: vault balance or strategy missing");
     }
-
     if (dryRun) {
       return {
         ok: true as const,
         content: JSON.stringify({
           ok: true,
           simulated: true,
-          ready: true,
+          ready,
           tokenId,
           balance: balance.toString(),
-          strategyRoot: root,
+          strategyRoot: ready ? root : (root ?? ZERO_DATA_ROOT),
         }),
       };
     }

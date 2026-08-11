@@ -26,21 +26,39 @@ function formatObjectLines(
     .join("\n");
 }
 
+function formatTweetRow(t: unknown): string[] {
+  if (typeof t === "string") return [`• ${t}`];
+  if (!t || typeof t !== "object") return [];
+  const row = t as Record<string, unknown>;
+  const url = row.url ?? row.original ?? row.snapshotUrl;
+  const ts = row.timestamp ?? row.iso;
+  return [`• ${url ?? JSON.stringify(row)}${ts ? ` (${String(ts)})` : ""}`];
+}
+
+function formatSnapshotRow(s: unknown): string[] {
+  if (!s || typeof s !== "object") return [];
+  const row = s as Record<string, unknown>;
+  return [
+    `• ${row.snapshotUrl ?? row.url ?? "?"}${row.iso ? ` (${String(row.iso)})` : ""}`,
+  ];
+}
+
 function formatArchiveResult(
   name: string,
   obj: Record<string, unknown>,
 ): string {
   if (name === "archive_confirm_deletion") {
-    const lines: string[] = [];
-    if (obj.wasArchived === true || obj.archived === true) {
-      lines.push("Archived: yes");
-      if (obj.archivedAt) lines.push(`Captured: ${String(obj.archivedAt)}`);
-      if (obj.snapshotUrl) lines.push(`Snapshot: ${String(obj.snapshotUrl)}`);
-      if (obj.interpretation) lines.push(String(obj.interpretation));
-    } else {
-      lines.push("Archived: no");
-      if (obj.interpretation) lines.push(String(obj.interpretation));
+    const archived = obj.wasArchived === true || obj.archived === true;
+    const lines = [archived ? "Archived: yes" : "Archived: no"];
+    if (archived) {
+      lines.push(
+        ...[
+          obj.archivedAt ? `Captured: ${String(obj.archivedAt)}` : "",
+          obj.snapshotUrl ? `Snapshot: ${String(obj.snapshotUrl)}` : "",
+        ].filter(Boolean),
+      );
     }
+    if (obj.interpretation) lines.push(String(obj.interpretation));
     return lines.join("\n");
   }
 
@@ -48,44 +66,31 @@ function formatArchiveResult(
     const handle = obj.handle ?? "?";
     const count = obj.archivedTweetCount ?? obj.count ?? 0;
     const tweets = obj.tweets ?? obj.snapshots;
-    const lines = [
+    const rows = Array.isArray(tweets)
+      ? tweets.slice(0, 50).flatMap(formatTweetRow)
+      : [];
+    const more =
+      Array.isArray(tweets) && tweets.length > 50
+        ? [`… and ${tweets.length - 50} more`]
+        : [];
+    return [
       `@${String(handle)} — ${String(count)} archived tweet URL(s)`,
-    ];
-    if (Array.isArray(tweets)) {
-      for (const t of tweets.slice(0, 50)) {
-        if (typeof t === "string") lines.push(`• ${t}`);
-        else if (t && typeof t === "object") {
-          const row = t as Record<string, unknown>;
-          const url = row.url ?? row.original ?? row.snapshotUrl;
-          const ts = row.timestamp ?? row.iso;
-          lines.push(
-            `• ${url ?? JSON.stringify(row)}${ts ? ` (${String(ts)})` : ""}`,
-          );
-        }
-      }
-      if (tweets.length > 50) lines.push(`… and ${tweets.length - 50} more`);
-    }
-    return lines.join("\n");
+      ...rows,
+      ...more,
+    ].join("\n");
   }
 
   if (name === "archive_lookup") {
     const url = obj.url ?? obj.original;
     const snapshots = obj.snapshots;
     if (Array.isArray(snapshots)) {
-      const lines = [
+      const more =
+        snapshots.length > 30 ? [`… and ${snapshots.length - 30} more`] : [];
+      return [
         `Snapshots for ${String(url ?? "URL")} (${snapshots.length})`,
-      ];
-      for (const s of snapshots.slice(0, 30)) {
-        if (s && typeof s === "object") {
-          const row = s as Record<string, unknown>;
-          lines.push(
-            `• ${row.snapshotUrl ?? row.url ?? "?"}${row.iso ? ` (${String(row.iso)})` : ""}`,
-          );
-        }
-      }
-      if (snapshots.length > 30)
-        lines.push(`… and ${snapshots.length - 30} more`);
-      return lines.join("\n");
+        ...snapshots.slice(0, 30).flatMap(formatSnapshotRow),
+        ...more,
+      ].join("\n");
     }
     if (obj.snapshot && typeof obj.snapshot === "object") {
       const snap = obj.snapshot as Record<string, unknown>;

@@ -4,7 +4,7 @@ import { useVaultDataBatch, type VaultDataEntry } from "./useVaultDataBatch.js";
 import { usePerformanceBatch } from "./usePerformanceBatch.js";
 import type { PerformanceMetrics } from "@axiom/config/types/performance";
 
-export interface PortfolioAgent {
+interface PortfolioAgent {
   tokenId: bigint;
   owner: string;
   dataHash: string;

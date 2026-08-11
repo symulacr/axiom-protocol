@@ -148,14 +148,13 @@ export function MintForm({
     phase === "chain" ||
     phase === "confirm";
 
-  const phaseLabel =
-    phase === "oracle"
-      ? "Registering with oracle…"
-      : phase === "chain"
-        ? "Preparing mint transaction…"
-        : phase === "confirm" || pendingHash
-          ? "Confirm in wallet / on-chain…"
-          : null;
+  const phaseLabel = ((): string | null => {
+    if (phase === "oracle") return "Registering with oracle…";
+    if (phase === "chain") return "Preparing mint transaction…";
+    if (phase === "confirm" || pendingHash)
+      return "Confirm in wallet / on-chain…";
+    return null;
+  })();
 
   return (
     <div
