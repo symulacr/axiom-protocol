@@ -68,6 +68,8 @@ type Message = {
   tool_calls?: ToolCall[];
   tool_call_id?: string;
   name?: string;
+  /** meta.error = UI-only error card; never sent to the model. */
+  meta?: { error?: boolean };
 };
 
 function createMessage(msg: Omit<Message, "id">): Message {
@@ -78,6 +80,17 @@ type ToolCall = {
   id: string;
   type: "function";
   function: { name: string; arguments: string };
+};
+
+type ToolRunStatus = "running" | "success" | "error";
+
+type ToolRun = {
+  name: string;
+  status: ToolRunStatus;
+  startedAt: number;
+  result?: string;
+  error?: string;
+  args?: Record<string, unknown>;
 };
 
 type SSEChunk = {
@@ -94,6 +107,11 @@ type SSEChunk = {
     };
     finish_reason?: string | null;
   }>;
+  /** Backend metadata frame ({type:"trace",trace}) and mid-stream error frames. */
+  type?: string;
+  trace?: Record<string, unknown>;
+  error?: string;
+  code?: string;
 };
 
 const SUPPORTED_CHAIN_IDS = new Set([aristotle.id]);
@@ -325,6 +343,7 @@ function ChatPageInner(): ReactElement {
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamText, setStreamText] = useState("");
+  const [streamError, setStreamError] = useState<string | null>(null);
   const [hasUsedChat, setHasUsedChat] = useState(() => {
     try {
       return localStorage.getItem("axiom:hasUsedChat") === "true";
@@ -337,10 +356,25 @@ function ChatPageInner(): ReactElement {
   const abortRef = useRef<AbortController | null>(null);
   const messagesRef = useRef<Message[]>(messages);
   const listRef = useRef<HTMLDivElement>(null);
+  const stickToBottomRef = useRef(true);
   const streamTextRef = useRef("");
+  const streamErrorRef = useRef<string | null>(null);
+  const lastStreamErrorRef = useRef<string | null>(null);
+  const traceRef = useRef<Record<string, unknown> | null>(null);
   const streamThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [queue, setQueue] = useState<string[]>([]);
   const queueRef = useRef<string[]>([]);
+  // Live tool-execution progress: callId -> run state (drives ToolCallCard UI)
+  const [toolRuns, setToolRuns] = useState<Record<string, ToolRun>>({});
+  const toolRunsRef = useRef<Record<string, ToolRun>>({});
+  const markToolRun = (id: string, patch: Partial<ToolRun>): void => {
+    const cur = toolRunsRef.current[id];
+    if (!cur) return;
+    toolRunsRef.current[id] = { ...cur, ...patch };
+  };
+  const [expandedToolCalls, setExpandedToolCalls] = useState<Set<string>>(
+    () => new Set(),
+  );
   const isStreamingRef = useRef(false);
   const [threads, setThreads] = useState<ChatThread[]>(loadThreads);
   const [threadId, setThreadId] = useState<string>(() => crypto.randomUUID());
@@ -449,8 +483,12 @@ function ChatPageInner(): ReactElement {
   }, [messages]);
 
   useEffect(() => {
-    if (listRef.current) {
-      listRef.current.scrollTop = listRef.current.scrollHeight;
+    const el = listRef.current;
+    if (!el) return;
+    // Only auto-scroll while the user is at/near the bottom; reading up is
+    // never hijacked mid-stream.
+    if (stickToBottomRef.current) {
+      el.scrollTop = el.scrollHeight;
     }
   }, [messages, streamText]);
   useEffect(() => {
@@ -490,6 +528,10 @@ function ChatPageInner(): ReactElement {
       if (!userText.trim() || !chainSupported) return;
       isStreamingRef.current = true;
       setIsStreaming(true);
+      streamErrorRef.current = null;
+      setStreamError(null);
+      toolRunsRef.current = {};
+      setToolRuns({});
 
       const userMsg = createMessage({ role: "user", content: userText });
       let currentMessages = [...messagesRef.current, userMsg];
@@ -551,7 +593,9 @@ function ChatPageInner(): ReactElement {
               model: CHAT_MODEL,
               messages: [
                 { role: "system", content: systemContent },
-                ...fitToContext(currentMessages, {
+                ...fitToContext(
+                  currentMessages.filter((m) => !m.meta?.error),
+                  {
                   model: CHAT_MODEL,
                   system: systemContent,
                   tools: TOOLS,
@@ -583,6 +627,18 @@ function ChatPageInner(): ReactElement {
             streamDone = parsed.done;
 
             for (const chunk of parsed.chunks) {
+              if (chunk.error || chunk.code) {
+                streamErrorRef.current =
+                  typeof chunk.error === "string"
+                    ? chunk.error
+                    : `Stream failed (${String(chunk.code ?? "STREAM_ERROR")})`;
+                streamDone = true;
+                break;
+              }
+              if (chunk.type === "trace") {
+                traceRef.current = chunk.trace ?? traceRef.current;
+                continue;
+              }
               const delta = chunk.choices?.[0]?.delta;
               if (!delta) continue;
 
@@ -617,6 +673,19 @@ function ChatPageInner(): ReactElement {
           );
 
           if (toolCallList.length === 0) {
+            if (streamErrorRef.current) {
+              lastStreamErrorRef.current = streamErrorRef.current;
+              setStreamError(streamErrorRef.current);
+              flushAndClearStreamText();
+              break;
+            }
+            if (!assistantContent) {
+              lastStreamErrorRef.current =
+                "Empty response — the model returned no content. Try again.";
+              setStreamError(lastStreamErrorRef.current);
+              flushAndClearStreamText();
+              break;
+            }
             const assistantMsg = createMessage({
               role: "assistant",
               content: assistantContent,
@@ -640,11 +709,36 @@ function ChatPageInner(): ReactElement {
 
           let sawAsk = false;
           const batches = groupParallelTools(toolCallList);
+          for (const tc of toolCallList) {
+            const id =
+              tc.id ||
+              `${tc.function.name}-${Math.random().toString(36).slice(2)}`;
+            if (!tc.id) tc.id = id;
+            let parsedArgs: Record<string, unknown> = {};
+            try {
+              parsedArgs = JSON.parse(tc.function.arguments?.trim() || "{}");
+            } catch {
+              /* keep empty args */
+            }
+            toolRunsRef.current[id] = {
+              name: tc.function.name,
+              status: "running",
+              startedAt: Date.now(),
+              args: parsedArgs,
+            };
+          }
+          setToolRuns({ ...toolRunsRef.current });
           for (const batch of batches) {
             const batchResults = await Promise.all(
               batch.map(async (tc) => {
                 const handler = handlers[tc.function.name];
                 if (!handler) {
+                  if (tc.id) {
+                    markToolRun(tc.id, {
+                      status: "error",
+                      error: `Unknown tool: ${tc.function.name}`,
+                    });
+                  }
                   return {
                     tc,
                     result: JSON.stringify({
@@ -672,8 +766,17 @@ function ChatPageInner(): ReactElement {
                   } catch {
                     /* result not JSON — nothing to capture */
                   }
+                  if (tc.id) {
+                    markToolRun(tc.id, { status: "success", result });
+                  }
                   return { tc, result };
                 } catch {
+                  if (tc.id) {
+                    markToolRun(tc.id, {
+                      status: "error",
+                      error: "could not parse tool arguments",
+                    });
+                  }
                   return {
                     tc,
                     result: JSON.stringify({
@@ -683,6 +786,7 @@ function ChatPageInner(): ReactElement {
                 }
               }),
             );
+            setToolRuns({ ...toolRunsRef.current });
             for (const { tc, result } of batchResults) {
               const isAsk = isAskUserResult({ ok: true, content: result });
               if (isAsk) sawAsk = true;
@@ -704,18 +808,15 @@ function ChatPageInner(): ReactElement {
           if (sawAsk) break;
         }
 
-        const { exhausted, signal } = evaluateContinue(loopCount);
+        const { exhausted } = evaluateContinue(loopCount);
         if (exhausted) {
           currentMessages = [
             ...currentMessages,
             createMessage({
               role: "assistant",
-              content: JSON.stringify({
-                continue: true,
-                reason: signal?.reason,
-                message:
-                  "This request needed more tool steps than allowed in one turn. Send a follow-up message to continue.",
-              }),
+              content:
+                "This request needed more steps than a single turn allows — send a follow-up to continue.",
+              meta: { error: true },
             }),
           ];
           messagesRef.current = currentMessages;
@@ -745,11 +846,13 @@ function ChatPageInner(): ReactElement {
           } else {
             toast.error(msg, refDesc ? { description: refDesc } : undefined);
           }
+          // UI-only error card (meta.error) — never sent to the model as context
           const withError = [
             ...currentMessages,
             createMessage({
               role: "assistant",
               content: msg,
+              meta: { error: true },
             }),
           ];
           messagesRef.current = withError;
@@ -918,7 +1021,15 @@ function ChatPageInner(): ReactElement {
           <ChatBanner>Wrong network. Switch wallet to 0G Aristotle.</ChatBanner>
         )}
 
-        <div className="chat-messages" ref={listRef}>
+        <div
+          className="chat-messages"
+          ref={listRef}
+          onScroll={(e) => {
+            const el = e.currentTarget;
+            stickToBottomRef.current =
+              el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+          }}
+        >
           {messages.length === 0 && !isStreaming && (
             <div
               className="fade-enter"
@@ -1035,6 +1146,67 @@ function ChatPageInner(): ReactElement {
                 {msg.role === "tool" && msg.name ? (
                   <ToolClassBadge name={msg.name} />
                 ) : null}
+                <span
+                  className="msg-actions"
+                  style={{ marginLeft: "auto" }}
+                >
+                  {msg.role === "user" ? (
+                    <button
+                      type="button"
+                      className="msg-action"
+                      title="Edit and resend"
+                      onClick={() => {
+                        const text = msg.content ?? "";
+                        const idx = messagesRef.current.findIndex(
+                          (m) => m.id === msg.id,
+                        );
+                        if (idx >= 0) {
+                          const trimmed = messagesRef.current.slice(0, idx);
+                          messagesRef.current = trimmed;
+                          setMessages(trimmed);
+                        }
+                        setInput(text);
+                      }}
+                    >
+                      Edit
+                    </button>
+                  ) : null}
+                  {msg.role === "assistant" &&
+                  !msg.meta?.error &&
+                  msg.id === messages[messages.length - 1]?.id ? (
+                    <button
+                      type="button"
+                      className="msg-action"
+                      title="Regenerate reply"
+                      onClick={() => {
+                        const idx = messagesRef.current.findIndex(
+                          (m) => m.id === msg.id,
+                        );
+                        if (idx > 0) {
+                          const trimmed = messagesRef.current.slice(0, idx);
+                          const lastUser = [...trimmed]
+                            .reverse()
+                            .find((m) => m.role === "user");
+                          messagesRef.current = trimmed;
+                          setMessages(trimmed);
+                          if (lastUser?.content) void runAgent(lastUser.content);
+                        }
+                      }}
+                    >
+                      Regenerate
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="msg-action"
+                    title="Copy message"
+                    onClick={() => {
+                      void navigator.clipboard?.writeText(msg.content ?? "");
+                    }}
+                  >
+                    Copy
+                  </button>
+                </span>
               </StatusDot>
               {msg.role === "tool" ? (
                 msg.name === "ask_user" ? (
@@ -1064,28 +1236,31 @@ function ChatPageInner(): ReactElement {
                   </div>
                 )
               ) : msg.tool_calls ? (
-                <div
-                  style={{
-                    fontSize: "var(--text-sm)",
-                    color: COLORS.textMuted,
-                  }}
-                >
-                  {dedupeToolCalls(msg.tool_calls).map((tc) => (
-                    <div key={tc.id}>
-                      <span
-                        style={{
-                          fontSize: "var(--text-xs)",
-                          color: COLORS.textMuted,
-                        }}
-                      >
-                        Calling:
-                      </span>{" "}
-                      <strong style={{ color: COLORS.bronzeLight }}>
-                        {TOOL_LABELS[tc.function.name] ?? tc.function.name}
-                      </strong>
-                      <ToolClassBadge name={tc.function.name} />
-                    </div>
-                  ))}
+                <div style={{ fontSize: "var(--text-sm)", color: COLORS.textMuted }}>
+                  {dedupeToolCalls(msg.tool_calls).map((tc) => {
+                    const run = tc.id ? toolRuns[tc.id] : undefined;
+                    return (
+                      <ToolCallCard
+                        key={tc.id}
+                        run={
+                          run ?? {
+                            name: tc.function.name,
+                            status: "running",
+                            startedAt: Date.now(),
+                          }
+                        }
+                        expanded={expandedToolCalls.has(tc.id)}
+                        onToggle={() =>
+                          setExpandedToolCalls((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(tc.id)) next.delete(tc.id);
+                            else next.add(tc.id);
+                            return next;
+                          })
+                        }
+                      />
+                    );
+                  })}
                 </div>
               ) : (
                 <div
@@ -1098,6 +1273,61 @@ function ChatPageInner(): ReactElement {
               )}
             </div>
           ))}
+
+          {/* Inline stream-error card (mid-stream upstream failure / empty response) */}
+          {streamError !== null && (
+            <div
+              role="alert"
+              className="fade-enter"
+              style={{
+                padding: "var(--space-md) var(--space-lg)",
+                borderRadius: "var(--radius-lg)",
+                border: "1px solid var(--c-danger-border)",
+                background: "var(--c-danger-bg)",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "var(--space-md)",
+                }}
+              >
+                <span style={{ fontSize: "var(--text-sm)", color: COLORS.text }}>
+                  {streamError}
+                </span>
+                <span
+                  style={{
+                    display: "flex",
+                    gap: "var(--space-sm)",
+                    flexShrink: 0,
+                  }}
+                >
+                  <Button
+                    variant="primary"
+                    onClick={() => {
+                      const last = lastStreamErrorRef.current;
+                      setStreamError(null);
+                      if (last && messagesRef.current.length > 0) {
+                        const lastUser = [...messagesRef.current]
+                          .reverse()
+                          .find((m) => m.role === "user");
+                        if (lastUser?.content) {
+                          void runAgent(lastUser.content);
+                        }
+                      }
+                    }}
+                  >
+                    Retry
+                  </Button>
+                  <Button variant="ghost" onClick={() => setStreamError(null)}>
+                    Dismiss
+                  </Button>
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Streaming in-progress indicator */}
           {isStreaming && (
@@ -1112,14 +1342,9 @@ function ChatPageInner(): ReactElement {
             >
               <StatusDot color={COLORS.text}>Assistant</StatusDot>
               {streamText ? (
-                <div style={chatMsgStyle}>
-                  <span
-                    className="chat-md"
-                    style={{ display: "inline" }}
-                    dangerouslySetInnerHTML={{
-                      __html: renderMarkdown(streamText),
-                    }}
-                  />
+                <div style={{ ...chatMsgStyle, whiteSpace: "pre-wrap" }}>
+                  {/* Stream raw text; full markdown renders once on the committed message */}
+                  <span style={{ whiteSpace: "pre-wrap" }}>{streamText}</span>
                   <span
                     className="caret-blink"
                     aria-hidden="true"
@@ -1224,6 +1449,107 @@ function ChatPageInner(): ReactElement {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function ToolCallCard({
+  run,
+  expanded,
+  onToggle,
+}: {
+  run: ToolRun;
+  expanded: boolean;
+  onToggle: () => void;
+}): ReactElement {
+  const label = TOOL_LABELS[run.name] ?? run.name;
+  const elapsedSec = Math.max(0, Math.floor((Date.now() - run.startedAt) / 1000));
+  return (
+    <div
+      style={{
+        border: "1px solid var(--c-border)",
+        borderRadius: "var(--radius-md)",
+        margin: "var(--space-xs) 0",
+        background: "var(--c-surface)",
+        overflow: "hidden",
+      }}
+    >
+      <button
+        type="button"
+        onClick={onToggle}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "var(--space-sm)",
+          width: "100%",
+          padding: "6px 10px",
+          border: "none",
+          background: "none",
+          cursor: "pointer",
+          color: COLORS.text,
+          textAlign: "left",
+          font: "inherit",
+          fontSize: "var(--text-xs)",
+        }}
+        aria-expanded={expanded}
+      >
+        {run.status === "running" ? (
+          <Spinner size={12} />
+        ) : run.status === "success" ? (
+          <span style={{ color: "var(--c-success)" }} aria-hidden="true">
+            ✓
+          </span>
+        ) : (
+          <span style={{ color: "var(--c-danger)" }} aria-hidden="true">
+            ✕
+          </span>
+        )}
+        <strong style={{ color: COLORS.bronzeLight }}>{label}</strong>
+        <ToolClassBadge name={run.name} />
+        <span
+          style={{
+            marginLeft: "auto",
+            color: COLORS.textDim,
+            fontSize: "var(--text-xs)",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {run.status === "running"
+            ? `${elapsedSec}s…`
+            : run.status === "success"
+              ? "done"
+              : "failed"}
+        </span>
+      </button>
+      {expanded && (
+        <div
+          style={{
+            padding: "6px 10px",
+            borderTop: "1px solid var(--c-border)",
+            fontSize: "var(--text-xs)",
+            color: COLORS.textMuted,
+          }}
+        >
+          {run.args && Object.keys(run.args).length > 0 && (
+            <pre
+              style={{
+                margin: "0 0 6px",
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
+                fontFamily: "var(--font-mono)",
+                fontSize: "var(--text-xs)",
+              }}
+            >
+              {JSON.stringify(run.args, null, 2)}
+            </pre>
+          )}
+          {run.error ? (
+            <span style={{ color: "var(--c-danger)" }}>{run.error}</span>
+          ) : run.result ? (
+            <ToolResultBody name={run.name} content={run.result} />
+          ) : null}
+        </div>
+      )}
     </div>
   );
 }
