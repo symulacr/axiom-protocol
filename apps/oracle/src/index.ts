@@ -41,11 +41,14 @@ const signer = new TeeSigner(env.AXIOM_TEE_SIGNER_PK, eip712Domain);
 let storage: StorageAdapter;
 if (env.AXIOM_STORAGE_INDEXER_RPC || process.env.AXIOM_STORAGE_RPC) {
 	const indexerRpc =
-		env.AXIOM_STORAGE_INDEXER_RPC || process.env.AXIOM_STORAGE_RPC!;
+		env.AXIOM_STORAGE_INDEXER_RPC || process.env.AXIOM_STORAGE_RPC;
+	if (!indexerRpc)
+		throw new Error("unreachable: indexer RPC checked by condition above");
 	const evmRpc = env.AXIOM_STORAGE_EVM_RPC || env.AXIOM_EVM_RPC;
 	const storagePk = env.AXIOM_STORAGE_PRIVATE_KEY ?? env.AXIOM_TEE_SIGNER_PK;
 	const wallet = new Wallet(storagePk);
 	storage = new ZeroGStorage({ indexerRpc, evmRpc, signer: wallet });
+	// Startup info banner — sanctioned process banner channel.
 	console.log(`[oracle] storage: 0G Storage (${indexerRpc})`);
 } else {
 	storage = new InMemoryStorage();

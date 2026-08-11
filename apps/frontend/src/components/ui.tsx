@@ -13,7 +13,6 @@ import type {
   InputHTMLAttributes,
   ReactElement,
   ReactNode,
-  SelectHTMLAttributes,
   TextareaHTMLAttributes,
 } from "react";
 
@@ -234,23 +233,6 @@ export const Textarea = forwardRef<
         width: "100%",
         boxSizing: "border-box",
         resize: "vertical",
-        ...style,
-      }}
-    />
-  );
-});
-
-export const Select = forwardRef<
-  HTMLSelectElement,
-  SelectHTMLAttributes<HTMLSelectElement>
->(function Select({ style, ...rest }, ref) {
-  return (
-    <select
-      ref={ref}
-      {...rest}
-      className={["axiom-field", rest.className].filter(Boolean).join(" ")}
-      style={{
-        ...formFieldBase,
         ...style,
       }}
     />
@@ -838,6 +820,7 @@ interface ModalProps {
   onClose: () => void;
   title?: string;
   children: ReactNode;
+  maxWidth?: number;
   style?: CSSProperties;
 }
 
@@ -846,6 +829,7 @@ export const Modal = React.memo(function Modal({
   onClose,
   title,
   children,
+  maxWidth,
   style,
 }: ModalProps): ReactElement | null {
   const dialogRef = useRef<HTMLDialogElement | null>(null);
@@ -874,7 +858,7 @@ export const Modal = React.memo(function Modal({
           padding: 28,
           border: `1px solid ${COLORS.borderStrong}`,
           borderRadius: "var(--radius-xl)",
-          maxWidth: 500,
+          maxWidth: maxWidth ?? 500,
           width: "90vw",
           maxHeight: "90vh",
           overflow: "auto",

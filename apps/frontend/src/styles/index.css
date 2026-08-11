@@ -2078,3 +2078,152 @@ select[aria-invalid="true"] {
   text-align: left;
 }
 .chat-md th { background: var(--c-surface); font-weight: var(--fw-semibold); }
+
+/* Shortcut-help dialog (App.tsx ShortcutHelp) */
+.shortcut-overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 1000;
+	background: var(--c-overlay);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+.shortcut-panel {
+	background: var(--c-surface);
+	border: 1px solid var(--c-border);
+	border-radius: var(--radius-xl);
+	padding: var(--space-2xl);
+	max-width: 380px;
+	width: 90vw;
+	opacity: 0;
+	transform: scale(0.96);
+	transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
+}
+.shortcut-panel--entered {
+	opacity: 1;
+	transform: scale(1);
+}
+.shortcut-title {
+	margin: 0 0 var(--space-lg);
+	font-size: var(--text-lg);
+	color: var(--c-text);
+	outline: none;
+}
+.shortcut-list {
+	margin: 0;
+}
+.shortcut-row {
+	display: flex;
+	justify-content: space-between;
+	padding: 6px 0;
+	border-bottom: 1px solid var(--c-border);
+}
+.shortcut-dt {
+	color: var(--c-text-muted);
+	font-size: var(--text-sm);
+}
+.shortcut-dd {
+	margin: 0;
+}
+.app-fallback {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	padding: 4rem;
+}
+.muted-note {
+	margin: 0;
+	color: var(--c-text-muted);
+	font-size: var(--text-sm);
+}
+
+/* TradeHistory rows (TradeHistory.tsx) */
+.trade-list {
+	display: flex;
+	flex-direction: column;
+	gap: 0;
+}
+.trade-row {
+	display: flex;
+	align-items: center;
+	gap: var(--space-md);
+	padding: var(--space-sm) 0;
+	font-size: var(--text-sm);
+}
+.trade-row:not(:last-child) {
+	border-bottom: 1px solid var(--c-border);
+}
+.trade-time {
+	color: var(--c-text-dim);
+	font-size: var(--text-xs);
+	min-width: 5.5rem;
+	white-space: nowrap;
+}
+.trade-action {
+	text-transform: uppercase;
+	min-width: 2.5rem;
+	font-size: var(--text-xs);
+}
+.trade-action--buy {
+	color: var(--c-success);
+}
+.trade-action--sell {
+	color: var(--c-danger);
+}
+.trade-action--hold {
+	color: var(--c-text-muted);
+}
+.trade-amount {
+	color: var(--c-text-muted);
+	font-size: var(--text-xs);
+}
+.trade-reason {
+	color: var(--c-text-dim);
+	font-size: var(--text-xs);
+	flex: 1;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.trade-link {
+	color: var(--c-teal);
+	font-size: var(--text-xs);
+	text-decoration: none;
+	flex-shrink: 0;
+	font-family: var(--font-mono);
+}
+
+/* ArchiveResultCard (chat/ArchiveResultCard.tsx) */
+.archive-link-line {
+	margin-top: 4px;
+}
+.archive-link-line a {
+	color: var(--c-bronze-light);
+	word-break: break-all;
+}
+.archive-result {
+	font-size: var(--text-sm);
+}
+.archive-result.strong--muted {
+	color: var(--c-text-muted);
+}
+.archive-result.strong--success {
+	color: var(--c-success);
+}
+.archive-muted {
+	color: var(--c-text-muted);
+}
+.archive-muted-top {
+	color: var(--c-text-muted);
+	margin-top: 4px;
+}
+.archive-muted-top-xs {
+	color: var(--c-text-muted);
+	margin-top: 6px;
+	font-size: var(--text-xs);
+}
+.archive-heading {
+	color: var(--c-text);
+	margin-bottom: 6px;
+}

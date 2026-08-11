@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import type { z } from "zod";
-import { timingSafeEqual } from "node:crypto";
+import { timingSafeMatch } from "@axiom/config/middleware/auth";
 import { createRoute } from "./route-factory.js";
 import { eventBodySchema } from "../route-schemas.js";
 import { HTTP, getRuntimeConfig } from "@axiom/config";
@@ -25,9 +25,7 @@ function isAuthorizedKey(
 	expected: string | undefined,
 ): boolean {
 	if (!expected) return false;
-	const p = Buffer.from(typeof provided === "string" ? provided : "", "utf-8");
-	const e = Buffer.from(expected, "utf-8");
-	return p.length === e.length && timingSafeEqual(p, e);
+	return timingSafeMatch(provided ?? "", [expected]);
 }
 
 type EventPostAuth =

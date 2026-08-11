@@ -285,7 +285,7 @@ export class StrategyRunner {
 			throw new Error("No vault address configured for on-chain settlement");
 		}
 
-		const strat = await readVaultStrategy(
+		const vaultStrategy = await readVaultStrategy(
 			this.provider,
 			vaultAddr,
 			strategy.agentTokenId,
@@ -301,15 +301,15 @@ export class StrategyRunner {
 			log.info("settleOnChain skipped (no executionPlan / Merkle proof)", {
 				action,
 				tokenId: strategy.agentTokenId.toString(),
-				root: strat.root,
+				root: vaultStrategy.root,
 			});
 			return {
 				status: "skipped",
-				reason: settlementSkipReason(strat.root),
+				reason: settlementSkipReason(vaultStrategy.root),
 			};
 		}
 
-		if (strat.root === ZERO_ROOT || BigInt(strat.root) === 0n) {
+		if (vaultStrategy.root === ZERO_ROOT || BigInt(vaultStrategy.root) === 0n) {
 			return {
 				status: "skipped",
 				reason: "no strategy root set on vault",
@@ -473,12 +473,14 @@ export class StrategyRunner {
 			.slice(-10)
 			.map((log) => {
 				const topic0 = log.topics[0];
-				const name =
-					topic0 === strategyTopic
-						? EVENT_NAMES.StrategySet
-						: topic0 === depositTopic
-							? EVENT_NAMES.Deposited
-							: EVENT_NAMES.Unknown;
+				let name: (typeof EVENT_NAMES)[keyof typeof EVENT_NAMES];
+				if (topic0 === strategyTopic) {
+					name = EVENT_NAMES.StrategySet;
+				} else if (topic0 === depositTopic) {
+					name = EVENT_NAMES.Deposited;
+				} else {
+					name = EVENT_NAMES.Unknown;
+				}
 				return {
 					blockNumber: BigInt(log.blockNumber),
 					txHash: log.transactionHash as `0x${string}`,

@@ -25,7 +25,10 @@ if (env.AXIOM_SENTRY_DSN) {
 const provider = getSharedProvider(env.AXIOM_CHAIN_ID ?? ARISTOTLE_CHAIN_ID);
 // The backend runtime signer must NOT be the deployer/upgrader key. Use a
 // dedicated key in production; fall back to DEPLOYER_PK only for local dev.
-const signer = new Wallet(env.AXIOM_RUNTIME_SIGNER_PK ?? env.DEPLOYER_PK, provider);
+const signer = new Wallet(
+	env.AXIOM_RUNTIME_SIGNER_PK ?? env.DEPLOYER_PK,
+	provider,
+);
 
 // On the live chain (0G mainnet), contracts deployed only on testnet have no
 // bytecode, so on-chain reads revert and crash with a 500. Omit any address

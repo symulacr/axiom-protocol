@@ -79,12 +79,13 @@ export function getRuntimeConfig(
 		const dflt = RUNTIME_DEFAULTS[key as keyof typeof RUNTIME_DEFAULTS];
 		const envName = RUNTIME_ENV_VARS[key as keyof typeof RUNTIME_ENV_VARS];
 		const raw = env[envName];
-		out[key] =
-			raw === undefined
-				? dflt
-				: typeof dflt === "bigint"
-					? BigInt(raw)
-					: Number(raw);
+		if (raw === undefined) {
+			out[key] = dflt;
+		} else if (typeof dflt === "bigint") {
+			out[key] = BigInt(raw);
+		} else {
+			out[key] = Number(raw);
+		}
 	}
 	const config = out as unknown as RuntimeConfig;
 	runtimeConfigCache.set(env, config);
@@ -92,7 +93,6 @@ export function getRuntimeConfig(
 }
 
 export const DEFAULT_EVENT_LIMIT = RUNTIME_DEFAULTS.maxEventQueryLimit;
-export const MAX_EVENT_QUERY_LIMIT = RUNTIME_DEFAULTS.maxEventQueryLimit;
 
 export const HTTP = {
 	OK: 200,

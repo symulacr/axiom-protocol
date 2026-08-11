@@ -35,7 +35,7 @@ import {
 import type { OracleEnv } from "./env-schema.js";
 
 function logRouteError(route: string, err: unknown): void {
-	console.log(
+	console.error(
 		JSON.stringify({
 			level: "error",
 			msg: `${route} error`,
@@ -159,6 +159,8 @@ export function startServer(config: ServerConfig): {
 				oldDataKey = Buffer.from(opened);
 			} else if (oldDataEncryptionKey && allowCleartext) {
 				oldDataKey = Buffer.from(oldDataEncryptionKey, "base64");
+			// else-if chain: earlier branches assign oldDataKey (no return),
+			// so the trailing else is required — not redundant after return.
 			} else if (oldDataEncryptionKey && !allowCleartext) {
 				return badRequest(
 					res,
@@ -379,7 +381,7 @@ export function startServer(config: ServerConfig): {
 
 	app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 		const message = err instanceof Error ? err.message : String(err);
-		console.log(
+		console.error(
 			JSON.stringify({
 				level: "error",
 				msg: "unhandled middleware error",
@@ -394,6 +396,7 @@ export function startServer(config: ServerConfig): {
 			.json({ error: safeMessage, code: "INTERNAL_ERROR" });
 	});
 	const httpServer = app.listen(config.port, config.bind, () => {
+		// Startup info channel: structured JSON on stdout, sanctioned for process banners.
 		console.log(
 			JSON.stringify({
 				level: "info",

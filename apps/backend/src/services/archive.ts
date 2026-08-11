@@ -167,7 +167,9 @@ async function confirmArchived(
 	try {
 		const snapshots = await lookupSnapshots(tweetUrl, 10);
 		if (snapshots.length === 0) return { archived: false, snapshot: null };
-		return { archived: true, snapshot: snapshots[0]! };
+		const snapshot = snapshots[0];
+		if (!snapshot) return { archived: false, snapshot: null };
+		return { archived: true, snapshot };
 	} catch (err) {
 		throw new Error(`Wayback confirm failed: ${extractErrorMessage(err)}`, {
 			cause: err,

@@ -166,6 +166,8 @@ async function registerDataHashWithOracle(
 	if (!oracleUrl) return;
 
 	const url = `${oracleUrl.replace(/\/$/, "")}/v1/agents/mint`;
+	// Best-effort, non-fatal: the mint proceeds regardless, so failures are
+	// logged (console.warn) instead of thrown — sanctioned console sites.
 	try {
 		const { ok } = await fetchJson<{ ok?: boolean }>(ctx.http, url, {
 			method: "POST",

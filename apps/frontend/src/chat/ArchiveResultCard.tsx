@@ -1,6 +1,5 @@
 import type { CSSProperties, ReactElement } from "react";
 import { formatToolResult } from "@axiom/chat-runtime";
-import { COLORS } from "../components/ui.js";
 
 const preBlockStyle: CSSProperties = {
   fontSize: "var(--text-xs)",
@@ -26,12 +25,11 @@ function LinkLine({
   label: string;
 }): ReactElement {
   return (
-    <div style={{ marginTop: 4 }}>
+    <div className="archive-link-line">
       <a
         href={href}
         target="_blank"
         rel="noopener noreferrer"
-        style={{ color: COLORS.bronzeLight, wordBreak: "break-all" }}
       >
         {label}
       </a>
@@ -62,12 +60,12 @@ export function ArchiveResultCard({
           ? String((obj.snapshot as Record<string, unknown>).snapshotUrl ?? "")
           : "";
     return (
-      <div style={{ fontSize: "var(--text-sm)" }}>
-        <strong style={{ color: archived ? COLORS.success : COLORS.textMuted }}>
+      <div className="archive-result">
+        <strong className={archived ? "archive-result strong--success" : "archive-result strong--muted"}>
           {archived ? "Was archived" : "Not archived"}
         </strong>
         {obj.archivedAt ? (
-          <div style={{ color: COLORS.textMuted, marginTop: 4 }}>
+          <div className="archive-muted-top">
             {String(obj.archivedAt)}
           </div>
         ) : null}
@@ -76,11 +74,7 @@ export function ArchiveResultCard({
         ) : null}
         {obj.interpretation ? (
           <div
-            style={{
-              color: COLORS.textMuted,
-              marginTop: 6,
-              fontSize: "var(--text-xs)",
-            }}
+            className="archive-muted-top-xs"
           >
             {String(obj.interpretation)}
           </div>
@@ -92,8 +86,8 @@ export function ArchiveResultCard({
   if (name === "archive_account_tweets") {
     const tweets = (obj.tweets ?? obj.snapshots) as unknown[] | undefined;
     return (
-      <div style={{ fontSize: "var(--text-sm)" }}>
-        <div style={{ color: COLORS.text, marginBottom: 6 }}>
+      <div className="archive-result">
+        <div className="archive-heading">
           @{String(obj.handle ?? "?")} —{" "}
           {String(obj.archivedTweetCount ?? obj.count ?? 0)} tweet(s)
         </div>

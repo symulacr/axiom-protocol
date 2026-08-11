@@ -22,6 +22,7 @@ function safeSerialize(v: unknown): string {
 function formatLog(entry: LogEntry): string {
   const ts = new Date().toISOString();
   const component = entry.component ? ` [${entry.component}]` : "";
+  // filter().map() here is intentional: map yields strings, so flatMap is impossible.
   const extra = Object.entries(entry)
     .filter(([k]) => !["level", "message", "component"].includes(k))
     .map(([k, v]) => ` ${k}=${typeof v === "string" ? v : safeSerialize(v)}`)
@@ -30,6 +31,7 @@ function formatLog(entry: LogEntry): string {
 }
 
 export function createLogger(component: string) {
+  // This file IS the logging abstraction — wrapping console.* is its purpose.
   return {
     info: (message: string, extra?: Record<string, unknown>) =>
       console.log(formatLog({ level: "info", message, component, ...extra })),

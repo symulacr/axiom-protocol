@@ -67,11 +67,7 @@ function resolveSealedKeyGuard(
 	const { key: sealedKeyOrDefault, missing } = resolveSealedKey(sealedKeyIn);
 	if (missing) {
 		if (process.env.NODE_ENV === "production") {
-			sendError(
-				res,
-				HTTP.BAD_REQUEST,
-				"sealedKey is required in production",
-			);
+			sendError(res, HTTP.BAD_REQUEST, "sealedKey is required in production");
 			return undefined;
 		}
 		log.warn(
@@ -252,7 +248,8 @@ export function registerAgentRoutes(
 			for (let i = 0; i < tokens.length; i++) {
 				const result = metadataResults[i];
 				if (result && result.status === "fulfilled") {
-					tokens[i]!.dataDescription = String(result.value ?? "");
+					const token = tokens[i];
+					if (token) token.dataDescription = String(result.value ?? "");
 				}
 			}
 			const result = { owner, agents: tokens };
@@ -357,13 +354,12 @@ export function registerAgentRoutes(
 					);
 					return;
 				}
-				const canRekey = Boolean(oldDataUri && sealedDataEncryptionKey);
 				if (!accessProof) {
 					const nonce = BigInt(accessProofNonce ?? 0);
-					if (canRekey) {
+					if (oldDataUri && sealedDataEncryptionKey) {
 						const rekey = await oracle.transferValidity({
 							oldDataHash: dataHash,
-							oldDataUri: oldDataUri!,
+							oldDataUri,
 							targetPubkey64: pk,
 							accessProofNonce: nonce.toString(),
 							sealedDataEncryptionKey,
@@ -478,11 +474,7 @@ export function registerAgentRoutes(
 					);
 					return;
 				}
-				const sealedKeyOrDefault = resolveSealedKeyGuard(
-					sealedKeyIn,
-					res,
-					id,
-				);
+				const sealedKeyOrDefault = resolveSealedKeyGuard(sealedKeyIn, res, id);
 				if (!sealedKeyOrDefault) return;
 				const tee = await oracle.signOwnership({
 					dataHash: proofDataHash,
@@ -563,8 +555,20 @@ export function registerAgentRoutes(
 			description:
 				"Encode AxiomAgentNFT mint transaction (value = on-chain mintFee)",
 		},
-		async (parsed: MintEncodeBody, _req, _res, { config: cfg }) => {
-			const nftAddr = cfg.addresses!.agentNft;
+		async (parsed: MintEncodeBody, _req, res, { config: cfg }) => {
+			if (!cfg.addresses?.agentNft) {
+				// Same condition as route-factory requireAddress: a missing
+				// configured address is a deployment-state problem (503
+				// ADDRESS_NOT_CONFIGURED), not an internal error (500).
+				sendError(
+					res,
+					HTTP.SERVICE_UNAVAILABLE,
+					"AgentNFT address not configured",
+					"ADDRESS_NOT_CONFIGURED",
+				);
+				return;
+			}
+			const nftAddr = cfg.addresses.agentNft;
 			const nftTc = new TypedContract<AgentNftMintEncodeMethods>(
 				nftAddr,
 				AGENT_NFT_ABI,

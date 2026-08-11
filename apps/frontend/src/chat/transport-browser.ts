@@ -25,17 +25,73 @@ function toViemAbi(abi: readonly unknown[] | Abi): Abi {
   return abi as Abi;
 }
 
+function buildWallet(
+  address: string | undefined,
+  sendTransactionAsync: ((args: {
+    to: `0x${string}`;
+    data?: `0x${string}`;
+    value?: bigint;
+  }) => Promise<`0x${string}`>) | undefined,
+  writeContractAsync: ((args: {
+    address: `0x${string}`;
+    abi: readonly unknown[];
+    functionName: string;
+    args: unknown[];
+    value?: bigint;
+  }) => Promise<`0x${string}`>) | undefined,
+): NonNullable<ToolRuntime["wallet"]> | undefined {
+  if (!address) return undefined;
+  return {
+    address: address.toLowerCase() as `0x${string}`,
+    ...(sendTransactionAsync
+      ? {
+          signAndSend: async (calldata: {
+            to: `0x${string}`;
+            data?: `0x${string}`;
+            value?: bigint;
+          }) =>
+            sendTransactionAsync({
+              to: calldata.to,
+              data: calldata.data,
+              value: calldata.value,
+            }),
+        }
+      : {}),
+    ...(writeContractAsync
+      ? {
+          writeContract: async (args: {
+            address: `0x${string}`;
+            abi: readonly unknown[];
+            functionName: string;
+            args: unknown[];
+            value?: bigint;
+          }) =>
+            writeContractAsync({
+              address: args.address,
+              abi: args.abi,
+              functionName: args.functionName,
+              args: [...args.args],
+              value: args.value,
+            }),
+        }
+      : {}),
+  };
+}
+
 function buildBrowserRuntime(ctx: ToolContext): ToolRuntime {
   const publicClient = ctx.publicClient;
+  const { address, sendTransactionAsync, writeContractAsync } = ctx;
 
   return {
     mode: "sign",
     oracleUrl: ORACLE_URL,
     http: {
       fetch: async (path, init) => {
-        const url = path.startsWith("http")
-          ? path
-          : `${BACKEND_URL}${path.startsWith("/") ? path : `/${path}`}`;
+        let url = path;
+        if (!path.startsWith("http")) {
+          const suffix = path.startsWith("/") ? path : `/${path}`;
+          url = `${BACKEND_URL}${suffix}`;
+        }
         const body =
           init?.body && typeof init.body === "object" && !(init.body instanceof Uint8Array)
             ? JSON.stringify(init.body)
@@ -76,29 +132,7 @@ function buildBrowserRuntime(ctx: ToolContext): ToolRuntime {
           },
         } as ToolChain)
       : undefined,
-    wallet: ctx.address
-      ? {
-          address: ctx.address ? (ctx.address.toLowerCase() as `0x${string}`) : undefined,
-          signAndSend: ctx.sendTransactionAsync
-            ? async (calldata) =>
-                ctx.sendTransactionAsync!({
-                  to: calldata.to,
-                  data: calldata.data,
-                  value: calldata.value,
-                })
-            : undefined,
-          writeContract: ctx.writeContractAsync
-            ? async (w) =>
-                ctx.writeContractAsync({
-                  address: w.address,
-                  abi: w.abi,
-                  functionName: w.functionName,
-                  args: [...w.args],
-                  value: w.value,
-                })
-            : undefined,
-        }
-      : undefined,
+    wallet: buildWallet(address, sendTransactionAsync, writeContractAsync),
     session: createSession({
       chainId: ctx.chainId,
       walletAddress: ctx.address ? (ctx.address.toLowerCase() as `0x${string}` | undefined) : undefined,

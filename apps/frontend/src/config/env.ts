@@ -1,4 +1,6 @@
 import { resolveChatModel } from "@axiom/config/chat-tools";
+const DEFAULT_WS_HOST = "127.0.0.1:3000";
+
 
 // Default to SAME-ORIGIN proxy paths. The production static servers proxy
 // these to the backend / oracle:
@@ -30,7 +32,7 @@ export function backendWsBase(): string {
       typeof window !== "undefined" ? window.location.protocol : "http:";
     const scheme = proto === "https:" ? "wss" : "ws";
     const host =
-      typeof window !== "undefined" ? window.location.host : "127.0.0.1:3000";
+      typeof window !== "undefined" ? window.location.host : DEFAULT_WS_HOST;
     return `${scheme}://${host}`;
   }
   const scheme = BACKEND_URL.startsWith("https://") ? "wss" : "ws";

@@ -22,7 +22,6 @@ import { ErrorBoundary } from "./components/ErrorBoundary.js";
 import { BRAND } from "./brand/assets.js";
 import { HealthBadge } from "./components/HealthBadge.js";
 import {
-  COLORS,
   ConnectedGuard,
   Kbd,
   Modal,
@@ -117,60 +116,31 @@ function ShortcutHelp(): ReactElement | null {
       role="dialog"
       aria-label="Keyboard shortcuts"
       onClick={() => setOpen(false)}
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 1000,
-        background: "var(--c-overlay)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
+      className="shortcut-overlay"
     >
       <div
         ref={panelRef}
         onClick={(e) => e.stopPropagation()}
-        style={{
-          background: COLORS.surface,
-          border: `1px solid ${COLORS.border}`,
-          borderRadius: "var(--radius-xl)",
-          padding: "var(--space-2xl)",
-          maxWidth: 380,
-          width: "90vw",
-          opacity: entered ? 1 : 0,
-          transform: entered ? "scale(1)" : "scale(0.96)",
-          transition:
-            "opacity 200ms var(--ease-out), transform 200ms var(--ease-out)",
-        }}
+        className={`shortcut-panel${entered ? " shortcut-panel--entered" : ""}`}
       >
         <h2
           tabIndex={-1}
-          style={{
-            margin: "0 0 var(--space-lg)",
-            fontSize: "var(--text-lg)",
-            color: COLORS.text,
-            outline: "none",
-          }}
+          className="shortcut-title"
         >
           Keyboard Shortcuts
         </h2>
-        <dl style={{ margin: 0 }}>
+        <dl className="shortcut-list">
           {shortcuts.map((s) => (
             <div
               key={s.key}
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                padding: "6px 0",
-                borderBottom: `1px solid ${COLORS.border}`,
-              }}
+              className="shortcut-row"
             >
               <dt
-                style={{ color: COLORS.textMuted, fontSize: "var(--text-sm)" }}
+                className="shortcut-dt"
               >
                 {s.label}
               </dt>
-              <dd style={{ margin: 0 }}>
+              <dd className="shortcut-dd">
                 <Kbd>{s.key}</Kbd>
               </dd>
             </div>
@@ -422,14 +392,7 @@ export function App(): ReactElement {
         <ErrorBoundary>
           <Suspense
             fallback={
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  padding: "4rem",
-                }}
-              >
+              <div className="app-fallback">
                 <Spinner size={32} />
               </div>
             }
@@ -475,7 +438,7 @@ export function App(): ReactElement {
         open={mintOpen}
         onClose={closeMint}
         title="Mint agent"
-        style={{ maxWidth: 520 }}
+        maxWidth={520}
       >
         {isConnected ? (
           <Suspense fallback={<Spinner />}>
@@ -491,7 +454,7 @@ export function App(): ReactElement {
           </Suspense>
         ) : (
           <ConnectedGuard>
-            <p style={{ margin: 0, color: "var(--c-text-muted)", fontSize: "var(--text-sm)" }}>
+            <p className="muted-note">
               Connect wallet to mint.
             </p>
           </ConnectedGuard>
@@ -521,4 +484,3 @@ export function App(): ReactElement {
   );
 }
 
-export default App;

@@ -37,7 +37,7 @@ if (!build.success) {
 
 const distDev = join(frontendDir, "dist-dev");
 
-const server = serve({
+serve({
 	port: PORT,
 	async fetch(req) {
 		try {
@@ -49,7 +49,9 @@ const server = serve({
 					method: req.method,
 					headers: req.headers,
 					body:
-						req.method === "GET" || req.method === "HEAD" ? undefined : req.body,
+						req.method === "GET" || req.method === "HEAD"
+							? undefined
+							: req.body,
 					duplex: "half",
 				});
 			}
@@ -59,7 +61,9 @@ const server = serve({
 					method: req.method,
 					headers: req.headers,
 					body:
-						req.method === "GET" || req.method === "HEAD" ? undefined : req.body,
+						req.method === "GET" || req.method === "HEAD"
+							? undefined
+							: req.body,
 					duplex: "half",
 				});
 			}

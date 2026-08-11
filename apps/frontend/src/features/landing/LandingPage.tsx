@@ -5,7 +5,7 @@ import { BRAND } from "../../brand/assets.js";
 /**
  * Landing — short, use-case first, same story as Home / Chat / Mint.
  */
-export function LandingPage(): ReactElement {
+function LandingPage(): ReactElement {
   return (
     <article className="landing-root">
       <Hero />

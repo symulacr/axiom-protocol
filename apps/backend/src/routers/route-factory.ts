@@ -71,11 +71,8 @@ export function createRoute<S extends z.ZodTypeAny | undefined = undefined>(
 					);
 					return;
 				}
-				const parsed = opts.schema
-					? opts.schema.parse(
-							method === "get" ? req.query : (req.body ?? req.query),
-						)
-					: undefined;
+				const raw = method === "get" ? req.query : (req.body ?? req.query);
+				const parsed = opts.schema ? opts.schema.parse(raw) : undefined;
 				const id = req.params.id ?? "";
 				const result = await handler(
 					parsed as S extends z.ZodTypeAny ? z.infer<S> : undefined,

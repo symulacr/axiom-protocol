@@ -136,9 +136,10 @@ export function fitToContext(
   let totalLen =
     serialized.reduce((a, s) => a + s.length, 0) + serialized.length + 1;
   let drop = 0;
-  while (history.length - drop > keep) {
+  for (const s of serialized) {
+    if (history.length - drop <= keep) break;
     if (estimateTokens(totalLen) <= maxHistoryTokens) break;
-    totalLen -= serialized[drop]!.length + 1; // oldest message + its separator comma
+    totalLen -= s.length + 1; // oldest message + its separator comma
     drop++;
   }
   return history.slice(drop);

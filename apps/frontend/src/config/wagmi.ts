@@ -12,7 +12,7 @@ const MAINNET_RPC = "https://evmrpc.0g.ai";
 // Any other value (e.g. a stale testnet RPC such as https://evmrpc-testnet.0g.ai)
 // is rejected so the frontend can never silently talk to a chain other than 16661.
 const MAINNET_RPC_ALLOWLIST = new Set([
-  "https://evmrpc.0g.ai",
+  MAINNET_RPC,
   "https://rpc.0g.ai",
 ]);
 

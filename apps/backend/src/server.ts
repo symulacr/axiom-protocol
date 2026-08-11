@@ -71,6 +71,8 @@ import pkg from "../package.json" with { type: "json" };
 const log = createLogger("server");
 const PKG_VERSION = pkg.version;
 const MAX_WS_CLIENTS = getRuntimeConfig().wsMaxClients;
+// Base for parsing relative WS upgrade paths (host is ignored here).
+const LOCAL_BASE_URL = "http://localhost";
 
 function shortSigner(addr: string): string {
 	return addr.length > 10 ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : addr;
@@ -780,7 +782,7 @@ function setupWebSocketServer(
 ): void {
 	const wss = new WebSocketServer({ noServer: true });
 	httpServer.on("upgrade", (req, socket, head) => {
-		const url = new URL(req.url ?? "/", "http://localhost");
+		const url = new URL(req.url ?? "/", LOCAL_BASE_URL);
 		if (url.pathname !== "/v1/stream") {
 			socket.destroy();
 			return;

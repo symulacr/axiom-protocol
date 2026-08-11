@@ -1,10 +1,8 @@
 import type { ReactElement } from "react";
 import type { TradeHistoryEntry } from "../hooks/usePerformance.js";
 import {
-  COLORS,
   Card,
   SectionTitle,
-  getActionColor,
   CopyButton,
   mutedTextSm,
 } from "./ui.js";
@@ -32,9 +30,8 @@ export function TradeHistory({ history }: TradeHistoryProps): ReactElement {
   return (
     <Card>
       <SectionTitle>Trade History</SectionTitle>
-      <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+      <div className="trade-list">
         {history.map((entry, i) => {
-          const actionColor = getActionColor(entry.action);
           const date = new Date(entry.timestamp);
           const timeStr = date.toLocaleString(undefined, {
             month: "short",
@@ -46,59 +43,27 @@ export function TradeHistory({ history }: TradeHistoryProps): ReactElement {
           return (
             <div
               key={`${entry.txHash}-${i}`}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "var(--space-md)",
-                padding: "var(--space-sm) 0",
-                borderBottom:
-                  i < history.length - 1
-                    ? `1px solid ${COLORS.border}`
-                    : "none",
-                fontSize: "var(--text-sm)",
-              }}
+              className="trade-row"
             >
               <span
-                className="tabular-nums"
-                style={{
-                  color: COLORS.textDim,
-                  fontSize: "var(--text-xs)",
-                  minWidth: "5.5rem",
-                  whiteSpace: "nowrap",
-                }}
+                className="trade-time tabular-nums"
               >
                 {timeStr}
               </span>
               <strong
-                style={{
-                  color: actionColor,
-                  textTransform: "uppercase",
-                  minWidth: "2.5rem",
-                  fontSize: "var(--text-xs)",
-                }}
+                className={`trade-action trade-action--${entry.action}`}
               >
                 {entry.action}
               </strong>
               {entry.amount !== null && (
                 <span
-                  className="tabular-nums"
-                  style={{
-                    color: COLORS.textMuted,
-                    fontSize: "var(--text-xs)",
-                  }}
+                  className="trade-amount tabular-nums"
                 >
                   amt: {entry.amount}
                 </span>
               )}
               <span
-                style={{
-                  color: COLORS.textDim,
-                  fontSize: "var(--text-xs)",
-                  flex: 1,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
+                className="trade-reason"
               >
                 {entry.reason}
               </span>
@@ -106,13 +71,7 @@ export function TradeHistory({ history }: TradeHistoryProps): ReactElement {
                 href={`${explorerBase}/tx/${entry.txHash}`}
                 target="_blank"
                 rel="noreferrer noopener"
-                style={{
-                  color: COLORS.teal,
-                  fontSize: "var(--text-xs)",
-                  textDecoration: "none",
-                  flexShrink: 0,
-                  fontFamily: "var(--font-mono)",
-                }}
+                className="trade-link"
               >
                 {entry.txHash.slice(0, 10)}…
               </a>

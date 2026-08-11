@@ -59,4 +59,3 @@ export function HealthBadge(): ReactElement {
   );
 }
 
-export default HealthBadge;

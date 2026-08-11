@@ -602,4 +602,3 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
 
 const ethersZero: Address = "0x0000000000000000000000000000000000000000";
 
-export default PaymentPanel;

@@ -55,6 +55,8 @@ export function getEnvWithAlias(
 		const val = process.env[key];
 		if (val !== undefined && val !== "") {
 			if (key !== canonical) {
+				// Sanctioned console.warn: one-time deprecation notice when an
+				// alias env var is used (kept for backward compat).
 				console.warn(
 					`[config] DEPRECATED: env var "${key}" is deprecated, use "${canonical}"`,
 				);

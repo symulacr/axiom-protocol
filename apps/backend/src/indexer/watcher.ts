@@ -160,6 +160,7 @@ export class Watcher {
 				this.nextBlock = latest >= this.window ? latest - this.window : 0n;
 			}
 
+			// bigint clamp — Math.min() throws on BigInt, ternary is the only option
 			const fromBlock = this.nextBlock < latest ? this.nextBlock : latest;
 
 			const windowEnd = fromBlock + this.window - 1n;

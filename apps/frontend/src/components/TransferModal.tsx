@@ -711,4 +711,3 @@ export function TransferModal({
   );
 }
 
-export default TransferModal;

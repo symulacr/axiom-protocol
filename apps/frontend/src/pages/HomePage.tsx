@@ -20,7 +20,7 @@ const AgentsBrowser = lazy(() => import("./AgentsBrowser.js"));
  * Home = portfolio KPIs + full agent list (search/actions).
  * Replaces separate Dashboard vs Agents nav destinations.
  */
-export function HomePage(): ReactElement {
+function HomePage(): ReactElement {
 	return (
 		<div>
 			<div

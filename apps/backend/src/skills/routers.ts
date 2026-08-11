@@ -7,7 +7,7 @@ import {
 	type SkillRouter,
 	cachedJsonGet,
 	getSharedProvider,
-	ser,
+	serialize,
 	getLogsChunked,
 	createLogger,
 	TTLCache,
@@ -45,6 +45,17 @@ import {
 
 const logEvm = createLogger("skills:evm");
 
+// The untyped ethers.Contract types every ABI method as possibly-undefined.
+// These routes use constant ABIs, so a missing method is a programming error:
+// fail loudly rather than mask it with optional chaining.
+function mustMethod<T extends (...args: never[]) => unknown>(
+	fn: T | undefined,
+	what: string,
+): T {
+	if (!fn) throw new Error(`Contract method unavailable: ${what}`);
+	return fn;
+}
+
 const ERC20_ABI = [
 	"function balanceOf(address) view returns (uint256)",
 	"function name() view returns (string)",
@@ -72,7 +83,9 @@ const CHAINS: { name: string; rpc: string }[] = [
 	{ name: "gnosis", rpc: "https://rpc.gnosischain.com" },
 ];
 
-const priceGet = cachedJsonGet("https://api.coingecko.com", { ttlMs: 60_000 });
+// CoinGecko price API base (fetchPrice).
+const COINGECKO_API = "https://api.coingecko.com";
+const priceGet = cachedJsonGet(COINGECKO_API, { ttlMs: 60_000 });
 
 async function fetchPrice(id: string): Promise<number> {
 	const j = (await priceGet(
@@ -109,6 +122,9 @@ interface SkillRouteDef<S extends z.ZodTypeAny = z.ZodTypeAny> {
 	requiresServerAuth?: boolean;
 }
 
+// Private module factory (28 internal call sites). Last two params are
+// optional flags; converting to an options object would churn all call sites
+// with no readability gain for a 6-arg internal helper.
 function skill<S extends z.ZodTypeAny>(
 	path: string,
 	schema: S,
@@ -183,6 +199,7 @@ export const whaleSchema = evmWhaleSchema;
 // Stocks skills
 // ---------------------------------------------------------------------------
 
+// Yahoo Finance quote API base (stocks skills).
 const YAHOO_BASE = "https://query2.finance.yahoo.com";
 const yahooGet = cachedJsonGet(YAHOO_BASE, { ttlMs: 30_000 });
 let crumb = "";
@@ -253,7 +270,7 @@ async function yahooFetch<T>(
 
 function extractQuote(result: YahooChartResponse) {
 	const meta: YahooChartMeta = result.chart?.result?.[0]?.meta ?? {};
-	return ser({
+	return serialize({
 		symbol: meta.symbol,
 		price: meta.regularMarketPrice,
 		previousClose: meta.chartPreviousClose ?? meta.previousClose,
@@ -308,10 +325,12 @@ const ofacHeaders = {
 	Accept: "text/html,application/xhtml+xml",
 };
 const ofacCache = new TTLCache<string>(5 * 60 * 1000);
+// OFAC sanctions search base (HTML, browser-UA only).
+const OFAC_BASE_URL = "https://sanctionssearch.ofac.treas.gov";
 async function ofacFetch(path: string): Promise<string> {
 	const cached = ofacCache.get(path);
 	if (cached !== undefined) return cached;
-	const res = await fetch(`https://sanctionssearch.ofac.treas.gov${path}`, {
+	const res = await fetch(`${OFAC_BASE_URL}${path}`, {
 		headers: ofacHeaders,
 		signal: AbortSignal.timeout(15_000),
 	});
@@ -332,7 +351,9 @@ const logUnbroker = createLogger("skills:unbroker");
 
 const CACHE_TTL_MS = 120_000;
 const cache = new TTLCache<unknown>(CACHE_TTL_MS);
-const ghGet = cachedJsonGet("https://api.github.com", { ttlMs: CACHE_TTL_MS });
+// GitHub REST API base (OSS forensics skills).
+const GITHUB_API = "https://api.github.com";
+const ghGet = cachedJsonGet(GITHUB_API, { ttlMs: CACHE_TTL_MS });
 const logForensics = createLogger("oss-forensics");
 
 function ghHeaders(): Record<string, string> {
@@ -538,12 +559,15 @@ export function createSkillRouters(config: ServerConfig): Router {
 						: null,
 				]);
 				const erc20Balance = tokenContract
-					? await tokenContract.balanceOf!(parsed.address).catch((err) => {
+					? await mustMethod(
+							tokenContract.balanceOf,
+							"balanceOf",
+						)(parsed.address).catch((err) => {
 							logEvm.warn("evm wallet balanceOf failed", { err });
 							return 0n;
 						})
 					: 0n;
-				return ser({ native, erc20Balance });
+				return serialize({ native, erc20Balance });
 			},
 		),
 		skill(
@@ -558,7 +582,7 @@ export function createSkillRouters(config: ServerConfig): Router {
 						return { chain: name, balance: bal.toString() };
 					}),
 				);
-				return ser(
+				return serialize(
 					results.map((r, i) =>
 						r.status === "fulfilled"
 							? r.value
@@ -576,7 +600,7 @@ export function createSkillRouters(config: ServerConfig): Router {
 					provider.getTransaction(parsed.hash),
 					provider.getTransactionReceipt(parsed.hash),
 				]);
-				return ser({ tx, receipt });
+				return serialize({ tx, receipt });
 			},
 		),
 		skill(
@@ -586,14 +610,14 @@ export function createSkillRouters(config: ServerConfig): Router {
 			async (parsed) => {
 				const c = new ethers.Contract(parsed.address, ERC20_ABI, provider);
 				const [name, symbol, decimals] = await Promise.all([
-					c.name!(),
-					c.symbol!(),
-					c.decimals!(),
+					mustMethod(c.name, "name")(),
+					mustMethod(c.symbol, "symbol")(),
+					mustMethod(c.decimals, "decimals")(),
 				]);
 				const price = parsed.coingeckoId
 					? await fetchPrice(parsed.coingeckoId)
 					: null;
-				return ser({ name, symbol, decimals, price });
+				return serialize({ name, symbol, decimals, price });
 			},
 		),
 		skill(
@@ -607,7 +631,7 @@ export function createSkillRouters(config: ServerConfig): Router {
 				const estCostWei = gasPrice * gasLimit;
 				const ethPrice = await fetchPrice("ethereum");
 				const estCostUsd = Number(ethers.formatEther(estCostWei)) * ethPrice;
-				return ser({
+				return serialize({
 					gasPrice: gasPrice.toString(),
 					maxFeePerGas: feeData.maxFeePerGas?.toString(),
 					maxPriorityFeePerGas: feeData.maxPriorityFeePerGas?.toString(),
@@ -644,7 +668,7 @@ export function createSkillRouters(config: ServerConfig): Router {
 						}
 					}
 				}
-				return ser({ transfers, count: transfers.length });
+				return serialize({ transfers, count: transfers.length });
 			},
 		),
 		skill(
@@ -665,7 +689,7 @@ export function createSkillRouters(config: ServerConfig): Router {
 						impl = ethers.getAddress("0x" + slotBytes.slice(26));
 					}
 				}
-				return ser({
+				return serialize({
 					isContract,
 					codeLength: (code.length - 2) / 2,
 					proxyImpl: impl,
@@ -680,14 +704,14 @@ export function createSkillRouters(config: ServerConfig): Router {
 				const c = new ethers.Contract(parsed.token, ERC20_ABI, provider);
 				const entries = await Promise.all(
 					Object.entries(DEX_SPENDERS).map(async ([dex, spender]) => {
-						const allowance: bigint = await c.allowance!(
-							parsed.address,
-							spender,
-						);
+						const allowance: bigint = await mustMethod(
+							c.allowance,
+							"allowance",
+						)(parsed.address, spender);
 						return { dex, spender, allowance: allowance.toString() };
 					}),
 				);
-				return ser({ allowances: entries });
+				return serialize({ allowances: entries });
 			},
 		),
 
@@ -707,7 +731,7 @@ export function createSkillRouters(config: ServerConfig): Router {
 					`/v1/finance/search`,
 					{ q: parsed.query, quotesCount: "8", newsCount: "0" },
 				);
-				return ser({
+				return serialize({
 					results: (data.quotes ?? []).map((q) => ({
 						symbol: q.symbol,
 						name: q.shortname ?? q.longname,
@@ -737,7 +761,7 @@ export function createSkillRouters(config: ServerConfig): Router {
 					close: quote.close?.[i],
 					volume: quote.volume?.[i],
 				}));
-				return ser({
+				return serialize({
 					symbol: parsed.symbol,
 					range: parsed.range,
 					interval: parsed.interval,
@@ -754,7 +778,7 @@ export function createSkillRouters(config: ServerConfig): Router {
 				const results = await Promise.allSettled(
 					parsed.symbols.map(async (s) => chartQuote(s, "1d", "1d")),
 				);
-				return ser({
+				return serialize({
 					quotes: results.map((r, i) =>
 						r.status === "fulfilled"
 							? r.value
@@ -821,7 +845,7 @@ export function createSkillRouters(config: ServerConfig): Router {
 				const html = await ofacFetch(
 					`/Details.aspx?id=0&name=${q}&program=SDN`,
 				);
-				return ser({
+				return serialize({
 					name: parsed.name,
 					source: "ofac-sanctions-search",
 					html,
@@ -848,15 +872,19 @@ export function createSkillRouters(config: ServerConfig): Router {
 				const { entities } = parsed;
 				const scores: Array<{ pair: [string, string]; score: number }> = [];
 				for (let i = 0; i < entities.length; i++) {
+					const a = entities[i];
+					if (a === undefined) continue;
 					for (let j = i + 1; j < entities.length; j++) {
+						const b = entities[j];
+						if (b === undefined) continue;
 						scores.push({
-							pair: [entities[i]!, entities[j]!],
-							score: tokenScore(entities[i]!, entities[j]!),
+							pair: [a, b],
+							score: tokenScore(a, b),
 						});
 					}
 				}
 				scores.sort((a, b) => b.score - a.score);
-				return ser({ matches: scores });
+				return serialize({ matches: scores });
 			},
 		),
 		skill(
@@ -884,10 +912,13 @@ export function createSkillRouters(config: ServerConfig): Router {
 				const nft = requireNft(res);
 				if (!nft) return;
 				const [owner, data] = await Promise.all([
-					nft.ownerOf!(BigInt(tokenId)),
-					nft.intelligentDatasOf!(BigInt(tokenId)),
+					mustMethod(nft.ownerOf, "ownerOf")(BigInt(tokenId)),
+					mustMethod(
+						nft.intelligentDatasOf,
+						"intelligentDatasOf",
+					)(BigInt(tokenId)),
 				]);
-				return ser({
+				return serialize({
 					tokenId,
 					to,
 					owner,
@@ -901,7 +932,7 @@ export function createSkillRouters(config: ServerConfig): Router {
 			unbrokerSchema,
 			"Compare transfer path options",
 			async (parsed) => {
-				return ser({
+				return serialize({
 					tokenId: parsed.tokenId,
 					to: parsed.to,
 					directGas: "25000",
@@ -922,8 +953,14 @@ export function createSkillRouters(config: ServerConfig): Router {
 				let score = 100;
 				const issues: string[] = [];
 				try {
-					const owner = await nft.ownerOf!(BigInt(tokenId));
-					const data = await nft.intelligentDatasOf!(BigInt(tokenId));
+					const owner = await mustMethod(
+						nft.ownerOf,
+						"ownerOf",
+					)(BigInt(tokenId));
+					const data = await mustMethod(
+						nft.intelligentDatasOf,
+						"intelligentDatasOf",
+					)(BigInt(tokenId));
 					const dataHash = data[0]?.dataHash;
 					if (accessProof) {
 						if (accessProof.dataHash !== dataHash) {
@@ -938,20 +975,24 @@ export function createSkillRouters(config: ServerConfig): Router {
 						score -= 40;
 						issues.push("No access proof provided");
 					}
-					return ser({
+					let rating: "SAFE" | "CAUTION" | "UNSAFE";
+					if (score >= 80) rating = "SAFE";
+					else if (score >= 50) rating = "CAUTION";
+					else rating = "UNSAFE";
+					return serialize({
 						tokenId,
 						to,
 						owner,
 						dataHash,
 						safetyScore: Math.max(0, score),
-						rating: score >= 80 ? "SAFE" : score >= 50 ? "CAUTION" : "UNSAFE",
+						rating,
 						issues,
 					});
 				} catch (err) {
 					logUnbroker.warn("unbroker analyze failed", {
 						err: err instanceof Error ? err.message : String(err),
 					});
-					return ser({
+					return serialize({
 						tokenId,
 						to,
 						safetyScore: 0,
@@ -992,9 +1033,9 @@ export function createSkillRouters(config: ServerConfig): Router {
 			async (parsed) => {
 				const base = await investigateRepo(parsed.owner, parsed.repo);
 				const bytecode = parsed.bytecode
-					? await compareBytecode(parsed.bytecode)
+					? compareBytecode(parsed.bytecode)
 					: null;
-				return ser({ ...base, bytecode });
+				return serialize({ ...base, bytecode });
 			},
 			true,
 			true,
@@ -1004,7 +1045,7 @@ export function createSkillRouters(config: ServerConfig): Router {
 			ossCommitsSchema,
 			"Commit history with force-push detection",
 			async (parsed) =>
-				ser(
+				serialize(
 					await fetchCommits(
 						parsed.owner,
 						parsed.repo,
@@ -1020,7 +1061,7 @@ export function createSkillRouters(config: ServerConfig): Router {
 			ossIocSchema,
 			"IOC regex scan (secret matches redacted)",
 			async (parsed) =>
-				ser(await scanIocs(parsed.owner, parsed.repo, parsed.path)),
+				serialize(await scanIocs(parsed.owner, parsed.repo, parsed.path)),
 			true,
 			true,
 		),
@@ -1028,7 +1069,7 @@ export function createSkillRouters(config: ServerConfig): Router {
 			"/v1/skills/oss-forensics/audit",
 			ossAuditSchema,
 			"Dependency manifest audit + storage layout detection",
-			async (parsed) => ser(await auditDeps(parsed.owner, parsed.repo)),
+			async (parsed) => serialize(await auditDeps(parsed.owner, parsed.repo)),
 			true,
 			true,
 		),

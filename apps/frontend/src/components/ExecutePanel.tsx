@@ -612,4 +612,3 @@ export function ExecutePanel({
 	);
 }
 
-export default ExecutePanel;

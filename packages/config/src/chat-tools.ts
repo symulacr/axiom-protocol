@@ -758,11 +758,11 @@ export function resolveContextWindow(
 ): number {
 	const id = model.trim().toLowerCase();
 	if (live) {
-		const hit = Object.keys(live).find((k) => k.toLowerCase() === id);
-		if (hit) return live[hit]!;
+		const hit = Object.entries(live).find(([k]) => k.toLowerCase() === id);
+		if (hit) return hit[1];
 	}
-	const fb = Object.keys(FALLBACK_CONTEXT_WINDOWS).find(
-		(k) => k.toLowerCase() === id,
+	const fb = Object.entries(FALLBACK_CONTEXT_WINDOWS).find(
+		([k]) => k.toLowerCase() === id,
 	);
-	return fb ? FALLBACK_CONTEXT_WINDOWS[fb]! : 32768;
+	return fb ? fb[1] : 32768;
 }

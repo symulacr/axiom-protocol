@@ -16,13 +16,13 @@ import { createLogger } from "../utils/logger.js";
 
 const log = createLogger("skills:shared");
 
-export function ser(v: unknown): unknown {
+export function serialize(v: unknown): unknown {
 	if (typeof v === "bigint") return v.toString();
-	if (Array.isArray(v)) return v.map(ser);
+	if (Array.isArray(v)) return v.map(serialize);
 	if (v !== null && typeof v === "object") {
 		const out: Record<string, unknown> = {};
 		for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
-			out[k] = ser(val);
+			out[k] = serialize(val);
 		}
 		return out;
 	}

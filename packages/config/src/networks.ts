@@ -9,6 +9,7 @@ export interface OGNetwork {
 
 export const ARISTOTLE_CHAIN_ID = 16661;
 
+// Static network registry — the URLs ARE the config data (not request targets).
 const _OG_NETWORKS = {
   16661: {
     name: "aristotle",
@@ -35,6 +36,7 @@ export function pickOGNetwork(chainId: number): OGNetwork | null {
   return OG_NETWORKS[chainId] ?? null;
 }
 
+// Browser-safe guard: `process` is undefined in bundles; typeof avoids ReferenceError.
 function envVar(...keys: string[]): string | undefined {
   if (typeof process === "undefined" || !process.env) return undefined;
   for (const key of keys) {

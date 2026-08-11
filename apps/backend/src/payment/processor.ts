@@ -133,14 +133,6 @@ export class PaymentProcessorClient {
 		return this.payment.contract.agentEarningsOf(creator);
 	}
 
-	async royaltyBpsOf(agentTokenId: bigint): Promise<bigint> {
-		return this.payment.contract.royaltyBpsOf(agentTokenId);
-	}
-
-	async royaltyBpsSet(agentTokenId: bigint): Promise<boolean> {
-		return this.payment.contract.royaltyBpsSet(agentTokenId);
-	}
-
 	async protocolFeeBps(): Promise<bigint> {
 		return this.payment.contract.protocolFeeBps();
 	}

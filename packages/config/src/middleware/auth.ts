@@ -17,7 +17,7 @@ function splitKeys(raw: string | undefined): string[] {
 		.filter(Boolean);
 }
 
-function timingSafeMatch(presented: string, candidates: string[]): boolean {
+export function timingSafeMatch(presented: string, candidates: string[]): boolean {
 	const keyBuf = Buffer.from(presented, "utf-8");
 	return candidates.some((api) => {
 		const apiBuf = Buffer.from(api, "utf-8");

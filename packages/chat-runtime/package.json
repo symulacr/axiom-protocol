@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Shared chat tool runtime for the Axiom Protocol — runTool dispatcher and class executors.",
+  "description": "Shared chat tool runtime for the Axiom Protocol \u2014 runTool dispatcher and class executors.",
   "main": "./dist/index.js",
   "exports": {
     ".": "./dist/index.js"
@@ -18,9 +18,8 @@
     "@axiom/config": "workspace:*",
     "viem": "^2.55.11"
   },
-  "devDependencies": {
-  },
+  "devDependencies": {},
   "engines": {
-    "node": ">=22.0.0"
+    "bun": ">=1.4.0"
   }
 }

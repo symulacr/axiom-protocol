@@ -220,11 +220,12 @@ export function useOrchestratorTick(): {
 
             ws.onclose = (event) => {
               if (settled) return;
-              const detail = event.reason
-                ? `: ${event.reason}`
-                : event.code !== 1000
-                  ? ` (code ${event.code})`
-                  : "";
+              let detail = "";
+              if (event.reason) {
+                detail = `: ${event.reason}`;
+              } else if (event.code !== 1000) {
+                detail = ` (code ${event.code})`;
+              }
               settle(
                 "reject",
                 new Error(

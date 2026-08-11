@@ -27,13 +27,19 @@ export function createStaticProvider(
 
 // ── router.ts ────────────────────────────────────────────────────────────────
 
+// 0G compute-router base used when no network override is configured.
+const ROUTER_API_BASE_URL = "https://router-api.0g.ai/v1";
+// Direct proxy base used when AXIOM_COMPUTE_DIRECT_KEY is set without a URL.
+const DIRECT_PROXY_BASE_URL =
+	"https://compute-network-6.integratenetwork.work/v1/proxy";
+
 export function getComputeBaseUrl(): string {
 	const explicit =
 		process.env.AXIOM_COMPUTE_BASE_URL ?? process.env.OG_COMPUTE_BASE_URL;
 	if (explicit) return explicit;
 	const chainId = resolveChainId();
 	const network = pickOGNetwork(chainId);
-	return network?.computeRouterUrl ?? "https://router-api.0g.ai/v1";
+	return network?.computeRouterUrl ?? ROUTER_API_BASE_URL;
 }
 
 const logRouter = createLogger("compute-router");
@@ -54,8 +60,7 @@ export async function createRouterClient(
 	const directKey = process.env.AXIOM_COMPUTE_DIRECT_KEY;
 	if (directKey) {
 		const directBase =
-			process.env.AXIOM_COMPUTE_DIRECT_URL ??
-			"https://compute-network-6.integratenetwork.work/v1/proxy";
+			process.env.AXIOM_COMPUTE_DIRECT_URL ?? DIRECT_PROXY_BASE_URL;
 		logRouter.info("Using direct compute provider", { directBase, model });
 		return new OpenAI({
 			baseURL: directBase,

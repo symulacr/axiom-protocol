@@ -2,7 +2,7 @@ import type { ReactElement } from "react";
 import { Link } from "react-router-dom";
 import { Card, COLORS } from "../components/ui.js";
 
-export function NotFound(): ReactElement {
+function NotFound(): ReactElement {
   return (
     <div
       style={{

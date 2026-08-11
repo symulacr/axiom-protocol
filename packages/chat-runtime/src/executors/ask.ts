@@ -18,13 +18,13 @@ function buildAskUserPrompt(args: Record<string, unknown>): AskUserPrompt {
 	if (!question) throw new Error("ask_user requires a 'question'");
 	const raw = Array.isArray(args.options) ? args.options : [];
 	const options = raw
-		.map((o) =>
-			typeof o === "string"
-				? o
-				: o && typeof o === "object"
-					? String((o as { label?: unknown }).label ?? "")
-					: "",
-		)
+		.map((o): string => {
+			if (typeof o === "string") return o;
+			if (o && typeof o === "object") {
+				return String((o as { label?: unknown }).label ?? "");
+			}
+			return "";
+		})
 		.map((o) => o.trim())
 		.filter(Boolean)
 		.slice(0, MAX_OPTIONS)
