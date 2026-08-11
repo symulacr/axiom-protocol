@@ -1,8 +1,14 @@
-import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv } from "node:crypto";
 
 const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 12;
 const AUTH_TAG_LENGTH = 16;
+
+function randomBytes(n: number): Uint8Array {
+  const out = new Uint8Array(n);
+  globalThis.crypto.getRandomValues(out);
+  return out;
+}
 
 export interface EncryptedPayload {
   iv: Uint8Array;
