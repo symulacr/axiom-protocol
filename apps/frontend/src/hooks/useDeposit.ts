@@ -1,65 +1,66 @@
 import { useCallback, useState } from "react";
-import { useChainId } from "wagmi";
-import { parseEther } from "viem";
-import { getAxiomStrategyVaultAddress } from "../abi/addresses.js";
-import { VAULT_ABI } from "@axiom/config/abis";
+import { useWalletClient } from "wagmi";
+import { apiFetch, type EncodeResponse } from "../utils/apiFetch.js";
+import { validateNumericInput } from "../utils/format.js";
 import { useVaultData } from "./useVaultData.js";
-import { useGenericWrite } from "./useGenericWrite.js";
 import { useWriteToast } from "./useWriteToast.js";
 
-const abi = VAULT_ABI;
-
 export function useDeposit(tokenId: bigint, onSuccess?: () => void) {
-  const chainId = useChainId();
   const vd = useVaultData(tokenId);
-  const vaultAddr = getAxiomStrategyVaultAddress(chainId);
+  const { data: walletClient } = useWalletClient();
   const [depositAmount, setDepositAmount] = useState("");
-
-  const { write } = useGenericWrite();
-  const { success: toastSuccess, error: toastError } = useWriteToast();
   const [isDepositing, setIsDepositing] = useState(false);
+  const { success: toastSuccess, error: toastError } = useWriteToast();
 
-  const handleDeposit = useCallback(() => {
-    if (!depositAmount) return;
-    let value: bigint;
-    try {
-      value = parseEther(depositAmount);
-    } catch {
-      toastError("Amount too large or invalid");
-      return;
-    }
+  const depositError = validateNumericInput(depositAmount, {
+    label: "Deposit",
+    min: 0,
+    allowDecimals: true,
+    maxDecimals: 18,
+    max: 1e12,
+  });
+
+  const handleDeposit = useCallback(async () => {
+    if (!depositAmount.trim() || depositError || !walletClient) return;
     setIsDepositing(true);
-    write({
-      to: vaultAddr,
-      abi,
-      functionName: "deposit",
-      args: [tokenId],
-      value,
-    })
-      .then(() => {
-        toastSuccess("Deposit successful");
-        setDepositAmount("");
-        vd.refetch();
-        onSuccess?.();
-      })
-      .catch(toastError)
-      .finally(() => setIsDepositing(false));
+    try {
+      // Same backend encode relay as withdraw and the chat deposit tool:
+      // single source of truth for the vault ABI (no frontend ABI drift).
+      const encoded = await apiFetch<EncodeResponse>(
+        `/v1/agents/${tokenId.toString()}/deposit`,
+        {
+          method: "POST",
+          body: JSON.stringify({ amount: depositAmount.trim() }),
+        },
+      );
+      const hash = await walletClient.sendTransaction({
+        to: encoded.to,
+        data: encoded.data,
+        value: BigInt(encoded.value || "0"),
+        chain: walletClient.chain,
+      });
+      toastSuccess(`Deposit submitted (${hash.slice(0, 10)}…)`);
+      setDepositAmount("");
+      await vd.refetch();
+      onSuccess?.();
+    } catch (err) {
+      toastError(err);
+    } finally {
+      setIsDepositing(false);
+    }
   }, [
-    vaultAddr,
-    abi,
-    tokenId,
     depositAmount,
-    write,
-    vd.refetch,
+    depositError,
+    walletClient,
+    tokenId,
+    vd,
     onSuccess,
-    toastError,
     toastSuccess,
+    toastError,
   ]);
 
   const isValidDeposit =
-    depositAmount.trim() !== "" &&
-    Number.isFinite(Number(depositAmount)) &&
-    Number(depositAmount) > 0;
+    depositAmount.trim() !== "" && !depositError && Number(depositAmount) > 0;
 
   return {
     depositAmount,
