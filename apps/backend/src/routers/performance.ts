@@ -100,7 +100,7 @@ export function registerPerformanceRoutes(
 
 			const result = {
 				metrics: summarizeCounts(counts),
-				history: history.reverse(),
+				history: history.toReversed(),
 			};
 			perfCache.set(cacheKey, result);
 			return result;

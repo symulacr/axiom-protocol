@@ -376,7 +376,7 @@ async function investigateRepo(owner: string, repo: string) {
 	return { info, languages, contributors };
 }
 
-async function compareBytecode(bytecode: string) {
+function compareBytecode(bytecode: string) {
 	const hash = ethers.keccak256(
 		bytecode.startsWith("0x") ? bytecode : `0x${bytecode}`,
 	);

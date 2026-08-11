@@ -171,7 +171,8 @@ export function validateNumericInput(
 	}
 
 	if (allowDecimals && trimmed.includes(".")) {
-		const decimals = (trimmed.split(".")[1] ?? "").length;
+		const [, decimalsPart] = trimmed.split(".");
+		const decimals = decimalsPart?.length ?? 0;
 		if (decimals > maxDecimals) {
 			return `${label} has too many decimal places (max ${maxDecimals}).`;
 		}
