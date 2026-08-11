@@ -134,7 +134,7 @@ export class Watcher {
 				const checkBlock = this.nextBlock - 1n;
 				try {
 					const block = await this.provider.getBlock(Number(checkBlock));
-					if (block && block.hash && block.hash !== this.lastBlockHash) {
+					if (block?.hash && block.hash !== this.lastBlockHash) {
 						this.logger({
 							level: "warn",
 							msg: "reorg detected — block hash mismatch",

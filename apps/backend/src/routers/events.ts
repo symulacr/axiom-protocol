@@ -129,7 +129,7 @@ export function registerEventRoutes(
 					? Number(req.query.since)
 					: undefined;
 			const since =
-				sinceRaw !== undefined && !isNaN(sinceRaw) && sinceRaw > 0
+				sinceRaw !== undefined && Number.isFinite(sinceRaw) && sinceRaw > 0
 					? sinceRaw
 					: undefined;
 			const eventName = req.query.eventName as string | undefined;

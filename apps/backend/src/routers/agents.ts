@@ -357,7 +357,7 @@ export function registerAgentRoutes(
 					);
 					return;
 				}
-				const canRekey = !!(oldDataUri && sealedDataEncryptionKey);
+				const canRekey = Boolean(oldDataUri && sealedDataEncryptionKey);
 				if (!accessProof) {
 					const nonce = BigInt(accessProofNonce ?? 0);
 					if (canRekey) {

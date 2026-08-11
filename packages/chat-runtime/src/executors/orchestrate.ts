@@ -81,7 +81,7 @@ export async function runOrchestrateTool(
       }),
       readStrategyRoot(ctx, vault, tokenId),
     ]);
-    const ready = balance > 0n && !!root && root !== ZERO_DATA_ROOT;
+    const ready = balance > 0n && root !== ZERO_DATA_ROOT;
 
     if (!ready) {
       if (dryRun) {

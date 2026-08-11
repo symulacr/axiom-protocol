@@ -117,8 +117,7 @@ export function humanizeError(err: unknown): string {
 		return "Transaction nonce conflict. Please wait for pending transactions to confirm.";
 	}
 
-	const capped = raw.length > 200 ? `${raw.slice(0, 200)}…` : raw;
-	return capped;
+	return raw.length > 200 ? `${raw.slice(0, 200)}…` : raw;
 }
 
 /** Builds the "Ref · requestId · code" description string for a toast, or null when absent. */
@@ -172,7 +171,7 @@ export function validateNumericInput(
 	}
 
 	if (allowDecimals && trimmed.includes(".")) {
-		const decimals = trimmed.split(".")[1]?.length ?? 0;
+		const decimals = (trimmed.split(".")[1] ?? "").length;
 		if (decimals > maxDecimals) {
 			return `${label} has too many decimal places (max ${maxDecimals}).`;
 		}

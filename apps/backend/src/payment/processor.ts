@@ -130,27 +130,27 @@ export class PaymentProcessorClient {
 	}
 
 	async earningsOf(creator: string): Promise<bigint> {
-		return await this.payment.contract.agentEarningsOf(creator);
+		return this.payment.contract.agentEarningsOf(creator);
 	}
 
 	async royaltyBpsOf(agentTokenId: bigint): Promise<bigint> {
-		return await this.payment.contract.royaltyBpsOf(agentTokenId);
+		return this.payment.contract.royaltyBpsOf(agentTokenId);
 	}
 
 	async royaltyBpsSet(agentTokenId: bigint): Promise<boolean> {
-		return await this.payment.contract.royaltyBpsSet(agentTokenId);
+		return this.payment.contract.royaltyBpsSet(agentTokenId);
 	}
 
 	async protocolFeeBps(): Promise<bigint> {
-		return await this.payment.contract.protocolFeeBps();
+		return this.payment.contract.protocolFeeBps();
 	}
 
 	async protocolTreasury(): Promise<string> {
-		return await this.payment.contract.protocolTreasury();
+		return this.payment.contract.protocolTreasury();
 	}
 
 	async paymentToken(): Promise<string> {
-		return await this.payment.contract.paymentToken();
+		return this.payment.contract.paymentToken();
 	}
 
 	private async ensureAllowance(amount: bigint): Promise<void> {

@@ -78,13 +78,12 @@ export function useOrchestratorTick(): {
   const tick = useCallback(
     async (req: TickRequest): Promise<TickResult> => {
       return execute(async (signal) => {
-        const data = await apiFetch<TickResult>("/v1/orchestrator/tick", {
+        return apiFetch<TickResult>("/v1/orchestrator/tick", {
           method: "POST",
           body: JSON.stringify(req),
           signal,
           timeout: 30000,
         });
-        return data;
       });
     },
     [execute],

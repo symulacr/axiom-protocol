@@ -177,6 +177,5 @@ export function formatToolResult(name: string, result: unknown): string {
 			.join("\n");
 	}
 
-	const lines = formatObjectLines(obj, () => "[details]");
-	return lines;
+	return formatObjectLines(obj, () => "[details]");
 }

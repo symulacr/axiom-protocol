@@ -54,7 +54,7 @@ export function useDeposit(tokenId: bigint, onSuccess?: () => void) {
 
 	const isValidDeposit =
 		depositAmount.trim() !== "" &&
-		!isNaN(Number(depositAmount)) &&
+		Number.isFinite(Number(depositAmount)) &&
 		Number(depositAmount) > 0;
 
 	return {
