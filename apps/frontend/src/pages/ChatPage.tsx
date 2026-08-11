@@ -44,7 +44,6 @@ import {
   ChatSessionProvider,
   useChatSession,
 } from "../chat/ChatSessionProvider.js";
-import { waitingMessageForElapsed } from "../chat/waitingMessages.js";
 import {
   TOOLS,
   TOOL_LABELS,
@@ -59,7 +58,7 @@ import {
 } from "@axiom/config/chat-tools";
 import { CHAT_MODEL } from "../config/env.js";
 import { aristotle } from "../config/wagmi.js";
-import { COLORS, Button, Input, ErrorRef, Spinner } from "../components/ui.js";
+import { COLORS, Button, Textarea, ErrorRef, Spinner } from "../components/ui.js";
 
 type Message = {
   id: string;
@@ -68,8 +67,8 @@ type Message = {
   tool_calls?: ToolCall[];
   tool_call_id?: string;
   name?: string;
-  /** meta.error = UI-only error card; never sent to the model. */
-  meta?: { error?: boolean };
+  /** meta.error = UI-only error card (never sent to the model); usage = cost chip. */
+  meta?: { error?: boolean; usage?: string };
 };
 
 function createMessage(msg: Omit<Message, "id">): Message {
@@ -530,6 +529,7 @@ function ChatPageInner(): ReactElement {
       setIsStreaming(true);
       streamErrorRef.current = null;
       setStreamError(null);
+      traceRef.current = null;
       toolRunsRef.current = {};
       setToolRuns({});
 
@@ -587,27 +587,50 @@ function ChatPageInner(): ReactElement {
           };
           const systemContent = buildSystemPrompt(liveSession);
 
-          const response = await apiFetchResponse("/v1/chat/completions", {
-            method: "POST",
-            body: JSON.stringify({
-              model: CHAT_MODEL,
-              messages: [
-                { role: "system", content: systemContent },
-                ...fitToContext(
-                  currentMessages.filter((m) => !m.meta?.error),
-                  {
+          // 429 Retry-After backoff: up to 2 retries, capped delay.
+          // apiFetchResponse throws HttpError (with retryAfter) on non-ok.
+          let response: Response;
+          let attempt = 0;
+          for (;;) {
+            try {
+              response = await apiFetchResponse("/v1/chat/completions", {
+                method: "POST",
+                body: JSON.stringify({
                   model: CHAT_MODEL,
-                  system: systemContent,
+                  messages: [
+                    { role: "system", content: systemContent },
+                    ...fitToContext(
+                      currentMessages.filter((m) => !m.meta?.error),
+                      {
+                        model: CHAT_MODEL,
+                        system: systemContent,
+                        tools: TOOLS,
+                        contextWindow,
+                      },
+                    ),
+                  ],
                   tools: TOOLS,
-                  contextWindow,
+                  stream: true,
                 }),
-              ],
-              tools: TOOLS,
-              stream: true,
-            }),
-            signal: controller.signal,
-            timeout: STREAM_TIMEOUT,
-          });
+                signal: controller.signal,
+                timeout: STREAM_TIMEOUT,
+              });
+              break;
+            } catch (err) {
+              const retryAfter = (err as { retryAfter?: number })?.retryAfter;
+              if (
+                err instanceof DOMException &&
+                err.name === "AbortError"
+              ) {
+                throw err;
+              }
+              if (retryAfter === undefined || attempt >= 2) throw err;
+              attempt++;
+              await new Promise((r) =>
+                setTimeout(r, Math.min(retryAfter, 10) * 1000),
+              );
+            }
+          }
 
           const body = response.body;
           if (!body) throw new Error("No response body from chat service");
@@ -689,6 +712,7 @@ function ChatPageInner(): ReactElement {
             const assistantMsg = createMessage({
               role: "assistant",
               content: assistantContent,
+              meta: { usage: traceUsageLabel(traceRef.current) },
             });
             currentMessages = [...currentMessages, assistantMsg];
             messagesRef.current = currentMessages;
@@ -1263,13 +1287,26 @@ function ChatPageInner(): ReactElement {
                   })}
                 </div>
               ) : (
-                <div
-                  className="chat-md"
-                  style={chatMsgStyle}
-                  dangerouslySetInnerHTML={{
-                    __html: renderMarkdown(msg.content),
-                  }}
-                />
+                <div>
+                  <div
+                    className="chat-md"
+                    style={chatMsgStyle}
+                    dangerouslySetInnerHTML={{
+                      __html: renderMarkdown(msg.content),
+                    }}
+                  />
+                  {msg.meta?.usage ? (
+                    <div
+                      style={{
+                        marginTop: 4,
+                        fontSize: "var(--text-xs)",
+                        color: COLORS.textDim,
+                      }}
+                    >
+                      {msg.meta.usage}
+                    </div>
+                  ) : null}
+                </div>
               )}
             </div>
           ))}
@@ -1371,7 +1408,7 @@ function ChatPageInner(): ReactElement {
                   >
                     <Spinner size={14} />
                     <span style={{ color: COLORS.bronzeLight }}>
-                      {waitingMessageForElapsed(elapsed)}
+                      {phaseLabel(elapsed, toolRuns, streamText)}
                     </span>
                     <span
                       style={{
@@ -1397,19 +1434,52 @@ function ChatPageInner(): ReactElement {
               padding: "0 var(--space-lg) var(--space-sm)",
             }}
           >
+            <span
+              style={{
+                fontSize: "var(--text-xs)",
+                color: COLORS.textMuted,
+                alignSelf: "center",
+              }}
+            >
+              {queue.length} queued
+            </span>
             {queue.map((q, i) => (
               <span
-                key={i}
+                key={`${i}-${q}`}
                 title={q}
                 style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
                   fontSize: "var(--text-xs)",
                   color: COLORS.textDim,
                   border: `1px solid ${COLORS.border}`,
                   borderRadius: "var(--radius-sm)",
-                  padding: "2px 10px",
+                  padding: "2px 4px 2px 10px",
                 }}
               >
                 {q.length > 40 ? `${q.slice(0, 40)}…` : q}
+                <button
+                  type="button"
+                  aria-label="Remove queued message"
+                  onClick={() => {
+                    const next = queueRef.current.filter((_, idx) => idx !== i);
+                    queueRef.current = next;
+                    setQueue(next);
+                  }}
+                  style={{
+                    border: "none",
+                    background: "none",
+                    cursor: "pointer",
+                    color: COLORS.textDim,
+                    padding: 0,
+                    fontFamily: "inherit",
+                    fontSize: "var(--text-xs)",
+                    lineHeight: 1,
+                  }}
+                >
+                  ✕
+                </button>
               </span>
             ))}
           </div>
@@ -1417,10 +1487,17 @@ function ChatPageInner(): ReactElement {
 
         <div className="chat-composer">
           <div className="chat-composer__row">
-            <Input
+            <Textarea
               aria-label="Chat input"
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              rows={1}
+              onChange={(e) => {
+                setInput(e.target.value);
+                // autosize up to 6 rows
+                const el = e.target;
+                el.style.height = "auto";
+                el.style.height = `${Math.min(el.scrollHeight, 6 * 22)}px`;
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
@@ -1451,6 +1528,38 @@ function ChatPageInner(): ReactElement {
       </div>
     </div>
   );
+}
+
+function phaseLabel(
+  elapsedSec: number,
+  runs: Record<string, ToolRun>,
+  streamText: string,
+): string {
+  const running = Object.values(runs).filter((r) => r.status === "running");
+  if (running.length > 0) {
+    const names = running
+      .map((r) => TOOL_LABELS[r.name] ?? r.name)
+      .join(", ");
+    return `Running ${names}… (${elapsedSec}s)`;
+  }
+  if (streamText) return `Streaming response… (${elapsedSec}s)`;
+  if (elapsedSec < 2) return "Connecting to 0G Compute…";
+  return `Waiting for model response… (${elapsedSec}s)`;
+}
+
+function traceUsageLabel(
+  trace: Record<string, unknown> | null,
+): string | undefined {
+  if (!trace) return undefined;
+  const parts: string[] = [];
+  const usage = trace.usage as
+    | { total_tokens?: number; prompt_tokens?: number; completion_tokens?: number }
+    | undefined;
+  if (usage?.total_tokens) parts.push(`${usage.total_tokens.toLocaleString()} tokens`);
+  const cost = trace.cost ?? trace.amount;
+  if (typeof cost === "number" && cost > 0) parts.push(`≈$${cost.toFixed(4)}`);
+  if (parts.length === 0) return "compute billed";
+  return parts.join(" · ");
 }
 
 function ToolCallCard({

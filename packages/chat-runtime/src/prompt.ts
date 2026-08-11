@@ -1,39 +1,20 @@
 import {
   CHAT_TOOL_CATALOG,
-  CHAT_TOOL_CLASS_LABELS,
   AXIOM_ASSISTANT_NAME,
   type ChatToolClass,
 } from "@axiom/config/chat-tools";
 import { buildSessionContext } from "./session.js";
 import type { ChatSessionContext } from "./types.js";
 
-function renderClassTools(cls: ChatToolClass): string {
-  return CHAT_TOOL_CATALOG.filter((t) => t.class === cls)
-    .map((t) => {
-      const tags: string[] = [];
-      if (t.requiresWallet) tags.push("wallet");
-      if (t.requiresTokenId) tags.push("token");
-      if (t.class === "encode") tags.push("sign");
-      if (t.friction !== "low") tags.push(t.friction);
-      if (t.capabilities?.length) tags.push(`caps:${t.capabilities.join(",")}`);
-      const metaBits = [t.os, t.context, t.requiresApiKey].filter(
-        Boolean,
-      ) as string[];
-      const tag = tags.length ? ` [${tags.join(" ")}]` : "";
-      const meta = metaBits.length ? ` (${metaBits.join("; ")})` : "";
-      return `${t.name} (${t.label})${tag}${meta}`;
-    })
-    .join(", ");
-}
-
-// Static catalog-derived sections: computed once at module load, not per chat request.
-const CLASS_TOOL_SECTIONS: Record<ChatToolClass, string> = {
-  read: renderClassTools("read"),
-  encode: renderClassTools("encode"),
-  orchestrate: renderClassTools("orchestrate"),
-  archive: renderClassTools("archive"),
-  ask: renderClassTools("ask"),
-  skill: renderClassTools("skill"),
+// Per-class guidance (1 line each). Exact tool specs ride in the `tools`
+// API parameter — duplicating the full catalog here doubled context cost.
+const CLASS_GUIDANCE: Record<ChatToolClass, string> = {
+  read: "Read on-chain state (agents, vaults, balances, events) — prefer over guessing.",
+  encode: "Wallet-signs actions (mint, deposit, withdraw, transfer, pay) — confirm intent first.",
+  orchestrate: "Vault strategy ticks — prefer simulate_tick before execute_tick when unsure.",
+  archive: "Web archive lookups via Wayback Machine.",
+  ask: "Pause and ask the user when input is missing or ambiguous.",
+  skill: "Composed multi-step skills (server-key gated for oss_forensics_*/unbroker_execute).",
 };
 
 const PROMPT_HEAD = [
@@ -60,14 +41,14 @@ const PROMPT_HEAD = [
 ].join("\n\n");
 
 const PROMPT_TAIL = [
-  "Tool classes:",
-  `READ — ${CHAT_TOOL_CLASS_LABELS.read}:\n${CLASS_TOOL_SECTIONS.read}`,
-  `ENCODE — ${CHAT_TOOL_CLASS_LABELS.encode} (wallet signs):\n${CLASS_TOOL_SECTIONS.encode}`,
-  `ORCHESTRATE — ${CHAT_TOOL_CLASS_LABELS.orchestrate}:\n${CLASS_TOOL_SECTIONS.orchestrate}`,
-  `ARCHIVE — ${CHAT_TOOL_CLASS_LABELS.archive}:\n${CLASS_TOOL_SECTIONS.archive}`,
-  `ASK — ${CHAT_TOOL_CLASS_LABELS.ask}:\n${CLASS_TOOL_SECTIONS.ask}`,
-  `SKILL — ${CHAT_TOOL_CLASS_LABELS.skill}:\n${CLASS_TOOL_SECTIONS.skill}`,
-  "Skills: client keys cannot call oss_forensics_* or unbroker_execute (server key only). Prefer simulate_tick before execute_tick when unsure.",
+  "Tool classes (exact names/schemas are in your tools list):",
+  `READ — ${CLASS_GUIDANCE.read}`,
+  `ENCODE — ${CLASS_GUIDANCE.encode}`,
+  `ORCHESTRATE — ${CLASS_GUIDANCE.orchestrate}`,
+  `ARCHIVE — ${CLASS_GUIDANCE.archive}`,
+  `ASK — ${CLASS_GUIDANCE.ask}`,
+  `SKILL — ${CLASS_GUIDANCE.skill}`,
+  "Client keys cannot call oss_forensics_* or unbroker_execute (server key only).",
 ].join("\n\n");
 
 export function buildSystemPrompt(session: ChatSessionContext): string {
