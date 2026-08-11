@@ -1,4 +1,3 @@
-import { timingSafeEqual } from "node:crypto";
 import type { Request, Response, NextFunction } from "express";
 
 type AuthPrincipal = "none" | "server" | "client" | "disabled";
@@ -21,9 +20,15 @@ export function timingSafeMatch(
   candidates: string[],
 ): boolean {
   const keyBuf = Buffer.from(presented, "utf-8");
+  const tsEqual = (a: Uint8Array, b: Uint8Array): boolean =>
+    (
+      globalThis.crypto as unknown as {
+        timingSafeEqual(x: Uint8Array, y: Uint8Array): boolean;
+      }
+    ).timingSafeEqual.call(globalThis.crypto, a, b);
   return candidates.some((api) => {
     const apiBuf = Buffer.from(api, "utf-8");
-    return keyBuf.length === apiBuf.length && timingSafeEqual(keyBuf, apiBuf);
+    return keyBuf.length === apiBuf.length && tsEqual(keyBuf, apiBuf);
   });
 }
 
