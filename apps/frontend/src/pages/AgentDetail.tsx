@@ -37,22 +37,22 @@ const TransferModal = lazy(() =>
 	})),
 );
 const DepositForm = lazy(() =>
-	import("../components/DepositForm.js").then((m) => ({
+	import("../components/VaultTools.js").then((m) => ({
 		default: m.DepositForm,
 	})),
 );
 const WithdrawForm = lazy(() =>
-	import("../components/WithdrawForm.js").then((m) => ({
+	import("../components/VaultTools.js").then((m) => ({
 		default: m.WithdrawForm,
 	})),
 );
 const StrategyPanel = lazy(() =>
-	import("../components/StrategyPanel.js").then((m) => ({
+	import("../components/VaultTools.js").then((m) => ({
 		default: m.StrategyPanel,
 	})),
 );
 const DelegatePanel = lazy(() =>
-	import("../components/DelegatePanel.js").then((m) => ({
+	import("../components/VaultTools.js").then((m) => ({
 		default: m.DelegatePanel,
 	})),
 );
