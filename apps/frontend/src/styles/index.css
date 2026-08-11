@@ -2229,23 +2229,6 @@ select[aria-invalid="true"] {
 }
 
 /* Per-message hover actions (ChatPage) */
-.msg-action {
-	border: 1px solid var(--c-border);
-	background: var(--c-surface);
-	color: var(--c-text-dim);
-	border-radius: var(--radius-sm);
-	padding: 1px 8px;
-	font-size: var(--text-xs);
-	font-family: inherit;
-	cursor: pointer;
-	line-height: 1.4;
-}
-.msg-action:hover {
-	color: var(--c-text);
-	border-color: var(--c-border-strong);
-}
-
-/* Per-message hover actions (ChatPage) */
 .msg-actions {
   display: inline-flex;
   gap: var(--space-xs);
