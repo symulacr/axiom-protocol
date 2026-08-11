@@ -67,27 +67,20 @@ function vaultAbiFor(
   return variant === "legacy" ? VAULT_ABI_LEGACY : VAULT_ABI;
 }
 
-interface VaultStrategyState {
-  root: string;
-  dailyLimit: bigint;
-  validUntilDay: bigint;
-}
-
 async function readVaultStrategy(
   provider: Provider,
   vaultAddress: string,
   tokenId: bigint,
-): Promise<VaultStrategyState> {
+): Promise<string> {
   const variant = await detectVaultAbiVariant(provider, vaultAddress);
   if (variant === "legacy") {
     const vault = new Contract(vaultAddress, STRATEGY_OF_LEGACY, provider);
-    const [root, dailyLimit] = await vault.getFunction("strategyOf")(tokenId);
-    return { root, dailyLimit, validUntilDay: 0n };
+    const [root] = await vault.getFunction("strategyOf")(tokenId);
+    return root;
   }
   const vault = new Contract(vaultAddress, STRATEGY_OF_CURRENT, provider);
-  const [root, dailyLimit, , , validUntilDay] =
-    await vault.getFunction("strategyOf")(tokenId);
-  return { root, dailyLimit, validUntilDay };
+  const [root] = await vault.getFunction("strategyOf")(tokenId);
+  return root;
 }
 
 const log = createLogger("orchestrator");
@@ -262,7 +255,7 @@ export class StrategyRunner {
       throw new Error("No vault address configured for on-chain settlement");
     }
 
-    const vaultStrategy = await readVaultStrategy(
+    const vaultStrategyRoot = await readVaultStrategy(
       this.provider,
       vaultAddr,
       strategy.agentTokenId,
@@ -278,17 +271,17 @@ export class StrategyRunner {
       log.info("settleOnChain skipped (no executionPlan / Merkle proof)", {
         action,
         tokenId: strategy.agentTokenId.toString(),
-        root: vaultStrategy.root,
+        root: vaultStrategyRoot,
       });
       return {
         status: "skipped",
-        reason: settlementSkipReason(vaultStrategy.root),
+        reason: settlementSkipReason(vaultStrategyRoot),
       };
     }
 
     if (
-      vaultStrategy.root === ZERO_DATA_ROOT ||
-      BigInt(vaultStrategy.root) === 0n
+      vaultStrategyRoot === ZERO_DATA_ROOT ||
+      BigInt(vaultStrategyRoot) === 0n
     ) {
       return {
         status: "skipped",

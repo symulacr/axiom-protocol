@@ -40,11 +40,7 @@ import {
   isAskUserResult,
   type ChatSessionContext,
 } from "@axiom/chat-runtime";
-import {
-  CHAT_TOOL_CATALOG,
-  classOfTool,
-  type ChatToolClass,
-} from "@axiom/config/chat-tools";
+import { CHAT_TOOL_CATALOG, classOfTool } from "@axiom/config/chat-tools";
 import {
   ArchiveResultCard,
   EncodePreviewCard,
@@ -143,6 +139,20 @@ const chatMsgStyle: CSSProperties = {
   color: COLORS.text,
   lineHeight: "var(--lh-normal)",
 };
+
+const dimXs: CSSProperties = {
+  color: COLORS.textDim,
+  fontSize: "var(--text-xs)",
+};
+
+const TOOL_GROUPS = (
+  ["read", "encode", "orchestrate", "archive", "skill", "ask"] as const
+)
+  .map((cls) => ({
+    cls,
+    tools: CHAT_TOOL_CATALOG.filter((t) => t.class === cls),
+  }))
+  .filter((g) => g.tools.length > 0);
 
 const insetCardStyle: CSSProperties = {
   background: COLORS.bg,
@@ -601,22 +611,6 @@ function ChatPageInner(): ReactElement {
   const tickRunning = Object.values(toolRuns).some(
     (r) => r.status === "running" && r.name === "execute_tick",
   );
-  const toolGroups = useMemo(() => {
-    const order: ChatToolClass[] = [
-      "read",
-      "encode",
-      "orchestrate",
-      "archive",
-      "skill",
-      "ask",
-    ];
-    return order
-      .map((cls) => ({
-        cls,
-        tools: CHAT_TOOL_CATALOG.filter((t) => t.class === cls),
-      }))
-      .filter((g) => g.tools.length > 0);
-  }, []);
 
   useEffect(() => {
     lastTokenIdRef.current = session.lastTokenId ?? urlAgentRef.current;
@@ -1424,7 +1418,7 @@ function ChatPageInner(): ReactElement {
                       paddingRight: 4,
                     }}
                   >
-                    {toolGroups.map((g) => (
+                    {TOOL_GROUPS.map((g) => (
                       <div
                         key={g.cls}
                         style={{ marginBottom: "var(--space-sm)" }}
@@ -1442,12 +1436,7 @@ function ChatPageInner(): ReactElement {
                           {CHAT_TOOL_CLASS_LABELS[g.cls]}
                         </div>
                         {g.tools.map((t) => {
-                          const gated =
-                            t.requiresApiKey !== undefined ||
-                            t.name === "unbroker_execute";
-                          const gateNote = t.requiresApiKey
-                            ? "server key"
-                            : "not implemented";
+                          const gated = t.requiresApiKey !== undefined;
                           const hint =
                             t.hint.length > 90
                               ? `${t.hint.slice(0, 90)}…`
@@ -1458,7 +1447,7 @@ function ChatPageInner(): ReactElement {
                               type="button"
                               disabled={gated}
                               onClick={() => setInput(t.name)}
-                              title={gated ? `${t.name} — ${gateNote}` : t.hint}
+                              title={gated ? `${t.name} — server key` : t.hint}
                               style={{
                                 display: "block",
                                 width: "100%",
@@ -1488,7 +1477,7 @@ function ChatPageInner(): ReactElement {
                               {gated ? (
                                 <span style={{ color: COLORS.textDim }}>
                                   {" "}
-                                  ({gateNote})
+                                  (server key)
                                 </span>
                               ) : null}
                             </button>
@@ -1787,43 +1776,17 @@ function ChatPageInner(): ReactElement {
                       {phaseLabel(elapsed, toolRuns, streamText)}
                     </span>
                     {tickRunning ? (
-                      <span
-                        style={{
-                          color: COLORS.textDim,
-                          fontSize: "var(--text-xs)",
-                        }}
-                      >
-                        Tick in progress…
-                      </span>
+                      <span style={dimXs}>Tick in progress…</span>
                     ) : null}
                     {agentStep > 0 ? (
-                      <span
-                        style={{
-                          color: COLORS.textDim,
-                          fontSize: "var(--text-xs)",
-                        }}
-                      >
+                      <span style={dimXs}>
                         step {agentStep}/{MAX_TOOL_LOOPS}
                       </span>
                     ) : null}
                     {ttftMs !== null && ttftMs >= 0 ? (
-                      <span
-                        style={{
-                          color: COLORS.textDim,
-                          fontSize: "var(--text-xs)",
-                        }}
-                      >
-                        TTFT {ttftMs}ms
-                      </span>
+                      <span style={dimXs}>TTFT {ttftMs}ms</span>
                     ) : null}
-                    <span
-                      style={{
-                        color: COLORS.textDim,
-                        fontSize: "var(--text-xs)",
-                      }}
-                    >
-                      {elapsed > 0 && `(${elapsed}s)`}
-                    </span>
+                    <span style={dimXs}>{elapsed > 0 && `(${elapsed}s)`}</span>
                   </span>
                 </p>
               )}

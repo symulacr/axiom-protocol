@@ -21,7 +21,6 @@ export interface ChatToolSpec {
   capabilities?: string[];
   os?: string;
   context?: string;
-  requiresApiKey?: string;
 }
 
 function skill<N extends string>(
@@ -70,10 +69,6 @@ const addressParam = {
 const tokenIdParam = {
   type: "string",
   description: "Agent token ID (numeric)",
-} as const;
-const ownerRepoParams = {
-  owner: { type: "string", description: "GitHub owner" },
-  repo: { type: "string", description: "GitHub repo" },
 } as const;
 const networkEgress = {
   os: "linux",
@@ -229,15 +224,6 @@ const SKILL_TOOL_DEFS = [
       },
       ["tokenId", "to"],
     ),
-  }),
-  skill({
-    name: "unbroker_execute",
-    label: "Unbroker Execute",
-    hint: "NOT IMPLEMENTED — backend returns 501 (no unbroker/pdd integration in this repo). Do NOT call or present as executable; transfers require the wallet-signing flow (/v1/agents/:id/transfer + iTransferFrom).",
-    requiresWallet: true,
-    requiresTokenId: true,
-    friction: "high",
-    parameters: params({ ...tokenTransferProps }, ["tokenId", "to"]),
   }),
   skill({
     name: "stocks_quote",
@@ -401,68 +387,6 @@ const SKILL_TOOL_DEFS = [
     ),
     capabilities: ["osint", "courtlistener"],
     context: "external OSINT APIs",
-  }),
-  skill({
-    name: "oss_forensics_investigate",
-    label: "OSS Investigate",
-    hint: "Investigate an open-source project for supply-chain risks",
-    friction: "medium",
-    parameters: params(
-      {
-        ...ownerRepoParams,
-        bytecode: {
-          type: "string",
-          description: "Optional hex bytecode for keccak256 comparison",
-        },
-      },
-      ["owner", "repo"],
-    ),
-    capabilities: ["forensics", "supply-chain"],
-    requiresApiKey: "GITHUB_TOKEN",
-    ...networkEgress,
-  }),
-  skill({
-    name: "oss_forensics_commits",
-    label: "OSS Commits",
-    hint: "Analyze commit history for suspicious patterns",
-    friction: "low",
-    parameters: params(
-      {
-        ...ownerRepoParams,
-        sha: { type: "string", description: "Optional branch/commit SHA" },
-        perPage: { type: "number", description: "1-100 (default 30)" },
-      },
-      ["owner", "repo"],
-    ),
-    capabilities: ["forensics", "commits"],
-    requiresApiKey: "GITHUB_TOKEN",
-    ...networkEgress,
-  }),
-  skill({
-    name: "oss_forensics_ioc",
-    label: "OSS IOC",
-    hint: "Extract indicators of compromise from repositories",
-    friction: "medium",
-    parameters: params(
-      {
-        ...ownerRepoParams,
-        path: { type: "string", description: "Optional path filter" },
-      },
-      ["owner", "repo"],
-    ),
-    capabilities: ["forensics", "ioc"],
-    requiresApiKey: "GITHUB_TOKEN",
-    ...networkEgress,
-  }),
-  skill({
-    name: "oss_forensics_audit",
-    label: "OSS Audit",
-    hint: "Full supply-chain audit of dependencies and transitive deps",
-    friction: "high",
-    parameters: params({ ...ownerRepoParams }, ["owner", "repo"]),
-    capabilities: ["forensics", "audit"],
-    requiresApiKey: "GITHUB_TOKEN",
-    ...networkEgress,
   }),
 ] as const;
 

@@ -571,20 +571,14 @@ export function PageHeader({
 export function SectionTitle({
   children,
   style,
-  spacing = "compact",
 }: {
   children: ReactNode;
   style?: CSSProperties;
-  spacing?: "compact" | "spaced";
 }): ReactElement {
   return (
     <h2
       className="text-sm fw-semibold text-dim lh-snug m-0 mb-lg uppercase"
-      style={{
-        letterSpacing: "0.08em",
-        marginTop: spacing === "spaced" ? "var(--space-2xl)" : undefined,
-        ...style,
-      }}
+      style={{ letterSpacing: "0.08em", ...style }}
     >
       {children}
     </h2>

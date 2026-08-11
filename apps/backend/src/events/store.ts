@@ -1,9 +1,5 @@
 import { createLogger } from "../utils/logger.js";
-import {
-  EVENT_NAMES,
-  DEFAULT_EVENT_LIMIT,
-  bigintReplacer,
-} from "@axiom/config";
+import { DEFAULT_EVENT_LIMIT, bigintReplacer } from "@axiom/config";
 import { extractErrorMessage } from "../utils/response.js";
 import { broadcast } from "../ws/broadcaster.js";
 import {
@@ -170,7 +166,6 @@ export class EventStore {
   private readonly buckets: Map<string, StoredEvent[]>;
   private readonly byEventName: Map<string, StoredEvent[]>;
   private readonly byTokenId: Map<string, StoredEvent[]>;
-  private readonly byTransferTo: Map<string, Map<string, number>>;
   private readonly indexPositions = new WeakMap<StoredEvent, IndexPositions>();
   private readonly seenKeys = new Set<string>();
   private readonly serialized = new Map<string, string>();
@@ -189,7 +184,6 @@ export class EventStore {
     this.buckets = new Map();
     this.byEventName = new Map();
     this.byTokenId = new Map();
-    this.byTransferTo = new Map();
     this.total = 0;
     this.load();
   }
@@ -277,7 +271,6 @@ export class EventStore {
     this.addToIndex(this.byEventName, evt.eventName, evt, "nameIdx", 0);
     const tid = tokenIdFromPayload(evt.payload);
     if (tid !== null) this.addToIndex(this.byTokenId, tid, evt, "tokenIdx", -1);
-    this.updateTransferToIndex(evt);
   }
 
   private load(): void {
@@ -285,7 +278,6 @@ export class EventStore {
     this.buckets.clear();
     this.byEventName.clear();
     this.byTokenId.clear();
-    this.byTransferTo.clear();
     this.seenKeys.clear();
     this.total = 0;
     for (const [bucketKey, events] of rawBuckets) {
@@ -358,58 +350,6 @@ export class EventStore {
         if (tidBucket.length === 0) this.byTokenId.delete(tid);
       }
     }
-
-    this.removeFromTransferToIndex(evt);
-  }
-
-  private transferIndexKey(
-    evt: StoredEvent,
-  ): { owner: string; tid: string } | null {
-    if (evt.eventName !== EVENT_NAMES.Transfer) return null;
-    const payload = evt.payload;
-    if (!("to" in payload) || typeof payload.to !== "string") return null;
-    const tid = tokenIdFromPayload(payload);
-    if (tid === null) return null;
-    return { owner: payload.to.toLowerCase(), tid };
-  }
-
-  private updateTransferToIndex(evt: StoredEvent): void {
-    const key = this.transferIndexKey(evt);
-    if (!key) return;
-
-    const ownerMap = getOrCreate(this.byTransferTo, key.owner, () => new Map());
-    const existing = ownerMap.get(key.tid);
-    if (existing === undefined || evt.blockNumber > existing) {
-      ownerMap.set(key.tid, evt.blockNumber);
-    }
-  }
-
-  private removeFromTransferToIndex(evt: StoredEvent): void {
-    const key = this.transferIndexKey(evt);
-    if (!key) return;
-
-    const ownerMap = this.byTransferTo.get(key.owner);
-    if (!ownerMap || ownerMap.get(key.tid) !== evt.blockNumber) return;
-
-    let max: number | undefined;
-    const transferBucket = this.byEventName.get(EVENT_NAMES.Transfer);
-    if (transferBucket) {
-      for (const e of transferBucket) {
-        if (e === evt) continue;
-        if (!("to" in e.payload) || typeof e.payload.to !== "string") continue;
-        if (e.payload.to.toLowerCase() !== key.owner) continue;
-        const eTid = tokenIdFromPayload(e.payload);
-        if (eTid !== key.tid) continue;
-        if (max === undefined || e.blockNumber > max) max = e.blockNumber;
-      }
-    }
-
-    if (max === undefined) {
-      ownerMap.delete(key.tid);
-      if (ownerMap.size === 0) this.byTransferTo.delete(key.owner);
-    } else {
-      ownerMap.set(key.tid, max);
-    }
   }
 
   private enqueuePersist(): Promise<void> {
@@ -470,7 +410,6 @@ export class EventStore {
     this.buckets.clear();
     this.byEventName.clear();
     this.byTokenId.clear();
-    this.byTransferTo.clear();
     this.total = 0;
     for (const [bucketKey, kept] of remaining) {
       this.buckets.set(bucketKey, kept);

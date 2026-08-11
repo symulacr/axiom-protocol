@@ -46,8 +46,6 @@ interface UploadOptions {
   encryption?: Encryption;
   expectedReplica?: number;
   taskSize?: number;
-  retryCount?: number;
-  retryDelay?: number;
 }
 
 interface DownloadOptions {

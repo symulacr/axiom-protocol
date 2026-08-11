@@ -12,8 +12,6 @@ export interface ConnectedClient {
 }
 
 const _clients = new Set<ConnectedClient>();
-const _clientIds = new WeakMap<WebSocket, string>();
-const _clientMap = new Map<string, ConnectedClient>();
 // Reverse index: subscription prefix -> subscribed clients, for cheap fan-out.
 const _topicIndex = new Map<string, Set<ConnectedClient>>();
 
@@ -68,23 +66,14 @@ export function broadcast(topic: string, payload: unknown): void {
   }
 }
 
-export function registerClient(client: ConnectedClient): string {
-  const id = crypto.randomUUID();
+export function registerClient(client: ConnectedClient): void {
   _clients.add(client);
-  _clientIds.set(client.socket, id);
-  _clientMap.set(id, client);
   indexAdd(client);
-  return id;
 }
 
 export function unregisterClient(client: ConnectedClient): void {
   indexRemove(client);
   _clients.delete(client);
-  const id = _clientIds.get(client.socket);
-  if (id) {
-    _clientMap.delete(id);
-    _clientIds.delete(client.socket);
-  }
 }
 
 export function getClients(): Set<ConnectedClient> {

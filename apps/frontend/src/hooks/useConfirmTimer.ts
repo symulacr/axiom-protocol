@@ -4,7 +4,6 @@ type TimerHandle = ReturnType<typeof setTimeout>;
 
 export function useConfirmTimer(onSuccess?: () => void): {
   balanceRef: RefObject<HTMLSpanElement>;
-  confirmTimer: RefObject<TimerHandle | undefined>;
   handleSuccess: () => void;
 } {
   const balanceRef = useRef<HTMLSpanElement>(null);
@@ -30,5 +29,5 @@ export function useConfirmTimer(onSuccess?: () => void): {
     onSuccess?.();
   }, [onSuccess]);
 
-  return { balanceRef, confirmTimer, handleSuccess };
+  return { balanceRef, handleSuccess };
 }

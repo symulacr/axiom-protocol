@@ -203,9 +203,7 @@ function AgentsBrowser(): ReactElement {
           aria-label="Search agents"
           style={{ width: "100%", marginBottom: 16, boxSizing: "border-box" }}
         />
-        {agents.length === 0 ? (
-          <p style={emptyHintStyle}>No agents found for this wallet</p>
-        ) : filteredAgents.length === 0 ? (
+        {filteredAgents.length === 0 ? (
           <p style={emptyHintStyle}>No agents match your search</p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>

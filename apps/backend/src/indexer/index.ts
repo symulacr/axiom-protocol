@@ -22,8 +22,6 @@ interface IndexerServiceConfig {
 export class IndexerService {
   private watcher: Watcher | null = null;
   private stopWatcher: (() => Promise<void>) | null = null;
-  private startedAt = 0;
-  private lastProcessedBlock = 0;
 
   constructor(private config: IndexerServiceConfig) {}
 
@@ -44,7 +42,6 @@ export class IndexerService {
         eventName: kind,
         payload: payload as Record<string, unknown>,
       });
-      this.lastProcessedBlock = Math.max(this.lastProcessedBlock, blockNumber);
     };
     this.watcher = new Watcher({
       provider,
@@ -65,7 +62,6 @@ export class IndexerService {
       },
     });
 
-    this.startedAt = Date.now();
     const handle = this.watcher.start();
     this.stopWatcher = handle.stop;
   }
@@ -76,12 +72,5 @@ export class IndexerService {
       this.stopWatcher = null;
     }
     this.watcher = null;
-  }
-
-  getStatus(): { lastProcessedBlock: number; uptime: number } {
-    return {
-      lastProcessedBlock: this.lastProcessedBlock,
-      uptime: this.startedAt ? Date.now() - this.startedAt : 0,
-    };
   }
 }

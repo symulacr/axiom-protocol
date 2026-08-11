@@ -5,8 +5,6 @@ import type { AxiomEvent } from "./useEventHistory.js";
 interface UseEventStreamResult {
   events: AxiomEvent[];
   isConnected: boolean;
-  error: Event | null;
-  reconnect: () => void;
 }
 
 interface UseEventStreamOptions {
@@ -24,7 +22,6 @@ export function useEventStream(
   const topicsKey = useMemo(() => topics.join(","), [topics]);
   const [events, setEvents] = useState<AxiomEvent[]>([]);
   const [isConnected, setIsConnected] = useState(false);
-  const [error, setError] = useState<Event | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectAttemptRef = useRef(0);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout>>();
@@ -48,7 +45,6 @@ export function useEventStream(
       ws.onopen = () => {
         reconnectAttemptRef.current = 0;
         setIsConnected(true);
-        setError(null);
       };
 
       ws.onmessage = (msg: MessageEvent) => {
@@ -88,15 +84,8 @@ export function useEventStream(
         if (!enabledRef.current) return;
 
         // Auth failures (1008 policy / 4401 custom) must not retry forever.
-        const isAuthClose = e.code === 1008 || e.code === 4401;
-        if (isAuthClose) {
-          setError(new Event("WebSocket closed: unauthorized"));
-          return;
-        }
-        if (reconnectAttemptRef.current >= MAX_RECONNECT_ATTEMPTS) {
-          setError(new Event("WebSocket connection failed after retries"));
-          return;
-        }
+        if (e.code === 1008 || e.code === 4401) return;
+        if (reconnectAttemptRef.current >= MAX_RECONNECT_ATTEMPTS) return;
 
         const delay = Math.min(
           1000 * Math.pow(2, reconnectAttemptRef.current),
@@ -105,16 +94,10 @@ export function useEventStream(
         reconnectAttemptRef.current++;
         reconnectTimerRef.current = setTimeout(connect, delay);
       };
-    } catch (err) {
-      setError(err instanceof Event ? err : new Event("connection failed"));
+    } catch {
+      return;
     }
   }, [enabled, topicsKey]);
-
-  const reconnect = useCallback(() => {
-    reconnectAttemptRef.current = 0;
-    setError(null);
-    connect();
-  }, [connect]);
 
   useEffect(() => {
     connect();
@@ -125,5 +108,5 @@ export function useEventStream(
     };
   }, [connect]);
 
-  return { events, isConnected, error, reconnect };
+  return { events, isConnected };
 }

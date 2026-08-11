@@ -196,13 +196,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-.surface-copper {
-  background: var(--c-copper-bg);
-  border: 1px solid var(--c-copper-border);
-  border-radius: var(--radius-lg);
-  box-shadow: 0 0 0 1px rgba(196, 122, 58, 0.08) inset;
-}
-
 .card-layered {
   position: relative;
   transition:
@@ -216,11 +209,6 @@
     var(--shadow-2),
     0 0 24px rgba(79, 70, 229, 0.12);
   border-color: var(--c-border-strong);
-}
-
-.phosphor-glow {
-  box-shadow: 0 0 12px rgba(52, 245, 160, 0.35);
-  color: var(--c-phosphor);
 }
 
 .dashboard-grid {
@@ -266,9 +254,6 @@
 
 .dashboard-stat--vault .dashboard-stat__value {
   color: var(--c-copper-light);
-}
-.dashboard-stat--live .dashboard-stat__value {
-  color: var(--c-phosphor);
 }
 
 .action-rail {
@@ -449,22 +434,6 @@ pre {
   }
 }
 
-@keyframes axiom-phosphor-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.35;
-  }
-}
-
-@keyframes axiom-seal-rotate {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 @keyframes axiom-blink {
   0%,
   49% {
@@ -473,15 +442,6 @@ pre {
   50%,
   100% {
     opacity: 0;
-  }
-}
-
-@keyframes axiom-beam {
-  from {
-    transform: translateX(-100%);
-  }
-  to {
-    transform: translateX(100%);
   }
 }
 
@@ -579,10 +539,6 @@ pre {
   align-items: center;
 }
 
-.landing-cta-row--center {
-  justify-content: center;
-}
-
 .landing-btn {
   text-decoration: none;
 }
@@ -625,13 +581,6 @@ pre {
   letter-spacing: -0.02em;
 }
 
-.landing-h3 {
-  font-family: var(--font-display);
-  font-size: var(--text-lg);
-  color: var(--c-text-primary);
-  margin: 0 0 var(--space-md);
-}
-
 .landing-sub {
   margin: 0 0 var(--space-xl);
   color: var(--c-text-muted);
@@ -666,27 +615,6 @@ pre {
   color: var(--c-text-muted);
   line-height: var(--lh-snug);
   max-width: 58ch;
-}
-
-.landing-note {
-  border-left: 3px solid var(--c-warning);
-  padding: var(--space-lg) var(--space-xl);
-  background: var(--c-surface);
-  border-radius: 0 var(--radius-md) var(--radius-md) 0;
-}
-
-.landing-plain-list {
-  margin: 0;
-  padding-left: 1.15rem;
-  color: var(--c-text-muted);
-  font-size: var(--text-sm);
-  line-height: 1.65;
-  max-width: 62ch;
-}
-
-.landing-plain-list strong {
-  color: var(--c-text-primary);
-  font-weight: var(--fw-semibold);
 }
 
 .shell {
@@ -851,24 +779,6 @@ pre {
   border-color: var(--c-border-strong);
 }
 
-.shell-ghost-hint {
-  background: none;
-  border: 1px solid transparent;
-  color: var(--c-text-dim);
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  width: 1.75rem;
-  height: 1.75rem;
-  border-radius: var(--radius-sm);
-  cursor: help;
-  padding: 0;
-}
-
-.shell-ghost-hint:hover {
-  color: var(--c-text-muted);
-  border-color: var(--c-border);
-}
-
 .shell-mint-btn {
   display: inline-flex;
   align-items: center;
@@ -887,12 +797,6 @@ pre {
 
 .shell-mint-btn:hover {
   filter: brightness(1.08);
-}
-
-.shell-mint-btn--block {
-  width: 100%;
-  margin-top: var(--space-sm);
-  border-radius: var(--radius-md);
 }
 
 .shell-wallet {
@@ -1169,8 +1073,7 @@ html[data-theme="light"] .chat-topbar {
   align-items: center;
 }
 
-.shell-footer__links a,
-.shell-footer__mint {
+.shell-footer__links a {
   font-size: var(--text-sm);
   color: var(--c-text-muted);
   text-decoration: none;
@@ -1182,8 +1085,7 @@ html[data-theme="light"] .chat-topbar {
   font-weight: var(--fw-medium);
 }
 
-.shell-footer__links a:hover,
-.shell-footer__mint:hover {
+.shell-footer__links a:hover {
   color: var(--c-bronze-light);
 }
 
@@ -1471,21 +1373,8 @@ html[data-theme="light"] .landing-root {
   }
 }
 
-.phosphor-pulse {
-  animation: axiom-phosphor-pulse 2s var(--ease-in-out) infinite;
-}
-
-.seal-rotate {
-  animation: axiom-seal-rotate 20s linear infinite;
-  transform-origin: center;
-}
-
 .caret-blink {
   animation: axiom-blink 1s step-end infinite;
-}
-
-.beam {
-  animation: axiom-beam 3s linear infinite;
 }
 
 .prompt-card {
@@ -1722,10 +1611,7 @@ select {
     stroke-dashoffset: 0 !important;
   }
   /* Decorative infinite animations: stop */
-  .phosphor-pulse,
-  .seal-rotate,
-  .caret-blink,
-  .beam {
+  .caret-blink {
     animation: none !important;
   }
 }

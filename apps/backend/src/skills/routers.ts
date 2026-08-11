@@ -36,10 +36,6 @@ import {
   osintCourtlistenerSchema,
   unbrokerSchema,
   unbrokerAnalyzeSchema,
-  ossInvestigateSchema,
-  ossCommitsSchema,
-  ossIocSchema,
-  ossAuditSchema,
 } from "@axiom/config/skills/schemas";
 
 const logEvm = createLogger("skills:evm");
@@ -104,8 +100,7 @@ interface SkillRouteDef<S extends z.ZodTypeAny = z.ZodTypeAny> {
   schema: S;
   description: string;
   handler: SkillHandlerFn<S>;
-  requiresGithubToken?: boolean;
-  /** When true only server API key may call (forensics / destructive skills). */
+  /** When true only server API key may call (destructive skills). */
   requiresServerAuth?: boolean;
 }
 
@@ -114,7 +109,6 @@ function skill<S extends z.ZodTypeAny>(
   schema: S,
   description: string,
   handler: SkillHandlerFn<S>,
-  requiresGithubToken = false,
   requiresServerAuth = false,
 ): SkillRouteDef<S> {
   return {
@@ -122,7 +116,6 @@ function skill<S extends z.ZodTypeAny>(
     schema,
     description,
     handler,
-    requiresGithubToken,
     requiresServerAuth,
   };
 }
@@ -148,12 +141,6 @@ function registerSkillRoutes(
             code: "SERVER_KEY_REQUIRED",
           };
       }
-      if (r.requiresGithubToken && !process.env.GITHUB_TOKEN)
-        return {
-          ok: false,
-          error:
-            "GITHUB_TOKEN is not configured on the server; OSS forensics requires a GitHub token",
-        };
       return r.handler(parsed, req, res, helpers);
     };
     route(
@@ -161,14 +148,6 @@ function registerSkillRoutes(
       handler,
     );
   }
-}
-
-export function redactIocMatch(raw: string, patternName: string): string {
-  if (patternName === "ipv4" || patternName === "domain") {
-    return raw; // ipv4/domain matches are public data, not secrets — no redaction needed
-  }
-  if (raw.length <= 8) return `[redacted:${patternName}]`;
-  return `${raw.slice(0, 4)}…${raw.slice(-4)} [redacted:${patternName}]`;
 }
 
 export const whaleSchema = evmWhaleSchema;
@@ -306,174 +285,6 @@ async function ofacFetch(path: string): Promise<string> {
 }
 
 const logUnbroker = createLogger("skills:unbroker");
-
-const CACHE_TTL_MS = 120_000;
-const cache = new TTLCache<unknown>(CACHE_TTL_MS);
-const GITHUB_API = "https://api.github.com";
-const ghGet = cachedJsonGet(GITHUB_API, { ttlMs: CACHE_TTL_MS });
-const logForensics = createLogger("oss-forensics");
-
-function ghHeaders(): Record<string, string> {
-  const h: Record<string, string> = { Accept: "application/vnd.github+json" };
-  const token = process.env.GITHUB_TOKEN;
-  if (token) h.Authorization = `Bearer ${token}`;
-  return h;
-}
-
-async function ghFetch(path: string): Promise<unknown> {
-  return ghGet(`gh:${path}`, path, { headers: ghHeaders() });
-}
-
-async function fetchGithubText(
-  // shared by scanIocs() and auditDeps(); GitHub content is base64-decoded, null when absent
-  owner: string,
-  repo: string,
-  filePath: string,
-  cacheKey: string,
-): Promise<string | null> {
-  const cached = cache.get(cacheKey);
-  if (cached !== undefined) return cached as string;
-  const blob = await ghFetch(`/repos/${owner}/${repo}/contents/${filePath}`);
-  const b64 = (blob as Record<string, unknown>).content as string;
-  if (!b64) return null;
-  const content = Buffer.from(b64, "base64").toString("utf-8");
-  cache.set(cacheKey, content);
-  return content;
-}
-
-async function investigateRepo(owner: string, repo: string) {
-  const info = await ghFetch(`/repos/${owner}/${repo}`);
-  const languages = await ghFetch(`/repos/${owner}/${repo}/languages`);
-  const contributors = await ghFetch(
-    `/repos/${owner}/${repo}/contributors?per_page=10`,
-  );
-  return { info, languages, contributors };
-}
-
-function compareBytecode(bytecode: string) {
-  const hash = ethers.keccak256(
-    bytecode.startsWith("0x") ? bytecode : `0x${bytecode}`,
-  );
-  return { bytecodeHash: hash, length: bytecode.length };
-}
-
-async function fetchCommits(
-  owner: string,
-  repo: string,
-  sha?: string,
-  perPage = 30,
-) {
-  const q = sha ? `?sha=${sha}&per_page=${perPage}` : `?per_page=${perPage}`;
-  const commits = await ghFetch(`/repos/${owner}/${repo}/commits${q}`);
-  const list = Array.isArray(commits) ? commits : [];
-  const forcePushSuspects: string[] = [];
-  for (let i = 1; i < list.length; i++) {
-    const curr = list[i] as Record<string, unknown>;
-    const prev = list[i - 1] as Record<string, unknown>;
-    const currParents = (curr.parents as Array<{ sha: string }>) ?? [];
-    const prevSha = (prev as { sha: string }).sha;
-    if (currParents.length > 0 && currParents[0]?.sha !== prevSha) {
-      forcePushSuspects.push(curr.sha as string);
-    }
-  }
-  return { commits: list, forcePushSuspects };
-}
-
-const IOC_PATTERNS: Record<string, RegExp> = {
-  awsAccessKey: /\bAKIA[0-9A-Z]{16}\b/g,
-  stripeSecretKey: /\bsk_(?:live|test)_[0-9a-zA-Z]{24,}\b/g,
-  githubPat: /\bghp_[0-9a-zA-Z]{36,}\b/g,
-  privateKey: /-----BEGIN (?:RSA |EC )?PRIVATE KEY-----/g,
-  ipv4: /\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\b/g,
-  domain:
-    /\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:com|net|org|io|xyz|tk|ru|cn)\b/gi,
-};
-
-async function scanIocs(owner: string, repo: string, path?: string) {
-  const treePath = path ?? "";
-  const tree = await ghFetch(
-    `/repos/${owner}/${repo}/git/trees/HEAD?recursive=1`,
-  );
-  const entries =
-    ((tree as Record<string, unknown>).tree as Array<
-      Record<string, unknown>
-    >) ?? [];
-  const textFiles = entries.filter(
-    (e) =>
-      e.type === "blob" &&
-      /\.(?:js|ts|json|env|yaml|yml|toml|cfg|conf|txt|md)$/i.test(
-        e.path as string,
-      ),
-  );
-
-  const hits: Array<{ file: string; pattern: string; match: string }> = [];
-  const limit = path ? 1 : 20;
-  for (const entry of textFiles.slice(0, limit)) {
-    const fp = entry.path as string;
-    if (treePath && !fp.startsWith(treePath)) continue;
-    const key = `blob:${owner}/${repo}/${fp}`;
-    const content = await fetchGithubText(owner, repo, fp, key);
-    if (content === null) continue;
-    for (const [patternName, re] of Object.entries(IOC_PATTERNS)) {
-      const reInst = new RegExp(re.source, re.flags);
-      for (const m of content.matchAll(reInst)) {
-        hits.push({
-          file: fp,
-          pattern: patternName,
-          match: redactIocMatch(m[0], patternName),
-        });
-      }
-    }
-  }
-  return {
-    scanned: Math.min(textFiles.length, limit),
-    totalFiles: textFiles.length,
-    hits,
-  };
-}
-
-async function auditDeps(owner: string, repo: string) {
-  const deps: Record<string, unknown> = {};
-  for (const manifest of ["package.json", "Cargo.toml", "requirements.txt"]) {
-    try {
-      const key = `dep:${owner}/${repo}/${manifest}`;
-      const content = await fetchGithubText(owner, repo, manifest, key);
-      if (content === null) continue;
-      deps[manifest] = content;
-    } catch (err) {
-      logForensics.warn("auditDeps: failed to read manifest", {
-        err,
-        owner,
-        repo,
-        manifest,
-      });
-    }
-  }
-
-  let storageLayout: unknown = null;
-  try {
-    const key = `layout:${owner}/${repo}`;
-    storageLayout = cache.get(key);
-    if (!storageLayout) {
-      const layout = await ghFetch(`/repos/${owner}/${repo}/contents/out`);
-      const items = Array.isArray(layout) ? layout : [];
-      const slotFile = items.find((i: Record<string, unknown>) =>
-        (i.name as string)?.includes("storage-layout"),
-      );
-      if (slotFile) {
-        storageLayout = {
-          found: true,
-          file: (slotFile as Record<string, unknown>).name,
-        };
-        cache.set(key, storageLayout);
-      }
-    }
-  } catch (err) {
-    logForensics.warn("auditDeps: no storage layout dir", { err, owner, repo });
-  }
-
-  return { deps, storageLayout };
-}
 
 export function createSkillRouters(config: ServerConfig): Router {
   const { router, route } = createSkillRouter(config);
@@ -945,71 +756,6 @@ export function createSkillRouters(config: ServerConfig): Router {
           });
         }
       },
-    ),
-    skill(
-      "/v1/skills/unbroker/execute",
-      unbrokerSchema,
-      "Execute verified transfer (server key only)",
-      // No unbroker/pdd.py integration exists here (no pdd binary, ledger, or signing path), so a fake {status:"queued"} would mislead callers: truthful 501; real transfers flow via wallet signing (/v1/agents/:id/transfer).
-      async (_parsed, _req, res) => {
-        sendError(
-          res,
-          HTTP.NOT_IMPLEMENTED,
-          "unbroker execute is not implemented (no unbroker/pdd integration in this repo); use the wallet-signing transfer flow (/v1/agents/:id/transfer) instead",
-          "NOT_IMPLEMENTED",
-        );
-      },
-      false,
-      true,
-    ),
-
-    skill(
-      // OSS forensics: server key + GITHUB_TOKEN required; IOC matches redacted
-      "/v1/skills/oss-forensics/investigate",
-      ossInvestigateSchema,
-      "GitHub repo forensics + optional keccak256 bytecode comparison",
-      async (parsed) => {
-        const base = await investigateRepo(parsed.owner, parsed.repo);
-        const bytecode = parsed.bytecode
-          ? compareBytecode(parsed.bytecode)
-          : null;
-        return serialize({ ...base, bytecode });
-      },
-      true,
-      true,
-    ),
-    skill(
-      "/v1/skills/oss-forensics/commits",
-      ossCommitsSchema,
-      "Commit history with force-push detection",
-      async (parsed) =>
-        serialize(
-          await fetchCommits(
-            parsed.owner,
-            parsed.repo,
-            parsed.sha,
-            parsed.perPage,
-          ),
-        ),
-      true,
-      true,
-    ),
-    skill(
-      "/v1/skills/oss-forensics/ioc",
-      ossIocSchema,
-      "IOC regex scan (secret matches redacted)",
-      async (parsed) =>
-        serialize(await scanIocs(parsed.owner, parsed.repo, parsed.path)),
-      true,
-      true,
-    ),
-    skill(
-      "/v1/skills/oss-forensics/audit",
-      ossAuditSchema,
-      "Dependency manifest audit + storage layout detection",
-      async (parsed) => serialize(await auditDeps(parsed.owner, parsed.repo)),
-      true,
-      true,
     ),
   ]);
 

@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { useAccount, useWalletClient } from "wagmi";
 import { useMutation } from "@tanstack/react-query";
-import { keccak256, toBytes, toHex } from "viem";
+import { keccak256, toHex } from "viem";
 import { humanizeError } from "../utils/format.js";
 import {
   apiFetch,
@@ -26,33 +26,17 @@ type MintWizardStep = "name" | "minting" | "ready";
 export function useMintWizard() {
   const [step, setStep] = useState<MintWizardStep>("name");
   const [agentName, setAgentName] = useState("");
-  const [payloadText, setPayloadText] = useState("");
-  const [dataHash, setDataHash] = useState<`0x${string}` | "">("");
-  const [oracleOk, setOracleOk] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { address: owner } = useAccount();
   const { data: walletClient } = useWalletClient();
-
-  const ensurePayload = useCallback(
-    (name?: string) => {
-      const n = (name ?? agentName).trim();
-      const payload = buildDefaultPayload(n);
-      setPayloadText(payload);
-      return payload;
-    },
-    [agentName],
-  );
 
   const deriveDataHash = useCallback(
     (name?: string) => {
       const n = (name ?? agentName).trim() || "Axiom agent";
       // dataHash = keccak256(toHex(name)) must match the chat mint_agent derivation (oracle signs only hashes it has SEEN); real hash is the 0G Merkle root once the payload uploads
-      const hash = keccak256(toHex(n));
-      ensurePayload(name); // keeps the metadata preview in sync with the chosen name
-      setDataHash(hash);
-      return hash;
+      return keccak256(toHex(n));
     },
-    [agentName, ensurePayload],
+    [agentName],
   );
 
   const oracleMutation = useMutation({
@@ -98,7 +82,6 @@ export function useMintWizard() {
         const hash = deriveDataHash(name);
         const body = await oracleMutation.mutateAsync(hash);
         if (body.ok !== true) throw new Error("Oracle did not accept dataHash");
-        setOracleOk(true);
         setStep("ready");
         return hash;
       } catch (err) {
@@ -120,16 +103,8 @@ export function useMintWizard() {
   );
 
   return {
-    step,
-    setStep,
     agentName,
     setAgentName,
-    payloadText,
-    setPayloadText,
-    dataHash,
-    deriveDataHash,
-    ensurePayload,
-    oracleOk,
     registerOracle,
     chainMint,
     error,
@@ -137,9 +112,5 @@ export function useMintWizard() {
       oracleMutation.isPending ||
       encodeMutation.isPending ||
       step === "minting",
-    setError,
-    payloadPreview: payloadText.trim()
-      ? toHex(toBytes(payloadText.trim())).slice(0, 42) + "…"
-      : null,
   };
 }

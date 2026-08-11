@@ -5,7 +5,6 @@ interface UseAsyncActionResult {
   cancel: () => void;
   isLoading: boolean;
   error: Error | null;
-  reset: () => void;
 }
 
 export function useAsyncAction(): UseAsyncActionResult {
@@ -51,10 +50,5 @@ export function useAsyncAction(): UseAsyncActionResult {
     abortRef.current?.abort();
   }, []);
 
-  const reset = useCallback(() => {
-    setError(null);
-    setIsLoading(false);
-  }, []);
-
-  return { execute, cancel, isLoading, error, reset };
+  return { execute, cancel, isLoading, error };
 }

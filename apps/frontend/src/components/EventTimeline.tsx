@@ -12,35 +12,12 @@ type EventRenderer = (
 interface EventTimelineProps {
   events: readonly AxiomEvent[];
   renderEvent: EventRenderer;
-  locale?: string;
-  timeZone?: string;
-  emptyState?: ReactNode;
-  loadingState?: ReactNode;
-  isLoading?: boolean;
 }
 
-const formatterCache = new Map<string, Intl.DateTimeFormat>();
-const MAX_CACHE_SIZE = 20;
-
-function getFormatter(
-  locale: string,
-  timeZone: string | undefined,
-): Intl.DateTimeFormat {
-  const key = timeZone === undefined ? locale : `${locale}::${timeZone}`;
-  const cached = formatterCache.get(key);
-  if (cached !== undefined) return cached;
-  if (formatterCache.size >= MAX_CACHE_SIZE) {
-    const first = formatterCache.keys().next();
-    if (first.value !== undefined) formatterCache.delete(first.value);
-  }
-  const fmt = new Intl.DateTimeFormat(locale, {
-    dateStyle: "medium",
-    timeStyle: "medium",
-    timeZone,
-  });
-  formatterCache.set(key, fmt);
-  return fmt;
-}
+const formatter = new Intl.DateTimeFormat("en-US", {
+  dateStyle: "medium",
+  timeStyle: "medium",
+});
 
 const ROW_GAP = "12px";
 
@@ -92,11 +69,6 @@ const emptyStateStyle: React.CSSProperties = {
 export const EventTimeline = React.memo(function EventTimeline({
   events,
   renderEvent,
-  locale = "en-US",
-  timeZone,
-  emptyState,
-  loadingState,
-  isLoading = false,
 }: EventTimelineProps): ReactElement {
   const [expanded, setExpanded] = useState(false);
   const isNarrow = useMediaQuery("(max-width: 479px)");
@@ -110,42 +82,28 @@ export const EventTimeline = React.memo(function EventTimeline({
     width: "100%",
   };
 
-  if (isLoading) {
-    return (
-      <section aria-busy="true" aria-label="Event timeline" style={baseStyle}>
-        <div style={emptyStateStyle}>
-          {loadingState ?? "Loading events\u2026"}
-        </div>
-      </section>
-    );
-  }
-
   if (events.length === 0) {
     return (
       <section aria-label="Event timeline" style={baseStyle}>
-        <div style={emptyStateStyle}>{emptyState ?? "No events yet."}</div>
+        <div style={emptyStateStyle}>No events yet.</div>
       </section>
     );
   }
 
-  const formatter = getFormatter(locale, timeZone);
   const EVENT_LIMIT = 50;
   const hasMore = events.length > EVENT_LIMIT;
   const displayed = expanded ? events : events.slice(0, EVENT_LIMIT);
 
   return (
     <section aria-label="Event timeline" style={baseStyle}>
-      {displayed.map((event) => {
-        const timestamp = formatter.format(new Date(event.receivedAt));
-        return (
-          <EventRow
-            key={eventKey(event)}
-            event={event}
-            timestamp={timestamp}
-            renderEvent={renderEvent}
-          />
-        );
-      })}
+      {displayed.map((event) => (
+        <EventRow
+          key={eventKey(event)}
+          event={event}
+          timestamp={formatter.format(new Date(event.receivedAt))}
+          renderEvent={renderEvent}
+        />
+      ))}
       {hasMore && !expanded && (
         <div style={{ gridColumn: "1 / -1", textAlign: "center" }}>
           <Button variant="teal" onClick={() => setExpanded(true)}>

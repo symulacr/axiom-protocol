@@ -8,7 +8,6 @@ const PREFIX_MAP: Record<string, string> = {
   stocks_: "/v1/skills/stocks/",
   unbroker_: "/v1/skills/unbroker/",
   osint_: "/v1/skills/osint/",
-  oss_forensics_: "/v1/skills/oss-forensics/",
 };
 
 export function resolveEndpoint(name: string): string {

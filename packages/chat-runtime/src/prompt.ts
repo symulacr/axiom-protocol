@@ -15,8 +15,7 @@ const CLASS_GUIDANCE: Record<ChatToolClass, string> = {
     "Vault strategy ticks — prefer simulate_tick before execute_tick when unsure.",
   archive: "Web archive lookups via Wayback Machine.",
   ask: "Pause and ask the user when input is missing or ambiguous.",
-  skill:
-    "Composed multi-step skills (server-key gated for oss_forensics_*/unbroker_execute).",
+  skill: "Composed multi-step skills (wallet-gated where required).",
 };
 
 const PROMPT_HEAD = [
@@ -48,7 +47,6 @@ const PROMPT_TAIL = [
   `ARCHIVE — ${CLASS_GUIDANCE.archive}`,
   `ASK — ${CLASS_GUIDANCE.ask}`,
   `SKILL — ${CLASS_GUIDANCE.skill}`,
-  "Client keys cannot call oss_forensics_* or unbroker_execute (server key only).",
 ].join("\n\n");
 
 export function buildSystemPrompt(session: ChatSessionContext): string {

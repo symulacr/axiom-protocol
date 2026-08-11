@@ -49,17 +49,9 @@ type UsePaymentResult = {
   setRoyalty: (tokenId: bigint, bps: number) => Promise<RoyaltyResult>;
   getPaymentConfig: () => Promise<PaymentConfig>;
   isPayLoading: boolean;
-  payError: Error | null;
   isRoyaltyLoading: boolean;
-  royaltyError: Error | null;
-  isFetching: boolean;
   fetchError: Error | null;
-  isEarningsLoading: boolean;
   earningsError: Error | null;
-  resetPay: () => void;
-  resetRoyalty: () => void;
-  resetFetch: () => void;
-  resetEarnings: () => void;
 };
 
 export function usePayment(): UsePaymentResult {
@@ -72,11 +64,6 @@ export function usePayment(): UsePaymentResult {
 
   const { write } = useGenericWrite();
   const [isPayLoading, setPayLoading] = useState(false);
-  const [payError, setPayError] = useState<Error | null>(null);
-  const resetPay = useCallback(() => {
-    setPayLoading(false);
-    setPayError(null);
-  }, []);
 
   const getPaymentConfig = useCallback(
     (): Promise<PaymentConfig> =>
@@ -92,7 +79,6 @@ export function usePayment(): UsePaymentResult {
   const payForAgent = useCallback(
     async (tokenId: bigint, amount: string): Promise<AgentPayResult> => {
       setPayLoading(true);
-      setPayError(null);
       try {
         const processor = getAxiomPaymentProcessorAddress(chainId);
         // Exact-amount approval mirrors backend ensureAllowance — never MaxUint256; matches the contract's "approve for amount" requirement (infinity approvals only in the E2E harness)
@@ -130,7 +116,6 @@ export function usePayment(): UsePaymentResult {
         };
       } catch (err) {
         setPayLoading(false);
-        setPayError(err instanceof Error ? err : new Error(String(err)));
         throw err;
       }
     },
@@ -166,16 +151,8 @@ export function usePayment(): UsePaymentResult {
     setRoyalty,
     getPaymentConfig,
     isPayLoading,
-    payError,
     isRoyaltyLoading: royaltyAction.isLoading,
-    royaltyError: royaltyAction.error,
-    isFetching: fetchAction.isLoading,
     fetchError: fetchAction.error,
-    isEarningsLoading: earningsAction.isLoading,
     earningsError: earningsAction.error,
-    resetPay,
-    resetRoyalty: royaltyAction.reset,
-    resetFetch: fetchAction.reset,
-    resetEarnings: earningsAction.reset,
   };
 }

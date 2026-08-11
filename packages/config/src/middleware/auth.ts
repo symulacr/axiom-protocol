@@ -47,7 +47,7 @@ const CLIENT_ALLOWED_ROUTES: ReadonlyArray<{
       p === "/v1/chat/completions" ||
       p === "/v1/orchestrator/tick",
   },
-  // Public market data skills only — not forensics, not unbroker execute
+  // Public market data skills only — unbroker transfer ops stay server-gated
   {
     match: (p) =>
       p.startsWith("/v1/skills/evm/") ||

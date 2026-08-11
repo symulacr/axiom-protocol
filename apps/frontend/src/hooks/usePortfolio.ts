@@ -18,7 +18,6 @@ export function usePortfolio(): {
   isLoading: boolean;
   error: Error | null;
   vaultMap: Map<string, VaultDataEntry>;
-  vaultLoading: boolean;
   perfMap: Map<string, PerformanceMetrics>;
   loading: boolean;
 } {
@@ -33,7 +32,6 @@ export function usePortfolio(): {
     isLoading,
     error,
     vaultMap,
-    vaultLoading,
     perfMap,
     loading: isLoading || vaultLoading,
   };

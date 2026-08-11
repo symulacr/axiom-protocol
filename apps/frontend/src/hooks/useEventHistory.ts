@@ -40,7 +40,6 @@ interface EventsResponse {
 
 interface UseEventHistoryResult {
   events: AxiomEvent[];
-  byName: Record<string, AxiomEvent[]>;
   isLoading: boolean;
   error: Error | null;
   refetch: () => void;
@@ -54,21 +53,6 @@ interface UseEventHistoryOptions {
 
 const DEFAULT_POLL_INTERVAL_MS = 15_000;
 const MAX_EVENTS = 500;
-
-function groupByName(
-  events: readonly AxiomEvent[],
-): Record<string, AxiomEvent[]> {
-  const out: Record<string, AxiomEvent[]> = {};
-  for (const ev of events) {
-    const bucket = out[ev.eventName];
-    if (bucket !== undefined) {
-      bucket.push(ev);
-    } else {
-      out[ev.eventName] = [ev];
-    }
-  }
-  return out;
-}
 
 export function useEventHistory(
   options: UseEventHistoryOptions = {},
@@ -133,14 +117,8 @@ export function useEventHistory(
     return capped;
   }, [query.data]);
 
-  const byName = useMemo<Record<string, AxiomEvent[]>>(
-    () => groupByName(events),
-    [events],
-  );
-
   return {
     events,
-    byName,
     isLoading: query.isFetching,
     error: query.error,
     refetch: () => void query.refetch(),

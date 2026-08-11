@@ -1,12 +1,11 @@
 import { useCallback, useState } from "react";
-import { useChainId, useWalletClient } from "wagmi";
+import { useWalletClient } from "wagmi";
 import { apiFetch, type EncodeResponse } from "../utils/apiFetch.js";
 import { validateNumericInput } from "../utils/format.js";
 import { useVaultData } from "./useVaultData.js";
 import { useWriteToast } from "./useWriteToast.js";
 
 export function useWithdraw(tokenId: bigint, onSuccess?: () => void) {
-  const chainId = useChainId();
   const vd = useVaultData(tokenId);
   const { data: walletClient } = useWalletClient();
   const [withdrawAmount, setWithdrawAmount] = useState("");
@@ -54,7 +53,6 @@ export function useWithdraw(tokenId: bigint, onSuccess?: () => void) {
     tokenId,
     vd,
     onSuccess,
-    chainId,
     toastSuccess,
     toastError,
   ]);

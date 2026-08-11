@@ -24,7 +24,6 @@ export type { TransferInput, TransferResponse, TransferPhase };
 type UseTransferResult = {
   prepare: (input: TransferInput) => Promise<TransferResponse>;
   confirm: (input: TransferInput) => Promise<Hex>;
-  transfer: (input: TransferInput) => Promise<Hex>;
   isLoading: boolean;
   error: Error | null;
   signature: TransferResponse | null;
@@ -358,14 +357,6 @@ export function useTransfer(): UseTransferResult {
     [chainId, from, signature, write],
   );
 
-  const transfer = useCallback(
-    async (input: TransferInput): Promise<Hex> => {
-      await prepare(input);
-      return confirm(input);
-    },
-    [prepare, confirm],
-  );
-
   const reset = useCallback((): void => {
     setSignature(null);
     setTransferPhase("idle");
@@ -380,7 +371,6 @@ export function useTransfer(): UseTransferResult {
   return {
     prepare,
     confirm,
-    transfer,
     isLoading: isPreparing || challengeQuery.isFetching || isWritePending,
     error: prepareError ?? challengeQuery.error ?? (writeError as Error | null),
     signature,

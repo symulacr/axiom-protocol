@@ -94,27 +94,3 @@ export const unbrokerAnalyzeSchema = unbrokerSchema.extend({
     .object({ dataHash: z.string(), validUntil: z.number() })
     .optional(),
 });
-
-export const ossInvestigateSchema = z.object({
-  owner: z.string().min(1),
-  repo: z.string().min(1),
-  bytecode: z.string().optional(),
-});
-
-export const ossCommitsSchema = z.object({
-  owner: z.string().min(1),
-  repo: z.string().min(1),
-  sha: z.string().optional(),
-  perPage: z.coerce.number().int().min(1).max(100).optional(),
-});
-
-export const ossIocSchema = z.object({
-  owner: z.string().min(1),
-  repo: z.string().min(1),
-  path: z.string().optional(),
-});
-
-export const ossAuditSchema = z.object({
-  owner: z.string().min(1),
-  repo: z.string().min(1),
-});
