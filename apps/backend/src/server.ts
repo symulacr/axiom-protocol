@@ -54,7 +54,7 @@ import { registerEventRoutes } from "./routers/events.js";
 import { registerVaultRoutes } from "./routers/vault.js";
 import { registerPerformanceRoutes } from "./routers/performance.js";
 import { registerOrchestratorRoutes } from "./routers/orchestrator.js";
-import { createArchiveRouter } from "./routers/archive.js";
+import { createArchiveRouter } from "./services/archive.js";
 import { createSkillRouters } from "./skills/routers.js";
 import { createMcpRouter } from "./mcp/server.js";
 import { chatBodySchema, royaltySchema } from "./route-schemas.js";
@@ -66,7 +66,7 @@ import {
 	unregisterClient,
 	type ConnectedClient,
 } from "./ws/broadcaster.js";
-import { TTLCache } from "./utils/cache.js";
+import { TTLCache } from "./utils/response.js";
 import pkg from "../package.json" with { type: "json" };
 const log = createLogger("server");
 const PKG_VERSION = pkg.version;
@@ -701,16 +701,7 @@ function registerPaymentRoutes(
 			const cached = paymentConfigCache.get("config");
 			if (cached) return cached;
 			const client = await getPayment();
-			const [paymentToken, feeBps, treasury] = await Promise.all([
-				client.paymentToken(),
-				client.protocolFeeBps(),
-				client.protocolTreasury(),
-			]);
-			const result = {
-				paymentToken,
-				protocolFeeBps: feeBps,
-				protocolTreasury: treasury,
-			};
+			const result = await client.protocolConfig();
 			paymentConfigCache.set("config", result);
 			return result;
 		},

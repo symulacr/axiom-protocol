@@ -1,5 +1,5 @@
 import type { ToolResult } from "../types.js";
-import type { ToolRuntime } from "../transport.js";
+import { toolFail, type ToolRuntime } from "../transport.js";
 
 interface AskUserPrompt {
 	question: string;
@@ -48,11 +48,7 @@ export async function runAskTool(
 			content: JSON.stringify({ ask: true, ...buildAskUserPrompt(args) }),
 		};
 	} catch (err) {
-		return {
-			ok: false,
-			content: "",
-			error: err instanceof Error ? err.message : String(err),
-		};
+		return toolFail(err instanceof Error ? err.message : String(err));
 	}
 }
 

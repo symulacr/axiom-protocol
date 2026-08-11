@@ -20,14 +20,6 @@ function resolveEventSources(extra?: string): Set<string> {
 	return allowed;
 }
 
-function isAuthorizedKey(
-	provided: string | undefined,
-	expected: string | undefined,
-): boolean {
-	if (!expected) return false;
-	return timingSafeMatch(provided ?? "", [expected]);
-}
-
 type EventPostAuth =
 	| { ok: true }
 	| { ok: false; status: number; code: string; message: string };
@@ -49,7 +41,16 @@ function authorizeEventPost(opts: {
 			message: `rejected event from untrusted source: "${opts.source}"`,
 		};
 	}
-	if (!isAuthorizedKey(opts.indexerKey, opts.indexerApiKey)) {
+	if (!opts.indexerApiKey) {
+		return {
+			ok: false,
+			status: HTTP.UNAUTHORIZED,
+			code: "INDEXER_UNAUTHORIZED",
+			message:
+				"unauthorized: POST /v1/events requires the dedicated indexer API key",
+		};
+	}
+	if (!timingSafeMatch(opts.indexerKey ?? "", [opts.indexerApiKey])) {
 		return {
 			ok: false,
 			status: HTTP.UNAUTHORIZED,

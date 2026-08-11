@@ -8,7 +8,6 @@ export const backendEnvSchema = sharedEnvSchema.merge(
     AXIOM_ORACLE_URL: z.string().url(),
     AXIOM_INDEXER_API_KEY: z.string().optional(),
     AXIOM_EVM_RPC: z.string().url(),
-    AXIOM_SENTRY_DSN: z.string().optional(),
     AXIOM_STORAGE_RPC: z.string().url().optional(),
     INDEXER_POLL_WINDOW_BLOCKS: z
       .coerce.number()

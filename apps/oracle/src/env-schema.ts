@@ -10,7 +10,6 @@ const baseSchema = sharedEnvSchema.merge(
     AXIOM_TEE_VERIFIER_ADDRESS: address.optional(),
     AXIOM_TEE_VERIFIER: address.optional(),
     AXIOM_EVM_RPC: z.string().url(),
-    AXIOM_SENTRY_DSN: z.string().optional(),
     AXIOM_ORACLE_BIND: z.string().default("0.0.0.0"),
     AXIOM_ORACLE_PORT: z.coerce.number().int().positive().default(8787),
     AXIOM_STORAGE_PRIVATE_KEY: hexString.optional(),

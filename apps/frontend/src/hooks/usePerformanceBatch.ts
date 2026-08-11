@@ -29,7 +29,6 @@ export function usePerformanceBatch(tokenIds: readonly bigint[]): {
 
   const { data, isLoading, error, refetch } =
     usePolledApi<BatchPerformanceResponse>(url, {
-      refetchInterval: 30_000,
       enabled,
       queryKey: ["performance-batch", ids],
     });

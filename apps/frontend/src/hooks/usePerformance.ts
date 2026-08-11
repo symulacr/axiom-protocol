@@ -37,7 +37,6 @@ export function usePerformance(
   const { data, isLoading, error, refetch } = usePolledApi<PerformanceResponse>(
     url,
     {
-      refetchInterval: 30_000,
       enabled,
       queryKey: ["performance", tokenId?.toString()],
     },

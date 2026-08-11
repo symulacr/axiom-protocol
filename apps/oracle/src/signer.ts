@@ -13,19 +13,15 @@ import {
 } from "@axiom/config/eip712";
 
 
-export function ownershipMessageHash(
+export const ownershipMessageHash = (
   input: OwnershipProofInput,
   domain: Eip712Domain = DEFAULT_EIP712_DOMAIN,
-): Hex {
-  return eip712OwnershipMessageHash(input, domain);
-}
+): Hex => eip712OwnershipMessageHash(input, domain);
 
-export function accessMessageHash(
+export const accessMessageHash = (
   input: AccessProofInput,
   domain: Eip712Domain = DEFAULT_EIP712_DOMAIN,
-): Hex {
-  return eip712AccessMessageHash(input, domain);
-}
+): Hex => eip712AccessMessageHash(input, domain);
 
 export class TeeSigner {
   readonly wallet: Wallet;

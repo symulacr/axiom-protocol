@@ -16,7 +16,7 @@ import {
 } from "@axiom/config/types/contract";
 import { type ServerConfig, isUpstreamTransportError } from "../server.js";
 import { sendError, extractErrorMessage } from "../utils/response.js";
-import { TTLCache } from "../utils/cache.js";
+import { TTLCache } from "../utils/response.js";
 import { TRANSFER_TOPIC } from "@axiom/config";
 import type { DefaultSignerOracleClient } from "../oracle/client.js";
 import { createLogger } from "../utils/logger.js";

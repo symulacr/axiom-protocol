@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
 import { COLORS } from "./components/ui.js";
 import { App } from "./App";
-import { WagmiConfigProvider } from "./config/WagmiConfigProvider";
+import { WagmiConfigProvider } from "./config/wagmi";
 import "@rainbow-me/rainbowkit/styles.css";
 import "./styles/index.css";
 

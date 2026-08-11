@@ -1,14 +1,87 @@
-import type { JsonRpcProvider } from "ethers";
+import type { JsonRpcProvider, Log } from "ethers";
+import { rename, mkdir } from "node:fs/promises";
+import { join, dirname } from "node:path";
 import { EVENT_NAMES, getRuntimeConfig } from "@axiom/config";
+import { getEnv } from "@axiom/config/env";
 import {
 	resolveIndexerAddresses,
 	type AxiomEvent,
 	type EventName,
 	type IndexerContractAddresses,
 } from "./events.js";
-import { decodeAxiomLog, type WatchedEvent } from "./events/parser.js";
-import { pollOnce, logsByChainOrder } from "./watcher/poll.js";
-import { loadCheckpoint, saveCheckpoint } from "./watcher/checkpoint.js";
+import { TOPIC_TABLE, decodeAxiomLog, type WatchedEvent } from "./events/parser.js";
+
+function getCheckpointFile(chainId: bigint): string {
+	const dataDir = getEnv("AXIOM_DATA_DIR") || "data";
+	const checkpointDir = join(dataDir, "checkpoints");
+	return join(checkpointDir, `checkpoint-${chainId}.json`);
+}
+export async function loadCheckpoint(chainId: bigint): Promise<number | null> {
+	const checkpointFile = getCheckpointFile(chainId);
+	try {
+		const data = await Bun.file(checkpointFile).text();
+		const parsed = JSON.parse(data);
+		if (
+			typeof parsed.nextBlock === "number" &&
+			Number.isInteger(parsed.nextBlock) &&
+			parsed.nextBlock > 0
+		) {
+			return parsed.nextBlock;
+		}
+	} catch (err) {
+		console.warn("[watcher] failed to load checkpoint:", err);
+	}
+	return null;
+}
+export async function saveCheckpoint(
+	chainId: bigint,
+	nextBlock: number,
+): Promise<void> {
+	const checkpointFile = getCheckpointFile(chainId);
+	const tmp = checkpointFile + ".tmp";
+	try {
+		await mkdir(dirname(checkpointFile), { recursive: true });
+		// Bun.write uses the fastest syscall; rename/mkdir stay node:fs/promises
+		// (Bun docs route directory ops to node:fs).
+		await Bun.write(tmp, JSON.stringify({ nextBlock, updatedAt: Date.now() }));
+		await rename(tmp, checkpointFile);
+	} catch (err) {
+		console.error("[watcher] failed to save checkpoint:", err);
+	}
+}
+
+export async function pollOnce(
+  provider: JsonRpcProvider,
+  watchList: readonly WatchedEvent[],
+  fromBlock: bigint,
+  window: bigint,
+) {
+  const toBlock = fromBlock + window - 1n;
+  const allLogs: Log[] = [];
+  // Group by contract address for multi-topic batching (4 calls vs 31)
+  const byAddress = new Map<string, string[]>();
+  for (const { name, address } of watchList) {
+    const key = address.toLowerCase();
+    const list = byAddress.get(key);
+    if (list) { list.push(TOPIC_TABLE[name]); }
+    else { byAddress.set(key, [TOPIC_TABLE[name]]); }
+  }
+  for (const [addr, topics] of byAddress) {
+    const filter = { address: addr, topics: [topics], fromBlock, toBlock };
+    const logs = await provider.getLogs(filter);
+    for (const log of logs) allLogs.push(log);
+  }
+  return allLogs;
+}
+export function logsByChainOrder(a: Log, b: Log) {
+  if (a.blockNumber !== b.blockNumber) {
+    return a.blockNumber < b.blockNumber ? -1 : 1;
+  }
+  if (a.index !== b.index) {
+    return a.index < b.index ? -1 : 1;
+  }
+  return 0;
+}
 
 const runtimeConfig = getRuntimeConfig();
 

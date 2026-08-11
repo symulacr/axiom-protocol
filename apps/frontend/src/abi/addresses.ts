@@ -7,20 +7,17 @@ import type { Address } from "viem";
 // filesystem access to deployed.json at runtime. The env values are
 // populated from deployed.json by the deployment pipeline.
 //
+// Only the primary AXIOM_* names are needed: resolveAddress (config)
+// iterates each contract's alias list and returns on the first non-empty
+// value, and every alias pointed at the same VITE_ variable. mockUsdc is
+// resolved on-chain via the payment config, never from this map.
+//
 
 const env: Record<string, unknown> = {
   AXIOM_AGENT_NFT_ADDRESS: import.meta.env.VITE_AGENT_NFT_ADDRESS,
-  AGENT_NFT_ADDRESS: import.meta.env.VITE_AGENT_NFT_ADDRESS,
   AXIOM_STRATEGY_VAULT_ADDRESS: import.meta.env.VITE_STRATEGY_VAULT_ADDRESS,
-  VAULT_ADDRESS: import.meta.env.VITE_STRATEGY_VAULT_ADDRESS,
   AXIOM_TEE_VERIFIER_ADDRESS: import.meta.env.VITE_TEE_VERIFIER_ADDRESS,
-  AXIOM_TEE_VERIFIER: import.meta.env.VITE_TEE_VERIFIER_ADDRESS,
   AXIOM_PAYMENT_PROCESSOR_ADDRESS: import.meta.env.VITE_PAYMENT_PROCESSOR_ADDRESS,
-  PAYMENT_PROCESSOR_ADDRESS: import.meta.env.VITE_PAYMENT_PROCESSOR_ADDRESS,
-  AXIOM_PAYMENT_PROCESSOR: import.meta.env.VITE_PAYMENT_PROCESSOR_ADDRESS,
-  // Mock USDC only used by payment flows — resolved on demand if needed
-  AXIOM_MOCK_USDC_ADDRESS: import.meta.env.VITE_MOCK_USDC_ADDRESS,
-  AXIOM_PAYMENT_TOKEN: import.meta.env.VITE_MOCK_USDC_ADDRESS,
 };
 
 // Resolve only contracts required for app shell / agents / vault — do not

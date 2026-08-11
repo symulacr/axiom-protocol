@@ -133,16 +133,17 @@ export class PaymentProcessorClient {
 		return this.payment.contract.agentEarningsOf(creator);
 	}
 
-	async protocolFeeBps(): Promise<bigint> {
-		return this.payment.contract.protocolFeeBps();
-	}
-
-	async protocolTreasury(): Promise<string> {
-		return this.payment.contract.protocolTreasury();
-	}
-
-	async paymentToken(): Promise<string> {
-		return this.payment.contract.paymentToken();
+	async protocolConfig(): Promise<{
+		paymentToken: string;
+		protocolFeeBps: bigint;
+		protocolTreasury: string;
+	}> {
+		const [paymentToken, protocolFeeBps, protocolTreasury] = await Promise.all([
+			this.payment.contract.paymentToken(),
+			this.payment.contract.protocolFeeBps(),
+			this.payment.contract.protocolTreasury(),
+		]);
+		return { paymentToken, protocolFeeBps, protocolTreasury };
 	}
 
 	private async ensureAllowance(amount: bigint): Promise<void> {

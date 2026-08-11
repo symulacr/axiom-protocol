@@ -14,13 +14,11 @@ export function pubKeyToAddress(uncompressed: Uint8Array): `0x${string}` {
   return ("0x" + Buffer.from(hash).toString("hex").slice(-40)) as `0x${string}`;
 }
 
-export function deriveRawPubkeyFromHex(privateKeyHex: string) {
+export function deriveUncompressedPubkeyFromHex(privateKeyHex: string) {
   return publicKeyUncompressedFromPrivate(
     Uint8Array.from(Buffer.from(privateKeyHex.replace(/^0x/, ""), "hex")),
   );
 }
-
-export const deriveUncompressedPubkeyFromHex = deriveRawPubkeyFromHex;
 
 function toCompressed(uncompressedOrFull: Uint8Array): Uint8Array {
   if (uncompressedOrFull.length === 33) return uncompressedOrFull;

@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
   type ReactElement,
+  type RefObject,
 } from "react";
 import {
   Link,
@@ -21,22 +22,148 @@ import { useAccount } from "wagmi";
 import { ErrorBoundary } from "./components/ErrorBoundary.js";
 import { BRAND } from "./brand/assets.js";
 import { HealthBadge } from "./components/HealthBadge.js";
-import {
-  ConnectedGuard,
-  Kbd,
-  Modal,
-  Spinner,
-} from "./components/ui.js";
+import { ConnectedGuard, Kbd, Modal, Spinner } from "./components/ui.js";
 import { useMediaQuery } from "./hooks/useMediaQuery.js";
-import { useFocusTrap } from "./hooks/useFocusTrap.js";
-import { useTheme } from "./hooks/useTheme.js";
-import {
-  APP_CHAT,
-  APP_HOME,
-  PRIMARY_NAV,
-  isMintOpen,
-  withMintOpen,
-} from "./navigation/ia.js";
+
+/**
+ * Axiom Protocol — primary information architecture (single source of truth).
+ * Primary shell: Home · Chat · Mint (modal action); deep page: Agent Detail.
+ */
+const APP_HOME = "/app" as const;
+const APP_CHAT = "/chat" as const;
+
+/** Query flag that opens the mint modal over the current route. */
+const MINT_QUERY = "mint" as const;
+const MINT_OPEN_VALUE = "1" as const;
+
+type PrimaryNavId = "home" | "chat" | "mint";
+type PrimaryNavItem = {
+  id: PrimaryNavId;
+  label: string;
+  path?: string;
+  kind: "link" | "action";
+  shortcut: string;
+};
+
+const PRIMARY_NAV: readonly PrimaryNavItem[] = [
+  { id: "home", label: "Home", path: APP_HOME, kind: "link", shortcut: "H" },
+  { id: "chat", label: "Chat", path: APP_CHAT, kind: "link", shortcut: "A" },
+  { id: "mint", label: "Mint", kind: "action", shortcut: "N" },
+] as const;
+
+function isMintOpen(search: string | URLSearchParams): boolean {
+  const params =
+    typeof search === "string" ? new URLSearchParams(search) : search;
+  return params.get(MINT_QUERY) === MINT_OPEN_VALUE;
+}
+
+function withMintOpen(
+  search: string | URLSearchParams,
+  open: boolean,
+): URLSearchParams {
+  const params =
+    typeof search === "string"
+      ? new URLSearchParams(search)
+      : new URLSearchParams(search);
+  if (open) params.set(MINT_QUERY, MINT_OPEN_VALUE);
+  else params.delete(MINT_QUERY);
+  return params;
+}
+
+type ThemeMode = "dark" | "light";
+const STORAGE_KEY = "axiom-theme";
+
+function readTheme(): ThemeMode {
+  try {
+    const v = localStorage.getItem(STORAGE_KEY);
+    if (v === "light" || v === "dark") return v;
+  } catch {
+    /* ignore */
+  }
+  return "dark";
+}
+
+function applyTheme(mode: ThemeMode): void {
+  document.documentElement.dataset.theme = mode;
+  document.documentElement.style.colorScheme = mode;
+}
+
+function useTheme(): {
+  theme: ThemeMode;
+  toggle: () => void;
+  setTheme: (m: ThemeMode) => void;
+} {
+  const [theme, setThemeState] = useState<ThemeMode>(() => {
+    if (typeof document !== "undefined") {
+      const t = readTheme();
+      applyTheme(t);
+      return t;
+    }
+    return "dark";
+  });
+
+  useEffect(() => {
+    applyTheme(theme);
+    try {
+      localStorage.setItem(STORAGE_KEY, theme);
+    } catch {
+      /* ignore */
+    }
+  }, [theme]);
+
+  const setTheme = useCallback((m: ThemeMode) => setThemeState(m), []);
+  const toggle = useCallback(() => {
+    setThemeState((t) => (t === "dark" ? "light" : "dark"));
+  }, []);
+
+  return { theme, toggle, setTheme };
+}
+
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+function getFocusable(container: HTMLElement): HTMLElement[] {
+  return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE));
+}
+
+function firstFocusable(container: HTMLElement): HTMLElement | null {
+  return (
+    getFocusable(container)[0] ?? container.querySelector<HTMLElement>("h2")
+  );
+}
+
+function useFocusTrap(
+  ref: RefObject<HTMLElement | null>,
+  active: boolean,
+): void {
+  useEffect(() => {
+    if (!active) return;
+    const container = ref.current;
+    if (!container) return;
+
+    firstFocusable(container)?.focus();
+
+    const el = container;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== "Tab") return;
+      const items = getFocusable(el);
+      const first = items[0] ?? el.querySelector<HTMLElement>("h2");
+      const last =
+        items[items.length - 1] ?? el.querySelector<HTMLElement>("h2");
+      if (!first || !last) return;
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+
+    el.addEventListener("keydown", onKeyDown);
+    return () => el.removeEventListener("keydown", onKeyDown);
+  }, [ref, active]);
+}
 
 const AgentDetail = lazy(() => import("./pages/AgentDetail.js"));
 const MintForm = lazy(() =>
@@ -60,7 +187,9 @@ function WalletButton(): ReactElement {
 }
 
 function navLinkClass({ isActive }: { isActive: boolean }): string {
-  return ["shell-nav__link", isActive ? "is-active" : ""].filter(Boolean).join(" ");
+  return ["shell-nav__link", isActive ? "is-active" : ""]
+    .filter(Boolean)
+    .join(" ");
 }
 
 function WalletRoute({ children }: { children: ReactElement }) {
@@ -123,23 +252,13 @@ function ShortcutHelp(): ReactElement | null {
         onClick={(e) => e.stopPropagation()}
         className={`shortcut-panel${entered ? " shortcut-panel--entered" : ""}`}
       >
-        <h2
-          tabIndex={-1}
-          className="shortcut-title"
-        >
+        <h2 tabIndex={-1} className="shortcut-title">
           Keyboard Shortcuts
         </h2>
         <dl className="shortcut-list">
           {shortcuts.map((s) => (
-            <div
-              key={s.key}
-              className="shortcut-row"
-            >
-              <dt
-                className="shortcut-dt"
-              >
-                {s.label}
-              </dt>
+            <div key={s.key} className="shortcut-row">
+              <dt className="shortcut-dt">{s.label}</dt>
               <dd className="shortcut-dd">
                 <Kbd>{s.key}</Kbd>
               </dd>
@@ -158,7 +277,8 @@ export function App(): ReactElement {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const isLanding = location.pathname === "/";
-  const isChat = location.pathname === "/chat" || location.pathname.startsWith("/chat/");
+  const isChat =
+    location.pathname === "/chat" || location.pathname.startsWith("/chat/");
   const mintOpen = isMintOpen(searchParams);
   const mintProvider = searchParams.get("provider") ?? undefined;
   const { isConnected } = useAccount();
@@ -305,7 +425,9 @@ export function App(): ReactElement {
               className="shell-icon-btn"
               onClick={toggleTheme}
               aria-label={
-                theme === "dark" ? "Switch to light theme" : "Switch to dark theme"
+                theme === "dark"
+                  ? "Switch to light theme"
+                  : "Switch to dark theme"
               }
               title={theme === "dark" ? "Light" : "Dark"}
             >
@@ -326,7 +448,9 @@ export function App(): ReactElement {
                 title="Shortcuts (?)"
                 aria-label="Keyboard shortcuts"
                 onClick={() =>
-                  document.dispatchEvent(new CustomEvent("axiom:show-shortcuts"))
+                  document.dispatchEvent(
+                    new CustomEvent("axiom:show-shortcuts"),
+                  )
                 }
               >
                 <span aria-hidden className="shell-icon">
@@ -402,13 +526,22 @@ export function App(): ReactElement {
               <Route path="/" element={<LandingPage />} />
               <Route path={APP_HOME} element={<HomePage />} />
               {/* List peers fold into Home; mint is modal-only */}
-              <Route path="/agents" element={<Navigate to={APP_HOME} replace />} />
+                <Route
+                  path="/agents"
+                  element={<Navigate to={APP_HOME} replace />}
+                />
               <Route
                 path="/agents/new"
                 element={<Navigate to={`${APP_HOME}?mint=1`} replace />}
               />
-              <Route path="/market" element={<Navigate to={APP_HOME} replace />} />
-              <Route path="/dashboard" element={<Navigate to={APP_HOME} replace />} />
+                <Route
+                  path="/market"
+                  element={<Navigate to={APP_HOME} replace />}
+                />
+                <Route
+                  path="/dashboard"
+                  element={<Navigate to={APP_HOME} replace />}
+                />
               <Route
                 path="/agents/:tokenId"
                 element={
@@ -425,7 +558,10 @@ export function App(): ReactElement {
                   </WalletRoute>
                 }
               />
-              <Route path="/settings" element={<Navigate to={APP_HOME} replace />} />
+                <Route
+                  path="/settings"
+                  element={<Navigate to={APP_HOME} replace />}
+                />
               <Route path="*" element={<NotFound />} />
             </Routes>
             </div>
@@ -454,14 +590,14 @@ export function App(): ReactElement {
           </Suspense>
         ) : (
           <ConnectedGuard>
-            <p className="muted-note">
-              Connect wallet to mint.
-            </p>
+            <p className="muted-note">Connect wallet to mint.</p>
           </ConnectedGuard>
         )}
       </Modal>
 
-      <footer className={`shell-footer${isChat ? " shell-footer--hidden" : ""}`}>
+      <footer
+        className={`shell-footer${isChat ? " shell-footer--hidden" : ""}`}
+      >
         <div className="shell-footer__inner">
           <div className="shell-footer__brand-block">
             <span className="shell-footer__brand">Axiom</span>
@@ -472,7 +608,11 @@ export function App(): ReactElement {
           <nav className="shell-footer__links" aria-label="Footer">
             <Link to="/app">Home</Link>
             <Link to="/chat">Chat</Link>
-            <button type="button" onClick={openMint} className="shell-footer__mint">
+            <button
+              type="button"
+              onClick={openMint}
+              className="shell-footer__mint"
+            >
               Mint
             </button>
             <Link to="/">About</Link>
@@ -483,4 +623,3 @@ export function App(): ReactElement {
     </div>
   );
 }
-

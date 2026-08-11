@@ -144,7 +144,8 @@ function requestWithHeaders(
 	);
 }
 
-export async function apiFetch<T>(
+async function apiFetchFrom<T>(
+	baseUrl: string,
 	path: string,
 	init: RequestInit & { timeout?: number; retries?: number } = {},
 ): Promise<T> {
@@ -157,7 +158,7 @@ export async function apiFetch<T>(
 	for (let attempt = 0; attempt <= maxRetries; attempt++) {
 		try {
 			const res = await fetch(
-				`${BACKEND_URL}${path}`,
+				`${baseUrl.replace(/\/$/, "")}${path}`,
 				requestWithHeaders(init, timeout, true),
 			);
 			if (!res.ok) throw await buildHttpError(path, res);
@@ -186,6 +187,13 @@ export async function apiFetch<T>(
 	throw lastError;
 }
 
+export async function apiFetch<T>(
+	path: string,
+	init: RequestInit & { timeout?: number; retries?: number } = {},
+): Promise<T> {
+	return apiFetchFrom<T>(BACKEND_URL, path, init);
+}
+
 export async function apiFetchResponse(
 	path: string,
 	init: RequestInit & { timeout?: number } = {},
@@ -208,15 +216,5 @@ export async function oracleFetch<T>(
 	path: string,
 	init: RequestInit & { timeout?: number } = {},
 ): Promise<T> {
-	const timeout = init.timeout ?? DEFAULT_TIMEOUT;
-	try {
-		const res = await fetch(
-			`${ORACLE_URL.replace(/\/$/, "")}${path}`,
-			requestWithHeaders(init, timeout, true),
-		);
-		if (!res.ok) throw await buildHttpError(path, res);
-		return res.json() as Promise<T>;
-	} catch (err) {
-		wrapFetchError(err);
-	}
+	return apiFetchFrom<T>(ORACLE_URL, path, init);
 }

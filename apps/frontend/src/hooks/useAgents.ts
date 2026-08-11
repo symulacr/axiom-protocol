@@ -32,7 +32,6 @@ export function useAgents(): {
     {
       queryKey: ["agents", address],
       enabled: Boolean(address),
-      refetchInterval: 30000,
     },
   );
 

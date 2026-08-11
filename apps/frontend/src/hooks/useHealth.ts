@@ -18,7 +18,6 @@ export function useHealth(options?: UseHealthOptions) {
   const { isConnected } = useAccount();
   const { enabled = true } = options ?? {};
   return usePolledApi<HealthResponse>("/health", {
-    refetchInterval: 30_000,
     enabled: enabled && isConnected,
   });
 }
