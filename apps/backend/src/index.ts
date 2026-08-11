@@ -1,6 +1,6 @@
 import * as Sentry from "@sentry/node";
 
-import { ethers, Wallet } from "ethers";
+import { type ethers, Wallet } from "ethers";
 import { resolveAddress } from "@axiom/config/addresses";
 import { registerProcessHandlers } from "@axiom/config/process";
 import { startServer, type ServerConfig } from "./server.js";
@@ -47,10 +47,14 @@ async function resolveLiveAddresses(
       const addr = resolved[key];
       try {
         const code = await chainProvider.getCode(addr);
-        if (code && code !== "0x") live[key] = addr;
+        if (code && code !== "0x") {
+          live[key] = addr;
+          return true;
+        }
       } catch {
         // Unverifiable on the live chain → omit to degrade gracefully.
       }
+      return false;
     }),
   );
   return live;

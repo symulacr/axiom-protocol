@@ -39,15 +39,15 @@ export function useEventStream(
     if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
     reconnectAttemptRef.current = 0;
 
-    const url = new URL(
-      `${backendWsBase()}${backendWsPathPrefix()}/v1/stream`,
-    );
-    for (const t of topics) {
-      url.searchParams.append("topic", t);
-    }
-    url.searchParams.append("token", API_KEY);
-
     try {
+      const url = new URL(
+        `${backendWsBase()}${backendWsPathPrefix()}/v1/stream`,
+      );
+      for (const t of topics) {
+        url.searchParams.append("topic", t);
+      }
+      url.searchParams.append("token", API_KEY);
+
       const ws = new WebSocket(url.toString());
       wsRef.current = ws;
 

@@ -40,34 +40,38 @@ const distDev = join(frontendDir, "dist-dev");
 const server = serve({
 	port: PORT,
 	async fetch(req) {
-		const url = new URL(req.url);
-		// Same-origin API proxy (mirrors prod /api -> backend, /oracle -> oracle).
-		if (url.pathname.startsWith("/api")) {
-			const upstream = new URL(url.pathname.slice(4) + url.search, BACKEND);
-			return fetch(upstream, {
-				method: req.method,
-				headers: req.headers,
-				body:
-					req.method === "GET" || req.method === "HEAD" ? undefined : req.body,
-				duplex: "half",
-			});
+		try {
+			const url = new URL(req.url);
+			// Same-origin API proxy (mirrors prod /api -> backend, /oracle -> oracle).
+			if (url.pathname.startsWith("/api")) {
+				const upstream = new URL(url.pathname.slice(4) + url.search, BACKEND);
+				return fetch(upstream, {
+					method: req.method,
+					headers: req.headers,
+					body:
+						req.method === "GET" || req.method === "HEAD" ? undefined : req.body,
+					duplex: "half",
+				});
+			}
+			if (url.pathname.startsWith("/oracle")) {
+				const upstream = new URL(url.pathname.slice(7) + url.search, ORACLE);
+				return fetch(upstream, {
+					method: req.method,
+					headers: req.headers,
+					body:
+						req.method === "GET" || req.method === "HEAD" ? undefined : req.body,
+					duplex: "half",
+				});
+			}
+			// Static from dist-dev (built on start), SPA fallback to index.html.
+			const path = url.pathname === "/" ? "/index.html" : url.pathname;
+			const file = Bun.file(join(distDev, path));
+			if (await file.exists()) return new Response(file);
+			const index = Bun.file(join(distDev, "index.html"));
+			return new Response(index);
+		} catch {
+			return new Response("Server error", { status: 500 });
 		}
-		if (url.pathname.startsWith("/oracle")) {
-			const upstream = new URL(url.pathname.slice(7) + url.search, ORACLE);
-			return fetch(upstream, {
-				method: req.method,
-				headers: req.headers,
-				body:
-					req.method === "GET" || req.method === "HEAD" ? undefined : req.body,
-				duplex: "half",
-			});
-		}
-		// Static from dist-dev (built on start), SPA fallback to index.html.
-		const path = url.pathname === "/" ? "/index.html" : url.pathname;
-		const file = Bun.file(join(distDev, path));
-		if (await file.exists()) return new Response(file);
-		const index = Bun.file(join(distDev, "index.html"));
-		return new Response(index);
 	},
 });
 
