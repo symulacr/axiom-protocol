@@ -18,10 +18,11 @@ import {
   useNavigate,
   useSearchParams,
 } from "react-router-dom";
+import { BACKEND_URL } from "./config/env.js";
 import { useAccount } from "wagmi";
+import { useHealth } from "./hooks/useHealth.js";
 import { ErrorBoundary } from "./components/ErrorBoundary.js";
 import { BRAND } from "./brand/assets.js";
-import { HealthBadge } from "./components/HealthBadge.js";
 import { ConnectedGuard, Kbd, Modal, Spinner } from "./components/ui.js";
 import { useMediaQuery } from "./hooks/useMediaQuery.js";
 
@@ -163,6 +164,63 @@ function useFocusTrap(
     el.addEventListener("keydown", onKeyDown);
     return () => el.removeEventListener("keydown", onKeyDown);
   }, [ref, active]);
+}
+
+/**
+ * Compact status pill for the shell header.
+ * Detail lives in title tooltip — not a second status bar.
+ */
+function HealthBadge(): ReactElement {
+  const { data, isLoading } = useHealth();
+
+  const isLocalhost =
+    BACKEND_URL.includes("127.0.0.1") || BACKEND_URL.includes("localhost");
+
+  if (isLocalhost) {
+    return (
+      <span
+        className="shell-status shell-status--local"
+        role="status"
+        title={`Local · ${BACKEND_URL}`}
+        aria-label="Local development"
+      >
+        <span className="shell-status__dot" aria-hidden />
+        <span className="shell-status__label">Local</span>
+      </span>
+    );
+  }
+
+  const status = !data
+    ? isLoading
+      ? "unknown"
+      : "down"
+    : data.ok
+      ? "ok"
+      : "down";
+
+  const label =
+    status === "ok"
+      ? "Online"
+      : status === "down"
+        ? "Offline"
+        : "…";
+
+  const title = data
+    ? `API ${label} · oracle ${data.oracle} · block #${data.chainHead}`
+    : label;
+
+  return (
+    <span
+      className={`shell-status shell-status--${status}`}
+      role="status"
+      aria-live="polite"
+      aria-label={title}
+      title={title}
+    >
+      <span className="shell-status__dot" aria-hidden />
+      <span className="shell-status__label">{label}</span>
+    </span>
+  );
 }
 
 const AgentDetail = lazy(() => import("./pages/AgentDetail.js"));

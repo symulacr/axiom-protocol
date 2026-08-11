@@ -67,6 +67,7 @@ const TradeHistory = lazy(() =>
 	})),
 );
 import { EmptyState } from "../components/EmptyState.js";
+import { ErrorBoundary } from "../components/ErrorBoundary.js";
 import {
 	COLORS,
 	Skeleton,
@@ -510,7 +511,9 @@ export function AgentDetail(): ReactElement {
 				>
 					{activeSection === "execute" && (
 						<Suspense fallback={skeletonFallback}>
-							<ExecutePanel tokenId={tokenId} />
+							<ErrorBoundary>
+								<ExecutePanel tokenId={tokenId} />
+							</ErrorBoundary>
 						</Suspense>
 					)}
 				</div>
@@ -524,7 +527,9 @@ export function AgentDetail(): ReactElement {
 				>
 					{activeSection === "payments" && (
 						<Suspense fallback={skeletonFallback}>
-							<PaymentPanel tokenId={tokenId} />
+							<ErrorBoundary>
+								<PaymentPanel tokenId={tokenId} />
+							</ErrorBoundary>
 						</Suspense>
 					)}
 				</div>

@@ -38,8 +38,11 @@ import {
   type ChatSessionContext,
 } from "@axiom/chat-runtime";
 import { classOfTool } from "@axiom/config/chat-tools";
-import { ArchiveResultCard } from "../chat/ArchiveResultCard.js";
-import { EncodePreviewCard, hasEncodePreview } from "../chat/EncodePreviewCard.js";
+import {
+  ArchiveResultCard,
+  EncodePreviewCard,
+  hasEncodePreview,
+} from "../chat/ToolResultCards.js";
 import {
   ChatSessionProvider,
   useChatSession,
@@ -311,7 +314,7 @@ function renderMarkdown(src: string | null): string {
     marked.parse(src ?? "", {
       async: false,
       gfm: true,
-      breaks: true,
+      breaks: false,
     }) as string,
     { FORBID_TAGS: ["style", "iframe"] },
   );
@@ -378,6 +381,7 @@ function ChatPageInner(): ReactElement {
   const [threads, setThreads] = useState<ChatThread[]>(loadThreads);
   const [threadId, setThreadId] = useState<string>(() => crypto.randomUUID());
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [threadSearch, setThreadSearch] = useState("");
   const [computeHint, setComputeHint] = useState<string | null>(null);
 
   // Live refs keep turn-local values (tokenId, address, chainId, and the
@@ -475,11 +479,16 @@ function ChatPageInner(): ReactElement {
         sessionStorage.removeItem(CHAT_MESSAGES_KEY);
       } else {
         sessionStorage.setItem(CHAT_MESSAGES_KEY, JSON.stringify(messages));
+        // Also persist to localStorage so a refresh restores the active thread
+        localStorage.setItem(
+          `axiom:thread:${threadId}`,
+          JSON.stringify(messages),
+        );
       }
     } catch {
       /* sessionStorage may be unavailable */
     }
-  }, [messages]);
+  }, [messages, threadId]);
 
   useEffect(() => {
     const el = listRef.current;
@@ -968,6 +977,17 @@ function ChatPageInner(): ReactElement {
     setSidebarOpen(false);
   }, []);
 
+  const deleteThread = useCallback(
+    (id: string) => {
+      setThreads((prev) => {
+        const next = prev.filter((t) => t.id !== id);
+        saveThreads(next);
+        return next;
+      });
+    },
+    [],
+  );
+
   const cancelStream = useCallback(() => {
     abortRef.current?.abort();
   }, []);
@@ -985,22 +1005,76 @@ function ChatPageInner(): ReactElement {
             New
           </Button>
         </div>
+        <input
+          aria-label="Search chats"
+          value={threadSearch}
+          onChange={(e) => setThreadSearch(e.target.value)}
+          placeholder="Search chats…"
+          style={{
+            margin: "0 var(--space-sm) var(--space-sm)",
+            padding: "4px 8px",
+            fontSize: "var(--text-xs)",
+            color: COLORS.text,
+            background: "var(--c-bg)",
+            border: `1px solid ${COLORS.border}`,
+            borderRadius: "var(--radius-sm)",
+            width: "calc(100% - var(--space-lg))",
+          }}
+        />
         <div className="chat-sidebar__list">
           {threads.length === 0 ? (
             <p className="chat-sidebar__empty">
               No history yet. Send a message.
             </p>
           ) : (
-            threads.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                className={`chat-sidebar__item${t.id === threadId ? " is-active" : ""}`}
-                onClick={() => openThread(t)}
-              >
-                {t.title}
-              </button>
-            ))
+            threads
+              .filter(
+                (t) =>
+                  !threadSearch ||
+                  t.title.toLowerCase().includes(threadSearch.toLowerCase()),
+              )
+              .map((t) => (
+                <div
+                  key={t.id}
+                  className={`chat-sidebar__item${t.id === threadId ? " is-active" : ""}`}
+                  style={{ display: "flex", alignItems: "center" }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => openThread(t)}
+                    style={{
+                      flex: 1,
+                      border: "none",
+                      background: "none",
+                      color: "inherit",
+                      cursor: "pointer",
+                      font: "inherit",
+                      fontSize: "var(--text-xs)",
+                      textAlign: "left",
+                      padding: "6px 4px",
+                    }}
+                    title={t.title}
+                  >
+                    {t.title}
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Delete chat: ${t.title}`}
+                    onClick={() => deleteThread(t.id)}
+                    style={{
+                      border: "none",
+                      background: "none",
+                      cursor: "pointer",
+                      color: COLORS.textDim,
+                      padding: "4px",
+                      fontFamily: "inherit",
+                      fontSize: "var(--text-xs)",
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))
           )}
         </div>
       </aside>
@@ -1370,6 +1444,9 @@ function ChatPageInner(): ReactElement {
           {isStreaming && (
             <div
               className="fade-enter"
+              role="status"
+              aria-live="polite"
+              aria-label="Assistant is responding"
               style={{
                 padding: "var(--space-md) var(--space-lg)",
                 borderRadius: "var(--radius-lg)",

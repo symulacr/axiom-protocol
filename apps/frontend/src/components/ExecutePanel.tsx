@@ -35,7 +35,15 @@ import {
 	humanizeError,
 	formatTokenAmount,
 } from "../utils/format.js";
-import { NEUTRAL_WAITING_MESSAGES } from "../chat/waitingMessages.js";
+// Static waiting messages for the tick step checklist (shared with chat UX).
+const NEUTRAL_WAITING_MESSAGES = [
+  "Connecting to 0G Compute…",
+  "Loading agent context…",
+  "Running inference…",
+  "Calling protocol tools…",
+  "Waiting for model response…",
+  "Processing your request…",
+];
 
 const TICK_STEPS = [
 	...NEUTRAL_WAITING_MESSAGES,
