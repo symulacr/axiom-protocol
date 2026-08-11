@@ -13,7 +13,7 @@ import {
   mkdirSync,
 } from "node:fs";
 import { writeFile, rename, mkdir } from "node:fs/promises";
-import { join } from "node:path";
+import { joinPath } from "@axiom/config/path";
 interface TickPayload {
   tokenId: string;
   action: string;
@@ -467,8 +467,8 @@ export function getEventStore(): EventStore {
 
 // Resolved at call time (not module load) so AXIOM_DATA_DIR set after import takes effect — matches acquireEventStoreLock and lets parallel test workers use per-file data dirs.
 function persistPaths(): { dir: string; file: string } {
-  const dir = join(process.env.AXIOM_DATA_DIR ?? process.cwd(), ".data");
-  return { dir, file: join(dir, "events.json") };
+  const dir = joinPath(process.env.AXIOM_DATA_DIR ?? process.cwd(), ".data");
+  return { dir, file: joinPath(dir, "events.json") };
 }
 
 const persistLog = createLogger("events");
@@ -541,8 +541,8 @@ export function acquireEventStoreLock(
     return () => {};
   }
 
-  const lockPath = join(dataDir, ".data", "event-store.lock");
-  mkdirSync(join(dataDir, ".data"), { recursive: true });
+  const lockPath = joinPath(dataDir, ".data", "event-store.lock");
+  mkdirSync(joinPath(dataDir, ".data"), { recursive: true });
 
   try {
     const fd = openSync(lockPath, "wx");

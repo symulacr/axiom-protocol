@@ -10,7 +10,7 @@ import {
   writeFileSync,
   mkdirSync,
 } from "node:fs";
-import { join, dirname } from "node:path";
+import { dirnamePath, joinPath } from "../path.js";
 
 interface UploadResult {
   rootHash: Hex;
@@ -54,7 +54,7 @@ interface DownloadOptions {
   withProof?: boolean;
 }
 
-const ORACLE_SEEN_HASHES_FILE = join(
+const ORACLE_SEEN_HASHES_FILE = joinPath(
   process.env.AXIOM_DATA_DIR ?? process.cwd(),
   ".data",
   "oracle-seen-hashes.json",
@@ -94,7 +94,7 @@ function loadSeenDataHashes(file: string): Set<string> {
 }
 
 function persistSeenDataHashes(file: string, seen: Set<string>): void {
-  mkdirSync(dirname(file), { recursive: true });
+  mkdirSync(dirnamePath(file), { recursive: true });
   const tmp = `${file}.${process.pid}.${crypto.randomUUID()}.tmp`;
   writeFileSync(tmp, JSON.stringify({ seenDataHashes: [...seen] }));
   renameSync(tmp, file);

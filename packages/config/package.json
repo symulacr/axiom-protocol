@@ -25,7 +25,8 @@
     "./types/transfer": "./dist/types/transfer.js",
     "./process": "./dist/process.js",
     "./chat-tools": "./dist/chat-tools.js",
-    "./skills/schemas": "./dist/skills/schemas.js"
+    "./skills/schemas": "./dist/skills/schemas.js",
+    "./path": "./dist/path.js"
   },
   "scripts": {
     "build": "tsc --project tsconfig.json",

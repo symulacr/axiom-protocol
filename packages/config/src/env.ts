@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirnamePath, joinPath } from "./path.js";
 
-const LEGACY_DEFAULT = join(process.cwd(), "../../.env");
+const LEGACY_DEFAULT = joinPath(process.cwd(), "../../.env");
 const MAX_UPSTREAM_LEVELS = 4;
 
 // Walk up from this module's dir (dist/ or src/ under packages/config) to the repo-root .env; the old
@@ -9,9 +9,9 @@ const MAX_UPSTREAM_LEVELS = 4;
 function resolveRepoRootEnv(): string {
   let dir = import.meta.dirname ?? process.cwd();
   for (let level = 0; level < MAX_UPSTREAM_LEVELS; level++) {
-    const candidate = join(dir, ".env");
+    const candidate = joinPath(dir, ".env");
     if (existsSync(candidate)) return candidate;
-    const parent = dirname(dir);
+    const parent = dirnamePath(dir);
     if (parent === dir) break;
     dir = parent;
   }

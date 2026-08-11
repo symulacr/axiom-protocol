@@ -1,6 +1,6 @@
 import type { JsonRpcProvider, Log } from "ethers";
 import { rename, mkdir } from "node:fs/promises";
-import { join, dirname } from "node:path";
+import { joinPath, dirnamePath } from "@axiom/config/path";
 import { EVENT_NAMES, getRuntimeConfig } from "@axiom/config";
 import { getEnv } from "@axiom/config/env";
 import {
@@ -17,8 +17,8 @@ import {
 
 function getCheckpointFile(chainId: bigint): string {
   const dataDir = getEnv("AXIOM_DATA_DIR") || "data";
-  const checkpointDir = join(dataDir, "checkpoints");
-  return join(checkpointDir, `checkpoint-${chainId}.json`);
+  const checkpointDir = joinPath(dataDir, "checkpoints");
+  return joinPath(checkpointDir, `checkpoint-${chainId}.json`);
 }
 async function loadCheckpoint(chainId: bigint): Promise<number | null> {
   const checkpointFile = getCheckpointFile(chainId);
@@ -44,7 +44,7 @@ async function saveCheckpoint(
   const checkpointFile = getCheckpointFile(chainId);
   const tmp = checkpointFile + ".tmp";
   try {
-    await mkdir(dirname(checkpointFile), { recursive: true });
+    await mkdir(dirnamePath(checkpointFile), { recursive: true });
     // Bun.write for speed; tmp+rename keeps the checkpoint write atomic; dir ops stay node:fs/promises (Bun routes those there)
     await Bun.write(tmp, JSON.stringify({ nextBlock, updatedAt: Date.now() }));
     await rename(tmp, checkpointFile);
