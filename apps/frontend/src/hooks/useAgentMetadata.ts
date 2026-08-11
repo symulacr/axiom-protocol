@@ -123,16 +123,13 @@ export function useAgentMetadata(
     };
   }, [query.data, tokenId, firstData, ownerOfReverted]);
 
-  const refetch = query.refetch;
-  const result = useMemo(
+  return useMemo(
     () => ({
       data,
       isLoading: query.isLoading,
       error: (query.error as Error | null) ?? null,
-      refetch,
+      refetch: query.refetch,
     }),
-    [data, query.isLoading, query.error, refetch],
+    [data, query.isLoading, query.error, query.refetch],
   );
-
-  return result;
 }

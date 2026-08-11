@@ -68,7 +68,7 @@ type EventPayload =
   | ExecutedPayload
   | Record<string, unknown>;
 
-export type StoredEventPayload = EventPayload;
+type StoredEventPayload = EventPayload;
 
 export function payloadField(
   payload: unknown,

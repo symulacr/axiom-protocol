@@ -126,7 +126,7 @@ function HomeBody(): ReactElement {
   // agents poll returns the new agent (then the real card replaces it).
   const agentsCountRef = useRef(agents.length);
   agentsCountRef.current = agents.length;
-  const [mintPending, setMintPending] = useState<boolean>(() => {
+  const [mintPending, setMintPending] = useState(() => {
     return (
       lastMintAt !== null &&
       Date.now() - lastMintAt < 90_000 &&

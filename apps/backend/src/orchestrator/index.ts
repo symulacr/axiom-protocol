@@ -37,7 +37,7 @@ type VaultAbiVariant = "legacy" | "current";
 
 const variantCache = new Map<string, VaultAbiVariant>();
 
-export async function detectVaultAbiVariant(
+async function detectVaultAbiVariant(
   provider: Provider,
   vaultAddress: string,
 ): Promise<VaultAbiVariant> {
@@ -61,7 +61,7 @@ export async function detectVaultAbiVariant(
   }
 }
 
-export function vaultAbiFor(
+function vaultAbiFor(
   variant: VaultAbiVariant,
 ): typeof VAULT_ABI | typeof VAULT_ABI_LEGACY {
   return variant === "legacy" ? VAULT_ABI_LEGACY : VAULT_ABI;
@@ -73,7 +73,7 @@ interface VaultStrategyState {
   validUntilDay: bigint;
 }
 
-export async function readVaultStrategy(
+async function readVaultStrategy(
   provider: Provider,
   vaultAddress: string,
   tokenId: bigint,

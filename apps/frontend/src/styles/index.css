@@ -1765,22 +1765,6 @@ select {
   }
 }
 
-.live-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 2px 8px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--c-border-strong);
-  font-size: var(--text-xs);
-  color: var(--c-text-dim);
-  background: transparent;
-}
-.live-pill[data-live="true"] {
-  color: var(--c-success);
-  border-color: var(--c-success-border);
-}
-
 @media (prefers-reduced-motion: no-preference) {
   ::view-transition-old(agent-card),
   ::view-transition-new(agent-card),

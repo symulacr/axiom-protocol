@@ -47,7 +47,7 @@ export function registerPerformanceRoutes(
       consumer: "usePerformance",
       description: "Agent strategy performance metrics",
     },
-    async (_parsed, req, _res, { id }) => {
+    (_parsed, req, _res, { id }) => {
       const limitRaw =
         typeof req.query.limit === "string"
           ? Number(req.query.limit)
@@ -111,7 +111,7 @@ export function registerPerformanceRoutes(
       consumer: "usePerformanceBatch",
       description: "Batch agent performance metrics",
     },
-    async (_parsed, req, res) => {
+    (_parsed, req, res) => {
       const idsRaw = typeof req.query.ids === "string" ? req.query.ids : "";
       const ids = idsRaw
         .split(",")

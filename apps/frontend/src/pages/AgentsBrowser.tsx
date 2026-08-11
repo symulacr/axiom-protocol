@@ -16,16 +16,15 @@ import type { VaultDataEntry } from "../hooks/useVaultDataBatch.js";
 import type { PerformanceMetrics } from "@axiom/config/types/performance";
 import { truncateAddress } from "../utils/format.js";
 import { BRAND } from "../brand/assets.js";
+import { EmptyState } from "../components/EmptyState.js";
 import {
   COLORS,
   Skeleton,
-  Card,
   ErrorAlert,
   ConnectedGuard,
   Input,
   Button,
   withViewTransition,
-  emptyCardStyle,
 } from "../components/ui.js";
 
 const emptyHintStyle: CSSProperties = {
@@ -48,14 +47,12 @@ function AgentCardStatus({ vaultData, metrics }: AgentCardStatusProps) {
   const balance = formatEther(vaultData.depositsWei);
   const balanceNum = parseFloat(balance);
   const hasBalance = balanceNum > 0;
-  const lastAction =
-    metrics && metrics.totalTicks > 0
-      ? metrics.buyCount > metrics.sellCount
-        ? "Mostly buy"
-        : metrics.sellCount > metrics.buyCount
-          ? "Mostly sell"
-          : "Mixed"
-      : null;
+  let lastAction: string | null = null;
+  if (metrics && metrics.totalTicks > 0) {
+    if (metrics.buyCount > metrics.sellCount) lastAction = "Mostly buy";
+    else if (metrics.sellCount > metrics.buyCount) lastAction = "Mostly sell";
+    else lastAction = "Mixed";
+  }
   return (
     <span
       style={{
@@ -79,7 +76,7 @@ function AgentCardStatus({ vaultData, metrics }: AgentCardStatusProps) {
   );
 }
 
-export function AgentsBrowser(): ReactElement {
+function AgentsBrowser(): ReactElement {
   const { isConnected } = useAccount();
   const navigate = useNavigate();
   const {
@@ -166,59 +163,19 @@ export function AgentsBrowser(): ReactElement {
     return (
       <div>
         {!isConnected ? (
-          <Card style={emptyCardStyle}>
-            <p
-              style={{
-                color: COLORS.textMuted,
-                fontSize: "var(--text-sm)",
-                marginBottom: "var(--space-lg)",
-              }}
-            >
-              Connect your wallet to get started
-            </p>
-          </Card>
+          <EmptyState>Connect your wallet to get started</EmptyState>
         ) : (
-          <Card style={emptyCardStyle}>
-            <img
-              src="/brand/empty-agents-960.jpg"
-              alt=""
-              width={320}
-              height={180}
-              style={{
-                width: "min(100%, 20rem)",
-                height: "auto",
-                borderRadius: "var(--radius-md)",
-                marginBottom: "var(--space-md)",
-                border: `1px solid ${COLORS.border}`,
-                objectFit: "cover",
-              }}
-            />
-            <p
-              style={{
-                color: COLORS.textPrimary,
-                fontSize: "var(--text-base)",
-                margin: "0 0 0.5rem",
-                fontWeight: "var(--fw-semibold)",
-                fontFamily: "var(--font-display)",
-              }}
-            >
-              No agents yet
-            </p>
-            <p
-              style={{
-                color: COLORS.textMuted,
-                fontSize: "var(--text-sm)",
-                margin: "0 0 var(--space-lg)",
-                fontWeight: "var(--fw-regular)",
-                lineHeight: "var(--lh-normal)",
-              }}
-            >
-              Name an agent and mint. Fund later on agent detail.
-            </p>
-            <Link to="/app?mint=1">
-              <Button variant="primary">Mint your first agent</Button>
-            </Link>
-          </Card>
+          <EmptyState
+            illustrated
+            title="No agents yet"
+            action={
+              <Link to="/app?mint=1">
+                <Button variant="primary">Mint your first agent</Button>
+              </Link>
+            }
+          >
+            Name an agent and mint. Fund later on agent detail.
+          </EmptyState>
         )}
       </div>
     );

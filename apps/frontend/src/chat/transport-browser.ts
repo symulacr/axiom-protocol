@@ -94,7 +94,7 @@ function buildBrowserRuntime(ctx: ToolContext): ToolRuntime {
     mode: "sign",
     oracleUrl: ORACLE_URL,
     http: {
-      fetch: async (path, init) => {
+      fetch: (path, init) => {
         let url = path;
         if (!path.startsWith("http")) {
           const suffix = path.startsWith("/") ? path : `/${path}`;

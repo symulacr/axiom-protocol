@@ -45,7 +45,7 @@ export function createHealthRouter(
     return { chainHead, oracleUp, ok, checkedAt: Date.now() };
   }
 
-  async function resolveSnapshot(): Promise<HealthSnapshot> {
+  function resolveSnapshot(): HealthSnapshot | Promise<HealthSnapshot> {
     const ttl = probeTtlMs();
     const now = Date.now();
     if (snapshot && now - snapshot.checkedAt < ttl) {

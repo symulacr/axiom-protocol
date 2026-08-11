@@ -36,9 +36,9 @@ export function pickOGNetwork(chainId: number): OGNetwork | null {
   return OG_NETWORKS[chainId] ?? null;
 }
 
-// Browser-safe guard: `process` is undefined in browser bundles, so typeof avoids a ReferenceError.
+// Browser-safe guard: `process` is absent in browser bundles; globalThis access avoids a ReferenceError without typeof.
 function envVar(...keys: string[]): string | undefined {
-  if (typeof process === "undefined" || !process.env) return undefined;
+  if (globalThis.process === undefined || !process.env) return undefined;
   for (const key of keys) {
     const val = process.env[key];
     if (val) return val;

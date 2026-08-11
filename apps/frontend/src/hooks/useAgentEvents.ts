@@ -66,7 +66,7 @@ export function useAgentEvents(
     return merged;
   }, [enabled, events, wsEvents, tokenId]);
 
-  const result = useMemo(
+  return useMemo(
     () => ({
       events: agentEvents,
       isLoading,
@@ -75,6 +75,4 @@ export function useAgentEvents(
     }),
     [agentEvents, isLoading, error, refetch],
   );
-
-  return result;
 }

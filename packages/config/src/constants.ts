@@ -47,8 +47,8 @@ const RUNTIME_ENV_VARS = {
 type EnvLike = Record<string, string | undefined>;
 
 function defaultRuntimeEnv(): EnvLike {
-  // `typeof` guard keeps this safe in browser bundles (no node: imports).
-  return typeof process !== "undefined" ? (process.env as EnvLike) : {};
+  // globalThis access keeps the guard safe in browser bundles (no node: imports, no ReferenceError).
+  return globalThis.process !== undefined ? (process.env as EnvLike) : {};
 }
 
 // Memoized per env object (process.env identity is stable in Node) so per-tick calls reuse one config; overrides are read once at startup

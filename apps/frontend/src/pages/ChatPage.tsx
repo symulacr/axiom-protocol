@@ -464,10 +464,8 @@ function ChatPageInner(): ReactElement {
   const { writeContractAsync } = useWriteContract();
   const { data: walletClient } = useWalletClient();
 
-  const [messages, setMessages] = useState<Message[]>(loadStoredMessages);
-  const [contextWindow, setContextWindow] = useState<number | undefined>(
-    undefined,
-  );
+  const [messages, setMessages] = useState(loadStoredMessages);
+  const [contextWindow, setContextWindow] = useState<number>();
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamText, setStreamText] = useState("");
@@ -503,7 +501,7 @@ function ChatPageInner(): ReactElement {
     () => new Set(),
   );
   const isStreamingRef = useRef(false);
-  const [threads, setThreads] = useState<ChatThread[]>(loadThreads);
+  const [threads, setThreads] = useState(loadThreads);
   const [threadId, setThreadId] = useState<string>(() => crypto.randomUUID());
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [threadSearch, setThreadSearch] = useState("");

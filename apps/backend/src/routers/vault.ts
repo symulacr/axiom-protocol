@@ -79,7 +79,7 @@ export function registerVaultRoutes(
         consumer: "chat-runtime",
         description: route.description,
       },
-      async (parsed: { amount: string }, _req, _res, { id, config: cfg }) => {
+      (parsed: { amount: string }, _req, _res, { id, config: cfg }) => {
         const vaultAddr = requireVaultAddress(cfg, _res);
         if (!vaultAddr) return;
         const amountWei = ethers.parseEther(parsed.amount);

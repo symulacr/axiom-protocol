@@ -25,8 +25,11 @@ interface DownloadResult {
 }
 
 export interface StorageAdapter {
-  upload(blob: Uint8Array, encryption?: Encryption): Promise<{ rootHash: Hex }>;
-  download(rootHash: Hex): Promise<Uint8Array>;
+  upload(
+    blob: Uint8Array,
+    encryption?: Encryption,
+  ): Promise<{ rootHash: Hex }> | { rootHash: Hex };
+  download(rootHash: Hex): Promise<Uint8Array> | Uint8Array;
   markDataHashSeen(rootHash: Hex): void;
   hasSeenDataHash(rootHash: Hex): boolean;
 }
@@ -127,16 +130,13 @@ export class InMemoryStorage extends SeenHashesMixin implements StorageAdapter {
     super(options.seenHashesFile ?? ORACLE_SEEN_HASHES_FILE);
   }
 
-  async upload(
-    blob: Uint8Array,
-    _encryption?: Encryption,
-  ): Promise<{ rootHash: Hex }> {
+  upload(blob: Uint8Array, _encryption?: Encryption): { rootHash: Hex } {
     const rootHash = keccak256(blob) as Hex;
     this.store.set(rootHash.toLowerCase(), new Uint8Array(blob));
     return { rootHash };
   }
 
-  async download(rootHash: Hex): Promise<Uint8Array> {
+  download(rootHash: Hex): Uint8Array {
     const blob = this.store.get(rootHash.toLowerCase());
     if (!blob) throw new Error(`Blob not found: ${rootHash}`);
     return new Uint8Array(blob);

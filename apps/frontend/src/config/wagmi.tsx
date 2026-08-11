@@ -47,7 +47,7 @@ function resolveAristotleRpc(): string {
 /** 0G Mainnet (Aristotle 16661) — uses viem's built-in chain definition, not a hand-rolled config. */
 export const aristotle = zeroGMainnet;
 
-export function createWagmiConfig() {
+function createWagmiConfig() {
   const storedWcProjectId =
     typeof window !== "undefined" && window.localStorage
       ? (window.localStorage.getItem("axiom.wcProjectId") ?? "")

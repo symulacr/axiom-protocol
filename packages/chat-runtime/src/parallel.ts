@@ -8,7 +8,7 @@ export function groupParallelTools<T extends ToolCallLike>(calls: T[]): T[][] {
 
   for (const tc of calls) {
     if (isWalletBound(tc)) {
-      if (open && open.length) {
+      if (open?.length) {
         batches.push(open);
         open = null;
       }
@@ -18,7 +18,7 @@ export function groupParallelTools<T extends ToolCallLike>(calls: T[]): T[][] {
       open.push(tc);
     }
   }
-  if (open && open.length) batches.push(open);
+  if (open?.length) batches.push(open);
 
   return batches;
 }

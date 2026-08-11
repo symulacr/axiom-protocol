@@ -26,7 +26,7 @@ function cacheKey(input: ArchiveQueryInput): string {
   });
 }
 
-export async function queryArchive(input: ArchiveQueryInput): Promise<unknown> {
+async function queryArchive(input: ArchiveQueryInput): Promise<unknown> {
   const key = cacheKey(input);
   const cached = cdxCache.get(key);
   if (cached !== undefined) return { ...asRecord(cached), cached: true };

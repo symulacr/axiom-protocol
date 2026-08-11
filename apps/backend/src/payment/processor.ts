@@ -118,10 +118,10 @@ export class PaymentProcessorClient {
     return { receipt, amount };
   }
 
-  async encodeSetRoyalty(
+  encodeSetRoyalty(
     agentTokenId: bigint,
     bps: number,
-  ): Promise<{ to: string; data: string; value: bigint }> {
+  ): { to: string; data: string; value: bigint } {
     const data = this.payment.iface.encodeFunctionData(
       "setRoyaltyBpsPermitted",
       [agentTokenId, bps],
@@ -129,7 +129,7 @@ export class PaymentProcessorClient {
     return { to: this.address, data, value: 0n };
   }
 
-  async earningsOf(creator: string): Promise<bigint> {
+  earningsOf(creator: string): Promise<bigint> {
     return this.payment.contract.agentEarningsOf(creator);
   }
 

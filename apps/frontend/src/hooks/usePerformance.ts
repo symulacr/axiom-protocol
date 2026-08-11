@@ -47,7 +47,7 @@ export function usePerformance(
   const metrics = data?.metrics ?? null;
   const history = data?.history ?? emptyHistory;
 
-  const result = useMemo(
+  return useMemo(
     () => ({
       metrics,
       history,
@@ -57,6 +57,4 @@ export function usePerformance(
     }),
     [metrics, history, isLoading, error, refetch],
   );
-
-  return result;
 }

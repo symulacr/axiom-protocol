@@ -92,7 +92,7 @@ export function ExecutePanel({
     error,
     resetStream,
   } = useOrchestratorTick();
-  const [selectedId, setSelectedId] = useState<string>(() => {
+  const [selectedId, setSelectedId] = useState(() => {
     if (tokenIdProp) return tokenIdProp.toString();
     try {
       return localStorage.getItem("axiom:lastAgent") ?? "";
@@ -170,9 +170,11 @@ export function ExecutePanel({
       }
       setResult(res);
       toast.success("Tick executed successfully");
-      vd.refetch();
+      void vd.refetch();
       // F13: keep the Stats tab from showing 30s-old numbers after a tick
-      queryClient.invalidateQueries({ queryKey: ["performance", activeId] });
+      void queryClient.invalidateQueries({
+        queryKey: ["performance", activeId],
+      });
     } catch (err) {
       const msg = humanizeError(err);
       toast.error(`Strategy execution failed: ${msg}`);

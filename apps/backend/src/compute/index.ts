@@ -44,10 +44,10 @@ interface RouterClientOptions {
   timeout?: number;
 }
 
-export async function createRouterClient(
+export function createRouterClient(
   model?: string,
   opts: RouterClientOptions = {},
-): Promise<OpenAI> {
+): OpenAI {
   const timeout = opts.timeout ?? ROUTER_TIMEOUT_MS;
   logRouter.info("Creating router client", { model });
 

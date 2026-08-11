@@ -115,18 +115,15 @@ export function useVaultDataBatch(tokenIds: readonly bigint[]): {
     return null;
   }, [data, query.error]);
 
-  const refetch = query.refetch;
-  const result = useMemo(
+  return useMemo(
     () => ({
       data,
       isLoading: query.isLoading,
       error: aggregateError,
       refetch: () => {
-        refetch();
+        query.refetch();
       },
     }),
-    [data, query.isLoading, aggregateError, refetch],
+    [data, query.isLoading, aggregateError, query.refetch],
   );
-
-  return result;
 }

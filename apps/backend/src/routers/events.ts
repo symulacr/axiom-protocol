@@ -75,7 +75,7 @@ export function registerEventRoutes(
       consumer: "indexer",
       description: "Append event to store (indexer)",
     },
-    async (parsed, req, res) => {
+    (parsed, req, res) => {
       const b = parsed as z.infer<typeof eventBodySchema>;
       const indexerKey =
         typeof req.headers[INDEXER_KEY_HEADER] === "string"
@@ -112,7 +112,7 @@ export function registerEventRoutes(
       consumer: "useEventHistory",
       description: "Query events with optional filters",
     },
-    async (_parsed, req, _res) => {
+    (_parsed, req, _res) => {
       const maxQueryLimit = getRuntimeConfig().maxEventQueryLimit;
       const limitRaw =
         typeof req.query.limit === "string"

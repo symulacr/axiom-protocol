@@ -17,18 +17,10 @@ import {
 import { useGenericWrite } from "./useGenericWrite.js";
 import type {
   TransferInput,
-  AccessProofStruct,
-  OwnershipProofStruct,
   TransferResponse,
   TransferPhase,
 } from "@axiom/config/types/transfer";
-export type {
-  TransferInput,
-  AccessProofStruct,
-  OwnershipProofStruct,
-  TransferResponse,
-  TransferPhase,
-};
+export type { TransferInput, TransferResponse, TransferPhase };
 type UseTransferResult = {
   prepare: (input: TransferInput) => Promise<TransferResponse>;
   confirm: (input: TransferInput) => Promise<Hex>;

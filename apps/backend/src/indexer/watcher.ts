@@ -20,7 +20,7 @@ function getCheckpointFile(chainId: bigint): string {
   const checkpointDir = join(dataDir, "checkpoints");
   return join(checkpointDir, `checkpoint-${chainId}.json`);
 }
-export async function loadCheckpoint(chainId: bigint): Promise<number | null> {
+async function loadCheckpoint(chainId: bigint): Promise<number | null> {
   const checkpointFile = getCheckpointFile(chainId);
   try {
     const data = await Bun.file(checkpointFile).text();
@@ -37,7 +37,7 @@ export async function loadCheckpoint(chainId: bigint): Promise<number | null> {
   }
   return null;
 }
-export async function saveCheckpoint(
+async function saveCheckpoint(
   chainId: bigint,
   nextBlock: number,
 ): Promise<void> {
@@ -53,7 +53,7 @@ export async function saveCheckpoint(
   }
 }
 
-export async function pollOnce(
+async function pollOnce(
   provider: JsonRpcProvider,
   watchList: readonly WatchedEvent[],
   fromBlock: bigint,
@@ -79,7 +79,7 @@ export async function pollOnce(
   }
   return allLogs;
 }
-export function logsByChainOrder(a: Log, b: Log) {
+function logsByChainOrder(a: Log, b: Log) {
   if (a.blockNumber !== b.blockNumber) {
     return a.blockNumber < b.blockNumber ? -1 : 1;
   }
@@ -352,6 +352,8 @@ export class Watcher {
       });
     }
 
+    // Sequential poll loop by design: each tick must complete before the next
+    // starts (blocks must be contiguous), and wait throttles the cadence.
     while (this.running) {
       await this.pollTick();
       if (!this.running) break;

@@ -20,7 +20,7 @@ export type RouteHandler<T> = (
   req: Request,
   res: Response,
   helpers: { id: string; config: ServerConfig },
-) => Promise<unknown>;
+) => unknown | Promise<unknown>;
 export interface RouteOptions<S extends z.ZodTypeAny | undefined = undefined> {
   path: string;
   method?: "get" | "post";

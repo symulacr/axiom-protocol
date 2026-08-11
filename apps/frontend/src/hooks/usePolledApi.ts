@@ -27,7 +27,7 @@ export function usePolledApi<T>(
 
   return useQuery<T, Error>({
     queryKey: options.queryKey ?? defaultKey,
-    queryFn: async ({ signal: querySignal }) => {
+    queryFn: ({ signal: querySignal }) => {
       const url =
         typeof getterRef.current === "function"
           ? getterRef.current()

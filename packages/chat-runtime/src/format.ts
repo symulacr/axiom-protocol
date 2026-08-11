@@ -12,14 +12,16 @@ function formatObjectLines(
   objectRender: (v: unknown) => string,
 ): string {
   return Object.entries(obj)
-    .filter(([k]) => k !== "ok" && k !== "encodeOnly")
-    .map(([k, v]) => {
+    .flatMap(([k, v]) => {
+      if (k === "ok" || k === "encodeOnly") return [];
       if (Array.isArray(v)) {
         const head = v.slice(0, 5);
-        return `${k}: ${head.map((x) => (x && typeof x === "object" ? JSON.stringify(x) : String(x))).join(", ")}${v.length > 5 ? `, +${v.length - 5} more` : ""}`;
+        return [
+          `${k}: ${head.map((x) => (x && typeof x === "object" ? JSON.stringify(x) : String(x))).join(", ")}${v.length > 5 ? `, +${v.length - 5} more` : ""}`,
+        ];
       }
-      if (v && typeof v === "object") return `${k}: ${objectRender(v)}`;
-      return `${k}: ${String(v)}`;
+      if (v && typeof v === "object") return [`${k}: ${objectRender(v)}`];
+      return [`${k}: ${String(v)}`];
     })
     .join("\n");
 }

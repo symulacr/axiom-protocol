@@ -12,7 +12,7 @@ export const ORACLE_URL = import.meta.env.VITE_ORACLE_URL ?? "/oracle";
 export const CHAT_MODEL = resolveChatModel(import.meta.env.VITE_CHAT_MODEL);
 
 // ws/wss base; relative /api derives host+scheme from the page so we never emit "ws:///api/..."
-export function backendWsBase(): string {
+function backendWsBase(): string {
   if (BACKEND_URL.startsWith("/")) {
     const proto =
       typeof window !== "undefined" ? window.location.protocol : "http:";
@@ -26,14 +26,17 @@ export function backendWsBase(): string {
   return `${scheme}://${host}`;
 }
 
-export function backendWsPathPrefix(): string {
-  return BACKEND_URL.startsWith("/") ? BACKEND_URL : "";
-}
-
 // Single shared WS handshake for event streams and orchestrator tick streams:
 // backend /v1/stream endpoint + topic(s) + auth token.
 export function buildStreamWsUrl(topics: string | string[]): string {
-  const url = new URL(`${backendWsBase()}${backendWsPathPrefix()}/v1/stream`);
+  const prefix = BACKEND_URL.startsWith("/") ? BACKEND_URL : "";
+  const base = `${backendWsBase()}${prefix}/v1/stream`;
+  let url: URL;
+  try {
+    url = new URL(base);
+  } catch {
+    throw new Error(`Invalid stream base URL: ${base}`);
+  }
   const list = Array.isArray(topics) ? topics : [topics];
   for (const t of list) url.searchParams.append("topic", t);
   url.searchParams.append("token", API_KEY);

@@ -140,7 +140,7 @@ const skeletonFallback = (
   </div>
 );
 
-export function AgentDetail(): ReactElement {
+function AgentDetail(): ReactElement {
   const params = useParams<{ tokenId: string }>();
   const tokenId = parseTokenId(params.tokenId);
 
@@ -238,12 +238,9 @@ export function AgentDetail(): ReactElement {
     if (ev.eventName === "Tick") {
       const p = ev.payload as Record<string, unknown>;
       const action = String(p.action ?? "");
-      const actionColor =
-        action === "buy"
-          ? COLORS.success
-          : action === "sell"
-            ? COLORS.danger
-            : COLORS.textMuted;
+      let actionColor: string = COLORS.textMuted;
+      if (action === "buy") actionColor = COLORS.success;
+      else if (action === "sell") actionColor = COLORS.danger;
       return (
         <div
           style={{
