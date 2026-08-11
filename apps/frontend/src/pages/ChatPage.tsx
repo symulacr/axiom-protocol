@@ -1,4 +1,6 @@
 import {
+	lazy,
+	Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -17,6 +19,7 @@ import {
 } from "wagmi";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
+import { useSearchParams } from "react-router-dom";
 import { BRAND } from "../brand/assets.js";
 import { toast } from "sonner";
 import {
@@ -37,7 +40,11 @@ import {
   isAskUserResult,
   type ChatSessionContext,
 } from "@axiom/chat-runtime";
-import { classOfTool } from "@axiom/config/chat-tools";
+import {
+	CHAT_TOOL_CATALOG,
+	classOfTool,
+	type ChatToolClass,
+} from "@axiom/config/chat-tools";
 import {
   ArchiveResultCard,
   EncodePreviewCard,
@@ -47,6 +54,11 @@ import {
   ChatSessionProvider,
   useChatSession,
 } from "../chat/ChatSessionProvider.js";
+const TransferModal = lazy(() =>
+	import("../components/TransferModal.js").then((m) => ({
+		default: m.TransferModal,
+	})),
+);
 import {
   TOOLS,
   TOOL_LABELS,
@@ -279,7 +291,14 @@ function AskUserCard({
   content: string;
   onAnswer: (answer: string) => void;
 }): ReactElement | null {
-  let data: { ask?: boolean; question?: string; options?: string[] } | null;
+	const [selected, setSelected] = useState<string[]>([]);
+	const [freeText, setFreeText] = useState("");
+	let data: {
+		ask?: boolean;
+		question?: string;
+		options?: string[];
+		multiSelect?: boolean;
+	} | null;
   try {
     data = JSON.parse(content);
   } catch {
@@ -288,7 +307,14 @@ function AskUserCard({
   if (!data || data.ask !== true) return null;
   const question = data.question ?? "Question";
   const options = Array.isArray(data.options) ? data.options : [];
-  if (options.length === 0) return null;
+	const multiSelect = data.multiSelect === true;
+
+	const submit = (answer: string): void => {
+		setSelected([]);
+		setFreeText("");
+		onAnswer(answer);
+	};
+
   return (
     <div style={insetCardStyle}>
       <p
@@ -300,13 +326,85 @@ function AskUserCard({
       >
         {question}
       </p>
+			{options.length > 0 ? (
+				multiSelect ? (
+					<div
+						style={{
+							display: "flex",
+							flexDirection: "column",
+							gap: 6,
+							alignItems: "flex-start",
+						}}
+					>
+						{options.map((o, i) => {
+							const checked = selected.includes(o);
+							return (
+								<label
+									key={i}
+									style={{
+										display: "inline-flex",
+										alignItems: "center",
+										gap: 6,
+										fontSize: "var(--text-sm)",
+										color: COLORS.text,
+										cursor: "pointer",
+									}}
+								>
+									<input
+										type="checkbox"
+										checked={checked}
+										onChange={() =>
+											setSelected((prev) =>
+												checked ? prev.filter((x) => x !== o) : [...prev, o],
+											)
+										}
+									/>
+									{o}
+								</label>
+							);
+						})}
+						<Button
+							variant="primary"
+							disabled={selected.length === 0}
+							onClick={() => submit(selected.join(", "))}
+						>
+							Submit
+						</Button>
+					</div>
+				) : (
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         {options.map((o, i) => (
-          <Button key={i} variant="secondary" onClick={() => onAnswer(o)}>
+							<Button key={i} variant="secondary" onClick={() => submit(o)}>
             {o}
           </Button>
         ))}
       </div>
+				)
+			) : (
+				<div style={{ display: "flex", gap: 8 }}>
+					<Textarea
+						aria-label="Answer"
+						value={freeText}
+						rows={1}
+						onChange={(e) => setFreeText(e.target.value)}
+						onKeyDown={(e) => {
+							if (e.key === "Enter" && !e.shiftKey && freeText.trim()) {
+								e.preventDefault();
+								submit(freeText.trim());
+							}
+						}}
+						placeholder="Type your answer…"
+						style={{ flex: 1 }}
+					/>
+					<Button
+						variant="primary"
+						disabled={!freeText.trim()}
+						onClick={() => submit(freeText.trim())}
+					>
+						Send
+					</Button>
+				</div>
+			)}
     </div>
   );
 }
@@ -335,6 +433,28 @@ const dedupeToolCalls = (calls: ToolCall[]): ToolCall[] =>
           x.function.arguments === c.function.arguments,
       ) === i,
   );
+
+// Per-tool-call ceiling: a hung skill/backend must not stall the agent loop forever.
+const TOOL_TIMEOUT_MS = 60_000;
+
+function withToolTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+	return new Promise<T>((resolve, reject) => {
+		const timer = setTimeout(
+			() => reject(new Error(`tool timed out after ${Math.round(ms / 1000)}s`)),
+			ms,
+		);
+		promise.then(
+			(v) => {
+				clearTimeout(timer);
+				resolve(v);
+			},
+			(e) => {
+				clearTimeout(timer);
+				reject(e);
+			},
+		);
+	});
+}
 
 function ChatPageInner(): ReactElement {
   const { address } = useAccount();
@@ -388,9 +508,25 @@ function ChatPageInner(): ReactElement {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [threadSearch, setThreadSearch] = useState("");
   const [computeHint, setComputeHint] = useState<string | null>(null);
+	const [agentStep, setAgentStep] = useState(0);
+	const [ttftMs, setTtftMs] = useState<number | null>(null);
+	const [transferTokenId, setTransferTokenId] = useState<string | null>(null);
+	const transferResolveRef = useRef<{
+		resolve: (txHash: string) => void;
+		reject: (err: Error) => void;
+	} | null>(null);
+	const [toolsOpen, setToolsOpen] = useState(false);
 
 	// Live refs: state updates land only on the next render, so same-turn tools must see earlier-set values (mint tokenId -> deposit); synced each render here, within-turn writes in runAgent
-  const lastTokenIdRef = useRef<string | undefined>(session.lastTokenId);
+	// AgentDetail's Chat button deep-links to /chat?agent=<tokenId>; seed the session default from the URL until a tool result overrides it.
+	const [searchParams] = useSearchParams();
+	const urlAgentParam = searchParams.get("agent");
+	const urlAgentRef = useRef<string | undefined>(
+		urlAgentParam && /^\d+$/.test(urlAgentParam) ? urlAgentParam : undefined,
+	);
+	const lastTokenIdRef = useRef<string | undefined>(
+		urlAgentRef.current ?? session.lastTokenId,
+	);
   const liveAddressRef = useRef<string | undefined>(address);
   const liveChainIdRef = useRef<number>(chainId);
   const writeContractAsyncRef = useRef(writeContractAsync);
@@ -403,6 +539,18 @@ function ChatPageInner(): ReactElement {
       streamThrottleRef.current = null;
     }
   }, []);
+
+	// Opens the shared TransferModal (same flow as AgentDetail) and resolves when the user completes or cancels it.
+	const openTransfer = useCallback((tokenId: string): Promise<string> => {
+		const id = String(tokenId ?? "").trim();
+		if (!/^\d+$/.test(id)) {
+			return Promise.reject(new Error("invalid tokenId: " + tokenId));
+		}
+		return new Promise<string>((resolve, reject) => {
+			transferResolveRef.current = { resolve, reject };
+			setTransferTokenId(id);
+		});
+	}, []);
 
   const scheduleStreamTextUpdate = useCallback(() => {
     if (streamThrottleRef.current !== null) return;
@@ -438,6 +586,7 @@ function ChatPageInner(): ReactElement {
             walletClient.sendTransaction({ to, data, value })
         : undefined,
       publicClient,
+			openTransfer,
     }),
     [
       address,
@@ -446,13 +595,33 @@ function ChatPageInner(): ReactElement {
       writeContractAsync,
       walletClient,
       publicClient,
+			openTransfer,
     ],
   );
   const handlers = useToolHandlers(toolCtx);
   const chainSupported = SUPPORTED_CHAIN_IDS.has(chainId);
+	const tickRunning = Object.values(toolRuns).some(
+		(r) => r.status === "running" && r.name === "execute_tick",
+	);
+	const toolGroups = useMemo(() => {
+		const order: ChatToolClass[] = [
+			"read",
+			"encode",
+			"orchestrate",
+			"archive",
+			"skill",
+			"ask",
+		];
+		return order
+			.map((cls) => ({
+				cls,
+				tools: CHAT_TOOL_CATALOG.filter((t) => t.class === cls),
+			}))
+			.filter((g) => g.tools.length > 0);
+	}, []);
 
   useEffect(() => {
-    lastTokenIdRef.current = session.lastTokenId;
+		lastTokenIdRef.current = session.lastTokenId ?? urlAgentRef.current;
     liveAddressRef.current = address;
     liveChainIdRef.current = chainId;
     writeContractAsyncRef.current = writeContractAsync;
@@ -531,6 +700,8 @@ function ChatPageInner(): ReactElement {
       traceRef.current = null;
       toolRunsRef.current = {};
       setToolRuns({});
+			setAgentStep(0);
+			setTtftMs(null);
 
       const userMsg = createMessage({ role: "user", content: userText });
       let currentMessages = [...messagesRef.current, userMsg];
@@ -552,11 +723,13 @@ function ChatPageInner(): ReactElement {
       const controller = new AbortController();
       abortRef.current = controller;
 
+			const runStartedAt = Date.now();
       let loopCount = 0;
 
       try {
         while (loopCount < MAX_TOOL_LOOPS) {
           loopCount++;
+					setAgentStep(loopCount);
 
           const liveToolCtx: ToolContext = {
 						// rebuilt from live refs each loop so same-turn tool values are visible without a React re-render
@@ -628,6 +801,7 @@ function ChatPageInner(): ReactElement {
           const decoder = new TextDecoder();
           let buffer = "";
           let assistantContent = "";
+					let firstTokenAt = 0;
           const pendingToolCalls: ToolCall[] = [];
           let streamDone = false;
 
@@ -656,6 +830,10 @@ function ChatPageInner(): ReactElement {
               if (!delta) continue;
 
               if (delta.content) {
+								if (!firstTokenAt) {
+									firstTokenAt = Date.now();
+									setTtftMs(firstTokenAt - runStartedAt);
+								}
                 assistantContent += delta.content;
                 streamTextRef.current = assistantContent;
                 scheduleStreamTextUpdate();
@@ -693,8 +871,7 @@ function ChatPageInner(): ReactElement {
               break;
             }
             if (!assistantContent) {
-              lastStreamErrorRef.current =
-                "Empty response — the model returned no content. Try again.";
+							lastStreamErrorRef.current = "No response — try again.";
               setStreamError(lastStreamErrorRef.current);
               flushAndClearStreamText();
               break;
@@ -764,7 +941,14 @@ function ChatPageInner(): ReactElement {
                   const args = JSON.parse(
                     tc.function.arguments?.trim() || "{}",
                   );
-                  const result = await handler(args, liveToolCtx);
+									// transfer is user-paced (modal form + wallet prompts), not a backend call — no timeout
+									const result =
+										tc.function.name === "transfer"
+											? await handler(args, liveToolCtx)
+											: await withToolTimeout(
+													handler(args, liveToolCtx),
+													TOOL_TIMEOUT_MS,
+												);
                   recordToolResult(tc.function.name, result);
                   try {
 										// capture produced tokenId so a later same-turn tool sees it (mirrors applyToolResult)
@@ -783,18 +967,20 @@ function ChatPageInner(): ReactElement {
                     markToolRun(tc.id, { status: "success", result });
                   }
                   return { tc, result };
-                } catch {
+								} catch (err) {
+									const toolErr =
+										err instanceof Error
+											? err.message
+											: "could not parse tool arguments";
                   if (tc.id) {
                     markToolRun(tc.id, {
                       status: "error",
-                      error: "could not parse tool arguments",
+											error: toolErr,
                     });
                   }
                   return {
                     tc,
-                    result: JSON.stringify({
-                      error: "could not parse tool arguments",
-                    }),
+										result: JSON.stringify({ error: toolErr }),
                   };
                 }
               }),
@@ -827,8 +1013,7 @@ function ChatPageInner(): ReactElement {
             ...currentMessages,
             createMessage({
               role: "assistant",
-              content:
-                "This request needed more steps than a single turn allows — send a follow-up to continue.",
+							content: `Turn limit hit after ${MAX_TOOL_LOOPS} steps — send "continue" to keep going.`,
               meta: { error: true },
             }),
           ];
@@ -837,7 +1022,15 @@ function ChatPageInner(): ReactElement {
         }
       } catch (err: unknown) {
         if (err instanceof DOMException && err.name === "AbortError") {
-					void 0;
+					// Stop pressed mid-loop: drop the assistant tool_calls message and any partial tool responses so no dangling calls persist into the next turn.
+					const lastUser = currentMessages
+						.map((m) => m.role)
+						.lastIndexOf("user");
+					if (lastUser >= 0) {
+						const trimmed = currentMessages.slice(0, lastUser + 1);
+						messagesRef.current = trimmed;
+						setMessages(trimmed);
+					}
         } else {
           const msg = humanizeError(err);
           const ref = err as { code?: string; requestId?: string } | null;
@@ -956,13 +1149,22 @@ function ChatPageInner(): ReactElement {
     setSidebarOpen(false);
   }, []);
 
-	const deleteThread = useCallback((id: string) => {
+	const deleteThread = useCallback(
+		(id: string) => {
       setThreads((prev) => {
         const next = prev.filter((t) => t.id !== id);
         saveThreads(next);
         return next;
       });
-	}, []);
+			// deleting the ACTIVE thread must not leave it on screen — select the next one or clear to new-chat
+			if (id === threadId) {
+				const nextThread = threads.find((t) => t.id !== id);
+				if (nextThread) openThread(nextThread);
+				else startNewChat();
+			}
+		},
+		[threadId, threads, openThread, startNewChat],
+	);
 
   const cancelStream = useCallback(() => {
     abortRef.current?.abort();
@@ -1131,7 +1333,7 @@ function ChatPageInner(): ReactElement {
                   margin: "0 auto var(--space-lg)",
                 }}
               >
-                Mint, list agents, vault, ticks. Wallet signs when needed.
+								Agents · vaults · ticks. Wallet signs on-chain actions.
               </p>
               <div
                 style={{
@@ -1142,19 +1344,19 @@ function ChatPageInner(): ReactElement {
               >
                 {[
                   {
-                    label: "List my agents",
+										label: "My agents",
                     hint: "What you own",
                   },
                   {
-                    label: "Mint agent named Scout",
+										label: "Mint agent",
                     hint: "Wallet signs",
                   },
                   {
-                    label: "Vault balance?",
+										label: "Vault balance",
                     hint: "0G holdings",
                   },
                   {
-                    label: "Simulate a strategy tick",
+										label: "Simulate tick",
                     hint: "Safe dry-run first",
                   },
                 ].map((p) => (
@@ -1184,6 +1386,121 @@ function ChatPageInner(): ReactElement {
                   </button>
                 ))}
               </div>
+							<div style={{ marginTop: "var(--space-md)", textAlign: "left" }}>
+								<button
+									type="button"
+									className="prompt-card"
+									onClick={() => setToolsOpen((v) => !v)}
+									aria-expanded={toolsOpen}
+									style={{
+										display: "flex",
+										alignItems: "center",
+										justifyContent: "space-between",
+										width: "100%",
+									}}
+								>
+									<span
+										style={{
+											fontSize: "var(--text-sm)",
+											fontWeight: "var(--fw-semibold)",
+											color: "var(--c-text)",
+										}}
+									>
+										All {CHAT_TOOL_CATALOG.length} tools
+									</span>
+									<span
+										style={{
+											fontSize: "var(--text-xs)",
+											color: "var(--c-text-dim)",
+										}}
+									>
+										{toolsOpen ? "hide ▴" : "browse ▾"}
+									</span>
+								</button>
+								{toolsOpen && (
+									<div
+										style={{
+											marginTop: "var(--space-sm)",
+											maxHeight: 320,
+											overflowY: "auto",
+											paddingRight: 4,
+										}}
+									>
+										{toolGroups.map((g) => (
+											<div
+												key={g.cls}
+												style={{ marginBottom: "var(--space-sm)" }}
+											>
+												<div
+													style={{
+														fontSize: "var(--text-xs)",
+														fontWeight: "var(--fw-semibold)",
+														color: COLORS.textDim,
+														textTransform: "uppercase",
+														letterSpacing: "0.02em",
+														marginBottom: 4,
+													}}
+												>
+													{CHAT_TOOL_CLASS_LABELS[g.cls]}
+												</div>
+												{g.tools.map((t) => {
+													const gated =
+														t.requiresApiKey !== undefined ||
+														t.name === "unbroker_execute";
+													const gateNote = t.requiresApiKey
+														? "server key"
+														: "not implemented";
+													const hint =
+														t.hint.length > 90
+															? `${t.hint.slice(0, 90)}…`
+															: t.hint;
+													return (
+														<button
+															key={t.name}
+															type="button"
+															disabled={gated}
+															onClick={() => setInput(t.name)}
+															title={gated ? `${t.name} — ${gateNote}` : t.hint}
+															style={{
+																display: "block",
+																width: "100%",
+																textAlign: "left",
+																border: "none",
+																background: "none",
+																cursor: gated ? "not-allowed" : "pointer",
+																padding: "3px 0",
+																font: "inherit",
+																fontSize: "var(--text-xs)",
+																color: gated ? COLORS.textDim : COLORS.text,
+																opacity: gated ? 0.55 : 1,
+															}}
+														>
+															<code
+																style={{
+																	fontFamily: "var(--font-mono)",
+																	color: COLORS.bronzeLight,
+																}}
+															>
+																{t.name}
+															</code>
+															<span style={{ color: COLORS.textMuted }}>
+																{" — "}
+																{hint}
+															</span>
+															{gated ? (
+																<span style={{ color: COLORS.textDim }}>
+																	{" "}
+																	({gateNote})
+																</span>
+															) : null}
+														</button>
+													);
+												})}
+											</div>
+										))}
+									</div>
+								)}
+							</div>
             </div>
           )}
 
@@ -1232,6 +1549,12 @@ function ChatPageInner(): ReactElement {
                           (m) => m.id === msg.id,
                         );
                         if (idx >= 0) {
+													if (idx < messagesRef.current.length - 1) {
+														const ok = window.confirm(
+															"Edit replaces the rest of this conversation after this message. Continue?",
+														);
+														if (!ok) return;
+													}
                           const trimmed = messagesRef.current.slice(0, idx);
                           messagesRef.current = trimmed;
                           setMessages(trimmed);
@@ -1465,6 +1788,36 @@ function ChatPageInner(): ReactElement {
                     <span style={{ color: COLORS.bronzeLight }}>
                       {phaseLabel(elapsed, toolRuns, streamText)}
                     </span>
+										{tickRunning ? (
+											<span
+												style={{
+													color: COLORS.textDim,
+													fontSize: "var(--text-xs)",
+												}}
+											>
+												Tick in progress…
+											</span>
+										) : null}
+										{agentStep > 0 ? (
+											<span
+												style={{
+													color: COLORS.textDim,
+													fontSize: "var(--text-xs)",
+												}}
+											>
+												step {agentStep}/{MAX_TOOL_LOOPS}
+											</span>
+										) : null}
+										{ttftMs !== null && ttftMs >= 0 ? (
+											<span
+												style={{
+													color: COLORS.textDim,
+													fontSize: "var(--text-xs)",
+												}}
+											>
+												TTFT {ttftMs}ms
+											</span>
+										) : null}
                     <span
                       style={{
                         color: COLORS.textDim,
@@ -1579,6 +1932,28 @@ function ChatPageInner(): ReactElement {
             </Button>
           </div>
         </div>
+				{transferTokenId !== null && (
+					<Suspense fallback={null}>
+						<TransferModal
+							open
+							tokenId={BigInt(transferTokenId)}
+							onClose={() => {
+								setTransferTokenId(null);
+								transferResolveRef.current?.reject(
+									new Error(
+										"Transfer cancelled — no transaction was submitted.",
+									),
+								);
+								transferResolveRef.current = null;
+							}}
+							onSuccess={(txHash) => {
+								setTransferTokenId(null);
+								transferResolveRef.current?.resolve(txHash);
+								transferResolveRef.current = null;
+							}}
+						/>
+					</Suspense>
+				)}
       </div>
     </div>
   );
@@ -1595,7 +1970,7 @@ function phaseLabel(
     return `Running ${names}… (${elapsedSec}s)`;
   }
   if (streamText) return `Streaming response… (${elapsedSec}s)`;
-  if (elapsedSec < 2) return "Connecting to 0G Compute…";
+	if (elapsedSec < 2) return "Thinking…";
   return `Waiting for model response… (${elapsedSec}s)`;
 }
 
@@ -1715,7 +2090,13 @@ function ToolCallCard({
           {run.error ? (
             <span style={{ color: "var(--c-danger)" }}>{run.error}</span>
           ) : run.result ? (
+						hasEncodePreview(run.result) ? (
+							<span style={{ color: COLORS.textMuted }}>
+								Encode preview rendered in the tool card above.
+							</span>
+						) : (
             <ToolResultBody name={run.name} content={run.result} />
+						)
           ) : null}
         </div>
       )}

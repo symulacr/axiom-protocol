@@ -119,7 +119,7 @@ export function EncodePreviewCard({
 					marginBottom: 6,
 				}}
 			>
-        Encode preview — confirm in wallet
+				Sign this transaction
       </div>
       {preview.to ? <div>to: {preview.to}</div> : null}
       {preview.value && preview.value !== "0" ? (

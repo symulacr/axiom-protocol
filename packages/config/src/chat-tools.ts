@@ -605,6 +605,21 @@ export const CHAT_TOOL_CATALOG = [
 		),
 	}),
 	tool({
+		name: "transfer",
+		class: "encode",
+		label: "Transfer Agent",
+		hint: "Transfer an agent (ERC-7857 iNFT) to a new owner with an EIP-712 access proof. Opens the transfer dialog in the UI — the wallet signs the proof and the on-chain iTransferFrom. tokenId required.",
+		requiresWallet: true,
+		requiresTokenId: true,
+		friction: "high",
+		parameters: params(
+			{
+				tokenId: { type: "string", description: "Agent token ID" },
+			},
+			["tokenId"],
+		),
+	}),
+	tool({
 		name: "archive_lookup",
 		class: "archive",
 		label: "Archive Lookup",

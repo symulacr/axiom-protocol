@@ -46,6 +46,10 @@ export async function runEncodeTool(
 			return encodeVaultOp("deposit", tokenId, args, ctx);
 		case "withdraw":
 			return encodeVaultOp("withdraw", tokenId, args, ctx);
+		case "transfer":
+			return toolFail(
+				"transfer runs in the wallet-signing UI flow — the user must complete the transfer dialog (EIP-712 access proof + iTransferFrom).",
+			);
 		default:
 			return {
 				ok: false as const,

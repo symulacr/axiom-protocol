@@ -160,7 +160,7 @@ export function compactHistory<T extends ChatApiMessage>(
   return [summaryMsg, ...recent];
 }
 
-export const MAX_TOOL_LOOPS = 50;
+export const MAX_TOOL_LOOPS = 10;
 
 export function summarizeConversation<
   T extends { role: string; content: string | null },

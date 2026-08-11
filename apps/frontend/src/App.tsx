@@ -594,14 +594,7 @@ export function App(): ReactElement {
                   </WalletRoute>
                 }
               />
-              <Route
-                path={APP_CHAT}
-                element={
-                  <WalletRoute>
-                    <ChatPage />
-                  </WalletRoute>
-                }
-              />
+								<Route path={APP_CHAT} element={<ChatPage />} />
                 <Route
                   path="/settings"
                   element={<Navigate to={APP_HOME} replace />}

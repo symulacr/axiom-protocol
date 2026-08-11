@@ -1,34 +1,39 @@
-import { useCallback, useMemo, useState, type FormEvent, type ReactElement } from "react";
+import {
+	useCallback,
+	useMemo,
+	useState,
+	type FormEvent,
+	type ReactElement,
+} from "react";
 import { useConfirmTimer } from "../hooks/useConfirmTimer.js";
 import { useDeposit } from "../hooks/useDeposit.js";
-import { formatTokenAmount, humanizeError, validateNumericInput } from "../utils/format.js";
-import { Alert, Button, COLORS, Card, ErrorAlert, Input, MonoLabel, SectionTitle, Spinner, amountInputStyle, textDimMediumNoWrap } from "./ui.js";
+import {
+	formatTokenAmount,
+	humanizeError,
+	validateNumericInput,
+} from "../utils/format.js";
+import {
+	Alert,
+	Button,
+	COLORS,
+	Card,
+	ErrorAlert,
+	Input,
+	MonoLabel,
+	SectionTitle,
+	Spinner,
+	amountInputStyle,
+	textDimMediumNoWrap,
+} from "./ui.js";
 import { useWithdraw } from "../hooks/useWithdraw.js";
 import { useChainId, useWriteContract } from "wagmi";
 import { toast } from "sonner";
 import { AGENT_NFT_ABI, VAULT_ABI } from "@axiom/config/abis";
-import { getAxiomAgentNftAddress, getAxiomStrategyVaultAddress } from "../abi/addresses.js";
+import {
+	getAxiomAgentNftAddress,
+	getAxiomStrategyVaultAddress,
+} from "../abi/addresses.js";
 import { isAddress } from "viem";
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 interface DepositFormProps {
 	tokenId: bigint;
@@ -66,7 +71,6 @@ export function DepositForm({
 		return null;
 	}, [depositAmount]);
 
-	if (vd.isLoading) return null;
 	if (vd.error !== null) {
 		return (
 			<ErrorAlert
@@ -75,9 +79,13 @@ export function DepositForm({
 			/>
 		);
 	}
-	if (vd.depositsWei === undefined) return null;
 
-	const isWarning = variant === "warning" && vd.depositsWei === 0n;
+	const balanceLabel =
+		vd.isLoading || vd.depositsWei === undefined
+			? "—"
+			: `${formatTokenAmount(vd.depositsWei)} 0G`;
+	const isWarning =
+		variant === "warning" && !vd.isLoading && vd.depositsWei === 0n;
 
 	return (
 		<div
@@ -95,7 +103,7 @@ export function DepositForm({
 			}}
 		>
 			<span ref={balanceRef} style={textDimMediumNoWrap}>
-				Vault: <MonoLabel>{formatTokenAmount(vd.depositsWei)} 0G</MonoLabel>
+				Vault: <MonoLabel>{balanceLabel}</MonoLabel>
 			</span>
 			<Input
 				type="text"
@@ -159,7 +167,10 @@ export function WithdrawForm({
 		vaultData: vd,
 	} = useWithdraw(tokenId, handleSuccess);
 
-	if (vd.isLoading || vd.depositsWei === undefined) return null;
+	const availableLabel =
+		vd.isLoading || vd.depositsWei === undefined
+			? "—"
+			: `${formatTokenAmount(vd.depositsWei)} 0G`;
 
 	return (
 		<div
@@ -179,7 +190,7 @@ export function WithdrawForm({
 				placeholder="0.0"
 				value={withdrawAmount}
 				onChange={(e) => setWithdrawAmount(e.target.value)}
-				disabled={isWithdrawing}
+				disabled={isWithdrawing || vd.isLoading}
 				aria-label="Withdraw amount in 0G"
 				aria-invalid={withdrawError !== null}
 				style={amountInputStyle}
@@ -188,7 +199,7 @@ export function WithdrawForm({
 				ref={balanceRef}
 				style={{ color: COLORS.textDim, fontSize: "var(--text-xs)" }}
 			>
-				available: <MonoLabel>{formatTokenAmount(vd.depositsWei)} 0G</MonoLabel>
+				available: <MonoLabel>{availableLabel}</MonoLabel>
 			</span>
 			{withdrawError !== null && (
 				<p className="field-error" style={{ width: "100%" }}>
@@ -197,7 +208,7 @@ export function WithdrawForm({
 			)}
 			<Button
 				variant="secondary"
-				disabled={!isValidWithdraw || isWithdrawing}
+				disabled={!isValidWithdraw || isWithdrawing || vd.isLoading}
 				onClick={() => void handleWithdraw()}
 				style={{ fontSize: "var(--text-sm)", padding: "0.375rem 0.75rem" }}
 			>
@@ -251,11 +262,23 @@ export function StrategyPanel({ tokenId }: { tokenId: bigint }): ReactElement {
   return (
     <Card style={{ marginBottom: "var(--space-xl)" }}>
       <SectionTitle>Bind strategy</SectionTitle>
-      <p style={{ fontSize: "var(--text-sm)", color: COLORS.textMuted, marginTop: 0 }}>
-        Set the Merkle root from your 0G Storage upload and a daily spend limit (wei).
+			<p
+				style={{
+					fontSize: "var(--text-sm)",
+					color: COLORS.textMuted,
+					marginTop: 0,
+				}}
+			>
+				Root from your 0G upload + daily spend limit (wei).
       </p>
       <form onSubmit={(e) => void onSubmit(e)}>
-        <label style={{ display: "block", fontSize: "var(--text-sm)", marginBottom: 6 }}>
+				<label
+					style={{
+						display: "block",
+						fontSize: "var(--text-sm)",
+						marginBottom: 6,
+					}}
+				>
           Strategy root (bytes32)
         </label>
         <Input
@@ -264,7 +287,13 @@ export function StrategyPanel({ tokenId }: { tokenId: bigint }): ReactElement {
           placeholder="0x…"
           style={{ width: "100%", marginBottom: "var(--space-md)" }}
         />
-        <label style={{ display: "block", fontSize: "var(--text-sm)", marginBottom: 6 }}>
+				<label
+					style={{
+						display: "block",
+						fontSize: "var(--text-sm)",
+						marginBottom: 6,
+					}}
+				>
           Daily limit (wei)
         </label>
         <Input
@@ -318,8 +347,14 @@ export function DelegatePanel({ tokenId }: { tokenId: bigint }): ReactElement {
   return (
     <Card style={{ marginBottom: "var(--space-xl)" }}>
       <SectionTitle>Delegate access</SectionTitle>
-      <p style={{ fontSize: "var(--text-sm)", color: COLORS.textMuted, marginTop: 0 }}>
-        Authorize another wallet to act on this agent (authorizeUsage).
+			<p
+				style={{
+					fontSize: "var(--text-sm)",
+					color: COLORS.textMuted,
+					marginTop: 0,
+				}}
+			>
+				Allow another wallet to act on this agent.
       </p>
       <Input
         value={delegate}
@@ -332,7 +367,11 @@ export function DelegatePanel({ tokenId }: { tokenId: bigint }): ReactElement {
           {error}
         </Alert>
       ) : null}
-      <Button variant="primary" disabled={isPending} onClick={() => void authorize()}>
+			<Button
+				variant="primary"
+				disabled={isPending}
+				onClick={() => void authorize()}
+			>
         {isPending ? "Confirming…" : "Authorize delegate"}
       </Button>
     </Card>

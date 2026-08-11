@@ -16,6 +16,7 @@ import { useAgentEvents } from "../hooks/useAgentEvents.js";
 import type { AxiomEvent } from "../hooks/useEventHistory.js";
 import { usePerformance } from "../hooks/usePerformance.js";
 import { useHealth } from "../hooks/useHealth.js";
+import { useVaultData } from "../hooks/useVaultData.js";
 const EventTimeline = lazy(() =>
 	import("../components/EventTimeline.js").then((m) => ({
 		default: m.EventTimeline,
@@ -71,6 +72,7 @@ import { ErrorBoundary } from "../components/ErrorBoundary.js";
 import {
 	COLORS,
 	Skeleton,
+	Spinner,
 	Card,
 	Button,
 	SectionTitle,
@@ -181,12 +183,20 @@ export function AgentDetail(): ReactElement {
 		metrics,
 		history: perfHistory,
 		isLoading: perfLoading,
+		refetch: refetchPerformance,
 	} = usePerformance(tokenId, {
 		enabled: hooksEnabled && activeSection === "performance",
 	});
 	const health = useHealth({ enabled: activeSection === "overview" });
 
 	const tokenIdBigInt = tokenId ?? 0n;
+	const vault = useVaultData(tokenIdBigInt);
+
+	// F7/F13: tab switches scroll to top and refresh the 30s-polled performance query
+	useEffect(() => {
+		window.scrollTo({ top: 0 });
+		if (activeSection === "performance") void refetchPerformance();
+	}, [activeSection, refetchPerformance]);
 
 	if (tokenId === null) {
 		return (
@@ -265,6 +275,12 @@ export function AgentDetail(): ReactElement {
 		return <span style={{ color: COLORS.text }}>{ev.eventName}</span>;
 	}, []);
 
+	// F3: post-mint next-step checklist — hidden once the vault is funded and a strategy is bound
+	const vaultFunded = (vault.depositsWei ?? 0n) > 0n;
+	const strategyBound = vault.strategyRoot !== "";
+	const showNextSteps =
+		!vault.isLoading && vault.error === null && !(vaultFunded && strategyBound);
+
 	return (
 		<div>
 			<BackLink />
@@ -297,7 +313,7 @@ export function AgentDetail(): ReactElement {
 							}}
 							onClick={() => {
 								setActiveSection(s.id);
-								window.history.replaceState(null, "", `#${s.id}`);
+								window.history.pushState(null, "", `#${s.id}`);
 							}}
 						>
 							{s.label}
@@ -348,24 +364,20 @@ export function AgentDetail(): ReactElement {
 											type="button"
 											onClick={() => {
 												setActiveSection("execute");
-												window.history.replaceState(null, "", "#execute");
+												window.history.pushState(null, "", "#execute");
 											}}
 										>
 											Tick
 										</Button>
-										<Button
-											variant="secondary"
-											type="button"
-											onClick={() => setVaultTool("deposit")}
-										>
-											Fund
-										</Button>
 										<span
 											ref={transferBtnRef}
 											style={{ display: "inline-block" }}
+											onPointerEnter={(): void => {
+												void import("../components/TransferModal.js");
+											}}
 										>
 											<Button
-												variant="ghost"
+												variant="secondary"
 												type="button"
 												onClick={(): void => {
 													transferBtnRef.current?.style.setProperty(
@@ -383,25 +395,66 @@ export function AgentDetail(): ReactElement {
 												Transfer
 											</Button>
 										</span>
-										<Link to="/chat" style={{ textDecoration: "none" }}>
+										<Link
+											to={`/chat?agent=${tokenId.toString()}`}
+											style={{ textDecoration: "none" }}
+										>
 											<Button variant="ghost" type="button">
 												Chat
 											</Button>
 										</Link>
 									</div>
 
+									{showNextSteps && (
+										<p
+											style={{
+												margin: "0 0 var(--space-sm)",
+												fontSize: "var(--text-xs)",
+												color: COLORS.textDim,
+											}}
+										>
+											Next:{" "}
+											<span
+												style={{
+													color: vaultFunded ? COLORS.success : undefined,
+												}}
+											>
+												{vaultFunded ? "✓ Fund" : "○ Fund"}
+											</span>{" "}
+											→{" "}
+											<span
+												style={{
+													color: strategyBound ? COLORS.success : undefined,
+												}}
+											>
+												{strategyBound ? "✓ Bind strategy" : "○ Bind strategy"}
+											</span>{" "}
+											→{" "}
+											<span
+												style={{
+													color:
+														vaultFunded && strategyBound
+															? COLORS.success
+															: undefined,
+												}}
+											>
+												{vaultFunded && strategyBound ? "✓ Tick" : "○ Tick"}
+											</span>
+										</p>
+									)}
+
 									<div className="agent-tool">
 										<div
 											className="agent-tool__switch"
-											role="tablist"
+											role="radiogroup"
 											aria-label="Vault tools"
 										>
 											{VAULT_TOOLS.map((t) => (
 												<button
 													key={t.id}
 													type="button"
-													role="tab"
-													aria-selected={vaultTool === t.id}
+													role="radio"
+													aria-checked={vaultTool === t.id}
 													className={`agent-tool__btn${
 														vaultTool === t.id ? " is-active" : ""
 													}`}
@@ -417,7 +470,10 @@ export function AgentDetail(): ReactElement {
 											className="agent-tool__panel fade-enter"
 										>
 											{vaultTool === "deposit" && (
-												<DepositForm tokenId={tokenIdBigInt} />
+												<DepositForm
+													variant="warning"
+													tokenId={tokenIdBigInt}
+												/>
 											)}
 											{vaultTool === "withdraw" && (
 												<WithdrawForm tokenId={tokenIdBigInt} />
@@ -441,7 +497,7 @@ export function AgentDetail(): ReactElement {
 										aria-expanded={showMeta}
 										onClick={() => setShowMeta((v) => !v)}
 									>
-										{showMeta ? "Hide details" : "Details"}
+										{showMeta ? "Details ▴" : "Details ▾"}
 									</button>
 									{showMeta && (
 										<dl className="agent-meta__grid fade-enter">
@@ -581,7 +637,10 @@ export function AgentDetail(): ReactElement {
 										<Button
 											variant="ghost"
 											style={{ padding: 0, textDecoration: "underline" }}
-											onClick={() => setActiveSection("execute")}
+											onClick={() => {
+												setActiveSection("execute");
+												window.history.pushState(null, "", "#execute");
+											}}
 										>
 											Run tick
 										</Button>
@@ -593,7 +652,7 @@ export function AgentDetail(): ReactElement {
 				</div>
 			</div>
 			{transferOpen && (
-				<Suspense fallback={null}>
+				<Suspense fallback={<Spinner />}>
 					<TransferModal
 						open={transferOpen}
 						tokenId={tokenId}

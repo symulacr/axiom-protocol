@@ -50,6 +50,7 @@ export type ToolContext = {
 		value?: bigint;
 	}) => Promise<`0x${string}`>;
 	publicClient: ReturnType<typeof usePublicClient>;
+	openTransfer?: (tokenId: string) => Promise<string>;
 };
 
 export const TOOLS: ToolDefinition[] = CHAT_TOOL_CATALOG.map((t) => ({
@@ -66,7 +67,32 @@ export function useToolHandlers(ctx: ToolContext): Record<string, ToolHandler> {
 		const handlers: Record<string, ToolHandler> = {};
 		for (const tool of TOOLS) {
 			const name = tool.function.name;
-			handlers[name] = async (args, c) => runBrowserTool(name, args, c);
+			handlers[name] = async (args, c) => {
+				if (name === "transfer") {
+					// transfer is a UI-flow tool: reuse the TransferModal path (EIP-712 access proof + iTransferFrom), never a raw executor
+					if (!c.openTransfer) {
+						return JSON.stringify({
+							error: "Wallet not connected — connect to transfer an agent.",
+						});
+					}
+					const tokenId = String(args.tokenId ?? c.lastTokenId ?? "");
+					if (!tokenId) {
+						return JSON.stringify({
+							error: "tokenId required — specify which agent to transfer.",
+						});
+					}
+					try {
+						const txHash = await c.openTransfer(tokenId);
+						return JSON.stringify({ ok: true, txHash });
+					} catch (err) {
+						return JSON.stringify({
+							ok: false,
+							error: err instanceof Error ? err.message : "transfer cancelled",
+						});
+					}
+				}
+				return runBrowserTool(name, args, c);
+			};
 		}
 		return handlers;
 	}, [ctx]);

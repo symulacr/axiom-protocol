@@ -48,21 +48,17 @@ const confirmTextStyle: CSSProperties = {
 
 const PHASE_LABELS: Record<TransferPhase, string> = {
   idle: "Ready",
-  challenge: "Generating challenge...",
-  signing: "Waiting for signature...",
-  finalizing: "Re-encrypting data...",
-  confirming: "Confirming on-chain...",
+	challenge: "Generating challenge…",
+	signing: "Waiting for signature…",
+	finalizing: "Re-encrypting data…",
+	confirming: "Confirming on-chain…",
 };
 
 const PHASE_RETRY: Partial<Record<TransferPhase, string>> = {
-  challenge:
-    "The challenge request to the oracle failed. The nonce has been consumed — generate a new nonce and try again.",
-  signing:
-    'The wallet signature was rejected or failed. The nonce has been consumed — click "Edit" to restart from the beginning.',
-  finalizing:
-    "Finalization with the oracle failed. The transaction was NOT submitted. Generate a new nonce and restart.",
-  confirming:
-    'The on-chain transaction failed. Click "Edit" to restart the flow with a fresh nonce.',
+	challenge: "Failed. Tap Edit to retry with a fresh nonce.",
+	signing: "Failed. Tap Edit to retry with a fresh nonce.",
+	finalizing: "Failed. Tap Edit to retry with a fresh nonce.",
+	confirming: "Failed. Tap Edit to retry with a fresh nonce.",
 };
 
 const proofCardStyle: CSSProperties = {
@@ -191,10 +187,7 @@ function TransferFormPhase({
   return (
     <form onSubmit={onSubmit}>
       <p className="text-muted text-sm" style={confirmTextStyle}>
-        The receiver signs an EIP-712 AccessProof and the TEE oracle signs the
-        OwnershipProof. You'll confirm the on-chain
-        <code style={{ color: COLORS.bronzeLight }}> iTransferFrom </code>
-        transaction in the next step.
+				You'll sign once to authorize, then confirm the on-chain transfer.
       </p>
 
       <FieldLabel htmlFor={`${formId}-to`}>Receiver address</FieldLabel>
@@ -212,7 +205,13 @@ function TransferFormPhase({
       />
       <FieldError>{addressError}</FieldError>
 
-      <FieldLabel htmlFor={`${formId}-pubkey`}>Receiver Public Key</FieldLabel>
+			<details className="mt-lg">
+				<summary className="cursor-pointer text-sm fw-medium text-muted">
+					Advanced
+				</summary>
+				<FieldLabel htmlFor={`${formId}-pubkey`} spacing="sm">
+					Receiver public key
+				</FieldLabel>
       <Textarea
         id={`${formId}-pubkey`}
         name="receiverPubKey64"
@@ -233,16 +232,11 @@ function TransferFormPhase({
           margin: "4px 0 0",
         }}
       >
-        The receiver's public key (not their address). Found in their wallet's
-        'Export Public Key' or via ENS. Must be 128 hex characters without the
-        0x04 prefix.
+					128 hex chars, no 0x04 prefix. Get it from the receiver's wallet
+					'Export Public Key'.
       </p>
       <FieldError>{pubKeyError}</FieldError>
 
-      <details style={{ fontSize: "var(--text-xs)", color: COLORS.textDim }}>
-        <summary style={{ cursor: "pointer" }}>
-          Advanced: Access proof details
-        </summary>
         <FieldLabel htmlFor={`${formId}-nonce`} spacing="sm">
           Access proof nonce
         </FieldLabel>
@@ -257,22 +251,19 @@ function TransferFormPhase({
           className="text-dim text-xs"
           style={{ margin: "4px 0 0", fontWeight: "var(--fw-light)" }}
         >
-          32 random bytes generated locally. A new nonce is minted each time the
-          modal opens.
+					32 random bytes, regenerated each time the modal opens.
         </p>
-      </details>
 
       <details className="mt-lg">
         <summary className="cursor-pointer text-sm fw-medium text-muted">
-          Re-encrypt for receiver (optional re-key)
+						Re-encrypt for receiver (optional)
         </summary>
         <p
           className="text-dim text-xs"
           style={{ margin: "8px 0", fontWeight: "var(--fw-light)" }}
         >
-          Supply the current AES data key and 0G Storage URI to trigger a full
-          re-key. The oracle re-encrypts and seals a fresh key. Leave blank for
-          sign-only.
+						Optional: AES key + storage URI to re-key data for the receiver.
+						Blank = sign-only.
         </p>
         <FieldLabel htmlFor={`${formId}-oldkey`} spacing="sm">
           Old data encryption key (base64)
@@ -304,6 +295,7 @@ function TransferFormPhase({
         />
         <FieldError>{rekeyError}</FieldError>
       </details>
+			</details>
 
       {mergedError}
 
@@ -354,9 +346,7 @@ function ConfirmTransferPhase({
       </h2>
 
       <p className="text-muted text-sm" style={confirmTextStyle}>
-        Review the proof details, then submit the on-chain
-        <code style={{ color: COLORS.bronzeLight }}> iTransferFrom </code>
-        transaction. Your wallet will ask for the final signature.
+				Confirm — your wallet will ask for the final signature.
       </p>
 
       {signature !== null && signature.rekeyed === true && (
@@ -501,7 +491,7 @@ export function TransferModal({
   );
   const handleTransferred = useCallback(
     (txHash: `0x${string}`): void => {
-      toast.success(`Transfer ${txHash.slice(0, 10)}... confirmed`);
+			toast.success(`Transfer ${txHash.slice(0, 10)}… confirmed`);
       onTransferred?.(txHash);
       onSuccess?.(txHash);
     },
@@ -710,4 +700,3 @@ export function TransferModal({
     </>
   );
 }
-

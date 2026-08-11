@@ -90,7 +90,23 @@ function PaymentConfigDisplay({
     );
   }
   if (config === null) {
-    return <Spinner size={16} />;
+		return (
+			<p
+				style={{
+					fontSize: "var(--text-xs)",
+					color: COLORS.textMuted,
+					margin: 0,
+					display: "flex",
+					gap: "8px",
+					alignItems: "center",
+					flexWrap: "wrap",
+				}}
+			>
+				<span>Protocol fee: {PLACEHOLDER}</span>
+				<span>•</span>
+				<span>Token: {PLACEHOLDER}</span>
+			</p>
+		);
   }
   const pct = (Number(config.protocolFeeBps) / 100).toFixed(2);
   return (
@@ -126,6 +142,7 @@ function PaymentForm({
   payStatus,
   payError,
   payAmountError,
+	configReady,
   onPayAmountChange,
   onPay,
 }: {
@@ -134,16 +151,14 @@ function PaymentForm({
   payStatus: ActionStatus;
   payError: string | null;
   payAmountError: string | null;
+	configReady: boolean;
   onPayAmountChange: (value: string) => void;
   onPay: () => void;
 }): ReactElement {
   return (
     <>
       <h3>Pay for Agent</h3>
-      <p className="text-xs text-muted">
-        Enter amount in tokens (e.g. &quot;10&quot;). Converted to smallest unit
-        automatically.
-      </p>
+			<p className="text-xs text-muted">Amount in tokens.</p>
       <NumericActionRow
         type="number"
         inputMode="numeric"
@@ -158,7 +173,12 @@ function PaymentForm({
         onSubmit={onPay}
         buttonLabel="Pay"
         loading={payStatus === "pending"}
-        disabled={isPayLoading || payAmount === "" || payAmountError !== null}
+				disabled={
+					isPayLoading ||
+					payAmount === "" ||
+					payAmountError !== null ||
+					!configReady
+				}
         error={payAmountError}
         errorId="pay-amount-error"
         className="mt-sm"
@@ -196,7 +216,21 @@ function EarningsSection({
     <>
       <h3>Earnings</h3>
       {earnings === null ? (
-        <Spinner size={16} />
+				<DefinitionList
+					labelWidth="140px"
+					style={{ margin: "var(--space-md) 0" }}
+					items={[
+						{ term: "Creator", detail: <MonoLabel>{PLACEHOLDER}</MonoLabel> },
+						{
+							term: "Accumulated Earnings",
+							detail: <MonoLabel>{PLACEHOLDER}</MonoLabel>,
+							detailStyle: {
+								color: COLORS.bronzeLight,
+								fontWeight: "var(--fw-semibold)",
+							},
+						},
+					]}
+				/>
       ) : (
         <DefinitionList
           labelWidth="140px"
@@ -239,7 +273,7 @@ function EarningsSection({
         title="Confirm Withdrawal"
       >
         <p style={{ marginBottom: "16px" }}>
-          Withdraw all agent earnings? This will send funds to your wallet.
+					Withdraw all earnings to your wallet?
         </p>
         <div
           style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}
@@ -289,8 +323,7 @@ function RoyaltySection({
     <>
       <h3>Royalty</h3>
       <p className="text-xs text-muted">
-        Basis points (0\u201310000). 250 = 2.5%. Only the agent creator may set
-        this on-chain.
+				bps (0\u201310000; 250 = 2.5%). Creator only.
       </p>
       <NumericActionRow
         type="number"
@@ -449,14 +482,14 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
       })) as bigint;
 
       if (allowance < scaledAmount) {
-        toast.info("Approving token allowance...");
+				toast.info("Approving token allowance…");
         const approveTx = await writeContractAsync({
           address: config.paymentToken,
           abi: erc20Abi,
           functionName: "approve",
           args: [getAxiomPaymentProcessorAddress(chainId), scaledAmount],
         });
-        toast.info("Waiting for approval confirmation...");
+				toast.info("Waiting for approval confirmation…");
         await publicClient.waitForTransactionReceipt({ hash: approveTx });
         toast.success("Allowance approved");
       }
@@ -537,6 +570,7 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
           payStatus={payStatus}
           payError={payError}
           payAmountError={payAmountError}
+					configReady={config !== null}
           onPayAmountChange={(v): void => {
             setPayAmount(v);
             setPayStatus("idle");
@@ -601,4 +635,3 @@ export function PaymentPanel({ tokenId }: PaymentPanelProps): ReactElement {
 }
 
 const ethersZero: Address = "0x0000000000000000000000000000000000000000";
-

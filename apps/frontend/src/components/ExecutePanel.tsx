@@ -6,6 +6,7 @@ import {
 	type ReactElement,
 } from "react";
 import { useChainId } from "wagmi";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
 	getAxiomAgentNftAddress,
@@ -24,7 +25,6 @@ import {
 	SectionTitle,
 	MonoLabel,
 	Alert,
-	HelpTip,
 	getActionColor,
 	DefinitionList,
 	ConnectedGuard,
@@ -35,20 +35,6 @@ import {
 	humanizeError,
 	formatTokenAmount,
 } from "../utils/format.js";
-// Static waiting messages for the tick step checklist (shared with chat UX).
-const NEUTRAL_WAITING_MESSAGES = [
-  "Connecting to 0G Compute…",
-  "Loading agent context…",
-  "Running inference…",
-  "Calling protocol tools…",
-  "Waiting for model response…",
-  "Processing your request…",
-];
-
-const TICK_STEPS = [
-	...NEUTRAL_WAITING_MESSAGES,
-	"Submitting strategy transaction to 0G Chain…",
-];
 
 function RawOutput({ raw }: { raw: string }): ReactElement {
 	const [shown, setShown] = useState(false);
@@ -117,7 +103,8 @@ export function ExecutePanel({
 	const [result, setResult] = useState<TickResult | null>(null);
 	const [showRaw, setShowRaw] = useState(false);
 	const [streamMode, setStreamMode] = useState(false);
-	const [loadingStep, setLoadingStep] = useState(0);
+	const [elapsedMs, setElapsedMs] = useState(0);
+	const queryClient = useQueryClient();
 
 	useEffect(() => {
 		if (selectedId && !tokenIdProp) {
@@ -129,17 +116,16 @@ export function ExecutePanel({
 		}
 	}, [selectedId, tokenIdProp]);
 
+	// Real progress: elapsed time since the tick request went out — no invented steps
 	useEffect(() => {
 		if (!isLoading) {
-			setLoadingStep(0);
+			setElapsedMs(0);
 			return;
 		}
+		const start = Date.now();
 		const interval = setInterval(() => {
-			setLoadingStep((step) => {
-				if (step < TICK_STEPS.length - 1) return step + 1;
-				return step;
-			});
-		}, 2500);
+			setElapsedMs(Date.now() - start);
+		}, 500);
 		return () => clearInterval(interval);
 	}, [isLoading]);
 
@@ -157,8 +143,7 @@ export function ExecutePanel({
 	const vd = useVaultData(activeBigint);
 	const isReady = !vd.isLoading && activeId !== "";
 	const depositsWei = isReady ? vd.depositsWei : undefined;
-	const strategyRoot = isReady ? vd.strategyRoot : undefined;
-	const dailyLimitWei = isReady ? vd.dailyLimitWei : undefined;
+	const hasFunds = (depositsWei ?? 0n) > 0n;
 
 	const onExecute = useCallback(async (): Promise<void> => {
 		if (!activeId) return;
@@ -186,11 +171,22 @@ export function ExecutePanel({
 			setResult(res);
 			toast.success("Tick executed successfully");
 			vd.refetch();
+			// F13: keep the Stats tab from showing 30s-old numbers after a tick
+			queryClient.invalidateQueries({ queryKey: ["performance", activeId] });
 		} catch (err) {
 			const msg = humanizeError(err);
 			toast.error(`Strategy execution failed: ${msg}`);
 		}
-	}, [activeId, chainId, streamMode, tick, tickStream, resetStream, vd]);
+	}, [
+		activeId,
+		chainId,
+		streamMode,
+		tick,
+		tickStream,
+		resetStream,
+		vd,
+		queryClient,
+	]);
 
 	return (
 		<ConnectedGuard>
@@ -248,51 +244,25 @@ export function ExecutePanel({
 					</label>
 				)}
 
-				<div>
-					<SectionTitle>Vault State</SectionTitle>
-					<DefinitionList
-						items={[
-							{
-								term: "Balance",
-								detail:
-									depositsWei === undefined
-										? PLACEHOLDER
-										: `${formatTokenAmount(depositsWei)} 0G`,
-								detailStyle: {
+				<p
+					style={{
+						margin: 0,
+						fontSize: "var(--text-sm)",
+						color: COLORS.textMuted,
+					}}
+				>
+					Vault:{" "}
+					<strong
+						style={{
 									color: COLORS.bronzeLight,
 									fontWeight: "var(--fw-semibold)",
-								},
-							},
-							{
-								term: (
-									<HelpTip tip="The on-chain address of the strategy contract controlling this agent's vault logic">
-										Strategy Root
-									</HelpTip>
-								),
-								detail:
-									strategyRoot !== undefined ? (
-										<MonoLabel
-											style={{ fontSize: "var(--text-xs)" }}
-										>{`${strategyRoot.slice(0, 10)}\u2026`}</MonoLabel>
-									) : (
-										<span style={{ color: COLORS.textDim }}>{PLACEHOLDER}</span>
-									),
-							},
-							{
-								term: (
-									<HelpTip tip="Maximum amount the agent can spend per 24-hour cycle, enforced by the vault contract">
-										Daily Limit
-									</HelpTip>
-								),
-								detail:
-									dailyLimitWei === undefined
+						}}
+					>
+						{depositsWei === undefined
 										? PLACEHOLDER
-										: `${formatTokenAmount(dailyLimitWei)} 0G`,
-								detailStyle: { color: COLORS.text },
-							},
-						]}
-					/>
-				</div>
+							: `${formatTokenAmount(depositsWei)} 0G`}
+					</strong>
+				</p>
 
 				<div
 					style={{
@@ -305,7 +275,9 @@ export function ExecutePanel({
 					<div style={{ display: "flex", alignItems: "center", gap: 12 }}>
 						<Button
 							variant="primary"
-							disabled={isLoading || activeId === ""}
+							disabled={
+								isLoading || activeId === "" || vd.isLoading || !hasFunds
+							}
 							title="This will consume gas to execute the strategy tick on-chain"
 							onClick={(): void => {
 								void onExecute();
@@ -338,16 +310,19 @@ export function ExecutePanel({
 							Stream
 						</label>
 					</div>
-					{isStreaming && (
-						<span
+					{activeId !== "" &&
+						!vd.isLoading &&
+						vd.error === null &&
+						!hasFunds && (
+							<p
 							style={{
+									margin: 0,
 								fontSize: "var(--text-xs)",
-								color: COLORS.bronzeLight,
-								fontStyle: "italic",
+									color: COLORS.textDim,
 							}}
 						>
-							Receiving live output...
-						</span>
+								Vault balance is 0 — fund it before running a tick.
+							</p>
 					)}
 					{isStreaming && (
 						<Button variant="secondary" onClick={cancelTick}>
@@ -396,57 +371,26 @@ export function ExecutePanel({
 								Enclave Pipeline Execution
 							</span>
 						</div>
-						{TICK_STEPS.map((step, idx) => {
-							const isCompleted = idx < loadingStep;
-							const isActive = idx === loadingStep;
-							const isUpcoming = idx > loadingStep;
-
-							let color: string = COLORS.textDim;
-							let icon = "○";
-							let fontWeight = "var(--fw-regular)";
-							let animationStyle: React.CSSProperties = {};
-
-							if (isCompleted) {
-								color = COLORS.success;
-								icon = "✓";
-							} else if (isActive) {
-								color = COLORS.bronzeLight;
-								icon = "●";
-								fontWeight = "var(--fw-semibold)";
-								animationStyle = {
-									animation: "axiom-pulse 1.5s ease-in-out infinite",
-								};
-							}
-
-							return (
 								<div
-									key={idx}
 									style={{
 										display: "flex",
 										alignItems: "center",
 										gap: "8px",
 										fontSize: "var(--text-sm)",
-										color,
-										fontWeight,
-										opacity: isUpcoming ? 0.4 : 1,
-										transition:
-											"opacity 0.2s var(--ease-out), color 0.18s var(--ease-out)",
-										...animationStyle,
 									}}
 								>
+							<span style={{ color: COLORS.bronzeLight }}>
+								{isStreaming ? "Receiving live output…" : "Executing tick…"}
+							</span>
 									<span
 										style={{
-											fontFamily: "var(--font-mono)",
-											minWidth: "16px",
-											textAlign: "center",
+									color: COLORS.textDim,
+									fontVariantNumeric: "tabular-nums",
 										}}
 									>
-										{icon}
+								{(elapsedMs / 1000).toFixed(1)}s
 									</span>
-									<span>{step}</span>
 								</div>
-							);
-						})}
 					</div>
 				)}
 
@@ -619,4 +563,3 @@ export function ExecutePanel({
 		</ConnectedGuard>
 	);
 }
-

@@ -14,10 +14,7 @@ export function TradeHistory({ history }: TradeHistoryProps): ReactElement {
   if (history.length === 0) {
     return (
       <EmptyState>
-        <p style={mutedTextSm}>
-          No strategy executions yet. Execute a strategy to see trade history
-          here.
-        </p>
+				<p style={mutedTextSm}>No executions yet.</p>
       </EmptyState>
     );
   }
