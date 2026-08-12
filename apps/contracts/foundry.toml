@@ -17,18 +17,31 @@ fs_permissions = [{ access = "write", path = "../.." }]
 # Cancun mandatory on 0G Chain
 evm_version = "cancun"
 
-# Solidity 0.8.24 (min required by OpenZeppelin 5.5+; 0G reference repo comment kept for provenance)
-solc = "0.8.24"
+# Solidity 0.8.30 — SSA codegen backend eliminates most stack-too-deep failures,
+# so via_ir can be dropped for classic-pipeline speed (evidence: soliditylang releases,
+# issue #16085). 0.8.24 was min for OZ 5.5+; 0.8.30 is strictly newer.
+solc = "0.8.30"
 
 # Min runs = smallest bytecode. 0G has zero gas fees, so runtime gas cost is irrelevant.
 optimizer_runs = 1
 bytecode_hash = "none"
 
-# viaIR on (per 0G docs) — needed to keep AxiomAgentNFT under EIP-170 (22,022B of 24,576B)
-via_ir = true
+# SSA backend handles stack depth — via_ir OFF globally for compile speed (was 2:25 wall).
+# AxiomTeeVerifier's proof loop still exceeds the classic 16-slot stack limit even after
+# extraction; route only that file through via_ir (evidence: foundry solidity-compiler reference).
+via_ir = false
+additional_compiler_profiles = [{ name = "via-ir", via_ir = true }]
+compilation_restrictions = [
+    { paths = "src/verifiers/AxiomTeeVerifier.sol", via_ir = true },
+    { paths = "src/AxiomStrategyVault.sol", via_ir = true },
+    { paths = "test/FuzzAxiomTeeVerifier.t.sol", via_ir = true },
+]
 verbosity = 2
 gas_reports = ["*"]
 fuzz = { runs = 256 }
+# Minimal artifacts = less disk I/O + lower RSS (evidence: forge build docs)
+build_info = false
+extra_output = ["abi", "evm.bytecode"]
 
 # Fast iteration profile: threads + fse only. via_ir must stay ON — the suite hits
 # "Stack too deep" without it (LValue.cpp:51), which is the original reason it was enabled.

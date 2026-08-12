@@ -130,7 +130,29 @@ contract AxiomTeeVerifier is Initializable, BaseVerifier, OwnableUpgradeable, UU
         bytes32 domainSep = _domainSeparator();
 
         for (uint256 i = 0; i < proofs.length; i++) {
-            TransferValidityProof calldata p = proofs[i];
+            outputs[i] = _verifyTransferValidityProof(
+                proofs[i],
+                to,
+                nft,
+                expectedSigner,
+                domainSep,
+                nowTs,
+                maxAge
+            );
+        }
+    }
+
+    /// @dev Single-proof verification body, extracted so the classic (non-via_ir) pipeline
+    ///      gets a fresh stack frame per proof — the inline loop exceeded the 16-slot limit.
+    function _verifyTransferValidityProof(
+        TransferValidityProof calldata p,
+        address to,
+        address nft,
+        address expectedSigner,
+        bytes32 domainSep,
+        uint256 nowTs,
+        uint256 maxAge
+    ) internal returns (TransferValidityProofOutput memory) {
 
             // Timestamp gate: validUntil must be future and within maxAge; validUntil >= now keeps the subtraction overflow-safe.
             _checkValidUntil(p.ownershipProof.validUntil, nowTs, maxAge);
@@ -154,44 +176,39 @@ contract AxiomTeeVerifier is Initializable, BaseVerifier, OwnableUpgradeable, UU
             }
 
             // Verify OwnershipProof (TEE oracle): bytes fields pre-hashed per EIP-712 hashstruct so signTypedData_v4 digests match.
-            bytes32 ownershipMessage = keccak256(
-                abi.encodePacked(
-                    "\x19\x01",
-                    domainSep,
-                    keccak256(
-                        abi.encode(
-                            OWNERSHIP_PROOF_TYPEHASH,
-                            p.ownershipProof.dataHash,
-                            sealedKeyHash,
-                            ownershipTargetPubkeyHash,
-                            to,
-                            nft,
-                            ownershipNonceHash,
-                            p.ownershipProof.validUntil
-                        )
-                    )
+            // Struct hash computed separately to keep the loop's stack depth under the classic-pipeline limit.
+            bytes32 ownershipStructHash = keccak256(
+                abi.encode(
+                    OWNERSHIP_PROOF_TYPEHASH,
+                    p.ownershipProof.dataHash,
+                    sealedKeyHash,
+                    ownershipTargetPubkeyHash,
+                    to,
+                    nft,
+                    ownershipNonceHash,
+                    p.ownershipProof.validUntil
                 )
+            );
+            bytes32 ownershipMessage = keccak256(
+                abi.encodePacked("\x19\x01", domainSep, ownershipStructHash)
             );
             address recovered = _recoverSigner(ownershipMessage, p.ownershipProof.proof);
             if (recovered != expectedSigner) revert AxiomInvalidOwnershipProof();
 
             // Verify AccessProof (receiver via signTypedData_v4); recovered signer must equal `to`.
-            bytes32 accessMessage = keccak256(
-                abi.encodePacked(
-                    "\x19\x01",
-                    domainSep,
-                    keccak256(
-                        abi.encode(
-                            ACCESS_PROOF_TYPEHASH,
-                            p.accessProof.dataHash,
-                            accessTargetPubkeyHash,
-                            to,
-                            nft,
-                            accessNonceHash,
-                            p.accessProof.validUntil
-                        )
-                    )
+            bytes32 accessStructHash = keccak256(
+                abi.encode(
+                    ACCESS_PROOF_TYPEHASH,
+                    p.accessProof.dataHash,
+                    accessTargetPubkeyHash,
+                    to,
+                    nft,
+                    accessNonceHash,
+                    p.accessProof.validUntil
                 )
+            );
+            bytes32 accessMessage = keccak256(
+                abi.encodePacked("\x19\x01", domainSep, accessStructHash)
             );
             address accessSigner = _recoverSigner(accessMessage, p.accessProof.proof);
             if (accessSigner == address(0) || accessSigner != to) revert AxiomInvalidAccessProof();
@@ -208,16 +225,16 @@ contract AxiomTeeVerifier is Initializable, BaseVerifier, OwnableUpgradeable, UU
             );
             _checkAndMarkProof(proofNonce);
 
-            outputs[i] = TransferValidityProofOutput({
-                dataHash: p.ownershipProof.dataHash,
-                sealedKey: p.ownershipProof.sealedKey,
-                targetPubkey: p.ownershipProof.targetPubkey,
-                wantedKey: "",
-                accessAssistant: accessSigner,
-                accessProofNonce: p.accessProof.nonce,
-                ownershipProofNonce: p.ownershipProof.nonce
-            });
-        }
+            return
+                TransferValidityProofOutput({
+                    dataHash: p.ownershipProof.dataHash,
+                    sealedKey: p.ownershipProof.sealedKey,
+                    targetPubkey: p.ownershipProof.targetPubkey,
+                    wantedKey: "",
+                    accessAssistant: accessSigner,
+                    accessProofNonce: p.accessProof.nonce,
+                    ownershipProofNonce: p.ownershipProof.nonce
+                });
     }
 
     /// @dev Enforce the EIP-712 deadline, overflow-safe: expired if validUntil < now; too far if validUntil - now > maxAge (covers type(uint256).max).
