@@ -1,9 +1,13 @@
 import { test } from "bun:test";
 import assert from "node:assert/strict";
 import express from "express";
+import { encodeAbiParameters, encodeEventTopics } from "viem";
+import type { Log } from "ethers";
 import { registerEventRoutes, INDEXER_KEY_HEADER } from "./events.js";
 import type { EventStore } from "../events/store.js";
 import type { ServerConfig } from "../server.js";
+import { decodeAxiomLog } from "../indexer/events/parser.js";
+import { EVENT_ABI } from "../indexer/events.js";
 
 const INDEXER_KEY = "super-secret-indexer-key";
 
@@ -150,4 +154,93 @@ test("POST /v1/events accepts an event without a txHash (no over-gating)", async
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
+});
+
+const DECODE_TX = "0x" + "ab".repeat(32);
+
+function decodeLog(
+  topics: readonly (string | string[] | null)[],
+  data: string,
+  blockNumber = 100,
+): Log {
+  return {
+    topics,
+    data,
+    blockNumber,
+    transactionHash: DECODE_TX,
+    index: 2,
+  } as unknown as Log;
+}
+
+test("decodeAxiomLog decodes StorageInfoUpdated(oldInfo, newInfo) into the AxiomEvent shape", () => {
+  const abi = EVENT_ABI.StorageInfoUpdated;
+  const topics = encodeEventTopics({
+    abi: [abi],
+    eventName: "StorageInfoUpdated",
+    args: {},
+  });
+  const data = encodeAbiParameters(
+    [
+      { type: "string" },
+      { type: "string" },
+    ],
+    ["ipfs://old-description", "ipfs://new-description"],
+  );
+  const decoded = decodeAxiomLog(decodeLog(topics, data));
+  assert.deepEqual(decoded, {
+    kind: "StorageInfoUpdated",
+    blockNumber: 100,
+    txHash: DECODE_TX,
+    logIndex: 2,
+    oldInfo: "ipfs://old-description",
+    newInfo: "ipfs://new-description",
+  });
+});
+
+test("decodeAxiomLog decodes Updated(tokenId, oldDatas, newDatas) into count fields", () => {
+  const abi = EVENT_ABI.Updated;
+  const topics = encodeEventTopics({
+    abi: [abi],
+    eventName: "Updated",
+    args: { tokenId: 7n },
+  });
+  const data = encodeAbiParameters(
+    [
+      {
+        type: "tuple[]",
+        components: [
+          { name: "dataDescription", type: "string" },
+          { name: "dataHash", type: "bytes32" },
+        ],
+      },
+      {
+        type: "tuple[]",
+        components: [
+          { name: "dataDescription", type: "string" },
+          { name: "dataHash", type: "bytes32" },
+        ],
+      },
+    ],
+    [
+      [{ dataDescription: "old", dataHash: ("0x" + "aa".repeat(32)) as `0x${string}` }],
+      [
+        { dataDescription: "new-1", dataHash: ("0x" + "bb".repeat(32)) as `0x${string}` },
+        { dataDescription: "new-2", dataHash: ("0x" + "cc".repeat(32)) as `0x${string}` },
+      ],
+    ],
+  );
+  const decoded = decodeAxiomLog(decodeLog(topics, data));
+  assert.equal(decoded?.kind, "Updated");
+  if (decoded?.kind === "Updated") {
+    assert.equal(decoded.tokenId, 7n);
+    assert.equal(decoded.oldDatasCount, 1);
+    assert.equal(decoded.newDatasCount, 2);
+  }
+});
+
+test("decodeAxiomLog drops a log whose topic0 matches no watched event", () => {
+  const decoded = decodeAxiomLog(
+    decodeLog(["0x" + "ff".repeat(32)], "0x", 101),
+  );
+  assert.equal(decoded, null);
 });

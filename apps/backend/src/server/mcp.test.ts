@@ -223,3 +223,143 @@ test("MCP requires the server API key; client keys and no key are rejected", asy
 		process.env.AXIOM_CLIENT_API_KEY = prevClient;
 	}
 });
+
+const COMPUTE_ENV_KEYS = [
+	"AXIOM_COMPUTE_API_KEY",
+	"OG_COMPUTE_API_KEY",
+	"AXIOM_COMPUTE_DIRECT_KEY",
+	"AXIOM_COMPUTE_DIRECT_URL",
+] as const;
+
+function snapshotComputeEnv(): Record<string, string | undefined> {
+	const snap: Record<string, string | undefined> = {};
+	for (const k of COMPUTE_ENV_KEYS) snap[k] = process.env[k];
+	return snap;
+}
+
+function restoreComputeEnv(snap: Record<string, string | undefined>): void {
+	for (const k of COMPUTE_ENV_KEYS) {
+		const v = snap[k];
+		if (v === undefined) delete process.env[k];
+		else process.env[k] = v;
+	}
+}
+
+async function chatRequest(
+	baseUrl: string,
+	body: unknown,
+): Promise<{ status: number; text: () => Promise<string>; json: () => Promise<unknown> }> {
+	const res = await fetch(`${baseUrl}/v1/chat/completions`, {
+		method: "POST",
+		headers: { "content-type": "application/json" },
+		body: JSON.stringify(body),
+	});
+	return { status: res.status, text: () => res.text(), json: () => res.json() };
+}
+
+test("/v1/chat/completions returns 502 when no compute key is configured", async () => {
+	const prevEnv = snapshotComputeEnv();
+	for (const k of COMPUTE_ENV_KEYS) delete process.env[k];
+	const prevDisable = process.env.AXIOM_DISABLE_AUTH;
+	process.env.AXIOM_DISABLE_AUTH = "true";
+	const booted = await boot(makeConfig());
+	try {
+		const res = await chatRequest(booted.baseUrl, {
+			messages: [{ role: "user", content: "hello" }],
+		});
+		assert.equal(res.status, 502);
+		const body = (await res.json()) as { error?: string };
+		assert.ok(
+			body.error?.includes("AXIOM_COMPUTE_API_KEY"),
+			`error should name the missing key, got: ${body.error}`,
+		);
+	} finally {
+		await booted.close();
+		restoreComputeEnv(prevEnv);
+		process.env.AXIOM_DISABLE_AUTH = prevDisable;
+	}
+});
+
+test("/v1/chat/completions maps an upstream 401 to a compute_auth 502 rail", async () => {
+	const prevEnv = snapshotComputeEnv();
+	const prevDisable = process.env.AXIOM_DISABLE_AUTH;
+	process.env.AXIOM_DISABLE_AUTH = "true";
+	process.env.AXIOM_COMPUTE_DIRECT_KEY = "test-key";
+	process.env.AXIOM_COMPUTE_DIRECT_URL = "http://127.0.0.1:1/v1/proxy";
+	const origFetch = globalThis.fetch;
+	globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+		const url =
+			input instanceof Request ? new URL(input.url) : new URL(String(input));
+		// Only the compute-upstream base (port 1) is stubbed; the local test
+		// server keeps using the real fetch.
+		if (url.port !== "1") return origFetch(input, init);
+		return new Response(
+			JSON.stringify({
+				error: { message: "Invalid API key", code: "invalid_api_key" },
+			}),
+			{ status: 401, headers: { "content-type": "application/json" } },
+		);
+	}) as unknown as typeof fetch;
+	const booted = await boot(makeConfig());
+	try {
+		const res = await chatRequest(booted.baseUrl, {
+			messages: [{ role: "user", content: "hello" }],
+		});
+		assert.equal(res.status, 502);
+		const body = (await res.json()) as { code?: string };
+		assert.equal(body.code, "compute_auth");
+	} finally {
+		await booted.close();
+		globalThis.fetch = origFetch;
+		restoreComputeEnv(prevEnv);
+		process.env.AXIOM_DISABLE_AUTH = prevDisable;
+	}
+});
+
+test("/v1/chat/completions streams an empty-response warning when upstream returns zero chunks", async () => {
+	const prevEnv = snapshotComputeEnv();
+	const prevDisable = process.env.AXIOM_DISABLE_AUTH;
+	process.env.AXIOM_DISABLE_AUTH = "true";
+	process.env.AXIOM_COMPUTE_DIRECT_KEY = "test-key";
+	process.env.AXIOM_COMPUTE_DIRECT_URL = "http://127.0.0.1:1/v1/proxy";
+	const origFetch = globalThis.fetch;
+	globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+		const url =
+			input instanceof Request ? new URL(input.url) : new URL(String(input));
+		// Only the compute-upstream base (port 1) is stubbed; the local test
+		// server keeps using the real fetch.
+		if (url.port !== "1") return origFetch(input, init);
+		return new Response("data: [DONE]\n\n", {
+			status: 200,
+			headers: {
+				"content-type": "text/event-stream",
+				"x_0g_trace": JSON.stringify({ request_id: "r-test" }),
+			},
+		});
+	}) as unknown as typeof fetch;
+	const booted = await boot(makeConfig());
+	try {
+		const res = await chatRequest(booted.baseUrl, {
+			messages: [{ role: "user", content: "hello" }],
+		});
+		assert.equal(res.status, 200);
+		const text = await res.text();
+		assert.ok(
+			text.includes("empty response"),
+			"SSE body should carry the empty-response warning",
+		);
+		assert.ok(
+			text.includes('"type":"trace"'),
+			"SSE body should carry the x_0g_trace chunk",
+		);
+		assert.ok(
+			text.includes("data: [DONE]"),
+			"SSE body should end with [DONE]",
+		);
+	} finally {
+		await booted.close();
+		globalThis.fetch = origFetch;
+		restoreComputeEnv(prevEnv);
+		process.env.AXIOM_DISABLE_AUTH = prevDisable;
+	}
+});

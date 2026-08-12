@@ -12,6 +12,7 @@ import assert from "node:assert/strict";
 import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { Wallet, getBytes, toBeHex } from "ethers";
+import { WebSocket } from "ws";
 
 import { startServer as startBackendServer, type ServerConfig } from "../server.js";
 import { fetchJson } from "../utils/response.js";
@@ -386,5 +387,96 @@ test("POST /v1/agents/:id/transfer challenge triggers full re-key via /v1/transf
     await waitForClose(bSrv);
     oracleSrv.closeAllConnections?.();
     await waitForClose(oracleSrv);
+  }
+});
+
+test("WS /v1/stream broadcasts appended events to subscribed clients", async () => {
+  const backend = startBackendServer({
+    bind: "127.0.0.1",
+    port: 0,
+    evmRpc: "http://127.0.0.1:1",
+    signer: new Wallet(BACKEND_PRIV),
+    oracleBaseUrl: "http://127.0.0.1:1",
+    addresses: MOCK_ADDRESSES,
+    env: {
+      AXIOM_TEE_SIGNER_PK: ORACLE_PRIV,
+      AXIOM_INDEXER_API_KEY: "test-indexer-key",
+    } as unknown as ServerConfig["env"],
+  });
+  const bSrv = backend.httpServer;
+  await waitForListening(bSrv);
+  const bAddr = bSrv.address() as AddressInfo;
+  const wsUrl = `ws://127.0.0.1:${bAddr.port}/v1/stream?topic=Tick*`;
+  const ws = new WebSocket(wsUrl);
+
+  const withTimeout = <T>(p: Promise<T>, ms = 3000): Promise<T> =>
+    Promise.race([
+      p,
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("WS test timed out")), ms),
+      ),
+    ]);
+
+  const nextMessage = () =>
+    withTimeout(
+      new Promise<Record<string, unknown>>((resolve, reject) => {
+        ws.once("message", (data) => resolve(JSON.parse(String(data))));
+        ws.once("error", reject);
+      }),
+    );
+
+  try {
+    await withTimeout(
+      new Promise<void>((resolve, reject) => {
+        ws.once("open", resolve);
+        ws.once("error", reject);
+      }),
+    );
+    const hello = await nextMessage();
+    assert.equal(hello.topic, "hello", "server greets with the hello topic");
+    assert.deepEqual(
+      (hello.payload as { topics?: string[] }).topics,
+      ["Tick*"],
+      "greeting echoes the subscribed topics",
+    );
+
+    // Attach the broadcast listener BEFORE posting so no message can slip in.
+    const broadcastMessage = nextMessage();
+    const txHash = "0x" + "cd".repeat(32);
+    const res = await fetch(`http://127.0.0.1:${bAddr.port}/v1/events`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-indexer-key": "test-indexer-key",
+      },
+      body: JSON.stringify({
+        source: "indexer",
+        eventName: "Tick",
+        chainId: 16661,
+        blockNumber: 123,
+        txHash,
+        logIndex: 0,
+        payload: { tokenId: "1", value: "2" },
+      }),
+    });
+    assert.ok(
+      res.status >= 200 && res.status < 300,
+      `event post should be accepted, got ${res.status}`,
+    );
+
+    const msg = await broadcastMessage;
+    assert.equal(msg.topic, "Tick", "broadcast carries the event name");
+    const payload = msg.payload as {
+      eventName?: string;
+      txHash?: string;
+      source?: string;
+    };
+    assert.equal(payload.eventName, "Tick");
+    assert.equal(payload.txHash, txHash);
+    assert.equal(payload.source, "indexer");
+  } finally {
+    ws.close();
+    bSrv.closeAllConnections?.();
+    await waitForClose(bSrv);
   }
 });
