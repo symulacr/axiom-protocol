@@ -9,6 +9,7 @@ import { loadEnv } from "@axiom/config/env";
 import { getSharedProvider } from "./provider.js";
 import { backendEnvSchema } from "./env-schema.js";
 import { ARISTOTLE_CHAIN_ID } from "@axiom/config/networks";
+import { ZeroGStorage, type StorageAdapter } from "@axiom/config/storage/0g";
 import { getEventStore } from "./events/store.js";
 import { IndexerService } from "./indexer/index.js";
 
@@ -68,6 +69,26 @@ async function resolveLiveAddresses(
 
 async function main(): Promise<void> {
   const addresses = await resolveLiveAddresses(provider, env);
+  // Chat-transcript persistence on 0G, same env contract as the oracle. Absent indexer RPC ⇒
+  // persistence disabled with a boot warning — the backend must still serve chat without storage.
+  let chatStorage: StorageAdapter | null = null;
+  const storageIndexerRpc = process.env.AXIOM_STORAGE_INDEXER_RPC;
+  if (storageIndexerRpc) {
+    chatStorage = new ZeroGStorage({
+      indexerRpc: storageIndexerRpc,
+      evmRpc: process.env.AXIOM_STORAGE_EVM_RPC ?? env.AXIOM_EVM_RPC,
+      signer: new Wallet(
+        process.env.AXIOM_STORAGE_PRIVATE_KEY ?? env.AXIOM_TEE_SIGNER_PK,
+      ),
+    });
+    console.log(
+      `[boot] chat transcript storage: 0G Storage (${storageIndexerRpc})`,
+    );
+  } else {
+    console.warn(
+      "[boot] chat transcript storage: disabled — set AXIOM_STORAGE_INDEXER_RPC to persist chat transcripts to 0G",
+    );
+  }
   const server = startServer({
     bind: env.AXIOM_BIND,
     port: env.PORT ?? env.AXIOM_PORT ?? 3000,
@@ -75,6 +96,7 @@ async function main(): Promise<void> {
     evmRpc: env.AXIOM_EVM_RPC,
     signer,
     oracleBaseUrl: env.AXIOM_ORACLE_URL,
+    chatStorage,
     addresses: addresses as ServerConfig["addresses"],
   });
   const indexer = new IndexerService({ provider, env });

@@ -38,6 +38,7 @@ import {
   getRuntimeConfig,
 } from "@axiom/config";
 import { getSharedProvider } from "./provider.js";
+import type { StorageAdapter } from "@axiom/config/storage/0g";
 import {
   createApiKeyAuth,
   enforceClientPathAllowlist,
@@ -120,6 +121,8 @@ export interface ServerConfig {
   evmRpc: string;
   signer: Wallet;
   oracleBaseUrl: string;
+  /** Optional 0G storage for chat-transcript persistence; null/undefined disables it. */
+  chatStorage?: StorageAdapter | null;
   addresses?: {
     agentNft: `0x${string}`;
     vault: `0x${string}`;
@@ -428,6 +431,66 @@ function registerComputeRoutes(app: Express, config: ServerConfig): void {
     config,
   );
 }
+const EMPTY_RESPONSE_FALLBACK =
+  "⚠ 0G Compute returned an empty response. Try again or check model availability.";
+
+// Narrow an SSE chunk's `choices[0].delta.content` without trusting an unchecked shape.
+function sseDeltaContent(chunk: unknown): string {
+  if (typeof chunk !== "object" || chunk === null || !("choices" in chunk)) {
+    return "";
+  }
+  const choices = chunk.choices;
+  if (!Array.isArray(choices) || choices.length === 0) return "";
+  const first = choices[0];
+  if (typeof first !== "object" || first === null || !("delta" in first)) {
+    return "";
+  }
+  const delta = first.delta;
+  if (typeof delta !== "object" || delta === null || !("content" in delta)) {
+    return "";
+  }
+  return typeof delta.content === "string" ? delta.content : "";
+}
+
+// After-effect for a completed chat turn: upload the transcript to 0G and record the pointer in the
+// EventStore (`chat::transcript` bucket). Fail-soft by contract — persistence must never break the
+// chat response or the request handler.
+async function persistChatTranscript(
+  storage: StorageAdapter | null | undefined,
+  chainId: number,
+  requestMessages: readonly unknown[],
+  assistantContent: string,
+): Promise<void> {
+  if (!storage) return;
+  try {
+    const threadId = crypto.randomUUID();
+    const ts = Date.now();
+    const transcript = {
+      threadId,
+      messages: [
+        ...requestMessages,
+        { role: "assistant", content: assistantContent },
+      ],
+      msgCount: requestMessages.length + 1,
+      ts,
+    };
+    const { rootHash } = await storage.upload(
+      new TextEncoder().encode(JSON.stringify(transcript)),
+    );
+    getEventStore().append({
+      source: "chat",
+      chainId,
+      eventName: "transcript",
+      blockNumber: 0,
+      txHash: rootHash,
+      logIndex: 0,
+      payload: { rootHash, threadId, msgCount: transcript.msgCount, ts },
+    });
+  } catch (err) {
+    log.error("chat transcript persistence failed", { err });
+  }
+}
+
 function registerChatRoutes(app: Express, config: ServerConfig): void {
   createRoute(
     app,
@@ -488,15 +551,18 @@ function registerChatRoutes(app: Express, config: ServerConfig): void {
           }
         };
         let n = 0;
+        let assistantContent = "";
         for await (const chunk of openaiRes) {
           if (res.writableEnded) break;
           if (!writeChunk(`data: ${JSON.stringify(chunk)}\n\n`)) break;
           n++;
+          assistantContent += sseDeltaContent(chunk);
         }
         if (!res.writableEnded) {
           if (n === 0) {
+            assistantContent = EMPTY_RESPONSE_FALLBACK;
             writeChunk(
-              `data: ${JSON.stringify({ choices: [{ delta: { content: "⚠ 0G Compute returned an empty response. Try again or check model availability." } }] })}\n\n`,
+              `data: ${JSON.stringify({ choices: [{ delta: { content: EMPTY_RESPONSE_FALLBACK } }] })}\n\n`,
             );
           }
           const traceHeader =
@@ -507,6 +573,13 @@ function registerChatRoutes(app: Express, config: ServerConfig): void {
           if (traceHeader) emitTraceChunk(writeChunk, traceHeader);
           writeChunk("data: [DONE]\n\n");
           res.end();
+          // Transcript persistence is a pure after-effect: the stream is already finalized.
+          await persistChatTranscript(
+            config.chatStorage,
+            config.env?.AXIOM_CHAIN_ID ?? ARISTOTLE_CHAIN_ID,
+            messages,
+            assistantContent,
+          );
         }
       } catch (err) {
         log.error("chat completions upstream failed", { err });
