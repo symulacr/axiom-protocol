@@ -1,4 +1,10 @@
 import { parseAbiItem, type AbiEvent, type Address } from "viem";
+import {
+  AGENT_NFT_ABI,
+  PAYMENT_PROCESSOR_ABI,
+  TEE_VERIFIER_ABI,
+  VAULT_ABI,
+} from "@axiom/config/abis";
 import { resolveAddress } from "@axiom/config/addresses";
 
 export type IndexerContractAddresses = {
@@ -20,68 +26,66 @@ export function resolveIndexerAddresses(
   };
 }
 
-const EVENT_SIGNATURES = {
-  Transfer:
-    "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)" as const,
-  Updated: "event Updated(uint256 indexed tokenId, string uri)" as const,
-  Authorization:
-    "event Authorization(address indexed user, address indexed operator, address indexed controller, uint256 indexed tokenId, uint256 expiresAt)" as const,
-  AuthorizationRevoked:
-    "event AuthorizationRevoked(address indexed user, address indexed operator, address indexed controller, uint256 indexed tokenId)" as const,
-  VerifierUpdated:
-    "event VerifierUpdated(address indexed oldVerifier, address indexed newVerifier)" as const,
-  CreatorSet:
-    "event CreatorSet(address indexed creator, address indexed agent, uint256 indexed tokenId)" as const,
-  MintFeeUpdated:
-    "event MintFeeUpdated(address indexed token, uint256 oldFee, uint256 newFee)" as const,
-  StorageInfoUpdated:
-    "event StorageInfoUpdated(uint256 indexed tokenId, string blobHash, uint256 blobSize)" as const,
-  PublishedSealedKey:
-    "event PublishedSealedKey(uint256 indexed tokenId, bytes sealedKey, uint256 version)" as const,
-  DelegateAccess:
-    "event DelegateAccess(uint256 indexed tokenId, address indexed delegate, bytes permission)" as const,
-  Deposited:
-    "event Deposited(address indexed user, uint256 indexed tokenId, address indexed strategy, uint256 amount, uint256 shares)" as const,
-  Withdrawn:
-    "event Withdrawn(address indexed user, uint256 indexed tokenId, address indexed strategy, uint256 amount, uint256 shares)" as const,
-  StrategySet:
-    "event StrategySet(uint256 indexed tokenId, address indexed strategy, bytes params)" as const,
-  Executed:
-    "event Executed(uint256 indexed tokenId, bytes data, bytes response)" as const,
-  PaymentProcessed:
-    "event PaymentProcessed(uint256 indexed tokenId, address indexed payer, address indexed payee, uint256 amount, address token)" as const,
-  ComputeProviderPaid:
-    "event ComputeProviderPaid(uint256 indexed tokenId, address indexed provider, address indexed payer, uint256 amount, address token, bytes metadata)" as const,
-  EarningsWithdrawn:
-    "event EarningsWithdrawn(uint256 indexed tokenId, address indexed user, address indexed token, uint256 amount)" as const,
-  RoyaltySet:
-    "event RoyaltySet(uint256 indexed tokenId, address indexed receiver, uint96 feeNumerator)" as const,
-  ProtocolTreasuryProposed:
-    "event ProtocolTreasuryProposed(address indexed newTreasury)" as const,
-  ProtocolTreasuryUpdated:
-    "event ProtocolTreasuryUpdated(address indexed oldTreasury, address indexed newTreasury)" as const,
-  ProtocolTreasuryProposalCancelled:
-    "event ProtocolTreasuryProposalCancelled(address indexed proposedTreasury)" as const,
-  ProtocolFeeBpsUpdated:
-    "event ProtocolFeeBpsUpdated(uint16 oldFeeBps, uint16 newFeeBps)" as const,
-  PaymentTokenUpdated:
-    "event PaymentTokenUpdated(address indexed oldToken, address indexed newToken)" as const,
-  MetadataJsonDecisionDocumented:
-    "event MetadataJsonDecisionDocumented(uint256 indexed tokenId, bytes32 hash, address indexed author)" as const,
-  Cloned:
-    "event Cloned(address indexed implementation, address indexed clone)" as const,
-  SignerProposed: "event SignerProposed(address indexed signer)" as const,
-  SignerExecuted: "event SignerExecuted(address indexed signer)" as const,
-  SignerProposalCancelled:
-    "event SignerProposalCancelled(address indexed signer)" as const,
-  Upgraded: "event Upgraded(address indexed implementation)" as const,
+// Watched event -> canonical ABI in @axiom/config/abis. Every entry matches the deployed
+// contracts (wave-3 0g-stack deepdive §1); the old hand-written signatures mismatched 20 of 32
+// topic0s and silently dropped those events in decodeAxiomLog. AdminChanged/BeaconUpgraded are
+// ERC1967 proxy-infra events absent from the contract ABIs, so they stay as literals.
+const EVENT_SOURCES = {
+  Transfer: AGENT_NFT_ABI,
+  Updated: AGENT_NFT_ABI,
+  Authorization: AGENT_NFT_ABI,
+  AuthorizationRevoked: AGENT_NFT_ABI,
+  VerifierUpdated: AGENT_NFT_ABI,
+  CreatorSet: AGENT_NFT_ABI,
+  MintFeeUpdated: AGENT_NFT_ABI,
+  StorageInfoUpdated: AGENT_NFT_ABI,
+  PublishedSealedKey: AGENT_NFT_ABI,
+  DelegateAccess: AGENT_NFT_ABI,
+  Deposited: VAULT_ABI,
+  Withdrawn: VAULT_ABI,
+  StrategySet: VAULT_ABI,
+  Executed: VAULT_ABI,
+  PaymentProcessed: PAYMENT_PROCESSOR_ABI,
+  ComputeProviderPaid: PAYMENT_PROCESSOR_ABI,
+  EarningsWithdrawn: PAYMENT_PROCESSOR_ABI,
+  RoyaltySet: PAYMENT_PROCESSOR_ABI,
+  ProtocolTreasuryProposed: PAYMENT_PROCESSOR_ABI,
+  ProtocolTreasuryUpdated: PAYMENT_PROCESSOR_ABI,
+  ProtocolTreasuryProposalCancelled: PAYMENT_PROCESSOR_ABI,
+  ProtocolFeeBpsUpdated: PAYMENT_PROCESSOR_ABI,
+  PaymentTokenUpdated: PAYMENT_PROCESSOR_ABI,
+  MetadataJsonDecisionDocumented: AGENT_NFT_ABI,
+  Cloned: AGENT_NFT_ABI,
+  SignerProposed: TEE_VERIFIER_ABI,
+  SignerExecuted: TEE_VERIFIER_ABI,
+  SignerProposalCancelled: TEE_VERIFIER_ABI,
+  Upgraded: AGENT_NFT_ABI,
   AdminChanged:
     "event AdminChanged(address previousAdmin, address newAdmin)" as const,
   BeaconUpgraded: "event BeaconUpgraded(address indexed beacon)" as const,
-  Initialized: "event Initialized(uint8 version)" as const,
+  Initialized: AGENT_NFT_ABI,
 } as const;
 
-export type EventName = keyof typeof EVENT_SIGNATURES;
+export type EventName = keyof typeof EVENT_SOURCES;
+
+function abiEventOf(
+  name: EventName,
+  source: readonly string[] | string,
+): AbiEvent {
+  const sig =
+    typeof source === "string"
+      ? source
+      : source.find((e) => e.startsWith(`event ${name}(`));
+  if (!sig) throw new Error(`@axiom/config/abis: missing event ${name}`);
+  return parseAbiItem(sig) as AbiEvent;
+}
+
+export const EVENT_ABI = Object.fromEntries(
+  (Object.keys(EVENT_SOURCES) as EventName[]).map((n) => [
+    n,
+    abiEventOf(n, EVENT_SOURCES[n]),
+  ]),
+) as { [K in EventName]: AbiEvent };
 
 export type AxiomEvent =
   | {
@@ -99,28 +103,26 @@ export type AxiomEvent =
       txHash: string;
       logIndex: number;
       tokenId: bigint;
-      uri: string;
+      oldDatasCount: number;
+      newDatasCount: number;
     }
   | {
       kind: "Authorization";
       blockNumber: number;
       txHash: string;
       logIndex: number;
-      user: string;
-      operator: string;
-      controller: string;
       tokenId: bigint;
-      expiresAt: bigint;
+      from: string;
+      to: string;
     }
   | {
       kind: "AuthorizationRevoked";
       blockNumber: number;
       txHash: string;
       logIndex: number;
-      user: string;
-      operator: string;
-      controller: string;
       tokenId: bigint;
+      from: string;
+      to: string;
     }
   | {
       kind: "VerifierUpdated";
@@ -135,16 +137,14 @@ export type AxiomEvent =
       blockNumber: number;
       txHash: string;
       logIndex: number;
-      creator: string;
-      agent: string;
       tokenId: bigint;
+      creator: string;
     }
   | {
       kind: "MintFeeUpdated";
       blockNumber: number;
       txHash: string;
       logIndex: number;
-      token: string;
       oldFee: bigint;
       newFee: bigint;
     }
@@ -153,49 +153,45 @@ export type AxiomEvent =
       blockNumber: number;
       txHash: string;
       logIndex: number;
-      tokenId: bigint;
-      blobHash: string;
-      blobSize: bigint;
+      oldInfo: string;
+      newInfo: string;
     }
   | {
       kind: "PublishedSealedKey";
       blockNumber: number;
       txHash: string;
       logIndex: number;
+      to: string;
       tokenId: bigint;
-      sealedKey: string;
-      version: bigint;
+      sealedKeys: readonly string[];
     }
   | {
       kind: "DelegateAccess";
       blockNumber: number;
       txHash: string;
       logIndex: number;
-      tokenId: bigint;
-      delegate: string;
-      permission: string;
+      user: string;
+      assistant: string;
     }
   | {
       kind: "Deposited";
       blockNumber: number;
       txHash: string;
       logIndex: number;
-      user: string;
       tokenId: bigint;
-      strategy: string;
+      from: string;
+      asset: string;
       amount: bigint;
-      shares: bigint;
     }
   | {
       kind: "Withdrawn";
       blockNumber: number;
       txHash: string;
       logIndex: number;
-      user: string;
       tokenId: bigint;
-      strategy: string;
+      to: string;
+      asset: string;
       amount: bigint;
-      shares: bigint;
     }
   | {
       kind: "StrategySet";
@@ -203,8 +199,9 @@ export type AxiomEvent =
       txHash: string;
       logIndex: number;
       tokenId: bigint;
-      strategy: string;
-      params: string;
+      strategyRoot: string;
+      dailyLimit: bigint;
+      validUntilDay: bigint;
     }
   | {
       kind: "Executed";
@@ -212,40 +209,37 @@ export type AxiomEvent =
       txHash: string;
       logIndex: number;
       tokenId: bigint;
-      data: string;
-      response: string;
+      actionHash: string;
+      target: string;
+      value: bigint;
+      result: string;
     }
   | {
       kind: "PaymentProcessed";
       blockNumber: number;
       txHash: string;
       logIndex: number;
-      tokenId: bigint;
+      agentTokenId: bigint;
       payer: string;
-      payee: string;
+      creator: string;
       amount: bigint;
-      token: string;
+      creatorCut: bigint;
+      protocolCut: bigint;
     }
   | {
       kind: "ComputeProviderPaid";
       blockNumber: number;
       txHash: string;
       logIndex: number;
-      tokenId: bigint;
       provider: string;
-      payer: string;
       amount: bigint;
-      token: string;
-      metadata: string;
     }
   | {
       kind: "EarningsWithdrawn";
       blockNumber: number;
       txHash: string;
       logIndex: number;
-      tokenId: bigint;
-      user: string;
-      token: string;
+      creator: string;
       amount: bigint;
     }
   | {
@@ -253,16 +247,16 @@ export type AxiomEvent =
       blockNumber: number;
       txHash: string;
       logIndex: number;
-      tokenId: bigint;
-      receiver: string;
-      feeNumerator: number;
+      agentTokenId: bigint;
+      bps: bigint;
     }
   | {
       kind: "ProtocolTreasuryProposed";
       blockNumber: number;
       txHash: string;
       logIndex: number;
-      newTreasury: string;
+      proposedTreasury: string;
+      effectiveAt: bigint;
     }
   | {
       kind: "ProtocolTreasuryUpdated";
@@ -277,15 +271,15 @@ export type AxiomEvent =
       blockNumber: number;
       txHash: string;
       logIndex: number;
-      proposedTreasury: string;
+      pendingTreasury: string;
     }
   | {
       kind: "ProtocolFeeBpsUpdated";
       blockNumber: number;
       txHash: string;
       logIndex: number;
-      oldFeeBps: number;
-      newFeeBps: number;
+      oldBps: bigint;
+      newBps: bigint;
     }
   | {
       kind: "PaymentTokenUpdated";
@@ -300,38 +294,42 @@ export type AxiomEvent =
       blockNumber: number;
       txHash: string;
       logIndex: number;
-      tokenId: bigint;
-      hash: string;
-      author: string;
+      collectionName: string;
+      collectionSymbol: string;
+      rationaleTag: string;
     }
   | {
       kind: "Cloned";
       blockNumber: number;
       txHash: string;
       logIndex: number;
-      implementation: string;
-      clone: string;
+      tokenId: bigint;
+      newTokenId: bigint;
+      from: string;
+      to: string;
     }
   | {
       kind: "SignerProposed";
       blockNumber: number;
       txHash: string;
       logIndex: number;
-      signer: string;
+      newSigner: string;
+      executableAt: bigint;
     }
   | {
       kind: "SignerExecuted";
       blockNumber: number;
       txHash: string;
       logIndex: number;
-      signer: string;
+      oldSigner: string;
+      newSigner: string;
     }
   | {
       kind: "SignerProposalCancelled";
       blockNumber: number;
       txHash: string;
       logIndex: number;
-      signer: string;
+      cancelledSigner: string;
     }
   | {
       kind: "Upgraded";
@@ -362,52 +360,3 @@ export type AxiomEvent =
       logIndex: number;
       version: number;
     };
-
-type EventAbiTable = {
-  [K in EventName]: AbiEvent;
-};
-
-export const EVENT_ABI = {
-  Transfer: parseAbiItem(EVENT_SIGNATURES.Transfer),
-  Updated: parseAbiItem(EVENT_SIGNATURES.Updated),
-  Authorization: parseAbiItem(EVENT_SIGNATURES.Authorization),
-  AuthorizationRevoked: parseAbiItem(EVENT_SIGNATURES.AuthorizationRevoked),
-  VerifierUpdated: parseAbiItem(EVENT_SIGNATURES.VerifierUpdated),
-  CreatorSet: parseAbiItem(EVENT_SIGNATURES.CreatorSet),
-  MintFeeUpdated: parseAbiItem(EVENT_SIGNATURES.MintFeeUpdated),
-  StorageInfoUpdated: parseAbiItem(EVENT_SIGNATURES.StorageInfoUpdated),
-  PublishedSealedKey: parseAbiItem(EVENT_SIGNATURES.PublishedSealedKey),
-  DelegateAccess: parseAbiItem(EVENT_SIGNATURES.DelegateAccess),
-  Deposited: parseAbiItem(EVENT_SIGNATURES.Deposited),
-  Withdrawn: parseAbiItem(EVENT_SIGNATURES.Withdrawn),
-  StrategySet: parseAbiItem(EVENT_SIGNATURES.StrategySet),
-  Executed: parseAbiItem(EVENT_SIGNATURES.Executed),
-  PaymentProcessed: parseAbiItem(EVENT_SIGNATURES.PaymentProcessed),
-  ComputeProviderPaid: parseAbiItem(EVENT_SIGNATURES.ComputeProviderPaid),
-  EarningsWithdrawn: parseAbiItem(EVENT_SIGNATURES.EarningsWithdrawn),
-  RoyaltySet: parseAbiItem(EVENT_SIGNATURES.RoyaltySet),
-  ProtocolTreasuryProposed: parseAbiItem(
-    EVENT_SIGNATURES.ProtocolTreasuryProposed,
-  ),
-  ProtocolTreasuryUpdated: parseAbiItem(
-    EVENT_SIGNATURES.ProtocolTreasuryUpdated,
-  ),
-  ProtocolTreasuryProposalCancelled: parseAbiItem(
-    EVENT_SIGNATURES.ProtocolTreasuryProposalCancelled,
-  ),
-  ProtocolFeeBpsUpdated: parseAbiItem(EVENT_SIGNATURES.ProtocolFeeBpsUpdated),
-  PaymentTokenUpdated: parseAbiItem(EVENT_SIGNATURES.PaymentTokenUpdated),
-  MetadataJsonDecisionDocumented: parseAbiItem(
-    EVENT_SIGNATURES.MetadataJsonDecisionDocumented,
-  ),
-  Cloned: parseAbiItem(EVENT_SIGNATURES.Cloned),
-  SignerProposed: parseAbiItem(EVENT_SIGNATURES.SignerProposed),
-  SignerExecuted: parseAbiItem(EVENT_SIGNATURES.SignerExecuted),
-  SignerProposalCancelled: parseAbiItem(
-    EVENT_SIGNATURES.SignerProposalCancelled,
-  ),
-  Upgraded: parseAbiItem(EVENT_SIGNATURES.Upgraded),
-  AdminChanged: parseAbiItem(EVENT_SIGNATURES.AdminChanged),
-  BeaconUpgraded: parseAbiItem(EVENT_SIGNATURES.BeaconUpgraded),
-  Initialized: parseAbiItem(EVENT_SIGNATURES.Initialized),
-} as const satisfies EventAbiTable;
