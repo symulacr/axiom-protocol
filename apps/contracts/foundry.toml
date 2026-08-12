@@ -6,6 +6,10 @@ test = "test"
 script = "script"
 cache_path = "cache"
 broadcast = "broadcast"
+# Parallel solc jobs: 0 = all logical cores (foundry issue #8689: threads>0 shows 1 solc in htop, but -j/threads=0 uses all cores)
+threads = 0
+# Keep compiler filesystem emulation in RAM (fewer disk hits, faster builds)
+fse = { memory_limit = "4 GiB" }
 
 # Allow deployment scripts to write the deployment manifest to ../../docs/deployments/
 fs_permissions = [{ access = "write", path = "../.." }]
@@ -20,11 +24,22 @@ solc = "0.8.24"
 optimizer_runs = 1
 bytecode_hash = "none"
 
-# viaIR on (per 0G docs)
+# viaIR on (per 0G docs) — needed to keep AxiomAgentNFT under EIP-170 (22,022B of 24,576B)
 via_ir = true
 verbosity = 2
 gas_reports = ["*"]
 fuzz = { runs = 256 }
+
+# Fast iteration profile: threads + fse only. via_ir must stay ON — the suite hits
+# "Stack too deep" without it (LValue.cpp:51), which is the original reason it was enabled.
+[profile.dev]
+via_ir = true
+optimizer_runs = 1
+verbosity = 1
+threads = 0
+fse = { memory_limit = "4 GiB" }
+gas_reports = []
+fuzz = { runs = 64 }
 
 # CI profile with more aggressive fuzzing
 [profile.ci]

@@ -22,6 +22,7 @@ contract AxiomTeeVerifier is Initializable, BaseVerifier, OwnableUpgradeable, UU
     error AxiomInvalidOwnershipProof();
     error AxiomInvalidAccessProof();
     error ZeroAddress();
+    error NoPendingProposal();
     error ProofFieldMismatch();
     error AxiomProofExpired(uint256 validUntil, uint256 blockTimestamp);
     /// @dev Thrown when `validUntil` is too far ahead — guards against long-lived TEE proofs and overflow attacks (validUntil = type(uint256).max).
@@ -52,6 +53,7 @@ contract AxiomTeeVerifier is Initializable, BaseVerifier, OwnableUpgradeable, UU
 
     /// @notice Replaces the constructor for proxy deployments; sets owner, initial TEE signer, and max proof age.
     function initialize(address _owner, address _signer, uint256 _maxProofAge) external initializer {
+        require(_signer != address(0), "Zero signer");
         __Ownable_init(_owner);
         maxProofAgeSeconds = _maxProofAge;
         registeredSigner = _signer;
@@ -72,6 +74,7 @@ contract AxiomTeeVerifier is Initializable, BaseVerifier, OwnableUpgradeable, UU
         emit SignerExecuted(old, newSigner);
     }
     function cancelSignerProposal() external onlyOwner {
+        if (_signerTimelock.proposed == address(0)) revert NoPendingProposal();
         address cancelled = _signerTimelock.proposed;
         _signerTimelock.cancel();
         emit SignerProposalCancelled(cancelled);

@@ -63,6 +63,7 @@ contract AxiomStrategyVault is Initializable, OwnableUpgradeable, PausableUpgrad
         _disableInitializers();
     }
     function initialize(IAxiomAgentNFT _nft, address _owner) external initializer {
+        require(address(_nft) != address(0), "Zero nft");
         __Ownable_init(_owner);
         __Pausable_init();
         nft = _nft;

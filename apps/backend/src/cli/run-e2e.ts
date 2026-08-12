@@ -43,10 +43,7 @@ import {
   runWithdrawEarningsStep,
 } from "./e2e/coverage.js";
 import { resolveE2eWallets, runWalletPreflight } from "./e2e/wallet.js";
-import {
-  initUsageScenarios,
-  markScenarioSkipped,
-} from "./e2e/scenarios.js";
+import { initUsageScenarios, markScenarioSkipped } from "./e2e/scenarios.js";
 import {
   noteFriction,
   recordStepDuration,
@@ -83,7 +80,6 @@ import { runFrontendPostTickBundle } from "./e2e/frontend-flows.js";
 import { runChatBench, printChatBenchReport } from "./e2e/chat-bench.js";
 import { buildChatEval, printChatEval } from "./e2e/eval.js";
 
-
 loadEnv();
 
 const TEE_SIGNER_PK = getEnv("TEE_SIGNER_PK");
@@ -93,13 +89,20 @@ const STORAGE_RPC = getEnvWithAlias(
   ["OG_STORAGE_RPC"],
   resolveStorageRpc(ARISTOTLE_CHAIN_ID),
 );
+// Explicit storage fee (wei). >0 skips SDK market() pricing — required on
+// chains whose flow contract lacks market() (Galileo testnet reverts).
+const STORAGE_FEE = getEnv("AXIOM_STORAGE_FEE", "0");
 const BACKEND_URL = getEnv("BACKEND_URL", "http://127.0.0.1:3000");
 if (process.env.BACKEND_URL === undefined) {
   console.warn("[config] BACKEND_URL defaulting to localhost");
 }
 const ORACLE_URL = getEnv("AXIOM_ORACLE_URL");
 const OG_CHAIN_ID = Number.parseInt(
-  getEnvWithAlias("AXIOM_CHAIN_ID", ["OG_CHAIN_ID"], String(ARISTOTLE_CHAIN_ID)),
+  getEnvWithAlias(
+    "AXIOM_CHAIN_ID",
+    ["OG_CHAIN_ID"],
+    String(ARISTOTLE_CHAIN_ID),
+  ),
   10,
 );
 
@@ -141,10 +144,16 @@ const to = receiver.address as `0x${string}`;
 const receiverPubKey64 = hexlify(
   deriveUncompressedPubkeyFromHex(receiverPk),
 ) as `0x${string}`;
-const eip712Domain = buildEip712Domain(OG_CHAIN_ID, TEE_VERIFIER as `0x${string}`);
+const eip712Domain = buildEip712Domain(
+  OG_CHAIN_ID,
+  TEE_VERIFIER as `0x${string}`,
+);
 
 const RUN_PAYMENT = getEnv("E2E_PAYMENT", "1") !== "0";
-const LIVE_GATE_MIN_PCT = Number.parseInt(getEnv("E2E_LIVE_GATE_MIN_PCT", "85"), 10);
+const LIVE_GATE_MIN_PCT = Number.parseInt(
+  getEnv("E2E_LIVE_GATE_MIN_PCT", "85"),
+  10,
+);
 const E2E_STRICT_FUNDING = getEnv("E2E_STRICT_FUNDING", "0") === "1";
 const E2E_COMPUTE_MODEL = getEnv("E2E_COMPUTE_MODEL", "");
 const E2E_FAST = e2eFastEnabled();
@@ -165,7 +174,8 @@ async function main(): Promise<void> {
 
   seedKnownFriction({
     walletSource: source,
-    sameKeyOperatorAndTee: operator.address.toLowerCase() === teeSigner.address.toLowerCase(),
+    sameKeyOperatorAndTee:
+      operator.address.toLowerCase() === teeSigner.address.toLowerCase(),
     runPayment: RUN_PAYMENT,
   });
   seedFrontendFriction();
@@ -281,6 +291,7 @@ async function main(): Promise<void> {
       signer: operator,
       blob,
       chainId: OG_CHAIN_ID,
+      storageFee: STORAGE_FEE === "0" ? undefined : BigInt(STORAGE_FEE),
     });
     uploadRoot = upload.rootHash;
 
@@ -380,7 +391,8 @@ async function main(): Promise<void> {
         severity: "info",
         category: "waste",
         message: "E2E_SKIP_VAULT_WITHDRAW skipped withdraw in mega pipeline",
-        suggestion: "Set E2E_FULL_VAULT=1 for full vault.withdraw on-chain proof",
+        suggestion:
+          "Set E2E_FULL_VAULT=1 for full vault.withdraw on-chain proof",
       });
       markScenarioSkipped("vault.withdraw", "E2E_SKIP_VAULT_WITHDRAW");
     }
@@ -413,7 +425,8 @@ async function main(): Promise<void> {
         id: "fast-skip-vault-withdraw",
         severity: "info",
         category: "waste",
-        message: "E2E_SKIP_VAULT_WITHDRAW / fast path skipped withdraw (~1 block saved)",
+        message:
+          "E2E_SKIP_VAULT_WITHDRAW / fast path skipped withdraw (~1 block saved)",
         suggestion: "Set E2E_FULL_VAULT=1 for full vault.withdraw scenario",
       });
       markScenarioSkipped("vault.withdraw", "E2E_SKIP_VAULT_WITHDRAW");
@@ -560,7 +573,11 @@ async function main(): Promise<void> {
         savedAt: new Date().toISOString(),
       });
     }
-    for (const id of ["transfer.proof", "transfer.onchain", "tee.cleanup"] as const) {
+    for (const id of [
+      "transfer.proof",
+      "transfer.onchain",
+      "tee.cleanup",
+    ] as const) {
       markScenarioSkipped(id, E2E_REUSE ? "E2E_REUSE_TOKEN" : "E2E_KEEP_TOKEN");
     }
     noteFriction({
@@ -570,7 +587,8 @@ async function main(): Promise<void> {
       message: E2E_REUSE
         ? "E2E_REUSE_TOKEN skipped transfer+tee (~2 blocks saved)"
         : "E2E_KEEP_TOKEN skipped transfer — snapshot saved for E2E_REUSE_TOKEN",
-      suggestion: "Run full E2E (no REUSE/KEEP) periodically for iTransferFrom proofs",
+      suggestion:
+        "Run full E2E (no REUSE/KEEP) periodically for iTransferFrom proofs",
     });
   } else {
     saveE2eReuseSnapshot({
@@ -635,8 +653,11 @@ async function main(): Promise<void> {
       chainId: OG_CHAIN_ID,
       liveCompute: E2E_LIVE_COMPUTE,
       operatorSigner: operator,
-      contextRounds: Number.parseInt(process.env.CHAT_BENCH_CONTEXT_ROUNDS ?? "3", 10) || 3,
-      keepAliveRounds: Number.parseInt(process.env.CHAT_BENCH_KEEPALIVE_ROUNDS ?? "2", 10) || 2,
+      contextRounds:
+        Number.parseInt(process.env.CHAT_BENCH_CONTEXT_ROUNDS ?? "3", 10) || 3,
+      keepAliveRounds:
+        Number.parseInt(process.env.CHAT_BENCH_KEEPALIVE_ROUNDS ?? "2", 10) ||
+        2,
     });
     printChatBenchReport(chatReport);
     printChatEval(buildChatEval(chatReport));

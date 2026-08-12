@@ -195,6 +195,8 @@ export async function runUploadStep(deps: {
   signer: Wallet;
   blob: Uint8Array;
   chainId: number;
+  /** Explicit storage fee (wei); skips SDK market() pricing when >0 (needed on Galileo testnet). */
+  storageFee?: bigint;
 }): Promise<UploadStepResult> {
   console.log("\n[Step 4]  Upload encrypted strategy to 0G Storage");
   const storage = new ZeroGStorage({
@@ -202,7 +204,9 @@ export async function runUploadStep(deps: {
     evmRpc: deps.rpc,
     signer: deps.signer,
   });
-  const upload = await storage.uploadData(deps.blob);
+  const upload = await storage.uploadData(deps.blob, {
+    ...(deps.storageFee !== undefined ? { fee: deps.storageFee } : {}),
+  });
   console.log(
     `          Uploaded: root=${upload.rootHash} tx=${upload.txHash}`,
   );
@@ -262,18 +266,24 @@ export async function runOracleRegisterStep(
   console.log(
     "\n[Step 5]  Register dataHash with oracle (POST /v1/agents/mint)",
   );
+  const oracleApiKey = process.env.AXIOM_API_KEY ?? "";
   const { data: mint } = await fetchJson<{
     ok: boolean;
     dataHash: string;
     seen: boolean;
   }>(`${oracleUrl}/v1/agents/mint`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(oracleApiKey ? { "x-api-key": oracleApiKey } : {}),
+    },
     body: JSON.stringify({ dataHash }),
   });
   const ok =
     mint.ok === true && mint.dataHash.toLowerCase() === dataHash.toLowerCase();
-  console.log(`          ok=${mint.ok} dataHash=${mint.dataHash} seen=${mint.seen}`);
+  console.log(
+    `          ok=${mint.ok} dataHash=${mint.dataHash} seen=${mint.seen}`,
+  );
   stepResults.push({
     step: 5,
     name: "oracle /v1/agents/mint",
@@ -342,7 +352,9 @@ export async function runOnChainMintStep(deps: {
     !onChainHash ||
     onChainHash.toLowerCase() !== deps.dataHash.toLowerCase()
   ) {
-    throw new Error(`mint: on-chain dataHash ${onChainHash} != ${deps.dataHash}`);
+    throw new Error(
+      `mint: on-chain dataHash ${onChainHash} != ${deps.dataHash}`,
+    );
   }
   markScenarioCovered("agent.mint", "on-chain-mint", { txs: 1, reads: 4 });
   markCovered("AxiomAgentNFT", "mint", "on-chain-mint");
@@ -350,12 +362,21 @@ export async function runOnChainMintStep(deps: {
   markCovered("AxiomAgentNFT", "creatorOf", "on-chain-mint");
   markCovered("AxiomAgentNFT", "ownerOf", "on-chain-mint");
   markCovered("AxiomAgentNFT", "intelligentDatasOf", "on-chain-mint");
-  recordReceipt(6, "AxiomAgentNFT.mint", `tokenId=${tokenId} creator=${creator}`, receipt, deps.chainId);
+  recordReceipt(
+    6,
+    "AxiomAgentNFT.mint",
+    `tokenId=${tokenId} creator=${creator}`,
+    receipt,
+    deps.chainId,
+  );
   return { tokenId, txHash: receipt.hash, blockNumber: receipt.blockNumber };
 }
 
 type VaultMethods = {
-  deposit(tokenId: bigint, overrides?: { value?: bigint }): Promise<TransactionResponse>;
+  deposit(
+    tokenId: bigint,
+    overrides?: { value?: bigint },
+  ): Promise<TransactionResponse>;
   balanceOf(tokenId: bigint): Promise<bigint>;
   setStrategy(
     tokenId: bigint,
@@ -387,9 +408,7 @@ export async function runVaultDepositStrategyPipeline(deps: {
     deps.deployer,
   );
   const before = await vaultTc.contract.balanceOf(deps.tokenId);
-  console.log(
-    `\n[Step 7–8] Vault deposit ${amount} + setStrategy (pipelined)`,
-  );
+  console.log(`\n[Step 7–8] Vault deposit ${amount} + setStrategy (pipelined)`);
   const vaultPipelineReceipts = await pipelineWalletTxs(
     "vault deposit+setStrategy",
     [
@@ -419,20 +438,42 @@ export async function runVaultDepositStrategyPipeline(deps: {
   const stratReceipt = vaultPipelineReceipts[1]!;
   const after = await vaultTc.contract.balanceOf(deps.tokenId);
   if (after < before + amount) {
-    throw new Error(`vault deposit: balance ${after} < expected ${before + amount}`);
+    throw new Error(
+      `vault deposit: balance ${after} < expected ${before + amount}`,
+    );
   }
-  const { root, dailyLimit: limit, validUntilDay: validUntil } =
-    await readVaultStrategy(provider, deps.vault, deps.tokenId);
+  const {
+    root,
+    dailyLimit: limit,
+    validUntilDay: validUntil,
+  } = await readVaultStrategy(provider, deps.vault, deps.tokenId);
   if (root.toLowerCase() !== deps.strategyRoot.toLowerCase()) {
-    throw new Error(`setStrategy: root on-chain ${root} != ${deps.strategyRoot}`);
+    throw new Error(
+      `setStrategy: root on-chain ${root} != ${deps.strategyRoot}`,
+    );
   }
   markScenarioCovered("vault.fund", "vault-deposit", { txs: 1, reads: 2 });
-  markScenarioCovered("vault.strategy", "vault-setStrategy", { txs: 1, reads: 1 });
+  markScenarioCovered("vault.strategy", "vault-setStrategy", {
+    txs: 1,
+    reads: 1,
+  });
   markCovered("AxiomStrategyVault", "deposit", "vault-deposit");
   markCovered("AxiomStrategyVault", "setStrategy", "vault-setStrategy");
   markCovered("AxiomStrategyVault", "strategyOf", "vault-setStrategy");
-  recordReceipt(7, "AxiomStrategyVault.deposit", `balance=${after} wei (+${after - before})`, depReceipt, deps.chainId);
-  recordReceipt(8, "AxiomStrategyVault.setStrategy", `root=${root} dailyLimit=${limit}`, stratReceipt, deps.chainId);
+  recordReceipt(
+    7,
+    "AxiomStrategyVault.deposit",
+    `balance=${after} wei (+${after - before})`,
+    depReceipt,
+    deps.chainId,
+  );
+  recordReceipt(
+    8,
+    "AxiomStrategyVault.setStrategy",
+    `root=${root} dailyLimit=${limit}`,
+    stratReceipt,
+    deps.chainId,
+  );
   void validUntil;
   return after;
 }
@@ -445,7 +486,9 @@ export async function runVaultDepositStep(deps: {
   depositWei?: bigint;
 }): Promise<bigint> {
   const amount = deps.depositWei ?? parseEther("0.001");
-  console.log(`\n[Step 7]  Vault deposit ${amount} wei (tokenId=${deps.tokenId})`);
+  console.log(
+    `\n[Step 7]  Vault deposit ${amount} wei (tokenId=${deps.tokenId})`,
+  );
   const vaultTc = new TypedContract<VaultMethods>(
     deps.vault,
     VAULT_ABI,
@@ -462,7 +505,13 @@ export async function runVaultDepositStep(deps: {
   }
   markScenarioCovered("vault.fund", "vault-deposit", { txs: 1, reads: 2 });
   markCovered("AxiomStrategyVault", "deposit", "vault-deposit");
-  recordReceipt(7, "AxiomStrategyVault.deposit", `balance=${after} wei (+${after - before})`, receipt, deps.chainId);
+  recordReceipt(
+    7,
+    "AxiomStrategyVault.deposit",
+    `balance=${after} wei (+${after - before})`,
+    receipt,
+    deps.chainId,
+  );
   return after;
 }
 
@@ -479,7 +528,9 @@ export async function runVaultStrategyStep(deps: {
   if (!provider) throw new Error("setStrategy: wallet missing provider");
   const variant = await detectVaultAbiVariant(provider, deps.vault);
   if (variant === "legacy") {
-    console.log("          legacy vault ABI (3-arg setStrategy, no validUntilDay)");
+    console.log(
+      "          legacy vault ABI (3-arg setStrategy, no validUntilDay)",
+    );
   }
   const vaultTc = new TypedContract<VaultMethods>(
     deps.vault,
@@ -500,21 +551,39 @@ export async function runVaultStrategyStep(deps: {
           0n,
         );
   const receipt = assertReceiptOk(await tx.wait(), "setStrategy");
-  const { root, dailyLimit: limit, validUntilDay: validUntil } =
-    await readVaultStrategy(provider, deps.vault, deps.tokenId);
+  const {
+    root,
+    dailyLimit: limit,
+    validUntilDay: validUntil,
+  } = await readVaultStrategy(provider, deps.vault, deps.tokenId);
   if (root.toLowerCase() !== deps.strategyRoot.toLowerCase()) {
-    throw new Error(`setStrategy: root on-chain ${root} != ${deps.strategyRoot}`);
+    throw new Error(
+      `setStrategy: root on-chain ${root} != ${deps.strategyRoot}`,
+    );
   }
   if (limit !== dailyLimit) {
-    throw new Error(`setStrategy: dailyLimit on-chain ${limit} != ${dailyLimit}`);
+    throw new Error(
+      `setStrategy: dailyLimit on-chain ${limit} != ${dailyLimit}`,
+    );
   }
   if (variant === "current" && validUntil !== 0n) {
-    throw new Error(`setStrategy: expected no expiry, got validUntilDay=${validUntil}`);
+    throw new Error(
+      `setStrategy: expected no expiry, got validUntilDay=${validUntil}`,
+    );
   }
-  markScenarioCovered("vault.strategy", "vault-setStrategy", { txs: 1, reads: 1 });
+  markScenarioCovered("vault.strategy", "vault-setStrategy", {
+    txs: 1,
+    reads: 1,
+  });
   markCovered("AxiomStrategyVault", "setStrategy", "vault-setStrategy");
   markCovered("AxiomStrategyVault", "setStrategy", "vault-setStrategy");
-  recordReceipt(8, "AxiomStrategyVault.setStrategy", `root=${root} dailyLimit=${limit}`, receipt, deps.chainId);
+  recordReceipt(
+    8,
+    "AxiomStrategyVault.setStrategy",
+    `root=${root} dailyLimit=${limit}`,
+    receipt,
+    deps.chainId,
+  );
 }
 
 export async function runTickStep(deps: {
@@ -611,7 +680,10 @@ export async function runTransferSteps(deps: {
   agentNft: string;
   eip712Domain: Eip712Domain;
 }): Promise<TransferStepResult> {
-  const recoveredDataKey = eciesDecrypt(deps.deployer.privateKey, deps.sealedKey);
+  const recoveredDataKey = eciesDecrypt(
+    deps.deployer.privateKey,
+    deps.sealedKey,
+  );
   const receiverPub = new Uint8Array(65);
   receiverPub[0] = 0x04;
   receiverPub.set(getBytes(deps.receiverPubKey64).subarray(0, 64), 1);
@@ -730,77 +802,86 @@ export async function runOnChainTransferStep(deps: {
     );
   }
   try {
-      const proofs = [
-        {
-          accessProof: {
-            dataHash: deps.finalResp.accessProof.dataHash,
-            targetPubkey: deps.finalResp.accessProof.targetPubkey,
-            nonce: deps.finalResp.accessProof.nonce,
-            proof: deps.finalResp.accessProof.proof,
-            validUntil: deps.finalResp.accessProof.validUntil,
-          },
-          ownershipProof: {
-            oracleType: deps.finalResp.ownershipProof.oracleType,
-            dataHash: deps.finalResp.ownershipProof.dataHash,
-            sealedKey: deps.finalResp.ownershipProof.sealedKey,
-            targetPubkey: deps.finalResp.ownershipProof.targetPubkey,
-            nonce: deps.finalResp.ownershipProof.nonce,
-            proof: deps.finalResp.ownershipProof.proof,
-            validUntil: deps.finalResp.ownershipProof.validUntil,
-          },
+    const proofs = [
+      {
+        accessProof: {
+          dataHash: deps.finalResp.accessProof.dataHash,
+          targetPubkey: deps.finalResp.accessProof.targetPubkey,
+          nonce: deps.finalResp.accessProof.nonce,
+          proof: deps.finalResp.accessProof.proof,
+          validUntil: deps.finalResp.accessProof.validUntil,
         },
-      ];
-      await nftTc.raw
-        .getFunction("iTransferFrom")
-        .staticCall(deps.deployer.address, deps.to, BigInt(deps.tokenId), proofs);
-      const tx = await nftTc.contract.iTransferFrom(
-        deps.deployer.address,
-        deps.to,
-        BigInt(deps.tokenId),
-        proofs,
-      );
-      const receipt = assertReceiptOk(await tx.wait(), "iTransferFrom");
-      const transferLog = receipt.logs.find(
-        (l) => l.topics[0] === TRANSFER_TOPIC,
-      );
-      if (!transferLog) throw new Error("Transfer event not found");
-      const parsed = nftTc.iface.parseLog(transferLog);
-      if (!parsed) throw new Error("Transfer log parse failed");
-      const [eventFrom, eventTo, eventTokenId] = parsed.args as unknown as [
-        string,
-        string,
-        bigint,
-      ];
-      if (eventFrom.toLowerCase() !== deps.deployer.address.toLowerCase())
-        throw new Error("Transfer from mismatch");
-      if (eventTo.toLowerCase() !== deps.to.toLowerCase())
-        throw new Error("Transfer to mismatch");
-      if (eventTokenId.toString() !== deps.tokenId)
-        throw new Error("Transfer tokenId mismatch");
-      const newOwner = await nftTc.contract.ownerOf(BigInt(deps.tokenId));
-      const accessInput = {
-        dataHash: deps.finalResp.accessProof.dataHash,
-        targetPubkey: deps.finalResp.accessProof.targetPubkey,
-        to: deps.to,
-        nft: deps.agentNft as `0x${string}`,
-        nonce: BigInt(deps.finalResp.accessProof.nonce),
-        validUntil: BigInt(deps.finalResp.accessProof.validUntil),
-      };
-      const recoveredAddr = recoverAccessSigner(
-        deps.finalResp.accessProof.proof,
-        accessInput,
-        deps.eip712Domain,
-      );
-      if (recoveredAddr.toLowerCase() !== deps.to.toLowerCase())
-        throw new Error("access signer mismatch");
-      if (newOwner.toLowerCase() !== deps.to.toLowerCase()) {
-        throw new Error(`post-transfer owner ${newOwner} != receiver ${deps.to}`);
-      }
-      markScenarioCovered("transfer.onchain", "iTransferFrom", { txs: 1, reads: 2 });
-      markCovered("AxiomAgentNFT", "iTransferFrom", "iTransferFrom");
-      markCovered("AxiomAgentNFT", "ownerOf", "iTransferFrom");
-      markCovered("AxiomTeeVerifier", "verifyTransferValidity", "iTransferFrom");
-      recordReceipt(11, "iTransferFrom on-chain", `owner=${newOwner} accessSigner=${recoveredAddr}`, receipt, deps.chainId);
+        ownershipProof: {
+          oracleType: deps.finalResp.ownershipProof.oracleType,
+          dataHash: deps.finalResp.ownershipProof.dataHash,
+          sealedKey: deps.finalResp.ownershipProof.sealedKey,
+          targetPubkey: deps.finalResp.ownershipProof.targetPubkey,
+          nonce: deps.finalResp.ownershipProof.nonce,
+          proof: deps.finalResp.ownershipProof.proof,
+          validUntil: deps.finalResp.ownershipProof.validUntil,
+        },
+      },
+    ];
+    await nftTc.raw
+      .getFunction("iTransferFrom")
+      .staticCall(deps.deployer.address, deps.to, BigInt(deps.tokenId), proofs);
+    const tx = await nftTc.contract.iTransferFrom(
+      deps.deployer.address,
+      deps.to,
+      BigInt(deps.tokenId),
+      proofs,
+    );
+    const receipt = assertReceiptOk(await tx.wait(), "iTransferFrom");
+    const transferLog = receipt.logs.find(
+      (l) => l.topics[0] === TRANSFER_TOPIC,
+    );
+    if (!transferLog) throw new Error("Transfer event not found");
+    const parsed = nftTc.iface.parseLog(transferLog);
+    if (!parsed) throw new Error("Transfer log parse failed");
+    const [eventFrom, eventTo, eventTokenId] = parsed.args as unknown as [
+      string,
+      string,
+      bigint,
+    ];
+    if (eventFrom.toLowerCase() !== deps.deployer.address.toLowerCase())
+      throw new Error("Transfer from mismatch");
+    if (eventTo.toLowerCase() !== deps.to.toLowerCase())
+      throw new Error("Transfer to mismatch");
+    if (eventTokenId.toString() !== deps.tokenId)
+      throw new Error("Transfer tokenId mismatch");
+    const newOwner = await nftTc.contract.ownerOf(BigInt(deps.tokenId));
+    const accessInput = {
+      dataHash: deps.finalResp.accessProof.dataHash,
+      targetPubkey: deps.finalResp.accessProof.targetPubkey,
+      to: deps.to,
+      nft: deps.agentNft as `0x${string}`,
+      nonce: BigInt(deps.finalResp.accessProof.nonce),
+      validUntil: BigInt(deps.finalResp.accessProof.validUntil),
+    };
+    const recoveredAddr = recoverAccessSigner(
+      deps.finalResp.accessProof.proof,
+      accessInput,
+      deps.eip712Domain,
+    );
+    if (recoveredAddr.toLowerCase() !== deps.to.toLowerCase())
+      throw new Error("access signer mismatch");
+    if (newOwner.toLowerCase() !== deps.to.toLowerCase()) {
+      throw new Error(`post-transfer owner ${newOwner} != receiver ${deps.to}`);
+    }
+    markScenarioCovered("transfer.onchain", "iTransferFrom", {
+      txs: 1,
+      reads: 2,
+    });
+    markCovered("AxiomAgentNFT", "iTransferFrom", "iTransferFrom");
+    markCovered("AxiomAgentNFT", "ownerOf", "iTransferFrom");
+    markCovered("AxiomTeeVerifier", "verifyTransferValidity", "iTransferFrom");
+    recordReceipt(
+      11,
+      "iTransferFrom on-chain",
+      `owner=${newOwner} accessSigner=${recoveredAddr}`,
+      receipt,
+      deps.chainId,
+    );
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     recordOnChainStep({
@@ -820,8 +901,7 @@ export function printReport(options?: { liveGateMinPct?: number }): void {
   console.log("============================================");
   for (const r of stepResults) {
     const flag = r.ok ? "[OK]" : "[FAIL]";
-    const block =
-      r.blockNumber !== undefined ? ` block=${r.blockNumber}` : "";
+    const block = r.blockNumber !== undefined ? ` block=${r.blockNumber}` : "";
     console.log(
       `  Step ${String(r.step).padStart(2)} ${flag}  ${r.name.padEnd(28)}  ${r.summary}${block}`,
     );

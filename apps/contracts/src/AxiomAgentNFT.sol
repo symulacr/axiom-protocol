@@ -143,6 +143,7 @@ contract AxiomAgentNFT is
     function proposeVerifier(
         address newVerifier
     ) external onlyRole(ADMIN_ROLE) {
+        require(newVerifier != address(0), "Zero verifier");
         AxiomAgentNFTStorage storage $ = _getAxiomAgentNFTStorage();
         $.verifierTimelock.propose(newVerifier);
         emit VerifierProposed(newVerifier);
@@ -246,7 +247,9 @@ contract AxiomAgentNFT is
         IntelligentData[] calldata iDatas,
         address to
     ) public virtual onlyRole(MINTER_ROLE) whenNotPaused nonReentrant returns (uint256 tokenId) {
-        return _mintWithRole(iDatas, to, address(0));
+        // Role-minted tokens default to `to` as creator so payForAgent/creatorOf
+        // behave identically to the public mint path (which sets creators[tokenId] = to).
+        return _mintWithRole(iDatas, to, to);
     }
 
     function mintWithRole(

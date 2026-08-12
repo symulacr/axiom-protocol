@@ -46,6 +46,8 @@ interface UploadOptions {
   encryption?: Encryption;
   expectedReplica?: number;
   taskSize?: number;
+  /** Explicit storage fee (wei). When >0 the SDK skips market() pricing — required on chains where the flow contract lacks market() (e.g. Galileo testnet). Default 0 = on-chain pricing. */
+  fee?: bigint;
 }
 
 interface DownloadOptions {
@@ -152,6 +154,7 @@ async function uploadToStorage(
     expectedReplica: options.expectedReplica,
     taskSize: options.taskSize,
     encryption: options.encryption,
+    ...(options.fee !== undefined ? { fee: options.fee } : {}),
   };
   const [tx, err] = await indexer.upload(memData, evmRpc, signer, uploadOpts);
   if (err) throw new Error(`0G upload failed: ${err.message ?? String(err)}`);
