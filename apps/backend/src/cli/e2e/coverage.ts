@@ -24,7 +24,7 @@ import { markCovered, markSkipped } from "./matrix.js";
 import { markScenarioCovered } from "./scenarios.js";
 import { ensureErc20Allowance } from "./erc20.js";
 import { hasContractFunction, LEGACY_DEPLOY_REASON } from "./deploy-compat.js";
-import { readVaultStrategy } from "./vault-compat.js";
+import { readVaultStrategy } from "../../orchestrator/index.js";
 import type { FinalResponse } from "./steps.js";
 
 const AGENT_NFT_EXTENDED_ABI = [

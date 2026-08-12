@@ -1,6 +1,6 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import {
-  Wallet,
+  type Wallet,
   hexlify,
   getBytes,
   parseEther,
@@ -26,10 +26,10 @@ import {
   detectVaultAbiVariant,
   readVaultStrategy,
   vaultAbiFor,
-} from "./vault-compat.js";
+} from "../../orchestrator/index.js";
 import { TRANSFER_TOPIC } from "@axiom/config";
 import type { fetchJson as fetchJsonFn } from "../../utils/response.js";
-import { postStep as postStepFn, stepResults } from "./http.js";
+import { type postStep as postStepFn, stepResults } from "./http.js";
 import {
   addressExplorerUrl,
   assertContractDeployed,

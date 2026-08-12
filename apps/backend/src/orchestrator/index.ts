@@ -37,7 +37,7 @@ type VaultAbiVariant = "legacy" | "current";
 
 const variantCache = new Map<string, VaultAbiVariant>();
 
-async function detectVaultAbiVariant(
+export async function detectVaultAbiVariant(
   provider: Provider,
   vaultAddress: string,
 ): Promise<VaultAbiVariant> {
@@ -61,26 +61,33 @@ async function detectVaultAbiVariant(
   }
 }
 
-function vaultAbiFor(
+export function vaultAbiFor(
   variant: VaultAbiVariant,
 ): typeof VAULT_ABI | typeof VAULT_ABI_LEGACY {
   return variant === "legacy" ? VAULT_ABI_LEGACY : VAULT_ABI;
 }
 
-async function readVaultStrategy(
+export interface VaultStrategyState {
+  root: string;
+  dailyLimit: bigint;
+  validUntilDay: bigint;
+}
+
+export async function readVaultStrategy(
   provider: Provider,
   vaultAddress: string,
   tokenId: bigint,
-): Promise<string> {
+): Promise<VaultStrategyState> {
   const variant = await detectVaultAbiVariant(provider, vaultAddress);
   if (variant === "legacy") {
     const vault = new Contract(vaultAddress, STRATEGY_OF_LEGACY, provider);
-    const [root] = await vault.getFunction("strategyOf")(tokenId);
-    return root;
+    const [root, dailyLimit] = await vault.getFunction("strategyOf")(tokenId);
+    return { root, dailyLimit, validUntilDay: 0n };
   }
   const vault = new Contract(vaultAddress, STRATEGY_OF_CURRENT, provider);
-  const [root] = await vault.getFunction("strategyOf")(tokenId);
-  return root;
+  const [root, dailyLimit, , , validUntilDay] = await vault
+    .getFunction("strategyOf")(tokenId);
+  return { root, dailyLimit, validUntilDay };
 }
 
 const log = createLogger("orchestrator");
@@ -253,11 +260,12 @@ export class StrategyRunner {
       throw new Error("No vault address configured for on-chain settlement");
     }
 
-    const vaultStrategyRoot = await readVaultStrategy(
+    const vaultStrategy = await readVaultStrategy(
       this.provider,
       vaultAddr,
       strategy.agentTokenId,
     );
+    const vaultStrategyRoot = vaultStrategy.root;
 
     const plan = strategy.executionPlan;
     if (
