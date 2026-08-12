@@ -12,6 +12,8 @@ import {
     OracleType
 } from "../src/interfaces/IERC7857DataVerifier.sol";
 import {AxiomTeeVerifier} from "../src/verifiers/AxiomTeeVerifier.sol";
+import {AxiomStrategyVault} from "../src/AxiomStrategyVault.sol";
+import {AxiomPaymentProcessor} from "../src/AxiomPaymentProcessor.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {LiveForkTest} from "./helpers/LiveForkTest.sol";
 
@@ -454,6 +456,47 @@ contract FuzzAxiomAgentNFTSanity is LiveForkTest {
     ) external view returns (bool) {
         AxiomAgentNFT liveNft = AxiomAgentNFT(nftAddr);
         return bytes(liveNft.name()).length > 0 && bytes(liveNft.symbol()).length > 0;
+    }
+
+    /// @notice Probes all four deployed mainnet proxies (docs/deployments/aristotle-2026-07-22.json)
+    ///         read-only on the fork. Fork at latest: evmrpc.0g.ai is non-archive and cannot
+    ///         serve the pinned 38,748,015 block (missing trie node), and the mainnet deploy
+    ///         itself (block ~39.5M) postdates that pin anyway.
+    function test_sanity_deployedMainnet() public {
+        _skipUnlessLiveFork();
+
+        vm.createSelectFork(_forkRpcUrl());
+
+        address nftProxy = address(0x4938F10B12051CE8DCd70E3F7555E71adb432545);
+        address vaultProxy = address(0xe32f87C6F8070C89a82D51BDd3fab578C0d7be6f);
+        address verifierProxy = address(0x7490D693364A31E0513bcef8E346397cc4BA9E9c);
+        address processorProxy = address(0xe8B3B31E5CE0436cCfD19a47351943CcB7703722);
+        address oracleAdmin = address(0x437371dB1FBD534Bd01BD3f4E66DfA1675952F91);
+
+        // Wrong-network fork (testnet) has no code at the mainnet addresses — skip, not fail.
+        if (nftProxy.code.length == 0) {
+            vm.skip(true);
+            return;
+        }
+
+        AxiomAgentNFT nft = AxiomAgentNFT(nftProxy);
+        assertEq(nft.name(), "Axiom Agent NFT");
+        assertEq(nft.symbol(), "AXM-A");
+        assertTrue(vm.load(address(nft), EIP1967_IMPL_SLOT) != bytes32(0), "nft impl slot");
+        assertTrue(nft.hasRole(bytes32(0), oracleAdmin), "nft DEFAULT_ADMIN_ROLE");
+
+        AxiomStrategyVault vault = AxiomStrategyVault(payable(vaultProxy));
+        assertEq(vault.owner(), oracleAdmin, "vault owner");
+        assertEq(address(vault.nft()), nftProxy, "vault nft binding");
+
+        AxiomTeeVerifier verifier = AxiomTeeVerifier(verifierProxy);
+        assertEq(verifier.registeredSigner(), address(0x0553f58a0209Fb8DcE201fCD9406Be56da890D73), "tee signer");
+        assertEq(verifier.maxProofAgeSeconds(), 7 days, "max proof age");
+
+        AxiomPaymentProcessor processor = AxiomPaymentProcessor(processorProxy);
+        assertEq(processor.paymentToken(), address(0x354CA53bAB51C0666964fa050628d8351f8A7d19), "payment token");
+        assertEq(processor.protocolFeeBps(), 100, "protocol fee bps");
+        assertEq(processor.owner(), oracleAdmin, "processor owner");
     }
 }
 
