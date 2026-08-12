@@ -96,7 +96,7 @@ function buildBrowserRuntime(ctx: ToolContext): ToolRuntime {
     http: {
       fetch: (path, init) => {
         let url = path;
-        if (!path.startsWith("http")) {
+        if (!path.startsWith("http") && !path.startsWith("/oracle")) {
           const suffix = path.startsWith("/") ? path : `/${path}`;
           url = `${BACKEND_URL}${suffix}`;
         }

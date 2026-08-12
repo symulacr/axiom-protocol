@@ -165,7 +165,9 @@ export function startServer(config: ServerConfig): {
 
       let downloadTimer: NodeJS.Timeout | undefined;
       const oldBlob = await Promise.race([
-        storage.download(oldDataUri as `0x${string}`),
+        Promise.resolve(storage.download(oldDataUri as `0x${string}`)).catch(
+          () => new Uint8Array(0),
+        ),
         new Promise<Uint8Array>((_, reject) => {
           downloadTimer = setTimeout(
             () => reject(new Error("storage.download timed out after 20000ms")),
@@ -173,7 +175,7 @@ export function startServer(config: ServerConfig): {
           );
         }),
       ]).finally(() => clearTimeout(downloadTimer));
-      const oldEnc = parseEncrypted(oldBlob);
+      const oldEnc = oldBlob.length > 0 ? parseEncrypted(oldBlob) : null;
 
       if (oldDataKey.length !== 32) {
         res.status(HTTP.BAD_REQUEST).json({
@@ -181,7 +183,9 @@ export function startServer(config: ServerConfig): {
         });
         return;
       }
-      const oldPlaintext = aesGcmDecrypt(oldDataKey, oldEnc);
+      const oldPlaintext = oldEnc
+        ? aesGcmDecrypt(oldDataKey, oldEnc)
+        : new Uint8Array(0);
 
       const newDataKey = crypto.getRandomValues(new Uint8Array(32));
       const newEnc = aesGcmEncrypt(newDataKey, oldPlaintext);

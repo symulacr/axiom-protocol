@@ -418,7 +418,8 @@ export class EventStore {
       this.dirty.add(bucketKey);
     }
     this.persistDebounced();
-    log.info("rollbackToBlock complete", {
+    // Surface rollback to WS subscribers (frontend listens on "*"); indexer console.warns server-side.
+    broadcast("system.reorg", {
       cutoff,
       removed,
       remaining: this.total,

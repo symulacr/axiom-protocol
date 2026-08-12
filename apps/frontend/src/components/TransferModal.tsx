@@ -364,6 +364,19 @@ function ConfirmTransferPhase({
               >
                 {signature.newDataHash}
               </MonoLabel>
+              {signature.ownershipProof?.sealedKey !== undefined && (
+                <>
+                  <br />
+                  New sealed key:{" "}
+                  <MonoLabel
+                    copyable
+                    text={signature.ownershipProof.sealedKey}
+                    style={{ fontSize: "var(--text-xs)" }}
+                  >
+                    {signature.ownershipProof.sealedKey}
+                  </MonoLabel>
+                </>
+              )}
             </>
           )}
         </Alert>
