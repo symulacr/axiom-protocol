@@ -1,0 +1,24 @@
+{
+  "network": "0G Aristotle mainnet",
+  "chainId": 16661,
+  "rpc": "https://evmrpc.0g.ai",
+  "explorer": "https://chainscan.0g.ai",
+  "storageIndexer": "https://indexer-storage-turbo.0g.ai",
+  "flowContract": "0x62D4144dB0F0a6fBBaeb6296c785C71B3D57C526",
+  "deployedAt": "2026-07-22T00:00:00Z",
+  "deployedAtUnix": 1784722220,
+  "teeSigner": "0x0553f58a0209Fb8DcE201fCD9406Be56da890D73",
+  "oracleAdmin": "0x437371dB1FBD534Bd01BD3f4E66DfA1675952F91",
+  "paymentToken": "0x354CA53bAB51C0666964fa050628d8351f8A7d19",
+  "contracts": {
+    "AxiomTeeVerifier (impl)":   "0x2157F99a0536375e6a8c70071F66eB88AC3942fc",
+    "AxiomTeeVerifier (proxy)":   "0x7490D693364A31E0513bcef8E346397cc4BA9E9c",
+    "AxiomAgentNFT (impl)":       "0xD34C8b3a72f36026E5B4f9c7d468C72894171609",
+    "AxiomAgentNFT (proxy)":      "0x4938F10B12051CE8DCd70E3F7555E71adb432545",
+    "AxiomStrategyVault (impl)":  "0x0E0a9214506154Cb35035C73f6C6A1B711210Ba8",
+    "AxiomStrategyVault (proxy)": "0xe32f87C6F8070C89a82D51BDd3fab578C0d7be6f",
+    "AxiomPaymentProcessor (impl)":  "0xBaEF770DF579844A6e81F86c53834A8310C7Cd6e",
+    "AxiomPaymentProcessor (proxy)": "0xe8B3B31E5CE0436cCfD19a47351943CcB7703722"
+  },
+  "verified": true
+}

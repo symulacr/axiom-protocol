@@ -23,16 +23,13 @@ jobs:
           persist-credentials: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
       - run: bun install --frozen-lockfile
-      - run:
-          bun run --filter @axiom/config build && bun run --filter @axiom/config
+      - run: bun run --filter @axiom/config build && bun run --filter @axiom/config
           typecheck
       - run: bun run --filter @axiom/chat-runtime build && bun run --filter
           @axiom/chat-runtime typecheck
-      - run:
-          bun run --filter @axiom/oracle build && bun run --filter @axiom/oracle
+      - run: bun run --filter @axiom/oracle build && bun run --filter @axiom/oracle
           typecheck
-      - run:
-          bun run --filter @axiom/backend build && bun run --filter @axiom/backend
+      - run: bun run --filter @axiom/backend build && bun run --filter @axiom/backend
           typecheck
       - run: bun run --filter @axiom/frontend typecheck
       - run: bun run --filter @axiom/frontend lint
@@ -78,6 +75,25 @@ jobs:
       - run: bun run --filter @axiom/config test
       - run: bun run --filter @axiom/chat-runtime test
       - run: bun run --filter @axiom/oracle test
+      - run: bun run --filter @axiom/oracle build
+      - run: bun run --filter @axiom/backend test
+      - name: Coverage gate (C1)
+        env:
+          AXIOM_API_KEY: ""
+          AXIOM_CLIENT_API_KEY: ""
+          AXIOM_DISABLE_AUTH: "true"
+          AXIOM_ALLOW_CLEARTEXT_DEK: "true"
+        run: |
+          set -euo pipefail
+          check() { # $1=dir $2=min-lines-floor
+            pct=$(cd "$1" && bun test --coverage --max-concurrency=1 2>&1 | awk '/All files/ {gsub(/\|/,""); print $NF}')
+            echo "$1 lines=$pct (floor $2)"
+            awk -v p="$pct" -v f="$2" 'BEGIN{exit !(p>=f)}'
+          }
+          check apps/backend 60
+          check apps/oracle 70
+          check packages/config 80
+          check packages/chat-runtime 65
 
   contracts:
     name: Forge tests (local)
@@ -128,7 +144,7 @@ jobs:
           cat /tmp/backend.log
           exit 1
       - name: Chat bench (CI mode)
-        run: bun dist/cli/run-chat-bench.js
+        run: bun run run-chat-bench
         working-directory: apps/backend
         env:
           E2E_LIVE_COMPUTE: "0"

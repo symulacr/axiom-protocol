@@ -261,7 +261,7 @@ apps/indexer/README.md
 packages/config/README.md
 
 # ── Audit docs — not source ──────────────────────────────
-docs/
+docs/*
 !docs/assets/
 !docs/assets/**
 
@@ -324,7 +324,10 @@ audit-reports/
 
 # ── Non-critical docs and planning artifacts ──────────
 analysis_reports/
-docs/
+docs/*
+!docs/deployments/
+!docs/deployments/**
+apps/contracts/docs/
 wallets/
 
 # ── Runtime data ─────────────────────────────────────
@@ -343,17 +346,6 @@ apps/backend/COVERAGE-TODO.md
 apps/backend/COVERAGE-WEEK-PLAN.md
 apps/backend/E2E-DISCOVERIES.md
 apps/backend/bench-before.mts
-apps/backend/src/cli/
-apps/backend/src/compute/router.test.ts
-apps/backend/src/events/instance-lock.test.ts
-apps/backend/src/orchestrator/orchestrator-chainid.test.ts
-apps/backend/src/orchestrator/settle-*.test.ts
-apps/backend/src/routers/agents.test.ts
-apps/backend/src/routers/events.test.ts
-apps/backend/src/server/
-apps/backend/src/skills/redact-ioc.test.ts
-apps/backend/src/skills/routers.test.ts
-apps/backend/src/utils/logger.test.ts
 apps/bench/
 apps/contracts/hardhat.config.cjs
 apps/contracts/remappings.txt
@@ -363,7 +355,6 @@ apps/contracts/script/Deploy.s.sol
 apps/contracts/script/MintE2eUsdc.s.sol
 apps/contracts/scripts/
 apps/contracts/src/mocks/
-apps/contracts/test/
 apps/contracts/vendor/
 apps/frontend/e2e/
 apps/frontend/eslint.config.js
@@ -376,21 +367,9 @@ apps/frontend/src/hooks/useTransfer.dataHash.test.ts
 apps/frontend/src/navigation/ia.test.ts
 apps/frontend/src/env.d.ts
 apps/oracle/src/__bench__/
-apps/oracle/src/server-access-proof.test.ts
-apps/oracle/src/server.test.ts
-apps/oracle/src/signer.test.ts
-apps/oracle/test/
-packages/chat-runtime/src/executors/*.test.ts
-packages/chat-runtime/src/format.test.ts
-packages/chat-runtime/src/parallel.test.ts
-packages/chat-runtime/src/prompt.test.ts
-packages/chat-runtime/src/session.test.ts
 packages/config/deployed.json
 packages/config/src/abis/mockUsdc.ts
 packages/config/src/abis/vault.legacy.ts
-packages/config/src/eip712.test.ts
-packages/config/src/middleware/auth.test.ts
-packages/config/src/models.test.ts
 
 # ── Previously tracked, git rm'd — silence from untracked status ──
 .gitleaks.toml
@@ -822,7 +801,6 @@ CONTRIBUTORS.wiki
 coverage/
 demo/
 doc/*
-docs/*
 eslint
 example.*
 example/*
@@ -1297,7 +1275,6 @@ security.wiki
 Security.wiki
 SECURITY.wiki
 stylelint*
-test*
 tsconfig.json
 yarn-*.log
 yarn.lock
