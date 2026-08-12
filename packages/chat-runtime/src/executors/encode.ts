@@ -92,7 +92,13 @@ async function encodeMint(
 
   if (!httpOk || !data.to) return toolFail("mint encode fail");
 
-  await registerDataHashWithOracle(ctx, dataHash, to);
+  try {
+    await registerDataHashWithOracle(ctx, dataHash, to);
+  } catch (e) {
+    return toolFail(
+      e instanceof Error ? e.message : "oracle registration failed",
+    );
+  }
 
   if (ctx.mode === "encode-only" || !ctx.wallet?.signAndSend) {
     return encodeOnlyResult(data);
@@ -159,23 +165,16 @@ async function registerDataHashWithOracle(
   if (!oracleUrl) return;
 
   const url = `${oracleUrl.replace(/\/$/, "")}/v1/agents/mint`;
-  try {
-    // non-fatal: mint proceeds regardless — warn instead of throw (sanctioned console site)
-    const { ok } = await fetchJson<{ ok?: boolean }>(ctx.http, url, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ dataHash, to }),
-    });
-    if (!ok) {
-      console.warn(
-        `[mint_agent] oracle registration returned ok:false for dataHash=${dataHash} (non-fatal)`,
-      );
-    }
-  } catch (e) {
-    console.warn(
-      `[mint_agent] oracle registration failed for dataHash=${dataHash} (non-fatal): ${
-        e instanceof Error ? e.message : String(e)
-      }`,
+  // Fatal like the UI wizard: a chat-minted agent whose hash was never seen by
+  // the oracle becomes un-transferable ("Unknown dataHash" at transfer time).
+  const { ok } = await fetchJson<{ ok?: boolean }>(ctx.http, url, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ dataHash, to }),
+  });
+  if (!ok) {
+    throw new Error(
+      `oracle registration failed for dataHash=${dataHash} (mint aborted)`,
     );
   }
 }

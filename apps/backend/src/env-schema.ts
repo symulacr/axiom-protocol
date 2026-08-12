@@ -5,7 +5,9 @@ import { RUNTIME_DEFAULTS } from "@axiom/config";
 
 export const backendEnvSchema = sharedEnvSchema.merge(
   z.object({
-    AXIOM_ORACLE_URL: z.string().url(),
+    AXIOM_ORACLE_URL: z
+      .string()
+      .url("AXIOM_ORACLE_URL must be a valid URL (oracle service, e.g. https://oracle…/ or http://127.0.0.1:8787)"),
     AXIOM_INDEXER_API_KEY: z.string().optional(),
     AXIOM_EVM_RPC: z.string().url(),
     AXIOM_STORAGE_RPC: z.string().url().optional(),

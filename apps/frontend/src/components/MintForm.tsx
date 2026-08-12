@@ -214,7 +214,11 @@ export function MintForm({
             <div
               style={{ fontSize: "var(--text-sm)", color: "var(--c-phosphor)" }}
             >
-              {mintFeeWei === undefined ? (
+              {mintFeeWei === undefined && feeError ? (
+                <span style={{ color: COLORS.warning }}>
+                  {humanizeError(feeError)}
+                </span>
+              ) : mintFeeWei === undefined ? (
                 "Loading…"
               ) : (
                 <>

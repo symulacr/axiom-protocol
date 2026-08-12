@@ -112,9 +112,11 @@ export function registerAgentRoutes(
   })();
   const agentCache = new TTLCache<unknown>(agentListTtlMs);
 
-  const trustedSigner = config.env
-    ? (ethers.computeAddress(config.env.AXIOM_TEE_SIGNER_PK) as Hex)
-    : ("0x0000000000000000000000000000000000000000" as Hex);
+  // Env-required at boot (backendEnvSchema); a missing PK fails loudly here
+  // instead of silently zeroing the signer (audit F3.2/M2).
+  const teeSignerPk = config.env?.AXIOM_TEE_SIGNER_PK;
+  if (!teeSignerPk) throw new Error("AXIOM_TEE_SIGNER_PK required");
+  const trustedSigner = ethers.computeAddress(teeSignerPk) as Hex;
 
   createRoute(
     app,

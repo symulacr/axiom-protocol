@@ -1,7 +1,8 @@
 import { resolveAddress } from "@axiom/config/addresses";
 import type { Address } from "viem";
-// Source of truth: packages/config/deployed.json, surfaced via VITE_ env (Vite bundles at build time, no filesystem access).
-// resolveAddress takes the first non-empty alias; mockUsdc resolves on-chain via the payment config, never from this map.
+// Runtime source of truth is env (VITE_* -> AXIOM_*); packages/config/deployed.json is the
+// deployment record only — never read by code. Backend getCode probe (index.ts) warns at boot
+// if an address has no live bytecode, surfacing env/deployment drift.
 const env: Record<string, unknown> = {
   AXIOM_AGENT_NFT_ADDRESS: import.meta.env.VITE_AGENT_NFT_ADDRESS,
   AXIOM_STRATEGY_VAULT_ADDRESS: import.meta.env.VITE_STRATEGY_VAULT_ADDRESS,

@@ -32,7 +32,6 @@ import { DefaultSignerOracleClient } from "./oracle/client.js";
 import {
   HTTP,
   type Eip712Domain,
-  DEFAULT_EIP712_DOMAIN,
   buildEip712Domain,
   resolveChatModel,
   resolveContextWindow,
@@ -240,7 +239,8 @@ export function startServer(config: ServerConfig): {
   });
   const eip712Domain: Eip712Domain = buildEip712Domain(
     ogChainId,
-    config.addresses?.verifier ?? DEFAULT_EIP712_DOMAIN.verifyingContract,
+    // verifier is env-required (resolveAddress throws at boot if unset) — no silent mainnet fallback
+    config.addresses!.verifier,
   );
   let orchestratorHandle: StrategyRunner | null = null;
 

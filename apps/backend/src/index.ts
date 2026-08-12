@@ -50,8 +50,15 @@ async function resolveLiveAddresses(
           live[key] = addr;
           return true;
         }
-      } catch {
-        /* unverifiable on live chain — omit to degrade gracefully */
+        console.warn(
+          `[boot] ${key} at ${addr} has no bytecode — omitted; related routes will 503`,
+        );
+      } catch (err) {
+        console.warn(
+          `[boot] could not verify ${key} at ${addr}: ${
+            err instanceof Error ? err.message : String(err)
+          } — omitted`,
+        );
       }
       return false;
     }),

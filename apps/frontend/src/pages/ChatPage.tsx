@@ -689,7 +689,7 @@ function ChatPageInner(): ReactElement {
 
   const runAgent = useCallback(
     async (userText: string) => {
-      if (!userText.trim() || !chainSupported) return;
+      if (!userText.trim()) return;
       isStreamingRef.current = true;
       setIsStreaming(true);
       streamErrorRef.current = null;
@@ -1092,7 +1092,7 @@ function ChatPageInner(): ReactElement {
   const sendMessage = useCallback(
     (userText: string) => {
       const text = userText.trim();
-      if (!text || !chainSupported) return;
+      if (!text) return;
       setInput("");
       queueRef.current = [...queueRef.current, text];
       setQueue(queueRef.current);
@@ -1976,7 +1976,7 @@ function ChatPageInner(): ReactElement {
             <Button
               variant={isStreaming ? "secondary" : "primary"}
               onClick={() => sendMessage(input)}
-              disabled={!input.trim() || !chainSupported}
+              disabled={!input.trim()}
             >
               {isStreaming ? "Queue" : "Send"}
             </Button>
