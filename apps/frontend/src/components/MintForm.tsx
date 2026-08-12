@@ -22,7 +22,12 @@ import { getAxiomAgentNftAddress } from "../abi/addresses.js";
 import { useMintWizard } from "../hooks/useMintWizard.js";
 import { COLORS, Card, Button, Alert, PageHeader, Input } from "./ui.js";
 
-const agentNftAbi = AGENT_NFT_ABI;
+const MINT_STEPS = ["Oracle registration", "Chain mint", "Confirm"] as const;
+const MINT_NARR = [
+  "Registering with oracle",
+  "Preparing mint transaction",
+  "Confirm in wallet / on-chain",
+] as const;
 
 type MintFormProps = {
   provider?: `0x${string}` | undefined;
@@ -53,7 +58,7 @@ export function MintForm({
     contracts: [
       {
         address: getAxiomAgentNftAddress(chainId),
-        abi: agentNftAbi,
+        abi: AGENT_NFT_ABI,
         functionName: "mintFee",
         args: undefined,
       },
@@ -66,7 +71,6 @@ export function MintForm({
   const mintFeeWei: bigint | undefined = feeQuery.data?.[0] as
     bigint | undefined;
   const feeError = (feeQuery.error as Error | null) ?? null;
-  const owner = address;
 
   const receiptQuery = useWaitForTransactionReceipt({
     hash: pendingHash ?? undefined,
@@ -108,7 +112,7 @@ export function MintForm({
     async (e?: FormEvent): Promise<void> => {
       e?.preventDefault();
       if (!wizard.agentName.trim()) return;
-      if (!isConnected || !owner || !walletClient) {
+      if (!isConnected || !address || !walletClient) {
         setSubmitError("Connect a wallet to mint.");
         return;
       }
@@ -129,7 +133,7 @@ export function MintForm({
         setMintPending(false);
       }
     },
-    [wizard, isConnected, owner, walletClient, mintFeeWei, onMintChain],
+    [wizard, isConnected, address, walletClient, mintFeeWei, onMintChain],
   );
 
   const onNameChange = useCallback(
@@ -148,13 +152,9 @@ export function MintForm({
     phase === "chain" ||
     phase === "confirm";
 
-  const phaseLabel = ((): string | null => {
-    if (phase === "oracle") return "Registering with oracle…";
-    if (phase === "chain") return "Preparing mint transaction…";
-    if (phase === "confirm" || pendingHash)
-      return "Confirm in wallet / on-chain…";
-    return null;
-  })();
+  const stepIdx: number =
+    phase === "idle" ? -1 : phase === "oracle" ? 0 : phase === "chain" ? 1 : 2;
+  const phaseLabel = stepIdx >= 0 ? `${MINT_NARR[stepIdx]}…` : null;
 
   return (
     <div
@@ -234,11 +234,77 @@ export function MintForm({
             </div>
           </div>
 
-          {phaseLabel ? (
-            <Alert variant="info" style={{ marginTop: "var(--space-md)" }}>
-              {phaseLabel}
-            </Alert>
-          ) : null}
+          {stepIdx >= 0 && (
+            <ol
+              style={{
+                display: "grid",
+                gap: "var(--space-sm)",
+                margin: "var(--space-md) 0 0",
+                padding: 0,
+                listStyle: "none",
+                fontSize: "var(--text-sm)",
+              }}
+            >
+              {MINT_STEPS.map((label, i) => (
+                <li
+                  key={label}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    color:
+                      i < stepIdx
+                        ? "var(--c-phosphor)"
+                        : i === stepIdx
+                          ? COLORS.textPrimary
+                          : COLORS.textDim,
+                  }}
+                >
+                  {i < stepIdx ? (
+                    <span aria-hidden="true">✓</span>
+                  ) : i === stepIdx ? (
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: "50%",
+                        border: "2px solid var(--c-border)",
+                        borderTopColor: COLORS.bronze,
+                        animation: "axiom-spin 0.8s linear infinite",
+                      }}
+                    />
+                  ) : (
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        width: 5,
+                        height: 5,
+                        borderRadius: "50%",
+                        background: COLORS.textDim,
+                      }}
+                    />
+                  )}{" "}
+                  {label}
+                </li>
+              ))}
+            </ol>
+          )}
+          <span
+            role="status"
+            aria-live="polite"
+            style={{
+              position: "absolute",
+              width: 1,
+              height: 1,
+              overflow: "hidden",
+              clip: "rect(0 0 0 0)",
+            }}
+          >
+            {phaseLabel
+              ? `${phaseLabel} — step ${stepIdx + 1} of ${MINT_STEPS.length}`
+              : ""}
+          </span>
 
           {wizard.error || submitError ? (
             <Alert

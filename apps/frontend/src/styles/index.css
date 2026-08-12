@@ -308,16 +308,6 @@ pre {
   font-variant-ligatures: none;
 }
 
-@keyframes axiom-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.4;
-  }
-}
-
 @keyframes axiom-spin {
   to {
     transform: rotate(360deg);
@@ -332,17 +322,6 @@ pre {
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-
-@keyframes axiom-pop-in {
-  from {
-    opacity: 0;
-    transform: scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
   }
 }
 
@@ -443,37 +422,6 @@ pre {
   animation-delay: calc(min(var(--i, 0), 8) * var(--dur-stagger));
 }
 
-@keyframes axiom-reveal-up {
-  from {
-    opacity: 0;
-    transform: translateY(24px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes axiom-reveal-scale {
-  from {
-    opacity: 0;
-    transform: scale(0.92);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes axiom-clip-reveal {
-  from {
-    clip-path: inset(0 0 100% 0);
-  }
-  to {
-    clip-path: inset(0 0 0 0);
-  }
-}
-
 @keyframes axiom-blink {
   0%,
   49% {
@@ -482,23 +430,6 @@ pre {
   50%,
   100% {
     opacity: 0;
-  }
-}
-
-@keyframes axiom-draw {
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-
-@keyframes axiom-count-up {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
   }
 }
 
@@ -1198,6 +1129,9 @@ html[data-theme="light"] .chat-topbar {
 
 /* Agent detail — 2-layer tools layout, not heavy stacked form walls */
 .agent-tabs {
+  position: sticky;
+  top: var(--nav-h);
+  z-index: 10;
   display: flex;
   gap: 2px;
   margin-bottom: var(--space-xl);
@@ -1427,6 +1361,38 @@ html[data-theme="light"] .landing-root {
   animation: axiom-blink 1s step-end infinite;
 }
 
+.stream-tail {
+  filter: blur(1.6px);
+  mask-image: linear-gradient(90deg, #000 20%, #0003);
+  -webkit-mask-image: linear-gradient(90deg, #000 20%, #0003);
+}
+
+@keyframes axiom-pixel-on {
+  0%,
+  to {
+    opacity: 0.15;
+  }
+  18%,
+  42% {
+    opacity: 1;
+  }
+  62% {
+    opacity: 0.15;
+  }
+}
+.churn-cell {
+  width: 4px;
+  height: 4px;
+  border-radius: 1px;
+  background: currentColor;
+  animation: axiom-pixel-on 650ms var(--ease-out) infinite;
+}
+.spinner--churn {
+  display: grid;
+  grid-template-columns: repeat(3, 4px);
+  gap: 2px;
+}
+
 .prompt-card {
   background: var(--c-surface);
   border: 1px solid var(--c-border);
@@ -1540,26 +1506,6 @@ dialog::backdrop {
 .btn-secondary:active {
   border-color: var(--c-bronze);
 }
-.btn-ghost {
-  background: transparent;
-  color: var(--c-text-muted);
-  border-color: transparent;
-  padding: 0.5rem 0.75rem;
-}
-
-.btn-ghost:active {
-  color: var(--c-text);
-}
-.btn-teal {
-  background: var(--c-teal);
-  color: var(--c-bg);
-  border-color: var(--c-teal);
-}
-
-.btn-teal:active {
-  background: var(--c-teal-light);
-  border-color: var(--c-teal-light);
-}
 @media (hover: hover) and (pointer: fine) {
   .btn-primary:hover {
     background: var(--c-bronze-dark);
@@ -1567,13 +1513,6 @@ dialog::backdrop {
   }
   .btn-secondary:hover {
     border-color: var(--c-bronze);
-  }
-  .btn-ghost:hover {
-    color: var(--c-text);
-  }
-  .btn-teal:hover {
-    background: var(--c-teal-light);
-    border-color: var(--c-teal-light);
   }
 }
 
@@ -1663,6 +1602,10 @@ select {
   /* Decorative infinite animations: stop */
   .caret-blink {
     animation: none !important;
+  }
+  .stream-tail {
+    mask: none;
+    filter: none;
   }
 }
 

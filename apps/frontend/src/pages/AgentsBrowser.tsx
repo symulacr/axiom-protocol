@@ -37,6 +37,28 @@ const pillButtonStyle: CSSProperties = {
   padding: "0.25rem 0.5rem",
 };
 
+/** Subsequence scorer with boundary, streak, and prefix bonuses; 0 = no match. */
+function rank(query: string, value: string): number {
+  if (!query) return 0;
+  const q = query.toLowerCase();
+  const v = value.toLowerCase();
+  let score = 0,
+    streak = 0,
+    best = 0,
+    qi = 0;
+  for (let vi = 0; vi < v.length && qi < q.length; vi++) {
+    if (v[vi] === q[qi]) {
+      qi++;
+      score += vi === 0 || !/[a-z0-9]/.test(v[vi - 1] ?? "") ? 2 : 1;
+      best = Math.max(best, ++streak);
+    } else streak = 0;
+  }
+  if (qi < q.length) return 0;
+  return score + best * 2 + (v.startsWith(q) ? 4 : 0);
+}
+
+const AGENT_GRID_LIMIT = 24;
+
 interface AgentCardStatusProps {
   vaultData: VaultDataEntry | undefined;
   metrics: PerformanceMetrics | undefined;
@@ -91,6 +113,7 @@ function AgentsBrowser(): ReactElement {
   const searchRef = useRef<HTMLInputElement>(null);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [showAllAgents, setShowAllAgents] = useState(false);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -114,21 +137,24 @@ function AgentsBrowser(): ReactElement {
 
   useEffect(() => () => clearTimeout(debounceTimerRef.current), []);
 
-  const filteredAgents = useMemo(
-    () =>
-      debouncedSearch
-        ? agents.filter(
-            (a) =>
-              a.tokenId?.toString().includes(debouncedSearch) ||
-              a.owner?.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-              (a.dataDescription &&
-                a.dataDescription
-                  .toLowerCase()
-                  .includes(debouncedSearch.toLowerCase())),
-          )
-        : agents,
-    [debouncedSearch, agents],
-  );
+  const filteredAgents = useMemo(() => {
+    if (!debouncedSearch) return agents;
+    return agents
+      .map((a) => ({
+        agent: a,
+        score: rank(
+          debouncedSearch,
+          `${a.tokenId?.toString() ?? ""} ${a.owner ?? ""} ${a.dataDescription ?? ""}`,
+        ),
+      }))
+      .filter((r) => r.score > 0)
+      .sort((x, y) => y.score - x.score)
+      .map((r) => r.agent);
+  }, [debouncedSearch, agents]);
+  const hasMoreAgents = filteredAgents.length > AGENT_GRID_LIMIT;
+  const displayedAgents = showAllAgents
+    ? filteredAgents
+    : filteredAgents.slice(0, AGENT_GRID_LIMIT);
 
   if (error !== null) {
     return (
@@ -193,21 +219,42 @@ function AgentsBrowser(): ReactElement {
         >
           Your agents
         </h2>
-        <Input
-          id="agent-search"
-          ref={searchRef}
-          type="text"
-          placeholder="Search by ID, name, or owner… (⌘K)"
-          value={searchTerm}
-          onChange={handleSearchChange}
-          aria-label="Search agents"
-          style={{ width: "100%", marginBottom: 16, boxSizing: "border-box" }}
-        />
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "var(--space-sm)",
+            marginBottom: 16,
+          }}
+        >
+          <Input
+            id="agent-search"
+            ref={searchRef}
+            type="text"
+            placeholder="Search by ID, name, or owner… (⌘K)"
+            value={searchTerm}
+            onChange={handleSearchChange}
+            aria-label="Search agents"
+            style={{ flex: 1, minWidth: 0, boxSizing: "border-box" }}
+          />
+          {debouncedSearch && (
+            <span
+              style={{
+                color: COLORS.textDim,
+                fontSize: "var(--text-xs)",
+                whiteSpace: "nowrap",
+                flexShrink: 0,
+              }}
+            >
+              {filteredAgents.length} of {count}
+            </span>
+          )}
+        </div>
         {filteredAgents.length === 0 ? (
           <p style={emptyHintStyle}>No agents match your search</p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {filteredAgents.map((agent, i) => (
+            {displayedAgents.map((agent, i) => (
               <div
                 key={agent.tokenId}
                 className="agent-card cv-auto fade-enter card-layered"
@@ -261,9 +308,9 @@ function AgentsBrowser(): ReactElement {
                       "view-transition-name",
                       "agent-card",
                     );
-                    withViewTransition(() => {
-                      flushSync(() => navigate(`/agents/${agent.tokenId}`));
-                    });
+                    withViewTransition(() =>
+                      flushSync(() => navigate(`/agents/${agent.tokenId}`)),
+                    );
                     card?.style.removeProperty("view-transition-name");
                   }}
                   style={{
@@ -336,6 +383,16 @@ function AgentsBrowser(): ReactElement {
                 </div>
               </div>
             ))}
+            {hasMoreAgents && !showAllAgents && (
+              <div style={{ textAlign: "center" }}>
+                <Button
+                  variant="secondary"
+                  onClick={() => setShowAllAgents(true)}
+                >
+                  Show all {filteredAgents.length} agents
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </ConnectedGuard>

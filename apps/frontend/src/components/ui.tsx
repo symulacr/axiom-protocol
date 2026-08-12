@@ -20,12 +20,9 @@ export const COLORS = {
   bg: "var(--c-bg)",
   surface: "var(--c-surface)",
   surfaceRaised: "var(--c-surface-raised)",
-  surfaceLight: "var(--c-surface-light)",
 
   border: "var(--c-border)",
   borderStrong: "var(--c-border-strong)",
-  borderGlow: "var(--c-border-glow)",
-  borderGlowStrong: "var(--c-border-glow-strong)",
 
   text: "var(--c-text)",
   textPrimary: "var(--c-text-primary)",
@@ -34,22 +31,12 @@ export const COLORS = {
 
   bronze: "var(--c-bronze)",
   bronzeLight: "var(--c-bronze-light)",
-  bronzeDark: "var(--c-bronze-dark)",
   bronzeBg: "var(--c-bronze-bg)",
   bronzeBorder: "var(--c-bronze-border)",
 
   teal: "var(--c-teal)",
-  tealLight: "var(--c-teal-light)",
   tealBg: "var(--c-teal-bg)",
   tealBorder: "var(--c-teal-border)",
-
-  phosphor: "var(--c-phosphor)",
-  phosphorDim: "var(--c-phosphor-dim)",
-
-  copper: "var(--c-copper)",
-  copperLight: "var(--c-copper-light)",
-  copperBg: "var(--c-copper-bg)",
-  copperBorder: "var(--c-copper-border)",
 
   danger: "var(--c-danger)",
   dangerBg: "var(--c-danger-bg)",
@@ -111,8 +98,6 @@ export function getActionColor(action: string): string {
   }
 }
 
-const transition = "var(--transition)";
-
 const formFieldBase: CSSProperties = {
   padding: "0.625rem 0.875rem",
   borderRadius: "var(--radius-md)",
@@ -122,7 +107,7 @@ const formFieldBase: CSSProperties = {
   fontSize: "var(--text-sm)",
   fontFamily: "inherit",
   minWidth: "0",
-  transition,
+  transition: "var(--transition)",
   // focus ring comes from a CSS class on inputs, not inline styles
 };
 
@@ -604,14 +589,11 @@ export function CopyButton({
   style?: CSSProperties;
 }): ReactElement {
   const [copied, setCopied] = useState(false);
-  const [pulse, setPulse] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
-  const pulseRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     return () => {
       if (timerRef.current !== undefined) clearTimeout(timerRef.current);
-      if (pulseRef.current !== undefined) clearTimeout(pulseRef.current);
     };
   }, []);
 
@@ -631,11 +613,8 @@ export function CopyButton({
         document.body.removeChild(ta);
       }
       setCopied(true);
-      setPulse(true);
       if (timerRef.current !== undefined) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => setCopied(false), 1200);
-      if (pulseRef.current !== undefined) clearTimeout(pulseRef.current);
-      pulseRef.current = setTimeout(() => setPulse(false), 130);
     } catch {
       void 0;
     }
@@ -644,12 +623,12 @@ export function CopyButton({
   return (
     <button
       type="button"
-      onClick={() => void copy()}
+      onClick={copy}
       aria-label={copied ? "Copied to clipboard" : "Copy to clipboard"}
       style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 4,
+        display: "inline-grid",
+        gridTemplateColumns: "4ch",
+        placeItems: "center",
         background: "transparent",
         color: COLORS.bronzeLight,
         border: `1px solid ${COLORS.bronzeBorder}`,
@@ -659,12 +638,31 @@ export function CopyButton({
         fontSize: "var(--text-xs)",
         lineHeight: 1,
         cursor: "pointer",
-        transform: pulse ? "scale(0.97)" : "scale(1)",
-        transition: "transform 120ms var(--ease-out)",
         ...style,
       }}
     >
-      {copied ? "✓ Copied" : "Copy"}
+      <span
+        style={{
+          gridArea: "1 / 1",
+          transition:
+            "opacity 120ms var(--ease-out), transform 120ms var(--ease-out)",
+          opacity: copied ? 0 : 1,
+          transform: copied ? "scale(0.8)" : "scale(1)",
+        }}
+      >
+        Copy
+      </span>
+      <span
+        style={{
+          gridArea: "1 / 1",
+          transition:
+            "opacity 120ms var(--ease-out), transform 120ms var(--ease-out)",
+          opacity: copied ? 1 : 0,
+          transform: copied ? "scale(1)" : "scale(0.8)",
+        }}
+      >
+        ✓
+      </span>
     </button>
   );
 }
@@ -764,11 +762,42 @@ export function Kbd({
 
 export function Spinner({
   size = 20,
+  variant = "spin",
   style,
 }: {
   size?: number;
+  variant?: "spin" | "churn";
   style?: CSSProperties;
 }): ReactElement {
+  if (variant === "churn") {
+    return (
+      <span
+        role="status"
+        aria-label="Loading"
+        className="spinner--churn"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(3, 4px)",
+          gap: 2,
+          ...style,
+        }}
+      >
+        {[0, 90, 180, 270, 0, 90, 180, 270, 0].map((delay, index) => (
+          <span
+            key={index}
+            className="churn-cell"
+            style={{
+              width: 4,
+              height: 4,
+              borderRadius: 1,
+              animation: "axiom-pixel-on 650ms var(--ease-out) infinite",
+              animationDelay: `${delay}ms`,
+            }}
+          />
+        ))}
+      </span>
+    );
+  }
   return (
     <span
       role="status"
@@ -848,14 +877,12 @@ export const Modal = React.memo(function Modal({
     }
   }, [open]);
 
-  const handleClose = useCallback(() => onClose(), [onClose]);
-
   return (
     <>
       <style>{MODAL_CSS}</style>
       <dialog
         ref={dialogRef}
-        onClose={handleClose}
+        onClose={onClose}
         aria-labelledby={title ? "modal-title" : undefined}
         data-axiom-modal=""
         style={{
@@ -918,6 +945,9 @@ export function ConnectedGuard({
   return <>{children}</>;
 }
 
+// First hover on a tip waits 200ms (transition-delay); once warmed, later hovers are instant.
+const warmedHelpTips = new WeakSet<HTMLElement>();
+
 export function HelpTip({
   tip,
   children,
@@ -928,6 +958,15 @@ export function HelpTip({
   return (
     <span
       className="helptip"
+      onMouseEnter={(e) => {
+        const el = e.currentTarget;
+        const content = el.querySelector<HTMLElement>(".helptip-content");
+        if (!content) return;
+        if (!warmedHelpTips.has(el)) warmedHelpTips.add(el);
+        content.style.transitionDelay = warmedHelpTips.has(el)
+          ? "0ms"
+          : "200ms";
+      }}
       style={{
         position: "relative",
         cursor: "help",

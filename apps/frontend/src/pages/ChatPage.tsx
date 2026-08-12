@@ -1681,39 +1681,40 @@ function ChatPageInner(): ReactElement {
                         marginTop: "var(--space-sm)",
                       }}
                     >
-                      {msg.sources.map((s, i) =>
-                        s.href ? (
+                      {msg.sources.length} sources
+                      {msg.sources.map((s, i) => {
+                        let domain = "";
+                        try {
+                          domain = s.href
+                            ? new URL(s.href).hostname.replace(/^www\./, "")
+                            : "";
+                        } catch {
+                          domain = "";
+                        }
+                        const chipStyle = {
+                          border: "1px solid var(--c-border)",
+                          borderRadius: "var(--radius-sm)",
+                          padding: "2px 8px",
+                          fontSize: "var(--text-xs)",
+                          color: COLORS.textMuted,
+                        };
+                        return s.href ? (
                           <a
                             key={i}
                             href={s.href}
                             target="_blank"
                             rel="noreferrer"
-                            style={{
-                              border: "1px solid var(--c-border)",
-                              borderRadius: "var(--radius-sm)",
-                              padding: "2px 8px",
-                              fontSize: "var(--text-xs)",
-                              color: COLORS.textMuted,
-                              textDecoration: "none",
-                            }}
+                            style={{ ...chipStyle, textDecoration: "none" }}
                           >
                             {s.label}
+                            {domain && ` · ${domain}`}
                           </a>
                         ) : (
-                          <span
-                            key={i}
-                            style={{
-                              border: "1px solid var(--c-border)",
-                              borderRadius: "var(--radius-sm)",
-                              padding: "2px 8px",
-                              fontSize: "var(--text-xs)",
-                              color: COLORS.textMuted,
-                            }}
-                          >
+                          <span key={i} style={chipStyle}>
                             {s.label}
                           </span>
-                        ),
-                      )}
+                        );
+                      })}
                     </div>
                   ) : null}
                   {msg.role === "assistant" &&
@@ -1835,7 +1836,7 @@ function ChatPageInner(): ReactElement {
               <StatusDot color={COLORS.text}>Assistant</StatusDot>
               {streamText ? (
                 <div style={{ ...chatMsgStyle, whiteSpace: "pre-wrap" }}>
-                  <span style={{ whiteSpace: "pre-wrap" }}>{streamText}</span>
+                  <span className="stream-tail">{streamText}</span>
                   <span
                     className="caret-blink"
                     aria-hidden="true"
@@ -1860,7 +1861,7 @@ function ChatPageInner(): ReactElement {
                       gap: 8,
                     }}
                   >
-                    <Spinner size={14} />
+                    <Spinner size={14} variant="churn" />
                     <span style={{ color: COLORS.bronzeLight }}>
                       {phaseLabel(elapsed, toolRuns, streamText)}
                     </span>

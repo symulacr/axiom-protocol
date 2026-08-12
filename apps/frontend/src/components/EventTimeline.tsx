@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import type { ReactElement, ReactNode } from "react";
 import type { AxiomEvent } from "../hooks/useEventHistory.js";
 import { useMediaQuery } from "../hooks/useMediaQuery.js";
@@ -19,8 +19,6 @@ const formatter = new Intl.DateTimeFormat("en-US", {
   timeStyle: "medium",
 });
 
-const ROW_GAP = "12px";
-
 const railCellStyle: React.CSSProperties = {
   position: "relative",
   paddingLeft: "12px",
@@ -37,7 +35,6 @@ const railBeforeStyle: React.CSSProperties = {
   bottom: 0,
   width: "2px",
   background: COLORS.border,
-  content: '""',
 };
 
 const railDotStyle: React.CSSProperties = {
@@ -58,34 +55,39 @@ const bodyCellStyle: React.CSSProperties = {
   color: COLORS.textPrimary,
 };
 
-const emptyStateStyle: React.CSSProperties = {
-  gridColumn: "1 / -1",
-  padding: "16px",
-  textAlign: "center",
-  color: COLORS.textDim,
-  fontStyle: "italic",
-};
-
 export const EventTimeline = React.memo(function EventTimeline({
   events,
   renderEvent,
 }: EventTimelineProps): ReactElement {
   const [expanded, setExpanded] = useState(false);
+  const [seenCount, setSeenCount] = useState(events.length);
   const isNarrow = useMediaQuery("(max-width: 479px)");
-  const railWidth = isNarrow ? "4rem" : "10rem";
   const baseStyle: React.CSSProperties = {
     display: "grid",
-    gridTemplateColumns: `${railWidth} 1fr`,
-    columnGap: ROW_GAP,
-    rowGap: ROW_GAP,
+    gridTemplateColumns: `${isNarrow ? "4rem" : "10rem"} 1fr`,
+    gap: "12px",
     alignItems: "start",
     width: "100%",
   };
+  const unseen = Math.max(0, events.length - seenCount);
+
+  // Section became active → current feed is the seen baseline; later appends count as new.
+  useEffect(() => setSeenCount(events.length), []);
 
   if (events.length === 0) {
     return (
       <section aria-label="Event timeline" style={baseStyle}>
-        <div style={emptyStateStyle}>No events yet.</div>
+        <div
+          style={{
+            gridColumn: "1 / -1",
+            padding: "16px",
+            textAlign: "center",
+            color: COLORS.textDim,
+            fontStyle: "italic",
+          }}
+        >
+          No events yet.
+        </div>
       </section>
     );
   }
@@ -96,6 +98,15 @@ export const EventTimeline = React.memo(function EventTimeline({
 
   return (
     <section aria-label="Event timeline" style={baseStyle}>
+      {unseen > 0 && (
+        <Button
+          variant="teal"
+          onClick={() => setSeenCount(events.length)}
+          style={{ gridColumn: "1 / -1", justifySelf: "center" }}
+        >
+          {unseen} new
+        </Button>
+      )}
       {displayed.map((event) => (
         <EventRow
           key={eventKey(event)}
