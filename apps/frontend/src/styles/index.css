@@ -335,6 +335,46 @@ pre {
   }
 }
 
+@keyframes axiom-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes axiom-stream-in {
+  from {
+    opacity: 0;
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+/* Press micro-interaction (interior.dev press primitive): 1px physical press, opt-in utility */
+.press {
+  transition:
+    transform var(--dur-press) var(--ease-out),
+    background-color var(--dur-card-hover) var(--ease-out);
+}
+.press:active {
+  transform: translateY(1px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .press {
+    transition: none;
+  }
+  .press:active {
+    transform: none;
+  }
+}
+
 @keyframes axiom-confirm {
   0% {
     border-color: var(--c-bronze);
@@ -522,6 +562,16 @@ pre {
 
 .landing-h1-accent {
   color: var(--c-bronze-light);
+}
+
+.landing-word {
+  animation: axiom-stream-in 600ms var(--ease-out) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-word {
+    animation: none;
+  }
 }
 
 .landing-lead {
@@ -2052,4 +2102,38 @@ select[aria-invalid="true"] {
 .msg-action:hover {
   color: var(--c-text);
   border-color: var(--c-border-strong);
+}
+
+/* Value flash — marks what just changed (interior.dev value-flash, CSS-only port) */
+.flash-up {
+  animation: axiom-flash-up 900ms var(--ease-out);
+}
+.flash-down {
+  animation: axiom-flash-down 900ms var(--ease-out);
+}
+@keyframes axiom-flash-up {
+  0% {
+    color: var(--c-success);
+    transform: scale(1.05);
+  }
+  100% {
+    color: inherit;
+    transform: scale(1);
+  }
+}
+@keyframes axiom-flash-down {
+  0% {
+    color: var(--c-danger);
+    transform: scale(1.05);
+  }
+  100% {
+    color: inherit;
+    transform: scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .flash-up,
+  .flash-down {
+    animation: none;
+  }
 }

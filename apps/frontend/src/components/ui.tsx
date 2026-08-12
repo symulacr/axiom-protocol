@@ -520,11 +520,21 @@ export function Skeleton({
   width = "100%",
   height = 20,
   style,
+  delay = 0,
 }: {
   width?: string | number;
   height?: string | number;
   style?: CSSProperties;
+  delay?: number;
 }): ReactElement {
+  // Anti-flash: when delay > 0, hold the skeleton invisible (but layout-reserving)
+  // for `delay` ms after mount so fast loads never show a flicker.
+  const [shown, setShown] = useState(delay <= 0);
+  useEffect(() => {
+    if (delay <= 0) return;
+    const t = setTimeout(() => setShown(true), delay);
+    return () => clearTimeout(t);
+  }, [delay]);
   return (
     <div
       role="status"
@@ -535,6 +545,7 @@ export function Skeleton({
         width,
         height,
         borderRadius: "var(--radius-sm)",
+        visibility: shown ? undefined : "hidden",
         ...style,
       }}
     />

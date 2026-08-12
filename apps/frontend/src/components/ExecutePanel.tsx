@@ -277,6 +277,8 @@ export function ExecutePanel({
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <Button
               variant="primary"
+              className="press"
+              style={{ minWidth: "14ch" }}
               disabled={
                 isLoading || activeId === "" || vd.isLoading || !hasFunds
               }

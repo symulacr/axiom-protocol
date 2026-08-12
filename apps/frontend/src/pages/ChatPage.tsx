@@ -75,6 +75,7 @@ import {
   Textarea,
   ErrorRef,
   Spinner,
+  CopyButton,
 } from "../components/ui.js";
 
 type Message = {
@@ -86,6 +87,10 @@ type Message = {
   name?: string;
   /** meta.error = UI-only error card (never sent to the model); usage = cost chip. */
   meta?: { error?: boolean; usage?: string };
+  /** Optional citation chips rendered below assistant messages; href wraps the chip in a link. */
+  sources?: Array<{ label: string; href?: string }>;
+  /** Optional follow-up question shortcuts rendered below assistant messages. */
+  followUps?: string[];
 };
 
 function createMessage(msg: Omit<Message, "id">): Message {
@@ -1096,6 +1101,11 @@ function ChatPageInner(): ReactElement {
     [processQueue],
   );
 
+  // Follow-up suggestion click: drop the question into the composer for review.
+  const handleFollowUp = useCallback((q: string) => {
+    setInput(q);
+  }, []);
+
   useEffect(() => {
     if (!isStreaming) processQueue();
   }, [isStreaming, processQueue]);
@@ -1660,6 +1670,94 @@ function ChatPageInner(): ReactElement {
                       {msg.meta.usage}
                     </div>
                   ) : null}
+                  {msg.role === "assistant" &&
+                  msg.sources &&
+                  msg.sources.length > 0 ? (
+                    <div
+                      style={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: "var(--space-xs)",
+                        marginTop: "var(--space-sm)",
+                      }}
+                    >
+                      {msg.sources.map((s, i) =>
+                        s.href ? (
+                          <a
+                            key={i}
+                            href={s.href}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{
+                              border: "1px solid var(--c-border)",
+                              borderRadius: "var(--radius-sm)",
+                              padding: "2px 8px",
+                              fontSize: "var(--text-xs)",
+                              color: COLORS.textMuted,
+                              textDecoration: "none",
+                            }}
+                          >
+                            {s.label}
+                          </a>
+                        ) : (
+                          <span
+                            key={i}
+                            style={{
+                              border: "1px solid var(--c-border)",
+                              borderRadius: "var(--radius-sm)",
+                              padding: "2px 8px",
+                              fontSize: "var(--text-xs)",
+                              color: COLORS.textMuted,
+                            }}
+                          >
+                            {s.label}
+                          </span>
+                        ),
+                      )}
+                    </div>
+                  ) : null}
+                  {msg.role === "assistant" &&
+                  msg.followUps &&
+                  msg.followUps.length > 0 ? (
+                    <div
+                      style={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        marginTop: "var(--space-sm)",
+                      }}
+                    >
+                      {msg.followUps.map((q, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => handleFollowUp(q)}
+                          style={{
+                            border: "none",
+                            background: "none",
+                            padding: 0,
+                            font: "inherit",
+                            color: COLORS.bronzeLight,
+                            fontSize: "var(--text-xs)",
+                            marginRight: 8,
+                            cursor: "pointer",
+                          }}
+                        >
+                          {q}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                  {msg.role === "assistant" && !msg.meta?.error ? (
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "var(--space-sm)",
+                        marginTop: "var(--space-sm)",
+                      }}
+                    >
+                      <CopyButton text={msg.content ?? ""} />
+                    </div>
+                  ) : null}
                 </div>
               )}
             </div>
@@ -2026,6 +2124,28 @@ function ToolCallCard({
             color: COLORS.textMuted,
           }}
         >
+          <div style={{ marginBottom: 6 }}>
+            {run.status === "running"
+              ? `running ${elapsedSec}s`
+              : `ran in ${elapsedSec}s`}
+          </div>
+          {run.result && !hasEncodePreview(run.result) ? (
+            <div
+              style={{
+                margin: "0 0 6px",
+                fontFamily: "var(--font-mono)",
+                fontSize: "var(--text-xs)",
+                color: COLORS.textMuted,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {run.result.length > 80
+                ? `${run.result.slice(0, 80)}…`
+                : run.result}
+            </div>
+          ) : null}
           {run.args && Object.keys(run.args).length > 0 && (
             <pre
               style={{

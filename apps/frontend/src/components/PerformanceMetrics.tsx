@@ -2,6 +2,7 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useState,
   type CSSProperties,
   type ReactElement,
 } from "react";
@@ -27,10 +28,21 @@ const EASE = "var(--ease-out)";
 const SPARK_H = 64;
 
 const metricValueStyle: CSSProperties = {
-  color: COLORS.text,
+  // inherit: the value-cell wrapper carries the resting color and the
+  // flash-up/flash-down animation color; at rest this resolves to --c-text.
+  color: "inherit",
   fontSize: "var(--text-base)",
   fontWeight: "var(--fw-semibold)",
 };
+
+const valueCellStyle: CSSProperties = {
+  display: "inline-block", // transformable, so the flash scale lift renders
+};
+
+// Value-flash direction: compare leading numeric content ("10 / 5 / 3" -> 10,
+// "66.7%" -> 66.7; ticks/actions pass through as numbers). Equal -> "down".
+const flashDir = (a: string | number, b: string | number): "up" | "down" =>
+  parseFloat(String(a)) > parseFloat(String(b)) ? "up" : "down";
 
 export function PerformanceMetrics({
   metrics,
@@ -56,6 +68,8 @@ export function PerformanceMetrics({
     typeof window.matchMedia === "function" &&
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+  const [flash, setFlash] = useState<Record<string, "up" | "down">>({});
+
   useEffect(() => {
     if (reduceMotion) {
       prevStats.current = stats;
@@ -65,6 +79,8 @@ export function PerformanceMetrics({
     const next = stats;
     const values = [next.ticks, next.bsh, next.rate, next.actions];
     const prevVals = [prev.ticks, prev.bsh, prev.rate, prev.actions];
+    const keys = ["ticks", "bsh", "rate", "actions"] as const;
+    const changed: Record<string, "up" | "down"> = {};
     valRefs.current.forEach((el, i) => {
       if (!el || prevVals[i] === values[i]) return;
       animRefs.current[i]?.cancel();
@@ -75,8 +91,18 @@ export function PerformanceMetrics({
         ],
         { duration: 180, easing: EASE },
       );
+      const key = keys[i];
+      const value = values[i];
+      const prevValue = prevVals[i];
+      if (key !== undefined && value !== undefined && prevValue !== undefined) {
+        changed[key] = flashDir(value, prevValue);
+      }
     });
     prevStats.current = stats;
+    if (Object.keys(changed).length === 0) return;
+    setFlash(changed);
+    const timer = setTimeout(() => setFlash({}), 900);
+    return () => clearTimeout(timer);
   }, [stats, reduceMotion]);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -157,9 +183,14 @@ export function PerformanceMetrics({
       label: "Total Ticks",
       value: (
         <span ref={(el) => (valRefs.current[0] = el)}>
-          <MonoLabel style={metricValueStyle}>
-            {metrics.totalTicks.toString()}
-          </MonoLabel>
+          <span
+            style={valueCellStyle}
+            className={flash.ticks ? `flash-${flash.ticks}` : undefined}
+          >
+            <MonoLabel style={metricValueStyle}>
+              {metrics.totalTicks.toString()}
+            </MonoLabel>
+          </span>
         </span>
       ),
     },
@@ -167,9 +198,14 @@ export function PerformanceMetrics({
       label: "Buy / Sell / Hold",
       value: (
         <span ref={(el) => (valRefs.current[1] = el)}>
-          <MonoLabel style={metricValueStyle}>
-            {`${metrics.buyCount} / ${metrics.sellCount} / ${metrics.holdCount}`}
-          </MonoLabel>
+          <span
+            style={valueCellStyle}
+            className={flash.bsh ? `flash-${flash.bsh}` : undefined}
+          >
+            <MonoLabel style={metricValueStyle}>
+              {`${metrics.buyCount} / ${metrics.sellCount} / ${metrics.holdCount}`}
+            </MonoLabel>
+          </span>
         </span>
       ),
     },
@@ -177,15 +213,19 @@ export function PerformanceMetrics({
       label: "Buy Rate",
       value: (
         <span ref={(el) => (valRefs.current[2] = el)}>
-          <MonoLabel
+          <span
             style={{
+              display: "inline-block",
+              // resting color lives here so the flash class can animate it
+              // (the label inherits it via metricValueStyle color: inherit)
               color: buyRate > 0 ? COLORS.success : COLORS.textMuted,
-              fontSize: "var(--text-base)",
-              fontWeight: "var(--fw-semibold)",
             }}
+            className={flash.rate ? `flash-${flash.rate}` : undefined}
           >
-            {`${(buyRate * 100).toFixed(1)}%`}
-          </MonoLabel>
+            <MonoLabel style={metricValueStyle}>
+              {`${(buyRate * 100).toFixed(1)}%`}
+            </MonoLabel>
+          </span>
         </span>
       ),
     },
@@ -193,9 +233,14 @@ export function PerformanceMetrics({
       label: "Actions",
       value: (
         <span ref={(el) => (valRefs.current[3] = el)}>
-          <MonoLabel style={metricValueStyle}>
-            {(metrics.buyCount + metrics.sellCount).toString()}
-          </MonoLabel>
+          <span
+            style={valueCellStyle}
+            className={flash.actions ? `flash-${flash.actions}` : undefined}
+          >
+            <MonoLabel style={metricValueStyle}>
+              {(metrics.buyCount + metrics.sellCount).toString()}
+            </MonoLabel>
+          </span>
         </span>
       ),
     },

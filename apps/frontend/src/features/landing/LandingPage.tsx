@@ -22,9 +22,29 @@ function Hero(): ReactElement {
             0G · ERC-7857 · software oracle
           </p>
           <h1 className="landing-h1">
-            Mint an agent.
+            {"Mint an agent.".split(" ").map((word, i) => (
+              <span
+                key={word}
+                className="landing-word"
+                style={{ animationDelay: `${i * 60}ms` }}
+              >
+                {word}
+                {i < 2 ? " " : null}
+              </span>
+            ))}
             <br />
-            <span className="landing-h1-accent">Own it on-chain.</span>
+            <span className="landing-h1-accent">
+              {"Own it on-chain.".split(" ").map((word, i) => (
+                <span
+                  key={word}
+                  className="landing-word"
+                  style={{ animationDelay: `${(i + 3) * 60}ms` }}
+                >
+                  {word}
+                  {i < 2 ? " " : null}
+                </span>
+              ))}
+            </span>
           </h1>
           <p className="landing-lead">
             Mint, fund, tick, and transfer on-chain agents — or just ask Axiom

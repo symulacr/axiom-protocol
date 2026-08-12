@@ -31,6 +31,11 @@ const MINT_COMPLETE_EVENT = "axiom:mint-complete";
 let lastMintAt: number | null = null;
 let lastMintCount: number | null = null;
 
+// Chip filter over the in-memory agent list. Agents carry no `status`
+// field; the real states are the vault signals the "Needs attention"
+// section already tracks (empty vault / no strategy bound).
+type StatusFilter = "all" | "unfunded" | "unbound";
+
 /** Home = portfolio KPIs + full agent list; merges the old Dashboard and Agents destinations. */
 function HomePage(): ReactElement {
   return (
@@ -121,6 +126,19 @@ function HomeBody(): ReactElement {
       return v && v.depositsWei === 0n;
     });
   }, [agents, vaultMap]);
+
+  // Status-chip filter over the loaded agents; "all" is the default view.
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+
+  const statusChips: { id: StatusFilter; label: string; count: number }[] = [
+    { id: "all", label: "All", count: agents.length },
+    { id: "unfunded", label: "Needs funding", count: unfunded.length },
+    { id: "unbound", label: "No strategy", count: unbound.length },
+  ];
+
+  // The attention lists respect the active chip; "all" keeps today's view.
+  const attentionUnfunded = statusFilter === "unbound" ? [] : unfunded;
+  const attentionUnbound = statusFilter === "unfunded" ? [] : unbound;
 
   // Optimistic mint row: a confirmed mint shows a pending card until the
   // agents poll returns the new agent (then the real card replaces it).
@@ -239,7 +257,54 @@ function HomeBody(): ReactElement {
         </Card>
       )}
 
-      {loading || unfunded.length > 0 || unbound.length > 0 ? (
+      <div
+        role="group"
+        aria-label="Filter agents by status"
+        style={{
+          display: "flex",
+          gap: "var(--space-sm)",
+          flexWrap: "wrap",
+          marginBottom: "var(--space-lg)",
+        }}
+      >
+        {statusChips
+          .filter(
+            (chip) =>
+              chip.id === "all" || chip.count > 0 || statusFilter === chip.id,
+          )
+          .map((chip) => (
+            <button
+              key={chip.id}
+              type="button"
+              className="press"
+              aria-pressed={statusFilter === chip.id}
+              onClick={() => setStatusFilter(chip.id)}
+              style={{
+                background:
+                  statusFilter === chip.id ? COLORS.bronzeBg : "transparent",
+                border: `1px solid ${
+                  statusFilter === chip.id ? COLORS.bronzeBorder : COLORS.border
+                }`,
+                color:
+                  statusFilter === chip.id
+                    ? COLORS.bronzeLight
+                    : COLORS.textMuted,
+                borderRadius: "var(--radius-sm)",
+                padding: "3px 10px",
+                fontSize: "var(--text-xs)",
+                cursor: "pointer",
+                fontFamily: "inherit",
+                lineHeight: 1.4,
+              }}
+            >
+              {chip.label} {chip.count}
+            </button>
+          ))}
+      </div>
+
+      {loading ||
+      attentionUnfunded.length > 0 ||
+      attentionUnbound.length > 0 ? (
         <div
           className="home-attention"
           style={{
@@ -282,7 +347,7 @@ function HomeBody(): ReactElement {
                 lineHeight: 1.55,
               }}
             >
-              {unfunded.slice(0, 3).map((a) => (
+              {attentionUnfunded.slice(0, 3).map((a) => (
                 <li key={`f-${a.tokenId}`}>
                   #{a.tokenId.toString()} empty vault —{" "}
                   <Link
@@ -293,7 +358,7 @@ function HomeBody(): ReactElement {
                   </Link>
                 </li>
               ))}
-              {unbound.slice(0, 3).map((a) => (
+              {attentionUnbound.slice(0, 3).map((a) => (
                 <li key={`s-${a.tokenId}`}>
                   #{a.tokenId.toString()} no strategy —{" "}
                   <Link
