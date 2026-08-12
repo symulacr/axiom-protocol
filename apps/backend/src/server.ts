@@ -250,8 +250,6 @@ export function startServer(config: ServerConfig): {
         orchestratorHandle = new StrategyRunner({
           evmRpc: config.evmRpc,
           signer: config.signer,
-          oracleBaseUrl: config.oracleBaseUrl,
-          apiKey: config.env?.AXIOM_API_KEY,
           chainId: ogChainId,
           addresses: config.addresses,
         });

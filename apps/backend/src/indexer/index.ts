@@ -8,7 +8,6 @@ import type { AxiomEvent } from "./events.js";
 interface IndexerServiceConfig {
   provider: ethers.JsonRpcProvider;
   env: {
-    AXIOM_STORAGE_RPC?: string;
     INDEXER_POLL_WINDOW_BLOCKS?: number;
     INDEXER_START_BLOCK?: number;
     AXIOM_INDEXER_API_KEY?: string;

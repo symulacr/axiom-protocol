@@ -39,20 +39,21 @@ const eip712Domain: Eip712Domain = { chainId, verifyingContract: teeVerifier };
 const signer = new TeeSigner(env.AXIOM_TEE_SIGNER_PK, eip712Domain);
 
 let storage: StorageAdapter;
-if (env.AXIOM_STORAGE_INDEXER_RPC || process.env.AXIOM_STORAGE_RPC) {
-  const indexerRpc =
-    env.AXIOM_STORAGE_INDEXER_RPC || process.env.AXIOM_STORAGE_RPC;
-  if (!indexerRpc)
-    throw new Error("unreachable: indexer RPC checked by condition above");
+if (env.AXIOM_STORAGE_INDEXER_RPC) {
+  const indexerRpc = env.AXIOM_STORAGE_INDEXER_RPC;
   const evmRpc = env.AXIOM_STORAGE_EVM_RPC || env.AXIOM_EVM_RPC;
   const storagePk = env.AXIOM_STORAGE_PRIVATE_KEY ?? env.AXIOM_TEE_SIGNER_PK;
   const wallet = new Wallet(storagePk);
   storage = new ZeroGStorage({ indexerRpc, evmRpc, signer: wallet });
   console.log(`[oracle] storage: 0G Storage (${indexerRpc})`);
+} else if (process.env.NODE_ENV === "production") {
+  throw new Error(
+    "AXIOM_STORAGE_INDEXER_RPC is required in production — refusing to run with fake in-memory storage",
+  );
 } else {
   storage = new InMemoryStorage();
-  console.log(
-    "[oracle] storage: InMemoryStorage (no AXIOM_STORAGE_INDEXER_RPC/AXIOM_STORAGE_RPC configured)",
+  console.warn(
+    "[oracle] storage: InMemoryStorage (dev fallback — no AXIOM_STORAGE_INDEXER_RPC configured)",
   );
 }
 

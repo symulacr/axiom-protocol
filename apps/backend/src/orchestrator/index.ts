@@ -129,12 +129,10 @@ type StreamCallback = (
 interface OrchestratorConfig {
   evmRpc: string;
   signer: Wallet;
-  oracleBaseUrl: string;
   addresses?: {
     vault?: `0x${string}`;
   };
   chainId?: number;
-  apiKey?: string;
 }
 
 export class StrategyRunner {
