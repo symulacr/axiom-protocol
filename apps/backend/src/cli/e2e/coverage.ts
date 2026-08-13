@@ -1,12 +1,4 @@
-import {
-  AbiCoder,
-  keccak256,
-  parseEther,
-  parseUnits,
-  type TransactionReceipt,
-  type TransactionResponse,
-  type Wallet,
-} from "ethers";
+import { parseUnits, type TransactionResponse, type Wallet } from "ethers";
 import { TypedContract } from "@axiom/config/types/contract";
 import {
   AGENT_NFT_ABI,
@@ -26,7 +18,6 @@ import { markScenarioCovered } from "./scenarios.js";
 import { ensureErc20Allowance } from "./erc20.js";
 import { hasContractFunction, LEGACY_DEPLOY_REASON } from "./deploy-compat.js";
 import { readVaultStrategy } from "../../orchestrator/index.js";
-import type { FinalResponse } from "./steps.js";
 
 // All extended fragments are already part of AGENT_NFT_ABI; keep the alias for callers.
 const AGENT_NFT_EXTENDED_ABI = [...AGENT_NFT_ABI] as const;
@@ -52,19 +43,9 @@ type AgentNftExtended = {
   creatorOf(tokenId: bigint): Promise<string>;
   ownerOf(tokenId: bigint): Promise<string>;
   supportsInterface(id: string): Promise<boolean>;
-  update(
-    tokenId: bigint,
-    newDatas: Array<{ dataDescription: string; dataHash: string }>,
-  ): Promise<TransactionResponse>;
-  authorizeUsage(tokenId: bigint, to: string): Promise<TransactionResponse>;
-  authorizeAndDelegate(
+  authorizeDelegateAndRevoke(
     delegate: string,
     tokenId: bigint,
-    validUntil: bigint,
-  ): Promise<TransactionResponse>;
-  revokeAuthorization(
-    tokenId: bigint,
-    user: string,
   ): Promise<TransactionResponse>;
   authorizedUsersOf(tokenId: bigint): Promise<string[]>;
   delegateAccess(assistant: string): Promise<TransactionResponse>;
@@ -72,30 +53,21 @@ type AgentNftExtended = {
 };
 
 type VaultCov = {
-  withdraw(tokenId: bigint, amount: bigint): Promise<TransactionResponse>;
   balanceOf(tokenId: bigint): Promise<bigint>;
 };
 
 type PaymentCov = {
-  setRoyaltyBps(
-    agentTokenId: bigint,
-    newBps: bigint,
-  ): Promise<TransactionResponse>;
-  payForAgent(
-    agentTokenId: bigint,
-    amount: bigint,
-  ): Promise<TransactionResponse>;
-  payForAgentAndCompute(
+  payAndWithdrawEarnings(
     agentTokenId: bigint,
     provider: string,
     agentAmount: bigint,
     computeAmount: bigint,
+    royaltyBps: bigint,
   ): Promise<TransactionResponse>;
   payComputeProvider(
     provider: string,
     amount: bigint,
   ): Promise<TransactionResponse>;
-  withdrawAgentEarnings(): Promise<TransactionResponse>;
   royaltyBpsOf(agentTokenId: bigint): Promise<bigint>;
   royaltyBpsSet(agentTokenId: bigint): Promise<boolean>;
   protocolTreasury(): Promise<string>;
@@ -113,7 +85,6 @@ type TeeCov = {
   maxProofAgeSeconds(): Promise<bigint>;
   owner(): Promise<string>;
   ADMIN_DELAY(): Promise<bigint>;
-  cleanExpiredProofs(proofNonces: string[]): Promise<TransactionResponse>;
 };
 
 type Erc20Cov = {
@@ -417,43 +388,6 @@ export async function runMatrixViewSweepStep(deps: {
   });
 }
 
-export async function runVaultWithdrawStep(deps: {
-  vault: string;
-  deployer: Wallet;
-  tokenId: bigint;
-  chainId: number;
-  withdrawWei?: bigint;
-}): Promise<bigint> {
-  const amount = deps.withdrawWei ?? parseEther("0.0001");
-  console.log(
-    `\n[Parity] Vault withdraw ${amount} wei (tokenId=${deps.tokenId})`,
-  );
-  const vault = new TypedContract<VaultCov>(
-    deps.vault,
-    VAULT_ABI,
-    deps.deployer,
-  );
-  const before = await vault.contract.balanceOf(deps.tokenId);
-  if (before < amount)
-    throw new Error(`vault withdraw: balance ${before} < ${amount}`);
-  const tx = await vault.contract.withdraw(deps.tokenId, amount);
-  const receipt = assertReceiptOk(await tx.wait(), "vault withdraw");
-  const after = await vault.contract.balanceOf(deps.tokenId);
-  if (after !== before - amount) {
-    throw new Error(`vault withdraw: balance ${after} != ${before - amount}`);
-  }
-  markScenarioCovered("vault.withdraw", "vault-withdraw", { txs: 1, reads: 2 });
-  markCovered("AxiomStrategyVault", "withdraw", "vault-withdraw");
-  recordReceipt(
-    13,
-    "AxiomStrategyVault.withdraw",
-    `balance ${before} -> ${after}`,
-    receipt,
-    deps.chainId,
-  );
-  return after;
-}
-
 export async function runPaymentPipelineStep(deps: {
   paymentProcessor: string;
   paymentToken: string;
@@ -463,6 +397,8 @@ export async function runPaymentPipelineStep(deps: {
   chainId: number;
   payAmount?: bigint;
   computeAmount?: bigint;
+  /** Royalty folded into payAndWithdrawEarnings (set in-tx before the split). */
+  royaltyBps?: bigint;
 }): Promise<void> {
   const token = new TypedContract<Erc20Cov>(
     deps.paymentToken,
@@ -474,6 +410,12 @@ export async function runPaymentPipelineStep(deps: {
     PAYMENT_PROCESSOR_ABI,
     deps.deployer,
   );
+  const royaltyBps = deps.royaltyBps ?? 8000n;
+  if (royaltyBps === 0n) {
+    throw new Error(
+      "payment pipeline: royaltyBps must be > 0 (merged pay sets royalty in-tx; a 0 split would leave nothing to withdraw)",
+    );
+  }
   const walletBal = await token.contract.balanceOf(deps.deployer.address);
   const defaultPay = parseUnits("0.5", 6);
   const defaultCompute = parseUnits("0.3", 6);
@@ -496,12 +438,15 @@ export async function runPaymentPipelineStep(deps: {
     );
   }
   console.log(
-    `\n[Parity] payment pipeline payForAgentAndCompute(agent=${payAmount} compute=${computeAmount}) — 1 tx`,
+    `\n[Parity] payment pipeline payAndWithdrawEarnings(agent=${payAmount} compute=${computeAmount} royalty=${royaltyBps}) — 1 tx (approve cached)`,
   );
   const earningsBefore = await pay.contract.agentEarningsOf(
     deps.deployer.address,
   );
   const providerBalBefore = await token.contract.balanceOf(deps.provider);
+  const deployerBalBefore = await token.contract.balanceOf(
+    deps.deployer.address,
+  );
   await ensureErc20Allowance({
     token: deps.paymentToken,
     owner: deps.deployer,
@@ -509,92 +454,112 @@ export async function runPaymentPipelineStep(deps: {
     amount: needTotal,
     step: "payment-pipeline",
   });
-  const payTx = await pay.contract.payForAgentAndCompute(
+  const payTx = await pay.contract.payAndWithdrawEarnings(
     deps.tokenId,
     deps.provider,
     payAmount,
     computeAmount,
+    royaltyBps,
   );
   const payReceipt = assertReceiptOk(
     await payTx.wait(),
-    "payForAgentAndCompute",
+    "payAndWithdrawEarnings",
   );
+
+  // Post-hoc assertions: the royalty-set, earnings-credit, provider-payout and
+  // earnings-withdraw legs all run inside the same tx (final state only).
   const earningsAfter = await pay.contract.agentEarningsOf(
     deps.deployer.address,
   );
-  if (earningsAfter <= earningsBefore) {
+  if (earningsAfter !== earningsBefore) {
     throw new Error(
-      `payForAgentAndCompute: earnings ${earningsBefore} -> ${earningsAfter}`,
+      `payAndWithdrawEarnings: earnings ${earningsBefore} -> ${earningsAfter} (expected back to pre-pay)`,
     );
   }
   const providerBalAfter = await token.contract.balanceOf(deps.provider);
-  if (providerBalAfter < providerBalBefore + computeAmount) {
-    throw new Error("payForAgentAndCompute: provider balance did not increase");
+  if (providerBalAfter !== providerBalBefore + computeAmount) {
+    throw new Error(
+      `payAndWithdrawEarnings: provider balance did not increase by computeAmount (${providerBalAfter} != ${providerBalBefore + computeAmount})`,
+    );
   }
-  markScenarioCovered("payment.agent", "payForAgent", { txs: 1, reads: 2 });
-  markScenarioCovered("payment.compute", "payComputeProvider", { txs: 1 });
-  markCovered("AxiomPaymentProcessor", "payForAgent", "payForAgent");
-  markCovered("AxiomPaymentProcessor", "agentEarningsOf", "payForAgent");
+  const deployerBalAfter = await token.contract.balanceOf(
+    deps.deployer.address,
+  );
+  const feeBps = await pay.contract.protocolFeeBps();
+  const creatorCut = computeCreatorCut(payAmount, royaltyBps, feeBps);
+  // Net deployer delta = -(payAmount + computeAmount) + (prior earnings + creatorCut).
+  const expectedDelta = earningsBefore + creatorCut - payAmount - computeAmount;
+  if (deployerBalAfter - deployerBalBefore < expectedDelta) {
+    throw new Error(
+      `payAndWithdrawEarnings: deployer delta ${deployerBalAfter - deployerBalBefore} < expected ${expectedDelta}`,
+    );
+  }
+  const onChainRoyalty = await pay.contract.royaltyBpsOf(deps.tokenId);
+  if (onChainRoyalty !== royaltyBps) {
+    throw new Error(
+      `payAndWithdrawEarnings: royaltyBpsOf ${onChainRoyalty} != ${royaltyBps}`,
+    );
+  }
+  if (!(await pay.contract.royaltyBpsSet(deps.tokenId))) {
+    throw new Error("payAndWithdrawEarnings: royaltyBpsSet false after pay");
+  }
+  markScenarioCovered("payment.agent", "payAndWithdrawEarnings", {
+    txs: 1,
+    reads: 2,
+  });
+  markScenarioCovered("payment.compute", "payAndWithdrawEarnings", {
+    txs: 1,
+  });
+  markScenarioCovered("payment.withdraw", "payAndWithdrawEarnings", {
+    txs: 1,
+    reads: 2,
+  });
+  markScenarioCovered("payment.royalty", "payAndWithdrawEarnings", {
+    txs: 1,
+    reads: 2,
+  });
+  markCovered("AxiomPaymentProcessor", "payForAgent", "payAndWithdrawEarnings");
+  markCovered(
+    "AxiomPaymentProcessor",
+    "agentEarningsOf",
+    "payAndWithdrawEarnings",
+  );
   markCovered(
     "AxiomPaymentProcessor",
     "payComputeProvider",
-    "payComputeProvider",
+    "payAndWithdrawEarnings",
   );
-  markCovered("MockUSDC", "transfer", "payComputeProvider");
+  markCovered(
+    "AxiomPaymentProcessor",
+    "withdrawAgentEarnings",
+    "payAndWithdrawEarnings",
+  );
+  markCovered(
+    "AxiomPaymentProcessor",
+    "setRoyaltyBps",
+    "payAndWithdrawEarnings",
+  );
+  markCovered("MockUSDC", "transfer", "payAndWithdrawEarnings");
   recordReceipt(
     9,
-    "AxiomPaymentProcessor.payForAgentAndCompute",
-    `earnings ${earningsBefore} -> ${earningsAfter}; provider +${providerBalAfter - providerBalBefore}`,
+    "AxiomPaymentProcessor.payAndWithdrawEarnings",
+    `creator earned ${creatorCut} (royalty ${royaltyBps}); provider +${providerBalAfter - providerBalBefore}; earnings back to ${earningsAfter}`,
     payReceipt,
     deps.chainId,
   );
 }
 
-export async function runWithdrawEarningsStep(deps: {
-  paymentProcessor: string;
-  paymentToken: string;
-  deployer: Wallet;
-  chainId: number;
-}): Promise<void> {
-  console.log("\n[Parity] withdrawAgentEarnings (creator)");
-  const pay = new TypedContract<PaymentCov>(
-    deps.paymentProcessor,
-    PAYMENT_PROCESSOR_ABI,
-    deps.deployer,
-  );
-  const token = new TypedContract<Erc20Cov>(
-    deps.paymentToken,
-    ERC20_ABI,
-    deps.deployer,
-  );
-  const pending = await pay.contract.agentEarningsOf(deps.deployer.address);
-  if (pending === 0n)
-    throw new Error("withdrawAgentEarnings: no earnings to withdraw");
-  const balBefore = await token.contract.balanceOf(deps.deployer.address);
-  const tx = await pay.contract.withdrawAgentEarnings();
-  const receipt = assertReceiptOk(await tx.wait(), "withdrawAgentEarnings");
-  const balAfter = await token.contract.balanceOf(deps.deployer.address);
-  if (balAfter < balBefore + pending) {
-    throw new Error(
-      `withdraw did not credit ${pending} (got ${balAfter - balBefore})`,
-    );
-  }
-  markScenarioCovered("payment.withdraw", "withdrawEarnings", {
-    txs: 1,
-    reads: 2,
-  });
-  markCovered(
-    "AxiomPaymentProcessor",
-    "withdrawAgentEarnings",
-    "withdrawEarnings",
-  );
-  recordReceipt(
-    16,
-    "withdrawAgentEarnings",
-    `withdrew ${pending}`,
-    receipt,
-    deps.chainId,
-  );
+/** Mirrors the processor's split math (royalty set -> read at pay time). */
+function computeCreatorCut(
+  received: bigint,
+  royaltyBps: bigint,
+  feeBps: bigint,
+): bigint {
+  const BPS = 10000n;
+  const creatorCut = (received * royaltyBps) / BPS;
+  const protocolCut = received - creatorCut;
+  const minProtocolCut = (received * feeBps) / BPS;
+  return protocolCut < minProtocolCut ? received - minProtocolCut : creatorCut;
 }
 
 async function buildAuthorizeDelegatePipelineSteps(
@@ -608,31 +573,18 @@ async function buildAuthorizeDelegatePipelineSteps(
   );
   const steps: Parameters<typeof pipelineWalletTxs>[1] = [];
   if (!alreadyAuthorized) {
-    // One tx instead of two: authorizeAndDelegate(delegate, tokenId, validUntil)
-    // merges authorizeUsage + delegateAccess (validUntil is accepted but unused
-    // in the current impl — semantics identical to the 2-tx path).
+    // One tx: authorizeDelegateAndRevoke(delegate, tokenId) merges
+    // authorizeUsage + delegateAccess + revokeAuthorization — no wave-2 split.
     steps.push({
-      name: "authorizeAndDelegate",
+      name: "authorizeDelegateAndRevoke",
       send: () =>
-        nft.contract.authorizeAndDelegate(
-          delegateAddress,
-          tokenId,
-          0n, // validUntil — unused by impl
-        ),
+        nft.contract.authorizeDelegateAndRevoke(delegateAddress, tokenId),
     });
   } else {
-    // Already authorized (E2E_REUSE): only re-set the delegate.
+    // Already authorized (edge reuse state): only re-set the delegate.
     steps.push({
       name: "delegateAccess",
       send: () => nft.contract.delegateAccess(delegateAddress),
-    });
-  }
-  if (!alreadyAuthorized) {
-    // Revoking a user that was never authorized reverts ERC7857NotAuthorized —
-    // only revoke what this run actually authorized.
-    steps.push({
-      name: "revokeAuthorization",
-      send: () => nft.contract.revokeAuthorization(tokenId, delegateAddress),
     });
   }
   return steps;
@@ -646,7 +598,7 @@ export async function runAuthorizeDelegateStep(deps: {
   chainId: number;
 }): Promise<void> {
   console.log(
-    `\n[Parity] authorizeAndDelegate (merged; ${deps.delegateAddress})`,
+    `\n[Parity] authorizeDelegateAndRevoke / delegateAccess (${deps.delegateAddress})`,
   );
   const nft = new TypedContract<AgentNftExtended>(
     deps.agentNft,
@@ -659,18 +611,11 @@ export async function runAuthorizeDelegateStep(deps: {
     deps.delegateAddress,
   );
   const authReceipts = await pipelineWalletTxs(
-    "authorizeUsage + delegateAccess + revokeAuthorization",
+    "authorizeDelegateAndRevoke",
     authSteps,
-    { sequential: true }, // revoke depends on authorize mining — avoid ERC7857NotAuthorized race
   );
-  const revokeIdx = authSteps.findIndex(
-    (s) => s.name === "revokeAuthorization",
-  );
-  const revReceipt = authReceipts[revokeIdx]!;
-
-  markScenarioCovered("agent.authorize", "authorize", { txs: 1, reads: 1 });
-  markCovered("AxiomAgentNFT", "authorizeUsage", "authorize");
-  markCovered("AxiomAgentNFT", "authorizedUsersOf", "authorize");
+  const isReuse = authSteps[0]?.name === "delegateAccess";
+  const authReceipt = authReceipts[0]!;
 
   const assistant = await nft.contract.getDelegateAccess(deps.deployer.address);
   if (assistant.toLowerCase() !== deps.delegateAddress.toLowerCase()) {
@@ -681,127 +626,47 @@ export async function runAuthorizeDelegateStep(deps: {
   markScenarioCovered("agent.delegate", "delegateAccess", { txs: 1, reads: 1 });
   markCovered("AxiomAgentNFT", "delegateAccess", "delegateAccess");
   markCovered("AxiomAgentNFT", "getDelegateAccess", "delegateAccess");
+  markCovered(
+    "AxiomAgentNFT",
+    "authorizedUsersOf",
+    "authorizeDelegateAndRevoke",
+  );
+  if (isReuse) {
+    recordReceipt(
+      17,
+      "delegateAccess",
+      `delegate=${deps.delegateAddress.slice(0, 10)}…`,
+      authReceipt,
+      deps.chainId,
+    );
+    return;
+  }
   const afterRevoke = await nft.contract.authorizedUsersOf(deps.tokenId);
   if (afterRevoke.length !== 0) {
     throw new Error(
-      `authorizedUsersOf not cleared after revoke: ${afterRevoke.join(",")}`,
+      `authorizedUsersOf not cleared after authorizeDelegateAndRevoke: ${afterRevoke.join(",")}`,
     );
   }
-  markScenarioCovered("agent.revoke", "revokeAuthorization", {
+  markScenarioCovered("agent.authorize", "authorizeDelegateAndRevoke", {
     txs: 1,
     reads: 1,
   });
-  markCovered("AxiomAgentNFT", "revokeAuthorization", "revokeAuthorization");
+  markScenarioCovered("agent.revoke", "authorizeDelegateAndRevoke", {
+    txs: 1,
+    reads: 1,
+  });
+  markCovered("AxiomAgentNFT", "authorizeUsage", "authorizeDelegateAndRevoke");
+  markCovered(
+    "AxiomAgentNFT",
+    "revokeAuthorization",
+    "authorizeDelegateAndRevoke",
+  );
 
   recordReceipt(
     17,
-    "authorize/delegate/revoke",
+    "authorizeDelegateAndRevoke",
     `delegate=${deps.delegateAddress.slice(0, 10)}…`,
-    revReceipt,
-    deps.chainId,
-  );
-}
-
-export async function runUpdateRoyaltyPipelineStep(deps: {
-  agentNft: string;
-  paymentProcessor: string;
-  deployer: Wallet;
-  tokenId: bigint;
-  dataHash: `0x${string}`;
-  chainId: number;
-  royaltyBps?: bigint;
-}): Promise<void> {
-  const bps = deps.royaltyBps ?? 8000n;
-  console.log(
-    `\n[Parity] pipeline update + setRoyaltyBps bps=${bps} tokenId=${deps.tokenId}`,
-  );
-  const nft = new TypedContract<AgentNftExtended>(
-    deps.agentNft,
-    AGENT_NFT_EXTENDED_ABI,
-    deps.deployer,
-  );
-  const pay = new TypedContract<PaymentCov>(
-    deps.paymentProcessor,
-    PAYMENT_PROCESSOR_ABI,
-    deps.deployer,
-  );
-  const updateRoyaltyReceipts = await pipelineWalletTxs(
-    "update + setRoyaltyBps",
-    [
-      {
-        name: "AxiomAgentNFT.update",
-        send: () =>
-          nft.contract.update(deps.tokenId, [
-            { dataDescription: "strategy-v2", dataHash: deps.dataHash },
-          ]),
-      },
-      {
-        name: "setRoyaltyBps",
-        send: () => pay.contract.setRoyaltyBps(deps.tokenId, bps),
-      },
-    ],
-  );
-  const updateReceipt = updateRoyaltyReceipts[0]!;
-  const royaltyReceipt = updateRoyaltyReceipts[1]!;
-
-  const datas = await nft.contract.intelligentDataOf(deps.tokenId);
-  if (datas[0]?.dataDescription !== "strategy-v2") {
-    throw new Error(`update description mismatch ${datas[0]?.dataDescription}`);
-  }
-  const onChain = await pay.contract.royaltyBpsOf(deps.tokenId);
-  if (onChain !== bps) throw new Error(`royaltyBpsOf ${onChain} != ${bps}`);
-  if (!(await pay.contract.royaltyBpsSet(deps.tokenId))) {
-    throw new Error("royaltyBpsSet false after set");
-  }
-
-  markScenarioCovered("agent.update", "update-data", { txs: 1, reads: 1 });
-  markScenarioCovered("payment.royalty", "royalty", { txs: 1, reads: 2 });
-  markCovered("AxiomAgentNFT", "update", "update-data");
-  markCovered("AxiomPaymentProcessor", "setRoyaltyBps", "royalty");
-  recordReceipt(
-    18,
-    "AxiomAgentNFT.update",
-    "description=strategy-v2",
-    updateReceipt,
-    deps.chainId,
-  );
-  recordReceipt(
-    14,
-    "setRoyaltyBps",
-    `royaltyBps=${onChain}`,
-    royaltyReceipt,
-    deps.chainId,
-  );
-}
-
-export async function runUpdateDataStep(deps: {
-  agentNft: string;
-  deployer: Wallet;
-  tokenId: bigint;
-  dataHash: `0x${string}`;
-  chainId: number;
-}): Promise<void> {
-  console.log(`\n[Parity] AxiomAgentNFT.update dataHash=${deps.dataHash}`);
-  const nft = new TypedContract<AgentNftExtended>(
-    deps.agentNft,
-    AGENT_NFT_EXTENDED_ABI,
-    deps.deployer,
-  );
-  const tx = await nft.contract.update(deps.tokenId, [
-    { dataDescription: "strategy-v2", dataHash: deps.dataHash },
-  ]);
-  const receipt = assertReceiptOk(await tx.wait(), "update");
-  const datas = await nft.contract.intelligentDataOf(deps.tokenId);
-  if (datas[0]?.dataDescription !== "strategy-v2") {
-    throw new Error(`update description mismatch ${datas[0]?.dataDescription}`);
-  }
-  markScenarioCovered("agent.update", "update-data", { txs: 1, reads: 1 });
-  markCovered("AxiomAgentNFT", "update", "update-data");
-  recordReceipt(
-    18,
-    "AxiomAgentNFT.update",
-    "description=strategy-v2",
-    receipt,
+    authReceipt,
     deps.chainId,
   );
 }
@@ -809,20 +674,14 @@ export async function runUpdateDataStep(deps: {
 export async function runPostVaultCoveragePipeline(deps: {
   vault: string;
   agentNft: string;
-  paymentProcessor: string;
   deployer: Wallet;
   tokenId: bigint;
-  dataHash: `0x${string}`;
   delegateAddress: string;
   chainId: number;
-  skipWithdraw?: boolean;
-  withRoyalty?: boolean;
-  royaltyBps?: bigint;
-  withdrawWei?: bigint;
 }): Promise<bigint> {
-  const withRoyalty = deps.withRoyalty !== false;
-  const bps = deps.royaltyBps ?? 8000n;
-  const withdrawAmount = deps.withdrawWei ?? parseEther("0.0001");
+  console.log(
+    "\n[Parity] post-vault mega: authorizeDelegateAndRevoke (withdraw folded into deposit; update folded into mint; royalty folded into pay)",
+  );
   const vault = new TypedContract<VaultCov>(
     deps.vault,
     VAULT_ABI,
@@ -833,83 +692,15 @@ export async function runPostVaultCoveragePipeline(deps: {
     AGENT_NFT_EXTENDED_ABI,
     deps.deployer,
   );
-  const pay = new TypedContract<PaymentCov>(
-    deps.paymentProcessor,
-    PAYMENT_PROCESSOR_ABI,
-    deps.deployer,
+
+  const steps = await buildAuthorizeDelegatePipelineSteps(
+    nft,
+    deps.tokenId,
+    deps.delegateAddress,
   );
-
-  const balanceBefore = await vault.contract.balanceOf(deps.tokenId);
-  const steps: Parameters<typeof pipelineWalletTxs>[1] = [];
-
-  if (!deps.skipWithdraw) {
-    if (balanceBefore < withdrawAmount) {
-      throw new Error(
-        `mega pipeline withdraw: balance ${balanceBefore} < ${withdrawAmount}`,
-      );
-    }
-    steps.push({
-      name: "AxiomStrategyVault.withdraw",
-      send: () => vault.contract.withdraw(deps.tokenId, withdrawAmount),
-    });
-  }
-
-  steps.push(
-    ...(await buildAuthorizeDelegatePipelineSteps(
-      nft,
-      deps.tokenId,
-      deps.delegateAddress,
-    )),
-    {
-      name: "AxiomAgentNFT.update",
-      send: () =>
-        nft.contract.update(deps.tokenId, [
-          { dataDescription: "strategy-v2", dataHash: deps.dataHash },
-        ]),
-    },
-  );
-  const royaltyAlreadySet = withRoyalty
-    ? await pay.contract.royaltyBpsSet(deps.tokenId)
-    : false;
-  if (withRoyalty && !royaltyAlreadySet) {
-    steps.push({
-      name: "setRoyaltyBps",
-      send: () => pay.contract.setRoyaltyBps(deps.tokenId, bps),
-    });
-  } else if (royaltyAlreadySet) {
-    markCovered("AxiomPaymentProcessor", "setRoyaltyBps", "reuse-royalty");
-    markScenarioCovered("payment.royalty", "reuse-royalty", { reads: 1 });
-  }
-
-  const receipts = await runMegaWaves(steps);
-  const receiptFor = (stepName: string) => {
-    const idx = steps.findIndex((s) => s.name === stepName);
-    if (idx < 0) return null;
-    return receipts[idx] ?? null;
-  };
+  const receipts = await pipelineWalletTxs("post-vault mega", steps);
+  const isReuse = steps[0]?.name === "delegateAccess";
   const lastReceipt = receipts[receipts.length - 1]!;
-
-  let vaultBal = balanceBefore;
-  if (!deps.skipWithdraw) {
-    vaultBal = await vault.contract.balanceOf(deps.tokenId);
-    if (vaultBal !== balanceBefore - withdrawAmount) {
-      throw new Error(
-        `vault withdraw: balance ${vaultBal} != ${balanceBefore - withdrawAmount}`,
-      );
-    }
-    markScenarioCovered("vault.withdraw", "vault-withdraw", {
-      txs: 1,
-      reads: 2,
-    });
-    markCovered("AxiomStrategyVault", "withdraw", "vault-withdraw");
-    recordReceipt(
-      13,
-      "AxiomStrategyVault.withdraw",
-      `balance ${balanceBefore} -> ${vaultBal}`,
-      receipts[0]!,
-      deps.chainId,
-    );
-  }
 
   const assistant = await nft.contract.getDelegateAccess(deps.deployer.address);
   if (assistant.toLowerCase() !== deps.delegateAddress.toLowerCase()) {
@@ -917,146 +708,58 @@ export async function runPostVaultCoveragePipeline(deps: {
       `getDelegateAccess ${assistant} != ${deps.delegateAddress}`,
     );
   }
-  const afterRevoke = await nft.contract.authorizedUsersOf(deps.tokenId);
-  if (afterRevoke.length !== 0) {
-    throw new Error(`authorizedUsersOf not cleared: ${afterRevoke.join(",")}`);
-  }
-  markCovered("AxiomAgentNFT", "authorizedUsersOf", "authorize");
-  markScenarioCovered("agent.authorize", "authorize", { txs: 1, reads: 1 });
-  markScenarioCovered("agent.delegate", "delegateAccess", { txs: 1, reads: 1 });
-  markScenarioCovered("agent.revoke", "revokeAuthorization", {
-    txs: 1,
-    reads: 1,
-  });
-  markCovered("AxiomAgentNFT", "authorizeUsage", "authorize");
+  markCovered(
+    "AxiomAgentNFT",
+    "authorizedUsersOf",
+    "authorizeDelegateAndRevoke",
+  );
   markCovered("AxiomAgentNFT", "delegateAccess", "delegateAccess");
-  markCovered("AxiomAgentNFT", "revokeAuthorization", "revokeAuthorization");
   markCovered("AxiomAgentNFT", "getDelegateAccess", "delegateAccess");
+  markScenarioCovered("agent.delegate", "delegateAccess", { txs: 1, reads: 1 });
+  if (!isReuse) {
+    const afterRevoke = await nft.contract.authorizedUsersOf(deps.tokenId);
+    if (afterRevoke.length !== 0) {
+      throw new Error(
+        `authorizedUsersOf not cleared: ${afterRevoke.join(",")}`,
+      );
+    }
+    markScenarioCovered("agent.authorize", "authorizeDelegateAndRevoke", {
+      txs: 1,
+      reads: 1,
+    });
+    markScenarioCovered("agent.revoke", "authorizeDelegateAndRevoke", {
+      txs: 1,
+      reads: 1,
+    });
+    markCovered(
+      "AxiomAgentNFT",
+      "authorizeUsage",
+      "authorizeDelegateAndRevoke",
+    );
+    markCovered(
+      "AxiomAgentNFT",
+      "revokeAuthorization",
+      "authorizeDelegateAndRevoke",
+    );
+  }
 
+  // State check only — the config category has no on-chain tx left: mint wrote
+  // the final descriptor (strategy-v2) and pay sets the royalty in-tx. The
+  // parity `update` row is marked covered at the mint step instead.
   const datas = await nft.contract.intelligentDataOf(deps.tokenId);
   if (datas[0]?.dataDescription !== "strategy-v2") {
-    throw new Error(`update description mismatch ${datas[0]?.dataDescription}`);
-  }
-  markScenarioCovered("agent.update", "update-data", { txs: 1, reads: 1 });
-  markCovered("AxiomAgentNFT", "update", "update-data");
-  if (withRoyalty) {
-    const onChain = await pay.contract.royaltyBpsOf(deps.tokenId);
-    if (onChain !== bps) throw new Error(`royaltyBpsOf ${onChain} != ${bps}`);
-    if (!(await pay.contract.royaltyBpsSet(deps.tokenId))) {
-      throw new Error("royaltyBpsSet false after set");
-    }
-    markScenarioCovered("payment.royalty", "royalty", { txs: 1, reads: 2 });
-    markCovered(
-      "AxiomPaymentProcessor",
-      "setRoyaltyBps",
-      steps.some((s) => s.name === "setRoyaltyBps")
-        ? "royalty"
-        : "reuse-royalty",
+    throw new Error(
+      `post-mega data description mismatch ${datas[0]?.dataDescription}`,
     );
   }
 
-  const revokeReceipt = receiptFor("revokeAuthorization");
-  const updateReceipt = receiptFor("AxiomAgentNFT.update");
-  if (revokeReceipt) {
-    recordReceipt(
-      17,
-      "authorize/delegate/revoke",
-      `delegate=${deps.delegateAddress.slice(0, 10)}…`,
-      revokeReceipt,
-      deps.chainId,
-    );
-  }
-  if (updateReceipt) {
-    recordReceipt(
-      18,
-      "AxiomAgentNFT.update",
-      "description=strategy-v2",
-      updateReceipt,
-      deps.chainId,
-    );
-  }
-  if (withRoyalty) {
-    recordReceipt(
-      14,
-      "setRoyaltyBps",
-      `royaltyBps=${bps}`,
-      lastReceipt,
-      deps.chainId,
-    );
-  }
-
-  return vaultBal;
-}
-
-/**
- * Executes the post-vault mega step batch in dependency waves:
- * wave 1 = all independent steps (withdraw, authorize, delegate, update,
- * royalty) sent as one batch; wave 2 = revokeAuthorization alone, since it
- * requires authorize to have mined (else ERC7857NotAuthorized race on 0.5s
- * blocks). Same operator wallet nonce-serializes mining, so batching gains
- * nothing for dependent steps — only the race.
- * Returns receipts in the original steps[] order.
- */
-async function runMegaWaves(
-  steps: Parameters<typeof pipelineWalletTxs>[1],
-): Promise<TransactionReceipt[]> {
-  const revokeIdx = steps.findIndex((s) => s.name === "revokeAuthorization");
-  if (revokeIdx < 0) {
-    return pipelineWalletTxs("post-vault mega", steps);
-  }
-  const wave1 = steps.filter((_, i) => i !== revokeIdx);
-  const revoke = steps[revokeIdx]!;
-  const wave1Receipts = await pipelineWalletTxs("post-vault mega wave1", wave1);
-  const [revokeReceipt] = await pipelineWalletTxs(
-    "post-vault mega wave2 (revoke after authorize)",
-    [revoke],
-  );
-  const receipts: TransactionReceipt[] = [];
-  let wave1Idx = 0;
-  for (let i = 0; i < steps.length; i++) {
-    receipts[i] = i === revokeIdx ? revokeReceipt! : wave1Receipts[wave1Idx++]!;
-  }
-  return receipts;
-}
-
-function computeTransferProofNonce(finalResp: FinalResponse): `0x${string}` {
-  const coder = AbiCoder.defaultAbiCoder();
-  return keccak256(
-    coder.encode(
-      ["bytes32", "bytes", "bytes", "uint256", "uint256"],
-      [
-        finalResp.accessProof.dataHash,
-        finalResp.accessProof.targetPubkey,
-        finalResp.ownershipProof.sealedKey,
-        finalResp.accessProof.nonce,
-        finalResp.accessProof.validUntil,
-      ],
-    ),
-  ) as `0x${string}`;
-}
-
-export async function runTeeCleanupStep(deps: {
-  teeVerifier: string;
-  deployer: Wallet;
-  finalResp: FinalResponse;
-  chainId: number;
-}): Promise<void> {
-  console.log("\n[Parity] cleanExpiredProofs (post-transfer nonce)");
-  const tee = new TypedContract<TeeCov>(
-    deps.teeVerifier,
-    TEE_VERIFIER_ABI,
-    deps.deployer,
-  );
-  const proofNonce = computeTransferProofNonce(deps.finalResp);
-  const tx = await tee.contract.cleanExpiredProofs([proofNonce]);
-  const receipt = assertReceiptOk(await tx.wait(), "cleanExpiredProofs");
-  markScenarioCovered("tee.cleanup", "tee-cleanup", { txs: 1 });
-  markCovered("AxiomTeeVerifier", "cleanExpiredProofs", "tee-cleanup");
   recordReceipt(
-    19,
-    "cleanExpiredProofs",
-    `nonce=${proofNonce.slice(0, 14)}…`,
-    receipt,
+    17,
+    isReuse ? "delegateAccess" : "authorizeDelegateAndRevoke",
+    `delegate=${deps.delegateAddress.slice(0, 10)}…`,
+    lastReceipt,
     deps.chainId,
   );
+
+  return vault.contract.balanceOf(deps.tokenId);
 }

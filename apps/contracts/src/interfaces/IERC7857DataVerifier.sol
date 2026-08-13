@@ -52,4 +52,7 @@ interface IERC7857DataVerifier {
         address _to,
         address _nft
     ) external returns (TransferValidityProofOutput[] memory outputs);
+
+    /// @notice Reclaim storage from proofs that have exceeded their max age
+    function cleanExpiredProofs(bytes32[] calldata proofNonces) external;
 }

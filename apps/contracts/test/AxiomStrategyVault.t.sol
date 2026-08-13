@@ -38,6 +38,8 @@ contract AxiomStrategyVaultTest is Test {
 
     uint256 internal constant TOKEN_ID = 1;
 
+    event Withdrawn(uint256 indexed tokenId, address indexed to, address indexed asset, uint256 amount);
+
     function _noExpiry() internal pure returns (uint64) {
         return 0;
     }
@@ -173,6 +175,46 @@ contract AxiomStrategyVaultTest is Test {
         assertEq(storedLimit, dailyLimit, "daily limit set");
         assertEq(storedSpent, 0, "daily spend reset");
         assertEq(storedValidUntil, validUntilDay, "valid-until day set");
+    }
+
+    function test_depositSetStrategyAndWithdraw_setsBalanceAndStrategyAndReducesBalance() public {
+        uint256 amount = 2 ether;
+        uint256 withdrawAmount = 1 ether;
+        uint256 dailyLimit = 2 ether;
+        bytes32 root = keccak256("strategy");
+        uint64 validUntilDay = _farFuture();
+
+        vm.deal(tokenOwner, amount);
+
+        vm.expectEmit(true, true, true, true);
+        emit Withdrawn(TOKEN_ID, tokenOwner, address(0), withdrawAmount);
+
+        vm.prank(tokenOwner);
+        vault.depositSetStrategyAndWithdraw{value: amount}(
+            TOKEN_ID, root, dailyLimit, validUntilDay, withdrawAmount
+        );
+
+        assertEq(vault.balanceOf(TOKEN_ID), amount - withdrawAmount, "balance reduced by withdraw amount");
+        assertEq(vault.totalTrackedBalance(), amount - withdrawAmount, "tracked balance matches");
+        assertEq(tokenOwner.balance, withdrawAmount, "withdrawn funds returned to owner");
+
+        (bytes32 storedRoot, uint256 storedLimit, uint256 storedSpent, , uint64 storedValidUntil) =
+            vault.strategyOf(TOKEN_ID);
+        assertEq(storedRoot, root, "strategy root set");
+        assertEq(storedLimit, dailyLimit, "daily limit set");
+        assertEq(storedSpent, 0, "daily spend reset");
+        assertEq(storedValidUntil, validUntilDay, "valid-until day set");
+    }
+
+    function test_depositSetStrategyAndWithdraw_revertsWhenWithdrawExceedsBalance() public {
+        uint256 amount = 1 ether;
+
+        vm.deal(tokenOwner, amount);
+        vm.prank(tokenOwner);
+        vm.expectRevert(AxiomStrategyVault.ZeroAmount.selector);
+        vault.depositSetStrategyAndWithdraw{value: amount}(
+            TOKEN_ID, bytes32(uint256(1)), 1 ether, _farFuture(), amount + 1
+        );
     }
 
     function test_recoverExcessNative() public {

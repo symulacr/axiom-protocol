@@ -141,6 +141,40 @@ contract AxiomStrategyVault is Initializable, OwnableUpgradeable, PausableUpgrad
         emit StrategySet(tokenId, root, dailyLimit, validUntilDay);
     }
 
+    /// @notice One-tx deposit + setStrategy + withdraw: funds the vault, installs/refreshes the strategy,
+    ///         and pays out `withdrawAmount` to the owner in a single call (3 txs -> 1). The withdraw leg
+    ///         sees the post-deposit balance, so a single value transfer covers all three operations.
+    function depositSetStrategyAndWithdraw(
+        uint256 tokenId,
+        bytes32 root,
+        uint256 dailyLimit,
+        uint64 validUntilDay,
+        uint256 withdrawAmount
+    ) external payable nonReentrant whenNotPaused onlyTokenOwner(tokenId) {
+        if (msg.value == 0) revert ZeroAmount();
+        Vault storage v = vaults[tokenId];
+        v.balance += msg.value;
+        totalTrackedBalance += msg.value;
+        emit Deposited(tokenId, msg.sender, address(0), msg.value);
+
+        if (dailyLimit > type(uint128).max) revert LimitOverflow();
+        v.strategyRoot = root;
+        v.dailyLimit = uint128(dailyLimit);
+        v.dailySpent = 0;
+        v.resetDay = uint64(block.timestamp / 1 days);
+        v.validUntilDay = validUntilDay;
+        emit StrategySet(tokenId, root, dailyLimit, validUntilDay);
+
+        if (withdrawAmount == 0) revert ZeroAmount();
+        if (v.balance < withdrawAmount) revert ZeroAmount();
+        // CEI ordering: state update precedes the external call to prevent reentrancy
+        v.balance -= withdrawAmount;
+        totalTrackedBalance -= withdrawAmount;
+        emit Withdrawn(tokenId, msg.sender, address(0), withdrawAmount);
+        (bool ok,) = payable(msg.sender).call{value: withdrawAmount}("");
+        if (!ok) revert TransferFailed();
+    }
+
     function strategyOf(
         uint256 tokenId
     )

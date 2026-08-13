@@ -14,6 +14,7 @@ import {ERC7857CloneableUpgradeable} from "./extensions/ERC7857CloneableUpgradea
 import {ERC7857AuthorizeUpgradeable} from "./extensions/ERC7857AuthorizeUpgradeable.sol";
 import {ERC7857IDataStorageUpgradeable} from "./extensions/ERC7857IDataStorageUpgradeable.sol";
 import {IntelligentData} from "./interfaces/IERC7857Metadata.sol";
+import {TransferValidityProof} from "./interfaces/IERC7857DataVerifier.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {AxiomMetadataJson} from "./extensions/AxiomMetadataJson.sol";
 import {TimelockManager} from "./libraries/TimelockManager.sol";
@@ -205,6 +206,35 @@ contract AxiomAgentNFT is
         require(_ownerOf(tokenId) == msg.sender, "Not owner");
         _authorizeUsage(tokenId, delegate);
         delegateAccess(delegate);
+    }
+
+    /// @notice Tx-reduction merge of authorizeAndDelegate + revokeAuthorization: authorizes `delegate`
+    ///         for `tokenId`, sets it as the owner's access assistant, then immediately revokes the
+    ///         authorization — final state = accessAssistants[msg.sender] == delegate, authorizedUsers empty.
+    ///         Safe in one tx because no _update (which clears authorized users) runs between add and remove.
+    function authorizeDelegateAndRevoke(
+        address delegate,
+        uint256 tokenId
+    ) external whenNotPaused {
+        require(_ownerOf(tokenId) == msg.sender, "Not owner");
+        _authorizeUsage(tokenId, delegate);
+        delegateAccess(delegate);
+        revokeAuthorization(tokenId, delegate);
+    }
+
+    /// @notice Tx-reduction merge of iTransferFrom + cleanExpiredProofs: transfers `tokenId` from
+    ///         `from` to `to` with proofs, then asks the verifier to reclaim expired proof storage
+    ///         for `cleanupNonces`. The just-used proof nonce is never deleted (fresh timestamp
+    ///         fails the now > timestamp + maxAge check), so this is safe to call with it included.
+    function transferAndCleanExpiredProofs(
+        address from,
+        address to,
+        uint256 tokenId,
+        TransferValidityProof[] calldata proofs,
+        bytes32[] calldata cleanupNonces
+    ) external {
+        iTransferFrom(from, to, tokenId, proofs);
+        verifier().cleanExpiredProofs(cleanupNonces);
     }
 
     function pause() external onlyRole(ADMIN_ROLE) {

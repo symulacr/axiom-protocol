@@ -337,6 +337,78 @@ contract AxiomPaymentProcessorTest is Test {
         processor.payForAgentAndCompute(AGENT_TOKEN_ID, provider, agentAmount, 0);
     }
 
+    // ─── payAndWithdrawEarnings ─────────────────────────────────────
+    function test_payAndWithdrawEarnings_creditsCreatorThenPaysOut() public {
+        uint256 agentAmount = 1000e6;
+        uint256 computeAmount = 300e6;
+        uint256 royaltyBps = 8000;
+        address provider = address(0xD3F);
+        uint256 expectedCreatorCut = (agentAmount * royaltyBps) / 10_000;
+        uint256 expectedProtocolCut = agentAmount - expectedCreatorCut;
+
+        token.mint(creator, agentAmount + computeAmount);
+        vm.prank(creator);
+        token.approve(address(processor), agentAmount + computeAmount);
+
+        assertEq(token.balanceOf(creator), agentAmount + computeAmount, "creator pre-balance");
+        assertEq(token.balanceOf(provider), 0, "provider pre-balance");
+        assertEq(processor.agentEarningsOf(creator), 0, "creator pre-earnings");
+        assertEq(processor.totalOutstandingEarnings(), 0, "no outstanding pre-call");
+
+        vm.prank(creator);
+        processor.payAndWithdrawEarnings(AGENT_TOKEN_ID, provider, agentAmount, computeAmount, royaltyBps);
+
+        assertEq(token.balanceOf(provider), computeAmount, "provider post-balance");
+        assertEq(token.balanceOf(creator), expectedCreatorCut, "creator post-balance (net: creatorCut)");
+        assertEq(processor.agentEarningsOf(creator), 0, "earnings back to prior");
+        assertEq(processor.totalOutstandingEarnings(), 0, "outstanding back to prior");
+        assertEq(token.balanceOf(treasury), expectedProtocolCut, "treasury receives protocol cut");
+        assertEq(token.balanceOf(address(processor)), 0, "processor holds no funds");
+        assertTrue(processor.royaltyBpsSet(AGENT_TOKEN_ID), "royalty set by merged call");
+        assertEq(processor.royaltyBpsOf(AGENT_TOKEN_ID), royaltyBps, "royalty stored");
+    }
+
+    function test_payAndWithdrawEarnings_revertsOnZeroProvider() public {
+        uint256 agentAmount = 100e6;
+        token.mint(creator, agentAmount);
+        vm.prank(creator);
+        token.approve(address(processor), agentAmount);
+
+        vm.prank(creator);
+        vm.expectRevert(AxiomPaymentProcessor.ZeroAddress.selector);
+        processor.payAndWithdrawEarnings(AGENT_TOKEN_ID, address(0), agentAmount, 50e6, 8000);
+    }
+
+    function test_payAndWithdrawEarnings_revertsOnZeroAmount() public {
+        address provider = address(0xD3F);
+        uint256 agentAmount = 100e6;
+        uint256 computeAmount = 50e6;
+        token.mint(creator, agentAmount + computeAmount);
+        vm.prank(creator);
+        token.approve(address(processor), agentAmount + computeAmount);
+
+        vm.prank(creator);
+        vm.expectRevert(AxiomPaymentProcessor.ZeroAmount.selector);
+        processor.payAndWithdrawEarnings(AGENT_TOKEN_ID, provider, 0, computeAmount, 8000);
+
+        vm.prank(creator);
+        vm.expectRevert(AxiomPaymentProcessor.ZeroAmount.selector);
+        processor.payAndWithdrawEarnings(AGENT_TOKEN_ID, provider, agentAmount, 0, 8000);
+    }
+
+    function test_payAndWithdrawEarnings_revertsForNonCreatorCaller() public {
+        address provider = address(0xD3F);
+        uint256 agentAmount = 100e6;
+        uint256 computeAmount = 50e6;
+        token.mint(payer, agentAmount + computeAmount);
+        vm.prank(payer);
+        token.approve(address(processor), agentAmount + computeAmount);
+
+        vm.prank(payer);
+        vm.expectRevert(AxiomPaymentProcessor.NotCreator.selector);
+        processor.payAndWithdrawEarnings(AGENT_TOKEN_ID, provider, agentAmount, computeAmount, 8000);
+    }
+
     // ─── withdrawAgentEarnings ──────────────────────────────────────
     function test_withdrawAgentEarnings_transfersToken() public {
         uint256 amount = 1000e6;

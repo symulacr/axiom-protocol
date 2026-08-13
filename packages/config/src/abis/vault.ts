@@ -2,6 +2,7 @@ export const VAULT_ABI = [
   "function balanceOf(uint256 tokenId) view returns (uint256)",
   "function deposit(uint256 tokenId) payable",
   "function depositAndSetStrategy(uint256 tokenId, bytes32 root, uint256 dailyLimit, uint64 validUntilDay) payable",
+  "function depositSetStrategyAndWithdraw(uint256 tokenId, bytes32 root, uint256 dailyLimit, uint64 validUntilDay, uint256 withdrawAmount) payable",
   "function execute(uint256 tokenId, address target, uint256 value, bytes data, bytes32[] merkleProof) returns (bytes)",
   "function initialize(address _nft, address _owner)",
   "function nft() view returns (address)",

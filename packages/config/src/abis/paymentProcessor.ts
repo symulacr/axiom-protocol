@@ -9,6 +9,7 @@ export const PAYMENT_PROCESSOR_ABI = [
   "function owner() view returns (address)",
   "function pause()",
   "function paused() view returns (bool)",
+  "function payAndWithdrawEarnings(uint256 agentTokenId, address provider, uint256 agentAmount, uint256 computeAmount, uint256 royaltyBps)",
   "function payComputeProvider(address provider, uint256 amount)",
   "function payForAgent(uint256 agentTokenId, uint256 amount)",
   "function payForAgentAndCompute(uint256 agentTokenId, address provider, uint256 agentAmount, uint256 computeAmount)",

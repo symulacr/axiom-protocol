@@ -1,11 +1,14 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import {
+  AbiCoder,
+  keccak256,
   type Wallet,
   hexlify,
   getBytes,
   parseEther,
   toBeHex,
   type Provider,
+  type TransactionReceipt,
   type TransactionResponse,
 } from "ethers";
 import { TypedContract } from "@axiom/config/types/contract";
@@ -19,7 +22,7 @@ import {
   recoverAccessSigner,
   type Eip712Domain,
 } from "@axiom/config";
-import { AGENT_NFT_ABI, ITRANSFER_FROM_ABI } from "@axiom/config/abis";
+import { AGENT_NFT_ABI } from "@axiom/config/abis";
 import {
   detectVaultAbiVariant,
   readVaultStrategy,
@@ -328,7 +331,10 @@ export async function runOnChainMintStep(deps: {
   );
   const mintFee = await nftTc.contract.mintFee();
   const tx = await nftTc.contract.mint(
-    [{ dataDescription: "strategy", dataHash: deps.dataHash }],
+    // Final iDatas at mint — eliminates the post-mint update tx. mint()
+    // exercises the same _updateData code path with the final descriptor,
+    // so the parity `update` row is re-homed here.
+    [{ dataDescription: "strategy-v2", dataHash: deps.dataHash }],
     deps.deployer.address,
     { value: mintFee },
   );
@@ -356,12 +362,20 @@ export async function runOnChainMintStep(deps: {
       `mint: on-chain dataHash ${onChainHash} != ${deps.dataHash}`,
     );
   }
+  if (datas[0]?.dataDescription !== "strategy-v2") {
+    throw new Error(
+      `mint: on-chain dataDescription ${datas[0]?.dataDescription} != strategy-v2`,
+    );
+  }
   markScenarioCovered("agent.mint", "on-chain-mint", { txs: 1, reads: 4 });
   markCovered("AxiomAgentNFT", "mint", "on-chain-mint");
   markCovered("AxiomAgentNFT", "mintFee", "on-chain-mint");
   markCovered("AxiomAgentNFT", "creatorOf", "on-chain-mint");
   markCovered("AxiomAgentNFT", "ownerOf", "on-chain-mint");
   markCovered("AxiomAgentNFT", "intelligentDatasOf", "on-chain-mint");
+  // update is folded into mint (mint writes the final descriptor via _updateData).
+  markScenarioCovered("agent.update", "mint", { reads: 1 });
+  markCovered("AxiomAgentNFT", "update", "mint");
   recordReceipt(
     6,
     "AxiomAgentNFT.mint",
@@ -384,6 +398,14 @@ type VaultMethods = {
     validUntilDay: bigint,
     overrides?: { value?: bigint },
   ): Promise<TransactionResponse>;
+  depositSetStrategyAndWithdraw(
+    tokenId: bigint,
+    root: string,
+    dailyLimit: bigint,
+    validUntilDay: bigint,
+    withdrawAmount: bigint,
+    overrides?: { value?: bigint },
+  ): Promise<TransactionResponse>;
   balanceOf(tokenId: bigint): Promise<bigint>;
   setStrategy(
     tokenId: bigint,
@@ -400,9 +422,14 @@ export async function runVaultDepositStrategyPipeline(deps: {
   strategyRoot: `0x${string}`;
   chainId: number;
   depositWei?: bigint;
+  /** Withdraw leg amount for the merged depositSetStrategyAndWithdraw call. */
+  withdrawWei?: bigint;
+  /** E2E_SKIP_VAULT_WITHDRAW: keep calling depositAndSetStrategy (no withdraw leg). */
+  skipWithdraw?: boolean;
 }): Promise<bigint> {
   const amount = deps.depositWei ?? parseEther("0.001");
   const dailyLimit = parseEther("0.1");
+  const withdrawAmount = deps.withdrawWei ?? parseEther("0.0001");
   const provider = deps.deployer.provider;
   if (!provider) throw new Error("vault pipeline: wallet missing provider");
   const variant = await detectVaultAbiVariant(provider, deps.vault);
@@ -415,8 +442,14 @@ export async function runVaultDepositStrategyPipeline(deps: {
     deps.deployer,
   );
   const before = await vaultTc.contract.balanceOf(deps.tokenId);
-  console.log(`\n[Step 7–8] Vault deposit ${amount} + setStrategy (pipelined)`);
-  let vaultReceipts: Awaited<ReturnType<typeof pipelineWalletTxs>>;
+  console.log(
+    `\n[Step 7–8] Vault deposit ${amount} + setStrategy${
+      variant !== "legacy" && !deps.skipWithdraw
+        ? ` + withdraw ${withdrawAmount}`
+        : ""
+    } (pipelined)`,
+  );
+  let vaultReceipts: TransactionReceipt[];
   if (variant === "legacy") {
     console.log(
       "          legacy vault ABI — 2-tx deposit+setStrategy fallback",
@@ -439,8 +472,8 @@ export async function runVaultDepositStrategyPipeline(deps: {
         },
       ],
     );
-  } else {
-    // Current vault: depositAndSetStrategy funds + installs the strategy in ONE tx.
+  } else if (deps.skipWithdraw) {
+    // E2E_SKIP_VAULT_WITHDRAW: deposit + strategy only (no withdraw leg).
     const tx = await vaultTc.contract.depositAndSetStrategy(
       deps.tokenId,
       deps.strategyRoot,
@@ -449,12 +482,34 @@ export async function runVaultDepositStrategyPipeline(deps: {
       { value: amount },
     );
     vaultReceipts = [assertReceiptOk(await tx.wait(), "depositAndSetStrategy")];
+  } else {
+    // Current vault: deposit + setStrategy + withdraw in ONE tx.
+    const tx = await vaultTc.contract.depositSetStrategyAndWithdraw(
+      deps.tokenId,
+      deps.strategyRoot,
+      dailyLimit,
+      0n,
+      withdrawAmount,
+      { value: amount },
+    );
+    vaultReceipts = [
+      assertReceiptOk(await tx.wait(), "depositSetStrategyAndWithdraw"),
+    ];
   }
   const after = await vaultTc.contract.balanceOf(deps.tokenId);
-  if (after < before + amount) {
-    throw new Error(
-      `vault deposit: balance ${after} < expected ${before + amount}`,
-    );
+  if (variant === "legacy" || deps.skipWithdraw) {
+    if (after < before + amount) {
+      throw new Error(
+        `vault deposit: balance ${after} < expected ${before + amount}`,
+      );
+    }
+  } else {
+    const expectedAfter = before + amount - withdrawAmount;
+    if (after !== expectedAfter) {
+      throw new Error(
+        `vault deposit+withdraw: balance ${after} != ${expectedAfter} (deposit ${amount} - withdraw ${withdrawAmount})`,
+      );
+    }
   }
   const {
     root,
@@ -474,13 +529,31 @@ export async function runVaultDepositStrategyPipeline(deps: {
   markCovered("AxiomStrategyVault", "deposit", "vault-deposit");
   markCovered("AxiomStrategyVault", "setStrategy", "vault-setStrategy");
   markCovered("AxiomStrategyVault", "strategyOf", "vault-setStrategy");
+  if (variant !== "legacy" && !deps.skipWithdraw) {
+    // Withdraw leg is inside depositSetStrategyAndWithdraw (same tx).
+    markScenarioCovered("vault.withdraw", "depositSetStrategyAndWithdraw", {
+      txs: 1,
+      reads: 2,
+    });
+    markCovered(
+      "AxiomStrategyVault",
+      "withdraw",
+      "depositSetStrategyAndWithdraw",
+    );
+  }
   const vaultReceipt = vaultReceipts[vaultReceipts.length - 1]!;
   recordReceipt(
     7,
     variant === "legacy"
       ? "AxiomStrategyVault.deposit"
-      : "AxiomStrategyVault.depositAndSetStrategy",
-    `balance=${after} wei (+${after - before}); root=${root} dailyLimit=${limit}`,
+      : deps.skipWithdraw
+        ? "AxiomStrategyVault.depositAndSetStrategy"
+        : "AxiomStrategyVault.depositSetStrategyAndWithdraw",
+    `balance=${after} wei (+${after - before}); root=${root} dailyLimit=${limit}${
+      variant !== "legacy" && !deps.skipWithdraw
+        ? ` withdraw=${withdrawAmount}`
+        : ""
+    }`,
     vaultReceipt,
     deps.chainId,
   );
@@ -670,14 +743,33 @@ export async function runTransferSteps(deps: {
 }
 
 type AgentNFTMethods = {
-  iTransferFrom(
+  transferAndCleanExpiredProofs(
     from: string,
     to: string,
     tokenId: bigint,
     proofs: unknown[],
+    cleanupNonces: string[],
   ): Promise<TransactionResponse>;
   ownerOf(tokenId: bigint): Promise<string>;
 };
+
+/** Matches AxiomTeeVerifier's per-proof nonce derivation (keccak256 of
+ *  dataHash, targetPubkey, sealedKey, nonce, validUntil). */
+function computeTransferProofNonce(finalResp: FinalResponse): `0x${string}` {
+  const coder = AbiCoder.defaultAbiCoder();
+  return keccak256(
+    coder.encode(
+      ["bytes32", "bytes", "bytes", "uint256", "uint256"],
+      [
+        finalResp.accessProof.dataHash,
+        finalResp.accessProof.targetPubkey,
+        finalResp.ownershipProof.sealedKey,
+        finalResp.accessProof.nonce,
+        finalResp.accessProof.validUntil,
+      ],
+    ),
+  ) as `0x${string}`;
+}
 
 export async function runOnChainTransferStep(deps: {
   agentNft: string;
@@ -688,28 +780,25 @@ export async function runOnChainTransferStep(deps: {
   eip712Domain: Eip712Domain;
   chainId: number;
 }): Promise<void> {
-  console.log(`\n[Step 11] AxiomAgentNFT.iTransferFrom on-chain (provable)`);
-  const ITRANSFER_FROM_ABI_LOCAL = [
-    ...ITRANSFER_FROM_ABI,
-    "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)",
-    "function ownerOf(uint256 tokenId) view returns (address)",
-  ] as unknown as readonly string[];
+  console.log(
+    `\n[Step 11] AxiomAgentNFT.transferAndCleanExpiredProofs on-chain (provable)`,
+  );
   const nftTc = new TypedContract<AgentNFTMethods>(
     deps.agentNft,
-    ITRANSFER_FROM_ABI_LOCAL,
+    AGENT_NFT_ABI,
     deps.deployer,
   );
   const currentOwner = await nftTc.contract.ownerOf(BigInt(deps.tokenId));
   if (currentOwner.toLowerCase() !== deps.deployer.address.toLowerCase()) {
     recordOnChainStep({
       step: 11,
-      name: "iTransferFrom on-chain",
+      name: "transferAndCleanExpiredProofs on-chain",
       ok: false,
       summary: `owner=${currentOwner} expected deployer ${deps.deployer.address}`,
       chainId: deps.chainId,
     });
     throw new Error(
-      `iTransferFrom: tokenId=${deps.tokenId} owned by ${currentOwner}, not deployer`,
+      `transferAndCleanExpiredProofs: tokenId=${deps.tokenId} owned by ${currentOwner}, not deployer`,
     );
   }
   try {
@@ -733,16 +822,30 @@ export async function runOnChainTransferStep(deps: {
         },
       },
     ];
+    // cleanup on the just-used nonce is a no-op in-tx (fresh timestamp fails
+    // now > timestamp + maxAge), so passing it is safe and exercises the
+    // verifier's cleanExpiredProofs via the NFT-side wrapper.
+    const cleanupNonces = [computeTransferProofNonce(deps.finalResp)];
     await nftTc.raw
-      .getFunction("iTransferFrom")
-      .staticCall(deps.deployer.address, deps.to, BigInt(deps.tokenId), proofs);
-    const tx = await nftTc.contract.iTransferFrom(
+      .getFunction("transferAndCleanExpiredProofs")
+      .staticCall(
+        deps.deployer.address,
+        deps.to,
+        BigInt(deps.tokenId),
+        proofs,
+        cleanupNonces,
+      );
+    const tx = await nftTc.contract.transferAndCleanExpiredProofs(
       deps.deployer.address,
       deps.to,
       BigInt(deps.tokenId),
       proofs,
+      cleanupNonces,
     );
-    const receipt = assertReceiptOk(await tx.wait(), "iTransferFrom");
+    const receipt = assertReceiptOk(
+      await tx.wait(),
+      "transferAndCleanExpiredProofs",
+    );
     const transferLog = receipt.logs.find(
       (l) => l.topics[0] === TRANSFER_TOPIC,
     );
@@ -779,16 +882,32 @@ export async function runOnChainTransferStep(deps: {
     if (newOwner.toLowerCase() !== deps.to.toLowerCase()) {
       throw new Error(`post-transfer owner ${newOwner} != receiver ${deps.to}`);
     }
-    markScenarioCovered("transfer.onchain", "iTransferFrom", {
+    markScenarioCovered("transfer.onchain", "transferAndCleanExpiredProofs", {
       txs: 1,
       reads: 2,
     });
-    markCovered("AxiomAgentNFT", "iTransferFrom", "iTransferFrom");
-    markCovered("AxiomAgentNFT", "ownerOf", "iTransferFrom");
-    markCovered("AxiomTeeVerifier", "verifyTransferValidity", "iTransferFrom");
+    markScenarioCovered("tee.cleanup", "transferAndCleanExpiredProofs", {
+      txs: 1,
+    });
+    markCovered(
+      "AxiomAgentNFT",
+      "iTransferFrom",
+      "transferAndCleanExpiredProofs",
+    );
+    markCovered("AxiomAgentNFT", "ownerOf", "transferAndCleanExpiredProofs");
+    markCovered(
+      "AxiomTeeVerifier",
+      "verifyTransferValidity",
+      "transferAndCleanExpiredProofs",
+    );
+    markCovered(
+      "AxiomTeeVerifier",
+      "cleanExpiredProofs",
+      "transferAndCleanExpiredProofs",
+    );
     recordReceipt(
       11,
-      "iTransferFrom on-chain",
+      "transferAndCleanExpiredProofs",
       `owner=${newOwner} accessSigner=${recoveredAddr}`,
       receipt,
       deps.chainId,
@@ -797,7 +916,7 @@ export async function runOnChainTransferStep(deps: {
     const msg = e instanceof Error ? e.message : String(e);
     recordOnChainStep({
       step: 11,
-      name: "iTransferFrom on-chain",
+      name: "transferAndCleanExpiredProofs on-chain",
       ok: false,
       summary: `reverted: ${msg.slice(0, 120)}`,
       chainId: deps.chainId,

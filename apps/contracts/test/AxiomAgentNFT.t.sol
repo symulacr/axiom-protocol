@@ -3,7 +3,9 @@ pragma solidity ^0.8.20;
 
 import {Test} from "forge-std/Test.sol";
 import {AxiomAgentNFT} from "../src/AxiomAgentNFT.sol";
+import {IERC7857} from "../src/interfaces/IERC7857.sol";
 import {AxiomTeeVerifier} from "../src/verifiers/AxiomTeeVerifier.sol";
+import {BaseVerifier} from "../src/verifiers/BaseVerifier.sol";
 import {IntelligentData} from "../src/interfaces/IERC7857Metadata.sol";
 import {
     TransferValidityProof,
@@ -579,6 +581,77 @@ contract AxiomAgentNFTTest is Test {
         vm.prank(alice);
         nft.delegateAccess(carol);
         assertEq(nft.getDelegateAccess(alice), carol, "delegate must be updated to carol");
+    }
+
+    // ─── authorizeDelegateAndRevoke (merged authorizeAndDelegate + revokeAuthorization) ──
+
+    function test_authorizeDelegateAndRevoke_succeeds() public {
+        uint256 tokenId = _mintTo(alice);
+
+        vm.prank(alice);
+        nft.authorizeDelegateAndRevoke(bob, tokenId);
+
+        // Delegate access persists...
+        assertEq(nft.getDelegateAccess(alice), bob, "delegate must be bob");
+        // ...but the authorization is revoked in the same tx (final state identical to the
+        // old two-tx flow: authorizeAndDelegate then revokeAuthorization).
+        address[] memory users = nft.authorizedUsersOf(tokenId);
+        assertEq(users.length, 0, "authorized users must be empty after revoke");
+    }
+
+    function test_authorizeDelegateAndRevoke_revertNotOwner() public {
+        uint256 tokenId = _mintTo(alice);
+
+        vm.prank(bob);
+        vm.expectRevert("Not owner");
+        nft.authorizeDelegateAndRevoke(bob, tokenId);
+
+        assertEq(nft.getDelegateAccess(alice), address(0), "no delegate must be set");
+    }
+
+    function test_authorizeDelegateAndRevoke_revertZeroDelegate() public {
+        uint256 tokenId = _mintTo(alice);
+
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(IERC7857.ERC7857InvalidAssistant.selector, address(0)));
+        nft.authorizeDelegateAndRevoke(address(0), tokenId);
+    }
+
+    // ─── transferAndCleanExpiredProofs (merged iTransferFrom + cleanExpiredProofs) ────
+
+    function test_transferAndCleanExpiredProofs_succeeds() public {
+        uint256 tokenId = _mintTo(alice);
+        bytes32 dataHash = nft.intelligentDatasOf(tokenId)[0].dataHash;
+        TransferValidityProof[] memory proofs = _makeProofs(alice, bob, dataHash, 1);
+
+        // Exact nonce derivation mirrored from AxiomTeeVerifier._verifyTransferValidityProof
+        // (accessProof.dataHash, targetPubkey, sealedKey, accessProof.nonce, validUntil).
+        bytes32 usedNonce = keccak256(
+            abi.encode(
+                proofs[0].accessProof.dataHash,
+                proofs[0].accessProof.targetPubkey,
+                proofs[0].ownershipProof.sealedKey,
+                proofs[0].accessProof.nonce,
+                proofs[0].accessProof.validUntil
+            )
+        );
+        // Cleanup the just-used nonce plus a never-used one — both must be a no-op.
+        bytes32[] memory cleanupNonces = new bytes32[](2);
+        cleanupNonces[0] = usedNonce;
+        cleanupNonces[1] = keccak256("never-used-nonce");
+
+        vm.prank(alice);
+        nft.transferAndCleanExpiredProofs(alice, bob, tokenId, proofs, cleanupNonces);
+
+        assertEq(nft.ownerOf(tokenId), bob, "token must be transferred to bob");
+
+        // The fresh nonce must NOT have been cleaned (now > timestamp + maxAge is false):
+        // replaying the same proofs to the same receiver still reverts with ProofAlreadyUsed.
+        // (A proof is bound to its receiver via the EIP-712 digest, so a replay to a different
+        // `to` would fail signature recovery before reaching the nonce check.)
+        vm.prank(bob);
+        vm.expectRevert(abi.encodeWithSelector(BaseVerifier.ProofAlreadyUsed.selector, usedNonce));
+        nft.iTransferFrom(bob, bob, tokenId, proofs);
     }
 
     // ─── Operator transfer tests ────────────────────────────────────

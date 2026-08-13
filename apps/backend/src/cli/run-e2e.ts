@@ -34,11 +34,6 @@ import {
   runMatrixViewSweepStep,
   runPaymentPipelineStep,
   runPostVaultCoveragePipeline,
-  runTeeCleanupStep,
-  runUpdateDataStep,
-  runUpdateRoyaltyPipelineStep,
-  runVaultWithdrawStep,
-  runWithdrawEarningsStep,
 } from "./e2e/coverage.js";
 import { resolveE2eWallets, runWalletPreflight } from "./e2e/wallet.js";
 import { initUsageScenarios, markScenarioSkipped } from "./e2e/scenarios.js";
@@ -265,11 +260,14 @@ async function main(): Promise<void> {
       "storage.verify",
       "oracle.preregister",
       "agent.mint",
+      "agent.update",
     ] as const) {
       markScenarioSkipped(id, "E2E_REUSE_TOKEN");
     }
     for (const [contract, fn] of [
       ["AxiomAgentNFT", "mint"],
+      // update is folded into mint (final iDatas) — skipped together.
+      ["AxiomAgentNFT", "update"],
       ["AxiomAgentNFT", "iTransferFrom"],
       ["AxiomTeeVerifier", "cleanExpiredProofs"],
       ["AxiomTeeVerifier", "verifyTransferValidity"],
@@ -343,23 +341,19 @@ async function main(): Promise<void> {
         tokenId,
         strategyRoot: uploadRoot,
         chainId: OG_CHAIN_ID,
+        skipWithdraw: E2E_SKIP_VAULT_WITHDRAW,
       }),
     ]);
     vaultBalanceAfterWithdraw = balanceAfterDeposit;
   } else {
     await postMintHttp;
-    await runVaultDepositStrategyPipeline({
+    vaultBalanceAfterWithdraw = await runVaultDepositStrategyPipeline({
       vault: VAULT,
       deployer: operator,
       tokenId,
       strategyRoot: uploadRoot,
       chainId: OG_CHAIN_ID,
-    });
-    vaultBalanceAfterWithdraw = await runVaultWithdrawStep({
-      vault: VAULT,
-      deployer: operator,
-      tokenId,
-      chainId: OG_CHAIN_ID,
+      skipWithdraw: E2E_SKIP_VAULT_WITHDRAW,
     });
   }
 
@@ -378,54 +372,34 @@ async function main(): Promise<void> {
     teeSignerAddress: teeSigner.address,
   };
 
+  if (E2E_SKIP_VAULT_WITHDRAW) {
+    noteFriction({
+      id: "fast-skip-vault-withdraw",
+      severity: "info",
+      category: "waste",
+      message:
+        "E2E_SKIP_VAULT_WITHDRAW kept depositAndSetStrategy (no withdraw leg)",
+      suggestion:
+        "Set E2E_FULL_VAULT=1 for the folded vault.withdraw on-chain proof",
+    });
+    markScenarioSkipped("vault.withdraw", "E2E_SKIP_VAULT_WITHDRAW");
+    markSkipped("AxiomStrategyVault", "withdraw", "E2E_SKIP_VAULT_WITHDRAW");
+  }
+
   if (E2E_MEGA_PIPELINE) {
-    if (E2E_SKIP_VAULT_WITHDRAW) {
-      noteFriction({
-        id: "fast-skip-vault-withdraw",
-        severity: "info",
-        category: "waste",
-        message: "E2E_SKIP_VAULT_WITHDRAW skipped withdraw in mega pipeline",
-        suggestion:
-          "Set E2E_FULL_VAULT=1 for full vault.withdraw on-chain proof",
-      });
-      markScenarioSkipped("vault.withdraw", "E2E_SKIP_VAULT_WITHDRAW");
-    }
     const [, megaBal] = await Promise.all([
       runMatrixViewSweepStep(viewSweepDeps),
       runPostVaultCoveragePipeline({
         vault: VAULT,
         agentNft: AGENT_NFT,
-        paymentProcessor: PAYMENT_PROCESSOR,
         deployer: operator,
         tokenId,
-        dataHash: uploadRoot,
         delegateAddress: teeSigner.address,
         chainId: OG_CHAIN_ID,
-        skipWithdraw: E2E_SKIP_VAULT_WITHDRAW,
-        withRoyalty: RUN_PAYMENT,
       }),
     ]);
     vaultBalanceAfterWithdraw = megaBal;
   } else {
-    if (!E2E_SKIP_VAULT_WITHDRAW && E2E_PIPELINE_TX) {
-      vaultBalanceAfterWithdraw = await runVaultWithdrawStep({
-        vault: VAULT,
-        deployer: operator,
-        tokenId,
-        chainId: OG_CHAIN_ID,
-      });
-    } else if (E2E_SKIP_VAULT_WITHDRAW) {
-      noteFriction({
-        id: "fast-skip-vault-withdraw",
-        severity: "info",
-        category: "waste",
-        message:
-          "E2E_SKIP_VAULT_WITHDRAW / fast path skipped withdraw (~1 block saved)",
-        suggestion: "Set E2E_FULL_VAULT=1 for full vault.withdraw scenario",
-      });
-      markScenarioSkipped("vault.withdraw", "E2E_SKIP_VAULT_WITHDRAW");
-    }
-
     await Promise.all([
       runMatrixViewSweepStep(viewSweepDeps),
       runAuthorizeDelegateStep({
@@ -436,31 +410,15 @@ async function main(): Promise<void> {
         chainId: OG_CHAIN_ID,
       }),
     ]);
-
-    if (RUN_PAYMENT) {
-      await runUpdateRoyaltyPipelineStep({
-        agentNft: AGENT_NFT,
-        paymentProcessor: PAYMENT_PROCESSOR,
-        deployer: operator,
-        tokenId,
-        dataHash: uploadRoot,
-        chainId: OG_CHAIN_ID,
-      });
-    } else {
-      await runUpdateDataStep({
-        agentNft: AGENT_NFT,
-        deployer: operator,
-        tokenId,
-        dataHash: uploadRoot,
-        chainId: OG_CHAIN_ID,
-      });
-    }
+    // No separate config txs: mint writes the final iDatas (strategy-v2) and
+    // payAndWithdrawEarnings sets the royalty in-tx via royaltyBps.
   }
 
   // Transfer proofs = 2 backend/oracle HTTP round-trips (challenge→final);
   // route reads only mint-time NFT state (ownerOf/balanceOf/dataHash), so it
   // is independent of the payment/tick/DA/perf lanes. Start it NOW to overlap
-  // chain mining; iTransferFrom (ownership move) still awaits it at the end.
+  // chain mining; transferAndCleanExpiredProofs (ownership move) still awaits
+  // it at the end.
   const transferHttp = E2E_SKIP_TRANSFER
     ? null
     : runTransferSteps({
@@ -503,6 +461,7 @@ async function main(): Promise<void> {
       "payment.agent",
       "payment.compute",
       "payment.withdraw",
+      "payment.royalty",
     ] as const) {
       markScenarioSkipped(id, reason);
     }
@@ -514,18 +473,14 @@ async function main(): Promise<void> {
       suggestion: "Fund MockUSDC or set E2E_PAYMENT=0",
     });
   } else if (paymentRunnable) {
+    // payAndWithdrawEarnings folds royalty-set + pay + compute + withdraw into
+    // one tx — no separate runWithdrawEarningsStep.
     await runPaymentPipelineStep({
       paymentProcessor: PAYMENT_PROCESSOR,
       paymentToken: PAYMENT_TOKEN,
       deployer: operator,
       tokenId,
       provider: receiverAddress,
-      chainId: OG_CHAIN_ID,
-    });
-    await runWithdrawEarningsStep({
-      paymentProcessor: PAYMENT_PROCESSOR,
-      paymentToken: PAYMENT_TOKEN,
-      deployer: operator,
       chainId: OG_CHAIN_ID,
     });
   }
@@ -603,7 +558,7 @@ async function main(): Promise<void> {
         ? "E2E_REUSE_TOKEN skipped transfer+tee (~2 blocks saved)"
         : "E2E_KEEP_TOKEN skipped transfer — snapshot saved for E2E_REUSE_TOKEN",
       suggestion:
-        "Run full E2E (no REUSE/KEEP) periodically for iTransferFrom proofs",
+        "Run full E2E (no REUSE/KEEP) periodically for transferAndCleanExpiredProofs proofs",
     });
   } else {
     saveE2eReuseSnapshot({
@@ -621,13 +576,8 @@ async function main(): Promise<void> {
       eip712Domain,
       chainId: OG_CHAIN_ID,
     });
-
-    await runTeeCleanupStep({
-      teeVerifier: TEE_VERIFIER,
-      deployer: operator,
-      finalResp,
-      chainId: OG_CHAIN_ID,
-    });
+    // runTeeCleanupStep is gone — the cleanup nonce is folded into
+    // transferAndCleanExpiredProofs (same tx).
   }
 
   if (!E2E_LIVE_COMPUTE) {
