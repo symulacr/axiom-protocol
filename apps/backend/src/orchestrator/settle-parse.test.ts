@@ -1,6 +1,12 @@
 import { test } from "bun:test";
 import assert from "node:assert/strict";
-import { Wallet, JsonRpcProvider, Interface, FetchRequest, keccak256 } from "ethers";
+import {
+  Wallet,
+  JsonRpcProvider,
+  Interface,
+  FetchRequest,
+  keccak256,
+} from "ethers";
 import {
   StrategyRunner,
   parseRecommendation,
@@ -206,9 +212,7 @@ async function withHttpStub(
 const COMPUTE_KEY = "AXIOM_COMPUTE_DIRECT_KEY";
 const COMPUTE_URL = "AXIOM_COMPUTE_DIRECT_URL";
 
-function withDirectComputeEnv(
-  fn: () => Promise<void>,
-): () => Promise<void> {
+function withDirectComputeEnv(fn: () => Promise<void>): () => Promise<void> {
   return async () => {
     const prevKey = process.env[COMPUTE_KEY];
     const prevUrl = process.env[COMPUTE_URL];
@@ -247,10 +251,7 @@ test("settlementSkipReason reports no strategy set for zero root", () => {
 
 test("settlementSkipReason reports Merkle proof producer requirement for non-zero root", () => {
   const reason = settlementSkipReason("0xabc");
-  assert.ok(
-    reason.includes("Merkle proof producer"),
-    `reason was: ${reason}`,
-  );
+  assert.ok(reason.includes("Merkle proof producer"), `reason was: ${reason}`);
 });
 
 test("StrategyRunner.runTick with manual:e2e-mock skips inference and reports a hold tick", async () => {

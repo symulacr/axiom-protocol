@@ -4,10 +4,7 @@ import { mkdtempSync, writeFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { keccak256, Wallet } from "ethers";
-import {
-  InMemoryStorage,
-  ZeroGStorage,
-} from "./storage/0g.js";
+import { InMemoryStorage, ZeroGStorage } from "./storage/0g.js";
 import {
   AXIOM_ASSISTANT_NAME,
   DEFAULT_CHAT_MODEL,
@@ -38,7 +35,9 @@ describe("storage adapters", () => {
   const seenFile = (name: string) => join(dir, name);
 
   it("InMemoryStorage round-trips a blob and throws on a missing root", () => {
-    const storage = new InMemoryStorage({ seenHashesFile: seenFile("mem.json") });
+    const storage = new InMemoryStorage({
+      seenHashesFile: seenFile("mem.json"),
+    });
     const blob = new TextEncoder().encode("hello storage");
     const { rootHash } = storage.upload(blob);
     assert.equal(rootHash, keccak256(blob), "root hash is the blob keccak");
@@ -61,7 +60,10 @@ describe("storage adapters", () => {
       false,
     );
     // case-insensitive: an uppercase variant of the same root still matches
-    assert.equal(b.hasSeenDataHash(("0x" + "AA".repeat(32)) as `0x${string}`), true);
+    assert.equal(
+      b.hasSeenDataHash(("0x" + "AA".repeat(32)) as `0x${string}`),
+      true,
+    );
   });
 
   it("backs up a corrupt seen-hashes file and starts empty", () => {

@@ -180,10 +180,7 @@ test("decodeAxiomLog decodes StorageInfoUpdated(oldInfo, newInfo) into the Axiom
     args: {},
   });
   const data = encodeAbiParameters(
-    [
-      { type: "string" },
-      { type: "string" },
-    ],
+    [{ type: "string" }, { type: "string" }],
     ["ipfs://old-description", "ipfs://new-description"],
   );
   const decoded = decodeAxiomLog(decodeLog(topics, data));
@@ -222,10 +219,21 @@ test("decodeAxiomLog decodes Updated(tokenId, oldDatas, newDatas) into count fie
       },
     ],
     [
-      [{ dataDescription: "old", dataHash: ("0x" + "aa".repeat(32)) as `0x${string}` }],
       [
-        { dataDescription: "new-1", dataHash: ("0x" + "bb".repeat(32)) as `0x${string}` },
-        { dataDescription: "new-2", dataHash: ("0x" + "cc".repeat(32)) as `0x${string}` },
+        {
+          dataDescription: "old",
+          dataHash: ("0x" + "aa".repeat(32)) as `0x${string}`,
+        },
+      ],
+      [
+        {
+          dataDescription: "new-1",
+          dataHash: ("0x" + "bb".repeat(32)) as `0x${string}`,
+        },
+        {
+          dataDescription: "new-2",
+          dataHash: ("0x" + "cc".repeat(32)) as `0x${string}`,
+        },
       ],
     ],
   );

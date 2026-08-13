@@ -1,4 +1,3 @@
-
 type ScenarioActor = "operator" | "receiver" | "tee-oracle" | "backend" | "any";
 
 interface UsageScenario {
@@ -264,7 +263,12 @@ function seed(): void {
       title: "Chat read tools (frontend parity)",
       actor: "backend",
       contracts: ["Backend HTTP", "AxiomAgentNFT", "AxiomStrategyVault"],
-      functions: ["GET /v1/agents", "balanceOf", "intelligentDatasOf", "GET /v1/events"],
+      functions: [
+        "GET /v1/agents",
+        "balanceOf",
+        "intelligentDatasOf",
+        "GET /v1/events",
+      ],
       intent: "Mirror ChatPage read tools without wallet UI",
     },
     {
@@ -288,8 +292,13 @@ function seed(): void {
       title: "Chat catalog cache hits",
       actor: "backend",
       contracts: ["Backend HTTP"],
-      functions: ["GET /v1/compute/providers", "GET /v1/payment/config", "GET /v1/agents"],
-      intent: "Second-read latency for providers, payment config, agent list TTL",
+      functions: [
+        "GET /v1/compute/providers",
+        "GET /v1/payment/config",
+        "GET /v1/agents",
+      ],
+      intent:
+        "Second-read latency for providers, payment config, agent list TTL",
     },
     {
       id: "chat.keepalive",
@@ -359,8 +368,19 @@ function seed(): void {
       id: "views.sweep",
       title: "Read-only contract surface sweep",
       actor: "any",
-      contracts: ["AxiomAgentNFT", "AxiomPaymentProcessor", "AxiomTeeVerifier", "MockUSDC"],
-      functions: ["name", "symbol", "tokenURI", "domainSeparator", "protocolTreasury"],
+      contracts: [
+        "AxiomAgentNFT",
+        "AxiomPaymentProcessor",
+        "AxiomTeeVerifier",
+        "MockUSDC",
+      ],
+      functions: [
+        "name",
+        "symbol",
+        "tokenURI",
+        "domainSeparator",
+        "protocolTreasury",
+      ],
       intent: "Single batched pass over all query endpoints",
     },
   ];
@@ -369,7 +389,6 @@ function seed(): void {
     scenarios.set(d.id, { ...d, status: "pending", txCount: 0, readCount: 0 });
   }
 }
-
 
 export function initUsageScenarios(): void {
   seed();
@@ -412,7 +431,9 @@ export interface LiveGateReport {
   gaps: string[];
 }
 
-export function computeLiveGate(criticalIds: readonly string[]): LiveGateReport {
+export function computeLiveGate(
+  criticalIds: readonly string[],
+): LiveGateReport {
   const all = getUsageScenarios();
   const inScope = all.filter((s) => s.status !== "skipped");
   const live = inScope.filter(hasLiveProof);
@@ -436,11 +457,7 @@ export function computeLiveGate(criticalIds: readonly string[]): LiveGateReport 
 
   const criticalLive = criticalIds.filter((id) => {
     const s = byId.get(id);
-    return (
-      s !== undefined &&
-      s.status !== "skipped" &&
-      hasLiveProof(s)
-    );
+    return s !== undefined && s.status !== "skipped" && hasLiveProof(s);
   }).length;
   const criticalTotal = criticalIds.filter((id) => {
     const s = byId.get(id);
@@ -496,7 +513,9 @@ export function printUsageScenarioMatrix(): void {
     const flag =
       s.status === "covered" ? "OK" : s.status === "skipped" ? "SKIP" : "MISS";
     const txInfo = s.txCount > 0 ? ` txs=${s.txCount}` : "";
-    console.log(`  ${flag.padEnd(4)} ${s.id.padEnd(22)} ${s.actor.padEnd(10)} ${s.title}${txInfo}`);
+    console.log(
+      `  ${flag.padEnd(4)} ${s.id.padEnd(22)} ${s.actor.padEnd(10)} ${s.title}${txInfo}`,
+    );
     if (s.status === "covered" && s.step) {
       console.log(`        ↳ ${s.step}`);
     }

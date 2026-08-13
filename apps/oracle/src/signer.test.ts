@@ -2,19 +2,34 @@ import { test } from "bun:test";
 import assert from "node:assert/strict";
 import { SigningKey, computeAddress, Wallet, getBytes, toBeHex } from "ethers";
 
-import { pubKeyToAddress, publicKeyUncompressedFromPrivate, sealKeyForReceiver, unsealKeyForReceiver } from "@axiom/config/crypto/keys";
-import { aesGcmDecrypt, aesGcmEncrypt, concatEncrypted, parseEncrypted } from "@axiom/config/crypto/aes-gcm";
-import { TeeSigner } from "./signer.js";
 import {
-  ownershipMessageHash,
-  accessMessageHash,
-} from "@axiom/config/eip712";
+  pubKeyToAddress,
+  publicKeyUncompressedFromPrivate,
+  sealKeyForReceiver,
+  unsealKeyForReceiver,
+} from "@axiom/config/crypto/keys";
+import {
+  aesGcmDecrypt,
+  aesGcmEncrypt,
+  concatEncrypted,
+  parseEncrypted,
+} from "@axiom/config/crypto/aes-gcm";
+import { TeeSigner } from "./signer.js";
+import { ownershipMessageHash, accessMessageHash } from "@axiom/config/eip712";
 
 const TEST_PRIV_HEX = "0x" + "11".repeat(32);
 const TEST_RECEIVER_PRIV_HEX = "0x" + "22".repeat(32);
 
-function expectEqualUint8Array(actual: Uint8Array, expected: Uint8Array, msg?: string) {
-  assert.equal(actual.length, expected.length, `${msg ?? "length"} mismatch: ${actual.length} vs ${expected.length}`);
+function expectEqualUint8Array(
+  actual: Uint8Array,
+  expected: Uint8Array,
+  msg?: string,
+) {
+  assert.equal(
+    actual.length,
+    expected.length,
+    `${msg ?? "length"} mismatch: ${actual.length} vs ${expected.length}`,
+  );
   for (let i = 0; i < actual.length; i++) {
     assert.equal(actual[i], expected[i], `${msg ?? "byte"} ${i} mismatch`);
   }
@@ -22,10 +37,16 @@ function expectEqualUint8Array(actual: Uint8Array, expected: Uint8Array, msg?: s
 
 test("AES-256-GCM roundtrip preserves plaintext", () => {
   const key = new Uint8Array(32).fill(0x07);
-  const plaintext = new TextEncoder().encode("Axiom Protocol — secret agent intelligence");
+  const plaintext = new TextEncoder().encode(
+    "Axiom Protocol — secret agent intelligence",
+  );
   const enc = aesGcmEncrypt(key, plaintext);
   const blob = concatEncrypted(enc);
-  assert.equal(blob.length, 12 + plaintext.length + 16, "blob = iv || ct || tag");
+  assert.equal(
+    blob.length,
+    12 + plaintext.length + 16,
+    "blob = iv || ct || tag",
+  );
   const dec = aesGcmDecrypt(key, parseEncrypted(blob));
   expectEqualUint8Array(dec, plaintext, "decrypted plaintext");
 });
@@ -39,15 +60,23 @@ test("AES-256-GCM detects tampering via auth tag", () => {
 });
 
 test("pubKeyToAddress matches on-chain Utils.pubKeyToAddress", () => {
-  const priv = Uint8Array.from(Buffer.from(TEST_PRIV_HEX.replace(/^0x/, ""), "hex"));
+  const priv = Uint8Array.from(
+    Buffer.from(TEST_PRIV_HEX.replace(/^0x/, ""), "hex"),
+  );
   const uncompressed = publicKeyUncompressedFromPrivate(priv);
-  assert.equal(uncompressed.length, 64, "uncompressed pubkey is 64 bytes (X||Y)");
+  assert.equal(
+    uncompressed.length,
+    64,
+    "uncompressed pubkey is 64 bytes (X||Y)",
+  );
   const address = pubKeyToAddress(uncompressed);
   assert.match(address, /^0x[0-9a-f]{40}$/);
 });
 
 test("ECIES sealKeyForReceiver → unsealKeyForReceiver roundtrip", () => {
-  const receiverPriv = Uint8Array.from(Buffer.from(TEST_RECEIVER_PRIV_HEX.replace(/^0x/, ""), "hex"));
+  const receiverPriv = Uint8Array.from(
+    Buffer.from(TEST_RECEIVER_PRIV_HEX.replace(/^0x/, ""), "hex"),
+  );
   const receiverPubkey = publicKeyUncompressedFromPrivate(receiverPriv);
   const dataKey = new Uint8Array(32);
   for (let i = 0; i < 32; i++) dataKey[i] = i;
@@ -71,13 +100,18 @@ test("TeeSigner.signOwnership produces 65-byte raw signature recoverable by ethe
   assert.match(sig, /^0x[0-9a-fA-F]+$/);
   assert.equal((sig.length - 2) / 2, 65, "signature is 65 bytes (r || s || v)");
 
-  
   const digest = ownershipMessageHash(input);
   const recoveredHex = SigningKey.recoverPublicKey(digest, sig);
-  
-  const recoveredBytes = Uint8Array.from(Buffer.from(recoveredHex.slice(2), "hex"));
-  assert.equal(recoveredBytes.length, 65, "recovered pubkey is 65 bytes (0x04 + X + Y)");
-  const recoveredUncompressed = recoveredBytes.slice(1); 
+
+  const recoveredBytes = Uint8Array.from(
+    Buffer.from(recoveredHex.slice(2), "hex"),
+  );
+  assert.equal(
+    recoveredBytes.length,
+    65,
+    "recovered pubkey is 65 bytes (0x04 + X + Y)",
+  );
+  const recoveredUncompressed = recoveredBytes.slice(1);
   const recoveredAddress = pubKeyToAddress(recoveredUncompressed);
   assert.equal(recoveredAddress.toLowerCase(), signer.address.toLowerCase());
 });
@@ -94,14 +128,15 @@ test("TeeSigner.recoverAccessSigner recovers a raw-ECDSA AccessProof", async () 
     nonce: toBeHex(7n) as `0x${string}`,
     validUntil: 99999999999n,
   };
-  
+
   const digest = accessMessageHash(input);
   const sig = receiver.signingKey.sign(getBytes(digest)).serialized;
 
   const recovered = signer.recoverAccessSigner(sig, input);
   assert.equal(recovered.toLowerCase(), receiver.address.toLowerCase());
 
-  
-  const directRecovered = computeAddress(SigningKey.recoverPublicKey(getBytes(digest), sig));
+  const directRecovered = computeAddress(
+    SigningKey.recoverPublicKey(getBytes(digest), sig),
+  );
   assert.equal(directRecovered.toLowerCase(), recovered.toLowerCase());
 });

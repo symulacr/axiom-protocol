@@ -32,7 +32,12 @@ function mockRes() {
 }
 
 test("client key cannot pass requireServerAuth (vault execute gate)", () => {
-  const auth = createApiKeyAuth("server-secret", ["/health"], false, "browser-key");
+  const auth = createApiKeyAuth(
+    "server-secret",
+    ["/health"],
+    false,
+    "browser-key",
+  );
   const req = {
     path: "/v1/vaults/1/execute",
     headers: { "x-api-key": "browser-key" },
@@ -49,7 +54,12 @@ test("client key cannot pass requireServerAuth (vault execute gate)", () => {
 });
 
 test("server key passes requireServerAuth", () => {
-  const auth = createApiKeyAuth("server-secret", ["/health"], false, "browser-key");
+  const auth = createApiKeyAuth(
+    "server-secret",
+    ["/health"],
+    false,
+    "browser-key",
+  );
   const req = {
     path: "/v1/vaults/1/execute",
     headers: { "x-api-key": "server-secret" },

@@ -38,10 +38,7 @@ import {
   getRuntimeConfig,
 } from "@axiom/config";
 import { getSharedProvider } from "./provider.js";
-import {
-  ZeroGStorage,
-  type StorageAdapter,
-} from "@axiom/config/storage/0g";
+import { ZeroGStorage, type StorageAdapter } from "@axiom/config/storage/0g";
 import {
   createApiKeyAuth,
   enforceClientPathAllowlist,

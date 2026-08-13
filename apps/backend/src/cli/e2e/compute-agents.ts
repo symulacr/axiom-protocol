@@ -1,10 +1,7 @@
 import { fetchJson } from "../../utils/response.js";
 import { getStep, postStep, stepResults } from "./http.js";
 import { markScenarioCovered, markScenarioSkipped } from "./scenarios.js";
-import {
-  e2eFastEnabled,
-  e2eStrictComputeEnabled,
-} from "./fast-path.js";
+import { e2eFastEnabled, e2eStrictComputeEnabled } from "./fast-path.js";
 import { postChatCompletionsSse, sleep } from "./shared.js";
 
 const VAULT_BALANCE_TOOL = {
@@ -21,15 +18,12 @@ export async function runComputeProvidersStep(deps: {
 }): Promise<void> {
   console.log("\n[Post-mint] GET /v1/compute/providers");
   const t0 = Date.now();
-  const first = await getStep<{ services?: Array<{ model: string; address: string }> }>(
-    deps.backendUrl,
-    6.1,
-    "/v1/compute/providers",
-    (r, meta) => ({
-      summary: `services=${r.services?.length ?? 0} status=${meta.status}`,
-      ok: meta.ok && (r.services?.length ?? 0) > 0,
-    }),
-  );
+  const first = await getStep<{
+    services?: Array<{ model: string; address: string }>;
+  }>(deps.backendUrl, 6.1, "/v1/compute/providers", (r, meta) => ({
+    summary: `services=${r.services?.length ?? 0} status=${meta.status}`,
+    ok: meta.ok && (r.services?.length ?? 0) > 0,
+  }));
   let reads = 1;
   if (!e2eFastEnabled()) {
     const t1 = Date.now();
@@ -56,7 +50,9 @@ export async function runAgentPostMintOpsStep(deps: {
   dataHash: `0x${string}`;
 }): Promise<void> {
   const owner = deps.operatorAddress.toLowerCase();
-  console.log(`\n[Post-mint] GET /v1/agents?owner=${owner} (fresh, poll until mint visible)`);
+  console.log(
+    `\n[Post-mint] GET /v1/agents?owner=${owner} (fresh, poll until mint visible)`,
+  );
   const listPath = `/v1/agents?owner=${owner}&fresh=1`;
   const t0 = Date.now();
   type AgentList = {
@@ -67,13 +63,18 @@ export async function runAgentPostMintOpsStep(deps: {
   const maxAttempts = 20;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      list = await getStep<AgentList>(deps.backendUrl, 6.2, listPath, (r, meta) => {
-        const found = r.agents.some((a) => a.tokenId === deps.tokenId);
-        return {
-          summary: `attempt=${attempt}/${maxAttempts} agents=${r.agents.length} tokenId=${deps.tokenId} found=${found}`,
-          ok: meta.ok && found,
-        };
-      });
+      list = await getStep<AgentList>(
+        deps.backendUrl,
+        6.2,
+        listPath,
+        (r, meta) => {
+          const found = r.agents.some((a) => a.tokenId === deps.tokenId);
+          return {
+            summary: `attempt=${attempt}/${maxAttempts} agents=${r.agents.length} tokenId=${deps.tokenId} found=${found}`,
+            ok: meta.ok && found,
+          };
+        },
+      );
       break;
     } catch (err) {
       if (attempt === maxAttempts) throw err;
@@ -101,7 +102,9 @@ export async function runAgentPostMintOpsStep(deps: {
   }
   markScenarioCovered("agent.list", "agent-list", { reads: listReads });
 
-  console.log(`\n[Post-mint] POST /v1/agents/${deps.tokenId}/metadata (encode update)`);
+  console.log(
+    `\n[Post-mint] POST /v1/agents/${deps.tokenId}/metadata (encode update)`,
+  );
   await postStep<{ to: string; data: string }>(
     deps.backendUrl,
     6.3,
@@ -159,13 +162,28 @@ export async function runPaymentConfigCacheStep(deps: {
   });
 }
 
-function handleComputeFailure(id: string, stepName: string, step: number, msg: string): void {
+function handleComputeFailure(
+  id: string,
+  stepName: string,
+  step: number,
+  msg: string,
+): void {
   if (e2eStrictComputeEnabled()) {
-    stepResults.push({ step, name: stepName, ok: false, summary: msg.slice(0, 120) });
+    stepResults.push({
+      step,
+      name: stepName,
+      ok: false,
+      summary: msg.slice(0, 120),
+    });
     throw new Error(`${stepName}: ${msg}`);
   }
   console.log(`          ⚠ ${stepName} skipped: ${msg.slice(0, 120)}`);
-  stepResults.push({ step, name: stepName, ok: true, summary: `skipped: ${msg.slice(0, 80)}` });
+  stepResults.push({
+    step,
+    name: stepName,
+    ok: true,
+    summary: `skipped: ${msg.slice(0, 80)}`,
+  });
   markScenarioSkipped(id, msg.slice(0, 120));
 }
 
@@ -180,14 +198,23 @@ export async function runLiveComputeTickStep(deps: {
   const model = deps.computeModel;
   console.log(`\n[Compute] POST /v1/orchestrator/tick (live model=${model})`);
   try {
-    const { data: res, ok, status } = await fetchJson<{
+    const {
+      data: res,
+      ok,
+      status,
+    } = await fetchJson<{
       recommendation?: { action: string; reason: string };
       rawModelOutput?: string;
       durationMs?: number;
       error?: string;
     }>(`${deps.backendUrl}/v1/orchestrator/tick`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", ...(process.env.AXIOM_API_KEY ? { "x-api-key": process.env.AXIOM_API_KEY } : {}) },
+      headers: {
+        "Content-Type": "application/json",
+        ...(process.env.AXIOM_API_KEY
+          ? { "x-api-key": process.env.AXIOM_API_KEY }
+          : {}),
+      },
       body: JSON.stringify({
         vault: deps.vault,
         agentNft: deps.agentNft,
@@ -205,7 +232,8 @@ export async function runLiveComputeTickStep(deps: {
     });
     if (!ok || !res.recommendation) {
       throw new Error(
-        res.error ?? `tick live failed status=${status} body=${JSON.stringify(res).slice(0, 120)}`,
+        res.error ??
+          `tick live failed status=${status} body=${JSON.stringify(res).slice(0, 120)}`,
       );
     }
     const mockSkipped =
@@ -295,9 +323,15 @@ export async function runDataAvailabilityStep(deps: {
   expectedRoot: `0x${string}`;
   vaultBalanceWei: bigint;
 }): Promise<void> {
-  console.log("\n[Compute] POST /v1/orchestrator/tick (data availability probe)");
+  console.log(
+    "\n[Compute] POST /v1/orchestrator/tick (data availability probe)",
+  );
   const daApiKey = process.env.AXIOM_API_KEY ?? "";
-  const { data: res, ok, status } = await fetchJson<{
+  const {
+    data: res,
+    ok,
+    status,
+  } = await fetchJson<{
     storage?: { rootHash?: string; size?: number };
     onchain?: { vaultBalance?: string };
   }>(`${deps.backendUrl}/v1/orchestrator/tick`, {
@@ -335,8 +369,6 @@ export async function runDataAvailabilityStep(deps: {
     reads: 1,
   });
 }
-
-
 
 export async function runAgentPerformanceStep(deps: {
   backendUrl: string;

@@ -28,7 +28,12 @@ beforeAll(async () => {
   signerAddress = signer.address;
   const storage = new InMemoryStorage();
 
-  const { httpServer } = startServer({ signer, storage, bind: "127.0.0.1", port: 0 });
+  const { httpServer } = startServer({
+    signer,
+    storage,
+    bind: "127.0.0.1",
+    port: 0,
+  });
   server = httpServer;
 
   const { promise, resolve, reject } = Promise.withResolvers<void>();
@@ -84,7 +89,11 @@ test("POST /v1/ownership no longer returns an accessSignature", async () => {
   assert.equal(res.status, 200);
   const body = await res.json();
   assert.ok(isRecord(body));
-  assert.equal(body.accessSignature, undefined, "oracle must not sign AccessProof");
+  assert.equal(
+    body.accessSignature,
+    undefined,
+    "oracle must not sign AccessProof",
+  );
   assert.equal(typeof body.signature, "string");
   assert.equal(body.signer, signerAddress);
 });

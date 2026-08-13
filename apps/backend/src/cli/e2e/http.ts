@@ -37,12 +37,15 @@ export async function getStep<T>(
     meta: { ok: boolean; status: number },
   ) => { summary: string; ok?: boolean },
 ): Promise<T> {
-  const { data: res, ok, status } = await fetchJson<T>(
-    `${backendUrl}${name}`,
-    { headers: authHeaders() },
-  );
+  const {
+    data: res,
+    ok,
+    status,
+  } = await fetchJson<T>(`${backendUrl}${name}`, { headers: authHeaders() });
   const s = summary(res, { ok, status });
-  console.log(`          ${JSON.stringify(res).slice(0, 500)}${JSON.stringify(res).length > 500 ? "…" : ""}`);
+  console.log(
+    `          ${JSON.stringify(res).slice(0, 500)}${JSON.stringify(res).length > 500 ? "…" : ""}`,
+  );
   pushStepResult(step, name, s.summary, s.ok ?? ok, undefined);
   if (s.ok === false || !ok) {
     throw new Error(`${name}: ${s.summary}`);
@@ -57,7 +60,11 @@ export async function postStep<T>(
   body: unknown,
   summary: (r: T) => { summary: string; txHash?: string; ok?: boolean },
 ): Promise<T> {
-  const { data: res, ok, status } = await fetchJson<T>(`${backendUrl}${name}`, {
+  const {
+    data: res,
+    ok,
+    status,
+  } = await fetchJson<T>(`${backendUrl}${name}`, {
     method: "POST",
     headers: authHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify(body),
