@@ -1,0 +1,36 @@
+{
+  "network": "0G Galileo testnet",
+  "chainId": 16602,
+  "deployedAt": "2026-08-13",
+  "purpose": "tx-merge prototype — 5 merged functions, e2e 12→6 on-chain txs",
+  "rpc": "https://evmrpc-testnet.0g.ai",
+  "script": "apps/contracts/script/RedeployVaultProcessor.s.sol",
+  "deployFlags": ["--legacy", "--gas-price 2000000000", "--slow"],
+  "contracts": {
+    "AxiomAgentNFT": { "impl": "0x560356097678cbb7D218c9693b4D4009f042dDe0", "proxy": "0x4e57e954D82A99Ee94c48e1bc804bA9D131a3622" },
+    "AxiomStrategyVault": { "impl": "0x7019274c34631944e7aB733B743d96Af9353246E", "proxy": "0x4D0A123fbb83F7a5f137ec0B720a5D69fCB52251" },
+    "AxiomPaymentProcessor": { "impl": "0x8407542B51B5c8387E96E641fF88B8B783a9b23C", "proxy": "0x9cDeDd99fe5F2E25f30920e092fC1C586716c0eC" }
+  },
+  "reused": {
+    "AxiomTeeVerifier": "0x1ba37125bba23b66b549ccb33bc9b4952fd4dcc4",
+    "AxiomMockUSDC": "0x354CA53bAB51C0666964fa050628d8351f8A7d19"
+  },
+  "wiringVerified": {
+    "nft.verifier()": "0x1ba37125bba23b66b549ccb33bc9b4952fd4dcc4",
+    "vault.nft()": "0x4e57e954D82A99Ee94c48e1bc804bA9D131a3622",
+    "processor.AXIOM_NFT()": "0x4e57e954D82A99Ee94c48e1bc804bA9D131a3622"
+  },
+  "e2eEvidence": {
+    "before": { "onChainTxs": 12, "wallSeconds": 143.6, "steps": 34 },
+    "after": { "onChainTxs": 6, "wallSeconds": 98.2, "steps": 29 },
+    "gate": "passed 11/11 critical",
+    "exitCode": 0
+  },
+  "newFunctions": [
+    "AxiomStrategyVault.depositSetStrategyAndWithdraw",
+    "AxiomPaymentProcessor.payAndWithdrawEarnings",
+    "AxiomAgentNFT.authorizeDelegateAndRevoke",
+    "AxiomAgentNFT.transferAndCleanExpiredProofs",
+    "IERC7857DataVerifier.cleanExpiredProofs(bytes32[])"
+  ]
+}
