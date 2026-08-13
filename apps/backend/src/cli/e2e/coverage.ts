@@ -3,6 +3,7 @@ import {
   keccak256,
   parseEther,
   parseUnits,
+  type TransactionReceipt,
   type TransactionResponse,
   type Wallet,
 } from "ethers";
@@ -353,11 +354,7 @@ export async function runMatrixViewSweepStep(deps: {
     tee.contract.owner(),
   ]);
   if (royaltyAlreadySet) {
-    markCovered(
-      "AxiomPaymentProcessor",
-      "setRoyaltyBps",
-      "reuse-royalty",
-    );
+    markCovered("AxiomPaymentProcessor", "setRoyaltyBps", "reuse-royalty");
     markScenarioCovered("payment.royalty", "reuse-royalty", { reads: 2 });
   }
   if (signer.toLowerCase() !== deps.teeSignerAddress.toLowerCase()) {
@@ -668,6 +665,7 @@ export async function runAuthorizeDelegateStep(deps: {
   const authReceipts = await pipelineWalletTxs(
     "authorizeUsage + delegateAccess + revokeAuthorization",
     authSteps,
+    { sequential: true }, // revoke depends on authorize mining — avoid ERC7857NotAuthorized race
   );
   const revokeIdx = authSteps.findIndex(
     (s) => s.name === "revokeAuthorization",
@@ -883,15 +881,11 @@ export async function runPostVaultCoveragePipeline(deps: {
       send: () => pay.contract.setRoyaltyBps(deps.tokenId, bps),
     });
   } else if (royaltyAlreadySet) {
-    markCovered(
-      "AxiomPaymentProcessor",
-      "setRoyaltyBps",
-      "reuse-royalty",
-    );
+    markCovered("AxiomPaymentProcessor", "setRoyaltyBps", "reuse-royalty");
     markScenarioCovered("payment.royalty", "reuse-royalty", { reads: 1 });
   }
 
-  const receipts = await pipelineWalletTxs("post-vault mega", steps);
+  const receipts = await runMegaWaves(steps);
   const receiptFor = (stepName: string) => {
     const idx = steps.findIndex((s) => s.name === stepName);
     if (idx < 0) return null;
@@ -996,6 +990,37 @@ export async function runPostVaultCoveragePipeline(deps: {
   }
 
   return vaultBal;
+}
+
+/**
+ * Executes the post-vault mega step batch in dependency waves:
+ * wave 1 = all independent steps (withdraw, authorize, delegate, update,
+ * royalty) sent as one batch; wave 2 = revokeAuthorization alone, since it
+ * requires authorize to have mined (else ERC7857NotAuthorized race on 0.5s
+ * blocks). Same operator wallet nonce-serializes mining, so batching gains
+ * nothing for dependent steps — only the race.
+ * Returns receipts in the original steps[] order.
+ */
+async function runMegaWaves(
+  steps: Parameters<typeof pipelineWalletTxs>[1],
+): Promise<TransactionReceipt[]> {
+  const revokeIdx = steps.findIndex((s) => s.name === "revokeAuthorization");
+  if (revokeIdx < 0) {
+    return pipelineWalletTxs("post-vault mega", steps);
+  }
+  const wave1 = steps.filter((_, i) => i !== revokeIdx);
+  const revoke = steps[revokeIdx]!;
+  const wave1Receipts = await pipelineWalletTxs("post-vault mega wave1", wave1);
+  const [revokeReceipt] = await pipelineWalletTxs(
+    "post-vault mega wave2 (revoke after authorize)",
+    [revoke],
+  );
+  const receipts: TransactionReceipt[] = [];
+  let wave1Idx = 0;
+  for (let i = 0; i < steps.length; i++) {
+    receipts[i] = i === revokeIdx ? revokeReceipt! : wave1Receipts[wave1Idx++]!;
+  }
+  return receipts;
 }
 
 function computeTransferProofNonce(finalResp: FinalResponse): `0x${string}` {

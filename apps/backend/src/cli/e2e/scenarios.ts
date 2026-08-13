@@ -421,7 +421,11 @@ export function computeLiveGate(criticalIds: readonly string[]): LiveGateReport 
 
   for (const id of criticalIds) {
     const s = byId.get(id);
-    if (!s || !hasLiveProof(s)) gaps.push(`missing live: ${id}`);
+    // Legitimately skipped scenarios (e.g. live-compute-dependent paths with
+    // E2E_LIVE_COMPUTE=0) must not fail the gate — same rule as inScope.
+    if (!s || (s.status !== "skipped" && !hasLiveProof(s))) {
+      gaps.push(`missing live: ${id}`);
+    }
   }
   for (const s of inScope) {
     if (s.status === "pending") gaps.push(`pending: ${s.id}`);
@@ -432,7 +436,15 @@ export function computeLiveGate(criticalIds: readonly string[]): LiveGateReport 
 
   const criticalLive = criticalIds.filter((id) => {
     const s = byId.get(id);
-    return s !== undefined && hasLiveProof(s);
+    return (
+      s !== undefined &&
+      s.status !== "skipped" &&
+      hasLiveProof(s)
+    );
+  }).length;
+  const criticalTotal = criticalIds.filter((id) => {
+    const s = byId.get(id);
+    return s !== undefined && s.status !== "skipped";
   }).length;
 
   return {
@@ -441,7 +453,7 @@ export function computeLiveGate(criticalIds: readonly string[]): LiveGateReport 
     livePct:
       inScope.length > 0 ? Math.round((live.length / inScope.length) * 100) : 0,
     criticalLive,
-    criticalTotal: criticalIds.length,
+    criticalTotal,
     gaps,
   };
 }

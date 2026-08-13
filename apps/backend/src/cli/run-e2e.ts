@@ -464,6 +464,26 @@ async function main(): Promise<void> {
     }
   }
 
+  // Transfer proofs = 2 backend/oracle HTTP round-trips (challenge→final);
+  // route reads only mint-time NFT state (ownerOf/balanceOf/dataHash), so it
+  // is independent of the payment/tick/DA/perf lanes. Start it NOW to overlap
+  // chain mining; iTransferFrom (ownership move) still awaits it at the end.
+  const transferHttp = E2E_SKIP_TRANSFER
+    ? null
+    : runTransferSteps({
+        backendUrl: BACKEND_URL,
+        postStep,
+        deployer: operator,
+        receiver,
+        receiverPubKey64,
+        to,
+        tokenId: tokenIdStr,
+        dataHash: uploadRoot,
+        sealedKey,
+        agentNft: AGENT_NFT,
+        eip712Domain,
+      });
+
   if (RUN_PAYMENT && !paymentRunnable) {
     if (E2E_STRICT_FUNDING) {
       throw new Error(
@@ -597,19 +617,7 @@ async function main(): Promise<void> {
       dataHash: uploadRoot,
       savedAt: new Date().toISOString(),
     });
-    const finalResp = await runTransferSteps({
-      backendUrl: BACKEND_URL,
-      postStep,
-      deployer: operator,
-      receiver,
-      receiverPubKey64,
-      to,
-      tokenId: tokenIdStr,
-      dataHash: uploadRoot,
-      sealedKey,
-      agentNft: AGENT_NFT,
-      eip712Domain,
-    });
+    const finalResp = await transferHttp!;
     await runOnChainTransferStep({
       agentNft: AGENT_NFT,
       deployer: operator,
@@ -628,6 +636,14 @@ async function main(): Promise<void> {
     });
   }
 
+  if (!E2E_LIVE_COMPUTE) {
+    // Without live compute, these scenarios cannot produce live proof; mark
+    // them skipped regardless of E2E_CHAT_BENCH so the live gate does not
+    // fail on them (runLiveChatToolsBench also short-circuits on !liveCompute).
+    markScenarioSkipped("compute.chat-tools", "E2E_LIVE_COMPUTE=0");
+    markScenarioSkipped("orchestrator.tick-live", "E2E_LIVE_COMPUTE=0");
+  }
+
   if (process.env.E2E_CHAT_BENCH === "0") {
     for (const id of [
       "chat.tools-read",
@@ -639,10 +655,6 @@ async function main(): Promise<void> {
       "chat.model-switch",
     ] as const) {
       markScenarioSkipped(id, "E2E_CHAT_BENCH=0");
-    }
-    if (!E2E_LIVE_COMPUTE) {
-      markScenarioSkipped("compute.chat-tools", "E2E_LIVE_COMPUTE=0");
-      markScenarioSkipped("orchestrator.tick-live", "E2E_LIVE_COMPUTE=0");
     }
   } else {
     const chatReport = await runChatBench({
