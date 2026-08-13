@@ -19,7 +19,7 @@ type PaymentProcessorMethods = {
     amount: bigint,
   ): Promise<TransactionResponse>;
   withdrawAgentEarnings(): Promise<TransactionResponse>;
-  setRoyaltyBpsPermitted(
+  setRoyaltyBps(
     agentTokenId: bigint,
     bps: number,
   ): Promise<TransactionResponse>;
@@ -122,10 +122,10 @@ export class PaymentProcessorClient {
     agentTokenId: bigint,
     bps: number,
   ): { to: string; data: string; value: bigint } {
-    const data = this.payment.iface.encodeFunctionData(
-      "setRoyaltyBpsPermitted",
-      [agentTokenId, bps],
-    );
+    const data = this.payment.iface.encodeFunctionData("setRoyaltyBps", [
+      agentTokenId,
+      bps,
+    ]);
     return { to: this.address, data, value: 0n };
   }
 

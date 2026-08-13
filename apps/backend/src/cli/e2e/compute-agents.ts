@@ -187,7 +187,7 @@ export async function runLiveComputeTickStep(deps: {
       error?: string;
     }>(`${deps.backendUrl}/v1/orchestrator/tick`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...(process.env.AXIOM_API_KEY ? { "x-api-key": process.env.AXIOM_API_KEY } : {}) },
       body: JSON.stringify({
         vault: deps.vault,
         agentNft: deps.agentNft,
@@ -296,12 +296,16 @@ export async function runDataAvailabilityStep(deps: {
   vaultBalanceWei: bigint;
 }): Promise<void> {
   console.log("\n[Compute] POST /v1/orchestrator/tick (data availability probe)");
+  const daApiKey = process.env.AXIOM_API_KEY ?? "";
   const { data: res, ok, status } = await fetchJson<{
     storage?: { rootHash?: string; size?: number };
     onchain?: { vaultBalance?: string };
   }>(`${deps.backendUrl}/v1/orchestrator/tick`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(daApiKey ? { "x-api-key": daApiKey } : {}),
+    },
     body: JSON.stringify({
       vault: deps.vault,
       agentNft: deps.agentNft,

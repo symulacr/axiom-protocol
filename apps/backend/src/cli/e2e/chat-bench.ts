@@ -522,6 +522,7 @@ async function resolveBenchModels(backendUrl: string): Promise<string[]> {
   const primary = await resolveE2eComputeModel(backendUrl);
   const { ok, data } = await fetchJson<{ services?: Array<{ model: string }> }>(
     `${backendUrl}/v1/compute/providers`,
+    { ...(process.env.AXIOM_API_KEY ? { headers: { "x-api-key": process.env.AXIOM_API_KEY } } : {}) },
   );
   if (!ok) return [primary];
   const chatModels = (data.services ?? [])

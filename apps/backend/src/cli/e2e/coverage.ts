@@ -54,8 +54,12 @@ type AgentNftExtended = {
   verifier(): Promise<string>;
   pendingVerifier(): Promise<string>;
   pendingVerifierExecutableAt(): Promise<bigint>;
-  intelligentDataOf(tokenId: bigint): Promise<Array<{ dataDescription: string; dataHash: string }>>;
-  intelligentDatasOf(tokenId: bigint): Promise<Array<{ dataDescription: string; dataHash: string }>>;
+  intelligentDataOf(
+    tokenId: bigint,
+  ): Promise<Array<{ dataDescription: string; dataHash: string }>>;
+  intelligentDatasOf(
+    tokenId: bigint,
+  ): Promise<Array<{ dataDescription: string; dataHash: string }>>;
   mintFee(): Promise<bigint>;
   creatorOf(tokenId: bigint): Promise<string>;
   ownerOf(tokenId: bigint): Promise<string>;
@@ -65,7 +69,10 @@ type AgentNftExtended = {
     newDatas: Array<{ dataDescription: string; dataHash: string }>,
   ): Promise<TransactionResponse>;
   authorizeUsage(tokenId: bigint, to: string): Promise<TransactionResponse>;
-  revokeAuthorization(tokenId: bigint, user: string): Promise<TransactionResponse>;
+  revokeAuthorization(
+    tokenId: bigint,
+    user: string,
+  ): Promise<TransactionResponse>;
   authorizedUsersOf(tokenId: bigint): Promise<string[]>;
   delegateAccess(assistant: string): Promise<TransactionResponse>;
   getDelegateAccess(user: string): Promise<string>;
@@ -77,9 +84,18 @@ type VaultCov = {
 };
 
 type PaymentCov = {
-  setRoyaltyBpsPermitted(agentTokenId: bigint, newBps: bigint): Promise<TransactionResponse>;
-  payForAgent(agentTokenId: bigint, amount: bigint): Promise<TransactionResponse>;
-  payComputeProvider(provider: string, amount: bigint): Promise<TransactionResponse>;
+  setRoyaltyBps(
+    agentTokenId: bigint,
+    newBps: bigint,
+  ): Promise<TransactionResponse>;
+  payForAgent(
+    agentTokenId: bigint,
+    amount: bigint,
+  ): Promise<TransactionResponse>;
+  payComputeProvider(
+    provider: string,
+    amount: bigint,
+  ): Promise<TransactionResponse>;
   withdrawAgentEarnings(): Promise<TransactionResponse>;
   royaltyBpsOf(agentTokenId: bigint): Promise<bigint>;
   royaltyBpsSet(agentTokenId: bigint): Promise<boolean>;
@@ -126,14 +142,26 @@ export async function runMatrixViewSweepStep(deps: {
     AGENT_NFT_EXTENDED_ABI,
     deps.deployer,
   );
-  const vault = new TypedContract<VaultCov>(deps.vault, VAULT_ABI, deps.deployer);
+  const vault = new TypedContract<VaultCov>(
+    deps.vault,
+    VAULT_ABI,
+    deps.deployer,
+  );
   const pay = new TypedContract<PaymentCov>(
     deps.paymentProcessor,
     PAYMENT_PROCESSOR_ABI,
     deps.deployer,
   );
-  const tee = new TypedContract<TeeCov>(deps.teeVerifier, TEE_VERIFIER_ABI, deps.deployer);
-  const token = new TypedContract<Erc20Cov>(deps.paymentToken, ERC20_ABI, deps.deployer);
+  const tee = new TypedContract<TeeCov>(
+    deps.teeVerifier,
+    TEE_VERIFIER_ABI,
+    deps.deployer,
+  );
+  const token = new TypedContract<Erc20Cov>(
+    deps.paymentToken,
+    ERC20_ABI,
+    deps.deployer,
+  );
 
   const [
     name,
@@ -171,7 +199,11 @@ export async function runMatrixViewSweepStep(deps: {
     tee.contract.domainSeparator(),
     tee.contract.registeredSigner(),
     token.contract.balanceOf(deps.deployer.address),
-    hasContractFunction(provider, deps.agentNft, "function creatorOf(uint256) view returns (address)").then((ok) => (ok ? nft.contract.creatorOf(deps.tokenId) : null)),
+    hasContractFunction(
+      provider,
+      deps.agentNft,
+      "function creatorOf(uint256) view returns (address)",
+    ).then((ok) => (ok ? nft.contract.creatorOf(deps.tokenId) : null)),
     nft.contract.ownerOf(deps.tokenId),
   ]);
   void storageInfo;
@@ -189,16 +221,51 @@ export async function runMatrixViewSweepStep(deps: {
   if (verifierAddr.toLowerCase() !== deps.teeVerifier.toLowerCase()) {
     throw new Error(`verifier mismatch ${verifierAddr} != ${deps.teeVerifier}`);
   }
-  const [hasPendingVerifier, hasPendingVerifierAt, hasPendingTreasury, hasPendingTreasuryAt, hasProtocolFeeBps, hasTotalOutstanding, hasAdminDelay] =
-    await Promise.all([
-      hasContractFunction(provider, deps.agentNft, "function pendingVerifier() view returns (address)"),
-      hasContractFunction(provider, deps.agentNft, "function pendingVerifierExecutableAt() view returns (uint256)"),
-      hasContractFunction(provider, deps.paymentProcessor, "function pendingProtocolTreasury() view returns (address)"),
-      hasContractFunction(provider, deps.paymentProcessor, "function pendingTreasuryEffectiveAt() view returns (uint256)"),
-      hasContractFunction(provider, deps.paymentProcessor, "function protocolFeeBps() view returns (uint256)"),
-      hasContractFunction(provider, deps.paymentProcessor, "function totalOutstandingEarnings() view returns (uint256)"),
-      hasContractFunction(provider, deps.teeVerifier, "function ADMIN_DELAY() view returns (uint256)"),
-    ]);
+  const [
+    hasPendingVerifier,
+    hasPendingVerifierAt,
+    hasPendingTreasury,
+    hasPendingTreasuryAt,
+    hasProtocolFeeBps,
+    hasTotalOutstanding,
+    hasAdminDelay,
+  ] = await Promise.all([
+    hasContractFunction(
+      provider,
+      deps.agentNft,
+      "function pendingVerifier() view returns (address)",
+    ),
+    hasContractFunction(
+      provider,
+      deps.agentNft,
+      "function pendingVerifierExecutableAt() view returns (uint256)",
+    ),
+    hasContractFunction(
+      provider,
+      deps.paymentProcessor,
+      "function pendingProtocolTreasury() view returns (address)",
+    ),
+    hasContractFunction(
+      provider,
+      deps.paymentProcessor,
+      "function pendingTreasuryEffectiveAt() view returns (uint256)",
+    ),
+    hasContractFunction(
+      provider,
+      deps.paymentProcessor,
+      "function protocolFeeBps() view returns (uint256)",
+    ),
+    hasContractFunction(
+      provider,
+      deps.paymentProcessor,
+      "function totalOutstandingEarnings() view returns (uint256)",
+    ),
+    hasContractFunction(
+      provider,
+      deps.teeVerifier,
+      "function ADMIN_DELAY() view returns (uint256)",
+    ),
+  ]);
   if (hasPendingVerifier) {
     await nft.contract.pendingVerifier();
     markCovered("AxiomAgentNFT", "pendingVerifier", "view-sweep");
@@ -209,7 +276,11 @@ export async function runMatrixViewSweepStep(deps: {
     await nft.contract.pendingVerifierExecutableAt();
     markCovered("AxiomAgentNFT", "pendingVerifierExecutableAt", "view-sweep");
   } else {
-    markSkipped("AxiomAgentNFT", "pendingVerifierExecutableAt", LEGACY_DEPLOY_REASON);
+    markSkipped(
+      "AxiomAgentNFT",
+      "pendingVerifierExecutableAt",
+      LEGACY_DEPLOY_REASON,
+    );
   }
   if (dataSingular.length === 0) throw new Error("intelligentDataOf empty");
   if (!supportsErc165 || !supportsErc721) {
@@ -221,30 +292,58 @@ export async function runMatrixViewSweepStep(deps: {
   markCovered("AxiomStrategyVault", "strategyOf", "view-sweep");
   if (hasPendingTreasury) {
     await pay.contract.pendingProtocolTreasury();
-    markCovered("AxiomPaymentProcessor", "pendingProtocolTreasury", "view-sweep");
+    markCovered(
+      "AxiomPaymentProcessor",
+      "pendingProtocolTreasury",
+      "view-sweep",
+    );
   } else {
-    markSkipped("AxiomPaymentProcessor", "pendingProtocolTreasury", LEGACY_DEPLOY_REASON);
+    markSkipped(
+      "AxiomPaymentProcessor",
+      "pendingProtocolTreasury",
+      LEGACY_DEPLOY_REASON,
+    );
   }
   if (hasPendingTreasuryAt) {
     await pay.contract.pendingTreasuryEffectiveAt();
-    markCovered("AxiomPaymentProcessor", "pendingTreasuryEffectiveAt", "view-sweep");
+    markCovered(
+      "AxiomPaymentProcessor",
+      "pendingTreasuryEffectiveAt",
+      "view-sweep",
+    );
   } else {
-    markSkipped("AxiomPaymentProcessor", "pendingTreasuryEffectiveAt", LEGACY_DEPLOY_REASON);
+    markSkipped(
+      "AxiomPaymentProcessor",
+      "pendingTreasuryEffectiveAt",
+      LEGACY_DEPLOY_REASON,
+    );
   }
   if (hasProtocolFeeBps) {
     await pay.contract.protocolFeeBps();
     markCovered("AxiomPaymentProcessor", "protocolFeeBps", "view-sweep");
   } else {
-    markSkipped("AxiomPaymentProcessor", "protocolFeeBps", LEGACY_DEPLOY_REASON);
+    markSkipped(
+      "AxiomPaymentProcessor",
+      "protocolFeeBps",
+      LEGACY_DEPLOY_REASON,
+    );
   }
   if (payToken.toLowerCase() !== deps.paymentToken.toLowerCase()) {
     throw new Error(`paymentToken mismatch ${payToken}`);
   }
   if (hasTotalOutstanding) {
     await pay.contract.totalOutstandingEarnings();
-    markCovered("AxiomPaymentProcessor", "totalOutstandingEarnings", "view-sweep");
+    markCovered(
+      "AxiomPaymentProcessor",
+      "totalOutstandingEarnings",
+      "view-sweep",
+    );
   } else {
-    markSkipped("AxiomPaymentProcessor", "totalOutstandingEarnings", LEGACY_DEPLOY_REASON);
+    markSkipped(
+      "AxiomPaymentProcessor",
+      "totalOutstandingEarnings",
+      LEGACY_DEPLOY_REASON,
+    );
   }
   const [, royaltyAlreadySet] = await Promise.all([
     pay.contract.royaltyBpsOf(deps.tokenId),
@@ -254,11 +353,17 @@ export async function runMatrixViewSweepStep(deps: {
     tee.contract.owner(),
   ]);
   if (royaltyAlreadySet) {
-    markCovered("AxiomPaymentProcessor", "setRoyaltyBpsPermitted", "reuse-royalty");
+    markCovered(
+      "AxiomPaymentProcessor",
+      "setRoyaltyBps",
+      "reuse-royalty",
+    );
     markScenarioCovered("payment.royalty", "reuse-royalty", { reads: 2 });
   }
   if (signer.toLowerCase() !== deps.teeSignerAddress.toLowerCase()) {
-    throw new Error(`registeredSigner ${signer} != oracle ${deps.teeSignerAddress}`);
+    throw new Error(
+      `registeredSigner ${signer} != oracle ${deps.teeSignerAddress}`,
+    );
   }
   if (hasAdminDelay) {
     await tee.contract.ADMIN_DELAY();
@@ -267,8 +372,13 @@ export async function runMatrixViewSweepStep(deps: {
     markSkipped("AxiomTeeVerifier", "ADMIN_DELAY", LEGACY_DEPLOY_REASON);
   }
 
-  if (creator && creator.toLowerCase() !== deps.deployer.address.toLowerCase()) {
-    throw new Error(`creatorOf ${creator} != operator ${deps.deployer.address}`);
+  if (
+    creator &&
+    creator.toLowerCase() !== deps.deployer.address.toLowerCase()
+  ) {
+    throw new Error(
+      `creatorOf ${creator} != operator ${deps.deployer.address}`,
+    );
   }
   if (owner.toLowerCase() !== deps.deployer.address.toLowerCase()) {
     throw new Error(`ownerOf ${owner} != operator ${deps.deployer.address}`);
@@ -320,10 +430,17 @@ export async function runVaultWithdrawStep(deps: {
   withdrawWei?: bigint;
 }): Promise<bigint> {
   const amount = deps.withdrawWei ?? parseEther("0.0001");
-  console.log(`\n[Parity] Vault withdraw ${amount} wei (tokenId=${deps.tokenId})`);
-  const vault = new TypedContract<VaultCov>(deps.vault, VAULT_ABI, deps.deployer);
+  console.log(
+    `\n[Parity] Vault withdraw ${amount} wei (tokenId=${deps.tokenId})`,
+  );
+  const vault = new TypedContract<VaultCov>(
+    deps.vault,
+    VAULT_ABI,
+    deps.deployer,
+  );
   const before = await vault.contract.balanceOf(deps.tokenId);
-  if (before < amount) throw new Error(`vault withdraw: balance ${before} < ${amount}`);
+  if (before < amount)
+    throw new Error(`vault withdraw: balance ${before} < ${amount}`);
   const tx = await vault.contract.withdraw(deps.tokenId, amount);
   const receipt = assertReceiptOk(await tx.wait(), "vault withdraw");
   const after = await vault.contract.balanceOf(deps.tokenId);
@@ -332,7 +449,13 @@ export async function runVaultWithdrawStep(deps: {
   }
   markScenarioCovered("vault.withdraw", "vault-withdraw", { txs: 1, reads: 2 });
   markCovered("AxiomStrategyVault", "withdraw", "vault-withdraw");
-  recordReceipt(13, "AxiomStrategyVault.withdraw", `balance ${before} -> ${after}`, receipt, deps.chainId);
+  recordReceipt(
+    13,
+    "AxiomStrategyVault.withdraw",
+    `balance ${before} -> ${after}`,
+    receipt,
+    deps.chainId,
+  );
   return after;
 }
 
@@ -346,7 +469,11 @@ export async function runPaymentPipelineStep(deps: {
   payAmount?: bigint;
   computeAmount?: bigint;
 }): Promise<void> {
-  const token = new TypedContract<Erc20Cov>(deps.paymentToken, ERC20_ABI, deps.deployer);
+  const token = new TypedContract<Erc20Cov>(
+    deps.paymentToken,
+    ERC20_ABI,
+    deps.deployer,
+  );
   const pay = new TypedContract<PaymentCov>(
     deps.paymentProcessor,
     PAYMENT_PROCESSOR_ABI,
@@ -376,7 +503,9 @@ export async function runPaymentPipelineStep(deps: {
   console.log(
     `\n[Parity] payment pipeline payForAgent(${payAmount}) + payComputeProvider(${computeAmount})`,
   );
-  const earningsBefore = await pay.contract.agentEarningsOf(deps.deployer.address);
+  const earningsBefore = await pay.contract.agentEarningsOf(
+    deps.deployer.address,
+  );
   const providerBalBefore = await token.contract.balanceOf(deps.provider);
   const need = payAmount > computeAmount ? payAmount : computeAmount;
   await ensureErc20Allowance({
@@ -400,9 +529,13 @@ export async function runPaymentPipelineStep(deps: {
       },
     ],
   );
-  const earningsAfter = await pay.contract.agentEarningsOf(deps.deployer.address);
+  const earningsAfter = await pay.contract.agentEarningsOf(
+    deps.deployer.address,
+  );
   if (earningsAfter <= earningsBefore) {
-    throw new Error(`payForAgent: earnings ${earningsBefore} -> ${earningsAfter}`);
+    throw new Error(
+      `payForAgent: earnings ${earningsBefore} -> ${earningsAfter}`,
+    );
   }
   const providerBalAfter = await token.contract.balanceOf(deps.provider);
   if (providerBalAfter < providerBalBefore + computeAmount) {
@@ -412,10 +545,26 @@ export async function runPaymentPipelineStep(deps: {
   markScenarioCovered("payment.compute", "payComputeProvider", { txs: 1 });
   markCovered("AxiomPaymentProcessor", "payForAgent", "payForAgent");
   markCovered("AxiomPaymentProcessor", "agentEarningsOf", "payForAgent");
-  markCovered("AxiomPaymentProcessor", "payComputeProvider", "payComputeProvider");
+  markCovered(
+    "AxiomPaymentProcessor",
+    "payComputeProvider",
+    "payComputeProvider",
+  );
   markCovered("MockUSDC", "transfer", "payComputeProvider");
-  recordReceipt(9, "AxiomPaymentProcessor.payForAgent", `earnings ${earningsBefore} -> ${earningsAfter}`, payReceipt!, deps.chainId);
-  recordReceipt(15, "payComputeProvider", `provider +${providerBalAfter - providerBalBefore}`, computeReceipt!, deps.chainId);
+  recordReceipt(
+    9,
+    "AxiomPaymentProcessor.payForAgent",
+    `earnings ${earningsBefore} -> ${earningsAfter}`,
+    payReceipt!,
+    deps.chainId,
+  );
+  recordReceipt(
+    15,
+    "payComputeProvider",
+    `provider +${providerBalAfter - providerBalBefore}`,
+    computeReceipt!,
+    deps.chainId,
+  );
 }
 
 export async function runWithdrawEarningsStep(deps: {
@@ -430,19 +579,39 @@ export async function runWithdrawEarningsStep(deps: {
     PAYMENT_PROCESSOR_ABI,
     deps.deployer,
   );
-  const token = new TypedContract<Erc20Cov>(deps.paymentToken, ERC20_ABI, deps.deployer);
+  const token = new TypedContract<Erc20Cov>(
+    deps.paymentToken,
+    ERC20_ABI,
+    deps.deployer,
+  );
   const pending = await pay.contract.agentEarningsOf(deps.deployer.address);
-  if (pending === 0n) throw new Error("withdrawAgentEarnings: no earnings to withdraw");
+  if (pending === 0n)
+    throw new Error("withdrawAgentEarnings: no earnings to withdraw");
   const balBefore = await token.contract.balanceOf(deps.deployer.address);
   const tx = await pay.contract.withdrawAgentEarnings();
   const receipt = assertReceiptOk(await tx.wait(), "withdrawAgentEarnings");
   const balAfter = await token.contract.balanceOf(deps.deployer.address);
   if (balAfter < balBefore + pending) {
-    throw new Error(`withdraw did not credit ${pending} (got ${balAfter - balBefore})`);
+    throw new Error(
+      `withdraw did not credit ${pending} (got ${balAfter - balBefore})`,
+    );
   }
-  markScenarioCovered("payment.withdraw", "withdrawEarnings", { txs: 1, reads: 2 });
-  markCovered("AxiomPaymentProcessor", "withdrawAgentEarnings", "withdrawEarnings");
-  recordReceipt(16, "withdrawAgentEarnings", `withdrew ${pending}`, receipt, deps.chainId);
+  markScenarioCovered("payment.withdraw", "withdrawEarnings", {
+    txs: 1,
+    reads: 2,
+  });
+  markCovered(
+    "AxiomPaymentProcessor",
+    "withdrawAgentEarnings",
+    "withdrawEarnings",
+  );
+  recordReceipt(
+    16,
+    "withdrawAgentEarnings",
+    `withdrew ${pending}`,
+    receipt,
+    deps.chainId,
+  );
 }
 
 async function buildAuthorizeDelegatePipelineSteps(
@@ -461,17 +630,18 @@ async function buildAuthorizeDelegatePipelineSteps(
       send: () => nft.contract.authorizeUsage(tokenId, delegateAddress),
     });
   }
-  steps.push(
-    {
-      name: "delegateAccess",
-      send: () => nft.contract.delegateAccess(delegateAddress),
-    },
-    {
+  steps.push({
+    name: "delegateAccess",
+    send: () => nft.contract.delegateAccess(delegateAddress),
+  });
+  if (!alreadyAuthorized) {
+    // Revoking a user that was never authorized reverts ERC7857NotAuthorized —
+    // only revoke what this run actually authorized.
+    steps.push({
       name: "revokeAuthorization",
-      send: () =>
-        nft.contract.revokeAuthorization(tokenId, delegateAddress),
-    },
-  );
+      send: () => nft.contract.revokeAuthorization(tokenId, delegateAddress),
+    });
+  }
   return steps;
 }
 
@@ -482,7 +652,9 @@ export async function runAuthorizeDelegateStep(deps: {
   delegateAddress: string;
   chainId: number;
 }): Promise<void> {
-  console.log(`\n[Parity] authorizeUsage + delegateAccess (${deps.delegateAddress})`);
+  console.log(
+    `\n[Parity] authorizeUsage + delegateAccess (${deps.delegateAddress})`,
+  );
   const nft = new TypedContract<AgentNftExtended>(
     deps.agentNft,
     AGENT_NFT_EXTENDED_ABI,
@@ -497,7 +669,9 @@ export async function runAuthorizeDelegateStep(deps: {
     "authorizeUsage + delegateAccess + revokeAuthorization",
     authSteps,
   );
-  const revokeIdx = authSteps.findIndex((s) => s.name === "revokeAuthorization");
+  const revokeIdx = authSteps.findIndex(
+    (s) => s.name === "revokeAuthorization",
+  );
   const revReceipt = authReceipts[revokeIdx]!;
 
   markScenarioCovered("agent.authorize", "authorize", { txs: 1, reads: 1 });
@@ -506,19 +680,32 @@ export async function runAuthorizeDelegateStep(deps: {
 
   const assistant = await nft.contract.getDelegateAccess(deps.deployer.address);
   if (assistant.toLowerCase() !== deps.delegateAddress.toLowerCase()) {
-    throw new Error(`getDelegateAccess ${assistant} != ${deps.delegateAddress}`);
+    throw new Error(
+      `getDelegateAccess ${assistant} != ${deps.delegateAddress}`,
+    );
   }
   markScenarioCovered("agent.delegate", "delegateAccess", { txs: 1, reads: 1 });
   markCovered("AxiomAgentNFT", "delegateAccess", "delegateAccess");
   markCovered("AxiomAgentNFT", "getDelegateAccess", "delegateAccess");
   const afterRevoke = await nft.contract.authorizedUsersOf(deps.tokenId);
   if (afterRevoke.length !== 0) {
-    throw new Error(`authorizedUsersOf not cleared after revoke: ${afterRevoke.join(",")}`);
+    throw new Error(
+      `authorizedUsersOf not cleared after revoke: ${afterRevoke.join(",")}`,
+    );
   }
-  markScenarioCovered("agent.revoke", "revokeAuthorization", { txs: 1, reads: 1 });
+  markScenarioCovered("agent.revoke", "revokeAuthorization", {
+    txs: 1,
+    reads: 1,
+  });
   markCovered("AxiomAgentNFT", "revokeAuthorization", "revokeAuthorization");
 
-  recordReceipt(17, "authorize/delegate/revoke", `delegate=${deps.delegateAddress.slice(0, 10)}…`, revReceipt, deps.chainId);
+  recordReceipt(
+    17,
+    "authorize/delegate/revoke",
+    `delegate=${deps.delegateAddress.slice(0, 10)}…`,
+    revReceipt,
+    deps.chainId,
+  );
 }
 
 export async function runUpdateRoyaltyPipelineStep(deps: {
@@ -532,7 +719,7 @@ export async function runUpdateRoyaltyPipelineStep(deps: {
 }): Promise<void> {
   const bps = deps.royaltyBps ?? 8000n;
   console.log(
-    `\n[Parity] pipeline update + setRoyaltyBpsPermitted bps=${bps} tokenId=${deps.tokenId}`,
+    `\n[Parity] pipeline update + setRoyaltyBps bps=${bps} tokenId=${deps.tokenId}`,
   );
   const nft = new TypedContract<AgentNftExtended>(
     deps.agentNft,
@@ -545,7 +732,7 @@ export async function runUpdateRoyaltyPipelineStep(deps: {
     deps.deployer,
   );
   const updateRoyaltyReceipts = await pipelineWalletTxs(
-    "update + setRoyaltyBpsPermitted",
+    "update + setRoyaltyBps",
     [
       {
         name: "AxiomAgentNFT.update",
@@ -555,8 +742,8 @@ export async function runUpdateRoyaltyPipelineStep(deps: {
           ]),
       },
       {
-        name: "setRoyaltyBpsPermitted",
-        send: () => pay.contract.setRoyaltyBpsPermitted(deps.tokenId, bps),
+        name: "setRoyaltyBps",
+        send: () => pay.contract.setRoyaltyBps(deps.tokenId, bps),
       },
     ],
   );
@@ -576,9 +763,21 @@ export async function runUpdateRoyaltyPipelineStep(deps: {
   markScenarioCovered("agent.update", "update-data", { txs: 1, reads: 1 });
   markScenarioCovered("payment.royalty", "royalty", { txs: 1, reads: 2 });
   markCovered("AxiomAgentNFT", "update", "update-data");
-  markCovered("AxiomPaymentProcessor", "setRoyaltyBpsPermitted", "royalty");
-  recordReceipt(18, "AxiomAgentNFT.update", "description=strategy-v2", updateReceipt, deps.chainId);
-  recordReceipt(14, "setRoyaltyBpsPermitted", `royaltyBps=${onChain}`, royaltyReceipt, deps.chainId);
+  markCovered("AxiomPaymentProcessor", "setRoyaltyBps", "royalty");
+  recordReceipt(
+    18,
+    "AxiomAgentNFT.update",
+    "description=strategy-v2",
+    updateReceipt,
+    deps.chainId,
+  );
+  recordReceipt(
+    14,
+    "setRoyaltyBps",
+    `royaltyBps=${onChain}`,
+    royaltyReceipt,
+    deps.chainId,
+  );
 }
 
 export async function runUpdateDataStep(deps: {
@@ -604,7 +803,13 @@ export async function runUpdateDataStep(deps: {
   }
   markScenarioCovered("agent.update", "update-data", { txs: 1, reads: 1 });
   markCovered("AxiomAgentNFT", "update", "update-data");
-  recordReceipt(18, "AxiomAgentNFT.update", "description=strategy-v2", receipt, deps.chainId);
+  recordReceipt(
+    18,
+    "AxiomAgentNFT.update",
+    "description=strategy-v2",
+    receipt,
+    deps.chainId,
+  );
 }
 
 export async function runPostVaultCoveragePipeline(deps: {
@@ -624,7 +829,11 @@ export async function runPostVaultCoveragePipeline(deps: {
   const withRoyalty = deps.withRoyalty !== false;
   const bps = deps.royaltyBps ?? 8000n;
   const withdrawAmount = deps.withdrawWei ?? parseEther("0.0001");
-  const vault = new TypedContract<VaultCov>(deps.vault, VAULT_ABI, deps.deployer);
+  const vault = new TypedContract<VaultCov>(
+    deps.vault,
+    VAULT_ABI,
+    deps.deployer,
+  );
   const nft = new TypedContract<AgentNftExtended>(
     deps.agentNft,
     AGENT_NFT_EXTENDED_ABI,
@@ -670,11 +879,15 @@ export async function runPostVaultCoveragePipeline(deps: {
     : false;
   if (withRoyalty && !royaltyAlreadySet) {
     steps.push({
-      name: "setRoyaltyBpsPermitted",
-      send: () => pay.contract.setRoyaltyBpsPermitted(deps.tokenId, bps),
+      name: "setRoyaltyBps",
+      send: () => pay.contract.setRoyaltyBps(deps.tokenId, bps),
     });
   } else if (royaltyAlreadySet) {
-    markCovered("AxiomPaymentProcessor", "setRoyaltyBpsPermitted", "reuse-royalty");
+    markCovered(
+      "AxiomPaymentProcessor",
+      "setRoyaltyBps",
+      "reuse-royalty",
+    );
     markScenarioCovered("payment.royalty", "reuse-royalty", { reads: 1 });
   }
 
@@ -694,14 +907,25 @@ export async function runPostVaultCoveragePipeline(deps: {
         `vault withdraw: balance ${vaultBal} != ${balanceBefore - withdrawAmount}`,
       );
     }
-    markScenarioCovered("vault.withdraw", "vault-withdraw", { txs: 1, reads: 2 });
+    markScenarioCovered("vault.withdraw", "vault-withdraw", {
+      txs: 1,
+      reads: 2,
+    });
     markCovered("AxiomStrategyVault", "withdraw", "vault-withdraw");
-    recordReceipt(13, "AxiomStrategyVault.withdraw", `balance ${balanceBefore} -> ${vaultBal}`, receipts[0]!, deps.chainId);
+    recordReceipt(
+      13,
+      "AxiomStrategyVault.withdraw",
+      `balance ${balanceBefore} -> ${vaultBal}`,
+      receipts[0]!,
+      deps.chainId,
+    );
   }
 
   const assistant = await nft.contract.getDelegateAccess(deps.deployer.address);
   if (assistant.toLowerCase() !== deps.delegateAddress.toLowerCase()) {
-    throw new Error(`getDelegateAccess ${assistant} != ${deps.delegateAddress}`);
+    throw new Error(
+      `getDelegateAccess ${assistant} != ${deps.delegateAddress}`,
+    );
   }
   const afterRevoke = await nft.contract.authorizedUsersOf(deps.tokenId);
   if (afterRevoke.length !== 0) {
@@ -710,7 +934,10 @@ export async function runPostVaultCoveragePipeline(deps: {
   markCovered("AxiomAgentNFT", "authorizedUsersOf", "authorize");
   markScenarioCovered("agent.authorize", "authorize", { txs: 1, reads: 1 });
   markScenarioCovered("agent.delegate", "delegateAccess", { txs: 1, reads: 1 });
-  markScenarioCovered("agent.revoke", "revokeAuthorization", { txs: 1, reads: 1 });
+  markScenarioCovered("agent.revoke", "revokeAuthorization", {
+    txs: 1,
+    reads: 1,
+  });
   markCovered("AxiomAgentNFT", "authorizeUsage", "authorize");
   markCovered("AxiomAgentNFT", "delegateAccess", "delegateAccess");
   markCovered("AxiomAgentNFT", "revokeAuthorization", "revokeAuthorization");
@@ -731,8 +958,8 @@ export async function runPostVaultCoveragePipeline(deps: {
     markScenarioCovered("payment.royalty", "royalty", { txs: 1, reads: 2 });
     markCovered(
       "AxiomPaymentProcessor",
-      "setRoyaltyBpsPermitted",
-      steps.some((s) => s.name === "setRoyaltyBpsPermitted")
+      "setRoyaltyBps",
+      steps.some((s) => s.name === "setRoyaltyBps")
         ? "royalty"
         : "reuse-royalty",
     );
@@ -741,13 +968,31 @@ export async function runPostVaultCoveragePipeline(deps: {
   const revokeReceipt = receiptFor("revokeAuthorization");
   const updateReceipt = receiptFor("AxiomAgentNFT.update");
   if (revokeReceipt) {
-    recordReceipt(17, "authorize/delegate/revoke", `delegate=${deps.delegateAddress.slice(0, 10)}…`, revokeReceipt, deps.chainId);
+    recordReceipt(
+      17,
+      "authorize/delegate/revoke",
+      `delegate=${deps.delegateAddress.slice(0, 10)}…`,
+      revokeReceipt,
+      deps.chainId,
+    );
   }
   if (updateReceipt) {
-    recordReceipt(18, "AxiomAgentNFT.update", "description=strategy-v2", updateReceipt, deps.chainId);
+    recordReceipt(
+      18,
+      "AxiomAgentNFT.update",
+      "description=strategy-v2",
+      updateReceipt,
+      deps.chainId,
+    );
   }
   if (withRoyalty) {
-    recordReceipt(14, "setRoyaltyBpsPermitted", `royaltyBps=${bps}`, lastReceipt, deps.chainId);
+    recordReceipt(
+      14,
+      "setRoyaltyBps",
+      `royaltyBps=${bps}`,
+      lastReceipt,
+      deps.chainId,
+    );
   }
 
   return vaultBal;
@@ -776,12 +1021,21 @@ export async function runTeeCleanupStep(deps: {
   chainId: number;
 }): Promise<void> {
   console.log("\n[Parity] cleanExpiredProofs (post-transfer nonce)");
-  const tee = new TypedContract<TeeCov>(deps.teeVerifier, TEE_VERIFIER_ABI, deps.deployer);
+  const tee = new TypedContract<TeeCov>(
+    deps.teeVerifier,
+    TEE_VERIFIER_ABI,
+    deps.deployer,
+  );
   const proofNonce = computeTransferProofNonce(deps.finalResp);
   const tx = await tee.contract.cleanExpiredProofs([proofNonce]);
   const receipt = assertReceiptOk(await tx.wait(), "cleanExpiredProofs");
   markScenarioCovered("tee.cleanup", "tee-cleanup", { txs: 1 });
   markCovered("AxiomTeeVerifier", "cleanExpiredProofs", "tee-cleanup");
-  recordReceipt(19, "cleanExpiredProofs", `nonce=${proofNonce.slice(0, 14)}…`, receipt, deps.chainId);
+  recordReceipt(
+    19,
+    "cleanExpiredProofs",
+    `nonce=${proofNonce.slice(0, 14)}…`,
+    receipt,
+    deps.chainId,
+  );
 }
-

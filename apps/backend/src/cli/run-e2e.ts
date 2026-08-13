@@ -302,6 +302,7 @@ async function main(): Promise<void> {
         signer: operator,
         rootHash: upload.rootHash,
         expectedBlob: blob,
+        transportKey: upload.transportKey,
       }),
       runOracleRegisterStep(ORACLE_URL, upload.rootHash, fetchJson),
     ]);
@@ -672,6 +673,11 @@ async function main(): Promise<void> {
 }
 
 main().catch((err: unknown) => {
-  log.error("e2e run failed", { err });
+  const msg =
+    err && typeof err === "object" && "message" in err
+      ? (err as Error).message
+      : String(err);
+  log.error("e2e run failed", { err, errMessage: msg });
+  console.error("E2E FAILED:", msg);
   process.exit(1);
 });

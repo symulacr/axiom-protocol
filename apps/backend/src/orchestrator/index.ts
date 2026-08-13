@@ -6,6 +6,7 @@ import {
   type TransactionResponse,
 } from "ethers";
 import { TypedContract } from "@axiom/config/types/contract";
+import type { StorageAdapter } from "@axiom/config/storage/0g";
 import type { TickResult } from "@axiom/config/types/orchestrator";
 import type OpenAI from "openai";
 import type { OgChatParams } from "@axiom/chat-runtime";
@@ -85,8 +86,8 @@ export async function readVaultStrategy(
     return { root, dailyLimit, validUntilDay: 0n };
   }
   const vault = new Contract(vaultAddress, STRATEGY_OF_CURRENT, provider);
-  const [root, dailyLimit, , , validUntilDay] = await vault
-    .getFunction("strategyOf")(tokenId);
+  const [root, dailyLimit, , , validUntilDay] =
+    await vault.getFunction("strategyOf")(tokenId);
   return { root, dailyLimit, validUntilDay };
 }
 
@@ -140,6 +141,8 @@ interface OrchestratorConfig {
     vault?: `0x${string}`;
   };
   chainId?: number;
+  /** Optional 0G storage adapter; when set, tick reports real blob size instead of the size-0 stub. */
+  storage?: StorageAdapter;
 }
 
 export class StrategyRunner {
@@ -149,6 +152,7 @@ export class StrategyRunner {
   private readonly addresses: OrchestratorConfig["addresses"];
 
   private readonly signer: Wallet;
+  private readonly storage: StorageAdapter | undefined;
   private vaultReadTc: TypedContract<StrategyVaultMethods> | null = null;
   private vaultWriteTc: TypedContract<StrategyVaultMethods> | null = null;
   private vaultAbiVariant: VaultAbiVariant | null = null;
@@ -160,6 +164,7 @@ export class StrategyRunner {
     });
     this.addresses = config.addresses;
     this.signer = config.signer;
+    this.storage = config.storage;
     const network = pickOGNetwork(chainId); // network const exists only for the unsupported-chain guard's type narrowing
     if (!network) throw new Error(`Unsupported chainId ${chainId}`);
   }
@@ -192,12 +197,24 @@ export class StrategyRunner {
         )
       : this.runInference(strategy, signal, onchainTask, onChunk);
 
-    // Storage read deliberately stubbed (no 0G payload-upload path exists — docs/current-state.md "Merkle proofs required"); report configured modelDataRoot with size 0 so Tick events honestly say storage was NOT measured.
+    // Storage read: when a 0G adapter is configured, download the blob by root and report
+    // its real size; otherwise report configured modelDataRoot with size 0 (honest: not measured).
+    const storageTask = (async (): Promise<{ rootHash: `0x${string}`; size: number }> => {
+      if (this.storage && strategy.modelDataRoot !== ZERO_DATA_ROOT) {
+        try {
+          const dl = await this.storage.download(strategy.modelDataRoot);
+          return { rootHash: strategy.modelDataRoot, size: dl.length };
+        } catch {
+          /* blob absent / undecryptable — report root with size 0 */
+        }
+      }
+      return { rootHash: strategy.modelDataRoot, size: 0 };
+    })();
     const [inferenceResult, onchainResult, storageResult] =
       await Promise.allSettled([
         inferenceTask,
         onchainTask,
-        Promise.resolve({ rootHash: strategy.modelDataRoot, size: 0 }),
+        storageTask,
       ]);
 
     const rawModelOutput =

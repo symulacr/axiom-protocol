@@ -7,7 +7,10 @@ export async function resolveE2eComputeModel(
   if (explicit) return explicit;
   const { data, ok } = await fetchJson<{
     services?: Array<{ model: string }>;
-  }>(`${backendUrl}/v1/compute/providers`);
+  }>(
+    `${backendUrl}/v1/compute/providers`,
+    { ...(process.env.AXIOM_API_KEY ? { headers: { "x-api-key": process.env.AXIOM_API_KEY } } : {}) },
+  );
   const services = ok ? (data.services ?? []) : [];
   const prefer = [
     "qwen2.5-omni",

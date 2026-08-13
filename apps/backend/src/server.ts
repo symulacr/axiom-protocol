@@ -255,6 +255,7 @@ export function startServer(config: ServerConfig): {
           signer: config.signer,
           chainId: ogChainId,
           addresses: config.addresses,
+          storage: config.chatStorage ?? undefined,
         });
       } catch (err) {
         log.warn(
@@ -410,6 +411,41 @@ function registerComputeRoutes(app: Express, config: ServerConfig): void {
       return {};
     }
   }
+
+  createRoute(
+    app,
+    {
+      path: "/v1/compute/providers",
+      method: "get",
+      consumer: "useCompute",
+      description: "List compute providers (router models + deterministic pseudo-addresses)",
+    },
+    async (_parsed: unknown, _req: Request, res: Response) => {
+      const models = await fetchRouterModels();
+      if (models.length === 0) {
+        res.status(HTTP.BAD_GATEWAY).json({
+          error: "Compute router returned no models",
+          code: "UPSTREAM_ERROR",
+        });
+        return;
+      }
+      const routerBaseUrl = getComputeBaseUrl();
+      const services = models.map((m: Record<string, unknown>) => {
+        const id = String(m.id ?? "");
+        const address = ethers
+          .keccak256(ethers.toUtf8Bytes(`model:${id}`))
+          .slice(0, 42) as `0x${string}`;
+        const pricingRaw = m.pricing;
+        const price =
+          pricingRaw && typeof pricingRaw === "object" && "prompt" in pricingRaw
+            ? String((pricingRaw as Record<string, unknown>).prompt ?? "")
+            : undefined;
+        return { address, model: id, endpoint: routerBaseUrl, price };
+      });
+      res.json({ services });
+    },
+    config,
+  );
 
   createRoute(
     app,
@@ -776,6 +812,40 @@ function registerPaymentRoutes(
   );
 
   registerVaultRoutes(paymentRouter, config);
+
+  createRoute(
+    paymentRouter,
+    {
+      path: "/v1/agents/:id/metadata",
+      method: "post",
+      requireId: true,
+      requireAddress: "agentNft",
+      consumer: "cli-only",
+      description: "Encode transaction to update agent metadata on-chain",
+    },
+    async (_parsed, req, res, { id, config: cfg }) => {
+      const nftAddr = cfg.addresses?.agentNft;
+      if (!nftAddr) {
+        sendError(res, HTTP.INTERNAL, "AgentNFT address not configured");
+        return;
+      }
+      const { datas } = req.body ?? {};
+      if (!datas || !Array.isArray(datas)) {
+        sendError(res, HTTP.BAD_REQUEST, "Missing or invalid datas array");
+        return;
+      }
+      if (!nftTc) {
+        sendError(res, HTTP.INTERNAL, "AgentNFT not configured");
+        return;
+      }
+      const encoded = nftTc.iface.encodeFunctionData("update", [
+        BigInt(id),
+        datas,
+      ]);
+      return { to: nftAddr, data: encoded, value: "0" };
+    },
+    config,
+  );
 
   app.use(paymentRouter);
 }

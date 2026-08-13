@@ -118,6 +118,9 @@ async function runEventStreamStep(deps: {
   const wsBase = httpBase.replace(/^http/, "ws");
   const url = new URL(`${wsBase}/v1/stream`);
   for (const t of topics) url.searchParams.append("topic", t);
+  // WS upgrade auth is token-based (?token=), not header — mirror the backend's setupWebSocketServer.
+  const apiKey = process.env.AXIOM_API_KEY ?? "";
+  if (apiKey) url.searchParams.append("token", apiKey);
 
   await new Promise<void>((resolve, reject) => {
     const timer = setTimeout(() => {
@@ -165,12 +168,19 @@ async function runEventStreamStep(deps: {
 async function runArchiveProbeStep(deps: {
   backendUrl: string;
 }): Promise<void> {
-  console.log("\n[Frontend] GET /v1/archive/closest (example.com)");
-  const path = `/v1/archive/closest?url=${encodeURIComponent(ARCHIVE_PROBE_URL)}`;
+  console.log("\n[Frontend] POST /v1/archive/query (closest, example.com)");
+  const archiveApiKey = process.env.AXIOM_API_KEY ?? "";
   const { data, ok, status } = await fetchJson<{
     url: string;
     snapshot: { snapshotUrl?: string } | null;
-  }>(`${deps.backendUrl}${path}`);
+  }>(`${deps.backendUrl}/v1/archive/query`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(archiveApiKey ? { "x-api-key": archiveApiKey } : {}),
+    },
+    body: JSON.stringify({ intent: "closest", url: ARCHIVE_PROBE_URL }),
+  });
   const stepOk = ok && data.url === ARCHIVE_PROBE_URL;
   console.log(
     `          snapshot=${data.snapshot ? "yes" : "null"} status=${status}`,

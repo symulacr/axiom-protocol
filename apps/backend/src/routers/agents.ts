@@ -502,7 +502,7 @@ export function registerAgentRoutes(
           accessProof: {
             dataHash: proofDataHash,
             targetPubkey: proofTargetPubkey,
-            nonce: nonce.toString(),
+            nonce: nonceHex,
             proof: accessProof.proof,
             validUntil: validUntil.toString(),
           },
@@ -511,7 +511,7 @@ export function registerAgentRoutes(
             dataHash: proofDataHash,
             sealedKey: sealedKeyOrDefault,
             targetPubkey: proofTargetPubkey,
-            nonce: nonce.toString(),
+            nonce: nonceHex,
             proof: tee.signature,
             validUntil: validUntil.toString(),
           },

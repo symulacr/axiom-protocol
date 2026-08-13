@@ -1,6 +1,6 @@
 const PROOF_TAIL_FIELDS = [
   { name: "targetPubkey", internalType: "bytes", type: "bytes" },
-  { name: "nonce", internalType: "uint256", type: "uint256" },
+  { name: "nonce", internalType: "bytes", type: "bytes" },
   { name: "proof", internalType: "bytes", type: "bytes" },
   { name: "validUntil", internalType: "uint256", type: "uint256" },
 ] as const;

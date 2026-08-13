@@ -24,7 +24,6 @@ export const PAYMENT_PROCESSOR_ABI = [
   "function setPaymentToken(address newPaymentToken)",
   "function setProtocolFeeBps(uint256 newBps)",
   "function setRoyaltyBps(uint256 agentTokenId, uint256 newBps)",
-  "function setRoyaltyBpsPermitted(uint256 agentTokenId, uint256 newBps)",
   "function totalOutstandingEarnings() view returns (uint256)",
   "function transferOwnership(address newOwner)",
   "function unpause()",

@@ -198,6 +198,11 @@ export class ZeroGStorage extends SeenHashesMixin implements StorageAdapter {
   // are undecryptable via this instance — acceptable: oracle re-encrypts (AES-GCM) every transfer.
   private readonly storageKey: Uint8Array;
 
+  /** Exposes the per-instance transport AES key so a verify step on the same instance can decrypt. */
+  get transportKey(): Uint8Array {
+    return this.storageKey;
+  }
+
   constructor(config: ZeroGStorageConfig, options: SeenHashesOptions = {}) {
     super(options.seenHashesFile ?? ORACLE_SEEN_HASHES_FILE);
     this.config = config;

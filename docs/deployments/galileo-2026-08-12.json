@@ -1,0 +1,24 @@
+{
+  "network": "0G Galileo testnet",
+  "chainId": 16602,
+  "rpc": "https://evmrpc-testnet.0g.ai",
+  "explorer": "https://chainscan-testnet.0g.ai",
+  "storageIndexer": "https://indexer-storage-testnet-turbo.0g.ai",
+  "deployedAt": "2026-08-12T00:00:00Z",
+  "deployedAtUnix": 1784822400,
+  "teeSigner": "0x0553f58a0209Fb8DcE201fCD9406Be56da890D73",
+  "oracleAdmin": "0xaf7c581b1C1C250aA69ac1F19f8014C0636c4d20",
+  "deployer": "0xA4999Fc220a3cb59D90F70FEC44A533360e30f63",
+  "paymentToken": "0x354CA53bAB51C0666964fa050628d8351f8A7d19",
+  "contracts": {
+    "AxiomTeeVerifier (impl)":   "0xb1b63f101a5cbe334559f92f9bd665b2379e1e14",
+    "AxiomTeeVerifier (proxy)":   "0x1ba37125bba23b66b549ccb33bc9b4952fd4dcc4",
+    "AxiomAgentNFT (impl)":       "0xD74045643CD685Cc6447d2A2a5aBa19Bdf847ed8",
+    "AxiomAgentNFT (proxy)":      "0xcfA6b2ce07489c870880AF7f90187b98614617B3",
+    "AxiomStrategyVault (impl)":  "0x200b2c38b7f72076573208557c7e6c064d92034c",
+    "AxiomStrategyVault (proxy)": "0x944B1d704afF5a265d907d81C208Be5b5285BE52",
+    "AxiomPaymentProcessor (impl)":  "0x98987c78b6c774183eb26261a63cd8e31ed5aaa7",
+    "AxiomPaymentProcessor (proxy)": "0x3aa5b29728c96A63bB83bB811C9582B59366a3e9"
+  },
+  "notes": "Redeploy 2026-08-12 with M1-M5 fixes + correct default profile (via_ir global ON; the compilation_restrictions .via-ir cascade broke proxy init in the prior attempt). solc 0.8.30, forge 1.5.1, legacy tx + 2 gwei gas price + --slow (deterministic nonce order). Verified on-chain: NFT name()='Axiom Agent NFT', mintFee()=0; TeeVerifier registeredSigner()=0x0553f58a…0D73 (matches teeSigner). Deployer=E2E_OPERATOR_PK 0xA4999Fc2. MockUSDC 0x354C…A7d19 reused."
+}

@@ -4,6 +4,7 @@ import {
   hexlify,
   getBytes,
   parseEther,
+  toBeHex,
   type Provider,
   type TransactionResponse,
 } from "ethers";
@@ -187,6 +188,8 @@ export function runEncryptStep(
 interface UploadStepResult {
   rootHash: `0x${string}`;
   txHash: string;
+  /** Per-instance transport AES key; verify must decrypt with the SAME key (fresh instances get random keys). */
+  transportKey: Uint8Array;
 }
 
 export async function runUploadStep(deps: {
@@ -219,7 +222,11 @@ export async function runUploadStep(deps: {
     txHash: upload.txHash,
     chainId: deps.chainId,
   });
-  return { rootHash: upload.rootHash, txHash: upload.txHash };
+  return {
+    rootHash: upload.rootHash,
+    txHash: upload.txHash,
+    transportKey: storage.transportKey,
+  };
 }
 
 export async function runStorageVerifyStep(deps: {
@@ -228,6 +235,8 @@ export async function runStorageVerifyStep(deps: {
   signer: Wallet;
   rootHash: `0x${string}`;
   expectedBlob: Uint8Array;
+  /** Transport AES key from the upload instance — decryption requires the SAME key. */
+  transportKey?: Uint8Array;
 }): Promise<void> {
   console.log("\n[Step 4b] Download from 0G Storage with Merkle proof");
   const storage = new ZeroGStorage({
@@ -237,6 +246,7 @@ export async function runStorageVerifyStep(deps: {
   });
   const downloaded = await storage.downloadWithOpts(deps.rootHash, {
     withProof: true,
+    ...(deps.transportKey ? { symmetricKey: deps.transportKey } : {}),
   });
   if (downloaded.rootHash.toLowerCase() !== deps.rootHash.toLowerCase()) {
     throw new Error(
@@ -718,7 +728,7 @@ export async function runTransferSteps(deps: {
     targetPubkey: challenge.targetPubkey,
     to: deps.to,
     nft: deps.agentNft as `0x${string}`,
-    nonce: BigInt(challenge.accessProofNonce),
+    nonce: toBeHex(BigInt(challenge.accessProofNonce)),
     validUntil: BigInt(challenge.validUntil),
   };
   const accessDigest = accessMessageHash(accessInput, deps.eip712Domain);
@@ -855,7 +865,7 @@ export async function runOnChainTransferStep(deps: {
       targetPubkey: deps.finalResp.accessProof.targetPubkey,
       to: deps.to,
       nft: deps.agentNft as `0x${string}`,
-      nonce: BigInt(deps.finalResp.accessProof.nonce),
+      nonce: toBeHex(BigInt(deps.finalResp.accessProof.nonce)),
       validUntil: BigInt(deps.finalResp.accessProof.validUntil),
     };
     const recoveredAddr = recoverAccessSigner(

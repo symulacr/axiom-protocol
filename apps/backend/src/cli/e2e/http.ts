@@ -1,5 +1,11 @@
 import { fetchJson } from "../../utils/response.js";
 
+/** Backend API key from env; sent as x-api-key when present (backend enforces auth in production). */
+function authHeaders(extra?: Record<string, string>): Record<string, string> {
+  const apiKey = process.env.AXIOM_API_KEY ?? "";
+  return { ...(apiKey ? { "x-api-key": apiKey } : {}), ...extra };
+}
+
 interface StepResult {
   step: number;
   name: string;
@@ -31,7 +37,10 @@ export async function getStep<T>(
     meta: { ok: boolean; status: number },
   ) => { summary: string; ok?: boolean },
 ): Promise<T> {
-  const { data: res, ok, status } = await fetchJson<T>(`${backendUrl}${name}`);
+  const { data: res, ok, status } = await fetchJson<T>(
+    `${backendUrl}${name}`,
+    { headers: authHeaders() },
+  );
   const s = summary(res, { ok, status });
   console.log(`          ${JSON.stringify(res).slice(0, 500)}${JSON.stringify(res).length > 500 ? "…" : ""}`);
   pushStepResult(step, name, s.summary, s.ok ?? ok, undefined);
@@ -50,7 +59,7 @@ export async function postStep<T>(
 ): Promise<T> {
   const { data: res, ok, status } = await fetchJson<T>(`${backendUrl}${name}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: authHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify(body),
   });
   const s = summary(res);
