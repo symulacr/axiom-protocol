@@ -22,7 +22,7 @@ export function normalizePubkey64(pk: `0x${string}`): `0x${string}` {
 export function pubKeyToAddress(uncompressed: Uint8Array): `0x${string}` {
   if (uncompressed.length !== 64)
     throw new Error("Uncompressed pubkey must be 64 bytes (X||Y)");
-  const hash = keccak256(new Uint8Array(uncompressed));
+  const hash = keccak256(uncompressed);
   return ("0x" + Buffer.from(hash).toString("hex").slice(-40)) as `0x${string}`;
 }
 

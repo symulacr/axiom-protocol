@@ -174,6 +174,8 @@ export class Watcher {
   private chainId: bigint | null = null;
   private consecutiveFailures = 0;
   private maxConsecutiveFailures = 10;
+  /** Dead-lettered logs (keyed txHash:logIndex) that failed to decode — never re-attempted on rescan. */
+  private readonly skippedLogs = new Set<string>();
 
   constructor(opts: WatcherOptions) {
     this.provider = opts.provider;
@@ -263,9 +265,30 @@ export class Watcher {
       let sinkFailures = 0;
       let lastSinkError: unknown;
       for (const log of logs) {
+        const logKey = `${log.transactionHash}:${log.index}`;
+        if (this.skippedLogs.has(logKey)) continue;
+        let ev: AxiomEvent | null;
         try {
-          const ev = decodeAxiomLog(log);
-          if (ev === null) continue;
+          ev = decodeAxiomLog(log);
+        } catch (err) {
+          // Dead-letter malformed logs: one undecodable event must never wedge the scan.
+          // Strict decoding stays in place for parseable data — only genuine decode
+          // failures are skipped, and the window still advances.
+          this.skippedLogs.add(logKey);
+          this.logger({
+            level: "error",
+            msg: "skipping malformed log — decode failed; dead-lettered",
+            blockNumber: log.blockNumber?.toString(),
+            topic0: log.topics[0],
+            address: log.address,
+            transactionHash: log.transactionHash,
+            logIndex: log.index,
+            err: err instanceof Error ? err.message : String(err),
+          });
+          continue;
+        }
+        if (ev === null) continue;
+        try {
           await this.sink(ev);
         } catch (err) {
           sinkFailures += 1;

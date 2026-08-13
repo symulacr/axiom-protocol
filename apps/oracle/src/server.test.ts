@@ -1,14 +1,13 @@
 import { test, beforeAll, afterAll } from "bun:test";
 import assert from "node:assert/strict";
 import type http from "node:http";
-import { keccak256, getBytes } from "ethers";
+import { keccak256 } from "ethers";
 
 import { startServer } from "./server.js";
 import { TeeSigner } from "./signer.js";
 import { InMemoryStorage, type StorageAdapter } from "@axiom/config/storage/0g";
 import {
   sealKeyForReceiver,
-  unsealKeyForReceiver,
   deriveUncompressedPubkeyFromHex,
 } from "@axiom/config/crypto/keys";
 
@@ -30,7 +29,12 @@ beforeAll(async () => {
   signerAddress = signer.address;
   const storage = new InMemoryStorage();
 
-  const { httpServer } = startServer({ signer, storage, bind: "127.0.0.1", port: 0 });
+  const { httpServer } = startServer({
+    signer,
+    storage,
+    bind: "127.0.0.1",
+    port: 0,
+  });
   server = httpServer;
 
   await new Promise<void>((resolve, reject) => {
@@ -70,8 +74,8 @@ afterAll(async () => {
   }
 });
 
-test("/v1/ownership honors caller-supplied validUntil", async () => {
-  const validUntil = 1893456000;
+test("/v1/ownership honors caller-supplied validUntil within the max proof age cap", async () => {
+  const validUntil = Math.floor(Date.now() / 1000) + 3600;
   const res = await fetch(`${baseUrl}/v1/ownership`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -91,6 +95,29 @@ test("/v1/ownership honors caller-supplied validUntil", async () => {
   assert.equal(body.validUntil, String(validUntil));
   assert.equal(typeof body.signature, "string");
   assert.equal(body.signer, signerAddress);
+});
+
+test("/v1/ownership rejects validUntil beyond the max proof age cap", async () => {
+  // 10 days ahead > on-chain maxProofAgeSeconds (deployed 7 days): the verifier would
+  // reject the proof with AxiomValidUntilTooFar, so the oracle must refuse to sign it.
+  const validUntil = Math.floor(Date.now() / 1000) + 10 * 86400;
+  const res = await fetch(`${baseUrl}/v1/ownership`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      dataHash,
+      targetPubkey,
+      sealedKey,
+      to: "0x0000000000000000000000000000000000000001",
+      nft: "0x0000000000000000000000000000000000000002",
+      nonce: 42,
+      validUntil,
+    }),
+  });
+  assert.equal(res.status, 400);
+  const body = await res.json();
+  assert.ok(isRecord(body));
+  assert.match(body.error as string, /max proof validity|maxProofAgeSeconds/);
 });
 
 test("/v1/ownership rejects malformed validUntil", async () => {
@@ -163,7 +190,7 @@ test("/v1/agents/mint rejects a malformed dataHash", async () => {
   assert.ok(typeof body.error === "string", "400 carries an error message");
 });
 
-test("/v1/transfer-validity re-keys an empty plaintext when the old blob is missing", async () => {
+test("/v1/transfer-validity aborts with 502 and uploads nothing when the old blob download fails", async () => {
   const signer = new TeeSigner(TEST_PRIV_HEX);
   const RECEIVER_PRIV_HEX = "0x" + "22".repeat(32);
   const receiverPubkey64 = deriveUncompressedPubkeyFromHex(RECEIVER_PRIV_HEX);
@@ -218,25 +245,16 @@ test("/v1/transfer-validity re-keys an empty plaintext when the old blob is miss
         sealedDataEncryptionKey,
       }),
     });
-    assert.equal(res.status, 200);
+    // E2: a failed download MUST abort the transfer — re-keying an empty blob would
+    // silently destroy the token's stored data and sign proofs over fabricated content.
+    assert.equal(res.status, 502);
     const body = (await res.json()) as Record<string, unknown>;
-    assert.notEqual(body.newDataHash, oldDataHash, "blob is re-keyed to a new root");
-    assert.equal(body.newDataUri, body.newDataHash);
-    assert.equal(body.accessProofNonce, 1);
-    assert.equal(typeof body.sealedKey, "string");
-    assert.ok(
-      (body.sealedKey as string).length > 66,
-      "sealedKey is ECIES ciphertext (pubkey + nonce + tag)",
+    assert.match(body.error as string, /blob missing from storage/);
+    assert.equal(
+      uploaded.length,
+      0,
+      "no re-encrypted blob may be uploaded when the old blob cannot be downloaded",
     );
-    assert.equal(uploaded.length, 1, "re-key uploads the re-encrypted blob");
-
-    // The receiver can open the new sealed key and it wraps a 32-byte DEK.
-    const newSealed = getBytes(body.sealedKey as `0x${string}`);
-    const recovered = unsealKeyForReceiver(
-      getBytes(RECEIVER_PRIV_HEX),
-      newSealed,
-    );
-    assert.equal(recovered.length, 32);
   } finally {
     srv.closeAllConnections?.();
     await new Promise<void>((resolve) => {

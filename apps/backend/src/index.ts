@@ -30,6 +30,17 @@ const signer = new Wallet(
   provider,
 );
 
+/** AXIOM_STORAGE_FEE (hex or decimal string) → bigint wei; undefined when unset. Passed to ZeroGStorage so uploads skip market() pricing on chains whose flow contract lacks market() (e.g. Galileo testnet). */
+function parseStorageFee(): bigint | undefined {
+  const raw = process.env.AXIOM_STORAGE_FEE;
+  if (raw === undefined || raw.trim() === "") return undefined;
+  const s = raw.trim();
+  if (/^0x[0-9a-fA-F]+$/.test(s) || /^\d+$/.test(s)) return BigInt(s);
+  throw new Error(
+    `AXIOM_STORAGE_FEE must be a hex (0x…) or decimal string, got: ${raw}`,
+  );
+}
+
 // Testnet-only contracts have no live-chain bytecode, so on-chain reads revert (500); omit empty-code addresses so existing guards return a clean 503 ("address not configured").
 async function resolveLiveAddresses(
   chainProvider: ethers.JsonRpcProvider,
@@ -80,6 +91,7 @@ async function main(): Promise<void> {
       signer: new Wallet(
         process.env.AXIOM_STORAGE_PRIVATE_KEY ?? env.AXIOM_TEE_SIGNER_PK,
       ),
+      fee: parseStorageFee(),
     });
     console.log(
       `[boot] chat transcript storage: 0G Storage (${storageIndexerRpc})`,

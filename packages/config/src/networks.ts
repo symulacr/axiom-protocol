@@ -64,18 +64,3 @@ export function resolveBlockExplorerUrl(chainId?: number): string {
   const network = chainId ? pickOGNetwork(chainId) : null;
   return network?.blockExplorer ?? "https://chainscan.0g.ai";
 }
-
-import { zeroGMainnet as _viemZeroGMainnet } from "viem/chains";
-
-export const zeroGMainnet = {
-  // exports viem built-in 0G Mainnet chain, with env-based dynamic RPC override
-  ..._viemZeroGMainnet,
-  rpcUrls: { default: { http: [resolveRpcUrl()] } },
-  contracts: {
-    ..._viemZeroGMainnet.contracts,
-    multicall3: {
-      address: "0xcA11bde05977b3631167028862bE2a173976CA11",
-      blockCreated: 0,
-    },
-  },
-};

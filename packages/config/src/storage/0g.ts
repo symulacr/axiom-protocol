@@ -1,7 +1,7 @@
 import { Indexer, MemData } from "@0gfoundation/0g-storage-ts-sdk";
 import type { EncryptionOption } from "@0gfoundation/0g-storage-ts-sdk";
 
-import { keccak256, toUtf8Bytes, type Signer } from "ethers";
+import { getBytes, keccak256, toUtf8Bytes, type Signer } from "ethers";
 import type { Hex } from "viem";
 import {
   existsSync,
@@ -38,18 +38,16 @@ interface ZeroGStorageConfig {
   indexerRpc: string;
   evmRpc: string;
   signer: Signer;
+  /** Explicit storage fee (wei) applied to every upload. When >0 the SDK skips market() pricing — required on chains where the flow contract lacks market() (e.g. Galileo testnet). Default undefined = on-chain pricing. */
+  fee?: bigint;
 }
 
 type Encryption = EncryptionOption;
 
 interface UploadOptions {
   encryption?: Encryption;
-  expectedReplica?: number;
-  taskSize?: number;
   /** Explicit storage fee (wei). When >0 the SDK skips market() pricing — required on chains where the flow contract lacks market() (e.g. Galileo testnet). Default 0 = on-chain pricing. */
   fee?: bigint;
-  /** Explicit storage submitter address. Defaults to the signer's address (the SDK's implicit fallback). */
-  submitter?: string;
   /** Blob tags for DA/explorer attribution. Defaults to "axiom-protocol/1". */
   tags?: Uint8Array;
 }
@@ -106,20 +104,80 @@ function persistSeenDataHashes(file: string, seen: Set<string>): void {
   renameSync(tmp, file);
 }
 
+const SEEN_HASHES_FLUSH_THRESHOLD = 8;
+const SEEN_HASHES_FLUSH_INTERVAL_MS = 5_000;
+
+// Every SeenHashesMixin instance registers here so a single pair of exit handlers
+// (SIGINT/SIGTERM) can flush in-memory marks to disk on process exit.
+const seenHashesInstances = new Set<SeenHashesMixin>();
+let seenHashesExitFlushRegistered = false;
+
+function registerSeenHashesExitFlush(instance: SeenHashesMixin): void {
+  seenHashesInstances.add(instance);
+  if (seenHashesExitFlushRegistered) return;
+  seenHashesExitFlushRegistered = true;
+  const flushAll = (): void => {
+    for (const inst of seenHashesInstances) {
+      try {
+        inst.flushSeenDataHashes();
+      } catch (err) {
+        console.error(
+          JSON.stringify({
+            level: "error",
+            msg: "failed to flush oracle seen-hashes on exit",
+            error: err instanceof Error ? err.message : String(err),
+          }),
+        );
+      }
+    }
+  };
+  // once: after the first signal the listener is removed, so processes without
+  // their own signal handling keep Node's default exit-on-signal behavior.
+  process.once("SIGINT", flushAll);
+  process.once("SIGTERM", flushAll);
+}
+
 abstract class SeenHashesMixin {
   protected seenDataHashes: Set<string>;
   protected readonly seenHashesFile: string;
+  private dirtyCount = 0;
+  private flushTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(seenHashesFile: string) {
     this.seenHashesFile = seenHashesFile;
     this.seenDataHashes = loadSeenDataHashes(seenHashesFile);
+    registerSeenHashesExitFlush(this);
   }
 
   markDataHashSeen(rootHash: Hex): void {
     const hash = rootHash.toLowerCase();
     if (this.seenDataHashes.has(hash)) return;
     this.seenDataHashes.add(hash);
+    this.dirtyCount += 1;
+    if (this.dirtyCount === 1 && !existsSync(this.seenHashesFile)) {
+      // First-ever mark: persist synchronously so the backing file exists and a
+      // concurrently-started instance observes the mark (durability contract).
+      this.flushSeenDataHashes();
+      return;
+    }
+    if (this.dirtyCount >= SEEN_HASHES_FLUSH_THRESHOLD) {
+      this.flushSeenDataHashes();
+      return;
+    }
+    if (this.flushTimer === undefined) {
+      this.flushTimer = setTimeout(() => {
+        this.flushTimer = undefined;
+        this.flushSeenDataHashes();
+      }, SEEN_HASHES_FLUSH_INTERVAL_MS);
+      this.flushTimer.unref?.();
+    }
+  }
+
+  /** Persist any in-memory marks not yet on disk. Safe to call repeatedly (no-op when clean). */
+  flushSeenDataHashes(): void {
+    if (this.dirtyCount === 0) return;
     persistSeenDataHashes(this.seenHashesFile, this.seenDataHashes);
+    this.dirtyCount = 0;
   }
 
   hasSeenDataHash(rootHash: Hex): boolean {
@@ -155,10 +213,7 @@ async function uploadToStorage(
 ): Promise<UploadResult> {
   const memData = new MemData(data);
   const uploadOpts: Parameters<typeof indexer.upload>[3] = {
-    expectedReplica: options.expectedReplica,
-    taskSize: options.taskSize,
     encryption: options.encryption,
-    submitter: options.submitter ?? (await signer.getAddress()),
     tags: options.tags ?? toUtf8Bytes("axiom-protocol/1"),
     ...(options.fee !== undefined ? { fee: options.fee } : {}),
   };
@@ -197,14 +252,39 @@ async function downloadFromStorage(
   return { data, rootHash, size: data.length };
 }
 
+/**
+ * Resolve the SDK transport AES key. When AXIOM_STORAGE_TRANSPORT_KEY (32-byte hex, optional 0x
+ * prefix) is set it is used verbatim, keeping blobs decryptable across restarts and instances.
+ * Without it the key is random per instance: blobs uploaded now are undecryptable after this
+ * process exits (a boot warning is logged so the misconfiguration is visible).
+ */
+function resolveTransportKey(): Uint8Array {
+  const raw = process.env.AXIOM_STORAGE_TRANSPORT_KEY;
+  if (raw !== undefined && raw.trim() !== "") {
+    const hex = raw.trim().replace(/^0x/, "");
+    if (!/^[0-9a-fA-F]{64}$/.test(hex)) {
+      throw new Error(
+        "AXIOM_STORAGE_TRANSPORT_KEY must be a 32-byte hex string (64 hex chars, optional 0x prefix)",
+      );
+    }
+    return getBytes(`0x${hex}`);
+  }
+  console.warn(
+    "[0g-storage] AXIOM_STORAGE_TRANSPORT_KEY not set — using an ephemeral random transport AES key; blobs uploaded now will be undecryptable after this process exits. Set AXIOM_STORAGE_TRANSPORT_KEY (32-byte hex) for cross-restart decrypt.",
+  );
+  return crypto.getRandomValues(new Uint8Array(32));
+}
+
 export class ZeroGStorage extends SeenHashesMixin implements StorageAdapter {
   readonly indexer: Indexer;
   readonly config: ZeroGStorageConfig;
-  // Per-instance 32-byte AES key for SDK transport encryption; regenerated on restart so old blobs
-  // are undecryptable via this instance — acceptable: oracle re-encrypts (AES-GCM) every transfer.
+  // 32-byte AES key for SDK transport encryption. Seeded from AXIOM_STORAGE_TRANSPORT_KEY (32-byte
+  // hex) when set — that keeps blobs decryptable across restarts and instances. Otherwise random
+  // per instance: blobs uploaded under a random key are undecryptable after this process exits
+  // (boot logs a warning; set the env var to fix).
   private readonly storageKey: Uint8Array;
 
-  /** Exposes the per-instance transport AES key so a verify step on the same instance can decrypt. */
+  /** Exposes the transport AES key so a verify step on the same instance can decrypt. */
   get transportKey(): Uint8Array {
     return this.storageKey;
   }
@@ -213,7 +293,7 @@ export class ZeroGStorage extends SeenHashesMixin implements StorageAdapter {
     super(options.seenHashesFile ?? ORACLE_SEEN_HASHES_FILE);
     this.config = config;
     this.indexer = new Indexer(config.indexerRpc);
-    this.storageKey = crypto.getRandomValues(new Uint8Array(32));
+    this.storageKey = resolveTransportKey();
   }
 
   async upload(
@@ -227,6 +307,7 @@ export class ZeroGStorage extends SeenHashesMixin implements StorageAdapter {
       this.config.signer,
       {
         encryption: encryption ?? { type: "aes256", key: this.storageKey },
+        ...(this.config.fee !== undefined ? { fee: this.config.fee } : {}),
       },
     );
     return { rootHash: result.rootHash };

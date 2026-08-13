@@ -28,22 +28,8 @@ import { hasContractFunction, LEGACY_DEPLOY_REASON } from "./deploy-compat.js";
 import { readVaultStrategy } from "../../orchestrator/index.js";
 import type { FinalResponse } from "./steps.js";
 
-const AGENT_NFT_EXTENDED_ABI = [
-  ...AGENT_NFT_ABI,
-  "function update(uint256 tokenId, (string dataDescription, bytes32 dataHash)[] newDatas)",
-  "function authorizeUsage(uint256 tokenId, address to)",
-  "function authorizeAndDelegate(address delegate, uint256 tokenId, uint256 validUntil)",
-  "function revokeAuthorization(uint256 tokenId, address user)",
-  "function authorizedUsersOf(uint256 tokenId) view returns (address[])",
-  "function delegateAccess(address assistant)",
-  "function getDelegateAccess(address user) view returns (address)",
-  "function intelligentDataOf(uint256 tokenId) view returns ((string dataDescription, bytes32 dataHash)[])",
-  "function verifier() view returns (address)",
-  "function storageInfo() view returns (string)",
-  "function pendingVerifier() view returns (address)",
-  "function pendingVerifierExecutableAt() view returns (uint256)",
-  "function supportsInterface(bytes4 interfaceId) view returns (bool)",
-] as const;
+// All extended fragments are already part of AGENT_NFT_ABI; keep the alias for callers.
+const AGENT_NFT_EXTENDED_ABI = [...AGENT_NFT_ABI] as const;
 
 const ERC165_INTERFACE_ID = "0x01ffc9a7";
 const ERC721_INTERFACE_ID = "0x80ac58cd";

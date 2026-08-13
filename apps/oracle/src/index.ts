@@ -28,6 +28,17 @@ if (env.AXIOM_SENTRY_DSN) {
   });
 }
 
+/** AXIOM_STORAGE_FEE (hex or decimal string) → bigint wei; undefined when unset. Passed to ZeroGStorage so uploads skip market() pricing on chains whose flow contract lacks market() (e.g. Galileo testnet). */
+function parseStorageFee(): bigint | undefined {
+  const raw = process.env.AXIOM_STORAGE_FEE;
+  if (raw === undefined || raw.trim() === "") return undefined;
+  const s = raw.trim();
+  if (/^0x[0-9a-fA-F]+$/.test(s) || /^\d+$/.test(s)) return BigInt(s);
+  throw new Error(
+    `AXIOM_STORAGE_FEE must be a hex (0x…) or decimal string, got: ${raw}`,
+  );
+}
+
 const teeVerifierRaw = env.AXIOM_TEE_VERIFIER_ADDRESS ?? env.AXIOM_TEE_VERIFIER;
 if (!teeVerifierRaw)
   throw new Error(
@@ -44,7 +55,12 @@ if (env.AXIOM_STORAGE_INDEXER_RPC) {
   const evmRpc = env.AXIOM_STORAGE_EVM_RPC || env.AXIOM_EVM_RPC;
   const storagePk = env.AXIOM_STORAGE_PRIVATE_KEY ?? env.AXIOM_TEE_SIGNER_PK;
   const wallet = new Wallet(storagePk);
-  storage = new ZeroGStorage({ indexerRpc, evmRpc, signer: wallet });
+  storage = new ZeroGStorage({
+    indexerRpc,
+    evmRpc,
+    signer: wallet,
+    fee: parseStorageFee(),
+  });
   console.log(`[oracle] storage: 0G Storage (${indexerRpc})`);
 } else if (process.env.NODE_ENV === "production") {
   throw new Error(

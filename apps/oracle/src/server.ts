@@ -49,7 +49,27 @@ function badRequest(res: Response, message: string): void {
   res.status(HTTP.BAD_REQUEST).json({ error: message });
 }
 
-const MAX_OWNERSHIP_VALIDITY_SECONDS = 10n * 365n * 24n * 3600n;
+const DEFAULT_MAX_PROOF_AGE_SECONDS = 7n * 24n * 3600n;
+
+/**
+ * On-chain max proof age: `_checkValidUntil` (AxiomTeeVerifier) rejects
+ * `validUntil - now > maxProofAgeSeconds`. Deployed default is 7 days; override via
+ * AXIOM_MAX_PROOF_AGE_SECONDS (decimal seconds) to match the deployed verifier.
+ */
+function maxProofAgeSeconds(): bigint {
+  const raw = process.env.AXIOM_MAX_PROOF_AGE_SECONDS;
+  if (raw !== undefined && raw.trim() !== "") {
+    const s = raw.trim();
+    if (/^\d+$/.test(s)) {
+      const v = BigInt(s);
+      if (v > 0n) return v;
+    }
+    console.warn(
+      `[oracle] ignoring invalid AXIOM_MAX_PROOF_AGE_SECONDS=${raw} (expected positive decimal seconds); using default ${DEFAULT_MAX_PROOF_AGE_SECONDS}s`,
+    );
+  }
+  return DEFAULT_MAX_PROOF_AGE_SECONDS;
+}
 
 export interface ServerConfig {
   signer: TeeSigner;
@@ -145,7 +165,10 @@ export function startServer(config: ServerConfig): {
           sealedDek.startsWith("0x") ? sealedDek.slice(2) : sealedDek,
           sealedDek.startsWith("0x") ? "hex" : "base64",
         );
-        const opened = unsealKeyForReceiver(signer.privateKeyBytes, sealedBytes);
+        const opened = unsealKeyForReceiver(
+          signer.privateKeyBytes,
+          sealedBytes,
+        );
         oldDataKey = opened;
       } else if (oldDataEncryptionKey && allowCleartext) {
         oldDataKey = Buffer.from(oldDataEncryptionKey, "base64");
@@ -160,29 +183,54 @@ export function startServer(config: ServerConfig): {
         );
       }
 
-      let downloadTimer: NodeJS.Timeout | undefined;
-      const oldBlob = await Promise.race([
-        Promise.resolve(storage.download(oldDataUri as `0x${string}`)).catch(
-          () => new Uint8Array(0),
-        ),
-        new Promise<Uint8Array>((_, reject) => {
-          downloadTimer = setTimeout(
-            () => reject(new Error("storage.download timed out after 20000ms")),
-            20_000,
-          );
-        }),
-      ]).finally(() => clearTimeout(downloadTimer));
-      const oldEnc = oldBlob.length > 0 ? parseEncrypted(oldBlob) : null;
-
       if (oldDataKey.length !== 32) {
         res.status(HTTP.BAD_REQUEST).json({
           error: "data encryption key must be 32 bytes after unseal",
         });
         return;
       }
-      const oldPlaintext = oldEnc
-        ? aesGcmDecrypt(oldDataKey, oldEnc)
-        : new Uint8Array(0);
+
+      // E2: a failed or missing download MUST abort the transfer — falling back to an empty
+      // blob would re-encrypt nothing and sign transfer proofs over fabricated data, silently
+      // destroying the token's stored data (wrong transport key after restart, 0G outage, timeout).
+      let downloadTimer: NodeJS.Timeout | undefined;
+      let oldBlob: Uint8Array;
+      try {
+        oldBlob = await Promise.race([
+          Promise.resolve(storage.download(oldDataUri as `0x${string}`)),
+          new Promise<Uint8Array>((_, reject) => {
+            downloadTimer = setTimeout(
+              () =>
+                reject(new Error("storage.download timed out after 20000ms")),
+              20_000,
+            );
+          }),
+        ]);
+      } catch (err) {
+        logRouteError("/v1/transfer-validity/download", err);
+        const message = err instanceof Error ? err.message : String(err);
+        return res.status(HTTP.BAD_GATEWAY).json({
+          error: `Failed to download old blob ${oldDataUri}: ${message} — transfer aborted, no data fabricated`,
+        });
+      } finally {
+        clearTimeout(downloadTimer);
+      }
+      if (oldBlob.length === 0) {
+        return res.status(HTTP.BAD_GATEWAY).json({
+          error: `Downloaded blob for ${oldDataUri} is empty — transfer aborted, no data fabricated`,
+        });
+      }
+      const oldEnc = parseEncrypted(oldBlob);
+      let oldPlaintext: Uint8Array;
+      try {
+        oldPlaintext = aesGcmDecrypt(oldDataKey, oldEnc);
+      } catch (err) {
+        logRouteError("/v1/transfer-validity/decrypt", err);
+        const message = err instanceof Error ? err.message : String(err);
+        return res.status(HTTP.BAD_GATEWAY).json({
+          error: `Failed to decrypt old blob with the provided data key (${message}) — transfer aborted`,
+        });
+      }
 
       const newDataKey = crypto.getRandomValues(new Uint8Array(32));
       const newEnc = aesGcmEncrypt(newDataKey, oldPlaintext);
@@ -320,10 +368,19 @@ export function startServer(config: ServerConfig): {
           if (parsed === null) {
             return badRequest(res, "Invalid validUntil");
           }
+          // E3: on-chain _checkValidUntil rejects validUntil - now > maxProofAgeSeconds
+          // (deployed 7 days). A proof signed with a farther deadline is unverifiable DOA,
+          // so reject the request instead of clamping to a value the chain still rejects.
+          const maxProofAge = maxProofAgeSeconds();
           const maxValidUntil =
-            BigInt(Math.floor(Date.now() / 1000)) +
-            MAX_OWNERSHIP_VALIDITY_SECONDS;
-          validUntil = parsed > maxValidUntil ? maxValidUntil : parsed;
+            BigInt(Math.floor(Date.now() / 1000)) + maxProofAge;
+          if (parsed > maxValidUntil) {
+            return badRequest(
+              res,
+              `validUntil ${parsed} exceeds maximum proof validity (now + ${maxProofAge}s); on-chain _checkValidUntil rejects validUntil - now > maxProofAgeSeconds`,
+            );
+          }
+          validUntil = parsed;
         }
 
         const ownershipSignature = signer.signOwnership({
