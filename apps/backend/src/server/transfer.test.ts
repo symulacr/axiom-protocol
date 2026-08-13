@@ -14,11 +14,22 @@ import type { AddressInfo } from "node:net";
 import { Wallet, getBytes, toBeHex } from "ethers";
 import { WebSocket } from "ws";
 
-import { startServer as startBackendServer, type ServerConfig } from "../server.js";
+import {
+  startServer as startBackendServer,
+  type ServerConfig,
+} from "../server.js";
 import { fetchJson } from "../utils/response.js";
 import { startServer as startOracleServer } from "@axiom/oracle/server";
 import { TeeSigner } from "@axiom/oracle/signer";
-import { accessMessageHash, deriveUncompressedPubkeyFromHex, buildEip712Domain, ARISTOTLE_CHAIN_ID, aesGcmEncrypt, concatEncrypted, unsealKeyForReceiver } from "@axiom/config";
+import {
+  accessMessageHash,
+  deriveUncompressedPubkeyFromHex,
+  buildEip712Domain,
+  ARISTOTLE_CHAIN_ID,
+  aesGcmEncrypt,
+  concatEncrypted,
+  unsealKeyForReceiver,
+} from "@axiom/config";
 import { sealKeyForReceiver } from "@axiom/config/crypto/keys";
 import { InMemoryStorage } from "@axiom/config/storage/0g";
 
@@ -68,7 +79,12 @@ beforeAll(async () => {
   );
   const storage = new InMemoryStorage();
 
-  const { httpServer: oSrv } = startOracleServer({ signer: oracleSigner, storage, bind: "127.0.0.1", port: 0 });
+  const { httpServer: oSrv } = startOracleServer({
+    signer: oracleSigner,
+    storage,
+    bind: "127.0.0.1",
+    port: 0,
+  });
   oracleHttp = oSrv;
 
   await waitForListening(oracleHttp);
@@ -85,7 +101,8 @@ beforeAll(async () => {
   const receiver = new Wallet(RECEIVER_PRIV);
   receiverAddress = receiver.address;
   const uncompressed = deriveUncompressedPubkeyFromHex(RECEIVER_PRIV);
-  receiverPubkey64 = ("0x" + Buffer.from(uncompressed).toString("hex")) as `0x${string}`;
+  receiverPubkey64 = ("0x" +
+    Buffer.from(uncompressed).toString("hex")) as `0x${string}`;
 
   const backendSigner = new Wallet(BACKEND_PRIV);
   const backend = startBackendServer({
@@ -118,7 +135,11 @@ afterAll(async () => {
 });
 
 test("POST /v1/agents/:id/transfer challenge returns ownership signature", async () => {
-  const { ok, status, data: body } = await fetchJson<{
+  const {
+    ok,
+    status,
+    data: body,
+  } = await fetchJson<{
     ok: boolean;
     stage: string;
     dataHash: string;
@@ -169,26 +190,42 @@ test("POST /v1/agents/:id/transfer final returns full proof structs", async () =
   });
   assert.equal(challengeStatus, 200);
   assert.equal(challengeOk, true);
-  const testDomain = buildEip712Domain(ARISTOTLE_CHAIN_ID, MOCK_ADDRESSES.verifier);
+  const testDomain = buildEip712Domain(
+    ARISTOTLE_CHAIN_ID,
+    MOCK_ADDRESSES.verifier,
+  );
 
   const nonce = BigInt(challenge.accessProofNonce);
   const validUntil = BigInt(challenge.validUntil);
-  const digest = accessMessageHash({
-    dataHash: challenge.dataHash as `0x${string}`,
-    targetPubkey: challenge.targetPubkey as `0x${string}`,
-    to: receiverAddress as `0x${string}`,
-    nft: MOCK_ADDRESSES.agentNft,
-    nonce: toBeHex(nonce) as `0x${string}`,
-    validUntil,
-  }, testDomain);
+  const digest = accessMessageHash(
+    {
+      dataHash: challenge.dataHash as `0x${string}`,
+      targetPubkey: challenge.targetPubkey as `0x${string}`,
+      to: receiverAddress as `0x${string}`,
+      nft: MOCK_ADDRESSES.agentNft,
+      nonce: toBeHex(nonce) as `0x${string}`,
+      validUntil,
+    },
+    testDomain,
+  );
   const receiver = new Wallet(RECEIVER_PRIV);
   const accessSignature = receiver.signingKey.sign(getBytes(digest)).serialized;
 
-  const { ok: finalOk, status: finalStatus, data: body } = await fetchJson<{
+  const {
+    ok: finalOk,
+    status: finalStatus,
+    data: body,
+  } = await fetchJson<{
     ok: boolean;
     stage: string;
     accessSigner: string;
-    accessProof: { dataHash: string; targetPubkey: string; nonce: string; proof: string; validUntil: string };
+    accessProof: {
+      dataHash: string;
+      targetPubkey: string;
+      nonce: string;
+      proof: string;
+      validUntil: string;
+    };
     ownershipProof: {
       oracleType: number;
       dataHash: string;
@@ -221,13 +258,13 @@ test("POST /v1/agents/:id/transfer final returns full proof structs", async () =
   assert.equal(body.accessSigner.toLowerCase(), receiverAddress.toLowerCase());
   assert.equal(body.accessProof.dataHash, challenge.dataHash);
   assert.equal(body.accessProof.targetPubkey, challenge.targetPubkey);
-  assert.equal(body.accessProof.nonce, nonce.toString());
+  assert.equal(body.accessProof.nonce, toBeHex(nonce));
   assert.equal(body.accessProof.proof, accessSignature);
   assert.equal(body.accessProof.validUntil, validUntil.toString());
   assert.equal(body.ownershipProof.oracleType, 0);
   assert.equal(body.ownershipProof.dataHash, challenge.dataHash);
   assert.equal(body.ownershipProof.targetPubkey, challenge.targetPubkey);
-  assert.equal(body.ownershipProof.nonce, nonce.toString());
+  assert.equal(body.ownershipProof.nonce, toBeHex(nonce));
   assert.match(body.ownershipProof.proof, /^0x[0-9a-fA-F]+$/);
   assert.equal((body.ownershipProof.proof.length - 2) / 2, 65);
   assert.equal(body.ownershipProof.validUntil, validUntil.toString());
@@ -247,7 +284,12 @@ test("POST /v1/agents/:id/transfer challenge triggers full re-key via /v1/transf
   const { rootHash: oldDataUri } = await storage.upload(oldBlob);
   storage.markDataHashSeen(oldDataUri);
 
-  const { httpServer: oracleSrv } = startOracleServer({ signer: oracleSigner, storage, bind: "127.0.0.1", port: 0 });
+  const { httpServer: oracleSrv } = startOracleServer({
+    signer: oracleSigner,
+    storage,
+    bind: "127.0.0.1",
+    port: 0,
+  });
   await waitForListening(oracleSrv);
   const oAddr = oracleSrv.address() as AddressInfo;
   const rekeyOracleUrl = `http://127.0.0.1:${oAddr.port}`;
@@ -270,7 +312,8 @@ test("POST /v1/agents/:id/transfer challenge triggers full re-key via /v1/transf
   try {
     const receiver = new Wallet(RECEIVER_PRIV);
     const uncompressed = deriveUncompressedPubkeyFromHex(RECEIVER_PRIV);
-    const receiverPubkey64 = ("0x" + Buffer.from(uncompressed).toString("hex")) as `0x${string}`;
+    const receiverPubkey64 = ("0x" +
+      Buffer.from(uncompressed).toString("hex")) as `0x${string}`;
 
     // Seal DEK to oracle TEE pubkey (cleartext rejected on backend + oracle).
     const sealedDek = sealKeyForReceiver(
@@ -319,23 +362,41 @@ test("POST /v1/agents/:id/transfer challenge triggers full re-key via /v1/transf
     assert.notEqual(challenge.newDataHash, oldDataUri);
     assert.equal(challenge.newDataUri, challenge.newDataHash);
     assert.match(challenge.sealedKey, /^0x[0-9a-fA-F]+$/);
-    assert.ok(challenge.sealedKey.length > 66, "sealedKey should be > 32 bytes (ECIES ciphertext)");
+    assert.ok(
+      challenge.sealedKey.length > 66,
+      "sealedKey should be > 32 bytes (ECIES ciphertext)",
+    );
     const sealedKeyBytes = getBytes(challenge.sealedKey as `0x${string}`);
-    const recoveredKey = unsealKeyForReceiver(getBytes(RECEIVER_PRIV), sealedKeyBytes);
-    assert.equal(recoveredKey.length, 32, "unsealed key must be 32-byte AES-256 key");
-    const testDomain = buildEip712Domain(ARISTOTLE_CHAIN_ID, MOCK_ADDRESSES.verifier);
+    const recoveredKey = unsealKeyForReceiver(
+      getBytes(RECEIVER_PRIV),
+      sealedKeyBytes,
+    );
+    assert.equal(
+      recoveredKey.length,
+      32,
+      "unsealed key must be 32-byte AES-256 key",
+    );
+    const testDomain = buildEip712Domain(
+      ARISTOTLE_CHAIN_ID,
+      MOCK_ADDRESSES.verifier,
+    );
 
     const nonce = BigInt(challenge.accessProofNonce);
     const validUntil = BigInt(challenge.validUntil);
-    const digest = accessMessageHash({
-      dataHash: challenge.dataHash as `0x${string}`,
-      targetPubkey: challenge.targetPubkey as `0x${string}`,
-      to: receiver.address as `0x${string}`,
-      nft: MOCK_ADDRESSES.agentNft,
-      nonce: toBeHex(nonce) as `0x${string}`,
-      validUntil,
-    }, testDomain);
-    const accessSignature = receiver.signingKey.sign(getBytes(digest)).serialized;
+    const digest = accessMessageHash(
+      {
+        dataHash: challenge.dataHash as `0x${string}`,
+        targetPubkey: challenge.targetPubkey as `0x${string}`,
+        to: receiver.address as `0x${string}`,
+        nft: MOCK_ADDRESSES.agentNft,
+        nonce: toBeHex(nonce) as `0x${string}`,
+        validUntil,
+      },
+      testDomain,
+    );
+    const accessSignature = receiver.signingKey.sign(
+      getBytes(digest),
+    ).serialized;
 
     const {
       ok: rekeyFinalOk,
@@ -375,11 +436,14 @@ test("POST /v1/agents/:id/transfer challenge triggers full re-key via /v1/transf
     assert.equal(rekeyFinalOk, true);
     assert.equal(final.ok, true);
     assert.equal(final.stage, "final");
-    assert.equal(final.accessSigner.toLowerCase(), receiver.address.toLowerCase());
+    assert.equal(
+      final.accessSigner.toLowerCase(),
+      receiver.address.toLowerCase(),
+    );
     assert.equal(final.ownershipProof.sealedKey, challenge.sealedKey);
     assert.equal(final.ownershipProof.dataHash, challenge.dataHash);
     assert.equal(final.ownershipProof.targetPubkey, challenge.targetPubkey);
-    assert.equal(final.ownershipProof.nonce, nonce.toString());
+    assert.equal(final.ownershipProof.nonce, toBeHex(nonce));
     assert.match(final.ownershipProof.proof, /^0x[0-9a-fA-F]+$/);
     assert.equal((final.ownershipProof.proof.length - 2) / 2, 65);
   } finally {
