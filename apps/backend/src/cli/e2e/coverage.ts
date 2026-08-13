@@ -32,6 +32,7 @@ const AGENT_NFT_EXTENDED_ABI = [
   ...AGENT_NFT_ABI,
   "function update(uint256 tokenId, (string dataDescription, bytes32 dataHash)[] newDatas)",
   "function authorizeUsage(uint256 tokenId, address to)",
+  "function authorizeAndDelegate(address delegate, uint256 tokenId, uint256 validUntil)",
   "function revokeAuthorization(uint256 tokenId, address user)",
   "function authorizedUsersOf(uint256 tokenId) view returns (address[])",
   "function delegateAccess(address assistant)",
@@ -70,6 +71,11 @@ type AgentNftExtended = {
     newDatas: Array<{ dataDescription: string; dataHash: string }>,
   ): Promise<TransactionResponse>;
   authorizeUsage(tokenId: bigint, to: string): Promise<TransactionResponse>;
+  authorizeAndDelegate(
+    delegate: string,
+    tokenId: bigint,
+    validUntil: bigint,
+  ): Promise<TransactionResponse>;
   revokeAuthorization(
     tokenId: bigint,
     user: string,
@@ -622,15 +628,25 @@ async function buildAuthorizeDelegatePipelineSteps(
   );
   const steps: Parameters<typeof pipelineWalletTxs>[1] = [];
   if (!alreadyAuthorized) {
+    // One tx instead of two: authorizeAndDelegate(delegate, tokenId, validUntil)
+    // merges authorizeUsage + delegateAccess (validUntil is accepted but unused
+    // in the current impl — semantics identical to the 2-tx path).
     steps.push({
-      name: "authorizeUsage",
-      send: () => nft.contract.authorizeUsage(tokenId, delegateAddress),
+      name: "authorizeAndDelegate",
+      send: () =>
+        nft.contract.authorizeAndDelegate(
+          delegateAddress,
+          tokenId,
+          0n, // validUntil — unused by impl
+        ),
+    });
+  } else {
+    // Already authorized (E2E_REUSE): only re-set the delegate.
+    steps.push({
+      name: "delegateAccess",
+      send: () => nft.contract.delegateAccess(delegateAddress),
     });
   }
-  steps.push({
-    name: "delegateAccess",
-    send: () => nft.contract.delegateAccess(delegateAddress),
-  });
   if (!alreadyAuthorized) {
     // Revoking a user that was never authorized reverts ERC7857NotAuthorized —
     // only revoke what this run actually authorized.
@@ -650,7 +666,7 @@ export async function runAuthorizeDelegateStep(deps: {
   chainId: number;
 }): Promise<void> {
   console.log(
-    `\n[Parity] authorizeUsage + delegateAccess (${deps.delegateAddress})`,
+    `\n[Parity] authorizeAndDelegate (merged; ${deps.delegateAddress})`,
   );
   const nft = new TypedContract<AgentNftExtended>(
     deps.agentNft,
