@@ -19,11 +19,7 @@ import {
   recoverAccessSigner,
   type Eip712Domain,
 } from "@axiom/config";
-import {
-  AGENT_NFT_ABI,
-  ITRANSFER_FROM_ABI,
-  VAULT_ABI,
-} from "@axiom/config/abis";
+import { AGENT_NFT_ABI, ITRANSFER_FROM_ABI } from "@axiom/config/abis";
 import {
   detectVaultAbiVariant,
   readVaultStrategy,
@@ -98,14 +94,12 @@ export async function runContractsLiveStep(deps: {
     { address: deps.paymentProcessor, label: "AxiomPaymentProcessor" },
     { address: deps.paymentToken, label: "PaymentToken" },
   ];
-  await Promise.all(
-    checks.map(async ({ address, label }) => {
-      await assertContractDeployed(deps.provider, address, label);
-      console.log(
-        `          ${label} live at ${address} (${addressExplorerUrl(deps.chainId, address)})`,
-      );
-    }),
-  );
+  for (const { address, label } of checks) {
+    await assertContractDeployed(deps.provider, address, label);
+    console.log(
+      `          ${label} live at ${address} (${addressExplorerUrl(deps.chainId, address)})`,
+    );
+  }
   stepResults.push({
     step: 1,
     name: "on-chain bytecode",
@@ -383,6 +377,13 @@ type VaultMethods = {
     tokenId: bigint,
     overrides?: { value?: bigint },
   ): Promise<TransactionResponse>;
+  depositAndSetStrategy(
+    tokenId: bigint,
+    root: string,
+    dailyLimit: bigint,
+    validUntilDay: bigint,
+    overrides?: { value?: bigint },
+  ): Promise<TransactionResponse>;
   balanceOf(tokenId: bigint): Promise<bigint>;
   setStrategy(
     tokenId: bigint,
@@ -415,33 +416,40 @@ export async function runVaultDepositStrategyPipeline(deps: {
   );
   const before = await vaultTc.contract.balanceOf(deps.tokenId);
   console.log(`\n[Step 7–8] Vault deposit ${amount} + setStrategy (pipelined)`);
-  const vaultPipelineReceipts = await pipelineWalletTxs(
-    "vault deposit+setStrategy",
-    [
-      {
-        name: "AxiomStrategyVault.deposit",
-        send: () => vaultTc.contract.deposit(deps.tokenId, { value: amount }),
-      },
-      {
-        name: "AxiomStrategyVault.setStrategy",
-        send: () =>
-          variant === "legacy"
-            ? vaultTc.contract.setStrategy(
-                deps.tokenId,
-                deps.strategyRoot,
-                dailyLimit,
-              )
-            : vaultTc.contract.setStrategy(
-                deps.tokenId,
-                deps.strategyRoot,
-                dailyLimit,
-                0n,
-              ),
-      },
-    ],
-  );
-  const depReceipt = vaultPipelineReceipts[0]!;
-  const stratReceipt = vaultPipelineReceipts[1]!;
+  let vaultReceipts: Awaited<ReturnType<typeof pipelineWalletTxs>>;
+  if (variant === "legacy") {
+    console.log(
+      "          legacy vault ABI — 2-tx deposit+setStrategy fallback",
+    );
+    vaultReceipts = await pipelineWalletTxs(
+      "vault deposit+setStrategy (legacy)",
+      [
+        {
+          name: "AxiomStrategyVault.deposit",
+          send: () => vaultTc.contract.deposit(deps.tokenId, { value: amount }),
+        },
+        {
+          name: "AxiomStrategyVault.setStrategy",
+          send: () =>
+            vaultTc.contract.setStrategy(
+              deps.tokenId,
+              deps.strategyRoot,
+              dailyLimit,
+            ),
+        },
+      ],
+    );
+  } else {
+    // Current vault: depositAndSetStrategy funds + installs the strategy in ONE tx.
+    const tx = await vaultTc.contract.depositAndSetStrategy(
+      deps.tokenId,
+      deps.strategyRoot,
+      dailyLimit,
+      0n,
+      { value: amount },
+    );
+    vaultReceipts = [assertReceiptOk(await tx.wait(), "depositAndSetStrategy")];
+  }
   const after = await vaultTc.contract.balanceOf(deps.tokenId);
   if (after < before + amount) {
     throw new Error(
@@ -466,130 +474,27 @@ export async function runVaultDepositStrategyPipeline(deps: {
   markCovered("AxiomStrategyVault", "deposit", "vault-deposit");
   markCovered("AxiomStrategyVault", "setStrategy", "vault-setStrategy");
   markCovered("AxiomStrategyVault", "strategyOf", "vault-setStrategy");
+  const vaultReceipt = vaultReceipts[vaultReceipts.length - 1]!;
   recordReceipt(
     7,
-    "AxiomStrategyVault.deposit",
-    `balance=${after} wei (+${after - before})`,
-    depReceipt,
+    variant === "legacy"
+      ? "AxiomStrategyVault.deposit"
+      : "AxiomStrategyVault.depositAndSetStrategy",
+    `balance=${after} wei (+${after - before}); root=${root} dailyLimit=${limit}`,
+    vaultReceipt,
     deps.chainId,
   );
-  recordReceipt(
-    8,
-    "AxiomStrategyVault.setStrategy",
-    `root=${root} dailyLimit=${limit}`,
-    stratReceipt,
-    deps.chainId,
-  );
+  if (variant === "legacy") {
+    recordReceipt(
+      8,
+      "AxiomStrategyVault.setStrategy",
+      `root=${root} dailyLimit=${limit}`,
+      vaultReceipts[1]!,
+      deps.chainId,
+    );
+  }
   void validUntil;
   return after;
-}
-
-export async function runVaultDepositStep(deps: {
-  vault: string;
-  deployer: Wallet;
-  tokenId: bigint;
-  chainId: number;
-  depositWei?: bigint;
-}): Promise<bigint> {
-  const amount = deps.depositWei ?? parseEther("0.001");
-  console.log(
-    `\n[Step 7]  Vault deposit ${amount} wei (tokenId=${deps.tokenId})`,
-  );
-  const vaultTc = new TypedContract<VaultMethods>(
-    deps.vault,
-    VAULT_ABI,
-    deps.deployer,
-  );
-  const before = await vaultTc.contract.balanceOf(deps.tokenId);
-  const tx = await vaultTc.contract.deposit(deps.tokenId, { value: amount });
-  const receipt = assertReceiptOk(await tx.wait(), "vault deposit");
-  const after = await vaultTc.contract.balanceOf(deps.tokenId);
-  if (after < before + amount) {
-    throw new Error(
-      `vault deposit: balance ${after} < expected ${before + amount}`,
-    );
-  }
-  markScenarioCovered("vault.fund", "vault-deposit", { txs: 1, reads: 2 });
-  markCovered("AxiomStrategyVault", "deposit", "vault-deposit");
-  recordReceipt(
-    7,
-    "AxiomStrategyVault.deposit",
-    `balance=${after} wei (+${after - before})`,
-    receipt,
-    deps.chainId,
-  );
-  return after;
-}
-
-export async function runVaultStrategyStep(deps: {
-  vault: string;
-  deployer: Wallet;
-  tokenId: bigint;
-  strategyRoot: `0x${string}`;
-  chainId: number;
-}): Promise<void> {
-  console.log(`\n[Step 8]  Vault setStrategy (root=${deps.strategyRoot})`);
-  const dailyLimit = parseEther("0.1");
-  const provider = deps.deployer.provider;
-  if (!provider) throw new Error("setStrategy: wallet missing provider");
-  const variant = await detectVaultAbiVariant(provider, deps.vault);
-  if (variant === "legacy") {
-    console.log(
-      "          legacy vault ABI (3-arg setStrategy, no validUntilDay)",
-    );
-  }
-  const vaultTc = new TypedContract<VaultMethods>(
-    deps.vault,
-    vaultAbiFor(variant),
-    deps.deployer,
-  );
-  const tx =
-    variant === "legacy"
-      ? await vaultTc.contract.setStrategy(
-          deps.tokenId,
-          deps.strategyRoot,
-          dailyLimit,
-        )
-      : await vaultTc.contract.setStrategy(
-          deps.tokenId,
-          deps.strategyRoot,
-          dailyLimit,
-          0n,
-        );
-  const receipt = assertReceiptOk(await tx.wait(), "setStrategy");
-  const {
-    root,
-    dailyLimit: limit,
-    validUntilDay: validUntil,
-  } = await readVaultStrategy(provider, deps.vault, deps.tokenId);
-  if (root.toLowerCase() !== deps.strategyRoot.toLowerCase()) {
-    throw new Error(
-      `setStrategy: root on-chain ${root} != ${deps.strategyRoot}`,
-    );
-  }
-  if (limit !== dailyLimit) {
-    throw new Error(
-      `setStrategy: dailyLimit on-chain ${limit} != ${dailyLimit}`,
-    );
-  }
-  if (variant === "current" && validUntil !== 0n) {
-    throw new Error(
-      `setStrategy: expected no expiry, got validUntilDay=${validUntil}`,
-    );
-  }
-  markScenarioCovered("vault.strategy", "vault-setStrategy", {
-    txs: 1,
-    reads: 1,
-  });
-  markCovered("AxiomStrategyVault", "setStrategy", "vault-setStrategy");
-  markCovered("AxiomStrategyVault", "setStrategy", "vault-setStrategy");
-  recordReceipt(
-    8,
-    "AxiomStrategyVault.setStrategy",
-    `root=${root} dailyLimit=${limit}`,
-    receipt,
-    deps.chainId,
-  );
 }
 
 export async function runTickStep(deps: {
@@ -724,7 +629,7 @@ export async function runTransferSteps(deps: {
     targetPubkey: challenge.targetPubkey,
     to: deps.to,
     nft: deps.agentNft as `0x${string}`,
-    nonce: toBeHex(BigInt(challenge.accessProofNonce)),
+    nonce: toBeHex(BigInt(challenge.accessProofNonce)) as `0x${string}`,
     validUntil: BigInt(challenge.validUntil),
   };
   const accessDigest = accessMessageHash(accessInput, deps.eip712Domain);
@@ -861,7 +766,7 @@ export async function runOnChainTransferStep(deps: {
       targetPubkey: deps.finalResp.accessProof.targetPubkey,
       to: deps.to,
       nft: deps.agentNft as `0x${string}`,
-      nonce: toBeHex(BigInt(deps.finalResp.accessProof.nonce)),
+      nonce: toBeHex(BigInt(deps.finalResp.accessProof.nonce)) as `0x${string}`,
       validUntil: BigInt(deps.finalResp.accessProof.validUntil),
     };
     const recoveredAddr = recoverAccessSigner(

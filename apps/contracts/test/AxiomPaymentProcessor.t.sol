@@ -280,6 +280,63 @@ contract AxiomPaymentProcessorTest is Test {
         assertEq(token.balanceOf(treasury), expectedProtocolCut, "protocol receives minimum fee");
     }
 
+    // ─── payForAgentAndCompute ───────────────────────────────────────
+    function test_payForAgentAndCompute_creditsCreatorAndPaysProvider() public {
+        uint256 agentAmount = 1000e6;
+        uint256 computeAmount = 300e6;
+        address provider = address(0xD3F);
+        uint256 expectedProtocolCut = (agentAmount * PROTOCOL_FEE_BPS) / 10_000;
+        uint256 expectedCreatorCut = agentAmount - expectedProtocolCut;
+
+        token.mint(payer, agentAmount + computeAmount);
+        vm.prank(payer);
+        token.approve(address(processor), agentAmount + computeAmount);
+
+        assertEq(token.balanceOf(payer), agentAmount + computeAmount, "payer pre-balance");
+        assertEq(token.balanceOf(provider), 0, "provider pre-balance");
+        assertEq(processor.agentEarningsOf(creator), 0, "creator pre-earnings");
+
+        vm.expectEmit(true, true, true, true);
+        emit PaymentProcessed(AGENT_TOKEN_ID, payer, creator, agentAmount, expectedCreatorCut, expectedProtocolCut);
+
+        vm.prank(payer);
+        processor.payForAgentAndCompute(AGENT_TOKEN_ID, provider, agentAmount, computeAmount);
+
+        assertEq(token.balanceOf(payer), 0, "payer post-balance");
+        assertEq(token.balanceOf(provider), computeAmount, "provider post-balance");
+        assertEq(processor.agentEarningsOf(creator), expectedCreatorCut, "creator post-earnings");
+        assertEq(processor.totalOutstandingEarnings(), expectedCreatorCut, "outstanding earnings tracked");
+    }
+
+    function test_payForAgentAndCompute_revertsOnZeroProvider() public {
+        uint256 agentAmount = 100e6;
+        uint256 computeAmount = 50e6;
+        token.mint(payer, agentAmount + computeAmount);
+        vm.prank(payer);
+        token.approve(address(processor), agentAmount + computeAmount);
+
+        vm.expectRevert(AxiomPaymentProcessor.ZeroAddress.selector);
+        vm.prank(payer);
+        processor.payForAgentAndCompute(AGENT_TOKEN_ID, address(0), agentAmount, computeAmount);
+    }
+
+    function test_payForAgentAndCompute_revertsOnZeroAmount() public {
+        address provider = address(0xD3F);
+        uint256 agentAmount = 100e6;
+        uint256 computeAmount = 50e6;
+        token.mint(payer, agentAmount + computeAmount);
+        vm.prank(payer);
+        token.approve(address(processor), agentAmount + computeAmount);
+
+        vm.expectRevert(AxiomPaymentProcessor.ZeroAmount.selector);
+        vm.prank(payer);
+        processor.payForAgentAndCompute(AGENT_TOKEN_ID, provider, 0, computeAmount);
+
+        vm.expectRevert(AxiomPaymentProcessor.ZeroAmount.selector);
+        vm.prank(payer);
+        processor.payForAgentAndCompute(AGENT_TOKEN_ID, provider, agentAmount, 0);
+    }
+
     // ─── withdrawAgentEarnings ──────────────────────────────────────
     function test_withdrawAgentEarnings_transfersToken() public {
         uint256 amount = 1000e6;

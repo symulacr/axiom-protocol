@@ -11,6 +11,7 @@ export const PAYMENT_PROCESSOR_ABI = [
   "function paused() view returns (bool)",
   "function payComputeProvider(address provider, uint256 amount)",
   "function payForAgent(uint256 agentTokenId, uint256 amount)",
+  "function payForAgentAndCompute(uint256 agentTokenId, address provider, uint256 agentAmount, uint256 computeAmount)",
   "function paymentToken() view returns (address)",
   "function pendingProtocolTreasury() view returns (address)",
   "function pendingTreasuryEffectiveAt() view returns (uint256)",

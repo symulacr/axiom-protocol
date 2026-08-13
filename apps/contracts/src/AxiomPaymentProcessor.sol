@@ -291,6 +291,60 @@ contract AxiomPaymentProcessor is Initializable, OwnableUpgradeable, PausableUpg
         emit ComputeProviderPaid(provider, amount);
     }
 
+    /// @notice One-tx payForAgent + payComputeProvider: credits the creator's split of `agentAmount`
+    ///         to withdrawable earnings and forwards `computeAmount` directly to `provider` (2 txs -> 1).
+    function payForAgentAndCompute(
+        uint256 agentTokenId,
+        address provider,
+        uint256 agentAmount,
+        uint256 computeAmount
+    ) external nonReentrant whenNotPaused {
+        if (provider == address(0)) revert ZeroAddress();
+        if (agentAmount == 0) revert ZeroAmount();
+        if (computeAmount == 0) revert ZeroAmount();
+        PaymentProcessorStorage storage $ = _getStorage();
+        IERC20 token = IERC20($.paymentToken);
+
+        address creator = $.axiomNft.creatorOf(agentTokenId);
+        if (creator == address(0)) revert AgentCreatorNotRegistered();
+
+        uint256 balanceBefore = token.balanceOf(address(this));
+        token.safeTransferFrom(msg.sender, address(this), agentAmount);
+        uint256 received = token.balanceOf(address(this)) - balanceBefore;
+        if (received != agentAmount) revert TransferAmountMismatch(agentAmount, received);
+
+        (uint256 royaltyBps, bool royaltyIsSet) = _effectiveRoyaltyBps($, agentTokenId);
+        uint256 feeBps = $.protocolFeeBps;
+        uint256 creatorCut;
+        uint256 protocolCut;
+        if (!royaltyIsSet) {
+            protocolCut = (received * feeBps) / BPS_DENOMINATOR;
+            creatorCut = received - protocolCut;
+        } else {
+            creatorCut = (received * royaltyBps) / BPS_DENOMINATOR;
+            protocolCut = received - creatorCut;
+            uint256 minProtocolCut = (received * feeBps) / BPS_DENOMINATOR;
+            if (protocolCut < minProtocolCut) {
+                protocolCut = minProtocolCut;
+                creatorCut = received - protocolCut;
+            }
+        }
+
+        if (creatorCut > 0) {
+            $.agentEarnings[creator] += creatorCut;
+            $.totalOutstandingEarnings += creatorCut;
+        }
+
+        if (protocolCut > 0) {
+            token.safeTransfer($.protocolTreasury, protocolCut);
+        }
+
+        emit PaymentProcessed(agentTokenId, msg.sender, creator, agentAmount, creatorCut, protocolCut);
+
+        token.safeTransferFrom(msg.sender, provider, computeAmount);
+        emit ComputeProviderPaid(provider, computeAmount);
+    }
+
     /// @notice Creator pulls accumulated earnings in the configured payment token (not native).
     function withdrawAgentEarnings() external nonReentrant {
         PaymentProcessorStorage storage $ = _getStorage();

@@ -119,6 +119,28 @@ contract AxiomStrategyVault is Initializable, OwnableUpgradeable, PausableUpgrad
         emit StrategySet(tokenId, root, dailyLimit, validUntilDay);
     }
 
+    /// @notice One-tx deposit + setStrategy: funds the vault and installs/refreshes the strategy in a single call (2 txs -> 1).
+    function depositAndSetStrategy(
+        uint256 tokenId,
+        bytes32 root,
+        uint256 dailyLimit,
+        uint64 validUntilDay
+    ) external payable whenNotPaused onlyTokenOwner(tokenId) {
+        if (msg.value == 0) revert ZeroAmount();
+        vaults[tokenId].balance += msg.value;
+        totalTrackedBalance += msg.value;
+        emit Deposited(tokenId, msg.sender, address(0), msg.value);
+
+        if (dailyLimit > type(uint128).max) revert LimitOverflow();
+        Vault storage v = vaults[tokenId];
+        v.strategyRoot = root;
+        v.dailyLimit = uint128(dailyLimit);
+        v.dailySpent = 0;
+        v.resetDay = uint64(block.timestamp / 1 days);
+        v.validUntilDay = validUntilDay;
+        emit StrategySet(tokenId, root, dailyLimit, validUntilDay);
+    }
+
     function strategyOf(
         uint256 tokenId
     )

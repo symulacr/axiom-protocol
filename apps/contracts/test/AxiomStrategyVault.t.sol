@@ -154,6 +154,27 @@ contract AxiomStrategyVaultTest is Test {
         vault.setStrategy(TOKEN_ID, bytes32(uint256(1)), uint256(type(uint128).max) + 1, _noExpiry());
     }
 
+    function test_depositAndSetStrategy_setsBalanceAndStrategy() public {
+        uint256 amount = 2 ether;
+        uint256 dailyLimit = 1 ether;
+        bytes32 root = keccak256("strategy");
+        uint64 validUntilDay = _farFuture();
+
+        vm.deal(tokenOwner, amount);
+        vm.prank(tokenOwner);
+        vault.depositAndSetStrategy{value: amount}(TOKEN_ID, root, dailyLimit, validUntilDay);
+
+        assertEq(vault.balanceOf(TOKEN_ID), amount, "balance funded in one call");
+        assertEq(vault.totalTrackedBalance(), amount, "tracked balance matches");
+
+        (bytes32 storedRoot, uint256 storedLimit, uint256 storedSpent, , uint64 storedValidUntil) =
+            vault.strategyOf(TOKEN_ID);
+        assertEq(storedRoot, root, "strategy root set");
+        assertEq(storedLimit, dailyLimit, "daily limit set");
+        assertEq(storedSpent, 0, "daily spend reset");
+        assertEq(storedValidUntil, validUntilDay, "valid-until day set");
+    }
+
     function test_recoverExcessNative() public {
         uint256 amount = 1 ether;
         vm.deal(tokenOwner, amount);

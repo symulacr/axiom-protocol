@@ -22,9 +22,7 @@ import {
   runStorageVerifyStep,
   runOracleRegisterStep,
   runOnChainMintStep,
-  runVaultDepositStep,
   runVaultDepositStrategyPipeline,
-  runVaultStrategyStep,
   runTickStep,
   runTransferSteps,
   runOnChainTransferStep,
@@ -183,6 +181,7 @@ async function main(): Promise<void> {
   if (!RUN_PAYMENT) {
     for (const fn of [
       "payForAgent",
+      "payForAgentAndCompute",
       "payComputeProvider",
       "withdrawAgentEarnings",
       "approve",
@@ -349,13 +348,7 @@ async function main(): Promise<void> {
     vaultBalanceAfterWithdraw = balanceAfterDeposit;
   } else {
     await postMintHttp;
-    await runVaultDepositStep({
-      vault: VAULT,
-      deployer: operator,
-      tokenId,
-      chainId: OG_CHAIN_ID,
-    });
-    await runVaultStrategyStep({
+    await runVaultDepositStrategyPipeline({
       vault: VAULT,
       deployer: operator,
       tokenId,
@@ -493,6 +486,7 @@ async function main(): Promise<void> {
     const reason = `USDC depleted (${preflight.operatorUsdc})`;
     for (const fn of [
       "payForAgent",
+      "payForAgentAndCompute",
       "payComputeProvider",
       "withdrawAgentEarnings",
       "approve",

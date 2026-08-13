@@ -85,6 +85,12 @@ type PaymentCov = {
     agentTokenId: bigint,
     amount: bigint,
   ): Promise<TransactionResponse>;
+  payForAgentAndCompute(
+    agentTokenId: bigint,
+    provider: string,
+    agentAmount: bigint,
+    computeAmount: bigint,
+  ): Promise<TransactionResponse>;
   payComputeProvider(
     provider: string,
     amount: bigint,
@@ -490,45 +496,40 @@ export async function runPaymentPipelineStep(deps: {
     );
   }
   console.log(
-    `\n[Parity] payment pipeline payForAgent(${payAmount}) + payComputeProvider(${computeAmount})`,
+    `\n[Parity] payment pipeline payForAgentAndCompute(agent=${payAmount} compute=${computeAmount}) — 1 tx`,
   );
   const earningsBefore = await pay.contract.agentEarningsOf(
     deps.deployer.address,
   );
   const providerBalBefore = await token.contract.balanceOf(deps.provider);
-  const need = payAmount > computeAmount ? payAmount : computeAmount;
   await ensureErc20Allowance({
     token: deps.paymentToken,
     owner: deps.deployer,
     spender: deps.paymentProcessor,
-    amount: need,
+    amount: needTotal,
     step: "payment-pipeline",
   });
-  const [payReceipt, computeReceipt] = await pipelineWalletTxs(
-    "payForAgent + payComputeProvider",
-    [
-      {
-        name: "AxiomPaymentProcessor.payForAgent",
-        send: () => pay.contract.payForAgent(deps.tokenId, payAmount),
-      },
-      {
-        name: "payComputeProvider",
-        send: () =>
-          pay.contract.payComputeProvider(deps.provider, computeAmount),
-      },
-    ],
+  const payTx = await pay.contract.payForAgentAndCompute(
+    deps.tokenId,
+    deps.provider,
+    payAmount,
+    computeAmount,
+  );
+  const payReceipt = assertReceiptOk(
+    await payTx.wait(),
+    "payForAgentAndCompute",
   );
   const earningsAfter = await pay.contract.agentEarningsOf(
     deps.deployer.address,
   );
   if (earningsAfter <= earningsBefore) {
     throw new Error(
-      `payForAgent: earnings ${earningsBefore} -> ${earningsAfter}`,
+      `payForAgentAndCompute: earnings ${earningsBefore} -> ${earningsAfter}`,
     );
   }
   const providerBalAfter = await token.contract.balanceOf(deps.provider);
   if (providerBalAfter < providerBalBefore + computeAmount) {
-    throw new Error("payComputeProvider: provider balance did not increase");
+    throw new Error("payForAgentAndCompute: provider balance did not increase");
   }
   markScenarioCovered("payment.agent", "payForAgent", { txs: 1, reads: 2 });
   markScenarioCovered("payment.compute", "payComputeProvider", { txs: 1 });
@@ -542,16 +543,9 @@ export async function runPaymentPipelineStep(deps: {
   markCovered("MockUSDC", "transfer", "payComputeProvider");
   recordReceipt(
     9,
-    "AxiomPaymentProcessor.payForAgent",
-    `earnings ${earningsBefore} -> ${earningsAfter}`,
-    payReceipt!,
-    deps.chainId,
-  );
-  recordReceipt(
-    15,
-    "payComputeProvider",
-    `provider +${providerBalAfter - providerBalBefore}`,
-    computeReceipt!,
+    "AxiomPaymentProcessor.payForAgentAndCompute",
+    `earnings ${earningsBefore} -> ${earningsAfter}; provider +${providerBalAfter - providerBalBefore}`,
+    payReceipt,
     deps.chainId,
   );
 }
