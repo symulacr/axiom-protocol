@@ -14,10 +14,6 @@ type PaymentProcessorMethods = {
     agentTokenId: bigint,
     amount: bigint,
   ): Promise<TransactionResponse>;
-  payComputeProvider(
-    provider: string,
-    amount: bigint,
-  ): Promise<TransactionResponse>;
   withdrawAgentEarnings(): Promise<TransactionResponse>;
   setRoyaltyBps(
     agentTokenId: bigint,
@@ -26,8 +22,6 @@ type PaymentProcessorMethods = {
   protocolTreasury(): Promise<string>;
   protocolFeeBps(): Promise<bigint>;
   paymentToken(): Promise<string>;
-  royaltyBpsOf(tokenId: bigint): Promise<bigint>;
-  royaltyBpsSet(tokenId: bigint): Promise<boolean>;
   agentEarningsOf(creator: string): Promise<bigint>;
 };
 
@@ -89,33 +83,6 @@ export class PaymentProcessorClient {
     );
     const event = this.parsePaymentProcessed(receipt);
     return { receipt, event };
-  }
-
-  async payComputeProvider(
-    provider: string,
-    amount: bigint,
-  ): Promise<{
-    receipt: ContractTransactionReceipt;
-    provider: string;
-    amount: bigint;
-  }> {
-    await this.ensureAllowance(amount);
-    const receipt = await this.sendAndWait(
-      this.payment.contract.payComputeProvider(provider, amount),
-    );
-    return { receipt, provider, amount };
-  }
-
-  async withdrawEarnings(): Promise<{
-    receipt: ContractTransactionReceipt;
-    amount: bigint | null;
-  }> {
-    const receipt = await this.sendAndWait(
-      this.payment.contract.withdrawAgentEarnings(),
-    );
-    const parsed = this.findParsedEvent(receipt, "EarningsWithdrawn");
-    const amount = (parsed?.args.amount as bigint | undefined) ?? null;
-    return { receipt, amount };
   }
 
   encodeSetRoyalty(

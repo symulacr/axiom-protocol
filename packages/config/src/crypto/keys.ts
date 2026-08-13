@@ -1,10 +1,22 @@
 import { encrypt, decrypt } from "eciesjs";
 import { secp256k1 } from "ethereum-cryptography/secp256k1";
 import { keccak256 } from "ethereum-cryptography/keccak";
+import { getBytes, hexlify } from "ethers";
 
 export function publicKeyUncompressedFromPrivate(privateKey: Uint8Array) {
   const pub = secp256k1.getPublicKey(privateKey, false);
   return pub.length === 65 ? pub.subarray(1) : pub;
+}
+
+export function normalizePubkey64(pk: `0x${string}`): `0x${string}` {
+  if (pk.length === 130 && pk.startsWith("0x04")) {
+    return ("0x" + pk.slice(4)) as `0x${string}`;
+  }
+  const pubBytes = getBytes(pk);
+  if (pubBytes.length === 65) {
+    return hexlify(pubBytes.subarray(1)) as `0x${string}`;
+  }
+  return pk;
 }
 
 export function pubKeyToAddress(uncompressed: Uint8Array): `0x${string}` {

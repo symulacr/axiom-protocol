@@ -38,7 +38,6 @@
     "viem": "^2.55.13",
     "@sentry/node": "^10.70.0",
     "ws": "^8.21.3",
-    "lru-cache": "^11.5.2",
     "zod": "^4.4.3"
   },
   "devDependencies": {

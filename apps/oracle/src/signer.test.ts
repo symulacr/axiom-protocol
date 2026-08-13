@@ -4,7 +4,11 @@ import { SigningKey, computeAddress, Wallet, getBytes, toBeHex } from "ethers";
 
 import { pubKeyToAddress, publicKeyUncompressedFromPrivate, sealKeyForReceiver, unsealKeyForReceiver } from "@axiom/config/crypto/keys";
 import { aesGcmDecrypt, aesGcmEncrypt, concatEncrypted, parseEncrypted } from "@axiom/config/crypto/aes-gcm";
-import { TeeSigner, ownershipMessageHash, accessMessageHash } from "./signer.js";
+import { TeeSigner } from "./signer.js";
+import {
+  ownershipMessageHash,
+  accessMessageHash,
+} from "@axiom/config/eip712";
 
 const TEST_PRIV_HEX = "0x" + "11".repeat(32);
 const TEST_RECEIVER_PRIV_HEX = "0x" + "22".repeat(32);

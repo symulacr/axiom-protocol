@@ -5,7 +5,7 @@ const VAULT_WITHDRAW_IFACE = new ethers.Interface([
   "function withdraw(uint256 tokenId, uint256 amount)",
 ]);
 
-import type { Router, Response } from "express";
+import type { Router } from "express";
 import { ethers } from "ethers";
 import { createRoute } from "./route-factory.js";
 import {
@@ -13,8 +13,6 @@ import {
   vaultWithdrawEncodeSchema,
 } from "../route-schemas.js";
 import type { z } from "zod";
-import { HTTP } from "@axiom/config";
-import { sendError } from "../utils/response.js";
 import type { ServerConfig } from "../server.js";
 
 type VaultActionRoute = {
@@ -47,23 +45,6 @@ const VAULT_ACTION_ROUTES: VaultActionRoute[] = [
   },
 ];
 
-function requireVaultAddress(
-  cfg: ServerConfig,
-  res: Response,
-): string | undefined {
-  const vaultAddr = cfg.addresses?.vault;
-  if (!vaultAddr) {
-    sendError(
-      res,
-      HTTP.INTERNAL,
-      "vault address not configured",
-      "VAULT_NOT_CONFIGURED",
-    );
-    return undefined;
-  }
-  return vaultAddr;
-}
-
 export function registerVaultRoutes(
   paymentRouter: Router,
   config: ServerConfig,
@@ -80,8 +61,7 @@ export function registerVaultRoutes(
         description: route.description,
       },
       (parsed: { amount: string }, _req, _res, { id, config: cfg }) => {
-        const vaultAddr = requireVaultAddress(cfg, _res);
-        if (!vaultAddr) return;
+        const vaultAddr = cfg.addresses?.vault as string;
         const amountWei = ethers.parseEther(parsed.amount);
         const data = route.encode(id, amountWei);
         return {

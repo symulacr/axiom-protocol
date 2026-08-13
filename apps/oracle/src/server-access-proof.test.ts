@@ -5,7 +5,8 @@ import type { Server } from "node:http";
 import { Wallet, getBytes, toBeHex } from "ethers";
 
 import { startServer } from "./server.js";
-import { TeeSigner, accessMessageHash } from "./signer.js";
+import { TeeSigner } from "./signer.js";
+import { accessMessageHash } from "@axiom/config/eip712";
 import { InMemoryStorage } from "@axiom/config/storage/0g";
 
 const TEST_PRIV_HEX = "0x" + "11".repeat(32);

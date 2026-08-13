@@ -2,7 +2,6 @@ import type { Request, Response, NextFunction, Router, Express } from "express";
 import { HTTP } from "@axiom/config";
 import type { ServerConfig } from "../server.js";
 import type { z } from "zod";
-import { broadcast } from "../ws/broadcaster.js";
 import { sendError } from "../utils/response.js";
 
 interface RouteRegistration {
@@ -27,7 +26,6 @@ export interface RouteOptions<S extends z.ZodTypeAny | undefined = undefined> {
   schema?: S;
   requireId?: boolean;
   requireAddress?: AddressKey;
-  broadcast?: string;
   consumer?: string;
   description?: string;
 }
@@ -43,7 +41,7 @@ export function createRoute<S extends z.ZodTypeAny | undefined = undefined>(
   REGISTERED_ROUTES.push({
     method: method.toUpperCase() as "GET" | "POST",
     path: opts.path,
-    consumer: opts.consumer,
+    consumer: opts.consumer ?? "chat-runtime",
     description: opts.description,
   });
   routeFn(
@@ -80,9 +78,6 @@ export function createRoute<S extends z.ZodTypeAny | undefined = undefined>(
           res,
           { id, config },
         );
-        if (opts.broadcast && result) {
-          broadcast(opts.broadcast, result);
-        }
         if (!res.headersSent) {
           res.json(result ?? { ok: true });
         }

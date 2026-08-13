@@ -3,10 +3,12 @@ import type { JsonRpcProvider } from "ethers";
 import type { OracleClient } from "../oracle/client.js";
 import { HTTP } from "@axiom/config";
 import { createLogger } from "../utils/logger.js";
-import { sendError, extractErrorMessage } from "../utils/response.js";
+import { sendError, extractErrorMessage, envInt } from "../utils/response.js";
 import type { ServerConfig } from "../server.js";
 import { createRoute } from "./route-factory.js";
+import pkg from "../../package.json" with { type: "json" };
 
+const PKG_VERSION = pkg.version;
 const log = createLogger("health");
 
 const DEFAULT_PROBE_TTL_MS = 3_000;
@@ -20,8 +22,7 @@ type HealthSnapshot = {
 };
 
 function probeTtlMs(): number {
-  const n = Number.parseInt(process.env.AXIOM_HEALTH_CACHE_MS ?? "", 10);
-  return Number.isFinite(n) && n > 0 ? n : DEFAULT_PROBE_TTL_MS;
+  return envInt("AXIOM_HEALTH_CACHE_MS", DEFAULT_PROBE_TTL_MS);
 }
 
 export function createHealthRouter(
@@ -109,7 +110,7 @@ export function createHealthRouter(
         const s = await resolveSnapshot();
         res.status(s.ok ? HTTP.OK : HTTP.SERVICE_UNAVAILABLE).json({
           ok: s.ok,
-          version: "0.1.0",
+          version: PKG_VERSION,
           signer: signerAddress,
           chainHead: s.chainHead,
           oracle: s.oracleUp ? "up" : "down",

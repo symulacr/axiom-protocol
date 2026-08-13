@@ -15,7 +15,8 @@ import type { AddressInfo } from "node:net";
 import { SigningKey, keccak256, toBeHex } from "ethers";
 
 import { InMemoryStorage } from "@axiom/config/storage/0g";
-import { TeeSigner, ownershipMessageHash } from "../src/signer.js";
+import { TeeSigner } from "../src/signer.js";
+import { ownershipMessageHash } from "@axiom/config/eip712";
 import { startServer } from "../src/server.js";
 import { aesGcmEncrypt, concatEncrypted } from "@axiom/config/crypto/aes-gcm";
 import { publicKeyUncompressedFromPrivate } from "@axiom/config/crypto/keys";

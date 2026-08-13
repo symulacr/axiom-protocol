@@ -106,7 +106,7 @@ export function createSkillRouter(config: ServerConfig): SkillRouter {
     opts: RouteOptions<S>,
     handler: RouteHandler<S extends z.ZodTypeAny ? z.infer<S> : unknown>,
   ): void => {
-    createRoute(router, { consumer: "chat-runtime", ...opts }, handler, config);
+    createRoute(router, opts, handler, config);
   };
   return { router, route };
 }

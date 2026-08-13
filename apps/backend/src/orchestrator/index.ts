@@ -155,7 +155,6 @@ export class StrategyRunner {
   private readonly storage: StorageAdapter | undefined;
   private vaultReadTc: TypedContract<StrategyVaultMethods> | null = null;
   private vaultWriteTc: TypedContract<StrategyVaultMethods> | null = null;
-  private vaultAbiVariant: VaultAbiVariant | null = null;
 
   constructor(config: OrchestratorConfig) {
     const chainId = resolveChainId(config.chainId);
@@ -199,7 +198,10 @@ export class StrategyRunner {
 
     // Storage read: when a 0G adapter is configured, download the blob by root and report
     // its real size; otherwise report configured modelDataRoot with size 0 (honest: not measured).
-    const storageTask = (async (): Promise<{ rootHash: `0x${string}`; size: number }> => {
+    const storageTask = (async (): Promise<{
+      rootHash: `0x${string}`;
+      size: number;
+    }> => {
       if (this.storage && strategy.modelDataRoot !== ZERO_DATA_ROOT) {
         try {
           const dl = await this.storage.download(strategy.modelDataRoot);
@@ -211,11 +213,7 @@ export class StrategyRunner {
       return { rootHash: strategy.modelDataRoot, size: 0 };
     })();
     const [inferenceResult, onchainResult, storageResult] =
-      await Promise.allSettled([
-        inferenceTask,
-        onchainTask,
-        storageTask,
-      ]);
+      await Promise.allSettled([inferenceTask, onchainTask, storageTask]);
 
     const rawModelOutput =
       inferenceResult.status === "fulfilled"
@@ -340,11 +338,7 @@ export class StrategyRunner {
   private async resolveVaultAbiVariant(): Promise<VaultAbiVariant> {
     const vaultAddr = this.addresses?.vault;
     if (!vaultAddr) return "current";
-    this.vaultAbiVariant ??= await detectVaultAbiVariant(
-      this.provider,
-      vaultAddr,
-    );
-    return this.vaultAbiVariant;
+    return detectVaultAbiVariant(this.provider, vaultAddr);
   }
 
   private getVaultContract(

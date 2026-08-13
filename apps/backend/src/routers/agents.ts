@@ -1,9 +1,3 @@
-const AGENT_NFT_IFACE = new ethers.Interface([
-  "function balanceOf(address) view returns (uint256)",
-  "function ownerOf(uint256) view returns (address)",
-  "function intelligentDatasOf(uint256) view returns (tuple(string dataDescription, bytes32 dataHash)[])",
-  "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)",
-]);
 import { hexViem, addressViem } from "@axiom/config/types/hex";
 import { AGENT_NFT_ABI } from "@axiom/config/abis";
 import { z } from "zod";
@@ -15,7 +9,7 @@ import {
   type AgentNFTMethods,
 } from "@axiom/config/types/contract";
 import { type ServerConfig, isUpstreamTransportError } from "../server.js";
-import { sendError, extractErrorMessage } from "../utils/response.js";
+import { sendError, extractErrorMessage, envInt } from "../utils/response.js";
 import { TTLCache } from "../utils/response.js";
 import { TRANSFER_TOPIC } from "@axiom/config";
 import type { DefaultSignerOracleClient } from "../oracle/client.js";
@@ -44,6 +38,7 @@ import {
   recoverOwnershipSigner,
   HTTP,
 } from "@axiom/config";
+import { normalizePubkey64 } from "@axiom/config/crypto/keys";
 import { transferBodySchema } from "../route-schemas.js";
 
 function resolveSealedKey(sealedKeyIn: string | undefined): {
@@ -106,10 +101,7 @@ export function registerAgentRoutes(
   eip712Domain: Eip712Domain,
   nftTc: TypedContract<AgentNFTMethods> | null,
 ): void {
-  const agentListTtlMs = (() => {
-    const n = Number.parseInt(process.env.AXIOM_AGENT_LIST_CACHE_MS ?? "", 10);
-    return Number.isFinite(n) && n > 0 ? n : 120_000;
-  })();
+  const agentListTtlMs = envInt("AXIOM_AGENT_LIST_CACHE_MS", 120_000);
   const agentCache = new TTLCache<unknown>(agentListTtlMs);
 
   // Env-required at boot (backendEnvSchema); a missing PK fails loudly here
@@ -156,7 +148,7 @@ export function registerAgentRoutes(
         );
         return;
       }
-      const iface = AGENT_NFT_IFACE;
+      const iface = new ethers.Interface(AGENT_NFT_ABI);
       const balanceHex = await provider.call({
         to: nftAddr,
         data: iface.encodeFunctionData("balanceOf", [owner]),
@@ -317,16 +309,9 @@ export function registerAgentRoutes(
           return;
         }
 
-        let pk = receiverPubKey64;
+        let pk: `0x${string}`;
         try {
-          if (pk.length === 130 && pk.startsWith("0x04")) {
-            pk = ("0x" + pk.slice(4)) as `0x${string}`;
-          } else {
-            const pubBytes = ethers.getBytes(pk);
-            if (pubBytes.length === 65) {
-              pk = ethers.hexlify(pubBytes.slice(1)) as `0x${string}`;
-            }
-          }
+          pk = normalizePubkey64(receiverPubKey64);
         } catch {
           sendError(res, HTTP.BAD_REQUEST, "Invalid receiverPubKey64 hex");
           return;

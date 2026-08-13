@@ -4,23 +4,12 @@ import type { Hex } from "viem";
 import { publicKeyUncompressedFromPrivate } from "@axiom/config/crypto/keys";
 import {
   DEFAULT_EIP712_DOMAIN,
-  accessMessageHash as eip712AccessMessageHash,
   ownershipMessageHash as eip712OwnershipMessageHash,
   recoverAccessSigner as eip712RecoverAccessSigner,
   type Eip712Domain,
   type OwnershipProofInput,
   type AccessProofInput,
 } from "@axiom/config/eip712";
-
-export const ownershipMessageHash = (
-  input: OwnershipProofInput,
-  domain: Eip712Domain = DEFAULT_EIP712_DOMAIN,
-): Hex => eip712OwnershipMessageHash(input, domain);
-
-export const accessMessageHash = (
-  input: AccessProofInput,
-  domain: Eip712Domain = DEFAULT_EIP712_DOMAIN,
-): Hex => eip712AccessMessageHash(input, domain);
 
 export class TeeSigner {
   readonly wallet: Wallet;
@@ -36,17 +25,14 @@ export class TeeSigner {
     this.wallet = new Wallet(privateKeyHex);
     this.address = this.wallet.address as Hex;
     this.domain = domain;
-    this.privateKeyBytes = Buffer.from(
-      privateKeyHex.replace(/^0x/, ""),
-      "hex",
-    );
+    this.privateKeyBytes = Buffer.from(privateKeyHex.replace(/^0x/, ""), "hex");
     this.uncompressedPubkey = publicKeyUncompressedFromPrivate(
       this.privateKeyBytes,
     );
   }
 
   signOwnership(input: OwnershipProofInput): Hex {
-    const digest = ownershipMessageHash(input, this.domain);
+    const digest = eip712OwnershipMessageHash(input, this.domain);
     return this.wallet.signingKey.sign(digest).serialized as Hex;
   }
 

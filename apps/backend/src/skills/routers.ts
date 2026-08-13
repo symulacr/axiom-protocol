@@ -13,7 +13,7 @@ import { getSharedProvider } from "../provider.js";
 import { TTLCache, sendError } from "../utils/response.js";
 import { createLogger } from "../utils/logger.js";
 import { TRANSFER_TOPIC } from "@axiom/config";
-import { AGENT_NFT_ABI } from "@axiom/config/abis";
+import { AGENT_NFT_ABI, ERC20_ABI } from "@axiom/config/abis";
 import { HTTP } from "@axiom/config";
 import {
   evmAddressSchema,
@@ -49,16 +49,6 @@ function mustMethod<T extends (...args: never[]) => unknown>(
   if (!fn) throw new Error(`Contract method unavailable: ${what}`);
   return fn;
 }
-
-const ERC20_ABI = [
-  "function balanceOf(address) view returns (uint256)",
-  "function name() view returns (string)",
-  "function symbol() view returns (string)",
-  "function decimals() view returns (uint8)",
-  "function allowance(address owner, address spender) view returns (uint256)",
-  "function transfer(address to, uint256 amount) returns (bool)",
-  "event Transfer(address indexed from, address indexed to, uint256 value)",
-];
 
 const DEX_SPENDERS: Record<string, string> = {
   uniswapV3: "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45",
@@ -149,8 +139,6 @@ function registerSkillRoutes(
     );
   }
 }
-
-export const whaleSchema = evmWhaleSchema;
 
 const YAHOO_BASE = "https://query2.finance.yahoo.com";
 const yahooGet = cachedJsonGet(YAHOO_BASE, { ttlMs: 30_000 });

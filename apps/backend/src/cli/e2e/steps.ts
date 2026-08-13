@@ -13,6 +13,7 @@ import { ZeroGStorage } from "@axiom/config/storage/0g";
 import { encrypt as eciesEncrypt, decrypt as eciesDecrypt } from "eciesjs";
 import {
   aesGcmEncrypt,
+  concatEncrypted,
   accessMessageHash,
   deriveUncompressedPubkeyFromHex,
   recoverAccessSigner,
@@ -162,12 +163,7 @@ export function runEncryptStep(
   const dataKey = new Uint8Array(randomBytes(32));
   const plaintext = Buffer.from(strategyJson, "utf-8");
   const enc = aesGcmEncrypt(dataKey, plaintext);
-  const blob = new Uint8Array(
-    enc.iv.length + enc.ciphertext.length + enc.authTag.length,
-  );
-  blob.set(enc.iv, 0);
-  blob.set(enc.ciphertext, enc.iv.length);
-  blob.set(enc.authTag, enc.iv.length + enc.ciphertext.length);
+  const blob = concatEncrypted(enc);
   const deployerPub = Buffer.concat([
     new Uint8Array([0x04]),
     deriveUncompressedPubkeyFromHex(deployerPk),

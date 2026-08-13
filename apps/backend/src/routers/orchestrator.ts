@@ -2,7 +2,7 @@ import type { z } from "zod";
 import type { Express, Request, Response } from "express";
 import { tickSchema } from "../route-schemas.js";
 import { getClients, sendToTopic } from "../ws/broadcaster.js";
-import { sendError, extractErrorMessage } from "../utils/response.js";
+import { sendError, extractErrorMessage, TTLCache } from "../utils/response.js";
 import { getEventStore } from "../events/store.js";
 import type {
   StrategyRunner,
@@ -20,12 +20,7 @@ import { getSharedProvider } from "../provider.js";
 import { keccak256, solidityPacked } from "ethers";
 import { ZERO_DATA_ROOT } from "@axiom/config";
 
-import { LRUCache } from "lru-cache";
-
-const modelDataRootCache = new LRUCache<string, `0x${string}`>({
-  max: 1000,
-  ttl: 5 * 60 * 1000,
-});
+const modelDataRootCache = new TTLCache<`0x${string}`>(5 * 60 * 1000, 1000);
 
 async function resolveModelDataRoot(
   agentNft: `0x${string}`,

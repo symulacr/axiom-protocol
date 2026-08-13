@@ -85,7 +85,7 @@ const abiCoder = AbiCoder.defaultAbiCoder();
 // TeeSigner, so memoize per domain (~60µs/op, ~16% of sign path) instead of re-hashing each time.
 const domainSeparatorCache = new WeakMap<Eip712Domain, Hex>();
 
-export function domainSeparator(domain?: Eip712Domain): Hex {
+function domainSeparator(domain?: Eip712Domain): Hex {
   const activeDomain = domain ?? DEFAULT_EIP712_DOMAIN;
   const cached = domainSeparatorCache.get(activeDomain);
   if (cached !== undefined) return cached;
