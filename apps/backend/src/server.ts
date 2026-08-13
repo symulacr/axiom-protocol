@@ -38,13 +38,16 @@ import {
   getRuntimeConfig,
 } from "@axiom/config";
 import { getSharedProvider } from "./provider.js";
-import type { StorageAdapter } from "@axiom/config/storage/0g";
+import {
+  ZeroGStorage,
+  type StorageAdapter,
+} from "@axiom/config/storage/0g";
 import {
   createApiKeyAuth,
   enforceClientPathAllowlist,
   timingSafeTokenInList,
 } from "@axiom/config/middleware/auth";
-import { getEventStore } from "./events/store.js";
+import { getEventStore, payloadField } from "./events/store.js";
 import { PaymentProcessorClient } from "./payment/processor.js";
 import type { BackendEnv } from "./env-schema.js";
 import { createHealthRouter } from "./routers/health.js";
@@ -57,7 +60,11 @@ import { registerOrchestratorRoutes } from "./routers/orchestrator.js";
 import { createArchiveRouter } from "./services/archive.js";
 import { createSkillRouters } from "./skills/routers.js";
 import { createMcpRouter } from "./mcp/server.js";
-import { chatBodySchema, royaltySchema } from "./route-schemas.js";
+import {
+  chatBodySchema,
+  chatHistoryQuerySchema,
+  royaltySchema,
+} from "./route-schemas.js";
 import { createLogger } from "./utils/logger.js";
 import { sendError } from "./utils/response.js";
 import {
@@ -418,7 +425,8 @@ function registerComputeRoutes(app: Express, config: ServerConfig): void {
       path: "/v1/compute/providers",
       method: "get",
       consumer: "useCompute",
-      description: "List compute providers (router models + deterministic pseudo-addresses)",
+      description:
+        "List compute providers (router models + deterministic pseudo-addresses)",
     },
     async (_parsed: unknown, _req: Request, res: Response) => {
       const models = await fetchRouterModels();
@@ -491,18 +499,30 @@ function sseDeltaContent(chunk: unknown): string {
 // After-effect for a completed chat turn: upload the transcript to 0G and record the pointer in the
 // EventStore (`chat::transcript` bucket). Fail-soft by contract — persistence must never break the
 // chat response or the request handler.
+//
+// Wallet-keyed sessions: when a wallet address is supplied, the threadId is the (lowercased) wallet
+// so every turn of the same wallet shares one stable thread; without a wallet a random UUID is used.
+//
+// Transport-AES note: ZeroGStorage encrypts blobs with a per-instance key that is regenerated on
+// every boot, which would make transcripts undecryptable after a restart. To keep chat history
+// retrievable we stamp the hex transport key into the EventStore payload alongside the rootHash;
+// the history route later decrypts with that stamped key via downloadWithOpts. (InMemoryStorage
+// ignores encryption and carries no key.)
 async function persistChatTranscript(
   storage: StorageAdapter | null | undefined,
   chainId: number,
   requestMessages: readonly unknown[],
   assistantContent: string,
+  wallet?: string,
 ): Promise<void> {
   if (!storage) return;
   try {
-    const threadId = crypto.randomUUID();
+    const walletKey = wallet?.toLowerCase();
+    const threadId = walletKey ?? crypto.randomUUID();
     const ts = Date.now();
     const transcript = {
       threadId,
+      ...(walletKey ? { wallet: walletKey } : {}),
       messages: [
         ...requestMessages,
         { role: "assistant", content: assistantContent },
@@ -510,6 +530,10 @@ async function persistChatTranscript(
       msgCount: requestMessages.length + 1,
       ts,
     };
+    const transportKey =
+      storage instanceof ZeroGStorage
+        ? ethers.hexlify(storage.transportKey)
+        : undefined;
     const { rootHash } = await storage.upload(
       new TextEncoder().encode(JSON.stringify(transcript)),
     );
@@ -520,11 +544,40 @@ async function persistChatTranscript(
       blockNumber: 0,
       txHash: rootHash,
       logIndex: 0,
-      payload: { rootHash, threadId, msgCount: transcript.msgCount, ts },
+      payload: {
+        rootHash,
+        threadId,
+        msgCount: transcript.msgCount,
+        ts,
+        ...(walletKey ? { wallet: walletKey } : {}),
+        ...(transportKey ? { transportKey } : {}),
+      },
     });
   } catch (err) {
     log.error("chat transcript persistence failed", { err });
   }
+}
+
+// Download one chat-transcript blob. ZeroGStorage blobs were encrypted with the transport key
+// stamped in the EventStore payload at upload time, so a later instance (with a fresh per-boot
+// key) still decrypts. Legacy blobs without a stamped key fall back to the current instance key.
+async function downloadChatTranscript(
+  storage: StorageAdapter | null | undefined,
+  rootHash: string,
+  payload: unknown,
+): Promise<Uint8Array> {
+  if (!storage) throw new Error("chat storage not configured");
+  const rootHashHex = rootHash as `0x${string}`;
+  if (storage instanceof ZeroGStorage) {
+    const transportKey = payloadField(payload, "transportKey");
+    if (transportKey) {
+      const result = await storage.downloadWithOpts(rootHashHex, {
+        symmetricKey: ethers.getBytes(transportKey),
+      });
+      return result.data;
+    }
+  }
+  return storage.download(rootHashHex);
 }
 
 function registerChatRoutes(app: Express, config: ServerConfig): void {
@@ -543,7 +596,7 @@ function registerChatRoutes(app: Express, config: ServerConfig): void {
       res: Response,
     ) => {
       try {
-        const { messages, tools, model: reqModel } = parsed;
+        const { messages, tools, model: reqModel, wallet } = parsed;
         const DEFAULT_MODEL = resolveChatModel(config.env?.AXIOM_COMPUTE_MODEL);
         const resolvedModel = reqModel ?? DEFAULT_MODEL;
         const client = await createRouterClient(resolvedModel);
@@ -615,6 +668,7 @@ function registerChatRoutes(app: Express, config: ServerConfig): void {
             config.env?.AXIOM_CHAIN_ID ?? ARISTOTLE_CHAIN_ID,
             messages,
             assistantContent,
+            wallet,
           );
         }
       } catch (err) {
@@ -666,6 +720,51 @@ function registerChatRoutes(app: Express, config: ServerConfig): void {
             : "compute upstream error",
         });
       }
+    },
+    config,
+  );
+
+  // Wallet-keyed history: every transcript persisted for this wallet (stable threadId =
+  // lowercased wallet) is downloaded and returned newest-first. Fail-soft per transcript —
+  // one unreadable blob must not break the whole history.
+  createRoute(
+    app,
+    {
+      path: "/v1/chat/history",
+      method: "get",
+      schema: chatHistoryQuerySchema,
+      consumer: "chat-runtime",
+      description: "Fetch persisted chat transcripts for a wallet",
+    },
+    async (
+      parsed: z.infer<typeof chatHistoryQuerySchema>,
+      _req: Request,
+      res: Response,
+      { config: cfg },
+    ) => {
+      const wallet = parsed.wallet.toLowerCase();
+      const events = getEventStore().getAll(100, undefined, "transcript");
+      const transcripts: unknown[] = [];
+      for (const evt of events) {
+        if (payloadField(evt.payload, "wallet") !== wallet) continue;
+        const rootHash = evt.txHash;
+        if (!rootHash) continue;
+        try {
+          const blob = await downloadChatTranscript(
+            cfg.chatStorage,
+            rootHash,
+            evt.payload,
+          );
+          transcripts.push(JSON.parse(new TextDecoder().decode(blob)));
+        } catch (err) {
+          log.warn("chat transcript download failed", {
+            rootHash,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+      transcripts.reverse(); // newest turn first
+      res.json({ wallet, count: transcripts.length, transcripts });
     },
     config,
   );

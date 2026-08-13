@@ -136,4 +136,11 @@ export const chatBodySchema = z.object({
   tools: z.array(z.any()).optional(),
   model: z.string().optional(),
   stream: z.boolean().optional(),
+  // Optional wallet address that keys the transcript thread (stable per wallet); absent = anonymous thread.
+  wallet: addressViem.optional(),
+});
+
+/** Query schema for GET /v1/chat/history — wallet is required so transcripts are scoped to one owner. */
+export const chatHistoryQuerySchema = z.object({
+  wallet: addressViem,
 });

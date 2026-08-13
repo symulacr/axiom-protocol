@@ -10,6 +10,7 @@ import {
   type ReactElement,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 import {
   useAccount,
   useChainId,
@@ -27,6 +28,14 @@ import {
   apiFetchResponse,
   STREAM_TIMEOUT,
 } from "../utils/apiFetch.js";
+import {
+  deleteThread as deleteThreadFromStore,
+  upsertThread,
+  useThreads,
+  type ChatThread as StoredThread,
+} from "../hooks/useThreads.js";
+import { useShellSidebar } from "../hooks/useShellSidebar.js";
+import { ChatHistorySection } from "../components/ChatHistorySection.js";
 import { humanizeError } from "../utils/format.js";
 import {
   buildSystemPrompt,
@@ -76,6 +85,8 @@ import {
   ErrorRef,
   Spinner,
   CopyButton,
+  SectionTitle,
+  MonoLabel,
 } from "../components/ui.js";
 
 type Message = {
@@ -87,10 +98,6 @@ type Message = {
   name?: string;
   /** meta.error = UI-only error card (never sent to the model); usage = cost chip. */
   meta?: { error?: boolean; usage?: string };
-  /** Optional citation chips rendered below assistant messages; href wraps the chip in a link. */
-  sources?: Array<{ label: string; href?: string }>;
-  /** Optional follow-up question shortcuts rendered below assistant messages. */
-  followUps?: string[];
 };
 
 function createMessage(msg: Omit<Message, "id">): Message {
@@ -137,10 +144,9 @@ type SSEChunk = {
 
 const SUPPORTED_CHAIN_IDS = new Set([aristotle.id]);
 const CHAT_MESSAGES_KEY = "axiom:chat-messages";
-const CHAT_THREADS_KEY = "axiom:chat-threads";
 
 const chatMsgStyle: CSSProperties = {
-  fontSize: "var(--text-sm)",
+  fontSize: "0.9375rem", /* 15px — readable chat baseline */
   color: COLORS.text,
   lineHeight: "var(--lh-normal)",
 };
@@ -167,12 +173,11 @@ const insetCardStyle: CSSProperties = {
   marginTop: "var(--space-xs)",
 };
 
-type ChatThread = {
-  id: string;
-  title: string;
-  updatedAt: number;
-  messages: Message[];
-};
+/** Store threads carry `unknown[]` at the storage boundary; ChatPage casts
+ *  them to Message[] when opening a thread (they were written by this page). */
+function toMessages(msgs: unknown[]): Message[] {
+  return msgs as Message[];
+}
 
 function loadJsonArray<T>(storage: Storage, key: string): T[] {
   try {
@@ -182,21 +187,6 @@ function loadJsonArray<T>(storage: Storage, key: string): T[] {
     return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
-  }
-}
-
-function loadThreads(): ChatThread[] {
-  return loadJsonArray<ChatThread>(localStorage, CHAT_THREADS_KEY);
-}
-
-function saveThreads(threads: ChatThread[]): void {
-  try {
-    localStorage.setItem(
-      CHAT_THREADS_KEY,
-      JSON.stringify(threads.slice(0, 40)),
-    );
-  } catch {
-    void 0;
   }
 }
 
@@ -277,14 +267,7 @@ function StatusDot({
           background: color,
         }}
       />
-      <span
-        style={{
-          fontWeight: "var(--fw-semibold)",
-          fontSize: "var(--text-xs)",
-          color: COLORS.textDim,
-          textTransform: "uppercase",
-        }}
-      >
+      <span className="fw-semibold text-xs text-dim uppercase">
         {children}
       </span>
     </div>
@@ -449,26 +432,34 @@ const dedupeToolCalls = (calls: ToolCall[]): ToolCall[] =>
       ) === i,
   );
 
-// Per-tool-call ceiling: a hung skill/backend must not stall the agent loop forever.
-const TOOL_TIMEOUT_MS = 60_000;
-
-function withToolTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(
-      () => reject(new Error(`tool timed out after ${Math.round(ms / 1000)}s`)),
-      ms,
-    );
-    promise.then(
-      (v) => {
-        clearTimeout(timer);
-        resolve(v);
-      },
-      (e) => {
-        clearTimeout(timer);
-        reject(e);
-      },
-    );
-  });
+function MessageEditConfirm({
+  onConfirm,
+  onCancel,
+}: {
+  onConfirm: () => void;
+  onCancel: () => void;
+}): ReactElement {
+  return (
+    <span className="msg-confirm">
+      <span className="msg-confirm__text">Edit discards the rest</span>
+      <button
+        type="button"
+        className="msg-action msg-action--danger"
+        title="Discard the messages after this one and edit"
+        onClick={onConfirm}
+      >
+        Edit
+      </button>
+      <button
+        type="button"
+        className="msg-action"
+        title="Keep the conversation"
+        onClick={onCancel}
+      >
+        Cancel
+      </button>
+    </span>
+  );
 }
 
 function ChatPageInner(): ReactElement {
@@ -516,10 +507,8 @@ function ChatPageInner(): ReactElement {
     () => new Set(),
   );
   const isStreamingRef = useRef(false);
-  const [threads, setThreads] = useState(loadThreads);
+  const threads = useThreads();
   const [threadId, setThreadId] = useState<string>(() => crypto.randomUUID());
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [threadSearch, setThreadSearch] = useState("");
   const [computeHint, setComputeHint] = useState<string | null>(null);
   const [agentStep, setAgentStep] = useState(0);
   const [ttftMs, setTtftMs] = useState<number | null>(null);
@@ -529,6 +518,7 @@ function ChatPageInner(): ReactElement {
     reject: (err: Error) => void;
   } | null>(null);
   const [toolsOpen, setToolsOpen] = useState(false);
+  const [editConfirmId, setEditConfirmId] = useState<string | null>(null);
 
   // Live refs: state updates land only on the next render, so same-turn tools must see earlier-set values (mint tokenId -> deposit); synced each render here, within-turn writes in runAgent
   // AgentDetail's Chat button deep-links to /chat?agent=<tokenId>; seed the session default from the URL until a tool result overrides it.
@@ -774,6 +764,9 @@ function ChatPageInner(): ReactElement {
                   ],
                   tools: TOOLS,
                   stream: true,
+                  // Wallet-keyed session: the backend persists the transcript under a stable
+                  // per-wallet threadId and exposes it via GET /v1/chat/history?wallet=…
+                  wallet: liveSession.walletAddress,
                 }),
                 signal: controller.signal,
                 timeout: STREAM_TIMEOUT,
@@ -939,13 +932,7 @@ function ChatPageInner(): ReactElement {
                     tc.function.arguments?.trim() || "{}",
                   );
                   // transfer is user-paced (modal form + wallet prompts), not a backend call — no timeout
-                  const result =
-                    tc.function.name === "transfer"
-                      ? await handler(args, liveToolCtx)
-                      : await withToolTimeout(
-                          handler(args, liveToolCtx),
-                          TOOL_TIMEOUT_MS,
-                        );
+                  const result = await handler(args, liveToolCtx);
                   recordToolResult(tc.function.name, result);
                   try {
                     // capture produced tokenId so a later same-turn tool sees it (mirrors applyToolResult)
@@ -1101,31 +1088,18 @@ function ChatPageInner(): ReactElement {
     [processQueue],
   );
 
-  // Follow-up suggestion click: drop the question into the composer for review.
-  const handleFollowUp = useCallback((q: string) => {
-    setInput(q);
-  }, []);
-
   useEffect(() => {
     if (!isStreaming) processQueue();
   }, [isStreaming, processQueue]);
 
   useEffect(() => {
     if (messages.length === 0) return;
-    const next: ChatThread = {
+    upsertThread({
       id: threadId,
       title: titleFromMessages(messages),
       updatedAt: Date.now(),
       messages,
-    };
-    setThreads((prev) => {
-      const others = prev.filter((t) => t.id !== threadId);
-      const merged = [next, ...others].sort(
-        (a, b) => b.updatedAt - a.updatedAt,
-      );
-      saveThreads(merged);
-      return merged;
-    });
+    } as StoredThread);
   }, [messages, threadId]);
 
   const startNewChat = useCallback(() => {
@@ -1135,7 +1109,6 @@ function ChatPageInner(): ReactElement {
     queueRef.current = [];
     setThreadId(crypto.randomUUID());
     setComputeHint(null);
-    setSidebarOpen(false);
     try {
       sessionStorage.removeItem(CHAT_MESSAGES_KEY);
     } catch {
@@ -1143,26 +1116,32 @@ function ChatPageInner(): ReactElement {
     }
   }, []);
 
-  const openThread = useCallback((t: ChatThread) => {
+  const openThread = useCallback((t: StoredThread) => {
     setThreadId(t.id);
-    setMessages(t.messages);
-    messagesRef.current = t.messages;
+    setMessages(toMessages(t.messages));
+    messagesRef.current = toMessages(t.messages);
     setComputeHint(null);
-    setSidebarOpen(false);
   }, []);
 
   const deleteThread = useCallback(
     (id: string) => {
-      setThreads((prev) => {
-        const next = prev.filter((t) => t.id !== id);
-        saveThreads(next);
-        return next;
-      });
+      const removed = deleteThreadFromStore(id);
       // deleting the ACTIVE thread must not leave it on screen — select the next one or clear to new-chat
       if (id === threadId) {
         const nextThread = threads.find((t) => t.id !== id);
         if (nextThread) openThread(nextThread);
         else startNewChat();
+      }
+      // Recoverable: deleting a chat is not irreversible, so offer undo.
+      if (removed) {
+        toast("Chat deleted", {
+          action: {
+            label: "Undo",
+            onClick: () => {
+              upsertThread(removed);
+            },
+          },
+        });
       }
     },
     [threadId, threads, openThread, startNewChat],
@@ -1172,100 +1151,55 @@ function ChatPageInner(): ReactElement {
     abortRef.current?.abort();
   }, []);
 
-  return (
-    <div className={`chat-layout${sidebarOpen ? " is-sidebar-open" : ""}`}>
-      <aside className="chat-sidebar" aria-label="Chat history">
-        <div className="chat-sidebar__head">
-          <h2 className="chat-sidebar__title">Chats</h2>
-          <Button
-            variant="ghost"
-            onClick={startNewChat}
-            style={{ fontSize: "var(--text-xs)" }}
-          >
-            New
-          </Button>
-        </div>
-        <input
-          aria-label="Search chats"
-          value={threadSearch}
-          onChange={(e) => setThreadSearch(e.target.value)}
-          placeholder="Search chats…"
-          style={{
-            margin: "0 var(--space-sm) var(--space-sm)",
-            padding: "4px 8px",
-            fontSize: "var(--text-xs)",
-            color: COLORS.text,
-            background: "var(--c-bg)",
-            border: `1px solid ${COLORS.border}`,
-            borderRadius: "var(--radius-sm)",
-            width: "calc(100% - var(--space-lg))",
-          }}
-        />
-        <div className="chat-sidebar__list">
-          {threads.length === 0 ? (
-            <p className="chat-sidebar__empty">
-              No history yet. Send a message.
-            </p>
-          ) : (
-            threads
-              .filter(
-                (t) =>
-                  !threadSearch ||
-                  t.title.toLowerCase().includes(threadSearch.toLowerCase()),
-              )
-              .map((t) => (
-                <div
-                  key={t.id}
-                  className={`chat-sidebar__item${t.id === threadId ? " is-active" : ""}`}
-                  style={{ display: "flex", alignItems: "center" }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => openThread(t)}
-                    style={{
-                      flex: 1,
-                      border: "none",
-                      background: "none",
-                      color: "inherit",
-                      cursor: "pointer",
-                      font: "inherit",
-                      fontSize: "var(--text-xs)",
-                      textAlign: "left",
-                      padding: "6px 4px",
-                    }}
-                    title={t.title}
-                  >
-                    {t.title}
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={`Delete chat: ${t.title}`}
-                    onClick={() => deleteThread(t.id)}
-                    style={{
-                      border: "none",
-                      background: "none",
-                      cursor: "pointer",
-                      color: COLORS.textDim,
-                      padding: "4px",
-                      fontFamily: "inherit",
-                      fontSize: "var(--text-xs)",
-                    }}
-                  >
-                    ✕
-                  </button>
-                </div>
-              ))
-          )}
-        </div>
-      </aside>
+  // Drawer: Esc closes, body scroll locks while open, focus returns to the toggle.
+  const sidebarToggleRef = useRef<HTMLButtonElement | null>(null);
+  const { open: sidebarOpen, setOpen: setSidebarOpen } = useShellSidebar();
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSidebarOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [sidebarOpen, setSidebarOpen]);
+  useEffect(() => {
+    if (!sidebarOpen) {
+      sidebarToggleRef.current?.focus();
+    }
+  }, [sidebarOpen]);
 
+  // Thread list lives in the shell sidebar on chat routes; portal it in.
+  const threadsSlot =
+    typeof document !== "undefined"
+      ? document.getElementById("sidebar-threads-slot")
+      : null;
+
+  return (
+    <div className="chat-layout">
+      {threadsSlot &&
+        createPortal(
+          <ChatHistorySection
+            activeThreadId={threadId}
+            onOpen={openThread}
+            onNew={startNewChat}
+            onDelete={deleteThread}
+          />,
+          threadsSlot,
+        )}
       <div className="chat-main">
         <div className="chat-topbar">
           <button
             type="button"
             className="shell-icon-btn chat-sidebar-toggle"
             aria-label="History"
-            onClick={() => setSidebarOpen((v) => !v)}
+            aria-expanded={sidebarOpen}
+            ref={sidebarToggleRef}
+            onClick={() => setSidebarOpen(!sidebarOpen)}
           >
             ☰
           </button>
@@ -1433,18 +1367,9 @@ function ChatPageInner(): ReactElement {
                         key={g.cls}
                         style={{ marginBottom: "var(--space-sm)" }}
                       >
-                        <div
-                          style={{
-                            fontSize: "var(--text-xs)",
-                            fontWeight: "var(--fw-semibold)",
-                            color: COLORS.textDim,
-                            textTransform: "uppercase",
-                            letterSpacing: "0.02em",
-                            marginBottom: 4,
-                          }}
-                        >
+                        <SectionTitle style={{ marginBottom: 4 }}>
                           {CHAT_TOOL_CLASS_LABELS[g.cls]}
-                        </div>
+                        </SectionTitle>
                         {g.tools.map((t) => {
                           const hint =
                             t.hint.length > 90
@@ -1469,14 +1394,9 @@ function ChatPageInner(): ReactElement {
                                 color: COLORS.text,
                               }}
                             >
-                              <code
-                                style={{
-                                  fontFamily: "var(--font-mono)",
-                                  color: COLORS.bronzeLight,
-                                }}
-                              >
+                              <MonoLabel style={{ padding: "0.125rem 0.35rem" }}>
                                 {t.name}
-                              </code>
+                              </MonoLabel>
                               <span style={{ color: COLORS.textMuted }}>
                                 {" — "}
                                 {hint}
@@ -1526,28 +1446,37 @@ function ChatPageInner(): ReactElement {
                   <ToolClassBadge name={msg.name} />
                 ) : null}
                 <span className="msg-actions" style={{ marginLeft: "auto" }}>
-                  {msg.role === "user" ? (
-                    <button
-                      type="button"
-                      className="msg-action"
-                      title="Edit and resend"
-                      onClick={() => {
+                  {msg.role === "user" && editConfirmId === msg.id ? (
+                    <MessageEditConfirm
+                      onConfirm={() => {
                         const text = msg.content ?? "";
                         const idx = messagesRef.current.findIndex(
                           (m) => m.id === msg.id,
                         );
                         if (idx >= 0) {
-                          if (idx < messagesRef.current.length - 1) {
-                            const ok = window.confirm(
-                              "Edit replaces the rest of this conversation after this message. Continue?",
-                            );
-                            if (!ok) return;
-                          }
                           const trimmed = messagesRef.current.slice(0, idx);
                           messagesRef.current = trimmed;
                           setMessages(trimmed);
                         }
+                        setEditConfirmId(null);
                         setInput(text);
+                      }}
+                      onCancel={() => setEditConfirmId(null)}
+                    />
+                  ) : msg.role === "user" ? (
+                    <button
+                      type="button"
+                      className="msg-action"
+                      title="Edit and resend"
+                      onClick={() => {
+                        const idx = messagesRef.current.findIndex(
+                          (m) => m.id === msg.id,
+                        );
+                        if (idx >= 0 && idx < messagesRef.current.length - 1) {
+                          setEditConfirmId(msg.id);
+                        } else {
+                          setInput(msg.content ?? "");
+                        }
                       }}
                     >
                       Edit
@@ -1670,84 +1599,6 @@ function ChatPageInner(): ReactElement {
                       {msg.meta.usage}
                     </div>
                   ) : null}
-                  {msg.role === "assistant" &&
-                  msg.sources &&
-                  msg.sources.length > 0 ? (
-                    <div
-                      style={{
-                        display: "flex",
-                        flexWrap: "wrap",
-                        gap: "var(--space-xs)",
-                        marginTop: "var(--space-sm)",
-                      }}
-                    >
-                      {msg.sources.length} sources
-                      {msg.sources.map((s, i) => {
-                        let domain = "";
-                        try {
-                          domain = s.href
-                            ? new URL(s.href).hostname.replace(/^www\./, "")
-                            : "";
-                        } catch {
-                          domain = "";
-                        }
-                        const chipStyle = {
-                          border: "1px solid var(--c-border)",
-                          borderRadius: "var(--radius-sm)",
-                          padding: "2px 8px",
-                          fontSize: "var(--text-xs)",
-                          color: COLORS.textMuted,
-                        };
-                        return s.href ? (
-                          <a
-                            key={i}
-                            href={s.href}
-                            target="_blank"
-                            rel="noreferrer"
-                            style={{ ...chipStyle, textDecoration: "none" }}
-                          >
-                            {s.label}
-                            {domain && ` · ${domain}`}
-                          </a>
-                        ) : (
-                          <span key={i} style={chipStyle}>
-                            {s.label}
-                          </span>
-                        );
-                      })}
-                    </div>
-                  ) : null}
-                  {msg.role === "assistant" &&
-                  msg.followUps &&
-                  msg.followUps.length > 0 ? (
-                    <div
-                      style={{
-                        display: "flex",
-                        flexWrap: "wrap",
-                        marginTop: "var(--space-sm)",
-                      }}
-                    >
-                      {msg.followUps.map((q, i) => (
-                        <button
-                          key={i}
-                          type="button"
-                          onClick={() => handleFollowUp(q)}
-                          style={{
-                            border: "none",
-                            background: "none",
-                            padding: 0,
-                            font: "inherit",
-                            color: COLORS.bronzeLight,
-                            fontSize: "var(--text-xs)",
-                            marginRight: 8,
-                            cursor: "pointer",
-                          }}
-                        >
-                          {q}
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
                   {msg.role === "assistant" && !msg.meta?.error ? (
                     <div
                       style={{
@@ -1835,7 +1686,13 @@ function ChatPageInner(): ReactElement {
             >
               <StatusDot color={COLORS.text}>Assistant</StatusDot>
               {streamText ? (
-                <div style={{ ...chatMsgStyle, whiteSpace: "pre-wrap" }}>
+                <div
+                  style={{
+                    ...chatMsgStyle,
+                    whiteSpace: "pre-wrap",
+                    overflowWrap: "anywhere",
+                  }}
+                >
                   <span className="stream-tail">{streamText}</span>
                   <span
                     className="caret-blink"
@@ -1852,7 +1709,12 @@ function ChatPageInner(): ReactElement {
                 </div>
               ) : (
                 <p
-                  style={{ ...chatMsgStyle, margin: 0, whiteSpace: "pre-wrap" }}
+                  style={{
+                    ...chatMsgStyle,
+                    margin: 0,
+                    whiteSpace: "pre-wrap",
+                    overflowWrap: "anywhere",
+                  }}
                 >
                   <span
                     style={{
@@ -1906,6 +1768,7 @@ function ChatPageInner(): ReactElement {
               <span
                 key={`${i}-${q}`}
                 title={q}
+                className="queue-chip"
                 style={{
                   display: "inline-flex",
                   alignItems: "center",

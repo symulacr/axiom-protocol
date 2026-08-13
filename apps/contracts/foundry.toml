@@ -10,6 +10,12 @@ broadcast = "broadcast"
 threads = 0
 # Keep compiler filesystem emulation in RAM (fewer disk hits, faster builds)
 fse = { memory_limit = "4 GiB" }
+# Prune compiler output for unchanged files — cuts artifact I/O + RSS on iterative builds
+# (experimental; https://www.getfoundry.sh/config/reference/solidity-compiler)
+sparse_mode = true
+# Link tests dynamically against the build artifacts (default-on since foundry v1.5.0;
+# explicit here to document intent — https://github.com/foundry-rs/foundry/pull/10285)
+dynamic_test_linking = true
 
 # Allow deployment scripts to write the deployment manifest to ../../docs/deployments/
 fs_permissions = [{ access = "write", path = "../.." }]
@@ -17,25 +23,18 @@ fs_permissions = [{ access = "write", path = "../.." }]
 # Cancun mandatory on 0G Chain
 evm_version = "cancun"
 
-# Solidity 0.8.30 — SSA codegen backend eliminates most stack-too-deep failures,
-# so via_ir can be dropped for classic-pipeline speed (evidence: soliditylang releases,
-# issue #16085). 0.8.24 was min for OZ 5.5+; 0.8.30 is strictly newer.
+# Solidity 0.8.30 — SSA codegen + newer compiler (evidence: soliditylang releases).
 solc = "0.8.30"
 
 # Min runs = smallest bytecode. 0G has zero gas fees, so runtime gas cost is irrelevant.
 optimizer_runs = 1
 bytecode_hash = "none"
 
-# SSA backend handles stack depth — via_ir OFF globally for compile speed (was 2:25 wall).
-# AxiomTeeVerifier's proof loop still exceeds the classic 16-slot stack limit even after
-# extraction; route only that file through via_ir (evidence: foundry solidity-compiler reference).
-via_ir = false
-additional_compiler_profiles = [{ name = "via-ir", via_ir = true }]
-compilation_restrictions = [
-    { paths = "src/verifiers/AxiomTeeVerifier.sol", via_ir = true },
-    { paths = "src/AxiomStrategyVault.sol", via_ir = true },
-    { paths = "test/FuzzAxiomTeeVerifier.t.sol", via_ir = true },
-]
+# Deploy profile: via_ir GLOBAL ON. compilation_restrictions cascade to any script that
+# imports a restricted file (Deploy.s.sol imports everything), producing .via-ir artifacts
+# whose initialize calldata mismatched the linked impl — broke proxy init on Galileo.
+# Correctness first; use FOUNDRY_PROFILE=dev for fast iteration.
+via_ir = true
 verbosity = 2
 gas_reports = ["*"]
 fuzz = { runs = 256 }
@@ -53,6 +52,8 @@ threads = 0
 fse = { memory_limit = "4 GiB" }
 gas_reports = []
 fuzz = { runs = 64 }
+build_info = false
+extra_output = ["abi", "evm.bytecode"]
 
 # CI profile with more aggressive fuzzing
 [profile.ci]
@@ -69,3 +70,7 @@ int_types = "long"
 multiline_func_header = "params_first"
 quote_style = "double"
 number_underscore = "thousands"
+
+# Skip solar lint on every build — linting is covered separately (solhint / forge fmt in CI)
+[lint]
+lint_on_build = false
