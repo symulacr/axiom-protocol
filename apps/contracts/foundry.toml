@@ -8,8 +8,6 @@ cache_path = "cache"
 broadcast = "broadcast"
 # Parallel solc jobs: 0 = all logical cores (foundry issue #8689: threads>0 shows 1 solc in htop, but -j/threads=0 uses all cores)
 threads = 0
-# Keep compiler filesystem emulation in RAM (fewer disk hits, faster builds)
-fse = { memory_limit = "4 GiB" }
 # Prune compiler output for unchanged files — cuts artifact I/O + RSS on iterative builds
 # (experimental; https://www.getfoundry.sh/config/reference/solidity-compiler)
 sparse_mode = true
@@ -23,8 +21,11 @@ fs_permissions = [{ access = "write", path = "../.." }]
 # Cancun mandatory on 0G Chain
 evm_version = "cancun"
 
-# Solidity 0.8.30 — SSA codegen + newer compiler (evidence: soliditylang releases).
-solc = "0.8.30"
+# Solidity 0.8.35 — 0.8.30 was in the buggy 0.8.28–0.8.33 via-IR range
+# (transient-storage clearing helper collision, fixed in 0.8.34) and 0.8.34/0.8.35
+# add via-IR compile-time fixes (Yul optimizer step pruning, CFG side-effects
+# collector, stack shuffler). Keep the Cancun pin: 0.8.31+ defaults to Osaka.
+solc = "0.8.35"
 
 # Min runs = smallest bytecode. 0G has zero gas fees, so runtime gas cost is irrelevant.
 optimizer_runs = 1
@@ -42,24 +43,26 @@ fuzz = { runs = 256 }
 build_info = false
 extra_output = ["abi", "evm.bytecode"]
 
-# Fast iteration profile: threads + fse only. via_ir must stay ON — the suite hits
+# Fast iteration profile: threads only. via_ir must stay ON — the suite hits
 # "Stack too deep" without it (LValue.cpp:51), which is the original reason it was enabled.
 [profile.dev]
 via_ir = true
 optimizer_runs = 1
 verbosity = 1
 threads = 0
-fse = { memory_limit = "4 GiB" }
 gas_reports = []
 fuzz = { runs = 64 }
 build_info = false
 extra_output = ["abi", "evm.bytecode"]
 
-# CI profile with more aggressive fuzzing
+# CI profile with more aggressive fuzzing. threads = 4 caps peak RSS: threads = 0
+# on this 20-logical-core box can spin up 20 concurrent via-IR solc processes,
+# each multi-GB RSS (foundry issue #8689; solidity issue #15141 datapoint).
 [profile.ci]
 verbosity = 3
 fuzz = { runs = 1000 }
 invariant = { runs = 256, depth = 32, fail_on_revert = true }
+threads = 4
 
 # Format settings (using [fmt] section for newer Foundry)
 [fmt]
