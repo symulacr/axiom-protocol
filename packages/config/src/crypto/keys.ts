@@ -16,7 +16,7 @@ export function pubKeyToAddress(uncompressed: Uint8Array): `0x${string}` {
 
 export function deriveUncompressedPubkeyFromHex(privateKeyHex: string) {
   return publicKeyUncompressedFromPrivate(
-    Uint8Array.from(Buffer.from(privateKeyHex.replace(/^0x/, ""), "hex")),
+    Buffer.from(privateKeyHex.replace(/^0x/, ""), "hex"),
   );
 }
 

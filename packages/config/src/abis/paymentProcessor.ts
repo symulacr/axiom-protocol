@@ -57,7 +57,6 @@ export const PAYMENT_PROCESSOR_ABI = [
   "error MigrationBlocked()",
   "error NoEarnings()",
   "error NoPendingProposal()",
-  "error NoPendingProposal()",
   "error NotCreator()",
   "error NotInitializing()",
   "error OwnableInvalidOwner(address owner)",

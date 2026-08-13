@@ -1,7 +1,7 @@
 import { Indexer, MemData } from "@0gfoundation/0g-storage-ts-sdk";
 import type { EncryptionOption } from "@0gfoundation/0g-storage-ts-sdk";
 
-import { keccak256, type Signer } from "ethers";
+import { keccak256, toUtf8Bytes, type Signer } from "ethers";
 import type { Hex } from "viem";
 import {
   existsSync,
@@ -48,6 +48,10 @@ interface UploadOptions {
   taskSize?: number;
   /** Explicit storage fee (wei). When >0 the SDK skips market() pricing — required on chains where the flow contract lacks market() (e.g. Galileo testnet). Default 0 = on-chain pricing. */
   fee?: bigint;
+  /** Explicit storage submitter address. Defaults to the signer's address (the SDK's implicit fallback). */
+  submitter?: string;
+  /** Blob tags for DA/explorer attribution. Defaults to "axiom-protocol/1". */
+  tags?: Uint8Array;
 }
 
 interface DownloadOptions {
@@ -154,6 +158,8 @@ async function uploadToStorage(
     expectedReplica: options.expectedReplica,
     taskSize: options.taskSize,
     encryption: options.encryption,
+    submitter: options.submitter ?? (await signer.getAddress()),
+    tags: options.tags ?? toUtf8Bytes("axiom-protocol/1"),
     ...(options.fee !== undefined ? { fee: options.fee } : {}),
   };
   const [tx, err] = await indexer.upload(memData, evmRpc, signer, uploadOpts);

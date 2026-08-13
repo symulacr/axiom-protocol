@@ -36,11 +36,13 @@ export class TeeSigner {
     this.wallet = new Wallet(privateKeyHex);
     this.address = this.wallet.address as Hex;
     this.domain = domain;
-    const priv = Uint8Array.from(
-      Buffer.from(privateKeyHex.replace(/^0x/, ""), "hex"),
+    this.privateKeyBytes = Buffer.from(
+      privateKeyHex.replace(/^0x/, ""),
+      "hex",
     );
-    this.privateKeyBytes = priv;
-    this.uncompressedPubkey = publicKeyUncompressedFromPrivate(priv);
+    this.uncompressedPubkey = publicKeyUncompressedFromPrivate(
+      this.privateKeyBytes,
+    );
   }
 
   signOwnership(input: OwnershipProofInput): Hex {

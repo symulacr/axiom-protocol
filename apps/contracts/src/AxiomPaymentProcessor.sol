@@ -214,8 +214,12 @@ contract AxiomPaymentProcessor is Initializable, OwnableUpgradeable, PausableUpg
     function royaltyBpsOf(
         uint256 agentTokenId
     ) external view returns (uint256) {
-        uint256 stored = _getStorage().agentRoyaltyStored[agentTokenId];
-        return stored == 0 ? 0 : stored - 1;
+        PaymentProcessorStorage storage $ = _getStorage();
+        uint256 stored = $.agentRoyaltyStored[agentTokenId];
+        if (stored == 0) return 0;
+        uint256 royaltyBps = stored - 1;
+        uint256 maxRoyalty = BPS_DENOMINATOR - $.protocolFeeBps;
+        return royaltyBps > maxRoyalty ? maxRoyalty : royaltyBps;
     }
 
     function royaltyBpsSet(

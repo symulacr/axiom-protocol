@@ -52,11 +52,13 @@ export function aesGcmDecrypt(
 }
 
 export function concatEncrypted(payload: EncryptedPayload) {
-  return new Uint8Array([
-    ...payload.iv,
-    ...payload.ciphertext,
-    ...payload.authTag,
-  ]);
+  const out = new Uint8Array(
+    payload.iv.length + payload.ciphertext.length + payload.authTag.length,
+  );
+  out.set(payload.iv, 0);
+  out.set(payload.ciphertext, payload.iv.length);
+  out.set(payload.authTag, payload.iv.length + payload.ciphertext.length);
+  return out;
 }
 
 export function parseEncrypted(blob: Uint8Array) {

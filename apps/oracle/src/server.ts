@@ -139,17 +139,14 @@ export function startServer(config: ServerConfig): {
         env?.AXIOM_ALLOW_CLEARTEXT_DEK === "true" &&
         process.env.NODE_ENV !== "production";
 
-      let oldDataKey: Buffer | undefined;
+      let oldDataKey: Uint8Array | undefined;
       if (typeof sealedDek === "string" && sealedDek.length > 0) {
         const sealedBytes = Buffer.from(
           sealedDek.startsWith("0x") ? sealedDek.slice(2) : sealedDek,
           sealedDek.startsWith("0x") ? "hex" : "base64",
         );
-        const opened = unsealKeyForReceiver(
-          signer.privateKeyBytes,
-          new Uint8Array(sealedBytes),
-        );
-        oldDataKey = Buffer.from(opened);
+        const opened = unsealKeyForReceiver(signer.privateKeyBytes, sealedBytes);
+        oldDataKey = opened;
       } else if (oldDataEncryptionKey && allowCleartext) {
         oldDataKey = Buffer.from(oldDataEncryptionKey, "base64");
       }
