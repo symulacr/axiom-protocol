@@ -127,7 +127,7 @@ contract AxiomPaymentProcessor is Initializable, OwnableUpgradeable, PausableUpg
     function setProtocolFeeBps(
         uint256 newBps
     ) external onlyOwner {
-        if (newBps > BPS_DENOMINATOR) revert InvalidBps();
+        if (newBps >= BPS_DENOMINATOR) revert InvalidBps();
         require(newBps <= type(uint16).max, "fee bps overflows uint16");
         PaymentProcessorStorage storage $ = _getStorage();
         uint256 old = $.protocolFeeBps;
@@ -161,7 +161,7 @@ contract AxiomPaymentProcessor is Initializable, OwnableUpgradeable, PausableUpg
         uint256 agentTokenId,
         uint256 newBps
     ) internal {
-        if (newBps > BPS_DENOMINATOR) revert InvalidBps();
+        if (newBps >= BPS_DENOMINATOR) revert InvalidBps();
         PaymentProcessorStorage storage $ = _getStorage();
         uint256 maxRoyalty = BPS_DENOMINATOR - $.protocolFeeBps;
         if (newBps > maxRoyalty) revert InvalidBps();

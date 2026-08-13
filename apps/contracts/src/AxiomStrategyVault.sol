@@ -17,7 +17,6 @@ contract AxiomStrategyVault is Initializable, OwnableUpgradeable, PausableUpgrad
     error NoStrategySet();
     error ZeroAmount();
     error ZeroAddress();
-    error TokenNotInRegistry();
     error UseDeposit();
     error StrategyExpired();
     error LimitOverflow();

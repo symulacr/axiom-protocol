@@ -54,6 +54,7 @@ contract AxiomTeeVerifier is Initializable, BaseVerifier, OwnableUpgradeable, UU
     /// @notice Replaces the constructor for proxy deployments; sets owner, initial TEE signer, and max proof age.
     function initialize(address _owner, address _signer, uint256 _maxProofAge) external initializer {
         require(_signer != address(0), "Zero signer");
+        require(_maxProofAge > 0, "Zero max proof age");
         __Ownable_init(_owner);
         maxProofAgeSeconds = _maxProofAge;
         registeredSigner = _signer;

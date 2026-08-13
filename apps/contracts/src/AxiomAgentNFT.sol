@@ -151,8 +151,10 @@ contract AxiomAgentNFT is
 
     function executeVerifier() external onlyRole(ADMIN_ROLE) {
         AxiomAgentNFTStorage storage $ = _getAxiomAgentNFTStorage();
+        address oldVerifier = address(verifier());
         address result = $.verifierTimelock.execute();
         _setVerifier(result);
+        emit VerifierUpdated(oldVerifier, result);
     }
 
     function cancelVerifierProposal() external onlyRole(ADMIN_ROLE) {
@@ -200,6 +202,7 @@ contract AxiomAgentNFT is
         uint256 tokenId,
         uint256 validUntil
     ) external whenNotPaused {
+        require(_ownerOf(tokenId) == msg.sender, "Not owner");
         _authorizeUsage(tokenId, delegate);
         delegateAccess(delegate);
     }
