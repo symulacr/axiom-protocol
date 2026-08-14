@@ -72,7 +72,7 @@ export interface TransferValidityInput {
   nft: `0x${string}`;
 }
 
-export interface TransferValidityResult {
+interface TransferValidityResult {
   newDataUri: `0x${string}`;
   newDataHash: `0x${string}`;
   sealedKey: `0x${string}`;
@@ -232,7 +232,7 @@ export async function transferValidity(
   };
 }
 
-export interface SignOwnershipInput {
+interface SignOwnershipInput {
   dataHash: `0x${string}`;
   targetPubkey: `0x${string}`;
   sealedKey: `0x${string}`;
@@ -242,7 +242,7 @@ export interface SignOwnershipInput {
   validUntil?: string | number | bigint;
 }
 
-export interface SignOwnershipResult {
+interface SignOwnershipResult {
   signature: `0x${string}`;
   signer: `0x${string}`;
   validUntil: string;

@@ -3,22 +3,56 @@
 import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { createConfig, http, WagmiProvider } from "wagmi";
 import { injected, walletConnect } from "wagmi/connectors";
-import { zeroGMainnet } from "viem/chains";
+import { zeroGMainnet, zeroGTestnet } from "viem/chains";
 import { COLORS } from "../components/ui.js";
 
-// Hardcoded mainnet-only RPC; the localStorage override is allowlisted below, never a testnet fallback
-const MAINNET_RPC = "https://evmrpc.0g.ai";
+/** Supported 0G chains — viem's built-in definitions (not hand-rolled). */
+const CHAINS = {
+  [zeroGMainnet.id]: zeroGMainnet, // Aristotle mainnet 16661
+  [zeroGTestnet.id]: zeroGTestnet, // Galileo testnet 16602
+} as const;
 
-// Override honored only in this allowlist — rejects stale testnet RPCs so the app can never silently leave chain 16661
-const MAINNET_RPC_ALLOWLIST = new Set([MAINNET_RPC, "https://rpc.0g.ai"]);
+// Per-chain RPC allowlist for the localStorage override — a stale override can
+// never silently move the app to another chain's RPC (which would zero out
+// every read/write). The resolved chain's own default RPC is always accepted.
+const RPC_ALLOWLISTS: Record<number, readonly string[]> = {
+  [zeroGMainnet.id]: ["https://evmrpc.0g.ai", "https://rpc.0g.ai"],
+  [zeroGTestnet.id]: ["https://evmrpc-testnet.0g.ai"],
+};
 
-// Validates the override, clears bad keys, falls back to MAINNET_RPC
-function resolveAristotleRpc(): string {
+/**
+ * Chain is env-driven: VITE_CHAIN_ID selects the network (16661 mainnet,
+ * 16602 Galileo), VITE_EVM_RPC overrides the RPC endpoint. Default = mainnet
+ * 16661 so a build without VITE_ vars keeps the historical prod behavior.
+ */
+function resolveChainId(): number {
+  const raw = import.meta.env.VITE_CHAIN_ID;
+  if (raw) {
+    const parsed = Number(raw);
+    if (Number.isInteger(parsed) && CHAINS[parsed as keyof typeof CHAINS]) {
+      return parsed;
+    }
+  }
+  return zeroGMainnet.id;
+}
+
+export const APP_CHAIN_ID = resolveChainId();
+export const APP_CHAIN = CHAINS[APP_CHAIN_ID as keyof typeof CHAINS];
+
+/** 0G Mainnet (Aristotle 16661) — viem's built-in chain definition. */
+export const aristotle = zeroGMainnet;
+
+// Validates the localStorage override against the SELECTED chain's allowlist;
+// clears bad keys and falls back to VITE_EVM_RPC ?? the chain default.
+function resolveRpc(chainId: number): string {
+  const envRpc =
+    chainId === APP_CHAIN_ID ? import.meta.env.VITE_EVM_RPC : undefined;
+  const fallback = APP_CHAIN.rpcUrls.default.http[0] ?? "https://evmrpc.0g.ai";
   if (typeof window === "undefined" || !window.localStorage) {
-    return MAINNET_RPC;
+    return envRpc || fallback;
   }
   const stored = window.localStorage.getItem("axiom.rpcUrl");
-  if (!stored) return MAINNET_RPC;
+  if (!stored) return envRpc || fallback;
 
   const candidate = stored.trim();
   const allowed = (() => {
@@ -27,7 +61,10 @@ function resolveAristotleRpc(): string {
       const normalized =
         url.origin +
         (url.pathname === "/" || url.pathname === "" ? "" : url.pathname);
-      return url.protocol === "https:" && MAINNET_RPC_ALLOWLIST.has(normalized);
+      return (
+        url.protocol === "https:" &&
+        (RPC_ALLOWLISTS[chainId]?.includes(normalized) ?? false)
+      );
     } catch {
       return false;
     }
@@ -41,11 +78,8 @@ function resolveAristotleRpc(): string {
   } catch {
     void 0;
   }
-  return MAINNET_RPC;
+  return envRpc || fallback;
 }
-
-/** 0G Mainnet (Aristotle 16661) — uses viem's built-in chain definition, not a hand-rolled config. */
-export const aristotle = zeroGMainnet;
 
 function createWagmiConfig() {
   const storedWcProjectId =
@@ -53,18 +87,17 @@ function createWagmiConfig() {
       ? (window.localStorage.getItem("axiom.wcProjectId") ?? "")
       : "";
 
-  const aristotleRpc = resolveAristotleRpc();
-
   const projectId =
     storedWcProjectId ||
     import.meta.env.VITE_WALLETCONNECT_PROJECT_ID ||
     "00000000000000000000000000000000";
 
   return createConfig({
-    chains: [aristotle],
+    chains: [APP_CHAIN],
     ssr: false,
     transports: {
-      [aristotle.id]: http(aristotleRpc),
+      [zeroGMainnet.id]: http(resolveRpc(zeroGMainnet.id)),
+      [zeroGTestnet.id]: http(resolveRpc(zeroGTestnet.id)),
     },
     connectors: [
       injected({ target: "metaMask" }),

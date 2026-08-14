@@ -106,7 +106,7 @@ REGISTERED_ROUTES.push({
   description: "WebSocket event stream (upgrade)",
 });
 
-export function isUpstreamTransportError(err: unknown): boolean {
+function isUpstreamTransportError(err: unknown): boolean {
   const e = err as { code?: string; cause?: { code?: string } } | null;
   const code = e?.code ?? e?.cause?.code;
   if (typeof code !== "string") return false;

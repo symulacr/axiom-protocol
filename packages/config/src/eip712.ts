@@ -124,19 +124,6 @@ export interface AccessProofInput {
   validUntil: bigint;
 }
 
-interface OwnershipProofResult {
-  newDataUri: Hex;
-  newDataHash: Hex;
-  sealedKey: Hex;
-  ownershipSignature: Hex;
-}
-
-export interface OwnershipProofResultWithMeta extends OwnershipProofResult {
-  accessProofNonce?: Hex;
-  ownershipProofNonce?: Hex;
-  signer?: Hex;
-}
-
 function ownershipStructHash(input: OwnershipProofInput): Hex {
   return keccak256(
     abiCoder.encode(

@@ -49,7 +49,7 @@ import {
   isAskUserResult,
   type ChatSessionContext,
 } from "@axiom/chat-runtime";
-import { CHAT_TOOL_CATALOG, classOfTool } from "@axiom/config/chat-tools";
+import { classOfTool } from "@axiom/config/chat-tools";
 import {
   ArchiveResultCard,
   EncodePreviewCard,
@@ -67,6 +67,7 @@ const TransferModal = lazy(() =>
 import {
   TOOLS,
   TOOL_LABELS,
+  CLIENT_TOOL_CATALOG,
   toolClass,
   toolHint,
   useToolHandlers,
@@ -77,7 +78,7 @@ import {
   AXIOM_ASSISTANT_NAME,
 } from "@axiom/config/chat-tools";
 import { CHAT_MODEL } from "../config/env.js";
-import { aristotle } from "../config/wagmi.js";
+import { APP_CHAIN_ID } from "../config/wagmi.js";
 import {
   COLORS,
   Button,
@@ -142,11 +143,11 @@ type SSEChunk = {
   code?: string;
 };
 
-const SUPPORTED_CHAIN_IDS = new Set([aristotle.id]);
+const SUPPORTED_CHAIN_IDS = new Set([APP_CHAIN_ID]);
 const CHAT_MESSAGES_KEY = "axiom:chat-messages";
 
 const chatMsgStyle: CSSProperties = {
-  fontSize: "0.9375rem", /* 15px — readable chat baseline */
+  fontSize: "0.9375rem" /* 15px — readable chat baseline */,
   color: COLORS.text,
   lineHeight: "var(--lh-normal)",
 };
@@ -161,7 +162,7 @@ const TOOL_GROUPS = (
 )
   .map((cls) => ({
     cls,
-    tools: CHAT_TOOL_CATALOG.filter((t) => t.class === cls),
+    tools: CLIENT_TOOL_CATALOG.filter((t) => t.class === cls),
   }))
   .filter((g) => g.tools.length > 0);
 
@@ -267,9 +268,7 @@ function StatusDot({
           background: color,
         }}
       />
-      <span className="fw-semibold text-xs text-dim uppercase">
-        {children}
-      </span>
+      <span className="fw-semibold text-xs text-dim uppercase">{children}</span>
     </div>
   );
 }
@@ -1342,7 +1341,7 @@ function ChatPageInner(): ReactElement {
                       color: "var(--c-text)",
                     }}
                   >
-                    All {CHAT_TOOL_CATALOG.length} tools
+                    All {CLIENT_TOOL_CATALOG.length} tools
                   </span>
                   <span
                     style={{
@@ -1394,7 +1393,9 @@ function ChatPageInner(): ReactElement {
                                 color: COLORS.text,
                               }}
                             >
-                              <MonoLabel style={{ padding: "0.125rem 0.35rem" }}>
+                              <MonoLabel
+                                style={{ padding: "0.125rem 0.35rem" }}
+                              >
                                 {t.name}
                               </MonoLabel>
                               <span style={{ color: COLORS.textMuted }}>

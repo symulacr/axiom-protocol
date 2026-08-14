@@ -17,7 +17,7 @@ function validateAddress(value: string, label = "address"): Address {
   return value as Address;
 }
 
-export function toViemHex(h: Hex): `0x${string}` {
+function toViemHex(h: Hex): `0x${string}` {
   return h as `0x${string}`;
 }
 

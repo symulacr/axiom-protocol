@@ -623,7 +623,7 @@ interface ChallengeResponse {
   error?: string;
 }
 
-export interface FinalResponse {
+interface FinalResponse {
   ok: boolean;
   stage: "final";
   tokenId: string;

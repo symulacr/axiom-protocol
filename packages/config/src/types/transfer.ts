@@ -11,7 +11,7 @@ export type TransferInput = {
   oldDataUri?: `0x${string}`;
 };
 
-export type AccessProofStruct = {
+type AccessProofStruct = {
   dataHash: `0x${string}`;
   targetPubkey: `0x${string}`;
   nonce: bigint;
@@ -19,7 +19,7 @@ export type AccessProofStruct = {
   validUntil: bigint;
 };
 
-export type OwnershipProofStruct = {
+type OwnershipProofStruct = {
   oracleType: number;
   dataHash: `0x${string}`;
   sealedKey: `0x${string}`;

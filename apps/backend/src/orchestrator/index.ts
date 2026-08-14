@@ -68,7 +68,7 @@ export function vaultAbiFor(
   return variant === "legacy" ? VAULT_ABI_LEGACY : VAULT_ABI;
 }
 
-export interface VaultStrategyState {
+interface VaultStrategyState {
   root: string;
   dailyLimit: bigint;
   validUntilDay: bigint;

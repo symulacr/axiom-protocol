@@ -11,6 +11,14 @@ import { runBrowserTool } from "./transport-browser.js";
 
 export const TOOL_LABELS: Record<string, string> = chatToolLabels();
 
+// Client-visible catalog. unbroker_* skills are server-gated (not in the
+// client-key route allowlist) and would 403 for browser chat users — hide
+// them from the browser catalog and the tool list sent to the LLM, keeping
+// the server-side routes intact for server-key consumers.
+export const CLIENT_TOOL_CATALOG = CHAT_TOOL_CATALOG.filter(
+  (t) => !t.name.startsWith("unbroker_"),
+);
+
 export function toolClass(name: string): ChatToolClass | undefined {
   return classOfTool(name);
 }
@@ -53,7 +61,7 @@ export type ToolContext = {
   openTransfer?: (tokenId: string) => Promise<string>;
 };
 
-export const TOOLS: ToolDefinition[] = CHAT_TOOL_CATALOG.map((t) => ({
+export const TOOLS: ToolDefinition[] = CLIENT_TOOL_CATALOG.map((t) => ({
   type: "function" as const,
   function: {
     name: t.name,
