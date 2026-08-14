@@ -23,16 +23,11 @@ jobs:
           persist-credentials: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
       - run: bun install --frozen-lockfile
-      - run:
-          bun run --filter @axiom/config build && bun run --filter @axiom/config
+      - run: bun run --filter @axiom/config build && bun run --filter @axiom/config
           typecheck
       - run: bun run --filter @axiom/chat-runtime build && bun run --filter
           @axiom/chat-runtime typecheck
-      - run:
-          bun run --filter @axiom/oracle build && bun run --filter @axiom/oracle
-          typecheck
-      - run:
-          bun run --filter @axiom/backend build && bun run --filter @axiom/backend
+      - run: bun run --filter @axiom/backend build && bun run --filter @axiom/backend
           typecheck
       - run: bun run --filter @axiom/frontend typecheck
       - run: bun run --filter @axiom/frontend lint
@@ -77,8 +72,6 @@ jobs:
       - run: bun run --filter @axiom/chat-runtime build
       - run: bun run --filter @axiom/config test
       - run: bun run --filter @axiom/chat-runtime test
-      - run: bun run --filter @axiom/oracle test
-      - run: bun run --filter @axiom/oracle build
       - run: bun run --filter @axiom/backend test
       - name: Coverage gate (C1)
         env:
@@ -94,7 +87,6 @@ jobs:
             awk -v p="$pct" -v f="$2" 'BEGIN{exit !(p>=f)}'
           }
           check apps/backend 60
-          check apps/oracle 70
           check packages/config 80
           check packages/chat-runtime 65
 

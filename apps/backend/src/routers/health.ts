@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from "express";
-import type { JsonRpcProvider } from "ethers";
-import type { OracleClient } from "../oracle/client.js";
+import { hexlify, type JsonRpcProvider } from "ethers";
+import type { TeeSigner } from "../oracle/signer.js";
 import { HTTP } from "@axiom/config";
 import { createLogger } from "../utils/logger.js";
 import { sendError, extractErrorMessage, envInt } from "../utils/response.js";
@@ -16,7 +16,6 @@ const STALE_OK_MS = 30_000;
 
 type HealthSnapshot = {
   chainHead: number;
-  oracleUp: boolean;
   ok: boolean;
   checkedAt: number;
 };
@@ -27,7 +26,7 @@ function probeTtlMs(): number {
 
 export function createHealthRouter(
   provider: JsonRpcProvider,
-  oracle: OracleClient,
+  teeSigner: TeeSigner,
   config: ServerConfig,
 ): Router {
   const router = Router();
@@ -37,13 +36,11 @@ export function createHealthRouter(
   let inflight: Promise<HealthSnapshot> | null = null;
 
   async function probe(): Promise<HealthSnapshot> {
-    const [chainHead, oracleHealth] = await Promise.all([
-      provider.getBlockNumber().catch(() => 0),
-      oracle.health().catch(() => null),
-    ]);
-    const oracleUp = oracleHealth?.ok === true;
-    const ok = chainHead > 0 && oracleUp;
-    return { chainHead, oracleUp, ok, checkedAt: Date.now() };
+    // The TEE signer is in-process (boot fails without AXIOM_TEE_SIGNER_PK), so the
+    // probe only needs chain health — no HTTP oracle round-trip.
+    const chainHead = await provider.getBlockNumber().catch(() => 0);
+    const ok = chainHead > 0;
+    return { chainHead, ok, checkedAt: Date.now() };
   }
 
   function resolveSnapshot(): HealthSnapshot | Promise<HealthSnapshot> {
@@ -69,7 +66,6 @@ export function createHealthRouter(
           }
           const failed: HealthSnapshot = {
             chainHead: 0,
-            oracleUp: false,
             ok: false,
             checkedAt: now,
           };
@@ -113,7 +109,9 @@ export function createHealthRouter(
           version: PKG_VERSION,
           signer: signerAddress,
           chainHead: s.chainHead,
-          oracle: s.oracleUp ? "up" : "down",
+          oracle: "up",
+          oracleSigner: teeSigner.address,
+          uncompressedPubkey: hexlify(teeSigner.uncompressedPubkey),
           addresses: addresses ?? null,
         });
       } catch (err) {

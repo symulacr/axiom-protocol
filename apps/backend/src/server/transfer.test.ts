@@ -19,8 +19,7 @@ import {
   type ServerConfig,
 } from "../server.js";
 import { fetchJson } from "../utils/response.js";
-import { startServer as startOracleServer } from "@axiom/oracle/server";
-import { TeeSigner } from "@axiom/oracle/signer";
+import { TeeSigner } from "../oracle/signer.js";
 import {
   accessMessageHash,
   deriveUncompressedPubkeyFromHex,
@@ -65,38 +64,16 @@ function waitForClose(server: Server): Promise<void> {
   return promise;
 }
 
-let oracleHttp: Server;
-let oracleUrl: string;
 let backendHttp: Server;
 let backendUrl: string;
 let receiverAddress: string;
 let receiverPubkey64: `0x${string}`;
 
 beforeAll(async () => {
-  const oracleSigner = new TeeSigner(
-    ORACLE_PRIV,
-    buildEip712Domain(ARISTOTLE_CHAIN_ID, MOCK_ADDRESSES.verifier),
-  );
+  // In-process oracle (oracle-merge): the backend derives the TEE signer from
+  // AXIOM_TEE_SIGNER_PK and shares the chatStorage instance for blob/seen-hash
+  // state. POST /oracle/v1/agents/mint is mounted on the backend app itself.
   const storage = new InMemoryStorage();
-
-  const { httpServer: oSrv } = startOracleServer({
-    signer: oracleSigner,
-    storage,
-    bind: "127.0.0.1",
-    port: 0,
-  });
-  oracleHttp = oSrv;
-
-  await waitForListening(oracleHttp);
-  const addr = oracleHttp.address() as AddressInfo;
-  oracleUrl = `http://127.0.0.1:${addr.port}`;
-
-  const mint = await fetch(`${oracleUrl}/v1/agents/mint`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ dataHash: DATA_HASH }),
-  });
-  assert.equal(mint.status, 200);
 
   const receiver = new Wallet(RECEIVER_PRIV);
   receiverAddress = receiver.address;
@@ -110,27 +87,32 @@ beforeAll(async () => {
     port: 0,
     evmRpc: "http://127.0.0.1:1",
     signer: backendSigner,
-    oracleBaseUrl: oracleUrl,
+    chatStorage: storage,
     addresses: MOCK_ADDRESSES,
     // The backend must be configured to trust the oracle's TEE signer, or
-    // every ownership proof is rejected (502). The test oracle signs with
-    // ORACLE_PRIV, so the trusted signer is derived from it.
+    // every ownership proof is rejected (502). The in-process oracle signs
+    // with the AXIOM_TEE_SIGNER_PK-derived signer (ORACLE_PRIV).
     env: { AXIOM_TEE_SIGNER_PK: ORACLE_PRIV } as unknown as ServerConfig["env"],
   });
   backendHttp = backend.httpServer;
   await waitForListening(backendHttp);
   const baddr = backendHttp.address() as AddressInfo;
   backendUrl = `http://127.0.0.1:${baddr.port}`;
+
+  // Register DATA_HASH via the in-process oracle's mint route (same storage
+  // instance, so the transfer route's signOwnership sees the hash as known).
+  const mint = await fetch(`${backendUrl}/oracle/v1/agents/mint`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ dataHash: DATA_HASH }),
+  });
+  assert.equal(mint.status, 200);
 });
 
 afterAll(async () => {
   if (backendHttp) {
     backendHttp.closeAllConnections?.();
     await waitForClose(backendHttp);
-  }
-  if (oracleHttp) {
-    oracleHttp.closeAllConnections?.();
-    await waitForClose(oracleHttp);
   }
 });
 
@@ -284,23 +266,15 @@ test("POST /v1/agents/:id/transfer challenge triggers full re-key via /v1/transf
   const { rootHash: oldDataUri } = await storage.upload(oldBlob);
   storage.markDataHashSeen(oldDataUri);
 
-  const { httpServer: oracleSrv } = startOracleServer({
-    signer: oracleSigner,
-    storage,
-    bind: "127.0.0.1",
-    port: 0,
-  });
-  await waitForListening(oracleSrv);
-  const oAddr = oracleSrv.address() as AddressInfo;
-  const rekeyOracleUrl = `http://127.0.0.1:${oAddr.port}`;
-
   const backendSigner = new Wallet(BACKEND_PRIV);
   const backend = startBackendServer({
     bind: "127.0.0.1",
     port: 0,
     evmRpc: "http://127.0.0.1:1",
     signer: backendSigner,
-    oracleBaseUrl: rekeyOracleUrl,
+    // The in-process oracle re-keys from THIS storage (downloads the old blob,
+    // re-encrypts, uploads) — same instance the test uploaded into.
+    chatStorage: storage,
     addresses: MOCK_ADDRESSES,
     env: { AXIOM_TEE_SIGNER_PK: ORACLE_PRIV } as unknown as ServerConfig["env"],
   });
@@ -449,8 +423,6 @@ test("POST /v1/agents/:id/transfer challenge triggers full re-key via /v1/transf
   } finally {
     bSrv.closeAllConnections?.();
     await waitForClose(bSrv);
-    oracleSrv.closeAllConnections?.();
-    await waitForClose(oracleSrv);
   }
 });
 
@@ -460,7 +432,6 @@ test("WS /v1/stream broadcasts appended events to subscribed clients", async () 
     port: 0,
     evmRpc: "http://127.0.0.1:1",
     signer: new Wallet(BACKEND_PRIV),
-    oracleBaseUrl: "http://127.0.0.1:1",
     addresses: MOCK_ADDRESSES,
     env: {
       AXIOM_TEE_SIGNER_PK: ORACLE_PRIV,

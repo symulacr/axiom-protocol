@@ -14,7 +14,7 @@ import {
   concatEncrypted,
   parseEncrypted,
 } from "@axiom/config/crypto/aes-gcm";
-import { TeeSigner } from "./signer.js";
+import { TeeSigner } from "../oracle/signer.js";
 import { ownershipMessageHash, accessMessageHash } from "@axiom/config/eip712";
 
 const TEST_PRIV_HEX = "0x" + "11".repeat(32);
@@ -130,7 +130,8 @@ test("TeeSigner.recoverAccessSigner recovers a raw-ECDSA AccessProof", async () 
   };
 
   const digest = accessMessageHash(input);
-  const sig = receiver.signingKey.sign(getBytes(digest)).serialized;
+  const sig = receiver.signingKey.sign(getBytes(digest))
+    .serialized as `0x${string}`;
 
   const recovered = signer.recoverAccessSigner(sig, input);
   assert.equal(recovered.toLowerCase(), receiver.address.toLowerCase());

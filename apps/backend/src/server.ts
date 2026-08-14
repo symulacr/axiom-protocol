@@ -28,7 +28,8 @@ import { getComputeBaseUrl, createRouterClient } from "./compute/index.js";
 import { AGENT_NFT_ABI } from "@axiom/config/abis";
 
 import { StrategyRunner } from "./orchestrator/index.js";
-import { DefaultSignerOracleClient } from "./oracle/client.js";
+import { TeeSigner } from "./oracle/signer.js";
+import { registerOracleRoutes, type OracleRouteDeps } from "./oracle/routes.js";
 import {
   HTTP,
   type Eip712Domain,
@@ -38,7 +39,11 @@ import {
   getRuntimeConfig,
 } from "@axiom/config";
 import { getSharedProvider } from "./provider.js";
-import { ZeroGStorage, type StorageAdapter } from "@axiom/config/storage/0g";
+import {
+  ZeroGStorage,
+  InMemoryStorage,
+  type StorageAdapter,
+} from "@axiom/config/storage/0g";
 import {
   createApiKeyAuth,
   enforceClientPathAllowlist,
@@ -124,8 +129,7 @@ export interface ServerConfig {
   port: number;
   evmRpc: string;
   signer: Wallet;
-  oracleBaseUrl: string;
-  /** Optional 0G storage for chat-transcript persistence; null/undefined disables it. */
+  /** Optional 0G storage for chat-transcript persistence AND the in-process oracle; null/undefined disables both (oracle falls back to InMemoryStorage). */
   chatStorage?: StorageAdapter | null;
   addresses?: {
     agentNft: `0x${string}`;
@@ -214,7 +218,7 @@ export function startServer(config: ServerConfig): {
   app.use(
     createApiKeyAuth(
       config.env?.AXIOM_API_KEY,
-      ["/health", "/health/live"],
+      ["/health", "/health/live", "/oracle/health"],
       process.env.AXIOM_DISABLE_AUTH === "true",
       process.env.AXIOM_CLIENT_API_KEY,
     ),
@@ -240,15 +244,23 @@ export function startServer(config: ServerConfig): {
   const startedAt = Date.now();
   // Resolved post-listen so MCP self-calls work even on ephemeral ports (tests bind port 0).
   let mcpBaseUrl: string | null = null;
-  const oracle = new DefaultSignerOracleClient({
-    baseUrl: config.oracleBaseUrl,
-    apiKey: config.env?.AXIOM_API_KEY,
-  });
   const eip712Domain: Eip712Domain = buildEip712Domain(
     ogChainId,
     // verifier is env-required (resolveAddress throws at boot if unset) — no silent mainnet fallback
     config.addresses!.verifier,
   );
+  // In-process oracle: the TEE signer is booted here from the same PK the trusted-signer
+  // checks used, so proofs are inherently from the trusted signer (no HTTP oracle hop).
+  const teeSignerPk = config.env?.AXIOM_TEE_SIGNER_PK;
+  if (!teeSignerPk) throw new Error("AXIOM_TEE_SIGNER_PK required");
+  const teeSigner = new TeeSigner(teeSignerPk, eip712Domain);
+  const oracleDeps: OracleRouteDeps = {
+    signer: teeSigner,
+    storage: config.chatStorage ?? new InMemoryStorage(),
+    chainId: BigInt(ogChainId),
+    verifier: config.addresses!.verifier,
+    env: config.env,
+  };
   let orchestratorHandle: StrategyRunner | null = null;
 
   function getOrCreateOrchestrator(): StrategyRunner | null {
@@ -324,12 +336,13 @@ export function startServer(config: ServerConfig): {
     }
   }, HEARTBEAT_INTERVAL);
 
-  registerHealthRoutes(app, config, provider, oracle);
+  registerHealthRoutes(app, config, provider, teeSigner);
+  registerOracleRoutes(app, oracleDeps);
   registerComputeRoutes(app, config);
 
   registerChatRoutes(app, config);
 
-  registerAgentRoutes(app, config, provider, oracle, eip712Domain, nftTc);
+  registerAgentRoutes(app, config, provider, oracleDeps, eip712Domain, nftTc);
   registerEventRoutes(app, config, getEventStore());
   registerPerformanceRoutes(app, config, getEventStore());
   registerOrchestratorRoutes(app, config, getOrCreateOrchestrator, ogChainId);
@@ -375,9 +388,9 @@ function registerHealthRoutes(
   app: Express,
   config: ServerConfig,
   provider: SharedProvider,
-  oracle: DefaultSignerOracleClient,
+  teeSigner: TeeSigner,
 ): void {
-  app.use(createHealthRouter(provider, oracle, config));
+  app.use(createHealthRouter(provider, teeSigner, config));
 }
 
 function registerComputeRoutes(app: Express, config: ServerConfig): void {

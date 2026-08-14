@@ -5,13 +5,22 @@ import assert from "node:assert/strict";
 import { request, type Server, type IncomingMessage } from "node:http";
 import type { AddressInfo } from "node:net";
 import { SigningKey, keccak256, toBeHex } from "ethers";
+import express from "express";
 
 import { InMemoryStorage } from "@axiom/config/storage/0g";
-import { TeeSigner } from "../src/signer.js";
+import { TeeSigner } from "../oracle/signer.js";
+import type { BackendEnv } from "../env-schema.js";
 import { ownershipMessageHash } from "@axiom/config/eip712";
-import { startServer } from "../src/server.js";
+import {
+  registerOracleRoutes,
+  transferValidity,
+  signOwnership,
+  OracleRequestError,
+  type OracleRouteDeps,
+} from "../oracle/routes.js";
 import { aesGcmEncrypt, concatEncrypted } from "@axiom/config/crypto/aes-gcm";
 import { publicKeyUncompressedFromPrivate } from "@axiom/config/crypto/keys";
+import { ARISTOTLE_CHAIN_ID } from "@axiom/config";
 
 const TEST_PRIV_HEX = "0x" + "11".repeat(32);
 const TEST_RECEIVER_PRIV_HEX = "0x" + "22".repeat(32);
@@ -22,9 +31,10 @@ const TEST_RECEIVER_PUBKEY_HEX = ("0x" +
       new Uint8Array(Buffer.from(TEST_RECEIVER_PRIV_HEX.slice(2), "hex")),
     ),
   ).toString("hex")) as `0x${string}`;
-const TEST_SEALED_KEY = "0x" + "22".repeat(32);
+const TEST_SEALED_KEY = ("0x" + "22".repeat(32)) as `0x${string}`;
 const UNKNOWN_DATA_HASH = ("0x" + "ab".repeat(32)) as `0x${string}`;
 const REGISTERED_DATA_HASH = ("0x" + "cd".repeat(32)) as `0x${string}`;
+const MOCK_VERIFIER = ("0x" + "00".repeat(19) + "03") as `0x${string}`;
 
 interface HttpResult {
   status: number;
@@ -60,7 +70,9 @@ function httpRequest(
         if (text.length > 0) {
           try {
             parsed = JSON.parse(text);
-          } catch {}
+          } catch {
+            parsed = text; // non-JSON body — keep raw text
+          }
         }
         resolve({ status: res.statusCode ?? 0, body: parsed });
       });
@@ -76,17 +88,25 @@ function httpRequest(
 let server: Server;
 let signer: TeeSigner;
 let storage: InMemoryStorage;
+let deps: OracleRouteDeps;
 
 beforeAll(async () => {
   signer = new TeeSigner(TEST_PRIV_HEX);
   storage = new InMemoryStorage();
-  const startResult = startServer({
+  deps = {
     signer,
     storage,
-    bind: "127.0.0.1",
-    port: 0,
-  });
-  server = startResult.httpServer;
+    chainId: BigInt(ARISTOTLE_CHAIN_ID),
+    verifier: MOCK_VERIFIER,
+    env: {
+      AXIOM_ALLOW_CLEARTEXT_DEK: "true",
+      NODE_ENV: "test",
+    } as unknown as BackendEnv,
+  };
+  const app = express();
+  app.use(express.json());
+  registerOracleRoutes(app, deps);
+  server = app.listen(0, "127.0.0.1");
   server.unref();
   await new Promise<void>((resolve) => {
     server.once("listening", () => resolve());
@@ -101,32 +121,32 @@ afterAll(async () => {
 });
 
 test("unknown_dataHash_returns_400", async () => {
-  const res = await httpRequest(server, "POST", "/v1/ownership", {
-    dataHash: UNKNOWN_DATA_HASH,
-    targetPubkey: TEST_RECEIVER_PUBKEY_HEX,
-    sealedKey: TEST_SEALED_KEY,
-    to: "0x0000000000000000000000000000000000000001",
-    nft: "0x0000000000000000000000000000000000000002",
-    nonce: 1,
-  });
-  assert.equal(
-    res.status,
-    400,
-    `expected 400 but got ${res.status}: ${JSON.stringify(res.body)}`,
+  await assert.rejects(
+    signOwnership(deps, {
+      dataHash: UNKNOWN_DATA_HASH,
+      targetPubkey: TEST_RECEIVER_PUBKEY_HEX,
+      sealedKey: TEST_SEALED_KEY,
+      to: "0x0000000000000000000000000000000000000001",
+      nft: "0x0000000000000000000000000000000000000002",
+      nonce: 1,
+    }),
+    (err: unknown) => {
+      assert.ok(err instanceof OracleRequestError);
+      assert.equal(err.status, 400);
+      assert.match(err.message, /Unknown dataHash/i);
+      return true;
+    },
   );
-  const errBody = res.body as { error: string; dataHash: string };
-  assert.match(errBody.error, /Unknown dataHash/i);
-  assert.equal(errBody.dataHash, UNKNOWN_DATA_HASH);
 });
 
 test("dataHash_registered_via_agents_mint_succeeds", async () => {
-  const regRes = await httpRequest(server, "POST", "/v1/agents/mint", {
+  const regRes = await httpRequest(server, "POST", "/oracle/v1/agents/mint", {
     dataHash: REGISTERED_DATA_HASH,
   });
   assert.equal(
     regRes.status,
     200,
-    `expected 200 from /v1/agents/mint but got ${regRes.status}`,
+    `expected 200 from /oracle/v1/agents/mint but got ${regRes.status}`,
   );
   const regBody = regRes.body as {
     ok: boolean;
@@ -137,7 +157,7 @@ test("dataHash_registered_via_agents_mint_succeeds", async () => {
   assert.equal(regBody.dataHash, REGISTERED_DATA_HASH);
   assert.equal(regBody.seen, true);
 
-  const ownRes = await httpRequest(server, "POST", "/v1/ownership", {
+  const ownResult = await signOwnership(deps, {
     dataHash: REGISTERED_DATA_HASH,
     targetPubkey: TEST_RECEIVER_PUBKEY_HEX,
     sealedKey: TEST_SEALED_KEY,
@@ -145,49 +165,42 @@ test("dataHash_registered_via_agents_mint_succeeds", async () => {
     nft: "0x0000000000000000000000000000000000000002",
     nonce: 7,
   });
+  assert.match(ownResult.signature, /^0x[0-9a-fA-F]+$/);
   assert.equal(
-    ownRes.status,
-    200,
-    `expected 200 from /v1/ownership but got ${ownRes.status}: ${JSON.stringify(ownRes.body)}`,
-  );
-  const ownBody = ownRes.body as {
-    signature: string;
-    signer: string;
-    validUntil: string;
-  };
-  assert.match(ownBody.signature, /^0x[0-9a-fA-F]+$/);
-  assert.equal(
-    (ownBody.signature.length - 2) / 2,
+    (ownResult.signature.length - 2) / 2,
     65,
     "signature is 65 bytes (r || s || v)",
   );
 
-  const validUntil = BigInt(ownBody.validUntil);
+  const validUntil = BigInt(ownResult.validUntil);
   const localDigest = ownershipMessageHash({
     dataHash: REGISTERED_DATA_HASH,
-    sealedKey: TEST_SEALED_KEY as `0x${string}`,
-    targetPubkey: TEST_RECEIVER_PUBKEY_HEX as `0x${string}`,
-    to: "0x0000000000000000000000000000000000000001" as `0x${string}`,
-    nft: "0x0000000000000000000000000000000000000002" as `0x${string}`,
+    sealedKey: TEST_SEALED_KEY,
+    targetPubkey: TEST_RECEIVER_PUBKEY_HEX,
+    to: "0x0000000000000000000000000000000000000001",
+    nft: "0x0000000000000000000000000000000000000002",
     nonce: toBeHex(7n) as `0x${string}`,
     validUntil,
   });
   const localSig = signer.signOwnership({
     dataHash: REGISTERED_DATA_HASH,
-    sealedKey: TEST_SEALED_KEY as `0x${string}`,
-    targetPubkey: TEST_RECEIVER_PUBKEY_HEX as `0x${string}`,
-    to: "0x0000000000000000000000000000000000000001" as `0x${string}`,
-    nft: "0x0000000000000000000000000000000000000002" as `0x${string}`,
+    sealedKey: TEST_SEALED_KEY,
+    targetPubkey: TEST_RECEIVER_PUBKEY_HEX,
+    to: "0x0000000000000000000000000000000000000001",
+    nft: "0x0000000000000000000000000000000000000002",
     nonce: toBeHex(7n) as `0x${string}`,
     validUntil,
   });
   assert.equal(
     localSig,
-    ownBody.signature,
-    "server-produced signature matches locally-re-signed one (deterministic k)",
+    ownResult.signature,
+    "server-produced signature matches locally re-signed one (deterministic k)",
   );
 
-  const recovered = SigningKey.recoverPublicKey(localDigest, ownBody.signature);
+  const recovered = SigningKey.recoverPublicKey(
+    localDigest,
+    ownResult.signature,
+  );
   const recoveredBytes = Uint8Array.from(
     Buffer.from(recovered.slice(2), "hex"),
   );
@@ -195,7 +208,7 @@ test("dataHash_registered_via_agents_mint_succeeds", async () => {
   const addrFromXY = "0x" + keccak256(recoveredXy).slice(-40);
   assert.equal(
     addrFromXY.toLowerCase(),
-    ownBody.signer.toLowerCase(),
+    ownResult.signer.toLowerCase(),
     "recovered address matches the configured TEE signer",
   );
 });
@@ -211,7 +224,7 @@ test("dataHash_observed_via_transfer_validity_succeeds", async () => {
   const oldDataEncryptionKey = Buffer.from(aesKey).toString("base64");
 
   await storage.upload(blob);
-  const tvRes = await httpRequest(server, "POST", "/v1/transfer-validity", {
+  const tvResult = await transferValidity(deps, {
     oldDataHash,
     oldDataUri: oldDataHash,
     targetPubkey64: TEST_RECEIVER_PUBKEY_HEX,
@@ -221,36 +234,24 @@ test("dataHash_observed_via_transfer_validity_succeeds", async () => {
     to: "0x0000000000000000000000000000000000000001",
     nft: "0x0000000000000000000000000000000000000002",
   });
-  assert.equal(
-    tvRes.status,
-    200,
-    `expected 200 from /v1/transfer-validity but got ${tvRes.status}: ${JSON.stringify(tvRes.body)}`,
-  );
-  const tvBody = tvRes.body as { newDataHash: string; newDataUri: string };
-  assert.equal(tvBody.newDataHash, tvBody.newDataUri);
+  assert.equal(tvResult.newDataHash, tvResult.newDataUri);
 
-  const ownRes = await httpRequest(server, "POST", "/v1/ownership", {
-    dataHash: tvBody.newDataHash,
+  const ownResult = await signOwnership(deps, {
+    dataHash: tvResult.newDataHash,
     targetPubkey: TEST_RECEIVER_PUBKEY_HEX,
     sealedKey: TEST_SEALED_KEY,
     to: "0x0000000000000000000000000000000000000001",
     nft: "0x0000000000000000000000000000000000000002",
     nonce: 11,
   });
+  assert.match(ownResult.signature, /^0x[0-9a-fA-F]+$/);
   assert.equal(
-    ownRes.status,
-    200,
-    `expected 200 from /v1/ownership (post transfer-validity) but got ${ownRes.status}: ${JSON.stringify(ownRes.body)}`,
-  );
-  const ownBody = ownRes.body as { signature: string; signer: string };
-  assert.match(ownBody.signature, /^0x[0-9a-fA-F]+$/);
-  assert.equal(
-    (ownBody.signature.length - 2) / 2,
+    (ownResult.signature.length - 2) / 2,
     65,
     "signature is 65 bytes (r || s || v)",
   );
   assert.ok(
-    ownBody.signer.startsWith("0x"),
+    ownResult.signer.startsWith("0x"),
     "signer field is a 0x-prefixed address",
   );
 });

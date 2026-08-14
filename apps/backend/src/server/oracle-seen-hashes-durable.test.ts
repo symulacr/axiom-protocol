@@ -22,8 +22,7 @@ afterAll(() => {
   for (const dir of tmpDirs) {
     try {
       rmSync(dir, { recursive: true, force: true });
-    } catch {
-    }
+    } catch {}
   }
 });
 

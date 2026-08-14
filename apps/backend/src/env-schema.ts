@@ -5,11 +5,14 @@ import { RUNTIME_DEFAULTS } from "@axiom/config";
 
 export const backendEnvSchema = sharedEnvSchema.merge(
   z.object({
+    // Oracle is in-process since the merge; URL retained (optional) for e2e/CLI that still
+    // dial the /oracle surface directly.
     AXIOM_ORACLE_URL: z
       .string()
       .url(
         "AXIOM_ORACLE_URL must be a valid URL (oracle service, e.g. https://oracle…/ or http://127.0.0.1:8787)",
-      ),
+      )
+      .optional(),
     AXIOM_INDEXER_API_KEY: z.string().optional(),
     AXIOM_EVM_RPC: z.string().url(),
     INDEXER_POLL_WINDOW_BLOCKS: z.coerce
@@ -27,6 +30,11 @@ export const backendEnvSchema = sharedEnvSchema.merge(
     AXIOM_PORT: z.coerce.number().int().positive().default(3000),
     PORT: z.coerce.number().int().positive().optional(),
     AXIOM_BIND: z.string().default("0.0.0.0"),
+    // 0G storage (in-process oracle + chat transcripts); same env contract as the old oracle.
+    AXIOM_STORAGE_INDEXER_RPC: z.string().url().optional(),
+    AXIOM_STORAGE_EVM_RPC: z.string().url().optional(),
+    AXIOM_STORAGE_PRIVATE_KEY: hexString.optional(),
+    AXIOM_STORAGE_FEE: z.string().optional(),
     AXIOM_AGENT_NFT_ADDRESS: z.string().optional(),
     AXIOM_STRATEGY_VAULT_ADDRESS: z.string().optional(),
     AXIOM_TEE_VERIFIER_ADDRESS: z.string().optional(),

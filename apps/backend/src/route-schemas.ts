@@ -25,6 +25,11 @@ export const royaltySchema = z.object({
   bps: z.number().int().min(0).max(10000),
 });
 
+/** Body for POST /oracle/v1/agents/mint (in-process oracle registration). */
+export const mintDataHashSchema = z.object({
+  dataHash: hexViem,
+});
+
 const amountStringSchema = z.object({
   amount: z.string().regex(/^\d+(\.\d+)?$/),
 });

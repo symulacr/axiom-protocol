@@ -52,6 +52,11 @@ const CLIENT_ALLOWED_ROUTES: ReadonlyArray<{
       p === "/v1/chat/completions" ||
       p === "/v1/orchestrator/tick",
   },
+  // In-process oracle surface (mint registration + health); browser keys reach it same-origin.
+  {
+    methods: ["GET", "POST"],
+    match: (p) => p.startsWith("/oracle"),
+  },
   // Public market data skills only — unbroker transfer ops stay server-gated
   {
     match: (p) =>

@@ -107,7 +107,6 @@ async function main(): Promise<void> {
     env,
     evmRpc: env.AXIOM_EVM_RPC,
     signer,
-    oracleBaseUrl: env.AXIOM_ORACLE_URL,
     chatStorage,
     addresses: addresses as ServerConfig["addresses"],
   });

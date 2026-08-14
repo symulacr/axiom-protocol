@@ -8,11 +8,16 @@ import {
   TypedContract,
   type AgentNFTMethods,
 } from "@axiom/config/types/contract";
-import { type ServerConfig, isUpstreamTransportError } from "../server.js";
+import type { ServerConfig } from "../server.js";
 import { sendError, extractErrorMessage, envInt } from "../utils/response.js";
 import { TTLCache } from "../utils/response.js";
 import { TRANSFER_TOPIC } from "@axiom/config";
-import type { DefaultSignerOracleClient } from "../oracle/client.js";
+import {
+  signOwnership,
+  transferValidity,
+  OracleRequestError,
+  type OracleRouteDeps,
+} from "../oracle/routes.js";
 import { createLogger } from "../utils/logger.js";
 import { createRoute } from "./route-factory.js";
 
@@ -93,11 +98,39 @@ export function assertTrustedOracleSigner(
   return true;
 }
 
+interface OwnershipSignatureRequest {
+  dataHash: Hex;
+  sealedKey: Hex;
+  targetPubkey: Hex;
+  to: Hex;
+  nft: Hex;
+  nonce: Hex;
+  validUntil: bigint;
+}
+
+// The in-process oracle signs via deps.signer/storage; a client-style oracle
+// (e.g. test doubles mirroring the pre-merge HTTP client) exposes signOwnership
+// as a method. Prefer the method when present, else the in-process helper.
+async function requestOwnershipSignature(
+  oracle: OracleRouteDeps,
+  args: OwnershipSignatureRequest,
+): Promise<{ signature: Hex; signer: Hex }> {
+  const client = oracle as unknown as {
+    signOwnership?: (
+      args: OwnershipSignatureRequest,
+    ) => Promise<{ signature: Hex; signer: Hex }>;
+  };
+  if (typeof client.signOwnership === "function") {
+    return client.signOwnership(args);
+  }
+  return signOwnership(oracle, args);
+}
+
 export function registerAgentRoutes(
   app: Express,
   config: ServerConfig,
   provider: ethers.JsonRpcProvider,
-  oracle: DefaultSignerOracleClient,
+  oracle: OracleRouteDeps,
   eip712Domain: Eip712Domain,
   nftTc: TypedContract<AgentNFTMethods> | null,
 ): void {
@@ -330,7 +363,7 @@ export function registerAgentRoutes(
         if (!accessProof) {
           const nonce = BigInt(accessProofNonce ?? 0);
           if (oldDataUri && sealedDataEncryptionKey) {
-            const rekey = await oracle.transferValidity({
+            const rekey = await transferValidity(oracle, {
               oldDataHash: dataHash,
               oldDataUri,
               targetPubkey64: pk,
@@ -369,7 +402,7 @@ export function registerAgentRoutes(
           );
           if (!sealedKeyOrDefault) return;
           const nonceHex = ethers.toBeHex(nonce) as `0x${string}`;
-          const tee = await oracle.signOwnership({
+          const tee = await requestOwnershipSignature(oracle, {
             dataHash,
             sealedKey: sealedKeyOrDefault,
             targetPubkey: pk,
@@ -449,7 +482,7 @@ export function registerAgentRoutes(
         }
         const sealedKeyOrDefault = resolveSealedKeyGuard(sealedKeyIn, res, id);
         if (!sealedKeyOrDefault) return;
-        const tee = await oracle.signOwnership({
+        const tee = await requestOwnershipSignature(oracle, {
           dataHash: proofDataHash,
           sealedKey: sealedKeyOrDefault,
           targetPubkey: proofTargetPubkey,
@@ -502,13 +535,8 @@ export function registerAgentRoutes(
           },
         });
       } catch (err) {
-        if (isUpstreamTransportError(err)) {
-          sendError(
-            res,
-            HTTP.SERVICE_UNAVAILABLE,
-            `TEE oracle at ${config.oracleBaseUrl} is unreachable; deploy the oracle service or set AXIOM_ORACLE_URL`,
-            "ORACLE_UNAVAILABLE",
-          );
+        if (err instanceof OracleRequestError) {
+          sendError(res, err.status, err.message);
           return;
         }
         throw err;
