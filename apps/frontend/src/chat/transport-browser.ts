@@ -1,8 +1,7 @@
 import { createSession, runTool } from "@axiom/chat-runtime";
 import type { ToolChain, ToolRuntime } from "@axiom/chat-runtime";
-import { parseAbi } from "viem";
-import type { Abi } from "viem";
 import { BACKEND_URL, ORACLE_URL } from "../config/env.js";
+import { toViemAbi } from "../lib/abi.js";
 import { apiKeyHeader } from "../utils/apiFetch.js";
 import {
   getAxiomAgentNftAddress,
@@ -21,13 +20,6 @@ export async function runBrowserTool(
 ): Promise<string> {
   const result = await runTool(name, args, buildBrowserRuntime(ctx));
   return result.content;
-}
-
-function toViemAbi(abi: readonly unknown[] | Abi): Abi {
-  if (abi.length > 0 && typeof abi[0] === "string") {
-    return parseAbi(abi as readonly string[]);
-  }
-  return abi as Abi;
 }
 
 function buildWallet(

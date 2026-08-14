@@ -6,6 +6,7 @@ import { type Hex, toHex } from "viem";
 import { getAxiomAgentNftAddress } from "../abi/addresses.js";
 import { ITRANSFER_FROM_ABI } from "@axiom/config/abis";
 import { sealKeyForReceiver } from "@axiom/config/crypto/keys";
+import { toViemAbi } from "../lib/abi.js";
 
 import { useEip712Domain, ACCESS_PROOF_TYPES } from "../abi/eip712.js";
 import {
@@ -327,7 +328,7 @@ export function useTransfer(): UseTransferResult {
       try {
         const txHash = await write({
           to: getAxiomAgentNftAddress(chainId),
-          abi: ITRANSFER_FROM_ABI,
+          abi: toViemAbi(ITRANSFER_FROM_ABI),
           functionName: "iTransferFrom",
           args: [
             from,

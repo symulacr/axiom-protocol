@@ -1,6 +1,7 @@
 import { useWalletClient } from "wagmi";
-import { encodeFunctionData, parseAbi, type Abi, type Hex } from "viem";
+import { encodeFunctionData, type Abi, type Hex } from "viem";
 import { useCallback } from "react";
+import { toViemAbi } from "../lib/abi.js";
 
 interface WriteCall {
   to: Hex;
@@ -10,16 +11,6 @@ interface WriteCall {
   value?: bigint;
 }
 
-/** viem's encodeFunctionData does NOT parse human-readable string ABIs at
- *  runtime — normalize like transport-browser.toViemAbi (config ABIs are
- *  string arrays). */
-function normalizeAbi(abi: readonly unknown[] | Abi): Abi {
-  if (abi.length > 0 && typeof abi[0] === "string") {
-    return parseAbi(abi as readonly string[]);
-  }
-  return abi as Abi;
-}
-
 export function useGenericWrite() {
   const { data: walletClient } = useWalletClient();
 
@@ -27,7 +18,7 @@ export function useGenericWrite() {
     async (call: WriteCall): Promise<Hex> => {
       if (!walletClient) throw new Error("wallet not connected");
       const data = encodeFunctionData({
-        abi: normalizeAbi(call.abi),
+        abi: toViemAbi(call.abi),
         functionName: call.functionName,
         args: call.args,
       });

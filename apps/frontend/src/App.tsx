@@ -23,14 +23,8 @@ import { useAccount } from "wagmi";
 import { useHealth } from "./hooks/useHealth.js";
 import { ErrorBoundary } from "./components/ErrorBoundary.js";
 import { BRAND } from "./brand/assets.js";
-import {
-  COLORS,
-  ConnectedGuard,
-  Kbd,
-  Modal,
-  Spinner,
-} from "./components/ui.js";
-import { useMediaQuery } from "./hooks/useMediaQuery.js";
+import { ConnectedGuard, Kbd, Modal, Spinner } from "./components/ui.js";
+import { ShellSidebarProvider } from "./hooks/useShellSidebar.js";
 
 /** IA source of truth: Home · Chat · Mint (modal action); deep page: Agent Detail. */
 const APP_HOME = "/app" as const;
@@ -80,6 +74,11 @@ function readTheme(): ThemeMode {
   try {
     const v = localStorage.getItem(STORAGE_KEY);
     if (v === "light" || v === "dark") return v;
+    if (typeof window !== "undefined" && window.matchMedia) {
+      return window.matchMedia("(prefers-color-scheme: light)").matches
+        ? "light"
+        : "dark";
+    }
   } catch {
     void 0;
   }
@@ -98,9 +97,7 @@ function useTheme(): {
 } {
   const [theme, setThemeState] = useState<ThemeMode>(() => {
     if (typeof document !== "undefined") {
-      const t = readTheme();
-      applyTheme(t);
-      return t;
+      return readTheme();
     }
     return "dark";
   });
@@ -113,6 +110,22 @@ function useTheme(): {
       void 0;
     }
   }, [theme]);
+
+  // Live OS-theme following: only when the user has no explicit stored choice.
+  useEffect(() => {
+    let stored: string | null = null;
+    try {
+      stored = localStorage.getItem(STORAGE_KEY);
+    } catch {
+      stored = null;
+    }
+    if (stored === "light" || stored === "dark") return;
+    const mq = window.matchMedia("(prefers-color-scheme: light)");
+    const onChange = (e: MediaQueryListEvent) =>
+      setThemeState(e.matches ? "light" : "dark");
+    mq.addEventListener?.("change", onChange);
+    return () => mq.removeEventListener?.("change", onChange);
+  }, []);
 
   const setTheme = useCallback((m: ThemeMode) => setThemeState(m), []);
   const toggle = useCallback(() => {
@@ -258,10 +271,14 @@ function ShortcutHelp(): ReactElement | null {
   const [open, setOpen] = useState(false);
   const [entered, setEntered] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+  const lastTriggerRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!open) {
       setEntered(false);
+      // Focus returns to whatever opened the panel (keyboard path stays intact).
+      lastTriggerRef.current?.focus();
+      lastTriggerRef.current = null;
       return;
     }
     const id = requestAnimationFrame(() => setEntered(true));
@@ -269,7 +286,8 @@ function ShortcutHelp(): ReactElement | null {
   }, [open]);
 
   useEffect(() => {
-    function show() {
+    function show(e: Event) {
+      lastTriggerRef.current = (e.target as HTMLElement | null) ?? null;
       setOpen(true);
     }
     document.addEventListener("axiom:show-shortcuts", show);
@@ -329,7 +347,6 @@ function ShortcutHelp(): ReactElement | null {
 }
 
 export function App(): ReactElement {
-  const isMobile = useMediaQuery("(max-width: 640px)");
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -341,6 +358,72 @@ export function App(): ReactElement {
   const { isConnected } = useAccount();
   const { theme, toggle: toggleTheme } = useTheme();
   const wasConnected = useRef(false);
+
+  // Shell-level sidebar state: persists the collapse choice; on ≤800px the
+  // sidebar is a drawer (default closed, promoted from the chat drawer).
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("axiom:sidebar-collapsed") !== "true";
+    } catch {
+      return true;
+    }
+  });
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("axiom:sidebar-collapsed") === "true";
+    } catch {
+      return false;
+    }
+  });
+  const sidebarToggleRef = useRef<HTMLButtonElement | null>(null);
+  const sidebarFirstLinkRef = useRef<HTMLAnchorElement | null>(null);
+
+  // Move focus into the drawer when it opens on narrow screens (≥800px the
+  // sidebar is persistent and focus stays where the user put it).
+  useEffect(() => {
+    if (sidebarOpen && window.matchMedia("(max-width: 800px)").matches) {
+      sidebarFirstLinkRef.current?.focus();
+    }
+  }, [sidebarOpen]);
+
+  const closeSidebar = useCallback(() => {
+    setSidebarOpen(false);
+    sidebarToggleRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        "axiom:sidebar-collapsed",
+        sidebarCollapsed ? "true" : "false",
+      );
+    } catch {
+      void 0;
+    }
+  }, [sidebarCollapsed]);
+
+  // Escape closes the mobile drawer; scroll locks while it is open.
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setSidebarOpen(false);
+        sidebarToggleRef.current?.focus();
+      }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = prev;
+    };
+  }, [sidebarOpen]);
+
+  // Close the drawer on route change.
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname]);
 
   const openMint = useCallback(() => {
     if (isLanding) {
@@ -403,14 +486,265 @@ export function App(): ReactElement {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [navigate, openMint]);
 
+  const shellClass = [
+    "app-shell",
+    isLanding ? "app-shell--landing" : "",
+    !isLanding && sidebarCollapsed && !isChat ? "app-shell--rail" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const mainClass = isLanding
+    ? "shell-main shell-main--landing"
+    : isChat
+      ? "shell-main shell-main--chat"
+      : "shell-main";
+  const footerClass = `shell-footer${isChat ? " shell-footer--hidden" : ""}`;
+
+  const pageContent = (
+    <ErrorBoundary>
+      <Suspense
+        fallback={
+          <div className="app-fallback">
+            <Spinner size={32} />
+          </div>
+        }
+      >
+        <div key={location.pathname} className="fade-enter">
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path={APP_HOME} element={<HomePage />} />
+            {/* List peers fold into Home; mint is modal-only, never a separate page */}
+            <Route
+              path="/agents"
+              element={<Navigate to={APP_HOME} replace />}
+            />
+            <Route
+              path="/market"
+              element={<Navigate to={APP_HOME} replace />}
+            />
+            <Route
+              path="/dashboard"
+              element={<Navigate to={APP_HOME} replace />}
+            />
+            <Route
+              path="/agents/:tokenId"
+              element={
+                <WalletRoute>
+                  <AgentDetail />
+                </WalletRoute>
+              }
+            />
+            <Route path={APP_CHAT} element={<ChatPage />} />
+            <Route
+              path="/settings"
+              element={<Navigate to={APP_HOME} replace />}
+            />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </div>
+      </Suspense>
+    </ErrorBoundary>
+  );
+
+  const footerInner = (
+    <div className="shell-footer__inner">
+      <div className="shell-footer__brand-block">
+        <span className="shell-footer__brand">Axiom</span>
+        <p className="shell-footer__tag">
+          Mint, fund, tick, transfer · software oracle on 0G
+        </p>
+      </div>
+      <nav className="shell-footer__links" aria-label="Footer">
+        {/* Primary destinations derive from PRIMARY_NAV; the Mint action
+            stays in the sidebar / top bar (single trigger set). */}
+        {PRIMARY_NAV.filter((item) => item.kind === "link").map((item) => (
+          <Link key={item.id} to={item.path!}>
+            {item.label}
+          </Link>
+        ))}
+        <Link to="/">About</Link>
+      </nav>
+    </div>
+  );
+
   return (
     <div className="shell">
       <a href="#main-content" className="skip-link">
         Skip to content
       </a>
-      <header className="shell-header">
-        <div className="shell-header__inner">
-          <nav className="shell-nav" aria-label="Primary">
+
+      {!isLanding ? (
+        <ShellSidebarProvider
+          value={{
+            open: sidebarOpen,
+            setOpen: (v) => setSidebarOpen(v),
+          }}
+        >
+          <div className={shellClass}>
+            <aside
+              className={`app-sidebar${sidebarOpen ? " is-open" : ""}`}
+              aria-label="Primary navigation"
+            >
+              <div className="app-sidebar__brand">
+                <Link to="/" className="shell-brand" aria-label="Axiom home">
+                  <img
+                    src={BRAND.chatAvatar}
+                    alt=""
+                    width={28}
+                    height={28}
+                    className="shell-brand__mark"
+                  />
+                  <span className="shell-brand__text">
+                    Axiom
+                    <span className="shell-brand__sub">Protocol</span>
+                  </span>
+                </Link>
+              </div>
+
+              <nav className="app-sidebar__nav" aria-label="Primary">
+                {PRIMARY_NAV.filter((item) => item.kind === "link").map(
+                  (item, i) => (
+                    <NavLink
+                      key={item.id}
+                      ref={i === 0 ? sidebarFirstLinkRef : undefined}
+                      to={item.path!}
+                      className={navLinkClass}
+                      end={item.id === "home"}
+                    >
+                      <span>{item.label}</span>
+                      <Kbd className="shell-nav__kbd">{item.shortcut}</Kbd>
+                    </NavLink>
+                  ),
+                )}
+                <button
+                  type="button"
+                  onClick={openMint}
+                  className="shell-nav__link shell-nav__link--mint"
+                  data-axiom-btn=""
+                >
+                  <span>Mint</span>
+                  <Kbd className="shell-nav__kbd">N</Kbd>
+                </button>
+              </nav>
+
+              {isChat && (
+                <div
+                  className="app-sidebar__threads"
+                  id="sidebar-threads-slot"
+                />
+              )}
+
+              <div className="app-sidebar__status">
+                <HealthBadge />
+              </div>
+            </aside>
+
+            <button
+              type="button"
+              className="app-sidebar__scrim"
+              aria-label="Close navigation"
+              tabIndex={sidebarOpen ? 0 : -1}
+              onClick={closeSidebar}
+            />
+
+            <header className="app-topbar">
+              <button
+                type="button"
+                className="shell-icon-btn app-topbar__toggle"
+                aria-label={
+                  sidebarOpen ? "Close navigation" : "Open navigation"
+                }
+                aria-expanded={sidebarOpen}
+                aria-controls="app-sidebar"
+                ref={sidebarToggleRef}
+                onClick={() => setSidebarOpen((v) => !v)}
+              >
+                <span aria-hidden className="shell-icon">
+                  ☰
+                </span>
+              </button>
+              {!isChat && (
+                <button
+                  type="button"
+                  className="shell-icon-btn app-topbar__collapse"
+                  aria-label={
+                    sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
+                  }
+                  aria-pressed={sidebarCollapsed}
+                  title={sidebarCollapsed ? "Expand" : "Collapse"}
+                  onClick={() => setSidebarCollapsed((v) => !v)}
+                >
+                  <span aria-hidden className="shell-icon">
+                    {sidebarCollapsed ? "»" : "«"}
+                  </span>
+                </button>
+              )}
+              <div className="app-topbar__side">
+                <button
+                  type="button"
+                  className="shell-icon-btn"
+                  onClick={toggleTheme}
+                  aria-pressed={theme === "dark"}
+                  aria-label={
+                    theme === "dark"
+                      ? "Switch to light theme"
+                      : "Switch to dark theme"
+                  }
+                  title={theme === "dark" ? "Light" : "Dark"}
+                >
+                  {theme === "dark" ? (
+                    <span aria-hidden className="shell-icon">
+                      ☀
+                    </span>
+                  ) : (
+                    <span aria-hidden className="shell-icon">
+                      ◐
+                    </span>
+                  )}
+                </button>
+                {!isLanding && (
+                  <button
+                    type="button"
+                    className="shell-icon-btn"
+                    title="Shortcuts (?)"
+                    aria-label="Keyboard shortcuts"
+                    onClick={() =>
+                      document.dispatchEvent(
+                        new CustomEvent("axiom:show-shortcuts"),
+                      )
+                    }
+                  >
+                    <span aria-hidden className="shell-icon">
+                      ?
+                    </span>
+                  </button>
+                )}
+                {(isLanding || !isChat) && (
+                  <button
+                    type="button"
+                    onClick={openMint}
+                    className="shell-mint-btn"
+                    data-axiom-btn=""
+                  >
+                    Mint
+                  </button>
+                )}
+                <div className="shell-wallet">
+                  <WalletButton />
+                </div>
+              </div>
+            </header>
+
+            <main id="main-content" className={mainClass}>
+              {pageContent}
+              <footer className={footerClass}>{footerInner}</footer>
+            </main>
+          </div>
+        </ShellSidebarProvider>
+      ) : (
+        <>
+          <header className="app-topbar app-topbar--landing">
             <Link to="/" className="shell-brand" aria-label="Axiom home">
               <img
                 src={BRAND.chatAvatar}
@@ -424,27 +758,29 @@ export function App(): ReactElement {
                 <span className="shell-brand__sub">Protocol</span>
               </span>
             </Link>
-
-            {!isLanding && !isMobile && (
-              <div className="shell-nav__pill" role="list">
-                {PRIMARY_NAV.filter((item) => item.kind === "link").map(
-                  (item) => (
-                    <NavLink
-                      key={item.id}
-                      to={item.path!}
-                      className={navLinkClass}
-                      end={item.id === "home"}
-                      role="listitem"
-                    >
-                      {item.label}
-                      <Kbd className="shell-nav__kbd">{item.shortcut}</Kbd>
-                    </NavLink>
-                  ),
+            <div className="app-topbar__side">
+              <button
+                type="button"
+                className="shell-icon-btn"
+                onClick={toggleTheme}
+                aria-pressed={theme === "dark"}
+                aria-label={
+                  theme === "dark"
+                    ? "Switch to light theme"
+                    : "Switch to dark theme"
+                }
+                title={theme === "dark" ? "Light" : "Dark"}
+              >
+                {theme === "dark" ? (
+                  <span aria-hidden className="shell-icon">
+                    ☀
+                  </span>
+                ) : (
+                  <span aria-hidden className="shell-icon">
+                    ◐
+                  </span>
                 )}
-              </div>
-            )}
-
-            {isLanding && (
+              </button>
               <div className="shell-nav__landing">
                 <Link to="/app" className="shell-nav__text-link">
                   Home
@@ -453,50 +789,6 @@ export function App(): ReactElement {
                   Chat
                 </Link>
               </div>
-            )}
-          </nav>
-
-          <div className="shell-header__actions">
-            <button
-              type="button"
-              className="shell-icon-btn"
-              onClick={toggleTheme}
-              aria-label={
-                theme === "dark"
-                  ? "Switch to light theme"
-                  : "Switch to dark theme"
-              }
-              title={theme === "dark" ? "Light" : "Dark"}
-            >
-              {theme === "dark" ? (
-                <span aria-hidden className="shell-icon">
-                  ☀
-                </span>
-              ) : (
-                <span aria-hidden className="shell-icon">
-                  ◐
-                </span>
-              )}
-            </button>
-            {!isLanding && !isMobile && (
-              <button
-                type="button"
-                className="shell-icon-btn"
-                title="Shortcuts (?)"
-                aria-label="Keyboard shortcuts"
-                onClick={() =>
-                  document.dispatchEvent(
-                    new CustomEvent("axiom:show-shortcuts"),
-                  )
-                }
-              >
-                <span aria-hidden className="shell-icon">
-                  ?
-                </span>
-              </button>
-            )}
-            {!isLanding && <HealthBadge />}
-            {(isLanding || !isMobile) && (
               <button
                 type="button"
                 onClick={openMint}
@@ -505,142 +797,18 @@ export function App(): ReactElement {
               >
                 Mint
               </button>
-            )}
-            <div className="shell-wallet">
-              <WalletButton />
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {!isLanding && isMobile && (
-        <nav
-          aria-label="Primary"
-          style={{
-            position: "fixed",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            zIndex: 40,
-            display: "flex",
-            gap: "var(--space-sm)",
-            padding: "var(--space-xs) var(--space-sm)",
-            borderTop: `1px solid ${COLORS.borderStrong}`,
-            background: COLORS.surface,
-            boxShadow: "0 -8px 24px rgba(0, 0, 0, 0.25)",
-          }}
-        >
-          {PRIMARY_NAV.map((item) =>
-            item.kind === "link" ? (
-              <NavLink
-                key={item.id}
-                to={item.path!}
-                end={item.id === "home"}
-                style={({ isActive }) => ({
-                  flex: 1,
-                  textAlign: "center",
-                  textDecoration: "none",
-                  borderRadius: "var(--radius-md)",
-                  padding: "0.6rem 0.5rem",
-                  fontSize: "var(--text-sm)",
-                  fontWeight: "var(--fw-medium)",
-                  color: isActive ? COLORS.textPrimary : COLORS.textMuted,
-                  background: isActive ? COLORS.surfaceRaised : "transparent",
-                  border: `1px solid ${
-                    isActive ? COLORS.borderStrong : "transparent"
-                  }`,
-                })}
-              >
-                {item.label}
-              </NavLink>
-            ) : (
-              <button
-                key={item.id}
-                type="button"
-                onClick={openMint}
-                data-axiom-btn=""
-                style={{
-                  flex: 1,
-                  textAlign: "center",
-                  borderRadius: "var(--radius-md)",
-                  padding: "0.6rem 0.5rem",
-                  fontSize: "var(--text-sm)",
-                  fontWeight: "var(--fw-semibold)",
-                  color: COLORS.bronzeLight,
-                  background: COLORS.surfaceRaised,
-                  border: `1px solid ${COLORS.borderStrong}`,
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                }}
-              >
-                {item.label}
-              </button>
-            ),
-          )}
-        </nav>
-      )}
-
-      <main
-        id="main-content"
-        style={
-          !isLanding && isMobile
-            ? {
-                paddingBottom: "calc(5rem + env(safe-area-inset-bottom))",
-              }
-            : undefined
-        }
-        className={
-          isLanding
-            ? "shell-main shell-main--landing"
-            : isChat
-              ? "shell-main shell-main--chat"
-              : "shell-main"
-        }
-      >
-        <ErrorBoundary>
-          <Suspense
-            fallback={
-              <div className="app-fallback">
-                <Spinner size={32} />
+              <div className="shell-wallet">
+                <WalletButton />
               </div>
-            }
-          >
-            <div key={location.pathname} className="fade-enter">
-              <Routes>
-                <Route path="/" element={<LandingPage />} />
-                <Route path={APP_HOME} element={<HomePage />} />
-                {/* List peers fold into Home; mint is modal-only, never a separate page */}
-                <Route
-                  path="/agents"
-                  element={<Navigate to={APP_HOME} replace />}
-                />
-                <Route
-                  path="/market"
-                  element={<Navigate to={APP_HOME} replace />}
-                />
-                <Route
-                  path="/dashboard"
-                  element={<Navigate to={APP_HOME} replace />}
-                />
-                <Route
-                  path="/agents/:tokenId"
-                  element={
-                    <WalletRoute>
-                      <AgentDetail />
-                    </WalletRoute>
-                  }
-                />
-                <Route path={APP_CHAT} element={<ChatPage />} />
-                <Route
-                  path="/settings"
-                  element={<Navigate to={APP_HOME} replace />}
-                />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
             </div>
-          </Suspense>
-        </ErrorBoundary>
-      </main>
+          </header>
+
+          <main id="main-content" className={mainClass}>
+            {pageContent}
+          </main>
+          <footer className="shell-footer">{footerInner}</footer>
+        </>
+      )}
 
       <Modal
         open={mintOpen}
@@ -651,7 +819,6 @@ export function App(): ReactElement {
         {isConnected ? (
           <Suspense fallback={<Spinner />}>
             <MintForm
-              compact
               onClose={() => {
                 closeMint();
                 // MintForm calls onClose only once the tx confirms, so this
@@ -673,29 +840,6 @@ export function App(): ReactElement {
         )}
       </Modal>
 
-      <footer
-        className={`shell-footer${isChat ? " shell-footer--hidden" : ""}`}
-        style={!isLanding && isMobile ? { display: "none" } : undefined}
-      >
-        <div className="shell-footer__inner">
-          <div className="shell-footer__brand-block">
-            <span className="shell-footer__brand">Axiom</span>
-            <p className="shell-footer__tag">
-              Mint, fund, tick, transfer · software oracle on 0G
-            </p>
-          </div>
-          <nav className="shell-footer__links" aria-label="Footer">
-            {/* Primary destinations derive from PRIMARY_NAV; the Mint action
-                stays in the header / bottom bar (single trigger set). */}
-            {PRIMARY_NAV.filter((item) => item.kind === "link").map((item) => (
-              <Link key={item.id} to={item.path!}>
-                {item.label}
-              </Link>
-            ))}
-            <Link to="/">About</Link>
-          </nav>
-        </div>
-      </footer>
       <ShortcutHelp />
     </div>
   );

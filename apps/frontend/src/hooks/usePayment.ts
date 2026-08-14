@@ -4,8 +4,10 @@ import { useAccount, useChainId, usePublicClient } from "wagmi";
 import { useGenericWrite } from "./useGenericWrite.js";
 import { useAsyncAction } from "./useAsyncAction.js";
 import { PAYMENT_PROCESSOR_ABI, ERC20_ABI } from "@axiom/config/abis";
+import { toViemAbi } from "../lib/abi.js";
 
-const paymentProcessorAbi = PAYMENT_PROCESSOR_ABI;
+const paymentProcessorAbi = toViemAbi(PAYMENT_PROCESSOR_ABI);
+const erc20Abi = toViemAbi(ERC20_ABI);
 import { getAxiomPaymentProcessorAddress } from "../abi/addresses.js";
 import {
   agentEarningsPath,
@@ -86,14 +88,14 @@ export function usePayment(): UsePaymentResult {
           const config = await getPaymentConfig();
           const allowance = (await publicClient.readContract({
             address: config.paymentToken,
-            abi: ERC20_ABI,
+            abi: erc20Abi,
             functionName: "allowance",
             args: [address, processor],
           })) as bigint;
           if (allowance < BigInt(amount)) {
             const approveHash = await write({
               to: config.paymentToken,
-              abi: ERC20_ABI,
+              abi: erc20Abi,
               functionName: "approve",
               args: [processor, BigInt(amount)],
             });

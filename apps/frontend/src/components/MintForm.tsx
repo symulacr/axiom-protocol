@@ -19,8 +19,9 @@ import { formatTokenAmount, humanizeError } from "../utils/format.js";
 import { AGENT_NFT_ABI } from "@axiom/config/abis";
 import { TRANSFER_TOPIC, ZERO_DATA_ROOT } from "@axiom/config/constants";
 import { getAxiomAgentNftAddress } from "../abi/addresses.js";
+import { toViemAbi } from "../lib/abi.js";
 import { useMintWizard } from "../hooks/useMintWizard.js";
-import { COLORS, Card, Button, Alert, PageHeader, Input } from "./ui.js";
+import { COLORS, Card, Button, Alert, Input } from "./ui.js";
 
 const MINT_STEPS = ["Oracle registration", "Chain mint", "Confirm"] as const;
 const MINT_NARR = [
@@ -31,16 +32,11 @@ const MINT_NARR = [
 
 type MintFormProps = {
   provider?: `0x${string}` | undefined;
-  compact?: boolean;
   onClose?: () => void;
 };
 
 /** One-field mint (name only): auto strategy payload → oracle dataHash → wallet signs the mint fee. */
-export function MintForm({
-  provider,
-  compact = false,
-  onClose,
-}: MintFormProps): ReactElement {
+export function MintForm({ provider, onClose }: MintFormProps): ReactElement {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const navigate = useNavigate();
@@ -58,7 +54,7 @@ export function MintForm({
     contracts: [
       {
         address: getAxiomAgentNftAddress(chainId),
-        abi: AGENT_NFT_ABI,
+        abi: toViemAbi(AGENT_NFT_ABI),
         functionName: "mintFee",
         args: undefined,
       },
@@ -157,25 +153,16 @@ export function MintForm({
   const phaseLabel = stepIdx >= 0 ? `${MINT_NARR[stepIdx]}…` : null;
 
   return (
-    <div
-      style={{
-        maxWidth: compact ? "100%" : "36rem",
-        margin: compact ? 0 : "0 auto",
-      }}
-    >
-      {!compact && <PageHeader title="Mint agent" />}
-      {compact && (
-        <p
-          style={{
-            margin: "0 0 var(--space-md)",
-            fontSize: "var(--text-sm)",
-            color: COLORS.textMuted,
-          }}
-        >
-          Name only — default payload + oracle, then wallet pays the 0G mint
-          fee.
-        </p>
-      )}
+    <div>
+      <p
+        style={{
+          margin: "0 0 var(--space-md)",
+          fontSize: "var(--text-sm)",
+          color: COLORS.textMuted,
+        }}
+      >
+        Name only — default payload + oracle, then wallet pays the 0G mint fee.
+      </p>
 
       <Card>
         <form onSubmit={(e) => void onCompleteMint(e)}>
@@ -271,7 +258,7 @@ export function MintForm({
                         borderRadius: "50%",
                         border: "2px solid var(--c-border)",
                         borderTopColor: COLORS.bronze,
-                        animation: "axiom-spin 0.8s linear infinite",
+                        animation: "axiom-spin var(--dur-spin) linear infinite",
                       }}
                     />
                   ) : (

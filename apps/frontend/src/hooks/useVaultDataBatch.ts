@@ -1,10 +1,10 @@
 import { useMemo } from "react";
-import type { Abi } from "viem";
 import { useAccount, useChainId, useReadContracts } from "wagmi";
 import { getAxiomStrategyVaultAddress } from "../abi/addresses.js";
 import { VAULT_ABI } from "@axiom/config/abis";
+import { toViemAbi } from "../lib/abi.js";
 
-const abi = VAULT_ABI as unknown as Abi;
+const abi = toViemAbi(VAULT_ABI);
 
 export interface VaultDataEntry {
   tokenId: bigint;
