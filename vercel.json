@@ -14,11 +14,11 @@
     },
     {
       "source": "/oracle/:path*",
-      "destination": "https://oracle-production-9f7d.up.railway.app/:path*"
+      "destination": "https://axiom-backend-production-2cf5.up.railway.app/oracle/:path*"
     },
     {
       "source": "/oracle",
-      "destination": "https://oracle-production-9f7d.up.railway.app/"
+      "destination": "https://axiom-backend-production-2cf5.up.railway.app/oracle/"
     },
     {
       "source": "/(.*)",

@@ -361,7 +361,6 @@ apps/frontend/eslint.config.js
 apps/frontend/playwright.config.ts
 apps/frontend/public/brand/
 apps/frontend/railway.json
-apps/frontend/server.mjs
 apps/frontend/src/hooks/useMintWizard.payload.test.ts
 apps/frontend/src/hooks/useTransfer.dataHash.test.ts
 apps/frontend/src/navigation/ia.test.ts
