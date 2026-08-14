@@ -254,9 +254,24 @@ export function startServer(config: ServerConfig): {
   const teeSignerPk = config.env?.AXIOM_TEE_SIGNER_PK;
   if (!teeSignerPk) throw new Error("AXIOM_TEE_SIGNER_PK required");
   const teeSigner = new TeeSigner(teeSignerPk, eip712Domain);
+  // InMemory fallback is fine for dev/test, but in production it silently loses chat
+  // transcripts AND oracle re-key blobs (the in-process oracle shares this storage) —
+  // fail loud instead of serving fake storage.
+  const oracleStorage = config.chatStorage ?? new InMemoryStorage();
+  if (
+    oracleStorage instanceof InMemoryStorage &&
+    process.env.NODE_ENV === "production"
+  ) {
+    throw new Error(
+      "Refusing to start: NODE_ENV=production without real 0G storage " +
+        "(AXIOM_STORAGE_INDEXER_RPC). The InMemoryStorage fallback would silently lose " +
+        "chat transcripts and oracle re-key blobs — set AXIOM_STORAGE_INDEXER_RPC (+ " +
+        "AXIOM_STORAGE_PRIVATE_KEY) or run with NODE_ENV=development/test.",
+    );
+  }
   const oracleDeps: OracleRouteDeps = {
     signer: teeSigner,
-    storage: config.chatStorage ?? new InMemoryStorage(),
+    storage: oracleStorage,
     chainId: BigInt(ogChainId),
     verifier: config.addresses!.verifier,
     env: config.env,

@@ -54,9 +54,11 @@ type AgentNftExtended = {
 
 type VaultCov = {
   balanceOf(tokenId: bigint): Promise<bigint>;
+  nft(): Promise<string>;
 };
 
 type PaymentCov = {
+  AXIOM_NFT(): Promise<string>;
   payAndWithdrawEarnings(
     agentTokenId: bigint,
     provider: string,
@@ -151,6 +153,8 @@ export async function runMatrixViewSweepStep(deps: {
     tokenBal,
     creator,
     owner,
+    vaultNft,
+    processorNft,
   ] = await Promise.all([
     nft.contract.name(),
     nft.contract.symbol(),
@@ -174,6 +178,8 @@ export async function runMatrixViewSweepStep(deps: {
       "function creatorOf(uint256) view returns (address)",
     ).then((ok) => (ok ? nft.contract.creatorOf(deps.tokenId) : null)),
     nft.contract.ownerOf(deps.tokenId),
+    vault.contract.nft(),
+    pay.contract.AXIOM_NFT(),
   ]);
   void storageInfo;
   void vaultBal;
@@ -189,6 +195,17 @@ export async function runMatrixViewSweepStep(deps: {
   }
   if (verifierAddr.toLowerCase() !== deps.teeVerifier.toLowerCase()) {
     throw new Error(`verifier mismatch ${verifierAddr} != ${deps.teeVerifier}`);
+  }
+  // G3 init-pointer probes: a deploy that wires the wrong NFT address into the
+  // vault/processor (or the wrong verifier into the NFT) passes init but bricks
+  // at first use — catch it at runtime parity time.
+  if (vaultNft.toLowerCase() !== deps.agentNft.toLowerCase()) {
+    throw new Error(`vault.nft() mismatch ${vaultNft} != ${deps.agentNft}`);
+  }
+  if (processorNft.toLowerCase() !== deps.agentNft.toLowerCase()) {
+    throw new Error(
+      `processor.AXIOM_NFT() mismatch ${processorNft} != ${deps.agentNft}`,
+    );
   }
   const [
     hasPendingVerifier,
@@ -349,9 +366,11 @@ export async function runMatrixViewSweepStep(deps: {
     ["AxiomAgentNFT", "creatorOf"],
     ["AxiomAgentNFT", "ownerOf"],
     ["AxiomAgentNFT", "supportsInterface"],
+    ["AxiomStrategyVault", "nft"],
     ["AxiomPaymentProcessor", "protocolTreasury"],
     ["AxiomPaymentProcessor", "protocolFeeBps"],
     ["AxiomPaymentProcessor", "paymentToken"],
+    ["AxiomPaymentProcessor", "AXIOM_NFT"],
     ["AxiomPaymentProcessor", "totalOutstandingEarnings"],
     ["AxiomPaymentProcessor", "royaltyBpsOf"],
     ["AxiomPaymentProcessor", "royaltyBpsSet"],

@@ -333,6 +333,8 @@ wallets/
 # ── Runtime data ─────────────────────────────────────
 .data/
 apps/backend/data/
+apps/backend/data-testnet/
+data/
 
 # ── Dev-only untracked files (keep on disk, out of git status) ──
 .gitmessage
@@ -340,6 +342,8 @@ _bench.ts
 bench-*.mjs
 eslint.config.js
 nixpacks.toml
+.commandcode/
+dist-dev/
 RELEASE_NOTES_v*.md
 apps/backend/CHAT-RUNTIME-PLAN.md
 apps/backend/COVERAGE-TODO.md

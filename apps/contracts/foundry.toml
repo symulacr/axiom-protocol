@@ -21,11 +21,12 @@ fs_permissions = [{ access = "write", path = "../.." }]
 # Cancun mandatory on 0G Chain
 evm_version = "cancun"
 
-# Solidity 0.8.35 — 0.8.30 was in the buggy 0.8.28–0.8.33 via-IR range
-# (transient-storage clearing helper collision, fixed in 0.8.34) and 0.8.34/0.8.35
+# Solidity 0.8.36 — 0.8.30 was in the buggy 0.8.28–0.8.33 via-IR range
+# (transient-storage clearing helper collision, fixed in 0.8.34); 0.8.34/0.8.35
 # add via-IR compile-time fixes (Yul optimizer step pruning, CFG side-effects
-# collector, stack shuffler). Keep the Cancun pin: 0.8.31+ defaults to Osaka.
-solc = "0.8.35"
+# collector, stack shuffler); 0.8.36 adds the picosha2 SHA-256 speedup and the
+# experimental SSA stack-spilling backend. Keep the Cancun pin: 0.8.31+ defaults to Osaka.
+solc = "0.8.36"
 
 # Min runs = smallest bytecode. 0G has zero gas fees, so runtime gas cost is irrelevant.
 optimizer_runs = 1
