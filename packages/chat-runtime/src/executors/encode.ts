@@ -1,6 +1,13 @@
 import { getChatToolSpec } from "@axiom/config/chat-tools";
+import { PAYMENT_PROCESSOR_ABI } from "@axiom/config/abis";
 import { fetchJson, resolveTokenId, toolFail } from "../transport.js";
-import { keccak256, toHex } from "viem";
+import {
+  encodeFunctionData,
+  keccak256,
+  parseAbi,
+  parseUnits,
+  toHex,
+} from "viem";
 import type { ToolRuntime } from "../transport.js";
 import type { ToolResult } from "../types.js";
 
@@ -74,6 +81,8 @@ export async function runEncodeTool(
       return encodeVaultOp("deposit", tokenId, args, ctx);
     case "withdraw":
       return encodeVaultOp("withdraw", tokenId, args, ctx);
+    case "pay_for_agent":
+      return encodePayForAgent(tokenId, args, ctx);
     case "transfer":
       return toolFail(
         "transfer runs in the wallet-signing UI flow — the user must complete the transfer dialog (EIP-712 access proof + iTransferFrom).",
@@ -203,6 +212,111 @@ async function encodeVaultOp(
     };
   } catch (e) {
     return toolFail(e instanceof Error ? e.message : `${op} sign failed`);
+  }
+}
+
+/** Payment token decimals: the deployed payment token is USDC (6 decimals).
+ *  Kept as a constant matching the e2e harness (parseUnits("0.5", 6)) and the
+ *  UI PaymentPanel scaling — no per-token chain read needed for the chat path. */
+const USDC_DECIMALS = 6;
+
+/** Parse a human-readable USDC amount ("1.5") to base units, rejecting empty/zero. */
+function parseUsdcAmount(raw: unknown): bigint | null {
+  if (typeof raw !== "string" || raw.trim() === "") return null;
+  const wei = parseUnits(raw.trim(), USDC_DECIMALS);
+  return wei > 0n ? wei : null;
+}
+
+function isValidAddress(raw: unknown): raw is `0x${string}` {
+  return typeof raw === "string" && /^0x[a-fA-F0-9]{40}$/.test(raw);
+}
+
+/** pay_for_agent: creator payment via payForAgent (computeAmount omitted) or
+ *  creator + compute provider via payForAgentAndCompute (computeAmount > 0,
+ *  provider required — the agent's provider must be passed explicitly since no
+ *  per-agent provider registry exists on-chain). Encodes AxiomPaymentProcessor
+ *  calldata directly (no backend route), signs with receipt-wait when available. */
+async function encodePayForAgent(
+  tokenId: string,
+  args: Record<string, unknown>,
+  ctx: ToolRuntime,
+): Promise<ToolResult> {
+  const processor = ctx.session.addresses?.paymentProcessor;
+  if (!processor) return toolFail("Payment processor address not configured");
+
+  const agentWei = parseUsdcAmount(args.agentAmount);
+  if (agentWei === null) {
+    return toolFail("agentAmount required and must be greater than zero");
+  }
+
+  const computeAmount = args.computeAmount;
+  const hasCompute =
+    computeAmount !== undefined &&
+    computeAmount !== null &&
+    String(computeAmount).trim() !== "";
+  const computeWei = hasCompute ? parseUsdcAmount(computeAmount) : null;
+  if (hasCompute && computeWei === null) {
+    return toolFail("computeAmount must be greater than zero");
+  }
+
+  let functionName: "payForAgent" | "payForAgentAndCompute";
+  let encodeArgs:
+    | readonly [bigint, bigint]
+    | readonly [bigint, `0x${string}`, bigint, bigint];
+  const extra: Record<string, unknown> = {
+    agentAmount: String(args.agentAmount),
+  };
+
+  if (!hasCompute) {
+    // Creator-only payment (matches the UI PaymentPanel): payForAgent(tokenId, amount)
+    functionName = "payForAgent";
+    encodeArgs = [BigInt(tokenId), agentWei];
+  } else {
+    const provider = args.provider;
+    if (!isValidAddress(provider)) {
+      return toolFail(
+        `No registered compute provider for agent ${tokenId} — pass the provider address explicitly.`,
+      );
+    }
+    functionName = "payForAgentAndCompute";
+    encodeArgs = [BigInt(tokenId), provider, agentWei, computeWei as bigint];
+    extra.computeAmount = String(computeAmount);
+    extra.provider = provider;
+  }
+
+  const data = encodeFunctionData({
+    abi: parseAbi(PAYMENT_PROCESSOR_ABI),
+    functionName,
+    args: encodeArgs,
+  });
+  const calldata = { to: processor, data, value: 0n };
+
+  if (ctx.mode === "encode-only" || !ctx.wallet?.signAndSend) {
+    return encodeOnlyResult(
+      { to: processor, data, value: "0" },
+      { tokenId, ...extra },
+    );
+  }
+
+  try {
+    const { txHash, receipt } = await signAndSendWithReceipt(ctx, calldata);
+    return {
+      ok: true as const,
+      content: JSON.stringify(
+        receipt
+          ? {
+              ok: true,
+              txHash,
+              tokenId,
+              ...extra,
+              receiptStatus: receipt.status,
+              blockNumber: receipt.blockNumber,
+            }
+          : { ok: true, txHash, tokenId, ...extra },
+      ),
+    };
+  } catch (e) {
+    return toolFail(e instanceof Error ? e.message : "pay sign failed");
   }
 }
 

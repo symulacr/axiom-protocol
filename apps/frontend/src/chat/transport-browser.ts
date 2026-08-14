@@ -6,6 +6,7 @@ import { BACKEND_URL, ORACLE_URL } from "../config/env.js";
 import { apiKeyHeader } from "../utils/apiFetch.js";
 import {
   getAxiomAgentNftAddress,
+  getAxiomPaymentProcessorAddress,
   getAxiomStrategyVaultAddress,
 } from "../abi/addresses.js";
 import type { ToolContext } from "./tools.js";
@@ -185,6 +186,7 @@ function buildBrowserRuntime(ctx: ToolContext): ToolRuntime {
       addresses: {
         vault: getAxiomStrategyVaultAddress(ctx.chainId),
         agentNft: getAxiomAgentNftAddress(ctx.chainId),
+        paymentProcessor: getAxiomPaymentProcessorAddress(ctx.chainId),
       },
     }),
   };

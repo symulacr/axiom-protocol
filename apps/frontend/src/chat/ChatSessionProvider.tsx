@@ -16,6 +16,7 @@ import {
 } from "@axiom/chat-runtime";
 import {
   getAxiomAgentNftAddress,
+  getAxiomPaymentProcessorAddress,
   getAxiomStrategyVaultAddress,
 } from "../abi/addresses.js";
 
@@ -71,6 +72,7 @@ export function ChatSessionProvider({
         addresses: {
           vault: getAxiomStrategyVaultAddress(chainId),
           agentNft: getAxiomAgentNftAddress(chainId),
+          paymentProcessor: getAxiomPaymentProcessorAddress(chainId),
         },
       }),
     [address, chainId, lastTokenId],

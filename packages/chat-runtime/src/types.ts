@@ -44,5 +44,6 @@ export interface ChatSessionContext {
   addresses?: {
     vault: `0x${string}`;
     agentNft: `0x${string}`;
+    paymentProcessor?: `0x${string}`;
   };
 }

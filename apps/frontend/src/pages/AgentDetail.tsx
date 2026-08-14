@@ -68,6 +68,7 @@ const TradeHistory = lazy(() =>
   })),
 );
 import { EmptyState } from "../components/EmptyState.js";
+import { ProviderPanel } from "../components/ProviderPanel.js";
 import { ErrorBoundary } from "../components/ErrorBoundary.js";
 import {
   COLORS,
@@ -81,6 +82,7 @@ import {
   ErrorAlert,
   PageHeader,
   HelpTip,
+  getActionColor,
   withViewTransition,
   backLinkStyle,
   mutedTextSm,
@@ -150,8 +152,8 @@ function AgentDetail(): ReactElement {
   const transferBtnRef = useRef<HTMLSpanElement>(null);
   const [activeSection, setActiveSection] =
     useState<AgentSection>(sectionFromHash);
-  const [pressed, setPressed] = useState<AgentSection | null>(null);
   const [vaultTool, setVaultTool] = useState<VaultTool>("deposit");
+  const vaultToolRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const [showMeta, setShowMeta] = useState(false);
 
   useEffect(() => {
@@ -238,9 +240,7 @@ function AgentDetail(): ReactElement {
     if (ev.eventName === "Tick") {
       const p = ev.payload as Record<string, unknown>;
       const action = String(p.action ?? "");
-      let actionColor: string = COLORS.textMuted;
-      if (action === "buy") actionColor = COLORS.success;
-      else if (action === "sell") actionColor = COLORS.danger;
+      const actionColor: string = getActionColor(action);
       return (
         <div
           style={{
@@ -288,35 +288,113 @@ function AgentDetail(): ReactElement {
         />
       </div>
 
-      <div role="tablist" aria-label="Agent sections" className="agent-tabs">
-        {AGENT_TABS.map((s) => {
-          const isActive = activeSection === s.id;
-          return (
-            <button
-              key={s.id}
+      <div
+        role="tablist"
+        aria-label="Agent sections"
+        className="agent-tabs"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "var(--space-xs)",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            gap: 2,
+            flex: "1 1 auto",
+            flexWrap: "wrap",
+          }}
+        >
+          {AGENT_TABS.map((s) => {
+            const isActive = activeSection === s.id;
+            return (
+              <button
+                key={s.id}
+                type="button"
+                role="tab"
+                id={`tab-${s.id}`}
+                aria-selected={isActive}
+                aria-controls={`panel-${s.id}`}
+                tabIndex={isActive ? 0 : -1}
+                className={`agent-tabs__btn${isActive ? " is-active" : ""}`}
+                data-axiom-btn=""
+                onClick={() => {
+                  setActiveSection(s.id);
+                  window.history.pushState(null, "", `#${s.id}`);
+                }}
+                onKeyDown={(e) => {
+                  // Arrow-key navigation within the tablist (roving tabindex).
+                  if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+                  e.preventDefault();
+                  const idx = VALID_SECTIONS.indexOf(s.id);
+                  const dir = e.key === "ArrowRight" ? 1 : -1;
+                  const next =
+                    VALID_SECTIONS[
+                      (idx + dir + VALID_SECTIONS.length) %
+                        VALID_SECTIONS.length
+                    ] ?? s.id;
+                  setActiveSection(next);
+                  window.history.pushState(null, "", `#${next}`);
+                  document.getElementById(`tab-${next}`)?.focus();
+                }}
+              >
+                {s.label}
+              </button>
+            );
+          })}
+        </div>
+        {isConnected && (
+          <div
+            className="agent-quick-actions"
+            style={{ display: "flex", gap: "var(--space-xs)", flexShrink: 0 }}
+          >
+            <Button
+              variant="primary"
               type="button"
-              role="tab"
-              id={`tab-${s.id}`}
-              aria-selected={isActive}
-              aria-controls={`panel-${s.id}`}
-              tabIndex={isActive ? 0 : -1}
-              className={`agent-tabs__btn${isActive ? " is-active" : ""}`}
-              data-axiom-btn=""
-              onPointerDown={() => setPressed(s.id)}
-              onPointerUp={() => setPressed(null)}
-              onPointerLeave={() => setPressed(null)}
-              style={{
-                transform: pressed === s.id ? "scale(0.97)" : undefined,
-              }}
               onClick={() => {
-                setActiveSection(s.id);
-                window.history.pushState(null, "", `#${s.id}`);
+                setActiveSection("execute");
+                window.history.pushState(null, "", "#execute");
               }}
             >
-              {s.label}
-            </button>
-          );
-        })}
+              Tick
+            </Button>
+            <span
+              ref={transferBtnRef}
+              style={{ display: "inline-block" }}
+              onPointerEnter={(): void => {
+                void import("../components/TransferModal.js");
+              }}
+            >
+              <Button
+                variant="secondary"
+                type="button"
+                onClick={(): void => {
+                  transferBtnRef.current?.style.setProperty(
+                    "view-transition-name",
+                    "transfer-dialog",
+                  );
+                  withViewTransition(() => {
+                    flushSync(() => setTransferOpen(true));
+                  });
+                  transferBtnRef.current?.style.removeProperty(
+                    "view-transition-name",
+                  );
+                }}
+              >
+                Transfer
+              </Button>
+            </span>
+            <Link
+              to={`/chat?agent=${tokenId.toString()}`}
+              style={{ textDecoration: "none" }}
+            >
+              <Button variant="ghost" type="button">
+                Chat
+              </Button>
+            </Link>
+          </div>
+        )}
       </div>
 
       {metaLoading && (
@@ -350,141 +428,121 @@ function AgentDetail(): ReactElement {
         >
           {activeSection === "overview" && (
             <Suspense fallback={skeletonFallback}>
-              {isConnected && (
-                <>
-                  <div
-                    className="action-rail agent-quick-actions"
-                    aria-label="Primary agent actions"
+              {showNextSteps && (
+                <div
+                  className="step-strip"
+                  role="group"
+                  aria-label="Next steps"
+                >
+                  <span className="step-strip__label">Next</span>
+                  <button
+                    type="button"
+                    className={`step-strip__step${vaultFunded ? " is-done" : " is-next"}`}
+                    data-axiom-btn=""
+                    onClick={() => {
+                      setActiveSection("overview");
+                      setVaultTool("deposit");
+                      window.history.pushState(null, "", "#overview");
+                    }}
                   >
-                    <Button
-                      variant="primary"
-                      type="button"
-                      onClick={() => {
-                        setActiveSection("execute");
-                        window.history.pushState(null, "", "#execute");
-                      }}
-                    >
-                      Tick
-                    </Button>
-                    <span
-                      ref={transferBtnRef}
-                      style={{ display: "inline-block" }}
-                      onPointerEnter={(): void => {
-                        void import("../components/TransferModal.js");
-                      }}
-                    >
-                      <Button
-                        variant="secondary"
-                        type="button"
-                        onClick={(): void => {
-                          transferBtnRef.current?.style.setProperty(
-                            "view-transition-name",
-                            "transfer-dialog",
-                          );
-                          withViewTransition(() => {
-                            flushSync(() => setTransferOpen(true));
-                          });
-                          transferBtnRef.current?.style.removeProperty(
-                            "view-transition-name",
-                          );
-                        }}
-                      >
-                        Transfer
-                      </Button>
-                    </span>
-                    <Link
-                      to={`/chat?agent=${tokenId.toString()}`}
-                      style={{ textDecoration: "none" }}
-                    >
-                      <Button variant="ghost" type="button">
-                        Chat
-                      </Button>
-                    </Link>
-                  </div>
-
-                  {showNextSteps && (
-                    <p
-                      style={{
-                        margin: "0 0 var(--space-sm)",
-                        fontSize: "var(--text-xs)",
-                        color: COLORS.textDim,
-                      }}
-                    >
-                      Next:{" "}
-                      <span
-                        style={{
-                          color: vaultFunded ? COLORS.success : undefined,
-                        }}
-                      >
-                        {vaultFunded ? "✓ Fund" : "○ Fund"}
-                      </span>{" "}
-                      →{" "}
-                      <span
-                        style={{
-                          color: strategyBound ? COLORS.success : undefined,
-                        }}
-                      >
-                        {strategyBound ? "✓ Bind strategy" : "○ Bind strategy"}
-                      </span>{" "}
-                      →{" "}
-                      <span
-                        style={{
-                          color:
-                            vaultFunded && strategyBound
-                              ? COLORS.success
-                              : undefined,
-                        }}
-                      >
-                        {vaultFunded && strategyBound ? "✓ Tick" : "○ Tick"}
-                      </span>
-                    </p>
-                  )}
-
-                  <div className="agent-tool">
-                    <div
-                      className="agent-tool__switch"
-                      role="radiogroup"
-                      aria-label="Vault tools"
-                    >
-                      {VAULT_TOOLS.map((t) => (
-                        <button
-                          key={t.id}
-                          type="button"
-                          role="radio"
-                          aria-checked={vaultTool === t.id}
-                          className={`agent-tool__btn${
-                            vaultTool === t.id ? " is-active" : ""
-                          }`}
-                          data-axiom-btn=""
-                          onClick={() => setVaultTool(t.id)}
-                        >
-                          {t.label}
-                        </button>
-                      ))}
-                    </div>
-                    <div
-                      key={vaultTool}
-                      className="agent-tool__panel fade-enter"
-                    >
-                      {vaultTool === "deposit" && (
-                        <DepositForm
-                          variant="warning"
-                          tokenId={tokenIdBigInt}
-                        />
-                      )}
-                      {vaultTool === "withdraw" && (
-                        <WithdrawForm tokenId={tokenIdBigInt} />
-                      )}
-                      {vaultTool === "strategy" && (
-                        <StrategyPanel tokenId={tokenIdBigInt} />
-                      )}
-                      {vaultTool === "delegate" && (
-                        <DelegatePanel tokenId={tokenIdBigInt} />
-                      )}
-                    </div>
-                  </div>
-                </>
+                    {vaultFunded ? "✓ Fund" : "Fund the vault"}
+                  </button>
+                  <span className="step-strip__arrow" aria-hidden>
+                    →
+                  </span>
+                  <button
+                    type="button"
+                    className={`step-strip__step${strategyBound ? " is-done" : " is-next"}`}
+                    data-axiom-btn=""
+                    onClick={() => {
+                      setActiveSection("overview");
+                      setVaultTool("strategy");
+                      window.history.pushState(null, "", "#overview");
+                    }}
+                  >
+                    {strategyBound ? "✓ Bind strategy" : "Bind strategy"}
+                  </button>
+                  <span className="step-strip__arrow" aria-hidden>
+                    →
+                  </span>
+                  <button
+                    type="button"
+                    className={`step-strip__step${vaultFunded && strategyBound ? " is-ready" : ""}`}
+                    data-axiom-btn=""
+                    onClick={() => {
+                      setActiveSection("execute");
+                      window.history.pushState(null, "", "#execute");
+                    }}
+                  >
+                    {vaultFunded && strategyBound ? "Tick the agent" : "Tick"}
+                  </button>
+                </div>
               )}
+
+              <div className="agent-tool">
+                <div
+                  className="agent-tool__switch"
+                  role="radiogroup"
+                  aria-label="Vault tools"
+                >
+                  {VAULT_TOOLS.map((t, ti) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={vaultTool === t.id}
+                      tabIndex={vaultTool === t.id ? 0 : -1}
+                      className={`agent-tool__btn${
+                        vaultTool === t.id ? " is-active" : ""
+                      }`}
+                      data-axiom-btn=""
+                      onClick={() => setVaultTool(t.id)}
+                      ref={(el): void => {
+                        vaultToolRefs.current[t.id] = el;
+                      }}
+                      onKeyDown={(e): void => {
+                        if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+                          e.preventDefault();
+                          const nextTool =
+                            VAULT_TOOLS[(ti + 1) % VAULT_TOOLS.length] ??
+                            VAULT_TOOLS[ti]!;
+                          const next: VaultTool = nextTool.id;
+                          setVaultTool(next);
+                          vaultToolRefs.current[next]?.focus();
+                        } else if (
+                          e.key === "ArrowLeft" ||
+                          e.key === "ArrowUp"
+                        ) {
+                          e.preventDefault();
+                          const prevTool =
+                            VAULT_TOOLS[
+                              (ti - 1 + VAULT_TOOLS.length) % VAULT_TOOLS.length
+                            ] ?? VAULT_TOOLS[ti]!;
+                          const prev: VaultTool = prevTool.id;
+                          setVaultTool(prev);
+                          vaultToolRefs.current[prev]?.focus();
+                        }
+                      }}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+                <div key={vaultTool} className="agent-tool__panel fade-enter">
+                  {vaultTool === "deposit" && (
+                    <DepositForm variant="warning" tokenId={tokenIdBigInt} />
+                  )}
+                  {vaultTool === "withdraw" && (
+                    <WithdrawForm tokenId={tokenIdBigInt} />
+                  )}
+                  {vaultTool === "strategy" && (
+                    <StrategyPanel tokenId={tokenIdBigInt} />
+                  )}
+                  {vaultTool === "delegate" && (
+                    <DelegatePanel tokenId={tokenIdBigInt} />
+                  )}
+                </div>
+              </div>
 
               {data !== null && (
                 <div className="agent-meta">
@@ -547,6 +605,8 @@ function AgentDetail(): ReactElement {
                   )}
                 </div>
               )}
+
+              <ProviderPanel />
             </Suspense>
           )}
         </div>
@@ -560,7 +620,14 @@ function AgentDetail(): ReactElement {
           {activeSection === "execute" && (
             <Suspense fallback={skeletonFallback}>
               <ErrorBoundary>
-                <ExecutePanel tokenId={tokenId} />
+                <ExecutePanel
+                  tokenId={tokenId}
+                  onFund={() => {
+                    setActiveSection("overview");
+                    setVaultTool("deposit");
+                    window.history.pushState(null, "", "#overview");
+                  }}
+                />
               </ErrorBoundary>
             </Suspense>
           )}
@@ -603,7 +670,9 @@ function AgentDetail(): ReactElement {
                 </Card>
               ) : (
                 <EmptyState>
-                  <p style={mutedTextSm}>No events yet. Run a tick first.</p>
+                  <p style={mutedTextSm}>
+                    No activity yet. Run the agent first.
+                  </p>
                 </EmptyState>
               )}
             </Suspense>

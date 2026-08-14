@@ -524,6 +524,34 @@ export const CHAT_TOOL_CATALOG = [
     ),
   }),
   tool({
+    name: "pay_for_agent",
+    class: "encode",
+    label: "Pay Agent",
+    hint: "Pay an agent's creator (royalty split) and optionally its compute provider via AxiomPaymentProcessor. agentAmount is in USDC (e.g. 1.5). computeAmount optional: omit for a creator-only payment (payForAgent); provide >0 to also pay the compute provider (payForAgentAndCompute — then provider is required). Opens MetaMask.",
+    requiresWallet: true,
+    requiresTokenId: true,
+    friction: "medium",
+    parameters: params(
+      {
+        tokenId: { type: "string", description: "Agent token ID" },
+        provider: {
+          type: "string",
+          description:
+            "Compute provider address (optional; required when computeAmount is provided)",
+        },
+        agentAmount: {
+          type: "string",
+          description: "Agent creator payment in USDC (e.g. 1.5)",
+        },
+        computeAmount: {
+          type: "string",
+          description: "Compute provider payment in USDC (optional)",
+        },
+      },
+      ["tokenId", "agentAmount"],
+    ),
+  }),
+  tool({
     name: "transfer",
     class: "encode",
     label: "Transfer Agent",
