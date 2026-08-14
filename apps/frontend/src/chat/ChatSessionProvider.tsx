@@ -22,28 +22,47 @@ import {
 
 const STORAGE_KEY = "axiom:chat-session";
 
+/** Router routing preference, persisted per chat session and sent as the
+ *  `provider` request field (backend maps it to X-0G-Provider-* headers). */
+export type ProviderPref = {
+  sort?: "latency" | "price";
+  address?: string;
+  allowFallbacks?: boolean;
+  trustMode?: "standard" | "verified" | "private";
+};
+
+type StoredSession = { lastTokenId?: string; providerPref?: ProviderPref };
+
 type ChatSessionValue = {
   session: ChatSessionContext;
   recordToolResult: (name: string, content: string) => void;
+  providerPref: ProviderPref | undefined;
+  setProviderPref: (pref: ProviderPref | undefined) => void;
 };
 
 const ChatSessionContextReact = createContext<ChatSessionValue | null>(null);
 
-function loadStoredTokenId(): string | undefined {
+// Backward compatible: older payloads stored only `{ lastTokenId }`; missing
+// providerPref simply falls back to the router/backend default routing.
+function loadStoredSession(): StoredSession {
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY);
-    if (!raw) return undefined;
-    const parsed = JSON.parse(raw) as { lastTokenId?: string };
-    return parsed.lastTokenId;
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as StoredSession;
+    return {
+      lastTokenId:
+        typeof parsed.lastTokenId === "string" ? parsed.lastTokenId : undefined,
+      providerPref: parsed.providerPref,
+    };
   } catch {
-    return undefined;
+    return {};
   }
 }
 
-function persistTokenId(lastTokenId: string | undefined): void {
+function persistSession(payload: StoredSession): void {
   try {
-    if (lastTokenId) {
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ lastTokenId }));
+    if (payload.lastTokenId || payload.providerPref) {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
     } else {
       sessionStorage.removeItem(STORAGE_KEY);
     }
@@ -59,9 +78,13 @@ export function ChatSessionProvider({
 }): ReactElement {
   const { address } = useAccount();
   const chainId = useChainId();
+  const [stored] = useState(loadStoredSession);
   const [lastTokenId, setLastTokenId] = useState<string | undefined>(
-    loadStoredTokenId,
+    stored.lastTokenId,
   );
+  const [providerPref, setProviderPrefState] = useState<
+    ProviderPref | undefined
+  >(stored.providerPref);
 
   const session = useMemo(
     () =>
@@ -84,15 +107,23 @@ export function ChatSessionProvider({
       applyToolResult(session, name, result);
       if (session.lastTokenId && session.lastTokenId !== lastTokenId) {
         setLastTokenId(session.lastTokenId);
-        persistTokenId(session.lastTokenId);
+        persistSession({ lastTokenId: session.lastTokenId, providerPref });
       }
     },
-    [session, lastTokenId],
+    [session, lastTokenId, providerPref],
+  );
+
+  const setProviderPref = useCallback(
+    (pref: ProviderPref | undefined) => {
+      setProviderPrefState(pref);
+      persistSession({ lastTokenId, providerPref: pref });
+    },
+    [lastTokenId],
   );
 
   const value = useMemo(
-    () => ({ session, recordToolResult }),
-    [session, recordToolResult],
+    () => ({ session, recordToolResult, providerPref, setProviderPref }),
+    [session, recordToolResult, providerPref, setProviderPref],
   );
 
   return (

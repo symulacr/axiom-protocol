@@ -10,6 +10,7 @@ import { getSharedProvider } from "./provider.js";
 import { backendEnvSchema } from "./env-schema.js";
 import { ARISTOTLE_CHAIN_ID } from "@axiom/config/networks";
 import { ZeroGStorage, type StorageAdapter } from "@axiom/config/storage/0g";
+import { createStaticProvider } from "./compute/index.js";
 import { getEventStore } from "./events/store.js";
 import { IndexerService } from "./indexer/index.js";
 
@@ -85,11 +86,17 @@ async function main(): Promise<void> {
   let chatStorage: StorageAdapter | null = null;
   const storageIndexerRpc = process.env.AXIOM_STORAGE_INDEXER_RPC;
   if (storageIndexerRpc) {
+    const storageEvmRpc =
+      process.env.AXIOM_STORAGE_EVM_RPC ?? env.AXIOM_EVM_RPC;
     chatStorage = new ZeroGStorage({
       indexerRpc: storageIndexerRpc,
-      evmRpc: process.env.AXIOM_STORAGE_EVM_RPC ?? env.AXIOM_EVM_RPC,
+      evmRpc: storageEvmRpc,
       signer: new Wallet(
         process.env.AXIOM_STORAGE_PRIVATE_KEY ?? env.AXIOM_TEE_SIGNER_PK,
+        // The 0G SDK's upload broadcasts a tx through this signer; an unbound Wallet throws
+        // UNSUPPORTED_OPERATION. Bind it to the same EVM RPC the upload targets, reusing the
+        // backend's createStaticProvider helper instead of a hand-rolled provider.
+        createStaticProvider(storageEvmRpc),
       ),
       fee: parseStorageFee(),
     });

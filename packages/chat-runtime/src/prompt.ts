@@ -3,8 +3,6 @@ import {
   AXIOM_ASSISTANT_NAME,
   type ChatToolClass,
 } from "@axiom/config/chat-tools";
-import { buildSessionContext } from "./session.js";
-import type { ChatSessionContext } from "./types.js";
 
 const CLASS_GUIDANCE: Record<ChatToolClass, string> = {
   // one line/class; exact specs ride in `tools` API param — full catalog here doubled context cost
@@ -49,10 +47,11 @@ const PROMPT_TAIL = [
   `SKILL — ${CLASS_GUIDANCE.skill}`,
 ].join("\n\n");
 
-export function buildSystemPrompt(session: ChatSessionContext): string {
-  const ctx = buildSessionContext(session);
-
-  return [PROMPT_HEAD, ctx ? `Session: ${ctx}.` : "", PROMPT_TAIL]
-    .filter(Boolean)
-    .join("\n\n");
+// Byte-stable across every turn and run: the system prompt must never embed
+// session state (wallet/tokenId/timestamp) — doing so invalidates the router's
+// whole-prefix cache on any mid-run mutation (wallet connect, tool-produced
+// tokenId). Tools resolve the current tokenId/wallet via their requiresTokenId
+// gates and the per-loop tool context instead.
+export function buildSystemPrompt(): string {
+  return [PROMPT_HEAD, PROMPT_TAIL].join("\n\n");
 }

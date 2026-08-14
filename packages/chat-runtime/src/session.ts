@@ -15,14 +15,6 @@ export function createSession(
   };
 }
 
-export function buildSessionContext(session: ChatSessionContext): string {
-  const parts: string[] = [];
-  if (session.lastTokenId)
-    parts.push(`default tokenId: ${session.lastTokenId}`);
-  if (session.walletAddress) parts.push(`wallet: ${session.walletAddress}`);
-  return parts.join("; ");
-}
-
 export function applyToolResult(
   session: ChatSessionContext,
   name: ChatToolName | string,

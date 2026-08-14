@@ -3,8 +3,7 @@ import assert from "node:assert/strict";
 import { buildSystemPrompt } from "./prompt.js";
 
 describe("buildSystemPrompt", () => {
-  const session = { chainId: 1 };
-  const prompt = buildSystemPrompt(session);
+  const prompt = buildSystemPrompt();
 
   it("lists tool classes with guidance (F-11 slim)", () => {
     assert.match(prompt, /Tool classes/);
@@ -29,5 +28,14 @@ describe("buildSystemPrompt", () => {
     assert.doesNotMatch(prompt, /8 chains/);
     // exact specs now ride the tools API param; prompt keeps class guidance only
     assert.match(prompt, /READ — read on-chain state/i);
+  });
+
+  it("is byte-stable — no wallet/tokenId/timestamp leak (prefix-cache anchor)", () => {
+    assert.doesNotMatch(
+      prompt,
+      /wallet:|default tokenId|0x[0-9a-fA-F]{40}|20\d\d-\d\d-\d\d|timestamp/i,
+    );
+    // repeated builds are byte-identical (no session, no clock)
+    assert.equal(buildSystemPrompt(), prompt);
   });
 });

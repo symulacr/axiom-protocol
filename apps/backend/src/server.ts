@@ -86,17 +86,69 @@ function shortSigner(addr: string): string {
   return addr.length > 10 ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : addr;
 }
 
-function emitTraceChunk(
-  writeChunk: (chunk: string) => boolean,
-  traceHeader: unknown,
-): void {
-  try {
-    const trace =
-      typeof traceHeader === "string" ? JSON.parse(traceHeader) : traceHeader;
-    writeChunk(`data: ${JSON.stringify({ type: "trace", trace })}\n\n`);
-  } catch {
-    /* trace header not JSON — skip */
+// Resolve the trace payload for the typed SSE frame. The router relays usage + x_0g_trace inside a
+// terminal SSE chunk (choices: []) right before [DONE] — there is no x_0g_trace response header.
+// Prefer the terminal chunk; fall back to the legacy header for upstreams that never send one.
+function resolveTracePayload(
+  terminalChunk: unknown,
+  response: { headers?: unknown } | undefined,
+): Record<string, unknown> | null {
+  const headers = response?.headers as
+    { get?(name: string): string | null } | Record<string, string> | undefined;
+  const headerValue = (name: string): string | null | undefined => {
+    if (headers && typeof headers.get === "function") {
+      return headers.get(name);
+    }
+    return (headers as Record<string, string> | undefined)?.[name];
+  };
+  if (terminalChunk !== null && typeof terminalChunk === "object") {
+    const chunk = terminalChunk as { usage?: unknown; x_0g_trace?: unknown };
+    const trace: Record<string, unknown> = { usage: chunk.usage };
+    if (chunk.x_0g_trace && typeof chunk.x_0g_trace === "object") {
+      Object.assign(trace, chunk.x_0g_trace);
+    }
+    const providerHeader = headerValue("x-provider");
+    if (providerHeader) trace.providerHeader = providerHeader;
+    return trace;
   }
+  const traceHeader = headerValue("x_0g_trace");
+  if (!traceHeader) return null;
+  try {
+    const parsed =
+      typeof traceHeader === "string" ? JSON.parse(traceHeader) : traceHeader;
+    return parsed && typeof parsed === "object"
+      ? (parsed as Record<string, unknown>)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+// Map the optional `provider` routing body to the canonical X-0G-Provider-* request headers.
+// The `provider` body field itself is never forwarded (deprecated by the router).
+function buildProviderRoutingHeaders(
+  provider: z.infer<typeof chatBodySchema>["provider"],
+): Record<string, string> | undefined {
+  if (!provider) return undefined;
+  const h: Record<string, string> = {};
+  if (provider.sort) h["X-0G-Provider-Sort"] = provider.sort;
+  if (provider.address) h["X-0G-Provider-Address"] = provider.address;
+  if (provider.allowFallbacks !== undefined)
+    h["X-0G-Provider-Allow-Fallbacks"] = String(provider.allowFallbacks);
+  if (provider.trustMode) h["X-0G-Provider-Trust-Mode"] = provider.trustMode;
+  const maxPrompt = provider.maxPriceUsdPrompt;
+  const maxCompletion = provider.maxPriceUsdCompletion;
+  if (maxPrompt !== undefined) {
+    // The router 400s when only a prompt cap is supplied (completion resolves <= 0); mirror the
+    // prompt cap as a sane completion ceiling unless one is explicitly given.
+    h["X-0G-Provider-Max-Price-Usd-Prompt"] = String(maxPrompt);
+    h["X-0G-Provider-Max-Price-Usd-Completion"] = String(
+      maxCompletion ?? maxPrompt,
+    );
+  } else if (maxCompletion !== undefined) {
+    h["X-0G-Provider-Max-Price-Usd-Completion"] = String(maxCompletion);
+  }
+  return Object.keys(h).length > 0 ? h : undefined;
 }
 
 REGISTERED_ROUTES.push({
@@ -408,6 +460,18 @@ function registerHealthRoutes(
   app.use(createHealthRouter(provider, teeSigner, config));
 }
 
+// Map the router's provider verifiability value (TeeTLS/TeeML/private) to the
+// X-0G-Provider-Trust-Mode vocabulary (standard|verified|private).
+function trustModeFromVerifiability(
+  verifiability: unknown,
+): "standard" | "verified" | "private" {
+  const v =
+    typeof verifiability === "string" ? verifiability.toLowerCase() : "";
+  if (v.includes("private")) return "private";
+  if (v.includes("tee")) return "verified";
+  return "standard";
+}
+
 function registerComputeRoutes(app: Express, config: ServerConfig): void {
   const modelsCache = new TTLCache<Record<string, unknown>[]>(60_000);
   async function fetchRouterModels(
@@ -444,6 +508,38 @@ function registerComputeRoutes(app: Express, config: ServerConfig): void {
     }
   }
 
+  // Passthrough to the router's provider discovery (real addresses + latency/pricing/TEE info).
+  // Router model ids are versioned (e.g. deepseek-v4-flash-0731), so an exact model_id query is
+  // attempted first and falls back to listing all providers and filtering locally by exact/prefix.
+  const providersCache = new TTLCache<Record<string, unknown>[]>(60_000);
+  async function fetchRouterProviders(
+    model: string,
+  ): Promise<Record<string, unknown>[]> {
+    const cacheKey = `providers:${model}`;
+    const cached = providersCache.get(cacheKey);
+    if (cached) return cached;
+    const routerBaseUrl = getComputeBaseUrl();
+    const fetchAll = async (qs: string): Promise<Record<string, unknown>[]> => {
+      const resp = await fetch(`${routerBaseUrl}/providers${qs}`, {
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (!resp.ok) return [];
+      const raw = await resp.json();
+      const parsed = z
+        .object({ data: z.array(z.record(z.string(), z.unknown())) })
+        .safeParse(raw);
+      return parsed.success ? parsed.data.data : [];
+    };
+    let providers = await fetchAll(`?model_id=${encodeURIComponent(model)}`);
+    if (providers.length === 0) providers = await fetchAll("");
+    providers = providers.filter((p) => {
+      const id = String(p.model_id ?? "");
+      return id === model || id.startsWith(model);
+    });
+    providersCache.set(cacheKey, providers);
+    return providers;
+  }
+
   createRoute(
     app,
     {
@@ -453,7 +549,30 @@ function registerComputeRoutes(app: Express, config: ServerConfig): void {
       description:
         "List compute providers (router models + deterministic pseudo-addresses)",
     },
-    async (_parsed: unknown, _req: Request, res: Response) => {
+    async (_parsed: unknown, req: Request, res: Response) => {
+      const routerBaseUrl = getComputeBaseUrl();
+      // ?model=<id> → real provider discovery passthrough (address/latency/pricing/TEE info)
+      const model =
+        typeof req.query?.model === "string" ? req.query.model : undefined;
+      if (model) {
+        const providers = await fetchRouterProviders(model);
+        if (providers.length === 0) {
+          res.status(HTTP.BAD_GATEWAY).json({
+            error: `Compute router returned no providers for model: ${model}`,
+            code: "UPSTREAM_ERROR",
+          });
+          return;
+        }
+        res.json({
+          services: providers.map((p: Record<string, unknown>) => ({
+            ...p,
+            model: String(p.model_id ?? ""),
+            endpoint: routerBaseUrl,
+            trust_mode: trustModeFromVerifiability(p.verifiability),
+          })),
+        });
+        return;
+      }
       const models = await fetchRouterModels();
       if (models.length === 0) {
         res.status(HTTP.BAD_GATEWAY).json({
@@ -462,7 +581,6 @@ function registerComputeRoutes(app: Express, config: ServerConfig): void {
         });
         return;
       }
-      const routerBaseUrl = getComputeBaseUrl();
       const services = models.map((m: Record<string, unknown>) => {
         const id = String(m.id ?? "");
         const address = ethers
@@ -621,9 +739,10 @@ function registerChatRoutes(app: Express, config: ServerConfig): void {
       res: Response,
     ) => {
       try {
-        const { messages, tools, model: reqModel, wallet } = parsed;
+        const { messages, tools, model: reqModel, wallet, provider } = parsed;
         const DEFAULT_MODEL = resolveChatModel(config.env?.AXIOM_COMPUTE_MODEL);
         const resolvedModel = reqModel ?? DEFAULT_MODEL;
+        const providerHeaders = buildProviderRoutingHeaders(provider);
         const client = await createRouterClient(resolvedModel);
         const streamAbort = new AbortController();
         const streamTimeoutMs = Number.parseInt(
@@ -646,7 +765,10 @@ function registerChatRoutes(app: Express, config: ServerConfig): void {
               stream: true,
               max_tokens: 2048,
             },
-            { signal: streamSignal },
+            {
+              signal: streamSignal,
+              ...(providerHeaders ? { headers: providerHeaders } : {}),
+            },
           )
           .withResponse();
         res.setHeader("Content-Type", "text/event-stream");
@@ -666,8 +788,27 @@ function registerChatRoutes(app: Express, config: ServerConfig): void {
         };
         let n = 0;
         let assistantContent = "";
+        // Terminal chunk: the router sends choices:[] + usage + x_0g_trace just before [DONE].
+        let terminalChunk: unknown = null;
         for await (const chunk of openaiRes) {
           if (res.writableEnded) break;
+          if (
+            terminalChunk === null &&
+            chunk !== null &&
+            typeof chunk === "object"
+          ) {
+            const choices = (chunk as { choices?: unknown }).choices;
+            const hasUsageOrTrace =
+              (chunk as { usage?: unknown }).usage !== undefined ||
+              (chunk as { x_0g_trace?: unknown }).x_0g_trace !== undefined;
+            if (
+              Array.isArray(choices) &&
+              choices.length === 0 &&
+              hasUsageOrTrace
+            ) {
+              terminalChunk = chunk;
+            }
+          }
           if (!writeChunk(`data: ${JSON.stringify(chunk)}\n\n`)) break;
           n++;
           assistantContent += sseDeltaContent(chunk);
@@ -679,12 +820,10 @@ function registerChatRoutes(app: Express, config: ServerConfig): void {
               `data: ${JSON.stringify({ choices: [{ delta: { content: EMPTY_RESPONSE_FALLBACK } }] })}\n\n`,
             );
           }
-          const traceHeader =
-            response?.headers?.get?.("x_0g_trace") ??
-            (response?.headers as unknown as Record<string, string>)?.[
-              "x_0g_trace"
-            ];
-          if (traceHeader) emitTraceChunk(writeChunk, traceHeader);
+          const trace = resolveTracePayload(terminalChunk, response);
+          if (trace) {
+            writeChunk(`data: ${JSON.stringify({ type: "trace", trace })}\n\n`);
+          }
           writeChunk("data: [DONE]\n\n");
           res.end();
           // Transcript persistence is a pure after-effect: the stream is already finalized.

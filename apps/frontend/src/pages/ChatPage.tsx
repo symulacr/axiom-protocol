@@ -37,6 +37,11 @@ import {
 import { useChatHistory } from "../hooks/useChatHistory.js";
 import { useChatTxStream } from "../hooks/useChatTxStream.js";
 import { useShellSidebar } from "../hooks/useShellSidebar.js";
+import {
+  normalizeProviders,
+  useProviders,
+  type ComputeProvider,
+} from "../hooks/useProviders.js";
 import { ChatHistorySection } from "../components/ChatHistorySection.js";
 import { humanizeError } from "../utils/format.js";
 import { resolveBlockExplorerUrl } from "@axiom/config/networks";
@@ -52,7 +57,7 @@ import {
   isAskUserResult,
   type ChatSessionContext,
 } from "@axiom/chat-runtime";
-import { classOfTool } from "@axiom/config/chat-tools";
+import { classOfTool, resolveContextWindow } from "@axiom/config/chat-tools";
 import {
   ArchiveResultCard,
   EncodePreviewCard,
@@ -61,6 +66,7 @@ import {
 import {
   ChatSessionProvider,
   useChatSession,
+  type ProviderPref,
 } from "../chat/ChatSessionProvider.js";
 const TransferModal = lazy(() =>
   import("../components/TransferModal.js").then((m) => ({
@@ -126,6 +132,19 @@ type ToolRun = {
   args?: Record<string, unknown>;
 };
 
+/** One LLM turn (one tool-loop iteration) — client timings + router usage/trace. */
+type TurnMetric = {
+  ttftMs?: number;
+  wallMs: number;
+  promptTokens?: number;
+  completionTokens?: number;
+  cachedTokens?: number;
+  provider?: string;
+  requestId?: string;
+  /** Router billing total_cost in neuron (1 0G = 1e18 neuron). */
+  costNeuron?: number;
+};
+
 type SSEChunk = {
   choices?: Array<{
     delta: {
@@ -145,6 +164,24 @@ type SSEChunk = {
   trace?: Record<string, unknown>;
   error?: string;
   code?: string;
+  /** Router usage on the terminal/finish_reason chunk body. */
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+    prompt_tokens_details?: { cached_tokens?: number };
+  };
+  /** Router x_0g_trace on the terminal chunk body. */
+  x_0g_trace?: {
+    provider?: string;
+    request_id?: string;
+    billing?: {
+      input_cost?: string;
+      output_cost?: string;
+      total_cost?: string;
+    };
+    tee_verified?: boolean;
+  };
 };
 
 const SUPPORTED_CHAIN_IDS = new Set([APP_CHAIN_ID]);
@@ -473,7 +510,8 @@ function MessageEditConfirm({
 function ChatPageInner(): ReactElement {
   const { address } = useAccount();
   const chainId = useChainId();
-  const { session, recordToolResult } = useChatSession();
+  const { session, recordToolResult, providerPref, setProviderPref } =
+    useChatSession();
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
   const { data: walletClient } = useWalletClient();
@@ -500,8 +538,16 @@ function ChatPageInner(): ReactElement {
   const streamTextRef = useRef("");
   const streamErrorRef = useRef<string | null>(null);
   const lastStreamErrorRef = useRef<string | null>(null);
-  const traceRef = useRef<Record<string, unknown> | null>(null);
   const streamThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Run-scoped LLM-turn metrics + tool-step counter, aggregated into the final
+   *  message's insights line. Reuses the existing TTFT computation. */
+  const turnMetricsRef = useRef<TurnMetric[]>([]);
+  const currentTurnRef = useRef<TurnMetric>({ wallMs: 0 });
+  const stepsRef = useRef(0);
+  /** Cached compaction summary: computed once per session so the inserted
+   *  `[Earlier conversation summary]` message is byte-identical every run
+   *  (prefix-cache stable anchor). Reset when history is rewritten. */
+  const summaryRef = useRef<string | null>(null);
   const [queue, setQueue] = useState<string[]>([]);
   const queueRef = useRef<string[]>([]);
   const [toolRuns, setToolRuns] = useState<Record<string, ToolRun>>({}); // callId -> ToolRun map powering the ToolCallCard live progress UI
@@ -545,6 +591,7 @@ function ChatPageInner(): ReactElement {
   );
   const liveAddressRef = useRef<string | undefined>(address);
   const liveChainIdRef = useRef<number>(chainId);
+  const providerPrefRef = useRef<ProviderPref | undefined>(undefined);
   const writeContractAsyncRef = useRef(writeContractAsync);
   const walletClientRef = useRef(walletClient);
   const publicClientRef = useRef(publicClient);
@@ -621,6 +668,54 @@ function ChatPageInner(): ReactElement {
     (r) => r.status === "running" && r.name === "execute_tick",
   );
 
+  // Provider selector: real router providers for CHAT_MODEL (latency/pricing/
+  // trust) via the backend ?model= passthrough; legacy pseudo-addresses are
+  // filtered out — pinning one would 400 provider_model_mismatch.
+  const { data: providersData } = useProviders(CHAT_MODEL);
+  const providerOptions = useMemo(
+    () => normalizeProviders(providersData?.services),
+    [providersData],
+  );
+  const pinCandidates = useMemo(
+    () =>
+      providerOptions.filter(
+        (p) => p.trustMode !== undefined || p.pricingUsd !== undefined,
+      ),
+    [providerOptions],
+  );
+  const hasPrivateProvider = pinCandidates.some(
+    (p) => p.trustMode === "private",
+  );
+  const prefKey = providerPref?.address
+    ? `pin:${providerPref.address}`
+    : providerPref?.sort === "price"
+      ? "cheapest"
+      : "auto";
+  const applyProviderPref = useCallback(
+    (key: string) => {
+      if (key === "auto") {
+        setProviderPref(undefined);
+      } else if (key === "cheapest") {
+        setProviderPref({ sort: "price" });
+      } else if (key.startsWith("pin:")) {
+        setProviderPref({ address: key.slice(4), allowFallbacks: false });
+      }
+    },
+    [setProviderPref],
+  );
+  const toggleTrustMode = useCallback(
+    (mode: "verified" | "private", on: boolean) => {
+      if (!on) {
+        setProviderPref(
+          providerPrefBody({ ...providerPref, trustMode: undefined }),
+        );
+      } else {
+        setProviderPref({ ...providerPref, trustMode: mode });
+      }
+    },
+    [providerPref, setProviderPref],
+  );
+
   useEffect(() => {
     lastTokenIdRef.current = session.lastTokenId ?? urlAgentRef.current;
     liveAddressRef.current = address;
@@ -628,6 +723,7 @@ function ChatPageInner(): ReactElement {
     writeContractAsyncRef.current = writeContractAsync;
     walletClientRef.current = walletClient;
     publicClientRef.current = publicClient;
+    providerPrefRef.current = providerPref;
   }, [
     session.lastTokenId,
     address,
@@ -635,6 +731,7 @@ function ChatPageInner(): ReactElement {
     writeContractAsync,
     walletClient,
     publicClient,
+    providerPref,
   ]);
 
   useEffect(() => {
@@ -698,16 +795,27 @@ function ChatPageInner(): ReactElement {
       setIsStreaming(true);
       streamErrorRef.current = null;
       setStreamError(null);
-      traceRef.current = null;
       toolRunsRef.current = {};
       setToolRuns({});
       setAgentStep(0);
       setTtftMs(null);
+      turnMetricsRef.current = [];
+      currentTurnRef.current = { wallMs: 0 };
+      stepsRef.current = 0;
 
       const userMsg = createMessage({ role: "user", content: userText });
       let currentMessages = [...messagesRef.current, userMsg];
-      const summary = summarizeConversation(messagesRef.current);
-      currentMessages = compactHistory(currentMessages, summary);
+      // Compaction runs once per RUN (never mid-loop), and the summary itself
+      // is cached per session — the inserted lead message is byte-identical
+      // every run so the wire prefix stays a stable cache anchor.
+      if (!summaryRef.current) {
+        const derived = summarizeConversation(messagesRef.current);
+        if (derived) summaryRef.current = derived;
+      }
+      currentMessages = compactHistory(
+        currentMessages,
+        summaryRef.current ?? "",
+      );
       messagesRef.current = currentMessages;
       setMessages(currentMessages);
       setIsStreaming(true);
@@ -727,10 +835,23 @@ function ChatPageInner(): ReactElement {
       const runStartedAt = Date.now();
       let loopCount = 0;
 
+      // Byte-stable system prompt (no wallet/tokenId/timestamp) + the model's
+      // own context window (server /v1/config reports the BACKEND default
+      // model's window, e.g. 131072, while CHAT_MODEL may be 32768 — clamp so
+      // fitToContext truncates at the real boundary instead of 4x too late).
+      const systemContent = buildSystemPrompt();
+      const effectiveContextWindow =
+        contextWindow !== undefined
+          ? Math.min(contextWindow, resolveContextWindow(CHAT_MODEL))
+          : resolveContextWindow(CHAT_MODEL);
+      const prefBody = providerPrefBody(providerPrefRef.current);
+
       try {
         while (loopCount < MAX_TOOL_LOOPS) {
           loopCount++;
           setAgentStep(loopCount);
+          const turnStartAt = Date.now();
+          currentTurnRef.current = { wallMs: 0 };
 
           const liveToolCtx: ToolContext = {
             // rebuilt from live refs each loop so same-turn tool values are visible without a React re-render
@@ -755,7 +876,6 @@ function ChatPageInner(): ReactElement {
               session.walletAddress) as `0x${string}` | undefined,
             lastTokenId: lastTokenIdRef.current,
           };
-          const systemContent = buildSystemPrompt(liveSession);
 
           let response: Response; // 429 Retry-After backoff: up to 2 retries, capped; apiFetchResponse throws HttpError with retryAfter on non-ok
           let attempt = 0;
@@ -773,7 +893,7 @@ function ChatPageInner(): ReactElement {
                         model: CHAT_MODEL,
                         system: systemContent,
                         tools: TOOLS,
-                        contextWindow,
+                        contextWindow: effectiveContextWindow,
                       },
                     ),
                   ],
@@ -782,6 +902,8 @@ function ChatPageInner(): ReactElement {
                   // Wallet-keyed session: the backend persists the transcript under a stable
                   // per-wallet threadId and exposes it via GET /v1/chat/history?wallet=…
                   wallet: liveSession.walletAddress,
+                  // Per-session provider routing pref (backend maps to X-0G-Provider-* headers).
+                  ...(prefBody ? { provider: prefBody } : {}),
                 }),
                 signal: controller.signal,
                 timeout: STREAM_TIMEOUT,
@@ -827,9 +949,23 @@ function ChatPageInner(): ReactElement {
                 streamDone = true;
                 break;
               }
+              // Backend trace frame (type:"trace") carries usage + x_0g_trace
+              // on the terminal chunk; raw router chunks may carry them too.
               if (chunk.type === "trace") {
-                traceRef.current = chunk.trace ?? traceRef.current;
+                captureTurnMetrics(
+                  currentTurnRef.current,
+                  (chunk.trace?.usage as SSEChunk["usage"] | undefined) ??
+                    undefined,
+                  chunk.trace,
+                );
                 continue;
+              }
+              if (chunk.usage || chunk.x_0g_trace) {
+                captureTurnMetrics(
+                  currentTurnRef.current,
+                  chunk.usage,
+                  chunk.x_0g_trace,
+                );
               }
               const delta = chunk.choices?.[0]?.delta;
               if (!delta) continue;
@@ -838,6 +974,8 @@ function ChatPageInner(): ReactElement {
                 if (!firstTokenAt) {
                   firstTokenAt = Date.now();
                   setTtftMs(firstTokenAt - runStartedAt);
+                  // Reuse the same TTFT computation for the per-turn metrics.
+                  currentTurnRef.current.ttftMs = firstTokenAt - runStartedAt;
                 }
                 assistantContent += delta.content;
                 streamTextRef.current = assistantContent;
@@ -863,6 +1001,8 @@ function ChatPageInner(): ReactElement {
 
           cancelStreamThrottle();
           setStreamText(streamTextRef.current);
+          currentTurnRef.current.wallMs = Date.now() - turnStartAt;
+          turnMetricsRef.current.push(currentTurnRef.current);
 
           const toolCallList = pendingToolCalls.filter(
             (tc) => tc.function.name,
@@ -884,7 +1024,13 @@ function ChatPageInner(): ReactElement {
             const assistantMsg = createMessage({
               role: "assistant",
               content: assistantContent,
-              meta: { usage: traceUsageLabel(traceRef.current) },
+              meta: {
+                usage: formatInsightsLine(
+                  turnMetricsRef.current,
+                  loopCount,
+                  stepsRef.current,
+                ),
+              },
             });
             currentMessages = [...currentMessages, assistantMsg];
             messagesRef.current = currentMessages;
@@ -1000,6 +1146,7 @@ function ChatPageInner(): ReactElement {
                 }),
               ];
             }
+            stepsRef.current += batchResults.length;
           }
           messagesRef.current = currentMessages;
           setMessages(currentMessages);
@@ -1124,6 +1271,7 @@ function ChatPageInner(): ReactElement {
     queueRef.current = [];
     setThreadId(crypto.randomUUID());
     setComputeHint(null);
+    summaryRef.current = null;
     try {
       sessionStorage.removeItem(CHAT_MESSAGES_KEY);
     } catch {
@@ -1132,10 +1280,12 @@ function ChatPageInner(): ReactElement {
   }, []);
 
   const openThread = useCallback((t: StoredThread) => {
+    const loaded = stripSummaryLead(toMessages(t.messages));
     setThreadId(t.id);
-    setMessages(toMessages(t.messages));
-    messagesRef.current = toMessages(t.messages);
+    setMessages(loaded);
+    messagesRef.current = loaded;
     setComputeHint(null);
+    summaryRef.current = null;
   }, []);
 
   const deleteThread = useCallback(
@@ -1473,9 +1623,12 @@ function ChatPageInner(): ReactElement {
                           (m) => m.id === msg.id,
                         );
                         if (idx >= 0) {
-                          const trimmed = messagesRef.current.slice(0, idx);
+                          const trimmed = stripSummaryLead(
+                            messagesRef.current.slice(0, idx),
+                          );
                           messagesRef.current = trimmed;
                           setMessages(trimmed);
+                          summaryRef.current = null;
                         }
                         setEditConfirmId(null);
                         setInput(text);
@@ -1513,12 +1666,15 @@ function ChatPageInner(): ReactElement {
                           (m) => m.id === msg.id,
                         );
                         if (idx > 0) {
-                          const trimmed = messagesRef.current.slice(0, idx);
+                          const trimmed = stripSummaryLead(
+                            messagesRef.current.slice(0, idx),
+                          );
                           const lastUser = [...trimmed]
                             .reverse()
                             .find((m) => m.role === "user");
                           messagesRef.current = trimmed;
                           setMessages(trimmed);
+                          summaryRef.current = null;
                           if (lastUser?.content)
                             void runAgent(lastUser.content);
                         }
@@ -1873,6 +2029,84 @@ function ChatPageInner(): ReactElement {
         )}
 
         <div className="chat-composer">
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "var(--space-sm)",
+              flexWrap: "wrap",
+              marginBottom: "var(--space-sm)",
+            }}
+          >
+            <select
+              aria-label="Provider routing"
+              value={prefKey}
+              onChange={(e) => applyProviderPref(e.target.value)}
+              style={{
+                fontSize: "var(--text-xs)",
+                fontFamily: "var(--font-mono)",
+                background: "var(--c-bg)",
+                color: "var(--c-text)",
+                border: `1px solid ${COLORS.border}`,
+                borderRadius: "var(--radius-sm)",
+                padding: "2px 6px",
+              }}
+            >
+              <option value="auto">Auto (latency)</option>
+              <option value="cheapest">Cheapest</option>
+              {pinCandidates.map((p) => (
+                <option key={p.address} value={`pin:${p.address}`}>
+                  {pinLabel(p)}
+                </option>
+              ))}
+            </select>
+            <label
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
+                fontSize: "var(--text-xs)",
+                color: COLORS.textMuted,
+                cursor: "pointer",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={providerPref?.trustMode === "verified"}
+                onChange={(e) => toggleTrustMode("verified", e.target.checked)}
+              />
+              Verified TEE only
+            </label>
+            <label
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
+                fontSize: "var(--text-xs)",
+                color: COLORS.textMuted,
+                cursor: hasPrivateProvider ? "pointer" : "not-allowed",
+                opacity: hasPrivateProvider ? 1 : 0.45,
+              }}
+              title={
+                hasPrivateProvider
+                  ? "Sealed TeeML inference (prompts never leave the enclave)"
+                  : "No TeeML (sealed) provider serves this model"
+              }
+            >
+              <input
+                type="checkbox"
+                disabled={!hasPrivateProvider}
+                checked={providerPref?.trustMode === "private"}
+                onChange={(e) => toggleTrustMode("private", e.target.checked)}
+              />
+              Private (sealed)
+            </label>
+            {providerPref?.address ? (
+              <span style={dimXs}>
+                pinned {shortAddress(providerPref.address)}
+              </span>
+            ) : null}
+          </div>
           <div className="chat-composer__row">
             <Textarea
               aria-label="Chat input"
@@ -1953,24 +2187,128 @@ function phaseLabel(
   return `Waiting for model response… (${elapsedSec}s)`;
 }
 
-function traceUsageLabel(
-  trace: Record<string, unknown> | null,
+/** Capture router usage/trace (terminal chunk or backend trace frame) into a
+ *  per-turn metric record. Reuses the exact fields the router emits. */
+function captureTurnMetrics(
+  turn: TurnMetric,
+  usage: SSEChunk["usage"],
+  trace: Record<string, unknown> | undefined,
+): void {
+  if (usage) {
+    if (typeof usage.prompt_tokens === "number")
+      turn.promptTokens = usage.prompt_tokens;
+    if (typeof usage.completion_tokens === "number")
+      turn.completionTokens = usage.completion_tokens;
+    const cached = usage.prompt_tokens_details?.cached_tokens;
+    if (typeof cached === "number") turn.cachedTokens = cached;
+  }
+  if (!trace) return;
+  if (typeof trace.provider === "string") turn.provider = trace.provider;
+  if (typeof trace.request_id === "string") turn.requestId = trace.request_id;
+  const billing = trace.billing as { total_cost?: string | number } | undefined;
+  if (billing?.total_cost !== undefined) {
+    const n =
+      typeof billing.total_cost === "string"
+        ? Number(billing.total_cost)
+        : billing.total_cost;
+    if (Number.isFinite(n)) turn.costNeuron = (turn.costNeuron ?? 0) + n;
+  }
+}
+
+function shortAddress(addr: string): string {
+  return addr.length > 10 ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : addr;
+}
+
+function formatNeuron(neuron: number): string {
+  const og = neuron / 1e18;
+  if (og >= 1) return og.toFixed(3);
+  return og.toPrecision(2);
+}
+
+/** Aggregated per-run insights line: 'N turns · N steps | LLM Xs | TTFT avg
+ *  Yms · Z tok/s | Cache hit W% | In A tok · Out B tok | served 0x… | ≈X 0G'. */
+function formatInsightsLine(
+  metrics: TurnMetric[],
+  turns: number,
+  steps: number,
 ): string | undefined {
-  if (!trace) return undefined;
-  const parts: string[] = [];
-  const usage = trace.usage as
-    | {
-        total_tokens?: number;
-        prompt_tokens?: number;
-        completion_tokens?: number;
-      }
-    | undefined;
-  if (usage?.total_tokens)
-    parts.push(`${usage.total_tokens.toLocaleString()} tokens`);
-  const cost = trace.cost ?? trace.amount;
-  if (typeof cost === "number" && cost > 0) parts.push(`≈$${cost.toFixed(4)}`);
-  if (parts.length === 0) return "compute billed";
-  return parts.join(" · ");
+  if (metrics.length === 0) return undefined;
+  const parts = [
+    `${turns} turn${turns === 1 ? "" : "s"} · ${steps} step${steps === 1 ? "" : "s"}`,
+  ];
+  const wallMs = metrics.reduce((a, m) => a + m.wallMs, 0);
+  if (wallMs > 0) parts.push(`LLM ${(wallMs / 1000).toFixed(1)}s`);
+  const ttfts = metrics.filter((m) => m.ttftMs !== undefined && m.ttftMs > 0);
+  const promptTok = metrics.reduce((a, m) => a + (m.promptTokens ?? 0), 0);
+  const completionTok = metrics.reduce(
+    (a, m) => a + (m.completionTokens ?? 0),
+    0,
+  );
+  if (ttfts.length > 0) {
+    const avgTtft =
+      ttfts.reduce((a, m) => a + (m.ttftMs ?? 0), 0) / ttfts.length;
+    const nonTtftMs = metrics.reduce(
+      (a, m) => a + Math.max(0, m.wallMs - (m.ttftMs ?? 0)),
+      0,
+    );
+    const tps =
+      nonTtftMs > 0 ? Math.round((completionTok * 1000) / nonTtftMs) : 0;
+    parts.push(
+      `TTFT avg ${Math.round(avgTtft)}ms${tps > 0 ? ` · ${tps} tok/s` : ""}`,
+    );
+  }
+  if (promptTok > 0 || completionTok > 0) {
+    if (promptTok > 0) {
+      const cached = metrics.reduce((a, m) => a + (m.cachedTokens ?? 0), 0);
+      parts.push(`Cache hit ${Math.round((cached / promptTok) * 100)}%`);
+    }
+    parts.push(
+      `In ${promptTok.toLocaleString()} tok · Out ${completionTok.toLocaleString()} tok`,
+    );
+  }
+  const last = metrics[metrics.length - 1];
+  if (last?.provider) parts.push(`served ${shortAddress(last.provider)}`);
+  const cost = metrics.reduce((a, m) => a + (m.costNeuron ?? 0), 0);
+  if (cost > 0) parts.push(`≈${formatNeuron(cost)} 0G`);
+  return parts.join(" | ");
+}
+
+/** Compact provider-selector option label: name · latency · price per 1M. */
+function pinLabel(p: ComputeProvider): string {
+  const name = p.providerName ?? shortAddress(p.address);
+  const lat =
+    p.latencyMs != null ? `${(p.latencyMs / 1000).toFixed(1)}s` : "no latency";
+  const price = p.pricingUsd?.prompt
+    ? `$${(Number(p.pricingUsd.prompt) * 1e6).toPrecision(2)}/M`
+    : "";
+  return `${name} · ${lat}${price ? ` · ${price}` : ""}`;
+}
+
+/** ProviderPref → request-body `provider` field; undefined when nothing is set
+ *  (backend then applies its own default routing). */
+function providerPrefBody(
+  pref: ProviderPref | undefined,
+): ProviderPref | undefined {
+  if (!pref) return undefined;
+  const body: ProviderPref = {};
+  if (pref.sort) body.sort = pref.sort;
+  if (pref.address) body.address = pref.address;
+  if (pref.allowFallbacks !== undefined)
+    body.allowFallbacks = pref.allowFallbacks;
+  if (pref.trustMode) body.trustMode = pref.trustMode;
+  return Object.keys(body).length > 0 ? body : undefined;
+}
+
+/** Drop a previously-inserted `[Earlier conversation summary]` lead so a
+ *  re-derivation after edit/regenerate/open doesn't wrap the old summary. */
+function stripSummaryLead<T extends { role: string; content: string | null }>(
+  msgs: T[],
+): T[] {
+  return msgs[0]?.role === "user" &&
+    typeof msgs[0].content === "string" &&
+    msgs[0].content.startsWith("[Earlier conversation summary]")
+    ? msgs.slice(1)
+    : msgs;
 }
 
 function ToolCallCard({

@@ -136,6 +136,23 @@ const chatMessageSchema = z.object({
   name: z.string().optional(),
 });
 
+// Optional 0G compute router routing preference. Mapped to X-0G-Provider-* request headers by the
+// backend (the `provider` body field itself is never forwarded — the router treats it as
+// deprecated). Price caps are USD per 1M tokens.
+export const providerRoutingSchema = z
+  .object({
+    sort: z.enum(["latency", "price"]).optional(),
+    address: z
+      .string()
+      .regex(/^0x[a-fA-F0-9]{40}$/)
+      .optional(),
+    allowFallbacks: z.boolean().optional(),
+    trustMode: z.enum(["standard", "verified", "private"]).optional(),
+    maxPriceUsdPrompt: z.number().nonnegative().optional(),
+    maxPriceUsdCompletion: z.number().nonnegative().optional(),
+  })
+  .optional();
+
 export const chatBodySchema = z.object({
   messages: z.array(chatMessageSchema).nonempty().max(50),
   tools: z.array(z.any()).optional(),
@@ -143,6 +160,7 @@ export const chatBodySchema = z.object({
   stream: z.boolean().optional(),
   // Optional wallet address that keys the transcript thread (stable per wallet); absent = anonymous thread.
   wallet: addressViem.optional(),
+  provider: providerRoutingSchema,
 });
 
 /** Query schema for GET /v1/chat/history — wallet is required so transcripts are scoped to one owner. */
