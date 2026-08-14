@@ -5,8 +5,6 @@ import { usePolledApi } from "./usePolledApi.js";
 interface AgentInfo {
   tokenId: bigint;
   owner: string;
-  dataHash: string;
-  uri: string;
   dataDescription?: string;
 }
 
@@ -14,8 +12,6 @@ interface AgentsApiResponse {
   agents: {
     tokenId: string;
     owner: string;
-    dataHash: string;
-    uri: string;
     dataDescription?: string;
   }[];
 }

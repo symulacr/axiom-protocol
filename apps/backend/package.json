@@ -13,6 +13,7 @@
     "prestart": "bun run build",
     "dev": "bun run src/index.ts",
     "test": "AXIOM_API_KEY= AXIOM_CLIENT_API_KEY= bun test --parallel --max-concurrency=1",
+    "test:openapi": "bun test src/server/openapi-wiring.test.ts",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
     "pre-run-e2e": "bun run --filter @axiom/chat-runtime build && bun run build",
@@ -20,6 +21,7 @@
     "run-chat-bench": "bun run src/cli/run-chat-bench.ts",
     "run-chat-bench:live": "E2E_LIVE_COMPUTE=1 bun run src/cli/run-chat-bench.ts",
     "run-load-bench": "bun run src/cli/run-load-bench.ts",
+    "generate:openapi": "bun scripts/generate-openapi.mjs",
     "coverage-status": "bun run src/cli/coverage-status.ts",
     "provision-e2e-wallet": "bun run src/cli/provision-e2e-wallet.ts",
     "fund-e2e-usdc": "bun run src/cli/fund-e2e-usdc.ts"
@@ -41,6 +43,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@asteasolutions/zod-to-openapi": "^9.1.0",
     "@types/compression": "^1.7.5",
     "@types/cors": "^2.8.19",
     "@types/express": "^4.17.21",

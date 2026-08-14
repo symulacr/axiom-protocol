@@ -1,0 +1,5806 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Axiom Protocol Backend",
+    "version": "0.1.0",
+    "description": "Axiom Protocol backend HTTP/WS surface: chat (SSE), agents, events, orchestrator, skills, archive, MCP (streamable-HTTP), WebSocket stream. SSE/WS frame specs and the key-tier model are documented via x-* extensions (x-sse-events, x-websocket/x-ws-events, securityScheme descriptions)."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3010",
+      "description": "local (AXIOM_PORT override)"
+    }
+  ],
+  "security": [
+    {
+      "serverKey": []
+    }
+  ],
+  "x-mcp-streamable-http": true,
+  "components": {
+    "securitySchemes": {
+      "serverKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-api-key",
+        "description": "Server key (AXIOM_API_KEY). Full access; also accepted by /v1/stream via ?token=. SAME header as clientKey — the key VALUE distinguishes the tier."
+      },
+      "clientKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-api-key",
+        "description": "Browser key (AXIOM_CLIENT_API_KEY). SAME header as serverKey; only CLIENT_ALLOWED_ROUTES are reachable (everything else → 403 CLIENT_PATH_DENIED)."
+      },
+      "indexerKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-indexer-key",
+        "description": "Indexer key (AXIOM_INDEXER_API_KEY). Required IN ADDITION to x-api-key for POST /v1/events."
+      },
+      "wsToken": {
+        "type": "apiKey",
+        "in": "query",
+        "name": "token",
+        "description": "Server or client key passed as ?token= on the /v1/stream WebSocket upgrade (fail-closed 401)."
+      }
+    },
+    "schemas": {
+      "ErrorEnvelope": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Human-readable error message"
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "VALIDATION_ERROR",
+              "UPSTREAM_ERROR",
+              "INTERNAL_ERROR",
+              "CLIENT_PATH_DENIED",
+              "SERVER_KEY_REQUIRED",
+              "ADDRESS_NOT_CONFIGURED",
+              "UNTRUSTED_EVENT_SOURCE",
+              "INDEXER_UNAUTHORIZED",
+              "NO_WS_SUBSCRIBER",
+              "ORACLE_SIGNATURE_INVALID",
+              "CLEARTEXT_DEK_REJECTED",
+              "insufficient_balance",
+              "compute_auth",
+              "STREAM_ERROR",
+              "-32000",
+              "HTTP_400",
+              "HTTP_401",
+              "HTTP_403",
+              "HTTP_404",
+              "HTTP_500"
+            ],
+            "description": "Stable error codes. HTTP_<status> is a dynamic family."
+          },
+          "requestId": {
+            "type": "string",
+            "description": "Echo of the x-request-id header (absent on a few legacy routes)"
+          }
+        },
+        "required": [
+          "error"
+        ]
+      },
+      "ValidationErrorEnvelope": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "\"Validation failed\""
+          },
+          "details": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": {}
+            },
+            "description": "Raw zod issue objects (path/message/code/expected/received…)"
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "VALIDATION_ERROR"
+            ]
+          },
+          "requestId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "error"
+        ]
+      },
+      "ErrorCode": {
+        "type": "string",
+        "enum": [
+          "VALIDATION_ERROR",
+          "UPSTREAM_ERROR",
+          "INTERNAL_ERROR",
+          "CLIENT_PATH_DENIED",
+          "SERVER_KEY_REQUIRED",
+          "ADDRESS_NOT_CONFIGURED",
+          "UNTRUSTED_EVENT_SOURCE",
+          "INDEXER_UNAUTHORIZED",
+          "NO_WS_SUBSCRIBER",
+          "ORACLE_SIGNATURE_INVALID",
+          "CLEARTEXT_DEK_REJECTED",
+          "insufficient_balance",
+          "compute_auth",
+          "STREAM_ERROR",
+          "-32000",
+          "HTTP_400",
+          "HTTP_401",
+          "HTTP_403",
+          "HTTP_404",
+          "HTTP_500"
+        ],
+        "description": "Stable error codes. HTTP_<status> is a dynamic family."
+      },
+      "ChatBody": {
+        "type": "object",
+        "properties": {
+          "messages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "role": {
+                  "type": "string",
+                  "enum": [
+                    "system",
+                    "user",
+                    "assistant",
+                    "tool"
+                  ]
+                },
+                "content": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 32000
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "tool_calls": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "function"
+                        ]
+                      },
+                      "function": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          },
+                          "arguments": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "name",
+                          "arguments"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "function"
+                    ]
+                  }
+                },
+                "tool_call_id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "role"
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 50
+          },
+          "tools": {
+            "type": "array",
+            "items": {}
+          },
+          "model": {
+            "type": "string"
+          },
+          "stream": {
+            "type": "boolean"
+          },
+          "wallet": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]{40}$"
+          },
+          "provider": {
+            "type": "object",
+            "properties": {
+              "sort": {
+                "type": "string",
+                "enum": [
+                  "latency",
+                  "price"
+                ]
+              },
+              "address": {
+                "type": "string",
+                "pattern": "^0x[a-fA-F0-9]{40}$"
+              },
+              "allowFallbacks": {
+                "type": "boolean"
+              },
+              "trustMode": {
+                "type": "string",
+                "enum": [
+                  "standard",
+                  "verified",
+                  "private"
+                ]
+              },
+              "maxPriceUsdPrompt": {
+                "type": "number",
+                "minimum": 0
+              },
+              "maxPriceUsdCompletion": {
+                "type": "number",
+                "minimum": 0
+              }
+            }
+          }
+        },
+        "required": [
+          "messages"
+        ]
+      },
+      "ProviderRouting": {
+        "type": "object",
+        "properties": {
+          "sort": {
+            "type": "string",
+            "enum": [
+              "latency",
+              "price"
+            ]
+          },
+          "address": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]{40}$"
+          },
+          "allowFallbacks": {
+            "type": "boolean"
+          },
+          "trustMode": {
+            "type": "string",
+            "enum": [
+              "standard",
+              "verified",
+              "private"
+            ]
+          },
+          "maxPriceUsdPrompt": {
+            "type": "number",
+            "minimum": 0
+          },
+          "maxPriceUsdCompletion": {
+            "type": "number",
+            "minimum": 0
+          }
+        }
+      },
+      "TransferBody": {
+        "type": "object",
+        "properties": {
+          "to": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]{40}$"
+          },
+          "receiverPubKey64": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]+$"
+          },
+          "accessProofNonce": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "dataHash": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]+$"
+          },
+          "sealedKey": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]+$"
+          },
+          "oldDataEncryptionKey": {
+            "type": "string"
+          },
+          "sealedDataEncryptionKey": {
+            "type": "string"
+          },
+          "oldDataUri": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]+$"
+          },
+          "accessProof": {
+            "type": "object",
+            "properties": {
+              "dataHash": {
+                "type": "string",
+                "pattern": "^0x[a-fA-F0-9]+$"
+              },
+              "targetPubkey": {
+                "type": "string",
+                "pattern": "^0x[a-fA-F0-9]+$"
+              },
+              "nonce": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 128
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              },
+              "proof": {
+                "type": "string",
+                "pattern": "^0x[a-fA-F0-9]+$"
+              },
+              "validUntil": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 128
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "dataHash",
+              "targetPubkey",
+              "nonce",
+              "proof",
+              "validUntil"
+            ]
+          }
+        },
+        "required": [
+          "to",
+          "receiverPubKey64"
+        ]
+      },
+      "RoyaltyBody": {
+        "type": "object",
+        "properties": {
+          "bps": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000
+          }
+        },
+        "required": [
+          "bps"
+        ]
+      },
+      "MintDataHashBody": {
+        "type": "object",
+        "properties": {
+          "dataHash": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]+$"
+          }
+        },
+        "required": [
+          "dataHash"
+        ]
+      },
+      "VaultDepositBody": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "string",
+            "pattern": "^\\d+(\\.\\d+)?$"
+          }
+        },
+        "required": [
+          "amount"
+        ]
+      },
+      "VaultWithdrawBody": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "string",
+            "pattern": "^\\d+(\\.\\d+)?$"
+          }
+        },
+        "required": [
+          "amount"
+        ]
+      },
+      "AmountString": {
+        "type": "string",
+        "pattern": "^\\d+(\\.\\d+)?$",
+        "description": "Decimal string (ether units), e.g. \"1.5\"",
+        "examples": [
+          "1.5"
+        ]
+      },
+      "EventBody": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "eventName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "chainId": {
+            "type": "integer",
+            "exclusiveMinimum": 0
+          },
+          "blockNumber": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "txHash": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]+$"
+          },
+          "logIndex": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "payload": {
+            "type": "object",
+            "additionalProperties": {}
+          }
+        },
+        "required": [
+          "source",
+          "eventName",
+          "chainId",
+          "blockNumber",
+          "logIndex",
+          "payload"
+        ]
+      },
+      "TickBody": {
+        "type": "object",
+        "properties": {
+          "vault": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]{40}$"
+          },
+          "agentNft": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]{40}$"
+          },
+          "agentTokenId": {
+            "type": "string",
+            "pattern": "^\\d+$"
+          },
+          "computeModel": {
+            "type": "string"
+          },
+          "strategy": {
+            "type": "string"
+          },
+          "systemPrompt": {
+            "type": "string"
+          },
+          "signalSource": {
+            "type": "string"
+          },
+          "signalPayload": {},
+          "stream": {
+            "type": "boolean"
+          },
+          "executionPlan": {
+            "type": "object",
+            "properties": {
+              "target": {
+                "type": "string",
+                "pattern": "^0x[a-fA-F0-9]{40}$"
+              },
+              "value": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              },
+              "data": {
+                "type": "string",
+                "pattern": "^0x[a-fA-F0-9]+$"
+              },
+              "merkleProof": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^0x[a-fA-F0-9]+$"
+                },
+                "minItems": 1,
+                "maxItems": 32
+              }
+            },
+            "required": [
+              "target",
+              "merkleProof"
+            ]
+          }
+        },
+        "required": [
+          "vault",
+          "agentNft",
+          "agentTokenId"
+        ]
+      },
+      "ArchiveUrl": {
+        "type": "string"
+      },
+      "ChatHistoryQuery": {
+        "type": "object",
+        "properties": {
+          "wallet": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]{40}$"
+          }
+        },
+        "required": [
+          "wallet"
+        ]
+      },
+      "MintEncodeBody": {
+        "type": "object",
+        "properties": {
+          "dataDescription": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024
+          },
+          "dataHash": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]+$",
+            "description": "0x-prefixed hex string"
+          },
+          "to": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]{40}$",
+            "description": "0x-prefixed EVM address (20 bytes)",
+            "examples": [
+              "0x0000000000000000000000000000000000000000"
+            ]
+          }
+        },
+        "required": [
+          "dataDescription",
+          "dataHash",
+          "to"
+        ]
+      },
+      "ArchiveQueryBody": {
+        "type": "object",
+        "properties": {
+          "intent": {
+            "type": "string",
+            "enum": [
+              "lookup",
+              "confirm",
+              "account",
+              "closest"
+            ],
+            "default": "lookup"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Target URL (bare hosts are normalized to https://). SSRF-guarded: http(s) only, private/loopback hosts rejected. Required for lookup/confirm/closest."
+          },
+          "handle": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 500
+          },
+          "timestamp": {
+            "type": "string",
+            "description": "Wayback timestamp (YYYYMMDDhhmmss-ish; coerced to ISO)"
+          },
+          "fullList": {
+            "type": "boolean"
+          }
+        }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "string"
+          },
+          "signer": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]{40}$",
+            "description": "0x-prefixed EVM address (20 bytes)",
+            "examples": [
+              "0x0000000000000000000000000000000000000000"
+            ]
+          },
+          "chainHead": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "oracle": {
+            "type": "string",
+            "enum": [
+              "up"
+            ]
+          },
+          "oracleSigner": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]{40}$",
+            "description": "0x-prefixed EVM address (20 bytes)",
+            "examples": [
+              "0x0000000000000000000000000000000000000000"
+            ]
+          },
+          "uncompressedPubkey": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]+$",
+            "description": "0x-prefixed hex string"
+          },
+          "addresses": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "agentNft": {
+                "type": "string",
+                "pattern": "^0x[a-fA-F0-9]{40}$",
+                "description": "0x-prefixed EVM address (20 bytes)",
+                "examples": [
+                  "0x0000000000000000000000000000000000000000"
+                ]
+              },
+              "vault": {
+                "type": "string",
+                "pattern": "^0x[a-fA-F0-9]{40}$",
+                "description": "0x-prefixed EVM address (20 bytes)",
+                "examples": [
+                  "0x0000000000000000000000000000000000000000"
+                ]
+              },
+              "verifier": {
+                "type": "string",
+                "pattern": "^0x[a-fA-F0-9]{40}$",
+                "description": "0x-prefixed EVM address (20 bytes)",
+                "examples": [
+                  "0x0000000000000000000000000000000000000000"
+                ]
+              },
+              "paymentProcessor": {
+                "type": "string",
+                "pattern": "^0x[a-fA-F0-9]{40}$",
+                "description": "0x-prefixed EVM address (20 bytes)",
+                "examples": [
+                  "0x0000000000000000000000000000000000000000"
+                ]
+              }
+            },
+            "required": [
+              "agentNft",
+              "vault",
+              "verifier"
+            ]
+          }
+        },
+        "required": [
+          "ok",
+          "version",
+          "signer",
+          "chainHead",
+          "oracle",
+          "oracleSigner",
+          "uncompressedPubkey"
+        ]
+      },
+      "LiveResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "live": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          }
+        },
+        "required": [
+          "ok",
+          "live"
+        ]
+      },
+      "OracleHealthResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "signer": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]{40}$",
+            "description": "0x-prefixed EVM address (20 bytes)",
+            "examples": [
+              "0x0000000000000000000000000000000000000000"
+            ]
+          },
+          "uncompressedPubkey": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]+$",
+            "description": "0x-prefixed hex string"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ok",
+          "signer",
+          "uncompressedPubkey",
+          "version"
+        ]
+      },
+      "MintResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "dataHash": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]+$",
+            "description": "0x-prefixed hex string"
+          },
+          "seen": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok",
+          "dataHash",
+          "seen"
+        ]
+      },
+      "ProviderService": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]{40}$",
+            "description": "0x-prefixed EVM address (20 bytes)",
+            "examples": [
+              "0x0000000000000000000000000000000000000000"
+            ]
+          },
+          "model": {
+            "type": "string"
+          },
+          "endpoint": {
+            "type": "string",
+            "description": "Compute router base URL"
+          },
+          "price": {
+            "type": "string"
+          },
+          "trust_mode": {
+            "type": "string",
+            "enum": [
+              "standard",
+              "verified",
+              "private"
+            ],
+            "description": "Present only on the ?model= passthrough branch (mapped from router verifiability)"
+          }
+        },
+        "required": [
+          "address",
+          "model",
+          "endpoint"
+        ]
+      },
+      "ProvidersResponse": {
+        "type": "object",
+        "properties": {
+          "services": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProviderService"
+            },
+            "description": "No ?model: deterministic pseudo-address per router model. With ?model: real provider records (address/latency/pricing/TEE) with model + trust_mode."
+          }
+        },
+        "required": [
+          "services"
+        ]
+      },
+      "ConfigResponse": {
+        "type": "object",
+        "properties": {
+          "model": {
+            "type": "string"
+          },
+          "assistantName": {
+            "type": "string",
+            "enum": [
+              "Axiom"
+            ]
+          },
+          "contextWindow": {
+            "type": "integer",
+            "exclusiveMinimum": 0
+          }
+        },
+        "required": [
+          "model",
+          "assistantName",
+          "contextWindow"
+        ]
+      },
+      "StoredEvent": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string"
+          },
+          "chainId": {
+            "type": "integer"
+          },
+          "blockNumber": {
+            "type": "integer"
+          },
+          "txHash": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "logIndex": {
+            "type": "integer"
+          },
+          "eventName": {
+            "type": "string"
+          },
+          "payload": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "receivedAt": {
+            "type": "integer"
+          },
+          "timestamp": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "source",
+          "chainId",
+          "blockNumber",
+          "txHash",
+          "logIndex",
+          "eventName",
+          "payload",
+          "receivedAt",
+          "timestamp"
+        ]
+      },
+      "EventStoredResponse": {
+        "type": "object",
+        "properties": {
+          "stored": {
+            "$ref": "#/components/schemas/StoredEvent"
+          }
+        },
+        "required": [
+          "stored"
+        ]
+      },
+      "EventsListResponse": {
+        "type": "object",
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoredEvent"
+            }
+          }
+        },
+        "required": [
+          "events"
+        ]
+      },
+      "ChatTranscript": {
+        "type": "object",
+        "properties": {
+          "threadId": {
+            "type": "string"
+          },
+          "wallet": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]{40}$",
+            "description": "0x-prefixed EVM address (20 bytes)",
+            "examples": [
+              "0x0000000000000000000000000000000000000000"
+            ]
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": {}
+            },
+            "description": "OpenAI chat message params (role + content/tool_calls), incl. the assistant reply"
+          },
+          "msgCount": {
+            "type": "integer"
+          },
+          "ts": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "threadId",
+          "messages",
+          "msgCount",
+          "ts"
+        ]
+      },
+      "ChatHistoryResponse": {
+        "type": "object",
+        "properties": {
+          "wallet": {
+            "type": "string",
+            "description": "Lowercased wallet address that keyed the thread"
+          },
+          "count": {
+            "type": "integer"
+          },
+          "transcripts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChatTranscript"
+            }
+          }
+        },
+        "required": [
+          "wallet",
+          "count",
+          "transcripts"
+        ]
+      },
+      "AgentSummary": {
+        "type": "object",
+        "properties": {
+          "tokenId": {
+            "type": "string",
+            "description": "Numeric agent token ID (string)"
+          },
+          "owner": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]{40}$",
+            "description": "0x-prefixed EVM address (20 bytes)",
+            "examples": [
+              "0x0000000000000000000000000000000000000000"
+            ]
+          },
+          "dataDescription": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tokenId",
+          "owner"
+        ]
+      },
+      "AgentListResponse": {
+        "type": "object",
+        "properties": {
+          "owner": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]{40}$",
+            "description": "0x-prefixed EVM address (20 bytes)",
+            "examples": [
+              "0x0000000000000000000000000000000000000000"
+            ]
+          },
+          "agents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentSummary"
+            }
+          }
+        },
+        "required": [
+          "owner",
+          "agents"
+        ]
+      },
+      "TransferChallengeStage": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "challenge"
+            ]
+          },
+          "tokenId": {
+            "type": "string",
+            "pattern": "^\\d+$",
+            "description": "Decimal token ID string"
+          },
+          "to": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]{40}$",
+            "description": "0x-prefixed EVM address (20 bytes)",
+            "examples": [
+              "0x0000000000000000000000000000000000000000"
+            ]
+          },
+          "dataHash": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]+$",
+            "description": "0x-prefixed hex string"
+          },
+          "targetPubkey": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]+$",
+            "description": "0x-prefixed hex string"
+          },
+          "accessProofNonce": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "validUntil": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "ownershipSignature": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]+$",
+            "description": "0x-prefixed hex string"
+          },
+          "signer": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]{40}$",
+            "description": "0x-prefixed EVM address (20 bytes)",
+            "examples": [
+              "0x0000000000000000000000000000000000000000"
+            ]
+          },
+          "oldDataHash": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]+$",
+            "description": "0x-prefixed hex string"
+          },
+          "newDataHash": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]+$",
+            "description": "0x-prefixed hex string"
+          },
+          "newDataUri": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]+$",
+            "description": "0x-prefixed hex string"
+          },
+          "sealedKey": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]+$",
+            "description": "0x-prefixed hex string"
+          },
+          "rekeyed": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          }
+        },
+        "required": [
+          "ok",
+          "stage",
+          "tokenId",
+          "to",
+          "dataHash",
+          "targetPubkey",
+          "accessProofNonce",
+          "validUntil",
+          "ownershipSignature",
+          "signer"
+        ]
+      },
+      "TransferFinalStage": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "final"
+            ]
+          },
+          "tokenId": {
+            "type": "string",
+            "pattern": "^\\d+$",
+            "description": "Decimal token ID string"
+          },
+          "to": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]{40}$",
+            "description": "0x-prefixed EVM address (20 bytes)",
+            "examples": [
+              "0x0000000000000000000000000000000000000000"
+            ]
+          },
+          "accessSigner": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]{40}$",
+            "description": "0x-prefixed EVM address (20 bytes)",
+            "examples": [
+              "0x0000000000000000000000000000000000000000"
+            ]
+          },
+          "signer": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]{40}$",
+            "description": "0x-prefixed EVM address (20 bytes)",
+            "examples": [
+              "0x0000000000000000000000000000000000000000"
+            ]
+          },
+          "accessProof": {
+            "type": "object",
+            "properties": {
+              "dataHash": {
+                "type": "string",
+                "pattern": "^0x[a-fA-F0-9]+$",
+                "description": "0x-prefixed hex string"
+              },
+              "targetPubkey": {
+                "type": "string",
+                "pattern": "^0x[a-fA-F0-9]+$",
+                "description": "0x-prefixed hex string"
+              },
+              "nonce": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              },
+              "proof": {
+                "type": "string",
+                "pattern": "^0x[a-fA-F0-9]+$",
+                "description": "0x-prefixed hex string"
+              },
+              "validUntil": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "dataHash",
+              "targetPubkey",
+              "nonce",
+              "proof",
+              "validUntil"
+            ]
+          },
+          "ownershipProof": {
+            "type": "object",
+            "properties": {
+              "oracleType": {
+                "type": "integer"
+              },
+              "dataHash": {
+                "type": "string",
+                "pattern": "^0x[a-fA-F0-9]+$",
+                "description": "0x-prefixed hex string"
+              },
+              "sealedKey": {
+                "type": "string",
+                "pattern": "^0x[a-fA-F0-9]+$",
+                "description": "0x-prefixed hex string"
+              },
+              "targetPubkey": {
+                "type": "string",
+                "pattern": "^0x[a-fA-F0-9]+$",
+                "description": "0x-prefixed hex string"
+              },
+              "nonce": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              },
+              "proof": {
+                "type": "string",
+                "pattern": "^0x[a-fA-F0-9]+$",
+                "description": "0x-prefixed hex string"
+              },
+              "validUntil": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "oracleType",
+              "dataHash",
+              "sealedKey",
+              "targetPubkey",
+              "nonce",
+              "proof",
+              "validUntil"
+            ]
+          }
+        },
+        "required": [
+          "ok",
+          "stage",
+          "tokenId",
+          "to",
+          "accessSigner",
+          "signer",
+          "accessProof",
+          "ownershipProof"
+        ]
+      },
+      "TransferResponse": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/TransferChallengeStage"
+          },
+          {
+            "$ref": "#/components/schemas/TransferFinalStage"
+          }
+        ],
+        "description": "Two-step ownership transfer: challenge stage (signed ownership challenge) or final stage (full access proof)"
+      },
+      "TxEncodeResponse": {
+        "type": "object",
+        "properties": {
+          "to": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]{40}$",
+            "description": "0x-prefixed EVM address (20 bytes)",
+            "examples": [
+              "0x0000000000000000000000000000000000000000"
+            ]
+          },
+          "data": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]+$",
+            "description": "0x-prefixed hex string"
+          },
+          "value": {
+            "type": "string",
+            "description": "Transaction value in wei (serialized bigint)"
+          }
+        },
+        "required": [
+          "to",
+          "data",
+          "value"
+        ]
+      },
+      "VaultEncodeResponse": {
+        "type": "object",
+        "properties": {
+          "tokenId": {
+            "type": "string",
+            "pattern": "^\\d+$",
+            "description": "Decimal token ID string"
+          },
+          "to": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]{40}$",
+            "description": "0x-prefixed EVM address (20 bytes)",
+            "examples": [
+              "0x0000000000000000000000000000000000000000"
+            ]
+          },
+          "data": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]+$",
+            "description": "0x-prefixed hex string"
+          },
+          "value": {
+            "type": "string",
+            "description": "Serialized bigint (decimal string)"
+          },
+          "amount": {
+            "type": "string",
+            "pattern": "^\\d+(\\.\\d+)?$",
+            "description": "Decimal string (ether units), e.g. \"1.5\"",
+            "examples": [
+              "1.5"
+            ]
+          }
+        },
+        "required": [
+          "tokenId",
+          "to",
+          "data",
+          "value",
+          "amount"
+        ]
+      },
+      "RoyaltyResponse": {
+        "type": "object",
+        "properties": {
+          "tokenId": {
+            "type": "string",
+            "pattern": "^\\d+$",
+            "description": "Decimal token ID string"
+          },
+          "bps": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000
+          },
+          "to": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]{40}$",
+            "description": "0x-prefixed EVM address (20 bytes)",
+            "examples": [
+              "0x0000000000000000000000000000000000000000"
+            ]
+          },
+          "data": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]+$",
+            "description": "0x-prefixed hex string"
+          },
+          "value": {
+            "type": "string",
+            "description": "Serialized bigint (decimal string)"
+          }
+        },
+        "required": [
+          "tokenId",
+          "bps",
+          "to",
+          "data",
+          "value"
+        ]
+      },
+      "EarningsResponse": {
+        "type": "object",
+        "properties": {
+          "tokenId": {
+            "type": "string",
+            "pattern": "^\\d+$",
+            "description": "Decimal token ID string"
+          },
+          "creator": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]{40}$",
+            "description": "0x-prefixed EVM address (20 bytes)",
+            "examples": [
+              "0x0000000000000000000000000000000000000000"
+            ]
+          },
+          "earnings": {
+            "type": "string",
+            "description": "Serialized bigint (decimal string)"
+          }
+        },
+        "required": [
+          "tokenId",
+          "creator",
+          "earnings"
+        ]
+      },
+      "PaymentConfigResponse": {
+        "type": "object",
+        "properties": {
+          "paymentToken": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]{40}$",
+            "description": "0x-prefixed EVM address (20 bytes)",
+            "examples": [
+              "0x0000000000000000000000000000000000000000"
+            ]
+          },
+          "protocolFeeBps": {
+            "type": "string",
+            "description": "Serialized bigint (decimal string)"
+          },
+          "protocolTreasury": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]{40}$",
+            "description": "0x-prefixed EVM address (20 bytes)",
+            "examples": [
+              "0x0000000000000000000000000000000000000000"
+            ]
+          }
+        },
+        "required": [
+          "paymentToken",
+          "protocolFeeBps",
+          "protocolTreasury"
+        ]
+      },
+      "MetricSummary": {
+        "type": "object",
+        "properties": {
+          "totalTicks": {
+            "type": "integer"
+          },
+          "buyCount": {
+            "type": "integer"
+          },
+          "sellCount": {
+            "type": "integer"
+          },
+          "holdCount": {
+            "type": "integer"
+          },
+          "buyRate": {
+            "type": "number"
+          },
+          "winRate": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "totalTicks",
+          "buyCount",
+          "sellCount",
+          "holdCount",
+          "buyRate",
+          "winRate"
+        ]
+      },
+      "MetricHistoryEntry": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "integer"
+          },
+          "action": {
+            "type": "string"
+          },
+          "amount": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "durationMs": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "blockNumber": {
+            "type": "integer"
+          },
+          "txHash": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "timestamp",
+          "action",
+          "amount",
+          "reason",
+          "durationMs",
+          "blockNumber",
+          "txHash"
+        ]
+      },
+      "PerformanceMetrics": {
+        "type": "object",
+        "properties": {
+          "metrics": {
+            "$ref": "#/components/schemas/MetricSummary"
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MetricHistoryEntry"
+            }
+          }
+        },
+        "required": [
+          "metrics",
+          "history"
+        ]
+      },
+      "BatchMetrics": {
+        "type": "object",
+        "properties": {
+          "results": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/MetricSummary"
+            },
+            "description": "Map of agent token ID → metrics"
+          }
+        },
+        "required": [
+          "results"
+        ]
+      },
+      "TickRecommendation": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "act",
+              "hold"
+            ]
+          },
+          "amount": {
+            "type": "number"
+          },
+          "confidence": {
+            "type": "number"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "action",
+          "reason"
+        ]
+      },
+      "TickResult": {
+        "type": "object",
+        "properties": {
+          "recommendation": {
+            "$ref": "#/components/schemas/TickRecommendation"
+          },
+          "rawModelOutput": {
+            "type": "string"
+          },
+          "onchain": {
+            "type": "object",
+            "properties": {
+              "vaultBalance": {
+                "type": "string",
+                "description": "Serialized bigint (decimal string)"
+              },
+              "recentEvents": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            },
+            "required": [
+              "vaultBalance",
+              "recentEvents"
+            ]
+          },
+          "storage": {
+            "type": "object",
+            "properties": {
+              "rootHash": {
+                "type": "string",
+                "pattern": "^0x[a-fA-F0-9]+$",
+                "description": "0x-prefixed hex string"
+              },
+              "size": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "rootHash",
+              "size"
+            ]
+          },
+          "execution": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "success",
+                  "skipped",
+                  "executed",
+                  "failed"
+                ]
+              },
+              "reason": {
+                "type": "string"
+              },
+              "txHash": {
+                "type": "string",
+                "pattern": "^0x[a-fA-F0-9]+$",
+                "description": "0x-prefixed hex string"
+              },
+              "action": {
+                "type": "string"
+              },
+              "target": {
+                "type": "string",
+                "pattern": "^0x[a-fA-F0-9]{40}$",
+                "description": "0x-prefixed EVM address (20 bytes)",
+                "examples": [
+                  "0x0000000000000000000000000000000000000000"
+                ]
+              },
+              "result": {
+                "type": "string",
+                "pattern": "^0x[a-fA-F0-9]+$",
+                "description": "0x-prefixed hex string"
+              },
+              "gasUsed": {
+                "type": "string",
+                "description": "Serialized bigint (decimal string)"
+              }
+            }
+          },
+          "durationMs": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "recommendation",
+          "rawModelOutput",
+          "onchain",
+          "storage",
+          "durationMs"
+        ]
+      },
+      "TickStreamAccepted": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "streamTopic": {
+            "type": "string",
+            "description": "e.g. tick.<tokenId>"
+          }
+        },
+        "required": [
+          "ok",
+          "streamTopic"
+        ]
+      },
+      "RouteInfo": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET",
+              "POST",
+              "DELETE",
+              "PUT"
+            ]
+          },
+          "path": {
+            "type": "string"
+          },
+          "consumer": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "method",
+          "path"
+        ]
+      },
+      "RoutesResponse": {
+        "type": "object",
+        "properties": {
+          "routes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RouteInfo"
+            }
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "version": {
+                "type": "string"
+              },
+              "chainId": {
+                "type": "integer"
+              },
+              "signer": {
+                "type": "string",
+                "description": "Short signer address (0x1234…abcd)"
+              },
+              "startedAt": {
+                "type": "integer"
+              },
+              "uptimeMs": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "version",
+              "chainId",
+              "signer",
+              "startedAt",
+              "uptimeMs"
+            ]
+          }
+        },
+        "required": [
+          "routes",
+          "meta"
+        ]
+      },
+      "ArchiveResult": {
+        "type": "object",
+        "additionalProperties": {},
+        "description": "Intent-shaped archive result: lookup {url,count,snapshots,note?}, confirm {archived,snapshot}, account {handle,count,snapshots}, closest {url,snapshot}. `cached: true` on TTL hits."
+      },
+      "SkillResult": {
+        "type": "object",
+        "additionalProperties": {},
+        "description": "Skill-specific result object (bigint fields serialized as strings). See the skill's component schema for request shape."
+      },
+      "MetadataBody": {
+        "type": "object",
+        "properties": {
+          "datas": {
+            "type": "array",
+            "items": {},
+            "description": "Unvalidated by design (consumer cli-only)"
+          }
+        },
+        "required": [
+          "datas"
+        ]
+      },
+      "ChatStreamChunkFrame": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "object": {
+            "type": "string",
+            "enum": [
+              "chat.completion.chunk"
+            ]
+          },
+          "created": {
+            "type": "integer"
+          },
+          "model": {
+            "type": "string"
+          },
+          "choices": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer"
+                },
+                "delta": {
+                  "type": "object",
+                  "properties": {
+                    "role": {
+                      "type": "string"
+                    },
+                    "content": {
+                      "type": "string"
+                    },
+                    "tool_calls": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {}
+                      }
+                    }
+                  }
+                },
+                "logprobs": {},
+                "finish_reason": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "index"
+              ]
+            }
+          },
+          "usage": {
+            "type": "object",
+            "additionalProperties": {}
+          }
+        },
+        "required": [
+          "id",
+          "object",
+          "created",
+          "model",
+          "choices"
+        ]
+      },
+      "ChatStreamTerminalFrame": {
+        "type": "object",
+        "properties": {
+          "choices": {
+            "type": "array",
+            "items": {},
+            "description": "Always []"
+          },
+          "usage": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "x_0g_trace": {
+            "type": "object",
+            "additionalProperties": {}
+          }
+        },
+        "required": [
+          "choices"
+        ],
+        "description": "Router terminal chunk: usage + x_0g_trace with empty choices, right before [DONE]"
+      },
+      "ChatStreamTraceFrame": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "trace"
+            ]
+          },
+          "trace": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "Terminal chunk usage ∪ x_0g_trace ∪ providerHeader (from the upstream x-provider header, when present)"
+          }
+        },
+        "required": [
+          "type",
+          "trace"
+        ]
+      },
+      "ChatStreamErrorFrame": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "STREAM_ERROR"
+            ]
+          }
+        },
+        "required": [
+          "error",
+          "code"
+        ],
+        "description": "Mid-stream failure (only after headers were already flushed)"
+      },
+      "ChatStreamDoneFrame": {
+        "type": "string",
+        "enum": [
+          "[DONE]"
+        ]
+      },
+      "ChatStreamEvent": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/ChatStreamChunkFrame"
+          },
+          {
+            "$ref": "#/components/schemas/ChatStreamTerminalFrame"
+          },
+          {
+            "$ref": "#/components/schemas/ChatStreamTraceFrame"
+          },
+          {
+            "$ref": "#/components/schemas/ChatStreamErrorFrame"
+          },
+          {
+            "$ref": "#/components/schemas/ChatStreamDoneFrame"
+          }
+        ]
+      },
+      "WsFrameEnvelope": {
+        "type": "object",
+        "properties": {
+          "topic": {
+            "type": "string"
+          },
+          "payload": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "ts": {
+            "type": "integer",
+            "description": "Epoch ms"
+          }
+        },
+        "required": [
+          "topic",
+          "payload",
+          "ts"
+        ]
+      },
+      "WsHelloFrame": {
+        "type": "object",
+        "properties": {
+          "topic": {
+            "type": "string",
+            "enum": [
+              "hello"
+            ]
+          },
+          "payload": {
+            "type": "object",
+            "properties": {
+              "topics": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "topics"
+            ]
+          },
+          "ts": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "topic",
+          "payload",
+          "ts"
+        ]
+      },
+      "WsTickFrame": {
+        "type": "object",
+        "properties": {
+          "topic": {
+            "type": "string",
+            "description": "tick.<tokenId>"
+          },
+          "payload": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "token"
+                    ]
+                  },
+                  "content": {
+                    "type": "string"
+                  },
+                  "index": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "type",
+                  "content",
+                  "index"
+                ]
+              },
+              {
+                "allOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "complete"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": {}
+                  }
+                ],
+                "description": "complete: full TickResult payload spread onto the frame"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "error"
+                    ]
+                  },
+                  "error": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "type",
+                  "error"
+                ]
+              }
+            ]
+          },
+          "ts": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "topic",
+          "payload",
+          "ts"
+        ]
+      },
+      "WsOrchestratorFrame": {
+        "type": "object",
+        "properties": {
+          "topic": {
+            "type": "string",
+            "enum": [
+              "orchestrator.tick"
+            ]
+          },
+          "payload": {
+            "type": "object",
+            "properties": {
+              "agentTokenId": {
+                "type": "string",
+                "pattern": "^\\d+$",
+                "description": "Decimal token ID string"
+              },
+              "recommendation": {
+                "$ref": "#/components/schemas/TickRecommendation"
+              }
+            },
+            "required": [
+              "agentTokenId",
+              "recommendation"
+            ]
+          },
+          "ts": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "topic",
+          "payload",
+          "ts"
+        ]
+      },
+      "JsonRpcRequest": {
+        "type": "object",
+        "properties": {
+          "jsonrpc": {
+            "type": "string",
+            "enum": [
+              "2.0"
+            ]
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "method": {
+            "type": "string"
+          },
+          "params": {
+            "type": "object",
+            "additionalProperties": {}
+          }
+        },
+        "required": [
+          "jsonrpc",
+          "id",
+          "method"
+        ]
+      },
+      "JsonRpcError": {
+        "type": "object",
+        "properties": {
+          "jsonrpc": {
+            "type": "string",
+            "enum": [
+              "2.0"
+            ]
+          },
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "integer"
+              },
+              "message": {
+                "type": "string"
+              },
+              "data": {}
+            },
+            "required": [
+              "code",
+              "message"
+            ]
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "jsonrpc",
+          "error",
+          "id"
+        ]
+      },
+      "McpListAgentsParams": {
+        "type": "object",
+        "properties": {
+          "owner": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]{40}$"
+          }
+        },
+        "required": [
+          "owner"
+        ]
+      },
+      "McpGetAgentPerformanceParams": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^\\d+$",
+            "description": "Decimal token ID string"
+          },
+          "limit": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 500
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "McpGetEventsParams": {
+        "type": "object",
+        "properties": {
+          "eventName": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string"
+          },
+          "since": {
+            "type": "integer",
+            "exclusiveMinimum": 0
+          },
+          "limit": {
+            "type": "integer",
+            "exclusiveMinimum": 0
+          }
+        }
+      },
+      "McpGetAgentPerformanceBatchParams": {
+        "type": "object",
+        "properties": {
+          "ids": {
+            "type": "string",
+            "description": "Comma-separated agent token IDs (max 50, e.g. \"1,2,3\")"
+          }
+        },
+        "required": [
+          "ids"
+        ]
+      },
+      "McpGetPaymentConfigParams": {
+        "type": "object",
+        "properties": {}
+      },
+      "McpListRoutesParams": {
+        "type": "object",
+        "properties": {}
+      },
+      "SkillevmAddressSchema": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string"
+          },
+          "context": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "Executor-supplied session context (chainId, walletAddress, agentNft, vault, lastTokenId); not validated by the route"
+          }
+        },
+        "required": [
+          "address"
+        ]
+      },
+      "SkillevmAllowanceSchema": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          },
+          "context": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "Executor-supplied session context (chainId, walletAddress, agentNft, vault, lastTokenId); not validated by the route"
+          }
+        },
+        "required": [
+          "address",
+          "token"
+        ]
+      },
+      "SkillevmGasSchema": {
+        "type": "object",
+        "properties": {
+          "gasLimit": {
+            "type": "number"
+          },
+          "context": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "Executor-supplied session context (chainId, walletAddress, agentNft, vault, lastTokenId); not validated by the route"
+          }
+        }
+      },
+      "SkillevmTokenOwnerSchema": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          },
+          "context": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "Executor-supplied session context (chainId, walletAddress, agentNft, vault, lastTokenId); not validated by the route"
+          }
+        },
+        "required": [
+          "address",
+          "token"
+        ]
+      },
+      "SkillevmTokenSchema": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string"
+          },
+          "coingeckoId": {
+            "type": "string"
+          },
+          "context": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "Executor-supplied session context (chainId, walletAddress, agentNft, vault, lastTokenId); not validated by the route"
+          }
+        },
+        "required": [
+          "address"
+        ]
+      },
+      "SkillevmTxSchema": {
+        "type": "object",
+        "properties": {
+          "hash": {
+            "type": "string"
+          },
+          "context": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "Executor-supplied session context (chainId, walletAddress, agentNft, vault, lastTokenId); not validated by the route"
+          }
+        },
+        "required": [
+          "hash"
+        ]
+      },
+      "SkillevmWhaleSchema": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "minValue": {
+            "type": "string",
+            "default": "0"
+          },
+          "fromBlock": {
+            "type": "number",
+            "default": 19900000
+          },
+          "toBlock": {
+            "type": "number",
+            "default": 20000000
+          },
+          "context": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "Executor-supplied session context (chainId, walletAddress, agentNft, vault, lastTokenId); not validated by the route"
+          }
+        },
+        "required": [
+          "token"
+        ]
+      },
+      "SkillosintCourtlistenerSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "o",
+              "r"
+            ]
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20
+          },
+          "context": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "Executor-supplied session context (chainId, walletAddress, agentNft, vault, lastTokenId); not validated by the route"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "SkillosintEntityResolveSchema": {
+        "type": "object",
+        "properties": {
+          "entities": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 2,
+            "maxItems": 20
+          },
+          "context": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "Executor-supplied session context (chainId, walletAddress, agentNft, vault, lastTokenId); not validated by the route"
+          }
+        },
+        "required": [
+          "entities"
+        ]
+      },
+      "SkillosintOfacSdnSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "context": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "Executor-supplied session context (chainId, walletAddress, agentNft, vault, lastTokenId); not validated by the route"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "SkillosintOpencorporatesSchema": {
+        "type": "object",
+        "properties": {
+          "jurisdiction": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 5,
+            "default": "us"
+          },
+          "query": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "context": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "Executor-supplied session context (chainId, walletAddress, agentNft, vault, lastTokenId); not validated by the route"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "SkillosintSecEdgarSchema": {
+        "type": "object",
+        "properties": {
+          "cik": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 12
+          },
+          "context": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "Executor-supplied session context (chainId, walletAddress, agentNft, vault, lastTokenId); not validated by the route"
+          }
+        },
+        "required": [
+          "cik"
+        ]
+      },
+      "SkillosintUsaspendingSchema": {
+        "type": "object",
+        "properties": {
+          "filters": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "context": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "Executor-supplied session context (chainId, walletAddress, agentNft, vault, lastTokenId); not validated by the route"
+          }
+        },
+        "required": [
+          "filters"
+        ]
+      },
+      "SkillstocksCompareSchema": {
+        "type": "object",
+        "properties": {
+          "symbols": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 12
+            },
+            "minItems": 1,
+            "maxItems": 10
+          },
+          "context": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "Executor-supplied session context (chainId, walletAddress, agentNft, vault, lastTokenId); not validated by the route"
+          }
+        },
+        "required": [
+          "symbols"
+        ]
+      },
+      "SkillstocksCryptoSchema": {
+        "type": "object",
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 12,
+            "default": "BTC-USD"
+          },
+          "context": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "Executor-supplied session context (chainId, walletAddress, agentNft, vault, lastTokenId); not validated by the route"
+          }
+        }
+      },
+      "SkillstocksHistorySchema": {
+        "type": "object",
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 12
+          },
+          "range": {
+            "type": "string",
+            "enum": [
+              "1d",
+              "5d",
+              "1mo",
+              "3mo",
+              "6mo",
+              "1y",
+              "5y",
+              "max"
+            ],
+            "default": "1y"
+          },
+          "interval": {
+            "type": "string",
+            "enum": [
+              "1m",
+              "5m",
+              "15m",
+              "1d",
+              "1wk",
+              "1mo"
+            ],
+            "default": "1d"
+          },
+          "context": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "Executor-supplied session context (chainId, walletAddress, agentNft, vault, lastTokenId); not validated by the route"
+          }
+        },
+        "required": [
+          "symbol"
+        ]
+      },
+      "SkillstocksQuoteSchema": {
+        "type": "object",
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 12
+          },
+          "context": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "Executor-supplied session context (chainId, walletAddress, agentNft, vault, lastTokenId); not validated by the route"
+          }
+        },
+        "required": [
+          "symbol"
+        ]
+      },
+      "SkillstocksSearchSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "context": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "Executor-supplied session context (chainId, walletAddress, agentNft, vault, lastTokenId); not validated by the route"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "SkillunbrokerAnalyzeSchema": {
+        "type": "object",
+        "properties": {
+          "tokenId": {
+            "type": "string",
+            "pattern": "^\\d+$"
+          },
+          "to": {
+            "type": "string"
+          },
+          "accessProof": {
+            "type": "object",
+            "properties": {
+              "dataHash": {
+                "type": "string"
+              },
+              "validUntil": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "dataHash",
+              "validUntil"
+            ]
+          },
+          "context": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "Executor-supplied session context (chainId, walletAddress, agentNft, vault, lastTokenId); not validated by the route"
+          }
+        },
+        "required": [
+          "tokenId",
+          "to"
+        ]
+      },
+      "SkillunbrokerSchema": {
+        "type": "object",
+        "properties": {
+          "tokenId": {
+            "type": "string",
+            "pattern": "^\\d+$"
+          },
+          "to": {
+            "type": "string"
+          },
+          "context": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "Executor-supplied session context (chainId, walletAddress, agentNft, vault, lastTokenId); not validated by the route"
+          }
+        },
+        "required": [
+          "tokenId",
+          "to"
+        ]
+      }
+    }
+  },
+  "paths": {
+    "/mcp": {
+      "delete": {
+        "summary": "Terminate an MCP session",
+        "security": [
+          {
+            "serverKey": []
+          }
+        ],
+        "x-required-principal": "server",
+        "parameters": [
+          {
+            "name": "mcp-session-id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session torn down (empty body)"
+          },
+          "400": {
+            "description": "Invalid or missing session ID (plain text)"
+          }
+        }
+      },
+      "get": {
+        "summary": "MCP SSE stream for an existing session",
+        "security": [
+          {
+            "serverKey": []
+          }
+        ],
+        "x-required-principal": "server",
+        "x-mcp-sse-stream": true,
+        "parameters": [
+          {
+            "name": "mcp-session-id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "SSE stream",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or missing session ID (plain text)"
+          }
+        }
+      },
+      "post": {
+        "summary": "MCP streamable-HTTP endpoint (read-only tools; initialize first)",
+        "security": [
+          {
+            "serverKey": []
+          }
+        ],
+        "x-required-principal": "server",
+        "x-mcp-streamable-http": true,
+        "parameters": [
+          {
+            "name": "mcp-session-id",
+            "in": "header",
+            "required": false,
+            "description": "Session id returned by initialize; required for subsequent requests",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "JSON-RPC 2.0 request (initialize first; sessionless requests → 400 JSON-RPC error)",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JsonRpcRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "JSON-RPC response — JSON (Accept: application/json) or SSE (text/event-stream)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonRpcError"
+                }
+              },
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing/unknown session or bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonRpcError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Server key required",
+            "x-error-codes": [
+              "SERVER_KEY_REQUIRED"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonRpcError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonRpcError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health check (chain head, signer, addresses)",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Chain unhealthy — same shape with ok:false (or error envelope)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/live": {
+      "get": {
+        "summary": "Liveness probe",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Live",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiveResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/oracle/health": {
+      "get": {
+        "summary": "TEE oracle signer pubkey + status",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Oracle status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OracleHealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/agents": {
+      "get": {
+        "summary": "List NFT agents owned by an address (log-scan, 120s cache)",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "owner",
+            "in": "query",
+            "required": true,
+            "description": "Owner address",
+            "schema": {
+              "type": "string",
+              "pattern": "^0x[a-fA-F0-9]{40}$"
+            }
+          },
+          {
+            "name": "fresh",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            }
+          },
+          {
+            "name": "nocache",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Agents",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Valid owner address required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "AgentNFT address not configured",
+            "x-error-codes": [
+              "ADDRESS_NOT_CONFIGURED"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/agents/{id}/earnings": {
+      "get": {
+        "summary": "Creator earnings by token (300s cache)",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Earnings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EarningsResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Agent creator not registered for token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Address not configured",
+            "x-error-codes": [
+              "ADDRESS_NOT_CONFIGURED"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/agents/{id}/performance": {
+      "get": {
+        "summary": "Per-agent strategy metrics (30s cache)",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Max ticks to scan (default 500)",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Metrics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerformanceMetrics"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid id",
+            "x-error-codes": [
+              "VALIDATION_ERROR"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/agents/performance/batch": {
+      "get": {
+        "summary": "Batch metrics for up to 50 agents",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "ids",
+            "in": "query",
+            "required": true,
+            "description": "Comma-separated agent token IDs (max 50)",
+            "schema": {
+              "type": "string",
+              "example": "1,2,3"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Metrics by id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchMetrics"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Maximum 50 agents per batch request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/chat/history": {
+      "get": {
+        "summary": "Fetch persisted chat transcripts for a wallet (0G, newest-first)",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "wallet",
+            "in": "query",
+            "required": true,
+            "description": "Owner wallet address (lowercased for the thread key)",
+            "schema": {
+              "type": "string",
+              "pattern": "^0x[a-fA-F0-9]{40}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Transcripts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatHistoryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/compute/providers": {
+      "get": {
+        "summary": "List compute providers; ?model= → real provider passthrough",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "model",
+            "in": "query",
+            "required": false,
+            "description": "Router model id — returns real provider records (address/latency/pricing/TEE)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Provider services",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProvidersResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Router upstream failure (direct res.json, no requestId)",
+            "x-error-codes": [
+              "UPSTREAM_ERROR"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/config": {
+      "get": {
+        "summary": "Backend configuration for the UI",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Config",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/events": {
+      "get": {
+        "summary": "Query stored events (optional filters)",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eventName",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "owner",
+            "in": "query",
+            "required": false,
+            "description": "Payload owner/to/from address filter",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "description": "Only events received after this epoch ms",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Max events (capped by AXIOM_MAX_EVENT_QUERY_LIMIT, default 500)",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Events",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventsListResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Append an event (indexer-only; dedupes on chainId:txHash:logIndex)",
+        "security": [
+          {
+            "serverKey": [],
+            "indexerKey": []
+          },
+          {
+            "clientKey": [],
+            "indexerKey": []
+          }
+        ],
+        "requestBody": {
+          "description": "Event to store",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EventBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Stored (or existing on dedupe)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventStoredResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Untrusted event source",
+            "x-error-codes": [
+              "UNTRUSTED_EVENT_SOURCE",
+              "VALIDATION_ERROR"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Indexer key missing/invalid",
+            "x-error-codes": [
+              "INDEXER_UNAUTHORIZED"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/payment/config": {
+      "get": {
+        "summary": "Payment contract configuration (300s cache)",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Payment config",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentConfigResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Payment processor not configured",
+            "x-error-codes": [
+              "ADDRESS_NOT_CONFIGURED"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/routes": {
+      "get": {
+        "summary": "List mounted routes + backend meta (self-description)",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Route registry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoutesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/stream": {
+      "get": {
+        "summary": "WebSocket event stream (upgrade). Frames: {topic, payload, ts} with bigintReplacer.",
+        "security": [
+          {
+            "wsToken": []
+          }
+        ],
+        "x-websocket": true,
+        "x-ws-events": [
+          {
+            "name": "hello",
+            "description": "On connect: subscribed topic list echo",
+            "schema": {
+              "$ref": "#/components/schemas/WsHelloFrame"
+            }
+          },
+          {
+            "name": "<eventName>",
+            "description": "StoredEvent broadcast (Tick, Transfer, Deposited, Withdrawn, StrategySet, Executed, transcript, …)",
+            "schema": {
+              "$ref": "#/components/schemas/WsFrameEnvelope"
+            }
+          },
+          {
+            "name": "tick.<tokenId>",
+            "description": "Streamed tick: {type:token} chunks, {type:complete} TickResult, {type:error}",
+            "schema": {
+              "$ref": "#/components/schemas/WsTickFrame"
+            }
+          },
+          {
+            "name": "orchestrator.tick",
+            "description": "Non-stream tick completion",
+            "schema": {
+              "$ref": "#/components/schemas/WsOrchestratorFrame"
+            }
+          }
+        ],
+        "x-ws-heartbeat": {
+          "intervalMs": 30000,
+          "maxMissedPings": 3
+        },
+        "x-ws-max-clients": 1000,
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": true,
+            "description": "Server or client API key (fail-closed 401 on mismatch)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "topic",
+            "in": "query",
+            "required": false,
+            "description": "Repeatable (≤20). Prefix subscription (tick. → all tick.*); * = everything",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "101": {
+            "description": "Switching Protocols — WS frames follow (JSON, bigints as strings)"
+          },
+          "401": {
+            "description": "Raw HTTP/1.1 401 Unauthorized (no body)"
+          }
+        }
+      }
+    },
+    "/oracle/v1/agents/mint": {
+      "post": {
+        "summary": "Register an agent dataHash with the oracle (marks seen)",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "requestBody": {
+          "description": "dataHash must be 32 bytes (0x + 64 hex chars)",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MintDataHashBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Registered (or already seen)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MintResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad hash / validation. Legacy route: plain {error} body, no code/requestId",
+            "x-error-codes": [
+              "VALIDATION_ERROR"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/agents/{id}/deposit": {
+      "post": {
+        "summary": "Encode a vault deposit transaction (value = amount in wei)",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Deposit amount (decimal ether string)",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VaultDepositBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Encoded deposit tx",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VaultEncodeResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation (amount format)",
+            "x-error-codes": [
+              "VALIDATION_ERROR"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Vault not configured",
+            "x-error-codes": [
+              "ADDRESS_NOT_CONFIGURED"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/agents/{id}/metadata": {
+      "post": {
+        "summary": "Encode a metadata-update transaction (body unvalidated; consumer cli-only)",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$"
+            }
+          }
+        ],
+        "x-unvalidated-body": true,
+        "requestBody": {
+          "description": "datas array (unvalidated by design)",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MetadataBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Encoded metadata tx",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TxEncodeResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing or invalid datas array",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/agents/{id}/royalty": {
+      "post": {
+        "summary": "Encode a royalty-set transaction",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Royalty basis points (0..10000)",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoyaltyBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Encoded royalty tx",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoyaltyResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation (bps range)",
+            "x-error-codes": [
+              "VALIDATION_ERROR"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Address not configured",
+            "x-error-codes": [
+              "ADDRESS_NOT_CONFIGURED"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/agents/{id}/transfer": {
+      "post": {
+        "summary": "Two-step ownership transfer (challenge → final)",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Agent token ID (numeric)",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "accessProof absent ⇒ challenge stage; present ⇒ final stage. Production requires sealedKey.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Challenge or final stage",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing/invalid id, cleartext DEK, accessProof mismatch",
+            "x-error-codes": [
+              "CLEARTEXT_DEK_REJECTED"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Oracle request/signature failure",
+            "x-error-codes": [
+              "ORACLE_SIGNATURE_INVALID",
+              "UPSTREAM_ERROR"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Address not configured",
+            "x-error-codes": [
+              "ADDRESS_NOT_CONFIGURED"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/agents/{id}/withdraw": {
+      "post": {
+        "summary": "Encode a vault withdraw transaction (value = 0)",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Withdraw amount (decimal ether string)",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VaultWithdrawBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Encoded withdraw tx",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VaultEncodeResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation (amount format)",
+            "x-error-codes": [
+              "VALIDATION_ERROR"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Vault not configured",
+            "x-error-codes": [
+              "ADDRESS_NOT_CONFIGURED"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/agents/mint/encode": {
+      "post": {
+        "summary": "Encode a mint transaction (value = mint fee)",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "requestBody": {
+          "description": "Mint parameters",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MintEncodeBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Encoded tx",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TxEncodeResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "AgentNFT address not configured",
+            "x-error-codes": [
+              "ADDRESS_NOT_CONFIGURED"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/archive/query": {
+      "post": {
+        "summary": "Unified archive facade (lookup/confirm/account/closest)",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "requestBody": {
+          "description": "Archive query (url SSRF-guarded)",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArchiveQueryBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Archive result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArchiveResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation (SSRF guard, intent, missing url/handle)",
+            "x-error-codes": [
+              "VALIDATION_ERROR"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/chat/completions": {
+      "post": {
+        "summary": "Stream chat completions (OpenAI-compatible SSE; stream is forced true server-side)",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "requestBody": {
+          "description": "Chat request (provider routing is mapped to X-0G-Provider-* headers, never forwarded as body)",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "SSE stream (text/event-stream): OpenAI chat.completion.chunk frames → trace frame → [DONE]. See x-sse-events.",
+            "x-sse-content-type": "application/json",
+            "x-sse-events": [
+              {
+                "name": "chat.completion.chunk",
+                "description": "Raw upstream OpenAI chunk (choices non-empty)",
+                "schema": {
+                  "$ref": "#/components/schemas/ChatStreamChunkFrame"
+                }
+              },
+              {
+                "name": "terminal_chunk",
+                "description": "Router terminal chunk: choices [] + usage + x_0g_trace (captured, not displayed)",
+                "schema": {
+                  "$ref": "#/components/schemas/ChatStreamTerminalFrame"
+                }
+              },
+              {
+                "name": "trace",
+                "description": "Usage ∪ x_0g_trace ∪ providerHeader",
+                "schema": {
+                  "$ref": "#/components/schemas/ChatStreamTraceFrame"
+                }
+              },
+              {
+                "name": "error",
+                "description": "Mid-stream failure (STREAM_ERROR) — only after headers flushed",
+                "schema": {
+                  "$ref": "#/components/schemas/ChatStreamErrorFrame"
+                }
+              },
+              {
+                "name": "done",
+                "description": "Always last: data: [DONE]",
+                "schema": {
+                  "$ref": "#/components/schemas/ChatStreamDoneFrame"
+                }
+              }
+            ],
+            "headers": {
+              "x-request-id": {
+                "schema": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-cache"
+                }
+              },
+              "X-Accel-Buffering": {
+                "schema": {
+                  "type": "string",
+                  "const": "no"
+                }
+              }
+            },
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ChatStreamEvent"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorEnvelope"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Compute account has no balance",
+            "x-error-codes": [
+              "insufficient_balance"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "429 — express-rate-limit (60s window, AXIOM_RATE_LIMIT_MAX default 100). Plain-text body, not the JSON envelope.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "RateLimit-Policy": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "RateLimit-Limit": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "RateLimit-Remaining": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "RateLimit-Reset": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            },
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "const": "Too many requests, please try again later."
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Compute auth failed (compute_auth) or upstream failure",
+            "x-error-codes": [
+              "compute_auth",
+              "UPSTREAM_ERROR"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/orchestrator/tick": {
+      "post": {
+        "summary": "Run an AI strategy tick (stream:true → 202 + WS stream to tick.<id>)",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "x-server-only-property": "executionPlan",
+        "requestBody": {
+          "description": "executionPlan requires the SERVER key (client key ⇒ 403 SERVER_KEY_REQUIRED).",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TickBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tick result (also broadcast to WS topic orchestrator.tick)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TickResult"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Stream accepted — WS frames follow on tick.<id>",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TickStreamAccepted"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "stream requested without a WS subscriber",
+            "x-error-codes": [
+              "NO_WS_SUBSCRIBER",
+              "VALIDATION_ERROR"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Client key with executionPlan",
+            "x-error-codes": [
+              "SERVER_KEY_REQUIRED"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Orchestrator not available",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/skills/evm/allowance": {
+      "post": {
+        "summary": "Check ERC-20 allowances for known DEX spenders",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "requestBody": {
+          "description": "Skill parameters",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SkillevmAllowanceSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Skill result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillResult"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Upstream fetch failed",
+            "x-error-codes": [
+              "UPSTREAM_ERROR",
+              "HTTP_502"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "AgentNFT not configured (unbroker)",
+            "x-error-codes": [
+              "ADDRESS_NOT_CONFIGURED"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/skills/evm/contract": {
+      "post": {
+        "summary": "Inspect contract code and proxy implementation",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "requestBody": {
+          "description": "Skill parameters",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SkillevmAddressSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Skill result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillResult"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Upstream fetch failed",
+            "x-error-codes": [
+              "UPSTREAM_ERROR",
+              "HTTP_502"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "AgentNFT not configured (unbroker)",
+            "x-error-codes": [
+              "ADDRESS_NOT_CONFIGURED"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/skills/evm/gas": {
+      "post": {
+        "summary": "Estimate EVM gas cost for a transaction",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "requestBody": {
+          "description": "Skill parameters",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SkillevmGasSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Skill result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillResult"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Upstream fetch failed",
+            "x-error-codes": [
+              "UPSTREAM_ERROR",
+              "HTTP_502"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "AgentNFT not configured (unbroker)",
+            "x-error-codes": [
+              "ADDRESS_NOT_CONFIGURED"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/skills/evm/multichain": {
+      "post": {
+        "summary": "Query wallet balances across multiple EVM chains",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "requestBody": {
+          "description": "Skill parameters",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SkillevmAddressSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Skill result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillResult"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Upstream fetch failed",
+            "x-error-codes": [
+              "UPSTREAM_ERROR",
+              "HTTP_502"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "AgentNFT not configured (unbroker)",
+            "x-error-codes": [
+              "ADDRESS_NOT_CONFIGURED"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/skills/evm/token": {
+      "post": {
+        "summary": "ERC-20 token metadata and price",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "requestBody": {
+          "description": "Skill parameters",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SkillevmTokenSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Skill result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillResult"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Upstream fetch failed",
+            "x-error-codes": [
+              "UPSTREAM_ERROR",
+              "HTTP_502"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "AgentNFT not configured (unbroker)",
+            "x-error-codes": [
+              "ADDRESS_NOT_CONFIGURED"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/skills/evm/tx": {
+      "post": {
+        "summary": "Fetch an EVM transaction and its receipt",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "requestBody": {
+          "description": "Skill parameters",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SkillevmTxSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Skill result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillResult"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Upstream fetch failed",
+            "x-error-codes": [
+              "UPSTREAM_ERROR",
+              "HTTP_502"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "AgentNFT not configured (unbroker)",
+            "x-error-codes": [
+              "ADDRESS_NOT_CONFIGURED"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/skills/evm/wallet": {
+      "post": {
+        "summary": "Query EVM wallet native and ERC-20 balances",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "requestBody": {
+          "description": "Skill parameters",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SkillevmTokenOwnerSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Skill result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillResult"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Upstream fetch failed",
+            "x-error-codes": [
+              "UPSTREAM_ERROR",
+              "HTTP_502"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "AgentNFT not configured (unbroker)",
+            "x-error-codes": [
+              "ADDRESS_NOT_CONFIGURED"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/skills/evm/whale": {
+      "post": {
+        "summary": "Scan for large (whale) ERC-20 transfers",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "requestBody": {
+          "description": "Skill parameters",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SkillevmWhaleSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Skill result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillResult"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Upstream fetch failed",
+            "x-error-codes": [
+              "UPSTREAM_ERROR",
+              "HTTP_502"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "AgentNFT not configured (unbroker)",
+            "x-error-codes": [
+              "ADDRESS_NOT_CONFIGURED"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/skills/osint/courtlistener": {
+      "post": {
+        "summary": "CourtListener opinions and RECAP search",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "requestBody": {
+          "description": "Skill parameters",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SkillosintCourtlistenerSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Skill result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillResult"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Upstream fetch failed",
+            "x-error-codes": [
+              "UPSTREAM_ERROR",
+              "HTTP_502"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "AgentNFT not configured (unbroker)",
+            "x-error-codes": [
+              "ADDRESS_NOT_CONFIGURED"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/skills/osint/entity_resolve": {
+      "post": {
+        "summary": "Resolve whether entity names refer to the same company",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "requestBody": {
+          "description": "Skill parameters",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SkillosintEntityResolveSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Skill result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillResult"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Upstream fetch failed",
+            "x-error-codes": [
+              "UPSTREAM_ERROR",
+              "HTTP_502"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "AgentNFT not configured (unbroker)",
+            "x-error-codes": [
+              "ADDRESS_NOT_CONFIGURED"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/skills/osint/ofac_sdn": {
+      "post": {
+        "summary": "OFAC SDN list name search",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "requestBody": {
+          "description": "Skill parameters",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SkillosintOfacSdnSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Skill result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillResult"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Upstream fetch failed",
+            "x-error-codes": [
+              "UPSTREAM_ERROR",
+              "HTTP_502"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "AgentNFT not configured (unbroker)",
+            "x-error-codes": [
+              "ADDRESS_NOT_CONFIGURED"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/skills/osint/opencorporates": {
+      "post": {
+        "summary": "OpenCorporates company search",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "requestBody": {
+          "description": "Skill parameters",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SkillosintOpencorporatesSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Skill result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillResult"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Upstream fetch failed",
+            "x-error-codes": [
+              "UPSTREAM_ERROR",
+              "HTTP_502"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "AgentNFT not configured (unbroker)",
+            "x-error-codes": [
+              "ADDRESS_NOT_CONFIGURED"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/skills/osint/sec_edgar": {
+      "post": {
+        "summary": "SEC EDGAR company submissions lookup",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "requestBody": {
+          "description": "Skill parameters",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SkillosintSecEdgarSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Skill result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillResult"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Upstream fetch failed",
+            "x-error-codes": [
+              "UPSTREAM_ERROR",
+              "HTTP_502"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "AgentNFT not configured (unbroker)",
+            "x-error-codes": [
+              "ADDRESS_NOT_CONFIGURED"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/skills/osint/usaspending": {
+      "post": {
+        "summary": "USASpending.gov federal award search",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "requestBody": {
+          "description": "Skill parameters",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SkillosintUsaspendingSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Skill result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillResult"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Upstream fetch failed",
+            "x-error-codes": [
+              "UPSTREAM_ERROR",
+              "HTTP_502"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "AgentNFT not configured (unbroker)",
+            "x-error-codes": [
+              "ADDRESS_NOT_CONFIGURED"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/skills/stocks/compare": {
+      "post": {
+        "summary": "Compare multiple stock quotes",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "requestBody": {
+          "description": "Skill parameters",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SkillstocksCompareSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Skill result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillResult"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Upstream fetch failed",
+            "x-error-codes": [
+              "UPSTREAM_ERROR",
+              "HTTP_502"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "AgentNFT not configured (unbroker)",
+            "x-error-codes": [
+              "ADDRESS_NOT_CONFIGURED"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/skills/stocks/crypto": {
+      "post": {
+        "summary": "Crypto pair quote (e.g. BTC-USD)",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "requestBody": {
+          "description": "Skill parameters",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SkillstocksCryptoSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Skill result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillResult"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Upstream fetch failed",
+            "x-error-codes": [
+              "UPSTREAM_ERROR",
+              "HTTP_502"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "AgentNFT not configured (unbroker)",
+            "x-error-codes": [
+              "ADDRESS_NOT_CONFIGURED"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/skills/stocks/history": {
+      "post": {
+        "summary": "Historical price data",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "requestBody": {
+          "description": "Skill parameters",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SkillstocksHistorySchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Skill result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillResult"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Upstream fetch failed",
+            "x-error-codes": [
+              "UPSTREAM_ERROR",
+              "HTTP_502"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "AgentNFT not configured (unbroker)",
+            "x-error-codes": [
+              "ADDRESS_NOT_CONFIGURED"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/skills/stocks/quote": {
+      "post": {
+        "summary": "Real-time stock quote",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "requestBody": {
+          "description": "Skill parameters",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SkillstocksQuoteSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Skill result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillResult"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Upstream fetch failed",
+            "x-error-codes": [
+              "UPSTREAM_ERROR",
+              "HTTP_502"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "AgentNFT not configured (unbroker)",
+            "x-error-codes": [
+              "ADDRESS_NOT_CONFIGURED"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/skills/stocks/search": {
+      "post": {
+        "summary": "Yahoo Finance symbol search",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "requestBody": {
+          "description": "Skill parameters",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SkillstocksSearchSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Skill result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillResult"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Upstream fetch failed",
+            "x-error-codes": [
+              "UPSTREAM_ERROR",
+              "HTTP_502"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "AgentNFT not configured (unbroker)",
+            "x-error-codes": [
+              "ADDRESS_NOT_CONFIGURED"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/skills/unbroker/analyze": {
+      "post": {
+        "summary": "Validate transfer proof and compute safety score",
+        "security": [
+          {
+            "serverKey": []
+          }
+        ],
+        "x-required-principal": "server",
+        "requestBody": {
+          "description": "Skill parameters",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SkillunbrokerAnalyzeSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Skill result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillResult"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Upstream fetch failed",
+            "x-error-codes": [
+              "UPSTREAM_ERROR",
+              "HTTP_502"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "AgentNFT not configured (unbroker)",
+            "x-error-codes": [
+              "ADDRESS_NOT_CONFIGURED"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/skills/unbroker/route": {
+      "post": {
+        "summary": "Compare transfer path options",
+        "security": [
+          {
+            "serverKey": []
+          }
+        ],
+        "x-required-principal": "server",
+        "requestBody": {
+          "description": "Skill parameters",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SkillunbrokerSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Skill result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillResult"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Upstream fetch failed",
+            "x-error-codes": [
+              "UPSTREAM_ERROR",
+              "HTTP_502"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "AgentNFT not configured (unbroker)",
+            "x-error-codes": [
+              "ADDRESS_NOT_CONFIGURED"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/skills/unbroker/simulate": {
+      "post": {
+        "summary": "Simulate an ERC-7857 transfer without sending",
+        "security": [
+          {
+            "serverKey": []
+          }
+        ],
+        "x-required-principal": "server",
+        "requestBody": {
+          "description": "Skill parameters",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SkillunbrokerSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Skill result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillResult"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Upstream fetch failed",
+            "x-error-codes": [
+              "UPSTREAM_ERROR",
+              "HTTP_502"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "AgentNFT not configured (unbroker)",
+            "x-error-codes": [
+              "ADDRESS_NOT_CONFIGURED"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "webhooks": {}
+}

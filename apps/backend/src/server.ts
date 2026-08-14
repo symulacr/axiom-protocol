@@ -417,6 +417,22 @@ export function startServer(config: ServerConfig): {
 
   registerHealthRoutes(app, config, provider, teeSigner);
   registerOracleRoutes(app, oracleDeps);
+  // Oracle routes are plain Express mounts (no createRoute), so they never reached
+  // REGISTERED_ROUTES — register them here so GET /v1/routes is a complete map.
+  REGISTERED_ROUTES.push(
+    {
+      method: "GET",
+      path: "/oracle/health",
+      consumer: "oracle",
+      description: "TEE oracle signer pubkey + status",
+    },
+    {
+      method: "POST",
+      path: "/oracle/v1/agents/mint",
+      consumer: "oracle",
+      description: "Register an agent dataHash with the oracle",
+    },
+  );
   registerComputeRoutes(app, config);
 
   registerChatRoutes(app, config);
