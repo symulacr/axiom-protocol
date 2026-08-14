@@ -31,7 +31,6 @@ test("POST transfer rejects cleartext oldDataEncryptionKey with 400", async () =
     port: 0,
     evmRpc: "http://127.0.0.1:1",
     signer,
-    oracleBaseUrl: "http://127.0.0.1:9",
     addresses: {
       agentNft: ("0x" + "00".repeat(19) + "01") as `0x${string}`,
       vault: ("0x" + "00".repeat(19) + "02") as `0x${string}`,

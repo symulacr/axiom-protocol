@@ -29,7 +29,6 @@ function buildEventsApp() {
     port: 0,
     evmRpc: "https://evmrpc.0g.ai",
     signer: {} as ServerConfig["signer"],
-    oracleBaseUrl: "http://oracle",
     env: {
       AXIOM_INDEXER_API_KEY: INDEXER_KEY,
     } as unknown as ServerConfig["env"],

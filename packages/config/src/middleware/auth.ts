@@ -52,6 +52,14 @@ const CLIENT_ALLOWED_ROUTES: ReadonlyArray<{
       p === "/v1/chat/completions" ||
       p === "/v1/orchestrator/tick",
   },
+  // Read-only persisted chat transcripts (0G) + 0G compute provider list — client-reachable
+  {
+    methods: ["GET"],
+    match: (p) =>
+      p === "/v1/chat/history" ||
+      p.startsWith("/v1/chat/history?") ||
+      p === "/v1/compute/providers",
+  },
   // In-process oracle surface (mint registration + health); browser keys reach it same-origin.
   {
     methods: ["GET", "POST"],

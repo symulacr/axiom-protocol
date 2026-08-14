@@ -23,7 +23,6 @@ function makeConfig(extraEnv?: Record<string, string>): ServerConfig {
     port: 0,
     evmRpc: "http://127.0.0.1:1",
     signer: TEST_SIGNER,
-    oracleBaseUrl: "http://127.0.0.1:1",
     addresses: MOCK_ADDRESSES,
     env: {
       AXIOM_TEE_SIGNER_PK: "0x" + "11".repeat(32),

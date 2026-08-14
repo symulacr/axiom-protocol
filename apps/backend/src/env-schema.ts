@@ -10,7 +10,7 @@ export const backendEnvSchema = sharedEnvSchema.merge(
     AXIOM_ORACLE_URL: z
       .string()
       .url(
-        "AXIOM_ORACLE_URL must be a valid URL (oracle service, e.g. https://oracle…/ or http://127.0.0.1:8787)",
+        "AXIOM_ORACLE_URL must be a valid URL (e2e/CLI fallback for the /oracle surface)",
       )
       .optional(),
     AXIOM_INDEXER_API_KEY: z.string().optional(),

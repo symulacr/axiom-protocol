@@ -267,14 +267,14 @@ export async function runOracleRegisterStep(
   fetchJson: FetchJson,
 ): Promise<void> {
   console.log(
-    "\n[Step 5]  Register dataHash with oracle (POST /v1/agents/mint)",
+    "\n[Step 5]  Register dataHash with oracle (POST /oracle/v1/agents/mint)",
   );
   const oracleApiKey = process.env.AXIOM_API_KEY ?? "";
   const { data: mint } = await fetchJson<{
     ok: boolean;
     dataHash: string;
     seen: boolean;
-  }>(`${oracleUrl}/v1/agents/mint`, {
+  }>(`${oracleUrl}/oracle/v1/agents/mint`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -289,7 +289,7 @@ export async function runOracleRegisterStep(
   );
   stepResults.push({
     step: 5,
-    name: "oracle /v1/agents/mint",
+    name: "oracle /oracle/v1/agents/mint",
     ok,
     summary: `dataHash=${mint.dataHash}`,
   });

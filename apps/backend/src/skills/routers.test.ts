@@ -12,7 +12,6 @@ function buildSkillApp() {
     port: 0,
     evmRpc: "https://evmrpc.0g.ai",
     signer: {} as ServerConfig["signer"],
-    oracleBaseUrl: "http://oracle",
     env: {} as unknown as ServerConfig["env"],
   } as unknown as ServerConfig;
 

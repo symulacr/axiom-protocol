@@ -51,8 +51,14 @@ function makeInput(): OwnershipProofInput {
 }
 
 /** Sign an ownership digest exactly as the TEE oracle would. */
-function signOwnership(input: OwnershipProofInput, signer: Wallet, domain: Eip712Domain): Hex {
-  const sig = signer.signingKey.sign(getBytes(ownershipMessageHash(input, domain)));
+function signOwnership(
+  input: OwnershipProofInput,
+  signer: Wallet,
+  domain: Eip712Domain,
+): Hex {
+  const sig = signer.signingKey.sign(
+    getBytes(ownershipMessageHash(input, domain)),
+  );
   return sig.serialized as Hex;
 }
 
@@ -70,7 +76,11 @@ test("assertTrustedOracleSigner accepts a signature from the configured trusted 
     trusted.address as Hex,
     DEFAULT_EIP712_DOMAIN,
   );
-  assert.equal(ok, true, "valid signature from the trusted key must be accepted");
+  assert.equal(
+    ok,
+    true,
+    "valid signature from the trusted key must be accepted",
+  );
   assert.equal(res.statusCode, 0, "no error status set on acceptance");
   assert.equal(res.body, undefined);
 });
@@ -92,7 +102,10 @@ test("assertTrustedOracleSigner rejects a valid signature from a non-trusted key
   );
   assert.equal(ok, false, "signature from a non-trusted key must be rejected");
   assert.equal(res.statusCode, 502);
-  assert.equal((res.body as { code?: string }).code, "ORACLE_SIGNATURE_INVALID");
+  assert.equal(
+    (res.body as { code?: string }).code,
+    "ORACLE_SIGNATURE_INVALID",
+  );
 });
 
 test("assertTrustedOracleSigner is domain-bound (wrong verifier's signature rejected)", () => {
@@ -111,7 +124,11 @@ test("assertTrustedOracleSigner is domain-bound (wrong verifier's signature reje
     trusted.address as Hex,
     DEFAULT_EIP712_DOMAIN,
   );
-  assert.equal(ok, false, "signature minted for another verifier must not verify");
+  assert.equal(
+    ok,
+    false,
+    "signature minted for another verifier must not verify",
+  );
   assert.equal(res.statusCode, 502);
 });
 
@@ -126,7 +143,6 @@ function buildTransferApp(trustedPk: Hex, oracleSigner: Wallet) {
     port: 0,
     evmRpc: "https://evmrpc.0g.ai",
     signer: new Wallet(trustedPk),
-    oracleBaseUrl: "http://oracle",
     addresses: {
       agentNft: ("0x" + "aa".repeat(20)) as Hex,
       vault: ("0x" + "bb".repeat(20)) as Hex,
@@ -192,11 +208,14 @@ test("POST /v1/agents/:id/transfer rejects a malicious oracle (non-trusted signe
   const server = app.listen(0);
   try {
     const addr = server.address() as { port: number };
-    const res = await fetch(`http://127.0.0.1:${addr.port}/v1/agents/1/transfer`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(transferBody),
-    });
+    const res = await fetch(
+      `http://127.0.0.1:${addr.port}/v1/agents/1/transfer`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(transferBody),
+      },
+    );
     assert.equal(
       res.status,
       502,
@@ -216,12 +235,19 @@ test("POST /v1/agents/:id/transfer accepts a legitimate oracle signing with the 
   const server = app.listen(0);
   try {
     const addr = server.address() as { port: number };
-    const res = await fetch(`http://127.0.0.1:${addr.port}/v1/agents/1/transfer`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(transferBody),
-    });
-    assert.equal(res.status, 200, "route must accept when the oracle signs with the trusted key");
+    const res = await fetch(
+      `http://127.0.0.1:${addr.port}/v1/agents/1/transfer`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(transferBody),
+      },
+    );
+    assert.equal(
+      res.status,
+      200,
+      "route must accept when the oracle signs with the trusted key",
+    );
     const body = (await res.json()) as { ok?: boolean; stage?: string };
     assert.equal(body.ok, true);
     assert.equal(body.stage, "challenge");

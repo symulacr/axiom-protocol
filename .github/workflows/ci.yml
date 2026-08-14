@@ -23,11 +23,13 @@ jobs:
           persist-credentials: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
       - run: bun install --frozen-lockfile
-      - run: bun run --filter @axiom/config build && bun run --filter @axiom/config
+      - run:
+          bun run --filter @axiom/config build && bun run --filter @axiom/config
           typecheck
       - run: bun run --filter @axiom/chat-runtime build && bun run --filter
           @axiom/chat-runtime typecheck
-      - run: bun run --filter @axiom/backend build && bun run --filter @axiom/backend
+      - run:
+          bun run --filter @axiom/backend build && bun run --filter @axiom/backend
           typecheck
       - run: bun run --filter @axiom/frontend typecheck
       - run: bun run --filter @axiom/frontend lint
@@ -111,7 +113,6 @@ jobs:
     # Public Anvil test keys only — NOT production. Never fund on mainnet.
     env:
       AXIOM_EVM_RPC: https://evmrpc-testnet.0g.ai
-      AXIOM_ORACLE_URL: http://127.0.0.1:8080
       DEPLOYER_PK: ${{ secrets.DEPLOYER_PK }}
       E2E_RECEIVER_PK: ${{ secrets.E2E_RECEIVER_PK }}
       RECEIVER_PK: ${{ secrets.RECEIVER_PK }}

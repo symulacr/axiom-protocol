@@ -59,9 +59,8 @@ Requires Node ≥ 22 (Railway pins 22, Vercel 24.x), pnpm 10.22.0, Foundry (`for
 pnpm install
 cp .env.example .env                # canonical template; fill in deployed addresses + secrets
 pnpm --filter @axiom/config build
-pnpm --filter @axiom/chat-runtime build   # required before backend/oracle dev
-pnpm --filter @axiom/oracle dev                       # :8787
-pnpm --filter @axiom/backend dev                      # :3000 (includes indexer)
+pnpm --filter @axiom/chat-runtime build   # required before backend dev
+pnpm --filter @axiom/backend dev                      # :3000 (in-process oracle + indexer)
 pnpm --filter @axiom/frontend dev                     # :5173
 ```
 
@@ -71,8 +70,7 @@ Contracts: `cd apps/contracts && pnpm build && pnpm test`
 
 | Service | URL |
 | --------- | ----- |
-| Backend API | `https://axiom-backend-production-2cf5.up.railway.app` |
-| Oracle (TEE signer) | `https://oracle-production-9f7d.up.railway.app` |
+| Backend API (in-process oracle + indexer) | `https://axiom-backend-production-2cf5.up.railway.app` |
 | Frontend | `https://axiom-protocol.vercel.app` |
 
 ### Contracts (Aristotle mainnet, chain 16661)
