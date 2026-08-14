@@ -183,7 +183,7 @@ function seed(): void {
       title: "Set creator royalty split",
       actor: "operator",
       contracts: ["AxiomPaymentProcessor"],
-      functions: ["setRoyaltyBpsPermitted", "royaltyBpsOf"],
+      functions: ["setRoyaltyBps", "royaltyBpsOf"],
       intent: "Creator configures revenue share before payments",
     },
     {

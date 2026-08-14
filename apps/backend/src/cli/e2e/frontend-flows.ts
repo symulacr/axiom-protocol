@@ -10,24 +10,21 @@ async function runRoutesRegistryStep(deps: {
   backendUrl: string;
 }): Promise<void> {
   console.log("\n[Frontend] GET /v1/routes");
-  const res = await getStep<{ routes?: Array<{ path: string; method?: string }> }>(
-    deps.backendUrl,
-    10.1,
-    "/v1/routes",
-    (r, meta) => {
-      const routes = r.routes ?? [];
-      const count = routes.length;
-      const hasTick = routes.some((x) => x.path === "/v1/orchestrator/tick");
-      const hasEvents = routes.some((x) => x.path === "/v1/events");
-      const hasPerfBatch = routes.some(
-        (x) => x.path === "/v1/agents/performance/batch",
-      );
-      return {
-        summary: `routes=${count} tick=${hasTick} events=${hasEvents} perfBatch=${hasPerfBatch}`,
-        ok: meta.ok && count >= 10 && hasEvents && hasPerfBatch && hasTick,
-      };
-    },
-  );
+  const res = await getStep<{
+    routes?: Array<{ path: string; method?: string }>;
+  }>(deps.backendUrl, 10.1, "/v1/routes", (r, meta) => {
+    const routes = r.routes ?? [];
+    const count = routes.length;
+    const hasTick = routes.some((x) => x.path === "/v1/orchestrator/tick");
+    const hasEvents = routes.some((x) => x.path === "/v1/events");
+    const hasPerfBatch = routes.some(
+      (x) => x.path === "/v1/agents/performance/batch",
+    );
+    return {
+      summary: `routes=${count} tick=${hasTick} events=${hasEvents} perfBatch=${hasPerfBatch}`,
+      ok: meta.ok && count >= 10 && hasEvents && hasPerfBatch && hasTick,
+    };
+  });
   void res;
   markScenarioCovered("api.routes", "routes-registry", { reads: 1 });
 }
@@ -39,25 +36,22 @@ async function runEventsFeedStep(deps: {
   console.log("\n[Frontend] GET /v1/events (Tick feed)");
   const since = Date.now() - 300_000;
   const path = `/v1/events?eventName=Tick&since=${since}`;
-  await getStep<{ events: Array<{ eventName: string; payload?: Record<string, unknown> }> }>(
-    deps.backendUrl,
-    10.2,
-    path,
-    (r, meta) => {
-      const ticks = r.events ?? [];
-      const match = deps.tokenId
-        ? ticks.some(
-            (e) =>
-              String(e.payload?.agentTokenId ?? e.payload?.tokenId ?? "") ===
-              deps.tokenId,
-          )
-        : ticks.length > 0;
-      return {
-        summary: `events=${ticks.length} tokenMatch=${match}`,
-        ok: meta.ok && ticks.length > 0 && (deps.tokenId ? match : true),
-      };
-    },
-  );
+  await getStep<{
+    events: Array<{ eventName: string; payload?: Record<string, unknown> }>;
+  }>(deps.backendUrl, 10.2, path, (r, meta) => {
+    const ticks = r.events ?? [];
+    const match = deps.tokenId
+      ? ticks.some(
+          (e) =>
+            String(e.payload?.agentTokenId ?? e.payload?.tokenId ?? "") ===
+            deps.tokenId,
+        )
+      : ticks.length > 0;
+    return {
+      summary: `events=${ticks.length} tokenMatch=${match}`,
+      ok: meta.ok && ticks.length > 0 && (deps.tokenId ? match : true),
+    };
+  });
   markScenarioCovered("events.feed", "events-feed", { reads: 1 });
 }
 
@@ -67,7 +61,9 @@ async function runPerformanceBatchStep(deps: {
   minTicks?: number;
 }): Promise<void> {
   const minTicks = deps.minTicks ?? 1;
-  console.log(`\n[Frontend] GET /v1/agents/performance/batch?ids=${deps.tokenId}`);
+  console.log(
+    `\n[Frontend] GET /v1/agents/performance/batch?ids=${deps.tokenId}`,
+  );
   const path = `/v1/agents/performance/batch?ids=${deps.tokenId}`;
   await getStep<{
     results: Record<
@@ -82,7 +78,9 @@ async function runPerformanceBatchStep(deps: {
       ok: meta.ok && ticks >= minTicks,
     };
   });
-  markScenarioCovered("agent.performance-batch", "performance-batch", { reads: 1 });
+  markScenarioCovered("agent.performance-batch", "performance-batch", {
+    reads: 1,
+  });
 }
 
 async function runRoyaltyEncodeStep(deps: {
@@ -91,7 +89,9 @@ async function runRoyaltyEncodeStep(deps: {
   bps?: number;
 }): Promise<void> {
   const bps = deps.bps ?? 8000;
-  console.log(`\n[Frontend] POST /v1/agents/${deps.tokenId}/royalty bps=${bps}`);
+  console.log(
+    `\n[Frontend] POST /v1/agents/${deps.tokenId}/royalty bps=${bps}`,
+  );
   await postStep<{ to: string; data: string; bps: number }>(
     deps.backendUrl,
     10.4,
@@ -138,14 +138,19 @@ async function runEventStreamStep(deps: {
 
     ws.on("message", (raw) => {
       try {
-        const data = JSON.parse(String(raw)) as { topic?: string; payload?: unknown };
+        const data = JSON.parse(String(raw)) as {
+          topic?: string;
+          payload?: unknown;
+        };
         if (data.topic === "hello") {
           hello = true;
           clearTimeout(timer);
           ws.close();
           resolve();
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     });
 
     ws.on("close", () => {
@@ -198,8 +203,10 @@ async function runArchiveProbeStep(deps: {
     id: "archive-snapshots-slow",
     severity: "info",
     category: "ux",
-    message: "E2E uses /archive/closest; /archive/snapshots (CDX) omitted — often >20s",
-    suggestion: "Run snapshots in dedicated slow integration job or E2E_ARCHIVE_CDX=1",
+    message:
+      "E2E uses /archive/closest; /archive/snapshots (CDX) omitted — often >20s",
+    suggestion:
+      "Run snapshots in dedicated slow integration job or E2E_ARCHIVE_CDX=1",
   });
   markScenarioCovered("archive.closest", "archive-closest", { reads: 1 });
 }
@@ -217,7 +224,10 @@ export async function runFrontendPostTickBundle(deps: {
       tokenId: deps.tokenId,
       minTicks: deps.minTicks,
     }),
-    runRoyaltyEncodeStep({ backendUrl: deps.backendUrl, tokenId: deps.tokenId }),
+    runRoyaltyEncodeStep({
+      backendUrl: deps.backendUrl,
+      tokenId: deps.tokenId,
+    }),
     runEventStreamStep({ backendUrl: deps.backendUrl }),
     runArchiveProbeStep({ backendUrl: deps.backendUrl }),
   ]);

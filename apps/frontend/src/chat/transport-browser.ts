@@ -47,6 +47,12 @@ function buildWallet(
         value?: bigint;
       }) => Promise<`0x${string}`>)
     | undefined,
+  waitForReceipt?:
+    | ((txHash: `0x${string}`) => Promise<{
+        status: "success" | "reverted";
+        blockNumber: bigint;
+      } | null>)
+    | undefined,
 ): NonNullable<ToolRuntime["wallet"]> | undefined {
   if (!address) return undefined;
   return {
@@ -65,6 +71,7 @@ function buildWallet(
             }),
         }
       : {}),
+    ...(waitForReceipt ? { waitForReceipt } : {}),
     ...(writeContractAsync
       ? {
           writeContract: async (args: {
@@ -83,6 +90,24 @@ function buildWallet(
             }),
         }
       : {}),
+  };
+}
+
+/** viem receipt wait for chat-signed tool txs: ~60s ceiling, null on timeout/unavailable. */
+export function buildWaitForReceipt(
+  publicClient: ToolContext["publicClient"],
+): ToolContext["waitForReceipt"] {
+  if (!publicClient) return undefined;
+  return async (txHash) => {
+    try {
+      const receipt = await publicClient.waitForTransactionReceipt({
+        hash: txHash,
+        timeout: 60_000,
+      });
+      return { status: receipt.status, blockNumber: receipt.blockNumber };
+    } catch {
+      return null;
+    }
   };
 }
 
@@ -145,7 +170,12 @@ function buildBrowserRuntime(ctx: ToolContext): ToolRuntime {
           },
         } as ToolChain)
       : undefined,
-    wallet: buildWallet(address, sendTransactionAsync, writeContractAsync),
+    wallet: buildWallet(
+      address,
+      sendTransactionAsync,
+      writeContractAsync,
+      buildWaitForReceipt(publicClient),
+    ),
     session: createSession({
       chainId: ctx.chainId,
       walletAddress: ctx.address

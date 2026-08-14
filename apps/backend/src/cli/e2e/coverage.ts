@@ -84,7 +84,6 @@ type TeeCov = {
   registeredSigner(): Promise<string>;
   maxProofAgeSeconds(): Promise<bigint>;
   owner(): Promise<string>;
-  ADMIN_DELAY(): Promise<bigint>;
 };
 
 type Erc20Cov = {
@@ -198,7 +197,6 @@ export async function runMatrixViewSweepStep(deps: {
     hasPendingTreasuryAt,
     hasProtocolFeeBps,
     hasTotalOutstanding,
-    hasAdminDelay,
   ] = await Promise.all([
     hasContractFunction(
       provider,
@@ -229,11 +227,6 @@ export async function runMatrixViewSweepStep(deps: {
       provider,
       deps.paymentProcessor,
       "function totalOutstandingEarnings() view returns (uint256)",
-    ),
-    hasContractFunction(
-      provider,
-      deps.teeVerifier,
-      "function ADMIN_DELAY() view returns (uint256)",
     ),
   ]);
   if (hasPendingVerifier) {
@@ -331,13 +324,6 @@ export async function runMatrixViewSweepStep(deps: {
       `registeredSigner ${signer} != oracle ${deps.teeSignerAddress}`,
     );
   }
-  if (hasAdminDelay) {
-    await tee.contract.ADMIN_DELAY();
-    markCovered("AxiomTeeVerifier", "ADMIN_DELAY", "view-sweep");
-  } else {
-    markSkipped("AxiomTeeVerifier", "ADMIN_DELAY", LEGACY_DEPLOY_REASON);
-  }
-
   if (
     creator &&
     creator.toLowerCase() !== deps.deployer.address.toLowerCase()

@@ -1,4 +1,3 @@
-
 type FrictionSeverity = "info" | "warn" | "waste";
 
 interface FrictionFinding {
@@ -32,7 +31,9 @@ export function recordStepDuration(name: string, ms: number): void {
   }
 }
 
-export function noteFriction(f: Omit<FrictionFinding, "id"> & { id?: string }): void {
+export function noteFriction(
+  f: Omit<FrictionFinding, "id"> & { id?: string },
+): void {
   findings.push({
     id: f.id ?? `F-${findings.length + 1}`,
     ...f,
@@ -48,8 +49,10 @@ export function seedKnownFriction(deps: {
     id: "dual-mint-path",
     severity: "warn",
     category: "duplication",
-    message: "Mint requires oracle POST /v1/agents/mint then on-chain mint — two systems must agree on dataHash",
-    suggestion: "Consider single entrypoint (backend mint route) that orchestrates both legs atomically",
+    message:
+      "Mint requires oracle POST /v1/agents/mint then on-chain mint — two systems must agree on dataHash",
+    suggestion:
+      "Consider single entrypoint (backend mint route) that orchestrates both legs atomically",
   });
 
   noteFriction({
@@ -64,32 +67,40 @@ export function seedKnownFriction(deps: {
     id: "authorize-then-revoke",
     severity: "waste",
     category: "waste",
-    message: "E2E authorizes delegate then immediately revokes (3 txs) purely for parity coverage",
-    suggestion: "In production, keep authorization until transfer clears delegates via _update",
+    message:
+      "E2E authorizes delegate then immediately revokes (3 txs) purely for parity coverage",
+    suggestion:
+      "In production, keep authorization until transfer clears delegates via _update",
   });
 
   noteFriction({
     id: "vault-deposit-partial-withdraw",
     severity: "info",
     category: "waste",
-    message: "Vault deposits 0.001 OG then withdraws 0.0001 OG — net lock for transfer tick only",
-    suggestion: "Use single deposit amount equal to tick signal needs, or skip withdraw when testing tick only",
+    message:
+      "Vault deposits 0.001 OG then withdraws 0.0001 OG — net lock for transfer tick only",
+    suggestion:
+      "Use single deposit amount equal to tick signal needs, or skip withdraw when testing tick only",
   });
 
   noteFriction({
     id: "view-sweep-after-steps",
     severity: "warn",
     category: "duplication",
-    message: "View sweep re-reads fields already asserted in mint/deposit/payment steps",
-    suggestion: "Collapse view sweep into a single pre-transfer snapshot or generate from step cache",
+    message:
+      "View sweep re-reads fields already asserted in mint/deposit/payment steps",
+    suggestion:
+      "Collapse view sweep into a single pre-transfer snapshot or generate from step cache",
   });
 
   noteFriction({
     id: "transfer-reseal-local",
     severity: "info",
     category: "ux",
-    message: "Transfer flow re-seals dataKey locally before POST — duplicates encrypt step crypto",
-    suggestion: "Backend could accept dataKey envelope and re-seal server-side with TEE",
+    message:
+      "Transfer flow re-seals dataKey locally before POST — duplicates encrypt step crypto",
+    suggestion:
+      "Backend could accept dataKey envelope and re-seal server-side with TEE",
   });
 
   if (deps.walletSource === "legacy-env") {
@@ -97,8 +108,10 @@ export function seedKnownFriction(deps: {
       id: "legacy-wallet-mix",
       severity: "warn",
       category: "config",
-      message: "E2E uses DEPLOYER_PK fallback instead of dedicated E2E_OPERATOR_PK",
-      suggestion: "Run pnpm provision-e2e-wallet and fund E2E_OPERATOR_ADDRESS from faucet",
+      message:
+        "E2E uses DEPLOYER_PK fallback instead of dedicated E2E_OPERATOR_PK",
+      suggestion:
+        "Run pnpm provision-e2e-wallet and fund E2E_OPERATOR_ADDRESS from faucet",
     });
   }
 
@@ -117,7 +130,8 @@ export function seedKnownFriction(deps: {
       id: "payment-skipped",
       severity: "info",
       category: "config",
-      message: "E2E_PAYMENT=0 skips payment scenarios — parity matrix marks them SKIP",
+      message:
+        "E2E_PAYMENT=0 skips payment scenarios — parity matrix marks them SKIP",
       suggestion: "Enable payment path for full economic loop coverage",
     });
   }
@@ -128,36 +142,45 @@ export function seedFrontendFriction(): void {
     id: "ui-mint-skips-storage",
     severity: "info",
     category: "ux",
-    message: "Mint wizard registers oracle + on-chain mint; full 0G Storage upload still CLI/E2E-only",
-    suggestion: "Add browser storage upload when backend proxy or 0G SDK is wired",
+    message:
+      "Mint wizard registers oracle + on-chain mint; full 0G Storage upload still CLI/E2E-only",
+    suggestion:
+      "Add browser storage upload when backend proxy or 0G SDK is wired",
   });
   noteFriction({
     id: "ui-no-set-strategy",
     severity: "info",
     category: "ux",
-    message: "StrategyPanel exposes setStrategy; legacy 3-arg vault may need ABI probe",
-    suggestion: "Mirror vault-compat detectVaultAbiVariant in frontend if legacy deploys persist",
+    message:
+      "StrategyPanel exposes setStrategy; legacy 3-arg vault may need ABI probe",
+    suggestion:
+      "Mirror vault-compat detectVaultAbiVariant in frontend if legacy deploys persist",
   });
   noteFriction({
     id: "ui-no-authorize-delegate",
     severity: "info",
     category: "ux",
-    message: "DelegatePanel covers authorizeUsage; payComputeProvider still chat/backend only",
+    message:
+      "DelegatePanel covers authorizeUsage; payComputeProvider still chat/backend only",
     suggestion: "Add compute payment UI on Payments tab when product-ready",
   });
   noteFriction({
     id: "ui-royalty-encode-only",
     severity: "info",
     category: "duplication",
-    message: "PaymentPanel uses POST /royalty encode — E2E also runs on-chain setRoyaltyBpsPermitted",
-    suggestion: "Single path: encode via API then wallet signs (already partial in UI)",
+    message:
+      "PaymentPanel uses POST /royalty encode — E2E also runs on-chain setRoyaltyBps",
+    suggestion:
+      "Single path: encode via API then wallet signs (already partial in UI)",
   });
   noteFriction({
     id: "e2e-mock-tick-redundant",
     severity: "waste",
     category: "waste",
-    message: "Mock orchestrator tick duplicates live tick when E2E_LIVE_COMPUTE=1",
-    suggestion: "Skip mock tick in fast+live mode; live + availability ticks cover endpoint",
+    message:
+      "Mock orchestrator tick duplicates live tick when E2E_LIVE_COMPUTE=1",
+    suggestion:
+      "Skip mock tick in fast+live mode; live + availability ticks cover endpoint",
   });
 }
 
@@ -171,7 +194,8 @@ export function recordErc20Approve(): void {
       severity: "waste",
       category: "duplication",
       message: `Multiple ERC20 approve txs in one run (${approveTxCount})`,
-      suggestion: "Use ensureErc20Allowance with max allowance once per spender",
+      suggestion:
+        "Use ensureErc20Allowance with max allowance once per spender",
       evidence: `approve count=${approveTxCount}`,
     });
   }
@@ -199,10 +223,14 @@ export function printFrictionReport(): void {
   if (findings.length === 0) {
     console.log("  No friction findings recorded.");
   } else {
-    console.log(`\n  ${findings.length} finding(s) — review for prod UX + gas savings`);
+    console.log(
+      `\n  ${findings.length} finding(s) — review for prod UX + gas savings`,
+    );
   }
 
-  const slow = stepDurationsMs.filter((s) => s.ms > 10_000).sort((a, b) => b.ms - a.ms);
+  const slow = stepDurationsMs
+    .filter((s) => s.ms > 10_000)
+    .sort((a, b) => b.ms - a.ms);
   if (slow.length > 0) {
     console.log("\n  Slow steps (>10s):");
     for (const s of slow.slice(0, 5)) {

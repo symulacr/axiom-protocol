@@ -55,7 +55,6 @@ contract AxiomAgentNFT is
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-    string public constant VERSION = "1.0.0";
 
     bytes32 private constant STORAGE_LOCATION = 0xe982fe9a44d6409dbf89634fae06be5c796203a5c100b2ec87b395d27194a900;
 
@@ -196,16 +195,6 @@ contract AxiomAgentNFT is
 
     function pendingVerifierExecutableAt() public view returns (uint256) {
         return _getAxiomAgentNFTStorage().verifierTimelock.proposedAt + TimelockManager.DELAY;
-    }
-
-    function authorizeAndDelegate(
-        address delegate,
-        uint256 tokenId,
-        uint256 validUntil
-    ) external whenNotPaused {
-        require(_ownerOf(tokenId) == msg.sender, "Not owner");
-        _authorizeUsage(tokenId, delegate);
-        delegateAccess(delegate);
     }
 
     /// @notice Tx-reduction merge of authorizeAndDelegate + revokeAuthorization: authorizes `delegate`

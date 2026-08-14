@@ -6,12 +6,20 @@ import { runOrchestrateTool, buildTickBody } from "./orchestrate.js";
 const ctx = {
   http: {
     async fetch() {
-      return { ok: true, status: 200, text: async () => "", json: async () => ({}) };
+      return {
+        ok: true,
+        status: 200,
+        text: async () => "",
+        json: async () => ({}),
+      };
     },
   },
   session: {
     chainId: 1,
-    addresses: { vault: "0xV" as `0x${string}`, agentNft: "0xN" as `0x${string}` },
+    addresses: {
+      vault: "0xV" as `0x${string}`,
+      agentNft: "0xN" as `0x${string}`,
+    },
   },
   mode: "encode-only",
 } as unknown as ToolRuntime;
@@ -36,7 +44,10 @@ function readyChain() {
 
 describe("buildTickBody", () => {
   it("includes computeModel when provided", () => {
-    const result = buildTickBody({ tokenId: "7", computeModel: "openai/gpt-4o" }, ctx);
+    const result = buildTickBody(
+      { tokenId: "7", computeModel: "openai/gpt-4o" },
+      ctx,
+    );
     assert.equal(result.computeModel, "openai/gpt-4o");
     assert.equal(result.agentTokenId, "7");
     assert.equal(result.vault, "0xV");
@@ -58,19 +69,15 @@ describe("buildTickBody", () => {
 
 describe("runOrchestrateTool", () => {
   it("simulate_tick reports a ready simulated state from on-chain reads", async () => {
-    const res = await runOrchestrateTool(
-      "simulate_tick",
-      { tokenId: "3" },
-      {
-        chain: readyChain(),
-        session: {
-          chainId: 1,
-          lastTokenId: "3",
-          addresses: { vault: VAULT, agentNft: AGENT_NFT },
-        },
-        mode: "encode-only",
-      } as unknown as ToolRuntime,
-    );
+    const res = await runOrchestrateTool("simulate_tick", { tokenId: "3" }, {
+      chain: readyChain(),
+      session: {
+        chainId: 1,
+        lastTokenId: "3",
+        addresses: { vault: VAULT, agentNft: AGENT_NFT },
+      },
+      mode: "encode-only",
+    } as unknown as ToolRuntime);
     assert.equal(res.ok, true);
     const data = JSON.parse(res.content) as {
       simulated: boolean;
@@ -94,32 +101,31 @@ describe("runOrchestrateTool", () => {
       } as unknown as ToolRuntime,
     );
     assert.equal(res.ok, true);
-    const data = JSON.parse(res.content) as { simulated: boolean; tokenId: string };
+    const data = JSON.parse(res.content) as {
+      simulated: boolean;
+      tokenId: string;
+    };
     assert.equal(data.simulated, true);
     assert.equal(data.tokenId, "3");
   });
 
   it("execute_tick refuses when the vault balance is zero (NOT_READY)", async () => {
-    const res = await runOrchestrateTool(
-      "execute_tick",
-      { tokenId: "3" },
-      {
-        chain: {
-          chainId: 1,
-          readContract: async (req: { functionName: string }) => {
-            if (req.functionName === "balanceOf") return 0n;
-            return [STRATEGY_ROOT, 0n, 0n, 0n, 0n];
-          },
-          multicall: async () => [],
+    const res = await runOrchestrateTool("execute_tick", { tokenId: "3" }, {
+      chain: {
+        chainId: 1,
+        readContract: async (req: { functionName: string }) => {
+          if (req.functionName === "balanceOf") return 0n;
+          return [STRATEGY_ROOT, 0n, 0n, 0n, 0n];
         },
-        session: {
-          chainId: 1,
-          lastTokenId: "3",
-          addresses: { vault: VAULT, agentNft: AGENT_NFT },
-        },
-        mode: "encode-only",
-      } as unknown as ToolRuntime,
-    );
+        multicall: async () => [],
+      },
+      session: {
+        chainId: 1,
+        lastTokenId: "3",
+        addresses: { vault: VAULT, agentNft: AGENT_NFT },
+      },
+      mode: "encode-only",
+    } as unknown as ToolRuntime);
     assert.equal(res.ok, false);
     const data = JSON.parse(res.content) as { error: string };
     assert.ok(data.error.includes("NOT_READY"), `error was ${data.error}`);
@@ -164,27 +170,23 @@ describe("runOrchestrateTool", () => {
   });
 
   it("execute_tick fails with the shared envelope when the HTTP call fails", async () => {
-    const res = await runOrchestrateTool(
-      "execute_tick",
-      { tokenId: "3" },
-      {
-        http: {
-          fetch: async () => ({
-            ok: false,
-            status: 502,
-            text: async () => "",
-            json: async () => ({}),
-          }),
-        },
-        chain: readyChain(),
-        session: {
-          chainId: 1,
-          lastTokenId: "3",
-          addresses: { vault: VAULT, agentNft: AGENT_NFT },
-        },
-        mode: "encode-only",
-      } as unknown as ToolRuntime,
-    );
+    const res = await runOrchestrateTool("execute_tick", { tokenId: "3" }, {
+      http: {
+        fetch: async () => ({
+          ok: false,
+          status: 502,
+          text: async () => "",
+          json: async () => ({}),
+        }),
+      },
+      chain: readyChain(),
+      session: {
+        chainId: 1,
+        lastTokenId: "3",
+        addresses: { vault: VAULT, agentNft: AGENT_NFT },
+      },
+      mode: "encode-only",
+    } as unknown as ToolRuntime);
     assert.equal(res.ok, false);
     const data = JSON.parse(res.content) as { error: string };
     assert.equal(data.error, "tick http fail");

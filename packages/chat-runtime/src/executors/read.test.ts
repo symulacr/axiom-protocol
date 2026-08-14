@@ -13,7 +13,11 @@ function makeCtx(overrides: Record<string, unknown> = {}): ToolRuntime {
         json: async () => ({ agents: [] }),
       }),
     },
-    chain: { chainId: 1, readContract: async () => 0n, multicall: async () => [] },
+    chain: {
+      chainId: 1,
+      readContract: async () => 0n,
+      multicall: async () => [],
+    },
     session: { chainId: 1 },
     mode: "sign",
     ...overrides,
@@ -68,11 +72,18 @@ describe("runReadTool", () => {
         readContract: async () => 5n,
         multicall: async () => [],
       },
-      session: { chainId: 1, lastTokenId: "3", addresses: { vault: VAULT, agentNft: AGENT_NFT } },
+      session: {
+        chainId: 1,
+        lastTokenId: "3",
+        addresses: { vault: VAULT, agentNft: AGENT_NFT },
+      },
     });
     const res = await runReadTool("vault_balance", {}, ctx);
     assert.equal(res.ok, true);
-    const data = JSON.parse(res.content) as { tokenId: string; balance: string };
+    const data = JSON.parse(res.content) as {
+      tokenId: string;
+      balance: string;
+    };
     assert.equal(data.tokenId, "3");
     assert.equal(data.balance, "5");
   });
@@ -95,7 +106,11 @@ describe("runReadTool", () => {
           },
         ],
       },
-      session: { chainId: 1, lastTokenId: "7", addresses: { vault: VAULT, agentNft: AGENT_NFT } },
+      session: {
+        chainId: 1,
+        lastTokenId: "7",
+        addresses: { vault: VAULT, agentNft: AGENT_NFT },
+      },
     });
     const res = await runReadTool("agent_metadata", {}, ctx);
     assert.equal(res.ok, true);

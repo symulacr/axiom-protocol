@@ -57,6 +57,11 @@ export type ToolContext = {
     data?: `0x${string}`;
     value?: bigint;
   }) => Promise<`0x${string}`>;
+  /** Optional receipt wait for wallet-signed tool txs; null on timeout/unavailable. */
+  waitForReceipt?: (txHash: `0x${string}`) => Promise<{
+    status: "success" | "reverted";
+    blockNumber: bigint;
+  } | null>;
   publicClient: ReturnType<typeof usePublicClient>;
   openTransfer?: (tokenId: string) => Promise<string>;
 };

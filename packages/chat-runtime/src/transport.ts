@@ -42,6 +42,13 @@ export interface ToolChain {
 interface ToolWallet {
   address?: `0x${string}`;
   signAndSend?(calldata: EncodeCalldata): Promise<`0x${string}`>;
+  /** Optional receipt wait so the LLM can report "confirmed" (mined + block)
+   *  instead of a fire-and-forget hash. Transports that cannot wait (no
+   *  provider / timeout) return null — executors fall back to txHash-only. */
+  waitForReceipt?(txHash: `0x${string}`): Promise<{
+    status: "success" | "reverted";
+    blockNumber: bigint;
+  } | null>;
   writeContract?(args: {
     address: `0x${string}`;
     abi: readonly unknown[];

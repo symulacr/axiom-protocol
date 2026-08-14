@@ -7,9 +7,7 @@ import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {IERC7857} from "./interfaces/IERC7857.sol";
 import {IERC7857Metadata, IntelligentData} from "./interfaces/IERC7857Metadata.sol";
 import {
-    AccessProof,
     IERC7857DataVerifier,
-    OwnershipProof,
     TransferValidityProof,
     TransferValidityProofOutput
 } from "./interfaces/IERC7857DataVerifier.sol";
@@ -182,22 +180,6 @@ abstract contract ERC7857Upgradeable is IERC7857, ERC721Upgradeable {
         TransferValidityProof[] memory proofs
     ) public virtual {
         _transfer(from, to, tokenId, proofs);
-    }
-
-    function iBatchTransferFrom(
-        address from,
-        address[] calldata to,
-        uint256[] calldata tokenIds,
-        AccessProof[] calldata accessProofs,
-        OwnershipProof[] calldata ownershipProofs
-    ) external {
-        uint256 len = tokenIds.length;
-        require(len == to.length && len == accessProofs.length && len == ownershipProofs.length, "length mismatch");
-        TransferValidityProof[] memory proofs = new TransferValidityProof[](1);
-        for (uint256 i = 0; i < len; i++) {
-            proofs[0] = TransferValidityProof({accessProof: accessProofs[i], ownershipProof: ownershipProofs[i]});
-            _transfer(from, to[i], tokenIds[i], proofs);
-        }
     }
 
     function iTransfer(

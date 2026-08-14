@@ -34,9 +34,12 @@ import {
   useThreads,
   type ChatThread as StoredThread,
 } from "../hooks/useThreads.js";
+import { useChatHistory } from "../hooks/useChatHistory.js";
+import { useChatTxStream } from "../hooks/useChatTxStream.js";
 import { useShellSidebar } from "../hooks/useShellSidebar.js";
 import { ChatHistorySection } from "../components/ChatHistorySection.js";
 import { humanizeError } from "../utils/format.js";
+import { resolveBlockExplorerUrl } from "@axiom/config/networks";
 import {
   buildSystemPrompt,
   formatToolResult,
@@ -73,6 +76,7 @@ import {
   useToolHandlers,
   type ToolContext,
 } from "../chat/tools.js";
+import { buildWaitForReceipt } from "../chat/transport-browser.js";
 import {
   CHAT_TOOL_CLASS_LABELS,
   AXIOM_ASSISTANT_NAME,
@@ -175,9 +179,14 @@ const insetCardStyle: CSSProperties = {
 };
 
 /** Store threads carry `unknown[]` at the storage boundary; ChatPage casts
- *  them to Message[] when opening a thread (they were written by this page). */
+ *  them to Message[] when opening a thread (they were written by this page).
+ *  Server transcripts (GET /v1/chat/history) were persisted through
+ *  toChatApiMessages, which strips `id` — re-assign ids so React keys and
+ *  message actions keep working. */
 function toMessages(msgs: unknown[]): Message[] {
-  return msgs as Message[];
+  return (msgs as Message[]).map((m) =>
+    m && typeof m.id === "string" ? m : { ...m, id: crypto.randomUUID() },
+  );
 }
 
 function loadJsonArray<T>(storage: Storage, key: string): T[] {
@@ -507,6 +516,11 @@ function ChatPageInner(): ReactElement {
   );
   const isStreamingRef = useRef(false);
   const threads = useThreads();
+  // Server-persisted transcripts for the connected wallet (merged in the sidebar list)
+  const { serverThreads: serverHistory, isLoading: historyLoading } =
+    useChatHistory(address);
+  // Live on-chain confirmations surfaced as "⛓ tx mined" rows under the thread
+  const { rows: txRows } = useChatTxStream(!!address);
   const [threadId, setThreadId] = useState<string>(() => crypto.randomUUID());
   const [computeHint, setComputeHint] = useState<string | null>(null);
   const [agentStep, setAgentStep] = useState(0);
@@ -587,6 +601,7 @@ function ChatPageInner(): ReactElement {
         ? async ({ to, data, value }) =>
             walletClient.sendTransaction({ to, data, value })
         : undefined,
+      waitForReceipt: buildWaitForReceipt(publicClient),
       publicClient,
       openTransfer,
     }),
@@ -730,6 +745,7 @@ function ChatPageInner(): ReactElement {
               ? async ({ to, data, value }) =>
                   walletClientRef.current!.sendTransaction({ to, data, value })
               : undefined,
+            waitForReceipt: buildWaitForReceipt(publicClientRef.current),
             publicClient: publicClientRef.current,
           };
           const liveSession: ChatSessionContext = {
@@ -1187,6 +1203,8 @@ function ChatPageInner(): ReactElement {
             onOpen={openThread}
             onNew={startNewChat}
             onDelete={deleteThread}
+            serverThreads={serverHistory}
+            serverLoading={historyLoading}
           />,
           threadsSlot,
         )}
@@ -1615,6 +1633,52 @@ function ChatPageInner(): ReactElement {
               )}
             </div>
           ))}
+
+          {txRows.length > 0 && (
+            <div
+              className="fade-enter"
+              role="status"
+              aria-label="Transaction confirmations"
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 4,
+                padding: "0 var(--space-lg)",
+                marginTop: "var(--space-sm)",
+              }}
+            >
+              {txRows.map((row) => (
+                <div
+                  key={row.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    flexWrap: "wrap",
+                    fontSize: "var(--text-xs)",
+                    color: COLORS.textDim,
+                  }}
+                >
+                  <span>⛓ tx mined</span>
+                  {row.tokenId ? <span>agent #{row.tokenId}</span> : null}
+                  <span>{row.eventName}</span>
+                  {row.blockNumber ? (
+                    <span>block {row.blockNumber}</span>
+                  ) : null}
+                  {row.txHash ? (
+                    <a
+                      href={`${resolveBlockExplorerUrl(chainId)}/tx/${row.txHash}`}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      style={{ color: COLORS.bronzeLight }}
+                    >
+                      {`${row.txHash.slice(0, 10)}…${row.txHash.slice(-6)}`}
+                    </a>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          )}
 
           {streamError !== null && (
             <div

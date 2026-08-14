@@ -21,6 +21,34 @@ function encodeOnlyResult(
   };
 }
 
+/** Sign+send, then wait for the receipt when the transport supports it (the
+ *  transport owns the ~60s ceiling). Appends confirmation to the tool result
+ *  so the LLM reports "confirmed" instead of a bare hash; a transport without
+ *  receipt support (or a wait timeout) falls back to txHash-only — never breaks. */
+async function signAndSendWithReceipt(
+  ctx: ToolRuntime,
+  calldata: { to: `0x${string}`; data: `0x${string}`; value: bigint },
+): Promise<{
+  txHash: `0x${string}`;
+  receipt?: { status: string; blockNumber: string };
+}> {
+  const txHash = await ctx.wallet!.signAndSend!(calldata);
+  if (!ctx.wallet?.waitForReceipt) return { txHash };
+  try {
+    const receipt = await ctx.wallet.waitForReceipt(txHash);
+    if (!receipt) return { txHash };
+    return {
+      txHash,
+      receipt: {
+        status: receipt.status,
+        blockNumber: receipt.blockNumber.toString(),
+      },
+    };
+  } catch {
+    return { txHash };
+  }
+}
+
 export async function runEncodeTool(
   name: string,
   args: Record<string, unknown>,
@@ -105,12 +133,24 @@ async function encodeMint(
   }
 
   try {
-    const txHash = await ctx.wallet.signAndSend({
+    const { txHash, receipt } = await signAndSendWithReceipt(ctx, {
       to: data.to as `0x${string}`,
       data: data.data as `0x${string}`,
       value: BigInt(data.value),
     });
-    return { ok: true as const, content: JSON.stringify({ ok: true, txHash }) };
+    return {
+      ok: true as const,
+      content: JSON.stringify(
+        receipt
+          ? {
+              ok: true,
+              txHash,
+              receiptStatus: receipt.status,
+              blockNumber: receipt.blockNumber,
+            }
+          : { ok: true, txHash },
+      ),
+    };
   } catch (e) {
     return toolFail(e instanceof Error ? e.message : "mint sign failed");
   }
@@ -142,14 +182,24 @@ async function encodeVaultOp(
   }
 
   try {
-    const txHash = await ctx.wallet.signAndSend({
+    const { txHash, receipt } = await signAndSendWithReceipt(ctx, {
       to: data.to as `0x${string}`,
       data: data.data as `0x${string}`,
       value: BigInt(data.value || "0"),
     });
     return {
       ok: true as const,
-      content: JSON.stringify({ ok: true, txHash, amount }),
+      content: JSON.stringify(
+        receipt
+          ? {
+              ok: true,
+              txHash,
+              amount,
+              receiptStatus: receipt.status,
+              blockNumber: receipt.blockNumber,
+            }
+          : { ok: true, txHash, amount },
+      ),
     };
   } catch (e) {
     return toolFail(e instanceof Error ? e.message : `${op} sign failed`);

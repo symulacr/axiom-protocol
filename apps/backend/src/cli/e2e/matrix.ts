@@ -1,4 +1,3 @@
-
 type CoverageKind = "view" | "write";
 type CoverageStatus = "pending" | "covered" | "skipped";
 
@@ -68,14 +67,34 @@ export function initParityMatrix(): void {
     "ownerOf",
     "supportsInterface",
   ] as const) {
-    register(agentNft, fn, fn.startsWith("get") || fn.endsWith("Of") || ["name", "symbol", "verifier", "tokenURI", "mintFee", "storageInfo", "pendingVerifier", "pendingVerifierExecutableAt"].includes(fn) ? "view" : "write");
+    register(
+      agentNft,
+      fn,
+      fn.startsWith("get") ||
+        fn.endsWith("Of") ||
+        [
+          "name",
+          "symbol",
+          "verifier",
+          "tokenURI",
+          "mintFee",
+          "storageInfo",
+          "pendingVerifier",
+          "pendingVerifierExecutableAt",
+        ].includes(fn)
+        ? "view"
+        : "write",
+    );
   }
 
   for (const [fn, reason] of [
     ["mintWithRole", "requires MINTER_ROLE wallet (not E2E deployer path)"],
     ["iClone", "requires clone proofs + second data leg"],
     ["iCloneFrom", "requires clone proofs + parent token"],
-    ["iTransfer", "same proof path as iTransferFrom; covered by transfer pipeline"],
+    [
+      "iTransfer",
+      "same proof path as iTransferFrom; covered by transfer pipeline",
+    ],
     ["proposeVerifier", "OPERATOR_ROLE + 1-day timelock"],
     ["executeVerifier", "OPERATOR_ROLE + timelock elapsed"],
     ["cancelVerifierProposal", "OPERATOR_ROLE admin path"],
@@ -91,8 +110,18 @@ export function initParityMatrix(): void {
     register(agentNft, fn, "write", "skipped", reason);
   }
 
-  for (const fn of ["deposit", "withdraw", "balanceOf", "setStrategy", "strategyOf"] as const) {
-    register(vault, fn, fn === "balanceOf" || fn === "strategyOf" ? "view" : "write");
+  for (const fn of [
+    "deposit",
+    "withdraw",
+    "balanceOf",
+    "setStrategy",
+    "strategyOf",
+  ] as const) {
+    register(
+      vault,
+      fn,
+      fn === "balanceOf" || fn === "strategyOf" ? "view" : "write",
+    );
   }
   for (const [fn, reason] of [
     ["execute", "requires strategy Merkle proof tree"],
@@ -107,7 +136,6 @@ export function initParityMatrix(): void {
     "payForAgent",
     "payComputeProvider",
     "withdrawAgentEarnings",
-    "setRoyaltyBpsPermitted",
     "protocolTreasury",
     "pendingProtocolTreasury",
     "pendingTreasuryEffectiveAt",
@@ -132,7 +160,10 @@ export function initParityMatrix(): void {
     register(payment, fn, view ? "view" : "write");
   }
   for (const [fn, reason] of [
-    ["setRoyaltyBps", "creator path covered by setRoyaltyBpsPermitted"],
+    [
+      "setRoyaltyBps",
+      "creator-only; royalty folded into payAndWithdrawEarnings",
+    ],
     ["proposeProtocolTreasury", "onlyOwner timelock"],
     ["executeProtocolTreasury", "onlyOwner timelock"],
     ["cancelProtocolTreasuryProposal", "onlyOwner"],
@@ -151,7 +182,6 @@ export function initParityMatrix(): void {
     "maxProofAgeSeconds",
     "cleanExpiredProofs",
     "owner",
-    "ADMIN_DELAY",
   ] as const) {
     const view = fn !== "cleanExpiredProofs" && fn !== "verifyTransferValidity";
     register(tee, fn, view ? "view" : "write");
@@ -166,7 +196,11 @@ export function initParityMatrix(): void {
   }
 
   for (const fn of ["approve", "balanceOf", "allowance", "transfer"] as const) {
-    register(erc20, fn, fn === "balanceOf" || fn === "allowance" ? "view" : "write");
+    register(
+      erc20,
+      fn,
+      fn === "balanceOf" || fn === "allowance" ? "view" : "write",
+    );
   }
 }
 
@@ -188,7 +222,11 @@ export function markCovered(contract: string, fn: string, step: string): void {
   e.skipReason = undefined;
 }
 
-export function markSkipped(contract: string, fn: string, reason: string): void {
+export function markSkipped(
+  contract: string,
+  fn: string,
+  reason: string,
+): void {
   const k = key(contract, fn);
   const e = entries.get(k);
   if (e) {
@@ -220,9 +258,13 @@ function computeParityReport(): ParityReport {
   const skipped = all.filter((e) => e.status === "skipped").length;
   const pending = all.filter((e) => e.status === "pending").length;
   const actionable = all.filter((e) => e.status !== "skipped");
-  const actionableCovered = actionable.filter((e) => e.status === "covered").length;
+  const actionableCovered = actionable.filter(
+    (e) => e.status === "covered",
+  ).length;
   const actionablePct =
-    actionable.length === 0 ? 100 : Math.round((actionableCovered / actionable.length) * 100);
+    actionable.length === 0
+      ? 100
+      : Math.round((actionableCovered / actionable.length) * 100);
   return {
     covered,
     skipped,
@@ -261,9 +303,9 @@ export function printParityMatrix(): ParityReport {
       e.status === "covered" ? "OK" : e.status === "skipped" ? "SKIP" : "MISS";
     const detail =
       e.status === "covered"
-        ? e.step ?? ""
+        ? (e.step ?? "")
         : e.status === "skipped"
-          ? e.skipReason ?? ""
+          ? (e.skipReason ?? "")
           : "not exercised";
     console.log(
       `    ${flag.padEnd(4)} ${e.function.padEnd(28)} ${e.kind.padEnd(5)} ${detail}`,

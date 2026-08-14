@@ -24,10 +24,6 @@ abstract contract ERC7857CloneableUpgradeable is IERC7857Cloneable, ERC7857Upgra
         }
     }
 
-    function nextTokenId() public view virtual returns (uint256) {
-        return _getERC7857CloneableStorage().nextTokenId;
-    }
-
     function _incrementTokenId() internal returns (uint256) {
         ERC7857CloneableStorage storage $ = _getERC7857CloneableStorage();
         uint256 id = $.nextTokenId;
