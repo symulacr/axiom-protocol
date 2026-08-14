@@ -24,7 +24,7 @@ const _OG_NETWORKS = {
     chainId: 16602,
     evmRpc: "https://evmrpc-testnet.0g.ai",
     storageRpc: "https://indexer-storage-testnet-turbo.0g.ai",
-    computeRouterUrl: "https://router-api-testnet.0g.ai/v1",
+    computeRouterUrl: "https://router-api-testnet.integratenetwork.work/v1",
     blockExplorer: "https://chainscan-testnet.0g.ai",
   },
 } as const satisfies Record<number, OGNetwork>;
