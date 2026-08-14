@@ -66,6 +66,7 @@ import {
 import {
   ChatSessionProvider,
   useChatSession,
+  DEFAULT_PROVIDER_PREF,
   type ProviderPref,
 } from "../chat/ChatSessionProvider.js";
 const TransferModal = lazy(() =>
@@ -186,6 +187,10 @@ type SSEChunk = {
 
 const SUPPORTED_CHAIN_IDS = new Set([APP_CHAIN_ID]);
 const CHAT_MESSAGES_KEY = "axiom:chat-messages";
+/** Active threadId (sessionStorage): lets a page reload resume the SAME
+ *  thread instead of generating a fresh id (which duplicated threads and
+ *  detached the in-progress conversation from its history). */
+const CHAT_THREAD_KEY = "axiom:chat-thread";
 
 const chatMsgStyle: CSSProperties = {
   fontSize: "0.9375rem" /* 15px — readable chat baseline */,
@@ -453,7 +458,21 @@ function AskUserCard({
 }
 
 function loadStoredMessages(): Message[] {
-  return loadJsonArray<Message>(sessionStorage, CHAT_MESSAGES_KEY);
+  // The synthetic `[Earlier conversation summary]` lead is recomputed per run
+  // (cached per thread) — never persist it. Strip defensively so legacy
+  // stored transcripts can't re-inject another thread's summary at mount.
+  return stripSummaryLead(
+    loadJsonArray<Message>(sessionStorage, CHAT_MESSAGES_KEY),
+  );
+}
+
+function loadStoredThreadId(): string | null {
+  try {
+    const raw = sessionStorage.getItem(CHAT_THREAD_KEY);
+    return typeof raw === "string" && raw ? raw : null;
+  } catch {
+    return null;
+  }
 }
 
 function renderMarkdown(src: string | null): string {
@@ -544,10 +563,20 @@ function ChatPageInner(): ReactElement {
   const turnMetricsRef = useRef<TurnMetric[]>([]);
   const currentTurnRef = useRef<TurnMetric>({ wallMs: 0 });
   const stepsRef = useRef(0);
-  /** Cached compaction summary: computed once per session so the inserted
-   *  `[Earlier conversation summary]` message is byte-identical every run
-   *  (prefix-cache stable anchor). Reset when history is rewritten. */
-  const summaryRef = useRef<string | null>(null);
+  /** Cached compaction summary, keyed by threadId: the inserted
+   *  `[Earlier conversation summary]` lead is byte-identical every run within
+   *  a thread (prefix-cache stable anchor), a fresh thread NEVER inherits
+   *  another thread's summary, and switching back reuses the cached lead.
+   *  A thread's entry is deleted when its history is rewritten
+   *  (edit/regenerate/delete). */
+  const summaryCacheRef = useRef<Map<string, string | null>>(new Map());
+  /** Monotonic run generation. Bumped on new-chat/thread-switch so an
+   *  in-flight runAgent can detect staleness and never commit its (old
+   *  thread's) messages — including the old summary lead — into a fresh
+   *  thread. This is the summary-bleed guard. */
+  const runEpochRef = useRef(0);
+  /** Per-thread user-turn counter driving the cache warm-up hint. */
+  const turnCountRef = useRef(0);
   const [queue, setQueue] = useState<string[]>([]);
   const queueRef = useRef<string[]>([]);
   const [toolRuns, setToolRuns] = useState<Record<string, ToolRun>>({}); // callId -> ToolRun map powering the ToolCallCard live progress UI
@@ -567,7 +596,12 @@ function ChatPageInner(): ReactElement {
     useChatHistory(address);
   // Live on-chain confirmations surfaced as "⛓ tx mined" rows under the thread
   const { rows: txRows } = useChatTxStream(!!address);
-  const [threadId, setThreadId] = useState<string>(() => crypto.randomUUID());
+  // Resume the active thread across page reloads (same threadId, same
+  // summary); a fresh UUID only when nothing was in flight.
+  const [threadId, setThreadId] = useState<string>(
+    () => loadStoredThreadId() ?? crypto.randomUUID(),
+  );
+  const threadIdRef = useRef<string>(threadId);
   const [computeHint, setComputeHint] = useState<string | null>(null);
   const [agentStep, setAgentStep] = useState(0);
   const [ttftMs, setTtftMs] = useState<number | null>(null);
@@ -694,7 +728,10 @@ function ChatPageInner(): ReactElement {
   const applyProviderPref = useCallback(
     (key: string) => {
       if (key === "auto") {
-        setProviderPref(undefined);
+        // "Auto (latency)": latency-sort sticks to one provider so prompt
+        // caching works by default (no hardcoded address — sort follows the
+        // live catalog).
+        setProviderPref({ ...DEFAULT_PROVIDER_PREF });
       } else if (key === "cheapest") {
         setProviderPref({ sort: "price" });
       } else if (key.startsWith("pin:")) {
@@ -736,15 +773,22 @@ function ChatPageInner(): ReactElement {
 
   useEffect(() => {
     messagesRef.current = messages;
+    threadIdRef.current = threadId;
     try {
-      if (messages.length === 0) {
+      // Never persist the synthetic summary lead — it is recomputed per run
+      // from the per-thread cache. Storing it let another session re-inject
+      // the old summary and polluted thread titles.
+      const stored = stripSummaryLead(messages);
+      if (stored.length === 0) {
         sessionStorage.removeItem(CHAT_MESSAGES_KEY);
+        sessionStorage.removeItem(CHAT_THREAD_KEY);
       } else {
-        sessionStorage.setItem(CHAT_MESSAGES_KEY, JSON.stringify(messages));
+        sessionStorage.setItem(CHAT_MESSAGES_KEY, JSON.stringify(stored));
         localStorage.setItem(
           `axiom:thread:${threadId}`,
-          JSON.stringify(messages),
+          JSON.stringify(stored),
         );
+        sessionStorage.setItem(CHAT_THREAD_KEY, threadId);
       }
     } catch {
       void 0;
@@ -805,19 +849,31 @@ function ChatPageInner(): ReactElement {
 
       const userMsg = createMessage({ role: "user", content: userText });
       let currentMessages = [...messagesRef.current, userMsg];
-      // Compaction runs once per RUN (never mid-loop), and the summary itself
-      // is cached per session — the inserted lead message is byte-identical
-      // every run so the wire prefix stays a stable cache anchor.
-      if (!summaryRef.current) {
-        const derived = summarizeConversation(messagesRef.current);
-        if (derived) summaryRef.current = derived;
+      // Run-generation guard: startNewChat/openThread bump runEpochRef, so an
+      // in-flight run can detect staleness and never commit old-thread
+      // messages (with the old summary lead) into a fresh thread.
+      const epoch = runEpochRef.current;
+      const isStale = (): boolean => epoch !== runEpochRef.current;
+      const commitMessages = (msgs: Message[]): void => {
+        if (isStale()) return;
+        messagesRef.current = msgs;
+        setMessages(msgs);
+      };
+      turnCountRef.current += 1;
+      const sessionTurns = turnCountRef.current;
+      // Compaction runs once per RUN (never mid-loop), and the summary is
+      // cached per threadId — the inserted lead message is byte-identical
+      // every run of this thread, and a fresh thread never inherits another
+      // thread's summary. Never summarize a previously inserted lead.
+      const threadKey = threadIdRef.current;
+      let summary = summaryCacheRef.current.get(threadKey);
+      if (summary === undefined) {
+        summary =
+          summarizeConversation(stripSummaryLead(messagesRef.current)) || null;
+        summaryCacheRef.current.set(threadKey, summary);
       }
-      currentMessages = compactHistory(
-        currentMessages,
-        summaryRef.current ?? "",
-      );
-      messagesRef.current = currentMessages;
-      setMessages(currentMessages);
+      currentMessages = compactHistory(currentMessages, summary);
+      commitMessages(currentMessages);
       setIsStreaming(true);
       flushAndClearStreamText();
       if (!hasUsedChat) {
@@ -849,6 +905,7 @@ function ChatPageInner(): ReactElement {
       try {
         while (loopCount < MAX_TOOL_LOOPS) {
           loopCount++;
+          if (isStale()) break;
           setAgentStep(loopCount);
           const turnStartAt = Date.now();
           currentTurnRef.current = { wallMs: 0 };
@@ -934,6 +991,12 @@ function ChatPageInner(): ReactElement {
 
           while (!streamDone) {
             const { done, value } = await reader.read();
+            if (isStale()) {
+              // New-chat/thread-switch during a stream: stop consuming and
+              // never surface this run's output in the fresh thread.
+              controller.abort();
+              break;
+            }
             if (done) break;
             buffer += decoder.decode(value, { stream: true });
             const parsed = consumeSseLines(buffer);
@@ -942,6 +1005,7 @@ function ChatPageInner(): ReactElement {
 
             for (const chunk of parsed.chunks) {
               if (chunk.error || chunk.code) {
+                if (isStale()) break;
                 streamErrorRef.current =
                   typeof chunk.error === "string"
                     ? chunk.error
@@ -1000,7 +1064,7 @@ function ChatPageInner(): ReactElement {
           }
 
           cancelStreamThrottle();
-          setStreamText(streamTextRef.current);
+          if (!isStale()) setStreamText(streamTextRef.current);
           currentTurnRef.current.wallMs = Date.now() - turnStartAt;
           turnMetricsRef.current.push(currentTurnRef.current);
 
@@ -1010,14 +1074,18 @@ function ChatPageInner(): ReactElement {
 
           if (toolCallList.length === 0) {
             if (streamErrorRef.current) {
-              lastStreamErrorRef.current = streamErrorRef.current;
-              setStreamError(streamErrorRef.current);
+              if (!isStale()) {
+                lastStreamErrorRef.current = streamErrorRef.current;
+                setStreamError(streamErrorRef.current);
+              }
               flushAndClearStreamText();
               break;
             }
             if (!assistantContent) {
-              lastStreamErrorRef.current = "No response — try again.";
-              setStreamError(lastStreamErrorRef.current);
+              if (!isStale()) {
+                lastStreamErrorRef.current = "No response — try again.";
+                setStreamError(lastStreamErrorRef.current);
+              }
               flushAndClearStreamText();
               break;
             }
@@ -1029,12 +1097,12 @@ function ChatPageInner(): ReactElement {
                   turnMetricsRef.current,
                   loopCount,
                   stepsRef.current,
+                  sessionTurns,
                 ),
               },
             });
             currentMessages = [...currentMessages, assistantMsg];
-            messagesRef.current = currentMessages;
-            setMessages(currentMessages);
+            commitMessages(currentMessages);
             flushAndClearStreamText();
             break;
           }
@@ -1045,8 +1113,7 @@ function ChatPageInner(): ReactElement {
             tool_calls: toolCallList,
           });
           currentMessages = [...currentMessages, assistantMsg];
-          messagesRef.current = currentMessages;
-          setMessages(currentMessages);
+          commitMessages(currentMessages);
           flushAndClearStreamText();
 
           let sawAsk = false;
@@ -1130,6 +1197,7 @@ function ChatPageInner(): ReactElement {
                 }
               }),
             );
+            if (isStale()) break;
             setToolRuns({ ...toolRunsRef.current });
             for (const { tc, result } of batchResults) {
               const isAsk = isAskUserResult({ ok: true, content: result });
@@ -1148,13 +1216,12 @@ function ChatPageInner(): ReactElement {
             }
             stepsRef.current += batchResults.length;
           }
-          messagesRef.current = currentMessages;
-          setMessages(currentMessages);
+          commitMessages(currentMessages);
           if (sawAsk) break;
         }
 
         const { exhausted } = evaluateContinue(loopCount);
-        if (exhausted) {
+        if (exhausted && !isStale()) {
           currentMessages = [
             ...currentMessages,
             createMessage({
@@ -1163,8 +1230,7 @@ function ChatPageInner(): ReactElement {
               meta: { error: true },
             }),
           ];
-          messagesRef.current = currentMessages;
-          setMessages(currentMessages);
+          commitMessages(currentMessages);
         }
       } catch (err: unknown) {
         if (err instanceof DOMException && err.name === "AbortError") {
@@ -1174,8 +1240,7 @@ function ChatPageInner(): ReactElement {
             .lastIndexOf("user");
           if (lastUser >= 0) {
             const trimmed = currentMessages.slice(0, lastUser + 1);
-            messagesRef.current = trimmed;
-            setMessages(trimmed);
+            commitMessages(trimmed);
           }
         } else {
           const msg = humanizeError(err);
@@ -1207,8 +1272,7 @@ function ChatPageInner(): ReactElement {
               meta: { error: true },
             }),
           ];
-          messagesRef.current = withError;
-          setMessages(withError);
+          commitMessages(withError);
         }
       } finally {
         isStreamingRef.current = false;
@@ -1256,41 +1320,55 @@ function ChatPageInner(): ReactElement {
 
   useEffect(() => {
     if (messages.length === 0) return;
+    const stored = stripSummaryLead(messages);
     upsertThread({
       id: threadId,
-      title: titleFromMessages(messages),
+      title: titleFromMessages(stored),
       updatedAt: Date.now(),
-      messages,
+      messages: stored,
     } as StoredThread);
   }, [messages, threadId]);
 
   const startNewChat = useCallback(() => {
+    // Invalidate any in-flight run so its stream/tool-loop can never commit
+    // the old thread's messages (incl. its summary lead) into the fresh
+    // thread — the summary-bleed guard.
+    runEpochRef.current += 1;
+    abortRef.current?.abort();
     setMessages([]);
     messagesRef.current = [];
     setQueue([]);
     queueRef.current = [];
     setThreadId(crypto.randomUUID());
     setComputeHint(null);
-    summaryRef.current = null;
+    turnCountRef.current = 0;
     try {
       sessionStorage.removeItem(CHAT_MESSAGES_KEY);
+      sessionStorage.removeItem(CHAT_THREAD_KEY);
     } catch {
       void 0;
     }
   }, []);
 
   const openThread = useCallback((t: StoredThread) => {
+    // Same guard as startNewChat: switching threads mid-run must not let the
+    // old run's output land in the newly opened thread.
+    runEpochRef.current += 1;
+    abortRef.current?.abort();
     const loaded = stripSummaryLead(toMessages(t.messages));
     setThreadId(t.id);
     setMessages(loaded);
     messagesRef.current = loaded;
     setComputeHint(null);
-    summaryRef.current = null;
+    turnCountRef.current = 0;
+    // The per-thread summary cache entry (if any) is kept: switching back
+    // reuses the byte-identical lead (cache anchor).
   }, []);
 
   const deleteThread = useCallback(
     (id: string) => {
       const removed = deleteThreadFromStore(id);
+      summaryCacheRef.current.delete(id);
       // deleting the ACTIVE thread must not leave it on screen — select the next one or clear to new-chat
       if (id === threadId) {
         const nextThread = threads.find((t) => t.id !== id);
@@ -1628,7 +1706,7 @@ function ChatPageInner(): ReactElement {
                           );
                           messagesRef.current = trimmed;
                           setMessages(trimmed);
-                          summaryRef.current = null;
+                          summaryCacheRef.current.delete(threadIdRef.current);
                         }
                         setEditConfirmId(null);
                         setInput(text);
@@ -1674,7 +1752,7 @@ function ChatPageInner(): ReactElement {
                             .find((m) => m.role === "user");
                           messagesRef.current = trimmed;
                           setMessages(trimmed);
-                          summaryRef.current = null;
+                          summaryCacheRef.current.delete(threadIdRef.current);
                           if (lastUser?.content)
                             void runAgent(lastUser.content);
                         }
@@ -1763,17 +1841,6 @@ function ChatPageInner(): ReactElement {
                       __html: renderMarkdown(msg.content),
                     }}
                   />
-                  {msg.meta?.usage ? (
-                    <div
-                      style={{
-                        marginTop: 4,
-                        fontSize: "var(--text-xs)",
-                        color: COLORS.textDim,
-                      }}
-                    >
-                      {msg.meta.usage}
-                    </div>
-                  ) : null}
                   {msg.role === "assistant" && !msg.meta?.error ? (
                     <div
                       style={{
@@ -1783,6 +1850,21 @@ function ChatPageInner(): ReactElement {
                       }}
                     >
                       <CopyButton text={msg.content ?? ""} />
+                    </div>
+                  ) : null}
+                  {msg.meta?.usage ? (
+                    <div
+                      className="msg-insights"
+                      style={{
+                        marginTop: "var(--space-sm)",
+                        paddingTop: "var(--space-xs)",
+                        borderTop: `1px solid ${COLORS.border}`,
+                        fontSize: "var(--text-xs)",
+                        color: COLORS.textDim,
+                        lineHeight: 1.4,
+                      }}
+                    >
+                      {msg.meta.usage}
                     </div>
                   ) : null}
                 </div>
@@ -2102,8 +2184,18 @@ function ChatPageInner(): ReactElement {
               Private (sealed)
             </label>
             {providerPref?.address ? (
-              <span style={dimXs}>
-                pinned {shortAddress(providerPref.address)}
+              <span
+                style={dimXs}
+                title="Provider pinned — the prompt-cache prefix stays on one provider"
+              >
+                pinned {shortAddress(providerPref.address)} · cache on
+              </span>
+            ) : providerPref?.sort === "latency" ? (
+              <span
+                style={dimXs}
+                title="Latency-sorted routing sticks to one provider — prompt cache builds by default"
+              >
+                latency-sorted · cache on
               </span>
             ) : null}
           </div>
@@ -2226,11 +2318,14 @@ function formatNeuron(neuron: number): string {
 }
 
 /** Aggregated per-run insights line: 'N turns · N steps | LLM Xs | TTFT avg
- *  Yms · Z tok/s | Cache hit W% | In A tok · Out B tok | served 0x… | ≈X 0G'. */
+ *  Yms · Z tok/s | Cache hit W% | In A tok · Out B tok | served 0x… | ≈X 0G'.
+ *  `sessionTurns` is the per-thread user-turn count used to hint that the
+ *  provider cache is still warming (first 2-4 identical-prefix turns). */
 function formatInsightsLine(
   metrics: TurnMetric[],
   turns: number,
   steps: number,
+  sessionTurns?: number,
 ): string | undefined {
   if (metrics.length === 0) return undefined;
   const parts = [
@@ -2260,7 +2355,12 @@ function formatInsightsLine(
   if (promptTok > 0 || completionTok > 0) {
     if (promptTok > 0) {
       const cached = metrics.reduce((a, m) => a + (m.cachedTokens ?? 0), 0);
-      parts.push(`Cache hit ${Math.round((cached / promptTok) * 100)}%`);
+      const pct = Math.round((cached / promptTok) * 100);
+      parts.push(`Cache hit ${pct}%`);
+      // The first 2-4 identical-prefix turns warm the provider cache.
+      if (pct === 0 && (sessionTurns ?? turns) < 4) {
+        parts.push("warming cache");
+      }
     }
     parts.push(
       `In ${promptTok.toLocaleString()} tok · Out ${completionTok.toLocaleString()} tok`,

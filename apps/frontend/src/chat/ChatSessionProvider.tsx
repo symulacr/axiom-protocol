@@ -33,6 +33,16 @@ export type ProviderPref = {
 
 type StoredSession = { lastTokenId?: string; providerPref?: ProviderPref };
 
+/** Cache-friendly default routing. Latency-sort makes the 0G router stick to
+ *  a single provider (measured in the cache deep-dive), so the prompt-cache
+ *  prefix stays on the same provider by default. `allowFallbacks: true` only
+ *  kicks in when that provider is unavailable. No provider address is
+ *  hardcoded — the catalog changes; sort:latency follows it. */
+export const DEFAULT_PROVIDER_PREF: ProviderPref = {
+  sort: "latency",
+  allowFallbacks: true,
+};
+
 type ChatSessionValue = {
   session: ChatSessionContext;
   recordToolResult: (name: string, content: string) => void;
@@ -43,7 +53,9 @@ type ChatSessionValue = {
 const ChatSessionContextReact = createContext<ChatSessionValue | null>(null);
 
 // Backward compatible: older payloads stored only `{ lastTokenId }`; missing
-// providerPref simply falls back to the router/backend default routing.
+// providerPref falls back to the cache-friendly DEFAULT_PROVIDER_PREF
+// (latency-sorted, allowFallbacks — never the router's cache-hostile
+// round-robin).
 function loadStoredSession(): StoredSession {
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY);
@@ -84,7 +96,7 @@ export function ChatSessionProvider({
   );
   const [providerPref, setProviderPrefState] = useState<
     ProviderPref | undefined
-  >(stored.providerPref);
+  >(stored.providerPref ?? DEFAULT_PROVIDER_PREF);
 
   const session = useMemo(
     () =>

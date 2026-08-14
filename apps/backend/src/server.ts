@@ -126,6 +126,18 @@ function resolveTracePayload(
 
 // Map the optional `provider` routing body to the canonical X-0G-Provider-* request headers.
 // The `provider` body field itself is never forwarded (deprecated by the router).
+//
+// Cache-friendly default: the router round-robins providers when no routing
+// header is sent (verified cache-hostile — 'Cache hit 0%'). Latency-sort makes
+// the router stick to a single provider, so the prompt-cache prefix stays on
+// the same provider for every client (UI and API alike). No address is
+// hardcoded — sort:latency follows the live catalog. allowFallbacks only
+// engages if that provider is unavailable.
+const CACHE_FRIENDLY_DEFAULT_ROUTING = {
+  sort: "latency" as const,
+  allowFallbacks: true,
+};
+
 function buildProviderRoutingHeaders(
   provider: z.infer<typeof chatBodySchema>["provider"],
 ): Record<string, string> | undefined {
@@ -742,7 +754,9 @@ function registerChatRoutes(app: Express, config: ServerConfig): void {
         const { messages, tools, model: reqModel, wallet, provider } = parsed;
         const DEFAULT_MODEL = resolveChatModel(config.env?.AXIOM_COMPUTE_MODEL);
         const resolvedModel = reqModel ?? DEFAULT_MODEL;
-        const providerHeaders = buildProviderRoutingHeaders(provider);
+        const providerHeaders = buildProviderRoutingHeaders(
+          provider ?? CACHE_FRIENDLY_DEFAULT_ROUTING,
+        );
         const client = await createRouterClient(resolvedModel);
         const streamAbort = new AbortController();
         const streamTimeoutMs = Number.parseInt(
