@@ -1,14 +1,16 @@
 import type { ReactElement } from "react";
 import { Link } from "react-router-dom";
-import { Card, COLORS } from "../components/ui.js";
+import { useAccount } from "wagmi";
+import { Card, COLORS, Button } from "../components/ui.js";
 
 function NotFound(): ReactElement {
+  const { isConnected } = useAccount();
   return (
     <div
       style={{
         padding: "var(--space-4xl) var(--space-xl)",
         textAlign: "center",
-        animation: "axiom-fade-in 300ms var(--ease-out)",
+        animation: "axiom-fade-in var(--dur-landing) var(--ease-out)",
       }}
     >
       <Card
@@ -42,21 +44,12 @@ function NotFound(): ReactElement {
           This page doesn't exist or may have been moved.
         </p>
         <Link
-          to="/"
-          style={{
-            display: "inline-block",
-            padding: "0.625rem 1.5rem",
-            borderRadius: "var(--radius-md)",
-            background: COLORS.bronze,
-            color: COLORS.bg,
-            textDecoration: "none",
-            fontSize: "var(--text-sm)",
-            fontWeight: "var(--fw-semibold)",
-            transition:
-              "color 0.18s var(--ease-out), background 0.18s var(--ease-out)",
-          }}
+          to={isConnected ? "/app" : "/"}
+          style={{ textDecoration: "none" }}
         >
-          Back to Home
+          <Button variant="primary">
+            {isConnected ? "Back to your agents" : "Back to Home"}
+          </Button>
         </Link>
       </Card>
     </div>

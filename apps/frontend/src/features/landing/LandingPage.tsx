@@ -1,6 +1,7 @@
 import { type CSSProperties, type ReactElement } from "react";
 import { Link } from "react-router-dom";
-import { BRAND } from "../../brand/assets.js";
+import { useHealth } from "../../hooks/useHealth.js";
+import { truncateAddress } from "../../utils/format.js";
 
 /** Landing — short, use-case first, telling the same story as Home / Chat / Mint. */
 function LandingPage(): ReactElement {
@@ -13,6 +14,13 @@ function LandingPage(): ReactElement {
 }
 
 function Hero(): ReactElement {
+  const { data: health } = useHealth();
+
+  const oracleUp = health?.oracle === "up";
+  const chainHead =
+    typeof health?.chainHead === "number" ? health.chainHead : null;
+  const signer = health?.signer ?? null;
+
   return (
     <section className="landing-hero landing-hero--enter">
       <div className="landing-hero__grid">
@@ -47,8 +55,9 @@ function Hero(): ReactElement {
             </span>
           </h1>
           <p className="landing-lead">
-            Mint, fund, tick, and transfer on-chain agents — or just ask Axiom
-            in chat.
+            An AI agent that runs on-chain: mint it, fund it with 0G, run it,
+            transfer it. Every balance, event, and trade you see is real — you
+            can verify it on-chain.
           </p>
           <div className="landing-cta-row">
             <Link to="/app?mint=1" className="btn btn-primary landing-btn">
@@ -62,15 +71,50 @@ function Hero(): ReactElement {
             </Link>
           </div>
         </div>
+
         <div className="landing-hero__visual">
-          <img
-            src={BRAND.heroSeal}
-            alt=""
-            width={320}
-            height={320}
-            className="landing-seal"
-            decoding="async"
-          />
+          <div className="landing-panel" aria-label="Axiom system status">
+            <div className="landing-panel__head">
+              <span>Axiom system</span>
+              <span className="landing-live">
+                <span className="landing-dot" aria-hidden />
+                {oracleUp ? "online" : "checking"}
+              </span>
+            </div>
+            <div className="landing-panel__body">
+              <div className="landing-row">
+                <span className="landing-row__label">Chain</span>
+                <span className="landing-row__value">0G Aristotle</span>
+              </div>
+              <div className="landing-row">
+                <span className="landing-row__label">Block head</span>
+                <span className="landing-row__value">
+                  {chainHead !== null ? `#${chainHead.toLocaleString()}` : "…"}
+                </span>
+              </div>
+              <div className="landing-row">
+                <span className="landing-row__label">Oracle</span>
+                <span className="landing-row__value">
+                  {oracleUp ? "up" : "…"}
+                </span>
+              </div>
+              <div className="landing-row">
+                <span className="landing-row__label">Signer</span>
+                <span
+                  className="landing-row__value"
+                  title={signer ?? undefined}
+                >
+                  {signer ? truncateAddress(signer) : "…"}
+                </span>
+              </div>
+              <div className="landing-row">
+                <span className="landing-row__label">Metadata</span>
+                <span className="landing-row__value landing-row__value--copper">
+                  re-keyed on transfer
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -81,23 +125,23 @@ function Uses(): ReactElement {
   const items = [
     {
       title: "Mint",
-      body: "Name the agent. Wallet pays the mint fee. Payload is auto-built.",
+      body: "Give your agent a name. Your wallet signs the mint. The payload is built for you.",
     },
     {
       title: "Fund",
-      body: "Deposit 0G on agent detail. Bind a strategy root when you have one.",
+      body: "Deposit 0G into the agent's vault. Add a strategy when you have one.",
     },
     {
       title: "Tick",
-      body: "Run strategy ticks from Execute. Needs vault funds and 0G Compute.",
+      body: "Let your agent act — each run uses 0G Compute, paid from the vault.",
     },
     {
       title: "Transfer",
-      body: "iTransfer re-keys sealed data for the buyer via the software oracle.",
+      body: "Sell or hand off the agent. Its data is re-sealed for the new owner.",
     },
     {
       title: "Chat",
-      body: "Ask Axiom to mint, read vaults, or tick — wallet required.",
+      body: "Ask Axiom to check a vault, run the agent, or start a mint — your wallet approves every on-chain step.",
     },
   ];
 

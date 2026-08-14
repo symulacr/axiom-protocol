@@ -142,34 +142,19 @@ export const Button = React.memo(function Button({
 export const Card = React.memo(function Card({
   children,
   style,
-  hover = false,
-  raised = false,
   className,
 }: {
   children: ReactNode;
   style?: CSSProperties;
-  hover?: boolean;
-  raised?: boolean;
   className?: string;
 }): ReactElement {
   return (
     <div
-      role={hover ? "button" : undefined}
-      tabIndex={hover ? 0 : undefined}
       className={
         ["surface-glass", className].filter(Boolean).join(" ") || undefined
       }
-      onKeyDown={
-        hover
-          ? (e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.currentTarget.click();
-              }
-            }
-          : undefined
-      }
       style={{
-        background: raised ? COLORS.surfaceRaised : COLORS.surface,
+        background: COLORS.surface,
         border: `1px solid ${COLORS.border}`,
         borderRadius: "var(--radius-xl)",
         padding: "var(--space-xl)",
@@ -177,7 +162,6 @@ export const Card = React.memo(function Card({
         transition: `border-color var(--dur-card-hover) var(--ease-out), transform var(--dur-card-hover) var(--ease-out), background var(--dur-card-hover) var(--ease-out)`,
         overflow: "hidden",
         contain: "layout style",
-        ...(hover ? { cursor: "pointer" } : {}),
         ...style,
       }}
     >
@@ -392,7 +376,7 @@ export function NumericActionRow({
   );
 }
 
-type AlertVariant = "error" | "success" | "info";
+type AlertVariant = "error" | "success";
 
 const alertBase: CSSProperties = {
   padding: "var(--space-md) var(--space-lg)",
@@ -414,12 +398,6 @@ const alertStyles: Record<AlertVariant, CSSProperties> = {
     background: COLORS.successBg,
     border: `1px solid ${COLORS.successBorder}`,
     color: COLORS.success,
-  },
-  info: {
-    ...alertBase,
-    background: COLORS.tealBg,
-    border: `1px solid ${COLORS.tealBorder}`,
-    color: COLORS.teal,
   },
 };
 
@@ -505,21 +483,11 @@ export function Skeleton({
   width = "100%",
   height = 20,
   style,
-  delay = 0,
 }: {
   width?: string | number;
   height?: string | number;
   style?: CSSProperties;
-  delay?: number;
 }): ReactElement {
-  // Anti-flash: when delay > 0, hold the skeleton invisible (but layout-reserving)
-  // for `delay` ms after mount so fast loads never show a flicker.
-  const [shown, setShown] = useState(delay <= 0);
-  useEffect(() => {
-    if (delay <= 0) return;
-    const t = setTimeout(() => setShown(true), delay);
-    return () => clearTimeout(t);
-  }, [delay]);
   return (
     <div
       role="status"
@@ -530,7 +498,6 @@ export function Skeleton({
         width,
         height,
         borderRadius: "var(--radius-sm)",
-        visibility: shown ? undefined : "hidden",
         ...style,
       }}
     />
@@ -550,7 +517,7 @@ export function PageHeader({
     <div className="flex items-baseline justify-between mb-2xl flex-wrap gap-md">
       <div style={{ minWidth: 0, overflow: "hidden" }}>
         <h1
-          className="text-xl fw-bold lh-tight"
+          className="text-2xl fw-bold lh-tight"
           style={{ ...ellipsisTitleStyle, margin: "0 0 0.375rem" }}
         >
           {title}
@@ -574,7 +541,7 @@ export function SectionTitle({
   return (
     <h2
       className="text-sm fw-semibold text-dim lh-snug m-0 mb-lg uppercase"
-      style={{ letterSpacing: "0.08em", ...style }}
+      style={{ letterSpacing: "0.1em", ...style }}
     >
       {children}
     </h2>
@@ -701,8 +668,9 @@ export function MonoLabel({
     <code
       title={title}
       style={{
-        fontFamily: "var(--font-mono)",
-        fontSize: "var(--text-sm)",
+        fontFamily: "var(--font-data)",
+        fontSize: "var(--text-data-sm)",
+        fontVariantNumeric: "var(--tabular)",
         color: COLORS.bronzeLight,
         background: COLORS.bronzeBg,
         padding: "0.125rem 0.5rem",
@@ -808,7 +776,7 @@ export function Spinner({
         border: `2px solid ${COLORS.border}`,
         borderTopColor: COLORS.bronze,
         borderRadius: "50%",
-        animation: "axiom-spin 0.8s linear infinite",
+        animation: "axiom-spin var(--dur-spin) linear infinite",
         ...style,
       }}
       aria-label="Loading"
@@ -819,20 +787,22 @@ export function Spinner({
 const MODAL_CSS = `
   [data-axiom-modal] {
     opacity: 0;
-    transform: scale(0.96);
-    transform-origin: center;
+    transform: scale(0.98) translateX(32px);
+    transform-origin: center right;
     pointer-events: none;
-    transition: opacity 240ms var(--ease-out), transform 240ms var(--ease-out),
-      display 240ms allow-discrete, overlay 240ms allow-discrete;
+    transition: opacity var(--dur-modal) var(--ease-out),
+      transform var(--dur-modal) var(--ease-out),
+      display var(--dur-modal) allow-discrete, overlay var(--dur-modal) allow-discrete;
   }
   [data-axiom-modal][open] {
     opacity: 1;
-    transform: scale(1);
+    transform: scale(1) translateX(0);
     pointer-events: auto;
   }
   [data-axiom-modal]::backdrop {
     opacity: 0;
-    transition: opacity 240ms var(--ease-out), overlay 240ms allow-discrete;
+    transition: opacity var(--dur-modal) var(--ease-out),
+      overlay var(--dur-modal) allow-discrete;
   }
   [data-axiom-modal][open]::backdrop {
     opacity: 1;
@@ -840,7 +810,7 @@ const MODAL_CSS = `
   @starting-style {
     [data-axiom-modal][open] {
       opacity: 0;
-      transform: scale(0.96);
+      transform: scale(0.98) translateX(32px);
     }
     [data-axiom-modal][open]::backdrop {
       opacity: 0;
@@ -895,7 +865,7 @@ export const Modal = React.memo(function Modal({
           overflow: "auto",
           background: COLORS.surface,
           color: COLORS.text,
-          boxShadow: "0 24px 80px rgba(0,0,0,0.5)",
+          boxShadow: "var(--shadow-modal)",
           ...style,
         }}
       >
@@ -958,6 +928,8 @@ export function HelpTip({
   return (
     <span
       className="helptip"
+      tabIndex={0}
+      role="note"
       onMouseEnter={(e) => {
         const el = e.currentTarget;
         const content = el.querySelector<HTMLElement>(".helptip-content");

@@ -77,10 +77,8 @@ function freshNonceHex(byteLength = 32): `0x${string}` {
 
 type TransferModalProps = {
   tokenId: bigint;
-  triggerLabel?: string;
   open?: boolean;
   onClose?: () => void;
-  onTransferred?: (txHash: `0x${string}`) => void;
   onSuccess?: (txHash: `0x${string}`) => void;
 };
 
@@ -205,59 +203,55 @@ function TransferFormPhase({
       />
       <FieldError>{addressError}</FieldError>
 
+      <FieldLabel htmlFor={`${formId}-pubkey`} spacing="sm">
+        Receiver public key
+      </FieldLabel>
+      <Textarea
+        id={`${formId}-pubkey`}
+        name="receiverPubKey64"
+        value={receiverPubKey}
+        onChange={onPubKeyChange}
+        rows={3}
+        spellCheck={false}
+        maxLength={RECEIVER_PUBKEY_HEX_LENGTH}
+        placeholder="0x\u2026  (128 hex chars)"
+        className="w-full"
+        style={monoFieldStyle}
+        required
+      />
+      <p
+        style={{
+          fontSize: "var(--text-xs)",
+          color: COLORS.textDim,
+          margin: "4px 0 0",
+        }}
+      >
+        128 hex chars, no 0x04 prefix. Get it from the receiver's wallet
+        'Export Public Key'.
+      </p>
+      <FieldError>{pubKeyError}</FieldError>
+
+      <FieldLabel htmlFor={`${formId}-nonce`} spacing="sm">
+        Access proof nonce
+      </FieldLabel>
+      <Input
+        id={`${formId}-nonce`}
+        value={accessProofNonce}
+        readOnly
+        className="w-full"
+        style={{ ...monoFieldStyle, color: COLORS.bronzeLight }}
+      />
+      <p
+        className="text-dim text-xs"
+        style={{ margin: "4px 0 0", fontWeight: "var(--fw-light)" }}
+      >
+        32 random bytes, regenerated each time the modal opens.
+      </p>
+
       <details className="mt-lg">
         <summary className="cursor-pointer text-sm fw-medium text-muted">
-          Advanced
+          Re-encrypt for receiver (optional)
         </summary>
-        <FieldLabel htmlFor={`${formId}-pubkey`} spacing="sm">
-          Receiver public key
-        </FieldLabel>
-        <Textarea
-          id={`${formId}-pubkey`}
-          name="receiverPubKey64"
-          value={receiverPubKey}
-          onChange={onPubKeyChange}
-          rows={3}
-          spellCheck={false}
-          maxLength={RECEIVER_PUBKEY_HEX_LENGTH}
-          placeholder="0x\u2026  (128 hex chars)"
-          className="w-full"
-          style={monoFieldStyle}
-          required
-        />
-        <p
-          style={{
-            fontSize: "var(--text-xs)",
-            color: COLORS.textDim,
-            margin: "4px 0 0",
-          }}
-        >
-          128 hex chars, no 0x04 prefix. Get it from the receiver's wallet
-          'Export Public Key'.
-        </p>
-        <FieldError>{pubKeyError}</FieldError>
-
-        <FieldLabel htmlFor={`${formId}-nonce`} spacing="sm">
-          Access proof nonce
-        </FieldLabel>
-        <Input
-          id={`${formId}-nonce`}
-          value={accessProofNonce}
-          readOnly
-          className="w-full"
-          style={{ ...monoFieldStyle, color: COLORS.bronzeLight }}
-        />
-        <p
-          className="text-dim text-xs"
-          style={{ margin: "4px 0 0", fontWeight: "var(--fw-light)" }}
-        >
-          32 random bytes, regenerated each time the modal opens.
-        </p>
-
-        <details className="mt-lg">
-          <summary className="cursor-pointer text-sm fw-medium text-muted">
-            Re-encrypt for receiver (optional)
-          </summary>
           <p
             className="text-dim text-xs"
             style={{ margin: "8px 0", fontWeight: "var(--fw-light)" }}
@@ -295,7 +289,6 @@ function TransferFormPhase({
           />
           <FieldError>{rekeyError}</FieldError>
         </details>
-      </details>
 
       {mergedError}
 
@@ -385,7 +378,7 @@ function ConfirmTransferPhase({
       {signature !== null && (
         <Card style={{ ...proofCardStyle, marginTop: 12 }}>
           <strong style={{ color: COLORS.text }}>OwnershipProof</strong>{" "}
-          (TEE-signed)
+          (signed by the Axiom oracle)
           <br />
           Signer:{" "}
           <MonoLabel
@@ -450,10 +443,8 @@ function ConfirmTransferPhase({
 
 export function TransferModal({
   tokenId,
-  triggerLabel,
   open: openProp,
   onClose,
-  onTransferred,
   onSuccess,
 }: TransferModalProps): ReactElement {
   const formId = useId();
@@ -505,10 +496,9 @@ export function TransferModal({
   const handleTransferred = useCallback(
     (txHash: `0x${string}`): void => {
       toast.success(`Transfer ${txHash.slice(0, 10)}… confirmed`);
-      onTransferred?.(txHash);
       onSuccess?.(txHash);
     },
-    [onSuccess, onTransferred],
+    [onSuccess],
   );
 
   const [accessProofNonce, setAccessProofNonce] = useState<`0x${string}`>(
@@ -629,13 +619,6 @@ export function TransferModal({
     [],
   );
 
-  const openModal = useCallback((): void => {
-    setSubmitError(null);
-    reset();
-    setPhase("form");
-    setAccessProofNonce(freshNonceHex(32) as `0x${string}`);
-    setInternalOpen(true);
-  }, [reset]);
   const cancel = useCallback((): void => {
     setOpen(false);
   }, [setOpen]);
@@ -664,12 +647,6 @@ export function TransferModal({
 
   return (
     <>
-      {triggerLabel !== undefined && triggerLabel !== "" && (
-        <Button variant="primary" onClick={openModal} disabled={!isConnected}>
-          {triggerLabel}
-        </Button>
-      )}
-
       <Modal
         open={open}
         onClose={cancel}

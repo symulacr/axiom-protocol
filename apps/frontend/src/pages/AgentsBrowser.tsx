@@ -15,7 +15,6 @@ import { usePortfolio } from "../hooks/usePortfolio.js";
 import type { VaultDataEntry } from "../hooks/useVaultDataBatch.js";
 import type { PerformanceMetrics } from "@axiom/config/types/performance";
 import { truncateAddress } from "../utils/format.js";
-import { BRAND } from "../brand/assets.js";
 import { EmptyState } from "../components/EmptyState.js";
 import {
   COLORS,
@@ -189,7 +188,10 @@ function AgentsBrowser(): ReactElement {
     return (
       <div>
         {!isConnected ? (
-          <EmptyState>Connect your wallet to get started</EmptyState>
+          <EmptyState>
+            Connect your wallet to see your agents. Your wallet signs every
+            on-chain action — nothing happens without your approval.
+          </EmptyState>
         ) : (
           <EmptyState
             illustrated
@@ -200,7 +202,8 @@ function AgentsBrowser(): ReactElement {
               </Link>
             }
           >
-            Name an agent and mint. Fund later on agent detail.
+            An agent is an AI you own and run on-chain. Name one and mint —
+            your wallet signs. You can fund and run it afterwards.
           </EmptyState>
         )}
       </div>
@@ -271,16 +274,12 @@ function AgentsBrowser(): ReactElement {
                   minWidth: 0,
                   gap: "var(--space-md)",
                   animationDelay: `${Math.min(i, 10) * 40}ms`,
-                  backgroundImage: `linear-gradient(120deg, rgba(79,70,229,0.08), transparent 42%, rgba(196,122,58,0.05)), url(${BRAND.agentLattice})`,
-                  backgroundSize: "cover, 56px 56px",
-                  backgroundPosition: "center, right 8px center",
-                  backgroundRepeat: "no-repeat, no-repeat",
                   transition:
                     "transform 150ms var(--ease-out), border-color 150ms var(--ease-out), box-shadow 150ms var(--ease-out)",
                 }}
               >
                 <img
-                  src={BRAND.agentLattice}
+                  src="/brand/agent-lattice-480.jpg"
                   alt=""
                   width={40}
                   height={40}
@@ -363,6 +362,7 @@ function AgentsBrowser(): ReactElement {
                   }}
                 >
                   <span
+                    className="agent-card__owner"
                     style={{
                       color: COLORS.textDim,
                       fontSize: "var(--text-sm)",

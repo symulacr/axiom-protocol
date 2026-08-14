@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import type { ReactElement, ReactNode } from "react";
-import type { AxiomEvent } from "../hooks/useEventHistory.js";
+import { eventDedupeKey, type AxiomEvent } from "../hooks/useEventHistory.js";
 import { useMediaQuery } from "../hooks/useMediaQuery.js";
 import { COLORS, Button } from "./ui.js";
 
@@ -22,7 +22,6 @@ const formatter = new Intl.DateTimeFormat("en-US", {
 const railCellStyle: React.CSSProperties = {
   position: "relative",
   paddingLeft: "12px",
-  fontVariantNumeric: "tabular-nums",
   color: COLORS.textMuted,
   fontSize: "var(--text-sm)",
   lineHeight: "var(--lh-snug)",
@@ -139,7 +138,7 @@ const EventRow = React.memo(function EventRow({
 }: EventRowProps): ReactElement {
   return (
     <>
-      <div style={railCellStyle}>
+      <div className="tabular-nums" style={railCellStyle}>
         <span style={railBeforeStyle} aria-hidden="true" />
         <span style={railDotStyle} aria-hidden="true" />
         <div>{timestamp}</div>
@@ -162,5 +161,5 @@ const EventRow = React.memo(function EventRow({
 
 function eventKey(event: AxiomEvent): string {
   // Stable per event: deduped upstream by chainId:txHash:logIndex; no positional suffix or every new WS event remounts every row
-  return `${event.chainId}:${event.txHash}:${event.logIndex}`;
+  return eventDedupeKey(event);
 }

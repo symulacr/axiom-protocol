@@ -8,23 +8,45 @@ import {
   type ReactElement,
 } from "react";
 import { Link } from "react-router-dom";
-import { useAccount } from "wagmi";
 import {
   COLORS,
+  Alert,
   Button,
   Card,
   PageHeader,
+  SectionTitle,
   Skeleton,
   ConnectedGuard,
 } from "../components/ui.js";
 import { usePortfolio } from "../hooks/usePortfolio.js";
 import { useMediaQuery } from "../hooks/useMediaQuery.js";
-import { formatTokenAmount, truncateAddress } from "../utils/format.js";
+import { formatTokenAmount } from "../utils/format.js";
 
 const AgentsBrowser = lazy(() => import("./AgentsBrowser.js"));
 
 /** Fired by the app-shell mint modal on confirmed mint (see App.tsx). */
 const MINT_COMPLETE_EVENT = "axiom:mint-complete";
+
+/** Change-flash for a stat: returns the flash class when the value differs from
+ *  the previous render, so the monitor announces change instead of looking frozen. */
+function useStatFlash(value: number): string | undefined {
+  const prev = useRef<number>(value);
+  const [flashing, setFlashing] = useState<"up" | "down" | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (value === prev.current) return;
+    setFlashing(value > prev.current ? "up" : "down");
+    prev.current = value;
+    if (timerRef.current !== null) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setFlashing(null), 700);
+    return () => {
+      if (timerRef.current !== null) clearTimeout(timerRef.current);
+    };
+  }, [value]);
+
+  return flashing !== null ? `flash-${flashing}` : undefined;
+}
 
 // Module-scoped mint tracker: survives route unmounts so a just-minted agent
 // shows a pending row on Home until the agents poll picks it up.
@@ -95,7 +117,6 @@ function HomeSeal(): ReactElement | null {
 }
 
 function HomeBody(): ReactElement {
-  const { address } = useAccount();
   const isMobile = useMediaQuery("(max-width: 640px)");
   const { agents, error: agentsError, vaultMap, loading } = usePortfolio();
 
@@ -126,6 +147,10 @@ function HomeBody(): ReactElement {
       return v && v.depositsWei === 0n;
     });
   }, [agents, vaultMap]);
+
+  const agentsFlash = useStatFlash(agents.length);
+  const vaultFlash = useStatFlash(Number(totalVaultWei));
+  const unfundedFlash = useStatFlash(unfunded.length);
 
   // Status-chip filter over the loaded agents; "all" is the default view.
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -201,7 +226,7 @@ function HomeBody(): ReactElement {
           style={{ ["--i" as string]: 0, ...mobileStatStyle }}
         >
           <div className="dashboard-stat__label">Agents</div>
-          <div className="dashboard-stat__value">
+          <div className={`dashboard-stat__value${agentsFlash ? ` ${agentsFlash}` : ""}`}>
             {loading ? <Skeleton width={40} height={28} /> : agents.length}
           </div>
         </div>
@@ -211,8 +236,8 @@ function HomeBody(): ReactElement {
         >
           <div className="dashboard-stat__label">Total vault</div>
           <div
-            className="dashboard-stat__value"
-            style={{ fontSize: "var(--text-lg)" }}
+            className={`dashboard-stat__value${vaultFlash ? ` ${vaultFlash}` : ""}`}
+            style={{ fontSize: "var(--text-data-lg)" }}
           >
             {loading ? (
               <Skeleton width={80} height={28} />
@@ -226,35 +251,16 @@ function HomeBody(): ReactElement {
           style={{ ["--i" as string]: 2, ...mobileStatStyle }}
         >
           <div className="dashboard-stat__label">Needs funding</div>
-          <div className="dashboard-stat__value">
+          <div className={`dashboard-stat__value${unfundedFlash ? ` ${unfundedFlash}` : ""}`}>
             {loading ? <Skeleton width={32} height={28} /> : unfunded.length}
           </div>
         </div>
       </div>
 
-      <div className="action-rail" aria-label="Quick actions">
-        <Link to="/chat" style={{ textDecoration: "none" }}>
-          <Button variant="secondary">Chat</Button>
-        </Link>
-      </div>
-
       {agentsError && (
-        <Card
-          style={{
-            marginBottom: "var(--space-xl)",
-            borderColor: COLORS.dangerBorder,
-          }}
-        >
-          <p
-            style={{
-              margin: 0,
-              color: COLORS.danger,
-              fontSize: "var(--text-sm)",
-            }}
-          >
-            Failed to load agents: {agentsError.message}
-          </p>
-        </Card>
+        <Alert variant="error" style={{ marginBottom: "var(--space-xl)" }}>
+          Failed to load agents: {agentsError.message}
+        </Alert>
       )}
 
       <div
@@ -276,26 +282,9 @@ function HomeBody(): ReactElement {
             <button
               key={chip.id}
               type="button"
-              className="press"
               aria-pressed={statusFilter === chip.id}
               onClick={() => setStatusFilter(chip.id)}
-              style={{
-                background:
-                  statusFilter === chip.id ? COLORS.bronzeBg : "transparent",
-                border: `1px solid ${
-                  statusFilter === chip.id ? COLORS.bronzeBorder : COLORS.border
-                }`,
-                color:
-                  statusFilter === chip.id
-                    ? COLORS.bronzeLight
-                    : COLORS.textMuted,
-                borderRadius: "var(--radius-sm)",
-                padding: "3px 10px",
-                fontSize: "var(--text-xs)",
-                cursor: "pointer",
-                fontFamily: "inherit",
-                lineHeight: 1.4,
-              }}
+              className="chip"
             >
               {chip.label} {chip.count}
             </button>
@@ -314,18 +303,7 @@ function HomeBody(): ReactElement {
             borderBottom: `1px solid ${COLORS.border}`,
           }}
         >
-          <div
-            style={{
-              marginBottom: "var(--space-sm)",
-              fontSize: "var(--text-xs)",
-              fontFamily: "var(--font-mono)",
-              color: COLORS.textDim,
-              letterSpacing: "0.06em",
-              textTransform: "uppercase",
-            }}
-          >
-            Needs attention
-          </div>
+          <SectionTitle>Needs attention</SectionTitle>
           {loading ? (
             <div
               style={{
@@ -423,18 +401,6 @@ function HomeBody(): ReactElement {
       >
         <AgentsBrowser />
       </Suspense>
-
-      {address ? (
-        <p
-          style={{
-            marginTop: "var(--space-xl)",
-            fontSize: "var(--text-xs)",
-            color: COLORS.textDim,
-          }}
-        >
-          {truncateAddress(address)}
-        </p>
-      ) : null}
     </>
   );
 }

@@ -74,10 +74,13 @@ function RawOutput({ raw }: { raw: string }): ReactElement {
 
 type ExecutePanelProps = {
   tokenId?: bigint;
+  /** Jump to the fund tool on the agent's overview tab (kills the empty-vault dead-end). */
+  onFund?: () => void;
 };
 
 export function ExecutePanel({
   tokenId: tokenIdProp,
+  onFund,
 }: ExecutePanelProps): ReactElement {
   const chainId = useChainId();
   const { agents, isLoading: agentsLoading } = useAgents();
@@ -221,7 +224,7 @@ export function ExecutePanel({
                 border: `1px solid ${COLORS.borderStrong}`,
                 background: COLORS.bg,
                 color: COLORS.text,
-                fontSize: "var(--text-sm)",
+                fontSize: "1rem", /* iOS Safari input zoom floor */
                 fontFamily: "inherit",
               }}
             >
@@ -277,7 +280,6 @@ export function ExecutePanel({
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <Button
               variant="primary"
-              className="press"
               style={{ minWidth: "14ch" }}
               disabled={
                 isLoading || activeId === "" || vd.isLoading || !hasFunds
@@ -318,16 +320,53 @@ export function ExecutePanel({
             !vd.isLoading &&
             vd.error === null &&
             !hasFunds && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "var(--space-sm)",
+                  flexWrap: "wrap",
+                }}
+              >
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: "var(--text-sm)",
+                    color: COLORS.textMuted,
+                  }}
+                >
+                  Vault balance is 0 — fund it before running a tick.
+                </p>
+                {onFund !== undefined && (
+                  <Button variant="secondary" onClick={onFund}>
+                    Fund the vault →
+                  </Button>
+                )}
+              </div>
+            )}
+          {activeId !== "" && vd.error !== null && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "var(--space-sm)",
+                flexWrap: "wrap",
+              }}
+            >
               <p
                 style={{
                   margin: 0,
-                  fontSize: "var(--text-xs)",
-                  color: COLORS.textDim,
+                  fontSize: "var(--text-sm)",
+                  color: COLORS.danger,
                 }}
               >
-                Vault balance is 0 — fund it before running a tick.
+                Couldn't load the vault balance.
               </p>
-            )}
+              <Button variant="secondary" onClick={() => vd.refetch()}>
+                Retry
+              </Button>
+            </div>
+          )}
           {isStreaming && (
             <Button variant="secondary" onClick={cancelTick}>
               Cancel
@@ -360,18 +399,10 @@ export function ExecutePanel({
                 size={12}
                 style={{
                   borderTopColor: COLORS.bronzeLight,
-                  animation: "axiom-spin 0.6s linear infinite",
+                  animation: "axiom-spin var(--dur-spin) linear infinite",
                 }}
               />
-              <span
-                style={{
-                  fontSize: "var(--text-xs)",
-                  fontWeight: "var(--fw-semibold)",
-                  color: COLORS.textMuted,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.05em",
-                }}
-              >
+              <span className="text-xs fw-semibold text-muted uppercase" style={{ letterSpacing: "0.05em" }}>
                 Enclave Pipeline Execution
               </span>
             </div>
@@ -387,10 +418,8 @@ export function ExecutePanel({
                 {isStreaming ? "Receiving live output…" : "Executing tick…"}
               </span>
               <span
-                style={{
-                  color: COLORS.textDim,
-                  fontVariantNumeric: "tabular-nums",
-                }}
+                className="tabular-nums"
+                style={{ color: COLORS.textDim }}
               >
                 {(elapsedMs / 1000).toFixed(1)}s
               </span>
