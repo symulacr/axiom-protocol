@@ -16,9 +16,10 @@
  * (method, path), and no timestamps/randomness are emitted — `git diff docs/openapi.json`
  * is clean when nothing changed.
  *
- * CI gate (orchestrator wires this up, do not edit ci.yml):
- *   bun run generate:openapi && git diff --exit-code apps/backend/docs/openapi.json
- *   — regenerates and fails on drift, so docs/openapi.json can never go stale.
+ * Regeneration is MANUAL: `bun run generate:openapi`. CI does NOT gate this file on
+ * drift. The silent-omission guard lives in src/server/openapi-wiring.test.ts, which
+ * boots the real app and asserts every REGISTERED_ROUTES path+method exists in the
+ * committed spec — so a newly mounted route with no spec entry fails the test suite.
  *
  * Notes on what OpenAPI cannot express (documented via x-* extensions + descriptions):
  *   - POST /v1/chat/completions returns a text/event-stream of heterogeneous frames

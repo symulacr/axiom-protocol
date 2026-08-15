@@ -141,7 +141,13 @@ export function formatToolResult(name: string, result: unknown): string {
   }
 
   if (obj.ok === true && obj.txHash !== undefined) {
-    return `Transaction sent: ${String(obj.txHash)}`;
+    // Receipt fields come from signAndSendWithReceipt when the transport waits —
+    // surface status + block so the LLM can report confirmed vs bare broadcast.
+    const receipt =
+      obj.receiptStatus !== undefined
+        ? ` (${obj.receiptStatus}${obj.blockNumber !== undefined ? ` in block ${obj.blockNumber}` : ""})`
+        : "";
+    return `Transaction sent${receipt}: ${String(obj.txHash)}`;
   }
 
   if (name.startsWith("archive_")) {

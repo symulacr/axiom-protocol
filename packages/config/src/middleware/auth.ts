@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
+import { createHash } from "node:crypto";
 
 type AuthPrincipal = "none" | "server" | "client" | "disabled";
 
@@ -19,17 +20,18 @@ export function timingSafeMatch(
   presented: string,
   candidates: string[],
 ): boolean {
-  const keyBuf = Buffer.from(presented, "utf-8");
+  // sha256 both sides first: fixed 32-byte digests remove the length short-circuit,
+  // so comparing a wrong-length key leaks nothing about the real key's length.
+  const digest = (v: string): Uint8Array =>
+    createHash("sha256").update(v, "utf-8").digest();
+  const presentedHash = digest(presented);
   const tsEqual = (a: Uint8Array, b: Uint8Array): boolean =>
     (
       globalThis.crypto as unknown as {
         timingSafeEqual(x: Uint8Array, y: Uint8Array): boolean;
       }
     ).timingSafeEqual.call(globalThis.crypto, a, b);
-  return candidates.some((api) => {
-    const apiBuf = Buffer.from(api, "utf-8");
-    return keyBuf.length === apiBuf.length && tsEqual(keyBuf, apiBuf);
-  });
+  return candidates.some((api) => tsEqual(presentedHash, digest(api)));
 }
 
 // client keys may only hit these prefixes (method-aware); everything else needs the server key

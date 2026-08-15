@@ -9,7 +9,7 @@ export const sharedEnvSchema = z.object({
     }
     return val;
   }, z.string().optional()),
-  AXIOM_CHAIN_ID: z.coerce.number().int().positive().default(16661),
+  AXIOM_CHAIN_ID: z.coerce.number().int().positive().default(16602),
   OG_COMPUTE_BASE_URL: z.string().url().optional(),
   AXIOM_EVM_RPC: z.string().url().optional(),
   AXIOM_ORACLE_URL: z.string().url().optional(),

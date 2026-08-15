@@ -253,10 +253,14 @@ async function downloadFromStorage(
 }
 
 /**
- * Resolve the SDK transport AES key. When AXIOM_STORAGE_TRANSPORT_KEY (32-byte hex, optional 0x
- * prefix) is set it is used verbatim, keeping blobs decryptable across restarts and instances.
- * Without it the key is random per instance: blobs uploaded now are undecryptable after this
- * process exits (a boot warning is logged so the misconfiguration is visible).
+ * Resolve the SDK transport AES key — load-or-create, so blobs stay decryptable
+ * across restarts (same durability contract as the seen-hashes file):
+ *  1. AXIOM_STORAGE_TRANSPORT_KEY (32-byte hex, optional 0x prefix) wins verbatim.
+ *  2. Otherwise the key is loaded from (or first created in)
+ *     AXIOM_DATA_DIR/.data/storage-transport-key — atomic tmp+rename, mode 600.
+ *     A corrupt file is backed up and regenerated (blobs under the lost key warn).
+ *  3. Under `bun test` (BUN_TEST=1) a fresh ephemeral random key is used — tests
+ *     never touch the on-disk key.
  */
 function resolveTransportKey(): Uint8Array {
   const raw = process.env.AXIOM_STORAGE_TRANSPORT_KEY;
@@ -269,19 +273,45 @@ function resolveTransportKey(): Uint8Array {
     }
     return getBytes(`0x${hex}`);
   }
-  console.warn(
-    "[0g-storage] AXIOM_STORAGE_TRANSPORT_KEY not set — using an ephemeral random transport AES key; blobs uploaded now will be undecryptable after this process exits. Set AXIOM_STORAGE_TRANSPORT_KEY (32-byte hex) for cross-restart decrypt.",
+  if (process.env.BUN_TEST === "1") {
+    return crypto.getRandomValues(new Uint8Array(32));
+  }
+  const file = joinPath(
+    process.env.AXIOM_DATA_DIR ?? process.cwd(),
+    ".data",
+    "storage-transport-key",
   );
-  return crypto.getRandomValues(new Uint8Array(32));
+  let hex = "";
+  try {
+    hex = existsSync(file) ? readFileSync(file, "utf-8").trim() : "";
+  } catch {
+    /* unreadable → regenerate below */
+  }
+  if (/^[0-9a-f]{64}$/.test(hex)) return getBytes(`0x${hex}`);
+  if (hex !== "" || existsSync(file)) {
+    console.warn(
+      `[0g-storage] discarding corrupt transport-key file ${file} — blobs encrypted under the lost key become undecryptable`,
+    );
+    try {
+      renameSync(file, `${file}.bak`);
+    } catch {
+      /* best-effort backup */
+    }
+  }
+  const key = crypto.getRandomValues(new Uint8Array(32));
+  mkdirSync(dirnamePath(file), { recursive: true });
+  const tmp = `${file}.${process.pid}.${crypto.randomUUID()}.tmp`;
+  writeFileSync(tmp, Buffer.from(key).toString("hex"), { mode: 0o600 });
+  renameSync(tmp, file);
+  return key;
 }
 
 export class ZeroGStorage extends SeenHashesMixin implements StorageAdapter {
   readonly indexer: Indexer;
   readonly config: ZeroGStorageConfig;
-  // 32-byte AES key for SDK transport encryption. Seeded from AXIOM_STORAGE_TRANSPORT_KEY (32-byte
-  // hex) when set — that keeps blobs decryptable across restarts and instances. Otherwise random
-  // per instance: blobs uploaded under a random key are undecryptable after this process exits
-  // (boot logs a warning; set the env var to fix).
+  // 32-byte AES key for SDK transport encryption. AXIOM_STORAGE_TRANSPORT_KEY (32-byte
+  // hex) wins verbatim; otherwise load-or-create from AXIOM_DATA_DIR/.data so restarts
+  // (and co-located instances) decrypt every blob. `bun test` gets an ephemeral key.
   private readonly storageKey: Uint8Array;
 
   /** Exposes the transport AES key so a verify step on the same instance can decrypt. */

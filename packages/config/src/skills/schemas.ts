@@ -2,17 +2,24 @@
 // parallel JSON Schema for LLM tool-calling; args must satisfy both — keep in sync.
 import { z } from "zod";
 
-export const evmAddressSchema = z.object({ address: z.string() }); // a single shape serves the evm_wallet, evm_multichain, and evm_contract routes
+const evmAddressField = z
+  .string()
+  .regex(/^0x[a-fA-F0-9]{40}$/, "must be a 0x-prefixed 20-byte address");
+const evmHashField = z
+  .string()
+  .regex(/^0x[a-fA-F0-9]{64}$/, "must be a 0x-prefixed 32-byte hash");
+
+export const evmAddressSchema = z.object({ address: evmAddressField }); // a single shape serves the evm_wallet, evm_multichain, and evm_contract routes
 
 export const evmTokenOwnerSchema = z.object({
-  address: z.string(),
-  token: z.string(),
+  address: evmAddressField,
+  token: evmAddressField,
 }); // owner plus ERC-20 token shape, shared by evm_wallet route and evm_allowance
 
-export const evmTxSchema = z.object({ hash: z.string() });
+export const evmTxSchema = z.object({ hash: evmHashField });
 
 export const evmTokenSchema = z.object({
-  address: z.string(),
+  address: evmAddressField,
   coingeckoId: z.string().optional(),
 });
 
@@ -20,17 +27,22 @@ export const evmGasSchema = z.object({ gasLimit: z.number().optional() });
 
 const WHALE_DEFAULT_FROM_BLOCK = 19_900_000; // fallback scan window so evm_whale runs without all numeric params; caller values win
 const WHALE_DEFAULT_TO_BLOCK = 20_000_000;
+const WHALE_MAX_BLOCK_SPAN = 2_000_000;
 
-export const evmWhaleSchema = z.object({
-  token: z.string(),
-  minValue: z.string().default("0"),
-  fromBlock: z.number().default(WHALE_DEFAULT_FROM_BLOCK),
-  toBlock: z.number().default(WHALE_DEFAULT_TO_BLOCK),
-});
+export const evmWhaleSchema = z
+  .object({
+    token: evmAddressField,
+    minValue: z.string().default("0"),
+    fromBlock: z.number().int().min(0).default(WHALE_DEFAULT_FROM_BLOCK),
+    toBlock: z.number().int().min(0).default(WHALE_DEFAULT_TO_BLOCK),
+  })
+  .refine((v) => v.toBlock - v.fromBlock <= WHALE_MAX_BLOCK_SPAN, {
+    message: `whale scan window exceeds the ${WHALE_MAX_BLOCK_SPAN}-block cap — narrow fromBlock/toBlock`,
+  });
 
 export const evmAllowanceSchema = z.object({
-  address: z.string(),
-  token: z.string(),
+  address: evmAddressField,
+  token: evmAddressField,
 });
 
 export const stocksQuoteSchema = z.object({

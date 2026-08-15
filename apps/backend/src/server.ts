@@ -39,11 +39,7 @@ import {
   getRuntimeConfig,
 } from "@axiom/config";
 import { getSharedProvider } from "./provider.js";
-import {
-  ZeroGStorage,
-  InMemoryStorage,
-  type StorageAdapter,
-} from "@axiom/config/storage/0g";
+import { InMemoryStorage, type StorageAdapter } from "@axiom/config/storage/0g";
 import {
   createApiKeyAuth,
   enforceClientPathAllowlist,
@@ -127,29 +123,34 @@ function resolveTracePayload(
 // Map the optional `provider` routing body to the canonical X-0G-Provider-* request headers.
 // The `provider` body field itself is never forwarded (deprecated by the router).
 //
-// Cache-friendly default: the router round-robins providers when no routing
-// header is sent (verified cache-hostile — 'Cache hit 0%'). Latency-sort makes
-// the router stick to a single provider, so the prompt-cache prefix stays on
-// the same provider for every client (UI and API alike). No address is
-// hardcoded — sort:latency follows the live catalog. allowFallbacks only
-// engages if that provider is unavailable.
-const CACHE_FRIENDLY_DEFAULT_ROUTING = {
-  sort: "latency" as const,
+// An empty provider object is treated as absent: the cache-friendly defaults apply, so
+// the prompt-cache prefix stays on one provider. Why the defaults: the router round-robins
+// providers when no routing header is sent (verified cache-hostile — 'Cache hit 0%');
+// latency-sort makes the router stick to a single provider for every client (UI and API
+// alike). No address is hardcoded — sort:latency follows the live catalog. allowFallbacks
+// only engages if that provider is unavailable. A non-empty provider object suppresses the
+// defaults: only the fields it names become headers.
+const CACHE_FRIENDLY_DEFAULT_ROUTING: NonNullable<
+  z.infer<typeof chatBodySchema>["provider"]
+> = {
+  sort: "latency",
   allowFallbacks: true,
 };
 
 function buildProviderRoutingHeaders(
   provider: z.infer<typeof chatBodySchema>["provider"],
-): Record<string, string> | undefined {
-  if (!provider) return undefined;
+): Record<string, string> {
+  const hasExplicitFields =
+    provider !== undefined && Object.keys(provider).length > 0;
+  const p = hasExplicitFields ? provider : CACHE_FRIENDLY_DEFAULT_ROUTING;
   const h: Record<string, string> = {};
-  if (provider.sort) h["X-0G-Provider-Sort"] = provider.sort;
-  if (provider.address) h["X-0G-Provider-Address"] = provider.address;
-  if (provider.allowFallbacks !== undefined)
-    h["X-0G-Provider-Allow-Fallbacks"] = String(provider.allowFallbacks);
-  if (provider.trustMode) h["X-0G-Provider-Trust-Mode"] = provider.trustMode;
-  const maxPrompt = provider.maxPriceUsdPrompt;
-  const maxCompletion = provider.maxPriceUsdCompletion;
+  if (p.sort) h["X-0G-Provider-Sort"] = p.sort;
+  if (p.address) h["X-0G-Provider-Address"] = p.address;
+  if (p.allowFallbacks !== undefined)
+    h["X-0G-Provider-Allow-Fallbacks"] = String(p.allowFallbacks);
+  if (p.trustMode) h["X-0G-Provider-Trust-Mode"] = p.trustMode;
+  const maxPrompt = p.maxPriceUsdPrompt;
+  const maxCompletion = p.maxPriceUsdCompletion;
   if (maxPrompt !== undefined) {
     // The router 400s when only a prompt cap is supplied (completion resolves <= 0); mirror the
     // prompt cap as a sane completion ceiling unless one is explicitly given.
@@ -160,7 +161,7 @@ function buildProviderRoutingHeaders(
   } else if (maxCompletion !== undefined) {
     h["X-0G-Provider-Max-Price-Usd-Completion"] = String(maxCompletion);
   }
-  return Object.keys(h).length > 0 ? h : undefined;
+  return h;
 }
 
 REGISTERED_ROUTES.push({
@@ -279,16 +280,7 @@ export function startServer(config: ServerConfig): {
       methods: ["GET", "POST"],
     }),
   );
-  app.use(
-    createApiKeyAuth(
-      config.env?.AXIOM_API_KEY,
-      ["/health", "/health/live", "/oracle/health"],
-      process.env.AXIOM_DISABLE_AUTH === "true",
-      process.env.AXIOM_CLIENT_API_KEY,
-    ),
-  );
-  // Browser keys only reach an explicit allowlist (not vault execute, forensics, event inject).
-  app.use(enforceClientPathAllowlist);
+  // Global limiter mounts BEFORE auth so x-api-key brute-forcing (401s) is throttled too.
   const rateLimitMax = Number.parseInt(
     process.env.AXIOM_RATE_LIMIT_MAX ?? "100",
     10,
@@ -302,9 +294,24 @@ export function startServer(config: ServerConfig): {
       legacyHeaders: false,
     }),
   );
+  app.use(
+    createApiKeyAuth(
+      config.env?.AXIOM_API_KEY,
+      ["/health", "/health/live", "/oracle/health"],
+      process.env.AXIOM_DISABLE_AUTH === "true",
+      process.env.AXIOM_CLIENT_API_KEY,
+    ),
+  );
+  // Browser keys only reach an explicit allowlist (not vault execute, forensics, event inject).
+  app.use(enforceClientPathAllowlist);
   app.set("json replacer", bigintReplacer);
 
   const ogChainId = config.env?.AXIOM_CHAIN_ID ?? ARISTOTLE_CHAIN_ID;
+  if (ogChainId === ARISTOTLE_CHAIN_ID) {
+    console.warn(
+      "[boot] AXIOM_CHAIN_ID=16661 (0G mainnet) — mainnet requires a distinct production signer set (runtime signer, TEE signer, storage signer)",
+    );
+  }
   const startedAt = Date.now();
   // Resolved post-listen so MCP self-calls work even on ephemeral ports (tests bind port 0).
   let mcpBaseUrl: string | null = null;
@@ -674,11 +681,9 @@ function sseDeltaContent(chunk: unknown): string {
 // Wallet-keyed sessions: when a wallet address is supplied, the threadId is the (lowercased) wallet
 // so every turn of the same wallet shares one stable thread; without a wallet a random UUID is used.
 //
-// Transport-AES note: ZeroGStorage encrypts blobs with a per-instance key that is regenerated on
-// every boot, which would make transcripts undecryptable after a restart. To keep chat history
-// retrievable we stamp the hex transport key into the EventStore payload alongside the rootHash;
-// the history route later decrypts with that stamped key via downloadWithOpts. (InMemoryStorage
-// ignores encryption and carries no key.)
+// Transport-AES note: ZeroGStorage encrypts blobs with an AES transport key that is load-or-created
+// server-side (AXIOM_DATA_DIR/.data — see storage/0g.ts) and never leaves the server. The EventStore
+// payload carries only the rootHash pointer; a restart decrypts with the same persisted key.
 async function persistChatTranscript(
   storage: StorageAdapter | null | undefined,
   chainId: number,
@@ -701,10 +706,6 @@ async function persistChatTranscript(
       msgCount: requestMessages.length + 1,
       ts,
     };
-    const transportKey =
-      storage instanceof ZeroGStorage
-        ? ethers.hexlify(storage.transportKey)
-        : undefined;
     const { rootHash } = await storage.upload(
       new TextEncoder().encode(JSON.stringify(transcript)),
     );
@@ -721,7 +722,6 @@ async function persistChatTranscript(
         msgCount: transcript.msgCount,
         ts,
         ...(walletKey ? { wallet: walletKey } : {}),
-        ...(transportKey ? { transportKey } : {}),
       },
     });
   } catch (err) {
@@ -729,26 +729,29 @@ async function persistChatTranscript(
   }
 }
 
-// Download one chat-transcript blob. ZeroGStorage blobs were encrypted with the transport key
-// stamped in the EventStore payload at upload time, so a later instance (with a fresh per-boot
-// key) still decrypts. Legacy blobs without a stamped key fall back to the current instance key.
-async function downloadChatTranscript(
-  storage: StorageAdapter | null | undefined,
-  rootHash: string,
-  payload: unknown,
-): Promise<Uint8Array> {
-  if (!storage) throw new Error("chat storage not configured");
-  const rootHashHex = rootHash as `0x${string}`;
-  if (storage instanceof ZeroGStorage) {
-    const transportKey = payloadField(payload, "transportKey");
-    if (transportKey) {
-      const result = await storage.downloadWithOpts(rootHashHex, {
-        symmetricKey: ethers.getBytes(transportKey),
-      });
-      return result.data;
-    }
+// SIWE-lite ownership proof for GET /v1/chat/history: EIP-191 personal_sign over the exact ASCII
+// message `axiom-chat-history-v1:${address.toLowerCase()}:${timestamp}` (unix seconds), presented
+// via x-wallet-address / x-wallet-timestamp / x-wallet-signature. The recovered signer must equal
+// the queried wallet and the timestamp must be within 300s of now (replay window).
+const WALLET_PROOF_MAX_AGE_SECONDS = 300;
+
+function verifyWalletProof(req: Request, wallet: string): boolean {
+  const address = String(req.headers["x-wallet-address"] ?? "").toLowerCase();
+  const timestamp = Number(req.headers["x-wallet-timestamp"]);
+  const signature = String(req.headers["x-wallet-signature"] ?? "");
+  if (!address || !signature || !Number.isFinite(timestamp)) return false;
+  if (address !== wallet.toLowerCase()) return false;
+  const now = Math.floor(Date.now() / 1000);
+  if (Math.abs(now - timestamp) > WALLET_PROOF_MAX_AGE_SECONDS) return false;
+  try {
+    const recovered = ethers.verifyMessage(
+      `axiom-chat-history-v1:${address}:${timestamp}`,
+      signature,
+    );
+    return recovered.toLowerCase() === address;
+  } catch {
+    return false;
   }
-  return storage.download(rootHashHex);
 }
 
 function registerChatRoutes(app: Express, config: ServerConfig): void {
@@ -770,9 +773,7 @@ function registerChatRoutes(app: Express, config: ServerConfig): void {
         const { messages, tools, model: reqModel, wallet, provider } = parsed;
         const DEFAULT_MODEL = resolveChatModel(config.env?.AXIOM_COMPUTE_MODEL);
         const resolvedModel = reqModel ?? DEFAULT_MODEL;
-        const providerHeaders = buildProviderRoutingHeaders(
-          provider ?? CACHE_FRIENDLY_DEFAULT_ROUTING,
-        );
+        const providerHeaders = buildProviderRoutingHeaders(provider);
         const client = await createRouterClient(resolvedModel);
         const streamAbort = new AbortController();
         const streamTimeoutMs = Number.parseInt(
@@ -797,7 +798,7 @@ function registerChatRoutes(app: Express, config: ServerConfig): void {
             },
             {
               signal: streamSignal,
-              ...(providerHeaders ? { headers: providerHeaders } : {}),
+              headers: providerHeaders,
             },
           )
           .withResponse();
@@ -920,7 +921,8 @@ function registerChatRoutes(app: Express, config: ServerConfig): void {
 
   // Wallet-keyed history: every transcript persisted for this wallet (stable threadId =
   // lowercased wallet) is downloaded and returned newest-first. Fail-soft per transcript —
-  // one unreadable blob must not break the whole history.
+  // one unreadable blob must not break the whole history. Read requires a SIWE-lite
+  // ownership proof (headers) proving the caller controls the queried wallet's key.
   createRoute(
     app,
     {
@@ -932,22 +934,29 @@ function registerChatRoutes(app: Express, config: ServerConfig): void {
     },
     async (
       parsed: z.infer<typeof chatHistoryQuerySchema>,
-      _req: Request,
+      req: Request,
       res: Response,
       { config: cfg },
     ) => {
       const wallet = parsed.wallet.toLowerCase();
+      if (!verifyWalletProof(req, wallet)) {
+        sendError(
+          res,
+          HTTP.UNAUTHORIZED,
+          "wallet ownership proof missing, expired, or invalid",
+          "WALLET_PROOF_INVALID",
+        );
+        return;
+      }
       const events = getEventStore().getAll(100, undefined, "transcript");
       const transcripts: unknown[] = [];
       for (const evt of events) {
         if (payloadField(evt.payload, "wallet") !== wallet) continue;
         const rootHash = evt.txHash;
-        if (!rootHash) continue;
+        if (!rootHash || !cfg.chatStorage) continue;
         try {
-          const blob = await downloadChatTranscript(
-            cfg.chatStorage,
-            rootHash,
-            evt.payload,
+          const blob = await cfg.chatStorage.download(
+            rootHash as `0x${string}`,
           );
           transcripts.push(JSON.parse(new TextDecoder().decode(blob)));
         } catch (err) {
@@ -1007,12 +1016,26 @@ function registerMcpRoutes(
   config: ServerConfig,
   getBaseUrl: () => string,
 ): void {
-  REGISTERED_ROUTES.push({
-    method: "POST",
-    path: "/mcp",
-    consumer: "mcp",
-    description: "MCP streamable HTTP endpoint (read-only tools)",
-  });
+  REGISTERED_ROUTES.push(
+    {
+      method: "POST",
+      path: "/mcp",
+      consumer: "mcp",
+      description: "MCP streamable HTTP endpoint (read-only tools)",
+    },
+    {
+      method: "GET",
+      path: "/mcp",
+      consumer: "mcp",
+      description: "MCP SSE session stream (requires mcp-session-id)",
+    },
+    {
+      method: "DELETE",
+      path: "/mcp",
+      consumer: "mcp",
+      description: "Terminate an MCP session (requires mcp-session-id)",
+    },
+  );
   app.use("/mcp", createMcpRouter(config, { baseUrl: getBaseUrl }));
 }
 
@@ -1144,11 +1167,11 @@ function registerPaymentRoutes(
 }
 
 function registerNotFoundHandler(app: Express): void {
+  // Terminal 404 for EVERY unmatched path — hanging non-/v1 requests is a bug.
+  // WS upgrades (/v1/stream) bypass Express entirely via the httpServer "upgrade"
+  // event, so they never reach this handler.
   app.use((req: Request, res: Response) => {
-    if (req.path.startsWith("/v1/") || req.path.startsWith("/health")) {
-      sendError(res, HTTP.NOT_FOUND, `No ${req.method} route for ${req.path}`);
-      return;
-    }
+    sendError(res, HTTP.NOT_FOUND, `No ${req.method} route for ${req.path}`);
   });
 }
 

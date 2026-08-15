@@ -36,6 +36,13 @@ interface Booted {
   close: () => Promise<void>;
 }
 
+// Assigning undefined to process.env stores the literal string "undefined"
+// (Bun/Node coercion), which later boots read as a real (wrong) key.
+function restoreEnv(name: string, value: string | undefined): void {
+  if (value === undefined) delete process.env[name];
+  else process.env[name] = value;
+}
+
 async function boot(config: ServerConfig): Promise<Booted> {
   const { httpServer } = startServer(config);
   const address = await new Promise<AddressInfo>((resolve, reject) => {
@@ -131,7 +138,7 @@ test("MCP tools/list exposes the six read-only tools (auth disabled)", async () 
     }
   } finally {
     await booted.close();
-    process.env.AXIOM_DISABLE_AUTH = prev;
+    restoreEnv("AXIOM_DISABLE_AUTH", prev);
   }
 });
 
@@ -170,7 +177,7 @@ test("MCP tools/call list_routes returns real repo route data via the REST facad
     );
   } finally {
     await booted.close();
-    process.env.AXIOM_DISABLE_AUTH = prev;
+    restoreEnv("AXIOM_DISABLE_AUTH", prev);
   }
 });
 
@@ -218,8 +225,8 @@ test("MCP requires the server API key; client keys and no key are rejected", asy
     assert.ok(sessionId.length > 0, "server key initializes a session");
   } finally {
     await booted.close();
-    process.env.AXIOM_DISABLE_AUTH = prevDisable;
-    process.env.AXIOM_CLIENT_API_KEY = prevClient;
+    restoreEnv("AXIOM_DISABLE_AUTH", prevDisable);
+    restoreEnv("AXIOM_CLIENT_API_KEY", prevClient);
   }
 });
 
@@ -279,7 +286,7 @@ test("/v1/chat/completions returns 502 when no compute key is configured", async
   } finally {
     await booted.close();
     restoreComputeEnv(prevEnv);
-    process.env.AXIOM_DISABLE_AUTH = prevDisable;
+    restoreEnv("AXIOM_DISABLE_AUTH", prevDisable);
   }
 });
 
@@ -315,7 +322,7 @@ test("/v1/chat/completions maps an upstream 401 to a compute_auth 502 rail", asy
     await booted.close();
     globalThis.fetch = origFetch;
     restoreComputeEnv(prevEnv);
-    process.env.AXIOM_DISABLE_AUTH = prevDisable;
+    restoreEnv("AXIOM_DISABLE_AUTH", prevDisable);
   }
 });
 
@@ -360,6 +367,6 @@ test("/v1/chat/completions streams an empty-response warning when upstream retur
     await booted.close();
     globalThis.fetch = origFetch;
     restoreComputeEnv(prevEnv);
-    process.env.AXIOM_DISABLE_AUTH = prevDisable;
+    restoreEnv("AXIOM_DISABLE_AUTH", prevDisable);
   }
 });

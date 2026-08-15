@@ -30,9 +30,15 @@ export const mintDataHashSchema = z.object({
   dataHash: hexViem,
 });
 
-const amountStringSchema = z.object({
-  amount: z.string().regex(/^\d+(\.\d+)?$/),
-});
+/** LLM-reachable vault ops are capped at 1000 native OG per call (chat-runtime encode.ts
+ *  enforces the same cap client-side and shows the LLM a clear error). */
+const MAX_VAULT_AMOUNT = 1000;
+
+const amountStringSchema = z
+  .object({ amount: z.string().regex(/^\d+(\.\d+)?$/) })
+  .refine((v) => Number(v.amount) <= MAX_VAULT_AMOUNT, {
+    message: `amount exceeds the ${MAX_VAULT_AMOUNT} cap for chat-driven vault operations`,
+  });
 
 export const vaultDepositEncodeSchema = amountStringSchema;
 export const vaultWithdrawEncodeSchema = amountStringSchema;

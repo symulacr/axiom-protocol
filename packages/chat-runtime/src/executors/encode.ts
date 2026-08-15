@@ -28,10 +28,17 @@ function encodeOnlyResult(
   };
 }
 
+/** Hard per-call spend caps the LLM cannot talk its way past: 1000 USDC for
+ *  pay_for_agent payments, 1000 native OG for vault deposit/withdraw (the vault
+ *  routes enforce the same 1000 cap server-side via route-schemas.ts). */
+export const MAX_CHAT_USDC = 1000n * 10n ** 6n;
+export const MAX_CHAT_NATIVE = 1000;
+
 /** Sign+send, then wait for the receipt when the transport supports it (the
- *  transport owns the ~60s ceiling). Appends confirmation to the tool result
- *  so the LLM reports "confirmed" instead of a bare hash; a transport without
- *  receipt support (or a wait timeout) falls back to txHash-only — never breaks. */
+ *  transport owns the ~60s ceiling). Appends receipt confirmation to the tool
+ *  result (receiptStatus + blockNumber) so formatToolResult can tell the LLM
+ *  "confirmed"/"failed" instead of a bare hash; a transport without receipt
+ *  support (or a wait timeout) falls back to txHash-only — never breaks. */
 async function signAndSendWithReceipt(
   ctx: ToolRuntime,
   calldata: { to: `0x${string}`; data: `0x${string}`; value: bigint },
@@ -173,6 +180,11 @@ async function encodeVaultOp(
 ): Promise<ToolResult> {
   if (!args.amount) return toolFail("amount required");
   const amount = String(args.amount);
+  if (!(Number(amount) <= MAX_CHAT_NATIVE)) {
+    return toolFail(
+      `amount ${amount} exceeds the chat cap of ${MAX_CHAT_NATIVE} (native OG) — ask the user to use the UI for larger vault operations`,
+    );
+  }
 
   const { ok: httpOk, data } = await fetchJson<{
     to: string;
@@ -248,6 +260,11 @@ async function encodePayForAgent(
   if (agentWei === null) {
     return toolFail("agentAmount required and must be greater than zero");
   }
+  if (agentWei > MAX_CHAT_USDC) {
+    return toolFail(
+      `agentAmount exceeds the chat cap of ${MAX_CHAT_USDC / 10n ** 6n} USDC — ask the user to use the UI for larger payments`,
+    );
+  }
 
   const computeAmount = args.computeAmount;
   const hasCompute =
@@ -257,6 +274,11 @@ async function encodePayForAgent(
   const computeWei = hasCompute ? parseUsdcAmount(computeAmount) : null;
   if (hasCompute && computeWei === null) {
     return toolFail("computeAmount must be greater than zero");
+  }
+  if (hasCompute && computeWei !== null && computeWei > MAX_CHAT_USDC) {
+    return toolFail(
+      `computeAmount exceeds the chat cap of ${MAX_CHAT_USDC / 10n ** 6n} USDC`,
+    );
   }
 
   let functionName: "payForAgent" | "payForAgentAndCompute";

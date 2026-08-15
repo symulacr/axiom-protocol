@@ -49,8 +49,9 @@ function envVar(...keys: string[]): string | undefined {
 export function resolveRpcUrl(chainId?: number): string {
   const varVal = envVar("AXIOM_EVM_RPC", "OG_RPC_URL", "RPC_URL");
   if (varVal) return varVal;
+  // Fallback matches the env default chain (16602 Galileo testnet) — .env.example says 16602.
   const network = chainId ? pickOGNetwork(chainId) : null;
-  return network?.evmRpc ?? "https://evmrpc.0g.ai";
+  return network?.evmRpc ?? "https://evmrpc-testnet.0g.ai";
 }
 
 export function resolveStorageRpc(chainId?: number): string {
