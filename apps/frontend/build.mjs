@@ -33,6 +33,10 @@ const build = await Bun.build({
 	splitting: true,
 	sourcemap: "none",
 	define,
+	// Absolute chunk URLs: built index.html is served from any route depth
+	// (SPA fallback), and relative "./chunk-…" URLs break at ≥2-segment paths
+	// (document base becomes /app/, chunks resolve to /app/chunk-… → 404).
+	publicPath: "/",
 });
 if (!build.success) {
 	for (const log of build.logs) console.error(log);

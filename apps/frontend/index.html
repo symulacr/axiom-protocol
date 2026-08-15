@@ -17,13 +17,31 @@
     </noscript>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="description" content="Axiom Protocol — verifiable iNFT agents on 0G Chain. Mint, transfer, and trade ERC-7857 intelligent NFTs whose encrypted intelligence is re-keyed on every transfer via a TEE oracle." />
-    <meta property="og:title" content="Axiom Protocol — iNFT Agents" />
-    <meta property="og:description" content="Ownable AI agents as ERC-7857 iNFTs on 0G. Software TEE oracle · vaults · Axiom assistant." />
+    <script>
+      // Theme init before first paint — kills the dark→light flash for stored-light users.
+      (function () {
+        try {
+          var v = localStorage.getItem("axiom-theme");
+          if (v !== "light" && v !== "dark") {
+            v = window.matchMedia &&
+              window.matchMedia("(prefers-color-scheme: light)").matches
+              ? "light"
+              : "dark";
+          }
+          document.documentElement.dataset.theme = v;
+          document.documentElement.style.colorScheme = v;
+        } catch (e) {
+          document.documentElement.dataset.theme = "dark";
+        }
+      })();
+    </script>
+    <meta name="description" content="Axiom — own an AI agent on-chain. Mint, fund, run, and transfer agents that act on your behalf. Your agent's data is re-sealed for each new owner. Real state, visible at all times." />
+    <meta property="og:title" content="Axiom — Own an AI Agent On-Chain" />
+    <meta property="og:description" content="Ownable AI agents on 0G. Mint, fund, run, and transfer. Vaults · on-chain tools · Axiom assistant." />
     <meta property="og:image" content="/brand/og-1200.jpg" />
     <meta name="twitter:card" content="summary_large_image" />
-    <title>Axiom Protocol — iNFT Agents</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2305050c'/%3E%3Ccircle cx='16' cy='16' r='10' fill='none' stroke='%234f46e5' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='4' fill='%2334f5a0'/%3E%3C/svg%3E" />
+    <title>Axiom — Own an AI Agent On-Chain</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%2308080c'/%3E%3Ccircle cx='16' cy='16' r='10' fill='none' stroke='%23d97742' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='4' fill='%2334f5a0'/%3E%3C/svg%3E" />
   </head>
   <body>
     <div id="root"></div>
