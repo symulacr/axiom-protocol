@@ -343,7 +343,7 @@ bench-*.mjs
 eslint.config.js
 nixpacks.toml
 .commandcode/
-dist-dev/
+**/dist-dev/
 RELEASE_NOTES_v*.md
 apps/backend/CHAT-RUNTIME-PLAN.md
 apps/backend/COVERAGE-TODO.md
