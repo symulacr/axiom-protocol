@@ -13,74 +13,108 @@ transferable on-chain asset whose encrypted metadata is re-keyed on every transf
 **TEE-style signer** (simulated TEE today — Node signer with cleartext key, not Intel TDX/SEV).
 Agents run vaults, execute strategy ticks, and trade on a live 0G Chain market.
 
-## 0G Integration
+**One backend service.** The oracle (TEE signer, `src/oracle/`) and the chain indexer
+(`src/indexer/`) run **in-process** inside `apps/backend` — there are no separate
+oracle/indexer services or ports. Oracle routes are mounted under `/oracle/*` on the
+backend's own HTTP server.
 
-- **0G Chain** — ERC-7857 iNFT contracts (AgentNFT, StrategyVault, TeeVerifier, PaymentProcessor, MockUSDC) deployed and executed on 0G Chain.
-- **0G Compute** — AI strategy inference and the TEE-style signer that re-keys encrypted metadata on every transfer.
-- **0G Storage** — encrypted iNFT payloads uploaded to 0G Storage; the Merkle dataHash is registered on-chain.
+## Monorepo layout
+
+```text
+apps/backend     Bun + Express API: orchestrator, in-process oracle + indexer, chat, WS events
+apps/frontend    Bun + React 18 + wagmi v2 + RainbowKit dashboard (Bun-native dev/build, no Vite)
+apps/contracts   Foundry Solidity: AxiomAgentNFT (ERC-7857), StrategyVault, PaymentProcessor, TeeVerifier
+apps/bench       Live E2E benchmark harness (local-only, not tracked)
+packages/config  Shared chains, ABIs, env schema, 0G Storage SDK wiring
+packages/chat-runtime  Tool-calling chat engine used by backend
+scripts/         CI + deploy tooling (forge install, ABI drift check, mainnet deploy, wallets)
+```
 
 ## Architecture
-
-The iNFT lifecycle flows through the monorepo — `apps/{contracts,backend,oracle,frontend,indexer}`, `packages/{config,chat-runtime}` — and the TEE signer re-keys encrypted metadata on every transfer.
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor User
     participant FE as Frontend
-    participant BE as Backend
-    participant OR as Oracle (TEE)
+    participant BE as Backend (in-process oracle + indexer)
     participant CH as 0G Chain
 
     Note over User,CH: 1) Mint — tokenize strategy as ERC-7857 iNFT
     User->>FE: Connect wallet (RainbowKit)
     User->>FE: Mint iNFT (strategy + encrypted metadata)
-    FE->>BE: POST /mint (VITE_API_KEY)
-    BE->>CH: Deploy ERC-7857 iNFT (AXIOM_EVM_RPC)
+    FE->>BE: POST /mint (API key)
+    BE->>CH: Mint + register dataHash (AXIOM_EVM_RPC)
     Note over User,CH: 2) Run — ticks, deposits, transfers re-key metadata
     User->>FE: Execute tick / deposit / transfer
-    FE->>BE: Strategy tick (VITE_CHAT_MODEL on chat)
-    BE->>OR: Ownership proof (AXIOM_ORACLE_URL)
-    OR->>OR: Re-key metadata (AXIOM_TEE_SIGNER_PK, simulated TEE)
-    OR->>CH: EIP-712 TEE-signed proof
+    FE->>BE: Strategy tick (chat model inference via 0G Compute)
+    BE->>BE: Ownership proof + re-key (in-process oracle, AXIOM_TEE_SIGNER_PK)
+    BE->>CH: EIP-712 TEE-signed proof
     Note over User,CH: 3) Chat — streaming assistant with on-chain tools
     User->>FE: Open chat assistant
-    FE->>BE: SSE /v1/chat/completions (VITE_BACKEND_URL)
+    FE->>BE: SSE /v1/chat/completions
     BE-->>FE: Streamed response
-    FE->>CH: Market WebSocket — transfers + leaderboard
-    Note over BE,OR: Local dev: AXIOM_DISABLE_AUTH=true
+    FE->>CH: Market data — transfers + leaderboard
 ```
 
 ## Quick start
 
-Requires Node ≥ 22 (Railway pins 22, Vercel 24.x), pnpm 10.22.0, Foundry (`forge`) for contracts.
+Requires **Bun ≥ 1.4** (`packageManager: bun@1.4.0`) and Foundry (`forge`) for contracts.
 
 ```bash
-pnpm install
-cp .env.example .env                # canonical template; fill in deployed addresses + secrets
-pnpm --filter @axiom/config build
-pnpm --filter @axiom/chat-runtime build   # required before backend dev
-pnpm --filter @axiom/backend dev                      # :3000 (in-process oracle + indexer)
-pnpm --filter @axiom/frontend dev                     # :5173
+bun install
+cp .env.example .env                  # fill in deployed addresses + API keys
+bun run --filter @axiom/config build
+bun run --filter @axiom/chat-runtime build   # required before backend dev
+bun run --filter @axiom/backend dev          # :3000 (in-process oracle + indexer)
+bun run --filter @axiom/frontend dev         # :5173
 ```
 
-Contracts: `cd apps/contracts && pnpm build && pnpm test`
+```bash
+bun run build          # config + chat-runtime + backend
+bun run build:all      # + frontend
+bun run test           # all workspaces
+bun run typecheck      # all workspaces
+bun run lint           # backend + frontend
+```
+
+Contracts: `cd apps/contracts && forge build && forge test`
+(CI deps: `bash scripts/ci-forge-install.sh`; ABI drift gate: `bash scripts/check-abi-drift.sh`).
+
+## Chain + current deployment
+
+Chain is env-driven: `AXIOM_CHAIN_ID` / `VITE_CHAIN_ID`, defaulting to **0G Galileo testnet
+(16602)**. Set `16661` for Aristotle mainnet.
+
+The current deployed prototype is the **tx-merge build on Galileo** —
+[docs/deployments/galileo-merged-2026-08-13.json](docs/deployments/galileo-merged-2026-08-13.json)
+(5 merged tx functions, e2e flow 12 → 6 on-chain txs):
+
+| Contract | Address (proxy) |
+| --------- | ---------------- |
+| AxiomAgentNFT | `0x4e57e954D82A99Ee94c48e1bc804bA9D131a3622` |
+| AxiomStrategyVault | `0x4D0A123fbb83F7a5f137ec0B720a5D69fCB52251` |
+| AxiomPaymentProcessor | `0x9cDeDd99fe5F2E25f30920e092fC1C586716c0eC` |
+| AxiomTeeVerifier (reused) | `0x1ba37125bba23b66b549ccb33bc9b4952fd4dcc4` |
+| MockUSDC (payment token) | `0x354CA53bAB51C0666964fa050628d8351f8A7d19` |
+
+The older Aristotle mainnet record
+([2026-07-22](docs/deployments/aristotle-2026-07-22.json)) is **stale** — it predates the
+merged transaction functions and does not match current contract source.
 
 ## Deployment
 
-| Service | URL |
-| --------- | ----- |
-| Backend API (in-process oracle + indexer) | `https://axiom-backend-production-2cf5.up.railway.app` |
-| Frontend | `https://axiom-protocol.vercel.app` |
+- **Railway** (`railway.json`, two services):
+  - `axiom-backend` — built by `bun scripts/build-binaries.mjs` into a standalone binary, started as `./dist/axiom-backend` (health: `/health`).
+  - `axiom-frontend` — static build + `bun apps/frontend/server.mjs`.
+- **Vercel** (`vercel.json`) — static SPA from `apps/frontend/dist`, rewriting `/api/*` and `/oracle/*` to the Railway backend.
 
-### Contracts (Aristotle mainnet, chain 16661)
+## Security posture (honest)
 
-| Contract | Address | Explorer |
-| ---------- | --------- | --------- |
-| AxiomTeeVerifier (proxy) | `0x7490D693364A31E0513bcef8E346397cc4BA9E9c` | [chainscan](https://chainscan.0g.ai/address/0x7490D693364A31E0513bcef8E346397cc4BA9E9c) |
-| AxiomAgentNFT (proxy) | `0x4938F10B12051CE8DCd70E3F7555E71adb432545` | [chainscan](https://chainscan.0g.ai/address/0x4938F10B12051CE8DCd70E3F7555E71adb432545) |
-| AxiomStrategyVault (proxy) | `0xe32f87C6F8070C89a82D51BDd3fab578C0d7be6f` | [chainscan](https://chainscan.0g.ai/address/0xe32f87C6F8070C89a82D51BDd3fab578C0d7be6f) |
-| AxiomPaymentProcessor (proxy) | `0xe8B3B31E5CE0436cCfD19a47351943CcB7703722` | [chainscan](https://chainscan.0g.ai/address/0xe8B3B31E5CE0436cCfD19a47351943CcB7703722) |
-| MockUSDC (payment token) | `0x354CA53bAB51C0666964fa050628d8351f8A7d19` | — |
-
-All 8 contracts (impl + proxy each) verified on chainscan.
+- Auth is **API-key based**: `AXIOM_API_KEY` (server, full access) and
+  `AXIOM_CLIENT_API_KEY` / `VITE_API_KEY` (browser, hard allowlist — no vault execute).
+  `AXIOM_DISABLE_AUTH=true` is refused when `NODE_ENV=production`.
+- The TEE signer is **simulated**: a software secp256k1 signer holding a cleartext key.
+  It is not a hardware TEE. Transfers require an ECIES-**sealed** data-encryption key;
+  cleartext DEKs are rejected.
+- Production deploy keys live in `wallets/*.json` (git-ignored) or env vars — never in the repo.
