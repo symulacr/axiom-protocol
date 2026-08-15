@@ -76,7 +76,7 @@ function buildWallet(
           }) =>
             writeContractAsync({
               address: args.address,
-              abi: args.abi,
+              abi: toViemAbi(args.abi),
               functionName: args.functionName,
               args: [...args.args],
               value: args.value,

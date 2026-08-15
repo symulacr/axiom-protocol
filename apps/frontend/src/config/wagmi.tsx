@@ -39,9 +39,6 @@ function resolveChainId(): number {
 export const APP_CHAIN_ID = resolveChainId();
 export const APP_CHAIN = CHAINS[APP_CHAIN_ID as keyof typeof CHAINS];
 
-/** 0G Mainnet (Aristotle 16661) — viem's built-in chain definition. */
-export const aristotle = zeroGMainnet;
-
 // Validates the localStorage override against the SELECTED chain's allowlist;
 // clears bad keys and falls back to VITE_EVM_RPC ?? the chain default.
 function resolveRpc(chainId: number): string {
@@ -91,6 +88,14 @@ function createWagmiConfig() {
     storedWcProjectId ||
     import.meta.env.VITE_WALLETCONNECT_PROJECT_ID ||
     "00000000000000000000000000000000";
+  if (
+    projectId === "00000000000000000000000000000000" &&
+    import.meta.env.MODE === "production"
+  ) {
+    console.warn(
+      "WalletConnect uses the placeholder projectId — set VITE_WALLETCONNECT_PROJECT_ID or WalletConnect pairing will fail.",
+    );
+  }
 
   return createConfig({
     chains: [APP_CHAIN],

@@ -12,8 +12,8 @@ const frontendDir = import.meta.dirname;
 const BACKEND = process.env.PROXY_BACKEND_URL ?? "http://127.0.0.1:3000";
 const PORT = Number(process.env.PORT) || 5173;
 
-// Dev build of the entry (no minify, sourcemaps, per-file chunks) served from
-// an in-memory build. `bun --hot` restarts this module on source change.
+// Dev build of the entry (no minify, sourcemaps, per-file chunks) written to
+// disk in dist-dev/. `bun --hot` restarts this module on source change.
 const build = await Bun.build({
   entrypoints: [join(frontendDir, "index.html")],
   outdir: join(frontendDir, "dist-dev"),

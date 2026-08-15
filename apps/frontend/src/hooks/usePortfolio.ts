@@ -7,8 +7,6 @@ import type { PerformanceMetrics } from "@axiom/config/types/performance";
 interface PortfolioAgent {
   tokenId: bigint;
   owner: string;
-  dataHash: string;
-  uri: string;
   dataDescription?: string;
 }
 
