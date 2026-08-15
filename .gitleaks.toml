@@ -1,0 +1,26 @@
+# gitleaks configuration — Axiom Protocol
+# The default ruleset is kept; we only allowlist known PUBLIC 0G testnet
+# contract/signer addresses (not secrets), so `gitleaks detect` stays clean
+# without hiding real leaks. .env.example is NOT path-allowlisted — keep it
+# placeholder-only (`sk-<...>`, `0x<...>`); real keys must never land in it.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Known public 0G Galileo testnet addresses (deployed contracts + signer/deployer) — not secrets."
+regexes = [
+  '''(?i)0xaBe9339b93320EC78400772802fc9103c56a4838''',
+  '''(?i)0x170271D189Fb039c2b546106F73a3049A8a7bC38''',
+  '''(?i)0x60B9d53F5410b6586D2D5395D4A309E3C9E5595A''',
+  '''(?i)0x670873887CaD7442F52027702538fb2e418b8576''',
+  '''(?i)0x354CA53bAB51C0666964fa050628d8351f8A7d19''',
+  '''(?i)0xeA13E136E59c6e919BeF2221f6ecDE2cBCEb0Dbf''',
+  '''(?i)0x437371dB1FBD534Bd01BD3f4E66DfA1675952F91''',
+  '''(?i)0x845016B204fb2db028Ff148990Fc75bb606EE239''',
+  '''(?i)0x6f82d061a903E48Ce1810F8d42536C6A837ed684''',
+  '''(?i)0xB30061Ea93b60FCbAE11C2b06FE3Db3C84FAA367''',
+  '''(?i)0x63Edfd4CD68A77AEdC4A56550Ae94e7F86d497B7''',
+  '''(?i)0x97a32707d948F91175706ca5509c7bfCC643a1dD''',
+  '''(?i)0xe82a136753545FC2e9f4DF38eac56057Cd31D894''',
+]
