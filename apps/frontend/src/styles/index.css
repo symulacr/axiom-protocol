@@ -34,7 +34,7 @@
   --line-soft: #272d31;
   --text: #f0eee9;
   --muted: #99a09f;
-  --dim: #6d7675;
+  --dim: #858e8d;
   --copper: #d28b52;
   --copper-bright: #efae6b;
   --phosphor: #67e8b4;
@@ -74,6 +74,8 @@ body {
 }
 button, input { font: inherit; }
 button { cursor: pointer; }
+/* UA buttonface bled through surface-less buttons (.account 2:1); classes still outrank. */
+button { background-color: transparent; }
 button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid var(--copper-bright); outline-offset: 3px; }
 button:active { transform: scale(.98); }
 h1, h2, h3, p { margin: 0; }

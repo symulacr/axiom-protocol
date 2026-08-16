@@ -87,7 +87,7 @@ export const lockedRouteMeta: Record<
     media: MEDIA.proof,
     proofs: [
       "Wallet context",
-      "Network 16661",
+      "Network boundary",
       "Session signature",
       "Console profile",
     ],

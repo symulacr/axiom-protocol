@@ -713,12 +713,12 @@ input[type="range"] {
 }
 
 [dir="rtl"] .app-shell { direction: rtl; }
-[dir="rtl"] .app-shell .sidebar { border-right: 0; border-left: 1px solid var(--completion-line); }
+/* RTL mirrors naturally (grid col 1 = right); the fixed rail anchors right —
+   the old template/column swaps + left anchor cancelled back into LTR. */
+[dir="rtl"] .app-shell .sidebar { border-right: 0; border-left: 1px solid var(--completion-line); inset: 0 0 0 auto; }
 @media (min-width: 701px) {
-  [dir="rtl"] .app-shell:not(.rail-hidden) { grid-template-columns: minmax(0, 1fr) var(--rail-width); }
-  [dir="rtl"] .app-shell .sidebar-wrap { grid-column: 2; grid-row: 1; }
-  [dir="rtl"] .app-shell .main { grid-column: 1; grid-row: 1; }
-  [dir="rtl"] .app-shell .rail-reopen { left: 0; right: auto; }
+  [dir="rtl"] .app-shell .rail-reopen { left: auto; right: 0; border-left: 1px solid var(--copper); border-right: 0; }
+  [dir="rtl"] .app-shell .rail-resize { right: auto; left: -4px; }
 }
 
 @media (max-width: 700px) {

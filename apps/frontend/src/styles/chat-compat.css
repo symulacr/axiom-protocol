@@ -7,8 +7,10 @@
   Loaded LAST (un-layered) in index.css so it wins over @layer axiom-base.
 */
 
-:root {
-  /* spacing / type / weight scales the kept components reference */
+:root,
+.app-shell {
+  /* Also declared on .app-shell so var(--text)/var(--panel)… re-resolve inside
+     the theme-scoped shell — :root alone froze the chat kit to dark colors. */
   --space-xs: 0.25rem;
   --space-sm: 0.5rem;
   --space-md: 0.75rem;
@@ -141,6 +143,8 @@
   color: #24170d;
 }
 .btn-primary:hover:not(:disabled) { background: var(--copper-bright); }
+/* Paper theme copper is darker; the graphite ink text only reached 3.8:1 there. */
+.app-shell.light .btn-primary { color: #fffdf8; }
 .btn-secondary {
   background: transparent;
   border-color: var(--copper);

@@ -9,7 +9,12 @@ export const API_KEY = import.meta.env.VITE_API_KEY ?? "";
 
 export const ORACLE_URL = import.meta.env.VITE_ORACLE_URL ?? "/oracle";
 
-export const CHAT_MODEL = resolveChatModel(import.meta.env.VITE_CHAT_MODEL);
+// Chain-aware: an unset VITE_CHAT_MODEL follows the chain default
+// (VITE_CHAIN_ID), so a testnet build never pins a mainnet-only model id.
+export const CHAT_MODEL = resolveChatModel(
+  import.meta.env.VITE_CHAT_MODEL,
+  Number(import.meta.env.VITE_CHAIN_ID) || undefined,
+);
 
 // ws/wss base; relative /api derives host+scheme from the page so we never emit "ws:///api/..."
 function backendWsBase(): string {

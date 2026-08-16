@@ -44,6 +44,24 @@
   border-color: #c9beb0;
 }
 
+/* Paper-theme inks: graphite-calibrated accents measured 1.3-4.0:1 on paper. */
+.app-shell.light { --phosphor: #0a6b43; }
+.app-shell.light .button-primary { color: #fffdf8; }
+.app-shell.light .button-danger,
+.app-shell.light .field-message,
+.app-shell.light .status-warning,
+.app-shell.light .state-reverted,
+.app-shell.light .state-rejected,
+.app-shell.light .state-stale {
+  color: #8a4a12;
+}
+
+.app-shell.light .storage-file > .mono { color: var(--copper-bright); }
+/* The strip's graphite slab (rgba(20,20,20,.9)) must not paint a dark bar on paper. */
+.app-shell.light .priority-action-strip {
+  background: linear-gradient(110deg, rgba(199, 116, 53, 0.18), rgba(255, 253, 248, 0.92) 42%, rgba(210, 139, 82, 0.08));
+}
+
 .app-shell .main {
   overflow: visible;
   background: var(--completion-canvas);

@@ -68,7 +68,7 @@
 
 .seo-route-status b {
   color: #67e8b4;
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 700;
 }
 
@@ -116,7 +116,7 @@
 .seo-route-rail span,
 .seo-route-rail small {
 	color: #a49f97;
-	font-size: 8px;
+	font-size: 9px;
 	font-weight: 700;
 	letter-spacing: .12em;
 }
@@ -264,8 +264,8 @@
 .seo-evidence-artifact small {
   display: block;
   margin-top: 10px;
-  color: #6f6b66;
-  font-size: 8px;
+  color: var(--dim, #858e8d);
+  font-size: 9px;
   letter-spacing: 0.08em;
 }
 
@@ -399,7 +399,7 @@
   .seo-console-link { margin-left: auto; }
 	.seo-hero { grid-template-columns: minmax(0, 1fr); gap: 28px; padding: 44px 0; }
 	.seo-route-rail { grid-column: 1; flex-direction: row; align-items: center; gap: 9px; min-height: auto; padding: 0 0 10px; border-left: 0; border-bottom: 1px solid rgba(210, 139, 82, .38); }
-	.seo-route-rail strong { max-width: none; font-size: 8px; writing-mode: initial; }
+	.seo-route-rail strong { max-width: none; font-size: 9px; writing-mode: initial; }
 	.seo-route-rail i { display: none; }
 	.seo-hero-copy { grid-column: 1; }
 	.seo-proof-card { grid-column: 1; box-shadow: 10px 10px 0 rgba(210, 139, 82, 0.08); }
@@ -416,7 +416,7 @@
   .seo-link-grid a { padding: 17px 14px; }
   .seo-link-grid strong { font-size: 16px; }
   .seo-evidence-artifact > div,
-  .seo-evidence-artifact > p { font-size: 8px; }
+  .seo-evidence-artifact > p { font-size: 9px; }
   .seo-hero h1 { font-size: clamp(38px, 11.1vw, 46px); letter-spacing: -0.05em; }
 }
 

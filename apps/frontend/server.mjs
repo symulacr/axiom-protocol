@@ -75,10 +75,14 @@ async function proxyHttpRequest(req, target) {
     url.pathname.replace(target.strip, "") + url.search || "/",
     target.base,
   );
+  // `{...req.headers}` is {} in Bun — it dropped x-api-key and 401'd every authed call.
+  const headers = new Headers(req.headers);
+  headers.set("host", upstream.host);
+  headers.set("origin", target.base);
   try {
     const upstreamRes = await fetch(upstream, {
       method: req.method,
-      headers: { ...req.headers, host: upstream.host, origin: target.base },
+      headers,
       body: ["GET", "HEAD"].includes(req.method) ? undefined : req.body,
       decompress: false,
       duplex: "half",

@@ -7,6 +7,7 @@ import { ArrowLeft, ChevronRight, LockKeyhole, Wallet } from "./axiom/icons.js";
 import { Button, Status } from "./axiom/Controls.js";
 import { Logo } from "./axiom/AppShell.js";
 import { lockedRouteMeta } from "../lib/prototypeCatalog.js";
+import { APP_CHAIN, APP_CHAIN_ID } from "../config/wagmi.js";
 
 export function LockedRoute({
   requested,
@@ -40,7 +41,7 @@ export function LockedRoute({
         </header>
         <div className="locked-command-strip">
           <span>SESSION / AWAITING</span>
-          <span>CHAIN / 16661</span>
+          <span>CHAIN / {APP_CHAIN_ID}</span>
           <span>BOUNDARY / {meta.boundary}</span>
           <span>NEXT / {meta.next}</span>
         </div>
@@ -53,7 +54,9 @@ export function LockedRoute({
               </div>
               <div>
                 <span>CHAIN</span>
-                <strong>16661 / 0G</strong>
+                <strong>
+                  {APP_CHAIN_ID} / {APP_CHAIN.name}
+                </strong>
               </div>
               <div>
                 <span>ROUTE</span>

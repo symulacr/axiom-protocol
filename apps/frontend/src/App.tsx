@@ -413,7 +413,13 @@ export function App(): ReactElement {
       "/agents/list",
     ].includes(location.pathname) &&
     !location.pathname.startsWith("/agents/");
-  const internal = !publicSeoSlug && !isNotFound && location.pathname !== "/";
+  // /chat stays public (anonymous live chat; history keys to the wallet only
+  // when a session exists) — every other internal route is wallet-gated.
+  const internal =
+    !publicSeoSlug &&
+    !isNotFound &&
+    location.pathname !== "/" &&
+    location.pathname !== "/chat";
   const authenticated =
     state.session.status === "authenticated" && isSessionFresh(state.session);
 
