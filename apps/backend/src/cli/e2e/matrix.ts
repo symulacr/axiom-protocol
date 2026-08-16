@@ -248,12 +248,16 @@ interface ParityReport {
   pendingEntries: MatrixEntry[];
 }
 
-function computeParityReport(): ParityReport {
-  const all = [...entries.values()].sort((a, b) =>
+function sortedEntries(): MatrixEntry[] {
+  return [...entries.values()].sort((a, b) =>
     a.contract === b.contract
       ? a.function.localeCompare(b.function)
       : a.contract.localeCompare(b.contract),
   );
+}
+
+function computeParityReport(): ParityReport {
+  const all = sortedEntries();
   const covered = all.filter((e) => e.status === "covered").length;
   const skipped = all.filter((e) => e.status === "skipped").length;
   const pending = all.filter((e) => e.status === "pending").length;
@@ -279,11 +283,7 @@ function computeParityReport(): ParityReport {
 
 export function printParityMatrix(): ParityReport {
   const report = computeParityReport();
-  const all = [...entries.values()].sort((a, b) =>
-    a.contract === b.contract
-      ? a.function.localeCompare(b.function)
-      : a.contract.localeCompare(b.contract),
-  );
+  const all = sortedEntries();
 
   console.log("\n============================================");
   console.log("  On-Chain Parity Matrix");

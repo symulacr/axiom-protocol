@@ -3,14 +3,12 @@ import type { EncryptionOption } from "@0gfoundation/0g-storage-ts-sdk";
 
 import { getBytes, keccak256, toUtf8Bytes, type Signer } from "ethers";
 import type { Hex } from "viem";
+import { existsSync, readFileSync } from "node:fs";
 import {
-  existsSync,
-  readFileSync,
-  renameSync,
-  writeFileSync,
-  mkdirSync,
-} from "node:fs";
-import { dirnamePath, joinPath } from "../path.js";
+  dataFilePath,
+  atomicWriteFileSync,
+  backupFileBestEffort,
+} from "../path.js";
 
 interface UploadResult {
   rootHash: Hex;
@@ -58,11 +56,7 @@ interface DownloadOptions {
   withProof?: boolean;
 }
 
-const ORACLE_SEEN_HASHES_FILE = joinPath(
-  process.env.AXIOM_DATA_DIR ?? process.cwd(),
-  ".data",
-  "oracle-seen-hashes.json",
-);
+const ORACLE_SEEN_HASHES_FILE = dataFilePath("oracle-seen-hashes.json");
 
 interface SeenHashesOptions {
   seenHashesFile?: string;
@@ -86,22 +80,13 @@ function loadSeenDataHashes(file: string): Set<string> {
     }
     return seen;
   } catch {
-    if (existsSync(file)) {
-      try {
-        renameSync(file, `${file}.bak`);
-      } catch {
-        /* ignore — backup is best-effort; a failed rename must not block startup */
-      }
-    }
+    if (existsSync(file)) backupFileBestEffort(file);
     return new Set();
   }
 }
 
 function persistSeenDataHashes(file: string, seen: Set<string>): void {
-  mkdirSync(dirnamePath(file), { recursive: true });
-  const tmp = `${file}.${process.pid}.${crypto.randomUUID()}.tmp`;
-  writeFileSync(tmp, JSON.stringify({ seenDataHashes: [...seen] }));
-  renameSync(tmp, file);
+  atomicWriteFileSync(file, JSON.stringify({ seenDataHashes: [...seen] }));
 }
 
 const SEEN_HASHES_FLUSH_THRESHOLD = 8;
@@ -276,11 +261,7 @@ function resolveTransportKey(): Uint8Array {
   if (process.env.BUN_TEST === "1") {
     return crypto.getRandomValues(new Uint8Array(32));
   }
-  const file = joinPath(
-    process.env.AXIOM_DATA_DIR ?? process.cwd(),
-    ".data",
-    "storage-transport-key",
-  );
+  const file = dataFilePath("storage-transport-key");
   let hex = "";
   try {
     hex = existsSync(file) ? readFileSync(file, "utf-8").trim() : "";
@@ -292,17 +273,10 @@ function resolveTransportKey(): Uint8Array {
     console.warn(
       `[0g-storage] discarding corrupt transport-key file ${file} — blobs encrypted under the lost key become undecryptable`,
     );
-    try {
-      renameSync(file, `${file}.bak`);
-    } catch {
-      /* best-effort backup */
-    }
+    backupFileBestEffort(file);
   }
   const key = crypto.getRandomValues(new Uint8Array(32));
-  mkdirSync(dirnamePath(file), { recursive: true });
-  const tmp = `${file}.${process.pid}.${crypto.randomUUID()}.tmp`;
-  writeFileSync(tmp, Buffer.from(key).toString("hex"), { mode: 0o600 });
-  renameSync(tmp, file);
+  atomicWriteFileSync(file, Buffer.from(key).toString("hex"), { mode: 0o600 });
   return key;
 }
 

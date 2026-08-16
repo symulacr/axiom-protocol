@@ -79,28 +79,45 @@ async function mcpRequest(
   return { status: res.status, headers: res.headers, json: () => res.json() };
 }
 
+const initializeBody = {
+  jsonrpc: "2.0",
+  method: "initialize",
+  params: {
+    protocolVersion: "2025-06-18",
+    capabilities: {},
+    clientInfo: { name: "axiom-mcp-test", version: "0.0.0" },
+  },
+  id: 1,
+};
+
 async function initialize(
   baseUrl: string,
   extraHeaders?: Record<string, string>,
 ): Promise<string> {
   const { status, headers } = await mcpRequest(
     baseUrl,
-    {
-      jsonrpc: "2.0",
-      method: "initialize",
-      params: {
-        protocolVersion: "2025-06-18",
-        capabilities: {},
-        clientInfo: { name: "axiom-mcp-test", version: "0.0.0" },
-      },
-      id: 1,
-    },
+    initializeBody,
     extraHeaders,
   );
   assert.equal(status, 200, "initialize must return 200");
   const sessionId = headers.get("mcp-session-id");
   assert.ok(sessionId, "initialize must set mcp-session-id header");
   return sessionId;
+}
+
+/** Stub global fetch for the compute-upstream base only (port 1); the local test
+ *  server keeps using the real fetch. Returns the restore function. */
+function stubPort1Fetch(respond: () => Response): () => void {
+  const origFetch = globalThis.fetch;
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url =
+      input instanceof Request ? new URL(input.url) : new URL(String(input));
+    if (url.port !== "1") return origFetch(input, init);
+    return respond();
+  }) as unknown as typeof fetch;
+  return () => {
+    globalThis.fetch = origFetch;
+  };
 }
 
 test("MCP tools/list exposes the six read-only tools (auth disabled)", async () => {
@@ -189,33 +206,13 @@ test("MCP requires the server API key; client keys and no key are rejected", asy
   const booted = await boot(makeConfig({ AXIOM_API_KEY: "server-secret" }));
   try {
     // No key → 401 from the global API-key middleware
-    const anon = await mcpRequest(booted.baseUrl, {
-      jsonrpc: "2.0",
-      method: "initialize",
-      params: {
-        protocolVersion: "2025-06-18",
-        capabilities: {},
-        clientInfo: { name: "axiom-mcp-test", version: "0.0.0" },
-      },
-      id: 1,
-    });
+    const anon = await mcpRequest(booted.baseUrl, initializeBody);
     assert.equal(anon.status, 401, "no key must be rejected");
 
     // Client key → 403 (client allowlist denies /mcp)
-    const client = await mcpRequest(
-      booted.baseUrl,
-      {
-        jsonrpc: "2.0",
-        method: "initialize",
-        params: {
-          protocolVersion: "2025-06-18",
-          capabilities: {},
-          clientInfo: { name: "axiom-mcp-test", version: "0.0.0" },
-        },
-        id: 1,
-      },
-      { "x-api-key": "browser-key" },
-    );
+    const client = await mcpRequest(booted.baseUrl, initializeBody, {
+      "x-api-key": "browser-key",
+    });
     assert.equal(client.status, 403, "client key must be rejected on /mcp");
 
     // Server key → initialize succeeds
@@ -296,20 +293,15 @@ test("/v1/chat/completions maps an upstream 401 to a compute_auth 502 rail", asy
   process.env.AXIOM_DISABLE_AUTH = "true";
   process.env.AXIOM_COMPUTE_DIRECT_KEY = "test-key";
   process.env.AXIOM_COMPUTE_DIRECT_URL = "http://127.0.0.1:1/v1/proxy";
-  const origFetch = globalThis.fetch;
-  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
-    const url =
-      input instanceof Request ? new URL(input.url) : new URL(String(input));
-    // Only the compute-upstream base (port 1) is stubbed; the local test
-    // server keeps using the real fetch.
-    if (url.port !== "1") return origFetch(input, init);
-    return new Response(
-      JSON.stringify({
-        error: { message: "Invalid API key", code: "invalid_api_key" },
-      }),
-      { status: 401, headers: { "content-type": "application/json" } },
-    );
-  }) as unknown as typeof fetch;
+  const restoreFetch = stubPort1Fetch(
+    () =>
+      new Response(
+        JSON.stringify({
+          error: { message: "Invalid API key", code: "invalid_api_key" },
+        }),
+        { status: 401, headers: { "content-type": "application/json" } },
+      ),
+  );
   const booted = await boot(makeConfig());
   try {
     const res = await chatRequest(booted.baseUrl, {
@@ -320,7 +312,7 @@ test("/v1/chat/completions maps an upstream 401 to a compute_auth 502 rail", asy
     assert.equal(body.code, "compute_auth");
   } finally {
     await booted.close();
-    globalThis.fetch = origFetch;
+    restoreFetch();
     restoreComputeEnv(prevEnv);
     restoreEnv("AXIOM_DISABLE_AUTH", prevDisable);
   }
@@ -332,21 +324,16 @@ test("/v1/chat/completions streams an empty-response warning when upstream retur
   process.env.AXIOM_DISABLE_AUTH = "true";
   process.env.AXIOM_COMPUTE_DIRECT_KEY = "test-key";
   process.env.AXIOM_COMPUTE_DIRECT_URL = "http://127.0.0.1:1/v1/proxy";
-  const origFetch = globalThis.fetch;
-  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
-    const url =
-      input instanceof Request ? new URL(input.url) : new URL(String(input));
-    // Only the compute-upstream base (port 1) is stubbed; the local test
-    // server keeps using the real fetch.
-    if (url.port !== "1") return origFetch(input, init);
-    return new Response("data: [DONE]\n\n", {
-      status: 200,
-      headers: {
-        "content-type": "text/event-stream",
-        x_0g_trace: JSON.stringify({ request_id: "r-test" }),
-      },
-    });
-  }) as unknown as typeof fetch;
+  const restoreFetch = stubPort1Fetch(
+    () =>
+      new Response("data: [DONE]\n\n", {
+        status: 200,
+        headers: {
+          "content-type": "text/event-stream",
+          x_0g_trace: JSON.stringify({ request_id: "r-test" }),
+        },
+      }),
+  );
   const booted = await boot(makeConfig());
   try {
     const res = await chatRequest(booted.baseUrl, {
@@ -365,7 +352,7 @@ test("/v1/chat/completions streams an empty-response warning when upstream retur
     assert.ok(text.includes("data: [DONE]"), "SSE body should end with [DONE]");
   } finally {
     await booted.close();
-    globalThis.fetch = origFetch;
+    restoreFetch();
     restoreComputeEnv(prevEnv);
     restoreEnv("AXIOM_DISABLE_AUTH", prevDisable);
   }

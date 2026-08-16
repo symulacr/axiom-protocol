@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { hexViem, addressViem } from "@axiom/config/types/hex";
+import {
+  hexViem,
+  addressViem,
+  HEX_REGEX,
+  ADDRESS_REGEX,
+} from "@axiom/config/types/hex";
 
 const accessProofSchema = z.object({
   dataHash: hexViem,
@@ -48,10 +53,7 @@ export const eventBodySchema = z.object({
   eventName: z.string().min(1).max(128),
   chainId: z.number().int().positive(),
   blockNumber: z.number().int().nonnegative(),
-  txHash: z
-    .string()
-    .regex(/^0x[a-fA-F0-9]+$/)
-    .optional(),
+  txHash: z.string().regex(HEX_REGEX).optional(),
   logIndex: z.number().int().nonnegative(),
   payload: z.record(z.string(), z.unknown()),
 });
@@ -148,10 +150,7 @@ const chatMessageSchema = z.object({
 export const providerRoutingSchema = z
   .object({
     sort: z.enum(["latency", "price"]).optional(),
-    address: z
-      .string()
-      .regex(/^0x[a-fA-F0-9]{40}$/)
-      .optional(),
+    address: z.string().regex(ADDRESS_REGEX).optional(),
     allowFallbacks: z.boolean().optional(),
     trustMode: z.enum(["standard", "verified", "private"]).optional(),
     maxPriceUsdPrompt: z.number().nonnegative().optional(),

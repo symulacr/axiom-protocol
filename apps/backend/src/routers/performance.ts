@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { HTTP, EVENT_NAMES } from "@axiom/config";
-import { createRoute } from "./route-factory.js";
+import { createRoute, positiveIntQuery } from "./route-factory.js";
 import { sendError } from "../utils/response.js";
 import type { EventStore } from "../events/store.js";
 import type { ServerConfig } from "../server.js";
@@ -48,14 +48,7 @@ export function registerPerformanceRoutes(
       description: "Agent strategy performance metrics",
     },
     (_parsed, req, _res, { id }) => {
-      const limitRaw =
-        typeof req.query.limit === "string"
-          ? Number(req.query.limit)
-          : undefined;
-      const limit =
-        limitRaw !== undefined && Number.isInteger(limitRaw) && limitRaw > 0
-          ? limitRaw
-          : 500;
+      const limit = positiveIntQuery(req.query.limit, 500);
       const cacheKey = `agent:${id}:${limit}`;
       const cached = perfCache.get(cacheKey);
       if (cached !== undefined) {

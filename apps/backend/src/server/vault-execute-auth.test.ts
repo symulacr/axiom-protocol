@@ -31,7 +31,8 @@ function mockRes() {
   return { res, state };
 }
 
-test("client key cannot pass requireServerAuth (vault execute gate)", () => {
+/** Builds a request that already passed the api-key middleware with `apiKey`. */
+function makeAuthedReq(apiKey: string): AuthRequest {
   const auth = createApiKeyAuth(
     "server-secret",
     ["/health"],
@@ -40,9 +41,14 @@ test("client key cannot pass requireServerAuth (vault execute gate)", () => {
   );
   const req = {
     path: "/v1/vaults/1/execute",
-    headers: { "x-api-key": "browser-key" },
+    headers: { "x-api-key": apiKey },
   } as unknown as AuthRequest;
   auth(req as Request, mockRes().res, () => {});
+  return req;
+}
+
+test("client key cannot pass requireServerAuth (vault execute gate)", () => {
+  const req = makeAuthedReq("browser-key");
   assert.equal(req.authPrincipal, "client");
   const { res, state } = mockRes();
   let next = false;
@@ -54,17 +60,7 @@ test("client key cannot pass requireServerAuth (vault execute gate)", () => {
 });
 
 test("server key passes requireServerAuth", () => {
-  const auth = createApiKeyAuth(
-    "server-secret",
-    ["/health"],
-    false,
-    "browser-key",
-  );
-  const req = {
-    path: "/v1/vaults/1/execute",
-    headers: { "x-api-key": "server-secret" },
-  } as unknown as AuthRequest;
-  auth(req as Request, mockRes().res, () => {});
+  const req = makeAuthedReq("server-secret");
   assert.equal(req.authPrincipal, "server");
   let next = false;
   requireServerAuth(req as Request, mockRes().res, () => {

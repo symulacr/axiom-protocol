@@ -42,6 +42,19 @@ function readyChain() {
   };
 }
 
+/** Common execute_tick/simulate_tick runtime: token 3 on the mock addresses. */
+function tickCtx(extra: Record<string, unknown> = {}): ToolRuntime {
+  return {
+    session: {
+      chainId: 1,
+      lastTokenId: "3",
+      addresses: { vault: VAULT, agentNft: AGENT_NFT },
+    },
+    mode: "encode-only",
+    ...extra,
+  } as unknown as ToolRuntime;
+}
+
 describe("buildTickBody", () => {
   it("includes computeModel when provided", () => {
     const result = buildTickBody(
@@ -69,15 +82,11 @@ describe("buildTickBody", () => {
 
 describe("runOrchestrateTool", () => {
   it("simulate_tick reports a ready simulated state from on-chain reads", async () => {
-    const res = await runOrchestrateTool("simulate_tick", { tokenId: "3" }, {
-      chain: readyChain(),
-      session: {
-        chainId: 1,
-        lastTokenId: "3",
-        addresses: { vault: VAULT, agentNft: AGENT_NFT },
-      },
-      mode: "encode-only",
-    } as unknown as ToolRuntime);
+    const res = await runOrchestrateTool(
+      "simulate_tick",
+      { tokenId: "3" },
+      tickCtx({ chain: readyChain() }),
+    );
     assert.equal(res.ok, true);
     const data = JSON.parse(res.content) as {
       simulated: boolean;
@@ -110,22 +119,20 @@ describe("runOrchestrateTool", () => {
   });
 
   it("execute_tick refuses when the vault balance is zero (NOT_READY)", async () => {
-    const res = await runOrchestrateTool("execute_tick", { tokenId: "3" }, {
-      chain: {
-        chainId: 1,
-        readContract: async (req: { functionName: string }) => {
-          if (req.functionName === "balanceOf") return 0n;
-          return [STRATEGY_ROOT, 0n, 0n, 0n, 0n];
+    const res = await runOrchestrateTool(
+      "execute_tick",
+      { tokenId: "3" },
+      tickCtx({
+        chain: {
+          chainId: 1,
+          readContract: async (req: { functionName: string }) => {
+            if (req.functionName === "balanceOf") return 0n;
+            return [STRATEGY_ROOT, 0n, 0n, 0n, 0n];
+          },
+          multicall: async () => [],
         },
-        multicall: async () => [],
-      },
-      session: {
-        chainId: 1,
-        lastTokenId: "3",
-        addresses: { vault: VAULT, agentNft: AGENT_NFT },
-      },
-      mode: "encode-only",
-    } as unknown as ToolRuntime);
+      }),
+    );
     assert.equal(res.ok, false);
     const data = JSON.parse(res.content) as { error: string };
     assert.ok(data.error.includes("NOT_READY"), `error was ${data.error}`);

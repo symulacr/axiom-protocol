@@ -1,7 +1,9 @@
 import { z } from "zod";
 
-const HEX_REGEX = /^0x[a-fA-F0-9]+$/;
-const ADDRESS_REGEX = /^0x[a-fA-F0-9]{40}$/;
+/** Shared EVM hex shapes: single source for every regex guarding a 0x value. */
+export const HEX_REGEX = /^0x[a-fA-F0-9]+$/;
+export const ADDRESS_REGEX = /^0x[a-fA-F0-9]{40}$/;
+export const HASH_REGEX = /^0x[a-fA-F0-9]{64}$/;
 
 export type Hex = string & { readonly __brand: unique symbol };
 export type Address = Hex & { readonly __address: unique symbol };

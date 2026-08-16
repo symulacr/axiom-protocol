@@ -50,7 +50,12 @@ const validBody = {
   payload: { tokenId: "999", value: "1" },
 };
 
-test("POST /v1/events rejects an untrusted source (event-store poisoning guard)", async () => {
+/** Boots a fresh app, POSTs one event, closes the server; the JSON body is
+ *  parsed before close so nothing depends on a drained socket. */
+async function postEvent(
+  body: unknown,
+  indexerKey: string,
+): Promise<{ status: number; body: unknown }> {
   const app = buildEventsApp();
   const server = app.listen(0);
   try {
@@ -59,100 +64,66 @@ test("POST /v1/events rejects an untrusted source (event-store poisoning guard)"
       method: "POST",
       headers: {
         "content-type": "application/json",
-        [INDEXER_KEY_HEADER]: INDEXER_KEY,
+        [INDEXER_KEY_HEADER]: indexerKey,
       },
-      body: JSON.stringify({ ...validBody, source: "attacker" }),
+      body: JSON.stringify(body),
     });
-    assert.ok(
-      res.status === 400 || res.status === 401 || res.status === 403,
-      `untrusted source must be rejected, got ${res.status}`,
-    );
-    const body = (await res.json()) as { code?: string };
-    assert.equal(body.code, "UNTRUSTED_EVENT_SOURCE");
+    return { status: res.status, body: await res.json() };
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
+}
+
+test("POST /v1/events rejects an untrusted source (event-store poisoning guard)", async () => {
+  const { status, body } = await postEvent(
+    { ...validBody, source: "attacker" },
+    INDEXER_KEY,
+  );
+  assert.ok(
+    status === 400 || status === 401 || status === 403,
+    `untrusted source must be rejected, got ${status}`,
+  );
+  assert.equal((body as { code?: string }).code, "UNTRUSTED_EVENT_SOURCE");
 });
 
 test("POST /v1/events rejects a missing/incorrect dedicated indexer key", async () => {
-  const app = buildEventsApp();
-  const server = app.listen(0);
-  try {
-    const addr = server.address() as { port: number };
-    const res = await fetch(`http://127.0.0.1:${addr.port}/v1/events`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        [INDEXER_KEY_HEADER]: "not-the-right-key",
-      },
-      body: JSON.stringify(validBody),
-    });
-    assert.equal(
-      res.status,
-      401,
-      "request without the dedicated indexer key must be rejected",
-    );
-    const body = (await res.json()) as { code?: string };
-    assert.equal(body.code, "INDEXER_UNAUTHORIZED");
-  } finally {
-    await new Promise<void>((resolve) => server.close(() => resolve()));
-  }
+  const { status, body } = await postEvent(validBody, "not-the-right-key");
+  assert.equal(
+    status,
+    401,
+    "request without the dedicated indexer key must be rejected",
+  );
+  assert.equal((body as { code?: string }).code, "INDEXER_UNAUTHORIZED");
 });
 
 test("POST /v1/events accepts a trusted source with the dedicated indexer key", async () => {
-  const app = buildEventsApp();
-  const server = app.listen(0);
-  try {
-    const addr = server.address() as { port: number };
-    const res = await fetch(`http://127.0.0.1:${addr.port}/v1/events`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        [INDEXER_KEY_HEADER]: INDEXER_KEY,
-      },
-      body: JSON.stringify(validBody),
-    });
-    assert.ok(
-      res.status >= 200 && res.status < 300,
-      `trusted source with the dedicated key must be accepted, got ${res.status}`,
-    );
-    const body = (await res.json()) as { stored?: unknown };
-    assert.ok(body.stored, "response should include the stored event");
-  } finally {
-    await new Promise<void>((resolve) => server.close(() => resolve()));
-  }
+  const { status, body } = await postEvent(validBody, INDEXER_KEY);
+  assert.ok(
+    status >= 200 && status < 300,
+    `trusted source with the dedicated key must be accepted, got ${status}`,
+  );
+  assert.ok(
+    (body as { stored?: unknown }).stored,
+    "response should include the stored event",
+  );
 });
 
 test("POST /v1/events accepts an event without a txHash (no over-gating)", async () => {
-  const app = buildEventsApp();
-  const server = app.listen(0);
-  try {
-    const addr = server.address() as { port: number };
-    const { txHash: _omit, ...noTxHash } = validBody;
-    void _omit;
-    const res = await fetch(`http://127.0.0.1:${addr.port}/v1/events`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        [INDEXER_KEY_HEADER]: INDEXER_KEY,
-      },
-      body: JSON.stringify(noTxHash),
-    });
-    assert.ok(
-      res.status >= 200 && res.status < 300,
-      `event without txHash must be accepted, got ${res.status}`,
-    );
-    const body = (await res.json()) as { stored?: { txHash?: unknown } };
-    assert.ok(body.stored, "response should include the stored event");
-    assert.ok(
-      body.stored.txHash === null || body.stored.txHash === undefined,
-      `stored event txHash should be null/undefined, got ${JSON.stringify(
-        body.stored.txHash,
-      )}`,
-    );
-  } finally {
-    await new Promise<void>((resolve) => server.close(() => resolve()));
-  }
+  const { txHash: _omit, ...noTxHash } = validBody;
+  void _omit;
+  const { status, body } = await postEvent(noTxHash, INDEXER_KEY);
+  assert.ok(
+    status >= 200 && status < 300,
+    `event without txHash must be accepted, got ${status}`,
+  );
+  const stored = (body as { stored?: { txHash?: unknown } }).stored;
+  assert.ok(stored, "response should include the stored event");
+  assert.ok(
+    stored.txHash === null || stored.txHash === undefined,
+    `stored event txHash should be null/undefined, got ${JSON.stringify(
+      stored.txHash,
+    )}`,
+  );
 });
 
 const DECODE_TX = "0x" + "ab".repeat(32);

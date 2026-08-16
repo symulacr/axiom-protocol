@@ -533,6 +533,16 @@ function derefSchema(schema: unknown, seen: Set<string> = new Set()): unknown {
   return derefSchema(resolveJsonPointer(ref), seen);
 }
 
+/** Members of every present anyOf/oneOf/allOf combinator, in that order. */
+function combinatorMembers(s: object): unknown[] {
+  const out: unknown[] = [];
+  for (const k of ["anyOf", "oneOf", "allOf"] as const) {
+    const member = s[k];
+    if (isUnknownArray(member)) out.push(...member);
+  }
+  return out;
+}
+
 /** Union of primitive type tokens: "string" | "number" | "integer" | "boolean" | "array" | "object" | "null". */
 function typeTokens(
   schema: unknown,
@@ -544,12 +554,8 @@ function typeTokens(
   if (typeof s.type === "string") tokens.add(s.type);
   else if (isUnknownArray(s.type))
     for (const t of s.type) if (typeof t === "string") tokens.add(t);
-  for (const k of ["anyOf", "oneOf", "allOf"] as const) {
-    const member = s[k];
-    if (isUnknownArray(member))
-      for (const m of member)
-        for (const t of typeTokens(m, seen)) tokens.add(t);
-  }
+  for (const m of combinatorMembers(s))
+    for (const t of typeTokens(m, seen)) tokens.add(t);
   return tokens;
 }
 
@@ -564,12 +570,8 @@ function collectProperties(
   const properties = s.properties;
   if (isObject(properties))
     for (const k of Object.keys(properties)) props.add(k);
-  for (const k of ["anyOf", "oneOf", "allOf"] as const) {
-    const member = s[k];
-    if (isUnknownArray(member))
-      for (const m of member)
-        for (const p of collectProperties(m, seen)) props.add(p);
-  }
+  for (const m of combinatorMembers(s))
+    for (const p of collectProperties(m, seen)) props.add(p);
   return props;
 }
 
@@ -579,14 +581,9 @@ function findPropertySchema(schema: unknown, name: string): unknown {
   const properties = s.properties;
   if (isObject(properties) && properties[name] !== undefined)
     return properties[name];
-  for (const k of ["anyOf", "oneOf", "allOf"] as const) {
-    const member = s[k];
-    if (isUnknownArray(member)) {
-      for (const m of member) {
-        const found = findPropertySchema(m, name);
-        if (found !== undefined) return found;
-      }
-    }
+  for (const m of combinatorMembers(s)) {
+    const found = findPropertySchema(m, name);
+    if (found !== undefined) return found;
   }
   return undefined;
 }
@@ -1044,6 +1041,60 @@ describe.skipIf(!SPEC_EXISTS)(
         failures.length,
         0,
         `oracle client-security drift:\n  ${failures.join("\n  ")}`,
+      );
+    });
+
+    // Route coverage: boot a throwaway server so every router registers itself,
+    // then assert REGISTERED_ROUTES ⊆ spec.paths — kills the silent-omission
+    // class (route mounted, no spec entry). Reverse direction (spec ⊇ consumers)
+    // is covered by test (a) above.
+    let bootedServer: Server | null = null;
+    beforeAll(() => {
+      const { httpServer } = startServer({
+        bind: "127.0.0.1",
+        port: 0,
+        evmRpc: "http://127.0.0.1:1",
+        signer: new Wallet("0x" + "44".repeat(32)),
+        chatStorage: new InMemoryStorage(),
+        addresses: {
+          agentNft: ("0x" + "00".repeat(19) + "01") as `0x${string}`,
+          vault: ("0x" + "00".repeat(19) + "02") as `0x${string}`,
+          verifier: ("0x" + "00".repeat(19) + "03") as `0x${string}`,
+        },
+        env: {
+          AXIOM_TEE_SIGNER_PK: "0x" + "11".repeat(32),
+        } as unknown as ServerConfig["env"],
+      });
+      bootedServer = httpServer;
+    });
+    afterAll(() => {
+      bootedServer?.closeAllConnections?.();
+      bootedServer?.close();
+    });
+
+    test("(r) every REGISTERED_ROUTES path+method appears in the spec", () => {
+      assert.ok(
+        REGISTERED_ROUTES.length >= 40,
+        `only ${REGISTERED_ROUTES.length} routes registered — server boot incomplete`,
+      );
+      const failures: string[] = [];
+      for (const r of REGISTERED_ROUTES) {
+        const template = openapiTemplate(r.path);
+        const pathItem = spec?.paths?.[template];
+        if (!isObject(pathItem)) {
+          failures.push(`registered but not in spec: ${r.method} ${template}`);
+          continue;
+        }
+        if (!isObject(pathItem[r.method.toLowerCase()])) {
+          failures.push(
+            `path in spec but method missing: ${r.method} ${template}`,
+          );
+        }
+      }
+      assert.equal(
+        failures.length,
+        0,
+        `spec drift (run \`bun run generate:openapi\` + commit):\n  ${failures.join("\n  ")}`,
       );
     });
   },

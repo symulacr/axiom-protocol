@@ -1,4 +1,3 @@
-
 import { readFileSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -14,12 +13,7 @@ const MANIFEST_FILES: Record<string, string> = {
   "frontend-prod": join(COVERAGE_DIR, "frontend-prod-manifest.json"),
 };
 
-type TaskStatus =
-  | "pending"
-  | "in_progress"
-  | "done"
-  | "blocked"
-  | "skipped";
+type TaskStatus = "pending" | "in_progress" | "done" | "blocked" | "skipped";
 
 type GateStatus = "pending" | "partial" | "met";
 
@@ -138,6 +132,18 @@ function taskScope(m: Manifest, t: Manifest["tasks"][number]): boolean {
   return (t.day ?? 0) >= 1;
 }
 
+/** Shared renderer for "current phase"/"today" remaining-task lists. */
+function printRemainingTasks(header: string, tasks: Manifest["tasks"]): void {
+  if (tasks.length === 0) return;
+  console.log(`\n  ${header} — remaining:`);
+  for (const t of tasks) {
+    const mark =
+      t.status === "in_progress" ? "…" : t.status === "blocked" ? "✗" : " ";
+    console.log(`  [${mark}] ${t.id} ${t.title}`);
+    if (t.command) console.log(`      $ ${t.command}`);
+  }
+}
+
 function recomputeSummary(m: Manifest): void {
   const scoped = m.tasks.filter((t) => taskScope(m, t));
   m.summary.tasksTotal = scoped.length;
@@ -161,11 +167,7 @@ function recomputeSummary(m: Manifest): void {
 
 function saveManifest(key: string, m: Manifest): void {
   recomputeSummary(m);
-  writeFileSync(
-    manifestPath(key),
-    `${JSON.stringify(m, null, 2)}\n`,
-    "utf8",
-  );
+  writeFileSync(manifestPath(key), `${JSON.stringify(m, null, 2)}\n`, "utf8");
 }
 
 function printDashboard(key: string, m: Manifest): void {
@@ -205,8 +207,7 @@ function printDashboard(key: string, m: Manifest): void {
 
   console.log("\n  Gates:");
   for (const g of m.gates) {
-    const icon =
-      g.status === "met" ? "✓" : g.status === "partial" ? "◐" : "○";
+    const icon = g.status === "met" ? "✓" : g.status === "partial" ? "◐" : "○";
     console.log(`  ${icon} ${g.id}: ${g.label} [${g.status}]`);
     if (g.evidence) console.log(`      ${g.evidence}`);
   }
@@ -263,36 +264,12 @@ function printDashboard(key: string, m: Manifest): void {
         (t as { phase?: string }).phase === m.currentPhase &&
         t.status !== "done",
     );
-    if (phaseTasks.length > 0) {
-      console.log(`\n  Current phase (${m.currentPhase}) — remaining:`);
-      for (const t of phaseTasks) {
-        const mark =
-          t.status === "in_progress"
-            ? "…"
-            : t.status === "blocked"
-              ? "✗"
-              : " ";
-        console.log(`  [${mark}] ${t.id} ${t.title}`);
-        if (t.command) console.log(`      $ ${t.command}`);
-      }
-    }
+    printRemainingTasks(`Current phase (${m.currentPhase})`, phaseTasks);
   } else if (m.currentDay) {
     const dayTasks = m.tasks.filter(
       (t) => t.day === m.currentDay && t.status !== "done",
     );
-    if (dayTasks.length > 0) {
-      console.log(`\n  Today (Day ${m.currentDay}) — remaining:`);
-      for (const t of dayTasks) {
-        const mark =
-          t.status === "in_progress"
-            ? "…"
-            : t.status === "blocked"
-              ? "✗"
-              : " ";
-        console.log(`  [${mark}] ${t.id} ${t.title}`);
-        if (t.command) console.log(`      $ ${t.command}`);
-      }
-    }
+    printRemainingTasks(`Today (Day ${m.currentDay})`, dayTasks);
   }
 
   const manifestFile =

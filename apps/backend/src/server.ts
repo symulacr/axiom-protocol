@@ -509,21 +509,30 @@ function trustModeFromVerifiability(
 
 function registerComputeRoutes(app: Express, config: ServerConfig): void {
   const modelsCache = new TTLCache<Record<string, unknown>[]>(60_000);
+  const routerDataSchema = z.object({
+    data: z.array(z.record(z.string(), z.unknown())),
+  });
+
+  /** GET a compute-router endpoint with the shared 10s timeout; null = non-2xx. */
+  async function fetchRouterEndpoint(
+    path: string,
+    requestId?: string,
+  ): Promise<unknown> {
+    const resp = await fetch(`${getComputeBaseUrl()}${path}`, {
+      ...(requestId ? { headers: { "X-Request-ID": requestId } } : {}),
+      signal: AbortSignal.timeout(10_000),
+    });
+    return resp.ok ? await resp.json() : null;
+  }
+
   async function fetchRouterModels(
     requestId?: string,
   ): Promise<Record<string, unknown>[]> {
     const cached = modelsCache.get("models");
     if (cached) return cached;
-    const routerBaseUrl = getComputeBaseUrl();
-    const resp = await fetch(`${routerBaseUrl}/models`, {
-      ...(requestId ? { headers: { "X-Request-ID": requestId } } : {}),
-      signal: AbortSignal.timeout(10_000),
-    });
-    if (!resp.ok) return [];
-    const raw = await resp.json();
-    const parsed = z
-      .object({ data: z.array(z.record(z.string(), z.unknown())) })
-      .parse(raw);
+    const raw = await fetchRouterEndpoint("/models", requestId);
+    if (raw === null) return [];
+    const parsed = routerDataSchema.parse(raw);
     modelsCache.set("models", parsed.data);
     return parsed.data;
   }
@@ -553,16 +562,10 @@ function registerComputeRoutes(app: Express, config: ServerConfig): void {
     const cacheKey = `providers:${model}`;
     const cached = providersCache.get(cacheKey);
     if (cached) return cached;
-    const routerBaseUrl = getComputeBaseUrl();
     const fetchAll = async (qs: string): Promise<Record<string, unknown>[]> => {
-      const resp = await fetch(`${routerBaseUrl}/providers${qs}`, {
-        signal: AbortSignal.timeout(10_000),
-      });
-      if (!resp.ok) return [];
-      const raw = await resp.json();
-      const parsed = z
-        .object({ data: z.array(z.record(z.string(), z.unknown())) })
-        .safeParse(raw);
+      const raw = await fetchRouterEndpoint(`/providers${qs}`);
+      if (raw === null) return [];
+      const parsed = routerDataSchema.safeParse(raw);
       return parsed.success ? parsed.data.data : [];
     };
     let providers = await fetchAll(`?model_id=${encodeURIComponent(model)}`);

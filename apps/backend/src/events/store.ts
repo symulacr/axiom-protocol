@@ -9,11 +9,15 @@ import {
   unlinkSync,
   existsSync,
   readFileSync,
-  renameSync,
   mkdirSync,
 } from "node:fs";
 import { writeFile, rename, mkdir } from "node:fs/promises";
-import { joinPath } from "@axiom/config/path";
+import {
+  joinPath,
+  dirnamePath,
+  dataFilePath,
+  backupFileBestEffort,
+} from "@axiom/config/path";
 interface TickPayload {
   tokenId: string;
   action: string;
@@ -468,8 +472,8 @@ export function getEventStore(): EventStore {
 
 // Resolved at call time (not module load) so AXIOM_DATA_DIR set after import takes effect — matches acquireEventStoreLock and lets parallel test workers use per-file data dirs.
 function persistPaths(): { dir: string; file: string } {
-  const dir = joinPath(process.env.AXIOM_DATA_DIR ?? process.cwd(), ".data");
-  return { dir, file: joinPath(dir, "events.json") };
+  const file = dataFilePath("events.json");
+  return { dir: dirnamePath(file), file };
 }
 
 const persistLog = createLogger("events");
@@ -496,13 +500,7 @@ function loadBuckets(): Map<string, unknown[]> {
     persistLog.warn("persist file corrupt or unreadable, starting fresh", {
       error: extractErrorMessage(err),
     });
-    if (existsSync(persistPaths().file)) {
-      try {
-        renameSync(persistPaths().file, `${persistPaths().file}.bak`);
-      } catch {
-        /* ignore */
-      }
-    }
+    backupFileBestEffort(persistPaths().file);
     return new Map();
   }
 }

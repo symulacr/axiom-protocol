@@ -64,6 +64,46 @@ function waitForClose(server: Server): Promise<void> {
   return promise;
 }
 
+function postTransferJson<T>(
+  url: string,
+  body: unknown,
+): Promise<{ ok: boolean; status: number; data: T }> {
+  return fetchJson<T>(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+/** Signs the transfer challenge the same way the frontend wallet does. */
+function signAccessProof(
+  receiver: Wallet,
+  challenge: {
+    dataHash: string;
+    targetPubkey: string;
+    accessProofNonce: number;
+    validUntil: string;
+  },
+  to: string,
+): { nonce: bigint; validUntil: bigint; accessSignature: string } {
+  const domain = buildEip712Domain(ARISTOTLE_CHAIN_ID, MOCK_ADDRESSES.verifier);
+  const nonce = BigInt(challenge.accessProofNonce);
+  const validUntil = BigInt(challenge.validUntil);
+  const digest = accessMessageHash(
+    {
+      dataHash: challenge.dataHash as `0x${string}`,
+      targetPubkey: challenge.targetPubkey as `0x${string}`,
+      to: to as `0x${string}`,
+      nft: MOCK_ADDRESSES.agentNft,
+      nonce: toBeHex(nonce) as `0x${string}`,
+      validUntil,
+    },
+    domain,
+  );
+  const accessSignature = receiver.signingKey.sign(getBytes(digest)).serialized;
+  return { nonce, validUntil, accessSignature };
+}
+
 let backendHttp: Server;
 let backendUrl: string;
 let receiverAddress: string;
@@ -121,7 +161,7 @@ test("POST /v1/agents/:id/transfer challenge returns ownership signature", async
     ok,
     status,
     data: body,
-  } = await fetchJson<{
+  } = await postTransferJson<{
     ok: boolean;
     stage: string;
     dataHash: string;
@@ -129,14 +169,10 @@ test("POST /v1/agents/:id/transfer challenge returns ownership signature", async
     validUntil: string;
     ownershipSignature: string;
   }>(`${backendUrl}/v1/agents/1/transfer`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      to: receiverAddress,
-      receiverPubKey64: receiverPubkey64,
-      accessProofNonce: "1",
-      dataHash: DATA_HASH,
-    }),
+    to: receiverAddress,
+    receiverPubKey64: receiverPubkey64,
+    accessProofNonce: "1",
+    dataHash: DATA_HASH,
   });
   assert.equal(status, 200);
   assert.equal(ok, true);
@@ -153,7 +189,7 @@ test("POST /v1/agents/:id/transfer final returns full proof structs", async () =
     ok: challengeOk,
     status: challengeStatus,
     data: challenge,
-  } = await fetchJson<{
+  } = await postTransferJson<{
     ok: boolean;
     stage: string;
     dataHash: string;
@@ -161,43 +197,25 @@ test("POST /v1/agents/:id/transfer final returns full proof structs", async () =
     accessProofNonce: number;
     validUntil: string;
   }>(`${backendUrl}/v1/agents/1/transfer`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      to: receiverAddress,
-      receiverPubKey64: receiverPubkey64,
-      accessProofNonce: "2",
-      dataHash: DATA_HASH,
-    }),
+    to: receiverAddress,
+    receiverPubKey64: receiverPubkey64,
+    accessProofNonce: "2",
+    dataHash: DATA_HASH,
   });
   assert.equal(challengeStatus, 200);
   assert.equal(challengeOk, true);
-  const testDomain = buildEip712Domain(
-    ARISTOTLE_CHAIN_ID,
-    MOCK_ADDRESSES.verifier,
-  );
-
-  const nonce = BigInt(challenge.accessProofNonce);
-  const validUntil = BigInt(challenge.validUntil);
-  const digest = accessMessageHash(
-    {
-      dataHash: challenge.dataHash as `0x${string}`,
-      targetPubkey: challenge.targetPubkey as `0x${string}`,
-      to: receiverAddress as `0x${string}`,
-      nft: MOCK_ADDRESSES.agentNft,
-      nonce: toBeHex(nonce) as `0x${string}`,
-      validUntil,
-    },
-    testDomain,
-  );
   const receiver = new Wallet(RECEIVER_PRIV);
-  const accessSignature = receiver.signingKey.sign(getBytes(digest)).serialized;
+  const { nonce, validUntil, accessSignature } = signAccessProof(
+    receiver,
+    challenge,
+    receiverAddress,
+  );
 
   const {
     ok: finalOk,
     status: finalStatus,
     data: body,
-  } = await fetchJson<{
+  } = await postTransferJson<{
     ok: boolean;
     stage: string;
     accessSigner: string;
@@ -218,20 +236,16 @@ test("POST /v1/agents/:id/transfer final returns full proof structs", async () =
       validUntil: string;
     };
   }>(`${backendUrl}/v1/agents/1/transfer`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      to: receiverAddress,
-      receiverPubKey64: receiverPubkey64,
-      dataHash: DATA_HASH,
-      accessProof: {
-        dataHash: challenge.dataHash,
-        targetPubkey: challenge.targetPubkey,
-        nonce: nonce.toString(),
-        proof: accessSignature,
-        validUntil: validUntil.toString(),
-      },
-    }),
+    to: receiverAddress,
+    receiverPubKey64: receiverPubkey64,
+    dataHash: DATA_HASH,
+    accessProof: {
+      dataHash: challenge.dataHash,
+      targetPubkey: challenge.targetPubkey,
+      nonce: nonce.toString(),
+      proof: accessSignature,
+      validUntil: validUntil.toString(),
+    },
   });
   assert.equal(finalStatus, 200);
   assert.equal(finalOk, true);
@@ -301,7 +315,7 @@ test("POST /v1/agents/:id/transfer challenge triggers full re-key via /v1/transf
       ok: rekeyChallengeOk,
       status: rekeyChallengeStatus,
       data: challenge,
-    } = await fetchJson<{
+    } = await postTransferJson<{
       ok: boolean;
       stage: string;
       dataHash: string;
@@ -315,16 +329,12 @@ test("POST /v1/agents/:id/transfer challenge triggers full re-key via /v1/transf
       ownershipSignature: string;
       rekeyed: boolean;
     }>(`${rekeyBackendUrl}/v1/agents/42/transfer`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        to: receiver.address,
-        receiverPubKey64: receiverPubkey64,
-        accessProofNonce: 7,
-        dataHash: oldDataUri,
-        oldDataUri,
-        sealedDataEncryptionKey,
-      }),
+      to: receiver.address,
+      receiverPubKey64: receiverPubkey64,
+      accessProofNonce: 7,
+      dataHash: oldDataUri,
+      oldDataUri,
+      sealedDataEncryptionKey,
     });
     assert.equal(rekeyChallengeStatus, 200);
     assert.equal(rekeyChallengeOk, true);
@@ -350,33 +360,17 @@ test("POST /v1/agents/:id/transfer challenge triggers full re-key via /v1/transf
       32,
       "unsealed key must be 32-byte AES-256 key",
     );
-    const testDomain = buildEip712Domain(
-      ARISTOTLE_CHAIN_ID,
-      MOCK_ADDRESSES.verifier,
+    const { nonce, validUntil, accessSignature } = signAccessProof(
+      receiver,
+      challenge,
+      receiver.address,
     );
-
-    const nonce = BigInt(challenge.accessProofNonce);
-    const validUntil = BigInt(challenge.validUntil);
-    const digest = accessMessageHash(
-      {
-        dataHash: challenge.dataHash as `0x${string}`,
-        targetPubkey: challenge.targetPubkey as `0x${string}`,
-        to: receiver.address as `0x${string}`,
-        nft: MOCK_ADDRESSES.agentNft,
-        nonce: toBeHex(nonce) as `0x${string}`,
-        validUntil,
-      },
-      testDomain,
-    );
-    const accessSignature = receiver.signingKey.sign(
-      getBytes(digest),
-    ).serialized;
 
     const {
       ok: rekeyFinalOk,
       status: rekeyFinalStatus,
       data: final,
-    } = await fetchJson<{
+    } = await postTransferJson<{
       ok: boolean;
       stage: string;
       accessSigner: string;
@@ -390,21 +384,17 @@ test("POST /v1/agents/:id/transfer challenge triggers full re-key via /v1/transf
         validUntil: string;
       };
     }>(`${rekeyBackendUrl}/v1/agents/42/transfer`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        to: receiver.address,
-        receiverPubKey64: receiverPubkey64,
-        dataHash: oldDataUri,
-        sealedKey: challenge.sealedKey,
-        accessProof: {
-          dataHash: challenge.dataHash,
-          targetPubkey: challenge.targetPubkey,
-          nonce: nonce.toString(),
-          proof: accessSignature,
-          validUntil: validUntil.toString(),
-        },
-      }),
+      to: receiver.address,
+      receiverPubKey64: receiverPubkey64,
+      dataHash: oldDataUri,
+      sealedKey: challenge.sealedKey,
+      accessProof: {
+        dataHash: challenge.dataHash,
+        targetPubkey: challenge.targetPubkey,
+        nonce: nonce.toString(),
+        proof: accessSignature,
+        validUntil: validUntil.toString(),
+      },
     });
     assert.equal(rekeyFinalStatus, 200);
     assert.equal(rekeyFinalOk, true);

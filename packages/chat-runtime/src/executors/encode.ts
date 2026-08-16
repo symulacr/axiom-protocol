@@ -1,5 +1,6 @@
 import { getChatToolSpec } from "@axiom/config/chat-tools";
 import { PAYMENT_PROCESSOR_ABI } from "@axiom/config/abis";
+import { ADDRESS_REGEX } from "@axiom/config/types/hex";
 import { fetchJson, resolveTokenId, toolFail } from "../transport.js";
 import {
   encodeFunctionData,
@@ -31,8 +32,8 @@ function encodeOnlyResult(
 /** Hard per-call spend caps the LLM cannot talk its way past: 1000 USDC for
  *  pay_for_agent payments, 1000 native OG for vault deposit/withdraw (the vault
  *  routes enforce the same 1000 cap server-side via route-schemas.ts). */
-export const MAX_CHAT_USDC = 1000n * 10n ** 6n;
-export const MAX_CHAT_NATIVE = 1000;
+const MAX_CHAT_USDC = 1000n * 10n ** 6n;
+const MAX_CHAT_NATIVE = 1000;
 
 /** Sign+send, then wait for the receipt when the transport supports it (the
  *  transport owns the ~60s ceiling). Appends receipt confirmation to the tool
@@ -240,7 +241,7 @@ function parseUsdcAmount(raw: unknown): bigint | null {
 }
 
 function isValidAddress(raw: unknown): raw is `0x${string}` {
-  return typeof raw === "string" && /^0x[a-fA-F0-9]{40}$/.test(raw);
+  return typeof raw === "string" && ADDRESS_REGEX.test(raw);
 }
 
 /** pay_for_agent: creator payment via payForAgent (computeAmount omitted) or

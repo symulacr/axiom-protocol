@@ -284,23 +284,29 @@ test("StrategyRunner.runTick with manual:e2e-mock skips inference and reports a 
   );
 });
 
+/** Runner wired to the vault address + a stub provider (shared by the three
+ *  settlement tests below). */
+function makeVaultRunner(): StrategyRunner {
+  const provider = new JsonRpcProvider("http://127.0.0.1:1", 16661, {
+    staticNetwork: true,
+  });
+  return new StrategyRunner({
+    evmRpc: "http://127.0.0.1:1",
+    signer: makeSigner(provider),
+    addresses: { vault: VAULT_ADDR },
+    chainId: 16661,
+  });
+}
+
+function marketSignal(payload: Record<string, unknown>): MarketSignal {
+  return { source: "market:test", payload, emittedAt: Date.now() };
+}
+
 test(
   "StrategyRunner.runTick with an act recommendation and no executionPlan skips settlement",
   withDirectComputeEnv(async () => {
-    const provider = new JsonRpcProvider("http://127.0.0.1:1", 16661, {
-      staticNetwork: true,
-    });
-    const runner = new StrategyRunner({
-      evmRpc: "http://127.0.0.1:1",
-      signer: makeSigner(provider),
-      addresses: { vault: VAULT_ADDR },
-      chainId: 16661,
-    });
-    const signal: MarketSignal = {
-      source: "market:test",
-      payload: { trend: "up" },
-      emittedAt: Date.now(),
-    };
+    const runner = makeVaultRunner();
+    const signal = marketSignal({ trend: "up" });
     await withHttpStub(vaultRpc(NON_ZERO_ROOT), ACT_OUTPUT, async () => {
       const result = await runner.runTick(makeStrategy(), signal);
       assert.equal(result.recommendation.action, "act");
@@ -318,15 +324,7 @@ test(
 test(
   "StrategyRunner.runTick skips settlement when the vault strategy root is zero",
   withDirectComputeEnv(async () => {
-    const provider = new JsonRpcProvider("http://127.0.0.1:1", 16661, {
-      staticNetwork: true,
-    });
-    const runner = new StrategyRunner({
-      evmRpc: "http://127.0.0.1:1",
-      signer: makeSigner(provider),
-      addresses: { vault: VAULT_ADDR },
-      chainId: 16661,
-    });
+    const runner = makeVaultRunner();
     const strategy = makeStrategy({
       executionPlan: {
         target: NFT_ADDR,
@@ -335,11 +333,7 @@ test(
         merkleProof: [("0x" + "aa".repeat(32)) as `0x${string}`],
       },
     });
-    const signal: MarketSignal = {
-      source: "market:test",
-      payload: {},
-      emittedAt: Date.now(),
-    };
+    const signal = marketSignal({});
     await withHttpStub(vaultRpc(ZERO_DATA_ROOT), ACT_OUTPUT, async () => {
       const result = await runner.runTick(strategy, signal);
       assert.equal(result.recommendation.action, "act");
@@ -352,15 +346,7 @@ test(
 test(
   "StrategyRunner.runTick executes the vault plan on-chain for an act recommendation",
   withDirectComputeEnv(async () => {
-    const provider = new JsonRpcProvider("http://127.0.0.1:1", 16661, {
-      staticNetwork: true,
-    });
-    const runner = new StrategyRunner({
-      evmRpc: "http://127.0.0.1:1",
-      signer: makeSigner(provider),
-      addresses: { vault: VAULT_ADDR },
-      chainId: 16661,
-    });
+    const runner = makeVaultRunner();
     const strategy = makeStrategy({
       executionPlan: {
         target: NFT_ADDR,
@@ -369,11 +355,7 @@ test(
         merkleProof: [("0x" + "aa".repeat(32)) as `0x${string}`],
       },
     });
-    const signal: MarketSignal = {
-      source: "market:test",
-      payload: { trend: "up" },
-      emittedAt: Date.now(),
-    };
+    const signal = marketSignal({ trend: "up" });
     await withHttpStub(vaultRpc(NON_ZERO_ROOT), ACT_OUTPUT, async () => {
       const result = await runner.runTick(strategy, signal);
       assert.equal(result.recommendation.action, "act");

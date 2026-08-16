@@ -1,13 +1,14 @@
 // Zod source of truth for skill request bodies (REST validation). chat-tools.ts carries
 // parallel JSON Schema for LLM tool-calling; args must satisfy both — keep in sync.
 import { z } from "zod";
+import { ADDRESS_REGEX, HASH_REGEX } from "../types/hex.js";
 
 const evmAddressField = z
   .string()
-  .regex(/^0x[a-fA-F0-9]{40}$/, "must be a 0x-prefixed 20-byte address");
+  .regex(ADDRESS_REGEX, "must be a 0x-prefixed 20-byte address");
 const evmHashField = z
   .string()
-  .regex(/^0x[a-fA-F0-9]{64}$/, "must be a 0x-prefixed 32-byte hash");
+  .regex(HASH_REGEX, "must be a 0x-prefixed 32-byte hash");
 
 export const evmAddressSchema = z.object({ address: evmAddressField }); // a single shape serves the evm_wallet, evm_multichain, and evm_contract routes
 

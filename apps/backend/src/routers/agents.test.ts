@@ -201,10 +201,10 @@ const transferBody = {
   sealedKey: ("0x" + "00".repeat(32)) as Hex,
 };
 
-test("POST /v1/agents/:id/transfer rejects a malicious oracle (non-trusted signer) with 502", async () => {
-  const trustedPk = ("0x" + "5d".repeat(32)) as Hex;
-  const attacker = Wallet.createRandom(); // NOT the trusted key
-  const { app } = buildTransferApp(trustedPk, attacker);
+/** Boots the app, POSTs the shared transferBody, closes; body parsed before close. */
+async function postTransfer(
+  app: ReturnType<typeof buildTransferApp>["app"],
+): Promise<{ status: number; body: unknown }> {
   const server = app.listen(0);
   try {
     const addr = server.address() as { port: number };
@@ -216,42 +216,36 @@ test("POST /v1/agents/:id/transfer rejects a malicious oracle (non-trusted signe
         body: JSON.stringify(transferBody),
       },
     );
-    assert.equal(
-      res.status,
-      502,
-      "route must reject when the oracle signs with a non-trusted key",
-    );
-    const body = (await res.json()) as { code?: string };
-    assert.equal(body.code, "ORACLE_SIGNATURE_INVALID");
+    return { status: res.status, body: await res.json() };
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
+}
+
+test("POST /v1/agents/:id/transfer rejects a malicious oracle (non-trusted signer) with 502", async () => {
+  const trustedPk = ("0x" + "5d".repeat(32)) as Hex;
+  const attacker = Wallet.createRandom(); // NOT the trusted key
+  const { app } = buildTransferApp(trustedPk, attacker);
+  const { status, body } = await postTransfer(app);
+  assert.equal(
+    status,
+    502,
+    "route must reject when the oracle signs with a non-trusted key",
+  );
+  assert.equal((body as { code?: string }).code, "ORACLE_SIGNATURE_INVALID");
 });
 
 test("POST /v1/agents/:id/transfer accepts a legitimate oracle signing with the trusted key", async () => {
   const trustedPk = ("0x" + "5d".repeat(32)) as Hex;
   const trustedWallet = new Wallet(trustedPk); // oracle signs with the trusted key
   const { app } = buildTransferApp(trustedPk, trustedWallet);
-  const server = app.listen(0);
-  try {
-    const addr = server.address() as { port: number };
-    const res = await fetch(
-      `http://127.0.0.1:${addr.port}/v1/agents/1/transfer`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(transferBody),
-      },
-    );
-    assert.equal(
-      res.status,
-      200,
-      "route must accept when the oracle signs with the trusted key",
-    );
-    const body = (await res.json()) as { ok?: boolean; stage?: string };
-    assert.equal(body.ok, true);
-    assert.equal(body.stage, "challenge");
-  } finally {
-    await new Promise<void>((resolve) => server.close(() => resolve()));
-  }
+  const { status, body } = await postTransfer(app);
+  assert.equal(
+    status,
+    200,
+    "route must accept when the oracle signs with the trusted key",
+  );
+  const parsed = body as { ok?: boolean; stage?: string };
+  assert.equal(parsed.ok, true);
+  assert.equal(parsed.stage, "challenge");
 });

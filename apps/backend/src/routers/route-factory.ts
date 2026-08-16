@@ -13,6 +13,13 @@ interface RouteRegistration {
 
 export const REGISTERED_ROUTES: RouteRegistration[] = [];
 
+/** Parse a positive-integer query param (e.g. ?limit=); returns the fallback when
+ *  absent or malformed. Shared by the events and performance query routes. */
+export function positiveIntQuery(raw: unknown, fallback: number): number {
+  const n = typeof raw === "string" ? Number(raw) : undefined;
+  return n !== undefined && Number.isInteger(n) && n > 0 ? n : fallback;
+}
+
 type AddressKey = keyof NonNullable<ServerConfig["addresses"]>;
 export type RouteHandler<T> = (
   parsed: T,

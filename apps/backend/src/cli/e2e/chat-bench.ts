@@ -1,4 +1,3 @@
-
 import { ethers, type Wallet } from "ethers";
 import { fetchJson } from "../../utils/response.js";
 import { getAddresses } from "@axiom/config/addresses";
@@ -31,7 +30,11 @@ export interface ChatBenchResult {
 export interface ChatBenchReport {
   results: ChatBenchResult[];
   toolParityPct: number;
-  cacheHitMs?: { providers?: number; paymentConfig?: number; agentList?: number };
+  cacheHitMs?: {
+    providers?: number;
+    paymentConfig?: number;
+    agentList?: number;
+  };
   keepAliveReusePct?: number;
   liveCompute: boolean;
 }
@@ -46,9 +49,6 @@ function chatBenchCooldownMs(): number {
   const n = Number.parseInt(process.env.CHAT_BENCH_COOLDOWN_MS ?? "2000", 10);
   return Number.isFinite(n) && n >= 0 ? n : 2000;
 }
-
-
-export type { E2eToolDeps };
 
 async function runToolParityBench(
   deps: E2eToolDeps,
@@ -89,7 +89,11 @@ async function runToolParityBench(
       continue;
     }
     try {
-      const { ok, result } = await executeE2eTool(name, toolArgs[name] ?? {}, deps);
+      const { ok, result } = await executeE2eTool(
+        name,
+        toolArgs[name] ?? {},
+        deps,
+      );
       const parsed = JSON.parse(result) as Record<string, unknown>;
       const hasError = parsed.error !== undefined;
       results.push({
@@ -139,7 +143,9 @@ async function runToolParityBench(
   return results;
 }
 
-async function runMicroDepositSignBench(deps: E2eToolDeps): Promise<ChatBenchResult | null> {
+async function runMicroDepositSignBench(
+  deps: E2eToolDeps,
+): Promise<ChatBenchResult | null> {
   if (process.env.CHAT_BENCH_SIGN_DEPOSIT !== "1" || !deps.operatorSigner) {
     return null;
   }
@@ -151,7 +157,10 @@ async function runMicroDepositSignBench(deps: E2eToolDeps): Promise<ChatBenchRes
       deps,
     );
     if (out.ok) {
-      markScenarioCovered("chat.tools-write", "chat-deposit-sign", { txs: 1, reads: 1 });
+      markScenarioCovered("chat.tools-write", "chat-deposit-sign", {
+        txs: 1,
+        reads: 1,
+      });
     }
     return {
       id: "tool.deposit-sign",
@@ -171,12 +180,13 @@ async function runMicroDepositSignBench(deps: E2eToolDeps): Promise<ChatBenchRes
   }
 }
 
-export { runComplexToolFlowBench } from "./complex-flow-bench.js";
-
 async function runCacheHitBench(deps: {
   backendUrl: string;
   operatorAddress: string;
-}): Promise<{ results: ChatBenchResult[]; deltas: ChatBenchReport["cacheHitMs"] }> {
+}): Promise<{
+  results: ChatBenchResult[];
+  deltas: ChatBenchReport["cacheHitMs"];
+}> {
   const owner = deps.operatorAddress.toLowerCase();
   const results: ChatBenchResult[] = [];
   const deltas: NonNullable<ChatBenchReport["cacheHitMs"]> = {};
@@ -195,10 +205,7 @@ async function runCacheHitBench(deps: {
     const warmMs = Math.round(t2 - t1);
     const delta = coldMs - warmMs;
     const ok =
-      first.ok &&
-      second.ok &&
-      validate(first.data) &&
-      validate(second.data);
+      first.ok && second.ok && validate(first.data) && validate(second.data);
     results.push({
       id: `cache.${id}`,
       ok,
@@ -254,13 +261,17 @@ async function runKeepAliveBench(deps: {
 
   for (let i = 0; i < deps.rounds; i++) {
     try {
-      const r = await postChatCompletionsSse(deps.backendUrl, {
-        model: deps.computeModel,
-        messages: [
-          { role: "user", content: `Reply with exactly: pong-${i}` },
-        ],
-        max_tokens: 16,
-      }, { keepAlive: true });
+      const r = await postChatCompletionsSse(
+        deps.backendUrl,
+        {
+          model: deps.computeModel,
+          messages: [
+            { role: "user", content: `Reply with exactly: pong-${i}` },
+          ],
+          max_tokens: 16,
+        },
+        { keepAlive: true },
+      );
       latencies.push(r.ms);
       ttfts.push(r.ttftMs);
       if (r.chunks.length === 0) failures++;
@@ -281,7 +292,9 @@ async function runKeepAliveBench(deps: {
   const ok = failures === 0 && latencies.length === deps.rounds;
 
   if (ok) {
-    markScenarioCovered("chat.keepalive", "chat-keepalive", { reads: deps.rounds });
+    markScenarioCovered("chat.keepalive", "chat-keepalive", {
+      reads: deps.rounds,
+    });
   } else {
     markScenarioSkipped("chat.keepalive", `${failures} failures`);
   }
@@ -327,11 +340,15 @@ async function runContextGrowthBench(deps: {
       content: `Round ${i + 1}: reply with only the digit ${i + 1}.`,
     });
     try {
-      const r = await postChatCompletionsSse(deps.backendUrl, {
-        model: deps.computeModel,
-        messages,
-        max_tokens: 32,
-      }, { keepAlive: true });
+      const r = await postChatCompletionsSse(
+        deps.backendUrl,
+        {
+          model: deps.computeModel,
+          messages,
+          max_tokens: 32,
+        },
+        { keepAlive: true },
+      );
       latencies.push(r.ms);
       ttfts.push(r.ttftMs);
       const reply = r.text.trim() || `round-${i + 1}`;
@@ -402,11 +419,15 @@ async function runModelSwitchBench(deps: {
   for (const model of deps.models.slice(0, 2)) {
     if (used.length > 0) await sleep(chatBenchCooldownMs());
     try {
-      const r = await postChatCompletionsSse(deps.backendUrl, {
-        model,
-        messages: [{ role: "user", content: "Say hi in 3 words." }],
-        max_tokens: 24,
-      }, { keepAlive: true });
+      const r = await postChatCompletionsSse(
+        deps.backendUrl,
+        {
+          model,
+          messages: [{ role: "user", content: "Say hi in 3 words." }],
+          max_tokens: 24,
+        },
+        { keepAlive: true },
+      );
       used.push(model);
       if (r.chunks.length === 0) {
         ok = false;
@@ -419,7 +440,9 @@ async function runModelSwitchBench(deps: {
   }
 
   if (ok) {
-    markScenarioCovered("chat.model-switch", "chat-model-switch", { reads: used.length });
+    markScenarioCovered("chat.model-switch", "chat-model-switch", {
+      reads: used.length,
+    });
   } else {
     markScenarioSkipped("chat.model-switch", lastError ?? "model call failed");
   }
@@ -472,26 +495,32 @@ async function runLiveChatToolsBench(deps: {
 
   const t0 = performance.now();
   try {
-    const r = await postChatCompletionsSse(deps.backendUrl, {
-      model: deps.computeModel,
-      messages: [
-        {
-          role: "system",
-          content:
-            "You have tools. When asked to list agents, call list_my_agents.",
-        },
-        {
-          role: "user",
-          content: "List my agents using the list_my_agents tool.",
-        },
-      ],
-      tools,
-      max_tokens: 256,
-    }, { keepAlive: true });
+    const r = await postChatCompletionsSse(
+      deps.backendUrl,
+      {
+        model: deps.computeModel,
+        messages: [
+          {
+            role: "system",
+            content:
+              "You have tools. When asked to list agents, call list_my_agents.",
+          },
+          {
+            role: "user",
+            content: "List my agents using the list_my_agents tool.",
+          },
+        ],
+        tools,
+        max_tokens: 256,
+      },
+      { keepAlive: true },
+    );
 
     const ok = r.chunks.length > 0 && (r.toolCallSeen || r.text.length > 0);
     if (ok) {
-      markScenarioCovered("compute.chat-tools", "chat-live-tools-sse", { reads: 1 });
+      markScenarioCovered("compute.chat-tools", "chat-live-tools-sse", {
+        reads: 1,
+      });
     }
     return {
       id: "chat.live-tools-sse",
@@ -511,7 +540,8 @@ async function runLiveChatToolsBench(deps: {
 }
 
 const NON_CHAT_MODEL = /image|flux|whisper|tts|embed|speech|vision/i;
-const CHAT_MODEL_HINT = /qwen|deepseek|gpt|llama|gemma|glm|mistral|omni|instruct/i;
+const CHAT_MODEL_HINT =
+  /qwen|deepseek|gpt|llama|gemma|glm|mistral|omni|instruct/i;
 
 function isChatCapableModel(id: string): boolean {
   if (NON_CHAT_MODEL.test(id)) return false;
@@ -522,7 +552,11 @@ async function resolveBenchModels(backendUrl: string): Promise<string[]> {
   const primary = await resolveE2eComputeModel(backendUrl);
   const { ok, data } = await fetchJson<{ services?: Array<{ model: string }> }>(
     `${backendUrl}/v1/compute/providers`,
-    { ...(process.env.AXIOM_API_KEY ? { headers: { "x-api-key": process.env.AXIOM_API_KEY } } : {}) },
+    {
+      ...(process.env.AXIOM_API_KEY
+        ? { headers: { "x-api-key": process.env.AXIOM_API_KEY } }
+        : {}),
+    },
   );
   if (!ok) return [primary];
   const chatModels = (data.services ?? [])
@@ -677,7 +711,8 @@ export function printChatBenchReport(report: ChatBenchReport): void {
     if (r.error) console.log(`        ↳ ${r.error}`);
   }
   const failed = report.results.filter(
-    (r) => !r.ok && !r.summary.includes("skipped") && !r.summary.includes("N/A"),
+    (r) =>
+      !r.ok && !r.summary.includes("skipped") && !r.summary.includes("N/A"),
   );
   if (failed.length === 0) {
     console.log("\n  All chat bench checks passed (or live-compute skips).");

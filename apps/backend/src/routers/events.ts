@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import type { z } from "zod";
 import { timingSafeMatch } from "@axiom/config/middleware/auth";
-import { createRoute } from "./route-factory.js";
+import { createRoute, positiveIntQuery } from "./route-factory.js";
 import { eventBodySchema } from "../route-schemas.js";
 import { HTTP, getRuntimeConfig } from "@axiom/config";
 import { sendError } from "../utils/response.js";
@@ -114,14 +114,10 @@ export function registerEventRoutes(
     },
     (_parsed, req, _res) => {
       const maxQueryLimit = getRuntimeConfig().maxEventQueryLimit;
-      const limitRaw =
-        typeof req.query.limit === "string"
-          ? Number(req.query.limit)
-          : undefined;
-      const limit =
-        limitRaw !== undefined && Number.isInteger(limitRaw) && limitRaw > 0
-          ? Math.min(limitRaw, maxQueryLimit)
-          : maxQueryLimit;
+      const limit = Math.min(
+        positiveIntQuery(req.query.limit, maxQueryLimit),
+        maxQueryLimit,
+      );
       const sinceRaw =
         typeof req.query.since === "string"
           ? Number(req.query.since)
