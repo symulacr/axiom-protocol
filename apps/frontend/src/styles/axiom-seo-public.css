@@ -1,0 +1,432 @@
+/* Copper Command Deck — hubs publics SEO : rail cuivre, preuve mono, phosphor réservé aux états vérifiés. */
+.seo-public {
+  min-height: 100svh;
+  overflow: hidden;
+  padding: 0 4vw;
+  color: #e9e2d9;
+  background: #0b0e0f;
+}
+
+.seo-public-nav {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 24px;
+  min-height: 74px;
+  border-bottom: 1px solid rgba(210, 139, 82, 0.24);
+}
+
+.seo-public-brand {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--hit-area, 44px);
+  gap: 10px;
+  color: #f1b879;
+  font-family: Syne, sans-serif;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-decoration: none;
+}
+
+.seo-public-nav nav {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+}
+
+.seo-public-nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--hit-area, 44px);
+  color: #bdb6ad;
+  font: 600 11px/1 "JetBrains Mono", monospace;
+  letter-spacing: 0.05em;
+  text-decoration: none;
+}
+
+.seo-public-nav nav a {
+  padding: 8px 0;
+  border-bottom: 1px solid transparent;
+}
+
+.seo-public-nav nav a:hover,
+.seo-public-nav nav a:focus-visible,
+.seo-public-nav nav a.is-active {
+  border-color: #d28b52;
+  color: #f1b879;
+}
+
+.seo-route-status {
+  display: grid;
+  gap: 4px;
+  padding-left: 14px;
+  border-left: 1px solid rgba(210, 139, 82, 0.28);
+  color: #a49f97;
+  font: 9px/1 "JetBrains Mono", monospace;
+  letter-spacing: 0.08em;
+}
+
+.seo-route-status b {
+  color: #67e8b4;
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.seo-console-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--hit-area, 44px);
+  gap: 7px;
+  padding: 9px 11px;
+  border: 1px solid rgba(210, 139, 82, 0.5);
+  color: #f1b879 !important;
+}
+
+.seo-hero {
+	position: relative;
+	display: grid;
+	grid-template-columns: 56px minmax(0, 1.08fr) minmax(360px, 0.92fr);
+	align-items: stretch;
+	gap: clamp(22px, 3.2vw, 56px);
+	min-height: calc(100svh - 74px);
+	padding: clamp(42px, 8vh, 110px) 0;
+}
+
+.seo-route-rail {
+  display: flex;
+  grid-column: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+  min-width: 0;
+  padding: 0;
+  border-left: 2px solid #d28b52;
+  color: #d28b52;
+  font-family: "JetBrains Mono", monospace;
+}
+
+/* The copper boundary is structural, not a numbered or textual route marker. */
+.seo-route-rail > span,
+.seo-route-rail > small,
+.seo-route-rail > strong,
+.seo-route-rail > i {
+  display: none;
+}
+
+.seo-route-rail span,
+.seo-route-rail small {
+	color: #a49f97;
+	font-size: 8px;
+	font-weight: 700;
+	letter-spacing: .12em;
+}
+
+.seo-route-rail strong {
+	max-width: 13px;
+	color: #f1b879;
+	font-size: 9px;
+	font-weight: 700;
+	letter-spacing: .08em;
+	line-height: 1.35;
+	text-transform: uppercase;
+	writing-mode: vertical-rl;
+}
+
+.seo-route-rail i {
+	flex: 1;
+	min-height: 32px;
+	margin-left: -14px;
+	border-left: 1px solid rgba(210, 139, 82, .32);
+}
+
+.seo-hero-copy {
+	grid-column: 2;
+	align-self: center;
+	min-width: 0;
+}
+
+.seo-hero-copy .eyebrow,
+.seo-link-field .eyebrow {
+  color: #f1b879;
+  font: 700 10px/1 "JetBrains Mono", monospace;
+  letter-spacing: 0.13em;
+}
+
+.seo-hero h1 {
+	max-inline-size: 11.5ch;
+	margin: 18px 0 24px;
+	color: #e9e2d9;
+	font: 800 clamp(48px, 5.25vw, 78px) / 0.94 Syne, sans-serif;
+	letter-spacing: -0.055em;
+}
+
+.seo-hero h1 span:last-child {
+  color: #d28b52;
+}
+
+.seo-hero-copy > p {
+  max-width: 590px;
+  color: #bdb6ad;
+  font-size: clamp(16px, 1.5vw, 20px);
+  line-height: 1.55;
+}
+
+.seo-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 32px;
+}
+
+.seo-action-primary,
+.seo-action-secondary {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--hit-area, 44px);
+  gap: 10px;
+  padding: 13px 16px;
+  font: 700 11px/1 "JetBrains Mono", monospace;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+}
+
+.seo-action-primary {
+  color: #16110d;
+  background: #d28b52;
+}
+
+.seo-action-secondary {
+  border: 1px solid rgba(233, 226, 217, 0.24);
+  color: #e9e2d9;
+}
+
+.seo-proof-card {
+	grid-column: 3;
+	align-self: center;
+	min-width: 0;
+	padding: 26px;
+  border: 1px solid rgba(233, 226, 217, 0.16);
+  border-top-color: rgba(210, 139, 82, 0.58);
+  background: linear-gradient(145deg, rgba(31, 34, 34, 0.88), rgba(14, 17, 18, 0.84));
+  box-shadow: 16px 16px 0 rgba(210, 139, 82, 0.08);
+}
+
+.seo-proof-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #67e8b4;
+  font: 700 10px/1 "JetBrains Mono", monospace;
+  letter-spacing: 0.12em;
+}
+
+.seo-proof-card > strong {
+  display: block;
+  margin: 20px 0 14px;
+  font: 700 24px/1.1 Syne, sans-serif;
+}
+
+.seo-evidence-artifact {
+  margin: 0 0 17px;
+  padding: 12px;
+  border: 1px solid rgba(210, 139, 82, 0.35);
+  background: #0d1011;
+  font-family: "JetBrains Mono", monospace;
+}
+
+.seo-evidence-artifact > div,
+.seo-evidence-artifact > p {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(233, 226, 217, 0.09);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+}
+
+.seo-evidence-artifact > div span,
+.seo-evidence-artifact > p span {
+  color: #86817b;
+}
+
+.seo-evidence-artifact > div b {
+  color: #67e8b4;
+  font-size: 9px;
+}
+
+.seo-evidence-artifact code {
+  color: #f1b879;
+  font: inherit;
+}
+
+.seo-evidence-artifact small {
+  display: block;
+  margin-top: 10px;
+  color: #6f6b66;
+  font-size: 8px;
+  letter-spacing: 0.08em;
+}
+
+.seo-proof-card ul {
+  display: grid;
+  gap: 11px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.seo-proof-card li {
+  display: flex;
+  gap: 10px;
+  color: #e9e2d9;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.seo-proof-card li svg {
+  flex: none;
+  margin-top: 2px;
+  color: #67e8b4;
+}
+
+.seo-proof-card > p {
+  margin: 19px 0 0;
+  padding-top: 16px;
+  border-top: 1px solid rgba(233, 226, 217, 0.13);
+  color: #a49f97;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.seo-link-field {
+  display: grid;
+  grid-template-columns: 0.85fr 1.15fr;
+  gap: 50px;
+  padding: 74px 0;
+  border-top: 1px solid rgba(233, 226, 217, 0.16);
+}
+
+.seo-link-field h2 {
+  margin: 14px 0;
+  font: 700 clamp(30px, 4vw, 56px) / 0.96 Syne, sans-serif;
+  letter-spacing: -0.045em;
+}
+
+.seo-link-field h2 span:last-child {
+  color: #d28b52;
+}
+
+.seo-link-field p {
+  max-width: 330px;
+  color: #a49f97;
+  line-height: 1.5;
+}
+
+.seo-link-grid {
+  display: grid;
+  gap: 2px;
+}
+
+.seo-link-grid a {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 24px;
+  align-items: center;
+  gap: 12px;
+  padding: 20px;
+  color: #e9e2d9;
+  background: #121617;
+  text-decoration: none;
+}
+
+.seo-link-grid a:hover {
+  background: #1b2020;
+}
+
+.seo-console-link:focus-visible,
+.seo-action-primary:focus-visible,
+.seo-action-secondary:focus-visible,
+.seo-link-grid a:focus-visible {
+  outline: 2px solid #67e8b4;
+  outline-offset: 3px;
+}
+
+.seo-link-grid a:focus-visible {
+  background: #1b2020;
+}
+
+.seo-link-grid span {
+  color: #d28b52;
+  font: 700 11px/1 "JetBrains Mono", monospace;
+}
+
+.seo-link-grid strong {
+  font: 700 18px/1.1 Syne, sans-serif;
+}
+
+.seo-link-grid svg {
+  color: #67e8b4;
+}
+
+.seo-public-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px 0 24px;
+  border-top: 1px solid rgba(233, 226, 217, 0.16);
+  color: #86817b;
+  font: 10px/1.4 "JetBrains Mono", monospace;
+  letter-spacing: 0.05em;
+}
+
+.seo-public--agents .seo-evidence-artifact { border-left: 3px solid #d28b52; }
+.seo-public--payments .seo-evidence-artifact { border-color: rgba(210, 139, 82, 0.55); border-style: dashed; }
+.seo-public--proofs .seo-evidence-artifact { box-shadow: inset 0 0 0 1px rgba(103, 232, 180, 0.12); }
+.seo-public--storage .seo-evidence-artifact { background: repeating-linear-gradient(0deg, #0d1011, #0d1011 20px, #101415 21px); }
+.seo-public--developers .seo-evidence-artifact { border-left: 3px solid #67e8b4; }
+
+@media (max-width: 1060px) {
+	.seo-public-nav { grid-template-columns: auto 1fr auto; }
+	.seo-route-status { display: none; }
+	.seo-hero { grid-template-columns: 42px minmax(0, 1fr) minmax(300px, .82fr); gap: 24px; }
+}
+
+@media (max-width: 850px) {
+  .seo-public { padding: 0 20px; }
+  .seo-public-nav { display: flex; gap: 16px; }
+  .seo-public-nav nav { display: none; }
+  .seo-console-link { margin-left: auto; }
+	.seo-hero { grid-template-columns: minmax(0, 1fr); gap: 28px; padding: 44px 0; }
+	.seo-route-rail { grid-column: 1; flex-direction: row; align-items: center; gap: 9px; min-height: auto; padding: 0 0 10px; border-left: 0; border-bottom: 1px solid rgba(210, 139, 82, .38); }
+	.seo-route-rail strong { max-width: none; font-size: 8px; writing-mode: initial; }
+	.seo-route-rail i { display: none; }
+	.seo-hero-copy { grid-column: 1; }
+	.seo-proof-card { grid-column: 1; box-shadow: 10px 10px 0 rgba(210, 139, 82, 0.08); }
+  .seo-link-field { grid-template-columns: 1fr; gap: 28px; padding: 48px 0; }
+  .seo-public-footer { display: grid; }
+	.seo-hero h1 { max-inline-size: 12ch; font-size: clamp(42px, 13vw, 68px); }
+}
+
+@media (max-width: 420px) {
+  .seo-public { padding: 0 16px; }
+  .seo-public-nav { min-height: 64px; }
+  .seo-console-link { padding: 8px 9px; font-size: 9px !important; }
+  .seo-proof-card { padding: 20px; }
+  .seo-link-grid a { padding: 17px 14px; }
+  .seo-link-grid strong { font-size: 16px; }
+  .seo-evidence-artifact > div,
+  .seo-evidence-artifact > p { font-size: 8px; }
+  .seo-hero h1 { font-size: clamp(38px, 11.1vw, 46px); letter-spacing: -0.05em; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seo-public *,
+  .seo-public *::before,
+  .seo-public *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+Disallow: /app
+Disallow: /agents/
+Disallow: /chat
+Disallow: /transactions
+Disallow: /storage
+Disallow: /settings
+Disallow: /staking
+Disallow: /mint
+Disallow: /payment
+Disallow: /transfer
+Disallow: /tick
+
+Sitemap: https://axiom.example/sitemap.xml

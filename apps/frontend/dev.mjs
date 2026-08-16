@@ -70,12 +70,19 @@ serve({
           duplex: "half",
         });
       }
-      // Static from dist-dev (built on start), SPA fallback to index.html.
-      const path = url.pathname === "/" ? "/index.html" : url.pathname;
-      const file = Bun.file(join(distDev, path));
-      if (await file.exists()) return new Response(file);
-      const index = Bun.file(join(distDev, "index.html"));
-      return new Response(index);
+    // Static from dist-dev (built on start), then public/ (brand images,
+    // robots.txt, sitemap.xml — not part of the module graph), SPA fallback.
+    const path = url.pathname === "/" ? "/index.html" : url.pathname;
+    const file = Bun.file(join(distDev, path));
+    if (await file.exists()) return new Response(file);
+    const publicFile = Bun.file(join(frontendDir, "public", path));
+    if (await publicFile.exists()) {
+      return new Response(publicFile, {
+        headers: { "cache-control": "no-cache" },
+      });
+    }
+    const index = Bun.file(join(distDev, "index.html"));
+    return new Response(index);
     } catch {
       return new Response("Server error", { status: 500 });
     }

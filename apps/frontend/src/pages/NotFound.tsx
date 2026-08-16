@@ -1,59 +1,44 @@
-import type { ReactElement } from "react";
-import { Link } from "react-router-dom";
-import { useAccount } from "wagmi";
-import { Card, COLORS, Button } from "../components/ui.js";
+/*
+  Recovery404 (v2): no sidebar, no wallet assumption, no partial dashboard —
+  a safe exit with two destinations.
+*/
+import { ArrowLeft, LayoutDashboard } from "../components/axiom/icons.js";
+import { Button } from "../components/axiom/Controls.js";
+import { Logo } from "../components/axiom/AppShell.js";
+import { MEDIA } from "../lib/media.js";
 
-function NotFound(): ReactElement {
-  const { isConnected } = useAccount();
+export default function Recovery404({ go }: { go: (path: string) => void }) {
   return (
-    <div
-      style={{
-        padding: "var(--space-4xl) var(--space-xl)",
-        textAlign: "center",
-        animation: "axiom-fade-in var(--dur-landing) var(--ease-out)",
-      }}
-    >
-      <Card
-        style={{
-          maxWidth: "32rem",
-          margin: "0 auto",
-          padding: "var(--space-3xl) var(--space-2xl)",
-        }}
-      >
-        <h1
-          style={{
-            fontSize: "var(--text-3xl)",
-            fontWeight: "var(--fw-bold)",
-            color: COLORS.bronzeLight,
-            marginBottom: "var(--space-sm)",
-            letterSpacing: "-0.03em",
-            lineHeight: "var(--lh-tight)",
-          }}
-        >
-          404
+    <div className="recovery-404">
+      <div className="recovery-404-art">
+        <img src={MEDIA.recovery404} alt="Abstract recoverable Axiom route" />
+      </div>
+      <div className="recovery-404-copy">
+        <Logo compact />
+        <span className="eyebrow copper">404 / ROUTE NOT INDEXED</span>
+        <h1>
+          The route
+          <br />
+          <i>drifted.</i>
         </h1>
-        <p
-          style={{
-            color: COLORS.textMuted,
-            fontSize: "var(--text-base)",
-            marginBottom: "var(--space-xl)",
-            fontWeight: "var(--fw-regular)",
-            lineHeight: "var(--lh-normal)",
-          }}
-        >
-          This page doesn't exist or may have been moved.
+        <p>
+          Axiom could not find this surface. No sidebar, wallet assumption or
+          partial dashboard is loaded here.
         </p>
-        <Link
-          to={isConnected ? "/app" : "/"}
-          style={{ textDecoration: "none" }}
-        >
-          <Button variant="primary">
-            {isConnected ? "Back to your agents" : "Back to Home"}
+        <div className="button-row">
+          <Button onClick={() => go("/")} icon={<ArrowLeft size={14} />}>
+            Return to landing
           </Button>
-        </Link>
-      </Card>
+          <Button
+            variant="secondary"
+            onClick={() => go("/app")}
+            icon={<LayoutDashboard size={15} />}
+          >
+            Open console
+          </Button>
+        </div>
+        <span className="mono recovery-code">RECOVERY / 404 / SAFE EXIT</span>
+      </div>
     </div>
   );
 }
-
-export default NotFound;

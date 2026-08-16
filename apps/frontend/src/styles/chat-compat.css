@@ -1,0 +1,493 @@
+/*
+  Chat-kit compatibility layer — the v1 primitives the live chat stack keeps
+  (ChatPage message cards, TransferModal, ChatHistorySection thread rail,
+  ui.tsx Button/Modal/inputs) speak a v1 token/class vocabulary. Everything is
+  remapped onto the v2 Copper Command Deck palette so the kept logic renders in
+  the v2 design without dragging the old 2.6k-line stylesheet along.
+  Loaded LAST (un-layered) in index.css so it wins over @layer axiom-base.
+*/
+
+:root {
+  /* spacing / type / weight scales the kept components reference */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 0.75rem;
+  --space-lg: 1rem;
+  --space-xl: 1.5rem;
+  --space-2xl: 2rem;
+  --space-3xl: 3rem;
+
+  --text-2xs: 0.6875rem;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 1.875rem;
+  --text-data-sm: 0.875rem;
+  --text-data-lg: 1.25rem;
+  --text-data-xl: 1.5rem;
+
+  --fw-light: 300;
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+  --lh-tight: 1.25;
+  --lh-snug: 1.35;
+  --lh-normal: 1.5;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+
+  --font-display: "Syne", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  --font-data: var(--font-mono);
+  --tabular: tabular-nums;
+
+  /* v1 color vocabulary → v2 tokens (single accent: copper #d28b52) */
+  --c-bg: var(--bg-2);
+  --c-surface: var(--panel);
+  --c-surface-raised: var(--panel-2);
+  --c-border: var(--line);
+  --c-border-strong: var(--line);
+  --c-text: var(--text);
+  --c-text-primary: var(--text);
+  --c-text-muted: var(--muted);
+  --c-text-dim: var(--dim);
+  --c-bronze: var(--copper);
+  --c-bronze-light: var(--copper-bright);
+  --c-bronze-bg: rgba(210, 139, 82, 0.12);
+  --c-bronze-border: rgba(210, 139, 82, 0.4);
+  --c-teal: var(--teal);
+  --c-teal-bg: rgba(121, 196, 205, 0.12);
+  --c-teal-border: rgba(121, 196, 205, 0.35);
+  --c-phosphor: var(--phosphor);
+  --c-danger: var(--danger);
+  --c-danger-bg: rgba(226, 125, 116, 0.12);
+  --c-danger-border: rgba(226, 125, 116, 0.35);
+  --c-success: var(--phosphor);
+  --c-success-bg: rgba(103, 232, 180, 0.1);
+  --c-success-border: rgba(103, 232, 180, 0.35);
+  --c-warning: var(--warning);
+  --c-warning-bg: rgba(240, 179, 107, 0.12);
+  --c-warning-border: rgba(240, 179, 107, 0.35);
+
+  --shadow-1: 0 1px 0 rgba(255, 255, 255, 0.03) inset;
+  --shadow-modal: 0 24px 80px rgba(0, 0, 0, 0.5);
+  --ease-out: cubic-bezier(0.25, 1, 0.5, 1);
+  --dur-card-hover: 150ms;
+  --dur-spin: 800ms;
+  --dur-modal: 200ms;
+  --transition: 150ms var(--ease-out);
+}
+
+/* ---------------------------------------------------------------- *
+ * Minimal utility classes the kept components emit.                 *
+ * ---------------------------------------------------------------- */
+.flex { display: flex; }
+.items-center { align-items: center; }
+.items-baseline { align-items: baseline; }
+.justify-between { justify-content: space-between; }
+.justify-end { justify-content: flex-end; }
+.flex-wrap { flex-wrap: wrap; }
+.w-full { width: 100%; }
+.m-0 { margin: 0; }
+.mb-lg { margin-bottom: var(--space-lg); }
+.mt-0 { margin-top: 0; }
+.gap-sm { gap: var(--space-sm); }
+.gap-md { gap: var(--space-md); }
+.uppercase { text-transform: uppercase; }
+.text-xs { font-size: var(--text-xs); }
+.text-sm { font-size: var(--text-sm); }
+.text-xl { font-size: var(--text-xl); }
+.text-2xl { font-size: var(--text-2xl); }
+.text-dim { color: var(--dim); }
+.text-muted { color: var(--muted); }
+.text-primary { color: var(--text); }
+.fw-light { font-weight: var(--fw-light); }
+.fw-medium { font-weight: var(--fw-medium); }
+.fw-semibold { font-weight: var(--fw-semibold); }
+.fw-bold { font-weight: var(--fw-bold); }
+.lh-tight { line-height: var(--lh-tight); }
+.lh-snug { line-height: var(--lh-snug); }
+.cursor-pointer { cursor: pointer; }
+@media (max-width: 760px) {
+  .stack-on-mobile { display: grid !important; grid-template-columns: 1fr !important; }
+}
+
+/* ---------------------------------------------------------------- *
+ * Buttons / inputs / surfaces (ui.tsx primitives).                  *
+ * ---------------------------------------------------------------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  padding: 9px 15px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  transition: 150ms var(--ease-out);
+  min-height: 34px;
+}
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn-primary {
+  background: var(--copper);
+  color: #24170d;
+}
+.btn-primary:hover:not(:disabled) { background: var(--copper-bright); }
+.btn-secondary {
+  background: transparent;
+  border-color: var(--copper);
+  color: var(--copper-bright);
+}
+.btn-secondary:hover:not(:disabled) { background: rgba(210, 139, 82, 0.1); }
+.btn-ghost {
+  background: transparent;
+  border-color: var(--line);
+  color: var(--muted);
+}
+.btn-ghost:hover:not(:disabled) { color: var(--text); border-color: var(--copper); }
+.btn-teal {
+  background: transparent;
+  border-color: var(--c-teal-border);
+  color: var(--c-teal);
+}
+.btn-teal:hover:not(:disabled) { background: var(--c-teal-bg); }
+
+.surface-glass { background: var(--panel); }
+
+.axiom-field {
+  color: var(--text);
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  transition: 150ms var(--ease-out);
+}
+.axiom-field:focus { outline: 0; border-color: var(--copper); box-shadow: 0 0 0 3px rgba(210, 139, 82, 0.1); }
+.axiom-field::placeholder { color: var(--dim); }
+select.axiom-field option { background: var(--panel); color: var(--text); }
+
+.field-error { color: var(--danger); font-size: var(--text-xs); margin: 4px 0 0; }
+
+.shell-icon-btn {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  border-radius: 6px;
+  min-width: 32px;
+  min-height: 32px;
+  display: inline-grid;
+  place-items: center;
+  cursor: pointer;
+  transition: 150ms var(--ease-out);
+}
+.shell-icon-btn:hover { color: var(--text); border-color: var(--copper); }
+
+/* ---------------------------------------------------------------- *
+ * Animations.                                                       *
+ * ---------------------------------------------------------------- */
+@keyframes axiom-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+.fade-enter { animation: axiom-fade-in 180ms var(--ease-out) both; }
+@keyframes axiom-spin { to { transform: rotate(360deg); } }
+@keyframes axiom-pixel-on {
+  0%, 70%, 100% { background: var(--dim); }
+  35% { background: var(--copper-bright); }
+}
+.churn-cell { background: var(--dim); }
+@keyframes axiom-caret { 50% { opacity: 0; } }
+.caret-blink { animation: axiom-caret 1s steps(1) infinite; }
+
+/* ---------------------------------------------------------------- *
+ * Chat surface (message rail, composer, thread list).               *
+ * ---------------------------------------------------------------- */
+.chat-main { display: flex; flex-direction: column; min-height: 0; height: 100%; }
+
+.chat-topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.chat-topbar__mark { border-radius: 8px; }
+.chat-topbar__meta { flex: 1; min-width: 0; }
+.chat-topbar__name { font-family: Syne, sans-serif; font-weight: 700; font-size: 13px; letter-spacing: 0.02em; }
+.chat-topbar__status { font-size: var(--text-xs); color: var(--dim); }
+
+.chat-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 0;
+  padding: 9px 12px;
+  border: 1px solid var(--c-warning-border);
+  background: var(--c-warning-bg);
+  border-radius: 7px;
+  font-size: var(--text-sm);
+  color: var(--warning);
+}
+
+.chat-messages {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 2px;
+  scrollbar-width: thin;
+}
+
+.chat-composer { border-top: 1px solid var(--line-soft); padding-top: 10px; }
+.chat-composer__row { display: flex; align-items: flex-end; gap: 8px; }
+.chat-composer__row .axiom-field { flex: 1; }
+
+.chat-sidebar-toggle { display: none; }
+@media (max-width: 760px) {
+  .chat-sidebar-toggle { display: inline-grid; }
+}
+
+.chat-md { line-height: var(--lh-normal); overflow-wrap: anywhere; }
+.chat-md > :first-child { margin-top: 0; }
+.chat-md > :last-child { margin-bottom: 0; }
+.chat-md p { margin: 0 0 0.6em; }
+.chat-md h1, .chat-md h2, .chat-md h3 { font-family: Syne, sans-serif; letter-spacing: -0.02em; margin: 1.1em 0 0.5em; }
+.chat-md h1 { font-size: 1.3em; }
+.chat-md h2 { font-size: 1.15em; }
+.chat-md h3, .chat-md h4, .chat-md h5, .chat-md h6 { font-size: 1em; }
+.chat-md strong { font-weight: var(--fw-semibold); }
+.chat-md hr { border: 0; border-top: 1px solid var(--line-soft); margin: 1em 0; }
+.chat-md ul, .chat-md ol { margin: 0.4em 0 0.8em; padding-left: 1.35em; }
+.chat-md li { margin: 0.2em 0; }
+.chat-md a { color: var(--copper-bright); }
+.chat-md code {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  background: var(--panel-2);
+  border: 1px solid var(--line-soft);
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+}
+.chat-md pre {
+  background: var(--bg-2);
+  border: 1px solid var(--line-soft);
+  border-radius: 7px;
+  padding: 10px 12px;
+  overflow-x: auto;
+  margin: 0.6em 0;
+}
+.chat-md pre code { background: none; border: 0; padding: 0; }
+.chat-md blockquote {
+  border-left: 2px solid var(--copper);
+  color: var(--muted);
+  margin: 0.6em 0;
+  padding: 0.1em 0 0.1em 0.9em;
+}
+.chat-md table { border-collapse: collapse; margin: 0.6em 0; font-size: 0.92em; }
+.chat-md th, .chat-md td { border: 1px solid var(--line-soft); padding: 5px 9px; text-align: left; }
+.chat-md th { background: var(--panel-2); font-weight: var(--fw-semibold); }
+.chat-md img { max-width: 100%; border-radius: 7px; }
+
+.msg-actions { display: inline-flex; gap: 6px; align-items: center; }
+.msg-action {
+  border: 0;
+  background: none;
+  color: var(--dim);
+  font-size: var(--text-2xs);
+  cursor: pointer;
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+.msg-action:hover { color: var(--copper-bright); }
+.msg-action--danger { color: var(--danger); }
+.msg-confirm { display: inline-flex; align-items: center; gap: 6px; font-size: var(--text-2xs); color: var(--warning); }
+.msg-confirm__text { color: var(--warning); }
+.msg-insights {
+  border-top: 1px solid var(--line-soft);
+  color: var(--dim);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  line-height: 1.45;
+}
+
+.prompt-card {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: 7px;
+  padding: 12px 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: 150ms var(--ease-out);
+}
+.prompt-card:hover { border-color: var(--copper); background: rgba(210, 139, 82, 0.05); }
+.prompt-card:focus-visible { outline: 2px solid var(--copper-bright); outline-offset: 2px; }
+
+.queue-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 2px 4px 2px 10px;
+  font-size: var(--text-xs);
+  color: var(--dim);
+  background: var(--panel);
+}
+
+.stream-tail { overflow-wrap: anywhere; }
+
+/* Thread rail (ChatHistorySection), styled as the v2 thread-list panel body. */
+.chat-history { display: flex; flex-direction: column; gap: 8px; min-height: 0; height: 100%; }
+.chat-history__head { display: flex; align-items: center; justify-content: space-between; }
+.chat-history__title {
+  margin: 0;
+  font-family: Syne, sans-serif;
+  font-size: 15px;
+  letter-spacing: -0.02em;
+}
+.chat-history__new {
+  border: 1px solid var(--copper);
+  color: var(--copper-bright);
+  background: transparent;
+  border-radius: 6px;
+  font-size: 11px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+.chat-history__new:hover { background: rgba(210, 139, 82, 0.1); }
+.chat-history__search {
+  border: 1px solid var(--line);
+  background: var(--bg-2);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 12px;
+}
+.chat-history__search:focus { outline: 0; border-color: var(--copper); }
+.chat-history__list { overflow-y: auto; display: grid; gap: 4px; min-height: 0; flex: 1; }
+.chat-history__item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  text-align: left;
+  padding: 9px 10px;
+  cursor: pointer;
+  transition: 150ms var(--ease-out);
+}
+.chat-history__item:hover { background: rgba(210, 139, 82, 0.06); color: var(--text); }
+.chat-history__item.is-active { background: rgba(210, 139, 82, 0.12); color: var(--text); box-shadow: inset 2px 0 0 var(--copper); }
+.chat-history__open { display: grid; gap: 2px; min-width: 0; }
+.chat-history__badge { font-size: 10px; color: var(--dim); }
+.chat-history__delete {
+  border: 0;
+  background: none;
+  color: var(--dim);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 3px 5px;
+  border-radius: 5px;
+  visibility: hidden;
+}
+.chat-history__item:hover .chat-history__delete,
+.chat-history__item.is-active .chat-history__delete { visibility: visible; }
+.chat-history__delete:hover { color: var(--danger); }
+.chat-history__empty { margin: 0; padding: 14px 4px; color: var(--dim); font-size: 11px; }
+
+/* ---------------------------------------------------------------- *
+ * Chat surface host — the v2 shell around the live ChatPage.        *
+ * ChatPage's own root is `.chat-layout` (v1 flex semantics); the v2 *
+ * fix layers make `.chat-layout` a grid, so the host + this override *
+ * restore the full-height column while borrowing v2 panel tokens.    *
+ * ---------------------------------------------------------------- */
+.chat-surface {
+  display: grid;
+  grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+  gap: 18px;
+  min-height: 0;
+  flex: 1;
+}
+.chat-surface .chat-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  height: 100%;
+  background: transparent;
+}
+.app-shell .main:has(> .chat-surface) {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: calc(100dvh - 74px); /* .topbar height */
+  overflow: hidden;
+}
+.chat-thread-rail {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  padding: 14px 12px;
+}
+.chat-thread-rail > div { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+@media (max-width: 760px) {
+  .chat-surface { grid-template-columns: minmax(0, 1fr); }
+  .chat-thread-rail { display: none; }
+  .chat-surface.threads-open .chat-thread-rail {
+    display: flex;
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 80;
+    width: min(84vw, 320px);
+    box-shadow: 24px 0 60px rgba(0, 0, 0, 0.45);
+    background: var(--panel);
+  }
+}
+
+/* Flow page live extras: agent select inside the v2 field frame. */
+.flow-form .field-control select.axiom-field {
+  width: 100%;
+  min-height: 40px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  padding: 0 12px;
+  outline: 0;
+}
+.tick-stream {
+  margin-top: 14px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  padding: 12px 14px;
+  background: var(--bg-2);
+}
+.tick-stream pre {
+  margin: 8px 0;
+  max-height: 180px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* Wallet gate: live error line under the action row. */
+.wallet-gate-error { margin: 10px 0 0; color: var(--danger); font-size: 11px; overflow-wrap: anywhere; }
+

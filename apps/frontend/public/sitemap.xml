@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://axiom.example/</loc></url>
+  <url><loc>https://axiom.example/agents</loc></url>
+  <url><loc>https://axiom.example/payments</loc></url>
+  <url><loc>https://axiom.example/proofs</loc></url>
+  <url><loc>https://axiom.example/storage/0g</loc></url>
+  <url><loc>https://axiom.example/developers</loc></url>
+</urlset>

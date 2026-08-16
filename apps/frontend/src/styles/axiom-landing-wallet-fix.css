@@ -1,0 +1,70 @@
+/*
+  Axiom Copper Command Deck — correction de composition.
+  Préserver un vide intentionnel entre la lecture éditoriale, l’artefact de preuve et le parcours wallet ; cuivre = action, phosphor = état vérifié.
+*/
+
+.landing-page { container-type:inline-size; }
+
+.landing-main {
+  grid-template-columns:minmax(0,1fr) minmax(480px,.92fr);
+  gap:clamp(48px,8cqi,112px);
+}
+
+.landing-copy { position:relative; z-index:1; min-width:0; }
+
+.landing-copy h1 {
+  max-inline-size:100%;
+  font-size:clamp(58px,6.2cqi,90px);
+  overflow-wrap:normal;
+  word-break:normal;
+}
+
+.landing-visual { min-width:0; isolation:isolate; }
+
+/* The dialog must remain anchored to the visual viewport and scroll as one surface when vertical space is constrained. */
+.wallet-gate-layer {
+  z-index:var(--layer-modal,80);
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  align-items:center;
+}
+
+.wallet-gate {
+  position:relative;
+  z-index:1;
+  max-height:calc(100dvh - 48px);
+}
+
+.wallet-gate-close {
+  position:absolute;
+  z-index:3;
+  top:12px;
+  right:12px;
+  display:grid;
+  place-items:center;
+  width:32px;
+  height:32px;
+  border:1px solid var(--line);
+  background:color-mix(in srgb, var(--panel) 88%, transparent);
+  color:var(--muted);
+}
+
+.wallet-gate-close:hover,
+.wallet-gate-close:focus-visible {
+  border-color:var(--copper);
+  color:var(--copper-bright);
+}
+
+.wallet-gate-close:focus-visible { outline:2px solid var(--phosphor); outline-offset:2px; }
+
+@media (max-width:1120px) {
+  .landing-main { grid-template-columns:1fr; }
+  .landing-visual { min-height:420px; }
+}
+
+@media (max-width:800px) {
+  .landing-main { gap:38px; }
+  .landing-copy h1 { font-size:clamp(50px,13.6cqi,54px); }
+  .wallet-gate-layer { align-items:start; padding:14px; }
+  .wallet-gate { width:100%; max-height:calc(100dvh - 28px); }
+}

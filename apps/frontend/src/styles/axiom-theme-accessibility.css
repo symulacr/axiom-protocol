@@ -1,0 +1,229 @@
+/*
+  Axiom Copper Command Deck — theme and stability reinforcement.
+  Style reminder: graphite or warm paper surfaces; copper carries deliberate action,
+  phosphor remains reserved for verified/live evidence, and content must never be clipped.
+*/
+
+.app-shell {
+  --completion-panel: color-mix(in srgb, var(--panel) 94%, transparent);
+  --completion-panel-2: color-mix(in srgb, var(--panel-2) 94%, transparent);
+  --completion-line: color-mix(in srgb, var(--line) 88%, transparent);
+  --completion-copper: var(--copper);
+  --completion-bright: var(--copper-bright);
+  --completion-phosphor: var(--phosphor);
+  --completion-muted: var(--muted);
+  --completion-dim: var(--dim);
+  --completion-warning: var(--warning);
+  --completion-text: var(--text);
+  --completion-canvas: var(--bg);
+  --completion-elevated: var(--bg-2);
+  --completion-overlay: rgba(7, 9, 10, .72);
+  --completion-shadow: rgba(0, 0, 0, .35);
+  isolation: isolate;
+  overflow-x: clip;
+  background: var(--completion-canvas);
+  color: var(--completion-text);
+}
+
+.app-shell.light {
+  --muted: #494a45;
+  --dim: #5b5a53;
+  --line: #c9beb0;
+  --line-soft: #ddd3c7;
+  --completion-muted: #494a45;
+  --completion-dim: #5b5a53;
+  --completion-line: #c9beb0;
+  --completion-overlay: rgba(49, 42, 35, .42);
+  --completion-shadow: rgba(66, 47, 31, .16);
+}
+
+.app-shell.light .button:disabled,
+.app-shell.light .toggle:disabled,
+.app-shell.light [aria-disabled="true"] {
+  color: #69645b;
+  border-color: #c9beb0;
+}
+
+.app-shell .main {
+  overflow: visible;
+  background: var(--completion-canvas);
+  color: var(--completion-text);
+}
+
+.app-shell .sidebar,
+.app-shell .topbar {
+  background: color-mix(in srgb, var(--completion-canvas) 90%, transparent);
+}
+
+.app-shell .sidebar {
+  border-right-color: var(--completion-line);
+}
+
+.app-shell .topbar,
+.app-shell .session-top,
+.app-shell .agent-row,
+.app-shell .activity-row,
+.app-shell .thread-item,
+.app-shell .transaction-row,
+.app-shell .command-palette > button,
+.app-shell .landing-strip > div,
+.app-shell .landing-strip > button {
+  color: var(--completion-text);
+}
+
+/* Dashboard evidence retains a readable label lane; status never consumes the flexible track. */
+.app-shell .activity-row {
+  grid-template-columns:36px minmax(0,1fr) max-content 14px;
+}
+.app-shell .activity-row > span:nth-child(2) {
+  min-width:0;
+  width:auto;
+}
+.app-shell .activity-row > .state-pill {
+  justify-self:end;
+  width:fit-content;
+  max-width:100%;
+}
+
+.app-shell .brand,
+.app-shell .field-control input,
+.app-shell .chat-compose textarea,
+.app-shell .settings-select-row select,
+.app-shell .command-input input {
+  color: var(--completion-text);
+}
+
+.app-shell .field-control,
+.app-shell .chat-compose textarea,
+.app-shell .toggle,
+.app-shell .settings-select-row select,
+.app-shell .receipt-drawer,
+.app-shell .command-palette,
+.app-shell .flow-visual,
+.app-shell .landing-visual {
+  background: var(--completion-elevated);
+}
+
+.app-shell .drawer-layer,
+.app-shell .command-palette-layer {
+  background: var(--completion-overlay);
+}
+
+.app-shell .receipt-drawer,
+.app-shell .command-palette {
+  box-shadow: 0 22px 70px var(--completion-shadow);
+}
+
+.app-shell .proof-card::after {
+  background: linear-gradient(180deg, transparent 20%, color-mix(in srgb, var(--completion-canvas) 94%, transparent));
+}
+
+.app-shell .hero-visual-readout span {
+  background: color-mix(in srgb, var(--completion-canvas) 76%, transparent);
+}
+
+.app-shell.light .proof-card img,
+.app-shell.light .flow-visual img,
+.app-shell.light .landing-visual > img {
+  mix-blend-mode: multiply;
+  opacity: .2;
+}
+
+.app-shell.light .sidebar {
+  background: color-mix(in srgb, var(--completion-canvas) 92%, transparent);
+}
+
+.app-shell .rail-resize {
+  touch-action: none;
+}
+
+.app-shell .rail-resize:focus-visible {
+  outline: 2px solid var(--completion-bright);
+  outline-offset: 2px;
+  background: color-mix(in srgb, var(--completion-copper) 18%, transparent);
+}
+
+.theme-segmented {
+  display: inline-flex;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--completion-line);
+  background: var(--completion-elevated);
+}
+
+.theme-segmented button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--hit-area, 44px);
+  padding: 0 9px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--completion-dim);
+  font: 700 9px 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+}
+
+.theme-segmented button:hover,
+.theme-segmented button.active {
+  border-color: color-mix(in srgb, var(--completion-copper) 55%, transparent);
+  background: color-mix(in srgb, var(--completion-copper) 12%, transparent);
+  color: var(--completion-bright);
+}
+
+@media (max-width: 700px) {
+  .theme-setting {
+    align-items: flex-start;
+  }
+
+  .theme-segmented {
+    flex: 0 0 auto;
+  }
+}
+
+/* Marker cleanup: progress remains visible through state and accessible labels, never serial decoration. */
+.guide-index,
+.guide-copy > .eyebrow.copper {
+  display: none;
+}
+
+.wallet-gate-panel > .eyebrow:has(+ h1),
+.wallet-state:has(.network-check) > .eyebrow,
+.wallet-state:has(.signature-preview) > .eyebrow,
+.wallet-state:has(.field) > .eyebrow {
+  font-size: 0;
+}
+
+.wallet-gate-panel > .eyebrow:has(+ h1)::after,
+.wallet-state:has(.network-check) > .eyebrow::after,
+.wallet-state:has(.signature-preview) > .eyebrow::after,
+.wallet-state:has(.field) > .eyebrow::after {
+  color: var(--copper-bright);
+  font: 700 10px/1.2 'JetBrains Mono', monospace;
+  letter-spacing: .14em;
+}
+
+.wallet-gate-panel > .eyebrow:has(+ h1)::after { content: "CONNECT WALLET"; }
+.wallet-state:has(.network-check) > .eyebrow::after { content: "VERIFY NETWORK"; }
+.wallet-state:has(.signature-preview) > .eyebrow::after { content: "SIGN MESSAGE"; }
+.wallet-state:has(.field) > .eyebrow::after { content: "CREATE PROFILE"; }
+
+.storage-step > span {
+  min-width: 16px;
+  font-size: 0;
+}
+
+.storage-step > span::before {
+  content: "—";
+  color: var(--dim);
+  font: 700 13px/1 'JetBrains Mono', monospace;
+}
+
+.storage-step.done > span::before {
+  content: "✓";
+  color: var(--phosphor);
+}
+
+.storage-step > span:has(svg)::before {
+  content: none;
+}

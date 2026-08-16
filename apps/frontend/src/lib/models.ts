@@ -1,0 +1,132 @@
+/*
+  Axiom UI-v2 shared types (ported from the v2 mockup; the fixture chat/agent
+  models were dropped — agents, events and receipts now come from the v1 data
+  layer — while the operation-draft machine that drives the flow pages and the
+  OperationReviewSheet is unchanged).
+*/
+import type { ReactNode } from "react";
+import type { Locale } from "./copy";
+
+export type { Locale } from "./copy";
+
+export type Route =
+  | "landing"
+  | "public-agents"
+  | "public-payments"
+  | "public-proofs"
+  | "public-storage"
+  | "public-developers"
+  | "dashboard"
+  | "agent"
+  | "chat"
+  | "transactions"
+  | "storage"
+  | "settings"
+  | "staking"
+  | "mint"
+  | "payment"
+  | "transfer"
+  | "tick"
+  | "not-found";
+export type FlowKind = "mint" | "payment" | "transfer" | "tick";
+export type TxState =
+  | "ready"
+  | "approval"
+  | "signing"
+  | "submitted"
+  | "confirming"
+  | "confirmed"
+  | "reverted"
+  | "rejected"
+  | "stale";
+export type SessionState =
+  | "disconnected"
+  | "connecting"
+  | "wrong-network"
+  | "signing"
+  | "profile"
+  | "authenticated"
+  | "rejected"
+  | "timeout";
+export type StoragePhase =
+  | "ready"
+  | "encrypted"
+  | "root-hashed"
+  | "published"
+  | "verified"
+  | "available"
+  | "failed";
+export type UiSettings = {
+  railCollapsed: boolean;
+  railHidden: boolean;
+  railWidth: number;
+  reducedMotion: boolean;
+  guideCompleted: boolean;
+  density: "calm" | "dense";
+  theme: "dark" | "light";
+  fixtureWallet: string;
+  direction: "ltr" | "rtl";
+  locale: Locale;
+};
+export type Session = {
+  status: SessionState;
+  wallet: string;
+  address: string;
+  profile: string;
+  chain: number;
+  signedAt: string | null;
+};
+export type Transaction = {
+  id: string;
+  kind: string;
+  detail: string;
+  hash: string;
+  age: string;
+  state: TxState;
+  route: string;
+  agent: string;
+  icon: ReactNode;
+};
+export type PendingIntent = {
+  path: string;
+  source:
+    | "wallet"
+    | "dashboard"
+    | "agent"
+    | "chat"
+    | "command-center"
+    | "receipt"
+    | "route";
+  createdAt: number;
+};
+export type OperationDraftPhase =
+  | "draft"
+  | "review"
+  | "approval-required"
+  | "payment-required"
+  | "submitting"
+  | "receipt"
+  | "recoverable-error";
+export type OperationDraft = {
+  kind: FlowKind;
+  value: string;
+  extra: string;
+  agent: string;
+  intent: string | null;
+  phase: OperationDraftPhase;
+  error: string | null;
+  receiptId: string | null;
+  updatedAt: number;
+};
+export type OperationState = {
+  pendingIntent: PendingIntent | null;
+  operationDrafts: Record<FlowKind, OperationDraft>;
+};
+export type AppState = {
+  settings: UiSettings;
+  session: Session;
+  transactions: Transaction[];
+  storage: StoragePhase;
+  guideOpen: boolean;
+  notice: string | null;
+} & OperationState;

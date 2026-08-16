@@ -1,0 +1,326 @@
+/*
+  Command Center (ported from the v2 mockup; lucide → local icon shim).
+  ⌘K/Ctrl-K palette over routes, next-safe actions and recent receipts.
+*/
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import {
+  ArrowRight,
+  Clock3,
+  CornerDownLeft,
+  Keyboard,
+  Search,
+  Sparkles,
+  X,
+} from "./axiom/icons.js";
+import type { AppState, Route } from "../lib/models.js";
+import { getNextSafeActions, type FundTarget } from "../lib/nextSafeAction.js";
+import { getCommandRouteItems } from "../lib/routeRegistry.js";
+import { trackUxEvent } from "../lib/uxTelemetry.js";
+
+type CommandItem = {
+  id: string;
+  group: "Continue" | "Next safe action" | "Go to" | "Recent";
+  label: string;
+  detail: string;
+  path: string;
+  shortcut?: string;
+  keywords: string;
+};
+
+const routeItems: CommandItem[] = getCommandRouteItems().map(
+  ({ id, label, path, shortcut }) => ({
+    id,
+    group: "Go to",
+    label,
+    detail: path,
+    path,
+    shortcut,
+    keywords: `${id} ${label} ${path}`,
+  }),
+);
+
+function isEditableTarget(target: EventTarget | null) {
+  return (
+    target instanceof HTMLElement &&
+    Boolean(target.closest("input, textarea, select, [contenteditable='true']"))
+  );
+}
+
+export function CommandCenter({
+  state,
+  route,
+  path,
+  go,
+  fundTarget,
+}: {
+  state: AppState;
+  route: Route;
+  path: string;
+  go: (path: string) => void;
+  fundTarget?: FundTarget;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [activeIndex, setActiveIndex] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const safeActions = useMemo(
+    () => getNextSafeActions(state, fundTarget),
+    [state, fundTarget],
+  );
+
+  const items = useMemo<CommandItem[]>(() => {
+    const currentRoute = routeItems.find(
+      (item) => item.path === path.split("?", 1)[0],
+    );
+    const continueItem = currentRoute
+      ? [
+          {
+            ...currentRoute,
+            id: `continue-${currentRoute.id}`,
+            group: "Continue" as const,
+            label: `Continue in ${currentRoute.label}`,
+            detail: "Resume current surface",
+          },
+        ]
+      : [];
+    const actionItems = safeActions.map((action) => ({
+      id: action.id,
+      group: "Next safe action" as const,
+      label: action.title,
+      detail: action.summary,
+      path: action.path,
+      shortcut: action.shortcut,
+      keywords: `${action.id} ${action.title} ${action.summary} ${action.proofLabel} ${action.proofValue}`,
+    }));
+    const recent = state.transactions.slice(0, 3).map((transaction) => ({
+      id: `recent-${transaction.id}`,
+      group: "Recent" as const,
+      label: transaction.kind,
+      detail: `${transaction.state} · ${transaction.hash}`,
+      path: `/transactions?tx=${encodeURIComponent(transaction.id)}`,
+      keywords: `${transaction.kind} ${transaction.detail} ${transaction.hash} ${transaction.state}`,
+    }));
+    return [...continueItem, ...actionItems, ...routeItems, ...recent];
+  }, [path, safeActions, state.transactions]);
+
+  const results = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    return normalized
+      ? items.filter((item) =>
+          `${item.label} ${item.detail} ${item.keywords}`
+            .toLowerCase()
+            .includes(normalized),
+        )
+      : items;
+  }, [items, query]);
+  const current = results[activeIndex] ?? results[0];
+  const groups: CommandItem["group"][] = [
+    "Continue",
+    "Next safe action",
+    "Go to",
+    "Recent",
+  ];
+
+  const close = () => {
+    setOpen(false);
+    setQuery("");
+    setActiveIndex(0);
+  };
+  const execute = (item?: CommandItem) => {
+    if (!item) return;
+    trackUxEvent(`command:${item.id}`, route);
+    go(item.path);
+    close();
+  };
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        event.key.toLowerCase() === "k" &&
+        !isEditableTarget(event.target)
+      ) {
+        event.preventDefault();
+        setOpen((value) => !value);
+      }
+      if (event.key === "Escape" && open) close();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open]); // close is stable enough for the escape path
+
+  useEffect(() => {
+    if (!open) return;
+    window.setTimeout(() => inputRef.current?.focus(), 0);
+  }, [open]);
+
+  useEffect(() => setActiveIndex(0), [query, open]);
+
+  const handlePanelKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setActiveIndex((index) =>
+        Math.min(index + 1, Math.max(results.length - 1, 0)),
+      );
+    }
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setActiveIndex((index) => Math.max(index - 1, 0));
+    }
+    if (event.key === "Enter") {
+      event.preventDefault();
+      execute(current);
+    }
+    if (event.key === "Escape") {
+      event.preventDefault();
+      close();
+    }
+    if (event.key === "Tab" && panelRef.current) {
+      const focusable = Array.from(
+        panelRef.current.querySelectorAll<HTMLElement>(
+          "button:not([disabled]), input:not([disabled])",
+        ),
+      );
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (!first || !last) return;
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      }
+      if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+  };
+
+  return (
+    <>
+      <button
+        className="icon-button command-center-trigger"
+        onClick={() => setOpen(true)}
+        aria-label="Open Command Center"
+        aria-haspopup="dialog"
+      >
+        <Search size={16} />
+      </button>
+      {open &&
+        createPortal(
+          <div
+            className="command-palette-layer command-center-layer"
+            onMouseDown={close}
+          >
+            <div
+              ref={panelRef}
+              className="command-palette command-center"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Command Center"
+              onMouseDown={(event) => event.stopPropagation()}
+              onKeyDown={handlePanelKeyDown}
+            >
+              <div className="command-center-head">
+                <span className="eyebrow">COMMAND CENTER</span>
+                <button
+                  className="icon-button command-center-close"
+                  onClick={close}
+                  aria-label="Close Command Center"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              <div className="command-input">
+                <Search size={16} />
+                <input
+                  ref={inputRef}
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Find action, receipt, or route"
+                  aria-controls="command-results"
+                  aria-activedescendant={
+                    current ? `command-${current.id}` : undefined
+                  }
+                />
+                <kbd>
+                  {navigator.platform.includes("Mac") ? "⌘ K" : "CTRL K"}
+                </kbd>
+              </div>
+              <div className="command-center-meta" aria-live="polite">
+                <span>
+                  <Sparkles size={13} /> {results.length} actions
+                </span>
+                <span>
+                  <Keyboard size={13} /> ↑↓ move · ↵ open · esc close
+                </span>
+              </div>
+              <div
+                id="command-results"
+                className="command-results"
+                role="listbox"
+              >
+                {groups.map((group) => {
+                  const grouped = results.filter(
+                    (item) => item.group === group,
+                  );
+                  if (!grouped.length) return null;
+                  return (
+                    <section
+                      key={group}
+                      className="command-group"
+                      aria-label={group}
+                    >
+                      <span className="command-group-label">{group}</span>
+                      {grouped.map((item) => {
+                        const index = results.indexOf(item);
+                        return (
+                          <button
+                            id={`command-${item.id}`}
+                            key={item.id}
+                            role="option"
+                            aria-selected={index === activeIndex}
+                            className={index === activeIndex ? "is-active" : ""}
+                            onMouseEnter={() => setActiveIndex(index)}
+                            onClick={() => execute(item)}
+                          >
+                            <span className="command-item-icon">
+                              {item.group === "Recent" ? (
+                                <Clock3 size={14} />
+                              ) : (
+                                <ArrowRight size={14} />
+                              )}
+                            </span>
+                            <span>
+                              <strong>{item.label}</strong>
+                              <small>{item.detail}</small>
+                            </span>
+                            {item.shortcut ? (
+                              <kbd>{item.shortcut}</kbd>
+                            ) : (
+                              <CornerDownLeft size={13} />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </section>
+                  );
+                })}
+                {!results.length && (
+                  <div className="empty-state">
+                    <strong>No matching destination</strong>
+                    <span>
+                      Try a route, receipt hash, or the next safe action.
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
+    </>
+  );
+}

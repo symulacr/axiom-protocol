@@ -1,846 +1,567 @@
+/*
+  Axiom UI-v2 App — the mockup's App composition over react-router:
+    · resolver-based routing (lib/routeRegistry) with v1 compat redirects
+      (/dashboard, /market → /app; ?mint=1 → /mint flow page)
+    · AppShell (rail + topbar + Command Center + priority strip + mobile drawer)
+    · live WalletGate: wagmi connect / chain check / SIWE-lite session sign
+    · internal routes are held behind LockedRoute until the session is
+      authenticated (24h session freshness, persisted in axiom-session)
+    · chat keeps the v1 live stack: ChatPage (SSE + tools + providers) mounts
+      in the shell with its thread rail portaled into #sidebar-threads-slot
+  Data: every screen is the v2 markup fed by the v1 hooks (usePortfolio,
+  useEventHistory/useEventStream, useMintWizard/usePayment/useTransfer/
+  useOrchestratorTick, useHealth).
+*/
 import {
   lazy,
   Suspense,
   useCallback,
   useEffect,
-  useRef,
   useState,
   type ReactElement,
-  type RefObject,
 } from "react";
 import {
-  Link,
-  NavLink,
   Navigate,
   Route,
   Routes,
   useLocation,
   useNavigate,
-  useSearchParams,
 } from "react-router-dom";
-import { BACKEND_URL } from "./config/env.js";
 import { useAccount } from "wagmi";
-import { useHealth } from "./hooks/useHealth.js";
+import { AppShell } from "./components/axiom/AppShell.js";
+import { WalletGate, isSessionFresh } from "./components/axiom/WalletGate.js";
+import { LockedRoute } from "./components/LockedRoute.js";
+import { Button } from "./components/axiom/Controls.js";
+import { ArrowRight, CircleCheck, X } from "./components/axiom/icons.js";
 import { ErrorBoundary } from "./components/ErrorBoundary.js";
-import { BRAND } from "./brand/assets.js";
-import { ConnectedGuard, Kbd, Modal, Spinner } from "./components/ui.js";
+import { Spinner } from "./components/ui.js";
 import { ShellSidebarProvider } from "./hooks/useShellSidebar.js";
+import { useUiStore } from "./lib/uiStore.js";
+import { resolvePublicSeoSlug } from "./lib/routeRegistry.js";
+import { MEDIA } from "./lib/media.js";
+import { getCopy } from "./lib/copy.js";
+import type { FlowKind } from "./lib/models.js";
+import { APP_CHAIN_ID } from "./config/wagmi.js";
 
-/** IA source of truth: Home · Chat · Mint (modal action); deep page: Agent Detail. */
-const APP_HOME = "/app" as const;
-const APP_CHAT = "/chat" as const;
-
-const MINT_QUERY = "mint" as const;
-const MINT_OPEN_VALUE = "1" as const;
-
-type PrimaryNavId = "home" | "chat" | "mint";
-type PrimaryNavItem = {
-  id: PrimaryNavId;
-  label: string;
-  path?: string;
-  kind: "link" | "action";
-  shortcut: string;
-};
-
-const PRIMARY_NAV: readonly PrimaryNavItem[] = [
-  { id: "home", label: "Home", path: APP_HOME, kind: "link", shortcut: "H" },
-  { id: "chat", label: "Chat", path: APP_CHAT, kind: "link", shortcut: "A" },
-  { id: "mint", label: "Mint", kind: "action", shortcut: "N" },
-] as const;
-
-function isMintOpen(search: string | URLSearchParams): boolean {
-  const params =
-    typeof search === "string" ? new URLSearchParams(search) : search;
-  return params.get(MINT_QUERY) === MINT_OPEN_VALUE;
-}
-
-function withMintOpen(
-  search: string | URLSearchParams,
-  open: boolean,
-): URLSearchParams {
-  const params =
-    typeof search === "string"
-      ? new URLSearchParams(search)
-      : new URLSearchParams(search);
-  if (open) params.set(MINT_QUERY, MINT_OPEN_VALUE);
-  else params.delete(MINT_QUERY);
-  return params;
-}
-
-type ThemeMode = "dark" | "light";
-const STORAGE_KEY = "axiom-theme";
-
-function readTheme(): ThemeMode {
-  try {
-    const v = localStorage.getItem(STORAGE_KEY);
-    if (v === "light" || v === "dark") return v;
-    if (typeof window !== "undefined" && window.matchMedia) {
-      return window.matchMedia("(prefers-color-scheme: light)").matches
-        ? "light"
-        : "dark";
-    }
-  } catch {
-    void 0;
-  }
-  return "dark";
-}
-
-function applyTheme(mode: ThemeMode): void {
-  document.documentElement.dataset.theme = mode;
-  document.documentElement.style.colorScheme = mode;
-}
-
-function useTheme(): {
-  theme: ThemeMode;
-  toggle: () => void;
-  setTheme: (m: ThemeMode) => void;
-} {
-  const [theme, setThemeState] = useState<ThemeMode>(() => {
-    if (typeof document !== "undefined") {
-      return readTheme();
-    }
-    return "dark";
-  });
-
-  useEffect(() => {
-    applyTheme(theme);
-    try {
-      localStorage.setItem(STORAGE_KEY, theme);
-    } catch {
-      void 0;
-    }
-  }, [theme]);
-
-  // Live OS-theme following: only when the user has no explicit stored choice.
-  useEffect(() => {
-    let stored: string | null = null;
-    try {
-      stored = localStorage.getItem(STORAGE_KEY);
-    } catch {
-      stored = null;
-    }
-    if (stored === "light" || stored === "dark") return;
-    const mq = window.matchMedia("(prefers-color-scheme: light)");
-    const onChange = (e: MediaQueryListEvent) =>
-      setThemeState(e.matches ? "light" : "dark");
-    mq.addEventListener?.("change", onChange);
-    return () => mq.removeEventListener?.("change", onChange);
-  }, []);
-
-  const setTheme = useCallback((m: ThemeMode) => setThemeState(m), []);
-  const toggle = useCallback(() => {
-    setThemeState((t) => (t === "dark" ? "light" : "dark"));
-  }, []);
-
-  return { theme, toggle, setTheme };
-}
-
-const FOCUSABLE =
-  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-
-function getFocusable(container: HTMLElement): HTMLElement[] {
-  return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE));
-}
-
-function firstFocusable(container: HTMLElement): HTMLElement | null {
-  return (
-    getFocusable(container)[0] ?? container.querySelector<HTMLElement>("h2")
-  );
-}
-
-function useFocusTrap(
-  ref: RefObject<HTMLElement | null>,
-  active: boolean,
-): void {
-  useEffect(() => {
-    if (!active) return;
-    const container = ref.current;
-    if (!container) return;
-
-    firstFocusable(container)?.focus();
-
-    const el = container;
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key !== "Tab") return;
-      const items = getFocusable(el);
-      const first = items[0] ?? el.querySelector<HTMLElement>("h2");
-      const last =
-        items[items.length - 1] ?? el.querySelector<HTMLElement>("h2");
-      if (!first || !last) return;
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    }
-
-    el.addEventListener("keydown", onKeyDown);
-    return () => el.removeEventListener("keydown", onKeyDown);
-  }, [ref, active]);
-}
-
-/** Compact header pill — detail lives in the title tooltip, not a second status bar. */
-function HealthBadge(): ReactElement {
-  const { data, isLoading } = useHealth();
-
-  const isLocalhost =
-    BACKEND_URL.includes("127.0.0.1") || BACKEND_URL.includes("localhost");
-
-  if (isLocalhost) {
-    return (
-      <span
-        className="shell-status shell-status--local"
-        role="status"
-        title={`Local · ${BACKEND_URL}`}
-        aria-label="Local development"
-      >
-        <span className="shell-status__dot" aria-hidden />
-        <span className="shell-status__label">Local</span>
-      </span>
-    );
-  }
-
-  let status: "ok" | "down" | "unknown";
-  if (!data) {
-    status = isLoading ? "unknown" : "down";
-  } else {
-    status = data.ok ? "ok" : "down";
-  }
-
-  let label: string;
-  if (status === "ok") {
-    label = "Online";
-  } else if (status === "down") {
-    label = "Offline";
-  } else {
-    label = "…";
-  }
-
-  const title = data
-    ? `API ${label} · oracle ${data.oracle} · block #${data.chainHead}`
-    : label;
-
-  return (
-    <span
-      className={`shell-status shell-status--${status}`}
-      role="status"
-      aria-live="polite"
-      aria-label={title}
-      title={title}
-    >
-      <span className="shell-status__dot" aria-hidden />
-      <span className="shell-status__label">{label}</span>
-    </span>
-  );
-}
-
-const AgentDetail = lazy(() => import("./pages/AgentDetail.js"));
-const MintForm = lazy(() =>
-  import("./components/MintForm.js").then((m) => ({ default: m.MintForm })),
-);
 const ChatPage = lazy(() => import("./pages/ChatPage.js"));
-const NotFound = lazy(() => import("./pages/NotFound.js"));
-const HomePage = lazy(() => import("./pages/HomePage.js"));
-const LandingPage = lazy(() => import("./features/landing/LandingPage.js"));
+const Landing = lazy(() =>
+  import("./pages/LandingPage.js").then((m) => ({ default: m.Landing })),
+);
+const DashboardPage = lazy(() =>
+  import("./pages/DashboardPage.js").then((m) => ({
+    default: m.DashboardPage,
+  })),
+);
+const AgentPage = lazy(() =>
+  import("./pages/AgentPage.js").then((m) => ({ default: m.AgentPage })),
+);
+const TransactionsPage = lazy(() =>
+  import("./pages/TransactionsPage.js").then((m) => ({
+    default: m.TransactionsPage,
+  })),
+);
+const StoragePage = lazy(() =>
+  import("./pages/StoragePage.js").then((m) => ({ default: m.StoragePage })),
+);
+const SettingsPage = lazy(() =>
+  import("./pages/SettingsPage.js").then((m) => ({ default: m.SettingsPage })),
+);
+const StakingPage = lazy(() =>
+  import("./pages/StakingPage.js").then((m) => ({ default: m.StakingPage })),
+);
+const FlowPage = lazy(() =>
+  import("./pages/FlowPage.js").then((m) => ({ default: m.FlowPage })),
+);
+const PublicSeoPage = lazy(() =>
+  import("./pages/PublicSeoPage.js").then((m) => ({
+    default: m.PublicSeoPage,
+  })),
+);
+const Recovery404 = lazy(() => import("./pages/NotFound.js"));
 
-const ConnectButton = lazy(() =>
-  import("@rainbow-me/rainbowkit").then((m) => ({ default: m.ConnectButton })),
+const pageFallback = (
+  <div className="app-fallback">
+    <Spinner size={32} />
+  </div>
 );
 
-function WalletButton(): ReactElement {
+function Notice({
+  text,
+  onClose,
+}: {
+  text: string | null;
+  onClose: () => void;
+}) {
+  if (!text) return null;
   return (
-    <Suspense fallback={null}>
-      <ConnectButton />
-    </Suspense>
-  );
-}
-
-function navLinkClass({ isActive }: { isActive: boolean }): string {
-  return ["shell-nav__link", isActive ? "is-active" : ""]
-    .filter(Boolean)
-    .join(" ");
-}
-
-function WalletRoute({ children }: { children: ReactElement }) {
-  return <ConnectedGuard>{children}</ConnectedGuard>;
-}
-
-function ShortcutHelp(): ReactElement | null {
-  const [open, setOpen] = useState(false);
-  const [entered, setEntered] = useState(false);
-  const panelRef = useRef<HTMLDivElement>(null);
-  const lastTriggerRef = useRef<HTMLElement | null>(null);
-
-  useEffect(() => {
-    if (!open) {
-      setEntered(false);
-      // Focus returns to whatever opened the panel (keyboard path stays intact).
-      lastTriggerRef.current?.focus();
-      lastTriggerRef.current = null;
-      return;
-    }
-    const id = requestAnimationFrame(() => setEntered(true));
-    return () => cancelAnimationFrame(id);
-  }, [open]);
-
-  useEffect(() => {
-    function show(e: Event) {
-      lastTriggerRef.current = (e.target as HTMLElement | null) ?? null;
-      setOpen(true);
-    }
-    document.addEventListener("axiom:show-shortcuts", show);
-    return () => document.removeEventListener("axiom:show-shortcuts", show);
-  }, []);
-
-  useEffect(() => {
-    if (!open) return;
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  }, [open]);
-
-  useFocusTrap(panelRef, open);
-
-  if (!open) return null;
-
-  const shortcuts = [
-    { key: "H", label: "Home — portfolio + agents (H, D, G)" },
-    { key: "A", label: "Chat with Axiom (A, C)" },
-    { key: "N", label: "Mint agent — modal (N, M)" },
-    { key: "⌘K", label: "Search agents on Home" },
-    { key: "?", label: "Show this help" },
-    { key: "Esc", label: "Close dialogs" },
-  ];
-
-  return (
-    <div
-      role="dialog"
-      aria-label="Keyboard shortcuts"
-      onClick={() => setOpen(false)}
-      className="shortcut-overlay"
-    >
-      <div
-        ref={panelRef}
-        onClick={(e) => e.stopPropagation()}
-        className={`shortcut-panel${entered ? " shortcut-panel--entered" : ""}`}
-      >
-        <h2 tabIndex={-1} className="shortcut-title">
-          Keyboard Shortcuts
-        </h2>
-        <dl className="shortcut-list">
-          {shortcuts.map((s) => (
-            <div key={s.key} className="shortcut-row">
-              <dt className="shortcut-dt">{s.label}</dt>
-              <dd className="shortcut-dd">
-                <Kbd>{s.key}</Kbd>
-              </dd>
-            </div>
-          ))}
-        </dl>
-      </div>
+    <div className="prototype-notice" role="status" aria-live="polite">
+      <CircleCheck size={15} />
+      <span>{text}</span>
+      <button onClick={onClose} aria-label="Close notification">
+        <X size={14} />
+      </button>
     </div>
   );
+}
+
+function Guide({
+  onClose,
+  go,
+  locale,
+}: {
+  onClose: () => void;
+  go: (path: string) => void;
+  locale: "en" | "fr" | "de";
+}) {
+  const copy = getCopy(locale);
+  const [step, setStep] = useState(0);
+  const steps = [
+    {
+      title: "Start with the next safe action.",
+      copy: "Axiom puts the highest-consequence decision first. Use the copper action lane before scanning the rest of the dashboard.",
+      path: "/app",
+      label: "Open overview",
+      image: MEDIA.onboarding,
+    },
+    {
+      title: "Every signature gets a receipt.",
+      copy: "Approval, signing, submission and confirmation stay separate, so you can see what happened and what still needs review.",
+      path: "/transactions",
+      label: "Open transaction center",
+      image: MEDIA.proof,
+    },
+    {
+      title: "Keep proof beside the action.",
+      copy: "Storage roots, oracle acknowledgements and event freshness remain visible instead of becoming one generic success badge.",
+      path: "/storage",
+      label: "Inspect provenance",
+      image: MEDIA.mint,
+    },
+    {
+      title: "Tune the surface to your work.",
+      copy: "Resize or collapse the rail, choose reduced motion and reopen this guide from Settings.",
+      path: "/settings",
+      label: "Open Settings",
+      image: MEDIA.recovery,
+    },
+  ];
+  const item = steps[step] ?? steps[0];
+  if (!item) return null;
+  return (
+    <div className="guide-layer">
+      <section className="guide-card">
+        <div className="guide-media">
+          <img src={item.image} alt="Axiom onboarding illustration" />
+        </div>
+        <div className="guide-copy">
+          <button
+            className="icon-button guide-close"
+            onClick={onClose}
+            aria-label="Close onboarding"
+          >
+            <X size={17} />
+          </button>
+          <span className="eyebrow copper">ORIENTATION</span>
+          <h2>{item.title}</h2>
+          <p>{item.copy}</p>
+          <div className="guide-actions">
+            <Button
+              onClick={() => {
+                go(item.path);
+                onClose();
+              }}
+              icon={<ArrowRight size={15} />}
+            >
+              {item.label}
+            </Button>
+            {step < steps.length - 1 ? (
+              <Button variant="ghost" onClick={() => setStep(step + 1)}>
+                {copy.guide.nextStep}
+              </Button>
+            ) : (
+              <Button variant="ghost" onClick={onClose}>
+                {copy.guide.finish}
+              </Button>
+            )}
+          </div>
+          <button className="guide-skip" onClick={onClose}>
+            {copy.guide.skip}
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+/**
+ * Chat surface host: renders the v2 thread rail (slot) synchronously and
+ * mounts the LIVE v1 ChatPage (SSE loop, client tools, provider selector,
+ * runEpoch guard, TransferModal bridge) lazily — the lazy boundary guarantees
+ * #sidebar-threads-slot exists in the DOM before ChatPage portals into it.
+ */
+function ChatSurface(): ReactElement {
+  const [threadsOpen, setThreadsOpen] = useState(false);
+  return (
+    <ShellSidebarProvider
+      value={{
+        open: threadsOpen,
+        setOpen: (v) => setThreadsOpen(v),
+      }}
+    >
+      <div className={`chat-surface${threadsOpen ? " threads-open" : ""}`}>
+        <aside
+          className="panel thread-list chat-thread-rail"
+          aria-label="Chat threads"
+        >
+          <div id="sidebar-threads-slot" />
+        </aside>
+        <Suspense fallback={pageFallback}>
+          <ChatPage />
+        </Suspense>
+      </div>
+    </ShellSidebarProvider>
+  );
+}
+
+function shortTokenId(pathname: string): bigint | null {
+  const raw = pathname.split("/")[2];
+  if (!raw) return null;
+  try {
+    return BigInt(raw.split("?")[0] ?? raw);
+  } catch {
+    return null;
+  }
 }
 
 export function App(): ReactElement {
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const isLanding = location.pathname === "/";
-  const isChat =
-    location.pathname === "/chat" || location.pathname.startsWith("/chat/");
-  const mintOpen = isMintOpen(searchParams);
-  const mintProvider = searchParams.get("provider") ?? undefined;
-  const { isConnected } = useAccount();
-  const { theme, toggle: toggleTheme } = useTheme();
-  const wasConnected = useRef(false);
+  const path = `${location.pathname}${location.search}`;
+  const { state, dispatch } = useUiStore();
+  const { address, isConnected, chainId, connector } = useAccount();
 
-  // Shell-level sidebar state: persists the collapse choice; on ≤800px the
-  // sidebar is a drawer (default closed, promoted from the chat drawer).
-  const [sidebarOpen, setSidebarOpen] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem("axiom:sidebar-collapsed") !== "true";
-    } catch {
-      return true;
-    }
-  });
-  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem("axiom:sidebar-collapsed") === "true";
-    } catch {
-      return false;
-    }
-  });
-  const sidebarToggleRef = useRef<HTMLButtonElement | null>(null);
-  const sidebarFirstLinkRef = useRef<HTMLAnchorElement | null>(null);
-
-  // Move focus into the drawer when it opens on narrow screens (≥800px the
-  // sidebar is persistent and focus stays where the user put it).
+  // v1 compat redirects: old IA entry points fold into the v2 surfaces.
   useEffect(() => {
-    if (sidebarOpen && window.matchMedia("(max-width: 800px)").matches) {
-      sidebarFirstLinkRef.current?.focus();
-    }
-  }, [sidebarOpen]);
-
-  const closeSidebar = useCallback(() => {
-    setSidebarOpen(false);
-    sidebarToggleRef.current?.focus();
-  }, []);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(
-        "axiom:sidebar-collapsed",
-        sidebarCollapsed ? "true" : "false",
-      );
-    } catch {
-      void 0;
-    }
-  }, [sidebarCollapsed]);
-
-  // Escape closes the mobile drawer; scroll locks while it is open.
-  useEffect(() => {
-    if (!sidebarOpen) return;
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        setSidebarOpen(false);
-        sidebarToggleRef.current?.focus();
-      }
-    }
-    document.addEventListener("keydown", onKeyDown);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = prev;
-    };
-  }, [sidebarOpen]);
-
-  // Close the drawer on route change.
-  useEffect(() => {
-    setSidebarOpen(false);
-  }, [location.pathname]);
-
-  const openMint = useCallback(() => {
-    if (isLanding) {
-      navigate(`${APP_HOME}?mint=1`);
-      return;
-    }
-    setSearchParams(withMintOpen(searchParams, true), { replace: false });
-  }, [isLanding, navigate, searchParams, setSearchParams]);
-
-  const closeMint = useCallback(() => {
-    const next = withMintOpen(searchParams, false);
-    next.delete("provider");
-    setSearchParams(next, { replace: true });
-  }, [searchParams, setSearchParams]);
-
-  // Auto-redirect to the app on the disconnected→connected transition; a connected user may still view "/"
-  useEffect(() => {
-    if (isConnected && !wasConnected.current && isLanding) {
+    if (
+      location.pathname === "/dashboard" ||
+      location.pathname === "/market" ||
+      location.pathname === "/agents/list"
+    ) {
       navigate("/app", { replace: true });
     }
-    wasConnected.current = isConnected;
-  }, [isConnected, isLanding, navigate]);
-
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      const tag = (e.target as HTMLElement).tagName;
-      if (
-        tag === "INPUT" ||
-        tag === "TEXTAREA" ||
-        tag === "SELECT" ||
-        (e.target as HTMLElement).isContentEditable
-      )
-        return;
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
-
-      switch (e.key.toLowerCase()) {
-        case "h":
-        case "d":
-        case "g":
-          e.preventDefault();
-          navigate(APP_HOME);
-          break;
-        case "a":
-        case "c":
-          e.preventDefault();
-          navigate(APP_CHAT);
-          break;
-        case "n":
-        case "m":
-          e.preventDefault();
-          openMint();
-          break;
-        case "?":
-          e.preventDefault();
-          document.dispatchEvent(new CustomEvent("axiom:show-shortcuts"));
-          break;
-      }
+    if (
+      location.pathname === "/app" &&
+      new URLSearchParams(location.search).get("mint") === "1"
+    ) {
+      navigate("/mint", { replace: true });
     }
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [navigate, openMint]);
+  }, [location.pathname, location.search, navigate]);
 
-  const shellClass = [
-    "app-shell",
-    isLanding ? "app-shell--landing" : "",
-    !isLanding && sidebarCollapsed && !isChat ? "app-shell--rail" : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
+  // ---- Session bridge: wagmi ↔ uiStore session ------------------------------
+  useEffect(() => {
+    if (!isConnected || !address) {
+      if (state.session.status !== "disconnected") {
+        dispatch({
+          type: "session",
+          session: { status: "disconnected", address: "", signedAt: null },
+        });
+      }
+      return;
+    }
+    const sameWallet =
+      state.session.address.toLowerCase() === address.toLowerCase();
+    if (
+      !sameWallet &&
+      ["authenticated", "profile"].includes(state.session.status)
+    ) {
+      // A different wallet took over: the stored session proof is void.
+      dispatch({
+        type: "session",
+        session: {
+          status: "signing",
+          address,
+          wallet: connector?.name ?? "",
+          chain: chainId ?? 0,
+          signedAt: null,
+          profile: "",
+        },
+      });
+      return;
+    }
+    if (
+      state.session.status === "authenticated" &&
+      !isSessionFresh(state.session)
+    ) {
+      dispatch({
+        type: "session",
+        session: { status: "signing", signedAt: null },
+      });
+      return;
+    }
+    if (
+      chainId !== undefined &&
+      chainId !== APP_CHAIN_ID &&
+      state.session.status !== "wrong-network"
+    ) {
+      dispatch({
+        type: "session",
+        session: {
+          status: "wrong-network",
+          address,
+          wallet: connector?.name ?? "",
+          chain: chainId,
+        },
+      });
+      return;
+    }
+    if (
+      state.session.address !== address ||
+      (connector?.name && state.session.wallet !== connector.name)
+    ) {
+      dispatch({
+        type: "session",
+        session: {
+          address,
+          wallet: connector?.name ?? state.session.wallet,
+          chain: chainId ?? APP_CHAIN_ID,
+        },
+      });
+    }
+    // bridge reads the whole session snapshot
+  }, [isConnected, address, chainId, connector?.name, state.session]);
 
-  const mainClass = isLanding
-    ? "shell-main shell-main--landing"
-    : isChat
-      ? "shell-main shell-main--chat"
-      : "shell-main";
-  const footerClass = `shell-footer${isChat ? " shell-footer--hidden" : ""}`;
+  // ---- Theme bridge: v2 settings.theme → html data-theme (+ axiom-theme key)
+  useEffect(() => {
+    document.documentElement.dataset.theme = state.settings.theme;
+    document.documentElement.style.colorScheme = state.settings.theme;
+    try {
+      localStorage.setItem("axiom-theme", state.settings.theme);
+    } catch {
+      // storage unavailable in privacy-restricted contexts
+    }
+  }, [state.settings.theme]);
 
-  const pageContent = (
+  // Notice auto-dismiss (4s, mockup semantics).
+  useEffect(() => {
+    if (!state.notice) return;
+    const timer = window.setTimeout(
+      () => dispatch({ type: "notice", notice: null }),
+      4000,
+    );
+    return () => window.clearTimeout(timer);
+  }, [state.notice, dispatch]);
+
+  const go = useCallback(
+    (next: string) => {
+      navigate(next);
+      window.scrollTo({ top: 0, behavior: "auto" });
+    },
+    [navigate],
+  );
+
+  const [walletOpen, setWalletOpen] = useState(false);
+  const openWallet = (
+    source:
+      | "wallet"
+      | "dashboard"
+      | "agent"
+      | "chat"
+      | "command-center"
+      | "receipt"
+      | "route",
+    requestedPath = path,
+  ) => {
+    void source;
+    dispatch({
+      type: "set-pending-intent",
+      intent: { path: requestedPath, source, createdAt: Date.now() },
+    });
+    setWalletOpen(true);
+  };
+  const resumeAfterAuth = () => {
+    const destination = state.pendingIntent?.path || "/app";
+    dispatch({ type: "clear-pending-intent" });
+    setWalletOpen(false);
+    go(destination);
+  };
+  const lockConsole = () => {
+    dispatch({
+      type: "session",
+      session: { status: "disconnected", signedAt: null },
+    });
+    go("/");
+  };
+
+  const locale = state.settings.locale;
+  const publicSeoSlug = resolvePublicSeoSlug(path);
+  const isNotFound =
+    !publicSeoSlug &&
+    ![
+      "/",
+      "/app",
+      "/chat",
+      "/transactions",
+      "/storage",
+      "/settings",
+      "/staking",
+      "/mint",
+      "/payment",
+      "/transfer",
+      "/tick",
+      "/dashboard",
+      "/market",
+      "/agents/list",
+    ].includes(location.pathname) &&
+    !location.pathname.startsWith("/agents/");
+  const internal = !publicSeoSlug && !isNotFound && location.pathname !== "/";
+  const authenticated =
+    state.session.status === "authenticated" && isSessionFresh(state.session);
+
+  const gate = walletOpen ? (
+    <WalletGate
+      session={state.session}
+      dispatch={dispatch}
+      locale={locale}
+      onClose={() => setWalletOpen(false)}
+      onAuthenticated={resumeAfterAuth}
+    />
+  ) : null;
+  const guide = state.guideOpen ? (
+    <Guide
+      onClose={() => dispatch({ type: "guide" })}
+      go={go}
+      locale={locale}
+    />
+  ) : null;
+  const notice = (
+    <Notice
+      text={state.notice}
+      onClose={() => dispatch({ type: "notice", notice: null })}
+    />
+  );
+
+  const surface = (
     <ErrorBoundary>
-      <Suspense
-        fallback={
-          <div className="app-fallback">
-            <Spinner size={32} />
-          </div>
-        }
-      >
-        <div key={location.pathname} className="fade-enter">
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path={APP_HOME} element={<HomePage />} />
-            {/* List peers fold into Home; mint is modal-only, never a separate page */}
-            <Route
-              path="/agents"
-              element={<Navigate to={APP_HOME} replace />}
-            />
-            <Route
-              path="/market"
-              element={<Navigate to={APP_HOME} replace />}
-            />
-            <Route
-              path="/dashboard"
-              element={<Navigate to={APP_HOME} replace />}
-            />
-            <Route
-              path="/agents/:tokenId"
-              element={
-                <WalletRoute>
-                  <AgentDetail />
-                </WalletRoute>
-              }
-            />
-            <Route path={APP_CHAT} element={<ChatPage />} />
-            <Route
-              path="/settings"
-              element={<Navigate to={APP_HOME} replace />}
-            />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </div>
+      <Suspense fallback={pageFallback}>
+        <Routes>
+          <Route path="/dashboard" element={<Navigate to="/app" replace />} />
+          <Route path="/market" element={<Navigate to="/app" replace />} />
+          <Route
+            path="/*"
+            element={
+              publicSeoSlug ? (
+                <PublicSeoPage slug={publicSeoSlug} />
+              ) : isNotFound ? (
+                <Recovery404 go={go} />
+              ) : location.pathname === "/" ? (
+                <Landing
+                  locale={locale}
+                  go={go}
+                  onConnect={() => openWallet("wallet", "/app")}
+                  onGuide={() => dispatch({ type: "guide" })}
+                />
+              ) : internal && !authenticated ? (
+                <LockedRoute
+                  requested={path}
+                  onConnect={() => openWallet("route", path)}
+                  go={go}
+                />
+              ) : (
+                <AppShell
+                  route={shellRoute(location.pathname)}
+                  path={path}
+                  state={state}
+                  dispatch={dispatch}
+                  go={go}
+                  onLock={lockConsole}
+                >
+                  {location.pathname === "/app" ? (
+                    <DashboardPage go={go} state={state} dispatch={dispatch} />
+                  ) : location.pathname.startsWith("/agents/") ? (
+                    <AgentRoute go={go} locale={locale} />
+                  ) : location.pathname === "/chat" ? (
+                    <ChatSurface />
+                  ) : location.pathname === "/transactions" ? (
+                    <TransactionsPage
+                      go={go}
+                      state={state}
+                      dispatch={dispatch}
+                    />
+                  ) : location.pathname === "/storage" ? (
+                    <StoragePage state={state} dispatch={dispatch} go={go} />
+                  ) : location.pathname === "/settings" ? (
+                    <SettingsPage
+                      state={state}
+                      dispatch={dispatch}
+                      go={go}
+                      onLock={lockConsole}
+                    />
+                  ) : location.pathname === "/staking" ? (
+                    <StakingPage go={go} />
+                  ) : ["/mint", "/payment", "/transfer", "/tick"].includes(
+                      location.pathname,
+                    ) ? (
+                    <FlowPage
+                      kind={location.pathname.slice(1) as FlowKind}
+                      state={state}
+                      dispatch={dispatch}
+                      go={go}
+                      locale={locale}
+                    />
+                  ) : null}
+                </AppShell>
+              )
+            }
+          />
+        </Routes>
       </Suspense>
     </ErrorBoundary>
   );
 
-  const footerInner = (
-    <div className="shell-footer__inner">
-      <div className="shell-footer__brand-block">
-        <span className="shell-footer__brand">Axiom</span>
-        <p className="shell-footer__tag">
-          Mint, fund, tick, transfer · software oracle on 0G
-        </p>
-      </div>
-      <nav className="shell-footer__links" aria-label="Footer">
-        {/* Primary destinations derive from PRIMARY_NAV; the Mint action
-            stays in the sidebar / top bar (single trigger set). */}
-        {PRIMARY_NAV.filter((item) => item.kind === "link").map((item) => (
-          <Link key={item.id} to={item.path!}>
-            {item.label}
-          </Link>
-        ))}
-        <Link to="/">About</Link>
-      </nav>
-    </div>
-  );
-
   return (
-    <div className="shell">
-      <a href="#main-content" className="skip-link">
-        Skip to content
-      </a>
-
-      {!isLanding ? (
-        <ShellSidebarProvider
-          value={{
-            open: sidebarOpen,
-            setOpen: (v) => setSidebarOpen(v),
-          }}
-        >
-          <div className={shellClass}>
-            <aside
-              className={`app-sidebar${sidebarOpen ? " is-open" : ""}`}
-              aria-label="Primary navigation"
-            >
-              <div className="app-sidebar__brand">
-                <Link to="/" className="shell-brand" aria-label="Axiom home">
-                  <img
-                    src={BRAND.chatAvatar}
-                    alt=""
-                    width={28}
-                    height={28}
-                    className="shell-brand__mark"
-                  />
-                  <span className="shell-brand__text">
-                    Axiom
-                    <span className="shell-brand__sub">Protocol</span>
-                  </span>
-                </Link>
-              </div>
-
-              <nav className="app-sidebar__nav" aria-label="Primary">
-                {PRIMARY_NAV.filter((item) => item.kind === "link").map(
-                  (item, i) => (
-                    <NavLink
-                      key={item.id}
-                      ref={i === 0 ? sidebarFirstLinkRef : undefined}
-                      to={item.path!}
-                      className={navLinkClass}
-                      end={item.id === "home"}
-                    >
-                      <span>{item.label}</span>
-                      <Kbd className="shell-nav__kbd">{item.shortcut}</Kbd>
-                    </NavLink>
-                  ),
-                )}
-                <button
-                  type="button"
-                  onClick={openMint}
-                  className="shell-nav__link shell-nav__link--mint"
-                  data-axiom-btn=""
-                >
-                  <span>Mint</span>
-                  <Kbd className="shell-nav__kbd">N</Kbd>
-                </button>
-              </nav>
-
-              {isChat && (
-                <div
-                  className="app-sidebar__threads"
-                  id="sidebar-threads-slot"
-                />
-              )}
-
-              <div className="app-sidebar__status">
-                <HealthBadge />
-              </div>
-            </aside>
-
-            <button
-              type="button"
-              className="app-sidebar__scrim"
-              aria-label="Close navigation"
-              tabIndex={sidebarOpen ? 0 : -1}
-              onClick={closeSidebar}
-            />
-
-            <header className="app-topbar">
-              <button
-                type="button"
-                className="shell-icon-btn app-topbar__toggle"
-                aria-label={
-                  sidebarOpen ? "Close navigation" : "Open navigation"
-                }
-                aria-expanded={sidebarOpen}
-                aria-controls="app-sidebar"
-                ref={sidebarToggleRef}
-                onClick={() => setSidebarOpen((v) => !v)}
-              >
-                <span aria-hidden className="shell-icon">
-                  ☰
-                </span>
-              </button>
-              {!isChat && (
-                <button
-                  type="button"
-                  className="shell-icon-btn app-topbar__collapse"
-                  aria-label={
-                    sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
-                  }
-                  aria-pressed={sidebarCollapsed}
-                  title={sidebarCollapsed ? "Expand" : "Collapse"}
-                  onClick={() => setSidebarCollapsed((v) => !v)}
-                >
-                  <span aria-hidden className="shell-icon">
-                    {sidebarCollapsed ? "»" : "«"}
-                  </span>
-                </button>
-              )}
-              <div className="app-topbar__side">
-                <button
-                  type="button"
-                  className="shell-icon-btn"
-                  onClick={toggleTheme}
-                  aria-pressed={theme === "dark"}
-                  aria-label={
-                    theme === "dark"
-                      ? "Switch to light theme"
-                      : "Switch to dark theme"
-                  }
-                  title={theme === "dark" ? "Light" : "Dark"}
-                >
-                  {theme === "dark" ? (
-                    <span aria-hidden className="shell-icon">
-                      ☀
-                    </span>
-                  ) : (
-                    <span aria-hidden className="shell-icon">
-                      ◐
-                    </span>
-                  )}
-                </button>
-                {!isLanding && (
-                  <button
-                    type="button"
-                    className="shell-icon-btn"
-                    title="Shortcuts (?)"
-                    aria-label="Keyboard shortcuts"
-                    onClick={() =>
-                      document.dispatchEvent(
-                        new CustomEvent("axiom:show-shortcuts"),
-                      )
-                    }
-                  >
-                    <span aria-hidden className="shell-icon">
-                      ?
-                    </span>
-                  </button>
-                )}
-                {(isLanding || !isChat) && (
-                  <button
-                    type="button"
-                    onClick={openMint}
-                    className="shell-mint-btn"
-                    data-axiom-btn=""
-                  >
-                    Mint
-                  </button>
-                )}
-                <div className="shell-wallet">
-                  <WalletButton />
-                </div>
-              </div>
-            </header>
-
-            <main id="main-content" className={mainClass}>
-              {pageContent}
-              <footer className={footerClass}>{footerInner}</footer>
-            </main>
-          </div>
-        </ShellSidebarProvider>
-      ) : (
-        <>
-          <header className="app-topbar app-topbar--landing">
-            <Link to="/" className="shell-brand" aria-label="Axiom home">
-              <img
-                src={BRAND.chatAvatar}
-                alt=""
-                width={28}
-                height={28}
-                className="shell-brand__mark"
-              />
-              <span className="shell-brand__text">
-                Axiom
-                <span className="shell-brand__sub">Protocol</span>
-              </span>
-            </Link>
-            <div className="app-topbar__side">
-              <button
-                type="button"
-                className="shell-icon-btn"
-                onClick={toggleTheme}
-                aria-pressed={theme === "dark"}
-                aria-label={
-                  theme === "dark"
-                    ? "Switch to light theme"
-                    : "Switch to dark theme"
-                }
-                title={theme === "dark" ? "Light" : "Dark"}
-              >
-                {theme === "dark" ? (
-                  <span aria-hidden className="shell-icon">
-                    ☀
-                  </span>
-                ) : (
-                  <span aria-hidden className="shell-icon">
-                    ◐
-                  </span>
-                )}
-              </button>
-              <div className="shell-nav__landing">
-                <Link to="/app" className="shell-nav__text-link">
-                  Home
-                </Link>
-                <Link to="/chat" className="shell-nav__text-link">
-                  Chat
-                </Link>
-              </div>
-              <button
-                type="button"
-                onClick={openMint}
-                className="shell-mint-btn"
-                data-axiom-btn=""
-              >
-                Mint
-              </button>
-              <div className="shell-wallet">
-                <WalletButton />
-              </div>
-            </div>
-          </header>
-
-          <main id="main-content" className={mainClass}>
-            {pageContent}
-          </main>
-          <footer className="shell-footer">{footerInner}</footer>
-        </>
-      )}
-
-      <Modal
-        open={mintOpen}
-        onClose={closeMint}
-        title="Mint agent"
-        maxWidth={520}
-      >
-        {isConnected ? (
-          <Suspense fallback={<Spinner />}>
-            <MintForm
-              onClose={() => {
-                closeMint();
-                // MintForm calls onClose only once the tx confirms, so this
-                // fires exactly on a successful mint. HomePage listens and
-                // shows an optimistic pending row until the agents poll lands.
-                window.dispatchEvent(new CustomEvent("axiom:mint-complete"));
-              }}
-              provider={
-                mintProvider && /^0x[a-fA-F0-9]{40}$/.test(mintProvider)
-                  ? (mintProvider as `0x${string}`)
-                  : undefined
-              }
-            />
-          </Suspense>
-        ) : (
-          <ConnectedGuard>
-            <p className="muted-note">Connect wallet to mint.</p>
-          </ConnectedGuard>
-        )}
-      </Modal>
-
-      <ShortcutHelp />
-    </div>
+    <>
+      {surface}
+      {gate}
+      {guide}
+      {notice}
+    </>
   );
+}
+
+function shellRoute(pathname: string) {
+  if (pathname === "/app") return "dashboard" as const;
+  if (pathname.startsWith("/agents/")) return "agent" as const;
+  if (pathname === "/chat") return "chat" as const;
+  if (pathname === "/transactions") return "transactions" as const;
+  if (pathname === "/storage") return "storage" as const;
+  if (pathname === "/settings") return "settings" as const;
+  if (pathname === "/staking") return "staking" as const;
+  return pathname.slice(1) as "mint" | "payment" | "transfer" | "tick";
+}
+
+function AgentRoute({
+  go,
+  locale,
+}: {
+  go: (path: string) => void;
+  locale: "en" | "fr" | "de";
+}) {
+  const location = useLocation();
+  const tokenId = shortTokenId(location.pathname);
+  if (tokenId === null) {
+    // /agents/<slug> that is not a tokenId → the register lives on Overview.
+    return (
+      <div className="ops-page">
+        <div className="empty-state">
+          <strong>Agent not addressable</strong>
+          <span>
+            Agent pages use /agents/&lt;tokenId&gt;. Open the register on the
+            overview.
+          </span>
+        </div>
+        <Button onClick={() => go("/app")}>Open the register</Button>
+      </div>
+    );
+  }
+  return <AgentPage tokenId={tokenId} go={go} locale={locale} />;
 }

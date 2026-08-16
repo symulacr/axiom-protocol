@@ -18,11 +18,15 @@ export function usePortfolio(): {
   vaultMap: Map<string, VaultDataEntry>;
   perfMap: Map<string, PerformanceMetrics>;
   loading: boolean;
+  refetch: () => void;
 } {
-  const { agents, isLoading, error } = useAgents();
+  const { agents, isLoading, error, refetch: refetchAgents } = useAgents();
   const tokenIds = useMemo(() => agents.map((a) => a.tokenId), [agents]);
-  const { data: vaultMap, isLoading: vaultLoading } =
-    useVaultDataBatch(tokenIds);
+  const {
+    data: vaultMap,
+    isLoading: vaultLoading,
+    refetch: refetchVaults,
+  } = useVaultDataBatch(tokenIds);
   const { data: perfMap } = usePerformanceBatch(tokenIds);
 
   return {
@@ -32,5 +36,9 @@ export function usePortfolio(): {
     vaultMap,
     perfMap,
     loading: isLoading || vaultLoading,
+    refetch: () => {
+      refetchAgents();
+      refetchVaults();
+    },
   };
 }
