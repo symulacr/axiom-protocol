@@ -8,7 +8,7 @@ import { createLogger } from "./utils/logger.js";
 import { loadEnv } from "@axiom/config/env";
 import { getSharedProvider } from "./provider.js";
 import { backendEnvSchema } from "./env-schema.js";
-import { ARISTOTLE_CHAIN_ID } from "@axiom/config/networks";
+import { ARISTOTLE_CHAIN_ID, resolveStorageRpc } from "@axiom/config/networks";
 import { ZeroGStorage, type StorageAdapter } from "@axiom/config/storage/0g";
 import { createStaticProvider } from "./compute/index.js";
 import { getEventStore } from "./events/store.js";
@@ -84,7 +84,11 @@ async function main(): Promise<void> {
   // Chat-transcript persistence on 0G, same env contract as the oracle. Absent indexer RPC ⇒
   // persistence disabled with a boot warning — the backend must still serve chat without storage.
   let chatStorage: StorageAdapter | null = null;
-  const storageIndexerRpc = process.env.AXIOM_STORAGE_INDEXER_RPC;
+  // Chain-driven fallback: unset indexer RPC derives from AXIOM_CHAIN_ID via the networks
+  // table (16602→testnet indexer, 16661→mainnet) — explicit env always wins.
+  const storageIndexerRpc =
+    process.env.AXIOM_STORAGE_INDEXER_RPC ??
+    resolveStorageRpc(env.AXIOM_CHAIN_ID ?? ARISTOTLE_CHAIN_ID);
   if (storageIndexerRpc) {
     const storageEvmRpc =
       process.env.AXIOM_STORAGE_EVM_RPC ?? env.AXIOM_EVM_RPC;

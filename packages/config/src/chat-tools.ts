@@ -1,3 +1,5 @@
+import { defaultChatModelForChain } from "./networks.js";
+
 export type ChatToolClass =
   "read" | "encode" | "orchestrate" | "archive" | "ask" | "skill";
 
@@ -701,14 +703,17 @@ export const CHAT_BENCH_ALL_TOOL_NAMES = CHAT_TOOL_CATALOG.map((t) => t.name);
 /** UI/system-prompt display name, distinct from the compute model id below. */
 export const AXIOM_ASSISTANT_NAME = "Axiom";
 
-/** 0G Compute model id used by the provider router, not the assistant name. */
+/** 0G Compute model id used by the provider router, not the assistant name. Mainnet default;
+ *  Galileo (16602) defaults to qwen2.5-omni — its router catalog has no deepseek models. */
 export const DEFAULT_CHAT_MODEL = "deepseek-v4-flash";
 
-export function resolveChatModel(override?: string): string {
-  return override?.trim() || DEFAULT_CHAT_MODEL;
+export function resolveChatModel(override?: string, chainId?: number): string {
+  return override?.trim() || defaultChatModelForChain(chainId);
 }
 
 export const FALLBACK_CONTEXT_WINDOWS: Record<string, number> = {
+  // qwen2.5-omni is the real Galileo catalog id (16602 default model).
+  "qwen2.5-omni": 32768,
   "qwen/qwen2.5-omni-7b": 32768,
   "deepseek-v4-flash": 131072,
 };

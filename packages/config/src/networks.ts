@@ -4,10 +4,17 @@ export interface OGNetwork {
   readonly evmRpc: string;
   readonly storageRpc: string;
   readonly computeRouterUrl: string;
+  /** Default 0G Compute chat model — each chain's router has a distinct catalog (Galileo: qwen2.5-omni only). */
+  readonly computeDefaultModel: string;
   readonly blockExplorer: string;
 }
 
 export const ARISTOTLE_CHAIN_ID = 16661;
+
+/** Mainnet default chat model; mirrored as DEFAULT_CHAT_MODEL in chat-tools.ts (no cross-import: keep networks leaf-only). */
+export const MAINNET_DEFAULT_CHAT_MODEL = "deepseek-v4-flash";
+
+const FALLBACK_COMPUTE_ROUTER_URL = "https://router-api.0g.ai/v1";
 
 // Static network registry — the URLs ARE the config data (not request targets).
 const _OG_NETWORKS = {
@@ -17,6 +24,7 @@ const _OG_NETWORKS = {
     evmRpc: "https://evmrpc.0g.ai",
     storageRpc: "https://indexer-storage-turbo.0g.ai",
     computeRouterUrl: "https://router-api.0g.ai/v1",
+    computeDefaultModel: "deepseek-v4-flash",
     blockExplorer: "https://chainscan.0g.ai",
   },
   16602: {
@@ -25,6 +33,7 @@ const _OG_NETWORKS = {
     evmRpc: "https://evmrpc-testnet.0g.ai",
     storageRpc: "https://indexer-storage-testnet-turbo.0g.ai",
     computeRouterUrl: "https://router-api-testnet.integratenetwork.work/v1",
+    computeDefaultModel: "qwen2.5-omni",
     blockExplorer: "https://chainscan-testnet.0g.ai",
   },
 } as const satisfies Record<number, OGNetwork>;
@@ -64,4 +73,20 @@ export function resolveStorageRpc(chainId?: number): string {
 export function resolveBlockExplorerUrl(chainId?: number): string {
   const network = chainId ? pickOGNetwork(chainId) : null;
   return network?.blockExplorer ?? "https://chainscan.0g.ai";
+}
+
+// Compute wiring is chain-driven: with AXIOM_COMPUTE_BASE_URL unset the router URL derives from
+// AXIOM_CHAIN_ID (16602→Galileo testnet router, 16661→mainnet router) — the two routers have
+// different catalogs AND different API keys, so pinning one URL for both chains is a live bug.
+export function resolveComputeRouterUrl(chainId?: number): string {
+  const varVal = envVar("AXIOM_COMPUTE_BASE_URL", "OG_COMPUTE_BASE_URL");
+  if (varVal) return varVal;
+  const network = chainId ? pickOGNetwork(chainId) : null;
+  return network?.computeRouterUrl ?? FALLBACK_COMPUTE_ROUTER_URL;
+}
+
+/** Per-chain default compute chat model (Galileo's catalog has no deepseek models). */
+export function defaultChatModelForChain(chainId?: number): string {
+  const network = chainId ? pickOGNetwork(chainId) : null;
+  return network?.computeDefaultModel ?? MAINNET_DEFAULT_CHAT_MODEL;
 }

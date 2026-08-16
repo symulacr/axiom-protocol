@@ -114,7 +114,10 @@ export function registerOrchestratorRoutes(
         executionPlan,
         systemPrompt,
       } = parsed;
-      const DEFAULT_MODEL = resolveChatModel(config.env?.AXIOM_COMPUTE_MODEL);
+      const DEFAULT_MODEL = resolveChatModel(
+        config.env?.AXIOM_COMPUTE_MODEL,
+        chainId,
+      );
       const modelDataRoot = await resolveModelDataRoot(
         agentNft,
         agentTokenId,

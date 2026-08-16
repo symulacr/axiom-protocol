@@ -5,6 +5,9 @@ export {
   resolveRpcUrl,
   resolveStorageRpc,
   ARISTOTLE_CHAIN_ID,
+  MAINNET_DEFAULT_CHAT_MODEL,
+  defaultChatModelForChain,
+  resolveComputeRouterUrl,
 } from "./networks.js";
 export type { OGNetwork } from "./networks.js";
 export { getAddresses } from "./addresses.js";

@@ -1,4 +1,4 @@
-import { describe, it } from "bun:test";
+import { describe, it, afterEach } from "bun:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, writeFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -10,6 +10,10 @@ import {
   DEFAULT_CHAT_MODEL,
   resolveChatModel,
 } from "./chat-tools.js";
+import {
+  defaultChatModelForChain,
+  resolveComputeRouterUrl,
+} from "./networks.js";
 
 describe("resolveChatModel", () => {
   it("returns the override when provided", () => {
@@ -27,6 +31,64 @@ describe("resolveChatModel", () => {
 
   it("brands the assistant as Axiom", () => {
     assert.equal(AXIOM_ASSISTANT_NAME, "Axiom");
+  });
+});
+
+describe("chain-driven compute resolution", () => {
+  const BASE_URL_KEYS = [
+    "AXIOM_COMPUTE_BASE_URL",
+    "OG_COMPUTE_BASE_URL",
+  ] as const;
+  const savedBaseUrls = BASE_URL_KEYS.map((k) => process.env[k]);
+
+  afterEach(() => {
+    for (const [i, key] of BASE_URL_KEYS.entries()) {
+      if (savedBaseUrls[i] === undefined) delete process.env[key];
+      else process.env[key] = savedBaseUrls[i];
+    }
+  });
+
+  it("router URL defaults per chain: 16602→Galileo testnet router, 16661→mainnet router", () => {
+    for (const key of BASE_URL_KEYS) delete process.env[key];
+    assert.equal(
+      resolveComputeRouterUrl(16602),
+      "https://router-api-testnet.integratenetwork.work/v1",
+    );
+    assert.equal(resolveComputeRouterUrl(16661), "https://router-api.0g.ai/v1");
+  });
+
+  it("router URL: explicit env override beats the chain default", () => {
+    for (const key of BASE_URL_KEYS) delete process.env[key];
+    process.env.AXIOM_COMPUTE_BASE_URL = "https://custom-router.example/v1";
+    assert.equal(
+      resolveComputeRouterUrl(16602),
+      "https://custom-router.example/v1",
+    );
+    delete process.env.AXIOM_COMPUTE_BASE_URL;
+    process.env.OG_COMPUTE_BASE_URL = "https://og-alias.example/v1";
+    assert.equal(resolveComputeRouterUrl(16661), "https://og-alias.example/v1");
+  });
+
+  it("router URL: absent/unknown chain falls back to the mainnet router", () => {
+    for (const key of BASE_URL_KEYS) delete process.env[key];
+    assert.equal(
+      resolveComputeRouterUrl(undefined),
+      "https://router-api.0g.ai/v1",
+    );
+    assert.equal(resolveComputeRouterUrl(31337), "https://router-api.0g.ai/v1");
+  });
+
+  it("default chat model per chain: 16602→qwen2.5-omni (Galileo-only catalog), 16661/absent→deepseek-v4-flash", () => {
+    assert.equal(defaultChatModelForChain(16602), "qwen2.5-omni");
+    assert.equal(defaultChatModelForChain(16661), DEFAULT_CHAT_MODEL);
+    assert.equal(defaultChatModelForChain(undefined), DEFAULT_CHAT_MODEL);
+    assert.equal(defaultChatModelForChain(31337), DEFAULT_CHAT_MODEL);
+  });
+
+  it("resolveChatModel: unset override → chain default; explicit override wins on any chain", () => {
+    assert.equal(resolveChatModel(undefined, 16602), "qwen2.5-omni");
+    assert.equal(resolveChatModel("", 16661), DEFAULT_CHAT_MODEL);
+    assert.equal(resolveChatModel("custom/model", 16602), "custom/model");
   });
 });
 

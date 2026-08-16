@@ -1,4 +1,6 @@
 import { fetchJson } from "../../utils/response.js";
+import { resolveChainId } from "../../compute/index.js";
+import { defaultChatModelForChain } from "@axiom/config/networks";
 
 export async function resolveE2eComputeModel(
   backendUrl: string,
@@ -7,24 +9,24 @@ export async function resolveE2eComputeModel(
   if (explicit) return explicit;
   const { data, ok } = await fetchJson<{
     services?: Array<{ model: string }>;
-  }>(
-    `${backendUrl}/v1/compute/providers`,
-    { ...(process.env.AXIOM_API_KEY ? { headers: { "x-api-key": process.env.AXIOM_API_KEY } } : {}) },
-  );
+  }>(`${backendUrl}/v1/compute/providers`, {
+    ...(process.env.AXIOM_API_KEY
+      ? { headers: { "x-api-key": process.env.AXIOM_API_KEY } }
+      : {}),
+  });
   const services = ok ? (data.services ?? []) : [];
-  const prefer = [
-    "qwen2.5-omni",
-    "qwen2.5-omni-7b",
-    "qwen/qwen2.5-omni-7b",
-    "qwen2.5-7b-instruct",
-  ];
+  const prefer = ["qwen2.5-omni", "deepseek-v4-flash"];
   for (const id of prefer) {
     const hit = services.find(
       (s) => s.model.toLowerCase() === id.toLowerCase(),
     );
     if (hit) return hit.model;
   }
-  return process.env.AXIOM_COMPUTE_MODEL ?? "qwen2.5-omni-7b";
+  // Chain-driven fallback (Galileo catalog has no "-7b" suffixed ids — that id 404s live).
+  return (
+    process.env.AXIOM_COMPUTE_MODEL ??
+    defaultChatModelForChain(resolveChainId())
+  );
 }
 
 export function e2eFastEnabled(): boolean {

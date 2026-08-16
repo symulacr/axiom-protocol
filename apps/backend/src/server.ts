@@ -24,7 +24,11 @@ import {
 import { ARISTOTLE_CHAIN_ID } from "@axiom/config/networks";
 import { bigintReplacer } from "@axiom/config";
 
-import { getComputeBaseUrl, createRouterClient } from "./compute/index.js";
+import {
+  getComputeBaseUrl,
+  createRouterClient,
+  logEffectiveComputeConfig,
+} from "./compute/index.js";
 import { AGENT_NFT_ABI } from "@axiom/config/abis";
 
 import { StrategyRunner } from "./orchestrator/index.js";
@@ -312,6 +316,7 @@ export function startServer(config: ServerConfig): {
       "[boot] AXIOM_CHAIN_ID=16661 (0G mainnet) — mainnet requires a distinct production signer set (runtime signer, TEE signer, storage signer)",
     );
   }
+  logEffectiveComputeConfig(ogChainId, config.env?.AXIOM_COMPUTE_MODEL);
   const startedAt = Date.now();
   // Resolved post-listen so MCP self-calls work even on ephemeral ports (tests bind port 0).
   let mcpBaseUrl: string | null = null;
@@ -440,9 +445,9 @@ export function startServer(config: ServerConfig): {
       description: "Register an agent dataHash with the oracle",
     },
   );
-  registerComputeRoutes(app, config);
+  registerComputeRoutes(app, config, ogChainId);
 
-  registerChatRoutes(app, config);
+  registerChatRoutes(app, config, ogChainId);
 
   registerAgentRoutes(app, config, provider, oracleDeps, eip712Domain, nftTc);
   registerEventRoutes(app, config, getEventStore());
@@ -507,7 +512,11 @@ function trustModeFromVerifiability(
   return "standard";
 }
 
-function registerComputeRoutes(app: Express, config: ServerConfig): void {
+function registerComputeRoutes(
+  app: Express,
+  config: ServerConfig,
+  ogChainId: number,
+): void {
   const modelsCache = new TTLCache<Record<string, unknown>[]>(60_000);
   const routerDataSchema = z.object({
     data: z.array(z.record(z.string(), z.unknown())),
@@ -645,7 +654,10 @@ function registerComputeRoutes(app: Express, config: ServerConfig): void {
       description: "Backend configuration",
     },
     async (_parsed: unknown, _req: Request, res: Response) => {
-      const model = resolveChatModel(config.env?.AXIOM_COMPUTE_MODEL);
+      const model = resolveChatModel(
+        config.env?.AXIOM_COMPUTE_MODEL,
+        ogChainId,
+      );
       const windows = await fetchModelWindows();
       res.json({
         model,
@@ -728,7 +740,11 @@ async function persistChatTranscript(
       },
     });
   } catch (err) {
-    log.error("chat transcript persistence failed", { err });
+    // Non-Error SDK failures serialize as {} — surface code+message or the log is useless.
+    const e = err as { code?: string; message?: string };
+    log.error("chat transcript persistence failed", {
+      err: `${e?.code ? `${e.code}: ` : ""}${e?.message ?? String(err)}`,
+    });
   }
 }
 
@@ -757,7 +773,11 @@ function verifyWalletProof(req: Request, wallet: string): boolean {
   }
 }
 
-function registerChatRoutes(app: Express, config: ServerConfig): void {
+function registerChatRoutes(
+  app: Express,
+  config: ServerConfig,
+  ogChainId: number,
+): void {
   createRoute(
     app,
     {
@@ -774,7 +794,10 @@ function registerChatRoutes(app: Express, config: ServerConfig): void {
     ) => {
       try {
         const { messages, tools, model: reqModel, wallet, provider } = parsed;
-        const DEFAULT_MODEL = resolveChatModel(config.env?.AXIOM_COMPUTE_MODEL);
+        const DEFAULT_MODEL = resolveChatModel(
+          config.env?.AXIOM_COMPUTE_MODEL,
+          ogChainId,
+        );
         const resolvedModel = reqModel ?? DEFAULT_MODEL;
         const providerHeaders = buildProviderRoutingHeaders(provider);
         const client = await createRouterClient(resolvedModel);
