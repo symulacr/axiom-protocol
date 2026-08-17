@@ -238,7 +238,13 @@ export function App(): ReactElement {
   const location = useLocation();
   const path = `${location.pathname}${location.search}`;
   const { state, dispatch } = useUiStore();
-  const { address, isConnected, chainId, connector } = useAccount();
+  const {
+    address,
+    isConnected,
+    chainId,
+    connector,
+    status: accountStatus,
+  } = useAccount();
 
   // v1 compat redirects: old IA entry points fold into the v2 surfaces.
   useEffect(() => {
@@ -259,6 +265,12 @@ export function App(): ReactElement {
 
   // ---- Session bridge: wagmi ↔ uiStore session ------------------------------
   useEffect(() => {
+    // C3-FE2: wagmi rehydrates its persisted connection asynchronously — during
+    // that window isConnected is briefly false and dispatching "disconnected"
+    // would void a valid stored session (locked routes until a full gate
+    // re-walk). Hold off until wagmi settles (connected or truly disconnected).
+    if (accountStatus === "reconnecting" || accountStatus === "connecting")
+      return;
     if (!isConnected || !address) {
       if (state.session.status !== "disconnected") {
         dispatch({
@@ -328,7 +340,14 @@ export function App(): ReactElement {
       });
     }
     // bridge reads the whole session snapshot
-  }, [isConnected, address, chainId, connector?.name, state.session]);
+  }, [
+    accountStatus,
+    isConnected,
+    address,
+    chainId,
+    connector?.name,
+    state.session,
+  ]);
 
   // ---- Theme bridge: v2 settings.theme → html data-theme (+ axiom-theme key)
   useEffect(() => {

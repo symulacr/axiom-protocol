@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import type { Address } from "viem";
+import { parseUnits, type Address } from "viem";
 import { useAccount, useChainId, usePublicClient } from "wagmi";
 import { useGenericWrite } from "./useGenericWrite.js";
 import { useAsyncAction } from "./useAsyncAction.js";
@@ -83,6 +83,10 @@ export function usePayment(): UsePaymentResult {
       setPayLoading(true);
       try {
         const processor = getAxiomPaymentProcessorAddress(chainId);
+        // The flow sheet passes HUMAN units ("1.5") — convert to USDC base
+        // units (6 decimals, same constant as the chat pay executor) instead
+        // of BigInt(amount), which throws "Cannot convert 1.5 to a BigInt".
+        const amountWei = parseUnits(amount.trim(), 6);
         // Exact-amount approval mirrors backend ensureAllowance — never MaxUint256; matches the contract's "approve for amount" requirement (infinity approvals only in the E2E harness)
         if (address && publicClient) {
           const config = await getPaymentConfig();
@@ -92,12 +96,12 @@ export function usePayment(): UsePaymentResult {
             functionName: "allowance",
             args: [address, processor],
           })) as bigint;
-          if (allowance < BigInt(amount)) {
+          if (allowance < amountWei) {
             const approveHash = await write({
               to: config.paymentToken,
               abi: erc20Abi,
               functionName: "approve",
-              args: [processor, BigInt(amount)],
+              args: [processor, amountWei],
             });
             await publicClient.waitForTransactionReceipt({ hash: approveHash });
           }
@@ -106,7 +110,7 @@ export function usePayment(): UsePaymentResult {
           to: processor,
           abi: paymentProcessorAbi,
           functionName: "payForAgent",
-          args: [tokenId, BigInt(amount)],
+          args: [tokenId, amountWei],
         });
         setPayLoading(false);
         return {

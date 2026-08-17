@@ -471,7 +471,10 @@ export class StrategyRunner {
           name = EVENT_NAMES.Unknown;
         }
         return {
-          blockNumber: BigInt(log.blockNumber),
+          // Plain number, not BigInt: this array is JSON.stringify'd into the
+          // inference prompt and the tick response/WS frame — BigInt throws
+          // "JSON.stringify cannot serialize BigInt" and kills every tick.
+          blockNumber: Number(log.blockNumber),
           txHash: log.transactionHash as `0x${string}`,
           name,
         };

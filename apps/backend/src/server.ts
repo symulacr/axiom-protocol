@@ -579,9 +579,19 @@ function registerComputeRoutes(
     };
     let providers = await fetchAll(`?model_id=${encodeURIComponent(model)}`);
     if (providers.length === 0) providers = await fetchAll("");
+    // Router rows carry BOTH the versioned upstream id (model_id, e.g.
+    // "qwen/qwen2.5-omni-7b") and the catalog id (canonical_id, e.g.
+    // "qwen2.5-omni") — and the router's own ?model_id filter is loose
+    // (it can return unrelated rows), so always filter locally on both.
     providers = providers.filter((p) => {
       const id = String(p.model_id ?? "");
-      return id === model || id.startsWith(model);
+      const canonical = String(p.canonical_id ?? "");
+      return (
+        id === model ||
+        id.startsWith(model) ||
+        canonical === model ||
+        canonical.startsWith(model)
+      );
     });
     providersCache.set(cacheKey, providers);
     return providers;
