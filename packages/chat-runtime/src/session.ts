@@ -22,12 +22,65 @@ export function applyToolResult(
 ): ChatSessionContext {
   session.lastToolName = name as ChatToolName;
   try {
-    const obj = JSON.parse(result.content) as Record<string, unknown>;
-    if (obj.tokenId !== undefined) session.lastTokenId = String(obj.tokenId);
-    if (obj.agents && Array.isArray(obj.agents) && obj.agents[0]) {
-      const first = obj.agents[0] as Record<string, unknown>;
-      if (first.tokenId !== undefined)
-        session.lastTokenId = String(first.tokenId);
+    // Tool result bodies may wrap payloads in { data: … } (skill executor capArrays)
+    // or carry multiple JSON objects concatenated (streamed tool_calls bug workaround
+    // in some transports) — try whole body first, then the first JSON object only.
+    const text = result.content.trim();
+    const firstObjEnd = (() => {
+      let depth = 0,
+        inStr = false,
+        esc = false;
+      for (let i = 0; i < text.length; i++) {
+        const c = text[i]!;
+        if (esc) {
+          esc = false;
+          continue;
+        }
+        if (c === "\\") {
+          esc = true;
+          continue;
+        }
+        if (c === '"') {
+          inStr = !inStr;
+          continue;
+        }
+        if (inStr) continue;
+        if (c === "{" || c === "[") depth++;
+        else if (c === "}" || c === "]") {
+          depth--;
+          if (depth === 0) return i + 1;
+        }
+      }
+      return -1;
+    })();
+    const candidates = [text];
+    if (firstObjEnd > 0 && firstObjEnd < text.length)
+      candidates.push(text.slice(0, firstObjEnd));
+    for (const candidate of candidates) {
+      try {
+        const parsed = JSON.parse(candidate) as
+          Record<string, unknown> | Array<unknown>;
+        const obj = (Array.isArray(parsed) ? parsed[0] : parsed) as
+          Record<string, unknown> | undefined;
+        if (!obj || typeof obj !== "object") continue;
+        const source = (
+          obj.data && typeof obj.data === "object" && !Array.isArray(obj.data)
+            ? { ...obj, ...(obj.data as Record<string, unknown>) }
+            : obj
+        ) as Record<string, unknown>;
+        if (source.tokenId !== undefined) {
+          session.lastTokenId = String(source.tokenId);
+          break;
+        }
+        const agents = Array.isArray(source.agents) ? source.agents : undefined;
+        const first = agents?.[0] as Record<string, unknown> | undefined;
+        if (first?.tokenId !== undefined) {
+          session.lastTokenId = String(first.tokenId);
+          break;
+        }
+      } catch {
+        // try next candidate
+      }
     }
   } catch {
     // malformed tool result body parsing is best-effort and silently ignored

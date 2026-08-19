@@ -564,6 +564,9 @@ export function createSkillRouters(config: ServerConfig): Router {
           "https://api.usaspending.gov/api/v2/search/spending_by_award/",
           {
             method: "POST",
+            // bun fetch does NOT auto-set content-type for string bodies; USASpending
+            // rejects POSTs without application/json with a 415.
+            headers: { "content-type": "application/json" },
             body: JSON.stringify({
               filters: parsed.filters,
               fields: [

@@ -25,8 +25,11 @@ function createLucideIcon(iconNode: IconNode) {
         aria-hidden={props["aria-hidden"] ?? true}
         {...props}
       >
-        {iconNode.map(([tag, attrs], index) => {
+        {iconNode.map(([tag, nodeAttrs], index) => {
           const Tag = tag as keyof React.JSX.IntrinsicElements;
+          // lucide nodes carry a `key` attr; spreading it into JSX trips React's
+          // "key in spread" warning — strip it (the map index keys the element).
+          const { key: _attrsKey, ...attrs } = nodeAttrs;
           return <Tag key={index} {...attrs} />;
         })}
       </svg>

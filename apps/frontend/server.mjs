@@ -117,6 +117,28 @@ const server = Bun.serve({
       }
       if (target) return await proxyHttpRequest(req, target);
 
+      // sitemap.xml ships a placeholder origin (https://axiom.example/) in the
+      // repo — rewrite <loc> URLs to the serving origin at request time so the
+      // sitemap is always self-consistent wherever the app is deployed.
+      // VITE_PUBLIC_ORIGIN (or PUBLIC_ORIGIN) wins for known canonical hosts.
+      if (urlPath === "/sitemap.xml") {
+        const file = Bun.file(DIST + "/sitemap.xml");
+        if (await file.exists()) {
+          const canonical =
+            (process.env.VITE_PUBLIC_ORIGIN || process.env.PUBLIC_ORIGIN || "")
+              .trim()
+              .replace(/\/+$/, "");
+          const origin = canonical || url.origin;
+          const xml = (await file.text()).replaceAll(
+            "https://axiom.example/",
+            origin + "/",
+          );
+          return new Response(xml, {
+            headers: { "Content-Type": "application/xml; charset=utf-8" },
+          });
+        }
+      }
+
       const safePath = urlPath.replace(/^(\.\.[/\\])+/, "");
       const filePath = (DIST + "/" + safePath).replace(/\/+/g, "/");
       if (!filePath.startsWith(DIST + "/")) {

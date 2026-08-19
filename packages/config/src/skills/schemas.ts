@@ -12,10 +12,12 @@ const evmHashField = z
 
 export const evmAddressSchema = z.object({ address: evmAddressField }); // a single shape serves the evm_wallet, evm_multichain, and evm_contract routes
 
+// token is optional: native-balance-only queries are the common case (the chat tool
+// catalog advertises address as the sole required param)
 export const evmTokenOwnerSchema = z.object({
   address: evmAddressField,
-  token: evmAddressField,
-}); // owner plus ERC-20 token shape, shared by evm_wallet route and evm_allowance
+  token: evmAddressField.optional(),
+}); // owner plus optional ERC-20 token shape, shared by evm_wallet route and evm_allowance
 
 export const evmTxSchema = z.object({ hash: evmHashField });
 

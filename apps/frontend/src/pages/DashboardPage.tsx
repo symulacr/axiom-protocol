@@ -173,6 +173,10 @@ export function DashboardPage({
   ).length;
 
   const activityRows = useMemo(() => {
+    // Chat-transcript storage pointers are not operator activity — receipts only.
+    const chainSource = events.filter(
+      (event) => event.eventName !== "transcript",
+    );
     const local = state.transactions.slice(0, 3).map((tx) => ({
       key: tx.id,
       icon: tx.icon,
@@ -181,7 +185,7 @@ export function DashboardPage({
       state: tx.state,
       open: `/transactions?tx=${encodeURIComponent(tx.id)}`,
     }));
-    const chainEvents = events.slice(0, 3).map((event) => {
+    const chainEvents = chainSource.slice(0, 3).map((event) => {
       const tokenId = eventTokenId(event);
       return {
         key: `${event.txHash}:${event.logIndex}`,
@@ -196,7 +200,6 @@ export function DashboardPage({
     });
     return [...local, ...chainEvents].slice(0, 3);
   }, [state.transactions, events]);
-
   return (
     <div className="ops-page">
       <div className="page-head page-head-asymmetric">

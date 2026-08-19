@@ -467,11 +467,24 @@ export function registerAgentRoutes(
           nonce: nonceHex,
           validUntil,
         };
-        const accessSigner = recoverAccessSigner(
-          accessProof.proof,
-          accessInput,
-          eip712Domain,
-        );
+        // A malformed/garbage proof hex throws inside ECDSA recovery — surface a
+        // readable 400 instead of an opaque 500 INTERNAL_ERROR.
+        let accessSigner: `0x${string}`;
+        try {
+          accessSigner = recoverAccessSigner(
+            accessProof.proof,
+            accessInput,
+            eip712Domain,
+          );
+        } catch {
+          sendError(
+            res,
+            HTTP.BAD_REQUEST,
+            "accessProof.proof is not a valid signature (recovery failed)",
+            "ACCESS_PROOF_INVALID",
+          );
+          return;
+        }
         if (accessSigner.toLowerCase() !== to.toLowerCase()) {
           sendError(
             res,

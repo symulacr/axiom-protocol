@@ -30,6 +30,7 @@ import type { AppState, Transaction, TxState } from "../lib/models.js";
 import type { PrototypeAction } from "../lib/prototypeStore.js";
 import {
   useEventHistory,
+  eventDedupeKey,
   eventTokenId,
   type AxiomEvent,
 } from "../hooks/useEventHistory.js";
@@ -235,7 +236,16 @@ export function TransactionsPage({
   }, [requestedFilter, requestedTx]);
 
   const transactions = useMemo<Transaction[]>(() => {
-    const chainEvents = [...events, ...wsEvents].map((event) =>
+    // One receipt per on-chain log: WS live frames and the polled history must
+    // merge on the (chainId, txHash, logIndex) dedupe key, and chat-transcript
+    // bookkeeping events are server-side storage pointers, not console
+    // receipts — a receipt center listing "transcript / block 0" rows is noise.
+    const merged = new Map<string, AxiomEvent>();
+    for (const event of [...events, ...wsEvents]) {
+      if (event.eventName === "transcript") continue;
+      merged.set(eventDedupeKey(event), event);
+    }
+    const chainEvents = [...merged.values()].map((event) =>
       eventToTransaction(event),
     );
     const seen = new Set(chainEvents.map((tx) => tx.id));

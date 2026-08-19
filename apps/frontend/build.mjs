@@ -20,6 +20,9 @@ for (const line of envSrc.split("\n")) {
 // guard on bare `import.meta.env` truthiness. Define both.
 define["import.meta.env.MODE"] = JSON.stringify("production");
 define["import.meta.env"] = JSON.stringify({ MODE: "production" });
+// React/wagmi CJS dev builds branch on process.env.NODE_ENV — without this the
+// full development React (dev warnings, no prod optimizations) ships to prod.
+define["process.env.NODE_ENV"] = JSON.stringify("production");
 
 const dist = join(frontendDir, "dist");
 await Bun.$`rm -rf ${dist}`.quiet();
