@@ -68,7 +68,7 @@ import {
   royaltySchema,
 } from "./route-schemas.js";
 import { createLogger } from "./utils/logger.js";
-import { sendError } from "./utils/response.js";
+import { sendError, trimErrorMessage } from "./utils/response.js";
 import {
   getClients,
   registerClient,
@@ -947,7 +947,7 @@ function registerChatRoutes(
         }
         res.status(502).json({
           error: msg
-            ? `Compute upstream: ${String(msg).slice(0, 200)}`
+            ? `Compute upstream: ${trimErrorMessage(e)}`
             : "compute upstream error",
         });
       }
@@ -1256,11 +1256,38 @@ function registerErrorHandlers(app: Express): void {
   });
 }
 
+/** WS auth header path: clients pass Sec-WebSocket-Protocol: ["axiom", base64(token)].
+ *  Returns the decoded token, or null when the header is absent/malformed. */
+const WS_AUTH_SUBPROTOCOL = "axiom";
+function wsTokenFromSubprotocols(
+  header: string | string[] | undefined,
+): string | null {
+  const parts = Array.isArray(header) ? header : header?.split(",");
+  const protocols = (parts ?? []).map((p) => p.trim()).filter(Boolean);
+  if (protocols.length === 0) return null;
+  // Exactly ["axiom", b64] carries the token; bare "axiom" (no payload) fails auth below.
+  if (protocols[0] !== WS_AUTH_SUBPROTOCOL || protocols.length < 2) return null;
+  try {
+    const token = Buffer.from(protocols[1]!, "base64").toString("utf8");
+    return token || null;
+  } catch {
+    return null;
+  }
+}
+
 function setupWebSocketServer(
   httpServer: HttpServer,
   config: ServerConfig,
 ): void {
-  const wss = new WebSocketServer({ noServer: true });
+  // Echo the offered subprotocols back verbatim: header-path auth clients
+  // expect ["axiom", b64(token)] to survive negotiation (RFC 6455 requires
+  // the server to select from the client's list — echoing all of them keeps
+  // both the marker and the token visible to the client).
+  const wss = new WebSocketServer({
+    noServer: true,
+    handleProtocols: (protocols: Set<string>) =>
+      protocols.size > 0 ? Array.from(protocols).join(", ") : false,
+  });
   httpServer.on("upgrade", (req, socket, head) => {
     const url = new URL(req.url ?? "/", LOCAL_BASE_URL);
     if (url.pathname !== "/v1/stream") {
@@ -1286,13 +1313,23 @@ function setupWebSocketServer(
         return;
       }
     } else {
-      const token = url.searchParams.get("token") ?? "";
+      // Dual-path auth (token must never leak into proxy logs via the URL):
+      // PREFERRED: Sec-WebSocket-Protocol: axiom, base64(token) — echoed back so
+      // the client's negotiation succeeds. FALLBACK: legacy ?token= query param
+      // (kept working: existing frontends/proxies still use it).
+      const token =
+        wsTokenFromSubprotocols(req.headers["sec-websocket-protocol"]) ??
+        url.searchParams.get("token") ??
+        "";
       if (!token || !timingSafeTokenInList(token, apiKeys)) {
         socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
         socket.destroy();
         return;
       }
     }
+    // Echo the client's subprotocols back so header-path clients (which send
+    // ["axiom", b64(token)]) complete negotiation successfully — the ws
+    // server is constructed with handleProtocols for this (see below).
     wss.handleUpgrade(req, socket, head, (ws) => {
       const wsClients = getClients();
       if (wsClients.size >= MAX_WS_CLIENTS) {

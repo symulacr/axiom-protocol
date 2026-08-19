@@ -35,8 +35,7 @@ import {
   type AxiomEvent,
 } from "../hooks/useEventHistory.js";
 import { useEventStream } from "../hooks/useEventStream.js";
-import { truncateHex } from "../utils/format.js";
-import { resolveBlockExplorerUrl } from "@axiom/config/networks";
+import { truncateHex, explorerTxUrl } from "../utils/format.js";
 
 function eventKindIcon(eventName: string) {
   const name = eventName.toLowerCase();
@@ -199,8 +198,7 @@ export function TransactionsPage({
   const copy = getCopy(state.settings.locale);
   const txCopy = copy.transactions;
   const chainId = useChainId();
-  const explorerTx = (hash: string) =>
-    `${resolveBlockExplorerUrl(chainId)}/tx/${hash}`;
+  const explorerTx = (hash: string) => explorerTxUrl(chainId, hash);
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedFilter = searchParams.get("filter");
   const requestedTx = searchParams.get("tx");

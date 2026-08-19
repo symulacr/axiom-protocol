@@ -47,9 +47,7 @@
 /* Paper-theme inks: graphite-calibrated accents measured 1.3-4.0:1 on paper. */
 .app-shell.light { --phosphor: #0a6b43; }
 .app-shell.light .button-primary { color: #fffdf8; }
-.app-shell.light .button-danger,
 .app-shell.light .field-message,
-.app-shell.light .status-warning,
 .app-shell.light .state-reverted,
 .app-shell.light .state-rejected,
 .app-shell.light .state-stale {
@@ -81,7 +79,6 @@
 .app-shell .session-top,
 .app-shell .agent-row,
 .app-shell .activity-row,
-.app-shell .thread-item,
 .app-shell .transaction-row,
 .app-shell .command-palette > button,
 .app-shell .landing-strip > div,
@@ -200,7 +197,6 @@
 }
 
 /* Marker cleanup: progress remains visible through state and accessible labels, never serial decoration. */
-.guide-index,
 .guide-copy > .eyebrow.copper {
   display: none;
 }

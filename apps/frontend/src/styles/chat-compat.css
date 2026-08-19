@@ -157,12 +157,6 @@
   color: var(--muted);
 }
 .btn-ghost:hover:not(:disabled) { color: var(--text); border-color: var(--copper); }
-.btn-teal {
-  background: transparent;
-  border-color: var(--c-teal-border);
-  color: var(--c-teal);
-}
-.btn-teal:hover:not(:disabled) { background: var(--c-teal-bg); }
 
 .surface-glass { background: var(--panel); }
 

@@ -34,6 +34,25 @@ export function sortEventsChronological(a: AxiomEvent, b: AxiomEvent): number {
   );
 }
 
+/** Merge a secondary event source (WS frames, poll pages) into a base list,
+ *  dropping duplicates by chainId:txHash:logIndex, chronological order. */
+export function mergeDedupedEvents(
+  base: AxiomEvent[],
+  incoming: AxiomEvent[],
+): AxiomEvent[] {
+  const seen = new Set(base.map(eventDedupeKey));
+  const merged = [...base];
+  for (const ev of incoming) {
+    const key = eventDedupeKey(ev);
+    if (!seen.has(key)) {
+      seen.add(key);
+      merged.push(ev);
+    }
+  }
+  merged.sort(sortEventsChronological);
+  return merged;
+}
+
 interface EventsResponse {
   events: AxiomEvent[];
 }
@@ -100,19 +119,9 @@ export function useEventHistory(
     const raw = Array.isArray(query.data.events) ? query.data.events : [];
     if (raw.length === 0) return mergedEventsRef.current;
 
-    const seen = new Set(mergedEventsRef.current.map(eventDedupeKey));
-    const merged = [...mergedEventsRef.current];
-    for (const ev of raw) {
-      const key = eventDedupeKey(ev);
-      if (!seen.has(key)) {
-        seen.add(key);
-        merged.push(ev);
-      }
-    }
-
-    merged.sort(sortEventsChronological);
-    const capped =
-      merged.length > MAX_EVENTS ? merged.slice(-MAX_EVENTS) : merged;
+    const capped = mergeDedupedEvents(mergedEventsRef.current, raw).slice(
+      -MAX_EVENTS,
+    );
     mergedEventsRef.current = capped;
     return capped;
   }, [query.data]);

@@ -8,11 +8,11 @@ Express HTTP + WebSocket server — the Axiom orchestration engine. Routes agent
 
 | Command | Description |
 | --------- | ------------- |
-| `pnpm dev` | Start with tsx watch (no build step) |
-| `pnpm build` | TypeScript compile |
-| `pnpm start` | Run compiled dist/ |
-| `pnpm test` | Run tests |
-| `pnpm run-e2e` | End-to-end integration test |
+| `bun run dev` | Start directly from source (bun runtime, no build step) |
+| `bun run build` | TypeScript compile |
+| `bun run start` | Run compiled dist/ |
+| `bun run test` | Run tests |
+| `bun run run-e2e` | End-to-end integration test |
 
 ## Network
 

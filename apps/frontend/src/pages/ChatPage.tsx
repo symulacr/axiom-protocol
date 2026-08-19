@@ -43,8 +43,12 @@ import {
   type ComputeProvider,
 } from "../hooks/useProviders.js";
 import { ChatHistorySection } from "../components/ChatHistorySection.js";
-import { humanizeError } from "../utils/format.js";
-import { resolveBlockExplorerUrl } from "@axiom/config/networks";
+import {
+  humanizeError,
+  truncateHex,
+  truncateAddress,
+  explorerTxUrl,
+} from "../utils/format.js";
 import {
   buildSystemPrompt,
   formatToolResult,
@@ -1905,12 +1909,12 @@ function ChatPageInner(): ReactElement {
                   ) : null}
                   {row.txHash ? (
                     <a
-                      href={`${resolveBlockExplorerUrl(chainId)}/tx/${row.txHash}`}
+                      href={explorerTxUrl(chainId, row.txHash)}
                       target="_blank"
                       rel="noreferrer noopener"
                       style={{ color: COLORS.bronzeLight }}
                     >
-                      {`${row.txHash.slice(0, 10)}…${row.txHash.slice(-6)}`}
+                      {truncateHex(row.txHash)}
                     </a>
                   ) : null}
                 </div>
@@ -2308,7 +2312,7 @@ function captureTurnMetrics(
 }
 
 function shortAddress(addr: string): string {
-  return addr.length > 10 ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : addr;
+  return truncateAddress(addr);
 }
 
 function formatNeuron(neuron: number): string {

@@ -49,29 +49,6 @@ export const COLORS = {
   warningBorder: "var(--c-warning-border)",
 } as const;
 
-export const textDimMediumNoWrap = {
-  color: COLORS.textDim,
-  fontWeight: "var(--fw-medium)",
-  whiteSpace: "nowrap",
-} as const;
-
-export const amountInputStyle = {
-  flex: "0 1 10rem",
-  fontSize: "var(--text-sm)",
-} as const;
-
-export const mutedTextSm = {
-  color: COLORS.textMuted,
-  fontSize: "var(--text-sm)",
-  margin: 0,
-} as const;
-
-export const backLinkStyle = {
-  color: COLORS.textMuted,
-  fontSize: "var(--text-sm)",
-  textDecoration: "none",
-} as const;
-
 const emptyCardStyle = {
   textAlign: "center",
   padding: "var(--space-3xl) var(--space-xl)",
@@ -84,19 +61,6 @@ const ellipsisTitleStyle: CSSProperties = {
   textOverflow: "ellipsis",
   whiteSpace: "nowrap",
 };
-
-export function getActionColor(action: string): string {
-  switch (action) {
-    case "buy":
-      return COLORS.success;
-    case "sell":
-      return COLORS.danger;
-    case "hold":
-      return COLORS.textMuted;
-    default:
-      return COLORS.textMuted;
-  }
-}
 
 const formFieldBase: CSSProperties = {
   padding: "0.625rem 0.875rem",
@@ -111,7 +75,7 @@ const formFieldBase: CSSProperties = {
   // focus ring comes from a CSS class on inputs, not inline styles
 };
 
-type ButtonVariant = "primary" | "secondary" | "ghost" | "teal";
+type ButtonVariant = "primary" | "secondary" | "ghost";
 
 export const Button = React.memo(function Button({
   variant = "primary",

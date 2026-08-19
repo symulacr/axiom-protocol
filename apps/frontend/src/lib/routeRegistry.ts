@@ -155,6 +155,14 @@ export const INDEXABLE_PATHS = new Set(
   ROUTES.filter((entry) => entry.indexable).map((entry) => entry.path),
 );
 
+/** Every routable app path (public hubs + internal routes + compat aliases). */
+export const KNOWN_PATHS = new Set([
+  "/",
+  ...ROUTES.map((entry) => entry.path),
+  ...Object.keys(PUBLIC_ALIASES),
+  "/agents/list",
+]);
+
 export function resolveRoute(path: string): Route {
   const cleanPath = path.split("?", 1)[0] ?? path;
   if (cleanPath.startsWith("/agents/")) return "agent";

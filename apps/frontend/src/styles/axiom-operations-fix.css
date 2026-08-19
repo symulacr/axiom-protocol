@@ -16,13 +16,7 @@
 .app-shell .agent-detail-head,
 .app-shell .agent-detail-proof,
 .app-shell .chat-layout,
-.app-shell .chat-stage,
 .app-shell .thread-list,
-.app-shell .message,
-.app-shell .message > div {
-  min-inline-size: 0;
-}
-
 .app-shell {
   grid-template-columns: var(--rail-width) minmax(0, 1fr);
   overflow: visible;
@@ -56,12 +50,8 @@
 .app-shell .page-head p,
 .app-shell .agent-row small,
 .app-shell .activity-row small,
-.app-shell .thread-item small,
 .app-shell .transaction-kind small,
 .app-shell .provenance-list dd,
-.app-shell .message p {
-  overflow-wrap: anywhere;
-}
 
 /* Copper stays structural through seams and boundaries, never sequential route markers. */
 .app-shell .sidebar .brand {
@@ -180,62 +170,9 @@
   white-space: normal;
 }
 
-/* Chat keeps thread context without squeezing messages or the composer. */
-.app-shell .chat-page {
-  display: block;
-  min-block-size: 0;
-  border: 0;
-  background: transparent;
-}
-
 .app-shell .chat-layout {
   grid-template-columns: minmax(250px, .52fr) minmax(0, 1.48fr);
   gap: 18px;
-}
-
-.app-shell .thread-item {
-  grid-template-columns: minmax(0, 1fr) 14px;
-  gap: 10px;
-  padding: 13px 14px;
-}
-
-.app-shell .thread-item > span:first-child {
-  min-inline-size: 0;
-}
-
-.app-shell .thread-item strong,
-.app-shell .thread-item small {
-  white-space: normal;
-}
-
-.app-shell .chat-stage-head {
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.app-shell .message-list {
-  min-inline-size: 0;
-  max-block-size: min(48vh, 480px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-
-.app-shell .message > div {
-  min-inline-size: 0;
-}
-
-.app-shell .message p {
-  white-space: pre-wrap;
-}
-
-.app-shell .chat-compose {
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-}
-
-.app-shell .chat-compose textarea {
-  min-inline-size: 0;
-  inline-size: 100%;
 }
 
 /* Avoid oversized flow panels and clipped evidence in the operational pages. */
@@ -484,15 +421,6 @@
   .app-shell .thread-list .panel-head {
     grid-column: 1 / -1;
   }
-
-  .app-shell .thread-item {
-    border-bottom: 0;
-    border-right: 1px solid var(--completion-line);
-  }
-
-  .app-shell .thread-item:last-child {
-    border-right: 0;
-  }
 }
 
 @media (max-width: 780px) {
@@ -580,22 +508,5 @@
 
   .app-shell .thread-list {
     display: block;
-  }
-
-  .app-shell .thread-item {
-    border-right: 0;
-    border-bottom: 1px solid var(--completion-line);
-  }
-
-  .app-shell .thread-item:last-child {
-    border-bottom: 0;
-  }
-
-  .app-shell .chat-compose {
-    grid-template-columns: 1fr;
-  }
-
-  .app-shell .chat-compose .button {
-    inline-size: 100%;
   }
 }

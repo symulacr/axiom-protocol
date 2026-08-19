@@ -32,8 +32,8 @@ import {
   formatTokenAmount,
   truncateAddress,
   truncateHex,
+  explorerTxUrl,
 } from "../utils/format.js";
-import { resolveBlockExplorerUrl } from "@axiom/config/networks";
 
 type AgentTab = "overview" | "execute" | "payments" | "activity";
 
@@ -49,8 +49,7 @@ export function AgentPage({
   const copy = getCopy(locale);
   const agentCopy = copy.agentDetail;
   const chainId = useChainId();
-  const explorerTx = (hash: string) =>
-    `${resolveBlockExplorerUrl(chainId)}/tx/${hash}`;
+  const explorerTx = (hash: string) => explorerTxUrl(chainId, hash);
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get("tab") as AgentTab | null;
   const [tab, setTab] = useState<AgentTab>(

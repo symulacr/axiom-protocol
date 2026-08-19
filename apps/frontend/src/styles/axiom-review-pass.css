@@ -38,10 +38,6 @@
   padding:clamp(56px, 8vw, 112px) 0 84px;
 }
 
-
-
-
-
 .locked-route-copy { grid-column:2; align-self:center; max-width:620px; padding:28px 0 38px; border-top:2px solid var(--route-accent); border-bottom:1px solid color-mix(in srgb, var(--route-accent) 24%, transparent); }
 .locked-route-copy .eyebrow { color:var(--route-accent); }
 .locked-route-copy h1 { max-width:600px; margin:18px 0 20px; font:800 clamp(50px, 6.6vw, 92px)/.88 Syne,sans-serif; letter-spacing:-.085em; }
@@ -128,23 +124,21 @@
 }
 
 /* Hardening pass: resilient content, accessible form sizing, and direction-safe layout. */
-.ops-page, .panel, .flow-stage, .flow-context, .chat-stage, .thread-list, .receipt-drawer { min-width:0; min-height:0; }
+.ops-page, .panel, .flow-stage, .flow-context, .thread-list, .receipt-drawer { min-width:0; min-height:0; }
 .ops-page h1, .ops-page h2, .ops-page h3, .panel-head, .page-head > div, .action-lane, .context-cell { min-width:0; }
-.ops-page h1, .ops-page h2, .ops-page h3, .page-head p, .panel p, .field-hint, .field-message, .diagnostic-note, .storage-note, .message p, .thread-item strong, .transaction-kind strong, .transaction-kind small { overflow-wrap:anywhere; word-break:break-word; }
+.ops-page h1, .ops-page h2, .ops-page h3, .page-head p, .panel p, .field-hint, .field-message, .diagnostic-note, .storage-note, .transaction-kind strong, .transaction-kind small { overflow-wrap:anywhere; word-break:break-word; }
 .mono, .provenance-list dd, .transaction-row > span, .signature-preview strong { overflow-wrap:anywhere; word-break:break-word; }
-.field input, .field textarea, .field select, .chat-compose textarea, .command-input input, .settings-select-row select { min-width:0; font-size:16px; }
-.field input, .chat-compose textarea { max-width:100%; }
+.field input, .field textarea, .field select, .command-input input, .settings-select-row select { min-width:0; font-size:16px; }
+.field input { max-width:100%; }
 .field input:invalid, .field.field-error input { border-color:rgba(240,179,107,.72); }
 .button { min-width:0; max-width:100%; white-space:normal; overflow-wrap:anywhere; }
 .button:disabled, .button.is-busy { cursor:wait; opacity:.58; transform:none; }
-.button:focus-visible, .icon-button:focus-visible, .nav-item:focus-visible, .filter:focus-visible, .thread-item:focus-visible, .transaction-row:focus-visible, .flow-progress button:focus-visible { outline:2px solid var(--copper, #d28b52); outline-offset:3px; }
-.transaction-table, .transaction-panel, .message-list, .storage-stage, .provenance-panel { overflow-x:auto; }
+.button:focus-visible, .icon-button:focus-visible, .nav-item:focus-visible, .filter:focus-visible, .transaction-row:focus-visible { outline:2px solid var(--copper, #d28b52); outline-offset:3px; }
+.transaction-table, .transaction-panel, .storage-stage, .provenance-panel { overflow-x:auto; }
 .empty-state { overflow-wrap:anywhere; }
-.chat-compose { align-items:flex-end; flex-wrap:wrap; }
-.chat-compose .field-hint { flex:1 0 100%; order:3; }
 [dir="rtl"] .brand, [dir="rtl"] .topbar, [dir="rtl"] .page-head, [dir="rtl"] .flow-stage-top, [dir="rtl"] .context-strip { direction:rtl; }
 [dir="rtl"] .flow-symbol { transform:scaleX(-1); }
-[dir="rtl"] .button svg, [dir="rtl"] .text-link svg, [dir="rtl"] .transaction-row > svg, [dir="rtl"] .thread-item > svg { transform:scaleX(-1); }
+[dir="rtl"] .button svg, [dir="rtl"] .text-link svg, [dir="rtl"] .transaction-row > svg { transform:scaleX(-1); }
 @media (max-width:700px) {
   .page-head, .page-head-asymmetric { gap:22px; }
   .page-head h1 { max-width:100%; }
@@ -193,7 +187,7 @@
 .prototype-notice { z-index:var(--layer-notice); max-height:calc(100dvh - 44px); overflow:auto; }
 
 .panel, .settings-card, .tab-panel, .agent-identity-card, .agent-command-card,
-.storage-stage, .provenance-panel, .flow-stage, .flow-steps, .chat-stage {
+.storage-stage, .provenance-panel, .flow-stage {
   min-width:0;
   min-height:0;
 }
@@ -230,8 +224,6 @@ html:not([data-axiom-ready="true"]) .hero-visual-scanline {
   .prototype-notice { right:16px; bottom:16px; max-width:calc(100vw - 32px); }
   .flow-visual { height:clamp(220px,62vw,260px); margin-top:22px; }
   .flow-visual img { height:100%; }
-  .flow-readouts { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px 12px; }
-  .flow-steps { padding:16px; }
   .receipt-drawer { width:100%; padding:70px 20px 24px; }
   .stats-grid, .context-strip { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .dashboard-split, .agent-grid, .chat-layout, .execute-grid, .receipt-grid { grid-template-columns:1fr; }

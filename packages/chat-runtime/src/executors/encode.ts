@@ -149,28 +149,41 @@ async function encodeMint(
     return encodeOnlyResult(data);
   }
 
-  try {
-    const { txHash, receipt } = await signAndSendWithReceipt(ctx, {
-      to: data.to as `0x${string}`,
-      data: data.data as `0x${string}`,
-      value: BigInt(data.value),
-    });
-    return {
+  return sendWithReceiptResult(ctx, data, "mint sign failed");
+}
+
+/** Shared send leg for encode tools: sign+send calldata, then shape the
+ *  ok/receipt JSON envelope every wallet-bound tool result uses (extra keys
+ *  merge into both the receipt and txHash-only variants). */
+function sendWithReceiptResult(
+  ctx: ToolRuntime,
+  data: { to: string; data: string; value: string },
+  failLabel: string,
+  extra?: Record<string, unknown>,
+): Promise<ToolResult> {
+  const fields = extra ?? {};
+  return signAndSendWithReceipt(ctx, {
+    to: data.to as `0x${string}`,
+    data: data.data as `0x${string}`,
+    value: BigInt(data.value || "0"),
+  })
+    .then(({ txHash, receipt }) => ({
       ok: true as const,
       content: JSON.stringify(
         receipt
           ? {
               ok: true,
               txHash,
+              ...fields,
               receiptStatus: receipt.status,
               blockNumber: receipt.blockNumber,
             }
-          : { ok: true, txHash },
+          : { ok: true, txHash, ...fields },
       ),
-    };
-  } catch (e) {
-    return toolFail(e instanceof Error ? e.message : "mint sign failed");
-  }
+    }))
+    .catch((e: unknown): ToolResult =>
+      toolFail(e instanceof Error ? e.message : failLabel),
+    );
 }
 
 async function encodeVaultOp(
@@ -203,29 +216,7 @@ async function encodeVaultOp(
     return encodeOnlyResult(data, { amount });
   }
 
-  try {
-    const { txHash, receipt } = await signAndSendWithReceipt(ctx, {
-      to: data.to as `0x${string}`,
-      data: data.data as `0x${string}`,
-      value: BigInt(data.value || "0"),
-    });
-    return {
-      ok: true as const,
-      content: JSON.stringify(
-        receipt
-          ? {
-              ok: true,
-              txHash,
-              amount,
-              receiptStatus: receipt.status,
-              blockNumber: receipt.blockNumber,
-            }
-          : { ok: true, txHash, amount },
-      ),
-    };
-  } catch (e) {
-    return toolFail(e instanceof Error ? e.message : `${op} sign failed`);
-  }
+  return sendWithReceiptResult(ctx, data, `${op} sign failed`, { amount });
 }
 
 /** Payment token decimals: the deployed payment token is USDC (6 decimals).
@@ -312,7 +303,6 @@ async function encodePayForAgent(
     functionName,
     args: encodeArgs,
   });
-  const calldata = { to: processor, data, value: 0n };
 
   if (ctx.mode === "encode-only" || !ctx.wallet?.signAndSend) {
     return encodeOnlyResult(
@@ -321,26 +311,12 @@ async function encodePayForAgent(
     );
   }
 
-  try {
-    const { txHash, receipt } = await signAndSendWithReceipt(ctx, calldata);
-    return {
-      ok: true as const,
-      content: JSON.stringify(
-        receipt
-          ? {
-              ok: true,
-              txHash,
-              tokenId,
-              ...extra,
-              receiptStatus: receipt.status,
-              blockNumber: receipt.blockNumber,
-            }
-          : { ok: true, txHash, tokenId, ...extra },
-      ),
-    };
-  } catch (e) {
-    return toolFail(e instanceof Error ? e.message : "pay sign failed");
-  }
+  return sendWithReceiptResult(
+    ctx,
+    { to: processor, data, value: "0" },
+    "pay sign failed",
+    { tokenId, ...extra },
+  );
 }
 
 async function registerDataHashWithOracle(

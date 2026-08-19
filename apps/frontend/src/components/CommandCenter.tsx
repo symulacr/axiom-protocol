@@ -17,6 +17,7 @@ import type { AppState, Route } from "../lib/models.js";
 import { getNextSafeActions, type FundTarget } from "../lib/nextSafeAction.js";
 import { getCommandRouteItems } from "../lib/routeRegistry.js";
 import { trackUxEvent } from "../lib/uxTelemetry.js";
+import { trapTabFocus } from "../utils/format.js";
 
 type CommandItem = {
   id: string;
@@ -183,18 +184,7 @@ export function CommandCenter({
           "button:not([disabled]), input:not([disabled])",
         ),
       );
-      if (!focusable.length) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (!first || !last) return;
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      }
-      if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
+      trapTabFocus(event, focusable);
     }
   };
 

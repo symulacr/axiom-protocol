@@ -6,19 +6,19 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://axiom-backend-production-2cf5.up.railway.app/:path*"
+      "destination": "${BACKEND_ORIGIN}/:path*"
     },
     {
       "source": "/api",
-      "destination": "https://axiom-backend-production-2cf5.up.railway.app/"
+      "destination": "${BACKEND_ORIGIN}/"
     },
     {
       "source": "/oracle/:path*",
-      "destination": "https://axiom-backend-production-2cf5.up.railway.app/oracle/:path*"
+      "destination": "${BACKEND_ORIGIN}/oracle/:path*"
     },
     {
       "source": "/oracle",
-      "destination": "https://axiom-backend-production-2cf5.up.railway.app/oracle/"
+      "destination": "${BACKEND_ORIGIN}/oracle/"
     },
     {
       "source": "/(.*)",

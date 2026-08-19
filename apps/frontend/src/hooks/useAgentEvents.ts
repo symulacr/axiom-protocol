@@ -2,8 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import {
   useEventHistory,
   eventTokenId,
-  eventDedupeKey,
-  sortEventsChronological,
+  mergeDedupedEvents,
   type AxiomEvent,
 } from "./useEventHistory.js";
 import { useEventStream } from "./useEventStream.js";
@@ -52,18 +51,7 @@ export function useAgentEvents(
 
     const httpFiltered = events.filter(matches);
     const wsFiltered = wsEvents.filter(matches);
-
-    const seen = new Set(httpFiltered.map(eventDedupeKey));
-    const merged = [...httpFiltered];
-    for (const ev of wsFiltered) {
-      const key = eventDedupeKey(ev);
-      if (!seen.has(key)) {
-        seen.add(key);
-        merged.push(ev);
-      }
-    }
-    merged.sort(sortEventsChronological);
-    return merged;
+    return mergeDedupedEvents(httpFiltered, wsFiltered);
   }, [enabled, events, wsEvents, tokenId]);
 
   return useMemo(

@@ -91,15 +91,7 @@
 .flow-intent-banner > div { display: grid; gap: .18rem; }
 .flow-intent-banner strong { color: var(--text, #f4efe7); font-size: .78rem; line-height: 1.35; }
 .flow-intent-banner > span { color: var(--copper-bright, #e6aa78); font-size: .65rem; white-space: nowrap; }
-.chat-suggestions { display: grid; grid-template-columns: minmax(140px, .6fr) minmax(0, 1.5fr); gap: .75rem; margin: .9rem .95rem .3rem; padding: .75rem; border: 1px solid rgba(199,116,53,.28); background: linear-gradient(110deg, rgba(199,116,53,.1), transparent); }
-.chat-suggestions > div:first-child { display: grid; align-content: start; gap: .3rem; }
-.chat-suggestions small { color: var(--dim, #998d7d); font-size: .68rem; line-height: 1.35; }
-.chat-suggestions > div:last-child { display: flex; flex-wrap: wrap; align-content: start; gap: .4rem; }
-.chat-suggestions button { display: inline-flex; gap: .3rem; align-items: center; max-width: 100%; padding: .42rem .5rem; color: var(--copper-bright, #e6aa78); border: 1px solid rgba(199,116,53,.32); background: rgba(0,0,0,.08); font: 700 .66rem/1.2 var(--font-mono, monospace); text-align: left; }
-.chat-suggestions button:hover { color: #fff4ec; border-color: var(--copper); background: rgba(199,116,53,.15); }
-.chat-compose-actions { display: flex; justify-content: space-between; align-items: center; gap: .75rem; }
-.chat-compose-actions .text-link { color: var(--dim, #998d7d); font-size: .7rem; }
-@media (max-width: 640px) { .flow-intent-banner { grid-template-columns: auto minmax(0, 1fr); margin-inline: 1rem; } .flow-intent-banner > span { grid-column: 2; } .chat-suggestions { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .flow-intent-banner { grid-template-columns: auto minmax(0, 1fr); margin-inline: 1rem; } .flow-intent-banner > span { grid-column: 2; } }
 
 /* Review-first operation surface — automatic evidence is observed, not clicked through. */
 .review-first-layout .flow-stage { min-width: 0; }

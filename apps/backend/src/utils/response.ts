@@ -33,6 +33,13 @@ export function extractErrorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
+/** Error text sent to clients: upstream bodies (full HTML error pages, JSON
+ *  dumps) can be huge; cap at 200 chars so responses/logs stay bounded. */
+export function trimErrorMessage(err: unknown, max = 200): string {
+  const msg = extractErrorMessage(err);
+  return msg.length > max ? `${msg.slice(0, max)}…` : msg;
+}
+
 export function envInt(name: string, fallback: number): number {
   const n = Number.parseInt(process.env[name] ?? "", 10);
   return Number.isFinite(n) && n > 0 ? n : fallback;

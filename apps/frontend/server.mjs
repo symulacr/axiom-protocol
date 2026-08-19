@@ -111,7 +111,26 @@ const server = Bun.serve({
           url.pathname.replace(target.strip, "") + url.search || "/",
           target.base.replace(/^http/, "ws"),
         );
-        const up = srv.upgrade(req, { data: { upstreamWs: upstreamWs.href } });
+        // Forward the client's Sec-WebSocket-Protocol verbatim, both ways:
+        // upstream (header-path WS auth rides ["axiom", base64(token)]) and
+        // back to the browser (Bun needs the response header echoed on the
+        // local upgrade or ws.protocol stays "" and clients can't confirm
+        // which auth path negotiated).
+        const clientProtocolHeader = req.headers.get("sec-websocket-protocol");
+        const clientProtocols =
+          clientProtocolHeader
+            ?.split(",")
+            .map((p) => p.trim())
+            .filter(Boolean) ?? [];
+        const up = srv.upgrade(req, {
+          data: {
+            upstreamWs: upstreamWs.href,
+            protocols: clientProtocols.length > 0 ? clientProtocols : undefined,
+          },
+          ...(clientProtocolHeader
+            ? { headers: { "Sec-WebSocket-Protocol": clientProtocolHeader } }
+            : {}),
+        });
         if (!up) return new Response("Upgrade failed", { status: 400 });
         return undefined;
       }
@@ -178,7 +197,15 @@ const server = Bun.serve({
   },
   websocket: {
     open(ws) {
-      const upstream = new WebSocket(ws.data.upstreamWs);
+      // Bun's WebSocket client rejects subprotocols containing "," or " "
+      // ("Wrong protocol for WebSocket"), but accepts a raw request header —
+      // so the two-token handshake (axiom, base64(token)) is sent via the
+      // headers option instead of the protocols argument.
+      const upstream = new WebSocket(ws.data.upstreamWs, {
+        headers: ws.data.protocols
+          ? { "Sec-WebSocket-Protocol": ws.data.protocols.join(", ") }
+          : undefined,
+      });
       ws.data.up = upstream;
       upstream.onmessage = (e) => {
         try {

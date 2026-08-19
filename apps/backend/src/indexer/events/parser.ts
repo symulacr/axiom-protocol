@@ -61,6 +61,13 @@ function makeEventParser(
   };
 }
 
+// Authorization and AuthorizationRevoked share the (tokenId, from, to) shape.
+const authFields = (a: Record<string, unknown>) => ({
+  tokenId: a["tokenId"] as bigint,
+  from: getAddress(a["from"] as string),
+  to: getAddress(a["to"] as string),
+});
+
 const EVENT_PARSERS: Record<string, EventParser> = {
   Transfer: makeEventParser(EVENT_NAMES.Transfer, EVENT_ABI.Transfer, (a) => ({
     from: getAddress(a["from"] as string),
@@ -75,20 +82,12 @@ const EVENT_PARSERS: Record<string, EventParser> = {
   Authorization: makeEventParser(
     "Authorization",
     EVENT_ABI.Authorization,
-    (a) => ({
-      tokenId: a["tokenId"] as bigint,
-      from: getAddress(a["from"] as string),
-      to: getAddress(a["to"] as string),
-    }),
+    authFields,
   ),
   AuthorizationRevoked: makeEventParser(
     "AuthorizationRevoked",
     EVENT_ABI.AuthorizationRevoked,
-    (a) => ({
-      tokenId: a["tokenId"] as bigint,
-      from: getAddress(a["from"] as string),
-      to: getAddress(a["to"] as string),
-    }),
+    authFields,
   ),
   VerifierUpdated: makeEventParser(
     "VerifierUpdated",

@@ -38,6 +38,7 @@ import type { AppState, Route, Session, UiSettings } from "../../lib/models.js";
 import type { PrototypeAction } from "../../lib/prototypeStore.js";
 import type { FundTarget } from "../../lib/nextSafeAction.js";
 import { useHealth } from "../../hooks/useHealth.js";
+import { truncateAddress, trapTabFocus } from "../../utils/format.js";
 import { APP_CHAIN, APP_CHAIN_ID } from "../../config/wagmi.js";
 
 export function Logo({ compact = false }: { compact?: boolean }) {
@@ -50,9 +51,7 @@ export function Logo({ compact = false }: { compact?: boolean }) {
 }
 
 function shortAddress(address: string): string {
-  return address
-    ? `${address.slice(0, 6)}…${address.slice(-4)}`
-    : "not connected";
+  return address ? truncateAddress(address) : "not connected";
 }
 
 function Sidebar({
@@ -116,10 +115,30 @@ function Sidebar({
     },
   ];
   const flows = [
-    { path: "/mint", label: "Mint", icon: <Sparkles size={14} /> },
-    { path: "/payment", label: "Payment", icon: <CreditCard size={14} /> },
-    { path: "/transfer", label: "Transfer", icon: <ShieldCheck size={14} /> },
-    { path: "/tick", label: "Tick", icon: <Play size={14} /> },
+    {
+      path: "/mint",
+      label: "Mint",
+      icon: <Sparkles size={14} />,
+      active: route === "mint",
+    },
+    {
+      path: "/payment",
+      label: "Payment",
+      icon: <CreditCard size={14} />,
+      active: route === "payment",
+    },
+    {
+      path: "/transfer",
+      label: "Transfer",
+      icon: <ShieldCheck size={14} />,
+      active: route === "transfer",
+    },
+    {
+      path: "/tick",
+      label: "Tick",
+      icon: <Play size={14} />,
+      active: route === "tick",
+    },
   ];
   const resizeWithKeyboard = (event: React.KeyboardEvent<HTMLDivElement>) => {
     const increment = event.shiftKey ? 24 : 12;
@@ -237,23 +256,10 @@ function Sidebar({
         <span className="mono">0G</span>
       </div>
       <nav className="side-nav" aria-label="Primary navigation">
-        {items.map((item) => (
-          <button
-            key={item.label}
-            className={`nav-item ${item.active ? "active" : ""}`}
-            onClick={() => go(item.path)}
-          >
-            {item.icon}
-            <span>{item.label}</span>
-          </button>
-        ))}
-        <div className="nav-section-label">
-          <span>EXECUTION</span>
-        </div>
-        {flows.map((item) => (
+        {[...items, ...flows].map((item) => (
           <button
             key={item.path}
-            className={`nav-item nav-flow ${route === item.path.slice(1) ? "active" : ""}`}
+            className={`nav-item ${item.active ? "active" : ""}`}
             onClick={() => go(item.path)}
           >
             {item.icon}
@@ -347,17 +353,7 @@ function MobileNavigationDrawer({
         event.preventDefault();
         return;
       }
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (!first || !last) return;
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      }
-      if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
+      trapTabFocus(event, focusable);
     };
     const restoreOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";

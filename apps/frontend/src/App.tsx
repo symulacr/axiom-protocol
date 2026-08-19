@@ -37,7 +37,11 @@ import { ErrorBoundary } from "./components/ErrorBoundary.js";
 import { Spinner } from "./components/ui.js";
 import { ShellSidebarProvider } from "./hooks/useShellSidebar.js";
 import { useUiStore } from "./lib/uiStore.js";
-import { resolvePublicSeoSlug } from "./lib/routeRegistry.js";
+import {
+  KNOWN_PATHS,
+  resolvePublicSeoSlug,
+  resolveRoute,
+} from "./lib/routeRegistry.js";
 import { MEDIA } from "./lib/media.js";
 import { getCopy } from "./lib/copy.js";
 import type { FlowKind } from "./lib/models.js";
@@ -415,22 +419,7 @@ export function App(): ReactElement {
   const publicSeoSlug = resolvePublicSeoSlug(path);
   const isNotFound =
     !publicSeoSlug &&
-    ![
-      "/",
-      "/app",
-      "/chat",
-      "/transactions",
-      "/storage",
-      "/settings",
-      "/staking",
-      "/mint",
-      "/payment",
-      "/transfer",
-      "/tick",
-      "/dashboard",
-      "/market",
-      "/agents/list",
-    ].includes(location.pathname) &&
+    !KNOWN_PATHS.has(location.pathname) &&
     !location.pathname.startsWith("/agents/");
   // /chat stays public (anonymous live chat; history keys to the wallet only
   // when a session exists) — every other internal route is wallet-gated.
@@ -493,7 +482,7 @@ export function App(): ReactElement {
                 />
               ) : (
                 <AppShell
-                  route={shellRoute(location.pathname)}
+                  route={resolveRoute(location.pathname)}
                   path={path}
                   state={state}
                   dispatch={dispatch}
@@ -551,17 +540,6 @@ export function App(): ReactElement {
       {notice}
     </>
   );
-}
-
-function shellRoute(pathname: string) {
-  if (pathname === "/app") return "dashboard" as const;
-  if (pathname.startsWith("/agents/")) return "agent" as const;
-  if (pathname === "/chat") return "chat" as const;
-  if (pathname === "/transactions") return "transactions" as const;
-  if (pathname === "/storage") return "storage" as const;
-  if (pathname === "/settings") return "settings" as const;
-  if (pathname === "/staking") return "staking" as const;
-  return pathname.slice(1) as "mint" | "payment" | "transfer" | "tick";
 }
 
 function AgentRoute({

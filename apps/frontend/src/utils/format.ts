@@ -1,7 +1,32 @@
 import { formatUnits } from "viem";
+import { resolveBlockExplorerUrl } from "@axiom/config/networks";
 
 export const PLACEHOLDER = "\u2014";
 const ELLIPSIS = "\u2026";
+
+/** Canonical block-explorer tx URL for the active chain. */
+export function explorerTxUrl(chainId: number, hash: string): string {
+  return `${resolveBlockExplorerUrl(chainId)}/tx/${hash}`;
+}
+
+/** Keep Tab/Shift+Tab keyboard focus inside `focusable` (first↔last wrap). */
+export function trapTabFocus(
+  event: { key: string; shiftKey: boolean; preventDefault(): void },
+  focusable: HTMLElement[],
+): void {
+  if (!focusable.length) return;
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (!first || !last) return;
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  }
+  if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
 
 export function truncateHex(value: string, head = 10, tail = 6): string {
   if (value.length <= head + tail + 2) {

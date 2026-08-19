@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { buildStreamWsUrl } from "../config/env.js";
+import { openStreamSocket } from "../config/env.js";
 import type { AxiomEvent } from "./useEventHistory.js";
 
 interface UseEventStreamResult {
@@ -31,17 +31,24 @@ export function useEventStream(
     enabledRef.current = enabled;
   }, [enabled]);
 
+  const connectRef = useRef<() => void>(() => {});
+  const scheduleReconnect = useCallback(() => {
+    if (!enabledRef.current) return;
+    if (reconnectAttemptRef.current >= MAX_RECONNECT_ATTEMPTS) return;
+    const delay = Math.min(
+      1000 * Math.pow(2, reconnectAttemptRef.current),
+      maxReconnectDelay,
+    );
+    reconnectAttemptRef.current++;
+    reconnectTimerRef.current = setTimeout(() => connectRef.current(), delay);
+  }, []);
+
   const connect = useCallback(() => {
     if (!enabled) return;
     if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
     reconnectAttemptRef.current = 0;
 
-    try {
-      const url = buildStreamWsUrl(topics);
-
-      const ws = new WebSocket(url);
-      wsRef.current = ws;
-
+    const attach = (ws: WebSocket) => {
       ws.onopen = () => {
         reconnectAttemptRef.current = 0;
         setIsConnected(true);
@@ -73,31 +80,30 @@ export function useEventStream(
         }
       };
 
-      ws.onerror = () => {
-        ws.close();
-        wsRef.current = null;
-      };
-
       ws.onclose = (e: CloseEvent) => {
         setIsConnected(false);
-        wsRef.current = null;
-        if (!enabledRef.current) return;
+        if (wsRef.current === ws) wsRef.current = null;
 
         // Auth failures (1008 policy / 4401 custom) must not retry forever.
         if (e.code === 1008 || e.code === 4401) return;
-        if (reconnectAttemptRef.current >= MAX_RECONNECT_ATTEMPTS) return;
-
-        const delay = Math.min(
-          1000 * Math.pow(2, reconnectAttemptRef.current),
-          maxReconnectDelay,
-        );
-        reconnectAttemptRef.current++;
-        reconnectTimerRef.current = setTimeout(connect, delay);
+        scheduleReconnect();
       };
-    } catch {
-      return;
-    }
-  }, [enabled, topicsKey]);
+    };
+
+    openStreamSocket(topics)
+      .then((ws) => {
+        wsRef.current = ws;
+        attach(ws);
+      })
+      .catch(() => {
+        /* both auth paths failed — backoff and retry */
+        scheduleReconnect();
+      });
+  }, [enabled, topics, topicsKey, scheduleReconnect]);
+
+  useEffect(() => {
+    connectRef.current = connect;
+  }, [connect]);
 
   useEffect(() => {
     connect();
