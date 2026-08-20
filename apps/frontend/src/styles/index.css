@@ -74,8 +74,9 @@ body {
 }
 button, input { font: inherit; }
 button { cursor: pointer; }
-/* UA buttonface bled through surface-less buttons (.account 2:1); classes still outrank. */
-button { background-color: transparent; }
+/* UA buttonface bled through surface-less buttons (.account 2:1). The reset
+   lives INSIDE @layer axiom-base (see below) — un-layered, it beat every
+   layered hover/active background regardless of specificity (C-02). */
 button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid var(--copper-bright); outline-offset: 3px; }
 button:active { transform: scale(.98); }
 h1, h2, h3, p { margin: 0; }
@@ -88,6 +89,11 @@ h1, h2, h3, strong { font-weight: 700; }
  * un-layered axiom-*.css rule overrides anything re-declared here.    *
  * ------------------------------------------------------------------ */
 @layer axiom-base {
+  /* C-02: the buttonface reset is layered so in-layer hover/active rules
+     (.nav-item:hover, .filter.active — specificity (0,2,0) beats (0,0,1))
+     and every un-layered axiom-*.css rule outrank it. Never un-layer this. */
+  button { background-color: transparent; }
+
   .sidebar {
     padding: 25px 18px 18px;
     border-right: 1px solid var(--line-soft);

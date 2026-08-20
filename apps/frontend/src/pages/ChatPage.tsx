@@ -1628,20 +1628,9 @@ function ChatPageInner(): ReactElement {
                             <button
                               key={t.name}
                               type="button"
+                              className="chat-tool-row"
                               onClick={() => setInput(t.name)}
                               title={t.hint}
-                              style={{
-                                display: "block",
-                                width: "100%",
-                                textAlign: "left",
-                                border: "none",
-                                background: "none",
-                                cursor: "pointer",
-                                padding: "3px 0",
-                                font: "inherit",
-                                fontSize: "var(--text-xs)",
-                                color: COLORS.text,
-                              }}
                             >
                               <MonoLabel
                                 style={{ padding: "0.125rem 0.35rem" }}
@@ -2091,20 +2080,11 @@ function ChatPageInner(): ReactElement {
                 <button
                   type="button"
                   aria-label="Remove queued message"
+                  className="chat-queue-remove"
                   onClick={() => {
                     const next = queueRef.current.filter((_, idx) => idx !== i);
                     queueRef.current = next;
                     setQueue(next);
-                  }}
-                  style={{
-                    border: "none",
-                    background: "none",
-                    cursor: "pointer",
-                    color: COLORS.textDim,
-                    padding: 0,
-                    fontFamily: "inherit",
-                    fontSize: "var(--text-xs)",
-                    lineHeight: 1,
                   }}
                 >
                   ✕
@@ -2128,15 +2108,7 @@ function ChatPageInner(): ReactElement {
               aria-label="Provider routing"
               value={prefKey}
               onChange={(e) => applyProviderPref(e.target.value)}
-              style={{
-                fontSize: "var(--text-xs)",
-                fontFamily: "var(--font-mono)",
-                background: "var(--c-bg)",
-                color: "var(--c-text)",
-                border: `1px solid ${COLORS.border}`,
-                borderRadius: "var(--radius-sm)",
-                padding: "2px 6px",
-              }}
+              className="chat-inline-select"
             >
               <option value="auto">Auto (latency)</option>
               <option value="cheapest">Cheapest</option>

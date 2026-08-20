@@ -686,3 +686,104 @@ input[type="range"] {
   .public-locked .locked-route-copy .button-row .button:first-child { flex: 1 1 100%; }
   .locked-route-consequence { max-width: none; padding-block: 0.72rem; }
 }
+
+/* ------------------------------------------------------------------ *
+ * State-feedback remediation (audit 04 FINDING-005, phase-3 C-02).     *
+ * Un-layered on purpose: this sheet is the final remediation layer,    *
+ * so these hovers outrank both @layer axiom-base and earlier fixes.    *
+ * Every rule here gives a previously dead control a visible hover;     *
+ * focus-visible stays on the global copper outline (index.css).        *
+ * ------------------------------------------------------------------ */
+
+/* 10. Sidebar account button (base-layer .account never had a hover). */
+.account:hover { background: rgba(210, 139, 82, 0.08); border-radius: 7px; }
+
+/* 2. Inline copy icon buttons (agent/storage/transactions). */
+.inline-copy { border-radius: 6px; transition: background 0.16s var(--ease), color 0.16s var(--ease); }
+.inline-copy:hover { color: var(--copper-bright); background: rgba(210, 139, 82, 0.12); }
+
+/* 3. Settings toggle rows (full-row targets). */
+.settings-toggle-control { transition: background 0.16s var(--ease); }
+.settings-toggle-control:hover { background: rgba(210, 139, 82, 0.06); }
+
+/* 4. Priority-strip "Why now" disclosure trigger. */
+.priority-why { transition: color 0.16s var(--ease); }
+.priority-why:hover { color: var(--copper-bright); }
+
+/* 5. Danger variant shipped without a state set (FINDING-003). */
+.button-danger { transition: background 0.16s var(--ease), border-color 0.16s var(--ease), color 0.16s var(--ease); }
+.button-danger:hover { background: rgba(240, 179, 107, 0.22); border-color: var(--warning); }
+
+/* 6. Disclosure summaries (settings cards + mobile disclosures). */
+.settings-disclosure > summary.panel-head,
+.mobile-disclosure > summary { cursor: pointer; transition: background 0.16s var(--ease); }
+.settings-disclosure > summary.panel-head:hover,
+.mobile-disclosure > summary:hover { background: rgba(210, 139, 82, 0.05); }
+
+/* 7. Recovery cell: keep the text shift, add a real surface change. */
+.ops-summary-recovery { transition: background 0.16s var(--ease); }
+.ops-summary-recovery:hover { background: rgba(210, 139, 82, 0.08); }
+
+/* 12. Rail re-open edge button. */
+.rail-reopen { transition: background 0.16s var(--ease); }
+.rail-reopen:hover { background: rgba(210, 139, 82, 0.16); }
+
+/* C-02 follow-through: the active filter fill (index.css @layer axiom-base
+   `.filter.active { background: var(--panel) }`) is additionally beaten by
+   the UN-layered `.filter { background: transparent }` in
+   axiom-completion.css — un-layered beats layered at any specificity.
+   Re-declare the fill un-layered (0,2,0) so it wins. */
+.filter.active { background: var(--panel); }
+
+/* 9. Selects: pointer cursor everywhere in the shell; border feedback on
+   class-styled selects (settings). The chat provider select is classed
+   below (.chat-inline-select). */
+.app-shell select { cursor: pointer; }
+.settings-select-row select { transition: border-color 0.16s var(--ease); }
+.settings-select-row select:hover { border-color: var(--copper); }
+
+/* 11. Composer checkboxes: theme the native box, pointer unless disabled. */
+.app-shell input[type="checkbox"] { accent-color: var(--copper); cursor: pointer; }
+.app-shell input[type="checkbox"]:disabled { cursor: not-allowed; }
+
+/* 1 + 8 + 9 (chat inline-style conversions): properties moved verbatim
+   from the inline styles in ChatPage.tsx; hover added on top. */
+.chat-tool-row {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 3px 0;
+  font: inherit;
+  font-size: var(--text-xs);
+  color: var(--text);
+  border-radius: 4px;
+  transition: background 0.16s var(--ease);
+}
+.chat-tool-row:hover { background: rgba(210, 139, 82, 0.08); }
+.chat-queue-remove {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--dim);
+  padding: 0;
+  font-family: inherit;
+  font-size: var(--text-xs);
+  line-height: 1;
+  transition: color 0.16s var(--ease);
+}
+.chat-queue-remove:hover { color: var(--danger); }
+.chat-inline-select {
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+  background: var(--c-bg);
+  color: var(--c-text);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  cursor: pointer;
+  transition: border-color 0.16s var(--ease);
+}
+.chat-inline-select:hover { border-color: var(--copper); }
