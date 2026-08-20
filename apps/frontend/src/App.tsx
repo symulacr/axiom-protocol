@@ -535,9 +535,14 @@ export function App(): ReactElement {
                     />
                   ) : location.pathname === "/staking" ? (
                     <StakingPage go={go} />
-                  ) : ["/mint", "/payment", "/transfer", "/tick"].includes(
-                      location.pathname,
-                    ) ? (
+                  ) : [
+                      "/mint",
+                      "/payment",
+                      "/transfer",
+                      "/tick",
+                      "/deposit",
+                      "/withdraw",
+                    ].includes(location.pathname) ? (
                     <FlowPage
                       kind={location.pathname.slice(1) as FlowKind}
                       state={state}

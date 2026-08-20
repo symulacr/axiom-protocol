@@ -116,6 +116,20 @@ const ROUTES: RouteDefinition[] = [
     label: "Run tick",
     shortcut: "Alt K",
   },
+  {
+    id: "deposit",
+    route: "deposit",
+    path: "/deposit",
+    label: "Deposit",
+    shortcut: "Alt D",
+  },
+  {
+    id: "withdraw",
+    route: "withdraw",
+    path: "/withdraw",
+    label: "Withdraw",
+    shortcut: "Alt W",
+  },
   { id: "settings", route: "settings", path: "/settings" },
   { id: "staking", route: "staking", path: "/staking" },
 ];
@@ -196,5 +210,12 @@ export function getCommandRouteItems() {
 }
 
 export function isOperationPath(path: string) {
-  return ["/mint", "/payment", "/transfer", "/tick"].includes(path);
+  return [
+    "/mint",
+    "/payment",
+    "/transfer",
+    "/tick",
+    "/deposit",
+    "/withdraw",
+  ].includes(path);
 }

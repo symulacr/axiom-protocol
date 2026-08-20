@@ -8,6 +8,8 @@
     transfer → useTransfer.prepare (challenge) + confirm (EIP-712 sign +
                ECIES-sealed finalize)
     tick     → useOrchestratorTick.tickStream (WS token frames → live stage)
+    deposit/withdraw → useVaultWrite (POST /v1/agents/:id/{deposit,withdraw}
+               encode relay → wallet sendTransaction; native 0G value)
   The OperationReviewSheet is the single confirm surface; "Simulate reject /
   timeout" stays dev-only and maps onto the real recoverable-error paths.
 */
@@ -46,6 +48,7 @@ import { useMintWizard } from "../hooks/useMintWizard.js";
 import { usePayment } from "../hooks/usePayment.js";
 import { useTransfer } from "../hooks/useTransfer.js";
 import { useOrchestratorTick } from "../hooks/useOrchestratorTick.js";
+import { useVaultWrite } from "../hooks/useVaultWrite.js";
 import {
   RECEIPT_CONFIRM_TIMEOUT_MS,
   waitForReceiptWithTimeout,
@@ -55,7 +58,9 @@ import {
   getAxiomPaymentProcessorAddress,
   getAxiomStrategyVaultAddress,
 } from "../abi/addresses.js";
+import { APP_CHAIN } from "../config/wagmi.js";
 import {
+  formatTokenAmount,
   humanizeError,
   truncateAddress,
   truncateHex,
@@ -118,6 +123,26 @@ export function FlowPage({
     ? `Agent #${selectedTokenId}`
     : "select an agent";
 
+  // C-07: vault flows ride the same draft/review/receipt machine; the write
+  // itself goes through the shared useVaultWrite encode relay (toasts off —
+  // this page owns the UX). Token unit comes from chain config, never a
+  // hardcoded literal.
+  const isVaultFlow = kind === "deposit" || kind === "withdraw";
+  const nativeSymbol = APP_CHAIN.nativeCurrency.symbol;
+  const nativeDecimals = APP_CHAIN.nativeCurrency.decimals;
+  const vaultTokenId = useMemo(() => {
+    if (!isVaultFlow || !/^\d+$/.test(selectedTokenId)) return 0n;
+    return BigInt(selectedTokenId);
+  }, [isVaultFlow, selectedTokenId]);
+  const vaultWrite = useVaultWrite(
+    kind === "withdraw" ? "withdraw" : "deposit",
+    vaultTokenId,
+    { toasts: false },
+  );
+  const vaultBalanceWei = isVaultFlow
+    ? vaultWrite.vaultData.depositsWei
+    : undefined;
+
   const [allowance, setAllowance] = useState<string | null>(null);
   const nonceRef = useRef<`0x${string}`>(freshNonceHex());
 
@@ -162,7 +187,8 @@ export function FlowPage({
     mint.busy ||
     payment.isPayLoading ||
     transfer.isLoading ||
-    tickHook.isStreaming;
+    tickHook.isStreaming ||
+    vaultWrite.isSubmitting;
 
   // Keep the wizard's name in sync with the persisted draft (mint derivation
   // keccak256(toHex(name)) must match the chat mint_agent derivation).
@@ -232,10 +258,20 @@ export function FlowPage({
   const validate = (): string | null => {
     const trimmed = draft.value.trim();
     if (
-      kind === "payment" &&
+      (kind === "payment" || isVaultFlow) &&
       (!Number.isFinite(Number(trimmed)) || Number(trimmed) <= 0)
     )
       return "Enter a positive amount.";
+    // Withdraw is bounded by the live vault balance when the read is
+    // available — the review sheet shows the resulting balance either way.
+    if (kind === "withdraw" && vaultBalanceWei !== undefined) {
+      try {
+        if (parseUnits(trimmed, nativeDecimals) > vaultBalanceWei)
+          return "Amount exceeds the vault balance.";
+      } catch {
+        return "Enter a valid amount.";
+      }
+    }
     if (kind === "mint" && (trimmed.length < 2 || trimmed.length > 80))
       return "Use 2–80 characters.";
     if (kind === "transfer" && !isAddress(trimmed))
@@ -416,6 +452,31 @@ export function FlowPage({
           type: "notice",
           notice: `Transfer submitted for agent #${selectedTokenId}. Proof receipt added.`,
         });
+      } else if (kind === "deposit" || kind === "withdraw") {
+        // Vault write through the shared encode relay; the receipt row and
+        // the draft's receipt phase ride the C-15 pipeline below.
+        const txHash = await vaultWrite.handleSubmit(draft.value.trim());
+        if (!txHash)
+          throw new Error("Connect a wallet to submit this operation.");
+        addReceipt({
+          id: txHash,
+          kind: kind === "deposit" ? "Vault deposit" : "Vault withdraw",
+          detail: `${draft.value.trim()} ${nativeSymbol} ${
+            kind === "deposit" ? "into" : "from"
+          } agent #${selectedTokenId}`,
+          hash: txHash,
+          age: "now",
+          state: "confirming",
+          route: `/${kind}`,
+          agent: selectedTokenId,
+        });
+        confirmOnChain(txHash);
+        dispatch({
+          type: "notice",
+          notice: `${
+            kind === "deposit" ? "Deposit" : "Withdrawal"
+          } submitted for agent #${selectedTokenId}. Receipt added to the Transaction Center.`,
+        });
       } else {
         const result = await tickHook.tickStream(
           {
@@ -486,7 +547,11 @@ export function FlowPage({
         ? ["Recipient challenge", "Signature boundary", "Receipt indexed"]
         : kind === "mint"
           ? ["Metadata hash", "Oracle acknowledgement", "Receipt indexed"]
-          : ["Bounded instruction", "Provider route", "Event indexed"];
+          : kind === "deposit"
+            ? ["Amount + balance", "Wallet boundary", "Receipt indexed"]
+            : kind === "withdraw"
+              ? ["Balance checked", "Wallet boundary", "Receipt indexed"]
+              : ["Bounded instruction", "Provider route", "Event indexed"];
 
   // C-15: the receipt panel derives from the LIVE tx row, not static copy —
   // "confirmed" is only ever rendered after the chain says so. A persisted
@@ -557,6 +622,35 @@ export function FlowPage({
     () => agents.map((agent) => agent.tokenId.toString()),
     [agents],
   );
+
+  // C-07: resulting-balance estimate for the vault review sheet — cheap
+  // because the vault read is already live on this page.
+  const balanceFact = useMemo(() => {
+    if (!isVaultFlow || vaultBalanceWei === undefined) return undefined;
+    try {
+      const amount = parseUnits(draft.value.trim() || "0", nativeDecimals);
+      const next =
+        kind === "deposit"
+          ? vaultBalanceWei + amount
+          : vaultBalanceWei - amount;
+      return {
+        dt: "Vault balance after",
+        dd:
+          next < 0n
+            ? "exceeds balance"
+            : `${formatTokenAmount(next, nativeDecimals)} ${nativeSymbol}`,
+      };
+    } catch {
+      return undefined;
+    }
+  }, [
+    isVaultFlow,
+    vaultBalanceWei,
+    draft.value,
+    kind,
+    nativeDecimals,
+    nativeSymbol,
+  ]);
 
   return (
     <div className={`ops-page flow-page flow-${kind}`}>
@@ -681,6 +775,26 @@ export function FlowPage({
                     : undefined
                 }
                 hint="Exact allowance is shown in review."
+              />
+            )}
+            {isVaultFlow && (
+              <Field
+                label="Amount"
+                value={draft.value}
+                onChange={updateValue}
+                required
+                maxLength={24}
+                suffix={nativeSymbol}
+                error={
+                  Number(draft.value) <= 0
+                    ? "Enter an amount above zero."
+                    : undefined
+                }
+                hint={
+                  kind === "withdraw" && vaultBalanceWei !== undefined
+                    ? `In vault: ${formatTokenAmount(vaultBalanceWei, nativeDecimals)} ${nativeSymbol}. The resulting balance appears in review.`
+                    : "The resulting vault balance appears in review."
+                }
               />
             )}
             {kind === "transfer" && (
@@ -831,7 +945,11 @@ export function FlowPage({
                 ? "Allowance before value."
                 : kind === "transfer"
                   ? "Challenge before finality."
-                  : "Stream before result."}
+                  : kind === "deposit"
+                    ? "Review before value moves."
+                    : kind === "withdraw"
+                      ? "Balance before withdrawal."
+                      : "Stream before result."}
           </h2>
           <ol className="passive-proof-timeline">
             {proofSteps.map((step, index) => (
@@ -878,6 +996,7 @@ export function FlowPage({
           busy={isBusy}
           confirmationLabel={confirmationLabel}
           approvalNeeded={paymentApprovalNeeded}
+          balanceFact={balanceFact}
           onClose={() =>
             dispatch({
               type: "set-draft-phase",

@@ -22,6 +22,9 @@ type Props = {
   /** Payment boundary 1: false when the live allowance already covers the
    *  amount (CTA relabeled — no wallet prompt fires on that click). */
   approvalNeeded?: boolean;
+  /** C-07: vault flows show the resulting-balance estimate as an extra fact
+   *  row (cheap — the vault read is already live on the flow page). */
+  balanceFact?: { dt: string; dd: string };
 };
 
 const labels: Record<FlowKind, { consequence: string; proof: string }> = {
@@ -41,6 +44,14 @@ const labels: Record<FlowKind, { consequence: string; proof: string }> = {
     consequence: "Launch one cancellable, bounded instruction.",
     proof: "Records the provider route and execution evidence.",
   },
+  deposit: {
+    consequence: "Move the reviewed amount into this agent's vault.",
+    proof: "Encodes via the vault relay; value equals the reviewed amount.",
+  },
+  withdraw: {
+    consequence: "Move the reviewed amount out of this agent's vault.",
+    proof: "Encodes via the vault relay; the remaining balance is shown above.",
+  },
 };
 
 export function OperationReviewSheet({
@@ -53,6 +64,7 @@ export function OperationReviewSheet({
   busy,
   confirmationLabel,
   approvalNeeded,
+  balanceFact,
 }: Props) {
   const details = labels[kind];
   const paymentNeedsApproval =
@@ -113,7 +125,7 @@ export function OperationReviewSheet({
           </div>
           <div>
             <dt>
-              {kind === "payment"
+              {kind === "payment" || kind === "deposit" || kind === "withdraw"
                 ? "Amount"
                 : kind === "transfer"
                   ? "Recipient"
@@ -123,6 +135,12 @@ export function OperationReviewSheet({
             </dt>
             <dd className="mono">{draft.value}</dd>
           </div>
+          {balanceFact && (
+            <div>
+              <dt>{balanceFact.dt}</dt>
+              <dd className="mono">{balanceFact.dd}</dd>
+            </div>
+          )}
           <div>
             <dt>Network</dt>
             <dd>0G · chain {APP_CHAIN_ID}</dd>

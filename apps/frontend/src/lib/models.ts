@@ -27,8 +27,11 @@ export type Route =
   | "payment"
   | "transfer"
   | "tick"
+  | "deposit"
+  | "withdraw"
   | "not-found";
-export type FlowKind = "mint" | "payment" | "transfer" | "tick";
+export type FlowKind =
+  "mint" | "payment" | "transfer" | "tick" | "deposit" | "withdraw";
 export type TxState =
   | "ready"
   | "approval"

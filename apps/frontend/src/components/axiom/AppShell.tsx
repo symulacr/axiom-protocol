@@ -27,6 +27,7 @@ import {
   Settings2,
   ShieldCheck,
   Sparkles,
+  UploadCloud,
   Wallet,
   X,
 } from "./icons.js";
@@ -138,6 +139,18 @@ function Sidebar({
       label: "Tick",
       icon: <Play size={14} />,
       active: route === "tick",
+    },
+    {
+      path: "/deposit",
+      label: "Deposit",
+      icon: <Wallet size={14} />,
+      active: route === "deposit",
+    },
+    {
+      path: "/withdraw",
+      label: "Withdraw",
+      icon: <UploadCloud size={14} />,
+      active: route === "withdraw",
     },
   ];
   const resizeWithKeyboard = (event: React.KeyboardEvent<HTMLDivElement>) => {

@@ -5,7 +5,8 @@
  */
 
 export type Locale = "en" | "fr" | "de";
-export type CopyFlow = "mint" | "payment" | "transfer" | "tick";
+export type CopyFlow =
+  "mint" | "payment" | "transfer" | "tick" | "deposit" | "withdraw";
 
 export type Copy = {
   localeName: string;
@@ -206,6 +207,8 @@ export type Copy = {
     commandSafeAction: string;
     chooseBoundedOperation: string;
     fundAgent: string;
+    depositFunds: string;
+    withdrawFunds: string;
     transferProof: string;
     queueTick: string;
     tickQueuedNotice: string;
@@ -497,6 +500,30 @@ const english: Copy = {
         "Event / recovery",
       ],
     },
+    deposit: {
+      eyebrow: "VAULT / DEPOSIT ROUTE",
+      title: "Deposit into the vault",
+      copy: "Amount → review → wallet boundary → on-chain receipt. The vault balance stays visible before value moves.",
+      steps: [
+        "Amount + agent",
+        "Review sheet",
+        "Wallet signature",
+        "Vault deposit",
+        "Receipt indexed",
+      ],
+    },
+    withdraw: {
+      eyebrow: "VAULT / WITHDRAW ROUTE",
+      title: "Withdraw from the vault",
+      copy: "Amount → review → wallet boundary → on-chain receipt. The remaining balance is shown before you sign.",
+      steps: [
+        "Amount + agent",
+        "Review sheet",
+        "Wallet signature",
+        "Vault withdraw",
+        "Receipt indexed",
+      ],
+    },
   },
   flowUi: {
     openTransactions: "Open transaction center",
@@ -541,6 +568,8 @@ const english: Copy = {
     commandSafeAction: "COMMAND / SAFE ACTION",
     chooseBoundedOperation: "Choose a bounded operation.",
     fundAgent: "Fund agent",
+    depositFunds: "Deposit to vault",
+    withdrawFunds: "Withdraw from vault",
     transferProof: "Transfer proof",
     queueTick: "Queue tick",
     tickQueuedNotice: "Tick request queued in the shared prototype store.",
@@ -847,6 +876,30 @@ const french: Copy = {
         "Événement / récupération",
       ],
     },
+    deposit: {
+      eyebrow: "VAULT / ROUTE DE DÉPÔT",
+      title: "Déposer dans le vault",
+      copy: "Montant → revue → limite wallet → reçu on-chain. Le solde du vault reste visible avant le transfert.",
+      steps: [
+        "Montant + agent",
+        "Fiche de revue",
+        "Signature wallet",
+        "Dépôt vault",
+        "Reçu indexé",
+      ],
+    },
+    withdraw: {
+      eyebrow: "VAULT / ROUTE DE RETRAIT",
+      title: "Retirer du vault",
+      copy: "Montant → revue → limite wallet → reçu on-chain. Le solde restant est affiché avant la signature.",
+      steps: [
+        "Montant + agent",
+        "Fiche de revue",
+        "Signature wallet",
+        "Retrait vault",
+        "Reçu indexé",
+      ],
+    },
   },
   flowUi: {
     openTransactions: "Ouvrir le centre transactionnel",
@@ -891,6 +944,8 @@ const french: Copy = {
     commandSafeAction: "COMMANDE / ACTION SÛRE",
     chooseBoundedOperation: "Choisissez une opération bornée.",
     fundAgent: "Financer l’agent",
+    depositFunds: "Déposer dans le vault",
+    withdrawFunds: "Retirer du vault",
     transferProof: "Transférer la preuve",
     queueTick: "Mettre le tick en file",
     tickQueuedNotice:
@@ -1199,6 +1254,30 @@ const german: Copy = {
         "Ereignis / Recovery",
       ],
     },
+    deposit: {
+      eyebrow: "VAULT / EINZAHLUNGSROUTE",
+      title: "In den Vault einzahlen",
+      copy: "Betrag → Prüfung → Wallet-Grenze → On-Chain-Beleg. Der Vault-Stand bleibt sichtbar, bevor Wert fließt.",
+      steps: [
+        "Betrag + Agent",
+        "Prüfblatt",
+        "Wallet-Signatur",
+        "Vault-Einzahlung",
+        "Beleg indexiert",
+      ],
+    },
+    withdraw: {
+      eyebrow: "VAULT / AUSZAHLUNGSROUTE",
+      title: "Aus dem Vault auszahlen",
+      copy: "Betrag → Prüfung → Wallet-Grenze → On-Chain-Beleg. Der Reststand wird vor dem Signieren gezeigt.",
+      steps: [
+        "Betrag + Agent",
+        "Prüfblatt",
+        "Wallet-Signatur",
+        "Vault-Auszahlung",
+        "Beleg indexiert",
+      ],
+    },
   },
   flowUi: {
     openTransactions: "Transaktionszentrum öffnen",
@@ -1243,6 +1322,8 @@ const german: Copy = {
     commandSafeAction: "BEFEHL / SICHERE AKTION",
     chooseBoundedOperation: "Wähle eine begrenzte Operation.",
     fundAgent: "Agent finanzieren",
+    depositFunds: "In Vault einzahlen",
+    withdrawFunds: "Aus Vault auszahlen",
     transferProof: "Nachweis übertragen",
     queueTick: "Tick einreihen",
     tickQueuedNotice:

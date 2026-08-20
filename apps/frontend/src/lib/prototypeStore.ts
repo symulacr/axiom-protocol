@@ -164,7 +164,16 @@ const draftValue = (kind: FlowKind) =>
 export const defaultOperationState: OperationState = {
   pendingIntent: null,
   operationDrafts: Object.fromEntries(
-    (["mint", "payment", "transfer", "tick"] as FlowKind[]).map((kind) => [
+    (
+      [
+        "mint",
+        "payment",
+        "transfer",
+        "tick",
+        "deposit",
+        "withdraw",
+      ] as FlowKind[]
+    ).map((kind) => [
       kind,
       {
         kind,

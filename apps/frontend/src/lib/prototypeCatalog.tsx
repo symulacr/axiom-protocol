@@ -1,6 +1,13 @@
 /* Flow + locked-route metadata ported from the v2 mockup (fixture agent list
  * removed — the register is live via useAgents/usePortfolio). */
-import { Bot, CreditCard, Play, ShieldCheck } from "../components/axiom/icons";
+import {
+  Bot,
+  CreditCard,
+  Play,
+  ShieldCheck,
+  UploadCloud,
+  Wallet,
+} from "../components/axiom/icons";
 import type { FlowKind } from "./models";
 import { MEDIA } from "./media";
 
@@ -51,6 +58,24 @@ export const flowMeta: Record<
     artifact: "STREAM / RECOVERY",
     steps: ["Review intent", "Run + receipt"],
     icon: <Play size={18} />,
+  },
+  deposit: {
+    eyebrow: "VAULT / DEPOSIT ROUTE",
+    title: "Deposit into the vault",
+    copy: "Review the exact amount and the resulting vault balance, then sign the deposit and receipt boundary together.",
+    media: MEDIA.payment,
+    artifact: "VAULT / VALUE",
+    steps: ["Review amount", "Sign + receipt"],
+    icon: <Wallet size={18} />,
+  },
+  withdraw: {
+    eyebrow: "VAULT / WITHDRAW ROUTE",
+    title: "Withdraw from the vault",
+    copy: "Review the exact amount and the remaining vault balance, then sign the withdrawal and receipt boundary together.",
+    media: MEDIA.transfer,
+    artifact: "VAULT / BALANCE",
+    steps: ["Review amount", "Sign + receipt"],
+    icon: <UploadCloud size={18} />,
   },
 };
 

@@ -17,6 +17,8 @@ import {
   Database,
   Play,
   ShieldCheck,
+  UploadCloud,
+  Wallet,
   X,
   Zap,
 } from "../components/axiom/icons.js";
@@ -308,6 +310,20 @@ export function AgentPage({
                 icon={<ShieldCheck size={15} />}
               >
                 {agentCopy.transferProof}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => go(`/deposit?agent=${tokenId.toString()}`)}
+                icon={<Wallet size={15} />}
+              >
+                {agentCopy.depositFunds}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => go(`/withdraw?agent=${tokenId.toString()}`)}
+                icon={<UploadCloud size={15} />}
+              >
+                {agentCopy.withdrawFunds}
               </Button>
               <Button
                 variant="ghost"
