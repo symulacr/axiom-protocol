@@ -13,7 +13,7 @@
 */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAccount, useChainId, usePublicClient } from "wagmi";
-import { erc20Abi, isAddress } from "viem";
+import { erc20Abi, isAddress, parseUnits } from "viem";
 import {
   AlertTriangle,
   ArrowRight,
@@ -46,6 +46,10 @@ import { useMintWizard } from "../hooks/useMintWizard.js";
 import { usePayment } from "../hooks/usePayment.js";
 import { useTransfer } from "../hooks/useTransfer.js";
 import { useOrchestratorTick } from "../hooks/useOrchestratorTick.js";
+import {
+  RECEIPT_CONFIRM_TIMEOUT_MS,
+  waitForReceiptWithTimeout,
+} from "../hooks/useReceiptReconcile.js";
 import {
   getAxiomAgentNftAddress,
   getAxiomPaymentProcessorAddress,
@@ -264,15 +268,24 @@ export function FlowPage({
   };
 
   const addReceipt = (tx: Omit<Transaction, "icon">) => {
-    dispatch({ type: "add-tx", tx: { ...tx, icon: meta.icon } });
+    dispatch({
+      type: "add-tx",
+      tx: { ...tx, createdAt: Date.now(), icon: meta.icon },
+    });
   };
 
+  // C-15: bounded confirmation wait — a dropped/replaced tx must surface as
+  // "stale" (check explorer) after the timeout instead of polling forever,
+  // and a reverted receipt (status 0) is "reverted", never "confirmed".
   const confirmOnChain = (hash: `0x${string}` | undefined) => {
     if (!hash || !publicClient || hash === "0x") return;
-    void publicClient
-      .waitForTransactionReceipt({ hash })
-      .then(() =>
-        dispatch({ type: "tx-state", txId: hash, txState: "confirmed" }),
+    void waitForReceiptWithTimeout(publicClient, hash)
+      .then((receipt) =>
+        dispatch({
+          type: "tx-state",
+          txId: hash,
+          txState: receipt.status === "success" ? "confirmed" : "reverted",
+        }),
       )
       .catch(() =>
         dispatch({ type: "tx-state", txId: hash, txState: "stale" }),
@@ -281,13 +294,56 @@ export function FlowPage({
 
   const execute = async () => {
     if (isBusy) return;
-    // Payment boundary 1: allowance reviewed → advance to the pay boundary.
+    // Payment boundary 1 is a REAL wallet boundary: send the exact-amount
+    // ERC-20 approve when the current allowance does not cover the reviewed
+    // amount; when it already does, advance with an explicit no-op notice.
     if (kind === "payment" && draft.phase === "approval-required") {
       dispatch({
         type: "set-draft-phase",
         flow: kind,
-        phase: "payment-required",
+        phase: "submitting",
+        error: null,
       });
+      try {
+        const { approveHash } = await payment.approveExactAllowance(
+          draft.value.trim(),
+        );
+        if (approveHash) {
+          addReceipt({
+            id: approveHash,
+            kind: "Allowance approval",
+            detail: `${draft.value.trim()} USDC → exact allowance (boundary 1)`,
+            hash: approveHash,
+            age: "now",
+            state: "confirming",
+            route: "/payment",
+            agent: selectedTokenId,
+            opensReceipt: false,
+          });
+          confirmOnChain(approveHash);
+        }
+        dispatch({
+          type: "set-draft-phase",
+          flow: kind,
+          phase: "payment-required",
+          error: null,
+        });
+        dispatch({
+          type: "notice",
+          notice: approveHash
+            ? "Exact allowance approved on-chain. Boundary 2: sign the payment."
+            : "Allowance already covers this amount — no approval transaction needed.",
+        });
+      } catch (err) {
+        const message = humanizeError(err);
+        dispatch({
+          type: "set-draft-phase",
+          flow: kind,
+          phase: "recoverable-error",
+          error: message,
+        });
+        dispatch({ type: "notice", notice: message });
+      }
       return;
     }
     dispatch({
@@ -432,6 +488,71 @@ export function FlowPage({
           ? ["Metadata hash", "Oracle acknowledgement", "Receipt indexed"]
           : ["Bounded instruction", "Provider route", "Event indexed"];
 
+  // C-15: the receipt panel derives from the LIVE tx row, not static copy —
+  // "confirmed" is only ever rendered after the chain says so. A persisted
+  // draft whose row aged out of storage falls back to "stale" (unknown —
+  // check explorer), never to a resurrected "confirming".
+  const receiptTx = draft.receiptId
+    ? state.transactions.find((tx) => tx.id === draft.receiptId)
+    : undefined;
+  const receiptState: TxState =
+    draft.phase === "receipt"
+      ? (receiptTx?.state ?? "stale")
+      : (receiptTx?.state ?? "confirming");
+  const receiptHeading =
+    receiptState === "confirmed"
+      ? "Receipt ready."
+      : receiptState === "reverted"
+        ? "Reverted on-chain."
+        : receiptState === "stale"
+          ? "Confirmation unknown."
+          : "Submitted — confirming…";
+  const receiptOverlay =
+    receiptState === "confirmed"
+      ? "Receipt indexed"
+      : receiptState === "reverted"
+        ? "Reverted"
+        : receiptState === "stale"
+          ? "Check explorer"
+          : "Confirming on-chain";
+  const receiptBody =
+    receiptState === "confirmed"
+      ? "Proof and event indexed in the Transaction Center."
+      : receiptState === "reverted"
+        ? "Reverted on-chain — the Transaction Center row has recovery."
+        : receiptState === "stale"
+          ? `No confirmation after ${Math.round(RECEIPT_CONFIRM_TIMEOUT_MS / 1000)}s — check the explorer; the row is marked Needs review.`
+          : "Submitted — awaiting on-chain confirmation.";
+  const proofReady = (index: number) =>
+    draft.phase === "receipt"
+      ? index < 2 || receiptState === "confirmed"
+      : isReviewOpen && index < 2;
+
+  // FINDING-009: the sheet's Boundary fact row must match the number of
+  // wallet prompts the click path actually produces. Boundary 1 sends the
+  // approve tx when the live allowance is short (→ 2 prompts total);
+  // otherwise the pay boundary is the only prompt (→ 1).
+  const paymentApprovalNeeded = useMemo(() => {
+    if (kind !== "payment" || draft.phase !== "approval-required")
+      return undefined;
+    if (allowance === null) return undefined;
+    try {
+      return BigInt(allowance) < parseUnits(draft.value.trim() || "0", 6);
+    } catch {
+      return undefined;
+    }
+  }, [kind, draft.phase, allowance, draft.value]);
+  const confirmationLabel =
+    kind !== "payment"
+      ? undefined
+      : draft.phase === "payment-required"
+        ? "1 wallet confirmation required"
+        : paymentApprovalNeeded === undefined
+          ? "Up to 2 wallet confirmations (checking allowance…)"
+          : paymentApprovalNeeded
+            ? "2 wallet confirmations required (approve, then pay)"
+            : "1 wallet confirmation required (allowance sufficient)";
+
   const agentOptions = useMemo(
     () => agents.map((agent) => agent.tokenId.toString()),
     [agents],
@@ -473,11 +594,17 @@ export function FlowPage({
               <span className="eyebrow">EDIT · REVIEW · RECEIPT</span>
               <h2>
                 {draft.phase === "receipt"
-                  ? "Receipt ready."
+                  ? receiptHeading
                   : "Review before you act."}
               </h2>
             </div>
-            <StatePill state={phaseState[draft.phase]} />
+            <StatePill
+              state={
+                draft.phase === "receipt"
+                  ? receiptState
+                  : phaseState[draft.phase]
+              }
+            />
           </div>
           <div className="flow-visual">
             <img src={meta.media} alt={`${kind} operational artifact`} />
@@ -485,7 +612,7 @@ export function FlowPage({
               <span className="eyebrow">{meta.artifact}</span>
               <strong>
                 {draft.phase === "receipt"
-                  ? "Receipt indexed"
+                  ? receiptOverlay
                   : isReviewOpen
                     ? "Review open"
                     : "Details editable"}
@@ -618,13 +745,20 @@ export function FlowPage({
           {draft.phase === "receipt" ? (
             <div className="operation-receipt">
               <div>
-                <CircleCheck size={17} />
+                {receiptState === "confirmed" ? (
+                  <CircleCheck size={17} />
+                ) : receiptState === "reverted" || receiptState === "stale" ? (
+                  <AlertTriangle size={17} />
+                ) : (
+                  <Timer size={17} />
+                )}
                 <div>
-                  <span className="eyebrow">RECEIPT / CONFIRMED</span>
+                  <span className="eyebrow">
+                    RECEIPT /{" "}
+                    {(copy.status[receiptState] ?? receiptState).toUpperCase()}
+                  </span>
                   <strong>{truncateHex(draft.receiptId || "", 12, 8)}</strong>
-                  <small>
-                    Proof and event indexed in the Transaction Center.
-                  </small>
+                  <small>{receiptBody}</small>
                 </div>
               </div>
               <div>
@@ -701,14 +835,7 @@ export function FlowPage({
           </h2>
           <ol className="passive-proof-timeline">
             {proofSteps.map((step, index) => (
-              <li
-                key={step}
-                className={
-                  draft.phase === "receipt" || (isReviewOpen && index < 2)
-                    ? "is-ready"
-                    : ""
-                }
-              >
+              <li key={step} className={proofReady(index) ? "is-ready" : ""}>
                 <span aria-hidden="true" />
                 <div>
                   <strong>{step}</strong>
@@ -716,9 +843,7 @@ export function FlowPage({
                     {index === 1 ? "Wallet boundary" : "Observed automatically"}
                   </small>
                 </div>
-                {draft.phase === "receipt" || (isReviewOpen && index < 2) ? (
-                  <Check size={14} />
-                ) : null}
+                {proofReady(index) ? <Check size={14} /> : null}
               </li>
             ))}
           </ol>
@@ -751,6 +876,8 @@ export function FlowPage({
               : selectedAgentName
           }
           busy={isBusy}
+          confirmationLabel={confirmationLabel}
+          approvalNeeded={paymentApprovalNeeded}
           onClose={() =>
             dispatch({
               type: "set-draft-phase",

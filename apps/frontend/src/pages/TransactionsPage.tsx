@@ -68,6 +68,15 @@ function eventToTransaction(event: AxiomEvent): Transaction {
   };
 }
 
+/** C-15: local receipts persist across reload — derive their age from the
+ *  persisted creation time instead of resurrecting a frozen "now". */
+function transactionAge(tx: Transaction): string {
+  if (typeof tx.createdAt === "number") {
+    return `${Math.max(0, Math.round((Date.now() - tx.createdAt) / 60000))}m ago`;
+  }
+  return tx.age;
+}
+
 function ReceiptDrawer({
   tx,
   explorerTx,
@@ -414,7 +423,7 @@ export function TransactionsPage({
                 {truncateHex(tx.hash, 8, 4)}
                 <small>proof / indexed</small>
               </span>
-              <span className="mono transaction-age">{tx.age}</span>
+              <span className="mono transaction-age">{transactionAge(tx)}</span>
               <StatePill state={tx.state} />
               <ChevronRight size={15} />
             </button>

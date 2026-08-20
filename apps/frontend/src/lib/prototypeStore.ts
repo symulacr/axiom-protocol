@@ -17,6 +17,67 @@ import type {
   UiSettings,
 } from "./models";
 
+/** Serializable form of a local receipt row (icon is a ReactNode and is
+ *  rehydrated from flowMeta by route in uiStore). */
+export type PersistedTransaction = Omit<Transaction, "icon">;
+
+export const MAX_PERSISTED_TRANSACTIONS = 50;
+const TRANSACTION_TTL_MS = 1000 * 60 * 60 * 24 * 7;
+
+const KNOWN_TX_STATES: ReadonlySet<TxState> = new Set([
+  "ready",
+  "approval",
+  "signing",
+  "submitted",
+  "confirming",
+  "confirmed",
+  "reverted",
+  "rejected",
+  "stale",
+]);
+
+/** Validate persisted receipt rows: shape-checked, TTL'd (7d like drafts),
+ *  capped; an unrecognized state coerces to "stale" (unknown — check
+ *  explorer) rather than resurrecting a lie. */
+export function sanitizeTransactions(value: unknown): PersistedTransaction[] {
+  if (!Array.isArray(value)) return [];
+  const now = Date.now();
+  const out: PersistedTransaction[] = [];
+  for (const raw of value) {
+    const tx = raw as Partial<PersistedTransaction> | null;
+    if (
+      !tx ||
+      typeof tx.id !== "string" ||
+      typeof tx.hash !== "string" ||
+      typeof tx.kind !== "string" ||
+      typeof tx.route !== "string"
+    )
+      continue;
+    if (
+      typeof tx.createdAt === "number" &&
+      now - tx.createdAt > TRANSACTION_TTL_MS
+    )
+      continue;
+    const state: TxState = KNOWN_TX_STATES.has(tx.state as TxState)
+      ? (tx.state as TxState)
+      : "stale";
+    out.push({
+      id: tx.id,
+      kind: tx.kind,
+      detail: typeof tx.detail === "string" ? tx.detail : "",
+      hash: tx.hash,
+      age: typeof tx.age === "string" ? tx.age : "",
+      state,
+      route: tx.route,
+      agent: typeof tx.agent === "string" ? tx.agent : "",
+      ...(typeof tx.createdAt === "number" ? { createdAt: tx.createdAt } : {}),
+      ...(tx.opensReceipt === false ? { opensReceipt: false } : {}),
+    });
+    if (out.length >= MAX_PERSISTED_TRANSACTIONS) break;
+  }
+  return out;
+}
+
 export type PrototypeAction =
   | { type: "settings"; patch: Partial<UiSettings> }
   | { type: "session"; session: Partial<Session> }
@@ -66,6 +127,18 @@ export function readStored<T>(key: string, fallback: T): T {
     return value
       ? ({ ...(fallback as object), ...JSON.parse(value) } as T)
       : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+/** Array variant of readStored (the object merge above cannot hydrate lists). */
+export function readStoredList<T>(key: string, fallback: T[]): T[] {
+  try {
+    const value = localStorage.getItem(key);
+    if (!value) return fallback;
+    const parsed: unknown = JSON.parse(value);
+    return Array.isArray(parsed) ? (parsed as T[]) : fallback;
   } catch {
     return fallback;
   }
@@ -128,12 +201,13 @@ export function createInitialPrototypeState(
   settings = defaultSettings,
   session = defaultSession,
   operationState = defaultOperationState,
+  transactions: Transaction[] = [],
 ): AppState {
   const safeOperationState = sanitizeOperationState(operationState);
   return {
     settings,
     session,
-    transactions: [],
+    transactions,
     storage: "ready",
     guideOpen: false,
     notice: null,
@@ -151,22 +225,25 @@ export function prototypeReducer(
     return { ...state, session: { ...state.session, ...action.session } };
   if (action.type === "add-tx") {
     const flow = action.tx.route.slice(1) as FlowKind;
+    // Boundary-1 approve receipts (opensReceipt === false) must not flip the
+    // flow draft into its receipt phase — the sheet still has boundary 2.
+    const advanceDraft =
+      action.tx.opensReceipt !== false && flow in state.operationDrafts;
     return {
       ...state,
       transactions: [action.tx, ...state.transactions],
-      operationDrafts:
-        flow in state.operationDrafts
-          ? {
-              ...state.operationDrafts,
-              [flow]: {
-                ...state.operationDrafts[flow],
-                phase: "receipt",
-                error: null,
-                receiptId: action.tx.id,
-                updatedAt: Date.now(),
-              },
-            }
-          : state.operationDrafts,
+      operationDrafts: advanceDraft
+        ? {
+            ...state.operationDrafts,
+            [flow]: {
+              ...state.operationDrafts[flow],
+              phase: "receipt",
+              error: null,
+              receiptId: action.tx.id,
+              updatedAt: Date.now(),
+            },
+          }
+        : state.operationDrafts,
     };
   }
   if (action.type === "tx-state") {

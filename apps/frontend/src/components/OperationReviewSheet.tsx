@@ -16,6 +16,12 @@ type Props = {
   onRetry: () => void;
   onExecute: () => void;
   busy: boolean;
+  /** C-15: FlowPage computes the truthful wallet-prompt count from the live
+   *  allowance; when provided it replaces the static payment fact row. */
+  confirmationLabel?: string;
+  /** Payment boundary 1: false when the live allowance already covers the
+   *  amount (CTA relabeled — no wallet prompt fires on that click). */
+  approvalNeeded?: boolean;
 };
 
 const labels: Record<FlowKind, { consequence: string; proof: string }> = {
@@ -45,6 +51,8 @@ export function OperationReviewSheet({
   onRetry,
   onExecute,
   busy,
+  confirmationLabel,
+  approvalNeeded,
 }: Props) {
   const details = labels[kind];
   const paymentNeedsApproval =
@@ -56,14 +64,17 @@ export function OperationReviewSheet({
       ? "Restart approval review"
       : "Resume review"
     : paymentNeedsApproval
-      ? "Approve exact allowance"
+      ? approvalNeeded === false
+        ? "Continue to payment"
+        : "Approve exact allowance"
       : paymentReady
         ? `Pay ${draft.value} USDC`
         : "Sign & execute";
   const confirmationCount =
-    kind === "payment"
+    confirmationLabel ??
+    (kind === "payment"
       ? "2 wallet confirmations required"
-      : "1 wallet confirmation required";
+      : "1 wallet confirmation required");
   return createPortal(
     <div className="operation-review-layer" role="presentation">
       <section

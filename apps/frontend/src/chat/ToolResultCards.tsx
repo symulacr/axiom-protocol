@@ -89,7 +89,9 @@ export function EncodePreviewCard({
           fontSize: "var(--text-sm)",
         }}
       >
-        <strong style={{ color: COLORS.bronzeLight }}>Signed</strong>
+        <strong style={{ color: COLORS.bronzeLight }}>
+          Submitted — awaiting confirmation
+        </strong>
         <div
           style={{
             color: COLORS.textMuted,

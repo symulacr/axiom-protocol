@@ -36,6 +36,7 @@ import { ArrowRight, CircleCheck, X } from "./components/axiom/icons.js";
 import { ErrorBoundary } from "./components/ErrorBoundary.js";
 import { Spinner } from "./components/ui.js";
 import { ShellSidebarProvider } from "./hooks/useShellSidebar.js";
+import { useReceiptReconcile } from "./hooks/useReceiptReconcile.js";
 import { useUiStore } from "./lib/uiStore.js";
 import {
   KNOWN_PATHS,
@@ -373,6 +374,10 @@ export function App(): ReactElement {
     );
     return () => window.clearTimeout(timer);
   }, [state.notice, dispatch]);
+
+  // C-15: settle persisted receipts that were mid-confirmation at reload
+  // (mined → confirmed/reverted; timeout → stale/check-explorer).
+  useReceiptReconcile(state.transactions, dispatch);
 
   const go = useCallback(
     (next: string) => {

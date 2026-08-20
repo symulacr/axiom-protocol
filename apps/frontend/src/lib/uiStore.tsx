@@ -2,7 +2,9 @@
   UI store bridge — the v2 mockup's useReducer(prototypeReducer) lifted into a
   React context so route-level screens can dispatch without prop drilling
   through react-router. Persistence keys are unchanged from the mockup
-  (axiom-ui-settings / axiom-session / axiom-operation-state-v1).
+  (axiom-ui-settings / axiom-session / axiom-operation-state-v1), plus
+  axiom-transactions-v1 (C-15): local receipt rows persist as icon-less stubs
+  and rehydrate their icon from flowMeta by route, so receipts survive reload.
 */
 import {
   createContext,
@@ -17,12 +19,17 @@ import {
   defaultOperationState,
   defaultSession,
   defaultSettings,
+  MAX_PERSISTED_TRANSACTIONS,
   persist,
   prototypeReducer,
   readStored,
+  readStoredList,
+  sanitizeTransactions,
+  type PersistedTransaction,
   type PrototypeAction,
 } from "./prototypeStore";
-import type { AppState, Session } from "./models";
+import { flowMeta } from "./prototypeCatalog";
+import type { AppState, FlowKind, Session, Transaction } from "./models";
 
 type UiStoreValue = {
   state: AppState;
@@ -31,12 +38,24 @@ type UiStoreValue = {
 
 const UiStoreContext = createContext<UiStoreValue | null>(null);
 
+/** Rehydrate persisted receipt stubs: the icon is derived (never stored) from
+ *  the same flowMeta source addReceipt uses at creation time. */
+function hydrateTransactions(): Transaction[] {
+  return sanitizeTransactions(
+    readStoredList<PersistedTransaction>("axiom-transactions-v1", []),
+  ).map((tx) => ({
+    ...tx,
+    icon: flowMeta[tx.route.slice(1) as FlowKind]?.icon ?? null,
+  }));
+}
+
 export function UiStoreProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(prototypeReducer, undefined, () =>
     createInitialPrototypeState(
       readStored("axiom-ui-settings", defaultSettings),
       readStored<Session>("axiom-session", defaultSession),
       readStored("axiom-operation-state-v1", defaultOperationState),
+      hydrateTransactions(),
     ),
   );
 
@@ -53,6 +72,15 @@ export function UiStoreProvider({ children }: { children: ReactNode }) {
       }),
     [state.pendingIntent, state.operationDrafts],
   );
+  // Local receipts persist as icon-less stubs (newest-first, capped); the
+  // reconciler (useReceiptReconcile, mounted in App) settles any row still
+  // "confirming" at load against the chain with a confirmation timeout.
+  useEffect(() => {
+    const stubs: PersistedTransaction[] = state.transactions
+      .slice(0, MAX_PERSISTED_TRANSACTIONS)
+      .map(({ icon: _icon, ...stub }) => stub);
+    persist("axiom-transactions-v1", stubs);
+  }, [state.transactions]);
   useEffect(() => {
     document.documentElement.dataset.axiomReady = "true";
     return () => {

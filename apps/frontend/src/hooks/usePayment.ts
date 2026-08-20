@@ -9,6 +9,7 @@ import { toViemAbi } from "../lib/abi.js";
 const paymentProcessorAbi = toViemAbi(PAYMENT_PROCESSOR_ABI);
 const erc20Abi = toViemAbi(ERC20_ABI);
 import { getAxiomPaymentProcessorAddress } from "../abi/addresses.js";
+import { waitForReceiptWithTimeout } from "./useReceiptReconcile.js";
 import {
   agentEarningsPath,
   agentRoyaltyPath,
@@ -46,6 +47,9 @@ type RoyaltyResult = {
 
 type UsePaymentResult = {
   payForAgent: (tokenId: bigint, amount: string) => Promise<AgentPayResult>;
+  approveExactAllowance: (amount: string) => Promise<{
+    approveHash: `0x${string}` | null;
+  }>;
 
   getEarnings: (tokenId: bigint) => Promise<EarningsInfo>;
   setRoyalty: (tokenId: bigint, bps: number) => Promise<RoyaltyResult>;
@@ -103,7 +107,7 @@ export function usePayment(): UsePaymentResult {
               functionName: "approve",
               args: [processor, amountWei],
             });
-            await publicClient.waitForTransactionReceipt({ hash: approveHash });
+            await waitForReceiptWithTimeout(publicClient, approveHash);
           }
         }
         const txHash = await write({
@@ -123,6 +127,43 @@ export function usePayment(): UsePaymentResult {
       } catch (err) {
         setPayLoading(false);
         throw err;
+      }
+    },
+    [chainId, write, address, publicClient, getPaymentConfig],
+  );
+
+  /**
+   * Payment boundary 1 (C-15/FINDING-009): the REAL approve leg, split out of
+   * the bundled payForAgent so the review sheet's "Approve exact allowance"
+   * CTA actually prompts the wallet. Reads the live allowance; when it already
+   * covers the amount this is a truthful no-op (approveHash: null). Exact
+   * amount only — never MaxUint256 (mirrors backend ensureAllowance).
+   */
+  const approveExactAllowance = useCallback(
+    async (amount: string): Promise<{ approveHash: `0x${string}` | null }> => {
+      setPayLoading(true);
+      try {
+        if (!address || !publicClient) throw new Error("wallet not connected");
+        const processor = getAxiomPaymentProcessorAddress(chainId);
+        const amountWei = parseUnits(amount.trim(), 6);
+        const config = await getPaymentConfig();
+        const allowance = (await publicClient.readContract({
+          address: config.paymentToken,
+          abi: erc20Abi,
+          functionName: "allowance",
+          args: [address, processor],
+        })) as bigint;
+        if (allowance >= amountWei) return { approveHash: null };
+        const approveHash = await write({
+          to: config.paymentToken,
+          abi: erc20Abi,
+          functionName: "approve",
+          args: [processor, amountWei],
+        });
+        await waitForReceiptWithTimeout(publicClient, approveHash);
+        return { approveHash };
+      } finally {
+        setPayLoading(false);
       }
     },
     [chainId, write, address, publicClient, getPaymentConfig],
@@ -153,6 +194,7 @@ export function usePayment(): UsePaymentResult {
 
   return {
     payForAgent,
+    approveExactAllowance,
     getEarnings,
     setRoyalty,
     getPaymentConfig,
