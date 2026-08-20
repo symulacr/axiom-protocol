@@ -15,6 +15,7 @@ import type {
   ReactNode,
   TextareaHTMLAttributes,
 } from "react";
+import { APP_CHAIN } from "../config/wagmi.js";
 
 export const COLORS = {
   bg: "var(--c-bg)",
@@ -904,7 +905,7 @@ export function ConnectedGuard({
             fontSize: "var(--text-sm)",
           }}
         >
-          Connect wallet (0G Aristotle) to mint, fund, and tick.
+          Connect wallet ({APP_CHAIN.name}) to mint, fund, and tick.
         </p>
         <React.Suspense fallback={<Spinner />}>
           <LazyConnectButton />

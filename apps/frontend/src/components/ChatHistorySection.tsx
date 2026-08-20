@@ -1,5 +1,6 @@
 import { useMemo, useState, type ReactElement } from "react";
 import { useThreads, type ChatThread } from "../hooks/useThreads.js";
+import type { Copy } from "../lib/copy.js";
 
 interface ChatHistorySectionProps {
   activeThreadId: string | null;
@@ -17,6 +18,8 @@ interface ChatHistorySectionProps {
    *  needs. Hidden once requested (or when no wallet is connected). */
   serverRestore?: boolean;
   onRequestServerHistory?: () => void;
+  /** Localized rail labels (C-11 — the rail was English-only in fr/de). */
+  copy: Copy["chat"];
 }
 
 /** Thread list rendered inside the shell sidebar on chat routes (the merged,
@@ -32,6 +35,7 @@ export function ChatHistorySection({
   serverLoading = false,
   serverRestore = false,
   onRequestServerHistory,
+  copy,
 }: ChatHistorySectionProps): ReactElement {
   const localThreads = useThreads();
   const [search, setSearch] = useState("");
@@ -65,27 +69,27 @@ export function ChatHistorySection({
   return (
     <div className="chat-history">
       <div className="chat-history__head">
-        <h2 className="chat-history__title">Chats</h2>
+        <h2 className="chat-history__title">{copy.historyTitle}</h2>
         <button
           type="button"
           className="chat-history__new"
           onClick={onNew}
           data-axiom-btn=""
         >
-          New
+          {copy.historyNew}
         </button>
       </div>
       <input
-        aria-label="Search chats"
+        aria-label={copy.historySearch}
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        placeholder="Search chats…"
+        placeholder={copy.historySearch}
         className="chat-history__search"
       />
       <div className="chat-history__list" aria-live="polite">
         {filtered.length === 0 ? (
           <p className="chat-history__empty">
-            {search ? "No matching chats." : "No history yet. Send a message."}
+            {search ? copy.historyNoMatch : copy.historyEmpty}
           </p>
         ) : (
           filtered.map((t) => (
@@ -109,7 +113,7 @@ export function ChatHistorySection({
               <button
                 type="button"
                 className="chat-history__delete"
-                aria-label={`Delete chat: ${t.title}`}
+                aria-label={copy.historyDelete(t.title)}
                 onClick={() => onDelete(t.id)}
               >
                 ✕
@@ -118,16 +122,16 @@ export function ChatHistorySection({
           ))
         )}
         {serverLoading && (
-          <p className="chat-history__empty">Loading server history…</p>
+          <p className="chat-history__empty">{copy.historyLoading}</p>
         )}
         {serverRestore && !serverLoading ? (
           <button
             type="button"
             className="chat-history__restore"
             onClick={onRequestServerHistory}
-            title="Sign a wallet message to load this wallet's server-saved transcripts. No transaction is sent."
+            title={copy.historyRestoreHint}
           >
-            Restore server history
+            {copy.historyRestore}
           </button>
         ) : null}
       </div>

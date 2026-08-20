@@ -82,40 +82,52 @@ export function SettingsPage({
   const rpc = APP_CHAIN.rpcUrls.default.http[0] ?? "https://evmrpc.0g.ai";
   const walletRows: [string, string, string][] = [
     [
-      "Wallet",
+      labels.rowWallet,
       address
-        ? `${state.session.profile || "operator"} / ${address}`
-        : "not connected",
-      address ? "Connected" : "Offline",
+        ? `${state.session.profile || copy.topbar.operator} / ${address}`
+        : copy.topbar.notConnected,
+      address ? labels.statusConnected : labels.statusOffline,
     ],
     [
-      "Chain",
+      labels.rowChain,
       `${APP_CHAIN.name} / ${APP_CHAIN_ID}`,
-      chainId === APP_CHAIN_ID ? "Selected" : "Mismatch",
+      chainId === APP_CHAIN_ID ? labels.statusSelected : labels.statusMismatch,
     ],
-    ["RPC", rpc, health?.ok ? "oracle live" : "checking"],
     [
-      "Connector",
+      labels.rowRpc,
+      rpc,
+      health?.ok ? copy.topbar.oracleLive : labels.statusChecking,
+    ],
+    [
+      labels.rowConnector,
       connector?.name ?? state.session.wallet ?? "—",
-      address ? "Ready" : "—",
+      address ? labels.statusReady : "—",
     ],
     [
-      "API",
+      labels.rowApi,
       BACKEND_URL.replace(/^https?:\/\//, ""),
-      health?.ok ? "online" : "offline",
+      health?.ok ? labels.statusOnline : labels.statusOffline,
     ],
   ];
+  // Status-pill tones key off the semantic kind, not the localized label.
+  const toneFor = (status: string) =>
+    status === labels.statusSelected ||
+    status === labels.statusConnected ||
+    status === labels.statusOnline ||
+    status === copy.topbar.oracleLive
+      ? "success"
+      : "live";
 
   return (
     <div className="ops-page settings-page">
       <div className="page-head">
         <div>
-          <span className="eyebrow">CONTROL PLANE / CONFIGURATION</span>
-          <h1>Settings</h1>
+          <span className="eyebrow">{labels.pageEyebrow}</span>
+          <h1>{labels.pageTitle}</h1>
           <p>{labels.languageHint}</p>
         </div>
         <Status
-          label={address ? "live wallet" : labels.localFixture}
+          label={address ? labels.liveWallet : labels.localFixture}
           tone={address ? "success" : "muted"}
         />
       </div>
@@ -130,17 +142,7 @@ export function SettingsPage({
             <div className="settings-row" key={label}>
               <span>{label}</span>
               <strong>{value}</strong>
-              <Status
-                label={status}
-                tone={
-                  status === "Selected" ||
-                  status === "Connected" ||
-                  status === "online" ||
-                  status === "oracle live"
-                    ? "success"
-                    : "live"
-                }
-              />
+              <Status label={status} tone={toneFor(status)} />
             </div>
           ))}
         </SettingsDisclosure>
@@ -240,8 +242,8 @@ export function SettingsPage({
                   })
                 }
               >
-                <option value="calm">Calm</option>
-                <option value="dense">Dense</option>
+                <option value="calm">{labels.densityCalm}</option>
+                <option value="dense">{labels.densityDense}</option>
               </select>
             </label>
             <label>
@@ -255,8 +257,8 @@ export function SettingsPage({
                   })
                 }
               >
-                <option value="ltr">LTR / left to right</option>
-                <option value="rtl">RTL / right to left</option>
+                <option value="ltr">{labels.directionLtr}</option>
+                <option value="rtl">{labels.directionRtl}</option>
               </select>
             </label>
             <label>
@@ -279,27 +281,24 @@ export function SettingsPage({
           </div>
           <div className="shortcut-map">
             <div>
-              <span className="eyebrow">COMMAND CENTER</span>
+              <span className="eyebrow">{labels.shortcutEyebrow}</span>
               <strong>
-                <Keyboard size={15} /> Keyboard map
+                <Keyboard size={15} /> {labels.shortcutTitle}
               </strong>
-              <small>
-                Fast paths remain visible; they never bypass wallet, network or
-                signature boundaries.
-              </small>
+              <small>{labels.shortcutHint}</small>
             </div>
             <dl>
               <div>
                 <dt>Ctrl / ⌘ K</dt>
-                <dd>Find actions, agents, receipts and routes</dd>
+                <dd>{labels.shortcutPalette}</dd>
               </div>
               <div>
                 <dt>Alt 1–5</dt>
-                <dd>Open core command surfaces</dd>
+                <dd>{labels.shortcutSurfaces}</dd>
               </div>
               <div>
                 <dt>Alt M / P / T / K</dt>
-                <dd>Open execution flows</dd>
+                <dd>{labels.shortcutFlows}</dd>
               </div>
             </dl>
           </div>
@@ -317,10 +316,7 @@ export function SettingsPage({
 
       <div className="diagnostic-note">
         <ShieldCheck size={15} />
-        <span>
-          Session, chain, RPC and preference state are visible before any action
-          is taken.
-        </span>
+        <span>{labels.diagnosticNote}</span>
       </div>
       <div className="settings-footer-actions settings-destructive-actions">
         <Button

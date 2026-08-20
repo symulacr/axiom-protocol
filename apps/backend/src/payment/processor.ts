@@ -29,6 +29,8 @@ type ERC20Methods = {
   allowance(owner: string, spender: string): Promise<bigint>;
   approve(spender: string, amount: bigint): Promise<TransactionResponse>;
   balanceOf(account: string): Promise<bigint>;
+  symbol(): Promise<string>;
+  decimals(): Promise<bigint>;
 };
 
 export interface PaymentConfig {
@@ -102,15 +104,34 @@ export class PaymentProcessorClient {
 
   async protocolConfig(): Promise<{
     paymentToken: string;
+    paymentTokenSymbol: string;
+    paymentTokenDecimals: number;
     protocolFeeBps: bigint;
     protocolTreasury: string;
   }> {
-    const [paymentToken, protocolFeeBps, protocolTreasury] = await Promise.all([
+    // Symbol/decimals come from the token contract itself — the UI must never
+    // hardcode a unit ("USDC" was wrong on Galileo, where the mock token's
+    // symbol is axmUSDC). Cached by the /v1/payment/config route layer.
+    const [
+      paymentToken,
+      protocolFeeBps,
+      protocolTreasury,
+      paymentTokenSymbol,
+      paymentTokenDecimals,
+    ] = await Promise.all([
       this.payment.contract.paymentToken(),
       this.payment.contract.protocolFeeBps(),
       this.payment.contract.protocolTreasury(),
+      this.token.contract.symbol(),
+      this.token.contract.decimals(),
     ]);
-    return { paymentToken, protocolFeeBps, protocolTreasury };
+    return {
+      paymentToken,
+      paymentTokenSymbol,
+      paymentTokenDecimals: Number(paymentTokenDecimals),
+      protocolFeeBps,
+      protocolTreasury,
+    };
   }
 
   private async ensureAllowance(amount: bigint): Promise<void> {

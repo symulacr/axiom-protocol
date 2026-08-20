@@ -64,21 +64,21 @@ export function Landing({
               <CircleHelp size={16} />
               <span>
                 <strong>{copy.nav.howItWorks}</strong>
-                <small>Review the wallet and proof boundary</small>
+                <small>{copy.landing.menuGuideHint}</small>
               </span>
             </button>
             <button onClick={() => navigate("/staking")}>
               <Database size={16} />
               <span>
-                <strong>0G Stake</strong>
+                <strong>{copy.landing.stakeTitle}</strong>
                 <small>{copy.landing.stakingBoundary}</small>
               </span>
             </button>
             <button onClick={() => navigate("/developers")}>
               <Globe2 size={16} />
               <span>
-                <strong>Developers</strong>
-                <small>Inspect the integration boundary</small>
+                <strong>{copy.landing.menuDevelopers}</strong>
+                <small>{copy.landing.menuDevelopersHint}</small>
               </span>
             </button>
             <Button
@@ -95,13 +95,11 @@ export function Landing({
       </header>
       <main className="landing-main">
         <section className="landing-copy">
-          <span className="eyebrow copper">
-            AXIOM / VERIFIED OPERATOR CONSOLE
-          </span>
+          <span className="eyebrow copper">{copy.landing.eyebrow}</span>
           <h1>
-            <span>Move with</span>
+            <span>{copy.landing.titleLead}</span>
             <br />
-            <i>evidence.</i>
+            <i>{copy.landing.titleEmphasis}</i>
           </h1>
           <p>{copy.landing.description}</p>
           <div className="button-row">
@@ -136,31 +134,31 @@ export function Landing({
             <strong>{copy.landing.heroTitle}</strong>
             <div className="hero-visual-readout">
               <span>chain {APP_CHAIN_ID}</span>
-              <span>proof boundary online</span>
-              <span>motion / reduced-motion aware</span>
+              <span>{copy.landing.readoutProof}</span>
+              <span>{copy.landing.readoutMotion}</span>
             </div>
           </div>
         </section>
       </main>
       <section className="landing-strip">
         <div>
-          <span className="eyebrow">CONNECT</span>
+          <span className="eyebrow">{copy.landing.stripConnectEyebrow}</span>
           <strong>{copy.landing.walletContext}</strong>
-          <small>Connector and address</small>
+          <small>{copy.landing.stripConnectSmall}</small>
         </div>
         <div>
-          <span className="eyebrow">VERIFY</span>
+          <span className="eyebrow">{copy.landing.stripVerifyEyebrow}</span>
           <strong>{copy.landing.signatureBoundary}</strong>
-          <small>No gas · no custody</small>
+          <small>{copy.landing.stripVerifySmall}</small>
         </div>
         <div>
-          <span className="eyebrow">OPERATE</span>
+          <span className="eyebrow">{copy.landing.stripOperateEyebrow}</span>
           <strong>{copy.landing.consoleAccess}</strong>
-          <small>Receipts beside action</small>
+          <small>{copy.landing.stripOperateSmall}</small>
         </div>
         <button onClick={() => go("/staking")}>
-          <span className="eyebrow">BOUNDARY</span>
-          <strong>0G Stake</strong>
+          <span className="eyebrow">{copy.landing.stripBoundaryEyebrow}</span>
+          <strong>{copy.landing.stakeTitle}</strong>
           <small>{copy.landing.stakingBoundary}</small>
           <ArrowRight size={14} />
         </button>

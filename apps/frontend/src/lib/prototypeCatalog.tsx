@@ -225,7 +225,7 @@ export const lockedRouteMeta: Record<
       "Payment receipt",
       "Earnings event",
     ],
-    evidenceValue: "ALLOWANCE: 0 USDC",
+    evidenceValue: "ALLOWANCE: UNISSUED",
     evidenceNote: "No spending approval has been issued for this route.",
   },
   "/transfer": {

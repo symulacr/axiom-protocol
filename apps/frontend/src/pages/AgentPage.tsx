@@ -24,12 +24,15 @@ import {
 } from "../components/axiom/icons.js";
 import { Button, Field, Status } from "../components/axiom/Controls.js";
 import { StatePill } from "../components/StatePill.js";
-import { getCopy, type Locale } from "../lib/copy.js";
+import { getCopy, interpolate, type Locale } from "../lib/copy.js";
 import { useAgentMetadata } from "../hooks/useAgentMetadata.js";
 import { useAgentEvents } from "../hooks/useAgentEvents.js";
 import { usePerformance } from "../hooks/usePerformance.js";
 import { usePayment } from "../hooks/usePayment.js";
+import { paymentSymbolOf, usePaymentToken } from "../hooks/usePaymentToken.js";
 import { useVaultData } from "../hooks/useVaultData.js";
+import { formatUnits } from "viem";
+import { APP_CHAIN } from "../config/wagmi.js";
 import {
   formatTokenAmount,
   truncateAddress,
@@ -118,9 +121,14 @@ export function AgentPage({
 
   const agentName = `Agent #${tokenId.toString()}`;
   const lastEvent = events[events.length - 1];
+  // C-12: vault balances are native-denominated (chain config); the payments
+  // tab speaks in the payment token's on-chain symbol (hook-cached config).
+  const nativeSymbol = APP_CHAIN.nativeCurrency.symbol;
+  const paymentToken = usePaymentToken();
+  const paymentSymbol = paymentSymbolOf(paymentToken);
   const vaultBalance =
     vault.depositsWei !== undefined
-      ? `${formatTokenAmount(vault.depositsWei)} 0G`
+      ? `${formatTokenAmount(vault.depositsWei)} ${nativeSymbol}`
       : "—";
   const strategyBound =
     Boolean(vault.strategyRoot) &&
@@ -174,7 +182,11 @@ export function AgentPage({
           <span className="eyebrow">{agentCopy.operatingBalance}</span>
           <strong>{vaultBalance}</strong>
           <small>
-            {strategyBound ? agentCopy.vaultRoute : "no strategy bound"}
+            {strategyBound
+              ? interpolate(agentCopy.vaultRoute, {
+                  chainName: APP_CHAIN.name,
+                })
+              : "no strategy bound"}
           </small>
         </div>
         <div className="agent-detail-proof">
@@ -391,11 +403,15 @@ export function AgentPage({
           <div className="receipt-grid">
             <div>
               <span className="eyebrow">{agentCopy.token}</span>
-              <strong>0G</strong>
+              <strong>{paymentSymbol}</strong>
             </div>
             <div>
-              <span className="eyebrow">Earnings</span>
-              <strong>{earnings ? earnings.earnings : "—"}</strong>
+              <span className="eyebrow">{agentCopy.earnings}</span>
+              <strong>
+                {earnings
+                  ? `${formatUnits(BigInt(earnings.earnings), paymentToken?.decimals ?? 6)} ${paymentSymbol}`
+                  : "—"}
+              </strong>
             </div>
             <div>
               <span className="eyebrow">{agentCopy.royalty}</span>

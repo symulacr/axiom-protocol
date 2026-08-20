@@ -1,8 +1,11 @@
 /* Next-safe-action engine ported from the v2 mockup. "Fund agent" targets the
  * first unfunded agent from the live portfolio (fallback: the payment route
  * without an agent); "recover receipt" keys off flow drafts in recoverable
- * error, and storage inspection stays the read-only proof check. */
+ * error, and storage inspection stays the read-only proof check.
+ * Copy comes from copy.strip (05 FINDING-007 — the strip localizes with the
+ * page body); no chain/token literal ever originates here (C-08/C-12). */
 import type { AppState } from "./models";
+import type { Copy } from "./copy";
 
 export type NextSafeAction = {
   id: "recover-receipt" | "fund-agent" | "inspect-storage";
@@ -22,6 +25,7 @@ export type FundTarget = { tokenId: string } | undefined;
 export function getNextSafeActions(
   state: AppState,
   fundTarget: FundTarget = undefined,
+  strip: Copy["strip"],
 ): NextSafeAction[] {
   const actions: NextSafeAction[] = [];
   const recoverable =
@@ -47,11 +51,11 @@ export function getNextSafeActions(
   if (recoverable) {
     actions.push({
       id: "recover-receipt",
-      eyebrow: "NOW / NEEDS REVIEW",
-      title: `Review ${recoverable.kind}`,
-      summary: "Recover the existing receipt before retrying.",
-      impact: "No asset movement until you continue.",
-      proofLabel: "RECEIPT",
+      eyebrow: strip.reviewEyebrow,
+      title: strip.reviewTitle(recoverable.kind),
+      summary: strip.reviewSummary,
+      impact: strip.reviewImpact,
+      proofLabel: strip.proofReceipt,
       proofValue: recoverable.hash,
       path: `/transactions?filter=review`,
       priority: "critical",
@@ -61,14 +65,12 @@ export function getNextSafeActions(
 
   actions.push({
     id: "fund-agent",
-    eyebrow: "NEXT SAFE ACTION",
-    title: fundTarget
-      ? `Fund agent #${fundTarget.tokenId}`
-      : "Open payment route",
-    summary: "Review an exact ERC-20 allowance before any value moves.",
-    impact: "Allowance and payment confirm separately.",
-    proofLabel: "AGENT",
-    proofValue: fundTarget ? `#${fundTarget.tokenId}` : "select in flow",
+    eyebrow: strip.nextEyebrow,
+    title: fundTarget ? strip.fundTitle(fundTarget.tokenId) : strip.fundTitle(),
+    summary: strip.fundSummary,
+    impact: strip.fundImpact,
+    proofLabel: strip.proofAgent,
+    proofValue: fundTarget ? `#${fundTarget.tokenId}` : strip.selectInFlow,
     path: fundTarget
       ? `/payment?agent=${fundTarget.tokenId}&intent=fund&stage=amount`
       : "/payment?intent=fund&stage=amount",
@@ -78,12 +80,14 @@ export function getNextSafeActions(
 
   actions.push({
     id: "inspect-storage",
-    eyebrow: "PROOF CHECK",
-    title: "Inspect storage root",
-    summary: "Check the indexed root and integrity state.",
-    impact: "Read-only. No wallet request.",
-    proofLabel: "ROOT",
-    proofValue: "0x3b9…f10",
+    eyebrow: strip.proofCheckEyebrow,
+    title: strip.inspectTitle,
+    summary: strip.inspectSummary,
+    impact: strip.inspectImpact,
+    proofLabel: strip.proofRoot,
+    // No storage backend exists yet (StoragePage is a labeled demo) — an
+    // honest "nothing indexed" marker instead of the old fixture hash.
+    proofValue: "—",
     path: "/storage?intent=inspect-root",
     priority: "normal",
     shortcut: "Alt 5",
@@ -96,8 +100,9 @@ export function getRouteAction(
   state: AppState,
   path: string,
   fundTarget: FundTarget = undefined,
+  strip: Copy["strip"],
 ) {
-  const actions = getNextSafeActions(state, fundTarget);
+  const actions = getNextSafeActions(state, fundTarget, strip);
   if (path.startsWith("/agents/") || path.startsWith("/payment"))
     return actions.find((action) => action.id === "fund-agent") ?? actions[0];
   if (path.startsWith("/storage"))

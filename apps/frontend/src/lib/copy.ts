@@ -8,13 +8,86 @@ export type Locale = "en" | "fr" | "de";
 export type CopyFlow =
   "mint" | "payment" | "transfer" | "tick" | "deposit" | "withdraw";
 
+/**
+ * Interpolation contract (C-08/C-12): copy NEVER hardcodes a chain name,
+ * chain ID or token symbol. Strings that mention them carry `{chainName}` /
+ * `{chainId}` / `{nativeSymbol}` placeholders resolved at render time from
+ * APP_CHAIN / APP_CHAIN_ID (config/wagmi) or the payment-token hook.
+ */
+export function interpolate(
+  template: string,
+  vars: Record<string, string | number>,
+): string {
+  return template.replace(/\{(\w+)\}/g, (match, key: string) =>
+    key in vars ? String(vars[key]) : match,
+  );
+}
+
 export type Copy = {
   localeName: string;
   nav: {
     howItWorks: string;
     connectWallet: string;
-    returnToLanding: string;
-    openConsole: string;
+    /** Shell navigation labels (sidebar + command palette share these). */
+    overview: string;
+    agents: string;
+    chat: string;
+    transactions: string;
+    storage: string;
+    mint: string;
+    payment: string;
+    transfer: string;
+    tick: string;
+    deposit: string;
+    withdraw: string;
+  };
+  /** Shell chrome above/beside the page body (05 FINDING-007). */
+  topbar: {
+    connected: string;
+    notConnected: string;
+    operator: string;
+    openRail: string;
+    network: string;
+    oracleLive: string;
+    oracleDown: string;
+  };
+  /** Priority action strip + next-safe-action engine (lib/nextSafeAction). */
+  strip: {
+    reviewEyebrow: string;
+    nextEyebrow: string;
+    proofCheckEyebrow: string;
+    reviewTitle: (kind: string) => string;
+    reviewSummary: string;
+    reviewImpact: string;
+    fundTitle: (tokenId?: string) => string;
+    fundSummary: string;
+    fundImpact: string;
+    inspectTitle: string;
+    inspectSummary: string;
+    inspectImpact: string;
+    proofReceipt: string;
+    proofAgent: string;
+    proofRoot: string;
+    selectInFlow: string;
+    openReview: string;
+    whyNow: string;
+    seeAllQueue: string;
+    prefilledNote: string;
+  };
+  /** CommandCenter palette (⌘K). */
+  command: {
+    title: string;
+    continueIn: (label: string) => string;
+    resumeCurrent: string;
+    groupContinue: string;
+    groupNextSafeAction: string;
+    groupGoTo: string;
+    groupRecent: string;
+    resultsCount: (count: number) => string;
+    placeholder: string;
+    emptyTitle: string;
+    emptyBody: string;
+    hintKeys: string;
   };
   landing: {
     eyebrow: string;
@@ -28,14 +101,28 @@ export type Copy = {
     signatureBoundary: string;
     consoleAccess: string;
     stakingBoundary: string;
+    menuGuideHint: string;
+    menuDevelopers: string;
+    menuDevelopersHint: string;
+    stakeTitle: string;
+    readoutProof: string;
+    readoutMotion: string;
+    stripConnectEyebrow: string;
+    stripConnectSmall: string;
+    stripVerifyEyebrow: string;
+    stripVerifySmall: string;
+    stripOperateEyebrow: string;
+    stripOperateSmall: string;
+    stripBoundaryEyebrow: string;
   };
   wallet: {
     connectingTitle: string;
     connectingDescription: string;
+    /** Placeholder: `{chainName}` — the TARGET network (APP_CHAIN.name). */
     wrongNetworkTitle: string;
     wrongNetworkDescription: string;
+    /** Placeholder: `{chainName}`. */
     switchNetwork: string;
-    testTimeout: string;
     approveSignature: string;
     rejectSignature: string;
     profileTitle: string;
@@ -54,12 +141,15 @@ export type Copy = {
     skip: string;
   };
   settings: {
+    pageEyebrow: string;
+    pageTitle: string;
     languageLabel: string;
     languageHint: string;
     localeEnglish: string;
     localeFrench: string;
     localeGerman: string;
     localFixture: string;
+    liveWallet: string;
     walletNetwork: string;
     signingContext: string;
     simulationConfig: string;
@@ -73,12 +163,34 @@ export type Copy = {
     railWidth: string;
     railWidthHint: string;
     density: string;
+    densityCalm: string;
+    densityDense: string;
     theme: string;
     themeHint: string;
     themeDark: string;
     themeLight: string;
-    fixtureWallet: string;
     direction: string;
+    directionLtr: string;
+    directionRtl: string;
+    rowWallet: string;
+    rowChain: string;
+    rowRpc: string;
+    rowConnector: string;
+    rowApi: string;
+    statusConnected: string;
+    statusOffline: string;
+    statusSelected: string;
+    statusMismatch: string;
+    statusChecking: string;
+    statusReady: string;
+    statusOnline: string;
+    shortcutEyebrow: string;
+    shortcutTitle: string;
+    shortcutHint: string;
+    shortcutPalette: string;
+    shortcutSurfaces: string;
+    shortcutFlows: string;
+    diagnosticNote: string;
     replayOnboarding: string;
     resetSurface: string;
     reviewStakingBoundary: string;
@@ -90,7 +202,10 @@ export type Copy = {
     titleEmphasis: string;
     description: string;
     review: (count: number) => string;
-    reviewAction: string;
+    /** Primary CTA — names the live attention target (`#<tokenId>`), never a
+     *  fixture agent; generic when the fleet needs nothing. */
+    reviewAction: (agentLabel?: string) => string;
+    nowReviewEyebrow: string;
     refresh: string;
     managedValue: string;
     agentsOnline: string;
@@ -107,28 +222,119 @@ export type Copy = {
     recentStore: string;
     latestEvidence: string;
     allReceipts: string;
+    contextWallet: string;
+    contextNetwork: string;
+    contextSigner: string;
+    contextAttention: string;
+    switchRequired: string;
+    signerReady: string;
+    signerWrong: string;
+    noConnector: string;
+    attentionCount: (count: number) => string;
+    openReviewQueue: string;
+    loadingVaults: string;
+    agentsScoped: (count: number) => string;
+    needReview: (count: number) => string;
+    fleetNominal: string;
+    eventsIndexed: string;
+    oracleUnreachable: string;
+    secondaryTelemetry: string;
+    telemetryTitle: string;
+    noEvidence: string;
+    noEvidenceHint: string;
+    registerUnavailable: string;
+    noAgents: string;
+    noAgentsHint: string;
+    mintAgent: string;
+    noDescription: string;
+    refreshNotice: string;
+    agentFundingEyebrow: (tokenId: string) => string;
+    paymentAllowanceEyebrow: string;
   };
+  /** Live /chat surface (v1 SSE chat). Every rendered string routes through
+   *  this section — hardcoded English in ChatPage was the C-11 defect. */
   chat: {
-    eyebrow: string;
-    titleLead: string;
-    titleEmphasis: string;
-    description: string;
-    providerFixed: string;
-    viewRouteDetails: string;
-    emptyThread: string;
-    placeholder: string;
-    sendHint: string;
+    pageTitle: string;
+    /** Placeholder: `{chainName}` — status slot shows the TARGET network. */
+    statusOnline: string;
+    /** Placeholder: `{chainName}`. */
+    statusWrongNetwork: string;
+    /** Placeholder: `{chainName}`. */
+    wrongNetworkBanner: string;
+    newChat: string;
+    historyToggle: string;
+    emptyTagline: string;
+    promptAgents: string;
+    promptAgentsHint: string;
+    promptMint: string;
+    promptMintHint: string;
+    promptVault: string;
+    /** Placeholder: `{nativeSymbol}`. */
+    promptVaultHint: string;
+    promptTick: string;
+    promptTickHint: string;
+    toolsToggle: (count: number) => string;
+    toolsBrowse: string;
+    toolsHide: string;
+    roleYou: string;
+    roleAssistant: string;
+    roleTool: string;
+    toolResultFallback: string;
+    questionFallback: string;
+    editResend: string;
+    regenerate: string;
+    regenerateShort: string;
+    copyMessage: string;
+    copyShort: string;
+    discardEditTitle: string;
+    keepConversationTitle: string;
+    editDiscards: string;
+    edit: string;
+    cancel: string;
+    retry: string;
+    dismiss: string;
+    assistantResponding: string;
+    tickInProgress: string;
+    queuedCount: (count: number) => string;
+    answerPlaceholder: string;
+    placeholder: (assistant: string) => string;
+    placeholderStreaming: string;
     send: string;
-    resetThread: string;
-    resetNotice: string;
-    inputRequired: string;
-    acknowledged: string;
-    fixtureProvider: string;
-    routeNoLiveCall: string;
-    threads: string;
-    conversations: string;
-    needsDecision: string;
-    updatedToday: string;
+    queue: string;
+    stop: string;
+    removeQueued: string;
+    routing: string;
+    routingHint: string;
+    routingAuto: string;
+    routingCheapest: string;
+    routingVerified: string;
+    routingPrivate: string;
+    routingPrivateHintOn: string;
+    routingPrivateHintOff: string;
+    routingChipTitle: string;
+    routingSummaryAuto: string;
+    routingSummaryCheapest: string;
+    routingStatusPinned: (address: string) => string;
+    routingStatusCheapest: string;
+    routingStatusAuto: string;
+    phaseRunning: (names: string, elapsed: number) => string;
+    phaseStreaming: (elapsed: number) => string;
+    phaseThinking: string;
+    phaseWaiting: (elapsed: number) => string;
+    historyTitle: string;
+    historyNew: string;
+    historySearch: string;
+    historyEmpty: string;
+    historyNoMatch: string;
+    historyLoading: string;
+    historyRestore: string;
+    historyRestoreHint: string;
+    historyDelete: (title: string) => string;
+    untitledThread: string;
+    deletedToast: string;
+    undo: string;
+    metricsShow: string;
+    metricsHide: string;
   };
   storage: {
     eyebrow: string;
@@ -139,9 +345,6 @@ export type Copy = {
     payload: string;
     fileMeta: string;
     labels: string[];
-    encryptPayload: string;
-    proofComplete: string;
-    continueStep: string;
     note: string;
     provenanceRecord: string;
     whatCanProve: string;
@@ -159,6 +362,9 @@ export type Copy = {
     pending: string;
     notIndexed: string;
     fixture: string;
+    /** Clear demo banner — the ladder is documentation until a storage
+     *  backend exists (03 FINDING-014); no fake progress, no fake hashes. */
+    demoNotice: string;
   };
   flows: Record<
     CopyFlow,
@@ -230,6 +436,7 @@ export type Copy = {
     allowance: string;
     royalty: string;
     openPaymentFlow: string;
+    earnings: string;
     activityFor: (agent: string) => string;
     evidenceTied: string;
   };
@@ -279,8 +486,63 @@ const english: Copy = {
   nav: {
     howItWorks: "How Axiom works",
     connectWallet: "Connect wallet",
-    returnToLanding: "Return to landing",
-    openConsole: "Open console",
+    overview: "Overview",
+    agents: "Agents",
+    chat: "Chat",
+    transactions: "Transactions",
+    storage: "Storage",
+    mint: "Mint",
+    payment: "Payment",
+    transfer: "Transfer",
+    tick: "Tick",
+    deposit: "Deposit",
+    withdraw: "Withdraw",
+  },
+  topbar: {
+    connected: "connected",
+    notConnected: "not connected",
+    operator: "operator",
+    openRail: "Open rail",
+    network: "NETWORK",
+    oracleLive: "oracle live",
+    oracleDown: "oracle down",
+  },
+  strip: {
+    reviewEyebrow: "NOW / NEEDS REVIEW",
+    nextEyebrow: "NEXT SAFE ACTION",
+    proofCheckEyebrow: "PROOF CHECK",
+    reviewTitle: (kind) => `Review ${kind}`,
+    reviewSummary: "Recover the existing receipt before retrying.",
+    reviewImpact: "No asset movement until you continue.",
+    fundTitle: (tokenId) =>
+      tokenId ? `Fund agent #${tokenId}` : "Open payment route",
+    fundSummary: "Review an exact ERC-20 allowance before any value moves.",
+    fundImpact: "Allowance and payment confirm separately.",
+    inspectTitle: "Inspect storage root",
+    inspectSummary: "Check the indexed root and integrity state.",
+    inspectImpact: "Read-only. No wallet request.",
+    proofReceipt: "RECEIPT",
+    proofAgent: "AGENT",
+    proofRoot: "ROOT",
+    selectInFlow: "select in flow",
+    openReview: "Open review",
+    whyNow: "Why now",
+    seeAllQueue: "See all queue",
+    prefilledNote: "prefilled, not submitted",
+  },
+  command: {
+    title: "Command Center",
+    continueIn: (label) => `Continue in ${label}`,
+    resumeCurrent: "Resume current surface",
+    groupContinue: "Continue",
+    groupNextSafeAction: "Next safe action",
+    groupGoTo: "Go to",
+    groupRecent: "Recent",
+    resultsCount: (count) => `${count} actions`,
+    placeholder: "Find action, receipt, or route",
+    emptyTitle: "No matching destination",
+    emptyBody: "Try a route, receipt hash, or the next safe action.",
+    hintKeys: "↑↓ move · ↵ open · esc close",
   },
   landing: {
     eyebrow: "AXIOM / VERIFIED OPERATOR CONSOLE",
@@ -296,16 +558,28 @@ const english: Copy = {
     signatureBoundary: "Signature boundary",
     consoleAccess: "Console access",
     stakingBoundary: "Staking is not part of Axiom yet.",
+    menuGuideHint: "Review the wallet and proof boundary",
+    menuDevelopers: "Developers",
+    menuDevelopersHint: "Inspect the integration boundary",
+    stakeTitle: "0G Stake",
+    readoutProof: "proof boundary online",
+    readoutMotion: "motion / reduced-motion aware",
+    stripConnectEyebrow: "CONNECT",
+    stripConnectSmall: "Connector and address",
+    stripVerifyEyebrow: "VERIFY",
+    stripVerifySmall: "No gas · no custody",
+    stripOperateEyebrow: "OPERATE",
+    stripOperateSmall: "Receipts beside action",
+    stripBoundaryEyebrow: "BOUNDARY",
   },
   wallet: {
     connectingTitle: "Reading wallet context.",
     connectingDescription:
       "Checking the wallet address, connector and target network.",
-    wrongNetworkTitle: "Switch to 0G Mainnet.",
+    wrongNetworkTitle: "Switch to {chainName}.",
     wrongNetworkDescription:
       "The wallet is connected, but it is on a different network. Switch before signing the access message.",
-    switchNetwork: "Switch to 0G Mainnet",
-    testTimeout: "Test a timeout",
+    switchNetwork: "Switch to {chainName}",
     approveSignature: "Approve signature",
     rejectSignature: "Reject signature",
     profileTitle: "Name the local profile.",
@@ -327,6 +601,8 @@ const english: Copy = {
     skip: "Skip for now",
   },
   settings: {
+    pageEyebrow: "CONTROL PLANE / CONFIGURATION",
+    pageTitle: "Settings",
     languageLabel: "Interface language",
     languageHint:
       "Changes labels and plural forms without changing the simulated network.",
@@ -334,6 +610,7 @@ const english: Copy = {
     localeFrench: "Français",
     localeGerman: "Deutsch",
     localFixture: "local fixture",
+    liveWallet: "live wallet",
     walletNetwork: "WALLET & NETWORK",
     signingContext: "Signing context",
     simulationConfig: "SIMULATION CONFIG",
@@ -347,13 +624,37 @@ const english: Copy = {
     railWidth: "Rail width",
     railWidthHint: "drag to tune the command surface.",
     density: "Density",
+    densityCalm: "Calm",
+    densityDense: "Dense",
     theme: "Surface theme",
     themeHint:
       "Keep operational contrast legible in either working environment.",
     themeDark: "Graphite",
     themeLight: "Paper",
-    fixtureWallet: "Fixture wallet",
     direction: "Direction",
+    directionLtr: "LTR / left to right",
+    directionRtl: "RTL / right to left",
+    rowWallet: "Wallet",
+    rowChain: "Chain",
+    rowRpc: "RPC",
+    rowConnector: "Connector",
+    rowApi: "API",
+    statusConnected: "Connected",
+    statusOffline: "Offline",
+    statusSelected: "Selected",
+    statusMismatch: "Mismatch",
+    statusChecking: "checking",
+    statusReady: "Ready",
+    statusOnline: "online",
+    shortcutEyebrow: "COMMAND CENTER",
+    shortcutTitle: "Keyboard map",
+    shortcutHint:
+      "Fast paths remain visible; they never bypass wallet, network or signature boundaries.",
+    shortcutPalette: "Find actions, agents, receipts and routes",
+    shortcutSurfaces: "Open core command surfaces",
+    shortcutFlows: "Open execution flows",
+    diagnosticNote:
+      "Session, chain, RPC and preference state are visible before any action is taken.",
     replayOnboarding: "Replay onboarding",
     resetSurface: "Reset surface",
     reviewStakingBoundary: "Review 0G integration boundary",
@@ -367,7 +668,9 @@ const english: Copy = {
       "Four agents, one verified signer context and a transaction trail that never turns pending into success.",
     review: (count) =>
       `${count} agent action${count === 1 ? "" : "s"} require${count === 1 ? "s" : ""} attention.`,
-    reviewAction: "Review Northstar",
+    reviewAction: (agentLabel) =>
+      agentLabel ? `Review agent ${agentLabel}` : "Review next action",
+    nowReviewEyebrow: "NOW / REVIEW",
     refresh: "Refresh overview",
     managedValue: "Managed value",
     agentsOnline: "Agents online",
@@ -385,32 +688,121 @@ const english: Copy = {
     recentStore: "RECENT / SHARED STORE",
     latestEvidence: "Latest evidence",
     allReceipts: "All receipts",
+    contextWallet: "WALLET CONTEXT",
+    contextNetwork: "NETWORK",
+    contextSigner: "SIGNER",
+    contextAttention: "ATTENTION",
+    switchRequired: "switch required",
+    signerReady: "Ready to sign",
+    signerWrong: "Wrong network",
+    noConnector: "no connector",
+    attentionCount: (count) =>
+      `${count} action${count === 1 ? "" : "s"} need review`,
+    openReviewQueue: "Open review queue",
+    loadingVaults: "loading vaults…",
+    agentsScoped: (count) => `${count} agent${count === 1 ? "" : "s"} scoped`,
+    needReview: (count) => `${count} need review`,
+    fleetNominal: "fleet nominal",
+    eventsIndexed: "events indexed",
+    oracleUnreachable: "oracle unreachable",
+    secondaryTelemetry: "SECONDARY TELEMETRY",
+    telemetryTitle: "Telemetry & recent evidence",
+    noEvidence: "No evidence yet",
+    noEvidenceHint:
+      "Mint an agent or run a payment to create the first receipt.",
+    registerUnavailable: "Agent register unavailable",
+    noAgents: "No agents yet",
+    noAgentsHint: "Mint your first agent to start the fleet.",
+    mintAgent: "Mint an agent",
+    noDescription: "no description",
+    refreshNotice: "Overview refreshed from the live indexers.",
+    agentFundingEyebrow: (tokenId) => `AGENT #${tokenId} / FUNDING`,
+    paymentAllowanceEyebrow: "PAYMENT / ALLOWANCE",
   },
   chat: {
-    eyebrow: "CHAT / OPERATOR CONTEXT",
-    titleLead: "Ask the",
-    titleEmphasis: "surface.",
-    description:
-      "Threads are local prototype conversations; responses never call a live provider.",
-    providerFixed: "Provider / fixture route",
-    viewRouteDetails: "View route details",
-    emptyThread:
-      "This thread is empty. Ask about an agent, route or proof to start a local conversation.",
-    placeholder: "Ask about an agent, route or proof…",
-    sendHint: "Enter to send, Shift+Enter for a new line.",
+    pageTitle: "Chat",
+    statusOnline: "Online · {chainName}",
+    statusWrongNetwork: "Switch to {chainName}",
+    wrongNetworkBanner: "Wrong network. Switch wallet to {chainName}.",
+    newChat: "New chat",
+    historyToggle: "History",
+    emptyTagline: "Agents · vaults · ticks. Wallet signs on-chain actions.",
+    promptAgents: "My agents",
+    promptAgentsHint: "What you own",
+    promptMint: "Mint agent",
+    promptMintHint: "Wallet signs",
+    promptVault: "Vault balance",
+    promptVaultHint: "{nativeSymbol} holdings",
+    promptTick: "Simulate tick",
+    promptTickHint: "Safe dry-run first",
+    toolsToggle: (count) => `All ${count} tools`,
+    toolsBrowse: "browse ▾",
+    toolsHide: "hide ▴",
+    roleYou: "You",
+    roleAssistant: "Assistant",
+    roleTool: "Tool",
+    toolResultFallback: "Tool result",
+    questionFallback: "Question",
+    editResend: "Edit and resend",
+    regenerate: "Regenerate reply",
+    regenerateShort: "Regenerate",
+    copyMessage: "Copy message",
+    copyShort: "Copy",
+    discardEditTitle: "Discard the messages after this one and edit",
+    keepConversationTitle: "Keep the conversation",
+    editDiscards: "Edit discards the rest",
+    edit: "Edit",
+    cancel: "Cancel",
+    retry: "Retry",
+    dismiss: "Dismiss",
+    assistantResponding: "Assistant is responding",
+    tickInProgress: "Tick in progress…",
+    queuedCount: (count) => `${count} queued`,
+    answerPlaceholder: "Type your answer…",
+    placeholder: (assistant) => `Message ${assistant}…`,
+    placeholderStreaming: "Queue a follow-up…",
     send: "Send",
-    resetThread: "New thread",
-    resetNotice:
-      "New thread ready. The previous messages were cleared from this prototype view.",
-    inputRequired: "Enter a message before sending.",
-    acknowledged:
-      "Acknowledged. I can route this to the selected agent, but no provider call is made in the cloud mockup.",
-    fixtureProvider: "fixture provider",
-    routeNoLiveCall: "Axiom route / no live call",
-    threads: "THREADS / 03",
-    conversations: "Conversations",
-    needsDecision: "Needs operator decision",
-    updatedToday: "Updated today",
+    queue: "Queue",
+    stop: "Stop",
+    removeQueued: "Remove queued message",
+    routing: "Routing",
+    routingHint: "This conversation only",
+    routingAuto: "Auto (fastest)",
+    routingCheapest: "Lowest cost",
+    routingVerified: "Verified providers only (TEE)",
+    routingPrivate: "Private (sealed enclave)",
+    routingPrivateHintOn:
+      "Sealed enclave inference (prompts never leave the enclave)",
+    routingPrivateHintOff: "No sealed-enclave provider serves this model",
+    routingChipTitle:
+      "Provider routing — change how this conversation is served",
+    routingSummaryAuto: "Auto",
+    routingSummaryCheapest: "Lowest cost",
+    routingStatusPinned: (address) =>
+      `Pinned to ${address} — every turn is served by this provider.`,
+    routingStatusCheapest:
+      "Lowest-cost provider first; the serving provider may change between turns.",
+    routingStatusAuto:
+      "Fastest provider first; turns stay on one provider so follow-ups are quicker.",
+    phaseRunning: (names, elapsed) => `Running ${names}… (${elapsed}s)`,
+    phaseStreaming: (elapsed) => `Streaming response… (${elapsed}s)`,
+    phaseThinking: "Thinking…",
+    phaseWaiting: (elapsed) => `Waiting for model response… (${elapsed}s)`,
+    historyTitle: "Chats",
+    historyNew: "New",
+    historySearch: "Search chats…",
+    historyEmpty: "No history yet. Send a message.",
+    historyNoMatch: "No matching chats.",
+    historyLoading: "Loading server history…",
+    historyRestore: "Restore server history",
+    historyRestoreHint:
+      "Sign a wallet message to load this wallet's server-saved transcripts. No transaction is sent.",
+    historyDelete: (title) => `Delete chat: ${title}`,
+    untitledThread: "New chat",
+    deletedToast: "Chat deleted",
+    undo: "Undo",
+    metricsShow: "metrics",
+    metricsHide: "hide metrics",
   },
   storage: {
     eyebrow: "DATA PROVENANCE / 0G",
@@ -429,9 +821,6 @@ const english: Copy = {
       "Proof verified",
       "Available",
     ],
-    encryptPayload: "Encrypt payload",
-    proofComplete: "Storage proof complete",
-    continueStep: "Continue to next storage step",
     note: "Available appears only after root hash, storage tx, proof and index state are present.",
     provenanceRecord: "PROVENANCE RECORD",
     whatCanProve: "What the UI can prove",
@@ -446,10 +835,12 @@ const english: Copy = {
     source: "SOURCE",
     sourceName: "0G Storage SDK / Indexer",
     sourceDescription:
-      "Fixture mirrors the adapter shape; replication and pinning are not claimed.",
+      "Demo mirrors the adapter shape; replication and pinning are not claimed.",
     pending: "pending",
     notIndexed: "not indexed",
-    fixture: "fixture / explicit",
+    fixture: "demo / not live",
+    demoNotice:
+      "Demo pipeline — no storage backend is connected yet. The stages below are what a real upload will expose; no state is produced or persisted here.",
   },
   flows: {
     mint: {
@@ -552,7 +943,7 @@ const english: Copy = {
   agentDetail: {
     executionSurface: "operator-controlled execution surface.",
     operatingBalance: "OPERATING BALANCE",
-    vaultRoute: "vault route · 0G Mainnet · chain 16661",
+    vaultRoute: "vault route · {chainName}",
     dataHash: "DATA HASH",
     overview: "Overview",
     execute: "Execute",
@@ -592,6 +983,7 @@ const english: Copy = {
     allowance: "ALLOWANCE",
     royalty: "ROYALTY",
     openPaymentFlow: "Open payment flow",
+    earnings: "Earnings",
     activityFor: (agent) => `ACTIVITY / ${agent.toUpperCase()}`,
     evidenceTied: "Evidence tied to this agent",
   },
@@ -653,8 +1045,65 @@ const french: Copy = {
   nav: {
     howItWorks: "Comprendre Axiom",
     connectWallet: "Connecter le wallet",
-    returnToLanding: "Retour à l’accueil",
-    openConsole: "Ouvrir la console",
+    overview: "Vue d’ensemble",
+    agents: "Agents",
+    chat: "Chat",
+    transactions: "Transactions",
+    storage: "Storage",
+    mint: "Mint",
+    payment: "Paiement",
+    transfer: "Transfert",
+    tick: "Tick",
+    deposit: "Dépôt",
+    withdraw: "Retrait",
+  },
+  topbar: {
+    connected: "connecté",
+    notConnected: "non connecté",
+    operator: "opérateur",
+    openRail: "Ouvrir le rail",
+    network: "RÉSEAU",
+    oracleLive: "oracle actif",
+    oracleDown: "oracle coupé",
+  },
+  strip: {
+    reviewEyebrow: "MAINTENANT / À EXAMINER",
+    nextEyebrow: "PROCHAINE ACTION SÛRE",
+    proofCheckEyebrow: "VÉRIFICATION DE PREUVE",
+    reviewTitle: (kind) => `Examiner ${kind}`,
+    reviewSummary: "Récupérez le reçu existant avant de réessayer.",
+    reviewImpact: "Aucun mouvement d’actifs avant votre reprise.",
+    fundTitle: (tokenId) =>
+      tokenId ? `Financer l’agent #${tokenId}` : "Ouvrir la route de paiement",
+    fundSummary:
+      "Examinez une approbation ERC-20 exacte avant tout mouvement de valeur.",
+    fundImpact: "Approbation et paiement se confirment séparément.",
+    inspectTitle: "Inspecter la racine Storage",
+    inspectSummary: "Vérifiez la racine indexée et l’état d’intégrité.",
+    inspectImpact: "Lecture seule. Aucune requête wallet.",
+    proofReceipt: "REÇU",
+    proofAgent: "AGENT",
+    proofRoot: "RACINE",
+    selectInFlow: "à choisir dans le flow",
+    openReview: "Ouvrir la revue",
+    whyNow: "Pourquoi maintenant",
+    seeAllQueue: "Voir toute la file",
+    prefilledNote: "prérempli, non soumis",
+  },
+  command: {
+    title: "Centre de commande",
+    continueIn: (label) => `Continuer dans ${label}`,
+    resumeCurrent: "Reprendre la surface courante",
+    groupContinue: "Continuer",
+    groupNextSafeAction: "Prochaine action sûre",
+    groupGoTo: "Aller à",
+    groupRecent: "Récent",
+    resultsCount: (count) => `${count} actions`,
+    placeholder: "Chercher une action, un reçu ou une route",
+    emptyTitle: "Aucune destination correspondante",
+    emptyBody:
+      "Essayez une route, un hash de reçu ou la prochaine action sûre.",
+    hintKeys: "↑↓ naviguer · ↵ ouvrir · esc fermer",
   },
   landing: {
     eyebrow: "AXIOM / CONSOLE OPÉRATEUR VÉRIFIÉE",
@@ -670,16 +1119,28 @@ const french: Copy = {
     signatureBoundary: "Limite de signature",
     consoleAccess: "Accès console",
     stakingBoundary: "Le staking ne fait pas encore partie d’Axiom.",
+    menuGuideHint: "Revoir la limite wallet et de preuve",
+    menuDevelopers: "Développeurs",
+    menuDevelopersHint: "Inspecter la limite d’intégration",
+    stakeTitle: "0G Stake",
+    readoutProof: "limite de preuve active",
+    readoutMotion: "motion / reduced-motion pris en charge",
+    stripConnectEyebrow: "CONNECTER",
+    stripConnectSmall: "Connecteur et adresse",
+    stripVerifyEyebrow: "VÉRIFIER",
+    stripVerifySmall: "Sans gas · sans garde",
+    stripOperateEyebrow: "OPÉRER",
+    stripOperateSmall: "Reçus à côté de l’action",
+    stripBoundaryEyebrow: "LIMITE",
   },
   wallet: {
     connectingTitle: "Lecture du contexte wallet.",
     connectingDescription:
       "Vérification de l’adresse, du connecteur et du réseau cible.",
-    wrongNetworkTitle: "Passez sur 0G Mainnet.",
+    wrongNetworkTitle: "Passez sur {chainName}.",
     wrongNetworkDescription:
       "Le wallet est connecté, mais utilise un autre réseau. Changez de réseau avant de signer le message d’accès.",
-    switchNetwork: "Passer sur 0G Mainnet",
-    testTimeout: "Tester un timeout",
+    switchNetwork: "Passer sur {chainName}",
     approveSignature: "Approuver la signature",
     rejectSignature: "Refuser la signature",
     profileTitle: "Nommez le profil local.",
@@ -701,6 +1162,8 @@ const french: Copy = {
     skip: "Passer pour l’instant",
   },
   settings: {
+    pageEyebrow: "PLAN DE CONTRÔLE / CONFIGURATION",
+    pageTitle: "Paramètres",
     languageLabel: "Langue de l’interface",
     languageHint:
       "Modifie les libellés et les pluriels sans changer le réseau simulé.",
@@ -708,6 +1171,7 @@ const french: Copy = {
     localeFrench: "Français",
     localeGerman: "Deutsch",
     localFixture: "fixture locale",
+    liveWallet: "wallet actif",
     walletNetwork: "WALLET & RÉSEAU",
     signingContext: "Contexte de signature",
     simulationConfig: "CONFIGURATION SIMULÉE",
@@ -723,13 +1187,37 @@ const french: Copy = {
     railWidth: "Largeur du rail",
     railWidthHint: "faites glisser pour régler la surface de commande.",
     density: "Densité",
+    densityCalm: "Calme",
+    densityDense: "Dense",
     theme: "Thème de surface",
     themeHint:
       "Préserve un contraste opérateur lisible dans chaque environnement de travail.",
     themeDark: "Graphite",
     themeLight: "Papier",
-    fixtureWallet: "Wallet fixture",
     direction: "Direction",
+    directionLtr: "LTR / gauche à droite",
+    directionRtl: "RTL / droite à gauche",
+    rowWallet: "Wallet",
+    rowChain: "Chaîne",
+    rowRpc: "RPC",
+    rowConnector: "Connecteur",
+    rowApi: "API",
+    statusConnected: "Connecté",
+    statusOffline: "Hors ligne",
+    statusSelected: "Sélectionnée",
+    statusMismatch: "Discordance",
+    statusChecking: "vérification",
+    statusReady: "Prêt",
+    statusOnline: "en ligne",
+    shortcutEyebrow: "CENTRE DE COMMANDE",
+    shortcutTitle: "Carte clavier",
+    shortcutHint:
+      "Les raccourcis restent visibles ; ils ne contournent jamais les limites wallet, réseau ou signature.",
+    shortcutPalette: "Chercher actions, agents, reçus et routes",
+    shortcutSurfaces: "Ouvrir les surfaces de commande",
+    shortcutFlows: "Ouvrir les flows d’exécution",
+    diagnosticNote:
+      "Session, chaîne, RPC et préférences sont visibles avant toute action.",
     replayOnboarding: "Rejouer l’onboarding",
     resetSurface: "Réinitialiser la surface",
     reviewStakingBoundary: "Revoir la limite d’intégration 0G",
@@ -743,7 +1231,11 @@ const french: Copy = {
       "Quatre agents, un contexte de signature vérifié et une piste transactionnelle qui ne transforme jamais l’attente en succès.",
     review: (count) =>
       `${count} action${count > 1 ? "s" : ""} agent${count > 1 ? "s" : ""} ${count > 1 ? "nécessitent" : "nécessite"} votre attention.`,
-    reviewAction: "Revoir Northstar",
+    reviewAction: (agentLabel) =>
+      agentLabel
+        ? `Examiner l’agent ${agentLabel}`
+        : "Examiner la prochaine action",
+    nowReviewEyebrow: "MAINTENANT / REVUE",
     refresh: "Actualiser la vue",
     managedValue: "Valeur gérée",
     agentsOnline: "Agents en ligne",
@@ -761,32 +1253,125 @@ const french: Copy = {
     recentStore: "RÉCENT / STORE PARTAGÉ",
     latestEvidence: "Dernières preuves",
     allReceipts: "Tous les reçus",
+    contextWallet: "CONTEXTE WALLET",
+    contextNetwork: "RÉSEAU",
+    contextSigner: "SIGNATAIRE",
+    contextAttention: "ATTENTION",
+    switchRequired: "changement requis",
+    signerReady: "Prêt à signer",
+    signerWrong: "Mauvais réseau",
+    noConnector: "aucun connecteur",
+    attentionCount: (count) =>
+      `${count} action${count > 1 ? "s" : ""} à examiner`,
+    openReviewQueue: "Ouvrir la file de revue",
+    loadingVaults: "chargement des vaults…",
+    agentsScoped: (count) =>
+      `${count} agent${count > 1 ? "s" : ""} suivi${count > 1 ? "s" : ""}`,
+    needReview: (count) => `${count} à examiner`,
+    fleetNominal: "flotte nominale",
+    eventsIndexed: "événements indexés",
+    oracleUnreachable: "oracle injoignable",
+    secondaryTelemetry: "TÉLÉMÉTRIE SECONDAIRE",
+    telemetryTitle: "Télémétrie et preuves récentes",
+    noEvidence: "Pas encore de preuve",
+    noEvidenceHint:
+      "Mintez un agent ou lancez un paiement pour créer le premier reçu.",
+    registerUnavailable: "Registre d’agents indisponible",
+    noAgents: "Pas encore d’agent",
+    noAgentsHint: "Mintez votre premier agent pour démarrer la flotte.",
+    mintAgent: "Minter un agent",
+    noDescription: "sans description",
+    refreshNotice: "Vue d’ensemble actualisée depuis les indexeurs live.",
+    agentFundingEyebrow: (tokenId) => `AGENT #${tokenId} / FINANCEMENT`,
+    paymentAllowanceEyebrow: "PAIEMENT / APPROBATION",
   },
   chat: {
-    eyebrow: "CHAT / CONTEXTE OPÉRATEUR",
-    titleLead: "Interrogez la",
-    titleEmphasis: "surface.",
-    description:
-      "Les threads sont des conversations locales du prototype ; les réponses n’appellent jamais un fournisseur réel.",
-    providerFixed: "Fournisseur / route fixture",
-    viewRouteDetails: "Voir les détails de la route",
-    emptyThread:
-      "Ce thread est vide. Demandez un agent, une route ou une preuve pour démarrer une conversation locale.",
-    placeholder: "Demander un agent, une route ou une preuve…",
-    sendHint: "Entrée pour envoyer, Maj+Entrée pour passer à la ligne.",
+    pageTitle: "Chat",
+    statusOnline: "En ligne · {chainName}",
+    statusWrongNetwork: "Passer sur {chainName}",
+    wrongNetworkBanner: "Mauvais réseau. Basculez le wallet sur {chainName}.",
+    newChat: "Nouveau chat",
+    historyToggle: "Historique",
+    emptyTagline:
+      "Agents · vaults · ticks. Le wallet signe les actions on-chain.",
+    promptAgents: "Mes agents",
+    promptAgentsHint: "Ce que vous possédez",
+    promptMint: "Minter un agent",
+    promptMintHint: "Le wallet signe",
+    promptVault: "Solde du vault",
+    promptVaultHint: "Avoirs en {nativeSymbol}",
+    promptTick: "Simuler un tick",
+    promptTickHint: "Essai à blanc d’abord",
+    toolsToggle: (count) => `Les ${count} outils`,
+    toolsBrowse: "parcourir ▾",
+    toolsHide: "masquer ▴",
+    roleYou: "Vous",
+    roleAssistant: "Assistant",
+    roleTool: "Outil",
+    toolResultFallback: "Résultat d’outil",
+    questionFallback: "Question",
+    editResend: "Modifier et renvoyer",
+    regenerate: "Régénérer la réponse",
+    regenerateShort: "Régénérer",
+    copyMessage: "Copier le message",
+    copyShort: "Copier",
+    discardEditTitle: "Abandonner les messages suivants et modifier",
+    keepConversationTitle: "Conserver la conversation",
+    editDiscards: "Modifier abandonne la suite",
+    edit: "Modifier",
+    cancel: "Annuler",
+    retry: "Réessayer",
+    dismiss: "Fermer",
+    assistantResponding: "L’assistant répond",
+    tickInProgress: "Tick en cours…",
+    queuedCount: (count) => `${count} en file`,
+    answerPlaceholder: "Saisissez votre réponse…",
+    placeholder: (assistant) => `Message à ${assistant}…`,
+    placeholderStreaming: "Mettre une réponse en file…",
     send: "Envoyer",
-    resetThread: "Nouveau thread",
-    resetNotice:
-      "Nouveau thread prêt. Les messages précédents ont été effacés de cette vue prototype.",
-    inputRequired: "Saisissez un message avant l’envoi.",
-    acknowledged:
-      "Reçu. Je peux router cette demande vers l’agent sélectionné, mais aucun appel fournisseur n’est effectué dans le mockup cloud.",
-    fixtureProvider: "fournisseur fixture",
-    routeNoLiveCall: "Route Axiom / aucun appel réel",
-    threads: "THREADS / 03",
-    conversations: "Conversations",
-    needsDecision: "Décision opérateur requise",
-    updatedToday: "Mis à jour aujourd’hui",
+    queue: "En file",
+    stop: "Stop",
+    removeQueued: "Retirer le message en file",
+    routing: "Routage",
+    routingHint: "Cette conversation uniquement",
+    routingAuto: "Auto (le plus rapide)",
+    routingCheapest: "Coût le plus bas",
+    routingVerified: "Fournisseurs vérifiés uniquement (TEE)",
+    routingPrivate: "Privé (enclave scellée)",
+    routingPrivateHintOn:
+      "Inférence en enclave scellée (les prompts ne quittent jamais l’enclave)",
+    routingPrivateHintOff:
+      "Aucun fournisseur à enclave scellée ne sert ce modèle",
+    routingChipTitle:
+      "Routage fournisseur — changez comment cette conversation est servie",
+    routingSummaryAuto: "Auto",
+    routingSummaryCheapest: "Coût le plus bas",
+    routingStatusPinned: (address) =>
+      `Épinglé à ${address} — chaque tour est servi par ce fournisseur.`,
+    routingStatusCheapest:
+      "Fournisseur le moins cher d’abord ; le fournisseur peut changer entre les tours.",
+    routingStatusAuto:
+      "Fournisseur le plus rapide d’abord ; les tours restent sur un même fournisseur pour des suivis plus rapides.",
+    phaseRunning: (names, elapsed) => `Exécution de ${names}… (${elapsed} s)`,
+    phaseStreaming: (elapsed) => `Réponse en flux… (${elapsed} s)`,
+    phaseThinking: "Réflexion…",
+    phaseWaiting: (elapsed) =>
+      `En attente de la réponse du modèle… (${elapsed} s)`,
+    historyTitle: "Chats",
+    historyNew: "Nouveau",
+    historySearch: "Rechercher des chats…",
+    historyEmpty: "Pas encore d’historique. Envoyez un message.",
+    historyNoMatch: "Aucun chat correspondant.",
+    historyLoading: "Chargement de l’historique serveur…",
+    historyRestore: "Restaurer l’historique serveur",
+    historyRestoreHint:
+      "Signez un message wallet pour charger les transcripts de ce wallet. Aucune transaction n’est envoyée.",
+    historyDelete: (title) => `Supprimer le chat : ${title}`,
+    untitledThread: "Nouveau chat",
+    deletedToast: "Chat supprimé",
+    undo: "Annuler",
+    metricsShow: "métriques",
+    metricsHide: "masquer les métriques",
   },
   storage: {
     eyebrow: "PROVENANCE DES DONNÉES / 0G",
@@ -805,9 +1390,6 @@ const french: Copy = {
       "Preuve vérifiée",
       "Disponible",
     ],
-    encryptPayload: "Chiffrer le payload",
-    proofComplete: "Preuve Storage terminée",
-    continueStep: "Passer à l’étape Storage suivante",
     note: "Disponible uniquement après présence du root hash, de la transaction Storage, de la preuve et de l’index.",
     provenanceRecord: "REGISTRE DE PROVENANCE",
     whatCanProve: "Ce que l’interface peut prouver",
@@ -822,10 +1404,12 @@ const french: Copy = {
     source: "SOURCE",
     sourceName: "SDK 0G Storage / Indexer",
     sourceDescription:
-      "La fixture reprend la forme de l’adaptateur ; aucune réplication ni pinning n’est revendiquée.",
+      "La démo reprend la forme de l’adaptateur ; aucune réplication ni pinning n’est revendiquée.",
     pending: "en attente",
     notIndexed: "non indexé",
-    fixture: "fixture / explicite",
+    fixture: "démo / non live",
+    demoNotice:
+      "Pipeline de démonstration — aucun backend Storage n’est connecté. Les étapes ci-dessous sont celles qu’un upload réel exposera ; aucun état n’est produit ni persisté ici.",
   },
   flows: {
     mint: {
@@ -928,7 +1512,7 @@ const french: Copy = {
   agentDetail: {
     executionSurface: "surface d’exécution contrôlée par l’opérateur.",
     operatingBalance: "SOLDE D’EXPLOITATION",
-    vaultRoute: "route du vault · 0G Mainnet · chaîne 16661",
+    vaultRoute: "route du vault · {chainName}",
     dataHash: "DATA HASH",
     overview: "Vue d’ensemble",
     execute: "Exécuter",
@@ -969,6 +1553,7 @@ const french: Copy = {
     allowance: "APPROBATION",
     royalty: "ROYALTY",
     openPaymentFlow: "Ouvrir le flow de paiement",
+    earnings: "Gains",
     activityFor: (agent) => `ACTIVITÉ / ${agent.toUpperCase()}`,
     evidenceTied: "Preuves liées à cet agent",
   },
@@ -1033,8 +1618,65 @@ const german: Copy = {
   nav: {
     howItWorks: "So funktioniert Axiom",
     connectWallet: "Wallet verbinden",
-    returnToLanding: "Zur Startseite",
-    openConsole: "Konsole öffnen",
+    overview: "Übersicht",
+    agents: "Agents",
+    chat: "Chat",
+    transactions: "Transaktionen",
+    storage: "Storage",
+    mint: "Mint",
+    payment: "Zahlung",
+    transfer: "Transfer",
+    tick: "Tick",
+    deposit: "Einzahlen",
+    withdraw: "Auszahlen",
+  },
+  topbar: {
+    connected: "verbunden",
+    notConnected: "nicht verbunden",
+    operator: "Operator",
+    openRail: "Leiste öffnen",
+    network: "NETZWERK",
+    oracleLive: "Oracle live",
+    oracleDown: "Oracle down",
+  },
+  strip: {
+    reviewEyebrow: "JETZT / PRÜFUNG NÖTIG",
+    nextEyebrow: "NÄCHSTE SICHERE AKTION",
+    proofCheckEyebrow: "BELEGPPRÜFUNG",
+    reviewTitle: (kind) => `${kind} prüfen`,
+    reviewSummary:
+      "Stelle den vorhandenen Beleg wieder her, bevor du es erneut versuchst.",
+    reviewImpact: "Keine Vermögensbewegung, bis du fortfährst.",
+    fundTitle: (tokenId) =>
+      tokenId ? `Agent #${tokenId} finanzieren` : "Zahlungsroute öffnen",
+    fundSummary: "Prüfe eine exakte ERC-20-Freigabe, bevor Wert fließt.",
+    fundImpact: "Freigabe und Zahlung werden getrennt bestätigt.",
+    inspectTitle: "Storage-Root prüfen",
+    inspectSummary: "Prüfe den indexierten Root und den Integritätsstatus.",
+    inspectImpact: "Nur lesend. Keine Wallet-Anfrage.",
+    proofReceipt: "BELEG",
+    proofAgent: "AGENT",
+    proofRoot: "ROOT",
+    selectInFlow: "im Flow wählen",
+    openReview: "Prüfung öffnen",
+    whyNow: "Warum jetzt",
+    seeAllQueue: "Ganze Warteschlange ansehen",
+    prefilledNote: "vorbefüllt, nicht abgesendet",
+  },
+  command: {
+    title: "Command Center",
+    continueIn: (label) => `Weiter in ${label}`,
+    resumeCurrent: "Aktuelle Oberfläche fortsetzen",
+    groupContinue: "Fortsetzen",
+    groupNextSafeAction: "Nächste sichere Aktion",
+    groupGoTo: "Gehe zu",
+    groupRecent: "Zuletzt",
+    resultsCount: (count) => `${count} Aktionen`,
+    placeholder: "Aktion, Beleg oder Route suchen",
+    emptyTitle: "Kein passendes Ziel",
+    emptyBody:
+      "Versuche eine Route, einen Beleg-Hash oder die nächste sichere Aktion.",
+    hintKeys: "↑↓ bewegen · ↵ öffnen · esc schließen",
   },
   landing: {
     eyebrow: "AXIOM / VERIFIZIERTE OPERATOR-KONSOLE",
@@ -1050,16 +1692,28 @@ const german: Copy = {
     signatureBoundary: "Signaturgrenze",
     consoleAccess: "Konsolenzugriff",
     stakingBoundary: "Staking gehört noch nicht zu Axiom.",
+    menuGuideHint: "Wallet- und Beleggrenze prüfen",
+    menuDevelopers: "Entwickler",
+    menuDevelopersHint: "Integrationsgrenze prüfen",
+    stakeTitle: "0G Stake",
+    readoutProof: "Beleggrenze online",
+    readoutMotion: "Motion / Reduced-Motion-fähig",
+    stripConnectEyebrow: "VERBINDEN",
+    stripConnectSmall: "Connector und Adresse",
+    stripVerifyEyebrow: "PRÜFEN",
+    stripVerifySmall: "Kein Gas · keine Verwahrung",
+    stripOperateEyebrow: "STEUERN",
+    stripOperateSmall: "Belege neben der Aktion",
+    stripBoundaryEyebrow: "GRENZE",
   },
   wallet: {
     connectingTitle: "Wallet-Kontext wird gelesen.",
     connectingDescription:
       "Adresse, Connector und Zielnetzwerk werden geprüft.",
-    wrongNetworkTitle: "Zu 0G Mainnet wechseln.",
+    wrongNetworkTitle: "Zu {chainName} wechseln.",
     wrongNetworkDescription:
       "Das Wallet ist verbunden, verwendet aber ein anderes Netzwerk. Wechsle vor der Signatur der Zugriffsnachricht.",
-    switchNetwork: "Zu 0G Mainnet wechseln",
-    testTimeout: "Timeout testen",
+    switchNetwork: "Zu {chainName} wechseln",
     approveSignature: "Signatur bestätigen",
     rejectSignature: "Signatur ablehnen",
     profileTitle: "Lokales Profil benennen.",
@@ -1081,6 +1735,8 @@ const german: Copy = {
     skip: "Jetzt überspringen",
   },
   settings: {
+    pageEyebrow: "KONTROLLEBENE / KONFIGURATION",
+    pageTitle: "Einstellungen",
     languageLabel: "Sprache der Oberfläche",
     languageHint:
       "Ändert Beschriftungen und Pluralformen, nicht das simulierte Netzwerk.",
@@ -1088,6 +1744,7 @@ const german: Copy = {
     localeFrench: "Français",
     localeGerman: "Deutsch",
     localFixture: "lokale Fixture",
+    liveWallet: "Live-Wallet",
     walletNetwork: "WALLET & NETZWERK",
     signingContext: "Signaturkontext",
     simulationConfig: "SIMULATIONS-KONFIGURATION",
@@ -1102,12 +1759,36 @@ const german: Copy = {
     railWidth: "Leistenbreite",
     railWidthHint: "ziehen, um die Befehlsoberfläche einzustellen.",
     density: "Dichte",
+    densityCalm: "Ruhig",
+    densityDense: "Dicht",
     theme: "Oberflächenthema",
     themeHint: "Sichert lesbaren Bedienkontrast in jeder Arbeitsumgebung.",
     themeDark: "Graphit",
     themeLight: "Papier",
-    fixtureWallet: "Fixture-Wallet",
     direction: "Richtung",
+    directionLtr: "LTR / links nach rechts",
+    directionRtl: "RTL / rechts nach links",
+    rowWallet: "Wallet",
+    rowChain: "Chain",
+    rowRpc: "RPC",
+    rowConnector: "Connector",
+    rowApi: "API",
+    statusConnected: "Verbunden",
+    statusOffline: "Offline",
+    statusSelected: "Ausgewählt",
+    statusMismatch: "Abweichung",
+    statusChecking: "wird geprüft",
+    statusReady: "Bereit",
+    statusOnline: "online",
+    shortcutEyebrow: "COMMAND CENTER",
+    shortcutTitle: "Tastaturbelegung",
+    shortcutHint:
+      "Schnellpfade bleiben sichtbar; sie umgehen nie Wallet-, Netzwerk- oder Signaturgrenzen.",
+    shortcutPalette: "Aktionen, Agents, Belege und Routen suchen",
+    shortcutSurfaces: "Zentrale Befehlsoberflächen öffnen",
+    shortcutFlows: "Ausführungs-Flows öffnen",
+    diagnosticNote:
+      "Session, Chain, RPC und Einstellungen sind vor jeder Aktion sichtbar.",
     replayOnboarding: "Onboarding wiederholen",
     resetSurface: "Oberfläche zurücksetzen",
     reviewStakingBoundary: "0G-Integrationsgrenze prüfen",
@@ -1121,7 +1802,9 @@ const german: Copy = {
       "Vier Agents, ein verifizierter Signaturkontext und eine Transaktionsspur, die „ausstehend“ nie als Erfolg ausgibt.",
     review: (count) =>
       `${count} Agentenaktion${count === 1 ? "" : "en"} erfordern Aufmerksamkeit.`,
-    reviewAction: "Northstar prüfen",
+    reviewAction: (agentLabel) =>
+      agentLabel ? `Agent ${agentLabel} prüfen` : "Nächste Aktion prüfen",
+    nowReviewEyebrow: "JETZT / PRÜFUNG",
     refresh: "Übersicht aktualisieren",
     managedValue: "Verwalteter Wert",
     agentsOnline: "Agents online",
@@ -1139,32 +1822,123 @@ const german: Copy = {
     recentStore: "AKTUELL / GEMEINSAMER STORE",
     latestEvidence: "Neueste Belege",
     allReceipts: "Alle Belege",
+    contextWallet: "WALLET-KONTEXT",
+    contextNetwork: "NETZWERK",
+    contextSigner: "SIGNIERER",
+    contextAttention: "ACHTUNG",
+    switchRequired: "Wechsel erforderlich",
+    signerReady: "Bereit zum Signieren",
+    signerWrong: "Falsches Netzwerk",
+    noConnector: "kein Connector",
+    attentionCount: (count) =>
+      `${count} Aktion${count === 1 ? "" : "en"} prüfen`,
+    openReviewQueue: "Prüfungsliste öffnen",
+    loadingVaults: "Vaults werden geladen…",
+    agentsScoped: (count) => `${count} Agent${count === 1 ? "" : "en"} erfasst`,
+    needReview: (count) => `${count} prüfen`,
+    fleetNominal: "Flotte nominal",
+    eventsIndexed: "Ereignisse indexiert",
+    oracleUnreachable: "Oracle unerreichbar",
+    secondaryTelemetry: "SEKUNDÄRE TELEMETRIE",
+    telemetryTitle: "Telemetrie und aktuelle Belege",
+    noEvidence: "Noch keine Belege",
+    noEvidenceHint:
+      "Minte einen Agent oder führe eine Zahlung aus, um den ersten Beleg zu erzeugen.",
+    registerUnavailable: "Agentenregister nicht verfügbar",
+    noAgents: "Noch keine Agents",
+    noAgentsHint: "Minte deinen ersten Agent, um die Flotte zu starten.",
+    mintAgent: "Agent minten",
+    noDescription: "keine Beschreibung",
+    refreshNotice: "Übersicht aus den Live-Indexern aktualisiert.",
+    agentFundingEyebrow: (tokenId) => `AGENT #${tokenId} / FINANZIERUNG`,
+    paymentAllowanceEyebrow: "ZAHLUNG / FREIGABE",
   },
   chat: {
-    eyebrow: "CHAT / LOKALER OPERATOR-KONTEXT",
-    titleLead: "Frage die",
-    titleEmphasis: "Oberfläche.",
-    description:
-      "Routen-Kontext, Agentenstatus und Beweisfragen bleiben in einem lokalen Thread. Dieser Prototyp ruft keinen Live-Provider auf.",
-    providerFixed: "Provider / Fixture-Route",
-    viewRouteDetails: "Routendetails anzeigen",
-    emptyThread:
-      "Dieser Thread ist leer. Frage nach einem Agenten, einer Route oder einem Beleg, um eine lokale Unterhaltung zu starten.",
-    placeholder: "Nach Agent, Route oder Beleg fragen…",
-    sendHint: "Enter zum Senden, Umschalt+Enter für einen Zeilenumbruch.",
+    pageTitle: "Chat",
+    statusOnline: "Online · {chainName}",
+    statusWrongNetwork: "Zu {chainName} wechseln",
+    wrongNetworkBanner: "Falsches Netzwerk. Wallet zu {chainName} wechseln.",
+    newChat: "Neuer Chat",
+    historyToggle: "Verlauf",
+    emptyTagline:
+      "Agents · Vaults · Ticks. Das Wallet signiert On-Chain-Aktionen.",
+    promptAgents: "Meine Agents",
+    promptAgentsHint: "Was du besitzt",
+    promptMint: "Agent minten",
+    promptMintHint: "Wallet signiert",
+    promptVault: "Vault-Guthaben",
+    promptVaultHint: "{nativeSymbol}-Bestände",
+    promptTick: "Tick simulieren",
+    promptTickHint: "Erst sicher testen",
+    toolsToggle: (count) => `Alle ${count} Tools`,
+    toolsBrowse: "anzeigen ▾",
+    toolsHide: "ausblenden ▴",
+    roleYou: "Du",
+    roleAssistant: "Assistent",
+    roleTool: "Tool",
+    toolResultFallback: "Tool-Ergebnis",
+    questionFallback: "Frage",
+    editResend: "Bearbeiten und erneut senden",
+    regenerate: "Antwort neu erzeugen",
+    regenerateShort: "Neu erzeugen",
+    copyMessage: "Nachricht kopieren",
+    copyShort: "Kopieren",
+    discardEditTitle: "Folgende Nachrichten verwerfen und bearbeiten",
+    keepConversationTitle: "Unterhaltung behalten",
+    editDiscards: "Bearbeiten verwirft den Rest",
+    edit: "Bearbeiten",
+    cancel: "Abbrechen",
+    retry: "Erneut versuchen",
+    dismiss: "Schließen",
+    assistantResponding: "Der Assistent antwortet",
+    tickInProgress: "Tick läuft…",
+    queuedCount: (count) => `${count} wartend`,
+    answerPlaceholder: "Antwort eingeben…",
+    placeholder: (assistant) => `Nachricht an ${assistant}…`,
+    placeholderStreaming: "Folgefrage einreihen…",
     send: "Senden",
-    resetThread: "Neuer Thread",
-    resetNotice:
-      "Neuer Thread bereit. Die vorherigen Nachrichten wurden aus dieser Prototyp-Ansicht gelöscht.",
-    inputRequired: "Gib vor dem Senden eine Nachricht ein.",
-    acknowledged:
-      "Verstanden. Ich kann die Anfrage an den ausgewählten Agenten routen, aber im Cloud-Mockup erfolgt kein Provider-Aufruf.",
-    fixtureProvider: "Fixture-Provider",
-    routeNoLiveCall: "Axiom-Route / kein Live-Aufruf",
-    threads: "THREADS / 03",
-    conversations: "Unterhaltungen",
-    needsDecision: "Operator-Entscheidung erforderlich",
-    updatedToday: "Heute aktualisiert",
+    queue: "Einreihen",
+    stop: "Stopp",
+    removeQueued: "Wartende Nachricht entfernen",
+    routing: "Routing",
+    routingHint: "Nur diese Unterhaltung",
+    routingAuto: "Auto (schnellster)",
+    routingCheapest: "Günstigster",
+    routingVerified: "Nur verifizierte Provider (TEE)",
+    routingPrivate: "Privat (versiegelte Enklave)",
+    routingPrivateHintOn:
+      "Versiegelte Enklaven-Inferenz (Prompts verlassen die Enklave nie)",
+    routingPrivateHintOff:
+      "Kein Provider mit versiegelter Enklave bedient dieses Modell",
+    routingChipTitle:
+      "Provider-Routing — ändere, wie diese Unterhaltung bedient wird",
+    routingSummaryAuto: "Auto",
+    routingSummaryCheapest: "Günstigster",
+    routingStatusPinned: (address) =>
+      `An ${address} gepinnt — jeder Turn wird von diesem Provider bedient.`,
+    routingStatusCheapest:
+      "Günstigster Provider zuerst; der bedienende Provider kann zwischen Turns wechseln.",
+    routingStatusAuto:
+      "Schnellster Provider zuerst; Turns bleiben auf einem Provider, damit Folgefragen schneller sind.",
+    phaseRunning: (names, elapsed) => `${names} läuft… (${elapsed} s)`,
+    phaseStreaming: (elapsed) => `Antwort wird gestreamt… (${elapsed} s)`,
+    phaseThinking: "Denkt nach…",
+    phaseWaiting: (elapsed) => `Warte auf Modellantwort… (${elapsed} s)`,
+    historyTitle: "Chats",
+    historyNew: "Neu",
+    historySearch: "Chats suchen…",
+    historyEmpty: "Noch kein Verlauf. Sende eine Nachricht.",
+    historyNoMatch: "Keine passenden Chats.",
+    historyLoading: "Server-Verlauf wird geladen…",
+    historyRestore: "Server-Verlauf wiederherstellen",
+    historyRestoreHint:
+      "Signiere eine Wallet-Nachricht, um die serverseitigen Transkripte dieses Wallets zu laden. Es wird keine Transaktion gesendet.",
+    historyDelete: (title) => `Chat löschen: ${title}`,
+    untitledThread: "Neuer Chat",
+    deletedToast: "Chat gelöscht",
+    undo: "Rückgängig",
+    metricsShow: "Metriken",
+    metricsHide: "Metriken ausblenden",
   },
   storage: {
     eyebrow: "DATENPROVENIENZ / 0G",
@@ -1183,9 +1957,6 @@ const german: Copy = {
       "Beleg geprüft",
       "Verfügbar",
     ],
-    encryptPayload: "Payload verschlüsseln",
-    proofComplete: "Storage-Beleg vollständig",
-    continueStep: "Zum nächsten Storage-Schritt",
     note: "Verfügbar erst, wenn Root-Hash, Storage-Transaktion, Beleg und Index vorhanden sind.",
     provenanceRecord: "PROVENIENZ-REGISTER",
     whatCanProve: "Was die Oberfläche belegen kann",
@@ -1200,10 +1971,12 @@ const german: Copy = {
     source: "QUELLE",
     sourceName: "0G-Storage-SDK / Indexer",
     sourceDescription:
-      "Die Fixture bildet die Adapterform ab; Replikation und Pinning werden nicht behauptet.",
+      "Die Demo bildet die Adapterform ab; Replikation und Pinning werden nicht behauptet.",
     pending: "ausstehend",
     notIndexed: "nicht indexiert",
-    fixture: "Fixture / explizit",
+    fixture: "Demo / nicht live",
+    demoNotice:
+      "Demo-Pipeline — es ist noch kein Storage-Backend verbunden. Die Stufen unten zeigen, was ein echter Upload ausgeben wird; hier wird kein Zustand erzeugt oder gespeichert.",
   },
   flows: {
     mint: {
@@ -1306,7 +2079,7 @@ const german: Copy = {
   agentDetail: {
     executionSurface: "operatorgesteuerte Ausführungsoberfläche.",
     operatingBalance: "BETRIEBSGUTHABEN",
-    vaultRoute: "Vault-Route · 0G Mainnet · Chain 16661",
+    vaultRoute: "Vault-Route · {chainName}",
     dataHash: "DATA-HASH",
     overview: "Übersicht",
     execute: "Ausführen",
@@ -1348,6 +2121,7 @@ const german: Copy = {
     allowance: "FREIGABE",
     royalty: "ROYALTY",
     openPaymentFlow: "Zahlungsflow öffnen",
+    earnings: "Erträge",
     activityFor: (agent) => `AKTIVITÄT / ${agent.toUpperCase()}`,
     evidenceTied: "Belege zu diesem Agenten",
   },
@@ -1423,10 +2197,6 @@ export function getCopy(locale: Locale = "en"): Copy {
       ...copy.dashboard,
       agentRegister: withoutSequence(copy.dashboard.agentRegister),
       proofLane: withoutSequence(copy.dashboard.proofLane),
-    },
-    chat: {
-      ...copy.chat,
-      threads: withoutSequence(copy.chat.threads),
     },
   };
 }

@@ -41,6 +41,7 @@ import type { FundTarget } from "../../lib/nextSafeAction.js";
 import { useHealth } from "../../hooks/useHealth.js";
 import { truncateAddress, trapTabFocus } from "../../utils/format.js";
 import { APP_CHAIN, APP_CHAIN_ID } from "../../config/wagmi.js";
+import { getCopy } from "../../lib/copy.js";
 
 export function Logo({ compact = false }: { compact?: boolean }) {
   return (
@@ -51,8 +52,8 @@ export function Logo({ compact = false }: { compact?: boolean }) {
   );
 }
 
-function shortAddress(address: string): string {
-  return address ? truncateAddress(address) : "not connected";
+function shortAddress(address: string, notConnected: string): string {
+  return address ? truncateAddress(address) : notConnected;
 }
 
 function Sidebar({
@@ -83,34 +84,37 @@ function Sidebar({
   // The agent register lives on the Overview surface; the "Agents" item stays
   // lit on deep agent pages (live agents are /agents/:tokenId — /agents alone
   // is the public SEO hub, never the console register).
+  // Labels come from copy.nav so the shell localizes with the page body
+  // (05 FINDING-007 — the nav was the last English-only surface).
+  const copy = getCopy(settings.locale);
   const items = [
     {
       path: "/app",
-      label: "Overview",
+      label: copy.nav.overview,
       icon: <LayoutDashboard size={15} />,
       active: route === "dashboard",
     },
     {
       path: "/app",
-      label: "Agents",
+      label: copy.nav.agents,
       icon: <Bot size={15} />,
       active: route === "agent",
     },
     {
       path: "/chat",
-      label: "Chat",
+      label: copy.nav.chat,
       icon: <MessageSquare size={15} />,
       active: route === "chat",
     },
     {
       path: "/transactions",
-      label: "Transactions",
+      label: copy.nav.transactions,
       icon: <ReceiptText size={15} />,
       active: route === "transactions",
     },
     {
       path: "/storage",
-      label: "Storage",
+      label: copy.nav.storage,
       icon: <Database size={15} />,
       active: route === "storage",
     },
@@ -118,37 +122,37 @@ function Sidebar({
   const flows = [
     {
       path: "/mint",
-      label: "Mint",
+      label: copy.nav.mint,
       icon: <Sparkles size={14} />,
       active: route === "mint",
     },
     {
       path: "/payment",
-      label: "Payment",
+      label: copy.nav.payment,
       icon: <CreditCard size={14} />,
       active: route === "payment",
     },
     {
       path: "/transfer",
-      label: "Transfer",
+      label: copy.nav.transfer,
       icon: <ShieldCheck size={14} />,
       active: route === "transfer",
     },
     {
       path: "/tick",
-      label: "Tick",
+      label: copy.nav.tick,
       icon: <Play size={14} />,
       active: route === "tick",
     },
     {
       path: "/deposit",
-      label: "Deposit",
+      label: copy.nav.deposit,
       icon: <Wallet size={14} />,
       active: route === "deposit",
     },
     {
       path: "/withdraw",
-      label: "Withdraw",
+      label: copy.nav.withdraw,
       icon: <UploadCloud size={14} />,
       active: route === "withdraw",
     },
@@ -282,14 +286,18 @@ function Sidebar({
       </nav>
       <div className="network-card">
         <div>
-          <span className="eyebrow">NETWORK</span>
+          <span className="eyebrow">{copy.topbar.network}</span>
           <strong>
             <i />
             {APP_CHAIN.name}
           </strong>
           <small className="mono">
             chain {APP_CHAIN_ID}
-            {health?.ok ? ` · oracle live` : health ? " · oracle down" : ""}
+            {health?.ok
+              ? ` · ${copy.topbar.oracleLive}`
+              : health
+                ? ` · ${copy.topbar.oracleDown}`
+                : ""}
           </small>
         </div>
         <Network size={16} />
@@ -299,8 +307,10 @@ function Sidebar({
           {(session.profile || "AM").slice(0, 2).toUpperCase()}
         </span>
         <div>
-          <strong>{session.profile || "operator"}</strong>
-          <small>{shortAddress(session.address)}</small>
+          <strong>{session.profile || copy.topbar.operator}</strong>
+          <small>
+            {shortAddress(session.address, copy.topbar.notConnected)}
+          </small>
         </div>
         <Settings2 size={14} />
       </button>
@@ -436,6 +446,7 @@ function Topbar({
   onOpenMobileNav: () => void;
   fundTarget?: FundTarget;
 }) {
+  const copy = getCopy(state.settings.locale);
   return (
     <header className="topbar">
       <div className="topbar-route">
@@ -459,8 +470,11 @@ function Topbar({
         />
         <button className="session-top" onClick={() => go("/settings")}>
           <Wallet size={14} />
-          <span>{session.profile || shortAddress(session.address)}</span>
-          <Status label="connected" tone="success" />
+          <span>
+            {session.profile ||
+              shortAddress(session.address, copy.topbar.notConnected)}
+          </span>
+          <Status label={copy.topbar.connected} tone="success" />
         </button>
         <button
           className="icon-button"
@@ -524,7 +538,8 @@ export function AppShell({
                 dispatch({ type: "settings", patch: { railHidden: false } })
               }
             >
-              <Menu size={14} /> Open rail
+              <Menu size={14} />{" "}
+              {getCopy(state.settings.locale).topbar.openRail}
             </button>
           )}
         </div>

@@ -1138,6 +1138,8 @@ function registerPaymentRoutes(
 
   const paymentConfigCache = new TTLCache<{
     paymentToken: string;
+    paymentTokenSymbol: string;
+    paymentTokenDecimals: number;
     protocolFeeBps: bigint;
     protocolTreasury: string;
   }>(300_000);

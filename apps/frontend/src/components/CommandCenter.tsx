@@ -16,6 +16,7 @@ import {
 import type { AppState, Route } from "../lib/models.js";
 import { getNextSafeActions, type FundTarget } from "../lib/nextSafeAction.js";
 import { getCommandRouteItems } from "../lib/routeRegistry.js";
+import { getCopy, type Copy } from "../lib/copy.js";
 import { trackUxEvent } from "../lib/uxTelemetry.js";
 import { trapTabFocus } from "../utils/format.js";
 
@@ -29,17 +30,34 @@ type CommandItem = {
   keywords: string;
 };
 
-const routeItems: CommandItem[] = getCommandRouteItems().map(
-  ({ id, label, path, shortcut }) => ({
+/** Registry route id → localized nav label (same source as the sidebar). */
+const NAV_KEY_BY_ROUTE_ID: Record<string, keyof Copy["nav"]> = {
+  dashboard: "overview",
+  agents: "agents",
+  chat: "chat",
+  transactions: "transactions",
+  storage: "storage",
+  mint: "mint",
+  payment: "payment",
+  transfer: "transfer",
+  tick: "tick",
+  deposit: "deposit",
+  withdraw: "withdraw",
+};
+
+const commandRoutes = getCommandRouteItems();
+
+function routeItemsFor(copy: Copy): CommandItem[] {
+  return commandRoutes.map(({ id, label, path, shortcut }) => ({
     id,
     group: "Go to",
-    label,
+    label: copy.nav[NAV_KEY_BY_ROUTE_ID[id] ?? "overview"] || label,
     detail: path,
     path,
     shortcut,
     keywords: `${id} ${label} ${path}`,
-  }),
-);
+  }));
+}
 
 function isEditableTarget(target: EventTarget | null) {
   return (
@@ -66,12 +84,15 @@ export function CommandCenter({
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const copy = getCopy(state.settings.locale);
+  const cmd = copy.command;
   const safeActions = useMemo(
-    () => getNextSafeActions(state, fundTarget),
-    [state, fundTarget],
+    () => getNextSafeActions(state, fundTarget, copy.strip),
+    [state, fundTarget, copy.strip],
   );
 
   const items = useMemo<CommandItem[]>(() => {
+    const routeItems = routeItemsFor(copy);
     const currentRoute = routeItems.find(
       (item) => item.path === path.split("?", 1)[0],
     );
@@ -81,8 +102,8 @@ export function CommandCenter({
             ...currentRoute,
             id: `continue-${currentRoute.id}`,
             group: "Continue" as const,
-            label: `Continue in ${currentRoute.label}`,
-            detail: "Resume current surface",
+            label: cmd.continueIn(currentRoute.label),
+            detail: cmd.resumeCurrent,
           },
         ]
       : [];
@@ -104,7 +125,7 @@ export function CommandCenter({
       keywords: `${transaction.kind} ${transaction.detail} ${transaction.hash} ${transaction.state}`,
     }));
     return [...continueItem, ...actionItems, ...routeItems, ...recent];
-  }, [path, safeActions, state.transactions]);
+  }, [path, safeActions, state.transactions, copy, cmd]);
 
   const results = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -123,6 +144,12 @@ export function CommandCenter({
     "Go to",
     "Recent",
   ];
+  const groupLabels: Record<CommandItem["group"], string> = {
+    Continue: cmd.groupContinue,
+    "Next safe action": cmd.groupNextSafeAction,
+    "Go to": cmd.groupGoTo,
+    Recent: cmd.groupRecent,
+  };
 
   const close = () => {
     setOpen(false);
@@ -225,7 +252,7 @@ export function CommandCenter({
               onKeyDown={handlePanelKeyDown}
             >
               <div className="command-center-head">
-                <span className="eyebrow">COMMAND CENTER</span>
+                <span className="eyebrow">{cmd.title}</span>
                 <button
                   className="icon-button command-center-close"
                   onClick={close}
@@ -240,7 +267,7 @@ export function CommandCenter({
                   ref={inputRef}
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Find action, receipt, or route"
+                  placeholder={cmd.placeholder}
                   aria-controls="command-results"
                   aria-activedescendant={
                     current ? `command-${current.id}` : undefined
@@ -252,10 +279,10 @@ export function CommandCenter({
               </div>
               <div className="command-center-meta" aria-live="polite">
                 <span>
-                  <Sparkles size={13} /> {results.length} actions
+                  <Sparkles size={13} /> {cmd.resultsCount(results.length)}
                 </span>
                 <span>
-                  <Keyboard size={13} /> ↑↓ move · ↵ open · esc close
+                  <Keyboard size={13} /> {cmd.hintKeys}
                 </span>
               </div>
               <div
@@ -272,9 +299,11 @@ export function CommandCenter({
                     <section
                       key={group}
                       className="command-group"
-                      aria-label={group}
+                      aria-label={groupLabels[group]}
                     >
-                      <span className="command-group-label">{group}</span>
+                      <span className="command-group-label">
+                        {groupLabels[group]}
+                      </span>
                       {grouped.map((item) => {
                         const index = results.indexOf(item);
                         return (
@@ -311,10 +340,8 @@ export function CommandCenter({
                 })}
                 {!results.length && (
                   <div className="empty-state">
-                    <strong>No matching destination</strong>
-                    <span>
-                      Try a route, receipt hash, or the next safe action.
-                    </span>
+                    <strong>{cmd.emptyTitle}</strong>
+                    <span>{cmd.emptyBody}</span>
                   </div>
                 )}
               </div>

@@ -29,10 +29,10 @@ function encodeOnlyResult(
   };
 }
 
-/** Hard per-call spend caps the LLM cannot talk its way past: 1000 USDC for
- *  pay_for_agent payments, 1000 native OG for vault deposit/withdraw (the vault
+/** Hard per-call spend caps the LLM cannot talk its way past: 1000 payment
+ *  tokens for pay_for_agent (scaled by resolved decimals inside
+ *  encodePayForAgent), 1000 native OG for vault deposit/withdraw (the vault
  *  routes enforce the same 1000 cap server-side via route-schemas.ts). */
-const MAX_CHAT_USDC = 1000n * 10n ** 6n;
 const MAX_CHAT_NATIVE = 1000;
 
 /** Sign+send, then wait for the receipt when the transport supports it (the
@@ -219,15 +219,32 @@ async function encodeVaultOp(
   return sendWithReceiptResult(ctx, data, `${op} sign failed`, { amount });
 }
 
-/** Payment token decimals: the deployed payment token is USDC (6 decimals).
- *  Kept as a constant matching the e2e harness (parseUnits("0.5", 6)) and the
- *  UI PaymentPanel scaling — no per-token chain read needed for the chat path. */
-const USDC_DECIMALS = 6;
+/** Payment token decimals resolved from the backend's /v1/payment/config
+ *  (which reads them from the token contract) — cached per process. Galileo's
+ *  axmUSDC is 18-decimal; hardcoding 6 mis-scales every payment 1e12. */
+let tokenDecimalsCache: number | null = null;
 
-/** Parse a human-readable USDC amount ("1.5") to base units, rejecting empty/zero. */
-function parseUsdcAmount(raw: unknown): bigint | null {
+async function resolveTokenDecimals(ctx: ToolRuntime): Promise<number> {
+  if (tokenDecimalsCache !== null) return tokenDecimalsCache;
+  try {
+    const { ok, data } = await fetchJson<{
+      paymentTokenDecimals?: number;
+    }>(ctx.http, "/v1/payment/config", { method: "GET" });
+    if (ok && typeof data.paymentTokenDecimals === "number") {
+      tokenDecimalsCache = data.paymentTokenDecimals;
+      return tokenDecimalsCache;
+    }
+  } catch {
+    // fall through to the safe default below
+  }
+  return 6;
+}
+
+/** Parse a human-readable token amount ("1.5") to base units at the given
+ *  decimals, rejecting empty/zero. */
+function parseTokenAmount(raw: unknown, decimals: number): bigint | null {
   if (typeof raw !== "string" || raw.trim() === "") return null;
-  const wei = parseUnits(raw.trim(), USDC_DECIMALS);
+  const wei = parseUnits(raw.trim(), decimals);
   return wei > 0n ? wei : null;
 }
 
@@ -248,13 +265,16 @@ async function encodePayForAgent(
   const processor = ctx.session.addresses?.paymentProcessor;
   if (!processor) return toolFail("Payment processor address not configured");
 
-  const agentWei = parseUsdcAmount(args.agentAmount);
+  const decimals = await resolveTokenDecimals(ctx);
+  const cap = 1000n * 10n ** BigInt(decimals);
+
+  const agentWei = parseTokenAmount(args.agentAmount, decimals);
   if (agentWei === null) {
     return toolFail("agentAmount required and must be greater than zero");
   }
-  if (agentWei > MAX_CHAT_USDC) {
+  if (agentWei > cap) {
     return toolFail(
-      `agentAmount exceeds the chat cap of ${MAX_CHAT_USDC / 10n ** 6n} USDC — ask the user to use the UI for larger payments`,
+      "agentAmount exceeds the chat cap of 1000 tokens — ask the user to use the UI for larger payments",
     );
   }
 
@@ -263,14 +283,14 @@ async function encodePayForAgent(
     computeAmount !== undefined &&
     computeAmount !== null &&
     String(computeAmount).trim() !== "";
-  const computeWei = hasCompute ? parseUsdcAmount(computeAmount) : null;
+  const computeWei = hasCompute
+    ? parseTokenAmount(computeAmount, decimals)
+    : null;
   if (hasCompute && computeWei === null) {
     return toolFail("computeAmount must be greater than zero");
   }
-  if (hasCompute && computeWei !== null && computeWei > MAX_CHAT_USDC) {
-    return toolFail(
-      `computeAmount exceeds the chat cap of ${MAX_CHAT_USDC / 10n ** 6n} USDC`,
-    );
+  if (hasCompute && computeWei !== null && computeWei > cap) {
+    return toolFail("computeAmount exceeds the chat cap of 1000 tokens");
   }
 
   let functionName: "payForAgent" | "payForAgentAndCompute";

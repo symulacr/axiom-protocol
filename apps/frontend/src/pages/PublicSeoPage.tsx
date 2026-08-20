@@ -65,10 +65,12 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
     artifact: {
       label: "PROVENANCE SPECIMEN",
       state: "IDENTITY LINKED",
+      // Truthful placeholders in the console's real formats — never a
+      // fabricated ID (02 FINDING-019).
       rows: [
-        ["AGENT ID", "agnt_07F2"],
-        ["MANIFEST", "mft_4A91"],
-        ["LAST RECEIPT", "rcpt_81C3"],
+        ["AGENT", "Agent #7"],
+        ["MANIFEST", "dataHash + metadata"],
+        ["LAST RECEIPT", "tx hash + event"],
       ],
     },
     journey: "Trace an\nagent evidence path.",
@@ -101,9 +103,9 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
       label: "ALLOWANCE ROUTE",
       state: "SIGNATURE PENDING",
       rows: [
-        ["APPROVAL", "approval_2E0"],
+        ["APPROVAL", "exact amount"],
         ["ROUTE", "vault → royalty"],
-        ["RECEIPT", "rcpt_94B1"],
+        ["RECEIPT", "tx hash + event"],
       ],
     },
     journey: "Inspect the\nreceipt boundary.",
@@ -136,7 +138,7 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
       label: "FINALITY CHAIN",
       state: "CONFIRMING",
       rows: [
-        ["TX HASH", "0x8a2f…7e19"],
+        ["TX HASH", "0x…"],
         ["STATE", "submitted → confirm"],
         ["RECOVERY", "retry surface"],
       ],
@@ -171,7 +173,7 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
       label: "PUBLICATION ROOT",
       state: "ROOT VERIFIED",
       rows: [
-        ["ROOT", "0x71c4…a908"],
+        ["ROOT", "0x…"],
         ["PHASE", "publish → verify"],
         ["AVAILABILITY", "separate state"],
       ],

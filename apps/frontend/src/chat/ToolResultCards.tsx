@@ -2,6 +2,7 @@ import { useState, type CSSProperties, type ReactElement } from "react";
 import { COLORS } from "../components/ui.js";
 import { formatEther } from "viem";
 import { formatToolResult } from "@axiom/chat-runtime";
+import { APP_CHAIN } from "../config/wagmi.js";
 
 type EncodePreview = {
   encodeOnly?: boolean;
@@ -31,7 +32,7 @@ export function hasEncodePreview(content: string | null): boolean {
 
 function formatNativeValue(weiStr: string): string {
   try {
-    return `${formatEther(BigInt(weiStr))} 0G`;
+    return `${formatEther(BigInt(weiStr))} ${APP_CHAIN.nativeCurrency.symbol}`;
   } catch {
     return `${weiStr} wei`;
   }
@@ -69,7 +70,7 @@ export function EncodePreviewCard({
 
   const amountLabel = ((): string | null => {
     if (toolName === "withdraw" || toolName === "deposit") {
-      return `${preview.amount ?? "?"} 0G`;
+      return `${preview.amount ?? "?"} ${APP_CHAIN.nativeCurrency.symbol}`;
     }
     if (preview.amount) {
       return `${preview.amount}${preview.amountUnit ? ` ${preview.amountUnit}` : ""}`;

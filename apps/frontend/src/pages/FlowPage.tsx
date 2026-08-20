@@ -15,7 +15,7 @@
 */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAccount, useChainId, usePublicClient } from "wagmi";
-import { erc20Abi, isAddress, parseUnits } from "viem";
+import { erc20Abi, formatUnits, isAddress, parseUnits } from "viem";
 import {
   AlertTriangle,
   ArrowRight,
@@ -46,6 +46,7 @@ import { flowMeta } from "../lib/prototypeCatalog.js";
 import { useAgents } from "../hooks/useAgents.js";
 import { useMintWizard } from "../hooks/useMintWizard.js";
 import { usePayment } from "../hooks/usePayment.js";
+import { paymentSymbolOf, usePaymentToken } from "../hooks/usePaymentToken.js";
 import { useTransfer } from "../hooks/useTransfer.js";
 import { useOrchestratorTick } from "../hooks/useOrchestratorTick.js";
 import { useVaultWrite } from "../hooks/useVaultWrite.js";
@@ -130,6 +131,12 @@ export function FlowPage({
   const isVaultFlow = kind === "deposit" || kind === "withdraw";
   const nativeSymbol = APP_CHAIN.nativeCurrency.symbol;
   const nativeDecimals = APP_CHAIN.nativeCurrency.decimals;
+  // C-12: the payment flow's unit is the payment token's ON-CHAIN symbol
+  // (Galileo: axmUSDC), resolved once via the hook-layer cache — the form
+  // suffix, the receipt detail and the review-sheet CTA all read this one
+  // source, so they can never contradict each other.
+  const paymentToken = usePaymentToken();
+  const paymentSymbol = paymentSymbolOf(paymentToken);
   const vaultTokenId = useMemo(() => {
     if (!isVaultFlow || !/^\d+$/.test(selectedTokenId)) return 0n;
     return BigInt(selectedTokenId);
@@ -348,7 +355,7 @@ export function FlowPage({
           addReceipt({
             id: approveHash,
             kind: "Allowance approval",
-            detail: `${draft.value.trim()} USDC → exact allowance (boundary 1)`,
+            detail: `${draft.value.trim()} ${paymentSymbol} → exact allowance (boundary 1)`,
             hash: approveHash,
             age: "now",
             state: "confirming",
@@ -602,11 +609,14 @@ export function FlowPage({
       return undefined;
     if (allowance === null) return undefined;
     try {
-      return BigInt(allowance) < parseUnits(draft.value.trim() || "0", 6);
+      return (
+        BigInt(allowance) <
+        parseUnits(draft.value.trim() || "0", paymentToken?.decimals ?? 6)
+      );
     } catch {
       return undefined;
     }
-  }, [kind, draft.phase, allowance, draft.value]);
+  }, [kind, draft.phase, allowance, draft.value, paymentToken?.decimals]);
   const confirmationLabel =
     kind !== "payment"
       ? undefined
@@ -768,7 +778,7 @@ export function FlowPage({
                 onChange={updateValue}
                 required
                 maxLength={24}
-                suffix="0G"
+                suffix={paymentSymbol}
                 error={
                   Number(draft.value) <= 0
                     ? "Enter an amount above zero."
@@ -969,8 +979,9 @@ export function FlowPage({
             <div className="diagnostic-note">
               <CreditCard size={14} />
               <span>
-                Current allowance: {allowance} (exact-amount approval only,
-                never infinite).
+                Current allowance:{" "}
+                {formatUnits(BigInt(allowance), paymentToken?.decimals ?? 6)}{" "}
+                {paymentSymbol} (exact-amount approval only, never infinite).
               </span>
             </div>
           )}
@@ -997,6 +1008,7 @@ export function FlowPage({
           confirmationLabel={confirmationLabel}
           approvalNeeded={paymentApprovalNeeded}
           balanceFact={balanceFact}
+          paymentSymbol={paymentSymbol}
           onClose={() =>
             dispatch({
               type: "set-draft-phase",

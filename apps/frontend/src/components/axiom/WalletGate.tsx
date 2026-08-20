@@ -32,7 +32,7 @@ import {
 import { Button, Field, Status } from "./Controls.js";
 import { Logo } from "./AppShell.js";
 
-import { getCopy, type Locale } from "../../lib/copy.js";
+import { getCopy, interpolate, type Locale } from "../../lib/copy.js";
 import type { PrototypeAction } from "../../lib/prototypeStore.js";
 import type { Session } from "../../lib/models.js";
 import { humanizeError } from "../../utils/format.js";
@@ -84,6 +84,9 @@ export function WalletGate({
   locale: Locale;
 }) {
   const copy = getCopy(locale);
+  // C-08: the target network in copy is always the configured chain, never a
+  // literal ("Switch to 0G Mainnet" told testnet users the wrong network).
+  const chainVars = { chainName: APP_CHAIN.name, chainId: APP_CHAIN_ID };
   const { address, isConnected, chainId, connector } = useAccount();
   const {
     connectors,
@@ -326,7 +329,7 @@ export function WalletGate({
             <div className="wallet-state">
               <AlertTriangle className="warning-icon" size={28} />
               <span className="eyebrow">NETWORK CHECK</span>
-              <h2>{copy.wallet.wrongNetworkTitle}</h2>
+              <h2>{interpolate(copy.wallet.wrongNetworkTitle, chainVars)}</h2>
               <p>{copy.wallet.wrongNetworkDescription}</p>
               <div className="network-check">
                 <span>Network mismatch</span>
@@ -339,7 +342,7 @@ export function WalletGate({
                 onClick={() => void switchNetwork()}
                 icon={<Network size={15} />}
               >
-                {copy.wallet.switchNetwork}
+                {interpolate(copy.wallet.switchNetwork, chainVars)}
               </Button>
               {error && (
                 <p className="wallet-gate-error" role="alert">

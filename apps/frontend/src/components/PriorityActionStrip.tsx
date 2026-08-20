@@ -10,6 +10,7 @@ import {
   getRouteAction,
   type FundTarget,
 } from "../lib/nextSafeAction.js";
+import { getCopy } from "../lib/copy.js";
 import { trackUxEvent } from "../lib/uxTelemetry.js";
 
 export function PriorityActionStrip({
@@ -26,12 +27,14 @@ export function PriorityActionStrip({
   fundTarget?: FundTarget;
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const action = getRouteAction(state, path, fundTarget);
+  const copy = getCopy(state.settings.locale);
+  const strip = copy.strip;
+  const action = getRouteAction(state, path, fundTarget, strip);
 
   // Chat fills the viewport below the topbar (live SSE surface) — no strip.
   if (!action || ["settings", "staking", "chat"].includes(route)) return null;
 
-  const actions = getNextSafeActions(state, fundTarget);
+  const actions = getNextSafeActions(state, fundTarget, strip);
   const alternatives = actions
     .filter((item) => item.id !== action.id)
     .slice(0, 2);
@@ -65,20 +68,20 @@ export function PriorityActionStrip({
       </div>
       <div className="priority-actions">
         <button className="button button-primary" onClick={() => openAction()}>
-          Open review <ArrowRight size={15} />
+          {strip.openReview} <ArrowRight size={15} />
         </button>
         <button
           className="priority-why"
           aria-expanded={detailsOpen}
           onClick={() => setDetailsOpen((open) => !open)}
         >
-          Why now <ChevronDown size={14} />
+          {strip.whyNow} <ChevronDown size={14} />
         </button>
       </div>
       {detailsOpen && (
         <div className="priority-details">
           <span className="mono">
-            {action.shortcut} · prefilled, not submitted
+            {action.shortcut} · {strip.prefilledNote}
           </span>
           <div>
             {alternatives.map((alternative) => (
@@ -90,7 +93,7 @@ export function PriorityActionStrip({
               </button>
             ))}
             <button onClick={() => go("/transactions?filter=review")}>
-              See all queue <ArrowRight size={13} />
+              {strip.seeAllQueue} <ArrowRight size={13} />
             </button>
           </div>
         </div>

@@ -18,6 +18,10 @@ import {
 
 export type PaymentConfig = {
   paymentToken: Address;
+  /** On-chain ERC-20 symbol/decimals, read by the backend from the token
+   *  contract (C-12: the UI interpolates these, never hardcodes a unit). */
+  paymentTokenSymbol: string;
+  paymentTokenDecimals: number;
   protocolFeeBps: string;
   protocolTreasury: Address;
 };
@@ -87,13 +91,18 @@ export function usePayment(): UsePaymentResult {
       setPayLoading(true);
       try {
         const processor = getAxiomPaymentProcessorAddress(chainId);
-        // The flow sheet passes HUMAN units ("1.5") — convert to USDC base
-        // units (6 decimals, same constant as the chat pay executor) instead
-        // of BigInt(amount), which throws "Cannot convert 1.5 to a BigInt".
-        const amountWei = parseUnits(amount.trim(), 6);
+        // The flow sheet passes HUMAN units ("1.5") — convert to the payment
+        // token's ON-CHAIN base units from the payment config (Galileo's
+        // axmUSDC is 18-decimal; the old hardcoded 6 was a USDC-era constant
+        // that mis-scaled every payment by 1e12). Never BigInt(amount) either
+        // — that throws "Cannot convert 1.5 to a BigInt".
+        const config = await getPaymentConfig();
+        const amountWei = parseUnits(
+          amount.trim(),
+          config.paymentTokenDecimals ?? 6,
+        );
         // Exact-amount approval mirrors backend ensureAllowance — never MaxUint256; matches the contract's "approve for amount" requirement (infinity approvals only in the E2E harness)
         if (address && publicClient) {
-          const config = await getPaymentConfig();
           const allowance = (await publicClient.readContract({
             address: config.paymentToken,
             abi: erc20Abi,
@@ -145,8 +154,12 @@ export function usePayment(): UsePaymentResult {
       try {
         if (!address || !publicClient) throw new Error("wallet not connected");
         const processor = getAxiomPaymentProcessorAddress(chainId);
-        const amountWei = parseUnits(amount.trim(), 6);
         const config = await getPaymentConfig();
+        // On-chain token decimals from the config — never a constant (C-12).
+        const amountWei = parseUnits(
+          amount.trim(),
+          config.paymentTokenDecimals ?? 6,
+        );
         const allowance = (await publicClient.readContract({
           address: config.paymentToken,
           abi: erc20Abi,

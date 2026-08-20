@@ -26,6 +26,10 @@ type Props = {
   /** C-07: vault flows show the resulting-balance estimate as an extra fact
    *  row (cheap — the vault read is already live on the flow page). */
   balanceFact?: { dt: string; dd: string };
+  /** C-12: the payment token's on-chain symbol from the hook-layer cache —
+   *  the confirm CTA interpolates it ("Pay 25 axmUSDC" on Galileo), never a
+   *  hardcoded unit. */
+  paymentSymbol?: string;
 };
 
 const labels: Record<FlowKind, { consequence: string; proof: string }> = {
@@ -66,6 +70,7 @@ export function OperationReviewSheet({
   confirmationLabel,
   approvalNeeded,
   balanceFact,
+  paymentSymbol,
 }: Props) {
   const details = labels[kind];
   // C-14 dismiss trio: Esc + focus restore here; backdrop via layer onMouseDown
@@ -85,7 +90,7 @@ export function OperationReviewSheet({
         ? "Continue to payment"
         : "Approve exact allowance"
       : paymentReady
-        ? `Pay ${draft.value} USDC`
+        ? `Pay ${draft.value} ${paymentSymbol ?? ""}`.trimEnd()
         : "Sign & execute";
   const confirmationCount =
     confirmationLabel ??

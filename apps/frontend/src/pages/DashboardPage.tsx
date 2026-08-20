@@ -43,50 +43,53 @@ function ContextStrip({
   chainOk,
   connectorName,
   reviewCount,
+  copy,
 }: {
   go: (path: string) => void;
   address?: string;
   chainOk: boolean;
   connectorName?: string;
   reviewCount: number;
+  copy: ReturnType<typeof getCopy>;
 }) {
   return (
     <section className="context-strip">
       <div className="context-cell">
-        <span className="eyebrow">WALLET CONTEXT</span>
+        <span className="eyebrow">{copy.dashboard.contextWallet}</span>
         <strong>
           <Wallet size={15} />{" "}
-          {address ? truncateAddress(address) : "not connected"}
+          {address ? truncateAddress(address) : copy.topbar.notConnected}
         </strong>
         <span className="mono">{address ?? "—"}</span>
       </div>
       <div className="context-cell">
-        <span className="eyebrow">NETWORK</span>
+        <span className="eyebrow">{copy.dashboard.contextNetwork}</span>
         <strong>
           <Network size={15} /> {APP_CHAIN.name}
         </strong>
         <span className="mono">
           chain {APP_CHAIN_ID}
-          {chainOk ? "" : " · switch required"}
+          {chainOk ? "" : ` · ${copy.dashboard.switchRequired}`}
         </span>
       </div>
       <div className="context-cell">
-        <span className="eyebrow">SIGNER</span>
+        <span className="eyebrow">{copy.dashboard.contextSigner}</span>
         <strong>
-          <KeyRound size={15} /> {chainOk ? "Ready to sign" : "Wrong network"}
+          <KeyRound size={15} />{" "}
+          {chainOk ? copy.dashboard.signerReady : copy.dashboard.signerWrong}
         </strong>
-        <span className="mono">{connectorName ?? "no connector"}</span>
+        <span className="mono">
+          {connectorName ?? copy.dashboard.noConnector}
+        </span>
       </div>
       <div className="context-cell context-action">
-        <span className="eyebrow">ATTENTION</span>
-        <strong>
-          {reviewCount} action{reviewCount === 1 ? "" : "s"} need review
-        </strong>
+        <span className="eyebrow">{copy.dashboard.contextAttention}</span>
+        <strong>{copy.dashboard.attentionCount(reviewCount)}</strong>
         <button
           className="text-link"
           onClick={() => go("/transactions?filter=review")}
         >
-          Open review queue <ArrowRight size={14} />
+          {copy.dashboard.openReviewQueue} <ArrowRight size={14} />
         </button>
       </div>
     </section>
@@ -129,6 +132,9 @@ export function DashboardPage({
   const { address, connector } = useAccount();
   const chainId = useChainId();
   const chainOk = chainId === APP_CHAIN_ID;
+  // Vault balances are native-denominated — the unit comes from chain config,
+  // never a literal (C-12).
+  const nativeSymbol = APP_CHAIN.nativeCurrency.symbol;
   const {
     agents,
     error: agentsError,
@@ -164,7 +170,7 @@ export function DashboardPage({
     refetchEvents();
     dispatch({
       type: "notice",
-      notice: "Overview refreshed from the live indexers.",
+      notice: copy.dashboard.refreshNotice,
     });
   };
 
@@ -213,7 +219,9 @@ export function DashboardPage({
           <p>{copy.dashboard.description}</p>
         </div>
         <div className="action-lane">
-          <span className="eyebrow copper">NOW / REVIEW</span>
+          <span className="eyebrow copper">
+            {copy.dashboard.nowReviewEyebrow}
+          </span>
           <strong>{copy.dashboard.review(attention.length)}</strong>
           <Button
             onClick={() =>
@@ -225,7 +233,9 @@ export function DashboardPage({
             }
             icon={<ArrowRight size={15} />}
           >
-            {copy.dashboard.reviewAction}
+            {copy.dashboard.reviewAction(
+              attention[0] ? `#${attention[0].tokenId.toString()}` : undefined,
+            )}
           </Button>
           <button className="text-link" onClick={refresh}>
             {copy.dashboard.refresh} <RefreshCw size={13} />
@@ -239,21 +249,22 @@ export function DashboardPage({
         chainOk={chainOk}
         connectorName={connector?.name}
         reviewCount={reviewCount}
+        copy={copy}
       />
 
       <MobileDisclosure
         className="dashboard-mobile-disclosure"
-        eyebrow="SECONDARY TELEMETRY"
-        title="Telemetry & recent evidence"
+        eyebrow={copy.dashboard.secondaryTelemetry}
+        title={copy.dashboard.telemetryTitle}
       >
         <section className="stats-grid">
           <Stat
             label={copy.dashboard.managedValue}
-            value={`${formatTokenAmount(totalVaultWei)} 0G`}
+            value={`${formatTokenAmount(totalVaultWei)} ${nativeSymbol}`}
             change={
               loading
-                ? "loading vaults…"
-                : `${agents.length} agent${agents.length === 1 ? "" : "s"} scoped`
+                ? copy.dashboard.loadingVaults
+                : copy.dashboard.agentsScoped(agents.length)
             }
             icon={<TrendingUp size={16} />}
           />
@@ -262,15 +273,15 @@ export function DashboardPage({
             value={`${String(agents.length - attention.length).padStart(2, "0")} / ${String(agents.length).padStart(2, "0")}`}
             change={
               attention.length
-                ? `${attention.length} need review`
-                : "fleet nominal"
+                ? copy.dashboard.needReview(attention.length)
+                : copy.dashboard.fleetNominal
             }
             icon={<Bot size={16} />}
           />
           <Stat
             label={copy.dashboard.storageProofs}
             value={String(events.length)}
-            change="events indexed"
+            change={copy.dashboard.eventsIndexed}
             icon={<Database size={16} />}
           />
           <Stat
@@ -280,7 +291,11 @@ export function DashboardPage({
                 ["submitted", "confirming"].includes(tx.state),
               ).length,
             ).padStart(2, "0")}
-            change={health?.ok ? "oracle live" : "oracle unreachable"}
+            change={
+              health?.ok
+                ? copy.topbar.oracleLive
+                : copy.dashboard.oracleUnreachable
+            }
             icon={<Gauge size={16} />}
           />
         </section>
@@ -301,10 +316,8 @@ export function DashboardPage({
           <div className="activity-list">
             {activityRows.length === 0 && (
               <div className="empty-state">
-                <strong>No evidence yet</strong>
-                <span>
-                  Mint an agent or run a payment to create the first receipt.
-                </span>
+                <strong>{copy.dashboard.noEvidence}</strong>
+                <span>{copy.dashboard.noEvidenceHint}</span>
               </div>
             )}
             {activityRows.map((row) => (
@@ -344,16 +357,16 @@ export function DashboardPage({
           <div className="agent-list">
             {agentsError && (
               <div className="empty-state">
-                <strong>Agent register unavailable</strong>
+                <strong>{copy.dashboard.registerUnavailable}</strong>
                 <span>{agentsError.message}</span>
               </div>
             )}
             {!agentsError && agents.length === 0 && (
               <div className="empty-state">
-                <strong>No agents yet</strong>
-                <span>Mint your first agent to start the fleet.</span>
+                <strong>{copy.dashboard.noAgents}</strong>
+                <span>{copy.dashboard.noAgentsHint}</span>
                 <Button onClick={() => go("/mint")} icon={<Bot size={15} />}>
-                  Mint an agent
+                  {copy.dashboard.mintAgent}
                 </Button>
               </div>
             )}
@@ -377,13 +390,13 @@ export function DashboardPage({
                       {truncateAddress(agent.owner)} ·{" "}
                       {agent.dataDescription
                         ? agent.dataDescription.slice(0, 42)
-                        : "no description"}
+                        : copy.dashboard.noDescription}
                     </small>
                   </span>
                   <span className="agent-value">
                     <b>
                       {vault
-                        ? `${formatTokenAmount(vault.depositsWei)} 0G`
+                        ? `${formatTokenAmount(vault.depositsWei)} ${nativeSymbol}`
                         : "—"}
                     </b>
                     <Status
@@ -410,8 +423,10 @@ export function DashboardPage({
             <div>
               <span className="eyebrow">
                 {attention[0]
-                  ? `AGENT #${attention[0].tokenId} / FUNDING`
-                  : "PAYMENT / ALLOWANCE"}
+                  ? copy.dashboard.agentFundingEyebrow(
+                      attention[0].tokenId.toString(),
+                    )
+                  : copy.dashboard.paymentAllowanceEyebrow}
               </span>
               <strong>{copy.dashboard.allowanceReady}</strong>
               <p>{copy.dashboard.allowanceDescription}</p>

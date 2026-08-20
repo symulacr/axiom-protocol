@@ -93,7 +93,9 @@ import {
   AXIOM_ASSISTANT_NAME,
 } from "@axiom/config/chat-tools";
 import { CHAT_MODEL } from "../config/env.js";
-import { APP_CHAIN_ID } from "../config/wagmi.js";
+import { APP_CHAIN, APP_CHAIN_ID } from "../config/wagmi.js";
+import { getCopy, interpolate, type Copy } from "../lib/copy.js";
+import { useUiStore } from "../lib/uiStore.js";
 import {
   COLORS,
   Textarea,
@@ -247,10 +249,10 @@ function loadJsonArray<T>(storage: Storage, key: string): T[] {
   }
 }
 
-function titleFromMessages(msgs: Message[]): string {
+function titleFromMessages(msgs: Message[], untitled: string): string {
   const first = msgs.find((m) => m.role === "user" && m.content);
-  const t = (first?.content ?? "New chat").trim().replace(/\s+/g, " ");
-  return t.length > 42 ? `${t.slice(0, 42)}…` : t || "New chat";
+  const t = (first?.content ?? untitled).trim().replace(/\s+/g, " ");
+  return t.length > 42 ? `${t.slice(0, 42)}…` : t || untitled;
 }
 
 function consumeSseLines(buffer: string): {
@@ -340,9 +342,11 @@ function ChatBanner({ children }: { children: ReactNode }): ReactElement {
 function AskUserCard({
   content,
   onAnswer,
+  copy,
 }: {
   content: string;
   onAnswer: (answer: string) => void;
+  copy: Copy["chat"];
 }): ReactElement | null {
   const [selected, setSelected] = useState<string[]>([]);
   const [freeText, setFreeText] = useState("");
@@ -358,7 +362,7 @@ function AskUserCard({
     return null;
   }
   if (!data || data.ask !== true) return null;
-  const question = data.question ?? "Question";
+  const question = data.question ?? copy.questionFallback;
   const options = Array.isArray(data.options) ? data.options : [];
   const multiSelect = data.multiSelect === true;
 
@@ -421,7 +425,7 @@ function AskUserCard({
               disabled={selected.length === 0}
               onClick={() => submit(selected.join(", "))}
             >
-              Submit
+              {copy.send}
             </Button>
           </div>
         ) : (
@@ -446,7 +450,7 @@ function AskUserCard({
                 submit(freeText.trim());
               }
             }}
-            placeholder="Type your answer…"
+            placeholder={copy.answerPlaceholder}
             style={{ flex: 1 }}
           />
           <Button
@@ -454,7 +458,7 @@ function AskUserCard({
             disabled={!freeText.trim()}
             onClick={() => submit(freeText.trim())}
           >
-            Send
+            {copy.send}
           </Button>
         </div>
       )}
@@ -504,28 +508,30 @@ const dedupeToolCalls = (calls: ToolCall[]): ToolCall[] =>
 function MessageEditConfirm({
   onConfirm,
   onCancel,
+  copy,
 }: {
   onConfirm: () => void;
   onCancel: () => void;
+  copy: Copy["chat"];
 }): ReactElement {
   return (
     <span className="msg-confirm">
-      <span className="msg-confirm__text">Edit discards the rest</span>
+      <span className="msg-confirm__text">{copy.editDiscards}</span>
       <button
         type="button"
         className="msg-action msg-action--danger"
-        title="Discard the messages after this one and edit"
+        title={copy.discardEditTitle}
         onClick={onConfirm}
       >
-        Edit
+        {copy.edit}
       </button>
       <button
         type="button"
         className="msg-action"
-        title="Keep the conversation"
+        title={copy.keepConversationTitle}
         onClick={onCancel}
       >
-        Cancel
+        {copy.cancel}
       </button>
     </span>
   );
@@ -534,6 +540,13 @@ function MessageEditConfirm({
 function ChatPageInner(): ReactElement {
   const { address } = useAccount();
   const chainId = useChainId();
+  // C-11: every rendered chat string routes through copy.chat (the old dead
+  // section described the mockup chat; these keys describe the live one).
+  const { state: uiState } = useUiStore();
+  const chatCopy = getCopy(uiState.settings.locale).chat;
+  // C-08/C-12: network name and native token unit come from chain config.
+  const chainVars = { chainName: APP_CHAIN.name, chainId: APP_CHAIN_ID };
+  const nativeSymbol = APP_CHAIN.nativeCurrency.symbol;
   const { session, recordToolResult, providerPref, setProviderPref } =
     useChatSession();
   const publicClient = usePublicClient();
@@ -1125,6 +1138,7 @@ function ChatPageInner(): ReactElement {
                   loopCount,
                   stepsRef.current,
                   sessionTurns,
+                  nativeSymbol,
                 ),
               },
             });
@@ -1350,11 +1364,12 @@ function ChatPageInner(): ReactElement {
     const stored = stripSummaryLead(messages);
     upsertThread({
       id: threadId,
-      title: titleFromMessages(stored),
+      title: titleFromMessages(stored, chatCopy.untitledThread),
       updatedAt: Date.now(),
       messages: stored,
     } as StoredThread);
-  }, [messages, threadId]);
+    // hooks: untitled label follows the locale
+  }, [messages, threadId, chatCopy.untitledThread]);
 
   const startNewChat = useCallback(() => {
     // Invalidate any in-flight run so its stream/tool-loop can never commit
@@ -1404,9 +1419,9 @@ function ChatPageInner(): ReactElement {
       }
       // Recoverable: deleting a chat is not irreversible, so offer undo.
       if (removed) {
-        toast("Chat deleted", {
+        toast(chatCopy.deletedToast, {
           action: {
-            label: "Undo",
+            label: chatCopy.undo,
             onClick: () => {
               upsertThread(removed);
             },
@@ -1414,7 +1429,7 @@ function ChatPageInner(): ReactElement {
         });
       }
     },
-    [threadId, threads, openThread, startNewChat],
+    [threadId, threads, openThread, startNewChat, chatCopy],
   );
 
   const cancelStream = useCallback(() => {
@@ -1462,6 +1477,7 @@ function ChatPageInner(): ReactElement {
             serverLoading={historyLoading}
             serverRestore={!!address && !historyRequested}
             onRequestServerHistory={() => setHistoryRequested(true)}
+            copy={chatCopy}
           />,
           threadsSlot,
         )}
@@ -1469,12 +1485,12 @@ function ChatPageInner(): ReactElement {
         {/* Shell grammar (C-05): one h1 per page. /chat is a fixed-viewport
             surface, so the head is visually hidden — the compact topbar below
             stays the surface chrome (audit-sanctioned exception). */}
-        <h1 className="visually-hidden">Chat</h1>
+        <h1 className="visually-hidden">{chatCopy.pageTitle}</h1>
         <div className="chat-topbar">
           <button
             type="button"
             className="shell-icon-btn chat-sidebar-toggle"
-            aria-label="History"
+            aria-label={chatCopy.historyToggle}
             aria-expanded={sidebarOpen}
             ref={sidebarToggleRef}
             onClick={() => {
@@ -1498,8 +1514,8 @@ function ChatPageInner(): ReactElement {
             <div className="chat-topbar__name">{AXIOM_ASSISTANT_NAME}</div>
             <div className="chat-topbar__status">
               {chainSupported
-                ? "Mint · vault · tick tools"
-                : `Switch to 0G (${chainId})`}
+                ? interpolate(chatCopy.statusOnline, chainVars)
+                : interpolate(chatCopy.statusWrongNetwork, chainVars)}
             </div>
           </div>
           <Button
@@ -1507,14 +1523,16 @@ function ChatPageInner(): ReactElement {
             onClick={startNewChat}
             icon={<MessageSquare size={13} />}
           >
-            New chat
+            {chatCopy.newChat}
           </Button>
         </div>
 
         {computeHint && <ChatBanner>{computeHint}</ChatBanner>}
 
         {!chainSupported && (
-          <ChatBanner>Wrong network. Switch wallet to 0G Aristotle.</ChatBanner>
+          <ChatBanner>
+            {interpolate(chatCopy.wrongNetworkBanner, chainVars)}
+          </ChatBanner>
         )}
 
         <div
@@ -1553,7 +1571,7 @@ function ChatPageInner(): ReactElement {
                   margin: "0 auto var(--space-lg)",
                 }}
               >
-                Agents · vaults · ticks. Wallet signs on-chain actions.
+                {chatCopy.emptyTagline}
               </p>
               <div
                 style={{
@@ -1564,20 +1582,22 @@ function ChatPageInner(): ReactElement {
               >
                 {[
                   {
-                    label: "My agents",
-                    hint: "What you own",
+                    label: chatCopy.promptAgents,
+                    hint: chatCopy.promptAgentsHint,
                   },
                   {
-                    label: "Mint agent",
-                    hint: "Wallet signs",
+                    label: chatCopy.promptMint,
+                    hint: chatCopy.promptMintHint,
                   },
                   {
-                    label: "Vault balance",
-                    hint: "0G holdings",
+                    label: chatCopy.promptVault,
+                    hint: interpolate(chatCopy.promptVaultHint, {
+                      nativeSymbol,
+                    }),
                   },
                   {
-                    label: "Simulate tick",
-                    hint: "Safe dry-run first",
+                    label: chatCopy.promptTick,
+                    hint: chatCopy.promptTickHint,
                   },
                 ].map((p) => (
                   <button
@@ -1626,7 +1646,7 @@ function ChatPageInner(): ReactElement {
                       color: "var(--c-text)",
                     }}
                   >
-                    All {CLIENT_TOOL_CATALOG.length} tools
+                    {chatCopy.toolsToggle(CLIENT_TOOL_CATALOG.length)}
                   </span>
                   <span
                     style={{
@@ -1634,7 +1654,7 @@ function ChatPageInner(): ReactElement {
                       color: "var(--c-text-dim)",
                     }}
                   >
-                    {toolsOpen ? "hide ▴" : "browse ▾"}
+                    {toolsOpen ? chatCopy.toolsHide : chatCopy.toolsBrowse}
                   </span>
                 </button>
                 {toolsOpen && (
@@ -1713,16 +1733,19 @@ function ChatPageInner(): ReactElement {
                 }
               >
                 {msg.role === "user"
-                  ? "You"
+                  ? chatCopy.roleYou
                   : msg.role === "tool"
-                    ? (TOOL_LABELS[msg.name ?? ""] ?? msg.name ?? "Tool")
-                    : "Assistant"}
+                    ? (TOOL_LABELS[msg.name ?? ""] ??
+                      msg.name ??
+                      chatCopy.roleTool)
+                    : chatCopy.roleAssistant}
                 {msg.role === "tool" && msg.name ? (
                   <ToolClassBadge name={msg.name} />
                 ) : null}
                 <span className="msg-actions" style={{ marginLeft: "auto" }}>
                   {msg.role === "user" && editConfirmId === msg.id ? (
                     <MessageEditConfirm
+                      copy={chatCopy}
                       onConfirm={() => {
                         const text = msg.content ?? "";
                         const idx = messagesRef.current.findIndex(
@@ -1745,7 +1768,7 @@ function ChatPageInner(): ReactElement {
                     <button
                       type="button"
                       className="msg-action"
-                      title="Edit and resend"
+                      title={chatCopy.editResend}
                       onClick={() => {
                         const idx = messagesRef.current.findIndex(
                           (m) => m.id === msg.id,
@@ -1757,7 +1780,7 @@ function ChatPageInner(): ReactElement {
                         }
                       }}
                     >
-                      Edit
+                      {chatCopy.edit}
                     </button>
                   ) : null}
                   {msg.role === "assistant" &&
@@ -1766,7 +1789,7 @@ function ChatPageInner(): ReactElement {
                     <button
                       type="button"
                       className="msg-action"
-                      title="Regenerate reply"
+                      title={chatCopy.regenerate}
                       onClick={() => {
                         const idx = messagesRef.current.findIndex(
                           (m) => m.id === msg.id,
@@ -1786,18 +1809,18 @@ function ChatPageInner(): ReactElement {
                         }
                       }}
                     >
-                      Regenerate
+                      {chatCopy.regenerateShort}
                     </button>
                   ) : null}
                   <button
                     type="button"
                     className="msg-action"
-                    title="Copy message"
+                    title={chatCopy.copyMessage}
                     onClick={() => {
                       void navigator.clipboard?.writeText(msg.content ?? "");
                     }}
                   >
-                    Copy
+                    {chatCopy.copyShort}
                   </button>
                 </span>
               </StatusDot>
@@ -1806,6 +1829,7 @@ function ChatPageInner(): ReactElement {
                   <AskUserCard
                     content={msg.content ?? ""}
                     onAnswer={sendMessage}
+                    copy={chatCopy}
                   />
                 ) : (
                   <div
@@ -1813,7 +1837,7 @@ function ChatPageInner(): ReactElement {
                     aria-label={
                       toolHint(msg.name ?? "") ??
                       TOOL_LABELS[msg.name ?? ""] ??
-                      "Tool result"
+                      chatCopy.toolResultFallback
                     }
                     style={{
                       ...insetCardStyle,
@@ -1881,7 +1905,11 @@ function ChatPageInner(): ReactElement {
                     </div>
                   ) : null}
                   {msg.meta?.usage ? (
-                    <InsightsDisclosure text={msg.meta.usage} />
+                    <InsightsDisclosure
+                      text={msg.meta.usage}
+                      showLabel={chatCopy.metricsShow}
+                      hideLabel={chatCopy.metricsHide}
+                    />
                   ) : null}
                 </div>
               )}
@@ -1980,10 +2008,10 @@ function ChatPageInner(): ReactElement {
                       }
                     }}
                   >
-                    Retry
+                    {chatCopy.retry}
                   </Button>
                   <Button variant="ghost" onClick={() => setStreamError(null)}>
-                    Dismiss
+                    {chatCopy.dismiss}
                   </Button>
                 </span>
               </div>
@@ -1995,7 +2023,7 @@ function ChatPageInner(): ReactElement {
               className="fade-enter"
               role="status"
               aria-live="polite"
-              aria-label="Assistant is responding"
+              aria-label={chatCopy.assistantResponding}
               style={{
                 padding: "var(--space-md) var(--space-lg)",
                 borderRadius: "var(--radius-lg)",
@@ -2003,7 +2031,9 @@ function ChatPageInner(): ReactElement {
                 background: "var(--c-surface)",
               }}
             >
-              <StatusDot color={COLORS.text}>Assistant</StatusDot>
+              <StatusDot color={COLORS.text}>
+                {chatCopy.roleAssistant}
+              </StatusDot>
               {streamText ? (
                 <div
                   style={{
@@ -2044,10 +2074,10 @@ function ChatPageInner(): ReactElement {
                   >
                     <Spinner size={14} variant="churn" />
                     <span style={{ color: COLORS.bronzeLight }}>
-                      {phaseLabel(elapsed, toolRuns, streamText)}
+                      {phaseLabel(elapsed, toolRuns, streamText, chatCopy)}
                     </span>
                     {tickRunning ? (
-                      <span style={dimXs}>Tick in progress…</span>
+                      <span style={dimXs}>{chatCopy.tickInProgress}</span>
                     ) : null}
                     {agentStep > 0 ? (
                       <span style={dimXs}>
@@ -2081,7 +2111,7 @@ function ChatPageInner(): ReactElement {
                 alignSelf: "center",
               }}
             >
-              {queue.length} queued
+              {chatCopy.queuedCount(queue.length)}
             </span>
             {queue.map((q, i) => (
               <span
@@ -2102,7 +2132,7 @@ function ChatPageInner(): ReactElement {
                 {q.length > 40 ? `${q.slice(0, 40)}…` : q}
                 <button
                   type="button"
-                  aria-label="Remove queued message"
+                  aria-label={chatCopy.removeQueued}
                   className="chat-queue-remove"
                   onClick={() => {
                     const next = queueRef.current.filter((_, idx) => idx !== i);
@@ -2129,22 +2159,24 @@ function ChatPageInner(): ReactElement {
                   <div
                     className="routing-popover"
                     role="dialog"
-                    aria-label="Provider routing"
+                    aria-label={chatCopy.routing}
                   >
                     <div className="routing-popover__head">
-                      <span className="eyebrow">Routing</span>
+                      <span className="eyebrow">{chatCopy.routing}</span>
                       <span className="routing-popover__hint">
-                        This conversation only
+                        {chatCopy.routingHint}
                       </span>
                     </div>
                     <select
-                      aria-label="Provider routing"
+                      aria-label={chatCopy.routing}
                       value={prefKey}
                       onChange={(e) => applyProviderPref(e.target.value)}
                       className="chat-inline-select routing-popover__select"
                     >
-                      <option value="auto">Auto (fastest)</option>
-                      <option value="cheapest">Lowest cost</option>
+                      <option value="auto">{chatCopy.routingAuto}</option>
+                      <option value="cheapest">
+                        {chatCopy.routingCheapest}
+                      </option>
                       {pinCandidates.map((p) => (
                         <option key={p.address} value={`pin:${p.address}`}>
                           {pinLabel(p)}
@@ -2159,14 +2191,14 @@ function ChatPageInner(): ReactElement {
                           toggleTrustMode("verified", e.target.checked)
                         }
                       />
-                      Verified providers only (TEE)
+                      {chatCopy.routingVerified}
                     </label>
                     <label
                       className={`routing-popover__check${hasPrivateProvider ? "" : " is-disabled"}`}
                       title={
                         hasPrivateProvider
-                          ? "Sealed enclave inference (prompts never leave the enclave)"
-                          : "No sealed-enclave provider serves this model"
+                          ? chatCopy.routingPrivateHintOn
+                          : chatCopy.routingPrivateHintOff
                       }
                     >
                       <input
@@ -2177,10 +2209,10 @@ function ChatPageInner(): ReactElement {
                           toggleTrustMode("private", e.target.checked)
                         }
                       />
-                      Private (sealed enclave)
+                      {chatCopy.routingPrivate}
                     </label>
                     <p className="routing-popover__status">
-                      {routingStatusLine(providerPref)}
+                      {routingStatusLine(providerPref, chatCopy)}
                     </p>
                   </div>
                 </>
@@ -2191,10 +2223,10 @@ function ChatPageInner(): ReactElement {
                 aria-expanded={routingOpen}
                 aria-haspopup="dialog"
                 onClick={() => setRoutingOpen((v) => !v)}
-                title="Provider routing — change how this conversation is served"
+                title={chatCopy.routingChipTitle}
               >
                 <Network size={12} />
-                {routingSummary(providerPref)}
+                {routingSummary(providerPref, chatCopy)}
               </button>
             </div>
             <Textarea
@@ -2215,14 +2247,14 @@ function ChatPageInner(): ReactElement {
               }}
               placeholder={
                 isStreaming
-                  ? "Queue a follow-up…"
-                  : `Message ${AXIOM_ASSISTANT_NAME}…`
+                  ? chatCopy.placeholderStreaming
+                  : chatCopy.placeholder(AXIOM_ASSISTANT_NAME)
               }
               maxLength={4000}
             />
             {isStreaming && (
               <Button variant="ghost" onClick={cancelStream}>
-                Stop
+                {chatCopy.stop}
               </Button>
             )}
             <Button
@@ -2230,7 +2262,7 @@ function ChatPageInner(): ReactElement {
               onClick={() => sendMessage(input)}
               disabled={!input.trim()}
             >
-              {isStreaming ? "Queue" : "Send"}
+              {isStreaming ? chatCopy.queue : chatCopy.send}
             </Button>
           </div>
         </div>
@@ -2265,15 +2297,16 @@ function phaseLabel(
   elapsedSec: number,
   runs: Record<string, ToolRun>,
   streamText: string,
+  copy: Copy["chat"],
 ): string {
   const running = Object.values(runs).filter((r) => r.status === "running");
   if (running.length > 0) {
     const names = running.map((r) => TOOL_LABELS[r.name] ?? r.name).join(", ");
-    return `Running ${names}… (${elapsedSec}s)`;
+    return copy.phaseRunning(names, elapsedSec);
   }
-  if (streamText) return `Streaming response… (${elapsedSec}s)`;
-  if (elapsedSec < 2) return "Thinking…";
-  return `Waiting for model response… (${elapsedSec}s)`;
+  if (streamText) return copy.phaseStreaming(elapsedSec);
+  if (elapsedSec < 2) return copy.phaseThinking;
+  return copy.phaseWaiting(elapsedSec);
 }
 
 /** Capture router usage/trace (terminal chunk or backend trace frame) into a
@@ -2315,16 +2348,18 @@ function formatNeuron(neuron: number): string {
 }
 
 /** Aggregated per-run insights line: 'N turns · N steps | LLM Xs | TTFT avg
- *  Yms · Z tok/s | Cache hit W% | In A tok · Out B tok | served 0x… | ≈X 0G'.
+ *  Yms · Z tok/s | Cache hit W% | In A tok · Out B tok | served 0x… | ≈X <native>'.
  *  Rendered inside InsightsDisclosure (collapsed by default) — the raw line
- *  stays byte-identical for anyone who expands it.
+ *  stays byte-identical for anyone who expands it; the cost unit is the
+ *  chain's native symbol (never a literal, C-12).
  *  `sessionTurns` is the per-thread user-turn count used to hint that the
  *  provider cache is still warming (first 2-4 identical-prefix turns). */
 function formatInsightsLine(
   metrics: TurnMetric[],
   turns: number,
   steps: number,
-  sessionTurns?: number,
+  sessionTurns: number | undefined,
+  nativeSymbol: string,
 ): string | undefined {
   if (metrics.length === 0) return undefined;
   const parts = [
@@ -2368,7 +2403,7 @@ function formatInsightsLine(
   const last = metrics[metrics.length - 1];
   if (last?.provider) parts.push(`served ${shortAddress(last.provider)}`);
   const cost = metrics.reduce((a, m) => a + (m.costNeuron ?? 0), 0);
-  if (cost > 0) parts.push(`≈${formatNeuron(cost)} 0G`);
+  if (cost > 0) parts.push(`≈${formatNeuron(cost)} ${nativeSymbol}`);
   return parts.join(" | ");
 }
 
@@ -2384,12 +2419,16 @@ function pinLabel(p: ComputeProvider): string {
 }
 
 /** One-line routing state for the composer's depth-0 summary chip
- *  ("Auto", "Lowest cost", "0xa48f…7836", plus a TEE/sealed suffix). */
-function routingSummary(pref: ProviderPref | undefined): string {
+ *  ("Auto", "Lowest cost", "0xa48f…7836", plus a TEE/sealed suffix —
+ *  the trust-mode tokens are protocol names and stay as-is). */
+function routingSummary(
+  pref: ProviderPref | undefined,
+  copy: Copy["chat"],
+): string {
   const parts: string[] = [];
   if (pref?.address) parts.push(shortAddress(pref.address));
-  else if (pref?.sort === "price") parts.push("Lowest cost");
-  else parts.push("Auto");
+  else if (pref?.sort === "price") parts.push(copy.routingSummaryCheapest);
+  else parts.push(copy.routingSummaryAuto);
   if (pref?.trustMode === "verified") parts.push("TEE");
   else if (pref?.trustMode === "private") parts.push("sealed");
   return parts.join(" · ");
@@ -2408,14 +2447,17 @@ function isNonDefaultRouting(pref: ProviderPref | undefined): boolean {
 /** Single status sentence inside the Routing popover — replaces the old
  *  depth-0 trailing chip ("latency-sorted · cache on"); "cache on" dropped
  *  (implementation guarantee, not user state). */
-function routingStatusLine(pref: ProviderPref | undefined): string {
+function routingStatusLine(
+  pref: ProviderPref | undefined,
+  copy: Copy["chat"],
+): string {
   if (pref?.address) {
-    return `Pinned to ${shortAddress(pref.address)} — every turn is served by this provider.`;
+    return copy.routingStatusPinned(shortAddress(pref.address));
   }
   if (pref?.sort === "price") {
-    return "Lowest-cost provider first; the serving provider may change between turns.";
+    return copy.routingStatusCheapest;
   }
-  return "Fastest provider first; turns stay on one provider so follow-ups are quicker.";
+  return copy.routingStatusAuto;
 }
 
 /** ProviderPref → request-body `provider` field; undefined when nothing is set
@@ -2448,7 +2490,15 @@ function stripSummaryLead<T extends { role: string; content: string | null }>(
 /** Per-message telemetry, collapsed to a quiet one-line affordance: the full
  *  TTFT/tok-s/cache/provider/cost dump only renders on explicit expand
  *  (02-FINDING-007). Own state per message — no parent bookkeeping. */
-function InsightsDisclosure({ text }: { text: string }): ReactElement {
+function InsightsDisclosure({
+  text,
+  showLabel,
+  hideLabel,
+}: {
+  text: string;
+  showLabel: string;
+  hideLabel: string;
+}): ReactElement {
   const [open, setOpen] = useState(false);
   return (
     <div className="msg-insights">
@@ -2458,7 +2508,7 @@ function InsightsDisclosure({ text }: { text: string }): ReactElement {
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
-        {open ? "hide metrics" : "metrics"}
+        {open ? hideLabel : showLabel}
       </button>
       {open ? <div className="msg-insights__detail">{text}</div> : null}
     </div>
