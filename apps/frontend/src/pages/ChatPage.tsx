@@ -948,6 +948,10 @@ function ChatPageInner(): ReactElement {
               : undefined,
             waitForReceipt: buildWaitForReceipt(publicClientRef.current),
             publicClient: publicClientRef.current,
+            // C-14: the transfer tool opens the TransferModal via openTransfer —
+            // without it the live ctx made chat transfers unreachable
+            // ("Wallet not connected" even with a connected wallet).
+            openTransfer,
           };
           const liveSession: ChatSessionContext = {
             ...session,

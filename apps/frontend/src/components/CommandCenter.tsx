@@ -154,7 +154,18 @@ export function CommandCenter({
 
   useEffect(() => {
     if (!open) return;
+    // C-14 focus leg of the dismiss contract: return focus to the trigger
+    // (the pre-open focused element) on close — the mobile drawer's behavior.
+    const priorFocus =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
     window.setTimeout(() => inputRef.current?.focus(), 0);
+    // Deferred: wins over the backdrop mousedown's default focus shift (see
+    // useModalDismiss), so focus lands on the trigger for Esc and backdrop.
+    return () => {
+      window.setTimeout(() => priorFocus?.focus(), 0);
+    };
   }, [open]);
 
   useEffect(() => setActiveIndex(0), [query, open]);

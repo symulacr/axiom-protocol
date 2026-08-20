@@ -72,7 +72,9 @@ button, input, textarea, select { line-height: 1.35; }
 .priority-actions { min-width: 146px; }
 
 .command-center { padding: var(--space-2); }
-.command-center-head { display: none; }
+/* C-14: the head (eyebrow + explicit X) shows at every width — the dismiss
+   contract needs a visible close control on desktop too, not only ≤640px. */
+.command-center-head { display: flex; align-items: center; justify-content: space-between; padding: 0 var(--space-1) var(--space-2); }
 .command-center-meta { padding: var(--space-3) var(--space-4) var(--space-2); }
 .command-results { gap: var(--space-2); padding: var(--space-1); }
 .command-center .command-group button { min-height: 52px; gap: var(--space-2); padding: var(--space-2) var(--space-3); }
@@ -567,7 +569,10 @@ input[type="range"] {
 .mobile-nav-drawer { position: relative; width: min(332px, calc(100vw - 28px)); min-height: 100dvh; overflow-y: auto; border-left: 1px solid var(--completion-copper, #d28b52); background: var(--completion-panel, #111617); box-shadow: -24px 0 64px rgba(0, 0, 0, .48); }
 .mobile-nav-close { position: absolute; z-index: 4; top: var(--space-2); right: var(--space-2); }
 .mobile-nav-trigger { display: none; }
-.mobile-nav-drawer .sidebar { position: relative; display: flex; width: 100%; min-height: 100dvh; transform: none; pointer-events: auto; }
+/* C-14: the base .sidebar rule carries z-index:30 for the fixed rail; inside
+   the drawer the position is reset to relative but the z-index survived and
+   painted the sidebar over .mobile-nav-close (z-4) — the X was unclickable. */
+.mobile-nav-drawer .sidebar { position: relative; z-index: auto; display: flex; width: 100%; min-height: 100dvh; transform: none; pointer-events: auto; }
 .mobile-nav-drawer .rail-resize,
 .mobile-nav-drawer .rail-hide { display: none; }
 

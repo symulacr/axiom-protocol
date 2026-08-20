@@ -37,6 +37,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary.js";
 import { Spinner } from "./components/ui.js";
 import { ShellSidebarProvider } from "./hooks/useShellSidebar.js";
 import { useReceiptReconcile } from "./hooks/useReceiptReconcile.js";
+import { useModalDismiss } from "./hooks/useModalDismiss.js";
 import { useUiStore } from "./lib/uiStore.js";
 import {
   KNOWN_PATHS,
@@ -119,6 +120,9 @@ function Guide({
   locale: "en" | "fr" | "de";
 }) {
   const copy = getCopy(locale);
+  // C-14 dismiss trio: Esc + focus restore here; backdrop via layer onMouseDown
+  // below; explicit close via the X and the skip affordance.
+  useModalDismiss(onClose);
   const [step, setStep] = useState(0);
   const steps = [
     {
@@ -153,8 +157,11 @@ function Guide({
   const item = steps[step] ?? steps[0];
   if (!item) return null;
   return (
-    <div className="guide-layer">
-      <section className="guide-card">
+    <div className="guide-layer" onMouseDown={onClose}>
+      <section
+        className="guide-card"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
         <div className="guide-media">
           <img src={item.image} alt="Axiom onboarding illustration" />
         </div>
@@ -209,14 +216,22 @@ function ChatSurface(): ReactElement {
   // Mobile rail dismiss: the ☰ toggle sits under the fixed rail overlay once
   // open, so closing needs its own affordances — backdrop tap + Esc (the
   // shell modal-dismiss contract), both only meaningful ≤760px where the
-  // rail is an overlay.
+  // rail is an overlay. C-14: focus returns to the pre-open element (the ☰
+  // toggle) on close, matching the shell drawer contract.
   useEffect(() => {
     if (!threadsOpen) return;
+    const priorFocus =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setThreadsOpen(false);
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.setTimeout(() => priorFocus?.focus(), 0);
+    };
   }, [threadsOpen]);
   return (
     <ShellSidebarProvider

@@ -36,6 +36,7 @@ import {
 } from "../hooks/useEventHistory.js";
 import { useEventStream } from "../hooks/useEventStream.js";
 import { truncateHex, explorerTxUrl } from "../utils/format.js";
+import { useModalDismiss } from "../hooks/useModalDismiss.js";
 
 function eventKindIcon(eventName: string) {
   const name = eventName.toLowerCase();
@@ -94,6 +95,9 @@ function ReceiptDrawer({
 }) {
   const copy = getCopy(locale);
   const txCopy = copy.transactions;
+  // C-14 dismiss trio: Esc + focus restore here; backdrop (layer onClick) and
+  // the X already existed.
+  useModalDismiss(onClose);
   const recover = ["reverted", "rejected", "stale"].includes(tx.state);
   const copyHash = () => {
     navigator.clipboard?.writeText(tx.hash);

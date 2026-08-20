@@ -36,6 +36,7 @@ import { getCopy, type Locale } from "../../lib/copy.js";
 import type { PrototypeAction } from "../../lib/prototypeStore.js";
 import type { Session } from "../../lib/models.js";
 import { humanizeError } from "../../utils/format.js";
+import { useModalDismiss } from "../../hooks/useModalDismiss.js";
 import { APP_CHAIN, APP_CHAIN_ID } from "../../config/wagmi.js";
 
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
@@ -95,6 +96,11 @@ export function WalletGate({
   const [profile, setProfile] = useState(session.profile);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // C-14 dismiss trio: Esc + focus restore here; backdrop via layer onMouseDown
+  // below; X already exists. Dismiss is safe in every view — the X was never
+  // gated during signing, session state is untouched by closing, and the gate
+  // re-opens from any locked CTA (the wagmi connection persists).
+  useModalDismiss(onClose);
 
   const wrongNetwork =
     isConnected && chainId !== undefined && chainId !== APP_CHAIN_ID;
@@ -199,12 +205,13 @@ export function WalletGate({
   };
 
   return (
-    <div className="wallet-gate-layer">
+    <div className="wallet-gate-layer" onMouseDown={onClose}>
       <section
         className="wallet-gate"
         role="dialog"
         aria-modal="true"
         aria-label="Axiom wallet access"
+        onMouseDown={(event) => event.stopPropagation()}
       >
         <button
           className="wallet-gate-close"

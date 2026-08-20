@@ -52,7 +52,9 @@
 }
 
 .command-center-layer { z-index: 80; }
-.command-center { width: min(680px, calc(100vw - 2rem)); max-height: min(690px, calc(100dvh - 2rem)); overflow: auto; padding: .55rem; border-color: color-mix(in srgb, var(--copper) 54%, transparent); box-shadow: 0 30px 80px rgba(0,0,0,.52); }
+/* C-13: the layer owns a 15vh top offset (axiom-completion.css .command-palette-layer),
+   so the palette max-height must subtract that offset — never compute from 100dvh alone. */
+.command-center { width: min(680px, calc(100vw - 2rem)); max-height: min(690px, calc(100dvh - 15vh - 2rem)); overflow: auto; padding: .55rem; border-color: color-mix(in srgb, var(--copper) 54%, transparent); box-shadow: 0 30px 80px rgba(0,0,0,.52); }
 .command-center .command-input { margin: 0; border-bottom: 1px solid rgba(255,255,255,.12); }
 .command-center-meta { display: flex; justify-content: space-between; gap: .75rem; padding: .65rem .78rem .35rem; color: var(--dim, #998d7d); font: 700 .64rem/1.25 var(--font-mono, monospace); letter-spacing: .04em; }
 .command-center-meta span { display: inline-flex; gap: .3rem; align-items: center; }

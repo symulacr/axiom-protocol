@@ -811,12 +811,24 @@ export const Modal = React.memo(function Modal({
     }
   }, [open]);
 
+  // C-14 dismiss trio for the v1 modal: native Esc (cancel → onClose) already
+  // existed; a click that lands on the <dialog> element itself is a ::backdrop
+  // click (native-dialog semantics) — route it through dialog.close() so it
+  // shares the single onClose path; the X below is the explicit control.
+  // Focus restore is native <dialog> behavior on close.
+  const handleBackdropClick = (event: React.MouseEvent<HTMLDialogElement>) => {
+    if (event.target === event.currentTarget) {
+      event.currentTarget.close();
+    }
+  };
+
   return (
     <>
       <style>{MODAL_CSS}</style>
       <dialog
         ref={dialogRef}
         onClose={onClose}
+        onClick={handleBackdropClick}
         aria-labelledby={title ? "modal-title" : undefined}
         data-axiom-modal=""
         style={{
@@ -833,6 +845,30 @@ export const Modal = React.memo(function Modal({
           ...style,
         }}
       >
+        <button
+          type="button"
+          onClick={() => dialogRef.current?.close()}
+          aria-label="Close dialog"
+          style={{
+            position: "absolute",
+            top: 12,
+            right: 12,
+            display: "grid",
+            placeItems: "center",
+            width: 32,
+            height: 32,
+            padding: 0,
+            border: `1px solid transparent`,
+            borderRadius: "var(--radius-md)",
+            background: "transparent",
+            color: COLORS.textMuted,
+            cursor: "pointer",
+            fontSize: 15,
+            lineHeight: 1,
+          }}
+        >
+          ✕
+        </button>
         {title !== undefined && (
           <h2
             id="modal-title"

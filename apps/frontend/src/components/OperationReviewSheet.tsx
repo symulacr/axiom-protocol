@@ -7,6 +7,7 @@ import { AlertTriangle, Check, ShieldCheck, X } from "./axiom/icons.js";
 import { createPortal } from "react-dom";
 import type { FlowKind, OperationDraft } from "../lib/models.js";
 import { APP_CHAIN_ID } from "../config/wagmi.js";
+import { useModalDismiss } from "../hooks/useModalDismiss.js";
 
 type Props = {
   kind: FlowKind;
@@ -67,6 +68,10 @@ export function OperationReviewSheet({
   balanceFact,
 }: Props) {
   const details = labels[kind];
+  // C-14 dismiss trio: Esc + focus restore here; backdrop via layer onMouseDown
+  // below; explicit close via the X and "Edit details". Sheet is the highest-
+  // stakes dialog — dismissing never submits (submission is wallet-gated).
+  useModalDismiss(onClose);
   const paymentNeedsApproval =
     kind === "payment" && draft.phase === "approval-required";
   const paymentReady = kind === "payment" && draft.phase === "payment-required";
@@ -88,13 +93,18 @@ export function OperationReviewSheet({
       ? "2 wallet confirmations required"
       : "1 wallet confirmation required");
   return createPortal(
-    <div className="operation-review-layer" role="presentation">
+    <div
+      className="operation-review-layer"
+      role="presentation"
+      onMouseDown={onClose}
+    >
       <section
         className="operation-review-sheet"
         role="dialog"
         aria-modal="true"
         aria-labelledby="operation-review-title"
         aria-describedby={draft.error ? "operation-review-error" : undefined}
+        onMouseDown={(event) => event.stopPropagation()}
       >
         <header className="operation-review-head">
           <div>
