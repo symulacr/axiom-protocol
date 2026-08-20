@@ -145,19 +145,12 @@ button, input, textarea, select { line-height: 1.35; }
 }
 
 /* A locked evidence panel is a ledger of protected artifacts, not a staged task list. */
-.public-locked .locked-evidence-row > svg { display: none; }
 .public-locked .locked-evidence-row:not(:first-of-type) small { font-size: 0; }
 .public-locked .locked-evidence-row:not(:first-of-type) small::after {
   content: "evidence gated";
   color: var(--dim, #998d7d);
   font: 600 0.64rem/1.35 var(--font-mono, monospace);
   letter-spacing: 0.02em;
-}
-.public-locked .locked-route-artifact strong,
-.public-locked .locked-evidence-head strong,
-.public-locked .locked-preview .eyebrow {
-  font-family: var(--font-mono, monospace);
-  letter-spacing: 0.04em;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -250,20 +243,20 @@ button, input, textarea, select { line-height: 1.35; }
 
 /* Landing summary becomes an asymmetric ledger rather than four equivalent cards. */
 .landing-strip { grid-template-columns: minmax(0, 1.5fr) minmax(0, 0.86fr) minmax(0, 0.86fr) minmax(0, 1.08fr); }
-.landing-strip > div:first-child {
+.landing-strip > button:first-child {
   position: relative;
   padding-left: clamp(28px, 3vw, 42px);
   background: linear-gradient(90deg, rgba(217, 138, 72, 0.11), rgba(217, 138, 72, 0.025));
 }
-.landing-strip > div:first-child::before { content: ""; position: absolute; inset: 16px auto 16px 14px; width: 2px; background: #d98a48; box-shadow: 0 0 16px rgba(217, 138, 72, 0.26); }
-.landing-strip > div:first-child strong { font-size: clamp(0.96rem, 1.25vw, 1.14rem); }
+.landing-strip > button:first-child::before { content: ""; position: absolute; inset: 16px auto 16px 14px; width: 2px; background: #d98a48; box-shadow: 0 0 16px rgba(217, 138, 72, 0.26); }
+.landing-strip > button:first-child strong { font-size: clamp(0.96rem, 1.25vw, 1.14rem); }
 .landing-strip > button { border-left: 1px solid rgba(217, 138, 72, 0.18); background: rgba(217, 138, 72, 0.035); }
 .landing-strip > button:hover { background: rgba(217, 138, 72, 0.11); }
 @media (max-width: 700px) {
   .landing-visual.hero-visual-modern > img.hero-visual-poster { object-position: 90% center; }
   .hero-visual-overlay > strong { display: none; }
   .landing-strip { grid-template-columns: 1fr 1fr; }
-  .landing-strip > div:first-child { grid-column: 1 / -1; padding-left: 34px; }
+  .landing-strip > button:first-child { grid-column: 1 / -1; padding-left: 34px; }
 }
 
 /* Chat is an operating surface: threads, messages, and the composer keep independent readable tracks. */
@@ -721,30 +714,6 @@ html[data-theme="light"] .filters-popover {
   .mobile-nav-drawer .sidebar.is-collapsed .account > svg { display: initial; }
   .receipt-drawer { max-height: 100dvh; overscroll-behavior: contain; }
 }
-
-/* Route identity: one consequence, one proof boundary, one safe next action. */
-.public-locked .locked-command-strip span { color: var(--dim, #998d7d); }
-.public-locked .locked-command-strip span:last-child { color: var(--copper); }
-.public-locked .locked-route-artifact { border-left-color: var(--copper); }
-.public-locked .locked-route-artifact > span,
-.public-locked .locked-evidence-head .eyebrow,
-.public-locked .locked-preview .eyebrow { color: var(--dim, #998d7d); }
-.locked-route-consequence {
-  display: grid;
-  gap: 0.38rem;
-  max-width: 42rem;
-  margin: 0;
-  padding: 0.78rem 0 0.78rem 1rem;
-  border-left: 2px solid var(--copper);
-  color: var(--muted, #c4baaa);
-  font-size: 0.83rem;
-  line-height: 1.52;
-}
-.locked-route-consequence span {
-  color: var(--copper);
-  font: 700 0.58rem/1 var(--font-mono, monospace);
-  letter-spacing: 0.13em;
-}
 .landing-copy .landing-note {
   position: relative;
   max-width: 31rem;
@@ -763,15 +732,11 @@ html[data-theme="light"] .filters-popover {
   letter-spacing: 0.13em;
 }
 @media (max-width: 700px) {
-  .public-locked .locked-command-strip { gap: 0; }
-  .public-locked .locked-command-strip span { padding-block: 0.6rem; }
-  .public-locked .locked-ledger { display: none; }
   .public-locked .locked-route-copy { display: grid; gap: 1rem; padding-top: 1.35rem; }
   .public-locked .locked-route-copy h1,
   .public-locked .locked-route-copy p { margin: 0; }
   .public-locked .locked-route-copy .button-row { margin-top: 0.2rem; }
   .public-locked .locked-route-copy .button-row .button:first-child { flex: 1 1 100%; }
-  .locked-route-consequence { max-width: none; padding-block: 0.72rem; }
 }
 
 /* ------------------------------------------------------------------ *

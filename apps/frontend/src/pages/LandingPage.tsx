@@ -42,7 +42,7 @@ export function Landing({
         <button
           className="icon-button landing-menu-trigger"
           onClick={() => setMenuOpen((value) => !value)}
-          aria-label="Explore public paths"
+          aria-label={copy.a11y.explorePublicPaths}
           aria-expanded={menuOpen}
           aria-controls="landing-mobile-menu"
         >
@@ -52,7 +52,7 @@ export function Landing({
           <nav
             id="landing-mobile-menu"
             className="landing-mobile-menu"
-            aria-label="Explore public paths"
+            aria-label={copy.a11y.explorePublicPaths}
           >
             <button
               onClick={() => {
@@ -134,27 +134,32 @@ export function Landing({
           </div>
         </section>
       </main>
+      {/* Journey strip: every cell is a real control with the same affordance
+          (arrow + hover tint) — no dead look-alike cells (02 FINDING-014). */}
       <section className="landing-strip">
-        <div>
+        <button type="button" onClick={onConnect}>
           <span className="eyebrow">{copy.landing.stripConnectEyebrow}</span>
           <strong>{copy.landing.walletContext}</strong>
           <small>{copy.landing.stripConnectSmall}</small>
-        </div>
-        <div>
+          <ArrowRight size={14} aria-hidden="true" />
+        </button>
+        <button type="button" onClick={onGuide}>
           <span className="eyebrow">{copy.landing.stripVerifyEyebrow}</span>
           <strong>{copy.landing.signatureBoundary}</strong>
           <small>{copy.landing.stripVerifySmall}</small>
-        </div>
-        <div>
+          <ArrowRight size={14} aria-hidden="true" />
+        </button>
+        <button type="button" onClick={() => go("/app")}>
           <span className="eyebrow">{copy.landing.stripOperateEyebrow}</span>
           <strong>{copy.landing.consoleAccess}</strong>
           <small>{copy.landing.stripOperateSmall}</small>
-        </div>
-        <button onClick={() => go("/staking")}>
+          <ArrowRight size={14} aria-hidden="true" />
+        </button>
+        <button type="button" onClick={() => go("/staking")}>
           <span className="eyebrow">{copy.landing.stripBoundaryEyebrow}</span>
           <strong>{copy.landing.stakeTitle}</strong>
           <small>{copy.landing.stakingBoundary}</small>
-          <ArrowRight size={14} />
+          <ArrowRight size={14} aria-hidden="true" />
         </button>
       </section>
     </div>

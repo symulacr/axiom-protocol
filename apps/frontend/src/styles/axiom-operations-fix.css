@@ -144,6 +144,10 @@
 .app-shell .agent-detail-proof .mono {
   max-inline-size: 100%;
   overflow-wrap: anywhere;
+  /* The value is always truncateHex output (~17 chars): without a floor the
+     auto grid column computes min-content as one character and the hash
+     renders vertically (found in the row-10 live pass). */
+  min-inline-size: max-content;
 }
 
 .app-shell .detail-tabs {
@@ -319,42 +323,6 @@
 .locked-route-content {
   position: relative;
   z-index: 2;
-}
-
-.locked-route-artifact {
-  position: relative;
-  padding-left: 16px;
-  border-left: 2px solid var(--completion-copper);
-}
-
-.locked-route-artifact::after {
-  content: "PROOF / GATED";
-  display: block;
-  margin-top: 7px;
-  color: var(--completion-dim);
-  font: 700 9px/1.25 "JetBrains Mono", monospace;
-  letter-spacing: .1em;
-}
-
-.locked-agent .locked-route-artifact::after {
-  content: "IDENTITY / PROVENANCE / GATED";
-}
-
-.locked-chat .locked-route-artifact::after,
-.locked-overview .locked-route-artifact::after {
-  content: "OPERATOR HEALTH / NEXT ACTION / GATED";
-}
-
-.locked-mint .locked-route-artifact::after {
-  content: "PAYLOAD / DATAHASH / ORACLE / GATED";
-}
-
-.locked-transactions .locked-route-artifact::after {
-  content: "RECEIPT / FINALITY / GATED";
-}
-
-.locked-storage .locked-route-artifact::after {
-  content: "ROOT / PROVENANCE / GATED";
 }
 
 .locked-preview {

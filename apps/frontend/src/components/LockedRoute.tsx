@@ -3,21 +3,25 @@
   requested before the operator session is authenticated. Proof rails stay
   visible; the CTA opens the live WalletGate.
 */
-import { ArrowLeft, ChevronRight, LockKeyhole, Wallet } from "./axiom/icons.js";
+import { ArrowLeft, LockKeyhole, Wallet } from "./axiom/icons.js";
 import { Button, Status } from "./axiom/Controls.js";
 import { Logo } from "./axiom/AppShell.js";
 import { lockedRouteMeta } from "../lib/prototypeCatalog.js";
-import { APP_CHAIN, APP_CHAIN_ID } from "../config/wagmi.js";
+import { getCopy } from "../lib/copy.js";
+import type { Locale } from "../lib/copy.js";
 
 export function LockedRoute({
   requested,
+  locale,
   onConnect,
   go,
 }: {
   requested: string;
+  locale: Locale;
   onConnect: () => void;
   go: (path: string) => void;
 }) {
+  const copy = getCopy(locale);
   const pathname = requested.split("?", 1)[0] ?? requested;
   const meta =
     lockedRouteMeta[pathname] ??
@@ -39,35 +43,8 @@ export function LockedRoute({
             <ArrowLeft size={14} /> Landing
           </button>
         </header>
-        <div className="locked-command-strip">
-          <span>SESSION / AWAITING</span>
-          <span>CHAIN / {APP_CHAIN_ID}</span>
-          <span>BOUNDARY / {meta.boundary}</span>
-          <span>NEXT / {meta.next}</span>
-        </div>
         <main className="locked-route-content">
           <section className="locked-route-copy">
-            <div className="locked-ledger">
-              <div>
-                <span>WALLET</span>
-                <strong>not connected</strong>
-              </div>
-              <div>
-                <span>CHAIN</span>
-                <strong>
-                  {APP_CHAIN_ID} / {APP_CHAIN.name}
-                </strong>
-              </div>
-              <div>
-                <span>ROUTE</span>
-                <strong>{meta.slug}</strong>
-              </div>
-            </div>
-            <div className="locked-route-artifact">
-              <span>EVIDENCE / {meta.artifact}</span>
-              <strong>{meta.evidenceValue}</strong>
-              <small>{meta.evidenceNote}</small>
-            </div>
             <span className="eyebrow copper">ROUTE HELD / {meta.label}</span>
             <h1>
               {meta.title}
@@ -75,13 +52,9 @@ export function LockedRoute({
               <i>{meta.emphasis}</i>
             </h1>
             <p>{meta.copy}</p>
-            <p className="locked-route-consequence">
-              <span>PROTECTED CONSEQUENCE</span>
-              {meta.risk}
-            </p>
             <div className="button-row">
               <Button onClick={onConnect} icon={<Wallet size={15} />}>
-                {meta.cta}
+                {copy.nav.connectWallet}
               </Button>
               <Button
                 variant="ghost"
@@ -108,6 +81,8 @@ export function LockedRoute({
                 <small>Wallet verification gates live evidence.</small>
               </div>
             </div>
+            {/* Ledger rows are static states, not controls — no chevron
+                affordance on a row that does not open (02 FINDING-014). */}
             {meta.proofs.map((item, index) => (
               <div className="locked-evidence-row" key={item}>
                 <span
@@ -120,7 +95,6 @@ export function LockedRoute({
                     {index === 0 ? "not connected" : "awaiting previous step"}
                   </small>
                 </div>
-                <ChevronRight size={14} />
               </div>
             ))}
           </aside>

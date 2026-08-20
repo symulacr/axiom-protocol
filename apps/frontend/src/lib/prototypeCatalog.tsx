@@ -11,70 +11,44 @@ import {
 import type { FlowKind } from "./models";
 import { MEDIA } from "./media";
 
+/* Text lives in copy.flows (localized); flowMeta keeps only the visual
+ * assets FlowPage/uiStore still consume (02 FINDING-022: one copy owner). */
 export const flowMeta: Record<
   FlowKind,
   {
-    eyebrow: string;
-    title: string;
-    copy: string;
     media: string;
     artifact: string;
-    steps: string[];
     icon: React.ReactNode;
   }
 > = {
   mint: {
-    eyebrow: "MINT / PROVENANCE BOUNDARY",
-    title: "Mint an agent",
-    copy: "Review name and payload, then sign the combined hash, oracle and receipt boundary.",
     media: MEDIA.mint,
     artifact: "IDENTITY / HASH",
-    steps: ["Review identity", "Sign + receipt"],
     icon: <Bot size={18} />,
   },
   payment: {
-    eyebrow: "PAYMENT / ALLOWANCE ROUTE",
-    title: "Fund with context",
-    copy: "Review the exact allowance, then sign payment and receipt together with the evidence visible.",
     media: MEDIA.payment,
     artifact: "ALLOWANCE / VALUE",
-    steps: ["Review allowance", "Sign + receipt"],
     icon: <CreditCard size={18} />,
   },
   transfer: {
-    eyebrow: "TRANSFER / EIP-712 PROOF",
-    title: "Transfer with evidence",
-    copy: "Review recipient and expiry, then sign and finalize the proof as one accountable action.",
     media: MEDIA.transfer,
     artifact: "CHALLENGE / FINALITY",
-    steps: ["Review recipient", "Sign + receipt"],
     icon: <ShieldCheck size={18} />,
   },
   tick: {
-    eyebrow: "ORCHESTRATOR / STREAM",
-    title: "Run the next tick",
-    copy: "Review the bounded instruction, then start the stream and create its receipt boundary together.",
     media: MEDIA.proof,
     artifact: "STREAM / RECOVERY",
-    steps: ["Review intent", "Run + receipt"],
     icon: <Play size={18} />,
   },
   deposit: {
-    eyebrow: "VAULT / DEPOSIT ROUTE",
-    title: "Deposit into the vault",
-    copy: "Review the exact amount and the resulting vault balance, then sign the deposit and receipt boundary together.",
     media: MEDIA.payment,
     artifact: "VAULT / VALUE",
-    steps: ["Review amount", "Sign + receipt"],
     icon: <Wallet size={18} />,
   },
   withdraw: {
-    eyebrow: "VAULT / WITHDRAW ROUTE",
-    title: "Withdraw from the vault",
-    copy: "Review the exact amount and the remaining vault balance, then sign the withdrawal and receipt boundary together.",
     media: MEDIA.transfer,
     artifact: "VAULT / BALANCE",
-    steps: ["Review amount", "Sign + receipt"],
     icon: <UploadCloud size={18} />,
   },
 };
@@ -106,13 +80,13 @@ export const lockedRouteMeta: Record<
     copy: "The command overview resolves agent health, active exposure and the one decision that should happen next.",
     risk: "Exposure is held until the operator session can be attributed.",
     cta: "Verify operator health",
-    boundary: "OPERATOR CONTEXT",
+    boundary: "SIGNATURE BOUNDARY",
     artifact: "HEALTH / NEXT ACTION",
     next: "Agent health / safe action",
     media: MEDIA.proof,
     proofs: [
       "Wallet context",
-      "Network boundary",
+      "Network match",
       "Session signature",
       "Console profile",
     ],
@@ -127,7 +101,7 @@ export const lockedRouteMeta: Record<
     copy: "Settings governs session posture, display preferences and the console controls an operator can safely rely on.",
     risk: "Preference and session changes remain attributable to the signed operator.",
     cta: "Verify control plane",
-    boundary: "CONTROL CONTEXT",
+    boundary: "SIGNATURE BOUNDARY",
     artifact: "SESSION / PREFERENCES",
     next: "Session / preferences / controls",
     media: MEDIA.recovery,
@@ -149,7 +123,7 @@ export const lockedRouteMeta: Record<
     copy: "Transactions opens into approvals, signatures, receipts and recovery boundaries instead of a generic dashboard surface.",
     risk: "Receipt finality cannot be asserted before the wallet context is verified.",
     cta: "Verify receipt context",
-    boundary: "RECEIPT INDEX",
+    boundary: "SIGNATURE BOUNDARY",
     artifact: "RECEIPT / FINALITY",
     next: "Receipt / finality / recovery",
     media: MEDIA.transfer,
@@ -171,7 +145,7 @@ export const lockedRouteMeta: Record<
     copy: "Chat carries operator health, linked agent context and the next reviewable decision into every response instead of starting from an empty prompt.",
     risk: "Live operator context must be verified before a prompt can influence a reviewable decision.",
     cta: "Verify operator context",
-    boundary: "OPERATOR STATE",
+    boundary: "SIGNATURE BOUNDARY",
     artifact: "HEALTH / CONTEXT",
     next: "Health / prompt / review",
     media: MEDIA.onboarding,
@@ -190,12 +164,12 @@ export const lockedRouteMeta: Record<
     label: "MINT / PROVENANCE",
     title: "Prove the",
     emphasis: "identity.",
-    copy: "Mint keeps payload, dataHash, oracle acknowledgement and ownership evidence visible before an agent exists.",
-    risk: "Identity cannot be created until its payload boundary is attributable to an operator.",
+    copy: "Mint keeps payload, metadata hash, oracle acknowledgement and ownership evidence visible before an agent exists.",
+    risk: "Identity cannot be created until its payload is attributable to an operator.",
     cta: "Verify provenance context",
-    boundary: "IDENTITY BOUNDARY",
-    artifact: "PAYLOAD / DATAHASH",
-    next: "Payload / dataHash / receipt",
+    boundary: "SIGNATURE BOUNDARY",
+    artifact: "PAYLOAD / HASH",
+    next: "Payload / hash / receipt",
     media: MEDIA.mint,
     proofs: [
       "Wallet context",
@@ -203,9 +177,9 @@ export const lockedRouteMeta: Record<
       "Oracle acknowledgement",
       "Mint receipt",
     ],
-    evidenceValue: "DATAHASH: PENDING",
+    evidenceValue: "HASH: PENDING",
     evidenceNote:
-      "Metadata hash is calculated only after the payload boundary is signed.",
+      "Metadata hash is calculated only after the payload is signed.",
   },
   "/payment": {
     slug: "payment",
@@ -215,7 +189,7 @@ export const lockedRouteMeta: Record<
     copy: "Payment separates exact ERC-20 approval from value transfer, protocol fee, royalty and decoded earnings.",
     risk: "No allowance or transfer is exposed until the accountable operator context is verified.",
     cta: "Verify allowance context",
-    boundary: "VALUE BOUNDARY",
+    boundary: "SIGNATURE BOUNDARY",
     artifact: "ALLOWANCE / VALUE",
     next: "Allowance / payment / event",
     media: MEDIA.payment,
@@ -233,17 +207,17 @@ export const lockedRouteMeta: Record<
     label: "TRANSFER / FINALITY",
     title: "Carry the",
     emphasis: "proof.",
-    copy: "Transfer keeps challenge, EIP-712 signature, expiration and on-chain finality visible as one accountable path.",
+    copy: "Transfer keeps challenge, signature, expiration and on-chain finality visible as one accountable path.",
     risk: "A transfer challenge is not issued until identity and recipient evidence can be attributed.",
     cta: "Verify finality context",
-    boundary: "FINALITY BOUNDARY",
+    boundary: "SIGNATURE BOUNDARY",
     artifact: "CHALLENGE / FINALITY",
     next: "Challenge / signature / finality",
     media: MEDIA.transfer,
     proofs: [
       "Wallet context",
       "Challenge nonce",
-      "EIP-712 signature",
+      "Signed challenge",
       "Finality receipt",
     ],
     evidenceValue: "NONCE: UNISSUED",
@@ -258,7 +232,7 @@ export const lockedRouteMeta: Record<
     copy: "Storage exposes encryption, root hash, transaction, proof and index availability rather than hiding provenance behind a card.",
     risk: "The published root remains unavailable until its storage intent is attributable.",
     cta: "Verify storage context",
-    boundary: "DATA BOUNDARY",
+    boundary: "SIGNATURE BOUNDARY",
     artifact: "ROOT / INTEGRITY",
     next: "Encryption / root / integrity",
     media: MEDIA.proof,
@@ -280,7 +254,7 @@ export const lockedRouteMeta: Record<
     copy: "Agent detail is ready to connect identity, ownership, activity, commands and receipt history after session verification.",
     risk: "Agent authority remains held until its owner and command capability are attributable.",
     cta: "Verify agent authority",
-    boundary: "AGENT CONTEXT",
+    boundary: "SIGNATURE BOUNDARY",
     artifact: "IDENTITY / ACTIVITY",
     next: "Identity / command / receipt",
     media: MEDIA.onboarding,
@@ -292,6 +266,6 @@ export const lockedRouteMeta: Record<
     ],
     evidenceValue: "AGENT: LOCKED",
     evidenceNote:
-      "Identity and activity records unlock together after the session boundary.",
+      "Identity and activity records unlock together after the session signature.",
   },
 };

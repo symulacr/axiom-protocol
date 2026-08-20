@@ -213,13 +213,13 @@ export function WalletGate({
         className="wallet-gate"
         role="dialog"
         aria-modal="true"
-        aria-label="Axiom wallet access"
+        aria-label={copy.a11y.walletAccess}
         onMouseDown={(event) => event.stopPropagation()}
       >
         <button
           className="wallet-gate-close"
           onClick={onClose}
-          aria-label="Close wallet access"
+          aria-label={copy.a11y.closeWalletAccess}
         >
           <X size={16} />
         </button>
@@ -316,7 +316,7 @@ export function WalletGate({
               <div
                 className="state-progress"
                 role="status"
-                aria-label="Waiting for wallet response"
+                aria-label={copy.a11y.walletWaiting}
               >
                 <i />
                 <i />

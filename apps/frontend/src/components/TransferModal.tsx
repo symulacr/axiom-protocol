@@ -50,7 +50,7 @@ const PHASE_LABELS: Record<TransferPhase, string> = {
   idle: "Ready",
   challenge: "Generating challenge…",
   signing: "Waiting for signature…",
-  finalizing: "Re-encrypting data…",
+  finalizing: "Securing data for the receiver…",
   confirming: "Confirming on-chain…",
 };
 
@@ -226,8 +226,8 @@ function TransferFormPhase({
           margin: "4px 0 0",
         }}
       >
-        128 hex chars, no 0x04 prefix. Get it from the receiver's wallet
-        'Export Public Key'.
+        128 hex chars, no 0x04 prefix. Get it from the receiver's wallet 'Export
+        Public Key'.
       </p>
       <FieldError>{pubKeyError}</FieldError>
 
@@ -245,50 +245,50 @@ function TransferFormPhase({
         className="text-dim text-xs"
         style={{ margin: "4px 0 0", fontWeight: "var(--fw-light)" }}
       >
-        32 random bytes, regenerated each time the modal opens.
+        Unique per transfer; generated automatically.
       </p>
 
       <details className="mt-lg">
         <summary className="cursor-pointer text-sm fw-medium text-muted">
           Re-encrypt for receiver (optional)
         </summary>
-          <p
-            className="text-dim text-xs"
-            style={{ margin: "8px 0", fontWeight: "var(--fw-light)" }}
-          >
-            Optional: AES key + storage URI to re-key data for the receiver.
-            Blank = sign-only.
-          </p>
-          <FieldLabel htmlFor={`${formId}-oldkey`} spacing="sm">
-            Old data encryption key (base64)
-          </FieldLabel>
-          <Input
-            id={`${formId}-oldkey`}
-            value={oldDataEncryptionKey}
-            onChange={onOldDataKeyChange}
-            placeholder="base64 32-byte AES key"
-            autoComplete="off"
-            spellCheck={false}
-            maxLength={256}
-            className="w-full"
-            style={monoFieldStyle}
-          />
-          <FieldLabel htmlFor={`${formId}-olduri`} spacing="sm">
-            Old data URI (0x&hellip;)
-          </FieldLabel>
-          <Input
-            id={`${formId}-olduri`}
-            value={oldDataUri}
-            onChange={onOldDataUriChange}
-            placeholder="0x\u2026 0G Storage root hash"
-            autoComplete="off"
-            spellCheck={false}
-            maxLength={128}
-            className="w-full"
-            style={monoFieldStyle}
-          />
-          <FieldError>{rekeyError}</FieldError>
-        </details>
+        <p
+          className="text-dim text-xs"
+          style={{ margin: "8px 0", fontWeight: "var(--fw-light)" }}
+        >
+          Optional: AES key + storage URI so only the receiver can read the data
+          after the transfer. Blank = sign-only.
+        </p>
+        <FieldLabel htmlFor={`${formId}-oldkey`} spacing="sm">
+          Old data encryption key (base64)
+        </FieldLabel>
+        <Input
+          id={`${formId}-oldkey`}
+          value={oldDataEncryptionKey}
+          onChange={onOldDataKeyChange}
+          placeholder="base64 32-byte AES key"
+          autoComplete="off"
+          spellCheck={false}
+          maxLength={256}
+          className="w-full"
+          style={monoFieldStyle}
+        />
+        <FieldLabel htmlFor={`${formId}-olduri`} spacing="sm">
+          Old data URI (0x&hellip;)
+        </FieldLabel>
+        <Input
+          id={`${formId}-olduri`}
+          value={oldDataUri}
+          onChange={onOldDataUriChange}
+          placeholder="0x\u2026 0G Storage root hash"
+          autoComplete="off"
+          spellCheck={false}
+          maxLength={128}
+          className="w-full"
+          style={monoFieldStyle}
+        />
+        <FieldError>{rekeyError}</FieldError>
+      </details>
 
       {mergedError}
 
@@ -301,7 +301,7 @@ function TransferFormPhase({
           type="submit"
           disabled={!canSubmit || rekeyError !== null}
         >
-          {isLoading ? "Signing\u2026" : "Sign AccessProof"}
+          {isLoading ? "Signing\u2026" : "Sign transfer authorization"}
         </Button>
       </div>
     </form>
@@ -344,11 +344,13 @@ function ConfirmTransferPhase({
 
       {signature !== null && signature.rekeyed === true && (
         <Alert variant="success" style={{ marginTop: 12 }}>
-          <strong>Re-encrypted</strong> &mdash; agent data was re-keyed for the
-          receiver.
+          <strong>Transfer authorized</strong> &mdash; the agent&rsquo;s data
+          was re-encrypted so only the new owner can read it.
           {signature.newDataHash !== undefined && (
-            <>
-              <br />
+            <details style={{ marginTop: 8 }}>
+              <summary className="cursor-pointer text-xs">
+                Proof details
+              </summary>
               New data hash:{" "}
               <MonoLabel
                 copyable
@@ -370,15 +372,15 @@ function ConfirmTransferPhase({
                   </MonoLabel>
                 </>
               )}
-            </>
+            </details>
           )}
         </Alert>
       )}
 
       {signature !== null && (
         <Card style={{ ...proofCardStyle, marginTop: 12 }}>
-          <strong style={{ color: COLORS.text }}>OwnershipProof</strong>{" "}
-          (signed by the Axiom oracle)
+          <strong style={{ color: COLORS.text }}>OwnershipProof</strong> (signed
+          by the Axiom oracle)
           <br />
           Signer:{" "}
           <MonoLabel
@@ -527,7 +529,7 @@ export function TransferModal({
     const hasKey = oldDataEncryptionKey.length > 0;
     const hasUri = oldDataUri.length > 0;
     if (hasKey !== hasUri) {
-      return "supply both old data key and old data URI to re-key, or leave both blank";
+      return "supply both old data key and old data URI to re-encrypt, or leave both blank";
     }
     return null;
   }, [oldDataEncryptionKey, oldDataUri]);

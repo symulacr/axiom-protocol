@@ -55,7 +55,7 @@ export function StoragePage({
           </div>
           <MobileDisclosure
             className="storage-stage-details"
-            title={copy.storage.payload}
+            title={copy.storage.fileSteps}
           >
             <div className="storage-file">
               <div className="file-icon">

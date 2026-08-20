@@ -22,7 +22,7 @@ import { trapTabFocus } from "../utils/format.js";
 
 type CommandItem = {
   id: string;
-  group: "Continue" | "Next safe action" | "Go to" | "Recent";
+  group: "Next safe action" | "Go to" | "Recent";
   label: string;
   detail: string;
   path: string;
@@ -92,20 +92,8 @@ export function CommandCenter({
 
   const items = useMemo<CommandItem[]>(() => {
     const routeItems = routeItemsFor(copy);
-    const currentRoute = routeItems.find(
-      (item) => item.path === path.split("?", 1)[0],
-    );
-    const continueItem = currentRoute
-      ? [
-          {
-            ...currentRoute,
-            id: `continue-${currentRoute.id}`,
-            group: "Continue" as const,
-            label: cmd.continueIn(currentRoute.label),
-            detail: cmd.resumeCurrent,
-          },
-        ]
-      : [];
+    // 02 FINDING-021: no "Continue in <current page>" item — a control whose
+    // destination is the page you are on is an empty affordance.
     const actionItems = safeActions.map((action) => ({
       id: action.id,
       group: "Next safe action" as const,
@@ -123,8 +111,8 @@ export function CommandCenter({
       path: `/transactions?tx=${encodeURIComponent(transaction.id)}`,
       keywords: `${transaction.kind} ${transaction.detail} ${transaction.hash} ${transaction.state}`,
     }));
-    return [...continueItem, ...actionItems, ...routeItems, ...recent];
-  }, [path, safeActions, state.transactions, copy, cmd]);
+    return [...actionItems, ...routeItems, ...recent];
+  }, [path, safeActions, state.transactions, copy]);
 
   const results = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -138,13 +126,11 @@ export function CommandCenter({
   }, [items, query]);
   const current = results[activeIndex] ?? results[0];
   const groups: CommandItem["group"][] = [
-    "Continue",
     "Next safe action",
     "Go to",
     "Recent",
   ];
   const groupLabels: Record<CommandItem["group"], string> = {
-    Continue: cmd.groupContinue,
     "Next safe action": cmd.groupNextSafeAction,
     "Go to": cmd.groupGoTo,
     Recent: cmd.groupRecent,
@@ -230,7 +216,7 @@ export function CommandCenter({
       <button
         className="icon-button command-center-trigger"
         onClick={() => setOpen(true)}
-        aria-label="Open Command Center"
+        aria-label={copy.a11y.openCommand}
         aria-haspopup="dialog"
       >
         <Search size={16} />
@@ -246,7 +232,7 @@ export function CommandCenter({
               className="command-palette command-center"
               role="dialog"
               aria-modal="true"
-              aria-label="Command Center"
+              aria-label={cmd.title}
               onMouseDown={(event) => event.stopPropagation()}
               onKeyDown={handlePanelKeyDown}
             >
@@ -255,7 +241,7 @@ export function CommandCenter({
                 <button
                   className="icon-button command-center-close"
                   onClick={close}
-                  aria-label="Close Command Center"
+                  aria-label={copy.a11y.closeCommand}
                 >
                   <X size={16} />
                 </button>

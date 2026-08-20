@@ -440,7 +440,7 @@ function AskUserCard({
       ) : (
         <div style={{ display: "flex", gap: 8 }}>
           <Textarea
-            aria-label="Answer"
+            aria-label={copy.answerPlaceholder}
             value={freeText}
             rows={1}
             onChange={(e) => setFreeText(e.target.value)}
@@ -608,6 +608,7 @@ function ChatPageInner(): ReactElement {
   // section described the mockup chat; these keys describe the live one).
   const { state: uiState } = useUiStore();
   const chatCopy = getCopy(uiState.settings.locale).chat;
+  const a11y = getCopy(uiState.settings.locale).a11y;
   // C-08/C-12: network name and native token unit come from chain config.
   const chainVars = { chainName: APP_CHAIN.name, chainId: APP_CHAIN_ID };
   const nativeSymbol = APP_CHAIN.nativeCurrency.symbol;
@@ -2092,7 +2093,7 @@ function ChatPageInner(): ReactElement {
             <div
               className="fade-enter"
               role="status"
-              aria-label="Transaction confirmations"
+              aria-label={a11y.txConfirmations}
               style={{
                 display: "flex",
                 flexDirection: "column",
@@ -2402,7 +2403,7 @@ function ChatPageInner(): ReactElement {
               </button>
             </div>
             <Textarea
-              aria-label="Chat input"
+              aria-label={a11y.chatInput}
               value={input}
               rows={1}
               onChange={(e) => {

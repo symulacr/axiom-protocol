@@ -77,9 +77,6 @@ export type Copy = {
   /** CommandCenter palette (⌘K). */
   command: {
     title: string;
-    continueIn: (label: string) => string;
-    resumeCurrent: string;
-    groupContinue: string;
     groupNextSafeAction: string;
     groupGoTo: string;
     groupRecent: string;
@@ -88,6 +85,28 @@ export type Copy = {
     emptyTitle: string;
     emptyBody: string;
     hintKeys: string;
+  };
+  /** Accessible names for icon-only shell/chrome controls (C-I18N residual:
+   *  visible text was localized in row 7; these thread the same locales
+   *  through the aria-labels). */
+  a11y: {
+    primaryNav: string;
+    openNav: string;
+    closeNav: string;
+    collapseSidebar: string;
+    hideSidebar: string;
+    resizeSidebar: string;
+    openCommand: string;
+    closeCommand: string;
+    chatThreads: string;
+    chatInput: string;
+    txConfirmations: string;
+    closeNotification: string;
+    closeOnboarding: string;
+    explorePublicPaths: string;
+    walletAccess: string;
+    closeWalletAccess: string;
+    walletWaiting: string;
   };
   landing: {
     eyebrow: string;
@@ -154,11 +173,13 @@ export type Copy = {
     pageEyebrow: string;
     pageTitle: string;
     languageLabel: string;
-    languageHint: string;
+    /** Page lede — describes the whole surface, not one control (02
+     *  FINDING-015: the old languageHint answered only "what does the
+     *  language dropdown do"). */
+    pageDescription: string;
     localeEnglish: string;
     localeFrench: string;
     localeGerman: string;
-    localFixture: string;
     liveWallet: string;
     walletNetwork: string;
     signingContext: string;
@@ -374,6 +395,9 @@ export type Copy = {
     openChat: string;
     adapter: string;
     payload: string;
+    /** Disclosure title under the payload panel head — must not repeat the
+     *  panel h2 (02 FINDING-023). */
+    fileSteps: string;
     fileMeta: string;
     labels: string[];
     note: string;
@@ -575,17 +599,33 @@ const english: Copy = {
   },
   command: {
     title: "Command Center",
-    continueIn: (label) => `Continue in ${label}`,
-    resumeCurrent: "Resume current surface",
-    groupContinue: "Continue",
     groupNextSafeAction: "Next safe action",
     groupGoTo: "Go to",
     groupRecent: "Recent",
-    resultsCount: (count) => `${count} actions`,
+    resultsCount: (count) => `${count} results`,
     placeholder: "Find action, receipt, or route",
     emptyTitle: "No matching destination",
     emptyBody: "Try a route, receipt hash, or the next safe action.",
     hintKeys: "↑↓ move · ↵ open · esc close",
+  },
+  a11y: {
+    primaryNav: "Primary navigation",
+    openNav: "Open primary navigation",
+    closeNav: "Close navigation",
+    collapseSidebar: "Collapse sidebar",
+    hideSidebar: "Hide sidebar",
+    resizeSidebar: "Resize sidebar",
+    openCommand: "Open Command Center",
+    closeCommand: "Close Command Center",
+    chatThreads: "Chat threads",
+    chatInput: "Chat input",
+    txConfirmations: "Transaction confirmations",
+    closeNotification: "Close notification",
+    closeOnboarding: "Close onboarding",
+    explorePublicPaths: "Explore public paths",
+    walletAccess: "Axiom wallet access",
+    closeWalletAccess: "Close wallet access",
+    walletWaiting: "Waiting for wallet response",
   },
   landing: {
     eyebrow: "AXIOM / VERIFIED OPERATOR CONSOLE",
@@ -654,12 +694,11 @@ const english: Copy = {
     pageEyebrow: "CONTROL PLANE / CONFIGURATION",
     pageTitle: "Settings",
     languageLabel: "Interface language",
-    languageHint:
-      "Changes labels and plural forms without changing the simulated network.",
+    pageDescription:
+      "Session, network and display preferences for this console.",
     localeEnglish: "English",
     localeFrench: "Français",
     localeGerman: "Deutsch",
-    localFixture: "local fixture",
     liveWallet: "live wallet",
     walletNetwork: "WALLET & NETWORK",
     signingContext: "Signing context",
@@ -912,6 +951,7 @@ const english: Copy = {
     openChat: "Open chat transcript",
     adapter: "0G STORAGE ADAPTER",
     payload: "Agent metadata payload",
+    fileSteps: "File & steps",
     fileMeta: "18.4 KB · AES-GCM encrypted · 4 tags",
     labels: [
       "Payload ready",
@@ -921,7 +961,7 @@ const english: Copy = {
       "Proof verified",
       "Available",
     ],
-    note: "Available appears only after root hash, storage tx, proof and index state are present.",
+    note: "Available lights up once the steps above complete.",
     provenanceRecord: "PROVENANCE RECORD",
     whatCanProve: "What the UI can prove",
     rootHash: "Root hash",
@@ -1005,13 +1045,13 @@ const english: Copy = {
     awaitingConfirmation: "awaiting confirmation",
     readyToConfirm: "ready to confirm",
     notCreated: "not created",
-    noLiveCall: "fixture / no live call",
+    noLiveCall: "demo / no live call",
     confirming: "CONFIRMING",
     stepWallet: "Wallet boundary",
     stepAuto: "Observed automatically",
   },
   agentDetail: {
-    executionSurface: "operator-controlled execution surface.",
+    executionSurface: "Operator-controlled · no on-chain events yet.",
     operatingBalance: "OPERATING BALANCE",
     vaultRoute: "vault route · {chainName}",
     dataHash: "Metadata hash",
@@ -1043,7 +1083,7 @@ const english: Copy = {
     instructionHint: "Simulated command; no live provider call.",
     providerRoute: "Provider route",
     providerValue: "Axiom orchestrator",
-    providerHint: "Fixture route selected from Settings.",
+    providerHint: "Demo route selected from Settings.",
     createTickIntent: "Create tick intent",
     createTickNotice: "Instruction created. Open Tick to inspect the stream.",
     cancel: "Cancel",
@@ -1166,18 +1206,34 @@ const french: Copy = {
   },
   command: {
     title: "Centre de commande",
-    continueIn: (label) => `Continuer dans ${label}`,
-    resumeCurrent: "Reprendre la surface courante",
-    groupContinue: "Continuer",
     groupNextSafeAction: "Prochaine action sûre",
     groupGoTo: "Aller à",
     groupRecent: "Récent",
-    resultsCount: (count) => `${count} actions`,
+    resultsCount: (count) => `${count} résultat${count > 1 ? "s" : ""}`,
     placeholder: "Chercher une action, un reçu ou une route",
     emptyTitle: "Aucune destination correspondante",
     emptyBody:
       "Essayez une route, un hash de reçu ou la prochaine action sûre.",
     hintKeys: "↑↓ naviguer · ↵ ouvrir · esc fermer",
+  },
+  a11y: {
+    primaryNav: "Navigation principale",
+    openNav: "Ouvrir la navigation principale",
+    closeNav: "Fermer la navigation",
+    collapseSidebar: "Replier la barre latérale",
+    hideSidebar: "Masquer la barre latérale",
+    resizeSidebar: "Redimensionner la barre latérale",
+    openCommand: "Ouvrir le centre de commande",
+    closeCommand: "Fermer le centre de commande",
+    chatThreads: "Fils de discussion",
+    chatInput: "Saisie du chat",
+    txConfirmations: "Confirmations de transaction",
+    closeNotification: "Fermer la notification",
+    closeOnboarding: "Fermer le guide",
+    explorePublicPaths: "Explorer les parcours publics",
+    walletAccess: "Accès wallet Axiom",
+    closeWalletAccess: "Fermer l’accès wallet",
+    walletWaiting: "En attente de la réponse du wallet",
   },
   landing: {
     eyebrow: "AXIOM / CONSOLE OPÉRATEUR VÉRIFIÉE",
@@ -1246,12 +1302,11 @@ const french: Copy = {
     pageEyebrow: "PLAN DE CONTRÔLE / CONFIGURATION",
     pageTitle: "Paramètres",
     languageLabel: "Langue de l’interface",
-    languageHint:
-      "Modifie les libellés et les pluriels sans changer le réseau simulé.",
+    pageDescription:
+      "Session, réseau et préférences d’affichage de cette console.",
     localeEnglish: "English",
     localeFrench: "Français",
     localeGerman: "Deutsch",
-    localFixture: "fixture locale",
     liveWallet: "wallet actif",
     walletNetwork: "WALLET & RÉSEAU",
     signingContext: "Contexte de signature",
@@ -1327,7 +1382,7 @@ const french: Copy = {
     description:
       "Quatre agents, un contexte de signature vérifié et une piste transactionnelle qui ne transforme jamais l’attente en succès.",
     review: (count) =>
-      `${count} action${count > 1 ? "s" : ""} agent${count > 1 ? "s" : ""} ${count > 1 ? "nécessitent" : "nécessite"} votre attention.`,
+      `${count} action${count > 1 ? "s" : ""} d’agent ${count > 1 ? "nécessitent" : "nécessite"} votre attention.`,
     nowReviewEyebrow: "MAINTENANT / REVUE",
     refresh: "Actualiser la vue",
     managedValue: "Valeur gérée",
@@ -1509,6 +1564,7 @@ const french: Copy = {
     openChat: "Ouvrir le transcript Chat",
     adapter: "ADAPTATEUR 0G STORAGE",
     payload: "Payload de métadonnées agent",
+    fileSteps: "Fichier et étapes",
     fileMeta: "18,4 Ko · chiffré AES-GCM · 4 tags",
     labels: [
       "Payload prêt",
@@ -1518,7 +1574,7 @@ const french: Copy = {
       "Preuve vérifiée",
       "Disponible",
     ],
-    note: "Disponible uniquement après présence du root hash, de la transaction Storage, de la preuve et de l’index.",
+    note: "« Disponible » s’allume une fois les étapes ci-dessus terminées.",
     provenanceRecord: "REGISTRE DE PROVENANCE",
     whatCanProve: "Ce que l’interface peut prouver",
     rootHash: "Root hash",
@@ -1606,13 +1662,14 @@ const french: Copy = {
     awaitingConfirmation: "confirmation en attente",
     readyToConfirm: "prêt à confirmer",
     notCreated: "non créé",
-    noLiveCall: "fixture / aucun appel réel",
+    noLiveCall: "démo / aucun appel réel",
     confirming: "CONFIRMATION",
     stepWallet: "Limite wallet",
     stepAuto: "Observé automatiquement",
   },
   agentDetail: {
-    executionSurface: "surface d’exécution contrôlée par l’opérateur.",
+    executionSurface:
+      "Contrôlé par l’opérateur · aucun événement on-chain pour l’instant.",
     operatingBalance: "SOLDE D’EXPLOITATION",
     vaultRoute: "route du vault · {chainName}",
     dataHash: "Hash de métadonnées",
@@ -1645,7 +1702,7 @@ const french: Copy = {
     instructionHint: "Commande simulée ; aucun appel fournisseur réel.",
     providerRoute: "Route fournisseur",
     providerValue: "Orchestrateur Axiom",
-    providerHint: "Route fixture sélectionnée dans Settings.",
+    providerHint: "Route de démonstration sélectionnée dans Paramètres.",
     createTickIntent: "Créer l’intention de tick",
     createTickNotice: "Instruction créée. Ouvrez Tick pour inspecter le flux.",
     cancel: "Annuler",
@@ -1715,8 +1772,7 @@ const french: Copy = {
     messages: (count) => `${count} message${count > 1 ? "s" : ""}`,
     transactions: (count) => `${count} transaction${count > 1 ? "s" : ""}`,
     steps: (count) => `${count} étape${count > 1 ? "s" : ""}`,
-    agents: (count) =>
-      `${count} action${count > 1 ? "s" : ""} agent${count > 1 ? "s" : ""}`,
+    agents: (count) => `${count} agent${count > 1 ? "s" : ""}`,
   },
 };
 
@@ -1772,18 +1828,34 @@ const german: Copy = {
   },
   command: {
     title: "Command Center",
-    continueIn: (label) => `Weiter in ${label}`,
-    resumeCurrent: "Aktuelle Oberfläche fortsetzen",
-    groupContinue: "Fortsetzen",
     groupNextSafeAction: "Nächste sichere Aktion",
     groupGoTo: "Gehe zu",
     groupRecent: "Zuletzt",
-    resultsCount: (count) => `${count} Aktionen`,
+    resultsCount: (count) => `${count} Ergebnis${count === 1 ? "" : "se"}`,
     placeholder: "Aktion, Beleg oder Route suchen",
     emptyTitle: "Kein passendes Ziel",
     emptyBody:
       "Versuche eine Route, einen Beleg-Hash oder die nächste sichere Aktion.",
     hintKeys: "↑↓ bewegen · ↵ öffnen · esc schließen",
+  },
+  a11y: {
+    primaryNav: "Hauptnavigation",
+    openNav: "Hauptnavigation öffnen",
+    closeNav: "Navigation schließen",
+    collapseSidebar: "Seitenleiste einklappen",
+    hideSidebar: "Seitenleiste ausblenden",
+    resizeSidebar: "Seitenleiste anpassen",
+    openCommand: "Command Center öffnen",
+    closeCommand: "Command Center schließen",
+    chatThreads: "Chat-Verläufe",
+    chatInput: "Chat-Eingabe",
+    txConfirmations: "Transaktionsbestätigungen",
+    closeNotification: "Benachrichtigung schließen",
+    closeOnboarding: "Einführung schließen",
+    explorePublicPaths: "Öffentliche Pfade erkunden",
+    walletAccess: "Axiom-Wallet-Zugang",
+    closeWalletAccess: "Wallet-Zugang schließen",
+    walletWaiting: "Warte auf Wallet-Antwort",
   },
   landing: {
     eyebrow: "AXIOM / VERIFIZIERTE OPERATOR-KONSOLE",
@@ -1852,12 +1924,11 @@ const german: Copy = {
     pageEyebrow: "KONTROLLEBENE / KONFIGURATION",
     pageTitle: "Einstellungen",
     languageLabel: "Sprache der Oberfläche",
-    languageHint:
-      "Ändert Beschriftungen und Pluralformen, nicht das simulierte Netzwerk.",
+    pageDescription:
+      "Sitzungs-, Netzwerk- und Anzeigeeinstellungen dieser Konsole.",
     localeEnglish: "English",
     localeFrench: "Français",
     localeGerman: "Deutsch",
-    localFixture: "lokale Fixture",
     liveWallet: "Live-Wallet",
     walletNetwork: "WALLET & NETZWERK",
     signingContext: "Signaturkontext",
@@ -1931,7 +2002,7 @@ const german: Copy = {
     description:
       "Vier Agents, ein verifizierter Signaturkontext und eine Transaktionsspur, die „ausstehend“ nie als Erfolg ausgibt.",
     review: (count) =>
-      `${count} Agentenaktion${count === 1 ? "" : "en"} erfordern Aufmerksamkeit.`,
+      `${count} Agentenaktion${count === 1 ? "" : "en"} ${count === 1 ? "erfordert" : "erfordern"} Aufmerksamkeit.`,
     nowReviewEyebrow: "JETZT / PRÜFUNG",
     refresh: "Übersicht aktualisieren",
     managedValue: "Verwalteter Wert",
@@ -2112,6 +2183,7 @@ const german: Copy = {
     openChat: "Chat-Transkript öffnen",
     adapter: "0G-STORAGE-ADAPTER",
     payload: "Agenten-Metadaten-Payload",
+    fileSteps: "Datei und Schritte",
     fileMeta: "18,4 KB · AES-GCM-verschlüsselt · 4 Tags",
     labels: [
       "Payload bereit",
@@ -2121,7 +2193,7 @@ const german: Copy = {
       "Beleg geprüft",
       "Verfügbar",
     ],
-    note: "Verfügbar erst, wenn Root-Hash, Storage-Transaktion, Beleg und Index vorhanden sind.",
+    note: "„Verfügbar“ leuchtet auf, sobald die obigen Schritte abgeschlossen sind.",
     provenanceRecord: "PROVENIENZ-REGISTER",
     whatCanProve: "Was die Oberfläche belegen kann",
     rootHash: "Root-Hash",
@@ -2205,13 +2277,13 @@ const german: Copy = {
     awaitingConfirmation: "Bestätigung ausstehend",
     readyToConfirm: "bereit zur Bestätigung",
     notCreated: "nicht erstellt",
-    noLiveCall: "Fixture / kein Live-Aufruf",
+    noLiveCall: "Demo / kein Live-Aufruf",
     confirming: "BESTÄTIGUNG",
     stepWallet: "Wallet-Grenze",
     stepAuto: "Automatisch beobachtet",
   },
   agentDetail: {
-    executionSurface: "operatorgesteuerte Ausführungsoberfläche.",
+    executionSurface: "Operatorgesteuert · noch keine On-Chain-Ereignisse.",
     operatingBalance: "BETRIEBSGUTHABEN",
     vaultRoute: "Vault-Route · {chainName}",
     dataHash: "Metadaten-Hash",
@@ -2244,7 +2316,7 @@ const german: Copy = {
     instructionHint: "Simulierter Befehl; kein Live-Provider-Aufruf.",
     providerRoute: "Provider-Route",
     providerValue: "Axiom-Orchestrator",
-    providerHint: "In Settings ausgewählte Fixture-Route.",
+    providerHint: "In den Einstellungen ausgewählte Demo-Route.",
     createTickIntent: "Tick-Absicht erstellen",
     createTickNotice:
       "Anweisung erstellt. Öffne Tick, um den Stream zu prüfen.",
@@ -2314,7 +2386,7 @@ const german: Copy = {
     messages: (count) => `${count} Nachricht${count === 1 ? "" : "en"}`,
     transactions: (count) => `${count} Transaktion${count === 1 ? "" : "en"}`,
     steps: (count) => `${count} Schritt${count === 1 ? "" : "e"}`,
-    agents: (count) => `${count} Agentenaktion${count === 1 ? "" : "en"}`,
+    agents: (count) => `${count} Agent${count === 1 ? "" : "en"}`,
   },
 };
 

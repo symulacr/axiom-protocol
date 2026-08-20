@@ -248,7 +248,7 @@ function Sidebar({
                 patch: { railCollapsed: !settings.railCollapsed },
               })
             }
-            aria-label="Collapse sidebar"
+            aria-label={copy.a11y.collapseSidebar}
           >
             <ChevronLeft size={15} />
           </button>
@@ -257,7 +257,7 @@ function Sidebar({
             onClick={() =>
               dispatch({ type: "settings", patch: { railHidden: true } })
             }
-            aria-label="Hide sidebar"
+            aria-label={copy.a11y.hideSidebar}
           >
             <Menu size={15} />
           </button>
@@ -267,7 +267,7 @@ function Sidebar({
         <span className="eyebrow">AXIOM / COMMAND DECK</span>
         <span className="mono">0G</span>
       </div>
-      <nav className="side-nav" aria-label="Primary navigation">
+      <nav className="side-nav" aria-label={copy.a11y.primaryNav}>
         {[...items, ...flows].map((item) => (
           <button
             key={item.path}
@@ -326,7 +326,7 @@ function Sidebar({
         className="rail-resize"
         role="separator"
         tabIndex={0}
-        aria-label="Resize sidebar"
+        aria-label={copy.a11y.resizeSidebar}
         aria-orientation="vertical"
         aria-valuemin={220}
         aria-valuemax={360}
@@ -356,6 +356,7 @@ function MobileNavigationDrawer({
   onClose: () => void;
 }) {
   const drawerRef = useRef<HTMLDivElement>(null);
+  const copy = getCopy(settings.locale);
   useEffect(() => {
     if (!open) return;
     const priorFocus =
@@ -402,7 +403,7 @@ function MobileNavigationDrawer({
     <div className="mobile-nav-layer" role="presentation">
       <button
         className="mobile-nav-backdrop"
-        aria-label="Close navigation"
+        aria-label={copy.a11y.closeNav}
         onClick={onClose}
       />
       <div
@@ -410,12 +411,12 @@ function MobileNavigationDrawer({
         ref={drawerRef}
         role="dialog"
         aria-modal="true"
-        aria-label="Primary navigation"
+        aria-label={copy.a11y.primaryNav}
       >
         <button
           className="icon-button mobile-nav-close"
           onClick={onClose}
-          aria-label="Close navigation"
+          aria-label={copy.a11y.closeNav}
         >
           <X size={18} />
         </button>
@@ -464,7 +465,7 @@ function Topbar({
         <button
           className="icon-button mobile-nav-trigger"
           onClick={onOpenMobileNav}
-          aria-label="Open primary navigation"
+          aria-label={copy.a11y.openNav}
           aria-haspopup="dialog"
         >
           <Menu size={18} />
@@ -497,7 +498,7 @@ function Topbar({
         <button
           className="icon-button"
           onClick={onLock}
-          aria-label="Lock console"
+          aria-label={copy.settings.lockConsole}
         >
           <LogOut size={15} />
         </button>

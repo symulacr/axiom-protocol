@@ -56,7 +56,7 @@ export function PriorityActionStrip({
   return (
     <section
       className={`priority-action-strip priority-${action.priority}`}
-      aria-label="Next safe action"
+      aria-label={copy.landing.nextSafeAction}
     >
       <div className="priority-rail" aria-hidden="true">
         <i />

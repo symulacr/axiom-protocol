@@ -69,7 +69,7 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
       // fabricated ID (02 FINDING-019).
       rows: [
         ["AGENT", "Agent #7"],
-        ["MANIFEST", "dataHash + metadata"],
+        ["MANIFEST", "hash + metadata"],
         ["LAST RECEIPT", "tx hash + event"],
       ],
     },
@@ -325,7 +325,6 @@ export function PublicSeoPage({ slug }: { slug: PublicSeoSlug }) {
         <aside className="seo-proof-card">
           <div className="seo-proof-card-head">
             <Icon size={19} />
-            <span>VERIFIED SURFACE</span>
           </div>
           <strong>{page.evidenceTitle}</strong>
           <div
@@ -366,9 +365,6 @@ export function PublicSeoPage({ slug }: { slug: PublicSeoSlug }) {
               </span>
             ))}
           </h2>
-          <p>
-            Continue through the route that exposes the next decision boundary.
-          </p>
         </div>
         <div className="seo-link-grid">
           {page.links.map((link) => (
@@ -381,7 +377,6 @@ export function PublicSeoPage({ slug }: { slug: PublicSeoSlug }) {
       </section>
       <footer className="seo-public-footer">
         <span>0G-aware operator workflows</span>
-        <span>Claims are constrained to the implemented product surface.</span>
       </footer>
     </main>
   );

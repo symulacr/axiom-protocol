@@ -218,10 +218,10 @@ export function SettingsPage({
         <div>
           <span className="eyebrow">{labels.pageEyebrow}</span>
           <h1>{labels.pageTitle}</h1>
-          <p>{labels.languageHint}</p>
+          <p>{labels.pageDescription}</p>
         </div>
         <Status
-          label={address ? labels.liveWallet : labels.localFixture}
+          label={address ? labels.liveWallet : copy.topbar.notConnected}
           tone={address ? "success" : "muted"}
         />
       </div>

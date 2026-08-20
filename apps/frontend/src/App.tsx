@@ -94,16 +94,21 @@ const pageFallback = (
 function Notice({
   text,
   onClose,
+  locale,
 }: {
   text: string | null;
   onClose: () => void;
+  locale: "en" | "fr" | "de";
 }) {
   if (!text) return null;
   return (
     <div className="prototype-notice" role="status" aria-live="polite">
       <CircleCheck size={15} />
       <span>{text}</span>
-      <button onClick={onClose} aria-label="Close notification">
+      <button
+        onClick={onClose}
+        aria-label={getCopy(locale).a11y.closeNotification}
+      >
         <X size={14} />
       </button>
     </div>
@@ -169,7 +174,7 @@ function Guide({
           <button
             className="icon-button guide-close"
             onClick={onClose}
-            aria-label="Close onboarding"
+            aria-label={copy.a11y.closeOnboarding}
           >
             <X size={17} />
           </button>
@@ -213,6 +218,7 @@ function Guide({
  */
 function ChatSurface(): ReactElement {
   const [threadsOpen, setThreadsOpen] = useState(false);
+  const { state: chatUiState } = useUiStore();
   // Mobile rail dismiss: the ☰ toggle sits under the fixed rail overlay once
   // open, so closing needs its own affordances — backdrop tap + Esc (the
   // shell modal-dismiss contract), both only meaningful ≤760px where the
@@ -249,7 +255,7 @@ function ChatSurface(): ReactElement {
         ) : null}
         <aside
           className="panel thread-list chat-thread-rail"
-          aria-label="Chat threads"
+          aria-label={getCopy(chatUiState.settings.locale).a11y.chatThreads}
         >
           <div id="sidebar-threads-slot" />
         </aside>
@@ -542,6 +548,7 @@ export function App(): ReactElement {
     <Notice
       text={state.notice}
       onClose={() => dispatch({ type: "notice", notice: null })}
+      locale={locale}
     />
   );
 
@@ -568,6 +575,7 @@ export function App(): ReactElement {
               ) : internal && !authenticated ? (
                 <LockedRoute
                   requested={path}
+                  locale={locale}
                   onConnect={() => openWallet("route", path)}
                   go={go}
                 />

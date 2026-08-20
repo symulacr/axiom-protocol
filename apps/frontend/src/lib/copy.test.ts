@@ -128,6 +128,34 @@ describe("Axiom i18n contract (C-08/C-11/C-12)", () => {
       expect(copy.transactions.filterStale).not.toBe(copy.status.stale);
     }
   });
+
+  it("keeps raw protocol terms out of user-facing copy (02 FINDING-012/017/024)", () => {
+    // Mechanism names live behind disclosures/drilldowns, never in copy.ts
+    // strings. A term that must stay gets a translated label (e.g. dataHash →
+    // "Metadata hash"); it never survives as a raw identifier.
+    const forbidden = /PayForAgent|dataHash|EIP-712|calldata/i;
+    for (const locale of ["en", "fr", "de"] as const) {
+      const copy = getCopy(locale);
+      for (const value of flatten(copy)) {
+        expect(value).not.toMatch(forbidden);
+      }
+    }
+  });
+
+  it("keeps plural helpers counting the same noun in every locale (02 FINDING-024)", () => {
+    // en "2 agents" / fr "2 agents" / de "2 Agenten" — one noun per helper,
+    // no per-locale unit drift (fr once counted "actions agent" here).
+    for (const locale of ["en", "fr", "de"] as const) {
+      expect(formatCount(locale, 2, "agents")).toMatch(/^2 \w*[aA]gent/);
+      expect(formatCount(locale, 2, "messages")).toMatch(/^2 /);
+    }
+    // dashboard.review grammar stays valid at one and many in every locale.
+    for (const locale of ["en", "fr", "de"] as const) {
+      expect(getCopy(locale).dashboard.review(1)).not.toBe(
+        getCopy(locale).dashboard.review(3),
+      );
+    }
+  });
 });
 
 function valueOrFunction(value: unknown): string {
