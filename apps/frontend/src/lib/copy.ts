@@ -152,8 +152,15 @@ export type Copy = {
     liveWallet: string;
     walletNetwork: string;
     signingContext: string;
-    simulationConfig: string;
-    explicitFixtures: string;
+    dailyEyebrow: string;
+    dailyTitle: string;
+    layoutEyebrow: string;
+    layoutTitle: string;
+    advancedEyebrow: string;
+    advancedTitle: string;
+    dangerEyebrow: string;
+    dangerTitle: string;
+    dangerHint: string;
     compactRail: string;
     compactRailHint: string;
     reducedMotion: string;
@@ -193,6 +200,10 @@ export type Copy = {
     diagnosticNote: string;
     replayOnboarding: string;
     resetSurface: string;
+    resetConfirmTitle: string;
+    resetConfirmBody: string;
+    resetConfirmAction: string;
+    resetCancel: string;
     reviewStakingBoundary: string;
     lockConsole: string;
   };
@@ -202,9 +213,6 @@ export type Copy = {
     titleEmphasis: string;
     description: string;
     review: (count: number) => string;
-    /** Primary CTA — names the live attention target (`#<tokenId>`), never a
-     *  fixture agent; generic when the fleet needs nothing. */
-    reviewAction: (agentLabel?: string) => string;
     nowReviewEyebrow: string;
     refresh: string;
     managedValue: string;
@@ -218,7 +226,6 @@ export type Copy = {
     attentionFirst: string;
     allowanceReady: string;
     allowanceDescription: string;
-    openPayment: string;
     recentStore: string;
     latestEvidence: string;
     allReceipts: string;
@@ -456,6 +463,11 @@ export type Copy = {
     activitySharedStore: string;
     statefulOperations: string;
     filterAll: string;
+    /** Depth-0 review-bucket chip (reverted+rejected+stale) — distinct from
+     *  the per-state stale chip (filterStale); they shared one label before. */
+    filterReview: string;
+    filterStale: string;
+    moreFilters: string;
     operation: string;
     hash: string;
     age: string;
@@ -613,8 +625,16 @@ const english: Copy = {
     liveWallet: "live wallet",
     walletNetwork: "WALLET & NETWORK",
     signingContext: "Signing context",
-    simulationConfig: "SIMULATION CONFIG",
-    explicitFixtures: "Explicit fixtures",
+    dailyEyebrow: "DISPLAY / PREFERENCES",
+    dailyTitle: "Daily preferences",
+    layoutEyebrow: "CONSOLE / LAYOUT",
+    layoutTitle: "Console layout",
+    advancedEyebrow: "ADVANCED / RARELY USED",
+    advancedTitle: "Advanced",
+    dangerEyebrow: "DANGER ZONE",
+    dangerTitle: "Destructive actions",
+    dangerHint:
+      "Reset wipes the session, every flow draft and all local receipts. Settings survive.",
     compactRail: "Compact command rail",
     compactRailHint: "Keep labels available while giving work more room.",
     reducedMotion: "Reduced motion",
@@ -657,6 +677,11 @@ const english: Copy = {
       "Session, chain, RPC and preference state are visible before any action is taken.",
     replayOnboarding: "Replay onboarding",
     resetSurface: "Reset surface",
+    resetConfirmTitle: "Reset the surface?",
+    resetConfirmBody:
+      "This signs you out and wipes every flow draft and local receipt. Your settings are kept. There is no undo.",
+    resetConfirmAction: "Reset everything",
+    resetCancel: "Cancel",
     reviewStakingBoundary: "Review 0G integration boundary",
     lockConsole: "Lock console",
   },
@@ -668,8 +693,6 @@ const english: Copy = {
       "Four agents, one verified signer context and a transaction trail that never turns pending into success.",
     review: (count) =>
       `${count} agent action${count === 1 ? "" : "s"} require${count === 1 ? "s" : ""} attention.`,
-    reviewAction: (agentLabel) =>
-      agentLabel ? `Review agent ${agentLabel}` : "Review next action",
     nowReviewEyebrow: "NOW / REVIEW",
     refresh: "Refresh overview",
     managedValue: "Managed value",
@@ -684,7 +707,6 @@ const english: Copy = {
     allowanceReady: "Allowance is ready for review.",
     allowanceDescription:
       "Exact amount, destination and processor route are known. The next action opens the payment evidence flow.",
-    openPayment: "Open payment route",
     recentStore: "RECENT / SHARED STORE",
     latestEvidence: "Latest evidence",
     allReceipts: "All receipts",
@@ -1004,6 +1026,9 @@ const english: Copy = {
     activitySharedStore: "ACTIVITY / SHARED STORE",
     statefulOperations: "Stateful operations",
     filterAll: "All",
+    filterReview: "Needs review",
+    filterStale: "Stale",
+    moreFilters: "More filters",
     operation: "OPERATION",
     hash: "HASH",
     age: "AGE",
@@ -1174,8 +1199,16 @@ const french: Copy = {
     liveWallet: "wallet actif",
     walletNetwork: "WALLET & RÉSEAU",
     signingContext: "Contexte de signature",
-    simulationConfig: "CONFIGURATION SIMULÉE",
-    explicitFixtures: "Fixtures explicites",
+    dailyEyebrow: "AFFICHAGE / PRÉFÉRENCES",
+    dailyTitle: "Préférences quotidiennes",
+    layoutEyebrow: "CONSOLE / DISPOSITION",
+    layoutTitle: "Disposition de la console",
+    advancedEyebrow: "AVANCÉ / RAREMENT UTILISÉ",
+    advancedTitle: "Avancé",
+    dangerEyebrow: "ZONE DANGEREUSE",
+    dangerTitle: "Actions destructrices",
+    dangerHint:
+      "La réinitialisation efface la session, tous les brouillons de flow et les reçus locaux. Les paramètres sont conservés.",
     compactRail: "Rail de commande compact",
     compactRailHint:
       "Gardez les libellés visibles tout en libérant de l’espace.",
@@ -1220,6 +1253,11 @@ const french: Copy = {
       "Session, chaîne, RPC et préférences sont visibles avant toute action.",
     replayOnboarding: "Rejouer l’onboarding",
     resetSurface: "Réinitialiser la surface",
+    resetConfirmTitle: "Réinitialiser la surface ?",
+    resetConfirmBody:
+      "Cette action vous déconnecte et efface tous les brouillons de flow et les reçus locaux. Vos paramètres sont conservés. Aucune annulation possible.",
+    resetConfirmAction: "Tout réinitialiser",
+    resetCancel: "Annuler",
     reviewStakingBoundary: "Revoir la limite d’intégration 0G",
     lockConsole: "Verrouiller la console",
   },
@@ -1231,10 +1269,6 @@ const french: Copy = {
       "Quatre agents, un contexte de signature vérifié et une piste transactionnelle qui ne transforme jamais l’attente en succès.",
     review: (count) =>
       `${count} action${count > 1 ? "s" : ""} agent${count > 1 ? "s" : ""} ${count > 1 ? "nécessitent" : "nécessite"} votre attention.`,
-    reviewAction: (agentLabel) =>
-      agentLabel
-        ? `Examiner l’agent ${agentLabel}`
-        : "Examiner la prochaine action",
     nowReviewEyebrow: "MAINTENANT / REVUE",
     refresh: "Actualiser la vue",
     managedValue: "Valeur gérée",
@@ -1249,7 +1283,6 @@ const french: Copy = {
     allowanceReady: "L’approbation est prête à être revue.",
     allowanceDescription:
       "Montant exact, destination et route du processeur sont connus. L’action suivante ouvre la preuve de paiement.",
-    openPayment: "Ouvrir la route de paiement",
     recentStore: "RÉCENT / STORE PARTAGÉ",
     latestEvidence: "Dernières preuves",
     allReceipts: "Tous les reçus",
@@ -1576,6 +1609,9 @@ const french: Copy = {
     activitySharedStore: "ACTIVITÉ / STORE PARTAGÉ",
     statefulOperations: "Opérations avec état",
     filterAll: "Tout",
+    filterReview: "À examiner",
+    filterStale: "Obsolète",
+    moreFilters: "Plus de filtres",
     operation: "OPÉRATION",
     hash: "HASH",
     age: "ÂGE",
@@ -1747,8 +1783,16 @@ const german: Copy = {
     liveWallet: "Live-Wallet",
     walletNetwork: "WALLET & NETZWERK",
     signingContext: "Signaturkontext",
-    simulationConfig: "SIMULATIONS-KONFIGURATION",
-    explicitFixtures: "Explizite Fixtures",
+    dailyEyebrow: "ANZEIGE / PRÄFERENZEN",
+    dailyTitle: "Tägliche Präferenzen",
+    layoutEyebrow: "KONSOLE / LAYOUT",
+    layoutTitle: "Konsolen-Layout",
+    advancedEyebrow: "ERWEITERT / SELTEN GENUTZT",
+    advancedTitle: "Erweitert",
+    dangerEyebrow: "GEFAHRENZONE",
+    dangerTitle: "Destruktive Aktionen",
+    dangerHint:
+      "Zurücksetzen löscht die Session, alle Flow-Entwürfe und alle lokalen Belege. Einstellungen bleiben erhalten.",
     compactRail: "Kompakte Befehlsleiste",
     compactRailHint:
       "Beschriftungen sichtbar halten und mehr Arbeitsraum schaffen.",
@@ -1791,6 +1835,11 @@ const german: Copy = {
       "Session, Chain, RPC und Einstellungen sind vor jeder Aktion sichtbar.",
     replayOnboarding: "Onboarding wiederholen",
     resetSurface: "Oberfläche zurücksetzen",
+    resetConfirmTitle: "Oberfläche zurücksetzen?",
+    resetConfirmBody:
+      "Dies meldet Sie ab und löscht alle Flow-Entwürfe und lokalen Belege. Ihre Einstellungen bleiben erhalten. Kein Rückgängigmachen.",
+    resetConfirmAction: "Alles zurücksetzen",
+    resetCancel: "Abbrechen",
     reviewStakingBoundary: "0G-Integrationsgrenze prüfen",
     lockConsole: "Konsole sperren",
   },
@@ -1802,8 +1851,6 @@ const german: Copy = {
       "Vier Agents, ein verifizierter Signaturkontext und eine Transaktionsspur, die „ausstehend“ nie als Erfolg ausgibt.",
     review: (count) =>
       `${count} Agentenaktion${count === 1 ? "" : "en"} erfordern Aufmerksamkeit.`,
-    reviewAction: (agentLabel) =>
-      agentLabel ? `Agent ${agentLabel} prüfen` : "Nächste Aktion prüfen",
     nowReviewEyebrow: "JETZT / PRÜFUNG",
     refresh: "Übersicht aktualisieren",
     managedValue: "Verwalteter Wert",
@@ -1818,7 +1865,6 @@ const german: Copy = {
     allowanceReady: "Die Freigabe kann geprüft werden.",
     allowanceDescription:
       "Exakter Betrag, Ziel und Prozessor-Route sind bekannt. Die nächste Aktion öffnet den Zahlungsnachweis.",
-    openPayment: "Zahlungsroute öffnen",
     recentStore: "AKTUELL / GEMEINSAMER STORE",
     latestEvidence: "Neueste Belege",
     allReceipts: "Alle Belege",
@@ -2144,6 +2190,9 @@ const german: Copy = {
     activitySharedStore: "AKTIVITÄT / GEMEINSAMER STORE",
     statefulOperations: "Zustandsbehaftete Operationen",
     filterAll: "Alle",
+    filterReview: "Zur Prüfung",
+    filterStale: "Veraltet",
+    moreFilters: "Mehr Filter",
     operation: "OPERATION",
     hash: "HASH",
     age: "ALTER",

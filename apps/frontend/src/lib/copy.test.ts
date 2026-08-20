@@ -103,11 +103,30 @@ describe("Axiom i18n contract (C-08/C-11/C-12)", () => {
     );
   });
 
-  it("names the live attention target in the dashboard CTA, never a fixture", () => {
-    expect(getCopy("en").dashboard.reviewAction("#7")).toBe("Review agent #7");
-    expect(getCopy("en").dashboard.reviewAction()).toBe("Review next action");
-    expect(getCopy("fr").dashboard.reviewAction("#7")).toContain("#7");
-    expect(getCopy("de").dashboard.reviewAction("#7")).toContain("#7");
+  it("keeps the receipt filter chip labels distinct per locale (C-SETTINGS)", () => {
+    // FINDING-011: the review bucket chip and the stale-state chip shared one
+    // label ("Needs review") with different semantics — no two filter chips
+    // may share a label. (The stale PILL keeps its own copy — pill and filter
+    // are different contexts.)
+    for (const locale of ["en", "fr", "de"] as const) {
+      const copy = getCopy(locale);
+      const chipLabels = [
+        copy.transactions.filterAll,
+        copy.transactions.filterReview,
+        copy.transactions.filterStale,
+        ...[
+          "approval",
+          "signing",
+          "submitted",
+          "confirming",
+          "confirmed",
+          "reverted",
+          "rejected",
+        ].map((state) => copy.status[state]),
+      ];
+      expect(new Set(chipLabels).size).toBe(chipLabels.length);
+      expect(copy.transactions.filterStale).not.toBe(copy.status.stale);
+    }
   });
 });
 

@@ -4,13 +4,14 @@
   hashes) and live on-chain events (useEventStream WS `*` + useEventHistory
   polled/deduped), mapped onto v2 Transaction rows + StatePill states.
 */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useChainId } from "wagmi";
 import { createPortal } from "react-dom";
 import {
   ArrowRight,
   Bot,
+  ChevronDown,
   ChevronRight,
   Copy,
   CreditCard,
@@ -76,6 +77,70 @@ function transactionAge(tx: Transaction): string {
     return `${Math.max(0, Math.round((Date.now() - tx.createdAt) / 60000))}m ago`;
   }
   return tx.age;
+}
+
+/* C-SETTINGS filter depth contract (03 FINDING-011): depth 0 keeps the three
+ * everyday buckets (All / Needs review / Confirmed); the seven per-state
+ * filters live behind a "More filters" popover at depth 1. The review bucket
+ * (reverted+rejected+stale) and the stale-only state get distinct labels
+ * (txCopy.filterReview vs txCopy.filterStale) — they shared "Needs review"
+ * before. ?filter= deep links keep working: the state machine is unchanged. */
+const ADVANCED_FILTERS = [
+  "approval",
+  "signing",
+  "submitted",
+  "confirming",
+  "reverted",
+  "rejected",
+  "stale",
+] as const satisfies readonly TxState[];
+
+type AdvancedFilter = (typeof ADVANCED_FILTERS)[number];
+
+function AdvancedFiltersPopover({
+  title,
+  options,
+  filter,
+  position,
+  onChoose,
+  onClose,
+}: {
+  title: string;
+  options: readonly { value: AdvancedFilter; label: string }[];
+  filter: "all" | "review" | TxState;
+  position: { top?: number; bottom?: number; right: number };
+  onChoose: (value: AdvancedFilter) => void;
+  onClose: () => void;
+}) {
+  // Modal-dismiss contract (C-14): Esc + focus restore here; the backdrop
+  // element covers the click-away leg; selection closes explicitly.
+  useModalDismiss(onClose);
+  return createPortal(
+    <>
+      <div className="filters-backdrop" onMouseDown={onClose} />
+      <div
+        className="filters-popover"
+        role="dialog"
+        aria-label={title}
+        style={{
+          top: position.top,
+          bottom: position.bottom,
+          right: position.right,
+        }}
+      >
+        {options.map((option) => (
+          <button
+            key={option.value}
+            className={filter === option.value ? "filter active" : "filter"}
+            onClick={() => onChoose(option.value)}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+    </>,
+    document.body,
+  );
 }
 
 function ReceiptDrawer({
@@ -217,6 +282,12 @@ export function TransactionsPage({
   const requestedTx = searchParams.get("tx");
   const [filter, setFilter] = useState<"all" | "review" | TxState>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [filtersPos, setFiltersPos] = useState<{
+    top?: number;
+    bottom?: number;
+    right: number;
+  } | null>(null);
+  const filtersTriggerRef = useRef<HTMLButtonElement>(null);
   const {
     events,
     refetch: refetchHistory,
@@ -281,6 +352,33 @@ export function TransactionsPage({
     next.delete("tx");
     setSelectedId(null);
     setSearchParams(next, { replace: true });
+  };
+
+  // Chip labels: the stale-only filter gets its own label so it can never
+  // collide with the review bucket again (03 FINDING-011).
+  const stateFilterLabel = (value: TxState) =>
+    value === "stale" ? txCopy.filterStale : (copy.status[value] ?? value);
+  const advancedActive = (ADVANCED_FILTERS as readonly string[]).includes(
+    filter,
+  );
+  const toggleFiltersPopover = () => {
+    if (filtersPos) {
+      setFiltersPos(null);
+      return;
+    }
+    const rect = filtersTriggerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const right = Math.max(8, Math.round(window.innerWidth - rect.right));
+    // Viewport-fit (C-13 lesson): open downward only when the popover fits;
+    // otherwise anchor to the trigger's top edge and grow upward.
+    if (window.innerHeight - rect.bottom >= 280) {
+      setFiltersPos({ top: Math.round(rect.bottom + 6), right });
+    } else {
+      setFiltersPos({
+        bottom: Math.round(window.innerHeight - rect.top + 6),
+        right,
+      });
+    }
   };
 
   return (
@@ -367,32 +465,31 @@ export function TransactionsPage({
               role="group"
               aria-label="Receipt state filter"
             >
-              {[
-                "all",
-                "review",
-                "approval",
-                "signing",
-                "submitted",
-                "confirming",
-                "confirmed",
-                "reverted",
-                "rejected",
-                "stale",
-              ].map((value) => (
+              {(["all", "review", "confirmed"] as const).map((value) => (
                 <button
                   key={value}
                   className={filter === value ? "filter active" : "filter"}
-                  onClick={() =>
-                    chooseFilter(value as "all" | "review" | TxState)
-                  }
+                  onClick={() => chooseFilter(value)}
                 >
                   {value === "all"
                     ? txCopy.filterAll
                     : value === "review"
-                      ? "Needs review"
-                      : copy.status[value]}
+                      ? txCopy.filterReview
+                      : stateFilterLabel("confirmed")}
                 </button>
               ))}
+              <button
+                ref={filtersTriggerRef}
+                className={`filter filters-trigger${advancedActive ? " active" : ""}`}
+                aria-expanded={Boolean(filtersPos)}
+                aria-haspopup="dialog"
+                onClick={toggleFiltersPopover}
+              >
+                {advancedActive
+                  ? `${txCopy.moreFilters} · ${stateFilterLabel(filter as TxState)}`
+                  : txCopy.moreFilters}
+                <ChevronDown size={11} />
+              </button>
             </div>
           </div>
         </div>
@@ -442,6 +539,23 @@ export function TransactionsPage({
           )}
         </div>
       </section>
+
+      {filtersPos && (
+        <AdvancedFiltersPopover
+          title={txCopy.moreFilters}
+          options={ADVANCED_FILTERS.map((value) => ({
+            value,
+            label: stateFilterLabel(value),
+          }))}
+          filter={filter}
+          position={filtersPos}
+          onChoose={(value) => {
+            chooseFilter(value);
+            setFiltersPos(null);
+          }}
+          onClose={() => setFiltersPos(null)}
+        />
+      )}
 
       {selected && (
         <ReceiptDrawer

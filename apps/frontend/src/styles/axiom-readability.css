@@ -420,6 +420,49 @@ input[type="range"] {
 
 .settings-disclosure[open] > summary::after { content: "–"; }
 
+/* C-SETTINGS danger zone: full-width, closed by default, warning-accented —
+   the only place destructive chrome lives on /settings. */
+.settings-danger-zone {
+  margin-top: var(--space-4);
+  border-color: rgba(240, 179, 107, 0.35);
+}
+.settings-danger-hint {
+  margin: 0 0 var(--space-3);
+  color: var(--completion-dim);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+/* C-SETTINGS reset confirm dialog: drawer-layer supplies the backdrop
+   (fixed/inset/z-90/scrim); these rules center and skin the panel. */
+.settings-confirm-layer { display: grid; place-items: center; padding: var(--space-4); }
+.settings-confirm-dialog {
+  display: grid;
+  gap: var(--space-3);
+  width: min(440px, 100%);
+  padding: var(--space-4);
+  border: 1px solid var(--warning);
+  background: var(--panel);
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.5);
+}
+.settings-confirm-dialog h2 {
+  margin: 0;
+  font: 700 1.4rem Syne, sans-serif;
+  letter-spacing: -0.04em;
+}
+.settings-confirm-dialog p {
+  margin: 0;
+  color: var(--completion-muted);
+  font-size: 0.8rem;
+  line-height: 1.6;
+}
+.settings-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
 .settings-toggle-control {
   width: 100%;
   min-height: var(--hit-area);
@@ -442,6 +485,45 @@ input[type="range"] {
 .receipt-primary-action { margin-top: var(--space-4); }
 .receipt-proof-disclosure { margin-top: var(--space-4); }
 .transaction-filter-controls { display: grid; justify-items: end; gap: var(--space-2); min-width: 0; }
+
+/* C-SETTINGS "More filters" popover: portaled + fixed so it is never clipped
+   by the chip row's overflow-x scrolling on narrow viewports; the backdrop
+   carries the click-away leg of the dismiss contract. */
+.filters-backdrop { position: fixed; inset: 0; z-index: 40; background: transparent; }
+.filters-popover {
+  position: fixed;
+  z-index: 41;
+  display: grid;
+  gap: 2px;
+  min-width: 180px;
+  max-height: min(60vh, 340px);
+  overflow: auto;
+  padding: 6px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
+}
+.filters-popover .filter { width: 100%; text-align: left; }
+.filters-trigger { display: inline-flex; align-items: center; gap: 5px; }
+
+/* C-SETTINGS: the popover portals to document.body — OUTSIDE .app-shell, so
+   the .app-shell.light token overrides never reach it and it painted graphite
+   on paper. Surface-anchored chrome follows the surface theme (unlike the
+   modal overlay layers — drawer/palette/confirm — which stay graphite in both
+   themes by design), so redeclare the paper tokens on the popover root; they
+   inherit down to the option chips. */
+html[data-theme="light"] .filters-popover {
+  --panel: #fffdf8;
+  --panel-2: #f3eee6;
+  --line: #c9beb0;
+  --text: #202528;
+  --dim: #5b5a53;
+  --completion-dim: #5b5a53;
+  --completion-bright: #8d4d25;
+  --completion-copper: #a96333;
+  box-shadow: 0 14px 40px rgba(66, 47, 31, 0.22);
+}
+
 .result-count { color: var(--completion-dim); font: 700 0.7rem/1 "JetBrains Mono", monospace; }
 .transaction-empty-state { display: grid; justify-items: start; gap: var(--space-2); }
 .transaction-empty-state p { margin: 0; }
@@ -454,7 +536,7 @@ input[type="range"] {
   .settings-disclosure-content .settings-toggle-row { min-height: var(--hit-area); padding-block: var(--space-2); }
   .settings-disclosure-content .settings-select-row { gap: var(--space-3); }
   .settings-disclosure-content .shortcut-map { margin-top: var(--space-3); }
-  .settings-destructive-actions { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .settings-footer-actions { display: grid; grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (max-width: 480px) {

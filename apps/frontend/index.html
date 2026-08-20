@@ -18,10 +18,18 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <script>
-      // Theme init before first paint — kills the dark→light flash for stored-light users.
+      // Theme init before first paint — kills the dark→light flash for
+      // stored-light users. Single owner: axiom-ui-settings.theme (C-SETTINGS);
+      // the legacy axiom-theme mirror key is gone — when no stored choice
+      // exists the boot script and the store agree on following the OS.
       (function () {
         try {
-          var v = localStorage.getItem("axiom-theme");
+          var v = null;
+          var raw = localStorage.getItem("axiom-ui-settings");
+          if (raw) {
+            var t = JSON.parse(raw).theme;
+            if (t === "light" || t === "dark") v = t;
+          }
           if (v !== "light" && v !== "dark") {
             v = window.matchMedia &&
               window.matchMedia("(prefers-color-scheme: light)").matches

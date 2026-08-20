@@ -2,26 +2,39 @@
   SettingsPage (v2 control plane, live values): session/chain/RPC rows come
   from wagmi + useHealth; display preferences persist in axiom-ui-settings
   (uiStore). Theme also drives the document data-theme attribute via App.
+
+  Depth contract (C-SETTINGS / 03 FINDING-004+005, 04 FINDING-003):
+  - depth 0: Signing context (read-only, open) + Daily preferences (theme,
+    compact rail, density, language) + footer (staking link, Lock console).
+  - depth 1: Console layout + Advanced — disclosures start CLOSED at every
+    viewport (an accordion that defaults open is grouping, not disclosure).
+  - depth 2: Danger zone (closed) → Reset surface wears danger chrome behind
+    an explicit confirm dialog (Esc/backdrop/Cancel via the modal-dismiss
+    contract). Lock console is routine → ghost, never danger.
 */
 import { useState, type Dispatch, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { useAccount, useChainId } from "wagmi";
 import {
   CircleHelp,
   Globe2,
   Keyboard,
+  LayoutDashboard,
   LogOut,
   Moon,
   RotateCcw,
-  Server,
+  Settings2,
+  ShieldAlert,
   ShieldCheck,
   Sun,
   Wifi,
 } from "../components/axiom/icons.js";
 import { Button, Status } from "../components/axiom/Controls.js";
-import { getCopy } from "../lib/copy.js";
+import { getCopy, type Copy } from "../lib/copy.js";
 import type { AppState, UiSettings } from "../lib/models.js";
 import type { PrototypeAction } from "../lib/prototypeStore.js";
 import { useHealth } from "../hooks/useHealth.js";
+import { useModalDismiss } from "../hooks/useModalDismiss.js";
 import { APP_CHAIN, APP_CHAIN_ID } from "../config/wagmi.js";
 import { BACKEND_URL } from "../config/env.js";
 
@@ -29,18 +42,22 @@ function SettingsDisclosure({
   eyebrow,
   title,
   icon,
+  defaultOpen = false,
+  className = "",
   children,
 }: {
   eyebrow: string;
   title: string;
   icon: ReactNode;
+  /** Shallow sections (read-only context, daily preferences) stay open; every
+   *  advanced/rare/destructive section starts closed at any viewport. */
+  defaultOpen?: boolean;
+  className?: string;
   children: ReactNode;
 }) {
-  const [open, setOpen] = useState(
-    () => !window.matchMedia("(max-width: 700px)").matches,
-  );
+  const [open, setOpen] = useState(defaultOpen);
   return (
-    <section className="panel settings-card">
+    <section className={`panel settings-card ${className}`.trim()}>
       <details
         className="settings-disclosure"
         open={open}
@@ -59,6 +76,49 @@ function SettingsDisclosure({
   );
 }
 
+/** Reset-surface confirm dialog (C-SETTINGS): the app's most destructive
+ *  non-wallet action gets the canonical modal trio — Esc + backdrop + explicit
+ *  Cancel — and an explicit danger confirm before anything is wiped. */
+function ResetConfirmDialog({
+  labels,
+  onCancel,
+  onConfirm,
+}: {
+  labels: Copy["settings"];
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  useModalDismiss(onCancel);
+  return createPortal(
+    <div className="drawer-layer settings-confirm-layer" onMouseDown={onCancel}>
+      <div
+        className="settings-confirm-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-label={labels.resetConfirmTitle}
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <span className="eyebrow">{labels.dangerEyebrow}</span>
+        <h2>{labels.resetConfirmTitle}</h2>
+        <p>{labels.resetConfirmBody}</p>
+        <div className="settings-confirm-actions">
+          <Button variant="ghost" onClick={onCancel}>
+            {labels.resetCancel}
+          </Button>
+          <Button
+            variant="danger"
+            onClick={onConfirm}
+            icon={<RotateCcw size={14} />}
+          >
+            {labels.resetConfirmAction}
+          </Button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 export function SettingsPage({
   state,
   dispatch,
@@ -72,6 +132,7 @@ export function SettingsPage({
 }) {
   const copy = getCopy(state.settings.locale);
   const labels = copy.settings;
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const update = (patch: Partial<UiSettings>) =>
     dispatch({ type: "settings", patch });
   const toggle = (key: "railCollapsed" | "reducedMotion" | "railHidden") =>
@@ -118,6 +179,31 @@ export function SettingsPage({
       ? "success"
       : "live";
 
+  const toggleRow = (
+    key: "railCollapsed" | "reducedMotion" | "railHidden",
+    label: string,
+    hint: string,
+  ) => (
+    <button
+      className="settings-toggle-row settings-toggle-control"
+      type="button"
+      key={key}
+      onClick={() => toggle(key)}
+      aria-pressed={state.settings[key]}
+    >
+      <span>
+        <strong>{label}</strong>
+        <small>{hint}</small>
+      </span>
+      <span
+        className={`toggle ${state.settings[key] ? "on" : ""}`}
+        aria-hidden="true"
+      >
+        <i />
+      </span>
+    </button>
+  );
+
   return (
     <div className="ops-page settings-page">
       <div className="page-head">
@@ -137,6 +223,7 @@ export function SettingsPage({
           eyebrow={labels.walletNetwork}
           title={labels.signingContext}
           icon={<Wifi size={17} className="copper" />}
+          defaultOpen
         >
           {walletRows.map(([label, value, status]) => (
             <div className="settings-row" key={label}>
@@ -148,9 +235,10 @@ export function SettingsPage({
         </SettingsDisclosure>
 
         <SettingsDisclosure
-          eyebrow={labels.simulationConfig}
-          title={labels.explicitFixtures}
-          icon={<Server size={17} className="copper" />}
+          eyebrow={labels.dailyEyebrow}
+          title={labels.dailyTitle}
+          icon={<Settings2 size={17} className="copper" />}
+          defaultOpen
         >
           <div className="settings-toggle-row theme-setting">
             <div>
@@ -182,32 +270,58 @@ export function SettingsPage({
               </button>
             </div>
           </div>
-          {(
-            [
-              ["railCollapsed", labels.compactRail, labels.compactRailHint],
-              ["reducedMotion", labels.reducedMotion, labels.reducedMotionHint],
-              ["railHidden", labels.railHidden, labels.railHiddenHint],
-            ] as const
-          ).map(([key, label, hint]) => (
-            <button
-              className="settings-toggle-row settings-toggle-control"
-              type="button"
-              key={key}
-              onClick={() => toggle(key)}
-              aria-pressed={state.settings[key]}
-            >
-              <span>
-                <strong>{label}</strong>
-                <small>{hint}</small>
-              </span>
-              <span
-                className={`toggle ${state.settings[key] ? "on" : ""}`}
-                aria-hidden="true"
+          {toggleRow(
+            "railCollapsed",
+            labels.compactRail,
+            labels.compactRailHint,
+          )}
+          <div className="settings-select-row">
+            <label>
+              {labels.density}
+              <select
+                aria-label={labels.density}
+                value={state.settings.density}
+                onChange={(event) =>
+                  update({
+                    density: event.target.value as UiSettings["density"],
+                  })
+                }
               >
-                <i />
-              </span>
-            </button>
-          ))}
+                <option value="calm">{labels.densityCalm}</option>
+                <option value="dense">{labels.densityDense}</option>
+              </select>
+            </label>
+            <label>
+              {labels.languageLabel}
+              <select
+                aria-label={labels.languageLabel}
+                value={state.settings.locale}
+                onChange={(event) =>
+                  update({
+                    locale: event.target
+                      .value as AppState["settings"]["locale"],
+                  })
+                }
+              >
+                <option value="en">{labels.localeEnglish}</option>
+                <option value="fr">{labels.localeFrench}</option>
+                <option value="de">{labels.localeGerman}</option>
+              </select>
+            </label>
+          </div>
+        </SettingsDisclosure>
+
+        <SettingsDisclosure
+          eyebrow={labels.layoutEyebrow}
+          title={labels.layoutTitle}
+          icon={<LayoutDashboard size={17} className="copper" />}
+        >
+          {toggleRow("railHidden", labels.railHidden, labels.railHiddenHint)}
+          {toggleRow(
+            "reducedMotion",
+            labels.reducedMotion,
+            labels.reducedMotionHint,
+          )}
           <label className="range-control">
             <span>
               <strong>{labels.railWidth}</strong>
@@ -230,22 +344,14 @@ export function SettingsPage({
               }
             />
           </label>
+        </SettingsDisclosure>
+
+        <SettingsDisclosure
+          eyebrow={labels.advancedEyebrow}
+          title={labels.advancedTitle}
+          icon={<Keyboard size={17} className="copper" />}
+        >
           <div className="settings-select-row">
-            <label>
-              {labels.density}
-              <select
-                aria-label={labels.density}
-                value={state.settings.density}
-                onChange={(event) =>
-                  update({
-                    density: event.target.value as UiSettings["density"],
-                  })
-                }
-              >
-                <option value="calm">{labels.densityCalm}</option>
-                <option value="dense">{labels.densityDense}</option>
-              </select>
-            </label>
             <label>
               {labels.direction}
               <select
@@ -259,23 +365,6 @@ export function SettingsPage({
               >
                 <option value="ltr">{labels.directionLtr}</option>
                 <option value="rtl">{labels.directionRtl}</option>
-              </select>
-            </label>
-            <label>
-              {labels.languageLabel}
-              <select
-                aria-label={labels.languageLabel}
-                value={state.settings.locale}
-                onChange={(event) =>
-                  update({
-                    locale: event.target
-                      .value as AppState["settings"]["locale"],
-                  })
-                }
-              >
-                <option value="en">{labels.localeEnglish}</option>
-                <option value="fr">{labels.localeFrench}</option>
-                <option value="de">{labels.localeGerman}</option>
               </select>
             </label>
           </div>
@@ -293,7 +382,7 @@ export function SettingsPage({
                 <dd>{labels.shortcutPalette}</dd>
               </div>
               <div>
-                <dt>Alt 1–5</dt>
+                <dt>Alt 1 / 3–5</dt>
                 <dd>{labels.shortcutSurfaces}</dd>
               </div>
               <div>
@@ -314,11 +403,29 @@ export function SettingsPage({
         </SettingsDisclosure>
       </div>
 
+      <SettingsDisclosure
+        eyebrow={labels.dangerEyebrow}
+        title={labels.dangerTitle}
+        icon={<ShieldAlert size={17} className="copper" />}
+        className="settings-danger-zone"
+      >
+        <p className="settings-danger-hint">{labels.dangerHint}</p>
+        <div className="settings-control-actions">
+          <Button
+            variant="danger"
+            onClick={() => setResetConfirmOpen(true)}
+            icon={<RotateCcw size={14} />}
+          >
+            {labels.resetSurface}
+          </Button>
+        </div>
+      </SettingsDisclosure>
+
       <div className="diagnostic-note">
         <ShieldCheck size={15} />
         <span>{labels.diagnosticNote}</span>
       </div>
-      <div className="settings-footer-actions settings-destructive-actions">
+      <div className="settings-footer-actions">
         <Button
           variant="secondary"
           onClick={() => go("/staking")}
@@ -326,17 +433,21 @@ export function SettingsPage({
         >
           {labels.reviewStakingBoundary}
         </Button>
-        <Button
-          variant="ghost"
-          onClick={() => dispatch({ type: "reset" })}
-          icon={<RotateCcw size={14} />}
-        >
-          {labels.resetSurface}
-        </Button>
-        <Button variant="danger" onClick={onLock} icon={<LogOut size={15} />}>
+        <Button variant="ghost" onClick={onLock} icon={<LogOut size={15} />}>
           {labels.lockConsole}
         </Button>
       </div>
+
+      {resetConfirmOpen && (
+        <ResetConfirmDialog
+          labels={labels}
+          onCancel={() => setResetConfirmOpen(false)}
+          onConfirm={() => {
+            setResetConfirmOpen(false);
+            dispatch({ type: "reset" });
+          }}
+        />
+      )}
     </div>
   );
 }

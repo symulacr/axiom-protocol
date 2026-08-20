@@ -387,12 +387,15 @@ export function App(): ReactElement {
     state.session,
   ]);
 
-  // ---- Theme bridge: v2 settings.theme → html data-theme (+ axiom-theme key)
+  // ---- Theme bridge: v2 settings.theme → html data-theme. Single storage
+  // owner is axiom-ui-settings (uiStore persists it; the index.html boot
+  // script reads it) — the legacy axiom-theme mirror is removed, and any
+  // orphaned copy from an older build is cleaned up here (C-SETTINGS).
   useEffect(() => {
     document.documentElement.dataset.theme = state.settings.theme;
     document.documentElement.style.colorScheme = state.settings.theme;
     try {
-      localStorage.setItem("axiom-theme", state.settings.theme);
+      localStorage.removeItem("axiom-theme");
     } catch {
       // storage unavailable in privacy-restricted contexts
     }

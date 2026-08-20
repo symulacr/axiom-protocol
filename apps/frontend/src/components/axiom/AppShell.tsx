@@ -13,7 +13,6 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import {
-  Bot,
   ChevronLeft,
   CreditCard,
   Database,
@@ -81,9 +80,10 @@ function Sidebar({
     },
     [],
   );
-  // The agent register lives on the Overview surface; the "Agents" item stays
-  // lit on deep agent pages (live agents are /agents/:tokenId — /agents alone
-  // is the public SEO hub, never the console register).
+  // One entry per destination (C-SETTINGS / 03 FINDING-008): the agent
+  // register lives on the Overview surface, so /app has a single owner —
+  // "Overview" — which stays lit on deep agent pages (/agents/:tokenId are
+  // children of the register; /agents alone is the public SEO hub).
   // Labels come from copy.nav so the shell localizes with the page body
   // (05 FINDING-007 — the nav was the last English-only surface).
   const copy = getCopy(settings.locale);
@@ -92,13 +92,7 @@ function Sidebar({
       path: "/app",
       label: copy.nav.overview,
       icon: <LayoutDashboard size={15} />,
-      active: route === "dashboard",
-    },
-    {
-      path: "/app",
-      label: copy.nav.agents,
-      icon: <Bot size={15} />,
-      active: route === "agent",
+      active: route === "dashboard" || route === "agent",
     },
     {
       path: "/chat",

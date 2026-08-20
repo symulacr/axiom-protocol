@@ -11,7 +11,6 @@ import {
   ArrowRight,
   Bot,
   ChevronRight,
-  CreditCard,
   Database,
   Gauge,
   KeyRound,
@@ -223,20 +222,10 @@ export function DashboardPage({
             {copy.dashboard.nowReviewEyebrow}
           </span>
           <strong>{copy.dashboard.review(attention.length)}</strong>
-          <Button
-            onClick={() =>
-              go(
-                attention[0]
-                  ? `/payment?agent=${attention[0].tokenId}&intent=fund&stage=amount`
-                  : "/payment?intent=fund&stage=amount",
-              )
-            }
-            icon={<ArrowRight size={15} />}
-          >
-            {copy.dashboard.reviewAction(
-              attention[0] ? `#${attention[0].tokenId.toString()}` : undefined,
-            )}
-          </Button>
+          {/* One owner for the payment next-action at depth 0: the
+              PriorityActionStrip (global chrome). The action lane keeps the
+              attention readout + Refresh only (C-SETTINGS / 03 FINDING-009,
+              04 FINDING-004 — this was the second of three copper CTAs). */}
           <button className="text-link" onClick={refresh}>
             {copy.dashboard.refresh} <RefreshCw size={13} />
           </button>
@@ -430,18 +419,9 @@ export function DashboardPage({
               </span>
               <strong>{copy.dashboard.allowanceReady}</strong>
               <p>{copy.dashboard.allowanceDescription}</p>
-              <Button
-                onClick={() =>
-                  go(
-                    attention[0]
-                      ? `/payment?agent=${attention[0].tokenId}&intent=fund&stage=amount`
-                      : "/payment?intent=fund&stage=amount",
-                  )
-                }
-                icon={<CreditCard size={15} />}
-              >
-                {copy.dashboard.openPayment}
-              </Button>
+              {/* Evidence only — the third copper CTA for the same payment
+                  action lived here; the strip owns that action now
+                  (C-SETTINGS / 03 FINDING-009, 04 FINDING-004). */}
             </div>
           </div>
         </section>

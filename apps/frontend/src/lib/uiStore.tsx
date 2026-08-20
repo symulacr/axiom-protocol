@@ -19,6 +19,7 @@ import {
   defaultOperationState,
   defaultSession,
   defaultSettings,
+  defaultTheme,
   MAX_PERSISTED_TRANSACTIONS,
   persist,
   prototypeReducer,
@@ -52,7 +53,12 @@ function hydrateTransactions(): Transaction[] {
 export function UiStoreProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(prototypeReducer, undefined, () =>
     createInitialPrototypeState(
-      readStored("axiom-ui-settings", defaultSettings),
+      // Unset theme follows the OS (defaultTheme) so store and boot script
+      // agree on first visit (C-SETTINGS); a stored choice always wins.
+      readStored("axiom-ui-settings", {
+        ...defaultSettings,
+        theme: defaultTheme(),
+      }),
       readStored<Session>("axiom-session", defaultSession),
       readStored("axiom-operation-state-v1", defaultOperationState),
       hydrateTransactions(),

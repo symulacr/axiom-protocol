@@ -33,7 +33,6 @@ type CommandItem = {
 /** Registry route id → localized nav label (same source as the sidebar). */
 const NAV_KEY_BY_ROUTE_ID: Record<string, keyof Copy["nav"]> = {
   dashboard: "overview",
-  agents: "agents",
   chat: "chat",
   transactions: "transactions",
   storage: "storage",

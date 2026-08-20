@@ -10,6 +10,7 @@ import {
   getRouteAction,
   type FundTarget,
 } from "../lib/nextSafeAction.js";
+import { isOperationPath } from "../lib/routeRegistry.js";
 import { getCopy } from "../lib/copy.js";
 import { trackUxEvent } from "../lib/uxTelemetry.js";
 
@@ -32,7 +33,15 @@ export function PriorityActionStrip({
   const action = getRouteAction(state, path, fundTarget, strip);
 
   // Chat fills the viewport below the topbar (live SSE surface) — no strip.
-  if (!action || ["settings", "staking", "chat"].includes(route)) return null;
+  // Flow pages own a copper primary for their own operation ("Review
+  // operation"); the strip's payment CTA must not compete with it, so the
+  // strip stays off every operation path (C-SETTINGS / 04 FINDING-004).
+  if (
+    !action ||
+    ["settings", "staking", "chat"].includes(route) ||
+    isOperationPath(path.split("?", 1)[0] ?? "")
+  )
+    return null;
 
   const actions = getNextSafeActions(state, fundTarget, strip);
   const alternatives = actions
