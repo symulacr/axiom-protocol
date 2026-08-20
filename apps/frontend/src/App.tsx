@@ -206,6 +206,18 @@ function Guide({
  */
 function ChatSurface(): ReactElement {
   const [threadsOpen, setThreadsOpen] = useState(false);
+  // Mobile rail dismiss: the ☰ toggle sits under the fixed rail overlay once
+  // open, so closing needs its own affordances — backdrop tap + Esc (the
+  // shell modal-dismiss contract), both only meaningful ≤760px where the
+  // rail is an overlay.
+  useEffect(() => {
+    if (!threadsOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setThreadsOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [threadsOpen]);
   return (
     <ShellSidebarProvider
       value={{
@@ -214,6 +226,12 @@ function ChatSurface(): ReactElement {
       }}
     >
       <div className={`chat-surface${threadsOpen ? " threads-open" : ""}`}>
+        {threadsOpen ? (
+          <div
+            className="chat-rail-backdrop"
+            onClick={() => setThreadsOpen(false)}
+          />
+        ) : null}
         <aside
           className="panel thread-list chat-thread-rail"
           aria-label="Chat threads"

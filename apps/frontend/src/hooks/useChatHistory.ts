@@ -69,8 +69,16 @@ function transcriptTitle(messages: unknown[] | undefined): string {
 /** Server-persisted chat transcripts for the connected wallet
  *  (GET /v1/chat/history?wallet=, wallet-proof headers attached). The
  *  consumer merges them with localStorage useThreads — dedupe by threadId,
- *  server wins. */
-export function useChatHistory(wallet: `0x${string}` | undefined): {
+ *  server wins.
+ *
+ *  SIGNATURE BOUNDARY: fetching requires an EIP-191 wallet proof, so the
+ *  query stays inert until `requested` is set by an explicit user gesture
+ *  (the thread rail's "Restore server history" row, or opening the rail on
+ *  mobile). /chat must never pop a signature on page load. */
+export function useChatHistory(
+  wallet: `0x${string}` | undefined,
+  requested: boolean,
+): {
   serverThreads: ChatThread[];
   isLoading: boolean;
   error: Error | null;
@@ -92,7 +100,7 @@ export function useChatHistory(wallet: `0x${string}` | undefined): {
         { timeout: LONG_TIMEOUT, retries: 0, headers: proof },
       );
     },
-    enabled: !!walletKey,
+    enabled: !!walletKey && requested,
     staleTime: 30_000,
     retry: 1,
   });

@@ -96,7 +96,6 @@ import { CHAT_MODEL } from "../config/env.js";
 import { APP_CHAIN_ID } from "../config/wagmi.js";
 import {
   COLORS,
-  Button,
   Textarea,
   ErrorRef,
   Spinner,
@@ -104,6 +103,8 @@ import {
   SectionTitle,
   MonoLabel,
 } from "../components/ui.js";
+import { Button } from "../components/axiom/Controls.js";
+import { MessageSquare, Network } from "../components/axiom/icons.js";
 
 type Message = {
   id: string;
@@ -595,9 +596,13 @@ function ChatPageInner(): ReactElement {
   );
   const isStreamingRef = useRef(false);
   const threads = useThreads();
-  // Server-persisted transcripts for the connected wallet (merged in the sidebar list)
+  // Server-persisted transcripts for the connected wallet (merged in the
+  // sidebar list). GATED: the fetch needs a wallet signature, so it only
+  // runs after an explicit user gesture (rail "Restore server history" row,
+  // or opening the rail on mobile) — never on page load (C-06).
+  const [historyRequested, setHistoryRequested] = useState(false);
   const { serverThreads: serverHistory, isLoading: historyLoading } =
-    useChatHistory(address);
+    useChatHistory(address, historyRequested);
   // Live on-chain confirmations surfaced as "⛓ tx mined" rows under the thread
   const { rows: txRows } = useChatTxStream(!!address);
   // Resume the active thread across page reloads (same threadId, same
@@ -616,6 +621,9 @@ function ChatPageInner(): ReactElement {
   } | null>(null);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [editConfirmId, setEditConfirmId] = useState<string | null>(null);
+  // Provider routing popover (C-04): the routing console lives at depth 1 —
+  // depth 0 carries only the summary chip that opens it.
+  const [routingOpen, setRoutingOpen] = useState(false);
 
   // Live refs: state updates land only on the next render, so same-turn tools must see earlier-set values (mint tokenId -> deposit); synced each render here, within-turn writes in runAgent
   // AgentDetail's Chat button deep-links to /chat?agent=<tokenId>; seed the session default from the URL until a tool result overrides it.
@@ -756,6 +764,17 @@ function ChatPageInner(): ReactElement {
     },
     [providerPref, setProviderPref],
   );
+
+  // Routing popover dismiss contract: Esc closes (backdrop click is handled
+  // by the .routing-backdrop element; both mirror the shell modal trio).
+  useEffect(() => {
+    if (!routingOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setRoutingOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [routingOpen]);
 
   useEffect(() => {
     lastTokenIdRef.current = session.lastTokenId ?? urlAgentRef.current;
@@ -1437,10 +1456,16 @@ function ChatPageInner(): ReactElement {
             onDelete={deleteThread}
             serverThreads={serverHistory}
             serverLoading={historyLoading}
+            serverRestore={!!address && !historyRequested}
+            onRequestServerHistory={() => setHistoryRequested(true)}
           />,
           threadsSlot,
         )}
       <div className="chat-main">
+        {/* Shell grammar (C-05): one h1 per page. /chat is a fixed-viewport
+            surface, so the head is visually hidden — the compact topbar below
+            stays the surface chrome (audit-sanctioned exception). */}
+        <h1 className="visually-hidden">Chat</h1>
         <div className="chat-topbar">
           <button
             type="button"
@@ -1448,7 +1473,13 @@ function ChatPageInner(): ReactElement {
             aria-label="History"
             aria-expanded={sidebarOpen}
             ref={sidebarToggleRef}
-            onClick={() => setSidebarOpen(!sidebarOpen)}
+            onClick={() => {
+              const opening = !sidebarOpen;
+              setSidebarOpen(opening);
+              // Opening the rail is the mobile gesture that needs history —
+              // only now may the wallet-proof signature fire (C-06).
+              if (opening) setHistoryRequested(true);
+            }}
           >
             ☰
           </button>
@@ -1470,7 +1501,7 @@ function ChatPageInner(): ReactElement {
           <Button
             variant="ghost"
             onClick={startNewChat}
-            style={{ fontSize: "var(--text-xs)" }}
+            icon={<MessageSquare size={13} />}
           >
             New chat
           </Button>
@@ -1846,19 +1877,7 @@ function ChatPageInner(): ReactElement {
                     </div>
                   ) : null}
                   {msg.meta?.usage ? (
-                    <div
-                      className="msg-insights"
-                      style={{
-                        marginTop: "var(--space-sm)",
-                        paddingTop: "var(--space-xs)",
-                        borderTop: `1px solid ${COLORS.border}`,
-                        fontSize: "var(--text-xs)",
-                        color: COLORS.textDim,
-                        lineHeight: 1.4,
-                      }}
-                    >
-                      {msg.meta.usage}
-                    </div>
+                    <InsightsDisclosure text={msg.meta.usage} />
                   ) : null}
                 </div>
               )}
@@ -2095,87 +2114,85 @@ function ChatPageInner(): ReactElement {
         )}
 
         <div className="chat-composer">
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "var(--space-sm)",
-              flexWrap: "wrap",
-              marginBottom: "var(--space-sm)",
-            }}
-          >
-            <select
-              aria-label="Provider routing"
-              value={prefKey}
-              onChange={(e) => applyProviderPref(e.target.value)}
-              className="chat-inline-select"
-            >
-              <option value="auto">Auto (latency)</option>
-              <option value="cheapest">Cheapest</option>
-              {pinCandidates.map((p) => (
-                <option key={p.address} value={`pin:${p.address}`}>
-                  {pinLabel(p)}
-                </option>
-              ))}
-            </select>
-            <label
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 4,
-                fontSize: "var(--text-xs)",
-                color: COLORS.textMuted,
-                cursor: "pointer",
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={providerPref?.trustMode === "verified"}
-                onChange={(e) => toggleTrustMode("verified", e.target.checked)}
-              />
-              Verified TEE only
-            </label>
-            <label
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 4,
-                fontSize: "var(--text-xs)",
-                color: COLORS.textMuted,
-                cursor: hasPrivateProvider ? "pointer" : "not-allowed",
-                opacity: hasPrivateProvider ? 1 : 0.45,
-              }}
-              title={
-                hasPrivateProvider
-                  ? "Sealed TeeML inference (prompts never leave the enclave)"
-                  : "No TeeML (sealed) provider serves this model"
-              }
-            >
-              <input
-                type="checkbox"
-                disabled={!hasPrivateProvider}
-                checked={providerPref?.trustMode === "private"}
-                onChange={(e) => toggleTrustMode("private", e.target.checked)}
-              />
-              Private (sealed)
-            </label>
-            {providerPref?.address ? (
-              <span
-                style={dimXs}
-                title="Provider pinned — the prompt-cache prefix stays on one provider"
-              >
-                pinned {shortAddress(providerPref.address)} · cache on
-              </span>
-            ) : providerPref?.sort === "latency" ? (
-              <span
-                style={dimXs}
-                title="Latency-sorted routing sticks to one provider — prompt cache builds by default"
-              >
-                latency-sorted · cache on
-              </span>
-            ) : null}
-          </div>
           <div className="chat-composer__row">
+            <div className="routing-anchor">
+              {routingOpen && (
+                <>
+                  <div
+                    className="routing-backdrop"
+                    onClick={() => setRoutingOpen(false)}
+                  />
+                  <div
+                    className="routing-popover"
+                    role="dialog"
+                    aria-label="Provider routing"
+                  >
+                    <div className="routing-popover__head">
+                      <span className="eyebrow">Routing</span>
+                      <span className="routing-popover__hint">
+                        This conversation only
+                      </span>
+                    </div>
+                    <select
+                      aria-label="Provider routing"
+                      value={prefKey}
+                      onChange={(e) => applyProviderPref(e.target.value)}
+                      className="chat-inline-select routing-popover__select"
+                    >
+                      <option value="auto">Auto (fastest)</option>
+                      <option value="cheapest">Lowest cost</option>
+                      {pinCandidates.map((p) => (
+                        <option key={p.address} value={`pin:${p.address}`}>
+                          {pinLabel(p)}
+                        </option>
+                      ))}
+                    </select>
+                    <label className="routing-popover__check">
+                      <input
+                        type="checkbox"
+                        checked={providerPref?.trustMode === "verified"}
+                        onChange={(e) =>
+                          toggleTrustMode("verified", e.target.checked)
+                        }
+                      />
+                      Verified providers only (TEE)
+                    </label>
+                    <label
+                      className={`routing-popover__check${hasPrivateProvider ? "" : " is-disabled"}`}
+                      title={
+                        hasPrivateProvider
+                          ? "Sealed enclave inference (prompts never leave the enclave)"
+                          : "No sealed-enclave provider serves this model"
+                      }
+                    >
+                      <input
+                        type="checkbox"
+                        disabled={!hasPrivateProvider}
+                        checked={providerPref?.trustMode === "private"}
+                        onChange={(e) =>
+                          toggleTrustMode("private", e.target.checked)
+                        }
+                      />
+                      Private (sealed enclave)
+                    </label>
+                    <p className="routing-popover__status">
+                      {routingStatusLine(providerPref)}
+                    </p>
+                  </div>
+                </>
+              )}
+              <button
+                type="button"
+                className={`routing-chip${isNonDefaultRouting(providerPref) ? " is-nondefault" : ""}`}
+                aria-expanded={routingOpen}
+                aria-haspopup="dialog"
+                onClick={() => setRoutingOpen((v) => !v)}
+                title="Provider routing — change how this conversation is served"
+              >
+                <Network size={12} />
+                {routingSummary(providerPref)}
+              </button>
+            </div>
             <Textarea
               aria-label="Chat input"
               value={input}
@@ -2200,12 +2217,12 @@ function ChatPageInner(): ReactElement {
               maxLength={4000}
             />
             {isStreaming && (
-              <Button variant="secondary" onClick={cancelStream}>
+              <Button variant="ghost" onClick={cancelStream}>
                 Stop
               </Button>
             )}
             <Button
-              variant={isStreaming ? "secondary" : "primary"}
+              variant="primary"
               onClick={() => sendMessage(input)}
               disabled={!input.trim()}
             >
@@ -2295,6 +2312,8 @@ function formatNeuron(neuron: number): string {
 
 /** Aggregated per-run insights line: 'N turns · N steps | LLM Xs | TTFT avg
  *  Yms · Z tok/s | Cache hit W% | In A tok · Out B tok | served 0x… | ≈X 0G'.
+ *  Rendered inside InsightsDisclosure (collapsed by default) — the raw line
+ *  stays byte-identical for anyone who expands it.
  *  `sessionTurns` is the per-thread user-turn count used to hint that the
  *  provider cache is still warming (first 2-4 identical-prefix turns). */
 function formatInsightsLine(
@@ -2360,6 +2379,41 @@ function pinLabel(p: ComputeProvider): string {
   return `${name} · ${lat}${price ? ` · ${price}` : ""}`;
 }
 
+/** One-line routing state for the composer's depth-0 summary chip
+ *  ("Auto", "Lowest cost", "0xa48f…7836", plus a TEE/sealed suffix). */
+function routingSummary(pref: ProviderPref | undefined): string {
+  const parts: string[] = [];
+  if (pref?.address) parts.push(shortAddress(pref.address));
+  else if (pref?.sort === "price") parts.push("Lowest cost");
+  else parts.push("Auto");
+  if (pref?.trustMode === "verified") parts.push("TEE");
+  else if (pref?.trustMode === "private") parts.push("sealed");
+  return parts.join(" · ");
+}
+
+/** Non-default routing gets a copper-tinted chip so an explicit choice is
+ *  always acknowledged at depth 0 (including price sort, which the old
+ *  trailing status silently dropped). Default = latency-sorted, no pin,
+ *  no trust filter (DEFAULT_PROVIDER_PREF). */
+function isNonDefaultRouting(pref: ProviderPref | undefined): boolean {
+  return (
+    !!pref && (!!pref.address || pref.sort === "price" || !!pref.trustMode)
+  );
+}
+
+/** Single status sentence inside the Routing popover — replaces the old
+ *  depth-0 trailing chip ("latency-sorted · cache on"); "cache on" dropped
+ *  (implementation guarantee, not user state). */
+function routingStatusLine(pref: ProviderPref | undefined): string {
+  if (pref?.address) {
+    return `Pinned to ${shortAddress(pref.address)} — every turn is served by this provider.`;
+  }
+  if (pref?.sort === "price") {
+    return "Lowest-cost provider first; the serving provider may change between turns.";
+  }
+  return "Fastest provider first; turns stay on one provider so follow-ups are quicker.";
+}
+
 /** ProviderPref → request-body `provider` field; undefined when nothing is set
  *  (backend then applies its own default routing). */
 function providerPrefBody(
@@ -2385,6 +2439,26 @@ function stripSummaryLead<T extends { role: string; content: string | null }>(
     msgs[0].content.startsWith("[Earlier conversation summary]")
     ? msgs.slice(1)
     : msgs;
+}
+
+/** Per-message telemetry, collapsed to a quiet one-line affordance: the full
+ *  TTFT/tok-s/cache/provider/cost dump only renders on explicit expand
+ *  (02-FINDING-007). Own state per message — no parent bookkeeping. */
+function InsightsDisclosure({ text }: { text: string }): ReactElement {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="msg-insights">
+      <button
+        type="button"
+        className="msg-insights__toggle"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        {open ? "hide metrics" : "metrics"}
+      </button>
+      {open ? <div className="msg-insights__detail">{text}</div> : null}
+    </div>
+  );
 }
 
 function ToolCallCard({

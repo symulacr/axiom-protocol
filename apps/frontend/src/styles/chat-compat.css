@@ -444,8 +444,13 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
 .chat-thread-rail > div { display: flex; flex-direction: column; min-height: 0; flex: 1; }
 @media (max-width: 760px) {
   .chat-surface { grid-template-columns: minmax(0, 1fr); }
-  .chat-thread-rail { display: none; }
-  .chat-surface.threads-open .chat-thread-rail {
+  /* Specificity: .app-shell .thread-list rules in axiom-readability.css and
+     axiom-operations-fix.css (both 0,2,1) stomped the old bare
+     .chat-thread-rail selector (0,1,0) — the rail was force-visible on
+     mobile and the ☰ toggle was dead. Match the specificity and let source
+     order (this file loads last) restore the intended hide/overlay model. */
+  .app-shell .chat-thread-rail { display: none; }
+  .app-shell .chat-surface.threads-open .chat-thread-rail {
     display: flex;
     position: fixed;
     top: 0;
@@ -489,3 +494,140 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
 /* Wallet gate: live error line under the action row. */
 .wallet-gate-error { margin: 10px 0 0; color: var(--danger); font-size: 11px; overflow-wrap: anywhere; }
 
+
+/* ---------------------------------------------------------------- *
+ * C-CHAT (phase 3, row 4): /chat adopts the shell grammar.          *
+ * - .visually-hidden: the page's single h1 ("Chat") exists for      *
+ *   semantics/AT while the fixed-viewport surface keeps its compact *
+ *   topbar (audit-sanctioned exception).                            *
+ * - .routing-chip + .routing-popover: the provider-routing console  *
+ *   moves off depth 0 into one quiet disclosure; the chip is the    *
+ *   only depth-0 remnant and tints copper on any non-default state. *
+ * - .msg-insights__toggle/__detail: telemetry collapses behind a    *
+ *   per-message "metrics" affordance.                               *
+ * - .chat-history__restore: the explicit gesture that authorizes    *
+ *   the one history-proof wallet signature.                         *
+ * ---------------------------------------------------------------- */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.routing-anchor { position: relative; align-self: flex-end; }
+.routing-backdrop { position: fixed; inset: 0; z-index: 40; background: transparent; }
+.routing-popover {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  z-index: 41;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 260px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  box-shadow: var(--shadow-modal);
+}
+.routing-popover__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.routing-popover__hint { font-size: var(--text-2xs); color: var(--dim); }
+.routing-popover__select { width: 100%; }
+.routing-popover__check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-xs);
+  color: var(--muted);
+  cursor: pointer;
+}
+.routing-popover__check.is-disabled { cursor: not-allowed; opacity: 0.45; }
+.routing-popover__status {
+  margin: 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--line-soft);
+  font-size: var(--text-2xs);
+  line-height: 1.5;
+  color: var(--dim);
+}
+.routing-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--dim);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--transition), border-color var(--transition);
+}
+.routing-chip:hover { color: var(--text); border-color: var(--copper); }
+.routing-chip.is-nondefault { color: var(--copper-bright); border-color: var(--copper); }
+
+.msg-insights {
+  margin-top: var(--space-sm);
+  padding-top: var(--space-xs);
+}
+.msg-insights__toggle {
+  border: 0;
+  background: none;
+  cursor: pointer;
+  padding: 1px 4px;
+  border-radius: 4px;
+  color: var(--dim);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  transition: color var(--transition);
+}
+.msg-insights__toggle:hover { color: var(--copper-bright); }
+.msg-insights__detail {
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  line-height: 1.45;
+  color: var(--dim);
+}
+
+.chat-history__restore {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 6px 8px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--dim);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  cursor: pointer;
+  transition: color var(--transition), border-color var(--transition);
+}
+.chat-history__restore:hover { color: var(--copper-bright); border-color: var(--copper); }
+
+/* Mobile thread-rail dismiss (backdrop sits under the z-80 rail overlay,
+   over the page); only relevant ≤760px where the rail is an overlay. */
+.chat-rail-backdrop { display: none; }
+@media (max-width: 760px) {
+  .chat-rail-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    background: rgba(0, 0, 0, 0.4);
+  }
+}

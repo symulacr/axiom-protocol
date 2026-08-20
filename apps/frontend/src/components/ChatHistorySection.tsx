@@ -12,6 +12,11 @@ interface ChatHistorySectionProps {
    *  continued the thread after the last persist). */
   serverThreads?: ChatThread[];
   serverLoading?: boolean;
+  /** When true, render the "Restore server history" row: the explicit
+   *  gesture that authorizes the one wallet signature the history fetch
+   *  needs. Hidden once requested (or when no wallet is connected). */
+  serverRestore?: boolean;
+  onRequestServerHistory?: () => void;
 }
 
 /** Thread list rendered inside the shell sidebar on chat routes (the merged,
@@ -25,6 +30,8 @@ export function ChatHistorySection({
   onDelete,
   serverThreads = [],
   serverLoading = false,
+  serverRestore = false,
+  onRequestServerHistory,
 }: ChatHistorySectionProps): ReactElement {
   const localThreads = useThreads();
   const [search, setSearch] = useState("");
@@ -113,6 +120,16 @@ export function ChatHistorySection({
         {serverLoading && (
           <p className="chat-history__empty">Loading server history…</p>
         )}
+        {serverRestore && !serverLoading ? (
+          <button
+            type="button"
+            className="chat-history__restore"
+            onClick={onRequestServerHistory}
+            title="Sign a wallet message to load this wallet's server-saved transcripts. No transaction is sent."
+          >
+            Restore server history
+          </button>
+        ) : null}
       </div>
     </div>
   );
