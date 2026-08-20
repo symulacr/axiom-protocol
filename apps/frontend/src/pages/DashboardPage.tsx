@@ -281,9 +281,9 @@ export function DashboardPage({
               ).length,
             ).padStart(2, "0")}
             change={
-              health?.ok
-                ? copy.topbar.oracleLive
-                : copy.dashboard.oracleUnreachable
+              health && !health.ok
+                ? copy.dashboard.oracleUnreachable
+                : copy.dashboard.queueAwaiting
             }
             icon={<Gauge size={16} />}
           />
@@ -335,13 +335,6 @@ export function DashboardPage({
               <span className="eyebrow">{copy.dashboard.agentRegister}</span>
               <h2>{copy.dashboard.operatingFleet}</h2>
             </div>
-            <Button
-              variant="ghost"
-              onClick={() => go("/app")}
-              icon={<ArrowRight size={14} />}
-            >
-              {copy.dashboard.openRegister}
-            </Button>
           </div>
           <div className="agent-list">
             {agentsError && (

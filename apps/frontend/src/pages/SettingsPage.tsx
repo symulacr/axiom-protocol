@@ -29,7 +29,7 @@ import {
   Sun,
   Wifi,
 } from "../components/axiom/icons.js";
-import { Button, Status } from "../components/axiom/Controls.js";
+import { Button, Field, Status } from "../components/axiom/Controls.js";
 import { getCopy, type Copy } from "../lib/copy.js";
 import type { AppState, UiSettings } from "../lib/models.js";
 import type { PrototypeAction } from "../lib/prototypeStore.js";
@@ -133,6 +133,14 @@ export function SettingsPage({
   const copy = getCopy(state.settings.locale);
   const labels = copy.settings;
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+  // Profile-name editor (03 FINDING-013): draft tracks the stored name and
+  // re-syncs when it changes elsewhere (first-run WalletGate step).
+  const [profileDraft, setProfileDraft] = useState(state.session.profile);
+  const [profileSynced, setProfileSynced] = useState(state.session.profile);
+  if (profileSynced !== state.session.profile) {
+    setProfileSynced(state.session.profile);
+    setProfileDraft(state.session.profile);
+  }
   const update = (patch: Partial<UiSettings>) =>
     dispatch({ type: "settings", patch });
   const toggle = (key: "railCollapsed" | "reducedMotion" | "railHidden") =>
@@ -232,6 +240,37 @@ export function SettingsPage({
               <Status label={status} tone={toneFor(status)} />
             </div>
           ))}
+          {/* 03 FINDING-013: Settings owns the operator profile name — the
+              WalletGate step only creates the first value; renames land here
+              and propagate to sidebar/topbar/avatar without re-auth. */}
+          <form
+            className="settings-profile-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const next = profileDraft.trim();
+              if (!next || next === state.session.profile) return;
+              dispatch({ type: "session", session: { profile: next } });
+              dispatch({ type: "notice", notice: labels.profileNameSaved });
+            }}
+          >
+            <Field
+              label={labels.profileNameLabel}
+              value={profileDraft}
+              onChange={setProfileDraft}
+              maxLength={60}
+              hint={copy.wallet.profileHint}
+            />
+            <Button
+              type="submit"
+              variant="secondary"
+              disabled={
+                !profileDraft.trim() ||
+                profileDraft.trim() === state.session.profile
+              }
+            >
+              {labels.profileNameSave}
+            </Button>
+          </form>
         </SettingsDisclosure>
 
         <SettingsDisclosure

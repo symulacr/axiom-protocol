@@ -16,7 +16,6 @@ import { Button } from "../components/axiom/Controls.js";
 import { Logo } from "../components/axiom/AppShell.js";
 import { MEDIA } from "../lib/media.js";
 import { getCopy, type Locale } from "../lib/copy.js";
-import { APP_CHAIN_ID } from "../config/wagmi.js";
 
 export function Landing({
   onConnect,
@@ -132,11 +131,6 @@ export function Landing({
           <div className="hero-visual-overlay">
             <span className="eyebrow">{copy.landing.nextSafeAction}</span>
             <strong>{copy.landing.heroTitle}</strong>
-            <div className="hero-visual-readout">
-              <span>chain {APP_CHAIN_ID}</span>
-              <span>{copy.landing.readoutProof}</span>
-              <span>{copy.landing.readoutMotion}</span>
-            </div>
           </div>
         </section>
       </main>

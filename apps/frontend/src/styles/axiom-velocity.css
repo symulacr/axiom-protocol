@@ -63,7 +63,11 @@
 .command-group { display: grid; gap: .14rem; }
 .command-group-label { padding: .48rem .58rem .2rem; color: var(--copper-bright, #e6aa78); font: 800 .61rem/1 var(--font-mono, monospace); letter-spacing: .12em; }
 .command-center .command-group button { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: .6rem; align-items: center; width: 100%; padding: .56rem .62rem; text-align: left; border: 1px solid transparent; border-radius: 3px; background: transparent; }
-.command-center .command-group button:hover, .command-center .command-group button.is-active { border-color: rgba(199,116,53,.42); background: rgba(199,116,53,.12); }
+/* 04 FINDING-013: mouse-hover and the keyboard-driven selection must not
+   paint identically — hover is a faint wash, .is-active keeps the full copper
+   wash + border (and wins on overlap because it comes later). */
+.command-center .command-group button:hover { border-color: rgba(199,116,53,.2); background: rgba(199,116,53,.05); }
+.command-center .command-group button.is-active, .command-center .command-group button.is-active:hover { border-color: rgba(199,116,53,.42); background: rgba(199,116,53,.12); }
 .command-item-icon { display: grid; place-items: center; color: var(--copper); }
 .command-center .command-group button > span:nth-child(2) { display: grid; gap: .12rem; min-width: 0; }
 .command-center .command-group strong { overflow: hidden; color: var(--text, #f4efe7); font-size: .8rem; text-overflow: ellipsis; white-space: nowrap; }

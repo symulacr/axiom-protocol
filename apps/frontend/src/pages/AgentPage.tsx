@@ -364,15 +364,18 @@ export function AgentPage({
               placeholder={agentCopy.instructionPlaceholder}
               hint={agentCopy.instructionHint}
             />
-            <Field
-              label={agentCopy.providerRoute}
-              value={
-                metrics
+            {/* 03 FINDING-016: a Field implies editable — this is a read-only
+                route readout, so it renders as a definition row, not an
+                input. */}
+            <div className="field provider-route-readout">
+              <span className="field-label">{agentCopy.providerRoute}</span>
+              <strong>
+                {metrics
                   ? `${metrics.totalTicks ?? 0} ticks recorded`
-                  : agentCopy.providerValue
-              }
-              hint={agentCopy.providerHint}
-            />
+                  : agentCopy.providerValue}
+              </strong>
+              <span className="field-hint">{agentCopy.providerHint}</span>
+            </div>
           </div>
           <div className="button-row">
             <Button

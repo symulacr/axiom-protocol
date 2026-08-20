@@ -167,7 +167,12 @@
   border-radius: 6px;
   transition: 150ms var(--ease-out);
 }
-.axiom-field:focus { outline: 0; border-color: var(--copper); box-shadow: 0 0 0 3px rgba(210, 139, 82, 0.1); }
+/* 04 FINDING-007: the standard 2px copper focus ring, same as every other
+   control — no outline:0 defeat, no 10%-alpha halo. The border-color change
+   stays as a secondary cue (the class owns the border; ui.tsx formFieldBase
+   no longer sets one inline). */
+.axiom-field:focus-visible { outline: 2px solid var(--copper-bright); outline-offset: 2px; }
+.axiom-field:focus { border-color: var(--copper); }
 .axiom-field::placeholder { color: var(--dim); }
 select.axiom-field option { background: var(--panel); color: var(--text); }
 
@@ -370,7 +375,8 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
   padding: 8px 10px;
   font-size: 12px;
 }
-.chat-history__search:focus { outline: 0; border-color: var(--copper); }
+.chat-history__search:focus-visible { outline: 2px solid var(--copper-bright); outline-offset: 2px; }
+.chat-history__search:focus { border-color: var(--copper); }
 .chat-history__list { overflow-y: auto; display: grid; gap: 4px; min-height: 0; flex: 1; }
 .chat-history__item {
   display: grid;

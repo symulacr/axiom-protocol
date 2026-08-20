@@ -287,10 +287,6 @@ export function PublicSeoPage({ slug }: { slug: PublicSeoSlug }) {
             </a>
           ))}
         </nav>
-        <div className="seo-route-status">
-          <span>ROUTE / PUBLIC SURFACE</span>
-          <b>PUBLIC · INDEXABLE</b>
-        </div>
         <a className="seo-console-link" href="/app">
           <LockKeyhole size={14} /> Operator console
         </a>

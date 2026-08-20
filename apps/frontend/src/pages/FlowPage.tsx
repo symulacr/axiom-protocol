@@ -251,58 +251,80 @@ export function FlowPage({
   }, [kind, draft.phase, chainId]);
 
   const updateValue = (value: string) => {
+    setSubmitError(null);
     dispatch({
       type: "save-draft",
       draft: { ...draft, value, phase: "draft", error: null, receiptId: null },
     });
   };
-  const updateExtra = (extra: string) =>
+  const updateExtra = (extra: string) => {
+    setSubmitError(null);
     dispatch({
       type: "save-draft",
       draft: { ...draft, extra, phase: "draft", error: null, receiptId: null },
     });
+  };
 
-  const validate = (): string | null => {
+  // 05 FINDING-008 / 04 FINDING-014: one wording per rule, one surface per
+  // error. validate() names the failing FIELD so openReview can render the
+  // message inline via the Field error contract instead of opening the
+  // review sheet to deliver validation news. The phase machine's
+  // recoverable-error state is reserved for execution failures.
+  type FlowFieldError = {
+    field: "value" | "extra" | "agent";
+    message: string;
+  };
+  const [submitError, setSubmitError] = useState<FlowFieldError | null>(null);
+
+  const validate = (): FlowFieldError | null => {
     const trimmed = draft.value.trim();
     if (
       (kind === "payment" || isVaultFlow) &&
       (!Number.isFinite(Number(trimmed)) || Number(trimmed) <= 0)
     )
-      return "Enter a positive amount.";
+      return { field: "value", message: "Enter an amount above zero." };
     // Withdraw is bounded by the live vault balance when the read is
     // available — the review sheet shows the resulting balance either way.
     if (kind === "withdraw" && vaultBalanceWei !== undefined) {
       try {
         if (parseUnits(trimmed, nativeDecimals) > vaultBalanceWei)
-          return "Amount exceeds the vault balance.";
+          return {
+            field: "value",
+            message: "Amount exceeds the vault balance.",
+          };
       } catch {
-        return "Enter a valid amount.";
+        return { field: "value", message: "Enter a valid amount." };
       }
     }
     if (kind === "mint" && (trimmed.length < 2 || trimmed.length > 80))
-      return "Use 2–80 characters.";
+      return { field: "value", message: "Use 2–80 characters." };
     if (kind === "transfer" && !isAddress(trimmed))
-      return "Recipient must be a valid 0x address.";
+      return {
+        field: "value",
+        message: "Recipient must be a valid 0x address.",
+      };
     if (kind === "transfer" && !/^0x[0-9a-fA-F]{128}$/.test(draft.extra.trim()))
-      return "Recipient public key must be 64 bytes of hex (0x…).";
+      return {
+        field: "extra",
+        message: "Recipient public key must be 64 bytes of hex (0x…).",
+      };
     if (kind === "tick" && trimmed.length < 3)
-      return "Describe the instruction.";
-    if (kind !== "mint" && !selectedTokenId) return "Select an agent first.";
+      return { field: "value", message: "Describe the instruction." };
+    if (kind !== "mint" && !selectedTokenId)
+      return { field: "agent", message: "Select an agent first." };
     return null;
   };
 
   const openReview = () => {
-    const error = validate();
-    if (error) {
-      dispatch({
-        type: "set-draft-phase",
-        flow: kind,
-        phase: "recoverable-error",
-        error,
-      });
-      dispatch({ type: "notice", notice: error });
+    const invalid = validate();
+    if (invalid) {
+      // Sheet stays CLOSED for invalid drafts: the failing field shows the
+      // inline error (Field contract), the notice toast is the backup.
+      setSubmitError(invalid);
+      dispatch({ type: "notice", notice: invalid.message });
       return;
     }
+    setSubmitError(null);
     dispatch({
       type: "set-draft-phase",
       flow: kind,
@@ -539,6 +561,7 @@ export function FlowPage({
   const restart = () => {
     nonceRef.current = freshNonceHex();
     tickHook.resetStream();
+    setSubmitError(null);
     dispatch({ type: "clear-draft", flow: kind });
   };
 
@@ -547,18 +570,9 @@ export function FlowPage({
     dispatch({ type: "notice", notice: "Receipt identifier copied locally." });
   };
 
-  const proofSteps =
-    kind === "payment"
-      ? ["Exact allowance", "Approval / payment boundary", "Receipt indexed"]
-      : kind === "transfer"
-        ? ["Recipient challenge", "Signature boundary", "Receipt indexed"]
-        : kind === "mint"
-          ? ["Metadata hash", "Oracle acknowledgement", "Receipt indexed"]
-          : kind === "deposit"
-            ? ["Amount + balance", "Wallet boundary", "Receipt indexed"]
-            : kind === "withdraw"
-              ? ["Balance checked", "Wallet boundary", "Receipt indexed"]
-              : ["Bounded instruction", "Provider route", "Event indexed"];
+  // 02 FINDING-012: step labels live in copy.flows[kind].steps (localized,
+  // outcome-named) — no hardcoded ladder, no protocol identifiers.
+  const proofSteps = flow.steps;
 
   // C-15: the receipt panel derives from the LIVE tx row, not static copy —
   // "confirmed" is only ever rendered after the chain says so. A persisted
@@ -727,7 +741,9 @@ export function FlowPage({
 
           <div className="flow-form">
             {kind !== "mint" && (
-              <label className="field">
+              <label
+                className={`field${submitError?.field === "agent" ? " field-error" : ""}`}
+              >
                 <span className="field-label">Agent *</span>
                 <span className="field-control">
                   <select
@@ -735,7 +751,8 @@ export function FlowPage({
                     aria-label="Target agent"
                     value={selectedTokenId}
                     disabled={isReviewOpen}
-                    onChange={(event) =>
+                    onChange={(event) => {
+                      setSubmitError(null);
                       dispatch({
                         type: "save-draft",
                         draft: {
@@ -743,8 +760,8 @@ export function FlowPage({
                           agent: event.target.value,
                           phase: "draft",
                         },
-                      })
-                    }
+                      });
+                    }}
                   >
                     {agentOptions.length === 0 && (
                       <option value="">no agents — mint first</option>
@@ -756,9 +773,15 @@ export function FlowPage({
                     ))}
                   </select>
                 </span>
-                <span className="field-hint">
-                  The agent whose vault or record this operation targets.
-                </span>
+                {submitError?.field === "agent" ? (
+                  <span className="field-message" role="alert">
+                    {submitError.message}
+                  </span>
+                ) : (
+                  <span className="field-hint">
+                    The agent whose vault or record this operation targets.
+                  </span>
+                )}
               </label>
             )}
             {kind === "mint" && (
@@ -768,6 +791,11 @@ export function FlowPage({
                 onChange={updateValue}
                 required
                 maxLength={80}
+                error={
+                  submitError?.field === "value"
+                    ? submitError.message
+                    : undefined
+                }
                 hint="Metadata hash is derived and shown in review."
               />
             )}
@@ -780,9 +808,11 @@ export function FlowPage({
                 maxLength={24}
                 suffix={paymentSymbol}
                 error={
-                  Number(draft.value) <= 0
-                    ? "Enter an amount above zero."
-                    : undefined
+                  submitError?.field === "value"
+                    ? submitError.message
+                    : Number(draft.value) <= 0
+                      ? "Enter an amount above zero."
+                      : undefined
                 }
                 hint="Exact allowance is shown in review."
               />
@@ -796,9 +826,11 @@ export function FlowPage({
                 maxLength={24}
                 suffix={nativeSymbol}
                 error={
-                  Number(draft.value) <= 0
-                    ? "Enter an amount above zero."
-                    : undefined
+                  submitError?.field === "value"
+                    ? submitError.message
+                    : Number(draft.value) <= 0
+                      ? "Enter an amount above zero."
+                      : undefined
                 }
                 hint={
                   kind === "withdraw" && vaultBalanceWei !== undefined
@@ -814,6 +846,11 @@ export function FlowPage({
                 onChange={updateValue}
                 required
                 maxLength={42}
+                error={
+                  submitError?.field === "value"
+                    ? submitError.message
+                    : undefined
+                }
                 hint="Challenge and expiry appear in review."
               />
             )}
@@ -824,6 +861,11 @@ export function FlowPage({
                 onChange={updateExtra}
                 required
                 maxLength={130}
+                error={
+                  submitError?.field === "extra"
+                    ? submitError.message
+                    : undefined
+                }
                 hint="64-byte hex (0x…) — the new owner's encryption key."
               />
             )}
@@ -834,6 +876,11 @@ export function FlowPage({
                 onChange={updateValue}
                 required
                 maxLength={320}
+                error={
+                  submitError?.field === "value"
+                    ? submitError.message
+                    : undefined
+                }
                 hint="Bounded and cancellable; streamed tokens appear below."
               />
             )}
@@ -967,9 +1014,7 @@ export function FlowPage({
                 <span aria-hidden="true" />
                 <div>
                   <strong>{step}</strong>
-                  <small>
-                    {index === 1 ? "Wallet boundary" : "Observed automatically"}
-                  </small>
+                  <small>{index === 1 ? f.stepWallet : f.stepAuto}</small>
                 </div>
                 {proofReady(index) ? <Check size={14} /> : null}
               </li>

@@ -202,6 +202,18 @@ export function compactHistory<T extends ChatApiMessage>(
     tool_call_id: undefined,
     name: undefined,
   } as unknown as T;
+  // The spread inherits recent[0]'s UI-only id — the lead would share a React
+  // key with the original (duplicate-key warning whenever compaction fires).
+  // id never reaches the API payload (toChatApiMessages strips it), so a
+  // fresh id is cache-safe.
+  if (
+    typeof summaryMsg === "object" &&
+    summaryMsg !== null &&
+    "id" in summaryMsg
+  ) {
+    (summaryMsg as Record<string, unknown>).id =
+      globalThis.crypto?.randomUUID?.() ?? `summary-${Date.now()}`;
+  }
   return [summaryMsg, ...recent];
 }
 

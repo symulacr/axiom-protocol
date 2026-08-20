@@ -105,8 +105,6 @@ export type Copy = {
     menuDevelopers: string;
     menuDevelopersHint: string;
     stakeTitle: string;
-    readoutProof: string;
-    readoutMotion: string;
     stripConnectEyebrow: string;
     stripConnectSmall: string;
     stripVerifyEyebrow: string;
@@ -140,6 +138,18 @@ export type Copy = {
     finish: string;
     skip: string;
   };
+  /** Recovery404 — says what happened and the safe next step, never what the
+   *  page implementation didn't load (02 FINDING-018). */
+  notFound: {
+    eyebrow: string;
+    titleLead: string;
+    titleEmphasis: string;
+    body: string;
+    returnToLanding: string;
+    openConsole: string;
+    /** document.title for unknown routes. */
+    title: string;
+  };
   settings: {
     pageEyebrow: string;
     pageTitle: string;
@@ -152,6 +162,11 @@ export type Copy = {
     liveWallet: string;
     walletNetwork: string;
     signingContext: string;
+    /** Operator profile name editor (03 FINDING-013 — Settings owns renames;
+     *  the WalletGate step only ever creates the first value). */
+    profileNameLabel: string;
+    profileNameSave: string;
+    profileNameSaved: string;
     dailyEyebrow: string;
     dailyTitle: string;
     layoutEyebrow: string;
@@ -221,7 +236,6 @@ export type Copy = {
     liveQueue: string;
     agentRegister: string;
     operatingFleet: string;
-    openRegister: string;
     proofLane: string;
     attentionFirst: string;
     allowanceReady: string;
@@ -244,6 +258,9 @@ export type Copy = {
     needReview: (count: number) => string;
     fleetNominal: string;
     eventsIndexed: string;
+    /** Live-queue stat subline while the oracle is healthy — describes the
+     *  queue, not the plumbing (02 FINDING-010); an outage overrides it. */
+    queueAwaiting: string;
     oracleUnreachable: string;
     secondaryTelemetry: string;
     telemetryTitle: string;
@@ -293,6 +310,13 @@ export type Copy = {
     regenerateShort: string;
     copyMessage: string;
     copyShort: string;
+    /** Inline confirmation after a copy action (every copy confirms — 04
+     *  FINDING-006); rendered as the swapped label beside the ✓. */
+    copiedMessage: string;
+    /** Tool browser: clicking a tool inserts this natural-language prompt
+     *  template (trailing space = parameter placeholder), never the raw
+     *  snake_case function name (02 FINDING-013). Fallback = tool label. */
+    toolPrompts: Record<string, string>;
     discardEditTitle: string;
     keepConversationTitle: string;
     editDiscards: string;
@@ -400,6 +424,10 @@ export type Copy = {
     notCreated: string;
     noLiveCall: string;
     confirming: string;
+    /** Proof-timeline step sublabels (C-P2: the ladder localizes with the
+     *  steps — these two were the last hardcoded English on flow pages). */
+    stepWallet: string;
+    stepAuto: string;
   };
   agentDetail: {
     executionSurface: string;
@@ -453,6 +481,9 @@ export type Copy = {
     description: string;
     refreshState: string;
     refreshNotice: string;
+    /** Appended to refreshNotice only when the live event feed is DOWN —
+     *  healthy plumbing is never announced (02 FINDING-010). */
+    feedDown: string;
     liveQueue: string;
     confirmingNow: string;
     today: string;
@@ -564,7 +595,7 @@ const english: Copy = {
       "Connect a wallet, review the next operator action and keep its proof beside it. Every state is labeled; this prototype never implies a live transaction.",
     prototypeNote:
       "Prototype mode: wallet, network, signature and transaction boundaries are visible before console access.",
-    nextSafeAction: "NEXT SAFE ACTION / AMBIENT LOOP",
+    nextSafeAction: "NEXT SAFE ACTION",
     heroTitle: "Verify the operator before the action.",
     walletContext: "Wallet context",
     signatureBoundary: "Signature boundary",
@@ -574,8 +605,6 @@ const english: Copy = {
     menuDevelopers: "Developers",
     menuDevelopersHint: "Inspect the integration boundary",
     stakeTitle: "0G Stake",
-    readoutProof: "proof boundary online",
-    readoutMotion: "motion / reduced-motion aware",
     stripConnectEyebrow: "CONNECT",
     stripConnectSmall: "Connector and address",
     stripVerifyEyebrow: "VERIFY",
@@ -612,6 +641,15 @@ const english: Copy = {
     finish: "Finish guide",
     skip: "Skip for now",
   },
+  notFound: {
+    eyebrow: "404 / PAGE NOT FOUND",
+    titleLead: "The route",
+    titleEmphasis: "drifted.",
+    body: "This page doesn't exist. Nothing was loaded and no wallet action was taken.",
+    returnToLanding: "Return to landing",
+    openConsole: "Open console",
+    title: "Page not found",
+  },
   settings: {
     pageEyebrow: "CONTROL PLANE / CONFIGURATION",
     pageTitle: "Settings",
@@ -625,6 +663,9 @@ const english: Copy = {
     liveWallet: "live wallet",
     walletNetwork: "WALLET & NETWORK",
     signingContext: "Signing context",
+    profileNameLabel: "Operator profile name",
+    profileNameSave: "Save name",
+    profileNameSaved: "Profile name updated.",
     dailyEyebrow: "DISPLAY / PREFERENCES",
     dailyTitle: "Daily preferences",
     layoutEyebrow: "CONSOLE / LAYOUT",
@@ -701,12 +742,12 @@ const english: Copy = {
     liveQueue: "Live queue",
     agentRegister: "AGENT REGISTER / 04",
     operatingFleet: "Operating fleet",
-    openRegister: "Open register",
     proofLane: "PROOF LANE / 01",
     attentionFirst: "Attention first",
     allowanceReady: "Allowance is ready for review.",
+    // One canonical allowance sentence, shared with the strip (02 FINDING-022).
     allowanceDescription:
-      "Exact amount, destination and processor route are known. The next action opens the payment evidence flow.",
+      "Review an exact ERC-20 allowance before any value moves.",
     recentStore: "RECENT / SHARED STORE",
     latestEvidence: "Latest evidence",
     allReceipts: "All receipts",
@@ -726,6 +767,7 @@ const english: Copy = {
     needReview: (count) => `${count} need review`,
     fleetNominal: "fleet nominal",
     eventsIndexed: "events indexed",
+    queueAwaiting: "awaiting confirmation",
     oracleUnreachable: "oracle unreachable",
     secondaryTelemetry: "SECONDARY TELEMETRY",
     telemetryTitle: "Telemetry & recent evidence",
@@ -770,6 +812,42 @@ const english: Copy = {
     regenerateShort: "Regenerate",
     copyMessage: "Copy message",
     copyShort: "Copy",
+    copiedMessage: "Copied",
+    toolPrompts: {
+      evm_wallet: "Check my wallet balance and network",
+      evm_multichain: "Query this address across chains: ",
+      evm_tx: "Build and broadcast a transaction to ",
+      evm_token: "Check the token balance of ",
+      evm_gas: "Estimate current gas prices",
+      evm_whale: "Track large wallet movements above ",
+      evm_contract: "Call a contract method on ",
+      evm_allowance: "Check the token allowance of ",
+      stocks_quote: "Get the latest quote for ",
+      stocks_search: "Search tickers for ",
+      stocks_history: "Show price history for ",
+      stocks_compare: "Compare fundamentals for ",
+      stocks_crypto: "Get the crypto market data for ",
+      osint_sec_edgar: "Search SEC filings for ",
+      osint_usaspending: "Look up federal spending for ",
+      osint_ofac_sdn: "Check the sanctions status of ",
+      osint_opencorporates: "Look up company registration for ",
+      osint_entity_resolve: "Resolve entity references for ",
+      osint_courtlistener: "Search court opinions for ",
+      list_my_agents: "List my agents",
+      vault_balance: "Show the vault balance of agent #",
+      agent_metadata: "Show the on-chain metadata of agent #",
+      event_history: "Show recent on-chain events for agent #",
+      execute_tick: "Execute a strategy tick for agent #",
+      simulate_tick: "Dry-run a tick for agent #",
+      mint_agent: "Mint a new agent named ",
+      deposit: "Deposit funds into the vault of agent #",
+      withdraw: "Withdraw funds from the vault of agent #",
+      pay_for_agent: "Make a payment to agent #",
+      transfer: "Transfer agent # to a new owner",
+      archive_lookup: "Look up the archived account ",
+      archive_account_tweets: "Show archived tweets from ",
+      archive_confirm_deletion: "Confirm deletion of the archived snapshot ",
+    },
     discardEditTitle: "Discard the messages after this one and edit",
     keepConversationTitle: "Keep the conversation",
     editDiscards: "Edit discards the rest",
@@ -868,74 +946,42 @@ const english: Copy = {
     mint: {
       eyebrow: "MINT / PROVENANCE BOUNDARY",
       title: "Mint an agent",
-      copy: "Name → hash → oracle acknowledgement → calldata → receipt.",
-      steps: [
-        "Name + payload",
-        "dataHash derived",
-        "Oracle accepted",
-        "Sign transaction",
-        "Receipt + agent",
-      ],
+      copy: "Name → hash → oracle acknowledgement → receipt.",
+      steps: ["Metadata hash", "Oracle acknowledgement", "Receipt indexed"],
     },
     payment: {
       eyebrow: "PAYMENT / ALLOWANCE ROUTE",
       title: "Fund with context",
       copy: "Token, exact allowance, fee, royalty and event decoding stay visible before completion.",
       steps: [
-        "Amount + token",
-        "Exact approval",
-        "Approval receipt",
-        "PayForAgent",
-        "Event decoded",
+        "Exact allowance",
+        "Approval / payment boundary",
+        "Receipt indexed",
       ],
     },
     transfer: {
-      eyebrow: "TRANSFER / EIP-712 PROOF",
+      eyebrow: "TRANSFER / SIGNED PROOF",
       title: "Transfer with evidence",
       copy: "Challenge → signature → finalization → on-chain receipt. Expiration never disappears.",
-      steps: [
-        "Recipient + dataHash",
-        "Challenge",
-        "EIP-712 sign",
-        "Finalize proof",
-        "On-chain receipt",
-      ],
+      steps: ["Recipient challenge", "Signature boundary", "Receipt indexed"],
     },
     tick: {
       eyebrow: "ORCHESTRATOR / STREAM",
       title: "Run the next tick",
       copy: "Intent → provider → stream → result → event or transaction → recovery.",
-      steps: [
-        "Instruction",
-        "Provider route",
-        "Streaming",
-        "Result",
-        "Event / recovery",
-      ],
+      steps: ["Bounded instruction", "Provider route", "Event indexed"],
     },
     deposit: {
       eyebrow: "VAULT / DEPOSIT ROUTE",
       title: "Deposit into the vault",
       copy: "Amount → review → wallet boundary → on-chain receipt. The vault balance stays visible before value moves.",
-      steps: [
-        "Amount + agent",
-        "Review sheet",
-        "Wallet signature",
-        "Vault deposit",
-        "Receipt indexed",
-      ],
+      steps: ["Amount + balance", "Wallet boundary", "Receipt indexed"],
     },
     withdraw: {
       eyebrow: "VAULT / WITHDRAW ROUTE",
       title: "Withdraw from the vault",
       copy: "Amount → review → wallet boundary → on-chain receipt. The remaining balance is shown before you sign.",
-      steps: [
-        "Amount + agent",
-        "Review sheet",
-        "Wallet signature",
-        "Vault withdraw",
-        "Receipt indexed",
-      ],
+      steps: ["Balance checked", "Wallet boundary", "Receipt indexed"],
     },
   },
   flowUi: {
@@ -961,12 +1007,14 @@ const english: Copy = {
     notCreated: "not created",
     noLiveCall: "fixture / no live call",
     confirming: "CONFIRMING",
+    stepWallet: "Wallet boundary",
+    stepAuto: "Observed automatically",
   },
   agentDetail: {
     executionSurface: "operator-controlled execution surface.",
     operatingBalance: "OPERATING BALANCE",
     vaultRoute: "vault route · {chainName}",
-    dataHash: "DATA HASH",
+    dataHash: "Metadata hash",
     overview: "Overview",
     execute: "Execute",
     payments: "Payments",
@@ -975,7 +1023,7 @@ const english: Copy = {
     agentRecord: "Agent record",
     owner: "Owner",
     agentId: "Agent ID",
-    metadataRoot: "Metadata root",
+    metadataRoot: "Metadata hash",
     lastEvent: "Last event",
     inspectStorageProof: "Inspect storage proof",
     commandSafeAction: "COMMAND / SAFE ACTION",
@@ -1015,6 +1063,7 @@ const english: Copy = {
     description: "Every signature has a state, a source and a recovery path.",
     refreshState: "Refresh state",
     refreshNotice: "Receipt index revalidated. Pending states remain pending.",
+    feedDown: "Live event feed offline — polling instead.",
     liveQueue: "LIVE QUEUE",
     confirmingNow: "confirming now",
     today: "TODAY",
@@ -1138,7 +1187,7 @@ const french: Copy = {
       "Connectez un wallet, examinez la prochaine action opérateur et gardez sa preuve à côté. Chaque état est explicite ; ce prototype ne simule jamais une transaction réelle.",
     prototypeNote:
       "Mode prototype : wallet, réseau, signature et limites transactionnelles sont visibles avant l’accès à la console.",
-    nextSafeAction: "PROCHAINE ACTION SÛRE / BOUCLE AMBIANTE",
+    nextSafeAction: "PROCHAINE ACTION SÛRE",
     heroTitle: "Vérifiez l’opérateur avant l’action.",
     walletContext: "Contexte wallet",
     signatureBoundary: "Limite de signature",
@@ -1148,8 +1197,6 @@ const french: Copy = {
     menuDevelopers: "Développeurs",
     menuDevelopersHint: "Inspecter la limite d’intégration",
     stakeTitle: "0G Stake",
-    readoutProof: "limite de preuve active",
-    readoutMotion: "motion / reduced-motion pris en charge",
     stripConnectEyebrow: "CONNECTER",
     stripConnectSmall: "Connecteur et adresse",
     stripVerifyEyebrow: "VÉRIFIER",
@@ -1186,6 +1233,15 @@ const french: Copy = {
     finish: "Terminer le guide",
     skip: "Passer pour l’instant",
   },
+  notFound: {
+    eyebrow: "404 / PAGE INTROUVABLE",
+    titleLead: "La route",
+    titleEmphasis: "s’est égarée.",
+    body: "Cette page n’existe pas. Rien n’a été chargé et aucune action wallet n’a été effectuée.",
+    returnToLanding: "Retour à l’accueil",
+    openConsole: "Ouvrir la console",
+    title: "Page introuvable",
+  },
   settings: {
     pageEyebrow: "PLAN DE CONTRÔLE / CONFIGURATION",
     pageTitle: "Paramètres",
@@ -1199,6 +1255,9 @@ const french: Copy = {
     liveWallet: "wallet actif",
     walletNetwork: "WALLET & RÉSEAU",
     signingContext: "Contexte de signature",
+    profileNameLabel: "Nom du profil opérateur",
+    profileNameSave: "Enregistrer",
+    profileNameSaved: "Nom du profil mis à jour.",
     dailyEyebrow: "AFFICHAGE / PRÉFÉRENCES",
     dailyTitle: "Préférences quotidiennes",
     layoutEyebrow: "CONSOLE / DISPOSITION",
@@ -1277,12 +1336,11 @@ const french: Copy = {
     liveQueue: "File active",
     agentRegister: "REGISTRE AGENTS / 04",
     operatingFleet: "Flotte active",
-    openRegister: "Ouvrir le registre",
     proofLane: "COULOIR DE PREUVE / 01",
     attentionFirst: "Attention d’abord",
     allowanceReady: "L’approbation est prête à être revue.",
     allowanceDescription:
-      "Montant exact, destination et route du processeur sont connus. L’action suivante ouvre la preuve de paiement.",
+      "Examinez une approbation ERC-20 exacte avant tout mouvement de valeur.",
     recentStore: "RÉCENT / STORE PARTAGÉ",
     latestEvidence: "Dernières preuves",
     allReceipts: "Tous les reçus",
@@ -1303,6 +1361,7 @@ const french: Copy = {
     needReview: (count) => `${count} à examiner`,
     fleetNominal: "flotte nominale",
     eventsIndexed: "événements indexés",
+    queueAwaiting: "confirmation en attente",
     oracleUnreachable: "oracle injoignable",
     secondaryTelemetry: "TÉLÉMÉTRIE SECONDAIRE",
     telemetryTitle: "Télémétrie et preuves récentes",
@@ -1348,6 +1407,42 @@ const french: Copy = {
     regenerateShort: "Régénérer",
     copyMessage: "Copier le message",
     copyShort: "Copier",
+    copiedMessage: "Copié",
+    toolPrompts: {
+      evm_wallet: "Vérifie le solde et le réseau de mon wallet",
+      evm_multichain: "Interroge cette adresse sur plusieurs chaînes : ",
+      evm_tx: "Construis et diffuse une transaction vers ",
+      evm_token: "Vérifie le solde du token ",
+      evm_gas: "Estime les prix du gas actuels",
+      evm_whale: "Suis les gros mouvements de wallet au-dessus de ",
+      evm_contract: "Appelle une méthode du contrat ",
+      evm_allowance: "Vérifie l’approbation du token ",
+      stocks_quote: "Donne la dernière cotation de ",
+      stocks_search: "Recherche des tickers pour ",
+      stocks_history: "Montre l’historique des prix de ",
+      stocks_compare: "Compare les fondamentaux de ",
+      stocks_crypto: "Donne les données de marché crypto de ",
+      osint_sec_edgar: "Recherche des dépôts SEC pour ",
+      osint_usaspending: "Recherche les dépenses fédérales pour ",
+      osint_ofac_sdn: "Vérifie le statut de sanctions de ",
+      osint_opencorporates: "Recherche l’immatriculation de ",
+      osint_entity_resolve: "Résous les références d’entité pour ",
+      osint_courtlistener: "Recherche des décisions de justice pour ",
+      list_my_agents: "Liste mes agents",
+      vault_balance: "Montre le solde du vault de l’agent #",
+      agent_metadata: "Montre les métadonnées on-chain de l’agent #",
+      event_history: "Montre les événements on-chain récents de l’agent #",
+      execute_tick: "Exécute un tick de stratégie pour l’agent #",
+      simulate_tick: "Simule un tick à blanc pour l’agent #",
+      mint_agent: "Minte un nouvel agent nommé ",
+      deposit: "Dépose des fonds dans le vault de l’agent #",
+      withdraw: "Retire des fonds du vault de l’agent #",
+      pay_for_agent: "Effectue un paiement à l’agent #",
+      transfer: "Transfère l’agent # à un nouveau propriétaire",
+      archive_lookup: "Recherche le compte archivé ",
+      archive_account_tweets: "Montre les tweets archivés de ",
+      archive_confirm_deletion: "Confirme la suppression du snapshot archivé ",
+    },
     discardEditTitle: "Abandonner les messages suivants et modifier",
     keepConversationTitle: "Conserver la conversation",
     editDiscards: "Modifier abandonne la suite",
@@ -1448,74 +1543,46 @@ const french: Copy = {
     mint: {
       eyebrow: "MINT / LIMITE DE PROVENANCE",
       title: "Créer un agent",
-      copy: "Nom → hash → accord oracle → calldata → reçu.",
-      steps: [
-        "Nom + payload",
-        "dataHash dérivé",
-        "Oracle accepté",
-        "Signer la transaction",
-        "Reçu + agent",
-      ],
+      copy: "Nom → hash → accord de l’oracle → reçu.",
+      steps: ["Hash de métadonnées", "Accord de l’oracle", "Reçu indexé"],
     },
     payment: {
       eyebrow: "PAIEMENT / ROUTE D’APPROBATION",
       title: "Financer avec contexte",
       copy: "Token, approbation exacte, frais, royalty et événements restent visibles avant la fin.",
       steps: [
-        "Montant + token",
         "Approbation exacte",
-        "Reçu d’approbation",
-        "PayForAgent",
-        "Événement décodé",
+        "Limite approbation / paiement",
+        "Reçu indexé",
       ],
     },
     transfer: {
-      eyebrow: "TRANSFERT / PREUVE EIP-712",
+      eyebrow: "TRANSFERT / PREUVE SIGNÉE",
       title: "Transférer avec preuve",
       copy: "Challenge → signature → finalisation → reçu on-chain. L’expiration reste visible.",
       steps: [
-        "Destinataire + dataHash",
-        "Challenge",
-        "Signature EIP-712",
-        "Finaliser la preuve",
-        "Reçu on-chain",
+        "Challenge du destinataire",
+        "Limite de signature",
+        "Reçu indexé",
       ],
     },
     tick: {
       eyebrow: "ORCHESTRATEUR / FLUX",
       title: "Lancer le prochain tick",
       copy: "Intention → fournisseur → flux → résultat → événement ou transaction → récupération.",
-      steps: [
-        "Instruction",
-        "Route fournisseur",
-        "Flux",
-        "Résultat",
-        "Événement / récupération",
-      ],
+      steps: ["Instruction bornée", "Route fournisseur", "Événement indexé"],
     },
     deposit: {
       eyebrow: "VAULT / ROUTE DE DÉPÔT",
       title: "Déposer dans le vault",
       copy: "Montant → revue → limite wallet → reçu on-chain. Le solde du vault reste visible avant le transfert.",
-      steps: [
-        "Montant + agent",
-        "Fiche de revue",
-        "Signature wallet",
-        "Dépôt vault",
-        "Reçu indexé",
-      ],
+      steps: ["Montant + solde", "Limite wallet", "Reçu indexé"],
     },
     withdraw: {
       eyebrow: "VAULT / ROUTE DE RETRAIT",
       title: "Retirer du vault",
       copy: "Montant → revue → limite wallet → reçu on-chain. Le solde restant est affiché avant la signature.",
-      steps: [
-        "Montant + agent",
-        "Fiche de revue",
-        "Signature wallet",
-        "Retrait vault",
-        "Reçu indexé",
-      ],
+      steps: ["Solde vérifié", "Limite wallet", "Reçu indexé"],
     },
   },
   flowUi: {
@@ -1541,12 +1608,14 @@ const french: Copy = {
     notCreated: "non créé",
     noLiveCall: "fixture / aucun appel réel",
     confirming: "CONFIRMATION",
+    stepWallet: "Limite wallet",
+    stepAuto: "Observé automatiquement",
   },
   agentDetail: {
     executionSurface: "surface d’exécution contrôlée par l’opérateur.",
     operatingBalance: "SOLDE D’EXPLOITATION",
     vaultRoute: "route du vault · {chainName}",
-    dataHash: "DATA HASH",
+    dataHash: "Hash de métadonnées",
     overview: "Vue d’ensemble",
     execute: "Exécuter",
     payments: "Paiements",
@@ -1555,7 +1624,7 @@ const french: Copy = {
     agentRecord: "Fiche agent",
     owner: "Propriétaire",
     agentId: "ID agent",
-    metadataRoot: "Racine de métadonnées",
+    metadataRoot: "Hash de métadonnées",
     lastEvent: "Dernier événement",
     inspectStorageProof: "Examiner la preuve Storage",
     commandSafeAction: "COMMANDE / ACTION SÛRE",
@@ -1598,6 +1667,8 @@ const french: Copy = {
     refreshState: "Actualiser l’état",
     refreshNotice:
       "Index des reçus revérifié. Les états en attente le restent.",
+    feedDown:
+      "Flux d’événements live hors ligne — interrogation périodique à la place.",
     liveQueue: "FILE ACTIVE",
     confirmingNow: "en confirmation",
     today: "AUJOURD’HUI",
@@ -1722,7 +1793,7 @@ const german: Copy = {
       "Verbinde ein Wallet, prüfe die nächste Operator-Aktion und halte den Nachweis daneben. Jeder Status ist sichtbar; dieser Prototyp behauptet keine echte Transaktion.",
     prototypeNote:
       "Prototyp-Modus: Wallet, Netzwerk, Signatur und Transaktionsgrenzen sind vor dem Konsolenzugriff sichtbar.",
-    nextSafeAction: "NÄCHSTE SICHERE AKTION / AMBIENT LOOP",
+    nextSafeAction: "NÄCHSTE SICHERE AKTION",
     heroTitle: "Prüfe den Operator vor der Aktion.",
     walletContext: "Wallet-Kontext",
     signatureBoundary: "Signaturgrenze",
@@ -1732,8 +1803,6 @@ const german: Copy = {
     menuDevelopers: "Entwickler",
     menuDevelopersHint: "Integrationsgrenze prüfen",
     stakeTitle: "0G Stake",
-    readoutProof: "Beleggrenze online",
-    readoutMotion: "Motion / Reduced-Motion-fähig",
     stripConnectEyebrow: "VERBINDEN",
     stripConnectSmall: "Connector und Adresse",
     stripVerifyEyebrow: "PRÜFEN",
@@ -1770,6 +1839,15 @@ const german: Copy = {
     finish: "Guide beenden",
     skip: "Jetzt überspringen",
   },
+  notFound: {
+    eyebrow: "404 / SEITE NICHT GEFUNDEN",
+    titleLead: "Diese Route",
+    titleEmphasis: "treibt davon.",
+    body: "Diese Seite existiert nicht. Es wurde nichts geladen und keine Wallet-Aktion ausgeführt.",
+    returnToLanding: "Zurück zur Startseite",
+    openConsole: "Konsole öffnen",
+    title: "Seite nicht gefunden",
+  },
   settings: {
     pageEyebrow: "KONTROLLEBENE / KONFIGURATION",
     pageTitle: "Einstellungen",
@@ -1783,6 +1861,9 @@ const german: Copy = {
     liveWallet: "Live-Wallet",
     walletNetwork: "WALLET & NETZWERK",
     signingContext: "Signaturkontext",
+    profileNameLabel: "Name des Operator-Profils",
+    profileNameSave: "Namen speichern",
+    profileNameSaved: "Profilname aktualisiert.",
     dailyEyebrow: "ANZEIGE / PRÄFERENZEN",
     dailyTitle: "Tägliche Präferenzen",
     layoutEyebrow: "KONSOLE / LAYOUT",
@@ -1859,12 +1940,11 @@ const german: Copy = {
     liveQueue: "Aktive Warteschlange",
     agentRegister: "AGENTENREGISTER / 04",
     operatingFleet: "Aktive Flotte",
-    openRegister: "Register öffnen",
     proofLane: "BEWEIS-SPUR / 01",
     attentionFirst: "Aufmerksamkeit zuerst",
     allowanceReady: "Die Freigabe kann geprüft werden.",
     allowanceDescription:
-      "Exakter Betrag, Ziel und Prozessor-Route sind bekannt. Die nächste Aktion öffnet den Zahlungsnachweis.",
+      "Prüfe eine exakte ERC-20-Freigabe, bevor Wert fließt.",
     recentStore: "AKTUELL / GEMEINSAMER STORE",
     latestEvidence: "Neueste Belege",
     allReceipts: "Alle Belege",
@@ -1884,6 +1964,7 @@ const german: Copy = {
     needReview: (count) => `${count} prüfen`,
     fleetNominal: "Flotte nominal",
     eventsIndexed: "Ereignisse indexiert",
+    queueAwaiting: "Bestätigung ausstehend",
     oracleUnreachable: "Oracle unerreichbar",
     secondaryTelemetry: "SEKUNDÄRE TELEMETRIE",
     telemetryTitle: "Telemetrie und aktuelle Belege",
@@ -1929,6 +2010,43 @@ const german: Copy = {
     regenerateShort: "Neu erzeugen",
     copyMessage: "Nachricht kopieren",
     copyShort: "Kopieren",
+    copiedMessage: "Kopiert",
+    toolPrompts: {
+      evm_wallet: "Prüfe Guthaben und Netzwerk meines Wallets",
+      evm_multichain: "Frage diese Adresse über mehrere Chains ab: ",
+      evm_tx: "Erstelle und sende eine Transaktion an ",
+      evm_token: "Prüfe das Token-Guthaben von ",
+      evm_gas: "Schätze die aktuellen Gaspreise",
+      evm_whale: "Verfolge große Wallet-Bewegungen über ",
+      evm_contract: "Rufe eine Contract-Methode auf ",
+      evm_allowance: "Prüfe die Token-Freigabe von ",
+      stocks_quote: "Hole die aktuelle Kursnotierung für ",
+      stocks_search: "Suche Ticker für ",
+      stocks_history: "Zeige die Kursverläufe von ",
+      stocks_compare: "Vergleiche Fundamentaldaten von ",
+      stocks_crypto: "Hole die Krypto-Marktdaten für ",
+      osint_sec_edgar: "Suche SEC-Filings für ",
+      osint_usaspending: "Suche US-Bundesausgaben für ",
+      osint_ofac_sdn: "Prüfe den Sanktionsstatus von ",
+      osint_opencorporates: "Suche die Firmenregistrierung von ",
+      osint_entity_resolve: "Löse Entitätsreferenzen auf für ",
+      osint_courtlistener: "Suche Gerichtsentscheidungen für ",
+      list_my_agents: "Liste meine Agents auf",
+      vault_balance: "Zeige das Vault-Guthaben von Agent #",
+      agent_metadata: "Zeige die On-Chain-Metadaten von Agent #",
+      event_history: "Zeige die letzten On-Chain-Ereignisse für Agent #",
+      execute_tick: "Führe einen Strategie-Tick für Agent # aus",
+      simulate_tick: "Teste einen Tick für Agent # trocken",
+      mint_agent: "Minte einen neuen Agent namens ",
+      deposit: "Zahle Guthaben in den Vault von Agent # ein",
+      withdraw: "Zahle Guthaben aus dem Vault von Agent # aus",
+      pay_for_agent: "Leiste eine Zahlung an Agent #",
+      transfer: "Übertrage Agent # an einen neuen Inhaber",
+      archive_lookup: "Suche den archivierten Account ",
+      archive_account_tweets: "Zeige archivierte Tweets von ",
+      archive_confirm_deletion:
+        "Bestätige die Löschung des archivierten Snapshots ",
+    },
     discardEditTitle: "Folgende Nachrichten verwerfen und bearbeiten",
     keepConversationTitle: "Unterhaltung behalten",
     editDiscards: "Bearbeiten verwirft den Rest",
@@ -2028,74 +2146,42 @@ const german: Copy = {
     mint: {
       eyebrow: "MINT / PROVENANCE-GRENZE",
       title: "Agent minten",
-      copy: "Name → Hash → Oracle-Bestätigung → Calldata → Beleg.",
-      steps: [
-        "Name + Payload",
-        "dataHash abgeleitet",
-        "Oracle akzeptiert",
-        "Transaktion signieren",
-        "Beleg + Agent",
-      ],
+      copy: "Name → Hash → Oracle-Bestätigung → Beleg.",
+      steps: ["Metadaten-Hash", "Oracle-Bestätigung", "Beleg indexiert"],
     },
     payment: {
       eyebrow: "PAYMENT / FREIGABE-ROUTE",
       title: "Mit Kontext finanzieren",
       copy: "Token, exakte Freigabe, Gebühr, Royalty und Ereignisse bleiben sichtbar.",
       steps: [
-        "Betrag + Token",
         "Exakte Freigabe",
-        "Freigabe-Beleg",
-        "PayForAgent",
-        "Ereignis dekodiert",
+        "Freigabe- / Zahlungsgrenze",
+        "Beleg indexiert",
       ],
     },
     transfer: {
-      eyebrow: "TRANSFER / EIP-712-BELEG",
+      eyebrow: "TRANSFER / SIGNIERTER BELEG",
       title: "Mit Nachweis übertragen",
       copy: "Challenge → Signatur → Abschluss → On-Chain-Beleg. Der Ablauf bleibt nachvollziehbar.",
-      steps: [
-        "Empfänger + dataHash",
-        "Challenge",
-        "EIP-712 signieren",
-        "Beleg abschließen",
-        "On-Chain-Beleg",
-      ],
+      steps: ["Empfänger-Challenge", "Signaturgrenze", "Beleg indexiert"],
     },
     tick: {
       eyebrow: "ORCHESTRATOR / STREAM",
       title: "Nächsten Tick ausführen",
       copy: "Absicht → Provider → Stream → Ergebnis → Ereignis oder Transaktion → Recovery.",
-      steps: [
-        "Anweisung",
-        "Provider-Route",
-        "Streaming",
-        "Ergebnis",
-        "Ereignis / Recovery",
-      ],
+      steps: ["Begrenzte Anweisung", "Provider-Route", "Ereignis indexiert"],
     },
     deposit: {
       eyebrow: "VAULT / EINZAHLUNGSROUTE",
       title: "In den Vault einzahlen",
       copy: "Betrag → Prüfung → Wallet-Grenze → On-Chain-Beleg. Der Vault-Stand bleibt sichtbar, bevor Wert fließt.",
-      steps: [
-        "Betrag + Agent",
-        "Prüfblatt",
-        "Wallet-Signatur",
-        "Vault-Einzahlung",
-        "Beleg indexiert",
-      ],
+      steps: ["Betrag + Guthaben", "Wallet-Grenze", "Beleg indexiert"],
     },
     withdraw: {
       eyebrow: "VAULT / AUSZAHLUNGSROUTE",
       title: "Aus dem Vault auszahlen",
       copy: "Betrag → Prüfung → Wallet-Grenze → On-Chain-Beleg. Der Reststand wird vor dem Signieren gezeigt.",
-      steps: [
-        "Betrag + Agent",
-        "Prüfblatt",
-        "Wallet-Signatur",
-        "Vault-Auszahlung",
-        "Beleg indexiert",
-      ],
+      steps: ["Guthaben geprüft", "Wallet-Grenze", "Beleg indexiert"],
     },
   },
   flowUi: {
@@ -2121,12 +2207,14 @@ const german: Copy = {
     notCreated: "nicht erstellt",
     noLiveCall: "Fixture / kein Live-Aufruf",
     confirming: "BESTÄTIGUNG",
+    stepWallet: "Wallet-Grenze",
+    stepAuto: "Automatisch beobachtet",
   },
   agentDetail: {
     executionSurface: "operatorgesteuerte Ausführungsoberfläche.",
     operatingBalance: "BETRIEBSGUTHABEN",
     vaultRoute: "Vault-Route · {chainName}",
-    dataHash: "DATA-HASH",
+    dataHash: "Metadaten-Hash",
     overview: "Übersicht",
     execute: "Ausführen",
     payments: "Zahlungen",
@@ -2135,7 +2223,7 @@ const german: Copy = {
     agentRecord: "Agentenakte",
     owner: "Inhaber",
     agentId: "Agent-ID",
-    metadataRoot: "Metadaten-Root",
+    metadataRoot: "Metadaten-Hash",
     lastEvent: "Letztes Ereignis",
     inspectStorageProof: "Storage-Beleg prüfen",
     commandSafeAction: "BEFEHL / SICHERE AKTION",
@@ -2179,6 +2267,7 @@ const german: Copy = {
     refreshState: "Status aktualisieren",
     refreshNotice:
       "Belegindex erneut geprüft. Ausstehende Status bleiben ausstehend.",
+    feedDown: "Live-Ereignisfeed offline — Polling stattdessen.",
     liveQueue: "AKTIVE WARTESCHLANGE",
     confirmingNow: "wird bestätigt",
     today: "HEUTE",

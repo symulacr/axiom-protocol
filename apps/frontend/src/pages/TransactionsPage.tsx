@@ -23,7 +23,7 @@ import {
   X,
   Zap,
 } from "../components/axiom/icons.js";
-import { Button, Status } from "../components/axiom/Controls.js";
+import { Button } from "../components/axiom/Controls.js";
 import { StatePill } from "../components/StatePill.js";
 import { MobileDisclosure } from "../components/MobileDisclosure.js";
 import { getCopy } from "../lib/copy.js";
@@ -395,7 +395,9 @@ export function TransactionsPage({
             refetchHistory();
             dispatch({
               type: "notice",
-              notice: `Event feed refreshed.${wsConnected ? " WS live." : ""}`,
+              notice: wsConnected
+                ? txCopy.refreshNotice
+                : `${txCopy.refreshNotice} ${txCopy.feedDown}`,
             });
           }}
           icon={<RefreshCw size={15} />}
@@ -440,13 +442,7 @@ export function TransactionsPage({
         </button>
         <div className="ops-summary-note">
           <ShieldCheck size={16} />
-          <span>
-            <Status
-              label={wsConnected ? "ws live" : "polling"}
-              tone={wsConnected ? "success" : "live"}
-            />{" "}
-            {txCopy.confirmedNote}
-          </span>
+          <span>{txCopy.confirmedNote}</span>
         </div>
       </section>
 
@@ -522,7 +518,6 @@ export function TransactionsPage({
               </span>
               <span className="mono transaction-proof-cell">
                 {truncateHex(tx.hash, 8, 4)}
-                <small>proof / indexed</small>
               </span>
               <span className="mono transaction-age">{transactionAge(tx)}</span>
               <StatePill state={tx.state} />

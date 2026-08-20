@@ -65,7 +65,16 @@ export function parseTokenId(raw: string | undefined): bigint | null {
 }
 
 export function humanizeError(err: unknown): string {
-  const raw = err instanceof Error ? err.message : String(err);
+  const full = err instanceof Error ? err.message : String(err);
+  // viem and backend dumps append implementation noise after the actual
+  // message ("Request Arguments: …", "Contract Call: …", "Details: …",
+  // "Version: viem@…", "Docs: …") — users never act on calldata, so the head
+  // sentence is the whole surface (04 FINDING-012). Known-message matching
+  // below runs on the head.
+  const noiseAt = full.search(
+    /\n?\s*(Request Arguments|Contract Call|Details|Version|Docs):/,
+  );
+  const raw = (noiseAt > 0 ? full.slice(0, noiseAt) : full).trim();
   const lower = raw.toLowerCase();
 
   if (
@@ -74,6 +83,13 @@ export function humanizeError(err: unknown): string {
     lower.includes("rejected the request")
   ) {
     return "Transaction cancelled — you rejected the request in your wallet.";
+  }
+
+  // 05 FINDING-010: the oracle dataHash registry answer addresses a developer
+  // ("POST {dataHash} to /v1/agents/mint first") — users get the state and a
+  // remedy, never an HTTP instruction.
+  if (lower.includes("unknown datahash")) {
+    return "This agent's metadata is not registered with the oracle yet. Re-register it from the mint flow (or pick another agent), then retry the transfer.";
   }
 
   if (

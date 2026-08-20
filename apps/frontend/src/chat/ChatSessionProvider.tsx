@@ -21,6 +21,10 @@ import {
 } from "../abi/addresses.js";
 
 const STORAGE_KEY = "axiom:chat-session";
+/** 03 FINDING-007: the routing preference is a user-level operational
+ *  preference — it persists in localStorage (survives new tabs/devices on
+ *  this machine), while lastTokenId stays session-scoped per tab. */
+const PREF_STORAGE_KEY = "axiom:chat-provider-pref";
 
 /** Router routing preference, persisted per chat session and sent as the
  *  `provider` request field (backend maps it to X-0G-Provider-* headers). */
@@ -71,6 +75,25 @@ function loadStoredSession(): StoredSession {
   }
 }
 
+function loadStoredPref(): ProviderPref | undefined {
+  try {
+    const raw = localStorage.getItem(PREF_STORAGE_KEY);
+    if (!raw) return undefined;
+    return JSON.parse(raw) as ProviderPref;
+  } catch {
+    return undefined;
+  }
+}
+
+function persistPref(pref: ProviderPref | undefined): void {
+  try {
+    if (pref) localStorage.setItem(PREF_STORAGE_KEY, JSON.stringify(pref));
+    else localStorage.removeItem(PREF_STORAGE_KEY);
+  } catch {
+    void 0;
+  }
+}
+
 function persistSession(payload: StoredSession): void {
   try {
     if (payload.lastTokenId || payload.providerPref) {
@@ -94,9 +117,11 @@ export function ChatSessionProvider({
   const [lastTokenId, setLastTokenId] = useState<string | undefined>(
     stored.lastTokenId,
   );
+  // Durable pref wins over the tab-scoped copy (legacy sessionStorage payload)
+  // and over the default; every change writes the localStorage key.
   const [providerPref, setProviderPrefState] = useState<
     ProviderPref | undefined
-  >(stored.providerPref ?? DEFAULT_PROVIDER_PREF);
+  >(loadStoredPref() ?? stored.providerPref ?? DEFAULT_PROVIDER_PREF);
 
   const session = useMemo(
     () =>
@@ -128,6 +153,7 @@ export function ChatSessionProvider({
   const setProviderPref = useCallback(
     (pref: ProviderPref | undefined) => {
       setProviderPrefState(pref);
+      persistPref(pref);
       persistSession({ lastTokenId, providerPref: pref });
     },
     [lastTokenId],

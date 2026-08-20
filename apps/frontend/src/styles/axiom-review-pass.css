@@ -131,6 +131,13 @@
 .field input, .field textarea, .field select, .command-input input, .settings-select-row select { min-width:0; font-size:16px; }
 .field input { max-width:100%; }
 .field input:invalid, .field.field-error input { border-color:rgba(240,179,107,.72); }
+/* Read-only field-styled readout (replaces the display-only "Provider route"
+   input — 03 FINDING-016): definition row, no control affordance. */
+.provider-route-readout { align-content:start; }
+.provider-route-readout strong { font:600 12px 'JetBrains Mono',monospace; color:var(--text,#f4efe7); overflow-wrap:anywhere; word-break:break-word; }
+/* Settings profile-name editor (03 FINDING-013). */
+.settings-profile-form { display:grid; gap:10px; justify-items:start; margin-top:14px; padding-top:14px; border-top:1px solid var(--line,#32383c); }
+.settings-profile-form .field { width:100%; margin-bottom:0; }
 .button { min-width:0; max-width:100%; white-space:normal; overflow-wrap:anywhere; }
 .button:disabled, .button.is-busy { cursor:wait; opacity:.58; transform:none; }
 .button:focus-visible, .icon-button:focus-visible, .nav-item:focus-visible, .filter:focus-visible, .transaction-row:focus-visible { outline:2px solid var(--copper, #d28b52); outline-offset:3px; }

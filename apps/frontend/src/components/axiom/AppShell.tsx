@@ -87,6 +87,7 @@ function Sidebar({
   // Labels come from copy.nav so the shell localizes with the page body
   // (05 FINDING-007 — the nav was the last English-only surface).
   const copy = getCopy(settings.locale);
+  const identified = session.status === "authenticated";
   const items = [
     {
       path: "/app",
@@ -285,25 +286,38 @@ function Sidebar({
             <i />
             {APP_CHAIN.name}
           </strong>
+          {/* 02 FINDING-010: the chain id is the one kept network readout; the
+              oracle earns a mention only when it is DOWN (healthy plumbing is
+              never announced). */}
           <small className="mono">
             chain {APP_CHAIN_ID}
-            {health?.ok
-              ? ` · ${copy.topbar.oracleLive}`
-              : health
-                ? ` · ${copy.topbar.oracleDown}`
-                : ""}
+            {health && !health.ok ? ` · ${copy.topbar.oracleDown}` : ""}
           </small>
         </div>
         <Network size={16} />
       </div>
+      {/* 03 FINDING-010: identity renders only for an authenticated session —
+          a stored profile/address from a previous operator never shows after
+          disconnect. */}
       <button className="account" onClick={() => go("/settings")}>
         <span className="avatar">
-          {(session.profile || "AM").slice(0, 2).toUpperCase()}
+          {(identified
+            ? session.profile || copy.topbar.operator
+            : copy.topbar.operator
+          )
+            .slice(0, 2)
+            .toUpperCase()}
         </span>
         <div>
-          <strong>{session.profile || copy.topbar.operator}</strong>
+          <strong>
+            {identified
+              ? session.profile || copy.topbar.operator
+              : copy.topbar.operator}
+          </strong>
           <small>
-            {shortAddress(session.address, copy.topbar.notConnected)}
+            {identified
+              ? shortAddress(session.address, copy.topbar.notConnected)
+              : copy.topbar.notConnected}
           </small>
         </div>
         <Settings2 size={14} />
@@ -441,6 +455,9 @@ function Topbar({
   fundTarget?: FundTarget;
 }) {
   const copy = getCopy(state.settings.locale);
+  // 03 FINDING-010: identity (and the session pill) render only for an
+  // authenticated session — never a stale profile/address after disconnect.
+  const identified = session.status === "authenticated";
   return (
     <header className="topbar">
       <div className="topbar-route">
@@ -465,10 +482,17 @@ function Topbar({
         <button className="session-top" onClick={() => go("/settings")}>
           <Wallet size={14} />
           <span>
-            {session.profile ||
-              shortAddress(session.address, copy.topbar.notConnected)}
+            {identified
+              ? session.profile ||
+                shortAddress(session.address, copy.topbar.notConnected)
+              : copy.topbar.notConnected}
           </span>
-          <Status label={copy.topbar.connected} tone="success" />
+          <Status
+            label={
+              identified ? copy.topbar.connected : copy.topbar.notConnected
+            }
+            tone={identified ? "success" : "muted"}
+          />
         </button>
         <button
           className="icon-button"

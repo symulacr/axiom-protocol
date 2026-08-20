@@ -1,13 +1,22 @@
 /*
   Recovery404 (v2): no sidebar, no wallet assumption, no partial dashboard —
-  a safe exit with two destinations.
+  a safe exit with two destinations. Copy owns what happened + the next step
+  (02 FINDING-018), localized via copy.notFound.
 */
 import { ArrowLeft, LayoutDashboard } from "../components/axiom/icons.js";
 import { Button } from "../components/axiom/Controls.js";
 import { Logo } from "../components/axiom/AppShell.js";
 import { MEDIA } from "../lib/media.js";
+import { getCopy, type Locale } from "../lib/copy.js";
 
-export default function Recovery404({ go }: { go: (path: string) => void }) {
+export default function Recovery404({
+  go,
+  locale,
+}: {
+  go: (path: string) => void;
+  locale: Locale;
+}) {
+  const copy = getCopy(locale).notFound;
   return (
     <div className="recovery-404">
       <div className="recovery-404-art">
@@ -15,29 +24,25 @@ export default function Recovery404({ go }: { go: (path: string) => void }) {
       </div>
       <div className="recovery-404-copy">
         <Logo compact />
-        <span className="eyebrow copper">404 / ROUTE NOT INDEXED</span>
+        <span className="eyebrow copper">{copy.eyebrow}</span>
         <h1>
-          The route
+          {copy.titleLead}
           <br />
-          <i>drifted.</i>
+          <i>{copy.titleEmphasis}</i>
         </h1>
-        <p>
-          Axiom could not find this surface. No sidebar, wallet assumption or
-          partial dashboard is loaded here.
-        </p>
+        <p>{copy.body}</p>
         <div className="button-row">
           <Button onClick={() => go("/")} icon={<ArrowLeft size={14} />}>
-            Return to landing
+            {copy.returnToLanding}
           </Button>
           <Button
             variant="secondary"
             onClick={() => go("/app")}
             icon={<LayoutDashboard size={15} />}
           >
-            Open console
+            {copy.openConsole}
           </Button>
         </div>
-        <span className="mono recovery-code">RECOVERY / 404 / SAFE EXIT</span>
       </div>
     </div>
   );

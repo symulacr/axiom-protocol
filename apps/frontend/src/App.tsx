@@ -311,9 +311,16 @@ export function App(): ReactElement {
       return;
     if (!isConnected || !address) {
       if (state.session.status !== "disconnected") {
+        // 03 FINDING-010: disconnect clears the whole identity — a stored
+        // profile/address must never outlive the session it belonged to.
         dispatch({
           type: "session",
-          session: { status: "disconnected", address: "", signedAt: null },
+          session: {
+            status: "disconnected",
+            address: "",
+            profile: "",
+            signedAt: null,
+          },
         });
       }
       return;
@@ -451,7 +458,12 @@ export function App(): ReactElement {
   const lockConsole = () => {
     dispatch({
       type: "session",
-      session: { status: "disconnected", signedAt: null },
+      session: {
+        status: "disconnected",
+        address: "",
+        profile: "",
+        signedAt: null,
+      },
     });
     go("/");
   };
@@ -463,14 +475,52 @@ export function App(): ReactElement {
     !KNOWN_PATHS.has(location.pathname) &&
     !location.pathname.startsWith("/agents/");
   // /chat stays public (anonymous live chat; history keys to the wallet only
-  // when a session exists) — every other internal route is wallet-gated.
+  // when a session exists) and /staking is a public status notice (03
+  // FINDING-015 — gating an honest "not integrated" page sent anonymous
+  // users two disclosures deep into a dead end) — every other internal route
+  // is wallet-gated.
   const internal =
     !publicSeoSlug &&
     !isNotFound &&
     location.pathname !== "/" &&
-    location.pathname !== "/chat";
+    location.pathname !== "/chat" &&
+    location.pathname !== "/staking";
   const authenticated =
     state.session.status === "authenticated" && isSessionFresh(state.session);
+
+  // 05 FINDING-012: one tab/history title per route ("<name> — Axiom"),
+  // localized via copy (nav labels are the canonical route names). Public
+  // hubs own their SEO title (PublicSeoPage); landing keeps the static
+  // index.html brand title.
+  useEffect(() => {
+    if (publicSeoSlug) return;
+    const copy = getCopy(locale);
+    const clean = location.pathname;
+    if (clean === "/") {
+      document.title = "Axiom — Own an AI Agent On-Chain";
+      return;
+    }
+    const agentMatch = clean.match(/^\/agents\/(\d+)/);
+    const name = agentMatch
+      ? `Agent #${agentMatch[1]}`
+      : isNotFound
+        ? copy.notFound.title
+        : {
+            "/app": copy.nav.overview,
+            "/chat": copy.nav.chat,
+            "/transactions": copy.nav.transactions,
+            "/storage": copy.nav.storage,
+            "/mint": copy.nav.mint,
+            "/payment": copy.nav.payment,
+            "/transfer": copy.nav.transfer,
+            "/tick": copy.nav.tick,
+            "/deposit": copy.nav.deposit,
+            "/withdraw": copy.nav.withdraw,
+            "/settings": copy.settings.pageTitle,
+            "/staking": copy.landing.stakeTitle,
+          }[clean];
+    if (name) document.title = `${name} — Axiom`;
+  }, [location.pathname, locale, publicSeoSlug, isNotFound]);
 
   const gate = walletOpen ? (
     <WalletGate
@@ -507,7 +557,7 @@ export function App(): ReactElement {
               publicSeoSlug ? (
                 <PublicSeoPage slug={publicSeoSlug} />
               ) : isNotFound ? (
-                <Recovery404 go={go} />
+                <Recovery404 go={go} locale={locale} />
               ) : location.pathname === "/" ? (
                 <Landing
                   locale={locale}

@@ -20,7 +20,7 @@ import {
 } from "wagmi";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { BRAND } from "../brand/assets.js";
 import { toast } from "sonner";
 import {
@@ -484,9 +484,31 @@ function loadStoredThreadId(): string | null {
   }
 }
 
-function renderMarkdown(src: string | null): string {
+/** 05 FINDING-014: console references in assistant answers become links —
+ *  `Agent #N` → the agent page (internal, SPA-routed via the click
+ *  interceptor on the message list), 64-hex hashes → the block explorer. */
+function linkifyConsoleRefs(
+  src: string,
+  explorerTx: (hash: string) => string,
+): string {
+  return src
+    .replace(/Agent #(\d+)/g, "[Agent #$1](/agents/$1)")
+    .replace(
+      /\b(0x[a-fA-F0-9]{64})\b/g,
+      (hash) => `[${truncateHex(hash, 6, 4)}](${explorerTx(hash)})`,
+    );
+}
+
+function renderMarkdown(
+  src: string | null,
+  explorerTx?: (hash: string) => string,
+): string {
+  const linked =
+    explorerTx !== undefined
+      ? linkifyConsoleRefs(src ?? "", explorerTx)
+      : (src ?? "");
   return DOMPurify.sanitize(
-    marked.parse(src ?? "", {
+    marked.parse(linked, {
       async: false,
       gfm: true,
       breaks: false,
@@ -504,6 +526,48 @@ const dedupeToolCalls = (calls: ToolCall[]): ToolCall[] =>
           x.function.arguments === c.function.arguments,
       ) === i,
   );
+
+/** 04 FINDING-012: tool failures render humanized in the message stream —
+ *  the model still receives the raw result JSON (it recovers better with
+ *  real detail); users get the head sentence, never a viem/backend dump. */
+function humanizeToolMessage(text: string): string {
+  return text.startsWith("Error: ") ? humanizeError(text) : text;
+}
+
+/** Per-message copy action with the app-wide inline-confirm contract (04
+ *  FINDING-006): the label swaps to "✓ Copied" for ~1.2s, matching the ui.tsx
+ *  CopyButton primitive used inside tool cards. */
+function MsgCopyAction({
+  text,
+  copy,
+}: {
+  text: string;
+  copy: Copy["chat"];
+}): ReactElement {
+  const [copied, setCopied] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(
+    () => () => {
+      if (timerRef.current !== undefined) clearTimeout(timerRef.current);
+    },
+    [],
+  );
+  return (
+    <button
+      type="button"
+      className="msg-action"
+      title={copied ? copy.copiedMessage : copy.copyMessage}
+      onClick={() => {
+        void navigator.clipboard?.writeText(text);
+        setCopied(true);
+        if (timerRef.current !== undefined) clearTimeout(timerRef.current);
+        timerRef.current = setTimeout(() => setCopied(false), 1200);
+      }}
+    >
+      {copied ? `✓ ${copy.copiedMessage}` : copy.copyShort}
+    </button>
+  );
+}
 
 function MessageEditConfirm({
   onConfirm,
@@ -641,6 +705,13 @@ function ChatPageInner(): ReactElement {
   // Live refs: state updates land only on the next render, so same-turn tools must see earlier-set values (mint tokenId -> deposit); synced each render here, within-turn writes in runAgent
   // AgentDetail's Chat button deep-links to /chat?agent=<tokenId>; seed the session default from the URL until a tool result overrides it.
   const [searchParams] = useSearchParams();
+  // 05 FINDING-014: internal links rendered inside assistant markdown
+  // (Agent #N → /agents/N) route through the SPA, never a full reload.
+  const navigate = useNavigate();
+  const explorerTx = useCallback(
+    (hash: string) => explorerTxUrl(chainId, hash),
+    [chainId],
+  );
   const urlAgentParam = searchParams.get("agent");
   const urlAgentRef = useRef<string | undefined>(
     urlAgentParam && /^\d+$/.test(urlAgentParam) ? urlAgentParam : undefined,
@@ -722,6 +793,71 @@ function ChatPageInner(): ReactElement {
     ],
   );
   const handlers = useToolHandlers(toolCtx);
+  // Rebuilt from live refs so tool execution never waits on a React render —
+  // used by the send loop and by tool-card Retry (04 FINDING-012). C-14: the
+  // transfer tool opens the TransferModal via openTransfer.
+  const buildLiveToolCtx = useCallback(
+    (): ToolContext => ({
+      address: liveAddressRef.current?.toLowerCase(),
+      chainId: liveChainIdRef.current,
+      lastTokenId: lastTokenIdRef.current,
+      writeContractAsync: (writeContractAsyncRef.current ??
+        (async () => {
+          throw new Error("Wallet not connected");
+        })) as ToolContext["writeContractAsync"],
+      sendTransactionAsync: walletClientRef.current
+        ? async ({ to, data, value }) =>
+            walletClientRef.current!.sendTransaction({ to, data, value })
+        : undefined,
+      waitForReceipt: buildWaitForReceipt(publicClientRef.current),
+      publicClient: publicClientRef.current,
+      openTransfer,
+    }),
+    [openTransfer],
+  );
+  /** Retry-with-same-args on a failed tool card (04 FINDING-012): re-invokes
+   *  the handler (wallet tools re-prompt the wallet) and updates the run. */
+  const retryToolRun = useCallback(
+    async (id: string) => {
+      const run = toolRunsRef.current[id];
+      if (!run || run.status === "running" || isStreamingRef.current) return;
+      const handler = handlers[run.name];
+      if (!handler) return;
+      markToolRun(id, {
+        status: "running",
+        error: undefined,
+        result: undefined,
+        startedAt: Date.now(),
+      });
+      setToolRuns({ ...toolRunsRef.current });
+      try {
+        const result = await handler(run.args ?? {}, buildLiveToolCtx());
+        recordToolResult(run.name, result);
+        let resultError: string | undefined;
+        try {
+          const parsed = JSON.parse(result) as { error?: unknown };
+          if (typeof parsed.error === "string" && parsed.error) {
+            resultError = parsed.error;
+          }
+        } catch {
+          void 0;
+        }
+        markToolRun(
+          id,
+          resultError !== undefined
+            ? { status: "error", error: resultError, result }
+            : { status: "success", result },
+        );
+      } catch (err) {
+        markToolRun(id, {
+          status: "error",
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+      setToolRuns({ ...toolRunsRef.current });
+    },
+    [handlers, recordToolResult, buildLiveToolCtx],
+  );
   const chainSupported = SUPPORTED_CHAIN_IDS.has(chainId);
   const tickRunning = Object.values(toolRuns).some(
     (r) => r.status === "running" && r.name === "execute_tick",
@@ -946,26 +1082,7 @@ function ChatPageInner(): ReactElement {
           const turnStartAt = Date.now();
           currentTurnRef.current = { wallMs: 0 };
 
-          const liveToolCtx: ToolContext = {
-            // rebuilt from live refs each loop so same-turn tool values are visible without a React re-render
-            address: liveAddressRef.current?.toLowerCase(),
-            chainId: liveChainIdRef.current,
-            lastTokenId: lastTokenIdRef.current,
-            writeContractAsync: (writeContractAsyncRef.current ??
-              (async () => {
-                throw new Error("Wallet not connected");
-              })) as ToolContext["writeContractAsync"],
-            sendTransactionAsync: walletClientRef.current
-              ? async ({ to, data, value }) =>
-                  walletClientRef.current!.sendTransaction({ to, data, value })
-              : undefined,
-            waitForReceipt: buildWaitForReceipt(publicClientRef.current),
-            publicClient: publicClientRef.current,
-            // C-14: the transfer tool opens the TransferModal via openTransfer —
-            // without it the live ctx made chat transfers unreachable
-            // ("Wallet not connected" even with a connected wallet).
-            openTransfer,
-          };
+          const liveToolCtx: ToolContext = buildLiveToolCtx();
           const liveSession: ChatSessionContext = {
             ...session,
             chainId: liveChainIdRef.current,
@@ -1203,21 +1320,34 @@ function ChatPageInner(): ReactElement {
                   // transfer is user-paced (modal form + wallet prompts), not a backend call — no timeout
                   const result = await handler(args, liveToolCtx);
                   recordToolResult(tc.function.name, result);
+                  let resultError: string | undefined;
                   try {
                     // capture produced tokenId so a later same-turn tool sees it (mirrors applyToolResult)
                     const parsed = JSON.parse(result) as {
                       tokenId?: unknown;
                       agents?: Array<{ tokenId?: unknown }>;
+                      error?: unknown;
                     };
                     const tok = parsed.tokenId ?? parsed.agents?.[0]?.tokenId;
                     if (tok !== undefined) {
                       lastTokenIdRef.current = String(tok);
                     }
+                    // 04 FINDING-012: a tool can fail SEMANTICALLY (error
+                    // payload, handler returned normally) — the run must read
+                    // failed so the card gets the humanized error + Retry.
+                    if (typeof parsed.error === "string" && parsed.error) {
+                      resultError = parsed.error;
+                    }
                   } catch {
                     void 0;
                   }
                   if (tc.id) {
-                    markToolRun(tc.id, { status: "success", result });
+                    markToolRun(
+                      tc.id,
+                      resultError !== undefined
+                        ? { status: "error", error: resultError, result }
+                        : { status: "success", result },
+                    );
                   }
                   return { tc, result };
                 } catch (err) {
@@ -1251,7 +1381,9 @@ function ChatPageInner(): ReactElement {
                   name: tc.function.name,
                   content: isAsk
                     ? result
-                    : formatToolResult(tc.function.name, result),
+                    : humanizeToolMessage(
+                        formatToolResult(tc.function.name, result),
+                      ),
                 }),
               ];
             }
@@ -1332,6 +1464,7 @@ function ChatPageInner(): ReactElement {
       scheduleStreamTextUpdate,
       cancelStreamThrottle,
       chainSupported,
+      buildLiveToolCtx,
     ],
   );
 
@@ -1538,6 +1671,16 @@ function ChatPageInner(): ReactElement {
         <div
           className="chat-messages"
           ref={listRef}
+          onClick={(e) => {
+            // SPA-route internal links produced by linkifyConsoleRefs.
+            const anchor = (e.target as HTMLElement).closest?.(
+              "a[href^='/']",
+            ) as HTMLAnchorElement | null;
+            if (anchor) {
+              e.preventDefault();
+              navigate(anchor.getAttribute("href") ?? "/");
+            }
+          }}
           onScroll={(e) => {
             const el = e.currentTarget;
             stickToBottomRef.current =
@@ -1675,18 +1818,26 @@ function ChatPageInner(): ReactElement {
                           {CHAT_TOOL_CLASS_LABELS[g.cls]}
                         </SectionTitle>
                         {g.tools.map((t) => {
-                          const hint =
-                            t.hint.length > 90
-                              ? `${t.hint.slice(0, 90)}…`
-                              : t.hint;
+                          // 02 FINDING-013: the friendly label leads, the raw
+                          // function name is a mono sublabel, and the hint
+                          // drops model-facing unit notes ("(in wei)").
+                          const hint = t.hint.replace(/\s*\(in wei\)/i, "");
+                          const trimmedHint =
+                            hint.length > 90 ? `${hint.slice(0, 90)}…` : hint;
+                          const label = TOOL_LABELS[t.name] ?? t.name;
                           return (
                             <button
                               key={t.name}
                               type="button"
                               className="chat-tool-row"
-                              onClick={() => setInput(t.name)}
+                              onClick={() =>
+                                setInput(chatCopy.toolPrompts[t.name] ?? label)
+                              }
                               title={t.hint}
                             >
+                              <span style={{ color: COLORS.text }}>
+                                {label}
+                              </span>
                               <MonoLabel
                                 style={{ padding: "0.125rem 0.35rem" }}
                               >
@@ -1694,7 +1845,7 @@ function ChatPageInner(): ReactElement {
                               </MonoLabel>
                               <span style={{ color: COLORS.textMuted }}>
                                 {" — "}
-                                {hint}
+                                {trimmedHint}
                               </span>
                             </button>
                           );
@@ -1812,16 +1963,7 @@ function ChatPageInner(): ReactElement {
                       {chatCopy.regenerateShort}
                     </button>
                   ) : null}
-                  <button
-                    type="button"
-                    className="msg-action"
-                    title={chatCopy.copyMessage}
-                    onClick={() => {
-                      void navigator.clipboard?.writeText(msg.content ?? "");
-                    }}
-                  >
-                    {chatCopy.copyShort}
-                  </button>
+                  <MsgCopyAction text={msg.content ?? ""} copy={chatCopy} />
                 </span>
               </StatusDot>
               {msg.role === "tool" ? (
@@ -1832,25 +1974,49 @@ function ChatPageInner(): ReactElement {
                     copy={chatCopy}
                   />
                 ) : (
-                  <div
-                    role="region"
-                    aria-label={
-                      toolHint(msg.name ?? "") ??
-                      TOOL_LABELS[msg.name ?? ""] ??
-                      chatCopy.toolResultFallback
-                    }
-                    style={{
-                      ...insetCardStyle,
-                      fontSize: "var(--text-sm)",
-                      color: COLORS.textMuted,
-                    }}
-                  >
-                    <ToolResultBody
-                      name={msg.name ?? ""}
-                      content={msg.content}
-                      sendTransactionAsync={toolCtx.sendTransactionAsync}
-                    />
-                  </div>
+                  (() => {
+                    // 04 FINDING-012: a semantically-failed tool (error
+                    // payload) renders danger-styled with a Retry affordance
+                    // keyed to its run — never as neutral body text.
+                    const failedRun = msg.tool_call_id
+                      ? toolRuns[msg.tool_call_id]?.status === "error"
+                      : false;
+                    return (
+                      <div
+                        role="region"
+                        aria-label={
+                          toolHint(msg.name ?? "") ??
+                          TOOL_LABELS[msg.name ?? ""] ??
+                          chatCopy.toolResultFallback
+                        }
+                        style={{
+                          ...insetCardStyle,
+                          fontSize: "var(--text-sm)",
+                          color: failedRun
+                            ? "var(--c-danger)"
+                            : COLORS.textMuted,
+                        }}
+                      >
+                        <ToolResultBody
+                          name={msg.name ?? ""}
+                          content={msg.content}
+                          sendTransactionAsync={toolCtx.sendTransactionAsync}
+                        />
+                        {failedRun && msg.tool_call_id ? (
+                          <button
+                            type="button"
+                            className="msg-action"
+                            style={{ marginTop: 6 }}
+                            onClick={() =>
+                              void retryToolRun(msg.tool_call_id as string)
+                            }
+                          >
+                            {chatCopy.retry}
+                          </button>
+                        ) : null}
+                      </div>
+                    );
+                  })()
                 )
               ) : msg.tool_calls ? (
                 <div
@@ -1880,6 +2046,12 @@ function ChatPageInner(): ReactElement {
                             return next;
                           })
                         }
+                        onRetry={
+                          run?.status === "error"
+                            ? () => void retryToolRun(tc.id)
+                            : undefined
+                        }
+                        retryLabel={chatCopy.retry}
                       />
                     );
                   })}
@@ -1890,7 +2062,7 @@ function ChatPageInner(): ReactElement {
                     className="chat-md"
                     style={chatMsgStyle}
                     dangerouslySetInnerHTML={{
-                      __html: renderMarkdown(msg.content),
+                      __html: renderMarkdown(msg.content, explorerTx),
                     }}
                   />
                   {msg.role === "assistant" && !msg.meta?.error ? (
@@ -2519,10 +2691,15 @@ function ToolCallCard({
   run,
   expanded,
   onToggle,
+  onRetry,
+  retryLabel,
 }: {
   run: ToolRun;
   expanded: boolean;
   onToggle: () => void;
+  /** 04 FINDING-012: retry-with-same-args affordance on failed tool runs. */
+  onRetry?: () => void;
+  retryLabel?: string;
 }): ReactElement {
   const label = TOOL_LABELS[run.name] ?? run.name;
   const elapsedSec = Math.max(
@@ -2631,7 +2808,20 @@ function ToolCallCard({
             </pre>
           )}
           {run.error ? (
-            <span style={{ color: "var(--c-danger)" }}>{run.error}</span>
+            <span style={{ color: "var(--c-danger)" }}>
+              {/* 04 FINDING-012: humanized — never a raw viem/backend dump. */}
+              {humanizeError(run.error)}
+              {onRetry && retryLabel ? (
+                <button
+                  type="button"
+                  className="msg-action"
+                  style={{ marginLeft: 8 }}
+                  onClick={onRetry}
+                >
+                  {retryLabel}
+                </button>
+              ) : null}
+            </span>
           ) : run.result ? (
             hasEncodePreview(run.result) ? (
               <span style={{ color: COLORS.textMuted }}>

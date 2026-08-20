@@ -66,7 +66,9 @@ const ellipsisTitleStyle: CSSProperties = {
 const formFieldBase: CSSProperties = {
   padding: "0.625rem 0.875rem",
   borderRadius: "var(--radius-md)",
-  border: `1px solid ${COLORS.borderStrong}`,
+  // No inline border: the .axiom-field class owns it so the :focus
+  // border-color change (and the focus-visible ring) actually applies
+  // (04 FINDING-007 — an inline border silently defeated both).
   background: COLORS.bg,
   color: COLORS.text,
   fontSize: "var(--text-sm)",
