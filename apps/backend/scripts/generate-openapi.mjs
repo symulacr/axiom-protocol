@@ -1250,7 +1250,7 @@ const SKILL_ROUTES = [
   ["/v1/skills/osint/sec_edgar", "osintSecEdgarSchema", "SEC EDGAR company submissions lookup"],
   ["/v1/skills/osint/usaspending", "osintUsaspendingSchema", "USASpending.gov federal award search"],
   ["/v1/skills/osint/ofac_sdn", "osintOfacSdnSchema", "OFAC SDN list name search"],
-  ["/v1/skills/osint/opencorporates", "osintOpencorporatesSchema", "OpenCorporates company search"],
+  ["/v1/skills/osint/company_search", "osintCompanySearchSchema", "GLEIF legal-entity search (keyless)"],
   ["/v1/skills/osint/entity_resolve", "osintEntityResolveSchema", "Resolve whether entity names refer to the same company"],
   ["/v1/skills/osint/courtlistener", "osintCourtlistenerSchema", "CourtListener opinions and RECAP search"],
   ["/v1/skills/unbroker/simulate", "unbrokerSchema", "Simulate an ERC-7857 transfer without sending"],

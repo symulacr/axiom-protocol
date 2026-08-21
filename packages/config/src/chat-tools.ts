@@ -340,21 +340,18 @@ const SKILL_TOOL_DEFS = [
     context: "external OSINT APIs",
   }),
   skill({
-    name: "osint_opencorporates",
-    label: "OpenCorporates",
-    hint: "Look up corporate registration and officer data. You MUST pass a `query` (e.g. 'Acme Corp'). Never leave it blank.",
+    name: "osint_company_search",
+    label: "Company search",
+    hint: "Look up legal entities worldwide by name via the GLEIF registry (no key needed). You MUST pass a `query` (e.g. 'Acme Corp'). Never leave it blank.",
     friction: "low",
     parameters: params(
       {
-        jurisdiction: {
-          type: "string",
-          description: "Jurisdiction code (default us)",
-        },
-        query: { type: "string", description: "Company query" },
+        limit: { type: "number", description: "1-20 (default 5)" },
+        query: { type: "string", description: "Company name query" },
       },
       ["query"],
     ),
-    capabilities: ["osint", "opencorporates"],
+    capabilities: ["osint", "gleif"],
     context: "external OSINT APIs",
   }),
   skill({

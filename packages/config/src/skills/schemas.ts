@@ -83,9 +83,9 @@ export const osintOfacSdnSchema = z.object({
   name: z.string().min(1).max(200),
 });
 
-export const osintOpencorporatesSchema = z.object({
-  jurisdiction: z.string().min(2).max(5).default("us"),
+export const osintCompanySearchSchema = z.object({
   query: z.string().min(1).max(200),
+  limit: z.number().int().min(1).max(20).default(5),
 });
 
 export const osintEntityResolveSchema = z.object({

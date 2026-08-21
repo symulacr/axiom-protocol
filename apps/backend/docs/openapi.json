@@ -2360,7 +2360,8 @@
         "type": "object",
         "properties": {
           "address": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]{40}$"
           },
           "context": {
             "type": "object",
@@ -2376,10 +2377,12 @@
         "type": "object",
         "properties": {
           "address": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]{40}$"
           },
           "token": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]{40}$"
           },
           "context": {
             "type": "object",
@@ -2409,10 +2412,12 @@
         "type": "object",
         "properties": {
           "address": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]{40}$"
           },
           "token": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]{40}$"
           },
           "context": {
             "type": "object",
@@ -2421,15 +2426,15 @@
           }
         },
         "required": [
-          "address",
-          "token"
+          "address"
         ]
       },
       "SkillevmTokenSchema": {
         "type": "object",
         "properties": {
           "address": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]{40}$"
           },
           "coingeckoId": {
             "type": "string"
@@ -2448,7 +2453,8 @@
         "type": "object",
         "properties": {
           "hash": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]{64}$"
           },
           "context": {
             "type": "object",
@@ -2464,18 +2470,21 @@
         "type": "object",
         "properties": {
           "token": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]{40}$"
           },
           "minValue": {
             "type": "string",
             "default": "0"
           },
           "fromBlock": {
-            "type": "number",
+            "type": "integer",
+            "minimum": 0,
             "default": 19900000
           },
           "toBlock": {
-            "type": "number",
+            "type": "integer",
+            "minimum": 0,
             "default": 20000000
           },
           "context": {
@@ -2486,6 +2495,30 @@
         },
         "required": [
           "token"
+        ]
+      },
+      "SkillosintCompanySearchSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20,
+            "default": 5
+          },
+          "context": {
+            "type": "object",
+            "additionalProperties": {},
+            "description": "Executor-supplied session context (chainId, walletAddress, agentNft, vault, lastTokenId); not validated by the route"
+          }
+        },
+        "required": [
+          "query"
         ]
       },
       "SkillosintCourtlistenerSchema": {
@@ -2556,30 +2589,6 @@
         },
         "required": [
           "name"
-        ]
-      },
-      "SkillosintOpencorporatesSchema": {
-        "type": "object",
-        "properties": {
-          "jurisdiction": {
-            "type": "string",
-            "minLength": 2,
-            "maxLength": 5,
-            "default": "us"
-          },
-          "query": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 200
-          },
-          "context": {
-            "type": "object",
-            "additionalProperties": {},
-            "description": "Executor-supplied session context (chainId, walletAddress, agentNft, vault, lastTokenId); not validated by the route"
-          }
-        },
-        "required": [
-          "query"
         ]
       },
       "SkillosintSecEdgarSchema": {
@@ -4925,6 +4934,69 @@
         }
       }
     },
+    "/v1/skills/osint/company_search": {
+      "post": {
+        "summary": "GLEIF legal-entity search (keyless)",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "requestBody": {
+          "description": "Skill parameters",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SkillosintCompanySearchSchema"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Skill result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillResult"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Upstream fetch failed",
+            "x-error-codes": [
+              "UPSTREAM_ERROR",
+              "HTTP_502"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "AgentNFT not configured (unbroker)",
+            "x-error-codes": [
+              "ADDRESS_NOT_CONFIGURED"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/skills/osint/courtlistener": {
       "post": {
         "summary": "CourtListener opinions and RECAP search",
@@ -5069,69 +5141,6 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/SkillosintOfacSdnSchema"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Skill result",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SkillResult"
-                }
-              }
-            }
-          },
-          "502": {
-            "description": "Upstream fetch failed",
-            "x-error-codes": [
-              "UPSTREAM_ERROR",
-              "HTTP_502"
-            ],
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "AgentNFT not configured (unbroker)",
-            "x-error-codes": [
-              "ADDRESS_NOT_CONFIGURED"
-            ],
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/skills/osint/opencorporates": {
-      "post": {
-        "summary": "OpenCorporates company search",
-        "security": [
-          {
-            "serverKey": []
-          },
-          {
-            "clientKey": []
-          }
-        ],
-        "requestBody": {
-          "description": "Skill parameters",
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SkillosintOpencorporatesSchema"
               }
             }
           }

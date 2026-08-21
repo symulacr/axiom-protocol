@@ -31,7 +31,7 @@ import {
   osintSecEdgarSchema,
   osintUsaspendingSchema,
   osintOfacSdnSchema,
-  osintOpencorporatesSchema,
+  osintCompanySearchSchema,
   osintEntityResolveSchema,
   osintCourtlistenerSchema,
   unbrokerSchema,
@@ -600,21 +600,16 @@ export function createSkillRouters(config: ServerConfig): Router {
       },
     ),
     skill(
-      "/v1/skills/osint/opencorporates",
-      osintOpencorporatesSchema,
-      "OpenCorporates company search",
+      "/v1/skills/osint/company_search",
+      osintCompanySearchSchema,
+      "GLEIF legal-entity search (keyless)",
       (parsed) => {
         const q = encodeURIComponent(parsed.query);
-        // Optional paid token (P4): passed upstream only when present; without
-        // it the public rate-limited endpoint answers (or the shared 502
-        // surfaces, unchanged). Read per request so deploys can rotate keys.
-        const token = process.env.OPENCORPORATES_API_TOKEN?.trim();
-        const tokenParam = token
-          ? `&api_token=${encodeURIComponent(token)}`
-          : "";
+        // GLEIF public API — no key, no signup (replaced OpenCorporates,
+        // whose self-serve tier went sales-only).
         return cachedFetch(
-          `ocorp:${parsed.jurisdiction}:${parsed.query}:${token ? "auth" : "anon"}`,
-          `https://api.opencorporates.com/v0.4/companies/search?q=${q}&jurisdiction_code=${parsed.jurisdiction}${tokenParam}`,
+          `gleif:${parsed.query}:${parsed.limit}`,
+          `https://api.gleif.org/api/v1/lei-records?filter[entity.legalName]=${q}&page[size]=${parsed.limit}`,
         );
       },
     ),
