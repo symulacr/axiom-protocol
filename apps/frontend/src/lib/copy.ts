@@ -452,6 +452,16 @@ export type Copy = {
      *  steps — these two were the last hardcoded English on flow pages). */
     stepWallet: string;
     stepAuto: string;
+    /** F-01 receiver co-sign step (cross-party transfer): the recipient's
+     *  wallet must sign the acceptance before the sender submits. */
+    coSignTitle: string;
+    coSignBody: (receiver: string) => string;
+    coSignAction: string;
+    coSignNote: string;
+    /** Honest blocker when the connected wallet cannot expose the receiver
+     *  account — no futile retry, just the two real remedies. */
+    coSignBlockedTitle: string;
+    coSignBlockedBody: (receiver: string) => string;
   };
   agentDetail: {
     executionSurface: string;
@@ -1049,6 +1059,15 @@ const english: Copy = {
     confirming: "CONFIRMING",
     stepWallet: "Wallet boundary",
     stepAuto: "Observed automatically",
+    coSignTitle: "Receiver co-sign required",
+    coSignBody: (receiver) =>
+      `Only the receiver can accept this agent. The receiving wallet (${receiver}) must sign the acceptance — your session stays connected as the sender.`,
+    coSignAction: "Sign as receiver",
+    coSignNote:
+      "After the receiver signs, you submit the transfer from your own account.",
+    coSignBlockedTitle: "Receiver account not available",
+    coSignBlockedBody: (receiver) =>
+      `This wallet cannot sign for ${receiver}. Add the receiver account to this wallet, or let the receiver accept the transfer from their own session.`,
   },
   agentDetail: {
     executionSurface: "Operator-controlled · no on-chain events yet.",
@@ -1666,6 +1685,15 @@ const french: Copy = {
     confirming: "CONFIRMATION",
     stepWallet: "Limite wallet",
     stepAuto: "Observé automatiquement",
+    coSignTitle: "Co-signature du destinataire requise",
+    coSignBody: (receiver) =>
+      `Seul le destinataire peut accepter cet agent. Le wallet destinataire (${receiver}) doit signer l’acceptation — votre session reste connectée en tant qu’expéditeur.`,
+    coSignAction: "Signer comme destinataire",
+    coSignNote:
+      "Après la signature du destinataire, vous soumettez le transfert depuis votre propre compte.",
+    coSignBlockedTitle: "Compte destinataire indisponible",
+    coSignBlockedBody: (receiver) =>
+      `Ce wallet ne peut pas signer pour ${receiver}. Ajoutez le compte destinataire à ce wallet, ou laissez le destinataire accepter le transfert depuis sa propre session.`,
   },
   agentDetail: {
     executionSurface:
@@ -2281,6 +2309,15 @@ const german: Copy = {
     confirming: "BESTÄTIGUNG",
     stepWallet: "Wallet-Grenze",
     stepAuto: "Automatisch beobachtet",
+    coSignTitle: "Empfänger-Gegenzeichnung erforderlich",
+    coSignBody: (receiver) =>
+      `Nur der Empfänger kann diesen Agenten annehmen. Das Empfänger-Wallet (${receiver}) muss die Annahme signieren — Ihre Sitzung bleibt als Sender verbunden.`,
+    coSignAction: "Als Empfänger signieren",
+    coSignNote:
+      "Nach der Signatur des Empfängers reichen Sie den Transfer von Ihrem eigenen Konto ein.",
+    coSignBlockedTitle: "Empfängerkonto nicht verfügbar",
+    coSignBlockedBody: (receiver) =>
+      `Dieses Wallet kann nicht für ${receiver} signieren. Fügen Sie das Empfängerkonto diesem Wallet hinzu, oder lassen Sie den Empfänger den Transfer in seiner eigenen Sitzung annehmen.`,
   },
   agentDetail: {
     executionSurface: "Operatorgesteuert · noch keine On-Chain-Ereignisse.",

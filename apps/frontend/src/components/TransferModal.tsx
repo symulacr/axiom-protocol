@@ -13,6 +13,7 @@ import { isAddress, toHex } from "viem";
 import { toast } from "sonner";
 import { useAccount } from "wagmi";
 import {
+  isReceiverAccountUnavailable,
   useTransfer,
   type TransferInput,
   type TransferPhase,
@@ -30,7 +31,9 @@ import {
   Card,
   Spinner,
 } from "./ui.js";
-import { humanizeError } from "../utils/format.js";
+import { humanizeError, truncateAddress } from "../utils/format.js";
+import { useUiStore } from "../lib/uiStore.js";
+import { getCopy } from "../lib/copy.js";
 
 const RECEIVER_PUBKEY_HEX_LENGTH = 130;
 
@@ -443,6 +446,88 @@ function ConfirmTransferPhase({
   );
 }
 
+/** F-01: explicit receiver co-sign step — the AccessProof must be signed by
+ *  the recipient's wallet (protocol requirement), so a cross-party transfer
+ *  pauses here between the oracle challenge and the sender's submission. The
+ *  blocked state is honest: when this wallet cannot expose the receiver
+ *  account there is no retry, only the two real remedies. */
+function CoSignPhase({
+  formId,
+  receiver,
+  blocked,
+  isLoading,
+  copy,
+  onSign,
+  onEdit,
+}: {
+  formId: string;
+  receiver: `0x${string}`;
+  blocked: boolean;
+  isLoading: boolean;
+  copy: {
+    title: string;
+    body: string;
+    action: string;
+    note: string;
+    blockedTitle: string;
+    blockedBody: string;
+  };
+  onSign: () => Promise<void>;
+  onEdit: () => void;
+}): ReactElement {
+  return (
+    <form
+      onSubmit={(e): void => {
+        e.preventDefault();
+        if (!blocked) void onSign();
+      }}
+    >
+      <h2
+        id={`${formId}-title`}
+        className="mt-0 text-xl fw-bold"
+        style={{ color: COLORS.text, letterSpacing: "-0.02em" }}
+      >
+        {copy.title}
+      </h2>
+
+      <p className="text-muted text-sm" style={confirmTextStyle}>
+        {copy.body}
+      </p>
+
+      <Card style={{ ...proofCardStyle, marginTop: 12 }}>
+        <strong style={{ color: COLORS.text }}>Receiver</strong>
+        <br />
+        <MonoLabel
+          copyable
+          text={receiver}
+          style={{ fontSize: "var(--text-xs)" }}
+        >
+          {receiver}
+        </MonoLabel>
+        <br />
+        <span style={{ fontSize: "var(--text-xs)" }}>{copy.note}</span>
+      </Card>
+
+      {blocked && (
+        <Alert variant="error" style={{ marginTop: 16 }}>
+          <strong>{copy.blockedTitle}.</strong> {copy.blockedBody}
+        </Alert>
+      )}
+
+      <div className="flex justify-end" style={{ gap: 10, marginTop: 20 }}>
+        <Button variant="secondary" onClick={onEdit} disabled={isLoading}>
+          Edit
+        </Button>
+        {!blocked && (
+          <Button variant="primary" type="submit" disabled={isLoading}>
+            {isLoading ? "Signing\u2026" : copy.action}
+          </Button>
+        )}
+      </div>
+    </form>
+  );
+}
+
 export function TransferModal({
   tokenId,
   open: openProp,
@@ -454,13 +539,17 @@ export function TransferModal({
   const { address: from, isConnected } = useAccount();
   const {
     prepare,
+    coSign,
     confirm,
     isLoading,
     error,
     signature,
+    coSignReceiver,
     reset,
     transferPhase,
   } = useTransfer();
+  const { state: uiState } = useUiStore();
+  const coSignCopy = getCopy(uiState.settings.locale).flowUi;
 
   const retryGuidance = useMemo(() => {
     if (!error) return null;
@@ -483,7 +572,8 @@ export function TransferModal({
   const [oldDataEncryptionKey, setOldDataEncryptionKey] = useState("");
   const [oldDataUri, setOldDataUri] = useState("");
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [phase, setPhase] = useState<"form" | "review">("form");
+  const [phase, setPhase] = useState<"form" | "co-sign" | "review">("form");
+  const [coSignBlocked, setCoSignBlocked] = useState(false);
 
   const isControlled = openProp !== undefined;
   const [internalOpen, setInternalOpen] = useState(false);
@@ -559,15 +649,34 @@ export function TransferModal({
       event.preventDefault();
       if (!canSubmit || !from || rekeyError !== null) return;
       setSubmitError(null);
+      setCoSignBlocked(false);
       try {
-        await prepare(buildInput());
-        setPhase("review");
+        const prepared = await prepare(buildInput());
+        // F-01: cross-party transfers pause for the receiver co-sign step;
+        // self-transfers go straight to the confirm review as before.
+        setPhase(prepared.status === "co-sign-required" ? "co-sign" : "review");
       } catch (err) {
         setSubmitError(humanizeError(err));
       }
     },
     [buildInput, canSubmit, from, prepare, rekeyError],
   );
+
+  const onCoSign = useCallback(async (): Promise<void> => {
+    setSubmitError(null);
+    setCoSignBlocked(false);
+    try {
+      await coSign();
+      setPhase("review");
+    } catch (err) {
+      if (isReceiverAccountUnavailable(err)) {
+        // honest blocker — this wallet can never sign for the receiver
+        setCoSignBlocked(true);
+        return;
+      }
+      setSubmitError(humanizeError(err));
+    }
+  }, [coSign]);
 
   const onConfirm = useCallback(async (): Promise<void> => {
     if (!signature) return;
@@ -592,6 +701,7 @@ export function TransferModal({
   const onEdit = useCallback((): void => {
     reset();
     setSubmitError(null);
+    setCoSignBlocked(false);
     setPhase("form");
     setAccessProofNonce(freshNonceHex(32) as `0x${string}`);
   }, [reset]);
@@ -678,6 +788,28 @@ export function TransferModal({
             isLoading={isLoading}
             onSubmit={onSubmit}
           />
+        ) : phase === "co-sign" && coSignReceiver !== null ? (
+          <>
+            <CoSignPhase
+              formId={formId}
+              receiver={coSignReceiver}
+              blocked={coSignBlocked}
+              isLoading={isLoading}
+              copy={{
+                title: coSignCopy.coSignTitle,
+                body: coSignCopy.coSignBody(truncateAddress(coSignReceiver)),
+                action: coSignCopy.coSignAction,
+                note: coSignCopy.coSignNote,
+                blockedTitle: coSignCopy.coSignBlockedTitle,
+                blockedBody: coSignCopy.coSignBlockedBody(
+                  truncateAddress(coSignReceiver),
+                ),
+              }}
+              onSign={onCoSign}
+              onEdit={onEdit}
+            />
+            {mergedError}
+          </>
         ) : (
           <ConfirmTransferPhase
             formId={formId}

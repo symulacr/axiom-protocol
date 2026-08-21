@@ -92,6 +92,22 @@ export function humanizeError(err: unknown): string {
     return "This agent's metadata is not registered with the oracle yet. Re-register it from the mint flow (or pick another agent), then retry the transfer.";
   }
 
+  // F-01: the backend's signer check names a protocol rule — translate it into
+  // the requirement + remedy (the GUI's co-sign step is the path, never a raw
+  // 400 with a futile retry).
+  if (
+    lower.includes("signer does not match recipient") ||
+    lower.includes("does not match recipient address")
+  ) {
+    return "The transfer acceptance must be signed by the recipient's own wallet. Go back and use the \u201cSign as receiver\u201d step with the recipient account selected.";
+  }
+
+  // F-01 blocker: the connected wallet cannot expose the receiver account at
+  // all — name the blocker and the two real remedies.
+  if (lower.includes("is not available in the connected wallet")) {
+    return "The receiving account is not available in the connected wallet. Add the receiver account to this wallet, or let the receiver accept the transfer from their own session.";
+  }
+
   if (
     lower.includes("insufficient_balance") ||
     lower.includes("compute account has no balance") ||

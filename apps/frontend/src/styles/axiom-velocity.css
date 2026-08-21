@@ -124,6 +124,17 @@
 .review-proof, .review-error { display: flex; gap: .45rem; align-items: flex-start; padding: .68rem; color: var(--muted, #cfc4b5); border: 1px solid rgba(166,207,98,.2); font-size: .7rem; line-height: 1.4; }
 .review-proof svg { flex: 0 0 auto; color: var(--phosphor); }
 .review-error { color: #ffd2bd; border-color: rgba(234,119,80,.45); background: rgba(234,119,80,.1); }
+/* F-01 receiver co-sign step: copper (action-required) panel inside the sheet —
+   same geometry as .review-proof so the step reads as part of the one confirm surface. */
+.review-cosign { display: flex; gap: .45rem; align-items: flex-start; padding: .68rem; color: var(--muted, #cfc4b5); border: 1px solid rgba(210,139,82,.45); background: rgba(210,139,82,.08); font-size: .7rem; line-height: 1.4; }
+.review-cosign > svg { flex: 0 0 auto; color: var(--copper, #d28b52); }
+.review-cosign div { display: grid; gap: .28rem; min-width: 0; }
+.review-cosign strong { color: var(--text, #e8dfd4); font-size: .72rem; }
+.review-cosign p { margin: 0; overflow-wrap: anywhere; }
+.review-cosign small { color: var(--dim, #998d7d); font-size: .64rem; }
+.review-cosign-blocked div { display: grid; gap: .28rem; min-width: 0; }
+.review-cosign-blocked strong { color: #ffd2bd; font-size: .72rem; }
+.review-cosign-blocked p { margin: 0; overflow-wrap: anywhere; }
 .review-actions { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; }
 .review-disclaimer { margin: 0; color: var(--dim, #998d7d); font-size: .62rem; line-height: 1.4; }
 .operation-receipt { display: grid; gap: .85rem; padding: .9rem; border: 1px solid rgba(166,207,98,.32); background: linear-gradient(115deg, rgba(166,207,98,.1), transparent); }

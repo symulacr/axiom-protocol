@@ -30,6 +30,22 @@ type Props = {
    *  the confirm CTA interpolates it ("Pay 25 axmUSDC" on Galileo), never a
    *  hardcoded unit. */
   paymentSymbol?: string;
+  /** F-01: cross-party transfer paused for the receiver co-sign. When set
+   *  (and no recoverable error is showing), the sheet's primary action becomes
+   *  the receiver signature; `blocked` renders the honest blocker (the wallet
+   *  cannot sign for the receiver — no futile retry). Copy arrives localized
+   *  from FlowPage (copy.flowUi). */
+  coSign?: {
+    receiver: string;
+    blocked: boolean;
+    onSign: () => void;
+    title: string;
+    body: string;
+    action: string;
+    note: string;
+    blockedTitle: string;
+    blockedBody: string;
+  };
 };
 
 const labels: Record<FlowKind, { consequence: string; proof: string }> = {
@@ -71,6 +87,7 @@ export function OperationReviewSheet({
   approvalNeeded,
   balanceFact,
   paymentSymbol,
+  coSign,
 }: Props) {
   const details = labels[kind];
   // C-14 dismiss trio: Esc + focus restore here; backdrop via layer onMouseDown
@@ -81,17 +98,23 @@ export function OperationReviewSheet({
     kind === "payment" && draft.phase === "approval-required";
   const paymentReady = kind === "payment" && draft.phase === "payment-required";
   const isRecoverableError = draft.phase === "recoverable-error";
+  // F-01: the co-sign step replaces the normal primary action whenever a
+  // cross-party transfer is paused for the receiver signature (and no
+  // execution error is being surfaced).
+  const coSignActive = coSign !== undefined && !isRecoverableError;
   const primaryLabel = isRecoverableError
     ? kind === "payment"
       ? "Restart approval review"
       : "Resume review"
-    : paymentNeedsApproval
-      ? approvalNeeded === false
-        ? "Continue to payment"
-        : "Approve exact allowance"
-      : paymentReady
-        ? `Pay ${draft.value} ${paymentSymbol ?? ""}`.trimEnd()
-        : "Sign & execute";
+    : coSignActive
+      ? coSign.action
+      : paymentNeedsApproval
+        ? approvalNeeded === false
+          ? "Continue to payment"
+          : "Approve exact allowance"
+        : paymentReady
+          ? `Pay ${draft.value} ${paymentSymbol ?? ""}`.trimEnd()
+          : "Sign & execute";
   const confirmationCount =
     confirmationLabel ??
     (kind === "payment"
@@ -169,6 +192,29 @@ export function OperationReviewSheet({
           <Check size={14} />
           <span>{details.proof}</span>
         </div>
+        {coSignActive && !coSign.blocked && (
+          <div className="review-cosign" data-testid="transfer-cosign">
+            <ShieldCheck size={14} />
+            <div>
+              <strong>{coSign.title}</strong>
+              <p>{coSign.body}</p>
+              <small>{coSign.note}</small>
+            </div>
+          </div>
+        )}
+        {coSignActive && coSign.blocked && (
+          <div
+            className="review-error review-cosign-blocked"
+            role="alert"
+            data-testid="transfer-cosign-blocked"
+          >
+            <AlertTriangle size={14} />
+            <div>
+              <strong>{coSign.blockedTitle}</strong>
+              <p>{coSign.blockedBody}</p>
+            </div>
+          </div>
+        )}
         {draft.error && (
           <div
             id="operation-review-error"
@@ -180,15 +226,23 @@ export function OperationReviewSheet({
           </div>
         )}
         <div className="review-actions" aria-label="Operation actions">
-          <button
-            className="button button-primary"
-            onClick={isRecoverableError ? onRetry : onExecute}
-            disabled={busy}
-            aria-busy={busy || undefined}
-          >
-            <ShieldCheck size={15} />
-            {busy ? "Awaiting wallet" : primaryLabel}
-          </button>
+          {!(coSignActive && coSign.blocked) && (
+            <button
+              className="button button-primary"
+              onClick={
+                isRecoverableError
+                  ? onRetry
+                  : coSignActive
+                    ? coSign.onSign
+                    : onExecute
+              }
+              disabled={busy}
+              aria-busy={busy || undefined}
+            >
+              <ShieldCheck size={15} />
+              {busy ? "Awaiting wallet" : primaryLabel}
+            </button>
+          )}
           <button className="button button-ghost" onClick={onClose}>
             Edit details
           </button>

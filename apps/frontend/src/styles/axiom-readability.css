@@ -35,6 +35,7 @@ button, input, textarea, select { line-height: 1.35; }
 
 .page-head p,
 .flow-intent-banner strong, .review-decision strong, .review-proof, .review-error,
+.review-cosign, .review-cosign-blocked,
 .priority-action-copy p, .shortcut-map small, .shortcut-map dd {
   font-size: 0.875rem;
   line-height: var(--copy-leading);
@@ -50,7 +51,8 @@ button, input, textarea, select { line-height: 1.35; }
 
 /* Short, readable cards: the main sentence has a reliable reading measure. */
 .page-head p, .priority-action-copy p,
-.review-decision strong, .review-proof span, .review-error span { overflow-wrap: anywhere; }
+.review-decision strong, .review-proof span, .review-error span,
+.review-cosign p, .review-cosign-blocked p { overflow-wrap: anywhere; }
 .page-head p { max-width: 58ch; }
 
 /* Controls remain easy to locate and operate while the surrounding copy becomes quieter. */
@@ -89,7 +91,7 @@ button, input, textarea, select { line-height: 1.35; }
 .review-facts { gap: var(--space-2); }
 .review-facts div { padding: var(--space-3); }
 .review-facts dd { font-size: 0.8rem; line-height: var(--support-leading); }
-.review-proof, .review-error { gap: var(--space-2); padding: var(--space-3); }
+.review-proof, .review-error, .review-cosign, .review-cosign-blocked { gap: var(--space-2); padding: var(--space-3); }
 .review-disclaimer { font-size: 0.7rem; line-height: var(--support-leading); }
 .review-actions { gap: var(--space-2); }
 

@@ -47,7 +47,10 @@ import { useAgents } from "../hooks/useAgents.js";
 import { useMintWizard } from "../hooks/useMintWizard.js";
 import { usePayment } from "../hooks/usePayment.js";
 import { paymentSymbolOf, usePaymentToken } from "../hooks/usePaymentToken.js";
-import { useTransfer } from "../hooks/useTransfer.js";
+import {
+  isReceiverAccountUnavailable,
+  useTransfer,
+} from "../hooks/useTransfer.js";
 import { useOrchestratorTick } from "../hooks/useOrchestratorTick.js";
 import { useVaultWrite } from "../hooks/useVaultWrite.js";
 import {
@@ -275,6 +278,17 @@ export function FlowPage({
     message: string;
   };
   const [submitError, setSubmitError] = useState<FlowFieldError | null>(null);
+  // F-01: true when the receiver co-sign was attempted but the wallet cannot
+  // expose the receiver account — the sheet renders the honest blocker (no
+  // futile retry) instead of the "Sign as receiver" action.
+  const [coSignBlocked, setCoSignBlocked] = useState(false);
+
+  const buildTransferInput = () => ({
+    tokenId: BigInt(selectedTokenId || "0"),
+    to: draft.value.trim() as `0x${string}`,
+    receiverPubKey64: draft.extra.trim() as `0x${string}`,
+    accessProofNonce: nonceRef.current,
+  });
 
   const validate = (): FlowFieldError | null => {
     const trimmed = draft.value.trim();
@@ -355,6 +369,66 @@ export function FlowPage({
       .catch(() =>
         dispatch({ type: "tx-state", txId: hash, txState: "stale" }),
       );
+  };
+
+  // F-01: shared transfer tail — receipt row + confirm pipeline (C-15) + notice.
+  const completeTransfer = (txHash: `0x${string}`) => {
+    nonceRef.current = freshNonceHex();
+    addReceipt({
+      id: txHash,
+      kind: "Transfer proof",
+      detail: `agent #${selectedTokenId} → ${truncateAddress(draft.value.trim())}`,
+      hash: txHash,
+      age: "now",
+      state: "confirming",
+      route: "/transfer",
+      agent: selectedTokenId,
+    });
+    confirmOnChain(txHash);
+    dispatch({
+      type: "notice",
+      notice: `Transfer submitted for agent #${selectedTokenId}. Proof receipt added.`,
+    });
+  };
+
+  // F-01 receiver co-sign step: signs the paused challenge AS the recipient,
+  // then hands straight back to the sender for the on-chain submission.
+  const executeCoSign = async () => {
+    if (kind !== "transfer" || isBusy) return;
+    setCoSignBlocked(false);
+    dispatch({
+      type: "set-draft-phase",
+      flow: kind,
+      phase: "submitting",
+      error: null,
+    });
+    try {
+      await transfer.coSign();
+      const txHash = await transfer.confirm(buildTransferInput());
+      completeTransfer(txHash);
+    } catch (err) {
+      if (isReceiverAccountUnavailable(err)) {
+        // Honest blocker — no retry can conjure the receiver account in this
+        // wallet; the sheet shows the two real remedies (add the account, or
+        // the receiver accepts from their own session), not a retry loop.
+        setCoSignBlocked(true);
+        dispatch({
+          type: "set-draft-phase",
+          flow: kind,
+          phase: "review",
+          error: null,
+        });
+        return;
+      }
+      const message = humanizeError(err);
+      dispatch({
+        type: "set-draft-phase",
+        flow: kind,
+        phase: "recoverable-error",
+        error: message,
+      });
+      dispatch({ type: "notice", notice: message });
+    }
   };
 
   const execute = async () => {
@@ -457,30 +531,22 @@ export function FlowPage({
           notice: `Payment submitted for agent #${selectedTokenId}. Receipt added to the Transaction Center.`,
         });
       } else if (kind === "transfer") {
-        const input = {
-          tokenId: BigInt(selectedTokenId),
-          to: draft.value.trim() as `0x${string}`,
-          receiverPubKey64: draft.extra.trim() as `0x${string}`,
-          accessProofNonce: nonceRef.current,
-        };
-        await transfer.prepare(input);
+        const input = buildTransferInput();
+        const prepared = await transfer.prepare(input);
+        if (prepared.status === "co-sign-required") {
+          // F-01: cross-party transfer pauses after the challenge — the review
+          // sheet stays open and renders the receiver co-sign step (the primary
+          // action becomes "Sign as receiver", driven by executeCoSign).
+          dispatch({
+            type: "set-draft-phase",
+            flow: kind,
+            phase: "review",
+            error: null,
+          });
+          return;
+        }
         const txHash = await transfer.confirm(input);
-        nonceRef.current = freshNonceHex();
-        addReceipt({
-          id: txHash,
-          kind: "Transfer proof",
-          detail: `agent #${selectedTokenId} → ${truncateAddress(draft.value.trim())}`,
-          hash: txHash,
-          age: "now",
-          state: "confirming",
-          route: "/transfer",
-          agent: selectedTokenId,
-        });
-        confirmOnChain(txHash);
-        dispatch({
-          type: "notice",
-          notice: `Transfer submitted for agent #${selectedTokenId}. Proof receipt added.`,
-        });
+        completeTransfer(txHash);
       } else if (kind === "deposit" || kind === "withdraw") {
         // Vault write through the shared encode relay; the receipt row and
         // the draft's receipt phase ride the C-15 pipeline below.
@@ -562,6 +628,8 @@ export function FlowPage({
     nonceRef.current = freshNonceHex();
     tickHook.resetStream();
     setSubmitError(null);
+    setCoSignBlocked(false);
+    transfer.reset();
     dispatch({ type: "clear-draft", flow: kind });
   };
 
@@ -631,16 +699,28 @@ export function FlowPage({
       return undefined;
     }
   }, [kind, draft.phase, allowance, draft.value, paymentToken?.decimals]);
+  // F-01: a cross-party transfer is known at review time (recipient ≠ the
+  // connected account) — the boundary row names the truthful prompt count
+  // before the first execute, not after the co-sign pause.
+  const transferNeedsCoSign =
+    kind === "transfer" &&
+    address !== undefined &&
+    isAddress(draft.value.trim()) &&
+    draft.value.trim().toLowerCase() !== address.toLowerCase();
   const confirmationLabel =
-    kind !== "payment"
-      ? undefined
-      : draft.phase === "payment-required"
-        ? "1 wallet confirmation required"
-        : paymentApprovalNeeded === undefined
-          ? "Up to 2 wallet confirmations (checking allowance…)"
-          : paymentApprovalNeeded
-            ? "2 wallet confirmations required (approve, then pay)"
-            : "1 wallet confirmation required (allowance sufficient)";
+    kind === "transfer"
+      ? transferNeedsCoSign
+        ? "2 wallet confirmations (receiver signs, then you submit)"
+        : "1 wallet confirmation required"
+      : kind !== "payment"
+        ? undefined
+        : draft.phase === "payment-required"
+          ? "1 wallet confirmation required"
+          : paymentApprovalNeeded === undefined
+            ? "Up to 2 wallet confirmations (checking allowance…)"
+            : paymentApprovalNeeded
+              ? "2 wallet confirmations required (approve, then pay)"
+              : "1 wallet confirmation required (allowance sufficient)";
 
   const agentOptions = useMemo(
     () => agents.map((agent) => agent.tokenId.toString()),
@@ -1054,14 +1134,38 @@ export function FlowPage({
           approvalNeeded={paymentApprovalNeeded}
           balanceFact={balanceFact}
           paymentSymbol={paymentSymbol}
-          onClose={() =>
+          coSign={
+            kind === "transfer" &&
+            transfer.coSignReceiver !== null &&
+            transfer.coSignReceiver.toLowerCase() ===
+              draft.value.trim().toLowerCase()
+              ? {
+                  receiver: transfer.coSignReceiver,
+                  blocked: coSignBlocked,
+                  onSign: () => void executeCoSign(),
+                  title: f.coSignTitle,
+                  body: f.coSignBody(transfer.coSignReceiver),
+                  action: f.coSignAction,
+                  note: f.coSignNote,
+                  blockedTitle: f.coSignBlockedTitle,
+                  blockedBody: f.coSignBlockedBody(transfer.coSignReceiver),
+                }
+              : undefined
+          }
+          onClose={() => {
+            // Closing the sheet abandons any paused receiver co-sign — a fresh
+            // review always starts a fresh challenge (nonces are single-use).
+            if (kind === "transfer") {
+              setCoSignBlocked(false);
+              transfer.reset();
+            }
             dispatch({
               type: "set-draft-phase",
               flow: kind,
               phase: "draft",
               error: null,
-            })
-          }
+            });
+          }}
           onRetry={() =>
             dispatch({
               type: "set-draft-phase",
