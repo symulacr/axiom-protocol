@@ -195,7 +195,7 @@ function ReceiptDrawer({
         className="receipt-drawer"
         role="dialog"
         aria-modal="true"
-        aria-label={`${txCopy.eyebrow} ${tx.id}`}
+        aria-label={`${txCopy.drawerTitle}: ${tx.kind}`}
         onClick={(event) => event.stopPropagation()}
       >
         <button
@@ -205,17 +205,16 @@ function ReceiptDrawer({
         >
           <X size={16} />
         </button>
-        <span className="eyebrow">
-          {txCopy.eyebrow} / {tx.id.slice(0, 14)}
-        </span>
-        <h2>{tx.kind}</h2>
-        <p>{tx.detail}</p>
-        <StatePill state={tx.state} />
+        {/* S1 (audit 06 FINDING-005 / duplication map #1): the row under this
+            drawer already shows kind, detail, state and the truncated hash —
+            the drawer renders only what the row cannot: the full hash, the
+            explorer link, the agent and the event note. */}
+        <h2>{txCopy.drawerTitle}</h2>
         <div className="receipt-primary-action">{primaryAction}</div>
         <MobileDisclosure
           className="receipt-proof-disclosure"
-          eyebrow="RECEIPT / PROOF"
-          title="Proof details"
+          eyebrow={txCopy.proofEyebrow}
+          title={txCopy.proofTitle}
         >
           <dl className="provenance-list drawer-list">
             <div>
@@ -288,11 +287,9 @@ export function TransactionsPage({
     right: number;
   } | null>(null);
   const filtersTriggerRef = useRef<HTMLButtonElement>(null);
-  const {
-    events,
-    refetch: refetchHistory,
-    isLoading: historyLoading,
-  } = useEventHistory({ pollIntervalMs: 15_000 });
+  const { events, refetch: refetchHistory } = useEventHistory({
+    pollIntervalMs: 15_000,
+  });
   const { events: wsEvents, isConnected: wsConnected } = useEventStream({
     topics: ["*"],
   });
@@ -418,13 +415,6 @@ export function TransactionsPage({
           </strong>
           <small>{txCopy.confirmingNow}</small>
         </div>
-        <div>
-          <span className="eyebrow">{txCopy.today}</span>
-          <strong>{String(transactions.length).padStart(2, "0")}</strong>
-          <small>
-            {historyLoading ? "loading index…" : txCopy.receiptsIndexed}
-          </small>
-        </div>
         <button
           className="ops-summary-recovery"
           onClick={() => chooseFilter("review")}
@@ -495,7 +485,6 @@ export function TransactionsPage({
             <span>{txCopy.hash}</span>
             <span>{txCopy.age}</span>
             <span>{txCopy.state}</span>
-            <span />
           </div>
           {filtered.map((tx) => (
             <button

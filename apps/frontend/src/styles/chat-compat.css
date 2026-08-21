@@ -201,11 +201,35 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
 }
 .fade-enter { animation: axiom-fade-in 180ms var(--ease-out) both; }
 @keyframes axiom-spin { to { transform: rotate(360deg); } }
-@keyframes axiom-pixel-on {
-  0%, 70%, 100% { background: var(--dim); }
-  35% { background: var(--copper-bright); }
+/* S1 (audit 06 FINDING-014): the churn spinner is one element — its three
+   pixel dots are painted by the element + its two pseudos (no child spans).
+   A class-based animation also means the reduced-motion overrides finally
+   reach it (the old inline cell styles were immune). */
+@keyframes axiom-churn-on {
+  0%, 70%, 100% { background-color: var(--dim); }
+  35% { background-color: var(--copper-bright); }
 }
-.churn-cell { background: var(--dim); }
+.spinner--churn {
+  position: relative;
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  margin: 0 6px;
+  background-color: var(--dim);
+  animation: axiom-churn-on 650ms ease-out infinite;
+}
+.spinner--churn::before,
+.spinner--churn::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: 4px;
+  height: 4px;
+  background-color: var(--dim);
+  animation: axiom-churn-on 650ms ease-out infinite;
+}
+.spinner--churn::before { left: -6px; animation-delay: 110ms; }
+.spinner--churn::after { left: 6px; animation-delay: 220ms; }
 @keyframes axiom-caret { 50% { opacity: 0; } }
 .caret-blink { animation: axiom-caret 1s steps(1) infinite; }
 

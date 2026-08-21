@@ -259,7 +259,10 @@ export function WalletGate({
 
           {view === "connect" && (
             <>
-              <span className="eyebrow">WALLET CONNECTION</span>
+              {/* S1 (audit 06 FINDING-004): the phase label was CSS ::after
+                  content — invisible to i18n/grep. Real DOM copy now, straight
+                  from copy.wallet. */}
+              <span className="eyebrow copper">{copy.wallet.phaseConnect}</span>
               <h1 id="wallet-title">
                 Enter the
                 <br />
@@ -328,7 +331,7 @@ export function WalletGate({
           {view === "wrong-network" && (
             <div className="wallet-state">
               <AlertTriangle className="warning-icon" size={28} />
-              <span className="eyebrow">NETWORK CHECK</span>
+              <span className="eyebrow copper">{copy.wallet.phaseNetwork}</span>
               <h2>{interpolate(copy.wallet.wrongNetworkTitle, chainVars)}</h2>
               <p>{copy.wallet.wrongNetworkDescription}</p>
               <div className="network-check">
@@ -355,7 +358,7 @@ export function WalletGate({
           {view === "signing" && (
             <div className="wallet-state">
               <KeyRound className="copper" size={28} />
-              <span className="eyebrow">SIGNATURE BOUNDARY</span>
+              <span className="eyebrow copper">{copy.wallet.phaseSigning}</span>
               <h2>Confirm the access message.</h2>
               <p>
                 Review the non-transactional message in{" "}
@@ -395,7 +398,7 @@ export function WalletGate({
 
           {view === "profile" && (
             <form className="wallet-state" onSubmit={saveProfile}>
-              <span className="eyebrow">OPERATOR PROFILE</span>
+              <span className="eyebrow copper">{copy.wallet.phaseProfile}</span>
               <h2>{copy.wallet.profileTitle}</h2>
               <p>{copy.wallet.profileDescription}</p>
               <Field
@@ -475,15 +478,9 @@ export function WalletGate({
               </Button>
             </div>
           )}
-
-          <div className="wallet-gate-foot">
-            <span>
-              <ShieldCheck size={14} /> Non-custodial access
-            </span>
-            <span>
-              <Network size={14} /> {APP_CHAIN.name} / {APP_CHAIN_ID}
-            </span>
-          </div>
+          {/* S1 (audit 06 FINDING-014 / duplication map #9): the foot repeated
+              "Non-custodial access" (art panel above) and the network name
+              (sidebar rail card + wrong-network check) on every gate state. */}
         </div>
       </section>
     </div>

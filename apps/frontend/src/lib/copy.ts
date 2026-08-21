@@ -151,6 +151,12 @@ export type Copy = {
     retryConnection: string;
     timeoutTitle: string;
     timeoutDescription: string;
+    /** Gate phase eyebrows (S1): the labels the accessibility pass injected
+     *  via CSS ::after now live here — real DOM text, localizable, greppable. */
+    phaseConnect: string;
+    phaseNetwork: string;
+    phaseSigning: string;
+    phaseProfile: string;
   };
   guide: {
     nextStep: string;
@@ -389,6 +395,13 @@ export type Copy = {
     phaseStreaming: (elapsed: number) => string;
     phaseThinking: string;
     phaseWaiting: (elapsed: number) => string;
+    /** S1 (audit 06 FINDING-014): the tx-mined confirmation row is ONE
+     *  localized string, not glyph-joined label spans. */
+    txMined: (
+      tokenId: string | null,
+      event: string | null,
+      block: number | null,
+    ) => string;
     historyTitle: string;
     historyNew: string;
     historySearch: string;
@@ -723,6 +736,11 @@ export type Copy = {
     openRecovery: string;
     recoveryNotice: string;
     openOperation: string;
+    /** S1 drawer head (audit 06 FINDING-005): the drawer no longer repeats
+     *  the row's kind/detail/pill — it leads with its own title. */
+    drawerTitle: string;
+    proofEyebrow: string;
+    proofTitle: string;
   };
   status: Record<string, string>;
   plural: {
@@ -846,6 +864,10 @@ const english: Copy = {
     wrongNetworkDescription:
       "The wallet is connected, but it is on a different network. Switch before signing the access message.",
     switchNetwork: "Switch to {chainName}",
+    phaseConnect: "CONNECT WALLET",
+    phaseNetwork: "VERIFY NETWORK",
+    phaseSigning: "SIGN MESSAGE",
+    phaseProfile: "CREATE PROFILE",
     approveSignature: "Approve signature",
     rejectSignature: "Reject signature",
     profileTitle: "Name the local profile.",
@@ -972,9 +994,9 @@ const english: Copy = {
     agentsOnline: "Agents online",
     storageProofs: "Storage proofs",
     liveQueue: "Live queue",
-    agentRegister: "AGENT REGISTER / 04",
+    agentRegister: "AGENT REGISTER",
     operatingFleet: "Operating fleet",
-    proofLane: "PROOF LANE / 01",
+    proofLane: "PROOF LANE",
     attentionFirst: "Attention first",
     allowanceReady: "Allowance is ready for review.",
     // One canonical allowance sentence, shared with the strip (02 FINDING-022).
@@ -1124,6 +1146,8 @@ const english: Copy = {
     phaseStreaming: (elapsed) => `Streaming response… (${elapsed}s)`,
     phaseThinking: "Thinking…",
     phaseWaiting: (elapsed) => `Waiting for model response… (${elapsed}s)`,
+    txMined: (tokenId, event, block) =>
+      `tx mined${tokenId ? ` · agent #${tokenId}` : ""}${event ? ` · ${event}` : ""}${block ? ` · block ${block}` : ""}`,
     historyTitle: "Chats",
     historyNew: "New",
     historySearch: "Search chats…",
@@ -1533,6 +1557,9 @@ const english: Copy = {
     openRecovery: "Open recovery",
     recoveryNotice: "Recovery opened. Operation returned to Ready.",
     openOperation: "Open operation",
+    drawerTitle: "Receipt detail",
+    proofEyebrow: "RECEIPT / PROOF",
+    proofTitle: "Proof details",
   },
   status: {
     ready: "Ready to start",
@@ -1668,6 +1695,10 @@ const french: Copy = {
     wrongNetworkDescription:
       "Le wallet est connecté, mais utilise un autre réseau. Changez de réseau avant de signer le message d’accès.",
     switchNetwork: "Passer sur {chainName}",
+    phaseConnect: "CONNECTER LE WALLET",
+    phaseNetwork: "VÉRIFIER LE RÉSEAU",
+    phaseSigning: "SIGNER LE MESSAGE",
+    phaseProfile: "CRÉER LE PROFIL",
     approveSignature: "Approuver la signature",
     rejectSignature: "Refuser la signature",
     profileTitle: "Nommez le profil local.",
@@ -1796,9 +1827,9 @@ const french: Copy = {
     agentsOnline: "Agents en ligne",
     storageProofs: "Preuves Storage",
     liveQueue: "File active",
-    agentRegister: "REGISTRE AGENTS / 04",
+    agentRegister: "REGISTRE AGENTS",
     operatingFleet: "Flotte active",
-    proofLane: "COULOIR DE PREUVE / 01",
+    proofLane: "COULOIR DE PREUVE",
     attentionFirst: "Attention d’abord",
     allowanceReady: "L’approbation est prête à être revue.",
     allowanceDescription:
@@ -1951,6 +1982,8 @@ const french: Copy = {
     phaseThinking: "Réflexion…",
     phaseWaiting: (elapsed) =>
       `En attente de la réponse du modèle… (${elapsed} s)`,
+    txMined: (tokenId, event, block) =>
+      `tx miné${tokenId ? ` · agent #${tokenId}` : ""}${event ? ` · ${event}` : ""}${block ? ` · bloc ${block}` : ""}`,
     historyTitle: "Chats",
     historyNew: "Nouveau",
     historySearch: "Rechercher des chats…",
@@ -2380,6 +2413,9 @@ const french: Copy = {
     openRecovery: "Ouvrir la récupération",
     recoveryNotice: "Récupération ouverte. L’opération revient à Prêt.",
     openOperation: "Ouvrir l’opération",
+    drawerTitle: "Détail du reçu",
+    proofEyebrow: "REÇU / PREUVE",
+    proofTitle: "Détails de la preuve",
   },
   status: {
     ready: "Prêt à démarrer",
@@ -2515,6 +2551,10 @@ const german: Copy = {
     wrongNetworkDescription:
       "Das Wallet ist verbunden, verwendet aber ein anderes Netzwerk. Wechsle vor der Signatur der Zugriffsnachricht.",
     switchNetwork: "Zu {chainName} wechseln",
+    phaseConnect: "WALLET VERBINDEN",
+    phaseNetwork: "NETZWERK PRÜFEN",
+    phaseSigning: "NACHRICHT SIGNIEREN",
+    phaseProfile: "PROFIL ERSTELLEN",
     approveSignature: "Signatur bestätigen",
     rejectSignature: "Signatur ablehnen",
     profileTitle: "Lokales Profil benennen.",
@@ -2641,9 +2681,9 @@ const german: Copy = {
     agentsOnline: "Agents online",
     storageProofs: "Storage-Beweise",
     liveQueue: "Aktive Warteschlange",
-    agentRegister: "AGENTENREGISTER / 04",
+    agentRegister: "AGENTENREGISTER",
     operatingFleet: "Aktive Flotte",
-    proofLane: "BEWEIS-SPUR / 01",
+    proofLane: "BEWEIS-SPUR",
     attentionFirst: "Aufmerksamkeit zuerst",
     allowanceReady: "Die Freigabe kann geprüft werden.",
     allowanceDescription:
@@ -2795,6 +2835,8 @@ const german: Copy = {
     phaseStreaming: (elapsed) => `Antwort wird gestreamt… (${elapsed} s)`,
     phaseThinking: "Denkt nach…",
     phaseWaiting: (elapsed) => `Warte auf Modellantwort… (${elapsed} s)`,
+    txMined: (tokenId, event, block) =>
+      `tx gemint${tokenId ? ` · Agent #${tokenId}` : ""}${event ? ` · ${event}` : ""}${block ? ` · Block ${block}` : ""}`,
     historyTitle: "Chats",
     historyNew: "Neu",
     historySearch: "Chats suchen…",
@@ -3224,6 +3266,9 @@ const german: Copy = {
     openRecovery: "Wiederherstellung öffnen",
     recoveryNotice: "Wiederherstellung geöffnet. Operation ist wieder bereit.",
     openOperation: "Operation öffnen",
+    drawerTitle: "Belegdetail",
+    proofEyebrow: "BELEG / NACHWEIS",
+    proofTitle: "Nachweisdetails",
   },
   status: {
     ready: "Bereit zum Start",

@@ -149,8 +149,7 @@
   .transaction-table { margin-inline:-1px; }
 }
 .locked-route-copy h1 { max-width:520px; margin:14px 0 16px; font-size:clamp(42px,5vw,72px); line-height:.94; }
-.locked-evidence-state { width:8px; height:8px; margin-top:5px; border:1px solid var(--completion-dim); border-radius:50%; }
-.locked-evidence-state.is-current { border-color:var(--route-accent); background:var(--route-accent); box-shadow:0 0 0 3px color-mix(in srgb, var(--route-accent) 16%, transparent); }
+/* S1: .locked-evidence-state dot removed with its (display:none'd) markup. */
 @media (max-width:700px) {
   .locked-route-copy h1 { font-size:clamp(42px,12vw,62px); }
 }

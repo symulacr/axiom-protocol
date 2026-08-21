@@ -11,7 +11,7 @@
    attention, and muted states never imply completion. */
 .context-strip { display:grid;grid-template-columns:repeat(4,1fr);gap:1px;margin:-12px 0 22px;border:1px solid var(--line);background:var(--line);box-shadow:7px 8px 0 rgba(210,139,82,.045); }
 .context-cell { min-height:92px;padding:15px 16px;background:var(--panel);display:grid;align-content:center;gap:7px;position:relative;overflow:hidden; }
-.context-cell:nth-child(4) { border-left:2px solid var(--copper); }
+.context-cell.context-action { border-left:2px solid var(--copper); }
 .context-cell strong { display:flex;align-items:center;gap:7px;font-size:12px; }
 .context-cell strong svg { color:var(--copper-bright); }
 .context-cell .mono { color:var(--dim);font-size:9px; }

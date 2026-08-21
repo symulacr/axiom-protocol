@@ -187,10 +187,16 @@ export function OperationReviewSheet({
           </div>
         </div>
         <dl className="review-facts">
-          <div>
-            <dt>{f.factAgent}</dt>
-            <dd>{agentName}</dd>
-          </div>
+          {/* S1 (audit 06 FINDING-009 / duplication map #3): for mint there is
+              no agent yet — agentName IS draft.value, so the TARGET AGENT row
+              repeated the AGENT NAME row verbatim. Other kinds keep both rows
+              (they are different facts there). */}
+          {kind !== "mint" && (
+            <div>
+              <dt>{f.factAgent}</dt>
+              <dd>{agentName}</dd>
+            </div>
+          )}
           <div>
             <dt>
               {kind === "payment" || kind === "deposit" || kind === "withdraw"

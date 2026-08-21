@@ -201,26 +201,11 @@
   display: none;
 }
 
-.wallet-gate-panel > .eyebrow:has(+ h1),
-.wallet-state:has(.network-check) > .eyebrow,
-.wallet-state:has(.signature-preview) > .eyebrow,
-.wallet-state:has(.field) > .eyebrow {
-  font-size: 0;
-}
-
-.wallet-gate-panel > .eyebrow:has(+ h1)::after,
-.wallet-state:has(.network-check) > .eyebrow::after,
-.wallet-state:has(.signature-preview) > .eyebrow::after,
-.wallet-state:has(.field) > .eyebrow::after {
-  color: var(--copper-bright);
-  font: 700 10px/1.2 'JetBrains Mono', monospace;
-  letter-spacing: .14em;
-}
-
-.wallet-gate-panel > .eyebrow:has(+ h1)::after { content: "CONNECT WALLET"; }
-.wallet-state:has(.network-check) > .eyebrow::after { content: "VERIFY NETWORK"; }
-.wallet-state:has(.signature-preview) > .eyebrow::after { content: "SIGN MESSAGE"; }
-.wallet-state:has(.field) > .eyebrow::after { content: "CREATE PROFILE"; }
+/* S1 (audit 06 FINDING-004): the gate phase labels this sheet injected via
+   ::after (CONNECT WALLET / VERIFY NETWORK / SIGN MESSAGE / CREATE PROFILE)
+   moved into real DOM copy (copy.wallet.phase*, rendered as .eyebrow.copper
+   in WalletGate) — CSS `content:` text is invisible to i18n, grep and tests.
+   The font-size:0 hide of the DOM eyebrow is gone with it. */
 
 .storage-step > span {
   min-width: 16px;

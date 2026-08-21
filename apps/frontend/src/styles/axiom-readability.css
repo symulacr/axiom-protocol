@@ -16,7 +16,7 @@ body { font-size: 15px; line-height: var(--copy-leading); }
 button, input, textarea, select { line-height: 1.35; }
 
 /* Stable type hierarchy: mono telemetry stays compact, but never becomes essential microtext. */
-.eyebrow, .rail-caption, .status, .network-card .mono,
+.eyebrow, .status, .network-card .mono,
 .account span, .field-label,
 .review-facts dt, .command-group-label, .priority-proof > span,
 .session-top, .text-link, .priority-why,
@@ -98,7 +98,7 @@ button, input, textarea, select { line-height: 1.35; }
 /* Evidence is a set of observed states, never an implied click-through stepper. */
 .passive-proof-timeline { gap: var(--space-2); margin-block: var(--space-4); }
 .passive-proof-timeline li { grid-template-columns: 18px minmax(0, 1fr) auto; gap: var(--space-3); padding-bottom: var(--space-3); }
-.passive-proof-timeline li > span { width: 14px; height: 14px; margin-top: 2px; border: 0; border-radius: 0; background: currentColor; color: var(--dim); font-size: 0; }
+.passive-proof-timeline li > i { width: 14px; height: 14px; margin-top: 2px; border: 0; border-radius: 0; background: currentColor; color: var(--dim); font-size: 0; }
 .passive-proof-timeline li strong { font-size: 0.8rem; line-height: 1.35; }
 .passive-proof-timeline li small { font-size: 0.72rem; line-height: var(--support-leading); }
 
@@ -717,7 +717,6 @@ html[data-theme="light"] .filters-popover {
   .mobile-nav-drawer .side-head { padding-right: 56px; }
   .mobile-nav-drawer .sidebar.is-collapsed { width: 100%; }
   .mobile-nav-drawer .sidebar.is-collapsed .brand span,
-  .mobile-nav-drawer .sidebar.is-collapsed .rail-caption,
   .mobile-nav-drawer .sidebar.is-collapsed .nav-item span,
   .mobile-nav-drawer .sidebar.is-collapsed .network-card div,
   .mobile-nav-drawer .sidebar.is-collapsed .account div:not(.avatar),
@@ -747,6 +746,21 @@ html[data-theme="light"] .filters-popover {
   .public-locked .locked-route-copy p { margin: 0; }
   .public-locked .locked-route-copy .button-row { margin-top: 0.2rem; }
   .public-locked .locked-route-copy .button-row .button:first-child { flex: 1 1 100%; }
+}
+
+/* S1 layout remediation (audit 06 FINDING-008/F010): both strips lost a
+   cell (context-strip: network moved to the rail card; ops-summary: the
+   TODAY total moved to the filter-aware result-count) — the earlier
+   4-column templates left an empty track, so the grids are re-templated
+   here at every width they had before. */
+.context-strip { grid-template-columns: repeat(3, 1fr); }
+.ops-summary { grid-template-columns: repeat(2, 0.7fr) 1.6fr; }
+@media (max-width: 1060px) {
+  .context-strip { grid-template-columns: repeat(2, 1fr); }
+  .ops-summary { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 700px) {
+  .context-strip { grid-template-columns: 1fr; }
 }
 
 /* ------------------------------------------------------------------ *

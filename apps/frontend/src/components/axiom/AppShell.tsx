@@ -263,10 +263,6 @@ function Sidebar({
           </button>
         </div>
       </div>
-      <div className="rail-caption">
-        <span className="eyebrow">AXIOM / COMMAND DECK</span>
-        <span className="mono">0G</span>
-      </div>
       <nav className="side-nav" aria-label={copy.a11y.primaryNav}>
         {[...items, ...flows].map((item) => (
           <button

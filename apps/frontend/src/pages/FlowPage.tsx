@@ -939,9 +939,10 @@ export function FlowPage({
                     ? f.reviewOpenLabel
                     : f.detailsEditable}
               </strong>
-              <span className="mono">
-                {interpolate(f.chainLive, { chainId })}
-              </span>
+              {/* S1 (audit 06 FINDING-008 / duplication map #5): the overlay's
+                  "chain N · live wallet" mono line duplicated the sidebar
+                  rail's network card — removed; the review sheet keeps its
+                  network fact row where it is decision data. */}
             </div>
           </div>
 
@@ -1209,7 +1210,10 @@ export function FlowPage({
           <ol className="passive-proof-timeline">
             {proofSteps.map((step, index) => (
               <li key={step} className={proofReady(index) ? "is-ready" : ""}>
-                <span aria-hidden="true" />
+                {/* S1 (audit 06 FINDING-014): timeline dots converge on the
+                    empty-<i> convention (StatePill/Status/toggle dots) — the
+                    empty-span variant is gone. */}
+                <i aria-hidden="true" />
                 <div>
                   <strong>{step}</strong>
                   <small>{index === 1 ? f.stepWallet : f.stepAuto}</small>

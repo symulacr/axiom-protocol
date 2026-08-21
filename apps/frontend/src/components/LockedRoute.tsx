@@ -39,9 +39,8 @@ export function LockedRoute({
           <div>
             <Status label="wallet required" tone="warning" />
           </div>
-          <button className="text-link" onClick={() => go("/")}>
-            <ArrowLeft size={14} /> Landing
-          </button>
+          {/* S1 (duplication map #16): the topbar "Landing" text-link repeated
+              the ghost "Return to landing" exit below — one exit remains. */}
         </header>
         <main className="locked-route-content">
           <section className="locked-route-copy">
@@ -85,10 +84,10 @@ export function LockedRoute({
                 affordance on a row that does not open (02 FINDING-014). */}
             {meta.proofs.map((item, index) => (
               <div className="locked-evidence-row" key={item}>
-                <span
-                  className={`locked-evidence-state ${index === 0 ? "is-current" : ""}`}
-                  aria-hidden="true"
-                />
+                {/* S1 (audit 06 FINDING-014): the .locked-evidence-state dot
+                    span rendered into every row and was display:none'd by
+                    axiom-velocity.css (.public-locked) — dead markup, removed
+                    with its CSS. */}
                 <div>
                   <strong>{item}</strong>
                   <small>

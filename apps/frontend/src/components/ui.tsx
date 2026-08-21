@@ -539,9 +539,6 @@ export function CopyButton({
       onClick={copy}
       aria-label={copied ? "Copied to clipboard" : "Copy to clipboard"}
       style={{
-        display: "inline-grid",
-        gridTemplateColumns: "4ch",
-        placeItems: "center",
         background: "transparent",
         color: COLORS.bronzeLight,
         border: `1px solid ${COLORS.bronzeBorder}`,
@@ -550,32 +547,17 @@ export function CopyButton({
         fontFamily: "inherit",
         fontSize: "var(--text-xs)",
         lineHeight: 1,
+        minWidth: "4ch",
+        textAlign: "center",
         cursor: "pointer",
         ...style,
       }}
     >
-      <span
-        style={{
-          gridArea: "1 / 1",
-          transition:
-            "opacity 120ms var(--ease-out), transform 120ms var(--ease-out)",
-          opacity: copied ? 0 : 1,
-          transform: copied ? "scale(0.8)" : "scale(1)",
-        }}
-      >
-        Copy
-      </span>
-      <span
-        style={{
-          gridArea: "1 / 1",
-          transition:
-            "opacity 120ms var(--ease-out), transform 120ms var(--ease-out)",
-          opacity: copied ? 1 : 0,
-          transform: copied ? "scale(1)" : "scale(0.8)",
-        }}
-      >
-        ✓
-      </span>
+      {/* S1 (audit 06 FINDING-014): single node with a label swap — the old
+          two-span stack kept an opacity:0 "✓" twin in the DOM at all times
+          (announced twice, one span too many per button). Matches
+          MsgCopyAction's inline-confirm contract. */}
+      {copied ? "✓" : "Copy"}
     </button>
   );
 }
@@ -684,32 +666,18 @@ export function Spinner({
   style?: CSSProperties;
 }): ReactElement {
   if (variant === "churn") {
+    // S1 (audit 06 FINDING-014): the churn was 9 empty animation-cell spans
+    // per instance. One aria-live node now — the dots are painted by CSS
+    // (.spinner--churn in chat-compat.css), which also puts the animation
+    // under the reduced-motion overrides for the first time (inline styles
+    // were immune to them).
     return (
       <span
         role="status"
         aria-label="Loading"
         className="spinner--churn"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3, 4px)",
-          gap: 2,
-          ...style,
-        }}
-      >
-        {[0, 90, 180, 270, 0, 90, 180, 270, 0].map((delay, index) => (
-          <span
-            key={index}
-            className="churn-cell"
-            style={{
-              width: 4,
-              height: 4,
-              borderRadius: 1,
-              animation: "axiom-pixel-on 650ms var(--ease-out) infinite",
-              animationDelay: `${delay}ms`,
-            }}
-          />
-        ))}
-      </span>
+        style={style}
+      />
     );
   }
   return (

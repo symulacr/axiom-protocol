@@ -14,7 +14,6 @@ import {
   Database,
   Gauge,
   KeyRound,
-  Network,
   RefreshCw,
   ReceiptText,
   ShieldCheck,
@@ -53,23 +52,16 @@ function ContextStrip({
 }) {
   return (
     <section className="context-strip">
+      {/* S1 (audit 06 FINDING-008 / duplication map #5): the network cell is
+          gone — the sidebar rail's network card is the single owner of
+          name + chain id. A wrong chain still surfaces here through the
+          signer cell ("Wrong network"), so no decision state was lost. */}
       <div className="context-cell">
         <span className="eyebrow">{copy.dashboard.contextWallet}</span>
-        <strong>
+        <strong title={address ?? undefined}>
           <Wallet size={15} />{" "}
           {address ? truncateAddress(address) : copy.topbar.notConnected}
         </strong>
-        <span className="mono">{address ?? "—"}</span>
-      </div>
-      <div className="context-cell">
-        <span className="eyebrow">{copy.dashboard.contextNetwork}</span>
-        <strong>
-          <Network size={15} /> {APP_CHAIN.name}
-        </strong>
-        <span className="mono">
-          chain {APP_CHAIN_ID}
-          {chainOk ? "" : ` · ${copy.dashboard.switchRequired}`}
-        </span>
       </div>
       <div className="context-cell">
         <span className="eyebrow">{copy.dashboard.contextSigner}</span>
@@ -78,7 +70,9 @@ function ContextStrip({
           {chainOk ? copy.dashboard.signerReady : copy.dashboard.signerWrong}
         </strong>
         <span className="mono">
-          {connectorName ?? copy.dashboard.noConnector}
+          {chainOk
+            ? (connectorName ?? copy.dashboard.noConnector)
+            : `${connectorName ?? copy.dashboard.noConnector} · ${copy.dashboard.switchRequired}`}
         </span>
       </div>
       <div className="context-cell context-action">

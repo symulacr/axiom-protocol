@@ -66,11 +66,7 @@ export function AgentPage({
   const [instruction, setInstruction] = useState("");
   const action = (message: string) => setNotice(message);
 
-  const {
-    data: metadata,
-    isLoading: metadataLoading,
-    error: metadataError,
-  } = useAgentMetadata(tokenId);
+  const { data: metadata, error: metadataError } = useAgentMetadata(tokenId);
   const { events, isLoading: eventsLoading } = useAgentEvents(tokenId);
   const { metrics } = usePerformance(tokenId);
   const vault = useVaultData(tokenId);
@@ -144,19 +140,11 @@ export function AgentPage({
     <div className="ops-page agent-page">
       <div className="page-head">
         <div>
-          <span className="eyebrow">AGENT / #{tokenId.toString()}</span>
+          {/* S1 (audit 06 FINDING-006 / duplication map #2): the head kept
+              "AGENT / #N" over "Agent #N" plus an owner/last-event line the
+              overview tab's provenance list renders verbatim. The name stays;
+              the identity dl below is the one canonical owner. */}
           <h1>{agentName}</h1>
-          <p>
-            {metadata
-              ? truncateAddress(metadata.owner)
-              : metadataLoading
-                ? "loading owner…"
-                : "owner unavailable"}{" "}
-            ·{" "}
-            {lastEvent
-              ? `${lastEvent.eventName} at block ${lastEvent.blockNumber}`
-              : agentCopy.executionSurface}
-          </p>
         </div>
         <div className="page-head-actions">
           <Status
@@ -189,16 +177,9 @@ export function AgentPage({
               : "no strategy bound"}
           </small>
         </div>
-        <div className="agent-detail-proof">
-          <span className="eyebrow">{agentCopy.dataHash}</span>
-          <span className="mono">
-            {metadata?.dataHash ? truncateHex(metadata.dataHash, 8, 6) : "—"}
-          </span>
-          <Status
-            label={metadata ? copy.storage.available : "loading"}
-            tone={metadata ? "success" : "muted"}
-          />
-        </div>
+        {/* S1 (duplication map #2): the dataHash block here was the second
+            on-screen copy of the metadata root — the overview tab's
+            provenance list renders it once, with the copy button. */}
       </div>
 
       <nav className="detail-tabs">

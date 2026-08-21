@@ -1845,7 +1845,6 @@ function ChatPageInner(): ReactElement {
                                 {t.name}
                               </MonoLabel>
                               <span style={{ color: COLORS.textMuted }}>
-                                {" — "}
                                 {trimmedHint}
                               </span>
                             </button>
@@ -2114,12 +2113,15 @@ function ChatPageInner(): ReactElement {
                     color: COLORS.textDim,
                   }}
                 >
-                  <span>⛓ tx mined</span>
-                  {row.tokenId ? <span>agent #{row.tokenId}</span> : null}
-                  <span>{row.eventName}</span>
-                  {row.blockNumber ? (
-                    <span>block {row.blockNumber}</span>
-                  ) : null}
+                  {/* S1 (audit 06 FINDING-014): one localized string instead of
+                      glyph-joined label spans ("⛓ tx mined" · "agent #N" · …). */}
+                  <span>
+                    {chatCopy.txMined(
+                      row.tokenId ?? null,
+                      row.eventName ?? null,
+                      row.blockNumber ?? null,
+                    )}
+                  </span>
                   {row.txHash ? (
                     <a
                       href={explorerTxUrl(chainId, row.txHash)}
@@ -2260,7 +2262,6 @@ function ChatPageInner(): ReactElement {
                     {ttftMs !== null && ttftMs >= 0 ? (
                       <span style={dimXs}>TTFT {ttftMs}ms</span>
                     ) : null}
-                    <span style={dimXs}>{elapsed > 0 && `(${elapsed}s)`}</span>
                   </span>
                 </p>
               )}
