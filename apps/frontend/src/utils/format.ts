@@ -108,6 +108,15 @@ export function humanizeError(err: unknown): string {
     return "The receiving account is not available in the connected wallet. Add the receiver account to this wallet, or let the receiver accept the transfer from their own session.";
   }
 
+  // P4 handoff: an acceptance code that is not a signature or recovers to the
+  // wrong address — the only remedy is a fresh receiver signature.
+  if (
+    lower.includes("acceptance code is not a wallet signature") ||
+    lower.includes("does not recover to the receiver address")
+  ) {
+    return "This acceptance code was not signed by the receiver's wallet. Ask the receiver to sign the acceptance link again with the receiving account, then paste the new code.";
+  }
+
   if (
     lower.includes("insufficient_balance") ||
     lower.includes("compute account has no balance") ||

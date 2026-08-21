@@ -7,6 +7,7 @@ import {
   getBytes,
   parseEther,
   toBeHex,
+  zeroPadValue,
   type Provider,
   type TransactionReceipt,
   type TransactionResponse,
@@ -702,7 +703,10 @@ export async function runTransferSteps(deps: {
     targetPubkey: challenge.targetPubkey,
     to: deps.to,
     nft: deps.agentNft as `0x${string}`,
-    nonce: toBeHex(BigInt(challenge.accessProofNonce)) as `0x${string}`,
+    nonce: zeroPadValue(
+      toBeHex(BigInt(challenge.accessProofNonce)),
+      32,
+    ) as `0x${string}`,
     validUntil: BigInt(challenge.validUntil),
   };
   const accessDigest = accessMessageHash(accessInput, deps.eip712Domain);
@@ -869,7 +873,10 @@ export async function runOnChainTransferStep(deps: {
       targetPubkey: deps.finalResp.accessProof.targetPubkey,
       to: deps.to,
       nft: deps.agentNft as `0x${string}`,
-      nonce: toBeHex(BigInt(deps.finalResp.accessProof.nonce)) as `0x${string}`,
+      nonce: zeroPadValue(
+        toBeHex(BigInt(deps.finalResp.accessProof.nonce)),
+        32,
+      ) as `0x${string}`,
       validUntil: BigInt(deps.finalResp.accessProof.validUntil),
     };
     const recoveredAddr = recoverAccessSigner(

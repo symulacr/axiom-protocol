@@ -1,6 +1,8 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
-import { Button, COLORS } from "./ui.js";
+import { Button } from "./axiom/Controls.js";
 import { humanizeError } from "../utils/format.js";
+import { useUiStore } from "../lib/uiStore.js";
+import { getCopy } from "../lib/copy.js";
 
 interface Props {
   children: ReactNode;
@@ -10,6 +12,51 @@ interface Props {
 interface State {
   hasError: boolean;
   error: Error | null;
+}
+
+/** P4: the fallback chrome routes through copy.ts (locale via useUiStore) and
+ *  the Controls kit — ErrorBoundary no longer imports the v1 ui.tsx kit. The
+ *  raw error sentence still flows through humanizeError (central, en — known
+ *  residual; error copy is the remaining untranslated surface). */
+function ErrorFallback({
+  error,
+  onRetry,
+}: {
+  error: Error | null;
+  onRetry: () => void;
+}) {
+  const { state } = useUiStore();
+  const copy = getCopy(state.settings.locale).errorBoundary;
+  const isNetworkError =
+    error?.name === "NetworkError" ||
+    error?.message.toLowerCase().includes("failed to fetch") ||
+    error?.message.toLowerCase().includes("load failed");
+  return (
+    <div className="ops-page cosign-panel" role="alert">
+      <div className="review-error">
+        <div>
+          <strong>
+            {isNetworkError ? copy.networkTitle : copy.genericTitle}
+          </strong>
+          <p>
+            {isNetworkError
+              ? copy.networkBody
+              : error
+                ? humanizeError(error)
+                : copy.networkBody}
+          </p>
+        </div>
+      </div>
+      <div className="review-handoff-actions">
+        <Button variant="secondary" onClick={onRetry}>
+          {copy.retry}
+        </Button>
+        <Button variant="ghost" onClick={() => window.location.reload()}>
+          {copy.reload}
+        </Button>
+      </div>
+    </div>
+  );
 }
 
 export class ErrorBoundary extends Component<Props, State> {
@@ -34,52 +81,11 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       if (this.props.fallback) return this.props.fallback;
 
-      const isNetworkError =
-        this.state.error?.name === "NetworkError" ||
-        this.state.error?.message.toLowerCase().includes("failed to fetch") ||
-        this.state.error?.message.toLowerCase().includes("load failed");
-
       return (
-        <div
-          role="alert"
-          style={{
-            padding: 24,
-            margin: 24,
-            border: `1px solid ${COLORS.dangerBorder}`,
-            borderRadius: "var(--radius-lg)",
-            background: COLORS.dangerBg,
-            color: COLORS.danger,
-            fontSize: "var(--text-sm)",
-          }}
-        >
-          <h2
-            style={{
-              fontSize: "var(--text-base)",
-              fontWeight: "var(--fw-semibold)",
-              margin: "0 0 8px",
-            }}
-          >
-            {isNetworkError ? "Connection problem" : "Something went wrong"}
-          </h2>
-          <p style={{ margin: "0 0 12px", lineHeight: "var(--lh-normal)" }}>
-            {isNetworkError
-              ? "Unable to load this section. Check your internet connection and try again."
-              : this.state.error
-                ? humanizeError(this.state.error)
-                : "An unexpected error occurred."}
-          </p>
-          <div style={{ display: "flex", gap: 8 }}>
-            <Button variant="secondary" onClick={this.resetErrorBoundary}>
-              Try again
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => window.location.reload()}
-            >
-              Reload page
-            </Button>
-          </div>
-        </div>
+        <ErrorFallback
+          error={this.state.error}
+          onRetry={this.resetErrorBoundary}
+        />
       );
     }
     return this.props.children;

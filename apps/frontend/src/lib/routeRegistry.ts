@@ -126,6 +126,14 @@ const ROUTES: RouteDefinition[] = [
   },
   { id: "settings", route: "settings", path: "/settings" },
   { id: "staking", route: "staking", path: "/staking" },
+  // P4 cross-wallet handoff receive path — public (no Axiom session; the
+  // acceptance signature is the only gate), deliberately NOT in the nav or
+  // the command palette: /transfer owns the one name for the destination.
+  {
+    id: "transfer-co-sign",
+    route: "transfer-co-sign",
+    path: "/transfer/co-sign",
+  },
 ];
 
 const PUBLIC_ALIASES: Record<string, Route> = {

@@ -1,5 +1,5 @@
 import type { Express, Request, Response } from "express";
-import { getBytes, hexlify, isAddress, toBeHex } from "ethers";
+import { getBytes, hexlify, isAddress, toBeHex, zeroPadValue } from "ethers";
 import { isHex, type Hex } from "viem";
 import { HTTP } from "@axiom/config";
 import { ZodError } from "zod";
@@ -215,8 +215,11 @@ export async function transferValidity(
     targetPubkey: targetPubkey64,
     to,
     nft,
-    nonce: toBeHex(
-      BigInt(ownershipProofNonce ?? accessProofNonce ?? 0),
+    // Canonical 32-byte nonce (see routers/agents.ts — minimal hex breaks
+    // wallet `bytes` typing when the top nibble is zero).
+    nonce: zeroPadValue(
+      toBeHex(BigInt(ownershipProofNonce ?? accessProofNonce ?? 0)),
+      32,
     ) as `0x${string}`,
     validUntil: defaultValidUntil,
   });
@@ -344,7 +347,8 @@ export async function signOwnership(
     targetPubkey,
     to,
     nft,
-    nonce: toBeHex(BigInt(nonce ?? 0)) as `0x${string}`,
+    // Canonical 32-byte nonce (see routers/agents.ts).
+    nonce: zeroPadValue(toBeHex(BigInt(nonce ?? 0)), 32) as `0x${string}`,
     validUntil,
   });
   return {

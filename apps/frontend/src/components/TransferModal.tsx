@@ -3,12 +3,11 @@ import {
   useId,
   useMemo,
   useState,
-  type CSSProperties,
-  type ChangeEvent,
   type FormEvent,
   type ReactElement,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 import { isAddress, toHex } from "viem";
 import { toast } from "sonner";
 import { useAccount } from "wagmi";
@@ -19,35 +18,25 @@ import {
   type TransferPhase,
   type TransferResponse,
 } from "../hooks/useTransfer.js";
-import {
-  COLORS,
-  Button,
-  Alert,
-  MonoLabel,
-  ErrorRef,
-  Input,
-  Textarea,
-  Modal,
-  Card,
-  Spinner,
-} from "./ui.js";
+import { Button, Field, Status } from "./axiom/Controls.js";
+import { AlertTriangle, Check, ShieldCheck, X } from "./axiom/icons.js";
+import { useModalDismiss } from "../hooks/useModalDismiss.js";
 import { humanizeError, truncateAddress } from "../utils/format.js";
 import { useUiStore } from "../lib/uiStore.js";
 import { getCopy } from "../lib/copy.js";
 
+/**
+ * P4: TransferModal migrated off the v1 ui.tsx kit onto the Controls kit and
+ * the shared overlay language — the sheet is the same graphite
+ * operation-review layer as OperationReviewSheet (theme-invariant, C-14
+ * dismiss trio via useModalDismiss). Form semantics are unchanged; the title
+ * reads copy.flowUi.transferAgentTitle ("Transfer agent #N" — the "iNFT"
+ * wording is gone). Remaining chrome stays English per the documented
+ * flow-body i18n deferral (chat-path exception; the co-sign step and the
+ * title localize through copy.ts).
+ */
+
 const RECEIVER_PUBKEY_HEX_LENGTH = 130;
-
-const monoFieldStyle: CSSProperties = {
-  boxSizing: "border-box",
-  fontFamily: "var(--font-mono)",
-  marginTop: 6,
-};
-
-const confirmTextStyle: CSSProperties = {
-  lineHeight: 1.6,
-  fontWeight: "var(--fw-light)",
-  marginBottom: 20,
-};
 
 const PHASE_LABELS: Record<TransferPhase, string> = {
   idle: "Ready",
@@ -62,14 +51,6 @@ const PHASE_RETRY: Partial<Record<TransferPhase, string>> = {
   signing: "Failed. Tap Edit to retry with a fresh nonce.",
   finalizing: "Failed. Tap Edit to retry with a fresh nonce.",
   confirming: "Failed. Tap Edit to retry with a fresh nonce.",
-};
-
-const proofCardStyle: CSSProperties = {
-  background: COLORS.bg,
-  padding: "12px 16px",
-  borderRadius: "var(--radius-lg)",
-  fontSize: "var(--text-xs)",
-  color: COLORS.textMuted,
 };
 
 function freshNonceHex(byteLength = 32): `0x${string}` {
@@ -94,55 +75,58 @@ function validatePubKey(value: string): string | null {
   return null;
 }
 
+/** Shared modal shell: the app's overlay layer (graphite, theme-invariant)
+ *  with the C-14 dismiss trio — replaces the v1 <dialog> from ui.tsx. */
+function ModalSheet({
+  title,
+  onClose,
+  children,
+}: {
+  title: string;
+  onClose: () => void;
+  children: ReactNode;
+}): ReactElement {
+  const titleId = useId();
+  useModalDismiss(onClose);
+  return createPortal(
+    <div
+      className="operation-review-layer"
+      role="presentation"
+      onMouseDown={onClose}
+    >
+      <section
+        className="operation-review-sheet transfer-modal-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <header className="operation-review-head">
+          <div>
+            <span className="eyebrow">TRANSFER</span>
+            <h2 id={titleId}>{title}</h2>
+          </div>
+          <button className="icon-button" onClick={onClose} aria-label="Close">
+            <X size={16} />
+          </button>
+        </header>
+        <div className="transfer-modal-body">{children}</div>
+      </section>
+    </div>,
+    document.body,
+  );
+}
+
 function PhaseIndicator({
   transferPhase,
 }: {
   transferPhase: TransferPhase;
 }): ReactElement {
   return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "var(--space-sm)",
-        fontSize: "var(--text-xs)",
-        color: COLORS.textMuted,
-      }}
-    >
-      <Spinner size={12} />
-      {PHASE_LABELS[transferPhase] ?? transferPhase}
-    </span>
-  );
-}
-
-function FieldLabel({
-  htmlFor,
-  children,
-  spacing = "lg",
-}: {
-  htmlFor: string;
-  children: ReactNode;
-  spacing?: "lg" | "sm";
-}): ReactElement {
-  return (
-    <label
-      htmlFor={htmlFor}
-      className={`block mt-${spacing} fw-medium text-sm text-primary`}
-    >
-      {children}
-    </label>
-  );
-}
-
-function FieldError({
-  children,
-}: {
-  children: ReactNode;
-}): ReactElement | null {
-  return children === null ? null : (
-    <Alert variant="error" style={{ marginTop: 4 }}>
-      {children}
-    </Alert>
+    <Status
+      label={PHASE_LABELS[transferPhase] ?? transferPhase}
+      tone={transferPhase === "idle" ? "muted" : "live"}
+    />
   );
 }
 
@@ -168,18 +152,18 @@ function TransferFormPhase({
 }: {
   formId: string;
   receiverAddress: string;
-  onAddressChange: (e: ChangeEvent<HTMLInputElement>) => void;
+  onAddressChange: (value: string) => void;
   addressError: string | null;
   receiverPubKey: string;
-  onPubKeyChange: (e: ChangeEvent<HTMLTextAreaElement>) => void;
+  onPubKeyChange: (value: string) => void;
   pubKeyError: string | null;
   accessProofNonce: `0x${string}`;
   oldDataEncryptionKey: string;
-  onOldDataKeyChange: (e: ChangeEvent<HTMLInputElement>) => void;
+  onOldDataKeyChange: (value: string) => void;
   oldDataUri: string;
-  onOldDataUriChange: (e: ChangeEvent<HTMLInputElement>) => void;
+  onOldDataUriChange: (value: string) => void;
   rekeyError: string | null;
-  mergedError: ReactElement | null;
+  mergedError: ReactNode;
   cancel: () => void;
   canSubmit: boolean;
   isLoading: boolean;
@@ -187,124 +171,86 @@ function TransferFormPhase({
 }): ReactElement {
   return (
     <form onSubmit={onSubmit}>
-      <p className="text-muted text-sm" style={confirmTextStyle}>
+      <p className="transfer-modal-lede">
         You'll sign once to authorize, then confirm the on-chain transfer.
       </p>
 
-      <FieldLabel htmlFor={`${formId}-to`}>Receiver address</FieldLabel>
-      <Input
+      <Field
         id={`${formId}-to`}
+        label="Receiver address"
         value={receiverAddress}
         onChange={onAddressChange}
-        placeholder="0x\u2026"
-        autoComplete="off"
-        spellCheck={false}
+        placeholder="0x…"
         maxLength={42}
-        className="w-full"
-        style={monoFieldStyle}
+        mono
         required
+        error={addressError ?? undefined}
       />
-      <FieldError>{addressError}</FieldError>
 
-      <FieldLabel htmlFor={`${formId}-pubkey`} spacing="sm">
-        Receiver public key
-      </FieldLabel>
-      <Textarea
+      <Field
         id={`${formId}-pubkey`}
-        name="receiverPubKey64"
+        label="Receiver public key"
         value={receiverPubKey}
         onChange={onPubKeyChange}
-        rows={3}
-        spellCheck={false}
+        placeholder="0x…  (128 hex chars)"
         maxLength={RECEIVER_PUBKEY_HEX_LENGTH}
-        placeholder="0x\u2026  (128 hex chars)"
-        className="w-full"
-        style={monoFieldStyle}
+        multiline
+        rows={3}
+        mono
         required
+        error={pubKeyError ?? undefined}
+        hint="128 hex chars, no 0x04 prefix. Get it from the receiver's wallet 'Export Public Key'."
       />
-      <p
-        style={{
-          fontSize: "var(--text-xs)",
-          color: COLORS.textDim,
-          margin: "4px 0 0",
-        }}
-      >
-        128 hex chars, no 0x04 prefix. Get it from the receiver's wallet 'Export
-        Public Key'.
-      </p>
-      <FieldError>{pubKeyError}</FieldError>
 
-      <FieldLabel htmlFor={`${formId}-nonce`} spacing="sm">
-        Access proof nonce
-      </FieldLabel>
-      <Input
+      <Field
         id={`${formId}-nonce`}
+        label="Access proof nonce"
         value={accessProofNonce}
         readOnly
-        className="w-full"
-        style={{ ...monoFieldStyle, color: COLORS.bronzeLight }}
+        mono
+        hint="Unique per transfer; generated automatically."
       />
-      <p
-        className="text-dim text-xs"
-        style={{ margin: "4px 0 0", fontWeight: "var(--fw-light)" }}
-      >
-        Unique per transfer; generated automatically.
-      </p>
 
-      <details className="mt-lg">
-        <summary className="cursor-pointer text-sm fw-medium text-muted">
-          Re-encrypt for receiver (optional)
-        </summary>
-        <p
-          className="text-dim text-xs"
-          style={{ margin: "8px 0", fontWeight: "var(--fw-light)" }}
-        >
+      <details className="transfer-modal-details">
+        <summary>Re-encrypt for receiver (optional)</summary>
+        <p className="transfer-modal-lede">
           Optional: AES key + storage URI so only the receiver can read the data
           after the transfer. Blank = sign-only.
         </p>
-        <FieldLabel htmlFor={`${formId}-oldkey`} spacing="sm">
-          Old data encryption key (base64)
-        </FieldLabel>
-        <Input
+        <Field
           id={`${formId}-oldkey`}
+          label="Old data encryption key (base64)"
           value={oldDataEncryptionKey}
           onChange={onOldDataKeyChange}
           placeholder="base64 32-byte AES key"
-          autoComplete="off"
-          spellCheck={false}
           maxLength={256}
-          className="w-full"
-          style={monoFieldStyle}
+          mono
         />
-        <FieldLabel htmlFor={`${formId}-olduri`} spacing="sm">
-          Old data URI (0x&hellip;)
-        </FieldLabel>
-        <Input
+        <Field
           id={`${formId}-olduri`}
+          label="Old data URI (0x…)"
           value={oldDataUri}
           onChange={onOldDataUriChange}
-          placeholder="0x\u2026 0G Storage root hash"
-          autoComplete="off"
-          spellCheck={false}
+          placeholder="0x… storage root hash"
           maxLength={128}
-          className="w-full"
-          style={monoFieldStyle}
+          mono
+          error={rekeyError ?? undefined}
         />
-        <FieldError>{rekeyError}</FieldError>
       </details>
 
       {mergedError}
 
-      <div className="flex justify-end" style={{ gap: 10, marginTop: 20 }}>
-        <Button variant="secondary" onClick={cancel} disabled={isLoading}>
+      <div className="review-actions">
+        <Button variant="ghost" onClick={cancel} disabled={isLoading}>
           Cancel
         </Button>
         <Button
-          variant="primary"
           type="submit"
           disabled={!canSubmit || rekeyError !== null}
+          busy={isLoading}
+          icon={<ShieldCheck size={15} />}
         >
-          {isLoading ? "Signing\u2026" : "Sign transfer authorization"}
+          {isLoading ? "Signing…" : "Sign transfer authorization"}
         </Button>
       </div>
     </form>
@@ -312,16 +258,14 @@ function TransferFormPhase({
 }
 
 function ConfirmTransferPhase({
-  formId,
   signature,
   mergedError,
   isLoading,
   onEdit,
   onConfirm,
 }: {
-  formId: string;
   signature: TransferResponse | null;
-  mergedError: ReactElement | null;
+  mergedError: ReactNode;
   isLoading: boolean;
   onEdit: () => void;
   onConfirm: () => Promise<void>;
@@ -333,113 +277,78 @@ function ConfirmTransferPhase({
         void onConfirm();
       }}
     >
-      <h2
-        id={`${formId}-title`}
-        className="mt-0 text-xl fw-bold"
-        style={{ color: COLORS.text, letterSpacing: "-0.02em" }}
-      >
-        Confirm Transfer
-      </h2>
-
-      <p className="text-muted text-sm" style={confirmTextStyle}>
+      <p className="transfer-modal-lede">
         Confirm — your wallet will ask for the final signature.
       </p>
 
       {signature !== null && signature.rekeyed === true && (
-        <Alert variant="success" style={{ marginTop: 12 }}>
-          <strong>Transfer authorized</strong> &mdash; the agent&rsquo;s data
-          was re-encrypted so only the new owner can read it.
-          {signature.newDataHash !== undefined && (
-            <details style={{ marginTop: 8 }}>
-              <summary className="cursor-pointer text-xs">
-                Proof details
-              </summary>
-              New data hash:{" "}
-              <MonoLabel
-                copyable
-                text={signature.newDataHash}
-                style={{ fontSize: "var(--text-xs)" }}
-              >
-                {signature.newDataHash}
-              </MonoLabel>
-              {signature.ownershipProof?.sealedKey !== undefined && (
-                <>
-                  <br />
-                  New sealed key:{" "}
-                  <MonoLabel
-                    copyable
-                    text={signature.ownershipProof.sealedKey}
-                    style={{ fontSize: "var(--text-xs)" }}
-                  >
-                    {signature.ownershipProof.sealedKey}
-                  </MonoLabel>
-                </>
-              )}
-            </details>
-          )}
-        </Alert>
+        <div className="review-proof">
+          <Check size={14} />
+          <span>
+            <strong>Transfer authorized</strong> — the agent's data was
+            re-encrypted so only the new owner can read it.
+            {signature.newDataHash !== undefined && (
+              <details>
+                <summary>Proof details</summary>
+                New metadata hash:{" "}
+                <span className="mono">{signature.newDataHash}</span>
+                {signature.ownershipProof?.sealedKey !== undefined && (
+                  <>
+                    {" "}
+                    · new sealed key:{" "}
+                    <span className="mono">
+                      {truncateAddress(
+                        signature.ownershipProof.sealedKey,
+                        10,
+                        6,
+                      )}
+                    </span>
+                  </>
+                )}
+              </details>
+            )}
+          </span>
+        </div>
       )}
 
       {signature !== null && (
-        <Card style={{ ...proofCardStyle, marginTop: 12 }}>
-          <strong style={{ color: COLORS.text }}>OwnershipProof</strong> (signed
-          by the Axiom oracle)
-          <br />
-          Signer:{" "}
-          <MonoLabel
-            copyable
-            text={signature.signer ?? ""}
-            style={{ fontSize: "var(--text-xs)" }}
-          >
-            {signature.signer ?? "\u2014"}
-          </MonoLabel>
+        <dl className="review-facts">
+          <div>
+            <dt>Ownership proof</dt>
+            <dd className="mono">{signature.signer ?? "—"}</dd>
+          </div>
           {signature.ownershipProof !== undefined && (
-            <>
-              <br />
-              Valid until:{" "}
-              <code
-                style={{
-                  color: COLORS.bronzeLight,
-                  fontSize: "var(--text-xs)",
-                }}
-              >
+            <div>
+              <dt>Valid until</dt>
+              <dd className="mono">
                 {new Date(
                   Number(signature.ownershipProof.validUntil) * 1000,
                 ).toISOString()}
-              </code>
-            </>
+              </dd>
+            </div>
           )}
-        </Card>
-      )}
-
-      {signature !== null && signature.accessSigner !== undefined && (
-        <Card style={{ ...proofCardStyle, marginTop: 8 }}>
-          <strong style={{ color: COLORS.text }}>AccessProof</strong>{" "}
-          (receiver-signed)
-          <br />
-          Recovered signer:{" "}
-          <MonoLabel
-            copyable
-            text={signature.accessSigner}
-            style={{ fontSize: "var(--text-xs)" }}
-          >
-            {signature.accessSigner}
-          </MonoLabel>
-        </Card>
+          {signature.accessSigner !== undefined && (
+            <div>
+              <dt>Access proof signer</dt>
+              <dd className="mono">{signature.accessSigner}</dd>
+            </div>
+          )}
+        </dl>
       )}
 
       {mergedError}
 
-      <div className="flex justify-end" style={{ gap: 10, marginTop: 20 }}>
-        <Button variant="secondary" onClick={onEdit} disabled={isLoading}>
+      <div className="review-actions">
+        <Button variant="ghost" onClick={onEdit} disabled={isLoading}>
           Edit
         </Button>
         <Button
-          variant="primary"
           type="submit"
           disabled={isLoading || signature === null}
+          busy={isLoading}
+          icon={<ShieldCheck size={15} />}
         >
-          {isLoading ? "Submitting\u2026" : "Confirm on-chain transfer"}
+          {isLoading ? "Submitting…" : "Confirm on-chain transfer"}
         </Button>
       </div>
     </form>
@@ -452,7 +361,6 @@ function ConfirmTransferPhase({
  *  blocked state is honest: when this wallet cannot expose the receiver
  *  account there is no retry, only the two real remedies. */
 function CoSignPhase({
-  formId,
   receiver,
   blocked,
   isLoading,
@@ -460,7 +368,6 @@ function CoSignPhase({
   onSign,
   onEdit,
 }: {
-  formId: string;
   receiver: `0x${string}`;
   blocked: boolean;
   isLoading: boolean;
@@ -482,45 +389,44 @@ function CoSignPhase({
         if (!blocked) void onSign();
       }}
     >
-      <h2
-        id={`${formId}-title`}
-        className="mt-0 text-xl fw-bold"
-        style={{ color: COLORS.text, letterSpacing: "-0.02em" }}
-      >
-        {copy.title}
-      </h2>
+      <div className="review-cosign">
+        <ShieldCheck size={14} />
+        <div>
+          <strong>{copy.title}</strong>
+          <p>{copy.body}</p>
+          <small>{copy.note}</small>
+        </div>
+      </div>
 
-      <p className="text-muted text-sm" style={confirmTextStyle}>
-        {copy.body}
-      </p>
-
-      <Card style={{ ...proofCardStyle, marginTop: 12 }}>
-        <strong style={{ color: COLORS.text }}>Receiver</strong>
-        <br />
-        <MonoLabel
-          copyable
-          text={receiver}
-          style={{ fontSize: "var(--text-xs)" }}
-        >
-          {receiver}
-        </MonoLabel>
-        <br />
-        <span style={{ fontSize: "var(--text-xs)" }}>{copy.note}</span>
-      </Card>
+      <dl className="review-facts">
+        <div>
+          <dt>Receiver</dt>
+          <dd className="mono">{receiver}</dd>
+        </div>
+      </dl>
 
       {blocked && (
-        <Alert variant="error" style={{ marginTop: 16 }}>
-          <strong>{copy.blockedTitle}.</strong> {copy.blockedBody}
-        </Alert>
+        <div className="review-error review-cosign-blocked" role="alert">
+          <AlertTriangle size={14} />
+          <div>
+            <strong>{copy.blockedTitle}</strong>
+            <p>{copy.blockedBody}</p>
+          </div>
+        </div>
       )}
 
-      <div className="flex justify-end" style={{ gap: 10, marginTop: 20 }}>
-        <Button variant="secondary" onClick={onEdit} disabled={isLoading}>
+      <div className="review-actions">
+        <Button variant="ghost" onClick={onEdit} disabled={isLoading}>
           Edit
         </Button>
         {!blocked && (
-          <Button variant="primary" type="submit" disabled={isLoading}>
-            {isLoading ? "Signing\u2026" : copy.action}
+          <Button
+            type="submit"
+            disabled={isLoading}
+            busy={isLoading}
+            icon={<ShieldCheck size={15} />}
+          >
+            {copy.action}
           </Button>
         )}
       </div>
@@ -549,7 +455,7 @@ export function TransferModal({
     transferPhase,
   } = useTransfer();
   const { state: uiState } = useUiStore();
-  const coSignCopy = getCopy(uiState.settings.locale).flowUi;
+  const flowCopy = getCopy(uiState.settings.locale).flowUi;
 
   const retryGuidance = useMemo(() => {
     if (!error) return null;
@@ -688,15 +594,7 @@ export function TransferModal({
     } catch (err) {
       setSubmitError(humanizeError(err));
     }
-  }, [
-    buildInput,
-    confirm,
-    handleTransferred,
-    setOpen,
-    signature,
-    tokenId,
-    receiverAddress,
-  ]);
+  }, [buildInput, confirm, handleTransferred, setOpen, signature]);
 
   const onEdit = useCallback((): void => {
     reset();
@@ -706,121 +604,104 @@ export function TransferModal({
     setAccessProofNonce(freshNonceHex(32) as `0x${string}`);
   }, [reset]);
 
-  const onAddressChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>): void => {
-      setReceiverAddress(event.target.value);
-    },
-    [],
-  );
-  const onPubKeyChange = useCallback(
-    (event: ChangeEvent<HTMLTextAreaElement>): void => {
-      setReceiverPubKey(event.target.value);
-    },
-    [],
-  );
-  const onOldDataKeyChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>): void => {
-      setOldDataEncryptionKey(event.target.value);
-    },
-    [],
-  );
-  const onOldDataUriChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>): void => {
-      setOldDataUri(event.target.value);
-    },
-    [],
-  );
+  const onAddressChange = useCallback((value: string): void => {
+    setReceiverAddress(value);
+  }, []);
+  const onPubKeyChange = useCallback((value: string): void => {
+    setReceiverPubKey(value);
+  }, []);
+  const onOldDataKeyChange = useCallback((value: string): void => {
+    setOldDataEncryptionKey(value);
+  }, []);
+  const onOldDataUriChange = useCallback((value: string): void => {
+    setOldDataUri(value);
+  }, []);
 
   const cancel = useCallback((): void => {
     setOpen(false);
   }, [setOpen]);
 
-  const errObj = error as { code?: string; requestId?: string } | null;
   const mergedError =
     submitError !== null ? (
-      <Alert variant="error" style={{ marginTop: 16 }}>
-        {submitError}
-      </Alert>
+      <div className="review-error" role="alert" style={{ marginTop: 12 }}>
+        <AlertTriangle size={14} />
+        <div>{submitError}</div>
+      </div>
     ) : error !== null ? (
-      <Alert variant="error" style={{ marginTop: 16 }}>
-        {humanizeError(error)}
-        {retryGuidance !== null && (
-          <>
-            <br />
-            <br />
-            {retryGuidance}
-          </>
-        )}
-        {errObj?.code !== undefined || errObj?.requestId !== undefined ? (
-          <ErrorRef code={errObj?.code} requestId={errObj?.requestId} />
-        ) : null}
-      </Alert>
+      <div className="review-error" role="alert" style={{ marginTop: 12 }}>
+        <AlertTriangle size={14} />
+        <div>
+          {humanizeError(error)}
+          {retryGuidance !== null && (
+            <>
+              <br />
+              {retryGuidance}
+            </>
+          )}
+        </div>
+      </div>
     ) : null;
 
-  return (
-    <>
-      <Modal
-        open={open}
-        onClose={cancel}
-        title={`Transfer iNFT #${tokenId.toString()}`}
-        style={{ viewTransitionName: "transfer-dialog" }}
-      >
-        <PhaseIndicator transferPhase={transferPhase} />
+  if (!open) return <></>;
 
-        {phase === "form" ? (
-          <TransferFormPhase
-            formId={formId}
-            receiverAddress={receiverAddress}
-            onAddressChange={onAddressChange}
-            addressError={addressError}
-            receiverPubKey={receiverPubKey}
-            onPubKeyChange={onPubKeyChange}
-            pubKeyError={pubKeyError}
-            accessProofNonce={accessProofNonce}
-            oldDataEncryptionKey={oldDataEncryptionKey}
-            onOldDataKeyChange={onOldDataKeyChange}
-            oldDataUri={oldDataUri}
-            onOldDataUriChange={onOldDataUriChange}
-            rekeyError={rekeyError}
-            mergedError={mergedError}
-            cancel={cancel}
-            canSubmit={canSubmit}
+  return (
+    <ModalSheet
+      title={flowCopy.transferAgentTitle(tokenId.toString())}
+      onClose={cancel}
+    >
+      <PhaseIndicator transferPhase={transferPhase} />
+
+      {phase === "form" ? (
+        <TransferFormPhase
+          formId={formId}
+          receiverAddress={receiverAddress}
+          onAddressChange={onAddressChange}
+          addressError={addressError}
+          receiverPubKey={receiverPubKey}
+          onPubKeyChange={onPubKeyChange}
+          pubKeyError={pubKeyError}
+          accessProofNonce={accessProofNonce}
+          oldDataEncryptionKey={oldDataEncryptionKey}
+          onOldDataKeyChange={onOldDataKeyChange}
+          oldDataUri={oldDataUri}
+          onOldDataUriChange={onOldDataUriChange}
+          rekeyError={rekeyError}
+          mergedError={mergedError}
+          cancel={cancel}
+          canSubmit={canSubmit}
+          isLoading={isLoading}
+          onSubmit={onSubmit}
+        />
+      ) : phase === "co-sign" && coSignReceiver !== null ? (
+        <>
+          <CoSignPhase
+            receiver={coSignReceiver}
+            blocked={coSignBlocked}
             isLoading={isLoading}
-            onSubmit={onSubmit}
-          />
-        ) : phase === "co-sign" && coSignReceiver !== null ? (
-          <>
-            <CoSignPhase
-              formId={formId}
-              receiver={coSignReceiver}
-              blocked={coSignBlocked}
-              isLoading={isLoading}
-              copy={{
-                title: coSignCopy.coSignTitle,
-                body: coSignCopy.coSignBody(truncateAddress(coSignReceiver)),
-                action: coSignCopy.coSignAction,
-                note: coSignCopy.coSignNote,
-                blockedTitle: coSignCopy.coSignBlockedTitle,
-                blockedBody: coSignCopy.coSignBlockedBody(
-                  truncateAddress(coSignReceiver),
-                ),
-              }}
-              onSign={onCoSign}
-              onEdit={onEdit}
-            />
-            {mergedError}
-          </>
-        ) : (
-          <ConfirmTransferPhase
-            formId={formId}
-            signature={signature}
-            mergedError={mergedError}
-            isLoading={isLoading}
+            copy={{
+              title: flowCopy.coSignTitle,
+              body: flowCopy.coSignBody(truncateAddress(coSignReceiver)),
+              action: flowCopy.coSignAction,
+              note: flowCopy.coSignNote,
+              blockedTitle: flowCopy.coSignBlockedTitle,
+              blockedBody: flowCopy.coSignBlockedBody(
+                truncateAddress(coSignReceiver),
+              ),
+            }}
+            onSign={onCoSign}
             onEdit={onEdit}
-            onConfirm={onConfirm}
           />
-        )}
-      </Modal>
-    </>
+          {mergedError}
+        </>
+      ) : (
+        <ConfirmTransferPhase
+          signature={signature}
+          mergedError={mergedError}
+          isLoading={isLoading}
+          onEdit={onEdit}
+          onConfirm={onConfirm}
+        />
+      )}
+    </ModalSheet>
   );
 }

@@ -292,7 +292,7 @@ export function AgentPage({
             )}
             <Button
               variant="secondary"
-              onClick={() => go("/storage?intent=inspect-root")}
+              onClick={() => go("/storage")}
               icon={<Database size={15} />}
             >
               {agentCopy.inspectStorageProof}

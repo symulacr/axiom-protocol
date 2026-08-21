@@ -3,6 +3,10 @@ import { COLORS } from "../components/ui.js";
 import { formatEther } from "viem";
 import { formatToolResult } from "@axiom/chat-runtime";
 import { APP_CHAIN } from "../config/wagmi.js";
+import { Button } from "../components/axiom/Controls.js";
+import { Check, ShieldCheck, Wallet } from "../components/axiom/icons.js";
+import { getCopy } from "../lib/copy.js";
+import { useUiStore } from "../lib/uiStore.js";
 
 type EncodePreview = {
   encodeOnly?: boolean;
@@ -38,6 +42,11 @@ function formatNativeValue(weiStr: string): string {
   }
 }
 
+/* Chat path (documented exception, C-07 residual): the EncodePreviewCard shows
+   the RAW contract payload — the v2 review sheets are the parsed-facts surface.
+   P4: it migrates to the Controls kit + icons (no `btn btn-primary`), its
+   chrome localizes via copy.chat.encode*, and the raw payload is labeled as a
+   developer view instead of masquerading as a parsed review. */
 export function EncodePreviewCard({
   content,
   toolName,
@@ -51,6 +60,8 @@ export function EncodePreviewCard({
     value?: bigint;
   }) => Promise<`0x${string}`>;
 }): ReactElement | null {
+  const { state } = useUiStore();
+  const chatCopy = getCopy(state.settings.locale).chat;
   const preview = parseEncodePreview(content);
   if (!preview) return null;
   const [signedHash, setSignedHash] = useState<string | null>(null);
@@ -91,7 +102,7 @@ export function EncodePreviewCard({
         }}
       >
         <strong style={{ color: COLORS.bronzeLight }}>
-          Submitted — awaiting confirmation
+          <Check size={13} /> {chatCopy.encodeSubmitted}
         </strong>
         <div
           style={{
@@ -120,12 +131,16 @@ export function EncodePreviewCard({
     >
       <div
         style={{
+          display: "flex",
+          gap: 6,
+          alignItems: "center",
           fontWeight: "var(--fw-semibold)",
           color: COLORS.text,
           marginBottom: 6,
         }}
       >
-        Sign this transaction
+        <ShieldCheck size={13} />
+        {chatCopy.encodeTitle}
       </div>
       {preview.to ? <div>to: {preview.to}</div> : null}
       {preview.value && preview.value !== "0" ? (
@@ -136,16 +151,17 @@ export function EncodePreviewCard({
         <div style={{ wordBreak: "break-all", marginTop: 4 }}>
           data: {preview.data.slice(0, 66)}
           {preview.data.length > 66 ? "…" : ""}
+          <div style={{ color: COLORS.textDim, marginTop: 2 }}>
+            {chatCopy.encodeRawData}
+          </div>
         </div>
       ) : null}
       {onSign && preview.to && !signedHash ? (
-        <button
-          className="btn btn-primary"
-          style={{ marginTop: 8 }}
-          onClick={handleSign}
-        >
-          Sign in wallet
-        </button>
+        <div style={{ marginTop: 8 }}>
+          <Button onClick={handleSign} icon={<Wallet size={14} />}>
+            {chatCopy.encodeSign}
+          </Button>
+        </div>
       ) : null}
     </div>
   );

@@ -6,12 +6,17 @@
     payment  → usePayment.payForAgent (exact ERC-20 approve when needed, then
                payForAgent) — the v2 2-boundary sheet: allowance review, then pay
     transfer → useTransfer.prepare (challenge) + confirm (EIP-712 sign +
-               ECIES-sealed finalize)
+               ECIES-sealed finalize); cross-party transfers pause for the
+               receiver co-sign — in this wallet, or via the P4 handoff link
+               when the receiver is on another device
     tick     → useOrchestratorTick.tickStream (WS token frames → live stage)
     deposit/withdraw → useVaultWrite (POST /v1/agents/:id/{deposit,withdraw}
                encode relay → wallet sendTransaction; native 0G value)
   The OperationReviewSheet is the single confirm surface; "Simulate reject /
   timeout" stays dev-only and maps onto the real recoverable-error paths.
+  P4: every flow-body string (field labels/hints, review rows, receipt
+  chrome, notices) routes through copy.ts — copy.flows[kind] for per-flow
+  text, copy.flowUi for shared chrome.
 */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAccount, useChainId, usePublicClient } from "wagmi";
@@ -32,7 +37,7 @@ import {
 import { Button, Field } from "../components/axiom/Controls.js";
 import { StatePill } from "../components/StatePill.js";
 import { OperationReviewSheet } from "../components/OperationReviewSheet.js";
-import { getCopy } from "../lib/copy.js";
+import { getCopy, interpolate } from "../lib/copy.js";
 import type {
   AppState,
   FlowKind,
@@ -57,6 +62,10 @@ import {
   RECEIPT_CONFIRM_TIMEOUT_MS,
   waitForReceiptWithTimeout,
 } from "../hooks/useReceiptReconcile.js";
+import {
+  decodeHandoffResult,
+  HANDOFF_RESULT_STORAGE_KEY,
+} from "../lib/transferHandoff.js";
 import {
   getAxiomAgentNftAddress,
   getAxiomPaymentProcessorAddress,
@@ -124,8 +133,8 @@ export function FlowPage({
   const selectedTokenId =
     requestedAgent ?? (draft.agent || agents[0]?.tokenId.toString() || "");
   const selectedAgentName = selectedTokenId
-    ? `Agent #${selectedTokenId}`
-    : "select an agent";
+    ? f.agentOption(selectedTokenId)
+    : f.agentSelectPlaceholder;
 
   // C-07: vault flows ride the same draft/review/receipt machine; the write
   // itself goes through the shared useVaultWrite encode relay (toasts off —
@@ -174,15 +183,15 @@ export function FlowPage({
 
   const intentCopy =
     intent === "fund"
-      ? "Agent selected. Review the exact allowance."
+      ? f.intentFund
       : intent === "proof"
-        ? "Proof mode selected. Check the recipient challenge."
+        ? f.intentProof
         : intent === "bounded"
-          ? "Bounded instruction selected. Streaming stays cancellable."
+          ? f.intentBounded
           : intent === "recovery"
-            ? "Recovering an existing receipt. No duplicate operation."
+            ? f.intentRecovery
             : intent === "receipt"
-              ? "Linked to an indexed receipt."
+              ? f.intentReceipt
               : null;
 
   const isReviewOpen = [
@@ -280,8 +289,17 @@ export function FlowPage({
   const [submitError, setSubmitError] = useState<FlowFieldError | null>(null);
   // F-01: true when the receiver co-sign was attempted but the wallet cannot
   // expose the receiver account — the sheet renders the honest blocker (no
-  // futile retry) instead of the "Sign as receiver" action.
+  // futile retry) plus the P4 handoff remedies (link + code paste).
   const [coSignBlocked, setCoSignBlocked] = useState(false);
+  // P4 handoff: pasted acceptance code, its apply error, and the applied
+  // state (acceptance verified → primary becomes "Submit transfer"). The
+  // receiver is kept locally — a successful apply clears the hook's pending
+  // co-sign, but the sheet must keep rendering the applied state until the
+  // sender submits or edits.
+  const [handoffCode, setHandoffCode] = useState("");
+  const [handoffError, setHandoffError] = useState<string | null>(null);
+  const [handoffApplied, setHandoffApplied] = useState(false);
+  const [handoffReceiver, setHandoffReceiver] = useState<string | null>(null);
 
   const buildTransferInput = () => ({
     tokenId: BigInt(selectedTokenId || "0"),
@@ -296,36 +314,27 @@ export function FlowPage({
       (kind === "payment" || isVaultFlow) &&
       (!Number.isFinite(Number(trimmed)) || Number(trimmed) <= 0)
     )
-      return { field: "value", message: "Enter an amount above zero." };
+      return { field: "value", message: f.errAmountPositive };
     // Withdraw is bounded by the live vault balance when the read is
     // available — the review sheet shows the resulting balance either way.
     if (kind === "withdraw" && vaultBalanceWei !== undefined) {
       try {
         if (parseUnits(trimmed, nativeDecimals) > vaultBalanceWei)
-          return {
-            field: "value",
-            message: "Amount exceeds the vault balance.",
-          };
+          return { field: "value", message: f.errExceedsVault };
       } catch {
-        return { field: "value", message: "Enter a valid amount." };
+        return { field: "value", message: f.errInvalidAmount };
       }
     }
     if (kind === "mint" && (trimmed.length < 2 || trimmed.length > 80))
-      return { field: "value", message: "Use 2–80 characters." };
+      return { field: "value", message: f.errNameLength };
     if (kind === "transfer" && !isAddress(trimmed))
-      return {
-        field: "value",
-        message: "Recipient must be a valid 0x address.",
-      };
+      return { field: "value", message: f.errRecipientAddress };
     if (kind === "transfer" && !/^0x[0-9a-fA-F]{128}$/.test(draft.extra.trim()))
-      return {
-        field: "extra",
-        message: "Recipient public key must be 64 bytes of hex (0x…).",
-      };
+      return { field: "extra", message: f.errRecipientKey };
     if (kind === "tick" && trimmed.length < 3)
-      return { field: "value", message: "Describe the instruction." };
+      return { field: "value", message: f.errInstruction };
     if (kind !== "mint" && !selectedTokenId)
-      return { field: "agent", message: "Select an agent first." };
+      return { field: "agent", message: f.errSelectAgent };
     return null;
   };
 
@@ -376,8 +385,12 @@ export function FlowPage({
     nonceRef.current = freshNonceHex();
     addReceipt({
       id: txHash,
-      kind: "Transfer proof",
-      detail: `agent #${selectedTokenId} → ${truncateAddress(draft.value.trim())}`,
+      // P4 naming contract: the receipt kind IS the destination's nav name.
+      kind: copy.flows.transfer.receiptKind,
+      detail: interpolate(copy.flows.transfer.detail, {
+        agent: selectedTokenId,
+        recipient: truncateAddress(draft.value.trim()),
+      }),
       hash: txHash,
       age: "now",
       state: "confirming",
@@ -387,7 +400,9 @@ export function FlowPage({
     confirmOnChain(txHash);
     dispatch({
       type: "notice",
-      notice: `Transfer submitted for agent #${selectedTokenId}. Proof receipt added.`,
+      notice: interpolate(copy.flows.transfer.notice, {
+        agent: selectedTokenId,
+      }),
     });
   };
 
@@ -409,8 +424,8 @@ export function FlowPage({
     } catch (err) {
       if (isReceiverAccountUnavailable(err)) {
         // Honest blocker — no retry can conjure the receiver account in this
-        // wallet; the sheet shows the two real remedies (add the account, or
-        // the receiver accepts from their own session), not a retry loop.
+        // wallet; the sheet shows the two real remedies AND the P4 handoff
+        // (the receiver can still accept from their own device).
         setCoSignBlocked(true);
         dispatch({
           type: "set-draft-phase",
@@ -420,6 +435,97 @@ export function FlowPage({
         });
         return;
       }
+      const message = humanizeError(err);
+      dispatch({
+        type: "set-draft-phase",
+        flow: kind,
+        phase: "recoverable-error",
+        error: message,
+      });
+      dispatch({ type: "notice", notice: message });
+    }
+  };
+
+  // P4 handoff: verify + apply a receiver-produced acceptance signature. The
+  // hook checks the signature recovers to the receiver address before the
+  // finalize call; on success the sheet's primary becomes "Submit transfer"
+  // (the sender's wallet stays the only on-chain submitter).
+  const applyHandoff = async (code: string, viaStorage = false) => {
+    if (kind !== "transfer" || isBusy) return;
+    setHandoffError(null);
+    dispatch({
+      type: "set-draft-phase",
+      flow: kind,
+      phase: "submitting",
+      error: null,
+    });
+    try {
+      await transfer.applyHandoffSignature(code.trim() as `0x${string}`);
+      setHandoffApplied(true);
+      dispatch({
+        type: "set-draft-phase",
+        flow: kind,
+        phase: "review",
+        error: null,
+      });
+      dispatch({
+        type: "notice",
+        notice: viaStorage ? f.handoffReceivedNotice : f.handoffAppliedNote,
+      });
+    } catch (err) {
+      // Bad code / wrong signer stays in the handoff panel (retryable by
+      // pasting a fresh code); anything else is a recoverable error.
+      dispatch({
+        type: "set-draft-phase",
+        flow: kind,
+        phase: "review",
+        error: null,
+      });
+      const message = humanizeError(err);
+      setHandoffError(message);
+    }
+  };
+  const applyHandoffRef = useRef(applyHandoff);
+  applyHandoffRef.current = applyHandoff;
+
+  // P4 handoff, same browser: the receiver page writes the acceptance to
+  // localStorage; the storage event delivers it here. The nonce match
+  // guarantees the result belongs to THIS paused challenge.
+  useEffect(() => {
+    if (kind !== "transfer" || transfer.coSignNonce === null || handoffApplied)
+      return;
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== HANDOFF_RESULT_STORAGE_KEY) return;
+      const result = decodeHandoffResult(event.newValue);
+      if (!result || result.nonce !== transfer.coSignNonce) return;
+      void applyHandoffRef.current(result.signature, true);
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [kind, transfer.coSignNonce, handoffApplied]);
+
+  const copyHandoffLink = () => {
+    const url = transfer.coSignHandoffUrl();
+    if (!url) return;
+    navigator.clipboard?.writeText(url);
+    dispatch({ type: "notice", notice: f.handoffLinkCopied });
+  };
+
+  // P4 handoff tail: the receiver acceptance is applied and verified — the
+  // sender's confirm() is the only remaining (wallet-gated) step.
+  const submitHandoffTransfer = async () => {
+    if (kind !== "transfer" || isBusy) return;
+    dispatch({
+      type: "set-draft-phase",
+      flow: kind,
+      phase: "submitting",
+      error: null,
+    });
+    try {
+      const txHash = await transfer.confirm(buildTransferInput());
+      setHandoffApplied(false);
+      completeTransfer(txHash);
+    } catch (err) {
       const message = humanizeError(err);
       dispatch({
         type: "set-draft-phase",
@@ -450,8 +556,11 @@ export function FlowPage({
         if (approveHash) {
           addReceipt({
             id: approveHash,
-            kind: "Allowance approval",
-            detail: `${draft.value.trim()} ${paymentSymbol} → exact allowance (boundary 1)`,
+            kind: f.allowanceKind,
+            detail: interpolate(f.allowanceDetail, {
+              amount: draft.value.trim(),
+              symbol: paymentSymbol,
+            }),
             hash: approveHash,
             age: "now",
             state: "confirming",
@@ -469,9 +578,7 @@ export function FlowPage({
         });
         dispatch({
           type: "notice",
-          notice: approveHash
-            ? "Exact allowance approved on-chain. Boundary 2: sign the payment."
-            : "Allowance already covers this amount — no approval transaction needed.",
+          notice: approveHash ? f.approveSentNotice : f.allowanceCoveredNotice,
         });
       } catch (err) {
         const message = humanizeError(err);
@@ -497,8 +604,8 @@ export function FlowPage({
         const txHash = await mint.chainMint(dataHash);
         addReceipt({
           id: txHash,
-          kind: "Oracle mint",
-          detail: `${draft.value.trim()} · oracle acknowledged`,
+          kind: flow.receiptKind,
+          detail: interpolate(flow.detail, { name: draft.value.trim() }),
           hash: txHash,
           age: "now",
           state: "confirming",
@@ -508,7 +615,7 @@ export function FlowPage({
         confirmOnChain(txHash);
         dispatch({
           type: "notice",
-          notice: `Mint submitted for ${draft.value.trim()}. Receipt added to the Transaction Center.`,
+          notice: interpolate(flow.notice, { name: draft.value.trim() }),
         });
       } else if (kind === "payment") {
         const result = await payment.payForAgent(
@@ -517,8 +624,11 @@ export function FlowPage({
         );
         addReceipt({
           id: result.txHash,
-          kind: "Payment",
-          detail: `${draft.value.trim()} → agent #${selectedTokenId}`,
+          kind: flow.receiptKind,
+          detail: interpolate(flow.detail, {
+            amount: draft.value.trim(),
+            agent: selectedTokenId,
+          }),
           hash: result.txHash,
           age: "now",
           state: "confirming",
@@ -528,7 +638,7 @@ export function FlowPage({
         confirmOnChain(result.txHash);
         dispatch({
           type: "notice",
-          notice: `Payment submitted for agent #${selectedTokenId}. Receipt added to the Transaction Center.`,
+          notice: interpolate(flow.notice, { agent: selectedTokenId }),
         });
       } else if (kind === "transfer") {
         const input = buildTransferInput();
@@ -536,7 +646,9 @@ export function FlowPage({
         if (prepared.status === "co-sign-required") {
           // F-01: cross-party transfer pauses after the challenge — the review
           // sheet stays open and renders the receiver co-sign step (the primary
-          // action becomes "Sign as receiver", driven by executeCoSign).
+          // action becomes "Sign as receiver", driven by executeCoSign; the
+          // P4 handoff panel covers a receiver on another device).
+          setHandoffReceiver(prepared.receiver);
           dispatch({
             type: "set-draft-phase",
             flow: kind,
@@ -555,10 +667,12 @@ export function FlowPage({
           throw new Error("Connect a wallet to submit this operation.");
         addReceipt({
           id: txHash,
-          kind: kind === "deposit" ? "Vault deposit" : "Vault withdraw",
-          detail: `${draft.value.trim()} ${nativeSymbol} ${
-            kind === "deposit" ? "into" : "from"
-          } agent #${selectedTokenId}`,
+          kind: flow.receiptKind,
+          detail: interpolate(flow.detail, {
+            amount: draft.value.trim(),
+            symbol: nativeSymbol,
+            agent: selectedTokenId,
+          }),
           hash: txHash,
           age: "now",
           state: "confirming",
@@ -568,9 +682,7 @@ export function FlowPage({
         confirmOnChain(txHash);
         dispatch({
           type: "notice",
-          notice: `${
-            kind === "deposit" ? "Deposit" : "Withdrawal"
-          } submitted for agent #${selectedTokenId}. Receipt added to the Transaction Center.`,
+          notice: interpolate(flow.notice, { agent: selectedTokenId }),
         });
       } else {
         const result = await tickHook.tickStream(
@@ -582,10 +694,15 @@ export function FlowPage({
           {},
         );
         const hash = result.execution?.txHash ?? result.storage.rootHash;
+        const outcome =
+          result.recommendation.action === "act" ? f.tickActed : f.tickHeld;
         addReceipt({
           id: hash,
-          kind: "Tick stream",
-          detail: `${result.recommendation.action} · ${result.recommendation.reason.slice(0, 48)}`,
+          kind: flow.receiptKind,
+          detail: interpolate(flow.detail, {
+            action: outcome,
+            reason: result.recommendation.reason.slice(0, 48),
+          }),
           hash,
           age: "now",
           state: "confirmed",
@@ -594,7 +711,10 @@ export function FlowPage({
         });
         dispatch({
           type: "notice",
-          notice: `Tick ${result.recommendation.action === "act" ? "acted" : "held"} for agent #${selectedTokenId}. Stream receipt indexed.`,
+          notice: interpolate(flow.notice, {
+            agent: selectedTokenId,
+            outcome,
+          }),
         });
       }
     } catch (err) {
@@ -612,9 +732,7 @@ export function FlowPage({
   const simulateFailure = (reason: "rejected" | "timeout") => {
     tickHook.cancelTick();
     const error =
-      reason === "timeout"
-        ? "Confirmation expired. Resume from review."
-        : "Signature rejected. Reviewed details are saved.";
+      reason === "timeout" ? f.simulateTimeoutError : f.simulateRejectedError;
     dispatch({
       type: "set-draft-phase",
       flow: kind,
@@ -629,13 +747,17 @@ export function FlowPage({
     tickHook.resetStream();
     setSubmitError(null);
     setCoSignBlocked(false);
+    setHandoffCode("");
+    setHandoffError(null);
+    setHandoffApplied(false);
+    setHandoffReceiver(null);
     transfer.reset();
     dispatch({ type: "clear-draft", flow: kind });
   };
 
   const copyReceipt = () => {
     if (draft.receiptId) navigator.clipboard?.writeText(draft.receiptId);
-    dispatch({ type: "notice", notice: "Receipt identifier copied locally." });
+    dispatch({ type: "notice", notice: f.receiptCopiedNotice });
   };
 
   // 02 FINDING-012: step labels live in copy.flows[kind].steps (localized,
@@ -655,28 +777,30 @@ export function FlowPage({
       : (receiptTx?.state ?? "confirming");
   const receiptHeading =
     receiptState === "confirmed"
-      ? "Receipt ready."
+      ? f.receiptHeadingConfirmed
       : receiptState === "reverted"
-        ? "Reverted on-chain."
+        ? f.receiptHeadingReverted
         : receiptState === "stale"
-          ? "Confirmation unknown."
-          : "Submitted — confirming…";
+          ? f.receiptHeadingStale
+          : f.receiptHeadingConfirming;
   const receiptOverlay =
     receiptState === "confirmed"
-      ? "Receipt indexed"
+      ? f.receiptOverlayConfirmed
       : receiptState === "reverted"
-        ? "Reverted"
+        ? f.receiptOverlayReverted
         : receiptState === "stale"
-          ? "Check explorer"
-          : "Confirming on-chain";
+          ? f.receiptOverlayStale
+          : f.receiptOverlayConfirming;
   const receiptBody =
     receiptState === "confirmed"
-      ? "Proof and event indexed in the Transaction Center."
+      ? f.receiptBodyConfirmed
       : receiptState === "reverted"
-        ? "Reverted on-chain — the Transaction Center row has recovery."
+        ? f.receiptBodyReverted
         : receiptState === "stale"
-          ? `No confirmation after ${Math.round(RECEIPT_CONFIRM_TIMEOUT_MS / 1000)}s — check the explorer; the row is marked Needs review.`
-          : "Submitted — awaiting on-chain confirmation.";
+          ? interpolate(f.receiptBodyStale, {
+              seconds: Math.round(RECEIPT_CONFIRM_TIMEOUT_MS / 1000),
+            })
+          : f.receiptBodyConfirming;
   const proofReady = (index: number) =>
     draft.phase === "receipt"
       ? index < 2 || receiptState === "confirmed"
@@ -710,17 +834,17 @@ export function FlowPage({
   const confirmationLabel =
     kind === "transfer"
       ? transferNeedsCoSign
-        ? "2 wallet confirmations (receiver signs, then you submit)"
-        : "1 wallet confirmation required"
+        ? f.confirmReceiverThenSubmit
+        : f.confirmOne
       : kind !== "payment"
         ? undefined
         : draft.phase === "payment-required"
-          ? "1 wallet confirmation required"
+          ? f.confirmOne
           : paymentApprovalNeeded === undefined
-            ? "Up to 2 wallet confirmations (checking allowance…)"
+            ? f.confirmChecking
             : paymentApprovalNeeded
-              ? "2 wallet confirmations required (approve, then pay)"
-              : "1 wallet confirmation required (allowance sufficient)";
+              ? f.confirmTwoApprovePay
+              : f.confirmOneAllowance;
 
   const agentOptions = useMemo(
     () => agents.map((agent) => agent.tokenId.toString()),
@@ -738,10 +862,10 @@ export function FlowPage({
           ? vaultBalanceWei + amount
           : vaultBalanceWei - amount;
       return {
-        dt: "Vault balance after",
+        dt: f.vaultBalanceAfter,
         dd:
           next < 0n
-            ? "exceeds balance"
+            ? f.exceedsBalance
             : `${formatTokenAmount(next, nativeDecimals)} ${nativeSymbol}`,
       };
     } catch {
@@ -754,6 +878,8 @@ export function FlowPage({
     kind,
     nativeDecimals,
     nativeSymbol,
+    f.vaultBalanceAfter,
+    f.exceedsBalance,
   ]);
 
   return (
@@ -777,7 +903,7 @@ export function FlowPage({
         <div className="flow-intent-banner">
           <ShieldCheck size={15} />
           <div>
-            <span className="eyebrow">PREFILLED · REVIEW REQUIRED</span>
+            <span className="eyebrow">{f.intentEyebrow}</span>
             <strong>{intentCopy}</strong>
           </div>
           <span className="mono">agent / {selectedTokenId || "—"}</span>
@@ -789,11 +915,9 @@ export function FlowPage({
           <div className="flow-stage-top">
             <span className="flow-symbol">{meta.icon}</span>
             <div>
-              <span className="eyebrow">EDIT · REVIEW · RECEIPT</span>
+              <span className="eyebrow">{f.stageEyebrow}</span>
               <h2>
-                {draft.phase === "receipt"
-                  ? receiptHeading
-                  : "Review before you act."}
+                {draft.phase === "receipt" ? receiptHeading : f.stageTitle}
               </h2>
             </div>
             <StatePill
@@ -805,17 +929,19 @@ export function FlowPage({
             />
           </div>
           <div className="flow-visual">
-            <img src={meta.media} alt={`${kind} operational artifact`} />
+            <img src={meta.media} alt={flow.title} />
             <div className="flow-visual-overlay">
               <span className="eyebrow">{meta.artifact}</span>
               <strong>
                 {draft.phase === "receipt"
                   ? receiptOverlay
                   : isReviewOpen
-                    ? "Review open"
-                    : "Details editable"}
+                    ? f.reviewOpenLabel
+                    : f.detailsEditable}
               </strong>
-              <span className="mono">chain {chainId} · live wallet</span>
+              <span className="mono">
+                {interpolate(f.chainLive, { chainId })}
+              </span>
             </div>
           </div>
 
@@ -824,11 +950,11 @@ export function FlowPage({
               <label
                 className={`field${submitError?.field === "agent" ? " field-error" : ""}`}
               >
-                <span className="field-label">Agent *</span>
+                <span className="field-label">{f.agentLabel} *</span>
                 <span className="field-control">
                   <select
                     className="axiom-field"
-                    aria-label="Target agent"
+                    aria-label={f.agentA11y}
                     value={selectedTokenId}
                     disabled={isReviewOpen}
                     onChange={(event) => {
@@ -844,11 +970,11 @@ export function FlowPage({
                     }}
                   >
                     {agentOptions.length === 0 && (
-                      <option value="">no agents — mint first</option>
+                      <option value="">{f.noAgentsOption}</option>
                     )}
                     {agentOptions.map((id) => (
                       <option key={id} value={id}>
-                        Agent #{id}
+                        {f.agentOption(id)}
                       </option>
                     ))}
                   </select>
@@ -858,15 +984,13 @@ export function FlowPage({
                     {submitError.message}
                   </span>
                 ) : (
-                  <span className="field-hint">
-                    The agent whose vault or record this operation targets.
-                  </span>
+                  <span className="field-hint">{f.agentHint}</span>
                 )}
               </label>
             )}
             {kind === "mint" && (
               <Field
-                label="Agent name"
+                label={flow.fieldLabel}
                 value={draft.value}
                 onChange={updateValue}
                 required
@@ -876,12 +1000,12 @@ export function FlowPage({
                     ? submitError.message
                     : undefined
                 }
-                hint="Metadata hash is derived and shown in review."
+                hint={flow.fieldHint}
               />
             )}
             {kind === "payment" && (
               <Field
-                label="Amount"
+                label={flow.fieldLabel}
                 value={draft.value}
                 onChange={updateValue}
                 required
@@ -891,15 +1015,15 @@ export function FlowPage({
                   submitError?.field === "value"
                     ? submitError.message
                     : Number(draft.value) <= 0
-                      ? "Enter an amount above zero."
+                      ? f.errAmountPositive
                       : undefined
                 }
-                hint="Exact allowance is shown in review."
+                hint={flow.fieldHint}
               />
             )}
             {isVaultFlow && (
               <Field
-                label="Amount"
+                label={flow.fieldLabel}
                 value={draft.value}
                 onChange={updateValue}
                 required
@@ -909,19 +1033,25 @@ export function FlowPage({
                   submitError?.field === "value"
                     ? submitError.message
                     : Number(draft.value) <= 0
-                      ? "Enter an amount above zero."
+                      ? f.errAmountPositive
                       : undefined
                 }
                 hint={
                   kind === "withdraw" && vaultBalanceWei !== undefined
-                    ? `In vault: ${formatTokenAmount(vaultBalanceWei, nativeDecimals)} ${nativeSymbol}. The resulting balance appears in review.`
-                    : "The resulting vault balance appears in review."
+                    ? interpolate(f.vaultedHint, {
+                        amount: formatTokenAmount(
+                          vaultBalanceWei,
+                          nativeDecimals,
+                        ),
+                        symbol: nativeSymbol,
+                      })
+                    : flow.fieldHint
                 }
               />
             )}
             {kind === "transfer" && (
               <Field
-                label="Recipient"
+                label={flow.fieldLabel}
                 value={draft.value}
                 onChange={updateValue}
                 required
@@ -931,12 +1061,12 @@ export function FlowPage({
                     ? submitError.message
                     : undefined
                 }
-                hint="Challenge and expiry appear in review."
+                hint={flow.fieldHint}
               />
             )}
             {kind === "transfer" && (
               <Field
-                label="Recipient public key"
+                label={f.transferKeyLabel}
                 value={draft.extra}
                 onChange={updateExtra}
                 required
@@ -946,12 +1076,12 @@ export function FlowPage({
                     ? submitError.message
                     : undefined
                 }
-                hint="64-byte hex (0x…) — the new owner's encryption key."
+                hint={f.transferKeyHint}
               />
             )}
             {kind === "tick" && (
               <Field
-                label="Instruction"
+                label={flow.fieldLabel}
                 value={draft.value}
                 onChange={updateValue}
                 required
@@ -961,7 +1091,7 @@ export function FlowPage({
                     ? submitError.message
                     : undefined
                 }
-                hint="Bounded and cancellable; streamed tokens appear below."
+                hint={flow.fieldHint}
               />
             )}
           </div>
@@ -969,7 +1099,7 @@ export function FlowPage({
           {kind === "tick" &&
             (tickHook.isStreaming || tickHook.streamedTokens) && (
               <div className="tick-stream" aria-live="polite">
-                <span className="eyebrow">STREAM / TOKENS</span>
+                <span className="eyebrow">{f.streamEyebrow}</span>
                 <pre className="mono">
                   {tickHook.streamedTokens || "…"}
                   {tickHook.isStreaming && (
@@ -987,7 +1117,7 @@ export function FlowPage({
                     onClick={tickHook.cancelTick}
                     icon={<X size={14} />}
                   >
-                    Cancel stream
+                    {f.cancelStream}
                   </Button>
                 )}
               </div>
@@ -1018,7 +1148,7 @@ export function FlowPage({
                   onClick={copyReceipt}
                   icon={<Copy size={14} />}
                 >
-                  Copy receipt
+                  {f.copyReceiptAction}
                 </Button>
                 <Button
                   variant="ghost"
@@ -1029,14 +1159,14 @@ export function FlowPage({
                   }
                   icon={<ReceiptText size={14} />}
                 >
-                  Open receipt
+                  {f.openReceiptAction}
                 </Button>
                 <Button
                   variant="ghost"
                   onClick={restart}
                   icon={<RotateCcw size={14} />}
                 >
-                  Start another
+                  {f.startAnotherAction}
                 </Button>
               </div>
             </div>
@@ -1047,7 +1177,7 @@ export function FlowPage({
                 onClick={openReview}
                 icon={<ArrowRight size={15} />}
               >
-                {isReviewOpen ? "Review open" : "Review operation"}
+                {isReviewOpen ? f.reviewOpenLabel : f.reviewAction}
               </Button>
               {DEV_TOOLS && (
                 <>
@@ -1057,7 +1187,7 @@ export function FlowPage({
                     disabled={isBusy}
                     icon={<AlertTriangle size={14} />}
                   >
-                    Simulate reject
+                    {f.simulateReject}
                   </Button>
                   <Button
                     variant="ghost"
@@ -1065,7 +1195,7 @@ export function FlowPage({
                     disabled={isBusy}
                     icon={<Timer size={14} />}
                   >
-                    Simulate timeout
+                    {f.simulateTimeout}
                   </Button>
                 </>
               )}
@@ -1075,19 +1205,7 @@ export function FlowPage({
 
         <aside className="flow-context panel">
           <span className="eyebrow">{f.evidenceBoundary}</span>
-          <h2>
-            {kind === "mint"
-              ? "Identity before ownership."
-              : kind === "payment"
-                ? "Allowance before value."
-                : kind === "transfer"
-                  ? "Challenge before finality."
-                  : kind === "deposit"
-                    ? "Review before value moves."
-                    : kind === "withdraw"
-                      ? "Balance before withdrawal."
-                      : "Stream before result."}
-          </h2>
+          <h2>{flow.contextTitle}</h2>
           <ol className="passive-proof-timeline">
             {proofSteps.map((step, index) => (
               <li key={step} className={proofReady(index) ? "is-ready" : ""}>
@@ -1104,79 +1222,104 @@ export function FlowPage({
             <div className="diagnostic-note">
               <CreditCard size={14} />
               <span>
-                Current allowance:{" "}
-                {formatUnits(BigInt(allowance), paymentToken?.decimals ?? 6)}{" "}
-                {paymentSymbol} (exact-amount approval only, never infinite).
+                {interpolate(f.allowanceNote, {
+                  amount: formatUnits(
+                    BigInt(allowance),
+                    paymentToken?.decimals ?? 6,
+                  ),
+                  symbol: paymentSymbol,
+                })}
               </span>
             </div>
           )}
           <div className="diagnostic-note">
             <ShieldCheck size={14} />
-            <span>
-              Live route: wallet signature and contract write happen only after
-              review.
-            </span>
+            <span>{f.liveRouteNote}</span>
           </div>
         </aside>
       </div>
 
-      {isReviewOpen && (
-        <OperationReviewSheet
-          kind={kind}
-          draft={draft}
-          agentName={
-            kind === "mint"
-              ? draft.value.trim() || "Axiom agent"
-              : selectedAgentName
-          }
-          busy={isBusy}
-          confirmationLabel={confirmationLabel}
-          approvalNeeded={paymentApprovalNeeded}
-          balanceFact={balanceFact}
-          paymentSymbol={paymentSymbol}
-          coSign={
+      {isReviewOpen &&
+        (() => {
+          // The co-sign surface stays alive while a cross-party transfer is
+          // paused (hook state) AND after a handoff apply succeeds (local
+          // state — the hook's pending is cleared but the sender still has to
+          // submit; the sheet must keep showing "Submit transfer", never revert
+          // to a fresh "Sign & execute" that would fetch a new challenge and
+          // orphan the applied acceptance).
+          const activeReceiver =
+            transfer.coSignReceiver ??
+            (handoffApplied ? (handoffReceiver as `0x${string}` | null) : null);
+          const coSignActive =
             kind === "transfer" &&
-            transfer.coSignReceiver !== null &&
-            transfer.coSignReceiver.toLowerCase() ===
-              draft.value.trim().toLowerCase()
-              ? {
-                  receiver: transfer.coSignReceiver,
-                  blocked: coSignBlocked,
-                  onSign: () => void executeCoSign(),
-                  title: f.coSignTitle,
-                  body: f.coSignBody(transfer.coSignReceiver),
-                  action: f.coSignAction,
-                  note: f.coSignNote,
-                  blockedTitle: f.coSignBlockedTitle,
-                  blockedBody: f.coSignBlockedBody(transfer.coSignReceiver),
+            activeReceiver !== null &&
+            activeReceiver.toLowerCase() === draft.value.trim().toLowerCase();
+          return (
+            <OperationReviewSheet
+              kind={kind}
+              draft={draft}
+              agentName={
+                kind === "mint"
+                  ? draft.value.trim() || "Axiom agent"
+                  : selectedAgentName
+              }
+              busy={isBusy}
+              confirmationLabel={confirmationLabel}
+              approvalNeeded={paymentApprovalNeeded}
+              balanceFact={balanceFact}
+              paymentSymbol={paymentSymbol}
+              coSign={
+                coSignActive
+                  ? {
+                      receiver: activeReceiver!,
+                      blocked: coSignBlocked && !handoffApplied,
+                      onSign: () => void executeCoSign(),
+                      handoff: {
+                        url: transfer.coSignHandoffUrl() ?? "",
+                        onCopyLink: copyHandoffLink,
+                        codeValue: handoffCode,
+                        onCodeChange: (value: string) => {
+                          setHandoffCode(value);
+                          setHandoffError(null);
+                        },
+                        onApplyCode: () => void applyHandoff(handoffCode),
+                        codeError: handoffError,
+                        applied: handoffApplied,
+                        onSubmit: () => void submitHandoffTransfer(),
+                      },
+                    }
+                  : undefined
+              }
+              onClose={() => {
+                // Closing the sheet abandons any paused receiver co-sign — a fresh
+                // review always starts a fresh challenge (nonces are single-use).
+                if (kind === "transfer") {
+                  setCoSignBlocked(false);
+                  setHandoffCode("");
+                  setHandoffError(null);
+                  setHandoffApplied(false);
+                  setHandoffReceiver(null);
+                  transfer.reset();
                 }
-              : undefined
-          }
-          onClose={() => {
-            // Closing the sheet abandons any paused receiver co-sign — a fresh
-            // review always starts a fresh challenge (nonces are single-use).
-            if (kind === "transfer") {
-              setCoSignBlocked(false);
-              transfer.reset();
-            }
-            dispatch({
-              type: "set-draft-phase",
-              flow: kind,
-              phase: "draft",
-              error: null,
-            });
-          }}
-          onRetry={() =>
-            dispatch({
-              type: "set-draft-phase",
-              flow: kind,
-              phase: kind === "payment" ? "approval-required" : "review",
-              error: null,
-            })
-          }
-          onExecute={() => void execute()}
-        />
-      )}
+                dispatch({
+                  type: "set-draft-phase",
+                  flow: kind,
+                  phase: "draft",
+                  error: null,
+                });
+              }}
+              onRetry={() =>
+                dispatch({
+                  type: "set-draft-phase",
+                  flow: kind,
+                  phase: kind === "payment" ? "approval-required" : "review",
+                  error: null,
+                })
+              }
+              onExecute={() => void execute()}
+            />
+          );
+        })()}
     </div>
   );
 }

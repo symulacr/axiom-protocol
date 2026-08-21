@@ -135,6 +135,27 @@
 .review-cosign-blocked div { display: grid; gap: .28rem; min-width: 0; }
 .review-cosign-blocked strong { color: #ffd2bd; font-size: .72rem; }
 .review-cosign-blocked p { margin: 0; overflow-wrap: anywhere; }
+/* P4 cross-wallet handoff panel (co-sign step): acceptance-link share + code
+   paste. Same surface language as the co-sign panels; the paste field reuses
+   the shared .field/.axiom-field kit — no new field vocabulary. */
+.review-handoff { display: grid; gap: .5rem; padding: .68rem; border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.03); font-size: .7rem; line-height: 1.4; }
+.review-handoff strong { color: var(--text, #e8dfd4); font-size: .72rem; }
+.review-handoff p { margin: 0; overflow-wrap: anywhere; color: var(--muted, #cfc4b5); }
+.review-handoff .field { display: grid; gap: .28rem; }
+.review-handoff .field input { width: 100%; box-sizing: border-box; }
+.review-handoff-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+/* P4 receiver page (/transfer/co-sign): rides the ops-page/panel/review-* kit;
+   only the standalone bad-link panel and the code block need their own geometry. */
+.cosign-panel { display: grid; gap: .8rem; max-width: 560px; margin: 2rem auto; padding: 1.1rem; }
+.cosign-panel .review-error { display: grid; gap: .28rem; }
+.cosign-code { margin: .45rem 0; padding: .55rem; overflow-wrap: anywhere; white-space: pre-wrap; color: var(--copper-bright, #e6aa78); background: rgba(10,9,8,.5); border: 1px solid rgba(210,139,82,.35); }
+/* P4 TransferModal on the Controls kit: form body inside the shared sheet. */
+.transfer-modal-body { display: grid; gap: .8rem; }
+.transfer-modal-body form { display: grid; gap: .7rem; }
+.transfer-modal-lede { margin: 0; color: var(--muted, #cfc4b5); font-size: .72rem; line-height: 1.5; }
+.transfer-modal-details { border: 1px solid rgba(255,255,255,.1); padding: .6rem .7rem; }
+.transfer-modal-details summary { cursor: pointer; color: var(--dim, #998d7d); font: 700 .64rem/1 var(--font-mono, monospace); letter-spacing: .06em; text-transform: uppercase; }
+.transfer-modal-details[open] { display: grid; gap: .6rem; }
 .review-actions { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; }
 .review-disclaimer { margin: 0; color: var(--dim, #998d7d); font-size: .62rem; line-height: 1.4; }
 .operation-receipt { display: grid; gap: .85rem; padding: .9rem; border: 1px solid rgba(166,207,98,.32); background: linear-gradient(115deg, rgba(166,207,98,.1), transparent); }

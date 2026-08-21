@@ -36,6 +36,40 @@ describe("Axiom copy pluralisation", () => {
         expect(valueOrFunction(value)).toBeTruthy();
       for (const value of Object.values(copy.transactions))
         expect(valueOrFunction(value)).toBeTruthy();
+      for (const value of Object.values(copy.errorBoundary))
+        expect(valueOrFunction(value)).toBeTruthy();
+    }
+  });
+
+  it("keeps the six flow bodies fully localized in every locale (P4)", () => {
+    // Flow-body i18n scope: every per-flow string (head, steps, receipt kind,
+    // review rows, field label/hint, receipt detail + notice templates) is
+    // present — no locale may fall back to another's text.
+    for (const locale of ["en", "fr", "de"] as const) {
+      const copy = getCopy(locale);
+      for (const flow of Object.values(copy.flows)) {
+        for (const value of Object.values(flow))
+          expect(valueOrFunction(value)).toBeTruthy();
+        expect(flow.steps.length).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("names receipts exactly like the destination (one name per destination, P4)", () => {
+    // Receipt kinds match the canonical nav labels — "Oracle mint"/"Transfer
+    // proof"/"Tick stream" style drift is now a hard failure.
+    for (const locale of ["en", "fr", "de"] as const) {
+      const copy = getCopy(locale);
+      for (const kind of [
+        "mint",
+        "payment",
+        "transfer",
+        "tick",
+        "deposit",
+        "withdraw",
+      ] as const) {
+        expect(copy.flows[kind].receiptKind).toBe(copy.nav[kind]);
+      }
     }
   });
 
@@ -132,8 +166,9 @@ describe("Axiom i18n contract (C-08/C-11/C-12)", () => {
   it("keeps raw protocol terms out of user-facing copy (02 FINDING-012/017/024)", () => {
     // Mechanism names live behind disclosures/drilldowns, never in copy.ts
     // strings. A term that must stay gets a translated label (e.g. dataHash →
-    // "Metadata hash"); it never survives as a raw identifier.
-    const forbidden = /PayForAgent|dataHash|EIP-712|calldata/i;
+    // "Metadata hash"); it never survives as a raw identifier. P4: "iNFT" is
+    // banned too — agents are "agents" everywhere user-facing.
+    const forbidden = /PayForAgent|dataHash|EIP-712|calldata|iNFT/i;
     for (const locale of ["en", "fr", "de"] as const) {
       const copy = getCopy(locale);
       for (const value of flatten(copy)) {

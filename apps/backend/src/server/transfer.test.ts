@@ -11,7 +11,7 @@ import { test, beforeAll, afterAll } from "bun:test";
 import assert from "node:assert/strict";
 import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { Wallet, getBytes, toBeHex } from "ethers";
+import { Wallet, getBytes, toBeHex, zeroPadValue } from "ethers";
 import { WebSocket } from "ws";
 
 import {
@@ -95,7 +95,7 @@ function signAccessProof(
       targetPubkey: challenge.targetPubkey as `0x${string}`,
       to: to as `0x${string}`,
       nft: MOCK_ADDRESSES.agentNft,
-      nonce: toBeHex(nonce) as `0x${string}`,
+      nonce: zeroPadValue(toBeHex(nonce), 32) as `0x${string}`,
       validUntil,
     },
     domain,
@@ -254,13 +254,13 @@ test("POST /v1/agents/:id/transfer final returns full proof structs", async () =
   assert.equal(body.accessSigner.toLowerCase(), receiverAddress.toLowerCase());
   assert.equal(body.accessProof.dataHash, challenge.dataHash);
   assert.equal(body.accessProof.targetPubkey, challenge.targetPubkey);
-  assert.equal(body.accessProof.nonce, toBeHex(nonce));
+  assert.equal(body.accessProof.nonce, zeroPadValue(toBeHex(nonce), 32));
   assert.equal(body.accessProof.proof, accessSignature);
   assert.equal(body.accessProof.validUntil, validUntil.toString());
   assert.equal(body.ownershipProof.oracleType, 0);
   assert.equal(body.ownershipProof.dataHash, challenge.dataHash);
   assert.equal(body.ownershipProof.targetPubkey, challenge.targetPubkey);
-  assert.equal(body.ownershipProof.nonce, toBeHex(nonce));
+  assert.equal(body.ownershipProof.nonce, zeroPadValue(toBeHex(nonce), 32));
   assert.match(body.ownershipProof.proof, /^0x[0-9a-fA-F]+$/);
   assert.equal((body.ownershipProof.proof.length - 2) / 2, 65);
   assert.equal(body.ownershipProof.validUntil, validUntil.toString());
@@ -407,7 +407,7 @@ test("POST /v1/agents/:id/transfer challenge triggers full re-key via /v1/transf
     assert.equal(final.ownershipProof.sealedKey, challenge.sealedKey);
     assert.equal(final.ownershipProof.dataHash, challenge.dataHash);
     assert.equal(final.ownershipProof.targetPubkey, challenge.targetPubkey);
-    assert.equal(final.ownershipProof.nonce, toBeHex(nonce));
+    assert.equal(final.ownershipProof.nonce, zeroPadValue(toBeHex(nonce), 32));
     assert.match(final.ownershipProof.proof, /^0x[0-9a-fA-F]+$/);
     assert.equal((final.ownershipProof.proof.length - 2) / 2, 65);
   } finally {

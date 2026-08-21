@@ -88,7 +88,7 @@ export function getNextSafeActions(
     // No storage backend exists yet (StoragePage is a labeled demo) — an
     // honest "nothing indexed" marker instead of the old fixture hash.
     proofValue: "—",
-    path: "/storage?intent=inspect-root",
+    path: "/storage",
     priority: "normal",
     shortcut: "Alt 5",
   });

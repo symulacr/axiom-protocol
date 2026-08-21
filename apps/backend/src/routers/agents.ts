@@ -401,7 +401,15 @@ export function registerAgentRoutes(
             id,
           );
           if (!sealedKeyOrDefault) return;
-          const nonceHex = ethers.toBeHex(nonce) as `0x${string}`;
+          // Canonical 32-byte nonce hex: the minimal form can drop to an ODD
+          // number of hex chars (top nibble zero, ~1/16 of random nonces),
+          // which wallets reject as an invalid `bytes` typed-data value.
+          // Padding once here keeps the oracle signature, the receiver's
+          // EIP-712 digest and the on-chain bytes identical (P4 live find).
+          const nonceHex = ethers.zeroPadValue(
+            ethers.toBeHex(nonce),
+            32,
+          ) as `0x${string}`;
           const tee = await requestOwnershipSignature(oracle, {
             dataHash,
             sealedKey: sealedKeyOrDefault,
@@ -458,7 +466,10 @@ export function registerAgentRoutes(
           return;
         }
 
-        const nonceHex = ethers.toBeHex(nonce) as `0x${string}`;
+        const nonceHex = ethers.zeroPadValue(
+          ethers.toBeHex(nonce),
+          32,
+        ) as `0x${string}`;
         const accessInput = {
           dataHash: proofDataHash,
           targetPubkey: proofTargetPubkey,

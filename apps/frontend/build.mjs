@@ -46,6 +46,12 @@ if (!build.success) {
 	process.exit(1);
 }
 
+// P4 og-image: regenerate the v2-styled og-1200.jpg (1200×630 JPEG) with the
+// repo's headless chromium before public/ is copied into dist/. Optional —
+// when no chromium is available the script keeps the committed JPEG and the
+// build stays green.
+await Bun.$`bun ${join(frontendDir, "scripts", "generate-og.mjs")}`.quiet();
+
 // Copy public/ static assets (brand images, og-1200.jpg).
 await mkdir(dist, { recursive: true });
 await cp(join(frontendDir, "public"), dist, { recursive: true });

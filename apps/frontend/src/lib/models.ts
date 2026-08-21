@@ -23,6 +23,7 @@ export type Route =
   | "storage"
   | "settings"
   | "staking"
+  | "transfer-co-sign"
   | "mint"
   | "payment"
   | "transfer"

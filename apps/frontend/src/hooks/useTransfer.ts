@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { useAccount, useChainId, useSignTypedData } from "wagmi";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { type Hex, toHex } from "viem";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { type Hex, recoverTypedDataAddress, toHex } from "viem";
 import type { Connector } from "wagmi";
 
 import { getAxiomAgentNftAddress } from "../abi/addresses.js";
@@ -17,6 +17,12 @@ import {
   LONG_TIMEOUT,
 } from "../utils/apiFetch.js";
 import { useGenericWrite } from "./useGenericWrite.js";
+import {
+  ACCEPTANCE_CODE_SHAPE,
+  encodeHandoffPayload,
+  handoffUrl,
+  type AccessProofMessage,
+} from "../lib/transferHandoff.js";
 import type {
   TransferInput,
   TransferResponse,
@@ -55,6 +61,25 @@ export function isReceiverAccountUnavailable(
   );
 }
 
+/** P4 handoff: an acceptance code that is not a signature at all, or one that
+ *  recovers to a different address than the receiver. Both mean "ask the
+ *  receiver to sign the link again" — never submit a mismatched proof. */
+export class HandoffSignatureInvalidError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "HandoffSignatureInvalidError";
+  }
+}
+
+export function isHandoffSignatureInvalid(
+  err: unknown,
+): err is HandoffSignatureInvalidError {
+  return (
+    err instanceof HandoffSignatureInvalidError ||
+    (err instanceof Error && err.name === "HandoffSignatureInvalidError")
+  );
+}
+
 type Eip1193Provider = {
   request: (args: {
     method: string;
@@ -90,6 +115,16 @@ type UseTransferResult = {
   /** Set when prepare() paused for a cross-party transfer: the receiver
    *  address that must co-sign before confirm() can run. */
   coSignReceiver: `0x${string}` | null;
+  /** Canonical-hex nonce of the paused challenge — lets callers match
+   *  receiver-produced results (localStorage cross-tab) to THIS challenge
+   *  before applying (P4 handoff). */
+  coSignNonce: `0x${string}` | null;
+  /** URL the receiver opens on their own device to sign the acceptance. */
+  coSignHandoffUrl: () => string | null;
+  /** Verify + apply a receiver-produced acceptance signature (P4 handoff). */
+  applyHandoffSignature: (
+    signature: `0x${string}`,
+  ) => Promise<TransferResponse>;
   reset: () => void;
   transferPhase: TransferPhase;
 };
@@ -254,39 +289,75 @@ export function useTransfer(): UseTransferResult {
     },
   });
 
-  const finalizeMutation = useMutation<
-    TransferResponse,
-    Error,
-    {
+  // Finalize logic lives in finalizePrepared below (shared by the sign path
+  // and the P4 handoff-apply path — both exchange a receiver signature for
+  // the final proof structs; only the signature's origin differs).
+
+  /** Canonical AccessProof message for a paused/active challenge — the one
+   *  structure the wallet signs, the sender validates handoff codes against
+   *  and the backend verifier hashes (P4: shared by sign + handoff paths). */
+  const buildAccessProofMessage = useCallback(
+    (
+      input: TransferInput,
+      challenge: TransferChallenge,
+    ): AccessProofMessage => {
+      const nonce = BigInt(challenge.accessProofNonce);
+      const validUntil = BigInt(challenge.validUntil);
+      return {
+        dataHash: challenge.dataHash,
+        targetPubkey: challenge.targetPubkey,
+        to: input.to,
+        nft: getAxiomAgentNftAddress(chainId),
+        // Canonical 32-byte hex — the challenge echoes the nonce as a DECIMAL
+        // string, but the backend/contract hash ethers.toBeHex(nonce); the
+        // minimal form can drop to an ODD number of hex chars (top nibble 0,
+        // ~1/16 of random nonces) which wallets reject as an invalid `bytes`
+        // value. Padding to 32 bytes keeps wallet, backend and contract
+        // hashing the identical bytes (F-01 encoding half + P4 live find).
+        nonce: toHex(nonce, { size: 32 }),
+        validUntil,
+      };
+    },
+    [chainId],
+  );
+
+  /** Exchanges a receiver signature for the final proof structs (no wallet
+   *  action) — shared by the in-wallet co-sign and the P4 handoff apply. */
+  const finalizePrepared = useCallback(
+    async ({
+      input,
+      challenge,
+      accessSignature,
+    }: {
       input: TransferInput;
       challenge: TransferChallenge;
       accessSignature: `0x${string}`;
-    }
-  >({
-    retry: false,
-    mutationFn: async ({ input, challenge, accessSignature }) => {
-      const path = agentTransferPath(input.tokenId);
+    }): Promise<TransferResponse> => {
+      setTransferPhase("finalizing");
       const nonce = BigInt(challenge.accessProofNonce);
       const validUntil = BigInt(challenge.validUntil);
       // iTransfer validates proof dataHash against the OLD on-chain hash; re-key uploads a new blob, sealedKey delivers the new AES key — never put newDataHash into the proofs
       const proofDataHash = challenge.dataHash;
-      let proof = await apiFetch<TransferResponse>(path, {
-        method: "POST",
-        timeout: LONG_TIMEOUT,
-        body: JSON.stringify({
-          to: input.to,
-          receiverPubKey64: input.receiverPubKey64,
-          dataHash: proofDataHash,
-          sealedKey: challenge.sealedKey,
-          accessProof: {
+      let proof = await apiFetch<TransferResponse>(
+        agentTransferPath(input.tokenId),
+        {
+          method: "POST",
+          timeout: LONG_TIMEOUT,
+          body: JSON.stringify({
+            to: input.to,
+            receiverPubKey64: input.receiverPubKey64,
             dataHash: proofDataHash,
-            targetPubkey: challenge.targetPubkey,
-            nonce: nonce.toString(),
-            proof: accessSignature,
-            validUntil: validUntil.toString(),
-          },
-        }),
-      });
+            sealedKey: challenge.sealedKey,
+            accessProof: {
+              dataHash: proofDataHash,
+              targetPubkey: challenge.targetPubkey,
+              nonce: nonce.toString(),
+              proof: accessSignature,
+              validUntil: validUntil.toString(),
+            },
+          }),
+        },
+      );
       if (!proof.ok || proof.stage !== "final") {
         throw new Error(
           'backend did not return final proof structs. Finalization failed — transaction was NOT submitted. Click "Prepare Transfer" to restart.',
@@ -305,9 +376,13 @@ export function useTransfer(): UseTransferResult {
           newDataUri: challenge.newDataUri,
         };
       }
+      signatureRef.current = proof;
+      setSignature(proof);
+      setTransferPhase("idle");
       return proof;
     },
-  });
+    [],
+  );
 
   /** Signs the receiver-bound AccessProof with `signerAccount`, then exchanges
    *  it for the final proof structs. Shared by the self-transfer one-step path
@@ -326,44 +401,21 @@ export function useTransfer(): UseTransferResult {
       signerConnector?: Connector;
     }): Promise<TransferResponse> => {
       setTransferPhase("signing");
-      const nonce = BigInt(challenge.accessProofNonce);
-      const validUntil = BigInt(challenge.validUntil);
-      const proofDataHash = challenge.dataHash;
+      const message = buildAccessProofMessage(input, challenge);
       const accessSignature = await signTypedDataAsync({
         domain,
         types: ACCESS_PROOF_TYPES,
         primaryType: "AccessProof",
-        message: {
-          dataHash: proofDataHash,
-          targetPubkey: challenge.targetPubkey,
-          to: input.to,
-          nft: getAxiomAgentNftAddress(chainId),
-          // Canonical hex — the challenge echoes the nonce as a DECIMAL string,
-          // but the backend/contract hash ethers.toBeHex(nonce); signing the
-          // decimal echo encodes a different digest and the recovered signer
-          // never matches (the encoding half of F-01).
-          nonce: toHex(nonce),
-          validUntil,
-        },
+        message,
         account: signerAccount,
         // Passing the connector forces a fresh getAccounts() probe (the cached
         // connection can lag a wallet-side account switch), so a just-exposed
         // receiver account is accepted immediately.
         ...(signerConnector ? { connector: signerConnector } : {}),
       });
-
-      setTransferPhase("finalizing");
-      const proof = await finalizeMutation.mutateAsync({
-        input,
-        challenge,
-        accessSignature,
-      });
-      signatureRef.current = proof;
-      setSignature(proof);
-      setTransferPhase("idle");
-      return proof;
+      return finalizePrepared({ input, challenge, accessSignature });
     },
-    [chainId, domain, signTypedDataAsync, finalizeMutation],
+    [domain, signTypedDataAsync, buildAccessProofMessage, finalizePrepared],
   );
 
   /** Asks the wallet to expose/switch to the receiver account (MetaMask:
@@ -499,6 +551,89 @@ export function useTransfer(): UseTransferResult {
     }
   }, [pendingCoSign, connector, requestReceiverExposure, signAndFinalize]);
 
+  /** P4 cross-wallet handoff: URL the receiver opens on their own device —
+   *  the paused challenge's typed data, base64url-encoded on the canonical
+   *  /transfer/co-sign receive path. Null unless a co-sign is pending. */
+  const coSignHandoffUrl = useCallback((): string | null => {
+    const pending = pendingCoSign;
+    if (!pending) return null;
+    const message = buildAccessProofMessage(pending.input, pending.challenge);
+    return handoffUrl(
+      encodeHandoffPayload({
+        v: 1,
+        typedData: {
+          domain,
+          primaryType: "AccessProof",
+          message,
+        },
+        meta: {
+          tokenId: pending.input.tokenId.toString(),
+          sender: from ?? ("" as `0x${string}`),
+          receiver: pending.input.to,
+          validUntil: pending.challenge.validUntil,
+        },
+      }),
+    );
+  }, [pendingCoSign, buildAccessProofMessage, domain, from]);
+
+  /** P4 handoff apply: accept a signature the receiver's wallet produced on
+   *  another device/browser. The signature is verified LOCALLY against the
+   *  paused challenge (recover → must equal the receiver address) before the
+   *  finalize call — a mismatched or damaged code never reaches the backend.
+   *  The sender still calls confirm() for the on-chain submission. */
+  const applyHandoffSignature = useCallback(
+    async (signature: `0x${string}`): Promise<TransferResponse> => {
+      const pending = pendingCoSign;
+      if (!pending) {
+        throw new Error("no transfer is waiting for a receiver co-sign");
+      }
+      if (!ACCEPTANCE_CODE_SHAPE.test(signature)) {
+        throw new HandoffSignatureInvalidError(
+          "This acceptance code is not a wallet signature.",
+        );
+      }
+      setPrepareError(null);
+      setIsPreparing(true);
+      try {
+        const message = buildAccessProofMessage(
+          pending.input,
+          pending.challenge,
+        );
+        const recovered = await recoverTypedDataAddress({
+          domain,
+          types: ACCESS_PROOF_TYPES,
+          primaryType: "AccessProof",
+          message,
+          signature,
+        });
+        if (recovered.toLowerCase() !== pending.input.to.toLowerCase()) {
+          throw new HandoffSignatureInvalidError(
+            `This acceptance signature does not recover to the receiver address (recovered ${recovered}).`,
+          );
+        }
+        const proof = await finalizePrepared({
+          input: pending.input,
+          challenge: pending.challenge,
+          accessSignature: signature,
+        });
+        setPendingCoSign(null);
+        return proof;
+      } catch (err) {
+        setTransferPhase("idle");
+        if (isHandoffSignatureInvalid(err)) {
+          setPrepareError(err);
+          throw err;
+        }
+        const wrapped = err instanceof Error ? err : new Error(String(err));
+        setPrepareError(wrapped);
+        throw wrapped;
+      } finally {
+        setIsPreparing(false);
+      }
+    },
+    [pendingCoSign, buildAccessProofMessage, domain, finalizePrepared],
+  );
+
   const confirm = useCallback(
     async (input: TransferInput): Promise<Hex> => {
       if (!from) {
@@ -565,6 +700,12 @@ export function useTransfer(): UseTransferResult {
     error: prepareError ?? challengeQuery.error ?? (writeError as Error | null),
     signature,
     coSignReceiver: pendingCoSign?.input.to ?? null,
+    coSignNonce: pendingCoSign
+      ? buildAccessProofMessage(pendingCoSign.input, pendingCoSign.challenge)
+          .nonce
+      : null,
+    coSignHandoffUrl,
+    applyHandoffSignature,
     reset,
     transferPhase,
   };

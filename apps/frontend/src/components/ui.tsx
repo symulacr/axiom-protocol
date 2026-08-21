@@ -446,30 +446,9 @@ export function ErrorRef({
   );
 }
 
-export function Skeleton({
-  width = "100%",
-  height = 20,
-  style,
-}: {
-  width?: string | number;
-  height?: string | number;
-  style?: CSSProperties;
-}): ReactElement {
-  return (
-    <div
-      role="status"
-      aria-label="Loading content"
-      data-axiom-skeleton=""
-      className="skeleton"
-      style={{
-        width,
-        height,
-        borderRadius: "var(--radius-sm)",
-        ...style,
-      }}
-    />
-  );
-}
+// P4 (audit §4 row 15): the generated-but-unused `Skeleton` export was dead
+// code — deleted. Loading states use `Spinner` (this kit) or the live-data
+// honest states on the v2 pages.
 
 export function PageHeader({
   title,

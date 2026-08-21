@@ -78,6 +78,9 @@ const StakingPage = lazy(() =>
 const FlowPage = lazy(() =>
   import("./pages/FlowPage.js").then((m) => ({ default: m.FlowPage })),
 );
+const CoSignPage = lazy(() =>
+  import("./pages/CoSignPage.js").then((m) => ({ default: m.CoSignPage })),
+);
 const PublicSeoPage = lazy(() =>
   import("./pages/PublicSeoPage.js").then((m) => ({
     default: m.PublicSeoPage,
@@ -483,14 +486,17 @@ export function App(): ReactElement {
   // /chat stays public (anonymous live chat; history keys to the wallet only
   // when a session exists) and /staking is a public status notice (03
   // FINDING-015 — gating an honest "not integrated" page sent anonymous
-  // users two disclosures deep into a dead end) — every other internal route
-  // is wallet-gated.
+  // users two disclosures deep into a dead end) — and /transfer/co-sign is
+  // the P4 public receiver path (the acceptance signature is the only gate;
+  // a receiver must NOT need an Axiom session to accept) — every other
+  // internal route is wallet-gated.
   const internal =
     !publicSeoSlug &&
     !isNotFound &&
     location.pathname !== "/" &&
     location.pathname !== "/chat" &&
-    location.pathname !== "/staking";
+    location.pathname !== "/staking" &&
+    location.pathname !== "/transfer/co-sign";
   const authenticated =
     state.session.status === "authenticated" && isSessionFresh(state.session);
 
@@ -524,6 +530,7 @@ export function App(): ReactElement {
             "/withdraw": copy.nav.withdraw,
             "/settings": copy.settings.pageTitle,
             "/staking": copy.landing.stakeTitle,
+            "/transfer/co-sign": copy.flowUi.receiveTitle,
           }[clean];
     if (name) document.title = `${name} — Axiom`;
   }, [location.pathname, locale, publicSeoSlug, isNotFound]);
@@ -572,6 +579,8 @@ export function App(): ReactElement {
                   onConnect={() => openWallet("wallet", "/app")}
                   onGuide={() => dispatch({ type: "guide" })}
                 />
+              ) : location.pathname === "/transfer/co-sign" ? (
+                <CoSignPage go={go} />
               ) : internal && !authenticated ? (
                 <LockedRoute
                   requested={path}

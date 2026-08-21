@@ -66,6 +66,11 @@ export function Field({
   suffix,
   required = false,
   maxLength = 180,
+  multiline = false,
+  rows = 3,
+  readOnly = false,
+  mono = false,
+  className,
 }: {
   id?: string;
   label: string;
@@ -77,27 +82,55 @@ export function Field({
   suffix?: string;
   required?: boolean;
   maxLength?: number;
+  /** Render a textarea instead of an input (TransferModal's pubkey field). */
+  multiline?: boolean;
+  rows?: number;
+  readOnly?: boolean;
+  /** Monospace value (addresses, keys, codes). */
+  mono?: boolean;
+  className?: string;
 }) {
   const fieldId =
     id || `field-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
   const messageId = `${fieldId}-message`;
   return (
-    <label className={`field ${error ? "field-error" : ""}`} htmlFor={fieldId}>
+    <label
+      className={`field ${error ? "field-error" : ""} ${className ?? ""}`.trim()}
+      htmlFor={fieldId}
+    >
       <span className="field-label">
         {label}
         {required ? <span aria-hidden="true"> *</span> : null}
       </span>
       <span className="field-control">
-        <input
-          id={fieldId}
-          value={value ?? ""}
-          onChange={(event) => onChange?.(event.target.value)}
-          placeholder={placeholder}
-          required={required}
-          maxLength={maxLength}
-          aria-invalid={Boolean(error)}
-          aria-describedby={error || hint ? messageId : undefined}
-        />
+        {multiline ? (
+          <textarea
+            id={fieldId}
+            rows={rows}
+            value={value ?? ""}
+            onChange={(event) => onChange?.(event.target.value)}
+            placeholder={placeholder}
+            required={required}
+            maxLength={maxLength}
+            readOnly={readOnly}
+            aria-invalid={Boolean(error)}
+            aria-describedby={error || hint ? messageId : undefined}
+            className={mono ? "mono" : undefined}
+          />
+        ) : (
+          <input
+            id={fieldId}
+            value={value ?? ""}
+            onChange={(event) => onChange?.(event.target.value)}
+            placeholder={placeholder}
+            required={required}
+            maxLength={maxLength}
+            readOnly={readOnly}
+            aria-invalid={Boolean(error)}
+            aria-describedby={error || hint ? messageId : undefined}
+            className={mono ? "mono" : undefined}
+          />
+        )}
         {suffix && <em aria-hidden="true">{suffix}</em>}
       </span>
       {error ? (

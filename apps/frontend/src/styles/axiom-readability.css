@@ -841,3 +841,8 @@ html[data-theme="light"] .filters-popover {
   transition: border-color 0.16s var(--ease);
 }
 .chat-inline-select:hover { border-color: var(--copper); }
+
+/* P4 Controls kit: multiline Field variant (TransferModal pubkey) — the
+   .field-control wrapper owns the border; the textarea only needs geometry. */
+.field-control textarea { width: 100%; resize: vertical; font: inherit; color: var(--text); background: transparent; border: 0; outline: 0; padding: 12px; min-width: 0; }
+.field-control textarea:focus-visible { outline: none; }

@@ -48,7 +48,9 @@ test("useTransfer confirm survives stale render closures (ref mirror)", () => {
 test("useTransfer signs the AccessProof nonce as canonical hex (backend hashes toBeHex)", () => {
   // The challenge echoes the nonce as a DECIMAL string; signing that string
   // encodes a different digest and the recovered signer never matches (F-01
-  // encoding half).
-  assert.match(src, /nonce: toHex\(nonce\)/);
+  // encoding half). P4: the hex is padded to 32 bytes — the minimal form can
+  // be ODD-length (top nibble zero, ~1/16 of random nonces) and wallets
+  // reject odd-length `bytes` values.
+  assert.match(src, /nonce: toHex\(nonce, \{ size: 32 \}\)/);
   assert.doesNotMatch(src, /nonce: \(challenge\.accessProofNonce \?\?/);
 });

@@ -605,9 +605,16 @@ export function createSkillRouters(config: ServerConfig): Router {
       "OpenCorporates company search",
       (parsed) => {
         const q = encodeURIComponent(parsed.query);
+        // Optional paid token (P4): passed upstream only when present; without
+        // it the public rate-limited endpoint answers (or the shared 502
+        // surfaces, unchanged). Read per request so deploys can rotate keys.
+        const token = process.env.OPENCORPORATES_API_TOKEN?.trim();
+        const tokenParam = token
+          ? `&api_token=${encodeURIComponent(token)}`
+          : "";
         return cachedFetch(
-          `ocorp:${parsed.jurisdiction}:${parsed.query}`,
-          `https://api.opencorporates.com/v0.4/companies/search?q=${q}&jurisdiction_code=${parsed.jurisdiction}`,
+          `ocorp:${parsed.jurisdiction}:${parsed.query}:${token ? "auth" : "anon"}`,
+          `https://api.opencorporates.com/v0.4/companies/search?q=${q}&jurisdiction_code=${parsed.jurisdiction}${tokenParam}`,
         );
       },
     ),
@@ -642,9 +649,14 @@ export function createSkillRouters(config: ServerConfig): Router {
         const q = encodeURIComponent(parsed.query);
         const type = parsed.type ?? "o";
         const endpoint = type === "o" ? "search" : "recap";
+        // Optional API token (P4): CourtListener v3 wants it as an
+        // Authorization header; anonymous calls keep today's behavior (shared
+        // readable 502 on throttling, unchanged). Read per request.
+        const token = process.env.COURTLISTENER_API_TOKEN?.trim();
         return cachedFetch(
-          `court:${type}:${parsed.query}`,
+          `court:${type}:${parsed.query}:${token ? "auth" : "anon"}`,
           `https://www.courtlistener.com/api/rest/v3/${endpoint}/?q=${q}&page_size=${parsed.limit ?? 10}`,
+          token ? { headers: { Authorization: `Token ${token}` } } : undefined,
         );
       },
     ),

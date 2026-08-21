@@ -4,7 +4,7 @@ import { test, beforeAll, afterAll } from "bun:test";
 import assert from "node:assert/strict";
 import { request, type Server, type IncomingMessage } from "node:http";
 import type { AddressInfo } from "node:net";
-import { SigningKey, keccak256, toBeHex } from "ethers";
+import { SigningKey, keccak256, toBeHex, zeroPadValue } from "ethers";
 import express from "express";
 
 import { InMemoryStorage } from "@axiom/config/storage/0g";
@@ -179,7 +179,7 @@ test("dataHash_registered_via_agents_mint_succeeds", async () => {
     targetPubkey: TEST_RECEIVER_PUBKEY_HEX,
     to: "0x0000000000000000000000000000000000000001",
     nft: "0x0000000000000000000000000000000000000002",
-    nonce: toBeHex(7n) as `0x${string}`,
+    nonce: zeroPadValue(toBeHex(7n), 32) as `0x${string}`,
     validUntil,
   });
   const localSig = signer.signOwnership({
@@ -188,7 +188,7 @@ test("dataHash_registered_via_agents_mint_succeeds", async () => {
     targetPubkey: TEST_RECEIVER_PUBKEY_HEX,
     to: "0x0000000000000000000000000000000000000001",
     nft: "0x0000000000000000000000000000000000000002",
-    nonce: toBeHex(7n) as `0x${string}`,
+    nonce: zeroPadValue(toBeHex(7n), 32) as `0x${string}`,
     validUntil,
   });
   assert.equal(
