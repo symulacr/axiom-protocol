@@ -1,5 +1,5 @@
 /*
-  PriorityActionStrip (ported from the v2 mockup; lucide → local icon shim).
+  PriorityActionStrip (lucide → local icon shim).
   The "next safe action" lane under the topbar — prefilled, never submitted.
 */
 import { useState } from "react";

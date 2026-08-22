@@ -1,4 +1,4 @@
-/* Local lucide-react icon subset (v0.453.0, ISC License — bundled from the v2 mockup
+/* Local lucide-react icon subset (v0.453.0, ISC License — bundled locally
  * instead of adding a dependency). API-compatible with the lucide-react imports
  * used by the v2 design: <Icon size={16} /> renders a 24x24 stroke icon. */
 import { forwardRef, type SVGProps } from "react";

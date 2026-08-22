@@ -1,5 +1,5 @@
 /*
-  StakingPage (ported from the v2 mockup): the explicit "not integrated"
+  StakingPage : the explicit "not integrated"
   boundary surface for 0G native staking.
 */
 import { ReceiptText, ShieldAlert, Wallet } from "../components/axiom/icons.js";

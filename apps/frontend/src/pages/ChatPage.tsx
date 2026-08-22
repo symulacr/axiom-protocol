@@ -605,7 +605,7 @@ function ChatPageInner(): ReactElement {
   const { address } = useAccount();
   const chainId = useChainId();
   // C-11: every rendered chat string routes through copy.chat (the old dead
-  // section described the mockup chat; these keys describe the live one).
+  // section described the old chat; these keys describe the live one).
   const { state: uiState } = useUiStore();
   const chatCopy = getCopy(uiState.settings.locale).chat;
   const a11y = getCopy(uiState.settings.locale).a11y;

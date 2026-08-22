@@ -1,8 +1,5 @@
 /*
-  Axiom UI-v2 shared types (ported from the v2 mockup; the fixture chat/agent
-  models were dropped — agents, events and receipts now come from the v1 data
-  layer — while the operation-draft machine that drives the flow pages and the
-  OperationReviewSheet is unchanged).
+  Axiom UI-v2 shared types .
 */
 import type { ReactNode } from "react";
 import type { Locale } from "./copy";

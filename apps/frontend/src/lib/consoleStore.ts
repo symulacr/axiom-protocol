@@ -1,5 +1,5 @@
 /*
-  Axiom UI store (ported from the v2 mockup consoleStore). The wallet session
+  Axiom UI store . The wallet session
   is bridged to wagmi in App.tsx; transactions here are LOCAL receipts added by
   the live flow pages (real hashes) — the transaction center merges them with
   on-chain/indexer events from useEventStream/useEventHistory.

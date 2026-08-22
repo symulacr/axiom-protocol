@@ -1,5 +1,5 @@
 /*
-  Command Center (ported from the v2 mockup; lucide → local icon shim).
+  Command Center .
   ⌘K/Ctrl-K palette over routes, next-safe actions and recent receipts.
 */
 import { useEffect, useMemo, useRef, useState } from "react";

@@ -2,7 +2,7 @@
  * Self-contained media for the console.
  * The original Manus sandbox served these from /manus-storage (a server-side
  * proxy that does not exist outside that environment); every image is now an
- * inline SVG data URI so the mockup renders identically offline with zero 404s.
+ * inline SVG data URI so the UI renders identically offline with zero 404s.
  * Motifs follow the Copper Command Deck palette: graphite canvas, copper
  * focal energy, phosphor verified-live accents.
  */

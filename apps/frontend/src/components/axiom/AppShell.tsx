@@ -1,5 +1,5 @@
 /*
-  v2 AppShell (ported from the mockup; live values). Sidebar + Topbar +
+  v2 AppShell (ported Sidebar + Topbar +
   MobileNavigationDrawer + AppShell. Rail resize/collapse/hide, theme/density
   and direction come from the uiStore settings; network + account are live
   (wagmi account, useHealth chain head).

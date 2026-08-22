@@ -1,5 +1,5 @@
 /*
-  Axiom UI-v2 App — the mockup's App composition over react-router:
+  Axiom UI-v2 App composition over react-router:
     · resolver-based routing (lib/routeRegistry) with v1 compat redirects
       (/dashboard, /market → /app; ?mint=1 → /mint flow page)
     · AppShell (rail + topbar + Command Center + priority strip + mobile drawer)
@@ -417,7 +417,7 @@ export function App(): ReactElement {
     }
   }, [state.settings.theme]);
 
-  // Notice auto-dismiss (4s, mockup semantics).
+  // Notice auto-dismiss (4s).
   useEffect(() => {
     if (!state.notice) return;
     const timer = window.setTimeout(

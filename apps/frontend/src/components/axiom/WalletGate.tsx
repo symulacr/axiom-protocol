@@ -1,5 +1,5 @@
 /*
-  Live WalletGate — the v2 mockup's gate states driven by wagmi:
+  Live WalletGate — the gate states driven by wagmi:
     disconnected → connector list (useConnect)
     connecting   → pending connect()
     wrong-network→ useSwitchChain (app chain from config/wagmi)

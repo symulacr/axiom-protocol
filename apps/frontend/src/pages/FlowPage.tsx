@@ -222,7 +222,7 @@ export function FlowPage({
       type: "save-draft",
       draft: { ...draft, agent: selectedTokenId, intent },
     });
-    // hooks: mirror mockup sync semantics
+    // hooks: mirror sync semantics
   }, [dispatch, draft, intent, selectedTokenId]);
 
   useEffect(() => {

@@ -1,5 +1,5 @@
 /*
-  LockedRoute (ported from the v2 mockup): shown when an internal route is
+  LockedRoute : shown when an internal route is
   requested before the operator session is authenticated. Proof rails stay
   visible; the CTA opens the live WalletGate.
 */

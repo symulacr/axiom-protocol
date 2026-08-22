@@ -27,7 +27,7 @@ if (!rootEl) {
   throw new Error("Root element #root not found in index.html");
 }
 
-// SEO policy (ported from the v2 mockup): public hubs index, app routes
+// SEO policy: public hubs index, app routes
 // noindex — kept in sync on every pushState/popstate.
 function applyIndexingPolicy() {
   const robots =

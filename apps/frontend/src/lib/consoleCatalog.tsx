@@ -1,5 +1,4 @@
-/* Flow + locked-route metadata ported from the v2 mockup (fixture agent list
- * removed — the register is live via useAgents/usePortfolio). */
+/* Flow + locked-route metadata. */
 import {
   Bot,
   CreditCard,

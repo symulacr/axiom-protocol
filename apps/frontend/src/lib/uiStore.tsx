@@ -1,11 +1,7 @@
 /*
-  UI store bridge — the v2 mockup's useReducer(consoleReducer) lifted into a
+  UI store bridge — the useReducer(consoleReducer) lifted into a
   React context so route-level screens can dispatch without prop drilling
-  through react-router. Persistence keys are unchanged from the mockup
-  (axiom-ui-settings / axiom-session / axiom-operation-state-v1), plus
-  axiom-transactions-v1 (C-15): local receipt rows persist as icon-less stubs
-  and rehydrate their icon from flowMeta by route, so receipts survive reload.
-*/
+  through react-router. Persistence keys are unchanged */
 import {
   createContext,
   useContext,

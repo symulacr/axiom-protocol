@@ -1,5 +1,5 @@
 /*
-  OperationReviewSheet (ported from the v2 mockup; live wording). The single
+  OperationReviewSheet . The single
   confirm surface over the v1 encode-relay hooks: review facts, then
   "Sign & execute" drives the real wallet call from FlowPage.
 

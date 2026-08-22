@@ -1,4 +1,4 @@
-/* Next-safe-action engine ported from the v2 mockup. "Fund agent" targets the
+/* Next-safe-action engine. "Fund agent" targets the
  * first unfunded agent from the live portfolio (fallback: the payment route
  * without an agent); "recover receipt" keys off flow drafts in recoverable
  * error, and storage inspection stays the read-only proof check.
