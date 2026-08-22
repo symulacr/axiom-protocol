@@ -107,7 +107,6 @@
 .review-first-layout .flow-stage { min-width: 0; }
 .passive-proof-timeline { display: grid; gap: .82rem; margin: 1rem 0; padding: 0; list-style: none; }
 .passive-proof-timeline li { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: .6rem; align-items: start; padding-bottom: .78rem; border-bottom: 1px solid rgba(255,255,255,.08); color: var(--dim, #998d7d); }
-.passive-proof-timeline li > i { display: grid; place-items: center; width: 20px; height: 20px; color: var(--dim, #998d7d); border: 1px solid currentColor; border-radius: 50%; font: 700 .61rem/1 var(--font-mono, monospace); font-style: normal; }
 .passive-proof-timeline li div { display: grid; gap: .16rem; min-width: 0; }
 .passive-proof-timeline li strong { color: var(--text, #e8dfd4); font-size: var(--fs-body); line-height: 1.25; }
 .passive-proof-timeline li small { color: var(--dim, #998d7d); font-size: var(--fs-small); line-height: 1.35; }

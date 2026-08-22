@@ -92,32 +92,19 @@
  * Minimal utility classes the kept components emit.                 *
  * ---------------------------------------------------------------- */
 .flex { display: flex; }
-.items-center { align-items: center; }
-.items-baseline { align-items: baseline; }
-.justify-between { justify-content: space-between; }
-.flex-wrap { flex-wrap: wrap; }
 .m-0 { margin: 0; }
 .mb-lg { margin-bottom: var(--space-lg); }
 .mt-0 { margin-top: 0; }
-.gap-sm { gap: var(--space-sm); }
-.gap-md { gap: var(--space-md); }
 .uppercase { text-transform: uppercase; }
 .text-xs { font-size: var(--text-xs); }
 .text-sm { font-size: var(--text-sm); }
 .text-xl { font-size: var(--text-xl); }
-.text-2xl { font-size: var(--text-2xl); }
 .text-dim { color: var(--dim); }
-.text-muted { color: var(--muted); }
-.text-primary { color: var(--text); }
-.fw-light { font-weight: var(--fw-light); }
 .fw-medium { font-weight: var(--fw-medium); }
 .fw-semibold { font-weight: var(--fw-semibold); }
 .fw-bold { font-weight: var(--fw-bold); }
-.lh-tight { line-height: var(--lh-tight); }
 .lh-snug { line-height: var(--lh-snug); }
-.cursor-pointer { cursor: pointer; }
 @media (max-width: 760px) {
-  .stack-on-mobile { display: grid !important; grid-template-columns: 1fr !important; }
 }
 
 /* ---------------------------------------------------------------- *

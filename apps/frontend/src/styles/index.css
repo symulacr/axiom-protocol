@@ -332,7 +332,7 @@ h1, h2, h3, strong { font-weight: 600; }
   .field-error .field-control { border-color: var(--danger); }
   .field-message { color: var(--danger); }
 
-  .empty-state { padding: 26px; color: var(--dim); font-size: var(--fs-small); }
+  
   .copper { color: var(--copper-bright); }
 }
 

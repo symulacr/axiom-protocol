@@ -102,14 +102,12 @@
 
 .app-shell .brand,
 .app-shell .field-control input,
-.app-shell .chat-compose textarea,
 .app-shell .settings-select-row select,
 .app-shell .command-input input {
   color: var(--completion-text);
 }
 
 .app-shell .field-control,
-.app-shell .chat-compose textarea,
 .app-shell .toggle,
 .app-shell .settings-select-row select,
 .app-shell .receipt-drawer,

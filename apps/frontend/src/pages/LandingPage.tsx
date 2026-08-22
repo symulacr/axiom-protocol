@@ -123,7 +123,6 @@ export function Landing({
             src={MEDIA.heroPulse}
             alt="Abstract Axiom operator signal field"
           />
-          <div className="hero-visual-scanline" aria-hidden="true" />
           <div className="hero-visual-overlay">
             <span className="eyebrow">{copy.landing.nextSafeAction}</span>
             <strong>{copy.landing.heroTitle}</strong>

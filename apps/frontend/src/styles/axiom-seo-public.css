@@ -403,13 +403,3 @@
   .seo-hero h1 { font-size: clamp(38px, 11.1vw, 46px); letter-spacing: -0.05em; }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .seo-public *,
-  .seo-public *::before,
-  .seo-public *::after {
-    scroll-behavior: auto !important;
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-  }
-}

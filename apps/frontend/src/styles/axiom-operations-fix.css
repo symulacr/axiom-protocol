@@ -14,13 +14,6 @@
 .app-shell .panel-head,
 .app-shell .panel-head > div,
 .app-shell .agent-detail-head,
-.app-shell .agent-detail-proof,
-.app-shell .chat-layout,
-.app-shell .thread-list,
-.app-shell {
-  grid-template-columns: var(--rail-width) minmax(0, 1fr);
-  overflow: visible;
-}
 
 .app-shell .main {
   overflow: visible;
@@ -133,22 +126,11 @@
 
 /* Agent sub-pages: retain all evidence and make the three execution choices scannable at once. */
 .app-shell .agent-detail-head {
-  grid-template-columns: 58px minmax(0, 1fr) minmax(180px, 260px);
+  /* audit-11 F-001: the third track held .agent-detail-proof, deleted in S1 —
+     phantom column collapsed to the two children that actually render. */
+  grid-template-columns: 58px minmax(0, 1fr);
   gap: 16px;
   padding: 16px 18px;
-}
-
-.app-shell .agent-detail-proof {
-  justify-items: start;
-}
-
-.app-shell .agent-detail-proof .mono {
-  max-inline-size: 100%;
-  overflow-wrap: anywhere;
-  /* The value is always truncateHex output (~17 chars): without a floor the
-     auto grid column computes min-content as one character and the hash
-     renders vertically (found in the row-10 live pass). */
-  min-inline-size: max-content;
 }
 
 .app-shell .detail-tabs {
@@ -374,10 +356,6 @@
     grid-template-columns: 54px minmax(0, 1fr);
   }
 
-  .app-shell .agent-detail-proof {
-    grid-column: 2;
-  }
-
   .app-shell .chat-layout {
     grid-template-columns: 1fr;
   }
@@ -447,12 +425,6 @@
     grid-template-columns: 46px minmax(0, 1fr);
     gap: 12px;
     padding: 14px;
-  }
-
-  .app-shell .agent-detail-proof {
-    grid-column: 1 / -1;
-    padding-top: 10px;
-    border-top: 1px solid var(--completion-line);
   }
 
   .app-shell .agent-grid,

@@ -172,10 +172,6 @@ button, input, textarea, select { line-height: 1.35; }
   letter-spacing: 0.02em;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
-}
-
 /* Modern hero artifact: one clear material focal point, with copy held in a calm safe area. */
 .landing-visual.hero-visual-modern {
   min-height: clamp(400px, 40vw, 548px);
@@ -219,7 +215,6 @@ button, input, textarea, select { line-height: 1.35; }
   animation: none;
   transform: none;
 }
-.hero-visual-scanline { display: none; }
 .hero-visual-overlay {
   z-index: 4;
   max-width: min(32ch, 58%);
@@ -269,7 +264,6 @@ button, input, textarea, select { line-height: 1.35; }
 }
 .thread-list { min-width: 0; }
 .thread-list { display: flex; flex-direction: column; overflow: hidden; }
-.thread-list .panel-head { padding: var(--space-4); }
 
 @media (max-width: 760px) {
   .app-shell { grid-template-columns: minmax(0, 1fr); }
@@ -277,8 +271,6 @@ button, input, textarea, select { line-height: 1.35; }
   .app-shell .sidebar { transform: translateX(-110%); pointer-events: none; transition: none; }
   .chat-layout { grid-template-columns: minmax(0, 1fr); gap: var(--space-3); }
   .app-shell .thread-list { display: flex; min-height: 0; grid-template-columns: none; }
-  .thread-list .panel-head { padding: var(--space-3) var(--space-4); }
-  .thread-list .panel-head h2 { font-size: var(--fs-title); }
   
   
 }
@@ -345,13 +337,7 @@ body .session-top,
 
 body .session-top,
 .filter,
-.tab {
-  min-width: var(--hit-area);
-}
 
-.tab {
-  min-height: var(--hit-area);
-}
 
 .notice-toast button {
   min-width: var(--hit-area);
@@ -585,13 +571,6 @@ html[data-theme="light"] .filters-popover {
     padding: var(--space-4);
   }
   .agent-detail-head small { font-size: var(--fs-small); line-height: 1.45; }
-  .agent-detail-proof {
-    grid-column: 1 / -1;
-    justify-items: start;
-    grid-template-columns: minmax(0, 1fr) auto;
-    padding-top: var(--space-3);
-    border-top: 1px solid var(--completion-line);
-  }
   .detail-tabs {
     gap: var(--space-1);
     margin-inline: calc(var(--space-4) * -1);

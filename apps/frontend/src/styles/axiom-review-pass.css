@@ -104,15 +104,7 @@
 .wallet-cta-hero { min-height:44px; padding-inline:18px; }
 .landing-main { gap:clamp(40px,7vw,104px); padding-top:clamp(42px,5vw,88px); padding-bottom:66px; }
 .landing-visual.hero-visual-modern { isolation:isolate; min-height:540px; }
-.landing-visual.hero-visual-modern > img.hero-visual-poster { display:block; position:absolute; inset:0; width:100%; height:100%; opacity:.72; object-fit:cover; mix-blend-mode:screen; animation:hero-poster-drift 12s var(--completion-ease) infinite alternate; transform-origin:center; }
-.hero-visual-scanline { position:absolute; inset:0; z-index:1; pointer-events:none; background:linear-gradient(180deg,transparent 0%,rgba(103,232,180,.06) 49%,transparent 51%); background-size:100% 220%; animation:hero-scan 7s linear infinite; mix-blend-mode:screen; }
 .hero-visual-overlay { z-index:2; }
-@keyframes hero-poster-drift { 0% { transform:scale(1.02) translate3d(-1%,0,0); filter:saturate(.92) brightness(.92); } 100% { transform:scale(1.08) translate3d(1.5%,-1%,0); filter:saturate(1.08) brightness(1.06); } }
-@keyframes hero-scan { 0% { background-position:0 -110%; } 100% { background-position:0 110%; } }
-@media (prefers-reduced-motion: reduce) {
-  .hero-visual-poster, .hero-visual-scanline { animation:none !important; }
-  .wallet-cta::after { display:none; }
-}
 @media (max-width:700px) {
   .landing-main { padding-top:46px; padding-bottom:42px; }
   .landing-visual.hero-visual-modern { min-height:360px; }
@@ -179,32 +171,13 @@
 }
 
 /* Dashboard evidence: the status is an endpoint, never the expanding track. */
-.activity-row {
-  grid-template-columns:36px minmax(0,1fr) max-content 14px;
-}
-.activity-row > span:nth-child(2) {
-  min-width:0;
-  width:auto;
-}
-.activity-row > .state-pill {
-  justify-self:end;
-  width:fit-content;
-  max-width:100%;
-}
 
 .flow-visual, .landing-visual, .locked-preview {
   contain:layout paint;
 }
 
 /* Decorative animation is deliberately dormant until the app has committed its first stable render. */
-html:not([data-axiom-ready="true"]) .hero-visual-poster,
-html:not([data-axiom-ready="true"]) .hero-visual-scanline {
-  animation:none !important;
-}
 
-.hero-visual-poster, .hero-visual-scanline {
-  animation-play-state:running;
-}
 
 @media (max-width:700px) {
   .notice-toast { right:16px; bottom:16px; max-width:calc(100vw - 32px); }
@@ -214,7 +187,6 @@ html:not([data-axiom-ready="true"]) .hero-visual-scanline {
   .stats-grid, .context-strip { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .dashboard-split, .agent-grid, .chat-layout, .execute-grid, .receipt-grid { grid-template-columns:1fr; }
   .agent-detail-head { grid-template-columns:48px minmax(0,1fr); padding:16px; }
-  .agent-detail-proof { grid-column:1/-1; justify-items:start; padding-top:12px; border-top:1px solid var(--completion-line); }
   .panel-head, .page-head { align-items:flex-start; flex-direction:column; gap:12px; }
   .page-head-actions { align-self:stretch; width:100%; }
   .page-head-actions .button { flex:1; }
