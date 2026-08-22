@@ -51,7 +51,7 @@
   .priority-proof, .priority-details { grid-column: 2; }
 }
 
-.command-center-layer { z-index: 80; }
+.command-center-layer { z-index: var(--layer-modal, 90); }
 /* C-13: the layer owns a 15vh top offset (axiom-completion.css .command-palette-layer),
    so the palette max-height must subtract that offset — never compute from 100dvh alone. */
 .command-center { width: min(680px, calc(100vw - 2rem)); max-height: min(690px, calc(100dvh - 15vh - 2rem)); overflow: auto; padding: .55rem; border-color: color-mix(in srgb, var(--copper) 54%, transparent); box-shadow: var(--shadow-modal); }
@@ -111,7 +111,7 @@
 .passive-proof-timeline li strong { color: var(--text, #e8dfd4); font-size: var(--fs-body); line-height: 1.25; }
 .passive-proof-timeline li small { color: var(--dim, #998d7d); font-size: var(--fs-small); line-height: var(--support-leading); }
 .passive-proof-timeline li.is-ready > i, .passive-proof-timeline li.is-ready > svg { color: var(--phosphor); }
-.operation-review-layer { position: fixed; z-index: 90; inset: 0; display: grid; place-items: end; padding: clamp(1rem, 3vw, 2.25rem); background: rgba(8,7,6,.72); backdrop-filter: blur(8px); }
+.operation-review-layer { position: fixed; z-index: var(--layer-review, 110); inset: 0; display: grid; place-items: end; padding: clamp(1rem, 3vw, 2.25rem); background: rgba(8,7,6,.72); backdrop-filter: blur(8px); }
 .operation-review-sheet { width: min(590px, 100%); display: grid; gap: 1rem; max-height: calc(100dvh - 2rem); overflow: auto; padding: clamp(1rem, 2.5vw, 1.55rem); color: var(--text, #f4efe7); border: 1px solid color-mix(in srgb, var(--copper) 62%, transparent); background: linear-gradient(145deg, #24201d, #11100f 72%); box-shadow: var(--shadow-modal); }
 .operation-review-head { display: flex; justify-content: space-between; gap: 1rem; align-items: start; }
 .operation-review-head h2 { margin: .2rem 0 0; color: var(--text, #f4efe7); font: var(--fw-strong) var(--fs-modal)/.98 var(--font-display, inherit); letter-spacing: -.03em; }

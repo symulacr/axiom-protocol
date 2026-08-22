@@ -165,7 +165,7 @@ button, input, textarea, select { line-height: var(--support-leading); }
    desktop). Mobile goes full-bleed; desktop is right-anchored and capped. */
 .landing-nav { position: relative; }
 .landing-menu-trigger { display: grid; min-width: var(--hit-area); min-height: var(--hit-area); }
-.landing-mobile-menu { position: absolute; z-index: 44; top: calc(100% - var(--space-2)); right: var(--space-3); width: min(420px, calc(100vw - 2 * var(--space-3))); display: grid; gap: 1px; padding: var(--space-2); border: 1px solid var(--completion-line); background: color-mix(in srgb, var(--completion-panel) 95%, black); box-shadow: var(--shadow-modal); }
+.landing-mobile-menu { position: absolute; z-index: var(--layer-popover, 60); top: calc(100% - var(--space-2)); right: var(--space-3); width: min(420px, calc(100vw - 2 * var(--space-3))); display: grid; gap: 1px; padding: var(--space-2); border: 1px solid var(--completion-line); background: color-mix(in srgb, var(--completion-panel) 95%, black); box-shadow: var(--shadow-modal); }
 .landing-mobile-menu > button:not(.button) { display: grid; grid-template-columns: 22px minmax(0, 1fr); align-items: center; gap: var(--space-3); width: 100%; min-height: var(--hit-area); padding: var(--space-3); color: var(--completion-text); text-align: left; border: 0; background: transparent; }
 .landing-mobile-menu > button:not(.button) svg { color: var(--completion-copper); }
 .landing-mobile-menu > button:not(.button) span { display: grid; gap: var(--space-1); }
@@ -477,7 +477,7 @@ input[type="range"] {
 /* C-SETTINGS "More filters" popover: portaled + fixed so it is never clipped
    by the chip row's overflow-x scrolling on narrow viewports; the backdrop
    carries the click-away leg of the dismiss contract. */
-.filters-backdrop { position: fixed; inset: 0; z-index: 40; background: transparent; }
+.filters-backdrop { position: fixed; inset: 0; z-index: var(--layer-topbar, 40); background: transparent; }
 .filters-popover {
   position: fixed;
   z-index: var(--layer-popover, 60);
