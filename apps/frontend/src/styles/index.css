@@ -42,6 +42,19 @@
   --danger: #e27d74;
   --warning: #f0b36b;
   --radius: 10px;
+  /* audit-11 F-014 canonical radius scale: 4 controls/chips, 6 inputs/rows, 8, 10 panels/sheets */
+  /* audit-11 F-015: two governed elevation families. Plates are the hard-offset ledger motif; modals are soft overlays. */
+  --shadow-plate-s: 8px 8px 0 rgba(0, 0, 0, .05);
+  --shadow-plate-m: 12px 12px 0 rgba(210, 139, 82, .05);
+  --shadow-plate-l: 18px 18px 0 rgba(210, 139, 82, .06);
+  --shadow-drawer: -22px 0 64px rgba(0, 0, 0, .45);
+  --shadow-drawer-r: 22px 0 64px rgba(0, 0, 0, .45);
+  --shadow-modal-sm: 0 14px 36px rgba(0, 0, 0, .22);
+  --shadow-modal: 0 24px 80px rgba(0, 0, 0, .45);
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
   --ease: cubic-bezier(.23, 1, .32, 1);
   /* ---------------------------------------------------------------- *
    * S2 type-scale contract (audit 06 FINDING-002): ONE scale — 4 core  *
@@ -158,7 +171,7 @@ h1, h2, h3, strong { font-weight: 600; }
     gap: 12px;
     width: 100%;
     padding: 11px;
-    border-radius: 7px;
+    border-radius: var(--radius-md);
     text-align: left;
     transition: .18s var(--ease);
   }
@@ -229,7 +242,7 @@ h1, h2, h3, strong { font-weight: 600; }
     color: var(--muted);
     width: 32px;
     height: 32px;
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     display: grid;
     place-items: center;
     transition: .18s var(--ease);
@@ -307,7 +320,7 @@ h1, h2, h3, strong { font-weight: 600; }
     align-items: center;
     border: 1px solid var(--line);
     background: var(--bg-2);
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     transition: .18s var(--ease);
   }
   .field-control:focus-within { border-color: var(--copper); box-shadow: 0 0 0 3px rgba(210, 139, 82, .1); }

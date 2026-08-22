@@ -25,7 +25,7 @@
 }
 
 .app-shell .ops-page > .page-head {
-  margin-bottom: 24px;
+  margin-bottom: var(--space-5);
 }
 
 .app-shell .ops-page > .page-head::before {
@@ -51,12 +51,12 @@
   /* S2: the 11.5px shrink (half-pixel neighbor of the 11px mono step) is
      gone — the rail brand rides the body step like every other label. */
   letter-spacing: .05em;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .app-shell .sidebar .nav-item {
   grid-template-columns: 18px minmax(0, 1fr);
-  gap: 10px;
+  gap: var(--space-2);
 }
 
 .app-shell .sidebar.is-collapsed .nav-item {
@@ -103,17 +103,17 @@
 
 .landing-nav .brand,
 .locked-topbar .brand {
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 /* The heading and action lane stay within the first console screen. */
 .app-shell .page-head-asymmetric {
   grid-template-columns: minmax(0, 1fr) minmax(250px, 328px);
-  gap: 24px;
+  gap: var(--space-5);
 }
 
 .app-shell .action-lane {
-  padding: 16px 18px;
+  padding: var(--space-4) var(--space-4);
 }
 
 .app-shell .context-strip,
@@ -121,7 +121,7 @@
 .app-shell .dashboard-split,
 .app-shell .activity-panel,
 .app-shell .ops-summary {
-  margin-bottom: 18px;
+  margin-bottom: var(--space-4);
 }
 
 /* Agent sub-pages: retain all evidence and make the three execution choices scannable at once. */
@@ -129,13 +129,13 @@
   /* audit-11 F-001: the third track held .agent-detail-proof, deleted in S1 —
      phantom column collapsed to the two children that actually render. */
   grid-template-columns: 58px minmax(0, 1fr);
-  gap: 16px;
-  padding: 16px 18px;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-4);
 }
 
 .app-shell .detail-tabs {
-  scroll-padding-inline: 18px;
-  margin-bottom: 18px;
+  scroll-padding-inline: var(--space-4);
+  margin-bottom: var(--space-4);
 }
 
 .app-shell .detail-tabs button {
@@ -143,24 +143,24 @@
 }
 
 .app-shell .agent-grid {
-  gap: 18px;
+  gap: var(--space-4);
 }
 
 .app-shell .command-actions {
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .app-shell .command-actions .button {
   min-inline-size: 0;
-  padding-inline: 10px;
+  padding-inline: var(--space-2);
   white-space: normal;
 }
 
 /* Avoid oversized flow panels and clipped evidence in the operational pages. */
 .app-shell .flow-layout {
   grid-template-columns: minmax(0, 1.12fr) minmax(280px, .88fr);
-  gap: 18px;
+  gap: var(--space-4);
 }
 
 .app-shell .flow-stage,
@@ -210,7 +210,7 @@
   align-items: flex-start;
   justify-content: center;
   inline-size: 1px;
-  padding-top: 2px;
+  padding-top: var(--space-1);
   border-left: 1px solid color-mix(in srgb, var(--completion-copper) 65%, transparent);
   color: var(--completion-bright);
   font: var(--fw-strong) var(--fs-mono)/1 "JetBrains Mono", monospace;
@@ -231,12 +231,12 @@
 }
 
 .landing-copy h1 {
-  margin-block: 14px 18px;
+  margin-block: var(--space-3) var(--space-4);
   font-size: clamp(52px, 5.5vw, 78px);
 }
 
 .landing-copy > p {
-  margin-block: 0 18px;
+  margin-block: 0 var(--space-4);
 }
 
 .landing-page .landing-visual.hero-visual-modern {
@@ -253,7 +253,7 @@
 .landing-strip > div,
 .landing-strip > button {
   min-inline-size: 0;
-  padding: 8px 14px;
+  padding: var(--space-2) var(--space-3);
 }
 
 .landing-strip strong,
@@ -313,7 +313,7 @@
   z-index: 2;
   top: 13px;
   right: 13px;
-  padding: 5px 7px;
+  padding: var(--space-1) var(--space-2);
   border: 1px solid color-mix(in srgb, var(--completion-copper) 44%, transparent);
   background: color-mix(in srgb, var(--completion-canvas) 78%, transparent);
   color: var(--completion-bright);
@@ -328,10 +328,10 @@
 .locked-transactions .locked-preview::before { content: "RECEIPT / FINALITY"; }
 .locked-storage .locked-preview::before { content: "STORAGE ROOT / PROVENANCE"; }
 
-@media (max-width: 1120px) and (min-width: 781px) {
+@media (max-width: 1120px) and (min-width: 701px) {
   .landing-main {
     grid-template-columns: minmax(0, 1.08fr) minmax(320px, .92fr);
-    gap: 32px;
+    gap: var(--space-6);
   }
 
   .landing-copy h1 {
@@ -339,7 +339,7 @@
   }
 }
 
-@media (max-width: 1020px) {
+@media (max-width: 1120px) {
   .app-shell .page-head-asymmetric,
   .app-shell .flow-layout,
   .app-shell .storage-grid,
@@ -361,7 +361,7 @@
   }
 }
 
-@media (max-width: 780px) {
+@media (max-width: 700px) {
   .app-shell {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -374,7 +374,7 @@
 
   .landing-main {
     grid-template-columns: 1fr;
-    padding: 24px;
+    padding: var(--space-5);
   }
 
   .landing-main::before,
@@ -399,7 +399,7 @@
   }
 
   .app-shell .ops-page {
-    padding: 22px 16px 36px;
+    padding: var(--space-5) var(--space-4) 36px;
   }
 
   .app-shell .page-head,
@@ -409,13 +409,13 @@
   }
 
   .app-shell .page-head {
-    gap: 18px;
+    gap: var(--space-4);
   }
 
   .app-shell .agent-detail-head {
     grid-template-columns: 46px minmax(0, 1fr);
-    gap: 12px;
-    padding: 14px;
+    gap: var(--space-3);
+    padding: var(--space-3);
   }
 
   .app-shell .agent-grid,

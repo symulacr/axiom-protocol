@@ -12,6 +12,19 @@
   --copy-measure: 60ch;
 }
 
+/* audit-11 F-013: chat-compat's rem names alias the ladder. Declared on
+   .app-shell (not :root) so the density-dense --space-* overrides below
+   resolve through the aliases — chat tightens with the rest of the shell. */
+.app-shell {
+  --space-xs: var(--space-1);
+  --space-sm: var(--space-2);
+  --space-md: var(--space-3);
+  --space-lg: var(--space-4);
+  --space-xl: var(--space-5);
+  --space-2xl: var(--space-6);
+  --space-3xl: var(--space-7);
+}
+
 body { font-size: var(--fs-body); line-height: var(--copy-leading); }
 button, input, textarea, select { line-height: 1.35; }
 
@@ -65,10 +78,10 @@ button, input, textarea, select { line-height: 1.35; }
 .page-head p { max-width: 58ch; }
 
 /* Controls remain easy to locate and operate while the surrounding copy becomes quieter. */
-.nav-item { min-height: 42px; padding-block: 10px; }
+.nav-item { min-height: 42px; padding-block: var(--space-2); }
 
 /* Tables and list rows favor visible context over prematurely truncated text. */
-.agent-row { padding-block: 14px; }
+.agent-row { padding-block: var(--space-3); }
 .transaction-proof-cell small { font-size: var(--fs-small); line-height: var(--support-leading); }
 .transaction-proof-cell { gap: var(--space-1); }
 
@@ -107,7 +120,7 @@ button, input, textarea, select { line-height: 1.35; }
 /* Evidence is a set of observed states, never an implied click-through stepper. */
 .passive-proof-timeline { gap: var(--space-2); margin-block: var(--space-4); }
 .passive-proof-timeline li { grid-template-columns: 18px minmax(0, 1fr) auto; gap: var(--space-3); padding-bottom: var(--space-3); }
-.passive-proof-timeline li > i { width: 14px; height: 14px; margin-top: 2px; border: 0; border-radius: 0; background: currentColor; color: var(--dim); font-size: 0; }
+.passive-proof-timeline li > i { width: 14px; height: 14px; margin-top: var(--space-1); border: 0; border-radius: 0; background: currentColor; color: var(--dim); font-size: 0; }
 .passive-proof-timeline li strong { font-size: var(--fs-body); line-height: 1.35; }
 .passive-proof-timeline li small { font-size: var(--fs-small); line-height: var(--support-leading); }
 
@@ -116,7 +129,7 @@ button, input, textarea, select { line-height: 1.35; }
   .priority-proof { padding-top: var(--space-3); }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 700px) {
   body { font-size: var(--fs-body); }
   .command-center-layer { display: flex; align-items: flex-end; padding: 0; }
   .command-center { box-sizing: border-box; width: 100%; max-height: min(78dvh, 660px); margin: 0; padding: var(--space-3); overflow-y: auto; border-inline: 0; border-bottom: 0; border-radius: 14px 14px 0 0; }
@@ -152,14 +165,14 @@ button, input, textarea, select { line-height: 1.35; }
    desktop). Mobile goes full-bleed; desktop is right-anchored and capped. */
 .landing-nav { position: relative; }
 .landing-menu-trigger { display: grid; min-width: var(--hit-area); min-height: var(--hit-area); }
-.landing-mobile-menu { position: absolute; z-index: 44; top: calc(100% - var(--space-2)); right: var(--space-3); width: min(420px, calc(100vw - 2 * var(--space-3))); display: grid; gap: 1px; padding: var(--space-2); border: 1px solid var(--completion-line); background: color-mix(in srgb, var(--completion-panel) 95%, black); box-shadow: 0 24px 60px rgba(0, 0, 0, .35); }
+.landing-mobile-menu { position: absolute; z-index: 44; top: calc(100% - var(--space-2)); right: var(--space-3); width: min(420px, calc(100vw - 2 * var(--space-3))); display: grid; gap: 1px; padding: var(--space-2); border: 1px solid var(--completion-line); background: color-mix(in srgb, var(--completion-panel) 95%, black); box-shadow: var(--shadow-modal); }
 .landing-mobile-menu > button:not(.button) { display: grid; grid-template-columns: 22px minmax(0, 1fr); align-items: center; gap: var(--space-3); width: 100%; min-height: var(--hit-area); padding: var(--space-3); color: var(--completion-text); text-align: left; border: 0; background: transparent; }
 .landing-mobile-menu > button:not(.button) svg { color: var(--completion-copper); }
-.landing-mobile-menu > button:not(.button) span { display: grid; gap: 2px; }
+.landing-mobile-menu > button:not(.button) span { display: grid; gap: var(--space-1); }
 .landing-mobile-menu > button:not(.button) strong { font-size: var(--fs-body); font-weight: var(--fw-label); }
 .landing-mobile-menu > button:not(.button) small { color: var(--completion-dim); font-size: var(--fs-small); line-height: var(--support-leading); }
 .landing-mobile-menu .button { width: 100%; }
-@media (max-width: 640px) {
+@media (max-width: 700px) {
   .landing-mobile-menu { left: var(--space-3); width: auto; }
 }
 
@@ -179,7 +192,7 @@ button, input, textarea, select { line-height: 1.35; }
   isolation: isolate;
   border: 1px solid rgba(217, 138, 72, 0.26);
   background: #0b0e0f;
-  box-shadow: 22px 24px 0 rgba(217, 138, 72, 0.055), 0 22px 56px rgba(0, 0, 0, 0.28);
+  box-shadow: var(--shadow-plate-l), var(--shadow-modal-sm);
 }
 .landing-visual.hero-visual-modern::before {
   content: "";
@@ -226,17 +239,17 @@ button, input, textarea, select { line-height: 1.35; }
   line-height: 1.03;
 }
 @media (max-width: 700px) {
-  .landing-visual.hero-visual-modern { min-height: 352px; box-shadow: 12px 14px 0 rgba(217, 138, 72, 0.05); }
+  .landing-visual.hero-visual-modern { min-height: 352px; box-shadow: var(--shadow-plate-m); }
   .landing-visual.hero-visual-modern::before { left: 7.5%; }
   .landing-visual.hero-visual-modern::after { background: linear-gradient(90deg, rgba(8, 11, 12, 0.84), rgba(8, 11, 12, 0.18) 100%), linear-gradient(180deg, transparent, rgba(8, 11, 12, 0.54)); }
   .landing-visual.hero-visual-modern > img.hero-visual-poster { object-position: 69% center; }
-  .hero-visual-overlay { max-width: 76%; padding: 24px; }
+  .hero-visual-overlay { max-width: 76%; padding: var(--space-5); }
 }
 
 /* The editorial landing statement remains singular; the artifact carries state, not another slogan. */
 .hero-visual-overlay > strong { display: none; }
 .landing-visual.hero-visual-modern > img.hero-visual-poster { object-position: 100% center; }
-.hero-visual-overlay .eyebrow { display: inline-flex; width: fit-content; padding: 7px 9px; border-left: 2px solid #d98a48; background: rgba(8, 11, 12, 0.72); color: #e6a46b; }
+.hero-visual-overlay .eyebrow { display: inline-flex; width: fit-content; padding: var(--space-2) var(--space-2); border-left: 2px solid #d98a48; background: rgba(8, 11, 12, 0.72); color: #e6a46b; }
 
 /* Landing summary becomes an asymmetric ledger rather than four equivalent cards. */
 .landing-strip { grid-template-columns: minmax(0, 1.5fr) minmax(0, 0.86fr) minmax(0, 0.86fr) minmax(0, 1.08fr); }
@@ -253,14 +266,14 @@ button, input, textarea, select { line-height: 1.35; }
   .landing-visual.hero-visual-modern > img.hero-visual-poster { object-position: 90% center; }
   .hero-visual-overlay > strong { display: none; }
   .landing-strip { grid-template-columns: 1fr 1fr; }
-  .landing-strip > button:first-child { grid-column: 1 / -1; padding-left: 34px; }
+  .landing-strip > button:first-child { grid-column: 1 / -1; padding-left: var(--space-6); }
 }
 
 /* Chat is an operating surface: threads, messages, and the composer keep independent readable tracks. */
 .thread-list { min-width: 0; }
 .thread-list { display: flex; flex-direction: column; overflow: hidden; }
 
-@media (max-width: 760px) {
+@media (max-width: 700px) {
   .app-shell { grid-template-columns: minmax(0, 1fr); }
   .app-shell .sidebar-wrap { width: 0; min-width: 0; }
   .app-shell .sidebar { transform: translateX(-110%); pointer-events: none; transition: none; }
@@ -418,7 +431,7 @@ input[type="range"] {
   padding: var(--space-4);
   border: 1px solid var(--warning);
   background: var(--panel);
-  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow-modal);
 }
 .settings-confirm-dialog h2 {
   margin: 0;
@@ -448,7 +461,7 @@ input[type="range"] {
   text-align: left;
 }
 
-.settings-toggle-control > span:first-child { display: grid; gap: 5px; min-width: 0; }
+.settings-toggle-control > span:first-child { display: grid; gap: var(--space-1); min-width: 0; }
 .settings-toggle-control .toggle { flex: 0 0 var(--hit-area); pointer-events: none; }
 .settings-toggle-control:focus-visible { outline: 2px solid var(--completion-bright); outline-offset: -2px; }
 
@@ -469,17 +482,17 @@ input[type="range"] {
   position: fixed;
   z-index: var(--layer-popover, 60);
   display: grid;
-  gap: 2px;
+  gap: var(--space-1);
   min-width: 180px;
   max-height: min(60vh, 340px);
   overflow: auto;
-  padding: 6px;
+  padding: var(--space-1);
   border: 1px solid var(--line);
   background: var(--panel);
-  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--shadow-modal-sm);
 }
 .filters-popover .filter { width: 100%; text-align: left; }
-.filters-trigger { display: inline-flex; align-items: center; gap: 5px; }
+.filters-trigger { display: inline-flex; align-items: center; gap: var(--space-1); }
 
 /* C-SETTINGS: the popover portals to document.body — OUTSIDE .app-shell, so
    the .app-shell.light token overrides never reach it and it painted graphite
@@ -496,7 +509,7 @@ html[data-theme="light"] .filters-popover {
   --completion-dim: #5b5a53;
   --completion-bright: #8d4d25;
   --completion-copper: #a96333;
-  box-shadow: 0 14px 40px rgba(66, 47, 31, 0.22);
+  box-shadow: var(--shadow-modal-sm);
 }
 
 .result-count { color: var(--completion-dim); font: 500 var(--fs-mono)/1 "JetBrains Mono", monospace; }
@@ -532,7 +545,7 @@ html[data-theme="light"] .filters-popover {
     list-style: none;
   }
   .mobile-disclosure > summary::-webkit-details-marker { display: none; }
-  .mobile-disclosure > summary > span { display: grid; gap: 3px; min-width: 0; }
+  .mobile-disclosure > summary > span { display: grid; gap: var(--space-1); min-width: 0; }
   .mobile-disclosure > summary strong { font: var(--fw-title) var(--fs-body)/1.15 Syne, sans-serif; }
   .mobile-disclosure > summary > svg { color: var(--completion-copper); transition: transform .16s var(--completion-ease); }
   .mobile-disclosure[open] > summary { border-bottom: 1px solid var(--completion-line); }
@@ -602,7 +615,7 @@ html[data-theme="light"] .filters-popover {
   background: linear-gradient(180deg, transparent, var(--completion-panel, #121617) 24%);
 }
 
-@media (max-width: 640px) {
+@media (max-width: 700px) {
   .operation-review-layer { padding: var(--space-2); align-items: end; }
   .operation-review-sheet { max-height: calc(100dvh - var(--space-4)); }
   .operation-review-head { position: sticky; top: 0; z-index: 1; padding-bottom: var(--space-2); background: var(--completion-panel, #121617); }
@@ -616,7 +629,7 @@ html[data-theme="light"] .filters-popover {
 
 .mobile-nav-layer { position: fixed; z-index: var(--layer-mobile-nav, 130); inset: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; }
 .mobile-nav-backdrop { width: 100%; height: 100%; border: 0; background: rgba(5, 7, 8, .7); backdrop-filter: blur(6px); }
-.mobile-nav-drawer { position: relative; width: min(332px, calc(100vw - 28px)); min-height: 100dvh; overflow-y: auto; border-left: 1px solid var(--completion-copper, #d28b52); background: var(--completion-panel, #111617); box-shadow: -24px 0 64px rgba(0, 0, 0, .48); }
+.mobile-nav-drawer { position: relative; width: min(332px, calc(100vw - 28px)); min-height: 100dvh; overflow-y: auto; border-left: 1px solid var(--completion-copper, #d28b52); background: var(--completion-panel, #111617); box-shadow: var(--shadow-drawer, -22px 0 64px rgba(0,0,0,.45)); }
 .mobile-nav-close { position: absolute; z-index: 4; top: var(--space-2); right: var(--space-2); }
 .mobile-nav-trigger { display: none; }
 /* C-14: the base .sidebar rule carries z-index:30 for the fixed rail; inside
@@ -656,7 +669,7 @@ html[data-theme="light"] .filters-popover {
 .app-shell.density-dense .stats-grid { gap: var(--space-3); margin-bottom: var(--space-5); }
 .app-shell.density-dense .agent-row,
 .app-shell.density-dense .activity-row,
-.app-shell.density-dense .transaction-row { padding-block: 11px; }
+.app-shell.density-dense .transaction-row { padding-block: var(--space-3); }
 
 .operator-preferences.reduce-motion *,
 .operator-preferences.reduce-motion *::before,
@@ -703,7 +716,7 @@ html[data-theme="light"] .filters-popover {
    here at every width they had before. */
 .context-strip { grid-template-columns: repeat(3, 1fr); }
 .ops-summary { grid-template-columns: repeat(2, 0.7fr) 1.6fr; }
-@media (max-width: 1060px) {
+@media (max-width: 1120px) {
   .context-strip { grid-template-columns: repeat(2, 1fr); }
   .ops-summary { grid-template-columns: repeat(3, 1fr); }
 }
@@ -720,10 +733,10 @@ html[data-theme="light"] .filters-popover {
  * ------------------------------------------------------------------ */
 
 /* 10. Sidebar account button (base-layer .account never had a hover). */
-.account:hover { background: rgba(210, 139, 82, 0.08); border-radius: 7px; }
+.account:hover { background: rgba(210, 139, 82, 0.08); border-radius: var(--radius-md, 6px); }
 
 /* 2. Inline copy icon buttons (agent/storage/transactions). */
-.inline-copy { border-radius: 6px; transition: background 0.16s var(--ease), color 0.16s var(--ease); }
+.inline-copy { border-radius: var(--radius-md, 6px); transition: background 0.16s var(--ease), color 0.16s var(--ease); }
 .inline-copy:hover { color: var(--copper-bright); background: rgba(210, 139, 82, 0.12); }
 
 /* 3. Settings toggle rows (full-row targets). */
@@ -775,11 +788,11 @@ html[data-theme="light"] .filters-popover {
   border: none;
   background: none;
   cursor: pointer;
-  padding: 3px 0;
+  padding: var(--space-1) 0;
   font: inherit;
   font-size: var(--text-xs);
   color: var(--text);
-  border-radius: 4px;
+  border-radius: var(--radius-sm, 4px);
   transition: background 0.16s var(--ease);
 }
 .chat-tool-row:hover { background: rgba(210, 139, 82, 0.08); }
@@ -802,7 +815,7 @@ html[data-theme="light"] .filters-popover {
   color: var(--c-text);
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
-  padding: 2px 6px;
+  padding: var(--space-1) var(--space-1);
   cursor: pointer;
   transition: border-color 0.16s var(--ease);
 }
@@ -810,5 +823,5 @@ html[data-theme="light"] .filters-popover {
 
 /* P4 Controls kit: multiline Field variant (TransferModal pubkey) — the
    .field-control wrapper owns the border; the textarea only needs geometry. */
-.field-control textarea { width: 100%; resize: vertical; font: inherit; color: var(--text); background: transparent; border: 0; outline: 0; padding: 12px; min-width: 0; }
+.field-control textarea { width: 100%; resize: vertical; font: inherit; color: var(--text); background: transparent; border: 0; outline: 0; padding: var(--space-3); min-width: 0; }
 .field-control textarea:focus-visible { outline: none; }

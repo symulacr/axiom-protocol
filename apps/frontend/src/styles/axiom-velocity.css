@@ -10,11 +10,11 @@
   color: var(--text, #f4efe7);
   border: 1px solid color-mix(in srgb, var(--copper) 58%, transparent);
   background: linear-gradient(110deg, rgba(199, 116, 53, .15), rgba(20, 20, 20, .9) 42%, rgba(255,255,255,.025));
-  box-shadow: 0 14px 36px rgba(0,0,0,.22);
+  box-shadow: var(--shadow-modal-sm);
   overflow: hidden;
 }
 .priority-action-strip::after { content: ""; position: absolute; inset: 0 auto 0 0; width: 42%; pointer-events: none; background: linear-gradient(90deg, rgba(199,116,53,.09), transparent); }
-.priority-rail { z-index: 1; display: grid; gap: 5px; align-self: stretch; padding-block: .15rem; }
+.priority-rail { z-index: 1; display: grid; gap: var(--space-1); align-self: stretch; padding-block: .15rem; }
 .priority-rail i { display: block; min-height: 0; background: var(--copper); opacity: .85; }
 .priority-rail i:nth-child(2) { opacity: .45; }
 .priority-rail i:nth-child(3) { opacity: .2; }
@@ -37,13 +37,13 @@
 .priority-details > div { display: flex; flex-wrap: wrap; gap: .4rem; }
 .priority-details button { display: inline-flex; gap: .25rem; align-items: center; color: var(--copper-bright, #e6aa78); font: 500 var(--fs-mono)/1 var(--font-mono, monospace); }
 .priority-details button:hover { color: #fff3e8; }
-@media (max-width: 850px) {
+@media (max-width: 900px) {
   .priority-action-strip { grid-template-columns: 8px minmax(0, 1fr) auto; gap: .85rem; margin-inline: 1rem; }
   .priority-proof { grid-column: 2 / -1; padding-left: 0; padding-top: .65rem; border-left: 0; border-top: 1px solid rgba(255,255,255,.1); }
   .priority-actions { grid-column: 3; grid-row: 1; }
   .priority-details { grid-column: 2 / -1; flex-direction: column; align-items: flex-start; }
 }
-@media (max-width: 560px) {
+@media (max-width: 480px) {
   .priority-action-strip { grid-template-columns: 6px minmax(0, 1fr); padding: .85rem; gap: .72rem; }
   .priority-actions { grid-column: 2; grid-row: auto; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
   .priority-actions .button { min-width: 0; }
@@ -54,7 +54,7 @@
 .command-center-layer { z-index: 80; }
 /* C-13: the layer owns a 15vh top offset (axiom-completion.css .command-palette-layer),
    so the palette max-height must subtract that offset — never compute from 100dvh alone. */
-.command-center { width: min(680px, calc(100vw - 2rem)); max-height: min(690px, calc(100dvh - 15vh - 2rem)); overflow: auto; padding: .55rem; border-color: color-mix(in srgb, var(--copper) 54%, transparent); box-shadow: 0 30px 80px rgba(0,0,0,.52); }
+.command-center { width: min(680px, calc(100vw - 2rem)); max-height: min(690px, calc(100dvh - 15vh - 2rem)); overflow: auto; padding: .55rem; border-color: color-mix(in srgb, var(--copper) 54%, transparent); box-shadow: var(--shadow-modal); }
 .command-center .command-input { margin: 0; border-bottom: 1px solid rgba(255,255,255,.12); }
 .command-center-meta { display: flex; justify-content: space-between; gap: .75rem; padding: .65rem .78rem .35rem; color: var(--dim, #998d7d); font: 500 var(--fs-mono)/1.25 var(--font-mono, monospace); letter-spacing: .04em; }
 .command-center-meta span { display: inline-flex; gap: .3rem; align-items: center; }
@@ -62,7 +62,7 @@
 .command-results { display: grid; gap: .55rem; padding: .18rem; }
 .command-group { display: grid; gap: .14rem; }
 .command-group-label { padding: .48rem .58rem .2rem; color: var(--copper-bright, #e6aa78); font: 500 var(--fs-mono)/1 var(--font-mono, monospace); letter-spacing: .12em; }
-.command-center .command-group button { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: .6rem; align-items: center; width: 100%; padding: .56rem .62rem; text-align: left; border: 1px solid transparent; border-radius: 3px; background: transparent; }
+.command-center .command-group button { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: .6rem; align-items: center; width: 100%; padding: .56rem .62rem; text-align: left; border: 1px solid transparent; border-radius: var(--radius-sm, 4px); background: transparent; }
 /* 04 FINDING-013: mouse-hover and the keyboard-driven selection must not
    paint identically — hover is a faint wash, .is-active keeps the full copper
    wash + border (and wins on overlap because it comes later). */
@@ -87,7 +87,7 @@
 .shortcut-map dl div { display: grid; grid-template-columns: minmax(80px, auto) minmax(0, 1fr); gap: .6rem; }
 .shortcut-map dt { color: var(--copper-bright, #e6aa78); font: 500 var(--fs-mono)/1.35 var(--font-mono, monospace); }
 .shortcut-map dd { margin: 0; color: var(--muted, #cfc4b5); font-size: var(--fs-small); line-height: 1.35; }
-@media (max-width: 640px) { .command-center-meta { align-items: flex-start; flex-direction: column; } .command-center-meta span:last-child { display: none; } .shortcut-map { grid-template-columns: 1fr; } }
+@media (max-width: 700px) { .command-center-meta { align-items: flex-start; flex-direction: column; } .command-center-meta span:last-child { display: none; } .shortcut-map { grid-template-columns: 1fr; } }
 
 .ops-summary-recovery { position: relative; display: grid; gap: .2rem; min-width: 0; padding: 0; text-align: left; color: inherit; background: var(--completion-panel); }
 .ops-summary-recovery strong { color: var(--copper-bright, #e6aa78); }
@@ -101,7 +101,7 @@
 .flow-intent-banner > div { display: grid; gap: .18rem; }
 .flow-intent-banner strong { color: var(--text, #f4efe7); font-size: var(--fs-body); line-height: 1.35; }
 .flow-intent-banner > span { color: var(--copper-bright, #e6aa78); font-size: var(--fs-mono); white-space: nowrap; }
-@media (max-width: 640px) { .flow-intent-banner { grid-template-columns: auto minmax(0, 1fr); margin-inline: 1rem; } .flow-intent-banner > span { grid-column: 2; } }
+@media (max-width: 700px) { .flow-intent-banner { grid-template-columns: auto minmax(0, 1fr); margin-inline: 1rem; } .flow-intent-banner > span { grid-column: 2; } }
 
 /* Review-first operation surface — automatic evidence is observed, not clicked through. */
 .review-first-layout .flow-stage { min-width: 0; }
@@ -112,7 +112,7 @@
 .passive-proof-timeline li small { color: var(--dim, #998d7d); font-size: var(--fs-small); line-height: 1.35; }
 .passive-proof-timeline li.is-ready > i, .passive-proof-timeline li.is-ready > svg { color: var(--phosphor); }
 .operation-review-layer { position: fixed; z-index: 90; inset: 0; display: grid; place-items: end; padding: clamp(1rem, 3vw, 2.25rem); background: rgba(8,7,6,.72); backdrop-filter: blur(8px); }
-.operation-review-sheet { width: min(590px, 100%); display: grid; gap: 1rem; max-height: calc(100dvh - 2rem); overflow: auto; padding: clamp(1rem, 2.5vw, 1.55rem); color: var(--text, #f4efe7); border: 1px solid color-mix(in srgb, var(--copper) 62%, transparent); background: linear-gradient(145deg, #24201d, #11100f 72%); box-shadow: 0 24px 80px rgba(0,0,0,.58); }
+.operation-review-sheet { width: min(590px, 100%); display: grid; gap: 1rem; max-height: calc(100dvh - 2rem); overflow: auto; padding: clamp(1rem, 2.5vw, 1.55rem); color: var(--text, #f4efe7); border: 1px solid color-mix(in srgb, var(--copper) 62%, transparent); background: linear-gradient(145deg, #24201d, #11100f 72%); box-shadow: var(--shadow-modal); }
 .operation-review-head { display: flex; justify-content: space-between; gap: 1rem; align-items: start; }
 .operation-review-head h2 { margin: .2rem 0 0; color: var(--text, #f4efe7); font: var(--fw-strong) var(--fs-modal)/.98 var(--font-display, inherit); letter-spacing: -.03em; }
 .operation-review-head h2 i { color: var(--copper-bright, #e6aa78); font-style: normal; }
@@ -168,7 +168,7 @@
 .operation-receipt strong { overflow-wrap: anywhere; color: var(--text, #f4efe7); font: var(--fw-title) var(--fs-body)/1.3 var(--font-mono, monospace); }
 .operation-receipt small { color: var(--muted, #cfc4b5); font-size: var(--fs-small); }
 .operation-receipt > div:last-child { display: flex; flex-wrap: wrap; gap: .5rem; }
-@media (max-width: 640px) { .operation-review-layer { align-items: end; padding: .75rem; } .operation-review-sheet { max-height: min(88dvh, 760px); } .review-facts { grid-template-columns: 1fr; } .review-actions .button { flex: 1 1 100%; justify-content: center; } }
+@media (max-width: 700px) { .operation-review-layer { align-items: end; padding: .75rem; } .operation-review-sheet { max-height: min(88dvh, 760px); } .review-facts { grid-template-columns: 1fr; } .review-actions .button { flex: 1 1 100%; justify-content: center; } }
 
 /* Locked product surfaces: the copper rail is a visible proof boundary, never a decorative stroke. */
 .public-locked .locked-route-content { isolation: isolate; }
@@ -186,4 +186,4 @@
 .public-locked .locked-evidence-row > div::before { content: "EVIDENCE"; position: absolute; top: .14rem; left: 0; color: var(--copper); font: var(--fw-strong) var(--fs-mono)/1 var(--font-mono, monospace); writing-mode: vertical-rl; transform: rotate(180deg); }
 .public-locked .locked-evidence-row small { color: var(--dim, #998d7d); }
 .public-locked .locked-evidence-row:first-of-type > div::before { color: var(--phosphor); }
-@media (max-width: 740px) { .public-locked .locked-route-content::before { inset: 2rem auto auto 1rem; height: calc(100% - 4rem); } .public-locked .locked-route-copy { padding-left: 1.6rem; } .public-locked .locked-route-copy::before { left: .22rem; } }
+@media (max-width: 700px) { .public-locked .locked-route-content::before { inset: 2rem auto auto 1rem; height: calc(100% - 4rem); } .public-locked .locked-route-copy { padding-left: 1.6rem; } .public-locked .locked-route-copy::before { left: .22rem; } }

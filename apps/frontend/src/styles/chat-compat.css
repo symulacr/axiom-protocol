@@ -11,13 +11,15 @@
 .app-shell {
   /* Also declared on .app-shell so var(--text)/var(--panel)… re-resolve inside
      the theme-scoped shell — :root alone froze the chat kit to dark colors. */
-  --space-xs: 0.25rem;
-  --space-sm: 0.5rem;
-  --space-md: 0.75rem;
-  --space-lg: 1rem;
-  --space-xl: 1.5rem;
-  --space-2xl: 2rem;
-  --space-3xl: 3rem;
+  /* audit-11 F-013: one ladder — the rem names alias the px steps so
+     density-dense rescales chat too. */
+  --space-xs: var(--space-1);
+  --space-sm: var(--space-2);
+  --space-md: var(--space-3);
+  --space-lg: var(--space-4);
+  --space-xl: var(--space-5);
+  --space-2xl: var(--space-6);
+  --space-3xl: var(--space-7);
 
   /* S2: the v1 chat-kit scale is pinned to the one S2 type scale (4 core
      steps + mono) — the two composed systems are one now. */
@@ -104,7 +106,7 @@
 .fw-semibold { font-weight: var(--fw-semibold); }
 .fw-bold { font-weight: var(--fw-bold); }
 .lh-snug { line-height: var(--lh-snug); }
-@media (max-width: 760px) {
+@media (max-width: 700px) {
 }
 
 /* ---------------------------------------------------------------- *
@@ -114,10 +116,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--space-2);
   border: 1px solid transparent;
-  border-radius: 7px;
-  padding: 9px 15px;
+  border-radius: var(--radius-md, 6px);
+  padding: var(--space-2) var(--space-4);
   font-size: var(--fs-small);
   font-weight: 500;
   letter-spacing: 0.01em;
@@ -151,7 +153,7 @@
   color: var(--text);
   background: var(--bg-2);
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: var(--radius-md, 6px);
   transition: 150ms var(--ease-out);
 }
 /* 04 FINDING-007: the standard 2px copper focus ring, same as every other
@@ -163,13 +165,13 @@
 .axiom-field::placeholder { color: var(--dim); }
 select.axiom-field option { background: var(--panel); color: var(--text); }
 
-.field-error { color: var(--danger); font-size: var(--text-xs); margin: 4px 0 0; }
+.field-error { color: var(--danger); font-size: var(--text-xs); margin: var(--space-1) 0 0; }
 
 .shell-icon-btn {
   border: 1px solid var(--line);
   background: transparent;
   color: var(--muted);
-  border-radius: 6px;
+  border-radius: var(--radius-md, 6px);
   min-width: 32px;
   min-height: 32px;
   display: inline-grid;
@@ -201,7 +203,7 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
   display: inline-block;
   width: 4px;
   height: 4px;
-  margin: 0 6px;
+  margin: 0 var(--space-1);
   background-color: var(--dim);
   animation: axiom-churn-on 650ms ease-out infinite;
 }
@@ -228,11 +230,11 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
 .chat-topbar {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 4px;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-1);
   border-bottom: 1px solid var(--line-soft);
 }
-.chat-topbar__mark { border-radius: 8px; }
+.chat-topbar__mark { border-radius: var(--radius-lg, 8px); }
 .chat-topbar__meta { flex: 1; min-width: 0; }
 .chat-topbar__name { font-family: Syne, sans-serif; font-weight: var(--fw-title); font-size: var(--fs-body); letter-spacing: 0.02em; }
 .chat-topbar__status { font-size: var(--text-xs); color: var(--dim); }
@@ -240,12 +242,12 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
 .chat-banner {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin: 10px 0 0;
-  padding: 9px 12px;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--c-warning-border);
   background: var(--c-warning-bg);
-  border-radius: 7px;
+  border-radius: var(--radius-md, 6px);
   font-size: var(--text-sm);
   color: var(--warning);
 }
@@ -256,17 +258,17 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 14px 2px;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-1);
   scrollbar-width: thin;
 }
 
-.chat-composer { border-top: 1px solid var(--line-soft); padding-top: 10px; }
-.chat-composer__row { display: flex; align-items: flex-end; gap: 8px; }
+.chat-composer { border-top: 1px solid var(--line-soft); padding-top: var(--space-2); }
+.chat-composer__row { display: flex; align-items: flex-end; gap: var(--space-2); }
 .chat-composer__row .axiom-field { flex: 1; }
 
 .chat-sidebar-toggle { display: none; }
-@media (max-width: 760px) {
+@media (max-width: 700px) {
   .chat-sidebar-toggle { display: inline-grid; }
 }
 
@@ -288,14 +290,14 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
   font-size: 0.86em;
   background: var(--panel-2);
   border: 1px solid var(--line-soft);
-  border-radius: 4px;
+  border-radius: var(--radius-sm, 4px);
   padding: 0.1em 0.35em;
 }
 .chat-md pre {
   background: var(--bg-2);
   border: 1px solid var(--line-soft);
-  border-radius: 7px;
-  padding: 10px 12px;
+  border-radius: var(--radius-md, 6px);
+  padding: var(--space-2) var(--space-3);
   overflow-x: auto;
   margin: 0.6em 0;
 }
@@ -307,23 +309,23 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
   padding: 0.1em 0 0.1em 0.9em;
 }
 .chat-md table { border-collapse: collapse; margin: 0.6em 0; font-size: 0.92em; }
-.chat-md th, .chat-md td { border: 1px solid var(--line-soft); padding: 5px 9px; text-align: left; }
+.chat-md th, .chat-md td { border: 1px solid var(--line-soft); padding: var(--space-1) var(--space-2); text-align: left; }
 .chat-md th { background: var(--panel-2); font-weight: var(--fw-semibold); }
-.chat-md img { max-width: 100%; border-radius: 7px; }
+.chat-md img { max-width: 100%; border-radius: var(--radius-md, 6px); }
 
-.msg-actions { display: inline-flex; gap: 6px; align-items: center; }
+.msg-actions { display: inline-flex; gap: var(--space-1); align-items: center; }
 .msg-action {
   border: 0;
   background: none;
   color: var(--dim);
   font-size: var(--text-2xs);
   cursor: pointer;
-  padding: 1px 4px;
-  border-radius: 4px;
+  padding: 1px var(--space-1);
+  border-radius: var(--radius-sm, 4px);
 }
 .msg-action:hover { color: var(--copper-bright); }
 .msg-action--danger { color: var(--danger); }
-.msg-confirm { display: inline-flex; align-items: center; gap: 6px; font-size: var(--text-2xs); color: var(--warning); }
+.msg-confirm { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--text-2xs); color: var(--warning); }
 .msg-confirm__text { color: var(--warning); }
 .msg-insights {
   border-top: 1px solid var(--line-soft);
@@ -336,8 +338,8 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
 .prompt-card {
   border: 1px solid var(--line);
   background: var(--panel);
-  border-radius: 7px;
-  padding: 12px 14px;
+  border-radius: var(--radius-md, 6px);
+  padding: var(--space-3) var(--space-3);
   text-align: left;
   cursor: pointer;
   transition: 150ms var(--ease-out);
@@ -348,10 +350,10 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
 .queue-chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1);
   border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 2px 4px 2px 10px;
+  border-radius: var(--radius-md, 6px);
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-2);
   font-size: var(--text-xs);
   color: var(--dim);
   background: var(--panel);
@@ -360,7 +362,7 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
 .stream-tail { overflow-wrap: anywhere; }
 
 /* Thread rail (ChatHistorySection), styled as the v2 thread-list panel body. */
-.chat-history { display: flex; flex-direction: column; gap: 8px; min-height: 0; height: 100%; }
+.chat-history { display: flex; flex-direction: column; gap: var(--space-2); min-height: 0; height: 100%; }
 .chat-history__head { display: flex; align-items: center; justify-content: space-between; }
 .chat-history__title {
   margin: 0;
@@ -372,9 +374,9 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
   border: 1px solid var(--copper);
   color: var(--copper-bright);
   background: transparent;
-  border-radius: 6px;
+  border-radius: var(--radius-md, 6px);
   font-size: var(--fs-mono);
-  padding: 5px 10px;
+  padding: var(--space-1) var(--space-2);
   cursor: pointer;
 }
 .chat-history__new:hover { background: rgba(210, 139, 82, 0.1); }
@@ -382,31 +384,31 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
   border: 1px solid var(--line);
   background: var(--bg-2);
   color: var(--text);
-  border-radius: 6px;
-  padding: 8px 10px;
+  border-radius: var(--radius-md, 6px);
+  padding: var(--space-2) var(--space-2);
   font-size: var(--fs-small);
 }
 .chat-history__search:focus-visible { outline: 2px solid var(--copper-bright); outline-offset: 2px; }
 .chat-history__search:focus { border-color: var(--copper); }
-.chat-history__list { overflow-y: auto; display: grid; gap: 4px; min-height: 0; flex: 1; }
+.chat-history__list { overflow-y: auto; display: grid; gap: var(--space-1); min-height: 0; flex: 1; }
 .chat-history__item {
   display: grid;
   grid-template-columns: 1fr auto;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1);
   width: 100%;
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--radius-md, 6px);
   background: transparent;
   color: var(--muted);
   text-align: left;
-  padding: 9px 10px;
+  padding: var(--space-2) var(--space-2);
   cursor: pointer;
   transition: 150ms var(--ease-out);
 }
 .chat-history__item:hover { background: rgba(210, 139, 82, 0.06); color: var(--text); }
 .chat-history__item.is-active { background: rgba(210, 139, 82, 0.12); color: var(--text); box-shadow: inset 2px 0 0 var(--copper); }
-.chat-history__open { display: grid; gap: 2px; min-width: 0; }
+.chat-history__open { display: grid; gap: var(--space-1); min-width: 0; }
 .chat-history__badge { font-size: var(--fs-mono); color: var(--dim); }
 .chat-history__delete {
   border: 0;
@@ -414,14 +416,14 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
   color: var(--dim);
   font-size: var(--fs-small);
   cursor: pointer;
-  padding: 3px 5px;
-  border-radius: 5px;
+  padding: var(--space-1) var(--space-1);
+  border-radius: var(--radius-md, 6px);
   visibility: hidden;
 }
 .chat-history__item:hover .chat-history__delete,
 .chat-history__item.is-active .chat-history__delete { visibility: visible; }
 .chat-history__delete:hover { color: var(--danger); }
-.chat-history__empty { margin: 0; padding: 14px 4px; color: var(--dim); font-size: var(--fs-small); }
+.chat-history__empty { margin: 0; padding: var(--space-3) var(--space-1); color: var(--dim); font-size: var(--fs-small); }
 
 /* ---------------------------------------------------------------- *
  * Chat surface host — the v2 shell around the live ChatPage.        *
@@ -432,7 +434,7 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
 .chat-surface {
   display: grid;
   grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
-  gap: 18px;
+  gap: var(--space-4);
   min-height: 0;
   flex: 1;
 }
@@ -456,10 +458,10 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
   flex-direction: column;
   min-height: 0;
   min-width: 0;
-  padding: 14px 12px;
+  padding: var(--space-3) var(--space-3);
 }
 .chat-thread-rail > div { display: flex; flex-direction: column; min-height: 0; flex: 1; }
-@media (max-width: 760px) {
+@media (max-width: 700px) {
   .chat-surface { grid-template-columns: minmax(0, 1fr); }
   /* Specificity: .app-shell .thread-list rules in axiom-readability.css and
      axiom-operations-fix.css (both 0,2,1) stomped the old bare
@@ -475,7 +477,7 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
     left: 0;
     z-index: var(--layer-drawer, 80);
     width: min(84vw, 320px);
-    box-shadow: 24px 0 60px rgba(0, 0, 0, 0.45);
+    box-shadow: var(--shadow-drawer-r, 22px 0 64px rgba(0,0,0,.45));
     background: var(--panel);
   }
 }
@@ -487,18 +489,18 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
   border: 0;
   background: transparent;
   color: var(--text);
-  padding: 0 12px;
+  padding: 0 var(--space-3);
   outline: 0;
 }
 .tick-stream {
-  margin-top: 14px;
+  margin-top: var(--space-3);
   border: 1px solid var(--line-soft);
-  border-radius: 8px;
-  padding: 12px 14px;
+  border-radius: var(--radius-lg, 8px);
+  padding: var(--space-3) var(--space-3);
   background: var(--bg-2);
 }
 .tick-stream pre {
-  margin: 8px 0;
+  margin: var(--space-2) 0;
   max-height: 180px;
   overflow: auto;
   white-space: pre-wrap;
@@ -509,7 +511,7 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
 }
 
 /* Wallet gate: live error line under the action row. */
-.wallet-gate-error { margin: 10px 0 0; color: var(--danger); font-size: var(--fs-small); overflow-wrap: anywhere; }
+.wallet-gate-error { margin: var(--space-2) 0 0; color: var(--danger); font-size: var(--fs-small); overflow-wrap: anywhere; }
 
 
 /* ---------------------------------------------------------------- *
@@ -546,9 +548,9 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
   z-index: 41;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-2);
   width: 260px;
-  padding: 14px;
+  padding: var(--space-3);
   border: 1px solid var(--line);
   background: var(--panel);
   box-shadow: var(--shadow-modal);
@@ -557,14 +559,14 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2);
 }
 .routing-popover__hint { font-size: var(--text-2xs); color: var(--dim); }
 .routing-popover__select { width: 100%; }
 .routing-popover__check {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1);
   font-size: var(--text-xs);
   color: var(--muted);
   cursor: pointer;
@@ -572,7 +574,7 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
 .routing-popover__check.is-disabled { cursor: not-allowed; opacity: 0.45; }
 .routing-popover__status {
   margin: 0;
-  padding-top: 8px;
+  padding-top: var(--space-2);
   border-top: 1px solid var(--line-soft);
   font-size: var(--text-2xs);
   line-height: 1.5;
@@ -581,13 +583,13 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
 .routing-chip {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: var(--space-1);
   border: 1px solid var(--line);
   background: transparent;
   color: var(--dim);
   font-family: var(--font-mono);
   font-size: var(--text-2xs);
-  padding: 4px 8px;
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-sm);
   cursor: pointer;
   white-space: nowrap;
@@ -604,8 +606,8 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
   border: 0;
   background: none;
   cursor: pointer;
-  padding: 1px 4px;
-  border-radius: 4px;
+  padding: 1px var(--space-1);
+  border-radius: var(--radius-sm, 4px);
   color: var(--dim);
   font-family: var(--font-mono);
   font-size: var(--text-2xs);
@@ -613,7 +615,7 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
 }
 .msg-insights__toggle:hover { color: var(--copper-bright); }
 .msg-insights__detail {
-  margin-top: 4px;
+  margin-top: var(--space-1);
   font-family: var(--font-mono);
   font-size: var(--text-2xs);
   line-height: 1.45;
@@ -623,8 +625,8 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
 .chat-history__restore {
   display: block;
   width: 100%;
-  margin-top: 6px;
-  padding: 6px 8px;
+  margin-top: var(--space-1);
+  padding: var(--space-1) var(--space-2);
   border: 1px dashed var(--line);
   border-radius: var(--radius-sm);
   background: transparent;
@@ -639,7 +641,7 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
 /* Mobile thread-rail dismiss (backdrop sits under the z-80 rail overlay,
    over the page); only relevant ≤760px where the rail is an overlay. */
 .chat-rail-backdrop { display: none; }
-@media (max-width: 760px) {
+@media (max-width: 700px) {
   .chat-rail-backdrop {
     display: block;
     position: fixed;

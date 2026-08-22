@@ -154,8 +154,8 @@
 
 .theme-segmented {
   display: inline-flex;
-  gap: 3px;
-  padding: 3px;
+  gap: var(--space-1);
+  padding: var(--space-1);
   border: 1px solid var(--completion-line);
   background: var(--completion-elevated);
 }
@@ -163,9 +163,9 @@
 .theme-segmented button {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1);
   min-height: var(--hit-area, 44px);
-  padding: 0 9px;
+  padding: 0 var(--space-2);
   border: 1px solid transparent;
   background: transparent;
   color: var(--completion-dim);
