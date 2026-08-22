@@ -18,8 +18,6 @@ import {
   useWriteContract,
   useWalletClient,
 } from "wagmi";
-import { marked } from "marked";
-import DOMPurify from "dompurify";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { BRAND } from "../brand/assets.js";
 import { toast } from "sonner";
@@ -43,12 +41,24 @@ import {
   type ComputeProvider,
 } from "../hooks/useProviders.js";
 import { ChatHistorySection } from "../components/ChatHistorySection.js";
+import { humanizeError, truncateHex, explorerTxUrl } from "../utils/format.js";
 import {
-  humanizeError,
-  truncateHex,
-  truncateAddress,
-  explorerTxUrl,
-} from "../utils/format.js";
+  createMessage,
+  toMessages,
+  loadJsonArray,
+  titleFromMessages,
+  consumeSseLines,
+  renderMarkdown,
+  dedupeToolCalls,
+  humanizeToolMessage,
+  captureTurnMetrics,
+  shortAddress,
+  formatInsightsLine,
+  type Message,
+  type SSEChunk,
+  type TurnMetric,
+  type ToolCall,
+} from "../chat/lib.js";
 import {
   buildSystemPrompt,
   formatToolResult,
@@ -108,27 +118,6 @@ import {
 import { Button } from "../components/axiom/Controls.js";
 import { MessageSquare, Network } from "../components/axiom/icons.js";
 
-type Message = {
-  id: string;
-  role: "user" | "assistant" | "tool";
-  content: string | null;
-  tool_calls?: ToolCall[];
-  tool_call_id?: string;
-  name?: string;
-  /** meta.error = UI-only error card (never sent to the model); usage = cost chip. */
-  meta?: { error?: boolean; usage?: string };
-};
-
-function createMessage(msg: Omit<Message, "id">): Message {
-  return { ...msg, id: crypto.randomUUID() };
-}
-
-type ToolCall = {
-  id: string;
-  type: "function";
-  function: { name: string; arguments: string };
-};
-
 type ToolRunStatus = "running" | "success" | "error";
 
 type ToolRun = {
@@ -141,57 +130,6 @@ type ToolRun = {
 };
 
 /** One LLM turn (one tool-loop iteration) — client timings + router usage/trace. */
-type TurnMetric = {
-  ttftMs?: number;
-  wallMs: number;
-  promptTokens?: number;
-  completionTokens?: number;
-  cachedTokens?: number;
-  provider?: string;
-  requestId?: string;
-  /** Router billing total_cost in neuron (1 0G = 1e18 neuron). */
-  costNeuron?: number;
-};
-
-type SSEChunk = {
-  choices?: Array<{
-    delta: {
-      content?: string | null;
-      tool_calls?: Array<{
-        index: number;
-        id?: string;
-        type?: "function";
-        function?: { name?: string; arguments?: string };
-      }>;
-      role?: string;
-    };
-    finish_reason?: string | null;
-  }>;
-  /** Backend metadata frame ({type:"trace",trace}); mid-stream error frames may also arrive with code (STREAM_ERROR). */
-  type?: string;
-  trace?: Record<string, unknown>;
-  error?: string;
-  code?: string;
-  /** Router usage on the terminal/finish_reason chunk body. */
-  usage?: {
-    prompt_tokens?: number;
-    completion_tokens?: number;
-    total_tokens?: number;
-    prompt_tokens_details?: { cached_tokens?: number };
-  };
-  /** Router x_0g_trace on the terminal chunk body. */
-  x_0g_trace?: {
-    provider?: string;
-    request_id?: string;
-    billing?: {
-      input_cost?: string;
-      output_cost?: string;
-      total_cost?: string;
-    };
-    tee_verified?: boolean;
-  };
-};
-
 const SUPPORTED_CHAIN_IDS = new Set([APP_CHAIN_ID]);
 const CHAT_MESSAGES_KEY = "axiom:chat-messages";
 /** Active threadId (sessionStorage): lets a page reload resume the SAME
@@ -232,53 +170,6 @@ const insetCardStyle: CSSProperties = {
  *  Server transcripts (GET /v1/chat/history) were persisted through
  *  toChatApiMessages, which strips `id` — re-assign ids so React keys and
  *  message actions keep working. */
-function toMessages(msgs: unknown[]): Message[] {
-  return (msgs as Message[]).map((m) =>
-    m && typeof m.id === "string" ? m : { ...m, id: crypto.randomUUID() },
-  );
-}
-
-function loadJsonArray<T>(storage: Storage, key: string): T[] {
-  try {
-    const raw = storage.getItem(key);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as T[];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function titleFromMessages(msgs: Message[], untitled: string): string {
-  const first = msgs.find((m) => m.role === "user" && m.content);
-  const t = (first?.content ?? untitled).trim().replace(/\s+/g, " ");
-  return t.length > 42 ? `${t.slice(0, 42)}…` : t || untitled;
-}
-
-function consumeSseLines(buffer: string): {
-  chunks: SSEChunk[];
-  rest: string;
-  done: boolean;
-} {
-  const chunks: SSEChunk[] = [];
-  let done = false;
-  const lines = buffer.split("\n");
-  const rest = lines.pop() ?? "";
-  for (const line of lines) {
-    if (!line.startsWith("data: ")) continue;
-    const payload = line.slice(6).trim();
-    if (payload === "[DONE]") {
-      done = true;
-      break;
-    }
-    try {
-      chunks.push(JSON.parse(payload) as SSEChunk);
-    } catch {
-      void 0;
-    }
-  }
-  return { chunks, rest, done };
-}
 
 function ToolClassBadge({ name }: { name: string }): ReactElement | null {
   const cls = toolClass(name);
@@ -487,52 +378,6 @@ function loadStoredThreadId(): string | null {
 /** 05 FINDING-014: console references in assistant answers become links —
  *  `Agent #N` → the agent page (internal, SPA-routed via the click
  *  interceptor on the message list), 64-hex hashes → the block explorer. */
-function linkifyConsoleRefs(
-  src: string,
-  explorerTx: (hash: string) => string,
-): string {
-  return src
-    .replace(/Agent #(\d+)/g, "[Agent #$1](/agents/$1)")
-    .replace(
-      /\b(0x[a-fA-F0-9]{64})\b/g,
-      (hash) => `[${truncateHex(hash, 6, 4)}](${explorerTx(hash)})`,
-    );
-}
-
-function renderMarkdown(
-  src: string | null,
-  explorerTx?: (hash: string) => string,
-): string {
-  const linked =
-    explorerTx !== undefined
-      ? linkifyConsoleRefs(src ?? "", explorerTx)
-      : (src ?? "");
-  return DOMPurify.sanitize(
-    marked.parse(linked, {
-      async: false,
-      gfm: true,
-      breaks: false,
-    }) as string,
-    { FORBID_TAGS: ["style", "iframe"] },
-  );
-}
-
-const dedupeToolCalls = (calls: ToolCall[]): ToolCall[] =>
-  calls.filter(
-    (c, i) =>
-      calls.findIndex(
-        (x) =>
-          x.function.name === c.function.name &&
-          x.function.arguments === c.function.arguments,
-      ) === i,
-  );
-
-/** 04 FINDING-012: tool failures render humanized in the message stream —
- *  the model still receives the raw result JSON (it recovers better with
- *  real detail); users get the head sentence, never a viem/backend dump. */
-function humanizeToolMessage(text: string): string {
-  return text.startsWith("Error: ") ? humanizeError(text) : text;
-}
 
 /** Per-message copy action with the app-wide inline-confirm contract (04
  *  FINDING-006): the label swaps to "✓ Copied" for ~1.2s, matching the ui.tsx
@@ -2483,66 +2328,6 @@ function phaseLabel(
 
 /** Capture router usage/trace (terminal chunk or backend trace frame) into a
  *  per-turn metric record. Reuses the exact fields the router emits. */
-function captureTurnMetrics(
-  turn: TurnMetric,
-  usage: SSEChunk["usage"],
-  trace: Record<string, unknown> | undefined,
-): void {
-  if (usage) {
-    if (typeof usage.prompt_tokens === "number")
-      turn.promptTokens = usage.prompt_tokens;
-    if (typeof usage.completion_tokens === "number")
-      turn.completionTokens = usage.completion_tokens;
-    const cached = usage.prompt_tokens_details?.cached_tokens;
-    if (typeof cached === "number") turn.cachedTokens = cached;
-  }
-  if (!trace) return;
-  if (typeof trace.provider === "string") turn.provider = trace.provider;
-  if (typeof trace.request_id === "string") turn.requestId = trace.request_id;
-  const billing = trace.billing as { total_cost?: string | number } | undefined;
-  if (billing?.total_cost !== undefined) {
-    const n =
-      typeof billing.total_cost === "string"
-        ? Number(billing.total_cost)
-        : billing.total_cost;
-    if (Number.isFinite(n)) turn.costNeuron = (turn.costNeuron ?? 0) + n;
-  }
-}
-
-function shortAddress(addr: string): string {
-  return truncateAddress(addr);
-}
-
-function formatNeuron(neuron: number): string {
-  const og = neuron / 1e18;
-  if (og >= 1) return og.toFixed(3);
-  return og.toPrecision(2);
-}
-
-/** Aggregated per-run insights line: 'N turns · N steps | LLM Xs | provider
- *  0x… | ≈X <native>'. Rendered inside InsightsDisclosure (collapsed by
- *  default); the cost unit is the chain's native symbol (never a literal,
- *  C-12). Token/cache internals are deliberately not shown (row 42, audit 07). */
-function formatInsightsLine(
-  metrics: TurnMetric[],
-  turns: number,
-  steps: number,
-  nativeSymbol: string,
-): string | undefined {
-  if (metrics.length === 0) return undefined;
-  const parts = [
-    `${turns} turn${turns === 1 ? "" : "s"} · ${steps} step${steps === 1 ? "" : "s"}`,
-  ];
-  const wallMs = metrics.reduce((a, m) => a + m.wallMs, 0);
-  if (wallMs > 0) parts.push(`LLM ${(wallMs / 1000).toFixed(1)}s`);
-  // Row-42 (07): the opened detail keeps 3 segments — cost, latency, provider.
-  // Token/cache/telemetry internals stay out of the collapsed-by-default line.
-  const last = metrics[metrics.length - 1];
-  if (last?.provider) parts.push(`provider ${shortAddress(last.provider)}`);
-  const cost = metrics.reduce((a, m) => a + (m.costNeuron ?? 0), 0);
-  if (cost > 0) parts.push(`≈${formatNeuron(cost)} ${nativeSymbol}`);
-  return parts.join(" | ");
-}
 
 /** Compact provider-selector option label: name · latency · price per 1M. */
 function pinLabel(p: ComputeProvider): string {
