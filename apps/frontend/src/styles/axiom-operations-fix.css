@@ -157,11 +157,6 @@
   white-space: normal;
 }
 
-.app-shell .chat-layout {
-  grid-template-columns: minmax(250px, .52fr) minmax(0, 1.48fr);
-  gap: 18px;
-}
-
 /* Avoid oversized flow panels and clipped evidence in the operational pages. */
 .app-shell .flow-layout {
   grid-template-columns: minmax(0, 1.12fr) minmax(280px, .88fr);
@@ -354,10 +349,6 @@
 
   .app-shell .agent-detail-head {
     grid-template-columns: 54px minmax(0, 1fr);
-  }
-
-  .app-shell .chat-layout {
-    grid-template-columns: 1fr;
   }
 
   .app-shell .thread-list {

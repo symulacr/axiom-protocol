@@ -12,13 +12,6 @@
 
 .landing-copy { position:relative; z-index:1; min-width:0; }
 
-.landing-copy h1 {
-  max-inline-size:100%;
-  font-size:clamp(58px,6.2cqi,90px);
-  overflow-wrap:normal;
-  word-break:normal;
-}
-
 .landing-visual { min-width:0; isolation:isolate; }
 
 /* The dialog must remain anchored to the visual viewport and scroll as one surface when vertical space is constrained. */
@@ -64,7 +57,6 @@
 
 @media (max-width:800px) {
   .landing-main { gap:38px; }
-  .landing-copy h1 { font-size:clamp(50px,13.6cqi,54px); }
   .wallet-gate-layer { align-items:start; padding:14px; }
   .wallet-gate { width:100%; max-height:calc(100dvh - 28px); }
 }

@@ -40,7 +40,6 @@
 
 .locked-route-copy { grid-column:2; align-self:center; max-width:620px; padding:28px 0 38px; border-top:2px solid var(--route-accent); border-bottom:1px solid color-mix(in srgb, var(--route-accent) 24%, transparent); }
 .locked-route-copy .eyebrow { color:var(--route-accent); }
-.locked-route-copy h1 { max-width:600px; margin:18px 0 20px; font:800 clamp(50px, 6.6vw, 92px)/.88 Syne,sans-serif; letter-spacing:-.085em; }
 .locked-route-copy h1 i { color:var(--completion-bright); font-style:normal; }
 .locked-route-copy p { max-width:500px; color:var(--completion-muted); font-size:13px; line-height:1.75; }
 .locked-route-copy .button-row { margin-top:28px; }
@@ -70,7 +69,7 @@
 }
 .landing-visual.hero-visual-modern > img { display:none; }
 .landing-main, .landing-copy { min-width:0; }
-.landing-copy h1 { max-width:560px; overflow:visible; font-size:clamp(58px,6.2vw,98px); }
+.landing-copy h1 { max-width:560px; overflow:visible; }
 .landing-copy h1 span, .landing-copy h1 i { display:inline-block; white-space:nowrap; }
 
 @media (max-width: 980px) {
@@ -78,14 +77,13 @@
   .locked-route-copy { grid-column:2; }
   .locked-evidence { grid-column:2; }
   .locked-route-copy { padding-top:20px; }
-  .locked-route-copy h1 { font-size:clamp(48px, 8vw, 76px); }
 }
 
 @media (max-width: 700px) {
   .public-locked .locked-route-content { grid-template-columns:1fr; width:calc(100% - 32px); padding:42px 0 58px; gap:24px; }
   
   .locked-route-copy { padding:20px 0 28px; }
-  .locked-route-copy h1 { max-width:100%; font-size:clamp(46px, 15vw, 68px); overflow-wrap:normal; }
+  .locked-route-copy h1 { max-width:100%; overflow-wrap:normal; }
   .locked-route-copy p { font-size:12px; }
   .locked-route-copy .button-row { align-items:stretch; flex-direction:column; }
   .locked-route-copy .button { width:100%; }
@@ -93,7 +91,7 @@
   .locked-route-copy { grid-column:1; }
   .locked-preview, .locked-preview img { min-height:150px; height:150px; }
   .landing-main { min-width:0; }
-  .landing-copy h1 { max-width:100%; font-size:clamp(44px,14vw,58px); letter-spacing:-.08em; overflow-wrap:normal; }
+  .landing-copy h1 { max-width:100%; letter-spacing:-.08em; overflow-wrap:normal; }
   .landing-copy h1 span, .landing-copy h1 i { white-space:normal; }
 }
 

@@ -257,11 +257,6 @@ button, input, textarea, select { line-height: 1.35; }
 }
 
 /* Chat is an operating surface: threads, messages, and the composer keep independent readable tracks. */
-.chat-layout {
-  grid-template-columns: minmax(236px, 280px) minmax(0, 1fr);
-  align-items: stretch;
-  gap: var(--space-4);
-}
 .thread-list { min-width: 0; }
 .thread-list { display: flex; flex-direction: column; overflow: hidden; }
 
@@ -269,7 +264,6 @@ button, input, textarea, select { line-height: 1.35; }
   .app-shell { grid-template-columns: minmax(0, 1fr); }
   .app-shell .sidebar-wrap { width: 0; min-width: 0; }
   .app-shell .sidebar { transform: translateX(-110%); pointer-events: none; transition: none; }
-  .chat-layout { grid-template-columns: minmax(0, 1fr); gap: var(--space-3); }
   .app-shell .thread-list { display: flex; min-height: 0; grid-template-columns: none; }
   
   
