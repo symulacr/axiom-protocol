@@ -135,6 +135,7 @@ h1, h2, h3, strong { font-weight: 600; }
     height: 100vh;
   }
   .light .sidebar { background: rgba(244, 240, 233, .92); }
+  .light .avatar { color: #fffdf8; }
   .side-head {
     display: flex;
     align-items: center;
@@ -200,7 +201,7 @@ h1, h2, h3, strong { font-weight: 600; }
   .account { display: flex; align-items: center; gap: 9px; padding: 9px 6px 0; color: var(--muted); }
   .account > div:nth-child(2) { display: grid; gap: 3px; flex: 1; min-width: 0; }
   .account strong { font-size: var(--fs-small); font-weight: var(--fw-label); color: var(--text); }
-  .account span { font: var(--fs-mono) 'JetBrains Mono', monospace; color: var(--dim); }
+  .account span:not(.avatar) { font: var(--fs-mono) 'JetBrains Mono', monospace; color: var(--dim); }
   .avatar {
     width: 27px;
     height: 27px;
