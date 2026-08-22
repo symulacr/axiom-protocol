@@ -166,81 +166,6 @@ export const Textarea = forwardRef<
   );
 });
 
-type AlertVariant = "error" | "success";
-
-const alertBase: CSSProperties = {
-  padding: "var(--space-md) var(--space-lg)",
-  borderRadius: "var(--radius-lg)",
-  fontSize: "var(--text-sm)",
-  lineHeight: "var(--lh-snug)",
-  overflowWrap: "break-word",
-};
-
-const alertStyles: Record<AlertVariant, CSSProperties> = {
-  error: {
-    ...alertBase,
-    background: COLORS.dangerBg,
-    border: `1px solid ${COLORS.dangerBorder}`,
-    color: COLORS.danger,
-  },
-  success: {
-    ...alertBase,
-    background: COLORS.successBg,
-    border: `1px solid ${COLORS.successBorder}`,
-    color: COLORS.success,
-  },
-};
-
-export function Alert({
-  variant = "error",
-  children,
-  style,
-  className,
-}: {
-  variant?: AlertVariant;
-  children: ReactNode;
-  style?: CSSProperties;
-  className?: string;
-}): ReactElement {
-  return (
-    <div
-      role={variant === "error" ? "alert" : "status"}
-      className={className}
-      style={{ ...alertStyles[variant], ...style }}
-    >
-      {children}
-    </div>
-  );
-}
-
-export function ErrorRef({
-  code,
-  requestId,
-}: {
-  code?: string;
-  requestId?: string;
-}): ReactElement {
-  if (code === undefined && requestId === undefined) return <></>;
-  const ref = [requestId, code].filter(Boolean).join(" · ");
-  return (
-    <span
-      style={{
-        display: "block",
-        marginTop: "var(--space-xs)",
-        fontFamily: "var(--font-mono)",
-        fontSize: "var(--text-xs)",
-        color: COLORS.textDim,
-      }}
-    >
-      Ref · {ref}
-    </span>
-  );
-}
-
-// P4 (audit §4 row 15): the generated-but-unused `Skeleton` export was dead
-// code — deleted. Loading states use `Spinner` (this kit) or the live-data
-// honest states on the v2 pages.
-
 export function SectionTitle({
   children,
   style,
@@ -372,6 +297,30 @@ export function MonoLabel({
     >
       {label}
       <CopyButton text={text ?? String(children)} />
+    </span>
+  );
+}
+
+export function ErrorRef({
+  code,
+  requestId,
+}: {
+  code?: string;
+  requestId?: string;
+}): ReactElement {
+  if (code === undefined && requestId === undefined) return <></>;
+  const ref = [requestId, code].filter(Boolean).join(" · ");
+  return (
+    <span
+      style={{
+        display: "block",
+        marginTop: "var(--space-xs)",
+        fontFamily: "var(--font-mono)",
+        fontSize: "var(--text-xs)",
+        color: COLORS.textDim,
+      }}
+    >
+      Ref · {ref}
     </span>
   );
 }
