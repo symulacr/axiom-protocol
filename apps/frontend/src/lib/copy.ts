@@ -115,7 +115,6 @@ export type Copy = {
     description: string;
     nextSafeAction: string;
     heroTitle: string;
-    walletContext: string;
     signatureBoundary: string;
     consoleAccess: string;
     stakingBoundary: string;
@@ -123,8 +122,6 @@ export type Copy = {
     menuDevelopers: string;
     menuDevelopersHint: string;
     stakeTitle: string;
-    stripConnectEyebrow: string;
-    stripConnectSmall: string;
     stripVerifyEyebrow: string;
     stripVerifySmall: string;
     stripOperateEyebrow: string;
@@ -202,7 +199,6 @@ export type Copy = {
     reload: string;
   };
   settings: {
-    pageEyebrow: string;
     pageTitle: string;
     languageLabel: string;
     /** Page lede — describes the whole surface, not one control (02
@@ -213,20 +209,15 @@ export type Copy = {
     localeFrench: string;
     localeGerman: string;
     liveWallet: string;
-    walletNetwork: string;
     signingContext: string;
     /** Operator profile name editor (03 FINDING-013 — Settings owns renames;
      *  the WalletGate step only ever creates the first value). */
     profileNameLabel: string;
     profileNameSave: string;
     profileNameSaved: string;
-    dailyEyebrow: string;
     dailyTitle: string;
-    layoutEyebrow: string;
     layoutTitle: string;
-    advancedEyebrow: string;
     advancedTitle: string;
-    dangerEyebrow: string;
     dangerTitle: string;
     dangerHint: string;
     compactRail: string;
@@ -259,7 +250,6 @@ export type Copy = {
     statusChecking: string;
     statusReady: string;
     statusOnline: string;
-    shortcutEyebrow: string;
     shortcutTitle: string;
     shortcutHint: string;
     shortcutPalette: string;
@@ -279,24 +269,17 @@ export type Copy = {
     titleLead: string;
     titleEmphasis: string;
     review: (count: number) => string;
-    nowReviewEyebrow: string;
     refresh: string;
     managedValue: string;
     agentsOnline: string;
     storageProofs: string;
     liveQueue: string;
-    agentRegister: string;
     operatingFleet: string;
-    proofLane: string;
     attentionFirst: string;
     allowanceReady: string;
-    recentStore: string;
     latestEvidence: string;
     allReceipts: string;
     contextWallet: string;
-    contextNetwork: string;
-    contextSigner: string;
-    contextAttention: string;
     switchRequired: string;
     signerReady: string;
     signerWrong: string;
@@ -624,7 +607,6 @@ export type Copy = {
     handoffAppliedTitle: string;
     handoffAppliedNote: string;
     /** Placeholder: {receiver}. */
-    handoffInvalidCode: string;
     handoffReceivedNotice: string;
     /** P4 receiver page (/transfer/co-sign) — public, wallet-gated only by
      *  the acceptance signature itself. */
@@ -837,7 +819,6 @@ const english: Copy = {
       "Connect a wallet, act, and keep the proof next to every action. Flows are real on the connected testnet.",
     nextSafeAction: "NEXT SAFE ACTION",
     heroTitle: "Verify the operator before the action.",
-    walletContext: "Wallet context",
     signatureBoundary: "Signature boundary",
     consoleAccess: "Console access",
     stakingBoundary: "Staking is not part of Axiom yet.",
@@ -845,8 +826,6 @@ const english: Copy = {
     menuDevelopers: "Developers",
     menuDevelopersHint: "APIs and tools",
     stakeTitle: "0G Stake",
-    stripConnectEyebrow: "CONNECT",
-    stripConnectSmall: "Connector and address",
     stripVerifyEyebrow: "VERIFY",
     stripVerifySmall: "No gas · no custody",
     stripOperateEyebrow: "OPERATE",
@@ -921,7 +900,6 @@ const english: Copy = {
     reload: "Reload page",
   },
   settings: {
-    pageEyebrow: "CONTROL PLANE / CONFIGURATION",
     pageTitle: "Settings",
     languageLabel: "Interface language",
     pageDescription:
@@ -930,18 +908,13 @@ const english: Copy = {
     localeFrench: "Français",
     localeGerman: "Deutsch",
     liveWallet: "live wallet",
-    walletNetwork: "WALLET & NETWORK",
     signingContext: "Signing context",
     profileNameLabel: "Operator profile name",
     profileNameSave: "Save name",
     profileNameSaved: "Profile name updated.",
-    dailyEyebrow: "DISPLAY / PREFERENCES",
     dailyTitle: "Daily preferences",
-    layoutEyebrow: "CONSOLE / LAYOUT",
     layoutTitle: "Console layout",
-    advancedEyebrow: "ADVANCED / RARELY USED",
     advancedTitle: "Advanced",
-    dangerEyebrow: "DANGER ZONE",
     dangerTitle: "Destructive actions",
     dangerHint: "Wipes session, drafts and receipts. Settings survive.",
     compactRail: "Compact command rail",
@@ -974,7 +947,6 @@ const english: Copy = {
     statusChecking: "checking",
     statusReady: "Ready",
     statusOnline: "online",
-    shortcutEyebrow: "COMMAND CENTER",
     shortcutTitle: "Keyboard map",
     shortcutHint: "Shortcuts navigate; they never sign.",
     shortcutPalette: "Find actions, agents, receipts and routes",
@@ -995,25 +967,18 @@ const english: Copy = {
     titleEmphasis: "surface accountable.",
     review: (count) =>
       `${count} agent${count === 1 ? "" : "s"} need${count === 1 ? "s" : ""} review.`,
-    nowReviewEyebrow: "NOW / REVIEW",
     refresh: "Refresh overview",
     managedValue: "Managed value",
     agentsOnline: "Agents online",
     storageProofs: "Storage proofs",
     liveQueue: "Live queue",
-    agentRegister: "AGENT REGISTER",
     operatingFleet: "Operating fleet",
-    proofLane: "PROOF LANE",
     attentionFirst: "Attention first",
     allowanceReady: "Allowance is ready for review.",
     // One canonical allowance sentence, shared with the strip (02 FINDING-022).
-    recentStore: "RECENT / SHARED STORE",
     latestEvidence: "Latest evidence",
     allReceipts: "All receipts",
     contextWallet: "WALLET CONTEXT",
-    contextNetwork: "NETWORK",
-    contextSigner: "SIGNER",
-    contextAttention: "ATTENTION",
     switchRequired: "switch required",
     signerReady: "Ready to sign",
     signerWrong: "Wrong network",
@@ -1422,8 +1387,6 @@ const english: Copy = {
     handoffApply: "Apply acceptance",
     handoffAppliedTitle: "Receiver acceptance applied",
     handoffAppliedNote: "Verified. Submit from your wallet to finish.",
-    handoffInvalidCode:
-      "Code doesn't match {receiver}. Ask them to sign the link again.",
     handoffReceivedNotice: "Receiver acceptance received from this browser.",
     receiveTitle: "Accept a transfer",
     receiveLede:
@@ -1642,7 +1605,6 @@ const french: Copy = {
       "Connectez un wallet, agissez, et gardez la preuve à côté de chaque action. Les flows sont réels sur le testnet connecté.",
     nextSafeAction: "PROCHAINE ACTION SÛRE",
     heroTitle: "Vérifiez l’opérateur avant l’action.",
-    walletContext: "Contexte wallet",
     signatureBoundary: "Limite de signature",
     consoleAccess: "Accès console",
     stakingBoundary: "Le staking ne fait pas encore partie d’Axiom.",
@@ -1650,8 +1612,6 @@ const french: Copy = {
     menuDevelopers: "Développeurs",
     menuDevelopersHint: "Inspecter la limite d’intégration",
     stakeTitle: "0G Stake",
-    stripConnectEyebrow: "CONNECTER",
-    stripConnectSmall: "Connecteur et adresse",
     stripVerifyEyebrow: "VÉRIFIER",
     stripVerifySmall: "Sans gas · sans garde",
     stripOperateEyebrow: "OPÉRER",
@@ -1730,7 +1690,6 @@ const french: Copy = {
     reload: "Recharger la page",
   },
   settings: {
-    pageEyebrow: "PLAN DE CONTRÔLE / CONFIGURATION",
     pageTitle: "Paramètres",
     languageLabel: "Langue de l’interface",
     pageDescription:
@@ -1739,18 +1698,13 @@ const french: Copy = {
     localeFrench: "Français",
     localeGerman: "Deutsch",
     liveWallet: "wallet actif",
-    walletNetwork: "WALLET & RÉSEAU",
     signingContext: "Contexte de signature",
     profileNameLabel: "Nom du profil opérateur",
     profileNameSave: "Enregistrer",
     profileNameSaved: "Nom du profil mis à jour.",
-    dailyEyebrow: "AFFICHAGE / PRÉFÉRENCES",
     dailyTitle: "Préférences quotidiennes",
-    layoutEyebrow: "CONSOLE / DISPOSITION",
     layoutTitle: "Disposition de la console",
-    advancedEyebrow: "AVANCÉ / RAREMENT UTILISÉ",
     advancedTitle: "Avancé",
-    dangerEyebrow: "ZONE DANGEREUSE",
     dangerTitle: "Actions destructrices",
     dangerHint:
       "La réinitialisation efface la session, tous les brouillons de flow et les reçus locaux. Les paramètres sont conservés.",
@@ -1787,7 +1741,6 @@ const french: Copy = {
     statusChecking: "vérification",
     statusReady: "Prêt",
     statusOnline: "en ligne",
-    shortcutEyebrow: "CENTRE DE COMMANDE",
     shortcutTitle: "Carte clavier",
     shortcutHint:
       "Les raccourcis restent visibles ; ils ne contournent jamais les limites wallet, réseau ou signature.",
@@ -1809,24 +1762,17 @@ const french: Copy = {
     titleLead: "Gardez la",
     titleEmphasis: "surface traçable.",
     review: (count) => `${count} agent${count > 1 ? "s" : ""} à revoir.`,
-    nowReviewEyebrow: "MAINTENANT / REVUE",
     refresh: "Actualiser la vue",
     managedValue: "Valeur gérée",
     agentsOnline: "Agents en ligne",
     storageProofs: "Preuves Storage",
     liveQueue: "File active",
-    agentRegister: "REGISTRE AGENTS",
     operatingFleet: "Flotte active",
-    proofLane: "COULOIR DE PREUVE",
     attentionFirst: "Attention d’abord",
     allowanceReady: "L’approbation est prête à être revue.",
-    recentStore: "RÉCENT / STORE PARTAGÉ",
     latestEvidence: "Dernières preuves",
     allReceipts: "Tous les reçus",
     contextWallet: "CONTEXTE WALLET",
-    contextNetwork: "RÉSEAU",
-    contextSigner: "SIGNATAIRE",
-    contextAttention: "ATTENTION",
     switchRequired: "changement requis",
     signerReady: "Prêt à signer",
     signerWrong: "Mauvais réseau",
@@ -2261,8 +2207,6 @@ const french: Copy = {
     handoffAppliedTitle: "Acceptation du destinataire appliquée",
     handoffAppliedNote:
       "L’acceptation est vérifiée contre l’adresse du destinataire. Soumettez le transfert depuis votre wallet pour terminer.",
-    handoffInvalidCode:
-      "Ce code d’acceptation ne correspond pas à l’adresse du destinataire ({receiver}). Demandez au destinataire de signer le lien avec le compte receveur.",
     handoffReceivedNotice:
       "Acceptation du destinataire reçue depuis ce navigateur.",
     receiveTitle: "Accepter un transfert",
@@ -2492,7 +2436,6 @@ const german: Copy = {
       "Verbinde ein Wallet, handle, und halte den Nachweis neben jeder Aktion. Flows sind auf dem verbundenen Testnet echt.",
     nextSafeAction: "NÄCHSTE SICHERE AKTION",
     heroTitle: "Prüfe den Operator vor der Aktion.",
-    walletContext: "Wallet-Kontext",
     signatureBoundary: "Signaturgrenze",
     consoleAccess: "Konsolenzugriff",
     stakingBoundary: "Staking gehört noch nicht zu Axiom.",
@@ -2500,8 +2443,6 @@ const german: Copy = {
     menuDevelopers: "Entwickler",
     menuDevelopersHint: "Integrationsgrenze prüfen",
     stakeTitle: "0G Stake",
-    stripConnectEyebrow: "VERBINDEN",
-    stripConnectSmall: "Connector und Adresse",
     stripVerifyEyebrow: "PRÜFEN",
     stripVerifySmall: "Kein Gas · keine Verwahrung",
     stripOperateEyebrow: "STEUERN",
@@ -2579,7 +2520,6 @@ const german: Copy = {
     reload: "Seite neu laden",
   },
   settings: {
-    pageEyebrow: "KONTROLLEBENE / KONFIGURATION",
     pageTitle: "Einstellungen",
     languageLabel: "Sprache der Oberfläche",
     pageDescription:
@@ -2588,18 +2528,13 @@ const german: Copy = {
     localeFrench: "Français",
     localeGerman: "Deutsch",
     liveWallet: "Live-Wallet",
-    walletNetwork: "WALLET & NETZWERK",
     signingContext: "Signaturkontext",
     profileNameLabel: "Name des Operator-Profils",
     profileNameSave: "Namen speichern",
     profileNameSaved: "Profilname aktualisiert.",
-    dailyEyebrow: "ANZEIGE / PRÄFERENZEN",
     dailyTitle: "Tägliche Präferenzen",
-    layoutEyebrow: "KONSOLE / LAYOUT",
     layoutTitle: "Konsolen-Layout",
-    advancedEyebrow: "ERWEITERT / SELTEN GENUTZT",
     advancedTitle: "Erweitert",
-    dangerEyebrow: "GEFAHRENZONE",
     dangerTitle: "Destruktive Aktionen",
     dangerHint:
       "Zurücksetzen löscht die Session, alle Flow-Entwürfe und alle lokalen Belege. Einstellungen bleiben erhalten.",
@@ -2634,7 +2569,6 @@ const german: Copy = {
     statusChecking: "wird geprüft",
     statusReady: "Bereit",
     statusOnline: "online",
-    shortcutEyebrow: "COMMAND CENTER",
     shortcutTitle: "Tastaturbelegung",
     shortcutHint:
       "Schnellpfade bleiben sichtbar; sie umgehen nie Wallet-, Netzwerk- oder Signaturgrenzen.",
@@ -2657,24 +2591,17 @@ const german: Copy = {
     titleEmphasis: "Oberfläche prüfbar.",
     review: (count) =>
       `${count} Agentenaktion${count === 1 ? "" : "en"} ${count === 1 ? "erfordert" : "erfordern"} Aufmerksamkeit.`,
-    nowReviewEyebrow: "JETZT / PRÜFUNG",
     refresh: "Übersicht aktualisieren",
     managedValue: "Verwalteter Wert",
     agentsOnline: "Agents online",
     storageProofs: "Storage-Beweise",
     liveQueue: "Aktive Warteschlange",
-    agentRegister: "AGENTENREGISTER",
     operatingFleet: "Aktive Flotte",
-    proofLane: "BEWEIS-SPUR",
     attentionFirst: "Aufmerksamkeit zuerst",
     allowanceReady: "Die Freigabe kann geprüft werden.",
-    recentStore: "AKTUELL / GEMEINSAMER STORE",
     latestEvidence: "Neueste Belege",
     allReceipts: "Alle Belege",
     contextWallet: "WALLET-KONTEXT",
-    contextNetwork: "NETZWERK",
-    contextSigner: "SIGNIERER",
-    contextAttention: "ACHTUNG",
     switchRequired: "Wechsel erforderlich",
     signerReady: "Bereit zum Signieren",
     signerWrong: "Falsches Netzwerk",
@@ -3111,8 +3038,6 @@ const german: Copy = {
     handoffAppliedTitle: "Empfänger-Annahme angewendet",
     handoffAppliedNote:
       "Verifiziert. Aus deinem Wallet einreichen, um fertigzustellen.",
-    handoffInvalidCode:
-      "Dieser Annahme-Code passt nicht zur Empfängeradresse ({receiver}). Bitten Sie den Empfänger, den Link mit dem Empfängerkonto neu zu signieren.",
     handoffReceivedNotice: "Empfänger-Annahme aus diesem Browser empfangen.",
     receiveTitle: "Einen Transfer annehmen",
     receiveLede:
@@ -3256,14 +3181,10 @@ export const copyByLocale: Record<Locale, Copy> = {
 export function getCopy(locale: Locale = "en"): Copy {
   const copy = copyByLocale[locale] ?? english;
   // Défense supplémentaire : ces libellés restent sémantiques, jamais séquentiels.
-  const withoutSequence = (value: string) =>
-    value.replace(/\s*\/\s*0\d+\s*$/, "");
   return {
     ...copy,
     dashboard: {
       ...copy.dashboard,
-      agentRegister: withoutSequence(copy.dashboard.agentRegister),
-      proofLane: withoutSequence(copy.dashboard.proofLane),
     },
   };
 }
