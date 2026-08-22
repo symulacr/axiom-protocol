@@ -290,7 +290,6 @@ export type Copy = {
     proofLane: string;
     attentionFirst: string;
     allowanceReady: string;
-    allowanceDescription: string;
     recentStore: string;
     latestEvidence: string;
     allReceipts: string;
@@ -997,7 +996,7 @@ const english: Copy = {
     titleLead: "Keep the",
     titleEmphasis: "surface accountable.",
     review: (count) =>
-      `${count} agent action${count === 1 ? "" : "s"} require${count === 1 ? "s" : ""} attention.`,
+      `${count} agent${count === 1 ? "" : "s"} need${count === 1 ? "s" : ""} review.`,
     nowReviewEyebrow: "NOW / REVIEW",
     refresh: "Refresh overview",
     managedValue: "Managed value",
@@ -1010,8 +1009,6 @@ const english: Copy = {
     attentionFirst: "Attention first",
     allowanceReady: "Allowance is ready for review.",
     // One canonical allowance sentence, shared with the strip (02 FINDING-022).
-    allowanceDescription:
-      "Review an exact ERC-20 allowance before any value moves.",
     recentStore: "RECENT / SHARED STORE",
     latestEvidence: "Latest evidence",
     allReceipts: "All receipts",
@@ -1024,7 +1021,7 @@ const english: Copy = {
     signerWrong: "Wrong network",
     noConnector: "no connector",
     attentionCount: (count) =>
-      `${count} action${count === 1 ? "" : "s"} need review`,
+      `${count} receipt${count === 1 ? "" : "s"} need review`,
     openReviewQueue: "Open review queue",
     loadingVaults: "loading vaults…",
     agentsScoped: (count) => `${count} agent${count === 1 ? "" : "s"} scoped`,
@@ -1816,8 +1813,7 @@ const french: Copy = {
     eyebrow: "VUE D’ENSEMBLE / PROCHAINE ACTION SÛRE",
     titleLead: "Gardez la",
     titleEmphasis: "surface traçable.",
-    review: (count) =>
-      `${count} action${count > 1 ? "s" : ""} d’agent ${count > 1 ? "nécessitent" : "nécessite"} votre attention.`,
+    review: (count) => `${count} agent${count > 1 ? "s" : ""} à revoir.`,
     nowReviewEyebrow: "MAINTENANT / REVUE",
     refresh: "Actualiser la vue",
     managedValue: "Valeur gérée",
@@ -1829,8 +1825,6 @@ const french: Copy = {
     proofLane: "COULOIR DE PREUVE",
     attentionFirst: "Attention d’abord",
     allowanceReady: "L’approbation est prête à être revue.",
-    allowanceDescription:
-      "Examinez une approbation ERC-20 exacte avant tout mouvement de valeur.",
     recentStore: "RÉCENT / STORE PARTAGÉ",
     latestEvidence: "Dernières preuves",
     allReceipts: "Tous les reçus",
@@ -2682,8 +2676,6 @@ const german: Copy = {
     proofLane: "BEWEIS-SPUR",
     attentionFirst: "Aufmerksamkeit zuerst",
     allowanceReady: "Die Freigabe kann geprüft werden.",
-    allowanceDescription:
-      "Prüfe eine exakte ERC-20-Freigabe, bevor Wert fließt.",
     recentStore: "AKTUELL / GEMEINSAMER STORE",
     latestEvidence: "Neueste Belege",
     allReceipts: "Alle Belege",

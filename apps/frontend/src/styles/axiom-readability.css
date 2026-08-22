@@ -732,23 +732,6 @@ html[data-theme="light"] .filters-popover {
   .mobile-nav-drawer .sidebar.is-collapsed .account > svg { display: initial; }
   .receipt-drawer { max-height: 100dvh; overscroll-behavior: contain; }
 }
-.landing-copy .landing-note {
-  position: relative;
-  max-width: 31rem;
-  padding: 0.82rem 0 0.82rem 1rem;
-  border-left: 2px solid var(--copper);
-}
-.landing-copy .landing-note::before {
-  content: "PROOF BOUNDARY";
-  position: absolute;
-  top: -0.45rem;
-  left: 0.9rem;
-  padding: 0 0.3rem;
-  background: var(--completion-bg, #0b0e0f);
-  color: var(--copper);
-  font: 500 0.55rem/1 var(--font-mono, monospace);
-  letter-spacing: 0.13em;
-}
 @media (max-width: 700px) {
   .public-locked .locked-route-copy { display: grid; gap: 1rem; padding-top: 1.35rem; }
   .public-locked .locked-route-copy h1,

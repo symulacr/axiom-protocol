@@ -131,14 +131,9 @@ export function Landing({
         </section>
       </main>
       {/* Journey strip: every cell is a real control with the same affordance
-          (arrow + hover tint) — no dead look-alike cells (02 FINDING-014). */}
+          (arrow + hover tint) — no dead look-alike cells (02 FINDING-014).
+          The CONNECT cell is gone: the header CTA owns connecting (06 essence). */}
       <section className="landing-strip">
-        <button type="button" onClick={onConnect}>
-          <span className="eyebrow">{copy.landing.stripConnectEyebrow}</span>
-          <strong>{copy.landing.walletContext}</strong>
-          <small>{copy.landing.stripConnectSmall}</small>
-          <ArrowRight size={14} aria-hidden="true" />
-        </button>
         <button type="button" onClick={onGuide}>
           <span className="eyebrow">{copy.landing.stripVerifyEyebrow}</span>
           <strong>{copy.landing.signatureBoundary}</strong>

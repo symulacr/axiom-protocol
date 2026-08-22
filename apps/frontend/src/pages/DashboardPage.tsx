@@ -401,7 +401,6 @@ export function DashboardPage({
                   : copy.dashboard.paymentAllowanceEyebrow}
               </span>
               <strong>{copy.dashboard.allowanceReady}</strong>
-              <p>{copy.dashboard.allowanceDescription}</p>
               {/* Evidence only — the third copper CTA for the same payment
                   action lived here; the strip owns that action now
                   (C-SETTINGS / 03 FINDING-009, 04 FINDING-004). */}
