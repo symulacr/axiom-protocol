@@ -33,7 +33,7 @@ import { Button, Field } from "./Controls.js";
 import { Logo } from "./AppShell.js";
 
 import { getCopy, interpolate, type Locale } from "../../lib/copy.js";
-import type { PrototypeAction } from "../../lib/prototypeStore.js";
+import type { ConsoleAction } from "../../lib/consoleStore.js";
 import type { Session } from "../../lib/models.js";
 import { humanizeError } from "../../utils/format.js";
 import { useModalDismiss } from "../../hooks/useModalDismiss.js";
@@ -78,7 +78,7 @@ export function WalletGate({
   locale,
 }: {
   session: Session;
-  dispatch: React.Dispatch<PrototypeAction>;
+  dispatch: React.Dispatch<ConsoleAction>;
   onClose: () => void;
   onAuthenticated: () => void;
   locale: Locale;

@@ -339,7 +339,7 @@ body .icon-button {
 }
 
 body .session-top,
-.prototype-notice button {
+.notice-toast button {
   min-height: var(--hit-area);
 }
 
@@ -353,7 +353,7 @@ body .session-top,
   min-height: var(--hit-area);
 }
 
-.prototype-notice button {
+.notice-toast button {
   min-width: var(--hit-area);
 }
 

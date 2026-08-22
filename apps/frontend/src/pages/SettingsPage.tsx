@@ -31,7 +31,7 @@ import {
 import { Button, Field, Status } from "../components/axiom/Controls.js";
 import { getCopy, type Copy } from "../lib/copy.js";
 import type { AppState, UiSettings } from "../lib/models.js";
-import type { PrototypeAction } from "../lib/prototypeStore.js";
+import type { ConsoleAction } from "../lib/consoleStore.js";
 import { useHealth } from "../hooks/useHealth.js";
 import { useModalDismiss } from "../hooks/useModalDismiss.js";
 import { APP_CHAIN, APP_CHAIN_ID } from "../config/wagmi.js";
@@ -124,7 +124,7 @@ export function SettingsPage({
   onLock,
 }: {
   state: AppState;
-  dispatch: Dispatch<PrototypeAction>;
+  dispatch: Dispatch<ConsoleAction>;
   go: (path: string) => void;
   onLock: () => void;
 }) {

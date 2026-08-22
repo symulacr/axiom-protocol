@@ -18,7 +18,7 @@ export function StatePill({ state }: { state: TxState }) {
     if (stored?.locale === "fr" || stored?.locale === "de")
       locale = stored.locale;
   } catch {
-    // Local prototype storage can be unavailable in privacy-restricted contexts.
+    // Local console storage can be unavailable in privacy-restricted contexts.
   }
   const labels = getCopy(locale).status;
   const statusLabel = locale === "fr" ? "Statut" : "Status";

@@ -21,6 +21,6 @@ export function trackUxEvent(name: string, surface: string) {
     } satisfies UxEvent);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
   } catch {
-    // Local, non-sensitive prototype telemetry is intentionally best-effort.
+    // Local, non-sensitive console telemetry is intentionally best-effort.
   }
 }

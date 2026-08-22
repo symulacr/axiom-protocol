@@ -1,5 +1,5 @@
 /*
-  UI store bridge — the v2 mockup's useReducer(prototypeReducer) lifted into a
+  UI store bridge — the v2 mockup's useReducer(consoleReducer) lifted into a
   React context so route-level screens can dispatch without prop drilling
   through react-router. Persistence keys are unchanged from the mockup
   (axiom-ui-settings / axiom-session / axiom-operation-state-v1), plus
@@ -15,26 +15,26 @@ import {
   type ReactNode,
 } from "react";
 import {
-  createInitialPrototypeState,
+  createInitialConsoleState,
   defaultOperationState,
   defaultSession,
   defaultSettings,
   defaultTheme,
   MAX_PERSISTED_TRANSACTIONS,
   persist,
-  prototypeReducer,
+  consoleReducer,
   readStored,
   readStoredList,
   sanitizeTransactions,
   type PersistedTransaction,
-  type PrototypeAction,
-} from "./prototypeStore";
-import { flowMeta } from "./prototypeCatalog";
+  type ConsoleAction,
+} from "./consoleStore";
+import { flowMeta } from "./consoleCatalog";
 import type { AppState, FlowKind, Session, Transaction } from "./models";
 
 type UiStoreValue = {
   state: AppState;
-  dispatch: React.Dispatch<PrototypeAction>;
+  dispatch: React.Dispatch<ConsoleAction>;
 };
 
 const UiStoreContext = createContext<UiStoreValue | null>(null);
@@ -51,8 +51,8 @@ function hydrateTransactions(): Transaction[] {
 }
 
 export function UiStoreProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(prototypeReducer, undefined, () =>
-    createInitialPrototypeState(
+  const [state, dispatch] = useReducer(consoleReducer, undefined, () =>
+    createInitialConsoleState(
       // Unset theme follows the OS (defaultTheme) so store and boot script
       // agree on first visit (C-SETTINGS); a stored choice always wins.
       readStored("axiom-ui-settings", {

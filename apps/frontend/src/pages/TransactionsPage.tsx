@@ -28,7 +28,7 @@ import { StatePill } from "../components/StatePill.js";
 import { MobileDisclosure } from "../components/MobileDisclosure.js";
 import { getCopy } from "../lib/copy.js";
 import type { AppState, Transaction, TxState } from "../lib/models.js";
-import type { PrototypeAction } from "../lib/prototypeStore.js";
+import type { ConsoleAction } from "../lib/consoleStore.js";
 import {
   useEventHistory,
   eventDedupeKey,
@@ -155,7 +155,7 @@ function ReceiptDrawer({
   explorerTx: (hash: string) => string;
   onClose: () => void;
   go: (path: string) => void;
-  dispatch: React.Dispatch<PrototypeAction>;
+  dispatch: React.Dispatch<ConsoleAction>;
   locale: "en" | "fr" | "de";
 }) {
   const copy = getCopy(locale);
@@ -270,7 +270,7 @@ export function TransactionsPage({
 }: {
   go: (path: string) => void;
   state: AppState;
-  dispatch: React.Dispatch<PrototypeAction>;
+  dispatch: React.Dispatch<ConsoleAction>;
 }) {
   const copy = getCopy(state.settings.locale);
   const txCopy = copy.transactions;

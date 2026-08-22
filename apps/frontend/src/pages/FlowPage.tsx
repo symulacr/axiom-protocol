@@ -46,8 +46,8 @@ import type {
   Transaction,
   TxState,
 } from "../lib/models.js";
-import type { PrototypeAction } from "../lib/prototypeStore.js";
-import { flowMeta } from "../lib/prototypeCatalog.js";
+import type { ConsoleAction } from "../lib/consoleStore.js";
+import { flowMeta } from "../lib/consoleCatalog.js";
 import { useAgents } from "../hooks/useAgents.js";
 import { useMintWizard } from "../hooks/useMintWizard.js";
 import { usePayment } from "../hooks/usePayment.js";
@@ -106,7 +106,7 @@ export function FlowPage({
 }: {
   kind: FlowKind;
   state: AppState;
-  dispatch: React.Dispatch<PrototypeAction>;
+  dispatch: React.Dispatch<ConsoleAction>;
   go: (path: string) => void;
   locale: Locale;
 }) {

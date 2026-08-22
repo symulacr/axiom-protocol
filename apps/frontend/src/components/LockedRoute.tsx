@@ -6,7 +6,7 @@
 import { ArrowLeft, LockKeyhole, Wallet } from "./axiom/icons.js";
 import { Button, Status } from "./axiom/Controls.js";
 import { Logo } from "./axiom/AppShell.js";
-import { lockedRouteMeta } from "../lib/prototypeCatalog.js";
+import { lockedRouteMeta } from "../lib/consoleCatalog.js";
 import { getCopy } from "../lib/copy.js";
 import type { Locale } from "../lib/copy.js";
 

@@ -35,7 +35,7 @@ import { Status } from "./Controls.js";
 import { CommandCenter } from "../CommandCenter.js";
 import { PriorityActionStrip } from "../PriorityActionStrip.js";
 import type { AppState, Route, Session, UiSettings } from "../../lib/models.js";
-import type { PrototypeAction } from "../../lib/prototypeStore.js";
+import type { ConsoleAction } from "../../lib/consoleStore.js";
 import type { FundTarget } from "../../lib/nextSafeAction.js";
 import { useHealth } from "../../hooks/useHealth.js";
 import { truncateAddress, trapTabFocus } from "../../utils/format.js";
@@ -65,7 +65,7 @@ function Sidebar({
   route: Route;
   go: (path: string) => void;
   settings: UiSettings;
-  dispatch: React.Dispatch<PrototypeAction>;
+  dispatch: React.Dispatch<ConsoleAction>;
   session: Session;
 }) {
   const resizeFrame = useRef<number | null>(null);
@@ -347,7 +347,7 @@ function MobileNavigationDrawer({
   route: Route;
   go: (path: string) => void;
   settings: UiSettings;
-  dispatch: React.Dispatch<PrototypeAction>;
+  dispatch: React.Dispatch<ConsoleAction>;
   session: Session;
   onClose: () => void;
 }) {
@@ -516,7 +516,7 @@ export function AppShell({
   route: Route;
   path: string;
   state: AppState;
-  dispatch: React.Dispatch<PrototypeAction>;
+  dispatch: React.Dispatch<ConsoleAction>;
   go: (path: string) => void;
   onLock: () => void;
   fundTarget?: FundTarget;

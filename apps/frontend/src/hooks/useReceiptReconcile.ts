@@ -11,7 +11,7 @@
 import { useEffect, useRef } from "react";
 import { usePublicClient } from "wagmi";
 import type { Transaction } from "../lib/models.js";
-import type { PrototypeAction } from "../lib/prototypeStore.js";
+import type { ConsoleAction } from "../lib/consoleStore.js";
 
 /** Matches FlowPage's confirmation ceiling: dropped/replaced txs flip to
  *  "stale" instead of polling forever. */
@@ -56,7 +56,7 @@ export async function waitForReceiptWithTimeout(
 
 export function useReceiptReconcile(
   transactions: Transaction[],
-  dispatch: React.Dispatch<PrototypeAction>,
+  dispatch: React.Dispatch<ConsoleAction>,
 ): void {
   const publicClient = usePublicClient();
   const watchedRef = useRef(new Set<string>());

@@ -1,5 +1,5 @@
 /*
-  Axiom UI store (ported from the v2 mockup prototypeStore). The wallet session
+  Axiom UI store (ported from the v2 mockup consoleStore). The wallet session
   is bridged to wagmi in App.tsx; transactions here are LOCAL receipts added by
   the live flow pages (real hashes) — the transaction center merges them with
   on-chain/indexer events from useEventStream/useEventHistory.
@@ -78,7 +78,7 @@ export function sanitizeTransactions(value: unknown): PersistedTransaction[] {
   return out;
 }
 
-export type PrototypeAction =
+export type ConsoleAction =
   | { type: "settings"; patch: Partial<UiSettings> }
   | { type: "session"; session: Partial<Session> }
   | { type: "add-tx"; tx: Transaction }
@@ -221,7 +221,7 @@ export function sanitizeOperationState(value: OperationState): OperationState {
   return { pendingIntent, operationDrafts };
 }
 
-export function createInitialPrototypeState(
+export function createInitialConsoleState(
   settings = defaultSettings,
   session = defaultSession,
   operationState = defaultOperationState,
@@ -239,9 +239,9 @@ export function createInitialPrototypeState(
   };
 }
 
-export function prototypeReducer(
+export function consoleReducer(
   state: AppState,
-  action: PrototypeAction,
+  action: ConsoleAction,
 ): AppState {
   if (action.type === "settings")
     return { ...state, settings: { ...state.settings, ...action.patch } };
@@ -321,7 +321,7 @@ export function prototypeReducer(
   if (action.type === "notice") return { ...state, notice: action.notice };
   if (action.type === "reset")
     return {
-      ...createInitialPrototypeState(state.settings),
+      ...createInitialConsoleState(state.settings),
       notice: "Surface reset. Wallet access remains locked.",
     };
   return state;

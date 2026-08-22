@@ -25,7 +25,7 @@ import { StatePill } from "../components/StatePill.js";
 import { MobileDisclosure } from "../components/MobileDisclosure.js";
 import { getCopy } from "../lib/copy.js";
 import type { AppState } from "../lib/models.js";
-import type { PrototypeAction } from "../lib/prototypeStore.js";
+import type { ConsoleAction } from "../lib/consoleStore.js";
 import { usePortfolio } from "../hooks/usePortfolio.js";
 import { useHealth } from "../hooks/useHealth.js";
 import { useEventHistory, eventTokenId } from "../hooks/useEventHistory.js";
@@ -121,7 +121,7 @@ export function DashboardPage({
 }: {
   go: (path: string) => void;
   state: AppState;
-  dispatch: React.Dispatch<PrototypeAction>;
+  dispatch: React.Dispatch<ConsoleAction>;
 }) {
   const copy = getCopy(state.settings.locale);
   const { address, connector } = useAccount();

@@ -16,14 +16,14 @@ import { Button, Status } from "../components/axiom/Controls.js";
 import { MobileDisclosure } from "../components/MobileDisclosure.js";
 import { getCopy } from "../lib/copy.js";
 import type { AppState } from "../lib/models.js";
-import type { PrototypeAction } from "../lib/prototypeStore.js";
+import type { ConsoleAction } from "../lib/consoleStore.js";
 
 export function StoragePage({
   state,
   go,
 }: {
   state: AppState;
-  dispatch: React.Dispatch<PrototypeAction>;
+  dispatch: React.Dispatch<ConsoleAction>;
   go: (path: string) => void;
 }) {
   const copy = getCopy(state.settings.locale);

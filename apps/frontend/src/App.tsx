@@ -105,7 +105,7 @@ function Notice({
 }) {
   if (!text) return null;
   return (
-    <div className="prototype-notice" role="status" aria-live="polite">
+    <div className="notice-toast" role="status" aria-live="polite">
       <CircleCheck size={15} />
       <span>{text}</span>
       <button

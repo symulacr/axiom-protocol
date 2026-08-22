@@ -170,7 +170,7 @@
 .topbar { z-index:var(--layer-topbar); }
 .drawer-layer { z-index:var(--layer-drawer); }
 .command-palette-layer { z-index:var(--layer-modal); }
-.prototype-notice { z-index:var(--layer-notice); max-height:calc(100dvh - 44px); overflow:auto; }
+.notice-toast { z-index:var(--layer-notice); max-height:calc(100dvh - 44px); overflow:auto; }
 
 .panel, .settings-card, .tab-panel, .agent-identity-card, .agent-command-card,
 .storage-stage, .provenance-panel, .flow-stage {
@@ -207,7 +207,7 @@ html:not([data-axiom-ready="true"]) .hero-visual-scanline {
 }
 
 @media (max-width:700px) {
-  .prototype-notice { right:16px; bottom:16px; max-width:calc(100vw - 32px); }
+  .notice-toast { right:16px; bottom:16px; max-width:calc(100vw - 32px); }
   .flow-visual { height:clamp(220px,62vw,260px); margin-top:22px; }
   .flow-visual img { height:100%; }
   .receipt-drawer { width:100%; padding:70px 20px 24px; }

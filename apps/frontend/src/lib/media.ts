@@ -1,5 +1,5 @@
 /**
- * Self-contained media for the standalone prototype.
+ * Self-contained media for the console.
  * The original Manus sandbox served these from /manus-storage (a server-side
  * proxy that does not exist outside that environment); every image is now an
  * inline SVG data URI so the mockup renders identically offline with zero 404s.
