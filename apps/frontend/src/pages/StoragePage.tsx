@@ -77,10 +77,6 @@ export function StoragePage({
           </MobileDisclosure>
           <div className="storage-note">
             <ShieldCheck size={14} />
-            <span>{copy.storage.demoNotice}</span>
-          </div>
-          <div className="storage-note">
-            <ShieldCheck size={14} />
             <span>{copy.storage.note}</span>
           </div>
         </section>

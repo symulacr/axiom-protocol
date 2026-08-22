@@ -459,10 +459,8 @@ export type Copy = {
     sourceDescription: string;
     pending: string;
     notIndexed: string;
-    fixture: string;
     /** Clear demo banner — the ladder is documentation until a storage
      *  backend exists (03 FINDING-014); no fake progress, no fake hashes. */
-    demoNotice: string;
   };
   flows: Record<
     CopyFlow,
@@ -1199,9 +1197,6 @@ const english: Copy = {
     sourceDescription: "Each storage step is proven separately.",
     pending: "pending",
     notIndexed: "not indexed",
-    fixture: "demo / not live",
-    demoNotice:
-      "Demo — no storage backend yet. The stages show what a real upload exposes.",
   },
   flows: {
     mint: {
@@ -2024,9 +2019,6 @@ const french: Copy = {
     sourceDescription: "Chaque étape Storage est prouvée séparément.",
     pending: "en attente",
     notIndexed: "non indexé",
-    fixture: "démo / non live",
-    demoNotice:
-      "Démo — pas de backend Storage. Les étapes montrent ce qu’un vrai upload expose.",
   },
   flows: {
     mint: {
@@ -2875,9 +2867,6 @@ const german: Copy = {
     sourceDescription: "Jeder Storage-Schritt wird separat nachgewiesen.",
     pending: "ausstehend",
     notIndexed: "nicht indexiert",
-    fixture: "Demo / nicht live",
-    demoNotice:
-      "Demo — noch kein Storage-Backend. Die Stufen zeigen, was ein echter Upload ausgeben würde.",
   },
   flows: {
     mint: {
