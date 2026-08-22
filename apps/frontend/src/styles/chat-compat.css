@@ -110,43 +110,9 @@
 }
 
 /* ---------------------------------------------------------------- *
- * Buttons / inputs / surfaces (ui.tsx primitives).                  *
+ * Shared kit primitives (ui.tsx + console surfaces) — the v1 .btn  *
+ * family was deleted: zero emitters post-P4 Controls migration.    *
  * ---------------------------------------------------------------- */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  border: 1px solid transparent;
-  border-radius: var(--radius-md, 6px);
-  padding: var(--space-2) var(--space-4);
-  font-size: var(--fs-small);
-  font-weight: 500;
-  letter-spacing: 0.01em;
-  transition: 150ms var(--ease-out);
-  min-height: 34px;
-}
-.btn:disabled { opacity: 0.45; cursor: not-allowed; }
-.btn-primary {
-  background: var(--copper);
-  color: #24170d;
-}
-.btn-primary:hover:not(:disabled) { background: var(--copper-bright); }
-/* Paper theme copper is darker; the graphite ink text only reached 3.8:1 there. */
-.app-shell.light .btn-primary { color: #fffdf8; }
-.btn-secondary {
-  background: transparent;
-  border-color: var(--copper);
-  color: var(--copper-bright);
-}
-.btn-secondary:hover:not(:disabled) { background: rgba(210, 139, 82, 0.1); }
-.btn-ghost {
-  background: transparent;
-  border-color: var(--line);
-  color: var(--muted);
-}
-.btn-ghost:hover:not(:disabled) { color: var(--text); border-color: var(--copper); }
-
 .surface-glass { background: var(--panel); }
 
 .axiom-field {
