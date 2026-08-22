@@ -26,7 +26,7 @@
 }
 
 body { font-size: var(--fs-body); line-height: var(--copy-leading); }
-button, input, textarea, select { line-height: 1.35; }
+button, input, textarea, select { line-height: var(--support-leading); }
 
 /* S2 type-scale contract: mono telemetry is the named --fs-mono step (was
    the max(0.68rem, 11px) floor — the 11/11.5px neighbor pair). Row
@@ -43,7 +43,7 @@ button, input, textarea, select { line-height: 1.35; }
 .field-hint,
 .settings-select-row label {
   font-size: var(--fs-mono);
-  line-height: 1.3;
+  line-height: var(--support-leading);
 }
 /* mono data IN rows (addresses, hashes, ages, sublabels) reads at the small
    step — 11px mono is no longer the receipt center's body size (F002). */
@@ -52,7 +52,7 @@ button, input, textarea, select { line-height: 1.35; }
 .stat small, .settings-toggle-row small, .storage-file > .mono,
 .range-control small {
   font-size: var(--fs-small);
-  line-height: 1.3;
+  line-height: var(--support-leading);
 }
 
 .page-head p,
@@ -102,7 +102,7 @@ button, input, textarea, select { line-height: 1.35; }
 .command-center-meta { padding: var(--space-3) var(--space-4) var(--space-2); }
 .command-results { gap: var(--space-2); padding: var(--space-1); }
 .command-center .command-group button { min-height: 52px; gap: var(--space-2); padding: var(--space-2) var(--space-3); }
-.command-center .command-group strong { font-size: var(--fs-body); line-height: 1.35; }
+.command-center .command-group strong { font-size: var(--fs-body); line-height: var(--support-leading); }
 .command-center .command-group small { font-size: var(--fs-small); line-height: var(--support-leading); white-space: normal; }
 
 /* Review sheets keep the decision at the top, with facts easy to compare. */
@@ -121,7 +121,7 @@ button, input, textarea, select { line-height: 1.35; }
 .passive-proof-timeline { gap: var(--space-2); margin-block: var(--space-4); }
 .passive-proof-timeline li { grid-template-columns: 18px minmax(0, 1fr) auto; gap: var(--space-3); padding-bottom: var(--space-3); }
 .passive-proof-timeline li > i { width: 14px; height: 14px; margin-top: var(--space-1); border: 0; border-radius: 0; background: currentColor; color: var(--dim); font-size: 0; }
-.passive-proof-timeline li strong { font-size: var(--fs-body); line-height: 1.35; }
+.passive-proof-timeline li strong { font-size: var(--fs-body); line-height: var(--support-leading); }
 .passive-proof-timeline li small { font-size: var(--fs-small); line-height: var(--support-leading); }
 
 @media (max-width: 900px) {
@@ -577,7 +577,7 @@ html[data-theme="light"] .filters-popover {
     gap: var(--space-3);
     padding: var(--space-4);
   }
-  .agent-detail-head small { font-size: var(--fs-small); line-height: 1.45; }
+  .agent-detail-head small { font-size: var(--fs-small); line-height: var(--support-leading); }
   .detail-tabs {
     gap: var(--space-1);
     margin-inline: calc(var(--space-4) * -1);

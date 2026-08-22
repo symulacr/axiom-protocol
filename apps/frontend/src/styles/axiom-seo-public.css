@@ -111,7 +111,7 @@
 	font-size: var(--fs-mono);
 	font-weight: 500;
 	letter-spacing: .08em;
-	line-height: 1.35;
+	line-height: var(--support-leading);
 	text-transform: uppercase;
 	writing-mode: vertical-rl;
 }
@@ -276,7 +276,7 @@
 }
 
 .seo-proof-card > p {
-  margin: 19px 0 0;
+  margin: var(--space-4) 0 0;
   padding-top: var(--space-4);
   border-top: 1px solid rgba(233, 226, 217, 0.13);
   color: #a49f97;
@@ -318,7 +318,7 @@
   grid-template-columns: minmax(0, 1fr) 24px;
   align-items: center;
   gap: var(--space-3);
-  padding: 20px;
+  padding: var(--space-5);
   color: #e9e2d9;
   background: #121617;
   text-decoration: none;
@@ -356,7 +356,7 @@
 .seo-public-footer {
   display: flex;
   justify-content: space-between;
-  gap: 20px;
+  gap: var(--space-5);
   padding: var(--space-4) 0 var(--space-5);
   border-top: 1px solid rgba(233, 226, 217, 0.16);
   color: #86817b;
@@ -376,17 +376,17 @@
 }
 
 @media (max-width: 900px) {
-  .seo-public { padding: 0 20px; }
+  .seo-public { padding: 0 var(--space-5); }
   .seo-public-nav { display: flex; gap: var(--space-4); }
   .seo-public-nav nav { display: none; }
   .seo-console-link { margin-left: auto; }
-	.seo-hero { grid-template-columns: minmax(0, 1fr); gap: 28px; padding: 44px 0; }
+	.seo-hero { grid-template-columns: minmax(0, 1fr); gap: var(--space-6); padding: 44px 0; }
 	.seo-route-rail { grid-column: 1; flex-direction: row; align-items: center; gap: var(--space-2); min-height: auto; padding: 0 0 var(--space-2); border-left: 0; border-bottom: 1px solid rgba(210, 139, 82, .38); }
 	.seo-route-rail strong { max-width: none; font-size: var(--fs-mono); writing-mode: initial; }
 	.seo-route-rail i { display: none; }
 	.seo-hero-copy { grid-column: 1; }
 	.seo-proof-card { grid-column: 1; box-shadow: var(--shadow-plate-s); }
-  .seo-link-field { grid-template-columns: 1fr; gap: 28px; padding: var(--space-7) 0; }
+  .seo-link-field { grid-template-columns: 1fr; gap: var(--space-6); padding: var(--space-7) 0; }
   .seo-public-footer { display: grid; }
 	.seo-hero h1 { max-inline-size: 12ch; font-size: clamp(42px, 13vw, 68px); }
 }
@@ -395,7 +395,7 @@
   .seo-public { padding: 0 var(--space-4); }
   .seo-public-nav { min-height: 64px; }
   .seo-console-link { padding: var(--space-2) var(--space-2); font-size: var(--fs-mono) !important; }
-  .seo-proof-card { padding: 20px; }
+  .seo-proof-card { padding: var(--space-5); }
   .seo-link-grid a { padding: var(--space-4) var(--space-3); }
   .seo-link-grid strong { font-size: 16px; }
   .seo-evidence-artifact > div,

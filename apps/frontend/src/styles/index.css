@@ -335,7 +335,7 @@ h1, h2, h3, strong { font-weight: 600; }
   }
   .field input::placeholder { color: var(--dim); }
   .field-control em { padding-right: 12px; color: var(--copper); font: 500 var(--fs-mono) 'JetBrains Mono', monospace; font-style: normal; }
-  .field-hint, .field-message { color: var(--dim); font-size: var(--fs-small); line-height: 1.45; }
+  .field-hint, .field-message { color: var(--dim); font-size: var(--fs-small); line-height: var(--support-leading); }
   .field-error .field-control { border-color: var(--danger); }
   .field-message { color: var(--danger); }
 
