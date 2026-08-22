@@ -1,7 +1,6 @@
 import { formatUnits } from "viem";
 import { resolveBlockExplorerUrl } from "@axiom/config/networks";
 
-export const PLACEHOLDER = "\u2014";
 const ELLIPSIS = "\u2026";
 
 /** Canonical block-explorer tx URL for the active chain. */

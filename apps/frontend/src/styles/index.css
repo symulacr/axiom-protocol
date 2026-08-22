@@ -210,7 +210,6 @@ h1, h2, h3, strong { font-weight: 600; }
     white-space: nowrap;
   }
   .status i { width: 6px; height: 6px; border-radius: 50%; background: var(--dim); }
-  .status-live i { background: var(--phosphor); box-shadow: 0 0 0 3px rgba(103, 232, 180, .08); }
   .status-success i { background: var(--phosphor); }
   .status-warning i { background: var(--warning); }
 

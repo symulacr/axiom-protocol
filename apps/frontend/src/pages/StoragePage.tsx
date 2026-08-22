@@ -50,7 +50,6 @@ export function StoragePage({
               <span className="eyebrow">{copy.storage.adapter}</span>
               <h2>{copy.storage.payload}</h2>
             </div>
-            <Status label={copy.storage.fixture} tone="warning" />
           </div>
           <MobileDisclosure
             className="storage-stage-details"

@@ -1680,7 +1680,7 @@ const french: Copy = {
     profileTitle: "Nommez le profil local.",
     profileDescription:
       "Ce libellé aide à reconnaître le wallet connecté dans Axiom. Vous pourrez le modifier dans Settings.",
-    profileHint: "Enregistré uniquement comme préférence locale du prototype.",
+    profileHint: "Enregistré uniquement sur cet appareil.",
     unlockConsole: "Déverrouiller la console",
     rejectedTitle: "Accès non accordé.",
     rejectedDescription:

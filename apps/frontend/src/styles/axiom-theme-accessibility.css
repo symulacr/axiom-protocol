@@ -133,10 +133,6 @@
   background: linear-gradient(180deg, transparent 20%, color-mix(in srgb, var(--completion-canvas) 94%, transparent));
 }
 
-.app-shell .hero-visual-readout span {
-  background: color-mix(in srgb, var(--completion-canvas) 76%, transparent);
-}
-
 .app-shell.light .proof-card img,
 .app-shell.light .flow-visual img,
 .app-shell.light .landing-visual > img {

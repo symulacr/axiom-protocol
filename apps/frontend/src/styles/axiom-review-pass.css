@@ -72,7 +72,6 @@
 .landing-main, .landing-copy { min-width:0; }
 .landing-copy h1 { max-width:560px; overflow:visible; font-size:clamp(58px,6.2vw,98px); }
 .landing-copy h1 span, .landing-copy h1 i { display:inline-block; white-space:nowrap; }
-.hero-visual-readout span:last-child { color:var(--completion-phosphor); }
 
 @media (max-width: 980px) {
   .public-locked .locked-route-content { grid-template-columns:46px minmax(0,1fr); gap:26px; width:min(860px,calc(100% - 40px)); }
@@ -245,8 +244,6 @@ html:not([data-axiom-ready="true"]) .hero-visual-scanline {
 /* Landing overflow fix: nav padding and hero readout tags must not push past viewport at 390 px. */
 @media (max-width:400px) {
   .landing-nav { padding:18px 14px; }
-  .hero-visual-readout { gap:6px; }
-  .hero-visual-readout span { padding:5px 7px; font-size:8px; }
   .landing-strip { grid-template-columns:1fr; }
   .landing-strip>div, .landing-strip>button { padding:16px 14px; }
   .landing-copy h1 { font-size:clamp(42px,13vw,56px); letter-spacing:-.09em; }

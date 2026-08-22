@@ -230,35 +230,18 @@ button, input, textarea, select { line-height: 1.35; }
   max-width: 18ch;
   line-height: 1.03;
 }
-.hero-visual-readout {
-  gap: 7px;
-  margin-top: 22px;
-}
-.hero-visual-readout span {
-  width: fit-content;
-  padding: 6px 9px;
-  border: 1px solid rgba(217, 138, 72, 0.25);
-  background: rgba(8, 11, 12, 0.74);
-  color: #c7b8a7;
-  backdrop-filter: blur(8px);
-}
 @media (max-width: 700px) {
   .landing-visual.hero-visual-modern { min-height: 352px; box-shadow: 12px 14px 0 rgba(217, 138, 72, 0.05); }
   .landing-visual.hero-visual-modern::before { left: 7.5%; }
   .landing-visual.hero-visual-modern::after { background: linear-gradient(90deg, rgba(8, 11, 12, 0.84), rgba(8, 11, 12, 0.18) 100%), linear-gradient(180deg, transparent, rgba(8, 11, 12, 0.54)); }
   .landing-visual.hero-visual-modern > img.hero-visual-poster { object-position: 69% center; }
   .hero-visual-overlay { max-width: 76%; padding: 24px; }
-  .hero-visual-readout { margin-top: 16px; }
-  .hero-visual-readout span { font-size: var(--fs-mono); }
 }
 
 /* The editorial landing statement remains singular; the artifact carries state, not another slogan. */
 .hero-visual-overlay > strong { display: none; }
 .landing-visual.hero-visual-modern > img.hero-visual-poster { object-position: 100% center; }
 .hero-visual-overlay .eyebrow { display: inline-flex; width: fit-content; padding: 7px 9px; border-left: 2px solid #d98a48; background: rgba(8, 11, 12, 0.72); color: #e6a46b; }
-.hero-visual-readout { position: relative; padding-left: 16px; }
-.hero-visual-readout::before { content: "EVIDENCE LEDGER"; position: absolute; top: 0; left: 0; height: 100%; writing-mode: vertical-rl; transform: rotate(180deg); color: rgba(217, 138, 72, 0.82); font: 600 0.56rem/1 var(--font-mono, monospace); letter-spacing: 0.12em; }
-.hero-visual-readout span { border-left: 2px solid rgba(217, 138, 72, 0.78); }
 
 /* Landing summary becomes an asymmetric ledger rather than four equivalent cards. */
 .landing-strip { grid-template-columns: minmax(0, 1.5fr) minmax(0, 0.86fr) minmax(0, 0.86fr) minmax(0, 1.08fr); }
@@ -777,10 +760,6 @@ html[data-theme="light"] .filters-popover {
 /* 4. Priority-strip "Why now" disclosure trigger. */
 .priority-why { transition: color 0.16s var(--ease); }
 .priority-why:hover { color: var(--copper-bright); }
-
-/* 5. Danger variant shipped without a state set (FINDING-003). */
-.button-danger { transition: background 0.16s var(--ease), border-color 0.16s var(--ease), color 0.16s var(--ease); }
-.button-danger:hover { background: rgba(240, 179, 107, 0.22); border-color: var(--warning); }
 
 /* 6. Disclosure summaries (settings cards + mobile disclosures). */
 .settings-disclosure > summary.panel-head,

@@ -56,22 +56,6 @@
   color: #f1b879;
 }
 
-.seo-route-status {
-  display: grid;
-  gap: 4px;
-  padding-left: 14px;
-  border-left: 1px solid rgba(210, 139, 82, 0.28);
-  color: #a49f97;
-  font: 9px/1 "JetBrains Mono", monospace;
-  letter-spacing: 0.08em;
-}
-
-.seo-route-status b {
-  color: #67e8b4;
-  font-size: var(--fs-mono);
-  font-weight: 500;
-}
-
 .seo-console-link {
   display: inline-flex;
   align-items: center;
@@ -388,7 +372,6 @@
 
 @media (max-width: 1060px) {
 	.seo-public-nav { grid-template-columns: auto 1fr auto; }
-	.seo-route-status { display: none; }
 	.seo-hero { grid-template-columns: 42px minmax(0, 1fr) minmax(300px, .82fr); gap: 24px; }
 }
 
