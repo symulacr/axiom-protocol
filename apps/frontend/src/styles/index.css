@@ -11,12 +11,10 @@
   Fonts (Inter / Syne / JetBrains Mono) load from index.html — no CSS @import.
   No Tailwind: the mockup's `@import "tailwindcss"` is intentionally dropped.
 */
-@import "./axiom-onboarding.css";
-@import "./axiom-refinement.css";
+@import "./axiom-base-patches.css";
 @import "./axiom-completion.css";
 @import "./axiom-review-pass.css";
 @import "./axiom-theme-accessibility.css";
-@import "./axiom-landing-wallet-fix.css";
 @import "./axiom-operations-fix.css";
 @import "./axiom-velocity.css";
 @import "./axiom-readability.css";
