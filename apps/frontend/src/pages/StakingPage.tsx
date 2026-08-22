@@ -2,32 +2,26 @@
   StakingPage (ported from the v2 mockup): the explicit "not integrated"
   boundary surface for 0G native staking.
 */
-import {
-  ReceiptText,
-  Settings2,
-  ShieldAlert,
-  Wallet,
-} from "../components/axiom/icons.js";
+import { ReceiptText, ShieldAlert, Wallet } from "../components/axiom/icons.js";
 import { Button } from "../components/axiom/Controls.js";
+import { getCopy } from "../lib/copy.js";
+import type { Locale } from "../lib/copy.js";
 
-export function StakingPage({ go }: { go: (path: string) => void }) {
+export function StakingPage({
+  go,
+  locale,
+}: {
+  go: (path: string) => void;
+  locale: Locale;
+}) {
+  const copy = getCopy(locale).staking;
   return (
     <div className="ops-page">
       <div className="page-head">
         <div>
           <h1>0G Stake</h1>
-          <p>
-            Native network staking remains separate from Axiom&apos;s confirmed
-            strategy vault.
-          </p>
+          <p>{copy.lede}</p>
         </div>
-        <Button
-          variant="secondary"
-          onClick={() => go("/settings")}
-          icon={<Settings2 size={15} />}
-        >
-          View integration settings
-        </Button>
       </div>
       <section className="not-integrated">
         <div className="not-integrated-icon">
@@ -35,26 +29,17 @@ export function StakingPage({ go }: { go: (path: string) => void }) {
         </div>
         <div>
           <span className="eyebrow copper">NOT INTEGRATED IN AXIOM</span>
-          <h2>Axiom does not expose a staking action here.</h2>
-          <p>
-            Current product evidence covers vault control, payments, transfer
-            proofs and 0G Storage. Validator delegation, rewards, unbonding and
-            a native staking contract are not part of this console.
-          </p>
+          <p>{copy.body}</p>
           <div className="not-integrated-actions">
-            <Button
-              variant="secondary"
-              onClick={() => go("/app")}
-              icon={<Wallet size={15} />}
-            >
-              Open Axiom vault
+            <Button onClick={() => go("/app")} icon={<Wallet size={15} />}>
+              {copy.openVault}
             </Button>
             <Button
               variant="ghost"
               onClick={() => go("/transactions")}
               icon={<ReceiptText size={15} />}
             >
-              Review evidence
+              {copy.reviewEvidence}
             </Button>
           </div>
         </div>

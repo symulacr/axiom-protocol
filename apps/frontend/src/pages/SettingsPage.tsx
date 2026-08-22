@@ -25,7 +25,6 @@ import {
   RotateCcw,
   Settings2,
   ShieldAlert,
-  ShieldCheck,
   Sun,
   Wifi,
 } from "../components/axiom/icons.js";
@@ -452,10 +451,6 @@ export function SettingsPage({
         </div>
       </SettingsDisclosure>
 
-      <div className="diagnostic-note">
-        <ShieldCheck size={15} />
-        <span>{labels.diagnosticNote}</span>
-      </div>
       <div className="settings-footer-actions">
         <Button
           variant="secondary"

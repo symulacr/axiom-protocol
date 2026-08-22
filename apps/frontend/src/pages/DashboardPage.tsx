@@ -212,7 +212,6 @@ export function DashboardPage({
             <br />
             <i>{copy.dashboard.titleEmphasis}</i>
           </h1>
-          <p>{copy.dashboard.description}</p>
         </div>
         <div className="action-lane">
           <strong>{copy.dashboard.review(attention.length)}</strong>

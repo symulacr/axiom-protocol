@@ -8,7 +8,6 @@ import {
   Database,
   Globe2,
   Menu,
-  ShieldCheck,
   Wallet,
   ArrowRight,
 } from "../components/axiom/icons.js";
@@ -117,9 +116,6 @@ export function Landing({
               {copy.nav.howItWorks}
             </Button>
           </div>
-          <p className="landing-note">
-            <ShieldCheck size={14} /> {copy.landing.prototypeNote}
-          </p>
         </section>
         <section className="landing-visual hero-visual-modern">
           <img

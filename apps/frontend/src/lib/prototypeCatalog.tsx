@@ -61,15 +61,11 @@ export const lockedRouteMeta: Record<
     title: string;
     emphasis: string;
     copy: string;
-    risk: string;
-    cta: string;
     boundary: string;
     artifact: string;
     next: string;
     media: string;
     proofs: string[];
-    evidenceValue: string;
-    evidenceNote: string;
   }
 > = {
   "/app": {
@@ -77,9 +73,7 @@ export const lockedRouteMeta: Record<
     label: "OVERVIEW / CONSOLE",
     title: "See the next",
     emphasis: "safe action.",
-    copy: "The command overview resolves agent health, active exposure and the one decision that should happen next.",
-    risk: "Exposure is held until the operator session can be attributed.",
-    cta: "Verify operator health",
+    copy: "See what your agents need next.",
     boundary: "SIGNATURE BOUNDARY",
     artifact: "HEALTH / NEXT ACTION",
     next: "Agent health / safe action",
@@ -90,17 +84,13 @@ export const lockedRouteMeta: Record<
       "Session signature",
       "Console profile",
     ],
-    evidenceValue: "HEALTH: HELD",
-    evidenceNote: "Operator health resolves after signed session.",
   },
   "/settings": {
     slug: "settings",
     label: "SETTINGS / CONTROL PLANE",
     title: "Guard the",
     emphasis: "control plane.",
-    copy: "Settings governs session posture, display preferences and the console controls an operator can safely rely on.",
-    risk: "Preference and session changes remain attributable to the signed operator.",
-    cta: "Verify control plane",
+    copy: "Session, display and console preferences.",
     boundary: "SIGNATURE BOUNDARY",
     artifact: "SESSION / PREFERENCES",
     next: "Session / preferences / controls",
@@ -111,18 +101,13 @@ export const lockedRouteMeta: Record<
       "Preference scope",
       "Recovery control",
     ],
-    evidenceValue: "CONTROL: HELD",
-    evidenceNote:
-      "Operator controls resolve after the local session is verified.",
   },
   "/transactions": {
     slug: "transactions",
     label: "TRANSACTIONS / RECEIPTS",
     title: "Trace every",
     emphasis: "receipt.",
-    copy: "Transactions opens into approvals, signatures, receipts and recovery boundaries instead of a generic dashboard surface.",
-    risk: "Receipt finality cannot be asserted before the wallet context is verified.",
-    cta: "Verify receipt context",
+    copy: "Every receipt, its state, and recovery.",
     boundary: "SIGNATURE BOUNDARY",
     artifact: "RECEIPT / FINALITY",
     next: "Receipt / finality / recovery",
@@ -133,18 +118,13 @@ export const lockedRouteMeta: Record<
       "Event decoding",
       "Recovery path",
     ],
-    evidenceValue: "RECEIPT: 0xA82…91C",
-    evidenceNote:
-      "Receipt finality remains unavailable until wallet context is verified.",
   },
   "/chat": {
     slug: "chat",
     label: "CHAT / OPERATOR STATE",
     title: "Ask from",
     emphasis: "context.",
-    copy: "Chat carries operator health, linked agent context and the next reviewable decision into every response instead of starting from an empty prompt.",
-    risk: "Live operator context must be verified before a prompt can influence a reviewable decision.",
-    cta: "Verify operator context",
+    copy: "Ask about your agents — chat knows your session.",
     boundary: "SIGNATURE BOUNDARY",
     artifact: "HEALTH / CONTEXT",
     next: "Health / prompt / review",
@@ -155,18 +135,13 @@ export const lockedRouteMeta: Record<
       "Agent context",
       "Reviewable response",
     ],
-    evidenceValue: "SESSION: UNRESOLVED",
-    evidenceNote:
-      "Live operator context is available only after a signed local session is established.",
   },
   "/mint": {
     slug: "mint",
     label: "MINT / PROVENANCE",
     title: "Prove the",
     emphasis: "identity.",
-    copy: "Mint keeps payload, metadata hash, oracle acknowledgement and ownership evidence visible before an agent exists.",
-    risk: "Identity cannot be created until its payload is attributable to an operator.",
-    cta: "Verify provenance context",
+    copy: "Your name becomes an on-chain identity with a receipt.",
     boundary: "SIGNATURE BOUNDARY",
     artifact: "PAYLOAD / HASH",
     next: "Payload / hash / receipt",
@@ -177,18 +152,13 @@ export const lockedRouteMeta: Record<
       "Oracle acknowledgement",
       "Mint receipt",
     ],
-    evidenceValue: "HASH: PENDING",
-    evidenceNote:
-      "Metadata hash is calculated only after the payload is signed.",
   },
   "/payment": {
     slug: "payment",
     label: "PAYMENT / ALLOWANCE",
     title: "Fund the",
     emphasis: "route.",
-    copy: "Payment separates exact ERC-20 approval from value transfer, protocol fee, royalty and decoded earnings.",
-    risk: "No allowance or transfer is exposed until the accountable operator context is verified.",
-    cta: "Verify allowance context",
+    copy: "Approve exactly what you pay — fees shown up front.",
     boundary: "SIGNATURE BOUNDARY",
     artifact: "ALLOWANCE / VALUE",
     next: "Allowance / payment / event",
@@ -199,17 +169,13 @@ export const lockedRouteMeta: Record<
       "Payment receipt",
       "Earnings event",
     ],
-    evidenceValue: "ALLOWANCE: UNISSUED",
-    evidenceNote: "No spending approval has been issued for this route.",
   },
   "/transfer": {
     slug: "transfer",
     label: "TRANSFER / FINALITY",
     title: "Carry the",
     emphasis: "proof.",
-    copy: "Transfer keeps challenge, signature, expiration and on-chain finality visible as one accountable path.",
-    risk: "A transfer challenge is not issued until identity and recipient evidence can be attributed.",
-    cta: "Verify finality context",
+    copy: "Receiver co-signs; expiry is enforced.",
     boundary: "SIGNATURE BOUNDARY",
     artifact: "CHALLENGE / FINALITY",
     next: "Challenge / signature / finality",
@@ -220,18 +186,13 @@ export const lockedRouteMeta: Record<
       "Signed challenge",
       "Finality receipt",
     ],
-    evidenceValue: "NONCE: UNISSUED",
-    evidenceNote:
-      "A challenge is issued only after identity and recipient evidence match.",
   },
   "/storage": {
     slug: "storage",
     label: "STORAGE / PROVENANCE",
     title: "Keep the",
     emphasis: "evidence.",
-    copy: "Storage exposes encryption, root hash, transaction, proof and index availability rather than hiding provenance behind a card.",
-    risk: "The published root remains unavailable until its storage intent is attributable.",
-    cta: "Verify storage context",
+    copy: "Every storage step is verifiable, not a success badge.",
     boundary: "SIGNATURE BOUNDARY",
     artifact: "ROOT / INTEGRITY",
     next: "Encryption / root / integrity",
@@ -242,18 +203,13 @@ export const lockedRouteMeta: Record<
       "Root hash",
       "Proof + index",
     ],
-    evidenceValue: "ROOT: UNPUBLISHED",
-    evidenceNote:
-      "The encrypted root appears only once the payload is published to 0G Storage.",
   },
   "/agents/": {
     slug: "agent",
     label: "AGENT / DETAIL",
     title: "Inspect the",
     emphasis: "operator.",
-    copy: "Agent detail is ready to connect identity, ownership, activity, commands and receipt history after session verification.",
-    risk: "Agent authority remains held until its owner and command capability are attributable.",
-    cta: "Verify agent authority",
+    copy: "Identity, ownership, activity and receipts per agent.",
     boundary: "SIGNATURE BOUNDARY",
     artifact: "IDENTITY / ACTIVITY",
     next: "Identity / command / receipt",
@@ -264,8 +220,5 @@ export const lockedRouteMeta: Record<
       "Command capability",
       "Activity receipt",
     ],
-    evidenceValue: "AGENT: LOCKED",
-    evidenceNote:
-      "Identity and activity records unlock together after the session signature.",
   },
 };

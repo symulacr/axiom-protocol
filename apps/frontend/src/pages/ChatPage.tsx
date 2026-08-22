@@ -1033,7 +1033,6 @@ function ChatPageInner(): ReactElement {
         setMessages(msgs);
       };
       turnCountRef.current += 1;
-      const sessionTurns = turnCountRef.current;
       // Compaction runs once per RUN (never mid-loop), and the summary is
       // cached per threadId — the inserted lead message is byte-identical
       // every run of this thread, and a fresh thread never inherits another
@@ -1255,7 +1254,6 @@ function ChatPageInner(): ReactElement {
                   turnMetricsRef.current,
                   loopCount,
                   stepsRef.current,
-                  sessionTurns,
                   nativeSymbol,
                 ),
               },
@@ -2521,18 +2519,14 @@ function formatNeuron(neuron: number): string {
   return og.toPrecision(2);
 }
 
-/** Aggregated per-run insights line: 'N turns · N steps | LLM Xs | TTFT avg
- *  Yms · Z tok/s | Cache hit W% | In A tok · Out B tok | served 0x… | ≈X <native>'.
- *  Rendered inside InsightsDisclosure (collapsed by default) — the raw line
- *  stays byte-identical for anyone who expands it; the cost unit is the
- *  chain's native symbol (never a literal, C-12).
- *  `sessionTurns` is the per-thread user-turn count used to hint that the
- *  provider cache is still warming (first 2-4 identical-prefix turns). */
+/** Aggregated per-run insights line: 'N turns · N steps | LLM Xs | provider
+ *  0x… | ≈X <native>'. Rendered inside InsightsDisclosure (collapsed by
+ *  default); the cost unit is the chain's native symbol (never a literal,
+ *  C-12). Token/cache internals are deliberately not shown (row 42, audit 07). */
 function formatInsightsLine(
   metrics: TurnMetric[],
   turns: number,
   steps: number,
-  sessionTurns: number | undefined,
   nativeSymbol: string,
 ): string | undefined {
   if (metrics.length === 0) return undefined;
@@ -2541,41 +2535,10 @@ function formatInsightsLine(
   ];
   const wallMs = metrics.reduce((a, m) => a + m.wallMs, 0);
   if (wallMs > 0) parts.push(`LLM ${(wallMs / 1000).toFixed(1)}s`);
-  const ttfts = metrics.filter((m) => m.ttftMs !== undefined && m.ttftMs > 0);
-  const promptTok = metrics.reduce((a, m) => a + (m.promptTokens ?? 0), 0);
-  const completionTok = metrics.reduce(
-    (a, m) => a + (m.completionTokens ?? 0),
-    0,
-  );
-  if (ttfts.length > 0) {
-    const avgTtft =
-      ttfts.reduce((a, m) => a + (m.ttftMs ?? 0), 0) / ttfts.length;
-    const nonTtftMs = metrics.reduce(
-      (a, m) => a + Math.max(0, m.wallMs - (m.ttftMs ?? 0)),
-      0,
-    );
-    const tps =
-      nonTtftMs > 0 ? Math.round((completionTok * 1000) / nonTtftMs) : 0;
-    parts.push(
-      `TTFT avg ${Math.round(avgTtft)}ms${tps > 0 ? ` · ${tps} tok/s` : ""}`,
-    );
-  }
-  if (promptTok > 0 || completionTok > 0) {
-    if (promptTok > 0) {
-      const cached = metrics.reduce((a, m) => a + (m.cachedTokens ?? 0), 0);
-      const pct = Math.round((cached / promptTok) * 100);
-      parts.push(`Cache hit ${pct}%`);
-      // The first 2-4 identical-prefix turns warm the provider cache.
-      if (pct === 0 && (sessionTurns ?? turns) < 4) {
-        parts.push("warming cache");
-      }
-    }
-    parts.push(
-      `In ${promptTok.toLocaleString()} tok · Out ${completionTok.toLocaleString()} tok`,
-    );
-  }
+  // Row-42 (07): the opened detail keeps 3 segments — cost, latency, provider.
+  // Token/cache/telemetry internals stay out of the collapsed-by-default line.
   const last = metrics[metrics.length - 1];
-  if (last?.provider) parts.push(`served ${shortAddress(last.provider)}`);
+  if (last?.provider) parts.push(`provider ${shortAddress(last.provider)}`);
   const cost = metrics.reduce((a, m) => a + (m.costNeuron ?? 0), 0);
   if (cost > 0) parts.push(`≈${formatNeuron(cost)} ${nativeSymbol}`);
   return parts.join(" | ");

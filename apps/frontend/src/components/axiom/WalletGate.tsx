@@ -235,7 +235,7 @@ export function WalletGate({
               <br />
               <i>One accountable session.</i>
             </strong>
-            <span>Non-custodial access with a visible signature boundary.</span>
+            <span>Non-custodial access.</span>
           </div>
         </div>
         <div className="wallet-gate-panel">
@@ -258,10 +258,7 @@ export function WalletGate({
                 <br />
                 <i>command surface.</i>
               </h1>
-              <p>
-                Connect a wallet to create a local operator session. Axiom never
-                asks for seed phrases or custody.
-              </p>
+              <p>Connect a wallet to start a session. We never take custody.</p>
               <div className="wallet-options">
                 {connectors.map((c) => {
                   const meta = connectorLabel(c);
@@ -291,8 +288,8 @@ export function WalletGate({
                 </p>
               )}
               <p className="wallet-gate-foot-note">
-                <ShieldCheck size={14} /> A signature is requested only after
-                chain verification.
+                <ShieldCheck size={14} /> Signature only after the network
+                check.
               </p>
             </>
           )}
@@ -350,11 +347,7 @@ export function WalletGate({
               <KeyRound className="copper" size={28} />
               <span className="eyebrow copper">{copy.wallet.phaseSigning}</span>
               <h2>Confirm the access message.</h2>
-              <p>
-                Review the non-transactional message in{" "}
-                {connector?.name ?? "your wallet"}. No gas, transfer or approval
-                is requested.
-              </p>
+              <p>A free signature — no gas, transfer or approval.</p>
               <div className="signature-preview">
                 <span className="mono">
                   axiom-console-session-v1 · chain {APP_CHAIN_ID}
@@ -414,7 +407,6 @@ export function WalletGate({
               </h2>
               <p>
                 Resume the local operator session or return to the landing page.
-                No new signature is requested.
               </p>
               <Button
                 onClick={onAuthenticated}
@@ -437,10 +429,7 @@ export function WalletGate({
               <ShieldAlert className="warning-icon" size={28} />
               <span className="eyebrow">SIGNATURE REJECTED</span>
               <h2>{copy.wallet.rejectedTitle}</h2>
-              <p>
-                {copy.wallet.rejectedDescription} The access signature was
-                declined before a session was created.
-              </p>
+              <p>{copy.wallet.rejectedDescription}</p>
               <Button onClick={retry} icon={<RotateCcw size={15} />}>
                 {copy.wallet.retryConnection}
               </Button>

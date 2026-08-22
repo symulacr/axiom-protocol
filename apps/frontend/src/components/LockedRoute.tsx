@@ -77,7 +77,7 @@ export function LockedRoute({
               <div>
                 <span className="eyebrow">{meta.artifact}</span>
                 <strong>Preview only</strong>
-                <small>Wallet verification gates live evidence.</small>
+                <small>Connect a wallet to unlock live evidence.</small>
               </div>
             </div>
             {/* Ledger rows are static states, not controls — no chevron
@@ -91,7 +91,7 @@ export function LockedRoute({
                 <div>
                   <strong>{item}</strong>
                   <small>
-                    {index === 0 ? "not connected" : "awaiting previous step"}
+                    {index === 0 ? "not connected" : "after connect"}
                   </small>
                 </div>
               </div>

@@ -81,7 +81,7 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
     title: "Payments that retain\ntheir receipt boundary.",
     metaTitle: "Programmable Payment Receipts | Axiom",
     accent:
-      "Keep approval, signature, submission and finality distinct so an operator sees both the next decision and the resulting evidence.",
+      "Approval, submission and finality stay distinct — with the receipt to prove it.",
     metaDescription:
       "Understand Axiom's evidence-oriented programmable payment workflow, including approval, receipts and finality states.",
     evidenceTitle: "What remains visible",
@@ -299,7 +299,6 @@ export function PublicSeoPage({ slug }: { slug: PublicSeoSlug }) {
           <span>ROUTE</span>
           <strong>{page.rail}</strong>
           <i aria-hidden="true" />
-          <small>PROOF BOUNDARY</small>
         </div>
         <div className="seo-hero-copy">
           <span className="eyebrow">{page.eyebrow}</span>
@@ -341,7 +340,7 @@ export function PublicSeoPage({ slug }: { slug: PublicSeoSlug }) {
                 <code>{value}</code>
               </p>
             ))}
-            <small>PUBLIC MODEL · NOT LIVE OPERATION DATA</small>
+            <small>EXAMPLE DATA</small>
           </div>
           <ul>
             {page.evidence.map((item) => (

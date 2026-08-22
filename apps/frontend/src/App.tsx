@@ -134,31 +134,31 @@ function Guide({
   const [step, setStep] = useState(0);
   const steps = [
     {
-      title: "Start with the next safe action.",
-      copy: "Axiom puts the highest-consequence decision first. Use the copper action lane before scanning the rest of the dashboard.",
+      title: copy.guide.step1Title,
+      copy: copy.guide.step1Body,
       path: "/app",
-      label: "Open overview",
+      label: copy.guide.openOverview,
       image: MEDIA.onboarding,
     },
     {
-      title: "Every signature gets a receipt.",
-      copy: "Approval, signing, submission and confirmation stay separate, so you can see what happened and what still needs review.",
+      title: copy.guide.step2Title,
+      copy: copy.guide.step2Body,
       path: "/transactions",
-      label: "Open transaction center",
+      label: copy.guide.openTransactions,
       image: MEDIA.proof,
     },
     {
-      title: "Keep proof beside the action.",
-      copy: "Storage roots, oracle acknowledgements and event freshness remain visible instead of becoming one generic success badge.",
+      title: copy.guide.step3Title,
+      copy: copy.guide.step3Body,
       path: "/storage",
-      label: "Inspect provenance",
+      label: copy.guide.openStorage,
       image: MEDIA.mint,
     },
     {
-      title: "Tune the surface to your work.",
-      copy: "Resize or collapse the rail, choose reduced motion and reopen this guide from Settings.",
+      title: copy.guide.step4Title,
+      copy: copy.guide.step4Body,
       path: "/settings",
-      label: "Open Settings",
+      label: copy.guide.openSettings,
       image: MEDIA.recovery,
     },
   ];
@@ -619,7 +619,7 @@ export function App(): ReactElement {
                       onLock={lockConsole}
                     />
                   ) : location.pathname === "/staking" ? (
-                    <StakingPage go={go} />
+                    <StakingPage go={go} locale={locale} />
                   ) : [
                       "/mint",
                       "/payment",

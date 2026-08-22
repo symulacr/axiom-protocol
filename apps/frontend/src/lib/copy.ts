@@ -113,7 +113,6 @@ export type Copy = {
     titleLead: string;
     titleEmphasis: string;
     description: string;
-    prototypeNote: string;
     nextSafeAction: string;
     heroTitle: string;
     walletContext: string;
@@ -162,6 +161,24 @@ export type Copy = {
     nextStep: string;
     finish: string;
     skip: string;
+    step1Title: string;
+    step1Body: string;
+    openOverview: string;
+    step2Title: string;
+    step2Body: string;
+    openTransactions: string;
+    step3Title: string;
+    step3Body: string;
+    openStorage: string;
+    step4Title: string;
+    step4Body: string;
+    openSettings: string;
+  };
+  staking: {
+    lede: string;
+    body: string;
+    openVault: string;
+    reviewEvidence: string;
   };
   /** Recovery404 — says what happened and the safe next step, never what the
    *  page implementation didn't load (02 FINDING-018). */
@@ -248,7 +265,6 @@ export type Copy = {
     shortcutPalette: string;
     shortcutSurfaces: string;
     shortcutFlows: string;
-    diagnosticNote: string;
     replayOnboarding: string;
     resetSurface: string;
     resetConfirmTitle: string;
@@ -262,7 +278,6 @@ export type Copy = {
     eyebrow: string;
     titleLead: string;
     titleEmphasis: string;
-    description: string;
     review: (count: number) => string;
     nowReviewEyebrow: string;
     refresh: string;
@@ -478,13 +493,7 @@ export type Copy = {
   >;
   flowUi: {
     openTransactions: string;
-    confirmingReceipt: string;
     ready: string;
-    finalEvidence: string;
-    inFlight: string;
-    simulatedReceipt: string;
-    confirmResult: string;
-    continueTo: string;
     restart: string;
     simulateReject: string;
     simulateTimeout: string;
@@ -492,12 +501,7 @@ export type Copy = {
     wallet: string;
     agent: string;
     network: string;
-    currentState: string;
     receipt: string;
-    awaitingConfirmation: string;
-    readyToConfirm: string;
-    notCreated: string;
-    noLiveCall: string;
     confirming: string;
     /** Proof-timeline step sublabels (C-P2: the ladder localizes with the
      *  steps — these two were the last hardcoded English on flow pages). */
@@ -674,7 +678,6 @@ export type Copy = {
     withdrawFunds: string;
     transferProof: string;
     queueTick: string;
-    tickQueuedNotice: string;
     commandEvidence: string;
     executeBoundedIntent: string;
     runRecoveryPath: string;
@@ -685,7 +688,6 @@ export type Copy = {
     providerValue: string;
     providerHint: string;
     createTickIntent: string;
-    createTickNotice: string;
     cancel: string;
     paymentsActivity: string;
     valueRouteFor: (agent: string) => string;
@@ -835,18 +837,16 @@ const english: Copy = {
     titleLead: "Move with",
     titleEmphasis: "evidence.",
     description:
-      "Connect a wallet, review the next operator action and keep its proof beside it. Every state is labeled; this prototype never implies a live transaction.",
-    prototypeNote:
-      "Prototype mode: wallet, network, signature and transaction boundaries are visible before console access.",
+      "Connect a wallet, act, and keep the proof next to every action. Flows are real on the connected testnet.",
     nextSafeAction: "NEXT SAFE ACTION",
     heroTitle: "Verify the operator before the action.",
     walletContext: "Wallet context",
     signatureBoundary: "Signature boundary",
     consoleAccess: "Console access",
     stakingBoundary: "Staking is not part of Axiom yet.",
-    menuGuideHint: "Review the wallet and proof boundary",
+    menuGuideHint: "How sessions and proofs work",
     menuDevelopers: "Developers",
-    menuDevelopersHint: "Inspect the integration boundary",
+    menuDevelopersHint: "APIs and tools",
     stakeTitle: "0G Stake",
     stripConnectEyebrow: "CONNECT",
     stripConnectSmall: "Connector and address",
@@ -859,10 +859,9 @@ const english: Copy = {
   wallet: {
     connectingTitle: "Reading wallet context.",
     connectingDescription:
-      "Checking the wallet address, connector and target network.",
+      "Waiting for the wallet — nothing has been requested yet.",
     wrongNetworkTitle: "Switch to {chainName}.",
-    wrongNetworkDescription:
-      "The wallet is connected, but it is on a different network. Switch before signing the access message.",
+    wrongNetworkDescription: "Your wallet is on another network.",
     switchNetwork: "Switch to {chainName}",
     phaseConnect: "CONNECT WALLET",
     phaseNetwork: "VERIFY NETWORK",
@@ -872,21 +871,40 @@ const english: Copy = {
     rejectSignature: "Reject signature",
     profileTitle: "Name the local profile.",
     profileDescription:
-      "This label helps you recognize the connected wallet in Axiom. You can change it later in Settings.",
-    profileHint: "Saved only as a local prototype preference.",
+      "Name this wallet for yourself. Changeable in Settings.",
+    profileHint: "Stored on this device only.",
     unlockConsole: "Unlock console",
     rejectedTitle: "Access was not granted.",
     rejectedDescription:
-      "The signature was declined, so the console stayed locked. No transaction was sent.",
+      "Signature declined. Nothing was sent — retry when ready.",
     retryConnection: "Retry wallet connection",
     timeoutTitle: "No access was granted.",
-    timeoutDescription:
-      "The wallet or network did not respond in time. Retry the connection or close this panel.",
+    timeoutDescription: "The wallet didn't respond in time. Retry or close.",
   },
   guide: {
     nextStep: "Next step",
     finish: "Finish guide",
     skip: "Skip for now",
+    step1Title: "Start with the next safe action.",
+    step1Body: "Your next action sits in the copper strip at the top.",
+    openOverview: "Open overview",
+    step2Title: "Every signature gets a receipt.",
+    step2Body:
+      "Each step keeps its own state, so you always know what is left.",
+    openTransactions: "Open transactions",
+    step3Title: "Keep proof beside the action.",
+    step3Body: "Proofs stay attached to actions — no generic success badge.",
+    openStorage: "Open storage",
+    step4Title: "Tune the surface to your work.",
+    step4Body:
+      "Resize or collapse the rail, choose reduced motion and reopen this guide from Settings.",
+    openSettings: "Open settings",
+  },
+  staking: {
+    lede: "Staking isn\u0027t part of Axiom.",
+    body: "Axiom covers vaults, payments, transfers and storage — not validator delegation or rewards.",
+    openVault: "Open the vault",
+    reviewEvidence: "Review receipts",
   },
   notFound: {
     eyebrow: "404 / PAGE NOT FOUND",
@@ -928,8 +946,7 @@ const english: Copy = {
     advancedTitle: "Advanced",
     dangerEyebrow: "DANGER ZONE",
     dangerTitle: "Destructive actions",
-    dangerHint:
-      "Reset wipes the session, every flow draft and all local receipts. Settings survive.",
+    dangerHint: "Wipes session, drafts and receipts. Settings survive.",
     compactRail: "Compact command rail",
     compactRailHint: "Keep labels available while giving work more room.",
     reducedMotion: "Reduced motion",
@@ -942,8 +959,7 @@ const english: Copy = {
     densityCalm: "Calm",
     densityDense: "Dense",
     theme: "Surface theme",
-    themeHint:
-      "Keep operational contrast legible in either working environment.",
+    themeHint: "Contrast stays legible in both themes.",
     themeDark: "Graphite",
     themeLight: "Paper",
     direction: "Direction",
@@ -963,18 +979,14 @@ const english: Copy = {
     statusOnline: "online",
     shortcutEyebrow: "COMMAND CENTER",
     shortcutTitle: "Keyboard map",
-    shortcutHint:
-      "Fast paths remain visible; they never bypass wallet, network or signature boundaries.",
+    shortcutHint: "Shortcuts navigate; they never sign.",
     shortcutPalette: "Find actions, agents, receipts and routes",
     shortcutSurfaces: "Open core command surfaces",
     shortcutFlows: "Open execution flows",
-    diagnosticNote:
-      "Session, chain, RPC and preference state are visible before any action is taken.",
     replayOnboarding: "Replay onboarding",
     resetSurface: "Reset surface",
     resetConfirmTitle: "Reset the surface?",
-    resetConfirmBody:
-      "This signs you out and wipes every flow draft and local receipt. Your settings are kept. There is no undo.",
+    resetConfirmBody: "Signs you out and wipes drafts and receipts. No undo.",
     resetConfirmAction: "Reset everything",
     resetCancel: "Cancel",
     reviewStakingBoundary: "Review 0G integration boundary",
@@ -984,8 +996,6 @@ const english: Copy = {
     eyebrow: "OVERVIEW / NEXT SAFE ACTION",
     titleLead: "Keep the",
     titleEmphasis: "surface accountable.",
-    description:
-      "Four agents, one verified signer context and a transaction trail that never turns pending into success.",
     review: (count) =>
       `${count} agent action${count === 1 ? "" : "s"} require${count === 1 ? "s" : ""} attention.`,
     nowReviewEyebrow: "NOW / REVIEW",
@@ -1026,14 +1036,13 @@ const english: Copy = {
     secondaryTelemetry: "SECONDARY TELEMETRY",
     telemetryTitle: "Telemetry & recent evidence",
     noEvidence: "No evidence yet",
-    noEvidenceHint:
-      "Mint an agent or run a payment to create the first receipt.",
+    noEvidenceHint: "Mint an agent to create the first receipt.",
     registerUnavailable: "Agent register unavailable",
     noAgents: "No agents yet",
     noAgentsHint: "Mint your first agent to start the fleet.",
     mintAgent: "Mint an agent",
     noDescription: "no description",
-    refreshNotice: "Overview refreshed from the live indexers.",
+    refreshNotice: "Overview refreshed.",
     agentFundingEyebrow: (tokenId) => `AGENT #${tokenId} / FUNDING`,
     paymentAllowanceEyebrow: "PAYMENT / ALLOWANCE",
   },
@@ -1129,8 +1138,7 @@ const english: Copy = {
     routingCheapest: "Lowest cost",
     routingVerified: "Verified providers only (TEE)",
     routingPrivate: "Private (sealed enclave)",
-    routingPrivateHintOn:
-      "Sealed enclave inference (prompts never leave the enclave)",
+    routingPrivateHintOn: "Prompts never leave the provider's enclave",
     routingPrivateHintOff: "No sealed-enclave provider serves this model",
     routingChipTitle:
       "Provider routing — change how this conversation is served",
@@ -1138,10 +1146,8 @@ const english: Copy = {
     routingSummaryCheapest: "Lowest cost",
     routingStatusPinned: (address) =>
       `Pinned to ${address} — every turn is served by this provider.`,
-    routingStatusCheapest:
-      "Lowest-cost provider first; the serving provider may change between turns.",
-    routingStatusAuto:
-      "Fastest provider first; turns stay on one provider so follow-ups are quicker.",
+    routingStatusCheapest: "Cheapest first; may change between turns.",
+    routingStatusAuto: "Fastest provider; follow-ups stay on it.",
     phaseRunning: (names, elapsed) => `Running ${names}… (${elapsed}s)`,
     phaseStreaming: (elapsed) => `Streaming response… (${elapsed}s)`,
     phaseThinking: "Thinking…",
@@ -1155,20 +1161,18 @@ const english: Copy = {
     historyNoMatch: "No matching chats.",
     historyLoading: "Loading server history…",
     historyRestore: "Restore server history",
-    historyRestoreHint:
-      "Sign a wallet message to load this wallet's server-saved transcripts. No transaction is sent.",
+    historyRestoreHint: "One free signature loads your saved chats.",
     historyDelete: (title) => `Delete chat: ${title}`,
     untitledThread: "New chat",
     deletedToast: "Chat deleted",
     undo: "Undo",
-    metricsShow: "metrics",
-    metricsHide: "hide metrics",
+    metricsShow: "Metrics",
+    metricsHide: "Hide metrics",
   },
   storage: {
     eyebrow: "DATA PROVENANCE / 0G",
     title: "Store the payload, then verify its proof.",
-    description:
-      "Encryption, root hash, storage transaction, integrity proof and index availability remain separate.",
+    description: "Each storage step is proven separately.",
     openChat: "Open chat transcript",
     adapter: "0G STORAGE ADAPTER",
     payload: "Agent metadata payload",
@@ -1195,13 +1199,12 @@ const english: Copy = {
     notReady: "not ready",
     source: "SOURCE",
     sourceName: "0G Storage SDK / Indexer",
-    sourceDescription:
-      "Demo mirrors the adapter shape; replication and pinning are not claimed.",
+    sourceDescription: "Each storage step is proven separately.",
     pending: "pending",
     notIndexed: "not indexed",
     fixture: "demo / not live",
     demoNotice:
-      "Demo pipeline — no storage backend is connected yet. The stages below are what a real upload will expose; no state is produced or persisted here.",
+      "Demo — no storage backend yet. The stages show what a real upload exposes.",
   },
   flows: {
     mint: {
@@ -1217,12 +1220,12 @@ const english: Copy = {
       fieldHint: "Metadata hash is derived and shown in review.",
       detail: "{name} · oracle acknowledged",
       notice:
-        "Mint submitted for {name}. Receipt added to the Transaction Center.",
+        "Mint submitted for {name}. Receipt added to the transaction center.",
     },
     payment: {
       eyebrow: "PAYMENT / ALLOWANCE ROUTE",
       title: "Fund with context",
-      copy: "Token, exact allowance, fee, royalty and event decoding stay visible before completion.",
+      copy: "Allowance, fees and events — all visible before you pay.",
       steps: [
         "Exact allowance",
         "Approval / payment boundary",
@@ -1236,7 +1239,7 @@ const english: Copy = {
       fieldHint: "Exact allowance is shown in review.",
       detail: "{amount} → agent #{agent}",
       notice:
-        "Payment submitted for agent #{agent}. Receipt added to the Transaction Center.",
+        "Payment submitted for agent #{agent}. Receipt added to the transaction center.",
     },
     transfer: {
       eyebrow: "TRANSFER / SIGNED PROOF",
@@ -1269,7 +1272,7 @@ const english: Copy = {
     deposit: {
       eyebrow: "VAULT / DEPOSIT ROUTE",
       title: "Deposit into the vault",
-      copy: "Amount → review → wallet boundary → on-chain receipt. The vault balance stays visible before value moves.",
+      copy: "Amount → review → receipt. Balance shown before you sign.",
       steps: ["Amount + balance", "Wallet boundary", "Receipt indexed"],
       receiptKind: "Deposit",
       consequence: "Move the reviewed amount into this agent's vault.",
@@ -1280,12 +1283,12 @@ const english: Copy = {
       fieldHint: "The resulting vault balance appears in review.",
       detail: "{amount} {symbol} into agent #{agent}",
       notice:
-        "Deposit submitted for agent #{agent}. Receipt added to the Transaction Center.",
+        "Deposit submitted for agent #{agent}. Receipt added to the transaction center.",
     },
     withdraw: {
       eyebrow: "VAULT / WITHDRAW ROUTE",
       title: "Withdraw from the vault",
-      copy: "Amount → review → wallet boundary → on-chain receipt. The remaining balance is shown before you sign.",
+      copy: "Amount → review → receipt. Remaining balance before you sign.",
       steps: ["Balance checked", "Wallet boundary", "Receipt indexed"],
       receiptKind: "Withdraw",
       consequence: "Move the reviewed amount out of this agent's vault.",
@@ -1296,18 +1299,12 @@ const english: Copy = {
       fieldHint: "The resulting vault balance appears in review.",
       detail: "{amount} {symbol} from agent #{agent}",
       notice:
-        "Withdrawal submitted for agent #{agent}. Receipt added to the Transaction Center.",
+        "Withdrawal submitted for agent #{agent}. Receipt added to the transaction center.",
     },
   },
   flowUi: {
     openTransactions: "Open transaction center",
-    confirmingReceipt: "Confirming receipt…",
     ready: "READY",
-    finalEvidence: "FINAL EVIDENCE",
-    inFlight: "IN FLIGHT",
-    simulatedReceipt: "simulated receipt",
-    confirmResult: "Confirm simulated result",
-    continueTo: "Continue to",
     restart: "Start this flow again",
     simulateReject: "Simulate reject",
     simulateTimeout: "Simulate timeout",
@@ -1315,24 +1312,18 @@ const english: Copy = {
     wallet: "Wallet",
     agent: "Agent",
     network: "Network",
-    currentState: "Current state",
     receipt: "Receipt",
-    awaitingConfirmation: "awaiting confirmation",
-    readyToConfirm: "ready to confirm",
-    notCreated: "not created",
-    noLiveCall: "demo / no live call",
     confirming: "CONFIRMING",
     stepWallet: "Wallet boundary",
     stepAuto: "Observed automatically",
     coSignTitle: "Receiver co-sign required",
     coSignBody: (receiver) =>
-      `Only the receiver can accept this agent. The receiving wallet (${receiver}) must sign the acceptance — your session stays connected as the sender.`,
+      `The receiver's wallet (${receiver}) signs first. You stay as sender.`,
     coSignAction: "Sign as receiver",
-    coSignNote:
-      "After the receiver signs, you submit the transfer from your own account.",
+    coSignNote: "Then you submit from your wallet.",
     coSignBlockedTitle: "Receiver account not available",
     coSignBlockedBody: (receiver) =>
-      `This wallet cannot sign for ${receiver}. Add the receiver account to this wallet, or let the receiver accept the transfer from their own session.`,
+      `Can't sign for ${receiver} here. Add that account, or have the receiver accept themselves.`,
     stageEyebrow: "EDIT · REVIEW · RECEIPT",
     stageTitle: "Review before you act.",
     reviewOpenLabel: "Review open",
@@ -1369,9 +1360,9 @@ const english: Copy = {
     receiptOverlayReverted: "Reverted",
     receiptOverlayStale: "Check explorer",
     receiptOverlayConfirming: "Confirming on-chain",
-    receiptBodyConfirmed: "Proof and event indexed in the Transaction Center.",
+    receiptBodyConfirmed: "Proof and event indexed in the transaction center.",
     receiptBodyReverted:
-      "Reverted on-chain — the Transaction Center row has recovery.",
+      "Reverted on-chain — the transaction center row has recovery.",
     receiptBodyStale:
       "No confirmation after {seconds}s — check the explorer; the row is marked Needs review.",
     receiptBodyConfirming: "Submitted — awaiting on-chain confirmation.",
@@ -1385,8 +1376,7 @@ const english: Copy = {
       "In vault: {amount} {symbol}. The resulting balance appears in review.",
     allowanceNote:
       "Current allowance: {amount} {symbol} (exact-amount approval only, never infinite).",
-    liveRouteNote:
-      "Live route: wallet signature and contract write happen only after review.",
+    liveRouteNote: "",
     simulateRejectedError: "Signature rejected. Reviewed details are saved.",
     simulateTimeoutError: "Confirmation expired. Resume from review.",
     tickActed: "acted",
@@ -1432,46 +1422,41 @@ const english: Copy = {
     transferAgentTitle: (id) => `Transfer agent #${id}`,
     handoffTitle: "Receiver on another device?",
     handoffBody:
-      "Share the acceptance link with the receiver. Their wallet signs the acceptance; paste the code they get back here — you keep the final on-chain submission.",
+      "Send the link. They sign; paste their code here, then you submit.",
     handoffCopyLink: "Copy acceptance link",
     handoffLinkCopied: "Acceptance link copied — send it to the receiver.",
     handoffPasteLabel: "Acceptance code",
     handoffPasteHint: "The code the receiver's wallet produced (0x…).",
     handoffApply: "Apply acceptance",
     handoffAppliedTitle: "Receiver acceptance applied",
-    handoffAppliedNote:
-      "The acceptance is verified against the receiver address. Submit the transfer from your wallet to finish.",
+    handoffAppliedNote: "Verified. Submit from your wallet to finish.",
     handoffInvalidCode:
-      "This acceptance code does not match the receiver's address ({receiver}). Ask the receiver to sign the link again with the receiving account.",
+      "Code doesn't match {receiver}. Ask them to sign the link again.",
     handoffReceivedNotice: "Receiver acceptance received from this browser.",
     receiveTitle: "Accept a transfer",
     receiveLede:
-      "An agent is being transferred to your address. Review it, then sign the acceptance with the receiving wallet.",
+      "Someone is sending you an agent. Review, then sign to accept.",
     receiveBadTitle: "This acceptance link is not usable",
-    receiveBadBody:
-      "The link is incomplete or damaged. Ask the sender for a fresh link from the transfer review.",
+    receiveBadBody: "Link damaged. Ask the sender for a new one.",
     receiveAgent: "Agent",
     receiveSender: "Sender",
     receiveReceiver: "Receiver (you)",
     receiveExpiry: "Acceptance valid until",
     receiveNetwork: "Network",
     receiveExpiredTitle: "Acceptance expired",
-    receiveExpiredBody:
-      "This acceptance link has passed its validity window. Ask the sender to restart the transfer for a fresh link.",
+    receiveExpiredBody: "Link expired. Ask the sender to restart the transfer.",
     receiveWrongChain:
       "Your wallet is on a different network. The acceptance is bound to chain {chainId}.",
     receiveConnect: "Connect wallet",
     receiveSign: "Sign acceptance",
     receiveSigning: "Waiting for signature…",
-    receiveWrongAccount:
-      "Connected wallet is {connected}, but this acceptance must be signed by {receiver}. Switch to the receiving account.",
+    receiveWrongAccount: "Wrong account — this acceptance needs {receiver}.",
     receiveDoneTitle: "Acceptance signed",
     receiveDoneBody:
-      "Send the code below back to the sender — they submit the transfer from their session. Nothing has moved on-chain yet; this signature only accepts the transfer.",
+      "Copy the code and send it to the sender. Nothing has moved on-chain yet.",
     receiveCopyCode: "Copy acceptance code",
     receiveCodeCopied: "Acceptance code copied.",
-    receiveDoneSameBrowser:
-      "Applied to the sender's tab in this browser automatically.",
+    receiveDoneSameBrowser: "Sent to the sender's tab automatically.",
   },
   agentDetail: {
     executionSurface: "Operator-controlled · no on-chain events yet.",
@@ -1496,19 +1481,17 @@ const english: Copy = {
     withdrawFunds: "Withdraw from vault",
     transferProof: "Transfer proof",
     queueTick: "Queue tick",
-    tickQueuedNotice: "Tick request queued in the shared prototype store.",
     commandEvidence:
       "Every action opens its own evidence model and returns to Activity with a receipt.",
     executeBoundedIntent: "EXECUTE / BOUNDED INTENT",
     runRecoveryPath: "Run an operation with a recovery path.",
     instruction: "Instruction",
     instructionPlaceholder: "Evaluate current route",
-    instructionHint: "Simulated command; no live provider call.",
+    instructionHint: "Streams below; cancellable.",
     providerRoute: "Provider route",
     providerValue: "Axiom orchestrator",
-    providerHint: "Demo route selected from Settings.",
+    providerHint: "",
     createTickIntent: "Create tick intent",
-    createTickNotice: "Instruction created. Open Tick to inspect the stream.",
     cancel: "Cancel",
     paymentsActivity: "PAYMENTS / ACTIVITY",
     valueRouteFor: (agent) => `Value route for ${agent}`,
@@ -1533,8 +1516,7 @@ const english: Copy = {
     receiptsIndexed: "receipts indexed",
     recovery: "RECOVERY",
     needReview: "need review",
-    confirmedNote:
-      "Confirmed means receipt observed and event decoded. Pending never collapses into success.",
+    confirmedNote: "Confirmed = observed on-chain. Pending stays pending.",
     activitySharedStore: "ACTIVITY / SHARED STORE",
     statefulOperations: "Stateful operations",
     filterAll: "All",
@@ -1545,8 +1527,7 @@ const english: Copy = {
     hash: "HASH",
     age: "AGE",
     state: "STATE",
-    emptyState:
-      "No receipts match this state. The shared store has no hidden items.",
+    emptyState: "No receipts match this filter.",
     closeReceipt: "Close receipt",
     transactionHash: "Transaction hash",
     network: "Network",
@@ -1666,9 +1647,7 @@ const french: Copy = {
     titleLead: "Avancez avec",
     titleEmphasis: "des preuves.",
     description:
-      "Connectez un wallet, examinez la prochaine action opérateur et gardez sa preuve à côté. Chaque état est explicite ; ce prototype ne simule jamais une transaction réelle.",
-    prototypeNote:
-      "Mode prototype : wallet, réseau, signature et limites transactionnelles sont visibles avant l’accès à la console.",
+      "Connectez un wallet, agissez, et gardez la preuve à côté de chaque action. Les flows sont réels sur le testnet connecté.",
     nextSafeAction: "PROCHAINE ACTION SÛRE",
     heroTitle: "Vérifiez l’opérateur avant l’action.",
     walletContext: "Contexte wallet",
@@ -1718,6 +1697,28 @@ const french: Copy = {
     nextStep: "Étape suivante",
     finish: "Terminer le guide",
     skip: "Passer pour l’instant",
+    step1Title: "Commencez par la prochaine action sûre.",
+    step1Body:
+      "Votre prochaine action se trouve dans la bande cuivrée en haut.",
+    openOverview: "Ouvrir la vue d’ensemble",
+    step2Title: "Chaque signature a son reçu.",
+    step2Body:
+      "Chaque étape garde son état — vous savez toujours ce qu’il reste.",
+    openTransactions: "Ouvrir les transactions",
+    step3Title: "La preuve accompagne l’action.",
+    step3Body:
+      "Les preuves restent liées aux actions — pas de succès générique.",
+    openStorage: "Ouvrir le stockage",
+    step4Title: "Ajustez la surface à votre travail.",
+    step4Body:
+      "Redimensionnez le rail, activez la motion réduite, rouvrez ce guide depuis les réglages.",
+    openSettings: "Ouvrir les réglages",
+  },
+  staking: {
+    lede: "Le staking ne fait pas partie d’Axiom.",
+    body: "Axiom couvre coffres, paiements, transferts et stockage — pas la délégation de validateurs ni les récompenses.",
+    openVault: "Ouvrir le coffre",
+    reviewEvidence: "Revoir les reçus",
   },
   notFound: {
     eyebrow: "404 / PAGE INTROUVABLE",
@@ -1801,8 +1802,6 @@ const french: Copy = {
     shortcutPalette: "Chercher actions, agents, reçus et routes",
     shortcutSurfaces: "Ouvrir les surfaces de commande",
     shortcutFlows: "Ouvrir les flows d’exécution",
-    diagnosticNote:
-      "Session, chaîne, RPC et préférences sont visibles avant toute action.",
     replayOnboarding: "Rejouer l’onboarding",
     resetSurface: "Réinitialiser la surface",
     resetConfirmTitle: "Réinitialiser la surface ?",
@@ -1817,8 +1816,6 @@ const french: Copy = {
     eyebrow: "VUE D’ENSEMBLE / PROCHAINE ACTION SÛRE",
     titleLead: "Gardez la",
     titleEmphasis: "surface traçable.",
-    description:
-      "Quatre agents, un contexte de signature vérifié et une piste transactionnelle qui ne transforme jamais l’attente en succès.",
     review: (count) =>
       `${count} action${count > 1 ? "s" : ""} d’agent ${count > 1 ? "nécessitent" : "nécessite"} votre attention.`,
     nowReviewEyebrow: "MAINTENANT / REVUE",
@@ -2003,8 +2000,7 @@ const french: Copy = {
   storage: {
     eyebrow: "PROVENANCE DES DONNÉES / 0G",
     title: "Stockez le payload, puis vérifiez sa preuve.",
-    description:
-      "Chiffrement, root hash, transaction Storage, preuve d’intégrité et disponibilité de l’index restent séparés.",
+    description: "Chaque étape Storage est prouvée séparément.",
     openChat: "Ouvrir le transcript Chat",
     adapter: "ADAPTATEUR 0G STORAGE",
     payload: "Payload de métadonnées agent",
@@ -2031,13 +2027,12 @@ const french: Copy = {
     notReady: "pas prêt",
     source: "SOURCE",
     sourceName: "SDK 0G Storage / Indexer",
-    sourceDescription:
-      "La démo reprend la forme de l’adaptateur ; aucune réplication ni pinning n’est revendiquée.",
+    sourceDescription: "Chaque étape Storage est prouvée séparément.",
     pending: "en attente",
     notIndexed: "non indexé",
     fixture: "démo / non live",
     demoNotice:
-      "Pipeline de démonstration — aucun backend Storage n’est connecté. Les étapes ci-dessous sont celles qu’un upload réel exposera ; aucun état n’est produit ni persisté ici.",
+      "Démo — pas de backend Storage. Les étapes montrent ce qu’un vrai upload expose.",
   },
   flows: {
     mint: {
@@ -2141,13 +2136,7 @@ const french: Copy = {
   },
   flowUi: {
     openTransactions: "Ouvrir le centre transactionnel",
-    confirmingReceipt: "Confirmation du reçu…",
     ready: "PRÊT",
-    finalEvidence: "PREUVE FINALE",
-    inFlight: "EN COURS",
-    simulatedReceipt: "reçu simulé",
-    confirmResult: "Confirmer le résultat simulé",
-    continueTo: "Continuer vers",
     restart: "Recommencer ce flow",
     simulateReject: "Simuler un rejet",
     simulateTimeout: "Simuler un timeout",
@@ -2155,24 +2144,19 @@ const french: Copy = {
     wallet: "Wallet",
     agent: "Agent",
     network: "Réseau",
-    currentState: "État actuel",
     receipt: "Reçu",
-    awaitingConfirmation: "confirmation en attente",
-    readyToConfirm: "prêt à confirmer",
-    notCreated: "non créé",
-    noLiveCall: "démo / aucun appel réel",
     confirming: "CONFIRMATION",
     stepWallet: "Limite wallet",
     stepAuto: "Observé automatiquement",
     coSignTitle: "Co-signature du destinataire requise",
     coSignBody: (receiver) =>
-      `Seul le destinataire peut accepter cet agent. Le wallet destinataire (${receiver}) doit signer l’acceptation — votre session reste connectée en tant qu’expéditeur.`,
+      `Le wallet destinataire (${receiver}) signe d’abord. Vous restez expéditeur.`,
     coSignAction: "Signer comme destinataire",
     coSignNote:
       "Après la signature du destinataire, vous soumettez le transfert depuis votre propre compte.",
     coSignBlockedTitle: "Compte destinataire indisponible",
     coSignBlockedBody: (receiver) =>
-      `Ce wallet ne peut pas signer pour ${receiver}. Ajoutez le compte destinataire à ce wallet, ou laissez le destinataire accepter le transfert depuis sa propre session.`,
+      `Impossible de signer pour ${receiver} ici. Ajoutez ce compte, ou laissez le destinataire accepter de son côté.`,
     stageEyebrow: "ÉDITER · REVUE · REÇU",
     stageTitle: "Revoyez avant d’agir.",
     reviewOpenLabel: "Revue ouverte",
@@ -2348,8 +2332,6 @@ const french: Copy = {
     withdrawFunds: "Retirer du vault",
     transferProof: "Transférer la preuve",
     queueTick: "Mettre le tick en file",
-    tickQueuedNotice:
-      "Demande de tick mise en file dans le store partagé du prototype.",
     commandEvidence:
       "Chaque action ouvre son propre modèle de preuve et revient à l’activité avec un reçu.",
     executeBoundedIntent: "EXÉCUTER / INTENTION BORNÉE",
@@ -2361,7 +2343,6 @@ const french: Copy = {
     providerValue: "Orchestrateur Axiom",
     providerHint: "Route de démonstration sélectionnée dans Paramètres.",
     createTickIntent: "Créer l’intention de tick",
-    createTickNotice: "Instruction créée. Ouvrez Tick pour inspecter le flux.",
     cancel: "Annuler",
     paymentsActivity: "PAIEMENTS / ACTIVITÉ",
     valueRouteFor: (agent) => `Route de valeur pour ${agent}`,
@@ -2522,9 +2503,7 @@ const german: Copy = {
     titleLead: "Handle mit",
     titleEmphasis: "Belegen.",
     description:
-      "Verbinde ein Wallet, prüfe die nächste Operator-Aktion und halte den Nachweis daneben. Jeder Status ist sichtbar; dieser Prototyp behauptet keine echte Transaktion.",
-    prototypeNote:
-      "Prototyp-Modus: Wallet, Netzwerk, Signatur und Transaktionsgrenzen sind vor dem Konsolenzugriff sichtbar.",
+      "Verbinde ein Wallet, handle, und halte den Nachweis neben jeder Aktion. Flows sind auf dem verbundenen Testnet echt.",
     nextSafeAction: "NÄCHSTE SICHERE AKTION",
     heroTitle: "Prüfe den Operator vor der Aktion.",
     walletContext: "Wallet-Kontext",
@@ -2574,6 +2553,27 @@ const german: Copy = {
     nextStep: "Nächster Schritt",
     finish: "Guide beenden",
     skip: "Jetzt überspringen",
+    step1Title: "Beginne mit der nächsten sicheren Aktion.",
+    step1Body: "Deine nächste Aktion sitzt im Kupferstreifen oben.",
+    openOverview: "Übersicht öffnen",
+    step2Title: "Jede Signatur bekommt einen Beleg.",
+    step2Body:
+      "Jede Stufe behält ihren Zustand — du weißt immer, was offen ist.",
+    openTransactions: "Transaktionen öffnen",
+    step3Title: "Der Nachweis bleibt neben der Aktion.",
+    step3Body:
+      "Nachweise bleiben an Aktionen gebunden — kein generisches „erfolgreich“.",
+    openStorage: "Storage öffnen",
+    step4Title: "Passe die Oberfläche deiner Arbeit an.",
+    step4Body:
+      "Rail verkleinern, reduzierte Motion wählen, diesen Guide in den Einstellungen neu öffnen.",
+    openSettings: "Einstellungen öffnen",
+  },
+  staking: {
+    lede: "Staking ist nicht Teil von Axiom.",
+    body: "Axiom deckt Vaults, Zahlungen, Transfers und Storage ab — keine Validator-Delegation oder Belohnungen.",
+    openVault: "Vault öffnen",
+    reviewEvidence: "Belege prüfen",
   },
   notFound: {
     eyebrow: "404 / SEITE NICHT GEFUNDEN",
@@ -2655,8 +2655,6 @@ const german: Copy = {
     shortcutPalette: "Aktionen, Agents, Belege und Routen suchen",
     shortcutSurfaces: "Zentrale Befehlsoberflächen öffnen",
     shortcutFlows: "Ausführungs-Flows öffnen",
-    diagnosticNote:
-      "Session, Chain, RPC und Einstellungen sind vor jeder Aktion sichtbar.",
     replayOnboarding: "Onboarding wiederholen",
     resetSurface: "Oberfläche zurücksetzen",
     resetConfirmTitle: "Oberfläche zurücksetzen?",
@@ -2671,8 +2669,6 @@ const german: Copy = {
     eyebrow: "ÜBERSICHT / NÄCHSTE SICHERE AKTION",
     titleLead: "Halte die",
     titleEmphasis: "Oberfläche prüfbar.",
-    description:
-      "Vier Agents, ein verifizierter Signaturkontext und eine Transaktionsspur, die „ausstehend“ nie als Erfolg ausgibt.",
     review: (count) =>
       `${count} Agentenaktion${count === 1 ? "" : "en"} ${count === 1 ? "erfordert" : "erfordern"} Aufmerksamkeit.`,
     nowReviewEyebrow: "JETZT / PRÜFUNG",
@@ -2884,13 +2880,12 @@ const german: Copy = {
     notReady: "nicht bereit",
     source: "QUELLE",
     sourceName: "0G-Storage-SDK / Indexer",
-    sourceDescription:
-      "Die Demo bildet die Adapterform ab; Replikation und Pinning werden nicht behauptet.",
+    sourceDescription: "Jeder Storage-Schritt wird separat nachgewiesen.",
     pending: "ausstehend",
     notIndexed: "nicht indexiert",
     fixture: "Demo / nicht live",
     demoNotice:
-      "Demo-Pipeline — es ist noch kein Storage-Backend verbunden. Die Stufen unten zeigen, was ein echter Upload ausgeben wird; hier wird kein Zustand erzeugt oder gespeichert.",
+      "Demo — noch kein Storage-Backend. Die Stufen zeigen, was ein echter Upload ausgeben würde.",
   },
   flows: {
     mint: {
@@ -2993,13 +2988,7 @@ const german: Copy = {
   },
   flowUi: {
     openTransactions: "Transaktionszentrum öffnen",
-    confirmingReceipt: "Beleg wird bestätigt…",
     ready: "BEREIT",
-    finalEvidence: "FINALER NACHWEIS",
-    inFlight: "IN ARBEIT",
-    simulatedReceipt: "simulierter Beleg",
-    confirmResult: "Simuliertes Ergebnis bestätigen",
-    continueTo: "Weiter zu",
     restart: "Diesen Flow neu starten",
     simulateReject: "Ablehnung simulieren",
     simulateTimeout: "Timeout simulieren",
@@ -3007,24 +2996,19 @@ const german: Copy = {
     wallet: "Wallet",
     agent: "Agent",
     network: "Netzwerk",
-    currentState: "Aktueller Status",
     receipt: "Beleg",
-    awaitingConfirmation: "Bestätigung ausstehend",
-    readyToConfirm: "bereit zur Bestätigung",
-    notCreated: "nicht erstellt",
-    noLiveCall: "Demo / kein Live-Aufruf",
     confirming: "BESTÄTIGUNG",
     stepWallet: "Wallet-Grenze",
     stepAuto: "Automatisch beobachtet",
     coSignTitle: "Empfänger-Gegenzeichnung erforderlich",
     coSignBody: (receiver) =>
-      `Nur der Empfänger kann diesen Agenten annehmen. Das Empfänger-Wallet (${receiver}) muss die Annahme signieren — Ihre Sitzung bleibt als Sender verbunden.`,
+      `Das Empfänger-Wallet (${receiver}) signiert zuerst. Du bleibst Sender.`,
     coSignAction: "Als Empfänger signieren",
     coSignNote:
       "Nach der Signatur des Empfängers reichen Sie den Transfer von Ihrem eigenen Konto ein.",
     coSignBlockedTitle: "Empfängerkonto nicht verfügbar",
     coSignBlockedBody: (receiver) =>
-      `Dieses Wallet kann nicht für ${receiver} signieren. Fügen Sie das Empfängerkonto diesem Wallet hinzu, oder lassen Sie den Empfänger den Transfer in seiner eigenen Sitzung annehmen.`,
+      `Signieren für ${receiver} hier nicht möglich. Konto hinzufügen, oder der Empfänger akzeptiert selbst.`,
     stageEyebrow: "BEARBEITEN · PRÜFEN · BELEG",
     stageTitle: "Prüfen Sie, bevor Sie handeln.",
     reviewOpenLabel: "Prüfung offen",
@@ -3135,7 +3119,7 @@ const german: Copy = {
     transferAgentTitle: (id) => `Agent #${id} übertragen`,
     handoffTitle: "Empfänger an einem anderen Gerät?",
     handoffBody:
-      "Teilen Sie den Annahme-Link mit dem Empfänger. Dessen Wallet signiert die Annahme; fügen Sie den erhaltenen Code hier ein — die finale On-Chain-Einreichung bleibt bei Ihnen.",
+      "Link senden. Der Empfänger signiert; Code hier einfügen, dann reichst du ein.",
     handoffCopyLink: "Annahme-Link kopieren",
     handoffLinkCopied:
       "Annahme-Link kopiert — senden Sie ihn an den Empfänger.",
@@ -3145,34 +3129,31 @@ const german: Copy = {
     handoffApply: "Annahme anwenden",
     handoffAppliedTitle: "Empfänger-Annahme angewendet",
     handoffAppliedNote:
-      "Die Annahme wurde gegen die Empfängeradresse verifiziert. Reichen Sie den Transfer aus Ihrem Wallet ein, um abzuschließen.",
+      "Verifiziert. Aus deinem Wallet einreichen, um fertigzustellen.",
     handoffInvalidCode:
       "Dieser Annahme-Code passt nicht zur Empfängeradresse ({receiver}). Bitten Sie den Empfänger, den Link mit dem Empfängerkonto neu zu signieren.",
     handoffReceivedNotice: "Empfänger-Annahme aus diesem Browser empfangen.",
     receiveTitle: "Einen Transfer annehmen",
     receiveLede:
-      "Ein Agent wird an Ihre Adresse übertragen. Prüfen Sie ihn und signieren Sie die Annahme mit dem Empfänger-Wallet.",
+      "Jemand sendet dir einen Agenten. Prüfen und signieren zum Annehmen.",
     receiveBadTitle: "Dieser Annahme-Link ist nicht verwendbar",
-    receiveBadBody:
-      "Der Link ist unvollständig oder beschädigt. Bitten Sie den Sender um einen frischen Link aus der Transfer-Prüfung.",
+    receiveBadBody: "Link beschädigt. Neu vom Sender anfordern.",
     receiveAgent: "Agent",
     receiveSender: "Sender",
     receiveReceiver: "Empfänger (Sie)",
     receiveExpiry: "Annahme gültig bis",
     receiveNetwork: "Netzwerk",
     receiveExpiredTitle: "Annahme abgelaufen",
-    receiveExpiredBody:
-      "Dieser Annahme-Link hat sein Gültigkeitsfenster überschritten. Bitten Sie den Sender, den Transfer für einen frischen Link neu zu starten.",
+    receiveExpiredBody: "Link abgelaufen. Transfer neu starten lassen.",
     receiveWrongChain:
       "Ihr Wallet ist in einem anderen Netzwerk. Die Annahme ist an Chain {chainId} gebunden.",
     receiveConnect: "Wallet verbinden",
     receiveSign: "Annahme signieren",
     receiveSigning: "Warten auf Signatur…",
-    receiveWrongAccount:
-      "Verbundenes Wallet ist {connected}, aber diese Annahme muss von {receiver} signiert werden. Wechseln Sie zum Empfängerkonto.",
+    receiveWrongAccount: "Falsches Konto — diese Annahme braucht {receiver}.",
     receiveDoneTitle: "Annahme signiert",
     receiveDoneBody:
-      "Senden Sie den Code unten an den Sender zurück — er reicht den Transfer aus seiner Sitzung ein. Noch nichts ist on-chain bewegt; diese Signatur nimmt den Transfer nur an.",
+      "Code kopieren und dem Sender schicken. On-Chain ist noch nichts passiert.",
     receiveCopyCode: "Annahme-Code kopieren",
     receiveCodeCopied: "Annahme-Code kopiert.",
     receiveDoneSameBrowser:
@@ -3201,21 +3182,17 @@ const german: Copy = {
     withdrawFunds: "Aus Vault auszahlen",
     transferProof: "Nachweis übertragen",
     queueTick: "Tick einreihen",
-    tickQueuedNotice:
-      "Tick-Anfrage wurde im gemeinsamen Prototyp-Store eingereiht.",
     commandEvidence:
       "Jede Aktion öffnet ihr eigenes Belegmodell und kehrt mit einem Beleg zu Aktivität zurück.",
     executeBoundedIntent: "AUSFÜHREN / BEGRENZTE ABSICHT",
     runRecoveryPath: "Führe eine Operation mit Wiederherstellungspfad aus.",
     instruction: "Anweisung",
     instructionPlaceholder: "Aktuelle Route auswerten",
-    instructionHint: "Simulierter Befehl; kein Live-Provider-Aufruf.",
+    instructionHint: "Wird unten gestreamt; abbrechbar.",
     providerRoute: "Provider-Route",
     providerValue: "Axiom-Orchestrator",
-    providerHint: "In den Einstellungen ausgewählte Demo-Route.",
+    providerHint: "",
     createTickIntent: "Tick-Absicht erstellen",
-    createTickNotice:
-      "Anweisung erstellt. Öffne Tick, um den Stream zu prüfen.",
     cancel: "Abbrechen",
     paymentsActivity: "ZAHLUNGEN / AKTIVITÄT",
     valueRouteFor: (agent) => `Wert-Route für ${agent}`,

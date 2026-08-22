@@ -199,7 +199,7 @@ function TransferFormPhase({
         mono
         required
         error={pubKeyError ?? undefined}
-        hint="128 hex chars, no 0x04 prefix. Get it from the receiver's wallet 'Export Public Key'."
+        hint="From the receiver's wallet → Export Public Key."
       />
 
       <Field
@@ -329,7 +329,7 @@ function ConfirmTransferPhase({
           )}
           {signature.accessSigner !== undefined && (
             <div>
-              <dt>Access proof signer</dt>
+              <dt>Accepted by</dt>
               <dd className="mono">{signature.accessSigner}</dd>
             </div>
           )}
