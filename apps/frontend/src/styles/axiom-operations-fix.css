@@ -213,7 +213,7 @@
   padding-top: 2px;
   border-left: 1px solid color-mix(in srgb, var(--completion-copper) 65%, transparent);
   color: var(--completion-bright);
-  font: 700 9px/1 "JetBrains Mono", monospace;
+  font: var(--fw-strong) var(--fs-mono)/1 "JetBrains Mono", monospace;
   letter-spacing: .08em;
 }
 
@@ -224,7 +224,7 @@
   bottom: 18px;
   z-index: 2;
   color: var(--completion-dim);
-  font: 700 7px/1 "JetBrains Mono", monospace;
+  font: var(--fw-strong) var(--fs-mono)/1 "JetBrains Mono", monospace;
   letter-spacing: .12em;
   writing-mode: vertical-rl;
   transform: rotate(180deg);
@@ -279,7 +279,7 @@
   padding-left: 0;
   border-left: 1px solid color-mix(in srgb, var(--completion-copper) 68%, transparent);
   color: var(--completion-bright);
-  font: 700 9px/1 "JetBrains Mono", monospace;
+  font: var(--fw-strong) var(--fs-mono)/1 "JetBrains Mono", monospace;
   letter-spacing: .09em;
   pointer-events: none;
 }
@@ -291,7 +291,7 @@
   bottom: 46px;
   left: clamp(28px, 5.8vw, 92px);
   color: var(--completion-dim);
-  font: 700 7px/1 "JetBrains Mono", monospace;
+  font: var(--fw-strong) var(--fs-mono)/1 "JetBrains Mono", monospace;
   letter-spacing: .12em;
   writing-mode: vertical-rl;
   transform: rotate(180deg);
@@ -317,7 +317,7 @@
   border: 1px solid color-mix(in srgb, var(--completion-copper) 44%, transparent);
   background: color-mix(in srgb, var(--completion-canvas) 78%, transparent);
   color: var(--completion-bright);
-  font: 700 9px/1 "JetBrains Mono", monospace;
+  font: var(--fw-strong) var(--fs-mono)/1 "JetBrains Mono", monospace;
   letter-spacing: .09em;
 }
 

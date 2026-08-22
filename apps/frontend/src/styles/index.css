@@ -257,16 +257,11 @@ h1, h2, h3, strong { font-weight: 600; }
   }
   .page-head p { color: var(--muted); font-size: var(--fs-body); }
 
-  .panel { border: 1px solid var(--line); background: var(--panel); }
   .panel-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; }
 
-  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 25px; }
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); }
   .stat {
-    background: var(--panel);
-    border: 1px solid var(--line-soft);
-    padding: 18px 19px;
     display: grid;
-    gap: 9px;
   }
   .stat-top { display: flex; justify-content: space-between; color: var(--muted); font-size: var(--fs-mono); }
   .stat-icon { color: var(--copper); }
@@ -323,7 +318,6 @@ h1, h2, h3, strong { font-weight: 600; }
     background: transparent;
     color: var(--text);
     padding: 12px;
-    font-size: 12px;
     min-width: 0;
   }
   .field input::placeholder { color: var(--dim); }
