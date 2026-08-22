@@ -43,6 +43,22 @@
   --warning: #f0b36b;
   --radius: 10px;
   --ease: cubic-bezier(.23, 1, .32, 1);
+  /* ---------------------------------------------------------------- *
+   * S2 type-scale contract (audit 06 FINDING-002): ONE scale — 4 core  *
+   * steps + the mono accent. Every font-size resolves to one of these  *
+   * (inputs keep 16px for the iOS zoom guard). Weight tokens keep the  *
+   * S2 budget: 500 labels/rows, 600 section titles, 700 reserved for   *
+   * h1 + primary CTA + attention pills + key data values.              *
+   * ---------------------------------------------------------------- */
+  --fs-mono: 11px;    /* eyebrow/status/pill/kbd/mono telemetry labels */
+  --fs-small: 12px;   /* support text, row sublabels, mono row data */
+  --fs-body: 13px;    /* reading text + row primary labels */
+  --fs-title: 20px;   /* panel/section h2, stat values, strip headline */
+  --fs-display: clamp(28px, 3vw, 43px); /* page h1 */
+  --fs-modal: clamp(24px, 3vw, 36px);   /* review sheet / gate / dialog h2 */
+  --fw-label: 500;
+  --fw-title: 600;
+  --fw-strong: 700;
 }
 
 .app-shell.light {
@@ -80,7 +96,9 @@ button { cursor: pointer; }
 button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid var(--copper-bright); outline-offset: 3px; }
 button:active { transform: scale(.98); }
 h1, h2, h3, p { margin: 0; }
-h1, h2, h3, strong { font-weight: 700; }
+/* S2: 600 is the title default; 700 is re-declared only where it is the
+   one thing that matters (h1, primary CTA, attention pills, key data). */
+h1, h2, h3, strong { font-weight: 600; }
 .mono { font-family: 'JetBrains Mono', monospace; }
 
 /* ------------------------------------------------------------------ *
@@ -119,16 +137,16 @@ h1, h2, h3, strong { font-weight: 700; }
     font-family: Syne, sans-serif;
     letter-spacing: .12em;
     font-weight: 800;
-    font-size: 14px;
+    font-size: var(--fs-body);
   }
   .brand img { width: 28px; height: 28px; object-fit: contain; }
-  .brand-compact { font-size: 16px; }
+  .brand-compact { font-size: var(--fs-body); }
   .brand-compact img { width: 34px; height: 34px; }
 
   .eyebrow {
     color: var(--dim);
-    font: 600 10px/1.2 'JetBrains Mono', monospace;
-    letter-spacing: .16em;
+    font: 500 var(--fs-mono)/1.35 'JetBrains Mono', monospace;
+    letter-spacing: .14em;
   }
 
   .nav-item {
@@ -150,7 +168,7 @@ h1, h2, h3, strong { font-weight: 700; }
   .nav-item kbd {
     margin-left: auto;
     color: var(--dim);
-    font: 10px 'JetBrains Mono', monospace;
+    font: 500 var(--fs-mono) 'JetBrains Mono', monospace;
   }
 
   .network-card {
@@ -163,13 +181,13 @@ h1, h2, h3, strong { font-weight: 700; }
     border-radius: 8px;
   }
   .network-card > div { display: grid; gap: 5px; }
-  .network-card .mono { font-size: 9px; color: var(--dim); }
+  .network-card .mono { font-size: var(--fs-mono); color: var(--dim); }
   .network-card > svg { color: var(--phosphor); }
 
   .account { display: flex; align-items: center; gap: 9px; padding: 9px 6px 0; color: var(--muted); }
   .account > div:nth-child(2) { display: grid; gap: 3px; flex: 1; min-width: 0; }
-  .account strong { font-size: 11px; color: var(--text); }
-  .account span { font: 10px 'JetBrains Mono', monospace; color: var(--dim); }
+  .account strong { font-size: var(--fs-small); font-weight: var(--fw-label); color: var(--text); }
+  .account span { font: var(--fs-mono) 'JetBrains Mono', monospace; color: var(--dim); }
   .avatar {
     width: 27px;
     height: 27px;
@@ -178,7 +196,7 @@ h1, h2, h3, strong { font-weight: 700; }
     background: var(--copper);
     color: #24170d;
     border-radius: 50%;
-    font: 700 10px 'JetBrains Mono', monospace;
+    font: 700 var(--fs-mono) 'JetBrains Mono', monospace;
   }
 
   .status {
@@ -186,13 +204,14 @@ h1, h2, h3, strong { font-weight: 700; }
     align-items: center;
     gap: 6px;
     color: var(--muted);
-    font: 600 10px 'JetBrains Mono', monospace;
+    font: 500 var(--fs-mono) 'JetBrains Mono', monospace;
     text-transform: uppercase;
     letter-spacing: .06em;
     white-space: nowrap;
   }
   .status i { width: 6px; height: 6px; border-radius: 50%; background: var(--dim); }
-  .status-live i, .status-success i { background: var(--phosphor); box-shadow: 0 0 0 3px rgba(103, 232, 180, .08); }
+  .status-live i { background: var(--phosphor); box-shadow: 0 0 0 3px rgba(103, 232, 180, .08); }
+  .status-success i { background: var(--phosphor); }
   .status-warning i { background: var(--warning); }
 
   .main { min-width: 0; flex: 1; }
@@ -225,7 +244,7 @@ h1, h2, h3, strong { font-weight: 700; }
     gap: 7px;
     border: 0;
     background: transparent;
-    font-size: 11px;
+    font-size: var(--fs-mono);
     padding: 0;
     transition: .18s var(--ease);
   }
@@ -233,11 +252,11 @@ h1, h2, h3, strong { font-weight: 700; }
 
   .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; }
   .page-head h1 {
-    font: 800 clamp(28px, 3vw, 43px)/1.02 Syne, sans-serif;
+    font: 800 var(--fs-display)/1.02 Syne, sans-serif;
     letter-spacing: -.045em;
     margin: 10px 0 9px;
   }
-  .page-head p { color: var(--muted); font-size: 13px; }
+  .page-head p { color: var(--muted); font-size: var(--fs-body); }
 
   .panel { border: 1px solid var(--line); background: var(--panel); }
   .panel-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; }
@@ -250,10 +269,10 @@ h1, h2, h3, strong { font-weight: 700; }
     display: grid;
     gap: 9px;
   }
-  .stat-top { display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; }
+  .stat-top { display: flex; justify-content: space-between; color: var(--muted); font-size: var(--fs-mono); }
   .stat-icon { color: var(--copper); }
-  .stat strong { font: 700 25px 'JetBrains Mono', monospace; }
-  .stat small { color: var(--phosphor); font-size: 10px; }
+  .stat strong { font: var(--fw-strong) var(--fs-title) 'JetBrains Mono', monospace; }
+  .stat small { color: var(--muted); font-size: var(--fs-mono); }
 
   .activity-list { display: grid; }
   .activity-row {
@@ -266,7 +285,7 @@ h1, h2, h3, strong { font-weight: 700; }
     text-align: left;
   }
   .activity-row > div { display: grid; gap: 4px; min-width: 0; }
-  .activity-row strong { font-size: 12px; }
+  .activity-row strong { font-size: var(--fs-body); font-weight: var(--fw-label); }
 
   .agent-row {
     display: grid;
@@ -285,7 +304,7 @@ h1, h2, h3, strong { font-weight: 700; }
   .agent-row:last-child, .activity-row:last-child { border-bottom: 0; }
 
   .filters { display: flex; gap: 5px; align-items: center; }
-  .filter { border: 0; background: transparent; color: var(--dim); padding: 7px 9px; font-size: 10px; }
+  .filter { border: 0; background: transparent; color: var(--dim); padding: 7px 9px; font-size: var(--fs-mono); font-weight: var(--fw-label); }
   .filter.active { color: var(--text); background: var(--panel); border: 1px solid var(--line); }
 
   .field { display: grid; gap: 8px; }
@@ -309,12 +328,12 @@ h1, h2, h3, strong { font-weight: 700; }
     min-width: 0;
   }
   .field input::placeholder { color: var(--dim); }
-  .field-control em { padding-right: 12px; color: var(--copper); font: 600 10px 'JetBrains Mono', monospace; font-style: normal; }
-  .field-hint, .field-message { color: var(--dim); font-size: 10px; line-height: 1.45; }
+  .field-control em { padding-right: 12px; color: var(--copper); font: 500 var(--fs-mono) 'JetBrains Mono', monospace; font-style: normal; }
+  .field-hint, .field-message { color: var(--dim); font-size: var(--fs-small); line-height: 1.45; }
   .field-error .field-control { border-color: var(--danger); }
   .field-message { color: var(--danger); }
 
-  .empty-state { padding: 26px; color: var(--dim); font-size: 11px; }
+  .empty-state { padding: 26px; color: var(--dim); font-size: var(--fs-small); }
   .copper { color: var(--copper-bright); }
 }
 

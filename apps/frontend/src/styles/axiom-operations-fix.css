@@ -55,7 +55,8 @@
 
 /* Copper stays structural through seams and boundaries, never sequential route markers. */
 .app-shell .sidebar .brand {
-  font-size: 11.5px;
+  /* S2: the 11.5px shrink (half-pixel neighbor of the 11px mono step) is
+     gone — the rail brand rides the body step like every other label. */
   letter-spacing: .05em;
   gap: 8px;
 }

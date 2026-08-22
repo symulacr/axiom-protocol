@@ -175,7 +175,7 @@
   border: 1px solid transparent;
   background: transparent;
   color: var(--completion-dim);
-  font: 700 9px 'JetBrains Mono', monospace;
+  font: 500 var(--fs-mono) 'JetBrains Mono', monospace;
   text-transform: uppercase;
 }
 
@@ -215,7 +215,7 @@
 .storage-step > span::before {
   content: "—";
   color: var(--dim);
-  font: 700 13px/1 'JetBrains Mono', monospace;
+  font: 700 var(--fs-body)/1 'JetBrains Mono', monospace;
 }
 
 .storage-step.done > span::before {

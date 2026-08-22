@@ -57,6 +57,10 @@ function ContextStrip({
           name + chain id. A wrong chain still surfaces here through the
           signer cell ("Wrong network"), so no decision state was lost. */}
       <div className="context-cell">
+        {/* S2 (audit 06 FINDING-003): the WALLET CONTEXT eyebrow survives —
+            a truncated address is not self-describing and needs its category.
+            The SIGNER / ATTENTION cells' values already state their meaning,
+            so their same-info eyebrows are gone. */}
         <span className="eyebrow">{copy.dashboard.contextWallet}</span>
         <strong title={address ?? undefined}>
           <Wallet size={15} />{" "}
@@ -64,7 +68,6 @@ function ContextStrip({
         </strong>
       </div>
       <div className="context-cell">
-        <span className="eyebrow">{copy.dashboard.contextSigner}</span>
         <strong>
           <KeyRound size={15} />{" "}
           {chainOk ? copy.dashboard.signerReady : copy.dashboard.signerWrong}
@@ -76,7 +79,6 @@ function ContextStrip({
         </span>
       </div>
       <div className="context-cell context-action">
-        <span className="eyebrow">{copy.dashboard.contextAttention}</span>
         <strong>{copy.dashboard.attentionCount(reviewCount)}</strong>
         <button
           className="text-link"
@@ -203,7 +205,8 @@ export function DashboardPage({
     <div className="ops-page">
       <div className="page-head page-head-asymmetric">
         <div>
-          <span className="eyebrow">{copy.dashboard.eyebrow}</span>
+          {/* S2 (audit 06 FINDING-003): page-head + panel-head eyebrows that
+              restated the h1/h2 beneath them are gone — one title per block. */}
           <h1>
             {copy.dashboard.titleLead}
             <br />
@@ -212,9 +215,6 @@ export function DashboardPage({
           <p>{copy.dashboard.description}</p>
         </div>
         <div className="action-lane">
-          <span className="eyebrow copper">
-            {copy.dashboard.nowReviewEyebrow}
-          </span>
           <strong>{copy.dashboard.review(attention.length)}</strong>
           {/* One owner for the payment next-action at depth 0: the
               PriorityActionStrip (global chrome). The action lane keeps the
@@ -285,7 +285,6 @@ export function DashboardPage({
         <section className="panel activity-panel">
           <div className="panel-head">
             <div>
-              <span className="eyebrow">{copy.dashboard.recentStore}</span>
               <h2>{copy.dashboard.latestEvidence}</h2>
             </div>
             <Button
@@ -326,7 +325,6 @@ export function DashboardPage({
         <section className="panel agent-panel">
           <div className="panel-head">
             <div>
-              <span className="eyebrow">{copy.dashboard.agentRegister}</span>
               <h2>{copy.dashboard.operatingFleet}</h2>
             </div>
           </div>
@@ -389,7 +387,6 @@ export function DashboardPage({
         <section className="panel next-action-panel">
           <div className="panel-head">
             <div>
-              <span className="eyebrow">{copy.dashboard.proofLane}</span>
               <h2>{copy.dashboard.attentionFirst}</h2>
             </div>
             <ShieldCheck size={18} className="copper" />

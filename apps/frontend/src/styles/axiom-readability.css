@@ -12,24 +12,33 @@
   --copy-measure: 60ch;
 }
 
-body { font-size: 15px; line-height: var(--copy-leading); }
+body { font-size: var(--fs-body); line-height: var(--copy-leading); }
 button, input, textarea, select { line-height: 1.35; }
 
-/* Stable type hierarchy: mono telemetry stays compact, but never becomes essential microtext. */
+/* S2 type-scale contract: mono telemetry is the named --fs-mono step (was
+   the max(0.68rem, 11px) floor — the 11/11.5px neighbor pair). Row
+   sublabels/mono row data moved to --fs-small (see the next block). */
 .eyebrow, .status, .network-card .mono,
 .account span, .field-label,
 .review-facts dt, .command-group-label, .priority-proof > span,
 .session-top, .text-link, .priority-why,
-.context-cell .mono, .stat small, .ops-summary small,
+.context-cell .mono, .ops-summary small,
 .state-pill, .result-count, .stat-top, .field-control em,
-.transaction-row > .mono, .flow-visual-overlay .mono,
+.flow-visual-overlay .mono,
 .provenance-list dt, .settings-row > span:not(.status),
-.agent-row small, .activity-row small, .transaction-kind small,
 .diagnostic-note, .filter, .theme-segmented button,
-.transaction-age, .field-hint,
-.settings-toggle-row small, .storage-file > .mono,
-.range-control small, .settings-select-row label {
-  font-size: max(0.68rem, 11px);
+.field-hint,
+.settings-select-row label {
+  font-size: var(--fs-mono);
+  line-height: 1.3;
+}
+/* mono data IN rows (addresses, hashes, ages, sublabels) reads at the small
+   step — 11px mono is no longer the receipt center's body size (F002). */
+.agent-row small, .activity-row small, .transaction-kind small,
+.transaction-row > .mono, .transaction-age,
+.stat small, .settings-toggle-row small, .storage-file > .mono,
+.range-control small {
+  font-size: var(--fs-small);
   line-height: 1.3;
 }
 
@@ -37,7 +46,7 @@ button, input, textarea, select { line-height: 1.35; }
 .flow-intent-banner strong, .review-decision strong, .review-proof, .review-error,
 .review-cosign, .review-cosign-blocked,
 .priority-action-copy p, .shortcut-map small, .shortcut-map dd {
-  font-size: 0.875rem;
+  font-size: var(--fs-body);
   line-height: var(--copy-leading);
   max-width: var(--copy-measure);
 }
@@ -60,16 +69,16 @@ button, input, textarea, select { line-height: 1.35; }
 
 /* Tables and list rows favor visible context over prematurely truncated text. */
 .agent-row { padding-block: 14px; }
-.transaction-proof-cell small { font-size: 0.72rem; line-height: var(--support-leading); }
+.transaction-proof-cell small { font-size: var(--fs-small); line-height: var(--support-leading); }
 .transaction-proof-cell { gap: var(--space-1); }
 
 /* Command center and priority strip use a short outcome first, then optional proof. */
 .priority-action-strip { gap: var(--space-4); padding: var(--space-4); }
 .priority-action-copy { gap: var(--space-1); }
-.priority-action-copy strong { font-size: clamp(1rem, 1.35vw, 1.16rem); line-height: 1.2; }
+.priority-action-copy strong { font-size: var(--fs-title); line-height: 1.15; }
 .priority-proof { gap: var(--space-1); padding-left: var(--space-4); }
-.priority-proof b { font-size: 0.78rem; line-height: var(--support-leading); }
-.priority-proof small, .priority-details > span, .priority-details button { font-size: 0.72rem; line-height: var(--support-leading); }
+.priority-proof b { font-size: var(--fs-small); line-height: var(--support-leading); }
+.priority-proof small, .priority-details > span, .priority-details button { font-size: var(--fs-small); line-height: var(--support-leading); }
 .priority-details { gap: var(--space-3); padding-top: var(--space-3); }
 .priority-actions { min-width: 146px; }
 
@@ -80,27 +89,27 @@ button, input, textarea, select { line-height: 1.35; }
 .command-center-meta { padding: var(--space-3) var(--space-4) var(--space-2); }
 .command-results { gap: var(--space-2); padding: var(--space-1); }
 .command-center .command-group button { min-height: 52px; gap: var(--space-2); padding: var(--space-2) var(--space-3); }
-.command-center .command-group strong { font-size: 0.82rem; line-height: 1.35; }
-.command-center .command-group small { font-size: 0.72rem; line-height: var(--support-leading); white-space: normal; }
+.command-center .command-group strong { font-size: var(--fs-body); line-height: 1.35; }
+.command-center .command-group small { font-size: var(--fs-small); line-height: var(--support-leading); white-space: normal; }
 
 /* Review sheets keep the decision at the top, with facts easy to compare. */
 .operation-review-sheet { gap: var(--space-4); padding: var(--space-5); }
 .operation-review-head { gap: var(--space-4); }
-.operation-review-head h2 { font-size: clamp(1.75rem, 3vw, 2.25rem); line-height: 1; }
+.operation-review-head h2 { font-size: var(--fs-modal); line-height: 1; }
 .review-decision { gap: var(--space-3); padding: var(--space-4); }
 .review-facts { gap: var(--space-2); }
 .review-facts div { padding: var(--space-3); }
-.review-facts dd { font-size: 0.8rem; line-height: var(--support-leading); }
+.review-facts dd { font-size: var(--fs-small); line-height: var(--support-leading); }
 .review-proof, .review-error, .review-cosign, .review-cosign-blocked { gap: var(--space-2); padding: var(--space-3); }
-.review-disclaimer { font-size: 0.7rem; line-height: var(--support-leading); }
+.review-disclaimer { font-size: var(--fs-small); line-height: var(--support-leading); }
 .review-actions { gap: var(--space-2); }
 
 /* Evidence is a set of observed states, never an implied click-through stepper. */
 .passive-proof-timeline { gap: var(--space-2); margin-block: var(--space-4); }
 .passive-proof-timeline li { grid-template-columns: 18px minmax(0, 1fr) auto; gap: var(--space-3); padding-bottom: var(--space-3); }
 .passive-proof-timeline li > i { width: 14px; height: 14px; margin-top: 2px; border: 0; border-radius: 0; background: currentColor; color: var(--dim); font-size: 0; }
-.passive-proof-timeline li strong { font-size: 0.8rem; line-height: 1.35; }
-.passive-proof-timeline li small { font-size: 0.72rem; line-height: var(--support-leading); }
+.passive-proof-timeline li strong { font-size: var(--fs-body); line-height: 1.35; }
+.passive-proof-timeline li small { font-size: var(--fs-small); line-height: var(--support-leading); }
 
 @media (max-width: 900px) {
   .priority-action-strip { gap: var(--space-3); }
@@ -108,7 +117,7 @@ button, input, textarea, select { line-height: 1.35; }
 }
 
 @media (max-width: 640px) {
-  body { font-size: 15px; }
+  body { font-size: var(--fs-body); }
   .command-center-layer { display: flex; align-items: flex-end; padding: 0; }
   .command-center { box-sizing: border-box; width: 100%; max-height: min(78dvh, 660px); margin: 0; padding: var(--space-3); overflow-y: auto; border-inline: 0; border-bottom: 0; border-radius: 14px 14px 0 0; }
   .command-center-head { display: flex; align-items: center; justify-content: space-between; padding: 0 var(--space-1) var(--space-2); }
@@ -117,7 +126,7 @@ button, input, textarea, select { line-height: 1.35; }
   .page-head { align-items: flex-start; gap: var(--space-3); margin-bottom: var(--space-5); }
   .page-head p,
   .flow-intent-banner strong, .review-decision strong, .review-proof, .review-error,
-  .priority-action-copy p, .shortcut-map small, .shortcut-map dd { font-size: 0.94rem; }
+  .priority-action-copy p, .shortcut-map small, .shortcut-map dd { font-size: var(--fs-body); }
   .priority-action-strip, .flow-intent-banner, 
   .priority-action-strip { padding: var(--space-3); }
   .priority-actions { min-width: 0; }
@@ -130,7 +139,7 @@ button, input, textarea, select { line-height: 1.35; }
 
   /* Keep route proof readable on a phone: retain the live state, suppress repeated gated filler. */
   .public-locked .locked-route-copy { padding-left: 1.35rem; }
-  .public-locked .locked-route-copy p { max-width: 34ch; font-size: 0.9rem; line-height: 1.58; }
+  .public-locked .locked-route-copy p { max-width: 34ch; font-size: var(--fs-body); line-height: 1.58; }
   .public-locked .locked-evidence-row { min-height: 56px; }
   .public-locked .locked-evidence-row:not(:first-of-type) small { display: none; }
   .public-locked .locked-evidence-row > div { padding-block: 0.6rem; }
@@ -147,8 +156,8 @@ button, input, textarea, select { line-height: 1.35; }
 .landing-mobile-menu > button:not(.button) { display: grid; grid-template-columns: 22px minmax(0, 1fr); align-items: center; gap: var(--space-3); width: 100%; min-height: var(--hit-area); padding: var(--space-3); color: var(--completion-text); text-align: left; border: 0; background: transparent; }
 .landing-mobile-menu > button:not(.button) svg { color: var(--completion-copper); }
 .landing-mobile-menu > button:not(.button) span { display: grid; gap: 2px; }
-.landing-mobile-menu > button:not(.button) strong { font-size: .82rem; }
-.landing-mobile-menu > button:not(.button) small { color: var(--completion-dim); font-size: .7rem; line-height: var(--support-leading); }
+.landing-mobile-menu > button:not(.button) strong { font-size: var(--fs-body); font-weight: var(--fw-label); }
+.landing-mobile-menu > button:not(.button) small { color: var(--completion-dim); font-size: var(--fs-small); line-height: var(--support-leading); }
 .landing-mobile-menu .button { width: 100%; }
 @media (max-width: 640px) {
   .landing-mobile-menu { left: var(--space-3); width: auto; }
@@ -159,7 +168,7 @@ button, input, textarea, select { line-height: 1.35; }
 .public-locked .locked-evidence-row:not(:first-of-type) small::after {
   content: "evidence gated";
   color: var(--dim, #998d7d);
-  font: 600 0.64rem/1.35 var(--font-mono, monospace);
+  font: 500 var(--fs-mono)/1.35 var(--font-mono, monospace);
   letter-spacing: 0.02em;
 }
 
@@ -240,7 +249,7 @@ button, input, textarea, select { line-height: 1.35; }
   .landing-visual.hero-visual-modern > img.hero-visual-poster { object-position: 69% center; }
   .hero-visual-overlay { max-width: 76%; padding: 24px; }
   .hero-visual-readout { margin-top: 16px; }
-  .hero-visual-readout span { font-size: 0.58rem; }
+  .hero-visual-readout span { font-size: var(--fs-mono); }
 }
 
 /* The editorial landing statement remains singular; the artifact carries state, not another slogan. */
@@ -259,7 +268,7 @@ button, input, textarea, select { line-height: 1.35; }
   background: linear-gradient(90deg, rgba(217, 138, 72, 0.11), rgba(217, 138, 72, 0.025));
 }
 .landing-strip > button:first-child::before { content: ""; position: absolute; inset: 16px auto 16px 14px; width: 2px; background: #d98a48; box-shadow: 0 0 16px rgba(217, 138, 72, 0.26); }
-.landing-strip > button:first-child strong { font-size: clamp(0.96rem, 1.25vw, 1.14rem); }
+.landing-strip > button:first-child strong { font-size: var(--fs-body); }
 .landing-strip > button { border-left: 1px solid rgba(217, 138, 72, 0.18); background: rgba(217, 138, 72, 0.035); }
 .landing-strip > button:hover { background: rgba(217, 138, 72, 0.11); }
 @media (max-width: 700px) {
@@ -286,7 +295,7 @@ button, input, textarea, select { line-height: 1.35; }
   .chat-layout { grid-template-columns: minmax(0, 1fr); gap: var(--space-3); }
   .app-shell .thread-list { display: flex; min-height: 0; grid-template-columns: none; }
   .thread-list .panel-head { padding: var(--space-3) var(--space-4); }
-  .thread-list .panel-head h2 { font-size: 1.25rem; }
+  .thread-list .panel-head h2 { font-size: var(--fs-title); }
   
   
 }
@@ -332,8 +341,8 @@ button, input, textarea, select { line-height: 1.35; }
 /* One shared tactile contract for existing controls; visual density remains in the content, not the hit area. */
 :root { --hit-area: 44px; --control-hit-area: var(--hit-area); }
 
-/* Action labels are critical copy: they meet the same 11px floor as telemetry. */
-body .button { font-size: max(0.68rem, 11px); }
+/* Action labels sit on the mono step like every other control label. */
+body .button { font-size: var(--fs-mono); }
 
 body .button {
   min-height: var(--control-hit-area);
@@ -418,7 +427,7 @@ input[type="range"] {
   content: "+";
   margin-left: auto;
   color: var(--completion-copper);
-  font: 700 1.25rem/1 "JetBrains Mono", monospace;
+  font: var(--fw-title) 1.25rem/1 "JetBrains Mono", monospace;
 }
 
 .settings-disclosure[open] > summary::after { content: "–"; }
@@ -432,7 +441,7 @@ input[type="range"] {
 .settings-danger-hint {
   margin: 0 0 var(--space-3);
   color: var(--completion-dim);
-  font-size: 0.75rem;
+  font-size: var(--fs-small);
   line-height: 1.5;
 }
 
@@ -450,13 +459,13 @@ input[type="range"] {
 }
 .settings-confirm-dialog h2 {
   margin: 0;
-  font: 700 1.4rem Syne, sans-serif;
-  letter-spacing: -0.04em;
+  font: var(--fw-strong) var(--fs-title) Syne, sans-serif;
+  letter-spacing: -0.02em;
 }
 .settings-confirm-dialog p {
   margin: 0;
   color: var(--completion-muted);
-  font-size: 0.8rem;
+  font-size: var(--fs-body);
   line-height: 1.6;
 }
 .settings-confirm-actions {
@@ -527,7 +536,7 @@ html[data-theme="light"] .filters-popover {
   box-shadow: 0 14px 40px rgba(66, 47, 31, 0.22);
 }
 
-.result-count { color: var(--completion-dim); font: 700 0.7rem/1 "JetBrains Mono", monospace; }
+.result-count { color: var(--completion-dim); font: 500 var(--fs-mono)/1 "JetBrains Mono", monospace; }
 .transaction-empty-state { display: grid; justify-items: start; gap: var(--space-2); }
 .transaction-empty-state p { margin: 0; }
 
@@ -561,7 +570,7 @@ html[data-theme="light"] .filters-popover {
   }
   .mobile-disclosure > summary::-webkit-details-marker { display: none; }
   .mobile-disclosure > summary > span { display: grid; gap: 3px; min-width: 0; }
-  .mobile-disclosure > summary strong { font: 700 0.9rem/1.15 Syne, sans-serif; }
+  .mobile-disclosure > summary strong { font: var(--fw-title) var(--fs-body)/1.15 Syne, sans-serif; }
   .mobile-disclosure > summary > svg { color: var(--completion-copper); transition: transform .16s var(--completion-ease); }
   .mobile-disclosure[open] > summary { border-bottom: 1px solid var(--completion-line); }
   .mobile-disclosure[open] > summary > svg { transform: rotate(180deg); }
@@ -577,7 +586,7 @@ html[data-theme="light"] .filters-popover {
   .storage-stage-details > summary { display: flex; }
   .storage-stage-details .mobile-disclosure-content { display: block; padding: 0 var(--space-3) var(--space-3); }
   .storage-stage-complete .storage-stage-details:not([open]) { border-color: rgba(103, 232, 180, .35); }
-  .storage-complete-note { display: flex; align-items: flex-start; gap: var(--space-2); padding: var(--space-3); color: var(--completion-phosphor); border-left: 2px solid var(--completion-phosphor); background: rgba(103, 232, 180, .06); font-size: 0.76rem; line-height: var(--support-leading); }
+  .storage-complete-note { display: flex; align-items: flex-start; gap: var(--space-2); padding: var(--space-3); color: var(--completion-phosphor); border-left: 2px solid var(--completion-phosphor); background: rgba(103, 232, 180, .06); font-size: var(--fs-small); line-height: var(--support-leading); }
   .receipt-drawer { padding: 72px var(--space-4) var(--space-4); }
   .receipt-primary-action .button { width: 100%; }
   .receipt-proof-disclosure { border: 1px solid var(--completion-line); }
@@ -592,7 +601,7 @@ html[data-theme="light"] .filters-popover {
     gap: var(--space-3);
     padding: var(--space-4);
   }
-  .agent-detail-head small { font-size: 0.75rem; line-height: 1.45; }
+  .agent-detail-head small { font-size: var(--fs-small); line-height: 1.45; }
   .agent-detail-proof {
     grid-column: 1 / -1;
     justify-items: start;
@@ -607,7 +616,7 @@ html[data-theme="light"] .filters-popover {
     scroll-padding-inline: var(--space-4);
     scrollbar-width: thin;
   }
-  .detail-tabs button { flex: 0 0 auto; min-height: var(--hit-area); padding-inline: var(--space-4); font-size: 0.68rem; }
+  .detail-tabs button { flex: 0 0 auto; min-height: var(--hit-area); padding-inline: var(--space-4); font-size: var(--fs-mono); }
 }
 
 .button.button-primary:disabled,
@@ -737,7 +746,7 @@ html[data-theme="light"] .filters-popover {
   padding: 0 0.3rem;
   background: var(--completion-bg, #0b0e0f);
   color: var(--copper);
-  font: 700 0.55rem/1 var(--font-mono, monospace);
+  font: 500 0.55rem/1 var(--font-mono, monospace);
   letter-spacing: 0.13em;
 }
 @media (max-width: 700px) {

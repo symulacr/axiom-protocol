@@ -209,7 +209,11 @@ export function AgentPage({
       {tab === "overview" && (
         <div className="agent-grid">
           <section className="panel agent-identity-card">
-            <span className="eyebrow">{agentCopy.identityProvenance}</span>
+            {/* S2 (audit 06 FINDING-003): panel eyebrows that restated the
+                h2 beneath them are gone (overview/command/execute/payments/
+                activity). The head OPERATING BALANCE label stays — it labels
+                a bare value — as do the payments token/earnings/royalty
+                labels. */}
             <h2>{agentCopy.agentRecord}</h2>
             <dl className="provenance-list">
               <div>
@@ -280,7 +284,6 @@ export function AgentPage({
             </Button>
           </section>
           <section className="panel agent-command-card">
-            <span className="eyebrow">{agentCopy.commandSafeAction}</span>
             <h2>{agentCopy.chooseBoundedOperation}</h2>
             <div className="command-actions">
               <Button
@@ -335,7 +338,6 @@ export function AgentPage({
 
       {tab === "execute" && (
         <section className="panel tab-panel">
-          <span className="eyebrow">{agentCopy.executeBoundedIntent}</span>
           <h2>{agentCopy.runRecoveryPath}</h2>
           <div className="execute-grid">
             <Field
@@ -382,7 +384,6 @@ export function AgentPage({
 
       {tab === "payments" && (
         <section className="panel tab-panel">
-          <span className="eyebrow">{agentCopy.paymentsActivity}</span>
           <h2>{agentCopy.valueRouteFor(agentName)}</h2>
           <div className="receipt-grid">
             <div>
@@ -421,7 +422,6 @@ export function AgentPage({
 
       {tab === "activity" && (
         <section className="panel tab-panel">
-          <span className="eyebrow">{agentCopy.activityFor(agentName)}</span>
           <h2>{agentCopy.evidenceTied}</h2>
           <div className="activity-list">
             {eventsLoading && events.length === 0 && (

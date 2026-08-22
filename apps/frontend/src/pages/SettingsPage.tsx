@@ -39,14 +39,12 @@ import { APP_CHAIN, APP_CHAIN_ID } from "../config/wagmi.js";
 import { BACKEND_URL } from "../config/env.js";
 
 function SettingsDisclosure({
-  eyebrow,
   title,
   icon,
   defaultOpen = false,
   className = "",
   children,
 }: {
-  eyebrow: string;
   title: string;
   icon: ReactNode;
   /** Shallow sections (read-only context, daily preferences) stay open; every
@@ -64,8 +62,10 @@ function SettingsDisclosure({
         onToggle={(event) => setOpen(event.currentTarget.open)}
       >
         <summary className="panel-head">
+          {/* S2 (audit 06 FINDING-003): disclosure eyebrows restated the h2
+              beneath them ("CONSOLE / LAYOUT" over "Console layout") — the h2
+              is the one title per card. */}
           <div>
-            <span className="eyebrow">{eyebrow}</span>
             <h2>{title}</h2>
           </div>
           {icon}
@@ -98,7 +98,6 @@ function ResetConfirmDialog({
         aria-label={labels.resetConfirmTitle}
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <span className="eyebrow">{labels.dangerEyebrow}</span>
         <h2>{labels.resetConfirmTitle}</h2>
         <p>{labels.resetConfirmBody}</p>
         <div className="settings-confirm-actions">
@@ -216,7 +215,6 @@ export function SettingsPage({
     <div className="ops-page settings-page">
       <div className="page-head">
         <div>
-          <span className="eyebrow">{labels.pageEyebrow}</span>
           <h1>{labels.pageTitle}</h1>
           <p>{labels.pageDescription}</p>
         </div>
@@ -228,7 +226,6 @@ export function SettingsPage({
 
       <div className="settings-grid">
         <SettingsDisclosure
-          eyebrow={labels.walletNetwork}
           title={labels.signingContext}
           icon={<Wifi size={17} className="copper" />}
           defaultOpen
@@ -274,7 +271,6 @@ export function SettingsPage({
         </SettingsDisclosure>
 
         <SettingsDisclosure
-          eyebrow={labels.dailyEyebrow}
           title={labels.dailyTitle}
           icon={<Settings2 size={17} className="copper" />}
           defaultOpen
@@ -351,7 +347,6 @@ export function SettingsPage({
         </SettingsDisclosure>
 
         <SettingsDisclosure
-          eyebrow={labels.layoutEyebrow}
           title={labels.layoutTitle}
           icon={<LayoutDashboard size={17} className="copper" />}
         >
@@ -386,7 +381,6 @@ export function SettingsPage({
         </SettingsDisclosure>
 
         <SettingsDisclosure
-          eyebrow={labels.advancedEyebrow}
           title={labels.advancedTitle}
           icon={<Keyboard size={17} className="copper" />}
         >
@@ -409,7 +403,6 @@ export function SettingsPage({
           </div>
           <div className="shortcut-map">
             <div>
-              <span className="eyebrow">{labels.shortcutEyebrow}</span>
               <strong>
                 <Keyboard size={15} /> {labels.shortcutTitle}
               </strong>
@@ -443,7 +436,6 @@ export function SettingsPage({
       </div>
 
       <SettingsDisclosure
-        eyebrow={labels.dangerEyebrow}
         title={labels.dangerTitle}
         icon={<ShieldAlert size={17} className="copper" />}
         className="settings-danger-zone"

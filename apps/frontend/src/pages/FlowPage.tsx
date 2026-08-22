@@ -886,7 +886,9 @@ export function FlowPage({
     <div className={`ops-page flow-page flow-${kind}`}>
       <div className="page-head">
         <div>
-          <span className="eyebrow">{flow.eyebrow}</span>
+          {/* S2 (audit 06 FINDING-003): the page-head eyebrow restated the
+              h1 ("MINT / PROVENANCE BOUNDARY" over the Mint title). The
+              intent-banner and stage labels stay — they carry state. */}
           <h1>{flow.title}</h1>
           <p>{flow.copy}</p>
         </div>

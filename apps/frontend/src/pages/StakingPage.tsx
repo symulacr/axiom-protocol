@@ -15,7 +15,6 @@ export function StakingPage({ go }: { go: (path: string) => void }) {
     <div className="ops-page">
       <div className="page-head">
         <div>
-          <span className="eyebrow">INTEGRATION STATUS / 0G</span>
           <h1>0G Stake</h1>
           <p>
             Native network staking remains separate from Axiom&apos;s confirmed

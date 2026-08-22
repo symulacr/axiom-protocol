@@ -382,7 +382,9 @@ export function TransactionsPage({
     <div className="ops-page">
       <div className="page-head">
         <div>
-          <span className="eyebrow">{txCopy.eyebrow}</span>
+          {/* S2 (audit 06 FINDING-003): the page-head/panel-head eyebrows
+              restated the h1/h2 below them — removed. The ops-summary LIVE
+              QUEUE / RECOVERY eyebrows stay: they label bare counts. */}
           <h1>{txCopy.title}</h1>
           <p>{txCopy.description}</p>
         </div>
@@ -439,7 +441,6 @@ export function TransactionsPage({
       <section className="panel transaction-panel">
         <div className="panel-head transaction-panel-head">
           <div>
-            <span className="eyebrow">{txCopy.activitySharedStore}</span>
             <h2>{txCopy.statefulOperations}</h2>
           </div>
           <div className="transaction-filter-controls">

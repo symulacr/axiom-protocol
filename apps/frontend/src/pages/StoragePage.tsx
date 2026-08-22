@@ -32,7 +32,6 @@ export function StoragePage({
     <div className="ops-page">
       <div className="page-head">
         <div>
-          <span className="eyebrow">{copy.storage.eyebrow}</span>
           <h1>{copy.storage.title}</h1>
           <p>{copy.storage.description}</p>
         </div>

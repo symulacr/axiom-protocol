@@ -19,16 +19,18 @@
   --space-2xl: 2rem;
   --space-3xl: 3rem;
 
-  --text-2xs: 0.6875rem;
-  --text-xs: 0.75rem;
-  --text-sm: 0.875rem;
-  --text-base: 1rem;
-  --text-lg: 1.25rem;
-  --text-xl: 1.5rem;
-  --text-2xl: 1.875rem;
-  --text-data-sm: 0.875rem;
-  --text-data-lg: 1.25rem;
-  --text-data-xl: 1.5rem;
+  /* S2: the v1 chat-kit scale is pinned to the one S2 type scale (4 core
+     steps + mono) — the two composed systems are one now. */
+  --text-2xs: var(--fs-mono);
+  --text-xs: var(--fs-small);
+  --text-sm: var(--fs-body);
+  --text-base: var(--fs-body);
+  --text-lg: var(--fs-title);
+  --text-xl: var(--fs-title);
+  --text-2xl: var(--fs-modal);
+  --text-data-sm: var(--fs-small);
+  --text-data-lg: var(--fs-title);
+  --text-data-xl: var(--fs-title);
 
   --fw-light: 300;
   --fw-regular: 400;
@@ -131,8 +133,8 @@
   border: 1px solid transparent;
   border-radius: 7px;
   padding: 9px 15px;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--fs-small);
+  font-weight: 500;
   letter-spacing: 0.01em;
   transition: 150ms var(--ease-out);
   min-height: 34px;
@@ -247,7 +249,7 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
 }
 .chat-topbar__mark { border-radius: 8px; }
 .chat-topbar__meta { flex: 1; min-width: 0; }
-.chat-topbar__name { font-family: Syne, sans-serif; font-weight: 700; font-size: 13px; letter-spacing: 0.02em; }
+.chat-topbar__name { font-family: Syne, sans-serif; font-weight: var(--fw-title); font-size: var(--fs-body); letter-spacing: 0.02em; }
 .chat-topbar__status { font-size: var(--text-xs); color: var(--dim); }
 
 .chat-banner {
@@ -378,7 +380,7 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
 .chat-history__title {
   margin: 0;
   font-family: Syne, sans-serif;
-  font-size: 15px;
+  font-size: var(--fs-title);
   letter-spacing: -0.02em;
 }
 .chat-history__new {
@@ -386,7 +388,7 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
   color: var(--copper-bright);
   background: transparent;
   border-radius: 6px;
-  font-size: 11px;
+  font-size: var(--fs-mono);
   padding: 5px 10px;
   cursor: pointer;
 }
@@ -397,7 +399,7 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
   color: var(--text);
   border-radius: 6px;
   padding: 8px 10px;
-  font-size: 12px;
+  font-size: var(--fs-small);
 }
 .chat-history__search:focus-visible { outline: 2px solid var(--copper-bright); outline-offset: 2px; }
 .chat-history__search:focus { border-color: var(--copper); }
@@ -420,12 +422,12 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
 .chat-history__item:hover { background: rgba(210, 139, 82, 0.06); color: var(--text); }
 .chat-history__item.is-active { background: rgba(210, 139, 82, 0.12); color: var(--text); box-shadow: inset 2px 0 0 var(--copper); }
 .chat-history__open { display: grid; gap: 2px; min-width: 0; }
-.chat-history__badge { font-size: 10px; color: var(--dim); }
+.chat-history__badge { font-size: var(--fs-mono); color: var(--dim); }
 .chat-history__delete {
   border: 0;
   background: none;
   color: var(--dim);
-  font-size: 11px;
+  font-size: var(--fs-small);
   cursor: pointer;
   padding: 3px 5px;
   border-radius: 5px;
@@ -434,7 +436,7 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
 .chat-history__item:hover .chat-history__delete,
 .chat-history__item.is-active .chat-history__delete { visibility: visible; }
 .chat-history__delete:hover { color: var(--danger); }
-.chat-history__empty { margin: 0; padding: 14px 4px; color: var(--dim); font-size: 11px; }
+.chat-history__empty { margin: 0; padding: 14px 4px; color: var(--dim); font-size: var(--fs-small); }
 
 /* ---------------------------------------------------------------- *
  * Chat surface host — the v2 shell around the live ChatPage.        *
@@ -516,13 +518,13 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
   overflow: auto;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  font-size: 11px;
+  font-size: var(--fs-small);
   line-height: 1.5;
   color: var(--muted);
 }
 
 /* Wallet gate: live error line under the action row. */
-.wallet-gate-error { margin: 10px 0 0; color: var(--danger); font-size: 11px; overflow-wrap: anywhere; }
+.wallet-gate-error { margin: 10px 0 0; color: var(--danger); font-size: var(--fs-small); overflow-wrap: anywhere; }
 
 
 /* ---------------------------------------------------------------- *

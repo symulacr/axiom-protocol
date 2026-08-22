@@ -200,7 +200,7 @@ const CHAT_MESSAGES_KEY = "axiom:chat-messages";
 const CHAT_THREAD_KEY = "axiom:chat-thread";
 
 const chatMsgStyle: CSSProperties = {
-  fontSize: "0.9375rem" /* 15px — readable chat baseline */,
+  fontSize: "var(--fs-body)" /* S2: chat baseline rides the one body step */,
   color: COLORS.text,
   lineHeight: "var(--lh-normal)",
 };

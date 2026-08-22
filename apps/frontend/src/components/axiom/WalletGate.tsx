@@ -29,7 +29,7 @@ import {
   Timer,
   X,
 } from "./icons.js";
-import { Button, Field, Status } from "./Controls.js";
+import { Button, Field } from "./Controls.js";
 import { Logo } from "./AppShell.js";
 
 import { getCopy, interpolate, type Locale } from "../../lib/copy.js";
@@ -239,22 +239,12 @@ export function WalletGate({
           </div>
         </div>
         <div className="wallet-gate-panel">
+          {/* S2 (audit 06 FINDING-004 / duplication map #8): one label per
+              state — the localized phase eyebrow (S1's DOM copy.wallet.phase*
+              strings) + the h2 carry it; the head's Status pill repeated the
+              raw view name a third time and is gone. */}
           <div className="wallet-gate-head">
             <Logo compact />
-            <Status
-              label={
-                view === "authenticated"
-                  ? "Console unlocked"
-                  : view.replace("-", " ")
-              }
-              tone={
-                view === "authenticated"
-                  ? "success"
-                  : ["wrong-network", "rejected", "timeout"].includes(view)
-                    ? "warning"
-                    : "live"
-              }
-            />
           </div>
 
           {view === "connect" && (

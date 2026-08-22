@@ -813,7 +813,7 @@ export const Modal = React.memo(function Modal({
             background: "transparent",
             color: COLORS.textMuted,
             cursor: "pointer",
-            fontSize: 15,
+            fontSize: "var(--fs-body)",
             lineHeight: 1,
           }}
         >
