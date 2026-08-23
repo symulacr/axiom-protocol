@@ -43,6 +43,10 @@ export const backendEnvSchema = sharedEnvSchema.merge(
     VAULT_ADDRESS: z.string().optional(),
     AXIOM_TEE_VERIFIER: z.string().optional(),
     PAYMENT_PROCESSOR_ADDRESS: z.string().optional(),
+    // Test-harness opt-in (never set in production): allows signalSource
+    // "manual:e2e"/"manual:e2e-mock"/"manual:e2e-availability" ticks to skip
+    // compute inference. Requires "1" AND a server API key at the route.
+    AXIOM_ALLOW_E2E_MOCK_TICKS: z.string().optional(),
   }),
 );
 export type BackendEnv = z.infer<typeof backendEnvSchema>;

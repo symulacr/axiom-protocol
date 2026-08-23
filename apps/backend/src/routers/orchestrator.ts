@@ -22,6 +22,24 @@ import { ZERO_DATA_ROOT } from "@axiom/config";
 
 const modelDataRootCache = new TTLCache<`0x${string}`>(5 * 60 * 1000, 1000);
 
+// These sources make the orchestrator fabricate a hold tick without touching
+// compute inference (test-harness affordance). Reachable only when the
+// operator set AXIOM_ALLOW_E2E_MOCK_TICKS=1 AND the caller holds the server key.
+const E2E_SKIP_SOURCES: ReadonlySet<string> = new Set([
+  "manual:e2e",
+  "manual:e2e-mock",
+  "manual:e2e-availability",
+]);
+
+export function isE2eMockTickAllowed(
+  signalSource: string | undefined,
+  principal: string | undefined,
+  allowFlag: string | undefined,
+): boolean {
+  if (!signalSource || !E2E_SKIP_SOURCES.has(signalSource)) return true;
+  return allowFlag === "1" && principal === "server";
+}
+
 async function resolveModelDataRoot(
   agentNft: `0x${string}`,
   agentTokenId: string,
@@ -131,6 +149,23 @@ export function registerOrchestratorRoutes(
           HTTP.FORBIDDEN,
           "executionPlan requires server API key",
           "SERVER_KEY_REQUIRED",
+        );
+        return;
+      }
+      // Inference-skip sources are a test-harness affordance — never reachable
+      // in a deployment that did not opt in via env.
+      if (
+        !isE2eMockTickAllowed(
+          signalSource,
+          principal,
+          config.env?.AXIOM_ALLOW_E2E_MOCK_TICKS,
+        )
+      ) {
+        sendError(
+          res,
+          HTTP.FORBIDDEN,
+          "e2e mock tick sources require AXIOM_ALLOW_E2E_MOCK_TICKS=1 and the server API key",
+          "E2E_MOCK_TICKS_DISABLED",
         );
         return;
       }
