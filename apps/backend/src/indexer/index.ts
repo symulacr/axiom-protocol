@@ -34,7 +34,7 @@ export class IndexerService {
       const { kind, blockNumber, txHash, logIndex, ...payload } = event;
       getEventStore().append({
         source: "indexer",
-        chainId: Number(env.AXIOM_CHAIN_ID ?? 16661),
+        chainId: Number(env.AXIOM_CHAIN_ID),
         blockNumber,
         txHash: txHash ?? null,
         logIndex,
