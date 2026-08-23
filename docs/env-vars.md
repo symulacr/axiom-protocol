@@ -1,11 +1,11 @@
-# Environment variables (generated from code truth — Wave 1)
+# Environment variables (generated from code truth, Wave 1)
 
 > Source of truth order: `.env.example` → per-app `env-schema.ts` → this file.
 > Package manager: **pnpm@10.22.0**. Default chainId: **16661** (Aristotle).
 
 ## .env.example keys
 
-```
+```text
 AXIOM_AGENT_LIST_CACHE_MS
 AXIOM_AGENT_NFT
 AXIOM_AGENT_NFT_ADDRESS
@@ -74,21 +74,21 @@ VITE_TEE_VERIFIER_ADDRESS
 VITE_WALLETCONNECT_PROJECT_ID
 ```
 
-## AXIOM_STORAGE_* — 0G storage (backend: in-process oracle + chat transcripts)
+## AXIOM_STORAGE_* (0G storage; backend in-process oracle and chat transcripts)
 
 The backend hosts the oracle in-process; one `StorageAdapter` (`ZeroGStorage` when configured, `InMemoryStorage` fallback otherwise) backs both re-key/ownership-proof blobs and chat-transcript persistence.
 
-- `AXIOM_STORAGE_INDEXER_RPC` — 0G indexer RPC (`https://indexer-storage-turbo.0g.ai`). Enables real 0G storage; **required in production** (fail-loud per storage-real M2). When unset, the backend boots with a warning and chat/oracle storage stays in-memory (data lost on restart).
-- `AXIOM_STORAGE_EVM_RPC` — 0G EVM RPC used by the storage flow contract; falls back to `AXIOM_EVM_RPC` when unset.
-- `AXIOM_STORAGE_FEE` — explicit upload fee in wei, hex (`0x…`) or decimal. Galileo's flow contract lacks `market()`, so set this to skip market pricing on testnet (otherwise uploads error).
-- `AXIOM_STORAGE_TRANSPORT_KEY` — 32-byte hex AES key (optional `0x` prefix) seeding the SDK transport key. Without it a per-instance random key is used: blobs uploaded now become **undecryptable after this process exits**. Set it for cross-restart decrypt.
-- `AXIOM_STORAGE_PRIVATE_KEY` — optional signer key (hex) for storage uploads. Use a dedicated storage signer, distinct from the TEE signer, in production.
+- `AXIOM_STORAGE_INDEXER_RPC`: 0G indexer RPC (`https://indexer-storage-turbo.0g.ai`). Enables real 0G storage; **required in production** (fail-loud per storage-real M2). When unset, the backend boots with a warning and chat/oracle storage stays in-memory (data lost on restart).
+- `AXIOM_STORAGE_EVM_RPC`: 0G EVM RPC used by the storage flow contract; falls back to `AXIOM_EVM_RPC` when unset.
+- `AXIOM_STORAGE_FEE`: explicit upload fee in wei, hex (`0x…`) or decimal. Galileo's flow contract lacks `market()`, so set this to skip market pricing on testnet (otherwise uploads error).
+- `AXIOM_STORAGE_TRANSPORT_KEY`: 32-byte hex AES key (optional `0x` prefix) seeding the SDK transport key. Without it a per-instance random key is used: blobs uploaded now become **undecryptable after this process exits**. Set it for cross-restart decrypt.
+- `AXIOM_STORAGE_PRIVATE_KEY`: optional signer key (hex) for storage uploads. Use a dedicated storage signer, distinct from the TEE signer, in production.
 
-Legacy: `AXIOM_STORAGE_RPC` (still listed in `.env.example`) is no longer read by any schema — the backend uses the `AXIOM_STORAGE_*` vars above.
+Legacy: `AXIOM_STORAGE_RPC` (still listed in `.env.example`) is no longer read by any schema. The backend uses the `AXIOM_STORAGE_*` vars above.
 
 ## Backend schema (apps/backend/src/env-schema.ts)
 
-```
+```ts
 7:    AXIOM_EVM_RPC: z.string().url(),
 8:    AXIOM_ORACLE_URL: z.string().url(),
 9:    AXIOM_INDEXER_API_KEY: z.string().optional(),
@@ -122,7 +122,7 @@ Legacy: `AXIOM_STORAGE_RPC` (still listed in `.env.example`) is no longer read b
 
 ## Oracle schema
 
-```
+```ts
 7:    AXIOM_TEE_SIGNER_PK: hexString,
 8:    AXIOM_ORACLE_URL: z.string().url().default("http://127.0.0.1:8787"),
 9:    AXIOM_STORAGE_INDEXER_RPC: z.string().url().optional(),
@@ -138,7 +138,7 @@ Legacy: `AXIOM_STORAGE_RPC` (still listed in `.env.example`) is no longer read b
 
 ## Indexer schema
 
-```
+```ts
 7:    AXIOM_EVM_RPC: z.string().url(),
 8:    AXIOM_CHAIN_ID: z.coerce.number().int().positive().default(16661),
 9:    AXIOM_STORAGE_RPC: z.string().optional(),
@@ -157,9 +157,9 @@ Legacy: `AXIOM_STORAGE_RPC` (still listed in `.env.example`) is no longer read b
 
 ## Frontend (VITE_*)
 
-```
-apps/frontend/server.mjs:6://       /api/*     -> backend  (PROXY_BACKEND_URL — required in production)
-apps/frontend/server.mjs:7://       /oracle/*  -> oracle   (PROXY_ORACLE_URL — required in production)
+```js
+apps/frontend/server.mjs:6://       /api/*     -> backend  (PROXY_BACKEND_URL, required in production)
+apps/frontend/server.mjs:7://       /oracle/*  -> oracle   (PROXY_ORACLE_URL, required in production)
 apps/frontend/server.mjs:38:  "PROXY_BACKEND_URL",
 apps/frontend/server.mjs:42:  "PROXY_ORACLE_URL",
 apps/frontend/src/config/env.ts:12:// Override per-deploy with the VITE_BACKEND_URL / VITE_ORACLE_URL build env
