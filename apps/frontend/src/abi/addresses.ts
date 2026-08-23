@@ -11,7 +11,7 @@ const env: Record<string, unknown> = {
     .VITE_PAYMENT_PROCESSOR_ADDRESS,
 };
 
-// Only app-shell contracts — getAddresses() hard-requires mockUsdc and crashes the SPA
+// Only app-shell contracts — getAddresses() also hard-requires paymentToken and would crash the SPA
 const ADDRESSES = {
   strategyVault: resolveAddress("strategyVault", env) as Address,
   agentNft: resolveAddress("agentNft", env) as Address,

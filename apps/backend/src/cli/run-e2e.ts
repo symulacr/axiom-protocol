@@ -112,8 +112,8 @@ const PAYMENT_PROCESSOR = getEnvWithAlias(
 );
 const PAYMENT_TOKEN = getEnvWithAlias(
   "AXIOM_PAYMENT_TOKEN",
-  ["AXIOM_MOCK_USDC_ADDRESS", "PAYMENT_TOKEN_ADDR"],
-  addresses.mockUsdc,
+  ["AXIOM_PAYMENT_TOKEN", "AXIOM_MOCK_USDC_ADDRESS", "PAYMENT_TOKEN_ADDR"],
+  addresses.paymentToken,
 );
 const AGENT_NFT = getEnvWithAlias(
   "AXIOM_AGENT_NFT_ADDRESS",

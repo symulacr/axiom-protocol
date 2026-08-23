@@ -5,7 +5,7 @@ export type AddressName =
   | "strategyVault"
   | "teeVerifier"
   | "paymentProcessor"
-  | "mockUsdc";
+  | "paymentToken";
 
 const ENV_VAR_NAMES: Record<AddressName, string[]> = {
   agentNft: ["AXIOM_AGENT_NFT_ADDRESS", "AGENT_NFT_ADDRESS"],
@@ -16,7 +16,7 @@ const ENV_VAR_NAMES: Record<AddressName, string[]> = {
     "PAYMENT_PROCESSOR_ADDRESS",
     "AXIOM_PAYMENT_PROCESSOR",
   ],
-  mockUsdc: ["AXIOM_MOCK_USDC_ADDRESS", "AXIOM_PAYMENT_TOKEN"],
+  paymentToken: ["AXIOM_PAYMENT_TOKEN", "AXIOM_MOCK_USDC_ADDRESS"],
 };
 
 const ADDRESS_NAMES = Object.keys(ENV_VAR_NAMES) as AddressName[];

@@ -358,7 +358,6 @@ apps/frontend/src/navigation/ia.test.ts
 apps/frontend/src/env.d.ts
 apps/oracle/src/__bench__/
 packages/config/deployed.json
-packages/config/src/abis/mockUsdc.ts
 packages/config/src/abis/vault.legacy.ts
 
 # ── Previously tracked, git rm'd — silence from untracked status ──

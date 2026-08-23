@@ -4,7 +4,7 @@ import { createLogger } from "../utils/logger.js";
 
 const log = createLogger("fund-e2e-usdc");
 import { getAddresses } from "@axiom/config/addresses";
-import { MOCK_USDC_ABI } from "@axiom/config/abis";
+import { PAYMENT_TOKEN_ABI } from "@axiom/config/abis";
 import { TypedContract } from "@axiom/config/types/contract";
 import { ARISTOTLE_CHAIN_ID } from "@axiom/config/networks";
 import { getSharedProvider } from "../provider.js";
@@ -15,8 +15,11 @@ loadEnv();
 
 const DEFAULT_MINT_HUMAN = "1000000";
 
-interface MockUsdcMint {
-  mint(to: string, amount: bigint): Promise<{ hash: string; wait(): Promise<unknown> }>;
+interface PaymentTokenMint {
+  mint(
+    to: string,
+    amount: bigint,
+  ): Promise<{ hash: string; wait(): Promise<unknown> }>;
   balanceOf(account: string): Promise<bigint>;
   decimals(): Promise<number>;
 }
@@ -27,8 +30,8 @@ async function main(): Promise<void> {
   const addresses = getAddresses(process.env);
   const tokenAddr = getEnvWithAlias(
     "AXIOM_PAYMENT_TOKEN",
-    ["AXIOM_MOCK_USDC_ADDRESS", "PAYMENT_TOKEN_ADDR"],
-    addresses.mockUsdc,
+    ["AXIOM_PAYMENT_TOKEN", "AXIOM_MOCK_USDC_ADDRESS", "PAYMENT_TOKEN_ADDR"],
+    addresses.paymentToken,
   );
 
   const mintHuman = getEnv("E2E_USDC_MINT_AMOUNT_HUMAN", DEFAULT_MINT_HUMAN);
@@ -37,7 +40,7 @@ async function main(): Promise<void> {
 
   const token = new TypedContract<MockUsdcMint>(
     tokenAddr,
-    MOCK_USDC_ABI,
+    PAYMENT_TOKEN_ABI,
     broadcaster,
   );
   const decimals = await token.contract.decimals();
