@@ -624,6 +624,9 @@ export type Copy = {
     /** Placeholder: {chainId}. */
     receiveWrongChain: string;
     receiveConnect: string;
+    receiveAcceptTitle: string;
+    /** Placeholder: {receiver}. */
+    receiveAcceptBody: string;
     receiveSign: string;
     receiveSigning: string;
     /** Placeholders: {connected}, {receiver}. */
@@ -1403,6 +1406,9 @@ const english: Copy = {
     receiveWrongChain:
       "Your wallet is on a different network. The acceptance is bound to chain {chainId}.",
     receiveConnect: "Connect wallet",
+    receiveAcceptTitle: "Review, then sign to accept.",
+    receiveAcceptBody:
+      "Your wallet ({receiver}) signs the acceptance. The sender submits the transfer afterward — nothing moves on-chain until then.",
     receiveSign: "Sign acceptance",
     receiveSigning: "Waiting for signature…",
     receiveWrongAccount: "Wrong account — this acceptance needs {receiver}.",
@@ -2226,6 +2232,9 @@ const french: Copy = {
     receiveWrongChain:
       "Votre wallet est sur un autre réseau. L’acceptation est liée à la chaîne {chainId}.",
     receiveConnect: "Connecter le wallet",
+    receiveAcceptTitle: "Vérifiez, puis signez pour accepter.",
+    receiveAcceptBody:
+      "Votre wallet ({receiver}) signe l’acceptation. L’expéditeur soumet ensuite le transfert — rien ne bouge on-chain d’ici là.",
     receiveSign: "Signer l’acceptation",
     receiveSigning: "En attente de la signature…",
     receiveWrongAccount:
@@ -3054,6 +3063,9 @@ const german: Copy = {
     receiveWrongChain:
       "Ihr Wallet ist in einem anderen Netzwerk. Die Annahme ist an Chain {chainId} gebunden.",
     receiveConnect: "Wallet verbinden",
+    receiveAcceptTitle: "Prüfen, dann zum Annehmen signieren.",
+    receiveAcceptBody:
+      "Ihr Wallet ({receiver}) signiert die Annahme. Der Absender übermittelt danach den Transfer — on-chain passiert bis dahin nichts.",
     receiveSign: "Annahme signieren",
     receiveSigning: "Warten auf Signatur…",
     receiveWrongAccount: "Falsches Konto — diese Annahme braucht {receiver}.",

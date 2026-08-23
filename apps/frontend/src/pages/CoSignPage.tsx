@@ -265,8 +265,12 @@ export function CoSignPage({ go }: { go: (path: string) => void }) {
               <div className="review-cosign" data-testid="cosign-action">
                 <ShieldCheck size={14} />
                 <div>
-                  <strong>{f.coSignTitle}</strong>
-                  <p>{f.coSignBody(truncateAddress(receiver))}</p>
+                  <strong>{f.receiveAcceptTitle}</strong>
+                  <p>
+                    {interpolate(f.receiveAcceptBody, {
+                      receiver: truncateAddress(receiver),
+                    })}
+                  </p>
                   <small>{f.reviewDisclaimer}</small>
                 </div>
               </div>
