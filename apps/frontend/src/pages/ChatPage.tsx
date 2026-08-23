@@ -23,7 +23,7 @@ import { BRAND } from "../brand/assets.js";
 import { toast } from "sonner";
 import {
   apiFetch,
-  apiFetchResponse,
+  postStreamingWithRetry,
   STREAM_TIMEOUT,
 } from "../utils/apiFetch.js";
 import {
@@ -34,6 +34,7 @@ import {
 } from "../hooks/useThreads.js";
 import { useChatHistory } from "../hooks/useChatHistory.js";
 import { useChatTxStream } from "../hooks/useChatTxStream.js";
+import { useThrottledStreamText } from "../hooks/useThrottledStreamText.js";
 import { useShellSidebar } from "../hooks/useShellSidebar.js";
 import {
   normalizeProviders,
@@ -471,7 +472,15 @@ function ChatPageInner(): ReactElement {
   const [contextWindow, setContextWindow] = useState<number>();
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
-  const [streamText, setStreamText] = useState("");
+  // Stream text + its 50ms render throttle live in one hook; the local aliases
+  // below keep the run/stream call sites reading exactly as before.
+  const {
+    streamText,
+    textRef: streamTextRef,
+    schedule: scheduleStreamTextUpdate,
+    flush: flushStreamText,
+    reset: flushAndClearStreamText,
+  } = useThrottledStreamText();
   const [streamError, setStreamError] = useState<string | null>(null);
   const [hasUsedChat, setHasUsedChat] = useState(() => {
     try {
@@ -486,10 +495,8 @@ function ChatPageInner(): ReactElement {
   const messagesRef = useRef<Message[]>(messages);
   const listRef = useRef<HTMLDivElement>(null);
   const stickToBottomRef = useRef(true);
-  const streamTextRef = useRef("");
   const streamErrorRef = useRef<string | null>(null);
   const lastStreamErrorRef = useRef<string | null>(null);
-  const streamThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Run-scoped LLM-turn metrics + tool-step counter, aggregated into the final
    *  message's insights line. Reuses the existing TTFT computation. */
   const turnMetricsRef = useRef<TurnMetric[]>([]);
@@ -576,13 +583,6 @@ function ChatPageInner(): ReactElement {
   const walletClientRef = useRef(walletClient);
   const publicClientRef = useRef(publicClient);
 
-  const cancelStreamThrottle = useCallback(() => {
-    if (streamThrottleRef.current !== null) {
-      clearTimeout(streamThrottleRef.current);
-      streamThrottleRef.current = null;
-    }
-  }, []);
-
   // Opens the shared TransferModal (same flow as AgentDetail) and resolves when the user completes or cancels it.
   const openTransfer = useCallback((tokenId: string): Promise<string> => {
     const id = String(tokenId ?? "").trim();
@@ -594,26 +594,6 @@ function ChatPageInner(): ReactElement {
       setTransferTokenId(id);
     });
   }, []);
-
-  const scheduleStreamTextUpdate = useCallback(() => {
-    if (streamThrottleRef.current !== null) return;
-    streamThrottleRef.current = setTimeout(() => {
-      streamThrottleRef.current = null;
-      setStreamText(streamTextRef.current);
-    }, 50);
-  }, []);
-
-  const flushAndClearStreamText = useCallback(() => {
-    cancelStreamThrottle();
-    streamTextRef.current = "";
-    setStreamText("");
-  }, [cancelStreamThrottle]);
-
-  useEffect(() => {
-    return () => {
-      cancelStreamThrottle();
-    };
-  }, [cancelStreamThrottle]);
 
   const toolCtx: ToolContext = useMemo(
     () => ({
@@ -940,50 +920,38 @@ function ChatPageInner(): ReactElement {
             lastTokenId: lastTokenIdRef.current,
           };
 
-          let response: Response; // 429 Retry-After backoff: up to 2 retries, capped; apiFetchResponse throws HttpError with retryAfter on non-ok
-          let attempt = 0;
-          for (;;) {
-            try {
-              response = await apiFetchResponse("/v1/chat/completions", {
-                method: "POST",
-                body: JSON.stringify({
-                  model: CHAT_MODEL,
-                  messages: [
-                    { role: "system", content: systemContent },
-                    ...fitToContext(
-                      currentMessages.filter((m) => !m.meta?.error),
-                      {
-                        model: CHAT_MODEL,
-                        system: systemContent,
-                        tools: TOOLS,
-                        contextWindow: effectiveContextWindow,
-                      },
-                    ),
-                  ],
-                  tools: TOOLS,
-                  stream: true,
-                  // Wallet-keyed session: the backend persists the transcript under a stable
-                  // per-wallet threadId and exposes it via GET /v1/chat/history?wallet=…
-                  wallet: liveSession.walletAddress,
-                  // Per-session provider routing pref (backend maps to X-0G-Provider-* headers).
-                  ...(prefBody ? { provider: prefBody } : {}),
-                }),
-                signal: controller.signal,
-                timeout: STREAM_TIMEOUT,
-              });
-              break;
-            } catch (err) {
-              const retryAfter = (err as { retryAfter?: number })?.retryAfter;
-              if (err instanceof DOMException && err.name === "AbortError") {
-                throw err;
-              }
-              if (retryAfter === undefined || attempt >= 2) throw err;
-              attempt++;
-              await new Promise((r) =>
-                setTimeout(r, Math.min(retryAfter, 10) * 1000),
-              );
-            }
-          }
+          // postStreamingWithRetry: 429 Retry-After backoff, up to 2 retries
+          // capped at 10s; AbortError propagates so a cancel is never retried.
+          const response = await postStreamingWithRetry(
+            "/v1/chat/completions",
+            {
+              method: "POST",
+              body: JSON.stringify({
+                model: CHAT_MODEL,
+                messages: [
+                  { role: "system", content: systemContent },
+                  ...fitToContext(
+                    currentMessages.filter((m) => !m.meta?.error),
+                    {
+                      model: CHAT_MODEL,
+                      system: systemContent,
+                      tools: TOOLS,
+                      contextWindow: effectiveContextWindow,
+                    },
+                  ),
+                ],
+                tools: TOOLS,
+                stream: true,
+                // Wallet-keyed session: the backend persists the transcript under a stable
+                // per-wallet threadId and exposes it via GET /v1/chat/history?wallet=…
+                wallet: liveSession.walletAddress,
+                // Per-session provider routing pref (backend maps to X-0G-Provider-* headers).
+                ...(prefBody ? { provider: prefBody } : {}),
+              }),
+              signal: controller.signal,
+              timeout: STREAM_TIMEOUT,
+            },
+          );
 
           const body = response.body;
           if (!body) throw new Error("No response body from chat service");
@@ -1069,8 +1037,7 @@ function ChatPageInner(): ReactElement {
             }
           }
 
-          cancelStreamThrottle();
-          if (!isStale()) setStreamText(streamTextRef.current);
+          flushStreamText();
           currentTurnRef.current.wallMs = Date.now() - turnStartAt;
           turnMetricsRef.current.push(currentTurnRef.current);
 
@@ -1310,7 +1277,6 @@ function ChatPageInner(): ReactElement {
       hasUsedChat,
       flushAndClearStreamText,
       scheduleStreamTextUpdate,
-      cancelStreamThrottle,
       chainSupported,
       buildLiveToolCtx,
     ],

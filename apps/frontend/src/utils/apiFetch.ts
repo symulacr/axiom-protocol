@@ -214,6 +214,27 @@ export async function apiFetchResponse(
   }
 }
 
+/** Streaming POST (SSE chat): honors Retry-After with up to 2 retries capped
+ *  at 10s each. AbortError propagates immediately — a user-initiated cancel
+ *  must never be retried. */
+export async function postStreamingWithRetry(
+  path: string,
+  init: RequestInit & { timeout?: number },
+): Promise<Response> {
+  let attempt = 0;
+  for (;;) {
+    try {
+      return await apiFetchResponse(path, init);
+    } catch (err) {
+      const retryAfter = (err as { retryAfter?: number })?.retryAfter;
+      if (err instanceof DOMException && err.name === "AbortError") throw err;
+      if (retryAfter === undefined || attempt >= 2) throw err;
+      attempt++;
+      await new Promise((r) => setTimeout(r, Math.min(retryAfter, 10) * 1000));
+    }
+  }
+}
+
 export async function oracleFetch<T>(
   path: string,
   init: RequestInit & { timeout?: number } = {},
