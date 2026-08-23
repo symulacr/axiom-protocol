@@ -314,8 +314,11 @@ export class Watcher {
       const safeBlock =
         toBlock > REORG_SAFE_DEPTH ? toBlock - REORG_SAFE_DEPTH : 0n;
       this.nextBlock = safeBlock + 1n;
+      // The hash must belong to the block the cursor points at (nextBlock-1 =
+      // safeBlock) — storing the head-side hash made every later poll compare
+      // hashes of two DIFFERENT blocks and fire a false reorg every tick.
       try {
-        const lastBlock = await this.provider.getBlock(Number(toBlock));
+        const lastBlock = await this.provider.getBlock(Number(safeBlock));
         this.lastBlockHash = lastBlock?.hash ?? null;
       } catch {
         this.lastBlockHash = null;
