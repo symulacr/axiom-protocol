@@ -838,7 +838,7 @@ const english: Copy = {
   wallet: {
     connectingTitle: "Reading wallet context.",
     connectingDescription:
-      "Waiting for the wallet — nothing has been requested yet.",
+      "Waiting for the wallet. Nothing has been requested yet.",
     wrongNetworkTitle: "Switch to {chainName}.",
     wrongNetworkDescription: "Your wallet is on another network.",
     switchNetwork: "Switch to {chainName}",
@@ -855,7 +855,7 @@ const english: Copy = {
     unlockConsole: "Unlock console",
     rejectedTitle: "Access was not granted.",
     rejectedDescription:
-      "Signature declined. Nothing was sent — retry when ready.",
+      "Signature declined. Nothing was sent, so retry when ready.",
     retryConnection: "Retry wallet connection",
     timeoutTitle: "No access was granted.",
     timeoutDescription: "The wallet didn't respond in time. Retry or close.",
@@ -872,7 +872,8 @@ const english: Copy = {
       "Each step keeps its own state, so you always know what is left.",
     openTransactions: "Open transactions",
     step3Title: "Keep proof beside the action.",
-    step3Body: "Proofs stay attached to actions — no generic success badge.",
+    step3Body:
+      "Proofs stay attached to actions instead of a generic success badge.",
     openStorage: "Open storage",
     step4Title: "Tune the surface to your work.",
     step4Body:
@@ -881,7 +882,7 @@ const english: Copy = {
   },
   staking: {
     lede: "Staking isn\u0027t part of Axiom.",
-    body: "Axiom covers vaults, payments, transfers and storage — not validator delegation or rewards.",
+    body: "Axiom covers vaults, payments, transfers and storage. It does not cover validator delegation or rewards.",
     openVault: "Open the vault",
     reviewEvidence: "Review receipts",
   },
@@ -1033,8 +1034,8 @@ const english: Copy = {
     roleTool: "Tool",
     toolResultFallback: "Tool result",
     encodeTitle: "Sign this transaction",
-    encodeSubmitted: "Submitted — awaiting confirmation",
-    encodeRawData: "raw contract payload — developer view",
+    encodeSubmitted: "Submitted, awaiting confirmation",
+    encodeRawData: "raw contract payload (developer view)",
     encodeSign: "Sign in wallet",
     questionFallback: "Question",
     editResend: "Edit and resend",
@@ -1104,11 +1105,11 @@ const english: Copy = {
     routingPrivateHintOn: "Prompts never leave the provider's enclave",
     routingPrivateHintOff: "No sealed-enclave provider serves this model",
     routingChipTitle:
-      "Provider routing — change how this conversation is served",
+      "Provider routing. Change how this conversation is served",
     routingSummaryAuto: "Auto",
     routingSummaryCheapest: "Lowest cost",
     routingStatusPinned: (address) =>
-      `Pinned to ${address} — every turn is served by this provider.`,
+      `Pinned to ${address}. Every turn is served by this provider.`,
     routingStatusCheapest: "Cheapest first; may change between turns.",
     routingStatusAuto: "Fastest provider; follow-ups stay on it.",
     phaseRunning: (names, elapsed) => `Running ${names}… (${elapsed}s)`,
@@ -1185,7 +1186,7 @@ const english: Copy = {
     payment: {
       eyebrow: "PAYMENT / ALLOWANCE ROUTE",
       title: "Fund with context",
-      copy: "Allowance, fees and events — all visible before you pay.",
+      copy: "Allowance, fees and events are visible before you pay.",
       steps: [
         "Exact allowance",
         "Approval / payment boundary",
@@ -1293,7 +1294,7 @@ const english: Copy = {
     agentLabel: "Agent",
     agentA11y: "Target agent",
     agentSelectPlaceholder: "select an agent",
-    noAgentsOption: "no agents — mint first",
+    noAgentsOption: "no agents yet (mint first)",
     agentOption: (id) => `Agent #${id}`,
     agentHint: "The agent whose vault or record this operation targets.",
     errAmountPositive: "Enter an amount above zero.",
@@ -1315,17 +1316,17 @@ const english: Copy = {
     receiptHeadingConfirmed: "Receipt ready.",
     receiptHeadingReverted: "Reverted on-chain.",
     receiptHeadingStale: "Confirmation unknown.",
-    receiptHeadingConfirming: "Submitted — confirming…",
+    receiptHeadingConfirming: "Submitted, confirming…",
     receiptOverlayConfirmed: "Receipt indexed",
     receiptOverlayReverted: "Reverted",
     receiptOverlayStale: "Check explorer",
     receiptOverlayConfirming: "Confirming on-chain",
     receiptBodyConfirmed: "Proof and event indexed in the transaction center.",
     receiptBodyReverted:
-      "Reverted on-chain — the transaction center row has recovery.",
+      "Reverted on-chain. The transaction center row offers recovery.",
     receiptBodyStale:
-      "No confirmation after {seconds}s — check the explorer; the row is marked Needs review.",
-    receiptBodyConfirming: "Submitted — awaiting on-chain confirmation.",
+      "No confirmation after {seconds}s. Check the explorer; the row is marked Needs review.",
+    receiptBodyConfirming: "Submitted, awaiting on-chain confirmation.",
     copyReceiptAction: "Copy receipt",
     openReceiptAction: "Open receipt",
     startAnotherAction: "Start another",
@@ -1346,7 +1347,7 @@ const english: Copy = {
     approveSentNotice:
       "Exact allowance approved on-chain. Boundary 2: sign the payment.",
     allowanceCoveredNotice:
-      "Allowance already covers this amount — no approval transaction needed.",
+      "The allowance already covers this amount, so no approval transaction is needed.",
     reviewEyebrow: "REVIEW / {kind}",
     reviewTitle: "Review operation.",
     closeReviewA11y: "Close review and edit operation details",
@@ -1378,13 +1379,13 @@ const english: Copy = {
     confirmReceiverThenSubmit:
       "2 wallet confirmations (receiver signs, then you submit)",
     transferKeyLabel: "Recipient public key",
-    transferKeyHint: "64-byte hex (0x…) — the new owner's encryption key.",
+    transferKeyHint: "64-byte hex (0x…), the new owner's encryption key.",
     transferAgentTitle: (id) => `Transfer agent #${id}`,
     handoffTitle: "Receiver on another device?",
     handoffBody:
       "Send the link. They sign; paste their code here, then you submit.",
     handoffCopyLink: "Copy acceptance link",
-    handoffLinkCopied: "Acceptance link copied — send it to the receiver.",
+    handoffLinkCopied: "Acceptance link copied. Send it to the receiver.",
     handoffPasteLabel: "Acceptance code",
     handoffPasteHint: "The code the receiver's wallet produced (0x…).",
     handoffApply: "Apply acceptance",
@@ -1408,10 +1409,10 @@ const english: Copy = {
     receiveConnect: "Connect wallet",
     receiveAcceptTitle: "Review, then sign to accept.",
     receiveAcceptBody:
-      "Your wallet ({receiver}) signs the acceptance. The sender submits the transfer afterward — nothing moves on-chain until then.",
+      "Your wallet ({receiver}) signs the acceptance. The sender submits the transfer afterward. Nothing moves on-chain until then.",
     receiveSign: "Sign acceptance",
     receiveSigning: "Waiting for signature…",
-    receiveWrongAccount: "Wrong account — this acceptance needs {receiver}.",
+    receiveWrongAccount: "Wrong account. This acceptance needs {receiver}.",
     receiveDoneTitle: "Acceptance signed",
     receiveDoneBody:
       "Copy the code and send it to the sender. Nothing has moved on-chain yet.",
@@ -1470,7 +1471,7 @@ const english: Copy = {
     description: "Every signature has a state, a source and a recovery path.",
     refreshState: "Refresh state",
     refreshNotice: "Receipt index revalidated. Pending states remain pending.",
-    feedDown: "Live event feed offline — polling instead.",
+    feedDown: "Live event feed offline, polling instead.",
     liveQueue: "LIVE QUEUE",
     confirmingNow: "confirming now",
     today: "TODAY",
@@ -1661,11 +1662,11 @@ const french: Copy = {
     openOverview: "Ouvrir la vue d’ensemble",
     step2Title: "Chaque signature a son reçu.",
     step2Body:
-      "Chaque étape garde son état — vous savez toujours ce qu’il reste.",
+      "Chaque étape garde son état : vous savez toujours ce qu’il reste.",
     openTransactions: "Ouvrir les transactions",
     step3Title: "La preuve accompagne l’action.",
     step3Body:
-      "Les preuves restent liées aux actions — pas de succès générique.",
+      "Les preuves restent liées aux actions, pas de succès générique.",
     openStorage: "Ouvrir le stockage",
     step4Title: "Ajustez la surface à votre travail.",
     step4Body:
@@ -1674,7 +1675,7 @@ const french: Copy = {
   },
   staking: {
     lede: "Le staking ne fait pas partie d’Axiom.",
-    body: "Axiom couvre coffres, paiements, transferts et stockage — pas la délégation de validateurs ni les récompenses.",
+    body: "Axiom couvre coffres, paiements, transferts et stockage. Ni la délégation de validateurs ni les récompenses.",
     openVault: "Ouvrir le coffre",
     reviewEvidence: "Revoir les reçus",
   },
@@ -1833,8 +1834,8 @@ const french: Copy = {
     roleTool: "Outil",
     toolResultFallback: "Résultat d’outil",
     encodeTitle: "Signer cette transaction",
-    encodeSubmitted: "Soumis — en attente de confirmation",
-    encodeRawData: "charge de contrat brute — vue développeur",
+    encodeSubmitted: "Soumis, en attente de confirmation",
+    encodeRawData: "charge de contrat brute (vue développeur)",
     encodeSign: "Signer dans le wallet",
     questionFallback: "Question",
     editResend: "Modifier et renvoyer",
@@ -1906,11 +1907,11 @@ const french: Copy = {
     routingPrivateHintOff:
       "Aucun fournisseur à enclave scellée ne sert ce modèle",
     routingChipTitle:
-      "Routage fournisseur — changez comment cette conversation est servie",
+      "Routage fournisseur. Changez comment cette conversation est servie",
     routingSummaryAuto: "Auto",
     routingSummaryCheapest: "Coût le plus bas",
     routingStatusPinned: (address) =>
-      `Épinglé à ${address} — chaque tour est servi par ce fournisseur.`,
+      `Épinglé à ${address}. Chaque tour est servi par ce fournisseur.`,
     routingStatusCheapest:
       "Fournisseur le moins cher d’abord ; le fournisseur peut changer entre les tours.",
     routingStatusAuto:
@@ -2104,7 +2105,7 @@ const french: Copy = {
     agentLabel: "Agent",
     agentA11y: "Agent ciblé",
     agentSelectPlaceholder: "choisir un agent",
-    noAgentsOption: "aucun agent — créez-en un d’abord",
+    noAgentsOption: "aucun agent pour l’instant (créez-en un)",
     agentOption: (id) => `Agent #${id}`,
     agentHint:
       "L’agent dont le vault ou la fiche est visé par cette opération.",
@@ -2130,7 +2131,7 @@ const french: Copy = {
     receiptHeadingConfirmed: "Reçu prêt.",
     receiptHeadingReverted: "Rejeté on-chain.",
     receiptHeadingStale: "Confirmation inconnue.",
-    receiptHeadingConfirming: "Soumis — confirmation…",
+    receiptHeadingConfirming: "Soumis, confirmation…",
     receiptOverlayConfirmed: "Reçu indexé",
     receiptOverlayReverted: "Rejeté",
     receiptOverlayStale: "Vérifier l’explorateur",
@@ -2138,10 +2139,10 @@ const french: Copy = {
     receiptBodyConfirmed:
       "Preuve et événement indexés dans le centre transactionnel.",
     receiptBodyReverted:
-      "Rejeté on-chain — la ligne du centre transactionnel propose une récupération.",
+      "Rejeté on-chain. La ligne du centre transactionnel propose une récupération.",
     receiptBodyStale:
-      "Aucune confirmation après {seconds} s — vérifiez l’explorateur ; la ligne est marquée À examiner.",
-    receiptBodyConfirming: "Soumis — en attente de confirmation on-chain.",
+      "Aucune confirmation après {seconds} s. Vérifiez l’explorateur ; la ligne est marquée À examiner.",
+    receiptBodyConfirming: "Soumis, en attente de confirmation on-chain.",
     copyReceiptAction: "Copier le reçu",
     openReceiptAction: "Ouvrir le reçu",
     startAnotherAction: "Recommencer",
@@ -2164,7 +2165,7 @@ const french: Copy = {
     approveSentNotice:
       "Approbation exacte validée on-chain. Limite 2 : signez le paiement.",
     allowanceCoveredNotice:
-      "L’approbation existante couvre ce montant — aucune transaction d’approbation nécessaire.",
+      "L’approbation existante couvre ce montant, aucune transaction d’approbation nécessaire.",
     reviewEyebrow: "REVUE / {kind}",
     reviewTitle: "Revoir l’opération.",
     closeReviewA11y: "Fermer la revue et modifier les détails de l’opération",
@@ -2200,13 +2201,13 @@ const french: Copy = {
       "2 confirmations wallet (le destinataire signe, puis vous soumettez)",
     transferKeyLabel: "Clé publique du destinataire",
     transferKeyHint:
-      "Hex 64 octets (0x…) — la clé de chiffrement du nouveau propriétaire.",
+      "Hex 64 octets (0x…), la clé de chiffrement du nouveau propriétaire.",
     transferAgentTitle: (id) => `Transférer l’agent #${id}`,
     handoffTitle: "Destinataire sur un autre appareil ?",
     handoffBody:
-      "Partagez le lien d’acceptation avec le destinataire. Son wallet signe l’acceptation ; collez ici le code qu’il obtient — vous gardez la soumission on-chain finale.",
+      "Partagez le lien d’acceptation avec le destinataire. Son wallet signe l’acceptation ; collez ici le code qu’il obtient. Vous gardez la soumission on-chain finale.",
     handoffCopyLink: "Copier le lien d’acceptation",
-    handoffLinkCopied: "Lien d’acceptation copié — envoyez-le au destinataire.",
+    handoffLinkCopied: "Lien d’acceptation copié. Envoyez-le au destinataire.",
     handoffPasteLabel: "Code d’acceptation",
     handoffPasteHint: "Le code produit par le wallet du destinataire (0x…).",
     handoffApply: "Appliquer l’acceptation",
@@ -2234,14 +2235,14 @@ const french: Copy = {
     receiveConnect: "Connecter le wallet",
     receiveAcceptTitle: "Vérifiez, puis signez pour accepter.",
     receiveAcceptBody:
-      "Votre wallet ({receiver}) signe l’acceptation. L’expéditeur soumet ensuite le transfert — rien ne bouge on-chain d’ici là.",
+      "Votre wallet ({receiver}) signe l’acceptation. L’expéditeur soumet ensuite le transfert. Rien ne bouge on-chain d’ici là.",
     receiveSign: "Signer l’acceptation",
     receiveSigning: "En attente de la signature…",
     receiveWrongAccount:
       "Le wallet connecté est {connected}, mais cette acceptation doit être signée par {receiver}. Passez au compte destinataire.",
     receiveDoneTitle: "Acceptation signée",
     receiveDoneBody:
-      "Renvoyez le code ci-dessous à l’expéditeur — il soumet le transfert depuis sa session. Rien n’a bougé on-chain ; cette signature accepte seulement le transfert.",
+      "Renvoyez le code ci-dessous à l’expéditeur. Il soumet le transfert depuis sa session. Rien n’a bougé on-chain ; cette signature accepte seulement le transfert.",
     receiveCopyCode: "Copier le code d’acceptation",
     receiveCodeCopied: "Code d’acceptation copié.",
     receiveDoneSameBrowser:
@@ -2302,7 +2303,7 @@ const french: Copy = {
     refreshNotice:
       "Index des reçus revérifié. Les états en attente le restent.",
     feedDown:
-      "Flux d’événements live hors ligne — interrogation périodique à la place.",
+      "Flux d’événements live hors ligne, interrogation périodique à la place.",
     liveQueue: "FILE ACTIVE",
     confirmingNow: "en confirmation",
     today: "AUJOURD’HUI",
@@ -2494,11 +2495,11 @@ const german: Copy = {
     openOverview: "Übersicht öffnen",
     step2Title: "Jede Signatur bekommt einen Beleg.",
     step2Body:
-      "Jede Stufe behält ihren Zustand — du weißt immer, was offen ist.",
+      "Jede Stufe behält ihren Zustand, du weißt immer, was offen ist.",
     openTransactions: "Transaktionen öffnen",
     step3Title: "Der Nachweis bleibt neben der Aktion.",
     step3Body:
-      "Nachweise bleiben an Aktionen gebunden — kein generisches „erfolgreich“.",
+      "Nachweise bleiben an Aktionen gebunden, ohne generisches „erfolgreich“.",
     openStorage: "Storage öffnen",
     step4Title: "Passe die Oberfläche deiner Arbeit an.",
     step4Body:
@@ -2507,7 +2508,7 @@ const german: Copy = {
   },
   staking: {
     lede: "Staking ist nicht Teil von Axiom.",
-    body: "Axiom deckt Vaults, Zahlungen, Transfers und Storage ab — keine Validator-Delegation oder Belohnungen.",
+    body: "Axiom deckt Vaults, Zahlungen, Transfers und Storage ab. Keine Validator-Delegation oder Belohnungen.",
     openVault: "Vault öffnen",
     reviewEvidence: "Belege prüfen",
   },
@@ -2664,8 +2665,8 @@ const german: Copy = {
     roleTool: "Tool",
     toolResultFallback: "Tool-Ergebnis",
     encodeTitle: "Diese Transaktion signieren",
-    encodeSubmitted: "Eingereicht — wartet auf Bestätigung",
-    encodeRawData: "roher Contract-Payload — Entwickleransicht",
+    encodeSubmitted: "Eingereicht, wartet auf Bestätigung",
+    encodeRawData: "roher Contract-Payload (Entwickleransicht)",
     encodeSign: "Im Wallet signieren",
     questionFallback: "Frage",
     editResend: "Bearbeiten und erneut senden",
@@ -2738,11 +2739,11 @@ const german: Copy = {
     routingPrivateHintOff:
       "Kein Provider mit versiegelter Enklave bedient dieses Modell",
     routingChipTitle:
-      "Provider-Routing — ändere, wie diese Unterhaltung bedient wird",
+      "Provider-Routing. Ändere, wie diese Unterhaltung bedient wird",
     routingSummaryAuto: "Auto",
     routingSummaryCheapest: "Günstigster",
     routingStatusPinned: (address) =>
-      `An ${address} gepinnt — jeder Turn wird von diesem Provider bedient.`,
+      `An ${address} gepinnt. Jeder Turn wird von diesem Provider bedient.`,
     routingStatusCheapest:
       "Günstigster Provider zuerst; der bedienende Provider kann zwischen Turns wechseln.",
     routingStatusAuto:
@@ -2935,7 +2936,7 @@ const german: Copy = {
     agentLabel: "Agent",
     agentA11y: "Ziel-Agent",
     agentSelectPlaceholder: "Agent auswählen",
-    noAgentsOption: "keine Agenten — zuerst minten",
+    noAgentsOption: "keine Agenten vorhanden (erst minten)",
     agentOption: (id) => `Agent #${id}`,
     agentHint:
       "Der Agent, dessen Vault oder Datensatz dieser Vorgang anspricht.",
@@ -2962,7 +2963,7 @@ const german: Copy = {
     receiptHeadingConfirmed: "Beleg bereit.",
     receiptHeadingReverted: "On-Chain rückgängig.",
     receiptHeadingStale: "Bestätigung unbekannt.",
-    receiptHeadingConfirming: "Eingereicht — Bestätigung läuft…",
+    receiptHeadingConfirming: "Eingereicht, Bestätigung läuft…",
     receiptOverlayConfirmed: "Beleg indexiert",
     receiptOverlayReverted: "Rückgängig",
     receiptOverlayStale: "Explorer prüfen",
@@ -2970,10 +2971,10 @@ const german: Copy = {
     receiptBodyConfirmed:
       "Nachweis und Ereignis im Transaktionszentrum indexiert.",
     receiptBodyReverted:
-      "On-Chain rückgängig — die Zeile im Transaktionszentrum bietet Recovery.",
+      "On-Chain rückgängig. Die Zeile im Transaktionszentrum bietet Recovery.",
     receiptBodyStale:
-      "Keine Bestätigung nach {seconds} s — prüfen Sie den Explorer; die Zeile ist als Prüfbedarf markiert.",
-    receiptBodyConfirming: "Eingereicht — wartet auf On-Chain-Bestätigung.",
+      "Keine Bestätigung nach {seconds} s. Prüfen Sie den Explorer; die Zeile ist als Prüfbedarf markiert.",
+    receiptBodyConfirming: "Eingereicht, wartet auf On-Chain-Bestätigung.",
     copyReceiptAction: "Beleg kopieren",
     openReceiptAction: "Beleg öffnen",
     startAnotherAction: "Neu beginnen",
@@ -2997,7 +2998,7 @@ const german: Copy = {
     approveSentNotice:
       "Exakte Freigabe on-chain genehmigt. Grenze 2: Signieren Sie die Zahlung.",
     allowanceCoveredNotice:
-      "Die bestehende Freigabe deckt diesen Betrag — keine Genehmigungstransaktion nötig.",
+      "Die bestehende Freigabe deckt diesen Betrag, keine Genehmigungstransaktion nötig.",
     reviewEyebrow: "PRÜFUNG / {kind}",
     reviewTitle: "Vorgang prüfen.",
     closeReviewA11y: "Prüfung schließen und Vorgangsdetails bearbeiten",
@@ -3032,14 +3033,13 @@ const german: Copy = {
       "2 Wallet-Bestätigungen (Empfänger signiert, dann reichen Sie ein)",
     transferKeyLabel: "Öffentlicher Schlüssel des Empfängers",
     transferKeyHint:
-      "64 Byte Hex (0x…) — der Verschlüsselungsschlüssel des neuen Eigentümers.",
+      "64 Byte Hex (0x…), der Verschlüsselungsschlüssel des neuen Eigentümers.",
     transferAgentTitle: (id) => `Agent #${id} übertragen`,
     handoffTitle: "Empfänger an einem anderen Gerät?",
     handoffBody:
       "Link senden. Der Empfänger signiert; Code hier einfügen, dann reichst du ein.",
     handoffCopyLink: "Annahme-Link kopieren",
-    handoffLinkCopied:
-      "Annahme-Link kopiert — senden Sie ihn an den Empfänger.",
+    handoffLinkCopied: "Annahme-Link kopiert. Senden Sie ihn an den Empfänger.",
     handoffPasteLabel: "Annahme-Code",
     handoffPasteHint:
       "Der Code, den das Wallet des Empfängers erzeugt hat (0x…).",
@@ -3065,10 +3065,10 @@ const german: Copy = {
     receiveConnect: "Wallet verbinden",
     receiveAcceptTitle: "Prüfen, dann zum Annehmen signieren.",
     receiveAcceptBody:
-      "Ihr Wallet ({receiver}) signiert die Annahme. Der Absender übermittelt danach den Transfer — on-chain passiert bis dahin nichts.",
+      "Ihr Wallet ({receiver}) signiert die Annahme. Der Absender übermittelt danach den Transfer. On-chain passiert bis dahin nichts.",
     receiveSign: "Annahme signieren",
     receiveSigning: "Warten auf Signatur…",
-    receiveWrongAccount: "Falsches Konto — diese Annahme braucht {receiver}.",
+    receiveWrongAccount: "Falsches Konto. Diese Annahme braucht {receiver}.",
     receiveDoneTitle: "Annahme signiert",
     receiveDoneBody:
       "Code kopieren und dem Sender schicken. On-Chain ist noch nichts passiert.",
@@ -3130,7 +3130,7 @@ const german: Copy = {
     refreshState: "Status aktualisieren",
     refreshNotice:
       "Belegindex erneut geprüft. Ausstehende Status bleiben ausstehend.",
-    feedDown: "Live-Ereignisfeed offline — Polling stattdessen.",
+    feedDown: "Live-Ereignisfeed offline, Polling stattdessen.",
     liveQueue: "AKTIVE WARTESCHLANGE",
     confirmingNow: "wird bestätigt",
     today: "HEUTE",
