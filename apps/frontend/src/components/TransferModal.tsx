@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
-import { isAddress, toHex } from "viem";
+import { isAddress } from "viem";
 import { toast } from "sonner";
 import { useAccount } from "wagmi";
 import {
@@ -21,7 +21,11 @@ import {
 import { Button, Field, Status } from "./axiom/Controls.js";
 import { AlertTriangle, Check, ShieldCheck, X } from "./axiom/icons.js";
 import { useModalDismiss } from "../hooks/useModalDismiss.js";
-import { humanizeError, truncateAddress } from "../utils/format.js";
+import {
+  freshNonceHex,
+  humanizeError,
+  truncateAddress,
+} from "../utils/format.js";
 import { useUiStore } from "../lib/uiStore.js";
 import { getCopy } from "../lib/copy.js";
 
@@ -52,12 +56,6 @@ const PHASE_RETRY: Partial<Record<TransferPhase, string>> = {
   finalizing: "Failed. Tap Edit to retry with a fresh nonce.",
   confirming: "Failed. Tap Edit to retry with a fresh nonce.",
 };
-
-function freshNonceHex(byteLength = 32): `0x${string}` {
-  const bytes = new Uint8Array(byteLength);
-  crypto.getRandomValues(bytes);
-  return toHex(bytes);
-}
 
 type TransferModalProps = {
   tokenId: bigint;

@@ -1,4 +1,4 @@
-import { formatUnits } from "viem";
+import { formatUnits, toHex } from "viem";
 import { resolveBlockExplorerUrl } from "@axiom/config/networks";
 
 const ELLIPSIS = "\u2026";
@@ -39,6 +39,14 @@ export function truncateAddress(value: string, head = 6, tail = 4): string {
     return value;
   }
   return `${value.slice(0, head)}${ELLIPSIS}${value.slice(-tail)}`;
+}
+
+/** Cryptographically random tx nonce/tag (e.g. transfer linkage). Single
+ *  owner — FlowPage and TransferModal previously carried divergent copies. */
+export function freshNonceHex(byteLength = 32): `0x${string}` {
+  const bytes = new Uint8Array(byteLength);
+  crypto.getRandomValues(bytes);
+  return toHex(bytes);
 }
 
 /** Readable token string with trailing zeros trimmed — never raw 18-decimal noise. */

@@ -74,6 +74,7 @@ import {
 import { APP_CHAIN } from "../config/wagmi.js";
 import {
   formatTokenAmount,
+  freshNonceHex,
   humanizeError,
   truncateAddress,
   truncateHex,
@@ -90,12 +91,6 @@ const phaseState: Record<OperationDraftPhase, TxState> = {
 };
 
 const DEV_TOOLS = import.meta.env.MODE !== "production";
-
-function freshNonceHex(byteLength = 32): `0x${string}` {
-  const bytes = new Uint8Array(byteLength);
-  globalThis.crypto?.getRandomValues(bytes);
-  return `0x${Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("")}` as `0x${string}`;
-}
 
 export function FlowPage({
   kind,

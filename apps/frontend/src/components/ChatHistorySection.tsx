@@ -70,12 +70,7 @@ export function ChatHistorySection({
     <div className="chat-history">
       <div className="chat-history__head">
         <h2 className="chat-history__title">{copy.historyTitle}</h2>
-        <button
-          type="button"
-          className="chat-history__new"
-          onClick={onNew}
-          data-axiom-btn=""
-        >
+        <button type="button" className="chat-history__new" onClick={onNew}>
           {copy.historyNew}
         </button>
       </div>

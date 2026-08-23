@@ -12,14 +12,14 @@ describe("Axiom copy pluralisation", () => {
   });
 
   it("keeps dashboard attention grammar valid at one and many", () => {
-    expect(getCopy("en").dashboard.review(1)).toBe(
-      "1 agent action requires attention.",
+    // Current contracts after the UX-audit copy reword (review phrasing).
+    expect(getCopy("en").dashboard.review(1)).toBe("1 agent needs review.");
+    expect(getCopy("en").dashboard.review(3)).toBe("3 agents need review.");
+    expect(getCopy("fr").dashboard.review(1)).toBe("1 agent à revoir.");
+    expect(getCopy("fr").dashboard.review(3)).toBe("3 agents à revoir.");
+    expect(getCopy("de").dashboard.review(1)).toBe(
+      "1 Agentenaktion erfordert Aufmerksamkeit.",
     );
-    expect(getCopy("en").dashboard.review(3)).toBe(
-      "3 agent actions require attention.",
-    );
-    expect(getCopy("fr").dashboard.review(1)).toContain("nécessite");
-    expect(getCopy("fr").dashboard.review(3)).toContain("nécessitent");
     expect(getCopy("de").dashboard.review(2)).toBe(
       "2 Agentenaktionen erfordern Aufmerksamkeit.",
     );
@@ -30,10 +30,15 @@ describe("Axiom copy pluralisation", () => {
       const copy = getCopy(locale);
       for (const value of Object.values(copy.settings))
         expect(valueOrFunction(value)).toBeTruthy();
-      for (const flow of Object.values(copy.flowUi))
-        expect(valueOrFunction(flow)).toBeTruthy();
-      for (const value of Object.values(copy.agentDetail))
-        expect(valueOrFunction(value)).toBeTruthy();
+      // Deliberately-blank labels (copy-clearance wave): their render sites
+      // show them only when non-empty, so "" is a valid localized state.
+      const INTENTIONALLY_BLANK = new Set(["liveRouteNote", "providerHint"]);
+      for (const [key, flow] of Object.entries(copy.flowUi))
+        if (!INTENTIONALLY_BLANK.has(key))
+          expect(valueOrFunction(flow)).toBeTruthy();
+      for (const [key, value] of Object.entries(copy.agentDetail))
+        if (!INTENTIONALLY_BLANK.has(key))
+          expect(valueOrFunction(value)).toBeTruthy();
       for (const value of Object.values(copy.transactions))
         expect(valueOrFunction(value)).toBeTruthy();
       for (const value of Object.values(copy.errorBoundary))
@@ -76,8 +81,11 @@ describe("Axiom copy pluralisation", () => {
   it("keeps semantic dashboard labels free of sequential decoration", () => {
     for (const locale of ["en", "fr", "de"] as const) {
       const copy = getCopy(locale);
-      expect(copy.dashboard.agentRegister).not.toMatch(/\/\s*0\d+$/);
-      expect(copy.dashboard.proofLane).not.toMatch(/\/\s*0\d+$/);
+      // dashboard.agentRegister/proofLane were removed as render-dead (loc-A);
+      // the no-"/01"-suffix contract now scans every dashboard leaf instead.
+      for (const value of Object.values(copy.dashboard)) {
+        expect(valueOrFunction(value)).not.toMatch(/\/\s*0\d+$/);
+      }
     }
   });
 });

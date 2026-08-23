@@ -202,10 +202,6 @@ export function captureTurnMetrics(
   }
 }
 
-export function shortAddress(addr: string): string {
-  return truncateAddress(addr);
-}
-
 export function formatNeuron(neuron: number): string {
   const og = neuron / 1e18;
   if (og >= 1) return og.toFixed(3);
@@ -231,7 +227,7 @@ export function formatInsightsLine(
   // Row-42 (07): the opened detail keeps 3 segments — cost, latency, provider.
   // Token/cache/telemetry internals stay out of the collapsed-by-default line.
   const last = metrics[metrics.length - 1];
-  if (last?.provider) parts.push(`provider ${shortAddress(last.provider)}`);
+  if (last?.provider) parts.push(`provider ${truncateAddress(last.provider)}`);
   const cost = metrics.reduce((a, m) => a + (m.costNeuron ?? 0), 0);
   if (cost > 0) parts.push(`≈${formatNeuron(cost)} ${nativeSymbol}`);
   return parts.join(" | ");

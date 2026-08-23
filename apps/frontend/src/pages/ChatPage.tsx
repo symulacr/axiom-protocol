@@ -41,7 +41,12 @@ import {
   type ComputeProvider,
 } from "../hooks/useProviders.js";
 import { ChatHistorySection } from "../components/ChatHistorySection.js";
-import { humanizeError, truncateHex, explorerTxUrl } from "../utils/format.js";
+import {
+  humanizeError,
+  truncateHex,
+  explorerTxUrl,
+  truncateAddress,
+} from "../utils/format.js";
 import {
   createMessage,
   toMessages,
@@ -52,7 +57,6 @@ import {
   dedupeToolCalls,
   humanizeToolMessage,
   captureTurnMetrics,
-  shortAddress,
   formatInsightsLine,
   type Message,
   type SSEChunk,
@@ -2331,7 +2335,7 @@ function phaseLabel(
 
 /** Compact provider-selector option label: name · latency · price per 1M. */
 function pinLabel(p: ComputeProvider): string {
-  const name = p.providerName ?? shortAddress(p.address);
+  const name = p.providerName ?? truncateAddress(p.address);
   const lat =
     p.latencyMs != null ? `${(p.latencyMs / 1000).toFixed(1)}s` : "no latency";
   const price = p.pricingUsd?.prompt
@@ -2348,7 +2352,7 @@ function routingSummary(
   copy: Copy["chat"],
 ): string {
   const parts: string[] = [];
-  if (pref?.address) parts.push(shortAddress(pref.address));
+  if (pref?.address) parts.push(truncateAddress(pref.address));
   else if (pref?.sort === "price") parts.push(copy.routingSummaryCheapest);
   else parts.push(copy.routingSummaryAuto);
   if (pref?.trustMode === "verified") parts.push("TEE");
@@ -2374,7 +2378,7 @@ function routingStatusLine(
   copy: Copy["chat"],
 ): string {
   if (pref?.address) {
-    return copy.routingStatusPinned(shortAddress(pref.address));
+    return copy.routingStatusPinned(truncateAddress(pref.address));
   }
   if (pref?.sort === "price") {
     return copy.routingStatusCheapest;

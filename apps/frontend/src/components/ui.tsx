@@ -1,12 +1,5 @@
-import React, {
-  forwardRef,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import type {
-  ButtonHTMLAttributes,
   CSSProperties,
   ReactElement,
   ReactNode,
@@ -46,34 +39,6 @@ const formFieldBase: CSSProperties = {
   transition: "var(--transition)",
   // focus ring comes from a CSS class on inputs, not inline styles
 };
-
-type ButtonVariant = "primary" | "secondary" | "ghost";
-
-export const Button = React.memo(function Button({
-  variant = "primary",
-  style,
-  className,
-  disabled,
-  children,
-  ...rest
-}: ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: ButtonVariant;
-}): ReactElement {
-  return (
-    <button
-      {...rest}
-      data-axiom-btn=""
-      disabled={disabled}
-      className={
-        ["btn", `btn-${variant}`, className].filter(Boolean).join(" ") ||
-        undefined
-      }
-      style={style}
-    >
-      {children}
-    </button>
-  );
-});
 
 export const Textarea = forwardRef<
   HTMLTextAreaElement,
