@@ -2143,7 +2143,7 @@ function ChatPageInner(): ReactElement {
                     aria-label={chatCopy.routing}
                   >
                     <div className="routing-popover__head">
-                      <span className="eyebrow">{chatCopy.routing}</span>
+                      <strong>{chatCopy.routing}</strong>
                       <span className="routing-popover__hint">
                         {chatCopy.routingHint}
                       </span>

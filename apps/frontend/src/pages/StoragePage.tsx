@@ -47,7 +47,6 @@ export function StoragePage({
         <section className="panel storage-stage">
           <div className="panel-head">
             <div>
-              <span className="eyebrow">{copy.storage.adapter}</span>
               <h2>{copy.storage.payload}</h2>
             </div>
           </div>
@@ -83,7 +82,6 @@ export function StoragePage({
         <section className="panel provenance-panel">
           <MobileDisclosure
             className="storage-proof-disclosure"
-            eyebrow={copy.storage.provenanceRecord}
             title={copy.storage.whatCanProve}
           >
             <dl className="provenance-list">
@@ -119,7 +117,6 @@ export function StoragePage({
               </div>
             </dl>
             <div className="provenance-source">
-              <span className="eyebrow">{copy.storage.source}</span>
               <strong>{copy.storage.sourceName}</strong>
               <span>{copy.storage.sourceDescription}</span>
             </div>

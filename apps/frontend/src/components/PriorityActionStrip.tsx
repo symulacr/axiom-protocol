@@ -64,7 +64,6 @@ export function PriorityActionStrip({
         <i />
       </div>
       <div className="priority-action-copy">
-        <span className="eyebrow copper">{action.eyebrow}</span>
         <strong>{action.title}</strong>
         <p>{action.summary}</p>
       </div>

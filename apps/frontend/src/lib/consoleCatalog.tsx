@@ -16,38 +16,31 @@ export const flowMeta: Record<
   FlowKind,
   {
     media: string;
-    artifact: string;
     icon: React.ReactNode;
   }
 > = {
   mint: {
     media: MEDIA.mint,
-    artifact: "IDENTITY / HASH",
     icon: <Bot size={18} />,
   },
   payment: {
     media: MEDIA.payment,
-    artifact: "ALLOWANCE / VALUE",
     icon: <CreditCard size={18} />,
   },
   transfer: {
     media: MEDIA.transfer,
-    artifact: "CHALLENGE / FINALITY",
     icon: <ShieldCheck size={18} />,
   },
   tick: {
     media: MEDIA.proof,
-    artifact: "STREAM / RECOVERY",
     icon: <Play size={18} />,
   },
   deposit: {
     media: MEDIA.payment,
-    artifact: "VAULT / VALUE",
     icon: <Wallet size={18} />,
   },
   withdraw: {
     media: MEDIA.transfer,
-    artifact: "VAULT / BALANCE",
     icon: <UploadCloud size={18} />,
   },
 };
@@ -60,8 +53,6 @@ export const lockedRouteMeta: Record<
     title: string;
     emphasis: string;
     copy: string;
-    boundary: string;
-    artifact: string;
     next: string;
     media: string;
     proofs: string[];
@@ -69,12 +60,10 @@ export const lockedRouteMeta: Record<
 > = {
   "/app": {
     slug: "overview",
-    label: "OVERVIEW / CONSOLE",
+    label: "Console overview",
     title: "See the next",
     emphasis: "safe action.",
     copy: "See what your agents need next.",
-    boundary: "SIGNATURE BOUNDARY",
-    artifact: "HEALTH / NEXT ACTION",
     next: "Agent health / safe action",
     media: MEDIA.proof,
     proofs: [
@@ -86,12 +75,10 @@ export const lockedRouteMeta: Record<
   },
   "/settings": {
     slug: "settings",
-    label: "SETTINGS / CONTROL PLANE",
+    label: "Session settings",
     title: "Guard the",
     emphasis: "control plane.",
     copy: "Session, display and console preferences.",
-    boundary: "SIGNATURE BOUNDARY",
-    artifact: "SESSION / PREFERENCES",
     next: "Session / preferences / controls",
     media: MEDIA.recovery,
     proofs: [
@@ -103,12 +90,10 @@ export const lockedRouteMeta: Record<
   },
   "/transactions": {
     slug: "transactions",
-    label: "TRANSACTIONS / RECEIPTS",
+    label: "Transaction center",
     title: "Trace every",
     emphasis: "receipt.",
     copy: "Every receipt, its state, and recovery.",
-    boundary: "SIGNATURE BOUNDARY",
-    artifact: "RECEIPT / FINALITY",
     next: "Receipt / finality / recovery",
     media: MEDIA.transfer,
     proofs: [
@@ -120,12 +105,10 @@ export const lockedRouteMeta: Record<
   },
   "/chat": {
     slug: "chat",
-    label: "CHAT / OPERATOR STATE",
+    label: "Operator chat",
     title: "Ask from",
     emphasis: "context.",
     copy: "Ask about your agents — chat knows your session.",
-    boundary: "SIGNATURE BOUNDARY",
-    artifact: "HEALTH / CONTEXT",
     next: "Health / prompt / review",
     media: MEDIA.onboarding,
     proofs: [
@@ -137,12 +120,10 @@ export const lockedRouteMeta: Record<
   },
   "/mint": {
     slug: "mint",
-    label: "MINT / PROVENANCE",
+    label: "Mint an agent",
     title: "Prove the",
     emphasis: "identity.",
     copy: "Your name becomes an on-chain identity with a receipt.",
-    boundary: "SIGNATURE BOUNDARY",
-    artifact: "PAYLOAD / HASH",
     next: "Payload / hash / receipt",
     media: MEDIA.mint,
     proofs: [
@@ -154,12 +135,10 @@ export const lockedRouteMeta: Record<
   },
   "/payment": {
     slug: "payment",
-    label: "PAYMENT / ALLOWANCE",
+    label: "Payment route",
     title: "Fund the",
     emphasis: "route.",
     copy: "Approve exactly what you pay — fees shown up front.",
-    boundary: "SIGNATURE BOUNDARY",
-    artifact: "ALLOWANCE / VALUE",
     next: "Allowance / payment / event",
     media: MEDIA.payment,
     proofs: [
@@ -171,12 +150,10 @@ export const lockedRouteMeta: Record<
   },
   "/transfer": {
     slug: "transfer",
-    label: "TRANSFER / FINALITY",
+    label: "Transfer flow",
     title: "Carry the",
     emphasis: "proof.",
     copy: "Receiver co-signs; expiry is enforced.",
-    boundary: "SIGNATURE BOUNDARY",
-    artifact: "CHALLENGE / FINALITY",
     next: "Challenge / signature / finality",
     media: MEDIA.transfer,
     proofs: [
@@ -188,12 +165,10 @@ export const lockedRouteMeta: Record<
   },
   "/storage": {
     slug: "storage",
-    label: "STORAGE / PROVENANCE",
+    label: "Storage proofs",
     title: "Keep the",
     emphasis: "evidence.",
     copy: "Every storage step is verifiable, not a success badge.",
-    boundary: "SIGNATURE BOUNDARY",
-    artifact: "ROOT / INTEGRITY",
     next: "Encryption / root / integrity",
     media: MEDIA.proof,
     proofs: [
@@ -205,12 +180,10 @@ export const lockedRouteMeta: Record<
   },
   "/agents/": {
     slug: "agent",
-    label: "AGENT / DETAIL",
+    label: "Agent detail",
     title: "Inspect the",
     emphasis: "operator.",
     copy: "Identity, ownership, activity and receipts per agent.",
-    boundary: "SIGNATURE BOUNDARY",
-    artifact: "IDENTITY / ACTIVITY",
     next: "Identity / command / receipt",
     media: MEDIA.onboarding,
     proofs: [

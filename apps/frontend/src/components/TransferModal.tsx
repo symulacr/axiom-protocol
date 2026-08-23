@@ -101,7 +101,6 @@ function ModalSheet({
       >
         <header className="operation-review-head">
           <div>
-            <span className="eyebrow">TRANSFER</span>
             <h2 id={titleId}>{title}</h2>
           </div>
           <button className="icon-button" onClick={onClose} aria-label="Close">

@@ -190,17 +190,6 @@
   }
 }
 
-/* Marker cleanup: progress remains visible through state and accessible labels, never serial decoration. */
-.guide-copy > .eyebrow.copper {
-  display: none;
-}
-
-/* S1 (audit 06 FINDING-004): the gate phase labels this sheet injected via
-   ::after (CONNECT WALLET / VERIFY NETWORK / SIGN MESSAGE / CREATE PROFILE)
-   moved into real DOM copy (copy.wallet.phase*, rendered as .eyebrow.copper
-   in WalletGate) — CSS `content:` text is invisible to i18n, grep and tests.
-   The font-size:0 hide of the DOM eyebrow is gone with it. */
-
 .storage-step > span {
   min-width: 16px;
   font-size: 0;

@@ -122,7 +122,6 @@ export function CoSignPage({ go }: { go: (path: string) => void }) {
     return (
       <div className={wrapperClass}>
         <div className="panel cosign-panel">
-          <span className="eyebrow">{f.receiveTitle}</span>
           <div className="review-error" role="alert">
             <AlertTriangle size={14} />
             <div>
@@ -151,7 +150,6 @@ export function CoSignPage({ go }: { go: (path: string) => void }) {
     <div className={wrapperClass}>
       <div className="page-head">
         <div>
-          <span className="eyebrow">TRANSFER / ACCEPTANCE</span>
           <h1>{f.receiveTitle}</h1>
           <p>{f.receiveLede}</p>
         </div>
@@ -330,7 +328,6 @@ export function CoSignPage({ go }: { go: (path: string) => void }) {
         </section>
 
         <aside className="flow-context panel">
-          <span className="eyebrow">{f.evidenceBoundary}</span>
           <h2>{f.liveRouteNote}</h2>
           <div className="diagnostic-note">
             <ShieldCheck size={14} />

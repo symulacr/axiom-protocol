@@ -57,11 +57,6 @@ function ContextStrip({
           name + chain id. A wrong chain still surfaces here through the
           signer cell ("Wrong network"), so no decision state was lost. */}
       <div className="context-cell">
-        {/* the WALLET CONTEXT eyebrow survives —
-            a truncated address is not self-describing and needs its category.
-            The SIGNER / ATTENTION cells' values already state their meaning,
-            so their same-info eyebrows are gone. */}
-        <span className="eyebrow">{copy.dashboard.contextWallet}</span>
         <strong title={address ?? undefined}>
           <Wallet size={15} />{" "}
           {address ? truncateAddress(address) : copy.topbar.notConnected}
@@ -205,8 +200,6 @@ export function DashboardPage({
     <div className="ops-page">
       <div className="page-head page-head-asymmetric">
         <div>
-          {/* page-head + panel-head eyebrows that
-              restated the h1/h2 beneath them are gone — one title per block. */}
           <h1>
             {copy.dashboard.titleLead}
             <br />
@@ -235,7 +228,6 @@ export function DashboardPage({
 
       <MobileDisclosure
         className="dashboard-mobile-disclosure"
-        eyebrow={copy.dashboard.secondaryTelemetry}
         title={copy.dashboard.telemetryTitle}
       >
         <section className="stats-grid">
@@ -392,17 +384,14 @@ export function DashboardPage({
           <div className="proof-card">
             <img src="/brand/hero-seal-512.jpg" alt="Abstract proof field" />
             <div>
-              <span className="eyebrow">
+              <small>
                 {attention[0]
-                  ? copy.dashboard.agentFundingEyebrow(
+                  ? copy.dashboard.agentFundingLabel(
                       attention[0].tokenId.toString(),
                     )
-                  : copy.dashboard.paymentAllowanceEyebrow}
-              </span>
+                  : copy.dashboard.paymentAllowanceLabel}
+              </small>
               <strong>{copy.dashboard.allowanceReady}</strong>
-              {/* Evidence only — the third copper CTA for the same payment
-                  action lived here; the strip owns that action now
-                  . */}
             </div>
           </div>
         </section>

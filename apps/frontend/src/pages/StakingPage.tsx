@@ -28,7 +28,6 @@ export function StakingPage({
           <ShieldAlert size={25} />
         </div>
         <div>
-          <span className="eyebrow copper">NOT INTEGRATED IN AXIOM</span>
           <p>{copy.body}</p>
           <div className="not-integrated-actions">
             <Button onClick={() => go("/app")} icon={<Wallet size={15} />}>

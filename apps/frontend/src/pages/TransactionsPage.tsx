@@ -213,7 +213,6 @@ function ReceiptDrawer({
         <div className="receipt-primary-action">{primaryAction}</div>
         <MobileDisclosure
           className="receipt-proof-disclosure"
-          eyebrow={txCopy.proofEyebrow}
           title={txCopy.proofTitle}
         >
           <dl className="provenance-list drawer-list">
@@ -382,9 +381,6 @@ export function TransactionsPage({
     <div className="ops-page">
       <div className="page-head">
         <div>
-          {/* the page-head/panel-head eyebrows
-              restated the h1/h2 below them — removed. The ops-summary LIVE
-              QUEUE / RECOVERY eyebrows stay: they label bare counts. */}
           <h1>{txCopy.title}</h1>
           <p>{txCopy.description}</p>
         </div>
@@ -407,7 +403,6 @@ export function TransactionsPage({
 
       <section className="ops-summary">
         <div>
-          <span className="eyebrow">{txCopy.liveQueue}</span>
           <strong>
             {String(
               transactions.filter((tx) =>
@@ -421,7 +416,6 @@ export function TransactionsPage({
           className="ops-summary-recovery"
           onClick={() => chooseFilter("review")}
         >
-          <span className="eyebrow">{txCopy.recovery}</span>
           <strong>
             {String(
               transactions.filter((tx) =>

@@ -44,7 +44,6 @@ export function LockedRoute({
         </header>
         <main className="locked-route-content">
           <section className="locked-route-copy">
-            <span className="eyebrow copper">ROUTE HELD / {meta.label}</span>
             <h1>
               {meta.title}
               <br />
@@ -67,15 +66,13 @@ export function LockedRoute({
           <aside className="locked-evidence">
             <div className="locked-evidence-head">
               <div>
-                <span className="eyebrow">{meta.boundary}</span>
                 <strong>{meta.next}</strong>
               </div>
               <LockKeyhole size={17} className="copper" />
             </div>
             <div className="locked-preview">
-              <img src={meta.media} alt={`${meta.artifact} preview`} />
+              <img src={meta.media} alt={`${meta.label} preview`} />
               <div>
-                <span className="eyebrow">{meta.artifact}</span>
                 <strong>Preview only</strong>
                 <small>Connect a wallet to unlock live evidence.</small>
               </div>

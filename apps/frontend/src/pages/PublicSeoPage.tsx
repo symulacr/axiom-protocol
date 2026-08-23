@@ -48,9 +48,10 @@ type EvidenceArtifact = {
   rows: [string, string][];
 };
 type PublicPage = {
-  eyebrow: string;
   title: string;
   metaTitle: string;
+  /** Top-nav and breadcrumb label for this page. */
+  navLabel: string;
   accent: string;
   metaDescription: string;
   evidenceTitle: string;
@@ -66,9 +67,9 @@ type PublicPage = {
 
 const pages: Record<PublicSeoSlug, PublicPage> = {
   agents: {
-    eyebrow: "SOLUTION / AGENT PROVENANCE",
     title: "Agents with a\nvisible proof trail.",
     metaTitle: "Agent Provenance Workflows | Axiom",
+    navLabel: "Agent provenance",
     accent:
       "An operator surface should explain what an agent is, what it did, and which artifacts support that account.",
     metaDescription:
@@ -104,9 +105,9 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
     rail: "IDENTITY → RECEIPT",
   },
   payments: {
-    eyebrow: "SOLUTION / PROGRAMMABLE PAYMENTS",
     title: "Payments that retain\ntheir receipt boundary.",
     metaTitle: "Programmable Payment Receipts | Axiom",
+    navLabel: "Payments",
     accent:
       "Approval, submission and finality stay distinct — with the receipt to prove it.",
     metaDescription:
@@ -139,9 +140,9 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
     rail: "ALLOWANCE → RECEIPT",
   },
   proofs: {
-    eyebrow: "SOLUTION / RECEIPTS & FINALITY",
     title: "Proof stays beside\nthe decision it supports.",
     metaTitle: "Operational Receipts and Finality | Axiom",
+    navLabel: "Receipts",
     accent:
       "Axiom surfaces receipt status, transaction identity and recovery context rather than flattening an operation into one generic success message.",
     metaDescription:
@@ -174,9 +175,9 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
     rail: "SUBMIT → FINALITY",
   },
   storage: {
-    eyebrow: "SOLUTION / VERIFIABLE 0G STORAGE",
     title: "Publish data with\na root you can inspect.",
     metaTitle: "Verifiable 0G Storage Evidence | Axiom",
+    navLabel: "Storage",
     accent:
       "The Storage flow separates encryption, root hashing, publication, verification and availability rather than treating upload as a black box.",
     metaDescription:
@@ -209,9 +210,9 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
     rail: "ROOT → PUBLICATION",
   },
   developers: {
-    eyebrow: "DEVELOPERS / IMPLEMENTATION PATH",
     title: "Start from the\nproof you need to expose.",
     metaTitle: "Developer Entry Point | Axiom",
+    navLabel: "Developers",
     accent:
       "Use the public documentation path to understand a flow before entering a wallet-gated operator console.",
     metaDescription:
@@ -307,7 +308,7 @@ export function PublicSeoPage({ slug }: { slug: PublicSeoSlug }) {
             {
               "@type": "ListItem",
               position: 2,
-              name: page.eyebrow.split(" / ").at(-1),
+              name: page.navLabel,
             },
           ],
         },
@@ -330,10 +331,7 @@ export function PublicSeoPage({ slug }: { slug: PublicSeoSlug }) {
               href={navSlug === "storage" ? "/storage/0g" : `/${navSlug}`}
               key={navSlug}
             >
-              {pages[navSlug].eyebrow
-                .split(" / ")
-                .at(-1)
-                ?.replace("VERIFIABLE 0G STORAGE", "STORAGE")}
+              {pages[navSlug].navLabel}
             </a>
           ))}
         </nav>
@@ -351,7 +349,6 @@ export function PublicSeoPage({ slug }: { slug: PublicSeoSlug }) {
           <i aria-hidden="true" />
         </div>
         <div className="seo-hero-copy">
-          <span className="eyebrow">{page.eyebrow}</span>
           <h1>
             {page.title.split("\n").map((line, index) => (
               <span key={line}>
@@ -405,7 +402,6 @@ export function PublicSeoPage({ slug }: { slug: PublicSeoSlug }) {
       </section>
       <section className="seo-link-field" aria-labelledby="related-title">
         <div>
-          <span className="eyebrow">NEXT EVIDENCE PATH</span>
           <h2 id="related-title">
             {page.journey.split("\n").map((line, index) => (
               <span key={line}>

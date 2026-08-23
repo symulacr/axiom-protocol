@@ -61,9 +61,6 @@ function SettingsDisclosure({
         onToggle={(event) => setOpen(event.currentTarget.open)}
       >
         <summary className="panel-head">
-          {/* disclosure eyebrows restated the h2
-              beneath them ("CONSOLE / LAYOUT" over "Console layout") — the h2
-              is the one title per card. */}
           <div>
             <h2>{title}</h2>
           </div>

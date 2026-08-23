@@ -74,7 +74,7 @@
 .state-reverted i,.state-rejected i,.state-stale i { background:var(--warning); }
 .transaction-kind>span { display:grid;gap:var(--space-1);min-width:0; }
 .ops-page>.page-head { position:relative; }
-.ops-page>.page-head::before { content:'//';position:absolute;left:-24px;top:5px;color:var(--copper);font:10px 'JetBrains Mono',monospace; }
+.ops-page>.page-head::before { content:'//';position:absolute;left:-24px;top:5px;color:var(--copper);font:var(--fs-mono) 'JetBrains Mono',monospace; }
 .panel-head::before { content:'/';color:var(--copper);font:var(--fw-title) var(--fs-body) 'JetBrains Mono',monospace;margin-right:var(--space-2); }
 .panel-head>div { min-width:0; }
 .storage-stage,.provenance-panel,.settings-card { padding:var(--space-5); }

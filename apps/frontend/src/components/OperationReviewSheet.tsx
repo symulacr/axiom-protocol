@@ -164,9 +164,6 @@ export function OperationReviewSheet({
       >
         <header className="operation-review-head">
           <div>
-            <span className="eyebrow">
-              {interpolate(f.reviewEyebrow, { kind: flow.receiptKind })}
-            </span>
             <h2 id="operation-review-title">{f.reviewTitle}</h2>
           </div>
           <button
@@ -182,7 +179,6 @@ export function OperationReviewSheet({
             <ShieldCheck size={17} />
           </span>
           <div>
-            <span className="eyebrow">{f.effectEyebrow}</span>
             <strong>{flow.consequence}</strong>
           </div>
         </div>

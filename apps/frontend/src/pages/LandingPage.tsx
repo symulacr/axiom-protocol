@@ -93,7 +93,6 @@ export function Landing({
       </header>
       <main className="landing-main">
         <section className="landing-copy">
-          <span className="eyebrow copper">{copy.landing.eyebrow}</span>
           <h1>
             <span>{copy.landing.titleLead}</span>
             <br />
@@ -123,10 +122,6 @@ export function Landing({
             src={MEDIA.heroPulse}
             alt="Abstract Axiom operator signal field"
           />
-          <div className="hero-visual-overlay">
-            <span className="eyebrow">{copy.landing.nextSafeAction}</span>
-            <strong>{copy.landing.heroTitle}</strong>
-          </div>
         </section>
       </main>
       {/* Journey strip: every cell is a real control with the same affordance
@@ -134,19 +129,16 @@ export function Landing({
           The CONNECT cell is gone: the header CTA owns connecting (06 essence). */}
       <section className="landing-strip">
         <button type="button" onClick={onGuide}>
-          <span className="eyebrow">{copy.landing.stripVerifyEyebrow}</span>
           <strong>{copy.landing.signatureBoundary}</strong>
           <small>{copy.landing.stripVerifySmall}</small>
           <ArrowRight size={14} aria-hidden="true" />
         </button>
         <button type="button" onClick={() => go("/app")}>
-          <span className="eyebrow">{copy.landing.stripOperateEyebrow}</span>
           <strong>{copy.landing.consoleAccess}</strong>
           <small>{copy.landing.stripOperateSmall}</small>
           <ArrowRight size={14} aria-hidden="true" />
         </button>
         <button type="button" onClick={() => go("/staking")}>
-          <span className="eyebrow">{copy.landing.stripBoundaryEyebrow}</span>
           <strong>{copy.landing.stakeTitle}</strong>
           <small>{copy.landing.stakingBoundary}</small>
           <ArrowRight size={14} aria-hidden="true" />

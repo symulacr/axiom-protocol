@@ -47,15 +47,11 @@ export type Copy = {
     notConnected: string;
     operator: string;
     openRail: string;
-    network: string;
     oracleLive: string;
     oracleDown: string;
   };
   /** Priority action strip + next-safe-action engine (lib/nextSafeAction). */
   strip: {
-    reviewEyebrow: string;
-    nextEyebrow: string;
-    proofCheckEyebrow: string;
     reviewTitle: (kind: string) => string;
     reviewSummary: string;
     reviewImpact: string;
@@ -109,12 +105,10 @@ export type Copy = {
     walletWaiting: string;
   };
   landing: {
-    eyebrow: string;
     titleLead: string;
     titleEmphasis: string;
     description: string;
     nextSafeAction: string;
-    heroTitle: string;
     signatureBoundary: string;
     consoleAccess: string;
     stakingBoundary: string;
@@ -122,11 +116,8 @@ export type Copy = {
     menuDevelopers: string;
     menuDevelopersHint: string;
     stakeTitle: string;
-    stripVerifyEyebrow: string;
     stripVerifySmall: string;
-    stripOperateEyebrow: string;
     stripOperateSmall: string;
-    stripBoundaryEyebrow: string;
   };
   wallet: {
     connectingTitle: string;
@@ -147,12 +138,6 @@ export type Copy = {
     retryConnection: string;
     timeoutTitle: string;
     timeoutDescription: string;
-    /** Gate phase eyebrows: the labels the accessibility pass injected
-     * via CSS::after now live here — real DOM text, localizable, greppable. */
-    phaseConnect: string;
-    phaseNetwork: string;
-    phaseSigning: string;
-    phaseProfile: string;
   };
   guide: {
     nextStep: string;
@@ -180,7 +165,6 @@ export type Copy = {
   /** Recovery404 — says what happened and the safe next step, never what the
    * page implementation didn't load. */
   notFound: {
-    eyebrow: string;
     titleLead: string;
     titleEmphasis: string;
     body: string;
@@ -265,7 +249,6 @@ export type Copy = {
     lockConsole: string;
   };
   dashboard: {
-    eyebrow: string;
     titleLead: string;
     titleEmphasis: string;
     review: (count: number) => string;
@@ -279,7 +262,6 @@ export type Copy = {
     allowanceReady: string;
     latestEvidence: string;
     allReceipts: string;
-    contextWallet: string;
     switchRequired: string;
     signerReady: string;
     signerWrong: string;
@@ -295,7 +277,6 @@ export type Copy = {
      * queue, not the plumbing; an outage overrides it. */
     queueAwaiting: string;
     oracleUnreachable: string;
-    secondaryTelemetry: string;
     telemetryTitle: string;
     noEvidence: string;
     noEvidenceHint: string;
@@ -305,8 +286,9 @@ export type Copy = {
     mintAgent: string;
     noDescription: string;
     refreshNotice: string;
-    agentFundingEyebrow: (tokenId: string) => string;
-    paymentAllowanceEyebrow: string;
+    /** Proof-card category line above the allowance headline. */
+    agentFundingLabel: (tokenId: string) => string;
+    paymentAllowanceLabel: string;
   };
   /** Live /chat surface (v1 SSE chat). Every rendered string routes through
    * this section — hardcoded English in ChatPage was the defect. */
@@ -415,11 +397,9 @@ export type Copy = {
     metricsHide: string;
   };
   storage: {
-    eyebrow: string;
     title: string;
     description: string;
     openChat: string;
-    adapter: string;
     payload: string;
     /** Disclosure title under the payload panel head — must not repeat the
      * panel h2. */
@@ -427,7 +407,6 @@ export type Copy = {
     fileMeta: string;
     labels: string[];
     note: string;
-    provenanceRecord: string;
     whatCanProve: string;
     rootHash: string;
     storageTx: string;
@@ -437,7 +416,6 @@ export type Copy = {
     download: string;
     available: string;
     notReady: string;
-    source: string;
     sourceName: string;
     sourceDescription: string;
     pending: string;
@@ -448,7 +426,6 @@ export type Copy = {
   flows: Record<
     CopyFlow,
     {
-      eyebrow: string;
       title: string;
       copy: string;
       steps: string[];
@@ -473,16 +450,13 @@ export type Copy = {
   >;
   flowUi: {
     openTransactions: string;
-    ready: string;
     restart: string;
     simulateReject: string;
     simulateTimeout: string;
-    evidenceBoundary: string;
     wallet: string;
     agent: string;
     network: string;
     receipt: string;
-    confirming: string;
     /** Proof-timeline step sublabels (C-: the ladder localizes with the
      * steps — these two were the last hardcoded English on flow pages). */
     stepWallet: string;
@@ -500,7 +474,6 @@ export type Copy = {
     /** flow-body i18n — shared chrome of the six flow pages, the review
      * sheet and the receipt panel (field labels, review rows, receipt
      * headings/bodies, notices, boundary fact rows). */
-    stageEyebrow: string;
     stageTitle: string;
     reviewOpenLabel: string;
     detailsEditable: string;
@@ -521,13 +494,13 @@ export type Copy = {
     errRecipientKey: string;
     errInstruction: string;
     errSelectAgent: string;
-    intentEyebrow: string;
     intentFund: string;
     intentProof: string;
     intentBounded: string;
     intentRecovery: string;
     intentReceipt: string;
-    streamEyebrow: string;
+    /** Visually hidden label for the tick token stream. */
+    streamLabel: string;
     cancelStream: string;
     receiptHeadingConfirmed: string;
     receiptHeadingReverted: string;
@@ -563,10 +536,8 @@ export type Copy = {
     approveSentNotice: string;
     allowanceCoveredNotice: string;
     /** Placeholder: {kind} — the localized flow receiptKind. */
-    reviewEyebrow: string;
     reviewTitle: string;
     closeReviewA11y: string;
-    effectEyebrow: string;
     factAgent: string;
     factAmount: string;
     factRecipient: string;
@@ -641,19 +612,18 @@ export type Copy = {
     executionSurface: string;
     operatingBalance: string;
     vaultRoute: string;
+    noStrategy: string;
     dataHash: string;
     overview: string;
     execute: string;
     payments: string;
     activity: string;
-    identityProvenance: string;
     agentRecord: string;
     owner: string;
     agentId: string;
     metadataRoot: string;
     lastEvent: string;
     inspectStorageProof: string;
-    commandSafeAction: string;
     chooseBoundedOperation: string;
     fundAgent: string;
     depositFunds: string;
@@ -661,7 +631,6 @@ export type Copy = {
     transferProof: string;
     queueTick: string;
     commandEvidence: string;
-    executeBoundedIntent: string;
     runRecoveryPath: string;
     instruction: string;
     instructionPlaceholder: string;
@@ -671,18 +640,14 @@ export type Copy = {
     providerHint: string;
     createTickIntent: string;
     cancel: string;
-    paymentsActivity: string;
     valueRouteFor: (agent: string) => string;
     token: string;
-    allowance: string;
     royalty: string;
     openPaymentFlow: string;
     earnings: string;
-    activityFor: (agent: string) => string;
     evidenceTied: string;
   };
   transactions: {
-    eyebrow: string;
     title: string;
     description: string;
     refreshState: string;
@@ -690,14 +655,9 @@ export type Copy = {
     /** Appended to refreshNotice only when the live event feed is DOWN —
      * healthy plumbing is never announced. */
     feedDown: string;
-    liveQueue: string;
     confirmingNow: string;
-    today: string;
-    receiptsIndexed: string;
-    recovery: string;
     needReview: string;
     confirmedNote: string;
-    activitySharedStore: string;
     statefulOperations: string;
     filterAll: string;
     /** Depth-0 review-bucket chip (reverted+rejected+stale) — distinct from
@@ -723,7 +683,6 @@ export type Copy = {
     /** drawer head: the drawer no longer repeats
      * the row's kind/detail/pill — it leads with its own title. */
     drawerTitle: string;
-    proofEyebrow: string;
     proofTitle: string;
   };
   status: Record<string, string>;
@@ -757,14 +716,10 @@ const english: Copy = {
     notConnected: "not connected",
     operator: "operator",
     openRail: "Open rail",
-    network: "NETWORK",
     oracleLive: "oracle live",
     oracleDown: "oracle down",
   },
   strip: {
-    reviewEyebrow: "NOW / NEEDS REVIEW",
-    nextEyebrow: "NEXT SAFE ACTION",
-    proofCheckEyebrow: "PROOF CHECK",
     reviewTitle: (kind) => `Review ${kind}`,
     reviewSummary: "Recover the existing receipt before retrying.",
     reviewImpact: "No asset movement until you continue.",
@@ -775,9 +730,9 @@ const english: Copy = {
     inspectTitle: "Inspect storage root",
     inspectSummary: "Check the indexed root and integrity state.",
     inspectImpact: "Read-only. No wallet request.",
-    proofReceipt: "RECEIPT",
-    proofAgent: "AGENT",
-    proofRoot: "ROOT",
+    proofReceipt: "Receipt",
+    proofAgent: "Agent",
+    proofRoot: "Root",
     selectInFlow: "select in flow",
     openReview: "Open review",
     whyNow: "Why now",
@@ -815,13 +770,11 @@ const english: Copy = {
     walletWaiting: "Waiting for wallet response",
   },
   landing: {
-    eyebrow: "AXIOM / VERIFIED OPERATOR CONSOLE",
     titleLead: "Move with",
     titleEmphasis: "evidence.",
     description:
       "Connect a wallet, act, and keep the proof next to every action. Flows are real on the connected testnet.",
-    nextSafeAction: "NEXT SAFE ACTION",
-    heroTitle: "Verify the operator before the action.",
+    nextSafeAction: "Next safe action",
     signatureBoundary: "Signature boundary",
     consoleAccess: "Console access",
     stakingBoundary: "Staking is not part of Axiom yet.",
@@ -829,11 +782,8 @@ const english: Copy = {
     menuDevelopers: "Developers",
     menuDevelopersHint: "APIs and tools",
     stakeTitle: "0G Stake",
-    stripVerifyEyebrow: "VERIFY",
     stripVerifySmall: "No gas · no custody",
-    stripOperateEyebrow: "OPERATE",
     stripOperateSmall: "Receipts beside action",
-    stripBoundaryEyebrow: "BOUNDARY",
   },
   wallet: {
     connectingTitle: "Reading wallet context.",
@@ -842,10 +792,6 @@ const english: Copy = {
     wrongNetworkTitle: "Switch to {chainName}.",
     wrongNetworkDescription: "Your wallet is on another network.",
     switchNetwork: "Switch to {chainName}",
-    phaseConnect: "CONNECT WALLET",
-    phaseNetwork: "VERIFY NETWORK",
-    phaseSigning: "SIGN MESSAGE",
-    phaseProfile: "CREATE PROFILE",
     approveSignature: "Approve signature",
     rejectSignature: "Reject signature",
     profileTitle: "Name the local profile.",
@@ -887,7 +833,6 @@ const english: Copy = {
     reviewEvidence: "Review receipts",
   },
   notFound: {
-    eyebrow: "404 / PAGE NOT FOUND",
     titleLead: "The route",
     titleEmphasis: "drifted.",
     body: "This page doesn't exist. Nothing was loaded and no wallet action was taken.",
@@ -966,7 +911,6 @@ const english: Copy = {
     lockConsole: "Lock console",
   },
   dashboard: {
-    eyebrow: "OVERVIEW / NEXT SAFE ACTION",
     titleLead: "Keep the",
     titleEmphasis: "surface accountable.",
     review: (count) =>
@@ -982,7 +926,6 @@ const english: Copy = {
     // One canonical allowance sentence, shared with the strip.
     latestEvidence: "Latest evidence",
     allReceipts: "All receipts",
-    contextWallet: "WALLET CONTEXT",
     switchRequired: "switch required",
     signerReady: "Ready to sign",
     signerWrong: "Wrong network",
@@ -997,7 +940,6 @@ const english: Copy = {
     eventsIndexed: "events indexed",
     queueAwaiting: "awaiting confirmation",
     oracleUnreachable: "oracle unreachable",
-    secondaryTelemetry: "SECONDARY TELEMETRY",
     telemetryTitle: "Telemetry & recent evidence",
     noEvidence: "No evidence yet",
     noEvidenceHint: "Mint an agent to create the first receipt.",
@@ -1007,8 +949,8 @@ const english: Copy = {
     mintAgent: "Mint an agent",
     noDescription: "no description",
     refreshNotice: "Overview refreshed.",
-    agentFundingEyebrow: (tokenId) => `AGENT #${tokenId} / FUNDING`,
-    paymentAllowanceEyebrow: "PAYMENT / ALLOWANCE",
+    agentFundingLabel: (tokenId) => `Agent #${tokenId} funding`,
+    paymentAllowanceLabel: "Payment allowance",
   },
   chat: {
     pageTitle: "Chat",
@@ -1134,11 +1076,9 @@ const english: Copy = {
     metricsHide: "Hide metrics",
   },
   storage: {
-    eyebrow: "DATA PROVENANCE / 0G",
     title: "Store the payload, then verify its proof.",
     description: "Each storage step is proven separately.",
     openChat: "Open chat transcript",
-    adapter: "0G STORAGE ADAPTER",
     payload: "Agent metadata payload",
     fileSteps: "File & steps",
     fileMeta: "18.4 KB · AES-GCM encrypted · 4 tags",
@@ -1151,7 +1091,6 @@ const english: Copy = {
       "Available",
     ],
     note: "Available lights up once the steps above complete.",
-    provenanceRecord: "PROVENANCE RECORD",
     whatCanProve: "What the UI can prove",
     rootHash: "Root hash",
     storageTx: "Storage tx",
@@ -1161,7 +1100,6 @@ const english: Copy = {
     download: "Download",
     available: "available",
     notReady: "not ready",
-    source: "SOURCE",
     sourceName: "0G Storage SDK / Indexer",
     sourceDescription: "Each storage step is proven separately.",
     pending: "pending",
@@ -1169,7 +1107,6 @@ const english: Copy = {
   },
   flows: {
     mint: {
-      eyebrow: "MINT / PROVENANCE BOUNDARY",
       title: "Mint an agent",
       copy: "Name → hash → oracle acknowledgement → receipt.",
       steps: ["Metadata hash", "Oracle acknowledgement", "Receipt indexed"],
@@ -1184,7 +1121,6 @@ const english: Copy = {
         "Mint submitted for {name}. Receipt added to the transaction center.",
     },
     payment: {
-      eyebrow: "PAYMENT / ALLOWANCE ROUTE",
       title: "Fund with context",
       copy: "Allowance, fees and events are visible before you pay.",
       steps: [
@@ -1203,7 +1139,6 @@ const english: Copy = {
         "Payment submitted for agent #{agent}. Receipt added to the transaction center.",
     },
     transfer: {
-      eyebrow: "TRANSFER / SIGNED PROOF",
       title: "Transfer with evidence",
       copy: "Challenge → signature → finalization → on-chain receipt. Expiration never disappears.",
       steps: ["Recipient challenge", "Signature boundary", "Receipt indexed"],
@@ -1217,7 +1152,6 @@ const english: Copy = {
       notice: "Transfer submitted for agent #{agent}. Proof receipt added.",
     },
     tick: {
-      eyebrow: "ORCHESTRATOR / STREAM",
       title: "Run the next tick",
       copy: "Intent → provider → stream → result → event or transaction → recovery.",
       steps: ["Bounded instruction", "Provider route", "Event indexed"],
@@ -1231,7 +1165,6 @@ const english: Copy = {
       notice: "Tick {outcome} for agent #{agent}. Stream receipt indexed.",
     },
     deposit: {
-      eyebrow: "VAULT / DEPOSIT ROUTE",
       title: "Deposit into the vault",
       copy: "Amount → review → receipt. Balance shown before you sign.",
       steps: ["Amount + balance", "Wallet boundary", "Receipt indexed"],
@@ -1247,7 +1180,6 @@ const english: Copy = {
         "Deposit submitted for agent #{agent}. Receipt added to the transaction center.",
     },
     withdraw: {
-      eyebrow: "VAULT / WITHDRAW ROUTE",
       title: "Withdraw from the vault",
       copy: "Amount → review → receipt. Remaining balance before you sign.",
       steps: ["Balance checked", "Wallet boundary", "Receipt indexed"],
@@ -1265,16 +1197,13 @@ const english: Copy = {
   },
   flowUi: {
     openTransactions: "Open transaction center",
-    ready: "READY",
     restart: "Start this flow again",
     simulateReject: "Simulate reject",
     simulateTimeout: "Simulate timeout",
-    evidenceBoundary: "EVIDENCE BOUNDARY",
     wallet: "Wallet",
     agent: "Agent",
     network: "Network",
     receipt: "Receipt",
-    confirming: "CONFIRMING",
     stepWallet: "Wallet boundary",
     stepAuto: "Observed automatically",
     coSignTitle: "Receiver co-sign required",
@@ -1285,7 +1214,6 @@ const english: Copy = {
     coSignBlockedTitle: "Receiver account not available",
     coSignBlockedBody: (receiver) =>
       `Can't sign for ${receiver} here. Add that account, or have the receiver accept themselves.`,
-    stageEyebrow: "EDIT · REVIEW · RECEIPT",
     stageTitle: "Review before you act.",
     reviewOpenLabel: "Review open",
     detailsEditable: "Details editable",
@@ -1305,13 +1233,12 @@ const english: Copy = {
     errRecipientKey: "Recipient public key must be 64 bytes of hex (0x…).",
     errInstruction: "Describe the instruction.",
     errSelectAgent: "Select an agent first.",
-    intentEyebrow: "PREFILLED · REVIEW REQUIRED",
     intentFund: "Agent selected. Review the exact allowance.",
     intentProof: "Proof mode selected. Check the recipient challenge.",
     intentBounded: "Bounded instruction selected. Streaming stays cancellable.",
     intentRecovery: "Recovering an existing receipt. No duplicate operation.",
     intentReceipt: "Linked to an indexed receipt.",
-    streamEyebrow: "STREAM / TOKENS",
+    streamLabel: "Streamed tokens",
     cancelStream: "Cancel stream",
     receiptHeadingConfirmed: "Receipt ready.",
     receiptHeadingReverted: "Reverted on-chain.",
@@ -1348,10 +1275,8 @@ const english: Copy = {
       "Exact allowance approved on-chain. Boundary 2: sign the payment.",
     allowanceCoveredNotice:
       "The allowance already covers this amount, so no approval transaction is needed.",
-    reviewEyebrow: "REVIEW / {kind}",
     reviewTitle: "Review operation.",
     closeReviewA11y: "Close review and edit operation details",
-    effectEyebrow: "EFFECT",
     factAgent: "Target agent",
     factAmount: "Amount",
     factRecipient: "Recipient",
@@ -1422,21 +1347,20 @@ const english: Copy = {
   },
   agentDetail: {
     executionSurface: "Operator-controlled · no on-chain events yet.",
-    operatingBalance: "OPERATING BALANCE",
+    operatingBalance: "Operating balance",
     vaultRoute: "vault route · {chainName}",
+    noStrategy: "no strategy bound",
     dataHash: "Metadata hash",
     overview: "Overview",
     execute: "Execute",
     payments: "Payments",
     activity: "Activity",
-    identityProvenance: "IDENTITY / PROVENANCE",
     agentRecord: "Agent record",
     owner: "Owner",
     agentId: "Agent ID",
     metadataRoot: "Metadata hash",
     lastEvent: "Last event",
     inspectStorageProof: "Inspect storage proof",
-    commandSafeAction: "COMMAND / SAFE ACTION",
     chooseBoundedOperation: "Choose a bounded operation.",
     fundAgent: "Fund agent",
     depositFunds: "Deposit to vault",
@@ -1445,7 +1369,6 @@ const english: Copy = {
     queueTick: "Queue tick",
     commandEvidence:
       "Every action opens its own evidence model and returns to Activity with a receipt.",
-    executeBoundedIntent: "EXECUTE / BOUNDED INTENT",
     runRecoveryPath: "Run an operation with a recovery path.",
     instruction: "Instruction",
     instructionPlaceholder: "Evaluate current route",
@@ -1455,40 +1378,31 @@ const english: Copy = {
     providerHint: "",
     createTickIntent: "Create tick intent",
     cancel: "Cancel",
-    paymentsActivity: "PAYMENTS / ACTIVITY",
     valueRouteFor: (agent) => `Value route for ${agent}`,
-    token: "TOKEN",
-    allowance: "ALLOWANCE",
-    royalty: "ROYALTY",
+    token: "Token",
+    royalty: "Royalty",
     openPaymentFlow: "Open payment flow",
     earnings: "Earnings",
-    activityFor: (agent) => `ACTIVITY / ${agent.toUpperCase()}`,
     evidenceTied: "Evidence tied to this agent",
   },
   transactions: {
-    eyebrow: "OPERATIONS / RECEIPTS",
     title: "Transaction center",
     description: "Every signature has a state, a source and a recovery path.",
     refreshState: "Refresh state",
     refreshNotice: "Receipt index revalidated. Pending states remain pending.",
     feedDown: "Live event feed offline, polling instead.",
-    liveQueue: "LIVE QUEUE",
     confirmingNow: "confirming now",
-    today: "TODAY",
-    receiptsIndexed: "receipts indexed",
-    recovery: "RECOVERY",
     needReview: "need review",
     confirmedNote: "Confirmed = observed on-chain. Pending stays pending.",
-    activitySharedStore: "ACTIVITY / SHARED STORE",
     statefulOperations: "Stateful operations",
     filterAll: "All",
     filterReview: "Needs review",
     filterStale: "Stale",
     moreFilters: "More filters",
-    operation: "OPERATION",
-    hash: "HASH",
-    age: "AGE",
-    state: "STATE",
+    operation: "Operation",
+    hash: "Hash",
+    age: "Age",
+    state: "State",
     emptyState: "No receipts match this filter.",
     closeReceipt: "Close receipt",
     transactionHash: "Transaction hash",
@@ -1501,7 +1415,6 @@ const english: Copy = {
     recoveryNotice: "Recovery opened. Operation returned to Ready.",
     openOperation: "Open operation",
     drawerTitle: "Receipt detail",
-    proofEyebrow: "RECEIPT / PROOF",
     proofTitle: "Proof details",
   },
   status: {
@@ -1545,14 +1458,10 @@ const french: Copy = {
     notConnected: "non connecté",
     operator: "opérateur",
     openRail: "Ouvrir le rail",
-    network: "RÉSEAU",
     oracleLive: "oracle actif",
     oracleDown: "oracle coupé",
   },
   strip: {
-    reviewEyebrow: "MAINTENANT / À EXAMINER",
-    nextEyebrow: "PROCHAINE ACTION SÛRE",
-    proofCheckEyebrow: "VÉRIFICATION DE PREUVE",
     reviewTitle: (kind) => `Examiner ${kind}`,
     reviewSummary: "Récupérez le reçu existant avant de réessayer.",
     reviewImpact: "Aucun mouvement d’actifs avant votre reprise.",
@@ -1564,9 +1473,9 @@ const french: Copy = {
     inspectTitle: "Inspecter la racine Storage",
     inspectSummary: "Vérifiez la racine indexée et l’état d’intégrité.",
     inspectImpact: "Lecture seule. Aucune requête wallet.",
-    proofReceipt: "REÇU",
-    proofAgent: "AGENT",
-    proofRoot: "RACINE",
+    proofReceipt: "Reçu",
+    proofAgent: "Agent",
+    proofRoot: "Racine",
     selectInFlow: "à choisir dans le flow",
     openReview: "Ouvrir la revue",
     whyNow: "Pourquoi maintenant",
@@ -1605,13 +1514,11 @@ const french: Copy = {
     walletWaiting: "En attente de la réponse du wallet",
   },
   landing: {
-    eyebrow: "AXIOM / CONSOLE OPÉRATEUR VÉRIFIÉE",
     titleLead: "Avancez avec",
     titleEmphasis: "des preuves.",
     description:
       "Connectez un wallet, agissez, et gardez la preuve à côté de chaque action. Les flows sont réels sur le testnet connecté.",
-    nextSafeAction: "PROCHAINE ACTION SÛRE",
-    heroTitle: "Vérifiez l’opérateur avant l’action.",
+    nextSafeAction: "Prochaine action sûre",
     signatureBoundary: "Limite de signature",
     consoleAccess: "Accès console",
     stakingBoundary: "Le staking ne fait pas encore partie d’Axiom.",
@@ -1619,11 +1526,8 @@ const french: Copy = {
     menuDevelopers: "Développeurs",
     menuDevelopersHint: "Inspecter la limite d’intégration",
     stakeTitle: "0G Stake",
-    stripVerifyEyebrow: "VÉRIFIER",
     stripVerifySmall: "Sans gas · sans garde",
-    stripOperateEyebrow: "OPÉRER",
     stripOperateSmall: "Reçus à côté de l’action",
-    stripBoundaryEyebrow: "LIMITE",
   },
   wallet: {
     connectingTitle: "Lecture du contexte wallet.",
@@ -1633,10 +1537,6 @@ const french: Copy = {
     wrongNetworkDescription:
       "Le wallet est connecté, mais utilise un autre réseau. Changez de réseau avant de signer le message d’accès.",
     switchNetwork: "Passer sur {chainName}",
-    phaseConnect: "CONNECTER LE WALLET",
-    phaseNetwork: "VÉRIFIER LE RÉSEAU",
-    phaseSigning: "SIGNER LE MESSAGE",
-    phaseProfile: "CRÉER LE PROFIL",
     approveSignature: "Approuver la signature",
     rejectSignature: "Refuser la signature",
     profileTitle: "Nommez le profil local.",
@@ -1680,7 +1580,6 @@ const french: Copy = {
     reviewEvidence: "Revoir les reçus",
   },
   notFound: {
-    eyebrow: "404 / PAGE INTROUVABLE",
     titleLead: "La route",
     titleEmphasis: "s’est égarée.",
     body: "Cette page n’existe pas. Rien n’a été chargé et aucune action wallet n’a été effectuée.",
@@ -1765,7 +1664,6 @@ const french: Copy = {
     lockConsole: "Verrouiller la console",
   },
   dashboard: {
-    eyebrow: "VUE D’ENSEMBLE / PROCHAINE ACTION SÛRE",
     titleLead: "Gardez la",
     titleEmphasis: "surface traçable.",
     review: (count) => `${count} agent${count > 1 ? "s" : ""} à revoir.`,
@@ -1779,7 +1677,6 @@ const french: Copy = {
     allowanceReady: "L’approbation est prête à être revue.",
     latestEvidence: "Dernières preuves",
     allReceipts: "Tous les reçus",
-    contextWallet: "CONTEXTE WALLET",
     switchRequired: "changement requis",
     signerReady: "Prêt à signer",
     signerWrong: "Mauvais réseau",
@@ -1795,7 +1692,6 @@ const french: Copy = {
     eventsIndexed: "événements indexés",
     queueAwaiting: "confirmation en attente",
     oracleUnreachable: "oracle injoignable",
-    secondaryTelemetry: "TÉLÉMÉTRIE SECONDAIRE",
     telemetryTitle: "Télémétrie et preuves récentes",
     noEvidence: "Pas encore de preuve",
     noEvidenceHint:
@@ -1806,8 +1702,8 @@ const french: Copy = {
     mintAgent: "Minter un agent",
     noDescription: "sans description",
     refreshNotice: "Vue d’ensemble actualisée depuis les indexeurs live.",
-    agentFundingEyebrow: (tokenId) => `AGENT #${tokenId} / FINANCEMENT`,
-    paymentAllowanceEyebrow: "PAIEMENT / APPROBATION",
+    agentFundingLabel: (tokenId) => `Financement de l’agent #${tokenId}`,
+    paymentAllowanceLabel: "Approbation de paiement",
   },
   chat: {
     pageTitle: "Chat",
@@ -1940,11 +1836,9 @@ const french: Copy = {
     metricsHide: "masquer les métriques",
   },
   storage: {
-    eyebrow: "PROVENANCE DES DONNÉES / 0G",
     title: "Stockez le payload, puis vérifiez sa preuve.",
     description: "Chaque étape Storage est prouvée séparément.",
     openChat: "Ouvrir le transcript Chat",
-    adapter: "ADAPTATEUR 0G STORAGE",
     payload: "Payload de métadonnées agent",
     fileSteps: "Fichier et étapes",
     fileMeta: "18,4 Ko · chiffré AES-GCM · 4 tags",
@@ -1957,7 +1851,6 @@ const french: Copy = {
       "Disponible",
     ],
     note: "« Disponible » s’allume une fois les étapes ci-dessus terminées.",
-    provenanceRecord: "REGISTRE DE PROVENANCE",
     whatCanProve: "Ce que l’interface peut prouver",
     rootHash: "Root hash",
     storageTx: "Transaction Storage",
@@ -1967,7 +1860,6 @@ const french: Copy = {
     download: "Téléchargement",
     available: "disponible",
     notReady: "pas prêt",
-    source: "SOURCE",
     sourceName: "SDK 0G Storage / Indexer",
     sourceDescription: "Chaque étape Storage est prouvée séparément.",
     pending: "en attente",
@@ -1975,7 +1867,6 @@ const french: Copy = {
   },
   flows: {
     mint: {
-      eyebrow: "MINT / LIMITE DE PROVENANCE",
       title: "Créer un agent",
       copy: "Nom → hash → accord de l’oracle → reçu.",
       steps: ["Hash de métadonnées", "Accord de l’oracle", "Reçu indexé"],
@@ -1989,7 +1880,6 @@ const french: Copy = {
       notice: "Mint soumis pour {name}. Reçu ajouté au centre transactionnel.",
     },
     payment: {
-      eyebrow: "PAIEMENT / ROUTE D’APPROBATION",
       title: "Financer avec contexte",
       copy: "Token, approbation exacte, frais, royalty et événements restent visibles avant la fin.",
       steps: [
@@ -2008,7 +1898,6 @@ const french: Copy = {
         "Paiement soumis pour l’agent #{agent}. Reçu ajouté au centre transactionnel.",
     },
     transfer: {
-      eyebrow: "TRANSFERT / PREUVE SIGNÉE",
       title: "Transférer avec preuve",
       copy: "Challenge → signature → finalisation → reçu on-chain. L’expiration reste visible.",
       steps: [
@@ -2026,7 +1915,6 @@ const french: Copy = {
       notice: "Transfert soumis pour l’agent #{agent}. Reçu de preuve ajouté.",
     },
     tick: {
-      eyebrow: "ORCHESTRATEUR / FLUX",
       title: "Lancer le prochain tick",
       copy: "Intention → fournisseur → flux → résultat → événement ou transaction → récupération.",
       steps: ["Instruction bornée", "Route fournisseur", "Événement indexé"],
@@ -2041,7 +1929,6 @@ const french: Copy = {
       notice: "Tick {outcome} pour l’agent #{agent}. Reçu de flux indexé.",
     },
     deposit: {
-      eyebrow: "VAULT / ROUTE DE DÉPÔT",
       title: "Déposer dans le vault",
       copy: "Montant → revue → limite wallet → reçu on-chain. Le solde du vault reste visible avant le transfert.",
       steps: ["Montant + solde", "Limite wallet", "Reçu indexé"],
@@ -2057,7 +1944,6 @@ const french: Copy = {
         "Dépôt soumis pour l’agent #{agent}. Reçu ajouté au centre transactionnel.",
     },
     withdraw: {
-      eyebrow: "VAULT / ROUTE DE RETRAIT",
       title: "Retirer du vault",
       copy: "Montant → revue → limite wallet → reçu on-chain. Le solde restant est affiché avant la signature.",
       steps: ["Solde vérifié", "Limite wallet", "Reçu indexé"],
@@ -2075,16 +1961,13 @@ const french: Copy = {
   },
   flowUi: {
     openTransactions: "Ouvrir le centre transactionnel",
-    ready: "PRÊT",
     restart: "Recommencer ce flow",
     simulateReject: "Simuler un rejet",
     simulateTimeout: "Simuler un timeout",
-    evidenceBoundary: "LIMITE DE PREUVE",
     wallet: "Wallet",
     agent: "Agent",
     network: "Réseau",
     receipt: "Reçu",
-    confirming: "CONFIRMATION",
     stepWallet: "Limite wallet",
     stepAuto: "Observé automatiquement",
     coSignTitle: "Co-signature du destinataire requise",
@@ -2096,7 +1979,6 @@ const french: Copy = {
     coSignBlockedTitle: "Compte destinataire indisponible",
     coSignBlockedBody: (receiver) =>
       `Impossible de signer pour ${receiver} ici. Ajoutez ce compte, ou laissez le destinataire accepter de son côté.`,
-    stageEyebrow: "ÉDITER · REVUE · REÇU",
     stageTitle: "Revoyez avant d’agir.",
     reviewOpenLabel: "Revue ouverte",
     detailsEditable: "Détails modifiables",
@@ -2118,7 +2000,6 @@ const french: Copy = {
       "La clé publique du destinataire doit être 64 octets de hex (0x…).",
     errInstruction: "Décrivez l’instruction.",
     errSelectAgent: "Choisissez d’abord un agent.",
-    intentEyebrow: "PRÉREMPLI · REVUE REQUISE",
     intentFund: "Agent sélectionné. Revoyez l’approbation exacte.",
     intentProof:
       "Mode preuve sélectionné. Vérifiez le challenge du destinataire.",
@@ -2126,7 +2007,7 @@ const french: Copy = {
     intentRecovery:
       "Récupération d’un reçu existant. Aucune opération en double.",
     intentReceipt: "Lié à un reçu indexé.",
-    streamEyebrow: "FLUX / TOKENS",
+    streamLabel: "Flux de tokens",
     cancelStream: "Annuler le flux",
     receiptHeadingConfirmed: "Reçu prêt.",
     receiptHeadingReverted: "Rejeté on-chain.",
@@ -2166,10 +2047,8 @@ const french: Copy = {
       "Approbation exacte validée on-chain. Limite 2 : signez le paiement.",
     allowanceCoveredNotice:
       "L’approbation existante couvre ce montant, aucune transaction d’approbation nécessaire.",
-    reviewEyebrow: "REVUE / {kind}",
     reviewTitle: "Revoir l’opération.",
     closeReviewA11y: "Fermer la revue et modifier les détails de l’opération",
-    effectEyebrow: "EFFET",
     factAgent: "Agent ciblé",
     factAmount: "Montant",
     factRecipient: "Destinataire",
@@ -2251,21 +2130,20 @@ const french: Copy = {
   agentDetail: {
     executionSurface:
       "Contrôlé par l’opérateur · aucun événement on-chain pour l’instant.",
-    operatingBalance: "SOLDE D’EXPLOITATION",
+    operatingBalance: "Solde d’exploitation",
     vaultRoute: "route du vault · {chainName}",
+    noStrategy: "aucune stratégie liée",
     dataHash: "Hash de métadonnées",
     overview: "Vue d’ensemble",
     execute: "Exécuter",
     payments: "Paiements",
     activity: "Activité",
-    identityProvenance: "IDENTITÉ / PROVENANCE",
     agentRecord: "Fiche agent",
     owner: "Propriétaire",
     agentId: "ID agent",
     metadataRoot: "Hash de métadonnées",
     lastEvent: "Dernier événement",
     inspectStorageProof: "Examiner la preuve Storage",
-    commandSafeAction: "COMMANDE / ACTION SÛRE",
     chooseBoundedOperation: "Choisissez une opération bornée.",
     fundAgent: "Financer l’agent",
     depositFunds: "Déposer dans le vault",
@@ -2274,7 +2152,6 @@ const french: Copy = {
     queueTick: "Mettre le tick en file",
     commandEvidence:
       "Chaque action ouvre son propre modèle de preuve et revient à l’activité avec un reçu.",
-    executeBoundedIntent: "EXÉCUTER / INTENTION BORNÉE",
     runRecoveryPath: "Lancez une opération avec un chemin de récupération.",
     instruction: "Instruction",
     instructionPlaceholder: "Évaluer la route courante",
@@ -2284,18 +2161,14 @@ const french: Copy = {
     providerHint: "Route de démonstration sélectionnée dans Paramètres.",
     createTickIntent: "Créer l’intention de tick",
     cancel: "Annuler",
-    paymentsActivity: "PAIEMENTS / ACTIVITÉ",
     valueRouteFor: (agent) => `Route de valeur pour ${agent}`,
-    token: "TOKEN",
-    allowance: "APPROBATION",
-    royalty: "ROYALTY",
+    token: "Token",
+    royalty: "Royalty",
     openPaymentFlow: "Ouvrir le flow de paiement",
     earnings: "Gains",
-    activityFor: (agent) => `ACTIVITÉ / ${agent.toUpperCase()}`,
     evidenceTied: "Preuves liées à cet agent",
   },
   transactions: {
-    eyebrow: "OPÉRATIONS / REÇUS",
     title: "Centre transactionnel",
     description:
       "Chaque signature possède un état, une source et un chemin de récupération.",
@@ -2304,24 +2177,19 @@ const french: Copy = {
       "Index des reçus revérifié. Les états en attente le restent.",
     feedDown:
       "Flux d’événements live hors ligne, interrogation périodique à la place.",
-    liveQueue: "FILE ACTIVE",
     confirmingNow: "en confirmation",
-    today: "AUJOURD’HUI",
-    receiptsIndexed: "reçus indexés",
-    recovery: "RÉCUPÉRATION",
     needReview: "à examiner",
     confirmedNote:
       "Confirmé signifie que le reçu a été observé et l’événement décodé. Une attente ne devient jamais un succès.",
-    activitySharedStore: "ACTIVITÉ / STORE PARTAGÉ",
     statefulOperations: "Opérations avec état",
     filterAll: "Tout",
     filterReview: "À examiner",
     filterStale: "Obsolète",
     moreFilters: "Plus de filtres",
-    operation: "OPÉRATION",
-    hash: "HASH",
-    age: "ÂGE",
-    state: "ÉTAT",
+    operation: "Opération",
+    hash: "Hash",
+    age: "Âge",
+    state: "État",
     emptyState:
       "Aucun reçu ne correspond à cet état. Le store partagé ne masque aucun élément.",
     closeReceipt: "Fermer le reçu",
@@ -2335,7 +2203,6 @@ const french: Copy = {
     recoveryNotice: "Récupération ouverte. L’opération revient à Prêt.",
     openOperation: "Ouvrir l’opération",
     drawerTitle: "Détail du reçu",
-    proofEyebrow: "REÇU / PREUVE",
     proofTitle: "Détails de la preuve",
   },
   status: {
@@ -2379,14 +2246,10 @@ const german: Copy = {
     notConnected: "nicht verbunden",
     operator: "Operator",
     openRail: "Leiste öffnen",
-    network: "NETZWERK",
     oracleLive: "Oracle live",
     oracleDown: "Oracle down",
   },
   strip: {
-    reviewEyebrow: "JETZT / PRÜFUNG NÖTIG",
-    nextEyebrow: "NÄCHSTE SICHERE AKTION",
-    proofCheckEyebrow: "BELEGPPRÜFUNG",
     reviewTitle: (kind) => `${kind} prüfen`,
     reviewSummary:
       "Stelle den vorhandenen Beleg wieder her, bevor du es erneut versuchst.",
@@ -2398,9 +2261,9 @@ const german: Copy = {
     inspectTitle: "Storage-Root prüfen",
     inspectSummary: "Prüfe den indexierten Root und den Integritätsstatus.",
     inspectImpact: "Nur lesend. Keine Wallet-Anfrage.",
-    proofReceipt: "BELEG",
-    proofAgent: "AGENT",
-    proofRoot: "ROOT",
+    proofReceipt: "Beleg",
+    proofAgent: "Agent",
+    proofRoot: "Root",
     selectInFlow: "im Flow wählen",
     openReview: "Prüfung öffnen",
     whyNow: "Warum jetzt",
@@ -2439,13 +2302,11 @@ const german: Copy = {
     walletWaiting: "Warte auf Wallet-Antwort",
   },
   landing: {
-    eyebrow: "AXIOM / VERIFIZIERTE OPERATOR-KONSOLE",
     titleLead: "Handle mit",
     titleEmphasis: "Belegen.",
     description:
       "Verbinde ein Wallet, handle, und halte den Nachweis neben jeder Aktion. Flows sind auf dem verbundenen Testnet echt.",
-    nextSafeAction: "NÄCHSTE SICHERE AKTION",
-    heroTitle: "Prüfe den Operator vor der Aktion.",
+    nextSafeAction: "Nächste sichere Aktion",
     signatureBoundary: "Signaturgrenze",
     consoleAccess: "Konsolenzugriff",
     stakingBoundary: "Staking gehört noch nicht zu Axiom.",
@@ -2453,11 +2314,8 @@ const german: Copy = {
     menuDevelopers: "Entwickler",
     menuDevelopersHint: "Integrationsgrenze prüfen",
     stakeTitle: "0G Stake",
-    stripVerifyEyebrow: "PRÜFEN",
     stripVerifySmall: "Kein Gas · keine Verwahrung",
-    stripOperateEyebrow: "STEUERN",
     stripOperateSmall: "Belege neben der Aktion",
-    stripBoundaryEyebrow: "GRENZE",
   },
   wallet: {
     connectingTitle: "Wallet-Kontext wird gelesen.",
@@ -2467,10 +2325,6 @@ const german: Copy = {
     wrongNetworkDescription:
       "Das Wallet ist verbunden, verwendet aber ein anderes Netzwerk. Wechsle vor der Signatur der Zugriffsnachricht.",
     switchNetwork: "Zu {chainName} wechseln",
-    phaseConnect: "WALLET VERBINDEN",
-    phaseNetwork: "NETZWERK PRÜFEN",
-    phaseSigning: "NACHRICHT SIGNIEREN",
-    phaseProfile: "PROFIL ERSTELLEN",
     approveSignature: "Signatur bestätigen",
     rejectSignature: "Signatur ablehnen",
     profileTitle: "Lokales Profil benennen.",
@@ -2513,7 +2367,6 @@ const german: Copy = {
     reviewEvidence: "Belege prüfen",
   },
   notFound: {
-    eyebrow: "404 / SEITE NICHT GEFUNDEN",
     titleLead: "Diese Route",
     titleEmphasis: "treibt davon.",
     body: "Diese Seite existiert nicht. Es wurde nichts geladen und keine Wallet-Aktion ausgeführt.",
@@ -2596,7 +2449,6 @@ const german: Copy = {
     lockConsole: "Konsole sperren",
   },
   dashboard: {
-    eyebrow: "ÜBERSICHT / NÄCHSTE SICHERE AKTION",
     titleLead: "Halte die",
     titleEmphasis: "Oberfläche prüfbar.",
     review: (count) =>
@@ -2611,7 +2463,6 @@ const german: Copy = {
     allowanceReady: "Die Freigabe kann geprüft werden.",
     latestEvidence: "Neueste Belege",
     allReceipts: "Alle Belege",
-    contextWallet: "WALLET-KONTEXT",
     switchRequired: "Wechsel erforderlich",
     signerReady: "Bereit zum Signieren",
     signerWrong: "Falsches Netzwerk",
@@ -2626,7 +2477,6 @@ const german: Copy = {
     eventsIndexed: "Ereignisse indexiert",
     queueAwaiting: "Bestätigung ausstehend",
     oracleUnreachable: "Oracle unerreichbar",
-    secondaryTelemetry: "SEKUNDÄRE TELEMETRIE",
     telemetryTitle: "Telemetrie und aktuelle Belege",
     noEvidence: "Noch keine Belege",
     noEvidenceHint:
@@ -2637,8 +2487,8 @@ const german: Copy = {
     mintAgent: "Agent minten",
     noDescription: "keine Beschreibung",
     refreshNotice: "Übersicht aus den Live-Indexern aktualisiert.",
-    agentFundingEyebrow: (tokenId) => `AGENT #${tokenId} / FINANZIERUNG`,
-    paymentAllowanceEyebrow: "ZAHLUNG / FREIGABE",
+    agentFundingLabel: (tokenId) => `Finanzierung von Agent #${tokenId}`,
+    paymentAllowanceLabel: "Zahlungsfreigabe",
   },
   chat: {
     pageTitle: "Chat",
@@ -2771,12 +2621,10 @@ const german: Copy = {
     metricsHide: "Metriken ausblenden",
   },
   storage: {
-    eyebrow: "DATENPROVENIENZ / 0G",
     title: "Payload speichern, dann den Beleg prüfen.",
     description:
       "Verschlüsselung, Root-Hash, Storage-Transaktion, Integritätsnachweis und Index-Verfügbarkeit bleiben getrennt.",
     openChat: "Chat-Transkript öffnen",
-    adapter: "0G-STORAGE-ADAPTER",
     payload: "Agenten-Metadaten-Payload",
     fileSteps: "Datei und Schritte",
     fileMeta: "18,4 KB · AES-GCM-verschlüsselt · 4 Tags",
@@ -2789,7 +2637,6 @@ const german: Copy = {
       "Verfügbar",
     ],
     note: "„Verfügbar“ leuchtet auf, sobald die obigen Schritte abgeschlossen sind.",
-    provenanceRecord: "PROVENIENZ-REGISTER",
     whatCanProve: "Was die Oberfläche belegen kann",
     rootHash: "Root-Hash",
     storageTx: "Storage-Transaktion",
@@ -2799,7 +2646,6 @@ const german: Copy = {
     download: "Download",
     available: "verfügbar",
     notReady: "nicht bereit",
-    source: "QUELLE",
     sourceName: "0G-Storage-SDK / Indexer",
     sourceDescription: "Jeder Storage-Schritt wird separat nachgewiesen.",
     pending: "ausstehend",
@@ -2807,7 +2653,6 @@ const german: Copy = {
   },
   flows: {
     mint: {
-      eyebrow: "MINT / PROVENANCE-GRENZE",
       title: "Agent minten",
       copy: "Name → Hash → Oracle-Bestätigung → Beleg.",
       steps: ["Metadaten-Hash", "Oracle-Bestätigung", "Beleg indexiert"],
@@ -2823,7 +2668,6 @@ const german: Copy = {
         "Mint für {name} eingereicht. Beleg zum Transaktionszentrum hinzugefügt.",
     },
     payment: {
-      eyebrow: "PAYMENT / FREIGABE-ROUTE",
       title: "Mit Kontext finanzieren",
       copy: "Token, exakte Freigabe, Gebühr, Royalty und Ereignisse bleiben sichtbar.",
       steps: [
@@ -2843,7 +2687,6 @@ const german: Copy = {
         "Zahlung für Agent #{agent} eingereicht. Beleg zum Transaktionszentrum hinzugefügt.",
     },
     transfer: {
-      eyebrow: "TRANSFER / SIGNIERTER BELEG",
       title: "Mit Nachweis übertragen",
       copy: "Challenge → Signatur → Abschluss → On-Chain-Beleg. Der Ablauf bleibt nachvollziehbar.",
       steps: ["Empfänger-Challenge", "Signaturgrenze", "Beleg indexiert"],
@@ -2858,7 +2701,6 @@ const german: Copy = {
         "Transfer für Agent #{agent} eingereicht. Nachweis-Beleg hinzugefügt.",
     },
     tick: {
-      eyebrow: "ORCHESTRATOR / STREAM",
       title: "Nächsten Tick ausführen",
       copy: "Absicht → Provider → Stream → Ergebnis → Ereignis oder Transaktion → Recovery.",
       steps: ["Begrenzte Anweisung", "Provider-Route", "Ereignis indexiert"],
@@ -2872,7 +2714,6 @@ const german: Copy = {
       notice: "Tick für Agent #{agent} {outcome}. Stream-Beleg indexiert.",
     },
     deposit: {
-      eyebrow: "VAULT / EINZAHLUNGSROUTE",
       title: "In den Vault einzahlen",
       copy: "Betrag → Prüfung → Wallet-Grenze → On-Chain-Beleg. Der Vault-Stand bleibt sichtbar, bevor Wert fließt.",
       steps: ["Betrag + Guthaben", "Wallet-Grenze", "Beleg indexiert"],
@@ -2888,7 +2729,6 @@ const german: Copy = {
         "Einzahlung für Agent #{agent} eingereicht. Beleg zum Transaktionszentrum hinzugefügt.",
     },
     withdraw: {
-      eyebrow: "VAULT / AUSZAHLUNGSROUTE",
       title: "Aus dem Vault auszahlen",
       copy: "Betrag → Prüfung → Wallet-Grenze → On-Chain-Beleg. Der Reststand wird vor dem Signieren gezeigt.",
       steps: ["Guthaben geprüft", "Wallet-Grenze", "Beleg indexiert"],
@@ -2906,16 +2746,13 @@ const german: Copy = {
   },
   flowUi: {
     openTransactions: "Transaktionszentrum öffnen",
-    ready: "BEREIT",
     restart: "Diesen Flow neu starten",
     simulateReject: "Ablehnung simulieren",
     simulateTimeout: "Timeout simulieren",
-    evidenceBoundary: "BELEG-GRENZE",
     wallet: "Wallet",
     agent: "Agent",
     network: "Netzwerk",
     receipt: "Beleg",
-    confirming: "BESTÄTIGUNG",
     stepWallet: "Wallet-Grenze",
     stepAuto: "Automatisch beobachtet",
     coSignTitle: "Empfänger-Gegenzeichnung erforderlich",
@@ -2927,7 +2764,6 @@ const german: Copy = {
     coSignBlockedTitle: "Empfängerkonto nicht verfügbar",
     coSignBlockedBody: (receiver) =>
       `Signieren für ${receiver} hier nicht möglich. Konto hinzufügen, oder der Empfänger akzeptiert selbst.`,
-    stageEyebrow: "BEARBEITEN · PRÜFEN · BELEG",
     stageTitle: "Prüfen Sie, bevor Sie handeln.",
     reviewOpenLabel: "Prüfung offen",
     detailsEditable: "Details bearbeitbar",
@@ -2949,7 +2785,6 @@ const german: Copy = {
       "Der öffentliche Schlüssel des Empfängers muss 64 Byte Hex sein (0x…).",
     errInstruction: "Beschreiben Sie die Anweisung.",
     errSelectAgent: "Wählen Sie zuerst einen Agenten.",
-    intentEyebrow: "VORBELEGT · PRÜFUNG ERFORDERLICH",
     intentFund: "Agent ausgewählt. Prüfen Sie die exakte Freigabe.",
     intentProof:
       "Nachweismodus ausgewählt. Prüfen Sie die Empfänger-Challenge.",
@@ -2958,7 +2793,7 @@ const german: Copy = {
     intentRecovery:
       "Ein bestehender Beleg wird wiederaufgenommen. Kein doppelter Vorgang.",
     intentReceipt: "Mit einem indexierten Beleg verknüpft.",
-    streamEyebrow: "STREAM / TOKENS",
+    streamLabel: "Token-Stream",
     cancelStream: "Stream abbrechen",
     receiptHeadingConfirmed: "Beleg bereit.",
     receiptHeadingReverted: "On-Chain rückgängig.",
@@ -2999,10 +2834,8 @@ const german: Copy = {
       "Exakte Freigabe on-chain genehmigt. Grenze 2: Signieren Sie die Zahlung.",
     allowanceCoveredNotice:
       "Die bestehende Freigabe deckt diesen Betrag, keine Genehmigungstransaktion nötig.",
-    reviewEyebrow: "PRÜFUNG / {kind}",
     reviewTitle: "Vorgang prüfen.",
     closeReviewA11y: "Prüfung schließen und Vorgangsdetails bearbeiten",
-    effectEyebrow: "WIRKUNG",
     factAgent: "Ziel-Agent",
     factAmount: "Betrag",
     factRecipient: "Empfänger",
@@ -3079,21 +2912,20 @@ const german: Copy = {
   },
   agentDetail: {
     executionSurface: "Operatorgesteuert · noch keine On-Chain-Ereignisse.",
-    operatingBalance: "BETRIEBSGUTHABEN",
+    operatingBalance: "Betriebsguthaben",
     vaultRoute: "Vault-Route · {chainName}",
+    noStrategy: "keine Strategie gebunden",
     dataHash: "Metadaten-Hash",
     overview: "Übersicht",
     execute: "Ausführen",
     payments: "Zahlungen",
     activity: "Aktivität",
-    identityProvenance: "IDENTITÄT / PROVENIENZ",
     agentRecord: "Agentenakte",
     owner: "Inhaber",
     agentId: "Agent-ID",
     metadataRoot: "Metadaten-Hash",
     lastEvent: "Letztes Ereignis",
     inspectStorageProof: "Storage-Beleg prüfen",
-    commandSafeAction: "BEFEHL / SICHERE AKTION",
     chooseBoundedOperation: "Wähle eine begrenzte Operation.",
     fundAgent: "Agent finanzieren",
     depositFunds: "In Vault einzahlen",
@@ -3102,7 +2934,6 @@ const german: Copy = {
     queueTick: "Tick einreihen",
     commandEvidence:
       "Jede Aktion öffnet ihr eigenes Belegmodell und kehrt mit einem Beleg zu Aktivität zurück.",
-    executeBoundedIntent: "AUSFÜHREN / BEGRENZTE ABSICHT",
     runRecoveryPath: "Führe eine Operation mit Wiederherstellungspfad aus.",
     instruction: "Anweisung",
     instructionPlaceholder: "Aktuelle Route auswerten",
@@ -3112,18 +2943,14 @@ const german: Copy = {
     providerHint: "",
     createTickIntent: "Tick-Absicht erstellen",
     cancel: "Abbrechen",
-    paymentsActivity: "ZAHLUNGEN / AKTIVITÄT",
     valueRouteFor: (agent) => `Wert-Route für ${agent}`,
-    token: "TOKEN",
-    allowance: "FREIGABE",
-    royalty: "ROYALTY",
+    token: "Token",
+    royalty: "Royalty",
     openPaymentFlow: "Zahlungsflow öffnen",
     earnings: "Erträge",
-    activityFor: (agent) => `AKTIVITÄT / ${agent.toUpperCase()}`,
     evidenceTied: "Belege zu diesem Agenten",
   },
   transactions: {
-    eyebrow: "OPERATIONEN / BELEGE",
     title: "Transaktionszentrum",
     description:
       "Jede Signatur hat einen Status, eine Quelle und einen Wiederherstellungspfad.",
@@ -3131,24 +2958,19 @@ const german: Copy = {
     refreshNotice:
       "Belegindex erneut geprüft. Ausstehende Status bleiben ausstehend.",
     feedDown: "Live-Ereignisfeed offline, Polling stattdessen.",
-    liveQueue: "AKTIVE WARTESCHLANGE",
     confirmingNow: "wird bestätigt",
-    today: "HEUTE",
-    receiptsIndexed: "Belege indexiert",
-    recovery: "WIEDERHERSTELLUNG",
     needReview: "prüfen",
     confirmedNote:
       "Bestätigt bedeutet: Beleg wurde beobachtet und Ereignis dekodiert. Ausstehend wird nie zu Erfolg.",
-    activitySharedStore: "AKTIVITÄT / GEMEINSAMER STORE",
     statefulOperations: "Zustandsbehaftete Operationen",
     filterAll: "Alle",
     filterReview: "Zur Prüfung",
     filterStale: "Veraltet",
     moreFilters: "Mehr Filter",
-    operation: "OPERATION",
-    hash: "HASH",
-    age: "ALTER",
-    state: "STATUS",
+    operation: "Operation",
+    hash: "Hash",
+    age: "Alter",
+    state: "Status",
     emptyState:
       "Keine Belege passen zu diesem Status. Der gemeinsame Store verbirgt keine Elemente.",
     closeReceipt: "Beleg schließen",
@@ -3162,7 +2984,6 @@ const german: Copy = {
     recoveryNotice: "Wiederherstellung geöffnet. Operation ist wieder bereit.",
     openOperation: "Operation öffnen",
     drawerTitle: "Belegdetail",
-    proofEyebrow: "BELEG / NACHWEIS",
     proofTitle: "Nachweisdetails",
   },
   status: {

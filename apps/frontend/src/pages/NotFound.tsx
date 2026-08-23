@@ -23,7 +23,6 @@ export default function Recovery404({
       </div>
       <div className="recovery-404-copy">
         <Logo compact />
-        <span className="eyebrow copper">{copy.eyebrow}</span>
         <h1>
           {copy.titleLead}
           <br />

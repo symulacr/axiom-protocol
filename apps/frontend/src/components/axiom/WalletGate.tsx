@@ -229,7 +229,6 @@ export function WalletGate({
             alt="Abstract Axiom wallet access nucleus"
           />
           <div className="wallet-gate-art-copy">
-            <span className="eyebrow">AXIOM ACCESS PROTOCOL</span>
             <strong>
               One wallet.
               <br />
@@ -239,20 +238,12 @@ export function WalletGate({
           </div>
         </div>
         <div className="wallet-gate-panel">
-          {/* one label per
-              state — the localized phase eyebrow (the DOM copy.wallet.phase*
-              strings) + the h2 carry it; the head's Status pill repeated the
-              raw view name a third time and is gone. */}
           <div className="wallet-gate-head">
             <Logo compact />
           </div>
 
           {view === "connect" && (
             <>
-              {/* the phase label was CSS::after
-                  content — invisible to i18n/grep. Real DOM copy now, straight
-                  from copy.wallet. */}
-              <span className="eyebrow copper">{copy.wallet.phaseConnect}</span>
               <h1 id="wallet-title">
                 Enter the
                 <br />
@@ -296,7 +287,6 @@ export function WalletGate({
 
           {view === "connecting" && (
             <div className="wallet-state">
-              <span className="eyebrow">CONNECTING</span>
               <h2>{copy.wallet.connectingTitle}</h2>
               <p>
                 {copy.wallet.connectingDescription} Waiting for the wallet to
@@ -318,7 +308,6 @@ export function WalletGate({
           {view === "wrong-network" && (
             <div className="wallet-state">
               <AlertTriangle className="warning-icon" size={28} />
-              <span className="eyebrow copper">{copy.wallet.phaseNetwork}</span>
               <h2>{interpolate(copy.wallet.wrongNetworkTitle, chainVars)}</h2>
               <p>{copy.wallet.wrongNetworkDescription}</p>
               <div className="network-check">
@@ -345,7 +334,6 @@ export function WalletGate({
           {view === "signing" && (
             <div className="wallet-state">
               <KeyRound className="copper" size={28} />
-              <span className="eyebrow copper">{copy.wallet.phaseSigning}</span>
               <h2>Confirm the access message.</h2>
               <p>A free signature — no gas, transfer or approval.</p>
               <div className="signature-preview">
@@ -381,7 +369,6 @@ export function WalletGate({
 
           {view === "profile" && (
             <form className="wallet-state" onSubmit={saveProfile}>
-              <span className="eyebrow copper">{copy.wallet.phaseProfile}</span>
               <h2>{copy.wallet.profileTitle}</h2>
               <p>{copy.wallet.profileDescription}</p>
               <Field
@@ -399,7 +386,6 @@ export function WalletGate({
           {view === "authenticated" && (
             <div className="wallet-state">
               <CircleCheck className="copper" size={28} />
-              <span className="eyebrow">SESSION READY</span>
               <h2>
                 Console access
                 <br />
@@ -427,7 +413,6 @@ export function WalletGate({
           {view === "rejected" && (
             <div className="wallet-state">
               <ShieldAlert className="warning-icon" size={28} />
-              <span className="eyebrow">SIGNATURE REJECTED</span>
               <h2>{copy.wallet.rejectedTitle}</h2>
               <p>{copy.wallet.rejectedDescription}</p>
               <Button onClick={retry} icon={<RotateCcw size={15} />}>
@@ -446,7 +431,6 @@ export function WalletGate({
           {view === "timeout" && (
             <div className="wallet-state">
               <Timer className="warning-icon" size={28} />
-              <span className="eyebrow">CONNECTION TIMEOUT</span>
               <h2>{copy.wallet.timeoutTitle}</h2>
               <p>
                 {copy.wallet.timeoutDescription} The wallet did not respond

@@ -181,7 +181,6 @@ function Guide({
           >
             <X size={17} />
           </button>
-          <span className="eyebrow copper">ORIENTATION</span>
           <h2>{item.title}</h2>
           <p>{item.copy}</p>
           <div className="guide-actions">

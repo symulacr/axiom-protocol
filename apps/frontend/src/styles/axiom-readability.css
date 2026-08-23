@@ -31,7 +31,7 @@ button, input, textarea, select { line-height: var(--support-leading); }
 /* S2 type-scale contract: mono telemetry is the named --fs-mono step (was
    the max(0.68rem, 11px) floor — the 11/11.5px neighbor pair). Row
    sublabels/mono row data moved to --fs-small (see the next block). */
-.eyebrow, .status, .network-card .mono,
+.status, .network-card .mono,
 .account span, .field-label,
 .review-facts dt, .command-group-label, .priority-proof > span,
 .session-top, .text-link, .priority-why,
@@ -96,7 +96,7 @@ button, input, textarea, select { line-height: var(--support-leading); }
 .priority-actions { min-width: 146px; }
 
 .command-center { padding: var(--space-2); }
-/* C-14: the head (eyebrow + explicit X) shows at every width — the dismiss
+/* C-14: the head (title + explicit X) shows at every width — the dismiss
    contract needs a visible close control on desktop too, not only ≤640px. */
 .command-center-head { display: flex; align-items: center; justify-content: space-between; padding: 0 var(--space-1) var(--space-2); }
 .command-center-meta { padding: var(--space-3) var(--space-4) var(--space-2); }
@@ -132,7 +132,7 @@ button, input, textarea, select { line-height: var(--support-leading); }
 @media (max-width: 700px) {
   body { font-size: var(--fs-body); }
   .command-center-layer { display: flex; align-items: flex-end; padding: 0; }
-  .command-center { box-sizing: border-box; width: 100%; max-height: min(78dvh, 660px); margin: 0; padding: var(--space-3); overflow-y: auto; border-inline: 0; border-bottom: 0; border-radius: 14px 14px 0 0; }
+  .command-center { box-sizing: border-box; width: 100%; max-height: min(78dvh, 660px); margin: 0; padding: var(--space-3); overflow-y: auto; border-inline: 0; border-bottom: 0; border-radius: var(--radius-xl) var(--radius-xl) 0 0; }
   .command-center-head { display: flex; align-items: center; justify-content: space-between; padding: 0 var(--space-1) var(--space-2); }
   .command-center-close { width: var(--hit-area); height: var(--hit-area); }
   .topbar { min-height: 64px; height: auto; padding-inline: var(--space-4); }
@@ -228,28 +228,15 @@ button, input, textarea, select { line-height: var(--support-leading); }
   animation: none;
   transform: none;
 }
-.hero-visual-overlay {
-  z-index: 4;
-  max-width: min(32ch, 58%);
-  padding: clamp(24px, 4vw, 46px);
-  text-shadow: none;
-}
-.hero-visual-overlay strong {
-  max-width: 18ch;
-  line-height: 1.03;
-}
 @media (max-width: 700px) {
   .landing-visual.hero-visual-modern { min-height: 352px; box-shadow: var(--shadow-plate-m); }
   .landing-visual.hero-visual-modern::before { left: 7.5%; }
   .landing-visual.hero-visual-modern::after { background: linear-gradient(90deg, rgba(8, 11, 12, 0.84), rgba(8, 11, 12, 0.18) 100%), linear-gradient(180deg, transparent, rgba(8, 11, 12, 0.54)); }
   .landing-visual.hero-visual-modern > img.hero-visual-poster { object-position: 69% center; }
-  .hero-visual-overlay { max-width: 76%; padding: var(--space-5); }
 }
 
 /* The editorial landing statement remains singular; the artifact carries state, not another slogan. */
-.hero-visual-overlay > strong { display: none; }
 .landing-visual.hero-visual-modern > img.hero-visual-poster { object-position: 100% center; }
-.hero-visual-overlay .eyebrow { display: inline-flex; width: fit-content; padding: var(--space-2) var(--space-2); border-left: 2px solid #d98a48; background: rgba(8, 11, 12, 0.72); color: #e6a46b; }
 
 /* Landing summary becomes an asymmetric ledger rather than four equivalent cards. */
 .landing-strip { grid-template-columns: minmax(0, 1.5fr) minmax(0, 0.86fr) minmax(0, 0.86fr) minmax(0, 1.08fr); }
@@ -264,7 +251,6 @@ button, input, textarea, select { line-height: var(--support-leading); }
 .landing-strip > button:hover { background: rgba(217, 138, 72, 0.11); }
 @media (max-width: 700px) {
   .landing-visual.hero-visual-modern > img.hero-visual-poster { object-position: 90% center; }
-  .hero-visual-overlay > strong { display: none; }
   .landing-strip { grid-template-columns: 1fr 1fr; }
   .landing-strip > button:first-child { grid-column: 1 / -1; padding-left: var(--space-6); }
 }

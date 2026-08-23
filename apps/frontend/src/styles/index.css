@@ -42,18 +42,18 @@
   --radius: 10px;
   /* audit-11 F-014 canonical radius scale: 4 controls/chips, 6 inputs/rows, 8, 10 panels/sheets */
   /* audit-11 F-015: two governed elevation families. Plates are the hard-offset ledger motif; modals are soft overlays. */
-  --shadow-plate-s: 8px 8px 0 rgba(0, 0, 0, .05);
-  --shadow-plate-m: 12px 12px 0 rgba(210, 139, 82, .05);
-  --shadow-plate-l: 18px 18px 0 rgba(210, 139, 82, .06);
-  --shadow-drawer: -22px 0 64px rgba(0, 0, 0, .45);
-  --shadow-drawer-r: 22px 0 64px rgba(0, 0, 0, .45);
-  --shadow-modal-sm: 0 14px 36px rgba(0, 0, 0, .22);
-  --shadow-modal: 0 24px 80px rgba(0, 0, 0, .45);
+  --shadow-plate-s: 8px 8px 0 rgba(0, 0, 0, 0.05);
+  --shadow-plate-m: 12px 12px 0 rgba(210, 139, 82, 0.05);
+  --shadow-plate-l: 18px 18px 0 rgba(210, 139, 82, 0.06);
+  --shadow-drawer: -22px 0 64px rgba(0, 0, 0, 0.45);
+  --shadow-drawer-r: 22px 0 64px rgba(0, 0, 0, 0.45);
+  --shadow-modal-sm: 0 14px 36px rgba(0, 0, 0, 0.22);
+  --shadow-modal: 0 24px 80px rgba(0, 0, 0, 0.45);
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 8px;
   --radius-xl: 10px;
-  --ease: cubic-bezier(.23, 1, .32, 1);
+  --ease: cubic-bezier(0.23, 1, 0.32, 1);
   /* ---------------------------------------------------------------- *
    * S2 type-scale contract (audit 06 FINDING-002): ONE scale — 4 core  *
    * steps + the mono accent. Every font-size resolves to one of these  *
@@ -61,12 +61,12 @@
    * S2 budget: 500 labels/rows, 600 section titles, 700 reserved for   *
    * h1 + primary CTA + attention pills + key data values.              *
    * ---------------------------------------------------------------- */
-  --fs-mono: 11px;    /* eyebrow/status/pill/kbd/mono telemetry labels */
-  --fs-small: 12px;   /* support text, row sublabels, mono row data */
-  --fs-body: 13px;    /* reading text + row primary labels */
-  --fs-title: 20px;   /* panel/section h2, stat values, strip headline */
+  --fs-mono: 11px; /* status/pill/kbd/mono telemetry labels */
+  --fs-small: 12px; /* support text, row sublabels, mono row data */
+  --fs-body: 13px; /* reading text + row primary labels */
+  --fs-title: 20px; /* panel/section h2, stat values, strip headline */
   --fs-display: clamp(28px, 3vw, 43px); /* page h1 */
-  --fs-modal: clamp(24px, 3vw, 36px);   /* review sheet / gate / dialog h2 */
+  --fs-modal: clamp(24px, 3vw, 36px); /* review sheet / gate / dialog h2 */
   --fw-label: 500;
   --fw-title: 600;
   --fw-strong: 700;
@@ -89,8 +89,12 @@
 /* ------------------------------------------------------------------ *
  * Element resets.                                                     *
  * ------------------------------------------------------------------ */
-* { box-sizing: border-box; }
-html { background: var(--bg); }
+* {
+  box-sizing: border-box;
+}
+html {
+  background: var(--bg);
+}
 body {
   margin: 0;
   min-width: 320px;
@@ -99,18 +103,43 @@ body {
   font-family: Inter, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
-button, input { font: inherit; }
-button { cursor: pointer; }
+button,
+input {
+  font: inherit;
+}
+button {
+  cursor: pointer;
+}
 /* UA buttonface bled through surface-less buttons (.account 2:1). The reset
    lives INSIDE @layer axiom-base (see below) — un-layered, it beat every
    layered hover/active background regardless of specificity (C-02). */
-button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid var(--copper-bright); outline-offset: 3px; }
-button:active { transform: scale(.98); }
-h1, h2, h3, p { margin: 0; }
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--copper-bright);
+  outline-offset: 3px;
+}
+button:active {
+  transform: scale(0.98);
+}
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
 /* S2: 600 is the title default; 700 is re-declared only where it is the
    one thing that matters (h1, primary CTA, attention pills, key data). */
-h1, h2, h3, strong { font-weight: 600; }
-.mono { font-family: 'JetBrains Mono', monospace; }
+h1,
+h2,
+h3,
+strong {
+  font-weight: 600;
+}
+.mono {
+  font-family: "JetBrains Mono", monospace;
+}
 
 /* ------------------------------------------------------------------ *
  * v0 component base — intentionally the LOWEST-priority layer.        *
@@ -121,19 +150,25 @@ h1, h2, h3, strong { font-weight: 600; }
   /* C-02: the buttonface reset is layered so in-layer hover/active rules
      (.nav-item:hover, .filter.active — specificity (0,2,0) beats (0,0,1))
      and every un-layered axiom-*.css rule outrank it. Never un-layer this. */
-  button { background-color: transparent; }
+  button {
+    background-color: transparent;
+  }
 
   .sidebar {
     padding: 25px 18px 18px;
     border-right: 1px solid var(--line-soft);
-    background: rgba(15, 17, 19, .82);
+    background: rgba(15, 17, 19, 0.82);
     display: flex;
     flex-direction: column;
     min-height: 100vh;
     height: 100vh;
   }
-  .light .sidebar { background: rgba(244, 240, 233, .92); }
-  .light .avatar { color: #fffdf8; }
+  .light .sidebar {
+    background: rgba(244, 240, 233, 0.92);
+  }
+  .light .avatar {
+    color: #fffdf8;
+  }
   .side-head {
     display: flex;
     align-items: center;
@@ -147,18 +182,21 @@ h1, h2, h3, strong { font-weight: 600; }
     gap: 9px;
     min-width: 0;
     font-family: Syne, sans-serif;
-    letter-spacing: .12em;
+    letter-spacing: 0.12em;
     font-weight: 800;
     font-size: var(--fs-body);
   }
-  .brand img { width: 28px; height: 28px; object-fit: contain; }
-  .brand-compact { font-size: var(--fs-body); }
-  .brand-compact img { width: 34px; height: 34px; }
-
-  .eyebrow {
-    color: var(--dim);
-    font: 500 var(--fs-mono)/1.35 'JetBrains Mono', monospace;
-    letter-spacing: .14em;
+  .brand img {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+  }
+  .brand-compact {
+    font-size: var(--fs-body);
+  }
+  .brand-compact img {
+    width: 34px;
+    height: 34px;
   }
 
   .nav-item {
@@ -172,15 +210,25 @@ h1, h2, h3, strong { font-weight: 600; }
     padding: 11px;
     border-radius: var(--radius-md);
     text-align: left;
-    transition: .18s var(--ease);
+    transition: 0.18s var(--ease);
   }
-  .nav-item:hover, .nav-item.active { background: rgba(210, 139, 82, .1); color: var(--text); }
-  .nav-item.active { box-shadow: inset 2px 0 0 var(--copper); }
-  .nav-item.active svg { color: var(--copper-bright); }
+  .nav-item:hover,
+  .nav-item.active {
+    background: rgba(210, 139, 82, 0.1);
+    color: var(--text);
+  }
+  .nav-item.active {
+    box-shadow: inset 2px 0 0 var(--copper);
+  }
+  .nav-item.active svg {
+    color: var(--copper-bright);
+  }
   .nav-item kbd {
     margin-left: auto;
     color: var(--dim);
-    font: 500 var(--fs-mono) 'JetBrains Mono', monospace;
+    font:
+      500 var(--fs-mono) "JetBrains Mono",
+      monospace;
   }
 
   .network-card {
@@ -189,17 +237,45 @@ h1, h2, h3, strong { font-weight: 600; }
     justify-content: space-between;
     padding: 13px 12px;
     border: 1px solid var(--line);
-    background: linear-gradient(135deg, rgba(103, 232, 180, .08), transparent);
+    background: linear-gradient(135deg, rgba(103, 232, 180, 0.08), transparent);
     border-radius: 8px;
   }
-  .network-card > div { display: grid; gap: 5px; }
-  .network-card .mono { font-size: var(--fs-mono); color: var(--dim); }
-  .network-card > svg { color: var(--phosphor); }
+  .network-card > div {
+    display: grid;
+    gap: 5px;
+  }
+  .network-card .mono {
+    font-size: var(--fs-mono);
+    color: var(--dim);
+  }
+  .network-card > svg {
+    color: var(--phosphor);
+  }
 
-  .account { display: flex; align-items: center; gap: 9px; padding: 9px 6px 0; color: var(--muted); }
-  .account > div:nth-child(2) { display: grid; gap: 3px; flex: 1; min-width: 0; }
-  .account strong { font-size: var(--fs-small); font-weight: var(--fw-label); color: var(--text); }
-  .account span:not(.avatar) { font: var(--fs-mono) 'JetBrains Mono', monospace; color: var(--dim); }
+  .account {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 9px 6px 0;
+    color: var(--muted);
+  }
+  .account > div:nth-child(2) {
+    display: grid;
+    gap: 3px;
+    flex: 1;
+    min-width: 0;
+  }
+  .account strong {
+    font-size: var(--fs-small);
+    font-weight: var(--fw-label);
+    color: var(--text);
+  }
+  .account span:not(.avatar) {
+    font:
+      var(--fs-mono) "JetBrains Mono",
+      monospace;
+    color: var(--dim);
+  }
   .avatar {
     width: 27px;
     height: 27px;
@@ -208,7 +284,9 @@ h1, h2, h3, strong { font-weight: 600; }
     background: var(--copper);
     color: #24170d;
     border-radius: 50%;
-    font: 700 var(--fs-mono) 'JetBrains Mono', monospace;
+    font:
+      700 var(--fs-mono) "JetBrains Mono",
+      monospace;
   }
 
   .status {
@@ -216,16 +294,30 @@ h1, h2, h3, strong { font-weight: 600; }
     align-items: center;
     gap: 6px;
     color: var(--muted);
-    font: 500 var(--fs-mono) 'JetBrains Mono', monospace;
+    font:
+      500 var(--fs-mono) "JetBrains Mono",
+      monospace;
     text-transform: uppercase;
-    letter-spacing: .06em;
+    letter-spacing: 0.06em;
     white-space: nowrap;
   }
-  .status i { width: 6px; height: 6px; border-radius: 50%; background: var(--dim); }
-  .status-success i { background: var(--phosphor); }
-  .status-warning i { background: var(--warning); }
+  .status i {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--dim);
+  }
+  .status-success i {
+    background: var(--phosphor);
+  }
+  .status-warning i {
+    background: var(--warning);
+  }
 
-  .main { min-width: 0; flex: 1; }
+  .main {
+    min-width: 0;
+    flex: 1;
+  }
   .topbar {
     height: 74px;
     border-bottom: 1px solid var(--line-soft);
@@ -244,9 +336,12 @@ h1, h2, h3, strong { font-weight: 600; }
     border-radius: var(--radius-md);
     display: grid;
     place-items: center;
-    transition: .18s var(--ease);
+    transition: 0.18s var(--ease);
   }
-  .icon-button:hover { color: var(--text); border-color: var(--copper); }
+  .icon-button:hover {
+    color: var(--text);
+    border-color: var(--copper);
+  }
 
   .text-link {
     color: var(--muted);
@@ -257,30 +352,66 @@ h1, h2, h3, strong { font-weight: 600; }
     background: transparent;
     font-size: var(--fs-mono);
     padding: 0;
-    transition: .18s var(--ease);
+    transition: 0.18s var(--ease);
   }
-  .text-link:hover { color: var(--copper-bright); }
+  .text-link:hover {
+    color: var(--copper-bright);
+  }
 
-  .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; }
+  .page-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+  }
   .page-head h1 {
-    font: 800 var(--fs-display)/1.02 Syne, sans-serif;
-    letter-spacing: -.045em;
+    font:
+      800 var(--fs-display)/1.02 Syne,
+      sans-serif;
+    letter-spacing: -0.045em;
     margin: 10px 0 9px;
   }
-  .page-head p { color: var(--muted); font-size: var(--fs-body); }
+  .page-head p {
+    color: var(--muted);
+    font-size: var(--fs-body);
+  }
 
-  .panel-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; }
+  .panel-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+  }
 
-  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); }
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+  }
   .stat {
     display: grid;
   }
-  .stat-top { display: flex; justify-content: space-between; color: var(--muted); font-size: var(--fs-mono); }
-  .stat-icon { color: var(--copper); }
-  .stat strong { font: var(--fw-strong) var(--fs-title) 'JetBrains Mono', monospace; }
-  .stat small { color: var(--muted); font-size: var(--fs-mono); }
+  .stat-top {
+    display: flex;
+    justify-content: space-between;
+    color: var(--muted);
+    font-size: var(--fs-mono);
+  }
+  .stat-icon {
+    color: var(--copper);
+  }
+  .stat strong {
+    font:
+      var(--fw-strong) var(--fs-title) "JetBrains Mono",
+      monospace;
+  }
+  .stat small {
+    color: var(--muted);
+    font-size: var(--fs-mono);
+  }
 
-  .activity-list { display: grid; }
+  .activity-list {
+    display: grid;
+  }
   .activity-row {
     display: grid;
     align-items: center;
@@ -290,8 +421,15 @@ h1, h2, h3, strong { font-weight: 600; }
     width: 100%;
     text-align: left;
   }
-  .activity-row > div { display: grid; gap: 4px; min-width: 0; }
-  .activity-row strong { font-size: var(--fs-body); font-weight: var(--fw-label); }
+  .activity-row > div {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+  }
+  .activity-row strong {
+    font-size: var(--fs-body);
+    font-weight: var(--fw-label);
+  }
 
   .agent-row {
     display: grid;
@@ -304,25 +442,51 @@ h1, h2, h3, strong { font-weight: 600; }
     color: var(--text);
     text-align: left;
     padding: 14px 18px;
-    transition: .18s var(--ease);
+    transition: 0.18s var(--ease);
   }
-  .agent-row:hover { background: rgba(210, 139, 82, .05); }
-  .agent-row:last-child, .activity-row:last-child { border-bottom: 0; }
+  .agent-row:hover {
+    background: rgba(210, 139, 82, 0.05);
+  }
+  .agent-row:last-child,
+  .activity-row:last-child {
+    border-bottom: 0;
+  }
 
-  .filters { display: flex; gap: 5px; align-items: center; }
-  .filter { border: 0; background: transparent; color: var(--dim); padding: 7px 9px; font-size: var(--fs-mono); font-weight: var(--fw-label); }
-  .filter.active { color: var(--text); background: var(--panel); border: 1px solid var(--line); }
+  .filters {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+  }
+  .filter {
+    border: 0;
+    background: transparent;
+    color: var(--dim);
+    padding: 7px 9px;
+    font-size: var(--fs-mono);
+    font-weight: var(--fw-label);
+  }
+  .filter.active {
+    color: var(--text);
+    background: var(--panel);
+    border: 1px solid var(--line);
+  }
 
-  .field { display: grid; gap: 8px; }
+  .field {
+    display: grid;
+    gap: 8px;
+  }
   .field-control {
     display: flex;
     align-items: center;
     border: 1px solid var(--line);
     background: var(--bg-2);
     border-radius: var(--radius-md);
-    transition: .18s var(--ease);
+    transition: 0.18s var(--ease);
   }
-  .field-control:focus-within { border-color: var(--copper); box-shadow: 0 0 0 3px rgba(210, 139, 82, .1); }
+  .field-control:focus-within {
+    border-color: var(--copper);
+    box-shadow: 0 0 0 3px rgba(210, 139, 82, 0.1);
+  }
   .field input {
     width: 100%;
     border: 0;
@@ -332,21 +496,42 @@ h1, h2, h3, strong { font-weight: 600; }
     padding: 12px;
     min-width: 0;
   }
-  .field input::placeholder { color: var(--dim); }
-  .field-control em { padding-right: 12px; color: var(--copper); font: 500 var(--fs-mono) 'JetBrains Mono', monospace; font-style: normal; }
-  .field-hint, .field-message { color: var(--dim); font-size: var(--fs-small); line-height: var(--support-leading); }
-  .field-error .field-control { border-color: var(--danger); }
-  .field-message { color: var(--danger); }
+  .field input::placeholder {
+    color: var(--dim);
+  }
+  .field-control em {
+    padding-right: 12px;
+    color: var(--copper);
+    font:
+      500 var(--fs-mono) "JetBrains Mono",
+      monospace;
+    font-style: normal;
+  }
+  .field-hint,
+  .field-message {
+    color: var(--dim);
+    font-size: var(--fs-small);
+    line-height: var(--support-leading);
+  }
+  .field-error .field-control {
+    border-color: var(--danger);
+  }
+  .field-message {
+    color: var(--danger);
+  }
 
-  
-  .copper { color: var(--copper-bright); }
+  .copper {
+    color: var(--copper-bright);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: .01ms !important;
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: .01ms !important;
+    transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
 }

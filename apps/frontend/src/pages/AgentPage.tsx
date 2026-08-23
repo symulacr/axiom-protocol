@@ -167,14 +167,14 @@ export function AgentPage({
           <Bot size={28} />
         </div>
         <div>
-          <span className="eyebrow">{agentCopy.operatingBalance}</span>
           <strong>{vaultBalance}</strong>
           <small>
+            {agentCopy.operatingBalance} ·{" "}
             {strategyBound
               ? interpolate(agentCopy.vaultRoute, {
                   chainName: APP_CHAIN.name,
                 })
-              : "no strategy bound"}
+              : agentCopy.noStrategy}
           </small>
         </div>
         {/* (duplication map #2): the dataHash block here was the second
@@ -209,11 +209,6 @@ export function AgentPage({
       {tab === "overview" && (
         <div className="agent-grid">
           <section className="panel agent-identity-card">
-            {/* panel eyebrows that restated the
-                h2 beneath them are gone (overview/command/execute/payments/
-                activity). The head OPERATING BALANCE label stays — it labels
-                a bare value — as do the payments token/earnings/royalty
-                labels. */}
             <h2>{agentCopy.agentRecord}</h2>
             <dl className="provenance-list">
               <div>
@@ -387,24 +382,24 @@ export function AgentPage({
           <h2>{agentCopy.valueRouteFor(agentName)}</h2>
           <div className="receipt-grid">
             <div>
-              <span className="eyebrow">{agentCopy.token}</span>
               <strong>{paymentSymbol}</strong>
+              <small>{agentCopy.token}</small>
             </div>
             <div>
-              <span className="eyebrow">{agentCopy.earnings}</span>
               <strong>
                 {earnings
                   ? `${formatUnits(BigInt(earnings.earnings), paymentToken?.decimals ?? 6)} ${paymentSymbol}`
                   : "—"}
               </strong>
+              <small>{agentCopy.earnings}</small>
             </div>
             <div>
-              <span className="eyebrow">{agentCopy.royalty}</span>
               <strong>
                 {paymentConfig
                   ? `${Number(paymentConfig.protocolFeeBps) / 100}%`
                   : "—"}
               </strong>
+              <small>{agentCopy.royalty}</small>
             </div>
           </div>
           <Button

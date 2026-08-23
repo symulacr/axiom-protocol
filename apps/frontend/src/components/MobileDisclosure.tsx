@@ -3,14 +3,12 @@ import { ChevronDown } from "./axiom/icons";
 
 type MobileDisclosureProps = {
   className?: string;
-  eyebrow?: string;
   title: string;
   children: ReactNode;
 };
 
 export function MobileDisclosure({
   className = "",
-  eyebrow,
   title,
   children,
 }: MobileDisclosureProps) {
@@ -26,7 +24,6 @@ export function MobileDisclosure({
     >
       <summary>
         <span>
-          {eyebrow && <small className="eyebrow">{eyebrow}</small>}
           <strong>{title}</strong>
         </span>
         <ChevronDown size={17} aria-hidden="true" />

@@ -277,7 +277,6 @@ function Sidebar({
       </nav>
       <div className="network-card">
         <div>
-          <span className="eyebrow">{copy.topbar.network}</span>
           <strong>
             <i />
             {APP_CHAIN.name}
@@ -466,7 +465,6 @@ function Topbar({
         >
           <Menu size={18} />
         </button>
-        <span className="eyebrow">{route.toUpperCase()} / AXIOM</span>
       </div>
       <div className="topbar-actions">
         <CommandCenter

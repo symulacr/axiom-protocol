@@ -129,13 +129,6 @@
 	min-width: 0;
 }
 
-.seo-hero-copy .eyebrow,
-.seo-link-field .eyebrow {
-  color: var(--completion-bright, #f1b879);
-  font: 500 var(--fs-mono)/1 "JetBrains Mono", monospace;
-  letter-spacing: 0.13em;
-}
-
 .seo-hero h1 {
 	max-inline-size: 11.5ch;
 	margin: var(--space-4) 0 var(--space-5);
@@ -360,7 +353,7 @@
   padding: var(--space-4) 0 var(--space-5);
   border-top: 1px solid rgba(233, 226, 217, 0.16);
   color: #86817b;
-  font: 10px/1.4 "JetBrains Mono", monospace;
+  font: var(--fs-mono)/1.4 "JetBrains Mono", monospace;
   letter-spacing: 0.05em;
 }
 

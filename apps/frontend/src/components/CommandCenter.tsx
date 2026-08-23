@@ -237,7 +237,7 @@ export function CommandCenter({
               onKeyDown={handlePanelKeyDown}
             >
               <div className="command-center-head">
-                <span className="eyebrow">{cmd.title}</span>
+                <strong>{cmd.title}</strong>
                 <button
                   className="icon-button command-center-close"
                   onClick={close}

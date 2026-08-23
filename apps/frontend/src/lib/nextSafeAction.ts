@@ -9,7 +9,6 @@ import type { Copy } from "./copy";
 
 export type NextSafeAction = {
   id: "recover-receipt" | "fund-agent" | "inspect-storage";
-  eyebrow: string;
   title: string;
   summary: string;
   impact: string;
@@ -51,7 +50,6 @@ export function getNextSafeActions(
   if (recoverable) {
     actions.push({
       id: "recover-receipt",
-      eyebrow: strip.reviewEyebrow,
       title: strip.reviewTitle(recoverable.kind),
       summary: strip.reviewSummary,
       impact: strip.reviewImpact,
@@ -65,7 +63,6 @@ export function getNextSafeActions(
 
   actions.push({
     id: "fund-agent",
-    eyebrow: strip.nextEyebrow,
     title: fundTarget ? strip.fundTitle(fundTarget.tokenId) : strip.fundTitle(),
     summary: strip.fundSummary,
     impact: strip.fundImpact,
@@ -80,7 +77,6 @@ export function getNextSafeActions(
 
   actions.push({
     id: "inspect-storage",
-    eyebrow: strip.proofCheckEyebrow,
     title: strip.inspectTitle,
     summary: strip.inspectSummary,
     impact: strip.inspectImpact,

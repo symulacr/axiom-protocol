@@ -179,7 +179,6 @@
 .public-locked .locked-evidence::before { content: "ACTIVE ROUTE / PROOF FRAME"; position: absolute; top: 12px; right: -46px; color: rgba(199,116,53,.38); font: var(--fw-strong) var(--fs-mono)/1 var(--font-mono, monospace); letter-spacing: .12em; transform: rotate(90deg); transform-origin: center; }
 .public-locked .locked-preview { position: relative; border-left: 0; }
 .public-locked .locked-preview strong { display: none; }
-.public-locked .locked-preview .eyebrow { display: inline-flex; padding: .28rem .42rem; color: var(--copper-bright, #e6aa78); border: 1px solid rgba(199,116,53,.45); background: rgba(10,9,8,.56); }
 .public-locked .locked-preview small { max-width: 25ch; color: var(--text, #e8dfd4); font: var(--fw-strong) var(--fs-mono)/1.35 var(--font-mono, monospace); }
 .public-locked .locked-evidence-row { grid-template-columns: minmax(0, 1fr); min-height: 68px; border-left: 0; }
 .public-locked .locked-evidence-row > div { position: relative; padding-left: .75rem; }

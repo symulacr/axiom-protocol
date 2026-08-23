@@ -881,9 +881,6 @@ export function FlowPage({
     <div className={`ops-page flow-page flow-${kind}`}>
       <div className="page-head">
         <div>
-          {/* the page-head eyebrow restated the
-              h1 ("MINT / PROVENANCE BOUNDARY" over the Mint title). The
-              intent-banner and stage labels stay — they carry state. */}
           <h1>{flow.title}</h1>
           <p>{flow.copy}</p>
         </div>
@@ -899,10 +896,7 @@ export function FlowPage({
       {intentCopy && (
         <div className="flow-intent-banner">
           <ShieldCheck size={15} />
-          <div>
-            <span className="eyebrow">{f.intentEyebrow}</span>
-            <strong>{intentCopy}</strong>
-          </div>
+          <strong>{intentCopy}</strong>
           <span className="mono">agent / {selectedTokenId || "—"}</span>
         </div>
       )}
@@ -912,7 +906,6 @@ export function FlowPage({
           <div className="flow-stage-top">
             <span className="flow-symbol">{meta.icon}</span>
             <div>
-              <span className="eyebrow">{f.stageEyebrow}</span>
               <h2>
                 {draft.phase === "receipt" ? receiptHeading : f.stageTitle}
               </h2>
@@ -928,7 +921,6 @@ export function FlowPage({
           <div className="flow-visual">
             <img src={meta.media} alt={flow.title} />
             <div className="flow-visual-overlay">
-              <span className="eyebrow">{meta.artifact}</span>
               <strong>
                 {draft.phase === "receipt"
                   ? receiptOverlay
@@ -936,10 +928,6 @@ export function FlowPage({
                     ? f.reviewOpenLabel
                     : f.detailsEditable}
               </strong>
-              {/* the overlay's
-                  "chain N · live wallet" mono line duplicated the sidebar
-                  rail's network card — removed; the review sheet keeps its
-                  network fact row where it is decision data. */}
             </div>
           </div>
 
@@ -1097,7 +1085,7 @@ export function FlowPage({
           {kind === "tick" &&
             (tickHook.isStreaming || tickHook.streamedTokens) && (
               <div className="tick-stream" aria-live="polite">
-                <span className="eyebrow">{f.streamEyebrow}</span>
+                <span className="visually-hidden">{f.streamLabel}</span>
                 <pre className="mono">
                   {tickHook.streamedTokens || "…"}
                   {tickHook.isStreaming && (
@@ -1132,10 +1120,6 @@ export function FlowPage({
                   <Timer size={17} />
                 )}
                 <div>
-                  <span className="eyebrow">
-                    RECEIPT /{" "}
-                    {(copy.status[receiptState] ?? receiptState).toUpperCase()}
-                  </span>
                   <strong>{truncateHex(draft.receiptId || "", 12, 8)}</strong>
                   <small>{receiptBody}</small>
                 </div>
@@ -1202,7 +1186,6 @@ export function FlowPage({
         </section>
 
         <aside className="flow-context panel">
-          <span className="eyebrow">{f.evidenceBoundary}</span>
           <h2>{flow.contextTitle}</h2>
           <ol className="passive-proof-timeline">
             {proofSteps.map((step, index) => (
