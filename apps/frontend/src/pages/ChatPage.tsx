@@ -50,6 +50,7 @@ import {
 } from "../utils/format.js";
 import {
   createMessage,
+  parseToolArguments,
   toMessages,
   loadJsonArray,
   titleFromMessages,
@@ -1096,12 +1097,7 @@ function ChatPageInner(): ReactElement {
               tc.id ||
               `${tc.function.name}-${Math.random().toString(36).slice(2)}`;
             if (!tc.id) tc.id = id;
-            let parsedArgs: Record<string, unknown> = {};
-            try {
-              parsedArgs = JSON.parse(tc.function.arguments?.trim() || "{}");
-            } catch {
-              void 0;
-            }
+            const parsedArgs = parseToolArguments(tc.function.arguments);
             toolRunsRef.current[id] = {
               name: tc.function.name,
               status: "running",
@@ -1129,9 +1125,7 @@ function ChatPageInner(): ReactElement {
                   };
                 }
                 try {
-                  const args = JSON.parse(
-                    tc.function.arguments?.trim() || "{}",
-                  );
+                  const args = parseToolArguments(tc.function.arguments);
                   // transfer is user-paced (modal form + wallet prompts), not a backend call — no timeout
                   const result = await handler(args, liveToolCtx);
                   recordToolResult(tc.function.name, result);

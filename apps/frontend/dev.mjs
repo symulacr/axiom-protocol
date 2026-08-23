@@ -6,11 +6,32 @@
 //    localhost URLs, mirrors prod server)
 //  - Hot reload via `bun --hot run dev.mjs` (the runtime reloads on file change)
 import { serve } from "bun";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
+import { readFile } from "node:fs/promises";
 
 const frontendDir = import.meta.dirname;
 const BACKEND = process.env.PROXY_BACKEND_URL ?? "http://127.0.0.1:3000";
 const PORT = Number(process.env.PORT) || 5173;
+
+// VITE_* from the repo-root .env (single source of truth, same as build.mjs)
+// with shell-exported VITE_* taking precedence for one-off overrides. Without
+// this the dev build silently fell back to wagmi's mainnet default while the
+// backend/contracts target the env-selected chain.
+let rootViteVars = {};
+try {
+  const envSrc = await readFile(resolve(frontendDir, "../../.env"), "utf8");
+  for (const line of envSrc.split("\n")) {
+    const key = /^VITE_[A-Z_]+(?==)/.exec(line)?.[0];
+    if (key) rootViteVars[key] = line.slice(key.length + 1);
+  }
+} catch {
+  // no root .env — dev runs on explicit process.env only
+}
+const viteDefines = Object.fromEntries(
+  Object.entries({ ...rootViteVars, ...process.env })
+    .filter(([k]) => k.startsWith("VITE_"))
+    .map(([k, v]) => [`import.meta.env.${k}`, JSON.stringify(v)]),
+);
 
 // Dev build of the entry (no minify, sourcemaps, per-file chunks) written to
 // disk in dist-dev/. `bun --hot` restarts this module on source change.
@@ -24,11 +45,7 @@ const build = await Bun.build({
   define: {
     "import.meta.env.MODE": JSON.stringify("development"),
     "import.meta.env": JSON.stringify({ MODE: "development" }),
-    ...Object.fromEntries(
-      Object.entries(process.env)
-        .filter(([k]) => k.startsWith("VITE_"))
-        .map(([k, v]) => [`import.meta.env.${k}`, JSON.stringify(v)]),
-    ),
+    ...viteDefines,
   },
 });
 if (!build.success) {

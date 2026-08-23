@@ -344,9 +344,8 @@ const agentsListResponseRef = reg("AgentListResponse", z.object({ owner: address
 const registryStatsRef = reg(
   "AgentRegistryStats",
   z.object({
-    totalMinted: z.number().int().nonnegative().meta({ description: "Distinct agent token IDs minted on-chain" }),
+    totalMinted: z.number().int().nonnegative().meta({ description: "Distinct agent token IDs minted on-chain (full-range log scan)" }),
     latestTokenId: z.string().nullable().meta({ description: "Highest minted token ID (null when registry is empty)" }),
-    scannedFromBlock: z.number().int().nonnegative(),
   }),
 );
 

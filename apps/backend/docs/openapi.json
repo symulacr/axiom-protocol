@@ -1087,7 +1087,7 @@
           "totalMinted": {
             "type": "integer",
             "minimum": 0,
-            "description": "Distinct agent token IDs minted on-chain"
+            "description": "Distinct agent token IDs minted on-chain (full-range log scan)"
           },
           "latestTokenId": {
             "type": [
@@ -1095,16 +1095,11 @@
               "null"
             ],
             "description": "Highest minted token ID (null when registry is empty)"
-          },
-          "scannedFromBlock": {
-            "type": "integer",
-            "minimum": 0
           }
         },
         "required": [
           "totalMinted",
-          "latestTokenId",
-          "scannedFromBlock"
+          "latestTokenId"
         ]
       },
       "TransferChallengeStage": {

@@ -302,25 +302,15 @@ export function registerAgentRoutes(
       }
       try {
         // Mints are Transfer logs with the zero address as `from` (topic1).
+        // Full-range indexed query: a recent-window scan would undercount
+        // registries whose older mints fall outside the window.
         const zeroPad = "0x" + "0".repeat(64);
-        const latest = await provider.getBlockNumber();
-        let fromBlock = Math.max(0, latest - AGENT_LOG_SCAN_BLOCKS);
-        let mintLogs = await provider.getLogs({
+        const mintLogs = await provider.getLogs({
           address: nftAddr,
-          fromBlock,
+          fromBlock: 0,
           toBlock: "latest",
           topics: [TRANSFER_TOPIC, zeroPad],
         });
-        if (mintLogs.length === 0 && fromBlock > 0) {
-          // Registry older than the scan window — pay for the full range.
-          fromBlock = 0;
-          mintLogs = await provider.getLogs({
-            address: nftAddr,
-            fromBlock,
-            toBlock: "latest",
-            topics: [TRANSFER_TOPIC, zeroPad],
-          });
-        }
         const tokenIds = new Set<bigint>();
         let latestTokenId = 0n;
         for (const logEntry of mintLogs) {
@@ -333,7 +323,6 @@ export function registerAgentRoutes(
         const stats = {
           totalMinted: tokenIds.size,
           latestTokenId: tokenIds.size > 0 ? latestTokenId.toString() : null,
-          scannedFromBlock: fromBlock,
         };
         mintStatsCache.set("global", stats);
         res.json(stats);
