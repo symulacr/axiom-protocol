@@ -3172,7 +3172,7 @@ const german: Copy = {
   },
 };
 
-export const copyByLocale: Record<Locale, Copy> = {
+const copyByLocale: Record<Locale, Copy> = {
   en: english,
   fr: french,
   de: german,

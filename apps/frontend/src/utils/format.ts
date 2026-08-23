@@ -62,15 +62,6 @@ export function formatTokenAmount(
   });
 }
 
-export function parseTokenId(raw: string | undefined): bigint | null {
-  if (raw === undefined || raw === "") return null;
-  try {
-    return BigInt(raw);
-  } catch {
-    return null;
-  }
-}
-
 export function humanizeError(err: unknown): string {
   const full = err instanceof Error ? err.message : String(err);
   // viem and backend dumps append implementation noise after the actual

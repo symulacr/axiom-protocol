@@ -152,13 +152,12 @@ const FEATURE_ALIAS_TO_CANONICAL: Record<string, string> = {
   "/features/developers": "/developers",
 };
 
-export const PUBLIC_SEO_ROUTES: Record<string, PublicSeoSlug> =
-  Object.fromEntries(
-    ROUTES.filter(
-      (entry): entry is RouteDefinition & { publicSlug: PublicSeoSlug } =>
-        Boolean(entry.publicSlug),
-    ).map((entry) => [entry.path, entry.publicSlug]),
-  );
+const PUBLIC_SEO_ROUTES: Record<string, PublicSeoSlug> = Object.fromEntries(
+  ROUTES.filter(
+    (entry): entry is RouteDefinition & { publicSlug: PublicSeoSlug } =>
+      Boolean(entry.publicSlug),
+  ).map((entry) => [entry.path, entry.publicSlug]),
+);
 
 /** Public hub slug for a request path, following /features/* aliases. */
 export function resolvePublicSeoSlug(path: string): PublicSeoSlug | null {
@@ -167,7 +166,7 @@ export function resolvePublicSeoSlug(path: string): PublicSeoSlug | null {
   return PUBLIC_SEO_ROUTES[canonical] ?? null;
 }
 
-export const INDEXABLE_PATHS = new Set(
+const INDEXABLE_PATHS = new Set(
   ROUTES.filter((entry) => entry.indexable).map((entry) => entry.path),
 );
 

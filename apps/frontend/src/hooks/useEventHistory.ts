@@ -26,7 +26,7 @@ export function eventDedupeKey(ev: AxiomEvent): string {
   return `${ev.chainId}:${ev.txHash}:${ev.logIndex}`;
 }
 
-export function sortEventsChronological(a: AxiomEvent, b: AxiomEvent): number {
+function sortEventsChronological(a: AxiomEvent, b: AxiomEvent): number {
   return (
     a.blockNumber - b.blockNumber ||
     a.logIndex - b.logIndex ||

@@ -71,7 +71,7 @@ export class HandoffSignatureInvalidError extends Error {
   }
 }
 
-export function isHandoffSignatureInvalid(
+function isHandoffSignatureInvalid(
   err: unknown,
 ): err is HandoffSignatureInvalidError {
   return (

@@ -205,7 +205,7 @@ export const defaultOperationState: OperationState = {
   ) as Record<FlowKind, OperationDraft>,
 };
 
-export function sanitizeOperationState(value: OperationState): OperationState {
+function sanitizeOperationState(value: OperationState): OperationState {
   const now = Date.now();
   const pendingIntent =
     value.pendingIntent &&

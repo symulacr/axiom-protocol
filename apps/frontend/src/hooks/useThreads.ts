@@ -52,7 +52,7 @@ function emit(): void {
   for (const l of listeners) l();
 }
 
-export function getThreads(): ChatThread[] {
+function getThreads(): ChatThread[] {
   return cache;
 }
 
