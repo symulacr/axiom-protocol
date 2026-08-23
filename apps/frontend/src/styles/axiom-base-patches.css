@@ -31,10 +31,10 @@
 .state-progress i { width:54px; height:3px; background:var(--line); }
 .state-progress i:first-child { background:var(--copper); animation:progress-pulse 1.2s infinite; }
 .network-check,.signature-preview { display:grid; gap:var(--space-1); padding:var(--space-4); margin:var(--space-2) 0 var(--space-2); border-left:2px solid var(--copper); background:var(--panel-2); }
-.network-check span,.signature-preview small { color:var(--dim); font:500 var(--fs-mono) 'JetBrains Mono',monospace; text-transform:uppercase; letter-spacing:.08em; }
+.network-check span { color:var(--dim); font:500 var(--fs-mono) 'JetBrains Mono',monospace; letter-spacing:.08em; }
+.signature-preview small { font-family:Inter,sans-serif; }
 .network-check strong { font:var(--fw-title) var(--fs-body) Syne,sans-serif; }
 .network-check small { color:var(--muted); font-size:var(--fs-small); }
-.signature-preview small { text-transform:none; letter-spacing:0; font-family:Inter,sans-serif; }
 .guide-media { position:relative; min-height:390px; overflow:hidden; background:#0c1011; }
 .guide-media img { width:100%; height:100%; object-fit:cover; opacity:.78; mix-blend-mode:screen; }
 .guide-media:after { content:""; position:absolute; inset:0; background:linear-gradient(180deg,transparent 40%,rgba(8,10,11,.72)); }

@@ -127,6 +127,10 @@ export type Copy = {
     wrongNetworkDescription: string;
     /** Placeholder: `{chainName}`. */
     switchNetwork: string;
+    networkMismatch: string;
+    /** Placeholders: `{chainId}`, then `{chainName}` + `{chainId}`. */
+    connectedChain: string;
+    requiredChain: string;
     approveSignature: string;
     rejectSignature: string;
     profileTitle: string;
@@ -792,6 +796,9 @@ const english: Copy = {
     wrongNetworkTitle: "Switch to {chainName}.",
     wrongNetworkDescription: "Your wallet is on another network.",
     switchNetwork: "Switch to {chainName}",
+    networkMismatch: "Network mismatch",
+    connectedChain: "Connected: chain {chainId}",
+    requiredChain: "Required: {chainName} · chain {chainId}",
     approveSignature: "Approve signature",
     rejectSignature: "Reject signature",
     profileTitle: "Name the local profile.",
@@ -1537,6 +1544,9 @@ const french: Copy = {
     wrongNetworkDescription:
       "Le wallet est connecté, mais utilise un autre réseau. Changez de réseau avant de signer le message d’accès.",
     switchNetwork: "Passer sur {chainName}",
+    networkMismatch: "Mauvais réseau",
+    connectedChain: "Connecté : chaîne {chainId}",
+    requiredChain: "Requis : {chainName} · chaîne {chainId}",
     approveSignature: "Approuver la signature",
     rejectSignature: "Refuser la signature",
     profileTitle: "Nommez le profil local.",
@@ -2325,6 +2335,9 @@ const german: Copy = {
     wrongNetworkDescription:
       "Das Wallet ist verbunden, verwendet aber ein anderes Netzwerk. Wechsle vor der Signatur der Zugriffsnachricht.",
     switchNetwork: "Zu {chainName} wechseln",
+    networkMismatch: "Falsches Netzwerk",
+    connectedChain: "Verbunden: Chain {chainId}",
+    requiredChain: "Erforderlich: {chainName} · Chain {chainId}",
     approveSignature: "Signatur bestätigen",
     rejectSignature: "Signatur ablehnen",
     profileTitle: "Lokales Profil benennen.",

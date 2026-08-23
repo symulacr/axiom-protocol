@@ -311,10 +311,17 @@ export function WalletGate({
               <h2>{interpolate(copy.wallet.wrongNetworkTitle, chainVars)}</h2>
               <p>{copy.wallet.wrongNetworkDescription}</p>
               <div className="network-check">
-                <span>Network mismatch</span>
-                <strong>Connected: chain {chainId ?? "unknown"}</strong>
+                <span>{copy.wallet.networkMismatch}</span>
+                <strong>
+                  {interpolate(copy.wallet.connectedChain, {
+                    chainId: String(chainId ?? "unknown"),
+                  })}
+                </strong>
                 <small>
-                  Required: {APP_CHAIN.name} · chain {APP_CHAIN_ID}
+                  {interpolate(copy.wallet.requiredChain, {
+                    chainName: APP_CHAIN.name,
+                    chainId: String(APP_CHAIN_ID),
+                  })}
                 </small>
               </div>
               <Button

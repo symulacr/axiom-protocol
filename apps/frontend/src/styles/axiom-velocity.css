@@ -122,7 +122,7 @@
 .review-decision strong { color: var(--text, #e8dfd4); font-size: var(--fs-body); line-height: 1.42; }
 .review-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .7rem; margin: 0; }
 .review-facts div { min-width: 0; padding: .62rem .68rem; border: 1px solid rgba(255,255,255,.09); background: rgba(255,255,255,.025); }
-.review-facts dt { color: var(--dim, #998d7d); font: 500 var(--fs-mono)/1 var(--font-mono, monospace); letter-spacing: .08em; text-transform: uppercase; }
+.review-facts dt { color: var(--dim, #998d7d); font: 500 var(--fs-mono)/1 var(--font-mono, monospace); }
 .review-facts dd { overflow-wrap: anywhere; margin: .3rem 0 0; color: var(--text, #e8dfd4); font-size: var(--fs-small); line-height: var(--support-leading); }
 .review-proof, .review-error { display: flex; gap: .45rem; align-items: flex-start; padding: .68rem; color: var(--muted, #cfc4b5); border: 1px solid rgba(103,232,180,.2); font-size: var(--fs-small); line-height: 1.4; }
 .review-proof svg { flex: 0 0 auto; color: var(--phosphor); }
@@ -157,7 +157,7 @@
 .transfer-modal-body form { display: grid; gap: .7rem; }
 .transfer-modal-lede { margin: 0; color: var(--muted, #cfc4b5); font-size: var(--fs-body); line-height: 1.5; }
 .transfer-modal-details { border: 1px solid rgba(255,255,255,.1); padding: .6rem .7rem; }
-.transfer-modal-details summary { cursor: pointer; color: var(--dim, #998d7d); font: 500 var(--fs-mono)/1 var(--font-mono, monospace); letter-spacing: .06em; text-transform: uppercase; }
+.transfer-modal-details summary { cursor: pointer; color: var(--dim, #998d7d); font: 500 var(--fs-mono)/1 var(--font-mono, monospace); }
 .transfer-modal-details[open] { display: grid; gap: .6rem; }
 .review-actions { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; }
 .review-disclaimer { margin: 0; color: var(--dim, #998d7d); font-size: var(--fs-small); line-height: 1.4; }
