@@ -136,6 +136,7 @@ export function registerAgentRoutes(
 ): void {
   const agentListTtlMs = envInt("AXIOM_AGENT_LIST_CACHE_MS", 120_000);
   const agentCache = new TTLCache<unknown>(agentListTtlMs);
+  const mintStatsCache = new TTLCache<unknown>(60_000);
 
   // Env-required at boot (backendEnvSchema); a missing PK fails loudly here
   // instead of silently zeroing the signer (audit F3.2/M2).
@@ -271,6 +272,74 @@ export function registerAgentRoutes(
       const result = { owner, agents: tokens };
       agentCache.set(owner, result);
       res.json(result);
+    },
+    config,
+  );
+
+  createRoute(
+    app,
+    {
+      path: "/v1/agents/stats",
+      method: "get",
+      consumer: "public-seo-hub",
+      description:
+        "Real on-chain agent registry stats: distinct mints + latest tokenId (60s cache)",
+    },
+    async (_parsed: unknown, _req: Request, res: Response) => {
+      const nftAddr = config.addresses?.agentNft;
+      if (!nftAddr) {
+        sendError(
+          res,
+          HTTP.SERVICE_UNAVAILABLE,
+          "Agent NFT address not configured",
+        );
+        return;
+      }
+      const cached = mintStatsCache.get("global");
+      if (cached) {
+        res.json(cached);
+        return;
+      }
+      try {
+        // Mints are Transfer logs with the zero address as `from` (topic1).
+        const zeroPad = "0x" + "0".repeat(64);
+        const latest = await provider.getBlockNumber();
+        let fromBlock = Math.max(0, latest - AGENT_LOG_SCAN_BLOCKS);
+        let mintLogs = await provider.getLogs({
+          address: nftAddr,
+          fromBlock,
+          toBlock: "latest",
+          topics: [TRANSFER_TOPIC, zeroPad],
+        });
+        if (mintLogs.length === 0 && fromBlock > 0) {
+          // Registry older than the scan window — pay for the full range.
+          fromBlock = 0;
+          mintLogs = await provider.getLogs({
+            address: nftAddr,
+            fromBlock,
+            toBlock: "latest",
+            topics: [TRANSFER_TOPIC, zeroPad],
+          });
+        }
+        const tokenIds = new Set<bigint>();
+        let latestTokenId = 0n;
+        for (const logEntry of mintLogs) {
+          const rawTid = logEntry.topics[3];
+          if (!rawTid) continue;
+          const tokenId = BigInt(rawTid);
+          tokenIds.add(tokenId);
+          if (tokenId > latestTokenId) latestTokenId = tokenId;
+        }
+        const stats = {
+          totalMinted: tokenIds.size,
+          latestTokenId: tokenIds.size > 0 ? latestTokenId.toString() : null,
+          scannedFromBlock: fromBlock,
+        };
+        mintStatsCache.set("global", stats);
+        res.json(stats);
+      } catch (err) {
+        sendError(res, HTTP.BAD_GATEWAY, extractErrorMessage(err));
+      }
     },
     config,
   );

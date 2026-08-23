@@ -341,6 +341,15 @@ const agentSummaryRef = reg(
 );
 const agentsListResponseRef = reg("AgentListResponse", z.object({ owner: addressStr, agents: z.array(agentSummaryRef) }));
 
+const registryStatsRef = reg(
+  "AgentRegistryStats",
+  z.object({
+    totalMinted: z.number().int().nonnegative().meta({ description: "Distinct agent token IDs minted on-chain" }),
+    latestTokenId: z.string().nullable().meta({ description: "Highest minted token ID (null when registry is empty)" }),
+    scannedFromBlock: z.number().int().nonnegative(),
+  }),
+);
+
 const transferChallengeStageRef = reg(
   "TransferChallengeStage",
   z.object({
@@ -999,6 +1008,18 @@ const ROUTES = [
       "200": okResp("Agents", agentsListResponseRef),
       "400": errorResp("Valid owner address required"),
       "503": errorResp("AgentNFT address not configured", ["ADDRESS_NOT_CONFIGURED"]),
+    },
+  },
+  {
+    method: "get",
+    path: "/v1/agents/stats",
+    summary:
+      "Real on-chain agent registry stats: distinct mints + latest tokenId (60s cache)",
+    security: SEC.serverOrClient,
+    responses: {
+      "200": okResp("AgentStats", registryStatsRef),
+      "502": errorResp("Registry read failure"),
+      "503": errorResp("AgentNFT address not configured"),
     },
   },
   {

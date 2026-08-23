@@ -1,5 +1,6 @@
 /* Copper Command Deck public discovery: evidence-first hubs, route-specific risk artifacts, and explicit console boundary. */
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { apiFetch } from "../utils/apiFetch.js";
 import {
   ArrowRight,
   CheckCircle2,
@@ -12,6 +13,31 @@ import {
 } from "../components/axiom/icons";
 import { AxiomBrandMark } from "../components/axiom/BrandMark";
 import "../styles/axiom-seo-public.css";
+
+/** Live on-chain registry counts for the agents hub artifact — null while
+ *  loading or when the backend is unreachable (card falls back to the
+ *  labeled specimen). */
+interface AgentRegistryStats {
+  totalMinted: number;
+  latestTokenId: string | null;
+}
+
+function useAgentRegistryStats(enabled: boolean): AgentRegistryStats | null {
+  const [stats, setStats] = useState<AgentRegistryStats | null>(null);
+  useEffect(() => {
+    if (!enabled) return;
+    let cancelled = false;
+    apiFetch<AgentRegistryStats>("/v1/agents/stats")
+      .then((d) => {
+        if (!cancelled && typeof d?.totalMinted === "number") setStats(d);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled]);
+  return stats;
+}
 
 export type PublicSeoSlug =
   "agents" | "payments" | "proofs" | "storage" | "developers";
@@ -65,10 +91,11 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
     artifact: {
       label: "PROVENANCE SPECIMEN",
       state: "IDENTITY LINKED",
-      // Truthful placeholders in the console's real formats — never a
-      // fabricated ID (02 FINDING-019).
+      // Fallback rows while /v1/agents/stats is unavailable. When the live
+      // registry read succeeds, real counts replace them (never a fabricated
+      // ID — 02 FINDING-019).
       rows: [
-        ["AGENT", "Agent #7"],
+        ["AGENTS", "registry read…"],
         ["MANIFEST", "hash + metadata"],
         ["LAST RECEIPT", "tx hash + event"],
       ],
@@ -221,6 +248,29 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
 export function PublicSeoPage({ slug }: { slug: PublicSeoSlug }) {
   const page = pages[slug];
   const Icon = page.icon;
+  const liveStats = useAgentRegistryStats(slug === "agents");
+  // Real registry counts replace the specimen rows once the chain read lands.
+  const artifact = (() => {
+    if (slug !== "agents" || !liveStats) return page.artifact;
+    if (liveStats.totalMinted === 0) {
+      return {
+        ...page.artifact,
+        rows: [
+          ["AGENTS", "none minted yet"],
+          ...page.artifact.rows.slice(1),
+        ] as [string, string][],
+      };
+    }
+    return {
+      ...page.artifact,
+      rows: [
+        ["AGENTS ON-CHAIN", String(liveStats.totalMinted)],
+        ["LATEST AGENT", `#${liveStats.latestTokenId ?? "?"}`],
+        ...page.artifact.rows.slice(2),
+      ] as [string, string][],
+    };
+  })();
+  const isLiveData = slug === "agents" && liveStats !== null;
   useEffect(() => {
     document.title = page.metaTitle;
     let description = document.querySelector('meta[name="description"]');
@@ -328,19 +378,19 @@ export function PublicSeoPage({ slug }: { slug: PublicSeoSlug }) {
           <strong>{page.evidenceTitle}</strong>
           <div
             className="seo-evidence-artifact"
-            aria-label={`${page.artifact.label} specimen`}
+            aria-label={`${artifact.label} specimen`}
           >
             <div>
-              <span>{page.artifact.label}</span>
-              <b>{page.artifact.state}</b>
+              <span>{artifact.label}</span>
+              <b>{artifact.state}</b>
             </div>
-            {page.artifact.rows.map(([label, value]) => (
+            {artifact.rows.map(([label, value]) => (
               <p key={label}>
                 <span>{label}</span>
                 <code>{value}</code>
               </p>
             ))}
-            <small>EXAMPLE DATA</small>
+            <small>{isLiveData ? "LIVE CHAIN DATA" : "EXAMPLE DATA"}</small>
           </div>
           <ul>
             {page.evidence.map((item) => (

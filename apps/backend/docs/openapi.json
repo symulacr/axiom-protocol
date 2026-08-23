@@ -1081,6 +1081,32 @@
           "agents"
         ]
       },
+      "AgentRegistryStats": {
+        "type": "object",
+        "properties": {
+          "totalMinted": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Distinct agent token IDs minted on-chain"
+          },
+          "latestTokenId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Highest minted token ID (null when registry is empty)"
+          },
+          "scannedFromBlock": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "totalMinted",
+          "latestTokenId",
+          "scannedFromBlock"
+        ]
+      },
       "TransferChallengeStage": {
         "type": "object",
         "properties": {
@@ -3266,6 +3292,51 @@
           },
           "400": {
             "description": "Maximum 50 agents per batch request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/agents/stats": {
+      "get": {
+        "summary": "Real on-chain agent registry stats: distinct mints + latest tokenId (60s cache)",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "AgentStats",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentRegistryStats"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Registry read failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "AgentNFT address not configured",
             "content": {
               "application/json": {
                 "schema": {
