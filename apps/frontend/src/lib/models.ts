@@ -41,14 +41,7 @@ export type TxState =
   | "rejected"
   | "stale";
 export type SessionState =
-  | "disconnected"
-  | "connecting"
-  | "wrong-network"
-  | "signing"
-  | "profile"
-  | "authenticated"
-  | "rejected"
-  | "timeout";
+  "disconnected" | "wrong-network" | "profile" | "authenticated";
 export type StoragePhase =
   | "ready"
   | "encrypted"

@@ -102,7 +102,6 @@ export type Copy = {
     explorePublicPaths: string;
     walletAccess: string;
     closeWalletAccess: string;
-    walletWaiting: string;
   };
   landing: {
     titleLead: string;
@@ -120,8 +119,6 @@ export type Copy = {
     stripOperateSmall: string;
   };
   wallet: {
-    connectingTitle: string;
-    connectingDescription: string;
     /** Placeholder: `{chainName}` — the TARGET network (APP_CHAIN.name). */
     wrongNetworkTitle: string;
     wrongNetworkDescription: string;
@@ -131,17 +128,10 @@ export type Copy = {
     /** Placeholders: `{chainId}`, then `{chainName}` + `{chainId}`. */
     connectedChain: string;
     requiredChain: string;
-    approveSignature: string;
-    rejectSignature: string;
     profileTitle: string;
     profileDescription: string;
     profileHint: string;
     unlockConsole: string;
-    rejectedTitle: string;
-    rejectedDescription: string;
-    retryConnection: string;
-    timeoutTitle: string;
-    timeoutDescription: string;
   };
   guide: {
     nextStep: string;
@@ -771,7 +761,6 @@ const english: Copy = {
     explorePublicPaths: "Explore public paths",
     walletAccess: "Axiom wallet access",
     closeWalletAccess: "Close wallet access",
-    walletWaiting: "Waiting for wallet response",
   },
   landing: {
     titleLead: "Move with",
@@ -790,28 +779,17 @@ const english: Copy = {
     stripOperateSmall: "Receipts beside action",
   },
   wallet: {
-    connectingTitle: "Reading wallet context.",
-    connectingDescription:
-      "Waiting for the wallet. Nothing has been requested yet.",
     wrongNetworkTitle: "Switch to {chainName}.",
     wrongNetworkDescription: "Your wallet is on another network.",
     switchNetwork: "Switch to {chainName}",
     networkMismatch: "Network mismatch",
     connectedChain: "Connected: chain {chainId}",
     requiredChain: "Required: {chainName} · chain {chainId}",
-    approveSignature: "Approve signature",
-    rejectSignature: "Reject signature",
     profileTitle: "Name the local profile.",
     profileDescription:
       "Name this wallet for yourself. Changeable in Settings.",
     profileHint: "Stored on this device only.",
     unlockConsole: "Unlock console",
-    rejectedTitle: "Access was not granted.",
-    rejectedDescription:
-      "Signature declined. Nothing was sent, so retry when ready.",
-    retryConnection: "Retry wallet connection",
-    timeoutTitle: "No access was granted.",
-    timeoutDescription: "The wallet didn't respond in time. Retry or close.",
   },
   guide: {
     nextStep: "Next step",
@@ -851,7 +829,7 @@ const english: Copy = {
     networkTitle: "Connection problem",
     genericTitle: "Something went wrong",
     networkBody:
-      "Unable to load this section. Check your internet connection and try again.",
+      "Unable to load this section. Retry, or check your connection if it keeps failing.",
     retry: "Try again",
     reload: "Reload page",
   },
@@ -1518,7 +1496,6 @@ const french: Copy = {
     explorePublicPaths: "Explorer les parcours publics",
     walletAccess: "Accès wallet Axiom",
     closeWalletAccess: "Fermer l’accès wallet",
-    walletWaiting: "En attente de la réponse du wallet",
   },
   landing: {
     titleLead: "Avancez avec",
@@ -1537,9 +1514,6 @@ const french: Copy = {
     stripOperateSmall: "Reçus à côté de l’action",
   },
   wallet: {
-    connectingTitle: "Lecture du contexte wallet.",
-    connectingDescription:
-      "Vérification de l’adresse, du connecteur et du réseau cible.",
     wrongNetworkTitle: "Passez sur {chainName}.",
     wrongNetworkDescription:
       "Le wallet est connecté, mais utilise un autre réseau. Changez de réseau avant de signer le message d’accès.",
@@ -1547,20 +1521,11 @@ const french: Copy = {
     networkMismatch: "Mauvais réseau",
     connectedChain: "Connecté : chaîne {chainId}",
     requiredChain: "Requis : {chainName} · chaîne {chainId}",
-    approveSignature: "Approuver la signature",
-    rejectSignature: "Refuser la signature",
     profileTitle: "Nommez le profil local.",
     profileDescription:
       "Ce libellé aide à reconnaître le wallet connecté dans Axiom. Vous pourrez le modifier dans Settings.",
     profileHint: "Enregistré uniquement sur cet appareil.",
     unlockConsole: "Déverrouiller la console",
-    rejectedTitle: "Accès non accordé.",
-    rejectedDescription:
-      "La signature a été refusée ; la console reste verrouillée. Aucune transaction n’a été envoyée.",
-    retryConnection: "Réessayer la connexion wallet",
-    timeoutTitle: "Accès non accordé.",
-    timeoutDescription:
-      "Le wallet ou le réseau n’a pas répondu à temps. Réessayez ou fermez ce panneau.",
   },
   guide: {
     nextStep: "Étape suivante",
@@ -1601,7 +1566,7 @@ const french: Copy = {
     networkTitle: "Problème de connexion",
     genericTitle: "Une erreur est survenue",
     networkBody:
-      "Impossible de charger cette section. Vérifiez votre connexion internet puis réessayez.",
+      "Impossible de charger cette section. Réessayez, ou vérifiez votre connexion si l’erreur persiste.",
     retry: "Réessayer",
     reload: "Recharger la page",
   },
@@ -2309,7 +2274,6 @@ const german: Copy = {
     explorePublicPaths: "Öffentliche Pfade erkunden",
     walletAccess: "Axiom-Wallet-Zugang",
     closeWalletAccess: "Wallet-Zugang schließen",
-    walletWaiting: "Warte auf Wallet-Antwort",
   },
   landing: {
     titleLead: "Handle mit",
@@ -2328,9 +2292,6 @@ const german: Copy = {
     stripOperateSmall: "Belege neben der Aktion",
   },
   wallet: {
-    connectingTitle: "Wallet-Kontext wird gelesen.",
-    connectingDescription:
-      "Adresse, Connector und Zielnetzwerk werden geprüft.",
     wrongNetworkTitle: "Zu {chainName} wechseln.",
     wrongNetworkDescription:
       "Das Wallet ist verbunden, verwendet aber ein anderes Netzwerk. Wechsle vor der Signatur der Zugriffsnachricht.",
@@ -2338,20 +2299,11 @@ const german: Copy = {
     networkMismatch: "Falsches Netzwerk",
     connectedChain: "Verbunden: Chain {chainId}",
     requiredChain: "Erforderlich: {chainName} · Chain {chainId}",
-    approveSignature: "Signatur bestätigen",
-    rejectSignature: "Signatur ablehnen",
     profileTitle: "Lokales Profil benennen.",
     profileDescription:
       "Dieses Label hilft dir, das verbundene Wallet in Axiom zu erkennen. Du kannst es später in Settings ändern.",
     profileHint: "Nur als lokale Prototyp-Einstellung gespeichert.",
     unlockConsole: "Konsole entsperren",
-    rejectedTitle: "Zugriff nicht gewährt.",
-    rejectedDescription:
-      "Die Signatur wurde abgelehnt; die Konsole bleibt gesperrt. Es wurde keine Transaktion gesendet.",
-    retryConnection: "Wallet-Verbindung erneut versuchen",
-    timeoutTitle: "Zugriff nicht gewährt.",
-    timeoutDescription:
-      "Wallet oder Netzwerk haben nicht rechtzeitig geantwortet. Versuche es erneut oder schließe dieses Panel.",
   },
   guide: {
     nextStep: "Nächster Schritt",
@@ -2391,7 +2343,7 @@ const german: Copy = {
     networkTitle: "Verbindungsproblem",
     genericTitle: "Etwas ist schiefgelaufen",
     networkBody:
-      "Dieser Abschnitt ließ sich nicht laden. Prüfen Sie Ihre Internetverbindung und versuchen Sie es erneut.",
+      "Dieser Abschnitt ließ sich nicht laden. Versuchen Sie es erneut, oder prüfen Sie Ihre Verbindung, wenn der Fehler bestehen bleibt.",
     retry: "Erneut versuchen",
     reload: "Seite neu laden",
   },

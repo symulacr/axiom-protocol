@@ -3,9 +3,11 @@
     · resolver-based routing (lib/routeRegistry) with v1 compat redirects
       (/dashboard, /market → /app; ?mint=1 → /mint flow page)
     · AppShell (rail + topbar + Command Center + priority strip + mobile drawer)
-    · live WalletGate: wagmi connect / chain check / SIWE-lite session sign
+    · live WalletGate: wagmi connect (RainbowKit modal) / chain check /
+      optional profile — a verified connection on the app chain is the session
     · internal routes are held behind LockedRoute until the session is
-      authenticated (24h session freshness, persisted in axiom-session)
+      authenticated (24h TTL renewed silently while connected, persisted
+      in axiom-session)
     · chat keeps the v1 live stack: ChatPage (SSE + tools + providers) mounts
       in the shell with its thread rail portaled into #sidebar-threads-slot
   Data: every screen is the v2 markup fed by the v1 hooks (usePortfolio,
@@ -339,11 +341,12 @@ export function App(): ReactElement {
       !sameWallet &&
       ["authenticated", "profile"].includes(state.session.status)
     ) {
-      // A different wallet took over: the stored session proof is void.
+      // A different wallet took over: the stored identity is void — the
+      // gate re-authenticates this wallet from scratch.
       dispatch({
         type: "session",
         session: {
-          status: "signing",
+          status: "disconnected",
           address,
           wallet: connector?.name ?? "",
           chain: chainId ?? 0,
@@ -355,11 +358,14 @@ export function App(): ReactElement {
     }
     if (
       state.session.status === "authenticated" &&
-      !isSessionFresh(state.session)
+      !isSessionFresh(state.session) &&
+      chainId === APP_CHAIN_ID
     ) {
+      // TTL expired while the wallet stayed connected: renew silently —
+      // no popup, the connection itself is the proof of presence.
       dispatch({
         type: "session",
-        session: { status: "signing", signedAt: null },
+        session: { signedAt: new Date().toISOString() },
       });
       return;
     }

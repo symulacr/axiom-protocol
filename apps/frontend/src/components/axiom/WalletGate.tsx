@@ -1,34 +1,18 @@
 /*
-  Live WalletGate — the gate states driven by wagmi:
-    disconnected → connector list (useConnect)
-    connecting → pending connect()
-    wrong-network→ useSwitchChain (app chain from config/wagmi)
-    signing → SIWE-lite session sign (same EIP-191 pattern the chat
-                   history proof uses, over an axiom-console-session message)
-    profile → name the local operator profile (stored in the session)
-    authenticated/ rejected / timeout → resume / retry states.
-  The signature is non-transactional and cached only in the local session
-  (axiom-session in localStorage, via the uiStore).
+  Live WalletGate — three states driven by wagmi:
+    connect → one CTA that opens RainbowKit's connect modal (wallet list,
+                   recents, mobile deep links and errors are its job)
+    wrong-network → switchChain back to the configured app chain
+    profile → optional local operator name, then the console opens.
+  A verified connection on the app chain IS the session: the old
+  axiom-console-session signature ceremony was removed because nothing ever
+  verified it. Reconnects restore silently (wagmi persists the last wallet);
+  the 24h TTL only decides whether returning users re-walk this small path.
 */
-import { useState } from "react";
-import { useAccount, useConnect, useSignMessage, useSwitchChain } from "wagmi";
-import type { Connector } from "wagmi";
-import {
-  AlertTriangle,
-  ArrowLeft,
-  ArrowRight,
-  CircleCheck,
-  KeyRound,
-  LayoutDashboard,
-  LockKeyhole,
-  Network,
-  RefreshCw,
-  RotateCcw,
-  ShieldAlert,
-  ShieldCheck,
-  Timer,
-  X,
-} from "./icons.js";
+import { useEffect, useRef, useState } from "react";
+import { useAccount, useSwitchChain } from "wagmi";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
+import { AlertTriangle, LockKeyhole, Network, X } from "./icons.js";
 import { Button, Field } from "./Controls.js";
 import { Logo } from "./AppShell.js";
 
@@ -40,34 +24,10 @@ import { useModalDismiss } from "../../hooks/useModalDismiss.js";
 import { APP_CHAIN, APP_CHAIN_ID } from "../../config/wagmi.js";
 
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
-const SESSION_MESSAGE = (address: string, ts: number) =>
-  `axiom-console-session-v1:${address.toLowerCase()}:${ts}`;
 
 export function isSessionFresh(session: Session): boolean {
   if (session.status !== "authenticated" || !session.signedAt) return false;
   return Date.now() - Date.parse(session.signedAt) < SESSION_TTL_MS;
-}
-
-export { SESSION_MESSAGE };
-
-function connectorLabel(connector: Connector): {
-  name: string;
-  hint: string;
-  mark: string;
-} {
-  const id = connector.id.toLowerCase();
-  const name = connector.name || "Browser wallet";
-  if (id.includes("walletconnect"))
-    return { name, hint: "Scan with a mobile wallet", mark: "W" };
-  if (id.includes("coinbase"))
-    return { name, hint: "Coinbase wallet", mark: "C" };
-  if (id.includes("metamask") || id.includes("injected"))
-    return { name, hint: "Browser extension", mark: "M" };
-  return {
-    name,
-    hint: "Connect via wallet",
-    mark: id.slice(0, 1).toUpperCase() || "W",
-  };
 }
 
 export function WalletGate({
@@ -88,61 +48,56 @@ export function WalletGate({
   // literal ("Switch to 0G Mainnet" told testnet users the wrong network).
   const chainVars = { chainName: APP_CHAIN.name, chainId: APP_CHAIN_ID };
   const { address, isConnected, chainId, connector } = useAccount();
-  const {
-    connectors,
-    connectAsync,
-    isPending: isConnecting,
-    error: connectError,
-  } = useConnect();
+  const { openConnectModal } = useConnectModal();
   const { switchChainAsync } = useSwitchChain();
-  const { signMessageAsync } = useSignMessage();
   const [profile, setProfile] = useState(session.profile);
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const resumed = useRef(false);
   // dismiss trio: Esc + focus restore here; backdrop via layer onMouseDown
-  // below; X already exists. Dismiss is safe in every view — the X was never
-  // gated during signing, session state is untouched by closing, and the gate
-  // re-opens from any locked CTA (the wagmi connection persists).
+  // below; X already exists. Dismiss is safe in every view — the wagmi
+  // connection persists and the gate re-opens from any locked CTA.
   useModalDismiss(onClose);
 
   const wrongNetwork =
     isConnected && chainId !== undefined && chainId !== APP_CHAIN_ID;
+  const connectedOk = isConnected && !wrongNetwork;
 
-  // Derived gate view — live wagmi state wins over the stored session status
-  // except for the post-signature states (rejected/timeout/profile/authenticated).
-  const view:
-    | "connect"
-    | "connecting"
-    | "wrong-network"
-    | "signing"
-    | "profile"
-    | "authenticated"
-    | "rejected"
-    | "timeout" =
-    session.status === "rejected"
-      ? "rejected"
-      : session.status === "timeout"
-        ? "timeout"
-        : session.status === "profile"
-          ? "profile"
-          : session.status === "authenticated"
-            ? "authenticated"
-            : wrongNetwork
-              ? "wrong-network"
-              : isConnected
-                ? "signing"
-                : isConnecting
-                  ? "connecting"
-                  : "connect";
-
-  const connect = async (c: Connector) => {
-    setError(null);
-    try {
-      await connectAsync({ connector: c });
-    } catch (err) {
-      setError(humanizeError(err));
+  // Silent sign-in: a verified connection on the app chain opens the session.
+  // The effect also resumes any pending intent (locked CTA → gate → console)
+  // without a second click. A "profile" session waits for the naming form —
+  // the effect must not override the authenticated state that form submits.
+  useEffect(() => {
+    if (!connectedOk || !address || session.status === "profile") return;
+    if (session.status === "authenticated") {
+      if (!resumed.current) {
+        resumed.current = true;
+        onAuthenticated();
+      }
+      return;
     }
-  };
+    dispatch({
+      type: "session",
+      session: {
+        status: session.profile ? "authenticated" : "profile",
+        address,
+        wallet: connector?.name ?? "",
+        chain: APP_CHAIN_ID,
+        signedAt: new Date().toISOString(),
+      },
+    });
+    if (session.profile) {
+      resumed.current = true;
+      onAuthenticated();
+    }
+  }, [
+    connectedOk,
+    address,
+    session.status,
+    session.profile,
+    connector,
+    dispatch,
+    onAuthenticated,
+  ]);
 
   const switchNetwork = async () => {
     setError(null);
@@ -155,57 +110,26 @@ export function WalletGate({
     }
   };
 
-  const approve = async () => {
-    if (!address) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const ts = Math.floor(Date.now() / 1000);
-      await signMessageAsync({ message: SESSION_MESSAGE(address, ts) });
-      dispatch({
-        type: "session",
-        session: {
-          status: session.profile ? "authenticated" : "profile",
-          address,
-          wallet: connector?.name ?? session.wallet,
-          chain: APP_CHAIN_ID,
-          signedAt: new Date().toISOString(),
-        },
-      });
-      if (session.profile) onAuthenticated();
-    } catch (err) {
-      dispatch({
-        type: "session",
-        session: {
-          status: "rejected",
-          address,
-          chain: chainId ?? APP_CHAIN_ID,
-        },
-      });
-      setError(humanizeError(err));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const reject = () =>
-    dispatch({ type: "session", session: { status: "rejected" } });
-  const retry = () => {
-    setError(null);
-    dispatch({
-      type: "session",
-      session: { status: "disconnected", signedAt: null },
-    });
-  };
-
   const saveProfile = (event: React.FormEvent) => {
     event.preventDefault();
     dispatch({
       type: "session",
-      session: { status: "authenticated", profile: profile || "axiom.main" },
+      session: {
+        status: "authenticated",
+        profile: profile || "axiom.main",
+        signedAt: new Date().toISOString(),
+      },
     });
+    resumed.current = true;
     onAuthenticated();
   };
+
+  const view: "connect" | "wrong-network" | "profile" =
+    session.status === "profile"
+      ? "profile"
+      : wrongNetwork
+        ? "wrong-network"
+        : "connect";
 
   return (
     <div className="wallet-gate-layer" onMouseDown={onClose}>
@@ -250,59 +174,13 @@ export function WalletGate({
                 <i>command surface.</i>
               </h1>
               <p>Connect a wallet to start a session. We never take custody.</p>
-              <div className="wallet-options">
-                {connectors.map((c) => {
-                  const meta = connectorLabel(c);
-                  return (
-                    <button
-                      key={c.uid}
-                      className="wallet-option"
-                      onClick={() => void connect(c)}
-                    >
-                      <span
-                        className={`wallet-option-mark ${c.id.includes("walletconnect") ? "wallet-connect-mark" : ""}`}
-                      >
-                        {meta.mark}
-                      </span>
-                      <span>
-                        <strong>{meta.name}</strong>
-                        <small>{meta.hint}</small>
-                      </span>
-                      <ArrowRight size={15} />
-                    </button>
-                  );
-                })}
-              </div>
-              {connectError && (
-                <p className="wallet-gate-error" role="alert">
-                  {humanizeError(connectError)}
-                </p>
-              )}
-              <p className="wallet-gate-foot-note">
-                <ShieldCheck size={14} /> Signature only after the network
-                check.
-              </p>
-            </>
-          )}
-
-          {view === "connecting" && (
-            <div className="wallet-state">
-              <h2>{copy.wallet.connectingTitle}</h2>
-              <p>
-                {copy.wallet.connectingDescription} Waiting for the wallet to
-                respond; no transaction, approval, or signature has been
-                requested.
-              </p>
-              <div
-                className="state-progress"
-                role="status"
-                aria-label={copy.a11y.walletWaiting}
+              <Button
+                onClick={() => openConnectModal?.()}
+                icon={<LockKeyhole size={15} />}
               >
-                <i />
-                <i />
-                <i />
-              </div>
-            </div>
+                {copy.nav.connectWallet}
+              </Button>
+            </>
           )}
 
           {view === "wrong-network" && (
@@ -338,42 +216,6 @@ export function WalletGate({
             </div>
           )}
 
-          {view === "signing" && (
-            <div className="wallet-state">
-              <KeyRound className="copper" size={28} />
-              <h2>Confirm the access message.</h2>
-              <p>A free signature — no gas, transfer or approval.</p>
-              <div className="signature-preview">
-                <span className="mono">
-                  axiom-console-session-v1 · chain {APP_CHAIN_ID}
-                </span>
-                <strong>{address}</strong>
-                <small>Session only · re-signed after 24h</small>
-              </div>
-              <div className="button-row">
-                <Button
-                  busy={busy}
-                  onClick={() => void approve()}
-                  icon={<ShieldCheck size={15} />}
-                >
-                  {copy.wallet.approveSignature}
-                </Button>
-                <Button
-                  variant="danger"
-                  onClick={reject}
-                  icon={<X size={15} />}
-                >
-                  {copy.wallet.rejectSignature}
-                </Button>
-              </div>
-              {error && (
-                <p className="wallet-gate-error" role="alert">
-                  {error}
-                </p>
-              )}
-            </div>
-          )}
-
           {view === "profile" && (
             <form className="wallet-state" onSubmit={saveProfile}>
               <h2>{copy.wallet.profileTitle}</h2>
@@ -389,68 +231,6 @@ export function WalletGate({
               </Button>
             </form>
           )}
-
-          {view === "authenticated" && (
-            <div className="wallet-state">
-              <CircleCheck className="copper" size={28} />
-              <h2>
-                Console access
-                <br />
-                <i>is already verified.</i>
-              </h2>
-              <p>
-                Resume the local operator session or return to the landing page.
-              </p>
-              <Button
-                onClick={onAuthenticated}
-                icon={<LayoutDashboard size={15} />}
-              >
-                Open operator console
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={onClose}
-                icon={<ArrowLeft size={14} />}
-              >
-                Return to landing
-              </Button>
-            </div>
-          )}
-
-          {view === "rejected" && (
-            <div className="wallet-state">
-              <ShieldAlert className="warning-icon" size={28} />
-              <h2>{copy.wallet.rejectedTitle}</h2>
-              <p>{copy.wallet.rejectedDescription}</p>
-              <Button onClick={retry} icon={<RotateCcw size={15} />}>
-                {copy.wallet.retryConnection}
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={onClose}
-                icon={<ArrowLeft size={14} />}
-              >
-                Return to landing
-              </Button>
-            </div>
-          )}
-
-          {view === "timeout" && (
-            <div className="wallet-state">
-              <Timer className="warning-icon" size={28} />
-              <h2>{copy.wallet.timeoutTitle}</h2>
-              <p>
-                {copy.wallet.timeoutDescription} The wallet did not respond
-                before this access request expired.
-              </p>
-              <Button onClick={retry} icon={<RefreshCw size={15} />}>
-                {copy.wallet.retryConnection}
-              </Button>
-            </div>
-          )}
-          {/* the foot repeated
-              "Non-custodial access" (art panel above) and the network name
-              (sidebar rail card + wrong-network check) on every gate state. */}
         </div>
       </section>
     </div>
