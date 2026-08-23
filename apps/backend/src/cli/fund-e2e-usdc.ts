@@ -38,7 +38,7 @@ async function main(): Promise<void> {
   const broadcasterPk = getEnv("DEPLOYER_PK");
   const broadcaster = new Wallet(broadcasterPk, provider);
 
-  const token = new TypedContract<MockUsdcMint>(
+  const token = new TypedContract<PaymentTokenMint>(
     tokenAddr,
     PAYMENT_TOKEN_ABI,
     broadcaster,
