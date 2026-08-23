@@ -530,6 +530,27 @@ async function saveBuckets(
 /** Prevents silent multi-instance split-brain on one data dir; AXIOM_ALLOW_MULTI_INSTANCE escapes for externally-coordinated replicas only. */
 const lockLog = createLogger("events-lock");
 
+/** True when the lock file exists but its holder pid is provably dead
+ *  (kill(pid,0) → ESRCH). A live-but-foreign holder still refuses. */
+function stealStaleLock(lockPath: string): boolean {
+  let raw = "";
+  try {
+    raw = readFileSync(lockPath, "utf-8").trim();
+  } catch {
+    return false;
+  }
+  const heldPid = Number.parseInt(raw.split("\n")[0] ?? "", 10);
+  if (!Number.isInteger(heldPid) || heldPid <= 0 || heldPid === process.pid) {
+    return false;
+  }
+  try {
+    process.kill(heldPid, 0);
+    return false; // alive — genuinely held
+  } catch (err) {
+    return (err as NodeJS.ErrnoException).code === "ESRCH"; // nobody home
+  }
+}
+
 export function acquireEventStoreLock(
   dataDir: string = process.env.AXIOM_DATA_DIR ?? process.cwd(),
 ): () => void {
@@ -549,7 +570,17 @@ export function acquireEventStoreLock(
     closeSync(fd);
   } catch (err) {
     const code = (err as NodeJS.ErrnoException).code;
-    if (code === "EEXIST") {
+    if (code === "EEXIST" && stealStaleLock(lockPath)) {
+      // Crash/SIGKILL leaves the lock file behind; a dead holder must not
+      // wedge every subsequent boot. Steal and retry exactly once.
+      lockLog.warn("stale event-store lock from a dead pid — stealing it", {
+        lockPath,
+      });
+      unlinkSync(lockPath);
+      const fd = openSync(lockPath, "wx");
+      writeFileSync(fd, `${process.pid}\n${new Date().toISOString()}\n`);
+      closeSync(fd);
+    } else if (code === "EEXIST") {
       let holder = "unknown";
       try {
         holder =
@@ -563,8 +594,9 @@ export function acquireEventStoreLock(
           `Stop the other process, delete the stale lock, or set AXIOM_ALLOW_MULTI_INSTANCE=true (unsafe).`,
         { cause: err },
       );
+    } else {
+      throw err;
     }
-    throw err;
   }
 
   const release = () => {

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test, beforeEach } from "bun:test";
+import { test } from "bun:test";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -42,7 +42,7 @@ function makeFakeProvider(opts: { forkAt?: number; forkHash?: string } = {}) {
 }
 
 function makeWatcher(
-  provider: any,
+  provider: ReturnType<typeof makeFakeProvider>,
   captured: {
     logs: Record<string, unknown>[];
     rolledBack: (number | bigint)[];
@@ -60,7 +60,9 @@ function makeWatcher(
     onReorg: (b) => captured.rolledBack.push(b),
   });
   // pollTick() early-returns unless the loop has been started; drive it directly.
-  (watcher as any).running = true;
+  (
+    watcher as Watcher & { running: boolean; pollTick(): Promise<void> }
+  ).running = true;
   return watcher;
 }
 
@@ -74,9 +76,13 @@ test("consecutive polls on a stable chain never fire a false reorg", async () =>
   };
   const watcher = makeWatcher(provider, captured);
   // Two ticks over an advancing, stable chain.
-  await (watcher as any).pollTick();
+  await (
+    watcher as Watcher & { running: boolean; pollTick(): Promise<void> }
+  ).pollTick();
   provider.setHead(120);
-  await (watcher as any).pollTick();
+  await (
+    watcher as Watcher & { running: boolean; pollTick(): Promise<void> }
+  ).pollTick();
   const warnings = captured.logs.filter(
     (l) => String(l.msg) === "reorg detected — block hash mismatch",
   );
@@ -95,11 +101,15 @@ test("a real reorg at the cursor is detected exactly once and rolls back", async
     rolledBack: [] as (number | bigint)[],
   };
   const watcher = makeWatcher(provider, captured);
-  await (watcher as any).pollTick(); // cursor lands at safe block with stored hash
+  await (
+    watcher as Watcher & { running: boolean; pollTick(): Promise<void> }
+  ).pollTick(); // cursor lands at safe block with stored hash
   // The chain replaces history from the cursor's verified block onward.
   const cursorBlock = Number(watcher.cursor) - 1;
   provider.rewrite(cursorBlock, "0x" + "e".repeat(64));
-  await (watcher as any).pollTick();
+  await (
+    watcher as Watcher & { running: boolean; pollTick(): Promise<void> }
+  ).pollTick();
   const warnings = captured.logs.filter(
     (l) => String(l.msg) === "reorg detected — block hash mismatch",
   );
