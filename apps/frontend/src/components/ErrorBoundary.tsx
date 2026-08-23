@@ -14,10 +14,10 @@ interface State {
   error: Error | null;
 }
 
-/** P4: the fallback chrome routes through copy.ts (locale via useUiStore) and
- *  the Controls kit — ErrorBoundary no longer imports the v1 ui.tsx kit. The
- *  raw error sentence still flows through humanizeError (central, en — known
- *  residual; error copy is the remaining untranslated surface). */
+/** the fallback chrome routes through copy.ts (locale via useUiStore) and
+ * the Controls kit — ErrorBoundary no longer imports the v1 ui.tsx kit. The
+ * raw error sentence still flows through humanizeError (central, en — known
+ * residual; error copy is the remaining untranslated surface). */
 function ErrorFallback({
   error,
   onRetry,

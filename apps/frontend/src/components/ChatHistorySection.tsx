@@ -8,24 +8,24 @@ interface ChatHistorySectionProps {
   onNew: () => void;
   onDelete: (id: string) => void;
   /** Server-persisted transcripts (useChatHistory); merged with localStorage
-   *  threads — dedupe by threadId, server takes precedence (newer-wins on a
-   *  tie is server; local only wins when it is strictly newer, i.e. the user
-   *  continued the thread after the last persist). */
+   * threads — dedupe by threadId, server takes precedence (newer-wins on a
+   * tie is server; local only wins when it is strictly newer, i.e. the user
+   * continued the thread after the last persist). */
   serverThreads?: ChatThread[];
   serverLoading?: boolean;
   /** When true, render the "Restore server history" row: the explicit
-   *  gesture that authorizes the one wallet signature the history fetch
-   *  needs. Hidden once requested (or when no wallet is connected). */
+   * gesture that authorizes the one wallet signature the history fetch
+   * needs. Hidden once requested (or when no wallet is connected). */
   serverRestore?: boolean;
   onRequestServerHistory?: () => void;
-  /** Localized rail labels (C-11 — the rail was English-only in fr/de). */
+  /** Localized rail labels. */
   copy: Copy["chat"];
 }
 
 /** Thread list rendered inside the shell sidebar on chat routes (the merged,
- *  ChatGPT-style sidebar). Owns the search affordance; the active row carries
- *  aria-current so screen readers hear the selection. Delete is delegated to
- *  the page so the undo toast and active-thread switch stay in one place. */
+ * ChatGPT-style sidebar). Owns the search affordance; the active row carries
+ * aria-current so screen readers hear the selection. Delete is delegated to
+ * the page so the undo toast and active-thread switch stay in one place. */
 export function ChatHistorySection({
   activeThreadId,
   onOpen,

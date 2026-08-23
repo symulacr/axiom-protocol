@@ -11,7 +11,7 @@ import type { FlowKind } from "./models";
 import { MEDIA } from "./media";
 
 /* Text lives in copy.flows (localized); flowMeta keeps only the visual
- * assets FlowPage/uiStore still consume (02 FINDING-022: one copy owner). */
+ * assets FlowPage/uiStore still consume (02: one copy owner). */
 export const flowMeta: Record<
   FlowKind,
   {

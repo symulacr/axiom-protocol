@@ -35,7 +35,7 @@ function sortEventsChronological(a: AxiomEvent, b: AxiomEvent): number {
 }
 
 /** Merge a secondary event source (WS frames, poll pages) into a base list,
- *  dropping duplicates by chainId:txHash:logIndex, chronological order. */
+ * dropping duplicates by chainId:txHash:logIndex, chronological order. */
 export function mergeDedupedEvents(
   base: AxiomEvent[],
   incoming: AxiomEvent[],

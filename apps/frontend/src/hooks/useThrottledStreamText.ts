@@ -3,9 +3,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 const STREAM_THROTTLE_MS = 50;
 
 /** Stream-text state with a ref mirror and 50 ms render throttle: chunk
- *  handlers append to `textRef` (cheap, per-chunk) and call `schedule()` to
- *  coalesce re-renders; `flush()` renders the ref immediately (stream end),
- *  `reset()` clears both for the next run. */
+ * handlers append to `textRef` (cheap, per-chunk) and call `schedule()` to
+ * coalesce re-renders; `flush()` renders the ref immediately (stream end),
+ * `reset()` clears both for the next run. */
 export function useThrottledStreamText() {
   const [streamText, setStreamText] = useState("");
   const textRef = useRef("");

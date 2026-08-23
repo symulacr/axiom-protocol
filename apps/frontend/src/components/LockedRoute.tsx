@@ -1,5 +1,5 @@
 /*
-  LockedRoute : shown when an internal route is
+  LockedRoute: shown when an internal route is
   requested before the operator session is authenticated. Proof rails stay
   visible; the CTA opens the live WalletGate.
 */
@@ -39,7 +39,7 @@ export function LockedRoute({
           <div>
             <Status label="wallet required" tone="warning" />
           </div>
-          {/* S1 (duplication map #16): the topbar "Landing" text-link repeated
+          {/* (duplication map #16): the topbar "Landing" text-link repeated
               the ghost "Return to landing" exit below — one exit remains. */}
         </header>
         <main className="locked-route-content">
@@ -81,10 +81,10 @@ export function LockedRoute({
               </div>
             </div>
             {/* Ledger rows are static states, not controls — no chevron
-                affordance on a row that does not open (02 FINDING-014). */}
+                affordance on a row that does not open. */}
             {meta.proofs.map((item, index) => (
               <div className="locked-evidence-row" key={item}>
-                {/* S1 (audit 06 FINDING-014): the .locked-evidence-state dot
+                {/* the.locked-evidence-state dot
                     span rendered into every row and was display:none'd by
                     axiom-velocity.css (.public-locked) — dead markup, removed
                     with its CSS. */}

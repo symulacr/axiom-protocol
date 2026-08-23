@@ -3,8 +3,8 @@ import { useEventStream } from "./useEventStream.js";
 import { eventTokenId } from "./useEventHistory.js";
 
 /** On-chain events the chat surface surfaces as "⛓ tx mined" confirmations.
- *  Mirrors the indexer's watched topics (apps/backend/src/indexer/events.ts)
- *  minus pure-admin/governance noise the chat user did not trigger. */
+ * Mirrors the indexer's watched topics (apps/backend/src/indexer/events.ts)
+ * minus pure-admin/governance noise the chat user did not trigger. */
 const CHAT_TX_EVENT_NAMES: Record<string, true> = {
   Transfer: true, // mint + iTransferFrom
   Authorization: true,
@@ -32,7 +32,7 @@ export interface ChatTxRow {
 const MAX_ROWS = 40;
 
 /** Live WS subscription (reuses the /v1/stream client-key auth + useEventStream
- *  reconnect/backoff) filtered to on-chain confirmations, deduped by txHash. */
+ * reconnect/backoff) filtered to on-chain confirmations, deduped by txHash. */
 export function useChatTxStream(enabled = true): {
   rows: ChatTxRow[];
   isConnected: boolean;

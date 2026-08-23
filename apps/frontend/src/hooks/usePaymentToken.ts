@@ -1,7 +1,7 @@
 /*
   Payment-token metadata (symbol + decimals), resolved ONCE from the backend
   payment config (GET /v1/payment/config → token-contract reads, server-cached
-  5 min) and memoized at module scope. C-12 rule: the UI never hardcodes a
+  5 min) and memoized at module scope. The UI never hardcodes a
   token unit — the payment form suffix, the review-sheet confirm CTA and the
   agent-page fact rows all read this one source, so they cannot disagree, and
   they are correct on any deployment (on Galileo the payment token's on-chain
@@ -13,9 +13,9 @@ import { apiFetch } from "../utils/apiFetch.js";
 export type PaymentTokenMeta = { symbol: string; decimals: number };
 
 /** Neutral unit placeholder while the config fetch is in flight (or when the
- *  backend is unreachable — the flow's allowance/execute path needs the same
- *  endpoint, so a down backend blocks execution anyway). Every consumer uses
- *  this SAME fallback, so the form and the confirm CTA never diverge. */
+ * backend is unreachable — the flow's allowance/execute path needs the same
+ * endpoint, so a down backend blocks execution anyway). Every consumer uses
+ * this SAME fallback, so the form and the confirm CTA never diverge. */
 export const PAYMENT_SYMBOL_PENDING = "…";
 
 type PaymentConfigResponse = {
@@ -66,7 +66,7 @@ export function usePaymentToken(): PaymentTokenMeta | null {
   return meta;
 }
 
-/** Display symbol with the shared pending fallback (C-12 consistency rule). */
+/** Display symbol with the shared pending fallback. */
 export function paymentSymbolOf(meta: PaymentTokenMeta | null): string {
   return meta?.symbol ?? PAYMENT_SYMBOL_PENDING;
 }

@@ -27,7 +27,7 @@ const PROOF_TTL_MS = 240_000;
 let proofCache = { address: "", ts: 0, sig: "0x" as `0x${string}` };
 
 /** Proof headers for the connected wallet, or null when signing is
- *  unavailable/rejected — callers degrade to empty history, never error. */
+ * unavailable/rejected — callers degrade to empty history, never error. */
 async function walletProofHeaders(
   address: string,
   signMessageAsync: (args: { message: string }) => Promise<`0x${string}`>,
@@ -67,14 +67,14 @@ function transcriptTitle(messages: unknown[] | undefined): string {
 }
 
 /** Server-persisted chat transcripts for the connected wallet
- *  (GET /v1/chat/history?wallet=, wallet-proof headers attached). The
- *  consumer merges them with localStorage useThreads — dedupe by threadId,
- *  server wins.
+ * (GET /v1/chat/history?wallet=, wallet-proof headers attached). The
+ * consumer merges them with localStorage useThreads — dedupe by threadId,
+ * server wins.
  *
- *  SIGNATURE BOUNDARY: fetching requires an EIP-191 wallet proof, so the
- *  query stays inert until `requested` is set by an explicit user gesture
- *  (the thread rail's "Restore server history" row, or opening the rail on
- *  mobile). /chat must never pop a signature on page load. */
+ * SIGNATURE BOUNDARY: fetching requires an EIP-191 wallet proof, so the
+ * query stays inert until `requested` is set by an explicit user gesture
+ * (the thread rail's "Restore server history" row, or opening the rail on
+ * mobile). /chat must never pop a signature on page load. */
 export function useChatHistory(
   wallet: `0x${string}` | undefined,
   requested: boolean,

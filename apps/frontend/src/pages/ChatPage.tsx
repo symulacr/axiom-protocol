@@ -139,12 +139,12 @@ type ToolRun = {
 const SUPPORTED_CHAIN_IDS = new Set([APP_CHAIN_ID]);
 const CHAT_MESSAGES_KEY = "axiom:chat-messages";
 /** Active threadId (sessionStorage): lets a page reload resume the SAME
- *  thread instead of generating a fresh id (which duplicated threads and
- *  detached the in-progress conversation from its history). */
+ * thread instead of generating a fresh id (which duplicated threads and
+ * detached the in-progress conversation from its history). */
 const CHAT_THREAD_KEY = "axiom:chat-thread";
 
 const chatMsgStyle: CSSProperties = {
-  fontSize: "var(--fs-body)" /* S2: chat baseline rides the one body step */,
+  fontSize: "var(--fs-body)" /* chat baseline rides the one body step */,
   color: COLORS.text,
   lineHeight: "var(--lh-normal)",
 };
@@ -172,10 +172,10 @@ const insetCardStyle: CSSProperties = {
 };
 
 /** Store threads carry `unknown[]` at the storage boundary; ChatPage casts
- *  them to Message[] when opening a thread (they were written by this page).
- *  Server transcripts (GET /v1/chat/history) were persisted through
- *  toChatApiMessages, which strips `id` — re-assign ids so React keys and
- *  message actions keep working. */
+ * them to Message[] when opening a thread (they were written by this page).
+ * Server transcripts (GET /v1/chat/history) were persisted through
+ * toChatApiMessages, which strips `id` — re-assign ids so React keys and
+ * message actions keep working. */
 
 function ToolClassBadge({ name }: { name: string }): ReactElement | null {
   const cls = toolClass(name);
@@ -381,13 +381,13 @@ function loadStoredThreadId(): string | null {
   }
 }
 
-/** 05 FINDING-014: console references in assistant answers become links —
- *  `Agent #N` → the agent page (internal, SPA-routed via the click
- *  interceptor on the message list), 64-hex hashes → the block explorer. */
+/** 05: console references in assistant answers become links —
+ * `Agent #N` → the agent page (internal, SPA-routed via the click
+ * interceptor on the message list), 64-hex hashes → the block explorer. */
 
 /** Per-message copy action with the app-wide inline-confirm contract (04
- *  FINDING-006): the label swaps to "✓ Copied" for ~1.2s, matching the ui.tsx
- *  CopyButton primitive used inside tool cards. */
+ * ): the label swaps to "✓ Copied" for ~1.2s, matching the ui.tsx
+ * CopyButton primitive used inside tool cards. */
 function MsgCopyAction({
   text,
   copy,
@@ -455,12 +455,12 @@ function MessageEditConfirm({
 function ChatPageInner(): ReactElement {
   const { address } = useAccount();
   const chainId = useChainId();
-  // C-11: every rendered chat string routes through copy.chat (the old dead
+  // every rendered chat string routes through copy.chat (the old dead
   // section described the old chat; these keys describe the live one).
   const { state: uiState } = useUiStore();
   const chatCopy = getCopy(uiState.settings.locale).chat;
   const a11y = getCopy(uiState.settings.locale).a11y;
-  // C-08/C-12: network name and native token unit come from chain config.
+  // network name and native token unit come from chain config.
   const chainVars = { chainName: APP_CHAIN.name, chainId: APP_CHAIN_ID };
   const nativeSymbol = APP_CHAIN.nativeCurrency.symbol;
   const { session, recordToolResult, providerPref, setProviderPref } =
@@ -499,21 +499,21 @@ function ChatPageInner(): ReactElement {
   const streamErrorRef = useRef<string | null>(null);
   const lastStreamErrorRef = useRef<string | null>(null);
   /** Run-scoped LLM-turn metrics + tool-step counter, aggregated into the final
-   *  message's insights line. Reuses the existing TTFT computation. */
+   * message's insights line. Reuses the existing TTFT computation. */
   const turnMetricsRef = useRef<TurnMetric[]>([]);
   const currentTurnRef = useRef<TurnMetric>({ wallMs: 0 });
   const stepsRef = useRef(0);
   /** Cached compaction summary, keyed by threadId: the inserted
-   *  `[Earlier conversation summary]` lead is byte-identical every run within
-   *  a thread (prefix-cache stable anchor), a fresh thread NEVER inherits
-   *  another thread's summary, and switching back reuses the cached lead.
-   *  A thread's entry is deleted when its history is rewritten
-   *  (edit/regenerate/delete). */
+   * `[Earlier conversation summary]` lead is byte-identical every run within
+   * a thread (prefix-cache stable anchor), a fresh thread NEVER inherits
+   * another thread's summary, and switching back reuses the cached lead.
+   * A thread's entry is deleted when its history is rewritten
+   * (edit/regenerate/delete). */
   const summaryCacheRef = useRef<Map<string, string | null>>(new Map());
   /** Monotonic run generation. Bumped on new-chat/thread-switch so an
-   *  in-flight runAgent can detect staleness and never commit its (old
-   *  thread's) messages — including the old summary lead — into a fresh
-   *  thread. This is the summary-bleed guard. */
+   * in-flight runAgent can detect staleness and never commit its (old
+   * thread's) messages — including the old summary lead — into a fresh
+   * thread. This is the summary-bleed guard. */
   const runEpochRef = useRef(0);
   /** Per-thread user-turn counter driving the cache warm-up hint. */
   const turnCountRef = useRef(0);
@@ -534,7 +534,7 @@ function ChatPageInner(): ReactElement {
   // Server-persisted transcripts for the connected wallet (merged in the
   // sidebar list). GATED: the fetch needs a wallet signature, so it only
   // runs after an explicit user gesture (rail "Restore server history" row,
-  // or opening the rail on mobile) — never on page load (C-06).
+  // or opening the rail on mobile) — never on page load.
   const [historyRequested, setHistoryRequested] = useState(false);
   const { serverThreads: serverHistory, isLoading: historyLoading } =
     useChatHistory(address, historyRequested);
@@ -556,14 +556,14 @@ function ChatPageInner(): ReactElement {
   } | null>(null);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [editConfirmId, setEditConfirmId] = useState<string | null>(null);
-  // Provider routing popover (C-04): the routing console lives at depth 1 —
+  // Provider routing popover: the routing console lives at depth 1 —
   // depth 0 carries only the summary chip that opens it.
   const [routingOpen, setRoutingOpen] = useState(false);
 
   // Live refs: state updates land only on the next render, so same-turn tools must see earlier-set values (mint tokenId -> deposit); synced each render here, within-turn writes in runAgent
   // AgentDetail's Chat button deep-links to /chat?agent=<tokenId>; seed the session default from the URL until a tool result overrides it.
   const [searchParams] = useSearchParams();
-  // 05 FINDING-014: internal links rendered inside assistant markdown
+  // 05: internal links rendered inside assistant markdown
   // (Agent #N → /agents/N) route through the SPA, never a full reload.
   const navigate = useNavigate();
   const explorerTx = useCallback(
@@ -625,7 +625,7 @@ function ChatPageInner(): ReactElement {
   );
   const handlers = useToolHandlers(toolCtx);
   // Rebuilt from live refs so tool execution never waits on a React render —
-  // used by the send loop and by tool-card Retry (04 FINDING-012). C-14: the
+  // used by the send loop and by tool-card Retry.: the
   // transfer tool opens the TransferModal via openTransfer.
   const buildLiveToolCtx = useCallback(
     (): ToolContext => ({
@@ -646,8 +646,8 @@ function ChatPageInner(): ReactElement {
     }),
     [openTransfer],
   );
-  /** Retry-with-same-args on a failed tool card (04 FINDING-012): re-invokes
-   *  the handler (wallet tools re-prompt the wallet) and updates the run. */
+  /** Retry-with-same-args on a failed tool card: re-invokes
+   * the handler (wallet tools re-prompt the wallet) and updates the run. */
   const retryToolRun = useCallback(
     async (id: string) => {
       const run = toolRunsRef.current[id];
@@ -746,7 +746,7 @@ function ChatPageInner(): ReactElement {
   );
 
   // Routing popover dismiss contract: Esc closes (backdrop click is handled
-  // by the .routing-backdrop element; both mirror the shell modal trio).
+  // by the.routing-backdrop element; both mirror the shell modal trio).
   useEffect(() => {
     if (!routingOpen) return;
     const onKey = (e: KeyboardEvent) => {
@@ -1141,7 +1141,7 @@ function ChatPageInner(): ReactElement {
                     if (tok !== undefined) {
                       lastTokenIdRef.current = String(tok);
                     }
-                    // 04 FINDING-012: a tool can fail SEMANTICALLY (error
+                    // 04: a tool can fail SEMANTICALLY (error
                     // payload, handler returned normally) — the run must read
                     // failed so the card gets the humanized error + Retry.
                     if (typeof parsed.error === "string" && parsed.error) {
@@ -1423,7 +1423,7 @@ function ChatPageInner(): ReactElement {
           threadsSlot,
         )}
       <div className="chat-main">
-        {/* Shell grammar (C-05): one h1 per page. /chat is a fixed-viewport
+        {/* Shell grammar: one h1 per page. /chat is a fixed-viewport
             surface, so the head is visually hidden — the compact topbar below
             stays the surface chrome (audit-sanctioned exception). */}
         <h1 className="visually-hidden">{chatCopy.pageTitle}</h1>
@@ -1438,7 +1438,7 @@ function ChatPageInner(): ReactElement {
               const opening = !sidebarOpen;
               setSidebarOpen(opening);
               // Opening the rail is the mobile gesture that needs history —
-              // only now may the wallet-proof signature fire (C-06).
+              // only now may the wallet-proof signature fire.
               if (opening) setHistoryRequested(true);
             }}
           >
@@ -1626,7 +1626,7 @@ function ChatPageInner(): ReactElement {
                           {CHAT_TOOL_CLASS_LABELS[g.cls]}
                         </SectionTitle>
                         {g.tools.map((t) => {
-                          // 02 FINDING-013: the friendly label leads, the raw
+                          // 02: the friendly label leads, the raw
                           // function name is a mono sublabel, and the hint
                           // drops model-facing unit notes ("(in wei)").
                           const hint = t.hint.replace(/\s*\(in wei\)/i, "");
@@ -1782,7 +1782,7 @@ function ChatPageInner(): ReactElement {
                   />
                 ) : (
                   (() => {
-                    // 04 FINDING-012: a semantically-failed tool (error
+                    // 04: a semantically-failed tool (error
                     // payload) renders danger-styled with a Retry affordance
                     // keyed to its run — never as neutral body text.
                     const failedRun = msg.tool_call_id
@@ -1920,7 +1920,7 @@ function ChatPageInner(): ReactElement {
                     color: COLORS.textDim,
                   }}
                 >
-                  {/* S1 (audit 06 FINDING-014): one localized string instead of
+                  {/* one localized string instead of
                       glyph-joined label spans ("⛓ tx mined" · "agent #N" · …). */}
                   <span>
                     {chatCopy.txMined(
@@ -2291,7 +2291,7 @@ function phaseLabel(
 }
 
 /** Capture router usage/trace (terminal chunk or backend trace frame) into a
- *  per-turn metric record. Reuses the exact fields the router emits. */
+ * per-turn metric record. Reuses the exact fields the router emits. */
 
 /** Compact provider-selector option label: name · latency · price per 1M. */
 function pinLabel(p: ComputeProvider): string {
@@ -2305,8 +2305,8 @@ function pinLabel(p: ComputeProvider): string {
 }
 
 /** One-line routing state for the composer's depth-0 summary chip
- *  ("Auto", "Lowest cost", "0xa48f…7836", plus a TEE/sealed suffix —
- *  the trust-mode tokens are protocol names and stay as-is). */
+ * ("Auto", "Lowest cost", "0xa48f…7836", plus a TEE/sealed suffix —
+ * the trust-mode tokens are protocol names and stay as-is). */
 function routingSummary(
   pref: ProviderPref | undefined,
   copy: Copy["chat"],
@@ -2321,9 +2321,9 @@ function routingSummary(
 }
 
 /** Non-default routing gets a copper-tinted chip so an explicit choice is
- *  always acknowledged at depth 0 (including price sort, which the old
- *  trailing status silently dropped). Default = latency-sorted, no pin,
- *  no trust filter (DEFAULT_PROVIDER_PREF). */
+ * always acknowledged at depth 0 (including price sort, which the old
+ * trailing status silently dropped). Default = latency-sorted, no pin,
+ * no trust filter (DEFAULT_PROVIDER_PREF). */
 function isNonDefaultRouting(pref: ProviderPref | undefined): boolean {
   return (
     !!pref && (!!pref.address || pref.sort === "price" || !!pref.trustMode)
@@ -2331,8 +2331,8 @@ function isNonDefaultRouting(pref: ProviderPref | undefined): boolean {
 }
 
 /** Single status sentence inside the Routing popover — replaces the old
- *  depth-0 trailing chip ("latency-sorted · cache on"); "cache on" dropped
- *  (implementation guarantee, not user state). */
+ * depth-0 trailing chip ("latency-sorted · cache on"); "cache on" dropped
+ * (implementation guarantee, not user state). */
 function routingStatusLine(
   pref: ProviderPref | undefined,
   copy: Copy["chat"],
@@ -2347,7 +2347,7 @@ function routingStatusLine(
 }
 
 /** ProviderPref → request-body `provider` field; undefined when nothing is set
- *  (backend then applies its own default routing). */
+ * (backend then applies its own default routing). */
 function providerPrefBody(
   pref: ProviderPref | undefined,
 ): ProviderPref | undefined {
@@ -2362,7 +2362,7 @@ function providerPrefBody(
 }
 
 /** Drop a previously-inserted `[Earlier conversation summary]` lead so a
- *  re-derivation after edit/regenerate/open doesn't wrap the old summary. */
+ * re-derivation after edit/regenerate/open doesn't wrap the old summary. */
 function stripSummaryLead<T extends { role: string; content: string | null }>(
   msgs: T[],
 ): T[] {
@@ -2374,8 +2374,8 @@ function stripSummaryLead<T extends { role: string; content: string | null }>(
 }
 
 /** Per-message telemetry, collapsed to a quiet one-line affordance: the full
- *  TTFT/tok-s/cache/provider/cost dump only renders on explicit expand
- *  (02-FINDING-007). Own state per message — no parent bookkeeping. */
+ * TTFT/tok-s/cache/provider/cost dump only renders on explicit expand
+ * (02-). Own state per message — no parent bookkeeping. */
 function InsightsDisclosure({
   text,
   showLabel,
@@ -2411,7 +2411,7 @@ function ToolCallCard({
   run: ToolRun;
   expanded: boolean;
   onToggle: () => void;
-  /** 04 FINDING-012: retry-with-same-args affordance on failed tool runs. */
+  /** 04: retry-with-same-args affordance on failed tool runs. */
   onRetry?: () => void;
   retryLabel?: string;
 }): ReactElement {
@@ -2523,7 +2523,7 @@ function ToolCallCard({
           )}
           {run.error ? (
             <span style={{ color: "var(--c-danger)" }}>
-              {/* 04 FINDING-012: humanized — never a raw viem/backend dump. */}
+              {/* 04: humanized — never a raw viem/backend dump. */}
               {humanizeError(run.error)}
               {onRetry && retryLabel ? (
                 <button

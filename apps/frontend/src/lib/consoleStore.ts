@@ -1,5 +1,5 @@
 /*
-  Axiom UI store . The wallet session
+  Axiom UI store. The wallet session
   is bridged to wagmi in App.tsx; transactions here are LOCAL receipts added by
   the live flow pages (real hashes) — the transaction center merges them with
   on-chain/indexer events from useEventStream/useEventHistory.
@@ -18,7 +18,7 @@ import type {
 } from "./models";
 
 /** Serializable form of a local receipt row (icon is a ReactNode and is
- *  rehydrated from flowMeta by route in uiStore). */
+ * rehydrated from flowMeta by route in uiStore). */
 export type PersistedTransaction = Omit<Transaction, "icon">;
 
 export const MAX_PERSISTED_TRANSACTIONS = 50;
@@ -37,8 +37,8 @@ const KNOWN_TX_STATES: ReadonlySet<TxState> = new Set([
 ]);
 
 /** Validate persisted receipt rows: shape-checked, TTL'd (7d like drafts),
- *  capped; an unrecognized state coerces to "stale" (unknown — check
- *  explorer) rather than resurrecting a lie. */
+ * capped; an unrecognized state coerces to "stale" (unknown — check
+ * explorer) rather than resurrecting a lie. */
 export function sanitizeTransactions(value: unknown): PersistedTransaction[] {
   if (!Array.isArray(value)) return [];
   const now = Date.now();
@@ -112,10 +112,10 @@ export const defaultSettings: UiSettings = {
   locale: "en",
 };
 
-/** Unset-theme default (C-SETTINGS): follow the OS, matching the index.html
- *  boot script — before this, the store hardcoded "dark" while the boot
- *  script honored prefers-color-scheme, so light-OS first visits flipped
- *  post-hydration. Falls back to "dark" when matchMedia is unavailable. */
+/** Unset-theme default: follow the OS, matching the index.html
+ * boot script — before this, the store hardcoded "dark" while the boot
+ * script honored prefers-color-scheme, so light-OS first visits flipped
+ * post-hydration. Falls back to "dark" when matchMedia is unavailable. */
 export function defaultTheme(): UiSettings["theme"] {
   try {
     return typeof window !== "undefined" &&

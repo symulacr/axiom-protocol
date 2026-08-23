@@ -1,5 +1,5 @@
 /*
-  C-14 modal dismiss contract — shared Esc leg + focus restore for every
+   modal dismiss contract — shared Esc leg + focus restore for every
   conditionally-mounted modal/overlay layer (OperationReviewSheet,
   ReceiptDrawer, WalletGate, guide overlay). The backdrop leg stays in markup
   (layer onMouseDown + stopPropagation on the dialog, mirroring the canonical

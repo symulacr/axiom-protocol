@@ -1,5 +1,5 @@
 /**
- * Cross-wallet transfer handoff (P4 — F-01 residual).
+ * Cross-wallet transfer handoff.
  *
  * When the receiver is NOT available in the sender's wallet (a different
  * person/device), the co-sign step cannot run in-session. This module packs
@@ -16,7 +16,7 @@
 export const TRANSFER_CO_SIGN_PATH = "/transfer/co-sign";
 
 /** localStorage key the receiver page writes and the sender tab listens to
- *  (`storage` event) when both live in the same browser. */
+ * (`storage` event) when both live in the same browser. */
 export const HANDOFF_RESULT_STORAGE_KEY = "axiom-transfer-cosign-result";
 
 /** Canonical AccessProof message — same shape useTransfer signs. */
@@ -43,7 +43,7 @@ export type TransferHandoffPayload = {
     message: AccessProofMessage;
   };
   /** Display + validation metadata (never trusted for the signature itself —
-   *  the message and domain above are what the wallet signs). */
+   * the message and domain above are what the wallet signs). */
   meta: {
     tokenId: string;
     sender: `0x${string}`;
@@ -55,7 +55,7 @@ export type TransferHandoffPayload = {
 
 const HEX_0X = /^0x[0-9a-fA-F]+$/;
 const ETH_ADDRESS = /^0x[0-9a-fA-F]{40}$/;
-/** 65-byte ECDSA signature: r(32) + s(32) + v(1) as hex. */
+/** 65-byte ECDSA signature: r + s + v as hex. */
 export const ACCEPTANCE_CODE_SHAPE = /^0x[0-9a-fA-F]{130}$/;
 
 /* --- base64url (no dependencies) ------------------------------------------ */
@@ -221,7 +221,7 @@ export type HandoffResult = {
   /** The receiver's acceptance signature (0x + 130 hex chars). */
   signature: `0x${string}`;
   /** Echo of the signed nonce — lets the sender tab match the result to the
-   *  paused challenge before applying (guards stale cross-tab results). */
+   * paused challenge before applying (guards stale cross-tab results). */
   nonce: `0x${string}`;
   at: number;
 };

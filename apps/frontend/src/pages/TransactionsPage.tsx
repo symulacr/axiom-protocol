@@ -70,8 +70,8 @@ function eventToTransaction(event: AxiomEvent): Transaction {
   };
 }
 
-/** C-15: local receipts persist across reload — derive their age from the
- *  persisted creation time instead of resurrecting a frozen "now". */
+/** local receipts persist across reload — derive their age from the
+ * persisted creation time instead of resurrecting a frozen "now". */
 function transactionAge(tx: Transaction): string {
   if (typeof tx.createdAt === "number") {
     return `${Math.max(0, Math.round((Date.now() - tx.createdAt) / 60000))}m ago`;
@@ -79,7 +79,7 @@ function transactionAge(tx: Transaction): string {
   return tx.age;
 }
 
-/* C-SETTINGS filter depth contract (03 FINDING-011): depth 0 keeps the three
+/* filter depth contract: depth 0 keeps the three
  * everyday buckets (All / Needs review / Confirmed); the seven per-state
  * filters live behind a "More filters" popover at depth 1. The review bucket
  * (reverted+rejected+stale) and the stale-only state get distinct labels
@@ -112,7 +112,7 @@ function AdvancedFiltersPopover({
   onChoose: (value: AdvancedFilter) => void;
   onClose: () => void;
 }) {
-  // Modal-dismiss contract (C-14): Esc + focus restore here; the backdrop
+  // Modal-dismiss contract: Esc + focus restore here; the backdrop
   // element covers the click-away leg; selection closes explicitly.
   useModalDismiss(onClose);
   return createPortal(
@@ -160,7 +160,7 @@ function ReceiptDrawer({
 }) {
   const copy = getCopy(locale);
   const txCopy = copy.transactions;
-  // C-14 dismiss trio: Esc + focus restore here; backdrop (layer onClick) and
+  // dismiss trio: Esc + focus restore here; backdrop (layer onClick) and
   // the X already existed.
   useModalDismiss(onClose);
   const recover = ["reverted", "rejected", "stale"].includes(tx.state);
@@ -205,7 +205,7 @@ function ReceiptDrawer({
         >
           <X size={16} />
         </button>
-        {/* S1 (audit 06 FINDING-005 / duplication map #1): the row under this
+        {/* the row under this
             drawer already shows kind, detail, state and the truncated hash —
             the drawer renders only what the row cannot: the full hash, the
             explorer link, the agent and the event note. */}
@@ -352,7 +352,7 @@ export function TransactionsPage({
   };
 
   // Chip labels: the stale-only filter gets its own label so it can never
-  // collide with the review bucket again (03 FINDING-011).
+  // collide with the review bucket again.
   const stateFilterLabel = (value: TxState) =>
     value === "stale" ? txCopy.filterStale : (copy.status[value] ?? value);
   const advancedActive = (ADVANCED_FILTERS as readonly string[]).includes(
@@ -366,7 +366,7 @@ export function TransactionsPage({
     const rect = filtersTriggerRef.current?.getBoundingClientRect();
     if (!rect) return;
     const right = Math.max(8, Math.round(window.innerWidth - rect.right));
-    // Viewport-fit (C-13 lesson): open downward only when the popover fits;
+    // Viewport-fit: open downward only when the popover fits;
     // otherwise anchor to the trigger's top edge and grow upward.
     if (window.innerHeight - rect.bottom >= 280) {
       setFiltersPos({ top: Math.round(rect.bottom + 6), right });
@@ -382,7 +382,7 @@ export function TransactionsPage({
     <div className="ops-page">
       <div className="page-head">
         <div>
-          {/* S2 (audit 06 FINDING-003): the page-head/panel-head eyebrows
+          {/* the page-head/panel-head eyebrows
               restated the h1/h2 below them — removed. The ops-summary LIVE
               QUEUE / RECOVERY eyebrows stay: they label bare counts. */}
           <h1>{txCopy.title}</h1>

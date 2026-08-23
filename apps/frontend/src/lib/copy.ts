@@ -9,7 +9,7 @@ export type CopyFlow =
   "mint" | "payment" | "transfer" | "tick" | "deposit" | "withdraw";
 
 /**
- * Interpolation contract (C-08/C-12): copy NEVER hardcodes a chain name,
+ * Interpolation contract: copy NEVER hardcodes a chain name,
  * chain ID or token symbol. Strings that mention them carry `{chainName}` /
  * `{chainId}` / `{nativeSymbol}` placeholders resolved at render time from
  * APP_CHAIN / APP_CHAIN_ID (config/wagmi) or the payment-token hook.
@@ -41,7 +41,7 @@ export type Copy = {
     deposit: string;
     withdraw: string;
   };
-  /** Shell chrome above/beside the page body (05 FINDING-007). */
+  /** Shell chrome above/beside the page body. */
   topbar: {
     connected: string;
     notConnected: string;
@@ -87,8 +87,8 @@ export type Copy = {
     hintKeys: string;
   };
   /** Accessible names for icon-only shell/chrome controls (C-I18N residual:
-   *  visible text was localized in row 7; these thread the same locales
-   *  through the aria-labels). */
+   * visible text was localized in row 7; these thread the same locales
+   * through the aria-labels). */
   a11y: {
     primaryNav: string;
     openNav: string;
@@ -147,8 +147,8 @@ export type Copy = {
     retryConnection: string;
     timeoutTitle: string;
     timeoutDescription: string;
-    /** Gate phase eyebrows (S1): the labels the accessibility pass injected
-     *  via CSS ::after now live here — real DOM text, localizable, greppable. */
+    /** Gate phase eyebrows: the labels the accessibility pass injected
+     * via CSS::after now live here — real DOM text, localizable, greppable. */
     phaseConnect: string;
     phaseNetwork: string;
     phaseSigning: string;
@@ -178,7 +178,7 @@ export type Copy = {
     reviewEvidence: string;
   };
   /** Recovery404 — says what happened and the safe next step, never what the
-   *  page implementation didn't load (02 FINDING-018). */
+   * page implementation didn't load. */
   notFound: {
     eyebrow: string;
     titleLead: string;
@@ -189,8 +189,8 @@ export type Copy = {
     /** document.title for unknown routes. */
     title: string;
   };
-  /** ErrorBoundary fallback chrome (P4: localized like every other surface —
-   *  the raw error text itself still routes through humanizeError). */
+  /** ErrorBoundary fallback chrome (localized like every other surface —
+   * the raw error text itself still routes through humanizeError). */
   errorBoundary: {
     networkTitle: string;
     genericTitle: string;
@@ -202,16 +202,16 @@ export type Copy = {
     pageTitle: string;
     languageLabel: string;
     /** Page lede — describes the whole surface, not one control (02
-     *  FINDING-015: the old languageHint answered only "what does the
-     *  language dropdown do"). */
+     * the old languageHint answered only "what does the
+     * language dropdown do"). */
     pageDescription: string;
     localeEnglish: string;
     localeFrench: string;
     localeGerman: string;
     liveWallet: string;
     signingContext: string;
-    /** Operator profile name editor (03 FINDING-013 — Settings owns renames;
-     *  the WalletGate step only ever creates the first value). */
+    /** Operator profile name editor (03 — Settings owns renames;
+     * the WalletGate step only ever creates the first value). */
     profileNameLabel: string;
     profileNameSave: string;
     profileNameSaved: string;
@@ -292,7 +292,7 @@ export type Copy = {
     fleetNominal: string;
     eventsIndexed: string;
     /** Live-queue stat subline while the oracle is healthy — describes the
-     *  queue, not the plumbing (02 FINDING-010); an outage overrides it. */
+     * queue, not the plumbing; an outage overrides it. */
     queueAwaiting: string;
     oracleUnreachable: string;
     secondaryTelemetry: string;
@@ -309,7 +309,7 @@ export type Copy = {
     paymentAllowanceEyebrow: string;
   };
   /** Live /chat surface (v1 SSE chat). Every rendered string routes through
-   *  this section — hardcoded English in ChatPage was the C-11 defect. */
+   * this section — hardcoded English in ChatPage was the defect. */
   chat: {
     pageTitle: string;
     /** Placeholder: `{chainName}` — status slot shows the TARGET network. */
@@ -338,8 +338,8 @@ export type Copy = {
     roleTool: string;
     toolResultFallback: string;
     /** EncodePreviewCard (chat path) — the raw-calldata panel stays a
-     *  documented chat-path exception; these strings at least localize its
-     *  chrome and label the raw payload clearly (P4). */
+     * documented chat-path exception; these strings at least localize its
+     * chrome and label the raw payload clearly. */
     encodeTitle: string;
     encodeSubmitted: string;
     encodeRawData: string;
@@ -351,11 +351,11 @@ export type Copy = {
     copyMessage: string;
     copyShort: string;
     /** Inline confirmation after a copy action (every copy confirms — 04
-     *  FINDING-006); rendered as the swapped label beside the ✓. */
+     * ); rendered as the swapped label beside the ✓. */
     copiedMessage: string;
     /** Tool browser: clicking a tool inserts this natural-language prompt
-     *  template (trailing space = parameter placeholder), never the raw
-     *  snake_case function name (02 FINDING-013). Fallback = tool label. */
+     * template (trailing space = parameter placeholder), never the raw
+     * snake_case function name. Fallback = tool label. */
     toolPrompts: Record<string, string>;
     discardEditTitle: string;
     keepConversationTitle: string;
@@ -392,8 +392,8 @@ export type Copy = {
     phaseStreaming: (elapsed: number) => string;
     phaseThinking: string;
     phaseWaiting: (elapsed: number) => string;
-    /** S1 (audit 06 FINDING-014): the tx-mined confirmation row is ONE
-     *  localized string, not glyph-joined label spans. */
+    /** the tx-mined confirmation row is ONE
+     * localized string, not glyph-joined label spans. */
     txMined: (
       tokenId: string | null,
       event: string | null,
@@ -422,7 +422,7 @@ export type Copy = {
     adapter: string;
     payload: string;
     /** Disclosure title under the payload panel head — must not repeat the
-     *  panel h2 (02 FINDING-023). */
+     * panel h2. */
     fileSteps: string;
     fileMeta: string;
     labels: string[];
@@ -443,7 +443,7 @@ export type Copy = {
     pending: string;
     notIndexed: string;
     /** Clear demo banner — the ladder is documentation until a storage
-     *  backend exists (03 FINDING-014); no fake progress, no fake hashes. */
+     * backend exists; no fake progress, no fake hashes. */
   };
   flows: Record<
     CopyFlow,
@@ -452,8 +452,8 @@ export type Copy = {
       title: string;
       copy: string;
       steps: string[];
-      /** P4: canonical receipt name — MUST equal copy.nav[kind] (naming
-       *  contract, one name per destination); guarded in copy.test.ts. */
+      /** canonical receipt name — MUST equal copy.nav[kind] (naming
+       * contract, one name per destination); guarded in copy.test.ts. */
       receiptKind: string;
       /** Review-sheet EFFECT row. */
       consequence: string;
@@ -465,7 +465,7 @@ export type Copy = {
       fieldLabel: string;
       fieldHint: string;
       /** Receipt-row detail template ({name}/{amount}/{agent}/{recipient}/
-       *  {symbol}/{action}/{reason} resolved at render time). */
+       * {symbol}/{action}/{reason} resolved at render time). */
       detail: string;
       /** Submit-success notice template ({name}/{agent}). */
       notice: string;
@@ -483,23 +483,23 @@ export type Copy = {
     network: string;
     receipt: string;
     confirming: string;
-    /** Proof-timeline step sublabels (C-P2: the ladder localizes with the
-     *  steps — these two were the last hardcoded English on flow pages). */
+    /** Proof-timeline step sublabels (C-: the ladder localizes with the
+     * steps — these two were the last hardcoded English on flow pages). */
     stepWallet: string;
     stepAuto: string;
-    /** F-01 receiver co-sign step (cross-party transfer): the recipient's
-     *  wallet must sign the acceptance before the sender submits. */
+    /** receiver co-sign step (cross-party transfer): the recipient's
+     * wallet must sign the acceptance before the sender submits. */
     coSignTitle: string;
     coSignBody: (receiver: string) => string;
     coSignAction: string;
     coSignNote: string;
     /** Honest blocker when the connected wallet cannot expose the receiver
-     *  account — no futile retry, just the two real remedies. */
+     * account — no futile retry, just the two real remedies. */
     coSignBlockedTitle: string;
     coSignBlockedBody: (receiver: string) => string;
-    /** P4 flow-body i18n — shared chrome of the six flow pages, the review
-     *  sheet and the receipt panel (field labels, review rows, receipt
-     *  headings/bodies, notices, boundary fact rows). */
+    /** flow-body i18n — shared chrome of the six flow pages, the review
+     * sheet and the receipt panel (field labels, review rows, receipt
+     * headings/bodies, notices, boundary fact rows). */
     stageEyebrow: string;
     stageTitle: string;
     reviewOpenLabel: string;
@@ -596,7 +596,7 @@ export type Copy = {
     transferKeyLabel: string;
     transferKeyHint: string;
     transferAgentTitle: (id: string) => string;
-    /** P4 cross-wallet handoff — sender side (review-sheet co-sign step). */
+    /** cross-wallet handoff — sender side (review-sheet co-sign step). */
     handoffTitle: string;
     handoffBody: string;
     handoffCopyLink: string;
@@ -608,8 +608,8 @@ export type Copy = {
     handoffAppliedNote: string;
     /** Placeholder: {receiver}. */
     handoffReceivedNotice: string;
-    /** P4 receiver page (/transfer/co-sign) — public, wallet-gated only by
-     *  the acceptance signature itself. */
+    /** receiver page (/transfer/co-sign) — public, wallet-gated only by
+     * the acceptance signature itself. */
     receiveTitle: string;
     receiveLede: string;
     receiveBadTitle: string;
@@ -688,7 +688,7 @@ export type Copy = {
     refreshState: string;
     refreshNotice: string;
     /** Appended to refreshNotice only when the live event feed is DOWN —
-     *  healthy plumbing is never announced (02 FINDING-010). */
+     * healthy plumbing is never announced. */
     feedDown: string;
     liveQueue: string;
     confirmingNow: string;
@@ -701,7 +701,7 @@ export type Copy = {
     statefulOperations: string;
     filterAll: string;
     /** Depth-0 review-bucket chip (reverted+rejected+stale) — distinct from
-     *  the per-state stale chip (filterStale); they shared one label before. */
+     * the per-state stale chip (filterStale); they shared one label before. */
     filterReview: string;
     filterStale: string;
     moreFilters: string;
@@ -720,8 +720,8 @@ export type Copy = {
     openRecovery: string;
     recoveryNotice: string;
     openOperation: string;
-    /** S1 drawer head (audit 06 FINDING-005): the drawer no longer repeats
-     *  the row's kind/detail/pill — it leads with its own title. */
+    /** drawer head: the drawer no longer repeats
+     * the row's kind/detail/pill — it leads with its own title. */
     drawerTitle: string;
     proofEyebrow: string;
     proofTitle: string;
@@ -979,7 +979,7 @@ const english: Copy = {
     operatingFleet: "Operating fleet",
     attentionFirst: "Attention first",
     allowanceReady: "Allowance is ready for review.",
-    // One canonical allowance sentence, shared with the strip (02 FINDING-022).
+    // One canonical allowance sentence, shared with the strip.
     latestEvidence: "Latest evidence",
     allReceipts: "All receipts",
     contextWallet: "WALLET CONTEXT",
@@ -3192,7 +3192,7 @@ const copyByLocale: Record<Locale, Copy> = {
 
 export function getCopy(locale: Locale = "en"): Copy {
   const copy = copyByLocale[locale] ?? english;
-  // Défense supplémentaire : ces libellés restent sémantiques, jamais séquentiels.
+  // Défense supplémentaire: ces libellés restent sémantiques, jamais séquentiels.
   return {
     ...copy,
     dashboard: {

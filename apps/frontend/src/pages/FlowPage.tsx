@@ -1,20 +1,20 @@
 /*
   FlowPage — v2 review-first operation page over the LIVE v1 encode-relay
   hooks (plan mapping, steps 6):
-    mint     → useMintWizard (oracle ack POST /v1/agents/mint, then
+    mint → useMintWizard (oracle ack POST /v1/agents/mint, then
                POST /v1/agents/mint/encode + wallet sendTransaction)
-    payment  → usePayment.payForAgent (exact ERC-20 approve when needed, then
+    payment → usePayment.payForAgent (exact ERC-20 approve when needed, then
                payForAgent) — the v2 2-boundary sheet: allowance review, then pay
     transfer → useTransfer.prepare (challenge) + confirm (EIP-712 sign +
                ECIES-sealed finalize); cross-party transfers pause for the
-               receiver co-sign — in this wallet, or via the P4 handoff link
+               receiver co-sign — in this wallet, or via the handoff link
                when the receiver is on another device
-    tick     → useOrchestratorTick.tickStream (WS token frames → live stage)
+    tick → useOrchestratorTick.tickStream (WS token frames → live stage)
     deposit/withdraw → useVaultWrite (POST /v1/agents/:id/{deposit,withdraw}
                encode relay → wallet sendTransaction; native 0G value)
   The OperationReviewSheet is the single confirm surface; "Simulate reject /
   timeout" stays dev-only and maps onto the real recoverable-error paths.
-  P4: every flow-body string (field labels/hints, review rows, receipt
+  every flow-body string (field labels/hints, review rows, receipt
   chrome, notices) routes through copy.ts — copy.flows[kind] for per-flow
   text, copy.flowUi for shared chrome.
 */
@@ -131,14 +131,14 @@ export function FlowPage({
     ? f.agentOption(selectedTokenId)
     : f.agentSelectPlaceholder;
 
-  // C-07: vault flows ride the same draft/review/receipt machine; the write
+  // vault flows ride the same draft/review/receipt machine; the write
   // itself goes through the shared useVaultWrite encode relay (toasts off —
   // this page owns the UX). Token unit comes from chain config, never a
   // hardcoded literal.
   const isVaultFlow = kind === "deposit" || kind === "withdraw";
   const nativeSymbol = APP_CHAIN.nativeCurrency.symbol;
   const nativeDecimals = APP_CHAIN.nativeCurrency.decimals;
-  // C-12: the payment flow's unit is the payment token's ON-CHAIN symbol
+  // the payment flow's unit is the payment token's ON-CHAIN symbol
   // (Galileo: axmUSDC), resolved once via the hook-layer cache — the form
   // suffix, the receipt detail and the review-sheet CTA all read this one
   // source, so they can never contradict each other.
@@ -272,7 +272,7 @@ export function FlowPage({
     });
   };
 
-  // 05 FINDING-008 / 04 FINDING-014: one wording per rule, one surface per
+  // 05 / 04: one wording per rule, one surface per
   // error. validate() names the failing FIELD so openReview can render the
   // message inline via the Field error contract instead of opening the
   // review sheet to deliver validation news. The phase machine's
@@ -282,11 +282,11 @@ export function FlowPage({
     message: string;
   };
   const [submitError, setSubmitError] = useState<FlowFieldError | null>(null);
-  // F-01: true when the receiver co-sign was attempted but the wallet cannot
+  // true when the receiver co-sign was attempted but the wallet cannot
   // expose the receiver account — the sheet renders the honest blocker (no
-  // futile retry) plus the P4 handoff remedies (link + code paste).
+  // futile retry) plus the handoff remedies (link + code paste).
   const [coSignBlocked, setCoSignBlocked] = useState(false);
-  // P4 handoff: pasted acceptance code, its apply error, and the applied
+  // handoff: pasted acceptance code, its apply error, and the applied
   // state (acceptance verified → primary becomes "Submit transfer"). The
   // receiver is kept locally — a successful apply clears the hook's pending
   // co-sign, but the sheet must keep rendering the applied state until the
@@ -357,7 +357,7 @@ export function FlowPage({
     });
   };
 
-  // C-15: bounded confirmation wait — a dropped/replaced tx must surface as
+  // bounded confirmation wait — a dropped/replaced tx must surface as
   // "stale" (check explorer) after the timeout instead of polling forever,
   // and a reverted receipt (status 0) is "reverted", never "confirmed".
   const confirmOnChain = (hash: `0x${string}` | undefined) => {
@@ -375,12 +375,12 @@ export function FlowPage({
       );
   };
 
-  // F-01: shared transfer tail — receipt row + confirm pipeline (C-15) + notice.
+  // shared transfer tail — receipt row + confirm pipeline + notice.
   const completeTransfer = (txHash: `0x${string}`) => {
     nonceRef.current = freshNonceHex();
     addReceipt({
       id: txHash,
-      // P4 naming contract: the receipt kind IS the destination's nav name.
+      // naming contract: the receipt kind IS the destination's nav name.
       kind: copy.flows.transfer.receiptKind,
       detail: interpolate(copy.flows.transfer.detail, {
         agent: selectedTokenId,
@@ -401,7 +401,7 @@ export function FlowPage({
     });
   };
 
-  // F-01 receiver co-sign step: signs the paused challenge AS the recipient,
+  // receiver co-sign step: signs the paused challenge AS the recipient,
   // then hands straight back to the sender for the on-chain submission.
   const executeCoSign = async () => {
     if (kind !== "transfer" || isBusy) return;
@@ -419,7 +419,7 @@ export function FlowPage({
     } catch (err) {
       if (isReceiverAccountUnavailable(err)) {
         // Honest blocker — no retry can conjure the receiver account in this
-        // wallet; the sheet shows the two real remedies AND the P4 handoff
+        // wallet; the sheet shows the two real remedies AND the handoff
         // (the receiver can still accept from their own device).
         setCoSignBlocked(true);
         dispatch({
@@ -441,7 +441,7 @@ export function FlowPage({
     }
   };
 
-  // P4 handoff: verify + apply a receiver-produced acceptance signature. The
+  // handoff: verify + apply a receiver-produced acceptance signature. The
   // hook checks the signature recovers to the receiver address before the
   // finalize call; on success the sheet's primary becomes "Submit transfer"
   // (the sender's wallet stays the only on-chain submitter).
@@ -483,7 +483,7 @@ export function FlowPage({
   const applyHandoffRef = useRef(applyHandoff);
   applyHandoffRef.current = applyHandoff;
 
-  // P4 handoff, same browser: the receiver page writes the acceptance to
+  // handoff, same browser: the receiver page writes the acceptance to
   // localStorage; the storage event delivers it here. The nonce match
   // guarantees the result belongs to THIS paused challenge.
   useEffect(() => {
@@ -506,7 +506,7 @@ export function FlowPage({
     dispatch({ type: "notice", notice: f.handoffLinkCopied });
   };
 
-  // P4 handoff tail: the receiver acceptance is applied and verified — the
+  // handoff tail: the receiver acceptance is applied and verified — the
   // sender's confirm() is the only remaining (wallet-gated) step.
   const submitHandoffTransfer = async () => {
     if (kind !== "transfer" || isBusy) return;
@@ -639,10 +639,10 @@ export function FlowPage({
         const input = buildTransferInput();
         const prepared = await transfer.prepare(input);
         if (prepared.status === "co-sign-required") {
-          // F-01: cross-party transfer pauses after the challenge — the review
+          // cross-party transfer pauses after the challenge — the review
           // sheet stays open and renders the receiver co-sign step (the primary
           // action becomes "Sign as receiver", driven by executeCoSign; the
-          // P4 handoff panel covers a receiver on another device).
+          // handoff panel covers a receiver on another device).
           setHandoffReceiver(prepared.receiver);
           dispatch({
             type: "set-draft-phase",
@@ -656,7 +656,7 @@ export function FlowPage({
         completeTransfer(txHash);
       } else if (kind === "deposit" || kind === "withdraw") {
         // Vault write through the shared encode relay; the receipt row and
-        // the draft's receipt phase ride the C-15 pipeline below.
+        // the draft's receipt phase ride the pipeline below.
         const txHash = await vaultWrite.handleSubmit(draft.value.trim());
         if (!txHash)
           throw new Error("Connect a wallet to submit this operation.");
@@ -755,11 +755,11 @@ export function FlowPage({
     dispatch({ type: "notice", notice: f.receiptCopiedNotice });
   };
 
-  // 02 FINDING-012: step labels live in copy.flows[kind].steps (localized,
+  // 02: step labels live in copy.flows[kind].steps (localized,
   // outcome-named) — no hardcoded ladder, no protocol identifiers.
   const proofSteps = flow.steps;
 
-  // C-15: the receipt panel derives from the LIVE tx row, not static copy —
+  // the receipt panel derives from the LIVE tx row, not static copy —
   // "confirmed" is only ever rendered after the chain says so. A persisted
   // draft whose row aged out of storage falls back to "stale" (unknown —
   // check explorer), never to a resurrected "confirming".
@@ -801,7 +801,7 @@ export function FlowPage({
       ? index < 2 || receiptState === "confirmed"
       : isReviewOpen && index < 2;
 
-  // FINDING-009: the sheet's Boundary fact row must match the number of
+  // the sheet's Boundary fact row must match the number of
   // wallet prompts the click path actually produces. Boundary 1 sends the
   // approve tx when the live allowance is short (→ 2 prompts total);
   // otherwise the pay boundary is the only prompt (→ 1).
@@ -818,7 +818,7 @@ export function FlowPage({
       return undefined;
     }
   }, [kind, draft.phase, allowance, draft.value, paymentToken?.decimals]);
-  // F-01: a cross-party transfer is known at review time (recipient ≠ the
+  // a cross-party transfer is known at review time (recipient ≠ the
   // connected account) — the boundary row names the truthful prompt count
   // before the first execute, not after the co-sign pause.
   const transferNeedsCoSign =
@@ -846,7 +846,7 @@ export function FlowPage({
     [agents],
   );
 
-  // C-07: resulting-balance estimate for the vault review sheet — cheap
+  // resulting-balance estimate for the vault review sheet — cheap
   // because the vault read is already live on this page.
   const balanceFact = useMemo(() => {
     if (!isVaultFlow || vaultBalanceWei === undefined) return undefined;
@@ -881,7 +881,7 @@ export function FlowPage({
     <div className={`ops-page flow-page flow-${kind}`}>
       <div className="page-head">
         <div>
-          {/* S2 (audit 06 FINDING-003): the page-head eyebrow restated the
+          {/* the page-head eyebrow restated the
               h1 ("MINT / PROVENANCE BOUNDARY" over the Mint title). The
               intent-banner and stage labels stay — they carry state. */}
           <h1>{flow.title}</h1>
@@ -936,7 +936,7 @@ export function FlowPage({
                     ? f.reviewOpenLabel
                     : f.detailsEditable}
               </strong>
-              {/* S1 (audit 06 FINDING-008 / duplication map #5): the overlay's
+              {/* the overlay's
                   "chain N · live wallet" mono line duplicated the sidebar
                   rail's network card — removed; the review sheet keeps its
                   network fact row where it is decision data. */}
@@ -1207,7 +1207,7 @@ export function FlowPage({
           <ol className="passive-proof-timeline">
             {proofSteps.map((step, index) => (
               <li key={step} className={proofReady(index) ? "is-ready" : ""}>
-                {/* S1 (audit 06 FINDING-014): timeline dots converge on the
+                {/* timeline dots converge on the
                     empty-<i> convention (StatePill/Status/toggle dots) — the
                     empty-span variant is gone. */}
                 <i aria-hidden="true" />

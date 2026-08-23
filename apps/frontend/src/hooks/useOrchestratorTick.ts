@@ -104,7 +104,7 @@ export function useOrchestratorTick(): {
           if (opts.signal) signals.push(opts.signal);
           const combinedSignal = AbortSignal.any(signals);
 
-          // C-01: the WS subscriber must exist BEFORE the stream POST — the
+          // the WS subscriber must exist BEFORE the stream POST — the
           // backend rejects stream requests with no subscriber
           // (400 NO_WS_SUBSCRIBER). The topic is deterministic
           // (`tick.${agentTokenId}` on both sides), openStreamSocket resolves

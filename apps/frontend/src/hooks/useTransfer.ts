@@ -30,17 +30,17 @@ import type {
 } from "@axiom/config/types/transfer";
 export type { TransferInput, TransferResponse, TransferPhase };
 
-/** F-01: prepare() outcome — self-transfers finish in one step ("ready");
- *  cross-party transfers pause after the oracle challenge until the RECEIVER
- *  co-signs the AccessProof (protocol requires recovered signer == recipient). */
+/** prepare() outcome — self-transfers finish in one step ("ready");
+ * cross-party transfers pause after the oracle challenge until the RECEIVER
+ * co-signs the AccessProof (protocol requires recovered signer == recipient). */
 export type PrepareResult =
   | { status: "ready"; proof: TransferResponse }
   | { status: "co-sign-required"; receiver: `0x${string}` };
 
 /** Thrown when the connected wallet cannot expose the receiver account, so the
- *  co-sign can never succeed from this session — the GUI renders an honest
- *  blocker (change recipient / let the receiver sign from their own session),
- *  never a futile retry. */
+ * co-sign can never succeed from this session — the GUI renders an honest
+ * blocker (change recipient / let the receiver sign from their own session),
+ * never a futile retry. */
 export class ReceiverAccountUnavailableError extends Error {
   readonly receiver: `0x${string}`;
   constructor(receiver: `0x${string}`) {
@@ -61,9 +61,9 @@ export function isReceiverAccountUnavailable(
   );
 }
 
-/** P4 handoff: an acceptance code that is not a signature at all, or one that
- *  recovers to a different address than the receiver. Both mean "ask the
- *  receiver to sign the link again" — never submit a mismatched proof. */
+/** handoff: an acceptance code that is not a signature at all, or one that
+ * recovers to a different address than the receiver. Both mean "ask the
+ * receiver to sign the link again" — never submit a mismatched proof. */
 export class HandoffSignatureInvalidError extends Error {
   constructor(message: string) {
     super(message);
@@ -88,7 +88,7 @@ type Eip1193Provider = {
 };
 
 /** wagmi/viem wrap connector errors — walk the cause chain for the
- *  ConnectorAccountNotFound signal (receiver not exposed by the wallet). */
+ * ConnectorAccountNotFound signal (receiver not exposed by the wallet). */
 function isAccountNotFound(err: unknown): boolean {
   let cur: unknown = err;
   for (let depth = 0; depth < 5 && cur; depth++) {
@@ -113,15 +113,15 @@ type UseTransferResult = {
   error: Error | null;
   signature: TransferResponse | null;
   /** Set when prepare() paused for a cross-party transfer: the receiver
-   *  address that must co-sign before confirm() can run. */
+   * address that must co-sign before confirm() can run. */
   coSignReceiver: `0x${string}` | null;
   /** Canonical-hex nonce of the paused challenge — lets callers match
-   *  receiver-produced results (localStorage cross-tab) to THIS challenge
-   *  before applying (P4 handoff). */
+   * receiver-produced results (localStorage cross-tab) to THIS challenge
+   * before applying. */
   coSignNonce: `0x${string}` | null;
   /** URL the receiver opens on their own device to sign the acceptance. */
   coSignHandoffUrl: () => string | null;
-  /** Verify + apply a receiver-produced acceptance signature (P4 handoff). */
+  /** Verify + apply a receiver-produced acceptance signature. */
   applyHandoffSignature: (
     signature: `0x${string}`,
   ) => Promise<TransferResponse>;
@@ -200,7 +200,7 @@ export function useTransfer(): UseTransferResult {
   const [transferPhase, setTransferPhase] = useState<TransferPhase>("idle");
   const [isPreparing, setIsPreparing] = useState(false);
   const [prepareError, setPrepareError] = useState<Error | null>(null);
-  // F-01: paused cross-party transfer — challenge is fetched, receiver co-sign outstanding
+  // paused cross-party transfer — challenge is fetched, receiver co-sign outstanding
   const [pendingCoSign, setPendingCoSign] = useState<{
     input: TransferInput;
     challenge: TransferChallenge;
@@ -290,12 +290,12 @@ export function useTransfer(): UseTransferResult {
   });
 
   // Finalize logic lives in finalizePrepared below (shared by the sign path
-  // and the P4 handoff-apply path — both exchange a receiver signature for
+  // and the handoff-apply path — both exchange a receiver signature for
   // the final proof structs; only the signature's origin differs).
 
   /** Canonical AccessProof message for a paused/active challenge — the one
-   *  structure the wallet signs, the sender validates handoff codes against
-   *  and the backend verifier hashes (P4: shared by sign + handoff paths). */
+   * structure the wallet signs, the sender validates handoff codes against
+   * and the backend verifier hashes (shared by sign + handoff paths). */
   const buildAccessProofMessage = useCallback(
     (
       input: TransferInput,
@@ -313,7 +313,7 @@ export function useTransfer(): UseTransferResult {
         // minimal form can drop to an ODD number of hex chars (top nibble 0,
         // ~1/16 of random nonces) which wallets reject as an invalid `bytes`
         // value. Padding to 32 bytes keeps wallet, backend and contract
-        // hashing the identical bytes (F-01 encoding half + P4 live find).
+        // hashing the identical bytes.
         nonce: toHex(nonce, { size: 32 }),
         validUntil,
       };
@@ -322,7 +322,7 @@ export function useTransfer(): UseTransferResult {
   );
 
   /** Exchanges a receiver signature for the final proof structs (no wallet
-   *  action) — shared by the in-wallet co-sign and the P4 handoff apply. */
+   * action) — shared by the in-wallet co-sign and the handoff apply. */
   const finalizePrepared = useCallback(
     async ({
       input,
@@ -385,9 +385,9 @@ export function useTransfer(): UseTransferResult {
   );
 
   /** Signs the receiver-bound AccessProof with `signerAccount`, then exchanges
-   *  it for the final proof structs. Shared by the self-transfer one-step path
-   *  (signer == connected owner) and the cross-party co-sign step (signer ==
-   *  recipient, F-01). */
+   * it for the final proof structs. Shared by the self-transfer one-step path
+   * (signer == connected owner) and the cross-party co-sign step (signer ==
+   * recipient). */
   const signAndFinalize = useCallback(
     async ({
       input,
@@ -419,8 +419,8 @@ export function useTransfer(): UseTransferResult {
   );
 
   /** Asks the wallet to expose/switch to the receiver account (MetaMask:
-   *  wallet_requestPermissions account picker; fallback eth_requestAccounts),
-   *  then re-probes the connector account list. */
+   * wallet_requestPermissions account picker; fallback eth_requestAccounts),
+   * then re-probes the connector account list. */
   const requestReceiverExposure = useCallback(
     async (receiver: `0x${string}`): Promise<boolean> => {
       if (!connector) return false;
@@ -473,7 +473,7 @@ export function useTransfer(): UseTransferResult {
           retry: false,
         });
 
-        // F-01: the AccessProof must recover to the RECIPIENT. Self-transfers
+        // the AccessProof must recover to the RECIPIENT. Self-transfers
         // keep the one-step path; cross-party transfers pause here and let the
         // GUI drive the explicit receiver co-sign step (coSign()).
         if (input.to.toLowerCase() !== from.toLowerCase()) {
@@ -500,12 +500,12 @@ export function useTransfer(): UseTransferResult {
     [from, queryClient, runChallenge, signAndFinalize],
   );
 
-  /** F-01 receiver co-sign: signs the paused challenge's AccessProof AS the
-   *  recipient. If the wallet does not expose the receiver account, asks it to
-   *  switch/add the account once; when that is impossible the caller gets a
-   *  ReceiverAccountUnavailableError (honest blocker, not a retry loop). The
-   *  connected sender session is never replaced — after this resolves, the
-   *  sender's own confirm() submits the transfer. */
+  /** receiver co-sign: signs the paused challenge's AccessProof AS the
+   * recipient. If the wallet does not expose the receiver account, asks it to
+   * switch/add the account once; when that is impossible the caller gets a
+   * ReceiverAccountUnavailableError (honest blocker, not a retry loop). The
+   * connected sender session is never replaced — after this resolves, the
+   * sender's own confirm() submits the transfer. */
   const coSign = useCallback(async (): Promise<TransferResponse> => {
     const pending = pendingCoSign;
     if (!pending) {
@@ -551,9 +551,9 @@ export function useTransfer(): UseTransferResult {
     }
   }, [pendingCoSign, connector, requestReceiverExposure, signAndFinalize]);
 
-  /** P4 cross-wallet handoff: URL the receiver opens on their own device —
-   *  the paused challenge's typed data, base64url-encoded on the canonical
-   *  /transfer/co-sign receive path. Null unless a co-sign is pending. */
+  /** cross-wallet handoff: URL the receiver opens on their own device —
+   * the paused challenge's typed data, base64url-encoded on the canonical
+   * /transfer/co-sign receive path. Null unless a co-sign is pending. */
   const coSignHandoffUrl = useCallback((): string | null => {
     const pending = pendingCoSign;
     if (!pending) return null;
@@ -576,11 +576,11 @@ export function useTransfer(): UseTransferResult {
     );
   }, [pendingCoSign, buildAccessProofMessage, domain, from]);
 
-  /** P4 handoff apply: accept a signature the receiver's wallet produced on
-   *  another device/browser. The signature is verified LOCALLY against the
-   *  paused challenge (recover → must equal the receiver address) before the
-   *  finalize call — a mismatched or damaged code never reaches the backend.
-   *  The sender still calls confirm() for the on-chain submission. */
+  /** handoff apply: accept a signature the receiver's wallet produced on
+   * another device/browser. The signature is verified LOCALLY against the
+   * paused challenge (recover → must equal the receiver address) before the
+   * finalize call — a mismatched or damaged code never reaches the backend.
+   * The sender still calls confirm() for the on-chain submission. */
   const applyHandoffSignature = useCallback(
     async (signature: `0x${string}`): Promise<TransferResponse> => {
       const pending = pendingCoSign;

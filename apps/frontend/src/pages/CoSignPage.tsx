@@ -1,5 +1,5 @@
 /*
-  CoSignPage — P4 cross-wallet handoff, receiver side (/transfer/co-sign).
+  CoSignPage — cross-wallet handoff, receiver side (/transfer/co-sign).
 
   Public route (no Axiom session needed): the sender's review sheet exports
   the paused challenge as an acceptance link; the receiver opens it on their

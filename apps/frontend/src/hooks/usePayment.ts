@@ -19,7 +19,7 @@ import {
 export type PaymentConfig = {
   paymentToken: Address;
   /** On-chain ERC-20 symbol/decimals, read by the backend from the token
-   *  contract (C-12: the UI interpolates these, never hardcodes a unit). */
+   * contract (the UI interpolates these, never hardcodes a unit). */
   paymentTokenSymbol: string;
   paymentTokenDecimals: number;
   protocolFeeBps: string;
@@ -142,7 +142,7 @@ export function usePayment(): UsePaymentResult {
   );
 
   /**
-   * Payment boundary 1 (C-15/FINDING-009): the REAL approve leg, split out of
+   * Payment boundary 1 (/): the REAL approve leg, split out of
    * the bundled payForAgent so the review sheet's "Approve exact allowance"
    * CTA actually prompts the wallet. Reads the live allowance; when it already
    * covers the amount this is a truthful no-op (approveHash: null). Exact
@@ -155,7 +155,7 @@ export function usePayment(): UsePaymentResult {
         if (!address || !publicClient) throw new Error("wallet not connected");
         const processor = getAxiomPaymentProcessorAddress(chainId);
         const config = await getPaymentConfig();
-        // On-chain token decimals from the config — never a constant (C-12).
+        // On-chain token decimals from the config — never a constant.
         const amountWei = parseUnits(
           amount.trim(),
           config.paymentTokenDecimals ?? 6,

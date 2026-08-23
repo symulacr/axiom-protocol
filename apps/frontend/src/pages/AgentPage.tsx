@@ -117,7 +117,7 @@ export function AgentPage({
 
   const agentName = `Agent #${tokenId.toString()}`;
   const lastEvent = events[events.length - 1];
-  // C-12: vault balances are native-denominated (chain config); the payments
+  // vault balances are native-denominated (chain config); the payments
   // tab speaks in the payment token's on-chain symbol (hook-cached config).
   const nativeSymbol = APP_CHAIN.nativeCurrency.symbol;
   const paymentToken = usePaymentToken();
@@ -140,7 +140,7 @@ export function AgentPage({
     <div className="ops-page agent-page">
       <div className="page-head">
         <div>
-          {/* S1 (audit 06 FINDING-006 / duplication map #2): the head kept
+          {/* the head kept
               "AGENT / #N" over "Agent #N" plus an owner/last-event line the
               overview tab's provenance list renders verbatim. The name stays;
               the identity dl below is the one canonical owner. */}
@@ -177,7 +177,7 @@ export function AgentPage({
               : "no strategy bound"}
           </small>
         </div>
-        {/* S1 (duplication map #2): the dataHash block here was the second
+        {/* (duplication map #2): the dataHash block here was the second
             on-screen copy of the metadata root — the overview tab's
             provenance list renders it once, with the copy button. */}
       </div>
@@ -209,7 +209,7 @@ export function AgentPage({
       {tab === "overview" && (
         <div className="agent-grid">
           <section className="panel agent-identity-card">
-            {/* S2 (audit 06 FINDING-003): panel eyebrows that restated the
+            {/* panel eyebrows that restated the
                 h2 beneath them are gone (overview/command/execute/payments/
                 activity). The head OPERATING BALANCE label stays — it labels
                 a bare value — as do the payments token/earnings/royalty
@@ -347,7 +347,7 @@ export function AgentPage({
               placeholder={agentCopy.instructionPlaceholder}
               hint={agentCopy.instructionHint}
             />
-            {/* 03 FINDING-016: a Field implies editable — this is a read-only
+            {/* 03: a Field implies editable — this is a read-only
                 route readout, so it renders as a definition row, not an
                 input. */}
             <div className="field provider-route-readout">

@@ -36,7 +36,7 @@ type UiStoreValue = {
 const UiStoreContext = createContext<UiStoreValue | null>(null);
 
 /** Rehydrate persisted receipt stubs: the icon is derived (never stored) from
- *  the same flowMeta source addReceipt uses at creation time. */
+ * the same flowMeta source addReceipt uses at creation time. */
 function hydrateTransactions(): Transaction[] {
   return sanitizeTransactions(
     readStoredList<PersistedTransaction>("axiom-transactions-v1", []),
@@ -50,7 +50,7 @@ export function UiStoreProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(consoleReducer, undefined, () =>
     createInitialConsoleState(
       // Unset theme follows the OS (defaultTheme) so store and boot script
-      // agree on first visit (C-SETTINGS); a stored choice always wins.
+      // agree on first visit; a stored choice always wins.
       readStored("axiom-ui-settings", {
         ...defaultSettings,
         theme: defaultTheme(),

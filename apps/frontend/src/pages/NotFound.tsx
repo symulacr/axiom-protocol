@@ -1,7 +1,6 @@
 /*
   Recovery404 (v2): no sidebar, no wallet assumption, no partial dashboard —
-  a safe exit with two destinations. Copy owns what happened + the next step
-  (02 FINDING-018), localized via copy.notFound.
+  a safe exit with two destinations. Copy owns what happened + the next step, localized via copy.notFound.
 */
 import { ArrowLeft, LayoutDashboard } from "../components/axiom/icons.js";
 import { Button } from "../components/axiom/Controls.js";

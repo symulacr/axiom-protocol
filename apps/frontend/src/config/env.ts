@@ -33,9 +33,9 @@ function backendWsBase(): string {
 
 // Single shared WS handshake for event streams and orchestrator tick streams:
 // backend /v1/stream endpoint + topic(s). Auth is dual-path:
-//  - PREFERRED: token rides the Sec-WebSocket-Protocol subprotocol header
-//    (["axiom", btoa(token)]) so it never leaks into URLs/logs.
-//  - FALLBACK: legacy ?token= query param, still required by current backends.
+// - PREFERRED: token rides the Sec-WebSocket-Protocol subprotocol header
+// (["axiom", btoa(token)]) so it never leaks into URLs/logs.
+// - FALLBACK: legacy ?token= query param, still required by current backends.
 // A subprotocol-bearing handshake against a backend that only knows ?token=
 // fails the WS open (negotiation mismatch) exactly once; callers retry via
 // openStreamSocket() with the query fallback, and a module-level latch keeps

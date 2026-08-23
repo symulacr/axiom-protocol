@@ -27,8 +27,8 @@ interface ProvidersResponse {
 }
 
 /** Normalize a backend provider object (verbatim router fields) into the
- *  client shape. The ?model= passthrough adds `model`/`trust_mode`; legacy
- *  items carry only address/model/endpoint/price. */
+ * client shape. The ?model= passthrough adds `model`/`trust_mode`; legacy
+ * items carry only address/model/endpoint/price. */
 export function normalizeProviders(
   services: unknown[] | undefined,
 ): ComputeProvider[] {

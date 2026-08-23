@@ -52,12 +52,12 @@ function ContextStrip({
 }) {
   return (
     <section className="context-strip">
-      {/* S1 (audit 06 FINDING-008 / duplication map #5): the network cell is
+      {/* the network cell is
           gone — the sidebar rail's network card is the single owner of
           name + chain id. A wrong chain still surfaces here through the
           signer cell ("Wrong network"), so no decision state was lost. */}
       <div className="context-cell">
-        {/* S2 (audit 06 FINDING-003): the WALLET CONTEXT eyebrow survives —
+        {/* the WALLET CONTEXT eyebrow survives —
             a truncated address is not self-describing and needs its category.
             The SIGNER / ATTENTION cells' values already state their meaning,
             so their same-info eyebrows are gone. */}
@@ -128,7 +128,7 @@ export function DashboardPage({
   const chainId = useChainId();
   const chainOk = chainId === APP_CHAIN_ID;
   // Vault balances are native-denominated — the unit comes from chain config,
-  // never a literal (C-12).
+  // never a literal.
   const nativeSymbol = APP_CHAIN.nativeCurrency.symbol;
   const {
     agents,
@@ -205,7 +205,7 @@ export function DashboardPage({
     <div className="ops-page">
       <div className="page-head page-head-asymmetric">
         <div>
-          {/* S2 (audit 06 FINDING-003): page-head + panel-head eyebrows that
+          {/* page-head + panel-head eyebrows that
               restated the h1/h2 beneath them are gone — one title per block. */}
           <h1>
             {copy.dashboard.titleLead}
@@ -217,8 +217,7 @@ export function DashboardPage({
           <strong>{copy.dashboard.review(attention.length)}</strong>
           {/* One owner for the payment next-action at depth 0: the
               PriorityActionStrip (global chrome). The action lane keeps the
-              attention readout + Refresh only (C-SETTINGS / 03 FINDING-009,
-              04 FINDING-004 — this was the second of three copper CTAs). */}
+              attention readout + Refresh only. */}
           <button className="text-link" onClick={refresh}>
             {copy.dashboard.refresh} <RefreshCw size={13} />
           </button>
@@ -403,7 +402,7 @@ export function DashboardPage({
               <strong>{copy.dashboard.allowanceReady}</strong>
               {/* Evidence only — the third copper CTA for the same payment
                   action lived here; the strip owns that action now
-                  (C-SETTINGS / 03 FINDING-009, 04 FINDING-004). */}
+                  . */}
             </div>
           </div>
         </section>

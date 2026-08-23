@@ -170,15 +170,15 @@ export const dedupeToolCalls = (calls: ToolCall[]): ToolCall[] =>
       ) === i,
   );
 
-/** 04 FINDING-012: tool failures render humanized in the message stream —
- *  the model still receives the raw result JSON (it recovers better with
- *  real detail); users get the head sentence, never a viem/backend dump. */
+/** 04: tool failures render humanized in the message stream —
+ * the model still receives the raw result JSON (it recovers better with
+ * real detail); users get the head sentence, never a viem/backend dump. */
 export function humanizeToolMessage(text: string): string {
   return text.startsWith("Error: ") ? humanizeError(text) : text;
 }
 
 /** Capture router usage/trace (terminal chunk or backend trace frame) into a
- *  per-turn metric record. Reuses the exact fields the router emits. */
+ * per-turn metric record. Reuses the exact fields the router emits. */
 export function captureTurnMetrics(
   turn: TurnMetric,
   usage: SSEChunk["usage"],
@@ -209,9 +209,9 @@ export function formatNeuron(neuron: number): string {
 }
 
 /** Aggregated per-run insights line: 'N turns · N steps | LLM Xs | provider
- *  0x… | ≈X <native>'. Rendered inside InsightsDisclosure (collapsed by
- *  default); the cost unit is the chain's native symbol (never a literal,
- *  C-12). Token/cache internals are deliberately not shown (row 42, audit 07). */
+ * 0x… | ≈X <native>'. Rendered inside InsightsDisclosure (collapsed by
+ * default); the cost unit is the chain's native symbol (never a literal,
+ * ). Token/cache internals are deliberately not shown (row 42, audit 07). */
 export function formatInsightsLine(
   metrics: TurnMetric[],
   turns: number,
@@ -224,7 +224,7 @@ export function formatInsightsLine(
   ];
   const wallMs = metrics.reduce((a, m) => a + m.wallMs, 0);
   if (wallMs > 0) parts.push(`LLM ${(wallMs / 1000).toFixed(1)}s`);
-  // Row-42 (07): the opened detail keeps 3 segments — cost, latency, provider.
+  // Row-42: the opened detail keeps 3 segments — cost, latency, provider.
   // Token/cache/telemetry internals stay out of the collapsed-by-default line.
   const last = metrics[metrics.length - 1];
   if (last?.provider) parts.push(`provider ${truncateAddress(last.provider)}`);
@@ -234,8 +234,8 @@ export function formatInsightsLine(
 }
 
 /** Parse an LLM tool-call's `arguments` payload. Models occasionally emit two
- *  concatenated JSON objects or append prose after the first one; salvage the
- *  first balanced {...} block instead of failing the whole tool call. */
+ * concatenated JSON objects or append prose after the first one; salvage the
+ * first balanced {...} block instead of failing the whole tool call. */
 export function parseToolArguments(
   raw: string | undefined,
 ): Record<string, unknown> {

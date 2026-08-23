@@ -28,9 +28,9 @@ export const COLORS = {
 const formFieldBase: CSSProperties = {
   padding: "0.625rem 0.875rem",
   borderRadius: "var(--radius-md)",
-  // No inline border: the .axiom-field class owns it so the :focus
+  // No inline border: the.axiom-field class owns it so the:focus
   // border-color change (and the focus-visible ring) actually applies
-  // (04 FINDING-007 — an inline border silently defeated both).
+  // (04 — an inline border silently defeated both).
   background: COLORS.bg,
   color: COLORS.text,
   fontSize: "var(--text-sm)",
@@ -136,7 +136,7 @@ export function CopyButton({
         ...style,
       }}
     >
-      {/* S1 (audit 06 FINDING-014): single node with a label swap — the old
+      {/* single node with a label swap — the old
           two-span stack kept an opacity:0 "✓" twin in the DOM at all times
           (announced twice, one span too many per button). Matches
           MsgCopyAction's inline-confirm contract. */}
@@ -229,7 +229,7 @@ export function Spinner({
   style?: CSSProperties;
 }): ReactElement {
   if (variant === "churn") {
-    // S1 (audit 06 FINDING-014): the churn was 9 empty animation-cell spans
+    // the churn was 9 empty animation-cell spans
     // per instance. One aria-live node now — the dots are painted by CSS
     // (.spinner--churn in chat-compat.css), which also puts the animation
     // under the reduced-motion overrides for the first time (inline styles

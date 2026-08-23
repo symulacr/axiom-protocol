@@ -15,8 +15,8 @@ import { AxiomBrandMark } from "../components/axiom/BrandMark";
 import "../styles/axiom-seo-public.css";
 
 /** Live on-chain registry counts for the agents hub artifact — null while
- *  loading or when the backend is unreachable (card falls back to the
- *  labeled specimen). */
+ * loading or when the backend is unreachable (card falls back to the
+ * labeled specimen). */
 interface AgentRegistryStats {
   totalMinted: number;
   latestTokenId: string | null;
@@ -92,8 +92,8 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
       label: "PROVENANCE SPECIMEN",
       state: "IDENTITY LINKED",
       // Fallback rows while /v1/agents/stats is unavailable. When the live
-      // registry read succeeds, real counts replace them (never a fabricated
-      // ID — 02 FINDING-019).
+      // registry read succeeds, real counts replace them. Never render a
+      // fabricated agent id.
       rows: [
         ["AGENTS", "registry read…"],
         ["MANIFEST", "hash + metadata"],

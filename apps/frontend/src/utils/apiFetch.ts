@@ -215,8 +215,8 @@ export async function apiFetchResponse(
 }
 
 /** Streaming POST (SSE chat): honors Retry-After with up to 2 retries capped
- *  at 10s each. AbortError propagates immediately — a user-initiated cancel
- *  must never be retried. */
+ * at 10s each. AbortError propagates immediately — a user-initiated cancel
+ * must never be retried. */
 export async function postStreamingWithRetry(
   path: string,
   init: RequestInit & { timeout?: number },

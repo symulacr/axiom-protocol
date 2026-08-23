@@ -1,5 +1,5 @@
 /*
-  Command Center .
+  Command Center.
   ⌘K/Ctrl-K palette over routes, next-safe actions and recent receipts.
 */
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -92,7 +92,7 @@ export function CommandCenter({
 
   const items = useMemo<CommandItem[]>(() => {
     const routeItems = routeItemsFor(copy);
-    // 02 FINDING-021: no "Continue in <current page>" item — a control whose
+    // 02: no "Continue in <current page>" item — a control whose
     // destination is the page you are on is an empty affordance.
     const actionItems = safeActions.map((action) => ({
       id: action.id,
@@ -166,7 +166,7 @@ export function CommandCenter({
 
   useEffect(() => {
     if (!open) return;
-    // C-14 focus leg of the dismiss contract: return focus to the trigger
+    // focus leg of the dismiss contract: return focus to the trigger
     // (the pre-open focused element) on close — the mobile drawer's behavior.
     const priorFocus =
       document.activeElement instanceof HTMLElement

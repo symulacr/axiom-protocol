@@ -128,7 +128,7 @@ function Guide({
   locale: "en" | "fr" | "de";
 }) {
   const copy = getCopy(locale);
-  // C-14 dismiss trio: Esc + focus restore here; backdrop via layer onMouseDown
+  // dismiss trio: Esc + focus restore here; backdrop via layer onMouseDown
   // below; explicit close via the X and the skip affordance.
   useModalDismiss(onClose);
   const [step, setStep] = useState(0);
@@ -225,7 +225,7 @@ function ChatSurface(): ReactElement {
   // Mobile rail dismiss: the ☰ toggle sits under the fixed rail overlay once
   // open, so closing needs its own affordances — backdrop tap + Esc (the
   // shell modal-dismiss contract), both only meaningful ≤760px where the
-  // rail is an overlay. C-14: focus returns to the pre-open element (the ☰
+  // rail is an overlay.: focus returns to the pre-open element (the ☰
   // toggle) on close, matching the shell drawer contract.
   useEffect(() => {
     if (!threadsOpen) return;
@@ -320,7 +320,7 @@ export function App(): ReactElement {
       return;
     if (!isConnected || !address) {
       if (state.session.status !== "disconnected") {
-        // 03 FINDING-010: disconnect clears the whole identity — a stored
+        // 03: disconnect clears the whole identity — a stored
         // profile/address must never outlive the session it belonged to.
         dispatch({
           type: "session",
@@ -406,7 +406,7 @@ export function App(): ReactElement {
   // ---- Theme bridge: v2 settings.theme → html data-theme. Single storage
   // owner is axiom-ui-settings (uiStore persists it; the index.html boot
   // script reads it) — the legacy axiom-theme mirror is removed, and any
-  // orphaned copy from an older build is cleaned up here (C-SETTINGS).
+  // orphaned copy from an older build is cleaned up here.
   useEffect(() => {
     document.documentElement.dataset.theme = state.settings.theme;
     document.documentElement.style.colorScheme = state.settings.theme;
@@ -427,7 +427,7 @@ export function App(): ReactElement {
     return () => window.clearTimeout(timer);
   }, [state.notice, dispatch]);
 
-  // C-15: settle persisted receipts that were mid-confirmation at reload
+  // settle persisted receipts that were mid-confirmation at reload
   // (mined → confirmed/reverted; timeout → stale/check-explorer).
   useReceiptReconcile(state.transactions, dispatch);
 
@@ -485,9 +485,9 @@ export function App(): ReactElement {
     !location.pathname.startsWith("/agents/");
   // /chat stays public (anonymous live chat; history keys to the wallet only
   // when a session exists) and /staking is a public status notice (03
-  // FINDING-015 — gating an honest "not integrated" page sent anonymous
+  // — gating an honest "not integrated" page sent anonymous
   // users two disclosures deep into a dead end) — and /transfer/co-sign is
-  // the P4 public receiver path (the acceptance signature is the only gate;
+  // the public receiver path (the acceptance signature is the only gate;
   // a receiver must NOT need an Axiom session to accept) — every other
   // internal route is wallet-gated.
   const internal =
@@ -500,7 +500,7 @@ export function App(): ReactElement {
   const authenticated =
     state.session.status === "authenticated" && isSessionFresh(state.session);
 
-  // 05 FINDING-012: one tab/history title per route ("<name> — Axiom"),
+  // 05: one tab/history title per route ("<name> — Axiom"),
   // localized via copy (nav labels are the canonical route names). Public
   // hubs own their SEO title (PublicSeoPage); landing keeps the static
   // index.html brand title.

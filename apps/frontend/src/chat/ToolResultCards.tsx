@@ -42,9 +42,9 @@ function formatNativeValue(weiStr: string): string {
   }
 }
 
-/* Chat path (documented exception, C-07 residual): the EncodePreviewCard shows
+/* Chat path (documented exception, residual): the EncodePreviewCard shows
    the RAW contract payload — the v2 review sheets are the parsed-facts surface.
-   P4: it migrates to the Controls kit + icons (no `btn btn-primary`), its
+   it migrates to the Controls kit + icons (no `btn btn-primary`), its
    chrome localizes via copy.chat.encode*, and the raw payload is labeled as a
    developer view instead of masquerading as a parsed review. */
 export function EncodePreviewCard({

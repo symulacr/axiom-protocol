@@ -30,9 +30,9 @@ import { useUiStore } from "../lib/uiStore.js";
 import { getCopy } from "../lib/copy.js";
 
 /**
- * P4: TransferModal migrated off the v1 ui.tsx kit onto the Controls kit and
+ * TransferModal migrated off the v1 ui.tsx kit onto the Controls kit and
  * the shared overlay language — the sheet is the same graphite
- * operation-review layer as OperationReviewSheet (theme-invariant, C-14
+ * operation-review layer as OperationReviewSheet (theme-invariant,
  * dismiss trio via useModalDismiss). Form semantics are unchanged; the title
  * reads copy.flowUi.transferAgentTitle ("Transfer agent #N" — the "iNFT"
  * wording is gone). Remaining chrome stays English per the documented
@@ -74,7 +74,7 @@ function validatePubKey(value: string): string | null {
 }
 
 /** Shared modal shell: the app's overlay layer (graphite, theme-invariant)
- *  with the C-14 dismiss trio — replaces the v1 <dialog> from ui.tsx. */
+ * with the dismiss trio — replaces the v1 <dialog> from ui.tsx. */
 function ModalSheet({
   title,
   onClose,
@@ -353,11 +353,11 @@ function ConfirmTransferPhase({
   );
 }
 
-/** F-01: explicit receiver co-sign step — the AccessProof must be signed by
- *  the recipient's wallet (protocol requirement), so a cross-party transfer
- *  pauses here between the oracle challenge and the sender's submission. The
- *  blocked state is honest: when this wallet cannot expose the receiver
- *  account there is no retry, only the two real remedies. */
+/** explicit receiver co-sign step — the AccessProof must be signed by
+ * the recipient's wallet (protocol requirement), so a cross-party transfer
+ * pauses here between the oracle challenge and the sender's submission. The
+ * blocked state is honest: when this wallet cannot expose the receiver
+ * account there is no retry, only the two real remedies. */
 function CoSignPhase({
   receiver,
   blocked,
@@ -556,7 +556,7 @@ export function TransferModal({
       setCoSignBlocked(false);
       try {
         const prepared = await prepare(buildInput());
-        // F-01: cross-party transfers pause for the receiver co-sign step;
+        // cross-party transfers pause for the receiver co-sign step;
         // self-transfers go straight to the confirm review as before.
         setPhase(prepared.status === "co-sign-required" ? "co-sign" : "review");
       } catch (err) {

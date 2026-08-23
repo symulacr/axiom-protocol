@@ -21,13 +21,13 @@ import {
 } from "../abi/addresses.js";
 
 const STORAGE_KEY = "axiom:chat-session";
-/** 03 FINDING-007: the routing preference is a user-level operational
- *  preference — it persists in localStorage (survives new tabs/devices on
- *  this machine), while lastTokenId stays session-scoped per tab. */
+/** 03: the routing preference is a user-level operational
+ * preference — it persists in localStorage (survives new tabs/devices on
+ * this machine), while lastTokenId stays session-scoped per tab. */
 const PREF_STORAGE_KEY = "axiom:chat-provider-pref";
 
 /** Router routing preference, persisted per chat session and sent as the
- *  `provider` request field (backend maps it to X-0G-Provider-* headers). */
+ * `provider` request field (backend maps it to X-0G-Provider-* headers). */
 export type ProviderPref = {
   sort?: "latency" | "price";
   address?: string;
@@ -38,10 +38,10 @@ export type ProviderPref = {
 type StoredSession = { lastTokenId?: string; providerPref?: ProviderPref };
 
 /** Cache-friendly default routing. Latency-sort makes the 0G router stick to
- *  a single provider (measured in the cache deep-dive), so the prompt-cache
- *  prefix stays on the same provider by default. `allowFallbacks: true` only
- *  kicks in when that provider is unavailable. No provider address is
- *  hardcoded — the catalog changes; sort:latency follows it. */
+ * a single provider (measured in the cache deep-dive), so the prompt-cache
+ * prefix stays on the same provider by default. `allowFallbacks: true` only
+ * kicks in when that provider is unavailable. No provider address is
+ * hardcoded — the catalog changes; sort:latency follows it. */
 export const DEFAULT_PROVIDER_PREF: ProviderPref = {
   sort: "latency",
   allowFallbacks: true,

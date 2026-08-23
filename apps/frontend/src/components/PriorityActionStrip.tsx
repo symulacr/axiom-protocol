@@ -35,7 +35,7 @@ export function PriorityActionStrip({
   // Chat fills the viewport below the topbar (live SSE surface) — no strip.
   // Flow pages own a copper primary for their own operation ("Review
   // operation"); the strip's payment CTA must not compete with it, so the
-  // strip stays off every operation path (C-SETTINGS / 04 FINDING-004).
+  // strip stays off every operation path.
   if (
     !action ||
     ["settings", "staking", "chat"].includes(route) ||

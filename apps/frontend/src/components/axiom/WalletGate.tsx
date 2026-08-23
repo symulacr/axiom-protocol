@@ -1,11 +1,11 @@
 /*
   Live WalletGate — the gate states driven by wagmi:
     disconnected → connector list (useConnect)
-    connecting   → pending connect()
+    connecting → pending connect()
     wrong-network→ useSwitchChain (app chain from config/wagmi)
-    signing      → SIWE-lite session sign (same EIP-191 pattern the chat
+    signing → SIWE-lite session sign (same EIP-191 pattern the chat
                    history proof uses, over an axiom-console-session message)
-    profile      → name the local operator profile (stored in the session)
+    profile → name the local operator profile (stored in the session)
     authenticated/ rejected / timeout → resume / retry states.
   The signature is non-transactional and cached only in the local session
   (axiom-session in localStorage, via the uiStore).
@@ -84,7 +84,7 @@ export function WalletGate({
   locale: Locale;
 }) {
   const copy = getCopy(locale);
-  // C-08: the target network in copy is always the configured chain, never a
+  // the target network in copy is always the configured chain, never a
   // literal ("Switch to 0G Mainnet" told testnet users the wrong network).
   const chainVars = { chainName: APP_CHAIN.name, chainId: APP_CHAIN_ID };
   const { address, isConnected, chainId, connector } = useAccount();
@@ -99,7 +99,7 @@ export function WalletGate({
   const [profile, setProfile] = useState(session.profile);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // C-14 dismiss trio: Esc + focus restore here; backdrop via layer onMouseDown
+  // dismiss trio: Esc + focus restore here; backdrop via layer onMouseDown
   // below; X already exists. Dismiss is safe in every view — the X was never
   // gated during signing, session state is untouched by closing, and the gate
   // re-opens from any locked CTA (the wagmi connection persists).
@@ -239,8 +239,8 @@ export function WalletGate({
           </div>
         </div>
         <div className="wallet-gate-panel">
-          {/* S2 (audit 06 FINDING-004 / duplication map #8): one label per
-              state — the localized phase eyebrow (S1's DOM copy.wallet.phase*
+          {/* one label per
+              state — the localized phase eyebrow (the DOM copy.wallet.phase*
               strings) + the h2 carry it; the head's Status pill repeated the
               raw view name a third time and is gone. */}
           <div className="wallet-gate-head">
@@ -249,7 +249,7 @@ export function WalletGate({
 
           {view === "connect" && (
             <>
-              {/* S1 (audit 06 FINDING-004): the phase label was CSS ::after
+              {/* the phase label was CSS::after
                   content — invisible to i18n/grep. Real DOM copy now, straight
                   from copy.wallet. */}
               <span className="eyebrow copper">{copy.wallet.phaseConnect}</span>
@@ -457,7 +457,7 @@ export function WalletGate({
               </Button>
             </div>
           )}
-          {/* S1 (audit 06 FINDING-014 / duplication map #9): the foot repeated
+          {/* the foot repeated
               "Non-custodial access" (art panel above) and the network name
               (sidebar rail card + wrong-network check) on every gate state. */}
         </div>

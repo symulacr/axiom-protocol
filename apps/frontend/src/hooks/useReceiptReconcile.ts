@@ -1,5 +1,5 @@
 /*
-  Receipt reconciler (C-15) — settles persisted local receipt rows against the
+  Receipt reconciler — settles persisted local receipt rows against the
   chain after reload. Any row still "confirming"/"submitted" when the store
   rehydrates is re-watched with the same 120s confirmation timeout FlowPage
   uses: mined+status 1 → "confirmed", status 0 → "reverted", timeout/dropped →
@@ -14,7 +14,7 @@ import type { Transaction } from "../lib/models.js";
 import type { ConsoleAction } from "../lib/consoleStore.js";
 
 /** Matches FlowPage's confirmation ceiling: dropped/replaced txs flip to
- *  "stale" instead of polling forever. */
+ * "stale" instead of polling forever. */
 export const RECEIPT_CONFIRM_TIMEOUT_MS = 120_000;
 
 const TX_HASH_RE = /^0x[0-9a-fA-F]{64}$/;

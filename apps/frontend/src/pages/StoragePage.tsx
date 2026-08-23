@@ -2,7 +2,7 @@
   StoragePage — read-only demo pipeline. There is no backend storage endpoint
   yet (apps/backend has no storage router), so the page documents the stages a
   real upload will expose and every value stays in its honest pending state.
-  C-11 fixture purge (03 FINDING-014): the phase-advance button and the
+   fixture purge: the phase-advance button and the
   hardcoded "0x3b9…f10" copy-root affordance are gone — a fixture no longer
   owns a primary action, and no fake hash can be copied.
 */

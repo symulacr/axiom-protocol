@@ -21,9 +21,9 @@ export function useVaultWrite(
   opts?: {
     onSuccess?: () => void;
     /** Default true: toast on submit/error and swallow errors. Flow pages pass
-     *  false so the OperationReviewSheet machine (submitting →
-     *  recoverable-error → receipt) owns the UX instead of toasts; in that
-     *  mode handleSubmit rethrows and resolves to the tx hash. */
+     * false so the OperationReviewSheet machine (submitting →
+     * recoverable-error → receipt) owns the UX instead of toasts; in that
+     * mode handleSubmit rethrows and resolves to the tx hash. */
     toasts?: boolean;
   },
 ) {

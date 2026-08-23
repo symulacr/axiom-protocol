@@ -1,12 +1,12 @@
 /*
-  OperationReviewSheet . The single
+  OperationReviewSheet. The single
   confirm surface over the v1 encode-relay hooks: review facts, then
   "Sign & execute" drives the real wallet call from FlowPage.
 
-  P4: the sheet reads its copy from lib/copy.ts directly (locale via
+  the sheet reads its copy from lib/copy.ts directly (locale via
   useUiStore) — review rows, fact labels, CTA vocabulary and the receipt/
-  co-sign/handoff chrome localize like the rest of the flow body. The F-01
-  co-sign step additionally carries the P4 cross-wallet handoff (share an
+  co-sign/handoff chrome localize like the rest of the flow body. The
+  co-sign step additionally carries the cross-wallet handoff (share an
   acceptance link / paste the receiver's code) so a receiver on another
   device never dead-ends the transfer.
 */
@@ -44,24 +44,24 @@ type Props = {
   onRetry: () => void;
   onExecute: () => void;
   busy: boolean;
-  /** C-15: FlowPage computes the truthful wallet-prompt count from the live
-   *  allowance; when provided it replaces the static payment fact row. */
+  /** FlowPage computes the truthful wallet-prompt count from the live
+   * allowance; when provided it replaces the static payment fact row. */
   confirmationLabel?: string;
   /** Payment boundary 1: false when the live allowance already covers the
-   *  amount (CTA relabeled — no wallet prompt fires on that click). */
+   * amount (CTA relabeled — no wallet prompt fires on that click). */
   approvalNeeded?: boolean;
-  /** C-07: vault flows show the resulting-balance estimate as an extra fact
-   *  row (cheap — the vault read is already live on the flow page). */
+  /** vault flows show the resulting-balance estimate as an extra fact
+   * row (cheap — the vault read is already live on the flow page). */
   balanceFact?: { dt: string; dd: string };
-  /** C-12: the payment token's on-chain symbol from the hook-layer cache —
-   *  the confirm CTA interpolates it ("Pay 25 axmUSDC" on Galileo), never a
-   *  hardcoded unit. */
+  /** the payment token's on-chain symbol from the hook-layer cache —
+   * the confirm CTA interpolates it ("Pay 25 axmUSDC" on Galileo), never a
+   * hardcoded unit. */
   paymentSymbol?: string;
-  /** F-01: cross-party transfer paused for the receiver co-sign. When set
-   *  (and no recoverable error is showing), the sheet's primary action becomes
-   *  the receiver signature; `blocked` renders the honest blocker (the wallet
-   *  cannot sign for the receiver) WITH the P4 handoff remedies (link + code
-   *  paste) — no dead end. Copy is read from copy.ts inside the sheet. */
+  /** cross-party transfer paused for the receiver co-sign. When set
+   * (and no recoverable error is showing), the sheet's primary action becomes
+   * the receiver signature; `blocked` renders the honest blocker (the wallet
+   * cannot sign for the receiver) WITH the handoff remedies (link + code
+   * paste) — no dead end. Copy is read from copy.ts inside the sheet. */
   coSign?: {
     receiver: string;
     blocked: boolean;
@@ -88,7 +88,7 @@ export function OperationReviewSheet({
   const copy = getCopy(state.settings.locale);
   const f = copy.flowUi;
   const flow = copy.flows[kind];
-  // C-14 dismiss trio: Esc + focus restore here; backdrop via layer onMouseDown
+  // dismiss trio: Esc + focus restore here; backdrop via layer onMouseDown
   // below; explicit close via the X and "Edit details". Sheet is the highest-
   // stakes dialog — dismissing never submits (submission is wallet-gated).
   useModalDismiss(onClose);
@@ -96,7 +96,7 @@ export function OperationReviewSheet({
     kind === "payment" && draft.phase === "approval-required";
   const paymentReady = kind === "payment" && draft.phase === "payment-required";
   const isRecoverableError = draft.phase === "recoverable-error";
-  // F-01: the co-sign step replaces the normal primary action whenever a
+  // the co-sign step replaces the normal primary action whenever a
   // cross-party transfer is paused for the receiver signature (and no
   // execution error is being surfaced).
   const coSignActive = coSign !== undefined && !isRecoverableError;
@@ -106,10 +106,10 @@ export function OperationReviewSheet({
     handoff?.codeValue?.trim() ?? "",
   );
   // One copper primary per view (CTA hierarchy contract):
-  //  - applied handoff → Submit transfer (the sender's wallet boundary)
-  //  - co-sign possible → Sign as receiver
-  //  - co-sign blocked  → Apply acceptance (the only remaining path; disabled
-  //    until a signature-shaped code is pasted)
+  // - applied handoff → Submit transfer (the sender's wallet boundary)
+  // - co-sign possible → Sign as receiver
+  // - co-sign blocked → Apply acceptance (the only remaining path; disabled
+  // until a signature-shaped code is pasted)
   const primaryLabel = isRecoverableError
     ? kind === "payment"
       ? f.restartApproval
@@ -187,7 +187,7 @@ export function OperationReviewSheet({
           </div>
         </div>
         <dl className="review-facts">
-          {/* S1 (audit 06 FINDING-009 / duplication map #3): for mint there is
+          {/* for mint there is
               no agent yet — agentName IS draft.value, so the TARGET AGENT row
               repeated the AGENT NAME row verbatim. Other kinds keep both rows
               (they are different facts there). */}

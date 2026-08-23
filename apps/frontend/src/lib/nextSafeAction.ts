@@ -2,8 +2,8 @@
  * first unfunded agent from the live portfolio (fallback: the payment route
  * without an agent); "recover receipt" keys off flow drafts in recoverable
  * error, and storage inspection stays the read-only proof check.
- * Copy comes from copy.strip (05 FINDING-007 — the strip localizes with the
- * page body); no chain/token literal ever originates here (C-08/C-12). */
+ * Copy comes from copy.strip (05 — the strip localizes with the
+ * page body); no chain/token literal ever originates here. */
 import type { AppState } from "./models";
 import type { Copy } from "./copy";
 

@@ -80,12 +80,12 @@ function Sidebar({
     },
     [],
   );
-  // One entry per destination (C-SETTINGS / 03 FINDING-008): the agent
+  // One entry per destination: the agent
   // register lives on the Overview surface, so /app has a single owner —
   // "Overview" — which stays lit on deep agent pages (/agents/:tokenId are
   // children of the register; /agents alone is the public SEO hub).
   // Labels come from copy.nav so the shell localizes with the page body
-  // (05 FINDING-007 — the nav was the last English-only surface).
+  // (05 — the nav was the last English-only surface).
   const copy = getCopy(settings.locale);
   const identified = session.status === "authenticated";
   const items = [
@@ -282,7 +282,7 @@ function Sidebar({
             <i />
             {APP_CHAIN.name}
           </strong>
-          {/* 02 FINDING-010: the chain id is the one kept network readout; the
+          {/* 02: the chain id is the one kept network readout; the
               oracle earns a mention only when it is DOWN (healthy plumbing is
               never announced). */}
           <small className="mono">
@@ -292,7 +292,7 @@ function Sidebar({
         </div>
         <Network size={16} />
       </div>
-      {/* 03 FINDING-010: identity renders only for an authenticated session —
+      {/* 03: identity renders only for an authenticated session —
           a stored profile/address from a previous operator never shows after
           disconnect. */}
       <button className="account" onClick={() => go("/settings")}>
@@ -452,7 +452,7 @@ function Topbar({
   fundTarget?: FundTarget;
 }) {
   const copy = getCopy(state.settings.locale);
-  // 03 FINDING-010: identity (and the session pill) render only for an
+  // 03: identity (and the session pill) render only for an
   // authenticated session — never a stale profile/address after disconnect.
   const identified = session.status === "authenticated";
   return (

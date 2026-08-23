@@ -3,7 +3,7 @@
   from wagmi + useHealth; display preferences persist in axiom-ui-settings
   (uiStore). Theme also drives the document data-theme attribute via App.
 
-  Depth contract (C-SETTINGS / 03 FINDING-004+005, 04 FINDING-003):
+  Depth contract:
   - depth 0: Signing context (read-only, open) + Daily preferences (theme,
     compact rail, density, language) + footer (staking link, Lock console).
   - depth 1: Console layout + Advanced — disclosures start CLOSED at every
@@ -47,7 +47,7 @@ function SettingsDisclosure({
   title: string;
   icon: ReactNode;
   /** Shallow sections (read-only context, daily preferences) stay open; every
-   *  advanced/rare/destructive section starts closed at any viewport. */
+   * advanced/rare/destructive section starts closed at any viewport. */
   defaultOpen?: boolean;
   className?: string;
   children: ReactNode;
@@ -61,7 +61,7 @@ function SettingsDisclosure({
         onToggle={(event) => setOpen(event.currentTarget.open)}
       >
         <summary className="panel-head">
-          {/* S2 (audit 06 FINDING-003): disclosure eyebrows restated the h2
+          {/* disclosure eyebrows restated the h2
               beneath them ("CONSOLE / LAYOUT" over "Console layout") — the h2
               is the one title per card. */}
           <div>
@@ -75,9 +75,9 @@ function SettingsDisclosure({
   );
 }
 
-/** Reset-surface confirm dialog (C-SETTINGS): the app's most destructive
- *  non-wallet action gets the canonical modal trio — Esc + backdrop + explicit
- *  Cancel — and an explicit danger confirm before anything is wiped. */
+/** Reset-surface confirm dialog: the app's most destructive
+ * non-wallet action gets the canonical modal trio — Esc + backdrop + explicit
+ * Cancel — and an explicit danger confirm before anything is wiped. */
 function ResetConfirmDialog({
   labels,
   onCancel,
@@ -131,7 +131,7 @@ export function SettingsPage({
   const copy = getCopy(state.settings.locale);
   const labels = copy.settings;
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
-  // Profile-name editor (03 FINDING-013): draft tracks the stored name and
+  // Profile-name editor: draft tracks the stored name and
   // re-syncs when it changes elsewhere (first-run WalletGate step).
   const [profileDraft, setProfileDraft] = useState(state.session.profile);
   const [profileSynced, setProfileSynced] = useState(state.session.profile);
@@ -236,7 +236,7 @@ export function SettingsPage({
               <Status label={status} tone={toneFor(status)} />
             </div>
           ))}
-          {/* 03 FINDING-013: Settings owns the operator profile name — the
+          {/* 03: Settings owns the operator profile name — the
               WalletGate step only creates the first value; renames land here
               and propagate to sidebar/topbar/avatar without re-auth. */}
           <form

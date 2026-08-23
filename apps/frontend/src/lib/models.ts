@@ -88,11 +88,11 @@ export type Transaction = {
   agent: string;
   icon: ReactNode;
   /** Wall-clock ms at local receipt creation; persisted so the receipt center
-   *  can render an honest age after reload (chain-event rows derive their own). */
+   * can render an honest age after reload (chain-event rows derive their own). */
   createdAt?: number;
   /** Default true: adding this receipt flips the owning flow draft to the
-   *  receipt phase. Boundary-1 approve receipts set false so the payment
-   *  sheet can advance to boundary 2 instead. */
+   * receipt phase. Boundary-1 approve receipts set false so the payment
+   * sheet can advance to boundary 2 instead. */
   opensReceipt?: boolean;
 };
 export type PendingIntent = {
