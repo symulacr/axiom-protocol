@@ -63,28 +63,40 @@ serve({
       // Same-origin API proxy (mirrors prod /api -> backend, /oracle -> backend).
       if (url.pathname.startsWith("/api")) {
         const upstream = new URL(url.pathname.slice(4) + url.search, BACKEND);
+        // Buffer the request body: streaming req.body through with duplex
+        // "half" truncates chunked upstream responses in some Bun versions
+        // (the browser saw 200 + an unreadable body on transfer finalization).
+        const body =
+          req.method === "GET" || req.method === "HEAD"
+            ? undefined
+            : await req.arrayBuffer();
+        // Force identity encoding: Bun's fetch re-adds its own
+        // accept-encoding when the header is absent, and compressed chunked
+        // upstream responses get mangled by this proxy (browser-only
+        // "Failed to fetch"). Compression still happens end-to-end in
+        // production where express serves dist directly.
+        const headers = new Headers(req.headers);
+        headers.set("accept-encoding", "identity");
         return fetch(upstream, {
           method: req.method,
-          headers: req.headers,
-          body:
-            req.method === "GET" || req.method === "HEAD"
-              ? undefined
-              : req.body,
-          duplex: "half",
+          headers,
+          body,
         });
       }
       if (url.pathname.startsWith("/oracle")) {
         // In-process oracle on the backend: forward /oracle* unchanged
         // (backend registers /oracle/health + /oracle/v1/agents/mint).
         const upstream = new URL(url.pathname + url.search, BACKEND);
+        const headers = new Headers(req.headers);
+        headers.delete("accept-encoding");
+        const body =
+          req.method === "GET" || req.method === "HEAD"
+            ? undefined
+            : await req.arrayBuffer();
         return fetch(upstream, {
           method: req.method,
-          headers: req.headers,
-          body:
-            req.method === "GET" || req.method === "HEAD"
-              ? undefined
-              : req.body,
-          duplex: "half",
+          headers,
+          body,
         });
       }
     // Static from dist-dev (built on start), then public/ (brand images,
