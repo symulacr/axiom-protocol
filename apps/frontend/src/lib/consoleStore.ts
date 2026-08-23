@@ -16,6 +16,7 @@ import type {
   TxState,
   UiSettings,
 } from "./models";
+import { APP_CHAIN_ID, type AppChainId } from "../config/wagmi.js";
 
 /** Serializable form of a local receipt row (icon is a ReactNode and is
  * rehydrated from flowMeta by route in uiStore). */
@@ -132,7 +133,7 @@ export const defaultSession: Session = {
   wallet: "",
   address: "",
   profile: "",
-  chain: 16661,
+  chain: APP_CHAIN_ID satisfies AppChainId,
   signedAt: null,
 };
 

@@ -25,12 +25,13 @@ const RPC_ALLOWLISTS: Record<number, readonly string[]> = {
  * 16602 Galileo), VITE_EVM_RPC overrides the RPC endpoint. Default = mainnet
  * 16661 so a build without VITE_ vars keeps the historical prod behavior.
  */
-function resolveChainId(): number {
+function resolveChainId(): AppChainId {
   const raw = import.meta.env.VITE_CHAIN_ID;
   if (raw) {
     const parsed = Number(raw);
+    // Narrowing validated by the CHAINS registry lookup above.
     if (Number.isInteger(parsed) && CHAINS[parsed as keyof typeof CHAINS]) {
-      return parsed;
+      return parsed as AppChainId;
     }
   }
   return zeroGMainnet.id;
@@ -38,6 +39,9 @@ function resolveChainId(): number {
 
 export const APP_CHAIN_ID = resolveChainId();
 export const APP_CHAIN = CHAINS[APP_CHAIN_ID as keyof typeof CHAINS];
+
+/** Chain ids the app is configured for, derived from the chain registry. */
+export type AppChainId = keyof typeof CHAINS;
 
 // Validates the localStorage override against the SELECTED chain's allowlist;
 // clears bad keys and falls back to VITE_EVM_RPC ?? the chain default.

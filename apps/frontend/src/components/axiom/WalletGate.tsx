@@ -102,9 +102,8 @@ export function WalletGate({
   const switchNetwork = async () => {
     setError(null);
     try {
-      // APP_CHAIN_ID is env-resolved (number); the wagmi config only registers
-      // 16661/16602, so narrow it to the configured union for switchChain.
-      await switchChainAsync({ chainId: APP_CHAIN_ID as 16661 | 16602 });
+      // APP_CHAIN_ID is env-resolved and typed as the configured-chain union.
+      await switchChainAsync({ chainId: APP_CHAIN_ID });
     } catch (err) {
       setError(humanizeError(err));
     }
