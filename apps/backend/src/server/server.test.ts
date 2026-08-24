@@ -13,6 +13,7 @@ import {
   type TransferValidityInput,
 } from "../oracle/routes.js";
 import { TeeSigner } from "../oracle/signer.js";
+import { DEFAULT_EIP712_DOMAIN } from "@axiom/config/eip712";
 import { InMemoryStorage, type StorageAdapter } from "@axiom/config/storage/0g";
 import {
   sealKeyForReceiver,
@@ -41,7 +42,7 @@ function makeDeps(signer: TeeSigner, storage: StorageAdapter): OracleRouteDeps {
 }
 
 beforeAll(async () => {
-  const signer = new TeeSigner(TEST_PRIV_HEX);
+  const signer = new TeeSigner(TEST_PRIV_HEX, DEFAULT_EIP712_DOMAIN);
   signerAddress = signer.address;
   const storage = new InMemoryStorage();
   deps = makeDeps(signer, storage);
@@ -196,7 +197,7 @@ test("/oracle/v1/agents/mint rejects a malformed dataHash", async () => {
 });
 
 test("transferValidity aborts with 502 and uploads nothing when the old blob download fails", async () => {
-  const signer = new TeeSigner(TEST_PRIV_HEX);
+  const signer = new TeeSigner(TEST_PRIV_HEX, DEFAULT_EIP712_DOMAIN);
   const RECEIVER_PRIV_HEX = "0x" + "22".repeat(32);
   const receiverPubkey64 = deriveUncompressedPubkeyFromHex(RECEIVER_PRIV_HEX);
   const receiverPubkeyHex =

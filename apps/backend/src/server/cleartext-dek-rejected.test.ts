@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 import { keccak256 } from "ethers";
 
 import { InMemoryStorage } from "@axiom/config/storage/0g";
+import { DEFAULT_EIP712_DOMAIN } from "@axiom/config/eip712";
 import { TeeSigner } from "../oracle/signer.js";
 import {
   transferValidity,
@@ -37,7 +38,7 @@ beforeAll(() => {
   process.env.NODE_ENV = "test";
 
   storage = new InMemoryStorage();
-  const signer = new TeeSigner(TEST_PRIV_HEX);
+  const signer = new TeeSigner(TEST_PRIV_HEX, DEFAULT_EIP712_DOMAIN);
   deps = {
     signer,
     storage,

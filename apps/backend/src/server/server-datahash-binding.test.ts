@@ -10,7 +10,10 @@ import express from "express";
 import { InMemoryStorage } from "@axiom/config/storage/0g";
 import { TeeSigner } from "../oracle/signer.js";
 import type { BackendEnv } from "../env-schema.js";
-import { ownershipMessageHash } from "@axiom/config/eip712";
+import {
+  DEFAULT_EIP712_DOMAIN,
+  ownershipMessageHash,
+} from "@axiom/config/eip712";
 import {
   registerOracleRoutes,
   transferValidity,
@@ -91,7 +94,7 @@ let storage: InMemoryStorage;
 let deps: OracleRouteDeps;
 
 beforeAll(async () => {
-  signer = new TeeSigner(TEST_PRIV_HEX);
+  signer = new TeeSigner(TEST_PRIV_HEX, DEFAULT_EIP712_DOMAIN);
   storage = new InMemoryStorage();
   deps = {
     signer,

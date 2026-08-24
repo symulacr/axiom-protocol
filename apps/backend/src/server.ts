@@ -329,7 +329,7 @@ export function startServer(config: ServerConfig): {
   // checks used, so proofs are inherently from the trusted signer (no HTTP oracle hop).
   const teeSignerPk = config.env?.AXIOM_TEE_SIGNER_PK;
   if (!teeSignerPk) throw new Error("AXIOM_TEE_SIGNER_PK required");
-  const teeSigner = new TeeSigner(teeSignerPk, eip712Domain);
+  const teeSigner = new TeeSigner(teeSignerPk, eip712Domain, ogChainId);
   // InMemory fallback is fine for dev/test, but in production it silently loses chat
   // transcripts AND oracle re-key blobs (the in-process oracle shares this storage) —
   // fail loud instead of serving fake storage.

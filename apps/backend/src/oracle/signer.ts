@@ -3,7 +3,6 @@ import type { Hex } from "viem";
 
 import { publicKeyUncompressedFromPrivate } from "@axiom/config/crypto/keys";
 import {
-  DEFAULT_EIP712_DOMAIN,
   ownershipMessageHash as eip712OwnershipMessageHash,
   recoverAccessSigner as eip712RecoverAccessSigner,
   type Eip712Domain,
@@ -20,8 +19,18 @@ export class TeeSigner {
 
   constructor(
     privateKeyHex: string,
-    domain: Eip712Domain = DEFAULT_EIP712_DOMAIN,
+    domain: Eip712Domain,
+    configuredChainId?: number,
   ) {
+    // A silently stale hardcoded domain would sign against the wrong network.
+    if (
+      configuredChainId !== undefined &&
+      domain.chainId !== BigInt(configuredChainId)
+    ) {
+      throw new Error(
+        `EIP-712 domain chainId ${domain.chainId} ≠ configured chain ${configuredChainId}`,
+      );
+    }
     this.wallet = new Wallet(privateKeyHex);
     this.address = this.wallet.address as Hex;
     this.domain = domain;

@@ -15,7 +15,11 @@ import {
   parseEncrypted,
 } from "@axiom/config/crypto/aes-gcm";
 import { TeeSigner } from "../oracle/signer.js";
-import { ownershipMessageHash, accessMessageHash } from "@axiom/config/eip712";
+import {
+  DEFAULT_EIP712_DOMAIN,
+  ownershipMessageHash,
+  accessMessageHash,
+} from "@axiom/config/eip712";
 
 const TEST_PRIV_HEX = "0x" + "11".repeat(32);
 const TEST_RECEIVER_PRIV_HEX = "0x" + "22".repeat(32);
@@ -86,7 +90,7 @@ test("ECIES sealKeyForReceiver → unsealKeyForReceiver roundtrip", () => {
 });
 
 test("TeeSigner.signOwnership produces 65-byte raw signature recoverable by ethers", () => {
-  const signer = new TeeSigner(TEST_PRIV_HEX);
+  const signer = new TeeSigner(TEST_PRIV_HEX, DEFAULT_EIP712_DOMAIN);
   const input = {
     dataHash: ("0x" + "11".repeat(32)) as `0x${string}`,
     sealedKey: ("0x" + "22".repeat(32)) as `0x${string}`,
@@ -117,7 +121,7 @@ test("TeeSigner.signOwnership produces 65-byte raw signature recoverable by ethe
 });
 
 test("TeeSigner.recoverAccessSigner recovers a raw-ECDSA AccessProof", async () => {
-  const signer = new TeeSigner(TEST_PRIV_HEX);
+  const signer = new TeeSigner(TEST_PRIV_HEX, DEFAULT_EIP712_DOMAIN);
   const receiver = new Wallet(TEST_RECEIVER_PRIV_HEX);
 
   const input = {
@@ -140,4 +144,35 @@ test("TeeSigner.recoverAccessSigner recovers a raw-ECDSA AccessProof", async () 
     SigningKey.recoverPublicKey(getBytes(digest), sig),
   );
   assert.equal(directRecovered.toLowerCase(), recovered.toLowerCase());
+});
+
+test("constructor throws when domain.chainId ≠ configured chain", () => {
+  assert.throws(
+    () => new TeeSigner(TEST_PRIV_HEX, DEFAULT_EIP712_DOMAIN, 16602),
+    /EIP-712 domain chainId 16661 ≠ configured chain 16602/,
+  );
+});
+
+test("signs and recovers against explicitly configured domain", () => {
+  const signer = new TeeSigner(TEST_PRIV_HEX, DEFAULT_EIP712_DOMAIN, 16661);
+  const input = {
+    dataHash: ("0x" + "44".repeat(32)) as `0x${string}`,
+    sealedKey: ("0x" + "55".repeat(32)) as `0x${string}`,
+    targetPubkey: ("0x" + "66".repeat(64)) as `0x${string}`,
+    to: "0x0000000000000000000000000000000000000003" as `0x${string}`,
+    nft: "0x0000000000000000000000000000000000000004" as `0x${string}`,
+    nonce: toBeHex(9n) as `0x${string}`,
+    validUntil: 99999999999n,
+  };
+  const sig = signer.signOwnership(input);
+  const digest = ownershipMessageHash(input);
+  const recoveredAddress = pubKeyToAddress(
+    Uint8Array.from(
+      Buffer.from(
+        SigningKey.recoverPublicKey(digest, sig).slice(2),
+        "hex",
+      ).slice(1),
+    ),
+  );
+  assert.equal(recoveredAddress.toLowerCase(), signer.address.toLowerCase());
 });

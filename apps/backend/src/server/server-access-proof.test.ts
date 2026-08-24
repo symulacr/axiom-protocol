@@ -4,7 +4,7 @@ import { Wallet, getBytes, toBeHex, SigningKey, computeAddress } from "ethers";
 
 import { signOwnership, type OracleRouteDeps } from "../oracle/routes.js";
 import { TeeSigner } from "../oracle/signer.js";
-import { accessMessageHash } from "@axiom/config/eip712";
+import { DEFAULT_EIP712_DOMAIN, accessMessageHash } from "@axiom/config/eip712";
 import { InMemoryStorage } from "@axiom/config/storage/0g";
 import { ARISTOTLE_CHAIN_ID } from "@axiom/config";
 
@@ -19,7 +19,7 @@ let signerAddress: string;
 let deps: OracleRouteDeps;
 
 beforeAll(async () => {
-  const signer = new TeeSigner(TEST_PRIV_HEX);
+  const signer = new TeeSigner(TEST_PRIV_HEX, DEFAULT_EIP712_DOMAIN);
   signerAddress = signer.address;
   const storage = new InMemoryStorage();
   deps = {
@@ -52,7 +52,7 @@ test("signOwnership no longer returns an accessSignature", async () => {
 });
 
 test("recoverAccessSigner still recovers a raw-ECDSA AccessProof", async () => {
-  const signer = new TeeSigner(TEST_PRIV_HEX);
+  const signer = new TeeSigner(TEST_PRIV_HEX, DEFAULT_EIP712_DOMAIN);
   const receiver = new Wallet(RECEIVER_PRIV_HEX);
   const input = {
     dataHash,

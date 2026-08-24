@@ -17,6 +17,11 @@ export interface Eip712Domain {
   verifyingContract: `0x${string}`;
 }
 
+/**
+ * @deprecated Hardcoded fallback (stale Aristotle verifier) — do not use in
+ * production wiring. TeeSigner requires an explicit domain and asserts its
+ * chainId against the configured chain; kept only for legacy test fixtures.
+ */
 export const DEFAULT_EIP712_DOMAIN: Eip712Domain = {
   chainId: 16661n,
   verifyingContract: "0xDfbA9B8e3d63dFf3a1Fc21F2cCD2850285Dab943",
@@ -81,8 +86,7 @@ const VERIFIER_VERSION_HASH = keccak256(toUtf8Bytes(EIP712_DOMAIN_VERSION));
 
 const abiCoder = AbiCoder.defaultAbiCoder();
 
-// Separators are pure per immutable domain; the oracle signs many proofs against one domain per
-// TeeSigner, so memoize per domain (~60µs/op, ~16% of sign path) instead of re-hashing each time.
+// Separators are pure per immutable domain; memoize (~60µs/op, ~16% of sign path), not re-hash each call.
 const domainSeparatorCache = new WeakMap<Eip712Domain, Hex>();
 
 function domainSeparator(domain?: Eip712Domain): Hex {
