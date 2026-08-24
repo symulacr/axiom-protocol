@@ -158,6 +158,10 @@ type WatcherOptions = {
   startBlock?: bigint;
   logger?: (line: Record<string, unknown>) => void;
   onReorg?: (rolledBackBlock: bigint) => void;
+  /** Durability hook: runs before the checkpoint advances so the sink's
+   * buffered state is persisted first (crash window closed). A throw here
+   * blocks checkpoint advance and retries the window. */
+  beforeCheckpoint?: () => Promise<void>;
 };
 
 export class Watcher {
@@ -168,6 +172,7 @@ export class Watcher {
   readonly sink: EventSink;
   readonly logger: (line: Record<string, unknown>) => void;
   private readonly onReorg: ((rolledBackBlock: bigint) => void) | null;
+  private readonly beforeCheckpoint: (() => Promise<void>) | null;
   private nextBlock: bigint;
   private lastBlockHash: string | null = null;
   private running = false;
@@ -188,6 +193,7 @@ export class Watcher {
       ((line) => console.error(JSON.stringify({ level: "info", ...line })));
     this.nextBlock = opts.startBlock ?? 0n;
     this.onReorg = opts.onReorg ?? null;
+    this.beforeCheckpoint = opts.beforeCheckpoint ?? null;
   }
 
   get cursor(): bigint {
@@ -311,6 +317,11 @@ export class Watcher {
               `sink failed for ${sinkFailures} log(s) in window ${fromBlock}-${toBlock}`,
             );
       }
+      // Flush the sink's buffered state BEFORE advancing the cursor: the
+      // EventStore debounces disk writes, so a crash between append and
+      // persist would otherwise skip those blocks forever. A throw here
+      // keeps the cursor (and checkpoint) on the old window for a full rescan.
+      await this.beforeCheckpoint?.();
       const safeBlock =
         toBlock > REORG_SAFE_DEPTH ? toBlock - REORG_SAFE_DEPTH : 0n;
       this.nextBlock = safeBlock + 1n;

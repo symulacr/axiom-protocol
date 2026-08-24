@@ -116,3 +116,125 @@ test("a real reorg at the cursor is detected exactly once and rolls back", async
   assert.equal(warnings.length, 1, "real reorg must be detected once");
   assert.deepEqual(captured.rolledBack.map(String), [String(cursorBlock)]);
 });
+
+// --- W1-6: flush-before-checkpoint ordering (crash-window guard) ---
+
+import { encodeEventTopics } from "viem";
+import type { Log } from "ethers";
+import { EVENT_ABI } from "./events.js";
+import { existsSync } from "node:fs";
+
+const TX_W16 = "0x" + "cd".repeat(32);
+
+function transferLogW16(block = 100): Log {
+  const topics = encodeEventTopics({
+    abi: [EVENT_ABI.Transfer],
+    eventName: "Transfer",
+    args: {
+      from: "0x" + "11".repeat(20),
+      to: "0x" + "22".repeat(20),
+      tokenId: 999n,
+    },
+  });
+  return {
+    topics,
+    data: "0x",
+    blockNumber: block,
+    transactionHash: TX_W16,
+    index: 0,
+    address: "0x" + "1".repeat(40),
+  } as unknown as Log;
+}
+
+function checkpointPathFor(dataDir: string): string {
+  return join(dataDir, "checkpoints", "checkpoint-16602.json");
+}
+
+test("flush runs before checkpoint write", async () => {
+  const provider = makeFakeProvider();
+  (provider as { getLogs(): Promise<unknown[]> }).getLogs = async () => [
+    transferLogW16(),
+  ];
+  let flushCalls = 0;
+  const delivered: unknown[] = [];
+  const watcher = new Watcher({
+    provider: provider as never,
+    watchList: [
+      { name: "Transfer" as const, address: "0x" + "1".repeat(40) },
+    ] as never,
+    pollWindow: 20n,
+    pollIntervalMs: 10,
+    sink: async (ev) => {
+      delivered.push(ev);
+    },
+    startBlock: 90n,
+    logger: () => {},
+    beforeCheckpoint: async () => {
+      flushCalls++;
+    },
+  });
+  (
+    watcher as Watcher & { running: boolean; pollTick(): Promise<void> }
+  ).running = true;
+  await (watcher as Watcher & { pollTick(): Promise<void> }).pollTick();
+
+  assert.equal(delivered.length, 1, "event must be delivered to the sink");
+  assert.equal(flushCalls, 1, "beforeCheckpoint hook must run once per tick");
+  assert.ok(
+    watcher.cursor > 90n,
+    "cursor advances when the flush hook succeeds",
+  );
+});
+
+test("flush failure blocks checkpoint advance", async () => {
+  const provider = makeFakeProvider();
+  (provider as { getLogs(): Promise<unknown[]> }).getLogs = async () => [
+    transferLogW16(),
+  ];
+  const watcher = new Watcher({
+    provider: provider as never,
+    watchList: [
+      { name: "Transfer" as const, address: "0x" + "1".repeat(40) },
+    ] as never,
+    pollWindow: 20n,
+    pollIntervalMs: 10,
+    sink: async () => {},
+    startBlock: 90n,
+    logger: () => {},
+    // Simulate EventStore.flush() throwing (disk failure): the checkpoint
+    // must NOT advance or those blocks would be skipped forever.
+    beforeCheckpoint: async () => {
+      throw new Error("flush failed");
+    },
+  });
+  (
+    watcher as Watcher & { running: boolean; pollTick(): Promise<void> }
+  ).running = true;
+  await (watcher as Watcher & { pollTick(): Promise<void> }).pollTick();
+  assert.equal(watcher.cursor, 90n, "cursor must not advance when flush fails");
+});
+
+test("sink failure still blocks checkpoint advance", async () => {
+  const provider = makeFakeProvider();
+  (provider as { getLogs(): Promise<unknown[]> }).getLogs = async () => [
+    transferLogW16(),
+  ];
+  const watcher = new Watcher({
+    provider: provider as never,
+    watchList: [
+      { name: "Transfer" as const, address: "0x" + "1".repeat(40) },
+    ] as never,
+    pollWindow: 20n,
+    pollIntervalMs: 10,
+    sink: async () => {
+      throw new Error("sink down");
+    },
+    startBlock: 90n,
+    logger: () => {},
+  });
+  (
+    watcher as Watcher & { running: boolean; pollTick(): Promise<void> }
+  ).running = true;
+  await (watcher as Watcher & { pollTick(): Promise<void> }).pollTick();
+  assert.equal(watcher.cursor, 90n, "cursor must not advance on sink failure");
+});

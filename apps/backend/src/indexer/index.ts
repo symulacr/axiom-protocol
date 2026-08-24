@@ -59,6 +59,9 @@ export class IndexerService {
           `[indexer] reorg rollback: removed ${removed} events at or above block ${rolledBackBlock}`,
         );
       },
+      // Crash-window guard: persist buffered events before the checkpoint
+      // advances, so a SIGKILL can never skip unpersisted blocks.
+      beforeCheckpoint: () => getEventStore().flush(),
     });
 
     const handle = this.watcher.start();
