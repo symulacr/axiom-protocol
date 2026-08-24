@@ -15,12 +15,15 @@
   useOrchestratorTick, useHealth).
 */
 import {
+  Component,
   lazy,
   Suspense,
   useCallback,
   useEffect,
   useState,
+  type ErrorInfo,
   type ReactElement,
+  type ReactNode,
 } from "react";
 import {
   Navigate,
@@ -30,24 +33,31 @@ import {
   useNavigate,
 } from "react-router-dom";
 import { useAccount } from "wagmi";
-import { AppShell } from "./components/axiom/AppShell.js";
+import { AppShell, Logo } from "./components/axiom/AppShell.js";
 import { WalletGate, isSessionFresh } from "./components/axiom/WalletGate.js";
-import { LockedRoute } from "./components/LockedRoute.js";
-import { Button } from "./components/axiom/Controls.js";
-import { ArrowRight, CircleCheck, X } from "./components/axiom/icons.js";
-import { ErrorBoundary } from "./components/ErrorBoundary.js";
+import { Button, Status } from "./components/axiom/Controls.js";
+import {
+  ArrowLeft,
+  ArrowRight,
+  CircleCheck,
+  LockKeyhole,
+  Wallet,
+  X,
+} from "./components/axiom/icons.js";
 import { Spinner } from "./components/ui.js";
 import { ShellSidebarProvider } from "./hooks/useShellSidebar.js";
 import { useReceiptReconcile } from "./hooks/useReceiptReconcile.js";
 import { useModalDismiss } from "./hooks/useModalDismiss.js";
 import { useUiStore } from "./lib/uiStore.js";
+import { humanizeError } from "./utils/format.js";
 import {
   KNOWN_PATHS,
   resolvePublicSeoSlug,
   resolveRoute,
 } from "./lib/routeRegistry.js";
+import { lockedRouteMeta } from "./lib/consoleCatalog.js";
 import { MEDIA } from "./lib/media.js";
-import { getCopy } from "./lib/copy.js";
+import { getCopy, type Locale } from "./lib/copy.js";
 import type { FlowKind } from "./lib/models.js";
 import { APP_CHAIN_ID } from "./config/wagmi.js";
 
@@ -663,4 +673,187 @@ function AgentRoute({
     );
   }
   return <AgentPage tokenId={tokenId} go={go} locale={locale} />;
+}
+
+/*
+  LockedRoute: shown when an internal route is
+  requested before the operator session is authenticated. Proof rails stay
+  visible; the CTA opens the live WalletGate.
+*/
+function LockedRoute({
+  requested,
+  locale,
+  onConnect,
+  go,
+}: {
+  requested: string;
+  locale: Locale;
+  onConnect: () => void;
+  go: (path: string) => void;
+}) {
+  const copy = getCopy(locale);
+  const pathname = requested.split("?", 1)[0] ?? requested;
+  const meta =
+    lockedRouteMeta[pathname] ??
+    (pathname.startsWith("/agents/")
+      ? lockedRouteMeta["/agents/"]
+      : lockedRouteMeta["/app"]) ??
+    lockedRouteMeta["/app"];
+  if (!meta) return null;
+
+  return (
+    <div className={`locked-route-shell public-locked locked-${meta.slug}`}>
+      <div className="locked-route-main">
+        <header className="locked-topbar">
+          <Logo compact />
+          <div>
+            <Status label="wallet required" tone="warning" />
+          </div>
+          {/* (duplication map #16): the topbar "Landing" text-link repeated
+              the ghost "Return to landing" exit below — one exit remains. */}
+        </header>
+        <main className="locked-route-content">
+          <section className="locked-route-copy">
+            <h1>
+              {meta.title}
+              <br />
+              <i>{meta.emphasis}</i>
+            </h1>
+            <p>{meta.copy}</p>
+            <div className="button-row">
+              <Button onClick={onConnect} icon={<Wallet size={15} />}>
+                {copy.nav.connectWallet}
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => go("/")}
+                icon={<ArrowLeft size={14} />}
+              >
+                Return to landing
+              </Button>
+            </div>
+          </section>
+          <aside className="locked-evidence">
+            <div className="locked-evidence-head">
+              <div>
+                <strong>{meta.next}</strong>
+              </div>
+              <LockKeyhole size={17} className="copper" />
+            </div>
+            <div className="locked-preview">
+              <img src={meta.media} alt={`${meta.label} preview`} />
+              <div>
+                <strong>Preview only</strong>
+                <small>Connect a wallet to unlock live evidence.</small>
+              </div>
+            </div>
+            {/* Ledger rows are static states, not controls — no chevron
+                affordance on a row that does not open. */}
+            {meta.proofs.map((item, index) => (
+              <div className="locked-evidence-row" key={item}>
+                {/* the.locked-evidence-state dot
+                    span rendered into every row and was display:none'd by
+                    axiom-velocity.css (.public-locked) — dead markup, removed
+                    with its CSS. */}
+                <div>
+                  <strong>{item}</strong>
+                  <small>
+                    {index === 0 ? "not connected" : "after connect"}
+                  </small>
+                </div>
+              </div>
+            ))}
+          </aside>
+        </main>
+      </div>
+    </div>
+  );
+}
+
+interface ErrorBoundaryProps {
+  children: ReactNode;
+  fallback?: ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+/** the fallback chrome routes through copy.ts (locale via useUiStore) and
+ * the Controls kit — ErrorBoundary no longer imports the v1 ui.tsx kit. The
+ * raw error sentence still flows through humanizeError (central, en — known
+ * residual; error copy is the remaining untranslated surface). */
+function ErrorFallback({
+  error,
+  onRetry,
+}: {
+  error: Error | null;
+  onRetry: () => void;
+}) {
+  const { state } = useUiStore();
+  const copy = getCopy(state.settings.locale).errorBoundary;
+  const isNetworkError =
+    error?.name === "NetworkError" ||
+    error?.message.toLowerCase().includes("failed to fetch") ||
+    error?.message.toLowerCase().includes("load failed");
+  return (
+    <div className="ops-page cosign-panel" role="alert">
+      <div className="review-error">
+        <div>
+          <strong>
+            {isNetworkError ? copy.networkTitle : copy.genericTitle}
+          </strong>
+          <p>
+            {isNetworkError
+              ? copy.networkBody
+              : error
+                ? humanizeError(error)
+                : copy.networkBody}
+          </p>
+        </div>
+      </div>
+      <div className="review-handoff-actions">
+        <Button variant="secondary" onClick={onRetry}>
+          {copy.retry}
+        </Button>
+        <Button variant="ghost" onClick={() => window.location.reload()}>
+          {copy.reload}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  override componentDidCatch(error: Error, info: ErrorInfo): void {
+    console.error("[ErrorBoundary]", error, info.componentStack);
+  }
+
+  private resetErrorBoundary = (): void => {
+    this.setState({ hasError: false, error: null });
+  };
+
+  override render(): ReactNode {
+    if (this.state.hasError) {
+      if (this.props.fallback) return this.props.fallback;
+
+      return (
+        <ErrorFallback
+          error={this.state.error}
+          onRetry={this.resetErrorBoundary}
+        />
+      );
+    }
+    return this.props.children;
+  }
 }

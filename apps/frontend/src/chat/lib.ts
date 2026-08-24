@@ -130,7 +130,7 @@ export function consumeSseLines(buffer: string): {
   return { chunks, rest, done };
 }
 
-export function linkifyConsoleRefs(
+function linkifyConsoleRefs(
   src: string,
   explorerTx: (hash: string) => string,
 ): string {
@@ -202,7 +202,7 @@ export function captureTurnMetrics(
   }
 }
 
-export function formatNeuron(neuron: number): string {
+function formatNeuron(neuron: number): string {
   const og = neuron / 1e18;
   if (og >= 1) return og.toFixed(3);
   return og.toPrecision(2);

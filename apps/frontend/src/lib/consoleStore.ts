@@ -256,7 +256,10 @@ export function consoleReducer(
       action.tx.opensReceipt !== false && flow in state.operationDrafts;
     return {
       ...state,
-      transactions: [action.tx, ...state.transactions],
+      transactions: [action.tx, ...state.transactions].slice(
+        0,
+        MAX_PERSISTED_TRANSACTIONS,
+      ),
       operationDrafts: advanceDraft
         ? {
             ...state.operationDrafts,

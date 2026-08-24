@@ -787,10 +787,6 @@ function ChatPageInner(): ReactElement {
         sessionStorage.removeItem(CHAT_THREAD_KEY);
       } else {
         sessionStorage.setItem(CHAT_MESSAGES_KEY, JSON.stringify(stored));
-        localStorage.setItem(
-          `axiom:thread:${threadId}`,
-          JSON.stringify(stored),
-        );
         sessionStorage.setItem(CHAT_THREAD_KEY, threadId);
       }
     } catch {

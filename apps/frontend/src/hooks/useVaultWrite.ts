@@ -1,9 +1,13 @@
 import { useCallback, useState } from "react";
 import { useWalletClient } from "wagmi";
+import { toast } from "sonner";
 import { apiFetch, type EncodeResponse } from "../utils/apiFetch.js";
-import { validateNumericInput } from "../utils/format.js";
+import {
+  errorRefString,
+  humanizeError,
+  validateNumericInput,
+} from "../utils/format.js";
 import { useVaultData } from "./useVaultData.js";
-import { useWriteToast } from "./useWriteToast.js";
 
 export type VaultWriteKind = "deposit" | "withdraw";
 
@@ -31,7 +35,19 @@ export function useVaultWrite(
   const { data: walletClient } = useWalletClient();
   const [amount, setAmount] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { success: toastSuccess, error: toastError } = useWriteToast();
+
+  /** Shared write-flow toasts: success on submit + canonical humanized error toast for every write path. */
+  const toastSuccess = useCallback((msg: string): void => {
+    toast.success(msg);
+  }, []);
+
+  const toastError = useCallback((err: unknown): void => {
+    const refStr = errorRefString(err);
+    toast.error(
+      humanizeError(err),
+      refStr ? { description: refStr } : undefined,
+    );
+  }, []);
 
   const { label, endpoint, verb } = VAULT_WRITE[kind];
   const toasts = opts?.toasts !== false;
