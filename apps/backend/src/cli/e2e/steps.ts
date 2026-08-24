@@ -45,6 +45,7 @@ import { printFrictionReport } from "./friction.js";
 import { enforceLiveGate } from "./eval.js";
 import { printScenarioBreakReport } from "./scenario-breaks.js";
 import { pipelineWalletTxs } from "./tx-pipeline.js";
+import { apiKeyHeader, errorMessage } from "./shared.js";
 
 type FetchJson = typeof fetchJsonFn;
 type PostStep = typeof postStepFn;
@@ -270,7 +271,6 @@ export async function runOracleRegisterStep(
   console.log(
     "\n[Step 5]  Register dataHash with oracle (POST /oracle/v1/agents/mint)",
   );
-  const oracleApiKey = process.env.AXIOM_API_KEY ?? "";
   const { data: mint } = await fetchJson<{
     ok: boolean;
     dataHash: string;
@@ -279,7 +279,7 @@ export async function runOracleRegisterStep(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...(oracleApiKey ? { "x-api-key": oracleApiKey } : {}),
+      ...apiKeyHeader(),
     },
     body: JSON.stringify({ dataHash }),
   });
@@ -915,7 +915,7 @@ export async function runOnChainTransferStep(deps: {
       deps.chainId,
     );
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
+    const msg = errorMessage(e);
     recordOnChainStep({
       step: 11,
       name: "transferAndCleanExpiredProofs on-chain",
@@ -953,7 +953,7 @@ export function printReport(options?: { liveGateMinPct?: number }): void {
   try {
     enforceLiveGate(liveMin);
   } catch (e) {
-    console.error(`\n  ${e instanceof Error ? e.message : String(e)}`);
+    console.error(`\n  ${errorMessage(e)}`);
     process.exit(1);
   }
 }

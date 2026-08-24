@@ -1,5 +1,5 @@
 import { WebSocket } from "ws";
-import { bigintReplacer } from "@axiom/config";
+import { bigintReplacer } from "@axiom/config/constants";
 import { createLogger } from "../utils/logger.js";
 import { extractErrorMessage } from "../utils/response.js";
 

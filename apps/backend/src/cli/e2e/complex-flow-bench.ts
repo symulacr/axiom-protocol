@@ -1,8 +1,8 @@
-
 import { ethers } from "ethers";
 import { executeE2eTool, type E2eToolDeps } from "./transport-node.js";
 import { markScenarioCovered, markScenarioSkipped } from "./scenarios.js";
 import type { ChatBenchResult } from "./chat-bench.js";
+import { errorMessage } from "./shared.js";
 import {
   benchSkipsOrchestrateWhenNotReady,
   probeTickReady,
@@ -70,16 +70,14 @@ export async function runComplexToolFlowBench(
       summary: `steps=${steps.join("→")}`,
     };
   } catch (err) {
-    markScenarioSkipped(
-      "chat.tools-complex",
-      err instanceof Error ? err.message : String(err),
-    );
+    const message = errorMessage(err);
+    markScenarioSkipped("chat.tools-complex", message);
     return {
       id: "flow.complex-tools",
       ok: false,
       ms: Math.round(performance.now() - t0),
       summary: `failed at ${steps.join("→")}`,
-      error: err instanceof Error ? err.message : String(err),
+      error: message,
     };
   }
 }

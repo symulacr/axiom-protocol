@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction, Router, Express } from "express";
-import { HTTP } from "@axiom/config";
+import { HTTP } from "@axiom/config/constants";
 import type { ServerConfig, AddressKey } from "../config-types.js";
 import type { z } from "zod";
 import { sendError } from "../utils/response.js";

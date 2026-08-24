@@ -17,7 +17,11 @@ import {
   resolveChainId,
 } from "../compute/index.js";
 import { pickOGNetwork } from "@axiom/config/networks";
-import { EVENT_NAMES, getRuntimeConfig, ZERO_DATA_ROOT } from "@axiom/config";
+import {
+  EVENT_NAMES,
+  getRuntimeConfig,
+  ZERO_DATA_ROOT,
+} from "@axiom/config/constants";
 import {
   STRATEGY_OF_CURRENT,
   STRATEGY_OF_LEGACY,

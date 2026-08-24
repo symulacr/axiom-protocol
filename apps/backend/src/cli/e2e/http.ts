@@ -1,9 +1,9 @@
 import { fetchJson } from "../../utils/response.js";
+import { apiKeyHeader } from "./shared.js";
 
-/** Backend API key from env; sent as x-api-key when present (backend enforces auth in production). */
+/** Backend auth headers: AXIOM_API_KEY as x-api-key (backend enforces auth in production) plus any extras. */
 function authHeaders(extra?: Record<string, string>): Record<string, string> {
-  const apiKey = process.env.AXIOM_API_KEY ?? "";
-  return { ...(apiKey ? { "x-api-key": apiKey } : {}), ...extra };
+  return { ...apiKeyHeader(), ...extra };
 }
 
 interface StepResult {

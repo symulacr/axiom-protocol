@@ -1,5 +1,5 @@
 import type { Express } from "express";
-import { HTTP, EVENT_NAMES } from "@axiom/config";
+import { HTTP, EVENT_NAMES } from "@axiom/config/constants";
 import { createRoute, positiveIntQuery } from "./route-factory.js";
 import { sendError } from "../utils/response.js";
 import type { EventStore } from "../events/store.js";

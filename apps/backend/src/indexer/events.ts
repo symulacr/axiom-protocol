@@ -5,7 +5,7 @@ import {
   TEE_VERIFIER_ABI,
   VAULT_ABI,
 } from "@axiom/config/abis";
-import { BROADCAST_EVENT_NAMES } from "@axiom/config";
+import { BROADCAST_EVENT_NAMES } from "@axiom/config/constants";
 import { resolveAddress } from "@axiom/config/addresses";
 
 export type IndexerContractAddresses = {

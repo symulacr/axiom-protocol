@@ -22,7 +22,7 @@ import {
   type AgentNFTMethods,
 } from "@axiom/config/types/contract";
 import { ARISTOTLE_CHAIN_ID } from "@axiom/config/networks";
-import { bigintReplacer } from "@axiom/config";
+import { bigintReplacer } from "@axiom/config/constants";
 
 import {
   getComputeBaseUrl,
@@ -34,14 +34,12 @@ import { AGENT_NFT_ABI } from "@axiom/config/abis";
 import { StrategyRunner } from "./orchestrator/index.js";
 import { TeeSigner } from "./oracle/signer.js";
 import { registerOracleRoutes, type OracleRouteDeps } from "./oracle/routes.js";
+import { type Eip712Domain, buildEip712Domain } from "@axiom/config/eip712";
 import {
-  HTTP,
-  type Eip712Domain,
-  buildEip712Domain,
   resolveChatModel,
   resolveContextWindow,
-  getRuntimeConfig,
-} from "@axiom/config";
+} from "@axiom/config/chat-tools";
+import { getRuntimeConfig, HTTP } from "@axiom/config/constants";
 import { getSharedProvider } from "./provider.js";
 import { InMemoryStorage, type StorageAdapter } from "@axiom/config/storage/0g";
 import {

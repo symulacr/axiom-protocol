@@ -7,7 +7,7 @@ import {
   type Address,
 } from "viem";
 import { validateHex, type Hex } from "@axiom/config/types/hex";
-import { EVENT_NAMES } from "@axiom/config";
+import { EVENT_NAMES } from "@axiom/config/constants";
 
 import { EVENT_ABI, type AxiomEvent, type EventName } from "../events.js";
 

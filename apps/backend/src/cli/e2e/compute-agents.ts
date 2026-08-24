@@ -2,7 +2,12 @@ import { fetchJson } from "../../utils/response.js";
 import { getStep, postStep, stepResults } from "./http.js";
 import { markScenarioCovered, markScenarioSkipped } from "./scenarios.js";
 import { e2eFastEnabled, e2eStrictComputeEnabled } from "./fast-path.js";
-import { postChatCompletionsSse, sleep } from "./shared.js";
+import {
+  apiKeyHeader,
+  errorMessage,
+  postChatCompletionsSse,
+  sleep,
+} from "./shared.js";
 
 const VAULT_BALANCE_TOOL = {
   type: "function" as const,
@@ -211,9 +216,7 @@ export async function runLiveComputeTickStep(deps: {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(process.env.AXIOM_API_KEY
-          ? { "x-api-key": process.env.AXIOM_API_KEY }
-          : {}),
+        ...apiKeyHeader(),
       },
       body: JSON.stringify({
         vault: deps.vault,
@@ -254,7 +257,7 @@ export async function runLiveComputeTickStep(deps: {
     markScenarioCovered("orchestrator.tick", "tick-live", { reads: 1 });
     return true;
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
+    const msg = errorMessage(err);
     handleComputeFailure(
       "orchestrator.tick-live",
       "/v1/orchestrator/tick (live compute)",
@@ -305,7 +308,7 @@ export async function runChatToolCallStep(deps: {
     if (!ok) throw new Error("no SSE chunks from chat completions");
     markScenarioCovered("compute.chat-tools", "chat-tools", { reads: 1 });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
+    const msg = errorMessage(err);
     handleComputeFailure(
       "compute.chat-tools",
       "/v1/chat/completions (tools)",
@@ -326,7 +329,6 @@ export async function runDataAvailabilityStep(deps: {
   console.log(
     "\n[Compute] POST /v1/orchestrator/tick (data availability probe)",
   );
-  const daApiKey = process.env.AXIOM_API_KEY ?? "";
   const {
     data: res,
     ok,
@@ -338,7 +340,7 @@ export async function runDataAvailabilityStep(deps: {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...(daApiKey ? { "x-api-key": daApiKey } : {}),
+      ...apiKeyHeader(),
     },
     body: JSON.stringify({
       vault: deps.vault,

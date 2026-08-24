@@ -3,6 +3,7 @@ import { fetchJson } from "../../utils/response.js";
 import { getStep, postStep, stepResults } from "./http.js";
 import { markScenarioCovered } from "./scenarios.js";
 import { noteFriction } from "./friction.js";
+import { apiKeyHeader } from "./shared.js";
 
 const ARCHIVE_PROBE_URL = "https://example.com";
 
@@ -174,7 +175,6 @@ async function runArchiveProbeStep(deps: {
   backendUrl: string;
 }): Promise<void> {
   console.log("\n[Frontend] POST /v1/archive/query (closest, example.com)");
-  const archiveApiKey = process.env.AXIOM_API_KEY ?? "";
   const { data, ok, status } = await fetchJson<{
     url: string;
     snapshot: { snapshotUrl?: string } | null;
@@ -182,7 +182,7 @@ async function runArchiveProbeStep(deps: {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...(archiveApiKey ? { "x-api-key": archiveApiKey } : {}),
+      ...apiKeyHeader(),
     },
     body: JSON.stringify({ intent: "closest", url: ARCHIVE_PROBE_URL }),
   });

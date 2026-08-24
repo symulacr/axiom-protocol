@@ -10,7 +10,13 @@ import {
   toolsByClass,
 } from "@axiom/config/chat-tools";
 import { resolveE2eComputeModel } from "./fast-path.js";
-import { percentile, postChatCompletionsSse, sleep } from "./shared.js";
+import {
+  apiKeyHeader,
+  errorMessage,
+  percentile,
+  postChatCompletionsSse,
+  sleep,
+} from "./shared.js";
 import { markScenarioCovered, markScenarioSkipped } from "./scenarios.js";
 import { noteFriction } from "./friction.js";
 import { runComplexToolFlowBench } from "./complex-flow-bench.js";
@@ -48,6 +54,11 @@ const WRITE_ENCODE_TOOLS = CHAT_BENCH_ENCODE_TOOLS;
 function chatBenchCooldownMs(): number {
   const n = Number.parseInt(process.env.CHAT_BENCH_COOLDOWN_MS ?? "2000", 10);
   return Number.isFinite(n) && n >= 0 ? n : 2000;
+}
+
+/** Standard no-live-compute bench outcome (ok=true so the report stays green). */
+function liveComputeSkip(id: string): ChatBenchResult {
+  return { id, ok: true, ms: 0, summary: "skipped (no live compute)" };
 }
 
 async function runToolParityBench(
@@ -112,7 +123,7 @@ async function runToolParityBench(
         ok: false,
         ms: Math.round(performance.now() - t0),
         summary: "exception",
-        error: err instanceof Error ? err.message : String(err),
+        error: errorMessage(err),
       });
     }
   }
@@ -175,7 +186,7 @@ async function runMicroDepositSignBench(
       ok: false,
       ms: Math.round(performance.now() - t0),
       summary: "exception",
-      error: err instanceof Error ? err.message : String(err),
+      error: errorMessage(err),
     };
   }
 }
@@ -247,12 +258,7 @@ async function runKeepAliveBench(deps: {
 }): Promise<ChatBenchResult> {
   if (!deps.liveCompute) {
     markScenarioSkipped("chat.keepalive", "E2E_LIVE_COMPUTE=0");
-    return {
-      id: "chat.keepalive",
-      ok: true,
-      ms: 0,
-      summary: "skipped (no live compute)",
-    };
+    return liveComputeSkip("chat.keepalive");
   }
 
   const latencies: number[] = [];
@@ -315,12 +321,7 @@ async function runContextGrowthBench(deps: {
 }): Promise<ChatBenchResult> {
   if (!deps.liveCompute) {
     markScenarioSkipped("chat.context-growth", "E2E_LIVE_COMPUTE=0");
-    return {
-      id: "chat.context-growth",
-      ok: true,
-      ms: 0,
-      summary: "skipped (no live compute)",
-    };
+    return liveComputeSkip("chat.context-growth");
   }
 
   const messages: Array<{ role: string; content: string }> = [
@@ -360,7 +361,7 @@ async function runContextGrowthBench(deps: {
       }
     } catch (err) {
       ok = false;
-      lastError = err instanceof Error ? err.message : String(err);
+      lastError = errorMessage(err);
       break;
     }
   }
@@ -435,7 +436,7 @@ async function runModelSwitchBench(deps: {
       }
     } catch (err) {
       ok = false;
-      lastError = err instanceof Error ? err.message : String(err);
+      lastError = errorMessage(err);
     }
   }
 
@@ -462,12 +463,7 @@ async function runLiveChatToolsBench(deps: {
   liveCompute: boolean;
 }): Promise<ChatBenchResult> {
   if (!deps.liveCompute) {
-    return {
-      id: "chat.live-tools-sse",
-      ok: true,
-      ms: 0,
-      summary: "skipped (no live compute)",
-    };
+    return liveComputeSkip("chat.live-tools-sse");
   }
 
   const tools = [
@@ -534,7 +530,7 @@ async function runLiveChatToolsBench(deps: {
       ok: false,
       ms: Math.round(performance.now() - t0),
       summary: "sse failed",
-      error: err instanceof Error ? err.message : String(err),
+      error: errorMessage(err),
     };
   }
 }
@@ -552,11 +548,7 @@ async function resolveBenchModels(backendUrl: string): Promise<string[]> {
   const primary = await resolveE2eComputeModel(backendUrl);
   const { ok, data } = await fetchJson<{ services?: Array<{ model: string }> }>(
     `${backendUrl}/v1/compute/providers`,
-    {
-      ...(process.env.AXIOM_API_KEY
-        ? { headers: { "x-api-key": process.env.AXIOM_API_KEY } }
-        : {}),
-    },
+    { headers: apiKeyHeader() },
   );
   if (!ok) return [primary];
   const chatModels = (data.services ?? [])

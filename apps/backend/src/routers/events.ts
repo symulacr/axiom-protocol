@@ -3,7 +3,7 @@ import type { z } from "zod";
 import { timingSafeMatch } from "@axiom/config/middleware/auth";
 import { createRoute, positiveIntQuery } from "./route-factory.js";
 import { eventBodySchema } from "../route-schemas.js";
-import { HTTP, getRuntimeConfig } from "@axiom/config";
+import { HTTP, getRuntimeConfig } from "@axiom/config/constants";
 import { sendError } from "../utils/response.js";
 import { QUERYABLE_EVENT_NAMES } from "../indexer/events.js";
 import type { EventStore } from "../events/store.js";

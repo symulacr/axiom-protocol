@@ -14,11 +14,12 @@ import type { EventStore } from "../events/store.js";
 import type { ServerConfig } from "../config-types.js";
 import { createRoute } from "./route-factory.js";
 import { AGENT_NFT_ABI } from "@axiom/config/abis";
-import { HTTP, resolveChatModel } from "@axiom/config";
+import { HTTP } from "@axiom/config/constants";
+import { resolveChatModel } from "@axiom/config/chat-tools";
 import { TypedContract } from "@axiom/config/types/contract";
 import { getSharedProvider } from "../provider.js";
 import { keccak256, solidityPacked } from "ethers";
-import { ZERO_DATA_ROOT } from "@axiom/config";
+import { ZERO_DATA_ROOT } from "@axiom/config/constants";
 
 const modelDataRootCache = new TTLCache<`0x${string}`>(5 * 60 * 1000, 1000);
 

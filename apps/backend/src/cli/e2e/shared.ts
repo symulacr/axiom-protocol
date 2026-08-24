@@ -1,5 +1,3 @@
-
-
 interface ChatCompletionSse {
   chunks: unknown[];
   toolCallSeen: boolean;
@@ -7,7 +5,6 @@ interface ChatCompletionSse {
   text: string;
   ttftMs: number;
 }
-
 
 async function readChatCompletionsSse(
   reader: ReadableStreamDefaultReader<Uint8Array>,
@@ -78,6 +75,16 @@ export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+export function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+/** x-api-key headers from AXIOM_API_KEY; empty object when unset. */
+export function apiKeyHeader(): Record<string, string> {
+  const apiKey = process.env.AXIOM_API_KEY ?? "";
+  return apiKey ? { "x-api-key": apiKey } : {};
+}
+
 interface ChatSseResult {
   chunks: unknown[];
   toolCallSeen: boolean;
@@ -86,7 +93,6 @@ interface ChatSseResult {
   ttftMs: number;
   ms: number;
 }
-
 
 export async function postChatCompletionsSse(
   backendUrl: string,

@@ -93,9 +93,7 @@ export function EncodePreviewCard({
     return (
       <div
         style={{
-          marginTop: "var(--space-xs)",
-          padding: "var(--space-sm) var(--space-md)",
-          borderRadius: "var(--radius-md)",
+          ...cardBaseStyle,
           border: `1px solid ${COLORS.bronzeBorder}`,
           background: COLORS.bronzeBg,
           fontSize: "var(--text-sm)",
@@ -120,9 +118,7 @@ export function EncodePreviewCard({
   return (
     <div
       style={{
-        marginTop: "var(--space-xs)",
-        padding: "var(--space-sm) var(--space-md)",
-        borderRadius: "var(--radius-md)",
+        ...cardBaseStyle,
         border: `1px solid ${COLORS.border}`,
         background: COLORS.bg,
         fontSize: "var(--text-xs)",
@@ -172,6 +168,13 @@ const preBlockStyle: CSSProperties = {
   margin: 0,
   whiteSpace: "pre-wrap",
   fontFamily: "inherit",
+};
+
+// Shared shell for both encode-card states (submitted receipt vs raw preview).
+const cardBaseStyle: CSSProperties = {
+  marginTop: "var(--space-xs)",
+  padding: "var(--space-sm) var(--space-md)",
+  borderRadius: "var(--radius-md)",
 };
 
 function parseObj(content: string | null): Record<string, unknown> | null {

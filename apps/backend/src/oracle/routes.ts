@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { getBytes, hexlify, isAddress, toBeHex, zeroPadValue } from "ethers";
 import { isHex, type Hex } from "viem";
-import { HTTP } from "@axiom/config";
+import { HTTP } from "@axiom/config/constants";
 import { ZodError } from "zod";
 
 import {

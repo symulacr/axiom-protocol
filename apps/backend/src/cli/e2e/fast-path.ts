@@ -1,6 +1,7 @@
 import { fetchJson } from "../../utils/response.js";
 import { resolveChainId } from "../../compute/index.js";
 import { defaultChatModelForChain } from "@axiom/config/networks";
+import { apiKeyHeader } from "./shared.js";
 
 export async function resolveE2eComputeModel(
   backendUrl: string,
@@ -9,11 +10,7 @@ export async function resolveE2eComputeModel(
   if (explicit) return explicit;
   const { data, ok } = await fetchJson<{
     services?: Array<{ model: string }>;
-  }>(`${backendUrl}/v1/compute/providers`, {
-    ...(process.env.AXIOM_API_KEY
-      ? { headers: { "x-api-key": process.env.AXIOM_API_KEY } }
-      : {}),
-  });
+  }>(`${backendUrl}/v1/compute/providers`, { headers: apiKeyHeader() });
   const services = ok ? (data.services ?? []) : [];
   const prefer = ["qwen2.5-omni", "deepseek-v4-flash"];
   for (const id of prefer) {

@@ -1,6 +1,7 @@
 import type { Provider, TransactionReceipt, TransactionResponse } from "ethers";
 import { resolveBlockExplorerUrl } from "@axiom/config/networks";
 import { stepResults } from "./http.js";
+import { errorMessage } from "./shared.js";
 
 function txExplorerUrl(chainId: number, txHash: string): string {
   return `${resolveBlockExplorerUrl(chainId)}/tx/${txHash}`;
@@ -24,14 +25,19 @@ export async function waitReceiptWithRetry(
       return assertReceiptOk(receipt, label);
     } catch (err) {
       lastErr = err;
-      const msg = err instanceof Error ? err.message : String(err);
-      if (!/no matching receipts|transaction not found/i.test(msg) || i === attempts - 1) {
+      const msg = errorMessage(err);
+      if (
+        !/no matching receipts|transaction not found/i.test(msg) ||
+        i === attempts - 1
+      ) {
         throw err;
       }
       await new Promise((r) => setTimeout(r, delayMs));
     }
   }
-  throw lastErr instanceof Error ? lastErr : new Error(`${label}: receipt wait failed`);
+  throw lastErr instanceof Error
+    ? lastErr
+    : new Error(`${label}: receipt wait failed`);
 }
 
 export function assertReceiptOk(

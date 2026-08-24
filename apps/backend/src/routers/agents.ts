@@ -11,7 +11,7 @@ import {
 import type { ServerConfig } from "../config-types.js";
 import { sendError, extractErrorMessage } from "../utils/response.js";
 import { TTLCache } from "../utils/response.js";
-import { TRANSFER_TOPIC } from "@axiom/config";
+import { TRANSFER_TOPIC } from "@axiom/config/constants";
 import {
   signOwnership,
   transferValidity,
@@ -37,12 +37,12 @@ type MintEncodeBody = z.infer<typeof mintEncodeSchema>;
 type AgentNftMintEncodeMethods = {
   mintFee(): Promise<bigint>;
 };
-import type { Eip712Domain, OwnershipProofInput } from "@axiom/config";
+import type { Eip712Domain, OwnershipProofInput } from "@axiom/config/eip712";
 import {
   recoverAccessSigner,
   recoverOwnershipSigner,
-  HTTP,
-} from "@axiom/config";
+} from "@axiom/config/eip712";
+import { HTTP } from "@axiom/config/constants";
 import { normalizePubkey64 } from "@axiom/config/crypto/keys";
 import { transferBodySchema } from "../route-schemas.js";
 

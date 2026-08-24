@@ -1,7 +1,7 @@
 import type { JsonRpcProvider, Log } from "ethers";
 import { rename, mkdir } from "node:fs/promises";
 import { joinPath, dirnamePath } from "@axiom/config/path";
-import { EVENT_NAMES, getRuntimeConfig } from "@axiom/config";
+import { EVENT_NAMES, getRuntimeConfig } from "@axiom/config/constants";
 import { getEnv } from "@axiom/config/env";
 import {
   resolveIndexerAddresses,

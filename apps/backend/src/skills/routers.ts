@@ -12,9 +12,9 @@ import {
 import { getSharedProvider } from "../provider.js";
 import { TTLCache, sendError } from "../utils/response.js";
 import { createLogger } from "../utils/logger.js";
-import { TRANSFER_TOPIC } from "@axiom/config";
+import { TRANSFER_TOPIC } from "@axiom/config/constants";
 import { AGENT_NFT_ABI, ERC20_ABI } from "@axiom/config/abis";
-import { HTTP } from "@axiom/config";
+import { HTTP } from "@axiom/config/constants";
 import {
   evmAddressSchema,
   evmTokenOwnerSchema,

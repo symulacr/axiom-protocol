@@ -4,7 +4,7 @@ import {
   ARISTOTLE_CHAIN_ID,
   resolveComputeRouterUrl,
 } from "@axiom/config/networks";
-import { resolveChatModel } from "@axiom/config";
+import { resolveChatModel } from "@axiom/config/chat-tools";
 import { createLogger } from "../utils/logger.js";
 
 export function resolveChainId(chainId?: number): number {

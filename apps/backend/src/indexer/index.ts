@@ -1,6 +1,6 @@
 import type { ethers } from "ethers";
 import { getEventStore } from "../events/store.js";
-import { RUNTIME_DEFAULTS } from "@axiom/config";
+import { RUNTIME_DEFAULTS } from "@axiom/config/constants";
 import { Watcher, buildDefaultWatchList } from "./watcher.js";
 import { resolveIndexerAddresses } from "./events.js";
 import type { AxiomEvent } from "./events.js";
