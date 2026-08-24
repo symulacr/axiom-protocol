@@ -74,11 +74,11 @@ function loadSeenDataHashes(file: string): Set<string> {
     ) {
       throw new Error("oracle seen-hashes file root is missing a string array");
     }
-    const seen = new Set<string>();
-    for (const item of parsed.seenDataHashes) {
-      if (typeof item === "string") seen.add(item.toLowerCase());
-    }
-    return seen;
+    return new Set(
+      parsed.seenDataHashes
+        .filter((item): item is string => typeof item === "string")
+        .map((item) => item.toLowerCase()),
+    );
   } catch {
     if (existsSync(file)) backupFileBestEffort(file);
     return new Set();

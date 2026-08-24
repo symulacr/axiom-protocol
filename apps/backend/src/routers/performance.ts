@@ -62,29 +62,15 @@ export function registerPerformanceRoutes(
       });
 
       const counts: ActionCounts = { buyCount: 0, sellCount: 0, holdCount: 0 };
-      const history: Array<{
-        timestamp: number;
-        action: string;
-        amount: number | null;
-        reason: string;
-        durationMs: number | null;
-        blockNumber: number;
-        txHash: string | null;
-      }> = [];
-
-      for (const evt of ticks) {
-        const action = recordAction(evt.payload, counts);
-
-        history.push({
-          timestamp: evt.receivedAt,
-          action,
-          amount: payloadNumber(evt.payload, "amount") ?? null,
-          reason: payloadField(evt.payload, "reason") ?? "",
-          durationMs: payloadNumber(evt.payload, "durationMs") ?? null,
-          blockNumber: evt.blockNumber,
-          txHash: evt.txHash,
-        });
-      }
+      const history = ticks.map((evt) => ({
+        timestamp: evt.receivedAt,
+        action: recordAction(evt.payload, counts),
+        amount: payloadNumber(evt.payload, "amount") ?? null,
+        reason: payloadField(evt.payload, "reason") ?? "",
+        durationMs: payloadNumber(evt.payload, "durationMs") ?? null,
+        blockNumber: evt.blockNumber,
+        txHash: evt.txHash,
+      }));
 
       const result = {
         metrics: summarizeCounts(counts),
@@ -145,9 +131,7 @@ export function registerPerformanceRoutes(
           sellCount: 0,
           holdCount: 0,
         };
-        for (const evt of ticks) {
-          recordAction(evt.payload, counts);
-        }
+        for (const evt of ticks) recordAction(evt.payload, counts);
         results[id] = summarizeCounts(counts);
       }
 

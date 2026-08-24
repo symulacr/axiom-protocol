@@ -249,11 +249,9 @@ export class EventStore {
       if (!since) return [...bucket];
       return bucket.filter((e) => e.timestamp > since);
     }
-    const all: StoredEvent[] = [...this.allEvents()];
-    let results = all;
-    if (since !== undefined) {
-      results = results.filter((e) => e.timestamp > since);
-    }
+    const results = [...this.allEvents()].filter(
+      (e) => since === undefined || e.timestamp > since,
+    );
     results.sort(byBlockThenLogReceived);
     return limit !== undefined ? results.slice(0, limit) : results;
   }

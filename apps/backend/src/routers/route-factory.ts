@@ -56,24 +56,21 @@ export function createRoute<S extends z.ZodTypeAny | undefined = undefined>(
         if (opts.requireId) {
           const idParam =
             typeof req.params.id === "string" ? req.params.id : null;
-          if (!idParam) {
-            sendError(res, HTTP.BAD_REQUEST, "Missing id");
-            return;
-          }
-          if (!/^\d+$/.test(idParam)) {
-            sendError(res, HTTP.BAD_REQUEST, "Invalid id: must be numeric");
-            return;
-          }
+          if (!idParam) return sendError(res, HTTP.BAD_REQUEST, "Missing id");
+          if (!/^\d+$/.test(idParam))
+            return sendError(
+              res,
+              HTTP.BAD_REQUEST,
+              "Invalid id: must be numeric",
+            );
         }
-        if (opts.requireAddress && !config.addresses?.[opts.requireAddress]) {
-          sendError(
+        if (opts.requireAddress && !config.addresses?.[opts.requireAddress])
+          return sendError(
             res,
             HTTP.SERVICE_UNAVAILABLE,
             `${opts.requireAddress} address not configured`,
             "ADDRESS_NOT_CONFIGURED",
           );
-          return;
-        }
         const raw = method === "get" ? req.query : (req.body ?? req.query);
         const parsed = opts.schema ? opts.schema.parse(raw) : undefined;
         const id = req.params.id ?? "";

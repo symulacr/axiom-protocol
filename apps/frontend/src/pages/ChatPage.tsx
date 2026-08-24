@@ -175,7 +175,16 @@ const TOOL_GROUPS = (
 )
   .map((cls) => ({
     cls,
-    tools: CLIENT_TOOL_CATALOG.filter((t) => t.class === cls),
+    // Row data precomputed once: the friendly label leads, and the hint
+    // drops model-facing unit notes ("(in wei)") before truncating.
+    tools: CLIENT_TOOL_CATALOG.filter((t) => t.class === cls).map((t) => {
+      const hint = t.hint.replace(/\s*\(in wei\)/i, "");
+      return {
+        ...t,
+        label: TOOL_LABELS[t.name] ?? t.name,
+        hintShort: hint.length > 90 ? `${hint.slice(0, 90)}…` : hint,
+      };
+    }),
   }))
   .filter((g) => g.tools.length > 0);
 
@@ -201,6 +210,137 @@ function loadStoredThreadId(): string | null {
   } catch {
     return null;
   }
+}
+
+/** Data-driven empty-state hero: tagline, the four prompt cards and the
+ * collapsible tool browser (clicking a tool inserts its natural-language
+ * prompt template). */
+function EmptyState(props: {
+  copy: Copy["chat"];
+  nativeSymbol: string;
+  toolsOpen: boolean;
+  toggleTools: () => void;
+  send: (text: string) => void;
+  insertInput: (text: string) => void;
+}): ReactElement {
+  const { copy, nativeSymbol, toolsOpen } = props;
+  return (
+    <div
+      className="fade-enter"
+      style={{
+        margin: "auto",
+        padding: "var(--space-2xl)",
+        textAlign: "center",
+        maxWidth: 520,
+      }}
+    >
+      <h2
+        style={{
+          fontSize: "var(--text-xl)",
+          color: "var(--c-text-primary)",
+          marginBottom: "var(--space-sm)",
+          fontFamily: "var(--font-display)",
+        }}
+      >
+        {AXIOM_ASSISTANT_NAME}
+      </h2>
+      <p
+        style={{
+          color: "var(--c-text-muted)",
+          fontSize: "var(--text-sm)",
+          margin: "0 auto var(--space-lg)",
+        }}
+      >
+        {copy.emptyTagline}
+      </p>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+          gap: "var(--space-sm)",
+        }}
+      >
+        {[
+          { label: copy.promptAgents, hint: copy.promptAgentsHint },
+          { label: copy.promptMint, hint: copy.promptMintHint },
+          {
+            label: copy.promptVault,
+            hint: interpolate(copy.promptVaultHint, { nativeSymbol }),
+          },
+          { label: copy.promptTick, hint: copy.promptTickHint },
+        ].map((p) => (
+          <button
+            key={p.label}
+            className="prompt-card"
+            onClick={() => props.send(p.label)}
+          >
+            <div style={{ ...promptLabelStyle, marginBottom: 2 }}>
+              {p.label}
+            </div>
+            <div style={promptHintStyle}>{p.hint}</div>
+          </button>
+        ))}
+      </div>
+      <div style={{ marginTop: "var(--space-md)", textAlign: "left" }}>
+        <button
+          type="button"
+          className="prompt-card"
+          onClick={props.toggleTools}
+          aria-expanded={toolsOpen}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            width: "100%",
+          }}
+        >
+          <span style={promptLabelStyle}>
+            {copy.toolsToggle(CLIENT_TOOL_CATALOG.length)}
+          </span>
+          <span style={promptHintStyle}>
+            {toolsOpen ? copy.toolsHide : copy.toolsBrowse}
+          </span>
+        </button>
+        {toolsOpen && (
+          <div
+            style={{
+              marginTop: "var(--space-sm)",
+              maxHeight: 320,
+              overflowY: "auto",
+              paddingRight: 4,
+            }}
+          >
+            {TOOL_GROUPS.map((g) => (
+              <div key={g.cls} style={{ marginBottom: "var(--space-sm)" }}>
+                <SectionTitle style={{ marginBottom: 4 }}>
+                  {CHAT_TOOL_CLASS_LABELS[g.cls]}
+                </SectionTitle>
+                {g.tools.map((t) => (
+                  <button
+                    key={t.name}
+                    type="button"
+                    className="chat-tool-row"
+                    onClick={() =>
+                      props.insertInput(copy.toolPrompts[t.name] ?? t.label)
+                    }
+                    title={t.hint}
+                  >
+                    <span style={{ color: COLORS.text }}>{t.label}</span>
+                    <MonoLabel style={{ padding: "0.125rem 0.35rem" }}>
+                      {t.name}
+                    </MonoLabel>
+                    <span style={{ color: COLORS.textMuted }}>
+                      {t.hintShort}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 /** 05: console references in assistant answers become links —
@@ -310,6 +450,10 @@ function ChatPageInner(): ReactElement {
   const [expandedToolCalls, setExpandedToolCalls] = useState<Set<string>>(
     () => new Set(),
   );
+  /** Index of a message id in live history (-1 when absent) — shared by
+   * the edit-confirm, edit and regenerate handlers. */
+  const idxOfMsg = (id: string): number =>
+    messagesRef.current.findIndex((m) => m.id === id);
   const isStreamingRef = useRef(false);
   const threads = useThreads();
   // Server-persisted transcripts for the connected wallet (merged in the
@@ -557,7 +701,7 @@ function ChatPageInner(): ReactElement {
         sessionStorage.setItem(CHAT_THREAD_KEY, threadId);
       }
     } catch {
-      void 0;
+      /* best-effort persistence */
     }
   }, [messages, threadId]);
 
@@ -649,7 +793,7 @@ function ChatPageInner(): ReactElement {
         try {
           localStorage.setItem("axiom:hasUsedChat", "true");
         } catch {
-          void 0;
+          /* best-effort persistence */
         }
       }
 
@@ -877,12 +1021,11 @@ function ChatPageInner(): ReactElement {
               batch.map(async (tc) => {
                 const handler = handlers[tc.function.name];
                 if (!handler) {
-                  if (tc.id) {
-                    markToolRun(tc.id, {
-                      status: "error",
-                      error: `Unknown tool: ${tc.function.name}`,
-                    });
-                  }
+                  // markToolRun no-ops on an undefined id (missing call id).
+                  markToolRun(tc.id, {
+                    status: "error",
+                    error: `Unknown tool: ${tc.function.name}`,
+                  });
                   return {
                     tc,
                     result: JSON.stringify({
@@ -906,7 +1049,7 @@ function ChatPageInner(): ReactElement {
                       lastTokenIdRef.current = String(tok);
                     }
                   } catch {
-                    void 0;
+                    /* best-effort persistence */
                   }
                   markRunResult(tc.id, result, semanticErrorOf(result));
                   return { tc, result };
@@ -915,12 +1058,10 @@ function ChatPageInner(): ReactElement {
                     err instanceof Error
                       ? err.message
                       : "could not parse tool arguments";
-                  if (tc.id) {
-                    markToolRun(tc.id, {
-                      status: "error",
-                      error: toolErr,
-                    });
-                  }
+                  markToolRun(tc.id, {
+                    status: "error",
+                    error: toolErr,
+                  });
                   return {
                     tc,
                     result: JSON.stringify({ error: toolErr }),
@@ -1016,13 +1157,11 @@ function ChatPageInner(): ReactElement {
     },
     [
       handlers,
-      toolCtx,
       session,
       recordToolResult,
       hasUsedChat,
       flushAndClearStreamText,
       scheduleStreamTextUpdate,
-      chainSupported,
       buildLiveToolCtx,
     ],
   );
@@ -1088,7 +1227,7 @@ function ChatPageInner(): ReactElement {
       sessionStorage.removeItem(CHAT_MESSAGES_KEY);
       sessionStorage.removeItem(CHAT_THREAD_KEY);
     } catch {
-      void 0;
+      /* best-effort persistence */
     }
   }, []);
 
@@ -1255,153 +1394,14 @@ function ChatPageInner(): ReactElement {
           }}
         >
           {messages.length === 0 && !isStreaming && (
-            <div
-              className="fade-enter"
-              style={{
-                margin: "auto",
-                padding: "var(--space-2xl)",
-                textAlign: "center",
-                maxWidth: 520,
-              }}
-            >
-              <h2
-                style={{
-                  fontSize: "var(--text-xl)",
-                  color: "var(--c-text-primary)",
-                  marginBottom: "var(--space-sm)",
-                  fontFamily: "var(--font-display)",
-                }}
-              >
-                {AXIOM_ASSISTANT_NAME}
-              </h2>
-              <p
-                style={{
-                  color: "var(--c-text-muted)",
-                  fontSize: "var(--text-sm)",
-                  margin: "0 auto var(--space-lg)",
-                }}
-              >
-                {chatCopy.emptyTagline}
-              </p>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-                  gap: "var(--space-sm)",
-                }}
-              >
-                {[
-                  {
-                    label: chatCopy.promptAgents,
-                    hint: chatCopy.promptAgentsHint,
-                  },
-                  {
-                    label: chatCopy.promptMint,
-                    hint: chatCopy.promptMintHint,
-                  },
-                  {
-                    label: chatCopy.promptVault,
-                    hint: interpolate(chatCopy.promptVaultHint, {
-                      nativeSymbol,
-                    }),
-                  },
-                  {
-                    label: chatCopy.promptTick,
-                    hint: chatCopy.promptTickHint,
-                  },
-                ].map((p) => (
-                  <button
-                    key={p.label}
-                    className="prompt-card"
-                    onClick={() => sendMessage(p.label)}
-                  >
-                    <div
-                      style={{
-                        ...promptLabelStyle,
-                        marginBottom: 2,
-                      }}
-                    >
-                      {p.label}
-                    </div>
-                    <div style={promptHintStyle}>{p.hint}</div>
-                  </button>
-                ))}
-              </div>
-              <div style={{ marginTop: "var(--space-md)", textAlign: "left" }}>
-                <button
-                  type="button"
-                  className="prompt-card"
-                  onClick={() => setToolsOpen((v) => !v)}
-                  aria-expanded={toolsOpen}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    width: "100%",
-                  }}
-                >
-                  <span style={promptLabelStyle}>
-                    {chatCopy.toolsToggle(CLIENT_TOOL_CATALOG.length)}
-                  </span>
-                  <span style={promptHintStyle}>
-                    {toolsOpen ? chatCopy.toolsHide : chatCopy.toolsBrowse}
-                  </span>
-                </button>
-                {toolsOpen && (
-                  <div
-                    style={{
-                      marginTop: "var(--space-sm)",
-                      maxHeight: 320,
-                      overflowY: "auto",
-                      paddingRight: 4,
-                    }}
-                  >
-                    {TOOL_GROUPS.map((g) => (
-                      <div
-                        key={g.cls}
-                        style={{ marginBottom: "var(--space-sm)" }}
-                      >
-                        <SectionTitle style={{ marginBottom: 4 }}>
-                          {CHAT_TOOL_CLASS_LABELS[g.cls]}
-                        </SectionTitle>
-                        {g.tools.map((t) => {
-                          // 02: the friendly label leads, the raw
-                          // function name is a mono sublabel, and the hint
-                          // drops model-facing unit notes ("(in wei)").
-                          const hint = t.hint.replace(/\s*\(in wei\)/i, "");
-                          const trimmedHint =
-                            hint.length > 90 ? `${hint.slice(0, 90)}…` : hint;
-                          const label = TOOL_LABELS[t.name] ?? t.name;
-                          return (
-                            <button
-                              key={t.name}
-                              type="button"
-                              className="chat-tool-row"
-                              onClick={() =>
-                                setInput(chatCopy.toolPrompts[t.name] ?? label)
-                              }
-                              title={t.hint}
-                            >
-                              <span style={{ color: COLORS.text }}>
-                                {label}
-                              </span>
-                              <MonoLabel
-                                style={{ padding: "0.125rem 0.35rem" }}
-                              >
-                                {t.name}
-                              </MonoLabel>
-                              <span style={{ color: COLORS.textMuted }}>
-                                {trimmedHint}
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+            <EmptyState
+              copy={chatCopy}
+              nativeSymbol={nativeSymbol}
+              toolsOpen={toolsOpen}
+              toggleTools={() => setToolsOpen((v) => !v)}
+              send={sendMessage}
+              insertInput={setInput}
+            />
           )}
 
           {messages.map((msg) => (
@@ -1442,9 +1442,7 @@ function ChatPageInner(): ReactElement {
                       copy={chatCopy}
                       onConfirm={() => {
                         const text = msg.content ?? "";
-                        const idx = messagesRef.current.findIndex(
-                          (m) => m.id === msg.id,
-                        );
+                        const idx = idxOfMsg(msg.id);
                         if (idx >= 0) {
                           const trimmed = stripSummaryLead(
                             messagesRef.current.slice(0, idx),
@@ -1468,9 +1466,7 @@ function ChatPageInner(): ReactElement {
                       className="msg-action"
                       title={chatCopy.editResend}
                       onClick={() => {
-                        const idx = messagesRef.current.findIndex(
-                          (m) => m.id === msg.id,
-                        );
+                        const idx = idxOfMsg(msg.id);
                         if (idx >= 0 && idx < messagesRef.current.length - 1) {
                           setEditConfirmId(msg.id);
                         } else {
@@ -1490,9 +1486,7 @@ function ChatPageInner(): ReactElement {
                       title={chatCopy.regenerate}
                       onClick={() => {
                         if (isStreamingRef.current) return;
-                        const idx = messagesRef.current.findIndex(
-                          (m) => m.id === msg.id,
-                        );
+                        const idx = idxOfMsg(msg.id);
                         if (idx > 0) {
                           const trimmed = stripSummaryLead(
                             messagesRef.current.slice(0, idx),
@@ -1649,12 +1643,11 @@ function ChatPageInner(): ReactElement {
                 <div
                   key={row.id}
                   style={{
+                    ...dimXs,
                     display: "flex",
                     alignItems: "center",
                     gap: 6,
                     flexWrap: "wrap",
-                    fontSize: "var(--text-xs)",
-                    color: COLORS.textDim,
                   }}
                 >
                   {/* one localized string instead of
@@ -1823,11 +1816,10 @@ function ChatPageInner(): ReactElement {
                 title={q}
                 className="queue-chip"
                 style={{
+                  ...dimXs,
                   display: "inline-flex",
                   alignItems: "center",
                   gap: 6,
-                  fontSize: "var(--text-xs)",
-                  color: COLORS.textDim,
                   border: `1px solid ${COLORS.border}`,
                   borderRadius: "var(--radius-sm)",
                   padding: "2px 4px 2px 10px",

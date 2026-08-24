@@ -1,7 +1,7 @@
 import type { JsonRpcProvider, Log } from "ethers";
 import { rename, mkdir } from "node:fs/promises";
 import { joinPath, dirnamePath } from "@axiom/config/path";
-import { EVENT_NAMES, getRuntimeConfig } from "@axiom/config/constants";
+import { getRuntimeConfig } from "@axiom/config/constants";
 import { getEnv } from "@axiom/config/env";
 import {
   resolveIndexerAddresses,
@@ -14,6 +14,7 @@ import {
   decodeAxiomLog,
   type WatchedEvent,
 } from "./events/parser.js";
+import { extractErrorMessage } from "../utils/response.js";
 
 function getCheckpointFile(chainId: bigint): string {
   const dataDir = getEnv("AXIOM_DATA_DIR") || "data";
@@ -62,32 +63,23 @@ async function pollOnce(
   const toBlock = fromBlock + window - 1n;
   const allLogs: Log[] = [];
   // Group by contract address for multi-topic batching (4 calls vs 31)
-  const byAddress = new Map<string, string[]>();
-  for (const { name, address } of watchList) {
-    const key = address.toLowerCase();
-    const list = byAddress.get(key);
-    if (list) {
-      list.push(TOPIC_TABLE[name]);
-    } else {
-      byAddress.set(key, [TOPIC_TABLE[name]]);
+  for (const [addr, group] of Map.groupBy(watchList, (w) =>
+    w.address.toLowerCase(),
+  )) {
+    const topics = group.map(({ name }) => TOPIC_TABLE[name]);
+    for (const log of await provider.getLogs({
+      address: addr,
+      topics: [topics],
+      fromBlock,
+      toBlock,
+    })) {
+      allLogs.push(log);
     }
-  }
-  for (const [addr, topics] of byAddress) {
-    const filter = { address: addr, topics: [topics], fromBlock, toBlock };
-    const logs = await provider.getLogs(filter);
-    for (const log of logs) allLogs.push(log);
   }
   return allLogs;
 }
-function logsByChainOrder(a: Log, b: Log) {
-  if (a.blockNumber !== b.blockNumber) {
-    return a.blockNumber < b.blockNumber ? -1 : 1;
-  }
-  if (a.index !== b.index) {
-    return a.index < b.index ? -1 : 1;
-  }
-  return 0;
-}
+const logsByChainOrder = (a: Log, b: Log) =>
+  a.blockNumber - b.blockNumber || a.index - b.index;
 
 const runtimeConfig = getRuntimeConfig();
 
@@ -100,41 +92,59 @@ const REORG_SAFE_DEPTH = runtimeConfig.indexerReorgSafeDepth;
 const wait = (ms: number): Promise<void> =>
   new Promise<void>((resolve) => setTimeout(resolve, ms));
 
+/** [event name, contract address key] pairs grouped per contract; order is irrelevant since pollOnce batches by address. */
+function watchGroup<K extends keyof IndexerContractAddresses>(
+  addrKey: K,
+  names: readonly EventName[],
+): ReadonlyArray<readonly [EventName, K]> {
+  return names.map((name) => [name, addrKey] as const);
+}
+
 const DEFAULT_WATCH: ReadonlyArray<
   readonly [name: EventName, addrKey: keyof IndexerContractAddresses]
 > = [
-  [EVENT_NAMES.Transfer, "AXIOM_AGENT_NFT"],
-  ["Updated", "AXIOM_AGENT_NFT"],
-  ["Authorization", "AXIOM_AGENT_NFT"],
-  ["AuthorizationRevoked", "AXIOM_AGENT_NFT"],
-  ["VerifierUpdated", "AXIOM_AGENT_NFT"],
-  ["CreatorSet", "AXIOM_AGENT_NFT"],
-  ["MintFeeUpdated", "AXIOM_AGENT_NFT"],
-  ["StorageInfoUpdated", "AXIOM_AGENT_NFT"],
-  ["PublishedSealedKey", "AXIOM_AGENT_NFT"],
-  ["DelegateAccess", "AXIOM_AGENT_NFT"],
-  [EVENT_NAMES.Deposited, "AXIOM_STRATEGY_VAULT"],
-  [EVENT_NAMES.Withdrawn, "AXIOM_STRATEGY_VAULT"],
-  [EVENT_NAMES.StrategySet, "AXIOM_STRATEGY_VAULT"],
-  [EVENT_NAMES.Executed, "AXIOM_STRATEGY_VAULT"],
-  ["PaymentProcessed", "AXIOM_PAYMENT_PROCESSOR"],
-  ["ComputeProviderPaid", "AXIOM_PAYMENT_PROCESSOR"],
-  ["EarningsWithdrawn", "AXIOM_PAYMENT_PROCESSOR"],
-  ["RoyaltySet", "AXIOM_PAYMENT_PROCESSOR"],
-  ["ProtocolTreasuryProposed", "AXIOM_PAYMENT_PROCESSOR"],
-  ["ProtocolTreasuryUpdated", "AXIOM_PAYMENT_PROCESSOR"],
-  ["ProtocolTreasuryProposalCancelled", "AXIOM_PAYMENT_PROCESSOR"],
-  ["ProtocolFeeBpsUpdated", "AXIOM_PAYMENT_PROCESSOR"],
-  ["PaymentTokenUpdated", "AXIOM_PAYMENT_PROCESSOR"],
-  ["MetadataJsonDecisionDocumented", "AXIOM_AGENT_NFT"],
-  ["Cloned", "AXIOM_AGENT_NFT"],
-  ["SignerProposed", "AXIOM_TEE_VERIFIER"],
-  ["SignerExecuted", "AXIOM_TEE_VERIFIER"],
-  ["SignerProposalCancelled", "AXIOM_TEE_VERIFIER"],
-  ["Upgraded", "AXIOM_AGENT_NFT"],
-  ["AdminChanged", "AXIOM_AGENT_NFT"],
-  ["BeaconUpgraded", "AXIOM_AGENT_NFT"],
-  ["Initialized", "AXIOM_AGENT_NFT"],
+  ...watchGroup("AXIOM_AGENT_NFT", [
+    "Transfer",
+    "Updated",
+    "Authorization",
+    "AuthorizationRevoked",
+    "VerifierUpdated",
+    "CreatorSet",
+    "MintFeeUpdated",
+    "StorageInfoUpdated",
+    "PublishedSealedKey",
+    "DelegateAccess",
+  ]),
+  ...watchGroup("AXIOM_STRATEGY_VAULT", [
+    "Deposited",
+    "Withdrawn",
+    "StrategySet",
+    "Executed",
+  ]),
+  ...watchGroup("AXIOM_PAYMENT_PROCESSOR", [
+    "PaymentProcessed",
+    "ComputeProviderPaid",
+    "EarningsWithdrawn",
+    "RoyaltySet",
+    "ProtocolTreasuryProposed",
+    "ProtocolTreasuryUpdated",
+    "ProtocolTreasuryProposalCancelled",
+    "ProtocolFeeBpsUpdated",
+    "PaymentTokenUpdated",
+  ]),
+  ...watchGroup("AXIOM_TEE_VERIFIER", [
+    "SignerProposed",
+    "SignerExecuted",
+    "SignerProposalCancelled",
+  ]),
+  ...watchGroup("AXIOM_AGENT_NFT", [
+    "MetadataJsonDecisionDocumented",
+    "Cloned",
+    "Upgraded",
+    "AdminChanged",
+    "BeaconUpgraded",
+    "Initialized",
+  ]),
 ];
 
 export function buildDefaultWatchList(
@@ -289,7 +299,7 @@ export class Watcher {
             address: log.address,
             transactionHash: log.transactionHash,
             logIndex: log.index,
-            err: err instanceof Error ? err.message : String(err),
+            err: extractErrorMessage(err),
           });
           continue;
         }
@@ -305,7 +315,7 @@ export class Watcher {
             blockNumber: log.blockNumber?.toString(),
             transactionHash: log.transactionHash,
             logIndex: log.index,
-            err: err instanceof Error ? err.message : String(err),
+            err: extractErrorMessage(err),
           });
         }
       }
@@ -352,7 +362,7 @@ export class Watcher {
         msg: "poll tick failed",
         consecutiveFailures: this.consecutiveFailures,
         maxConsecutiveFailures: this.maxConsecutiveFailures,
-        err: err instanceof Error ? err.message : String(err),
+        err: extractErrorMessage(err),
       });
       if (this.consecutiveFailures >= this.maxConsecutiveFailures) {
         const cooldown = Math.min(this.intervalMs * 10, 300_000);
@@ -385,7 +395,7 @@ export class Watcher {
       this.logger({
         level: "error",
         msg: "failed to load checkpoint",
-        err: err instanceof Error ? err.message : String(err),
+        err: extractErrorMessage(err),
       });
     }
 

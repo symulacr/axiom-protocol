@@ -94,12 +94,10 @@ function resolveTracePayload(
 ): Record<string, unknown> | null {
   const headers = response?.headers as
     { get?(name: string): string | null } | Record<string, string> | undefined;
-  const headerValue = (name: string): string | null | undefined => {
-    if (headers && typeof headers.get === "function") {
-      return headers.get(name);
-    }
-    return (headers as Record<string, string> | undefined)?.[name];
-  };
+  const headerValue = (name: string): string | null | undefined =>
+    typeof headers?.get === "function"
+      ? headers.get(name)
+      : (headers as Record<string, string> | undefined)?.[name];
   if (terminalChunk !== null && typeof terminalChunk === "object") {
     const chunk = terminalChunk as { usage?: unknown; x_0g_trace?: unknown };
     const trace: Record<string, unknown> = { usage: chunk.usage };
@@ -534,13 +532,13 @@ function registerComputeRoutes(
   async function fetchModelWindows(): Promise<Record<string, number>> {
     try {
       const models = await fetchRouterModels();
-      const out: Record<string, number> = {};
-      for (const m of models) {
-        const id = String(m.id ?? "");
-        const cw = m.context_window;
-        if (id && typeof cw === "number") out[id] = cw;
-      }
-      return out;
+      return Object.fromEntries(
+        models.flatMap((m) => {
+          const id = String(m.id ?? "");
+          const cw = m.context_window;
+          return id && typeof cw === "number" ? [[id, cw]] : [];
+        }),
+      );
     } catch {
       return {};
     }
@@ -568,16 +566,12 @@ function registerComputeRoutes(
     // "qwen/qwen2.5-omni-7b") and the catalog id (canonical_id, e.g.
     // "qwen2.5-omni") — and the router's own ?model_id filter is loose
     // (it can return unrelated rows), so always filter locally on both.
-    providers = providers.filter((p) => {
-      const id = String(p.model_id ?? "");
-      const canonical = String(p.canonical_id ?? "");
-      return (
-        id === model ||
-        id.startsWith(model) ||
-        canonical === model ||
-        canonical.startsWith(model)
-      );
-    });
+    providers = providers.filter((p) =>
+      [p.model_id, p.canonical_id].some((id) => {
+        const s = String(id ?? "");
+        return s === model || s.startsWith(model);
+      }),
+    );
     providersCache.set(cacheKey, providers);
     return providers;
   }
@@ -598,13 +592,11 @@ function registerComputeRoutes(
         typeof req.query?.model === "string" ? req.query.model : undefined;
       if (model) {
         const providers = await fetchRouterProviders(model);
-        if (providers.length === 0) {
-          res.status(HTTP.BAD_GATEWAY).json({
+        if (providers.length === 0)
+          return void res.status(HTTP.BAD_GATEWAY).json({
             error: `Compute router returned no providers for model: ${model}`,
             code: "UPSTREAM_ERROR",
           });
-          return;
-        }
         res.json({
           services: providers.map((p: Record<string, unknown>) => ({
             ...p,
@@ -616,13 +608,11 @@ function registerComputeRoutes(
         return;
       }
       const models = await fetchRouterModels();
-      if (models.length === 0) {
-        res.status(HTTP.BAD_GATEWAY).json({
+      if (models.length === 0)
+        return void res.status(HTTP.BAD_GATEWAY).json({
           error: "Compute router returned no models",
           code: "UPSTREAM_ERROR",
         });
-        return;
-      }
       const services = models.map((m: Record<string, unknown>) => {
         const id = String(m.id ?? "");
         const address = ethers
@@ -668,20 +658,11 @@ const EMPTY_RESPONSE_FALLBACK =
 
 // Narrow an SSE chunk's `choices[0].delta.content` without trusting an unchecked shape.
 function sseDeltaContent(chunk: unknown): string {
-  if (typeof chunk !== "object" || chunk === null || !("choices" in chunk)) {
-    return "";
-  }
-  const choices = chunk.choices;
+  const choices = (chunk as { choices?: unknown } | null)?.choices;
   if (!Array.isArray(choices) || choices.length === 0) return "";
-  const first = choices[0];
-  if (typeof first !== "object" || first === null || !("delta" in first)) {
-    return "";
-  }
-  const delta = first.delta;
-  if (typeof delta !== "object" || delta === null || !("content" in delta)) {
-    return "";
-  }
-  return typeof delta.content === "string" ? delta.content : "";
+  const content = (choices[0] as { delta?: { content?: unknown } } | null)
+    ?.delta?.content;
+  return typeof content === "string" ? content : "";
 }
 
 // After-effect for a completed chat turn: upload the transcript to 0G and record the pointer in the
@@ -960,15 +941,13 @@ function registerChatRoutes(
       { config: cfg },
     ) => {
       const wallet = parsed.wallet.toLowerCase();
-      if (!verifyWalletProof(req, wallet)) {
-        sendError(
+      if (!verifyWalletProof(req, wallet))
+        return sendError(
           res,
           HTTP.UNAUTHORIZED,
           "wallet ownership proof missing, expired, or invalid",
           "WALLET_PROOF_INVALID",
         );
-        return;
-      }
       const events = getEventStore().getAll(100, undefined, "transcript");
       const transcripts: unknown[] = [];
       for (const evt of events) {
@@ -1079,23 +1058,19 @@ function registerPaymentRoutes(
     },
     async (_parsed, _req, res, { id }) => {
       res.setHeader("Cache-Control", "public, max-age=300");
-      if (!nftTc) {
-        sendError(
+      if (!nftTc)
+        return sendError(
           res,
           HTTP.SERVICE_UNAVAILABLE,
           "AgentNFT address not configured",
         );
-        return;
-      }
       const creator = await nftTc.contract.creatorOf(BigInt(id));
-      if (!creator || creator === ethers.ZeroAddress) {
-        sendError(
+      if (!creator || creator === ethers.ZeroAddress)
+        return sendError(
           res,
           HTTP.NOT_FOUND,
           "Agent creator not registered for token",
         );
-        return;
-      }
       const client = await getPayment();
       const earnings = await client.earningsOf(creator);
       return { tokenId: id, creator, earnings };
@@ -1164,19 +1139,17 @@ function registerPaymentRoutes(
     },
     async (_parsed, req, res, { id, config: cfg }) => {
       const nftAddr = cfg.addresses?.agentNft;
-      if (!nftAddr) {
-        sendError(res, HTTP.INTERNAL, "AgentNFT address not configured");
-        return;
-      }
+      if (!nftAddr)
+        return sendError(res, HTTP.INTERNAL, "AgentNFT address not configured");
       const { datas } = req.body ?? {};
-      if (!datas || !Array.isArray(datas)) {
-        sendError(res, HTTP.BAD_REQUEST, "Missing or invalid datas array");
-        return;
-      }
-      if (!nftTc) {
-        sendError(res, HTTP.INTERNAL, "AgentNFT not configured");
-        return;
-      }
+      if (!datas || !Array.isArray(datas))
+        return sendError(
+          res,
+          HTTP.BAD_REQUEST,
+          "Missing or invalid datas array",
+        );
+      if (!nftTc)
+        return sendError(res, HTTP.INTERNAL, "AgentNFT not configured");
       const encoded = nftTc.iface.encodeFunctionData("update", [
         BigInt(id),
         datas,
@@ -1254,6 +1227,14 @@ function registerErrorHandlers(app: Express): void {
 /** WS auth header path: clients pass Sec-WebSocket-Protocol: ["axiom", base64(token)].
  *  Returns the decoded token, or null when the header is absent/malformed. */
 const WS_AUTH_SUBPROTOCOL = "axiom";
+
+/** Comma-separated key list -> trimmed, non-empty entries. */
+function splitKeys(v: string | undefined): string[] {
+  return (v ?? "")
+    .split(",")
+    .map((k) => k.trim())
+    .filter(Boolean);
+}
 function wsTokenFromSubprotocols(
   header: string | string[] | undefined,
 ): string | null {
@@ -1284,27 +1265,24 @@ function setupWebSocketServer(
       protocols.size > 0 ? Array.from(protocols).join(", ") : false,
   });
   httpServer.on("upgrade", (req, socket, head) => {
+    // Uniform 401 for every denied upgrade (auth missing or token invalid).
+    const deny = (): void => {
+      socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
+      socket.destroy();
+    };
     const url = new URL(req.url ?? "/", LOCAL_BASE_URL);
     if (url.pathname !== "/v1/stream") {
       socket.destroy();
       return;
     }
-    const serverKeys = config.env?.AXIOM_API_KEY
-      ? config.env.AXIOM_API_KEY.split(",")
-          .map((k) => k.trim())
-          .filter(Boolean)
-      : [];
-    const clientKeys = process.env.AXIOM_CLIENT_API_KEY
-      ? process.env.AXIOM_CLIENT_API_KEY.split(",")
-          .map((k) => k.trim())
-          .filter(Boolean)
-      : [];
-    const apiKeys = [...serverKeys, ...clientKeys];
+    const apiKeys = [
+      ...splitKeys(config.env?.AXIOM_API_KEY),
+      ...splitKeys(process.env.AXIOM_CLIENT_API_KEY),
+    ];
     // Fail closed: a missing API key denies WS upgrades unless auth is explicitly disabled.
     if (apiKeys.length === 0) {
       if (process.env.AXIOM_DISABLE_AUTH !== "true") {
-        socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
-        socket.destroy();
+        deny();
         return;
       }
     } else {
@@ -1317,8 +1295,7 @@ function setupWebSocketServer(
         url.searchParams.get("token") ??
         "";
       if (!token || !timingSafeTokenInList(token, apiKeys)) {
-        socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
-        socket.destroy();
+        deny();
         return;
       }
     }

@@ -41,16 +41,10 @@ function authorizeEventPost(opts: {
       message: `rejected event from untrusted source: "${opts.source}"`,
     };
   }
-  if (!opts.indexerApiKey) {
-    return {
-      ok: false,
-      status: HTTP.UNAUTHORIZED,
-      code: "INDEXER_UNAUTHORIZED",
-      message:
-        "unauthorized: POST /v1/events requires the dedicated indexer API key",
-    };
-  }
-  if (!timingSafeMatch(opts.indexerKey ?? "", [opts.indexerApiKey])) {
+  if (
+    !opts.indexerApiKey ||
+    !timingSafeMatch(opts.indexerKey ?? "", [opts.indexerApiKey])
+  ) {
     return {
       ok: false,
       status: HTTP.UNAUTHORIZED,

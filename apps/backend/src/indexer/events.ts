@@ -28,40 +28,45 @@ export function resolveIndexerAddresses(
 }
 
 // Watched event -> canonical ABI in @axiom/config/abis; entries match deployed contracts (ERC1967 events stay literal).
+const NFT = AGENT_NFT_ABI;
+const VAULT = VAULT_ABI;
+const PAY = PAYMENT_PROCESSOR_ABI;
+const TEE = TEE_VERIFIER_ABI;
+
 const EVENT_SOURCES = {
-  Transfer: AGENT_NFT_ABI,
-  Updated: AGENT_NFT_ABI,
-  Authorization: AGENT_NFT_ABI,
-  AuthorizationRevoked: AGENT_NFT_ABI,
-  VerifierUpdated: AGENT_NFT_ABI,
-  CreatorSet: AGENT_NFT_ABI,
-  MintFeeUpdated: AGENT_NFT_ABI,
-  StorageInfoUpdated: AGENT_NFT_ABI,
-  PublishedSealedKey: AGENT_NFT_ABI,
-  DelegateAccess: AGENT_NFT_ABI,
-  Deposited: VAULT_ABI,
-  Withdrawn: VAULT_ABI,
-  StrategySet: VAULT_ABI,
-  Executed: VAULT_ABI,
-  PaymentProcessed: PAYMENT_PROCESSOR_ABI,
-  ComputeProviderPaid: PAYMENT_PROCESSOR_ABI,
-  EarningsWithdrawn: PAYMENT_PROCESSOR_ABI,
-  RoyaltySet: PAYMENT_PROCESSOR_ABI,
-  ProtocolTreasuryProposed: PAYMENT_PROCESSOR_ABI,
-  ProtocolTreasuryUpdated: PAYMENT_PROCESSOR_ABI,
-  ProtocolTreasuryProposalCancelled: PAYMENT_PROCESSOR_ABI,
-  ProtocolFeeBpsUpdated: PAYMENT_PROCESSOR_ABI,
-  PaymentTokenUpdated: PAYMENT_PROCESSOR_ABI,
-  MetadataJsonDecisionDocumented: AGENT_NFT_ABI,
-  Cloned: AGENT_NFT_ABI,
-  SignerProposed: TEE_VERIFIER_ABI,
-  SignerExecuted: TEE_VERIFIER_ABI,
-  SignerProposalCancelled: TEE_VERIFIER_ABI,
-  Upgraded: AGENT_NFT_ABI,
+  Transfer: NFT,
+  Updated: NFT,
+  Authorization: NFT,
+  AuthorizationRevoked: NFT,
+  VerifierUpdated: NFT,
+  CreatorSet: NFT,
+  MintFeeUpdated: NFT,
+  StorageInfoUpdated: NFT,
+  PublishedSealedKey: NFT,
+  DelegateAccess: NFT,
+  Deposited: VAULT,
+  Withdrawn: VAULT,
+  StrategySet: VAULT,
+  Executed: VAULT,
+  PaymentProcessed: PAY,
+  ComputeProviderPaid: PAY,
+  EarningsWithdrawn: PAY,
+  RoyaltySet: PAY,
+  ProtocolTreasuryProposed: PAY,
+  ProtocolTreasuryUpdated: PAY,
+  ProtocolTreasuryProposalCancelled: PAY,
+  ProtocolFeeBpsUpdated: PAY,
+  PaymentTokenUpdated: PAY,
+  MetadataJsonDecisionDocumented: NFT,
+  Cloned: NFT,
+  Upgraded: NFT,
+  Initialized: NFT,
+  SignerProposed: TEE,
+  SignerExecuted: TEE,
+  SignerProposalCancelled: TEE,
   AdminChanged:
     "event AdminChanged(address previousAdmin, address newAdmin)" as const,
   BeaconUpgraded: "event BeaconUpgraded(address indexed beacon)" as const,
-  Initialized: AGENT_NFT_ABI,
 } as const;
 
 export type EventName = keyof typeof EVENT_SOURCES;
@@ -95,276 +100,166 @@ export const EVENT_ABI = Object.fromEntries(
   ]),
 ) as { [K in EventName]: AbiEvent };
 
+/** Envelope fields shared by every decoded event; variants list only their payload. */
+interface EventEnvelope {
+  blockNumber: number;
+  txHash: string;
+  logIndex: number;
+}
+
 export type AxiomEvent =
-  | {
+  | (EventEnvelope & {
       kind: "Transfer";
-      blockNumber: number;
-      txHash: string;
-      logIndex: number;
       from: string;
       to: string;
       tokenId: bigint;
-    }
-  | {
+    })
+  | (EventEnvelope & {
       kind: "Updated";
-      blockNumber: number;
-      txHash: string;
-      logIndex: number;
       tokenId: bigint;
       oldDatasCount: number;
       newDatasCount: number;
-    }
-  | {
+    })
+  | (EventEnvelope & {
       kind: "Authorization";
-      blockNumber: number;
-      txHash: string;
-      logIndex: number;
       tokenId: bigint;
       from: string;
       to: string;
-    }
-  | {
+    })
+  | (EventEnvelope & {
       kind: "AuthorizationRevoked";
-      blockNumber: number;
-      txHash: string;
-      logIndex: number;
       tokenId: bigint;
       from: string;
       to: string;
-    }
-  | {
+    })
+  | (EventEnvelope & {
       kind: "VerifierUpdated";
-      blockNumber: number;
-      txHash: string;
-      logIndex: number;
       oldVerifier: string;
       newVerifier: string;
-    }
-  | {
-      kind: "CreatorSet";
-      blockNumber: number;
-      txHash: string;
-      logIndex: number;
-      tokenId: bigint;
-      creator: string;
-    }
-  | {
-      kind: "MintFeeUpdated";
-      blockNumber: number;
-      txHash: string;
-      logIndex: number;
-      oldFee: bigint;
-      newFee: bigint;
-    }
-  | {
+    })
+  | (EventEnvelope & { kind: "CreatorSet"; tokenId: bigint; creator: string })
+  | (EventEnvelope & { kind: "MintFeeUpdated"; oldFee: bigint; newFee: bigint })
+  | (EventEnvelope & {
       kind: "StorageInfoUpdated";
-      blockNumber: number;
-      txHash: string;
-      logIndex: number;
       oldInfo: string;
       newInfo: string;
-    }
-  | {
+    })
+  | (EventEnvelope & {
       kind: "PublishedSealedKey";
-      blockNumber: number;
-      txHash: string;
-      logIndex: number;
       to: string;
       tokenId: bigint;
       sealedKeys: readonly string[];
-    }
-  | {
+    })
+  | (EventEnvelope & {
       kind: "DelegateAccess";
-      blockNumber: number;
-      txHash: string;
-      logIndex: number;
       user: string;
       assistant: string;
-    }
-  | {
+    })
+  | (EventEnvelope & {
       kind: "Deposited";
-      blockNumber: number;
-      txHash: string;
-      logIndex: number;
       tokenId: bigint;
       from: string;
       asset: string;
       amount: bigint;
-    }
-  | {
+    })
+  | (EventEnvelope & {
       kind: "Withdrawn";
-      blockNumber: number;
-      txHash: string;
-      logIndex: number;
       tokenId: bigint;
       to: string;
       asset: string;
       amount: bigint;
-    }
-  | {
+    })
+  | (EventEnvelope & {
       kind: "StrategySet";
-      blockNumber: number;
-      txHash: string;
-      logIndex: number;
       tokenId: bigint;
       strategyRoot: string;
       dailyLimit: bigint;
       validUntilDay: bigint;
-    }
-  | {
+    })
+  | (EventEnvelope & {
       kind: "Executed";
-      blockNumber: number;
-      txHash: string;
-      logIndex: number;
       tokenId: bigint;
       actionHash: string;
       target: string;
       value: bigint;
       result: string;
-    }
-  | {
+    })
+  | (EventEnvelope & {
       kind: "PaymentProcessed";
-      blockNumber: number;
-      txHash: string;
-      logIndex: number;
       agentTokenId: bigint;
       payer: string;
       creator: string;
       amount: bigint;
       creatorCut: bigint;
       protocolCut: bigint;
-    }
-  | {
+    })
+  | (EventEnvelope & {
       kind: "ComputeProviderPaid";
-      blockNumber: number;
-      txHash: string;
-      logIndex: number;
       provider: string;
       amount: bigint;
-    }
-  | {
+    })
+  | (EventEnvelope & {
       kind: "EarningsWithdrawn";
-      blockNumber: number;
-      txHash: string;
-      logIndex: number;
       creator: string;
       amount: bigint;
-    }
-  | {
-      kind: "RoyaltySet";
-      blockNumber: number;
-      txHash: string;
-      logIndex: number;
-      agentTokenId: bigint;
-      bps: bigint;
-    }
-  | {
+    })
+  | (EventEnvelope & { kind: "RoyaltySet"; agentTokenId: bigint; bps: bigint })
+  | (EventEnvelope & {
       kind: "ProtocolTreasuryProposed";
-      blockNumber: number;
-      txHash: string;
-      logIndex: number;
       proposedTreasury: string;
       effectiveAt: bigint;
-    }
-  | {
+    })
+  | (EventEnvelope & {
       kind: "ProtocolTreasuryUpdated";
-      blockNumber: number;
-      txHash: string;
-      logIndex: number;
       oldTreasury: string;
       newTreasury: string;
-    }
-  | {
+    })
+  | (EventEnvelope & {
       kind: "ProtocolTreasuryProposalCancelled";
-      blockNumber: number;
-      txHash: string;
-      logIndex: number;
       pendingTreasury: string;
-    }
-  | {
+    })
+  | (EventEnvelope & {
       kind: "ProtocolFeeBpsUpdated";
-      blockNumber: number;
-      txHash: string;
-      logIndex: number;
       oldBps: bigint;
       newBps: bigint;
-    }
-  | {
+    })
+  | (EventEnvelope & {
       kind: "PaymentTokenUpdated";
-      blockNumber: number;
-      txHash: string;
-      logIndex: number;
       oldToken: string;
       newToken: string;
-    }
-  | {
+    })
+  | (EventEnvelope & {
       kind: "MetadataJsonDecisionDocumented";
-      blockNumber: number;
-      txHash: string;
-      logIndex: number;
       collectionName: string;
       collectionSymbol: string;
       rationaleTag: string;
-    }
-  | {
+    })
+  | (EventEnvelope & {
       kind: "Cloned";
-      blockNumber: number;
-      txHash: string;
-      logIndex: number;
       tokenId: bigint;
       newTokenId: bigint;
       from: string;
       to: string;
-    }
-  | {
+    })
+  | (EventEnvelope & {
       kind: "SignerProposed";
-      blockNumber: number;
-      txHash: string;
-      logIndex: number;
       newSigner: string;
       executableAt: bigint;
-    }
-  | {
+    })
+  | (EventEnvelope & {
       kind: "SignerExecuted";
-      blockNumber: number;
-      txHash: string;
-      logIndex: number;
       oldSigner: string;
       newSigner: string;
-    }
-  | {
+    })
+  | (EventEnvelope & {
       kind: "SignerProposalCancelled";
-      blockNumber: number;
-      txHash: string;
-      logIndex: number;
       cancelledSigner: string;
-    }
-  | {
-      kind: "Upgraded";
-      blockNumber: number;
-      txHash: string;
-      logIndex: number;
-      implementation: string;
-    }
-  | {
+    })
+  | (EventEnvelope & { kind: "Upgraded"; implementation: string })
+  | (EventEnvelope & {
       kind: "AdminChanged";
-      blockNumber: number;
-      txHash: string;
-      logIndex: number;
       previousAdmin: string;
       newAdmin: string;
-    }
-  | {
-      kind: "BeaconUpgraded";
-      blockNumber: number;
-      txHash: string;
-      logIndex: number;
-      beacon: string;
-    }
-  | {
-      kind: "Initialized";
-      blockNumber: number;
-      txHash: string;
-      logIndex: number;
-      version: number;
-    };
+    })
+  | (EventEnvelope & { kind: "BeaconUpgraded"; beacon: string })
+  | (EventEnvelope & { kind: "Initialized"; version: number });

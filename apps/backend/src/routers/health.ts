@@ -64,12 +64,7 @@ export function createHealthRouter(
             });
             return snapshot;
           }
-          const failed: HealthSnapshot = {
-            chainHead: 0,
-            ok: false,
-            checkedAt: now,
-          };
-          return failed;
+          return { chainHead: 0, ok: false, checkedAt: now };
         })
         .finally(() => {
           inflight = null;

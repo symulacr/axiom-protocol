@@ -172,22 +172,7 @@ export class PaymentProcessorClient {
     receipt: ContractTransactionReceipt,
   ): PaymentProcessedEvent | null {
     const parsed = this.findParsedEvent(receipt, "PaymentProcessed");
-    if (!parsed) return null;
-    const args = parsed.args as unknown as {
-      agentTokenId: bigint;
-      payer: string;
-      creator: string;
-      amount: bigint;
-      creatorCut: bigint;
-      protocolCut: bigint;
-    };
-    return {
-      agentTokenId: args.agentTokenId,
-      payer: args.payer,
-      creator: args.creator,
-      amount: args.amount,
-      creatorCut: args.creatorCut,
-      protocolCut: args.protocolCut,
-    };
+    // parseLog args are exactly the PaymentProcessed params (agentTokenId…protocolCut).
+    return (parsed?.args as unknown as PaymentProcessedEvent) ?? null;
   }
 }

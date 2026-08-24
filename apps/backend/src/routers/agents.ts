@@ -183,10 +183,8 @@ export function registerAgentRoutes(
         typeof req.query.owner === "string"
           ? req.query.owner.toLowerCase()
           : undefined;
-      if (!owner || !/^0x[0-9a-f]{40}$/i.test(owner)) {
-        sendError(res, HTTP.BAD_REQUEST, "Valid owner address required");
-        return;
-      }
+      if (!owner || !/^0x[0-9a-f]{40}$/i.test(owner))
+        return sendError(res, HTTP.BAD_REQUEST, "Valid owner address required");
       res.setHeader("Cache-Control", "public, max-age=120");
       const bypassCache =
         req.query.fresh === "1" ||
@@ -200,14 +198,12 @@ export function registerAgentRoutes(
         }
       }
       const nftAddr = config.addresses?.agentNft;
-      if (!nftAddr) {
-        sendError(
+      if (!nftAddr)
+        return sendError(
           res,
           HTTP.SERVICE_UNAVAILABLE,
           "Agent NFT address not configured",
         );
-        return;
-      }
       const iface = new ethers.Interface(AGENT_NFT_ABI);
       const balanceHex = await provider.call({
         to: nftAddr,
@@ -241,16 +237,13 @@ export function registerAgentRoutes(
           // best-effort: a log fetch failure must not abort the owner lookup
         }
       }
-      const seen = new Set<bigint>();
-      const uniqueTokenIds: bigint[] = [];
-      for (const log of transferLogs) {
-        const rawTid = log.topics[3];
-        if (!rawTid) continue;
-        const tokenId = BigInt(rawTid);
-        if (seen.has(tokenId)) continue;
-        seen.add(tokenId);
-        uniqueTokenIds.push(tokenId);
-      }
+      const uniqueTokenIds = [
+        ...new Set(
+          transferLogs.flatMap((entry) =>
+            entry.topics[3] ? [BigInt(entry.topics[3])] : [],
+          ),
+        ),
+      ];
       const ownerResults = await Promise.all(
         uniqueTokenIds.slice(0, MAX_AGENT_ENUMERATION).map(async (tokenId) => {
           const ownerHex = await provider.call({
@@ -288,13 +281,11 @@ export function registerAgentRoutes(
           }
         }),
       );
-      for (let i = 0; i < tokens.length; i++) {
+      tokens.forEach((token, i) => {
         const result = metadataResults[i];
-        if (result && result.status === "fulfilled") {
-          const token = tokens[i];
-          if (token) token.dataDescription = String(result.value ?? "");
-        }
-      }
+        if (result?.status === "fulfilled")
+          token.dataDescription = String(result.value ?? "");
+      });
       const result = { owner, agents: tokens };
       agentCache.set(owner, result);
       res.json(result);
@@ -313,14 +304,12 @@ export function registerAgentRoutes(
     },
     async (_parsed: unknown, _req: Request, res: Response) => {
       const nftAddr = config.addresses?.agentNft;
-      if (!nftAddr) {
-        sendError(
+      if (!nftAddr)
+        return sendError(
           res,
           HTTP.SERVICE_UNAVAILABLE,
           "Agent NFT address not configured",
         );
-        return;
-      }
       const cached = mintStatsCache.get("global");
       if (cached) {
         res.json(cached);
@@ -337,15 +326,12 @@ export function registerAgentRoutes(
           toBlock: "latest",
           topics: [TRANSFER_TOPIC, zeroPad],
         });
-        const tokenIds = new Set<bigint>();
-        let latestTokenId = 0n;
-        for (const logEntry of mintLogs) {
-          const rawTid = logEntry.topics[3];
-          if (!rawTid) continue;
-          const tokenId = BigInt(rawTid);
-          tokenIds.add(tokenId);
-          if (tokenId > latestTokenId) latestTokenId = tokenId;
-        }
+        const mintIds = mintLogs.flatMap((logEntry) =>
+          logEntry.topics[3] ? [BigInt(logEntry.topics[3])] : [],
+        );
+        const tokenIds = new Set(mintIds);
+        const latestTokenId =
+          mintIds.length > 0 ? mintIds.reduce((a, b) => (b > a ? b : a)) : 0n;
         const stats = {
           totalMinted: tokenIds.size,
           latestTokenId: tokenIds.size > 0 ? latestTokenId.toString() : null,
@@ -377,20 +363,15 @@ export function registerAgentRoutes(
     ) => {
       try {
         const id = helpers.id;
-        if (!id) {
-          sendError(res, HTTP.BAD_REQUEST, "Missing id");
-          return;
-        }
-        if (!config.addresses?.agentNft) {
+        if (!id) return sendError(res, HTTP.BAD_REQUEST, "Missing id");
+        if (!config.addresses?.agentNft)
           // missing configured address = deployment-state problem (503 ADDRESS_NOT_CONFIGURED), not an internal 500
-          sendError(
+          return sendError(
             res,
             HTTP.SERVICE_UNAVAILABLE,
             "AgentNFT address not configured",
             "ADDRESS_NOT_CONFIGURED",
           );
-          return;
-        }
         const nft = config.addresses.agentNft;
         const {
           to,
@@ -417,14 +398,12 @@ export function registerAgentRoutes(
             });
           }
         }
-        if (!dataHash) {
-          sendError(
+        if (!dataHash)
+          return sendError(
             res,
             HTTP.BAD_REQUEST,
             "Cannot determine dataHash for token",
           );
-          return;
-        }
 
         let pk: `0x${string}`;
         try {
@@ -521,14 +500,18 @@ export function registerAgentRoutes(
         const validUntil = BigInt(accessProof.validUntil);
         const proofDataHash = accessProof.dataHash;
         const proofTargetPubkey = accessProof.targetPubkey;
-        if (proofDataHash.toLowerCase() !== dataHash.toLowerCase()) {
-          sendError(res, HTTP.BAD_REQUEST, "accessProof dataHash mismatch");
-          return;
-        }
-        if (proofTargetPubkey.toLowerCase() !== pk.toLowerCase()) {
-          sendError(res, HTTP.BAD_REQUEST, "accessProof targetPubkey mismatch");
-          return;
-        }
+        if (proofDataHash.toLowerCase() !== dataHash.toLowerCase())
+          return sendError(
+            res,
+            HTTP.BAD_REQUEST,
+            "accessProof dataHash mismatch",
+          );
+        if (proofTargetPubkey.toLowerCase() !== pk.toLowerCase())
+          return sendError(
+            res,
+            HTTP.BAD_REQUEST,
+            "accessProof targetPubkey mismatch",
+          );
 
         const nonceHex = canonicalNonceHex(nonce);
         const accessInput = {
@@ -630,15 +613,13 @@ export function registerAgentRoutes(
         "Encode AxiomAgentNFT mint transaction (value = on-chain mintFee)",
     },
     async (parsed: MintEncodeBody, _req, res, { config: cfg }) => {
-      if (!cfg.addresses?.agentNft) {
-        sendError(
+      if (!cfg.addresses?.agentNft)
+        return sendError(
           res,
           HTTP.SERVICE_UNAVAILABLE,
           "AgentNFT address not configured",
           "ADDRESS_NOT_CONFIGURED",
         );
-        return;
-      }
       const nftAddr = cfg.addresses.agentNft;
       const nftTc = new TypedContract<AgentNftMintEncodeMethods>(
         nftAddr,

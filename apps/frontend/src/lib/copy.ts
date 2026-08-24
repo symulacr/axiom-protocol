@@ -688,6 +688,11 @@ export type Copy = {
   };
 };
 
+/** Flow receipt-notice tails: the four submitted-flow notices differ only
+ * by their verb head per locale (tick reports {outcome}, so it opts out). */
+const enFlowNotice = (head: string): string =>
+  `${head} Receipt added to the transaction center.`;
+
 const english: Copy = {
   localeName: "English",
   nav: {
@@ -1102,8 +1107,7 @@ const english: Copy = {
       fieldLabel: "Agent name",
       fieldHint: "Metadata hash is derived and shown in review.",
       detail: "{name} · oracle acknowledged",
-      notice:
-        "Mint submitted for {name}. Receipt added to the transaction center.",
+      notice: enFlowNotice("Mint submitted for {name}."),
     },
     payment: {
       title: "Fund with context",
@@ -1120,8 +1124,7 @@ const english: Copy = {
       fieldLabel: "Amount",
       fieldHint: "Exact allowance is shown in review.",
       detail: "{amount} → agent #{agent}",
-      notice:
-        "Payment submitted for agent #{agent}. Receipt added to the transaction center.",
+      notice: enFlowNotice("Payment submitted for agent #{agent}."),
     },
     transfer: {
       title: "Transfer with evidence",
@@ -1176,8 +1179,7 @@ const english: Copy = {
       fieldLabel: "Amount",
       fieldHint: "The resulting vault balance appears in review.",
       detail: "{amount} {symbol} from agent #{agent}",
-      notice:
-        "Withdrawal submitted for agent #{agent}. Receipt added to the transaction center.",
+      notice: enFlowNotice("Withdrawal submitted for agent #{agent}."),
     },
   },
   flowUi: {
@@ -1420,6 +1422,9 @@ const english: Copy = {
     agents: (count) => `${count} agent${count === 1 ? "" : "s"}`,
   },
 };
+
+const frFlowNotice = (head: string): string =>
+  `${head} Reçu ajouté au centre transactionnel.`;
 
 const french: Copy = {
   localeName: "Français",
@@ -1851,8 +1856,7 @@ const french: Copy = {
       contextTitle: "L’approbation avant la valeur.",
       fieldLabel: "Montant",
       fieldHint: "L’approbation exacte est montrée à la revue.",
-      notice:
-        "Paiement soumis pour l’agent #{agent}. Reçu ajouté au centre transactionnel.",
+      notice: frFlowNotice("Paiement soumis pour l’agent #{agent}."),
     },
     transfer: {
       ...english.flows.transfer,
@@ -1895,8 +1899,7 @@ const french: Copy = {
       fieldLabel: "Montant",
       fieldHint: "Le solde du vault résultant apparaît à la revue.",
       detail: "{amount} {symbol} vers le vault de l’agent #{agent}",
-      notice:
-        "Dépôt soumis pour l’agent #{agent}. Reçu ajouté au centre transactionnel.",
+      notice: frFlowNotice("Dépôt soumis pour l’agent #{agent}."),
     },
     withdraw: {
       title: "Retirer du vault",
@@ -1910,8 +1913,7 @@ const french: Copy = {
       fieldLabel: "Montant",
       fieldHint: "Le solde du vault résultant apparaît à la revue.",
       detail: "{amount} {symbol} depuis le vault de l’agent #{agent}",
-      notice:
-        "Retrait soumis pour l’agent #{agent}. Reçu ajouté au centre transactionnel.",
+      notice: frFlowNotice("Retrait soumis pour l’agent #{agent}."),
     },
   },
   flowUi: {
@@ -2170,6 +2172,9 @@ const french: Copy = {
     agents: (count) => `${count} agent${count > 1 ? "s" : ""}`,
   },
 };
+
+const deFlowNotice = (head: string): string =>
+  `${head} Beleg zum Transaktionszentrum hinzugefügt.`;
 
 const german: Copy = {
   localeName: "Deutsch",
@@ -2581,8 +2586,7 @@ const german: Copy = {
       fieldHint:
         "Der Metadaten-Hash wird abgeleitet und in der Prüfung gezeigt.",
       detail: "{name} · Oracle bestätigt",
-      notice:
-        "Mint für {name} eingereicht. Beleg zum Transaktionszentrum hinzugefügt.",
+      notice: deFlowNotice("Mint für {name} eingereicht."),
     },
     payment: {
       title: "Mit Kontext finanzieren",
@@ -2600,8 +2604,7 @@ const german: Copy = {
       fieldLabel: "Betrag",
       fieldHint: "Die exakte Freigabe erscheint in der Prüfung.",
       detail: "{amount} → Agent #{agent}",
-      notice:
-        "Zahlung für Agent #{agent} eingereicht. Beleg zum Transaktionszentrum hinzugefügt.",
+      notice: deFlowNotice("Zahlung für Agent #{agent} eingereicht."),
     },
     transfer: {
       ...english.flows.transfer,
@@ -2641,8 +2644,7 @@ const german: Copy = {
       fieldLabel: "Betrag",
       fieldHint: "Der resultierende Vault-Stand erscheint in der Prüfung.",
       detail: "{amount} {symbol} in den Vault von Agent #{agent}",
-      notice:
-        "Einzahlung für Agent #{agent} eingereicht. Beleg zum Transaktionszentrum hinzugefügt.",
+      notice: deFlowNotice("Einzahlung für Agent #{agent} eingereicht."),
     },
     withdraw: {
       title: "Aus dem Vault auszahlen",
@@ -2656,8 +2658,7 @@ const german: Copy = {
       fieldLabel: "Betrag",
       fieldHint: "Der resultierende Vault-Stand erscheint in der Prüfung.",
       detail: "{amount} {symbol} aus dem Vault von Agent #{agent}",
-      notice:
-        "Auszahlung für Agent #{agent} eingereicht. Beleg zum Transaktionszentrum hinzugefügt.",
+      notice: deFlowNotice("Auszahlung für Agent #{agent} eingereicht."),
     },
   },
   flowUi: {
@@ -2921,12 +2922,7 @@ const copyByLocale: Record<Locale, Copy> = {
 export function getCopy(locale: Locale = "en"): Copy {
   const copy = copyByLocale[locale] ?? english;
   // Défense supplémentaire: ces libellés restent sémantiques, jamais séquentiels.
-  return {
-    ...copy,
-    dashboard: {
-      ...copy.dashboard,
-    },
-  };
+  return { ...copy, dashboard: { ...copy.dashboard } };
 }
 
 export function formatCount(

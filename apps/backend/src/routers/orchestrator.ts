@@ -160,15 +160,13 @@ export function registerOrchestratorRoutes(
       );
       // Client keys may tick but must not supply Merkle execute plans (server-signed vault settlement).
       const principal = (req as { authPrincipal?: string }).authPrincipal;
-      if (executionPlan && principal === "client") {
-        sendError(
+      if (executionPlan && principal === "client")
+        return sendError(
           res,
           HTTP.FORBIDDEN,
           "executionPlan requires server API key",
           "SERVER_KEY_REQUIRED",
         );
-        return;
-      }
       // Inference-skip sources are a test-harness affordance — never reachable
       // in a deployment that did not opt in via env.
       if (
@@ -177,15 +175,13 @@ export function registerOrchestratorRoutes(
           principal,
           config.env?.AXIOM_ALLOW_E2E_MOCK_TICKS,
         )
-      ) {
-        sendError(
+      )
+        return sendError(
           res,
           HTTP.FORBIDDEN,
           "e2e mock tick sources require AXIOM_ALLOW_E2E_MOCK_TICKS=1 and the server API key",
           "E2E_MOCK_TICKS_DISABLED",
         );
-        return;
-      }
       const spec: StrategySpec = {
         agentTokenId: BigInt(agentTokenId),
         agentNft,
@@ -210,24 +206,24 @@ export function registerOrchestratorRoutes(
         emittedAt: Date.now(),
       };
       const runner = getOrCreateOrchestrator();
-      if (!runner) {
-        sendError(res, HTTP.SERVICE_UNAVAILABLE, "Orchestrator not available");
-        return;
-      }
+      if (!runner)
+        return sendError(
+          res,
+          HTTP.SERVICE_UNAVAILABLE,
+          "Orchestrator not available",
+        );
 
       // One in-flight tick per token: concurrent runs would race the tx nonce
       // (double-spend / replacement) and interleave tick events. Different
       // tokenIds stay fully parallel.
       const tickKey = String(spec.agentTokenId);
-      if (!tryAcquireTickSlot(tickKey)) {
-        sendError(
+      if (!tryAcquireTickSlot(tickKey))
+        return sendError(
           res,
           HTTP.CONFLICT,
           "tick already in flight for this token",
           "TICK_IN_FLIGHT",
         );
-        return;
-      }
 
       if (shouldStream) {
         const topic = `tick.${agentTokenId}`;
@@ -236,11 +232,10 @@ export function registerOrchestratorRoutes(
         );
         if (!hasSubscribers) {
           releaseTickSlot(tickKey);
-          res.status(HTTP.BAD_REQUEST).json({
+          return void res.status(HTTP.BAD_REQUEST).json({
             error: "No WebSocket subscriber for streaming",
             code: "NO_WS_SUBSCRIBER",
           });
-          return;
         }
 
         void runner
