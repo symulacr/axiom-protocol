@@ -145,3 +145,62 @@ export function Field({
     </label>
   );
 }
+
+/** Shared ops-page header: h1 (+ optional lede) left, actions/status right. */
+export function PageHead({
+  title,
+  lede,
+  children,
+}: {
+  title: ReactNode;
+  lede?: ReactNode;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="page-head">
+      <div>
+        <h1>{title}</h1>
+        {lede !== undefined && <p>{lede}</p>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/** Shared panel header: h2 block left, controls right. */
+export function PanelHead({
+  title,
+  className,
+  children,
+}: {
+  title: ReactNode;
+  className?: string;
+  children?: ReactNode;
+}) {
+  return (
+    <div className={className ? `panel-head ${className}` : "panel-head"}>
+      <div>
+        <h2>{title}</h2>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/** One definition row in .review-facts / .provenance-list lists. */
+export function Fact({
+  label,
+  mono = false,
+  children,
+}: {
+  label: ReactNode;
+  mono?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <div>
+      <dt>{label}</dt>
+      <dd className={mono ? "mono" : undefined}>{children}</dd>
+    </div>
+  );
+}

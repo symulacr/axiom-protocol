@@ -36,5 +36,5 @@ export function useThrottledStreamText() {
 
   useEffect(() => () => cancelThrottle(), [cancelThrottle]);
 
-  return { streamText, setStreamText, textRef, schedule, flush, reset };
+  return { streamText, textRef, schedule, flush, reset };
 }

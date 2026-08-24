@@ -20,7 +20,7 @@ import {
   TrendingUp,
   Wallet,
 } from "../components/axiom/icons.js";
-import { Button, Status } from "../components/axiom/Controls.js";
+import { Button, PanelHead, Status } from "../components/axiom/Controls.js";
 import { StatePill } from "../components/StatePill.js";
 import { MobileDisclosure } from "../components/MobileDisclosure.js";
 import { getCopy } from "../lib/copy.js";
@@ -272,10 +272,7 @@ export function DashboardPage({
           />
         </section>
         <section className="panel activity-panel">
-          <div className="panel-head">
-            <div>
-              <h2>{copy.dashboard.latestEvidence}</h2>
-            </div>
+          <PanelHead title={copy.dashboard.latestEvidence}>
             <Button
               variant="ghost"
               onClick={() => go("/transactions")}
@@ -283,7 +280,7 @@ export function DashboardPage({
             >
               {copy.dashboard.allReceipts}
             </Button>
-          </div>
+          </PanelHead>
           <div className="activity-list">
             {activityRows.length === 0 && (
               <div className="empty-state">
@@ -312,11 +309,7 @@ export function DashboardPage({
 
       <div className="dashboard-split">
         <section className="panel agent-panel">
-          <div className="panel-head">
-            <div>
-              <h2>{copy.dashboard.operatingFleet}</h2>
-            </div>
-          </div>
+          <PanelHead title={copy.dashboard.operatingFleet} />
           <div className="agent-list">
             {agentsError && (
               <div className="empty-state">
@@ -374,12 +367,9 @@ export function DashboardPage({
           </div>
         </section>
         <section className="panel next-action-panel">
-          <div className="panel-head">
-            <div>
-              <h2>{copy.dashboard.attentionFirst}</h2>
-            </div>
+          <PanelHead title={copy.dashboard.attentionFirst}>
             <ShieldCheck size={18} className="copper" />
-          </div>
+          </PanelHead>
           <div className="proof-card">
             <img src="/brand/hero-seal-512.jpg" alt="Abstract proof field" />
             <div>

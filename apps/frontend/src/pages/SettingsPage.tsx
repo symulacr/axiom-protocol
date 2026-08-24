@@ -28,7 +28,12 @@ import {
   Sun,
   Wifi,
 } from "../components/axiom/icons.js";
-import { Button, Field, Status } from "../components/axiom/Controls.js";
+import {
+  Button,
+  Field,
+  PageHead,
+  Status,
+} from "../components/axiom/Controls.js";
 import { getCopy, type Copy } from "../lib/copy.js";
 import type { AppState, UiSettings } from "../lib/models.js";
 import type { ConsoleAction } from "../lib/consoleStore.js";
@@ -208,16 +213,12 @@ export function SettingsPage({
 
   return (
     <div className="ops-page settings-page">
-      <div className="page-head">
-        <div>
-          <h1>{labels.pageTitle}</h1>
-          <p>{labels.pageDescription}</p>
-        </div>
+      <PageHead title={labels.pageTitle} lede={labels.pageDescription}>
         <Status
           label={address ? labels.liveWallet : copy.topbar.notConnected}
           tone={address ? "success" : "muted"}
         />
-      </div>
+      </PageHead>
 
       <div className="settings-grid">
         <SettingsDisclosure

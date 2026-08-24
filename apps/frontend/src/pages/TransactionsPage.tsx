@@ -23,7 +23,7 @@ import {
   X,
   Zap,
 } from "../components/axiom/icons.js";
-import { Button } from "../components/axiom/Controls.js";
+import { Button, PageHead, PanelHead } from "../components/axiom/Controls.js";
 import { StatePill } from "../components/StatePill.js";
 import { MobileDisclosure } from "../components/MobileDisclosure.js";
 import { getCopy } from "../lib/copy.js";
@@ -368,11 +368,7 @@ export function TransactionsPage({
 
   return (
     <div className="ops-page">
-      <div className="page-head">
-        <div>
-          <h1>{txCopy.title}</h1>
-          <p>{txCopy.description}</p>
-        </div>
+      <PageHead title={txCopy.title} lede={txCopy.description}>
         <Button
           variant="secondary"
           onClick={() => {
@@ -388,7 +384,7 @@ export function TransactionsPage({
         >
           {txCopy.refreshState}
         </Button>
-      </div>
+      </PageHead>
 
       <section className="ops-summary">
         <div>
@@ -418,10 +414,10 @@ export function TransactionsPage({
       </section>
 
       <section className="panel transaction-panel">
-        <div className="panel-head transaction-panel-head">
-          <div>
-            <h2>{txCopy.statefulOperations}</h2>
-          </div>
+        <PanelHead
+          className="transaction-panel-head"
+          title={txCopy.statefulOperations}
+        >
           <div className="transaction-filter-controls">
             <span className="result-count" aria-live="polite">
               {filtered.length} of {transactions.length} receipts
@@ -458,7 +454,7 @@ export function TransactionsPage({
               </button>
             </div>
           </div>
-        </div>
+        </PanelHead>
         <div className="transaction-table">
           <div className="transaction-table-head">
             <span>{txCopy.operation}</span>

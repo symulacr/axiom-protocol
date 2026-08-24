@@ -14,10 +14,7 @@ type AgentMetadata = {
   dataDescription: string;
 };
 
-export function useAgentMetadata(
-  tokenId: bigint,
-  options?: { enabled?: boolean },
-): {
+export function useAgentMetadata(tokenId: bigint): {
   data: AgentMetadata | null;
   isLoading: boolean;
   error: Error | null;
@@ -25,7 +22,6 @@ export function useAgentMetadata(
 } {
   const chainId = useChainId();
   const { isConnected } = useAccount();
-  const enabledOption = options?.enabled ?? true;
   const agentNftAddr = getAxiomAgentNftAddress(chainId);
 
   const contracts = useMemo(
@@ -51,7 +47,7 @@ export function useAgentMetadata(
     allowFailure: true,
     contracts,
     query: {
-      enabled: enabledOption && isConnected && tokenId > 0n,
+      enabled: isConnected && tokenId > 0n,
     },
   });
 

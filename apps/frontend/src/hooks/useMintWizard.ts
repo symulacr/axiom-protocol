@@ -2,7 +2,6 @@ import { useCallback, useState } from "react";
 import { useAccount, useWalletClient } from "wagmi";
 import { useMutation } from "@tanstack/react-query";
 import { deriveMintDataHash } from "@axiom/config/types/hex";
-import { humanizeError } from "../utils/format.js";
 import {
   apiFetch,
   oracleFetch,
@@ -26,7 +25,6 @@ type MintWizardStep = "name" | "minting" | "ready";
 export function useMintWizard() {
   const [step, setStep] = useState<MintWizardStep>("name");
   const [agentName, setAgentName] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const { address: owner } = useAccount();
   const { data: walletClient } = useWalletClient();
 
@@ -76,7 +74,6 @@ export function useMintWizard() {
 
   const registerOracle = useCallback(
     async (name?: string): Promise<`0x${string}`> => {
-      setError(null);
       setStep("minting");
       try {
         const hash = deriveDataHash(name);
@@ -85,7 +82,6 @@ export function useMintWizard() {
         setStep("ready");
         return hash;
       } catch (err) {
-        setError(humanizeError(err));
         setStep("name");
         throw err;
       }
@@ -103,11 +99,9 @@ export function useMintWizard() {
   );
 
   return {
-    agentName,
     setAgentName,
     registerOracle,
     chainMint,
-    error,
     busy:
       oracleMutation.isPending ||
       encodeMutation.isPending ||

@@ -77,7 +77,6 @@ export function useChatHistory(
 ): {
   serverThreads: ChatThread[];
   isLoading: boolean;
-  error: Error | null;
 } {
   const walletKey = wallet?.toLowerCase();
   const { signMessageAsync } = useSignMessage();
@@ -117,6 +116,5 @@ export function useChatHistory(
   return {
     serverThreads,
     isLoading: query.isFetching,
-    error: query.error,
   };
 }

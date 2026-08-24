@@ -3,7 +3,7 @@
   boundary surface for 0G native staking.
 */
 import { ReceiptText, ShieldAlert, Wallet } from "../components/axiom/icons.js";
-import { Button } from "../components/axiom/Controls.js";
+import { Button, PageHead } from "../components/axiom/Controls.js";
 import { getCopy } from "../lib/copy.js";
 import type { Locale } from "../lib/copy.js";
 
@@ -17,12 +17,7 @@ export function StakingPage({
   const copy = getCopy(locale).staking;
   return (
     <div className="ops-page">
-      <div className="page-head">
-        <div>
-          <h1>0G Stake</h1>
-          <p>{copy.lede}</p>
-        </div>
-      </div>
+      <PageHead title="0G Stake" lede={copy.lede} />
       <section className="not-integrated">
         <div className="not-integrated-icon">
           <ShieldAlert size={25} />

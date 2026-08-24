@@ -10,14 +10,9 @@ interface HealthResponse {
   addresses: Record<string, string> | null;
 }
 
-interface UseHealthOptions {
-  enabled?: boolean;
-}
-
-export function useHealth(options?: UseHealthOptions) {
+export function useHealth() {
   const { isConnected } = useAccount();
-  const { enabled = true } = options ?? {};
   return usePolledApi<HealthResponse>("/health", {
-    enabled: enabled && isConnected,
+    enabled: isConnected,
   });
 }

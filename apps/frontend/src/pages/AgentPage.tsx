@@ -22,7 +22,13 @@ import {
   X,
   Zap,
 } from "../components/axiom/icons.js";
-import { Button, Field, Status } from "../components/axiom/Controls.js";
+import {
+  Button,
+  Fact,
+  Field,
+  PageHead,
+  Status,
+} from "../components/axiom/Controls.js";
 import { StatePill } from "../components/StatePill.js";
 import { getCopy, interpolate, type Locale } from "../lib/copy.js";
 import { useAgentMetadata } from "../hooks/useAgentMetadata.js";
@@ -41,7 +47,8 @@ import {
   explorerTxUrl,
 } from "../utils/format.js";
 
-type AgentTab = "overview" | "execute" | "payments" | "activity";
+const AGENT_TABS = ["overview", "execute", "payments", "activity"] as const;
+type AgentTab = (typeof AGENT_TABS)[number];
 
 export function AgentPage({
   tokenId,
@@ -103,11 +110,7 @@ export function AgentPage({
   }, [tokenId.toString()]);
 
   useEffect(() => {
-    if (
-      ["overview", "execute", "payments", "activity"].includes(
-        requestedTab ?? "",
-      )
-    )
+    if ((AGENT_TABS as readonly string[]).includes(requestedTab ?? ""))
       setTab(requestedTab as AgentTab);
   }, [requestedTab]);
 
@@ -135,14 +138,11 @@ export function AgentPage({
 
   return (
     <div className="ops-page agent-page">
-      <div className="page-head">
-        <div>
-          {/* the head kept
-              "AGENT / #N" over "Agent #N" plus an owner/last-event line the
-              overview tab's provenance list renders verbatim. The name stays;
-              the identity dl below is the one canonical owner. */}
-          <h1>{agentName}</h1>
-        </div>
+      {/* the head kept
+          "AGENT / #N" over "Agent #N" plus an owner/last-event line the
+          overview tab's provenance list renders verbatim. The name stays;
+          the identity dl below is the one canonical owner. */}
+      <PageHead title={agentName}>
         <div className="page-head-actions">
           <Status
             label={strategyBound ? "online" : "attention"}
@@ -157,7 +157,7 @@ export function AgentPage({
             {copy.flows.tick.title}
           </Button>
         </div>
-      </div>
+      </PageHead>
 
       <div className="agent-detail-head">
         <div className="agent-detail-mark">
@@ -180,17 +180,15 @@ export function AgentPage({
       </div>
 
       <nav className="detail-tabs">
-        {(["overview", "execute", "payments", "activity"] as const).map(
-          (item) => (
-            <button
-              className={tab === item ? "active" : ""}
-              key={item}
-              onClick={() => chooseTab(item)}
-            >
-              {agentCopy[item]}
-            </button>
-          ),
-        )}
+        {AGENT_TABS.map((item) => (
+          <button
+            className={tab === item ? "active" : ""}
+            key={item}
+            onClick={() => chooseTab(item)}
+          >
+            {agentCopy[item]}
+          </button>
+        ))}
       </nav>
 
       {notice && (
@@ -208,55 +206,43 @@ export function AgentPage({
           <section className="panel agent-identity-card">
             <h2>{agentCopy.agentRecord}</h2>
             <dl className="provenance-list">
-              <div>
-                <dt>{agentCopy.owner}</dt>
-                <dd>{metadata ? truncateAddress(metadata.owner) : "—"}</dd>
-              </div>
-              <div>
-                <dt>{agentCopy.agentId}</dt>
-                <dd className="mono">#{tokenId.toString()}</dd>
-              </div>
-              <div>
-                <dt>{agentCopy.metadataRoot}</dt>
-                <dd className="mono">
-                  {metadata?.dataHash
-                    ? truncateHex(metadata.dataHash, 8, 6)
-                    : "—"}{" "}
-                  <button
-                    className="inline-copy"
-                    onClick={copyDataHash}
-                    aria-label="Copy metadata root"
-                  >
-                    <Copy size={12} />
-                  </button>
-                </dd>
-              </div>
-              <div>
-                <dt>Description</dt>
-                <dd>{metadata?.dataDescription || "—"}</dd>
-              </div>
-              <div>
-                <dt>{agentCopy.lastEvent}</dt>
-                <dd>
-                  {lastEvent
-                    ? `${lastEvent.eventName} · block ${lastEvent.blockNumber}`
-                    : "no events indexed"}
-                </dd>
-              </div>
+              <Fact label={agentCopy.owner}>
+                {metadata ? truncateAddress(metadata.owner) : "—"}
+              </Fact>
+              <Fact label={agentCopy.agentId} mono>
+                #{tokenId.toString()}
+              </Fact>
+              <Fact label={agentCopy.metadataRoot} mono>
+                {metadata?.dataHash
+                  ? truncateHex(metadata.dataHash, 8, 6)
+                  : "—"}{" "}
+                <button
+                  className="inline-copy"
+                  onClick={copyDataHash}
+                  aria-label="Copy metadata root"
+                >
+                  <Copy size={12} />
+                </button>
+              </Fact>
+              <Fact label="Description">
+                {metadata?.dataDescription || "—"}
+              </Fact>
+              <Fact label={agentCopy.lastEvent}>
+                {lastEvent
+                  ? `${lastEvent.eventName} · block ${lastEvent.blockNumber}`
+                  : "no events indexed"}
+              </Fact>
               {metadata?.dataHash && (
-                <div>
-                  <dt>Explorer</dt>
-                  <dd>
-                    <a
-                      className="text-link"
-                      href={explorerTx(metadata.dataHash)}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      View record <ArrowRight size={12} />
-                    </a>
-                  </dd>
-                </div>
+                <Fact label="Explorer">
+                  <a
+                    className="text-link"
+                    href={explorerTx(metadata.dataHash)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    View record <ArrowRight size={12} />
+                  </a>
+                </Fact>
               )}
             </dl>
             {metadataError && (

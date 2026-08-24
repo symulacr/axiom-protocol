@@ -23,7 +23,7 @@ import {
   Timer,
   Wallet as WalletIcon,
 } from "../components/axiom/icons.js";
-import { Button } from "../components/axiom/Controls.js";
+import { Button, Fact, PageHead } from "../components/axiom/Controls.js";
 import { StatePill } from "../components/StatePill.js";
 import { useUiStore } from "../lib/uiStore.js";
 import { getCopy, interpolate } from "../lib/copy.js";
@@ -146,11 +146,7 @@ export function CoSignPage({ go }: { go: (path: string) => void }) {
 
   return (
     <div className={wrapperClass}>
-      <div className="page-head">
-        <div>
-          <h1>{f.receiveTitle}</h1>
-          <p>{f.receiveLede}</p>
-        </div>
+      <PageHead title={f.receiveTitle} lede={f.receiveLede}>
         {signature ? (
           <StatePill state="confirmed" />
         ) : expired ? (
@@ -158,36 +154,25 @@ export function CoSignPage({ go }: { go: (path: string) => void }) {
         ) : (
           <StatePill state="signing" />
         )}
-      </div>
+      </PageHead>
 
       <div className="flow-layout review-first-layout">
         <section className="flow-stage panel">
           <dl className="review-facts">
-            <div>
-              <dt>{f.receiveAgent}</dt>
-              <dd>#{payload.meta.tokenId}</dd>
-            </div>
-            <div>
-              <dt>{f.receiveSender}</dt>
-              <dd className="mono">{truncateAddress(payload.meta.sender)}</dd>
-            </div>
-            <div>
-              <dt>{f.receiveReceiver}</dt>
-              <dd className="mono">{truncateAddress(receiver)}</dd>
-            </div>
-            <div>
-              <dt>{f.receiveExpiry}</dt>
-              <dd>{expiryDate.toLocaleString()}</dd>
-            </div>
-            <div>
-              <dt>{f.receiveNetwork}</dt>
-              <dd>
-                {interpolate(f.networkFact, {
-                  chainName: "",
-                  chainId: payload.typedData.domain.chainId,
-                }).replace(/^ · /, "")}
-              </dd>
-            </div>
+            <Fact label={f.receiveAgent}>#{payload.meta.tokenId}</Fact>
+            <Fact label={f.receiveSender} mono>
+              {truncateAddress(payload.meta.sender)}
+            </Fact>
+            <Fact label={f.receiveReceiver} mono>
+              {truncateAddress(receiver)}
+            </Fact>
+            <Fact label={f.receiveExpiry}>{expiryDate.toLocaleString()}</Fact>
+            <Fact label={f.receiveNetwork}>
+              {interpolate(f.networkFact, {
+                chainName: "",
+                chainId: payload.typedData.domain.chainId,
+              }).replace(/^ · /, "")}
+            </Fact>
           </dl>
 
           {expired && (

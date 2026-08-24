@@ -121,7 +121,6 @@ export function usePayment(): UsePaymentResult {
           functionName: "payForAgent",
           args: [tokenId, amountWei],
         });
-        setPayLoading(false);
         return {
           ok: true,
           tokenId: tokenId.toString(),
@@ -129,9 +128,8 @@ export function usePayment(): UsePaymentResult {
           txHash,
           payment: { txHash },
         };
-      } catch (err) {
+      } finally {
         setPayLoading(false);
-        throw err;
       }
     },
     [chainId, write, address, publicClient, getPaymentConfig],

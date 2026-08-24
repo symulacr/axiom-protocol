@@ -12,7 +12,13 @@ import {
   MessageSquare,
   ShieldCheck,
 } from "../components/axiom/icons.js";
-import { Button, Status } from "../components/axiom/Controls.js";
+import {
+  Button,
+  Fact,
+  PageHead,
+  PanelHead,
+  Status,
+} from "../components/axiom/Controls.js";
 import { MobileDisclosure } from "../components/MobileDisclosure.js";
 import { getCopy } from "../lib/copy.js";
 import type { AppState } from "../lib/models.js";
@@ -30,11 +36,7 @@ export function StoragePage({
   const labels = copy.storage.labels;
   return (
     <div className="ops-page">
-      <div className="page-head">
-        <div>
-          <h1>{copy.storage.title}</h1>
-          <p>{copy.storage.description}</p>
-        </div>
+      <PageHead title={copy.storage.title} lede={copy.storage.description}>
         <Button
           variant="secondary"
           onClick={() => go("/chat")}
@@ -42,14 +44,10 @@ export function StoragePage({
         >
           {copy.storage.openChat}
         </Button>
-      </div>
+      </PageHead>
       <div className="storage-grid">
         <section className="panel storage-stage">
-          <div className="panel-head">
-            <div>
-              <h2>{copy.storage.payload}</h2>
-            </div>
-          </div>
+          <PanelHead title={copy.storage.payload} />
           <MobileDisclosure
             className="storage-stage-details"
             title={copy.storage.fileSteps}
@@ -85,36 +83,24 @@ export function StoragePage({
             title={copy.storage.whatCanProve}
           >
             <dl className="provenance-list">
-              <div>
-                <dt>{copy.storage.rootHash}</dt>
-                <dd className="mono">{copy.storage.pending}</dd>
-              </div>
-              <div>
-                <dt>{copy.storage.storageTx}</dt>
-                <dd className="mono">{copy.storage.pending}</dd>
-              </div>
-              <div>
-                <dt>{copy.storage.integrityProof}</dt>
-                <dd>
-                  <Status label={copy.storage.pending} tone="warning" />
-                </dd>
-              </div>
-              <div>
-                <dt>{copy.storage.encryption}</dt>
-                <dd>
-                  <LockKeyhole size={13} /> AES-GCM
-                </dd>
-              </div>
-              <div>
-                <dt>{copy.storage.indexerAge}</dt>
-                <dd className="mono">{copy.storage.notIndexed}</dd>
-              </div>
-              <div>
-                <dt>{copy.storage.download}</dt>
-                <dd>
-                  <Status label={copy.storage.notReady} tone="muted" />
-                </dd>
-              </div>
+              <Fact label={copy.storage.rootHash} mono>
+                {copy.storage.pending}
+              </Fact>
+              <Fact label={copy.storage.storageTx} mono>
+                {copy.storage.pending}
+              </Fact>
+              <Fact label={copy.storage.integrityProof}>
+                <Status label={copy.storage.pending} tone="warning" />
+              </Fact>
+              <Fact label={copy.storage.encryption}>
+                <LockKeyhole size={13} /> AES-GCM
+              </Fact>
+              <Fact label={copy.storage.indexerAge} mono>
+                {copy.storage.notIndexed}
+              </Fact>
+              <Fact label={copy.storage.download}>
+                <Status label={copy.storage.notReady} tone="muted" />
+              </Fact>
             </dl>
             <div className="provenance-source">
               <strong>{copy.storage.sourceName}</strong>

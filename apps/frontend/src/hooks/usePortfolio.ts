@@ -1,8 +1,6 @@
 import { useMemo } from "react";
 import { useAgents } from "./useAgents.js";
 import { useVaultDataBatch, type VaultDataEntry } from "./useVaultDataBatch.js";
-import { usePerformanceBatch } from "./usePerformanceBatch.js";
-import type { PerformanceMetrics } from "@axiom/config/types/performance";
 
 interface PortfolioAgent {
   tokenId: bigint;
@@ -13,10 +11,8 @@ interface PortfolioAgent {
 /** Single owner of the agent portfolio data sources (agents + vault + perf). */
 export function usePortfolio(): {
   agents: PortfolioAgent[];
-  isLoading: boolean;
   error: Error | null;
   vaultMap: Map<string, VaultDataEntry>;
-  perfMap: Map<string, PerformanceMetrics>;
   loading: boolean;
   refetch: () => void;
 } {
@@ -27,14 +23,11 @@ export function usePortfolio(): {
     isLoading: vaultLoading,
     refetch: refetchVaults,
   } = useVaultDataBatch(tokenIds);
-  const { data: perfMap } = usePerformanceBatch(tokenIds);
 
   return {
     agents,
-    isLoading,
     error,
     vaultMap,
-    perfMap,
     loading: isLoading || vaultLoading,
     refetch: () => {
       refetchAgents();
