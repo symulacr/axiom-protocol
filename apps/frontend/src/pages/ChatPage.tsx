@@ -838,6 +838,9 @@ function ChatPageInner(): ReactElement {
   const runAgent = useCallback(
     async (userText: string) => {
       if (!userText.trim()) return;
+      // One run at a time: Regenerate/Retry bypass the send queue, so an
+      // in-flight stream must make re-entry a silent no-op.
+      if (isStreamingRef.current) return;
       isStreamingRef.current = true;
       setIsStreaming(true);
       streamErrorRef.current = null;
@@ -1749,6 +1752,7 @@ function ChatPageInner(): ReactElement {
                       className="msg-action"
                       title={chatCopy.regenerate}
                       onClick={() => {
+                        if (isStreamingRef.current) return;
                         const idx = messagesRef.current.findIndex(
                           (m) => m.id === msg.id,
                         );
@@ -1978,6 +1982,7 @@ function ChatPageInner(): ReactElement {
                   <Button
                     variant="primary"
                     onClick={() => {
+                      if (isStreamingRef.current) return;
                       const last = lastStreamErrorRef.current;
                       setStreamError(null);
                       if (last && messagesRef.current.length > 0) {
