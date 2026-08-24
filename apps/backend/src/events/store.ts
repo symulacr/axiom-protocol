@@ -14,7 +14,6 @@ import {
 import {
   writeFileAtomic,
   joinPath,
-  dirnamePath,
   dataFilePath,
   backupFileBestEffort,
 } from "@axiom/config/path";
@@ -478,9 +477,8 @@ export function getEventStore(): EventStore {
 }
 
 // Resolved at call time (not module load) so AXIOM_DATA_DIR set after import takes effect — matches acquireEventStoreLock and lets parallel test workers use per-file data dirs.
-function persistPaths(): { dir: string; file: string } {
-  const file = dataFilePath("events.json");
-  return { dir: dirnamePath(file), file };
+function persistPaths(): string {
+  return dataFilePath("events.json");
 }
 
 const persistLog = createLogger("events");
@@ -501,12 +499,12 @@ async function saveBuckets(
   }
   dirty.clear();
   // writeFileAtomic keeps the tmp+rename ordering — readers never see a partial persist file.
-  await writeFileAtomic(persistPaths().file, `{${parts.join(",")}}`);
+  await writeFileAtomic(persistPaths(), `{${parts.join(",")}}`);
 }
 
 function loadBuckets(): Map<string, unknown[]> {
   try {
-    const { file } = persistPaths();
+    const file = persistPaths();
     if (!existsSync(file)) return new Map();
     const raw = readFileSync(file, "utf-8");
     const parsed = JSON.parse(raw) as Record<string, unknown>;
@@ -522,7 +520,7 @@ function loadBuckets(): Map<string, unknown[]> {
     persistLog.warn("persist file corrupt or unreadable, starting fresh", {
       error: extractErrorMessage(err),
     });
-    backupFileBestEffort(persistPaths().file);
+    backupFileBestEffort(persistPaths());
     return new Map();
   }
 }
@@ -609,8 +607,7 @@ export function acquireEventStoreLock(
     }
   };
 
-  process.once("exit", release);
-  for (const signal of ["SIGINT", "SIGTERM"] as const)
+  for (const signal of ["exit", "SIGINT", "SIGTERM"] as const)
     process.once(signal, release);
 
   return release;

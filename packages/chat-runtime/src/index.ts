@@ -1,6 +1,6 @@
 export { runTool } from "./session.js";
 export { formatToolResult } from "./format.js";
-export { groupParallelTools } from "./parallel.js";
+export { groupParallelTools } from "./session.js";
 export {
   applyToolResult,
   createSession,

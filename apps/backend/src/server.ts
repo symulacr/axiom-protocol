@@ -51,7 +51,11 @@ import { getEventStore, payloadField } from "./events/store.js";
 import { PaymentProcessorClient } from "./payment/processor.js";
 
 import { createHealthRouter } from "./routers/health.js";
-import { createRoute, REGISTERED_ROUTES } from "./routers/route-factory.js";
+import {
+  createRoute,
+  REGISTERED_ROUTES,
+  type RouteOptions,
+} from "./routers/route-factory.js";
 import { registerAgentRoutes } from "./routers/agents.js";
 import { registerEventRoutes } from "./routers/events.js";
 import { registerVaultRoutes } from "./routers/vault.js";
@@ -165,12 +169,31 @@ function buildProviderRoutingHeaders(
   return h;
 }
 
-REGISTERED_ROUTES.push({
-  method: "GET",
-  path: "/v1/stream",
-  consumer: "ws",
-  description: "WebSocket event stream (upgrade)",
-});
+// Metadata-only registration for routes mounted without createRoute (WS upgrade, oracle, MCP)
+// so GET /v1/routes stays a complete map.
+function pushRouteMeta(
+  ...entries: readonly (readonly [
+    method: "GET" | "POST" | "DELETE",
+    path: string,
+    consumer: string,
+    description: string,
+  ])[]
+): void {
+  for (const [method, path, consumer, description] of entries)
+    REGISTERED_ROUTES.push({ method, path, consumer, description });
+}
+
+/** Positional shorthand for createRoute's option literal (method defaults to post). */
+function routeMeta<S extends z.ZodTypeAny | undefined = undefined>(
+  path: string,
+  consumer: string,
+  description: string,
+  extra?: Omit<RouteOptions<S>, "path" | "consumer" | "description">,
+): RouteOptions<S> {
+  return { path, consumer, description, ...extra };
+}
+
+pushRouteMeta(["GET", "/v1/stream", "ws", "WebSocket event stream (upgrade)"]);
 
 function isUpstreamTransportError(err: unknown): boolean {
   const e = err as { code?: string; cause?: { code?: string } } | null;
@@ -215,30 +238,27 @@ export function startServer(config: ServerConfig): {
   app.use(express.json({ limit: "2mb" }));
   app.use(
     compression({
+      // x-no-compression opt-out; SSE streams must stay unbuffered.
       filter: (req, res) => {
-        if (req.headers["x-no-compression"] !== undefined) return false;
         const type = res.getHeader("Content-Type");
-        if (typeof type === "string" && type.includes("text/event-stream")) {
-          return false;
-        }
-        return true;
+        return (
+          req.headers["x-no-compression"] === undefined &&
+          !(typeof type === "string" && type.includes("text/event-stream"))
+        );
       },
     }),
   );
 
   app.use((req, res, next) => {
     const requestId = crypto.randomUUID();
+    const start = Date.now();
     res.setHeader("x-request-id", requestId);
     (req as Request & { requestId?: string }).requestId = requestId;
     res.locals.requestId = requestId;
-    next();
-  });
-  app.use((req, res, next) => {
-    const start = Date.now();
     res.on("finish", () => {
       log.info(`${req.method} ${req.originalUrl} ${res.statusCode}`, {
         duration: `${Date.now() - start}ms`,
-        requestId: res.locals.requestId,
+        requestId,
       });
     });
     next();
@@ -410,23 +430,18 @@ export function startServer(config: ServerConfig): {
     }
   }, HEARTBEAT_INTERVAL);
 
-  registerHealthRoutes(app, config, provider, teeSigner);
+  app.use(createHealthRouter(provider, teeSigner, config));
   registerOracleRoutes(app, oracleDeps);
-  // Oracle routes are plain Express mounts (no createRoute), so they never reached
-  // REGISTERED_ROUTES — register them here so GET /v1/routes is a complete map.
-  REGISTERED_ROUTES.push(
-    {
-      method: "GET",
-      path: "/oracle/health",
-      consumer: "oracle",
-      description: "TEE oracle signer pubkey + status",
-    },
-    {
-      method: "POST",
-      path: "/oracle/v1/agents/mint",
-      consumer: "oracle",
-      description: "Register an agent dataHash with the oracle",
-    },
+  // Oracle routes are plain Express mounts (no createRoute) — register them so
+  // GET /v1/routes is a complete map.
+  pushRouteMeta(
+    ["GET", "/oracle/health", "oracle", "TEE oracle signer pubkey + status"],
+    [
+      "POST",
+      "/oracle/v1/agents/mint",
+      "oracle",
+      "Register an agent dataHash with the oracle",
+    ],
   );
   registerComputeRoutes(app, config, ogChainId);
 
@@ -436,16 +451,44 @@ export function startServer(config: ServerConfig): {
   registerEventRoutes(app, config, getEventStore());
   registerPerformanceRoutes(app, config, getEventStore());
   registerOrchestratorRoutes(app, config, getOrCreateOrchestrator, ogChainId);
-  registerArchiveRoutes(app, config);
-  registerSkillRoutes(app, config);
-  registerMetaRoutes(app, config, ogChainId, startedAt);
+  app.use(createArchiveRouter(config));
+  app.use(createSkillRouters(config));
+  createRoute(
+    app,
+    routeMeta("/v1/routes", "meta", "List mounted routes", { method: "get" }),
+    async (_parsed: unknown, _req: Request, res: Response) => {
+      res.json({
+        routes: REGISTERED_ROUTES,
+        meta: {
+          version: PKG_VERSION,
+          chainId: ogChainId,
+          signer: shortSigner(config.signer.address),
+          startedAt,
+          uptimeMs: Date.now() - startedAt,
+        },
+      });
+    },
+    config,
+  );
 
   registerPaymentRoutes(app, config, nftTc, getPayment);
 
-  registerMcpRoutes(
-    app,
-    config,
-    () => mcpBaseUrl ?? `http://127.0.0.1:${config.port}`,
+  pushRouteMeta(
+    ["POST", "/mcp", "mcp", "MCP streamable HTTP endpoint (read-only tools)"],
+    ["GET", "/mcp", "mcp", "MCP SSE session stream (requires mcp-session-id)"],
+    [
+      "DELETE",
+      "/mcp",
+      "mcp",
+      "Terminate an MCP session (requires mcp-session-id)",
+    ],
+  );
+  app.use(
+    "/mcp",
+    createMcpRouter(
+      config,
+      () => mcpBaseUrl ?? `http://127.0.0.1:${config.port}`,
+    ),
   );
 
   registerNotFoundHandler(app);
@@ -470,17 +513,6 @@ export function startServer(config: ServerConfig): {
   });
 
   return { app, httpServer };
-}
-
-type SharedProvider = ReturnType<typeof getSharedProvider>;
-
-function registerHealthRoutes(
-  app: Express,
-  config: ServerConfig,
-  provider: SharedProvider,
-  teeSigner: TeeSigner,
-): void {
-  app.use(createHealthRouter(provider, teeSigner, config));
 }
 
 // Map the router's provider verifiability value (TeeTLS/TeeML/private) to the
@@ -567,10 +599,9 @@ function registerComputeRoutes(
     // "qwen2.5-omni") — and the router's own ?model_id filter is loose
     // (it can return unrelated rows), so always filter locally on both.
     providers = providers.filter((p) =>
-      [p.model_id, p.canonical_id].some((id) => {
-        const s = String(id ?? "");
-        return s === model || s.startsWith(model);
-      }),
+      [p.model_id, p.canonical_id].some((id) =>
+        String(id ?? "").startsWith(model),
+      ),
     );
     providersCache.set(cacheKey, providers);
     return providers;
@@ -578,13 +609,12 @@ function registerComputeRoutes(
 
   createRoute(
     app,
-    {
-      path: "/v1/compute/providers",
-      method: "get",
-      consumer: "useCompute",
-      description:
-        "List compute providers (router models + deterministic pseudo-addresses)",
-    },
+    routeMeta(
+      "/v1/compute/providers",
+      "useCompute",
+      "List compute providers (router models + deterministic pseudo-addresses)",
+      { method: "get" },
+    ),
     async (_parsed: unknown, req: Request, res: Response) => {
       const routerBaseUrl = getComputeBaseUrl();
       // ?model=<id> → real provider discovery passthrough (address/latency/pricing/TEE info)
@@ -632,12 +662,9 @@ function registerComputeRoutes(
 
   createRoute(
     app,
-    {
-      path: "/v1/config",
+    routeMeta("/v1/config", "config", "Backend configuration", {
       method: "get",
-      consumer: "config",
-      description: "Backend configuration",
-    },
+    }),
     async (_parsed: unknown, _req: Request, res: Response) => {
       const model = resolveChatModel(
         config.env?.AXIOM_COMPUTE_MODEL,
@@ -756,13 +783,14 @@ function registerChatRoutes(
 ): void {
   createRoute(
     app,
-    {
-      path: "/v1/chat/completions",
-      method: "post",
-      schema: chatBodySchema,
-      consumer: "chat-runtime",
-      description: "Stream chat completions",
-    },
+    routeMeta(
+      "/v1/chat/completions",
+      "chat-runtime",
+      "Stream chat completions",
+      {
+        schema: chatBodySchema,
+      },
+    ),
     async (
       parsed: z.infer<typeof chatBodySchema>,
       req: Request,
@@ -830,17 +858,17 @@ function registerChatRoutes(
             chunk !== null &&
             typeof chunk === "object"
           ) {
-            const choices = (chunk as { choices?: unknown }).choices;
-            const hasUsageOrTrace =
-              (chunk as { usage?: unknown }).usage !== undefined ||
-              (chunk as { x_0g_trace?: unknown }).x_0g_trace !== undefined;
+            const c = chunk as {
+              choices?: unknown;
+              usage?: unknown;
+              x_0g_trace?: unknown;
+            };
             if (
-              Array.isArray(choices) &&
-              choices.length === 0 &&
-              hasUsageOrTrace
-            ) {
+              Array.isArray(c.choices) &&
+              c.choices.length === 0 &&
+              (c.usage !== undefined || c.x_0g_trace !== undefined)
+            )
               terminalChunk = chunk;
-            }
           }
           if (!writeChunk(`data: ${JSON.stringify(chunk)}\n\n`)) break;
           n++;
@@ -892,30 +920,41 @@ function registerChatRoutes(
         const status = e?.status;
         const code = e?.code ?? e?.error?.code;
         const msg = e?.error?.message ?? e?.message ?? "";
+        const jsonFail = (
+          failStatus: number,
+          error: string,
+          failCode?: string,
+        ): void => {
+          res
+            .status(failStatus)
+            .json(failCode ? { error, code: failCode } : { error });
+        };
         if (
           status === 402 ||
           code === "insufficient_balance" ||
           /insufficient balance/i.test(String(msg))
         ) {
-          res.status(402).json({
-            error:
-              "Compute account has no balance. Fund the 0G Compute provider account linked to AXIOM_COMPUTE_API_KEY, then retry.",
-            code: "insufficient_balance",
-          });
+          jsonFail(
+            402,
+            "Compute account has no balance. Fund the 0G Compute provider account linked to AXIOM_COMPUTE_API_KEY, then retry.",
+            "insufficient_balance",
+          );
           return;
         }
         if (status === 401 || status === 403) {
-          res.status(502).json({
-            error: "Compute auth failed. Check AXIOM_COMPUTE_API_KEY.",
-            code: "compute_auth",
-          });
+          jsonFail(
+            502,
+            "Compute auth failed. Check AXIOM_COMPUTE_API_KEY.",
+            "compute_auth",
+          );
           return;
         }
-        res.status(502).json({
-          error: msg
+        jsonFail(
+          502,
+          msg
             ? `Compute upstream: ${trimErrorMessage(e)}`
             : "compute upstream error",
-        });
+        );
       }
     },
     config,
@@ -927,13 +966,12 @@ function registerChatRoutes(
   // ownership proof (headers) proving the caller controls the queried wallet's key.
   createRoute(
     app,
-    {
-      path: "/v1/chat/history",
-      method: "get",
-      schema: chatHistoryQuerySchema,
-      consumer: "chat-runtime",
-      description: "Fetch persisted chat transcripts for a wallet",
-    },
+    routeMeta(
+      "/v1/chat/history",
+      "chat-runtime",
+      "Fetch persisted chat transcripts for a wallet",
+      { method: "get", schema: chatHistoryQuerySchema },
+    ),
     async (
       parsed: z.infer<typeof chatHistoryQuerySchema>,
       req: Request,
@@ -973,72 +1011,6 @@ function registerChatRoutes(
   );
 }
 
-function registerArchiveRoutes(app: Express, config: ServerConfig): void {
-  app.use(createArchiveRouter(config));
-}
-
-function registerSkillRoutes(app: Express, config: ServerConfig): void {
-  app.use(createSkillRouters(config));
-}
-
-function registerMetaRoutes(
-  app: Express,
-  config: ServerConfig,
-  ogChainId: number,
-  startedAt: number,
-): void {
-  createRoute(
-    app,
-    {
-      path: "/v1/routes",
-      method: "get",
-      consumer: "meta",
-      description: "List mounted routes",
-    },
-    async (_parsed: unknown, _req: Request, res: Response) => {
-      res.json({
-        routes: REGISTERED_ROUTES,
-        meta: {
-          version: PKG_VERSION,
-          chainId: ogChainId,
-          signer: shortSigner(config.signer.address),
-          startedAt,
-          uptimeMs: Date.now() - startedAt,
-        },
-      });
-    },
-    config,
-  );
-}
-
-function registerMcpRoutes(
-  app: Express,
-  config: ServerConfig,
-  getBaseUrl: () => string,
-): void {
-  REGISTERED_ROUTES.push(
-    {
-      method: "POST",
-      path: "/mcp",
-      consumer: "mcp",
-      description: "MCP streamable HTTP endpoint (read-only tools)",
-    },
-    {
-      method: "GET",
-      path: "/mcp",
-      consumer: "mcp",
-      description: "MCP SSE session stream (requires mcp-session-id)",
-    },
-    {
-      method: "DELETE",
-      path: "/mcp",
-      consumer: "mcp",
-      description: "Terminate an MCP session (requires mcp-session-id)",
-    },
-  );
-  app.use("/mcp", createMcpRouter(config, getBaseUrl));
-}
-
 function registerPaymentRoutes(
   app: Express,
   config: ServerConfig,
@@ -1048,14 +1020,16 @@ function registerPaymentRoutes(
   const paymentRouter = express.Router();
   createRoute(
     paymentRouter,
-    {
-      path: "/v1/agents/:id/earnings",
-      method: "get",
-      requireId: true,
-      requireAddress: "paymentProcessor",
-      consumer: "usePayment",
-      description: "Get agent earnings by token ID",
-    },
+    routeMeta(
+      "/v1/agents/:id/earnings",
+      "usePayment",
+      "Get agent earnings by token ID",
+      {
+        method: "get",
+        requireId: true,
+        requireAddress: "paymentProcessor",
+      },
+    ),
     async (_parsed, _req, res, { id }) => {
       res.setHeader("Cache-Control", "public, max-age=300");
       if (!nftTc)
@@ -1080,14 +1054,16 @@ function registerPaymentRoutes(
 
   createRoute(
     paymentRouter,
-    {
-      path: "/v1/agents/:id/royalty",
-      schema: royaltySchema,
-      requireId: true,
-      requireAddress: "paymentProcessor",
-      consumer: "usePayment",
-      description: "Encode royalty set transaction data",
-    },
+    routeMeta(
+      "/v1/agents/:id/royalty",
+      "usePayment",
+      "Encode royalty set transaction data",
+      {
+        schema: royaltySchema,
+        requireId: true,
+        requireAddress: "paymentProcessor",
+      },
+    ),
     async (parsed: { bps: number }, _req, _res, { id }) => {
       const client = await getPayment();
       const txData = await client.encodeSetRoyalty(BigInt(id), parsed.bps);
@@ -1106,13 +1082,15 @@ function registerPaymentRoutes(
 
   createRoute(
     paymentRouter,
-    {
-      path: "/v1/payment/config",
-      method: "get",
-      requireAddress: "paymentProcessor",
-      consumer: "usePayment",
-      description: "Payment contract configuration (cached 5min)",
-    },
+    routeMeta(
+      "/v1/payment/config",
+      "usePayment",
+      "Payment contract configuration (cached 5min)",
+      {
+        method: "get",
+        requireAddress: "paymentProcessor",
+      },
+    ),
     async (_parsed, _req, res) => {
       res.setHeader("Cache-Control", "public, max-age=300");
       const cached = paymentConfigCache.get("config");
@@ -1129,14 +1107,12 @@ function registerPaymentRoutes(
 
   createRoute(
     paymentRouter,
-    {
-      path: "/v1/agents/:id/metadata",
-      method: "post",
-      requireId: true,
-      requireAddress: "agentNft",
-      consumer: "cli-only",
-      description: "Encode transaction to update agent metadata on-chain",
-    },
+    routeMeta(
+      "/v1/agents/:id/metadata",
+      "cli-only",
+      "Encode transaction to update agent metadata on-chain",
+      { requireId: true, requireAddress: "agentNft" },
+    ),
     async (_parsed, req, res, { id, config: cfg }) => {
       const nftAddr = cfg.addresses?.agentNft;
       if (!nftAddr)
@@ -1201,24 +1177,24 @@ function registerErrorHandlers(app: Express): void {
               ? Number((err as Record<string, unknown>).status)
               : undefined;
           if (status && status >= 400 && status < 600) {
-            res
-              .status(status)
-              .json({ error: err.message, code: `HTTP_${status}`, requestId });
+            sendError(res, status, err.message, `HTTP_${status}`);
             return;
           }
           if (isUpstreamTransportError(err)) {
-            res.status(HTTP.BAD_GATEWAY).json({
-              error: "Upstream service error",
-              code: "UPSTREAM_ERROR",
-              requestId,
-            });
+            sendError(
+              res,
+              HTTP.BAD_GATEWAY,
+              "Upstream service error",
+              "UPSTREAM_ERROR",
+            );
             return;
           }
-          res.status(HTTP.INTERNAL).json({
-            error: "Internal server error",
-            code: "INTERNAL_ERROR",
-            requestId,
-          });
+          sendError(
+            res,
+            HTTP.INTERNAL,
+            "Internal server error",
+            "INTERNAL_ERROR",
+          );
         },
       );
     });

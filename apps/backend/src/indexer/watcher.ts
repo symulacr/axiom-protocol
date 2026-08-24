@@ -25,11 +25,8 @@ async function loadCheckpoint(chainId: bigint): Promise<number | null> {
   try {
     const data = await Bun.file(checkpointFile).text();
     const parsed = JSON.parse(data);
-    if (
-      typeof parsed.nextBlock === "number" &&
-      Number.isInteger(parsed.nextBlock) &&
-      parsed.nextBlock > 0
-    ) {
+    // Number.isInteger already excludes non-numbers (and NaN/Infinity).
+    if (Number.isInteger(parsed.nextBlock) && parsed.nextBlock > 0) {
       return parsed.nextBlock;
     }
   } catch (err) {
@@ -66,14 +63,14 @@ async function pollOnce(
     w.address.toLowerCase(),
   )) {
     const topics = group.map(({ name }) => TOPIC_TABLE[name]);
-    for (const log of await provider.getLogs({
-      address: addr,
-      topics: [topics],
-      fromBlock,
-      toBlock,
-    })) {
-      allLogs.push(log);
-    }
+    allLogs.push(
+      ...(await provider.getLogs({
+        address: addr,
+        topics: [topics],
+        fromBlock,
+        toBlock,
+      })),
+    );
   }
   return allLogs;
 }

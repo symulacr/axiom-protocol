@@ -1180,8 +1180,7 @@ const english: Copy = {
       fieldLabel: "Amount",
       fieldHint: "The resulting vault balance appears in review.",
       detail: "{amount} {symbol} into agent #{agent}",
-      notice:
-        "Deposit submitted for agent #{agent}. Receipt added to the transaction center.",
+      notice: enFlowNotice("Deposit submitted for agent #{agent}."),
     },
     withdraw: {
       title: "Withdraw from the vault",
@@ -1858,7 +1857,7 @@ const french: Copy = {
       fieldLabel: "Nom de l’agent",
       fieldHint: "Le hash de métadonnées est dérivé et montré à la revue.",
       detail: "{name} · accord de l’oracle enregistré",
-      notice: "Mint soumis pour {name}. Reçu ajouté au centre transactionnel.",
+      notice: frFlowNotice("Mint soumis pour {name}."),
     },
     payment: {
       ...english.flows.payment,
@@ -2936,14 +2935,8 @@ const german: Copy = {
   },
 };
 
-const copyByLocale: Record<Locale, Copy> = {
-  en: english,
-  fr: french,
-  de: german,
-};
-
 export function getCopy(locale: Locale = "en"): Copy {
-  const copy = copyByLocale[locale] ?? english;
+  const copy = locale === "fr" ? french : locale === "de" ? german : english;
   // Défense supplémentaire: ces libellés restent sémantiques, jamais séquentiels.
   return { ...copy, dashboard: { ...copy.dashboard } };
 }

@@ -19,12 +19,11 @@ export function createStaticProvider(
   opts?: { timeoutMs?: number },
 ): JsonRpcProvider {
   const cid = resolveChainId(chainId);
-  if (opts?.timeoutMs !== undefined) {
-    const fetchReq = new FetchRequest(evmRpc);
-    fetchReq.timeout = opts.timeoutMs;
-    return new JsonRpcProvider(fetchReq, cid, { staticNetwork: true });
-  }
-  return new JsonRpcProvider(evmRpc, cid, { staticNetwork: true });
+  if (opts?.timeoutMs === undefined)
+    return new JsonRpcProvider(evmRpc, cid, { staticNetwork: true });
+  const fetchReq = new FetchRequest(evmRpc);
+  fetchReq.timeout = opts.timeoutMs;
+  return new JsonRpcProvider(fetchReq, cid, { staticNetwork: true });
 }
 
 // Router URL is chain-driven: explicit AXIOM_COMPUTE_BASE_URL/OG_COMPUTE_BASE_URL wins, else

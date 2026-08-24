@@ -56,15 +56,14 @@ function defaultValidUntil(): bigint {
 
 /** Accepts bigint / positive integer / decimal-or-hex string; null when unparseable. */
 function parsePositiveBigInt(raw: string | number | bigint): bigint | null {
-  if (typeof raw === "bigint") return raw;
-  if (typeof raw === "number" && Number.isInteger(raw) && raw > 0)
-    return BigInt(raw);
-  if (typeof raw === "string" && (isHex(raw) || /^\d+$/.test(raw))) {
-    try {
+  try {
+    if (typeof raw === "bigint") return raw;
+    if (typeof raw === "number" && Number.isInteger(raw) && raw > 0)
       return BigInt(raw);
-    } catch {
-      return null;
-    }
+    if (typeof raw === "string" && (isHex(raw) || /^\d+$/.test(raw)))
+      return BigInt(raw);
+  } catch {
+    /* fall through to null */
   }
   return null;
 }
@@ -359,16 +358,14 @@ export function registerOracleRoutes(
       storage.markDataHashSeen(dataHash);
       res.json({ ok: true, dataHash, seen: true });
     } catch (err) {
-      if (err instanceof OracleRequestError || err instanceof ZodError) {
-        res.status(HTTP.BAD_REQUEST).json({
-          error:
-            err instanceof ZodError
-              ? (err.issues[0]?.message ?? "Validation error")
-              : err.message,
-        });
-        return;
-      }
-      throw err;
+      if (!(err instanceof OracleRequestError || err instanceof ZodError))
+        throw err;
+      res.status(HTTP.BAD_REQUEST).json({
+        error:
+          err instanceof ZodError
+            ? (err.issues[0]?.message ?? "Validation error")
+            : err.message,
+      });
     }
   });
 }
