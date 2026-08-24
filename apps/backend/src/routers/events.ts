@@ -6,7 +6,7 @@ import { eventBodySchema } from "../route-schemas.js";
 import { HTTP, getRuntimeConfig } from "@axiom/config";
 import { sendError } from "../utils/response.js";
 import type { EventStore } from "../events/store.js";
-import type { ServerConfig } from "../server.js";
+import type { ServerConfig } from "../config-types.js";
 
 const DEFAULT_EVENT_SOURCES = ["indexer"] as const;
 

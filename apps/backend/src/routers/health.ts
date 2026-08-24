@@ -4,7 +4,7 @@ import type { TeeSigner } from "../oracle/signer.js";
 import { HTTP } from "@axiom/config";
 import { createLogger } from "../utils/logger.js";
 import { sendError, extractErrorMessage, envInt } from "../utils/response.js";
-import type { ServerConfig } from "../server.js";
+import type { ServerConfig } from "../config-types.js";
 import { createRoute } from "./route-factory.js";
 import pkg from "../../package.json" with { type: "json" };
 

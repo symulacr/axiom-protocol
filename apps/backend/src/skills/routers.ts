@@ -1,7 +1,7 @@
 import type { Router, Request, Response } from "express";
 import { ethers } from "ethers";
 import type { z } from "zod";
-import type { ServerConfig } from "../server.js";
+import type { ServerConfig } from "../config-types.js";
 import {
   createSkillRouter,
   type SkillRouter,
@@ -605,8 +605,7 @@ export function createSkillRouters(config: ServerConfig): Router {
       "GLEIF legal-entity search (keyless)",
       (parsed) => {
         const q = encodeURIComponent(parsed.query);
-        // GLEIF public API — no key, no signup (replaced OpenCorporates,
-        // whose self-serve tier went sales-only).
+        // GLEIF public API — no key, no signup (replaced OpenCorporates, whose self-serve tier went sales-only).
         return cachedFetch(
           `gleif:${parsed.query}:${parsed.limit}`,
           `https://api.gleif.org/api/v1/lei-records?filter[entity.legalName]=${q}&page[size]=${parsed.limit}`,
@@ -644,9 +643,7 @@ export function createSkillRouters(config: ServerConfig): Router {
         const q = encodeURIComponent(parsed.query);
         const type = parsed.type ?? "o";
         const endpoint = type === "o" ? "search" : "recap";
-        // Optional API token (P4): CourtListener v3 wants it as an
-        // Authorization header; anonymous calls keep today's behavior (shared
-        // readable 502 on throttling, unchanged). Read per request.
+        // Optional CourtListener token (P4): sent as an Authorization header; anonymous calls unchanged. Read per request.
         const token = process.env.COURTLISTENER_API_TOKEN?.trim();
         return cachedFetch(
           `court:${type}:${parsed.query}:${token ? "auth" : "anon"}`,

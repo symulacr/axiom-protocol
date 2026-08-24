@@ -12,7 +12,8 @@ import compression from "compression";
 import rateLimit from "express-rate-limit";
 import { createServer, type Server as HttpServer } from "node:http";
 import { WebSocketServer, type WebSocket } from "ws";
-import { ethers, type Wallet } from "ethers";
+import { ethers } from "ethers";
+import type { ServerConfig } from "./config-types.js";
 import type {
   ChatCompletionMessageParam,
   ChatCompletionTool,
@@ -51,7 +52,7 @@ import {
 } from "@axiom/config/middleware/auth";
 import { getEventStore, payloadField } from "./events/store.js";
 import { PaymentProcessorClient } from "./payment/processor.js";
-import type { BackendEnv } from "./env-schema.js";
+
 import { createHealthRouter } from "./routers/health.js";
 import { createRoute, REGISTERED_ROUTES } from "./routers/route-factory.js";
 import { registerAgentRoutes } from "./routers/agents.js";
@@ -193,21 +194,7 @@ function isUpstreamTransportError(err: unknown): boolean {
   ].includes(code);
 }
 
-export interface ServerConfig {
-  bind: string;
-  port: number;
-  evmRpc: string;
-  signer: Wallet;
-  /** Optional 0G storage for chat-transcript persistence AND the in-process oracle; null/undefined disables both (oracle falls back to InMemoryStorage). */
-  chatStorage?: StorageAdapter | null;
-  addresses?: {
-    agentNft: `0x${string}`;
-    vault: `0x${string}`;
-    verifier: `0x${string}`;
-    paymentProcessor?: `0x${string}`;
-  };
-  env?: BackendEnv;
-}
+export type { ServerConfig };
 
 export function assertStartupAuthNotDisabledInProduction(
   env: Record<string, string | undefined>,

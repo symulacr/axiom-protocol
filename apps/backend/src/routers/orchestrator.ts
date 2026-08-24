@@ -11,7 +11,7 @@ import type {
 } from "../orchestrator/index.js";
 import type { TickResult } from "@axiom/config/types/orchestrator";
 import type { EventStore } from "../events/store.js";
-import type { ServerConfig } from "../server.js";
+import type { ServerConfig } from "../config-types.js";
 import { createRoute } from "./route-factory.js";
 import { AGENT_NFT_ABI } from "@axiom/config/abis";
 import { HTTP, resolveChatModel } from "@axiom/config";

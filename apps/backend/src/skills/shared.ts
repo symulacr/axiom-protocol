@@ -1,6 +1,6 @@
 import { Router } from "express";
 import type { z } from "zod";
-import type { ServerConfig } from "../server.js";
+import type { ServerConfig } from "../config-types.js";
 import {
   createRoute,
   type RouteOptions,

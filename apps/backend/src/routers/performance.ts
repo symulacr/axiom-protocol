@@ -3,7 +3,7 @@ import { HTTP, EVENT_NAMES } from "@axiom/config";
 import { createRoute, positiveIntQuery } from "./route-factory.js";
 import { sendError } from "../utils/response.js";
 import type { EventStore } from "../events/store.js";
-import type { ServerConfig } from "../server.js";
+import type { ServerConfig } from "../config-types.js";
 import { payloadField, payloadNumber } from "../events/store.js";
 import { TTLCache } from "../utils/response.js";
 

@@ -8,7 +8,7 @@ import {
   TypedContract,
   type AgentNFTMethods,
 } from "@axiom/config/types/contract";
-import type { ServerConfig } from "../server.js";
+import type { ServerConfig } from "../config-types.js";
 import { sendError, extractErrorMessage, envInt } from "../utils/response.js";
 import { TTLCache } from "../utils/response.js";
 import { TRANSFER_TOPIC } from "@axiom/config";

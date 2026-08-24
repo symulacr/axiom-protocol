@@ -13,7 +13,7 @@ import {
   vaultWithdrawEncodeSchema,
 } from "../route-schemas.js";
 import type { z } from "zod";
-import type { ServerConfig } from "../server.js";
+import type { ServerConfig } from "../config-types.js";
 
 type VaultActionRoute = {
   path: string;

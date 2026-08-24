@@ -5,7 +5,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { requireServerAuth } from "@axiom/config/middleware/auth";
 import { createLogger } from "../utils/logger.js";
-import type { ServerConfig } from "../server.js";
+import type { ServerConfig } from "../config-types.js";
 import pkg from "../../package.json" with { type: "json" };
 
 const log = createLogger("mcp");

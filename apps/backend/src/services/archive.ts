@@ -204,7 +204,7 @@ async function closestSnapshot(
 
 import { Router } from "express";
 import { z } from "zod";
-import type { ServerConfig } from "../server.js";
+import type { ServerConfig } from "../config-types.js";
 import { createRoute } from "../routers/route-factory.js";
 import { archiveUrlSchema } from "../route-schemas.js";
 
