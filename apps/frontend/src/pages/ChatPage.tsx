@@ -1716,6 +1716,10 @@ function ChatPageInner(): ReactElement {
                           const trimmed = stripSummaryLead(
                             messagesRef.current.slice(0, idx),
                           );
+                          // Stale run must never commit into edited history
+                          // (same pattern as openThread/startNewChat).
+                          runEpochRef.current += 1;
+                          abortRef.current?.abort();
                           messagesRef.current = trimmed;
                           setMessages(trimmed);
                           summaryCacheRef.current.delete(threadIdRef.current);

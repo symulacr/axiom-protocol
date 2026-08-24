@@ -25,3 +25,15 @@ test("regenerate and retry call sites guard on streaming ref", () => {
   const guards = src.match(/if \(isStreamingRef\.current\) return;/g) ?? [];
   assert.ok(guards.length >= 3, `expected ≥3 guards, found ${guards.length}`);
 });
+
+test("edit-confirm bumps run epoch and aborts in-flight run", () => {
+  const bumps = src.match(/runEpochRef\.current \+= 1;/g) ?? [];
+  assert.ok(
+    bumps.length >= 3,
+    `expected epoch bump in startNewChat, openThread AND editConfirm; found ${bumps.length}`,
+  );
+  assert.match(
+    src,
+    /runEpochRef\.current \+= 1;\s*\n\s*abortRef\.current\?\.abort\(\);/,
+  );
+});
