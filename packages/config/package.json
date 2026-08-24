@@ -22,10 +22,8 @@
     "./middleware/auth": "./dist/middleware/auth.js",
     "./env-schema": "./dist/env-schema.js",
     "./storage/0g": "./dist/storage/0g.js",
-    "./types/performance": "./dist/types/performance.js",
     "./types/orchestrator": "./dist/types/orchestrator.js",
     "./types/transfer": "./dist/types/transfer.js",
-    "./process": "./dist/process.js",
     "./chat-tools": "./dist/chat-tools.js",
     "./skills/schemas": "./dist/skills/schemas.js",
     "./path": "./dist/path.js"

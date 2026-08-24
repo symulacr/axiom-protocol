@@ -74,15 +74,6 @@ export class HandoffSignatureInvalidError extends Error {
   }
 }
 
-function isHandoffSignatureInvalid(
-  err: unknown,
-): err is HandoffSignatureInvalidError {
-  return (
-    err instanceof HandoffSignatureInvalidError ||
-    (err instanceof Error && err.name === "HandoffSignatureInvalidError")
-  );
-}
-
 type Eip1193Provider = {
   request: (args: {
     method: string;
@@ -612,7 +603,6 @@ export function useTransfer(): UseTransferResult {
         return proof;
       } catch (err) {
         setTransferPhase("idle");
-        if (isHandoffSignatureInvalid(err)) throw failWith(err);
         throw failWith(err);
       } finally {
         setIsPreparing(false);

@@ -1,4 +1,4 @@
-export { runTool } from "./run-tool.js";
+export { runTool } from "./session.js";
 export { formatToolResult } from "./format.js";
 export { groupParallelTools } from "./parallel.js";
 export {

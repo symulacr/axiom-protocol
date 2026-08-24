@@ -66,7 +66,7 @@ import {
   royaltySchema,
 } from "./route-schemas.js";
 import { createLogger } from "./utils/logger.js";
-import { getSentry } from "./utils/sentry.js";
+import { getSentry } from "./utils/logger.js";
 import { sendError, trimErrorMessage } from "./utils/response.js";
 import {
   getClients,

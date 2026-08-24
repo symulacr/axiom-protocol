@@ -103,34 +103,27 @@ export function Field({
         {required ? <span aria-hidden="true"> *</span> : null}
       </span>
       <span className="field-control">
-        {multiline ? (
-          <textarea
-            id={fieldId}
-            rows={rows}
-            value={value ?? ""}
-            onChange={(event) => onChange?.(event.target.value)}
-            placeholder={placeholder}
-            required={required}
-            maxLength={maxLength}
-            readOnly={readOnly}
-            aria-invalid={Boolean(error)}
-            aria-describedby={error || hint ? messageId : undefined}
-            className={mono ? "mono" : undefined}
-          />
-        ) : (
-          <input
-            id={fieldId}
-            value={value ?? ""}
-            onChange={(event) => onChange?.(event.target.value)}
-            placeholder={placeholder}
-            required={required}
-            maxLength={maxLength}
-            readOnly={readOnly}
-            aria-invalid={Boolean(error)}
-            aria-describedby={error || hint ? messageId : undefined}
-            className={mono ? "mono" : undefined}
-          />
-        )}
+        {(() => {
+          // Shared control props — textarea and input differ only in `rows`.
+          const shared = {
+            id: fieldId,
+            value: value ?? "",
+            onChange: (event: { target: { value: string } }) =>
+              onChange?.(event.target.value),
+            placeholder,
+            required,
+            maxLength,
+            readOnly,
+            "aria-invalid": Boolean(error),
+            "aria-describedby": error || hint ? messageId : undefined,
+            className: mono ? "mono" : undefined,
+          };
+          return multiline ? (
+            <textarea {...shared} rows={rows} />
+          ) : (
+            <input {...shared} />
+          );
+        })()}
         {suffix && <em aria-hidden="true">{suffix}</em>}
       </span>
       {error ? (

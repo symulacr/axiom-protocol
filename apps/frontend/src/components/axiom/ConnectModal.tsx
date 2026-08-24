@@ -29,10 +29,12 @@ export function ConnectModal({
 
   if (!open) return null;
 
-  // Localized labels keyed on the configured connector ids; unknown ids fall
+  // Localized labels keyed on the configured connector types; unknown ids fall
   // back to the connector's own name (config/wagmi only ships the two below).
+  // NOTE: match on type, not id — injected({target:"metaMask"}) yields
+  // id "metaMask" while type stays "injected".
   const options = connectors.map((connector) => {
-    switch (connector.id) {
+    switch (connector.type) {
       case "injected":
         return {
           connector,

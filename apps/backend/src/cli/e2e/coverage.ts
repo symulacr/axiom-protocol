@@ -1,5 +1,7 @@
 import {
+  Contract,
   parseUnits,
+  type Provider,
   type TransactionReceipt,
   type TransactionResponse,
   type Wallet,
@@ -21,7 +23,6 @@ import { pipelineWalletTxs } from "./tx-pipeline.js";
 import { markCovered, markSkipped } from "./matrix.js";
 import { markScenarioCovered } from "./scenarios.js";
 import { ensureErc20Allowance } from "./erc20.js";
-import { hasContractFunction, LEGACY_DEPLOY_REASON } from "./deploy-compat.js";
 import { readVaultStrategy } from "../../orchestrator/index.js";
 
 // All extended fragments are already part of AGENT_NFT_ABI; keep the alias for callers.
@@ -210,61 +211,23 @@ export async function runMatrixViewSweepStep(deps: {
       `processor.AXIOM_NFT() mismatch ${processorNft} != ${deps.agentNft}`,
     );
   }
-  const [
-    hasPendingVerifier,
-    hasPendingVerifierAt,
-    hasPendingTreasury,
-    hasPendingTreasuryAt,
-    hasProtocolFeeBps,
-    hasTotalOutstanding,
-  ] = await Promise.all([
-    hasContractFunction(
-      provider,
-      deps.agentNft,
-      "function pendingVerifier() view returns (address)",
-    ),
-    hasContractFunction(
-      provider,
-      deps.agentNft,
-      "function pendingVerifierExecutableAt() view returns (uint256)",
-    ),
-    hasContractFunction(
-      provider,
-      deps.paymentProcessor,
-      "function pendingProtocolTreasury() view returns (address)",
-    ),
-    hasContractFunction(
-      provider,
-      deps.paymentProcessor,
-      "function pendingTreasuryEffectiveAt() view returns (uint256)",
-    ),
-    hasContractFunction(
-      provider,
-      deps.paymentProcessor,
-      "function protocolFeeBps() view returns (uint256)",
-    ),
-    hasContractFunction(
-      provider,
-      deps.paymentProcessor,
-      "function totalOutstandingEarnings() view returns (uint256)",
-    ),
+  // Legacy-deploy compat: probe each view before calling it; absent functions record a skip.
+  await sweepViews(provider, [
+    {
+      address: deps.agentNft,
+      contract: "AxiomAgentNFT",
+      fn: "pendingVerifier",
+      sig: "function pendingVerifier() view returns (address)",
+      read: () => nft.contract.pendingVerifier(),
+    },
+    {
+      address: deps.agentNft,
+      contract: "AxiomAgentNFT",
+      fn: "pendingVerifierExecutableAt",
+      sig: "function pendingVerifierExecutableAt() view returns (uint256)",
+      read: () => nft.contract.pendingVerifierExecutableAt(),
+    },
   ]);
-  if (hasPendingVerifier) {
-    await nft.contract.pendingVerifier();
-    markCovered("AxiomAgentNFT", "pendingVerifier", "view-sweep");
-  } else {
-    markSkipped("AxiomAgentNFT", "pendingVerifier", LEGACY_DEPLOY_REASON);
-  }
-  if (hasPendingVerifierAt) {
-    await nft.contract.pendingVerifierExecutableAt();
-    markCovered("AxiomAgentNFT", "pendingVerifierExecutableAt", "view-sweep");
-  } else {
-    markSkipped(
-      "AxiomAgentNFT",
-      "pendingVerifierExecutableAt",
-      LEGACY_DEPLOY_REASON,
-    );
-  }
   if (dataSingular.length === 0) throw new Error("intelligentDataOf empty");
   if (!supportsErc165 || !supportsErc721) {
     throw new Error(
@@ -273,61 +236,41 @@ export async function runMatrixViewSweepStep(deps: {
   }
   markCovered("AxiomStrategyVault", "balanceOf", "view-sweep");
   markCovered("AxiomStrategyVault", "strategyOf", "view-sweep");
-  if (hasPendingTreasury) {
-    await pay.contract.pendingProtocolTreasury();
-    markCovered(
-      "AxiomPaymentProcessor",
-      "pendingProtocolTreasury",
-      "view-sweep",
-    );
-  } else {
-    markSkipped(
-      "AxiomPaymentProcessor",
-      "pendingProtocolTreasury",
-      LEGACY_DEPLOY_REASON,
-    );
-  }
-  if (hasPendingTreasuryAt) {
-    await pay.contract.pendingTreasuryEffectiveAt();
-    markCovered(
-      "AxiomPaymentProcessor",
-      "pendingTreasuryEffectiveAt",
-      "view-sweep",
-    );
-  } else {
-    markSkipped(
-      "AxiomPaymentProcessor",
-      "pendingTreasuryEffectiveAt",
-      LEGACY_DEPLOY_REASON,
-    );
-  }
-  if (hasProtocolFeeBps) {
-    await pay.contract.protocolFeeBps();
-    markCovered("AxiomPaymentProcessor", "protocolFeeBps", "view-sweep");
-  } else {
-    markSkipped(
-      "AxiomPaymentProcessor",
-      "protocolFeeBps",
-      LEGACY_DEPLOY_REASON,
-    );
-  }
+  await sweepViews(provider, [
+    {
+      address: deps.paymentProcessor,
+      contract: "AxiomPaymentProcessor",
+      fn: "pendingProtocolTreasury",
+      sig: "function pendingProtocolTreasury() view returns (address)",
+      read: () => pay.contract.pendingProtocolTreasury(),
+    },
+    {
+      address: deps.paymentProcessor,
+      contract: "AxiomPaymentProcessor",
+      fn: "pendingTreasuryEffectiveAt",
+      sig: "function pendingTreasuryEffectiveAt() view returns (uint256)",
+      read: () => pay.contract.pendingTreasuryEffectiveAt(),
+    },
+    {
+      address: deps.paymentProcessor,
+      contract: "AxiomPaymentProcessor",
+      fn: "protocolFeeBps",
+      sig: "function protocolFeeBps() view returns (uint256)",
+      read: () => pay.contract.protocolFeeBps(),
+    },
+  ]);
   if (payToken.toLowerCase() !== deps.paymentToken.toLowerCase()) {
     throw new Error(`paymentToken mismatch ${payToken}`);
   }
-  if (hasTotalOutstanding) {
-    await pay.contract.totalOutstandingEarnings();
-    markCovered(
-      "AxiomPaymentProcessor",
-      "totalOutstandingEarnings",
-      "view-sweep",
-    );
-  } else {
-    markSkipped(
-      "AxiomPaymentProcessor",
-      "totalOutstandingEarnings",
-      LEGACY_DEPLOY_REASON,
-    );
-  }
+  await sweepViews(provider, [
+    {
+      address: deps.paymentProcessor,
+      contract: "AxiomPaymentProcessor",
+      fn: "totalOutstandingEarnings",
+      sig: "function totalOutstandingEarnings() view returns (uint256)",
+      read: () => pay.contract.totalOutstandingEarnings(),
+    },
+  ]);
   const [, royaltyAlreadySet] = await Promise.all([
     pay.contract.royaltyBpsOf(deps.tokenId),
     pay.contract.royaltyBpsSet(deps.tokenId),
@@ -674,20 +617,9 @@ export async function runAuthorizeDelegateStep(deps: {
     "authorizeDelegateAndRevoke",
     "authorizedUsersOf not cleared after authorizeDelegateAndRevoke",
   );
-  if (isReuse) {
-    recordReceipt(
-      17,
-      "delegateAccess",
-      `delegate=${deps.delegateAddress.slice(0, 10)}…`,
-      authReceipt,
-      deps.chainId,
-    );
-    return;
-  }
-
   recordReceipt(
     17,
-    "authorizeDelegateAndRevoke",
+    isReuse ? "delegateAccess" : "authorizeDelegateAndRevoke",
     `delegate=${deps.delegateAddress.slice(0, 10)}…`,
     authReceipt,
     deps.chainId,
@@ -742,4 +674,60 @@ export async function runPostVaultCoveragePipeline(deps: {
   );
 
   return vault.contract.balanceOf(deps.tokenId);
+}
+
+// ---- deploy-compat (absorbed): cached static-call probe for legacy-deploy coverage ----
+
+const probeCache = new Map<string, boolean>();
+
+function cacheKey(address: string, signature: string): string {
+  return `${address.toLowerCase()}::${signature}`;
+}
+
+export async function hasContractFunction(
+  provider: Provider,
+  address: string,
+  signature: string,
+  args: readonly unknown[] = [],
+): Promise<boolean> {
+  const key = cacheKey(address, signature);
+  const cached = probeCache.get(key);
+  if (cached !== undefined) return cached;
+
+  const fn = signature.match(/function\s+(\w+)/)?.[1];
+  if (!fn) throw new Error(`deploy-compat: invalid signature ${signature}`);
+
+  const contract = new Contract(address, [signature], provider);
+  try {
+    await contract.getFunction(fn).staticCall(...args);
+    probeCache.set(key, true);
+    return true;
+  } catch {
+    probeCache.set(key, false);
+    return false;
+  }
+}
+
+export const LEGACY_DEPLOY_REASON = "legacy Wave E-6 deploy (function absent)";
+
+/** Legacy-deploy view sweep: call each view when present, else record the skip
+ * (same probe-or-skip contract the inline ladders used before consolidation). */
+async function sweepViews(
+  provider: Provider,
+  targets: {
+    address: string;
+    contract: string;
+    fn: string;
+    sig: string;
+    read: () => Promise<unknown>;
+  }[],
+): Promise<void> {
+  for (const t of targets) {
+    if (!(await hasContractFunction(provider, t.address, t.sig))) {
+      markSkipped(t.contract, t.fn, LEGACY_DEPLOY_REASON);
+      continue;
+    }
+    await t.read();
+    markCovered(t.contract, t.fn, "view-sweep");
+  }
 }

@@ -19,7 +19,6 @@ import {
   useWalletClient,
 } from "wagmi";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { BRAND } from "../brand/assets.js";
 import { toast } from "sonner";
 import {
   apiFetch,
@@ -30,9 +29,9 @@ import {
   deleteThread as deleteThreadFromStore,
   upsertThread,
   useThreads,
+  useChatHistory,
   type ChatThread as StoredThread,
-} from "../hooks/useThreads.js";
-import { useChatHistory } from "../hooks/useChatHistory.js";
+} from "../hooks/useChatHistory.js";
 import { useEventStream } from "../hooks/useEventStream.js";
 import { eventTokenId } from "../hooks/useEventHistory.js";
 import { usePolledApi } from "../hooks/usePolledApi.js";
@@ -126,6 +125,15 @@ import { Button } from "../components/axiom/Controls.js";
 import { MessageSquare, Network } from "../components/axiom/icons.js";
 
 const SUPPORTED_CHAIN_IDS = new Set([APP_CHAIN_ID]);
+
+/** Integrated brand imagery (Grok Imagine assets under public/brand); absolute paths served from the static public/ root. */
+const BRAND = {
+  heroSeal: "/brand/hero-seal-512.jpg",
+  agentLattice: "/brand/agent-lattice-480.jpg",
+  chatAvatar: "/brand/chat-avatar-128.jpg",
+  emptyAgents: "/brand/empty-agents-960.jpg",
+} as const;
+
 const CHAT_MESSAGES_KEY = "axiom:chat-messages";
 /** Active threadId (sessionStorage): lets a page reload resume the SAME
  * thread instead of generating a fresh id (which duplicated threads and

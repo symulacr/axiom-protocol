@@ -40,7 +40,7 @@ import {
 import { useEventStream } from "../hooks/useEventStream.js";
 import { usePolledApi } from "../hooks/usePolledApi.js";
 import { AGENT_NFT_ABI } from "@axiom/config/abis";
-import type { PerformanceMetrics } from "@axiom/config/types/performance";
+import type { PerformanceMetrics } from "@axiom/config/types/orchestrator";
 import {
   usePayment,
   usePaymentToken,

@@ -126,6 +126,15 @@ const VAULT = getEnvWithAlias(
   addresses.strategyVault,
 );
 
+// Deployed-address bundle shared by every step-deps object in main().
+const contractAddrs = {
+  agentNft: AGENT_NFT,
+  vault: VAULT,
+  teeVerifier: TEE_VERIFIER,
+  paymentProcessor: PAYMENT_PROCESSOR,
+  paymentToken: PAYMENT_TOKEN,
+};
+
 const provider = getSharedProvider(OG_CHAIN_ID);
 const { operator, receiver, operatorAddress, receiverAddress, source } =
   resolveE2eWallets(provider);
@@ -211,11 +220,7 @@ async function main(): Promise<void> {
     backendUrl: BACKEND_URL,
     deployerAddress: operatorAddress,
     teeSignerAddress: teeSigner.address,
-    teeVerifier: TEE_VERIFIER,
-    paymentProcessor: PAYMENT_PROCESSOR,
-    paymentToken: PAYMENT_TOKEN,
-    agentNft: AGENT_NFT,
-    vault: VAULT,
+    ...contractAddrs,
   });
   console.log(
     `  Mode: fast=${E2E_FAST ? "on" : "off"} liveCompute=${E2E_LIVE_COMPUTE ? "on" : "off"} pipelineTx=${E2E_PIPELINE_TX ? "on" : "off"} mega=${E2E_MEGA_PIPELINE ? "on" : "off"} reuse=${E2E_REUSE ? "on" : "off"} keepToken=${E2E_KEEP_TOKEN ? "on" : "off"} skipVaultWithdraw=${E2E_SKIP_VAULT_WITHDRAW ? "on" : "off"}`,
@@ -227,11 +232,7 @@ async function main(): Promise<void> {
       runContractsLiveStep({
         provider,
         chainId: OG_CHAIN_ID,
-        agentNft: AGENT_NFT,
-        vault: VAULT,
-        teeVerifier: TEE_VERIFIER,
-        paymentProcessor: PAYMENT_PROCESSOR,
-        paymentToken: PAYMENT_TOKEN,
+        ...contractAddrs,
       }),
     ]),
     runWalletPreflight({
@@ -366,11 +367,7 @@ async function main(): Promise<void> {
     RUN_PAYMENT && preflight.operatorUsdc >= E2E_PAYMENT_MICRO_MIN_TOTAL;
 
   const viewSweepDeps = {
-    agentNft: AGENT_NFT,
-    vault: VAULT,
-    paymentProcessor: PAYMENT_PROCESSOR,
-    teeVerifier: TEE_VERIFIER,
-    paymentToken: PAYMENT_TOKEN,
+    ...contractAddrs,
     deployer: operator,
     tokenId,
     chainId: OG_CHAIN_ID,

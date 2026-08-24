@@ -61,11 +61,13 @@ const FEATURE_ALIAS_TO_CANONICAL: Record<string, string> = {
   "/features/developers": "/developers",
 };
 
-/** Alias → Route id, derived from the canonical map so one table owns both. */
+/** Alias → Route id, derived from the canonical map so one table owns both.
+ *  Resolved directly against ROUTES (not resolveRoute) to avoid a circular
+ *  dependency on this very table during module init. */
 const PUBLIC_ALIASES: Record<string, Route> = Object.fromEntries(
   Object.entries(FEATURE_ALIAS_TO_CANONICAL).map(([alias, canonical]) => [
     alias,
-    resolveRoute(canonical),
+    ROUTES.find((entry) => entry.path === canonical)?.route ?? "not-found",
   ]),
 );
 

@@ -119,3 +119,55 @@ export const AGENT_NFT_ABI = [
   "error UnauthorizedUsage(address caller)",
   "error UseITransferWithProofs()"
 ] as const;
+
+const PROOF_TAIL_FIELDS = [
+  { name: "targetPubkey", internalType: "bytes", type: "bytes" },
+  { name: "nonce", internalType: "bytes", type: "bytes" },
+  { name: "proof", internalType: "bytes", type: "bytes" },
+  { name: "validUntil", internalType: "uint256", type: "uint256" },
+] as const;
+
+export const ITRANSFER_FROM_ABI = [
+  {
+    type: "function",
+    inputs: [
+      { name: "from", internalType: "address", type: "address" },
+      { name: "to", internalType: "address", type: "address" },
+      { name: "tokenId", internalType: "uint256", type: "uint256" },
+      {
+        name: "proofs",
+        internalType: "struct TransferValidityProof[]",
+        type: "tuple[]",
+        components: [
+          {
+            name: "accessProof",
+            internalType: "struct AccessProof",
+            type: "tuple",
+            components: [
+              { name: "dataHash", internalType: "bytes32", type: "bytes32" },
+              ...PROOF_TAIL_FIELDS,
+            ],
+          },
+          {
+            name: "ownershipProof",
+            internalType: "struct OwnershipProof",
+            type: "tuple",
+            components: [
+              {
+                name: "oracleType",
+                internalType: "enum OracleType",
+                type: "uint8",
+              },
+              { name: "dataHash", internalType: "bytes32", type: "bytes32" },
+              { name: "sealedKey", internalType: "bytes", type: "bytes" },
+              ...PROOF_TAIL_FIELDS,
+            ],
+          },
+        ],
+      },
+    ],
+    name: "iTransferFrom",
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+] as const;
