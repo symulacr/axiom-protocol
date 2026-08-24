@@ -38,11 +38,15 @@ function backendWsBase(): string {
 // - FALLBACK: legacy ?token= query param, still required by current backends.
 // A subprotocol-bearing handshake against a backend that only knows ?token=
 // fails the WS open (negotiation mismatch) exactly once; callers retry via
-// openStreamSocket() with the query fallback, and a module-level latch keeps
-// subsequent connections on whichever path was proven to work.
+// openStreamSocket() with the query fallback. Header failures are counted, not
+// latched: a transient blip must not demote auth for the whole session — only
+// a header SUCCESS resets the counter (query-only backends reach steady state
+// after ≤2 extra handshakes).
 export const WS_AUTH_SUBPROTOCOL = "axiom";
 
-let wsAuthPrefersHeader: boolean | null = null;
+const MAX_HEADER_AUTH_FAILURES = 2;
+let wsAuthHeaderFailures = 0;
+let wsAuthHeaderProven = false;
 
 function wsTokenSubprotocols(token: string): string[] | undefined {
   if (!token) return undefined;
@@ -76,10 +80,11 @@ function buildStreamWsUrl(
       ? "header"
       : import.meta.env.VITE_WS_AUTH === "query"
         ? "query"
-        : wsAuthPrefersHeader === true
+        : wsAuthHeaderProven
           ? "header"
           : "query";
-  if (opts.token !== false && mode === "query") {
+  // Empty API_KEY must not produce a meaningless `token=` param.
+  if (opts.token !== false && mode === "query" && API_KEY) {
     url.searchParams.append("token", API_KEY);
   }
   return url.toString();
@@ -119,14 +124,18 @@ export function openStreamSocket(
     });
 
   return (async () => {
-    // Forced/explicit query mode, no token, or a known query-only backend.
-    if (protocols && wsAuthPrefersHeader !== false) {
+    // Try the header path while under the failure budget (or forced header).
+    if (
+      protocols &&
+      (wsAuthHeaderProven || wsAuthHeaderFailures < MAX_HEADER_AUTH_FAILURES)
+    ) {
       try {
         const ws = await tryOpen(headerUrl, protocols);
-        wsAuthPrefersHeader = true;
+        wsAuthHeaderProven = true;
+        wsAuthHeaderFailures = 0;
         return ws;
       } catch {
-        wsAuthPrefersHeader = false;
+        wsAuthHeaderFailures++;
       }
     }
     return tryOpen(queryUrl);
