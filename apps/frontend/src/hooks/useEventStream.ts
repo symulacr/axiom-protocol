@@ -90,7 +90,7 @@ export function useEventStream(
       };
     };
 
-    openStreamSocket(topics)
+    openStreamSocket(topicsKey ? topicsKey.split(",") : [])
       .then((ws) => {
         wsRef.current = ws;
         attach(ws);
@@ -99,7 +99,7 @@ export function useEventStream(
         /* both auth paths failed — backoff and retry */
         scheduleReconnect();
       });
-  }, [enabled, topics, topicsKey, scheduleReconnect]);
+  }, [enabled, topicsKey, scheduleReconnect]);
 
   useEffect(() => {
     connectRef.current = connect;

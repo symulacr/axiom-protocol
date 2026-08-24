@@ -12,7 +12,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
     "coverage-status": "bun run --filter @axiom/backend src/cli/coverage-status.ts --manifest frontend-prod",
-    "test": "bun test src/hooks/useTransfer.dataHash.test.ts src/hooks/useTransfer.coSign.test.ts src/hooks/useTransfer.handoff.test.ts src/hooks/useMintWizard.payload.test.ts src/lib/copy.test.ts src/lib/transferHandoff.test.ts src/utils/format.humanizeError.test.ts src/chat/lib.test.ts",
+    "test": "bun test src/hooks/useTransfer.dataHash.test.ts src/hooks/useTransfer.coSign.test.ts src/hooks/useTransfer.handoff.test.ts src/hooks/useMintWizard.payload.test.ts src/lib/copy.test.ts src/lib/transferHandoff.test.ts src/utils/format.humanizeError.test.ts src/chat/lib.test.ts src/hooks/useEventStream.deps.test.ts",
     "test:e2e": "playwright test"
   },
   "dependencies": {
