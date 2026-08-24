@@ -13,10 +13,6 @@ export function agentEarningsPath(id: bigint | string): string {
   return agentPath(id, "earnings");
 }
 
-export function agentRoyaltyPath(id: bigint | string): string {
-  return agentPath(id, "royalty");
-}
-
 const DEFAULT_TIMEOUT = 10_000;
 export const LONG_TIMEOUT = 60_000;
 export const STREAM_TIMEOUT = 120_000;
@@ -69,46 +65,52 @@ type HttpError = Error & {
   requestId?: string;
 };
 
+type ErrorBody = { error?: string; code?: string; requestId?: string } | null;
+
+/** Correlation refs ride every HTTP error variant unchanged. */
+function attachRefs(err: HttpError, parsed: ErrorBody): HttpError {
+  if (parsed?.code !== undefined) err.code = parsed.code;
+  if (parsed?.requestId !== undefined) err.requestId = parsed.requestId;
+  return err;
+}
+
 async function buildHttpError(path: string, res: Response): Promise<HttpError> {
   const text = await res.text();
-  let parsed: { error?: string; code?: string; requestId?: string } | null =
-    null;
+  let parsed: ErrorBody = null;
   if (text) {
     try {
       const j: unknown = JSON.parse(text);
       if (j && typeof j === "object") {
-        parsed = j as { error?: string; code?: string; requestId?: string };
+        parsed = j as ErrorBody;
       }
     } catch {
       parsed = null;
     }
   }
   if (res.status === 401 || res.status === 403) {
-    const err = new Error(
-      "Session expired or unauthorized — reconnect your wallet.",
-    ) as HttpError;
-    if (parsed?.code !== undefined) err.code = parsed.code;
-    if (parsed?.requestId !== undefined) err.requestId = parsed.requestId;
-    return err;
+    return attachRefs(
+      new Error(
+        "Session expired or unauthorized — reconnect your wallet.",
+      ) as HttpError,
+      parsed,
+    );
   }
   if (res.status === 429) {
     const raw = res.headers.get("Retry-After");
     const parsedSecs = raw ? Number(raw) : NaN;
     const secs =
       Number.isFinite(parsedSecs) && parsedSecs > 0 ? parsedSecs : 30;
-    const err = new Error(`Rate limited — retry in ${secs}s.`) as HttpError;
+    const err = attachRefs(
+      new Error(`Rate limited — retry in ${secs}s.`) as HttpError,
+      parsed,
+    );
     err.retryAfter = secs;
-    if (parsed?.code !== undefined) err.code = parsed.code;
-    if (parsed?.requestId !== undefined) err.requestId = parsed.requestId;
     return err;
   }
   const message =
     parsed?.error ??
     `${path} failed: ${res.status} ${res.statusText}${text ? `: ${text}` : ""}`;
-  const err = new Error(message) as HttpError;
-  if (parsed?.code !== undefined) err.code = parsed.code;
-  if (parsed?.requestId !== undefined) err.requestId = parsed.requestId;
-  return err;
+  return attachRefs(new Error(message) as HttpError, parsed);
 }
 
 function wrapFetchError(err: unknown): never {
@@ -197,7 +199,7 @@ export async function apiFetch<T>(
   return apiFetchFrom<T>(BACKEND_URL, path, init);
 }
 
-export async function apiFetchResponse(
+async function apiFetchResponse(
   path: string,
   init: RequestInit & { timeout?: number } = {},
 ): Promise<Response> {

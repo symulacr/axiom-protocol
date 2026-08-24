@@ -6,6 +6,19 @@ import { toViemAbi } from "../lib/abi.js";
 
 const abi = toViemAbi(VAULT_ABI);
 
+/** Unpack one multicall result as [errorMessage, value]; undefined value =
+ * call reverted or hasn't resolved — caller keeps its default. */
+function unpackContractResult(
+  result:
+    | { status: "failure"; error: Error }
+    | { status: "success"; result?: unknown }
+    | undefined,
+): [string | null, unknown] {
+  if (!result) return [null, undefined];
+  if (result.status === "failure") return [result.error.message, undefined];
+  return [null, result.result];
+}
+
 export interface VaultDataEntry {
   tokenId: bigint;
   depositsWei: bigint;
@@ -55,48 +68,25 @@ export function useVaultDataBatch(tokenIds: readonly bigint[]): {
     for (let i = 0; i < tokenIds.length; i++) {
       const tokenId = tokenIds[i];
       if (tokenId === undefined) continue;
-      const balanceResult = query.data?.[i * 2];
-      const strategyResult = query.data?.[i * 2 + 1];
 
-      let depositsWei = 0n;
-      let readError: string | null = null;
+      const [balanceError, balance] = unpackContractResult(query.data?.[i * 2]);
+      const [strategyError, strategy] = unpackContractResult(
+        query.data?.[i * 2 + 1],
+      );
+      let readError: string | null = balanceError;
+      if (strategyError)
+        readError = readError
+          ? `${readError}; ${strategyError}`
+          : strategyError;
 
-      if (balanceResult?.status === "failure") {
-        readError = balanceResult.error.message;
-      } else if (
-        balanceResult &&
-        balanceResult.status === "success" &&
-        balanceResult.result !== undefined
-      ) {
-        depositsWei = balanceResult.result as bigint;
-      }
-
-      let strategyRoot = "";
-      let dailyLimitWei = 0n;
-      if (strategyResult?.status === "failure") {
-        const strategyErr = strategyResult.error.message;
-        readError = readError ? `${readError}; ${strategyErr}` : strategyErr;
-      } else if (
-        strategyResult &&
-        strategyResult.status === "success" &&
-        strategyResult.result !== undefined
-      ) {
-        const strategy = strategyResult.result as readonly [
-          `0x${string}`,
-          bigint,
-          bigint,
-          bigint,
-          bigint,
-        ];
-        strategyRoot = strategy[0] as string;
-        dailyLimitWei = strategy[1] as bigint;
-      }
+      const strategyTuple = strategy as
+        readonly [`0x${string}`, bigint, bigint, bigint, bigint] | undefined;
 
       map.set(tokenId.toString(), {
         tokenId,
-        depositsWei,
-        strategyRoot,
-        dailyLimitWei,
+        depositsWei: (balance as bigint | undefined) ?? 0n,
+        strategyRoot: strategyTuple ? (strategyTuple[0] as string) : "",
+        dailyLimitWei: strategyTuple ? strategyTuple[1] : 0n,
         ...(readError ? { readError } : {}),
       });
     }

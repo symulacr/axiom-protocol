@@ -3,6 +3,24 @@ import { fetchJson, resolveTokenId, toolFail } from "../transport.js";
 import type { ToolRuntime } from "../transport.js";
 import type { ToolResult } from "../types.js";
 
+/** Shared read-list leg: GET path → `{ [key]: rows }` envelope (empty array when the backend omits the key). */
+async function fetchList(
+  ctx: ToolRuntime,
+  path: string,
+  key: "agents" | "events",
+  failLabel: string,
+): Promise<ToolResult> {
+  const { ok, data } = await fetchJson<Record<string, unknown[]>>(
+    ctx.http,
+    path,
+  );
+  if (!ok) return toolFail(failLabel);
+  return {
+    ok: true as const,
+    content: JSON.stringify({ [key]: data[key] ?? [] }),
+  };
+}
+
 export async function runReadTool(
   name: string,
   args: Record<string, unknown>,
@@ -14,15 +32,12 @@ export async function runReadTool(
       if (!owner) {
         return toolFail("Wallet not connected");
       }
-      const { ok, data } = await fetchJson<{ agents: unknown[] }>(
-        ctx.http,
+      return fetchList(
+        ctx,
         `/v1/agents?owner=${owner}`,
+        "agents",
+        "agents http fail",
       );
-      if (!ok) return toolFail("agents http fail");
-      return {
-        ok: true as const,
-        content: JSON.stringify({ agents: data.agents ?? [] }),
-      };
     }
     case "vault_balance": {
       const tokenId = resolveTokenId(args, ctx);
@@ -91,15 +106,7 @@ export async function runReadTool(
       if (args.eventName) {
         path += `&eventName=${encodeURIComponent(String(args.eventName))}`;
       }
-      const { ok, data } = await fetchJson<{ events: unknown[] }>(
-        ctx.http,
-        path,
-      );
-      if (!ok) return toolFail("events http fail");
-      return {
-        ok: true as const,
-        content: JSON.stringify({ events: data.events ?? [] }),
-      };
+      return fetchList(ctx, path, "events", "events http fail");
     }
     default:
       return toolFail(`Unknown read tool: ${name}`);

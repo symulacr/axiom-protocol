@@ -121,6 +121,44 @@ export function AgentPage({
 
   const agentName = `Agent #${tokenId.toString()}`;
   const lastEvent = events[events.length - 1];
+  const agentId = tokenId.toString();
+  // Bounded-operation launcher: one data-driven row per deep-linked flow.
+  const commandActions: {
+    path: string;
+    icon: React.ReactNode;
+    variant?: "secondary" | "ghost";
+    label: string;
+  }[] = [
+    {
+      path: `/payment?agent=${agentId}&intent=fund&stage=amount`,
+      icon: <CreditCard size={15} />,
+      label: agentCopy.fundAgent,
+    },
+    {
+      path: `/transfer?agent=${agentId}&intent=proof&stage=recipient`,
+      icon: <ShieldCheck size={15} />,
+      variant: "secondary",
+      label: agentCopy.transferProof,
+    },
+    {
+      path: `/deposit?agent=${agentId}`,
+      icon: <Wallet size={15} />,
+      variant: "secondary",
+      label: agentCopy.depositFunds,
+    },
+    {
+      path: `/withdraw?agent=${agentId}`,
+      icon: <UploadCloud size={15} />,
+      variant: "secondary",
+      label: agentCopy.withdrawFunds,
+    },
+    {
+      path: `/tick?agent=${agentId}&intent=bounded`,
+      icon: <Play size={15} />,
+      variant: "ghost",
+      label: agentCopy.queueTick,
+    },
+  ];
   // vault balances are native-denominated (chain config); payments tab uses the payment token symbol.
   const nativeSymbol = APP_CHAIN.nativeCurrency.symbol;
   const paymentToken = usePaymentToken();
@@ -264,50 +302,16 @@ export function AgentPage({
           <section className="panel agent-command-card">
             <h2>{agentCopy.chooseBoundedOperation}</h2>
             <div className="command-actions">
-              <Button
-                onClick={() =>
-                  go(
-                    `/payment?agent=${tokenId.toString()}&intent=fund&stage=amount`,
-                  )
-                }
-                icon={<CreditCard size={15} />}
-              >
-                {agentCopy.fundAgent}
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() =>
-                  go(
-                    `/transfer?agent=${tokenId.toString()}&intent=proof&stage=recipient`,
-                  )
-                }
-                icon={<ShieldCheck size={15} />}
-              >
-                {agentCopy.transferProof}
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() => go(`/deposit?agent=${tokenId.toString()}`)}
-                icon={<Wallet size={15} />}
-              >
-                {agentCopy.depositFunds}
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() => go(`/withdraw?agent=${tokenId.toString()}`)}
-                icon={<UploadCloud size={15} />}
-              >
-                {agentCopy.withdrawFunds}
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={() =>
-                  go(`/tick?agent=${tokenId.toString()}&intent=bounded`)
-                }
-                icon={<Play size={15} />}
-              >
-                {agentCopy.queueTick}
-              </Button>
+              {commandActions.map((item) => (
+                <Button
+                  key={item.label}
+                  variant={item.variant}
+                  onClick={() => go(item.path)}
+                  icon={item.icon}
+                >
+                  {item.label}
+                </Button>
+              ))}
             </div>
             <p>{agentCopy.commandEvidence}</p>
           </section>
@@ -364,26 +368,29 @@ export function AgentPage({
         <section className="panel tab-panel">
           <h2>{agentCopy.valueRouteFor(agentName)}</h2>
           <div className="receipt-grid">
-            <div>
-              <strong>{paymentSymbol}</strong>
-              <small>{agentCopy.token}</small>
-            </div>
-            <div>
-              <strong>
-                {earnings
+            {[
+              {
+                value: paymentSymbol,
+                label: agentCopy.token,
+              },
+              {
+                value: earnings
                   ? `${formatUnits(BigInt(earnings.earnings), paymentToken?.decimals ?? 6)} ${paymentSymbol}`
-                  : "—"}
-              </strong>
-              <small>{agentCopy.earnings}</small>
-            </div>
-            <div>
-              <strong>
-                {paymentConfig
+                  : "—",
+                label: agentCopy.earnings,
+              },
+              {
+                value: paymentConfig
                   ? `${Number(paymentConfig.protocolFeeBps) / 100}%`
-                  : "—"}
-              </strong>
-              <small>{agentCopy.royalty}</small>
-            </div>
+                  : "—",
+                label: agentCopy.royalty,
+              },
+            ].map((cell) => (
+              <div key={cell.label}>
+                <strong>{cell.value}</strong>
+                <small>{cell.label}</small>
+              </div>
+            ))}
           </div>
           <Button
             onClick={() =>
@@ -402,18 +409,17 @@ export function AgentPage({
         <section className="panel tab-panel">
           <h2>{agentCopy.evidenceTied}</h2>
           <div className="activity-list">
-            {eventsLoading && events.length === 0 && (
+            {events.length === 0 && (
               <div className="empty-state">
-                <strong>Loading events…</strong>
-              </div>
-            )}
-            {!eventsLoading && events.length === 0 && (
-              <div className="empty-state">
-                <strong>No events indexed</strong>
-                <span>
-                  On-chain activity for this agent appears here as the indexer
-                  sees it.
-                </span>
+                <strong>
+                  {eventsLoading ? "Loading events…" : "No events indexed"}
+                </strong>
+                {!eventsLoading && (
+                  <span>
+                    On-chain activity for this agent appears here as the indexer
+                    sees it.
+                  </span>
+                )}
               </div>
             )}
             {[...events].reverse().map((event) => (

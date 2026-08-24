@@ -18,6 +18,7 @@ import type { TeeSigner } from "./signer.js";
 import type { StorageAdapter } from "@axiom/config/storage/0g";
 import { mintDataHashSchema } from "../route-schemas.js";
 import type { BackendEnv } from "../env-schema.js";
+import { extractErrorMessage } from "../utils/response.js";
 
 /** In-process oracle deps: the TEE signer and storage are shared with the host backend (no HTTP hop). */
 export interface OracleRouteDeps {
@@ -38,6 +39,22 @@ export class OracleRequestError extends Error {
 }
 
 const DEFAULT_MAX_PROOF_AGE_SECONDS = 7n * 24n * 3600n;
+
+/** Single funnel for BAD_REQUEST validation failures so every rejection keeps the same error shape. */
+function requireCond(cond: unknown, message: string): asserts cond {
+  if (!cond) throw new OracleRequestError(HTTP.BAD_REQUEST, message);
+}
+
+/** Non-validation failure (upstream storage/crypto): still surfaces as an OracleRequestError. */
+function reject(status: number, message: string): never {
+  throw new OracleRequestError(status, message);
+}
+
+/** Canonical 32-byte nonce (see routers/agents.ts — minimal hex breaks
+ * wallet `bytes` typing when the top nibble is zero). */
+function canonicalNonce(value: string | number | undefined): `0x${string}` {
+  return zeroPadValue(toBeHex(BigInt(value ?? 0)), 32) as `0x${string}`;
+}
 
 /**
  * On-chain max proof age: `_checkValidUntil` (AxiomTeeVerifier) rejects
@@ -95,23 +112,20 @@ export async function transferValidity(
     nft,
   } = input;
 
-  if (!oldDataHash || !oldDataUri || !targetPubkey64) {
-    throw new OracleRequestError(HTTP.BAD_REQUEST, "Missing required field");
-  }
-  if (targetPubkey64.length !== 130) {
-    throw new OracleRequestError(
-      HTTP.BAD_REQUEST,
-      "targetPubkey64 must be 64 bytes (128 hex chars)",
-    );
-  }
+  requireCond(
+    oldDataHash && oldDataUri && targetPubkey64,
+    "Missing required field",
+  );
+  requireCond(
+    targetPubkey64.length === 130,
+    "targetPubkey64 must be 64 bytes (128 hex chars)",
+  );
   const normHash = String(oldDataHash).toLowerCase().replace(/^0x/, "");
   const normUri = String(oldDataUri).toLowerCase().replace(/^0x/, "");
-  if (normHash !== normUri) {
-    throw new OracleRequestError(
-      HTTP.BAD_REQUEST,
-      "oldDataUri must equal oldDataHash (blob root binding)",
-    );
-  }
+  requireCond(
+    normHash === normUri,
+    "oldDataUri must equal oldDataHash (blob root binding)",
+  );
 
   const allowCleartext =
     env?.AXIOM_ALLOW_CLEARTEXT_DEK === "true" &&
@@ -122,30 +136,25 @@ export async function transferValidity(
     typeof sealedDataEncryptionKey === "string" &&
     sealedDataEncryptionKey.length > 0
   ) {
+    const hexEncoded = sealedDataEncryptionKey.startsWith("0x");
     const sealedBytes = Buffer.from(
-      sealedDataEncryptionKey.startsWith("0x")
-        ? sealedDataEncryptionKey.slice(2)
-        : sealedDataEncryptionKey,
-      sealedDataEncryptionKey.startsWith("0x") ? "hex" : "base64",
+      hexEncoded ? sealedDataEncryptionKey.slice(2) : sealedDataEncryptionKey,
+      hexEncoded ? "hex" : "base64",
     );
     oldDataKey = unsealKeyForReceiver(signer.privateKeyBytes, sealedBytes);
   } else if (oldDataEncryptionKey && allowCleartext) {
     oldDataKey = Buffer.from(oldDataEncryptionKey, "base64");
   }
-  if (oldDataKey === undefined) {
-    throw new OracleRequestError(
-      HTTP.BAD_REQUEST,
-      oldDataEncryptionKey
-        ? "cleartext oldDataEncryptionKey rejected; send sealedDataEncryptionKey (ECIES to oracle pubkey from GET /oracle/health)"
-        : "sealedDataEncryptionKey is required (ECIES-seal the 32-byte DEK to oracle uncompressed pubkey)",
-    );
-  }
-  if (oldDataKey.length !== 32) {
-    throw new OracleRequestError(
-      HTTP.BAD_REQUEST,
-      "data encryption key must be 32 bytes after unseal",
-    );
-  }
+  requireCond(
+    oldDataKey !== undefined,
+    oldDataEncryptionKey
+      ? "cleartext oldDataEncryptionKey rejected; send sealedDataEncryptionKey (ECIES to oracle pubkey from GET /oracle/health)"
+      : "sealedDataEncryptionKey is required (ECIES-seal the 32-byte DEK to oracle uncompressed pubkey)",
+  );
+  requireCond(
+    oldDataKey.length === 32,
+    "data encryption key must be 32 bytes after unseal",
+  );
 
   // E2: a failed or missing download MUST abort the transfer — falling back to an empty
   // blob would re-encrypt nothing and sign transfer proofs over fabricated data, silently
@@ -163,16 +172,15 @@ export async function transferValidity(
       }),
     ]);
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    throw new OracleRequestError(
+    reject(
       HTTP.BAD_GATEWAY,
-      `Failed to download old blob ${oldDataUri}: ${message} — transfer aborted, no data fabricated`,
+      `Failed to download old blob ${oldDataUri}: ${extractErrorMessage(err)} — transfer aborted, no data fabricated`,
     );
   } finally {
     clearTimeout(downloadTimer);
   }
   if (oldBlob.length === 0) {
-    throw new OracleRequestError(
+    reject(
       HTTP.BAD_GATEWAY,
       `Downloaded blob for ${oldDataUri} is empty — transfer aborted, no data fabricated`,
     );
@@ -182,10 +190,9 @@ export async function transferValidity(
   try {
     oldPlaintext = aesGcmDecrypt(oldDataKey, oldEnc);
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    throw new OracleRequestError(
+    reject(
       HTTP.BAD_GATEWAY,
-      `Failed to decrypt old blob with the provided data key (${message}) — transfer aborted`,
+      `Failed to decrypt old blob with the provided data key (${extractErrorMessage(err)}) — transfer aborted`,
     );
   }
 
@@ -206,12 +213,7 @@ export async function transferValidity(
     targetPubkey: targetPubkey64,
     to,
     nft,
-    // Canonical 32-byte nonce (see routers/agents.ts — minimal hex breaks
-    // wallet `bytes` typing when the top nibble is zero).
-    nonce: zeroPadValue(
-      toBeHex(BigInt(ownershipProofNonce ?? accessProofNonce ?? 0)),
-      32,
-    ) as `0x${string}`,
+    nonce: canonicalNonce(ownershipProofNonce ?? accessProofNonce),
     validUntil: defaultValidUntil,
   });
 
@@ -262,29 +264,19 @@ export async function signOwnership(
     validUntil: rawValidUntil,
   } = input;
 
-  if (!dataHash || !targetPubkey || !sealedKey) {
-    throw new OracleRequestError(HTTP.BAD_REQUEST, "Missing required field");
-  }
-
-  if (!storage.hasSeenDataHash(dataHash)) {
-    throw new OracleRequestError(
-      HTTP.BAD_REQUEST,
-      `Unknown dataHash: not previously seen by oracle. POST {dataHash} to /v1/agents/mint first.`,
-    );
-  }
-
-  if (!to || !isAddress(to)) {
-    throw new OracleRequestError(
-      HTTP.BAD_REQUEST,
-      "'to' address is required and must be a valid non-zero address",
-    );
-  }
-  if (!nft || !isAddress(nft)) {
-    throw new OracleRequestError(
-      HTTP.BAD_REQUEST,
-      "'nft' address is required and must be a valid non-zero address",
-    );
-  }
+  requireCond(dataHash && targetPubkey && sealedKey, "Missing required field");
+  requireCond(
+    storage.hasSeenDataHash(dataHash),
+    `Unknown dataHash: not previously seen by oracle. POST {dataHash} to /v1/agents/mint first.`,
+  );
+  requireCond(
+    to && isAddress(to),
+    "'to' address is required and must be a valid non-zero address",
+  );
+  requireCond(
+    nft && isAddress(nft),
+    "'nft' address is required and must be a valid non-zero address",
+  );
 
   const defaultValidUntil = BigInt(Math.floor(Date.now() / 1000)) + 86400n;
   let validUntil = defaultValidUntil;
@@ -292,43 +284,33 @@ export async function signOwnership(
     let parsed: bigint | null = null;
     if (typeof rawValidUntil === "bigint") {
       parsed = rawValidUntil;
-    } else if (typeof rawValidUntil === "number") {
-      if (
-        Number.isFinite(rawValidUntil) &&
-        Number.isInteger(rawValidUntil) &&
-        rawValidUntil > 0
-      ) {
+    } else if (
+      typeof rawValidUntil === "number" &&
+      Number.isFinite(rawValidUntil) &&
+      Number.isInteger(rawValidUntil) &&
+      rawValidUntil > 0
+    ) {
+      parsed = BigInt(rawValidUntil);
+    } else if (
+      typeof rawValidUntil === "string" &&
+      (isHex(rawValidUntil) || /^\d+$/.test(rawValidUntil))
+    ) {
+      try {
         parsed = BigInt(rawValidUntil);
-      }
-    } else if (typeof rawValidUntil === "string") {
-      if (isHex(rawValidUntil)) {
-        try {
-          parsed = BigInt(rawValidUntil);
-        } catch {
-          parsed = null;
-        }
-      } else if (/^\d+$/.test(rawValidUntil)) {
-        try {
-          parsed = BigInt(rawValidUntil);
-        } catch {
-          parsed = null;
-        }
+      } catch {
+        parsed = null;
       }
     }
-    if (parsed === null) {
-      throw new OracleRequestError(HTTP.BAD_REQUEST, "Invalid validUntil");
-    }
+    requireCond(parsed !== null, "Invalid validUntil");
     // E3: on-chain _checkValidUntil rejects validUntil - now > maxProofAgeSeconds
     // (deployed 7 days). A proof signed with a farther deadline is unverifiable DOA,
     // so reject the request instead of clamping to a value the chain still rejects.
     const maxProofAge = maxProofAgeSeconds(env);
     const maxValidUntil = BigInt(Math.floor(Date.now() / 1000)) + maxProofAge;
-    if (parsed > maxValidUntil) {
-      throw new OracleRequestError(
-        HTTP.BAD_REQUEST,
-        `validUntil ${parsed} exceeds maximum proof validity (now + ${maxProofAge}s); on-chain _checkValidUntil rejects validUntil - now > maxProofAgeSeconds`,
-      );
-    }
+    requireCond(
+      parsed <= maxValidUntil,
+      `validUntil ${parsed} exceeds maximum proof validity (now + ${maxProofAge}s); on-chain _checkValidUntil rejects validUntil - now > maxProofAgeSeconds`,
+    );
     validUntil = parsed;
   }
 
@@ -338,8 +320,7 @@ export async function signOwnership(
     targetPubkey,
     to,
     nft,
-    // Canonical 32-byte nonce (see routers/agents.ts).
-    nonce: zeroPadValue(toBeHex(BigInt(nonce ?? 0)), 32) as `0x${string}`,
+    nonce: canonicalNonce(nonce),
     validUntil,
   });
   return {

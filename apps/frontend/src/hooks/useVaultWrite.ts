@@ -19,6 +19,24 @@ const VAULT_WRITE: Record<
   withdraw: { label: "Withdraw", endpoint: "withdraw", verb: "Withdraw" },
 };
 
+/** Shared write-flow toasts: success on submit + canonical humanized error toast for every write path. */
+const toastSuccess = (msg: string): void => {
+  toast.success(msg);
+};
+const toastError = (err: unknown): void => {
+  const refStr = errorRefString(err);
+  toast.error(humanizeError(err), refStr ? { description: refStr } : undefined);
+};
+
+/** Shared numeric rules for the amount field (deposit + withdraw alike). */
+const amountRules = (label: string) => ({
+  label,
+  min: 0,
+  allowDecimals: true,
+  maxDecimals: 18,
+  max: 1e12,
+});
+
 export function useVaultWrite(
   kind: VaultWriteKind,
   tokenId: bigint,
@@ -36,30 +54,11 @@ export function useVaultWrite(
   const [amount, setAmount] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  /** Shared write-flow toasts: success on submit + canonical humanized error toast for every write path. */
-  const toastSuccess = useCallback((msg: string): void => {
-    toast.success(msg);
-  }, []);
-
-  const toastError = useCallback((err: unknown): void => {
-    const refStr = errorRefString(err);
-    toast.error(
-      humanizeError(err),
-      refStr ? { description: refStr } : undefined,
-    );
-  }, []);
-
   const { label, endpoint, verb } = VAULT_WRITE[kind];
   const toasts = opts?.toasts !== false;
   const onSuccess = opts?.onSuccess;
 
-  const error = validateNumericInput(amount, {
-    label,
-    min: 0,
-    allowDecimals: true,
-    maxDecimals: 18,
-    max: 1e12,
-  });
+  const error = validateNumericInput(amount, amountRules(label));
 
   const handleSubmit = useCallback(
     async (amountOverride?: string): Promise<`0x${string}` | null> => {
@@ -67,13 +66,7 @@ export function useVaultWrite(
       const overrideError =
         amountOverride === undefined
           ? error
-          : validateNumericInput(value, {
-              label,
-              min: 0,
-              allowDecimals: true,
-              maxDecimals: 18,
-              max: 1e12,
-            });
+          : validateNumericInput(value, amountRules(label));
       if (!value || overrideError || !walletClient) return null;
       setIsSubmitting(true);
       try {
@@ -117,8 +110,6 @@ export function useVaultWrite(
       vd,
       onSuccess,
       toasts,
-      toastSuccess,
-      toastError,
     ],
   );
 

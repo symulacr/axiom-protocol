@@ -211,6 +211,29 @@ export function SettingsPage({
     </button>
   );
 
+  // Shared <label><select> row for enum preferences (density/language/direction).
+  const selectRow = (
+    label: string,
+    value: string,
+    onChange: (value: string) => void,
+    options: readonly (readonly [string, string])[],
+  ) => (
+    <label>
+      {label}
+      <select
+        aria-label={label}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      >
+        {options.map(([v, text]) => (
+          <option key={v} value={v}>
+            {text}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+
   return (
     <div className="ops-page settings-page">
       <PageHead title={labels.pageTitle} lede={labels.pageDescription}>
@@ -281,24 +304,23 @@ export function SettingsPage({
               role="group"
               aria-label={labels.theme}
             >
-              <button
-                type="button"
-                className={state.settings.theme === "dark" ? "active" : ""}
-                aria-pressed={state.settings.theme === "dark"}
-                onClick={() => update({ theme: "dark" })}
-              >
-                <Moon size={13} />
-                {labels.themeDark}
-              </button>
-              <button
-                type="button"
-                className={state.settings.theme === "light" ? "active" : ""}
-                aria-pressed={state.settings.theme === "light"}
-                onClick={() => update({ theme: "light" })}
-              >
-                <Sun size={13} />
-                {labels.themeLight}
-              </button>
+              {(
+                [
+                  ["dark", Moon, labels.themeDark],
+                  ["light", Sun, labels.themeLight],
+                ] as const
+              ).map(([value, Icon, text]) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={state.settings.theme === value ? "active" : ""}
+                  aria-pressed={state.settings.theme === value}
+                  onClick={() => update({ theme: value })}
+                >
+                  <Icon size={13} />
+                  {text}
+                </button>
+              ))}
             </div>
           </div>
           {toggleRow(
@@ -307,38 +329,25 @@ export function SettingsPage({
             labels.compactRailHint,
           )}
           <div className="settings-select-row">
-            <label>
-              {labels.density}
-              <select
-                aria-label={labels.density}
-                value={state.settings.density}
-                onChange={(event) =>
-                  update({
-                    density: event.target.value as UiSettings["density"],
-                  })
-                }
-              >
-                <option value="calm">{labels.densityCalm}</option>
-                <option value="dense">{labels.densityDense}</option>
-              </select>
-            </label>
-            <label>
-              {labels.languageLabel}
-              <select
-                aria-label={labels.languageLabel}
-                value={state.settings.locale}
-                onChange={(event) =>
-                  update({
-                    locale: event.target
-                      .value as AppState["settings"]["locale"],
-                  })
-                }
-              >
-                <option value="en">{labels.localeEnglish}</option>
-                <option value="fr">{labels.localeFrench}</option>
-                <option value="de">{labels.localeGerman}</option>
-              </select>
-            </label>
+            {selectRow(
+              labels.density,
+              state.settings.density,
+              (v) => update({ density: v as UiSettings["density"] }),
+              [
+                ["calm", labels.densityCalm],
+                ["dense", labels.densityDense],
+              ],
+            )}
+            {selectRow(
+              labels.languageLabel,
+              state.settings.locale,
+              (v) => update({ locale: v as AppState["settings"]["locale"] }),
+              [
+                ["en", labels.localeEnglish],
+                ["fr", labels.localeFrench],
+                ["de", labels.localeGerman],
+              ],
+            )}
           </div>
         </SettingsDisclosure>
 
@@ -381,21 +390,15 @@ export function SettingsPage({
           icon={<Keyboard size={17} className="copper" />}
         >
           <div className="settings-select-row">
-            <label>
-              {labels.direction}
-              <select
-                aria-label={labels.direction}
-                value={state.settings.direction}
-                onChange={(event) =>
-                  update({
-                    direction: event.target.value as UiSettings["direction"],
-                  })
-                }
-              >
-                <option value="ltr">{labels.directionLtr}</option>
-                <option value="rtl">{labels.directionRtl}</option>
-              </select>
-            </label>
+            {selectRow(
+              labels.direction,
+              state.settings.direction,
+              (v) => update({ direction: v as UiSettings["direction"] }),
+              [
+                ["ltr", labels.directionLtr],
+                ["rtl", labels.directionRtl],
+              ],
+            )}
           </div>
           <div className="shortcut-map">
             <div>

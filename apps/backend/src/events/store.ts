@@ -70,27 +70,28 @@ type EventPayload =
 
 type StoredEventPayload = EventPayload;
 
+function hasPayloadKey(payload: unknown, key: string): boolean {
+  return !!payload && typeof payload === "object" && key in payload;
+}
+
 export function payloadField(
   payload: unknown,
   key: string,
 ): string | undefined {
-  if (payload && typeof payload === "object" && key in payload) {
-    return String((payload as Record<string, unknown>)[key]);
-  }
-  return undefined;
+  return hasPayloadKey(payload, key)
+    ? String((payload as Record<string, unknown>)[key])
+    : undefined;
 }
 
 export function payloadNumber(
   payload: unknown,
   key: string,
 ): number | undefined {
-  if (payload && typeof payload === "object" && key in payload) {
-    const val = (payload as Record<string, unknown>)[key];
-    if (val === undefined || val === null) return undefined;
-    const n = Number(val);
-    return Number.isFinite(n) ? n : undefined;
-  }
-  return undefined;
+  if (!hasPayloadKey(payload, key)) return undefined;
+  const val = (payload as Record<string, unknown>)[key];
+  if (val === undefined || val === null) return undefined;
+  const n = Number(val);
+  return Number.isFinite(n) ? n : undefined;
 }
 
 const log = createLogger("events");
@@ -248,10 +249,7 @@ export class EventStore {
       if (!since) return [...bucket];
       return bucket.filter((e) => e.timestamp > since);
     }
-    const all: StoredEvent[] = [];
-    for (const bucket of this.buckets.values()) {
-      all.push(...bucket);
-    }
+    const all: StoredEvent[] = [...this.allEvents()];
     let results = all;
     if (since !== undefined) {
       results = results.filter((e) => e.timestamp > since);
@@ -264,6 +262,20 @@ export class EventStore {
     let n = 0;
     for (const bucket of this.buckets.values()) n += bucket.length;
     return n;
+  }
+
+  /** Flat iteration over every stored event, shared by getAll() and findByDedupeKey(). */
+  private *allEvents(): Generator<StoredEvent> {
+    for (const bucket of this.buckets.values()) yield* bucket;
+  }
+
+  /** Installs a validated/kept bucket and reindexes its events; load() and rollbackToBlock() share this so both rebuild indexes identically. */
+  private installBucket(bucketKey: string, events: StoredEvent[]): void {
+    this.buckets.set(bucketKey, events);
+    this.total += events.length;
+    for (const evt of events) {
+      this.reindexEvent(evt);
+    }
   }
 
   /** Single indexer shared by append(), load() and rollbackToBlock() so every insertion path keeps identical indexes; append() passes its precomputed dedupe key. */
@@ -294,11 +306,7 @@ export class EventStore {
         valid.push(evt);
       }
       if (valid.length === 0) continue;
-      this.buckets.set(bucketKey, valid);
-      this.total += valid.length;
-      for (const evt of valid) {
-        this.reindexEvent(evt);
-      }
+      this.installBucket(bucketKey, valid);
     }
   }
 
@@ -414,11 +422,7 @@ export class EventStore {
     this.byTokenId.clear();
     this.total = 0;
     for (const [bucketKey, kept] of remaining) {
-      this.buckets.set(bucketKey, kept);
-      this.total += kept.length;
-      for (const evt of kept) {
-        this.reindexEvent(evt);
-      }
+      this.installBucket(bucketKey, kept);
       this.dirty.add(bucketKey);
     }
     this.persistDebounced();
@@ -433,9 +437,8 @@ export class EventStore {
 
   private findByDedupeKey(key: string): StoredEvent | undefined {
     if (!this.seenKeys.has(key)) return undefined;
-    for (const bucket of this.buckets.values()) {
-      const found = bucket.find((e) => dedupeKey(e) === key);
-      if (found) return found;
+    for (const evt of this.allEvents()) {
+      if (dedupeKey(evt) === key) return evt;
     }
     return undefined;
   }
@@ -564,10 +567,15 @@ export function acquireEventStoreLock(
   const lockPath = joinPath(dataDir, ".data", "event-store.lock");
   mkdirSync(joinPath(dataDir, ".data"), { recursive: true });
 
-  try {
+  // Lock file records holder pid + acquisition time; pid is what stealStaleLock liveness-checks.
+  const writeLockFile = () => {
     const fd = openSync(lockPath, "wx");
     writeFileSync(fd, `${process.pid}\n${new Date().toISOString()}\n`);
     closeSync(fd);
+  };
+
+  try {
+    writeLockFile();
   } catch (err) {
     const code = (err as NodeJS.ErrnoException).code;
     if (code === "EEXIST" && stealStaleLock(lockPath)) {
@@ -576,9 +584,7 @@ export function acquireEventStoreLock(
         lockPath,
       });
       unlinkSync(lockPath);
-      const fd = openSync(lockPath, "wx");
-      writeFileSync(fd, `${process.pid}\n${new Date().toISOString()}\n`);
-      closeSync(fd);
+      writeLockFile();
     } else if (code === "EEXIST") {
       let holder = "unknown";
       try {
@@ -607,12 +613,9 @@ export function acquireEventStoreLock(
   };
 
   process.once("exit", release);
-  process.once("SIGINT", () => {
-    release();
-  });
-  process.once("SIGTERM", () => {
-    release();
-  });
+  for (const signal of ["SIGINT", "SIGTERM"] as const) {
+    process.once(signal, release);
+  }
 
   return release;
 }

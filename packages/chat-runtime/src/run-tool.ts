@@ -1,5 +1,5 @@
 import { getChatToolSpec } from "@axiom/config/chat-tools";
-import type { ToolRuntime } from "./transport.js";
+import { toolFail, type ToolRuntime } from "./transport.js";
 import type { ToolResult } from "./types.js";
 import { runReadTool } from "./executors/read.js";
 import { runEncodeTool } from "./executors/encode.js";
@@ -14,12 +14,7 @@ export async function runTool(
   ctx: ToolRuntime,
 ): Promise<ToolResult> {
   const spec = getChatToolSpec(name);
-  if (!spec) {
-    return {
-      ok: false,
-      content: JSON.stringify({ error: `Unknown tool: ${name}` }),
-    };
-  }
+  if (!spec) return toolFail(`Unknown tool: ${name}`);
   switch (spec.class) {
     case "read":
       return runReadTool(name, args, ctx);
@@ -34,9 +29,6 @@ export async function runTool(
     case "skill":
       return runSkillTool(name, args, ctx);
     default:
-      return {
-        ok: false,
-        content: JSON.stringify({ error: `Unhandled class: ${spec.class}` }),
-      };
+      return toolFail(`Unhandled class: ${spec.class}`);
   }
 }

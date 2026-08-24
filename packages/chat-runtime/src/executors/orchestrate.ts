@@ -1,5 +1,5 @@
 import { parseAbi } from "viem";
-import { fetchJson, resolveTokenId, toolFail } from "../transport.js";
+import { postJson, resolveTokenId, toolFail } from "../transport.js";
 import type { ToolRuntime } from "../transport.js";
 import { STRATEGY_OF_CURRENT, STRATEGY_OF_LEGACY } from "@axiom/config/abis";
 import { ZERO_DATA_ROOT } from "@axiom/config/constants";
@@ -96,14 +96,10 @@ export async function runOrchestrateTool(
     };
   }
 
-  const { ok: httpOk, data } = await fetchJson<Record<string, unknown>>(
+  const { ok: httpOk, data } = await postJson<Record<string, unknown>>(
     ctx.http,
     "/v1/orchestrator/tick",
-    {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(buildTickBody(args, ctx)),
-    },
+    buildTickBody(args, ctx),
   );
 
   if (!httpOk) return toolFail("tick http fail");

@@ -53,32 +53,40 @@ export function Landing({
             className="landing-mobile-menu"
             aria-label={copy.a11y.explorePublicPaths}
           >
-            <button
-              onClick={() => {
-                setMenuOpen(false);
-                onGuide();
-              }}
-            >
-              <CircleHelp size={16} />
-              <span>
-                <strong>{copy.nav.howItWorks}</strong>
-                <small>{copy.landing.menuGuideHint}</small>
-              </span>
-            </button>
-            <button onClick={() => navigate("/staking")}>
-              <Database size={16} />
-              <span>
-                <strong>{copy.landing.stakeTitle}</strong>
-                <small>{copy.landing.stakingBoundary}</small>
-              </span>
-            </button>
-            <button onClick={() => navigate("/developers")}>
-              <Globe2 size={16} />
-              <span>
-                <strong>{copy.landing.menuDevelopers}</strong>
-                <small>{copy.landing.menuDevelopersHint}</small>
-              </span>
-            </button>
+            {/* Mobile menu entries share one icon + title/hint shape. */}
+            {(
+              [
+                {
+                  Icon: CircleHelp,
+                  title: copy.nav.howItWorks,
+                  hint: copy.landing.menuGuideHint,
+                  onClick: () => {
+                    setMenuOpen(false);
+                    onGuide();
+                  },
+                },
+                {
+                  Icon: Database,
+                  title: copy.landing.stakeTitle,
+                  hint: copy.landing.stakingBoundary,
+                  onClick: () => navigate("/staking"),
+                },
+                {
+                  Icon: Globe2,
+                  title: copy.landing.menuDevelopers,
+                  hint: copy.landing.menuDevelopersHint,
+                  onClick: () => navigate("/developers"),
+                },
+              ] as const
+            ).map(({ Icon, title, hint, onClick }) => (
+              <button key={title} onClick={onClick}>
+                <Icon size={16} />
+                <span>
+                  <strong>{title}</strong>
+                  <small>{hint}</small>
+                </span>
+              </button>
+            ))}
             <Button
               onClick={() => {
                 setMenuOpen(false);

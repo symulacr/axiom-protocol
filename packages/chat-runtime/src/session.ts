@@ -245,10 +245,3 @@ export function evaluateContinue(
     signal: { type: "continue", reason: "tool_loop_budget_exceeded" },
   };
 }
-
-export function shouldAutoContinue(
-  signal: ContinueSignal,
-  criticalRequest: boolean,
-): boolean {
-  return signal !== null && !criticalRequest;
-}

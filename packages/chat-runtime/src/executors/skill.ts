@@ -49,12 +49,9 @@ export async function runSkillTool(
     const guidance = needsWallet
       ? "Connect the wallet (or provide an address) before calling this tool."
       : `Ask the user to provide it (use the Ask User tool) before calling ${name}.`;
-    return {
-      ok: false,
-      content: JSON.stringify({
-        error: `Missing required parameter(s): ${missingParams.join(", ")}. ${guidance}`,
-      }),
-    };
+    return toolFail(
+      `Missing required parameter(s): ${missingParams.join(", ")}. ${guidance}`,
+    );
   }
 
   let endpoint: string;

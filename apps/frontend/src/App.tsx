@@ -21,6 +21,7 @@ import {
   useCallback,
   useEffect,
   useState,
+  type ComponentType,
   type ErrorInfo,
   type ReactElement,
   type ReactNode,
@@ -61,42 +62,49 @@ import { getCopy, type Locale } from "./lib/copy.js";
 import type { FlowKind } from "./lib/models.js";
 import { APP_CHAIN_ID } from "./config/wagmi.js";
 
+/** Every page module exposes one named component; this collapses the repeated
+ * lazy(...then pick default) boilerplate. The module member is known to be a
+ * component; the any-cast only bridges the generic pick to React.lazy. */
+function lazyNamed<
+  M extends Record<string, unknown>,
+  K extends string & keyof M,
+>(load: () => Promise<M>, key: K) {
+  return lazy(() =>
+    load().then((m) => ({ default: m[key] as ComponentType<any> })),
+  );
+}
+
 const ChatPage = lazy(() => import("./pages/ChatPage.js"));
-const Landing = lazy(() =>
-  import("./pages/LandingPage.js").then((m) => ({ default: m.Landing })),
+const Landing = lazyNamed(() => import("./pages/LandingPage.js"), "Landing");
+const DashboardPage = lazyNamed(
+  () => import("./pages/DashboardPage.js"),
+  "DashboardPage",
 );
-const DashboardPage = lazy(() =>
-  import("./pages/DashboardPage.js").then((m) => ({
-    default: m.DashboardPage,
-  })),
+const AgentPage = lazyNamed(() => import("./pages/AgentPage.js"), "AgentPage");
+const TransactionsPage = lazyNamed(
+  () => import("./pages/TransactionsPage.js"),
+  "TransactionsPage",
 );
-const AgentPage = lazy(() =>
-  import("./pages/AgentPage.js").then((m) => ({ default: m.AgentPage })),
+const StoragePage = lazyNamed(
+  () => import("./pages/StoragePage.js"),
+  "StoragePage",
 );
-const TransactionsPage = lazy(() =>
-  import("./pages/TransactionsPage.js").then((m) => ({
-    default: m.TransactionsPage,
-  })),
+const SettingsPage = lazyNamed(
+  () => import("./pages/SettingsPage.js"),
+  "SettingsPage",
 );
-const StoragePage = lazy(() =>
-  import("./pages/StoragePage.js").then((m) => ({ default: m.StoragePage })),
+const StakingPage = lazyNamed(
+  () => import("./pages/StakingPage.js"),
+  "StakingPage",
 );
-const SettingsPage = lazy(() =>
-  import("./pages/SettingsPage.js").then((m) => ({ default: m.SettingsPage })),
+const FlowPage = lazyNamed(() => import("./pages/FlowPage.js"), "FlowPage");
+const CoSignPage = lazyNamed(
+  () => import("./pages/CoSignPage.js"),
+  "CoSignPage",
 );
-const StakingPage = lazy(() =>
-  import("./pages/StakingPage.js").then((m) => ({ default: m.StakingPage })),
-);
-const FlowPage = lazy(() =>
-  import("./pages/FlowPage.js").then((m) => ({ default: m.FlowPage })),
-);
-const CoSignPage = lazy(() =>
-  import("./pages/CoSignPage.js").then((m) => ({ default: m.CoSignPage })),
-);
-const PublicSeoPage = lazy(() =>
-  import("./pages/PublicSeoPage.js").then((m) => ({
-    default: m.PublicSeoPage,
-  })),
+const PublicSeoPage = lazyNamed(
+  () => import("./pages/PublicSeoPage.js"),
+  "PublicSeoPage",
 );
 const Recovery404 = lazy(() => import("./pages/NotFound.js"));
 
@@ -298,6 +306,9 @@ export function App(): ReactElement {
     connector,
     status: accountStatus,
   } = useAccount();
+  // One wrapper for the five session-bridge/lifecycle dispatch sites.
+  const setSession = (session: Partial<typeof state.session>) =>
+    dispatch({ type: "session", session });
 
   // v1 compat redirects: old IA entry points fold into the v2 surfaces.
   useEffect(() => {
@@ -324,14 +335,11 @@ export function App(): ReactElement {
     if (!isConnected || !address) {
       if (state.session.status !== "disconnected") {
         // Disconnect clears all identity — a stored profile must never outlive its session.
-        dispatch({
-          type: "session",
-          session: {
-            status: "disconnected",
-            address: "",
-            profile: "",
-            signedAt: null,
-          },
+        setSession({
+          status: "disconnected",
+          address: "",
+          profile: "",
+          signedAt: null,
         });
       }
       return;
@@ -343,16 +351,13 @@ export function App(): ReactElement {
       ["authenticated", "profile"].includes(state.session.status)
     ) {
       // A different wallet took over: stored identity is void — the gate re-authenticates from scratch.
-      dispatch({
-        type: "session",
-        session: {
-          status: "disconnected",
-          address,
-          wallet: connector?.name ?? "",
-          chain: chainId ?? 0,
-          signedAt: null,
-          profile: "",
-        },
+      setSession({
+        status: "disconnected",
+        address,
+        wallet: connector?.name ?? "",
+        chain: chainId ?? 0,
+        signedAt: null,
+        profile: "",
       });
       return;
     }
@@ -362,10 +367,7 @@ export function App(): ReactElement {
       chainId === APP_CHAIN_ID
     ) {
       // TTL expired while the wallet stayed connected: renew silently — the connection itself is the proof.
-      dispatch({
-        type: "session",
-        session: { signedAt: new Date().toISOString() },
-      });
+      setSession({ signedAt: new Date().toISOString() });
       return;
     }
     if (
@@ -373,14 +375,11 @@ export function App(): ReactElement {
       chainId !== APP_CHAIN_ID &&
       state.session.status !== "wrong-network"
     ) {
-      dispatch({
-        type: "session",
-        session: {
-          status: "wrong-network",
-          address,
-          wallet: connector?.name ?? "",
-          chain: chainId,
-        },
+      setSession({
+        status: "wrong-network",
+        address,
+        wallet: connector?.name ?? "",
+        chain: chainId,
       });
       return;
     }
@@ -388,13 +387,10 @@ export function App(): ReactElement {
       state.session.address !== address ||
       (connector?.name && state.session.wallet !== connector.name)
     ) {
-      dispatch({
-        type: "session",
-        session: {
-          address,
-          wallet: connector?.name ?? state.session.wallet,
-          chain: chainId ?? APP_CHAIN_ID,
-        },
+      setSession({
+        address,
+        wallet: connector?.name ?? state.session.wallet,
+        chain: chainId ?? APP_CHAIN_ID,
       });
     }
     // bridge reads the whole session snapshot
@@ -466,14 +462,11 @@ export function App(): ReactElement {
     go(destination);
   };
   const lockConsole = () => {
-    dispatch({
-      type: "session",
-      session: {
-        status: "disconnected",
-        address: "",
-        profile: "",
-        signedAt: null,
-      },
+    setSession({
+      status: "disconnected",
+      address: "",
+      profile: "",
+      signedAt: null,
     });
     go("/");
   };

@@ -211,6 +211,13 @@ export function useTransfer(): UseTransferResult {
   intentRef.current = intent;
   const attemptRef = useRef(0);
 
+  /** Normalize + record a failure — shared by every prepare/coSign/apply catch path. */
+  const failWith = useCallback((err: unknown): Error => {
+    const wrapped = err instanceof Error ? err : new Error(String(err));
+    setPrepareError(wrapped);
+    return wrapped;
+  }, []);
+
   const runChallenge = useCallback(
     async ({
       input,
@@ -475,14 +482,12 @@ export function useTransfer(): UseTransferResult {
         return { status: "ready", proof };
       } catch (err) {
         setTransferPhase("idle");
-        const wrapped = err instanceof Error ? err : new Error(String(err));
-        setPrepareError(wrapped);
-        throw wrapped;
+        throw failWith(err);
       } finally {
         setIsPreparing(false);
       }
     },
-    [from, queryClient, runChallenge, signAndFinalize],
+    [from, queryClient, runChallenge, signAndFinalize, failWith],
   );
 
   /** receiver co-sign: signs the paused challenge's AccessProof AS the
@@ -518,23 +523,22 @@ export function useTransfer(): UseTransferResult {
       return proof;
     } catch (err) {
       setTransferPhase("idle");
-      if (isReceiverAccountUnavailable(err)) {
-        setPrepareError(err);
-        throw err;
-      }
+      if (isReceiverAccountUnavailable(err)) throw failWith(err);
       if (isAccountNotFound(err)) {
         // The wallet lost the account between probe and prompt — same honest blocker.
-        const blocked = new ReceiverAccountUnavailableError(receiver);
-        setPrepareError(blocked);
-        throw blocked;
+        throw failWith(new ReceiverAccountUnavailableError(receiver));
       }
-      const wrapped = err instanceof Error ? err : new Error(String(err));
-      setPrepareError(wrapped);
-      throw wrapped;
+      throw failWith(err);
     } finally {
       setIsPreparing(false);
     }
-  }, [pendingCoSign, connector, requestReceiverExposure, signAndFinalize]);
+  }, [
+    pendingCoSign,
+    connector,
+    requestReceiverExposure,
+    signAndFinalize,
+    failWith,
+  ]);
 
   /** cross-wallet handoff: URL the receiver opens on their own device —
    * the paused challenge's typed data, base64url-encoded on the canonical
@@ -605,18 +609,19 @@ export function useTransfer(): UseTransferResult {
         return proof;
       } catch (err) {
         setTransferPhase("idle");
-        if (isHandoffSignatureInvalid(err)) {
-          setPrepareError(err);
-          throw err;
-        }
-        const wrapped = err instanceof Error ? err : new Error(String(err));
-        setPrepareError(wrapped);
-        throw wrapped;
+        if (isHandoffSignatureInvalid(err)) throw failWith(err);
+        throw failWith(err);
       } finally {
         setIsPreparing(false);
       }
     },
-    [pendingCoSign, buildAccessProofMessage, domain, finalizePrepared],
+    [
+      pendingCoSign,
+      buildAccessProofMessage,
+      domain,
+      finalizePrepared,
+      failWith,
+    ],
   );
 
   const confirm = useCallback(

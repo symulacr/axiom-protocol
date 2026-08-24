@@ -168,15 +168,6 @@ export function persist<T>(key: string, value: T) {
   }
 }
 
-const draftValue = (kind: FlowKind) =>
-  kind === "payment"
-    ? ""
-    : kind === "transfer"
-      ? ""
-      : kind === "mint"
-        ? ""
-        : "";
-
 export const defaultOperationState: OperationState = {
   pendingIntent: null,
   operationDrafts: Object.fromEntries(
@@ -193,7 +184,7 @@ export const defaultOperationState: OperationState = {
       kind,
       {
         kind,
-        value: draftValue(kind),
+        value: "",
         extra: "",
         agent: "",
         intent: null,
@@ -240,6 +231,16 @@ export function createInitialConsoleState(
   };
 }
 
+/** Replace one flow draft, preserving the others — shared by every
+ * operationDrafts-writing reducer branch. */
+function patchDraft(
+  state: AppState,
+  kind: FlowKind,
+  next: OperationDraft,
+): AppState["operationDrafts"] {
+  return { ...state.operationDrafts, [kind]: next };
+}
+
 export function consoleReducer(
   state: AppState,
   action: ConsoleAction,
@@ -261,16 +262,13 @@ export function consoleReducer(
         MAX_PERSISTED_TRANSACTIONS,
       ),
       operationDrafts: advanceDraft
-        ? {
-            ...state.operationDrafts,
-            [flow]: {
-              ...state.operationDrafts[flow],
-              phase: "receipt",
-              error: null,
-              receiptId: action.tx.id,
-              updatedAt: Date.now(),
-            },
-          }
+        ? patchDraft(state, flow, {
+            ...state.operationDrafts[flow],
+            phase: "receipt",
+            error: null,
+            receiptId: action.tx.id,
+            updatedAt: Date.now(),
+          })
         : state.operationDrafts,
     };
   }
@@ -289,36 +287,30 @@ export function consoleReducer(
   if (action.type === "save-draft")
     return {
       ...state,
-      operationDrafts: {
-        ...state.operationDrafts,
-        [action.draft.kind]: { ...action.draft, updatedAt: Date.now() },
-      },
+      operationDrafts: patchDraft(state, action.draft.kind, {
+        ...action.draft,
+        updatedAt: Date.now(),
+      }),
     };
   if (action.type === "set-draft-phase")
     return {
       ...state,
-      operationDrafts: {
-        ...state.operationDrafts,
-        [action.flow]: {
-          ...state.operationDrafts[action.flow],
-          phase: action.phase,
-          error: action.error ?? null,
-          receiptId:
-            action.receiptId ?? state.operationDrafts[action.flow].receiptId,
-          updatedAt: Date.now(),
-        },
-      },
+      operationDrafts: patchDraft(state, action.flow, {
+        ...state.operationDrafts[action.flow],
+        phase: action.phase,
+        error: action.error ?? null,
+        receiptId:
+          action.receiptId ?? state.operationDrafts[action.flow].receiptId,
+        updatedAt: Date.now(),
+      }),
     };
   if (action.type === "clear-draft")
     return {
       ...state,
-      operationDrafts: {
-        ...state.operationDrafts,
-        [action.flow]: {
-          ...defaultOperationState.operationDrafts[action.flow],
-          updatedAt: Date.now(),
-        },
-      },
+      operationDrafts: patchDraft(state, action.flow, {
+        ...defaultOperationState.operationDrafts[action.flow],
+        updatedAt: Date.now(),
+      }),
     };
   if (action.type === "storage") return { ...state, storage: action.storage };
   if (action.type === "guide") return { ...state, guideOpen: !state.guideOpen };

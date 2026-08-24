@@ -28,16 +28,12 @@ export function trapTabFocus(
 }
 
 export function truncateHex(value: string, head = 10, tail = 6): string {
-  if (value.length <= head + tail + 2) {
-    return value;
-  }
+  if (value.length <= head + tail + 2) return value;
   return `${value.slice(0, head)}${ELLIPSIS}${value.slice(-tail)}`;
 }
 
 export function truncateAddress(value: string, head = 6, tail = 4): string {
-  if (!value.startsWith("0x") || value.length <= head + tail + 2) {
-    return value;
-  }
+  if (!value.startsWith("0x") || value.length <= head + tail + 2) return value;
   return `${value.slice(0, head)}${ELLIPSIS}${value.slice(-tail)}`;
 }
 
@@ -70,12 +66,11 @@ export function humanizeError(err: unknown): string {
   );
   const raw = (noiseAt > 0 ? full.slice(0, noiseAt) : full).trim();
   const lower = raw.toLowerCase();
+  // Known-message ladders all test "lower contains any of these heads".
+  const has = (...needles: string[]) =>
+    needles.some((needle) => lower.includes(needle));
 
-  if (
-    lower.includes("user rejected") ||
-    lower.includes("user denied") ||
-    lower.includes("rejected the request")
-  ) {
+  if (has("user rejected", "user denied", "rejected the request")) {
     return "Transaction cancelled — you rejected the request in your wallet.";
   }
 
@@ -86,8 +81,7 @@ export function humanizeError(err: unknown): string {
 
   // Backend signer check names a protocol rule — translate it into requirement + remedy (co-sign step).
   if (
-    lower.includes("signer does not match recipient") ||
-    lower.includes("does not match recipient address")
+    has("signer does not match recipient", "does not match recipient address")
   ) {
     return "The transfer acceptance must be signed by the recipient's own wallet. Go back and use the \u201cSign as receiver\u201d step with the recipient account selected.";
   }
@@ -99,8 +93,10 @@ export function humanizeError(err: unknown): string {
 
   // Non-signature or wrong-recoverer acceptance code — only remedy is a fresh receiver signature.
   if (
-    lower.includes("acceptance code is not a wallet signature") ||
-    lower.includes("does not recover to the receiver address")
+    has(
+      "acceptance code is not a wallet signature",
+      "does not recover to the receiver address",
+    )
   ) {
     return "This acceptance code was not signed by the receiver's wallet. Ask the receiver to sign the acceptance link again with the receiving account, then paste the new code.";
   }
@@ -113,10 +109,7 @@ export function humanizeError(err: unknown): string {
     return "0G Compute is out of credits. Fund the compute account for AXIOM_COMPUTE_API_KEY, then retry.";
   }
 
-  if (
-    lower.includes("insufficient funds") ||
-    lower.includes("exceeds the balance")
-  ) {
+  if (has("insufficient funds", "exceeds the balance")) {
     return "Insufficient balance to complete this transaction. Please add funds and try again.";
   }
 
@@ -124,10 +117,7 @@ export function humanizeError(err: unknown): string {
     return "Compute is unavailable right now. Check backend compute keys and balance.";
   }
 
-  if (
-    lower.includes("gas required exceeds") ||
-    lower.includes("cannot estimate gas")
-  ) {
+  if (has("gas required exceeds", "cannot estimate gas")) {
     return "Transaction would fail on-chain. Check your inputs and wallet balance.";
   }
 
@@ -143,24 +133,22 @@ export function humanizeError(err: unknown): string {
   }
 
   if (
-    lower.includes("failed to fetch") ||
-    lower.includes("networkerror") ||
-    lower.includes("econnrefused") ||
-    lower.includes("network request failed") ||
-    lower.includes("load failed")
+    has(
+      "failed to fetch",
+      "networkerror",
+      "econnrefused",
+      "network request failed",
+      "load failed",
+    )
   ) {
     return "Network error — check your internet connection and try again.";
   }
 
-  if (
-    lower.includes("timeout") ||
-    lower.includes("timed out") ||
-    lower.includes("aborterror")
-  ) {
+  if (has("timeout", "timed out", "aborterror")) {
     return "Request timed out. The network may be congested — please try again.";
   }
 
-  if (lower.includes("nonce") && lower.includes("too low")) {
+  if (has("nonce") && lower.includes("too low")) {
     return "Transaction nonce conflict. Please wait for pending transactions to confirm.";
   }
 
@@ -199,19 +187,12 @@ export function validateNumericInput(
   }
 
   const num = Number(trimmed);
-  if (Number.isNaN(num)) {
-    return `${label} must be a valid number.`;
-  }
-  if (!Number.isFinite(num)) {
-    return `${label} must be a finite number.`;
-  }
-  if (num < min) {
-    return `${label} must be at least ${min}.`;
-  }
+  if (Number.isNaN(num)) return `${label} must be a valid number.`;
+  if (!Number.isFinite(num)) return `${label} must be a finite number.`;
+  if (num < min) return `${label} must be at least ${min}.`;
   if (max !== undefined && num > max) {
     return `${label} must be at most ${max}.`;
   }
-
   if (!allowDecimals && trimmed.includes(".")) {
     return `${label} must be a whole number.`;
   }

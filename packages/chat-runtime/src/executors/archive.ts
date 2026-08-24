@@ -1,4 +1,4 @@
-import { fetchJson, toolFail } from "../transport.js";
+import { postJson, toolFail } from "../transport.js";
 import type { ToolRuntime } from "../transport.js";
 import type { ToolResult } from "../types.js";
 
@@ -8,14 +8,10 @@ async function archiveQuery(
   ctx: ToolRuntime,
   body: Record<string, unknown>,
 ): Promise<ToolResult> {
-  const { ok: httpOk, data } = await fetchJson<Record<string, unknown>>(
+  const { ok: httpOk, data } = await postJson<Record<string, unknown>>(
     ctx.http,
     "/v1/archive/query",
-    {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(body),
-    },
+    body,
   );
   if (!httpOk) return toolFail("archive query fail");
   return { ok: true as const, content: JSON.stringify(data) };
@@ -46,10 +42,7 @@ export async function runArchiveTool(
     case "archive_confirm_deletion":
       return archiveConfirm(args, ctx);
     default:
-      return {
-        ok: false as const,
-        content: JSON.stringify({ error: `Unknown archive tool: ${name}` }),
-      };
+      return toolFail(`Unknown archive tool: ${name}`);
   }
 }
 

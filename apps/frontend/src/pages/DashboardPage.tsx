@@ -112,6 +112,24 @@ function Stat({
   );
 }
 
+/** Shared panel placeholder: title + optional hint line (+ trailing control). */
+function EmptyState({
+  title,
+  hint,
+  children,
+}: {
+  title: string;
+  hint?: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="empty-state">
+      <strong>{title}</strong>
+      {hint !== undefined && <span>{hint}</span>}
+      {children}
+    </div>
+  );
+}
 export function DashboardPage({
   go,
   state,
@@ -286,10 +304,10 @@ export function DashboardPage({
           </PanelHead>
           <div className="activity-list">
             {activityRows.length === 0 && (
-              <div className="empty-state">
-                <strong>{copy.dashboard.noEvidence}</strong>
-                <span>{copy.dashboard.noEvidenceHint}</span>
-              </div>
+              <EmptyState
+                title={copy.dashboard.noEvidence}
+                hint={copy.dashboard.noEvidenceHint}
+              />
             )}
             {activityRows.map((row) => (
               <button
@@ -315,22 +333,23 @@ export function DashboardPage({
           <PanelHead title={copy.dashboard.operatingFleet} />
           <div className="agent-list">
             {agentsError && (
-              <div className="empty-state">
-                <strong>{copy.dashboard.registerUnavailable}</strong>
-                <span>{agentsError.message}</span>
-              </div>
+              <EmptyState
+                title={copy.dashboard.registerUnavailable}
+                hint={agentsError.message}
+              />
             )}
             {!agentsError && agents.length === 0 && (
-              <div className="empty-state">
-                <strong>{copy.dashboard.noAgents}</strong>
-                <span>{copy.dashboard.noAgentsHint}</span>
+              <EmptyState
+                title={copy.dashboard.noAgents}
+                hint={copy.dashboard.noAgentsHint}
+              >
                 <Button
                   onClick={() => go(routePath("mint"))}
                   icon={<Bot size={15} />}
                 >
                   {copy.dashboard.mintAgent}
                 </Button>
-              </div>
+              </EmptyState>
             )}
             {agents.map((agent) => {
               const vault = vaultMap.get(agent.tokenId.toString());

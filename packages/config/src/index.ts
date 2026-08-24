@@ -1,11 +1,9 @@
 // env helpers stay in the Node-only @axiom/config/env subpath (not re-exported here) so browser bundles skip node:fs/node:path
 export {
-  OG_NETWORKS,
   pickOGNetwork,
   resolveRpcUrl,
   resolveStorageRpc,
   ARISTOTLE_CHAIN_ID,
-  MAINNET_DEFAULT_CHAT_MODEL,
   defaultChatModelForChain,
   resolveComputeRouterUrl,
 } from "./networks.js";
@@ -34,13 +32,11 @@ export {
   CHAT_TOOL_CATALOG,
   CHAT_TOOL_CLASS_LABELS,
   DEFAULT_CHAT_MODEL,
-  FALLBACK_CONTEXT_WINDOWS,
   chatToolLabels,
   classOfTool,
   getChatToolSpec,
   resolveChatModel,
   resolveContextWindow,
-  toolNamesByClass,
   toolsByClass,
   type ChatToolClass,
   type ChatToolName,

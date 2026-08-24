@@ -5,6 +5,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { requireServerAuth } from "@axiom/config/middleware/auth";
 import { createLogger } from "../utils/logger.js";
+import { extractErrorMessage } from "../utils/response.js";
 import type { ServerConfig } from "../config-types.js";
 import pkg from "../../package.json" with { type: "json" };
 
@@ -154,7 +155,7 @@ async function callReadEndpoint(
       content: [
         {
           type: "text",
-          text: `GET ${path} failed: ${err instanceof Error ? err.message : String(err)}`,
+          text: `GET ${path} failed: ${extractErrorMessage(err)}`,
         },
       ],
       isError: true,
@@ -196,6 +197,12 @@ function sendJsonRpcError(
   });
 }
 
+function sessionIdOf(req: Request): string | undefined {
+  return typeof req.headers["mcp-session-id"] === "string"
+    ? (req.headers["mcp-session-id"] as string)
+    : undefined;
+}
+
 /** Mount at /mcp, server API key only: /mcp is deliberately absent from CLIENT_ALLOWED_ROUTES, so client keys are denied. */
 export function createMcpRouter(
   config: ServerConfig,
@@ -206,10 +213,7 @@ export function createMcpRouter(
   router.use(requireServerAuth);
 
   router.post("/", async (req: Request, res: Response) => {
-    const sessionId =
-      typeof req.headers["mcp-session-id"] === "string"
-        ? (req.headers["mcp-session-id"] as string)
-        : undefined;
+    const sessionId = sessionIdOf(req);
     try {
       let transport: StreamableHTTPServerTransport | undefined;
       if (sessionId) {
@@ -251,7 +255,7 @@ export function createMcpRouter(
       await transport.handleRequest(req, res, req.body);
     } catch (err) {
       log.error("MCP POST handler failed", {
-        error: err instanceof Error ? err.message : String(err),
+        error: extractErrorMessage(err),
       });
       sendJsonRpcError(res, 500, "Internal server error");
     }
@@ -262,10 +266,7 @@ export function createMcpRouter(
     res: Response,
     method: "GET" | "DELETE",
   ): Promise<void> {
-    const sessionId =
-      typeof req.headers["mcp-session-id"] === "string"
-        ? (req.headers["mcp-session-id"] as string)
-        : undefined;
+    const sessionId = sessionIdOf(req);
     if (!sessionId || !transports.has(sessionId)) {
       res.status(400).send("Invalid or missing session ID");
       return;
@@ -275,7 +276,7 @@ export function createMcpRouter(
       if (transport) await transport.handleRequest(req, res);
     } catch (err) {
       log.error(`MCP ${method} handler failed`, {
-        error: err instanceof Error ? err.message : String(err),
+        error: extractErrorMessage(err),
       });
       if (!res.headersSent) res.status(500).send("Internal server error");
     }

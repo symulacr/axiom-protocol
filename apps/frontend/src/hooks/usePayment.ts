@@ -57,6 +57,38 @@ export function usePayment(): UsePaymentResult {
   const { write } = useGenericWrite();
   const [isPayLoading, setPayLoading] = useState(false);
 
+  /**
+   * Payment boundary 1: exact-amount approval mirrors backend ensureAllowance —
+   * never MaxUint256; matches the contract's "approve for amount" requirement
+   * (infinity approvals only in the E2E harness). Returns the approve hash, or
+   * null when live allowance already covers amount. Caller guarantees
+   * address+publicClient exist.
+   */
+  const ensureAllowance = useCallback(
+    async (
+      config: PaymentConfig,
+      amountWei: bigint,
+    ): Promise<`0x${string}` | null> => {
+      const processor = getAxiomPaymentProcessorAddress(chainId);
+      const allowance = (await publicClient!.readContract({
+        address: config.paymentToken,
+        abi: erc20Abi,
+        functionName: "allowance",
+        args: [address!, processor],
+      })) as bigint;
+      if (allowance >= amountWei) return null;
+      const approveHash = await write({
+        to: config.paymentToken,
+        abi: erc20Abi,
+        functionName: "approve",
+        args: [processor, amountWei],
+      });
+      await waitForReceiptWithTimeout(publicClient!, approveHash);
+      return approveHash;
+    },
+    [chainId, write, address, publicClient],
+  );
+
   const getPaymentConfig = useCallback(
     (): Promise<PaymentConfig> =>
       fetchAction.execute((signal) =>
@@ -79,24 +111,7 @@ export function usePayment(): UsePaymentResult {
           amount.trim(),
           config.paymentTokenDecimals ?? 6,
         );
-        // Exact-amount approval mirrors backend ensureAllowance — never MaxUint256; matches the contract's "approve for amount" requirement (infinity approvals only in the E2E harness)
-        if (address && publicClient) {
-          const allowance = (await publicClient.readContract({
-            address: config.paymentToken,
-            abi: erc20Abi,
-            functionName: "allowance",
-            args: [address, processor],
-          })) as bigint;
-          if (allowance < amountWei) {
-            const approveHash = await write({
-              to: config.paymentToken,
-              abi: erc20Abi,
-              functionName: "approve",
-              args: [processor, amountWei],
-            });
-            await waitForReceiptWithTimeout(publicClient, approveHash);
-          }
-        }
+        if (address && publicClient) await ensureAllowance(config, amountWei);
         const txHash = await write({
           to: processor,
           abi: paymentProcessorAbi,
@@ -114,7 +129,7 @@ export function usePayment(): UsePaymentResult {
         setPayLoading(false);
       }
     },
-    [chainId, write, address, publicClient, getPaymentConfig],
+    [chainId, write, address, publicClient, getPaymentConfig, ensureAllowance],
   );
 
   /**
@@ -126,33 +141,18 @@ export function usePayment(): UsePaymentResult {
       setPayLoading(true);
       try {
         if (!address || !publicClient) throw new Error("wallet not connected");
-        const processor = getAxiomPaymentProcessorAddress(chainId);
         const config = await getPaymentConfig();
         // On-chain token decimals from the config — never a constant.
         const amountWei = parseUnits(
           amount.trim(),
           config.paymentTokenDecimals ?? 6,
         );
-        const allowance = (await publicClient.readContract({
-          address: config.paymentToken,
-          abi: erc20Abi,
-          functionName: "allowance",
-          args: [address, processor],
-        })) as bigint;
-        if (allowance >= amountWei) return { approveHash: null };
-        const approveHash = await write({
-          to: config.paymentToken,
-          abi: erc20Abi,
-          functionName: "approve",
-          args: [processor, amountWei],
-        });
-        await waitForReceiptWithTimeout(publicClient, approveHash);
-        return { approveHash };
+        return { approveHash: await ensureAllowance(config, amountWei) };
       } finally {
         setPayLoading(false);
       }
     },
-    [chainId, write, address, publicClient, getPaymentConfig],
+    [address, publicClient, getPaymentConfig, ensureAllowance],
   );
 
   const getEarnings = useCallback(

@@ -117,14 +117,11 @@ export function createApiKeyAuth(
     }
     const raw = req.headers["x-api-key"];
     const key = typeof raw === "string" ? raw : "";
-    if (timingSafeMatch(key, serverKeys)) {
-      (req as AuthRequest).authPrincipal = "server";
-      (req as AuthRequest).authKeyKind = "server";
-      return next();
-    }
-    if (timingSafeMatch(key, clientKeys)) {
-      (req as AuthRequest).authPrincipal = "client";
-      (req as AuthRequest).authKeyKind = "client";
+    for (const kind of ["server", "client"] as const) {
+      const keys = kind === "server" ? serverKeys : clientKeys;
+      if (!timingSafeMatch(key, keys)) continue;
+      (req as AuthRequest).authPrincipal = kind;
+      (req as AuthRequest).authKeyKind = kind;
       return next();
     }
     res.status(401).json({ error: "unauthorized" });

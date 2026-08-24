@@ -2,7 +2,7 @@ import { getChatToolSpec } from "@axiom/config/chat-tools";
 import { PAYMENT_PROCESSOR_ABI } from "@axiom/config/abis";
 import { ADDRESS_REGEX } from "@axiom/config/types/hex";
 import { deriveMintDataHash } from "@axiom/config/types/mint";
-import { fetchJson, resolveTokenId, toolFail } from "../transport.js";
+import { fetchJson, postJson, resolveTokenId, toolFail } from "../transport.js";
 import { encodeFunctionData, parseAbi, parseUnits } from "viem";
 import type { ToolRuntime } from "../transport.js";
 import type { ToolResult } from "../types.js";
@@ -84,10 +84,7 @@ export async function runEncodeTool(
         "transfer runs in the wallet-signing UI flow — the user must complete the transfer dialog (EIP-712 access proof + iTransferFrom).",
       );
     default:
-      return {
-        ok: false as const,
-        content: JSON.stringify({ error: `Unhandled encode tool: ${name}` }),
-      };
+      return toolFail(`Unhandled encode tool: ${name}`);
   }
 }
 
@@ -113,15 +110,11 @@ async function encodeMint(
     to,
   };
 
-  const { ok: httpOk, data } = await fetchJson<{
+  const { ok: httpOk, data } = await postJson<{
     to: string;
     data: string;
     value: string;
-  }>(ctx.http, "/v1/agents/mint/encode", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  }>(ctx.http, "/v1/agents/mint/encode", body);
 
   if (!httpOk || !data.to) return toolFail("mint encode fail");
 
@@ -186,16 +179,11 @@ async function encodeVaultOp(
     );
   }
 
-  const { ok: httpOk, data } = await fetchJson<{
+  const { ok: httpOk, data } = await postJson<{
     to: string;
     data: string;
     value: string;
-  }>(ctx.http, `/v1/agents/${tokenId}/${op}`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ amount }),
-  });
-
+  }>(ctx.http, `/v1/agents/${tokenId}/${op}`, { amount });
   if (!httpOk || !data.to) return toolFail(`${op} encode fail`);
 
   if (ctx.mode === "encode-only" || !ctx.wallet?.signAndSend) {
@@ -328,10 +316,9 @@ async function registerDataHashWithOracle(
 
   const url = `${oracleUrl.replace(/\/$/, "")}/v1/agents/mint`;
   // Fatal like the UI wizard: oracle-unseen hashes yield un-transferable agents ("Unknown dataHash").
-  const { ok } = await fetchJson<{ ok?: boolean }>(ctx.http, url, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ dataHash, to }),
+  const { ok } = await postJson<{ ok?: boolean }>(ctx.http, url, {
+    dataHash,
+    to,
   });
   if (!ok) {
     throw new Error(

@@ -290,24 +290,15 @@ export class ZeroGStorage extends SeenHashesMixin implements StorageAdapter {
     blob: Uint8Array,
     encryption?: Encryption,
   ): Promise<{ rootHash: Hex }> {
-    const result = await uploadToStorage(
-      this.indexer,
-      blob,
-      this.config.evmRpc,
-      this.config.signer,
-      {
-        encryption: encryption ?? { type: "aes256", key: this.storageKey },
-        ...(this.config.fee !== undefined ? { fee: this.config.fee } : {}),
-      },
-    );
-    return { rootHash: result.rootHash };
+    const { rootHash } = await this.uploadData(blob, {
+      encryption: encryption ?? { type: "aes256", key: this.storageKey },
+      ...(this.config.fee !== undefined ? { fee: this.config.fee } : {}),
+    });
+    return { rootHash };
   }
 
   async download(rootHash: Hex): Promise<Uint8Array> {
-    const result = await downloadFromStorage(this.indexer, rootHash, {
-      withProof: true,
-      symmetricKey: this.storageKey,
-    });
+    const result = await this.downloadWithOpts(rootHash, { withProof: true });
     return result.data;
   }
 

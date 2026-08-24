@@ -33,18 +33,14 @@ function formatLog(entry: LogEntry): string {
 
 export function createLogger(component: string) {
   // This file IS the logging abstraction — wrapping console.* is its purpose.
+  const write =
+    (level: LogLevel, out: (...args: unknown[]) => void) =>
+    (message: string, extra?: Record<string, unknown>) =>
+      out(formatLog({ level, message, component, ...extra }));
   return {
-    info: (message: string, extra?: Record<string, unknown>) =>
-      console.log(formatLog({ level: "info", message, component, ...extra })),
-    warn: (message: string, extra?: Record<string, unknown>) =>
-      console.warn(formatLog({ level: "warn", message, component, ...extra })),
-    error: (message: string, extra?: Record<string, unknown>) =>
-      console.error(
-        formatLog({ level: "error", message, component, ...extra }),
-      ),
-    debug: (message: string, extra?: Record<string, unknown>) =>
-      console.debug(
-        formatLog({ level: "debug", message, component, ...extra }),
-      ),
+    info: write("info", console.log),
+    warn: write("warn", console.warn),
+    error: write("error", console.error),
+    debug: write("debug", console.debug),
   };
 }

@@ -137,14 +137,6 @@ export function routePath(id: string): string {
   return ROUTES.find((entry) => entry.id === id)?.path ?? id;
 }
 
-const PUBLIC_ALIASES: Record<string, Route> = {
-  "/features/agents": "public-agents",
-  "/features/payments": "public-payments",
-  "/features/proofs": "public-proofs",
-  "/features/storage": "public-storage",
-  "/features/developers": "public-developers",
-};
-
 const FEATURE_ALIAS_TO_CANONICAL: Record<string, string> = {
   "/features/agents": "/agents",
   "/features/payments": "/payments",
@@ -152,6 +144,14 @@ const FEATURE_ALIAS_TO_CANONICAL: Record<string, string> = {
   "/features/storage": "/storage/0g",
   "/features/developers": "/developers",
 };
+
+/** Alias → Route id, derived from the canonical map so one table owns both. */
+const PUBLIC_ALIASES: Record<string, Route> = Object.fromEntries(
+  Object.entries(FEATURE_ALIAS_TO_CANONICAL).map(([alias, canonical]) => [
+    alias,
+    resolveRoute(canonical),
+  ]),
+);
 
 const PUBLIC_SEO_ROUTES: Record<string, PublicSeoSlug> = Object.fromEntries(
   ROUTES.filter(
@@ -211,13 +211,13 @@ export function getCommandRouteItems() {
   );
 }
 
+// Flow routes are the operation paths; derive them so the table stays the single source.
+const OPERATION_PATHS = new Set(
+  (["mint", "payment", "transfer", "tick", "deposit", "withdraw"] as const).map(
+    routePath,
+  ),
+);
+
 export function isOperationPath(path: string) {
-  return [
-    "/mint",
-    "/payment",
-    "/transfer",
-    "/tick",
-    "/deposit",
-    "/withdraw",
-  ].includes(path);
+  return OPERATION_PATHS.has(path);
 }

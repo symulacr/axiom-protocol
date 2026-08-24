@@ -1,31 +1,27 @@
 export function registerProcessHandlers(): void {
-  process.on("unhandledRejection", (reason: unknown) => {
-    const err =
-      reason instanceof Error
-        ? (reason.stack ?? reason.message)
-        : String(reason);
-    // console.error in fatal handlers is the sanctioned channel before exit(1).
+  // console.error in fatal handlers is the sanctioned channel before exit(1).
+  const fatal = (msg: string, error: unknown): void => {
     console.error(
       JSON.stringify({
         level: "error",
-        msg: "unhandledRejection",
-        error: err,
+        msg,
+        error,
         pid: process.pid,
       }),
     );
     process.exit(1);
+  };
+
+  process.on("unhandledRejection", (reason: unknown) => {
+    fatal(
+      "unhandledRejection",
+      reason instanceof Error
+        ? (reason.stack ?? reason.message)
+        : String(reason),
+    );
   });
 
   process.on("uncaughtException", (err: Error) => {
-    const errMsg = err.stack ?? err.message;
-    console.error(
-      JSON.stringify({
-        level: "error",
-        msg: "uncaughtException",
-        error: errMsg,
-        pid: process.pid,
-      }),
-    );
-    process.exit(1);
+    fatal("uncaughtException", err.stack ?? err.message);
   });
 }

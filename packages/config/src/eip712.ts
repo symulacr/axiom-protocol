@@ -176,22 +176,29 @@ function accessStructHash(input: AccessProofInput): Hex {
   ) as Hex;
 }
 
+function messageHash(structHash: Hex, domain?: Eip712Domain): Hex {
+  return keccak256(
+    concat(["0x1901", domainSeparator(domain), structHash]),
+  ) as Hex;
+}
+
 export function ownershipMessageHash(
   input: OwnershipProofInput,
   domain?: Eip712Domain,
 ): Hex {
-  return keccak256(
-    concat(["0x1901", domainSeparator(domain), ownershipStructHash(input)]),
-  ) as Hex;
+  return messageHash(ownershipStructHash(input), domain);
 }
 
 export function accessMessageHash(
   input: AccessProofInput,
   domain?: Eip712Domain,
 ): Hex {
-  return keccak256(
-    concat(["0x1901", domainSeparator(domain), accessStructHash(input)]),
-  ) as Hex;
+  return messageHash(accessStructHash(input), domain);
+}
+
+function recoverSigner(signature: Hex, msgHash: Hex): Hex {
+  const recovered = SigningKey.recoverPublicKey(getBytes(msgHash), signature);
+  return computeAddress(recovered) as Hex;
 }
 
 export function recoverAccessSigner(
@@ -199,11 +206,7 @@ export function recoverAccessSigner(
   input: AccessProofInput,
   domain?: Eip712Domain,
 ): Hex {
-  const recovered = SigningKey.recoverPublicKey(
-    getBytes(accessMessageHash(input, domain)),
-    signature,
-  );
-  return computeAddress(recovered) as Hex;
+  return recoverSigner(signature, accessMessageHash(input, domain));
 }
 
 export function recoverOwnershipSigner(
@@ -211,9 +214,5 @@ export function recoverOwnershipSigner(
   input: OwnershipProofInput,
   domain?: Eip712Domain,
 ): Hex {
-  const recovered = SigningKey.recoverPublicKey(
-    getBytes(ownershipMessageHash(input, domain)),
-    signature,
-  );
-  return computeAddress(recovered) as Hex;
+  return recoverSigner(signature, ownershipMessageHash(input, domain));
 }

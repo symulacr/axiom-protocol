@@ -25,7 +25,9 @@ export interface ChatToolSpec {
   context?: string;
 }
 
-function skill<N extends string>(
+/** Shared defaults: wallet/tokenId gates default off; class injected by the wrapper. */
+function makeTool<N extends string>(
+  cls: ChatToolClass,
   def: Omit<
     ChatToolSpec,
     "class" | "name" | "requiresWallet" | "requiresTokenId"
@@ -33,10 +35,19 @@ function skill<N extends string>(
 ): ChatToolSpec & { name: N } {
   return {
     ...def,
-    class: "skill",
+    class: cls,
     requiresWallet: def.requiresWallet ?? false,
     requiresTokenId: def.requiresTokenId ?? false,
   };
+}
+
+function skill<N extends string>(
+  def: Omit<
+    ChatToolSpec,
+    "class" | "name" | "requiresWallet" | "requiresTokenId"
+  > & { name: N; requiresWallet?: boolean; requiresTokenId?: boolean },
+): ChatToolSpec & { name: N } {
+  return makeTool("skill", def);
 }
 
 function tool<N extends string>(
@@ -46,11 +57,7 @@ function tool<N extends string>(
     requiresTokenId?: boolean;
   },
 ): ChatToolSpec & { name: N } {
-  return {
-    ...def,
-    requiresWallet: def.requiresWallet ?? false,
-    requiresTokenId: def.requiresTokenId ?? false,
-  };
+  return makeTool(def.class, def);
 }
 
 type ToolParam = { type: string; description?: string };
@@ -77,10 +84,56 @@ const networkEgress = {
   context: "network egress",
 } as const;
 
+const providerChainContext = {
+  context: "reads default provider chain",
+} as const;
+const osintContext = { context: "external OSINT APIs" } as const;
+
+const archiveEgress = {
+  ...networkEgress,
+  capabilities: ["archive", "wayback"] as string[],
+};
+
 const tokenTransferProps = {
   tokenId: tokenIdParam,
   to: { type: "string", description: "Recipient address" },
 } as const;
+
+/** execute_tick/simulate_tick share this shape: tokenId falls back to the session's last agent. */
+const optionalTokenIdParam = {
+  tokenId: {
+    type: "string",
+    description: "Agent token ID (optional; defaults to session last agent)",
+  },
+} as const;
+
+/** deposit/withdraw differ only in label/hint/amount example. */
+function vaultOpTool(
+  name: "deposit" | "withdraw",
+  label: string,
+  hint: string,
+  amountExample: string,
+): ChatToolSpec {
+  return tool({
+    name,
+    class: "encode",
+    label,
+    hint,
+    requiresWallet: true,
+    requiresTokenId: true,
+    friction: "medium",
+    parameters: params(
+      {
+        tokenId: { type: "string", description: "Agent token ID" },
+        amount: {
+          type: "string",
+          description: `Amount in 0G (e.g. ${amountExample})`,
+        },
+      },
+      ["tokenId", "amount"],
+    ),
+  });
+}
 
 const SKILL_TOOL_DEFS = [
   skill({
@@ -90,7 +143,7 @@ const SKILL_TOOL_DEFS = [
     friction: "low",
     parameters: params({ address: addressParam }, ["address"]),
     capabilities: ["evm", "wallet"],
-    context: "reads default provider chain",
+    ...providerChainContext,
   }),
   skill({
     name: "evm_multichain",
@@ -112,7 +165,7 @@ const SKILL_TOOL_DEFS = [
       ["hash"],
     ),
     capabilities: ["evm", "tx"],
-    context: "reads default provider chain",
+    ...providerChainContext,
   }),
   skill({
     name: "evm_token",
@@ -130,7 +183,7 @@ const SKILL_TOOL_DEFS = [
       ["address"],
     ),
     capabilities: ["evm", "token"],
-    context: "reads default provider chain",
+    ...providerChainContext,
   }),
   skill({
     name: "evm_gas",
@@ -147,7 +200,7 @@ const SKILL_TOOL_DEFS = [
       [],
     ),
     capabilities: ["evm", "gas"],
-    context: "reads default provider chain",
+    ...providerChainContext,
   }),
   skill({
     name: "evm_whale",
@@ -164,7 +217,7 @@ const SKILL_TOOL_DEFS = [
       ["token", "minValue", "fromBlock", "toBlock"],
     ),
     capabilities: ["evm", "whale"],
-    context: "reads default provider chain",
+    ...providerChainContext,
   }),
   skill({
     name: "evm_contract",
@@ -176,7 +229,7 @@ const SKILL_TOOL_DEFS = [
       ["address"],
     ),
     capabilities: ["evm", "contract"],
-    context: "reads default provider chain",
+    ...providerChainContext,
   }),
   skill({
     name: "evm_allowance",
@@ -192,7 +245,7 @@ const SKILL_TOOL_DEFS = [
       ["address", "token"],
     ),
     capabilities: ["evm", "allowance"],
-    context: "reads default provider chain",
+    ...providerChainContext,
   }),
   skill({
     name: "unbroker_simulate",
@@ -307,7 +360,7 @@ const SKILL_TOOL_DEFS = [
       ["cik"],
     ),
     capabilities: ["osint", "edgar"],
-    context: "external OSINT APIs",
+    ...osintContext,
   }),
   skill({
     name: "osint_usaspending",
@@ -325,7 +378,7 @@ const SKILL_TOOL_DEFS = [
       ["filters"],
     ),
     capabilities: ["osint", "usaspending"],
-    context: "external OSINT APIs",
+    ...osintContext,
   }),
   skill({
     name: "osint_ofac_sdn",
@@ -337,7 +390,7 @@ const SKILL_TOOL_DEFS = [
       ["name"],
     ),
     capabilities: ["osint", "ofac"],
-    context: "external OSINT APIs",
+    ...osintContext,
   }),
   skill({
     name: "osint_company_search",
@@ -352,7 +405,7 @@ const SKILL_TOOL_DEFS = [
       ["query"],
     ),
     capabilities: ["osint", "gleif"],
-    context: "external OSINT APIs",
+    ...osintContext,
   }),
   skill({
     name: "osint_entity_resolve",
@@ -366,7 +419,7 @@ const SKILL_TOOL_DEFS = [
       ["entities"],
     ),
     capabilities: ["osint", "entity-resolve"],
-    context: "external OSINT APIs",
+    ...osintContext,
   }),
   skill({
     name: "osint_courtlistener",
@@ -385,7 +438,7 @@ const SKILL_TOOL_DEFS = [
       ["query"],
     ),
     capabilities: ["osint", "courtlistener"],
-    context: "external OSINT APIs",
+    ...osintContext,
   }),
 ] as const;
 
@@ -446,13 +499,7 @@ export const CHAT_TOOL_CATALOG = [
     hint: "Execute a strategy tick for an agent (simulation via orchestrator). tokenId optional; defaults to the session's last agent",
     requiresTokenId: false,
     friction: "high",
-    parameters: params({
-      tokenId: {
-        type: "string",
-        description:
-          "Agent token ID (optional; defaults to session last agent)",
-      },
-    }),
+    parameters: params({ ...optionalTokenIdParam }),
   }),
   tool({
     name: "simulate_tick",
@@ -461,13 +508,7 @@ export const CHAT_TOOL_CATALOG = [
     hint: "Dry-run tick preflight (vault balance + strategy) without live compute. tokenId optional; defaults to the session's last agent",
     requiresTokenId: false,
     friction: "low",
-    parameters: params({
-      tokenId: {
-        type: "string",
-        description:
-          "Agent token ID (optional; defaults to session last agent)",
-      },
-    }),
+    parameters: params({ ...optionalTokenIdParam }),
   }),
   tool({
     name: "mint_agent",
@@ -490,38 +531,18 @@ export const CHAT_TOOL_CATALOG = [
       ["dataDescription"],
     ),
   }),
-  tool({
-    name: "deposit",
-    class: "encode",
-    label: "Deposit",
-    hint: "Deposit 0G into an agent vault. Opens MetaMask.",
-    requiresWallet: true,
-    requiresTokenId: true,
-    friction: "medium",
-    parameters: params(
-      {
-        tokenId: { type: "string", description: "Agent token ID" },
-        amount: { type: "string", description: "Amount in 0G (e.g. 1.5)" },
-      },
-      ["tokenId", "amount"],
-    ),
-  }),
-  tool({
-    name: "withdraw",
-    class: "encode",
-    label: "Withdraw",
-    hint: "Withdraw 0G from an agent vault. Opens MetaMask.",
-    requiresWallet: true,
-    requiresTokenId: true,
-    friction: "medium",
-    parameters: params(
-      {
-        tokenId: { type: "string", description: "Agent token ID" },
-        amount: { type: "string", description: "Amount in 0G (e.g. 0.5)" },
-      },
-      ["tokenId", "amount"],
-    ),
-  }),
+  vaultOpTool(
+    "deposit",
+    "Deposit",
+    "Deposit 0G into an agent vault. Opens MetaMask.",
+    "1.5",
+  ),
+  vaultOpTool(
+    "withdraw",
+    "Withdraw",
+    "Withdraw 0G from an agent vault. Opens MetaMask.",
+    "0.5",
+  ),
   tool({
     name: "pay_for_agent",
     class: "encode",
@@ -570,8 +591,7 @@ export const CHAT_TOOL_CATALOG = [
     class: "archive",
     label: "Archive Lookup",
     hint: "Look up all Wayback Machine (Internet Archive) snapshots for a URL. Returns list of timestamps where the URL was archived. Use to find snapshotted posts of an account, confirm if a specific URL was ever archived, or get the snapshot URL to view in a browser. NOTE: Twitter/X is JS-rendered; snapshots only contain the HTML shell, not the actual bio or tweet text.",
-    ...networkEgress,
-    capabilities: ["archive", "wayback"],
+    ...archiveEgress,
     friction: "medium",
     parameters: params(
       {
@@ -593,8 +613,7 @@ export const CHAT_TOOL_CATALOG = [
     class: "archive",
     label: "Archived Tweets",
     hint: "List all archived tweets for an X/Twitter account handle. Returns all tweet URLs that were captured by the Wayback Machine, with timestamps. Use to research an account's snapshotted history.",
-    ...networkEgress,
-    capabilities: ["archive", "wayback"],
+    ...archiveEgress,
     friction: "high",
     parameters: params(
       {
@@ -615,8 +634,7 @@ export const CHAT_TOOL_CATALOG = [
     class: "archive",
     label: "Confirm Archived",
     hint: "Check if a specific tweet URL was ever archived by the Wayback Machine. Returns { archived, snapshot, snapshotUrl } — useful as evidence that a post existed at a specific time even if it is now deleted. Does NOT extract tweet content.",
-    ...networkEgress,
-    capabilities: ["archive", "wayback"],
+    ...archiveEgress,
     friction: "medium",
     parameters: params(
       {
@@ -685,7 +703,7 @@ export function toolsByClass(cls: ChatToolClass): readonly ChatToolSpec[] {
   return CHAT_TOOL_CATALOG.filter((t) => t.class === cls);
 }
 
-export function toolNamesByClass(cls: ChatToolClass): string[] {
+function toolNamesByClass(cls: ChatToolClass): string[] {
   return toolsByClass(cls).map((t) => t.name);
 }
 
@@ -707,7 +725,7 @@ export function resolveChatModel(override?: string, chainId?: number): string {
   return override?.trim() || defaultChatModelForChain(chainId);
 }
 
-export const FALLBACK_CONTEXT_WINDOWS: Record<string, number> = {
+const FALLBACK_CONTEXT_WINDOWS: Record<string, number> = {
   // qwen2.5-omni is the real Galileo catalog id (16602 default model).
   "qwen2.5-omni": 32768,
   "qwen/qwen2.5-omni-7b": 32768,

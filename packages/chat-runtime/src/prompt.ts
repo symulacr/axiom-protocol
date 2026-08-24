@@ -37,14 +37,18 @@ const PROMPT_HEAD = [
   "- Oracle re-key uses a software-simulated TEE signer (not hardware TDX/SEV).",
 ].join("\n\n");
 
+const CLASS_ORDER: readonly ChatToolClass[] = [
+  "read",
+  "encode",
+  "orchestrate",
+  "archive",
+  "ask",
+  "skill",
+];
+
 const PROMPT_TAIL = [
   "Tool classes (exact names/schemas are in your tools list):",
-  `READ — ${CLASS_GUIDANCE.read}`,
-  `ENCODE — ${CLASS_GUIDANCE.encode}`,
-  `ORCHESTRATE — ${CLASS_GUIDANCE.orchestrate}`,
-  `ARCHIVE — ${CLASS_GUIDANCE.archive}`,
-  `ASK — ${CLASS_GUIDANCE.ask}`,
-  `SKILL — ${CLASS_GUIDANCE.skill}`,
+  ...CLASS_ORDER.map((cls) => `${cls.toUpperCase()} — ${CLASS_GUIDANCE[cls]}`),
 ].join("\n\n");
 
 // Byte-stable across turns: embedding session state would invalidate the router's whole-prefix cache (tools resolve tokenId/wallet via their gates).

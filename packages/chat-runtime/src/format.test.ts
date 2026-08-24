@@ -6,7 +6,14 @@ describe("formatToolResult", () => {
   it("surfaces encode-only calldata", () => {
     const text = formatToolResult(
       "deposit",
-      JSON.stringify({ ok: true, encodeOnly: true, to: "0x1", data: "0xabc", value: "1000", amount: "1.5" }),
+      JSON.stringify({
+        ok: true,
+        encodeOnly: true,
+        to: "0x1",
+        data: "0xabc",
+        value: "1000",
+        amount: "1.5",
+      }),
     );
     assert.ok(text.length > 0);
     assert.match(text, /to: 0x1/);
@@ -42,16 +49,23 @@ describe("formatToolResult", () => {
       JSON.stringify({ symbol: "AAPL", price: 150, currency: "USD" }),
     );
     assert.match(text, /symbol: AAPL/);
+    assert.match(text, /price: 150/);
     assert.doesNotMatch(text, /\[details\]/);
   });
 
   it("always shows the transaction hash for a successful broadcast (F-11)", () => {
     assert.equal(
-      formatToolResult("mint_agent", JSON.stringify({ ok: true, txHash: "0xdead" })),
+      formatToolResult(
+        "mint_agent",
+        JSON.stringify({ ok: true, txHash: "0xdead" }),
+      ),
       "Transaction sent: 0xdead",
     );
     assert.equal(
-      formatToolResult("deposit", JSON.stringify({ ok: true, txHash: "0xbeef", amount: "1.5" })),
+      formatToolResult(
+        "deposit",
+        JSON.stringify({ ok: true, txHash: "0xbeef", amount: "1.5" }),
+      ),
       "Transaction sent: 0xbeef",
     );
   });

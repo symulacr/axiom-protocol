@@ -3,7 +3,6 @@ import assert from "node:assert/strict";
 import {
   summarizeConversation,
   evaluateContinue,
-  shouldAutoContinue,
   compactHistory,
   MAX_TOOL_LOOPS,
   applyToolResult,
@@ -36,13 +35,6 @@ test("evaluateContinue is false below budget and structured above", () => {
     type: "continue",
     reason: "tool_loop_budget_exceeded",
   });
-});
-
-test("shouldAutoContinue respects a critical request", () => {
-  const signal = evaluateContinue(MAX_TOOL_LOOPS).signal;
-  assert.equal(shouldAutoContinue(signal, false), true);
-  assert.equal(shouldAutoContinue(signal, true), false);
-  assert.equal(shouldAutoContinue(null, false), false);
 });
 
 test("compactHistory returns a summary message followed by recent turns", () => {

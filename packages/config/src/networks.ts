@@ -12,7 +12,7 @@ export interface OGNetwork {
 export const ARISTOTLE_CHAIN_ID = 16661;
 
 /** Mainnet default chat model; mirrored as DEFAULT_CHAT_MODEL in chat-tools.ts (no cross-import: keep networks leaf-only). */
-export const MAINNET_DEFAULT_CHAT_MODEL = "deepseek-v4-flash";
+const MAINNET_DEFAULT_CHAT_MODEL = "deepseek-v4-flash";
 
 const FALLBACK_COMPUTE_ROUTER_URL = "https://router-api.0g.ai/v1";
 
@@ -38,7 +38,7 @@ const _OG_NETWORKS = {
   },
 } as const satisfies Record<number, OGNetwork>;
 
-export const OG_NETWORKS: Record<number, OGNetwork> =
+const OG_NETWORKS: Record<number, OGNetwork> =
   _OG_NETWORKS as unknown as Record<number, OGNetwork>;
 
 export function pickOGNetwork(chainId: number): OGNetwork | null {
@@ -55,19 +55,36 @@ function envVar(...keys: string[]): string | undefined {
   return undefined;
 }
 
-export function resolveRpcUrl(chainId?: number): string {
-  const varVal = envVar("AXIOM_EVM_RPC", "OG_RPC_URL", "RPC_URL");
+// Env override wins, else the chain's registry field, else a static fallback.
+function resolveNetworkUrl(
+  chainId: number | undefined,
+  envKeys: string[],
+  field: "evmRpc" | "storageRpc" | "computeRouterUrl",
+  fallback: string,
+): string {
+  const varVal = envVar(...envKeys);
   if (varVal) return varVal;
-  // Fallback matches the env default chain (16602 Galileo testnet) — .env.example says 16602.
   const network = chainId ? pickOGNetwork(chainId) : null;
-  return network?.evmRpc ?? "https://evmrpc-testnet.0g.ai";
+  return network?.[field] ?? fallback;
+}
+
+export function resolveRpcUrl(chainId?: number): string {
+  // Fallback matches the env default chain (16602 Galileo testnet) — .env.example says 16602.
+  return resolveNetworkUrl(
+    chainId,
+    ["AXIOM_EVM_RPC", "OG_RPC_URL", "RPC_URL"],
+    "evmRpc",
+    "https://evmrpc-testnet.0g.ai",
+  );
 }
 
 export function resolveStorageRpc(chainId?: number): string {
-  const varVal = envVar("AXIOM_STORAGE_RPC", "OG_STORAGE_RPC");
-  if (varVal) return varVal;
-  const network = chainId ? pickOGNetwork(chainId) : null;
-  return network?.storageRpc ?? "https://indexer-storage-turbo.0g.ai";
+  return resolveNetworkUrl(
+    chainId,
+    ["AXIOM_STORAGE_RPC", "OG_STORAGE_RPC"],
+    "storageRpc",
+    "https://indexer-storage-turbo.0g.ai",
+  );
 }
 
 export function resolveBlockExplorerUrl(chainId?: number): string {
@@ -77,10 +94,12 @@ export function resolveBlockExplorerUrl(chainId?: number): string {
 
 // Router URL derives from AXIOM_CHAIN_ID; the two routers' catalogs and keys differ — pinning one URL is a live bug.
 export function resolveComputeRouterUrl(chainId?: number): string {
-  const varVal = envVar("AXIOM_COMPUTE_BASE_URL", "OG_COMPUTE_BASE_URL");
-  if (varVal) return varVal;
-  const network = chainId ? pickOGNetwork(chainId) : null;
-  return network?.computeRouterUrl ?? FALLBACK_COMPUTE_ROUTER_URL;
+  return resolveNetworkUrl(
+    chainId,
+    ["AXIOM_COMPUTE_BASE_URL", "OG_COMPUTE_BASE_URL"],
+    "computeRouterUrl",
+    FALLBACK_COMPUTE_ROUTER_URL,
+  );
 }
 
 /** Per-chain default compute chat model (Galileo's catalog has no deepseek models). */

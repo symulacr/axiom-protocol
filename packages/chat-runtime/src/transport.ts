@@ -81,6 +81,19 @@ export async function fetchJson<T>(
   return { ok: res.ok, data, status: res.status };
 }
 
+/** Shared POST leg: JSON body + content-type header, parsed via fetchJson. */
+export function postJson<T>(
+  http: ToolHttp,
+  path: string,
+  body: unknown,
+): Promise<{ ok: boolean; data: T; status: number }> {
+  return fetchJson<T>(http, path, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
 export function toolFail(message: string): ToolResult {
   // shared envelope: every executor fails with ok:false + content {error: message}
   return { ok: false, content: JSON.stringify({ error: message }) };
