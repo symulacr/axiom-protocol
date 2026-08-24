@@ -13,6 +13,7 @@ import type { TickResult } from "@axiom/config/types/orchestrator";
 import type { EventStore } from "../events/store.js";
 import type { ServerConfig } from "../config-types.js";
 import { createRoute } from "./route-factory.js";
+import { readAgentDataHash } from "../skills/shared.js";
 import { AGENT_NFT_ABI } from "@axiom/config/abis";
 import { HTTP } from "@axiom/config/constants";
 import { resolveChatModel } from "@axiom/config/chat-tools";
@@ -70,8 +71,7 @@ async function resolveModelDataRoot(
     const nftTc = new TypedContract<{
       intelligentDatasOf(tokenId: bigint): Promise<Array<{ dataHash: string }>>;
     }>(agentNft, AGENT_NFT_ABI, provider);
-    const datas = await nftTc.contract.intelligentDatasOf(BigInt(agentTokenId));
-    const hash = datas?.[0]?.dataHash;
+    const hash = await readAgentDataHash(nftTc.contract, BigInt(agentTokenId));
     if (
       typeof hash === "string" &&
       hash.startsWith("0x") &&

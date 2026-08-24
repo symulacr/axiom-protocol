@@ -39,7 +39,6 @@ import {
 } from "../hooks/useEventHistory.js";
 import { useEventStream } from "../hooks/useEventStream.js";
 import { usePolledApi } from "../hooks/usePolledApi.js";
-import { toViemAbi } from "../lib/abi.js";
 import { AGENT_NFT_ABI } from "@axiom/config/abis";
 import type { PerformanceMetrics } from "@axiom/config/types/performance";
 import {
@@ -57,7 +56,7 @@ import {
   truncateHex,
   explorerTxUrl,
 } from "../utils/format.js";
-import { getAxiomAgentNftAddress } from "../abi/addresses.js";
+import { getAxiomAgentNftAddress, toViemAbi } from "../abi/addresses.js";
 
 const AGENT_TABS = ["overview", "execute", "payments", "activity"] as const;
 type AgentTab = (typeof AGENT_TABS)[number];

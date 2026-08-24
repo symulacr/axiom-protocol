@@ -1453,6 +1453,7 @@ button, input, textarea, select { line-height: var(--support-leading); }
 /* Modal geometry belongs to the shared component surfaces, not individual flow pages. */
 .operation-review-layer,
 .wallet-gate-layer,
+.connect-modal-layer,
 .command-palette-layer,
 .drawer-layer {
   overscroll-behavior: contain;
@@ -1487,6 +1488,54 @@ button, input, textarea, select { line-height: var(--support-leading); }
   width: 44px;
   height: 44px;
 }
+
+/* ConnectModal — wagmi-native wallet picker (RainbowKit removal). Fixed layer
+   shares the modal-geometry contract; surfaces reuse completion tokens and the
+   shared .button vocabulary. */
+.connect-modal-layer {
+  position: fixed;
+  z-index: calc(var(--layer-review, 110) + 1);
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: clamp(12px, 3vw, 32px);
+  overflow: auto;
+  background: rgba(8, 10, 11, 0.72);
+  backdrop-filter: blur(4px);
+}
+.connect-modal {
+  position: relative;
+  width: min(420px, 100%);
+  display: grid;
+  gap: var(--space-3);
+  border: 1px solid var(--completion-line);
+  background: var(--completion-panel);
+  padding: var(--space-5);
+}
+.connect-modal h2 {
+  margin: var(--space-2) 0 0;
+  font: var(--fw-title) var(--fs-title) Syne, sans-serif;
+  letter-spacing: -.02em;
+}
+.connect-modal-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: #ece9de;
+  cursor: pointer;
+}
+.connect-modal-close:hover,
+.connect-modal-close:focus-visible { border-color: var(--copper); color: var(--copper-bright); }
+.connect-modal-close:focus-visible { outline: 2px solid var(--phosphor); outline-offset: 2px; }
+.connect-options { display: grid; gap: var(--space-2); }
+.connect-option { display: grid; gap: 2px; text-align: left; }
+.connect-option small { color: var(--dim); font-size: var(--fs-small); font-family: 'JetBrains Mono', monospace; }
 
 /* One shared tactile contract for existing controls; visual density remains in the content, not the hit area. */
 :root { --hit-area: 44px; --control-hit-area: var(--hit-area); }

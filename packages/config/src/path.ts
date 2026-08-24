@@ -1,5 +1,6 @@
 // Bun-native path + atomic-file helpers (POSIX-only); shared by every JSON persistence site.
 import { mkdirSync, renameSync, writeFileSync } from "node:fs";
+import { mkdir, rename } from "node:fs/promises";
 
 export function joinPath(...parts: string[]): string {
   return parts
@@ -34,6 +35,20 @@ export function atomicWriteFileSync(
   const tmp = `${file}.${process.pid}.${crypto.randomUUID()}.tmp`;
   writeFileSync(tmp, data, opts);
   renameSync(tmp, file);
+}
+
+/** Async atomic tmp+rename write for durability paths (event buckets, indexer
+ *  checkpoints): the full tmp write completes before the rename, so readers see
+ *  old or new content, never a partial write. */
+export async function writeFileAtomic(
+  file: string,
+  data: string,
+): Promise<void> {
+  await mkdir(dirnamePath(file), { recursive: true });
+  const tmp = `${file}.tmp`;
+  // Bun.write for speed; rename is the atomicity point.
+  await Bun.write(tmp, data);
+  await rename(tmp, file);
 }
 
 /** Best-effort rename of a corrupt file aside to `<file>.bak`; failures (and a

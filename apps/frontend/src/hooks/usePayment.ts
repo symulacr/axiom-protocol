@@ -4,11 +4,13 @@ import { useAccount, useChainId, usePublicClient } from "wagmi";
 import { useGenericWrite } from "./useGenericWrite.js";
 import { useAsyncAction } from "./useAsyncAction.js";
 import { PAYMENT_PROCESSOR_ABI, ERC20_ABI } from "@axiom/config/abis";
-import { toViemAbi } from "../lib/abi.js";
+import {
+  getAxiomPaymentProcessorAddress,
+  toViemAbi,
+} from "../abi/addresses.js";
 
 const paymentProcessorAbi = toViemAbi(PAYMENT_PROCESSOR_ABI);
 const erc20Abi = toViemAbi(ERC20_ABI);
-import { getAxiomPaymentProcessorAddress } from "../abi/addresses.js";
 import { waitForReceiptWithTimeout } from "./useReceiptReconcile.js";
 import { agentEarningsPath, apiFetch } from "../utils/apiFetch.js";
 

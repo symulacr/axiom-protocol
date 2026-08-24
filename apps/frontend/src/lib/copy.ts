@@ -132,6 +132,12 @@ export type Copy = {
     profileDescription: string;
     profileHint: string;
     unlockConsole: string;
+    /** ConnectModal (wagmi-native wallet picker). */
+    connectTitle: string;
+    browserWalletLabel: string;
+    browserWalletHint: string;
+    walletConnectLabel: string;
+    walletConnectHint: string;
   };
   guide: {
     nextStep: string;
@@ -801,6 +807,11 @@ const english: Copy = {
       "Name this wallet for yourself. Changeable in Settings.",
     profileHint: "Stored on this device only.",
     unlockConsole: "Unlock console",
+    connectTitle: "Choose a wallet.",
+    browserWalletLabel: "Browser wallet",
+    browserWalletHint: "MetaMask and other injected wallets",
+    walletConnectLabel: "WalletConnect",
+    walletConnectHint: "Scan the QR code or open your wallet app",
   },
   guide: {
     nextStep: "Next step",
@@ -1531,6 +1542,11 @@ const french: Copy = {
       "Ce libellé aide à reconnaître le wallet connecté dans Axiom. Vous pourrez le modifier dans Settings.",
     profileHint: "Enregistré uniquement sur cet appareil.",
     unlockConsole: "Déverrouiller la console",
+    connectTitle: "Choisissez un wallet.",
+    browserWalletLabel: "Wallet du navigateur",
+    browserWalletHint: "MetaMask et autres wallets injectés",
+    walletConnectLabel: "WalletConnect",
+    walletConnectHint: "Scannez le QR code ou ouvrez votre app wallet",
   },
   guide: {
     nextStep: "Étape suivante",
@@ -2278,6 +2294,11 @@ const german: Copy = {
       "Dieses Label hilft dir, das verbundene Wallet in Axiom zu erkennen. Du kannst es später in Settings ändern.",
     profileHint: "Nur als lokale Prototyp-Einstellung gespeichert.",
     unlockConsole: "Konsole entsperren",
+    connectTitle: "Wähle ein Wallet.",
+    browserWalletLabel: "Browser-Wallet",
+    browserWalletHint: "MetaMask und andere injizierte Wallets",
+    walletConnectLabel: "WalletConnect",
+    walletConnectHint: "QR-Code scannen oder Wallet-App öffnen",
   },
   guide: {
     nextStep: "Nächster Schritt",

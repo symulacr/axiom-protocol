@@ -8,10 +8,10 @@ import {
   getAxiomAgentNftAddress,
   useEip712Domain,
   ACCESS_PROOF_TYPES,
+  toViemAbi,
 } from "../abi/addresses.js";
 import { ITRANSFER_FROM_ABI } from "@axiom/config/abis";
 import { sealKeyForReceiver } from "@axiom/config/crypto/keys";
-import { toViemAbi } from "../lib/abi.js";
 
 import {
   agentTransferPath,

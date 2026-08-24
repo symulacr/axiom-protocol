@@ -16,8 +16,8 @@ for (const line of envSrc.split("\n")) {
 	if (!key) continue;
 	define[`import.meta.env.${key}`] = JSON.stringify(line.slice(key.length + 1));
 }
-// Library dev-asserts check MODE !== "production" (wagmi/rainbowkit) and
-// guard on bare `import.meta.env` truthiness. Define both.
+// Library dev-asserts check MODE !== "production" (wagmi) and guard on bare
+// `import.meta.env` truthiness. Define both.
 define["import.meta.env.MODE"] = JSON.stringify("production");
 define["import.meta.env"] = JSON.stringify({ MODE: "production" });
 // React/wagmi CJS dev builds branch on process.env.NODE_ENV — without this the
@@ -26,28 +26,6 @@ define["process.env.NODE_ENV"] = JSON.stringify("production");
 
 const dist = join(frontendDir, "dist");
 await Bun.$`rm -rf ${dist}`.quiet();
-
-// RainbowKit v2 ships every translation as its own dynamic-import chunk
-// (dist/<locale>-<hash>.js). The app hardcodes locale="en" in wagmi.tsx and RK
-// pre-caches en-US inline, so non-English chunks are never fetched at runtime —
-// stub them so they cost no dist bytes. English (en_US) is passed through
-// verbatim as a safety fallback for the fetchTranslations("en") path.
-const dropRainbowKitLocales = {
-	name: "axiom-drop-rainbowkit-locales",
-	setup(build) {
-		const localeChunk =
-			/@rainbow-me\/rainbowkit\/dist\/([a-z]{2}_[A-Za-z0-9]+)-[A-Z0-9]+\.js$/;
-		build.onLoad({ filter: localeChunk }, async (args) => {
-			if (!args.path.includes("en_US")) {
-				return { contents: 'export default "{}";', loader: "js" };
-			}
-			return {
-				contents: await readFile(args.path, "utf8"),
-				loader: "js",
-			};
-		});
-	},
-};
 
 // Safe Apps SDK ships dual ESM/CJS builds. Its CJS copy (pulled in by the
 // CJS-only @safe-global/safe-apps-provider) does require("viem") in
@@ -83,7 +61,7 @@ const build = await Bun.build({
 	minify: true,
 	splitting: true,
 	sourcemap: "none",
-	plugins: [dropRainbowKitLocales, dedupeSafeAppsSdkCjs],
+	plugins: [dedupeSafeAppsSdkCjs],
 	define,
 	// Absolute chunk URLs: built index.html is served from any route depth
 	// (SPA fallback), and relative "./chunk-…" URLs break at ≥2-segment paths

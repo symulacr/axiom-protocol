@@ -19,6 +19,7 @@ import {
   type OracleRouteDeps,
 } from "../oracle/routes.js";
 import { createLogger } from "../utils/logger.js";
+import { readAgentDataHash } from "../skills/shared.js";
 import { createRoute } from "./route-factory.js";
 
 const log = createLogger("agents");
@@ -352,6 +353,7 @@ export function registerAgentRoutes(
       method: "post",
       schema: transferBodySchema,
       requireId: true,
+      requireAddress: "agentNft",
       consumer: "agents",
       description: "Transfer agent ownership",
     },
@@ -364,15 +366,8 @@ export function registerAgentRoutes(
       try {
         const id = helpers.id;
         if (!id) return sendError(res, HTTP.BAD_REQUEST, "Missing id");
-        if (!config.addresses?.agentNft)
-          // missing configured address = deployment-state problem (503 ADDRESS_NOT_CONFIGURED), not an internal 500
-          return sendError(
-            res,
-            HTTP.SERVICE_UNAVAILABLE,
-            "AgentNFT address not configured",
-            "ADDRESS_NOT_CONFIGURED",
-          );
-        const nft = config.addresses.agentNft;
+        // requireAddress guard above already 503s (ADDRESS_NOT_CONFIGURED) when agentNft is unset.
+        const nft = config.addresses!.agentNft;
         const {
           to,
           receiverPubKey64,
@@ -388,8 +383,7 @@ export function registerAgentRoutes(
         let dataHash = dataHashIn;
         if (!dataHash && nftTc) {
           try {
-            const datas = await nftTc.contract.intelligentDatasOf(BigInt(id));
-            dataHash = (datas as { dataHash: string }[])?.[0]?.dataHash as
+            dataHash = (await readAgentDataHash(nftTc.contract, BigInt(id))) as
               `0x${string}` | undefined;
           } catch (err) {
             log.warn("intelligentDatasOf failed for token", {
@@ -612,15 +606,9 @@ export function registerAgentRoutes(
       description:
         "Encode AxiomAgentNFT mint transaction (value = on-chain mintFee)",
     },
-    async (parsed: MintEncodeBody, _req, res, { config: cfg }) => {
-      if (!cfg.addresses?.agentNft)
-        return sendError(
-          res,
-          HTTP.SERVICE_UNAVAILABLE,
-          "AgentNFT address not configured",
-          "ADDRESS_NOT_CONFIGURED",
-        );
-      const nftAddr = cfg.addresses.agentNft;
+    async (parsed: MintEncodeBody, _req, _res, { config: cfg }) => {
+      // requireAddress guard above already 503s (ADDRESS_NOT_CONFIGURED) when agentNft is unset.
+      const nftAddr = cfg.addresses!.agentNft;
       const nftTc = new TypedContract<AgentNftMintEncodeMethods>(
         nftAddr,
         AGENT_NFT_ABI,

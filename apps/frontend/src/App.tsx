@@ -3,7 +3,7 @@
     · resolver-based routing (lib/routeRegistry) with v1 compat redirects
       (/dashboard, /market → /app; ?mint=1 → /mint flow page)
     · AppShell (rail + topbar + Command Center + priority strip + mobile drawer)
-    · live WalletGate: wagmi connect (RainbowKit modal) / chain check /
+    · live WalletGate: wagmi connect (wagmi-native ConnectModal) / chain check /
       optional profile — a verified connection on the app chain is the session
     · internal routes are held behind LockedRoute until the session is
       authenticated (24h TTL renewed silently while connected, persisted

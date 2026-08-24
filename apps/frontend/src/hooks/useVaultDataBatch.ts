@@ -1,8 +1,7 @@
 import { useMemo } from "react";
 import { useAccount, useChainId, useReadContracts } from "wagmi";
-import { getAxiomStrategyVaultAddress } from "../abi/addresses.js";
+import { getAxiomStrategyVaultAddress, toViemAbi } from "../abi/addresses.js";
 import { VAULT_ABI } from "@axiom/config/abis";
-import { toViemAbi } from "../lib/abi.js";
 
 const abi = toViemAbi(VAULT_ABI);
 

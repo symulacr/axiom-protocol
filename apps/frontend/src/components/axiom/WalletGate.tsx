@@ -1,7 +1,7 @@
 /*
   Live WalletGate — three states driven by wagmi:
-    connect → one CTA that opens RainbowKit's connect modal (wallet list,
-                   recents, mobile deep links and errors are its job)
+    connect → one CTA that opens the wagmi-native ConnectModal (wallet list,
+                   QR/deep-link flow and errors are ours now)
     wrong-network → switchChain back to the configured app chain
     profile → optional local operator name, then the console opens.
   A verified connection on the app chain IS the session: the old
@@ -11,9 +11,9 @@
 */
 import { useEffect, useRef, useState } from "react";
 import { useAccount, useSwitchChain } from "wagmi";
-import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { AlertTriangle, LockKeyhole, Network, X } from "./icons.js";
 import { Button, Field } from "./Controls.js";
+import { ConnectModal } from "./ConnectModal.js";
 import { Logo } from "./AppShell.js";
 
 import { getCopy, interpolate, type Locale } from "../../lib/copy.js";
@@ -48,7 +48,7 @@ export function WalletGate({
   // literal ("Switch to 0G Mainnet" told testnet users the wrong network).
   const chainVars = { chainName: APP_CHAIN.name, chainId: APP_CHAIN_ID };
   const { address, isConnected, chainId, connector } = useAccount();
-  const { openConnectModal } = useConnectModal();
+  const [connectOpen, setConnectOpen] = useState(false);
   const { switchChainAsync } = useSwitchChain();
   const [profile, setProfile] = useState(session.profile);
   const [error, setError] = useState<string | null>(null);
@@ -174,7 +174,7 @@ export function WalletGate({
               </h1>
               <p>Connect a wallet to start a session. We never take custody.</p>
               <Button
-                onClick={() => openConnectModal?.()}
+                onClick={() => setConnectOpen(true)}
                 icon={<LockKeyhole size={15} />}
               >
                 {copy.nav.connectWallet}
@@ -232,6 +232,13 @@ export function WalletGate({
           )}
         </div>
       </section>
+      {connectOpen && (
+        <ConnectModal
+          open
+          onClose={() => setConnectOpen(false)}
+          locale={locale}
+        />
+      )}
     </div>
   );
 }

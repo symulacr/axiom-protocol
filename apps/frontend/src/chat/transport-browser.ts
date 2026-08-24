@@ -1,12 +1,12 @@
 import { createSession, runTool } from "@axiom/chat-runtime";
 import type { ToolChain, ToolRuntime } from "@axiom/chat-runtime";
 import { BACKEND_URL, ORACLE_URL } from "../config/env.js";
-import { toViemAbi } from "../lib/abi.js";
 import { apiKeyHeader } from "../utils/apiFetch.js";
 import {
   getAxiomAgentNftAddress,
   getAxiomPaymentProcessorAddress,
   getAxiomStrategyVaultAddress,
+  toViemAbi,
 } from "../abi/addresses.js";
 import type { ToolContext } from "./tools.js";
 

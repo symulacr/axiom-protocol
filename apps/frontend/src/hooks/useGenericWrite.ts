@@ -1,7 +1,7 @@
 import { useWalletClient } from "wagmi";
 import { encodeFunctionData, type Abi, type Hex } from "viem";
 import { useCallback } from "react";
-import { toViemAbi } from "../lib/abi.js";
+import { toViemAbi } from "../abi/addresses.js";
 
 interface WriteCall {
   to: Hex;

@@ -9,7 +9,6 @@ import { App } from "./App";
 import { WagmiConfigProvider } from "./config/wagmi";
 import { UiStoreProvider } from "./lib/uiStore";
 import { getShortcutPath, isIndexablePath } from "./lib/routeRegistry";
-import "@rainbow-me/rainbowkit/styles.css";
 import "./styles/index.css";
 
 const queryClient = new QueryClient({
@@ -81,7 +80,8 @@ function CommandShortcuts() {
   return null;
 }
 
-// QueryClientProvider must wrap WagmiConfigProvider so RainbowKit's react-query hooks resolve their client
+// QueryClientProvider must wrap WagmiConfigProvider — wagmi's data hooks
+// resolve their react-query client internally.
 createRoot(rootEl).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>

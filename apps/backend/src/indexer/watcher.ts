@@ -1,6 +1,5 @@
 import type { JsonRpcProvider, Log } from "ethers";
-import { rename, mkdir } from "node:fs/promises";
-import { joinPath, dirnamePath } from "@axiom/config/path";
+import { writeFileAtomic, joinPath } from "@axiom/config/path";
 import { getRuntimeConfig } from "@axiom/config/constants";
 import { getEnv } from "@axiom/config/env";
 import {
@@ -43,12 +42,12 @@ async function saveCheckpoint(
   nextBlock: number,
 ): Promise<void> {
   const checkpointFile = getCheckpointFile(chainId);
-  const tmp = checkpointFile + ".tmp";
   try {
-    await mkdir(dirnamePath(checkpointFile), { recursive: true });
-    // Bun.write for speed; tmp+rename keeps the checkpoint write atomic; dir ops stay node:fs/promises (Bun routes those there)
-    await Bun.write(tmp, JSON.stringify({ nextBlock, updatedAt: Date.now() }));
-    await rename(tmp, checkpointFile);
+    // writeFileAtomic keeps the tmp+rename ordering — the checkpoint is never half-written.
+    await writeFileAtomic(
+      checkpointFile,
+      JSON.stringify({ nextBlock, updatedAt: Date.now() }),
+    );
   } catch (err) {
     console.error("[watcher] failed to save checkpoint:", err);
   }

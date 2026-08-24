@@ -17,6 +17,23 @@ export function serialize(v: unknown): unknown {
   return v;
 }
 
+// Shared ERC-7857 metadata ladder (orchestrator / transfer fallback / unbroker):
+// read intelligentDatasOf(tokenId), take the first entry's dataHash. Accepts a
+// TypedContract `.contract` or an ethers.Contract alike; throws propagate to each
+// caller's own failure policy (shape-check+cache, warn-and-continue, score-down).
+export async function readAgentDataHash(
+  nft: object,
+  tokenId: bigint,
+): Promise<string | undefined> {
+  const fn = (nft as { intelligentDatasOf?: unknown }).intelligentDatasOf as
+    ((tokenId: bigint) => Promise<Array<{ dataHash?: string }>>) | undefined;
+  if (typeof fn !== "function")
+    throw new Error("Contract method unavailable: intelligentDatasOf");
+  const datas = (await fn.call(nft, tokenId)) as
+    Array<{ dataHash?: string }> | undefined;
+  return datas?.[0]?.dataHash;
+}
+
 interface LogFilter {
   address?: string;
   topics?: (string | string[] | null)[];

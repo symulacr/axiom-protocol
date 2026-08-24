@@ -7,7 +7,12 @@ import {
   type RouteOptions,
   type RouteHandler,
 } from "../routers/route-factory.js";
-import { cachedJsonGet, serialize, getLogsChunked } from "../skills/shared.js";
+import {
+  cachedJsonGet,
+  serialize,
+  getLogsChunked,
+  readAgentDataHash,
+} from "../skills/shared.js";
 import { getSharedProvider } from "../provider.js";
 import { TTLCache, sendError } from "../utils/response.js";
 import { createLogger } from "../utils/logger.js";
@@ -669,18 +674,15 @@ export function createSkillRouters(config: ServerConfig): Router {
         const { tokenId, to } = parsed;
         const nft = requireNft(res);
         if (!nft) return;
-        const [owner, data] = await Promise.all([
+        const [owner, dataHash] = await Promise.all([
           mustMethod(nft.ownerOf, "ownerOf")(BigInt(tokenId)),
-          mustMethod(
-            nft.intelligentDatasOf,
-            "intelligentDatasOf",
-          )(BigInt(tokenId)),
+          readAgentDataHash(nft, BigInt(tokenId)),
         ]);
         return serialize({
           tokenId,
           to,
           owner,
-          dataHash: data[0]?.dataHash ?? null,
+          dataHash: dataHash ?? null,
           canTransfer: owner !== ethers.ZeroAddress,
         });
       },
@@ -715,11 +717,7 @@ export function createSkillRouters(config: ServerConfig): Router {
             nft.ownerOf,
             "ownerOf",
           )(BigInt(tokenId));
-          const data = await mustMethod(
-            nft.intelligentDatasOf,
-            "intelligentDatasOf",
-          )(BigInt(tokenId));
-          const dataHash = data[0]?.dataHash;
+          const dataHash = await readAgentDataHash(nft, BigInt(tokenId));
           if (accessProof) {
             if (accessProof.dataHash !== dataHash) {
               score -= 30;

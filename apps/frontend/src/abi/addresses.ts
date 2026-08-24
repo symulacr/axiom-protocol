@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { parseAbi, type Abi } from "viem";
 import { useChainId } from "wagmi";
 import { resolveAddress } from "@axiom/config/addresses";
 import {
@@ -8,6 +9,18 @@ import {
 import type { Address } from "viem";
 
 export { ACCESS_PROOF_TYPES } from "@axiom/config/eip712";
+
+/** viem's ABI consumers (readContract, useReadContracts, encodeFunctionData,
+ * useWriteContract, …) do NOT parse human-readable string ABIs at runtime.
+ * @axiom/config/abis exports string arrays — normalize once here so every
+ * viem/wagmi call site gets a parsed JSON `Abi` (passthrough when already
+ * parsed). */
+export function toViemAbi(abi: readonly unknown[] | Abi): Abi {
+  if (abi.length > 0 && typeof abi[0] === "string") {
+    return parseAbi(abi as readonly string[]);
+  }
+  return abi as Abi;
+}
 
 // Runtime source of truth is env (VITE_* -> AXIOM_*); deployed.json is record-only, never read by code.
 const env: Record<string, unknown> = {

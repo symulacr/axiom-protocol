@@ -11,8 +11,8 @@ import {
   readFileSync,
   mkdirSync,
 } from "node:fs";
-import { writeFile, rename, mkdir } from "node:fs/promises";
 import {
+  writeFileAtomic,
   joinPath,
   dirnamePath,
   dataFilePath,
@@ -485,8 +485,23 @@ function persistPaths(): { dir: string; file: string } {
 
 const persistLog = createLogger("events");
 
-async function ensurePersistDir(): Promise<void> {
-  await mkdir(persistPaths().dir, { recursive: true });
+async function saveBuckets(
+  buckets: Map<string, unknown[]>,
+  serialized: Map<string, string>,
+  dirty: Set<string>,
+): Promise<void> {
+  const parts: string[] = [];
+  for (const [key, events] of buckets) {
+    let json = serialized.get(key);
+    if (dirty.has(key) || json === undefined) {
+      json = JSON.stringify(events, bigintReplacer);
+      serialized.set(key, json);
+    }
+    parts.push(`${JSON.stringify(key)}:${json}`);
+  }
+  dirty.clear();
+  // writeFileAtomic keeps the tmp+rename ordering — readers never see a partial persist file.
+  await writeFileAtomic(persistPaths().file, `{${parts.join(",")}}`);
 }
 
 function loadBuckets(): Map<string, unknown[]> {
@@ -510,28 +525,6 @@ function loadBuckets(): Map<string, unknown[]> {
     backupFileBestEffort(persistPaths().file);
     return new Map();
   }
-}
-
-async function saveBuckets(
-  buckets: Map<string, unknown[]>,
-  serialized: Map<string, string>,
-  dirty: Set<string>,
-): Promise<void> {
-  await ensurePersistDir();
-  const parts: string[] = [];
-  for (const [key, events] of buckets) {
-    let json = serialized.get(key);
-    if (dirty.has(key) || json === undefined) {
-      json = JSON.stringify(events, bigintReplacer);
-      serialized.set(key, json);
-    }
-    parts.push(`${JSON.stringify(key)}:${json}`);
-  }
-  dirty.clear();
-  const data = `{${parts.join(",")}}`;
-  const tmp = `${persistPaths().file}.tmp`;
-  await writeFile(tmp, data);
-  await rename(tmp, persistPaths().file);
 }
 
 /** Prevents silent multi-instance split-brain on one data dir; AXIOM_ALLOW_MULTI_INSTANCE escapes for externally-coordinated replicas only. */
