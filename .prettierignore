@@ -4,3 +4,4 @@ dist
 report
 wallets
 .env
+apps/backend/docs/openapi.json
