@@ -32,11 +32,49 @@ import {
   isRecoverableTx,
 } from "../lib/models.js";
 import type { ConsoleAction } from "../lib/consoleStore.js";
-import { usePortfolio } from "../hooks/usePortfolio.js";
+import { useAgents } from "../hooks/useAgents.js";
+import {
+  useVaultDataBatch,
+  type VaultDataEntry,
+} from "../hooks/useVaultDataBatch.js";
 import { useHealth } from "../hooks/useHealth.js";
 import { useEventHistory, eventTokenId } from "../hooks/useEventHistory.js";
 import { formatTokenAmount, truncateAddress } from "../utils/format.js";
 import { APP_CHAIN, APP_CHAIN_ID } from "../config/wagmi.js";
+
+interface PortfolioAgent {
+  tokenId: bigint;
+  owner: string;
+  dataDescription?: string;
+}
+
+/** Single owner of the agent portfolio data sources (agents + vault + perf). */
+function usePortfolio(): {
+  agents: PortfolioAgent[];
+  error: Error | null;
+  vaultMap: Map<string, VaultDataEntry>;
+  loading: boolean;
+  refetch: () => void;
+} {
+  const { agents, isLoading, error, refetch: refetchAgents } = useAgents();
+  const tokenIds = useMemo(() => agents.map((a) => a.tokenId), [agents]);
+  const {
+    data: vaultMap,
+    isLoading: vaultLoading,
+    refetch: refetchVaults,
+  } = useVaultDataBatch(tokenIds);
+
+  return {
+    agents,
+    error,
+    vaultMap,
+    loading: isLoading || vaultLoading,
+    refetch: () => {
+      refetchAgents();
+      refetchVaults();
+    },
+  };
+}
 
 function ContextStrip({
   go,

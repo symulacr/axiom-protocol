@@ -8,7 +8,6 @@ export {
   compactHistory,
   MAX_TOOL_LOOPS,
   summarizeConversation,
-  evaluateContinue,
 } from "./session.js";
 export { isAskUserResult } from "./executors/ask.js";
 export { buildSystemPrompt } from "./prompt.js";

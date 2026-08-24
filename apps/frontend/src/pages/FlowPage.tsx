@@ -18,8 +18,14 @@
   chrome, notices) routes through copy.ts — copy.flows[kind] for per-flow
   text, copy.flowUi for shared chrome.
 */
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useAccount, useChainId, usePublicClient } from "wagmi";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useAccount,
+  useChainId,
+  usePublicClient,
+  useWalletClient,
+} from "wagmi";
+import { toast } from "sonner";
 import { erc20Abi, formatUnits, isAddress, parseUnits } from "viem";
 import {
   AlertTriangle,
@@ -50,11 +56,14 @@ import type { ConsoleAction } from "../lib/consoleStore.js";
 import { flowMeta } from "../lib/consoleCatalog.js";
 import { useAgents } from "../hooks/useAgents.js";
 import { useMintWizard } from "../hooks/useMintWizard.js";
-import { usePayment } from "../hooks/usePayment.js";
-import { paymentSymbolOf, usePaymentToken } from "../hooks/usePaymentToken.js";
+import {
+  usePayment,
+  usePaymentToken,
+  paymentSymbolOf,
+} from "../hooks/usePayment.js";
 import { useTransfer } from "../hooks/useTransfer.js";
-import { useOrchestratorTick } from "../hooks/useOrchestratorTick.js";
-import { useVaultWrite } from "../hooks/useVaultWrite.js";
+import { useVaultData } from "../hooks/useVaultDataBatch.js";
+import { useAsyncAction } from "../hooks/useAsyncAction.js";
 import {
   RECEIPT_CONFIRM_TIMEOUT_MS,
   waitForReceiptWithTimeout,
@@ -71,10 +80,23 @@ import {
 import { APP_CHAIN } from "../config/wagmi.js";
 import {
   formatTokenAmount,
+  errorRefString,
   humanizeError,
   truncateAddress,
   truncateHex,
+  validateNumericInput,
 } from "../utils/format.js";
+import {
+  apiFetch,
+  STREAM_TIMEOUT,
+  type EncodeResponse,
+} from "../utils/apiFetch.js";
+import { openStreamSocket } from "../config/env.js";
+import type {
+  TickRequest,
+  TickResult,
+  TickStreamOptions,
+} from "@axiom/config/types/orchestrator";
 import {
   buildTransferInput as assembleTransferInput,
   freshAccessProofNonce,
@@ -92,6 +114,398 @@ const phaseState: Record<OperationDraftPhase, TxState> = {
 };
 
 const DEV_TOOLS = import.meta.env.MODE !== "production";
+
+type VaultWriteKind = "deposit" | "withdraw";
+
+const VAULT_WRITE: Record<
+  VaultWriteKind,
+  { label: string; endpoint: string; verb: string }
+> = {
+  deposit: { label: "Deposit", endpoint: "deposit", verb: "Deposit" },
+  withdraw: { label: "Withdraw", endpoint: "withdraw", verb: "Withdraw" },
+};
+
+/** Shared write-flow toasts: success on submit + canonical humanized error toast for every write path. */
+const toastSuccess = (msg: string): void => {
+  toast.success(msg);
+};
+const toastError = (err: unknown): void => {
+  const refStr = errorRefString(err);
+  toast.error(humanizeError(err), refStr ? { description: refStr } : undefined);
+};
+
+/** Shared numeric rules for the amount field (deposit + withdraw alike). */
+const amountRules = (label: string) => ({
+  label,
+  min: 0,
+  allowDecimals: true,
+  maxDecimals: 18,
+  max: 1e12,
+});
+
+function useVaultWrite(
+  kind: VaultWriteKind,
+  tokenId: bigint,
+  opts?: {
+    onSuccess?: () => void;
+    /** Default true: toast on submit/error and swallow errors. Flow pages pass
+     * false so the OperationReviewSheet machine (submitting →
+     * recoverable-error → receipt) owns the UX instead of toasts; in that
+     * mode handleSubmit rethrows and resolves to the tx hash. */
+    toasts?: boolean;
+  },
+) {
+  const vd = useVaultData(tokenId);
+  const { data: walletClient } = useWalletClient();
+  const [amount, setAmount] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const { label, endpoint, verb } = VAULT_WRITE[kind];
+  const toasts = opts?.toasts !== false;
+  const onSuccess = opts?.onSuccess;
+
+  const error = validateNumericInput(amount, amountRules(label));
+
+  const handleSubmit = useCallback(
+    async (amountOverride?: string): Promise<`0x${string}` | null> => {
+      const value = (amountOverride ?? amount).trim();
+      const overrideError =
+        amountOverride === undefined
+          ? error
+          : validateNumericInput(value, amountRules(label));
+      if (!value || overrideError || !walletClient) return null;
+      setIsSubmitting(true);
+      try {
+        // Same backend encode relay as the chat deposit tool — single vault ABI source, no frontend drift.
+        const encoded = await apiFetch<EncodeResponse>(
+          `/v1/agents/${tokenId.toString()}/${endpoint}`,
+          {
+            method: "POST",
+            body: JSON.stringify({ amount: value }),
+          },
+        );
+        const hash = await walletClient.sendTransaction({
+          to: encoded.to,
+          data: encoded.data,
+          value: BigInt(encoded.value || "0"),
+          chain: walletClient.chain,
+        });
+        if (toasts) toastSuccess(`${verb} submitted (${hash.slice(0, 10)}…)`);
+        setAmount("");
+        await vd.refetch();
+        onSuccess?.();
+        return hash;
+      } catch (err) {
+        if (toasts) {
+          toastError(err);
+          return null;
+        }
+        throw err;
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [
+      amount,
+      error,
+      label,
+      walletClient,
+      tokenId,
+      endpoint,
+      verb,
+      vd,
+      onSuccess,
+      toasts,
+    ],
+  );
+
+  const isValid = amount.trim() !== "" && !error && Number(amount) > 0;
+
+  return {
+    amount,
+    setAmount,
+    isSubmitting,
+    isValid,
+    error,
+    handleSubmit,
+    vaultData: vd,
+  };
+}
+
+const WS_CONNECTION_TIMEOUT_MS = 60_000;
+
+export type { TickRequest, TickResult, TickStreamOptions };
+
+function useOrchestratorTick(): {
+  tick: (req: TickRequest) => Promise<TickResult>;
+  tickStream: (
+    req: TickRequest,
+    opts: TickStreamOptions,
+  ) => Promise<TickResult>;
+  cancelTick: () => void;
+  isLoading: boolean;
+  isStreaming: boolean;
+  streamedTokens: string;
+  streamingError: string | null;
+  error: Error | null;
+  resetStream: () => void;
+} {
+  const { execute, cancel, isLoading, error } = useAsyncAction();
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamedTokens, setStreamedTokens] = useState("");
+  const streamedRef = useRef("");
+  const [streamingError, setStreamingError] = useState<string | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+
+  useEffect(() => {
+    return () => {
+      wsRef.current?.close();
+      wsRef.current = null;
+      cancel();
+    };
+  }, [cancel]);
+
+  const resetStream = useCallback(() => {
+    setStreamedTokens("");
+    streamedRef.current = "";
+    setStreamingError(null);
+  }, []);
+
+  // Debounced 50ms flush of ref→state so individual WebSocket tokens don't each trigger a re-render
+  useEffect(() => {
+    const flush = () => {
+      const batch = streamedRef.current;
+      if (batch) {
+        streamedRef.current = "";
+        const MAX_STREAMED_TOKENS = 50000;
+        setStreamedTokens((prev) => {
+          const next = prev + batch;
+          return next.length > MAX_STREAMED_TOKENS
+            ? next.slice(next.length - MAX_STREAMED_TOKENS)
+            : next;
+        });
+      }
+    };
+
+    if (!isStreaming) {
+      flush();
+      return;
+    }
+
+    const id = setInterval(flush, 50);
+    return () => {
+      clearInterval(id);
+      flush();
+    };
+  }, [isStreaming]);
+
+  const tick = useCallback(
+    async (req: TickRequest): Promise<TickResult> => {
+      return execute(async (signal) => {
+        return apiFetch<TickResult>("/v1/orchestrator/tick", {
+          method: "POST",
+          body: JSON.stringify(req),
+          signal,
+          timeout: 30000,
+        });
+      });
+    },
+    [execute],
+  );
+
+  const tickStream = useCallback(
+    async (req: TickRequest, opts: TickStreamOptions): Promise<TickResult> => {
+      setIsStreaming(true);
+      setStreamedTokens("");
+      streamedRef.current = "";
+      setStreamingError(null);
+      const onChunk = opts.onChunk ?? (() => {});
+      try {
+        return await execute(async (signal) => {
+          const signals: AbortSignal[] = [
+            signal,
+            AbortSignal.timeout(STREAM_TIMEOUT),
+          ];
+          if (opts.signal) signals.push(opts.signal);
+          const combinedSignal = AbortSignal.any(signals);
+
+          // Subscriber must precede the stream POST (400 NO_WS_SUBSCRIBER); topic registers sync at upgrade.
+          const topic = `tick.${req.agentTokenId}`;
+          const ws = await new Promise<WebSocket>((resolve, reject) => {
+            let settled = false;
+            const timeoutId = setTimeout(() => {
+              settled = true;
+              reject(
+                new Error(
+                  `WebSocket connection timed out after ${WS_CONNECTION_TIMEOUT_MS / 1000}s`,
+                ),
+              );
+            }, WS_CONNECTION_TIMEOUT_MS);
+            const onAbort = () => {
+              settled = true;
+              clearTimeout(timeoutId);
+              reject(new DOMException("Aborted", "AbortError"));
+            };
+            combinedSignal.addEventListener("abort", onAbort, { once: true });
+            openStreamSocket(topic).then(
+              (socket) => {
+                clearTimeout(timeoutId);
+                combinedSignal.removeEventListener("abort", onAbort);
+                if (settled) {
+                  socket.close();
+                  return;
+                }
+                settled = true;
+                resolve(socket);
+              },
+              () => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timeoutId);
+                combinedSignal.removeEventListener("abort", onAbort);
+                reject(
+                  new Error("WebSocket connection failed for tick stream"),
+                );
+              },
+            );
+          });
+
+          return await new Promise<TickResult>((resolve, reject) => {
+            let accumulatedResult: Partial<TickResult> = {};
+            let settled = false;
+            wsRef.current = ws;
+
+            const settle = (
+              action: "resolve" | "reject",
+              value: TickResult | Error,
+            ) => {
+              if (settled) return;
+              settled = true;
+              if (action === "resolve") {
+                resolve(value as TickResult);
+              } else {
+                reject(value);
+              }
+            };
+
+            const abortHandler = () => {
+              ws.close();
+              settle("reject", new DOMException("Aborted", "AbortError"));
+            };
+            combinedSignal.addEventListener("abort", abortHandler, {
+              once: true,
+            });
+
+            const cleanup = () => {
+              combinedSignal.removeEventListener("abort", abortHandler);
+              if (wsRef.current === ws) {
+                wsRef.current = null;
+              }
+            };
+
+            ws.onmessage = (msg: MessageEvent) => {
+              try {
+                const data = JSON.parse(msg.data);
+                if (data.topic !== topic) return;
+                const payload = data.payload;
+
+                if (payload.type === "token") {
+                  onChunk(payload.content);
+                  streamedRef.current += payload.content;
+                } else if (payload.type === "complete") {
+                  accumulatedResult = { ...payload };
+                  ws.close();
+                  settle("resolve", accumulatedResult as TickResult);
+                } else if (payload.type === "error") {
+                  setStreamingError(payload.error);
+                  ws.close();
+                  settle("reject", new Error(payload.error));
+                }
+              } catch {
+                return;
+              }
+            };
+
+            ws.onerror = () => {
+              ws.close();
+              settle(
+                "reject",
+                new Error("WebSocket connection failed for tick stream"),
+              );
+            };
+
+            ws.onclose = (event) => {
+              cleanup();
+              if (settled) return;
+              let detail = "";
+              if (event.reason) {
+                detail = `: ${event.reason}`;
+              } else if (event.code !== 1000) {
+                detail = ` (code ${event.code})`;
+              }
+              settle(
+                "reject",
+                new Error(
+                  `WebSocket closed before tick stream completed${detail}`,
+                ),
+              );
+            };
+
+            // Start the stream only after subscriber + handlers attach; token frames can race the POST's 202.
+            apiFetch<{ ok: boolean; streamTopic: string }>(
+              "/v1/orchestrator/tick",
+              {
+                method: "POST",
+                body: JSON.stringify({ ...req, stream: true }),
+                signal: combinedSignal,
+                timeout: 5000,
+                headers: {
+                  "content-type": "application/json",
+                  accept: "application/json",
+                },
+              },
+            )
+              .then((initRes) => {
+                if (!initRes.ok) {
+                  ws.close();
+                  settle("reject", new Error("Failed to start tick stream"));
+                }
+              })
+              .catch((err: unknown) => {
+                ws.close();
+                settle(
+                  "reject",
+                  err instanceof Error ? err : new Error(String(err)),
+                );
+              });
+          });
+        });
+      } finally {
+        setIsStreaming(false);
+      }
+    },
+    [execute],
+  );
+
+  const cancelTick = useCallback(() => {
+    cancel();
+    wsRef.current?.close();
+    wsRef.current = null;
+    setIsStreaming(false);
+  }, [cancel]);
+
+  return {
+    tick,
+    tickStream,
+    cancelTick,
+    isLoading,
+    isStreaming,
+    streamedTokens,
+    streamingError,
+    error,
+    resetStream,
+  };
+}
 
 export function FlowPage({
   kind,

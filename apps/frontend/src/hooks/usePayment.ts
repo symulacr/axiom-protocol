@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { parseUnits, type Address } from "viem";
 import { useAccount, useChainId, usePublicClient } from "wagmi";
 import { useGenericWrite } from "./useGenericWrite.js";
@@ -173,4 +173,70 @@ export function usePayment(): UsePaymentResult {
     getPaymentConfig,
     isPayLoading,
   };
+}
+
+/*
+  Payment-token symbol/decimals resolved once from the backend config and memoized at module scope —
+  one unit source so form suffix, confirm CTA and fact rows can never diverge or hardcode a token.
+*/
+
+export type PaymentTokenMeta = { symbol: string; decimals: number };
+
+/** Neutral unit placeholder while the config fetch is in flight (or when the
+ * backend is unreachable — the flow's allowance/execute path needs the same
+ * endpoint, so a down backend blocks execution anyway). Every consumer uses
+ * this SAME fallback, so the form and the confirm CTA never diverge. */
+export const PAYMENT_SYMBOL_PENDING = "…";
+
+type PaymentConfigResponse = {
+  paymentToken: string;
+  paymentTokenSymbol?: string;
+  paymentTokenDecimals?: number;
+};
+
+let cached: PaymentTokenMeta | null = null;
+let inflight: Promise<PaymentTokenMeta | null> | null = null;
+
+function fetchMeta(): Promise<PaymentTokenMeta | null> {
+  inflight ??= apiFetch<PaymentConfigResponse>("/v1/payment/config", {
+    method: "GET",
+  })
+    .then((config) => {
+      cached = config.paymentTokenSymbol
+        ? {
+            symbol: config.paymentTokenSymbol,
+            decimals: config.paymentTokenDecimals ?? 6,
+          }
+        : null;
+      return cached;
+    })
+    .catch(() => {
+      inflight = null; // allow a retry on the next mount
+      return null;
+    });
+  return inflight;
+}
+
+/** Payment-token metadata; null until the first successful read resolves. */
+export function usePaymentToken(): PaymentTokenMeta | null {
+  const [meta, setMeta] = useState<PaymentTokenMeta | null>(cached);
+  useEffect(() => {
+    if (cached) {
+      setMeta(cached);
+      return;
+    }
+    let alive = true;
+    void fetchMeta().then((resolved) => {
+      if (alive) setMeta(resolved);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+  return meta;
+}
+
+/** Display symbol with the shared pending fallback. */
+export function paymentSymbolOf(meta: PaymentTokenMeta | null): string {
+  return meta?.symbol ?? PAYMENT_SYMBOL_PENDING;
 }

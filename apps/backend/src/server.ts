@@ -45,7 +45,7 @@ import { InMemoryStorage, type StorageAdapter } from "@axiom/config/storage/0g";
 import {
   createApiKeyAuth,
   enforceClientPathAllowlist,
-  timingSafeTokenInList,
+  timingSafeMatch,
 } from "@axiom/config/middleware/auth";
 import { getEventStore, payloadField } from "./events/store.js";
 import { PaymentProcessorClient } from "./payment/processor.js";
@@ -1036,7 +1036,7 @@ function registerMcpRoutes(
       description: "Terminate an MCP session (requires mcp-session-id)",
     },
   );
-  app.use("/mcp", createMcpRouter(config, { baseUrl: getBaseUrl }));
+  app.use("/mcp", createMcpRouter(config, getBaseUrl));
 }
 
 function registerPaymentRoutes(
@@ -1294,7 +1294,7 @@ function setupWebSocketServer(
         wsTokenFromSubprotocols(req.headers["sec-websocket-protocol"]) ??
         url.searchParams.get("token") ??
         "";
-      if (!token || !timingSafeTokenInList(token, apiKeys)) {
+      if (!token || !timingSafeMatch(token, apiKeys)) {
         deny();
         return;
       }

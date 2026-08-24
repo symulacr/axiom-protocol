@@ -6,7 +6,7 @@ import {
   enforceClientPathAllowlist,
   isClientPathAllowed,
   requireServerAuth,
-  timingSafeTokenInList,
+  timingSafeMatch,
   type AuthRequest,
 } from "./auth.js";
 
@@ -73,9 +73,9 @@ test("requireServerAuth allows server principal", () => {
   assert.equal(next, true);
 });
 
-test("timingSafeTokenInList matches", () => {
-  assert.equal(timingSafeTokenInList("abc", ["x", "abc"]), true);
-  assert.equal(timingSafeTokenInList("nope", ["x", "abc"]), false);
+test("timingSafeMatch list matches", () => {
+  assert.equal(timingSafeMatch("abc", ["x", "abc"]), true);
+  assert.equal(timingSafeMatch("nope", ["x", "abc"]), false);
 });
 
 test("isClientPathAllowed: chat and agents ok; vault execute and forensics denied", () => {
@@ -103,10 +103,7 @@ test("enforceClientPathAllowlist blocks client on vault execute path", () => {
   });
   assert.equal(next, false);
   assert.equal(state.statusCode, 403);
-  assert.equal(
-    (state.body as { code?: string }).code,
-    "CLIENT_PATH_DENIED",
-  );
+  assert.equal((state.body as { code?: string }).code, "CLIENT_PATH_DENIED");
 });
 
 test("enforceClientPathAllowlist allows client on chat path", () => {

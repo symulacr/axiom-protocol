@@ -201,7 +201,7 @@ function sessionIdOf(req: Request): string | undefined {
 /** Mount at /mcp, server API key only: /mcp is deliberately absent from CLIENT_ALLOWED_ROUTES, so client keys are denied. */
 export function createMcpRouter(
   config: ServerConfig,
-  opts: { baseUrl: () => string },
+  baseUrl: () => string,
 ): Router {
   const transports = new Map<string, StreamableHTTPServerTransport>();
   const router = Router();
@@ -244,7 +244,7 @@ export function createMcpRouter(
           }
         };
         transport = created;
-        const server = buildMcpServer(config, opts.baseUrl);
+        const server = buildMcpServer(config, baseUrl);
         await server.connect(transport);
       }
       await transport.handleRequest(req, res, req.body);

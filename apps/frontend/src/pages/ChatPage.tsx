@@ -33,14 +33,10 @@ import {
   type ChatThread as StoredThread,
 } from "../hooks/useThreads.js";
 import { useChatHistory } from "../hooks/useChatHistory.js";
-import { useChatTxStream } from "../hooks/useChatTxStream.js";
-import { useThrottledStreamText } from "../hooks/useThrottledStreamText.js";
+import { useEventStream } from "../hooks/useEventStream.js";
+import { eventTokenId } from "../hooks/useEventHistory.js";
+import { usePolledApi } from "../hooks/usePolledApi.js";
 import { useShellSidebar } from "../hooks/useShellSidebar.js";
-import {
-  normalizeProviders,
-  useProviders,
-  type ComputeProvider,
-} from "../hooks/useProviders.js";
 import { ChatHistorySection } from "../components/ChatHistorySection.js";
 import {
   humanizeError,
@@ -73,7 +69,6 @@ import {
   compactHistory,
   MAX_TOOL_LOOPS,
   summarizeConversation,
-  evaluateContinue,
   isAskUserResult,
   type ChatSessionContext,
 } from "@axiom/chat-runtime";
@@ -383,6 +378,188 @@ function EmptyState(props: {
 /** 05: console references in assistant answers become links —
  * `Agent #N` → the agent page (internal, SPA-routed via the click
  * interceptor on the message list), 64-hex hashes → the block explorer. */
+
+const STREAM_THROTTLE_MS = 50;
+
+/** Stream text with ref mirror + 50ms throttle: chunks append to the ref; schedule() coalesces re-renders. */
+function useThrottledStreamText() {
+  const [streamText, setStreamText] = useState("");
+  const textRef = useRef("");
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const cancelThrottle = useCallback(() => {
+    if (timerRef.current !== null) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
+
+  const schedule = useCallback(() => {
+    if (timerRef.current !== null) return;
+    timerRef.current = setTimeout(() => {
+      timerRef.current = null;
+      setStreamText(textRef.current);
+    }, STREAM_THROTTLE_MS);
+  }, []);
+
+  const flush = useCallback(() => {
+    cancelThrottle();
+    setStreamText(textRef.current);
+  }, [cancelThrottle]);
+
+  const reset = useCallback(() => {
+    cancelThrottle();
+    textRef.current = "";
+    setStreamText("");
+  }, [cancelThrottle]);
+
+  useEffect(() => () => cancelThrottle(), [cancelThrottle]);
+
+  return { streamText, textRef, schedule, flush, reset };
+}
+
+interface ComputeProvider {
+  address: string;
+  model: string;
+  endpoint?: string;
+  price?: string;
+  /** Router latency ms; null = no recent routing samples. */
+  latencyMs?: number | null;
+  /** USD per token (router `pricing_usd`); undefined on the legacy list. */
+  pricingUsd?: {
+    prompt?: string;
+    completion?: string;
+    cached?: string;
+  };
+  trustMode?: "standard" | "verified" | "private";
+  providerName?: string | null;
+  providerCountry?: string | null;
+  isHealthy?: boolean;
+  uptime?: number | null;
+}
+
+interface ProvidersResponse {
+  services: ComputeProvider[];
+}
+
+/** Normalize a backend provider into the client shape; ?model= adds model/trust_mode, legacy items don't. */
+function normalizeProviders(
+  services: unknown[] | undefined,
+): ComputeProvider[] {
+  if (!Array.isArray(services)) return [];
+  return services
+    .filter(
+      (s): s is Record<string, unknown> => typeof s === "object" && s !== null,
+    )
+    .map((p) => {
+      const pricing = p.pricing_usd as Record<string, unknown> | undefined;
+      const trust = p.trust_mode;
+      const out: ComputeProvider = {
+        address: String(p.address ?? ""),
+        model: String(p.model ?? p.model_id ?? ""),
+        latencyMs: typeof p.latency === "number" ? p.latency : null,
+        uptime: typeof p.uptime === "number" ? p.uptime : null,
+        isHealthy: typeof p.is_healthy === "boolean" ? p.is_healthy : undefined,
+        trustMode:
+          trust === "standard" || trust === "verified" || trust === "private"
+            ? trust
+            : undefined,
+      };
+      if (typeof p.endpoint === "string") out.endpoint = p.endpoint;
+      if (typeof p.price === "string") out.price = p.price;
+      if (pricing && typeof pricing === "object") {
+        out.pricingUsd = {
+          prompt:
+            typeof pricing.prompt === "string" ? pricing.prompt : undefined,
+          completion:
+            typeof pricing.completion === "string"
+              ? pricing.completion
+              : undefined,
+          cached:
+            typeof pricing.cached_prompt === "string"
+              ? pricing.cached_prompt
+              : undefined,
+        };
+      }
+      if (typeof p.provider_name === "string")
+        out.providerName = p.provider_name;
+      if (typeof p.provider_country === "string")
+        out.providerCountry = p.provider_country;
+      return out;
+    });
+}
+
+/** 0G compute providers; `model` hits the passthrough, else legacy pseudo-address list. Poll ≥60s (backend cache). */
+function useProviders(model?: string) {
+  const url = model
+    ? `/v1/compute/providers?model=${encodeURIComponent(model)}`
+    : "/v1/compute/providers";
+  return usePolledApi<ProvidersResponse>(url, {
+    refetchInterval: 60_000,
+    queryKey: ["compute-providers", model ?? "all"],
+  });
+}
+
+/** On-chain events chat surfaces as "⛓ tx mined" confirmations — indexer topics minus admin noise. */
+const CHAT_TX_EVENT_NAMES: Record<string, true> = {
+  Transfer: true, // mint + iTransferFrom
+  Authorization: true,
+  AuthorizationRevoked: true,
+  DelegateAccess: true,
+  Cloned: true,
+  Deposited: true,
+  Withdrawn: true,
+  StrategySet: true,
+  Executed: true,
+  PaymentProcessed: true,
+  ComputeProviderPaid: true,
+  EarningsWithdrawn: true,
+  RoyaltySet: true,
+};
+
+const CHAT_TX_MAX_ROWS = 40;
+
+interface ChatTxRow {
+  id: string;
+  eventName: string;
+  txHash?: string;
+  blockNumber?: number;
+  tokenId?: string;
+}
+
+/** Live WS subscription (reuses the /v1/stream client-key auth + useEventStream
+ * reconnect/backoff) filtered to on-chain confirmations, deduped by txHash. */
+function useChatTxStream(enabled = true): {
+  rows: ChatTxRow[];
+  isConnected: boolean;
+} {
+  const { events, isConnected } = useEventStream({
+    topics: ["*"],
+    enabled,
+  });
+
+  const rows = useMemo(() => {
+    const seen = new Set<string>();
+    const out: ChatTxRow[] = [];
+    for (const ev of events) {
+      if (CHAT_TX_EVENT_NAMES[ev.eventName] !== true) continue;
+      const txHash = ev.txHash || ev.transactionHash || ev.payload?.txHash;
+      if (!txHash) continue;
+      if (seen.has(txHash)) continue;
+      seen.add(txHash);
+      out.push({
+        id: `${txHash}:${ev.logIndex ?? 0}`,
+        eventName: ev.eventName,
+        txHash: String(txHash),
+        blockNumber: ev.blockNumber,
+        tokenId: eventTokenId(ev) ?? undefined,
+      });
+    }
+    return out.slice(0, CHAT_TX_MAX_ROWS);
+  }, [events]);
+
+  return { rows, isConnected };
+}
 
 function ChatPageInner(): ReactElement {
   const { address } = useAccount();
@@ -1123,8 +1300,7 @@ function ChatPageInner(): ReactElement {
           if (sawAsk) break;
         }
 
-        const { exhausted } = evaluateContinue(loopCount);
-        if (exhausted && !isStale()) {
+        if (loopCount >= MAX_TOOL_LOOPS && !isStale()) {
           currentMessages = [
             ...currentMessages,
             createMessage({

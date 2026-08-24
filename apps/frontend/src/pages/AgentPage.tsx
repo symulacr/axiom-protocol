@@ -5,9 +5,9 @@
   Executes bounded operations by deep-linking the flow pages with a prefilled
   intent (review-first, never auto-submitted).
 */
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useChainId } from "wagmi";
+import { useAccount, useChainId, useReadContracts } from "wagmi";
 import {
   ArrowRight,
   Bot,
@@ -31,13 +31,24 @@ import {
 } from "../components/axiom/Controls.js";
 import { StatePill } from "../components/StatePill.js";
 import { getCopy, interpolate, type Locale } from "../lib/copy.js";
-import { useAgentMetadata } from "../hooks/useAgentMetadata.js";
-import { useAgentEvents } from "../hooks/useAgentEvents.js";
-import { usePerformance } from "../hooks/usePerformance.js";
-import { usePayment } from "../hooks/usePayment.js";
-import { paymentSymbolOf, usePaymentToken } from "../hooks/usePaymentToken.js";
+import {
+  useEventHistory,
+  eventTokenId,
+  mergeDedupedEvents,
+  type AxiomEvent,
+} from "../hooks/useEventHistory.js";
+import { useEventStream } from "../hooks/useEventStream.js";
+import { usePolledApi } from "../hooks/usePolledApi.js";
+import { toViemAbi } from "../lib/abi.js";
+import { AGENT_NFT_ABI } from "@axiom/config/abis";
+import type { PerformanceMetrics } from "@axiom/config/types/performance";
+import {
+  usePayment,
+  usePaymentToken,
+  paymentSymbolOf,
+} from "../hooks/usePayment.js";
 import { useVaultData } from "../hooks/useVaultDataBatch.js";
-import { formatUnits } from "viem";
+import { formatUnits, type Address, type Hex } from "viem";
 import { APP_CHAIN } from "../config/wagmi.js";
 import { hasStrategyRoot } from "../lib/models.js";
 import {
@@ -46,9 +57,173 @@ import {
   truncateHex,
   explorerTxUrl,
 } from "../utils/format.js";
+import { getAxiomAgentNftAddress } from "../abi/addresses.js";
 
 const AGENT_TABS = ["overview", "execute", "payments", "activity"] as const;
 type AgentTab = (typeof AGENT_TABS)[number];
+
+const axiomAgentNftAbiParsed = toViemAbi(AGENT_NFT_ABI);
+
+type AgentMetadata = {
+  tokenId: bigint;
+  owner: Address;
+  dataHash: Hex;
+  dataDescription: string;
+};
+
+function useAgentMetadata(tokenId: bigint): {
+  data: AgentMetadata | null;
+  error: Error | null;
+} {
+  const chainId = useChainId();
+  const { isConnected } = useAccount();
+  const agentNftAddr = getAxiomAgentNftAddress(chainId);
+
+  const contracts = useMemo(
+    () =>
+      [
+        {
+          address: agentNftAddr,
+          abi: axiomAgentNftAbiParsed,
+          functionName: "ownerOf",
+          args: [tokenId],
+        },
+        {
+          address: agentNftAddr,
+          abi: axiomAgentNftAbiParsed,
+          functionName: "intelligentDatasOf",
+          args: [tokenId],
+        },
+      ] as const,
+    [tokenId, agentNftAddr],
+  );
+
+  const query = useReadContracts({
+    allowFailure: true,
+    contracts,
+    query: {
+      enabled: isConnected && tokenId > 0n,
+    },
+  });
+
+  const intelligentDatas =
+    (
+      query.data?.[1] as
+        | {
+            result?: ReadonlyArray<{ dataDescription: string; dataHash: Hex }>;
+            error?: Error;
+          }
+        | undefined
+    )?.result ?? undefined;
+  const firstData = intelligentDatas?.[0];
+
+  // ownerOf revert is the canonical on-chain "token does not exist" signal — treat as confirmed null; network failures don't carry the revert message
+  const ownerOfError = (query.data?.[0] as { error?: Error } | undefined)
+    ?.error;
+  const ownerOfReverted =
+    ownerOfError !== undefined &&
+    /revert/i.test(ownerOfError.message ?? String(ownerOfError));
+
+  const data = useMemo<AgentMetadata | null>(() => {
+    if (!query.data) return null;
+    if (ownerOfReverted) return null;
+    return {
+      tokenId,
+      owner:
+        (query.data[0] as { result?: Address; error?: Error } | undefined)
+          ?.result ?? "0x0",
+      dataHash: firstData?.dataHash ?? "0x",
+      dataDescription: firstData?.dataDescription ?? "",
+    };
+  }, [query.data, tokenId, firstData, ownerOfReverted]);
+
+  return useMemo(
+    () => ({
+      data,
+      error: (query.error as Error | null) ?? null,
+    }),
+    [data, query.error],
+  );
+}
+
+interface UseAgentEventsOptions {
+  enabled?: boolean;
+}
+
+interface UseAgentEventsResult {
+  events: AxiomEvent[];
+  isLoading: boolean;
+  error: Error | null;
+  refetch: () => void;
+}
+
+function useAgentEvents(
+  tokenId: bigint | null,
+  options: UseAgentEventsOptions = {},
+): UseAgentEventsResult {
+  const { enabled = true } = options;
+  const { events, isLoading, error, refetch } = useEventHistory({
+    pollIntervalMs: 15_000,
+    enabled,
+  });
+  const { events: wsEvents, isConnected } = useEventStream({
+    topics: ["*"],
+    enabled,
+  });
+
+  const hadWsConnectRef = useRef(false);
+  useEffect(() => {
+    if (!enabled) {
+      hadWsConnectRef.current = false;
+      return;
+    }
+    if (!isConnected || hadWsConnectRef.current) return;
+    hadWsConnectRef.current = true;
+    refetch();
+  }, [enabled, isConnected, refetch]);
+
+  const agentEvents = useMemo(() => {
+    if (!enabled || tokenId === null) return [];
+
+    const tid = tokenId.toString();
+    const matches = (ev: AxiomEvent) => eventTokenId(ev) === tid;
+
+    const httpFiltered = events.filter(matches);
+    const wsFiltered = wsEvents.filter(matches);
+    return mergeDedupedEvents(httpFiltered, wsFiltered);
+  }, [enabled, events, wsEvents, tokenId]);
+
+  return useMemo(
+    () => ({
+      events: agentEvents,
+      isLoading,
+      error,
+      refetch,
+    }),
+    [agentEvents, isLoading, error, refetch],
+  );
+}
+
+interface PerformanceResponse {
+  metrics: PerformanceMetrics;
+}
+
+/** Per-agent tick metrics; the only consumer-facing field (AgentPage fact row). */
+function usePerformance(tokenId: bigint | null): {
+  metrics: PerformanceMetrics | null;
+} {
+  const { isConnected } = useAccount();
+  const enabled = isConnected && tokenId !== null && tokenId > 0n;
+  const url = enabled ? `/v1/agents/${tokenId.toString()}/performance` : "";
+
+  const { data } = usePolledApi<PerformanceResponse>(url, {
+    enabled,
+    queryKey: ["performance", tokenId?.toString()],
+  });
+
+  const metrics = data?.metrics ?? null;
+  return useMemo(() => ({ metrics }), [metrics]);
+}
 
 export function AgentPage({
   tokenId,

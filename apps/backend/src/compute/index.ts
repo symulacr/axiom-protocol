@@ -59,18 +59,11 @@ export function logEffectiveComputeConfig(
 const logRouter = createLogger("compute-router");
 const ROUTER_TIMEOUT_MS = 30_000;
 
-interface RouterClientOptions {
-  timeout?: number;
-}
-
-export async function createRouterClient(
-  model?: string,
-  opts: RouterClientOptions = {},
-): Promise<OpenAI> {
+export async function createRouterClient(model?: string): Promise<OpenAI> {
   // Lazy: the openai SDK (~1MB parsed) joins the graph only when a compute
   // client is actually created, not at boot.
   const { default: OpenAI } = await import("openai");
-  const timeout = opts.timeout ?? ROUTER_TIMEOUT_MS;
+  const timeout = ROUTER_TIMEOUT_MS;
   logRouter.info("Creating router client", { model });
 
   const directKey = process.env.AXIOM_COMPUTE_DIRECT_KEY;

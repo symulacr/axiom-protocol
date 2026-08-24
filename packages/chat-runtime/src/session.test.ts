@@ -2,9 +2,7 @@ import { test } from "bun:test";
 import assert from "node:assert/strict";
 import {
   summarizeConversation,
-  evaluateContinue,
   compactHistory,
-  MAX_TOOL_LOOPS,
   applyToolResult,
   createSession,
 } from "./session.js";
@@ -25,16 +23,6 @@ test("summarizeConversation returns a non-empty summary for long history", () =>
   const summary = summarizeConversation(msgs);
   assert.ok(summary.length > 0);
   assert.match(summary, /\[user\]/);
-});
-
-test("evaluateContinue is false below budget and structured above", () => {
-  assert.deepEqual(evaluateContinue(3), { exhausted: false, signal: null });
-  const over = evaluateContinue(MAX_TOOL_LOOPS);
-  assert.equal(over.exhausted, true);
-  assert.deepEqual(over.signal, {
-    type: "continue",
-    reason: "tool_loop_budget_exceeded",
-  });
 });
 
 test("compactHistory returns a summary message followed by recent turns", () => {

@@ -1,11 +1,3 @@
-import { Router } from "express";
-import type { z } from "zod";
-import type { ServerConfig } from "../config-types.js";
-import {
-  createRoute,
-  type RouteOptions,
-  type RouteHandler,
-} from "../routers/route-factory.js";
 import { getSharedProvider } from "../provider.js";
 import { TTLCache } from "../utils/response.js";
 import { createLogger } from "../utils/logger.js";
@@ -90,25 +82,6 @@ export async function* getLogsChunked(
 
     from = to + 1;
   }
-}
-
-export interface SkillRouter {
-  router: Router;
-  route: <S extends z.ZodTypeAny | undefined = undefined>(
-    opts: RouteOptions<S>,
-    handler: RouteHandler<S extends z.ZodTypeAny ? z.infer<S> : unknown>,
-  ) => void;
-}
-
-export function createSkillRouter(config: ServerConfig): SkillRouter {
-  const router = Router();
-  const route = <S extends z.ZodTypeAny | undefined = undefined>(
-    opts: RouteOptions<S>,
-    handler: RouteHandler<S extends z.ZodTypeAny ? z.infer<S> : unknown>,
-  ): void => {
-    createRoute(router, opts, handler, config);
-  };
-  return { router, route };
 }
 
 interface CachedJsonGetOptions {

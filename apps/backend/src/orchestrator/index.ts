@@ -175,7 +175,7 @@ export class StrategyRunner {
 
   private async getClient(model?: string): Promise<OpenAI> {
     if (this.openai && this.openaiModel === model) return this.openai;
-    this.openai = await createRouterClient(model, { timeout: undefined });
+    this.openai = await createRouterClient(model);
     this.openaiModel = model;
     return this.openai;
   }

@@ -209,11 +209,11 @@ export class EventStore {
     const bucketKey = `${stored.source}::${stored.eventName}`;
     const bucket = getOrCreate(this.buckets, bucketKey, () => []);
     if (bucket.length >= this.cap) {
-      const evicted = bucket.shift(); // cap validated positive, so the bucket is non-empty here and shift cannot be undefined
-      if (!evicted) throw new Error("EventStore cap bucket empty");
+      const evicted = bucket.shift()!; // cap validated positive, so the bucket is non-empty here and shift cannot be undefined
       this.seenKeys.delete(dedupeKey(evicted));
       this.removeFromIndex(evicted);
-      if (this.total > 0) this.total -= 1;
+      // total was incremented for every stored event, so it is ≥ 1 whenever an eviction fires.
+      this.total -= 1;
     }
     bucket.push(stored);
     this.reindexEvent(stored, dedupe);
@@ -330,8 +330,8 @@ export class EventStore {
   ): void {
     const last = bucket.length - 1;
     if (idx !== last) {
-      const swapped = bucket[last];
-      if (!swapped) throw new Error("EventStore swap slot empty");
+      // idx is a recorded in-bucket position, so idx !== last implies bucket[last] exists.
+      const swapped = bucket[last]!;
       bucket[idx] = swapped;
       updatePos(swapped, idx);
     }

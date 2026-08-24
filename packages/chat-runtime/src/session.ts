@@ -229,19 +229,3 @@ export function summarizeConversation<
   }
   return out.trim();
 }
-
-type ContinueSignal = {
-  type: "continue";
-  reason: "tool_loop_budget_exceeded";
-} | null;
-
-export function evaluateContinue(
-  loopCount: number,
-  maxLoops = MAX_TOOL_LOOPS,
-): { exhausted: boolean; signal: ContinueSignal } {
-  if (loopCount < maxLoops) return { exhausted: false, signal: null };
-  return {
-    exhausted: true,
-    signal: { type: "continue", reason: "tool_loop_budget_exceeded" },
-  };
-}

@@ -157,10 +157,3 @@ export function requireServerAuth(
     code: "SERVER_KEY_REQUIRED",
   });
 }
-
-export function timingSafeTokenInList(
-  token: string,
-  candidates: string[],
-): boolean {
-  return timingSafeMatch(token, candidates);
-}

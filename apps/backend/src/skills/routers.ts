@@ -1,14 +1,13 @@
-import type { Router, Request, Response } from "express";
+import { Router, type Request, type Response } from "express";
 import { ethers } from "ethers";
 import type { z } from "zod";
 import type { ServerConfig } from "../config-types.js";
 import {
-  createSkillRouter,
-  type SkillRouter,
-  cachedJsonGet,
-  serialize,
-  getLogsChunked,
-} from "../skills/shared.js";
+  createRoute,
+  type RouteOptions,
+  type RouteHandler,
+} from "../routers/route-factory.js";
+import { cachedJsonGet, serialize, getLogsChunked } from "../skills/shared.js";
 import { getSharedProvider } from "../provider.js";
 import { TTLCache, sendError } from "../utils/response.js";
 import { createLogger } from "../utils/logger.js";
@@ -111,7 +110,10 @@ function skill<S extends z.ZodTypeAny>(
 }
 
 function registerSkillRoutes(
-  route: SkillRouter["route"],
+  route: <S extends z.ZodTypeAny | undefined = undefined>(
+    opts: RouteOptions<S>,
+    handler: RouteHandler<S extends z.ZodTypeAny ? z.infer<S> : unknown>,
+  ) => void,
   registrations: SkillRouteDef[],
 ): void {
   // One registration indirection keeps path/schema/handler/auth together, replacing five near-identical factories; positional flags stay (an options object would churn 28 call sites).
@@ -275,7 +277,13 @@ async function ofacFetch(path: string): Promise<string> {
 const logUnbroker = createLogger("skills:unbroker");
 
 export function createSkillRouters(config: ServerConfig): Router {
-  const { router, route } = createSkillRouter(config);
+  const router = Router();
+  const route = <S extends z.ZodTypeAny | undefined = undefined>(
+    opts: RouteOptions<S>,
+    handler: RouteHandler<S extends z.ZodTypeAny ? z.infer<S> : unknown>,
+  ): void => {
+    createRoute(router, opts, handler, config);
+  };
   const provider = getSharedProvider();
   const getNft = (addr: string) =>
     new ethers.Contract(addr, AGENT_NFT_ABI, provider);
