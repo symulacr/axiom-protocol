@@ -198,6 +198,12 @@ export function FlowPage({
     tickHook.isStreaming ||
     vaultWrite.isSubmitting;
 
+  // Single dispatch shape for every draft phase transition (reducer nulls absent error).
+  const setDraftPhase = (
+    phase: OperationDraftPhase,
+    error: string | null = null,
+  ): void => dispatch({ type: "set-draft-phase", flow: kind, phase, error });
+
   // Keep wizard name in sync with draft — mint keccak256(toHex(name)) must match chat mint derivation.
   useEffect(() => {
     if (kind === "mint") mint.setAgentName(draft.value);
@@ -215,11 +221,7 @@ export function FlowPage({
 
   useEffect(() => {
     if ((!requestedStage && !intent) || draft.phase !== "draft") return;
-    dispatch({
-      type: "set-draft-phase",
-      flow: kind,
-      phase: kind === "payment" ? "approval-required" : "review",
-    });
+    setDraftPhase(kind === "payment" ? "approval-required" : "review");
     // hooks: opens review once per intent link
   }, [dispatch, draft.phase, intent, kind, requestedStage]);
 
@@ -324,11 +326,7 @@ export function FlowPage({
       return;
     }
     setSubmitError(null);
-    dispatch({
-      type: "set-draft-phase",
-      flow: kind,
-      phase: kind === "payment" ? "approval-required" : "review",
-    });
+    setDraftPhase(kind === "payment" ? "approval-required" : "review");
   };
 
   const addReceipt = (tx: Omit<Transaction, "icon">) => {
@@ -384,12 +382,7 @@ export function FlowPage({
   const executeCoSign = async () => {
     if (kind !== "transfer" || isBusy) return;
     setCoSignBlocked(false);
-    dispatch({
-      type: "set-draft-phase",
-      flow: kind,
-      phase: "submitting",
-      error: null,
-    });
+    setDraftPhase("submitting");
     try {
       await transfer.coSign();
       const txHash = await transfer.confirm(buildTransferInput());
@@ -398,21 +391,11 @@ export function FlowPage({
       if (isReceiverAccountUnavailable(err)) {
         // Honest blocker: no retry conjures the receiver account here; sheet shows remedies + handoff.
         setCoSignBlocked(true);
-        dispatch({
-          type: "set-draft-phase",
-          flow: kind,
-          phase: "review",
-          error: null,
-        });
+        setDraftPhase("review");
         return;
       }
       const message = humanizeError(err);
-      dispatch({
-        type: "set-draft-phase",
-        flow: kind,
-        phase: "recoverable-error",
-        error: message,
-      });
+      setDraftPhase("recoverable-error", message);
       dispatch({ type: "notice", notice: message });
     }
   };
@@ -421,33 +404,18 @@ export function FlowPage({
   const applyHandoff = async (code: string, viaStorage = false) => {
     if (kind !== "transfer" || isBusy) return;
     setHandoffError(null);
-    dispatch({
-      type: "set-draft-phase",
-      flow: kind,
-      phase: "submitting",
-      error: null,
-    });
+    setDraftPhase("submitting");
     try {
       await transfer.applyHandoffSignature(code.trim() as `0x${string}`);
       setHandoffApplied(true);
-      dispatch({
-        type: "set-draft-phase",
-        flow: kind,
-        phase: "review",
-        error: null,
-      });
+      setDraftPhase("review");
       dispatch({
         type: "notice",
         notice: viaStorage ? f.handoffReceivedNotice : f.handoffAppliedNote,
       });
     } catch (err) {
       // Bad code / wrong signer stays retryable in the handoff panel; anything else is recoverable.
-      dispatch({
-        type: "set-draft-phase",
-        flow: kind,
-        phase: "review",
-        error: null,
-      });
+      setDraftPhase("review");
       const message = humanizeError(err);
       setHandoffError(message);
     }
@@ -479,24 +447,14 @@ export function FlowPage({
   // Handoff tail: acceptance applied + verified — sender's confirm() is the last wallet-gated step.
   const submitHandoffTransfer = async () => {
     if (kind !== "transfer" || isBusy) return;
-    dispatch({
-      type: "set-draft-phase",
-      flow: kind,
-      phase: "submitting",
-      error: null,
-    });
+    setDraftPhase("submitting");
     try {
       const txHash = await transfer.confirm(buildTransferInput());
       setHandoffApplied(false);
       completeTransfer(txHash);
     } catch (err) {
       const message = humanizeError(err);
-      dispatch({
-        type: "set-draft-phase",
-        flow: kind,
-        phase: "recoverable-error",
-        error: message,
-      });
+      setDraftPhase("recoverable-error", message);
       dispatch({ type: "notice", notice: message });
     }
   };
@@ -505,12 +463,7 @@ export function FlowPage({
     if (isBusy) return;
     // Real wallet boundary: exact-amount approve when allowance falls short; explicit no-op notice otherwise.
     if (kind === "payment" && draft.phase === "approval-required") {
-      dispatch({
-        type: "set-draft-phase",
-        flow: kind,
-        phase: "submitting",
-        error: null,
-      });
+      setDraftPhase("submitting");
       try {
         const { approveHash } = await payment.approveExactAllowance(
           draft.value.trim(),
@@ -532,34 +485,19 @@ export function FlowPage({
           });
           confirmOnChain(approveHash);
         }
-        dispatch({
-          type: "set-draft-phase",
-          flow: kind,
-          phase: "payment-required",
-          error: null,
-        });
+        setDraftPhase("payment-required");
         dispatch({
           type: "notice",
           notice: approveHash ? f.approveSentNotice : f.allowanceCoveredNotice,
         });
       } catch (err) {
         const message = humanizeError(err);
-        dispatch({
-          type: "set-draft-phase",
-          flow: kind,
-          phase: "recoverable-error",
-          error: message,
-        });
+        setDraftPhase("recoverable-error", message);
         dispatch({ type: "notice", notice: message });
       }
       return;
     }
-    dispatch({
-      type: "set-draft-phase",
-      flow: kind,
-      phase: "submitting",
-      error: null,
-    });
+    setDraftPhase("submitting");
     try {
       if (kind === "mint") {
         const dataHash = await mint.registerOracle(draft.value);
@@ -608,12 +546,7 @@ export function FlowPage({
         if (prepared.status === "co-sign-required") {
           // Cross-party pause: sheet shows co-sign step ("Sign as receiver"); handoff covers remote receivers.
           setHandoffReceiver(prepared.receiver);
-          dispatch({
-            type: "set-draft-phase",
-            flow: kind,
-            phase: "review",
-            error: null,
-          });
+          setDraftPhase("review");
           return;
         }
         const txHash = await transfer.confirm(input);
@@ -677,12 +610,7 @@ export function FlowPage({
       }
     } catch (err) {
       const message = humanizeError(err);
-      dispatch({
-        type: "set-draft-phase",
-        flow: kind,
-        phase: "recoverable-error",
-        error: message,
-      });
+      setDraftPhase("recoverable-error", message);
       dispatch({ type: "notice", notice: message });
     }
   };
@@ -691,12 +619,7 @@ export function FlowPage({
     tickHook.cancelTick();
     const error =
       reason === "timeout" ? f.simulateTimeoutError : f.simulateRejectedError;
-    dispatch({
-      type: "set-draft-phase",
-      flow: kind,
-      phase: "recoverable-error",
-      error,
-    });
+    setDraftPhase("recoverable-error", error);
     dispatch({ type: "notice", notice: `[dev] ${error}` });
   };
 
@@ -1232,20 +1155,12 @@ export function FlowPage({
                   setHandoffReceiver(null);
                   transfer.reset();
                 }
-                dispatch({
-                  type: "set-draft-phase",
-                  flow: kind,
-                  phase: "draft",
-                  error: null,
-                });
+                setDraftPhase("draft");
               }}
               onRetry={() =>
-                dispatch({
-                  type: "set-draft-phase",
-                  flow: kind,
-                  phase: kind === "payment" ? "approval-required" : "review",
-                  error: null,
-                })
+                setDraftPhase(
+                  kind === "payment" ? "approval-required" : "review",
+                )
               }
               onExecute={() => void execute()}
             />

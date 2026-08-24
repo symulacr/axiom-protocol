@@ -1,12 +1,14 @@
 import { ethers } from "ethers";
+import { STRATEGY_OF_CURRENT, STRATEGY_OF_LEGACY } from "@axiom/config/abis";
 import { getSharedProvider } from "../../provider.js";
 
 const ZERO_ROOT = `0x${"0".repeat(64)}` as const;
 
+// strategyOf variants shared with @axiom/config (same fragments the orchestrator probes).
 const VAULT_ABI = [
   "function balanceOf(uint256) view returns (uint256)",
-  "function strategyOf(uint256) view returns (bytes32, uint256, uint256, uint64, uint64)",
-  "function strategyOf(uint256) view returns (bytes32, uint256, uint256, uint64)",
+  ...STRATEGY_OF_CURRENT,
+  ...STRATEGY_OF_LEGACY,
 ] as const;
 
 interface TickReadyState {
@@ -51,13 +53,12 @@ export async function probeTickReady(
       strategyRoot = null;
     }
   }
-  const ready =
-    balance > 0n &&
-    !!strategyRoot &&
-    strategyRoot !== ZERO_ROOT;
+  const ready = balance > 0n && !!strategyRoot && strategyRoot !== ZERO_ROOT;
   return { ready, balance, strategyRoot };
 }
 
-export function benchSkipsOrchestrateWhenNotReady(liveCompute: boolean): boolean {
+export function benchSkipsOrchestrateWhenNotReady(
+  liveCompute: boolean,
+): boolean {
   return !liveCompute;
 }

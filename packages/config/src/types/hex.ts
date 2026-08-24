@@ -1,3 +1,4 @@
+import { keccak256, toHex } from "viem";
 import { z } from "zod";
 
 /** Shared EVM hex shapes: single source for every regex guarding a 0x value. */
@@ -36,3 +37,9 @@ export const address = z
 export const hexViem = hexString.transform((v) => toViemHex(v));
 
 export const addressViem = address.transform((v) => toViemHex(v));
+
+/** Canonical mint dataHash: keccak256(toHex(trimmed description)). The UI wizard
+ *  and chat mint_agent MUST derive identically — the oracle only signs hashes it has seen. */
+export function deriveMintDataHash(description: string): `0x${string}` {
+  return keccak256(toHex(description.trim()));
+}

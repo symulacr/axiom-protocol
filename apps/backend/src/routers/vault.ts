@@ -1,12 +1,6 @@
-const VAULT_DEPOSIT_IFACE = new ethers.Interface([
-  "function deposit(uint256 tokenId) payable",
-]);
-const VAULT_WITHDRAW_IFACE = new ethers.Interface([
-  "function withdraw(uint256 tokenId, uint256 amount)",
-]);
-
 import type { Router } from "express";
 import { ethers } from "ethers";
+import { VAULT_ABI } from "@axiom/config/abis";
 import { createRoute } from "./route-factory.js";
 import {
   vaultDepositEncodeSchema,
@@ -23,13 +17,15 @@ type VaultActionRoute = {
   valueOf: (amountWei: bigint) => string;
 };
 
+// Shared ABI source: deposit/withdraw fragments come from @axiom/config/abis, not inline copies.
+const VAULT_IFACE = new ethers.Interface(VAULT_ABI);
+
 const VAULT_ACTION_ROUTES: VaultActionRoute[] = [
   {
     path: "/v1/agents/:id/deposit",
     schema: vaultDepositEncodeSchema,
     description: "Encode vault deposit transaction (value = native OG amount)",
-    encode: (id) =>
-      VAULT_DEPOSIT_IFACE.encodeFunctionData("deposit", [BigInt(id)]),
+    encode: (id) => VAULT_IFACE.encodeFunctionData("deposit", [BigInt(id)]),
     valueOf: (amountWei) => amountWei.toString(),
   },
   {
@@ -37,10 +33,7 @@ const VAULT_ACTION_ROUTES: VaultActionRoute[] = [
     schema: vaultWithdrawEncodeSchema,
     description: "Encode vault withdraw transaction (amount in native OG)",
     encode: (id, amountWei) =>
-      VAULT_WITHDRAW_IFACE.encodeFunctionData("withdraw", [
-        BigInt(id),
-        amountWei,
-      ]),
+      VAULT_IFACE.encodeFunctionData("withdraw", [BigInt(id), amountWei]),
     valueOf: () => "0",
   },
 ];

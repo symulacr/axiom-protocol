@@ -126,6 +126,32 @@ async function requestOwnershipSignature(
   return signOwnership(oracle, args);
 }
 
+// Canonical 32-byte nonce hex: the minimal form can drop to an ODD number of
+// hex chars (top nibble zero, ~1/16 of random nonces), which wallets reject as
+// an invalid `bytes` typed-data value. Padding once here keeps the oracle
+// signature, the receiver's EIP-712 digest and the on-chain bytes identical.
+function canonicalNonceHex(nonce: bigint): `0x${string}` {
+  return ethers.zeroPadValue(ethers.toBeHex(nonce), 32) as `0x${string}`;
+}
+
+/** Oracle-signs the ownership proof, then verifies it against the trusted TEE signer;
+ *  sends the error response and returns null on signature mismatch. */
+async function signOwnershipVerified(
+  res: Response,
+  oracle: OracleRouteDeps,
+  args: OwnershipSignatureRequest,
+  trustedSigner: Hex,
+  domain: Eip712Domain,
+): Promise<{ signature: Hex; signer: Hex } | null> {
+  const tee = await requestOwnershipSignature(oracle, args);
+  if (
+    !assertTrustedOracleSigner(res, tee.signature, args, trustedSigner, domain)
+  ) {
+    return null;
+  }
+  return tee;
+}
+
 export function registerAgentRoutes(
   app: Express,
   config: ServerConfig,
@@ -459,43 +485,23 @@ export function registerAgentRoutes(
             id,
           );
           if (!sealedKeyOrDefault) return;
-          // Canonical 32-byte nonce hex: the minimal form can drop to an ODD
-          // number of hex chars (top nibble zero, ~1/16 of random nonces),
-          // which wallets reject as an invalid `bytes` typed-data value.
-          // Padding once here keeps the oracle signature, the receiver's
-          // EIP-712 digest and the on-chain bytes identical (P4 live find).
-          const nonceHex = ethers.zeroPadValue(
-            ethers.toBeHex(nonce),
-            32,
-          ) as `0x${string}`;
-          const tee = await requestOwnershipSignature(oracle, {
-            dataHash,
-            sealedKey: sealedKeyOrDefault,
-            targetPubkey: pk,
-            to,
-            nft,
-            nonce: nonceHex,
-            validUntil,
-          });
-          if (
-            !assertTrustedOracleSigner(
-              res,
-              tee.signature,
-              {
-                dataHash,
-                sealedKey: sealedKeyOrDefault,
-                targetPubkey: pk,
-                to,
-                nft,
-                nonce: nonceHex,
-                validUntil,
-              },
-              trustedSigner,
-              eip712Domain,
-            )
-          ) {
-            return;
-          }
+          const nonceHex = canonicalNonceHex(nonce);
+          const tee = await signOwnershipVerified(
+            res,
+            oracle,
+            {
+              dataHash,
+              sealedKey: sealedKeyOrDefault,
+              targetPubkey: pk,
+              to,
+              nft,
+              nonce: nonceHex,
+              validUntil,
+            },
+            trustedSigner,
+            eip712Domain,
+          );
+          if (!tee) return;
           res.json({
             ok: true,
             stage: "challenge",
@@ -524,10 +530,7 @@ export function registerAgentRoutes(
           return;
         }
 
-        const nonceHex = ethers.zeroPadValue(
-          ethers.toBeHex(nonce),
-          32,
-        ) as `0x${string}`;
+        const nonceHex = canonicalNonceHex(nonce);
         const accessInput = {
           dataHash: proofDataHash,
           targetPubkey: proofTargetPubkey,
@@ -564,34 +567,22 @@ export function registerAgentRoutes(
         }
         const sealedKeyOrDefault = resolveSealedKeyGuard(sealedKeyIn, res, id);
         if (!sealedKeyOrDefault) return;
-        const tee = await requestOwnershipSignature(oracle, {
-          dataHash: proofDataHash,
-          sealedKey: sealedKeyOrDefault,
-          targetPubkey: proofTargetPubkey,
-          to,
-          nft,
-          nonce: nonceHex,
-          validUntil,
-        });
-        if (
-          !assertTrustedOracleSigner(
-            res,
-            tee.signature,
-            {
-              dataHash: proofDataHash,
-              sealedKey: sealedKeyOrDefault,
-              targetPubkey: proofTargetPubkey,
-              to,
-              nft,
-              nonce: nonceHex,
-              validUntil,
-            },
-            trustedSigner,
-            eip712Domain,
-          )
-        ) {
-          return;
-        }
+        const tee = await signOwnershipVerified(
+          res,
+          oracle,
+          {
+            dataHash: proofDataHash,
+            sealedKey: sealedKeyOrDefault,
+            targetPubkey: proofTargetPubkey,
+            to,
+            nft,
+            nonce: nonceHex,
+            validUntil,
+          },
+          trustedSigner,
+          eip712Domain,
+        );
+        if (!tee) return;
         res.json({
           ok: true,
           stage: "final",

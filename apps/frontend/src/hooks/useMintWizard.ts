@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { useAccount, useWalletClient } from "wagmi";
 import { useMutation } from "@tanstack/react-query";
-import { keccak256, toHex } from "viem";
+import { deriveMintDataHash } from "@axiom/config/types/hex";
 import { humanizeError } from "../utils/format.js";
 import {
   apiFetch,
@@ -33,8 +33,8 @@ export function useMintWizard() {
   const deriveDataHash = useCallback(
     (name?: string) => {
       const n = (name ?? agentName).trim() || "Axiom agent";
-      // dataHash = keccak256(toHex(name)) must match the chat mint_agent derivation (oracle signs only hashes it has SEEN); real hash is the 0G Merkle root once the payload uploads
-      return keccak256(toHex(n));
+      // dataHash must match the chat mint_agent derivation (oracle signs only hashes it has SEEN); real hash is the 0G Merkle root once the payload uploads
+      return deriveMintDataHash(n);
     },
     [agentName],
   );

@@ -1,14 +1,8 @@
 import { getChatToolSpec } from "@axiom/config/chat-tools";
 import { PAYMENT_PROCESSOR_ABI } from "@axiom/config/abis";
-import { ADDRESS_REGEX } from "@axiom/config/types/hex";
+import { ADDRESS_REGEX, deriveMintDataHash } from "@axiom/config/types/hex";
 import { fetchJson, resolveTokenId, toolFail } from "../transport.js";
-import {
-  encodeFunctionData,
-  keccak256,
-  parseAbi,
-  parseUnits,
-  toHex,
-} from "viem";
+import { encodeFunctionData, parseAbi, parseUnits } from "viem";
 import type { ToolRuntime } from "../transport.js";
 import type { ToolResult } from "../types.js";
 
@@ -104,13 +98,13 @@ async function encodeMint(
   if (!to) return toolFail("Wallet not connected");
 
   if (!args.dataDescription) return toolFail("dataDescription required");
-  // dataHash must match the UI mint wizard: keccak256(toHex(trimmed description)); the oracle signs only hashes it has seen, so both mint paths MUST derive identically — until upload, this name hash stands in for the payload's 0G Merkle root.
+  // dataHash must match the UI mint wizard: deriveMintDataHash(trimmed description); the oracle signs only hashes it has seen, so both mint paths MUST derive identically — until upload, this name hash stands in for the payload's 0G Merkle root.
   const description = String(args.dataDescription).trim();
   // dataHash omitted → name-derived placeholder keeps first-time mints working; real sealed data attaches later via update().
   const dataHash =
     typeof args.dataHash === "string" && args.dataHash.length > 0
       ? String(args.dataHash)
-      : keccak256(toHex(description));
+      : deriveMintDataHash(description);
 
   const body = {
     dataDescription: description,
