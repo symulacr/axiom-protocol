@@ -20,3 +20,11 @@ test("connect deps keyed on topicsKey", () => {
 test("empty topic key does not produce phantom topic entry", () => {
   assert.match(src, /topicsKey\s*\?\s*topicsKey\.split\(","\)\s*:\s*\[\]/);
 });
+
+test("handshake resolution guarded by disposed flag", () => {
+  assert.match(src, /disposedRef\.current\)\s*\{\s*ws\.close\(\)/);
+});
+
+test("cleanup disables reconnects", () => {
+  assert.match(src, /enabledRef\.current = false/);
+});

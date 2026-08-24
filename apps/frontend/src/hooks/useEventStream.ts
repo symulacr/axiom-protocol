@@ -27,6 +27,9 @@ export function useEventStream(
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const maxReconnectDelay = 30000;
   const enabledRef = useRef(enabled);
+  // Set on unmount: a handshake resolving afterwards must be closed, not
+  // attached (orphan), and must never schedule reconnects.
+  const disposedRef = useRef(false);
   useEffect(() => {
     enabledRef.current = enabled;
   }, [enabled]);
@@ -92,6 +95,10 @@ export function useEventStream(
 
     openStreamSocket(topicsKey ? topicsKey.split(",") : [])
       .then((ws) => {
+        if (disposedRef.current) {
+          ws.close();
+          return;
+        }
         wsRef.current = ws;
         attach(ws);
       })
@@ -106,8 +113,12 @@ export function useEventStream(
   }, [connect]);
 
   useEffect(() => {
+    disposedRef.current = false;
+    enabledRef.current = enabled; // resync covers remount ordering
     connect();
     return () => {
+      disposedRef.current = true;
+      enabledRef.current = false; // kills scheduled reconnects
       if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
       wsRef.current?.close();
       wsRef.current = null;
