@@ -22,6 +22,22 @@ import { ZERO_DATA_ROOT } from "@axiom/config";
 
 const modelDataRootCache = new TTLCache<`0x${string}`>(5 * 60 * 1000, 1000);
 
+/** Per-token in-flight tick registry — enforces one concurrent tick per tokenId. */
+const inFlightTicks = new Set<string>();
+
+/** @internal One tick at a time per tokenId; false = tick already running. */
+export function tryAcquireTickSlot(agentTokenId: string): boolean {
+  const key = String(agentTokenId);
+  if (inFlightTicks.has(key)) return false;
+  inFlightTicks.add(key);
+  return true;
+}
+
+/** @internal Release the token's tick slot when its run settles. */
+export function releaseTickSlot(agentTokenId: string): void {
+  inFlightTicks.delete(String(agentTokenId));
+}
+
 // These sources make the orchestrator fabricate a hold tick without touching
 // compute inference (test-harness affordance). Reachable only when the
 // operator set AXIOM_ALLOW_E2E_MOCK_TICKS=1 AND the caller holds the server key.
@@ -198,12 +214,27 @@ export function registerOrchestratorRoutes(
         return;
       }
 
+      // One in-flight tick per token: concurrent runs would race the tx nonce
+      // (double-spend / replacement) and interleave tick events. Different
+      // tokenIds stay fully parallel.
+      const tickKey = String(spec.agentTokenId);
+      if (!tryAcquireTickSlot(tickKey)) {
+        sendError(
+          res,
+          HTTP.CONFLICT,
+          "tick already in flight for this token",
+          "TICK_IN_FLIGHT",
+        );
+        return;
+      }
+
       if (shouldStream) {
         const topic = `tick.${agentTokenId}`;
         const hasSubscribers = [...getClients()].some(
           (c) => c.topics.has(topic) || c.topics.has("*"),
         );
         if (!hasSubscribers) {
+          releaseTickSlot(tickKey);
           res.status(HTTP.BAD_REQUEST).json({
             error: "No WebSocket subscriber for streaming",
             code: "NO_WS_SUBSCRIBER",
@@ -211,7 +242,7 @@ export function registerOrchestratorRoutes(
           return;
         }
 
-        runner
+        void runner
           .runTick(spec, signal, (chunk) => {
             if (chunk.type === "token")
               sendToTopic(`tick.${agentTokenId}`, chunk);
@@ -228,6 +259,9 @@ export function registerOrchestratorRoutes(
               type: "error",
               error: extractErrorMessage(err),
             });
+          })
+          .finally(() => {
+            releaseTickSlot(tickKey);
           });
         res
           .status(HTTP.ACCEPTED)
@@ -235,13 +269,17 @@ export function registerOrchestratorRoutes(
         return;
       }
 
-      const orchestratorResult = await runner.runTick(spec, signal);
-      appendTickEvent(events, chainId, spec, orchestratorResult);
-      sendToTopic("orchestrator.tick", {
-        agentTokenId: spec.agentTokenId.toString(),
-        recommendation: orchestratorResult.recommendation,
-      });
-      res.status(HTTP.OK).json(orchestratorResult);
+      try {
+        const orchestratorResult = await runner.runTick(spec, signal);
+        appendTickEvent(events, chainId, spec, orchestratorResult);
+        sendToTopic("orchestrator.tick", {
+          agentTokenId: spec.agentTokenId.toString(),
+          recommendation: orchestratorResult.recommendation,
+        });
+        res.status(HTTP.OK).json(orchestratorResult);
+      } finally {
+        releaseTickSlot(tickKey);
+      }
     },
     config,
   );

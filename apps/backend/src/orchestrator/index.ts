@@ -1,4 +1,4 @@
-import type { Wallet } from "ethers";
+import { NonceManager, type Wallet } from "ethers";
 import {
   Contract,
   type JsonRpcProvider,
@@ -151,7 +151,8 @@ export class StrategyRunner {
   private readonly provider: JsonRpcProvider;
   private readonly addresses: OrchestratorConfig["addresses"];
 
-  private readonly signer: Wallet;
+  // NonceManager serializes concurrent execute() sends over the shared wallet.
+  private readonly signer: NonceManager;
   private readonly storage: StorageAdapter | undefined;
   private vaultReadTc: TypedContract<StrategyVaultMethods> | null = null;
   private vaultWriteTc: TypedContract<StrategyVaultMethods> | null = null;
@@ -162,7 +163,7 @@ export class StrategyRunner {
       timeoutMs: getRuntimeConfig().orchestratorProviderTimeoutMs,
     });
     this.addresses = config.addresses;
-    this.signer = config.signer;
+    this.signer = new NonceManager(config.signer);
     this.storage = config.storage;
     const network = pickOGNetwork(chainId); // network const exists only for the unsupported-chain guard's type narrowing
     if (!network) throw new Error(`Unsupported chainId ${chainId}`);
