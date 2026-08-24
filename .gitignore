@@ -334,7 +334,6 @@ data/
 .gitmessage
 _bench.ts
 bench-*.mjs
-eslint.config.js
 nixpacks.toml
 .commandcode/
 **/dist-dev/
