@@ -32,10 +32,7 @@ export function PriorityActionStrip({
   const strip = copy.strip;
   const action = getRouteAction(state, path, fundTarget, strip);
 
-  // Chat fills the viewport below the topbar (live SSE surface) — no strip.
-  // Flow pages own a copper primary for their own operation ("Review
-  // operation"); the strip's payment CTA must not compete with it, so the
-  // strip stays off every operation path.
+  // No strip on chat (fills viewport) or flow pages — their copper primary must not compete with the payment CTA.
   if (
     !action ||
     ["settings", "staking", "chat"].includes(route) ||

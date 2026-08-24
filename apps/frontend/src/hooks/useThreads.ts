@@ -1,9 +1,6 @@
 import { useSyncExternalStore } from "react";
 
-/** Chat thread persistence — the single source of truth shared between the
- * shell sidebar (thread list) and ChatPage (active thread + history).
- * Mirrors the previous ChatPage-local localStorage list so existing
- * threads survive the sidebar merge untouched. */
+/** Chat thread persistence — single source of truth shared by the shell sidebar and ChatPage. */
 const CHAT_THREADS_KEY = "axiom:chat-threads";
 const MAX_THREADS = 40;
 

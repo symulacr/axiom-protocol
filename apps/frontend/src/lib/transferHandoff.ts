@@ -81,8 +81,7 @@ function base64UrlToBytes(encoded: string): Uint8Array {
 /* --- payload encode / decode ---------------------------------------------- */
 
 export function encodeHandoffPayload(payload: TransferHandoffPayload): string {
-  // bigint (validUntil) is not JSON-serializable — carry it as a string and
-  // restore on decode.
+  // bigint (validUntil) is not JSON-serializable — carried as a string, restored on decode.
   const portable = {
     ...payload,
     typedData: {
@@ -140,8 +139,7 @@ export function decodeHandoffPayload(
       nft: hex(m.nft),
       nonce: hex(m.nonce),
     };
-    // validUntil serializes as a decimal string; accept bigint (in-memory) or
-    // a clean decimal string — anything else is a damaged payload.
+    // validUntil serializes as decimal string; accept bigint (in-memory) or clean decimal — else damaged.
     const validUntil =
       typeof m.validUntil === "bigint"
         ? m.validUntil

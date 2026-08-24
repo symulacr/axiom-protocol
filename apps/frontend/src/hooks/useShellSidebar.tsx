@@ -1,8 +1,6 @@
 import { createContext, useContext, type ReactNode } from "react";
 
-/** Shell-level sidebar bridge — lets inner pages (chat) open the shell
- * drawer (≤800px) without each page owning its own sidebar. The App shell
- * provides the value; pages consume it via useShellSidebar(). */
+/** Shell sidebar bridge — lets inner pages (chat) open the shell drawer (≤800px); App provides the value. */
 interface ShellSidebarValue {
   open: boolean;
   setOpen: (v: boolean) => void;

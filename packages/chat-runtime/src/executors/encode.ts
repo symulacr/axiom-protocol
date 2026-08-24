@@ -29,17 +29,10 @@ function encodeOnlyResult(
   };
 }
 
-/** Hard per-call spend caps the LLM cannot talk its way past: 1000 payment
- *  tokens for pay_for_agent (scaled by resolved decimals inside
- *  encodePayForAgent), 1000 native OG for vault deposit/withdraw (the vault
- *  routes enforce the same 1000 cap server-side via route-schemas.ts). */
+/** Hard per-call spend caps the LLM cannot talk past: 1000 payment tokens, 1000 native OG (server-mirrored). */
 const MAX_CHAT_NATIVE = 1000;
 
-/** Sign+send, then wait for the receipt when the transport supports it (the
- *  transport owns the ~60s ceiling). Appends receipt confirmation to the tool
- *  result (receiptStatus + blockNumber) so formatToolResult can tell the LLM
- *  "confirmed"/"failed" instead of a bare hash; a transport without receipt
- *  support (or a wait timeout) falls back to txHash-only — never breaks. */
+/** Sign+send and append receipt status/block when the transport can wait; otherwise txHash-only fallback. */
 async function signAndSendWithReceipt(
   ctx: ToolRuntime,
   calldata: { to: `0x${string}`; data: `0x${string}`; value: bigint },
@@ -152,9 +145,7 @@ async function encodeMint(
   return sendWithReceiptResult(ctx, data, "mint sign failed");
 }
 
-/** Shared send leg for encode tools: sign+send calldata, then shape the
- *  ok/receipt JSON envelope every wallet-bound tool result uses (extra keys
- *  merge into both the receipt and txHash-only variants). */
+/** Shared send leg: sign+send calldata, then shape the ok/receipt envelope wallet-bound tool results use. */
 function sendWithReceiptResult(
   ctx: ToolRuntime,
   data: { to: string; data: string; value: string },
@@ -219,9 +210,7 @@ async function encodeVaultOp(
   return sendWithReceiptResult(ctx, data, `${op} sign failed`, { amount });
 }
 
-/** Payment token decimals resolved from the backend's /v1/payment/config
- *  (which reads them from the token contract) — cached per process. Galileo's
- *  axmUSDC is 18-decimal; hardcoding 6 mis-scales every payment 1e12. */
+/** Payment-token decimals from /v1/payment/config, cached per process; Galileo axmUSDC is 18-decimal, not 6. */
 let tokenDecimalsCache: number | null = null;
 
 async function resolveTokenDecimals(ctx: ToolRuntime): Promise<number> {
@@ -240,8 +229,7 @@ async function resolveTokenDecimals(ctx: ToolRuntime): Promise<number> {
   return 6;
 }
 
-/** Parse a human-readable token amount ("1.5") to base units at the given
- *  decimals, rejecting empty/zero. */
+/** Parse a human-readable token amount ("1.5") to base units at the given decimals, rejecting empty/zero. */
 function parseTokenAmount(raw: unknown, decimals: number): bigint | null {
   if (typeof raw !== "string" || raw.trim() === "") return null;
   const wei = parseUnits(raw.trim(), decimals);
@@ -252,11 +240,7 @@ function isValidAddress(raw: unknown): raw is `0x${string}` {
   return typeof raw === "string" && ADDRESS_REGEX.test(raw);
 }
 
-/** pay_for_agent: creator payment via payForAgent (computeAmount omitted) or
- *  creator + compute provider via payForAgentAndCompute (computeAmount > 0,
- *  provider required — the agent's provider must be passed explicitly since no
- *  per-agent provider registry exists on-chain). Encodes AxiomPaymentProcessor
- *  calldata directly (no backend route), signs with receipt-wait when available. */
+/** pay_for_agent: payForAgent (creator-only) or payForAgentAndCompute; provider explicit since none exists on-chain. */
 async function encodePayForAgent(
   tokenId: string,
   args: Record<string, unknown>,
@@ -348,8 +332,7 @@ async function registerDataHashWithOracle(
   if (!oracleUrl) return;
 
   const url = `${oracleUrl.replace(/\/$/, "")}/v1/agents/mint`;
-  // Fatal like the UI wizard: a chat-minted agent whose hash was never seen by
-  // the oracle becomes un-transferable ("Unknown dataHash" at transfer time).
+  // Fatal like the UI wizard: oracle-unseen hashes yield un-transferable agents ("Unknown dataHash").
   const { ok } = await fetchJson<{ ok?: boolean }>(ctx.http, url, {
     method: "POST",
     headers: { "content-type": "application/json" },

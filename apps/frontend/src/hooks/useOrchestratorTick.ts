@@ -104,12 +104,7 @@ export function useOrchestratorTick(): {
           if (opts.signal) signals.push(opts.signal);
           const combinedSignal = AbortSignal.any(signals);
 
-          // the WS subscriber must exist BEFORE the stream POST — the
-          // backend rejects stream requests with no subscriber
-          // (400 NO_WS_SUBSCRIBER). The topic is deterministic
-          // (`tick.${agentTokenId}` on both sides), openStreamSocket resolves
-          // at onopen, and the server registers the subscriber synchronously
-          // in its upgrade handler, so the POST below always sees it.
+          // Subscriber must precede the stream POST (400 NO_WS_SUBSCRIBER); topic registers sync at upgrade.
           const topic = `tick.${req.agentTokenId}`;
           const ws = await new Promise<WebSocket>((resolve, reject) => {
             let settled = false;
@@ -231,9 +226,7 @@ export function useOrchestratorTick(): {
               );
             };
 
-            // Subscriber is registered and handlers are attached — start the
-            // stream. Token frames can race the POST response (the backend
-            // starts runTick before writing the 202), so this must come last.
+            // Start the stream only after subscriber + handlers attach; token frames can race the POST's 202.
             apiFetch<{ ok: boolean; streamTopic: string }>(
               "/v1/orchestrator/tick",
               {

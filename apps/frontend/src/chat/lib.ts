@@ -224,8 +224,7 @@ export function formatInsightsLine(
   ];
   const wallMs = metrics.reduce((a, m) => a + m.wallMs, 0);
   if (wallMs > 0) parts.push(`LLM ${(wallMs / 1000).toFixed(1)}s`);
-  // Row-42: the opened detail keeps 3 segments — cost, latency, provider.
-  // Token/cache/telemetry internals stay out of the collapsed-by-default line.
+  // Row-42: opened detail keeps 3 segments (cost, latency, provider); internals stay out of the collapsed line.
   const last = metrics[metrics.length - 1];
   if (last?.provider) parts.push(`provider ${truncateAddress(last.provider)}`);
   const cost = metrics.reduce((a, m) => a + (m.costNeuron ?? 0), 0);

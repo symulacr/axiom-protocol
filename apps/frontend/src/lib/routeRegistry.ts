@@ -57,10 +57,7 @@ const ROUTES: RouteDefinition[] = [
     label: "Overview",
     shortcut: "Alt 1",
   },
-  // One nav entry per destination: the agent
-  // register lives on the Overview surface and live agent pages are
-  // /agents/:tokenId, so the old "Agents" → /app alias (Alt 2) is gone —
-  // /app has a single owner in the sidebar and the command palette.
+  // One nav entry per destination: agent pages are /agents/:tokenId, so /app has a single owner.
   {
     id: "chat",
     route: "chat",
@@ -126,9 +123,7 @@ const ROUTES: RouteDefinition[] = [
   },
   { id: "settings", route: "settings", path: "/settings" },
   { id: "staking", route: "staking", path: "/staking" },
-  // cross-wallet handoff receive path — public (no Axiom session; the
-  // acceptance signature is the only gate), deliberately NOT in the nav or
-  // the command palette: /transfer owns the one name for the destination.
+  // Cross-wallet handoff receive path — public (acceptance signature is the gate), kept out of nav/palette.
   {
     id: "transfer-co-sign",
     route: "transfer-co-sign",

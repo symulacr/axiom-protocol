@@ -88,28 +88,21 @@ export function OperationReviewSheet({
   const copy = getCopy(state.settings.locale);
   const f = copy.flowUi;
   const flow = copy.flows[kind];
-  // dismiss trio: Esc + focus restore here; backdrop via layer onMouseDown
-  // below; explicit close via the X and "Edit details". Sheet is the highest-
-  // stakes dialog — dismissing never submits (submission is wallet-gated).
+  // Dismiss trio: Esc + focus restore here, backdrop onMouseDown below, explicit X/"Edit details"; dismissing never submits.
   useModalDismiss(onClose);
   const paymentNeedsApproval =
     kind === "payment" && draft.phase === "approval-required";
   const paymentReady = kind === "payment" && draft.phase === "payment-required";
   const isRecoverableError = draft.phase === "recoverable-error";
-  // the co-sign step replaces the normal primary action whenever a
-  // cross-party transfer is paused for the receiver signature (and no
-  // execution error is being surfaced).
+  // Co-sign step replaces the primary while a cross-party transfer is paused for the receiver signature.
   const coSignActive = coSign !== undefined && !isRecoverableError;
   const handoff = coSignActive ? coSign?.handoff : undefined;
   const handoffApplied = handoff?.applied === true;
   const codeLooksSignable = ACCEPTANCE_CODE_SHAPE.test(
     handoff?.codeValue?.trim() ?? "",
   );
-  // One copper primary per view (CTA hierarchy contract):
-  // - applied handoff → Submit transfer (the sender's wallet boundary)
-  // - co-sign possible → Sign as receiver
-  // - co-sign blocked → Apply acceptance (the only remaining path; disabled
-  // until a signature-shaped code is pasted)
+  // One copper primary per view: applied handoff → Submit transfer; co-sign → Sign as receiver;
+  // co-sign blocked → Apply acceptance (only path until a signature-shaped code is pasted).
   const primaryLabel = isRecoverableError
     ? kind === "payment"
       ? f.restartApproval

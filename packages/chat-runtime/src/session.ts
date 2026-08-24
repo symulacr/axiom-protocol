@@ -22,9 +22,7 @@ export function applyToolResult(
 ): ChatSessionContext {
   session.lastToolName = name as ChatToolName;
   try {
-    // Tool result bodies may wrap payloads in { data: … } (skill executor capArrays)
-    // or carry multiple JSON objects concatenated (streamed tool_calls bug workaround
-    // in some transports) — try whole body first, then the first JSON object only.
+    // Tool bodies may be { data: … }-wrapped or concatenated JSON objects — try whole body, then first object only.
     const text = result.content.trim();
     const firstObjEnd = (() => {
       let depth = 0,
@@ -202,10 +200,7 @@ export function compactHistory<T extends ChatApiMessage>(
     tool_call_id: undefined,
     name: undefined,
   } as unknown as T;
-  // The spread inherits recent[0]'s UI-only id — the lead would share a React
-  // key with the original (duplicate-key warning whenever compaction fires).
-  // id never reaches the API payload (toChatApiMessages strips it), so a
-  // fresh id is cache-safe.
+  // Fresh id avoids sharing recent[0]'s UI-only React key (id is stripped before the API payload, so cache-safe).
   if (
     typeof summaryMsg === "object" &&
     summaryMsg !== null &&

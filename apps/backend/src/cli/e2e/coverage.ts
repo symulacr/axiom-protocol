@@ -196,9 +196,7 @@ export async function runMatrixViewSweepStep(deps: {
   if (verifierAddr.toLowerCase() !== deps.teeVerifier.toLowerCase()) {
     throw new Error(`verifier mismatch ${verifierAddr} != ${deps.teeVerifier}`);
   }
-  // G3 init-pointer probes: a deploy that wires the wrong NFT address into the
-  // vault/processor (or the wrong verifier into the NFT) passes init but bricks
-  // at first use — catch it at runtime parity time.
+  // G3 init-pointer probes: mis-wired NFT/vault/processor/verifier passes init but bricks at first use.
   if (vaultNft.toLowerCase() !== deps.agentNft.toLowerCase()) {
     throw new Error(`vault.nft() mismatch ${vaultNft} != ${deps.agentNft}`);
   }
@@ -471,8 +469,7 @@ export async function runPaymentPipelineStep(deps: {
     "payAndWithdrawEarnings",
   );
 
-  // Post-hoc assertions: the royalty-set, earnings-credit, provider-payout and
-  // earnings-withdraw legs all run inside the same tx (final state only).
+  // All payment legs (royalty, credit, payout, withdraw) ran in one tx — assert final state only.
   const earningsAfter = await pay.contract.agentEarningsOf(
     deps.deployer.address,
   );
@@ -578,8 +575,7 @@ async function buildAuthorizeDelegatePipelineSteps(
   );
   const steps: Parameters<typeof pipelineWalletTxs>[1] = [];
   if (!alreadyAuthorized) {
-    // One tx: authorizeDelegateAndRevoke(delegate, tokenId) merges
-    // authorizeUsage + delegateAccess + revokeAuthorization — no wave-2 split.
+    // One tx: authorizeDelegateAndRevoke merges authorizeUsage + delegateAccess + revokeAuthorization.
     steps.push({
       name: "authorizeDelegateAndRevoke",
       send: () =>
@@ -748,9 +744,7 @@ export async function runPostVaultCoveragePipeline(deps: {
     );
   }
 
-  // State check only — the config category has no on-chain tx left: mint wrote
-  // the final descriptor (strategy-v2) and pay sets the royalty in-tx. The
-  // parity `update` row is marked covered at the mint step instead.
+  // State check only — config category has no on-chain tx left (mint wrote descriptor, pay set royalty).
   const datas = await nft.contract.intelligentDataOf(deps.tokenId);
   if (datas[0]?.dataDescription !== "strategy-v2") {
     throw new Error(

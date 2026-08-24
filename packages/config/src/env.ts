@@ -4,8 +4,7 @@ import { dirnamePath, joinPath } from "./path.js";
 const LEGACY_DEFAULT = joinPath(process.cwd(), "../../.env");
 const MAX_UPSTREAM_LEVELS = 4;
 
-// Walk up from this module's dir (dist/ or src/ under packages/config) to the repo-root .env; the old
-// cwd-based ../../.env default resolves to ~/.env when cwd is the repo root, silently missing it.
+// Walk up from this module's dir to the repo-root .env; cwd-based defaults resolve to ~/.env at repo root.
 function resolveRepoRootEnv(): string {
   let dir = import.meta.dirname ?? process.cwd();
   for (let level = 0; level < MAX_UPSTREAM_LEVELS; level++) {

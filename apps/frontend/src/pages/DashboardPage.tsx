@@ -122,8 +122,7 @@ export function DashboardPage({
   const { address, connector } = useAccount();
   const chainId = useChainId();
   const chainOk = chainId === APP_CHAIN_ID;
-  // Vault balances are native-denominated — the unit comes from chain config,
-  // never a literal.
+  // Vault balances are native-denominated — the unit comes from chain config, never a literal.
   const nativeSymbol = APP_CHAIN.nativeCurrency.symbol;
   const {
     agents,

@@ -1,11 +1,6 @@
 /*
-  Payment-token metadata (symbol + decimals), resolved ONCE from the backend
-  payment config (GET /v1/payment/config → token-contract reads, server-cached
-  5 min) and memoized at module scope. The UI never hardcodes a
-  token unit — the payment form suffix, the review-sheet confirm CTA and the
-  agent-page fact rows all read this one source, so they cannot disagree, and
-  they are correct on any deployment (on Galileo the payment token's on-chain
-  symbol is axmUSDC, not the previously hardcoded "USDC").
+  Payment-token symbol/decimals resolved once from the backend config and memoized at module scope —
+  one unit source so form suffix, confirm CTA and fact rows can never diverge or hardcode a token.
 */
 import { useEffect, useState } from "react";
 import { apiFetch } from "../utils/apiFetch.js";

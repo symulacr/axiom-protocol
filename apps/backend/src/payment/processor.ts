@@ -109,9 +109,7 @@ export class PaymentProcessorClient {
     protocolFeeBps: bigint;
     protocolTreasury: string;
   }> {
-    // Symbol/decimals come from the token contract itself — the UI must never
-    // hardcode a unit ("USDC" was wrong on Galileo, where the mock token's
-    // symbol is axmUSDC). Cached by the /v1/payment/config route layer.
+    // Symbol/decimals come from the token contract itself — UI must never hardcode units ("USDC" was wrong on Galileo).
     const [
       paymentToken,
       protocolFeeBps,

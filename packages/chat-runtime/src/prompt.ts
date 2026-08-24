@@ -47,11 +47,7 @@ const PROMPT_TAIL = [
   `SKILL — ${CLASS_GUIDANCE.skill}`,
 ].join("\n\n");
 
-// Byte-stable across every turn and run: the system prompt must never embed
-// session state (wallet/tokenId/timestamp) — doing so invalidates the router's
-// whole-prefix cache on any mid-run mutation (wallet connect, tool-produced
-// tokenId). Tools resolve the current tokenId/wallet via their requiresTokenId
-// gates and the per-loop tool context instead.
+// Byte-stable across turns: embedding session state would invalidate the router's whole-prefix cache (tools resolve tokenId/wallet via their gates).
 export function buildSystemPrompt(): string {
   return [PROMPT_HEAD, PROMPT_TAIL].join("\n\n");
 }

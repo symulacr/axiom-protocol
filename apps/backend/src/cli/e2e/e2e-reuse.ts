@@ -44,8 +44,7 @@ export function saveE2eReuseSnapshot(snap: E2eReuseSnapshot): void {
   );
 }
 
-/** Bench CLIs resolve the agent under test as: explicit env override, else the
- *  tokenId persisted by the last e2e run, else token 1. */
+/** Bench CLIs resolve the agent under test as: env override, else last run's tokenId, else token 1. */
 export function resolveBenchTokenId(explicit: string | undefined): string {
   if (explicit) return explicit;
   if (existsSync(REUSE_PATH)) {

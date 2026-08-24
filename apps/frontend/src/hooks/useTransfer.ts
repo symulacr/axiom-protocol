@@ -192,10 +192,7 @@ export function useTransfer(): UseTransferResult {
   const queryClient = useQueryClient();
 
   const [signature, setSignature] = useState<TransferResponse | null>(null);
-  // Ref mirror of `signature`: prepare/coSign → confirm chains run inside one
-  // stale render closure (FlowPage execute), so confirm() must not trust the
-  // state captured by its own useCallback (C-stale closure; the modal's
-  // click-separated path never hit this, the flow page's chained one does).
+  // Ref mirror of `signature`: chained prepare→confirm runs in one stale closure, so confirm() reads this ref.
   const signatureRef = useRef<TransferResponse | null>(null);
   const [transferPhase, setTransferPhase] = useState<TransferPhase>("idle");
   const [isPreparing, setIsPreparing] = useState(false);
@@ -289,9 +286,7 @@ export function useTransfer(): UseTransferResult {
     },
   });
 
-  // Finalize logic lives in finalizePrepared below (shared by the sign path
-  // and the handoff-apply path — both exchange a receiver signature for
-  // the final proof structs; only the signature's origin differs).
+  // Finalize logic lives in finalizePrepared — shared by sign and handoff-apply paths (signature origin is the only diff).
 
   /** Canonical AccessProof message for a paused/active challenge — the one
    * structure the wallet signs, the sender validates handoff codes against
@@ -308,12 +303,7 @@ export function useTransfer(): UseTransferResult {
         targetPubkey: challenge.targetPubkey,
         to: input.to,
         nft: getAxiomAgentNftAddress(chainId),
-        // Canonical 32-byte hex — the challenge echoes the nonce as a DECIMAL
-        // string, but the backend/contract hash ethers.toBeHex(nonce); the
-        // minimal form can drop to an ODD number of hex chars (top nibble 0,
-        // ~1/16 of random nonces) which wallets reject as an invalid `bytes`
-        // value. Padding to 32 bytes keeps wallet, backend and contract
-        // hashing the identical bytes.
+        // Canonical 32-byte hex — minimal hex of a decimal nonce can be odd-length, which wallets reject.
         nonce: toHex(nonce, { size: 32 }),
         validUntil,
       };
@@ -408,9 +398,7 @@ export function useTransfer(): UseTransferResult {
         primaryType: "AccessProof",
         message,
         account: signerAccount,
-        // Passing the connector forces a fresh getAccounts() probe (the cached
-        // connection can lag a wallet-side account switch), so a just-exposed
-        // receiver account is accepted immediately.
+        // Passing the connector forces a fresh getAccounts() probe — cached connections lag account switches.
         ...(signerConnector ? { connector: signerConnector } : {}),
       });
       return finalizePrepared({ input, challenge, accessSignature });
@@ -432,8 +420,7 @@ export function useTransfer(): UseTransferResult {
             params: [{ eth_accounts: {} }],
           });
         } catch {
-          // wallet has no permission flow (or denied) — a plain account
-          // request is the only other switch lever injected wallets expose
+          // No permission flow (or denied) — plain eth_requestAccounts is the only other lever injected wallets expose.
           await provider
             .request({ method: "eth_requestAccounts" })
             .catch(() => undefined);
@@ -473,9 +460,7 @@ export function useTransfer(): UseTransferResult {
           retry: false,
         });
 
-        // the AccessProof must recover to the RECIPIENT. Self-transfers
-        // keep the one-step path; cross-party transfers pause here and let the
-        // GUI drive the explicit receiver co-sign step (coSign()).
+        // AccessProof must recover to the RECIPIENT: self-transfers stay one-step; cross-party pauses for coSign().
         if (input.to.toLowerCase() !== from.toLowerCase()) {
           setPendingCoSign({ input, challenge });
           setTransferPhase("idle");

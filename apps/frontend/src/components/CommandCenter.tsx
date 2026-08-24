@@ -92,8 +92,7 @@ export function CommandCenter({
 
   const items = useMemo<CommandItem[]>(() => {
     const routeItems = routeItemsFor(copy);
-    // 02: no "Continue in <current page>" item — a control whose
-    // destination is the page you are on is an empty affordance.
+    // No "Continue in <current page>" item — navigating to your current page is an empty affordance.
     const actionItems = safeActions.map((action) => ({
       id: action.id,
       group: "Next safe action" as const,
@@ -166,15 +165,13 @@ export function CommandCenter({
 
   useEffect(() => {
     if (!open) return;
-    // focus leg of the dismiss contract: return focus to the trigger
-    // (the pre-open focused element) on close — the mobile drawer's behavior.
+    // Dismiss focus leg: return focus to the pre-open trigger on close — the mobile drawer's behavior.
     const priorFocus =
       document.activeElement instanceof HTMLElement
         ? document.activeElement
         : null;
     window.setTimeout(() => inputRef.current?.focus(), 0);
-    // Deferred: wins over the backdrop mousedown's default focus shift (see
-    // useModalDismiss), so focus lands on the trigger for Esc and backdrop.
+    // Deferred one tick: wins over backdrop mousedown's default focus shift (see useModalDismiss).
     return () => {
       window.setTimeout(() => priorFocus?.focus(), 0);
     };

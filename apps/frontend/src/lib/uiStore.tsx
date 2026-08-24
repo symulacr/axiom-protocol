@@ -49,8 +49,7 @@ function hydrateTransactions(): Transaction[] {
 export function UiStoreProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(consoleReducer, undefined, () =>
     createInitialConsoleState(
-      // Unset theme follows the OS (defaultTheme) so store and boot script
-      // agree on first visit; a stored choice always wins.
+      // Unset theme follows the OS so store and boot script agree on first visit; a stored choice always wins.
       readStored("axiom-ui-settings", {
         ...defaultSettings,
         theme: defaultTheme(),
@@ -74,9 +73,7 @@ export function UiStoreProvider({ children }: { children: ReactNode }) {
       }),
     [state.pendingIntent, state.operationDrafts],
   );
-  // Local receipts persist as icon-less stubs (newest-first, capped); the
-  // reconciler (useReceiptReconcile, mounted in App) settles any row still
-  // "confirming" at load against the chain with a confirmation timeout.
+  // Local receipts persist as capped icon-less stubs; useReceiptReconcile settles "confirming" rows at load.
   useEffect(() => {
     const stubs: PersistedTransaction[] = state.transactions
       .slice(0, MAX_PERSISTED_TRANSACTIONS)

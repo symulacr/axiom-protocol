@@ -1,12 +1,6 @@
 /*
-  Receipt reconciler — settles persisted local receipt rows against the
-  chain after reload. Any row still "confirming"/"submitted" when the store
-  rehydrates is re-watched with the same 120s confirmation timeout FlowPage
-  uses: mined+status 1 → "confirmed", status 0 → "reverted", timeout/dropped →
-  "stale" (unknown — check explorer). Mounted once in App so reconciliation
-  runs regardless of which page the user reloads onto; in-session rows are
-  already watched by FlowPage.confirmOnChain (the per-id latch makes the
-  duplicate watch harmless and idempotent).
+  Reconciler — re-watches persisted "confirming" rows after reload with the same 120s timeout
+  FlowPage uses (confirmed / reverted / stale); mounted once in App, per-id latch keeps it idempotent.
 */
 import { useEffect, useRef } from "react";
 import { usePublicClient } from "wagmi";
@@ -27,12 +21,8 @@ type ReceiptReader = {
 };
 
 /**
- * Bounded receipt wait that survives RPC tx-pool lag. viem's
- * waitForTransactionReceipt rethrows TransactionReceiptNotFoundError when the
- * node's lookup momentarily lags the broadcast (observed live on 0G Galileo —
- * the tx mines seconds later), which would falsely mark healthy txs "stale".
- * Poll getTransactionReceipt instead: not-found is transient until the
- * timeout; only the timeout itself means "unknown — check explorer".
+ * Bounded receipt wait that survives RPC tx-pool lag: viem throws when the node's lookup lags the
+ * broadcast (tx mines seconds later), falsely marking healthy txs stale — poll instead until timeout.
  */
 export async function waitForReceiptWithTimeout(
   publicClient: ReceiptReader,
@@ -65,9 +55,7 @@ export function useReceiptReconcile(
     if (!publicClient) return;
     for (const tx of transactions) {
       if (tx.state !== "confirming" && tx.state !== "submitted") continue;
-      // Tick receipts are 0G storage root hashes, not chain txs — they are
-      // added as "confirmed" and never reach this branch; the regex is a
-      // second line of defense.
+      // Tick receipts are 0G storage root hashes added as "confirmed" — never reach this branch; regex is defense.
       if (!TX_HASH_RE.test(tx.hash)) continue;
       if (watchedRef.current.has(tx.id)) continue;
       watchedRef.current.add(tx.id);

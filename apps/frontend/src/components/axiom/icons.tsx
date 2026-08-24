@@ -27,8 +27,7 @@ function createLucideIcon(iconNode: IconNode) {
       >
         {iconNode.map(([tag, nodeAttrs], index) => {
           const Tag = tag as keyof React.JSX.IntrinsicElements;
-          // lucide nodes carry a `key` attr; spreading it into JSX trips React's
-          // "key in spread" warning — strip it (the map index keys the element).
+          // lucide nodes carry a `key` attr — strip it or JSX spread trips React's "key in spread" warning.
           const { key: _attrsKey, ...attrs } = nodeAttrs;
           return <Tag key={index} {...attrs} />;
         })}

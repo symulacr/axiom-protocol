@@ -58,8 +58,7 @@ export function CoSignPage({ go }: { go: (path: string) => void }) {
     chainId !== undefined &&
     payload !== null &&
     chainId !== payload.typedData.domain.chainId;
-  // The signature is only valid when recovered == the receiver address; the
-  // page refuses to prompt when the connected account is someone else.
+  // Signature valid only when recovered == receiver address; refuse to prompt for another account.
   const wrongAccount =
     isConnected &&
     address !== undefined &&
@@ -88,8 +87,7 @@ export function CoSignPage({ go }: { go: (path: string) => void }) {
         account: payload.typedData.message.to,
       });
       setSignature(sig);
-      // Same-browser handoff: the sender's review sheet listens for this
-      // storage event and applies the acceptance automatically (nonce-matched).
+      // Same-browser handoff: sender's review sheet auto-applies via this storage event (nonce-matched).
       try {
         localStorage.setItem(
           HANDOFF_RESULT_STORAGE_KEY,

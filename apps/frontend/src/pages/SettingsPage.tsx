@@ -128,8 +128,7 @@ export function SettingsPage({
   const copy = getCopy(state.settings.locale);
   const labels = copy.settings;
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
-  // Profile-name editor: draft tracks the stored name and
-  // re-syncs when it changes elsewhere (first-run WalletGate step).
+  // Profile-name editor: draft tracks stored name, re-syncs on external change (first-run gate step).
   const [profileDraft, setProfileDraft] = useState(state.session.profile);
   const [profileSynced, setProfileSynced] = useState(state.session.profile);
   if (profileSynced !== state.session.profile) {

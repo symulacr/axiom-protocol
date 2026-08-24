@@ -92,9 +92,7 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
     artifact: {
       label: "PROVENANCE SPECIMEN",
       state: "IDENTITY LINKED",
-      // Fallback rows while /v1/agents/stats is unavailable. When the live
-      // registry read succeeds, real counts replace them. Never render a
-      // fabricated agent id.
+      // Fallback rows while /v1/agents/stats is down; live reads replace them; never fabricate an agent id.
       rows: [
         ["AGENTS", "registry read…"],
         ["MANIFEST", "hash + metadata"],

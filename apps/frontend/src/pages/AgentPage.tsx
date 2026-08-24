@@ -117,8 +117,7 @@ export function AgentPage({
 
   const agentName = `Agent #${tokenId.toString()}`;
   const lastEvent = events[events.length - 1];
-  // vault balances are native-denominated (chain config); the payments
-  // tab speaks in the payment token's on-chain symbol (hook-cached config).
+  // vault balances are native-denominated (chain config); payments tab uses the payment token symbol.
   const nativeSymbol = APP_CHAIN.nativeCurrency.symbol;
   const paymentToken = usePaymentToken();
   const paymentSymbol = paymentSymbolOf(paymentToken);

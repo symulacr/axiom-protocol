@@ -700,8 +700,7 @@ export const CHAT_BENCH_ALL_TOOL_NAMES = CHAT_TOOL_CATALOG.map((t) => t.name);
 /** UI/system-prompt display name, distinct from the compute model id below. */
 export const AXIOM_ASSISTANT_NAME = "Axiom";
 
-/** 0G Compute model id used by the provider router, not the assistant name. Mainnet default;
- *  Galileo (16602) defaults to qwen2.5-omni — its router catalog has no deepseek models. */
+/** Router model id, not assistant name; Galileo (16602) defaults to qwen2.5-omni (no deepseek in its catalog). */
 export const DEFAULT_CHAT_MODEL = "deepseek-v4-flash";
 
 export function resolveChatModel(override?: string, chainId?: number): string {

@@ -332,9 +332,7 @@ export async function runOnChainMintStep(deps: {
   );
   const mintFee = await nftTc.contract.mintFee();
   const tx = await nftTc.contract.mint(
-    // Final iDatas at mint — eliminates the post-mint update tx. mint()
-    // exercises the same _updateData code path with the final descriptor,
-    // so the parity `update` row is re-homed here.
+    // Final iDatas at mint eliminates the post-mint update tx; parity `update` row re-homed here.
     [{ dataDescription: "strategy-v2", dataHash: deps.dataHash }],
     deps.deployer.address,
     { value: mintFee },
@@ -757,8 +755,7 @@ type AgentNFTMethods = {
   ownerOf(tokenId: bigint): Promise<string>;
 };
 
-/** Matches AxiomTeeVerifier's per-proof nonce derivation (keccak256 of
- *  dataHash, targetPubkey, sealedKey, nonce, validUntil). */
+/** Mirrors AxiomTeeVerifier's nonce keccak256 over dataHash, targetPubkey, sealedKey, nonce, validUntil. */
 function computeTransferProofNonce(finalResp: FinalResponse): `0x${string}` {
   const coder = AbiCoder.defaultAbiCoder();
   return keccak256(
@@ -826,9 +823,7 @@ export async function runOnChainTransferStep(deps: {
         },
       },
     ];
-    // cleanup on the just-used nonce is a no-op in-tx (fresh timestamp fails
-    // now > timestamp + maxAge), so passing it is safe and exercises the
-    // verifier's cleanExpiredProofs via the NFT-side wrapper.
+    // Cleanup on the just-used nonce is an in-tx no-op (timestamp check) but exercises cleanExpiredProofs.
     const cleanupNonces = [computeTransferProofNonce(deps.finalResp)];
     await nftTc.raw
       .getFunction("transferAndCleanExpiredProofs")

@@ -130,8 +130,7 @@ function Guide({
   locale: "en" | "fr" | "de";
 }) {
   const copy = getCopy(locale);
-  // dismiss trio: Esc + focus restore here; backdrop via layer onMouseDown
-  // below; explicit close via the X and the skip affordance.
+  // Dismiss trio: Esc + focus restore here; backdrop onMouseDown below; explicit close via X/skip.
   useModalDismiss(onClose);
   const [step, setStep] = useState(0);
   const steps = [
@@ -223,11 +222,7 @@ function Guide({
 function ChatSurface(): ReactElement {
   const [threadsOpen, setThreadsOpen] = useState(false);
   const { state: chatUiState } = useUiStore();
-  // Mobile rail dismiss: the ☰ toggle sits under the fixed rail overlay once
-  // open, so closing needs its own affordances — backdrop tap + Esc (the
-  // shell modal-dismiss contract), both only meaningful ≤760px where the
-  // rail is an overlay.: focus returns to the pre-open element (the ☰
-  // toggle) on close, matching the shell drawer contract.
+  // Mobile rail dismiss: backdrop tap + Esc per the shell contract; overlay only ≤760px; focus returns to ☰.
   useEffect(() => {
     if (!threadsOpen) return;
     const priorFocus =
@@ -313,16 +308,12 @@ export function App(): ReactElement {
 
   // ---- Session bridge: wagmi ↔ uiStore session ------------------------------
   useEffect(() => {
-    // C3-FE2: wagmi rehydrates its persisted connection asynchronously — during
-    // that window isConnected is briefly false and dispatching "disconnected"
-    // would void a valid stored session (locked routes until a full gate
-    // re-walk). Hold off until wagmi settles (connected or truly disconnected).
+    // C3-FE2: wagmi rehydrates async — mid-window "disconnected" would void a stored session; wait for settle.
     if (accountStatus === "reconnecting" || accountStatus === "connecting")
       return;
     if (!isConnected || !address) {
       if (state.session.status !== "disconnected") {
-        // 03: disconnect clears the whole identity — a stored
-        // profile/address must never outlive the session it belonged to.
+        // Disconnect clears all identity — a stored profile must never outlive its session.
         dispatch({
           type: "session",
           session: {
@@ -341,8 +332,7 @@ export function App(): ReactElement {
       !sameWallet &&
       ["authenticated", "profile"].includes(state.session.status)
     ) {
-      // A different wallet took over: the stored identity is void — the
-      // gate re-authenticates this wallet from scratch.
+      // A different wallet took over: stored identity is void — the gate re-authenticates from scratch.
       dispatch({
         type: "session",
         session: {
@@ -361,8 +351,7 @@ export function App(): ReactElement {
       !isSessionFresh(state.session) &&
       chainId === APP_CHAIN_ID
     ) {
-      // TTL expired while the wallet stayed connected: renew silently —
-      // no popup, the connection itself is the proof of presence.
+      // TTL expired while the wallet stayed connected: renew silently — the connection itself is the proof.
       dispatch({
         type: "session",
         session: { signedAt: new Date().toISOString() },
@@ -408,10 +397,8 @@ export function App(): ReactElement {
     state.session,
   ]);
 
-  // ---- Theme bridge: v2 settings.theme → html data-theme. Single storage
-  // owner is axiom-ui-settings (uiStore persists it; the index.html boot
-  // script reads it) — the legacy axiom-theme mirror is removed, and any
-  // orphaned copy from an older build is cleaned up here.
+  // Theme bridge: settings.theme → html data-theme; axiom-ui-settings is the single storage owner;
+  // legacy axiom-theme mirror removed, orphaned copies cleaned up here.
   useEffect(() => {
     document.documentElement.dataset.theme = state.settings.theme;
     document.documentElement.style.colorScheme = state.settings.theme;
@@ -432,8 +419,7 @@ export function App(): ReactElement {
     return () => window.clearTimeout(timer);
   }, [state.notice, dispatch]);
 
-  // settle persisted receipts that were mid-confirmation at reload
-  // (mined → confirmed/reverted; timeout → stale/check-explorer).
+  // Settle persisted receipts mid-confirmation at reload (mined → confirmed/reverted; timeout → stale).
   useReceiptReconcile(state.transactions, dispatch);
 
   const go = useCallback(
@@ -488,13 +474,8 @@ export function App(): ReactElement {
     !publicSeoSlug &&
     !KNOWN_PATHS.has(location.pathname) &&
     !location.pathname.startsWith("/agents/");
-  // /chat stays public (anonymous live chat; history keys to the wallet only
-  // when a session exists) and /staking is a public status notice (03
-  // — gating an honest "not integrated" page sent anonymous
-  // users two disclosures deep into a dead end) — and /transfer/co-sign is
-  // the public receiver path (the acceptance signature is the only gate;
-  // a receiver must NOT need an Axiom session to accept) — every other
-  // internal route is wallet-gated.
+  // Public by design: /chat (anonymous live chat), /staking (honest not-integrated notice),
+  // /transfer/co-sign (receiver needs no Axiom session) — every other internal route is wallet-gated.
   const internal =
     !publicSeoSlug &&
     !isNotFound &&
@@ -505,10 +486,7 @@ export function App(): ReactElement {
   const authenticated =
     state.session.status === "authenticated" && isSessionFresh(state.session);
 
-  // 05: one tab/history title per route ("<name> — Axiom"),
-  // localized via copy (nav labels are the canonical route names). Public
-  // hubs own their SEO title (PublicSeoPage); landing keeps the static
-  // index.html brand title.
+  // One localized tab title per route ("<name> — Axiom"); public hubs own their SEO title.
   useEffect(() => {
     if (publicSeoSlug) return;
     const copy = getCopy(locale);

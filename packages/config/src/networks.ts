@@ -75,9 +75,7 @@ export function resolveBlockExplorerUrl(chainId?: number): string {
   return network?.blockExplorer ?? "https://chainscan.0g.ai";
 }
 
-// Compute wiring is chain-driven: with AXIOM_COMPUTE_BASE_URL unset the router URL derives from
-// AXIOM_CHAIN_ID (16602→Galileo testnet router, 16661→mainnet router) — the two routers have
-// different catalogs AND different API keys, so pinning one URL for both chains is a live bug.
+// Router URL derives from AXIOM_CHAIN_ID; the two routers' catalogs and keys differ — pinning one URL is a live bug.
 export function resolveComputeRouterUrl(chainId?: number): string {
   const varVal = envVar("AXIOM_COMPUTE_BASE_URL", "OG_COMPUTE_BASE_URL");
   if (varVal) return varVal;

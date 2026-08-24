@@ -91,11 +91,7 @@ export function usePayment(): UsePaymentResult {
       setPayLoading(true);
       try {
         const processor = getAxiomPaymentProcessorAddress(chainId);
-        // The flow sheet passes HUMAN units ("1.5") — convert to the payment
-        // token's ON-CHAIN base units from the payment config (Galileo's
-        // axmUSDC is 18-decimal; the old hardcoded 6 was a USDC-era constant
-        // that mis-scaled every payment by 1e12). Never BigInt(amount) either
-        // — that throws "Cannot convert 1.5 to a BigInt".
+        // Human units ("1.5") → on-chain base units via payment config; never BigInt(amount) — it throws.
         const config = await getPaymentConfig();
         const amountWei = parseUnits(
           amount.trim(),
@@ -142,11 +138,8 @@ export function usePayment(): UsePaymentResult {
   );
 
   /**
-   * Payment boundary 1 (/): the REAL approve leg, split out of
-   * the bundled payForAgent so the review sheet's "Approve exact allowance"
-   * CTA actually prompts the wallet. Reads the live allowance; when it already
-   * covers the amount this is a truthful no-op (approveHash: null). Exact
-   * amount only — never MaxUint256 (mirrors backend ensureAllowance).
+   * Payment boundary 1: the REAL approve leg split out of payForAgent so the "Approve exact
+   * allowance" CTA actually prompts; no-op (approveHash: null) when live allowance covers amount.
    */
   const approveExactAllowance = useCallback(
     async (amount: string): Promise<{ approveHash: `0x${string}` | null }> => {

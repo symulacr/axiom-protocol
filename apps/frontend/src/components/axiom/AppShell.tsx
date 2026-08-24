@@ -80,12 +80,7 @@ function Sidebar({
     },
     [],
   );
-  // One entry per destination: the agent
-  // register lives on the Overview surface, so /app has a single owner —
-  // "Overview" — which stays lit on deep agent pages (/agents/:tokenId are
-  // children of the register; /agents alone is the public SEO hub).
-  // Labels come from copy.nav so the shell localizes with the page body
-  // (05 — the nav was the last English-only surface).
+  // One nav owner per destination: /app is "Overview"; labels come from copy.nav for localization.
   const copy = getCopy(settings.locale);
   const identified = session.status === "authenticated";
   const items = [
@@ -451,8 +446,7 @@ function Topbar({
   fundTarget?: FundTarget;
 }) {
   const copy = getCopy(state.settings.locale);
-  // 03: identity (and the session pill) render only for an
-  // authenticated session — never a stale profile/address after disconnect.
+  // Identity + session pill render only when authenticated — never a stale profile after disconnect.
   const identified = session.status === "authenticated";
   return (
     <header className="topbar">

@@ -141,8 +141,7 @@ export function formatToolResult(name: string, result: unknown): string {
   }
 
   if (obj.ok === true && obj.txHash !== undefined) {
-    // Receipt fields come from signAndSendWithReceipt when the transport waits —
-    // surface status + block so the LLM can report confirmed vs bare broadcast.
+    // Receipt fields come from signAndSendWithReceipt when the transport waits — surface status + block.
     const receipt =
       obj.receiptStatus !== undefined
         ? ` (${obj.receiptStatus}${obj.blockNumber !== undefined ? ` in block ${obj.blockNumber}` : ""})`

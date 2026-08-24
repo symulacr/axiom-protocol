@@ -1,5 +1,4 @@
-// Bun-native path + atomic-file helpers (POSIX-only: Linux/WSL/bun). Shared by
-// every JSON persistence site so crash-safety stays identical everywhere.
+// Bun-native path + atomic-file helpers (POSIX-only); shared by every JSON persistence site.
 import { mkdirSync, renameSync, writeFileSync } from "node:fs";
 
 export function joinPath(...parts: string[]): string {

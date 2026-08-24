@@ -92,8 +92,7 @@ function persistSeenDataHashes(file: string, seen: Set<string>): void {
 const SEEN_HASHES_FLUSH_THRESHOLD = 8;
 const SEEN_HASHES_FLUSH_INTERVAL_MS = 5_000;
 
-// Every SeenHashesMixin instance registers here so a single pair of exit handlers
-// (SIGINT/SIGTERM) can flush in-memory marks to disk on process exit.
+// Every SeenHashesMixin instance registers here so one signal-handler pair flushes marks on exit.
 const seenHashesInstances = new Set<SeenHashesMixin>();
 let seenHashesExitFlushRegistered = false;
 
@@ -116,8 +115,7 @@ function registerSeenHashesExitFlush(instance: SeenHashesMixin): void {
       }
     }
   };
-  // once: after the first signal the listener is removed, so processes without
-  // their own signal handling keep Node's default exit-on-signal behavior.
+  // once: after the first signal the listener is removed, preserving Node's default exit-on-signal behavior.
   process.once("SIGINT", flushAll);
   process.once("SIGTERM", flushAll);
 }
@@ -140,8 +138,7 @@ abstract class SeenHashesMixin {
     this.seenDataHashes.add(hash);
     this.dirtyCount += 1;
     if (this.dirtyCount === 1 && !existsSync(this.seenHashesFile)) {
-      // First-ever mark: persist synchronously so the backing file exists and a
-      // concurrently-started instance observes the mark (durability contract).
+      // First mark persists synchronously so concurrently-started instances observe it (durability contract).
       this.flushSeenDataHashes();
       return;
     }
@@ -237,16 +234,7 @@ async function downloadFromStorage(
   return { data, rootHash, size: data.length };
 }
 
-/**
- * Resolve the SDK transport AES key — load-or-create, so blobs stay decryptable
- * across restarts (same durability contract as the seen-hashes file):
- *  1. AXIOM_STORAGE_TRANSPORT_KEY (32-byte hex, optional 0x prefix) wins verbatim.
- *  2. Otherwise the key is loaded from (or first created in)
- *     AXIOM_DATA_DIR/.data/storage-transport-key — atomic tmp+rename, mode 600.
- *     A corrupt file is backed up and regenerated (blobs under the lost key warn).
- *  3. Under `bun test` (BUN_TEST=1) a fresh ephemeral random key is used — tests
- *     never touch the on-disk key.
- */
+/** Transport AES key resolution: env hex > persisted .data key (mode 600) > bun-test ephemeral. */
 function resolveTransportKey(): Uint8Array {
   const raw = process.env.AXIOM_STORAGE_TRANSPORT_KEY;
   if (raw !== undefined && raw.trim() !== "") {
@@ -283,9 +271,7 @@ function resolveTransportKey(): Uint8Array {
 export class ZeroGStorage extends SeenHashesMixin implements StorageAdapter {
   readonly indexer: Indexer;
   readonly config: ZeroGStorageConfig;
-  // 32-byte AES key for SDK transport encryption. AXIOM_STORAGE_TRANSPORT_KEY (32-byte
-  // hex) wins verbatim; otherwise load-or-create from AXIOM_DATA_DIR/.data so restarts
-  // (and co-located instances) decrypt every blob. `bun test` gets an ephemeral key.
+  // 32-byte transport AES key: env hex wins verbatim, else load-or-create from AXIOM_DATA_DIR/.data (bun test: ephemeral).
   private readonly storageKey: Uint8Array;
 
   /** Exposes the transport AES key so a verify step on the same instance can decrypt. */

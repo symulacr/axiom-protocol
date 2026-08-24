@@ -6,8 +6,7 @@ import type {
   TextareaHTMLAttributes,
 } from "react";
 
-// Only keys with render-site consumers; status/danger/success/warning colors
-// are owned by CSS classes, not inline styles.
+// Only keys with render-site consumers; status/danger/success/warning colors live in CSS classes.
 export const COLORS = {
   bg: "var(--c-bg)",
   surface: "var(--c-surface)",
@@ -28,9 +27,7 @@ export const COLORS = {
 const formFieldBase: CSSProperties = {
   padding: "0.625rem 0.875rem",
   borderRadius: "var(--radius-md)",
-  // No inline border: the.axiom-field class owns it so the:focus
-  // border-color change (and the focus-visible ring) actually applies
-  // (04 — an inline border silently defeated both).
+  // No inline border: .axiom-field owns it so the :focus border change + focus ring actually apply.
   background: COLORS.bg,
   color: COLORS.text,
   fontSize: "var(--text-sm)",
@@ -229,11 +226,7 @@ export function Spinner({
   style?: CSSProperties;
 }): ReactElement {
   if (variant === "churn") {
-    // the churn was 9 empty animation-cell spans
-    // per instance. One aria-live node now — the dots are painted by CSS
-    // (.spinner--churn in chat-compat.css), which also puts the animation
-    // under the reduced-motion overrides for the first time (inline styles
-    // were immune to them).
+    // One aria-live node (was 9 spans per instance); CSS paints the dots, so reduced-motion overrides apply.
     return (
       <span
         role="status"

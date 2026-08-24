@@ -26,9 +26,7 @@ interface ProvidersResponse {
   services: ComputeProvider[];
 }
 
-/** Normalize a backend provider object (verbatim router fields) into the
- * client shape. The ?model= passthrough adds `model`/`trust_mode`; legacy
- * items carry only address/model/endpoint/price. */
+/** Normalize a backend provider into the client shape; ?model= adds model/trust_mode, legacy items don't. */
 export function normalizeProviders(
   services: unknown[] | undefined,
 ): ComputeProvider[] {
@@ -75,12 +73,7 @@ export function normalizeProviders(
     });
 }
 
-/**
- * 0G compute providers from GET /v1/compute/providers.
- * Pass `model` to hit the ?model= passthrough (real provider objects with
- * latency/pricing/trust); omit it for the legacy model-id pseudo-address list.
- * Backend caches the upstream router list for 60s, so poll at the same cadence.
- */
+/** 0G compute providers; `model` hits the passthrough, else legacy pseudo-address list. Poll ≥60s (backend cache). */
 export function useProviders(model?: string) {
   const url = model
     ? `/v1/compute/providers?model=${encodeURIComponent(model)}`

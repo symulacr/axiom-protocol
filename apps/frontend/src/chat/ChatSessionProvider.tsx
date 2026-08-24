@@ -56,10 +56,7 @@ type ChatSessionValue = {
 
 const ChatSessionContextReact = createContext<ChatSessionValue | null>(null);
 
-// Backward compatible: older payloads stored only `{ lastTokenId }`; missing
-// providerPref falls back to the cache-friendly DEFAULT_PROVIDER_PREF
-// (latency-sorted, allowFallbacks — never the router's cache-hostile
-// round-robin).
+// Backward compat: legacy `{ lastTokenId }` payloads fall back to the cache-friendly DEFAULT_PROVIDER_PREF.
 function loadStoredSession(): StoredSession {
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY);
@@ -117,8 +114,7 @@ export function ChatSessionProvider({
   const [lastTokenId, setLastTokenId] = useState<string | undefined>(
     stored.lastTokenId,
   );
-  // Durable pref wins over the tab-scoped copy (legacy sessionStorage payload)
-  // and over the default; every change writes the localStorage key.
+  // Durable pref wins over tab-scoped copy (legacy sessionStorage) and default; changes write localStorage.
   const [providerPref, setProviderPrefState] = useState<
     ProviderPref | undefined
   >(loadStoredPref() ?? stored.providerPref ?? DEFAULT_PROVIDER_PREF);

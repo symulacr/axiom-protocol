@@ -410,15 +410,10 @@ async function main(): Promise<void> {
         chainId: OG_CHAIN_ID,
       }),
     ]);
-    // No separate config txs: mint writes the final iDatas (strategy-v2) and
-    // payAndWithdrawEarnings sets the royalty in-tx via royaltyBps.
+    // Mint writes final iDatas and payAndWithdrawEarnings sets royalty in-tx — no separate config txs.
   }
 
-  // Transfer proofs = 2 backend/oracle HTTP round-trips (challenge→final);
-  // route reads only mint-time NFT state (ownerOf/balanceOf/dataHash), so it
-  // is independent of the payment/tick/DA/perf lanes. Start it NOW to overlap
-  // chain mining; transferAndCleanExpiredProofs (ownership move) still awaits
-  // it at the end.
+  // Transfer route reads only mint-time NFT state (lane-independent) — start now to overlap chain mining.
   const transferHttp = E2E_SKIP_TRANSFER
     ? null
     : runTransferSteps({
@@ -473,8 +468,7 @@ async function main(): Promise<void> {
       suggestion: "Fund MockUSDC or set E2E_PAYMENT=0",
     });
   } else if (paymentRunnable) {
-    // payAndWithdrawEarnings folds royalty-set + pay + compute + withdraw into
-    // one tx — no separate runWithdrawEarningsStep.
+    // payAndWithdrawEarnings folds royalty-set + pay + compute + withdraw into one tx — no separate step.
     await runPaymentPipelineStep({
       paymentProcessor: PAYMENT_PROCESSOR,
       paymentToken: PAYMENT_TOKEN,
@@ -576,14 +570,11 @@ async function main(): Promise<void> {
       eip712Domain,
       chainId: OG_CHAIN_ID,
     });
-    // runTeeCleanupStep is gone — the cleanup nonce is folded into
-    // transferAndCleanExpiredProofs (same tx).
+    // runTeeCleanupStep removed: cleanup nonce folded into transferAndCleanExpiredProofs (same tx).
   }
 
   if (!E2E_LIVE_COMPUTE) {
-    // Without live compute, these scenarios cannot produce live proof; mark
-    // them skipped regardless of E2E_CHAT_BENCH so the live gate does not
-    // fail on them (runLiveChatToolsBench also short-circuits on !liveCompute).
+    // Without live compute there is no live proof; mark skipped so the live gate does not fail.
     markScenarioSkipped("compute.chat-tools", "E2E_LIVE_COMPUTE=0");
     markScenarioSkipped("orchestrator.tick-live", "E2E_LIVE_COMPUTE=0");
   }

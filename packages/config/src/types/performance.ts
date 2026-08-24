@@ -4,8 +4,7 @@ export interface PerformanceMetrics {
   sellCount: number;
   holdCount: number;
   buyRate: number;
-  // (buyCount + sellCount) / totalTicks — trade-action rate, NOT an alias for buyRate;
-  // backend single-agent and batch endpoints compute this identically (see routers/performance.ts).
+  // (buyCount + sellCount)/totalTicks — trade-action rate, NOT buyRate; mirrors routers/performance.ts.
   winRate: number;
 }
 

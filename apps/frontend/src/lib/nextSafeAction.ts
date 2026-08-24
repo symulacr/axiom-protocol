@@ -81,8 +81,7 @@ export function getNextSafeActions(
     summary: strip.inspectSummary,
     impact: strip.inspectImpact,
     proofLabel: strip.proofRoot,
-    // No storage backend exists yet (StoragePage is a labeled demo) — an
-    // honest "nothing indexed" marker instead of the old fixture hash.
+    // No storage backend yet (StoragePage is a labeled demo) — honest "nothing indexed" marker.
     proofValue: "—",
     path: "/storage",
     priority: "normal",

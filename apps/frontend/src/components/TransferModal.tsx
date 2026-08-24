@@ -555,8 +555,7 @@ export function TransferModal({
       setCoSignBlocked(false);
       try {
         const prepared = await prepare(buildInput());
-        // cross-party transfers pause for the receiver co-sign step;
-        // self-transfers go straight to the confirm review as before.
+        // Cross-party transfers pause for the receiver co-sign step; self-transfers go straight to review.
         setPhase(prepared.status === "co-sign-required" ? "co-sign" : "review");
       } catch (err) {
         setSubmitError(humanizeError(err));

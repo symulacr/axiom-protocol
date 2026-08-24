@@ -18,11 +18,7 @@ interface ChatHistoryResponse {
   transcripts: ServerTranscript[];
 }
 
-// GET /v1/chat/history requires an EIP-191 wallet proof: headers
-// x-wallet-address / x-wallet-timestamp (unix seconds) / x-wallet-signature
-// over `axiom-chat-history-v1:${address.toLowerCase()}:${timestamp}`; the
-// server rejects proofs older than 300s. Re-sign at 240s so a cached proof
-// never crosses the window boundary mid-flight.
+// /v1/chat/history needs EIP-191 wallet-proof headers (addr/ts/sig); server rejects >300s — re-sign at 240s.
 const PROOF_TTL_MS = 240_000;
 let proofCache = { address: "", ts: 0, sig: "0x" as `0x${string}` };
 

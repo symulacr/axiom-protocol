@@ -61,8 +61,7 @@ export function useVaultWrite(
       if (!value || overrideError || !walletClient) return null;
       setIsSubmitting(true);
       try {
-        // Same backend encode relay as the chat deposit tool:
-        // single source of truth for the vault ABI (no frontend ABI drift).
+        // Same backend encode relay as the chat deposit tool — single vault ABI source, no frontend drift.
         const encoded = await apiFetch<EncodeResponse>(
           `/v1/agents/${tokenId.toString()}/${endpoint}`,
           {

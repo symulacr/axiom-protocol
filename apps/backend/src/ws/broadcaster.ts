@@ -47,11 +47,7 @@ export function broadcast(topic: string, payload: unknown): void {
     { topic, payload, ts: Date.now() },
     bigintReplacer,
   );
-  // Recipients: every subscription whose prefix matches the topic. The old
-  // exact-map lookup (`_topicIndex.get(topicPrefixOf(topic))`) only hit
-  // letter-exact subscriptions — a wildcard "*" (prefix "") or trailing-"*"
-  // subscriber (e.g. "agent.*") never received anything, so the frontend's
-  // topic:"*" event stream silently dropped every indexer frame.
+  // Recipients = every subscription whose prefix matches the topic (exact-match lookup dropped wildcards).
   const recipients = new Set<ConnectedClient>();
   for (const [prefix, clients] of _topicIndex) {
     if (prefix !== "" && !topic.startsWith(prefix)) continue;

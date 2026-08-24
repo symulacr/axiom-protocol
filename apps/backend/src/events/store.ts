@@ -571,8 +571,7 @@ export function acquireEventStoreLock(
   } catch (err) {
     const code = (err as NodeJS.ErrnoException).code;
     if (code === "EEXIST" && stealStaleLock(lockPath)) {
-      // Crash/SIGKILL leaves the lock file behind; a dead holder must not
-      // wedge every subsequent boot. Steal and retry exactly once.
+      // Crash/SIGKILL leaves the lock file behind; steal from a dead holder and retry exactly once.
       lockLog.warn("stale event-store lock from a dead pid — stealing it", {
         lockPath,
       });

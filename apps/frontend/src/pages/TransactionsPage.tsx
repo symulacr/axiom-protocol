@@ -112,8 +112,7 @@ function AdvancedFiltersPopover({
   onChoose: (value: AdvancedFilter) => void;
   onClose: () => void;
 }) {
-  // Modal-dismiss contract: Esc + focus restore here; the backdrop
-  // element covers the click-away leg; selection closes explicitly.
+  // Dismiss contract: Esc + focus restore here; backdrop covers click-away; selection closes explicitly.
   useModalDismiss(onClose);
   return createPortal(
     <>
@@ -160,8 +159,7 @@ function ReceiptDrawer({
 }) {
   const copy = getCopy(locale);
   const txCopy = copy.transactions;
-  // dismiss trio: Esc + focus restore here; backdrop (layer onClick) and
-  // the X already existed.
+  // Dismiss trio: Esc + focus restore added here; backdrop and X already existed.
   useModalDismiss(onClose);
   const recover = ["reverted", "rejected", "stale"].includes(tx.state);
   const copyHash = () => {
@@ -314,10 +312,7 @@ export function TransactionsPage({
   }, [requestedFilter, requestedTx]);
 
   const transactions = useMemo<Transaction[]>(() => {
-    // One receipt per on-chain log: WS live frames and the polled history must
-    // merge on the (chainId, txHash, logIndex) dedupe key, and chat-transcript
-    // bookkeeping events are server-side storage pointers, not console
-    // receipts — a receipt center listing "transcript / block 0" rows is noise.
+    // One receipt per on-chain log: merge on (chainId, txHash, logIndex); transcript bookkeeping events are noise.
     const merged = new Map<string, AxiomEvent>();
     for (const event of [...events, ...wsEvents]) {
       if (event.eventName === "transcript") continue;
@@ -350,8 +345,7 @@ export function TransactionsPage({
     setSearchParams(next, { replace: true });
   };
 
-  // Chip labels: the stale-only filter gets its own label so it can never
-  // collide with the review bucket again.
+  // Chip labels: the stale-only filter gets its own label so it never collides with the review bucket.
   const stateFilterLabel = (value: TxState) =>
     value === "stale" ? txCopy.filterStale : (copy.status[value] ?? value);
   const advancedActive = (ADVANCED_FILTERS as readonly string[]).includes(
@@ -365,8 +359,7 @@ export function TransactionsPage({
     const rect = filtersTriggerRef.current?.getBoundingClientRect();
     if (!rect) return;
     const right = Math.max(8, Math.round(window.innerWidth - rect.right));
-    // Viewport-fit: open downward only when the popover fits;
-    // otherwise anchor to the trigger's top edge and grow upward.
+    // Viewport-fit: open downward only when it fits below; otherwise anchor above and grow upward.
     if (window.innerHeight - rect.bottom >= 280) {
       setFiltersPos({ top: Math.round(rect.bottom + 6), right });
     } else {

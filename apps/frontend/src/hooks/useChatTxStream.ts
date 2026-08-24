@@ -2,9 +2,7 @@ import { useMemo } from "react";
 import { useEventStream } from "./useEventStream.js";
 import { eventTokenId } from "./useEventHistory.js";
 
-/** On-chain events the chat surface surfaces as "⛓ tx mined" confirmations.
- * Mirrors the indexer's watched topics (apps/backend/src/indexer/events.ts)
- * minus pure-admin/governance noise the chat user did not trigger. */
+/** On-chain events chat surfaces as "⛓ tx mined" confirmations — indexer topics minus admin noise. */
 const CHAT_TX_EVENT_NAMES: Record<string, true> = {
   Transfer: true, // mint + iTransferFrom
   Authorization: true,

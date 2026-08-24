@@ -11,10 +11,7 @@ import { runBrowserTool } from "./transport-browser.js";
 
 export const TOOL_LABELS: Record<string, string> = chatToolLabels();
 
-// Client-visible catalog. unbroker_* skills are server-gated (not in the
-// client-key route allowlist) and would 403 for browser chat users — hide
-// them from the browser catalog and the tool list sent to the LLM, keeping
-// the server-side routes intact for server-key consumers.
+// unbroker_* skills would 403 for browser users — hidden from catalog and LLM tool list; server routes stay intact.
 export const CLIENT_TOOL_CATALOG = CHAT_TOOL_CATALOG.filter(
   (t) => !t.name.startsWith("unbroker_"),
 );

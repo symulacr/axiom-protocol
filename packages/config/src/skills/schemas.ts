@@ -1,5 +1,4 @@
-// Zod source of truth for skill request bodies (REST validation). chat-tools.ts carries
-// parallel JSON Schema for LLM tool-calling; args must satisfy both — keep in sync.
+// Zod source of truth for skill request bodies (REST); chat-tools.ts carries parallel JSON Schema — keep in sync.
 import { z } from "zod";
 import { ADDRESS_REGEX, HASH_REGEX } from "../types/hex.js";
 

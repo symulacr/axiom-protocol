@@ -442,8 +442,7 @@ export function computeLiveGate(
 
   for (const id of criticalIds) {
     const s = byId.get(id);
-    // Legitimately skipped scenarios (e.g. live-compute-dependent paths with
-    // E2E_LIVE_COMPUTE=0) must not fail the gate — same rule as inScope.
+    // Legitimately skipped scenarios (live-compute paths with E2E_LIVE_COMPUTE=0) must not fail the gate.
     if (!s || (s.status !== "skipped" && !hasLiveProof(s))) {
       gaps.push(`missing live: ${id}`);
     }

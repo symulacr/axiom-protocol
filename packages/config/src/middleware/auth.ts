@@ -20,8 +20,7 @@ export function timingSafeMatch(
   presented: string,
   candidates: string[],
 ): boolean {
-  // sha256 both sides first: fixed 32-byte digests remove the length short-circuit,
-  // so comparing a wrong-length key leaks nothing about the real key's length.
+  // sha256 both sides first: fixed-length digests remove the length short-circuit (no length leak).
   const digest = (v: string): Uint8Array =>
     createHash("sha256").update(v, "utf-8").digest();
   const presentedHash = digest(presented);

@@ -64,11 +64,7 @@ export function formatTokenAmount(
 
 export function humanizeError(err: unknown): string {
   const full = err instanceof Error ? err.message : String(err);
-  // viem and backend dumps append implementation noise after the actual
-  // message ("Request Arguments: …", "Contract Call: …", "Details: …",
-  // "Version: viem@…", "Docs: …") — users never act on calldata, so the head
-  // sentence is the whole surface. Known-message matching
-  // below runs on the head.
+  // viem/backend dumps append calldata noise after the real message; known-message matching uses the head.
   const noiseAt = full.search(
     /\n?\s*(Request Arguments|Contract Call|Details|Version|Docs):/,
   );
@@ -83,16 +79,12 @@ export function humanizeError(err: unknown): string {
     return "Transaction cancelled — you rejected the request in your wallet.";
   }
 
-  // 05: the oracle dataHash registry answer addresses a developer
-  // ("POST {dataHash} to /v1/agents/mint first") — users get the state and a
-  // remedy, never an HTTP instruction.
+  // Oracle dataHash answer targets developers — users get state + remedy, never an HTTP instruction.
   if (lower.includes("unknown datahash")) {
     return "This agent's metadata is not registered with the oracle yet. Re-register it from the mint flow (or pick another agent), then retry the transfer.";
   }
 
-  // the backend's signer check names a protocol rule — translate it into
-  // the requirement + remedy (the GUI's co-sign step is the path, never a raw
-  // 400 with a futile retry).
+  // Backend signer check names a protocol rule — translate it into requirement + remedy (co-sign step).
   if (
     lower.includes("signer does not match recipient") ||
     lower.includes("does not match recipient address")
@@ -100,14 +92,12 @@ export function humanizeError(err: unknown): string {
     return "The transfer acceptance must be signed by the recipient's own wallet. Go back and use the \u201cSign as receiver\u201d step with the recipient account selected.";
   }
 
-  // blocker: the connected wallet cannot expose the receiver account at
-  // all — name the blocker and the two real remedies.
+  // Wallet cannot expose the receiver account at all — name the blocker and the two real remedies.
   if (lower.includes("is not available in the connected wallet")) {
     return "The receiving account is not available in the connected wallet. Add the receiver account to this wallet, or let the receiver accept the transfer from their own session.";
   }
 
-  // handoff: an acceptance code that is not a signature or recovers to the
-  // wrong address — the only remedy is a fresh receiver signature.
+  // Non-signature or wrong-recoverer acceptance code — only remedy is a fresh receiver signature.
   if (
     lower.includes("acceptance code is not a wallet signature") ||
     lower.includes("does not recover to the receiver address")
