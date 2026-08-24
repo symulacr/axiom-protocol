@@ -12,7 +12,6 @@ import { isAddress } from "viem";
 import { toast } from "sonner";
 import { useAccount } from "wagmi";
 import {
-  isReceiverAccountUnavailable,
   useTransfer,
   type TransferInput,
   type TransferPhase,
@@ -21,11 +20,12 @@ import {
 import { Button, Field, Status } from "./axiom/Controls.js";
 import { AlertTriangle, Check, ShieldCheck, X } from "./axiom/icons.js";
 import { useModalDismiss } from "../hooks/useModalDismiss.js";
+import { humanizeError, truncateAddress } from "../utils/format.js";
 import {
-  freshNonceHex,
-  humanizeError,
-  truncateAddress,
-} from "../utils/format.js";
+  buildTransferInput as assembleTransferInput,
+  freshAccessProofNonce,
+  runCoSignStep,
+} from "../lib/cosignFlow.js";
 import { useUiStore } from "../lib/uiStore.js";
 import { getCopy } from "../lib/copy.js";
 
@@ -497,7 +497,7 @@ export function TransferModal({
   );
 
   const [accessProofNonce, setAccessProofNonce] = useState<`0x${string}`>(
-    () => freshNonceHex(32) as `0x${string}`,
+    freshAccessProofNonce,
   );
 
   const pubKeyError = useMemo(
@@ -527,17 +527,15 @@ export function TransferModal({
     return null;
   }, [oldDataEncryptionKey, oldDataUri]);
   const buildInput = useCallback((): TransferInput => {
-    const input: TransferInput = {
-      tokenId,
-      to: receiverAddress as `0x${string}`,
-      receiverPubKey64: receiverPubKey as `0x${string}`,
-      accessProofNonce,
-    };
-    if (oldDataEncryptionKey && oldDataUri) {
-      input.oldDataEncryptionKey = oldDataEncryptionKey;
-      input.oldDataUri = oldDataUri as `0x${string}`;
-    }
-    return input;
+    return assembleTransferInput(
+      {
+        tokenId,
+        to: receiverAddress,
+        receiverPubKey64: receiverPubKey,
+        accessProofNonce,
+      },
+      { oldDataEncryptionKey, oldDataUri },
+    );
   }, [
     accessProofNonce,
     oldDataEncryptionKey,
@@ -567,17 +565,17 @@ export function TransferModal({
   const onCoSign = useCallback(async (): Promise<void> => {
     setSubmitError(null);
     setCoSignBlocked(false);
-    try {
-      await coSign();
-      setPhase("review");
-    } catch (err) {
-      if (isReceiverAccountUnavailable(err)) {
-        // honest blocker — this wallet can never sign for the receiver
-        setCoSignBlocked(true);
-        return;
-      }
-      setSubmitError(humanizeError(err));
+    const attempt = await runCoSignStep(coSign);
+    if (attempt.outcome === "blocked") {
+      // honest blocker — this wallet can never sign for the receiver
+      setCoSignBlocked(true);
+      return;
     }
+    if (attempt.outcome === "failed") {
+      setSubmitError(attempt.message);
+      return;
+    }
+    setPhase("review");
   }, [coSign]);
 
   const onConfirm = useCallback(async (): Promise<void> => {
@@ -597,7 +595,7 @@ export function TransferModal({
     setSubmitError(null);
     setCoSignBlocked(false);
     setPhase("form");
-    setAccessProofNonce(freshNonceHex(32) as `0x${string}`);
+    setAccessProofNonce(freshAccessProofNonce());
   }, [reset]);
 
   // setState is stable — pass it straight to Field onChange (no wrapper needed).

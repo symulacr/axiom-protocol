@@ -8,7 +8,6 @@ import {
   useState,
   type CSSProperties,
   type ReactElement,
-  type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -77,12 +76,22 @@ import {
   isAskUserResult,
   type ChatSessionContext,
 } from "@axiom/chat-runtime";
-import { classOfTool, resolveContextWindow } from "@axiom/config/chat-tools";
+import { resolveContextWindow } from "@axiom/config/chat-tools";
 import {
-  ArchiveResultCard,
-  EncodePreviewCard,
-  hasEncodePreview,
-} from "../chat/ToolResultCards.js";
+  AskUserCard,
+  ChatBanner,
+  insetCardStyle,
+  MessageEditConfirm,
+  MsgCopyAction,
+  StatusDot,
+  ToolClassBadge,
+} from "../chat/MessageAtoms.js";
+import {
+  InsightsDisclosure,
+  ToolCallCard,
+  ToolResultBody,
+  type ToolRun,
+} from "../chat/ToolProgress.js";
 import {
   ChatSessionProvider,
   useChatSession,
@@ -98,7 +107,6 @@ import {
   TOOLS,
   TOOL_LABELS,
   CLIENT_TOOL_CATALOG,
-  toolClass,
   toolHint,
   useToolHandlers,
   type ToolContext,
@@ -123,17 +131,6 @@ import {
 } from "../components/ui.js";
 import { Button } from "../components/axiom/Controls.js";
 import { MessageSquare, Network } from "../components/axiom/icons.js";
-
-type ToolRunStatus = "running" | "success" | "error";
-
-type ToolRun = {
-  name: string;
-  status: ToolRunStatus;
-  startedAt: number;
-  result?: string;
-  error?: string;
-  args?: Record<string, unknown>;
-};
 
 /** One LLM turn (one tool-loop iteration) — client timings + router usage/trace. */
 const SUPPORTED_CHAIN_IDS = new Set([APP_CHAIN_ID]);
@@ -163,205 +160,11 @@ const TOOL_GROUPS = (
   }))
   .filter((g) => g.tools.length > 0);
 
-const insetCardStyle: CSSProperties = {
-  background: COLORS.bg,
-  border: `1px solid ${COLORS.border}`,
-  borderRadius: "var(--radius-md)",
-  padding: "var(--space-sm) var(--space-md)",
-  marginTop: "var(--space-xs)",
-};
-
 /** Store threads carry `unknown[]` at the storage boundary; ChatPage casts
  * them to Message[] when opening a thread (they were written by this page).
  * Server transcripts (GET /v1/chat/history) were persisted through
  * toChatApiMessages, which strips `id` — re-assign ids so React keys and
  * message actions keep working. */
-
-function ToolClassBadge({ name }: { name: string }): ReactElement | null {
-  const cls = toolClass(name);
-  if (!cls) return null;
-  return (
-    <span
-      aria-label={`Tool class: ${CHAT_TOOL_CLASS_LABELS[cls]}`}
-      title={toolHint(name)}
-      style={{
-        marginLeft: 6,
-        fontSize: "var(--text-xs)",
-        fontWeight: "var(--fw-medium)",
-        color: COLORS.textDim,
-        textTransform: "lowercase",
-        letterSpacing: "0.02em",
-      }}
-    >
-      ({CHAT_TOOL_CLASS_LABELS[cls]})
-    </span>
-  );
-}
-
-function StatusDot({
-  color,
-  children,
-}: {
-  color: string;
-  children: ReactNode;
-}): ReactElement {
-  return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-        marginBottom: "var(--space-xs)",
-      }}
-    >
-      <span
-        style={{
-          display: "inline-block",
-          width: 6,
-          height: 6,
-          borderRadius: "50%",
-          background: color,
-        }}
-      />
-      <span className="fw-semibold text-xs text-dim uppercase">{children}</span>
-    </div>
-  );
-}
-
-function ChatBanner({ children }: { children: ReactNode }): ReactElement {
-  return (
-    <div className="chat-banner" role="status">
-      {children}
-    </div>
-  );
-}
-
-function AskUserCard({
-  content,
-  onAnswer,
-  copy,
-}: {
-  content: string;
-  onAnswer: (answer: string) => void;
-  copy: Copy["chat"];
-}): ReactElement | null {
-  const [selected, setSelected] = useState<string[]>([]);
-  const [freeText, setFreeText] = useState("");
-  let data: {
-    ask?: boolean;
-    question?: string;
-    options?: string[];
-    multiSelect?: boolean;
-  } | null;
-  try {
-    data = JSON.parse(content);
-  } catch {
-    return null;
-  }
-  if (!data || data.ask !== true) return null;
-  const question = data.question ?? copy.questionFallback;
-  const options = Array.isArray(data.options) ? data.options : [];
-  const multiSelect = data.multiSelect === true;
-
-  const submit = (answer: string): void => {
-    setSelected([]);
-    setFreeText("");
-    onAnswer(answer);
-  };
-
-  return (
-    <div style={insetCardStyle}>
-      <p
-        style={{
-          margin: "0 0 8px",
-          fontSize: "var(--text-sm)",
-          color: COLORS.text,
-        }}
-      >
-        {question}
-      </p>
-      {options.length > 0 ? (
-        multiSelect ? (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 6,
-              alignItems: "flex-start",
-            }}
-          >
-            {options.map((o, i) => {
-              const checked = selected.includes(o);
-              return (
-                <label
-                  key={i}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 6,
-                    fontSize: "var(--text-sm)",
-                    color: COLORS.text,
-                    cursor: "pointer",
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() =>
-                      setSelected((prev) =>
-                        checked ? prev.filter((x) => x !== o) : [...prev, o],
-                      )
-                    }
-                  />
-                  {o}
-                </label>
-              );
-            })}
-            <Button
-              variant="primary"
-              disabled={selected.length === 0}
-              onClick={() => submit(selected.join(", "))}
-            >
-              {copy.send}
-            </Button>
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {options.map((o, i) => (
-              <Button key={i} variant="secondary" onClick={() => submit(o)}>
-                {o}
-              </Button>
-            ))}
-          </div>
-        )
-      ) : (
-        <div style={{ display: "flex", gap: 8 }}>
-          <Textarea
-            aria-label={copy.answerPlaceholder}
-            value={freeText}
-            rows={1}
-            onChange={(e) => setFreeText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey && freeText.trim()) {
-                e.preventDefault();
-                submit(freeText.trim());
-              }
-            }}
-            placeholder={copy.answerPlaceholder}
-            style={{ flex: 1 }}
-          />
-          <Button
-            variant="primary"
-            disabled={!freeText.trim()}
-            onClick={() => submit(freeText.trim())}
-          >
-            {copy.send}
-          </Button>
-        </div>
-      )}
-    </div>
-  );
-}
 
 function loadStoredMessages(): Message[] {
   // The synthetic `[Earlier conversation summary]` lead is recomputed per run
@@ -384,73 +187,6 @@ function loadStoredThreadId(): string | null {
 /** 05: console references in assistant answers become links —
  * `Agent #N` → the agent page (internal, SPA-routed via the click
  * interceptor on the message list), 64-hex hashes → the block explorer. */
-
-/** Per-message copy action with the app-wide inline-confirm contract (04
- * ): the label swaps to "✓ Copied" for ~1.2s, matching the ui.tsx
- * CopyButton primitive used inside tool cards. */
-function MsgCopyAction({
-  text,
-  copy,
-}: {
-  text: string;
-  copy: Copy["chat"];
-}): ReactElement {
-  const [copied, setCopied] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
-  useEffect(
-    () => () => {
-      if (timerRef.current !== undefined) clearTimeout(timerRef.current);
-    },
-    [],
-  );
-  return (
-    <button
-      type="button"
-      className="msg-action"
-      title={copied ? copy.copiedMessage : copy.copyMessage}
-      onClick={() => {
-        void navigator.clipboard?.writeText(text);
-        setCopied(true);
-        if (timerRef.current !== undefined) clearTimeout(timerRef.current);
-        timerRef.current = setTimeout(() => setCopied(false), 1200);
-      }}
-    >
-      {copied ? `✓ ${copy.copiedMessage}` : copy.copyShort}
-    </button>
-  );
-}
-
-function MessageEditConfirm({
-  onConfirm,
-  onCancel,
-  copy,
-}: {
-  onConfirm: () => void;
-  onCancel: () => void;
-  copy: Copy["chat"];
-}): ReactElement {
-  return (
-    <span className="msg-confirm">
-      <span className="msg-confirm__text">{copy.editDiscards}</span>
-      <button
-        type="button"
-        className="msg-action msg-action--danger"
-        title={copy.discardEditTitle}
-        onClick={onConfirm}
-      >
-        {copy.edit}
-      </button>
-      <button
-        type="button"
-        className="msg-action"
-        title={copy.keepConversationTitle}
-        onClick={onCancel}
-      >
-        {copy.cancel}
-      </button>
-    </span>
-  );
-}
 
 function ChatPageInner(): ReactElement {
   const { address } = useAccount();
@@ -2376,231 +2112,6 @@ function stripSummaryLead<T extends { role: string; content: string | null }>(
     msgs[0].content.startsWith("[Earlier conversation summary]")
     ? msgs.slice(1)
     : msgs;
-}
-
-/** Per-message telemetry, collapsed to a quiet one-line affordance: the full
- * TTFT/tok-s/cache/provider/cost dump only renders on explicit expand
- * (02-). Own state per message — no parent bookkeeping. */
-function InsightsDisclosure({
-  text,
-  showLabel,
-  hideLabel,
-}: {
-  text: string;
-  showLabel: string;
-  hideLabel: string;
-}): ReactElement {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="msg-insights">
-      <button
-        type="button"
-        className="msg-insights__toggle"
-        aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
-      >
-        {open ? hideLabel : showLabel}
-      </button>
-      {open ? <div className="msg-insights__detail">{text}</div> : null}
-    </div>
-  );
-}
-
-function ToolCallCard({
-  run,
-  expanded,
-  onToggle,
-  onRetry,
-  retryLabel,
-}: {
-  run: ToolRun;
-  expanded: boolean;
-  onToggle: () => void;
-  /** 04: retry-with-same-args affordance on failed tool runs. */
-  onRetry?: () => void;
-  retryLabel?: string;
-}): ReactElement {
-  const label = TOOL_LABELS[run.name] ?? run.name;
-  const elapsedSec = Math.max(
-    0,
-    Math.floor((Date.now() - run.startedAt) / 1000),
-  );
-  return (
-    <div
-      style={{
-        border: "1px solid var(--c-border)",
-        borderRadius: "var(--radius-md)",
-        margin: "var(--space-xs) 0",
-        background: "var(--c-surface)",
-        overflow: "hidden",
-      }}
-    >
-      <button
-        type="button"
-        onClick={onToggle}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "var(--space-sm)",
-          width: "100%",
-          padding: "6px 10px",
-          border: "none",
-          background: "none",
-          cursor: "pointer",
-          color: COLORS.text,
-          textAlign: "left",
-          font: "inherit",
-          fontSize: "var(--text-xs)",
-        }}
-        aria-expanded={expanded}
-      >
-        {run.status === "running" ? (
-          <Spinner size={12} />
-        ) : run.status === "success" ? (
-          <span style={{ color: "var(--c-success)" }} aria-hidden="true">
-            ✓
-          </span>
-        ) : (
-          <span style={{ color: "var(--c-danger)" }} aria-hidden="true">
-            ✕
-          </span>
-        )}
-        <strong style={{ color: COLORS.bronzeLight }}>{label}</strong>
-        <ToolClassBadge name={run.name} />
-        <span
-          style={{
-            marginLeft: "auto",
-            color: COLORS.textDim,
-            fontSize: "var(--text-xs)",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {run.status === "running"
-            ? `${elapsedSec}s…`
-            : run.status === "success"
-              ? "done"
-              : "failed"}
-        </span>
-      </button>
-      {expanded && (
-        <div
-          style={{
-            padding: "6px 10px",
-            borderTop: "1px solid var(--c-border)",
-            fontSize: "var(--text-xs)",
-            color: COLORS.textMuted,
-          }}
-        >
-          <div style={{ marginBottom: 6 }}>
-            {run.status === "running"
-              ? `running ${elapsedSec}s`
-              : `ran in ${elapsedSec}s`}
-          </div>
-          {run.result && !hasEncodePreview(run.result) ? (
-            <div
-              style={{
-                margin: "0 0 6px",
-                fontFamily: "var(--font-mono)",
-                fontSize: "var(--text-xs)",
-                color: COLORS.textMuted,
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-            >
-              {run.result.length > 80
-                ? `${run.result.slice(0, 80)}…`
-                : run.result}
-            </div>
-          ) : null}
-          {run.args && Object.keys(run.args).length > 0 && (
-            <pre
-              style={{
-                margin: "0 0 6px",
-                whiteSpace: "pre-wrap",
-                wordBreak: "break-word",
-                fontFamily: "var(--font-mono)",
-                fontSize: "var(--text-xs)",
-              }}
-            >
-              {JSON.stringify(run.args, null, 2)}
-            </pre>
-          )}
-          {run.error ? (
-            <span style={{ color: "var(--c-danger)" }}>
-              {/* 04: humanized — never a raw viem/backend dump. */}
-              {humanizeError(run.error)}
-              {onRetry && retryLabel ? (
-                <button
-                  type="button"
-                  className="msg-action"
-                  style={{ marginLeft: 8 }}
-                  onClick={onRetry}
-                >
-                  {retryLabel}
-                </button>
-              ) : null}
-            </span>
-          ) : run.result ? (
-            hasEncodePreview(run.result) ? (
-              <span style={{ color: COLORS.textMuted }}>
-                Encode preview rendered in the tool card above.
-              </span>
-            ) : (
-              <ToolResultBody name={run.name} content={run.result} />
-            )
-          ) : null}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ToolResultBody({
-  name,
-  content,
-  sendTransactionAsync,
-}: {
-  name: string;
-  content: string | null;
-  sendTransactionAsync?: (a: {
-    to: `0x${string}`;
-    data?: `0x${string}`;
-    value?: bigint;
-  }) => Promise<`0x${string}`>;
-}): ReactElement | null {
-  if (hasEncodePreview(content)) {
-    return (
-      <EncodePreviewCard
-        content={content}
-        toolName={name}
-        onSign={sendTransactionAsync}
-      />
-    );
-  }
-
-  if (classOfTool(name) === "archive") {
-    return <ArchiveResultCard name={name} content={content} />;
-  }
-
-  const text = formatToolResult(name, content);
-  if (!text) return null;
-
-  return (
-    <pre
-      style={{
-        fontSize: "var(--text-xs)",
-        margin: 0,
-        whiteSpace: "pre-wrap",
-        wordBreak: "break-word",
-        lineHeight: "var(--lh-normal)",
-        fontFamily: "inherit",
-        color: COLORS.textMuted,
-      }}
-    >
-      {text}
-    </pre>
-  );
 }
 
 export default function ChatPage(): ReactElement {

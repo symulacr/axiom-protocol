@@ -52,10 +52,7 @@ import { useAgents } from "../hooks/useAgents.js";
 import { useMintWizard } from "../hooks/useMintWizard.js";
 import { usePayment } from "../hooks/usePayment.js";
 import { paymentSymbolOf, usePaymentToken } from "../hooks/usePaymentToken.js";
-import {
-  isReceiverAccountUnavailable,
-  useTransfer,
-} from "../hooks/useTransfer.js";
+import { useTransfer } from "../hooks/useTransfer.js";
 import { useOrchestratorTick } from "../hooks/useOrchestratorTick.js";
 import { useVaultWrite } from "../hooks/useVaultWrite.js";
 import {
@@ -74,11 +71,15 @@ import {
 import { APP_CHAIN } from "../config/wagmi.js";
 import {
   formatTokenAmount,
-  freshNonceHex,
   humanizeError,
   truncateAddress,
   truncateHex,
 } from "../utils/format.js";
+import {
+  buildTransferInput as assembleTransferInput,
+  freshAccessProofNonce,
+  runCoSignStep,
+} from "../lib/cosignFlow.js";
 
 const phaseState: Record<OperationDraftPhase, TxState> = {
   draft: "ready",
@@ -152,7 +153,7 @@ export function FlowPage({
     : undefined;
 
   const [allowance, setAllowance] = useState<string | null>(null);
-  const nonceRef = useRef<`0x${string}`>(freshNonceHex());
+  const nonceRef = useRef(freshAccessProofNonce());
 
   // Prefilled instruction links (?instruction=…) seed the draft once.
   useEffect(() => {
@@ -281,12 +282,13 @@ export function FlowPage({
   const [handoffApplied, setHandoffApplied] = useState(false);
   const [handoffReceiver, setHandoffReceiver] = useState<string | null>(null);
 
-  const buildTransferInput = () => ({
-    tokenId: BigInt(selectedTokenId || "0"),
-    to: draft.value.trim() as `0x${string}`,
-    receiverPubKey64: draft.extra.trim() as `0x${string}`,
-    accessProofNonce: nonceRef.current,
-  });
+  const buildTransferInput = () =>
+    assembleTransferInput({
+      tokenId: BigInt(selectedTokenId || "0"),
+      to: draft.value.trim(),
+      receiverPubKey64: draft.extra.trim(),
+      accessProofNonce: nonceRef.current,
+    });
 
   const validate = (): FlowFieldError | null => {
     const trimmed = draft.value.trim();
@@ -370,7 +372,7 @@ export function FlowPage({
 
   // shared transfer tail — receipt row + confirm pipeline + notice.
   const completeTransfer = (txHash: `0x${string}`) => {
-    nonceRef.current = freshNonceHex();
+    nonceRef.current = freshAccessProofNonce();
     addFlowReceipt(txHash, {
       // naming contract: the receipt kind IS the destination's nav name.
       kind: copy.flows.transfer.receiptKind,
@@ -395,17 +397,22 @@ export function FlowPage({
     if (kind !== "transfer" || isBusy) return;
     setCoSignBlocked(false);
     setDraftPhase("submitting");
+    const attempt = await runCoSignStep(transfer.coSign);
+    if (attempt.outcome === "blocked") {
+      // Honest blocker: no retry conjures the receiver account here; sheet shows remedies + handoff.
+      setCoSignBlocked(true);
+      setDraftPhase("review");
+      return;
+    }
+    if (attempt.outcome === "failed") {
+      setDraftPhase("recoverable-error", attempt.message);
+      dispatch({ type: "notice", notice: attempt.message });
+      return;
+    }
     try {
-      await transfer.coSign();
       const txHash = await transfer.confirm(buildTransferInput());
       completeTransfer(txHash);
     } catch (err) {
-      if (isReceiverAccountUnavailable(err)) {
-        // Honest blocker: no retry conjures the receiver account here; sheet shows remedies + handoff.
-        setCoSignBlocked(true);
-        setDraftPhase("review");
-        return;
-      }
       const message = humanizeError(err);
       setDraftPhase("recoverable-error", message);
       dispatch({ type: "notice", notice: message });
@@ -617,7 +624,7 @@ export function FlowPage({
   };
 
   const restart = () => {
-    nonceRef.current = freshNonceHex();
+    nonceRef.current = freshAccessProofNonce();
     tickHook.resetStream();
     setSubmitError(null);
     setCoSignBlocked(false);
