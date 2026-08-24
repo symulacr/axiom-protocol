@@ -1,4 +1,4 @@
-import OpenAI from "openai";
+import type OpenAI from "openai";
 import { FetchRequest, JsonRpcProvider } from "ethers";
 import {
   ARISTOTLE_CHAIN_ID,
@@ -63,10 +63,13 @@ interface RouterClientOptions {
   timeout?: number;
 }
 
-export function createRouterClient(
+export async function createRouterClient(
   model?: string,
   opts: RouterClientOptions = {},
-): OpenAI {
+): Promise<OpenAI> {
+  // Lazy: the openai SDK (~1MB parsed) joins the graph only when a compute
+  // client is actually created, not at boot.
+  const { default: OpenAI } = await import("openai");
   const timeout = opts.timeout ?? ROUTER_TIMEOUT_MS;
   logRouter.info("Creating router client", { model });
 

@@ -6,7 +6,6 @@ import express, {
   type NextFunction,
 } from "express";
 import helmet from "helmet";
-import * as Sentry from "@sentry/node";
 import cors from "cors";
 import compression from "compression";
 import rateLimit from "express-rate-limit";
@@ -69,6 +68,7 @@ import {
   royaltySchema,
 } from "./route-schemas.js";
 import { createLogger } from "./utils/logger.js";
+import { getSentry } from "./utils/sentry.js";
 import { sendError, trimErrorMessage } from "./utils/response.js";
 import {
   getClients,
@@ -1201,48 +1201,56 @@ function registerNotFoundHandler(app: Express): void {
 }
 
 function registerErrorHandlers(app: Express): void {
-  Sentry.setupExpressErrorHandler(app);
-
-  app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-    const requestId = res.locals.requestId;
-    log.error("Unhandled error", {
-      error: err.message,
-      stack: err.stack,
-      requestId,
+  // @sentry/node is lazy: both middlewares attach from one resolved promise so Sentry's
+  // handler always precedes the terminal JSON handler, loaded or not. A load failure
+  // degrades to no-op capture, never a missing terminal handler.
+  void getSentry()
+    .catch(() => null)
+    .then((Sentry) => {
+      Sentry?.setupExpressErrorHandler(app);
+      app.use(
+        (err: Error, _req: Request, res: Response, _next: NextFunction) => {
+          const requestId = res.locals.requestId;
+          log.error("Unhandled error", {
+            error: err.message,
+            stack: err.stack,
+            requestId,
+          });
+          if (err instanceof z.ZodError) {
+            res.status(HTTP.BAD_REQUEST).json({
+              error: "Validation failed",
+              details: err.issues,
+              code: "VALIDATION_ERROR",
+              requestId,
+            });
+            return;
+          }
+          const status =
+            typeof err === "object" && err !== null && "status" in err
+              ? Number((err as Record<string, unknown>).status)
+              : undefined;
+          if (status && status >= 400 && status < 600) {
+            res
+              .status(status)
+              .json({ error: err.message, code: `HTTP_${status}`, requestId });
+            return;
+          }
+          if (isUpstreamTransportError(err)) {
+            res.status(HTTP.BAD_GATEWAY).json({
+              error: "Upstream service error",
+              code: "UPSTREAM_ERROR",
+              requestId,
+            });
+            return;
+          }
+          res.status(HTTP.INTERNAL).json({
+            error: "Internal server error",
+            code: "INTERNAL_ERROR",
+            requestId,
+          });
+        },
+      );
     });
-    if (err instanceof z.ZodError) {
-      res.status(HTTP.BAD_REQUEST).json({
-        error: "Validation failed",
-        details: err.issues,
-        code: "VALIDATION_ERROR",
-        requestId,
-      });
-      return;
-    }
-    const status =
-      typeof err === "object" && err !== null && "status" in err
-        ? Number((err as Record<string, unknown>).status)
-        : undefined;
-    if (status && status >= 400 && status < 600) {
-      res
-        .status(status)
-        .json({ error: err.message, code: `HTTP_${status}`, requestId });
-      return;
-    }
-    if (isUpstreamTransportError(err)) {
-      res.status(HTTP.BAD_GATEWAY).json({
-        error: "Upstream service error",
-        code: "UPSTREAM_ERROR",
-        requestId,
-      });
-      return;
-    }
-    res.status(HTTP.INTERNAL).json({
-      error: "Internal server error",
-      code: "INTERNAL_ERROR",
-      requestId,
-    });
-  });
 }
 
 /** WS auth header path: clients pass Sec-WebSocket-Protocol: ["axiom", base64(token)].

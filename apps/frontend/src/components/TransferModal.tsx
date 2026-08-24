@@ -600,19 +600,7 @@ export function TransferModal({
     setAccessProofNonce(freshNonceHex(32) as `0x${string}`);
   }, [reset]);
 
-  const onAddressChange = useCallback((value: string): void => {
-    setReceiverAddress(value);
-  }, []);
-  const onPubKeyChange = useCallback((value: string): void => {
-    setReceiverPubKey(value);
-  }, []);
-  const onOldDataKeyChange = useCallback((value: string): void => {
-    setOldDataEncryptionKey(value);
-  }, []);
-  const onOldDataUriChange = useCallback((value: string): void => {
-    setOldDataUri(value);
-  }, []);
-
+  // setState is stable — pass it straight to Field onChange (no wrapper needed).
   const cancel = useCallback((): void => {
     setOpen(false);
   }, [setOpen]);
@@ -651,16 +639,16 @@ export function TransferModal({
         <TransferFormPhase
           formId={formId}
           receiverAddress={receiverAddress}
-          onAddressChange={onAddressChange}
+          onAddressChange={setReceiverAddress}
           addressError={addressError}
           receiverPubKey={receiverPubKey}
-          onPubKeyChange={onPubKeyChange}
+          onPubKeyChange={setReceiverPubKey}
           pubKeyError={pubKeyError}
           accessProofNonce={accessProofNonce}
           oldDataEncryptionKey={oldDataEncryptionKey}
-          onOldDataKeyChange={onOldDataKeyChange}
+          onOldDataKeyChange={setOldDataEncryptionKey}
           oldDataUri={oldDataUri}
-          onOldDataUriChange={onOldDataUriChange}
+          onOldDataUriChange={setOldDataUri}
           rekeyError={rekeyError}
           mergedError={mergedError}
           cancel={cancel}

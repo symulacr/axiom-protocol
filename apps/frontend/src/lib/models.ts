@@ -40,6 +40,16 @@ export type TxState =
   | "reverted"
   | "rejected"
   | "stale";
+/** Receipt-state buckets shared by dashboard/receipt-center/next-action logic. */
+export const isRecoverableTx = (state: TxState) =>
+  state === "reverted" || state === "rejected" || state === "stale";
+export const isInFlightTx = (state: TxState) =>
+  state === "submitted" || state === "confirming";
+/** A vault is strategy-bound when its root is set and non-zero. */
+export const hasStrategyRoot = (root: string | null | undefined) =>
+  Boolean(root) && root !== ZERO_STRATEGY_ROOT;
+const ZERO_STRATEGY_ROOT =
+  "0x0000000000000000000000000000000000000000000000000000000000000000";
 export type SessionState =
   "disconnected" | "wrong-network" | "profile" | "authenticated";
 export type StoragePhase =

@@ -22,6 +22,17 @@ interface AgentRegistryStats {
   latestTokenId: string | null;
 }
 
+/** Create-or-update a document-head meta tag (description/robots share it). */
+function setMeta(name: string, content: string) {
+  let meta = document.querySelector(`meta[name="${name}"]`);
+  if (!meta) {
+    meta = document.createElement("meta");
+    meta.setAttribute("name", name);
+    document.head.appendChild(meta);
+  }
+  meta.setAttribute("content", content);
+}
+
 function useAgentRegistryStats(enabled: boolean): AgentRegistryStats | null {
   const [stats, setStats] = useState<AgentRegistryStats | null>(null);
   useEffect(() => {
@@ -272,20 +283,8 @@ export function PublicSeoPage({ slug }: { slug: PublicSeoSlug }) {
   const isLiveData = slug === "agents" && liveStats !== null;
   useEffect(() => {
     document.title = page.metaTitle;
-    let description = document.querySelector('meta[name="description"]');
-    if (!description) {
-      description = document.createElement("meta");
-      description.setAttribute("name", "description");
-      document.head.appendChild(description);
-    }
-    description.setAttribute("content", page.metaDescription);
-    let robots = document.querySelector('meta[name="robots"]');
-    if (!robots) {
-      robots = document.createElement("meta");
-      robots.setAttribute("name", "robots");
-      document.head.appendChild(robots);
-    }
-    robots.setAttribute("content", "index,follow");
+    setMeta("description", page.metaDescription);
+    setMeta("robots", "index,follow");
     const schemaId = "axiom-public-schema";
     document.getElementById(schemaId)?.remove();
     const schema = document.createElement("script");

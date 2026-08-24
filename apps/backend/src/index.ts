@@ -1,10 +1,9 @@
-import * as Sentry from "@sentry/node";
-
 import { type ethers, Wallet } from "ethers";
 import { resolveAddress } from "@axiom/config/addresses";
 import { registerProcessHandlers } from "@axiom/config/process";
 import { startServer, type ServerConfig } from "./server.js";
 import { createLogger } from "./utils/logger.js";
+import { initSentry } from "./utils/sentry.js";
 import { loadEnv } from "@axiom/config/env";
 import { getSharedProvider } from "./provider.js";
 import { backendEnvSchema } from "./env-schema.js";
@@ -17,12 +16,6 @@ import { IndexerService } from "./indexer/index.js";
 loadEnv();
 
 const env = backendEnvSchema.parse(process.env);
-if (env.AXIOM_SENTRY_DSN) {
-  Sentry.init({
-    dsn: env.AXIOM_SENTRY_DSN,
-    environment: process.env.NODE_ENV ?? "development",
-  });
-}
 
 const provider = getSharedProvider(env.AXIOM_CHAIN_ID ?? ARISTOTLE_CHAIN_ID);
 const signer = new Wallet(
@@ -80,6 +73,9 @@ async function resolveLiveAddresses(
 }
 
 async function main(): Promise<void> {
+  // Lazy: @sentry/node loads only when a DSN is configured; awaited before startServer
+  // so the express error handler registers with Sentry already initialized.
+  await initSentry(env);
   const addresses = await resolveLiveAddresses(provider, env);
   // Chat-transcript persistence on 0G, same env contract as the oracle. Absent indexer RPC ⇒
   // persistence disabled with a boot warning — the backend must still serve chat without storage.

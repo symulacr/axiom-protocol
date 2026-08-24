@@ -28,6 +28,7 @@ import { StatePill } from "../components/StatePill.js";
 import { MobileDisclosure } from "../components/MobileDisclosure.js";
 import { getCopy } from "../lib/copy.js";
 import type { AppState, Transaction, TxState } from "../lib/models.js";
+import { isInFlightTx, isRecoverableTx } from "../lib/models.js";
 import type { ConsoleAction } from "../lib/consoleStore.js";
 import {
   useEventHistory,
@@ -161,7 +162,7 @@ function ReceiptDrawer({
   const txCopy = copy.transactions;
   // Dismiss trio: Esc + focus restore added here; backdrop and X already existed.
   useModalDismiss(onClose);
-  const recover = ["reverted", "rejected", "stale"].includes(tx.state);
+  const recover = isRecoverableTx(tx.state);
   const copyHash = () => {
     navigator.clipboard?.writeText(tx.hash);
     dispatch({ type: "notice", notice: "Receipt hash copied locally." });
@@ -292,19 +293,10 @@ export function TransactionsPage({
   });
 
   useEffect(() => {
+    // deep-link whitelist: review + confirmed + every ADVANCED_FILTERS state
     if (
       requestedFilter === "review" ||
-      [
-        "all",
-        "approval",
-        "signing",
-        "submitted",
-        "confirming",
-        "confirmed",
-        "reverted",
-        "rejected",
-        "stale",
-      ].includes(requestedFilter ?? "")
+      ["all", "confirmed", ...ADVANCED_FILTERS].includes(requestedFilter ?? "")
     ) {
       setFilter(requestedFilter as "all" | "review" | TxState);
     }
@@ -330,19 +322,23 @@ export function TransactionsPage({
     filter === "all"
       ? transactions
       : filter === "review"
-        ? transactions.filter((tx) =>
-            ["reverted", "rejected", "stale"].includes(tx.state),
-          )
+        ? transactions.filter((tx) => isRecoverableTx(tx.state))
         : transactions.filter((tx) => tx.state === filter);
   const selected = transactions.find((tx) => tx.id === selectedId) ?? null;
 
+  const pushParams = (mutate: (next: URLSearchParams) => void) => {
+    const next = new URLSearchParams(searchParams);
+    mutate(next);
+    setSearchParams(next, { replace: true });
+  };
+
   const chooseFilter = (value: "all" | "review" | TxState) => {
     setFilter(value);
-    const next = new URLSearchParams(searchParams);
-    next.set("filter", value);
-    next.delete("tx");
+    pushParams((next) => {
+      next.set("filter", value);
+      next.delete("tx");
+    });
     setSelectedId(null);
-    setSearchParams(next, { replace: true });
   };
 
   // Chip labels: the stale-only filter gets its own label so it never collides with the review bucket.
@@ -398,9 +394,7 @@ export function TransactionsPage({
         <div>
           <strong>
             {String(
-              transactions.filter((tx) =>
-                ["submitted", "confirming"].includes(tx.state),
-              ).length,
+              transactions.filter((tx) => isInFlightTx(tx.state)).length,
             ).padStart(2, "0")}
           </strong>
           <small>{txCopy.confirmingNow}</small>
@@ -411,9 +405,7 @@ export function TransactionsPage({
         >
           <strong>
             {String(
-              transactions.filter((tx) =>
-                ["reverted", "rejected", "stale"].includes(tx.state),
-              ).length,
+              transactions.filter((tx) => isRecoverableTx(tx.state)).length,
             ).padStart(2, "0")}
           </strong>
           <small>{txCopy.needReview}</small>
@@ -480,10 +472,10 @@ export function TransactionsPage({
               key={tx.id}
               onClick={() => {
                 setSelectedId(tx.id);
-                const next = new URLSearchParams(searchParams);
-                next.set("filter", filter);
-                next.set("tx", tx.id);
-                setSearchParams(next, { replace: true });
+                pushParams((next) => {
+                  next.set("filter", filter);
+                  next.set("tx", tx.id);
+                });
               }}
             >
               <span className="transaction-kind">
@@ -535,9 +527,7 @@ export function TransactionsPage({
           explorerTx={explorerTx}
           onClose={() => {
             setSelectedId(null);
-            const next = new URLSearchParams(searchParams);
-            next.delete("tx");
-            setSearchParams(next, { replace: true });
+            pushParams((next) => next.delete("tx"));
           }}
           go={go}
           dispatch={dispatch}

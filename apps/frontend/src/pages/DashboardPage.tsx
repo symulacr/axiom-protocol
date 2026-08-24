@@ -25,15 +25,17 @@ import { StatePill } from "../components/StatePill.js";
 import { MobileDisclosure } from "../components/MobileDisclosure.js";
 import { getCopy } from "../lib/copy.js";
 import type { AppState } from "../lib/models.js";
+import {
+  hasStrategyRoot,
+  isInFlightTx,
+  isRecoverableTx,
+} from "../lib/models.js";
 import type { ConsoleAction } from "../lib/consoleStore.js";
 import { usePortfolio } from "../hooks/usePortfolio.js";
 import { useHealth } from "../hooks/useHealth.js";
 import { useEventHistory, eventTokenId } from "../hooks/useEventHistory.js";
 import { formatTokenAmount, truncateAddress } from "../utils/format.js";
 import { APP_CHAIN, APP_CHAIN_ID } from "../config/wagmi.js";
-
-const ZERO_ROOT =
-  "0x0000000000000000000000000000000000000000000000000000000000000000";
 
 function ContextStrip({
   go,
@@ -148,7 +150,7 @@ export function DashboardPage({
         const vault = vaultMap.get(agent.tokenId.toString());
         if (!vault) return true; // no vault data yet — needs review
         const root = vault.strategyRoot?.toLowerCase?.() ?? "";
-        return vault.depositsWei === 0n || !root || root === ZERO_ROOT;
+        return vault.depositsWei === 0n || !hasStrategyRoot(root);
       }),
     [agents, vaultMap],
   );
@@ -164,7 +166,7 @@ export function DashboardPage({
   };
 
   const reviewCount = state.transactions.filter((tx) =>
-    ["reverted", "rejected", "stale"].includes(tx.state),
+    isRecoverableTx(tx.state),
   ).length;
 
   const activityRows = useMemo(() => {
@@ -259,9 +261,7 @@ export function DashboardPage({
           <Stat
             label={copy.dashboard.liveQueue}
             value={String(
-              state.transactions.filter((tx) =>
-                ["submitted", "confirming"].includes(tx.state),
-              ).length,
+              state.transactions.filter((tx) => isInFlightTx(tx.state)).length,
             ).padStart(2, "0")}
             change={
               health && !health.ok

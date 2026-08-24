@@ -4,7 +4,7 @@
  * error, and storage inspection stays the read-only proof check.
  * Copy comes from copy.strip (05 — the strip localizes with the
  * page body); no chain/token literal ever originates here. */
-import type { AppState } from "./models";
+import { isRecoverableTx, type AppState } from "./models";
 import type { Copy } from "./copy";
 
 export type NextSafeAction = {
@@ -27,23 +27,15 @@ export function getNextSafeActions(
   strip: Copy["strip"],
 ): NextSafeAction[] {
   const actions: NextSafeAction[] = [];
+  const recoverableDraft = Object.values(state.operationDrafts).find(
+    (draft) => draft.phase === "recoverable-error",
+  );
   const recoverable =
-    state.transactions.find((tx) =>
-      ["reverted", "rejected", "stale"].includes(tx.state),
-    ) ??
-    (Object.values(state.operationDrafts).find(
-      (draft) => draft.phase === "recoverable-error",
-    )
+    state.transactions.find((tx) => isRecoverableTx(tx.state)) ??
+    (recoverableDraft
       ? {
-          kind: Object.values(state.operationDrafts).find(
-            (draft) => draft.phase === "recoverable-error",
-          )!.kind,
-          hash:
-            state.operationDrafts[
-              Object.values(state.operationDrafts).find(
-                (draft) => draft.phase === "recoverable-error",
-              )!.kind
-            ].receiptId ?? "draft",
+          kind: recoverableDraft.kind,
+          hash: recoverableDraft.receiptId ?? "draft",
         }
       : undefined);
 

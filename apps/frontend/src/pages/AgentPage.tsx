@@ -33,6 +33,7 @@ import { paymentSymbolOf, usePaymentToken } from "../hooks/usePaymentToken.js";
 import { useVaultData } from "../hooks/useVaultData.js";
 import { formatUnits } from "viem";
 import { APP_CHAIN } from "../config/wagmi.js";
+import { hasStrategyRoot } from "../lib/models.js";
 import {
   formatTokenAmount,
   truncateAddress,
@@ -125,10 +126,7 @@ export function AgentPage({
     vault.depositsWei !== undefined
       ? `${formatTokenAmount(vault.depositsWei)} ${nativeSymbol}`
       : "—";
-  const strategyBound =
-    Boolean(vault.strategyRoot) &&
-    vault.strategyRoot !==
-      "0x0000000000000000000000000000000000000000000000000000000000000000";
+  const strategyBound = hasStrategyRoot(vault.strategyRoot);
 
   const copyDataHash = () => {
     if (metadata?.dataHash) navigator.clipboard?.writeText(metadata.dataHash);
