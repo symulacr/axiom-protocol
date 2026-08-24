@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "packageManager": "bun@1.4.0",
-  "description": "Axiom Protocol iNFT agent dashboard — Bun + React 18 + wagmi v2 + RainbowKit v2",
+  "description": "Axiom Protocol iNFT agent dashboard \u2014 Bun + React 18 + wagmi v2 + RainbowKit v2",
   "scripts": {
     "dev": "bun --hot run dev.mjs",
     "build": "tsc --project tsconfig.json && bun build.mjs",
@@ -18,16 +18,16 @@
   "dependencies": {
     "@axiom/chat-runtime": "workspace:*",
     "@axiom/config": "workspace:*",
-    "@rainbow-me/rainbowkit": "^2.2.1",
-    "@tanstack/react-query": "^5.101.4",
-    "dompurify": "^3.4.13",
-    "marked": "^18.0.9",
+    "@rainbow-me/rainbowkit": "^2.2.11",
+    "@tanstack/react-query": "^5.102.2",
+    "dompurify": "^3.4.14",
+    "marked": "^18.0.10",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^7.18.2",
     "sonner": "^2.0.7",
     "viem": "^2.55.13",
-    "wagmi": "^2.13.0"
+    "wagmi": "^2.19.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
