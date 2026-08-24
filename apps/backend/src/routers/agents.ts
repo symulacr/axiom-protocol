@@ -1,4 +1,4 @@
-import { hexViem, addressViem } from "@axiom/config/types/hex";
+import { hexViem, addressViem } from "@axiom/config/types/hex-schema";
 import { AGENT_NFT_ABI } from "@axiom/config/abis";
 import { z } from "zod";
 import type { Express, Request, Response } from "express";

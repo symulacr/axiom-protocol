@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { hexString } from "@axiom/config/types/hex";
+import { hexString } from "@axiom/config/types/hex-schema";
 import { sharedEnvSchema } from "@axiom/config/env-schema";
 import { RUNTIME_DEFAULTS } from "@axiom/config/constants";
 

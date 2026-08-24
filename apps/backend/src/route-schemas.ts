@@ -1,11 +1,7 @@
 import { z } from "zod";
 import { QUERYABLE_EVENT_NAMES } from "./indexer/events.js";
-import {
-  hexViem,
-  addressViem,
-  HEX_REGEX,
-  ADDRESS_REGEX,
-} from "@axiom/config/types/hex";
+import { hexViem, addressViem } from "@axiom/config/types/hex-schema";
+import { HEX_REGEX, ADDRESS_REGEX } from "@axiom/config/types/hex";
 
 const accessProofSchema = z.object({
   dataHash: hexViem,
