@@ -28,13 +28,10 @@ export const VAULT_ABI = [
   "event Unpaused(address account)",
   "event Withdrawn(uint256 indexed tokenId, address indexed to, address indexed asset, uint256 amount)",
   "error ActionAlreadyUsed()",
-  "error AddressEmptyCode(address target)",
   "error CallFailed()",
   "error DailyLimitExceeded()",
-  "error ERC1967NonPayable()",
   "error EnforcedPause()",
   "error ExpectedPause()",
-  "error FailedInnerCall()",
   "error InvalidInitialization()",
   "error InvalidMerkleProof()",
   "error LimitOverflow()",
@@ -48,7 +45,7 @@ export const VAULT_ABI = [
   "error TransferFailed()",
   "error UseDeposit()",
   "error ZeroAddress()",
-  "error ZeroAmount()",
+  "error ZeroAmount()"
 ] as const;
 
 // Legacy pre-validUntilDay vault interface, kept for backward-compatible orchestrator reads of old contracts;
@@ -74,5 +71,5 @@ export const STRATEGY_OF_CURRENT = [
 ] as const;
 
 export const STRATEGY_OF_LEGACY = [
-  "function strategyOf(uint256) view returns (bytes32, uint256, uint256, uint64)",
+  "function strategyOf(uint256) view returns (bytes32, uint256, uint256, uint64)"
 ] as const;

@@ -59,6 +59,7 @@ export const PAYMENT_PROCESSOR_ABI = [
   "error MigrationBlocked()",
   "error NoEarnings()",
   "error NoPendingProposal()",
+  "error NoPendingProposal()",
   "error NotCreator()",
   "error NotInitializing()",
   "error OwnableInvalidOwner(address owner)",
@@ -69,5 +70,5 @@ export const PAYMENT_PROCESSOR_ABI = [
   "error UUPSUnauthorizedCallContext()",
   "error UUPSUnsupportedProxiableUUID(bytes32 slot)",
   "error ZeroAddress()",
-  "error ZeroAmount()",
+  "error ZeroAmount()"
 ] as const;

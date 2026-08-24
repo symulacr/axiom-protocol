@@ -23,7 +23,6 @@ export const AGENT_NFT_ABI = [
   "function iCloneFrom(address from, address to, uint256 tokenId, ((bytes32 dataHash, bytes targetPubkey, bytes nonce, bytes proof, uint256 validUntil) accessProof, (uint8 oracleType, bytes32 dataHash, bytes sealedKey, bytes targetPubkey, bytes nonce, bytes proof, uint256 validUntil) ownershipProof)[] proofs) returns (uint256)",
   "function iTransfer(address to, uint256 tokenId, ((bytes32 dataHash, bytes targetPubkey, bytes nonce, bytes proof, uint256 validUntil) accessProof, (uint8 oracleType, bytes32 dataHash, bytes sealedKey, bytes targetPubkey, bytes nonce, bytes proof, uint256 validUntil) ownershipProof)[] proofs)",
   "function iTransferFrom(address from, address to, uint256 tokenId, ((bytes32 dataHash, bytes targetPubkey, bytes nonce, bytes proof, uint256 validUntil) accessProof, (uint8 oracleType, bytes32 dataHash, bytes sealedKey, bytes targetPubkey, bytes nonce, bytes proof, uint256 validUntil) ownershipProof)[] proofs)",
-  "function transferAndCleanExpiredProofs(address from, address to, uint256 tokenId, ((bytes32 dataHash, bytes targetPubkey, bytes nonce, bytes proof, uint256 validUntil) accessProof, (uint8 oracleType, bytes32 dataHash, bytes sealedKey, bytes targetPubkey, bytes nonce, bytes proof, uint256 validUntil) ownershipProof)[] proofs, bytes32[] cleanupNonces)",
   "function initialize(string name_, string symbol_, string storageInfo_, address verifierAddr, address admin_)",
   "function intelligentDataOf(uint256 tokenId) view returns ((string dataDescription, bytes32 dataHash)[] data)",
   "function intelligentDatasOf(uint256 tokenId) view returns ((string dataDescription, bytes32 dataHash)[])",
@@ -52,6 +51,7 @@ export const AGENT_NFT_ABI = [
   "function supportsInterface(bytes4 interfaceId) view returns (bool)",
   "function symbol() view returns (string)",
   "function tokenURI(uint256 tokenId) view returns (string)",
+  "function transferAndCleanExpiredProofs(address from, address to, uint256 tokenId, ((bytes32 dataHash, bytes targetPubkey, bytes nonce, bytes proof, uint256 validUntil) accessProof, (uint8 oracleType, bytes32 dataHash, bytes sealedKey, bytes targetPubkey, bytes nonce, bytes proof, uint256 validUntil) ownershipProof)[] proofs, bytes32[] cleanupNonces)",
   "function transferFrom(address from, address to, uint256 tokenId)",
   "function unpause()",
   "function update(uint256 tokenId, (string dataDescription, bytes32 dataHash)[] newDatas)",
@@ -117,5 +117,5 @@ export const AGENT_NFT_ABI = [
   "error UUPSUnauthorizedCallContext()",
   "error UUPSUnsupportedProxiableUUID(bytes32 slot)",
   "error UnauthorizedUsage(address caller)",
-  "error UseITransferWithProofs()",
+  "error UseITransferWithProofs()"
 ] as const;

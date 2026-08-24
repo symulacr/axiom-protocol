@@ -36,6 +36,7 @@ export const TEE_VERIFIER_ABI = [
   "error FailedInnerCall()",
   "error InvalidInitialization()",
   "error NoPendingProposal()",
+  "error NoPendingProposal()",
   "error NotInitializing()",
   "error OwnableInvalidOwner(address owner)",
   "error OwnableUnauthorizedAccount(address account)",
@@ -43,5 +44,5 @@ export const TEE_VERIFIER_ABI = [
   "error ProofFieldMismatch()",
   "error UUPSUnauthorizedCallContext()",
   "error UUPSUnsupportedProxiableUUID(bytes32 slot)",
-  "error ZeroAddress()",
+  "error ZeroAddress()"
 ] as const;

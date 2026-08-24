@@ -38,12 +38,12 @@ CONTRACTS=(AxiomAgentNFT AxiomTeeVerifier AxiomStrategyVault AxiomPaymentProcess
 # ── require forge ──
 if ! command -v forge >/dev/null 2>&1; then
   echo "⚠ forge not found on PATH — skipping ABI drift check"
-  exit 0
+  [ "$CI" = "true" ] && exit 1 || exit 0
 fi
 
 if ! (cd "$CONTRACTS_DIR" && forge build >/dev/null 2>&1); then
   echo "⚠ forge build failed — are the contracts compiled?"
-  exit 0 # Don't fail CI on a build failure here
+  [ "$CI" = "true" ] && exit 1 || exit 0
 fi
 
 # ── the same JSON→human-readable converter as generate-abis.sh ──
@@ -147,7 +147,7 @@ for name in "${CONTRACTS[@]}"; do
   # Generate fresh ABI JSON from the contract
   if ! (cd "$CONTRACTS_DIR" && forge inspect "$name" abi --json >"$TEMP_DIR/$name.json" 2>/dev/null); then
     echo "⚠ Could not inspect $name — is the contract compiled?"
-    exit 0 # Don't fail CI if forge can't inspect
+    [ "$CI" = "true" ] && exit 1 || exit 0
   fi
 
   # Convert fresh JSON → human-readable TS (same format as generate-abis.sh)
@@ -176,7 +176,9 @@ for name in "${CONTRACTS[@]}"; do
     echo "❌ ABI drift detected: $name"
     echo "   Committed: $committed_ts"
     echo "   Contract:  $name ($TEMP_DIR/$name.json)"
-    diff -u "$committed_block" "$fresh_ts" | sed 's/^/     /'
+    # `|| true`: under set -e/pipefail the failing diff must not abort the
+    # remaining contracts' checks.
+    diff -u "$committed_block" "$fresh_ts" | sed 's/^/     /' || true
     echo "   Run 'bash apps/contracts/scripts/generate-abis.sh' to update"
     drift_found=1
   else

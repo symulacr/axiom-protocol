@@ -75,6 +75,11 @@ jobs:
       - run: bun run --filter @axiom/config test
       - run: bun run --filter @axiom/chat-runtime test
       - run: bun run --filter @axiom/backend test
+      - name: OpenAPI freshness
+        run: |
+          cd apps/backend
+          bun run generate:openapi
+          git diff --exit-code docs/openapi.json
       - name: Coverage gate (C1)
         env:
           AXIOM_API_KEY: ""
@@ -105,6 +110,8 @@ jobs:
       - run: bash scripts/ci-forge-install.sh
       - run: forge test -vv
         working-directory: apps/contracts
+      - name: ABI drift check
+        run: bash scripts/check-abi-drift.sh
 
   chat-bench:
     name: Chat tool parity
