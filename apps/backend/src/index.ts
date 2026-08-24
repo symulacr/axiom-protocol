@@ -129,8 +129,12 @@ async function main(): Promise<void> {
     if (shuttingDown) return;
     shuttingDown = true;
     createLogger("server").info("shutdown", { signal: sig });
+    // Bound the drain: a refusing socket must not turn graceful shutdown into
+    // SIGKILL-by-orchestrator (which would void the EventStore flush).
+    const forceExit = setTimeout(() => process.exit(1), 10_000);
+    forceExit.unref();
     void (async () => {
-      indexer.stop();
+      await indexer.stop(); // final checkpoint rename completes first
       await getEventStore().flush();
       server.httpServer.closeAllConnections?.();
       server.httpServer.close(() => process.exit(0));
