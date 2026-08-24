@@ -1,5 +1,5 @@
 {
-  "lockfileVersion": 3,
+  "lockfileVersion": 2,
   "configVersion": 1,
   "workspaces": {
     "": {
@@ -86,7 +86,7 @@
         "react-dom": "^18.3.1",
         "react-router-dom": "^7.18.2",
         "sonner": "^2.0.7",
-        "viem": "^2.55.11",
+        "viem": "^2.55.13",
         "wagmi": "^2.13.0",
       },
       "devDependencies": {
@@ -103,7 +103,7 @@
       "version": "0.1.0",
       "dependencies": {
         "@axiom/config": "workspace:*",
-        "viem": "^2.55.11",
+        "viem": "^2.55.13",
       },
     },
     "packages/config": {
@@ -123,9 +123,6 @@
     },
   },
   "overrides": {
-    "@0gfoundation/0g-storage-ts-sdk": {
-      "ethers": "6.17.0",
-    },
     "@types/express": "4.17.25",
     "ethers": "6.17.0",
     "viem": "2.55.13",

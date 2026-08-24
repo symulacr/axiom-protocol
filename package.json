@@ -60,7 +60,6 @@
   ],
   "overrides": {
     "ethers": "6.17.0",
-    "@0gfoundation/0g-storage-ts-sdk>ethers": "6.17.0",
     "@types/express": "4.17.25",
     "viem": "2.55.13"
   }
