@@ -16,9 +16,7 @@ type AgentMetadata = {
 
 export function useAgentMetadata(tokenId: bigint): {
   data: AgentMetadata | null;
-  isLoading: boolean;
   error: Error | null;
-  refetch: () => void;
 } {
   const chainId = useChainId();
   const { isConnected } = useAccount();
@@ -85,10 +83,8 @@ export function useAgentMetadata(tokenId: bigint): {
   return useMemo(
     () => ({
       data,
-      isLoading: query.isLoading,
       error: (query.error as Error | null) ?? null,
-      refetch: query.refetch,
     }),
-    [data, query.isLoading, query.error, query.refetch],
+    [data, query.error],
   );
 }

@@ -6,6 +6,7 @@ import { ArrowLeft, LayoutDashboard } from "../components/axiom/icons.js";
 import { Button } from "../components/axiom/Controls.js";
 import { Logo } from "../components/axiom/AppShell.js";
 import { MEDIA } from "../lib/media.js";
+import { routePath } from "../lib/routeRegistry.js";
 import { getCopy, type Locale } from "../lib/copy.js";
 
 export default function Recovery404({
@@ -35,7 +36,7 @@ export default function Recovery404({
           </Button>
           <Button
             variant="secondary"
-            onClick={() => go("/app")}
+            onClick={() => go(routePath("dashboard"))}
             icon={<LayoutDashboard size={15} />}
           >
             {copy.openConsole}

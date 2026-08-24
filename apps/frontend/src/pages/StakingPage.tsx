@@ -5,6 +5,7 @@
 import { ReceiptText, ShieldAlert, Wallet } from "../components/axiom/icons.js";
 import { Button, PageHead } from "../components/axiom/Controls.js";
 import { getCopy } from "../lib/copy.js";
+import { routePath } from "../lib/routeRegistry.js";
 import type { Locale } from "../lib/copy.js";
 
 export function StakingPage({
@@ -25,12 +26,15 @@ export function StakingPage({
         <div>
           <p>{copy.body}</p>
           <div className="not-integrated-actions">
-            <Button onClick={() => go("/app")} icon={<Wallet size={15} />}>
+            <Button
+              onClick={() => go(routePath("dashboard"))}
+              icon={<Wallet size={15} />}
+            >
               {copy.openVault}
             </Button>
             <Button
               variant="ghost"
-              onClick={() => go("/transactions")}
+              onClick={() => go(routePath("transactions"))}
               icon={<ReceiptText size={15} />}
             >
               {copy.reviewEvidence}

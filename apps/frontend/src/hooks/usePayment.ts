@@ -10,11 +10,7 @@ const paymentProcessorAbi = toViemAbi(PAYMENT_PROCESSOR_ABI);
 const erc20Abi = toViemAbi(ERC20_ABI);
 import { getAxiomPaymentProcessorAddress } from "../abi/addresses.js";
 import { waitForReceiptWithTimeout } from "./useReceiptReconcile.js";
-import {
-  agentEarningsPath,
-  agentRoyaltyPath,
-  apiFetch,
-} from "../utils/apiFetch.js";
+import { agentEarningsPath, apiFetch } from "../utils/apiFetch.js";
 
 export type PaymentConfig = {
   paymentToken: Address;
@@ -40,15 +36,6 @@ type AgentPayResult = {
   payment: unknown;
 };
 
-type RoyaltyResult = {
-  ok: true;
-  tokenId: string;
-  bps: number;
-  to: `0x${string}`;
-  data: `0x${string}`;
-  value: string;
-};
-
 type UsePaymentResult = {
   payForAgent: (tokenId: bigint, amount: string) => Promise<AgentPayResult>;
   approveExactAllowance: (amount: string) => Promise<{
@@ -56,12 +43,8 @@ type UsePaymentResult = {
   }>;
 
   getEarnings: (tokenId: bigint) => Promise<EarningsInfo>;
-  setRoyalty: (tokenId: bigint, bps: number) => Promise<RoyaltyResult>;
   getPaymentConfig: () => Promise<PaymentConfig>;
   isPayLoading: boolean;
-  isRoyaltyLoading: boolean;
-  fetchError: Error | null;
-  earningsError: Error | null;
 };
 
 export function usePayment(): UsePaymentResult {
@@ -70,7 +53,6 @@ export function usePayment(): UsePaymentResult {
   const publicClient = usePublicClient();
   const fetchAction = useAsyncAction();
   const earningsAction = useAsyncAction();
-  const royaltyAction = useAsyncAction();
 
   const { write } = useGenericWrite();
   const [isPayLoading, setPayLoading] = useState(false);
@@ -184,27 +166,11 @@ export function usePayment(): UsePaymentResult {
     [earningsAction.execute],
   );
 
-  const setRoyalty = useCallback(
-    (tokenId: bigint, bps: number): Promise<RoyaltyResult> =>
-      royaltyAction.execute((signal) =>
-        apiFetch<RoyaltyResult>(agentRoyaltyPath(tokenId), {
-          method: "POST",
-          body: JSON.stringify({ bps }),
-          signal,
-        }),
-      ),
-    [royaltyAction.execute],
-  );
-
   return {
     payForAgent,
     approveExactAllowance,
     getEarnings,
-    setRoyalty,
     getPaymentConfig,
     isPayLoading,
-    isRoyaltyLoading: royaltyAction.isLoading,
-    fetchError: fetchAction.error,
-    earningsError: earningsAction.error,
   };
 }

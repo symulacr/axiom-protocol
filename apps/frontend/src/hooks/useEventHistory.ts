@@ -66,7 +66,6 @@ interface UseEventHistoryResult {
 
 interface UseEventHistoryOptions {
   pollIntervalMs?: number;
-  owner?: `0x${string}` | undefined;
   enabled?: boolean;
 }
 
@@ -76,31 +75,28 @@ const MAX_EVENTS = 500;
 export function useEventHistory(
   options: UseEventHistoryOptions = {},
 ): UseEventHistoryResult {
-  const { pollIntervalMs, owner, enabled = true } = options;
+  const { pollIntervalMs, enabled = true } = options;
   const { isConnected } = useAccount();
   const interval = pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
 
   const lastTimestampRef = useRef(0);
   const mergedEventsRef = useRef<AxiomEvent[]>([]);
 
-  const urlGetter = useCallback(() => {
-    let path = `/v1/events?since=${lastTimestampRef.current}`;
-    if (owner !== undefined) {
-      path += `&owner=${owner}`;
-    }
-    return path;
-  }, [owner]);
+  const urlGetter = useCallback(
+    () => `/v1/events?since=${lastTimestampRef.current}`,
+    [],
+  );
 
   const query = usePolledApi<EventsResponse>(urlGetter, {
     refetchInterval: interval,
     enabled: enabled && isConnected,
-    queryKey: ["events", { owner }],
+    queryKey: ["events"],
   });
 
   useEffect(() => {
     mergedEventsRef.current = [];
     lastTimestampRef.current = 0;
-  }, [owner, enabled]);
+  }, [enabled]);
 
   useEffect(() => {
     if (!query.data) return;

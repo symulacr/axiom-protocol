@@ -27,6 +27,7 @@ import { Button, PageHead, PanelHead } from "../components/axiom/Controls.js";
 import { StatePill } from "../components/StatePill.js";
 import { MobileDisclosure } from "../components/MobileDisclosure.js";
 import { getCopy } from "../lib/copy.js";
+import { routePath } from "../lib/routeRegistry.js";
 import type { AppState, Transaction, TxState } from "../lib/models.js";
 import { isInFlightTx, isRecoverableTx } from "../lib/models.js";
 import type { ConsoleAction } from "../lib/consoleStore.js";
@@ -65,7 +66,7 @@ function eventToTransaction(event: AxiomEvent): Transaction {
       ? `${Math.max(0, Math.round((Date.now() - event.timestamp * 1000) / 60000))}m ago`
       : "indexed",
     state: "confirmed",
-    route: tokenId ? `/agents/${tokenId}` : "/transactions",
+    route: tokenId ? `/agents/${tokenId}` : routePath("transactions"),
     agent: tokenId ?? "chain",
     icon: eventKindIcon(event.eventName ?? ""),
   };

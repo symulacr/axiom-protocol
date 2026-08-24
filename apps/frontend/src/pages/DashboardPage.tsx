@@ -24,6 +24,7 @@ import { Button, PanelHead, Status } from "../components/axiom/Controls.js";
 import { StatePill } from "../components/StatePill.js";
 import { MobileDisclosure } from "../components/MobileDisclosure.js";
 import { getCopy } from "../lib/copy.js";
+import { routePath } from "../lib/routeRegistry.js";
 import type { AppState } from "../lib/models.js";
 import {
   hasStrategyRoot,
@@ -192,7 +193,9 @@ export function DashboardPage({
           ? `agent #${tokenId} · block ${event.blockNumber}`
           : `block ${event.blockNumber}`,
         state: "confirmed" as const,
-        open: tokenId ? `/agents/${tokenId}?tab=activity` : "/transactions",
+        open: tokenId
+          ? `/agents/${tokenId}?tab=activity`
+          : routePath("transactions"),
       };
     });
     return [...local, ...chainEvents].slice(0, 3);
@@ -275,7 +278,7 @@ export function DashboardPage({
           <PanelHead title={copy.dashboard.latestEvidence}>
             <Button
               variant="ghost"
-              onClick={() => go("/transactions")}
+              onClick={() => go(routePath("transactions"))}
               icon={<ReceiptText size={14} />}
             >
               {copy.dashboard.allReceipts}
@@ -321,7 +324,10 @@ export function DashboardPage({
               <div className="empty-state">
                 <strong>{copy.dashboard.noAgents}</strong>
                 <span>{copy.dashboard.noAgentsHint}</span>
-                <Button onClick={() => go("/mint")} icon={<Bot size={15} />}>
+                <Button
+                  onClick={() => go(routePath("mint"))}
+                  icon={<Bot size={15} />}
+                >
                   {copy.dashboard.mintAgent}
                 </Button>
               </div>

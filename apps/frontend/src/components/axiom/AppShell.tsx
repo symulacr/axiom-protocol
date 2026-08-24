@@ -83,6 +83,8 @@ function Sidebar({
   // One nav owner per destination: /app is "Overview"; labels come from copy.nav for localization.
   const copy = getCopy(settings.locale);
   const identified = session.status === "authenticated";
+  const setSettings = (patch: Partial<UiSettings>) =>
+    dispatch({ type: "settings", patch });
   const items = [
     {
       path: "/app",
@@ -161,10 +163,7 @@ function Sidebar({
               : null;
     if (value === null) return;
     event.preventDefault();
-    dispatch({
-      type: "settings",
-      patch: { railWidth: clampRailWidth(value), railCollapsed: false },
-    });
+    setSettings({ railWidth: clampRailWidth(value), railCollapsed: false });
   };
   const startResize = (event: ReactPointerEvent<HTMLDivElement>) => {
     cleanupResize.current?.();
@@ -189,10 +188,7 @@ function Sidebar({
       if (resizeFrame.current !== null) return;
       resizeFrame.current = window.requestAnimationFrame(() => {
         resizeFrame.current = null;
-        dispatch({
-          type: "settings",
-          patch: { railWidth: pendingWidth.current, railCollapsed: false },
-        });
+        setSettings({ railWidth: pendingWidth.current, railCollapsed: false });
       });
     };
     const move = (moveEvent: PointerEvent) => {
@@ -205,10 +201,7 @@ function Sidebar({
       if (resizeFrame.current !== null) {
         window.cancelAnimationFrame(resizeFrame.current);
         resizeFrame.current = null;
-        dispatch({
-          type: "settings",
-          patch: { railWidth: pendingWidth.current, railCollapsed: false },
-        });
+        setSettings({ railWidth: pendingWidth.current, railCollapsed: false });
       }
       release();
     };
@@ -238,10 +231,7 @@ function Sidebar({
           <button
             className="icon-button rail-toggle"
             onClick={() =>
-              dispatch({
-                type: "settings",
-                patch: { railCollapsed: !settings.railCollapsed },
-              })
+              setSettings({ railCollapsed: !settings.railCollapsed })
             }
             aria-label={copy.a11y.collapseSidebar}
           >
@@ -249,9 +239,7 @@ function Sidebar({
           </button>
           <button
             className="icon-button rail-hide"
-            onClick={() =>
-              dispatch({ type: "settings", patch: { railHidden: true } })
-            }
+            onClick={() => setSettings({ railHidden: true })}
             aria-label={copy.a11y.hideSidebar}
           >
             <Menu size={15} />
@@ -515,6 +503,8 @@ export function AppShell({
   children: ReactNode;
 }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const setSettings = (patch: Partial<UiSettings>) =>
+    dispatch({ type: "settings", patch });
   const className =
     `operator-preferences ${state.settings.reducedMotion ? "reduce-motion" : ""} ${state.settings.railHidden ? "rail-hidden" : ""}`.trim();
   return (
@@ -541,9 +531,7 @@ export function AppShell({
           {state.settings.railHidden && (
             <button
               className="rail-reopen"
-              onClick={() =>
-                dispatch({ type: "settings", patch: { railHidden: false } })
-              }
+              onClick={() => setSettings({ railHidden: false })}
             >
               <Menu size={14} />{" "}
               {getCopy(state.settings.locale).topbar.openRail}

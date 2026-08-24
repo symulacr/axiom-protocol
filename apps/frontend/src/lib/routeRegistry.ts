@@ -131,6 +131,12 @@ const ROUTES: RouteDefinition[] = [
   },
 ];
 
+/** Canonical path lookup keyed by route id — derived from ROUTES so the table stays
+ * the single source; prefer over hardcoded strings. Falls back to the id itself. */
+export function routePath(id: string): string {
+  return ROUTES.find((entry) => entry.id === id)?.path ?? id;
+}
+
 const PUBLIC_ALIASES: Record<string, Route> = {
   "/features/agents": "public-agents",
   "/features/payments": "public-payments",
