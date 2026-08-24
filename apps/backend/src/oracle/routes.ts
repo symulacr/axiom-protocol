@@ -44,19 +44,10 @@ const DEFAULT_MAX_PROOF_AGE_SECONDS = 7n * 24n * 3600n;
  * `validUntil - now > maxProofAgeSeconds`. Deployed default is 7 days; override via
  * AXIOM_MAX_PROOF_AGE_SECONDS (decimal seconds) to match the deployed verifier.
  */
-function maxProofAgeSeconds(): bigint {
-  const raw = process.env.AXIOM_MAX_PROOF_AGE_SECONDS;
-  if (raw !== undefined && raw.trim() !== "") {
-    const s = raw.trim();
-    if (/^\d+$/.test(s)) {
-      const v = BigInt(s);
-      if (v > 0n) return v;
-    }
-    console.warn(
-      `[oracle] ignoring invalid AXIOM_MAX_PROOF_AGE_SECONDS=${raw} (expected positive decimal seconds); using default ${DEFAULT_MAX_PROOF_AGE_SECONDS}s`,
-    );
-  }
-  return DEFAULT_MAX_PROOF_AGE_SECONDS;
+function maxProofAgeSeconds(env?: BackendEnv): bigint {
+  const v =
+    env?.AXIOM_MAX_PROOF_AGE_SECONDS ?? Number(DEFAULT_MAX_PROOF_AGE_SECONDS);
+  return BigInt(v);
 }
 
 export interface TransferValidityInput {
@@ -260,7 +251,7 @@ export async function signOwnership(
   deps: OracleRouteDeps,
   input: SignOwnershipInput,
 ): Promise<SignOwnershipResult> {
-  const { signer, storage } = deps;
+  const { signer, storage, env } = deps;
   const {
     dataHash,
     targetPubkey,
@@ -330,7 +321,7 @@ export async function signOwnership(
     // E3: on-chain _checkValidUntil rejects validUntil - now > maxProofAgeSeconds
     // (deployed 7 days). A proof signed with a farther deadline is unverifiable DOA,
     // so reject the request instead of clamping to a value the chain still rejects.
-    const maxProofAge = maxProofAgeSeconds();
+    const maxProofAge = maxProofAgeSeconds(env);
     const maxValidUntil = BigInt(Math.floor(Date.now() / 1000)) + maxProofAge;
     if (parsed > maxValidUntil) {
       throw new OracleRequestError(

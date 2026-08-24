@@ -40,11 +40,6 @@ export function trimErrorMessage(err: unknown, max = 200): string {
   return msg.length > max ? `${msg.slice(0, max)}…` : msg;
 }
 
-export function envInt(name: string, fallback: number): number {
-  const n = Number.parseInt(process.env[name] ?? "", 10);
-  return Number.isFinite(n) && n > 0 ? n : fallback;
-}
-
 export function sendError(
   res: Response,
   status: number,

@@ -3,7 +3,7 @@ import { hexlify, type JsonRpcProvider } from "ethers";
 import type { TeeSigner } from "../oracle/signer.js";
 import { HTTP } from "@axiom/config";
 import { createLogger } from "../utils/logger.js";
-import { sendError, extractErrorMessage, envInt } from "../utils/response.js";
+import { sendError, extractErrorMessage } from "../utils/response.js";
 import type { ServerConfig } from "../config-types.js";
 import { createRoute } from "./route-factory.js";
 import pkg from "../../package.json" with { type: "json" };
@@ -20,8 +20,8 @@ type HealthSnapshot = {
   checkedAt: number;
 };
 
-function probeTtlMs(): number {
-  return envInt("AXIOM_HEALTH_CACHE_MS", DEFAULT_PROBE_TTL_MS);
+function probeTtlMs(config: ServerConfig): number {
+  return config.env?.AXIOM_HEALTH_CACHE_MS ?? DEFAULT_PROBE_TTL_MS;
 }
 
 export function createHealthRouter(
@@ -44,7 +44,7 @@ export function createHealthRouter(
   }
 
   function resolveSnapshot(): HealthSnapshot | Promise<HealthSnapshot> {
-    const ttl = probeTtlMs();
+    const ttl = probeTtlMs(config);
     const now = Date.now();
     if (snapshot && now - snapshot.checkedAt < ttl) {
       return snapshot;

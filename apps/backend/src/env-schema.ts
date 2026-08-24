@@ -47,6 +47,18 @@ export const backendEnvSchema = sharedEnvSchema.merge(
     // "manual:e2e"/"manual:e2e-mock"/"manual:e2e-availability" ticks to skip
     // compute inference. Requires "1" AND a server API key at the route.
     AXIOM_ALLOW_E2E_MOCK_TICKS: z.string().optional(),
+    // Ad-hoc knobs folded into the schema (formerly raw process.env reads).
+    AXIOM_AGENT_LIST_CACHE_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(120_000),
+    AXIOM_HEALTH_CACHE_MS: z.coerce.number().int().positive().default(3_000),
+    AXIOM_MAX_PROOF_AGE_SECONDS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(604800),
   }),
 );
 export type BackendEnv = z.infer<typeof backendEnvSchema>;

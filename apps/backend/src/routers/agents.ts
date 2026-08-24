@@ -9,7 +9,7 @@ import {
   type AgentNFTMethods,
 } from "@axiom/config/types/contract";
 import type { ServerConfig } from "../config-types.js";
-import { sendError, extractErrorMessage, envInt } from "../utils/response.js";
+import { sendError, extractErrorMessage } from "../utils/response.js";
 import { TTLCache } from "../utils/response.js";
 import { TRANSFER_TOPIC } from "@axiom/config";
 import {
@@ -134,7 +134,7 @@ export function registerAgentRoutes(
   eip712Domain: Eip712Domain,
   nftTc: TypedContract<AgentNFTMethods> | null,
 ): void {
-  const agentListTtlMs = envInt("AXIOM_AGENT_LIST_CACHE_MS", 120_000);
+  const agentListTtlMs = config.env?.AXIOM_AGENT_LIST_CACHE_MS ?? 120_000;
   const agentCache = new TTLCache<unknown>(agentListTtlMs);
   const mintStatsCache = new TTLCache<unknown>(60_000);
 
