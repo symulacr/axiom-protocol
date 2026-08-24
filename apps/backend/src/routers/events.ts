@@ -5,6 +5,7 @@ import { createRoute, positiveIntQuery } from "./route-factory.js";
 import { eventBodySchema } from "../route-schemas.js";
 import { HTTP, getRuntimeConfig } from "@axiom/config";
 import { sendError } from "../utils/response.js";
+import { QUERYABLE_EVENT_NAMES } from "../indexer/events.js";
 import type { EventStore } from "../events/store.js";
 import type { ServerConfig } from "../config-types.js";
 
@@ -112,7 +113,7 @@ export function registerEventRoutes(
       consumer: "useEventHistory",
       description: "Query events with optional filters",
     },
-    (_parsed, req, _res) => {
+    (_parsed, req, res) => {
       const maxQueryLimit = getRuntimeConfig().maxEventQueryLimit;
       const limit = Math.min(
         positiveIntQuery(req.query.limit, maxQueryLimit),
@@ -126,7 +127,22 @@ export function registerEventRoutes(
         sinceRaw !== undefined && Number.isFinite(sinceRaw) && sinceRaw > 0
           ? sinceRaw
           : undefined;
-      const eventName = req.query.eventName as string | undefined;
+      const eventNameRaw = req.query.eventName as string | undefined;
+      if (
+        eventNameRaw !== undefined &&
+        !QUERYABLE_EVENT_NAMES.includes(
+          eventNameRaw as (typeof QUERYABLE_EVENT_NAMES)[number],
+        )
+      ) {
+        sendError(
+          res,
+          HTTP.BAD_REQUEST,
+          `unknown eventName: "${eventNameRaw}"`,
+          "UNKNOWN_EVENT_NAME",
+        );
+        return;
+      }
+      const eventName = eventNameRaw;
       const all = events.getAll(limit, since, eventName);
       const owner = req.query.owner as string | undefined;
       const ownerFiltered = owner

@@ -102,3 +102,6 @@ export const EVENT_NAMES = {
   Unknown: "Unknown",
 } as const;
 export type EventName = (typeof EVENT_NAMES)[keyof typeof EVENT_NAMES];
+
+/** Documented alias: EVENT_NAMES is the WS-broadcast subset of indexer events. */
+export const BROADCAST_EVENT_NAMES = EVENT_NAMES;

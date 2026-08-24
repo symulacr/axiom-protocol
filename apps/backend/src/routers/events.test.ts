@@ -222,3 +222,107 @@ test("decodeAxiomLog drops a log whose topic0 matches no watched event", () => {
   );
   assert.equal(decoded, null);
 });
+
+// --- W0-7: typed event names, 400 on unknown (GET + POST paths) ---
+
+import { z } from "zod";
+import { HTTP } from "@axiom/config";
+import { QUERYABLE_EVENT_NAMES } from "../indexer/events.js";
+
+/** Mirrors the app-level ZodError branch of server.ts's error middleware so
+ * schema rejections surface as 400 VALIDATION_ERROR like they do in prod. */
+function attachValidationErrorHandler(app: express.Express): void {
+  app.use(
+    (
+      err: unknown,
+      _req: express.Request,
+      res: express.Response,
+      next: express.NextFunction,
+    ) => {
+      if (!(err instanceof z.ZodError)) return next(err);
+      res.status(HTTP.BAD_REQUEST).json({
+        error: "Validation failed",
+        details: err.issues,
+        code: "VALIDATION_ERROR",
+      });
+    },
+  );
+}
+
+function buildEventsAppWithErrors(): express.Express {
+  const config = {
+    bind: "0.0.0.0",
+    port: 0,
+    evmRpc: "https://evmrpc.0g.ai",
+    signer: {} as ServerConfig["signer"],
+    env: {
+      AXIOM_INDEXER_API_KEY: INDEXER_KEY,
+    } as unknown as ServerConfig["env"],
+  } as unknown as ServerConfig;
+  const app = express();
+  app.use(express.json());
+  registerEventRoutes(app, config, makeEventStore());
+  attachValidationErrorHandler(app);
+  return app;
+}
+
+async function getEvents(
+  query: string,
+): Promise<{ status: number; body: unknown }> {
+  const app = buildEventsApp();
+  const server = app.listen(0);
+  try {
+    const addr = server.address() as { port: number };
+    const res = await fetch(`http://127.0.0.1:${addr.port}/v1/events${query}`);
+    return { status: res.status, body: await res.json() };
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+}
+
+test("POST /v1/events rejects unknown eventName with 400", async () => {
+  const app = buildEventsAppWithErrors();
+  const server = app.listen(0);
+  try {
+    const addr = server.address() as { port: number };
+    const res = await fetch(`http://127.0.0.1:${addr.port}/v1/events`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        [INDEXER_KEY_HEADER]: INDEXER_KEY,
+      },
+      body: JSON.stringify({ ...validBody, eventName: "Trnasfer" }),
+    });
+    const body = (await res.json()) as { code?: string };
+    assert.equal(res.status, 400);
+    assert.equal(body.code, "VALIDATION_ERROR");
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test("POST /v1/events accepts known and Unknown event names", async () => {
+  for (const name of ["Tick", "Unknown"]) {
+    const { status } = await postEvent(
+      { ...validBody, eventName: name },
+      INDEXER_KEY,
+    );
+    assert.ok(status >= 200 && status < 300, `${name} should be accepted`);
+  }
+});
+
+test("GET /v1/events returns 400 for typo'd eventName filter", async () => {
+  const { status, body } = await getEvents("?eventName=Trnasfer");
+  assert.equal(status, 400);
+  assert.equal((body as { code?: string }).code, "UNKNOWN_EVENT_NAME");
+});
+
+test("GET /v1/events accepts each known event name", async () => {
+  for (const name of QUERYABLE_EVENT_NAMES) {
+    const { status } = await getEvents(`?eventName=${name}`);
+    assert.ok(
+      status >= 200 && status < 300,
+      `${name} should be queryable, got ${status}`,
+    );
+  }
+});

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { QUERYABLE_EVENT_NAMES } from "./indexer/events.js";
 import {
   hexViem,
   addressViem,
@@ -50,7 +51,7 @@ export const vaultWithdrawEncodeSchema = amountStringSchema;
 
 export const eventBodySchema = z.object({
   source: z.string().min(1).max(128),
-  eventName: z.string().min(1).max(128),
+  eventName: z.enum(QUERYABLE_EVENT_NAMES),
   chainId: z.number().int().positive(),
   blockNumber: z.number().int().nonnegative(),
   txHash: z.string().regex(HEX_REGEX).optional(),

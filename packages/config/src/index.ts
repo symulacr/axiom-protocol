@@ -52,6 +52,7 @@ export {
 export {
   HTTP,
   EVENT_NAMES,
+  BROADCAST_EVENT_NAMES,
   TRANSFER_TOPIC,
   ZERO_DATA_ROOT,
   bigintReplacer,

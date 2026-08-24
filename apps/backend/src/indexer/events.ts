@@ -5,6 +5,7 @@ import {
   TEE_VERIFIER_ABI,
   VAULT_ABI,
 } from "@axiom/config/abis";
+import { BROADCAST_EVENT_NAMES } from "@axiom/config";
 import { resolveAddress } from "@axiom/config/addresses";
 
 export type IndexerContractAddresses = {
@@ -26,10 +27,7 @@ export function resolveIndexerAddresses(
   };
 }
 
-// Watched event -> canonical ABI in @axiom/config/abis. Every entry matches the deployed
-// contracts (wave-3 0g-stack deepdive §1); the old hand-written signatures mismatched 20 of 32
-// topic0s and silently dropped those events in decodeAxiomLog. AdminChanged/BeaconUpgraded are
-// ERC1967 proxy-infra events absent from the contract ABIs, so they stay as literals.
+// Watched event -> canonical ABI in @axiom/config/abis; entries match deployed contracts (ERC1967 events stay literal).
 const EVENT_SOURCES = {
   Transfer: AGENT_NFT_ABI,
   Updated: AGENT_NFT_ABI,
@@ -67,6 +65,16 @@ const EVENT_SOURCES = {
 } as const;
 
 export type EventName = keyof typeof EVENT_SOURCES;
+
+export const KNOWN_EVENT_NAMES = Object.keys(EVENT_SOURCES) as EventName[];
+/** Names accepted on /v1/events: log-decoded events, server-appended
+ * broadcast kinds (e.g. orchestrator "Tick" ticks), and the catch-all
+ * "Unknown" store bucket. */
+export const QUERYABLE_EVENT_NAMES = [
+  ...KNOWN_EVENT_NAMES,
+  ...Object.values(BROADCAST_EVENT_NAMES),
+  "Unknown",
+] as const;
 
 function abiEventOf(
   name: EventName,
