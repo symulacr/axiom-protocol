@@ -70,7 +70,11 @@ function transcriptTitle(messages: unknown[] | undefined): string {
  * SIGNATURE BOUNDARY: fetching requires an EIP-191 wallet proof, so the
  * query stays inert until `requested` is set by an explicit user gesture
  * (the thread rail's "Restore server history" row, or opening the rail on
- * mobile). /chat must never pop a signature on page load. */
+ * mobile). /chat must never pop a signature on page load.
+ *
+ * No react-query `select`: the only consumer (ChatPage) feeds serverThreads
+ * into the rail AND into openThread, which reads full `messages` to load a
+ * server transcript — a metadata-only select would break thread opening. */
 export function useChatHistory(
   wallet: `0x${string}` | undefined,
   requested: boolean,

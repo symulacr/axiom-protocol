@@ -11,9 +11,10 @@ export interface ChatThread {
   updatedAt: number;
 }
 
-function loadThreads(): ChatThread[] {
+/** Parses the persisted list; `metaOnly` drops message arrays so boot
+ * hydration retains ids/titles/updatedAt without transcript payloads. */
+function parseThreads(raw: string | null, metaOnly: boolean): ChatThread[] {
   try {
-    const raw = localStorage.getItem(CHAT_THREADS_KEY);
     if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
@@ -25,7 +26,8 @@ function loadThreads(): ChatThread[] {
           typeof (t as ChatThread).title === "string" &&
           Array.isArray((t as ChatThread).messages),
       )
-      .slice(0, MAX_THREADS);
+      .slice(0, MAX_THREADS)
+      .map((t) => (metaOnly ? { ...t, messages: [] } : t));
   } catch {
     return [];
   }
@@ -42,7 +44,23 @@ function saveThreads(threads: ChatThread[]): void {
   }
 }
 
-let cache: ChatThread[] = loadThreads();
+// Boot keeps only thread metadata (~40 ids/titles); the full message arrays
+// (~2 MB) are parsed lazily on first read/mutation — all consumers mount on
+// chat routes, so pages off /chat retain no transcripts.
+let cache: ChatThread[] = parseThreads(
+  localStorage.getItem(CHAT_THREADS_KEY),
+  true,
+);
+let hydrated = false;
+
+function ensureHydrated(): ChatThread[] {
+  if (!hydrated) {
+    hydrated = true;
+    cache = parseThreads(localStorage.getItem(CHAT_THREADS_KEY), false);
+  }
+  return cache;
+}
+
 const listeners = new Set<() => void>();
 
 function emit(): void {
@@ -50,18 +68,18 @@ function emit(): void {
 }
 
 function getThreads(): ChatThread[] {
-  return cache;
+  return ensureHydrated();
 }
 
 export function upsertThread(thread: ChatThread): void {
-  const others = cache.filter((t) => t.id !== thread.id);
+  const others = ensureHydrated().filter((t) => t.id !== thread.id);
   cache = [thread, ...others].slice(0, MAX_THREADS);
   saveThreads(cache);
   emit();
 }
 
 export function deleteThread(id: string): ChatThread | undefined {
-  const removed = cache.find((t) => t.id === id);
+  const removed = ensureHydrated().find((t) => t.id === id);
   cache = cache.filter((t) => t.id !== id);
   saveThreads(cache);
   emit();

@@ -27,6 +27,11 @@ export function useEventStream(
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const maxReconnectDelay = 30000;
   const enabledRef = useRef(enabled);
+  // Reused pending buffers (swap on flush): WS messages push here, a single
+  // rAF per frame applies them to state — avoids per-message array spreads.
+  const pendingRef = useRef<AxiomEvent[]>([]);
+  const spareRef = useRef<AxiomEvent[]>([]);
+  const flushRafRef = useRef<number>();
   // Set on unmount: a handshake resolving afterwards must be closed, not
   // attached (orphan), and must never schedule reconnects.
   const disposedRef = useRef(false);
@@ -44,6 +49,34 @@ export function useEventStream(
     );
     reconnectAttemptRef.current++;
     reconnectTimerRef.current = setTimeout(() => connectRef.current(), delay);
+  }, []);
+
+  // Apply all buffered events as one state update; newest first, capped.
+  const flushEvents = useCallback(() => {
+    if (flushRafRef.current !== undefined) {
+      cancelAnimationFrame(flushRafRef.current);
+      flushRafRef.current = undefined;
+    }
+    const pending = pendingRef.current;
+    if (pending.length === 0) return;
+    const next = spareRef.current;
+    next.length = 0;
+    pendingRef.current = next;
+    spareRef.current = pending;
+    setEvents((prev) => {
+      const total = Math.min(prev.length + pending.length, MAX_EVENTS);
+      const merged: AxiomEvent[] = [];
+      // Newest pending first, then previous events, capped at MAX_EVENTS.
+      for (let i = pending.length - 1; i >= 0 && merged.length < total; i--) {
+        const ev = pending[i];
+        if (ev !== undefined) merged.push(ev);
+      }
+      for (let i = 0; i < prev.length && merged.length < total; i++) {
+        const ev = prev[i];
+        if (ev !== undefined) merged.push(ev);
+      }
+      return merged;
+    });
   }, []);
 
   const connect = useCallback(() => {
@@ -74,10 +107,10 @@ export function useEventStream(
             timestamp: data.ts ?? Date.now(),
           };
 
-          setEvents((prev) => {
-            const next = [event, ...prev];
-            return next.length > MAX_EVENTS ? next.slice(0, MAX_EVENTS) : next;
-          });
+          pendingRef.current.push(event);
+          if (flushRafRef.current === undefined) {
+            flushRafRef.current = requestAnimationFrame(flushEvents);
+          }
         } catch {
           return;
         }
@@ -120,10 +153,11 @@ export function useEventStream(
       disposedRef.current = true;
       enabledRef.current = false; // kills scheduled reconnects
       if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+      flushEvents(); // apply buffered events so teardown drops nothing
       wsRef.current?.close();
       wsRef.current = null;
     };
-  }, [connect]);
+  }, [connect, flushEvents]);
 
   return { events, isConnected };
 }

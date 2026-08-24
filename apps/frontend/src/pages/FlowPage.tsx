@@ -336,6 +336,22 @@ export function FlowPage({
     });
   };
 
+  // Shared execute()-tail receipt row: id/hash/age/state are always the same shape.
+  const addFlowReceipt = (
+    txHash: string,
+    row: Omit<Transaction, "icon" | "id" | "hash" | "age" | "state"> & {
+      state?: TxState;
+    },
+  ): void => {
+    addReceipt({
+      id: txHash,
+      hash: txHash,
+      age: "now",
+      state: "confirming",
+      ...row,
+    });
+  };
+
   // Bounded wait: dropped/replaced txs go stale after timeout; status-0 receipts are reverted, never confirmed.
   const confirmOnChain = (hash: `0x${string}` | undefined) => {
     if (!hash || !publicClient || hash === "0x") return;
@@ -355,17 +371,13 @@ export function FlowPage({
   // shared transfer tail — receipt row + confirm pipeline + notice.
   const completeTransfer = (txHash: `0x${string}`) => {
     nonceRef.current = freshNonceHex();
-    addReceipt({
-      id: txHash,
+    addFlowReceipt(txHash, {
       // naming contract: the receipt kind IS the destination's nav name.
       kind: copy.flows.transfer.receiptKind,
       detail: interpolate(copy.flows.transfer.detail, {
         agent: selectedTokenId,
         recipient: truncateAddress(draft.value.trim()),
       }),
-      hash: txHash,
-      age: "now",
-      state: "confirming",
       route: "/transfer",
       agent: selectedTokenId,
     });
@@ -469,16 +481,12 @@ export function FlowPage({
           draft.value.trim(),
         );
         if (approveHash) {
-          addReceipt({
-            id: approveHash,
+          addFlowReceipt(approveHash, {
             kind: f.allowanceKind,
             detail: interpolate(f.allowanceDetail, {
               amount: draft.value.trim(),
               symbol: paymentSymbol,
             }),
-            hash: approveHash,
-            age: "now",
-            state: "confirming",
             route: "/payment",
             agent: selectedTokenId,
             opensReceipt: false,
@@ -502,13 +510,9 @@ export function FlowPage({
       if (kind === "mint") {
         const dataHash = await mint.registerOracle(draft.value);
         const txHash = await mint.chainMint(dataHash);
-        addReceipt({
-          id: txHash,
+        addFlowReceipt(txHash, {
           kind: flow.receiptKind,
           detail: interpolate(flow.detail, { name: draft.value.trim() }),
-          hash: txHash,
-          age: "now",
-          state: "confirming",
           route: "/mint",
           agent: "new",
         });
@@ -522,16 +526,12 @@ export function FlowPage({
           BigInt(selectedTokenId),
           draft.value.trim(),
         );
-        addReceipt({
-          id: result.txHash,
+        addFlowReceipt(result.txHash, {
           kind: flow.receiptKind,
           detail: interpolate(flow.detail, {
             amount: draft.value.trim(),
             agent: selectedTokenId,
           }),
-          hash: result.txHash,
-          age: "now",
-          state: "confirming",
           route: "/payment",
           agent: selectedTokenId,
         });
@@ -556,17 +556,13 @@ export function FlowPage({
         const txHash = await vaultWrite.handleSubmit(draft.value.trim());
         if (!txHash)
           throw new Error("Connect a wallet to submit this operation.");
-        addReceipt({
-          id: txHash,
+        addFlowReceipt(txHash, {
           kind: flow.receiptKind,
           detail: interpolate(flow.detail, {
             amount: draft.value.trim(),
             symbol: nativeSymbol,
             agent: selectedTokenId,
           }),
-          hash: txHash,
-          age: "now",
-          state: "confirming",
           route: `/${kind}`,
           agent: selectedTokenId,
         });
@@ -587,18 +583,15 @@ export function FlowPage({
         const hash = result.execution?.txHash ?? result.storage.rootHash;
         const outcome =
           result.recommendation.action === "act" ? f.tickActed : f.tickHeld;
-        addReceipt({
-          id: hash,
+        addFlowReceipt(hash, {
           kind: flow.receiptKind,
           detail: interpolate(flow.detail, {
             action: outcome,
             reason: result.recommendation.reason.slice(0, 48),
           }),
-          hash,
-          age: "now",
-          state: "confirmed",
           route: "/tick",
           agent: selectedTokenId,
+          state: "confirmed",
         });
         dispatch({
           type: "notice",
@@ -652,32 +645,34 @@ export function FlowPage({
     draft.phase === "receipt"
       ? (receiptTx?.state ?? "stale")
       : (receiptTx?.state ?? "confirming");
-  const receiptHeading =
-    receiptState === "confirmed"
-      ? f.receiptHeadingConfirmed
-      : receiptState === "reverted"
-        ? f.receiptHeadingReverted
-        : receiptState === "stale"
-          ? f.receiptHeadingStale
-          : f.receiptHeadingConfirming;
-  const receiptOverlay =
-    receiptState === "confirmed"
-      ? f.receiptOverlayConfirmed
-      : receiptState === "reverted"
-        ? f.receiptOverlayReverted
-        : receiptState === "stale"
-          ? f.receiptOverlayStale
-          : f.receiptOverlayConfirming;
-  const receiptBody =
-    receiptState === "confirmed"
-      ? f.receiptBodyConfirmed
-      : receiptState === "reverted"
-        ? f.receiptBodyReverted
-        : receiptState === "stale"
-          ? interpolate(f.receiptBodyStale, {
-              seconds: Math.round(RECEIPT_CONFIRM_TIMEOUT_MS / 1000),
-            })
-          : f.receiptBodyConfirming;
+  // Receipt chrome: state→[heading, overlay, body] table; unlisted states fall back to confirming.
+  const receiptCopy: Partial<Record<TxState, [string, string, string]>> = {
+    confirmed: [
+      f.receiptHeadingConfirmed,
+      f.receiptOverlayConfirmed,
+      f.receiptBodyConfirmed,
+    ],
+    reverted: [
+      f.receiptHeadingReverted,
+      f.receiptOverlayReverted,
+      f.receiptBodyReverted,
+    ],
+    stale: [
+      f.receiptHeadingStale,
+      f.receiptOverlayStale,
+      interpolate(f.receiptBodyStale, {
+        seconds: Math.round(RECEIPT_CONFIRM_TIMEOUT_MS / 1000),
+      }),
+    ],
+  };
+  const [receiptHeading, receiptOverlay, receiptBody] = receiptCopy[
+    receiptState
+  ] ?? [
+    f.receiptHeadingConfirming,
+    f.receiptOverlayConfirming,
+    f.receiptBodyConfirming,
+  ];
+
   const proofReady = (index: number) =>
     draft.phase === "receipt"
       ? index < 2 || receiptState === "confirmed"
@@ -752,6 +747,64 @@ export function FlowPage({
     f.vaultBalanceAfter,
     f.exceedsBalance,
   ]);
+
+  // Data-driven form fields: one Field renderer serves every operation kind.
+  type FormFieldSpec = {
+    key: "value" | "extra";
+    label: string;
+    value: string;
+    onChange: (next: string) => void;
+    maxLength: number;
+    suffix?: string;
+    error?: string;
+    hint?: string;
+  };
+  const fieldError = (field: "value" | "extra"): string | undefined =>
+    submitError?.field === field ? submitError.message : undefined;
+  const amountFieldError =
+    fieldError("value") ??
+    (Number(draft.value) <= 0 ? f.errAmountPositive : undefined);
+  const baseValueField = {
+    key: "value" as const,
+    label: flow.fieldLabel,
+    value: draft.value,
+    onChange: updateValue,
+    error: fieldError("value"),
+    hint: flow.fieldHint,
+  };
+  const formFields: FormFieldSpec[] = [];
+  if (kind === "mint") {
+    formFields.push({ ...baseValueField, maxLength: 80 });
+  } else if (kind === "payment" || isVaultFlow) {
+    formFields.push({
+      ...baseValueField,
+      maxLength: 24,
+      suffix: kind === "payment" ? paymentSymbol : nativeSymbol,
+      error: amountFieldError,
+      hint:
+        kind === "withdraw" && vaultBalanceWei !== undefined
+          ? interpolate(f.vaultedHint, {
+              amount: formatTokenAmount(vaultBalanceWei, nativeDecimals),
+              symbol: nativeSymbol,
+            })
+          : flow.fieldHint,
+    });
+  } else if (kind === "transfer") {
+    formFields.push(
+      { ...baseValueField, maxLength: 42 },
+      {
+        key: "extra",
+        label: f.transferKeyLabel,
+        value: draft.extra,
+        onChange: updateExtra,
+        maxLength: 130,
+        error: fieldError("extra"),
+        hint: f.transferKeyHint,
+      },
+    );
+  } else if (kind === "tick") {
+    formFields.push({ ...baseValueField, maxLength: 320 });
+  }
 
   return (
     <div className={`ops-page flow-page flow-${kind}`}>
@@ -850,112 +903,19 @@ export function FlowPage({
                 )}
               </label>
             )}
-            {kind === "mint" && (
+            {formFields.map((field) => (
               <Field
-                label={flow.fieldLabel}
-                value={draft.value}
-                onChange={updateValue}
+                key={field.key}
+                label={field.label}
+                value={field.value}
+                onChange={field.onChange}
                 required
-                maxLength={80}
-                error={
-                  submitError?.field === "value"
-                    ? submitError.message
-                    : undefined
-                }
-                hint={flow.fieldHint}
+                maxLength={field.maxLength}
+                suffix={field.suffix}
+                error={field.error}
+                hint={field.hint}
               />
-            )}
-            {kind === "payment" && (
-              <Field
-                label={flow.fieldLabel}
-                value={draft.value}
-                onChange={updateValue}
-                required
-                maxLength={24}
-                suffix={paymentSymbol}
-                error={
-                  submitError?.field === "value"
-                    ? submitError.message
-                    : Number(draft.value) <= 0
-                      ? f.errAmountPositive
-                      : undefined
-                }
-                hint={flow.fieldHint}
-              />
-            )}
-            {isVaultFlow && (
-              <Field
-                label={flow.fieldLabel}
-                value={draft.value}
-                onChange={updateValue}
-                required
-                maxLength={24}
-                suffix={nativeSymbol}
-                error={
-                  submitError?.field === "value"
-                    ? submitError.message
-                    : Number(draft.value) <= 0
-                      ? f.errAmountPositive
-                      : undefined
-                }
-                hint={
-                  kind === "withdraw" && vaultBalanceWei !== undefined
-                    ? interpolate(f.vaultedHint, {
-                        amount: formatTokenAmount(
-                          vaultBalanceWei,
-                          nativeDecimals,
-                        ),
-                        symbol: nativeSymbol,
-                      })
-                    : flow.fieldHint
-                }
-              />
-            )}
-            {kind === "transfer" && (
-              <Field
-                label={flow.fieldLabel}
-                value={draft.value}
-                onChange={updateValue}
-                required
-                maxLength={42}
-                error={
-                  submitError?.field === "value"
-                    ? submitError.message
-                    : undefined
-                }
-                hint={flow.fieldHint}
-              />
-            )}
-            {kind === "transfer" && (
-              <Field
-                label={f.transferKeyLabel}
-                value={draft.extra}
-                onChange={updateExtra}
-                required
-                maxLength={130}
-                error={
-                  submitError?.field === "extra"
-                    ? submitError.message
-                    : undefined
-                }
-                hint={f.transferKeyHint}
-              />
-            )}
-            {kind === "tick" && (
-              <Field
-                label={flow.fieldLabel}
-                value={draft.value}
-                onChange={updateValue}
-                required
-                maxLength={320}
-                error={
-                  submitError?.field === "value"
-                    ? submitError.message
-                    : undefined
-                }
-                hint={flow.fieldHint}
-              />
-            )}
+            ))}
           </div>
 
           {kind === "tick" &&
