@@ -1,4 +1,4 @@
-import { useState, type ReactElement } from "react";
+import { useState, type CSSProperties, type ReactElement } from "react";
 import { formatToolResult } from "@axiom/chat-runtime";
 import { classOfTool } from "@axiom/config/chat-tools";
 import { COLORS, Spinner } from "../components/ui.js";
@@ -20,6 +20,12 @@ export type ToolRun = {
   result?: string;
   error?: string;
   args?: Record<string, unknown>;
+};
+
+/** Monospace detail text inside an expanded tool card. */
+const monoXs: CSSProperties = {
+  fontFamily: "var(--font-mono)",
+  fontSize: "var(--text-xs)",
 };
 
 /** Per-message telemetry, collapsed to a quiet one-line affordance: the full
@@ -143,9 +149,8 @@ export function ToolCallCard({
           {run.result && !hasEncodePreview(run.result) ? (
             <div
               style={{
+                ...monoXs,
                 margin: "0 0 6px",
-                fontFamily: "var(--font-mono)",
-                fontSize: "var(--text-xs)",
                 color: COLORS.textMuted,
                 whiteSpace: "nowrap",
                 overflow: "hidden",
@@ -160,11 +165,10 @@ export function ToolCallCard({
           {run.args && Object.keys(run.args).length > 0 && (
             <pre
               style={{
+                ...monoXs,
                 margin: "0 0 6px",
                 whiteSpace: "pre-wrap",
                 wordBreak: "break-word",
-                fontFamily: "var(--font-mono)",
-                fontSize: "var(--text-xs)",
               }}
             >
               {JSON.stringify(run.args, null, 2)}

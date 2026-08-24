@@ -77,15 +77,11 @@ function attachRefs(err: HttpError, parsed: ErrorBody): HttpError {
 async function buildHttpError(path: string, res: Response): Promise<HttpError> {
   const text = await res.text();
   let parsed: ErrorBody = null;
-  if (text) {
-    try {
-      const j: unknown = JSON.parse(text);
-      if (j && typeof j === "object") {
-        parsed = j as ErrorBody;
-      }
-    } catch {
-      parsed = null;
-    }
+  try {
+    const j: unknown = JSON.parse(text); // empty text throws → stays null
+    parsed = j && typeof j === "object" ? (j as ErrorBody) : null;
+  } catch {
+    parsed = null;
   }
   if (res.status === 401 || res.status === 403) {
     return attachRefs(

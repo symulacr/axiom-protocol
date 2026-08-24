@@ -693,6 +693,12 @@ export type Copy = {
 const enFlowNotice = (head: string): string =>
   `${head} Receipt added to the transaction center.`;
 
+/** Count-suffix helpers: locales differ only in plural threshold/suffix;
+ * keeps count-template entries on one line. */
+const enS = (count: number) => (count === 1 ? "" : "s");
+const frS = (count: number) => (count > 1 ? "s" : "");
+const deS = (count: number) => (count === 1 ? "" : "en");
+
 const english: Copy = {
   localeName: "English",
   nav: {
@@ -904,7 +910,7 @@ const english: Copy = {
     titleLead: "Keep the",
     titleEmphasis: "surface accountable.",
     review: (count) =>
-      `${count} agent${count === 1 ? "" : "s"} need${count === 1 ? "s" : ""} review.`,
+      `${count} agent${enS(count)} need${count === 1 ? "s" : ""} review.`,
     refresh: "Refresh overview",
     managedValue: "Managed value",
     agentsOnline: "Agents online",
@@ -920,8 +926,7 @@ const english: Copy = {
     signerReady: "Ready to sign",
     signerWrong: "Wrong network",
     noConnector: "no connector",
-    attentionCount: (count) =>
-      `${count} receipt${count === 1 ? "" : "s"} need review`,
+    attentionCount: (count) => `${count} receipt${enS(count)} need review`,
     openReviewQueue: "Open review queue",
     loadingVaults: "loading vaults…",
     agentsScoped: (count) => `${count} agent${count === 1 ? "" : "s"} scoped`,
@@ -1648,12 +1653,10 @@ const french: Copy = {
     signerReady: "Prêt à signer",
     signerWrong: "Mauvais réseau",
     noConnector: "aucun connecteur",
-    attentionCount: (count) =>
-      `${count} action${count > 1 ? "s" : ""} à examiner`,
+    attentionCount: (count) => `${count} action${frS(count)} à examiner`,
     openReviewQueue: "Ouvrir la file de revue",
     loadingVaults: "chargement des vaults…",
-    agentsScoped: (count) =>
-      `${count} agent${count > 1 ? "s" : ""} suivi${count > 1 ? "s" : ""}`,
+    agentsScoped: (count) => `${count} agent${frS(count)} suivi${frS(count)}`,
     needReview: (count) => `${count} à examiner`,
     fleetNominal: "flotte nominale",
     eventsIndexed: "événements indexés",
@@ -2394,8 +2397,7 @@ const german: Copy = {
     signerReady: "Bereit zum Signieren",
     signerWrong: "Falsches Netzwerk",
     noConnector: "kein Connector",
-    attentionCount: (count) =>
-      `${count} Aktion${count === 1 ? "" : "en"} prüfen`,
+    attentionCount: (count) => `${count} Aktion${deS(count)} prüfen`,
     openReviewQueue: "Prüfungsliste öffnen",
     loadingVaults: "Vaults werden geladen…",
     agentsScoped: (count) => `${count} Agent${count === 1 ? "" : "en"} erfasst`,

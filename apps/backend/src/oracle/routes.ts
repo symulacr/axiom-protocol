@@ -50,6 +50,25 @@ function reject(status: number, message: string): never {
   throw new OracleRequestError(status, message);
 }
 
+function defaultValidUntil(): bigint {
+  return BigInt(Math.floor(Date.now() / 1000)) + 86400n;
+}
+
+/** Accepts bigint / positive integer / decimal-or-hex string; null when unparseable. */
+function parsePositiveBigInt(raw: string | number | bigint): bigint | null {
+  if (typeof raw === "bigint") return raw;
+  if (typeof raw === "number" && Number.isInteger(raw) && raw > 0)
+    return BigInt(raw);
+  if (typeof raw === "string" && (isHex(raw) || /^\d+$/.test(raw))) {
+    try {
+      return BigInt(raw);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 /** Canonical 32-byte nonce (see routers/agents.ts — minimal hex breaks
  * wallet `bytes` typing when the top nibble is zero). */
 function canonicalNonce(value: string | number | undefined): `0x${string}` {
@@ -205,26 +224,26 @@ export async function transferValidity(
 
   const targetPubkeyBytes = getBytes(targetPubkey64);
   const sealedKey = sealKeyForReceiver(targetPubkeyBytes, newDataKey);
-
-  const defaultValidUntil = BigInt(Math.floor(Date.now() / 1000)) + 86400n;
+  const sealedKeyHex = hexlify(sealedKey) as `0x${string}`;
+  const validUntilDefault = defaultValidUntil();
   const ownershipSignature = signer.signOwnership({
     dataHash: oldDataHash,
-    sealedKey: hexlify(sealedKey) as `0x${string}`,
+    sealedKey: sealedKeyHex,
     targetPubkey: targetPubkey64,
     to,
     nft,
     nonce: canonicalNonce(ownershipProofNonce ?? accessProofNonce),
-    validUntil: defaultValidUntil,
+    validUntil: validUntilDefault,
   });
 
   return {
     newDataUri: newDataHash,
     newDataHash,
-    sealedKey: hexlify(sealedKey) as `0x${string}`,
+    sealedKey: sealedKeyHex,
     ownershipSignature,
     accessProofNonce: accessProofNonce ?? 0,
     ownershipProofNonce: ownershipProofNonce ?? accessProofNonce ?? 0,
-    validUntil: defaultValidUntil.toString(),
+    validUntil: validUntilDefault.toString(),
   };
 }
 
@@ -278,37 +297,17 @@ export async function signOwnership(
     "'nft' address is required and must be a valid non-zero address",
   );
 
-  const defaultValidUntil = BigInt(Math.floor(Date.now() / 1000)) + 86400n;
-  let validUntil = defaultValidUntil;
+  const validUntilDefault = defaultValidUntil();
+  let validUntil = validUntilDefault;
   if (rawValidUntil !== undefined) {
-    let parsed: bigint | null = null;
-    if (typeof rawValidUntil === "bigint") {
-      parsed = rawValidUntil;
-    } else if (
-      typeof rawValidUntil === "number" &&
-      Number.isFinite(rawValidUntil) &&
-      Number.isInteger(rawValidUntil) &&
-      rawValidUntil > 0
-    ) {
-      parsed = BigInt(rawValidUntil);
-    } else if (
-      typeof rawValidUntil === "string" &&
-      (isHex(rawValidUntil) || /^\d+$/.test(rawValidUntil))
-    ) {
-      try {
-        parsed = BigInt(rawValidUntil);
-      } catch {
-        parsed = null;
-      }
-    }
+    const parsed = parsePositiveBigInt(rawValidUntil);
     requireCond(parsed !== null, "Invalid validUntil");
     // E3: on-chain _checkValidUntil rejects validUntil - now > maxProofAgeSeconds
     // (deployed 7 days). A proof signed with a farther deadline is unverifiable DOA,
     // so reject the request instead of clamping to a value the chain still rejects.
     const maxProofAge = maxProofAgeSeconds(env);
-    const maxValidUntil = BigInt(Math.floor(Date.now() / 1000)) + maxProofAge;
     requireCond(
-      parsed <= maxValidUntil,
+      parsed <= BigInt(Math.floor(Date.now() / 1000)) + maxProofAge,
       `validUntil ${parsed} exceeds maximum proof validity (now + ${maxProofAge}s); on-chain _checkValidUntil rejects validUntil - now > maxProofAgeSeconds`,
     );
     validUntil = parsed;
@@ -353,19 +352,20 @@ export function registerOracleRoutes(
   app.post("/oracle/v1/agents/mint", (req: Request, res: Response) => {
     try {
       const { dataHash } = mintDataHashSchema.parse(req.body);
-      if (!/^0x[0-9a-fA-F]{64}$/.test(dataHash)) {
-        res.status(HTTP.BAD_REQUEST).json({
-          error: "dataHash must be a 32-byte hex string (0x + 64 hex chars)",
-        });
-        return;
-      }
+      requireCond(
+        /^0x[0-9a-fA-F]{64}$/.test(dataHash),
+        "dataHash must be a 32-byte hex string (0x + 64 hex chars)",
+      );
       storage.markDataHashSeen(dataHash);
       res.json({ ok: true, dataHash, seen: true });
     } catch (err) {
-      if (err instanceof ZodError) {
-        res
-          .status(HTTP.BAD_REQUEST)
-          .json({ error: err.issues[0]?.message ?? "Validation error" });
+      if (err instanceof OracleRequestError || err instanceof ZodError) {
+        res.status(HTTP.BAD_REQUEST).json({
+          error:
+            err instanceof ZodError
+              ? (err.issues[0]?.message ?? "Validation error")
+              : err.message,
+        });
         return;
       }
       throw err;

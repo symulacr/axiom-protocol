@@ -16,6 +16,15 @@ function splitKeys(raw: string | undefined): string[] {
     .filter(Boolean);
 }
 
+// Bun/webcrypto timingSafeEqual is absent from the lib types; bind it once.
+const timingSafeEqual = (
+  globalThis.crypto as unknown as {
+    timingSafeEqual(x: Uint8Array, y: Uint8Array): boolean;
+  }
+).timingSafeEqual.bind(globalThis.crypto);
+
+const auth = (req: Request): AuthRequest => req as AuthRequest;
+
 export function timingSafeMatch(
   presented: string,
   candidates: string[],
@@ -24,13 +33,7 @@ export function timingSafeMatch(
   const digest = (v: string): Uint8Array =>
     createHash("sha256").update(v, "utf-8").digest();
   const presentedHash = digest(presented);
-  const tsEqual = (a: Uint8Array, b: Uint8Array): boolean =>
-    (
-      globalThis.crypto as unknown as {
-        timingSafeEqual(x: Uint8Array, y: Uint8Array): boolean;
-      }
-    ).timingSafeEqual.call(globalThis.crypto, a, b);
-  return candidates.some((api) => tsEqual(presentedHash, digest(api)));
+  return candidates.some((api) => timingSafeEqual(presentedHash, digest(api)));
 }
 
 // client keys may only hit these prefixes (method-aware); everything else needs the server key
@@ -62,10 +65,7 @@ const CLIENT_ALLOWED_ROUTES: ReadonlyArray<{
       p === "/v1/compute/providers",
   },
   // In-process oracle surface (mint registration + health); browser keys reach it same-origin.
-  {
-    methods: ["GET", "POST"],
-    match: (p) => p.startsWith("/oracle"),
-  },
+  { methods: ["GET", "POST"], match: (p) => p.startsWith("/oracle") },
   // Public market data skills only — unbroker transfer ops stay server-gated
   {
     match: (p) =>
@@ -105,14 +105,14 @@ export function createApiKeyAuth(
       };
     }
     return (req: Request, _res: Response, next: NextFunction) => {
-      (req as AuthRequest).authPrincipal = "disabled";
+      auth(req).authPrincipal = "disabled";
       next();
     };
   }
 
   return (req: Request, res: Response, next: NextFunction) => {
     if (publicPaths.includes(req.path)) {
-      (req as AuthRequest).authPrincipal = "none";
+      auth(req).authPrincipal = "none";
       return next();
     }
     const raw = req.headers["x-api-key"];
@@ -120,8 +120,9 @@ export function createApiKeyAuth(
     for (const kind of ["server", "client"] as const) {
       const keys = kind === "server" ? serverKeys : clientKeys;
       if (!timingSafeMatch(key, keys)) continue;
-      (req as AuthRequest).authPrincipal = kind;
-      (req as AuthRequest).authKeyKind = kind;
+      const principal = auth(req);
+      principal.authPrincipal = kind;
+      principal.authKeyKind = kind;
       return next();
     }
     res.status(401).json({ error: "unauthorized" });
@@ -133,14 +134,9 @@ export function enforceClientPathAllowlist(
   res: Response,
   next: NextFunction,
 ): void {
-  const principal = (req as AuthRequest).authPrincipal;
-  if (principal !== "client") {
-    next();
-    return;
-  }
-  if (isClientPathAllowed(req.method, req.path)) {
-    next();
-    return;
+  const principal = auth(req).authPrincipal;
+  if (principal !== "client" || isClientPathAllowed(req.method, req.path)) {
+    return next();
   }
   res.status(403).json({
     error: "forbidden: client API key cannot access this route",
@@ -154,11 +150,8 @@ export function requireServerAuth(
   res: Response,
   next: NextFunction,
 ): void {
-  const principal = (req as AuthRequest).authPrincipal;
-  if (principal === "disabled" || principal === "server") {
-    next();
-    return;
-  }
+  const principal = auth(req).authPrincipal;
+  if (principal === "disabled" || principal === "server") return next();
   res.status(403).json({
     error: "forbidden: server API key required",
     code: "SERVER_KEY_REQUIRED",

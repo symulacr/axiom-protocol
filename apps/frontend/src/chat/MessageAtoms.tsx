@@ -6,10 +6,13 @@ import {
   type ReactElement,
   type ReactNode,
 } from "react";
-import { CHAT_TOOL_CLASS_LABELS } from "@axiom/config/chat-tools";
+import {
+  CHAT_TOOL_CLASS_LABELS,
+  classOfTool,
+  getChatToolSpec,
+} from "@axiom/config/chat-tools";
 import { COLORS, Textarea } from "../components/ui.js";
 import { Button } from "../components/axiom/Controls.js";
-import { toolClass, toolHint } from "./tools.js";
 import type { Copy } from "../lib/copy.js";
 
 export const insetCardStyle: CSSProperties = {
@@ -25,12 +28,12 @@ export function ToolClassBadge({
 }: {
   name: string;
 }): ReactElement | null {
-  const cls = toolClass(name);
+  const cls = classOfTool(name);
   if (!cls) return null;
   return (
     <span
       aria-label={`Tool class: ${CHAT_TOOL_CLASS_LABELS[cls]}`}
-      title={toolHint(name)}
+      title={getChatToolSpec(name)?.hint}
       style={{
         marginLeft: 6,
         fontSize: "var(--text-xs)",

@@ -17,7 +17,7 @@ const MAINNET_DEFAULT_CHAT_MODEL = "deepseek-v4-flash";
 const FALLBACK_COMPUTE_ROUTER_URL = "https://router-api.0g.ai/v1";
 
 // Static network registry — the URLs ARE the config data (not request targets).
-const _OG_NETWORKS = {
+const OG_NETWORKS: Record<number, OGNetwork> = {
   16661: {
     name: "aristotle",
     chainId: 16661,
@@ -36,10 +36,7 @@ const _OG_NETWORKS = {
     computeDefaultModel: "qwen2.5-omni",
     blockExplorer: "https://chainscan-testnet.0g.ai",
   },
-} as const satisfies Record<number, OGNetwork>;
-
-const OG_NETWORKS: Record<number, OGNetwork> =
-  _OG_NETWORKS as unknown as Record<number, OGNetwork>;
+};
 
 export function pickOGNetwork(chainId: number): OGNetwork | null {
   return OG_NETWORKS[chainId] ?? null;

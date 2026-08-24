@@ -57,29 +57,28 @@ type ChatSessionValue = {
 const ChatSessionContextReact = createContext<ChatSessionValue | null>(null);
 
 // Backward compat: legacy `{ lastTokenId }` payloads fall back to the cache-friendly DEFAULT_PROVIDER_PREF.
-function loadStoredSession(): StoredSession {
+/** Best-effort JSON read from web storage (undefined on miss/corruption). */
+function readJson(storage: Storage, key: string): unknown {
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw) as StoredSession;
-    return {
-      lastTokenId:
-        typeof parsed.lastTokenId === "string" ? parsed.lastTokenId : undefined,
-      providerPref: parsed.providerPref,
-    };
-  } catch {
-    return {};
-  }
-}
-
-function loadStoredPref(): ProviderPref | undefined {
-  try {
-    const raw = localStorage.getItem(PREF_STORAGE_KEY);
-    if (!raw) return undefined;
-    return JSON.parse(raw) as ProviderPref;
+    const raw = storage.getItem(key);
+    return raw ? (JSON.parse(raw) as unknown) : undefined;
   } catch {
     return undefined;
   }
+}
+
+function loadStoredSession(): StoredSession {
+  const parsed = readJson(sessionStorage, STORAGE_KEY) as
+    StoredSession | undefined;
+  return {
+    lastTokenId:
+      typeof parsed?.lastTokenId === "string" ? parsed.lastTokenId : undefined,
+    providerPref: parsed?.providerPref,
+  };
+}
+
+function loadStoredPref(): ProviderPref | undefined {
+  return readJson(localStorage, PREF_STORAGE_KEY) as ProviderPref | undefined;
 }
 
 function persistPref(pref: ProviderPref | undefined): void {

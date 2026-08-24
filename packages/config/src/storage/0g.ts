@@ -44,7 +44,7 @@ type Encryption = EncryptionOption;
 
 interface UploadOptions {
   encryption?: Encryption;
-  /** Explicit storage fee (wei). When >0 the SDK skips market() pricing — required on chains where the flow contract lacks market() (e.g. Galileo testnet). Default 0 = on-chain pricing. */
+  /** Explicit storage fee (wei) — see ZeroGStorageConfig.fee. */
   fee?: bigint;
   /** Blob tags for DA/explorer attribution. Defaults to "axiom-protocol/1". */
   tags?: Uint8Array;
@@ -64,16 +64,15 @@ interface SeenHashesOptions {
 
 function loadSeenDataHashes(file: string): Set<string> {
   try {
-    if (!existsSync(file)) return new Set();
+    // ENOENT lands in the catch below, which skips the backup for a missing file.
     const raw = readFileSync(file, "utf-8");
     const parsed = JSON.parse(raw) as { seenDataHashes?: unknown };
     if (
       !parsed ||
       typeof parsed !== "object" ||
       !Array.isArray(parsed.seenDataHashes)
-    ) {
+    )
       throw new Error("oracle seen-hashes file root is missing a string array");
-    }
     return new Set(
       parsed.seenDataHashes
         .filter((item): item is string => typeof item === "string")
@@ -126,7 +125,7 @@ abstract class SeenHashesMixin {
   private dirtyCount = 0;
   private flushTimer: ReturnType<typeof setTimeout> | undefined;
 
-  constructor(seenHashesFile: string) {
+  constructor(seenHashesFile: string = ORACLE_SEEN_HASHES_FILE) {
     this.seenHashesFile = seenHashesFile;
     this.seenDataHashes = loadSeenDataHashes(seenHashesFile);
     registerSeenHashesExitFlush(this);
@@ -137,12 +136,11 @@ abstract class SeenHashesMixin {
     if (this.seenDataHashes.has(hash)) return;
     this.seenDataHashes.add(hash);
     this.dirtyCount += 1;
-    if (this.dirtyCount === 1 && !existsSync(this.seenHashesFile)) {
+    if (
       // First mark persists synchronously so concurrently-started instances observe it (durability contract).
-      this.flushSeenDataHashes();
-      return;
-    }
-    if (this.dirtyCount >= SEEN_HASHES_FLUSH_THRESHOLD) {
+      (this.dirtyCount === 1 && !existsSync(this.seenHashesFile)) ||
+      this.dirtyCount >= SEEN_HASHES_FLUSH_THRESHOLD
+    ) {
       this.flushSeenDataHashes();
       return;
     }
@@ -171,7 +169,7 @@ export class InMemoryStorage extends SeenHashesMixin implements StorageAdapter {
   private store = new Map<string, Uint8Array>();
 
   constructor(options: SeenHashesOptions = {}) {
-    super(options.seenHashesFile ?? ORACLE_SEEN_HASHES_FILE);
+    super(options.seenHashesFile);
   }
 
   upload(blob: Uint8Array, _encryption?: Encryption): { rootHash: Hex } {
@@ -197,8 +195,8 @@ async function uploadToStorage(
   const uploadOpts: Parameters<typeof indexer.upload>[3] = {
     encryption: options.encryption,
     tags: options.tags ?? toUtf8Bytes("axiom-protocol/1"),
-    ...(options.fee !== undefined ? { fee: options.fee } : {}),
   };
+  if (options.fee !== undefined) uploadOpts.fee = options.fee;
   const [tx, err] = await indexer.upload(memData, evmRpc, signer, uploadOpts);
   if (err) throw new Error(`0G upload failed: ${err.message ?? String(err)}`);
   const result = tx as { rootHash: string; txHash: string };
@@ -219,26 +217,25 @@ async function downloadFromStorage(
   const downloadOpts: Parameters<typeof indexer.downloadToBlob>[1] = {
     proof: opts.withProof ?? true,
   };
-  if (opts.symmetricKey || opts.privateKey) {
-    downloadOpts.decryption = {
-      ...(opts.symmetricKey ? { symmetricKey: opts.symmetricKey } : {}),
-      ...(opts.privateKey ? { privateKey: opts.privateKey } : {}),
-    };
-  }
+  const decryption = {
+    ...(opts.symmetricKey && { symmetricKey: opts.symmetricKey }),
+    ...(opts.privateKey && { privateKey: opts.privateKey }),
+  };
+  if (decryption.symmetricKey || decryption.privateKey)
+    downloadOpts.decryption = decryption;
   const [blob, err] = await indexer.downloadToBlob(rootHash, downloadOpts);
   if (err) throw new Error(`0G download failed: ${err.message ?? String(err)}`);
   if (!blob)
     throw new Error(`0G Storage download returned no blob for ${rootHash}`);
   const data = new Uint8Array(await blob.arrayBuffer());
-
   return { data, rootHash, size: data.length };
 }
 
 /** Transport AES key resolution: env hex > persisted .data key (mode 600) > bun-test ephemeral. */
 function resolveTransportKey(): Uint8Array {
-  const raw = process.env.AXIOM_STORAGE_TRANSPORT_KEY;
-  if (raw !== undefined && raw.trim() !== "") {
-    const hex = raw.trim().replace(/^0x/, "");
+  const raw = process.env.AXIOM_STORAGE_TRANSPORT_KEY?.trim();
+  if (raw) {
+    const hex = raw.replace(/^0x/, "");
     if (!/^[0-9a-fA-F]{64}$/.test(hex)) {
       throw new Error(
         "AXIOM_STORAGE_TRANSPORT_KEY must be a 32-byte hex string (64 hex chars, optional 0x prefix)",
@@ -252,7 +249,7 @@ function resolveTransportKey(): Uint8Array {
   const file = dataFilePath("storage-transport-key");
   let hex = "";
   try {
-    hex = existsSync(file) ? readFileSync(file, "utf-8").trim() : "";
+    hex = readFileSync(file, "utf-8").trim();
   } catch {
     /* unreadable → regenerate below */
   }
@@ -280,7 +277,7 @@ export class ZeroGStorage extends SeenHashesMixin implements StorageAdapter {
   }
 
   constructor(config: ZeroGStorageConfig, options: SeenHashesOptions = {}) {
-    super(options.seenHashesFile ?? ORACLE_SEEN_HASHES_FILE);
+    super(options.seenHashesFile);
     this.config = config;
     this.indexer = new Indexer(config.indexerRpc);
     this.storageKey = resolveTransportKey();
@@ -290,10 +287,10 @@ export class ZeroGStorage extends SeenHashesMixin implements StorageAdapter {
     blob: Uint8Array,
     encryption?: Encryption,
   ): Promise<{ rootHash: Hex }> {
-    const { rootHash } = await this.uploadData(blob, {
-      encryption: encryption ?? { type: "aes256", key: this.storageKey },
-      ...(this.config.fee !== undefined ? { fee: this.config.fee } : {}),
-    });
+    // uploadData applies the storageKey aes256 default when encryption is omitted.
+    const options: UploadOptions = { encryption };
+    if (this.config.fee !== undefined) options.fee = this.config.fee;
+    const { rootHash } = await this.uploadData(blob, options);
     return { rootHash };
   }
 
@@ -306,18 +303,16 @@ export class ZeroGStorage extends SeenHashesMixin implements StorageAdapter {
     data: Uint8Array,
     options: UploadOptions = {},
   ): Promise<UploadResult> {
+    const encryption = options.encryption ?? {
+      type: "aes256",
+      key: this.storageKey,
+    };
     return uploadToStorage(
       this.indexer,
       data,
       this.config.evmRpc,
       this.config.signer,
-      {
-        ...options,
-        encryption: options.encryption ?? {
-          type: "aes256",
-          key: this.storageKey,
-        },
-      },
+      { ...options, encryption },
     );
   }
 

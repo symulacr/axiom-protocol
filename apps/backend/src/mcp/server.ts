@@ -85,10 +85,9 @@ const TOOLS: McpToolDef[] = [
     },
     buildUrl: (a) => {
       const q = new URLSearchParams();
-      if (a.eventName !== undefined) q.set("eventName", String(a.eventName));
-      if (a.owner !== undefined) q.set("owner", String(a.owner));
-      if (a.since !== undefined) q.set("since", String(a.since));
-      if (a.limit !== undefined) q.set("limit", String(a.limit));
+      for (const key of ["eventName", "owner", "since", "limit"] as const) {
+        if (a[key] !== undefined) q.set(key, String(a[key]));
+      }
       const qs = q.toString();
       return `/v1/events${qs ? `?${qs}` : ""}`;
     },
@@ -124,11 +123,21 @@ const TOOLS: McpToolDef[] = [
   },
 ];
 
+type McpToolResult = {
+  content: { type: "text"; text: string }[];
+  isError: boolean;
+};
+
+const toolError = (text: string): McpToolResult => ({
+  content: [{ type: "text", text }],
+  isError: true,
+});
+
 async function callReadEndpoint(
   config: ServerConfig,
   baseUrl: string,
   path: string,
-): Promise<{ content: { type: "text"; text: string }[]; isError: boolean }> {
+): Promise<McpToolResult> {
   const headers: Record<string, string> = { accept: "application/json" };
   const apiKey = config.env?.AXIOM_API_KEY;
   if (apiKey) headers["x-api-key"] = apiKey;
@@ -139,27 +148,13 @@ async function callReadEndpoint(
     });
     const text = await res.text();
     if (!res.ok) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `GET ${path} failed (HTTP ${res.status}): ${text.slice(0, 500)}`,
-          },
-        ],
-        isError: true,
-      };
+      return toolError(
+        `GET ${path} failed (HTTP ${res.status}): ${text.slice(0, 500)}`,
+      );
     }
     return { content: [{ type: "text", text }], isError: false };
   } catch (err) {
-    return {
-      content: [
-        {
-          type: "text",
-          text: `GET ${path} failed: ${extractErrorMessage(err)}`,
-        },
-      ],
-      isError: true,
-    };
+    return toolError(`GET ${path} failed: ${extractErrorMessage(err)}`);
   }
 }
 

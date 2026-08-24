@@ -2,10 +2,10 @@
 import { mkdirSync, renameSync, writeFileSync } from "node:fs";
 
 export function joinPath(...parts: string[]): string {
-  const cleaned = parts
+  return parts
     .filter((p) => p.length > 0)
-    .map((p) => p.replace(/\/+$/, ""));
-  return cleaned.join("/");
+    .map((p) => p.replace(/\/+$/, ""))
+    .join("/");
 }
 
 export function dirnamePath(p: string): string {
@@ -32,11 +32,7 @@ export function atomicWriteFileSync(
 ): void {
   mkdirSync(dirnamePath(file), { recursive: true });
   const tmp = `${file}.${process.pid}.${crypto.randomUUID()}.tmp`;
-  writeFileSync(
-    tmp,
-    data,
-    opts?.mode !== undefined ? { mode: opts.mode } : undefined,
-  );
+  writeFileSync(tmp, data, opts);
   renameSync(tmp, file);
 }
 

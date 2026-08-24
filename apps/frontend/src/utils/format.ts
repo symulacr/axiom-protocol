@@ -27,14 +27,19 @@ export function trapTabFocus(
   }
 }
 
+/** Shared head…tail ellipsis; returns the value untouched when short enough. */
+function ellipsize(value: string, head: number, tail: number): string {
+  return value.length <= head + tail + 2
+    ? value
+    : `${value.slice(0, head)}${ELLIPSIS}${value.slice(-tail)}`;
+}
+
 export function truncateHex(value: string, head = 10, tail = 6): string {
-  if (value.length <= head + tail + 2) return value;
-  return `${value.slice(0, head)}${ELLIPSIS}${value.slice(-tail)}`;
+  return ellipsize(value, head, tail);
 }
 
 export function truncateAddress(value: string, head = 6, tail = 4): string {
-  if (!value.startsWith("0x") || value.length <= head + tail + 2) return value;
-  return `${value.slice(0, head)}${ELLIPSIS}${value.slice(-tail)}`;
+  return value.startsWith("0x") ? ellipsize(value, head, tail) : value;
 }
 
 /** Cryptographically random tx nonce/tag (e.g. transfer linkage). Single
@@ -102,8 +107,7 @@ export function humanizeError(err: unknown): string {
   }
 
   if (
-    lower.includes("insufficient_balance") ||
-    lower.includes("compute account has no balance") ||
+    has("insufficient_balance", "compute account has no balance") ||
     (lower.includes("insufficient balance") && lower.includes("compute"))
   ) {
     return "0G Compute is out of credits. Fund the compute account for AXIOM_COMPUTE_API_KEY, then retry.";

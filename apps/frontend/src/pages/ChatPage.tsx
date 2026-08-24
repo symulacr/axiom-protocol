@@ -8,6 +8,7 @@ import {
   useState,
   type CSSProperties,
   type ReactElement,
+  type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -107,7 +108,6 @@ import {
   TOOLS,
   TOOL_LABELS,
   CLIENT_TOOL_CATALOG,
-  toolHint,
   useToolHandlers,
   type ToolContext,
 } from "../chat/tools.js";
@@ -115,6 +115,7 @@ import { buildWaitForReceipt } from "../chat/transport-browser.js";
 import {
   CHAT_TOOL_CLASS_LABELS,
   AXIOM_ASSISTANT_NAME,
+  getChatToolSpec,
 } from "@axiom/config/chat-tools";
 import { CHAT_MODEL } from "../config/env.js";
 import { APP_CHAIN, APP_CHAIN_ID } from "../config/wagmi.js";
@@ -158,6 +159,23 @@ const dimXs: CSSProperties = {
   color: COLORS.textDim,
   fontSize: "var(--text-xs)",
 };
+
+/** dim small-text flex row (tx-confirm rows, queue chips). */
+const dimRow = (extra: CSSProperties): CSSProperties => ({
+  ...dimXs,
+  display: "flex",
+  alignItems: "center",
+  gap: 6,
+  ...extra,
+});
+
+/** Chat body text wrapped for streaming (pre-wrap + break-anywhere). */
+const wrapChatMsg = (extra?: CSSProperties): CSSProperties => ({
+  ...chatMsgStyle,
+  whiteSpace: "pre-wrap",
+  overflowWrap: "anywhere",
+  ...extra,
+});
 
 // Empty-state typography shared by the prompt cards and the tools toggle.
 const promptLabelStyle: CSSProperties = {
@@ -210,6 +228,27 @@ function loadStoredThreadId(): string | null {
   } catch {
     return null;
   }
+}
+
+/** Inline message action chip — Edit / Regenerate / tool-card Retry all
+ * share the `.msg-action` button recipe. */
+function MsgActionBtn(props: {
+  title?: string;
+  style?: CSSProperties;
+  onClick: () => void;
+  children: ReactNode;
+}): ReactElement {
+  return (
+    <button
+      type="button"
+      className="msg-action"
+      title={props.title}
+      style={props.style}
+      onClick={props.onClick}
+    >
+      {props.children}
+    </button>
+  );
 }
 
 /** Data-driven empty-state hero: tagline, the four prompt cards and the
@@ -454,6 +493,13 @@ function ChatPageInner(): ReactElement {
    * the edit-confirm, edit and regenerate handlers. */
   const idxOfMsg = (id: string): number =>
     messagesRef.current.findIndex((m) => m.id === id);
+  /** Rewrite live history to `trimmed` and drop this thread's cached
+   * summary lead (edit/regenerate re-derive it from the trimmed prefix). */
+  const applyHistoryRewrite = (trimmed: Message[]): void => {
+    messagesRef.current = trimmed;
+    setMessages(trimmed);
+    summaryCacheRef.current.delete(threadIdRef.current);
+  };
   const isStreamingRef = useRef(false);
   const threads = useThreads();
   // Server-persisted transcripts for the connected wallet (merged in the
@@ -786,7 +832,6 @@ function ChatPageInner(): ReactElement {
       }
       currentMessages = compactHistory(currentMessages, summary);
       commitMessages(currentMessages);
-      setIsStreaming(true);
       flushAndClearStreamText();
       if (!hasUsedChat) {
         setHasUsedChat(true);
@@ -957,18 +1002,15 @@ function ChatPageInner(): ReactElement {
           );
 
           if (toolCallList.length === 0) {
-            if (streamErrorRef.current) {
+            // Terminal turn: a stream failure or an empty answer both end the
+            // loop after surfacing the same error card.
+            const failMsg =
+              streamErrorRef.current ??
+              (assistantContent ? null : "No response — try again.");
+            if (failMsg !== null) {
               if (!isStale()) {
-                lastStreamErrorRef.current = streamErrorRef.current;
-                setStreamError(streamErrorRef.current);
-              }
-              flushAndClearStreamText();
-              break;
-            }
-            if (!assistantContent) {
-              if (!isStale()) {
-                lastStreamErrorRef.current = "No response — try again.";
-                setStreamError(lastStreamErrorRef.current);
+                lastStreamErrorRef.current = failMsg;
+                setStreamError(failMsg);
               }
               flushAndClearStreamText();
               break;
@@ -1019,19 +1061,15 @@ function ChatPageInner(): ReactElement {
           for (const batch of batches) {
             const batchResults = await Promise.all(
               batch.map(async (tc) => {
+                // Shared failure tail: flag the run card and hand the model
+                // the raw error JSON (it recovers better with real detail).
+                const failTool = (error: string) => {
+                  markToolRun(tc.id, { status: "error", error });
+                  return { tc, result: JSON.stringify({ error }) };
+                };
                 const handler = handlers[tc.function.name];
                 if (!handler) {
-                  // markToolRun no-ops on an undefined id (missing call id).
-                  markToolRun(tc.id, {
-                    status: "error",
-                    error: `Unknown tool: ${tc.function.name}`,
-                  });
-                  return {
-                    tc,
-                    result: JSON.stringify({
-                      error: `Unknown tool: ${tc.function.name}`,
-                    }),
-                  };
+                  return failTool(`Unknown tool: ${tc.function.name}`);
                 }
                 try {
                   const args = parseToolArguments(tc.function.arguments);
@@ -1054,18 +1092,11 @@ function ChatPageInner(): ReactElement {
                   markRunResult(tc.id, result, semanticErrorOf(result));
                   return { tc, result };
                 } catch (err) {
-                  const toolErr =
+                  return failTool(
                     err instanceof Error
                       ? err.message
-                      : "could not parse tool arguments";
-                  markToolRun(tc.id, {
-                    status: "error",
-                    error: toolErr,
-                  });
-                  return {
-                    tc,
-                    result: JSON.stringify({ error: toolErr }),
-                  };
+                      : "could not parse tool arguments",
+                  );
                 }
               }),
             );
@@ -1129,13 +1160,14 @@ function ChatPageInner(): ReactElement {
           ) {
             setComputeHint(msg);
           }
+          const toastOpts = refDesc ? { description: refDesc } : undefined;
           if (msg.includes("429") || msg.toLowerCase().includes("rate limit")) {
             toast.error(
               "Rate limited — wait a moment and try again.",
-              refDesc ? { description: refDesc } : undefined,
+              toastOpts,
             );
           } else {
-            toast.error(msg, refDesc ? { description: refDesc } : undefined);
+            toast.error(msg, toastOpts);
           }
           const withError = [
             // meta.error card is UI-only — never sent to the model as context
@@ -1444,16 +1476,13 @@ function ChatPageInner(): ReactElement {
                         const text = msg.content ?? "";
                         const idx = idxOfMsg(msg.id);
                         if (idx >= 0) {
-                          const trimmed = stripSummaryLead(
-                            messagesRef.current.slice(0, idx),
-                          );
                           // Stale run must never commit into edited history
                           // (same pattern as openThread/startNewChat).
                           runEpochRef.current += 1;
                           abortRef.current?.abort();
-                          messagesRef.current = trimmed;
-                          setMessages(trimmed);
-                          summaryCacheRef.current.delete(threadIdRef.current);
+                          applyHistoryRewrite(
+                            stripSummaryLead(messagesRef.current.slice(0, idx)),
+                          );
                         }
                         setEditConfirmId(null);
                         setInput(text);
@@ -1461,9 +1490,7 @@ function ChatPageInner(): ReactElement {
                       onCancel={() => setEditConfirmId(null)}
                     />
                   ) : msg.role === "user" ? (
-                    <button
-                      type="button"
-                      className="msg-action"
+                    <MsgActionBtn
                       title={chatCopy.editResend}
                       onClick={() => {
                         const idx = idxOfMsg(msg.id);
@@ -1475,31 +1502,26 @@ function ChatPageInner(): ReactElement {
                       }}
                     >
                       {chatCopy.edit}
-                    </button>
+                    </MsgActionBtn>
                   ) : null}
                   {msg.role === "assistant" &&
                   !msg.meta?.error &&
                   msg.id === messages[messages.length - 1]?.id ? (
-                    <button
-                      type="button"
-                      className="msg-action"
+                    <MsgActionBtn
                       title={chatCopy.regenerate}
                       onClick={() => {
                         if (isStreamingRef.current) return;
                         const idx = idxOfMsg(msg.id);
                         if (idx > 0) {
-                          const trimmed = stripSummaryLead(
-                            messagesRef.current.slice(0, idx),
+                          applyHistoryRewrite(
+                            stripSummaryLead(messagesRef.current.slice(0, idx)),
                           );
-                          messagesRef.current = trimmed;
-                          setMessages(trimmed);
-                          summaryCacheRef.current.delete(threadIdRef.current);
                           rerunLastUser();
                         }
                       }}
                     >
                       {chatCopy.regenerateShort}
-                    </button>
+                    </MsgActionBtn>
                   ) : null}
                   <MsgCopyAction text={msg.content ?? ""} copy={chatCopy} />
                 </span>
@@ -1523,7 +1545,7 @@ function ChatPageInner(): ReactElement {
                       <div
                         role="region"
                         aria-label={
-                          toolHint(msg.name ?? "") ??
+                          getChatToolSpec(msg.name ?? "")?.hint ??
                           TOOL_LABELS[msg.name ?? ""] ??
                           chatCopy.toolResultFallback
                         }
@@ -1541,16 +1563,14 @@ function ChatPageInner(): ReactElement {
                           sendTransactionAsync={toolCtx.sendTransactionAsync}
                         />
                         {failedRun && msg.tool_call_id ? (
-                          <button
-                            type="button"
-                            className="msg-action"
+                          <MsgActionBtn
                             style={{ marginTop: 6 }}
                             onClick={() =>
                               void retryToolRun(msg.tool_call_id as string)
                             }
                           >
                             {chatCopy.retry}
-                          </button>
+                          </MsgActionBtn>
                         ) : null}
                       </div>
                     );
@@ -1640,16 +1660,7 @@ function ChatPageInner(): ReactElement {
               }}
             >
               {txRows.map((row) => (
-                <div
-                  key={row.id}
-                  style={{
-                    ...dimXs,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                    flexWrap: "wrap",
-                  }}
-                >
+                <div key={row.id} style={dimRow({ flexWrap: "wrap" })}>
                   {/* one localized string instead of
                       glyph-joined label spans ("⛓ tx mined" · "agent #N" · …). */}
                   <span>
@@ -1733,13 +1744,7 @@ function ChatPageInner(): ReactElement {
                 {chatCopy.roleAssistant}
               </StatusDot>
               {streamText ? (
-                <div
-                  style={{
-                    ...chatMsgStyle,
-                    whiteSpace: "pre-wrap",
-                    overflowWrap: "anywhere",
-                  }}
-                >
+                <div style={wrapChatMsg()}>
                   <span className="stream-tail">{streamText}</span>
                   <span
                     className="caret-blink"
@@ -1755,14 +1760,7 @@ function ChatPageInner(): ReactElement {
                   />
                 </div>
               ) : (
-                <p
-                  style={{
-                    ...chatMsgStyle,
-                    margin: 0,
-                    whiteSpace: "pre-wrap",
-                    overflowWrap: "anywhere",
-                  }}
-                >
+                <p style={wrapChatMsg({ margin: 0 })}>
                   <span
                     style={{
                       display: "inline-flex",
@@ -1815,15 +1813,12 @@ function ChatPageInner(): ReactElement {
                 key={`${i}-${q}`}
                 title={q}
                 className="queue-chip"
-                style={{
-                  ...dimXs,
+                style={dimRow({
                   display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
                   border: `1px solid ${COLORS.border}`,
                   borderRadius: "var(--radius-sm)",
                   padding: "2px 4px 2px 10px",
-                }}
+                })}
               >
                 {q.length > 40 ? `${q.slice(0, 40)}…` : q}
                 <button

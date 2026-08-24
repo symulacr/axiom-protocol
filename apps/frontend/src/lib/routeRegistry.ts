@@ -13,122 +13,38 @@ type RouteDefinition = {
   publicSlug?: PublicSeoSlug;
 };
 
+/** Builder: route id doubles as the canonical Route value; path defaults to `/${id}`. */
+const def = (
+  id: string,
+  extra: Omit<Partial<RouteDefinition>, "id" | "route"> = {},
+): RouteDefinition => ({ id, route: id as Route, path: `/${id}`, ...extra });
+
 const ROUTES: RouteDefinition[] = [
-  { id: "landing", route: "landing", path: "/", indexable: true },
-  {
-    id: "public-agents",
-    route: "public-agents",
-    path: "/agents",
-    indexable: true,
-    publicSlug: "agents",
-  },
-  {
-    id: "public-payments",
-    route: "public-payments",
-    path: "/payments",
-    indexable: true,
-    publicSlug: "payments",
-  },
-  {
-    id: "public-proofs",
-    route: "public-proofs",
-    path: "/proofs",
-    indexable: true,
-    publicSlug: "proofs",
-  },
-  {
-    id: "public-storage",
-    route: "public-storage",
+  def("landing", { path: "/", indexable: true }),
+  def("public-agents", { indexable: true, publicSlug: "agents" }),
+  def("public-payments", { indexable: true, publicSlug: "payments" }),
+  def("public-proofs", { indexable: true, publicSlug: "proofs" }),
+  def("public-storage", {
     path: "/storage/0g",
     indexable: true,
     publicSlug: "storage",
-  },
-  {
-    id: "public-developers",
-    route: "public-developers",
-    path: "/developers",
-    indexable: true,
-    publicSlug: "developers",
-  },
-  {
-    id: "dashboard",
-    route: "dashboard",
-    path: "/app",
-    label: "Overview",
-    shortcut: "Alt 1",
-  },
+  }),
+  def("public-developers", { indexable: true, publicSlug: "developers" }),
   // One nav entry per destination: agent pages are /agents/:tokenId, so /app has a single owner.
-  {
-    id: "chat",
-    route: "chat",
-    path: "/chat",
-    label: "Chat",
-    shortcut: "Alt 3",
-  },
-  {
-    id: "transactions",
-    route: "transactions",
-    path: "/transactions",
-    label: "Transactions",
-    shortcut: "Alt 4",
-  },
-  {
-    id: "storage",
-    route: "storage",
-    path: "/storage",
-    label: "Storage proof",
-    shortcut: "Alt 5",
-  },
-  {
-    id: "mint",
-    route: "mint",
-    path: "/mint",
-    label: "Mint",
-    shortcut: "Alt M",
-  },
-  {
-    id: "payment",
-    route: "payment",
-    path: "/payment",
-    label: "Payment",
-    shortcut: "Alt P",
-  },
-  {
-    id: "transfer",
-    route: "transfer",
-    path: "/transfer",
-    label: "Transfer proof",
-    shortcut: "Alt T",
-  },
-  {
-    id: "tick",
-    route: "tick",
-    path: "/tick",
-    label: "Run tick",
-    shortcut: "Alt K",
-  },
-  {
-    id: "deposit",
-    route: "deposit",
-    path: "/deposit",
-    label: "Deposit",
-    shortcut: "Alt D",
-  },
-  {
-    id: "withdraw",
-    route: "withdraw",
-    path: "/withdraw",
-    label: "Withdraw",
-    shortcut: "Alt W",
-  },
-  { id: "settings", route: "settings", path: "/settings" },
-  { id: "staking", route: "staking", path: "/staking" },
+  def("dashboard", { path: "/app", label: "Overview", shortcut: "Alt 1" }),
+  def("chat", { label: "Chat", shortcut: "Alt 3" }),
+  def("transactions", { label: "Transactions", shortcut: "Alt 4" }),
+  def("storage", { label: "Storage proof", shortcut: "Alt 5" }),
+  def("mint", { label: "Mint", shortcut: "Alt M" }),
+  def("payment", { label: "Payment", shortcut: "Alt P" }),
+  def("transfer", { label: "Transfer proof", shortcut: "Alt T" }),
+  def("tick", { label: "Run tick", shortcut: "Alt K" }),
+  def("deposit", { label: "Deposit", shortcut: "Alt D" }),
+  def("withdraw", { label: "Withdraw", shortcut: "Alt W" }),
+  def("settings"),
+  def("staking"),
   // Cross-wallet handoff receive path — public (acceptance signature is the gate), kept out of nav/palette.
-  {
-    id: "transfer-co-sign",
-    route: "transfer-co-sign",
-    path: "/transfer/co-sign",
-  },
+  def("transfer-co-sign"),
 ];
 
 /** Canonical path lookup keyed by route id — derived from ROUTES so the table stays

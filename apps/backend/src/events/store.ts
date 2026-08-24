@@ -33,32 +33,27 @@ interface TransferPayload {
   from: string;
   to: string;
 }
-
 interface DepositedPayload {
   tokenId: string;
   from: string;
   amount: string;
 }
-
 interface WithdrawnPayload {
   tokenId: string;
   to: string;
   amount: string;
 }
-
 interface StrategySetPayload {
   tokenId: string;
   strategyRoot: string;
   dailyLimit: string;
 }
-
 interface ExecutedPayload {
   tokenId: string;
   actionHash: string;
   target: string;
   value: string;
 }
-
 type EventPayload =
   | TickPayload
   | TransferPayload
@@ -67,8 +62,6 @@ type EventPayload =
   | StrategySetPayload
   | ExecutedPayload
   | Record<string, unknown>;
-
-type StoredEventPayload = EventPayload;
 
 function hasPayloadKey(payload: unknown, key: string): boolean {
   return !!payload && typeof payload === "object" && key in payload;
@@ -103,7 +96,7 @@ interface StoredEvent {
   txHash: string | null;
   logIndex: number;
   eventName: string;
-  payload: StoredEventPayload;
+  payload: EventPayload;
   receivedAt: number;
   timestamp: number;
 }
@@ -129,6 +122,15 @@ const byBlockThenLogReceived = (a: StoredEvent, b: StoredEvent) =>
   a.blockNumber - b.blockNumber ||
   a.logIndex - b.logIndex ||
   a.receivedAt - b.receivedAt;
+
+/** Shared query tail: order by chain position, then apply the optional limit. */
+function sortedLimited(
+  list: StoredEvent[],
+  limit?: number,
+): readonly StoredEvent[] {
+  list.sort(byBlockThenLogReceived);
+  return limit !== undefined ? list.slice(0, limit) : list;
+}
 
 function dedupeKey(
   evt: Pick<StoredEventInput, "chainId" | "txHash" | "logIndex">,
@@ -235,8 +237,7 @@ export class EventStore {
         (query.eventName === undefined || evt.eventName === query.eventName) &&
         (query.source === undefined || evt.source === query.source),
     );
-    matches.sort(byBlockThenLogReceived);
-    return query.limit !== undefined ? matches.slice(0, query.limit) : matches;
+    return sortedLimited(matches, query.limit);
   }
   getAll(
     limit?: number,
@@ -252,8 +253,7 @@ export class EventStore {
     const results = [...this.allEvents()].filter(
       (e) => since === undefined || e.timestamp > since,
     );
-    results.sort(byBlockThenLogReceived);
-    return limit !== undefined ? results.slice(0, limit) : results;
+    return sortedLimited(results, limit);
   }
 
   get size(): number {
@@ -289,23 +289,24 @@ export class EventStore {
 
   private load(): void {
     const rawBuckets = loadBuckets();
+    this.resetState();
+    for (const [bucketKey, events] of rawBuckets) {
+      const valid = events.filter((evt): evt is StoredEvent => {
+        if (isStoredEvent(evt)) return true;
+        log.warn("skipping invalid persisted event", { bucketKey });
+        return false;
+      });
+      if (valid.length > 0) this.installBucket(bucketKey, valid);
+    }
+  }
+
+  /** Clears every index + counter; shared by load() and rollbackToBlock() before reinstalling kept buckets. */
+  private resetState(): void {
     this.buckets.clear();
     this.byEventName.clear();
     this.byTokenId.clear();
     this.seenKeys.clear();
     this.total = 0;
-    for (const [bucketKey, events] of rawBuckets) {
-      const valid: StoredEvent[] = [];
-      for (const evt of events) {
-        if (!isStoredEvent(evt)) {
-          log.warn("skipping invalid persisted event", { bucketKey });
-          continue;
-        }
-        valid.push(evt);
-      }
-      if (valid.length === 0) continue;
-      this.installBucket(bucketKey, valid);
-    }
   }
 
   private addToIndex(
@@ -337,27 +338,36 @@ export class EventStore {
     bucket.pop();
   }
 
+  /** Swap-remove the event at `pos[field]` from one indexed bucket and drop the bucket when it empties. */
+  private removeFromIndexedBucket(
+    map: Map<string, StoredEvent[]>,
+    key: string,
+    pos: IndexPositions,
+    field: "nameIdx" | "tokenIdx",
+  ): void {
+    const idx = pos[field];
+    const bucket = map.get(key);
+    if (bucket === undefined || idx === undefined) return;
+    this.removeFromIndexAt(bucket, idx, (swapped, newIdx) => {
+      const swappedPos = this.indexPositions.get(swapped);
+      if (swappedPos) swappedPos[field] = newIdx;
+    });
+    if (bucket.length === 0) map.delete(key);
+  }
+
   private removeFromIndex(evt: StoredEvent): void {
     const pos = this.indexPositions.get(evt);
-
-    const nameBucket = this.byEventName.get(evt.eventName);
-    if (nameBucket && pos) {
-      this.removeFromIndexAt(nameBucket, pos.nameIdx, (swapped, newIdx) => {
-        const swappedPos = this.indexPositions.get(swapped);
-        if (swappedPos) swappedPos.nameIdx = newIdx;
-      });
-      if (nameBucket.length === 0) this.byEventName.delete(evt.eventName);
-    }
-
+    if (!pos) return;
+    this.removeFromIndexedBucket(
+      this.byEventName,
+      evt.eventName,
+      pos,
+      "nameIdx",
+    );
     const tid = tokenIdFromPayload(evt.payload);
-    if (tid === null || pos?.tokenIdx === undefined) return;
-    const tidBucket = this.byTokenId.get(tid);
-    if (!tidBucket) return;
-    this.removeFromIndexAt(tidBucket, pos.tokenIdx, (swapped, newIdx) => {
-      const swappedPos = this.indexPositions.get(swapped);
-      if (swappedPos) swappedPos.tokenIdx = newIdx;
-    });
-    if (tidBucket.length === 0) this.byTokenId.delete(tid);
+    if (tid !== null) {
+      this.removeFromIndexedBucket(this.byTokenId, tid, pos, "tokenIdx");
+    }
   }
 
   private enqueuePersist(): Promise<void> {
@@ -397,15 +407,14 @@ export class EventStore {
     let removed = 0;
     const remaining = new Map<string, StoredEvent[]>();
     for (const [bucketKey, bucket] of this.buckets) {
-      const kept: StoredEvent[] = [];
-      for (const evt of bucket) {
+      const kept = bucket.filter((evt) => {
         if (evt.blockNumber >= cutoff) {
           removed += 1;
           this.seenKeys.delete(dedupeKey(evt));
-        } else {
-          kept.push(evt);
+          return false;
         }
-      }
+        return true;
+      });
       if (kept.length > 0) {
         remaining.set(bucketKey, kept);
       } else {
@@ -415,10 +424,7 @@ export class EventStore {
     if (removed === 0) return 0;
 
     // indexPositions is a WeakMap: removed-event entries GC once dereferenced; kept events get positions overwritten below (mirrors load()).
-    this.buckets.clear();
-    this.byEventName.clear();
-    this.byTokenId.clear();
-    this.total = 0;
+    this.resetState();
     for (const [bucketKey, kept] of remaining) {
       this.installBucket(bucketKey, kept);
       this.dirty.add(bucketKey);
@@ -442,7 +448,7 @@ export class EventStore {
   }
 }
 
-function tokenIdFromPayload(payload: StoredEventPayload): string | null {
+function tokenIdFromPayload(payload: EventPayload): string | null {
   const record = payload as Record<string, unknown>;
   for (const key of ["tokenId", "agentTokenId", "_tokenId"] as const) {
     const raw = record[key];
@@ -611,9 +617,8 @@ export function acquireEventStoreLock(
   };
 
   process.once("exit", release);
-  for (const signal of ["SIGINT", "SIGTERM"] as const) {
+  for (const signal of ["SIGINT", "SIGTERM"] as const)
     process.once(signal, release);
-  }
 
   return release;
 }

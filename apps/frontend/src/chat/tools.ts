@@ -1,12 +1,6 @@
 import { useMemo } from "react";
 import { usePublicClient } from "wagmi";
-import {
-  chatToolLabels,
-  CHAT_TOOL_CATALOG,
-  classOfTool,
-  getChatToolSpec,
-  type ChatToolClass,
-} from "@axiom/config/chat-tools";
+import { chatToolLabels, CHAT_TOOL_CATALOG } from "@axiom/config/chat-tools";
 import { runBrowserTool } from "./transport-browser.js";
 
 export const TOOL_LABELS: Record<string, string> = chatToolLabels();
@@ -15,14 +9,6 @@ export const TOOL_LABELS: Record<string, string> = chatToolLabels();
 export const CLIENT_TOOL_CATALOG = CHAT_TOOL_CATALOG.filter(
   (t) => !t.name.startsWith("unbroker_"),
 );
-
-export function toolClass(name: string): ChatToolClass | undefined {
-  return classOfTool(name);
-}
-
-export function toolHint(name: string): string | undefined {
-  return getChatToolSpec(name)?.hint;
-}
 
 type ToolDefinition = {
   type: "function";
