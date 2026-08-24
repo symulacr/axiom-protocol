@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { useAccount, useWalletClient } from "wagmi";
 import { useMutation } from "@tanstack/react-query";
-import { deriveMintDataHash } from "@axiom/config/types/mint";
+import { deriveMintDataHash } from "@axiom/config/types/hex";
 import {
   apiFetch,
   oracleFetch,

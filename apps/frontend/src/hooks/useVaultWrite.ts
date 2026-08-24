@@ -7,7 +7,7 @@ import {
   humanizeError,
   validateNumericInput,
 } from "../utils/format.js";
-import { useVaultData } from "./useVaultData.js";
+import { useVaultData } from "./useVaultDataBatch.js";
 
 export type VaultWriteKind = "deposit" | "withdraw";
 

@@ -1,7 +1,6 @@
 import { getChatToolSpec } from "@axiom/config/chat-tools";
 import { PAYMENT_PROCESSOR_ABI } from "@axiom/config/abis";
-import { ADDRESS_REGEX } from "@axiom/config/types/hex";
-import { deriveMintDataHash } from "@axiom/config/types/mint";
+import { ADDRESS_REGEX, deriveMintDataHash } from "@axiom/config/types/hex";
 import { fetchJson, postJson, resolveTokenId, toolFail } from "../transport.js";
 import { encodeFunctionData, parseAbi, parseUnits } from "viem";
 import type { ToolRuntime } from "../transport.js";

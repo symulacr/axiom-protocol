@@ -1,5 +1,14 @@
+import { useMemo } from "react";
+import { useChainId } from "wagmi";
 import { resolveAddress } from "@axiom/config/addresses";
+import {
+  EIP712_DOMAIN_NAME,
+  EIP712_DOMAIN_VERSION,
+} from "@axiom/config/eip712";
 import type { Address } from "viem";
+
+export { ACCESS_PROOF_TYPES } from "@axiom/config/eip712";
+
 // Runtime source of truth is env (VITE_* -> AXIOM_*); deployed.json is record-only, never read by code.
 const env: Record<string, unknown> = {
   AXIOM_AGENT_NFT_ADDRESS: import.meta.env.VITE_AGENT_NFT_ADDRESS,
@@ -34,3 +43,27 @@ export const getAxiomTeeVerifierAddress = (chainId?: number) =>
   getContractAddress("teeVerifier", chainId);
 export const getAxiomPaymentProcessorAddress = (chainId?: number) =>
   getContractAddress("paymentProcessor", chainId);
+
+const BASE_DOMAIN = {
+  name: EIP712_DOMAIN_NAME,
+  version: EIP712_DOMAIN_VERSION,
+} as const;
+
+export function useEip712Domain(): {
+  domain: typeof BASE_DOMAIN & {
+    chainId: number;
+    verifyingContract: `0x${string}`;
+  };
+} {
+  const chainId = useChainId();
+  return useMemo(
+    () => ({
+      domain: {
+        ...BASE_DOMAIN,
+        chainId,
+        verifyingContract: getAxiomTeeVerifierAddress(chainId),
+      },
+    }),
+    [chainId],
+  );
+}

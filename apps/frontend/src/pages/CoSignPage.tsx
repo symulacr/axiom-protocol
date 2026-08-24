@@ -32,7 +32,7 @@ import {
   encodeHandoffResult,
   HANDOFF_RESULT_STORAGE_KEY,
 } from "../lib/transferHandoff.js";
-import { ACCESS_PROOF_TYPES } from "../abi/eip712.js";
+import { ACCESS_PROOF_TYPES } from "../abi/addresses.js";
 import { humanizeError, truncateAddress } from "../utils/format.js";
 
 /** Shared alert row — every honest blocker on this page renders the same shell. */

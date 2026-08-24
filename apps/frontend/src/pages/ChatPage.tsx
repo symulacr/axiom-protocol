@@ -81,18 +81,16 @@ import { resolveContextWindow } from "@axiom/config/chat-tools";
 import {
   AskUserCard,
   ChatBanner,
+  InsightsDisclosure,
   insetCardStyle,
   MessageEditConfirm,
   MsgCopyAction,
   StatusDot,
-  ToolClassBadge,
-} from "../chat/MessageAtoms.js";
-import {
-  InsightsDisclosure,
   ToolCallCard,
+  ToolClassBadge,
   ToolResultBody,
   type ToolRun,
-} from "../chat/ToolProgress.js";
+} from "../chat/MessageAtoms.js";
 import {
   ChatSessionProvider,
   useChatSession,

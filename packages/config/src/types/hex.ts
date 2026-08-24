@@ -1,6 +1,7 @@
 /** Shared EVM hex shapes: single source for every regex guarding a 0x value.
  *  Zod-free by design — browser bundles import from here; the zod schemas
  *  live in ./hex-schema.js (backend-only consumers). */
+import { keccak256, toHex } from "viem";
 
 export const HEX_REGEX = /^0x[a-fA-F0-9]+$/;
 export const ADDRESS_REGEX = /^0x[a-fA-F0-9]{40}$/;
@@ -14,4 +15,6 @@ export function validateHex(value: string, label = "value"): Hex {
   return value as Hex;
 }
 
-export { deriveMintDataHash } from "./mint.js";
+export function deriveMintDataHash(description: string): `0x${string}` {
+  return keccak256(toHex(description.trim()));
+}

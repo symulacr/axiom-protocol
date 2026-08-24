@@ -36,7 +36,7 @@ import { useAgentEvents } from "../hooks/useAgentEvents.js";
 import { usePerformance } from "../hooks/usePerformance.js";
 import { usePayment } from "../hooks/usePayment.js";
 import { paymentSymbolOf, usePaymentToken } from "../hooks/usePaymentToken.js";
-import { useVaultData } from "../hooks/useVaultData.js";
+import { useVaultData } from "../hooks/useVaultDataBatch.js";
 import { formatUnits } from "viem";
 import { APP_CHAIN } from "../config/wagmi.js";
 import { hasStrategyRoot } from "../lib/models.js";
