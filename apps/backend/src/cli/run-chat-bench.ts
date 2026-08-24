@@ -5,6 +5,7 @@ import { buildChatEval, printChatEval } from "./e2e/eval.js";
 import { runChatBench, printChatBenchReport } from "./e2e/chat-bench.js";
 import { resolveE2eWallets } from "./e2e/wallet.js";
 import { resolveBenchTokenId } from "./e2e/e2e-reuse.js";
+import { printBanner } from "./e2e/shared.js";
 import { getSharedProvider } from "../provider.js";
 import { ARISTOTLE_CHAIN_ID } from "@axiom/config/networks";
 
@@ -28,9 +29,7 @@ async function main(): Promise<void> {
     10,
   );
 
-  console.log("\n============================================");
-  console.log("  Axiom Chat Bench");
-  console.log("============================================");
+  printBanner("Axiom Chat Bench");
   console.log(`  Backend: ${BACKEND_URL}`);
   console.log(`  Operator: ${operator.address}`);
   console.log(`  tokenId: ${tokenId}`);

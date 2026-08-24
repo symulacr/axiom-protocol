@@ -45,7 +45,7 @@ import { printFrictionReport } from "./friction.js";
 import { enforceLiveGate } from "./eval.js";
 import { printScenarioBreakReport } from "./scenario-breaks.js";
 import { pipelineWalletTxs } from "./tx-pipeline.js";
-import { apiKeyHeader, errorMessage } from "./shared.js";
+import { errorMessage, postJsonInit, printBanner } from "./shared.js";
 
 type FetchJson = typeof fetchJsonFn;
 type PostStep = typeof postStepFn;
@@ -275,14 +275,7 @@ export async function runOracleRegisterStep(
     ok: boolean;
     dataHash: string;
     seen: boolean;
-  }>(`${oracleUrl}/oracle/v1/agents/mint`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...apiKeyHeader(),
-    },
-    body: JSON.stringify({ dataHash }),
-  });
+  }>(`${oracleUrl}/oracle/v1/agents/mint`, postJsonInit({ dataHash }));
   const ok =
     mint.ok === true && mint.dataHash.toLowerCase() === dataHash.toLowerCase();
   console.log(
@@ -928,9 +921,7 @@ export async function runOnChainTransferStep(deps: {
 }
 
 export function printReport(options?: { liveGateMinPct?: number }): void {
-  console.log("\n============================================");
-  console.log("  E2E Summary (live + on-chain proofs)");
-  console.log("============================================");
+  printBanner("E2E Summary (live + on-chain proofs)");
   for (const r of stepResults) {
     const flag = r.ok ? "[OK]" : "[FAIL]";
     const block = r.blockNumber !== undefined ? ` block=${r.blockNumber}` : "";

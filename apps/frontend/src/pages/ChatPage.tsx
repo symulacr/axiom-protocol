@@ -132,7 +132,6 @@ import {
 import { Button } from "../components/axiom/Controls.js";
 import { MessageSquare, Network } from "../components/axiom/icons.js";
 
-/** One LLM turn (one tool-loop iteration) — client timings + router usage/trace. */
 const SUPPORTED_CHAIN_IDS = new Set([APP_CHAIN_ID]);
 const CHAT_MESSAGES_KEY = "axiom:chat-messages";
 /** Active threadId (sessionStorage): lets a page reload resume the SAME
@@ -146,9 +145,29 @@ const chatMsgStyle: CSSProperties = {
   lineHeight: "var(--lh-normal)",
 };
 
+/** Shared rounded-card shell: message bubbles, the stream-error alert and
+ * the live status card all use the same padding/radius/border recipe. */
+const bubbleCard = (border: string, background: string): CSSProperties => ({
+  padding: "var(--space-md) var(--space-lg)",
+  borderRadius: "var(--radius-lg)",
+  border: `1px solid ${border}`,
+  background,
+});
+
 const dimXs: CSSProperties = {
   color: COLORS.textDim,
   fontSize: "var(--text-xs)",
+};
+
+// Empty-state typography shared by the prompt cards and the tools toggle.
+const promptLabelStyle: CSSProperties = {
+  fontSize: "var(--text-sm)",
+  fontWeight: "var(--fw-semibold)",
+  color: "var(--c-text)",
+};
+const promptHintStyle: CSSProperties = {
+  fontSize: "var(--text-xs)",
+  color: "var(--c-text-dim)",
 };
 
 const TOOL_GROUPS = (
@@ -261,6 +280,32 @@ function ChatPageInner(): ReactElement {
     const cur = toolRunsRef.current[id];
     if (!cur) return;
     toolRunsRef.current[id] = { ...cur, ...patch };
+  };
+  /** 04: a tool can fail SEMANTICALLY (error payload, handler resolved
+   * normally) — the run must read failed so the card gets the humanized
+   * error + Retry affordance instead of a neutral body. */
+  const semanticErrorOf = (result: string): string | undefined => {
+    try {
+      const parsed = JSON.parse(result) as { error?: unknown };
+      return typeof parsed.error === "string" && parsed.error
+        ? parsed.error
+        : undefined;
+    } catch {
+      return undefined;
+    }
+  };
+  const markRunResult = (
+    id: string | undefined,
+    result: string,
+    resultError: string | undefined,
+  ): void => {
+    if (!id) return;
+    markToolRun(
+      id,
+      resultError !== undefined
+        ? { status: "error", error: resultError, result }
+        : { status: "success", result },
+    );
   };
   const [expandedToolCalls, setExpandedToolCalls] = useState<Set<string>>(
     () => new Set(),
@@ -400,21 +445,7 @@ function ChatPageInner(): ReactElement {
       try {
         const result = await handler(run.args ?? {}, buildLiveToolCtx());
         recordToolResult(run.name, result);
-        let resultError: string | undefined;
-        try {
-          const parsed = JSON.parse(result) as { error?: unknown };
-          if (typeof parsed.error === "string" && parsed.error) {
-            resultError = parsed.error;
-          }
-        } catch {
-          void 0;
-        }
-        markToolRun(
-          id,
-          resultError !== undefined
-            ? { status: "error", error: resultError, result }
-            : { status: "success", result },
-        );
+        markRunResult(id, result, semanticErrorOf(result));
       } catch (err) {
         markToolRun(id, {
           status: "error",
@@ -864,35 +895,20 @@ function ChatPageInner(): ReactElement {
                   // transfer is user-paced (modal form + wallet prompts), not a backend call — no timeout
                   const result = await handler(args, liveToolCtx);
                   recordToolResult(tc.function.name, result);
-                  let resultError: string | undefined;
                   try {
                     // capture produced tokenId so a later same-turn tool sees it (mirrors applyToolResult)
                     const parsed = JSON.parse(result) as {
                       tokenId?: unknown;
                       agents?: Array<{ tokenId?: unknown }>;
-                      error?: unknown;
                     };
                     const tok = parsed.tokenId ?? parsed.agents?.[0]?.tokenId;
                     if (tok !== undefined) {
                       lastTokenIdRef.current = String(tok);
                     }
-                    // 04: a tool can fail SEMANTICALLY (error
-                    // payload, handler returned normally) — the run must read
-                    // failed so the card gets the humanized error + Retry.
-                    if (typeof parsed.error === "string" && parsed.error) {
-                      resultError = parsed.error;
-                    }
                   } catch {
                     void 0;
                   }
-                  if (tc.id) {
-                    markToolRun(
-                      tc.id,
-                      resultError !== undefined
-                        ? { status: "error", error: resultError, result }
-                        : { status: "success", result },
-                    );
-                  }
+                  markRunResult(tc.id, result, semanticErrorOf(result));
                   return { tc, result };
                 } catch (err) {
                   const toolErr =
@@ -1010,6 +1026,14 @@ function ChatPageInner(): ReactElement {
       buildLiveToolCtx,
     ],
   );
+
+  /** Rerun the most recent user turn from live history (Regenerate + stream-error Retry share this tail). */
+  const rerunLastUser = useCallback(() => {
+    const lastUser = [...messagesRef.current]
+      .reverse()
+      .find((m) => m.role === "user");
+    if (lastUser?.content) void runAgent(lastUser.content);
+  }, [runAgent]);
 
   const processQueue = useCallback(() => {
     if (isStreamingRef.current) return;
@@ -1293,22 +1317,13 @@ function ChatPageInner(): ReactElement {
                   >
                     <div
                       style={{
-                        fontSize: "var(--text-sm)",
-                        fontWeight: "var(--fw-semibold)",
-                        color: "var(--c-text)",
+                        ...promptLabelStyle,
                         marginBottom: 2,
                       }}
                     >
                       {p.label}
                     </div>
-                    <div
-                      style={{
-                        fontSize: "var(--text-xs)",
-                        color: "var(--c-text-dim)",
-                      }}
-                    >
-                      {p.hint}
-                    </div>
+                    <div style={promptHintStyle}>{p.hint}</div>
                   </button>
                 ))}
               </div>
@@ -1325,21 +1340,10 @@ function ChatPageInner(): ReactElement {
                     width: "100%",
                   }}
                 >
-                  <span
-                    style={{
-                      fontSize: "var(--text-sm)",
-                      fontWeight: "var(--fw-semibold)",
-                      color: "var(--c-text)",
-                    }}
-                  >
+                  <span style={promptLabelStyle}>
                     {chatCopy.toolsToggle(CLIENT_TOOL_CATALOG.length)}
                   </span>
-                  <span
-                    style={{
-                      fontSize: "var(--text-xs)",
-                      color: "var(--c-text-dim)",
-                    }}
-                  >
+                  <span style={promptHintStyle}>
                     {toolsOpen ? chatCopy.toolsHide : chatCopy.toolsBrowse}
                   </span>
                 </button>
@@ -1404,17 +1408,14 @@ function ChatPageInner(): ReactElement {
             <div
               key={msg.id}
               className="fade-enter"
-              style={{
-                padding: "var(--space-md) var(--space-lg)",
-                borderRadius: "var(--radius-lg)",
-                border: `1px solid ${msg.role === "user" ? "var(--c-bronze-border)" : COLORS.border}`,
-                background:
-                  msg.role === "user"
-                    ? "var(--c-bronze-bg)"
-                    : msg.role === "tool"
-                      ? "var(--c-bg)"
-                      : "var(--c-surface)",
-              }}
+              style={bubbleCard(
+                msg.role === "user" ? "var(--c-bronze-border)" : COLORS.border,
+                msg.role === "user"
+                  ? "var(--c-bronze-bg)"
+                  : msg.role === "tool"
+                    ? "var(--c-bg)"
+                    : "var(--c-surface)",
+              )}
             >
               <StatusDot
                 color={
@@ -1496,14 +1497,10 @@ function ChatPageInner(): ReactElement {
                           const trimmed = stripSummaryLead(
                             messagesRef.current.slice(0, idx),
                           );
-                          const lastUser = [...trimmed]
-                            .reverse()
-                            .find((m) => m.role === "user");
                           messagesRef.current = trimmed;
                           setMessages(trimmed);
                           summaryCacheRef.current.delete(threadIdRef.current);
-                          if (lastUser?.content)
-                            void runAgent(lastUser.content);
+                          rerunLastUser();
                         }
                       }}
                     >
@@ -1688,12 +1685,7 @@ function ChatPageInner(): ReactElement {
             <div
               role="alert"
               className="fade-enter"
-              style={{
-                padding: "var(--space-md) var(--space-lg)",
-                borderRadius: "var(--radius-lg)",
-                border: "1px solid var(--c-danger-border)",
-                background: "var(--c-danger-bg)",
-              }}
+              style={bubbleCard("var(--c-danger-border)", "var(--c-danger-bg)")}
             >
               <div
                 style={{
@@ -1722,12 +1714,7 @@ function ChatPageInner(): ReactElement {
                       const last = lastStreamErrorRef.current;
                       setStreamError(null);
                       if (last && messagesRef.current.length > 0) {
-                        const lastUser = [...messagesRef.current]
-                          .reverse()
-                          .find((m) => m.role === "user");
-                        if (lastUser?.content) {
-                          void runAgent(lastUser.content);
-                        }
+                        rerunLastUser();
                       }
                     }}
                   >
@@ -1747,12 +1734,7 @@ function ChatPageInner(): ReactElement {
               role="status"
               aria-live="polite"
               aria-label={chatCopy.assistantResponding}
-              style={{
-                padding: "var(--space-md) var(--space-lg)",
-                borderRadius: "var(--radius-lg)",
-                border: `1px solid ${COLORS.border}`,
-                background: "var(--c-surface)",
-              }}
+              style={bubbleCard(COLORS.border, "var(--c-surface)")}
             >
               <StatusDot color={COLORS.text}>
                 {chatCopy.roleAssistant}
@@ -2030,9 +2012,6 @@ function phaseLabel(
   if (elapsedSec < 2) return copy.phaseThinking;
   return copy.phaseWaiting(elapsedSec);
 }
-
-/** Capture router usage/trace (terminal chunk or backend trace frame) into a
- * per-turn metric record. Reuses the exact fields the router emits. */
 
 /** Compact provider-selector option label: name · latency · price per 1M. */
 function pinLabel(p: ComputeProvider): string {

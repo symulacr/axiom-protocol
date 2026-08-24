@@ -1,8 +1,7 @@
-
 import WebSocket from "ws";
 import { fetchJson } from "../../utils/response.js";
 import { resolveE2eComputeModel } from "./fast-path.js";
-import { percentile } from "./shared.js";
+import { percentile, printBanner } from "./shared.js";
 
 interface LaneStats {
   lane: string;
@@ -76,7 +75,10 @@ async function runLane(
   };
 }
 
-function wsProbe(url: string, timeoutMs: number): Promise<{ ok: boolean; error?: string }> {
+function wsProbe(
+  url: string,
+  timeoutMs: number,
+): Promise<{ ok: boolean; error?: string }> {
   return new Promise((resolve) => {
     const ws = new WebSocket(url);
     const timer = setTimeout(() => {
@@ -105,8 +107,13 @@ function buildLanes(deps: {
     {
       name: "health",
       probe: async () => {
-        const { ok, data } = await fetchJson<{ ok?: boolean }>(`${base}/health`);
-        return { ok: ok && data.ok === true, error: ok ? undefined : "health-not-ok" };
+        const { ok, data } = await fetchJson<{ ok?: boolean }>(
+          `${base}/health`,
+        );
+        return {
+          ok: ok && data.ok === true,
+          error: ok ? undefined : "health-not-ok",
+        };
       },
     },
     {
@@ -124,7 +131,9 @@ function buildLanes(deps: {
     {
       name: "routes",
       probe: async () => {
-        const { ok, data } = await fetchJson<{ routes?: unknown[] }>(`${base}/v1/routes`);
+        const { ok, data } = await fetchJson<{ routes?: unknown[] }>(
+          `${base}/v1/routes`,
+        );
         return {
           ok: ok && (data.routes?.length ?? 0) >= 5,
           error: ok ? "routes-empty" : "routes-http",
@@ -214,7 +223,10 @@ function buildLanes(deps: {
           });
           if (!res.ok) {
             const text = await res.text();
-            return { ok: false, error: `chat-${res.status}:${text.slice(0, 40)}` };
+            return {
+              ok: false,
+              error: `chat-${res.status}:${text.slice(0, 40)}`,
+            };
           }
           const reader = res.body?.getReader();
           if (!reader) return { ok: false, error: "chat-no-body" };
@@ -227,10 +239,15 @@ function buildLanes(deps: {
             if (done) break;
             buffer += decoder.decode(value, { stream: true });
             if (buffer.includes("[DONE]")) break;
-            chunks += buffer.split("\n").filter((l) => l.startsWith("data: ")).length;
+            chunks += buffer
+              .split("\n")
+              .filter((l) => l.startsWith("data: ")).length;
             buffer = buffer.slice(-200);
           }
-          return { ok: chunks > 0, error: chunks > 0 ? undefined : "chat-no-chunks" };
+          return {
+            ok: chunks > 0,
+            error: chunks > 0 ? undefined : "chat-no-chunks",
+          };
         } catch (e) {
           return {
             ok: false,
@@ -255,9 +272,7 @@ export async function runAxiomCoreLoadBench(deps: {
   const lanes = buildLanes(deps);
   const all: LaneStats[] = [];
 
-  console.log("\n============================================");
-  console.log("  Axiom Core — parallel load bench");
-  console.log("============================================");
+  printBanner("Axiom Core — parallel load bench");
   console.log(`  Backend: ${deps.backendUrl}`);
   console.log(`  tokenId: ${deps.tokenId}`);
   console.log(`  iterations/lane: ${iterations}`);
@@ -305,7 +320,9 @@ export async function runAxiomCoreLoadBench(deps: {
   if (sub100.length === 0) {
     console.log("  All lanes 100% reliable across tested concurrencies.");
   } else {
-    console.log(`  ${sub100.length} lane×concurrency combos below 100% — review errors above.`);
+    console.log(
+      `  ${sub100.length} lane×concurrency combos below 100% — review errors above.`,
+    );
   }
   console.log("");
 

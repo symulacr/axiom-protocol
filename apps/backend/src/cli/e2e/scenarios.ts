@@ -493,6 +493,8 @@ export function assertLiveGate(
   return report;
 }
 
+import { printBanner } from "./shared.js";
+
 export function printUsageScenarioMatrix(): void {
   const all = getUsageScenarios();
   const covered = all.filter((s) => s.status === "covered").length;
@@ -500,9 +502,7 @@ export function printUsageScenarioMatrix(): void {
   const pending = all.filter((s) => s.status === "pending").length;
   const totalTx = all.reduce((n, s) => n + s.txCount, 0);
 
-  console.log("\n============================================");
-  console.log("  Usage Scenario Matrix");
-  console.log("============================================");
+  printBanner("Usage Scenario Matrix");
   console.log(
     `  Covered: ${covered}/${all.length}  |  skipped: ${skipped}  |  pending: ${pending}  |  on-chain txs: ${totalTx}`,
   );

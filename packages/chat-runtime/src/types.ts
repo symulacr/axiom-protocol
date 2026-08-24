@@ -5,22 +5,6 @@ export interface OgChatParams {
   chat_template_kwargs?: { enable_thinking?: boolean };
 }
 
-export interface OgTrace {
-  request_id: string;
-  provider: string;
-  billing?: {
-    input_cost?: string;
-    output_cost?: string;
-    total_cost?: string;
-  };
-  tee_verified?: boolean;
-}
-
-export interface ChatTraceEvent {
-  type: "trace";
-  trace: OgTrace;
-}
-
 export type ToolMode = "encode-only" | "sign";
 
 export interface EncodeCalldata {

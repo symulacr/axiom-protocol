@@ -1,3 +1,5 @@
+import { printBanner } from "./shared.js";
+
 type BreakLayer =
   "backend" | "contract" | "storage" | "compute" | "oracle" | "ops";
 
@@ -168,9 +170,7 @@ const CARDS: ScenarioBreakCard[] = [
 ];
 
 export function printScenarioBreakReport(): void {
-  console.log("\n============================================");
-  console.log("  Scenario Break Matrix (fault planning)");
-  console.log("============================================");
+  printBanner("Scenario Break Matrix (fault planning)");
   console.log(
     "  Use for chaos injection: each row = what to break, how E2E detects, what to fix.\n",
   );

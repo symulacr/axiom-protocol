@@ -1,10 +1,5 @@
 import { fetchJson } from "../../utils/response.js";
-import { apiKeyHeader } from "./shared.js";
-
-/** Backend auth headers: AXIOM_API_KEY as x-api-key (backend enforces auth in production) plus any extras. */
-function authHeaders(extra?: Record<string, string>): Record<string, string> {
-  return { ...apiKeyHeader(), ...extra };
-}
+import { apiKeyHeader, postJsonInit } from "./shared.js";
 
 interface StepResult {
   step: number;
@@ -41,7 +36,9 @@ export async function getStep<T>(
     data: res,
     ok,
     status,
-  } = await fetchJson<T>(`${backendUrl}${name}`, { headers: authHeaders() });
+  } = await fetchJson<T>(`${backendUrl}${name}`, {
+    headers: apiKeyHeader(),
+  });
   const s = summary(res, { ok, status });
   console.log(
     `          ${JSON.stringify(res).slice(0, 500)}${JSON.stringify(res).length > 500 ? "…" : ""}`,
@@ -64,11 +61,7 @@ export async function postStep<T>(
     data: res,
     ok,
     status,
-  } = await fetchJson<T>(`${backendUrl}${name}`, {
-    method: "POST",
-    headers: authHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify(body),
-  });
+  } = await fetchJson<T>(`${backendUrl}${name}`, postJsonInit(body));
   const s = summary(res);
   const stepOk = s.ok ?? ok;
   console.log(`          ${JSON.stringify(res)}`);

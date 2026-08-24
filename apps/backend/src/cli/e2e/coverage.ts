@@ -1,4 +1,9 @@
-import { parseUnits, type TransactionResponse, type Wallet } from "ethers";
+import {
+  parseUnits,
+  type TransactionReceipt,
+  type TransactionResponse,
+  type Wallet,
+} from "ethers";
 import { TypedContract } from "@axiom/config/types/contract";
 import {
   AGENT_NFT_ABI,
@@ -591,6 +596,61 @@ async function buildAuthorizeDelegatePipelineSteps(
   return steps;
 }
 
+/** Shared authorize/delegate pipeline + verification used by both coverage entrypoints. */
+async function authorizeDelegateCore(
+  nft: TypedContract<AgentNftExtended>,
+  deployerAddress: string,
+  tokenId: bigint,
+  delegateAddress: string,
+  pipelineLabel: string,
+  notClearedMsg: string,
+): Promise<{ isReuse: boolean; receipt: TransactionReceipt }> {
+  const steps = await buildAuthorizeDelegatePipelineSteps(
+    nft,
+    tokenId,
+    delegateAddress,
+  );
+  const receipts = await pipelineWalletTxs(pipelineLabel, steps);
+  const isReuse = steps[0]?.name === "delegateAccess";
+  const assistant = await nft.contract.getDelegateAccess(deployerAddress);
+  if (assistant.toLowerCase() !== delegateAddress.toLowerCase()) {
+    throw new Error(`getDelegateAccess ${assistant} != ${delegateAddress}`);
+  }
+  markCovered(
+    "AxiomAgentNFT",
+    "authorizedUsersOf",
+    "authorizeDelegateAndRevoke",
+  );
+  markCovered("AxiomAgentNFT", "delegateAccess", "delegateAccess");
+  markCovered("AxiomAgentNFT", "getDelegateAccess", "delegateAccess");
+  markScenarioCovered("agent.delegate", "delegateAccess", { txs: 1, reads: 1 });
+  if (!isReuse) {
+    const afterRevoke = await nft.contract.authorizedUsersOf(tokenId);
+    if (afterRevoke.length !== 0) {
+      throw new Error(`${notClearedMsg}: ${afterRevoke.join(",")}`);
+    }
+    markScenarioCovered("agent.authorize", "authorizeDelegateAndRevoke", {
+      txs: 1,
+      reads: 1,
+    });
+    markScenarioCovered("agent.revoke", "authorizeDelegateAndRevoke", {
+      txs: 1,
+      reads: 1,
+    });
+    markCovered(
+      "AxiomAgentNFT",
+      "authorizeUsage",
+      "authorizeDelegateAndRevoke",
+    );
+    markCovered(
+      "AxiomAgentNFT",
+      "revokeAuthorization",
+      "authorizeDelegateAndRevoke",
+    );
+  }
+  return { isReuse, receipt: receipts[0]! };
+}
+
 export async function runAuthorizeDelegateStep(deps: {
   agentNft: string;
   deployer: Wallet;
@@ -606,31 +666,13 @@ export async function runAuthorizeDelegateStep(deps: {
     AGENT_NFT_EXTENDED_ABI,
     deps.deployer,
   );
-  const authSteps = await buildAuthorizeDelegatePipelineSteps(
+  const { isReuse, receipt: authReceipt } = await authorizeDelegateCore(
     nft,
+    deps.deployer.address,
     deps.tokenId,
     deps.delegateAddress,
-  );
-  const authReceipts = await pipelineWalletTxs(
     "authorizeDelegateAndRevoke",
-    authSteps,
-  );
-  const isReuse = authSteps[0]?.name === "delegateAccess";
-  const authReceipt = authReceipts[0]!;
-
-  const assistant = await nft.contract.getDelegateAccess(deps.deployer.address);
-  if (assistant.toLowerCase() !== deps.delegateAddress.toLowerCase()) {
-    throw new Error(
-      `getDelegateAccess ${assistant} != ${deps.delegateAddress}`,
-    );
-  }
-  markScenarioCovered("agent.delegate", "delegateAccess", { txs: 1, reads: 1 });
-  markCovered("AxiomAgentNFT", "delegateAccess", "delegateAccess");
-  markCovered("AxiomAgentNFT", "getDelegateAccess", "delegateAccess");
-  markCovered(
-    "AxiomAgentNFT",
-    "authorizedUsersOf",
-    "authorizeDelegateAndRevoke",
+    "authorizedUsersOf not cleared after authorizeDelegateAndRevoke",
   );
   if (isReuse) {
     recordReceipt(
@@ -642,26 +684,6 @@ export async function runAuthorizeDelegateStep(deps: {
     );
     return;
   }
-  const afterRevoke = await nft.contract.authorizedUsersOf(deps.tokenId);
-  if (afterRevoke.length !== 0) {
-    throw new Error(
-      `authorizedUsersOf not cleared after authorizeDelegateAndRevoke: ${afterRevoke.join(",")}`,
-    );
-  }
-  markScenarioCovered("agent.authorize", "authorizeDelegateAndRevoke", {
-    txs: 1,
-    reads: 1,
-  });
-  markScenarioCovered("agent.revoke", "authorizeDelegateAndRevoke", {
-    txs: 1,
-    reads: 1,
-  });
-  markCovered("AxiomAgentNFT", "authorizeUsage", "authorizeDelegateAndRevoke");
-  markCovered(
-    "AxiomAgentNFT",
-    "revokeAuthorization",
-    "authorizeDelegateAndRevoke",
-  );
 
   recordReceipt(
     17,
@@ -694,55 +716,14 @@ export async function runPostVaultCoveragePipeline(deps: {
     deps.deployer,
   );
 
-  const steps = await buildAuthorizeDelegatePipelineSteps(
+  const { isReuse, receipt: lastReceipt } = await authorizeDelegateCore(
     nft,
+    deps.deployer.address,
     deps.tokenId,
     deps.delegateAddress,
+    "post-vault mega",
+    "authorizedUsersOf not cleared",
   );
-  const receipts = await pipelineWalletTxs("post-vault mega", steps);
-  const isReuse = steps[0]?.name === "delegateAccess";
-  const lastReceipt = receipts[receipts.length - 1]!;
-
-  const assistant = await nft.contract.getDelegateAccess(deps.deployer.address);
-  if (assistant.toLowerCase() !== deps.delegateAddress.toLowerCase()) {
-    throw new Error(
-      `getDelegateAccess ${assistant} != ${deps.delegateAddress}`,
-    );
-  }
-  markCovered(
-    "AxiomAgentNFT",
-    "authorizedUsersOf",
-    "authorizeDelegateAndRevoke",
-  );
-  markCovered("AxiomAgentNFT", "delegateAccess", "delegateAccess");
-  markCovered("AxiomAgentNFT", "getDelegateAccess", "delegateAccess");
-  markScenarioCovered("agent.delegate", "delegateAccess", { txs: 1, reads: 1 });
-  if (!isReuse) {
-    const afterRevoke = await nft.contract.authorizedUsersOf(deps.tokenId);
-    if (afterRevoke.length !== 0) {
-      throw new Error(
-        `authorizedUsersOf not cleared: ${afterRevoke.join(",")}`,
-      );
-    }
-    markScenarioCovered("agent.authorize", "authorizeDelegateAndRevoke", {
-      txs: 1,
-      reads: 1,
-    });
-    markScenarioCovered("agent.revoke", "authorizeDelegateAndRevoke", {
-      txs: 1,
-      reads: 1,
-    });
-    markCovered(
-      "AxiomAgentNFT",
-      "authorizeUsage",
-      "authorizeDelegateAndRevoke",
-    );
-    markCovered(
-      "AxiomAgentNFT",
-      "revokeAuthorization",
-      "authorizeDelegateAndRevoke",
-    );
-  }
 
   // State check only — config category has no on-chain tx left (mint wrote descriptor, pay set royalty).
   const datas = await nft.contract.intelligentDataOf(deps.tokenId);

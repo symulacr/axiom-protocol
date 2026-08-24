@@ -9,9 +9,7 @@ export {
   defaultChatModelForChain,
   resolveComputeRouterUrl,
 } from "./networks.js";
-export type { OGNetwork } from "./networks.js";
 export { getAddresses } from "./addresses.js";
-export type { AddressName } from "./addresses.js";
 export * from "./types/index.js";
 export * from "./eip712.js";
 export {
@@ -45,7 +43,6 @@ export {
   toolNamesByClass,
   toolsByClass,
   type ChatToolClass,
-  type ChatToolFriction,
   type ChatToolName,
   type ChatToolSpec,
 } from "./chat-tools.js";
@@ -61,4 +58,4 @@ export {
   getRuntimeConfig,
 } from "./constants.js";
 export * from "./skills/schemas.js";
-export type { EventName, RuntimeConfig } from "./constants.js";
+export type { EventName } from "./constants.js";

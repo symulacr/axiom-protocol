@@ -15,6 +15,7 @@ import {
   errorMessage,
   percentile,
   postChatCompletionsSse,
+  printBanner,
   sleep,
 } from "./shared.js";
 import { markScenarioCovered, markScenarioSkipped } from "./scenarios.js";
@@ -59,6 +60,26 @@ function chatBenchCooldownMs(): number {
 /** Standard no-live-compute bench outcome (ok=true so the report stays green). */
 function liveComputeSkip(id: string): ChatBenchResult {
   return { id, ok: true, ms: 0, summary: "skipped (no live compute)" };
+}
+
+function skipNoLiveCompute(id: string): ChatBenchResult {
+  markScenarioSkipped(id, "E2E_LIVE_COMPUTE=0");
+  return liveComputeSkip(id);
+}
+
+function benchFailure(
+  id: string,
+  t0: number,
+  err: unknown,
+  summary = "exception",
+): ChatBenchResult {
+  return {
+    id,
+    ok: false,
+    ms: Math.round(performance.now() - t0),
+    summary,
+    error: errorMessage(err),
+  };
 }
 
 async function runToolParityBench(
@@ -118,13 +139,7 @@ async function runToolParityBench(
             : `ok len=${result.length}`,
       });
     } catch (err) {
-      results.push({
-        id: `tool.${name}`,
-        ok: false,
-        ms: Math.round(performance.now() - t0),
-        summary: "exception",
-        error: errorMessage(err),
-      });
+      results.push(benchFailure(`tool.${name}`, t0, err));
     }
   }
 
@@ -181,13 +196,7 @@ async function runMicroDepositSignBench(
       error: out.ok ? undefined : out.result,
     };
   } catch (err) {
-    return {
-      id: "tool.deposit-sign",
-      ok: false,
-      ms: Math.round(performance.now() - t0),
-      summary: "exception",
-      error: errorMessage(err),
-    };
+    return benchFailure("tool.deposit-sign", t0, err);
   }
 }
 
@@ -257,8 +266,7 @@ async function runKeepAliveBench(deps: {
   liveCompute: boolean;
 }): Promise<ChatBenchResult> {
   if (!deps.liveCompute) {
-    markScenarioSkipped("chat.keepalive", "E2E_LIVE_COMPUTE=0");
-    return liveComputeSkip("chat.keepalive");
+    return skipNoLiveCompute("chat.keepalive");
   }
 
   const latencies: number[] = [];
@@ -320,8 +328,7 @@ async function runContextGrowthBench(deps: {
   liveCompute: boolean;
 }): Promise<ChatBenchResult> {
   if (!deps.liveCompute) {
-    markScenarioSkipped("chat.context-growth", "E2E_LIVE_COMPUTE=0");
-    return liveComputeSkip("chat.context-growth");
+    return skipNoLiveCompute("chat.context-growth");
   }
 
   const messages: Array<{ role: string; content: string }> = [
@@ -392,13 +399,7 @@ async function runModelSwitchBench(deps: {
   liveCompute: boolean;
 }): Promise<ChatBenchResult> {
   if (!deps.liveCompute) {
-    markScenarioSkipped("chat.model-switch", "E2E_LIVE_COMPUTE=0");
-    return {
-      id: "chat.model-switch",
-      ok: true,
-      ms: 0,
-      summary: "skipped (no live compute)",
-    };
+    return skipNoLiveCompute("chat.model-switch");
   }
   if (deps.models.length < 2) {
     markScenarioSkipped(
@@ -525,13 +526,7 @@ async function runLiveChatToolsBench(deps: {
       summary: `chunks=${r.chunks.length} toolCall=${r.toolCallSeen} tools=${r.toolNames.join(",") || "none"} textLen=${r.text.length}`,
     };
   } catch (err) {
-    return {
-      id: "chat.live-tools-sse",
-      ok: false,
-      ms: Math.round(performance.now() - t0),
-      summary: "sse failed",
-      error: errorMessage(err),
-    };
+    return benchFailure("chat.live-tools-sse", t0, err, "sse failed");
   }
 }
 
@@ -676,9 +671,7 @@ export async function runChatBench(deps: {
 }
 
 export function printChatBenchReport(report: ChatBenchReport): void {
-  console.log("\n============================================");
-  console.log("  Chat + Tool Bench");
-  console.log("============================================");
+  printBanner("Chat + Tool Bench");
   const classSummary = (["read", "encode", "orchestrate", "archive"] as const)
     .map((c) => `${c}=${toolsByClass(c).length}`)
     .join(" ");

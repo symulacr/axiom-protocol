@@ -13,10 +13,4 @@ export {
 export { isAskUserResult } from "./executors/ask.js";
 export { buildSystemPrompt } from "./prompt.js";
 export type { ToolChain, ToolRuntime } from "./transport.js";
-export type {
-  ToolResult,
-  ChatSessionContext,
-  OgChatParams,
-  OgTrace,
-  ChatTraceEvent,
-} from "./types.js";
+export type { ToolResult, ChatSessionContext, OgChatParams } from "./types.js";

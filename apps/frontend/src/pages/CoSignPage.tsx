@@ -11,7 +11,7 @@
   Honest states only: unusable link, expired acceptance, wrong network,
   wrong account, signing, done. Copy via copy.flowUi.receive* (en/fr/de).
 */
-import { useState } from "react";
+import { useState, type ReactElement, type ReactNode } from "react";
 import { useAccount, useConnect, useSignTypedData } from "wagmi";
 import type { Connector } from "wagmi";
 import {
@@ -34,6 +34,27 @@ import {
 } from "../lib/transferHandoff.js";
 import { ACCESS_PROOF_TYPES } from "../abi/eip712.js";
 import { humanizeError, truncateAddress } from "../utils/format.js";
+
+/** Shared alert row — every honest blocker on this page renders the same shell. */
+function ReviewError({
+  testId,
+  title,
+  children,
+}: {
+  testId?: string;
+  title?: string;
+  children: ReactNode;
+}): ReactElement {
+  return (
+    <div className="review-error" role="alert" data-testid={testId}>
+      <AlertTriangle size={14} />
+      <div>
+        {title !== undefined && <strong>{title}</strong>}
+        {children}
+      </div>
+    </div>
+  );
+}
 
 export function CoSignPage({ go }: { go: (path: string) => void }) {
   const { state } = useUiStore();
@@ -120,13 +141,9 @@ export function CoSignPage({ go }: { go: (path: string) => void }) {
     return (
       <div className={wrapperClass}>
         <div className="panel cosign-panel">
-          <div className="review-error" role="alert">
-            <AlertTriangle size={14} />
-            <div>
-              <strong>{f.receiveBadTitle}</strong>
-              <p>{f.receiveBadBody}</p>
-            </div>
-          </div>
+          <ReviewError title={f.receiveBadTitle}>
+            <p>{f.receiveBadBody}</p>
+          </ReviewError>
           <Button
             variant="ghost"
             onClick={() => go("/")}
@@ -176,50 +193,28 @@ export function CoSignPage({ go }: { go: (path: string) => void }) {
           </dl>
 
           {expired && (
-            <div
-              className="review-error"
-              role="alert"
-              data-testid="cosign-expired"
-            >
-              <AlertTriangle size={14} />
-              <div>
-                <strong>{f.receiveExpiredTitle}</strong>
-                <p>{f.receiveExpiredBody}</p>
-              </div>
-            </div>
+            <ReviewError testId="cosign-expired" title={f.receiveExpiredTitle}>
+              <p>{f.receiveExpiredBody}</p>
+            </ReviewError>
           )}
           {!expired && wrongNetwork && (
-            <div
-              className="review-error"
-              role="alert"
-              data-testid="cosign-wrong-chain"
-            >
-              <AlertTriangle size={14} />
-              <div>
-                <p>
-                  {interpolate(f.receiveWrongChain, {
-                    chainId: payload.typedData.domain.chainId,
-                  })}
-                </p>
-              </div>
-            </div>
+            <ReviewError testId="cosign-wrong-chain">
+              <p>
+                {interpolate(f.receiveWrongChain, {
+                  chainId: payload.typedData.domain.chainId,
+                })}
+              </p>
+            </ReviewError>
           )}
           {!expired && wrongAccount && (
-            <div
-              className="review-error"
-              role="alert"
-              data-testid="cosign-wrong-account"
-            >
-              <AlertTriangle size={14} />
-              <div>
-                <p>
-                  {interpolate(f.receiveWrongAccount, {
-                    connected: truncateAddress(address ?? ""),
-                    receiver: truncateAddress(receiver),
-                  })}
-                </p>
-              </div>
-            </div>
+            <ReviewError testId="cosign-wrong-account">
+              <p>
+                {interpolate(f.receiveWrongAccount, {
+                  connected: truncateAddress(address ?? ""),
+                  receiver: truncateAddress(receiver),
+                })}
+              </p>
+            </ReviewError>
           )}
 
           {signature ? (
@@ -258,36 +253,27 @@ export function CoSignPage({ go }: { go: (path: string) => void }) {
             )
           )}
 
-          {error && (
-            <div className="review-error" role="alert">
-              <AlertTriangle size={14} />
-              {error}
-            </div>
-          )}
+          {error && <ReviewError>{error}</ReviewError>}
 
           {!signature && !expired && (
             <div className="review-actions">
               {!isConnected ? (
-                connectors.length === 1 ? (
-                  <Button
-                    busy={isConnecting}
-                    onClick={() => void connect(connectors[0]!)}
-                    icon={<WalletIcon size={15} />}
-                  >
-                    {f.receiveConnect}
-                  </Button>
-                ) : (
-                  connectors.map((connector) => (
+                (connectors.length === 1 ? [connectors[0]!] : connectors).map(
+                  (connector) => (
                     <Button
                       key={connector.uid}
-                      variant="secondary"
+                      variant={
+                        connectors.length === 1 ? undefined : "secondary"
+                      }
                       busy={isConnecting}
                       onClick={() => void connect(connector)}
                       icon={<WalletIcon size={15} />}
                     >
-                      {connector.name}
+                      {connectors.length === 1
+                        ? f.receiveConnect
+                        : connector.name}
                     </Button>
-                  ))
+                  ),
                 )
               ) : (
                 <Button

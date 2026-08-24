@@ -71,7 +71,7 @@ import {
 } from "./e2e/e2e-reuse.js";
 import { runFrontendPostTickBundle } from "./e2e/frontend-flows.js";
 import { runChatBench, printChatBenchReport } from "./e2e/chat-bench.js";
-import { buildChatEval, printChatEval } from "./e2e/eval.js";
+import { buildChatEval, printChatEval, CHAT_EVAL_IDS } from "./e2e/eval.js";
 
 loadEnv();
 
@@ -158,6 +158,33 @@ const E2E_REUSE = e2eReuseEnabled();
 const E2E_KEEP_TOKEN = e2eKeepTokenEnabled();
 const E2E_SKIP_TRANSFER = E2E_REUSE || E2E_KEEP_TOKEN;
 
+/** Marks all payment parity/scenario rows skipped under the given reason (E2E_PAYMENT=0 or depleted USDC). */
+function skipPaymentScenarios(reason: string): void {
+  for (const fn of [
+    "payForAgent",
+    "payForAgentAndCompute",
+    "payComputeProvider",
+    "withdrawAgentEarnings",
+    "approve",
+    "allowance",
+    "transfer",
+  ] as const) {
+    const contract =
+      fn === "approve" || fn === "transfer" || fn === "allowance"
+        ? "MockUSDC"
+        : "AxiomPaymentProcessor";
+    markSkipped(contract, fn, reason);
+  }
+  for (const id of [
+    "payment.agent",
+    "payment.compute",
+    "payment.withdraw",
+    "payment.royalty",
+  ] as const) {
+    markScenarioSkipped(id, reason);
+  }
+}
+
 async function main(): Promise<void> {
   const t0 = Date.now();
   initParityMatrix();
@@ -174,29 +201,7 @@ async function main(): Promise<void> {
   seedFrontendFriction();
 
   if (!RUN_PAYMENT) {
-    for (const fn of [
-      "payForAgent",
-      "payForAgentAndCompute",
-      "payComputeProvider",
-      "withdrawAgentEarnings",
-      "approve",
-      "allowance",
-      "transfer",
-    ] as const) {
-      const contract =
-        fn === "approve" || fn === "transfer" || fn === "allowance"
-          ? "MockUSDC"
-          : "AxiomPaymentProcessor";
-      markSkipped(contract, fn, "E2E_PAYMENT=0");
-    }
-    for (const id of [
-      "payment.royalty",
-      "payment.agent",
-      "payment.compute",
-      "payment.withdraw",
-    ] as const) {
-      markScenarioSkipped(id, "E2E_PAYMENT=0");
-    }
+    skipPaymentScenarios("E2E_PAYMENT=0");
   }
 
   printE2eBanner({
@@ -437,29 +442,7 @@ async function main(): Promise<void> {
       );
     }
     const reason = `USDC depleted (${preflight.operatorUsdc})`;
-    for (const fn of [
-      "payForAgent",
-      "payForAgentAndCompute",
-      "payComputeProvider",
-      "withdrawAgentEarnings",
-      "approve",
-      "allowance",
-      "transfer",
-    ] as const) {
-      const contract =
-        fn === "approve" || fn === "transfer" || fn === "allowance"
-          ? "MockUSDC"
-          : "AxiomPaymentProcessor";
-      markSkipped(contract, fn, reason);
-    }
-    for (const id of [
-      "payment.agent",
-      "payment.compute",
-      "payment.withdraw",
-      "payment.royalty",
-    ] as const) {
-      markScenarioSkipped(id, reason);
-    }
+    skipPaymentScenarios(reason);
     noteFriction({
       id: "e2e-usdc-depleted",
       severity: "warn",
@@ -580,15 +563,9 @@ async function main(): Promise<void> {
   }
 
   if (process.env.E2E_CHAT_BENCH === "0") {
-    for (const id of [
-      "chat.tools-read",
-      "chat.tools-write",
-      "chat.tools-complex",
-      "chat.cache-hit",
-      "chat.keepalive",
-      "chat.context-growth",
-      "chat.model-switch",
-    ] as const) {
+    // compute.chat-tools is handled by the E2E_LIVE_COMPUTE branch above.
+    for (const id of CHAT_EVAL_IDS) {
+      if (id === "compute.chat-tools") continue;
       markScenarioSkipped(id, "E2E_CHAT_BENCH=0");
     }
   } else {

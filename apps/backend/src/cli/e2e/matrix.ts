@@ -1,3 +1,5 @@
+import { printBanner } from "./shared.js";
+
 type CoverageKind = "view" | "write";
 type CoverageStatus = "pending" | "covered" | "skipped";
 
@@ -285,9 +287,7 @@ export function printParityMatrix(): ParityReport {
   const report = computeParityReport();
   const all = sortedEntries();
 
-  console.log("\n============================================");
-  console.log("  On-Chain Parity Matrix");
-  console.log("============================================");
+  printBanner("On-Chain Parity Matrix");
   console.log(
     `  Actionable: ${report.actionableCovered}/${report.actionable} (${report.actionablePct}%)  |  skipped admin/timelock: ${report.skipped}  |  pending: ${report.pending}`,
   );

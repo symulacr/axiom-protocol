@@ -3,9 +3,9 @@ import { getStep, postStep, stepResults } from "./http.js";
 import { markScenarioCovered, markScenarioSkipped } from "./scenarios.js";
 import { e2eFastEnabled, e2eStrictComputeEnabled } from "./fast-path.js";
 import {
-  apiKeyHeader,
   errorMessage,
   postChatCompletionsSse,
+  postJsonInit,
   sleep,
 } from "./shared.js";
 
@@ -212,13 +212,9 @@ export async function runLiveComputeTickStep(deps: {
       rawModelOutput?: string;
       durationMs?: number;
       error?: string;
-    }>(`${deps.backendUrl}/v1/orchestrator/tick`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...apiKeyHeader(),
-      },
-      body: JSON.stringify({
+    }>(
+      `${deps.backendUrl}/v1/orchestrator/tick`,
+      postJsonInit({
         vault: deps.vault,
         agentNft: deps.agentNft,
         agentTokenId: deps.tokenId,
@@ -232,7 +228,7 @@ export async function runLiveComputeTickStep(deps: {
             "Respond with JSON only: {action:'hold'|'buy'|'sell', reason:string}",
         },
       }),
-    });
+    );
     if (!ok || !res.recommendation) {
       throw new Error(
         res.error ??
@@ -336,13 +332,9 @@ export async function runDataAvailabilityStep(deps: {
   } = await fetchJson<{
     storage?: { rootHash?: string; size?: number };
     onchain?: { vaultBalance?: string };
-  }>(`${deps.backendUrl}/v1/orchestrator/tick`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...apiKeyHeader(),
-    },
-    body: JSON.stringify({
+  }>(
+    `${deps.backendUrl}/v1/orchestrator/tick`,
+    postJsonInit({
       vault: deps.vault,
       agentNft: deps.agentNft,
       agentTokenId: deps.tokenId,
@@ -350,7 +342,7 @@ export async function runDataAvailabilityStep(deps: {
       signalSource: "manual:e2e-availability",
       signalPayload: { vaultBalance: deps.vaultBalanceWei.toString() },
     }),
-  });
+  );
   const root = res.storage?.rootHash?.toLowerCase();
   const expected = deps.expectedRoot.toLowerCase();
   const rootOk = ok && root === expected && (res.storage?.size ?? 0) > 0;

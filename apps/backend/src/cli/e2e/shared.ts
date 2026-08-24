@@ -1,4 +1,4 @@
-interface ChatCompletionSse {
+interface ChatSseResult {
   chunks: unknown[];
   toolCallSeen: boolean;
   toolNames: string[];
@@ -9,7 +9,7 @@ interface ChatCompletionSse {
 async function readChatCompletionsSse(
   reader: ReadableStreamDefaultReader<Uint8Array>,
   startTime?: number,
-): Promise<ChatCompletionSse> {
+): Promise<ChatSseResult> {
   const decoder = new TextDecoder();
   let buffer = "";
   const chunks: unknown[] = [];
@@ -75,6 +75,13 @@ export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/** Section banner used by every report printer. */
+export function printBanner(title: string): void {
+  console.log("\n============================================");
+  console.log(`  ${title}`);
+  console.log("============================================");
+}
+
 export function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
@@ -85,12 +92,16 @@ export function apiKeyHeader(): Record<string, string> {
   return apiKey ? { "x-api-key": apiKey } : {};
 }
 
-interface ChatSseResult {
-  chunks: unknown[];
-  toolCallSeen: boolean;
-  toolNames: string[];
-  text: string;
-  ttftMs: number;
+/** fetchJson init for an authenticated JSON POST to the backend. */
+export function postJsonInit(body: unknown): RequestInit {
+  return {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...apiKeyHeader() },
+    body: JSON.stringify(body),
+  };
+}
+
+interface ChatSseResultWithMs extends ChatSseResult {
   ms: number;
 }
 
@@ -98,7 +109,7 @@ export async function postChatCompletionsSse(
   backendUrl: string,
   body: unknown,
   opts?: { retries?: number; keepAlive?: boolean },
-): Promise<ChatSseResult> {
+): Promise<ChatSseResultWithMs> {
   const retries = opts?.retries ?? 2;
   const t0 = performance.now();
   let res: Response | undefined;
@@ -125,10 +136,7 @@ export async function postChatCompletionsSse(
   const parsed = await readChatCompletionsSse(reader, t0);
   const ms = Math.round(performance.now() - t0);
   return {
-    chunks: parsed.chunks,
-    toolCallSeen: parsed.toolCallSeen,
-    toolNames: parsed.toolNames,
-    text: parsed.text,
+    ...parsed,
     ttftMs: parsed.ttftMs > 0 ? parsed.ttftMs : ms,
     ms,
   };

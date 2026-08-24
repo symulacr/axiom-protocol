@@ -172,17 +172,15 @@ export function FlowPage({
   }, [kind, requestedInstruction]);
 
   const intentCopy =
-    intent === "fund"
-      ? f.intentFund
-      : intent === "proof"
-        ? f.intentProof
-        : intent === "bounded"
-          ? f.intentBounded
-          : intent === "recovery"
-            ? f.intentRecovery
-            : intent === "receipt"
-              ? f.intentReceipt
-              : null;
+    (
+      {
+        fund: f.intentFund,
+        proof: f.intentProof,
+        bounded: f.intentBounded,
+        recovery: f.intentRecovery,
+        receipt: f.intentReceipt,
+      } as Record<string, string | undefined>
+    )[intent ?? ""] ?? null;
 
   const isReviewOpen = [
     "review",
@@ -204,6 +202,13 @@ export function FlowPage({
     phase: OperationDraftPhase,
     error: string | null = null,
   ): void => dispatch({ type: "set-draft-phase", flow: kind, phase, error });
+
+  // Shared recoverable-error tail: humanized message lands in the sheet AND the notice rail.
+  const failDraft = (err: unknown): void => {
+    const message = humanizeError(err);
+    setDraftPhase("recoverable-error", message);
+    dispatch({ type: "notice", notice: message });
+  };
 
   // Keep wizard name in sync with draft — mint keccak256(toHex(name)) must match chat mint derivation.
   useEffect(() => {
@@ -370,26 +375,34 @@ export function FlowPage({
       );
   };
 
+  // Shared success tail: receipt row + confirmation pipeline + optional notice.
+  const settleFlowTx = (
+    txHash: `0x${string}`,
+    row: Parameters<typeof addFlowReceipt>[1],
+    notice?: string,
+  ): void => {
+    addFlowReceipt(txHash, row);
+    confirmOnChain(txHash);
+    if (notice !== undefined) dispatch({ type: "notice", notice });
+  };
+
   // shared transfer tail — receipt row + confirm pipeline + notice.
   const completeTransfer = (txHash: `0x${string}`) => {
     nonceRef.current = freshAccessProofNonce();
-    addFlowReceipt(txHash, {
-      // naming contract: the receipt kind IS the destination's nav name.
-      kind: copy.flows.transfer.receiptKind,
-      detail: interpolate(copy.flows.transfer.detail, {
+    // naming contract: the receipt kind IS the destination's nav name.
+    settleFlowTx(
+      txHash,
+      {
+        kind: copy.flows.transfer.receiptKind,
+        detail: interpolate(copy.flows.transfer.detail, {
+          agent: selectedTokenId,
+          recipient: truncateAddress(draft.value.trim()),
+        }),
+        route: "/transfer",
         agent: selectedTokenId,
-        recipient: truncateAddress(draft.value.trim()),
-      }),
-      route: "/transfer",
-      agent: selectedTokenId,
-    });
-    confirmOnChain(txHash);
-    dispatch({
-      type: "notice",
-      notice: interpolate(copy.flows.transfer.notice, {
-        agent: selectedTokenId,
-      }),
-    });
+      },
+      interpolate(copy.flows.transfer.notice, { agent: selectedTokenId }),
+    );
   };
 
   // Receiver co-sign step: signs the paused challenge AS recipient, hands back to sender to submit.
@@ -413,9 +426,7 @@ export function FlowPage({
       const txHash = await transfer.confirm(buildTransferInput());
       completeTransfer(txHash);
     } catch (err) {
-      const message = humanizeError(err);
-      setDraftPhase("recoverable-error", message);
-      dispatch({ type: "notice", notice: message });
+      failDraft(err);
     }
   };
 
@@ -472,9 +483,7 @@ export function FlowPage({
       setHandoffApplied(false);
       completeTransfer(txHash);
     } catch (err) {
-      const message = humanizeError(err);
-      setDraftPhase("recoverable-error", message);
-      dispatch({ type: "notice", notice: message });
+      failDraft(err);
     }
   };
 
@@ -488,7 +497,7 @@ export function FlowPage({
           draft.value.trim(),
         );
         if (approveHash) {
-          addFlowReceipt(approveHash, {
+          settleFlowTx(approveHash, {
             kind: f.allowanceKind,
             detail: interpolate(f.allowanceDetail, {
               amount: draft.value.trim(),
@@ -498,7 +507,6 @@ export function FlowPage({
             agent: selectedTokenId,
             opensReceipt: false,
           });
-          confirmOnChain(approveHash);
         }
         setDraftPhase("payment-required");
         dispatch({
@@ -506,9 +514,7 @@ export function FlowPage({
           notice: approveHash ? f.approveSentNotice : f.allowanceCoveredNotice,
         });
       } catch (err) {
-        const message = humanizeError(err);
-        setDraftPhase("recoverable-error", message);
-        dispatch({ type: "notice", notice: message });
+        failDraft(err);
       }
       return;
     }
@@ -516,37 +522,34 @@ export function FlowPage({
     try {
       if (kind === "mint") {
         const dataHash = await mint.registerOracle(draft.value);
-        const txHash = await mint.chainMint(dataHash);
-        addFlowReceipt(txHash, {
-          kind: flow.receiptKind,
-          detail: interpolate(flow.detail, { name: draft.value.trim() }),
-          route: "/mint",
-          agent: "new",
-        });
-        confirmOnChain(txHash);
-        dispatch({
-          type: "notice",
-          notice: interpolate(flow.notice, { name: draft.value.trim() }),
-        });
+        settleFlowTx(
+          await mint.chainMint(dataHash),
+          {
+            kind: flow.receiptKind,
+            detail: interpolate(flow.detail, { name: draft.value.trim() }),
+            route: "/mint",
+            agent: "new",
+          },
+          interpolate(flow.notice, { name: draft.value.trim() }),
+        );
       } else if (kind === "payment") {
         const result = await payment.payForAgent(
           BigInt(selectedTokenId),
           draft.value.trim(),
         );
-        addFlowReceipt(result.txHash, {
-          kind: flow.receiptKind,
-          detail: interpolate(flow.detail, {
-            amount: draft.value.trim(),
+        settleFlowTx(
+          result.txHash,
+          {
+            kind: flow.receiptKind,
+            detail: interpolate(flow.detail, {
+              amount: draft.value.trim(),
+              agent: selectedTokenId,
+            }),
+            route: "/payment",
             agent: selectedTokenId,
-          }),
-          route: "/payment",
-          agent: selectedTokenId,
-        });
-        confirmOnChain(result.txHash);
-        dispatch({
-          type: "notice",
-          notice: interpolate(flow.notice, { agent: selectedTokenId }),
-        });
+          },
+          interpolate(flow.notice, { agent: selectedTokenId }),
+        );
       } else if (kind === "transfer") {
         const input = buildTransferInput();
         const prepared = await transfer.prepare(input);
@@ -556,28 +559,26 @@ export function FlowPage({
           setDraftPhase("review");
           return;
         }
-        const txHash = await transfer.confirm(input);
-        completeTransfer(txHash);
+        completeTransfer(await transfer.confirm(input));
       } else if (kind === "deposit" || kind === "withdraw") {
         // Vault write via shared encode relay; receipt row + receipt phase ride the pipeline below.
         const txHash = await vaultWrite.handleSubmit(draft.value.trim());
         if (!txHash)
           throw new Error("Connect a wallet to submit this operation.");
-        addFlowReceipt(txHash, {
-          kind: flow.receiptKind,
-          detail: interpolate(flow.detail, {
-            amount: draft.value.trim(),
-            symbol: nativeSymbol,
+        settleFlowTx(
+          txHash,
+          {
+            kind: flow.receiptKind,
+            detail: interpolate(flow.detail, {
+              amount: draft.value.trim(),
+              symbol: nativeSymbol,
+              agent: selectedTokenId,
+            }),
+            route: `/${kind}`,
             agent: selectedTokenId,
-          }),
-          route: `/${kind}`,
-          agent: selectedTokenId,
-        });
-        confirmOnChain(txHash);
-        dispatch({
-          type: "notice",
-          notice: interpolate(flow.notice, { agent: selectedTokenId }),
-        });
+          },
+          interpolate(flow.notice, { agent: selectedTokenId }),
+        );
       } else {
         const result = await tickHook.tickStream(
           {
@@ -609,9 +610,7 @@ export function FlowPage({
         });
       }
     } catch (err) {
-      const message = humanizeError(err);
-      setDraftPhase("recoverable-error", message);
-      dispatch({ type: "notice", notice: message });
+      failDraft(err);
     }
   };
 
@@ -649,9 +648,7 @@ export function FlowPage({
     ? state.transactions.find((tx) => tx.id === draft.receiptId)
     : undefined;
   const receiptState: TxState =
-    draft.phase === "receipt"
-      ? (receiptTx?.state ?? "stale")
-      : (receiptTx?.state ?? "confirming");
+    receiptTx?.state ?? (draft.phase === "receipt" ? "stale" : "confirming");
   // Receipt chrome: state→[heading, overlay, body] table; unlisted states fall back to confirming.
   const receiptCopy: Partial<Record<TxState, [string, string, string]>> = {
     confirmed: [

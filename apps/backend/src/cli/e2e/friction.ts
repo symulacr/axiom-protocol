@@ -1,3 +1,5 @@
+import { printBanner } from "./shared.js";
+
 type FrictionSeverity = "info" | "warn" | "waste";
 
 interface FrictionFinding {
@@ -202,9 +204,7 @@ export function recordErc20Approve(): void {
 }
 
 export function printFrictionReport(): void {
-  console.log("\n============================================");
-  console.log("  Friction / Waste / Duplication Report");
-  console.log("============================================");
+  printBanner("Friction / Waste / Duplication Report");
 
   const bySeverity = (s: FrictionSeverity) =>
     findings.filter((f) => f.severity === s);

@@ -3,7 +3,7 @@ import { fetchJson } from "../../utils/response.js";
 import { getStep, postStep, stepResults } from "./http.js";
 import { markScenarioCovered } from "./scenarios.js";
 import { noteFriction } from "./friction.js";
-import { apiKeyHeader } from "./shared.js";
+import { postJsonInit } from "./shared.js";
 
 const ARCHIVE_PROBE_URL = "https://example.com";
 
@@ -178,14 +178,10 @@ async function runArchiveProbeStep(deps: {
   const { data, ok, status } = await fetchJson<{
     url: string;
     snapshot: { snapshotUrl?: string } | null;
-  }>(`${deps.backendUrl}/v1/archive/query`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...apiKeyHeader(),
-    },
-    body: JSON.stringify({ intent: "closest", url: ARCHIVE_PROBE_URL }),
-  });
+  }>(
+    `${deps.backendUrl}/v1/archive/query`,
+    postJsonInit({ intent: "closest", url: ARCHIVE_PROBE_URL }),
+  );
   const stepOk = ok && data.url === ARCHIVE_PROBE_URL;
   console.log(
     `          snapshot=${data.snapshot ? "yes" : "null"} status=${status}`,

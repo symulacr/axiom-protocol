@@ -289,6 +289,16 @@ function findTask(m: Manifest, id: string) {
   return t;
 }
 
+function mustFind<T extends { id: string }>(
+  list: T[] | undefined,
+  id: string,
+  what: string,
+): T {
+  const hit = list?.find((x) => x.id === id);
+  if (!hit) throw new Error(`Unknown ${what}: ${id}`);
+  return hit;
+}
+
 function main(): void {
   const rawArgs = process.argv.slice(2);
   const { key, rest: args } = resolveManifestKey(rawArgs);
@@ -345,8 +355,7 @@ function main(): void {
     }
     case "wave": {
       if (!m.waves?.length) throw new Error("Manifest has no waves");
-      const w = m.waves.find((x) => x.id === arg1);
-      if (!w) throw new Error(`Unknown wave: ${arg1}`);
+      const w = mustFind(m.waves, arg1!, "wave");
       m.currentWave = arg1!;
       if (rest[0] === "active" || rest[0] === "done") w.status = rest[0];
       console.log(`Current wave → ${arg1} (${w.name})`);
@@ -355,10 +364,8 @@ function main(): void {
     case "agent": {
       if (!m.waves?.length) throw new Error("Manifest has no waves");
       const [waveId, agentId, agentStatus] = [arg1, rest[0], rest[1]];
-      const w = m.waves.find((x) => x.id === waveId);
-      if (!w) throw new Error(`Unknown wave: ${waveId}`);
-      const a = w.agents.find((x) => x.id === agentId);
-      if (!a) throw new Error(`Unknown agent: ${agentId}`);
+      const w = mustFind(m.waves, waveId!, "wave");
+      const a = mustFind(w.agents, agentId!, "agent");
       if (agentStatus === "done" || agentStatus === "in_progress") {
         a.status = agentStatus;
       }
@@ -366,15 +373,13 @@ function main(): void {
       break;
     }
     case "resolve": {
-      const b = m.blockers.find((x) => x.id === arg1);
-      if (!b) throw new Error(`Unknown blocker: ${arg1}`);
+      const b = mustFind(m.blockers, arg1!, "blocker");
       b.status = "resolved";
       console.log(`✓ Blocker ${b.id} resolved`);
       break;
     }
     case "gate": {
-      const g = m.gates.find((x) => x.id === arg1);
-      if (!g) throw new Error(`Unknown gate: ${arg1}`);
+      const g = mustFind(m.gates, arg1!, "gate");
       const status = rest[0] as GateStatus;
       if (!["pending", "partial", "met"].includes(status)) {
         throw new Error("gate status must be pending|partial|met");
@@ -385,8 +390,7 @@ function main(): void {
       break;
     }
     case "discovery": {
-      const d = m.discoveries.find((x) => x.id === arg1);
-      if (!d) throw new Error(`Unknown discovery: ${arg1}`);
+      const d = mustFind(m.discoveries, arg1!, "discovery");
       d.status = rest[0] ?? "done";
       console.log(`Discovery ${d.id} → ${d.status}`);
       break;

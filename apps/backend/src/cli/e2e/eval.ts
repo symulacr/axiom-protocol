@@ -1,4 +1,3 @@
-
 import {
   computeLiveGate,
   assertLiveGate,
@@ -6,6 +5,7 @@ import {
   type LiveGateReport,
 } from "./scenarios.js";
 import type { ChatBenchReport } from "./chat-bench.js";
+import { printBanner } from "./shared.js";
 
 const LIVE_CRITICAL_IDS = [
   "api.health",
@@ -24,9 +24,7 @@ const LIVE_CRITICAL_IDS = [
 
 function printLiveGate(minPct = 85): LiveGateReport {
   const report = computeLiveGate(LIVE_CRITICAL_IDS);
-  console.log("\n============================================");
-  console.log("  Live Path Gate");
-  console.log("============================================");
+  printBanner("Live Path Gate");
   console.log(
     `  Live proof: ${report.live}/${report.inScope} (${report.livePct}%)  |  critical ${report.criticalLive}/${report.criticalTotal}`,
   );
@@ -48,7 +46,9 @@ function printLiveGate(minPct = 85): LiveGateReport {
       `\n  Live gate failed — need ≥${minPct}% live proof and all ${report.criticalTotal} critical paths`,
     );
   } else {
-    console.log(`\n  Live gate passed (≥${minPct}%, critical ${report.criticalTotal}/${report.criticalTotal})`);
+    console.log(
+      `\n  Live gate passed (≥${minPct}%, critical ${report.criticalTotal}/${report.criticalTotal})`,
+    );
   }
   return report;
 }
@@ -64,7 +64,7 @@ interface ChatEvalReport {
   dimensions: Array<{ id: string; ok: boolean; detail: string }>;
 }
 
-const CHAT_EVAL_IDS = [
+export const CHAT_EVAL_IDS = [
   "chat.tools-read",
   "chat.tools-write",
   "chat.tools-complex",
@@ -91,8 +91,7 @@ export function buildChatEval(bench: ChatBenchReport): ChatEvalReport {
     const scenario = scenarios.find((s) => s.id === id);
     const hit = covered.has(id);
     const skipped = scenario?.status === "skipped";
-    const liveSkipped =
-      !bench.liveCompute && LIVE_CHAT_IDS.has(id) && skipped;
+    const liveSkipped = !bench.liveCompute && LIVE_CHAT_IDS.has(id) && skipped;
     return {
       id,
       ok: hit || liveSkipped,
@@ -118,9 +117,7 @@ export function buildChatEval(bench: ChatBenchReport): ChatEvalReport {
 }
 
 export function printChatEval(report: ChatEvalReport): void {
-  console.log("\n============================================");
-  console.log("  Chat Eval");
-  console.log("============================================");
+  printBanner("Chat Eval");
   console.log(
     `  Score: ${report.scorePct}%  |  tool parity: ${report.toolParityPct}%`,
   );

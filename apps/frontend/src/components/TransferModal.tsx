@@ -50,12 +50,9 @@ const PHASE_LABELS: Record<TransferPhase, string> = {
   confirming: "Confirming on-chain…",
 };
 
-const PHASE_RETRY: Partial<Record<TransferPhase, string>> = {
-  challenge: "Failed. Tap Edit to retry with a fresh nonce.",
-  signing: "Failed. Tap Edit to retry with a fresh nonce.",
-  finalizing: "Failed. Tap Edit to retry with a fresh nonce.",
-  confirming: "Failed. Tap Edit to retry with a fresh nonce.",
-};
+/** Every failed phase retries identically: Edit regenerates a fresh nonce
+ * (single-use). Only the idle phase has no retry hint to offer. */
+const RETRY_HINT = "Failed. Tap Edit to retry with a fresh nonce.";
 
 type TransferModalProps = {
   tokenId: bigint;
@@ -456,11 +453,10 @@ export function TransferModal({
 
   const retryGuidance = useMemo(() => {
     if (!error) return null;
+
+    if (transferPhase !== "idle") return RETRY_HINT;
+
     const msg = error.message.toLowerCase();
-
-    const phaseHint = PHASE_RETRY[transferPhase];
-    if (phaseHint !== undefined) return phaseHint;
-
     if (msg.includes("challenge")) {
       return "The challenge request failed. Generate a new nonce and try again.";
     }
@@ -603,24 +599,26 @@ export function TransferModal({
     setOpen(false);
   }, [setOpen]);
 
-  const mergedError =
+  // One review-error shell for both error sources (submit-time and hook-level).
+  const errorContent =
     submitError !== null ? (
-      <div className="review-error" role="alert" style={{ marginTop: 12 }}>
-        <AlertTriangle size={14} />
-        <div>{submitError}</div>
-      </div>
+      submitError
     ) : error !== null ? (
+      <>
+        {humanizeError(error)}
+        {retryGuidance !== null && (
+          <>
+            <br />
+            {retryGuidance}
+          </>
+        )}
+      </>
+    ) : null;
+  const mergedError =
+    errorContent !== null ? (
       <div className="review-error" role="alert" style={{ marginTop: 12 }}>
         <AlertTriangle size={14} />
-        <div>
-          {humanizeError(error)}
-          {retryGuidance !== null && (
-            <>
-              <br />
-              {retryGuidance}
-            </>
-          )}
-        </div>
+        <div>{errorContent}</div>
       </div>
     ) : null;
 
