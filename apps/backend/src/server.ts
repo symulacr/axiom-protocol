@@ -987,23 +987,46 @@ function registerChatRoutes(
           "WALLET_PROOF_INVALID",
         );
       const events = getEventStore().getAll(100, undefined, "transcript");
-      const transcripts: unknown[] = [];
-      for (const evt of events) {
-        if (payloadField(evt.payload, "wallet") !== wallet) continue;
+      const jobs = events.flatMap((evt) => {
         const rootHash = evt.txHash;
-        if (!rootHash || !cfg.chatStorage) continue;
-        try {
-          const blob = await cfg.chatStorage.download(
-            rootHash as `0x${string}`,
-          );
-          transcripts.push(JSON.parse(new TextDecoder().decode(blob)));
-        } catch (err) {
-          log.warn("chat transcript download failed", {
-            rootHash,
-            error: err instanceof Error ? err.message : String(err),
-          });
+        if (
+          payloadField(evt.payload, "wallet") !== wallet ||
+          !rootHash ||
+          !cfg.chatStorage
+        )
+          return [];
+        return [{ rootHash }];
+      });
+      type DownloadSlot = { ok: true; value: unknown } | { ok: false };
+      const slots = new Array<DownloadSlot>(jobs.length);
+      let nextJob = 0;
+      const worker = async (): Promise<void> => {
+        while (nextJob < jobs.length) {
+          const i = nextJob++;
+          const { rootHash } = jobs[i]!;
+          try {
+            const blob = await cfg.chatStorage!.download(
+              rootHash as `0x${string}`,
+            );
+            slots[i] = {
+              ok: true,
+              value: JSON.parse(new TextDecoder().decode(blob)),
+            };
+          } catch (err) {
+            slots[i] = { ok: false };
+            log.warn("chat transcript download failed", {
+              rootHash,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
         }
-      }
+      };
+      await Promise.all(
+        Array.from({ length: Math.min(6, jobs.length) }, () => worker()),
+      );
+      const transcripts = slots
+        .filter((s): s is { ok: true; value: unknown } => s.ok)
+        .map((s) => s.value);
       transcripts.reverse(); // newest turn first
       res.json({ wallet, count: transcripts.length, transcripts });
     },
