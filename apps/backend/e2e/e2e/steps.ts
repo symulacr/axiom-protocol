@@ -28,9 +28,9 @@ import {
   detectVaultAbiVariant,
   readVaultStrategy,
   vaultAbiFor,
-} from "../../orchestrator/index.js";
+} from "../../src/orchestrator/index.js";
 import { TRANSFER_TOPIC } from "@axiom/config";
-import type { fetchJson as fetchJsonFn } from "../../utils/response.js";
+import type { fetchJson as fetchJsonFn } from "../../src/utils/response.js";
 import { type postStep as postStepFn, stepResults } from "./http.js";
 import {
   addressExplorerUrl,

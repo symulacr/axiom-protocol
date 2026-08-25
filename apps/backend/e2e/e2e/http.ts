@@ -1,4 +1,4 @@
-import { fetchJson } from "../../utils/response.js";
+import { fetchJson } from "../../src/utils/response.js";
 import { apiKeyHeader, postJsonInit } from "./shared.js";
 
 interface StepResult {

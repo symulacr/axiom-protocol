@@ -1,4 +1,4 @@
-import { getSharedProvider } from "../provider.js";
+import { getSharedProvider } from "../providers.js";
 import { TTLCache } from "../utils/response.js";
 import { createLogger } from "../utils/logger.js";
 

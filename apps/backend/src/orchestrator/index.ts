@@ -15,7 +15,7 @@ import {
   createRouterClient,
   createStaticProvider,
   resolveChainId,
-} from "../compute/index.js";
+} from "../providers.js";
 import { pickOGNetwork } from "@axiom/config/networks";
 import {
   EVENT_NAMES,

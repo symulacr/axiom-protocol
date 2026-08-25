@@ -18,7 +18,7 @@ import { AGENT_NFT_ABI } from "@axiom/config/abis";
 import { HTTP } from "@axiom/config/constants";
 import { resolveChatModel } from "@axiom/config/chat-tools";
 import { TypedContract } from "@axiom/config/types/contract";
-import { getSharedProvider } from "../provider.js";
+import { getSharedProvider } from "../providers.js";
 import { keccak256, solidityPacked } from "ethers";
 import { ZERO_DATA_ROOT } from "@axiom/config/constants";
 

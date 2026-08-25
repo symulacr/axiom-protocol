@@ -1,16 +1,16 @@
 import { Wallet, hexlify } from "ethers";
 import { loadEnv, getEnv, getEnvWithAlias } from "@axiom/config/env";
-import { createLogger } from "../utils/logger.js";
+import { createLogger } from "../src/utils/logger.js";
 
 const log = createLogger("run-e2e");
-import { getSharedProvider } from "../provider.js";
+import { getSharedProvider } from "../src/providers.js";
 import {
   buildEip712Domain,
   deriveUncompressedPubkeyFromHex,
 } from "@axiom/config";
 import { getAddresses } from "@axiom/config/addresses";
 import { resolveStorageRpc, ARISTOTLE_CHAIN_ID } from "@axiom/config/networks";
-import { fetchJson } from "../utils/response.js";
+import { fetchJson } from "../src/utils/response.js";
 import { postStep } from "./e2e/http.js";
 import {
   printE2eBanner,

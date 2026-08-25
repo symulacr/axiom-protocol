@@ -6,7 +6,7 @@ import { runChatBench, printChatBenchReport } from "./e2e/chat-bench.js";
 import { resolveE2eWallets } from "./e2e/wallet.js";
 import { resolveBenchTokenId } from "./e2e/e2e-reuse.js";
 import { printBanner } from "./e2e/shared.js";
-import { getSharedProvider } from "../provider.js";
+import { getSharedProvider } from "../src/providers.js";
 import { ARISTOTLE_CHAIN_ID } from "@axiom/config/networks";
 
 loadEnv();

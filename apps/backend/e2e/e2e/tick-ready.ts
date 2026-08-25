@@ -1,6 +1,6 @@
 import { ethers } from "ethers";
 import { STRATEGY_OF_CURRENT, STRATEGY_OF_LEGACY } from "@axiom/config/abis";
-import { getSharedProvider } from "../../provider.js";
+import { getSharedProvider } from "../../src/providers.js";
 
 const ZERO_ROOT = `0x${"0".repeat(64)}` as const;
 

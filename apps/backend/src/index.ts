@@ -4,11 +4,11 @@ import { startServer, type ServerConfig } from "./server.js";
 import { createLogger } from "./utils/logger.js";
 import { initSentry } from "./utils/logger.js";
 import { loadEnv } from "@axiom/config/env";
-import { getSharedProvider } from "./provider.js";
+import { createStaticProvider, getSharedProvider } from "./providers.js";
 import { backendEnvSchema } from "./env-schema.js";
 import { ARISTOTLE_CHAIN_ID, resolveStorageRpc } from "@axiom/config/networks";
 import { ZeroGStorage, type StorageAdapter } from "@axiom/config/storage/0g";
-import { createStaticProvider } from "./compute/index.js";
+
 import { getEventStore } from "./events/store.js";
 import { IndexerService } from "./indexer/index.js";
 

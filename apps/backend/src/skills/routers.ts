@@ -13,7 +13,7 @@ import {
   getLogsChunked,
   readAgentDataHash,
 } from "../skills/shared.js";
-import { getSharedProvider } from "../provider.js";
+import { getSharedProvider } from "../providers.js";
 import { TTLCache, sendError } from "../utils/response.js";
 import { createLogger } from "../utils/logger.js";
 import { TRANSFER_TOPIC } from "@axiom/config/constants";

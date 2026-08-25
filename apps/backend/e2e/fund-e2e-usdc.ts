@@ -1,13 +1,13 @@
 import { parseUnits, Wallet } from "ethers";
 import { loadEnv, getEnv, getEnvWithAlias } from "@axiom/config/env";
-import { createLogger } from "../utils/logger.js";
+import { createLogger } from "../src/utils/logger.js";
 
 const log = createLogger("fund-e2e-usdc");
 import { getAddresses } from "@axiom/config/addresses";
 import { PAYMENT_TOKEN_ABI } from "@axiom/config/abis";
 import { TypedContract } from "@axiom/config/types/contract";
 import { ARISTOTLE_CHAIN_ID } from "@axiom/config/networks";
-import { getSharedProvider } from "../provider.js";
+import { getSharedProvider } from "../src/providers.js";
 import { resolveE2eWallets } from "./e2e/wallet.js";
 import { E2E_PAYMENT_MICRO_MIN_TOTAL } from "./e2e/fast-path.js";
 

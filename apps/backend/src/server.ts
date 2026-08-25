@@ -28,7 +28,7 @@ import {
   getComputeBaseUrl,
   createRouterClient,
   logEffectiveComputeConfig,
-} from "./compute/index.js";
+} from "./providers.js";
 import { AGENT_NFT_ABI } from "@axiom/config/abis";
 
 import { StrategyRunner } from "./orchestrator/index.js";
@@ -40,7 +40,7 @@ import {
   resolveContextWindow,
 } from "@axiom/config/chat-tools";
 import { getRuntimeConfig, HTTP } from "@axiom/config/constants";
-import { getSharedProvider } from "./provider.js";
+import { getSharedProvider } from "./providers.js";
 import { InMemoryStorage, type StorageAdapter } from "@axiom/config/storage/0g";
 import {
   createApiKeyAuth,

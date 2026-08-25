@@ -1,5 +1,5 @@
 import WebSocket from "ws";
-import { fetchJson } from "../../utils/response.js";
+import { fetchJson } from "../../src/utils/response.js";
 import { getStep, postStep, stepResults } from "./http.js";
 import { markScenarioCovered } from "./scenarios.js";
 import { noteFriction } from "./friction.js";

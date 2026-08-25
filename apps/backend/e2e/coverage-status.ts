@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 const COVERAGE_DIR = join(
   dirname(fileURLToPath(import.meta.url)),
-  "../../.coverage",
+  "../.coverage",
 );
 
 const MANIFEST_FILES: Record<string, string> = {

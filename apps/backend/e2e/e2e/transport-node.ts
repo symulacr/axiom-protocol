@@ -5,7 +5,7 @@ import {
   type ToolRuntime,
   type ToolResult,
 } from "@axiom/chat-runtime";
-import { getSharedProvider } from "../../provider.js";
+import { getSharedProvider } from "../../src/providers.js";
 export type E2eToolDeps = {
   backendUrl: string;
   operatorAddress: string;

@@ -1,4 +1,4 @@
-import { fetchJson } from "../../utils/response.js";
+import { fetchJson } from "../../src/utils/response.js";
 import { getStep, postStep, stepResults } from "./http.js";
 import { markScenarioCovered, markScenarioSkipped } from "./scenarios.js";
 import { e2eFastEnabled, e2eStrictComputeEnabled } from "./fast-path.js";

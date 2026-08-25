@@ -1,5 +1,5 @@
 import WebSocket from "ws";
-import { fetchJson } from "../../utils/response.js";
+import { fetchJson } from "../../src/utils/response.js";
 import { resolveE2eComputeModel } from "./fast-path.js";
 import { percentile, printBanner } from "./shared.js";
 

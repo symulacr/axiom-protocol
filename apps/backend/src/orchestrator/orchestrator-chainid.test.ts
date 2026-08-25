@@ -2,7 +2,7 @@ import { test } from "bun:test";
 import assert from "node:assert/strict";
 import { Wallet } from "ethers";
 import { StrategyRunner } from "../../src/orchestrator/index.js";
-import { getComputeBaseUrl } from "../../src/compute/index.js";
+import { getComputeBaseUrl } from "../../src/providers.js";
 
 function makeSigner(): Wallet {
   return new Wallet("0x" + "11".repeat(32));

@@ -1,5 +1,5 @@
 import { ethers, type Wallet } from "ethers";
-import { fetchJson } from "../../utils/response.js";
+import { fetchJson } from "../../src/utils/response.js";
 import { getAddresses } from "@axiom/config/addresses";
 import { ARISTOTLE_CHAIN_ID } from "@axiom/config/networks";
 import { executeE2eTool, type E2eToolDeps } from "./transport-node.js";

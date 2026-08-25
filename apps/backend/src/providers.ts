@@ -3,9 +3,27 @@ import { FetchRequest, JsonRpcProvider } from "ethers";
 import {
   ARISTOTLE_CHAIN_ID,
   resolveComputeRouterUrl,
+  resolveRpcUrl,
 } from "@axiom/config/networks";
 import { resolveChatModel } from "@axiom/config/chat-tools";
-import { createLogger } from "../utils/logger.js";
+import { createLogger } from "./utils/logger.js";
+
+// Cache keyed by resolved RPC URL so per-chain lookups get distinct providers instead of chain #1's forever.
+const providers = new Map<string, JsonRpcProvider>();
+
+export function getSharedProvider(chainId?: number): JsonRpcProvider {
+  const rpcUrl = resolveRpcUrl(chainId);
+  let provider = providers.get(rpcUrl);
+  if (!provider) {
+    const fetchReq = new FetchRequest(rpcUrl);
+    fetchReq.timeout = 10_000;
+    provider = new JsonRpcProvider(fetchReq, undefined, {
+      staticNetwork: true,
+    });
+    providers.set(rpcUrl, provider);
+  }
+  return provider;
+}
 
 export function resolveChainId(chainId?: number): number {
   if (chainId !== undefined) return chainId;

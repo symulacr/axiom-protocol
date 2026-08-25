@@ -23,7 +23,7 @@ import { pipelineWalletTxs } from "./tx-pipeline.js";
 import { markCovered, markSkipped } from "./matrix.js";
 import { markScenarioCovered } from "./scenarios.js";
 import { ensureErc20Allowance } from "./erc20.js";
-import { readVaultStrategy } from "../../orchestrator/index.js";
+import { readVaultStrategy } from "../../src/orchestrator/index.js";
 
 // All extended fragments are already part of AGENT_NFT_ABI; keep the alias for callers.
 const AGENT_NFT_EXTENDED_ABI = [...AGENT_NFT_ABI] as const;

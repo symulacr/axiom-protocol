@@ -1,5 +1,5 @@
-import { fetchJson } from "../../utils/response.js";
-import { resolveChainId } from "../../compute/index.js";
+import { fetchJson } from "../../src/utils/response.js";
+import { resolveChainId } from "../../src/providers.js";
 import { defaultChatModelForChain } from "@axiom/config/networks";
 import { apiKeyHeader } from "./shared.js";
 
