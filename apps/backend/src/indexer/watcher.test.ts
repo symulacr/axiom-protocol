@@ -3,7 +3,7 @@ import { test } from "bun:test";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Watcher } from "./watcher.js";
+import { Watcher } from "./index.js";
 
 // Deterministic fake chain: hash(n) = 0x + n padded, unless a reorg is staged
 // for that height (reorgs map flips the canonical hash after `forkAt`).
