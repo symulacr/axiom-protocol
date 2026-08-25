@@ -589,8 +589,10 @@ export function EncodePreviewCard({
   const preview = parseEncodePreview(content);
   if (!preview) return null;
   const [signedHash, setSignedHash] = useState<string | null>(null);
+  const [signError, setSignError] = useState<string | null>(null);
   const handleSign = async () => {
     if (!onSign || !preview.to) return;
+    setSignError(null);
     try {
       const hash = await onSign({
         to: preview.to as `0x${string}`,
@@ -598,8 +600,9 @@ export function EncodePreviewCard({
         value: preview.value ? BigInt(preview.value) : undefined,
       });
       setSignedHash(hash);
-    } catch {
-      void 0;
+    } catch (err) {
+      // humanized like ToolCallCard — never a raw viem/wallet dump.
+      setSignError(humanizeError(err));
     }
   };
 
@@ -674,6 +677,17 @@ export function EncodePreviewCard({
           <div style={{ color: COLORS.textDim, marginTop: 2 }}>
             {chatCopy.encodeRawData}
           </div>
+        </div>
+      ) : null}
+      {signError ? (
+        <div
+          style={{
+            marginTop: 8,
+            color: "var(--c-danger)",
+            fontSize: "var(--text-xs)",
+          }}
+        >
+          {signError}
         </div>
       ) : null}
       {onSign && preview.to && !signedHash ? (

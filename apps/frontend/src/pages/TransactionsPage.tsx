@@ -155,7 +155,7 @@ function ReceiptDrawer({
   locale,
 }: {
   tx: Transaction;
-  explorerTx: (hash: string) => string;
+  explorerTx: (hash: string) => string | undefined;
   onClose: () => void;
   go: (path: string) => void;
   dispatch: React.Dispatch<ConsoleAction>;
@@ -165,6 +165,8 @@ function ReceiptDrawer({
   const txCopy = copy.transactions;
   // Dismiss trio: Esc + focus restore added here; backdrop and X already existed.
   useModalDismiss(onClose);
+  // U5: chain rows without a txHash synthesize "—" — no explorer link for those.
+  const explorerHref = explorerTx(tx.hash);
   const recover = isRecoverableTx(tx.state);
   const copyHash = () => {
     navigator.clipboard?.writeText(tx.hash);
@@ -187,15 +189,22 @@ function ReceiptDrawer({
        in-app action demotes to a ghost that runs another like this instead
        of pre-filling a fresh draft from a finished receipt. */
     <>
-      <a
-        className="button button-primary"
-        href={explorerTx(tx.hash)}
-        target="_blank"
-        rel="noreferrer"
-      >
-        <ArrowRight size={15} />
-        View on explorer
-      </a>
+      {explorerHref ? (
+        <a
+          className="button button-primary"
+          href={explorerHref}
+          target="_blank"
+          rel="noreferrer"
+        >
+          <ArrowRight size={15} />
+          View on explorer
+        </a>
+      ) : (
+        <span className="button button-primary" aria-disabled="true">
+          <ArrowRight size={15} />
+          View on explorer
+        </span>
+      )}
       <Button
         variant="ghost"
         onClick={() => go(`${tx.route}?intent=receipt`)}
@@ -248,14 +257,18 @@ function ReceiptDrawer({
             <div>
               <dt>{txCopy.network}</dt>
               <dd>
-                <a
-                  className="text-link"
-                  href={explorerTx(tx.hash)}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  View on explorer <ArrowRight size={12} />
-                </a>
+                {explorerHref ? (
+                  <a
+                    className="text-link"
+                    href={explorerHref}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    View on explorer <ArrowRight size={12} />
+                  </a>
+                ) : (
+                  <span>View on explorer</span>
+                )}
               </dd>
             </div>
             <div>
@@ -290,7 +303,10 @@ export function TransactionsPage({
   const copy = getCopy(state.settings.locale);
   const txCopy = copy.transactions;
   const chainId = useChainId();
-  const explorerTx = (hash: string) => explorerTxUrl(chainId, hash);
+  // U5: only a real 32-byte tx hash gets an explorer URL; synthesized "—" rows render unlinked.
+  const isTxHash = (hash: string) => /^0x[0-9a-fA-F]{64}$/.test(hash);
+  const explorerTx = (hash: string) =>
+    isTxHash(hash) ? explorerTxUrl(chainId, hash) : undefined;
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedFilter = searchParams.get("filter");
   const requestedTx = searchParams.get("tx");
@@ -480,7 +496,7 @@ export function TransactionsPage({
                 {advancedActive
                   ? `${txCopy.moreFilters} · ${stateFilterLabel(filter as TxState)}`
                   : txCopy.moreFilters}
-                <ChevronDown size={11} />
+                <ChevronDown size={14} />
               </button>
             </div>
           </div>

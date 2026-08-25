@@ -74,7 +74,6 @@ type PublicPage = {
   icon: typeof Network;
   artifact: EvidenceArtifact;
   journey: string;
-  rail: string;
 };
 
 const pages: Record<PublicSeoSlug, PublicPage> = {
@@ -112,7 +111,6 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
       ],
     },
     journey: "Trace an\nagent evidence path.",
-    rail: "IDENTITY → RECEIPT",
   },
   payments: {
     title: "Payments that retain\ntheir receipt boundary.",
@@ -147,7 +145,6 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
       ],
     },
     journey: "Inspect the\nreceipt boundary.",
-    rail: "ALLOWANCE → RECEIPT",
   },
   proofs: {
     title: "Proof stays beside\nthe decision it supports.",
@@ -185,7 +182,6 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
       ],
     },
     journey: "Follow the\nfinality chain.",
-    rail: "SUBMIT → FINALITY",
   },
   storage: {
     title: "Publish data with\na root you can inspect.",
@@ -223,7 +219,6 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
       ],
     },
     journey: "Inspect the\nstorage root.",
-    rail: "ROOT → PUBLICATION",
   },
   developers: {
     title: "Start from the\nproof you need to expose.",
@@ -258,7 +253,6 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
       ],
     },
     journey: "Build from the\nproof boundary.",
-    rail: "DOCS → CONSOLE",
   },
 };
 
@@ -344,14 +338,7 @@ export function PublicSeoPage({ slug }: { slug: PublicSeoSlug }) {
         </a>
       </header>
       <section className="seo-hero">
-        <div
-          className="seo-route-rail"
-          aria-label={`Route context: ${page.rail}`}
-        >
-          <span>ROUTE</span>
-          <strong>{page.rail}</strong>
-          <i aria-hidden="true" />
-        </div>
+        <div className="seo-route-rail" role="presentation" />
         <div className="seo-hero-copy">
           <h1>
             {page.title.split("\n").map((line, index) => (

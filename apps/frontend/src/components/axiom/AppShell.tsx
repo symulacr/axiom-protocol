@@ -403,7 +403,7 @@ function MobileNavigationDrawer({
           onClick={onClose}
           aria-label={copy.a11y.closeNav}
         >
-          <X size={18} />
+          <X size={16} />
         </button>
         <Sidebar
           route={route}

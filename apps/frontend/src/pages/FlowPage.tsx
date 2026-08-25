@@ -1089,8 +1089,13 @@ export function FlowPage({
     dispatch({ type: "clear-draft", flow: kind });
   };
 
+  // narrowed once so the guarded receipt buttons keep the string type in closures
+  const receiptId = draft.receiptId;
+
   const copyReceipt = () => {
-    if (draft.receiptId) navigator.clipboard?.writeText(draft.receiptId);
+    // no receipt id (held tick / stream-only) → no copy, no false "copied" toast
+    if (!receiptId) return;
+    navigator.clipboard?.writeText(receiptId);
     dispatch({ type: "notice", notice: f.receiptCopiedNotice });
   };
 
@@ -1431,24 +1436,26 @@ export function FlowPage({
                 </div>
               </div>
               <div>
-                <Button
-                  variant="secondary"
-                  onClick={copyReceipt}
-                  icon={<Copy size={14} />}
-                >
-                  {f.copyReceiptAction}
-                </Button>
-                <Button
-                  variant="ghost"
-                  onClick={() =>
-                    go(
-                      `/transactions?tx=${encodeURIComponent(draft.receiptId || "")}`,
-                    )
-                  }
-                  icon={<ReceiptText size={14} />}
-                >
-                  {f.openReceiptAction}
-                </Button>
+                {receiptId ? (
+                  <>
+                    <Button
+                      variant="secondary"
+                      onClick={copyReceipt}
+                      icon={<Copy size={14} />}
+                    >
+                      {f.copyReceiptAction}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() =>
+                        go(`/transactions?tx=${encodeURIComponent(receiptId)}`)
+                      }
+                      icon={<ReceiptText size={14} />}
+                    >
+                      {f.openReceiptAction}
+                    </Button>
+                  </>
+                ) : null}
                 <Button
                   variant="ghost"
                   onClick={restart}

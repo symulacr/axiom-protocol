@@ -444,11 +444,11 @@ export function AgentPage({
                   ? `${lastEvent.eventName} · block ${lastEvent.blockNumber}`
                   : "no events indexed"}
               </Fact>
-              {metadata?.dataHash && (
+              {lastEvent?.txHash && (
                 <Fact label="Explorer">
                   <a
                     className="text-link"
-                    href={explorerTx(metadata.dataHash)}
+                    href={explorerTx(lastEvent.txHash)}
                     target="_blank"
                     rel="noreferrer"
                   >

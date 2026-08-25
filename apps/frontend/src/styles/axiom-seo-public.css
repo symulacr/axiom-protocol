@@ -1,7 +1,7 @@
 /* Copper Command Deck — hubs publics SEO : rail cuivre, preuve mono, phosphor réservé aux états vérifiés. */
 .seo-public {
   min-height: 100svh;
-  overflow: hidden;
+  overflow-x: clip;
   padding: 0 4vw;
   color: #e9e2d9;
   background: #0b0e0f;
@@ -87,40 +87,6 @@
   border-left: 2px solid var(--copper, #d28b52);
   color: var(--copper, #d28b52);
   font-family: "JetBrains Mono", monospace;
-}
-
-/* The copper boundary is structural, not a numbered or textual route marker. */
-.seo-route-rail > span,
-.seo-route-rail > small,
-.seo-route-rail > strong,
-.seo-route-rail > i {
-  display: none;
-}
-
-.seo-route-rail span,
-.seo-route-rail small {
-	color: #a49f97;
-	font-size: var(--fs-mono);
-	font-weight: 500;
-	letter-spacing: .12em;
-}
-
-.seo-route-rail strong {
-	max-width: 13px;
-	color: var(--completion-bright, #f1b879);
-	font-size: var(--fs-mono);
-	font-weight: 500;
-	letter-spacing: .08em;
-	line-height: var(--support-leading);
-	text-transform: uppercase;
-	writing-mode: vertical-rl;
-}
-
-.seo-route-rail i {
-	flex: 1;
-	min-height: 32px;
-	margin-left: -var(--space-3);
-	border-left: 1px solid rgba(210, 139, 82, .32);
 }
 
 .seo-hero-copy {
@@ -375,8 +341,6 @@
   .seo-console-link { margin-left: auto; }
 	.seo-hero { grid-template-columns: minmax(0, 1fr); gap: var(--space-6); padding: 44px 0; }
 	.seo-route-rail { grid-column: 1; flex-direction: row; align-items: center; gap: var(--space-2); min-height: auto; padding: 0 0 var(--space-2); border-left: 0; border-bottom: 1px solid rgba(210, 139, 82, .38); }
-	.seo-route-rail strong { max-width: none; font-size: var(--fs-mono); writing-mode: initial; }
-	.seo-route-rail i { display: none; }
 	.seo-hero-copy { grid-column: 1; }
 	.seo-proof-card { grid-column: 1; box-shadow: var(--shadow-plate-s); }
   .seo-link-field { grid-template-columns: 1fr; gap: var(--space-6); padding: var(--space-7) 0; }

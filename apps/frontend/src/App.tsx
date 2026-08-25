@@ -203,7 +203,7 @@ function Guide({
             onClick={onClose}
             aria-label={copy.a11y.closeOnboarding}
           >
-            <X size={17} />
+            <X size={16} />
           </button>
           <h2>{item.title}</h2>
           <p>{item.copy}</p>

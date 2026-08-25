@@ -43,6 +43,22 @@ describe("public hub paths (route registry single source)", () => {
     }
   });
 
+  it("keeps pre-wave-1 short hub URLs as inbound compat aliases (U1)", () => {
+    expect(resolvePublicSeoSlug("/agents")).toBe("agents");
+    expect(resolveRoute("/agents")).toBe("public-agents");
+    // the /agents/:tokenId prefix rule must not be shadowed by the alias
+    expect(resolveRoute("/agents/7")).toBe("agent");
+    expect(KNOWN_PATHS.has("/payments")).toBe(true);
+    expect(KNOWN_PATHS.has("/proofs")).toBe(true);
+    expect(KNOWN_PATHS.has("/developers")).toBe(true);
+  });
+
+  it("registers the cross-wallet handoff receive path (U2)", () => {
+    expect(KNOWN_PATHS.has("/transfer/co-sign")).toBe(true);
+    expect(resolveRoute("/transfer/co-sign")).toBe("transfer-co-sign");
+    expect(KNOWN_PATHS.has("/transfer-co-sign")).toBe(false);
+  });
+
   it("keeps sitemap.xml URLs inside KNOWN_PATHS (no phantom hub URLs)", () => {
     const xml = readFileSync(
       new URL("../../public/sitemap.xml", import.meta.url),

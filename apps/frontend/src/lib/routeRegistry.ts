@@ -45,7 +45,7 @@ const ROUTES: RouteDefinition[] = [
   def("settings"),
   def("staking"),
   // Cross-wallet handoff receive path — public (acceptance signature is the gate), kept out of nav/palette.
-  def("transfer-co-sign"),
+  def("transfer-co-sign", { path: "/transfer/co-sign" }),
 ];
 
 /** PublicSeoSlug → canonical hub path, derived so emitted hrefs can never drift from the registry. */
@@ -70,11 +70,25 @@ const FEATURE_ALIAS_TO_CANONICAL: Record<string, string> = {
   "/features/developers": PUBLIC_HUB_PATHS.developers,
 };
 
+/** Pre-wave-1 published short URLs — kept as inbound compat aliases.
+ *  Exact-match keys only: `/agents/:tokenId` keeps its own resolveRoute rule. */
+const SHORT_HUB_ALIASES: Record<string, string> = {
+  "/agents": PUBLIC_HUB_PATHS.agents,
+  "/payments": PUBLIC_HUB_PATHS.payments,
+  "/proofs": PUBLIC_HUB_PATHS.proofs,
+  "/developers": PUBLIC_HUB_PATHS.developers,
+};
+
+const ALIAS_TO_CANONICAL: Record<string, string> = {
+  ...FEATURE_ALIAS_TO_CANONICAL,
+  ...SHORT_HUB_ALIASES,
+};
+
 /** Alias → Route id, derived from the canonical map so one table owns both.
  *  Resolved directly against ROUTES (not resolveRoute) to avoid a circular
  *  dependency on this very table during module init. */
 const PUBLIC_ALIASES: Record<string, Route> = Object.fromEntries(
-  Object.entries(FEATURE_ALIAS_TO_CANONICAL).map(([alias, canonical]) => [
+  Object.entries(ALIAS_TO_CANONICAL).map(([alias, canonical]) => [
     alias,
     ROUTES.find((entry) => entry.path === canonical)?.route ?? "not-found",
   ]),
@@ -87,10 +101,10 @@ const PUBLIC_SEO_ROUTES: Record<string, PublicSeoSlug> = Object.fromEntries(
   ).map((entry) => [entry.path, entry.publicSlug]),
 );
 
-/** Public hub slug for a request path, following /features/* aliases. */
+/** Public hub slug for a request path, following /features/* and short-URL aliases. */
 export function resolvePublicSeoSlug(path: string): PublicSeoSlug | null {
   const cleanPath = path.split("?", 1)[0] ?? path;
-  const canonical = FEATURE_ALIAS_TO_CANONICAL[cleanPath] ?? cleanPath;
+  const canonical = ALIAS_TO_CANONICAL[cleanPath] ?? cleanPath;
   return PUBLIC_SEO_ROUTES[canonical] ?? null;
 }
 
