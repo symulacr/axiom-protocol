@@ -13,7 +13,7 @@
   copy.flowUi.receive* (en/fr/de).
 */
 import { useState, type ReactElement, type ReactNode } from "react";
-import { useAccount, useConnect, useSignTypedData } from "wagmi";
+import { useAccount, useConnect, useConnectors, useSignTypedData } from "wagmi";
 import type { Connector } from "wagmi";
 import {
   AlertTriangle,
@@ -67,7 +67,10 @@ export function CoSignPage({ go }: { go: (path: string) => void }) {
   const rawToken = search.get("data");
   const payload = decodeHandoffPayload(rawToken ?? "");
   const { address, isConnected, chainId } = useAccount();
-  const { connectors, connectAsync, isPending: isConnecting } = useConnect();
+  // Widened to the base type — v3's useConnectors() infers the exact config
+  // tuple (length 2), which breaks the single-connector length check below.
+  const connectors: readonly Connector[] = useConnectors();
+  const { connectAsync, isPending: isConnecting } = useConnect();
   const { signTypedDataAsync } = useSignTypedData();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

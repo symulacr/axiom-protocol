@@ -19,6 +19,7 @@
     "@axiom/chat-runtime": "workspace:*",
     "@axiom/config": "workspace:*",
     "@tanstack/react-query": "5.102.4",
+    "@walletconnect/ethereum-provider": "^2.21.1",
     "dompurify": "^3.4.14",
     "marked": "18.0.11",
     "react": "^18.3.1",
@@ -26,7 +27,7 @@
     "react-router-dom": "^7.18.2",
     "sonner": "^2.0.7",
     "viem": "2.55.19",
-    "wagmi": "^2.19.5"
+    "wagmi": "^3.7.6"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

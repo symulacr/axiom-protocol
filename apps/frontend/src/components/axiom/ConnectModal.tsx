@@ -6,7 +6,7 @@
   the shared Button component — no new design system.
 */
 import { useState } from "react";
-import { useConnect } from "wagmi";
+import { useConnect, useConnectors } from "wagmi";
 import { X } from "./icons.js";
 import { Button } from "./Controls.js";
 import { getCopy, type Locale } from "../../lib/copy.js";
@@ -22,7 +22,8 @@ export function ConnectModal({
   locale: Locale;
 }) {
   const copy = getCopy(locale);
-  const { connectors, connectAsync } = useConnect();
+  const connectors = useConnectors();
+  const { connectAsync } = useConnect();
   const [error, setError] = useState<string | null>(null);
   // Local busy marker — wagmi's variables.connector unions away the uid.
   const [pendingUid, setPendingUid] = useState<string | null>(null);
