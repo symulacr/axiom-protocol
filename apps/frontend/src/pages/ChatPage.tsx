@@ -20,6 +20,7 @@ import {
 } from "wagmi";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
 import {
   apiFetch,
   postStreamingWithRetry,
@@ -34,7 +35,6 @@ import {
 } from "../hooks/useChatHistory.js";
 import { useEventStream } from "../hooks/useEventStream.js";
 import { eventTokenId } from "../hooks/useEventHistory.js";
-import { usePolledApi } from "../hooks/usePolledApi.js";
 import { useShellSidebar } from "../hooks/useShellSidebar.js";
 import {
   humanizeError,
@@ -509,14 +509,34 @@ function normalizeProviders(
     });
 }
 
+/** StrictMode remount drops the first observer, so react-query aborts the
+ * in-flight queryFn signal (net::ERR_ABORTED). Share one transport promise per
+ * URL while in flight; other polled hooks keep per-mount signal cancellation. */
+const inflightProviders = new Map<string, Promise<ProvidersResponse>>();
+function fetchProvidersDeduped(url: string): Promise<ProvidersResponse> {
+  let p = inflightProviders.get(url);
+  if (!p) {
+    p = apiFetch<ProvidersResponse>(url).finally(() =>
+      inflightProviders.delete(url),
+    );
+    inflightProviders.set(url, p);
+  }
+  return p;
+}
+
 /** 0G compute providers; `model` hits the passthrough, else legacy pseudo-address list. Poll ≥60s (backend cache). */
 function useProviders(model?: string) {
   const url = model
     ? `/v1/compute/providers?model=${encodeURIComponent(model)}`
     : "/v1/compute/providers";
-  return usePolledApi<ProvidersResponse>(url, {
-    refetchInterval: 60_000,
+  // Inline useQuery (not usePolledApi): the deduped queryFn must not receive the
+  // observer signal, or the StrictMode unmount would abort the shared promise.
+  return useQuery<ProvidersResponse, Error>({
     queryKey: ["compute-providers", model ?? "all"],
+    queryFn: () => fetchProvidersDeduped(url),
+    refetchInterval: 60_000,
+    staleTime: 60_000 * 0.8,
+    retry: 2,
   });
 }
 

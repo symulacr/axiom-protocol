@@ -8,8 +8,9 @@
   in the same browser, it reaches the sender's tab via the storage event).
   Nothing moves on-chain here — the sender keeps the only submission key.
 
-  Honest states only: unusable link, expired acceptance, wrong network,
-  wrong account, signing, done. Copy via copy.flowUi.receive* (en/fr/de).
+  Honest states only: bare visit (orientation), unusable link, expired
+  acceptance, wrong network, wrong account, signing, done. Copy via
+  copy.flowUi.receive* (en/fr/de).
 */
 import { useState, type ReactElement, type ReactNode } from "react";
 import { useAccount, useConnect, useSignTypedData } from "wagmi";
@@ -63,7 +64,8 @@ export function CoSignPage({ go }: { go: (path: string) => void }) {
   const f = getCopy(state.settings.locale).flowUi;
   const search = new URLSearchParams(window.location.search);
   // ~1 KB decode per render — cheaper than memoizing on a recreated URLSearchParams.
-  const payload = decodeHandoffPayload(search.get("data") ?? "");
+  const rawToken = search.get("data");
+  const payload = decodeHandoffPayload(rawToken ?? "");
   const { address, isConnected, chainId } = useAccount();
   const { connectors, connectAsync, isPending: isConnecting } = useConnect();
   const { signTypedDataAsync } = useSignTypedData();
@@ -141,6 +143,31 @@ export function CoSignPage({ go }: { go: (path: string) => void }) {
   const wrapperClass = "ops-page cosign-page";
 
   if (payload === null) {
+    // Bare visit (no ?data=): orientation, not an error — the receiver likely
+    // opened the page directly instead of following the acceptance link.
+    if (rawToken === null) {
+      return (
+        <div className={wrapperClass}>
+          <div className="panel cosign-panel">
+            <div className="review-cosign" data-testid="cosign-no-link">
+              <ShieldCheck size={14} />
+              <div>
+                <strong>{f.receiveNoLinkTitle}</strong>
+                <p>{f.receiveNoLinkBody}</p>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              onClick={() => go("/")}
+              icon={<ArrowLeft size={15} />}
+            >
+              Axiom
+            </Button>
+          </div>
+        </div>
+      );
+    }
+    // Present-but-unusable token: genuine damaged/expired-link error.
     return (
       <div className={wrapperClass}>
         <div className="panel cosign-panel">

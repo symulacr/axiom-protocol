@@ -43,6 +43,22 @@ describe("public hub paths (route registry single source)", () => {
     }
   });
 
+  it("maps /features/* aliases and short hub URLs to real public SEO slugs, never the gate (L5-02)", () => {
+    for (const slug of SLUGS) {
+      expect(resolvePublicSeoSlug(`/features/${slug}`)).toBe(slug);
+      expect(KNOWN_PATHS.has(`/features/${slug}`)).toBe(true);
+      expect(resolveRoute(`/features/${slug}`)).not.toBe("not-found");
+      expect(resolveRoute(`/features/${slug}`)).not.toBe("dashboard");
+    }
+    // Bare short hub URLs (no short alias exists for /storage/0g).
+    for (const path of ["/agents", "/payments", "/proofs", "/developers"]) {
+      expect(resolvePublicSeoSlug(path)).toBe(path.slice(1));
+      expect(KNOWN_PATHS.has(path)).toBe(true);
+      expect(resolveRoute(path)).not.toBe("not-found");
+      expect(resolveRoute(path)).not.toBe("dashboard");
+    }
+  });
+
   it("keeps pre-wave-1 short hub URLs as inbound compat aliases (U1)", () => {
     expect(resolvePublicSeoSlug("/agents")).toBe("agents");
     expect(resolveRoute("/agents")).toBe("public-agents");

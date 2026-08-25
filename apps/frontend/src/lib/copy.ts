@@ -597,6 +597,9 @@ export type Copy = {
      * the acceptance signature itself. */
     receiveTitle: string;
     receiveLede: string;
+    /** Bare visit without ?data= — orientation for the receiver, not an error. */
+    receiveNoLinkTitle: string;
+    receiveNoLinkBody: string;
     receiveBadTitle: string;
     receiveBadBody: string;
     receiveAgent: string;
@@ -1354,6 +1357,9 @@ const english: Copy = {
     receiveTitle: "Accept a transfer",
     receiveLede:
       "Someone is sending you an agent. Review, then sign to accept.",
+    receiveNoLinkTitle: "Nothing to accept yet",
+    receiveNoLinkBody:
+      "This page is where you accept an agent someone sent you. Open the acceptance link they shared, or ask them for a fresh one from their transfer review.",
     receiveBadTitle: "This acceptance link is not usable",
     receiveBadBody: "Link damaged. Ask the sender for a new one.",
     receiveAgent: "Agent",
@@ -2117,6 +2123,9 @@ const french: Copy = {
     receiveTitle: "Accepter un transfert",
     receiveLede:
       "Un agent est en cours de transfert vers votre adresse. Revoyez-le, puis signez l’acceptation avec le wallet destinataire.",
+    receiveNoLinkTitle: "Rien à accepter pour l’instant",
+    receiveNoLinkBody:
+      "Cette page sert à accepter un agent qu’on vous a envoyé. Ouvrez le lien d’acceptation partagé par l’expéditeur, ou demandez-lui un nouveau lien depuis sa revue de transfert.",
     receiveBadTitle: "Ce lien d’acceptation est inutilisable",
     receiveBadBody:
       "Le lien est incomplet ou endommagé. Demandez à l’expéditeur un lien frais depuis la revue de transfert.",
@@ -2884,6 +2893,9 @@ const german: Copy = {
     receiveTitle: "Einen Transfer annehmen",
     receiveLede:
       "Jemand sendet dir einen Agenten. Prüfen und signieren zum Annehmen.",
+    receiveNoLinkTitle: "Noch nichts anzunehmen",
+    receiveNoLinkBody:
+      "Auf dieser Seite nimmst du einen Agenten an, den dir jemand geschickt hat. Öffne den Annahme-Link des Senders oder bitte ihn um einen neuen aus seiner Transfer-Prüfung.",
     receiveBadTitle: "Dieser Annahme-Link ist nicht verwendbar",
     receiveBadBody: "Link beschädigt. Neu vom Sender anfordern.",
     receiveReceiver: "Empfänger (Sie)",
