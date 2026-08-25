@@ -30,7 +30,9 @@ function createNodeTransport(
         ? path
         : `${deps.backendUrl}${path.startsWith("/") ? path : `/${path}`}`;
       const body =
-        init?.body && typeof init.body === "object" && !(init.body instanceof Uint8Array)
+        init?.body &&
+        typeof init.body === "object" &&
+        !(init.body instanceof Uint8Array)
           ? JSON.stringify(init.body)
           : init?.body;
       return fetch(url, { ...init, body } as RequestInit);
@@ -56,10 +58,14 @@ function createNodeTransport(
               req.abi as ethers.InterfaceAbi,
               provider,
             );
-            const result = await c.getFunction(req.functionName)(...(req.args ?? []));
+            const result = await c.getFunction(req.functionName)(
+              ...(req.args ?? []),
+            );
             return { result };
           } catch (error) {
-            return { error: error instanceof Error ? error : new Error(String(error)) };
+            return {
+              error: error instanceof Error ? error : new Error(String(error)),
+            };
           }
         }),
       );
@@ -112,11 +118,17 @@ export async function executeE2eTool(
   args: Record<string, unknown>,
   deps: E2eToolDeps,
 ): Promise<{ ok: boolean; result: string }> {
-  const result: ToolResult = await runTool(name, args, createNodeTransport(deps, args));
+  const result: ToolResult = await runTool(
+    name,
+    args,
+    createNodeTransport(deps, args),
+  );
   let ok = result.ok;
   try {
     const parsed = JSON.parse(result.content) as { error?: string };
     if (parsed.error !== undefined) ok = false;
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return { ok, result: result.content };
 }

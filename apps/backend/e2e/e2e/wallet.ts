@@ -117,8 +117,12 @@ export async function runWalletPreflight(deps: {
 
   const faucet = getEnv("OG_FAUCET_URL", "https://faucet.0g.ai");
   console.log("\n[E2E Wallets] Preflight");
-  console.log(`  Operator: ${deps.operator.address} (${addressExplorerUrl(deps.chainId, deps.operator.address)})`);
-  console.log(`  Receiver: ${deps.receiver.address} (${addressExplorerUrl(deps.chainId, deps.receiver.address)})`);
+  console.log(
+    `  Operator: ${deps.operator.address} (${addressExplorerUrl(deps.chainId, deps.operator.address)})`,
+  );
+  console.log(
+    `  Receiver: ${deps.receiver.address} (${addressExplorerUrl(deps.chainId, deps.receiver.address)})`,
+  );
   console.log(`  Operator OG:  ${operatorOg} wei`);
   console.log(`  Receiver OG:  ${receiverOg} wei`);
   console.log(`  Operator USDC: ${operatorUsdc}`);
@@ -185,8 +189,7 @@ export function provisionE2eWalletsToEnv(): {
   env = env
     .split("\n")
     .filter(
-      (l) =>
-        !/^E2E_OPERATOR_|^E2E_RECEIVER_|^# ─── E2E dedicated/.test(l),
+      (l) => !/^E2E_OPERATOR_|^E2E_RECEIVER_|^# ─── E2E dedicated/.test(l),
     )
     .join("\n");
   if (!env.endsWith("\n")) env += "\n";

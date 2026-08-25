@@ -3,10 +3,6 @@ import assert from "node:assert/strict";
 import { recordReceipt } from "./onchain.js";
 import { stepResults } from "./http.js";
 
-
-
-
-
 test("recordReceipt records an ok on-chain step with explorer url", () => {
   const before = stepResults.length;
   recordReceipt(

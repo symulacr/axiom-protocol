@@ -31,11 +31,16 @@ export async function ensureErc20Allowance(deps: {
   markCovered("MockUSDC", "balanceOf", deps.step);
   const balance = await token.contract.balanceOf(deps.owner.address);
   if (balance < deps.amount) {
-    throw new Error(`ERC20 balance ${balance} < ${deps.amount} for ${deps.step}`);
+    throw new Error(
+      `ERC20 balance ${balance} < ${deps.amount} for ${deps.step}`,
+    );
   }
 
   markCovered("MockUSDC", "allowance", deps.step);
-  const onChain = await token.contract.allowance(deps.owner.address, deps.spender);
+  const onChain = await token.contract.allowance(
+    deps.owner.address,
+    deps.spender,
+  );
   if (onChain >= deps.amount && cached >= deps.amount) return;
 
   const approveTx = await token.contract.approve(deps.spender, MaxUint256);
