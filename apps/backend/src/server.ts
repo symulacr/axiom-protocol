@@ -1061,14 +1061,16 @@ function registerPaymentRoutes(
           HTTP.SERVICE_UNAVAILABLE,
           "AgentNFT address not configured",
         );
-      const creator = await nftTc.contract.creatorOf(BigInt(id));
+      const [creator, client] = await Promise.all([
+        nftTc.contract.creatorOf(BigInt(id)),
+        getPayment(),
+      ]);
       if (!creator || creator === ethers.ZeroAddress)
         return sendError(
           res,
           HTTP.NOT_FOUND,
           "Agent creator not registered for token",
         );
-      const client = await getPayment();
       const earnings = await client.earningsOf(creator);
       return { tokenId: id, creator, earnings };
     },
