@@ -17,7 +17,6 @@ import { createPortal } from "react-dom";
 import { useAccount, useChainId } from "wagmi";
 import {
   CircleHelp,
-  Globe2,
   Keyboard,
   LayoutDashboard,
   LogOut,
@@ -122,12 +121,10 @@ function ResetConfirmDialog({
 export function SettingsPage({
   state,
   dispatch,
-  go,
   onLock,
 }: {
   state: AppState;
   dispatch: Dispatch<ConsoleAction>;
-  go: (path: string) => void;
   onLock: () => void;
 }) {
   const copy = getCopy(state.settings.locale);
@@ -452,13 +449,6 @@ export function SettingsPage({
       </SettingsDisclosure>
 
       <div className="settings-footer-actions">
-        <Button
-          variant="secondary"
-          onClick={() => go("/staking")}
-          icon={<Globe2 size={15} />}
-        >
-          {labels.reviewStakingBoundary}
-        </Button>
         <Button variant="ghost" onClick={onLock} icon={<LogOut size={15} />}>
           {labels.lockConsole}
         </Button>

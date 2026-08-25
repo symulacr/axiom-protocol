@@ -5,7 +5,6 @@
 import { useState } from "react";
 import {
   CircleHelp,
-  Database,
   Globe2,
   Menu,
   Wallet,
@@ -14,6 +13,7 @@ import {
 import { Button } from "../components/axiom/Controls.js";
 import { Logo } from "../components/axiom/AppShell.js";
 import { MEDIA } from "../lib/media.js";
+import { routePath } from "../lib/routeRegistry.js";
 import { getCopy, type Locale } from "../lib/copy.js";
 
 export function Landing({
@@ -66,16 +66,10 @@ export function Landing({
                   },
                 },
                 {
-                  Icon: Database,
-                  title: copy.landing.stakeTitle,
-                  hint: copy.landing.stakingBoundary,
-                  onClick: () => navigate("/staking"),
-                },
-                {
                   Icon: Globe2,
                   title: copy.landing.menuDevelopers,
                   hint: copy.landing.menuDevelopersHint,
-                  onClick: () => navigate("/developers"),
+                  onClick: () => navigate(routePath("public-developers")),
                 },
               ] as const
             ).map(({ Icon, title, hint, onClick }) => (
@@ -122,6 +116,14 @@ export function Landing({
             >
               {copy.nav.howItWorks}
             </Button>
+            {/* U21: signed-out escape hatch — /chat is public by design. */}
+            <Button
+              variant="ghost"
+              onClick={() => navigate(routePath("chat"))}
+              icon={<ArrowRight size={15} />}
+            >
+              {copy.landing.tryAssistant}
+            </Button>
           </div>
         </section>
         <section className="landing-visual hero-visual-modern">
@@ -144,11 +146,6 @@ export function Landing({
         <button type="button" onClick={() => go("/app")}>
           <strong>{copy.landing.consoleAccess}</strong>
           <small>{copy.landing.stripOperateSmall}</small>
-          <ArrowRight size={14} aria-hidden="true" />
-        </button>
-        <button type="button" onClick={() => go("/staking")}>
-          <strong>{copy.landing.stakeTitle}</strong>
-          <small>{copy.landing.stakingBoundary}</small>
           <ArrowRight size={14} aria-hidden="true" />
         </button>
       </section>

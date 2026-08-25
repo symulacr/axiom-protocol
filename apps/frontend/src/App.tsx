@@ -33,7 +33,7 @@ import {
   useLocation,
   useNavigate,
 } from "react-router-dom";
-import { useAccount } from "wagmi";
+import { useAccount, useSwitchChain } from "wagmi";
 import { AppShell, Logo } from "./components/axiom/AppShell.js";
 import { WalletGate, isSessionFresh } from "./components/axiom/WalletGate.js";
 import { Button, Status } from "./components/axiom/Controls.js";
@@ -42,6 +42,7 @@ import {
   ArrowRight,
   CircleCheck,
   LockKeyhole,
+  Network,
   Wallet,
   X,
 } from "./components/axiom/icons.js";
@@ -58,9 +59,12 @@ import {
 } from "./lib/routeRegistry.js";
 import { lockedRouteMeta } from "./lib/consoleCatalog.js";
 import { MEDIA } from "./lib/media.js";
-import { getCopy, type Locale } from "./lib/copy.js";
-import type { FlowKind } from "./lib/models.js";
-import { APP_CHAIN_ID } from "./config/wagmi.js";
+import { getCopy, interpolate, type Locale } from "./lib/copy.js";
+import type {
+  FlowKind,
+  NoticeSeverity,
+} from "./lib/models.js";
+import { APP_CHAIN, APP_CHAIN_ID } from "./config/wagmi.js";
 
 /** Every page module exposes one named component; this collapses the repeated
  * lazy(...then pick default) boilerplate. The module member is known to be a
@@ -116,16 +120,24 @@ const pageFallback = (
 
 function Notice({
   text,
+  severity,
   onClose,
   locale,
 }: {
   text: string | null;
+  severity: NoticeSeverity;
   onClose: () => void;
   locale: "en" | "fr" | "de";
 }) {
   if (!text) return null;
+  // U24: errors persist (manual ✕ only, role=alert); successes keep the 4s toast.
+  const isError = severity === "error";
   return (
-    <div className="notice-toast" role="status" aria-live="polite">
+    <div
+      className="notice-toast"
+      role={isError ? "alert" : "status"}
+      aria-live={isError ? "assertive" : "polite"}
+    >
       <CircleCheck size={15} />
       <span>{text}</span>
       <button
@@ -165,13 +177,6 @@ function Guide({
       path: "/transactions",
       label: copy.guide.openTransactions,
       image: MEDIA.proof,
-    },
-    {
-      title: copy.guide.step3Title,
-      copy: copy.guide.step3Body,
-      path: "/storage",
-      label: copy.guide.openStorage,
-      image: MEDIA.mint,
     },
     {
       title: copy.guide.step4Title,
@@ -415,15 +420,15 @@ export function App(): ReactElement {
     }
   }, [state.settings.theme]);
 
-  // Notice auto-dismiss (4s).
+  // Notice auto-dismiss (4s) — U24: error notices persist until manually closed.
   useEffect(() => {
-    if (!state.notice) return;
+    if (!state.notice || state.noticeSeverity === "error") return;
     const timer = window.setTimeout(
       () => dispatch({ type: "notice", notice: null }),
       4000,
     );
     return () => window.clearTimeout(timer);
-  }, [state.notice, dispatch]);
+  }, [state.notice, state.noticeSeverity, dispatch]);
 
   // Settle persisted receipts mid-confirmation at reload (mined → confirmed/reverted; timeout → stale).
   useReceiptReconcile(state.transactions, dispatch);
@@ -515,7 +520,7 @@ export function App(): ReactElement {
             "/deposit": copy.nav.deposit,
             "/withdraw": copy.nav.withdraw,
             "/settings": copy.settings.pageTitle,
-            "/staking": copy.landing.stakeTitle,
+            "/staking": "0G Stake",
             "/transfer/co-sign": copy.flowUi.receiveTitle,
           }[clean];
     if (name) document.title = `${name} — Axiom`;
@@ -540,6 +545,7 @@ export function App(): ReactElement {
   const notice = (
     <Notice
       text={state.notice}
+      severity={state.noticeSeverity ?? "success"}
       onClose={() => dispatch({ type: "notice", notice: null })}
       locale={locale}
     />
@@ -567,6 +573,10 @@ export function App(): ReactElement {
                 />
               ) : location.pathname === "/transfer/co-sign" ? (
                 <CoSignPage go={go} />
+              ) : internal && state.session.status === "wrong-network" ? (
+                // U12: a connected wrong-chain wallet gets the one-click remedy,
+                // not the full wallet-required lock screen.
+                <WrongNetworkNotice go={go} locale={locale} />
               ) : internal && !authenticated ? (
                 <LockedRoute
                   requested={path}
@@ -601,7 +611,6 @@ export function App(): ReactElement {
                     <SettingsPage
                       state={state}
                       dispatch={dispatch}
-                      go={go}
                       onLock={lockConsole}
                     />
                   ) : location.pathname === "/staking" ? (
@@ -666,6 +675,74 @@ function AgentRoute({
     );
   }
   return <AgentPage tokenId={tokenId} go={go} locale={locale} />;
+}
+
+/*
+  U12: wrong-network stop for connected wallets. The switch button mirrors
+  WalletGate's silent sign-in semantics — once the wallet sits on the app
+  chain, the connection itself re-opens the session.
+*/
+function WrongNetworkNotice({
+  go,
+  locale,
+}: {
+  go: (path: string) => void;
+  locale: Locale;
+}) {
+  const { dispatch } = useUiStore();
+  const copy = getCopy(locale);
+  const { switchChainAsync } = useSwitchChain();
+  const [error, setError] = useState<string | null>(null);
+  const chainVars = { chainName: APP_CHAIN.name, chainId: APP_CHAIN_ID };
+  const switchBack = async () => {
+    setError(null);
+    try {
+      await switchChainAsync({ chainId: APP_CHAIN_ID });
+      dispatch({
+        type: "session",
+        session: {
+          status: "authenticated",
+          chain: APP_CHAIN_ID,
+          signedAt: new Date().toISOString(),
+        },
+      });
+    } catch (err) {
+      setError(humanizeError(err));
+    }
+  };
+  return (
+    <div className="locked-route-shell public-locked">
+      <div className="locked-route-main">
+        <header className="locked-topbar">
+          <Logo compact />
+          <div>
+            <Status label="network mismatch" tone="warning" />
+          </div>
+        </header>
+        <main className="locked-route-content">
+          <section className="locked-route-copy" role="alert">
+            <h1>
+              {interpolate(copy.wallet.wrongNetworkTitle, chainVars)}
+            </h1>
+            <p>{copy.wallet.wrongNetworkDescription}</p>
+            <div className="button-row">
+              <Button onClick={() => void switchBack()} icon={<Network size={15} />}>
+                {interpolate(copy.wallet.switchNetwork, chainVars)}
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => go("/")}
+                icon={<ArrowLeft size={14} />}
+              >
+                Return to landing
+              </Button>
+            </div>
+            {error ? <p>{error}</p> : null}
+          </section>
+        </main>
+      </div>
+    </div>
+  );
 }
 
 /*

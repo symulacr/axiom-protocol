@@ -69,7 +69,6 @@ export const lockedRouteMeta: Record<
     proofs: [
       "Wallet context",
       "Network match",
-      "Session signature",
       "Console profile",
     ],
   },

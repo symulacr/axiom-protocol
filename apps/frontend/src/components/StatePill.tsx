@@ -7,21 +7,16 @@
   failed/stale (warning). The a11y contract is unchanged (role=status,
   localized "Status: <state>" label).
 */
-import { getCopy, type Locale } from "../lib/copy";
+import { getCopy } from "../lib/copy";
 import type { TxState } from "../lib/models";
+import { useUiStore } from "../lib/uiStore";
 
 export function StatePill({ state }: { state: TxState }) {
-  let locale: Locale = "en";
-  try {
-    const raw = window.localStorage.getItem("axiom-ui-settings");
-    const stored = raw ? (JSON.parse(raw) as { locale?: Locale }) : null;
-    if (stored?.locale === "fr" || stored?.locale === "de")
-      locale = stored.locale;
-  } catch {
-    // Local console storage can be unavailable in privacy-restricted contexts.
-  }
-  const labels = getCopy(locale).status;
-  const statusLabel = locale === "fr" ? "Statut" : "Status";
+  // U27: locale comes from the live UI store — the raw localStorage read went
+  // stale the moment the user switched language without a reload.
+  const { state: uiState } = useUiStore();
+  const labels = getCopy(uiState.settings.locale).status;
+  const statusLabel = uiState.settings.locale === "fr" ? "Statut" : "Status";
   return (
     <span
       className={`state-pill state-${state}${state === "confirmed" ? " is-quiet" : ""}`}

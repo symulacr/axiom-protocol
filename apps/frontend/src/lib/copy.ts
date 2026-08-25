@@ -102,6 +102,8 @@ export type Copy = {
     explorePublicPaths: string;
     walletAccess: string;
     closeWalletAccess: string;
+    /** U27: skip-to-content link in AppShell. */
+    skipToContent: string;
   };
   landing: {
     titleLead: string;
@@ -110,11 +112,11 @@ export type Copy = {
     nextSafeAction: string;
     signatureBoundary: string;
     consoleAccess: string;
-    stakingBoundary: string;
     menuGuideHint: string;
     menuDevelopers: string;
     menuDevelopersHint: string;
-    stakeTitle: string;
+    /** U21: signed-out escape hatch straight into the public /chat surface. */
+    tryAssistant: string;
     stripVerifySmall: string;
     stripOperateSmall: string;
   };
@@ -149,9 +151,6 @@ export type Copy = {
     step2Title: string;
     step2Body: string;
     openTransactions: string;
-    step3Title: string;
-    step3Body: string;
-    openStorage: string;
     step4Title: string;
     step4Body: string;
     openSettings: string;
@@ -245,7 +244,6 @@ export type Copy = {
     resetConfirmBody: string;
     resetConfirmAction: string;
     resetCancel: string;
-    reviewStakingBoundary: string;
     lockConsole: string;
   };
   dashboard: {
@@ -257,6 +255,9 @@ export type Copy = {
     agentsOnline: string;
     storageProofs: string;
     liveQueue: string;
+    /** U8: stat labels say whose numbers they are (scoped via isOwnEvent). */
+    myEventsSeen: string;
+    pendingMine: string;
     operatingFleet: string;
     attentionFirst: string;
     allowanceReady: string;
@@ -312,6 +313,12 @@ export type Copy = {
     promptVaultHint: string;
     promptTick: string;
     promptTickHint: string;
+    /** Full no-parameter intent sent when a depth-0 prompt card is clicked
+     * (U16); the visible card label stays short. */
+    promptAgentsIntent: string;
+    promptMintIntent: string;
+    promptVaultIntent: string;
+    promptTickIntent: string;
     toolsToggle: (count: number) => string;
     toolsBrowse: string;
     toolsHide: string;
@@ -389,6 +396,8 @@ export type Copy = {
     historyLoading: string;
     historyRestore: string;
     historyRestoreHint: string;
+    /** U25: explanatory line rendered beside the restore CTA when the rail is empty. */
+    historyOnChainNote: string;
     historyDelete: (title: string) => string;
     untitledThread: string;
     deletedToast: string;
@@ -492,6 +501,11 @@ export type Copy = {
     errNameLength: string;
     errRecipientAddress: string;
     errRecipientKey: string;
+    /** U10: shape-aware variant fired when the paste is a 42-char address. */
+    errRecipientKeyIsAddress: string;
+    /** U11: expanding 3-step walkthrough under the recipient-key field. */
+    transferKeyWalkthroughTitle: string;
+    transferKeyWalkthroughSteps: string[];
     errInstruction: string;
     errSelectAgent: string;
     intentFund: string;
@@ -607,6 +621,10 @@ export type Copy = {
     receiveCopyCode: string;
     receiveCodeCopied: string;
     receiveDoneSameBrowser: string;
+    /** U26: co-sign done-state presents a one-piece claim token + URL; the raw signature hides behind "Advanced". */
+    claimTokenLabel: string;
+    claimUrlLabel: string;
+    claimRawToggle: string;
   };
   agentDetail: {
     executionSurface: string;
@@ -680,6 +698,8 @@ export type Copy = {
     openRecovery: string;
     recoveryNotice: string;
     openOperation: string;
+    /** U20: demoted drawer button — keeps the same go() destination but stops pre-filling a fresh draft as the primary action. */
+    runAnother: string;
     /** drawer head: the drawer no longer repeats
      * the row's kind/detail/pill — it leads with its own title. */
     drawerTitle: string;
@@ -718,7 +738,7 @@ const english: Copy = {
     mint: "Mint",
     payment: "Payment",
     transfer: "Transfer",
-    tick: "Tick",
+    tick: "Run agent task",
     deposit: "Deposit",
     withdraw: "Withdraw",
   },
@@ -778,6 +798,7 @@ const english: Copy = {
     explorePublicPaths: "Explore public paths",
     walletAccess: "Axiom wallet access",
     closeWalletAccess: "Close wallet access",
+    skipToContent: "Skip to content",
   },
   landing: {
     titleLead: "Move with",
@@ -787,11 +808,10 @@ const english: Copy = {
     nextSafeAction: "Next safe action",
     signatureBoundary: "Signature boundary",
     consoleAccess: "Console access",
-    stakingBoundary: "Staking is not part of Axiom yet.",
     menuGuideHint: "How sessions and proofs work",
     menuDevelopers: "Developers",
     menuDevelopersHint: "APIs and tools",
-    stakeTitle: "0G Stake",
+    tryAssistant: "Try the assistant — no wallet",
     stripVerifySmall: "No gas · no custody",
     stripOperateSmall: "Receipts beside action",
   },
@@ -824,10 +844,6 @@ const english: Copy = {
     step2Body:
       "Each step keeps its own state, so you always know what is left.",
     openTransactions: "Open transactions",
-    step3Title: "Keep proof beside the action.",
-    step3Body:
-      "Proofs stay attached to actions instead of a generic success badge.",
-    openStorage: "Open storage",
     step4Title: "Tune the surface to your work.",
     step4Body:
       "Resize or collapse the rail, choose reduced motion and reopen this guide from Settings.",
@@ -914,7 +930,6 @@ const english: Copy = {
     resetConfirmBody: "Signs you out and wipes drafts and receipts. No undo.",
     resetConfirmAction: "Reset everything",
     resetCancel: "Cancel",
-    reviewStakingBoundary: "Review 0G integration boundary",
     lockConsole: "Lock console",
   },
   dashboard: {
@@ -927,6 +942,8 @@ const english: Copy = {
     agentsOnline: "Agents online",
     storageProofs: "Storage proofs",
     liveQueue: "Live queue",
+    myEventsSeen: "My events seen",
+    pendingMine: "My pending operations",
     operatingFleet: "Operating fleet",
     attentionFirst: "Attention first",
     allowanceReady: "Allowance is ready for review.",
@@ -974,6 +991,10 @@ const english: Copy = {
     promptVaultHint: "{nativeSymbol} holdings",
     promptTick: "Simulate tick",
     promptTickHint: "Safe dry-run first",
+    promptAgentsIntent: "List my agents and their vault balances",
+    promptMintIntent: "Help me mint a new agent",
+    promptVaultIntent: "Show the vault balances of my agents",
+    promptTickIntent: "Dry-run a strategy tick for one of my agents",
     toolsToggle: (count) => `All ${count} tools`,
     toolsBrowse: "browse ▾",
     toolsHide: "hide ▴",
@@ -1048,10 +1069,11 @@ const english: Copy = {
     routingHint: "This conversation only",
     routingAuto: "Auto (fastest)",
     routingCheapest: "Lowest cost",
-    routingVerified: "Verified providers only (TEE)",
-    routingPrivate: "Private (sealed enclave)",
-    routingPrivateHintOn: "Prompts never leave the provider's enclave",
-    routingPrivateHintOff: "No sealed-enclave provider serves this model",
+    routingVerified: "Verified providers only",
+    routingPrivate: "Private providers (extra isolation)",
+    routingPrivateHintOn:
+      "TEE-isolated inference — prompts never leave the provider's enclave",
+    routingPrivateHintOff: "No TEE provider serves this model",
     routingChipTitle:
       "Provider routing. Change how this conversation is served",
     routingSummaryAuto: "Auto",
@@ -1074,6 +1096,8 @@ const english: Copy = {
     historyLoading: "Loading server history…",
     historyRestore: "Restore server history",
     historyRestoreHint: "One free signature loads your saved chats.",
+    historyOnChainNote:
+      "Your chats are saved on-chain — restore them (1 signature)",
     historyDelete: (title) => `Delete chat: ${title}`,
     untitledThread: "New chat",
     deletedToast: "Chat deleted",
@@ -1115,7 +1139,7 @@ const english: Copy = {
     mint: {
       title: "Mint an agent",
       copy: "Name → hash → oracle acknowledgement → receipt.",
-      steps: ["Metadata hash", "Oracle acknowledgement", "Receipt indexed"],
+      steps: ["Preparing identity", "Confirming uniqueness", "Receipt indexed"],
       receiptKind: "Mint",
       consequence: "Create an agent identity after confirmation.",
       proofLine: "Records metadata hash and oracle acknowledgement.",
@@ -1129,7 +1153,7 @@ const english: Copy = {
       title: "Fund with context",
       copy: "Allowance, fees and events are visible before you pay.",
       steps: [
-        "Exact allowance",
+        "Spending limit",
         "Approval / payment boundary",
         "Receipt indexed",
       ],
@@ -1159,7 +1183,7 @@ const english: Copy = {
       title: "Run the next tick",
       copy: "Intent → provider → stream → result → event or transaction → recovery.",
       steps: ["Bounded instruction", "Provider route", "Event indexed"],
-      receiptKind: "Tick",
+      receiptKind: "Run agent task",
       consequence: "Launch one cancellable, bounded instruction.",
       proofLine: "Records the provider route and execution evidence.",
       contextTitle: "Stream before result.",
@@ -1233,6 +1257,14 @@ const english: Copy = {
     errNameLength: "Use 2–80 characters.",
     errRecipientAddress: "Recipient must be a valid 0x address.",
     errRecipientKey: "Recipient public key must be 64 bytes of hex (0x…).",
+    errRecipientKeyIsAddress:
+      "This looks like an Ethereum address (42 chars) — a transfer needs the receiver's public key (132 chars). See “How to get it” below.",
+    transferKeyWalkthroughTitle: "How to get it",
+    transferKeyWalkthroughSteps: [
+      "The receiver opens their wallet and picks the account that will hold the agent",
+      "They open the account details and choose “Export public key”",
+      "Paste the copied key here",
+    ],
     errInstruction: "Describe the instruction.",
     errSelectAgent: "Select an agent first.",
     intentFund: "Agent selected. Review the exact allowance.",
@@ -1259,7 +1291,7 @@ const english: Copy = {
     copyReceiptAction: "Copy receipt",
     openReceiptAction: "Open receipt",
     startAnotherAction: "Start another",
-    receiptCopiedNotice: "Receipt identifier copied locally.",
+    receiptCopiedNotice: "Receipt identifier copied.",
     vaultBalanceAfter: "Vault balance after",
     exceedsBalance: "exceeds balance",
     vaultedHint:
@@ -1272,7 +1304,7 @@ const english: Copy = {
     tickActed: "acted",
     tickHeld: "held",
     allowanceKind: "Allowance approval",
-    allowanceDetail: "{amount} {symbol} → exact allowance (boundary 1)",
+    allowanceDetail: "{amount} {symbol} → spending limit (boundary 1)",
     approveSentNotice:
       "Exact allowance approved on-chain. Boundary 2: sign the payment.",
     allowanceCoveredNotice:
@@ -1288,7 +1320,7 @@ const english: Copy = {
     factBoundary: "Boundary",
     networkFact: "{chainName} · chain {chainId}",
     primarySign: "Sign & execute",
-    primaryApprove: "Approve exact allowance",
+    primaryApprove: "Approve spending limit",
     primaryContinuePayment: "Continue to payment",
     payCta: "Pay {amount} {symbol}",
     resumeReview: "Resume review",
@@ -1346,6 +1378,9 @@ const english: Copy = {
     receiveCopyCode: "Copy acceptance code",
     receiveCodeCopied: "Acceptance code copied.",
     receiveDoneSameBrowser: "Sent to the sender's tab automatically.",
+    claimTokenLabel: "Claim token",
+    claimUrlLabel: "Claim link",
+    claimRawToggle: "Advanced — raw signature",
   },
   agentDetail: {
     executionSurface: "Operator-controlled · no on-chain events yet.",
@@ -1416,6 +1451,7 @@ const english: Copy = {
     openRecovery: "Open recovery",
     recoveryNotice: "Recovery opened. Operation returned to Ready.",
     openOperation: "Open operation",
+    runAnother: "Run another like this",
     drawerTitle: "Receipt detail",
     proofTitle: "Proof details",
   },
@@ -1511,6 +1547,7 @@ const french: Copy = {
     explorePublicPaths: "Explorer les parcours publics",
     walletAccess: "Accès wallet Axiom",
     closeWalletAccess: "Fermer l’accès wallet",
+    skipToContent: "Aller au contenu",
   },
   landing: {
     ...english.landing,
@@ -1521,7 +1558,7 @@ const french: Copy = {
     nextSafeAction: "Prochaine action sûre",
     signatureBoundary: "Limite de signature",
     consoleAccess: "Accès console",
-    stakingBoundary: "Le staking ne fait pas encore partie d’Axiom.",
+    tryAssistant: "Essayer l’assistant — sans wallet",
     menuGuideHint: "Revoir la limite wallet et de preuve",
     menuDevelopers: "Développeurs",
     menuDevelopersHint: "Inspecter la limite d’intégration",
@@ -1559,10 +1596,6 @@ const french: Copy = {
     step2Body:
       "Chaque étape garde son état : vous savez toujours ce qu’il reste.",
     openTransactions: "Ouvrir les transactions",
-    step3Title: "La preuve accompagne l’action.",
-    step3Body:
-      "Les preuves restent liées aux actions, pas de succès générique.",
-    openStorage: "Ouvrir le stockage",
     step4Title: "Ajustez la surface à votre travail.",
     step4Body:
       "Redimensionnez le rail, activez la motion réduite, rouvrez ce guide depuis les réglages.",
@@ -1647,7 +1680,6 @@ const french: Copy = {
       "Cette action vous déconnecte et efface tous les brouillons de flow et les reçus locaux. Vos paramètres sont conservés. Aucune annulation possible.",
     resetConfirmAction: "Tout réinitialiser",
     resetCancel: "Annuler",
-    reviewStakingBoundary: "Revoir la limite d’intégration 0G",
     lockConsole: "Verrouiller la console",
   },
   dashboard: {
@@ -1659,6 +1691,8 @@ const french: Copy = {
     agentsOnline: "Agents en ligne",
     storageProofs: "Preuves Storage",
     liveQueue: "File active",
+    myEventsSeen: "Mes événements vus",
+    pendingMine: "Mes opérations en cours",
     operatingFleet: "Flotte active",
     attentionFirst: "Attention d’abord",
     allowanceReady: "L’approbation est prête à être revue.",
@@ -1707,6 +1741,11 @@ const french: Copy = {
     promptVaultHint: "Avoirs en {nativeSymbol}",
     promptTick: "Simuler un tick",
     promptTickHint: "Essai à blanc d’abord",
+    promptAgentsIntent: "Liste mes agents et les soldes de leurs vaults",
+    promptMintIntent: "Aide-moi à minter un nouvel agent",
+    promptVaultIntent: "Montre les soldes de vault de mes agents",
+    promptTickIntent:
+      "Simule à blanc un tick de stratégie pour un de mes agents",
     toolsToggle: (count) => `Les ${count} outils`,
     toolsBrowse: "parcourir ▾",
     toolsHide: "masquer ▴",
@@ -1778,12 +1817,11 @@ const french: Copy = {
     routingHint: "Cette conversation uniquement",
     routingAuto: "Auto (le plus rapide)",
     routingCheapest: "Coût le plus bas",
-    routingVerified: "Fournisseurs vérifiés uniquement (TEE)",
-    routingPrivate: "Privé (enclave scellée)",
+    routingVerified: "Fournisseurs vérifiés uniquement",
+    routingPrivate: "Fournisseurs privés (isolation supplémentaire)",
     routingPrivateHintOn:
-      "Inférence en enclave scellée (les prompts ne quittent jamais l’enclave)",
-    routingPrivateHintOff:
-      "Aucun fournisseur à enclave scellée ne sert ce modèle",
+      "Inférence isolée en TEE — les prompts ne quittent jamais l’enclave du fournisseur",
+    routingPrivateHintOff: "Aucun fournisseur TEE ne sert ce modèle",
     routingChipTitle:
       "Routage fournisseur. Changez comment cette conversation est servie",
     routingSummaryCheapest: "Coût le plus bas",
@@ -1808,6 +1846,8 @@ const french: Copy = {
     historyRestore: "Restaurer l’historique serveur",
     historyRestoreHint:
       "Signez un message wallet pour charger les transcripts de ce wallet. Aucune transaction n’est envoyée.",
+    historyOnChainNote:
+      "Vos chats sont sauvegardés on-chain — restaurez-les (1 signature)",
     historyDelete: (title) => `Supprimer le chat : ${title}`,
     untitledThread: "Nouveau chat",
     deletedToast: "Chat supprimé",
@@ -1850,7 +1890,7 @@ const french: Copy = {
       ...english.flows.mint,
       title: "Créer un agent",
       copy: "Nom → hash → accord de l’oracle → reçu.",
-      steps: ["Hash de métadonnées", "Accord de l’oracle", "Reçu indexé"],
+      steps: ["Préparation de l’identité", "Confirmation d’unicité", "Reçu indexé"],
       consequence: "Créer l’identité d’un agent après confirmation.",
       proofLine: "Enregistre le hash de métadonnées et l’accord de l’oracle.",
       contextTitle: "L’identité avant la propriété.",
@@ -1864,7 +1904,7 @@ const french: Copy = {
       title: "Financer avec contexte",
       copy: "Token, approbation exacte, frais, royalty et événements restent visibles avant la fin.",
       steps: [
-        "Approbation exacte",
+        "Limite de dépense",
         "Limite approbation / paiement",
         "Reçu indexé",
       ],
@@ -1970,6 +2010,14 @@ const french: Copy = {
     errRecipientAddress: "Le destinataire doit être une adresse 0x valide.",
     errRecipientKey:
       "La clé publique du destinataire doit être 64 octets de hex (0x…).",
+    errRecipientKeyIsAddress:
+      "Ceci ressemble à une adresse Ethereum (42 caractères) — un transfert exige la clé publique du destinataire (132 caractères). Voyez « Comment l’obtenir » ci-dessous.",
+    transferKeyWalkthroughTitle: "Comment l’obtenir",
+    transferKeyWalkthroughSteps: [
+      "Le destinataire ouvre son wallet et choisit le compte qui recevra l’agent",
+      "Il ouvre les détails du compte et choisit « Exporter la clé publique »",
+      "Collez ici la clé copiée",
+    ],
     errInstruction: "Décrivez l’instruction.",
     errSelectAgent: "Choisissez d’abord un agent.",
     intentFund: "Agent sélectionné. Revoyez l’approbation exacte.",
@@ -1999,7 +2047,7 @@ const french: Copy = {
     copyReceiptAction: "Copier le reçu",
     openReceiptAction: "Ouvrir le reçu",
     startAnotherAction: "Recommencer",
-    receiptCopiedNotice: "Identifiant du reçu copié localement.",
+    receiptCopiedNotice: "Identifiant du reçu copié.",
     vaultBalanceAfter: "Solde du vault après",
     exceedsBalance: "dépasse le solde",
     vaultedHint:
@@ -2014,7 +2062,7 @@ const french: Copy = {
     tickActed: "exécuté",
     tickHeld: "mis en attente",
     allowanceKind: "Approbation",
-    allowanceDetail: "{amount} {symbol} → approbation exacte (limite 1)",
+    allowanceDetail: "{amount} {symbol} → limite de dépense (étape 1)",
     approveSentNotice:
       "Approbation exacte validée on-chain. Limite 2 : signez le paiement.",
     allowanceCoveredNotice:
@@ -2029,7 +2077,7 @@ const french: Copy = {
     factBoundary: "Limite",
     networkFact: "{chainName} · chaîne {chainId}",
     primarySign: "Signer et exécuter",
-    primaryApprove: "Approuver le montant exact",
+    primaryApprove: "Approuver la limite de dépense",
     primaryContinuePayment: "Continuer vers le paiement",
     payCta: "Payer {amount} {symbol}",
     resumeReview: "Reprendre la revue",
@@ -2096,6 +2144,9 @@ const french: Copy = {
     receiveCodeCopied: "Code d’acceptation copié.",
     receiveDoneSameBrowser:
       "Appliqué automatiquement à l’onglet de l’expéditeur dans ce navigateur.",
+    claimTokenLabel: "Jeton de réclamation",
+    claimUrlLabel: "Lien de réclamation",
+    claimRawToggle: "Avancé — signature brute",
   },
   agentDetail: {
     ...english.agentDetail,
@@ -2169,6 +2220,7 @@ const french: Copy = {
     openRecovery: "Ouvrir la récupération",
     recoveryNotice: "Récupération ouverte. L’opération revient à Prêt.",
     openOperation: "Ouvrir l’opération",
+    runAnother: "Relancer une opération similaire",
     drawerTitle: "Détail du reçu",
     proofTitle: "Détails de la preuve",
   },
@@ -2263,6 +2315,7 @@ const german: Copy = {
     explorePublicPaths: "Öffentliche Pfade erkunden",
     walletAccess: "Axiom-Wallet-Zugang",
     closeWalletAccess: "Wallet-Zugang schließen",
+    skipToContent: "Zum Inhalt springen",
   },
   landing: {
     ...english.landing,
@@ -2273,7 +2326,7 @@ const german: Copy = {
     nextSafeAction: "Nächste sichere Aktion",
     signatureBoundary: "Signaturgrenze",
     consoleAccess: "Konsolenzugriff",
-    stakingBoundary: "Staking gehört noch nicht zu Axiom.",
+    tryAssistant: "Assistent testen — ohne Wallet",
     menuGuideHint: "Wallet- und Beleggrenze prüfen",
     menuDevelopers: "Entwickler",
     menuDevelopersHint: "Integrationsgrenze prüfen",
@@ -2310,10 +2363,6 @@ const german: Copy = {
     step2Body:
       "Jede Stufe behält ihren Zustand, du weißt immer, was offen ist.",
     openTransactions: "Transaktionen öffnen",
-    step3Title: "Der Nachweis bleibt neben der Aktion.",
-    step3Body:
-      "Nachweise bleiben an Aktionen gebunden, ohne generisches „erfolgreich“.",
-    openStorage: "Storage öffnen",
     step4Title: "Passe die Oberfläche deiner Arbeit an.",
     step4Body:
       "Rail verkleinern, reduzierte Motion wählen, diesen Guide in den Einstellungen neu öffnen.",
@@ -2395,7 +2444,6 @@ const german: Copy = {
       "Dies meldet Sie ab und löscht alle Flow-Entwürfe und lokalen Belege. Ihre Einstellungen bleiben erhalten. Kein Rückgängigmachen.",
     resetConfirmAction: "Alles zurücksetzen",
     resetCancel: "Abbrechen",
-    reviewStakingBoundary: "0G-Integrationsgrenze prüfen",
     lockConsole: "Konsole sperren",
   },
   dashboard: {
@@ -2408,6 +2456,8 @@ const german: Copy = {
     managedValue: "Verwalteter Wert",
     storageProofs: "Storage-Beweise",
     liveQueue: "Aktive Warteschlange",
+    myEventsSeen: "Meine Ereignisse",
+    pendingMine: "Meine laufenden Operationen",
     operatingFleet: "Aktive Flotte",
     attentionFirst: "Aufmerksamkeit zuerst",
     allowanceReady: "Die Freigabe kann geprüft werden.",
@@ -2455,6 +2505,11 @@ const german: Copy = {
     promptVaultHint: "{nativeSymbol}-Bestände",
     promptTick: "Tick simulieren",
     promptTickHint: "Erst sicher testen",
+    promptAgentsIntent: "Liste meine Agents und ihre Vault-Guthaben auf",
+    promptMintIntent: "Hilf mir, einen neuen Agent zu minten",
+    promptVaultIntent: "Zeige die Vault-Guthaben meiner Agents",
+    promptTickIntent:
+      "Teste einen Strategie-Tick für einen meiner Agents trocken",
     toolsToggle: (count) => `Alle ${count} Tools`,
     toolsBrowse: "anzeigen ▾",
     toolsHide: "ausblenden ▴",
@@ -2528,12 +2583,11 @@ const german: Copy = {
     routingHint: "Nur diese Unterhaltung",
     routingAuto: "Auto (schnellster)",
     routingCheapest: "Günstigster",
-    routingVerified: "Nur verifizierte Provider (TEE)",
-    routingPrivate: "Privat (versiegelte Enklave)",
+    routingVerified: "Nur verifizierte Provider",
+    routingPrivate: "Private Provider (zusätzliche Isolation)",
     routingPrivateHintOn:
-      "Versiegelte Enklaven-Inferenz (Prompts verlassen die Enklave nie)",
-    routingPrivateHintOff:
-      "Kein Provider mit versiegelter Enklave bedient dieses Modell",
+      "TEE-isolierte Inferenz — Prompts verlassen die Enklave des Providers nie",
+    routingPrivateHintOff: "Kein TEE-Provider bedient dieses Modell",
     routingChipTitle:
       "Provider-Routing. Ändere, wie diese Unterhaltung bedient wird",
     routingSummaryCheapest: "Günstigster",
@@ -2557,6 +2611,8 @@ const german: Copy = {
     historyRestore: "Server-Verlauf wiederherstellen",
     historyRestoreHint:
       "Signiere eine Wallet-Nachricht, um die serverseitigen Transkripte dieses Wallets zu laden. Es wird keine Transaktion gesendet.",
+    historyOnChainNote:
+      "Deine Chats werden on-chain gespeichert — stelle sie wieder her (1 Signatur)",
     historyDelete: (title) => `Chat löschen: ${title}`,
     untitledThread: "Neuer Chat",
     deletedToast: "Chat gelöscht",
@@ -2600,7 +2656,7 @@ const german: Copy = {
       ...english.flows.mint,
       title: "Agent minten",
       copy: "Name → Hash → Oracle-Bestätigung → Beleg.",
-      steps: ["Metadaten-Hash", "Oracle-Bestätigung", "Beleg indexiert"],
+      steps: ["Identität wird vorbereitet", "Eindeutigkeit wird bestätigt", "Beleg indexiert"],
       consequence: "Nach der Bestätigung eine Agenten-Identität erstellen.",
       proofLine: "Speichert Metadaten-Hash und Oracle-Bestätigung.",
       contextTitle: "Identität vor Eigentum.",
@@ -2614,7 +2670,7 @@ const german: Copy = {
       title: "Mit Kontext finanzieren",
       copy: "Token, exakte Freigabe, Gebühr, Royalty und Ereignisse bleiben sichtbar.",
       steps: [
-        "Exakte Freigabe",
+        "Ausgabenlimit",
         "Freigabe- / Zahlungsgrenze",
         "Beleg indexiert",
       ],
@@ -2719,6 +2775,14 @@ const german: Copy = {
     errRecipientAddress: "Der Empfänger muss eine gültige 0x-Adresse sein.",
     errRecipientKey:
       "Der öffentliche Schlüssel des Empfängers muss 64 Byte Hex sein (0x…).",
+    errRecipientKeyIsAddress:
+      "Das sieht nach einer Ethereum-Adresse aus (42 Zeichen) — eine Übertragung benötigt den öffentlichen Schlüssel des Empfängers (132 Zeichen). Siehe „Wie erhält man ihn“ unten.",
+    transferKeyWalkthroughTitle: "Wie erhält man ihn",
+    transferKeyWalkthroughSteps: [
+      "Der Empfänger öffnet sein Wallet und wählt das Konto, das den Agent empfangen soll",
+      "Er öffnet die Kontodetails und wählt „Öffentlichen Schlüssel exportieren“",
+      "Fügen Sie den kopierten Schlüssel hier ein",
+    ],
     errInstruction: "Beschreiben Sie die Anweisung.",
     errSelectAgent: "Wählen Sie zuerst einen Agenten.",
     intentFund: "Agent ausgewählt. Prüfen Sie die exakte Freigabe.",
@@ -2749,7 +2813,7 @@ const german: Copy = {
     copyReceiptAction: "Beleg kopieren",
     openReceiptAction: "Beleg öffnen",
     startAnotherAction: "Neu beginnen",
-    receiptCopiedNotice: "Beleg-Kennung lokal kopiert.",
+    receiptCopiedNotice: "Beleg-Kennung kopiert.",
     vaultBalanceAfter: "Vault-Stand danach",
     exceedsBalance: "übersteigt Guthaben",
     vaultedHint:
@@ -2765,7 +2829,7 @@ const german: Copy = {
     tickActed: "ausgeführt",
     tickHeld: "zurückgehalten",
     allowanceKind: "Freigabe-Genehmigung",
-    allowanceDetail: "{amount} {symbol} → exakte Freigabe (Grenze 1)",
+    allowanceDetail: "{amount} {symbol} → Ausgabenlimit (Grenze 1)",
     approveSentNotice:
       "Exakte Freigabe on-chain genehmigt. Grenze 2: Signieren Sie die Zahlung.",
     allowanceCoveredNotice:
@@ -2781,7 +2845,7 @@ const german: Copy = {
     factBoundary: "Grenze",
     networkFact: "{chainName} · Chain {chainId}",
     primarySign: "Signieren & ausführen",
-    primaryApprove: "Exakte Freigabe genehmigen",
+    primaryApprove: "Ausgabenlimit genehmigen",
     primaryContinuePayment: "Zur Zahlung fortfahren",
     payCta: "{amount} {symbol} zahlen",
     resumeReview: "Prüfung wieder aufnehmen",
@@ -2843,6 +2907,9 @@ const german: Copy = {
     receiveCodeCopied: "Annahme-Code kopiert.",
     receiveDoneSameBrowser:
       "Wurde im Sender-Tab dieses Browsers automatisch angewendet.",
+    claimTokenLabel: "Claim-Token",
+    claimUrlLabel: "Claim-Link",
+    claimRawToggle: "Erweitert — rohe Signatur",
   },
   agentDetail: {
     ...english.agentDetail,
@@ -2913,6 +2980,7 @@ const german: Copy = {
     openRecovery: "Wiederherstellung öffnen",
     recoveryNotice: "Wiederherstellung geöffnet. Operation ist wieder bereit.",
     openOperation: "Operation öffnen",
+    runAnother: "Ähnliche Operation erneut ausführen",
     drawerTitle: "Belegdetail",
     proofTitle: "Nachweisdetails",
   },

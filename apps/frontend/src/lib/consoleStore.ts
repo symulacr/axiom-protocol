@@ -7,6 +7,7 @@
 import type {
   AppState,
   FlowKind,
+  NoticeSeverity,
   OperationDraft,
   OperationState,
   PendingIntent,
@@ -97,7 +98,7 @@ export type ConsoleAction =
   | { type: "clear-draft"; flow: FlowKind }
   | { type: "storage"; storage: StoragePhase }
   | { type: "guide" }
-  | { type: "notice"; notice: string | null }
+  | { type: "notice"; notice: string | null; severity?: NoticeSeverity }
   | { type: "reset" };
 
 export const defaultSettings: UiSettings = {
@@ -227,6 +228,7 @@ export function createInitialConsoleState(
     storage: "ready",
     guideOpen: false,
     notice: null,
+    noticeSeverity: null,
     ...safeOperationState,
   };
 }
@@ -314,11 +316,17 @@ export function consoleReducer(
     };
   if (action.type === "storage") return { ...state, storage: action.storage };
   if (action.type === "guide") return { ...state, guideOpen: !state.guideOpen };
-  if (action.type === "notice") return { ...state, notice: action.notice };
+  if (action.type === "notice")
+    return {
+      ...state,
+      notice: action.notice,
+      noticeSeverity: action.notice ? (action.severity ?? "success") : null,
+    };
   if (action.type === "reset")
     return {
       ...createInitialConsoleState(state.settings),
       notice: "Surface reset. Wallet access remains locked.",
+      noticeSeverity: "success",
     };
   return state;
 }

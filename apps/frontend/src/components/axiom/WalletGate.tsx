@@ -3,16 +3,18 @@
     connect → one CTA that opens the wagmi-native ConnectModal (wallet list,
                    QR/deep-link flow and errors are ours now)
     wrong-network → switchChain back to the configured app chain
-    profile → optional local operator name, then the console opens.
+    authenticated → the console opens immediately.
   A verified connection on the app chain IS the session: the old
   axiom-console-session signature ceremony was removed because nothing ever
-  verified it. Reconnects restore silently (wagmi persists the last wallet);
-  the 24h TTL only decides whether returning users re-walk this small path.
+  verified it, and the mandatory profile-naming step went with it (naming
+  lives in Settings). Reconnects restore silently (wagmi persists the last
+  wallet); the 24h TTL only decides whether returning users re-walk this
+  small path.
 */
 import { useEffect, useRef, useState } from "react";
 import { useAccount, useSwitchChain } from "wagmi";
 import { AlertTriangle, LockKeyhole, Network, X } from "./icons.js";
-import { Button, Field } from "./Controls.js";
+import { Button } from "./Controls.js";
 import { ConnectModal } from "./ConnectModal.js";
 import { Logo } from "./AppShell.js";
 
@@ -50,7 +52,6 @@ export function WalletGate({
   const { address, isConnected, chainId, connector } = useAccount();
   const [connectOpen, setConnectOpen] = useState(false);
   const { switchChainAsync } = useSwitchChain();
-  const [profile, setProfile] = useState(session.profile);
   const [error, setError] = useState<string | null>(null);
   const resumed = useRef(false);
   // dismiss trio: Esc + focus restore here; backdrop via layer onMouseDown
@@ -64,10 +65,11 @@ export function WalletGate({
 
   // Silent sign-in: a verified connection on the app chain opens the session.
   // The effect also resumes any pending intent (locked CTA → gate → console)
-  // without a second click. A "profile" session waits for the naming form —
-  // the effect must not override the authenticated state that form submits.
+  // without a second click. U14: no naming detour — the session is
+  // authenticated immediately; whatever profile exists stays as-is and the
+  // reducer merge keeps it (naming lives in Settings).
   useEffect(() => {
-    if (!connectedOk || !address || session.status === "profile") return;
+    if (!connectedOk || !address) return;
     if (session.status === "authenticated") {
       if (!resumed.current) {
         resumed.current = true;
@@ -78,22 +80,17 @@ export function WalletGate({
     dispatch({
       type: "session",
       session: {
-        status: session.profile ? "authenticated" : "profile",
+        status: "authenticated",
         address,
         wallet: connector?.name ?? "",
         chain: APP_CHAIN_ID,
         signedAt: new Date().toISOString(),
       },
     });
-    if (session.profile) {
-      resumed.current = true;
-      onAuthenticated();
-    }
   }, [
     connectedOk,
     address,
     session.status,
-    session.profile,
     connector,
     dispatch,
     onAuthenticated,
@@ -109,26 +106,9 @@ export function WalletGate({
     }
   };
 
-  const saveProfile = (event: React.FormEvent) => {
-    event.preventDefault();
-    dispatch({
-      type: "session",
-      session: {
-        status: "authenticated",
-        profile: profile || "axiom.main",
-        signedAt: new Date().toISOString(),
-      },
-    });
-    resumed.current = true;
-    onAuthenticated();
-  };
-
-  const view: "connect" | "wrong-network" | "profile" =
-    session.status === "profile"
-      ? "profile"
-      : wrongNetwork
-        ? "wrong-network"
-        : "connect";
+  const view: "connect" | "wrong-network" = wrongNetwork
+    ? "wrong-network"
+    : "connect";
 
   return (
     <div className="wallet-gate-layer" onMouseDown={onClose}>
@@ -213,22 +193,6 @@ export function WalletGate({
                 </p>
               )}
             </div>
-          )}
-
-          {view === "profile" && (
-            <form className="wallet-state" onSubmit={saveProfile}>
-              <h2>{copy.wallet.profileTitle}</h2>
-              <p>{copy.wallet.profileDescription}</p>
-              <Field
-                label="Profile name"
-                value={profile}
-                onChange={setProfile}
-                hint={copy.wallet.profileHint}
-              />
-              <Button type="submit" icon={<LockKeyhole size={15} />}>
-                {copy.wallet.unlockConsole}
-              </Button>
-            </form>
           )}
         </div>
       </section>

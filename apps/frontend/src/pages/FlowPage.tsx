@@ -70,7 +70,9 @@ import {
 } from "../hooks/useReceiptReconcile.js";
 import {
   decodeHandoffResult,
+  decodeHandoffResultToken,
   HANDOFF_RESULT_STORAGE_KEY,
+  type HandoffResult,
 } from "../lib/transferHandoff.js";
 import {
   getAxiomAgentNftAddress,
@@ -621,7 +623,8 @@ export function FlowPage({
   const failDraft = (err: unknown): void => {
     const message = humanizeError(err);
     setDraftPhase("recoverable-error", message);
-    dispatch({ type: "notice", notice: message });
+    // U24: failures persist until manually dismissed — no 4s auto-dismiss.
+    dispatch({ type: "notice", notice: message, severity: "error" });
   };
 
   // Keep wizard name in sync with draft — mint keccak256(toHex(name)) must match chat mint derivation.
@@ -730,7 +733,14 @@ export function FlowPage({
     if (kind === "transfer" && !isAddress(trimmed))
       return { field: "value", message: f.errRecipientAddress };
     if (kind === "transfer" && !/^0x[0-9a-fA-F]{128}$/.test(draft.extra.trim()))
-      return { field: "extra", message: f.errRecipientKey };
+      // U10: the classic dead-end is pasting the 42-char ADDRESS into the
+      // 132-char pubkey field — name the mistake instead of echoing hex math.
+      return {
+        field: "extra",
+        message: /^0x[0-9a-fA-F]{40}$/.test(draft.extra.trim())
+          ? f.errRecipientKeyIsAddress
+          : f.errRecipientKey,
+      };
     if (kind === "tick" && trimmed.length < 3)
       return { field: "value", message: f.errInstruction };
     if (kind !== "mint" && !selectedTokenId)
@@ -743,7 +753,7 @@ export function FlowPage({
     if (invalid) {
       // Sheet stays CLOSED for invalid drafts: inline field error first, notice toast as backup.
       setSubmitError(invalid);
-      dispatch({ type: "notice", notice: invalid.message });
+      dispatch({ type: "notice", notice: invalid.message, severity: "error" });
       return;
     }
     setSubmitError(null);
@@ -833,7 +843,11 @@ export function FlowPage({
     }
     if (attempt.outcome === "failed") {
       setDraftPhase("recoverable-error", attempt.message);
-      dispatch({ type: "notice", notice: attempt.message });
+      dispatch({
+        type: "notice",
+        notice: attempt.message,
+        severity: "error",
+      });
       return;
     }
     try {
@@ -880,6 +894,32 @@ export function FlowPage({
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
   }, [kind, transfer.coSignNonce, handoffApplied]);
+
+  // U26: cross-device handoff — a receiver's claim link lands here as
+  // ?result=<token>. Held until this tab's paused challenge exists, applied
+  // on nonce match, then stripped from the address bar (one-shot).
+  const [claimResult, setClaimResult] = useState<HandoffResult | null>(() =>
+    kind === "transfer"
+      ? decodeHandoffResultToken(
+          new URLSearchParams(window.location.search).get("result") ?? "",
+        )
+      : null,
+  );
+  useEffect(() => {
+    if (
+      !claimResult ||
+      kind !== "transfer" ||
+      transfer.coSignNonce === null ||
+      handoffApplied
+    )
+      return;
+    if (claimResult.nonce !== transfer.coSignNonce) return;
+    void applyHandoffRef.current(claimResult.signature, false);
+    setClaimResult(null);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("result");
+    window.history.replaceState(null, "", url.toString());
+  }, [claimResult, kind, transfer.coSignNonce, handoffApplied]);
 
   const copyHandoffLink = () => {
     const url = transfer.coSignHandoffUrl();
@@ -1033,7 +1073,7 @@ export function FlowPage({
     const error =
       reason === "timeout" ? f.simulateTimeoutError : f.simulateRejectedError;
     setDraftPhase("recoverable-error", error);
-    dispatch({ type: "notice", notice: `[dev] ${error}` });
+    dispatch({ type: "notice", notice: `[dev] ${error}`, severity: "error" });
   };
 
   const restart = () => {
@@ -1334,6 +1374,18 @@ export function FlowPage({
                 hint={field.hint}
               />
             ))}
+            {/* U10: the paste-guidance error above points here — the
+                3-step receiver-key walkthrough, one expanding disclosure. */}
+            {kind === "transfer" && (
+              <details className="transfer-key-walkthrough">
+                <summary>{f.transferKeyWalkthroughTitle}</summary>
+                <ol>
+                  {f.transferKeyWalkthroughSteps.map((step) => (
+                    <li key={step}>{step}</li>
+                  ))}
+                </ol>
+              </details>
+            )}
           </div>
 
           {kind === "tick" &&

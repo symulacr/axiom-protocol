@@ -224,6 +224,11 @@ export function formatInsightsLine(
   ];
   const wallMs = metrics.reduce((a, m) => a + m.wallMs, 0);
   if (wallMs > 0) parts.push(`LLM ${(wallMs / 1000).toFixed(1)}s`);
+  // U15: first-token latency lives here (insights), never in the loading UI.
+  const first = metrics[0];
+  if (first?.ttftMs && first.ttftMs > 0) {
+    parts.push(`TTFT ${(first.ttftMs / 1000).toFixed(1)}s`);
+  }
   // Row-42: opened detail keeps 3 segments (cost, latency, provider); internals stay out of the collapsed line.
   const last = metrics[metrics.length - 1];
   if (last?.provider) parts.push(`provider ${truncateAddress(last.provider)}`);

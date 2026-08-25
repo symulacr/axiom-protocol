@@ -143,6 +143,7 @@ function TransferFormPhase({
   canSubmit,
   isLoading,
   onSubmit,
+  walkthrough,
 }: {
   formId: string;
   receiverAddress: string;
@@ -162,6 +163,7 @@ function TransferFormPhase({
   canSubmit: boolean;
   isLoading: boolean;
   onSubmit: (e: FormEvent<HTMLFormElement>) => Promise<void>;
+  walkthrough: { title: string; steps: readonly string[] };
 }): ReactElement {
   return (
     <form onSubmit={onSubmit}>
@@ -193,8 +195,18 @@ function TransferFormPhase({
         mono
         required
         error={pubKeyError ?? undefined}
-        hint="From the receiver's wallet → Export Public Key."
       />
+
+      {/* U11: the one-line hint became an expanding 3-step walkthrough —
+          same validation/maxLength, self-service key retrieval. */}
+      <details className="transfer-modal-details">
+        <summary>{walkthrough.title}</summary>
+        <ol>
+          {walkthrough.steps.map((step) => (
+            <li key={step}>{step}</li>
+          ))}
+        </ol>
+      </details>
 
       <Field
         id={`${formId}-nonce`}
@@ -651,6 +663,10 @@ export function TransferModal({
           canSubmit={canSubmit}
           isLoading={isLoading}
           onSubmit={onSubmit}
+          walkthrough={{
+            title: flowCopy.transferKeyWalkthroughTitle,
+            steps: flowCopy.transferKeyWalkthroughSteps,
+          }}
         />
       ) : phase === "co-sign" && coSignReceiver !== null ? (
         <>

@@ -12,6 +12,7 @@ import {
   ShieldCheck,
 } from "../components/axiom/icons";
 import { AxiomBrandMark } from "../components/axiom/BrandMark";
+import { PUBLIC_HUB_PATHS } from "../lib/routeRegistry.js";
 import "../styles/axiom-seo-public.css";
 
 /** Live on-chain registry counts for the agents hub artifact — null while
@@ -93,11 +94,11 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
     ],
     boundary:
       "Axiom describes an operator workflow; it does not claim autonomous behavior beyond the configured flows.",
-    next: { href: "/proofs", label: "Trace a receipt lifecycle" },
+    next: { href: PUBLIC_HUB_PATHS.proofs, label: "Trace a receipt lifecycle" },
     links: [
-      { href: "/payments", label: "Programmable payments" },
-      { href: "/storage/0g", label: "Verifiable 0G Storage" },
-      { href: "/developers", label: "Developer quickstart" },
+      { href: PUBLIC_HUB_PATHS.payments, label: "Programmable payments" },
+      { href: PUBLIC_HUB_PATHS.storage, label: "Verifiable 0G Storage" },
+      { href: PUBLIC_HUB_PATHS.developers, label: "Developer quickstart" },
     ],
     icon: Network,
     artifact: {
@@ -129,11 +130,11 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
     ],
     boundary:
       "A receipt is an operational trace, not a financial, legal or regulatory guarantee.",
-    next: { href: "/proofs", label: "Inspect receipt states" },
+    next: { href: PUBLIC_HUB_PATHS.proofs, label: "Inspect receipt states" },
     links: [
-      { href: "/agents", label: "Agent provenance" },
-      { href: "/storage/0g", label: "Store a verifiable artifact" },
-      { href: "/developers", label: "Payment integration guide" },
+      { href: PUBLIC_HUB_PATHS.agents, label: "Agent provenance" },
+      { href: PUBLIC_HUB_PATHS.storage, label: "Store a verifiable artifact" },
+      { href: PUBLIC_HUB_PATHS.developers, label: "Payment integration guide" },
     ],
     icon: ReceiptText,
     artifact: {
@@ -164,11 +165,14 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
     ],
     boundary:
       "Finality and recovery states depend on the relevant network and operation; they are never represented as a universal guarantee.",
-    next: { href: "/payments", label: "See programmable payments" },
+    next: {
+      href: PUBLIC_HUB_PATHS.payments,
+      label: "See programmable payments",
+    },
     links: [
-      { href: "/agents", label: "Agent evidence" },
-      { href: "/storage/0g", label: "Storage proof workflow" },
-      { href: "/developers", label: "Developer references" },
+      { href: PUBLIC_HUB_PATHS.agents, label: "Agent evidence" },
+      { href: PUBLIC_HUB_PATHS.storage, label: "Storage proof workflow" },
+      { href: PUBLIC_HUB_PATHS.developers, label: "Developer references" },
     ],
     icon: FileCheck2,
     artifact: {
@@ -199,11 +203,14 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
     ],
     boundary:
       "0G infrastructure capabilities and Axiom's current product integration are described separately; no absolute availability or privacy claim is made.",
-    next: { href: "/developers", label: "Open Storage quickstart" },
+    next: {
+      href: PUBLIC_HUB_PATHS.developers,
+      label: "Open Storage quickstart",
+    },
     links: [
-      { href: "/proofs", label: "Understand evidence lifecycle" },
-      { href: "/agents", label: "Connect artifacts to agents" },
-      { href: "/payments", label: "Payment receipts" },
+      { href: PUBLIC_HUB_PATHS.proofs, label: "Understand evidence lifecycle" },
+      { href: PUBLIC_HUB_PATHS.agents, label: "Connect artifacts to agents" },
+      { href: PUBLIC_HUB_PATHS.payments, label: "Payment receipts" },
     ],
     icon: ShieldCheck,
     artifact: {
@@ -236,9 +243,9 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
       "Integration details must remain aligned with the deployed contracts, network configuration and 0G SDK version used by the product.",
     next: { href: "/app", label: "Open operator console" },
     links: [
-      { href: "/agents", label: "Agent architecture" },
-      { href: "/payments", label: "Payment lifecycle" },
-      { href: "/storage/0g", label: "Storage evidence" },
+      { href: PUBLIC_HUB_PATHS.agents, label: "Agent architecture" },
+      { href: PUBLIC_HUB_PATHS.payments, label: "Payment lifecycle" },
+      { href: PUBLIC_HUB_PATHS.storage, label: "Storage evidence" },
     ],
     icon: Code2,
     artifact: {
@@ -325,7 +332,7 @@ export function PublicSeoPage({ slug }: { slug: PublicSeoSlug }) {
           {(Object.keys(pages) as PublicSeoSlug[]).map((navSlug) => (
             <a
               className={navSlug === slug ? "is-active" : undefined}
-              href={navSlug === "storage" ? "/storage/0g" : `/${navSlug}`}
+              href={PUBLIC_HUB_PATHS[navSlug]}
               key={navSlug}
             >
               {pages[navSlug].navLabel}

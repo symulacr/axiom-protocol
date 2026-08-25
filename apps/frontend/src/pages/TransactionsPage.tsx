@@ -6,7 +6,7 @@
 */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useChainId } from "wagmi";
+import { useAccount, useChainId } from "wagmi";
 import { createPortal } from "react-dom";
 import {
   ArrowRight,
@@ -35,9 +35,11 @@ import {
   useEventHistory,
   eventDedupeKey,
   eventTokenId,
+  isOwnEvent,
   type AxiomEvent,
 } from "../hooks/useEventHistory.js";
 import { useEventStream } from "../hooks/useEventStream.js";
+import { useAgents } from "../hooks/useAgents.js";
 import { truncateHex, explorerTxUrl } from "../utils/format.js";
 import { useModalDismiss } from "../hooks/useModalDismiss.js";
 
@@ -166,7 +168,7 @@ function ReceiptDrawer({
   const recover = isRecoverableTx(tx.state);
   const copyHash = () => {
     navigator.clipboard?.writeText(tx.hash);
-    dispatch({ type: "notice", notice: "Receipt hash copied locally." });
+    dispatch({ type: "notice", notice: "Receipt hash copied." });
   };
   const primaryAction = recover ? (
     <Button
@@ -181,13 +183,27 @@ function ReceiptDrawer({
       {txCopy.openRecovery}
     </Button>
   ) : (
-    <Button
-      variant="secondary"
-      onClick={() => go(`${tx.route}?intent=receipt`)}
-      icon={<ArrowRight size={15} />}
-    >
-      {txCopy.openOperation}
-    </Button>
+    /* U20: the explorer link is the honest "see the evidence" primary; the
+       in-app action demotes to a ghost that runs another like this instead
+       of pre-filling a fresh draft from a finished receipt. */
+    <>
+      <a
+        className="button button-primary"
+        href={explorerTx(tx.hash)}
+        target="_blank"
+        rel="noreferrer"
+      >
+        <ArrowRight size={15} />
+        View on explorer
+      </a>
+      <Button
+        variant="ghost"
+        onClick={() => go(`${tx.route}?intent=receipt`)}
+        icon={<RotateCcw size={15} />}
+      >
+        {txCopy.runAnother}
+      </Button>
+    </>
   );
   return createPortal(
     <div className="drawer-layer" onClick={onClose}>
@@ -286,12 +302,24 @@ export function TransactionsPage({
     right: number;
   } | null>(null);
   const filtersTriggerRef = useRef<HTMLButtonElement>(null);
-  const { events, refetch: refetchHistory } = useEventHistory({
-    pollIntervalMs: 15_000,
-  });
+  const { events, isLoading: historyLoading, refetch: refetchHistory } =
+    useEventHistory({
+      pollIntervalMs: 15_000,
+    });
   const { events: wsEvents, isConnected: wsConnected } = useEventStream({
     topics: ["*"],
   });
+  const { address } = useAccount();
+  // U7: the indexer subscribes with topics ["*"] — rows are scoped to this
+  // wallet through the shared isOwnEvent predicate before they render.
+  const { agents } = useAgents();
+  const eventScope = useMemo(
+    () => ({
+      address,
+      tokenIds: new Set(agents.map((agent) => agent.tokenId.toString())),
+    }),
+    [address, agents],
+  );
 
   useEffect(() => {
     // deep-link whitelist: review + confirmed + every ADVANCED_FILTERS state
@@ -309,6 +337,7 @@ export function TransactionsPage({
     const merged = new Map<string, AxiomEvent>();
     for (const event of [...events, ...wsEvents]) {
       if (event.eventName === "transcript") continue;
+      if (!isOwnEvent(event, eventScope)) continue;
       merged.set(eventDedupeKey(event), event);
     }
     const chainEvents = [...merged.values()].map((event) =>
@@ -317,7 +346,7 @@ export function TransactionsPage({
     const seen = new Set(chainEvents.map((tx) => tx.id));
     const local = state.transactions.filter((tx) => !seen.has(tx.id));
     return [...local, ...chainEvents];
-  }, [events, wsEvents, state.transactions]);
+  }, [events, wsEvents, eventScope, state.transactions]);
 
   const filtered =
     filter === "all"
@@ -490,7 +519,29 @@ export function TransactionsPage({
               <ChevronRight size={15} />
             </button>
           ))}
-          {filtered.length === 0 && (
+          {/* U5: first load is not an empty result — skeleton rows until the
+              history poll has delivered once (background re-polls must not
+              resurrect them) and the WS stream has had its say; the true
+              empty state renders strictly post-load. */}
+          {historyLoading &&
+          events.length === 0 &&
+          transactions.length === 0 &&
+          wsEvents.length === 0 ? (
+            <div className="transaction-table-skeleton" aria-busy="true">
+              {[0, 1, 2].map((row) => (
+                <div key={row} className="transaction-row" aria-hidden="true">
+                  <span className="transaction-kind">
+                    <i />
+                    <span>
+                      <strong>&nbsp;</strong>
+                      <small>&nbsp;</small>
+                    </span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          {!historyLoading && filtered.length === 0 && (
             <div className="empty-state transaction-empty-state">
               <p>{txCopy.emptyState}</p>
               <button className="text-link" onClick={() => chooseFilter("all")}>

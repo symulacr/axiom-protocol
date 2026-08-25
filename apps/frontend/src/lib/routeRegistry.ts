@@ -34,11 +34,12 @@ const ROUTES: RouteDefinition[] = [
   def("dashboard", { path: "/app", label: "Overview", shortcut: "Alt 1" }),
   def("chat", { label: "Chat", shortcut: "Alt 3" }),
   def("transactions", { label: "Transactions", shortcut: "Alt 4" }),
-  def("storage", { label: "Storage proof", shortcut: "Alt 5" }),
+  // U18: demoted from prime IA (no label/shortcut → absent from rail palette); route stays for deep links.
+  def("storage"),
   def("mint", { label: "Mint", shortcut: "Alt M" }),
   def("payment", { label: "Payment", shortcut: "Alt P" }),
   def("transfer", { label: "Transfer proof", shortcut: "Alt T" }),
-  def("tick", { label: "Run tick", shortcut: "Alt K" }),
+  def("tick", { label: "Run agent task", shortcut: "Alt K" }),
   def("deposit", { label: "Deposit", shortcut: "Alt D" }),
   def("withdraw", { label: "Withdraw", shortcut: "Alt W" }),
   def("settings"),
@@ -47,6 +48,14 @@ const ROUTES: RouteDefinition[] = [
   def("transfer-co-sign"),
 ];
 
+/** PublicSeoSlug → canonical hub path, derived so emitted hrefs can never drift from the registry. */
+export const PUBLIC_HUB_PATHS: Record<PublicSeoSlug, string> = Object.fromEntries(
+  ROUTES.filter(
+    (entry): entry is RouteDefinition & { publicSlug: PublicSeoSlug } =>
+      Boolean(entry.publicSlug),
+  ).map((entry) => [entry.publicSlug, entry.path]),
+) as Record<PublicSeoSlug, string>;
+
 /** Canonical path lookup keyed by route id — derived from ROUTES so the table stays
  * the single source; prefer over hardcoded strings. Falls back to the id itself. */
 export function routePath(id: string): string {
@@ -54,11 +63,11 @@ export function routePath(id: string): string {
 }
 
 const FEATURE_ALIAS_TO_CANONICAL: Record<string, string> = {
-  "/features/agents": "/agents",
-  "/features/payments": "/payments",
-  "/features/proofs": "/proofs",
-  "/features/storage": "/storage/0g",
-  "/features/developers": "/developers",
+  "/features/agents": PUBLIC_HUB_PATHS.agents,
+  "/features/payments": PUBLIC_HUB_PATHS.payments,
+  "/features/proofs": PUBLIC_HUB_PATHS.proofs,
+  "/features/storage": PUBLIC_HUB_PATHS.storage,
+  "/features/developers": PUBLIC_HUB_PATHS.developers,
 };
 
 /** Alias → Route id, derived from the canonical map so one table owns both.

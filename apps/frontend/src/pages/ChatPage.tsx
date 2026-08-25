@@ -300,18 +300,31 @@ function EmptyState(props: {
         }}
       >
         {[
-          { label: copy.promptAgents, hint: copy.promptAgentsHint },
-          { label: copy.promptMint, hint: copy.promptMintHint },
+          {
+            label: copy.promptAgents,
+            hint: copy.promptAgentsHint,
+            prompt: copy.promptAgentsIntent,
+          },
+          {
+            label: copy.promptMint,
+            hint: copy.promptMintHint,
+            prompt: copy.promptMintIntent,
+          },
           {
             label: copy.promptVault,
             hint: interpolate(copy.promptVaultHint, { nativeSymbol }),
+            prompt: copy.promptVaultIntent,
           },
-          { label: copy.promptTick, hint: copy.promptTickHint },
+          {
+            label: copy.promptTick,
+            hint: copy.promptTickHint,
+            prompt: copy.promptTickIntent,
+          },
         ].map((p) => (
           <button
             key={p.label}
             className="prompt-card"
-            onClick={() => props.send(p.label)}
+            onClick={() => props.send(p.prompt)}
           >
             <div style={{ ...promptLabelStyle, marginBottom: 2 }}>
               {p.label}
@@ -535,8 +548,13 @@ interface ChatTxRow {
 }
 
 /** Live WS subscription (reuses the /v1/stream client-key auth + useEventStream
- * reconnect/backoff) filtered to on-chain confirmations, deduped by txHash. */
-function useChatTxStream(enabled = true): {
+ * reconnect/backoff) filtered to on-chain confirmations, deduped by txHash.
+ * U9: rows are scoped to txHashes referenced by the current thread — an empty
+ * scope yields no rows (the feed renders nothing for that conversation). */
+function useChatTxStream(
+  enabled = true,
+  threadTxHashes: Set<string>,
+): {
   rows: ChatTxRow[];
   isConnected: boolean;
 } {
@@ -552,6 +570,7 @@ function useChatTxStream(enabled = true): {
       if (CHAT_TX_EVENT_NAMES[ev.eventName] !== true) continue;
       const txHash = ev.txHash || ev.transactionHash || ev.payload?.txHash;
       if (!txHash) continue;
+      if (!threadTxHashes.has(String(txHash).toLowerCase())) continue;
       if (seen.has(txHash)) continue;
       seen.add(txHash);
       out.push({
@@ -563,7 +582,7 @@ function useChatTxStream(enabled = true): {
       });
     }
     return out.slice(0, CHAT_TX_MAX_ROWS);
-  }, [events]);
+  }, [events, threadTxHashes]);
 
   return { rows, isConnected };
 }
@@ -692,7 +711,22 @@ function ChatPageInner(): ReactElement {
   const { serverThreads: serverHistory, isLoading: historyLoading } =
     useChatHistory(address, historyRequested);
   // Live on-chain confirmations surfaced as "⛓ tx mined" rows under the thread
-  const { rows: txRows } = useChatTxStream(!!address);
+  // U9: tx hashes referenced anywhere in the current thread (message bodies,
+  // tool-call args/results, meta) — the confirmation feed only shows these.
+  const threadTxHashes = useMemo(() => {
+    const hashes = new Set<string>();
+    const scan = (text: string) => {
+      for (const m of text.matchAll(/0x[0-9a-fA-F]{64}/g))
+        hashes.add(m[0].toLowerCase());
+    };
+    for (const msg of messages) {
+      if (msg.content) scan(msg.content);
+      if (msg.tool_calls) scan(JSON.stringify(msg.tool_calls));
+      if (msg.meta) scan(JSON.stringify(msg.meta));
+    }
+    return hashes;
+  }, [messages]);
+  const { rows: txRows } = useChatTxStream(!!address, threadTxHashes);
   // Resume the active thread across page reloads (same threadId, same
   // summary); a fresh UUID only when nothing was in flight.
   const [threadId, setThreadId] = useState<string>(
@@ -700,8 +734,6 @@ function ChatPageInner(): ReactElement {
   );
   const threadIdRef = useRef<string>(threadId);
   const [computeHint, setComputeHint] = useState<string | null>(null);
-  const [agentStep, setAgentStep] = useState(0);
-  const [ttftMs, setTtftMs] = useState<number | null>(null);
   const [transferTokenId, setTransferTokenId] = useState<string | null>(null);
   const transferResolveRef = useRef<{
     resolve: (txHash: string) => void;
@@ -982,8 +1014,6 @@ function ChatPageInner(): ReactElement {
       setStreamError(null);
       toolRunsRef.current = {};
       setToolRuns({});
-      setAgentStep(0);
-      setTtftMs(null);
       turnMetricsRef.current = [];
       currentTurnRef.current = { wallMs: 0 };
       stepsRef.current = 0;
@@ -1045,7 +1075,6 @@ function ChatPageInner(): ReactElement {
         while (loopCount < MAX_TOOL_LOOPS) {
           loopCount++;
           if (isStale()) break;
-          setAgentStep(loopCount);
           const turnStartAt = Date.now();
           currentTurnRef.current = { wallMs: 0 };
 
@@ -1149,8 +1178,8 @@ function ChatPageInner(): ReactElement {
               if (delta.content) {
                 if (!firstTokenAt) {
                   firstTokenAt = Date.now();
-                  setTtftMs(firstTokenAt - runStartedAt);
-                  // Reuse the same TTFT computation for the per-turn metrics.
+                  // Reuse the same TTFT computation for the per-turn metrics
+                  // (surfaced via InsightsDisclosure, not the loading UI).
                   currentTurnRef.current.ttftMs = firstTokenAt - runStartedAt;
                 }
                 assistantContent += delta.content;
@@ -1956,14 +1985,6 @@ function ChatPageInner(): ReactElement {
                     {tickRunning ? (
                       <span style={dimXs}>{chatCopy.tickInProgress}</span>
                     ) : null}
-                    {agentStep > 0 ? (
-                      <span style={dimXs}>
-                        step {agentStep}/{MAX_TOOL_LOOPS}
-                      </span>
-                    ) : null}
-                    {ttftMs !== null && ttftMs >= 0 ? (
-                      <span style={dimXs}>TTFT {ttftMs}ms</span>
-                    ) : null}
                   </span>
                 </p>
               )}
@@ -2335,6 +2356,22 @@ function ChatHistorySection({
 
   return (
     <div className="chat-history">
+      {/* U25: discoverability — an empty rail next to a connected wallet
+          explains where chats live and offers the one-signature restore
+          before "New chat", instead of burying it below the list. */}
+      {serverRestore && !serverLoading && threads.length === 0 ? (
+        <div>
+          <p className="chat-history__empty">{copy.historyOnChainNote}</p>
+          <button
+            type="button"
+            className="chat-history__restore"
+            onClick={onRequestServerHistory}
+            title={copy.historyRestoreHint}
+          >
+            {copy.historyRestore}
+          </button>
+        </div>
+      ) : null}
       <div className="chat-history__head">
         <h2 className="chat-history__title">{copy.historyTitle}</h2>
         <button type="button" className="chat-history__new" onClick={onNew}>
@@ -2386,16 +2423,6 @@ function ChatHistorySection({
         {serverLoading && (
           <p className="chat-history__empty">{copy.historyLoading}</p>
         )}
-        {serverRestore && !serverLoading ? (
-          <button
-            type="button"
-            className="chat-history__restore"
-            onClick={onRequestServerHistory}
-            title={copy.historyRestoreHint}
-          >
-            {copy.historyRestore}
-          </button>
-        ) : null}
       </div>
     </div>
   );

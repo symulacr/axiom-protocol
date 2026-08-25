@@ -8,8 +8,11 @@ import {
   ACCEPTANCE_CODE_SHAPE,
   decodeHandoffPayload,
   decodeHandoffResult,
+  decodeHandoffResultToken,
   encodeHandoffPayload,
   encodeHandoffResult,
+  encodeHandoffResultToken,
+  handoffClaimUrl,
   handoffUrl,
   TRANSFER_CO_SIGN_PATH,
   type TransferHandoffPayload,
@@ -105,5 +108,35 @@ describe("transfer handoff result code", () => {
     assert.equal(decodeHandoffResult(null), null);
     assert.equal(decodeHandoffResult("garbage"), null);
     assert.ok(ACCEPTANCE_CODE_SHAPE.test(sig));
+  });
+});
+
+describe("transfer handoff claim token / link (U26)", () => {
+  const sig = ("0x" + "ab".repeat(65)) as `0x${string}`;
+  const nonce = validPayload.typedData.message.nonce;
+
+  test("claim token round-trips to the same signature + nonce", () => {
+    const token = encodeHandoffResultToken(sig, nonce);
+    assert.match(token, /^[\w-]+$/); // base64url, URL-safe, no padding
+    const result = decodeHandoffResultToken(token);
+    assert.equal(result?.signature, sig);
+    assert.equal(result?.nonce, nonce);
+  });
+
+  test("rejects damaged tokens instead of throwing", () => {
+    assert.equal(decodeHandoffResultToken("not-a-token"), null);
+    assert.equal(decodeHandoffResultToken(""), null);
+    // valid base64url of garbage JSON
+    assert.equal(
+      decodeHandoffResultToken(encodeHandoffResultToken("0x12" as `0x${string}`, nonce)),
+      null,
+    );
+  });
+
+  test("claim link carries the token on the sender-side transfer path", () => {
+    const url = handoffClaimUrl(encodeHandoffResultToken(sig, nonce), "https://x.test");
+    assert.ok(url.startsWith("https://x.test/transfer?result="));
+    const token = new URL(url).searchParams.get("result") ?? "";
+    assert.equal(decodeHandoffResultToken(token)?.signature, sig);
   });
 });

@@ -1,7 +1,10 @@
-/* Next-safe-action engine. "Fund agent" targets the
- * first unfunded agent from the live portfolio (fallback: the payment route
- * without an agent); "recover receipt" keys off flow drafts in recoverable
- * error, and storage inspection stays the read-only proof check.
+/* Next-safe-action engine. "Fund agent" appears only with a concrete
+ * unfunded target from the caller (U17: the old unconditional push pointed
+ * at a fallback route with no agent — noise, not signal); "recover receipt"
+ * keys off flow drafts in recoverable error. Storage inspection is NOT
+ * emitted (U18: no real storage backend exists yet — the action pointed at
+ * a labeled demo page). The list may legitimately be empty; the strip
+ * renders nothing then.
  * Copy comes from copy.strip (05 — the strip localizes with the
  * page body); no chain/token literal ever originates here. */
 import { isRecoverableTx, type AppState } from "./models";
@@ -53,32 +56,24 @@ export function getNextSafeActions(
     });
   }
 
-  actions.push({
-    id: "fund-agent",
-    title: fundTarget ? strip.fundTitle(fundTarget.tokenId) : strip.fundTitle(),
-    summary: strip.fundSummary,
-    impact: strip.fundImpact,
-    proofLabel: strip.proofAgent,
-    proofValue: fundTarget ? `#${fundTarget.tokenId}` : strip.selectInFlow,
-    path: fundTarget
-      ? `/payment?agent=${fundTarget.tokenId}&intent=fund&stage=amount`
-      : "/payment?intent=fund&stage=amount",
-    priority: "high",
-    shortcut: "Alt P",
-  });
+  // U17: gated on a concrete target — the caller decides which vault is
+  // unfunded; no target means no fund action, never a generic fallback.
+  if (fundTarget) {
+    actions.push({
+      id: "fund-agent",
+      title: strip.fundTitle(fundTarget.tokenId),
+      summary: strip.fundSummary,
+      impact: strip.fundImpact,
+      proofLabel: strip.proofAgent,
+      proofValue: `#${fundTarget.tokenId}`,
+      path: `/payment?agent=${fundTarget.tokenId}&intent=fund&stage=amount`,
+      priority: "high",
+      shortcut: "Alt P",
+    });
+  }
 
-  actions.push({
-    id: "inspect-storage",
-    title: strip.inspectTitle,
-    summary: strip.inspectSummary,
-    impact: strip.inspectImpact,
-    proofLabel: strip.proofRoot,
-    // No storage backend yet (StoragePage is a labeled demo) — honest "nothing indexed" marker.
-    proofValue: "—",
-    path: "/storage",
-    priority: "normal",
-    shortcut: "Alt 5",
-  });
+  // U18: no "inspect-storage" push — until a real storage backend exists the
+  // demo-page action stays out of the strip (route + page remain for deep links).
 
   return actions;
 }
@@ -92,9 +87,6 @@ export function getRouteAction(
   const actions = getNextSafeActions(state, fundTarget, strip);
   if (path.startsWith("/agents/") || path.startsWith("/payment"))
     return actions.find((action) => action.id === "fund-agent") ?? actions[0];
-  if (path.startsWith("/storage"))
-    return (
-      actions.find((action) => action.id === "inspect-storage") ?? actions[0]
-    );
+  // No /storage branch: inspect-storage is no longer emitted (U18).
   return actions[0];
 }

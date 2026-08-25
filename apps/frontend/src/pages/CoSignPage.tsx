@@ -30,6 +30,8 @@ import { getCopy, interpolate } from "../lib/copy.js";
 import {
   decodeHandoffPayload,
   encodeHandoffResult,
+  encodeHandoffResultToken,
+  handoffClaimUrl,
   HANDOFF_RESULT_STORAGE_KEY,
 } from "../lib/transferHandoff.js";
 import { ACCESS_PROOF_TYPES } from "../abi/addresses.js";
@@ -125,13 +127,14 @@ export function CoSignPage({ go }: { go: (path: string) => void }) {
   };
 
   const copyCode = async () => {
-    if (!signature) return;
+    // U26: the receiver sends ONE piece — the claim link; raw signature stays behind "Advanced".
+    if (!claimUrl) return;
     try {
-      await navigator.clipboard?.writeText(signature);
+      await navigator.clipboard?.writeText(claimUrl);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1500);
     } catch {
-      // clipboard blocked — the code stays selectable in the panel
+      // clipboard blocked — token and link stay selectable in the panel
     }
   };
 
@@ -157,6 +160,11 @@ export function CoSignPage({ go }: { go: (path: string) => void }) {
   }
 
   const receiver = payload.typedData.message.to;
+  // U26: one-piece claim token + full claim link for the sender's /transfer page.
+  const resultToken = signature
+    ? encodeHandoffResultToken(signature, payload.typedData.message.nonce)
+    : null;
+  const claimUrl = resultToken ? handoffClaimUrl(resultToken) : null;
   const expiryDate = new Date(
     Number(payload.typedData.message.validUntil) * 1000,
   );
@@ -223,7 +231,21 @@ export function CoSignPage({ go }: { go: (path: string) => void }) {
               <div>
                 <strong>{f.receiveDoneTitle}</strong>
                 <p>{f.receiveDoneBody}</p>
-                <pre className="mono cosign-code">{signature}</pre>
+                {/* U26: happy path ends in one tap — token + link, raw signature behind Advanced. */}
+                <dl className="drawer-list">
+                  <div>
+                    <dt>{f.claimUrlLabel}</dt>
+                    <dd className="mono">{claimUrl}</dd>
+                  </div>
+                  <div>
+                    <dt>{f.claimTokenLabel}</dt>
+                    <dd className="mono cosign-code">{resultToken}</dd>
+                  </div>
+                </dl>
+                <details>
+                  <summary>{f.claimRawToggle}</summary>
+                  <pre className="mono cosign-code">{signature}</pre>
+                </details>
                 <div className="review-handoff-actions">
                   <Button
                     variant={copied ? "secondary" : "primary"}

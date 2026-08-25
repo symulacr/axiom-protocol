@@ -133,6 +133,7 @@ export type OperationState = {
   pendingIntent: PendingIntent | null;
   operationDrafts: Record<FlowKind, OperationDraft>;
 };
+export type NoticeSeverity = "success" | "error";
 export type AppState = {
   settings: UiSettings;
   session: Session;
@@ -140,4 +141,6 @@ export type AppState = {
   storage: StoragePhase;
   guideOpen: boolean;
   notice: string | null;
+  /** U24: error notices persist (no auto-dismiss); successes toast for 4s. */
+  noticeSeverity: NoticeSeverity | null;
 } & OperationState;

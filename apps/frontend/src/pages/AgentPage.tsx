@@ -345,7 +345,7 @@ export function AgentPage({
 
   const copyDataHash = () => {
     if (metadata?.dataHash) navigator.clipboard?.writeText(metadata.dataHash);
-    action("Metadata root copied locally.");
+    action("Metadata root copied.");
   };
 
   return (

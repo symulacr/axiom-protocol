@@ -38,7 +38,11 @@ import {
   type VaultDataEntry,
 } from "../hooks/useVaultDataBatch.js";
 import { useHealth } from "../hooks/useHealth.js";
-import { useEventHistory, eventTokenId } from "../hooks/useEventHistory.js";
+import {
+  useEventHistory,
+  eventTokenId,
+  isOwnEvent,
+} from "../hooks/useEventHistory.js";
 import { formatTokenAmount, truncateAddress } from "../utils/format.js";
 import { APP_CHAIN, APP_CHAIN_ID } from "../config/wagmi.js";
 
@@ -195,6 +199,25 @@ export function DashboardPage({
     pollIntervalMs: 20_000,
   });
 
+  // U8: the indexer subscribes with topics ["*"] — every event surface on
+  // this page goes through the shared isOwnEvent scope, never raw length.
+  const ownTokenIds = useMemo(
+    () => new Set(agents.map((agent) => agent.tokenId.toString())),
+    [agents],
+  );
+  const eventScope = useMemo(
+    () => ({ address, tokenIds: ownTokenIds }),
+    [address, ownTokenIds],
+  );
+  const ownEvents = useMemo(
+    () =>
+      events.filter(
+        (event) =>
+          event.eventName !== "transcript" && isOwnEvent(event, eventScope),
+      ),
+    [events, eventScope],
+  );
+
   const totalVaultWei = useMemo(() => {
     let sum = 0n;
     for (const entry of vaultMap.values()) sum += entry.depositsWei;
@@ -228,9 +251,8 @@ export function DashboardPage({
 
   const activityRows = useMemo(() => {
     // Chat-transcript storage pointers are not operator activity — receipts only.
-    const chainSource = events.filter(
-      (event) => event.eventName !== "transcript",
-    );
+    // U8: scoped through isOwnEvent; strangers' chain events are noise here.
+    const chainSource = ownEvents.slice(0, 3);
     const local = state.transactions.slice(0, 3).map((tx) => ({
       key: tx.id,
       icon: tx.icon,
@@ -255,7 +277,7 @@ export function DashboardPage({
       };
     });
     return [...local, ...chainEvents].slice(0, 3);
-  }, [state.transactions, events]);
+  }, [state.transactions, ownEvents]);
   return (
     <div className="ops-page">
       <div className="page-head page-head-asymmetric">
@@ -312,13 +334,13 @@ export function DashboardPage({
             icon={<Bot size={16} />}
           />
           <Stat
-            label={copy.dashboard.storageProofs}
-            value={String(events.length)}
+            label={copy.dashboard.myEventsSeen}
+            value={String(ownEvents.length)}
             change={copy.dashboard.eventsIndexed}
             icon={<Database size={16} />}
           />
           <Stat
-            label={copy.dashboard.liveQueue}
+            label={copy.dashboard.pendingMine}
             value={String(
               state.transactions.filter((tx) => isInFlightTx(tx.state)).length,
             ).padStart(2, "0")}
@@ -376,7 +398,14 @@ export function DashboardPage({
                 hint={agentsError.message}
               />
             )}
-            {!agentsError && agents.length === 0 && (
+            {/* U4: the register is empty only after load — during fetch the
+                panel shows a busy placeholder, never "No agents yet". */}
+            {!agentsError && loading && agents.length === 0 && (
+              <div aria-busy="true">
+                <EmptyState title={copy.dashboard.loadingVaults} />
+              </div>
+            )}
+            {!agentsError && !loading && agents.length === 0 && (
               <EmptyState
                 title={copy.dashboard.noAgents}
                 hint={copy.dashboard.noAgentsHint}
@@ -434,17 +463,28 @@ export function DashboardPage({
             <ShieldCheck size={18} className="copper" />
           </PanelHead>
           <div className="proof-card">
-            <img src="/brand/hero-seal-512.jpg" alt="Abstract proof field" />
-            <div>
-              <small>
-                {attention[0]
-                  ? copy.dashboard.agentFundingLabel(
+            {/* U8: no canned allowance card when nothing needs attention —
+                the fallback collapses to honest text-only. */}
+            {attention[0] ? (
+              <>
+                <img
+                  src="/brand/hero-seal-512.jpg"
+                  alt="Abstract proof field"
+                />
+                <div>
+                  <small>
+                    {copy.dashboard.agentFundingLabel(
                       attention[0].tokenId.toString(),
-                    )
-                  : copy.dashboard.paymentAllowanceLabel}
-              </small>
-              <strong>{copy.dashboard.allowanceReady}</strong>
-            </div>
+                    )}
+                  </small>
+                  <strong>{copy.dashboard.allowanceReady}</strong>
+                </div>
+              </>
+            ) : (
+              <div>
+                <strong>{copy.dashboard.fleetNominal}</strong>
+              </div>
+            )}
           </div>
         </section>
       </div>

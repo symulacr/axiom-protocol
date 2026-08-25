@@ -26,6 +26,26 @@ export function eventDedupeKey(ev: AxiomEvent): string {
   return `${ev.chainId}:${ev.txHash}:${ev.logIndex}`;
 }
 
+/** Ownership scope shared by every event consumer (Transactions, Dashboard,
+ * Chat): an event is the user's when it touches one of their agent token
+ * ids or their address appears in the payload. The indexer subscribes with
+ * `topics:["*"]`, so consumers MUST filter through this single predicate —
+ * raw `events.filter(e => e.eventName !== "transcript")` renders the whole
+ * chain's activity as if it were the user's. */
+export function isOwnEvent(
+  ev: AxiomEvent,
+  scope: { address?: string; tokenIds: Set<string> },
+): boolean {
+  const tokenId = eventTokenId(ev);
+  if (tokenId !== null && scope.tokenIds.has(tokenId)) return true;
+  const owner = scope.address?.toLowerCase();
+  if (!owner) return false;
+  const payload = ev.payload ?? {};
+  return [payload.from, payload.to, payload.owner].some(
+    (field) => typeof field === "string" && field.toLowerCase() === owner,
+  );
+}
+
 function sortEventsChronological(a: AxiomEvent, b: AxiomEvent): number {
   return (
     a.blockNumber - b.blockNumber ||

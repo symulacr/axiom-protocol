@@ -622,6 +622,10 @@ export function AppShell({
           } as React.CSSProperties
         }
       >
+        {/* U27: keyboard bypass of the command rail; target is main.main below. */}
+        <a className="skip-link" href="#main-content">
+          {getCopy(state.settings.locale).a11y.skipToContent}
+        </a>
         <div className="sidebar-wrap">
           {!state.settings.railHidden && (
             <Sidebar
@@ -642,7 +646,7 @@ export function AppShell({
             </button>
           )}
         </div>
-        <main className="main">
+        <main id="main-content" className="main">
           <Topbar
             route={route}
             path={path}

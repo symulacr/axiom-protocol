@@ -256,3 +256,38 @@ export function decodeHandoffResult(raw: string | null): HandoffResult | null {
     return null;
   }
 }
+
+/* --- U26: one-piece claim token / claim link ------------------------------ */
+
+/** Sender-side flow path that consumes `?result=<token>` claim links. */
+export const TRANSFER_CLAIM_PATH = "/transfer";
+
+/** The receiver's acceptance as a compact base64url token — the whole thing
+ * a receiver copies/sends (the raw 130-hex signature hides behind "Advanced"). */
+export function encodeHandoffResultToken(
+  signature: `0x${string}`,
+  nonce: `0x${string}`,
+): string {
+  return bytesToBase64Url(
+    new TextEncoder().encode(encodeHandoffResult(signature, nonce)),
+  );
+}
+
+export function decodeHandoffResultToken(
+  token: string,
+): HandoffResult | null {
+  try {
+    return decodeHandoffResult(
+      new TextDecoder().decode(base64UrlToBytes(token)),
+    );
+  } catch {
+    return null;
+  }
+}
+
+/** Full claim link (`/transfer?result=…`) the receiver pastes to the sender. */
+export function handoffClaimUrl(token: string, origin?: string): string {
+  const base =
+    origin ?? (typeof window === "undefined" ? "" : window.location.origin);
+  return `${base}${TRANSFER_CLAIM_PATH}?result=${token}`;
+}

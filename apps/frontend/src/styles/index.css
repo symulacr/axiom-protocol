@@ -1978,6 +1978,10 @@ html[data-theme="light"] .filters-popover {
 .rail-reopen { transition: background 0.16s var(--ease); }
 .rail-reopen:hover { background: rgba(210, 139, 82, 0.16); }
 
+/* 13. Skip-to-content (U27): hidden until keyboard-focused; jumps past the command rail. */
+.skip-link { position: fixed; top: -60px; left: var(--space-4); z-index: calc(var(--layer-topbar) + 1); padding: var(--space-2) var(--space-4); background: var(--completion-panel); color: #ece9de; border: 1px solid var(--completion-copper); font: 500 var(--fs-small) 'JetBrains Mono', monospace; transition: top 0.16s var(--ease); }
+.skip-link:focus { top: var(--space-2); }
+
 /* C-02 follow-through: the active filter fill (index.css @layer axiom-base
    `.filter.active { background: var(--panel) }`) is additionally beaten by
    the UN-layered `.filter { background: transparent }` in
