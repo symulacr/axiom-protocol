@@ -52,14 +52,6 @@ const ZERO_STRATEGY_ROOT =
   "0x0000000000000000000000000000000000000000000000000000000000000000";
 export type SessionState =
   "disconnected" | "wrong-network" | "profile" | "authenticated";
-export type StoragePhase =
-  | "ready"
-  | "encrypted"
-  | "root-hashed"
-  | "published"
-  | "verified"
-  | "available"
-  | "failed";
 export type UiSettings = {
   railCollapsed: boolean;
   railHidden: boolean;
@@ -100,14 +92,6 @@ export type Transaction = {
 };
 export type PendingIntent = {
   path: string;
-  source:
-    | "wallet"
-    | "dashboard"
-    | "agent"
-    | "chat"
-    | "command-center"
-    | "receipt"
-    | "route";
   createdAt: number;
 };
 export type OperationDraftPhase =
@@ -138,7 +122,6 @@ export type AppState = {
   settings: UiSettings;
   session: Session;
   transactions: Transaction[];
-  storage: StoragePhase;
   guideOpen: boolean;
   notice: string | null;
   /** U24: error notices persist (no auto-dismiss); successes toast for 4s. */

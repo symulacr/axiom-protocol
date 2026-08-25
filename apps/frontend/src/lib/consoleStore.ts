@@ -12,7 +12,6 @@ import type {
   OperationState,
   PendingIntent,
   Session,
-  StoragePhase,
   Transaction,
   TxState,
   UiSettings,
@@ -96,7 +95,6 @@ export type ConsoleAction =
       receiptId?: string | null;
     }
   | { type: "clear-draft"; flow: FlowKind }
-  | { type: "storage"; storage: StoragePhase }
   | { type: "guide" }
   | { type: "notice"; notice: string | null; severity?: NoticeSeverity }
   | { type: "reset" };
@@ -225,7 +223,6 @@ export function createInitialConsoleState(
     settings,
     session,
     transactions,
-    storage: "ready",
     guideOpen: false,
     notice: null,
     noticeSeverity: null,
@@ -314,7 +311,6 @@ export function consoleReducer(
         updatedAt: Date.now(),
       }),
     };
-  if (action.type === "storage") return { ...state, storage: action.storage };
   if (action.type === "guide") return { ...state, guideOpen: !state.guideOpen };
   if (action.type === "notice")
     return {

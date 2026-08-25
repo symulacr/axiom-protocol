@@ -60,10 +60,7 @@ import {
 import { lockedRouteMeta } from "./lib/consoleCatalog.js";
 import { MEDIA } from "./lib/media.js";
 import { getCopy, interpolate, type Locale } from "./lib/copy.js";
-import type {
-  FlowKind,
-  NoticeSeverity,
-} from "./lib/models.js";
+import type { FlowKind, NoticeSeverity } from "./lib/models.js";
 import { APP_CHAIN, APP_CHAIN_ID } from "./config/wagmi.js";
 
 /** Every page module exposes one named component; this collapses the repeated
@@ -442,21 +439,10 @@ export function App(): ReactElement {
   );
 
   const [walletOpen, setWalletOpen] = useState(false);
-  const openWallet = (
-    source:
-      | "wallet"
-      | "dashboard"
-      | "agent"
-      | "chat"
-      | "command-center"
-      | "receipt"
-      | "route",
-    requestedPath = path,
-  ) => {
-    void source;
+  const openWallet = (requestedPath = path) => {
     dispatch({
       type: "set-pending-intent",
-      intent: { path: requestedPath, source, createdAt: Date.now() },
+      intent: { path: requestedPath, createdAt: Date.now() },
     });
     setWalletOpen(true);
   };
@@ -568,7 +554,7 @@ export function App(): ReactElement {
                 <Landing
                   locale={locale}
                   go={go}
-                  onConnect={() => openWallet("wallet", "/app")}
+                  onConnect={() => openWallet("/app")}
                   onGuide={() => dispatch({ type: "guide" })}
                 />
               ) : location.pathname === "/transfer/co-sign" ? (
@@ -581,7 +567,7 @@ export function App(): ReactElement {
                 <LockedRoute
                   requested={path}
                   locale={locale}
-                  onConnect={() => openWallet("route", path)}
+                  onConnect={() => openWallet(path)}
                   go={go}
                 />
               ) : (
@@ -721,12 +707,13 @@ function WrongNetworkNotice({
         </header>
         <main className="locked-route-content">
           <section className="locked-route-copy" role="alert">
-            <h1>
-              {interpolate(copy.wallet.wrongNetworkTitle, chainVars)}
-            </h1>
+            <h1>{interpolate(copy.wallet.wrongNetworkTitle, chainVars)}</h1>
             <p>{copy.wallet.wrongNetworkDescription}</p>
             <div className="button-row">
-              <Button onClick={() => void switchBack()} icon={<Network size={15} />}>
+              <Button
+                onClick={() => void switchBack()}
+                icon={<Network size={15} />}
+              >
                 {interpolate(copy.wallet.switchNetwork, chainVars)}
               </Button>
               <Button
