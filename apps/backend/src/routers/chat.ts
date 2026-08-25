@@ -308,7 +308,9 @@ export function registerChatRoutes(
           writeChunk("data: [DONE]\n\n");
           res.end();
           // Transcript persistence is a pure after-effect: the stream is already finalized.
-          await persistChatTranscript(
+          // Void (S-5): persistChatTranscript never rejects — its body is fully try/caught —
+          // so releasing the socket slot immediately is safe.
+          void persistChatTranscript(
             config.chatStorage,
             config.env?.AXIOM_CHAIN_ID ?? ARISTOTLE_CHAIN_ID,
             messages,
