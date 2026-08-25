@@ -81,7 +81,8 @@ function resolveRpc(chainId: number): string {
   return envRpc || fallback;
 }
 
-function createWagmiConfig() {
+// Inputs that legitimately require config recreation when they change.
+function resolveWagmiInputs() {
   const storedWcProjectId =
     typeof window !== "undefined" && window.localStorage
       ? (window.localStorage.getItem("axiom.wcProjectId") ?? "")
@@ -100,18 +101,45 @@ function createWagmiConfig() {
     );
   }
 
+  return {
+    projectId,
+    mainnetRpc: resolveRpc(zeroGMainnet.id),
+    testnetRpc: resolveRpc(zeroGTestnet.id),
+  };
+}
+
+function createWagmiConfig(inputs: ReturnType<typeof resolveWagmiInputs>) {
   return createConfig({
     chains: [APP_CHAIN],
     ssr: false,
     transports: {
-      [zeroGMainnet.id]: http(resolveRpc(zeroGMainnet.id)),
-      [zeroGTestnet.id]: http(resolveRpc(zeroGTestnet.id)),
+      [zeroGMainnet.id]: http(inputs.mainnetRpc),
+      [zeroGTestnet.id]: http(inputs.testnetRpc),
     },
     connectors: [
       injected({ target: "metaMask" }),
-      walletConnect({ projectId }),
+      walletConnect({ projectId: inputs.projectId }),
     ],
   });
+}
+
+// Module-level memo: StrictMode double-mounts reuse one instance instead of
+// initializing the WalletConnect provider twice.
+let cached: {
+  key: string;
+  config: ReturnType<typeof createWagmiConfig>;
+} | null = null;
+
+function getWagmiConfig(): ReturnType<typeof createWagmiConfig> {
+  const inputs = resolveWagmiInputs();
+  const key = JSON.stringify([
+    inputs.projectId,
+    inputs.mainnetRpc,
+    inputs.testnetRpc,
+  ]);
+  if (cached?.key === key) return cached.config;
+  cached = { key, config: createWagmiConfig(inputs) };
+  return cached.config;
 }
 
 declare module "wagmi" {
@@ -123,10 +151,10 @@ declare module "wagmi" {
 const WATCHED_KEYS = new Set(["axiom.wcProjectId", "axiom.rpcUrl"]);
 
 export function WagmiConfigProvider({ children }: { children: ReactNode }) {
-  const [config, setConfig] = useState(() => createWagmiConfig());
+  const [config, setConfig] = useState(() => getWagmiConfig());
 
   useEffect(() => {
-    const refresh = () => setConfig(createWagmiConfig());
+    const refresh = () => setConfig(getWagmiConfig());
 
     const onStorage = (event: StorageEvent) => {
       if (event.key === null || WATCHED_KEYS.has(event.key)) {
