@@ -88,6 +88,27 @@ export function createHealthRouter(
     config,
   );
 
+  async function healthCheck(_parsed: unknown, _req: Request, res: Response) {
+    try {
+      const s = await resolveSnapshot();
+      res.status(s.ok ? HTTP.OK : HTTP.SERVICE_UNAVAILABLE).json({
+        ok: s.ok,
+        version: PKG_VERSION,
+        signer: signerAddress,
+        chainHead: s.chainHead,
+        oracle: "up",
+        oracleSigner: teeSigner.address,
+        uncompressedPubkey: hexlify(teeSigner.uncompressedPubkey),
+        addresses: addresses ?? null,
+      });
+    } catch (err) {
+      log.error("health check failed", {
+        error: extractErrorMessage(err),
+      });
+      sendError(res, HTTP.SERVICE_UNAVAILABLE, "Health check failed");
+    }
+  }
+
   createRoute(
     router,
     {
@@ -96,26 +117,20 @@ export function createHealthRouter(
       consumer: "health",
       description: "Health check",
     },
-    async (_parsed: unknown, _req: Request, res: Response) => {
-      try {
-        const s = await resolveSnapshot();
-        res.status(s.ok ? HTTP.OK : HTTP.SERVICE_UNAVAILABLE).json({
-          ok: s.ok,
-          version: PKG_VERSION,
-          signer: signerAddress,
-          chainHead: s.chainHead,
-          oracle: "up",
-          oracleSigner: teeSigner.address,
-          uncompressedPubkey: hexlify(teeSigner.uncompressedPubkey),
-          addresses: addresses ?? null,
-        });
-      } catch (err) {
-        log.error("health check failed", {
-          error: extractErrorMessage(err),
-        });
-        sendError(res, HTTP.SERVICE_UNAVAILABLE, "Health check failed");
-      }
+    healthCheck,
+    config,
+  );
+
+  // "/api/health": proxies that forward the /api prefix unstripped (L5-06).
+  createRoute(
+    router,
+    {
+      path: "/api/health",
+      method: "get",
+      consumer: "health",
+      description: "Health check (unstripped /api prefix alias)",
     },
+    healthCheck,
     config,
   );
 

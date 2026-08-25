@@ -854,6 +854,19 @@ const ROUTES = [
       },
     },
   },
+  {
+    method: "get",
+    path: "/api/health",
+    summary: "Health check (unstripped /api prefix alias for proxies that keep /api)",
+    security: SEC.public,
+    responses: {
+      "200": okResp("Healthy", healthResponseRef),
+      "503": {
+        description: "Chain unhealthy — same shape with ok:false (or error envelope)",
+        content: json(healthResponseRef),
+      },
+    },
+  },
 
   // oracle (in-process TEE signer; plain express routes, now in REGISTERED_ROUTES)
   {

@@ -493,13 +493,13 @@
               "PaymentTokenUpdated",
               "MetadataJsonDecisionDocumented",
               "Cloned",
+              "Upgraded",
+              "Initialized",
               "SignerProposed",
               "SignerExecuted",
               "SignerProposalCancelled",
-              "Upgraded",
               "AdminChanged",
               "BeaconUpgraded",
-              "Initialized",
               "Tick",
               "Unknown"
             ]
@@ -3014,6 +3014,34 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/JsonRpcError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/health": {
+      "get": {
+        "summary": "Health check (unstripped /api prefix alias for proxies that keep /api)",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Chain unhealthy — same shape with ok:false (or error envelope)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
                 }
               }
             }

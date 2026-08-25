@@ -180,7 +180,8 @@ export function startServer(config: ServerConfig): {
   app.use(
     createApiKeyAuth(
       config.env?.AXIOM_API_KEY,
-      ["/health", "/health/live", "/oracle/health"],
+      // "/api/health": some proxies forward the /api prefix unstripped (L5-06).
+      ["/health", "/api/health", "/health/live", "/oracle/health"],
       process.env.AXIOM_DISABLE_AUTH === "true",
       process.env.AXIOM_CLIENT_API_KEY,
     ),
