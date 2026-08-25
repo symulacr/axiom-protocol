@@ -16,15 +16,16 @@
     "test:openapi": "bun test src/server/openapi-wiring.test.ts",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
+    "typecheck:e2e": "tsc --project tsconfig.e2e.json",
     "pre-run-e2e": "bun run --filter @axiom/chat-runtime build && bun run build",
-    "run-e2e": "bun run src/cli/run-e2e.ts",
-    "run-chat-bench": "bun run src/cli/run-chat-bench.ts",
-    "run-chat-bench:live": "E2E_LIVE_COMPUTE=1 bun run src/cli/run-chat-bench.ts",
-    "run-load-bench": "bun run src/cli/run-load-bench.ts",
+    "run-e2e": "bun run e2e/run-e2e.ts",
+    "run-chat-bench": "bun run e2e/run-chat-bench.ts",
+    "run-chat-bench:live": "E2E_LIVE_COMPUTE=1 bun run e2e/run-chat-bench.ts",
+    "run-load-bench": "bun run e2e/run-load-bench.ts",
     "generate:openapi": "bun scripts/generate-openapi.mjs",
-    "coverage-status": "bun run src/cli/coverage-status.ts",
-    "provision-e2e-wallet": "bun run src/cli/provision-e2e-wallet.ts",
-    "fund-e2e-usdc": "bun run src/cli/fund-e2e-usdc.ts"
+    "coverage-status": "bun run e2e/coverage-status.ts",
+    "provision-e2e-wallet": "bun run e2e/provision-e2e-wallet.ts",
+    "fund-e2e-usdc": "bun run e2e/fund-e2e-usdc.ts"
   },
   "dependencies": {
     "@axiom/chat-runtime": "workspace:*",

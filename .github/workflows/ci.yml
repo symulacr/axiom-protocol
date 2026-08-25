@@ -31,6 +31,7 @@ jobs:
       - run:
           bun run --filter @axiom/backend build && bun run --filter @axiom/backend
           typecheck
+      - run: bun run --filter @axiom/backend typecheck:e2e
       - run: bun run --filter @axiom/frontend typecheck
       - run: bun run --filter @axiom/frontend lint
       - run: bun run --filter @axiom/contracts typecheck
