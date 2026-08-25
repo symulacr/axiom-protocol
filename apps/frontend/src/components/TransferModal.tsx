@@ -25,7 +25,7 @@ import {
   buildTransferInput as assembleTransferInput,
   freshAccessProofNonce,
   runCoSignStep,
-} from "../lib/cosignFlow.js";
+} from "../lib/transferHandoff.js";
 import { useUiStore } from "../lib/uiStore.js";
 import { getCopy } from "../lib/copy.js";
 

@@ -24,6 +24,8 @@ import {
   ACCEPTANCE_CODE_SHAPE,
   encodeHandoffPayload,
   handoffUrl,
+  ReceiverAccountUnavailableError,
+  isReceiverAccountUnavailable,
   type AccessProofMessage,
 } from "../lib/transferHandoff.js";
 import type {
@@ -43,26 +45,9 @@ export type PrepareResult =
 /** Thrown when the connected wallet cannot expose the receiver account, so the
  * co-sign can never succeed from this session — the GUI renders an honest
  * blocker (change recipient / let the receiver sign from their own session),
- * never a futile retry. */
-export class ReceiverAccountUnavailableError extends Error {
-  readonly receiver: `0x${string}`;
-  constructor(receiver: `0x${string}`) {
-    super(
-      `The receiving account ${receiver} is not available in the connected wallet.`,
-    );
-    this.name = "ReceiverAccountUnavailableError";
-    this.receiver = receiver;
-  }
-}
-
-export function isReceiverAccountUnavailable(
-  err: unknown,
-): err is ReceiverAccountUnavailableError {
-  return (
-    err instanceof ReceiverAccountUnavailableError ||
-    (err instanceof Error && err.name === "ReceiverAccountUnavailableError")
-  );
-}
+ * never a futile retry. Lives in transferHandoff.ts (pure module, no wagmi/env
+ * graph) and is re-exported here for the hook's consumers. */
+export { ReceiverAccountUnavailableError, isReceiverAccountUnavailable };
 
 /** handoff: an acceptance code that is not a signature at all, or one that
  * recovers to a different address than the receiver. Both mean "ask the
@@ -147,10 +132,11 @@ function base64ToBytes(b64: string): Uint8Array {
   return out;
 }
 
-async function sealDekForOracle(
-  oldDataEncryptionKeyB64: string,
-  signal?: AbortSignal,
-): Promise<string> {
+// Oracle TEE pubkey is deployment-static; cache it so each re-key transfer
+// skips the /health hop. A mid-session pubkey rotation requires a page reload.
+let cachedOraclePubkey: Uint8Array | null = null;
+
+async function fetchOraclePubkey(signal?: AbortSignal): Promise<Uint8Array> {
   const body = await oracleFetch<{ uncompressedPubkey?: string | number[] }>(
     "/health",
     { signal },
@@ -167,6 +153,15 @@ async function sealDekForOracle(
   if (pubBytes.length === 65 && pubBytes[0] === 0x04) {
     pubBytes = pubBytes.subarray(1);
   }
+  return pubBytes;
+}
+
+async function sealDekForOracle(
+  oldDataEncryptionKeyB64: string,
+  signal?: AbortSignal,
+): Promise<string> {
+  const pubBytes = cachedOraclePubkey ?? (await fetchOraclePubkey(signal));
+  cachedOraclePubkey = pubBytes;
   const dek = base64ToBytes(oldDataEncryptionKeyB64);
   if (dek.length !== 32) {
     throw new Error("oldDataEncryptionKey must be 32 bytes base64");
