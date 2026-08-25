@@ -187,6 +187,7 @@ const royaltyBodyRef = reg("RoyaltyBody", routeSchemas.royaltySchema);
 const mintDataHashBodyRef = reg("MintDataHashBody", routeSchemas.mintDataHashSchema);
 const vaultDepositBodyRef = reg("VaultDepositBody", routeSchemas.vaultDepositEncodeSchema);
 const vaultWithdrawBodyRef = reg("VaultWithdrawBody", routeSchemas.vaultWithdrawEncodeSchema);
+const vaultSetStrategyBodyRef = reg("VaultSetStrategyBody", routeSchemas.vaultSetStrategySchema);
 reg("AmountString", amountStr);
 const eventBodyRef = reg("EventBody", routeSchemas.eventBodySchema);
 const tickBodyRef = reg("TickBody", routeSchemas.tickSchema);
@@ -1115,6 +1116,16 @@ const ROUTES = [
   },
   {
     method: "post",
+    path: "/v1/payment/withdraw-earnings",
+    summary: "Encode a withdrawAgentEarnings transaction (creator = tx signer)",
+    security: SEC.serverOrClient,
+    responses: {
+      "200": okResp("Encoded withdraw-earnings tx", txEncodeResponseRef),
+      "503": errorResp("Payment processor not configured", ["ADDRESS_NOT_CONFIGURED"]),
+    },
+  },
+  {
+    method: "post",
     path: "/v1/agents/{id}/metadata",
     summary: "Encode a metadata-update transaction (body unvalidated; consumer cli-only)",
     security: SEC.serverOrClient,
@@ -1155,6 +1166,21 @@ const ROUTES = [
     responses: {
       "200": okResp("Encoded withdraw tx", vaultEncodeResponseRef),
       "400": errorResp("Validation (amount format)", ["VALIDATION_ERROR"]),
+      "503": errorResp("Vault not configured", ["ADDRESS_NOT_CONFIGURED"]),
+    },
+  },
+  {
+    method: "post",
+    path: "/v1/agents/{id}/set-strategy",
+    summary: "Encode a vault setStrategy transaction (root + daily limit + expiry day)",
+    security: SEC.serverOrClient,
+    parameters: [
+      { name: "id", in: "path", required: true, schema: { type: "string", pattern: TOKEN_ID_PATTERN } },
+    ],
+    request: { body: { description: "Strategy install/refresh (root omitted = keep existing Merkle root; validUntilDay \"0\" = no expiry)", required: true, content: json(vaultSetStrategyBodyRef) } },
+    responses: {
+      "200": okResp("Encoded setStrategy tx", vaultEncodeResponseRef),
+      "400": errorResp("Validation (root/dailyLimit/validUntilDay format)", ["VALIDATION_ERROR"]),
       "503": errorResp("Vault not configured", ["ADDRESS_NOT_CONFIGURED"]),
     },
   },

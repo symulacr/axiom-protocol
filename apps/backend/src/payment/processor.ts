@@ -102,6 +102,12 @@ export class PaymentProcessorClient {
     return this.payment.contract.agentEarningsOf(creator);
   }
 
+  encodeWithdrawEarnings(): { to: string; data: string; value: bigint } {
+    // Mirrors encodeSetRoyalty: relay-only, funds move when the creator signs.
+    const data = this.payment.iface.encodeFunctionData("withdrawAgentEarnings", []);
+    return { to: this.address, data, value: 0n };
+  }
+
   async protocolConfig(): Promise<{
     paymentToken: string;
     paymentTokenSymbol: string;

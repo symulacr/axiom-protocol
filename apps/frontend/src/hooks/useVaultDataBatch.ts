@@ -23,8 +23,23 @@ export interface VaultDataEntry {
   depositsWei: bigint;
   strategyRoot: string;
   dailyLimitWei: bigint;
+  /** strategyOf()[2] — spend attributed to the current window (UTC day). */
+  dailySpentWei: bigint;
+  /** strategyOf()[3] — UTC day index the spend counter is valid for; spend resets when today passes it. */
+  resetDay: bigint;
+  /** strategyOf()[4] — UTC day index after which execute() reverts StrategyExpired; 0n = no expiry. */
+  validUntilDay: bigint;
   readError?: string | null;
 }
+
+// Predictive guard lives in a side-effect-free module so tests can import it
+// without tripping the deployed-address env requirement in abi/addresses.ts.
+export {
+  currentUtcDay,
+  utcDayDateLabel,
+  strategyGuardError,
+  type StrategyLimits,
+} from "./strategyGuard.js";
 
 export function useVaultDataBatch(tokenIds: readonly bigint[]): {
   data: Map<string, VaultDataEntry>;
@@ -86,6 +101,9 @@ export function useVaultDataBatch(tokenIds: readonly bigint[]): {
         depositsWei: (balance as bigint | undefined) ?? 0n,
         strategyRoot: strategyTuple ? (strategyTuple[0] as string) : "",
         dailyLimitWei: strategyTuple ? strategyTuple[1] : 0n,
+        dailySpentWei: strategyTuple ? strategyTuple[2] : 0n,
+        resetDay: strategyTuple ? strategyTuple[3] : 0n,
+        validUntilDay: strategyTuple ? strategyTuple[4] : 0n,
         ...(readError ? { readError } : {}),
       });
     }
@@ -120,6 +138,10 @@ export function useVaultDataBatch(tokenIds: readonly bigint[]): {
 export type VaultData = {
   depositsWei: bigint | undefined;
   strategyRoot: string;
+  dailyLimitWei: bigint;
+  dailySpentWei: bigint;
+  resetDay: bigint;
+  validUntilDay: bigint;
   refetch: () => void;
 };
 
@@ -130,6 +152,10 @@ export function useVaultData(tokenId: bigint): VaultData {
   return {
     depositsWei: result.error !== null ? undefined : (entry?.depositsWei ?? 0n),
     strategyRoot: entry?.strategyRoot ?? "",
+    dailyLimitWei: entry?.dailyLimitWei ?? 0n,
+    dailySpentWei: entry?.dailySpentWei ?? 0n,
+    resetDay: entry?.resetDay ?? 0n,
+    validUntilDay: entry?.validUntilDay ?? 0n,
     refetch: result.refetch,
   };
 }

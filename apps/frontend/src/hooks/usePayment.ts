@@ -44,6 +44,10 @@ type UsePaymentResult = {
     approveHash: `0x${string}` | null;
   }>;
 
+  /** Direct wallet write of withdrawAgentEarnings() — earnings accrue to
+   * msg.sender on-chain, so no args and no allowance leg (pre-empts NoEarnings
+   * is the caller's job via the earnings read). */
+  withdrawEarnings: () => Promise<`0x${string}`>;
   getEarnings: (tokenId: bigint) => Promise<EarningsInfo>;
   getPaymentConfig: () => Promise<PaymentConfig>;
   isPayLoading: boolean;
@@ -168,9 +172,23 @@ export function usePayment(): UsePaymentResult {
     [earningsAction.execute],
   );
 
+  // Mirrors the sibling paymentProcessor writes (payForAgent/approveExactAllowance):
+  // calldata encoded locally from the shared ABI, sent through useGenericWrite —
+  // the POST /v1/payment/withdraw-earnings relay stays a chat-runtime surface.
+  const withdrawEarnings = useCallback(async (): Promise<`0x${string}`> => {
+    if (!address || !publicClient) throw new Error("wallet not connected");
+    return write({
+      to: getAxiomPaymentProcessorAddress(chainId),
+      abi: paymentProcessorAbi,
+      functionName: "withdrawAgentEarnings",
+      args: [],
+    });
+  }, [chainId, write, address, publicClient]);
+
   return {
     payForAgent,
     approveExactAllowance,
+    withdrawEarnings,
     getEarnings,
     getPaymentConfig,
     isPayLoading,

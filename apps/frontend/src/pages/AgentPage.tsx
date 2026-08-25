@@ -7,7 +7,8 @@
 */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useAccount, useChainId, useReadContracts } from "wagmi";
+import { useAccount, useChainId, useReadContracts, useWalletClient } from "wagmi";
+import { toast } from "sonner";
 import {
   ArrowRight,
   Bot,
@@ -46,7 +47,7 @@ import {
   usePaymentToken,
   paymentSymbolOf,
 } from "../hooks/usePayment.js";
-import { useVaultData } from "../hooks/useVaultDataBatch.js";
+import { useVaultData, utcDayDateLabel } from "../hooks/useVaultDataBatch.js";
 import { formatUnits, type Address, type Hex } from "viem";
 import { APP_CHAIN } from "../config/wagmi.js";
 import { hasStrategyRoot } from "../lib/models.js";
@@ -55,7 +56,10 @@ import {
   truncateAddress,
   truncateHex,
   explorerTxUrl,
+  humanizeError,
+  errorRefString,
 } from "../utils/format.js";
+import { apiFetch, type EncodeResponse } from "../utils/apiFetch.js";
 import { getAxiomAgentNftAddress, toViemAbi } from "../abi/addresses.js";
 
 const AGENT_TABS = ["overview", "execute", "payments", "activity"] as const;
@@ -343,6 +347,83 @@ export function AgentPage({
       : "—";
   const strategyBound = hasStrategyRoot(vault.strategyRoot);
 
+  // Shared write-flow toasts — same shape as FlowPage's canonical helpers.
+  const toastSuccess = (msg: string): void => {
+    toast.success(msg);
+  };
+  const toastError = (err: unknown): void => {
+    const refStr = errorRefString(err);
+    toast.error(humanizeError(err), refStr ? { description: refStr } : undefined);
+  };
+
+  // M6: creator earnings withdrawal — direct withdrawAgentEarnings() wallet write.
+  const { data: walletClient } = useWalletClient();
+  const [isWithdrawing, setWithdrawing] = useState(false);
+  const hasEarnings = earnings !== null && BigInt(earnings.earnings) > 0n;
+  const withdrawEarnings = async (): Promise<void> => {
+    if (!hasEarnings || isWithdrawing) return;
+    setWithdrawing(true);
+    try {
+      const hash = await payment.withdrawEarnings();
+      toastSuccess(`Withdrawal submitted (${hash.slice(0, 10)}…)`);
+      // Refresh the earnings figure from the live read; a stale non-zero value would re-enable the CTA against an empty balance.
+      const info = await payment.getEarnings(tokenId).catch(() => null);
+      if (info) setEarnings(info);
+    } catch (err) {
+      toastError(err);
+    } finally {
+      setWithdrawing(false);
+    }
+  };
+
+  // M3: owner spending-strategy surface — refresh the daily limit through the
+  // set-strategy encode relay; root is pre-filled from the live strategyOf read
+  // so refreshing a limit never zeroes the Merkle root.
+  const [limitInput, setLimitInput] = useState("");
+  const [strategyError, setStrategyError] = useState<string | null>(null);
+  const [isStrategySubmitting, setStrategySubmitting] = useState(false);
+  const submitStrategyLimit = async (): Promise<void> => {
+    const value = limitInput.trim();
+    // Same shape the set-strategy relay schema enforces — catch it inline before the 400.
+    if (!/^\d+(\.\d+)?$/.test(value) || Number(value) <= 0) {
+      setStrategyError("Enter a daily limit greater than zero.");
+      return;
+    }
+    if (!walletClient) {
+      setStrategyError("Connect a wallet to set the spending limit.");
+      return;
+    }
+    setStrategySubmitting(true);
+    setStrategyError(null);
+    try {
+      const encoded = await apiFetch<EncodeResponse>(
+        `/v1/agents/${agentId}/set-strategy`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            root: strategyBound ? vault.strategyRoot : undefined,
+            dailyLimit: value,
+            // Preserve the live expiry; "0" sentinel keeps "no expiry" when unset.
+            validUntilDay: vault.validUntilDay.toString(),
+          }),
+        },
+      );
+      const hash = await walletClient.sendTransaction({
+        to: encoded.to,
+        data: encoded.data,
+        value: BigInt(encoded.value || "0"),
+        chain: walletClient.chain,
+      });
+      toastSuccess(`Spending limit submitted (${hash.slice(0, 10)}…)`);
+      setLimitInput("");
+      vault.refetch();
+    } catch (err) {
+      toastError(err);
+    } finally {
+      setStrategySubmitting(false);
+    }
+  };
+
   const copyDataHash = () => {
     if (metadata?.dataHash) navigator.clipboard?.writeText(metadata.dataHash);
     action("Metadata root copied.");
@@ -566,16 +647,88 @@ export function AgentPage({
               </div>
             ))}
           </div>
-          <Button
-            onClick={() =>
-              go(
-                `/payment?agent=${tokenId.toString()}&intent=fund&stage=amount`,
-              )
-            }
-            icon={<ArrowRight size={15} />}
-          >
-            {agentCopy.openPaymentFlow}
-          </Button>
+          <div className="button-row">
+            <Button
+              onClick={() =>
+                go(
+                  `/payment?agent=${tokenId.toString()}&intent=fund&stage=amount`,
+                )
+              }
+              icon={<ArrowRight size={15} />}
+            >
+              {agentCopy.openPaymentFlow}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => void withdrawEarnings()}
+              busy={isWithdrawing}
+              disabled={!hasEarnings}
+            >
+              Withdraw earnings
+            </Button>
+          </div>
+        </section>
+      )}
+
+      {tab === "payments" && (
+        <section className="panel tab-panel">
+          <h2>Spending strategy</h2>
+          <dl className="provenance-list">
+            <Fact label="Daily limit">
+              {vault.dailyLimitWei > 0n
+                ? `${formatTokenAmount(vault.dailyLimitWei)} ${nativeSymbol}`
+                : "—"}
+            </Fact>
+            <Fact label="Spent today" mono>
+              {vault.dailyLimitWei > 0n
+                ? `${formatTokenAmount(vault.dailySpentWei)} ${nativeSymbol}`
+                : "—"}
+            </Fact>
+            <Fact label="Remaining" mono>
+              {vault.dailyLimitWei > 0n
+                ? `${formatTokenAmount(
+                    vault.dailySpentWei > vault.dailyLimitWei
+                      ? 0n
+                      : vault.dailyLimitWei - vault.dailySpentWei,
+                  )} ${nativeSymbol}`
+                : "—"}
+            </Fact>
+            <Fact label="Resets">
+              {vault.resetDay > 0n
+                ? `${utcDayDateLabel(vault.resetDay + 1n)} (UTC)`
+                : "—"}
+            </Fact>
+            <Fact label="Expires">
+              {vault.validUntilDay > 0n
+                ? `${utcDayDateLabel(vault.validUntilDay)} (UTC)`
+                : strategyBound
+                  ? "Never"
+                  : "—"}
+            </Fact>
+          </dl>
+          <div className="execute-grid">
+            <Field
+              label="New daily limit"
+              value={limitInput}
+              onChange={setLimitInput}
+              suffix={nativeSymbol}
+              placeholder="e.g. 0.5"
+              error={strategyError ?? undefined}
+              hint={
+                strategyBound
+                  ? "Submitted through the set-strategy relay; the existing Merkle root and expiry are preserved."
+                  : "No Merkle root is set on this vault — autonomous settlement additionally needs a proof root plus an off-chain Merkle-proof producer."
+              }
+            />
+          </div>
+          <div className="button-row">
+            <Button
+              onClick={() => void submitStrategyLimit()}
+              busy={isStrategySubmitting}
+            >
+              Set spending limit
+            </Button>
+          </div>
         </section>
       )}
 

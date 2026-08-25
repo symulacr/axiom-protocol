@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ethers } from "ethers";
 import { QUERYABLE_EVENT_NAMES } from "./indexer/events.js";
 import { hexViem, addressViem } from "@axiom/config/types/hex-schema";
 import { HEX_REGEX, ADDRESS_REGEX } from "@axiom/config/types/hex";
@@ -44,6 +45,29 @@ const amountStringSchema = z
 
 export const vaultDepositEncodeSchema = amountStringSchema;
 export const vaultWithdrawEncodeSchema = amountStringSchema;
+
+/** Body for POST /v1/agents/:id/set-strategy (AxiomStrategyVault.setStrategy).
+ *  root omitted ⇒ refresh the limit under the existing Merkle root; validUntilDay "0"
+ *  is the contract's no-expiry sentinel. */
+export const vaultSetStrategySchema = z
+  .object({
+    root: z.string().regex(/^0x[0-9a-fA-F]{64}$/).optional(), // 32-byte Merkle root hex
+    dailyLimit: z.string().regex(/^\d+(\.\d+)?$/), // native OG human units, parsed with ethers.parseEther
+    validUntilDay: z.string().regex(/^\d+$/), // UTC day index; "0" sentinel = no expiry
+  })
+  .refine((v) => BigInt(v.validUntilDay) < 2n ** 64n, {
+    message: "validUntilDay exceeds uint64",
+  })
+  .refine(
+    (v) => {
+      try {
+        return ethers.parseEther(v.dailyLimit) <= 2n ** 128n - 1n;
+      } catch {
+        return false;
+      }
+    },
+    { message: "dailyLimit exceeds the contract's uint128 LimitOverflow cap" },
+  );
 
 export const eventBodySchema = z.object({
   source: z.string().min(1).max(128),

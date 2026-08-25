@@ -5,6 +5,7 @@ import { createRoute } from "./route-factory.js";
 import {
   vaultDepositEncodeSchema,
   vaultWithdrawEncodeSchema,
+  vaultSetStrategySchema,
 } from "../route-schemas.js";
 import type { z } from "zod";
 import type { ServerConfig } from "../config-types.js";
@@ -68,4 +69,41 @@ export function registerVaultRoutes(
       config,
     );
   }
+
+  // setStrategy's body shape (root/dailyLimit/validUntilDay) differs from the
+  // amount-only action routes above, so it registers as a sibling createRoute.
+  createRoute(
+    paymentRouter,
+    {
+      path: "/v1/agents/:id/set-strategy",
+      schema: vaultSetStrategySchema,
+      requireId: true,
+      requireAddress: "vault",
+      consumer: "chat-runtime",
+      description:
+        "Encode vault setStrategy transaction (root + daily limit + expiry day)",
+    },
+    (
+      parsed: { root?: string; dailyLimit: string; validUntilDay: string },
+      _req,
+      _res,
+      { id, config: cfg },
+    ) => {
+      const vaultAddr = cfg.addresses?.vault as string;
+      const data = VAULT_IFACE.encodeFunctionData("setStrategy", [
+        BigInt(id),
+        parsed.root ?? ethers.ZeroHash, // ZeroHash clears the root — callers refreshing a limit must send the live strategyOf root
+        ethers.parseEther(parsed.dailyLimit),
+        BigInt(parsed.validUntilDay),
+      ]);
+      return {
+        tokenId: id,
+        to: vaultAddr,
+        data,
+        value: "0",
+        amount: parsed.dailyLimit,
+      };
+    },
+    config,
+  );
 }

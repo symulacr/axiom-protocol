@@ -449,6 +449,27 @@
           "amount"
         ]
       },
+      "VaultSetStrategyBody": {
+        "type": "object",
+        "properties": {
+          "root": {
+            "type": "string",
+            "pattern": "^0x[0-9a-fA-F]{64}$"
+          },
+          "dailyLimit": {
+            "type": "string",
+            "pattern": "^\\d+(\\.\\d+)?$"
+          },
+          "validUntilDay": {
+            "type": "string",
+            "pattern": "^\\d+$"
+          }
+        },
+        "required": [
+          "dailyLimit",
+          "validUntilDay"
+        ]
+      },
       "AmountString": {
         "type": "string",
         "pattern": "^\\d+(\\.\\d+)?$",
@@ -4043,6 +4064,79 @@
         }
       }
     },
+    "/v1/agents/{id}/set-strategy": {
+      "post": {
+        "summary": "Encode a vault setStrategy transaction (root + daily limit + expiry day)",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Strategy install/refresh (root omitted = keep existing Merkle root; validUntilDay \"0\" = no expiry)",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VaultSetStrategyBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Encoded setStrategy tx",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VaultEncodeResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation (root/dailyLimit/validUntilDay format)",
+            "x-error-codes": [
+              "VALIDATION_ERROR"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Vault not configured",
+            "x-error-codes": [
+              "ADDRESS_NOT_CONFIGURED"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/agents/{id}/transfer": {
       "post": {
         "summary": "Two-step ownership transfer (challenge → final)",
@@ -4547,6 +4641,44 @@
           },
           "503": {
             "description": "Orchestrator not available",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/payment/withdraw-earnings": {
+      "post": {
+        "summary": "Encode a withdrawAgentEarnings transaction (creator = tx signer)",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Encoded withdraw-earnings tx",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TxEncodeResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Payment processor not configured",
+            "x-error-codes": [
+              "ADDRESS_NOT_CONFIGURED"
+            ],
             "content": {
               "application/json": {
                 "schema": {

@@ -75,6 +75,21 @@ export function registerPaymentRoutes(
     config,
   );
 
+  createRoute(
+    paymentRouter,
+    routeMeta(
+      "/v1/payment/withdraw-earnings",
+      "usePayment",
+      "Encode withdrawAgentEarnings transaction data (creator = tx signer)",
+      { requireAddress: "paymentProcessor" },
+    ),
+    async () => {
+      const client = await getPayment();
+      return client.encodeWithdrawEarnings();
+    },
+    config,
+  );
+
   const paymentConfigCache = new TTLCache<{
     paymentToken: string;
     paymentTokenSymbol: string;
