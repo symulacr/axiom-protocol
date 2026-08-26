@@ -27,32 +27,6 @@ define["process.env.NODE_ENV"] = JSON.stringify("production");
 const dist = join(frontendDir, "dist");
 await Bun.$`rm -rf ${dist}`.quiet();
 
-// Safe Apps SDK ships dual ESM/CJS builds. Its CJS copy (pulled in by the
-// CJS-only @safe-global/safe-apps-provider) does require("viem") in
-// dist/cjs/safe/index.js, which makes Bun bundle a second, CJS-flavored copy
-// of viem alongside the ESM one (~500KB extra in dist). Redirect that single
-// file to its identical ESM sibling (already in the graph): consumers only do
-// `require("./safe/index.js").Safe`, so a namespace-object re-export keeps the
-// runtime API intact while the duplicate viem edge disappears.
-const dedupeSafeAppsSdkCjs = {
-	name: "axiom-dedupe-safe-apps-sdk-cjs",
-	setup(build) {
-		build.onLoad(
-			{ filter: /@safe-global[/\\]safe-apps-sdk[/\\]dist[/\\]cjs[/\\]safe[/\\]index\.js$/ },
-			(args) => {
-				const esmPath = args.path.replace(
-					/([/\\])dist[/\\]cjs[/\\]/,
-					"$1dist$1esm$1",
-				);
-				return {
-					contents: `module.exports = require(${JSON.stringify(esmPath)});`,
-					loader: "js",
-				};
-			},
-		);
-	},
-};
-
 const t0 = performance.now();
 const build = await Bun.build({
 	entrypoints: [join(frontendDir, "index.html")],
@@ -61,7 +35,7 @@ const build = await Bun.build({
 	minify: true,
 	splitting: true,
 	sourcemap: "none",
-	plugins: [dedupeSafeAppsSdkCjs],
+	plugins: [],
 	define,
 	// Absolute chunk URLs: built index.html is served from any route depth
 	// (SPA fallback), and relative "./chunk-…" URLs break at ≥2-segment paths
