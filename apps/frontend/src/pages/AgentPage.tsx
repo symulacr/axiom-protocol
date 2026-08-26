@@ -36,6 +36,7 @@ import {
 } from "../components/axiom/Controls.js";
 import { StatePill } from "../components/StatePill.js";
 import { getCopy, interpolate, type Locale } from "../lib/copy.js";
+import { routePath } from "../lib/routeRegistry.js";
 import {
   useEventHistory,
   eventTokenId,
@@ -69,6 +70,15 @@ const AGENT_TABS = ["overview", "execute", "payments", "activity"] as const;
 type AgentTab = (typeof AGENT_TABS)[number];
 
 const axiomAgentNftAbiParsed = toViemAbi(AGENT_NFT_ABI);
+
+/** Fact/activity value: local clock/date via Intl — block numbers mean nothing to a first-time user. */
+function eventTimeLabel(event: AxiomEvent): string {
+  const ts = event.timestamp ?? event.receivedAt;
+  const date = new Date(ts);
+  return date.toDateString() === new Date().toDateString()
+    ? date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    : date.toLocaleDateString([], { month: "short", day: "numeric" });
+}
 
 type AgentMetadata = {
   tokenId: bigint;
@@ -301,41 +311,45 @@ export function AgentPage({
   const agentName = `Agent #${tokenId.toString()}`;
   const lastEvent = events[events.length - 1];
   const agentId = tokenId.toString();
-  // Bounded-operation launcher: one data-driven row per deep-linked flow.
-  const commandActions: {
+  // Bounded-operation launcher: one primary money action + task runner,
+  // the rest behind a "More…" disclosure (choice-parity with the overview).
+  const [moreOpen, setMoreOpen] = useState(false);
+  const primaryActions: {
     path: string;
     icon: React.ReactNode;
     variant?: "secondary" | "ghost";
     label: string;
   }[] = [
     {
-      path: `/payment?agent=${agentId}&intent=fund&stage=amount`,
-      icon: <CreditCard size={15} />,
-      label: agentCopy.fundAgent,
-    },
-    {
-      path: `/transfer?agent=${agentId}&intent=proof&stage=recipient`,
-      icon: <ShieldCheck size={15} />,
-      variant: "secondary",
-      label: agentCopy.transferProof,
-    },
-    {
-      path: `/deposit?agent=${agentId}`,
+      path: `${routePath("deposit")}?agent=${agentId}`,
       icon: <Wallet size={15} />,
-      variant: "secondary",
-      label: agentCopy.depositFunds,
-    },
-    {
-      path: `/withdraw?agent=${agentId}`,
-      icon: <UploadCloud size={15} />,
-      variant: "secondary",
-      label: agentCopy.withdrawFunds,
+      label: agentCopy.addMoneyPrimary,
     },
     {
       path: `/tick?agent=${agentId}&intent=bounded`,
       icon: <Play size={15} />,
-      variant: "ghost",
-      label: agentCopy.queueTick,
+      label: agentCopy.runTask,
+    },
+  ];
+  const secondaryActions: {
+    path: string;
+    icon: React.ReactNode;
+    label: string;
+  }[] = [
+    {
+      path: `/transfer?agent=${agentId}&intent=proof&stage=recipient`,
+      icon: <ShieldCheck size={15} />,
+      label: agentCopy.transferProof,
+    },
+    {
+      path: `/withdraw?agent=${agentId}`,
+      icon: <UploadCloud size={15} />,
+      label: agentCopy.withdrawFunds,
+    },
+    {
+      path: `/payment?agent=${agentId}&intent=fund&stage=amount`,
+      icon: <CreditCard size={15} />,
+      label: agentCopy.fundAgent,
     },
   ];
   // vault balances are native-denominated (chain config); payments tab uses the payment token symbol.
@@ -357,7 +371,7 @@ export function AgentPage({
     setWithdrawing(true);
     try {
       const hash = await payment.withdrawEarnings();
-      toastSuccess(`Withdrawal submitted (${hash.slice(0, 10)}…)`);
+      toastSuccess(agentCopy.withdrawToast(hash));
       // Refresh the earnings figure from the live read; a stale non-zero value would re-enable the CTA against an empty balance.
       const info = await payment.getEarnings(tokenId).catch(() => null);
       if (info) setEarnings(info);
@@ -378,11 +392,11 @@ export function AgentPage({
     const value = limitInput.trim();
     // Same shape the set-strategy relay schema enforces — catch it inline before the 400.
     if (!/^\d+(\.\d+)?$/.test(value) || Number(value) <= 0) {
-      setStrategyError("Enter a daily limit greater than zero.");
+      setStrategyError(agentCopy.errLimitPositive);
       return;
     }
     if (!walletClient) {
-      setStrategyError("Connect a wallet to set the spending limit.");
+      setStrategyError(agentCopy.errLimitWallet);
       return;
     }
     setStrategySubmitting(true);
@@ -406,7 +420,7 @@ export function AgentPage({
         value: BigInt(encoded.value || "0"),
         chain: walletClient.chain,
       });
-      toastSuccess(`Spending limit submitted (${hash.slice(0, 10)}…)`);
+      toastSuccess(agentCopy.limitToast(hash));
       setLimitInput("");
       vault.refetch();
     } catch (err) {
@@ -418,7 +432,7 @@ export function AgentPage({
 
   const copyDataHash = () => {
     if (metadata?.dataHash) navigator.clipboard?.writeText(metadata.dataHash);
-    action("Metadata root copied.");
+    action(agentCopy.copiedNotice);
   };
 
   return (
@@ -435,7 +449,7 @@ export function AgentPage({
             }
             icon={<Play size={15} />}
           >
-            {copy.flows.tick.title}
+            {agentCopy.runTask}
           </Button>
         </div>
       </PageHead>
@@ -447,12 +461,11 @@ export function AgentPage({
         <div>
           <strong>{vaultBalance}</strong>
           <small>
-            {agentCopy.operatingBalance} ·{" "}
             {strategyBound
-              ? interpolate(agentCopy.vaultRoute, {
-                  chainName: APP_CHAIN.name,
+              ? interpolate(agentCopy.balanceToSpend, {
+                  amount: vaultBalance,
                 })
-              : agentCopy.noStrategy}
+              : agentCopy.needsSetup}
           </small>
         </div>
       </div>
@@ -497,28 +510,28 @@ export function AgentPage({
                 <button
                   className="inline-copy"
                   onClick={copyDataHash}
-                  aria-label="Copy metadata root"
+                  aria-label={agentCopy.copyHashA11y}
                 >
                   <Copy size={12} />
                 </button>
               </Fact>
-              <Fact label="Description">
+              <Fact label={agentCopy.descriptionLabel}>
                 {metadata?.dataDescription || "—"}
               </Fact>
               <Fact label={agentCopy.lastEvent}>
                 {lastEvent
-                  ? `${lastEvent.eventName} · block ${lastEvent.blockNumber}`
-                  : "no events indexed"}
+                  ? eventTimeLabel(lastEvent)
+                  : agentCopy.noActivityYet}
               </Fact>
               {lastEvent?.txHash && (
-                <Fact label="Explorer">
+                <Fact label={agentCopy.explorerLabel}>
                   <a
                     className="text-link"
                     href={explorerTx(lastEvent.txHash)}
                     target="_blank"
                     rel="noreferrer"
                   >
-                    View record <ArrowRight size={12} />
+                    {agentCopy.viewRecordLink} <ArrowRight size={12} />
                   </a>
                 </Fact>
               )}
@@ -526,9 +539,7 @@ export function AgentPage({
             {metadataError && (
               <div className="diagnostic-note">
                 <ShieldCheck size={14} />
-                <span>
-                  On-chain metadata read failed: {metadataError.message}
-                </span>
+                <span>{agentCopy.metadataReadFailed}</span>
               </div>
             )}
             <Button
@@ -542,7 +553,7 @@ export function AgentPage({
           <section className="panel agent-command-card">
             <h2>{agentCopy.chooseBoundedOperation}</h2>
             <div className="command-actions">
-              {commandActions.map((item) => (
+              {primaryActions.map((item) => (
                 <Button
                   key={item.label}
                   variant={item.variant}
@@ -552,8 +563,23 @@ export function AgentPage({
                   {item.label}
                 </Button>
               ))}
+              {!moreOpen && (
+                <Button variant="ghost" onClick={() => setMoreOpen(true)}>
+                  {agentCopy.moreActions}
+                </Button>
+              )}
+              {moreOpen &&
+                secondaryActions.map((item) => (
+                  <Button
+                    key={item.label}
+                    variant="secondary"
+                    onClick={() => go(item.path)}
+                    icon={item.icon}
+                  >
+                    {item.label}
+                  </Button>
+                ))}
             </div>
-            <p>{agentCopy.commandEvidence}</p>
           </section>
         </div>
       )}
@@ -576,7 +602,7 @@ export function AgentPage({
               <span className="field-label">{agentCopy.providerRoute}</span>
               <strong>
                 {metrics
-                  ? `${metrics.totalTicks ?? 0} ticks recorded`
+                  ? agentCopy.ticksRun(metrics.totalTicks ?? 0)
                   : agentCopy.providerValue}
               </strong>
               <span className="field-hint">{agentCopy.providerHint}</span>
@@ -586,7 +612,7 @@ export function AgentPage({
             <Button
               onClick={() => {
                 if (!instruction.trim()) {
-                  action("Describe the bounded instruction first.");
+                  action(agentCopy.describeFirst);
                   return;
                 }
                 go(
@@ -595,7 +621,7 @@ export function AgentPage({
               }}
               icon={<Zap size={15} />}
             >
-              {agentCopy.createTickIntent}
+              {agentCopy.previewRun}
             </Button>
             <Button variant="ghost" onClick={() => chooseTab("overview")}>
               {agentCopy.cancel}
@@ -650,24 +676,24 @@ export function AgentPage({
                 busy={isWithdrawing}
                 disabled={!hasEarnings}
               >
-                Withdraw earnings
+                {agentCopy.withdrawEarningsCta}
               </Button>
             </div>
           </section>
           <section className="panel tab-panel">
-            <h2>Spending strategy</h2>
+            <h2>{agentCopy.dailySpendingLimitTitle}</h2>
             <dl className="provenance-list">
-              <Fact label="Daily limit">
+              <Fact label={agentCopy.dailyLimitFact}>
                 {vault.dailyLimitWei > 0n
                   ? `${formatTokenAmount(vault.dailyLimitWei)} ${nativeSymbol}`
                   : "—"}
               </Fact>
-              <Fact label="Spent today" mono>
+              <Fact label={agentCopy.spentTodayFact} mono>
                 {vault.dailyLimitWei > 0n
                   ? `${formatTokenAmount(vault.dailySpentWei)} ${nativeSymbol}`
                   : "—"}
               </Fact>
-              <Fact label="Remaining" mono>
+              <Fact label={agentCopy.remainingFact} mono>
                 {vault.dailyLimitWei > 0n
                   ? `${formatTokenAmount(
                       vault.dailySpentWei > vault.dailyLimitWei
@@ -676,22 +702,22 @@ export function AgentPage({
                     )} ${nativeSymbol}`
                   : "—"}
               </Fact>
-              <Fact label="Resets">
+              <Fact label={agentCopy.resetsFact}>
                 {vault.resetDay > 0n
                   ? `${utcDayDateLabel(vault.resetDay + 1n)} (UTC)`
                   : "—"}
               </Fact>
-              <Fact label="Expires">
+              <Fact label={agentCopy.expiresFact}>
                 {vault.validUntilDay > 0n
                   ? `${utcDayDateLabel(vault.validUntilDay)} (UTC)`
                   : strategyBound
-                    ? "Never"
+                    ? agentCopy.neverExpires
                     : "—"}
               </Fact>
             </dl>
             <div className="execute-grid">
               <Field
-                label="New daily limit"
+                label={agentCopy.newDailyLimit}
                 value={limitInput}
                 onChange={setLimitInput}
                 suffix={nativeSymbol}
@@ -699,8 +725,8 @@ export function AgentPage({
                 error={strategyError ?? undefined}
                 hint={
                   strategyBound
-                    ? "Submitted through the set-strategy relay; the existing Merkle root and expiry are preserved."
-                    : "No Merkle root is set on this vault — autonomous settlement additionally needs a proof root plus an off-chain Merkle-proof producer."
+                    ? agentCopy.limitTipBound
+                    : agentCopy.limitTipUnbound
                 }
               />
             </div>
@@ -709,7 +735,7 @@ export function AgentPage({
                 onClick={() => void submitStrategyLimit()}
                 busy={isStrategySubmitting}
               >
-                Set spending limit
+                {agentCopy.setSpendingLimit}
               </Button>
             </div>
           </section>
@@ -723,14 +749,11 @@ export function AgentPage({
             {events.length === 0 && (
               <div className="empty-state">
                 <strong>
-                  {eventsLoading ? "Loading events…" : "No events indexed"}
+                  {eventsLoading
+                    ? agentCopy.activityLoading
+                    : agentCopy.activityEmptyTitle}
                 </strong>
-                {!eventsLoading && (
-                  <span>
-                    On-chain activity for this agent appears here as the indexer
-                    sees it.
-                  </span>
-                )}
+                {!eventsLoading && <span>{agentCopy.activityEmptyHint}</span>}
               </div>
             )}
             {[...events].reverse().map((event) => (
@@ -747,8 +770,7 @@ export function AgentPage({
                 <span>
                   <strong>{event.eventName}</strong>
                   <small>
-                    block {event.blockNumber} ·{" "}
-                    {truncateHex(event.txHash, 10, 6)}
+                    {eventTimeLabel(event)} · {truncateHex(event.txHash, 10, 6)}
                   </small>
                 </span>
                 <StatePill state="confirmed" />

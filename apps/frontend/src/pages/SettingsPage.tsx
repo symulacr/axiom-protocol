@@ -4,8 +4,10 @@
   (uiStore). Theme also drives the document data-theme attribute via App.
 
   Depth contract:
-  - depth 0: Signing context (read-only, open) + Daily preferences (theme,
-    compact rail, density, language) + footer (staking link, Lock console).
+  - depth 0: Connection diagnostics (read-only, collapsed — proto-subpages-b:
+    the summary lives in the disclosure heading, detail inside) + Appearance
+    (theme, compact rail, density, language) + footer (staking link, Lock
+    console).
   - depth 1: Console layout + Advanced — disclosures start CLOSED at every
     viewport (an accordion that defaults open is grouping, not disclosure).
   - depth 2: Danger zone (closed) → Reset surface wears danger chrome behind
@@ -242,9 +244,12 @@ export function SettingsPage({
 
       <div className="settings-grid">
         <SettingsDisclosure
-          title={labels.signingContext}
+          title={`${labels.signingContext} — ${
+            address && chainId === APP_CHAIN_ID && health?.ok === true
+              ? labels.connectionOk
+              : labels.connectionFail
+          }`}
           icon={<Wifi size={17} className="copper" />}
-          defaultOpen
         >
           {walletRows.map(([label, value, status]) => (
             <div className="settings-row" key={label}>

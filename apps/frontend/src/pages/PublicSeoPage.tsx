@@ -90,7 +90,7 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
   agents: {
     title: "Agents with a\nvisible track record.",
     metaTitle: "Agent Provenance Workflows | Axiom",
-    navLabel: "Agent provenance",
+    navLabel: "Explore agents",
     accent:
       "You can see what an agent is, what it did, and which records support it.",
     metaDescription:
@@ -103,7 +103,7 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
     ],
     boundary:
       "Axiom describes a human-controlled workflow; it does not claim autonomous behavior beyond the configured flows.",
-    next: { href: PUBLIC_HUB_PATHS.proofs, label: "Trace a receipt lifecycle" },
+    next: { href: PUBLIC_HUB_PATHS.proofs, label: "See how it works" },
     links: [
       { href: PUBLIC_HUB_PATHS.payments, label: "Programmable payments" },
       { href: PUBLIC_HUB_PATHS.storage, label: "Verifiable 0G Storage" },
@@ -111,12 +111,12 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
     ],
     icon: Network,
     artifact: {
-      label: "PROVENANCE SPECIMEN",
+      label: "LIVE RECORD",
       // Fallback rows while /v1/agents/stats is down; live reads replace them; never fabricate an agent id.
       rows: [
         ["AGENTS", "registry read…"],
-        ["MANIFEST", "hash + metadata"],
-        ["LAST RECEIPT", "tx hash + event"],
+        ["WHAT THEY DID", "hash + metadata"],
+        ["LAST ACTIVITY", "tx hash + event"],
       ],
     },
     journey: "Trace an\nagent evidence path.",
@@ -381,10 +381,7 @@ export function PublicSeoPage({ slug }: { slug: PublicSeoSlug }) {
             <Icon size={19} />
           </div>
           <strong>{page.evidenceTitle}</strong>
-          <div
-            className="seo-evidence-artifact"
-            aria-label={`${artifact.label} specimen`}
-          >
+          <div className="seo-evidence-artifact" aria-label={artifact.label}>
             <div>
               <span>{artifact.label}</span>
             </div>
@@ -428,7 +425,7 @@ export function PublicSeoPage({ slug }: { slug: PublicSeoSlug }) {
         </div>
       </section>
       <footer className="seo-public-footer">
-        <span>0G-aware operator workflows</span>
+        <span>Built on 0G</span>
       </footer>
     </main>
   );

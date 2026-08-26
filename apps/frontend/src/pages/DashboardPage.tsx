@@ -11,7 +11,6 @@ import {
   ArrowRight,
   Bot,
   ChevronRight,
-  Database,
   Gauge,
   KeyRound,
   RefreshCw,
@@ -42,9 +41,22 @@ import {
   useEventHistory,
   eventTokenId,
   isOwnEvent,
+  type AxiomEvent,
 } from "../hooks/useEventHistory.js";
 import { formatTokenAmount, truncateAddress } from "../utils/format.js";
 import { APP_CHAIN, APP_CHAIN_ID } from "../config/wagmi.js";
+
+/**
+ * Activity-row detail suffix: local clock/date via Intl (locale-aware) —
+ * block numbers mean nothing to a first-time user.
+ */
+function eventTimeLabel(event: AxiomEvent): string {
+  const ts = event.timestamp ?? event.receivedAt;
+  const date = new Date(ts);
+  return date.toDateString() === new Date().toDateString()
+    ? date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    : date.toLocaleDateString([], { month: "short", day: "numeric" });
+}
 
 interface PortfolioAgent {
   tokenId: bigint;
@@ -247,6 +259,9 @@ export function DashboardPage({
     isRecoverableTx(tx.state),
   ).length;
 
+  // First unready agent drives the one primary CTA (next-action panel).
+  const firstAttention = attention[0];
+
   const activityRows = useMemo(() => {
     // Chat-transcript storage pointers are not operator activity — receipts only.
     // U8: scoped through isOwnEvent; strangers' chain events are noise here.
@@ -266,8 +281,8 @@ export function DashboardPage({
         icon: <Activity size={15} />,
         kind: event.eventName || "Event",
         detail: tokenId
-          ? `agent #${tokenId} · block ${event.blockNumber}`
-          : `block ${event.blockNumber}`,
+          ? `agent #${tokenId} · ${eventTimeLabel(event)}`
+          : eventTimeLabel(event),
         state: "confirmed" as const,
         open: tokenId
           ? `/agents/${tokenId}?tab=activity`
@@ -280,11 +295,7 @@ export function DashboardPage({
     <div className="ops-page">
       <div className="page-head page-head-asymmetric">
         <div>
-          <h1>
-            {copy.dashboard.titleLead}
-            <br />
-            <i>{copy.dashboard.titleEmphasis}</i>
-          </h1>
+          <h1>{copy.dashboard.title}</h1>
         </div>
         <div className="action-lane">
           <strong>{copy.dashboard.review(attention.length)}</strong>
@@ -323,7 +334,7 @@ export function DashboardPage({
           />
           <Stat
             label={copy.dashboard.agentsOnline}
-            value={`${String(agents.length - attention.length).padStart(2, "0")} / ${String(agents.length).padStart(2, "0")}`}
+            value={`${agents.length - attention.length} / ${agents.length}`}
             change={
               attention.length
                 ? copy.dashboard.needReview(attention.length)
@@ -332,16 +343,10 @@ export function DashboardPage({
             icon={<Bot size={16} />}
           />
           <Stat
-            label={copy.dashboard.myEventsSeen}
-            value={String(ownEvents.length)}
-            change={copy.dashboard.eventsIndexed}
-            icon={<Database size={16} />}
-          />
-          <Stat
             label={copy.dashboard.pendingMine}
             value={String(
               state.transactions.filter((tx) => isInFlightTx(tx.state)).length,
-            ).padStart(2, "0")}
+            )}
             change={
               health && !health.ok
                 ? copy.dashboard.oracleUnreachable
@@ -433,7 +438,6 @@ export function DashboardPage({
                   <span>
                     <strong>Agent #{agent.tokenId.toString()}</strong>
                     <small>
-                      {truncateAddress(agent.owner)} ·{" "}
                       {agent.dataDescription
                         ? agent.dataDescription.slice(0, 42)
                         : copy.dashboard.noDescription}
@@ -446,7 +450,11 @@ export function DashboardPage({
                         : "—"}
                     </b>
                     <Status
-                      label={needsAttention ? "attention" : "online"}
+                      label={
+                        needsAttention
+                          ? copy.dashboard.needsSetupLabel
+                          : copy.dashboard.readyLabel
+                      }
                       tone={needsAttention ? "warning" : "success"}
                     />
                   </span>
@@ -463,20 +471,26 @@ export function DashboardPage({
           <div className="proof-card">
             {/* U8: no canned allowance card when nothing needs attention —
                 the fallback collapses to honest text-only. */}
-            {attention[0] ? (
+            {firstAttention ? (
               <>
-                <img
-                  src="/brand/hero-seal-512.jpg"
-                  alt="Abstract proof field"
-                />
                 <div>
                   <small>
                     {copy.dashboard.agentFundingLabel(
-                      attention[0].tokenId.toString(),
+                      firstAttention.tokenId.toString(),
                     )}
                   </small>
                   <strong>{copy.dashboard.allowanceReady}</strong>
                 </div>
+                <Button
+                  onClick={() =>
+                    go(
+                      `${routePath("deposit")}?agent=${firstAttention.tokenId.toString()}`,
+                    )
+                  }
+                  icon={<Wallet size={15} />}
+                >
+                  {copy.dashboard.addMoney}
+                </Button>
               </>
             ) : (
               <div>

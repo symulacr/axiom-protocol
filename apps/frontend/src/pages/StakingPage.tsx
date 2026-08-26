@@ -2,7 +2,7 @@
   StakingPage : the explicit "not integrated"
   boundary surface for 0G native staking.
 */
-import { ReceiptText, ShieldAlert, Wallet } from "../components/axiom/icons.js";
+import { ShieldAlert, Wallet } from "../components/axiom/icons.js";
 import { Button, PageHead } from "../components/axiom/Controls.js";
 import { getCopy } from "../lib/copy.js";
 import { routePath } from "../lib/routeRegistry.js";
@@ -25,19 +25,13 @@ export function StakingPage({
         </div>
         <div>
           <p>{copy.body}</p>
+          {/* proto-subpages-b S10: one honest sentence + one CTA total. */}
           <div className="not-integrated-actions">
             <Button
               onClick={() => go(routePath("dashboard"))}
               icon={<Wallet size={15} />}
             >
               {copy.openVault}
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={() => go(routePath("transactions"))}
-              icon={<ReceiptText size={15} />}
-            >
-              {copy.reviewEvidence}
             </Button>
           </div>
         </div>

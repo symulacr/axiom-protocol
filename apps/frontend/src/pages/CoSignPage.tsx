@@ -164,7 +164,7 @@ export function CoSignPage({ go }: { go: (path: string) => void }) {
               onClick={() => go("/")}
               icon={<ArrowLeft size={15} />}
             >
-              Axiom
+              {f.goHome}
             </Button>
           </div>
         </div>
@@ -182,7 +182,7 @@ export function CoSignPage({ go }: { go: (path: string) => void }) {
             onClick={() => go("/")}
             icon={<ArrowLeft size={15} />}
           >
-            Axiom
+            {f.goHome}
           </Button>
         </div>
       </div>
@@ -261,19 +261,17 @@ export function CoSignPage({ go }: { go: (path: string) => void }) {
               <div>
                 <strong>{f.receiveDoneTitle}</strong>
                 <p>{f.receiveDoneBody}</p>
-                {/* U26: happy path ends in one tap — token + link, raw signature behind Advanced. */}
+                {/* proto-subpages-b: the happy path presents ONE artifact — the
+                    approval link; raw signature + token live behind Advanced. */}
                 <dl className="drawer-list">
                   <div>
                     <dt>{f.claimUrlLabel}</dt>
                     <dd className="mono">{claimUrl}</dd>
                   </div>
-                  <div>
-                    <dt>{f.claimTokenLabel}</dt>
-                    <dd className="mono cosign-code">{resultToken}</dd>
-                  </div>
                 </dl>
                 <details>
                   <summary>{f.claimRawToggle}</summary>
+                  <pre className="mono cosign-code">{resultToken}</pre>
                   <pre className="mono cosign-code">{signature}</pre>
                 </details>
                 <div className="review-handoff-actions">
@@ -342,23 +340,11 @@ export function CoSignPage({ go }: { go: (path: string) => void }) {
                 onClick={() => go("/")}
                 icon={<ArrowLeft size={15} />}
               >
-                Axiom
+                {f.goHome}
               </Button>
             </div>
           )}
         </section>
-
-        <aside className="flow-context panel">
-          <h2>{f.liveRouteNote}</h2>
-          <div className="diagnostic-note">
-            <ShieldCheck size={14} />
-            <span>
-              {interpolate(f.chainLive, {
-                chainId: payload.typedData.domain.chainId,
-              })}
-            </span>
-          </div>
-        </aside>
       </div>
     </div>
   );

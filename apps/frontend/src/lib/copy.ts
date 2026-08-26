@@ -159,7 +159,6 @@ export type Copy = {
     lede: string;
     body: string;
     openVault: string;
-    reviewEvidence: string;
   };
   /** Recovery404 — says what happened and the safe next step, never what the
    * page implementation didn't load. */
@@ -191,6 +190,10 @@ export type Copy = {
     localeGerman: string;
     liveWallet: string;
     signingContext: string;
+    /** Connection summary suffix rendered next to signingContext in the
+     * collapsed disclosure heading ("Connection — Working ✓"). */
+    connectionOk: string;
+    connectionFail: string;
     /** Operator profile name editor (03 — Settings owns renames;
      * the WalletGate step only ever creates the first value). */
     profileNameLabel: string;
@@ -245,18 +248,17 @@ export type Copy = {
     lockConsole: string;
   };
   dashboard: {
-    titleLead: string;
-    titleEmphasis: string;
+    title: string;
     review: (count: number) => string;
     refresh: string;
     managedValue: string;
     agentsOnline: string;
-    /** U8: stat labels say whose numbers they are (scoped via isOwnEvent). */
-    myEventsSeen: string;
     pendingMine: string;
     operatingFleet: string;
     attentionFirst: string;
     allowanceReady: string;
+    /** Next-action CTA: reuses the deposit route for the first unready agent. */
+    addMoney: string;
     latestEvidence: string;
     allReceipts: string;
     switchRequired: string;
@@ -269,7 +271,9 @@ export type Copy = {
     agentsScoped: (count: number) => string;
     needReview: (count: number) => string;
     fleetNominal: string;
-    eventsIndexed: string;
+    /** Per-row fleet status pills (plain words, not internal states). */
+    readyLabel: string;
+    needsSetupLabel: string;
     /** Live-queue stat subline while the oracle is healthy — describes the
      * queue, not the plumbing; an outage overrides it. */
     queueAwaiting: string;
@@ -466,11 +470,14 @@ export type Copy = {
     stepWallet: string;
     stepAuto: string;
     /** receiver co-sign step (cross-party transfer): the recipient's
-     * wallet must sign the acceptance before the sender submits. */
+     * wallet must sign the approval before the sender submits. */
     coSignTitle: string;
     coSignBody: (receiver: string) => string;
     coSignAction: string;
     coSignNote: string;
+    /** S12: the single "Needs approval" card replacing the former
+     * waiting / blocked / handoff sibling blocks on the transfer sheet. */
+    needsApprovalTitle: string;
     /** Honest blocker when the connected wallet cannot expose the receiver
      * account — no futile retry, just the two real remedies. */
     coSignBlockedTitle: string;
@@ -511,6 +518,13 @@ export type Copy = {
     /** Visually hidden label for the tick token stream. */
     streamLabel: string;
     cancelStream: string;
+    /** proto-subpages-a mint trims: cost row replaces Network+Limit on the
+     * mint sheet. */
+    factCost: string;
+    confirmMint: string;
+    /** proto-subpages-a mint success state. Placeholder: {name}. */
+    mintDoneHeading: string;
+    mintDoneBody: string;
     receiptHeadingConfirmed: string;
     receiptHeadingReverted: string;
     receiptHeadingStale: string;
@@ -619,15 +633,17 @@ export type Copy = {
     receiveCopyCode: string;
     receiveCodeCopied: string;
     receiveDoneSameBrowser: string;
-    /** U26: co-sign done-state presents a one-piece claim token + URL; the raw signature hides behind "Advanced". */
-    claimTokenLabel: string;
+    /** U26: co-sign done-state presents a one-piece approval link; the raw
+     * signature/token hide behind "Advanced". */
     claimUrlLabel: string;
     claimRawToggle: string;
+    /** Plain-language ghost exit used by CoSignPage back buttons. */
+    goHome: string;
   };
   agentDetail: {
-    operatingBalance: string;
-    vaultRoute: string;
-    noStrategy: string;
+    /** Balance caption: `{amount}` — formatted balance + symbol from chain config. */
+    balanceToSpend: string;
+    needsSetup: string;
     dataHash: string;
     overview: string;
     execute: string;
@@ -637,15 +653,21 @@ export type Copy = {
     owner: string;
     agentId: string;
     metadataRoot: string;
+    copyHashA11y: string;
     lastEvent: string;
+    descriptionLabel: string;
+    noActivityYet: string;
+    explorerLabel: string;
+    viewRecordLink: string;
+    metadataReadFailed: string;
     inspectStorageProof: string;
     chooseBoundedOperation: string;
+    addMoneyPrimary: string;
+    runTask: string;
+    moreActions: string;
     fundAgent: string;
-    depositFunds: string;
     withdrawFunds: string;
     transferProof: string;
-    queueTick: string;
-    commandEvidence: string;
     runRecoveryPath: string;
     instruction: string;
     instructionPlaceholder: string;
@@ -653,14 +675,36 @@ export type Copy = {
     providerRoute: string;
     providerValue: string;
     providerHint: string;
-    createTickIntent: string;
+    describeFirst: string;
+    previewRun: string;
     cancel: string;
     valueRouteFor: (agent: string) => string;
     token: string;
     royalty: string;
     openPaymentFlow: string;
+    withdrawEarningsCta: string;
     earnings: string;
     evidenceTied: string;
+    dailySpendingLimitTitle: string;
+    dailyLimitFact: string;
+    spentTodayFact: string;
+    remainingFact: string;
+    resetsFact: string;
+    expiresFact: string;
+    neverExpires: string;
+    newDailyLimit: string;
+    setSpendingLimit: string;
+    limitTipBound: string;
+    limitTipUnbound: string;
+    errLimitPositive: string;
+    errLimitWallet: string;
+    copiedNotice: string;
+    limitToast: (hash: string) => string;
+    withdrawToast: (hash: string) => string;
+    ticksRun: (count: number) => string;
+    activityLoading: string;
+    activityEmptyTitle: string;
+    activityEmptyHint: string;
   };
   transactions: {
     title: string;
@@ -837,9 +881,8 @@ const english: Copy = {
   },
   staking: {
     lede: "Staking isn\u0027t part of Axiom.",
-    body: "Axiom covers vaults, payments, transfers and storage. It does not cover validator delegation or rewards.",
-    openVault: "Open the vault",
-    reviewEvidence: "Review receipts",
+    body: "Staking needs the official 0G app — Axiom doesn\u0027t do staking.",
+    openVault: "Go to my agents",
   },
   notFound: {
     titleLead: "The route",
@@ -860,16 +903,18 @@ const english: Copy = {
   settings: {
     pageTitle: "Settings",
     languageLabel: "Interface language",
-    pageDescription: "Session, network and display preferences for this app.",
+    pageDescription: "Your preferences.",
     localeEnglish: "English",
     localeFrench: "Français",
     localeGerman: "Deutsch",
     liveWallet: "live wallet",
-    signingContext: "Signing context",
+    signingContext: "Connection",
+    connectionOk: "Working ✓",
+    connectionFail: "Check connection ✗",
     profileNameLabel: "Operator profile name",
     profileNameSave: "Save name",
     profileNameSaved: "Profile name updated.",
-    dailyTitle: "Daily preferences",
+    dailyTitle: "Appearance",
     layoutTitle: "Layout",
     advancedTitle: "Advanced",
     dangerTitle: "Destructive actions",
@@ -918,18 +963,19 @@ const english: Copy = {
     lockConsole: "Sign out",
   },
   dashboard: {
-    titleLead: "Keep the",
-    titleEmphasis: "receipts.",
+    title: "Your agents.",
     review: (count) =>
-      `${count} agent${enS(count)} need${count === 1 ? "s" : ""} review.`,
-    refresh: "Refresh overview",
-    managedValue: "Managed value",
-    agentsOnline: "Agents online",
-    myEventsSeen: "My events seen",
-    pendingMine: "My pending operations",
-    operatingFleet: "Operating fleet",
+      count === 1
+        ? "1 agent isn't ready yet"
+        : `${count} agents aren't ready yet`,
+    refresh: "Refresh",
+    managedValue: "Money held",
+    agentsOnline: "Ready to work",
+    pendingMine: "In progress",
+    operatingFleet: "Your agents",
     attentionFirst: "Attention first",
-    allowanceReady: "Allowance is ready for review.",
+    allowanceReady: "Needs money before it can work.",
+    addMoney: "Add money",
     // One canonical allowance sentence, shared with the strip.
     latestEvidence: "Latest receipts",
     allReceipts: "All receipts",
@@ -940,22 +986,23 @@ const english: Copy = {
     attentionCount: (count) => `${count} receipt${enS(count)} need review`,
     openReviewQueue: "Open review queue",
     loadingVaults: "loading vaults…",
-    agentsScoped: (count) => `${count} agent${count === 1 ? "" : "s"} scoped`,
+    agentsScoped: (count) => `across ${count} agent${count === 1 ? "" : "s"}`,
     needReview: (count) => `${count} need review`,
-    fleetNominal: "fleet nominal",
-    eventsIndexed: "events indexed",
+    fleetNominal: "All set.",
+    readyLabel: "ready",
+    needsSetupLabel: "needs setup",
     queueAwaiting: "awaiting confirmation",
     oracleUnreachable: "status checks failing",
     telemetryTitle: "Recent activity",
     noEvidence: "Nothing here yet",
     noEvidenceHint: "Mint an agent to create the first receipt.",
     registerUnavailable: "Agent register unavailable",
-    noAgents: "No agents yet",
-    noAgentsHint: "Mint your first agent to start the fleet.",
-    mintAgent: "Mint an agent",
+    noAgents: "You don't have an agent yet",
+    noAgentsHint: "Make one — about a minute.",
+    mintAgent: "Create agent",
     noDescription: "no description",
-    refreshNotice: "Overview refreshed.",
-    agentFundingLabel: (tokenId) => `Agent #${tokenId} funding`,
+    refreshNotice: "Updated",
+    agentFundingLabel: (tokenId) => `Agent #${tokenId} has nothing to spend`,
   },
   chat: {
     pageTitle: "Chat",
@@ -1073,7 +1120,7 @@ const english: Copy = {
     historyTitle: "Chats",
     historyNew: "New",
     historySearch: "Search chats…",
-    historyEmpty: "No history yet. Send a message.",
+    historyEmpty: "No chats yet.",
     historyNoMatch: "No matching chats.",
     historyLoading: "Loading server history…",
     historyRestore: "Restore server history",
@@ -1119,39 +1166,35 @@ const english: Copy = {
   },
   flows: {
     mint: {
-      title: "Mint an agent",
-      copy: "Name → hash → registration → receipt.",
+      title: "Create an agent",
+      copy: "Pick a name. Confirm once.",
       steps: ["Preparing identity", "Confirming uniqueness", "Receipt indexed"],
       receiptKind: "Mint",
-      consequence: "Create an agent identity after confirmation.",
+      consequence: "Once confirmed, your new agent is yours forever.",
       proofLine: "Records the metadata hash and its on-chain registration.",
       contextTitle: "Identity before ownership.",
       fieldLabel: "Agent name",
-      fieldHint: "Metadata hash is derived and shown in review.",
+      fieldHint: "Names are permanent — choose well.",
       detail: "{name} · registered on-chain",
       notice: enFlowNotice("Mint submitted for {name}."),
     },
     payment: {
-      title: "Fund with context",
-      copy: "Allowance, fees and events are visible before you pay.",
-      steps: [
-        "Spending limit",
-        "Approval / payment boundary",
-        "Receipt indexed",
-      ],
+      title: "Add funds",
+      copy: "One approval, then one payment.",
+      steps: ["Approve", "Confirm", "Done"],
       receiptKind: "Payment",
       consequence: "Fund the selected agent with the reviewed amount.",
-      proofLine: "Bounds the allowance; payment confirms separately.",
-      contextTitle: "Allowance before value.",
+      proofLine: "",
+      contextTitle: "",
       fieldLabel: "Amount",
-      fieldHint: "Exact allowance is shown in review.",
+      fieldHint: "",
       detail: "{amount} → agent #{agent}",
       notice: enFlowNotice("Payment submitted for agent #{agent}."),
     },
     transfer: {
-      title: "Transfer with evidence",
+      title: "Give an agent",
       copy: "Challenge → signature → finalization → on-chain receipt. Expiration never disappears.",
-      steps: ["Recipient challenge", "Signature step", "Receipt indexed"],
+      steps: ["They agree", "You send", "Done"],
       receiptKind: "Transfer",
       consequence: "Send the reviewed transfer to this recipient.",
       proofLine: "Binds the recipient challenge and expiry.",
@@ -1212,13 +1255,14 @@ const english: Copy = {
     agent: "Agent",
     network: "Network",
     receipt: "Receipt",
-    stepWallet: "Your wallet",
-    stepAuto: "Observed automatically",
-    coSignTitle: "Receiver co-sign required",
+    stepWallet: "You",
+    stepAuto: "Us",
+    coSignTitle: "The receiver must approve first.",
     coSignBody: (receiver) =>
-      `The receiver's wallet (${receiver}) signs first. You stay as sender.`,
+      `The receiver's wallet (${receiver}) signs the approval. You stay as sender.`,
     coSignAction: "Sign as receiver",
-    coSignNote: "Then you submit from your wallet.",
+    coSignNote: "",
+    needsApprovalTitle: "Needs approval",
     coSignBlockedTitle: "Receiver account not available",
     coSignBlockedBody: (receiver) =>
       `Can't sign for ${receiver} here. Add that account, or have the receiver accept themselves.`,
@@ -1230,7 +1274,7 @@ const english: Copy = {
     agentLabel: "Agent",
     agentA11y: "Target agent",
     agentSelectPlaceholder: "select an agent",
-    noAgentsOption: "no agents yet (mint first)",
+    noAgentsOption: "No agents yet — create one",
     agentOption: (id) => `Agent #${id}`,
     agentHint: "The agent whose vault or record this operation targets.",
     errAmountPositive: "Enter an amount above zero.",
@@ -1249,13 +1293,15 @@ const english: Copy = {
     ],
     errInstruction: "Describe the instruction.",
     errSelectAgent: "Select an agent first.",
-    intentFund: "Agent selected. Review the exact allowance.",
+    intentFund: "Paying agent #{agent}",
     intentProof: "Transfer selected. Review the recipient details.",
     intentBounded: "Instruction selected. Streaming stays cancellable.",
     intentRecovery: "Recovering an existing receipt. No duplicate operation.",
     intentReceipt: "Linked to an indexed receipt.",
     streamLabel: "Streamed tokens",
     cancelStream: "Cancel stream",
+    factCost: "Cost",
+    confirmMint: "1 click in your wallet · usual network fee",
     receiptHeadingConfirmed: "Receipt ready.",
     receiptHeadingReverted: "Reverted on-chain.",
     receiptHeadingStale: "Confirmation unknown.",
@@ -1273,13 +1319,16 @@ const english: Copy = {
     copyReceiptAction: "Copy receipt",
     openReceiptAction: "Open receipt",
     startAnotherAction: "Start another",
+    /** proto-subpages-a mint success — Placeholder: {name}. */
+    mintDoneHeading: "Done — {name} is live!",
+    mintDoneBody: "Saved in your history.",
     receiptCopiedNotice: "Receipt identifier copied.",
     vaultBalanceAfter: "Vault balance after",
     exceedsBalance: "exceeds balance",
     vaultedHint:
       "In vault: {amount} {symbol}. The resulting balance appears in review.",
     allowanceNote:
-      "Current allowance: {amount} {symbol} (exact-amount approval only, never infinite).",
+      "Current allowance: {amount} {symbol} — approves exactly this amount, never infinite.",
     liveRouteNote: "",
     simulateRejectedError: "Signature rejected. Reviewed details are saved.",
     simulateTimeoutError: "Confirmation expired. Resume from review.",
@@ -1298,7 +1347,7 @@ const english: Copy = {
     factName: "Agent name",
     factInstruction: "Instruction",
     factNetwork: "Network",
-    factBoundary: "Limit",
+    factBoundary: "Asks twice?",
     networkFact: "{chainName} · chain {chainId}",
     primarySign: "Sign & execute",
     primaryApprove: "Approve spending limit",
@@ -1310,99 +1359,127 @@ const english: Copy = {
     awaitingWallet: "Awaiting wallet",
     submitTransfer: "Submit transfer",
     reviewDisclaimer: "Nothing is submitted until you confirm in the wallet.",
-    confirmOne: "1 wallet confirmation required",
-    confirmTwo: "2 wallet confirmations required",
-    confirmTwoApprovePay: "2 wallet confirmations required (approve, then pay)",
-    confirmOneAllowance:
-      "1 wallet confirmation required (allowance sufficient)",
-    confirmChecking: "Up to 2 wallet confirmations (checking allowance…)",
-    confirmReceiverThenSubmit:
-      "2 wallet confirmations (receiver signs, then you submit)",
+    confirmOne: "No — single ask",
+    confirmTwo: "Yes — two wallet asks",
+    confirmTwoApprovePay: "Yes — once now, once to pay",
+    confirmOneAllowance: "No — your approval covers it",
+    confirmChecking: "Up to 2 wallet asks (checking approval…)",
+    confirmReceiverThenSubmit: "Approval needed: yes",
     transferKeyLabel: "Recipient public key",
     transferKeyHint: "64-byte hex (0x…), the new owner's encryption key.",
     transferAgentTitle: (id) => `Transfer agent #${id}`,
     handoffTitle: "Receiver on another device?",
     handoffBody:
-      "Send the link. They sign; paste their code here, then you submit.",
-    handoffCopyLink: "Copy acceptance link",
-    handoffLinkCopied: "Acceptance link copied. Send it to the receiver.",
-    handoffPasteLabel: "Acceptance code",
-    handoffPasteHint: "The code the receiver's wallet produced (0x…).",
-    handoffApply: "Apply acceptance",
-    handoffAppliedTitle: "Receiver acceptance applied",
+      "Send this link. They sign it; paste their result here, then you submit.",
+    handoffCopyLink: "Copy approval link",
+    handoffLinkCopied: "Approval link copied. Send it to the receiver.",
+    handoffPasteLabel: "Paste approval link",
+    handoffPasteHint: "The receiver's signed result comes as a 0x… code.",
+    handoffApply: "Apply result",
+    handoffAppliedTitle: "Receiver approved",
     handoffAppliedNote: "Verified. Submit from your wallet to finish.",
-    handoffReceivedNotice: "Receiver acceptance received from this browser.",
+    handoffReceivedNotice: "Receiver approval received from this browser.",
     receiveTitle: "Accept a transfer",
     receiveLede:
       "Someone is sending you an agent. Review, then sign to accept.",
     receiveNoLinkTitle: "Nothing to accept yet",
     receiveNoLinkBody:
-      "This page is where you accept an agent someone sent you. Open the acceptance link they shared, or ask them for a fresh one from their transfer review.",
-    receiveBadTitle: "This acceptance link is not usable",
+      "This page is where you accept an agent someone sent you. Open the approval link they shared, or ask them for a fresh one from their transfer review.",
+    receiveBadTitle: "This approval link is not usable",
     receiveBadBody: "Link damaged. Ask the sender for a new one.",
     receiveAgent: "Agent",
     receiveSender: "Sender",
     receiveReceiver: "Receiver (you)",
-    receiveExpiry: "Acceptance valid until",
+    receiveExpiry: "Approval link valid until",
     receiveNetwork: "Network",
-    receiveExpiredTitle: "Acceptance expired",
+    receiveExpiredTitle: "Approval link expired",
     receiveExpiredBody: "Link expired. Ask the sender to restart the transfer.",
     receiveWrongChain:
-      "Your wallet is on a different network. The acceptance is bound to chain {chainId}.",
+      "Your wallet is on a different network. The approval is bound to chain {chainId}.",
     receiveConnect: "Connect wallet",
-    receiveAcceptTitle: "Review, then sign to accept.",
+    receiveAcceptTitle: "Review, then sign to approve.",
     receiveAcceptBody:
-      "Your wallet ({receiver}) signs the acceptance. The sender submits the transfer afterward. Nothing moves on-chain until then.",
-    receiveSign: "Sign acceptance",
+      "You're receiving this agent with your wallet ({receiver}). Sign to agree — nothing moves on-chain until the sender submits.",
+    receiveSign: "Sign approval",
     receiveSigning: "Waiting for signature…",
-    receiveWrongAccount: "Wrong account. This acceptance needs {receiver}.",
-    receiveDoneTitle: "Acceptance signed",
-    receiveDoneBody:
-      "Copy the code and send it to the sender. Nothing has moved on-chain yet.",
-    receiveCopyCode: "Copy acceptance code",
-    receiveCodeCopied: "Acceptance code copied.",
+    receiveWrongAccount: "Wrong account. This approval needs {receiver}.",
+    receiveDoneTitle: "Approval signed",
+    receiveDoneBody: "Send the approval link to the sender below.",
+    receiveCopyCode: "Copy approval link",
+    receiveCodeCopied: "Approval link copied.",
     receiveDoneSameBrowser: "Sent to the sender's tab automatically.",
-    claimTokenLabel: "Claim token",
-    claimUrlLabel: "Claim link",
+    /** U26: co-sign done-state presents a one-piece approval link; the raw
+     * signature/token hide behind "Advanced". */
+    claimUrlLabel: "Approval link",
     claimRawToggle: "Advanced — raw signature",
+    goHome: "Home",
   },
   agentDetail: {
-    operatingBalance: "Operating balance",
-    vaultRoute: "vault route · {chainName}",
-    noStrategy: "no strategy bound",
+    balanceToSpend: "Has {amount} to spend · ready",
+    needsSetup: "Needs setup",
     dataHash: "Metadata hash",
-    overview: "Overview",
-    execute: "Execute",
-    payments: "Payments",
-    activity: "Activity",
-    agentRecord: "Agent record",
+    overview: "About",
+    execute: "Run",
+    payments: "Money",
+    activity: "History",
+    agentRecord: "Details",
     owner: "Owner",
     agentId: "Agent ID",
     metadataRoot: "Metadata hash",
-    lastEvent: "Last event",
-    inspectStorageProof: "Inspect storage proof",
-    chooseBoundedOperation: "Choose an operation.",
-    fundAgent: "Fund agent",
-    depositFunds: "Deposit to vault",
-    withdrawFunds: "Withdraw from vault",
-    transferProof: "Transfer",
-    queueTick: "Queue tick",
-    commandEvidence: "Every action returns here with a receipt.",
-    runRecoveryPath: "Run an operation with a recovery path.",
+    copyHashA11y: "Copy metadata hash",
+    lastEvent: "Last active",
+    descriptionLabel: "Description",
+    noActivityYet: "Not active yet",
+    explorerLabel: "Explorer",
+    viewRecordLink: "View record",
+    metadataReadFailed: "Couldn't load this agent's details.",
+    inspectStorageProof: "Files & records",
+    chooseBoundedOperation: "What do you want to do?",
+    addMoneyPrimary: "Add money",
+    runTask: "Run task",
+    moreActions: "More…",
+    fundAgent: "Give spending credit",
+    withdrawFunds: "Take money back",
+    transferProof: "Send to someone",
+    runRecoveryPath: "Give it something to do",
     instruction: "Instruction",
-    instructionPlaceholder: "Evaluate current route",
-    instructionHint: "Streams below; cancellable.",
+    instructionPlaceholder: "e.g. Summarize my inbox",
+    instructionHint: "You can cancel anytime.",
     providerRoute: "Provider route",
     providerValue: "Axiom orchestrator",
     providerHint: "",
-    createTickIntent: "Create tick intent",
+    describeFirst: "Describe the task first.",
+    previewRun: "Preview run",
     cancel: "Cancel",
-    valueRouteFor: (agent) => `Value route for ${agent}`,
+    valueRouteFor: () => "Its money",
     token: "Token",
-    royalty: "Royalty",
+    royalty: "Service fee",
     openPaymentFlow: "Open payment flow",
+    withdrawEarningsCta: "Withdraw earnings",
     earnings: "Earnings",
-    evidenceTied: "Receipts for this agent",
+    evidenceTied: "Activity",
+    dailySpendingLimitTitle: "Daily spending limit",
+    dailyLimitFact: "Daily limit",
+    spentTodayFact: "Spent today",
+    remainingFact: "Remaining",
+    resetsFact: "Resets",
+    expiresFact: "Expires",
+    neverExpires: "Never",
+    newDailyLimit: "New daily limit",
+    setSpendingLimit: "Set spending limit",
+    limitTipBound:
+      "Edits keep this agent's rules and expiry — only the daily limit changes.",
+    limitTipUnbound:
+      "Tip: set a daily limit so your agent can pay small bills by itself.",
+    errLimitPositive: "Enter a daily limit greater than zero.",
+    errLimitWallet: "Connect a wallet to set the spending limit.",
+    copiedNotice: "Copied",
+    limitToast: (hash) => `Spending limit submitted (${hash.slice(0, 10)}…)`,
+    withdrawToast: (hash) => `Withdrawal submitted (${hash.slice(0, 10)}…)`,
+    ticksRun: (count) => `ran ${count} tasks`,
+    activityLoading: "Loading…",
+    activityEmptyTitle: "Nothing yet",
+    activityEmptyHint: "Runs will show up here.",
   },
   transactions: {
     title: "Transaction center",
@@ -1574,9 +1651,8 @@ const french: Copy = {
   },
   staking: {
     lede: "Le staking ne fait pas partie d’Axiom.",
-    body: "Axiom couvre coffres, paiements, transferts et stockage. Ni la délégation de validateurs ni les récompenses.",
-    openVault: "Ouvrir le coffre",
-    reviewEvidence: "Revoir les reçus",
+    body: "Le staking passe par l’app officielle 0G — Axiom ne fait pas de staking.",
+    openVault: "Aller à mes agents",
   },
   notFound: {
     titleLead: "La route",
@@ -1598,13 +1674,15 @@ const french: Copy = {
     ...english.settings,
     pageTitle: "Paramètres",
     languageLabel: "Langue de l’interface",
-    pageDescription: "Session, réseau et préférences d’affichage de cette app.",
+    pageDescription: "Vos préférences.",
     liveWallet: "wallet actif",
-    signingContext: "Contexte de signature",
+    signingContext: "Connexion",
+    connectionOk: "Tout fonctionne ✓",
+    connectionFail: "Vérifiez la connexion ✗",
     profileNameLabel: "Nom du profil opérateur",
     profileNameSave: "Enregistrer",
     profileNameSaved: "Nom du profil mis à jour.",
-    dailyTitle: "Préférences quotidiennes",
+    dailyTitle: "Apparence",
     layoutTitle: "Disposition",
     advancedTitle: "Avancé",
     dangerTitle: "Actions destructrices",
@@ -1653,17 +1731,19 @@ const french: Copy = {
     lockConsole: "Se déconnecter",
   },
   dashboard: {
-    titleLead: "Gardez les",
-    titleEmphasis: "reçus.",
-    review: (count) => `${count} agent${count > 1 ? "s" : ""} à revoir.`,
-    refresh: "Actualiser la vue",
-    managedValue: "Valeur gérée",
-    agentsOnline: "Agents en ligne",
-    myEventsSeen: "Mes événements vus",
-    pendingMine: "Mes opérations en cours",
-    operatingFleet: "Flotte active",
+    title: "Vos agents.",
+    review: (count) =>
+      count === 1
+        ? "1 agent n'est pas prêt"
+        : `${count} agents ne sont pas prêts`,
+    refresh: "Actualiser",
+    managedValue: "Argent détenu",
+    agentsOnline: "Prêts à travailler",
+    pendingMine: "En cours",
+    operatingFleet: "Vos agents",
     attentionFirst: "Attention d’abord",
-    allowanceReady: "L’approbation est prête à être revue.",
+    allowanceReady: "Il lui faut des fonds avant de pouvoir agir.",
+    addMoney: "Ajouter des fonds",
     latestEvidence: "Derniers reçus",
     allReceipts: "Tous les reçus",
     switchRequired: "changement requis",
@@ -1673,10 +1753,11 @@ const french: Copy = {
     attentionCount: (count) => `${count} action${frS(count)} à examiner`,
     openReviewQueue: "Ouvrir la file de revue",
     loadingVaults: "chargement des vaults…",
-    agentsScoped: (count) => `${count} agent${frS(count)} suivi${frS(count)}`,
+    agentsScoped: (count) => `sur ${count} agent${frS(count)}`,
     needReview: (count) => `${count} à examiner`,
-    fleetNominal: "flotte nominale",
-    eventsIndexed: "événements indexés",
+    fleetNominal: "Tout est en ordre.",
+    readyLabel: "prêt",
+    needsSetupLabel: "à configurer",
     queueAwaiting: "confirmation en attente",
     oracleUnreachable: "vérifications en échec",
     telemetryTitle: "Activité récente",
@@ -1684,12 +1765,12 @@ const french: Copy = {
     noEvidenceHint:
       "Mintez un agent ou lancez un paiement pour créer le premier reçu.",
     registerUnavailable: "Registre d’agents indisponible",
-    noAgents: "Pas encore d’agent",
-    noAgentsHint: "Mintez votre premier agent pour démarrer la flotte.",
-    mintAgent: "Minter un agent",
+    noAgents: "Vous n'avez pas encore d'agent",
+    noAgentsHint: "Créez-en un — environ une minute.",
+    mintAgent: "Créer un agent",
     noDescription: "sans description",
-    refreshNotice: "Vue d’ensemble actualisée depuis les indexeurs live.",
-    agentFundingLabel: (tokenId) => `Financement de l’agent #${tokenId}`,
+    refreshNotice: "Mis à jour",
+    agentFundingLabel: (tokenId) => `L’agent #${tokenId} n’a rien à dépenser`,
   },
   chat: {
     ...english.chat,
@@ -1807,7 +1888,7 @@ const french: Copy = {
       `tx miné${tokenId ? ` · agent #${tokenId}` : ""}${event ? ` · ${event}` : ""}${block ? ` · bloc ${block}` : ""}`,
     historyNew: "Nouveau",
     historySearch: "Rechercher des chats…",
-    historyEmpty: "Pas encore d’historique. Envoyez un message.",
+    historyEmpty: "Pas encore de discussions.",
     historyNoMatch: "Aucun chat correspondant.",
     historyLoading: "Chargement de l’historique serveur…",
     historyRestore: "Restaurer l’historique serveur",
@@ -1856,39 +1937,40 @@ const french: Copy = {
     mint: {
       ...english.flows.mint,
       title: "Créer un agent",
-      copy: "Nom → hash → enregistrement → reçu.",
+      copy: "Choisissez un nom. Confirmez une fois.",
       steps: [
         "Préparation de l’identité",
         "Confirmation d’unicité",
         "Reçu indexé",
       ],
-      consequence: "Créer l’identité d’un agent après confirmation.",
+      consequence:
+        "Une fois confirmé, votre nouvel agent est à vous pour toujours.",
       proofLine:
         "Enregistre le hash de métadonnées et son inscription on-chain.",
       contextTitle: "L’identité avant la propriété.",
       fieldLabel: "Nom de l’agent",
-      fieldHint: "Le hash de métadonnées est dérivé et montré à la revue.",
+      fieldHint: "Les noms sont permanents — choisissez bien.",
       detail: "{name} · enregistré on-chain",
       notice: frFlowNotice("Mint soumis pour {name}."),
     },
     payment: {
       ...english.flows.payment,
-      title: "Financer avec contexte",
-      copy: "Token, approbation exacte, frais, royalty et événements restent visibles avant la fin.",
-      steps: ["Limite de dépense", "Approuver, puis payer", "Reçu indexé"],
+      title: "Ajouter des fonds",
+      copy: "Une approbation, puis un paiement.",
+      steps: ["Approuver", "Confirmer", "Terminé"],
       receiptKind: "Paiement",
       consequence: "Financer l’agent sélectionné du montant revu.",
-      proofLine: "Borne l’approbation ; le paiement se confirme séparément.",
-      contextTitle: "L’approbation avant la valeur.",
+      proofLine: "",
+      contextTitle: "",
       fieldLabel: "Montant",
-      fieldHint: "L’approbation exacte est montrée à la revue.",
+      fieldHint: "",
       notice: frFlowNotice("Paiement soumis pour l’agent #{agent}."),
     },
     transfer: {
       ...english.flows.transfer,
-      title: "Transférer avec preuve",
+      title: "Donner un agent",
       copy: "Challenge → signature → finalisation → reçu on-chain. L’expiration reste visible.",
-      steps: ["Challenge du destinataire", "Étape de signature", "Reçu indexé"],
+      steps: ["Ils acceptent", "Vous envoyez", "Terminé"],
       receiptKind: "Transfert",
       consequence: "Envoyer la preuve revue à ce destinataire.",
       proofLine: "Lie le challenge du destinataire et l’expiration.",
@@ -1946,14 +2028,14 @@ const french: Copy = {
     simulateTimeout: "Simuler un timeout",
     network: "Réseau",
     receipt: "Reçu",
-    stepWallet: "Votre wallet",
-    stepAuto: "Observé automatiquement",
-    coSignTitle: "Co-signature du destinataire requise",
+    stepWallet: "Vous",
+    stepAuto: "Nous",
+    coSignTitle: "Le destinataire doit d’abord approuver.",
     coSignBody: (receiver) =>
-      `Le wallet destinataire (${receiver}) signe d’abord. Vous restez expéditeur.`,
+      `Le wallet destinataire (${receiver}) signe l’approbation. Vous restez expéditeur.`,
     coSignAction: "Signer comme destinataire",
-    coSignNote:
-      "Après la signature du destinataire, vous soumettez le transfert depuis votre propre compte.",
+    coSignNote: "",
+    needsApprovalTitle: "Approbation requise",
     coSignBlockedTitle: "Compte destinataire indisponible",
     coSignBlockedBody: (receiver) =>
       `Impossible de signer pour ${receiver} ici. Ajoutez ce compte, ou laissez le destinataire accepter de son côté.`,
@@ -1964,7 +2046,7 @@ const french: Copy = {
     reviewAction: "Revoir l’opération",
     agentA11y: "Agent ciblé",
     agentSelectPlaceholder: "choisir un agent",
-    noAgentsOption: "aucun agent pour l’instant (créez-en un)",
+    noAgentsOption: "Pas encore d’agent — créez-en un",
     agentHint:
       "L’agent dont le vault ou la fiche est visé par cette opération.",
     errAmountPositive: "Saisissez un montant supérieur à zéro.",
@@ -1984,7 +2066,7 @@ const french: Copy = {
     ],
     errInstruction: "Décrivez l’instruction.",
     errSelectAgent: "Choisissez d’abord un agent.",
-    intentFund: "Agent sélectionné. Revoyez l’approbation exacte.",
+    intentFund: "Paiement de l’agent #{agent}",
     intentProof: "Transfert sélectionné. Vérifiez les détails du destinataire.",
     intentBounded: "Instruction sélectionnée. Le flux reste annulable.",
     intentRecovery:
@@ -1992,6 +2074,8 @@ const french: Copy = {
     intentReceipt: "Lié à un reçu indexé.",
     streamLabel: "Flux de tokens",
     cancelStream: "Annuler le flux",
+    factCost: "Coût",
+    confirmMint: "Un clic dans votre wallet · frais de réseau habituels",
     receiptHeadingConfirmed: "Reçu prêt.",
     receiptHeadingReverted: "Rejeté on-chain.",
     receiptHeadingStale: "Confirmation inconnue.",
@@ -2010,6 +2094,8 @@ const french: Copy = {
     copyReceiptAction: "Copier le reçu",
     openReceiptAction: "Ouvrir le reçu",
     startAnotherAction: "Recommencer",
+    mintDoneHeading: "C’est fait — {name} est en ligne !",
+    mintDoneBody: "Enregistré dans votre historique.",
     receiptCopiedNotice: "Identifiant du reçu copié.",
     vaultBalanceAfter: "Solde du vault après",
     exceedsBalance: "dépasse le solde",
@@ -2037,7 +2123,7 @@ const french: Copy = {
     factRecipient: "Destinataire",
     factName: "Nom de l’agent",
     factNetwork: "Réseau",
-    factBoundary: "Limite",
+    factBoundary: "Double demande ?",
     networkFact: "{chainName} · chaîne {chainId}",
     primarySign: "Signer et exécuter",
     primaryApprove: "Approuver la limite de dépense",
@@ -2050,105 +2136,129 @@ const french: Copy = {
     submitTransfer: "Soumettre le transfert",
     reviewDisclaimer:
       "Rien n’est soumis avant votre confirmation dans le wallet.",
-    confirmOne: "1 confirmation wallet requise",
-    confirmTwo: "2 confirmations wallet requises",
-    confirmTwoApprovePay:
-      "2 confirmations wallet requises (approbation, puis paiement)",
-    confirmOneAllowance:
-      "1 confirmation wallet requise (approbation suffisante)",
-    confirmChecking:
-      "Jusqu’à 2 confirmations wallet (vérification de l’approbation…)",
-    confirmReceiverThenSubmit:
-      "2 confirmations wallet (le destinataire signe, puis vous soumettez)",
+    confirmOne: "Non — une seule demande",
+    confirmTwo: "Oui — deux demandes wallet",
+    confirmTwoApprovePay: "Oui — une fois maintenant, une pour payer",
+    confirmOneAllowance: "Non — l’approbation suffit",
+    confirmChecking: "Jusqu’à 2 demandes wallet (vérification…)",
+    confirmReceiverThenSubmit: "Approbation requise : oui",
     transferKeyLabel: "Clé publique du destinataire",
     transferKeyHint:
       "Hex 64 octets (0x…), la clé de chiffrement du nouveau propriétaire.",
     transferAgentTitle: (id) => `Transférer l’agent #${id}`,
     handoffTitle: "Destinataire sur un autre appareil ?",
     handoffBody:
-      "Partagez le lien d’acceptation avec le destinataire. Son wallet signe l’acceptation ; collez ici le code qu’il obtient. Vous gardez la soumission on-chain finale.",
-    handoffCopyLink: "Copier le lien d’acceptation",
-    handoffLinkCopied: "Lien d’acceptation copié. Envoyez-le au destinataire.",
-    handoffPasteLabel: "Code d’acceptation",
-    handoffPasteHint: "Le code produit par le wallet du destinataire (0x…).",
-    handoffApply: "Appliquer l’acceptation",
-    handoffAppliedTitle: "Acceptation du destinataire appliquée",
+      "Envoyez ce lien. Le destinataire le signe ; collez ici son résultat, puis vous soumettez.",
+    handoffCopyLink: "Copier le lien d’approbation",
+    handoffLinkCopied: "Lien d’approbation copié. Envoyez-le au destinataire.",
+    handoffPasteLabel: "Coller le lien d’approbation",
+    handoffPasteHint: "Le résultat signé du destinataire arrive en code 0x….",
+    handoffApply: "Appliquer le résultat",
+    handoffAppliedTitle: "Le destinataire a approuvé",
     handoffAppliedNote:
-      "L’acceptation est vérifiée contre l’adresse du destinataire. Soumettez le transfert depuis votre wallet pour terminer.",
+      "L’approbation est vérifiée contre l’adresse du destinataire. Soumettez le transfert depuis votre wallet pour terminer.",
     handoffReceivedNotice:
-      "Acceptation du destinataire reçue depuis ce navigateur.",
+      "Approbation du destinataire reçue depuis ce navigateur.",
     receiveTitle: "Accepter un transfert",
     receiveLede:
-      "Un agent est en cours de transfert vers votre adresse. Revoyez-le, puis signez l’acceptation avec le wallet destinataire.",
+      "Un agent est en cours de transfert vers votre adresse. Revoyez-le, puis signez l’approbation avec le wallet destinataire.",
     receiveNoLinkTitle: "Rien à accepter pour l’instant",
     receiveNoLinkBody:
-      "Cette page sert à accepter un agent qu’on vous a envoyé. Ouvrez le lien d’acceptation partagé par l’expéditeur, ou demandez-lui un nouveau lien depuis sa revue de transfert.",
-    receiveBadTitle: "Ce lien d’acceptation est inutilisable",
+      "Cette page sert à accepter un agent qu’on vous a envoyé. Ouvrez le lien d’approbation partagé par l’expéditeur, ou demandez-lui un nouveau lien depuis sa revue de transfert.",
+    receiveBadTitle: "Ce lien d’approbation est inutilisable",
     receiveBadBody:
       "Le lien est incomplet ou endommagé. Demandez à l’expéditeur un lien frais depuis la revue de transfert.",
     receiveSender: "Expéditeur",
     receiveReceiver: "Destinataire (vous)",
-    receiveExpiry: "Acceptation valable jusqu’au",
+    receiveExpiry: "Lien d’approbation valable jusqu’au",
     receiveNetwork: "Réseau",
-    receiveExpiredTitle: "Acceptation expirée",
+    receiveExpiredTitle: "Lien d’approbation expiré",
     receiveExpiredBody:
-      "Ce lien d’acceptation a dépassé sa fenêtre de validité. Demandez à l’expéditeur de relancer le transfert pour un lien frais.",
+      "Ce lien d’approbation a dépassé sa fenêtre de validité. Demandez à l’expéditeur de relancer le transfert pour un lien frais.",
     receiveWrongChain:
-      "Votre wallet est sur un autre réseau. L’acceptation est liée à la chaîne {chainId}.",
+      "Votre wallet est sur un autre réseau. L’approbation est liée à la chaîne {chainId}.",
     receiveConnect: "Connecter le wallet",
-    receiveAcceptTitle: "Vérifiez, puis signez pour accepter.",
+    receiveAcceptTitle: "Vérifiez, puis signez pour approuver.",
     receiveAcceptBody:
-      "Votre wallet ({receiver}) signe l’acceptation. L’expéditeur soumet ensuite le transfert. Rien ne bouge on-chain d’ici là.",
-    receiveSign: "Signer l’acceptation",
+      "Vous recevez cet agent avec votre wallet ({receiver}). Signez pour accepter — rien ne bouge on-chain tant que l’expéditeur n’a pas soumis.",
+    receiveSign: "Signer l’approbation",
     receiveSigning: "En attente de la signature…",
     receiveWrongAccount:
-      "Le wallet connecté est {connected}, mais cette acceptation doit être signée par {receiver}. Passez au compte destinataire.",
-    receiveDoneTitle: "Acceptation signée",
-    receiveDoneBody:
-      "Renvoyez le code ci-dessous à l’expéditeur. Il soumet le transfert depuis sa session. Rien n’a bougé on-chain ; cette signature accepte seulement le transfert.",
-    receiveCopyCode: "Copier le code d’acceptation",
-    receiveCodeCopied: "Code d’acceptation copié.",
+      "Mauvais compte. Cette approbation doit être signée par {receiver}. Passez au compte destinataire.",
+    receiveDoneTitle: "Approbation signée",
+    receiveDoneBody: "Envoyez le lien d’approbation à l’expéditeur ci-dessous.",
+    receiveCopyCode: "Copier le lien d’approbation",
+    receiveCodeCopied: "Lien d’approbation copié.",
     receiveDoneSameBrowser:
       "Appliqué automatiquement à l’onglet de l’expéditeur dans ce navigateur.",
-    claimTokenLabel: "Jeton de réclamation",
-    claimUrlLabel: "Lien de réclamation",
+    claimUrlLabel: "Lien d’approbation",
     claimRawToggle: "Avancé — signature brute",
+    goHome: "Accueil",
   },
   agentDetail: {
     ...english.agentDetail,
-    operatingBalance: "Solde d’exploitation",
-    vaultRoute: "route du vault · {chainName}",
-    noStrategy: "aucune stratégie liée",
+    balanceToSpend: "Dispose de {amount} à dépenser · prêt",
+    needsSetup: "À configurer",
     dataHash: "Hash de métadonnées",
-    overview: "Vue d’ensemble",
-    execute: "Exécuter",
-    payments: "Paiements",
-    activity: "Activité",
-    agentRecord: "Fiche agent",
+    overview: "À propos",
+    execute: "Lancer",
+    payments: "Argent",
+    activity: "Historique",
+    agentRecord: "Détails",
     owner: "Propriétaire",
     agentId: "ID agent",
     metadataRoot: "Hash de métadonnées",
-    lastEvent: "Dernier événement",
-    inspectStorageProof: "Examiner la preuve Storage",
-    chooseBoundedOperation: "Choisissez une opération.",
-    fundAgent: "Financer l’agent",
-    depositFunds: "Déposer dans le vault",
-    withdrawFunds: "Retirer du vault",
-    transferProof: "Transférer",
-    queueTick: "Mettre le tick en file",
-    commandEvidence: "Chaque action revient ici avec un reçu.",
-    runRecoveryPath: "Lancez une opération avec un chemin de récupération.",
-    instructionPlaceholder: "Évaluer la route courante",
-    instructionHint: "Commande simulée ; aucun appel fournisseur réel.",
+    copyHashA11y: "Copier le hash de métadonnées",
+    lastEvent: "Dernière activité",
+    descriptionLabel: "Description",
+    noActivityYet: "Pas encore actif",
+    explorerLabel: "Explorateur",
+    viewRecordLink: "Voir l’enregistrement",
+    metadataReadFailed: "Impossible de charger les détails de cet agent.",
+    inspectStorageProof: "Fichiers et enregistrements",
+    chooseBoundedOperation: "Que voulez-vous faire ?",
+    addMoneyPrimary: "Ajouter des fonds",
+    runTask: "Lancer une tâche",
+    moreActions: "Plus…",
+    fundAgent: "Donner du crédit de dépense",
+    withdrawFunds: "Reprendre des fonds",
+    transferProof: "Envoyer à quelqu’un",
+    runRecoveryPath: "Donnez-lui quelque chose à faire",
+    instructionPlaceholder: "ex. Résumer ma boîte mail",
+    instructionHint: "Vous pouvez annuler à tout moment.",
     providerRoute: "Route fournisseur",
     providerValue: "Orchestrateur Axiom",
-    providerHint: "Route de démonstration sélectionnée dans Paramètres.",
-    createTickIntent: "Créer l’intention de tick",
+    describeFirst: "Décrivez d’abord la tâche.",
+    previewRun: "Aperçu de la tâche",
     cancel: "Annuler",
-    valueRouteFor: (agent) => `Route de valeur pour ${agent}`,
+    valueRouteFor: () => "Son argent",
+    royalty: "Frais de service",
     openPaymentFlow: "Ouvrir le flow de paiement",
+    withdrawEarningsCta: "Retirer les gains",
     earnings: "Gains",
-    evidenceTied: "Reçus liés à cet agent",
+    evidenceTied: "Activité",
+    dailySpendingLimitTitle: "Limite de dépense quotidienne",
+    dailyLimitFact: "Limite quotidienne",
+    spentTodayFact: "Dépensé aujourd’hui",
+    remainingFact: "Restant",
+    resetsFact: "Réinitialisation",
+    expiresFact: "Expire",
+    neverExpires: "Jamais",
+    newDailyLimit: "Nouvelle limite quotidienne",
+    setSpendingLimit: "Définir la limite",
+    limitTipBound:
+      "La modification conserve les règles et l’expiration de cet agent — seule la limite quotidienne change.",
+    limitTipUnbound:
+      "Astuce : définissez une limite quotidienne pour que votre agent puisse payer seul les petites factures.",
+    errLimitPositive: "Entrez une limite quotidienne supérieure à zéro.",
+    errLimitWallet: "Connectez un wallet pour définir la limite de dépense.",
+    copiedNotice: "Copié",
+    limitToast: (hash) => `Limite de dépense soumise (${hash.slice(0, 10)}…)`,
+    withdrawToast: (hash) => `Retrait soumis (${hash.slice(0, 10)}…)`,
+    ticksRun: (count) => `${count} tâches effectuées`,
+    activityLoading: "Chargement…",
+    activityEmptyTitle: "Rien pour l’instant",
+    activityEmptyHint: "Les tâches apparaîtront ici.",
   },
   transactions: {
     ...english.transactions,
@@ -2323,9 +2433,8 @@ const german: Copy = {
   },
   staking: {
     lede: "Staking ist nicht Teil von Axiom.",
-    body: "Axiom deckt Vaults, Zahlungen, Transfers und Storage ab. Keine Validator-Delegation oder Belohnungen.",
-    openVault: "Vault öffnen",
-    reviewEvidence: "Belege prüfen",
+    body: "Staking läuft über die offizielle 0G-App — Axiom macht kein Staking.",
+    openVault: "Zu meinen Agents",
   },
   notFound: {
     titleLead: "Diese Route",
@@ -2347,14 +2456,15 @@ const german: Copy = {
     ...english.settings,
     pageTitle: "Einstellungen",
     languageLabel: "Sprache der Oberfläche",
-    pageDescription:
-      "Sitzungs-, Netzwerk- und Anzeigeeinstellungen dieser App.",
+    pageDescription: "Deine Einstellungen.",
     liveWallet: "Live-Wallet",
-    signingContext: "Signaturkontext",
+    signingContext: "Verbindung",
+    connectionOk: "Funktioniert ✓",
+    connectionFail: "Verbindung prüfen ✗",
     profileNameLabel: "Name des Operator-Profils",
     profileNameSave: "Namen speichern",
     profileNameSaved: "Profilname aktualisiert.",
-    dailyTitle: "Tägliche Präferenzen",
+    dailyTitle: "Erscheinungsbild",
     layoutTitle: "Layout",
     advancedTitle: "Erweitert",
     dangerTitle: "Destruktive Aktionen",
@@ -2401,17 +2511,19 @@ const german: Copy = {
   },
   dashboard: {
     ...english.dashboard,
-    titleLead: "Bewahre die",
-    titleEmphasis: "Belege auf.",
+    title: "Deine Agents.",
     review: (count) =>
-      `${count} Agentenaktion${count === 1 ? "" : "en"} ${count === 1 ? "erfordert" : "erfordern"} Aufmerksamkeit.`,
-    refresh: "Übersicht aktualisieren",
-    managedValue: "Verwalteter Wert",
-    myEventsSeen: "Meine Ereignisse",
-    pendingMine: "Meine laufenden Operationen",
-    operatingFleet: "Aktive Flotte",
+      count === 1
+        ? "1 Agent ist noch nicht bereit"
+        : `${count} Agents sind noch nicht bereit`,
+    refresh: "Aktualisieren",
+    managedValue: "Verwaltetes Geld",
+    agentsOnline: "Arbeitsbereit",
+    pendingMine: "In Arbeit",
+    operatingFleet: "Deine Agents",
     attentionFirst: "Aufmerksamkeit zuerst",
-    allowanceReady: "Die Freigabe kann geprüft werden.",
+    allowanceReady: "Es braucht Geld, bevor es arbeiten kann.",
+    addMoney: "Geld hinzufügen",
     latestEvidence: "Neueste Belege",
     allReceipts: "Alle Belege",
     switchRequired: "Wechsel erforderlich",
@@ -2421,10 +2533,11 @@ const german: Copy = {
     attentionCount: (count) => `${count} Aktion${deS(count)} prüfen`,
     openReviewQueue: "Prüfungsliste öffnen",
     loadingVaults: "Vaults werden geladen…",
-    agentsScoped: (count) => `${count} Agent${count === 1 ? "" : "en"} erfasst`,
+    agentsScoped: (count) => `über ${count} Agent${count === 1 ? "" : "en"}`,
     needReview: (count) => `${count} prüfen`,
-    fleetNominal: "Flotte nominal",
-    eventsIndexed: "Ereignisse indexiert",
+    fleetNominal: "Alles bereit.",
+    readyLabel: "bereit",
+    needsSetupLabel: "einrichten",
     queueAwaiting: "Bestätigung ausstehend",
     oracleUnreachable: "Statusprüfungen fehlerhaft",
     telemetryTitle: "Letzte Aktivität",
@@ -2432,12 +2545,12 @@ const german: Copy = {
     noEvidenceHint:
       "Minte einen Agent oder führe eine Zahlung aus, um den ersten Beleg zu erzeugen.",
     registerUnavailable: "Agentenregister nicht verfügbar",
-    noAgents: "Noch keine Agents",
-    noAgentsHint: "Minte deinen ersten Agent, um die Flotte zu starten.",
-    mintAgent: "Agent minten",
+    noAgents: "Du hast noch keinen Agent",
+    noAgentsHint: "Erstelle einen — dauert etwa eine Minute.",
+    mintAgent: "Agent erstellen",
     noDescription: "keine Beschreibung",
-    refreshNotice: "Übersicht aus den Live-Indexern aktualisiert.",
-    agentFundingLabel: (tokenId) => `Finanzierung von Agent #${tokenId}`,
+    refreshNotice: "Aktualisiert",
+    agentFundingLabel: (tokenId) => `Agent #${tokenId} hat nichts zum Ausgeben`,
   },
   chat: {
     ...english.chat,
@@ -2555,7 +2668,7 @@ const german: Copy = {
       `tx gemint${tokenId ? ` · Agent #${tokenId}` : ""}${event ? ` · ${event}` : ""}${block ? ` · Block ${block}` : ""}`,
     historyNew: "Neu",
     historySearch: "Chats suchen…",
-    historyEmpty: "Noch kein Verlauf. Sende eine Nachricht.",
+    historyEmpty: "Noch keine Chats.",
     historyNoMatch: "Keine passenden Chats.",
     historyLoading: "Server-Verlauf wird geladen…",
     historyRestore: "Server-Verlauf wiederherstellen",
@@ -2605,40 +2718,40 @@ const german: Copy = {
     mint: {
       ...english.flows.mint,
       title: "Agent minten",
-      copy: "Name → Hash → Registrierung → Beleg.",
+      copy: "Namen wählen. Einmal bestätigen.",
       steps: [
         "Identität wird vorbereitet",
         "Eindeutigkeit wird bestätigt",
         "Beleg indexiert",
       ],
-      consequence: "Nach der Bestätigung eine Agenten-Identität erstellen.",
+      consequence:
+        "Nach der Bestätigung gehört dein neuer Agent für immer dir.",
       proofLine: "Speichert Metadaten-Hash und dessen On-Chain-Registrierung.",
       contextTitle: "Identität vor Eigentum.",
       fieldLabel: "Agentenname",
-      fieldHint:
-        "Der Metadaten-Hash wird abgeleitet und in der Prüfung gezeigt.",
+      fieldHint: "Namen sind dauerhaft — wähle mit Bedacht.",
       detail: "{name} · on-chain registriert",
       notice: deFlowNotice("Mint für {name} eingereicht."),
     },
     payment: {
-      title: "Mit Kontext finanzieren",
-      copy: "Token, exakte Freigabe, Gebühr, Royalty und Ereignisse bleiben sichtbar.",
-      steps: ["Ausgabenlimit", "Freigeben, dann zahlen", "Beleg indexiert"],
+      title: "Guthaben hinzufügen",
+      copy: "Eine Freigabe, dann eine Zahlung.",
+      steps: ["Freigeben", "Bestätigen", "Fertig"],
       receiptKind: "Zahlung",
       consequence:
         "Den ausgewählten Agenten mit dem geprüften Betrag finanzieren.",
-      proofLine: "Begrenzt die Freigabe; die Zahlung bestätigt separat.",
-      contextTitle: "Freigabe vor Wert.",
+      proofLine: "",
+      contextTitle: "",
       fieldLabel: "Betrag",
-      fieldHint: "Die exakte Freigabe erscheint in der Prüfung.",
+      fieldHint: "",
       detail: "{amount} → Agent #{agent}",
       notice: deFlowNotice("Zahlung für Agent #{agent} eingereicht."),
     },
     transfer: {
       ...english.flows.transfer,
-      title: "Mit Nachweis übertragen",
+      title: "Einen Agenten weitergeben",
       copy: "Challenge → Signatur → Abschluss → On-Chain-Beleg. Der Ablauf bleibt nachvollziehbar.",
-      steps: ["Empfänger-Challenge", "Signierschritt", "Beleg indexiert"],
+      steps: ["Empfänger stimmt zu", "Du sendest", "Fertig"],
       consequence: "Den geprüften Nachweis an diesen Empfänger senden.",
       proofLine: "Bindet Empfänger-Challenge und Ablaufdatum.",
       contextTitle: "Challenge vor Endgültigkeit.",
@@ -2697,14 +2810,14 @@ const german: Copy = {
     simulateTimeout: "Timeout simulieren",
     network: "Netzwerk",
     receipt: "Beleg",
-    stepWallet: "Dein Wallet",
-    stepAuto: "Automatisch beobachtet",
-    coSignTitle: "Empfänger-Gegenzeichnung erforderlich",
+    stepWallet: "Du",
+    stepAuto: "Wir",
+    coSignTitle: "Der Empfänger muss zuerst zustimmen.",
     coSignBody: (receiver) =>
-      `Das Empfänger-Wallet (${receiver}) signiert zuerst. Du bleibst Sender.`,
+      `Das Empfänger-Wallet (${receiver}) signiert die Zustimmung. Du bleibst Sender.`,
     coSignAction: "Als Empfänger signieren",
-    coSignNote:
-      "Nach der Signatur des Empfängers reichen Sie den Transfer von Ihrem eigenen Konto ein.",
+    coSignNote: "",
+    needsApprovalTitle: "Zustimmung erforderlich",
     coSignBlockedTitle: "Empfängerkonto nicht verfügbar",
     coSignBlockedBody: (receiver) =>
       `Signieren für ${receiver} hier nicht möglich. Konto hinzufügen, oder der Empfänger akzeptiert selbst.`,
@@ -2715,7 +2828,7 @@ const german: Copy = {
     reviewAction: "Vorgang prüfen",
     agentA11y: "Ziel-Agent",
     agentSelectPlaceholder: "Agent auswählen",
-    noAgentsOption: "keine Agenten vorhanden (erst minten)",
+    noAgentsOption: "Keine Agenten vorhanden — erst erstellen",
     agentHint:
       "Der Agent, dessen Vault oder Datensatz dieser Vorgang anspricht.",
     errAmountPositive: "Geben Sie einen Betrag über null ein.",
@@ -2735,7 +2848,7 @@ const german: Copy = {
     ],
     errInstruction: "Beschreiben Sie die Anweisung.",
     errSelectAgent: "Wählen Sie zuerst einen Agenten.",
-    intentFund: "Agent ausgewählt. Prüfen Sie die exakte Freigabe.",
+    intentFund: "Zahlung an Agent #{agent}",
     intentProof: "Transfer ausgewählt. Empfängerdetails prüfen.",
     intentBounded: "Anweisung ausgewählt. Der Stream bleibt abbrechbar.",
     intentRecovery:
@@ -2743,6 +2856,8 @@ const german: Copy = {
     intentReceipt: "Mit einem indexierten Beleg verknüpft.",
     streamLabel: "Token-Stream",
     cancelStream: "Stream abbrechen",
+    factCost: "Kosten",
+    confirmMint: "Ein Klick im Wallet · übliche Netzwerkgebühr",
     receiptHeadingConfirmed: "Beleg bereit.",
     receiptHeadingReverted: "On-Chain rückgängig.",
     receiptHeadingStale: "Bestätigung unbekannt.",
@@ -2761,6 +2876,8 @@ const german: Copy = {
     copyReceiptAction: "Beleg kopieren",
     openReceiptAction: "Beleg öffnen",
     startAnotherAction: "Neu beginnen",
+    mintDoneHeading: "Fertig — {name} ist live!",
+    mintDoneBody: "In deinem Verlauf gespeichert.",
     receiptCopiedNotice: "Beleg-Kennung kopiert.",
     vaultBalanceAfter: "Vault-Stand danach",
     exceedsBalance: "übersteigt Guthaben",
@@ -2790,7 +2907,7 @@ const german: Copy = {
     factName: "Agentenname",
     factInstruction: "Anweisung",
     factNetwork: "Netzwerk",
-    factBoundary: "Limit",
+    factBoundary: "Doppelt gefragt?",
     networkFact: "{chainName} · Chain {chainId}",
     primarySign: "Signieren & ausführen",
     primaryApprove: "Ausgabenlimit genehmigen",
@@ -2803,100 +2920,127 @@ const german: Copy = {
     submitTransfer: "Transfer einreichen",
     reviewDisclaimer:
       "Nichts wird eingereicht, bevor Sie im Wallet bestätigen.",
-    confirmOne: "1 Wallet-Bestätigung erforderlich",
-    confirmTwo: "2 Wallet-Bestätigungen erforderlich",
-    confirmTwoApprovePay:
-      "2 Wallet-Bestätigungen erforderlich (genehmigen, dann zahlen)",
-    confirmOneAllowance:
-      "1 Wallet-Bestätigung erforderlich (Freigabe ausreichend)",
-    confirmChecking: "Bis zu 2 Wallet-Bestätigungen (Freigabe wird geprüft…)",
-    confirmReceiverThenSubmit:
-      "2 Wallet-Bestätigungen (Empfänger signiert, dann reichen Sie ein)",
+    confirmOne: "Nein — nur eine Anfrage",
+    confirmTwo: "Ja — zwei Wallet-Anfragen",
+    confirmTwoApprovePay: "Ja — einmal jetzt, einmal zum Zahlen",
+    confirmOneAllowance: "Nein — die Freigabe reicht",
+    confirmChecking: "Bis zu 2 Wallet-Anfragen (Freigabe wird geprüft…)",
+    confirmReceiverThenSubmit: "Zustimmung erforderlich: ja",
     transferKeyLabel: "Öffentlicher Schlüssel des Empfängers",
     transferKeyHint:
       "64 Byte Hex (0x…), der Verschlüsselungsschlüssel des neuen Eigentümers.",
     transferAgentTitle: (id) => `Agent #${id} übertragen`,
     handoffTitle: "Empfänger an einem anderen Gerät?",
     handoffBody:
-      "Link senden. Der Empfänger signiert; Code hier einfügen, dann reichst du ein.",
-    handoffCopyLink: "Annahme-Link kopieren",
-    handoffLinkCopied: "Annahme-Link kopiert. Senden Sie ihn an den Empfänger.",
-    handoffPasteLabel: "Annahme-Code",
+      "Link senden. Der Empfänger signiert; sein Ergebnis hier einfügen, dann reichst du ein.",
+    handoffCopyLink: "Zustimmungs-Link kopieren",
+    handoffLinkCopied:
+      "Zustimmungs-Link kopiert. Senden Sie ihn an den Empfänger.",
+    handoffPasteLabel: "Zustimmungs-Link einfügen",
     handoffPasteHint:
-      "Der Code, den das Wallet des Empfängers erzeugt hat (0x…).",
-    handoffApply: "Annahme anwenden",
-    handoffAppliedTitle: "Empfänger-Annahme angewendet",
+      "Das signierte Ergebnis des Empfängers kommt als 0x…-Code.",
+    handoffApply: "Ergebnis anwenden",
+    handoffAppliedTitle: "Empfänger hat zugestimmt",
     handoffAppliedNote:
       "Verifiziert. Aus deinem Wallet einreichen, um fertigzustellen.",
-    handoffReceivedNotice: "Empfänger-Annahme aus diesem Browser empfangen.",
+    handoffReceivedNotice: "Empfänger-Zustimmung aus diesem Browser empfangen.",
     receiveTitle: "Einen Transfer annehmen",
     receiveLede:
-      "Jemand sendet dir einen Agenten. Prüfen und signieren zum Annehmen.",
+      "Jemand sendet dir einen Agenten. Prüfen und signieren zum Zustimmen.",
     receiveNoLinkTitle: "Noch nichts anzunehmen",
     receiveNoLinkBody:
-      "Auf dieser Seite nimmst du einen Agenten an, den dir jemand geschickt hat. Öffne den Annahme-Link des Senders oder bitte ihn um einen neuen aus seiner Transfer-Prüfung.",
-    receiveBadTitle: "Dieser Annahme-Link ist nicht verwendbar",
+      "Auf dieser Seite nimmst du einen Agenten an, den dir jemand geschickt hat. Öffne den Zustimmungs-Link des Senders oder bitte ihn um einen neuen aus seiner Transfer-Prüfung.",
+    receiveBadTitle: "Dieser Zustimmungs-Link ist nicht verwendbar",
     receiveBadBody: "Link beschädigt. Neu vom Sender anfordern.",
     receiveReceiver: "Empfänger (Sie)",
-    receiveExpiry: "Annahme gültig bis",
+    receiveExpiry: "Zustimmungs-Link gültig bis",
     receiveNetwork: "Netzwerk",
-    receiveExpiredTitle: "Annahme abgelaufen",
+    receiveExpiredTitle: "Zustimmungs-Link abgelaufen",
     receiveExpiredBody: "Link abgelaufen. Transfer neu starten lassen.",
     receiveWrongChain:
-      "Ihr Wallet ist in einem anderen Netzwerk. Die Annahme ist an Chain {chainId} gebunden.",
+      "Ihr Wallet ist in einem anderen Netzwerk. Die Zustimmung ist an Chain {chainId} gebunden.",
     receiveConnect: "Wallet verbinden",
-    receiveAcceptTitle: "Prüfen, dann zum Annehmen signieren.",
+    receiveAcceptTitle: "Prüfen, dann zum Zustimmen signieren.",
     receiveAcceptBody:
-      "Ihr Wallet ({receiver}) signiert die Annahme. Der Absender übermittelt danach den Transfer. On-chain passiert bis dahin nichts.",
-    receiveSign: "Annahme signieren",
+      "Du erhältst diesen Agenten mit deinem Wallet ({receiver}). Signieren zum Zustimmen — on-chain passiert nichts, bevor der Absender einreicht.",
+    receiveSign: "Zustimmung signieren",
     receiveSigning: "Warten auf Signatur…",
-    receiveWrongAccount: "Falsches Konto. Diese Annahme braucht {receiver}.",
-    receiveDoneTitle: "Annahme signiert",
-    receiveDoneBody:
-      "Code kopieren und dem Sender schicken. On-Chain ist noch nichts passiert.",
-    receiveCopyCode: "Annahme-Code kopieren",
-    receiveCodeCopied: "Annahme-Code kopiert.",
+    receiveWrongAccount: "Falsches Konto. Diese Zustimmung braucht {receiver}.",
+    receiveDoneTitle: "Zustimmung signiert",
+    receiveDoneBody: "Zustimmungs-Link unten an den Sender schicken.",
+    receiveCopyCode: "Zustimmungs-Link kopieren",
+    receiveCodeCopied: "Zustimmungs-Link kopiert.",
     receiveDoneSameBrowser:
       "Wurde im Sender-Tab dieses Browsers automatisch angewendet.",
-    claimTokenLabel: "Claim-Token",
-    claimUrlLabel: "Claim-Link",
+    claimUrlLabel: "Zustimmungs-Link",
     claimRawToggle: "Erweitert — rohe Signatur",
+    goHome: "Startseite",
   },
   agentDetail: {
     ...english.agentDetail,
-    operatingBalance: "Betriebsguthaben",
-    vaultRoute: "Vault-Route · {chainName}",
-    noStrategy: "keine Strategie gebunden",
+    balanceToSpend: "Hat {amount} zum Ausgeben · bereit",
+    needsSetup: "Einrichtung nötig",
     dataHash: "Metadaten-Hash",
-    overview: "Übersicht",
-    execute: "Ausführen",
-    payments: "Zahlungen",
-    activity: "Aktivität",
-    agentRecord: "Agentenakte",
+    overview: "Über",
+    execute: "Starten",
+    payments: "Geld",
+    activity: "Verlauf",
+    agentRecord: "Details",
     owner: "Inhaber",
     agentId: "Agent-ID",
     metadataRoot: "Metadaten-Hash",
-    lastEvent: "Letztes Ereignis",
-    inspectStorageProof: "Storage-Beleg prüfen",
-    chooseBoundedOperation: "Wähle eine begrenzte Operation.",
-    fundAgent: "Agent finanzieren",
-    depositFunds: "In Vault einzahlen",
-    withdrawFunds: "Aus Vault auszahlen",
-    transferProof: "Übertragen",
-    queueTick: "Tick einreihen",
-    commandEvidence: "Jede Aktion kehrt mit einem Beleg zurück.",
-    runRecoveryPath: "Führe eine Operation mit Wiederherstellungspfad aus.",
-    instruction: "Anweisung",
-    instructionPlaceholder: "Aktuelle Route auswerten",
-    instructionHint: "Wird unten gestreamt; abbrechbar.",
+    copyHashA11y: "Metadaten-Hash kopieren",
+    lastEvent: "Zuletzt aktiv",
+    descriptionLabel: "Beschreibung",
+    noActivityYet: "Noch nicht aktiv",
+    explorerLabel: "Explorer",
+    viewRecordLink: "Eintrag ansehen",
+    metadataReadFailed:
+      "Die Details dieses Agents konnten nicht geladen werden.",
+    inspectStorageProof: "Dateien & Nachweise",
+    chooseBoundedOperation: "Was möchtest du tun?",
+    addMoneyPrimary: "Geld hinzufügen",
+    runTask: "Aufgabe starten",
+    moreActions: "Mehr…",
+    fundAgent: "Ausgabenguthaben geben",
+    withdrawFunds: "Geld zurückholen",
+    transferProof: "An jemanden senden",
+    runRecoveryPath: "Gib ihm etwas zu tun",
+    instructionPlaceholder: "z. B. Mein Postfach zusammenfassen",
+    instructionHint: "Du kannst jederzeit abbrechen.",
     providerRoute: "Provider-Route",
     providerValue: "Axiom-Orchestrator",
-    createTickIntent: "Tick-Absicht erstellen",
+    describeFirst: "Beschreibe zuerst die Aufgabe.",
+    previewRun: "Durchlauf vorschauen",
     cancel: "Abbrechen",
-    valueRouteFor: (agent) => `Wert-Route für ${agent}`,
+    valueRouteFor: () => "Sein Geld",
+    royalty: "Servicegebühr",
     openPaymentFlow: "Zahlungsflow öffnen",
+    withdrawEarningsCta: "Erträge abheben",
     earnings: "Erträge",
-    evidenceTied: "Belege zu diesem Agenten",
+    evidenceTied: "Aktivität",
+    dailySpendingLimitTitle: "Tägliches Ausgabenlimit",
+    dailyLimitFact: "Tageslimit",
+    spentTodayFact: "Heute ausgegeben",
+    remainingFact: "Verbleibend",
+    resetsFact: "Setzt sich zurück",
+    expiresFact: "Läuft ab",
+    neverExpires: "Nie",
+    newDailyLimit: "Neues Tageslimit",
+    setSpendingLimit: "Ausgabenlimit setzen",
+    limitTipBound:
+      "Änderungen behalten die Regeln und Ablaufdaten dieses Agents — nur das Tageslimit ändert sich.",
+    limitTipUnbound:
+      "Tipp: Setze ein Tageslimit, damit dein Agent kleine Rechnungen selbst bezahlen kann.",
+    errLimitPositive: "Gib ein Tageslimit größer als null ein.",
+    errLimitWallet: "Verbinde ein Wallet, um das Ausgabenlimit zu setzen.",
+    copiedNotice: "Kopiert",
+    limitToast: (hash) => `Ausgabenlimit übermittelt (${hash.slice(0, 10)}…)`,
+    withdrawToast: (hash) => `Abhebung übermittelt (${hash.slice(0, 10)}…)`,
+    ticksRun: (count) => `${count} Aufgaben ausgeführt`,
+    activityLoading: "Wird geladen…",
+    activityEmptyTitle: "Noch nichts",
+    activityEmptyHint: "Durchläufe erscheinen hier.",
   },
   transactions: {
     ...english.transactions,

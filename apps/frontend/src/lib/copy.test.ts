@@ -3,16 +3,18 @@ import { getCopy, interpolate } from "./copy";
 
 describe("Axiom copy pluralisation", () => {
   it("keeps dashboard attention grammar valid at one and many", () => {
-    // Current contracts after the UX-audit copy reword (review phrasing).
-    expect(getCopy("en").dashboard.review(1)).toBe("1 agent needs review.");
-    expect(getCopy("en").dashboard.review(3)).toBe("3 agents need review.");
-    expect(getCopy("fr").dashboard.review(1)).toBe("1 agent à revoir.");
-    expect(getCopy("fr").dashboard.review(3)).toBe("3 agents à revoir.");
+    // Current contracts after the proto-subpages-A copy reword ("not ready").
+    expect(getCopy("en").dashboard.review(1)).toBe("1 agent isn't ready yet");
+    expect(getCopy("en").dashboard.review(3)).toBe("3 agents aren't ready yet");
+    expect(getCopy("fr").dashboard.review(1)).toBe("1 agent n'est pas prêt");
+    expect(getCopy("fr").dashboard.review(3)).toBe(
+      "3 agents ne sont pas prêts",
+    );
     expect(getCopy("de").dashboard.review(1)).toBe(
-      "1 Agentenaktion erfordert Aufmerksamkeit.",
+      "1 Agent ist noch nicht bereit",
     );
     expect(getCopy("de").dashboard.review(2)).toBe(
-      "2 Agentenaktionen erfordern Aufmerksamkeit.",
+      "2 Agents sind noch nicht bereit",
     );
   });
 
@@ -23,7 +25,12 @@ describe("Axiom copy pluralisation", () => {
         expect(valueOrFunction(value)).toBeTruthy();
       // Deliberately-blank labels (copy-clearance wave): their render sites
       // show them only when non-empty, so "" is a valid localized state.
-      const INTENTIONALLY_BLANK = new Set(["liveRouteNote", "providerHint"]);
+      const INTENTIONALLY_BLANK = new Set([
+        "liveRouteNote",
+        "providerHint",
+        // proto-subpages-b: the co-sign note merged into the one "Needs approval" card.
+        "coSignNote",
+      ]);
       for (const [key, flow] of Object.entries(copy.flowUi))
         if (!INTENTIONALLY_BLANK.has(key))
           expect(valueOrFunction(flow)).toBeTruthy();
@@ -43,9 +50,13 @@ describe("Axiom copy pluralisation", () => {
     // present — no locale may fall back to another's text.
     for (const locale of ["en", "fr", "de"] as const) {
       const copy = getCopy(locale);
+      // Payment-flow explainer rows deleted by proto-subpages-b (the review
+      // sheet already states them): "" is a valid localized state there.
+      const FLOW_BLANK_OK = new Set(["fieldHint", "contextTitle", "proofLine"]);
       for (const flow of Object.values(copy.flows)) {
-        for (const value of Object.values(flow))
-          expect(valueOrFunction(value)).toBeTruthy();
+        for (const [key, value] of Object.entries(flow))
+          if (!(FLOW_BLANK_OK.has(key) && valueOrFunction(value) === ""))
+            expect(valueOrFunction(value)).toBeTruthy();
         expect(flow.steps.length).toBeGreaterThan(0);
       }
     }
@@ -116,7 +127,7 @@ describe("Axiom i18n contract (C-08/C-11/C-12)", () => {
       const copy = getCopy(locale);
       expect(copy.wallet.wrongNetworkTitle).toContain("{chainName}");
       expect(copy.wallet.switchNetwork).toContain("{chainName}");
-      expect(copy.agentDetail.vaultRoute).toContain("{chainName}");
+      expect(copy.agentDetail.balanceToSpend).toContain("{amount}");
       expect(copy.chat.statusOnline).toContain("{chainName}");
       expect(copy.chat.statusWrongNetwork).toContain("{chainName}");
       expect(copy.chat.wrongNetworkBanner).toContain("{chainName}");

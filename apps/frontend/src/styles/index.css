@@ -2276,7 +2276,7 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
 
 /* Thread rail (ChatHistorySection), styled as the v2 thread-list panel body. */
 .chat-history { display: flex; flex-direction: column; gap: var(--space-2); min-height: 0; height: 100%; }
-.chat-history__head { display: flex; align-items: center; justify-content: space-between; }
+.chat-history__head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; row-gap: var(--space-2); }
 .chat-history__title {
   margin: 0;
   font-family: Syne, sans-serif;
@@ -2292,7 +2292,27 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
   padding: var(--space-1) var(--space-2);
   cursor: pointer;
 }
+/* Sticky full-width New chat pinned to the rail top; head never scrolls
+   (only __list does), so sticky is a forward-safe width/juice upgrade. */
+.chat-history__new {
+  flex: 1 1 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  width: 100%;
+  position: sticky;
+  top: calc(-1 * var(--space-2));
+  z-index: 1;
+  padding: var(--space-2);
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  backdrop-filter: blur(6px);
+}
+.chat-history__new::before { content: "＋"; }
 .chat-history__new:hover { background: rgba(210, 139, 82, 0.1); }
+/* Search demoted to an icon-expandable affordance: collapsed 32px ⌕ square
+   aligned right under the rail head, expands to full width on focus or when
+   it holds a query. Pure CSS — no markup/state dependency. */
 .chat-history__search {
   border: 1px solid var(--line);
   background: var(--bg-2);
@@ -2300,7 +2320,29 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
   border-radius: var(--radius-md, 6px);
   padding: var(--space-2) var(--space-2);
   font-size: var(--fs-small);
+  align-self: flex-end;
+  box-sizing: border-box;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2399a09f' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 16px;
+  transition: width 160ms var(--ease);
 }
+.chat-history__search:focus,
+.chat-history__search:not(:placeholder-shown) {
+  width: 100%;
+  align-self: stretch;
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  background-position: var(--space-2) center;
+  cursor: text;
+}
+.chat-history__search::placeholder { opacity: 0; transition: opacity 120ms var(--ease); }
+.chat-history__search:focus::placeholder,
+.chat-history__search:not(:placeholder-shown)::placeholder { opacity: 1; }
 .chat-history__search:focus-visible { outline: 2px solid var(--copper-bright); outline-offset: 2px; }
 .chat-history__search:focus { border-color: var(--copper); }
 .chat-history__list { overflow-y: auto; display: grid; gap: var(--space-1); min-height: 0; flex: 1; }
@@ -2346,11 +2388,12 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
  * ---------------------------------------------------------------- */
 .chat-surface {
   display: grid;
-  grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(210px, 250px);
   gap: var(--space-4);
   min-height: 0;
   flex: 1;
 }
+.app-shell .chat-thread-rail { order: 2; } /* rail chrome pinned to the right edge */
 .chat-surface .chat-layout { gap: var(--space-4);
   display: flex;
   flex-direction: column;
@@ -2385,10 +2428,10 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
     position: fixed;
     top: 0;
     bottom: 0;
-    left: 0;
+    right: 0;
     z-index: var(--layer-drawer, 80);
     width: min(84vw, 320px);
-    box-shadow: var(--shadow-drawer-r, 22px 0 64px rgba(0,0,0,.45));
+    box-shadow: var(--shadow-drawer);
     background: var(--panel);
   }
 }

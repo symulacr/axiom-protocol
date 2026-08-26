@@ -1072,7 +1072,7 @@ export function FlowPage({
     : undefined;
   const receiptState: TxState =
     receiptTx?.state ?? (draft.phase === "receipt" ? "stale" : "confirming");
-  // Receipt chrome: state→[heading, overlay, body] table; unlisted states fall back to confirming.
+  // Receipt chrome: state→[heading, body] table; unlisted states fall back to confirming.
   const receiptCopy: Partial<Record<TxState, [string, string, string]>> = {
     confirmed: [
       f.receiptHeadingConfirmed,
@@ -1092,13 +1092,20 @@ export function FlowPage({
       }),
     ],
   };
-  const [receiptHeading, receiptOverlay, receiptBody] = receiptCopy[
-    receiptState
-  ] ?? [
-    f.receiptHeadingConfirming,
-    f.receiptOverlayConfirming,
-    f.receiptBodyConfirming,
-  ];
+  // proto-subpages-a: mint success speaks human — "Done — {name} is live!";
+  // every other state (and flow) keeps the shared state→copy table.
+  const [receiptHeading, , receiptBody] =
+    kind === "mint" && receiptState === "confirmed"
+      ? [
+          interpolate(f.mintDoneHeading, { name: draft.value }),
+          f.receiptOverlayConfirmed,
+          f.mintDoneBody,
+        ]
+      : (receiptCopy[receiptState] ?? [
+          f.receiptHeadingConfirming,
+          f.receiptOverlayConfirming,
+          f.receiptBodyConfirming,
+        ]);
 
   const proofReady = (index: number) =>
     draft.phase === "receipt"
@@ -1250,10 +1257,12 @@ export function FlowPage({
       </div>
 
       {intentCopy && (
+        // proto-subpages-b: one state label, not banner+stage+overlay stacked.
         <div className="flow-intent-banner">
           <ShieldCheck size={15} />
-          <strong>{intentCopy}</strong>
-          <span className="mono">agent / {selectedTokenId || "—"}</span>
+          <strong>
+            {interpolate(intentCopy, { agent: selectedTokenId || "—" })}
+          </strong>
         </div>
       )}
 
@@ -1276,15 +1285,6 @@ export function FlowPage({
           </div>
           <div className="flow-visual">
             <img src={meta.media} alt={flow.title} />
-            <div className="flow-visual-overlay">
-              <strong>
-                {draft.phase === "receipt"
-                  ? receiptOverlay
-                  : isReviewOpen
-                    ? f.reviewOpenLabel
-                    : f.detailsEditable}
-              </strong>
-            </div>
           </div>
 
           <div className="flow-form">
@@ -1463,14 +1463,19 @@ export function FlowPage({
         </section>
 
         <aside className="flow-context panel">
-          <h2>{flow.contextTitle}</h2>
+          {flow.contextTitle !== "" && <h2>{flow.contextTitle}</h2>}
           <ol className="passive-proof-timeline">
             {proofSteps.map((step, index) => (
               <li key={step} className={proofReady(index) ? "is-ready" : ""}>
                 <i aria-hidden="true" />
                 <div>
                   <strong>{step}</strong>
-                  <small>{index === 1 ? f.stepWallet : f.stepAuto}</small>
+                  {/* proto-subpages-b: plain actor tags — You/You/Us per ladder. */}
+                  <small>
+                    {index === proofSteps.length - 1
+                      ? f.stepAuto
+                      : f.stepWallet}
+                  </small>
                 </div>
                 {proofReady(index) ? <Check size={14} /> : null}
               </li>
@@ -1754,93 +1759,114 @@ function OperationReviewSheet({
               <dd className="mono">{balanceFact.dd}</dd>
             </div>
           )}
-          <div>
-            <dt>{f.factNetwork}</dt>
-            <dd>
-              {interpolate(f.networkFact, {
-                chainName: APP_CHAIN.name,
-                chainId: APP_CHAIN_ID,
-              })}
-            </dd>
-          </div>
-          <div>
-            <dt>{f.factBoundary}</dt>
-            <dd>{confirmationCount}</dd>
-          </div>
-        </dl>
-        <div className="review-proof">
-          <Check size={14} />
-          <span>{flow.proofLine}</span>
-        </div>
-        {coSignActive && (handoffApplied || !coSign!.blocked) && (
-          <div className="review-cosign" data-testid="transfer-cosign">
-            <ShieldCheck size={14} />
+          {kind === "mint" ? (
+            /* proto-subpages-a: mint sheet trims to Name + Cost — the network
+               and wallet-ask counts fold into one plain cost row. */
             <div>
-              <strong>{f.coSignTitle}</strong>
-              <p>{f.coSignBody(truncateAddress(coSign!.receiver))}</p>
-              <small>{f.coSignNote}</small>
+              <dt>{f.factCost}</dt>
+              <dd>{f.confirmMint}</dd>
             </div>
-          </div>
-        )}
-        {coSignActive && handoffApplied && (
-          <div className="review-cosign" data-testid="transfer-handoff-applied">
-            <Check size={14} />
-            <div>
-              <strong>{f.handoffAppliedTitle}</strong>
-              <p>{f.handoffAppliedNote}</p>
-            </div>
-          </div>
-        )}
-        {coSignActive && coSign!.blocked && (
-          <div
-            className="review-error review-cosign-blocked"
-            role="alert"
-            data-testid="transfer-cosign-blocked"
-          >
-            <AlertTriangle size={14} />
-            <div>
-              <strong>{f.coSignBlockedTitle}</strong>
-              <p>{f.coSignBlockedBody(truncateAddress(coSign!.receiver))}</p>
-            </div>
-          </div>
-        )}
-        {coSignActive && handoff && !handoffApplied && (
-          <div className="review-handoff" data-testid="transfer-handoff">
-            <div>
-              <strong>{f.handoffTitle}</strong>
-              <p>{f.handoffBody}</p>
-            </div>
-            <div className="review-handoff-actions">
-              <button
-                type="button"
-                className="button button-secondary"
-                onClick={handoff.onCopyLink}
-              >
-                <Copy size={14} />
-                {f.handoffCopyLink}
-              </button>
-            </div>
-            <label className="field">
-              <span className="field-label">{f.handoffPasteLabel}</span>
-              <span className="field-control">
-                <input
-                  className="axiom-field mono"
-                  value={handoff.codeValue}
-                  onChange={(event) => handoff.onCodeChange(event.target.value)}
-                  placeholder="0x…"
-                  spellCheck={false}
-                  maxLength={132}
-                  aria-label={f.handoffPasteLabel}
-                />
-              </span>
-              <span className="field-hint">{f.handoffPasteHint}</span>
-            </label>
-            {handoff.codeError && (
-              <div className="review-error" role="alert">
-                <AlertTriangle size={14} />
-                {handoff.codeError}
+          ) : (
+            <>
+              <div>
+                <dt>{f.factNetwork}</dt>
+                <dd>
+                  {interpolate(f.networkFact, {
+                    chainName: APP_CHAIN.name,
+                    chainId: APP_CHAIN_ID,
+                  })}
+                </dd>
               </div>
+              <div>
+                <dt>{f.factBoundary}</dt>
+                <dd>{confirmationCount}</dd>
+              </div>
+            </>
+          )}
+        </dl>
+        {flow.proofLine !== "" && (
+          <div className="review-proof">
+            <Check size={14} />
+            <span>{flow.proofLine}</span>
+          </div>
+        )}
+        {coSignActive && (
+          /* proto-subpages-b S12: ONE "Needs approval" card with internal
+             sub-states (waiting / not-here / done) replaces the three sibling
+             blocks that re-explained who signs when. */
+          <div
+            className={`review-cosign${
+              coSign!.blocked && !handoffApplied ? " review-cosign-blocked" : ""
+            }`}
+            role={coSign!.blocked && !handoffApplied ? "alert" : undefined}
+            data-testid={
+              coSign!.blocked && !handoffApplied
+                ? "transfer-cosign-blocked"
+                : handoffApplied
+                  ? "transfer-handoff-applied"
+                  : "transfer-cosign"
+            }
+          >
+            {coSign!.blocked && !handoffApplied ? (
+              <AlertTriangle size={14} />
+            ) : handoffApplied ? (
+              <Check size={14} />
+            ) : (
+              <ShieldCheck size={14} />
             )}
+            <div>
+              <strong>
+                {coSign!.blocked && !handoffApplied
+                  ? f.coSignBlockedTitle
+                  : handoffApplied
+                    ? f.handoffAppliedTitle
+                    : f.needsApprovalTitle}
+              </strong>
+              <p>
+                {coSign!.blocked && !handoffApplied
+                  ? f.coSignBlockedBody(truncateAddress(coSign!.receiver))
+                  : handoffApplied
+                    ? f.handoffAppliedNote
+                    : f.coSignBody(truncateAddress(coSign!.receiver))}
+              </p>
+              {handoff && !handoffApplied && (
+                <>
+                  <div className="review-handoff-actions">
+                    <button
+                      type="button"
+                      className="button button-secondary"
+                      onClick={handoff.onCopyLink}
+                    >
+                      <Copy size={14} />
+                      {f.handoffCopyLink}
+                    </button>
+                  </div>
+                  <label className="field">
+                    <span className="field-label">{f.handoffPasteLabel}</span>
+                    <span className="field-control">
+                      <input
+                        className="axiom-field mono"
+                        value={handoff.codeValue}
+                        onChange={(event) =>
+                          handoff.onCodeChange(event.target.value)
+                        }
+                        placeholder="0x…"
+                        spellCheck={false}
+                        maxLength={132}
+                        aria-label={f.handoffPasteLabel}
+                      />
+                    </span>
+                    <span className="field-hint">{f.handoffPasteHint}</span>
+                  </label>
+                  {handoff.codeError && (
+                    <div className="review-error" role="alert">
+                      <AlertTriangle size={14} />
+                      {handoff.codeError}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         )}
         {draft.error && (
