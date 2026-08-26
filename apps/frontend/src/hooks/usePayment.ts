@@ -115,7 +115,8 @@ export function usePayment(): UsePaymentResult {
         const config = await getPaymentConfig();
         const amountWei = parseUnits(
           amount.trim(),
-          config.paymentTokenDecimals ?? 6,
+          // Fallback matches the deployed token's decimals (18) when the config omits them.
+          config.paymentTokenDecimals ?? 18,
         );
         if (address && publicClient) await ensureAllowance(config, amountWei);
         const txHash = await write({
@@ -151,7 +152,8 @@ export function usePayment(): UsePaymentResult {
         // On-chain token decimals from the config — never a constant.
         const amountWei = parseUnits(
           amount.trim(),
-          config.paymentTokenDecimals ?? 6,
+          // Fallback matches the deployed token's decimals (18) when the config omits them.
+          config.paymentTokenDecimals ?? 18,
         );
         return { approveHash: await ensureAllowance(config, amountWei) };
       } finally {
@@ -225,7 +227,8 @@ function fetchMeta(): Promise<PaymentTokenMeta | null> {
       cached = config.paymentTokenSymbol
         ? {
             symbol: config.paymentTokenSymbol,
-            decimals: config.paymentTokenDecimals ?? 6,
+            // Fallback matches the deployed token's decimals (18) when the config omits them.
+            decimals: config.paymentTokenDecimals ?? 18,
           }
         : null;
       return cached;

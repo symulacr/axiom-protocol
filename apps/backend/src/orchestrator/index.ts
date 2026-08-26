@@ -6,6 +6,7 @@ import {
   type TransactionResponse,
 } from "ethers";
 import { TypedContract } from "@axiom/config/types/contract";
+import { currentUtcDay, strategyGuardError } from "@axiom/config";
 import type { StorageAdapter } from "@axiom/config/storage/0g";
 import type { TickResult } from "@axiom/config/types/orchestrator";
 import type OpenAI from "openai";
@@ -319,13 +320,19 @@ export class StrategyRunner {
 
     // Predictive strategy guards — execute() reverts StrategyExpired /
     // DailyLimitExceeded opaquely (AxiomStrategyVault.sol execute); skip with a
-    // reason instead of burning a reverting tx. Mirrors the contract's
-    // resetDay rollover and its expired-before-limit check order.
-    const today = BigInt(Math.floor(Date.now() / 86_400_000));
-    if (
-      vaultStrategy.validUntilDay !== 0n &&
-      today > vaultStrategy.validUntilDay
-    ) {
+    // reason instead of burning a reverting tx. Shared predicate from
+    // @axiom/config mirrors the contract's resetDay rollover and its
+    // expired-before-limit check order.
+    const guardError = strategyGuardError(
+      {
+        dailyLimitWei: vaultStrategy.dailyLimit,
+        dailySpentWei: vaultStrategy.dailySpent,
+        validUntilDay: vaultStrategy.validUntilDay,
+        resetDay: vaultStrategy.resetDay,
+      },
+      BigInt(plan.value ?? 0),
+    );
+    if (guardError?.startsWith("Strategy expired")) {
       log.info("settleOnChain skipped (strategy expired)", {
         action,
         tokenId: strategy.agentTokenId.toString(),
@@ -333,12 +340,11 @@ export class StrategyRunner {
       });
       return { status: "skipped", reason: "strategy expired" };
     }
-    const effectiveSpent =
-      today > vaultStrategy.resetDay ? 0n : vaultStrategy.dailySpent;
-    if (
-      vaultStrategy.dailyLimit > 0n &&
-      effectiveSpent + BigInt(plan.value ?? 0) > vaultStrategy.dailyLimit
-    ) {
+    if (guardError?.startsWith("Daily limit exceeded")) {
+      const effectiveSpent =
+        currentUtcDay() > vaultStrategy.resetDay
+          ? 0n
+          : vaultStrategy.dailySpent;
       log.info("settleOnChain skipped (daily limit exceeded)", {
         action,
         tokenId: strategy.agentTokenId.toString(),

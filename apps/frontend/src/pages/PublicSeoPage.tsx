@@ -34,6 +34,17 @@ function setMeta(name: string, content: string) {
   meta.setAttribute("content", content);
 }
 
+/** Create-or-update a document-head rel=canonical link (one per page). */
+function setCanonical(href: string) {
+  const id = "axiom-public-canonical";
+  document.getElementById(id)?.remove();
+  const link = document.createElement("link");
+  link.id = id;
+  link.setAttribute("rel", "canonical");
+  link.setAttribute("href", href);
+  document.head.appendChild(link);
+}
+
 function useAgentRegistryStats(enabled: boolean): AgentRegistryStats | null {
   const [stats, setStats] = useState<AgentRegistryStats | null>(null);
   useEffect(() => {
@@ -286,6 +297,11 @@ export function PublicSeoPage({ slug }: { slug: PublicSeoSlug }) {
     document.title = page.metaTitle;
     setMeta("description", page.metaDescription);
     setMeta("robots", "index,follow");
+    // Canonical form is the short hub URL; derived from PUBLIC_HUB_PATHS by
+    // dropping the /public prefix — every short form is a registered inbound alias.
+    setCanonical(
+      new URL(PUBLIC_HUB_PATHS[slug].replace(/^\/public(?=\/)/, ""), location.origin).href,
+    );
     const schemaId = "axiom-public-schema";
     document.getElementById(schemaId)?.remove();
     const schema = document.createElement("script");
@@ -313,7 +329,11 @@ export function PublicSeoPage({ slug }: { slug: PublicSeoSlug }) {
       ],
     });
     document.head.appendChild(schema);
-    return () => schema.remove();
+    return () => {
+      schema.remove();
+      // Keep the console's head clean when navigating out of the public hubs.
+      document.getElementById("axiom-public-canonical")?.remove();
+    };
   }, [page]);
   return (
     <main className={`seo-public seo-public--${slug}`} data-seo-page={slug}>

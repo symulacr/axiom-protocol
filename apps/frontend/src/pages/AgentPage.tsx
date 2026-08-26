@@ -630,7 +630,7 @@ export function AgentPage({
               },
               {
                 value: earnings
-                  ? `${formatUnits(BigInt(earnings.earnings), paymentToken?.decimals ?? 6)} ${paymentSymbol}`
+                  ? `${formatUnits(BigInt(earnings.earnings), paymentToken?.decimals ?? 18)} ${paymentSymbol}`
                   : "—",
                 label: agentCopy.earnings,
               },

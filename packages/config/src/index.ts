@@ -10,6 +10,7 @@ export {
 export { getAddresses } from "./addresses.js";
 export * from "./types/index.js";
 export * from "./eip712.js";
+export * from "./strategy-guard.js";
 export {
   aesGcmEncrypt,
   aesGcmDecrypt,

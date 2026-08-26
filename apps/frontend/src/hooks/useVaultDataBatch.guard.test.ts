@@ -9,7 +9,7 @@ import {
   currentUtcDay,
   strategyGuardError,
   utcDayDateLabel,
-} from "./strategyGuard.js";
+} from "@axiom/config";
 
 const DAY_MS = 86_400_000;
 // Fixed "today": day index 20000 → 2024-10-04 UTC.
