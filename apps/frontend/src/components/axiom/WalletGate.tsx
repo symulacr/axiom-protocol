@@ -1,7 +1,9 @@
 /*
   Live WalletGate — three states driven by wagmi:
-    connect → one CTA that opens the wagmi-native ConnectModal (wallet list,
-                   QR/deep-link flow and errors are ours now)
+    connect → one CTA that connectAsync's the discovered injected connector
+                   directly (one click); a chooser opens only when more than
+                   one injected wallet is installed, and WalletConnect stays
+                   available as the mobile path
     wrong-network → switchChain back to the configured app chain
     authenticated → the console opens immediately.
   A verified connection on the app chain IS the session: the old
@@ -12,7 +14,7 @@
   small path.
 */
 import { useEffect, useRef, useState } from "react";
-import { useAccount, useSwitchChain } from "wagmi";
+import { useAccount, useConnect, useConnectors, useSwitchChain } from "wagmi";
 import { AlertTriangle, LockKeyhole, Network, X } from "./icons.js";
 import { Button } from "./Controls.js";
 import { ConnectModal } from "./ConnectModal.js";
@@ -50,7 +52,14 @@ export function WalletGate({
   // literal ("Switch to 0G Mainnet" told testnet users the wrong network).
   const chainVars = { chainName: APP_CHAIN.name, chainId: APP_CHAIN_ID };
   const { address, isConnected, chainId, connector } = useAccount();
-  const [connectOpen, setConnectOpen] = useState(false);
+  const [chooserOpen, setChooserOpen] = useState(false);
+  const [connecting, setConnecting] = useState(false);
+  const { connectAsync } = useConnect();
+  const connectors = useConnectors();
+  // mipd-discovered injected wallets (bare injected() in config/wagmi);
+  // WalletConnect is the secondary mobile path, never the primary CTA.
+  const injected = connectors.filter((c) => c.type === "injected");
+  const mobileConnector = connectors.find((c) => c.type === "walletConnect");
   const { switchChainAsync } = useSwitchChain();
   const [error, setError] = useState<string | null>(null);
   const resumed = useRef(false);
@@ -106,6 +115,32 @@ export function WalletGate({
     }
   };
 
+  // One-click happy path: the CTA connects the first injected wallet
+  // synchronously in the click gesture. No provider installed → mipd lists
+  // nothing usable, so surface it instead of throwing ProviderNotFoundError.
+  const connectInjected = async () => {
+    const target = injected[0];
+    if (!target) {
+      setError(copy.wallet.noWalletDetected);
+      return;
+    }
+    setError(null);
+    setConnecting(true);
+    try {
+      await connectAsync({ connector: target });
+    } catch (err) {
+      // No injected provider announced → wagmi throws ProviderNotFoundError;
+      // that is the "install a wallet" case, not a generic failure.
+      setError(
+        err instanceof Error && /provider not found/i.test(err.message)
+          ? copy.wallet.noWalletDetected
+          : humanizeError(err),
+      );
+    } finally {
+      setConnecting(false);
+    }
+  };
+
   const view: "connect" | "wrong-network" = wrongNetwork
     ? "wrong-network"
     : "connect";
@@ -153,12 +188,33 @@ export function WalletGate({
                 <i>command surface.</i>
               </h1>
               <p>Connect a wallet to start a session. We never take custody.</p>
+              {/* Chooser only on conflict: >1 injected wallet means the CTA
+                  cannot guess which one to open. */}
               <Button
-                onClick={() => setConnectOpen(true)}
+                busy={connecting}
+                onClick={() =>
+                  injected.length > 1
+                    ? setChooserOpen(true)
+                    : void connectInjected()
+                }
                 icon={<LockKeyhole size={15} />}
               >
                 {copy.nav.connectWallet}
               </Button>
+              {mobileConnector && (
+                <Button
+                  variant="ghost"
+                  className="wallet-gate-mobile-cta"
+                  onClick={() => setChooserOpen(true)}
+                >
+                  {copy.wallet.useMobileWallet}
+                </Button>
+              )}
+              {error && (
+                <p className="wallet-gate-error" role="alert">
+                  {error}
+                </p>
+              )}
             </>
           )}
 
@@ -196,12 +252,8 @@ export function WalletGate({
           )}
         </div>
       </section>
-      {connectOpen && (
-        <ConnectModal
-          open
-          onClose={() => setConnectOpen(false)}
-          locale={locale}
-        />
+      {chooserOpen && (
+        <ConnectModal onClose={() => setChooserOpen(false)} locale={locale} />
       )}
     </div>
   );

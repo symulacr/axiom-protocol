@@ -1,8 +1,10 @@
 /*
-  ConnectModal — wagmi-native wallet picker replacing the removed RainbowKit
-  modal. Lists exactly the connectors configured in config/wagmi (browser
-  injected + WalletConnect); WalletConnect renders its own QR/deep-link flow
-  through wagmi's connector. Styling reuses the existing surface tokens and
+  ConnectModal — conflict chooser only. The WalletGate CTA connects the first
+  discovered injected wallet directly; this surface mounts solely when more
+  than one injected wallet is installed (or via "Use mobile wallet"). Lists
+  the connectors configured in config/wagmi (mipd-discovered injected +
+  WalletConnect); WalletConnect renders its own QR/deep-link flow through
+  wagmi's connector. Styling reuses the existing surface tokens and
   the shared Button component — no new design system.
 */
 import { useState } from "react";
@@ -13,11 +15,9 @@ import { getCopy, type Locale } from "../../lib/copy.js";
 import { humanizeError } from "../../utils/format.js";
 
 export function ConnectModal({
-  open,
   onClose,
   locale,
 }: {
-  open: boolean;
   onClose: () => void;
   locale: Locale;
 }) {
@@ -28,12 +28,8 @@ export function ConnectModal({
   // Local busy marker — wagmi's variables.connector unions away the uid.
   const [pendingUid, setPendingUid] = useState<string | null>(null);
 
-  if (!open) return null;
-
   // Localized labels keyed on the configured connector types; unknown ids fall
-  // back to the connector's own name (config/wagmi only ships the two below).
-  // NOTE: match on type, not id — injected({target:"metaMask"}) yields
-  // id "metaMask" while type stays "injected".
+  // back to the connector's own name.
   const options = connectors.map((connector) => {
     switch (connector.type) {
       case "injected":

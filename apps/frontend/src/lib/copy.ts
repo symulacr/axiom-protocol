@@ -134,12 +134,16 @@ export type Copy = {
     profileDescription: string;
     profileHint: string;
     unlockConsole: string;
-    /** ConnectModal (wagmi-native wallet picker). */
+    /** Conflict chooser (mounted only when >1 injected wallet is installed). */
     connectTitle: string;
     browserWalletLabel: string;
     browserWalletHint: string;
     walletConnectLabel: string;
     walletConnectHint: string;
+    /** Secondary CTA under the direct-connect primary. */
+    useMobileWallet: string;
+    /** Shown when no injected provider announced via EIP-6963. */
+    noWalletDetected: string;
   };
   guide: {
     nextStep: string;
@@ -835,6 +839,9 @@ const english: Copy = {
     browserWalletHint: "MetaMask and other injected wallets",
     walletConnectLabel: "WalletConnect",
     walletConnectHint: "Scan the QR code or open your wallet app",
+    useMobileWallet: "Use mobile wallet",
+    noWalletDetected:
+      "No browser wallet detected. Install one, or use a mobile wallet.",
   },
   guide: {
     nextStep: "Next step",
@@ -1589,6 +1596,9 @@ const french: Copy = {
     browserWalletHint: "MetaMask et autres wallets injectés",
     walletConnectLabel: "WalletConnect",
     walletConnectHint: "Scannez le QR code ou ouvrez votre app wallet",
+    useMobileWallet: "Utiliser un wallet mobile",
+    noWalletDetected:
+      "Aucun wallet de navigateur détecté. Installez-en un ou utilisez un wallet mobile.",
   },
   guide: {
     nextStep: "Étape suivante",
@@ -1896,7 +1906,11 @@ const french: Copy = {
       ...english.flows.mint,
       title: "Créer un agent",
       copy: "Nom → hash → accord de l’oracle → reçu.",
-      steps: ["Préparation de l’identité", "Confirmation d’unicité", "Reçu indexé"],
+      steps: [
+        "Préparation de l’identité",
+        "Confirmation d’unicité",
+        "Reçu indexé",
+      ],
       consequence: "Créer l’identité d’un agent après confirmation.",
       proofLine: "Enregistre le hash de métadonnées et l’accord de l’oracle.",
       contextTitle: "L’identité avant la propriété.",
@@ -2360,6 +2374,9 @@ const german: Copy = {
     browserWalletHint: "MetaMask und andere injizierte Wallets",
     walletConnectLabel: "WalletConnect",
     walletConnectHint: "QR-Code scannen oder Wallet-App öffnen",
+    useMobileWallet: "Mobile Wallet verwenden",
+    noWalletDetected:
+      "Keine Browser-Wallet erkannt. Installiere eine oder nutze eine mobile Wallet.",
   },
   guide: {
     nextStep: "Nächster Schritt",
@@ -2665,7 +2682,11 @@ const german: Copy = {
       ...english.flows.mint,
       title: "Agent minten",
       copy: "Name → Hash → Oracle-Bestätigung → Beleg.",
-      steps: ["Identität wird vorbereitet", "Eindeutigkeit wird bestätigt", "Beleg indexiert"],
+      steps: [
+        "Identität wird vorbereitet",
+        "Eindeutigkeit wird bestätigt",
+        "Beleg indexiert",
+      ],
       consequence: "Nach der Bestätigung eine Agenten-Identität erstellen.",
       proofLine: "Speichert Metadaten-Hash und Oracle-Bestätigung.",
       contextTitle: "Identität vor Eigentum.",
@@ -2678,11 +2699,7 @@ const german: Copy = {
     payment: {
       title: "Mit Kontext finanzieren",
       copy: "Token, exakte Freigabe, Gebühr, Royalty und Ereignisse bleiben sichtbar.",
-      steps: [
-        "Ausgabenlimit",
-        "Freigabe- / Zahlungsgrenze",
-        "Beleg indexiert",
-      ],
+      steps: ["Ausgabenlimit", "Freigabe- / Zahlungsgrenze", "Beleg indexiert"],
       receiptKind: "Zahlung",
       consequence:
         "Den ausgewählten Agenten mit dem geprüften Betrag finanzieren.",

@@ -117,7 +117,10 @@ function createWagmiConfig(inputs: ReturnType<typeof resolveWagmiInputs>) {
       [zeroGTestnet.id]: http(inputs.testnetRpc),
     },
     connectors: [
-      injected({ target: "metaMask" }),
+      // Bare injected() = mipd/EIP-6963 discovery lists every installed
+      // wallet; a pinned target (e.g. "metaMask") requires provider.isMetaMask
+      // and throws ProviderNotFoundError on anything else (Rabby, Brave).
+      injected(),
       walletConnect({ projectId: inputs.projectId }),
     ],
   });

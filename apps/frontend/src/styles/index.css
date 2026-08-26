@@ -2538,6 +2538,8 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
 
 /* Wallet gate: live error line under the action row. */
 .wallet-gate-error { margin: var(--space-2) 0 0; color: var(--danger); font-size: var(--fs-small); overflow-wrap: anywhere; }
+/* Secondary "Use mobile wallet" under the direct-connect primary CTA. */
+.wallet-gate-mobile-cta { margin-top: var(--space-2); }
 
 
 /* ---------------------------------------------------------------- *
