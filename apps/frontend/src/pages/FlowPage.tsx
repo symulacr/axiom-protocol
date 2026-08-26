@@ -240,23 +240,18 @@ function useVaultWrite(
 
 const WS_CONNECTION_TIMEOUT_MS = 60_000;
 
-export type { TickRequest, TickResult, TickStreamOptions };
-
 function useOrchestratorTick(): {
-  tick: (req: TickRequest) => Promise<TickResult>;
   tickStream: (
     req: TickRequest,
     opts: TickStreamOptions,
   ) => Promise<TickResult>;
   cancelTick: () => void;
-  isLoading: boolean;
   isStreaming: boolean;
   streamedTokens: string;
   streamingError: string | null;
-  error: Error | null;
   resetStream: () => void;
 } {
-  const { execute, cancel, isLoading, error } = useAsyncAction();
+  const { execute, cancel } = useAsyncAction();
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamedTokens, setStreamedTokens] = useState("");
   const streamedRef = useRef("");
@@ -304,20 +299,6 @@ function useOrchestratorTick(): {
       flush();
     };
   }, [isStreaming]);
-
-  const tick = useCallback(
-    async (req: TickRequest): Promise<TickResult> => {
-      return execute(async (signal) => {
-        return apiFetch<TickResult>("/v1/orchestrator/tick", {
-          method: "POST",
-          body: JSON.stringify(req),
-          signal,
-          timeout: 30000,
-        });
-      });
-    },
-    [execute],
-  );
 
   const tickStream = useCallback(
     async (req: TickRequest, opts: TickStreamOptions): Promise<TickResult> => {
@@ -501,14 +482,11 @@ function useOrchestratorTick(): {
   }, [cancel]);
 
   return {
-    tick,
     tickStream,
     cancelTick,
-    isLoading,
     isStreaming,
     streamedTokens,
     streamingError,
-    error,
     resetStream,
   };
 }
@@ -1507,9 +1485,6 @@ export function FlowPage({
           <ol className="passive-proof-timeline">
             {proofSteps.map((step, index) => (
               <li key={step} className={proofReady(index) ? "is-ready" : ""}>
-                {/* timeline dots converge on the
-                    empty-<i> convention (StatePill/Status/toggle dots) — the
-                    empty-span variant is gone. */}
                 <i aria-hidden="true" />
                 <div>
                   <strong>{step}</strong>
@@ -1779,10 +1754,7 @@ function OperationReviewSheet({
           </div>
         </div>
         <dl className="review-facts">
-          {/* for mint there is
-              no agent yet — agentName IS draft.value, so the TARGET AGENT row
-              repeated the AGENT NAME row verbatim. Other kinds keep both rows
-              (they are different facts there). */}
+          {/* mint has no agent yet — agentName IS draft.value */}
           {kind !== "mint" && (
             <div>
               <dt>{f.factAgent}</dt>

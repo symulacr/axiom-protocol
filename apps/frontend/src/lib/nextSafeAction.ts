@@ -1,17 +1,10 @@
-/* Next-safe-action engine. "Fund agent" appears only with a concrete
- * unfunded target from the caller (U17: the old unconditional push pointed
- * at a fallback route with no agent — noise, not signal); "recover receipt"
- * keys off flow drafts in recoverable error. Storage inspection is NOT
- * emitted (U18: no real storage backend exists yet — the action pointed at
- * a labeled demo page). The list may legitimately be empty; the strip
- * renders nothing then.
- * Copy comes from copy.strip (05 — the strip localizes with the
- * page body); no chain/token literal ever originates here. */
+/* Next-safe-action engine: derives the priority strip actions from app state.
+ * The list may legitimately be empty; the strip renders nothing then. */
 import { isRecoverableTx, type AppState } from "./models";
 import type { Copy } from "./copy";
 
 export type NextSafeAction = {
-  id: "recover-receipt" | "fund-agent" | "inspect-storage";
+  id: "recover-receipt" | "fund-agent";
   title: string;
   summary: string;
   impact: string;
@@ -56,8 +49,7 @@ export function getNextSafeActions(
     });
   }
 
-  // U17: gated on a concrete target — the caller decides which vault is
-  // unfunded; no target means no fund action, never a generic fallback.
+  // U17: gated on a concrete target — no generic fallback.
   if (fundTarget) {
     actions.push({
       id: "fund-agent",
@@ -72,9 +64,7 @@ export function getNextSafeActions(
     });
   }
 
-  // U18: no "inspect-storage" push — until a real storage backend exists the
-  // demo-page action stays out of the strip (route + page remain for deep links).
-
+  // U18: no storage push until a real backend exists.
   return actions;
 }
 
@@ -87,6 +77,5 @@ export function getRouteAction(
   const actions = getNextSafeActions(state, fundTarget, strip);
   if (path.startsWith("/agents/") || path.startsWith("/payment"))
     return actions.find((action) => action.id === "fund-agent") ?? actions[0];
-  // No /storage branch: inspect-storage is no longer emitted (U18).
   return actions[0];
 }

@@ -1,16 +1,7 @@
 import { describe, expect, it } from "bun:test";
-import { formatCount, getCopy, interpolate } from "./copy";
+import { getCopy, interpolate } from "./copy";
 
 describe("Axiom copy pluralisation", () => {
-  it("keeps singular and plural forms explicit in every supported locale", () => {
-    expect(formatCount("en", 1, "messages")).toBe("1 message");
-    expect(formatCount("en", 2, "messages")).toBe("2 messages");
-    expect(formatCount("fr", 1, "transactions")).toBe("1 transaction");
-    expect(formatCount("fr", 2, "transactions")).toBe("2 transactions");
-    expect(formatCount("de", 1, "steps")).toBe("1 Schritt");
-    expect(formatCount("de", 2, "steps")).toBe("2 Schritte");
-  });
-
   it("keeps dashboard attention grammar valid at one and many", () => {
     // Current contracts after the UX-audit copy reword (review phrasing).
     expect(getCopy("en").dashboard.review(1)).toBe("1 agent needs review.");
@@ -182,21 +173,6 @@ describe("Axiom i18n contract (C-08/C-11/C-12)", () => {
       for (const value of flatten(copy)) {
         expect(value).not.toMatch(forbidden);
       }
-    }
-  });
-
-  it("keeps plural helpers counting the same noun in every locale (02 FINDING-024)", () => {
-    // en "2 agents" / fr "2 agents" / de "2 Agenten" — one noun per helper,
-    // no per-locale unit drift (fr once counted "actions agent" here).
-    for (const locale of ["en", "fr", "de"] as const) {
-      expect(formatCount(locale, 2, "agents")).toMatch(/^2 \w*[aA]gent/);
-      expect(formatCount(locale, 2, "messages")).toMatch(/^2 /);
-    }
-    // dashboard.review grammar stays valid at one and many in every locale.
-    for (const locale of ["en", "fr", "de"] as const) {
-      expect(getCopy(locale).dashboard.review(1)).not.toBe(
-        getCopy(locale).dashboard.review(3),
-      );
     }
   });
 });

@@ -1,15 +1,11 @@
 /*
   Axiom UI-v2 App composition over react-router:
-    · resolver-based routing (lib/routeRegistry) with v1 compat redirects
-      (/dashboard, /market → /app; ?mint=1 → /mint flow page)
-    · AppShell (rail + topbar + Command Center + priority strip + mobile drawer)
-    · live WalletGate: wagmi connect (wagmi-native ConnectModal) / chain check /
-      optional profile — a verified connection on the app chain is the session
-    · internal routes are held behind LockedRoute until the session is
-      authenticated (24h TTL renewed silently while connected, persisted
-      in axiom-session)
-    · chat keeps the v1 live stack: ChatPage (SSE + tools + providers) mounts
-      in the shell with its thread rail portaled into #sidebar-threads-slot
+    · resolver-based routing (lib/routeRegistry) with compat redirects
+      (/dashboard, /market → /app; ?mint=1 → /mint)
+    · internal routes held behind LockedRoute (24h session TTL renewed silently
+      while connected, persisted in axiom-session)
+    · chat mounts ChatPage (SSE + tools + providers) inside AppShell with its
+      thread rail portaled into #sidebar-threads-slot
   Data: every screen is the v2 markup fed by the v1 hooks (usePortfolio,
   useEventHistory/useEventStream, useMintWizard/usePayment/useTransfer/
   useOrchestratorTick, useHealth).
@@ -290,7 +286,8 @@ function shortTokenId(pathname: string): bigint | null {
   const raw = pathname.split("/")[2];
   if (!raw) return null;
   try {
-    return BigInt(raw.split("?")[0] ?? raw);
+    // location.pathname never carries a query (react-router splits it into location.search)
+    return BigInt(raw);
   } catch {
     return null;
   }
@@ -312,13 +309,9 @@ export function App(): ReactElement {
   const setSession = (session: Partial<typeof state.session>) =>
     dispatch({ type: "session", session });
 
-  // v1 compat redirects: old IA entry points fold into the v2 surfaces.
+  // v1 compat redirects: /dashboard and /market are handled declaratively in Routes.
   useEffect(() => {
-    if (
-      location.pathname === "/dashboard" ||
-      location.pathname === "/market" ||
-      location.pathname === "/agents/list"
-    ) {
+    if (location.pathname === "/agents/list") {
       navigate("/app", { replace: true });
     }
     if (
@@ -405,8 +398,7 @@ export function App(): ReactElement {
     state.session,
   ]);
 
-  // Theme bridge: settings.theme → html data-theme; axiom-ui-settings is the single storage owner;
-  // legacy axiom-theme mirror removed, orphaned copies cleaned up here.
+  // Theme bridge: settings.theme → html data-theme; axiom-ui-settings is the single storage owner.
   useEffect(() => {
     document.documentElement.dataset.theme = state.settings.theme;
     document.documentElement.style.colorScheme = state.settings.theme;
@@ -592,7 +584,7 @@ export function App(): ReactElement {
                       dispatch={dispatch}
                     />
                   ) : location.pathname === "/storage" ? (
-                    <StoragePage state={state} dispatch={dispatch} go={go} />
+                    <StoragePage state={state} go={go} />
                   ) : location.pathname === "/settings" ? (
                     <SettingsPage
                       state={state}
@@ -766,8 +758,6 @@ function LockedRoute({
           <div>
             <Status label="wallet required" tone="warning" />
           </div>
-          {/* (duplication map #16): the topbar "Landing" text-link repeated
-              the ghost "Return to landing" exit below — one exit remains. */}
         </header>
         <main className="locked-route-content">
           <section className="locked-route-copy">
@@ -808,10 +798,6 @@ function LockedRoute({
                 affordance on a row that does not open. */}
             {meta.proofs.map((item, index) => (
               <div className="locked-evidence-row" key={item}>
-                {/* the.locked-evidence-state dot
-                    span rendered into every row and was display:none'd by
-                    axiom-velocity.css (.public-locked) — dead markup, removed
-                    with its CSS. */}
                 <div>
                   <strong>{item}</strong>
                   <small>
@@ -829,7 +815,6 @@ function LockedRoute({
 
 interface ErrorBoundaryProps {
   children: ReactNode;
-  fallback?: ReactNode;
 }
 
 interface ErrorBoundaryState {
@@ -837,10 +822,8 @@ interface ErrorBoundaryState {
   error: Error | null;
 }
 
-/** the fallback chrome routes through copy.ts (locale via useUiStore) and
- * the Controls kit — ErrorBoundary no longer imports the v1 ui.tsx kit. The
- * raw error sentence still flows through humanizeError (central, en — known
- * residual; error copy is the remaining untranslated surface). */
+/** Fallback chrome routes through copy.ts + the Controls kit; the raw error
+ * sentence still flows through humanizeError (central, en — known residual). */
 function ErrorFallback({
   error,
   onRetry,
@@ -902,8 +885,6 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 
   override render(): ReactNode {
     if (this.state.hasError) {
-      if (this.props.fallback) return this.props.fallback;
-
       return (
         <ErrorFallback
           error={this.state.error}

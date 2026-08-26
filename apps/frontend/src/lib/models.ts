@@ -1,6 +1,4 @@
-/*
-  Axiom UI-v2 shared types .
-*/
+/* Axiom shared types. */
 import type { ReactNode } from "react";
 import type { Locale } from "./copy";
 

@@ -42,7 +42,7 @@ function backendWsBase(): string {
 // latched: a transient blip must not demote auth for the whole session — only
 // a header SUCCESS resets the counter (query-only backends reach steady state
 // after ≤2 extra handshakes).
-export const WS_AUTH_SUBPROTOCOL = "axiom";
+const WS_AUTH_SUBPROTOCOL = "axiom";
 
 const MAX_HEADER_AUTH_FAILURES = 2;
 let wsAuthHeaderFailures = 0;

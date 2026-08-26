@@ -7,7 +7,12 @@
 */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useAccount, useChainId, useReadContracts, useWalletClient } from "wagmi";
+import {
+  useAccount,
+  useChainId,
+  useReadContracts,
+  useWalletClient,
+} from "wagmi";
 import { toast } from "sonner";
 import {
   ArrowRight,
@@ -353,7 +358,10 @@ export function AgentPage({
   };
   const toastError = (err: unknown): void => {
     const refStr = errorRefString(err);
-    toast.error(humanizeError(err), refStr ? { description: refStr } : undefined);
+    toast.error(
+      humanizeError(err),
+      refStr ? { description: refStr } : undefined,
+    );
   };
 
   // M6: creator earnings withdrawal — direct withdrawAgentEarnings() wallet write.
@@ -431,10 +439,6 @@ export function AgentPage({
 
   return (
     <div className="ops-page agent-page">
-      {/* the head kept
-          "AGENT / #N" over "Agent #N" plus an owner/last-event line the
-          overview tab's provenance list renders verbatim. The name stays;
-          the identity dl below is the one canonical owner. */}
       <PageHead title={agentName}>
         <div className="page-head-actions">
           <Status
@@ -467,9 +471,6 @@ export function AgentPage({
               : agentCopy.noStrategy}
           </small>
         </div>
-        {/* (duplication map #2): the dataHash block here was the second
-            on-screen copy of the metadata root — the overview tab's
-            provenance list renders it once, with the copy button. */}
       </div>
 
       <nav className="detail-tabs">

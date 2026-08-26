@@ -56,7 +56,6 @@ type ChatSessionValue = {
 
 const ChatSessionContextReact = createContext<ChatSessionValue | null>(null);
 
-// Backward compat: legacy `{ lastTokenId }` payloads fall back to the cache-friendly DEFAULT_PROVIDER_PREF.
 /** Best-effort JSON read from web storage (undefined on miss/corruption). */
 function readJson(storage: Storage, key: string): unknown {
   try {
@@ -113,6 +112,7 @@ export function ChatSessionProvider({
   const [lastTokenId, setLastTokenId] = useState<string | undefined>(
     stored.lastTokenId,
   );
+  // Backward compat: legacy `{ lastTokenId }` payloads fall back to the cache-friendly DEFAULT_PROVIDER_PREF.
   // Durable pref wins over tab-scoped copy (legacy sessionStorage) and default; changes write localStorage.
   const [providerPref, setProviderPrefState] = useState<
     ProviderPref | undefined

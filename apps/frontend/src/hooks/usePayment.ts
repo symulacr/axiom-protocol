@@ -17,7 +17,8 @@ import { agentEarningsPath, apiFetch } from "../utils/apiFetch.js";
 export type PaymentConfig = {
   paymentToken: Address;
   /** On-chain ERC-20 symbol/decimals, read by the backend from the token
-   * contract (the UI interpolates these, never hardcodes a unit). */
+   * contract (the UI interpolates these, never hardcodes a unit). Decimals
+   * may be absent on the wire; all parseUnits sites fall back to 18. */
   paymentTokenSymbol: string;
   paymentTokenDecimals: number;
   protocolFeeBps: string;
@@ -115,7 +116,6 @@ export function usePayment(): UsePaymentResult {
         const config = await getPaymentConfig();
         const amountWei = parseUnits(
           amount.trim(),
-          // Fallback matches the deployed token's decimals (18) when the config omits them.
           config.paymentTokenDecimals ?? 18,
         );
         if (address && publicClient) await ensureAllowance(config, amountWei);
@@ -152,7 +152,6 @@ export function usePayment(): UsePaymentResult {
         // On-chain token decimals from the config — never a constant.
         const amountWei = parseUnits(
           amount.trim(),
-          // Fallback matches the deployed token's decimals (18) when the config omits them.
           config.paymentTokenDecimals ?? 18,
         );
         return { approveHash: await ensureAllowance(config, amountWei) };
@@ -227,7 +226,6 @@ function fetchMeta(): Promise<PaymentTokenMeta | null> {
       cached = config.paymentTokenSymbol
         ? {
             symbol: config.paymentTokenSymbol,
-            // Fallback matches the deployed token's decimals (18) when the config omits them.
             decimals: config.paymentTokenDecimals ?? 18,
           }
         : null;

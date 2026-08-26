@@ -112,10 +112,8 @@ export const defaultSettings: UiSettings = {
   locale: "en",
 };
 
-/** Unset-theme default: follow the OS, matching the index.html
- * boot script — before this, the store hardcoded "dark" while the boot
- * script honored prefers-color-scheme, so light-OS first visits flipped
- * post-hydration. Falls back to "dark" when matchMedia is unavailable. */
+/** Unset theme follows the OS, matching the index.html boot script;
+ * falls back to "dark". */
 export function defaultTheme(): UiSettings["theme"] {
   try {
     return typeof window !== "undefined" &&

@@ -58,13 +58,8 @@ export type Copy = {
     fundTitle: (tokenId?: string) => string;
     fundSummary: string;
     fundImpact: string;
-    inspectTitle: string;
-    inspectSummary: string;
-    inspectImpact: string;
     proofReceipt: string;
     proofAgent: string;
-    proofRoot: string;
-    selectInFlow: string;
     openReview: string;
     whyNow: string;
     seeAllQueue: string;
@@ -130,10 +125,7 @@ export type Copy = {
     /** Placeholders: `{chainId}`, then `{chainName}` + `{chainId}`. */
     connectedChain: string;
     requiredChain: string;
-    profileTitle: string;
-    profileDescription: string;
     profileHint: string;
-    unlockConsole: string;
     /** Conflict chooser (mounted only when >1 injected wallet is installed). */
     connectTitle: string;
     browserWalletLabel: string;
@@ -188,9 +180,7 @@ export type Copy = {
   settings: {
     pageTitle: string;
     languageLabel: string;
-    /** Page lede — describes the whole surface, not one control (02
-     * the old languageHint answered only "what does the
-     * language dropdown do"). */
+    /** Page lede — describes the whole surface, not one control. */
     pageDescription: string;
     localeEnglish: string;
     localeFrench: string;
@@ -257,8 +247,6 @@ export type Copy = {
     refresh: string;
     managedValue: string;
     agentsOnline: string;
-    storageProofs: string;
-    liveQueue: string;
     /** U8: stat labels say whose numbers they are (scoped via isOwnEvent). */
     myEventsSeen: string;
     pendingMine: string;
@@ -293,7 +281,6 @@ export type Copy = {
     refreshNotice: string;
     /** Proof-card category line above the allowance headline. */
     agentFundingLabel: (tokenId: string) => string;
-    paymentAllowanceLabel: string;
   };
   /** Live /chat surface (v1 SSE chat). Every rendered string routes through
    * this section — hardcoded English in ChatPage was the defect. */
@@ -634,7 +621,6 @@ export type Copy = {
     claimRawToggle: string;
   };
   agentDetail: {
-    executionSurface: string;
     operatingBalance: string;
     vaultRoute: string;
     noStrategy: string;
@@ -704,7 +690,6 @@ export type Copy = {
     awaitingFinalEvidence: string;
     openRecovery: string;
     recoveryNotice: string;
-    openOperation: string;
     /** U20: demoted drawer button — keeps the same go() destination but stops pre-filling a fresh draft as the primary action. */
     runAnother: string;
     /** drawer head: the drawer no longer repeats
@@ -713,12 +698,6 @@ export type Copy = {
     proofTitle: string;
   };
   status: Record<string, string>;
-  plural: {
-    messages: (count: number) => string;
-    transactions: (count: number) => string;
-    steps: (count: number) => string;
-    agents: (count: number) => string;
-  };
 };
 
 /** Flow receipt-notice tails: the four submitted-flow notices differ only
@@ -765,13 +744,8 @@ const english: Copy = {
       tokenId ? `Fund agent #${tokenId}` : "Open payment route",
     fundSummary: "Review an exact ERC-20 allowance before any value moves.",
     fundImpact: "Allowance and payment confirm separately.",
-    inspectTitle: "Inspect storage root",
-    inspectSummary: "Check the indexed root and integrity state.",
-    inspectImpact: "Read-only. No wallet request.",
     proofReceipt: "Receipt",
     proofAgent: "Agent",
-    proofRoot: "Root",
-    selectInFlow: "select in flow",
     openReview: "Open review",
     whyNow: "Why now",
     seeAllQueue: "See all queue",
@@ -829,11 +803,7 @@ const english: Copy = {
     networkMismatch: "Network mismatch",
     connectedChain: "Connected: chain {chainId}",
     requiredChain: "Required: {chainName} · chain {chainId}",
-    profileTitle: "Name the local profile.",
-    profileDescription:
-      "Name this wallet for yourself. Changeable in Settings.",
     profileHint: "Stored on this device only.",
-    unlockConsole: "Unlock console",
     connectTitle: "Choose a wallet.",
     browserWalletLabel: "Browser wallet",
     browserWalletHint: "MetaMask and other injected wallets",
@@ -950,8 +920,6 @@ const english: Copy = {
     refresh: "Refresh overview",
     managedValue: "Managed value",
     agentsOnline: "Agents online",
-    storageProofs: "Storage proofs",
-    liveQueue: "Live queue",
     myEventsSeen: "My events seen",
     pendingMine: "My pending operations",
     operatingFleet: "Operating fleet",
@@ -983,7 +951,6 @@ const english: Copy = {
     noDescription: "no description",
     refreshNotice: "Overview refreshed.",
     agentFundingLabel: (tokenId) => `Agent #${tokenId} funding`,
-    paymentAllowanceLabel: "Payment allowance",
   },
   chat: {
     pageTitle: "Chat",
@@ -1396,7 +1363,6 @@ const english: Copy = {
     claimRawToggle: "Advanced — raw signature",
   },
   agentDetail: {
-    executionSurface: "Operator-controlled · no on-chain events yet.",
     operatingBalance: "Operating balance",
     vaultRoute: "vault route · {chainName}",
     noStrategy: "no strategy bound",
@@ -1463,7 +1429,6 @@ const english: Copy = {
     awaitingFinalEvidence: "awaiting final evidence",
     openRecovery: "Open recovery",
     recoveryNotice: "Recovery opened. Operation returned to Ready.",
-    openOperation: "Open operation",
     runAnother: "Run another like this",
     drawerTitle: "Receipt detail",
     proofTitle: "Proof details",
@@ -1478,12 +1443,6 @@ const english: Copy = {
     reverted: "Reverted",
     rejected: "Rejected",
     stale: "Needs review",
-  },
-  plural: {
-    messages: (count) => `${count} message${count === 1 ? "" : "s"}`,
-    transactions: (count) => `${count} transaction${count === 1 ? "" : "s"}`,
-    steps: (count) => `${count} step${count === 1 ? "" : "s"}`,
-    agents: (count) => `${count} agent${count === 1 ? "" : "s"}`,
   },
 };
 
@@ -1520,12 +1479,7 @@ const french: Copy = {
     fundSummary:
       "Examinez une approbation ERC-20 exacte avant tout mouvement de valeur.",
     fundImpact: "Approbation et paiement se confirment séparément.",
-    inspectTitle: "Inspecter la racine Storage",
-    inspectSummary: "Vérifiez la racine indexée et l’état d’intégrité.",
-    inspectImpact: "Lecture seule. Aucune requête wallet.",
     proofReceipt: "Reçu",
-    proofRoot: "Racine",
-    selectInFlow: "à choisir dans le flow",
     openReview: "Ouvrir la revue",
     whyNow: "Pourquoi maintenant",
     seeAllQueue: "Voir toute la file",
@@ -1586,11 +1540,7 @@ const french: Copy = {
     networkMismatch: "Mauvais réseau",
     connectedChain: "Connecté : chaîne {chainId}",
     requiredChain: "Requis : {chainName} · chaîne {chainId}",
-    profileTitle: "Nommez le profil local.",
-    profileDescription:
-      "Ce libellé aide à reconnaître le wallet connecté dans Axiom. Vous pourrez le modifier dans Settings.",
     profileHint: "Enregistré uniquement sur cet appareil.",
-    unlockConsole: "Déverrouiller la console",
     connectTitle: "Choisissez un wallet.",
     browserWalletLabel: "Wallet du navigateur",
     browserWalletHint: "MetaMask et autres wallets injectés",
@@ -1705,8 +1655,6 @@ const french: Copy = {
     refresh: "Actualiser la vue",
     managedValue: "Valeur gérée",
     agentsOnline: "Agents en ligne",
-    storageProofs: "Preuves Storage",
-    liveQueue: "File active",
     myEventsSeen: "Mes événements vus",
     pendingMine: "Mes opérations en cours",
     operatingFleet: "Flotte active",
@@ -1738,7 +1686,6 @@ const french: Copy = {
     noDescription: "sans description",
     refreshNotice: "Vue d’ensemble actualisée depuis les indexeurs live.",
     agentFundingLabel: (tokenId) => `Financement de l’agent #${tokenId}`,
-    paymentAllowanceLabel: "Approbation de paiement",
   },
   chat: {
     ...english.chat,
@@ -2173,8 +2120,6 @@ const french: Copy = {
   },
   agentDetail: {
     ...english.agentDetail,
-    executionSurface:
-      "Contrôlé par l’opérateur · aucun événement on-chain pour l’instant.",
     operatingBalance: "Solde d’exploitation",
     vaultRoute: "route du vault · {chainName}",
     noStrategy: "aucune stratégie liée",
@@ -2242,7 +2187,6 @@ const french: Copy = {
     awaitingFinalEvidence: "preuve finale en attente",
     openRecovery: "Ouvrir la récupération",
     recoveryNotice: "Récupération ouverte. L’opération revient à Prêt.",
-    openOperation: "Ouvrir l’opération",
     runAnother: "Relancer une opération similaire",
     drawerTitle: "Détail du reçu",
     proofTitle: "Détails de la preuve",
@@ -2257,12 +2201,6 @@ const french: Copy = {
     reverted: "Annulée",
     rejected: "Refusée",
     stale: "À vérifier",
-  },
-  plural: {
-    messages: (count) => `${count} message${count > 1 ? "s" : ""}`,
-    transactions: (count) => `${count} transaction${count > 1 ? "s" : ""}`,
-    steps: (count) => `${count} étape${count > 1 ? "s" : ""}`,
-    agents: (count) => `${count} agent${count > 1 ? "s" : ""}`,
   },
 };
 
@@ -2299,11 +2237,7 @@ const german: Copy = {
       tokenId ? `Agent #${tokenId} finanzieren` : "Zahlungsroute öffnen",
     fundSummary: "Prüfe eine exakte ERC-20-Freigabe, bevor Wert fließt.",
     fundImpact: "Freigabe und Zahlung werden getrennt bestätigt.",
-    inspectTitle: "Storage-Root prüfen",
-    inspectSummary: "Prüfe den indexierten Root und den Integritätsstatus.",
-    inspectImpact: "Nur lesend. Keine Wallet-Anfrage.",
     proofReceipt: "Beleg",
-    selectInFlow: "im Flow wählen",
     openReview: "Prüfung öffnen",
     whyNow: "Warum jetzt",
     seeAllQueue: "Ganze Warteschlange ansehen",
@@ -2364,11 +2298,7 @@ const german: Copy = {
     networkMismatch: "Falsches Netzwerk",
     connectedChain: "Verbunden: Chain {chainId}",
     requiredChain: "Erforderlich: {chainName} · Chain {chainId}",
-    profileTitle: "Lokales Profil benennen.",
-    profileDescription:
-      "Dieses Label hilft dir, das verbundene Wallet in Axiom zu erkennen. Du kannst es später in Settings ändern.",
     profileHint: "Nur als lokale Prototyp-Einstellung gespeichert.",
-    unlockConsole: "Konsole entsperren",
     connectTitle: "Wähle ein Wallet.",
     browserWalletLabel: "Browser-Wallet",
     browserWalletHint: "MetaMask und andere injizierte Wallets",
@@ -2480,8 +2410,6 @@ const german: Copy = {
       `${count} Agentenaktion${count === 1 ? "" : "en"} ${count === 1 ? "erfordert" : "erfordern"} Aufmerksamkeit.`,
     refresh: "Übersicht aktualisieren",
     managedValue: "Verwalteter Wert",
-    storageProofs: "Storage-Beweise",
-    liveQueue: "Aktive Warteschlange",
     myEventsSeen: "Meine Ereignisse",
     pendingMine: "Meine laufenden Operationen",
     operatingFleet: "Aktive Flotte",
@@ -2513,7 +2441,6 @@ const german: Copy = {
     noDescription: "keine Beschreibung",
     refreshNotice: "Übersicht aus den Live-Indexern aktualisiert.",
     agentFundingLabel: (tokenId) => `Finanzierung von Agent #${tokenId}`,
-    paymentAllowanceLabel: "Zahlungsfreigabe",
   },
   chat: {
     ...english.chat,
@@ -2942,7 +2869,6 @@ const german: Copy = {
   },
   agentDetail: {
     ...english.agentDetail,
-    executionSurface: "Operatorgesteuert · noch keine On-Chain-Ereignisse.",
     operatingBalance: "Betriebsguthaben",
     vaultRoute: "Vault-Route · {chainName}",
     noStrategy: "keine Strategie gebunden",
@@ -3008,7 +2934,6 @@ const german: Copy = {
     awaitingFinalEvidence: "finaler Beleg ausstehend",
     openRecovery: "Wiederherstellung öffnen",
     recoveryNotice: "Wiederherstellung geöffnet. Operation ist wieder bereit.",
-    openOperation: "Operation öffnen",
     runAnother: "Ähnliche Operation erneut ausführen",
     drawerTitle: "Belegdetail",
     proofTitle: "Nachweisdetails",
@@ -3024,24 +2949,9 @@ const german: Copy = {
     rejected: "Abgelehnt",
     stale: "Prüfung nötig",
   },
-  plural: {
-    messages: (count) => `${count} Nachricht${count === 1 ? "" : "en"}`,
-    transactions: (count) => `${count} Transaktion${count === 1 ? "" : "en"}`,
-    steps: (count) => `${count} Schritt${count === 1 ? "" : "e"}`,
-    agents: (count) => `${count} Agent${count === 1 ? "" : "en"}`,
-  },
 };
 
 export function getCopy(locale: Locale = "en"): Copy {
   const copy = locale === "fr" ? french : locale === "de" ? german : english;
-  // Défense supplémentaire: ces libellés restent sémantiques, jamais séquentiels.
-  return { ...copy, dashboard: { ...copy.dashboard } };
-}
-
-export function formatCount(
-  locale: Locale,
-  count: number,
-  kind: keyof Copy["plural"],
-): string {
-  return getCopy(locale).plural[kind](count);
+  return copy;
 }

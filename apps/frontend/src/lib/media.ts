@@ -1,21 +1,11 @@
 /**
- * Self-contained media for the console.
- * The original Manus sandbox served these from /manus-storage (a server-side
- * proxy that does not exist outside that environment); every image is now an
- * inline SVG data URI so the UI renders identically offline with zero 404s.
- * Motifs follow the Copper Command Deck palette: graphite canvas, copper
- * focal energy, phosphor verified-live accents.
- */
-/**
- * Dark-art palette, pinned by contract: these SVGs render inside
- * mix-blend-mode:screen photo slots whose canvases stay dark under light
- * theme (B9 dark-lock), so they keep the dark palette on purpose. Each hex
- * mirrors its CSS token twin in src/styles/index.css.
+ * Inline SVG data URIs (zero network fetches). Rendered inside
+ * mix-blend-mode:screen slots that stay dark under light theme (B9
+ * dark-lock) — hexes mirror their CSS tokens in src/styles/index.css.
  */
 const CANVAS_PLATE = "#0c1011";
 const CANVAS_FADE = "#0b0e0f";
 const COPPER = "#d28b52"; // --copper
-const COPPER_BRIGHT = "#efae6b"; // --copper-bright
 const PHOSPHOR = "#67e8b4"; // --phosphor
 const WARNING = "#f0b36b"; // --warning
 // Legacy teal family, retired from CSS tokens; retained for art identity.
@@ -23,10 +13,7 @@ const TEAL_LEGACY = "#79c4cd";
 const TEAL_ROUTE = "#6bb9c8";
 
 const ART = {
-  mark: COPPER,
-  hero: COPPER_BRIGHT,
   heroPulse: PHOSPHOR,
-  wallet: COPPER,
   onboarding: TEAL_LEGACY,
   proof: PHOSPHOR,
   recovery: WARNING,
@@ -63,10 +50,7 @@ function field(accent: string, seed: number): string {
 }
 
 export const MEDIA = {
-  mark: field(ART.mark, 0),
-  hero: field(ART.hero, 1),
   heroPulse: field(ART.heroPulse, 2),
-  wallet: field(ART.wallet, 3),
   onboarding: field(ART.onboarding, 4),
   proof: field(ART.proof, 5),
   recovery: field(ART.recovery, 6),
@@ -74,5 +58,4 @@ export const MEDIA = {
   payment: field(ART.payment, 8),
   transfer: field(ART.transfer, 9),
   recovery404: field(ART.recovery404, 10),
-  video: null as string | null,
 } as const;

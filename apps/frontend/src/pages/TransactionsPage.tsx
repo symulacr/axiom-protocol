@@ -83,12 +83,8 @@ function transactionAge(tx: Transaction): string {
   return tx.age;
 }
 
-/* filter depth contract: depth 0 keeps the three
- * everyday buckets (All / Needs review / Confirmed); the seven per-state
- * filters live behind a "More filters" popover at depth 1. The review bucket
- * (reverted+rejected+stale) and the stale-only state get distinct labels
- * (txCopy.filterReview vs txCopy.filterStale) — they shared "Needs review"
- * before. ?filter= deep links keep working: the state machine is unchanged. */
+/* filter depth contract: buckets at depth 0, seven per-state filters behind
+ * a "More filters" popover at depth 1; ?filter= deep links unchanged. */
 const ADVANCED_FILTERS = [
   "approval",
   "signing",
@@ -318,10 +314,13 @@ export function TransactionsPage({
     right: number;
   } | null>(null);
   const filtersTriggerRef = useRef<HTMLButtonElement>(null);
-  const { events, isLoading: historyLoading, refetch: refetchHistory } =
-    useEventHistory({
-      pollIntervalMs: 15_000,
-    });
+  const {
+    events,
+    isLoading: historyLoading,
+    refetch: refetchHistory,
+  } = useEventHistory({
+    pollIntervalMs: 15_000,
+  });
   const { events: wsEvents, isConnected: wsConnected } = useEventStream({
     topics: ["*"],
   });

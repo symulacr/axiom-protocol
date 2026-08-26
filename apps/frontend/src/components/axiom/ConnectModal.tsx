@@ -1,11 +1,9 @@
 /*
-  ConnectModal — conflict chooser only. The WalletGate CTA connects the first
-  discovered injected wallet directly; this surface mounts solely when more
-  than one injected wallet is installed (or via "Use mobile wallet"). Lists
-  the connectors configured in config/wagmi (mipd-discovered injected +
-  WalletConnect); WalletConnect renders its own QR/deep-link flow through
-  wagmi's connector. Styling reuses the existing surface tokens and
-  the shared Button component — no new design system.
+  ConnectModal — conflict chooser only: mounts solely when more than one
+  injected wallet is installed (or via "Use mobile wallet"); WalletConnect
+  renders its own QR/deep-link flow through wagmi's connector. Styling reuses
+  the existing surface tokens and the shared Button component — no new design
+  system.
 */
 import { useState } from "react";
 import { useConnect, useConnectors } from "wagmi";

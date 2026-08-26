@@ -1,9 +1,4 @@
-/*
-  v2 AppShell (ported Sidebar + Topbar +
-  MobileNavigationDrawer + AppShell. Rail resize/collapse/hide, theme/density
-  and direction come from the uiStore settings; network + account are live
-  (wagmi account, useHealth chain head).
-*/
+/* Shell = Sidebar + Topbar + mobile drawer + ⌘K palette; theme/density/direction from uiStore. */
 import {
   useEffect,
   useMemo,
@@ -478,12 +473,10 @@ function isEditableTarget(target: EventTarget | null) {
 
 function CommandCenter({
   state,
-  path,
   go,
   fundTarget,
 }: {
   state: AppState;
-  path: string;
   go: (path: string) => void;
   fundTarget?: FundTarget;
 }) {
@@ -520,7 +513,7 @@ function CommandCenter({
       keywords: `${transaction.kind} ${transaction.detail} ${transaction.hash} ${transaction.state}`,
     }));
     return [...actionItems, ...routeItems, ...recent];
-  }, [path, safeActions, state.transactions, copy]);
+  }, [safeActions, state.transactions, copy]);
 
   const results = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -744,7 +737,6 @@ function CommandCenter({
 }
 
 function Topbar({
-  path,
   state,
   session,
   go,
@@ -752,7 +744,6 @@ function Topbar({
   onOpenMobileNav,
   fundTarget,
 }: {
-  path: string;
   state: AppState;
   session: Session;
   go: (path: string) => void;
@@ -776,12 +767,7 @@ function Topbar({
         </button>
       </div>
       <div className="topbar-actions">
-        <CommandCenter
-          state={state}
-          path={path}
-          go={go}
-          fundTarget={fundTarget}
-        />
+        <CommandCenter state={state} go={go} fundTarget={fundTarget} />
         <button className="session-top" onClick={() => go("/settings")}>
           <Wallet size={14} />
           <span>
@@ -966,7 +952,6 @@ export function AppShell({
         </div>
         <main id="main-content" className="main">
           <Topbar
-            path={path}
             state={state}
             session={state.session}
             go={go}

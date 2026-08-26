@@ -127,12 +127,7 @@ import { MessageSquare, Network } from "../components/axiom/icons.js";
 const SUPPORTED_CHAIN_IDS = new Set([APP_CHAIN_ID]);
 
 /** Integrated brand imagery (Grok Imagine assets under public/brand); absolute paths served from the static public/ root. */
-const BRAND = {
-  heroSeal: "/brand/hero-seal-512.jpg",
-  agentLattice: "/brand/agent-lattice-480.jpg",
-  chatAvatar: "/brand/chat-avatar-128.jpg",
-  emptyAgents: "/brand/empty-agents-960.jpg",
-} as const;
+const BRAND = { chatAvatar: "/brand/chat-avatar-128.jpg" } as const;
 
 const CHAT_MESSAGES_KEY = "axiom:chat-messages";
 /** Active threadId (sessionStorage): lets a page reload resume the SAME
@@ -395,10 +390,6 @@ function EmptyState(props: {
   );
 }
 
-/** 05: console references in assistant answers become links —
- * `Agent #N` → the agent page (internal, SPA-routed via the click
- * interceptor on the message list), 64-hex hashes → the block explorer. */
-
 const STREAM_THROTTLE_MS = 50;
 
 /** Stream text with ref mirror + 50ms throttle: chunks append to the ref; schedule() coalesces re-renders. */
@@ -610,8 +601,7 @@ function useChatTxStream(
 function ChatPageInner(): ReactElement {
   const { address } = useAccount();
   const chainId = useChainId();
-  // every rendered chat string routes through copy.chat (the old dead
-  // section described the old chat; these keys describe the live one).
+  // every rendered chat string routes through copy.chat
   const { state: uiState } = useUiStore();
   const chatCopy = getCopy(uiState.settings.locale).chat;
   const a11y = getCopy(uiState.settings.locale).a11y;
@@ -670,8 +660,6 @@ function ChatPageInner(): ReactElement {
    * thread's) messages — including the old summary lead — into a fresh
    * thread. This is the summary-bleed guard. */
   const runEpochRef = useRef(0);
-  /** Per-thread user-turn counter driving the cache warm-up hint. */
-  const turnCountRef = useRef(0);
   const [queue, setQueue] = useState<string[]>([]);
   const queueRef = useRef<string[]>([]);
   const [toolRuns, setToolRuns] = useState<Record<string, ToolRun>>({}); // callId -> ToolRun map powering the ToolCallCard live progress UI
@@ -830,8 +818,7 @@ function ChatPageInner(): ReactElement {
   );
   const handlers = useToolHandlers(toolCtx);
   // Rebuilt from live refs so tool execution never waits on a React render —
-  // used by the send loop and by tool-card Retry.: the
-  // transfer tool opens the TransferModal via openTransfer.
+  // used by the send loop and by tool-card Retry.
   const buildLiveToolCtx = useCallback(
     (): ToolContext => ({
       address: liveAddressRef.current?.toLowerCase(),
@@ -937,7 +924,7 @@ function ChatPageInner(): ReactElement {
   );
 
   // Routing popover dismiss contract: Esc closes (backdrop click is handled
-  // by the.routing-backdrop element; both mirror the shell modal trio).
+  // by the .routing-backdrop element; both mirror the shell modal trio).
   useEffect(() => {
     if (!routingOpen) return;
     const onKey = (e: KeyboardEvent) => {
@@ -1050,7 +1037,6 @@ function ChatPageInner(): ReactElement {
         messagesRef.current = msgs;
         setMessages(msgs);
       };
-      turnCountRef.current += 1;
       // Compaction runs once per RUN (never mid-loop), and the summary is
       // cached per threadId — the inserted lead message is byte-identical
       // every run of this thread, and a fresh thread never inherits another
@@ -1484,7 +1470,6 @@ function ChatPageInner(): ReactElement {
     queueRef.current = [];
     setThreadId(crypto.randomUUID());
     setComputeHint(null);
-    turnCountRef.current = 0;
     try {
       sessionStorage.removeItem(CHAT_MESSAGES_KEY);
       sessionStorage.removeItem(CHAT_THREAD_KEY);
@@ -1503,7 +1488,6 @@ function ChatPageInner(): ReactElement {
     setMessages(loaded);
     messagesRef.current = loaded;
     setComputeHint(null);
-    turnCountRef.current = 0;
     // The per-thread summary cache entry (if any) is kept: switching back
     // reuses the byte-identical lead (cache anchor).
   }, []);
@@ -2250,8 +2234,7 @@ function routingSummary(
 }
 
 /** Non-default routing gets a copper-tinted chip so an explicit choice is
- * always acknowledged at depth 0 (including price sort, which the old
- * trailing status silently dropped). Default = latency-sorted, no pin,
+ * always acknowledged at depth 0. Default = latency-sorted, no pin,
  * no trust filter (DEFAULT_PROVIDER_PREF). */
 function isNonDefaultRouting(pref: ProviderPref | undefined): boolean {
   return (
@@ -2259,9 +2242,7 @@ function isNonDefaultRouting(pref: ProviderPref | undefined): boolean {
   );
 }
 
-/** Single status sentence inside the Routing popover — replaces the old
- * depth-0 trailing chip ("latency-sorted · cache on"); "cache on" dropped
- * (implementation guarantee, not user state). */
+/** One-line routing state for the composer's summary chip. */
 function routingStatusLine(
   pref: ProviderPref | undefined,
   copy: Copy["chat"],

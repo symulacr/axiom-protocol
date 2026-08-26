@@ -42,8 +42,7 @@ export function truncateAddress(value: string, head = 6, tail = 4): string {
   return value.startsWith("0x") ? ellipsize(value, head, tail) : value;
 }
 
-/** Cryptographically random tx nonce/tag (e.g. transfer linkage). Single
- * owner — FlowPage and TransferModal previously carried divergent copies. */
+/** Canonical crypto-random tx nonce (single owner — do not fork). */
 export function freshNonceHex(byteLength = 32): `0x${string}` {
   const bytes = new Uint8Array(byteLength);
   crypto.getRandomValues(bytes);

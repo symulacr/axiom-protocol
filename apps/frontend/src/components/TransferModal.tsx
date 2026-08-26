@@ -29,16 +29,10 @@ import {
 import { useUiStore } from "../lib/uiStore.js";
 import { getCopy } from "../lib/copy.js";
 
-/**
- * TransferModal migrated off the v1 ui.tsx kit onto the Controls kit and
- * the shared overlay language — the sheet is the same graphite
- * operation-review layer as OperationReviewSheet (theme-invariant,
- * dismiss trio via useModalDismiss). Form semantics are unchanged; the title
- * reads copy.flowUi.transferAgentTitle ("Transfer agent #N" — the "iNFT"
- * wording is gone). Remaining chrome stays English per the documented
- * flow-body i18n deferral (chat-path exception; the co-sign step and the
- * title localize through copy.ts).
- */
+/*
+  Shared overlay shell + Controls kit; title/co-sign localize via
+  copy.flowUi; body English per flow-body i18n deferral.
+*/
 
 const RECEIVER_PUBKEY_HEX_LENGTH = 130;
 
@@ -56,7 +50,7 @@ const RETRY_HINT = "Failed. Tap Edit to retry with a fresh nonce.";
 
 type TransferModalProps = {
   tokenId: bigint;
-  open?: boolean;
+  open: boolean;
   onClose?: () => void;
   onSuccess?: (txHash: `0x${string}`) => void;
 };
@@ -70,8 +64,7 @@ function validatePubKey(value: string): string | null {
   return null;
 }
 
-/** Shared modal shell: the app's overlay layer (graphite, theme-invariant)
- * with the dismiss trio — replaces the v1 <dialog> from ui.tsx. */
+/** Shared modal shell: the app's overlay layer with the dismiss trio via useModalDismiss. */
 function ModalSheet({
   title,
   onClose,
@@ -442,7 +435,7 @@ function CoSignPhase({
 
 export function TransferModal({
   tokenId,
-  open: openProp,
+  open,
   onClose,
   onSuccess,
 }: TransferModalProps): ReactElement {
@@ -486,15 +479,11 @@ export function TransferModal({
   const [phase, setPhase] = useState<"form" | "co-sign" | "review">("form");
   const [coSignBlocked, setCoSignBlocked] = useState(false);
 
-  const isControlled = openProp !== undefined;
-  const [internalOpen, setInternalOpen] = useState(false);
-  const open = isControlled ? openProp : internalOpen;
   const setOpen = useCallback(
     (next: boolean): void => {
-      if (!isControlled) setInternalOpen(next);
       if (!next) onClose?.();
     },
-    [isControlled, onClose],
+    [onClose],
   );
   const handleTransferred = useCallback(
     (txHash: `0x${string}`): void => {

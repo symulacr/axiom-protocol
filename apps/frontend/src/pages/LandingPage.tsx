@@ -134,9 +134,7 @@ export function Landing({
           />
         </section>
       </main>
-      {/* Journey strip: every cell is a real control with the same affordance
-          (arrow + hover tint) — no dead look-alike cells.
-          The CONNECT cell is gone: the header CTA owns connecting (06 essence). */}
+      {/* Journey strip: each cell is a live control (arrow + hover tint). */}
       <section className="landing-strip">
         <button type="button" onClick={onGuide}>
           <strong>{copy.landing.signatureBoundary}</strong>

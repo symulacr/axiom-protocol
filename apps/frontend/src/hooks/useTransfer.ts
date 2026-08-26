@@ -176,7 +176,6 @@ export function useTransfer(): UseTransferResult {
   const { signTypedDataAsync } = useSignTypedData();
   const { write } = useGenericWrite();
   const [isWritePending, setWritePending] = useState(false);
-  const [writeError, setWriteError] = useState<Error | null>(null);
   const { domain } = useEip712Domain();
   const queryClient = useQueryClient();
 
@@ -402,9 +401,8 @@ export function useTransfer(): UseTransferResult {
     [domain, signTypedDataAsync, buildAccessProofMessage, finalizePrepared],
   );
 
-  /** Asks the wallet to expose/switch to the receiver account (MetaMask:
-   * wallet_requestPermissions account picker; fallback eth_requestAccounts),
-   * then re-probes the connector account list. */
+  /** Asks the wallet to expose/switch accounts (wallet_requestPermissions,
+   * fallback eth_requestAccounts), then re-probes the connector account list. */
   const requestReceiverExposure = useCallback(
     async (receiver: `0x${string}`): Promise<boolean> => {
       if (!connector) return false;
@@ -623,7 +621,6 @@ export function useTransfer(): UseTransferResult {
       }
       setTransferPhase("confirming");
       setWritePending(true);
-      setWriteError(null);
       try {
         const txHash = await write({
           to: getAxiomAgentNftAddress(chainId),
@@ -666,7 +663,6 @@ export function useTransfer(): UseTransferResult {
     setPrepareError(null);
     setIsPreparing(false);
     setWritePending(false);
-    setWriteError(null);
     queryClient.removeQueries({ queryKey: ["transfer-challenge"] });
   }, [queryClient]);
 
@@ -675,7 +671,7 @@ export function useTransfer(): UseTransferResult {
     coSign,
     confirm,
     isLoading: isPreparing || challengeQuery.isFetching || isWritePending,
-    error: prepareError ?? challengeQuery.error ?? (writeError as Error | null),
+    error: prepareError ?? challengeQuery.error,
     signature,
     coSignReceiver: pendingCoSign?.input.to ?? null,
     coSignNonce: pendingCoSign

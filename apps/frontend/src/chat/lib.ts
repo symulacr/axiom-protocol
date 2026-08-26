@@ -51,7 +51,6 @@ export type SSEChunk = {
   usage?: {
     prompt_tokens?: number;
     completion_tokens?: number;
-    total_tokens?: number;
     prompt_tokens_details?: { cached_tokens?: number };
   };
   /** Router x_0g_trace on the terminal chunk body. */
@@ -59,22 +58,15 @@ export type SSEChunk = {
     provider?: string;
     request_id?: string;
     billing?: {
-      input_cost?: string;
-      output_cost?: string;
       total_cost?: string;
     };
-    tee_verified?: boolean;
   };
 };
 
 export type TurnMetric = {
   wallMs: number;
   ttftMs?: number;
-  promptTokens?: number;
-  completionTokens?: number;
-  cachedTokens?: number;
   provider?: string;
-  requestId?: string;
   costNeuron?: number;
 };
 
@@ -177,24 +169,16 @@ export function humanizeToolMessage(text: string): string {
   return text.startsWith("Error: ") ? humanizeError(text) : text;
 }
 
-/** Capture router usage/trace (terminal chunk or backend trace frame) into a
- * per-turn metric record. Reuses the exact fields the router emits. */
+/** Capture router trace (terminal chunk or backend trace frame) into a
+ * per-turn metric record. Token/cache counts stay wire-only — deliberately
+ * not captured or shown (row 42, audit 07). */
 export function captureTurnMetrics(
   turn: TurnMetric,
-  usage: SSEChunk["usage"],
+  _usage: SSEChunk["usage"],
   trace: Record<string, unknown> | undefined,
 ): void {
-  if (usage) {
-    if (typeof usage.prompt_tokens === "number")
-      turn.promptTokens = usage.prompt_tokens;
-    if (typeof usage.completion_tokens === "number")
-      turn.completionTokens = usage.completion_tokens;
-    const cached = usage.prompt_tokens_details?.cached_tokens;
-    if (typeof cached === "number") turn.cachedTokens = cached;
-  }
   if (!trace) return;
   if (typeof trace.provider === "string") turn.provider = trace.provider;
-  if (typeof trace.request_id === "string") turn.requestId = trace.request_id;
   const billing = trace.billing as { total_cost?: string } | undefined;
   if (billing?.total_cost !== undefined) {
     const n = Number(billing.total_cost);

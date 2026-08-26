@@ -1,17 +1,13 @@
 /*
   Live WalletGate — three states driven by wagmi:
-    connect → one CTA that connectAsync's the discovered injected connector
-                   directly (one click); a chooser opens only when more than
-                   one injected wallet is installed, and WalletConnect stays
-                   available as the mobile path
+    connect → direct connectAsync of the first discovered injected wallet
+              (chooser opens only when multiple injected wallets are
+              installed; WalletConnect stays as the mobile path)
     wrong-network → switchChain back to the configured app chain
     authenticated → the console opens immediately.
-  A verified connection on the app chain IS the session: the old
-  axiom-console-session signature ceremony was removed because nothing ever
-  verified it, and the mandatory profile-naming step went with it (naming
-  lives in Settings). Reconnects restore silently (wagmi persists the last
-  wallet); the 24h TTL only decides whether returning users re-walk this
-  small path.
+  A verified connection on the app chain IS the session; reconnects restore
+  silently (wagmi persists the last wallet), and the 24h TTL only decides
+  whether returning users re-walk this small path.
 */
 import { useEffect, useRef, useState } from "react";
 import { useAccount, useConnect, useConnectors, useSwitchChain } from "wagmi";

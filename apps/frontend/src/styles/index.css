@@ -2,9 +2,7 @@
   Axiom Copper Command Deck — entry stylesheet (v2, ported from the verified
   mockup). Cascade contract, low → high priority:
     1. @layer axiom-base   — v0 component base looks (sidebar, controls, fields…).
-       Layered so EVERY un-layered axiom-*.css remediation layer below overrides it.
-       (Un-layered base rules after the fix imports caused the mockup's cascade
-       inversion drift — never reintroduce that ordering.)
+       Layered so EVERY un-layered remediation block below overrides it.
     2. Un-layered fixes     — axiom-onboarding → … → axiom-readability, then
        chat-compat (v1 chat-kit tokens/classes remapped onto v2 tokens).
     3. This file's tail     — design tokens + element resets (highest precedence).
@@ -224,7 +222,7 @@
 .ops-page, .panel, .flow-stage, .flow-context, .thread-list, .receipt-drawer { min-width:0; min-height:0; }
 .ops-page h1, .ops-page h2, .ops-page h3, .panel-head, .page-head > div, .action-lane, .context-cell { min-width:0; }
 .ops-page h1, .ops-page h2, .ops-page h3, .page-head p, .panel p, .field-hint, .field-message, .diagnostic-note, .storage-note, .transaction-kind strong, .transaction-kind small { overflow-wrap:anywhere; word-break:break-word; }
-.mono, .provenance-list dd, .transaction-row > span, .signature-preview strong { overflow-wrap:anywhere; word-break:break-word; }
+.mono, .provenance-list dd, .transaction-row > span { overflow-wrap:anywhere; word-break:break-word; }
 .field input, .field textarea, .field select, .command-input input, .settings-select-row select { min-width:0; font-size:16px; }
 .field input { max-width:100%; }
 .field input:invalid, .field.field-error input { border-color:color-mix(in srgb, var(--warning) 72%, transparent); }
@@ -1208,9 +1206,7 @@ body:has(.flow-action) .notice-toast { bottom:96px; }
   --copy-measure: 60ch;
 }
 
-/* audit-11 F-013: chat-compat's rem names alias the ladder. Declared on
-   .app-shell (not :root) so the density-dense --space-* overrides below
-   resolve through the aliases — chat tightens with the rest of the shell. */
+/* Rem names alias the ladder on .app-shell (not :root) so density-dense rescales them too. */
 .app-shell {
   --space-xs: var(--space-1);
   --space-sm: var(--space-2);
@@ -1224,9 +1220,7 @@ body:has(.flow-action) .notice-toast { bottom:96px; }
 body { font-size: var(--fs-body); line-height: var(--copy-leading); }
 button, input, textarea, select { line-height: var(--support-leading); }
 
-/* S2 type-scale contract: mono telemetry is the named --fs-mono step (was
-   the max(0.68rem, 11px) floor — the 11/11.5px neighbor pair). Row
-   sublabels/mono row data moved to --fs-small (see the next block). */
+/* Type-scale contract: mono telemetry uses --fs-mono; row sublabels/mono row data use --fs-small. */
 .status, .network-card .mono,
 .account span, .field-label,
 .review-facts dt, .command-group-label, .priority-proof > span,
@@ -1503,9 +1497,9 @@ button, input, textarea, select { line-height: var(--support-leading); }
   height: 44px;
 }
 
-/* ConnectModal — wagmi-native wallet picker (RainbowKit removal). Fixed layer
-   shares the modal-geometry contract; surfaces reuse completion tokens and the
-   shared .button vocabulary. */
+/* ConnectModal — wagmi-native wallet picker. Fixed layer shares the
+   modal-geometry contract; surfaces reuse completion tokens and the shared
+   .button vocabulary. */
 .connect-modal-layer {
   position: fixed;
   z-index: calc(var(--layer-review, 110) + 1);
@@ -1793,8 +1787,6 @@ html[data-theme="light"] .filters-popover {
   }
   .storage-stage-details > summary { display: flex; }
   .storage-stage-details .mobile-disclosure-content { display: block; padding: 0 var(--space-3) var(--space-3); }
-  .storage-stage-complete .storage-stage-details:not([open]) { border-color: color-mix(in srgb, var(--phosphor) 35%, transparent); }
-  .storage-complete-note { display: flex; align-items: flex-start; gap: var(--space-2); padding: var(--space-3); color: var(--completion-phosphor); border-left: 2px solid var(--completion-phosphor); background: color-mix(in srgb, var(--phosphor) 6%, transparent); font-size: var(--fs-small); line-height: var(--support-leading); }
   .receipt-drawer { padding: 72px var(--space-4) var(--space-4); }
   .receipt-primary-action .button { width: 100%; }
   .receipt-proof-disclosure { border: 1px solid var(--completion-line); }
@@ -1941,11 +1933,8 @@ html[data-theme="light"] .filters-popover {
   .public-locked .locked-route-copy .button-row .button:first-child { flex: 1 1 100%; }
 }
 
-/* S1 layout remediation (audit 06 FINDING-008/F010): both strips lost a
-   cell (context-strip: network moved to the rail card; ops-summary: the
-   TODAY total moved to the filter-aware result-count) — the earlier
-   4-column templates left an empty track, so the grids are re-templated
-   here at every width they had before. */
+/* Audit 06 FINDING-008/F010: context-strip is 3 columns and ops-summary
+   2+fr at every width — no empty grid tracks. */
 .context-strip { grid-template-columns: repeat(3, 1fr); }
 .ops-summary { grid-template-columns: repeat(2, 0.7fr) 1.6fr; }
 @media (max-width: 1120px) {
@@ -1997,11 +1986,8 @@ html[data-theme="light"] .filters-popover {
 .skip-link { position: fixed; top: -60px; left: var(--space-4); z-index: calc(var(--layer-topbar) + 1); padding: var(--space-2) var(--space-4); background: var(--completion-panel); color: #ece9de; border: 1px solid var(--completion-copper); font: 500 var(--fs-small) 'JetBrains Mono', monospace; transition: top 0.16s var(--ease); }
 .skip-link:focus { top: var(--space-2); }
 
-/* C-02 follow-through: the active filter fill (index.css @layer axiom-base
-   `.filter.active { background: var(--panel) }`) is additionally beaten by
-   the UN-layered `.filter { background: transparent }` in
-   axiom-completion.css — un-layered beats layered at any specificity.
-   Re-declare the fill un-layered (0,2,0) so it wins. */
+/* C-02 follow-through: this un-layered restatement of .filter.active wins
+   over any layered base rule regardless of specificity. */
 .filter.active { background: var(--panel); }
 
 /* 9. Selects: pointer cursor everywhere in the shell; border feedback on
@@ -2061,15 +2047,9 @@ html[data-theme="light"] .filters-popover {
    .field-control wrapper owns the border; the textarea only needs geometry. */
 .field-control textarea { width: 100%; resize: vertical; font: inherit; color: var(--text); background: transparent; border: 0; outline: 0; padding: var(--space-3); min-width: 0; }
 .field-control textarea:focus-visible { outline: none; }
-/* ---- inlined: chat-compat.css ---- */
-/*
-  Chat-kit compatibility layer — the v1 primitives the live chat stack keeps
-  (ChatPage message cards, TransferModal, ChatHistorySection thread rail,
-  ui.tsx Button/Modal/inputs) speak a v1 token/class vocabulary. Everything is
-  remapped onto the v2 Copper Command Deck palette so the kept logic renders in
-  the v2 design without dragging the old 2.6k-line stylesheet along.
-  Loaded LAST (un-layered) in index.css so it wins over @layer axiom-base.
-*/
+/* Chat-kit compat layer: v1 token/class vocabulary (ChatPage cards,
+   TransferModal, thread rail, ui.tsx kit) remapped onto v2 tokens; loaded
+   LAST un-layered so it wins over @layer axiom-base. */
 
 :root,
 .app-shell {
@@ -2154,26 +2134,13 @@ html[data-theme="light"] .filters-popover {
 /* ---------------------------------------------------------------- *
  * Minimal utility classes the kept components emit.                 *
  * ---------------------------------------------------------------- */
-.flex { display: flex; }
 .m-0 { margin: 0; }
 .mb-lg { margin-bottom: var(--space-lg); }
-.mt-0 { margin-top: 0; }
 .text-xs { font-size: var(--text-xs); }
 .text-sm { font-size: var(--text-sm); }
-.text-xl { font-size: var(--text-xl); }
 .text-dim { color: var(--dim); }
-.fw-medium { font-weight: var(--fw-medium); }
 .fw-semibold { font-weight: var(--fw-semibold); }
-.fw-bold { font-weight: var(--fw-bold); }
 .lh-snug { line-height: var(--lh-snug); }
-@media (max-width: 700px) {
-}
-
-/* ---------------------------------------------------------------- *
- * Shared kit primitives (ui.tsx + console surfaces) — the v1 .btn  *
- * family was deleted: zero emitters post-P4 Controls migration.    *
- * ---------------------------------------------------------------- */
-.surface-glass { background: var(--panel); }
 
 .axiom-field {
   color: var(--text);
@@ -2182,10 +2149,7 @@ html[data-theme="light"] .filters-popover {
   border-radius: var(--radius-md, 6px);
   transition: 150ms var(--ease-out);
 }
-/* 04 FINDING-007: the standard 2px copper focus ring, same as every other
-   control — no outline:0 defeat, no 10%-alpha halo. The border-color change
-   stays as a secondary cue (the class owns the border; ui.tsx formFieldBase
-   no longer sets one inline). */
+/* Standard 2px copper focus ring; the class owns the border. */
 .axiom-field:focus-visible { outline: 2px solid var(--copper-bright); outline-offset: 2px; }
 .axiom-field:focus { border-color: var(--copper); }
 .axiom-field::placeholder { color: var(--dim); }
@@ -2489,11 +2453,9 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
 .chat-thread-rail > div { display: flex; flex-direction: column; min-height: 0; flex: 1; }
 @media (max-width: 700px) {
   .chat-surface { grid-template-columns: minmax(0, 1fr); }
-  /* Specificity: .app-shell .thread-list rules in axiom-readability.css and
-     axiom-operations-fix.css (both 0,2,1) stomped the old bare
-     .chat-thread-rail selector (0,1,0) — the rail was force-visible on
-     mobile and the ☰ toggle was dead. Match the specificity and let source
-     order (this file loads last) restore the intended hide/overlay model. */
+  /* Specificity: bare .chat-thread-rail (0,1,0) loses to the compound
+     .app-shell-scoped rules elsewhere in this file — match their specificity
+     so source order keeps the intended hide/overlay model. */
   .app-shell .chat-thread-rail { display: none; }
   .app-shell .chat-surface.threads-open .chat-thread-rail {
     display: flex;

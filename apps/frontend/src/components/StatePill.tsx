@@ -1,11 +1,6 @@
 /*
-  Axiom Copper Command Deck — shared transaction state primitive.
-  Style reminder: compact mono-facing status, factual language, phosphor for live states and copper warning states.
-   CONFIRMED is the calm default — rendered as a
-  quiet text state, not a saturated pill. The pill (color + glow dot) is
-  reserved for states that need attention: pending (copper) and
-  failed/stale (warning). The a11y contract is unchanged (role=status,
-  localized "Status: <state>" label).
+  Shared transaction state primitive. CONFIRMED renders quiet; the pill
+  glow is reserved for pending/failed/stale. role=status contract unchanged.
 */
 import { getCopy } from "../lib/copy";
 import type { TxState } from "../lib/models";

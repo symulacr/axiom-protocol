@@ -32,14 +32,14 @@ export interface VaultDataEntry {
   readError?: string | null;
 }
 
-// Predictive guard lives in a side-effect-free module so tests can import it
-// without tripping the deployed-address env requirement in abi/addresses.ts.
+// Predictive guard lives in @axiom/config/strategy-guard (shared with the
+// backend orchestrator so display and skip logic can never drift).
 export {
   currentUtcDay,
   utcDayDateLabel,
   strategyGuardError,
   type StrategyLimits,
-} from "./strategyGuard.js";
+} from "@axiom/config";
 
 export function useVaultDataBatch(tokenIds: readonly bigint[]): {
   data: Map<string, VaultDataEntry>;

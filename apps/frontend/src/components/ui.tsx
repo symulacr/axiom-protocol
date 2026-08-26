@@ -12,7 +12,6 @@ export const COLORS = {
   surface: "var(--c-surface)",
 
   border: "var(--c-border)",
-  borderStrong: "var(--c-border-strong)",
 
   text: "var(--c-text)",
   textMuted: "var(--c-text-muted)",
@@ -133,10 +132,7 @@ export function CopyButton({
         ...style,
       }}
     >
-      {/* single node with a label swap — the old
-          two-span stack kept an opacity:0 "✓" twin in the DOM at all times
-          (announced twice, one span too many per button). Matches
-          MsgCopyAction's inline-confirm contract. */}
+      {/* Single node with label swap (a11y: one announcement). */}
       {copied ? "✓" : "Copy"}
     </button>
   );
@@ -144,20 +140,13 @@ export function CopyButton({
 
 export function MonoLabel({
   children,
-  title,
   style,
-  copyable,
-  text,
 }: {
   children: ReactNode;
-  title?: string;
   style?: CSSProperties;
-  copyable?: boolean;
-  text?: string;
 }): ReactElement {
-  const label = (
+  return (
     <code
-      title={title}
       style={{
         fontFamily: "var(--font-data)",
         fontSize: "var(--text-data-sm)",
@@ -175,20 +164,6 @@ export function MonoLabel({
     >
       {children}
     </code>
-  );
-  if (!copyable) return label;
-  return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "6px",
-        maxWidth: "100%",
-      }}
-    >
-      {label}
-      <CopyButton text={text ?? String(children)} />
-    </span>
   );
 }
 

@@ -97,10 +97,8 @@ function ContextStrip({
 }) {
   return (
     <section className="context-strip">
-      {/* the network cell is
-          gone — the sidebar rail's network card is the single owner of
-          name + chain id. A wrong chain still surfaces here through the
-          signer cell ("Wrong network"), so no decision state was lost. */}
+      {/* Network name/chainId live in the sidebar rail card; wrong-chain
+          surfaces via the signer cell. */}
       <div className="context-cell">
         <strong title={address ?? undefined}>
           <Wallet size={15} />{" "}

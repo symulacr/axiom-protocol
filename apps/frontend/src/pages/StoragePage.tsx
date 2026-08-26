@@ -2,9 +2,6 @@
   StoragePage — read-only demo pipeline. There is no backend storage endpoint
   yet (apps/backend has no storage router), so the page documents the stages a
   real upload will expose and every value stays in its honest pending state.
-   fixture purge: the phase-advance button and the
-  hardcoded "0x3b9…f10" copy-root affordance are gone — a fixture no longer
-  owns a primary action, and no fake hash can be copied.
 */
 import {
   FileCheck2,
@@ -22,14 +19,12 @@ import {
 import { MobileDisclosure } from "../components/MobileDisclosure.js";
 import { getCopy } from "../lib/copy.js";
 import type { AppState } from "../lib/models.js";
-import type { ConsoleAction } from "../lib/consoleStore.js";
 
 export function StoragePage({
   state,
   go,
 }: {
   state: AppState;
-  dispatch: React.Dispatch<ConsoleAction>;
   go: (path: string) => void;
 }) {
   const copy = getCopy(state.settings.locale);
