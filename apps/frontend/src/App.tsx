@@ -37,7 +37,6 @@ import {
   ArrowLeft,
   ArrowRight,
   CircleCheck,
-  LockKeyhole,
   Network,
   Wallet,
   X,
@@ -750,8 +749,8 @@ function WrongNetworkNotice({
 
 /*
   LockedRoute: shown when an internal route is
-  requested before the operator session is authenticated. Proof rails stay
-  visible; the CTA opens the live WalletGate.
+  requested before the operator session is authenticated.
+  The CTA opens the live WalletGate.
 */
 function LockedRoute({
   requested,
@@ -776,7 +775,7 @@ function LockedRoute({
 
   return (
     <LockedShell
-      statusLabel="wallet required"
+      statusLabel="wallet not connected"
       shellClass={`locked-${meta.slug}`}
     >
       <section className="locked-route-copy">
@@ -794,29 +793,12 @@ function LockedRoute({
         </div>
       </section>
       <aside className="locked-evidence">
-        <div className="locked-evidence-head">
-          <div>
-            <strong>{meta.next}</strong>
-          </div>
-          <LockKeyhole size={17} className="copper" />
-        </div>
         <div className="locked-preview">
           <img src={meta.media} alt={`${meta.label} preview`} />
           <div>
-            <strong>Preview only</strong>
-            <small>Connect a wallet to unlock live evidence.</small>
+            <small>Preview — connect a wallet for live data.</small>
           </div>
         </div>
-        {/* Ledger rows are static states, not controls — no chevron
-            affordance on a row that does not open. */}
-        {meta.proofs.map((item, index) => (
-          <div className="locked-evidence-row" key={item}>
-            <div>
-              <strong>{item}</strong>
-              <small>{index === 0 ? "not connected" : "after connect"}</small>
-            </div>
-          </div>
-        ))}
       </aside>
     </LockedShell>
   );

@@ -181,7 +181,7 @@ export function WalletGate({
             <strong>
               One wallet.
               <br />
-              <i>One accountable session.</i>
+              <i>{copy.wallet.gateSessionLine}</i>
             </strong>
             <span>Non-custodial access.</span>
           </div>
@@ -193,11 +193,7 @@ export function WalletGate({
 
           {view === "connect" && (
             <>
-              <h1 id="wallet-title">
-                Enter the
-                <br />
-                <i>command surface.</i>
-              </h1>
+              <h1 id="wallet-title">{copy.wallet.gateTitle}</h1>
               <p>Connect a wallet to start a session. We never take custody.</p>
               {/* Chooser only on conflict: >1 injected wallet means the CTA
                   cannot guess which one to open. */}

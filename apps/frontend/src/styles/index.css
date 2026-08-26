@@ -41,7 +41,6 @@
 .guide-actions { display:flex; align-items:center; gap:var(--space-3); }
 .guide-skip { margin-top:var(--space-4); }
 .locked-topbar .text-link { margin-left:var(--space-1); }
-.locked-evidence-row>div { display:grid; gap:var(--space-1); }
 .hero-visual-modern>img { opacity:.72!important; }
 .rail-controls { display:flex; gap:var(--space-1); }
 .rail-toggle svg { transition:transform .2s var(--ease); }
@@ -61,7 +60,6 @@
 .rail-hide,.rail-toggle { display:none; }
 .locked-topbar .locked-route-content { display:block; padding:58px var(--space-5) 45px; }
 .locked-topbar .text-link { font-size:var(--fs-mono); }
-.locked-evidence-row>div { min-width:0; }
 
 /* === from axiom-refinement === */
 .context-cell.context-action { border-left:2px solid var(--copper); }
@@ -157,19 +155,11 @@
 .locked-route-copy p { max-width:500px; color:var(--completion-muted); font-size:var(--fs-body); line-height:1.75; }
 .locked-route-copy .button-row { margin-top:var(--space-6); }
 .locked-evidence { grid-column:3; align-self:center; min-width:0; border:1px solid var(--completion-line); border-top:2px solid var(--route-accent); background:linear-gradient(145deg, var(--route-surface), transparent 42%), var(--completion-panel); box-shadow: var(--shadow-plate-l); }
-.locked-evidence-head { display:flex; justify-content:space-between; align-items:flex-start; gap:var(--space-4); padding:var(--space-5); border-bottom:1px solid var(--completion-line); }
-.locked-evidence-head strong { display:block; margin-top:var(--space-2); color:var(--completion-bright); font:var(--fw-strong) var(--fs-body) Syne,sans-serif; }
 .locked-preview { position:relative; min-height:178px; overflow:hidden; border-bottom:1px solid var(--completion-line); background:var(--completion-panel); }
 .locked-preview img { width:100%; height:178px; object-fit:cover; opacity:.62; mix-blend-mode:screen; }
 .locked-preview:after { content:""; position:absolute; inset:0; background:linear-gradient(180deg,transparent 15%,rgba(11,14,15,.92)); pointer-events:none; }
 .locked-preview>div { position:absolute; z-index:1; inset:auto var(--space-4) var(--space-4); display:grid; gap:var(--space-1); }
-.locked-preview strong { font:700 18px Syne,sans-serif; }
 .locked-preview small { color:var(--completion-muted); font:var(--fs-mono) 'JetBrains Mono',monospace; }
-.locked-evidence-row { display:grid; grid-template-columns:27px minmax(0,1fr); align-items:center; gap:var(--space-2); padding:var(--space-3) var(--space-4); border-bottom:1px solid var(--completion-line); }
-.locked-evidence-row:last-child { border-bottom:0; }
-.locked-evidence-row strong { display:block; font-size:var(--fs-mono); }
-.locked-evidence-row small { display:block; margin-top:var(--space-1); color:var(--completion-dim); font:var(--fs-mono) 'JetBrains Mono',monospace; }
-.locked-evidence-row>svg { color:var(--completion-dim); }
 
 .landing-visual.hero-visual-modern {
   box-shadow: var(--shadow-plate-l);
@@ -843,20 +833,6 @@ body:has(.flow-action) .notice-toast { bottom:96px; }
   pointer-events: none;
 }
 
-.locked-route-main::after {
-  content: "PROOF";
-  position: absolute;
-  z-index: 1;
-  bottom: 46px;
-  left: clamp(28px, 5.8vw, 92px);
-  color: var(--completion-dim);
-  font: var(--fw-strong) var(--fs-mono)/1 "JetBrains Mono", monospace;
-  letter-spacing: .12em;
-  writing-mode: vertical-rl;
-  transform: rotate(180deg);
-  pointer-events: none;
-}
-
 .locked-route-content {
   position: relative;
   z-index: 2;
@@ -865,27 +841,6 @@ body:has(.flow-action) .notice-toast { bottom:96px; }
 .locked-preview {
   position: relative;
 }
-
-.locked-preview::before {
-  content: "LOCKED PROOF ARTIFACT";
-  position: absolute;
-  z-index: 2;
-  top: 13px;
-  right: 13px;
-  padding: var(--space-1) var(--space-2);
-  border: 1px solid color-mix(in srgb, var(--completion-copper) 44%, transparent);
-  background: color-mix(in srgb, var(--completion-canvas) 78%, transparent);
-  color: var(--completion-bright);
-  font: var(--fw-strong) var(--fs-mono)/1 "JetBrains Mono", monospace;
-  letter-spacing: .09em;
-}
-
-.locked-agent .locked-preview::before { content: "IDENTITY / PROVENANCE"; }
-.locked-chat .locked-preview::before,
-.locked-overview .locked-preview::before { content: "OPERATOR HEALTH / NEXT"; }
-.locked-mint .locked-preview::before { content: "PAYLOAD / DATAHASH / ORACLE"; }
-.locked-transactions .locked-preview::before { content: "RECEIPT / FINALITY"; }
-.locked-storage .locked-preview::before { content: "STORAGE ROOT / PROVENANCE"; }
 
 @media (max-width: 1120px) and (min-width: 701px) {
   .landing-main {
@@ -938,8 +893,7 @@ body:has(.flow-action) .notice-toast { bottom:96px; }
 
   .landing-main::before,
   .landing-main::after,
-  .locked-route-main::before,
-  .locked-route-main::after {
+  .locked-route-main::before {
     display: none;
   }
 
@@ -1175,22 +1129,12 @@ body:has(.flow-action) .notice-toast { bottom:96px; }
 .operation-receipt > div:last-child { display: flex; flex-wrap: wrap; gap: .5rem; }
 @media (max-width: 700px) { .operation-review-layer { align-items: end; padding: .75rem; } .operation-review-sheet { max-height: min(88dvh, 760px); } .review-facts { grid-template-columns: 1fr; } .review-actions .button { flex: 1 1 100%; justify-content: center; } }
 
-/* Locked product surfaces: the copper rail is a visible proof boundary, never a decorative stroke. */
+/* Locked product surfaces: copper accents mark the active route. */
 .public-locked .locked-route-content { isolation: isolate; }
-.public-locked .locked-route-content::before { content: "PROOF BOUNDARY / GATED"; position: absolute; z-index: -1; inset: 8% auto 7% clamp(1.1rem, 3.5vw, 3.6rem); width: 2px; color: transparent; background: linear-gradient(180deg, transparent, var(--copper) 13%, var(--copper) 88%, transparent); box-shadow: 0 0 20px rgba(199,116,53,.34); }
 .public-locked .locked-route-copy { position: relative; }
-.public-locked .locked-route-copy::before { content: "GATED\A PROOF"; position: absolute; top: 73%; left: -2.05rem; color: var(--dim, #998d7d); font: var(--fw-strong) var(--fs-mono)/1.1 var(--font-mono, monospace); letter-spacing: .12em; white-space: pre; writing-mode: vertical-rl; transform: rotate(180deg); }
 .public-locked .locked-evidence { position: relative; overflow: hidden; border-top-color: transparent; border-left: 3px solid var(--copper); background: linear-gradient(90deg, rgba(199,116,53,.13), transparent 17%), linear-gradient(125deg,rgba(210,139,82,.08),transparent 50%), var(--panel); }
-.public-locked .locked-evidence::before { content: "ACTIVE ROUTE / PROOF FRAME"; position: absolute; top: 12px; right: -46px; color: rgba(199,116,53,.38); font: var(--fw-strong) var(--fs-mono)/1 var(--font-mono, monospace); letter-spacing: .12em; transform: rotate(90deg); transform-origin: center; }
 .public-locked .locked-preview { position: relative; border-left: 0; }
-.public-locked .locked-preview strong { display: none; }
 .public-locked .locked-preview small { max-width: 25ch; color: var(--text, #e8dfd4); font: var(--fw-strong) var(--fs-mono)/1.35 var(--font-mono, monospace); }
-.public-locked .locked-evidence-row { grid-template-columns: minmax(0, 1fr); min-height: 68px; border-left: 0; }
-.public-locked .locked-evidence-row > div { position: relative; padding-left: .75rem; }
-.public-locked .locked-evidence-row > div::before { content: "EVIDENCE"; position: absolute; top: .14rem; left: 0; color: var(--copper); font: var(--fw-strong) var(--fs-mono)/1 var(--font-mono, monospace); writing-mode: vertical-rl; transform: rotate(180deg); }
-.public-locked .locked-evidence-row small { color: var(--dim, #998d7d); }
-.public-locked .locked-evidence-row:first-of-type > div::before { color: var(--phosphor); }
-@media (max-width: 700px) { .public-locked .locked-route-content::before { inset: 2rem auto auto 1rem; height: calc(100% - 4rem); } .public-locked .locked-route-copy { padding-left: 1.6rem; } .public-locked .locked-route-copy::before { left: .22rem; } }
 /* ---- inlined: axiom-readability.css ---- */
 /* AXIOM readability layer: shared type, measure and spacing rules applied after visual refinements. */
 :root {
@@ -1340,12 +1284,8 @@ button, input, textarea, select { line-height: var(--support-leading); }
   .review-facts { grid-template-columns: 1fr; }
   .review-actions .button { min-height: 44px; }
 
-  /* Keep route proof readable on a phone: retain the live state, suppress repeated gated filler. */
-  .public-locked .locked-route-copy { padding-left: 1.35rem; }
+  /* Keep route copy readable on a phone: retain a tight measure. */
   .public-locked .locked-route-copy p { max-width: 34ch; font-size: var(--fs-body); line-height: 1.58; }
-  .public-locked .locked-evidence-row { min-height: 56px; }
-  .public-locked .locked-evidence-row:not(:first-of-type) small { display: none; }
-  .public-locked .locked-evidence-row > div { padding-block: 0.6rem; }
   .public-locked .locked-preview small { max-width: 29ch; }
 }
 
@@ -1364,15 +1304,6 @@ button, input, textarea, select { line-height: var(--support-leading); }
 .landing-mobile-menu .button { width: 100%; }
 @media (max-width: 700px) {
   .landing-mobile-menu { left: var(--space-3); width: auto; }
-}
-
-/* A locked evidence panel is a ledger of protected artifacts, not a staged task list. */
-.public-locked .locked-evidence-row:not(:first-of-type) small { font-size: 0; }
-.public-locked .locked-evidence-row:not(:first-of-type) small::after {
-  content: "evidence gated";
-  color: var(--dim, #998d7d);
-  font: 500 var(--fs-mono)/1.35 var(--font-mono, monospace);
-  letter-spacing: 0.02em;
 }
 
 /* Modern hero artifact: one clear material focal point, with copy held in a calm safe area. */

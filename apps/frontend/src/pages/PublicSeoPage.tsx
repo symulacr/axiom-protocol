@@ -89,21 +89,21 @@ type PublicPage = {
 
 const pages: Record<PublicSeoSlug, PublicPage> = {
   agents: {
-    title: "Agents with a\nvisible proof trail.",
+    title: "Agents with a\nvisible track record.",
     metaTitle: "Agent Provenance Workflows | Axiom",
     navLabel: "Agent provenance",
     accent:
-      "An operator surface should explain what an agent is, what it did, and which artifacts support that account.",
+      "You can see what an agent is, what it did, and which records support it.",
     metaDescription:
       "Explore Axiom's approach to on-chain agent provenance, operator activity and evidence-oriented workflows.",
-    evidenceTitle: "What the operator can inspect",
+    evidenceTitle: "What you can inspect",
     evidence: [
       "Agent identity and observable activity",
       "Operation-linked receipts and transaction states",
       "Storage and proof references beside the action",
     ],
     boundary:
-      "Axiom describes an operator workflow; it does not claim autonomous behavior beyond the configured flows.",
+      "Axiom describes a human-controlled workflow; it does not claim autonomous behavior beyond the configured flows.",
     next: { href: PUBLIC_HUB_PATHS.proofs, label: "Trace a receipt lifecycle" },
     links: [
       { href: PUBLIC_HUB_PATHS.payments, label: "Programmable payments" },
@@ -124,7 +124,7 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
     journey: "Trace an\nagent evidence path.",
   },
   payments: {
-    title: "Payments that retain\ntheir receipt boundary.",
+    title: "Payments that keep\ntheir receipts.",
     metaTitle: "Programmable Payment Receipts | Axiom",
     navLabel: "Payments",
     accent:
@@ -155,11 +155,11 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
         ["RECEIPT", "tx hash + event"],
       ],
     },
-    journey: "Inspect the\nreceipt boundary.",
+    journey: "Inspect the\nreceipt trail.",
   },
   proofs: {
     title: "Proof stays beside\nthe decision it supports.",
-    metaTitle: "Operational Receipts and Finality | Axiom",
+    metaTitle: "On-chain Receipts and Recovery | Axiom",
     navLabel: "Receipts",
     accent:
       "Axiom surfaces receipt status, transaction identity and recovery context rather than flattening an operation into one generic success message.",
@@ -184,7 +184,7 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
     ],
     icon: FileCheck2,
     artifact: {
-      label: "FINALITY CHAIN",
+      label: "LIFECYCLE",
       state: "CONFIRMING",
       rows: [
         ["TX HASH", "0x…"],
@@ -243,7 +243,7 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
     evidence: [
       "Choose the agent, payment or Storage proof workflow",
       "Review signing, receipt and failure states",
-      "Enter the console only when an operator action is required",
+      "Enter the app only when an action needs your wallet",
     ],
     boundary:
       "Integration details must remain aligned with the deployed contracts, network configuration and 0G SDK version used by the product.",
@@ -260,10 +260,10 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
       rows: [
         ["SDK", "0G Storage SDK"],
         ["FLOW", "sign → receipt"],
-        ["BOUNDARY", "console gated"],
+        ["BOUNDARY", "sign-in required"],
       ],
     },
-    journey: "Build from the\nproof boundary.",
+    journey: "Build from the\nfirst receipt.",
   },
 };
 
@@ -300,7 +300,10 @@ export function PublicSeoPage({ slug }: { slug: PublicSeoSlug }) {
     // Canonical form is the short hub URL; derived from PUBLIC_HUB_PATHS by
     // dropping the public- prefix — every short form is a registered inbound alias.
     setCanonical(
-      new URL(PUBLIC_HUB_PATHS[slug].replace(/^\/public-/, "/"), location.origin).href,
+      new URL(
+        PUBLIC_HUB_PATHS[slug].replace(/^\/public-/, "/"),
+        location.origin,
+      ).href,
     );
     const schemaId = "axiom-public-schema";
     document.getElementById(schemaId)?.remove();

@@ -16,7 +16,7 @@ test("landing renders with wallet CTA", async ({ page }) => {
 test("internal route is locked behind the wallet gate", async ({ page }) => {
   await page.goto("/app", { waitUntil: "networkidle" });
   await expect(page.locator(".locked-route-shell")).toBeVisible();
-  await expect(page.getByText("wallet required")).toBeVisible();
+  await expect(page.getByText("wallet not connected")).toBeVisible();
 });
 
 test("public SEO hub renders (agents)", async ({ page }) => {

@@ -38,7 +38,7 @@ const ROUTES: RouteDefinition[] = [
   def("storage"),
   def("mint", { label: "Mint", shortcut: "Alt M" }),
   def("payment", { label: "Payment", shortcut: "Alt P" }),
-  def("transfer", { label: "Transfer proof", shortcut: "Alt T" }),
+  def("transfer", { label: "Transfer", shortcut: "Alt T" }),
   def("tick", { label: "Run agent task", shortcut: "Alt K" }),
   def("deposit", { label: "Deposit", shortcut: "Alt D" }),
   def("withdraw", { label: "Withdraw", shortcut: "Alt W" }),
@@ -49,12 +49,13 @@ const ROUTES: RouteDefinition[] = [
 ];
 
 /** PublicSeoSlug → canonical hub path, derived so emitted hrefs can never drift from the registry. */
-export const PUBLIC_HUB_PATHS: Record<PublicSeoSlug, string> = Object.fromEntries(
-  ROUTES.filter(
-    (entry): entry is RouteDefinition & { publicSlug: PublicSeoSlug } =>
-      Boolean(entry.publicSlug),
-  ).map((entry) => [entry.publicSlug, entry.path]),
-) as Record<PublicSeoSlug, string>;
+export const PUBLIC_HUB_PATHS: Record<PublicSeoSlug, string> =
+  Object.fromEntries(
+    ROUTES.filter(
+      (entry): entry is RouteDefinition & { publicSlug: PublicSeoSlug } =>
+        Boolean(entry.publicSlug),
+    ).map((entry) => [entry.publicSlug, entry.path]),
+  ) as Record<PublicSeoSlug, string>;
 
 /** Canonical path lookup keyed by route id — derived from ROUTES so the table stays
  * the single source; prefer over hardcoded strings. Falls back to the id itself. */
