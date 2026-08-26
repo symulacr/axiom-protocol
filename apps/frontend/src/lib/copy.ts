@@ -5,7 +5,7 @@
  */
 
 export type Locale = "en" | "fr" | "de";
-export type CopyFlow =
+type CopyFlow =
   "mint" | "payment" | "transfer" | "tick" | "deposit" | "withdraw";
 
 /**

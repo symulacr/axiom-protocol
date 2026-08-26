@@ -14,7 +14,7 @@ const erc20Abi = toViemAbi(ERC20_ABI);
 import { waitForReceiptWithTimeout } from "./useReceiptReconcile.js";
 import { agentEarningsPath, apiFetch } from "../utils/apiFetch.js";
 
-export type PaymentConfig = {
+type PaymentConfig = {
   paymentToken: Address;
   /** On-chain ERC-20 symbol/decimals, read by the backend from the token
    * contract (the UI interpolates these, never hardcodes a unit). Decimals
@@ -22,10 +22,9 @@ export type PaymentConfig = {
   paymentTokenSymbol: string;
   paymentTokenDecimals: number;
   protocolFeeBps: string;
-  protocolTreasury: Address;
 };
 
-export type EarningsInfo = {
+type EarningsInfo = {
   tokenId: string;
   creator: Address;
   earnings: string;
@@ -201,13 +200,13 @@ export function usePayment(): UsePaymentResult {
   one unit source so form suffix, confirm CTA and fact rows can never diverge or hardcode a token.
 */
 
-export type PaymentTokenMeta = { symbol: string; decimals: number };
+type PaymentTokenMeta = { symbol: string; decimals: number };
 
 /** Neutral unit placeholder while the config fetch is in flight (or when the
  * backend is unreachable — the flow's allowance/execute path needs the same
  * endpoint, so a down backend blocks execution anyway). Every consumer uses
  * this SAME fallback, so the form and the confirm CTA never diverge. */
-export const PAYMENT_SYMBOL_PENDING = "…";
+const PAYMENT_SYMBOL_PENDING = "…";
 
 type PaymentConfigResponse = {
   paymentToken: string;

@@ -153,7 +153,6 @@ function useVaultWrite(
   kind: VaultWriteKind,
   tokenId: bigint,
   opts?: {
-    onSuccess?: () => void;
     /** Default true: toast on submit/error and swallow errors. Flow pages pass
      * false so the OperationReviewSheet machine (submitting →
      * recoverable-error → receipt) owns the UX instead of toasts; in that
@@ -168,7 +167,6 @@ function useVaultWrite(
 
   const { label, endpoint, verb } = VAULT_WRITE[kind];
   const toasts = opts?.toasts !== false;
-  const onSuccess = opts?.onSuccess;
 
   const error = validateNumericInput(amount, amountRules(label));
 
@@ -199,7 +197,6 @@ function useVaultWrite(
         if (toasts) toastSuccess(`${verb} submitted (${hash.slice(0, 10)}…)`);
         setAmount("");
         await vd.refetch();
-        onSuccess?.();
         return hash;
       } catch (err) {
         if (toasts) {
@@ -211,18 +208,7 @@ function useVaultWrite(
         setIsSubmitting(false);
       }
     },
-    [
-      amount,
-      error,
-      label,
-      walletClient,
-      tokenId,
-      endpoint,
-      verb,
-      vd,
-      onSuccess,
-      toasts,
-    ],
+    [amount, error, label, walletClient, tokenId, endpoint, verb, vd, toasts],
   );
 
   const isValid = amount.trim() !== "" && !error && Number(amount) > 0;

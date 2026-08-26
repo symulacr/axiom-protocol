@@ -567,9 +567,8 @@ function useChatTxStream(
   threadTxHashes: Set<string>,
 ): {
   rows: ChatTxRow[];
-  isConnected: boolean;
 } {
-  const { events, isConnected } = useEventStream({
+  const { events } = useEventStream({
     topics: ["*"],
     enabled,
   });
@@ -595,7 +594,7 @@ function useChatTxStream(
     return out.slice(0, CHAT_TX_MAX_ROWS);
   }, [events, threadTxHashes]);
 
-  return { rows, isConnected };
+  return { rows };
 }
 
 function ChatPageInner(): ReactElement {

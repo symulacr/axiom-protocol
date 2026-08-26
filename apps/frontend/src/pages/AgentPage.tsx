@@ -161,7 +161,6 @@ interface UseAgentEventsOptions {
 interface UseAgentEventsResult {
   events: AxiomEvent[];
   isLoading: boolean;
-  error: Error | null;
   refetch: () => void;
 }
 
@@ -170,7 +169,7 @@ function useAgentEvents(
   options: UseAgentEventsOptions = {},
 ): UseAgentEventsResult {
   const { enabled = true } = options;
-  const { events, isLoading, error, refetch } = useEventHistory({
+  const { events, isLoading, refetch } = useEventHistory({
     pollIntervalMs: 15_000,
     enabled,
   });
@@ -205,10 +204,9 @@ function useAgentEvents(
     () => ({
       events: agentEvents,
       isLoading,
-      error,
       refetch,
     }),
-    [agentEvents, isLoading, error, refetch],
+    [agentEvents, isLoading, refetch],
   );
 }
 
@@ -249,7 +247,7 @@ export function AgentPage({
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get("tab") as AgentTab | null;
   const [tab, setTab] = useState<AgentTab>(
-    ["overview", "execute", "payments", "activity"].includes(requestedTab ?? "")
+    (AGENT_TABS as readonly string[]).includes(requestedTab ?? "")
       ? (requestedTab as AgentTab)
       : "overview",
   );
@@ -621,116 +619,115 @@ export function AgentPage({
       )}
 
       {tab === "payments" && (
-        <section className="panel tab-panel">
-          <h2>{agentCopy.valueRouteFor(agentName)}</h2>
-          <div className="receipt-grid">
-            {[
-              {
-                value: paymentSymbol,
-                label: agentCopy.token,
-              },
-              {
-                value: earnings
-                  ? `${formatUnits(BigInt(earnings.earnings), paymentToken?.decimals ?? 18)} ${paymentSymbol}`
-                  : "—",
-                label: agentCopy.earnings,
-              },
-              {
-                value: paymentConfig
-                  ? `${Number(paymentConfig.protocolFeeBps) / 100}%`
-                  : "—",
-                label: agentCopy.royalty,
-              },
-            ].map((cell) => (
-              <div key={cell.label}>
-                <strong>{cell.value}</strong>
-                <small>{cell.label}</small>
-              </div>
-            ))}
-          </div>
-          <div className="button-row">
-            <Button
-              onClick={() =>
-                go(
-                  `/payment?agent=${tokenId.toString()}&intent=fund&stage=amount`,
-                )
-              }
-              icon={<ArrowRight size={15} />}
-            >
-              {agentCopy.openPaymentFlow}
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => void withdrawEarnings()}
-              busy={isWithdrawing}
-              disabled={!hasEarnings}
-            >
-              Withdraw earnings
-            </Button>
-          </div>
-        </section>
-      )}
-
-      {tab === "payments" && (
-        <section className="panel tab-panel">
-          <h2>Spending strategy</h2>
-          <dl className="provenance-list">
-            <Fact label="Daily limit">
-              {vault.dailyLimitWei > 0n
-                ? `${formatTokenAmount(vault.dailyLimitWei)} ${nativeSymbol}`
-                : "—"}
-            </Fact>
-            <Fact label="Spent today" mono>
-              {vault.dailyLimitWei > 0n
-                ? `${formatTokenAmount(vault.dailySpentWei)} ${nativeSymbol}`
-                : "—"}
-            </Fact>
-            <Fact label="Remaining" mono>
-              {vault.dailyLimitWei > 0n
-                ? `${formatTokenAmount(
-                    vault.dailySpentWei > vault.dailyLimitWei
-                      ? 0n
-                      : vault.dailyLimitWei - vault.dailySpentWei,
-                  )} ${nativeSymbol}`
-                : "—"}
-            </Fact>
-            <Fact label="Resets">
-              {vault.resetDay > 0n
-                ? `${utcDayDateLabel(vault.resetDay + 1n)} (UTC)`
-                : "—"}
-            </Fact>
-            <Fact label="Expires">
-              {vault.validUntilDay > 0n
-                ? `${utcDayDateLabel(vault.validUntilDay)} (UTC)`
-                : strategyBound
-                  ? "Never"
+        <>
+          <section className="panel tab-panel">
+            <h2>{agentCopy.valueRouteFor(agentName)}</h2>
+            <div className="receipt-grid">
+              {[
+                {
+                  value: paymentSymbol,
+                  label: agentCopy.token,
+                },
+                {
+                  value: earnings
+                    ? `${formatUnits(BigInt(earnings.earnings), paymentToken?.decimals ?? 18)} ${paymentSymbol}`
+                    : "—",
+                  label: agentCopy.earnings,
+                },
+                {
+                  value: paymentConfig
+                    ? `${Number(paymentConfig.protocolFeeBps) / 100}%`
+                    : "—",
+                  label: agentCopy.royalty,
+                },
+              ].map((cell) => (
+                <div key={cell.label}>
+                  <strong>{cell.value}</strong>
+                  <small>{cell.label}</small>
+                </div>
+              ))}
+            </div>
+            <div className="button-row">
+              <Button
+                onClick={() =>
+                  go(
+                    `/payment?agent=${tokenId.toString()}&intent=fund&stage=amount`,
+                  )
+                }
+                icon={<ArrowRight size={15} />}
+              >
+                {agentCopy.openPaymentFlow}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => void withdrawEarnings()}
+                busy={isWithdrawing}
+                disabled={!hasEarnings}
+              >
+                Withdraw earnings
+              </Button>
+            </div>
+          </section>
+          <section className="panel tab-panel">
+            <h2>Spending strategy</h2>
+            <dl className="provenance-list">
+              <Fact label="Daily limit">
+                {vault.dailyLimitWei > 0n
+                  ? `${formatTokenAmount(vault.dailyLimitWei)} ${nativeSymbol}`
                   : "—"}
-            </Fact>
-          </dl>
-          <div className="execute-grid">
-            <Field
-              label="New daily limit"
-              value={limitInput}
-              onChange={setLimitInput}
-              suffix={nativeSymbol}
-              placeholder="e.g. 0.5"
-              error={strategyError ?? undefined}
-              hint={
-                strategyBound
-                  ? "Submitted through the set-strategy relay; the existing Merkle root and expiry are preserved."
-                  : "No Merkle root is set on this vault — autonomous settlement additionally needs a proof root plus an off-chain Merkle-proof producer."
-              }
-            />
-          </div>
-          <div className="button-row">
-            <Button
-              onClick={() => void submitStrategyLimit()}
-              busy={isStrategySubmitting}
-            >
-              Set spending limit
-            </Button>
-          </div>
-        </section>
+              </Fact>
+              <Fact label="Spent today" mono>
+                {vault.dailyLimitWei > 0n
+                  ? `${formatTokenAmount(vault.dailySpentWei)} ${nativeSymbol}`
+                  : "—"}
+              </Fact>
+              <Fact label="Remaining" mono>
+                {vault.dailyLimitWei > 0n
+                  ? `${formatTokenAmount(
+                      vault.dailySpentWei > vault.dailyLimitWei
+                        ? 0n
+                        : vault.dailyLimitWei - vault.dailySpentWei,
+                    )} ${nativeSymbol}`
+                  : "—"}
+              </Fact>
+              <Fact label="Resets">
+                {vault.resetDay > 0n
+                  ? `${utcDayDateLabel(vault.resetDay + 1n)} (UTC)`
+                  : "—"}
+              </Fact>
+              <Fact label="Expires">
+                {vault.validUntilDay > 0n
+                  ? `${utcDayDateLabel(vault.validUntilDay)} (UTC)`
+                  : strategyBound
+                    ? "Never"
+                    : "—"}
+              </Fact>
+            </dl>
+            <div className="execute-grid">
+              <Field
+                label="New daily limit"
+                value={limitInput}
+                onChange={setLimitInput}
+                suffix={nativeSymbol}
+                placeholder="e.g. 0.5"
+                error={strategyError ?? undefined}
+                hint={
+                  strategyBound
+                    ? "Submitted through the set-strategy relay; the existing Merkle root and expiry are preserved."
+                    : "No Merkle root is set on this vault — autonomous settlement additionally needs a proof root plus an off-chain Merkle-proof producer."
+                }
+              />
+            </div>
+            <div className="button-row">
+              <Button
+                onClick={() => void submitStrategyLimit()}
+                busy={isStrategySubmitting}
+              >
+                Set spending limit
+              </Button>
+            </div>
+          </section>
+        </>
       )}
 
       {tab === "activity" && (

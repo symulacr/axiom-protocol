@@ -290,7 +290,7 @@ export function decodeHandoffResult(raw: string | null): HandoffResult | null {
 /* --- U26: one-piece claim token / claim link ------------------------------ */
 
 /** Sender-side flow path that consumes `?result=<token>` claim links. */
-export const TRANSFER_CLAIM_PATH = "/transfer";
+const TRANSFER_CLAIM_PATH = "/transfer";
 
 /** The receiver's acceptance as a compact base64url token — the whole thing
  * a receiver copies/sends (the raw 130-hex signature hides behind "Advanced"). */
@@ -330,7 +330,7 @@ export function freshAccessProofNonce(): `0x${string}` {
   return freshNonceHex(32);
 }
 
-export type TransferInputFields = {
+type TransferInputFields = {
   tokenId: bigint;
   /** Receiver address — trimming/validation stays at the call sites. */
   to: string;
@@ -365,7 +365,7 @@ export function buildTransferInput(
 /** Outcome of one co-sign attempt. `blocked` = ReceiverAccountUnavailable —
  * this wallet can never sign for the receiver (honest blocker, no retry);
  * `failed` carries the humanized message for the caller's error surface. */
-export type CoSignAttempt =
+type CoSignAttempt =
   | { outcome: "signed"; proof: TransferResponse }
   | { outcome: "blocked" }
   | { outcome: "failed"; message: string };

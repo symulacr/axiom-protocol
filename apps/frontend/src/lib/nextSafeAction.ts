@@ -3,7 +3,7 @@
 import { isRecoverableTx, type AppState } from "./models";
 import type { Copy } from "./copy";
 
-export type NextSafeAction = {
+type NextSafeAction = {
   id: "recover-receipt" | "fund-agent";
   title: string;
   summary: string;

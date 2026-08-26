@@ -135,7 +135,7 @@ export function useVaultDataBatch(tokenIds: readonly bigint[]): {
   );
 }
 
-export type VaultData = {
+type VaultData = {
   depositsWei: bigint | undefined;
   strategyRoot: string;
   dailyLimitWei: bigint;

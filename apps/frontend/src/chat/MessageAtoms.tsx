@@ -292,7 +292,7 @@ export function MessageEditConfirm({
   );
 }
 
-export type ToolRunStatus = "running" | "success" | "error";
+type ToolRunStatus = "running" | "success" | "error";
 
 export type ToolRun = {
   name: string;
@@ -554,7 +554,7 @@ function parseEncodePreview(content: string | null): EncodePreview | null {
   }
 }
 
-export function hasEncodePreview(content: string | null): boolean {
+function hasEncodePreview(content: string | null): boolean {
   return parseEncodePreview(content) !== null;
 }
 
@@ -566,11 +566,8 @@ function formatNativeValue(weiStr: string): string {
   }
 }
 
-/* Chat path (documented exception, residual): the EncodePreviewCard shows
-   the RAW contract payload — the v2 review sheets are the parsed-facts surface.
-   it migrates to the Controls kit + icons (no `btn btn-primary`), its
-   chrome localizes via copy.chat.encode*, and the raw payload is labeled as a
-   developer view instead of masquerading as a parsed review. */
+/* Chat path exception: EncodePreviewCard shows the RAW contract payload;
+   the v2 review sheets are the parsed-facts surface. */
 export function EncodePreviewCard({
   content,
   toolName,
@@ -740,7 +737,7 @@ function LinkLine({
   );
 }
 
-export function ArchiveResultCard({
+function ArchiveResultCard({
   name,
   content,
 }: {

@@ -48,7 +48,7 @@ export const hasStrategyRoot = (root: string | null | undefined) =>
   Boolean(root) && root !== ZERO_STRATEGY_ROOT;
 const ZERO_STRATEGY_ROOT =
   "0x0000000000000000000000000000000000000000000000000000000000000000";
-export type SessionState =
+type SessionState =
   "disconnected" | "wrong-network" | "profile" | "authenticated";
 export type UiSettings = {
   railCollapsed: boolean;

@@ -38,7 +38,7 @@ export type { TransferInput, TransferResponse, TransferPhase };
 /** prepare() outcome — self-transfers finish in one step ("ready");
  * cross-party transfers pause after the oracle challenge until the RECEIVER
  * co-signs the AccessProof (protocol requires recovered signer == recipient). */
-export type PrepareResult =
+type PrepareResult =
   | { status: "ready"; proof: TransferResponse }
   | { status: "co-sign-required"; receiver: `0x${string}` };
 
