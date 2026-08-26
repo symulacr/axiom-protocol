@@ -298,9 +298,9 @@ export function PublicSeoPage({ slug }: { slug: PublicSeoSlug }) {
     setMeta("description", page.metaDescription);
     setMeta("robots", "index,follow");
     // Canonical form is the short hub URL; derived from PUBLIC_HUB_PATHS by
-    // dropping the /public prefix — every short form is a registered inbound alias.
+    // dropping the public- prefix — every short form is a registered inbound alias.
     setCanonical(
-      new URL(PUBLIC_HUB_PATHS[slug].replace(/^\/public(?=\/)/, ""), location.origin).href,
+      new URL(PUBLIC_HUB_PATHS[slug].replace(/^\/public-/, "/"), location.origin).href,
     );
     const schemaId = "axiom-public-schema";
     document.getElementById(schemaId)?.remove();
