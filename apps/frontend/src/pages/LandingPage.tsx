@@ -81,15 +81,6 @@ export function Landing({
                 </span>
               </button>
             ))}
-            <Button
-              onClick={() => {
-                setMenuOpen(false);
-                onConnect();
-              }}
-              icon={<Wallet size={15} />}
-            >
-              {copy.nav.connectWallet}
-            </Button>
           </nav>
         )}
       </header>

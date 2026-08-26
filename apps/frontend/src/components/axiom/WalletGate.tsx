@@ -141,6 +141,21 @@ export function WalletGate({
     ? "wrong-network"
     : "connect";
 
+  // Zero-interstitial open: mounting the gate continues the original click
+  // gesture — exactly one injected wallet connects immediately (extension
+  // popup, no second click); several wallets auto-open the chooser; none
+  // surfaces the install hint at once. The panel stays for retries and
+  // manual paths.
+  const autoTried = useRef(false);
+  useEffect(() => {
+    if (view !== "connect" || autoTried.current) return;
+    autoTried.current = true;
+    if (injected.length > 1) setChooserOpen(true);
+    else if (injected.length === 1) void connectInjected();
+    else setError(copy.wallet.noWalletDetected);
+    // Run once per mount: connectors and copy are stable for the gate lifetime.
+  }, []);
+
   return (
     <div className="wallet-gate-layer" onMouseDown={onClose}>
       <section
