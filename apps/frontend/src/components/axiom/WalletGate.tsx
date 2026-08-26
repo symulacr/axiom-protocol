@@ -12,7 +12,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useAccount, useConnect, useConnectors, useSwitchChain } from "wagmi";
 import { AlertTriangle, LockKeyhole, Network, X } from "./icons.js";
-import { Button } from "./Controls.js";
+import { Button, ErrorNote } from "./Controls.js";
 import { ConnectModal } from "./ConnectModal.js";
 import { Logo } from "./AppShell.js";
 
@@ -206,11 +206,7 @@ export function WalletGate({
                   {copy.wallet.useMobileWallet}
                 </Button>
               )}
-              {error && (
-                <p className="wallet-gate-error" role="alert">
-                  {error}
-                </p>
-              )}
+              <ErrorNote message={error} />
             </>
           )}
 
@@ -239,11 +235,7 @@ export function WalletGate({
               >
                 {interpolate(copy.wallet.switchNetwork, chainVars)}
               </Button>
-              {error && (
-                <p className="wallet-gate-error" role="alert">
-                  {error}
-                </p>
-              )}
+              <ErrorNote message={error} />
             </div>
           )}
         </div>

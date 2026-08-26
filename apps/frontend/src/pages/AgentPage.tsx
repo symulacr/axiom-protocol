@@ -13,7 +13,6 @@ import {
   useReadContracts,
   useWalletClient,
 } from "wagmi";
-import { toast } from "sonner";
 import {
   ArrowRight,
   Bot,
@@ -61,11 +60,10 @@ import {
   truncateAddress,
   truncateHex,
   explorerTxUrl,
-  humanizeError,
-  errorRefString,
 } from "../utils/format.js";
 import { apiFetch, type EncodeResponse } from "../utils/apiFetch.js";
 import { getAxiomAgentNftAddress, toViemAbi } from "../abi/addresses.js";
+import { toastError, toastSuccess } from "./shared.js";
 
 const AGENT_TABS = ["overview", "execute", "payments", "activity"] as const;
 type AgentTab = (typeof AGENT_TABS)[number];
@@ -349,18 +347,6 @@ export function AgentPage({
       ? `${formatTokenAmount(vault.depositsWei)} ${nativeSymbol}`
       : "—";
   const strategyBound = hasStrategyRoot(vault.strategyRoot);
-
-  // Shared write-flow toasts — same shape as FlowPage's canonical helpers.
-  const toastSuccess = (msg: string): void => {
-    toast.success(msg);
-  };
-  const toastError = (err: unknown): void => {
-    const refStr = errorRefString(err);
-    toast.error(
-      humanizeError(err),
-      refStr ? { description: refStr } : undefined,
-    );
-  };
 
   // M6: creator earnings withdrawal — direct withdrawAgentEarnings() wallet write.
   const { data: walletClient } = useWalletClient();

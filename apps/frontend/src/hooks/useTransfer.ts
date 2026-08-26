@@ -206,6 +206,35 @@ export function useTransfer(): UseTransferResult {
     return wrapped;
   }, []);
 
+  /** Guard shared by the paused-challenge consumers (coSign, handoff apply). */
+  const requirePendingCoSign = useCallback(() => {
+    if (!pendingCoSign)
+      throw new Error("no transfer is waiting for a receiver co-sign");
+    return pendingCoSign;
+  }, [pendingCoSign]);
+
+  /** Shared shell for prepare/coSign/handoff-apply: clears stale errors,
+   * gates isLoading, resets phase + records a normalized failure. `translate`
+   * lets coSign map a lost wallet account onto the honest blocker. */
+  const runStep = useCallback(
+    async <T>(
+      translate: ((err: unknown) => unknown) | null,
+      fn: () => Promise<T>,
+    ): Promise<T> => {
+      setPrepareError(null);
+      setIsPreparing(true);
+      try {
+        return await fn();
+      } catch (err) {
+        setTransferPhase("idle");
+        throw failWith(translate ? translate(err) : err);
+      } finally {
+        setIsPreparing(false);
+      }
+    },
+    [failWith],
+  );
+
   const runChallenge = useCallback(
     async ({
       input,
@@ -439,14 +468,12 @@ export function useTransfer(): UseTransferResult {
         );
       }
 
-      setPrepareError(null);
-      setIsPreparing(true);
       setPendingCoSign(null);
       const attempt = attemptRef.current + 1;
       attemptRef.current = attempt;
       setIntent({ input, attempt });
       setTransferPhase("challenge");
-      try {
+      return runStep(null, async () => {
         const challenge = await queryClient.fetchQuery({
           queryKey: ["transfer-challenge", attempt],
           queryFn: ({ signal }) => runChallenge({ input, signal }),
@@ -467,14 +494,9 @@ export function useTransfer(): UseTransferResult {
           signerAccount: from,
         });
         return { status: "ready", proof };
-      } catch (err) {
-        setTransferPhase("idle");
-        throw failWith(err);
-      } finally {
-        setIsPreparing(false);
-      }
+      });
     },
-    [from, queryClient, runChallenge, signAndFinalize, failWith],
+    [from, queryClient, runChallenge, signAndFinalize, runStep],
   );
 
   /** receiver co-sign: signs the paused challenge's AccessProof AS the
@@ -484,47 +506,39 @@ export function useTransfer(): UseTransferResult {
    * connected sender session is never replaced — after this resolves, the
    * sender's own confirm() submits the transfer. */
   const coSign = useCallback(async (): Promise<TransferResponse> => {
-    const pending = pendingCoSign;
-    if (!pending) {
-      throw new Error("no transfer is waiting for a receiver co-sign");
-    }
+    const pending = requirePendingCoSign();
     const receiver = pending.input.to;
-    setPrepareError(null);
-    setIsPreparing(true);
-    try {
-      const exposed = (await connector?.getAccounts().catch(() => [])) ?? [];
-      const canSignDirectly = exposed.some(
-        (a) => a.toLowerCase() === receiver.toLowerCase(),
-      );
-      if (!canSignDirectly) {
-        const switched = await requestReceiverExposure(receiver);
-        if (!switched) throw new ReceiverAccountUnavailableError(receiver);
-      }
-      const proof = await signAndFinalize({
-        input: pending.input,
-        challenge: pending.challenge,
-        signerAccount: receiver,
-        signerConnector: connector,
-      });
-      setPendingCoSign(null);
-      return proof;
-    } catch (err) {
-      setTransferPhase("idle");
-      if (isReceiverAccountUnavailable(err)) throw failWith(err);
-      if (isAccountNotFound(err)) {
-        // The wallet lost the account between probe and prompt — same honest blocker.
-        throw failWith(new ReceiverAccountUnavailableError(receiver));
-      }
-      throw failWith(err);
-    } finally {
-      setIsPreparing(false);
-    }
+    // Wallet lost the receiver account between probe and prompt — same honest blocker.
+    return runStep(
+      (err) =>
+        !isReceiverAccountUnavailable(err) && isAccountNotFound(err)
+          ? new ReceiverAccountUnavailableError(receiver)
+          : err,
+      async () => {
+        const exposed = (await connector?.getAccounts().catch(() => [])) ?? [];
+        const canSignDirectly = exposed.some(
+          (a) => a.toLowerCase() === receiver.toLowerCase(),
+        );
+        if (!canSignDirectly) {
+          const switched = await requestReceiverExposure(receiver);
+          if (!switched) throw new ReceiverAccountUnavailableError(receiver);
+        }
+        const proof = await signAndFinalize({
+          input: pending.input,
+          challenge: pending.challenge,
+          signerAccount: receiver,
+          signerConnector: connector,
+        });
+        setPendingCoSign(null);
+        return proof;
+      },
+    );
   }, [
-    pendingCoSign,
+    requirePendingCoSign,
+    runStep,
     connector,
     requestReceiverExposure,
     signAndFinalize,
-    failWith,
   ]);
 
   /** cross-wallet handoff: URL the receiver opens on their own device —
@@ -559,18 +573,13 @@ export function useTransfer(): UseTransferResult {
    * The sender still calls confirm() for the on-chain submission. */
   const applyHandoffSignature = useCallback(
     async (signature: `0x${string}`): Promise<TransferResponse> => {
-      const pending = pendingCoSign;
-      if (!pending) {
-        throw new Error("no transfer is waiting for a receiver co-sign");
-      }
+      const pending = requirePendingCoSign();
       if (!ACCEPTANCE_CODE_SHAPE.test(signature)) {
         throw new HandoffSignatureInvalidError(
           "This acceptance code is not a wallet signature.",
         );
       }
-      setPrepareError(null);
-      setIsPreparing(true);
-      try {
+      return runStep(null, async () => {
         const message = buildAccessProofMessage(
           pending.input,
           pending.challenge,
@@ -594,19 +603,14 @@ export function useTransfer(): UseTransferResult {
         });
         setPendingCoSign(null);
         return proof;
-      } catch (err) {
-        setTransferPhase("idle");
-        throw failWith(err);
-      } finally {
-        setIsPreparing(false);
-      }
+      });
     },
     [
-      pendingCoSign,
+      requirePendingCoSign,
+      runStep,
       buildAccessProofMessage,
       domain,
       finalizePrepared,
-      failWith,
     ],
   );
 
@@ -638,17 +642,17 @@ export function useTransfer(): UseTransferResult {
             ],
           ],
         });
-        setWritePending(false);
         setTransferPhase("idle");
         return txHash;
       } catch (err) {
-        setWritePending(false);
         setTransferPhase("idle");
         const msg = err instanceof Error ? err.message : String(err);
         throw new Error(
           `On-chain transaction failed: ${msg}. Your prepared proof is still valid — click "Edit" to restart the flow with a fresh nonce.`,
           { cause: err },
         );
+      } finally {
+        setWritePending(false);
       }
     },
     [chainId, from, signature, write],

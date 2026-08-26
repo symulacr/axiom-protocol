@@ -26,7 +26,6 @@ import {
   usePublicClient,
   useWalletClient,
 } from "wagmi";
-import { toast } from "sonner";
 import { erc20Abi, formatUnits, isAddress, parseUnits } from "viem";
 import {
   AlertTriangle,
@@ -86,12 +85,12 @@ import {
 import { APP_CHAIN, APP_CHAIN_ID } from "../config/wagmi.js";
 import {
   formatTokenAmount,
-  errorRefString,
   humanizeError,
   truncateAddress,
   truncateHex,
   validateNumericInput,
 } from "../utils/format.js";
+import { toastError, toastSuccess } from "./shared.js";
 import {
   apiFetch,
   STREAM_TIMEOUT,
@@ -129,15 +128,6 @@ const VAULT_WRITE: Record<
 > = {
   deposit: { label: "Deposit", endpoint: "deposit", verb: "Deposit" },
   withdraw: { label: "Withdraw", endpoint: "withdraw", verb: "Withdraw" },
-};
-
-/** Shared write-flow toasts: success on submit + canonical humanized error toast for every write path. */
-const toastSuccess = (msg: string): void => {
-  toast.success(msg);
-};
-const toastError = (err: unknown): void => {
-  const refStr = errorRefString(err);
-  toast.error(humanizeError(err), refStr ? { description: refStr } : undefined);
 };
 
 /** Shared numeric rules for the amount field (deposit + withdraw alike). */
@@ -587,13 +577,14 @@ export function FlowPage({
     error: string | null = null,
   ): void => dispatch({ type: "set-draft-phase", flow: kind, phase, error });
 
-  // Shared recoverable-error tail: humanized message lands in the sheet AND the notice rail.
-  const failDraft = (err: unknown): void => {
-    const message = humanizeError(err);
+  // Shared recoverable-error tail: message lands in the sheet AND the notice rail.
+  const failDraftMessage = (message: string): void => {
     setDraftPhase("recoverable-error", message);
     // U24: failures persist until manually dismissed — no 4s auto-dismiss.
     dispatch({ type: "notice", notice: message, severity: "error" });
   };
+  const failDraft = (err: unknown): void =>
+    failDraftMessage(humanizeError(err));
 
   // Keep wizard name in sync with draft — mint keccak256(toHex(name)) must match chat mint derivation.
   useEffect(() => {
@@ -643,20 +634,25 @@ export function FlowPage({
     // hooks: one read per review open
   }, [kind, draft.phase, chainId]);
 
-  const updateValue = (value: string) => {
+  // One owner for draft text edits: clears the submit error and resets
+  // phase/receipt metadata so both fields share the exact same transition.
+  const patchDraftText = (
+    patch: Partial<Pick<OperationDraft, "value" | "extra">>,
+  ): void => {
     setSubmitError(null);
     dispatch({
       type: "save-draft",
-      draft: { ...draft, value, phase: "draft", error: null, receiptId: null },
+      draft: {
+        ...draft,
+        ...patch,
+        phase: "draft",
+        error: null,
+        receiptId: null,
+      },
     });
   };
-  const updateExtra = (extra: string) => {
-    setSubmitError(null);
-    dispatch({
-      type: "save-draft",
-      draft: { ...draft, extra, phase: "draft", error: null, receiptId: null },
-    });
-  };
+  const updateValue = (value: string): void => patchDraftText({ value });
+  const updateExtra = (extra: string): void => patchDraftText({ extra });
 
   // validate() names the failing FIELD for inline Field errors; recoverable-error state is execution-only.
   type FlowFieldError = {
@@ -671,6 +667,16 @@ export function FlowPage({
   const [handoffError, setHandoffError] = useState<string | null>(null);
   const [handoffApplied, setHandoffApplied] = useState(false);
   const [handoffReceiver, setHandoffReceiver] = useState<string | null>(null);
+
+  // Paused co-sign / handoff state is owned by one challenge — cleared as a set.
+  const resetHandoff = (): void => {
+    setCoSignBlocked(false);
+    setHandoffCode("");
+    setHandoffError(null);
+    setHandoffApplied(false);
+    setHandoffReceiver(null);
+    transfer.reset();
+  };
 
   const buildTransferInput = () =>
     assembleTransferInput({
@@ -810,12 +816,7 @@ export function FlowPage({
       return;
     }
     if (attempt.outcome === "failed") {
-      setDraftPhase("recoverable-error", attempt.message);
-      dispatch({
-        type: "notice",
-        notice: attempt.message,
-        severity: "error",
-      });
+      failDraftMessage(attempt.message);
       return;
     }
     try {
@@ -1048,12 +1049,7 @@ export function FlowPage({
     nonceRef.current = freshAccessProofNonce();
     tickHook.resetStream();
     setSubmitError(null);
-    setCoSignBlocked(false);
-    setHandoffCode("");
-    setHandoffError(null);
-    setHandoffApplied(false);
-    setHandoffReceiver(null);
-    transfer.reset();
+    resetHandoff();
     dispatch({ type: "clear-draft", flow: kind });
   };
 
@@ -1549,14 +1545,7 @@ export function FlowPage({
               }
               onClose={() => {
                 // Closing abandons any paused co-sign — a fresh review starts a fresh challenge (nonces single-use).
-                if (kind === "transfer") {
-                  setCoSignBlocked(false);
-                  setHandoffCode("");
-                  setHandoffError(null);
-                  setHandoffApplied(false);
-                  setHandoffReceiver(null);
-                  transfer.reset();
-                }
+                if (kind === "transfer") resetHandoff();
                 setDraftPhase("draft");
               }}
               onRetry={() =>

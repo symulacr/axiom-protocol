@@ -39,23 +39,15 @@ const ADDRESSES = {
   paymentProcessor: resolveAddress("paymentProcessor", env) as Address,
 } as const;
 
-type ContractName = keyof typeof ADDRESSES;
-
-function getContractAddress(
-  contract: ContractName,
-  _chainId?: number,
-): Address {
-  return ADDRESSES[contract]; // chain-agnostic: addresses are env-sourced, so there is no chain gate
-}
-
-export const getAxiomStrategyVaultAddress = (chainId?: number) =>
-  getContractAddress("strategyVault", chainId);
-export const getAxiomAgentNftAddress = (chainId?: number) =>
-  getContractAddress("agentNft", chainId);
-const getAxiomTeeVerifierAddress = (chainId?: number) =>
-  getContractAddress("teeVerifier", chainId);
-export const getAxiomPaymentProcessorAddress = (chainId?: number) =>
-  getContractAddress("paymentProcessor", chainId);
+// Chain-agnostic: addresses are env-sourced, so the accessors ignore any chainId arg.
+export const getAxiomStrategyVaultAddress = (_chainId?: number): Address =>
+  ADDRESSES.strategyVault;
+export const getAxiomAgentNftAddress = (_chainId?: number): Address =>
+  ADDRESSES.agentNft;
+const getAxiomTeeVerifierAddress = (_chainId?: number): Address =>
+  ADDRESSES.teeVerifier;
+export const getAxiomPaymentProcessorAddress = (_chainId?: number): Address =>
+  ADDRESSES.paymentProcessor;
 
 const BASE_DOMAIN = {
   name: EIP712_DOMAIN_NAME,

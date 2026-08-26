@@ -111,6 +111,57 @@ const pageFallback = (
   </div>
 );
 
+/** Disconnect clears all identity — a stored profile must never outlive its session. */
+const DISCONNECTED_SESSION = {
+  status: "disconnected",
+  address: "",
+  profile: "",
+  signedAt: null,
+} as const;
+
+/** Shared stop-screen chrome for the public blockers (wrong-network,
+ * wallet-required): logo + warning status bar over the main content column;
+ * only the slug class and status label differ between surfaces. */
+function LockedShell({
+  statusLabel,
+  shellClass = "",
+  children,
+}: {
+  statusLabel: string;
+  shellClass?: string;
+  children: ReactNode;
+}): ReactElement {
+  return (
+    <div
+      className={`locked-route-shell public-locked${shellClass && ` ${shellClass}`}`}
+    >
+      <div className="locked-route-main">
+        <header className="locked-topbar">
+          <Logo compact />
+          <div>
+            <Status label={statusLabel} tone="warning" />
+          </div>
+        </header>
+        <main className="locked-route-content">{children}</main>
+      </div>
+    </div>
+  );
+}
+
+const ReturnToLanding = ({
+  go,
+}: {
+  go: (path: string) => void;
+}): ReactElement => (
+  <Button
+    variant="ghost"
+    onClick={() => go("/")}
+    icon={<ArrowLeft size={14} />}
+  >
+    Return to landing
+  </Button>
+);
+
 function Notice({
   text,
   severity,
@@ -329,13 +380,7 @@ export function App(): ReactElement {
       return;
     if (!isConnected || !address) {
       if (state.session.status !== "disconnected") {
-        // Disconnect clears all identity — a stored profile must never outlive its session.
-        setSession({
-          status: "disconnected",
-          address: "",
-          profile: "",
-          signedAt: null,
-        });
+        setSession(DISCONNECTED_SESSION);
       }
       return;
     }
@@ -445,12 +490,7 @@ export function App(): ReactElement {
     go(destination);
   };
   const lockConsole = () => {
-    setSession({
-      status: "disconnected",
-      address: "",
-      profile: "",
-      signedAt: null,
-    });
+    setSession(DISCONNECTED_SESSION);
     go("/");
   };
 
@@ -689,38 +729,22 @@ function WrongNetworkNotice({
     }
   };
   return (
-    <div className="locked-route-shell public-locked">
-      <div className="locked-route-main">
-        <header className="locked-topbar">
-          <Logo compact />
-          <div>
-            <Status label="network mismatch" tone="warning" />
-          </div>
-        </header>
-        <main className="locked-route-content">
-          <section className="locked-route-copy" role="alert">
-            <h1>{interpolate(copy.wallet.wrongNetworkTitle, chainVars)}</h1>
-            <p>{copy.wallet.wrongNetworkDescription}</p>
-            <div className="button-row">
-              <Button
-                onClick={() => void switchBack()}
-                icon={<Network size={15} />}
-              >
-                {interpolate(copy.wallet.switchNetwork, chainVars)}
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={() => go("/")}
-                icon={<ArrowLeft size={14} />}
-              >
-                Return to landing
-              </Button>
-            </div>
-            {error ? <p>{error}</p> : null}
-          </section>
-        </main>
-      </div>
-    </div>
+    <LockedShell statusLabel="network mismatch">
+      <section className="locked-route-copy" role="alert">
+        <h1>{interpolate(copy.wallet.wrongNetworkTitle, chainVars)}</h1>
+        <p>{copy.wallet.wrongNetworkDescription}</p>
+        <div className="button-row">
+          <Button
+            onClick={() => void switchBack()}
+            icon={<Network size={15} />}
+          >
+            {interpolate(copy.wallet.switchNetwork, chainVars)}
+          </Button>
+          <ReturnToLanding go={go} />
+        </div>
+        {error ? <p>{error}</p> : null}
+      </section>
+    </LockedShell>
   );
 }
 
@@ -751,65 +775,50 @@ function LockedRoute({
   if (!meta) return null;
 
   return (
-    <div className={`locked-route-shell public-locked locked-${meta.slug}`}>
-      <div className="locked-route-main">
-        <header className="locked-topbar">
-          <Logo compact />
+    <LockedShell
+      statusLabel="wallet required"
+      shellClass={`locked-${meta.slug}`}
+    >
+      <section className="locked-route-copy">
+        <h1>
+          {meta.title}
+          <br />
+          <i>{meta.emphasis}</i>
+        </h1>
+        <p>{meta.copy}</p>
+        <div className="button-row">
+          <Button onClick={onConnect} icon={<Wallet size={15} />}>
+            {copy.nav.connectWallet}
+          </Button>
+          <ReturnToLanding go={go} />
+        </div>
+      </section>
+      <aside className="locked-evidence">
+        <div className="locked-evidence-head">
           <div>
-            <Status label="wallet required" tone="warning" />
+            <strong>{meta.next}</strong>
           </div>
-        </header>
-        <main className="locked-route-content">
-          <section className="locked-route-copy">
-            <h1>
-              {meta.title}
-              <br />
-              <i>{meta.emphasis}</i>
-            </h1>
-            <p>{meta.copy}</p>
-            <div className="button-row">
-              <Button onClick={onConnect} icon={<Wallet size={15} />}>
-                {copy.nav.connectWallet}
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={() => go("/")}
-                icon={<ArrowLeft size={14} />}
-              >
-                Return to landing
-              </Button>
+          <LockKeyhole size={17} className="copper" />
+        </div>
+        <div className="locked-preview">
+          <img src={meta.media} alt={`${meta.label} preview`} />
+          <div>
+            <strong>Preview only</strong>
+            <small>Connect a wallet to unlock live evidence.</small>
+          </div>
+        </div>
+        {/* Ledger rows are static states, not controls — no chevron
+            affordance on a row that does not open. */}
+        {meta.proofs.map((item, index) => (
+          <div className="locked-evidence-row" key={item}>
+            <div>
+              <strong>{item}</strong>
+              <small>{index === 0 ? "not connected" : "after connect"}</small>
             </div>
-          </section>
-          <aside className="locked-evidence">
-            <div className="locked-evidence-head">
-              <div>
-                <strong>{meta.next}</strong>
-              </div>
-              <LockKeyhole size={17} className="copper" />
-            </div>
-            <div className="locked-preview">
-              <img src={meta.media} alt={`${meta.label} preview`} />
-              <div>
-                <strong>Preview only</strong>
-                <small>Connect a wallet to unlock live evidence.</small>
-              </div>
-            </div>
-            {/* Ledger rows are static states, not controls — no chevron
-                affordance on a row that does not open. */}
-            {meta.proofs.map((item, index) => (
-              <div className="locked-evidence-row" key={item}>
-                <div>
-                  <strong>{item}</strong>
-                  <small>
-                    {index === 0 ? "not connected" : "after connect"}
-                  </small>
-                </div>
-              </div>
-            ))}
-          </aside>
-        </main>
-      </div>
-    </div>
+          </div>
+        ))}
+      </aside>
+    </LockedShell>
   );
 }
 

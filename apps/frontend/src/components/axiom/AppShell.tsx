@@ -345,16 +345,8 @@ function MobileNavigationDrawer({
   const copy = getCopy(settings.locale);
   useEffect(() => {
     if (!open) return;
-    const priorFocus =
-      document.activeElement instanceof HTMLElement
-        ? document.activeElement
-        : null;
-    const focusFirst = () =>
-      drawerRef.current
-        ?.querySelector<HTMLElement>(
-          "button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])",
-        )
-        ?.focus();
+    const priorFocus = focusedElement();
+    const focusFirst = () => listFocusables(drawerRef.current)[0]?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
@@ -362,11 +354,7 @@ function MobileNavigationDrawer({
         return;
       }
       if (event.key !== "Tab") return;
-      const focusable = Array.from(
-        drawerRef.current?.querySelectorAll<HTMLElement>(
-          "button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])",
-        ) ?? [],
-      );
+      const focusable = listFocusables(drawerRef.current);
       if (!focusable.length) {
         event.preventDefault();
         return;
@@ -463,6 +451,17 @@ function routeItemsFor(copy: Copy): CommandItem[] {
     keywords: `${id} ${label} ${path}`,
   }));
 }
+
+// Focus-trap selector shared by the mobile drawer (focus-first + tab wrap).
+const FOCUSABLE_SELECTOR =
+  "button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])";
+
+const listFocusables = (root: HTMLElement | null): HTMLElement[] =>
+  Array.from(root?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR) ?? []);
+
+/** Active element narrowed to HTMLElement (focus restore on dismiss). */
+const focusedElement = (): HTMLElement | null =>
+  document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
 function isEditableTarget(target: EventTarget | null) {
   return (
@@ -567,10 +566,7 @@ function CommandCenter({
   useEffect(() => {
     if (!open) return;
     // Dismiss focus leg: return focus to the pre-open trigger on close — the mobile drawer's behavior.
-    const priorFocus =
-      document.activeElement instanceof HTMLElement
-        ? document.activeElement
-        : null;
+    const priorFocus = focusedElement();
     window.setTimeout(() => inputRef.current?.focus(), 0);
     // Deferred one tick: wins over backdrop mousedown's default focus shift (see useModalDismiss).
     return () => {
@@ -911,6 +907,7 @@ export function AppShell({
   children: ReactNode;
 }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const copy = getCopy(state.settings.locale);
   const setSettings = (patch: Partial<UiSettings>) =>
     dispatch({ type: "settings", patch });
   const className =
@@ -928,7 +925,7 @@ export function AppShell({
       >
         {/* U27: keyboard bypass of the command rail; target is main.main below. */}
         <a className="skip-link" href="#main-content">
-          {getCopy(state.settings.locale).a11y.skipToContent}
+          {copy.a11y.skipToContent}
         </a>
         <div className="sidebar-wrap">
           {!state.settings.railHidden && (
@@ -945,8 +942,7 @@ export function AppShell({
               className="rail-reopen"
               onClick={() => setSettings({ railHidden: false })}
             >
-              <Menu size={14} />{" "}
-              {getCopy(state.settings.locale).topbar.openRail}
+              <Menu size={14} /> {copy.topbar.openRail}
             </button>
           )}
         </div>

@@ -8,7 +8,7 @@
 import { useState } from "react";
 import { useConnect, useConnectors } from "wagmi";
 import { X } from "./icons.js";
-import { Button } from "./Controls.js";
+import { Button, ErrorNote } from "./Controls.js";
 import { getCopy, type Locale } from "../../lib/copy.js";
 import { humanizeError } from "../../utils/format.js";
 
@@ -92,11 +92,7 @@ export function ConnectModal({
             </Button>
           ))}
         </div>
-        {error && (
-          <p className="wallet-gate-error" role="alert">
-            {error}
-          </p>
-        )}
+        <ErrorNote message={error} />
       </section>
     </div>
   );

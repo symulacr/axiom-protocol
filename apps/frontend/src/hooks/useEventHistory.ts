@@ -90,7 +90,8 @@ interface UseEventHistoryOptions {
 }
 
 const DEFAULT_POLL_INTERVAL_MS = 15_000;
-const MAX_EVENTS = 500;
+/** Event-list cap shared with the WS stream (useEventStream) so both sources can never grow unbounded. */
+export const MAX_EVENTS = 500;
 
 export function useEventHistory(
   options: UseEventHistoryOptions = {},

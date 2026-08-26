@@ -228,7 +228,7 @@ export async function postStreamingWithRetry(
       if (err instanceof DOMException && err.name === "AbortError") throw err;
       if (retryAfter === undefined || attempt >= 2) throw err;
       attempt++;
-      await new Promise((r) => setTimeout(r, Math.min(retryAfter, 10) * 1000));
+      await delay(Math.min(retryAfter, 10) * 1000);
     }
   }
 }

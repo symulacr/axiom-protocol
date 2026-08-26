@@ -197,3 +197,13 @@ export function Fact({
     </div>
   );
 }
+
+/** Shared modal error note; renders nothing without a message. */
+export function ErrorNote({ message }: { message?: string | null }) {
+  if (!message) return null;
+  return (
+    <p className="wallet-gate-error" role="alert">
+      {message}
+    </p>
+  );
+}

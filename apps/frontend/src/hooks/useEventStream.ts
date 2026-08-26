@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { openStreamSocket } from "../config/env.js";
-import type { AxiomEvent } from "./useEventHistory.js";
+import { MAX_EVENTS, type AxiomEvent } from "./useEventHistory.js";
 
 interface UseEventStreamResult {
   events: AxiomEvent[];
@@ -12,7 +12,6 @@ interface UseEventStreamOptions {
   enabled?: boolean;
 }
 
-const MAX_EVENTS = 500;
 const MAX_RECONNECT_ATTEMPTS = 8;
 
 export function useEventStream(

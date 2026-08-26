@@ -518,12 +518,9 @@ export function ToolResultBody({
   return (
     <pre
       style={{
-        fontSize: "var(--text-xs)",
-        margin: 0,
-        whiteSpace: "pre-wrap",
+        ...preBlockStyle,
         wordBreak: "break-word",
         lineHeight: "var(--lh-normal)",
-        fontFamily: "inherit",
         color: COLORS.textMuted,
       }}
     >
@@ -543,15 +540,9 @@ type EncodePreview = {
 };
 
 function parseEncodePreview(content: string | null): EncodePreview | null {
-  if (!content) return null;
-  try {
-    const obj = JSON.parse(content) as EncodePreview & { error?: string };
-    if (obj.error !== undefined) return null;
-    if (obj.encodeOnly || obj.txHash) return obj;
-    return null;
-  } catch {
-    return null;
-  }
+  const obj = parseObj(content);
+  if (!obj || obj.error !== undefined) return null;
+  return obj.encodeOnly || obj.txHash ? (obj as EncodePreview) : null;
 }
 
 function hasEncodePreview(content: string | null): boolean {
