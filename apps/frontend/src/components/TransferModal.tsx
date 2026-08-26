@@ -38,7 +38,7 @@ const RECEIVER_PUBKEY_HEX_LENGTH = 130;
 
 const PHASE_LABELS: Record<TransferPhase, string> = {
   idle: "Ready",
-  challenge: "Generating challenge…",
+  challenge: "Preparing transfer…",
   signing: "Waiting for signature…",
   finalizing: "Securing data for the receiver…",
   confirming: "Confirming on-chain…",
@@ -46,7 +46,7 @@ const PHASE_LABELS: Record<TransferPhase, string> = {
 
 /** Every failed phase retries identically: Edit regenerates a fresh nonce
  * (single-use). Only the idle phase has no retry hint to offer. */
-const RETRY_HINT = "Failed. Tap Edit to retry with a fresh nonce.";
+const RETRY_HINT = "Failed. Tap Edit to retry.";
 
 type TransferModalProps = {
   tokenId: bigint;
@@ -463,12 +463,12 @@ export function TransferModal({
 
     const msg = error.message.toLowerCase();
     if (msg.includes("challenge")) {
-      return "The challenge request failed. Generate a new nonce and try again.";
+      return "The request failed. Please try again.";
     }
     if (msg.includes("final") || msg.includes("proof struct")) {
-      return 'Finalization failed. The transaction was NOT submitted. Click "Prepare Transfer" to restart.';
+      return "Submission failed. Nothing was sent. Tap Edit to retry.";
     }
-    return "Something went wrong. Click the appropriate button to restart from the beginning with a fresh nonce.";
+    return "Something went wrong. Tap Edit to start over.";
   }, [error, transferPhase]);
 
   const [receiverAddress, setReceiverAddress] = useState("");

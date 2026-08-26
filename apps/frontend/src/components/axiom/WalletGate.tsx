@@ -183,7 +183,8 @@ export function WalletGate({
               <br />
               <i>{copy.wallet.gateSessionLine}</i>
             </strong>
-            <span>Non-custodial access.</span>
+            {/* custody is already stated once in the connect panel ("We never
+                take custody") — the art overlay must not repeat it */}
           </div>
         </div>
         <div className="wallet-gate-panel">

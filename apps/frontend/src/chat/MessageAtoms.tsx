@@ -40,7 +40,7 @@ export function ToolClassBadge({
   if (!cls) return null;
   return (
     <span
-      aria-label={`Tool class: ${CHAT_TOOL_CLASS_LABELS[cls]}`}
+      aria-label={CHAT_TOOL_CLASS_LABELS[cls]}
       title={getChatToolSpec(name)?.hint}
       style={{
         marginLeft: 6,

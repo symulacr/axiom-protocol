@@ -70,9 +70,6 @@
 .state-confirming i,.state-submitted i,.state-signing i,.state-approval i { background:var(--copper); }
 .state-reverted i,.state-rejected i,.state-stale i { background:var(--warning); }
 .transaction-kind>span { display:grid;gap:var(--space-1);min-width:0; }
-.ops-page>.page-head { position:relative; }
-.ops-page>.page-head::before { content:'//';position:absolute;left:-24px;top:5px;color:var(--copper);font:var(--fs-mono) 'JetBrains Mono',monospace; }
-.panel-head::before { content:'/';color:var(--copper);font:var(--fw-title) var(--fs-body) 'JetBrains Mono',monospace;margin-right:var(--space-2); }
 .panel-head>div { min-width:0; }
 .storage-stage,.provenance-panel,.settings-card { padding:var(--space-5); }
 .storage-file>div:nth-child(2) { display:grid;gap:var(--space-1);flex:1;min-width:0; }
@@ -85,7 +82,6 @@
 .flow-stage-top>div { flex:1; }
 .flow-page .flow-stage { border-left:3px solid var(--copper); }
 .flow-page .flow-stage-top .state-pill { margin-left:auto; }
-.ops-page>.page-head::before { display:none; }
 .transaction-row>svg { grid-column:2;grid-row:1 / span 2; }
 .transaction-row>.transaction-age { grid-column:2;grid-row:2; }
 .filters::-webkit-scrollbar { display:none; }
@@ -575,10 +571,6 @@ body:has(.flow-action) .notice-toast { bottom:96px; }
 
 .app-shell .ops-page > .page-head {
   margin-bottom: var(--space-5);
-}
-
-.app-shell .ops-page > .page-head::before {
-  display: none;
 }
 
 .app-shell .page-head h1,

@@ -737,8 +737,8 @@ const english: Copy = {
     notConnected: "not connected",
     operator: "You",
     openRail: "Show sidebar",
-    oracleLive: "oracle live",
-    oracleDown: "oracle down",
+    oracleLive: "online",
+    oracleDown: "services degraded",
   },
   strip: {
     reviewTitle: (kind) => `Review ${kind}`,
@@ -945,7 +945,7 @@ const english: Copy = {
     fleetNominal: "fleet nominal",
     eventsIndexed: "events indexed",
     queueAwaiting: "awaiting confirmation",
-    oracleUnreachable: "oracle unreachable",
+    oracleUnreachable: "status checks failing",
     telemetryTitle: "Recent activity",
     noEvidence: "Nothing here yet",
     noEvidenceHint: "Mint an agent to create the first receipt.",
@@ -1120,15 +1120,15 @@ const english: Copy = {
   flows: {
     mint: {
       title: "Mint an agent",
-      copy: "Name → hash → oracle acknowledgement → receipt.",
+      copy: "Name → hash → registration → receipt.",
       steps: ["Preparing identity", "Confirming uniqueness", "Receipt indexed"],
       receiptKind: "Mint",
       consequence: "Create an agent identity after confirmation.",
-      proofLine: "Records metadata hash and oracle acknowledgement.",
+      proofLine: "Records the metadata hash and its on-chain registration.",
       contextTitle: "Identity before ownership.",
       fieldLabel: "Agent name",
       fieldHint: "Metadata hash is derived and shown in review.",
-      detail: "{name} · oracle acknowledged",
+      detail: "{name} · registered on-chain",
       notice: enFlowNotice("Mint submitted for {name}."),
     },
     payment: {
@@ -1469,8 +1469,8 @@ const french: Copy = {
     notConnected: "non connecté",
     operator: "Vous",
     openRail: "Afficher la barre latérale",
-    oracleLive: "oracle actif",
-    oracleDown: "oracle coupé",
+    oracleLive: "en ligne",
+    oracleDown: "services dégradés",
   },
   strip: {
     ...english.strip,
@@ -1678,7 +1678,7 @@ const french: Copy = {
     fleetNominal: "flotte nominale",
     eventsIndexed: "événements indexés",
     queueAwaiting: "confirmation en attente",
-    oracleUnreachable: "oracle injoignable",
+    oracleUnreachable: "vérifications en échec",
     telemetryTitle: "Activité récente",
     noEvidence: "Rien ici pour l’instant",
     noEvidenceHint:
@@ -1856,18 +1856,19 @@ const french: Copy = {
     mint: {
       ...english.flows.mint,
       title: "Créer un agent",
-      copy: "Nom → hash → accord de l’oracle → reçu.",
+      copy: "Nom → hash → enregistrement → reçu.",
       steps: [
         "Préparation de l’identité",
         "Confirmation d’unicité",
         "Reçu indexé",
       ],
       consequence: "Créer l’identité d’un agent après confirmation.",
-      proofLine: "Enregistre le hash de métadonnées et l’accord de l’oracle.",
+      proofLine:
+        "Enregistre le hash de métadonnées et son inscription on-chain.",
       contextTitle: "L’identité avant la propriété.",
       fieldLabel: "Nom de l’agent",
       fieldHint: "Le hash de métadonnées est dérivé et montré à la revue.",
-      detail: "{name} · accord de l’oracle enregistré",
+      detail: "{name} · enregistré on-chain",
       notice: frFlowNotice("Mint soumis pour {name}."),
     },
     payment: {
@@ -2218,8 +2219,8 @@ const german: Copy = {
     notConnected: "nicht verbunden",
     operator: "Du",
     openRail: "Seitenleiste zeigen",
-    oracleLive: "Oracle live",
-    oracleDown: "Oracle down",
+    oracleLive: "online",
+    oracleDown: "Dienste beeinträchtigt",
   },
   strip: {
     ...english.strip,
@@ -2425,7 +2426,7 @@ const german: Copy = {
     fleetNominal: "Flotte nominal",
     eventsIndexed: "Ereignisse indexiert",
     queueAwaiting: "Bestätigung ausstehend",
-    oracleUnreachable: "Oracle unerreichbar",
+    oracleUnreachable: "Statusprüfungen fehlerhaft",
     telemetryTitle: "Letzte Aktivität",
     noEvidence: "Noch nichts hier",
     noEvidenceHint:
@@ -2604,19 +2605,19 @@ const german: Copy = {
     mint: {
       ...english.flows.mint,
       title: "Agent minten",
-      copy: "Name → Hash → Oracle-Bestätigung → Beleg.",
+      copy: "Name → Hash → Registrierung → Beleg.",
       steps: [
         "Identität wird vorbereitet",
         "Eindeutigkeit wird bestätigt",
         "Beleg indexiert",
       ],
       consequence: "Nach der Bestätigung eine Agenten-Identität erstellen.",
-      proofLine: "Speichert Metadaten-Hash und Oracle-Bestätigung.",
+      proofLine: "Speichert Metadaten-Hash und dessen On-Chain-Registrierung.",
       contextTitle: "Identität vor Eigentum.",
       fieldLabel: "Agentenname",
       fieldHint:
         "Der Metadaten-Hash wird abgeleitet und in der Prüfung gezeigt.",
-      detail: "{name} · Oracle bestätigt",
+      detail: "{name} · on-chain registriert",
       notice: deFlowNotice("Mint für {name} eingereicht."),
     },
     payment: {

@@ -67,7 +67,6 @@ export type PublicSeoSlug =
 
 type EvidenceArtifact = {
   label: string;
-  state: string;
   rows: [string, string][];
 };
 type PublicPage = {
@@ -113,7 +112,6 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
     icon: Network,
     artifact: {
       label: "PROVENANCE SPECIMEN",
-      state: "IDENTITY LINKED",
       // Fallback rows while /v1/agents/stats is down; live reads replace them; never fabricate an agent id.
       rows: [
         ["AGENTS", "registry read…"],
@@ -148,7 +146,6 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
     icon: ReceiptText,
     artifact: {
       label: "ALLOWANCE ROUTE",
-      state: "SIGNATURE PENDING",
       rows: [
         ["APPROVAL", "exact amount"],
         ["ROUTE", "vault → royalty"],
@@ -185,7 +182,6 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
     icon: FileCheck2,
     artifact: {
       label: "LIFECYCLE",
-      state: "CONFIRMING",
       rows: [
         ["TX HASH", "0x…"],
         ["STATE", "submitted → confirm"],
@@ -222,7 +218,6 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
     icon: ShieldCheck,
     artifact: {
       label: "PUBLICATION ROOT",
-      state: "ROOT VERIFIED",
       rows: [
         ["ROOT", "0x…"],
         ["PHASE", "publish → verify"],
@@ -256,7 +251,6 @@ const pages: Record<PublicSeoSlug, PublicPage> = {
     icon: Code2,
     artifact: {
       label: "IMPLEMENTATION PATH",
-      state: "DOCS FIRST",
       rows: [
         ["SDK", "0G Storage SDK"],
         ["FLOW", "sign → receipt"],
@@ -393,7 +387,6 @@ export function PublicSeoPage({ slug }: { slug: PublicSeoSlug }) {
           >
             <div>
               <span>{artifact.label}</span>
-              <b>{artifact.state}</b>
             </div>
             {artifact.rows.map(([label, value]) => (
               <p key={label}>
