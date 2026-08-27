@@ -1,8 +1,9 @@
 import type { Express, Request, Response } from "express";
-import { getBytes, hexlify, isAddress, toBeHex, zeroPadValue } from "ethers";
+import { getBytes, hexlify, isAddress } from "ethers";
 import { isHex, type Hex } from "viem";
 import { HTTP } from "@axiom/config/constants";
 import { ZodError } from "zod";
+import { canonicalNonceHex } from "@axiom/config/eip712";
 
 import {
   aesGcmDecrypt,
@@ -112,12 +113,6 @@ function parsePositiveBigInt(raw: string | number | bigint): bigint | null {
     /* fall through to null */
   }
   return null;
-}
-
-/** Canonical 32-byte nonce (see routers/agents.ts — minimal hex breaks
- * wallet `bytes` typing when the top nibble is zero). */
-function canonicalNonce(value: string | number | undefined): `0x${string}` {
-  return zeroPadValue(toBeHex(BigInt(value ?? 0)), 32) as `0x${string}`;
 }
 
 /**
@@ -279,7 +274,7 @@ export async function transferValidity(
     targetPubkey: targetPubkey64,
     to,
     nft,
-    nonce: canonicalNonce(ownershipProofNonce ?? accessProofNonce),
+    nonce: canonicalNonceHex(ownershipProofNonce ?? accessProofNonce),
     validUntil: validUntilDefault,
   });
 
@@ -366,7 +361,7 @@ export async function signOwnership(
     targetPubkey,
     to,
     nft,
-    nonce: canonicalNonce(nonce),
+    nonce: canonicalNonceHex(nonce),
     validUntil,
   });
   return {

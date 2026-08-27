@@ -40,6 +40,7 @@ import {
   humanizeError,
   truncateHex,
   explorerTxUrl,
+  humanizeToolName,
   truncateAddress,
 } from "../utils/format.js";
 import {
@@ -2197,7 +2198,9 @@ function phaseLabel(
 ): string {
   const running = Object.values(runs).filter((r) => r.status === "running");
   if (running.length > 0) {
-    const names = running.map((r) => TOOL_LABELS[r.name] ?? r.name).join(", ");
+    const names = running
+      .map((r) => TOOL_LABELS[r.name] ?? humanizeToolName(r.name))
+      .join(", ");
     return copy.phaseRunning(names, elapsedSec);
   }
   if (streamText) return copy.phaseStreaming(elapsedSec);

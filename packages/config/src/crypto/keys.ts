@@ -3,11 +3,26 @@ import { secp256k1 } from "ethereum-cryptography/secp256k1";
 import { keccak256 } from "ethereum-cryptography/keccak";
 // Noble utils only — importing ethers here would drag the full ethers library
 // into every browser chunk that needs a key-derivation helper.
-import { hexToBytes, toHex } from "ethereum-cryptography/utils";
+import { hexToBytes as hexToBytes_, toHex } from "ethereum-cryptography/utils";
 
 export function publicKeyUncompressedFromPrivate(privateKey: Uint8Array) {
   const pub = secp256k1.getPublicKey(privateKey, false);
   return pub.length === 65 ? pub.subarray(1) : pub;
+}
+
+/** 0x-tolerant hex → bytes; odd-length input throws (same contract as the noble util). */
+export function hexToBytes(hex: string): Uint8Array {
+  const h = hex.replace(/^0x/, "");
+  if (h.length % 2 !== 0) throw new Error("invalid hex");
+  return hexToBytes_(h);
+}
+
+/** Browser-safe (atob, no Buffer/node:crypto) so consumers keep an ethers-free bundle. */
+export function base64ToBytes(b64: string): Uint8Array {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
 }
 
 export function normalizePubkey64(pk: `0x${string}`): `0x${string}` {

@@ -6,11 +6,25 @@ import {
   getBytes,
   SigningKey,
   computeAddress,
+  toBeHex,
+  zeroPadValue,
 } from "ethers";
 import type { Hex } from "viem";
 
 export const EIP712_DOMAIN_NAME = "AxiomTeeVerifier" as const;
 export const EIP712_DOMAIN_VERSION = "1" as const;
+
+/**
+ * Canonical 32-byte nonce hex: the minimal form can drop to an ODD number of
+ * hex chars (top nibble zero, ~1/16 of random nonces), which wallets reject
+ * as an invalid `bytes` typed-data value. Padding once keeps the oracle
+ * signature, the receiver's EIP-712 digest and the on-chain bytes identical.
+ */
+export function canonicalNonceHex(
+  nonce: string | number | bigint | undefined | null,
+): `0x${string}` {
+  return zeroPadValue(toBeHex(BigInt(nonce ?? 0)), 32) as `0x${string}`;
+}
 
 export interface Eip712Domain {
   chainId: bigint;

@@ -17,6 +17,7 @@ import { sendError, trimErrorMessage } from "../utils/response.js";
 import { createLogger } from "../utils/logger.js";
 import { createRoute } from "./route-factory.js";
 import { routeMeta } from "./shared.js";
+import { downloadBlobCached } from "../oracle/routes.js";
 
 const log = createLogger("server");
 
@@ -427,9 +428,10 @@ export function registerChatRoutes(
           const i = nextJob++;
           const { rootHash } = jobs[i]!;
           try {
-            const blob = await cfg.chatStorage!.download(
-              rootHash as `0x${string}`,
-            );
+            // Transcript blobs are rootHash-addressed and immutable — the
+            // oracle's LRU (same storage instance, see server.ts) keeps
+            // repeat /v1/chat/history restores from re-hitting 0G storage.
+            const blob = await downloadBlobCached(cfg.chatStorage!, rootHash);
             slots[i] = {
               ok: true,
               value: JSON.parse(new TextDecoder().decode(blob)),

@@ -62,6 +62,7 @@ type AgentNftMintEncodeMethods = {
 };
 import type { Eip712Domain, OwnershipProofInput } from "@axiom/config/eip712";
 import {
+  canonicalNonceHex,
   recoverAccessSigner,
   recoverOwnershipSigner,
 } from "@axiom/config/eip712";
@@ -131,30 +132,26 @@ interface OwnershipSignatureRequest {
   validUntil: bigint;
 }
 
-// The in-process oracle signs via deps.signer/storage; a client-style oracle
-// (e.g. test doubles mirroring the pre-merge HTTP client) exposes signOwnership
-// as a method. Prefer the method when present, else the in-process helper.
-async function requestOwnershipSignature(
-  oracle: OracleRouteDeps,
-  args: OwnershipSignatureRequest,
-): Promise<{ signature: Hex; signer: Hex }> {
-  const client = oracle as unknown as {
-    signOwnership?: (
-      args: OwnershipSignatureRequest,
-    ) => Promise<{ signature: Hex; signer: Hex }>;
-  };
-  if (typeof client.signOwnership === "function") {
-    return client.signOwnership(args);
-  }
-  return signOwnership(oracle, args);
+/**
+ * Test doubles for the oracle implement this interface (signOwnership(args) →
+ * signature + signer) instead of being duck-typed off the real deps shape.
+ * The in-process oracle signs via deps.signer — requestOwnershipSignature
+ * prefers the double's method when present, else falls through to it.
+ */
+export interface OwnershipSignerOverride {
+  signOwnership(
+    args: OwnershipSignatureRequest,
+  ): Promise<{ signature: Hex; signer: Hex }>;
 }
 
-// Canonical 32-byte nonce hex: the minimal form can drop to an ODD number of
-// hex chars (top nibble zero, ~1/16 of random nonces), which wallets reject as
-// an invalid `bytes` typed-data value. Padding once here keeps the oracle
-// signature, the receiver's EIP-712 digest and the on-chain bytes identical.
-function canonicalNonceHex(nonce: bigint): `0x${string}` {
-  return ethers.zeroPadValue(ethers.toBeHex(nonce), 32) as `0x${string}`;
+async function requestOwnershipSignature(
+  oracle: OracleRouteDeps & Partial<OwnershipSignerOverride>,
+  args: OwnershipSignatureRequest,
+): Promise<{ signature: Hex; signer: Hex }> {
+  if (oracle.signOwnership) {
+    return oracle.signOwnership(args);
+  }
+  return signOwnership(oracle, args);
 }
 
 /** Oracle-signs the ownership proof, then verifies it against the trusted TEE signer;

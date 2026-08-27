@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { useAccount, useChainId, useSignTypedData } from "wagmi";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { type Hex, recoverTypedDataAddress, toHex } from "viem";
 import type { Connector } from "wagmi";
 
@@ -11,7 +11,11 @@ import {
   toViemAbi,
 } from "../abi/addresses.js";
 import { ITRANSFER_FROM_ABI } from "@axiom/config/abis";
-import { sealKeyForReceiver } from "@axiom/config/crypto/keys";
+import {
+  sealKeyForReceiver,
+  hexToBytes,
+  base64ToBytes,
+} from "@axiom/config/crypto/keys";
 
 import {
   agentTransferPath,
@@ -129,23 +133,6 @@ type TransferChallenge = TransferResponse & {
   validUntil: string;
 };
 
-function hexToBytes(hex: string): Uint8Array {
-  const h = hex.replace(/^0x/, "");
-  if (h.length % 2 !== 0) throw new Error("invalid hex");
-  const out = new Uint8Array(h.length / 2);
-  for (let i = 0; i < out.length; i++) {
-    out[i] = parseInt(h.slice(i * 2, i * 2 + 2), 16);
-  }
-  return out;
-}
-
-function base64ToBytes(b64: string): Uint8Array {
-  const bin = atob(b64);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
-}
-
 // Oracle TEE pubkey is deployment-static; cache it so each re-key transfer
 // skips the /health hop. A mid-session pubkey rotation requires a page reload.
 let cachedOraclePubkey: Uint8Array | null = null;
@@ -204,13 +191,8 @@ export function useTransfer(): UseTransferResult {
     input: TransferInput;
     challenge: TransferChallenge;
   } | null>(null);
-  // intent-start marker; each prepare() bumps attempt so a fresh challenge is always fetched (nonces are single-use)
-  const [intent, setIntent] = useState<{
-    input: TransferInput;
-    attempt: number;
-  } | null>(null);
-  const intentRef = useRef(intent);
-  intentRef.current = intent;
+  // Intent-start marker: each prepare() bumps `attempt` so the fetchQuery
+  // cache key is fresh every time (nonces are single-use — never reuse one).
   const attemptRef = useRef(0);
 
   /** Normalize + record a failure — shared by every prepare/coSign/apply catch path. */
@@ -335,18 +317,10 @@ export function useTransfer(): UseTransferResult {
     return r.receiverPubKey64;
   }
 
-  // Challenge fetch fires on transfer intent; prepare() awaits the same fetchQuery cache entry so signing/finalizing stay sequential
-  const challengeQuery = useQuery<TransferChallenge, Error>({
-    queryKey: ["transfer-challenge", intent?.attempt ?? -1],
-    enabled: intent !== null,
-    staleTime: Infinity,
-    retry: false,
-    queryFn: ({ signal }) => {
-      const current = intentRef.current;
-      if (!current) throw new Error("no transfer intent");
-      return runChallenge({ input: current.input, signal });
-    },
-  });
+  // The challenge is fetched once per attempt inside prepare() via
+  // queryClient.fetchQuery (nonces are single-use, so no cache reuse) —
+  // a useQuery subscription here would only mirror isLoading/error that
+  // runStep + prepareError already surface.
 
   // Finalize logic lives in finalizePrepared — shared by sign and handoff-apply paths (signature origin is the only diff).
 
@@ -515,7 +489,6 @@ export function useTransfer(): UseTransferResult {
       setPendingCoSign(null);
       const attempt = attemptRef.current + 1;
       attemptRef.current = attempt;
-      setIntent({ input, attempt });
       setTransferPhase("challenge");
       return runStep(null, async () => {
         const challenge = await queryClient.fetchQuery({
@@ -706,7 +679,6 @@ export function useTransfer(): UseTransferResult {
     setSignature(null);
     signatureRef.current = null;
     setTransferPhase("idle");
-    setIntent(null);
     setPendingCoSign(null);
     setPrepareError(null);
     setIsPreparing(false);
@@ -718,8 +690,8 @@ export function useTransfer(): UseTransferResult {
     prepare,
     coSign,
     confirm,
-    isLoading: isPreparing || challengeQuery.isFetching || isWritePending,
-    error: prepareError ?? challengeQuery.error,
+    isLoading: isPreparing || isWritePending,
+    error: prepareError,
     signature,
     coSignReceiver: pendingCoSign?.input.to ?? null,
     coSignNonce: pendingCoSign

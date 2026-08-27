@@ -151,6 +151,17 @@ export function humanizeError(err: unknown): string {
   return raw.length > 200 ? `${raw.slice(0, 200)}…` : raw;
 }
 
+/** L1-M10: prettify a raw tool identifier for user-facing rows — strip
+ * underscores, title-case ("evm_wallet" → "Evm Wallet"). */
+export function humanizeToolName(name: string): string {
+  const spaced = name.replace(/[_\-\s]+/g, " ").trim();
+  if (!spaced) return name;
+  return spaced
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
 export function errorRefString(err: unknown): string | null {
   const ref = err as { code?: string; requestId?: string } | null;
   return ref && (ref.code !== undefined || ref.requestId !== undefined)

@@ -9,7 +9,11 @@ import {
   type OwnershipProofInput,
   type Eip712Domain,
 } from "@axiom/config";
-import { assertTrustedOracleSigner, registerAgentRoutes } from "./agents.js";
+import {
+  assertTrustedOracleSigner,
+  registerAgentRoutes,
+  type OwnershipSignerOverride,
+} from "./agents.js";
 import type { ServerConfig } from "../server.js";
 
 // ---- helpers ----------------------------------------------------------------
@@ -155,16 +159,8 @@ function buildTransferApp(trustedPk: Hex, oracleSigner: Wallet) {
   // claims signer = its own address. Before the fix the route compared the
   // recovered signer to this self-claim and accepted it. The mock signs the
   // exact input the route hands it (as a real oracle would).
-  const oracle = {
-    signOwnership: async (args: {
-      dataHash: Hex;
-      sealedKey: Hex;
-      targetPubkey: Hex;
-      to: Hex;
-      nft: Hex;
-      nonce: bigint;
-      validUntil: bigint;
-    }) => {
+  const oracle: OwnershipSignerOverride = {
+    signOwnership: async (args) => {
       const input: OwnershipProofInput = {
         dataHash: args.dataHash,
         sealedKey: args.sealedKey,
@@ -179,7 +175,7 @@ function buildTransferApp(trustedPk: Hex, oracleSigner: Wallet) {
         signer: oracleSigner.address as Hex,
       };
     },
-  } as unknown as Parameters<typeof registerAgentRoutes>[3];
+  };
 
   const app = express();
   app.use(express.json());
@@ -187,7 +183,7 @@ function buildTransferApp(trustedPk: Hex, oracleSigner: Wallet) {
     app,
     config,
     {} as unknown as Parameters<typeof registerAgentRoutes>[2],
-    oracle,
+    oracle as unknown as Parameters<typeof registerAgentRoutes>[3],
     DEFAULT_EIP712_DOMAIN,
     null,
   );
