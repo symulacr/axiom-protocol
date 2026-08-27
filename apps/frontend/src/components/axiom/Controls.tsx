@@ -49,7 +49,7 @@ export function Status({
       aria-live="polite"
       aria-atomic="true"
     >
-      <i />
+      {/* R2 S3: decorative dot removed — tone color + text carry the state. */}
       {label}
     </span>
   );

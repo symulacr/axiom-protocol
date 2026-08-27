@@ -244,11 +244,8 @@ export function SettingsPage({
 
       <div className="settings-grid">
         <SettingsDisclosure
-          title={`${labels.signingContext} — ${
-            address && chainId === APP_CHAIN_ID && health?.ok === true
-              ? labels.connectionOk
-              : labels.connectionFail
-          }`}
+          // F2/R2 #8: status lives in the row pills; the title is a plain label.
+          title={labels.signingContext}
           icon={<Wifi size={17} className="copper" />}
         >
           {walletRows.map(([label, value, status]) => (
@@ -367,7 +364,7 @@ export function SettingsPage({
             <span>
               <strong>{labels.railWidth}</strong>
               <small>
-                {state.settings.railWidth}px · {labels.railWidthHint}
+                {state.settings.railWidth}px, {labels.railWidthHint}
               </small>
             </span>
             <input

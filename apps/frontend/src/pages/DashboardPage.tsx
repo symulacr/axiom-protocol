@@ -125,7 +125,7 @@ function ContextStrip({
         <span className="mono">
           {chainOk
             ? (connectorName ?? copy.dashboard.noConnector)
-            : `${connectorName ?? copy.dashboard.noConnector} · ${copy.dashboard.switchRequired}`}
+            : `${connectorName ?? copy.dashboard.noConnector}, ${copy.dashboard.switchRequired}`}
         </span>
       </div>
       <div className="context-cell context-action">
@@ -281,7 +281,7 @@ export function DashboardPage({
         icon: <Activity size={15} />,
         kind: event.eventName || "Event",
         detail: tokenId
-          ? `agent #${tokenId} · ${eventTimeLabel(event)}`
+          ? `agent #${tokenId}, ${eventTimeLabel(event)}`
           : eventTimeLabel(event),
         state: "confirmed" as const,
         open: tokenId

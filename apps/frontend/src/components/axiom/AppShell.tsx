@@ -273,7 +273,7 @@ function Sidebar({
               never announced). */}
           <small className="mono">
             chain {APP_CHAIN_ID}
-            {health && !health.ok ? ` · ${copy.topbar.oracleDown}` : ""}
+            {health && !health.ok ? `, ${copy.topbar.oracleDown}` : ""}
           </small>
         </div>
         <Network size={16} />
@@ -503,7 +503,7 @@ function CommandCenter({
       id: `recent-${transaction.id}`,
       group: "Recent" as const,
       label: transaction.kind,
-      detail: `${transaction.state} · ${transaction.hash}`,
+      detail: `${transaction.state}, ${transaction.hash}`,
       path: `/transactions?tx=${encodeURIComponent(transaction.id)}`,
       keywords: `${transaction.kind} ${transaction.detail} ${transaction.hash} ${transaction.state}`,
     }));
@@ -861,7 +861,7 @@ function PriorityActionStrip({
       {detailsOpen && (
         <div className="priority-details">
           <span className="mono">
-            {action.shortcut} · {strip.prefilledNote}
+            {action.shortcut}, {strip.prefilledNote}
           </span>
           <div>
             {alternatives.map((alternative) => (

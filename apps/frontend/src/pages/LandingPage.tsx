@@ -107,14 +107,16 @@ export function Landing({
             >
               {copy.nav.howItWorks}
             </Button>
-            {/* U21: signed-out escape hatch — /chat is public by design. */}
-            <Button
-              variant="ghost"
+            {/* U21: signed-out escape hatch — /chat is public by design.
+                F2/R2 #2: demoted from ghost button to text link; one ghost
+                max beside the primary keeps the CTA single-intent. */}
+            <button
+              type="button"
+              className="text-link"
               onClick={() => navigate(routePath("chat"))}
-              icon={<ArrowRight size={15} />}
             >
               {copy.landing.tryAssistant}
-            </Button>
+            </button>
           </div>
         </section>
         <section className="landing-visual hero-visual-modern">

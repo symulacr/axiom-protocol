@@ -61,7 +61,7 @@ function eventToTransaction(event: AxiomEvent): Transaction {
     id: `${event.txHash}:${event.logIndex}`,
     kind: event.eventName || "Chain event",
     detail: tokenId
-      ? `agent #${tokenId} · block ${event.blockNumber}`
+      ? `agent #${tokenId}, block ${event.blockNumber}`
       : `block ${event.blockNumber}`,
     hash: event.txHash || "—",
     age: event.timestamp
@@ -495,7 +495,7 @@ export function TransactionsPage({
                 onClick={toggleFiltersPopover}
               >
                 {advancedActive
-                  ? `${txCopy.moreFilters} · ${stateFilterLabel(filter as TxState)}`
+                  ? `${txCopy.moreFilters}, ${stateFilterLabel(filter as TxState)}`
                   : txCopy.moreFilters}
                 <ChevronDown size={14} />
               </button>

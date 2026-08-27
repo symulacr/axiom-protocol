@@ -15,6 +15,7 @@ const read = (path: string): string =>
 const registrySrc = read("routeRegistry.ts");
 const appSrc = read("../App.tsx");
 const flowSrc = read("../pages/FlowPage.tsx");
+const agentSrc = read("../pages/AgentPage.tsx");
 
 describe("R1 route-surface guards (registry/config level)", () => {
   it("R1-1: /tick is a registered first-class operation route with its own identity (own hero, not a redirect)", () => {

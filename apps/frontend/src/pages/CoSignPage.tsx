@@ -226,7 +226,7 @@ export function CoSignPage({ go }: { go: (path: string) => void }) {
               {interpolate(f.networkFact, {
                 chainName: "",
                 chainId: payload.typedData.domain.chainId,
-              }).replace(/^ · /, "")}
+              }).replace(/^, /, "")}
             </Fact>
           </dl>
 

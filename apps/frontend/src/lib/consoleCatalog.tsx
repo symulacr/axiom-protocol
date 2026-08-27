@@ -85,7 +85,7 @@ export const lockedRouteMeta: Record<
     label: "Operator chat",
     title: "Chat that knows",
     emphasis: "your setup.",
-    copy: "Ask about your agents — chat knows your session.",
+    copy: "Ask about your agents; chat knows your session.",
     media: MEDIA.onboarding,
   },
   "/mint": {
@@ -101,7 +101,7 @@ export const lockedRouteMeta: Record<
     label: "Payment route",
     title: "Pay exactly",
     emphasis: "what you approve.",
-    copy: "Approve exactly what you pay — fees shown up front.",
+    copy: "Approve exactly what you pay; fees shown up front.",
     media: MEDIA.payment,
   },
   "/transfer": {
@@ -136,7 +136,7 @@ export const lockedRouteMeta: Record<
     label: "Run agent task",
     title: "Run one agent task,",
     emphasis: "bounded.",
-    copy: "Give the agent one instruction — it streams the result and stops.",
+    copy: "Give the agent one instruction, it streams the result and stops.",
     media: MEDIA.proof,
   },
   "/deposit": {
@@ -152,7 +152,7 @@ export const lockedRouteMeta: Record<
     label: "Withdraw",
     title: "Withdraw from an",
     emphasis: "agent vault.",
-    copy: "Move funds out of one agent's vault — balance shown first.",
+    copy: "Move funds out of one agent's vault, balance shown first.",
     media: MEDIA.transfer,
   },
 };

@@ -175,7 +175,7 @@ export function ErrorRef({
   requestId?: string;
 }): ReactElement {
   if (code === undefined && requestId === undefined) return <></>;
-  const ref = [requestId, code].filter(Boolean).join(" · ");
+  const ref = [requestId, code].filter(Boolean).join(", ");
   return (
     <span
       style={{
@@ -186,7 +186,7 @@ export function ErrorRef({
         color: COLORS.textDim,
       }}
     >
-      Ref · {ref}
+      Ref {ref}
     </span>
   );
 }

@@ -823,7 +823,7 @@ const english: Copy = {
     placeholder: "Find action, receipt, or route",
     emptyTitle: "No matching destination",
     emptyBody: "Try a route, receipt hash, or the next safe action.",
-    hintKeys: "↑↓ move · ↵ open · esc close",
+    hintKeys: "↑↓ move, ↵ open, esc close",
   },
   a11y: {
     primaryNav: "Primary navigation",
@@ -848,15 +848,15 @@ const english: Copy = {
     titleLead: "Own AI agents",
     titleEmphasis: "that work for you.",
     description:
-      "Mint an agent on 0G, put your funds to work, and stay in control — every step signs through your wallet and leaves a receipt.",
+      "Mint an agent on 0G, put your funds to work, and stay in control. Every step signs through your wallet and leaves a receipt.",
     nextSafeAction: "Next safe action",
     signatureBoundary: "How signing works",
     consoleAccess: "Console access",
     menuGuideHint: "How signing and receipts work",
     menuDevelopers: "Developers",
     menuDevelopersHint: "APIs and developer tools",
-    tryAssistant: "Try the assistant — no wallet",
-    stripVerifySmall: "No gas · no custody",
+    tryAssistant: "Try the assistant, no wallet",
+    stripVerifySmall: "No gas, no custody",
     stripOperateSmall: "Receipts beside action",
   },
   wallet: {
@@ -865,7 +865,7 @@ const english: Copy = {
     switchNetwork: "Switch to {chainName}",
     networkMismatch: "Network mismatch",
     connectedChain: "Connected: chain {chainId}",
-    requiredChain: "Required: {chainName} · chain {chainId}",
+    requiredChain: "Required: {chainName}, chain {chainId}",
     profileHint: "Stored on this device only.",
     gateTitle: "Start here.",
     gateSessionLine: "One session.",
@@ -896,7 +896,7 @@ const english: Copy = {
   },
   staking: {
     lede: "Staking isn\u0027t part of Axiom.",
-    body: "Staking needs the official 0G app — Axiom doesn\u0027t do staking.",
+    body: "Staking needs the official 0G app. Axiom doesn\u0027t do staking.",
     openVault: "Go to my agents",
   },
   notFound: {
@@ -1013,7 +1013,7 @@ const english: Copy = {
     noEvidenceHint: "Mint an agent to create the first receipt.",
     registerUnavailable: "Agent register unavailable",
     noAgents: "You don't have an agent yet",
-    noAgentsHint: "Make one — about a minute.",
+    noAgentsHint: "Make one. About a minute.",
     mintAgent: "Create agent",
     noDescription: "no description",
     refreshNotice: "Updated",
@@ -1021,7 +1021,7 @@ const english: Copy = {
   },
   chat: {
     pageTitle: "Chat",
-    statusOnline: "Online · {chainName}",
+    statusOnline: "Online, {chainName}",
     statusWrongNetwork: "Switch to {chainName}",
     wrongNetworkBanner: "Wrong network. Switch wallet to {chainName}.",
     newChat: "New chat",
@@ -1118,7 +1118,7 @@ const english: Copy = {
     routingVerified: "Verified providers only",
     routingPrivate: "Private providers (extra isolation)",
     routingPrivateHintOn:
-      "TEE-isolated inference — prompts never leave the provider's enclave",
+      "TEE-isolated inference. Prompts never leave the provider's enclave",
     routingPrivateHintOff: "No TEE provider serves this model",
     routingChipTitle:
       "Provider routing. Change how this conversation is served",
@@ -1133,7 +1133,7 @@ const english: Copy = {
     phaseThinking: "Thinking…",
     phaseWaiting: (elapsed) => `Waiting for model response… (${elapsed}s)`,
     txMined: (tokenId, event, block) =>
-      `tx mined${tokenId ? ` · agent #${tokenId}` : ""}${event ? ` · ${event}` : ""}${block ? ` · block ${block}` : ""}`,
+      `tx mined${tokenId ? `, agent #${tokenId}` : ""}${event ? `, ${event}` : ""}${block ? `, block ${block}` : ""}`,
     historyTitle: "Chats",
     historyNew: "New",
     historySearch: "Search chats…",
@@ -1143,7 +1143,7 @@ const english: Copy = {
     historyRestore: "Restore server history",
     historyRestoreHint: "One free signature loads your saved chats.",
     historyOnChainNote:
-      "Your chats are saved on-chain — restore them (1 signature)",
+      "Your chats are saved on-chain. Restore them (1 signature)",
     historyDelete: (title) => `Delete chat: ${title}`,
     untitledThread: "New chat",
     deletedToast: "Chat deleted",
@@ -1157,7 +1157,7 @@ const english: Copy = {
     openChat: "Open chat transcript",
     payload: "Agent metadata payload",
     fileSteps: "File & steps",
-    fileMeta: "18.4 KB · AES-GCM encrypted · 4 tags",
+    fileMeta: "18.4 KB, AES-GCM encrypted, 4 tags",
     labels: [
       "Payload ready",
       "Encrypted",
@@ -1191,8 +1191,8 @@ const english: Copy = {
       proofLine: "Records the metadata hash and its on-chain registration.",
       contextTitle: "Identity before ownership.",
       fieldLabel: "Agent name",
-      fieldHint: "Names are permanent — choose well.",
-      detail: "{name} · registered on-chain",
+      fieldHint: "Names are permanent. Choose well.",
+      detail: "{name}, registered on-chain",
       notice: enFlowNotice("Mint submitted for {name}."),
     },
     payment: {
@@ -1231,7 +1231,7 @@ const english: Copy = {
       contextTitle: "Stream before result.",
       fieldLabel: "Instruction",
       fieldHint: "Cancellable; streamed tokens appear below.",
-      detail: "{action} · {reason}",
+      detail: "{action}, {reason}",
       notice: "Tick {outcome} for agent #{agent}. Stream receipt indexed.",
     },
     deposit: {
@@ -1286,12 +1286,12 @@ const english: Copy = {
     stageTitle: "Review before you act.",
     reviewOpenLabel: "Review open",
     detailsEditable: "Details editable",
-    chainLive: "chain {chainId} · live wallet",
+    chainLive: "chain {chainId}, live wallet",
     reviewAction: "Review operation",
     agentLabel: "Agent",
     agentA11y: "Target agent",
     agentSelectPlaceholder: "select an agent",
-    noAgentsOption: "No agents yet — create one",
+    noAgentsOption: "No agents yet, create one",
     agentOption: (id) => `Agent #${id}`,
     agentHint: "The agent whose vault or record this operation targets.",
     errAmountPositive: "Enter an amount above zero.",
@@ -1301,7 +1301,7 @@ const english: Copy = {
     errRecipientAddress: "Recipient must be a valid 0x address.",
     errRecipientKey: "Recipient public key must be 64 bytes of hex (0x…).",
     errRecipientKeyIsAddress:
-      "This looks like an Ethereum address (42 chars) — a transfer needs the receiver's public key (132 chars). See “How to get it” below.",
+      "This looks like an Ethereum address (42 chars); a transfer needs the receiver's public key (132 chars). See “How to get it” below.",
     transferKeyWalkthroughTitle: "How to get it",
     transferKeyWalkthroughSteps: [
       "The receiver opens their wallet and picks the account that will hold the agent",
@@ -1318,7 +1318,7 @@ const english: Copy = {
     streamLabel: "Streamed tokens",
     cancelStream: "Cancel stream",
     factCost: "Cost",
-    confirmMint: "1 click in your wallet · usual network fee",
+    confirmMint: "1 click in your wallet, usual network fee",
     receiptHeadingConfirmed: "Receipt ready.",
     receiptHeadingReverted: "Reverted on-chain.",
     receiptHeadingStale: "Confirmation unknown.",
@@ -1337,7 +1337,7 @@ const english: Copy = {
     openReceiptAction: "Open receipt",
     startAnotherAction: "Start another",
     /** proto-subpages-a mint success — Placeholder: {name}. */
-    mintDoneHeading: "Done — {name} is live!",
+    mintDoneHeading: "Done. {name} is live!",
     mintDoneBody: "Saved in your history.",
     receiptCopiedNotice: "Receipt identifier copied.",
     vaultBalanceAfter: "Vault balance after",
@@ -1345,7 +1345,7 @@ const english: Copy = {
     vaultedHint:
       "In vault: {amount} {symbol}. The resulting balance appears in review.",
     allowanceNote:
-      "Current allowance: {amount} {symbol} — approves exactly this amount, never infinite.",
+      "Current allowance: {amount} {symbol}, approves exactly this amount, never infinite.",
     liveRouteNote: "",
     simulateRejectedError: "Signature rejected. Reviewed details are saved.",
     simulateTimeoutError: "Confirmation expired. Resume from review.",
@@ -1365,7 +1365,7 @@ const english: Copy = {
     factInstruction: "Instruction",
     factNetwork: "Network",
     factBoundary: "Asks twice?",
-    networkFact: "{chainName} · chain {chainId}",
+    networkFact: "{chainName}, chain {chainId}",
     primarySign: "Sign & execute",
     primaryApprove: "Approve spending limit",
     primaryContinuePayment: "Continue to payment",
@@ -1376,15 +1376,15 @@ const english: Copy = {
     awaitingWallet: "Awaiting wallet",
     submitTransfer: "Submit transfer",
     reviewDisclaimer: "Nothing is submitted until you confirm in the wallet.",
-    confirmOne: "No — single ask",
-    confirmTwo: "Yes — two wallet asks",
-    confirmTwoApprovePay: "Yes — once now, once to pay",
-    confirmOneAllowance: "No — your approval covers it",
+    confirmOne: "No, single ask",
+    confirmTwo: "Yes, two wallet asks",
+    confirmTwoApprovePay: "Yes, once now, once to pay",
+    confirmOneAllowance: "No, your approval covers it",
     confirmChecking: "Up to 2 wallet asks (checking approval…)",
     confirmReceiverThenSubmit: "Approval needed: yes",
     transferKeyLabel: "Recipient public key",
     transferKeyHint: "64-byte hex (0x…), the new owner's encryption key.",
-    transferPubkeyFallbackSummary: "Advanced — paste the public key instead",
+    transferPubkeyFallbackSummary: "Advanced, paste the public key instead",
     transferPubkeyResolvePending: "Looking up the key for this address…",
     transferPubkeyResolveFailed:
       "No public key found on-chain for this address yet. Paste it manually below.",
@@ -1420,7 +1420,7 @@ const english: Copy = {
     receiveConnect: "Connect wallet",
     receiveAcceptTitle: "Review, then sign to approve.",
     receiveAcceptBody:
-      "You're receiving this agent with your wallet ({receiver}). Sign to agree — nothing moves on-chain until the sender submits.",
+      "You're receiving this agent with your wallet ({receiver}). Sign to agree, nothing moves on-chain until the sender submits.",
     receiveSign: "Sign approval",
     receiveSigning: "Waiting for signature…",
     receiveWrongAccount: "Wrong account. This approval needs {receiver}.",
@@ -1432,11 +1432,11 @@ const english: Copy = {
     /** U26: co-sign done-state presents a one-piece approval link; the raw
      * signature/token hide behind "Advanced". */
     claimUrlLabel: "Approval link",
-    claimRawToggle: "Advanced — raw signature",
+    claimRawToggle: "Advanced, raw signature",
     goHome: "Home",
   },
   agentDetail: {
-    balanceToSpend: "Has {amount} to spend · ready",
+    balanceToSpend: "Has {amount} to spend, ready",
     needsSetup: "Needs setup",
     dataHash: "Metadata hash",
     overview: "About",
@@ -1489,7 +1489,7 @@ const english: Copy = {
     newDailyLimit: "New daily limit",
     setSpendingLimit: "Set spending limit",
     limitTipBound:
-      "Edits keep this agent's rules and expiry — only the daily limit changes.",
+      "Edits keep this agent's rules and expiry, only the daily limit changes.",
     limitTipUnbound:
       "Tip: set a daily limit so your agent can pay small bills by itself.",
     errLimitPositive: "Enter a daily limit greater than zero.",
@@ -1551,7 +1551,7 @@ const english: Copy = {
     tick: {
       titleLead: "Run one agent task,",
       titleEmphasis: "bounded.",
-      copy: "Give the agent one instruction — it streams the result and stops.",
+      copy: "Give the agent one instruction, it streams the result and stops.",
     },
     deposit: {
       titleLead: "Fund an agent",
@@ -1561,7 +1561,7 @@ const english: Copy = {
     withdraw: {
       titleLead: "Withdraw from an",
       titleEmphasis: "agent vault.",
-      copy: "Move funds out of one agent's vault — balance shown first.",
+      copy: "Move funds out of one agent's vault, balance shown first.",
     },
   },
 };
@@ -1615,7 +1615,7 @@ const french: Copy = {
     emptyTitle: "Aucune destination correspondante",
     emptyBody:
       "Essayez une route, un hash de reçu ou la prochaine action sûre.",
-    hintKeys: "↑↓ naviguer · ↵ ouvrir · esc fermer",
+    hintKeys: "↑↓ naviguer, ↵ ouvrir, esc fermer",
   },
   a11y: {
     primaryNav: "Navigation principale",
@@ -1641,15 +1641,15 @@ const french: Copy = {
     titleLead: "Possédez des agents IA",
     titleEmphasis: "qui travaillent pour vous.",
     description:
-      "Mintez un agent sur 0G, mettez vos fonds au travail et gardez le contrôle — chaque étape est signée par votre wallet et laisse un reçu.",
+      "Mintez un agent sur 0G, mettez vos fonds au travail et gardez le contrôle. Chaque étape est signée par votre wallet et laisse un reçu.",
     nextSafeAction: "Prochaine action sûre",
     signatureBoundary: "Comment fonctionne la signature",
     consoleAccess: "Accès console",
-    tryAssistant: "Essayer l’assistant — sans wallet",
+    tryAssistant: "Essayer l’assistant, sans wallet",
     menuGuideHint: "Comment fonctionnent signatures et reçus",
     menuDevelopers: "Développeurs",
     menuDevelopersHint: "APIs et outils pour développeurs",
-    stripVerifySmall: "Sans gas · sans garde",
+    stripVerifySmall: "Sans gas, sans garde",
     stripOperateSmall: "Reçus à côté de l’action",
   },
   wallet: {
@@ -1659,7 +1659,7 @@ const french: Copy = {
     switchNetwork: "Passer sur {chainName}",
     networkMismatch: "Mauvais réseau",
     connectedChain: "Connecté : chaîne {chainId}",
-    requiredChain: "Requis : {chainName} · chaîne {chainId}",
+    requiredChain: "Requis : {chainName}, chaîne {chainId}",
     profileHint: "Enregistré uniquement sur cet appareil.",
     gateTitle: "Commencez ici.",
     gateSessionLine: "Une session.",
@@ -1691,7 +1691,7 @@ const french: Copy = {
   },
   staking: {
     lede: "Le staking ne fait pas partie d’Axiom.",
-    body: "Le staking passe par l’app officielle 0G — Axiom ne fait pas de staking.",
+    body: "Le staking passe par l’app officielle 0G. Axiom ne fait pas de staking.",
     openVault: "Aller à mes agents",
   },
   notFound: {
@@ -1806,7 +1806,7 @@ const french: Copy = {
       "Mintez un agent ou lancez un paiement pour créer le premier reçu.",
     registerUnavailable: "Registre d’agents indisponible",
     noAgents: "Vous n'avez pas encore d'agent",
-    noAgentsHint: "Créez-en un — environ une minute.",
+    noAgentsHint: "Créez-en un. Environ une minute.",
     mintAgent: "Créer un agent",
     noDescription: "sans description",
     refreshNotice: "Mis à jour",
@@ -1814,7 +1814,7 @@ const french: Copy = {
   },
   chat: {
     ...english.chat,
-    statusOnline: "En ligne · {chainName}",
+    statusOnline: "En ligne, {chainName}",
     statusWrongNetwork: "Passer sur {chainName}",
     wrongNetworkBanner: "Mauvais réseau. Basculez le wallet sur {chainName}.",
     newChat: "Nouveau chat",
@@ -1910,7 +1910,7 @@ const french: Copy = {
     routingVerified: "Fournisseurs vérifiés uniquement",
     routingPrivate: "Fournisseurs privés (isolation supplémentaire)",
     routingPrivateHintOn:
-      "Inférence isolée en TEE — les prompts ne quittent jamais l’enclave du fournisseur",
+      "Inférence isolée en TEE. Les prompts ne quittent jamais l’enclave du fournisseur",
     routingPrivateHintOff: "Aucun fournisseur TEE ne sert ce modèle",
     routingChipTitle:
       "Routage fournisseur. Changez comment cette conversation est servie",
@@ -1927,7 +1927,7 @@ const french: Copy = {
     phaseWaiting: (elapsed) =>
       `En attente de la réponse du modèle… (${elapsed} s)`,
     txMined: (tokenId, event, block) =>
-      `tx miné${tokenId ? ` · agent #${tokenId}` : ""}${event ? ` · ${event}` : ""}${block ? ` · bloc ${block}` : ""}`,
+      `tx miné${tokenId ? `, agent #${tokenId}` : ""}${event ? `, ${event}` : ""}${block ? `, bloc ${block}` : ""}`,
     historyNew: "Nouveau",
     historySearch: "Rechercher des chats…",
     historyEmpty: "Pas encore de discussions.",
@@ -1937,7 +1937,7 @@ const french: Copy = {
     historyRestoreHint:
       "Signez un message wallet pour charger les transcripts de ce wallet. Aucune transaction n’est envoyée.",
     historyOnChainNote:
-      "Vos chats sont sauvegardés on-chain — restaurez-les (1 signature)",
+      "Vos chats sont sauvegardés on-chain. Restaurez-les (1 signature)",
     historyDelete: (title) => `Supprimer le chat : ${title}`,
     untitledThread: "Nouveau chat",
     deletedToast: "Chat supprimé",
@@ -1952,7 +1952,7 @@ const french: Copy = {
     openChat: "Ouvrir le transcript Chat",
     payload: "Payload de métadonnées agent",
     fileSteps: "Fichier et étapes",
-    fileMeta: "18,4 Ko · chiffré AES-GCM · 4 tags",
+    fileMeta: "18,4 Ko, chiffré AES-GCM, 4 tags",
     labels: [
       "Payload prêt",
       "Chiffré",
@@ -1991,8 +1991,8 @@ const french: Copy = {
         "Enregistre le hash de métadonnées et son inscription on-chain.",
       contextTitle: "L’identité avant la propriété.",
       fieldLabel: "Nom de l’agent",
-      fieldHint: "Les noms sont permanents — choisissez bien.",
-      detail: "{name} · enregistré on-chain",
+      fieldHint: "Les noms sont permanents. Choisissez bien.",
+      detail: "{name}, enregistré on-chain",
       notice: frFlowNotice("Mint soumis pour {name}."),
     },
     payment: {
@@ -2084,11 +2084,11 @@ const french: Copy = {
     stageTitle: "Revoyez avant d’agir.",
     reviewOpenLabel: "Revue ouverte",
     detailsEditable: "Détails modifiables",
-    chainLive: "chaîne {chainId} · wallet réel",
+    chainLive: "chaîne {chainId}, wallet réel",
     reviewAction: "Revoir l’opération",
     agentA11y: "Agent ciblé",
     agentSelectPlaceholder: "choisir un agent",
-    noAgentsOption: "Pas encore d’agent — créez-en un",
+    noAgentsOption: "Pas encore d’agent, créez-en un",
     agentHint:
       "L’agent dont le vault ou la fiche est visé par cette opération.",
     errAmountPositive: "Saisissez un montant supérieur à zéro.",
@@ -2099,7 +2099,7 @@ const french: Copy = {
     errRecipientKey:
       "La clé publique du destinataire doit être 64 octets de hex (0x…).",
     errRecipientKeyIsAddress:
-      "Ceci ressemble à une adresse Ethereum (42 caractères) — un transfert exige la clé publique du destinataire (132 caractères). Voyez « Comment l’obtenir » ci-dessous.",
+      "Ceci ressemble à une adresse Ethereum (42 caractères) ; un transfert exige la clé publique du destinataire (132 caractères). Voyez « Comment l’obtenir » ci-dessous.",
     transferKeyWalkthroughTitle: "Comment l’obtenir",
     transferKeyWalkthroughSteps: [
       "Le destinataire ouvre son wallet et choisit le compte qui recevra l’agent",
@@ -2117,7 +2117,7 @@ const french: Copy = {
     streamLabel: "Flux de tokens",
     cancelStream: "Annuler le flux",
     factCost: "Coût",
-    confirmMint: "Un clic dans votre wallet · frais de réseau habituels",
+    confirmMint: "Un clic dans votre wallet, frais de réseau habituels",
     receiptHeadingConfirmed: "Reçu prêt.",
     receiptHeadingReverted: "Rejeté on-chain.",
     receiptHeadingStale: "Confirmation inconnue.",
@@ -2136,7 +2136,7 @@ const french: Copy = {
     copyReceiptAction: "Copier le reçu",
     openReceiptAction: "Ouvrir le reçu",
     startAnotherAction: "Recommencer",
-    mintDoneHeading: "C’est fait — {name} est en ligne !",
+    mintDoneHeading: "C’est fait. {name} est en ligne !",
     mintDoneBody: "Enregistré dans votre historique.",
     receiptCopiedNotice: "Identifiant du reçu copié.",
     vaultBalanceAfter: "Solde du vault après",
@@ -2166,7 +2166,7 @@ const french: Copy = {
     factName: "Nom de l’agent",
     factNetwork: "Réseau",
     factBoundary: "Double demande ?",
-    networkFact: "{chainName} · chaîne {chainId}",
+    networkFact: "{chainName}, chaîne {chainId}",
     primarySign: "Signer et exécuter",
     primaryApprove: "Approuver la limite de dépense",
     primaryContinuePayment: "Continuer vers le paiement",
@@ -2178,16 +2178,16 @@ const french: Copy = {
     submitTransfer: "Soumettre le transfert",
     reviewDisclaimer:
       "Rien n’est soumis avant votre confirmation dans le wallet.",
-    confirmOne: "Non — une seule demande",
-    confirmTwo: "Oui — deux demandes wallet",
-    confirmTwoApprovePay: "Oui — une fois maintenant, une pour payer",
-    confirmOneAllowance: "Non — l’approbation suffit",
+    confirmOne: "Non, une seule demande",
+    confirmTwo: "Oui, deux demandes wallet",
+    confirmTwoApprovePay: "Oui, une fois maintenant, une pour payer",
+    confirmOneAllowance: "Non, l’approbation suffit",
     confirmChecking: "Jusqu’à 2 demandes wallet (vérification…)",
     confirmReceiverThenSubmit: "Approbation requise : oui",
     transferKeyLabel: "Clé publique du destinataire",
     transferKeyHint:
       "Hex 64 octets (0x…), la clé de chiffrement du nouveau propriétaire.",
-    transferPubkeyFallbackSummary: "Avancé — coller la clé publique à la place",
+    transferPubkeyFallbackSummary: "Avancé, coller la clé publique à la place",
     transferPubkeyResolvePending: "Recherche de la clé pour cette adresse…",
     transferPubkeyResolveFailed:
       "Aucune clé publique trouvée on-chain pour cette adresse. Collez-la manuellement ci-dessous.",
@@ -2226,7 +2226,7 @@ const french: Copy = {
     receiveConnect: "Connecter le wallet",
     receiveAcceptTitle: "Vérifiez, puis signez pour approuver.",
     receiveAcceptBody:
-      "Vous recevez cet agent avec votre wallet ({receiver}). Signez pour accepter — rien ne bouge on-chain tant que l’expéditeur n’a pas soumis.",
+      "Vous recevez cet agent avec votre wallet ({receiver}). Signez pour accepter, rien ne bouge on-chain tant que l’expéditeur n’a pas soumis.",
     receiveSign: "Signer l’approbation",
     receiveSigning: "En attente de la signature…",
     receiveWrongAccount:
@@ -2238,12 +2238,12 @@ const french: Copy = {
     receiveDoneSameBrowser:
       "Appliqué automatiquement à l’onglet de l’expéditeur dans ce navigateur.",
     claimUrlLabel: "Lien d’approbation",
-    claimRawToggle: "Avancé — signature brute",
+    claimRawToggle: "Avancé, signature brute",
     goHome: "Accueil",
   },
   agentDetail: {
     ...english.agentDetail,
-    balanceToSpend: "Dispose de {amount} à dépenser · prêt",
+    balanceToSpend: "Dispose de {amount} à dépenser, prêt",
     needsSetup: "À configurer",
     dataHash: "Hash de métadonnées",
     overview: "À propos",
@@ -2293,7 +2293,7 @@ const french: Copy = {
     newDailyLimit: "Nouvelle limite quotidienne",
     setSpendingLimit: "Définir la limite",
     limitTipBound:
-      "La modification conserve les règles et l’expiration de cet agent — seule la limite quotidienne change.",
+      "La modification conserve les règles et l’expiration de cet agent, seule la limite quotidienne change.",
     limitTipUnbound:
       "Astuce : définissez une limite quotidienne pour que votre agent puisse payer seul les petites factures.",
     errLimitPositive: "Entrez une limite quotidienne supérieure à zéro.",
@@ -2357,7 +2357,7 @@ const french: Copy = {
     tick: {
       titleLead: "Lance une tâche d'agent,",
       titleEmphasis: "bornée.",
-      copy: "Donne une instruction à l'agent — il diffuse le résultat puis s'arrête.",
+      copy: "Donne une instruction à l'agent, il diffuse le résultat puis s'arrête.",
     },
     deposit: {
       titleLead: "Alimente le vault",
@@ -2367,7 +2367,7 @@ const french: Copy = {
     withdraw: {
       titleLead: "Retire des fonds du",
       titleEmphasis: "vault d'un agent.",
-      copy: "Sors des fonds du vault d'un agent — solde affiché avant signature.",
+      copy: "Sors des fonds du vault d'un agent, solde affiché avant signature.",
     },
   },
 };
@@ -2421,7 +2421,7 @@ const german: Copy = {
     emptyTitle: "Kein passendes Ziel",
     emptyBody:
       "Versuche eine Route, einen Beleg-Hash oder die nächste sichere Aktion.",
-    hintKeys: "↑↓ bewegen · ↵ öffnen · esc schließen",
+    hintKeys: "↑↓ bewegen, ↵ öffnen, esc schließen",
   },
   a11y: {
     primaryNav: "Hauptnavigation",
@@ -2447,15 +2447,15 @@ const german: Copy = {
     titleLead: "Eigene KI-Agents,",
     titleEmphasis: "die für dich arbeiten.",
     description:
-      "Minte einen Agent auf 0G, lass deine Mittel arbeiten und behalte die Kontrolle — jeder Schritt wird von deinem Wallet signiert und hinterlässt einen Beleg.",
+      "Minte einen Agent auf 0G, lass deine Mittel arbeiten und behalte die Kontrolle. Jeder Schritt wird von deinem Wallet signiert und hinterlässt einen Beleg.",
     nextSafeAction: "Nächste sichere Aktion",
     signatureBoundary: "Wie die Signatur funktioniert",
     consoleAccess: "Konsolenzugriff",
-    tryAssistant: "Assistent testen — ohne Wallet",
+    tryAssistant: "Assistent testen, ohne Wallet",
     menuGuideHint: "Wie Signatur und Beleg funktionieren",
     menuDevelopers: "Entwickler",
     menuDevelopersHint: "APIs und Entwickler-Tools",
-    stripVerifySmall: "Kein Gas · keine Verwahrung",
+    stripVerifySmall: "Kein Gas, keine Verwahrung",
     stripOperateSmall: "Belege neben der Aktion",
   },
   wallet: {
@@ -2465,7 +2465,7 @@ const german: Copy = {
     switchNetwork: "Zu {chainName} wechseln",
     networkMismatch: "Falsches Netzwerk",
     connectedChain: "Verbunden: Chain {chainId}",
-    requiredChain: "Erforderlich: {chainName} · Chain {chainId}",
+    requiredChain: "Erforderlich: {chainName}, Chain {chainId}",
     profileHint: "Nur als lokale Prototyp-Einstellung gespeichert.",
     gateTitle: "Hier starten.",
     gateSessionLine: "Eine Sitzung.",
@@ -2496,7 +2496,7 @@ const german: Copy = {
   },
   staking: {
     lede: "Staking ist nicht Teil von Axiom.",
-    body: "Staking läuft über die offizielle 0G-App — Axiom macht kein Staking.",
+    body: "Staking läuft über die offizielle 0G-App. Axiom macht kein Staking.",
     openVault: "Zu meinen Agents",
   },
   notFound: {
@@ -2609,7 +2609,7 @@ const german: Copy = {
       "Minte einen Agent oder führe eine Zahlung aus, um den ersten Beleg zu erzeugen.",
     registerUnavailable: "Agentenregister nicht verfügbar",
     noAgents: "Du hast noch keinen Agent",
-    noAgentsHint: "Erstelle einen — dauert etwa eine Minute.",
+    noAgentsHint: "Erstelle einen. Dauert etwa eine Minute.",
     mintAgent: "Agent erstellen",
     noDescription: "keine Beschreibung",
     refreshNotice: "Aktualisiert",
@@ -2713,7 +2713,7 @@ const german: Copy = {
     routingVerified: "Nur verifizierte Provider",
     routingPrivate: "Private Provider (zusätzliche Isolation)",
     routingPrivateHintOn:
-      "TEE-isolierte Inferenz — Prompts verlassen die Enklave des Providers nie",
+      "TEE-isolierte Inferenz. Prompts verlassen die Enklave des Providers nie",
     routingPrivateHintOff: "Kein TEE-Provider bedient dieses Modell",
     routingChipTitle:
       "Provider-Routing. Ändere, wie diese Unterhaltung bedient wird",
@@ -2729,7 +2729,7 @@ const german: Copy = {
     phaseThinking: "Denkt nach…",
     phaseWaiting: (elapsed) => `Warte auf Modellantwort… (${elapsed} s)`,
     txMined: (tokenId, event, block) =>
-      `tx gemint${tokenId ? ` · Agent #${tokenId}` : ""}${event ? ` · ${event}` : ""}${block ? ` · Block ${block}` : ""}`,
+      `tx gemint${tokenId ? `, Agent #${tokenId}` : ""}${event ? `, ${event}` : ""}${block ? `, Block ${block}` : ""}`,
     historyNew: "Neu",
     historySearch: "Chats suchen…",
     historyEmpty: "Noch keine Chats.",
@@ -2739,7 +2739,7 @@ const german: Copy = {
     historyRestoreHint:
       "Signiere eine Wallet-Nachricht, um die serverseitigen Transkripte dieses Wallets zu laden. Es wird keine Transaktion gesendet.",
     historyOnChainNote:
-      "Deine Chats werden on-chain gespeichert — stelle sie wieder her (1 Signatur)",
+      "Deine Chats werden on-chain gespeichert. Stelle sie wieder her (1 Signatur)",
     historyDelete: (title) => `Chat löschen: ${title}`,
     untitledThread: "Neuer Chat",
     deletedToast: "Chat gelöscht",
@@ -2755,7 +2755,7 @@ const german: Copy = {
     openChat: "Chat-Transkript öffnen",
     payload: "Agenten-Metadaten-Payload",
     fileSteps: "Datei und Schritte",
-    fileMeta: "18,4 KB · AES-GCM-verschlüsselt · 4 Tags",
+    fileMeta: "18,4 KB, AES-GCM-verschlüsselt, 4 Tags",
     labels: [
       "Payload bereit",
       "Verschlüsselt",
@@ -2793,8 +2793,8 @@ const german: Copy = {
       proofLine: "Speichert Metadaten-Hash und dessen On-Chain-Registrierung.",
       contextTitle: "Identität vor Eigentum.",
       fieldLabel: "Agentenname",
-      fieldHint: "Namen sind dauerhaft — wähle mit Bedacht.",
-      detail: "{name} · on-chain registriert",
+      fieldHint: "Namen sind dauerhaft. Wähle mit Bedacht.",
+      detail: "{name}, on-chain registriert",
       notice: deFlowNotice("Mint für {name} eingereicht."),
     },
     payment: {
@@ -2888,11 +2888,11 @@ const german: Copy = {
     stageTitle: "Prüfen Sie, bevor Sie handeln.",
     reviewOpenLabel: "Prüfung offen",
     detailsEditable: "Details bearbeitbar",
-    chainLive: "Chain {chainId} · Live-Wallet",
+    chainLive: "Chain {chainId}, Live-Wallet",
     reviewAction: "Vorgang prüfen",
     agentA11y: "Ziel-Agent",
     agentSelectPlaceholder: "Agent auswählen",
-    noAgentsOption: "Keine Agenten vorhanden — erst erstellen",
+    noAgentsOption: "Keine Agenten vorhanden, erst erstellen",
     agentHint:
       "Der Agent, dessen Vault oder Datensatz dieser Vorgang anspricht.",
     errAmountPositive: "Geben Sie einen Betrag über null ein.",
@@ -2903,7 +2903,7 @@ const german: Copy = {
     errRecipientKey:
       "Der öffentliche Schlüssel des Empfängers muss 64 Byte Hex sein (0x…).",
     errRecipientKeyIsAddress:
-      "Das sieht nach einer Ethereum-Adresse aus (42 Zeichen) — eine Übertragung benötigt den öffentlichen Schlüssel des Empfängers (132 Zeichen). Siehe „Wie erhält man ihn“ unten.",
+      "Das sieht nach einer Ethereum-Adresse aus (42 Zeichen); eine Übertragung benötigt den öffentlichen Schlüssel des Empfängers (132 Zeichen). Siehe „Wie erhält man ihn“ unten.",
     transferKeyWalkthroughTitle: "Wie erhält man ihn",
     transferKeyWalkthroughSteps: [
       "Der Empfänger öffnet sein Wallet und wählt das Konto, das den Agent empfangen soll",
@@ -2921,7 +2921,7 @@ const german: Copy = {
     streamLabel: "Token-Stream",
     cancelStream: "Stream abbrechen",
     factCost: "Kosten",
-    confirmMint: "Ein Klick im Wallet · übliche Netzwerkgebühr",
+    confirmMint: "Ein Klick im Wallet, übliche Netzwerkgebühr",
     receiptHeadingConfirmed: "Beleg bereit.",
     receiptHeadingReverted: "On-Chain rückgängig.",
     receiptHeadingStale: "Bestätigung unbekannt.",
@@ -2940,7 +2940,7 @@ const german: Copy = {
     copyReceiptAction: "Beleg kopieren",
     openReceiptAction: "Beleg öffnen",
     startAnotherAction: "Neu beginnen",
-    mintDoneHeading: "Fertig — {name} ist live!",
+    mintDoneHeading: "Fertig. {name} ist live!",
     mintDoneBody: "In deinem Verlauf gespeichert.",
     receiptCopiedNotice: "Beleg-Kennung kopiert.",
     vaultBalanceAfter: "Vault-Stand danach",
@@ -2972,7 +2972,7 @@ const german: Copy = {
     factInstruction: "Anweisung",
     factNetwork: "Netzwerk",
     factBoundary: "Doppelt gefragt?",
-    networkFact: "{chainName} · Chain {chainId}",
+    networkFact: "{chainName}, Chain {chainId}",
     primarySign: "Signieren & ausführen",
     primaryApprove: "Ausgabenlimit genehmigen",
     primaryContinuePayment: "Zur Zahlung fortfahren",
@@ -2984,17 +2984,17 @@ const german: Copy = {
     submitTransfer: "Transfer einreichen",
     reviewDisclaimer:
       "Nichts wird eingereicht, bevor Sie im Wallet bestätigen.",
-    confirmOne: "Nein — nur eine Anfrage",
-    confirmTwo: "Ja — zwei Wallet-Anfragen",
-    confirmTwoApprovePay: "Ja — einmal jetzt, einmal zum Zahlen",
-    confirmOneAllowance: "Nein — die Freigabe reicht",
+    confirmOne: "Nein, nur eine Anfrage",
+    confirmTwo: "Ja, zwei Wallet-Anfragen",
+    confirmTwoApprovePay: "Ja, einmal jetzt, einmal zum Zahlen",
+    confirmOneAllowance: "Nein, die Freigabe reicht",
     confirmChecking: "Bis zu 2 Wallet-Anfragen (Freigabe wird geprüft…)",
     confirmReceiverThenSubmit: "Zustimmung erforderlich: ja",
     transferKeyLabel: "Öffentlicher Schlüssel des Empfängers",
     transferKeyHint:
       "64 Byte Hex (0x…), der Verschlüsselungsschlüssel des neuen Eigentümers.",
     transferPubkeyFallbackSummary:
-      "Erweitert — öffentlichen Schlüssel stattdessen einfügen",
+      "Erweitert, öffentlichen Schlüssel stattdessen einfügen",
     transferPubkeyResolvePending: "Schlüssel für diese Adresse wird gesucht…",
     transferPubkeyResolveFailed:
       "Kein öffentlicher Schlüssel on-chain für diese Adresse gefunden. Fügen Sie ihn unten manuell ein.",
@@ -3031,7 +3031,7 @@ const german: Copy = {
     receiveConnect: "Wallet verbinden",
     receiveAcceptTitle: "Prüfen, dann zum Zustimmen signieren.",
     receiveAcceptBody:
-      "Du erhältst diesen Agenten mit deinem Wallet ({receiver}). Signieren zum Zustimmen — on-chain passiert nichts, bevor der Absender einreicht.",
+      "Du erhältst diesen Agenten mit deinem Wallet ({receiver}). Signieren zum Zustimmen, on-chain passiert nichts, bevor der Absender einreicht.",
     receiveSign: "Zustimmung signieren",
     receiveSigning: "Warten auf Signatur…",
     receiveWrongAccount: "Falsches Konto. Diese Zustimmung braucht {receiver}.",
@@ -3042,12 +3042,12 @@ const german: Copy = {
     receiveDoneSameBrowser:
       "Wurde im Sender-Tab dieses Browsers automatisch angewendet.",
     claimUrlLabel: "Zustimmungs-Link",
-    claimRawToggle: "Erweitert — rohe Signatur",
+    claimRawToggle: "Erweitert, rohe Signatur",
     goHome: "Startseite",
   },
   agentDetail: {
     ...english.agentDetail,
-    balanceToSpend: "Hat {amount} zum Ausgeben · bereit",
+    balanceToSpend: "Hat {amount} zum Ausgeben, bereit",
     needsSetup: "Einrichtung nötig",
     dataHash: "Metadaten-Hash",
     overview: "Über",
@@ -3098,7 +3098,7 @@ const german: Copy = {
     newDailyLimit: "Neues Tageslimit",
     setSpendingLimit: "Ausgabenlimit setzen",
     limitTipBound:
-      "Änderungen behalten die Regeln und Ablaufdaten dieses Agents — nur das Tageslimit ändert sich.",
+      "Änderungen behalten die Regeln und Ablaufdaten dieses Agents, nur das Tageslimit ändert sich.",
     limitTipUnbound:
       "Tipp: Setze ein Tageslimit, damit dein Agent kleine Rechnungen selbst bezahlen kann.",
     errLimitPositive: "Gib ein Tageslimit größer als null ein.",
@@ -3160,7 +3160,7 @@ const german: Copy = {
     tick: {
       titleLead: "Führe eine Agent-Aufgabe aus,",
       titleEmphasis: "begrenzt.",
-      copy: "Gib dem Agent eine Anweisung — er streamt das Ergebnis und stoppt.",
+      copy: "Gib dem Agent eine Anweisung, er streamt das Ergebnis und stoppt.",
     },
     deposit: {
       titleLead: "Das Vault eines",
@@ -3170,7 +3170,7 @@ const german: Copy = {
     withdraw: {
       titleLead: "Aus dem Agent-Vault",
       titleEmphasis: "abheben.",
-      copy: "Ziehe Geld aus dem Vault eines Agents ab — Guthaben zuerst sichtbar.",
+      copy: "Ziehe Geld aus dem Vault eines Agents ab, Guthaben zuerst sichtbar.",
     },
   },
 };

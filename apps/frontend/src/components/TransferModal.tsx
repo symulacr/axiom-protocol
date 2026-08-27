@@ -278,14 +278,14 @@ function ConfirmTransferPhase({
       }}
     >
       <p className="transfer-modal-lede">
-        Confirm — your wallet will ask for the final signature.
+        Confirm. Your wallet will ask for the final signature.
       </p>
 
       {signature !== null && signature.rekeyed === true && (
         <div className="review-proof">
           <Check size={14} />
           <span>
-            <strong>Transfer authorized</strong> — the agent's data was
+            <strong>Transfer authorized</strong>: the agent's data was
             re-encrypted so only the new owner can read it.
             {signature.newDataHash !== undefined && (
               <details>
@@ -295,7 +295,7 @@ function ConfirmTransferPhase({
                 {signature.ownershipProof?.sealedKey !== undefined && (
                   <>
                     {" "}
-                    · new sealed key:{" "}
+                    ; new sealed key:{" "}
                     <span className="mono">
                       {truncateAddress(
                         signature.ownershipProof.sealedKey,

@@ -1,6 +1,9 @@
 /*
-  Shared transaction state primitive. CONFIRMED renders quiet; the pill
-  glow is reserved for pending/failed/stale. role=status contract unchanged.
+  Shared transaction state primitive. CONFIRMED renders quiet; pending/
+  failed/stale carry the copper/warning pill tone. role=status contract
+  unchanged. R2 S3: the decorative dot is gone — state carries in the
+  pill's tone color + text (redundant with the status word, and the dot
+  glow shaded every row it sat on).
 */
 import { getCopy } from "../lib/copy";
 import type { TxState } from "../lib/models";
@@ -20,7 +23,6 @@ export function StatePill({ state }: { state: TxState }) {
       aria-atomic="true"
       aria-label={`${statusLabel}: ${labels[state]}`}
     >
-      <i />
       {labels[state]}
     </span>
   );
