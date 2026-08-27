@@ -282,7 +282,7 @@ describe("runEncodeTool pay_for_agent", () => {
       encodeFunctionData({
         abi: PAY_ABI,
         functionName: "payForAgent",
-        args: [3n, parseUnits("1.5", 6)],
+        args: [3n, parseUnits("1.5", 18)],
       }),
       "creator-only payment must encode payForAgent(tokenId, amount)",
     );
@@ -307,7 +307,7 @@ describe("runEncodeTool pay_for_agent", () => {
       encodeFunctionData({
         abi: PAY_ABI,
         functionName: "payForAgentAndCompute",
-        args: [3n, PROVIDER, parseUnits("1.5", 6), parseUnits("0.5", 6)],
+        args: [3n, PROVIDER, parseUnits("1.5", 18), parseUnits("0.5", 18)],
       }),
       "combined payment must encode payForAgentAndCompute(tokenId, provider, agentAmount, computeAmount)",
     );
@@ -349,7 +349,7 @@ describe("runEncodeTool pay_for_agent", () => {
       encodeFunctionData({
         abi: PAY_ABI,
         functionName: "payForAgentAndCompute",
-        args: [3n, PROVIDER, parseUnits("2", 6), parseUnits("1", 6)],
+        args: [3n, PROVIDER, parseUnits("2", 18), parseUnits("1", 18)],
       }),
     );
   });

@@ -18,6 +18,13 @@ export const sharedEnvSchema = z.object({
   AXIOM_COMPUTE_BASE_URL: z.string().url().optional(),
   AXIOM_DISABLE_AUTH: z.string().optional(),
   AXIOM_COMPUTE_DIRECT_KEY: z.string().optional(),
+  // Direct-path shim (W-2): direct compute mode (AXIOM_COMPUTE_DIRECT_KEY) falls
+  // back to this hardcoded proxy when AXIOM_COMPUTE_DIRECT_URL is unset. Declared
+  // here so the constant lives with its sibling env knobs, not at the call site.
+  AXIOM_COMPUTE_DIRECT_PROXY_URL: z
+    .string()
+    .url()
+    .default("https://compute-network-6.integratenetwork.work/v1/proxy"),
   AXIOM_COMPUTE_DIRECT_URL: z.string().url().optional(),
   AXIOM_CLIENT_API_KEY: z.string().optional(),
   AXIOM_EVENT_SOURCES: z.string().optional(),

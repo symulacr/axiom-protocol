@@ -136,53 +136,13 @@ const CHAT_MESSAGES_KEY = "axiom:chat-messages";
  * detached the in-progress conversation from its history). */
 const CHAT_THREAD_KEY = "axiom:chat-thread";
 
-const chatMsgStyle: CSSProperties = {
-  fontSize: "var(--fs-body)" /* chat baseline rides the one body step */,
-  color: COLORS.text,
-  lineHeight: "var(--lh-normal)",
-};
+/** Composer hard cap (maxLength below); counter nudge fires at 90%. */
+const COMPOSER_MAX_LENGTH = 4000;
 
-/** Shared rounded-card shell: message bubbles, the stream-error alert and
- * the live status card all use the same padding/radius/border recipe. */
-const bubbleCard = (border: string, background: string): CSSProperties => ({
-  padding: "var(--space-md) var(--space-lg)",
-  borderRadius: "var(--radius-lg)",
-  border: `1px solid ${border}`,
-  background,
-});
-
-const dimXs: CSSProperties = {
-  color: COLORS.textDim,
-  fontSize: "var(--text-xs)",
-};
-
-/** dim small-text flex row (tx-confirm rows, queue chips). */
-const dimRow = (extra: CSSProperties): CSSProperties => ({
-  ...dimXs,
-  display: "flex",
-  alignItems: "center",
-  gap: 6,
-  ...extra,
-});
-
-/** Chat body text wrapped for streaming (pre-wrap + break-anywhere). */
-const wrapChatMsg = (extra?: CSSProperties): CSSProperties => ({
-  ...chatMsgStyle,
-  whiteSpace: "pre-wrap",
-  overflowWrap: "anywhere",
-  ...extra,
-});
-
-// Empty-state typography shared by the prompt cards and the tools toggle.
-const promptLabelStyle: CSSProperties = {
-  fontSize: "var(--text-sm)",
-  fontWeight: "var(--fw-semibold)",
-  color: "var(--c-text)",
-};
-const promptHintStyle: CSSProperties = {
-  fontSize: "var(--text-xs)",
-  color: "var(--c-text-dim)",
-};
+/* Static style factories from this file moved to CSS classes (N-3):
+   .chat-msg, .chat-msg-wrap, .chat-bubble variants, .chat-dim-row,
+   .prompt-card__label/hint in styles/index.css. Dynamic per-render
+   styles stay inline. */
 
 const TOOL_GROUPS = (
   ["read", "encode", "orchestrate", "archive", "skill", "ask"] as const
@@ -322,10 +282,10 @@ function EmptyState(props: {
             className="prompt-card"
             onClick={() => props.send(p.prompt)}
           >
-            <div style={{ ...promptLabelStyle, marginBottom: 2 }}>
+            <div className="prompt-card__label prompt-card__label--stack">
               {p.label}
             </div>
-            <div style={promptHintStyle}>{p.hint}</div>
+            <div className="prompt-card__hint">{p.hint}</div>
           </button>
         ))}
       </div>
@@ -342,10 +302,10 @@ function EmptyState(props: {
             width: "100%",
           }}
         >
-          <span style={promptLabelStyle}>
+          <span className="prompt-card__label">
             {copy.toolsToggle(CLIENT_TOOL_CATALOG.length)}
           </span>
-          <span style={promptHintStyle}>
+          <span className="prompt-card__hint">
             {toolsOpen ? copy.toolsHide : copy.toolsBrowse}
           </span>
         </button>
@@ -1653,15 +1613,13 @@ function ChatPageInner(): ReactElement {
           {messages.map((msg) => (
             <div
               key={msg.id}
-              className="fade-enter"
-              style={bubbleCard(
-                msg.role === "user" ? "var(--c-bronze-border)" : COLORS.border,
+              className={`fade-enter chat-bubble${
                 msg.role === "user"
-                  ? "var(--c-bronze-bg)"
+                  ? " chat-bubble--user"
                   : msg.role === "tool"
-                    ? "var(--c-bg)"
-                    : "var(--c-surface)",
-              )}
+                    ? " chat-bubble--tool"
+                    : ""
+              }`}
             >
               <StatusDot
                 color={
@@ -1831,8 +1789,7 @@ function ChatPageInner(): ReactElement {
               ) : (
                 <div>
                   <div
-                    className="chat-md"
-                    style={chatMsgStyle}
+                    className="chat-md chat-msg"
                     dangerouslySetInnerHTML={{
                       __html: renderMarkdown(msg.content, explorerTx),
                     }}
@@ -1874,7 +1831,7 @@ function ChatPageInner(): ReactElement {
               }}
             >
               {txRows.map((row) => (
-                <div key={row.id} style={dimRow({ flexWrap: "wrap" })}>
+                <div key={row.id} className="chat-dim-row chat-dim-row--wrap">
                   {/* one localized string instead of
                       glyph-joined label spans ("⛓ tx mined" · "agent #N" · …). */}
                   <span>
@@ -1902,8 +1859,7 @@ function ChatPageInner(): ReactElement {
           {streamError !== null && (
             <div
               role="alert"
-              className="fade-enter"
-              style={bubbleCard("var(--c-danger-border)", "var(--c-danger-bg)")}
+              className="fade-enter chat-bubble chat-bubble--danger"
             >
               <div
                 style={{
@@ -1948,17 +1904,16 @@ function ChatPageInner(): ReactElement {
 
           {isStreaming && (
             <div
-              className="fade-enter"
+              className="fade-enter chat-bubble"
               role="status"
               aria-live="polite"
               aria-label={chatCopy.assistantResponding}
-              style={bubbleCard(COLORS.border, "var(--c-surface)")}
             >
               <StatusDot color={COLORS.text}>
                 {chatCopy.roleAssistant}
               </StatusDot>
               {streamText ? (
-                <div style={wrapChatMsg()}>
+                <div className="chat-msg chat-msg-wrap">
                   <span className="stream-tail">{streamText}</span>
                   <span
                     className="caret-blink"
@@ -1974,7 +1929,7 @@ function ChatPageInner(): ReactElement {
                   />
                 </div>
               ) : (
-                <p style={wrapChatMsg({ margin: 0 })}>
+                <p className="chat-msg chat-msg-wrap chat-msg--flush">
                   <span
                     style={{
                       display: "inline-flex",
@@ -1987,7 +1942,9 @@ function ChatPageInner(): ReactElement {
                       {phaseLabel(elapsed, toolRuns, streamText, chatCopy)}
                     </span>
                     {tickRunning ? (
-                      <span style={dimXs}>{chatCopy.tickInProgress}</span>
+                      <span className="chat-dim-xs">
+                        {chatCopy.tickInProgress}
+                      </span>
                     ) : null}
                   </span>
                 </p>
@@ -2015,17 +1972,7 @@ function ChatPageInner(): ReactElement {
               {chatCopy.queuedCount(queue.length)}
             </span>
             {queue.map((q, i) => (
-              <span
-                key={`${i}-${q}`}
-                title={q}
-                className="queue-chip"
-                style={dimRow({
-                  display: "inline-flex",
-                  border: `1px solid ${COLORS.border}`,
-                  borderRadius: "var(--radius-sm)",
-                  padding: "2px 4px 2px 10px",
-                })}
-              >
+              <span key={`${i}-${q}`} title={q} className="queue-chip">
                 {q.length > 40 ? `${q.slice(0, 40)}…` : q}
                 <button
                   type="button"
@@ -2147,13 +2094,27 @@ function ChatPageInner(): ReactElement {
                   ? chatCopy.placeholderStreaming
                   : chatCopy.placeholder(AXIOM_ASSISTANT_NAME)
               }
-              maxLength={4000}
+              maxLength={COMPOSER_MAX_LENGTH}
             />
-            {isStreaming && (
-              <Button variant="ghost" onClick={cancelStream}>
-                {chatCopy.stop}
-              </Button>
+            {/* L1-L6: maxLength silently truncates pastes — surface the
+                remaining budget once it gets tight (90% of the cap). */}
+            {COMPOSER_MAX_LENGTH - input.length <=
+              Math.ceil(COMPOSER_MAX_LENGTH / 10) && (
+              <p className="chat-composer__counter" aria-live="polite">
+                {chatCopy.composerNearLimit(COMPOSER_MAX_LENGTH - input.length)}
+              </p>
             )}
+            {/* L1-L10: Stop must not appear/disappear into a different DOM
+                position mid-stream — its slot is always rendered and only
+                toggles visually, so focus and tab order stay stable. */}
+            <Button
+              variant="ghost"
+              onClick={cancelStream}
+              className={`chat-stop${isStreaming ? "" : " chat-stop--hidden"}`}
+              disabled={!isStreaming}
+            >
+              {chatCopy.stop}
+            </Button>
             <Button
               variant="primary"
               onClick={() => sendMessage(input)}

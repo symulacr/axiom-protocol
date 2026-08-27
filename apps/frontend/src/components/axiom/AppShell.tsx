@@ -59,10 +59,6 @@ export function Logo({ compact = false }: { compact?: boolean }) {
   );
 }
 
-function shortAddress(address: string, notConnected: string): string {
-  return address ? truncateAddress(address) : notConnected;
-}
-
 function Sidebar({
   route,
   go,
@@ -302,7 +298,7 @@ function Sidebar({
           </strong>
           <small>
             {identified
-              ? shortAddress(session.address, copy.topbar.notConnected)
+              ? truncateAddress(session.address)
               : copy.topbar.notConnected}
           </small>
         </div>
@@ -768,8 +764,7 @@ function Topbar({
           <Wallet size={14} />
           <span>
             {identified
-              ? session.profile ||
-                shortAddress(session.address, copy.topbar.notConnected)
+              ? session.profile || truncateAddress(session.address)
               : copy.topbar.notConnected}
           </span>
           <Status

@@ -50,7 +50,10 @@ export function getComputeBaseUrl(): string {
   return resolveComputeRouterUrl(resolveChainId());
 }
 
-// Direct proxy base used when AXIOM_COMPUTE_DIRECT_KEY is set without a URL.
+// Direct proxy base used when AXIOM_COMPUTE_DIRECT_KEY is set without a URL —
+// declared/validated in @axiom/config env-schema (AXIOM_COMPUTE_DIRECT_PROXY_URL, W-2);
+// this literal mirrors the schema default so resolution works even when callers
+// construct config without running the full env parse (e.g. unit tests).
 const DIRECT_PROXY_BASE_URL =
   "https://compute-network-6.integratenetwork.work/v1/proxy";
 
@@ -94,7 +97,9 @@ export async function createRouterClient(model?: string): Promise<OpenAI> {
 
   if (directKey) {
     const directBase =
-      process.env.AXIOM_COMPUTE_DIRECT_URL ?? DIRECT_PROXY_BASE_URL;
+      process.env.AXIOM_COMPUTE_DIRECT_URL ??
+      process.env.AXIOM_COMPUTE_DIRECT_PROXY_URL ??
+      DIRECT_PROXY_BASE_URL;
     const key = `direct:${directBase}:${directKey}`;
     if (cachedClient && cachedClientKey === key) return cachedClient;
     logRouter.info("Using direct compute provider", { directBase, model });

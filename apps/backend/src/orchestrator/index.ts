@@ -471,7 +471,10 @@ export class StrategyRunner {
       messages,
       response_format: { type: "json_object" as const },
       ...({
-        // 0G router extension: suppress reasoning tokens so JSON output stays deterministic for parsing
+        // 0G router extension: suppress reasoning tokens so JSON output stays deterministic for parsing.
+        // chat_template_kwargs is NOT an OpenAI-standard ChatCompletion param — it is applied
+        // only by the 0G compute router's template-based models; other OpenAI-compatible
+        // providers ignore or reject it, so do not treat this as portable API surface.
         chat_template_kwargs: { enable_thinking: false },
       } satisfies OgChatParams),
     };

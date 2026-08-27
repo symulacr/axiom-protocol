@@ -512,6 +512,14 @@ export function ToolResultBody({
     return <ArchiveResultCard name={name} content={content} />;
   }
 
+  // L1-L9: array-of-objects results read as tabular data, not JSON — render
+  // a mini-table (reuses .chat-md table styling); everything else keeps the
+  // monospace body.
+  const rows = parseObjectRows(content);
+  if (rows) {
+    return <MiniTable rows={rows} />;
+  }
+
   const text = formatToolResult(name, content);
   if (!text) return null;
 
@@ -710,6 +718,72 @@ function parseObj(content: string | null): Record<string, unknown> | null {
   } catch {
     return null;
   }
+}
+
+/** L1-L9: array-of-objects tool results become a mini-table. */
+type MiniTableRow = Record<string, unknown>;
+
+function parseObjectRows(content: string | null): MiniTableRow[] | null {
+  if (!content) return null;
+  try {
+    const parsed: unknown = JSON.parse(content);
+    if (!Array.isArray(parsed) || parsed.length === 0) return null;
+    const rows = parsed.filter(
+      (item): item is MiniTableRow =>
+        typeof item === "object" &&
+        item !== null &&
+        !Array.isArray(item) &&
+        Object.keys(item).length > 0,
+    );
+    // A table needs uniform columns and more than one row to beat the
+    // single-object card view; guard both.
+    if (rows.length < 2) return null;
+    const columns = Object.keys(rows[0] ?? {});
+    if (columns.length === 0 || columns.length > 6) return null;
+    return rows.every(
+      (row) =>
+        Object.keys(row).length === columns.length &&
+        columns.every((col) => col in row),
+    )
+      ? rows
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function MiniTable({ rows }: { rows: MiniTableRow[] }): ReactElement {
+  const columns = Object.keys(rows[0] ?? {});
+  return (
+    <div className="chat-md">
+      <table>
+        <thead>
+          <tr>
+            {columns.map((col) => (
+              <th key={col} scope="col">
+                {col}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => (
+            <tr key={i}>
+              {columns.map((col) => (
+                <td key={col}>{miniCellText(row[col])}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function miniCellText(value: unknown): string {
+  if (value === null || value === undefined) return "—";
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
 }
 
 function LinkLine({

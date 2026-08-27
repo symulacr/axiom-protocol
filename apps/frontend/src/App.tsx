@@ -442,10 +442,15 @@ export function App(): ReactElement {
     state.session,
   ]);
 
-  // Theme bridge: settings.theme → html data-theme; axiom-ui-settings is the single storage owner.
+  // Theme bridge: settings.theme → html data-theme + body.light class.
+  // Single CSS mechanism is the .light class chain (L3-B12); html[data-theme]
+  // stays for the index.html pre-paint boot and colorScheme only. body.light
+  // lets portaled chrome on document.body (filters popover) resolve light
+  // tokens outside .app-shell.
   useEffect(() => {
     document.documentElement.dataset.theme = state.settings.theme;
     document.documentElement.style.colorScheme = state.settings.theme;
+    document.body.classList.toggle("light", state.settings.theme === "light");
     try {
       localStorage.removeItem("axiom-theme");
     } catch {

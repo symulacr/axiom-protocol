@@ -192,7 +192,7 @@ async function resolveTokenDecimals(ctx: ToolRuntime): Promise<number> {
   } catch {
     // fall through to the safe default below
   }
-  return 6;
+  return 18;
 }
 
 /** Parse a human-readable token amount ("1.5") to base units at the given decimals, rejecting empty/zero. */

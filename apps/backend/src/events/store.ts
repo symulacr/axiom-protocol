@@ -549,6 +549,10 @@ function stealStaleLock(lockPath: string): boolean {
   }
 }
 
+// PID lock (OE-6): guards the local JSON store against multi-instance
+// split-brain. Set AXIOM_ALLOW_MULTI_INSTANCE=true to skip (unsafe);
+// a lock whose holder pid is dead is stolen (stealStaleLock), a live
+// holder refuses acquisition.
 export function acquireEventStoreLock(
   dataDir: string = process.env.AXIOM_DATA_DIR ?? process.cwd(),
 ): () => void {

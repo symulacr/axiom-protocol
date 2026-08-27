@@ -431,24 +431,26 @@ export function TransactionsPage({
         </Button>
       </PageHead>
 
-      <section className="ops-summary">
+      <section className="ops-summary" aria-label={txCopy.statefulOperations}>
         <div>
-          <strong>
+          {/* L1-L7: these are section headers, not inline emphasis — real
+              headings keep the document outline valid. */}
+          <h2 className="ops-summary-value">
             {String(
               transactions.filter((tx) => isInFlightTx(tx.state)).length,
             ).padStart(2, "0")}
-          </strong>
+          </h2>
           <small>{txCopy.confirmingNow}</small>
         </div>
         <button
           className="ops-summary-recovery"
           onClick={() => chooseFilter("review")}
         >
-          <strong>
+          <h2 className="ops-summary-value">
             {String(
               transactions.filter((tx) => isRecoverableTx(tx.state)).length,
             ).padStart(2, "0")}
-          </strong>
+          </h2>
           <small>{txCopy.needReview}</small>
           <ArrowRight size={14} />
         </button>

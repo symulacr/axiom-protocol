@@ -362,6 +362,7 @@ export type Copy = {
     queue: string;
     stop: string;
     removeQueued: string;
+    composerNearLimit: (remaining: number) => string;
     routing: string;
     routingHint: string;
     routingAuto: string;
@@ -1100,6 +1101,8 @@ const english: Copy = {
     queue: "Queue",
     stop: "Stop",
     removeQueued: "Remove queued message",
+    composerNearLimit: (remaining) =>
+      `${remaining} characters left before the composer cuts off pastes`,
     routing: "Routing",
     routingHint: "This conversation only",
     routingAuto: "Auto (fastest)",
@@ -1868,8 +1871,11 @@ const french: Copy = {
     placeholder: (assistant) => `Message à ${assistant}…`,
     placeholderStreaming: "Mettre une réponse en file…",
     send: "Envoyer",
+    stop: "Arrêter",
     queue: "En file",
     removeQueued: "Retirer le message en file",
+    composerNearLimit: (remaining) =>
+      `${remaining} caractères restants avant que le champ ne tronque les collages`,
     routing: "Routage",
     routingHint: "Cette conversation uniquement",
     routingAuto: "Auto (le plus rapide)",
@@ -2655,6 +2661,8 @@ const german: Copy = {
     queue: "Einreihen",
     stop: "Stopp",
     removeQueued: "Wartende Nachricht entfernen",
+    composerNearLimit: (remaining) =>
+      `${remaining} Zeichen übrig, bevor der Editor Einfügungen kürzt`,
     routingHint: "Nur diese Unterhaltung",
     routingAuto: "Auto (schnellster)",
     routingCheapest: "Günstigster",

@@ -54,10 +54,13 @@ function mustMethod<T extends (...args: never[]) => unknown>(
   return fn;
 }
 
-const DEX_SPENDERS: Record<string, string> = {
-  uniswapV3: "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45",
-  sushiswap: "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F",
-  oneInch: "0x1111111254fb6c44bAC0beD2854e76F90643097d",
+// Ethereum MAINNET router/spender addresses only (OE-14) — not chain-generic.
+// The same router address is usually a different contract on other chains, so
+// these MUST NOT be reused for polygon/arbitrum/etc. allowances.
+const DEX_SPENDERS_ETHEREUM_MAINNET: Record<string, string> = {
+  uniswapV3: "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45", // SwapRouter02
+  sushiswap: "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F", // RouterV2
+  oneInch: "0x1111111254fb6c44bAC0beD2854e76F90643097d", // v5 AggregationRouter
 };
 
 const CHAINS: { name: string; rpc: string }[] = [
@@ -462,13 +465,15 @@ export function createSkillRouters(config: ServerConfig): Router {
       async (parsed) => {
         const c = new ethers.Contract(parsed.token, ERC20_ABI, provider);
         const entries = await Promise.all(
-          Object.entries(DEX_SPENDERS).map(async ([dex, spender]) => {
-            const allowance: bigint = await mustMethod(
-              c.allowance,
-              "allowance",
-            )(parsed.address, spender);
-            return { dex, spender, allowance: allowance.toString() };
-          }),
+          Object.entries(DEX_SPENDERS_ETHEREUM_MAINNET).map(
+            async ([dex, spender]) => {
+              const allowance: bigint = await mustMethod(
+                c.allowance,
+                "allowance",
+              )(parsed.address, spender);
+              return { dex, spender, allowance: allowance.toString() };
+            },
+          ),
         );
         return serialize({ allowances: entries });
       },
