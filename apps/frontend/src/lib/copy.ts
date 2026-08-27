@@ -159,6 +159,11 @@ export type Copy = {
     lede: string;
     body: string;
     openVault: string;
+    /** Outbound pointer to 0G's own staking docs — the honest forward action
+     * for a surface that deliberately does not implement staking. */
+    docsLink: string;
+    docsA11y: string;
+    docsLabel: string;
   };
   /** Recovery404 — says what happened and the safe next step, never what the
    * page implementation didn't load. */
@@ -437,6 +442,18 @@ export type Copy = {
     sourceDescription: string;
     pending: string;
     notIndexed: string;
+    /** Verify-on-0G block (L2-B4): one operable element on a read-only page. */
+    verifyTitle: string;
+    verifyHint: string;
+    verifyLabel: string;
+    verifyPlaceholder: string;
+    verifyAction: string;
+    verifyA11y: string;
+    verifyError: string;
+    verifyExplorerHint: string;
+    verifyDocsLabel: string;
+    forwardTitle: string;
+    forwardCta: string;
     /** Clear demo banner — the ladder is documentation until a storage
      * backend exists; no fake progress, no fake hashes. */
   };
@@ -898,6 +915,10 @@ const english: Copy = {
     lede: "Staking isn\u0027t part of Axiom.",
     body: "Staking needs the official 0G app. Axiom doesn\u0027t do staking.",
     openVault: "Go to my agents",
+    docsLink:
+      "https://docs.0g.ai/developer-hub/building-on-0g/contracts-on-0g/staking-interfaces",
+    docsA11y: "0G staking documentation (opens in a new tab)",
+    docsLabel: "0G staking docs",
   },
   notFound: {
     titleLead: "The route",
@@ -1180,6 +1201,20 @@ const english: Copy = {
     sourceDescription: "Each storage step is proven separately.",
     pending: "pending",
     notIndexed: "not indexed",
+    verifyTitle: "Verify on 0G",
+    verifyHint:
+      "Paste a publication root hash to open the 0G storage indexer’s own record for it. Axiom never stores your files; verification happens on 0G infrastructure.",
+    verifyLabel: "Root hash to verify",
+    verifyPlaceholder: "0x…",
+    verifyAction: "Open 0G verification",
+    verifyA11y:
+      "Verify this root hash on the 0G storage indexer (opens in a new tab)",
+    verifyError: "Enter a 0x-prefixed 32-byte root hash.",
+    verifyExplorerHint:
+      "The publication transaction is also visible on the 0G block explorer.",
+    verifyDocsLabel: "0G storage verification docs",
+    forwardTitle: "Storage proofs start with an operation.",
+    forwardCta: "Mint an agent to publish metadata",
   },
   flows: {
     mint: {
@@ -1693,6 +1728,10 @@ const french: Copy = {
     lede: "Le staking ne fait pas partie d’Axiom.",
     body: "Le staking passe par l’app officielle 0G. Axiom ne fait pas de staking.",
     openVault: "Aller à mes agents",
+    docsLink:
+      "https://docs.0g.ai/developer-hub/building-on-0g/contracts-on-0g/staking-interfaces",
+    docsA11y: "Documentation de staking 0G (s’ouvre dans un nouvel onglet)",
+    docsLabel: "Docs staking 0G",
   },
   notFound: {
     titleLead: "La route",
@@ -1974,6 +2013,20 @@ const french: Copy = {
     sourceDescription: "Chaque étape Storage est prouvée séparément.",
     pending: "en attente",
     notIndexed: "non indexé",
+    verifyTitle: "Vérifier sur 0G",
+    verifyHint:
+      "Collez un hash de racine de publication pour ouvrir la fiche propre de l’indexer 0G Storage. Axiom ne stocke jamais vos fichiers ; la vérification a lieu sur l’infrastructure 0G.",
+    verifyLabel: "Hash de racine à vérifier",
+    verifyPlaceholder: "0x…",
+    verifyAction: "Ouvrir la vérification 0G",
+    verifyA11y:
+      "Vérifier ce hash de racine sur l’indexer 0G Storage (s’ouvre dans un nouvel onglet)",
+    verifyError: "Saisissez un hash de racine 32 octets préfixé 0x.",
+    verifyExplorerHint:
+      "La transaction de publication est aussi visible sur l’explorateur de blocs 0G.",
+    verifyDocsLabel: "Documentation de vérification 0G Storage",
+    forwardTitle: "Les preuves Storage commencent par une opération.",
+    forwardCta: "Minter un agent pour publier des métadonnées",
   },
   flows: {
     mint: {
@@ -2498,6 +2551,10 @@ const german: Copy = {
     lede: "Staking ist nicht Teil von Axiom.",
     body: "Staking läuft über die offizielle 0G-App. Axiom macht kein Staking.",
     openVault: "Zu meinen Agents",
+    docsLink:
+      "https://docs.0g.ai/developer-hub/building-on-0g/contracts-on-0g/staking-interfaces",
+    docsA11y: "0G-Staking-Dokumentation (öffnet in neuem Tab)",
+    docsLabel: "0G-Staking-Doku",
   },
   notFound: {
     titleLead: "Diese Route",
@@ -2777,6 +2834,20 @@ const german: Copy = {
     sourceDescription: "Jeder Storage-Schritt wird separat nachgewiesen.",
     pending: "ausstehend",
     notIndexed: "nicht indexiert",
+    verifyTitle: "Auf 0G verifizieren",
+    verifyHint:
+      "Füge den Root-Hash einer Veröffentlichung ein, um den eigenen Eintrag des 0G-Storage-Indexers zu öffnen. Axiom speichert deine Dateien nie; die Verifizierung läuft auf 0G-Infrastruktur.",
+    verifyLabel: "Zu prüfender Root-Hash",
+    verifyPlaceholder: "0x…",
+    verifyAction: "0G-Verifizierung öffnen",
+    verifyA11y:
+      "Diesen Root-Hash auf dem 0G-Storage-Indexer verifizieren (öffnet in neuem Tab)",
+    verifyError: "Gib einen 0x-präfixierten 32-Byte-Root-Hash ein.",
+    verifyExplorerHint:
+      "Die Veröffentlichungstransaktion ist auch im 0G-Block-Explorer sichtbar.",
+    verifyDocsLabel: "0G-Storage-Verifizierungsdokumentation",
+    forwardTitle: "Storage-Belege beginnen mit einer Operation.",
+    forwardCta: "Agent minten, um Metadaten zu veröffentlichen",
   },
   flows: {
     mint: {

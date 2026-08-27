@@ -25,7 +25,9 @@ export function StakingPage({
         </div>
         <div>
           <p>{copy.body}</p>
-          {/* proto-subpages-b S10: one honest sentence + one CTA total. */}
+          {/* proto-subpages-b S10: one honest sentence + one CTA total.
+              L2-B3: the outbound docs link gives the page's own subject a
+              forward action — nothing on this surface dead-ends. */}
           <div className="not-integrated-actions">
             <Button
               onClick={() => go(routePath("dashboard"))}
@@ -33,6 +35,15 @@ export function StakingPage({
             >
               {copy.openVault}
             </Button>
+            <a
+              className="button button-secondary"
+              href={copy.docsLink}
+              target="_blank"
+              rel="noreferrer noopener"
+              aria-label={copy.docsA11y}
+            >
+              {copy.docsLabel}
+            </a>
           </div>
         </div>
       </section>

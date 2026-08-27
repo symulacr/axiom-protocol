@@ -131,10 +131,19 @@ const SUPPORTED_CHAIN_IDS = new Set([APP_CHAIN_ID]);
 const BRAND = { chatAvatar: "/brand/chat-avatar-128.jpg" } as const;
 
 const CHAT_MESSAGES_KEY = "axiom:chat-messages";
-/** Active threadId (sessionStorage): lets a page reload resume the SAME
- * thread instead of generating a fresh id (which duplicated threads and
- * detached the in-progress conversation from its history). */
+/** Active threadId (localStorage): lets a page reload — or a closed and
+ * reopened tab (L1-L8) — resume the SAME thread instead of generating a
+ * fresh id (which duplicated threads and detached the in-progress
+ * conversation from its history). */
 const CHAT_THREAD_KEY = "axiom:chat-thread";
+
+/** Resume-cache budget (L1-L8): authoritative transcripts persist server-side
+ * in 0G storage; this localStorage copy is a UX resume cache only. It holds
+ * exactly one thread — the most recent active one — so the stored-thread
+ * count stays at 1 ≤ MAX_RESUME_THREADS; the multi-thread history is capped
+ * separately in useChatHistory (axiom:chat-threads). Multi-tab use is
+ * last-writer-wins. */
+export const MAX_RESUME_THREADS = 10;
 
 /** Composer hard cap (maxLength below); counter nudge fires at 90%. */
 const COMPOSER_MAX_LENGTH = 4000;
@@ -173,13 +182,13 @@ function loadStoredMessages(): Message[] {
   // (cached per thread) — never persist it. Strip defensively so legacy
   // stored transcripts can't re-inject another thread's summary at mount.
   return stripSummaryLead(
-    loadJsonArray<Message>(sessionStorage, CHAT_MESSAGES_KEY),
+    loadJsonArray<Message>(localStorage, CHAT_MESSAGES_KEY),
   );
 }
 
 function loadStoredThreadId(): string | null {
   try {
-    const raw = sessionStorage.getItem(CHAT_THREAD_KEY);
+    const raw = localStorage.getItem(CHAT_THREAD_KEY);
     return typeof raw === "string" && raw ? raw : null;
   } catch {
     return null;
@@ -921,11 +930,11 @@ function ChatPageInner(): ReactElement {
       // the old summary and polluted thread titles.
       const stored = stripSummaryLead(messages);
       if (stored.length === 0) {
-        sessionStorage.removeItem(CHAT_MESSAGES_KEY);
-        sessionStorage.removeItem(CHAT_THREAD_KEY);
+        localStorage.removeItem(CHAT_MESSAGES_KEY);
+        localStorage.removeItem(CHAT_THREAD_KEY);
       } else {
-        sessionStorage.setItem(CHAT_MESSAGES_KEY, JSON.stringify(stored));
-        sessionStorage.setItem(CHAT_THREAD_KEY, threadId);
+        localStorage.setItem(CHAT_MESSAGES_KEY, JSON.stringify(stored));
+        localStorage.setItem(CHAT_THREAD_KEY, threadId);
       }
     } catch {
       /* best-effort persistence */
@@ -1431,8 +1440,8 @@ function ChatPageInner(): ReactElement {
     setThreadId(crypto.randomUUID());
     setComputeHint(null);
     try {
-      sessionStorage.removeItem(CHAT_MESSAGES_KEY);
-      sessionStorage.removeItem(CHAT_THREAD_KEY);
+      localStorage.removeItem(CHAT_MESSAGES_KEY);
+      localStorage.removeItem(CHAT_THREAD_KEY);
     } catch {
       /* best-effort persistence */
     }

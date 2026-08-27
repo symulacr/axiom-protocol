@@ -58,3 +58,32 @@ test("tool-card fallback run is never a synthetic running state (R1-8)", () => {
   // The success/error paths mark real runs; only the no-run fallback is guarded here.
   assert.match(src, /status: "running",\s*\n\s*startedAt: Date\.now\(\)/);
 });
+
+// L1-L8: active-thread resume must survive a closed tab — the resume cache
+// (axiom:chat-messages + axiom:chat-thread) persists in localStorage, not
+// sessionStorage, and honors the MAX_RESUME_THREADS budget.
+test("active-thread resume persists in localStorage with a thread cap (L1-L8)", () => {
+  assert.doesNotMatch(
+    src,
+    /sessionStorage/,
+    "resume cache must not use sessionStorage (tab close would lose the thread)",
+  );
+  const reads = src.match(
+    /loadJsonArray<Message>\(localStorage, CHAT_MESSAGES_KEY\)/,
+  );
+  const writes = src.match(
+    /localStorage\.setItem\(CHAT_MESSAGES_KEY, JSON\.stringify\(stored\)\)/,
+  );
+  assert.ok(
+    reads,
+    "loadStoredMessages reads the resume cache from localStorage",
+  );
+  assert.ok(writes, "persist effect writes the resume cache to localStorage");
+  assert.match(src, /localStorage\.setItem\(CHAT_THREAD_KEY, threadId\)/);
+  const cap = src.match(/export const MAX_RESUME_THREADS = (\d+);/);
+  assert.ok(cap, "MAX_RESUME_THREADS budget declared");
+  assert.ok(
+    Number(cap[1]) > 0 && Number(cap[1]) <= 10,
+    `resume cap must be between 1 and 10, got ${cap[1]}`,
+  );
+});
