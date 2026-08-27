@@ -23,14 +23,16 @@ export function useEventStream(
   const [isConnected, setIsConnected] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectAttemptRef = useRef(0);
-  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
   const maxReconnectDelay = 30000;
   const enabledRef = useRef(enabled);
   // Reused pending buffers (swap on flush): WS messages push here, a single
   // rAF per frame applies them to state — avoids per-message array spreads.
   const pendingRef = useRef<AxiomEvent[]>([]);
   const spareRef = useRef<AxiomEvent[]>([]);
-  const flushRafRef = useRef<number>();
+  const flushRafRef = useRef<number | undefined>(undefined);
   // Set on unmount: a handshake resolving afterwards must be closed, not
   // attached (orphan), and must never schedule reconnects.
   const disposedRef = useRef(false);

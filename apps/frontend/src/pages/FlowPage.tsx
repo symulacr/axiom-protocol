@@ -940,6 +940,12 @@ export function FlowPage({
           interpolate(flow.notice, { name: draft.value.trim() }),
         );
       } else if (kind === "payment") {
+        // Ledger M4 (open product decision): this panel pays creators only (payForAgent).
+        // payForAgentAndCompute (creator + compute provider in one call) already exists,
+        // converged through the chat lane (packages/chat-runtime executors/encode.ts).
+        // R3 §3 recommendation: converge user-facing payments on payForAgentAndCompute
+        // and route this panel through it. Adding a second visible pay path here is a
+        // product decision that has NOT been made — do not add UI until it is.
         const result = await payment.payForAgent(
           BigInt(selectedTokenId),
           draft.value.trim(),

@@ -69,7 +69,7 @@ export function Landing({
                   Icon: Globe2,
                   title: copy.landing.menuDevelopers,
                   hint: copy.landing.menuDevelopersHint,
-                  onClick: () => navigate(routePath("public-developers")),
+                  onClick: () => navigate(routePath("developers")),
                 },
               ] as const
             ).map(({ Icon, title, hint, onClick }) => (

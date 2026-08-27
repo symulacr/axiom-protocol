@@ -11,6 +11,10 @@ export type Route =
   | "public-proofs"
   | "public-storage"
   | "public-developers"
+  /** L1-M7: legacy hub spellings (/public-*, /features/*) resolve to this
+   *  redirect marker — App.tsx turns it into a <Navigate replace> so the URL
+   *  bar lands on the canonical short hub path. Never a rendered surface. */
+  | "redirect"
   | "dashboard"
   | "agent"
   | "chat"

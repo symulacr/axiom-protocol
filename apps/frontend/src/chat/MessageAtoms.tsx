@@ -236,7 +236,7 @@ export function MsgCopyAction({
   copy: Copy["chat"];
 }): ReactElement {
   const [copied, setCopied] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(
     () => () => {
       if (timerRef.current !== undefined) clearTimeout(timerRef.current);

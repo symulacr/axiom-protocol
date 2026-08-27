@@ -362,9 +362,12 @@ export function startServer(config: ServerConfig): {
   );
   app.use(
     "/mcp",
+    // OE-11: getPayment lets MCP tools dispatch in-process; mcpBaseUrl stays only for
+    // the AXIOM_MCP_LOOPBACK=true fallback path.
     createMcpRouter(
       config,
       () => mcpBaseUrl ?? `http://127.0.0.1:${config.port}`,
+      { getPayment },
     ),
   );
 

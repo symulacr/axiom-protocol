@@ -65,6 +65,7 @@ type VaultCov = {
 
 type PaymentCov = {
   AXIOM_NFT(): Promise<string>;
+  // e2e-only, no production producer (ledger M5) — no backend route, hook, or chat tool calls it.
   payAndWithdrawEarnings(
     agentTokenId: bigint,
     provider: string,
@@ -405,6 +406,8 @@ export async function runPaymentPipelineStep(deps: {
     amount: needTotal,
     step: "payment-pipeline",
   });
+  // e2e-only, no production producer (ledger M5): payAndWithdrawEarnings is exercised here only —
+  // no backend route, hook, or chat tool calls it.
   const payTx = await pay.contract.payAndWithdrawEarnings(
     deps.tokenId,
     deps.provider,

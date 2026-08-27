@@ -413,6 +413,7 @@ async function main(): Promise<void> {
       }),
     ]);
     // Mint writes final iDatas and payAndWithdrawEarnings sets royalty in-tx — no separate config txs.
+    // (payAndWithdrawEarnings is e2e-only, no production producer — ledger M5.)
   }
 
   // Transfer route reads only mint-time NFT state (lane-independent) — start now to overlap chain mining.
@@ -449,6 +450,7 @@ async function main(): Promise<void> {
     });
   } else if (paymentRunnable) {
     // payAndWithdrawEarnings folds royalty-set + pay + compute + withdraw into one tx — no separate step.
+    // (e2e-only, no production producer — ledger M5.)
     await runPaymentPipelineStep({
       paymentProcessor: PAYMENT_PROCESSOR,
       paymentToken: PAYMENT_TOKEN,

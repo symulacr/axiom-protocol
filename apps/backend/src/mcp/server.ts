@@ -7,6 +7,12 @@ import { requireServerAuth } from "@axiom/config/middleware/auth";
 import { createLogger } from "../utils/logger.js";
 import { extractErrorMessage } from "../utils/response.js";
 import type { ServerConfig } from "../config-types.js";
+import type { PaymentProcessorClient } from "../payment/processor.js";
+import {
+  buildInProcessTools,
+  type McpInProcessToolDef,
+  type McpToolDeps,
+} from "./tools.js";
 import pkg from "../../package.json" with { type: "json" };
 
 const log = createLogger("mcp");
@@ -22,7 +28,8 @@ interface McpToolDef {
   buildUrl: (args: Record<string, unknown>) => string;
 }
 
-const TOOLS: McpToolDef[] = [
+// Loopback tool defs — the OE-11 fallback path (AXIOM_MCP_LOOPBACK=true).
+const LOOPBACK_TOOLS: McpToolDef[] = [
   {
     name: "list_agents",
     title: "List Agents",
@@ -158,12 +165,69 @@ async function callReadEndpoint(
   }
 }
 
+async function callInProcess(
+  tool: McpInProcessToolDef,
+  args: Record<string, unknown>,
+): Promise<McpToolResult> {
+  try {
+    const outcome = await tool.handler(args);
+    if (!outcome.ok) {
+      return toolError(`tool ${tool.name} failed: ${outcome.message}`);
+    }
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(outcome.payload, bigintReplacerJson),
+        },
+      ],
+      isError: false,
+    };
+  } catch (err) {
+    return toolError(`tool ${tool.name} failed: ${extractErrorMessage(err)}`);
+  }
+}
+
+// bigint → string parity with the REST json replacer (app "json replacer").
+function bigintReplacerJson(_key: string, value: unknown): unknown {
+  return typeof value === "bigint" ? value.toString() : value;
+}
+
+interface McpRouterOptions {
+  getPayment: () => Promise<PaymentProcessorClient>;
+}
+
 function buildMcpServer(
   config: ServerConfig,
   getBaseUrl: () => string,
+  opts?: McpRouterOptions,
 ): McpServer {
   const server = new McpServer({ name: "axiom", version: PKG_VERSION });
-  for (const tool of TOOLS) {
+  // OE-11: default is in-process dispatch (handlers call service functions directly);
+  // AXIOM_MCP_LOOPBACK=true restores the legacy HTTP self-call path.
+  const loopback = process.env.AXIOM_MCP_LOOPBACK === "true";
+  if (loopback) {
+    log.info("MCP dispatch: loopback (AXIOM_MCP_LOOPBACK=true)");
+    for (const tool of LOOPBACK_TOOLS) {
+      server.registerTool(
+        tool.name,
+        {
+          title: tool.title,
+          description: tool.description,
+          inputSchema: tool.schema,
+          annotations: { readOnlyHint: true, openWorldHint: false },
+        },
+        async (args: Record<string, unknown>) =>
+          callReadEndpoint(config, getBaseUrl(), tool.buildUrl(args)),
+      );
+    }
+    return server;
+  }
+  log.info(
+    "MCP dispatch: in-process (set AXIOM_MCP_LOOPBACK=true for the legacy HTTP self-call path)",
+  );
+  const deps: McpToolDeps = { config, getPayment: opts!.getPayment };
+  for (const tool of buildInProcessTools(deps)) {
     server.registerTool(
       tool.name,
       {
@@ -172,8 +236,7 @@ function buildMcpServer(
         inputSchema: tool.schema,
         annotations: { readOnlyHint: true, openWorldHint: false },
       },
-      async (args: Record<string, unknown>) =>
-        callReadEndpoint(config, getBaseUrl(), tool.buildUrl(args)),
+      async (args: Record<string, unknown>) => callInProcess(tool, args),
     );
   }
   return server;
@@ -202,6 +265,7 @@ function sessionIdOf(req: Request): string | undefined {
 export function createMcpRouter(
   config: ServerConfig,
   baseUrl: () => string,
+  opts?: McpRouterOptions,
 ): Router {
   const transports = new Map<string, StreamableHTTPServerTransport>();
   const router = Router();
@@ -244,7 +308,7 @@ export function createMcpRouter(
           }
         };
         transport = created;
-        const server = buildMcpServer(config, baseUrl);
+        const server = buildMcpServer(config, baseUrl, opts);
         await server.connect(transport);
       }
       await transport.handleRequest(req, res, req.body);

@@ -49,6 +49,7 @@ import { useUiStore } from "./lib/uiStore.js";
 import { humanizeError } from "./utils/format.js";
 import {
   KNOWN_PATHS,
+  redirectHubTarget,
   resolvePublicSeoSlug,
   resolveRoute,
 } from "./lib/routeRegistry.js";
@@ -499,9 +500,11 @@ export function App(): ReactElement {
   };
 
   const locale = state.settings.locale;
+  const hubRedirect = redirectHubTarget(location.pathname);
   const publicSeoSlug = resolvePublicSeoSlug(path);
   const isNotFound =
     !publicSeoSlug &&
+    !hubRedirect &&
     !KNOWN_PATHS.has(location.pathname) &&
     !location.pathname.startsWith("/agents/");
   // Public by design: /chat (anonymous live chat), /staking (honest not-integrated notice),
@@ -509,6 +512,7 @@ export function App(): ReactElement {
   const internal =
     !publicSeoSlug &&
     !isNotFound &&
+    !hubRedirect &&
     location.pathname !== "/" &&
     location.pathname !== "/chat" &&
     location.pathname !== "/staking" &&
@@ -586,6 +590,11 @@ export function App(): ReactElement {
                 <PublicSeoPage slug={publicSeoSlug} />
               ) : isNotFound ? (
                 <Recovery404 go={go} locale={locale} />
+              ) : hubRedirect ? (
+                // L1-M7: legacy hub spellings (/public-*, /features/*) are
+                // permanent redirects to the canonical short hub path — never
+                // 200-rendered alongside it (SEO duplicate-content guard).
+                <Navigate to={hubRedirect} replace />
               ) : location.pathname === "/" ? (
                 <Landing
                   locale={locale}

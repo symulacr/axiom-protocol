@@ -55,6 +55,22 @@ if (!build.success) {
 
 const distDev = join(frontendDir, "dist-dev");
 
+// L1-M7: legacy /public-* + /features/* hub spellings → canonical short path.
+// Server-side mirror of routeRegistry LEGACY_HUB_REDIRECTS so the permanent
+// redirect fires before the SPA fallback (kept in sync by routeRegistry.hubs.test.ts).
+const HUB_REDIRECTS = {
+  "/public-agents": "/agents",
+  "/public-payments": "/payments",
+  "/public-proofs": "/proofs",
+  "/public-storage": "/storage/0g",
+  "/public-developers": "/developers",
+  "/features/agents": "/agents",
+  "/features/payments": "/payments",
+  "/features/proofs": "/proofs",
+  "/features/storage": "/storage/0g",
+  "/features/developers": "/developers",
+};
+
 serve({
   port: PORT,
   async fetch(req) {
@@ -101,6 +117,15 @@ serve({
       }
     // Static from dist-dev (built on start), then public/ (brand images,
     // robots.txt, sitemap.xml — not part of the module graph), SPA fallback.
+    // L1-M7: legacy hub spellings 308 to the canonical short hub path before
+    // the SPA fallback (mirrors routeRegistry LEGACY_HUB_REDIRECTS).
+    const hubRedirect = HUB_REDIRECTS[url.pathname];
+    if (hubRedirect) {
+      return new Response(null, {
+        status: 308,
+        headers: { location: hubRedirect + url.search },
+      });
+    }
     const path = url.pathname === "/" ? "/index.html" : url.pathname;
     const file = Bun.file(join(distDev, path));
     if (await file.exists()) return new Response(file);

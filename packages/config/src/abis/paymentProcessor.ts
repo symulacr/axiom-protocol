@@ -1,4 +1,7 @@
 export const PAYMENT_PROCESSOR_ABI = [
+  // e2e-only, no production producer (ledger M5): payAndWithdrawEarnings is exercised
+  // by apps/backend/e2e parity runs only — no backend route, hook, or chat tool calls it.
+  // Do not wire it into any user-facing surface (see R3 §3: converge on payForAgentAndCompute).
   "function AXIOM_NFT() view returns (address)",
   "function BPS_DENOMINATOR() view returns (uint256)",
   "function UPGRADE_INTERFACE_VERSION() view returns (string)",

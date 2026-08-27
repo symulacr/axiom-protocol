@@ -35,6 +35,20 @@ const BACKEND_URL = requireProxyUrl(
 // NOTE: no separate PROXY_ORACLE_URL — the oracle is in-process on the backend
 // (fccbb3ec); /oracle* forwards through BACKEND_URL below.
 
+// L1-M7: legacy /public-* + /features/* hub spellings → canonical short path.
+const HUB_REDIRECTS = {
+  "/public-agents": "/agents",
+  "/public-payments": "/payments",
+  "/public-proofs": "/proofs",
+  "/public-storage": "/storage/0g",
+  "/public-developers": "/developers",
+  "/features/agents": "/agents",
+  "/features/payments": "/payments",
+  "/features/proofs": "/proofs",
+  "/features/storage": "/storage/0g",
+  "/features/developers": "/developers",
+};
+
 const MIME = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
@@ -159,6 +173,18 @@ const server = Bun.serve({
       }
 
       const safePath = urlPath.replace(/^(\.\.[/\\])+/, "");
+
+      // L1-M7: legacy /public-* + /features/* hub spellings → canonical short
+      // path, before the SPA fallback (server-side mirror of routeRegistry
+      // LEGACY_HUB_REDIRECTS; kept in sync by routeRegistry.hubs.test.ts).
+      const hubRedirect = HUB_REDIRECTS[urlPath];
+      if (hubRedirect) {
+        return new Response(null, {
+          status: 308,
+          headers: { location: hubRedirect + url.search },
+        });
+      }
+
       const filePath = (DIST + "/" + safePath).replace(/\/+/g, "/");
       if (!filePath.startsWith(DIST + "/")) {
         return new Response("Forbidden", { status: 403 });
