@@ -23,3 +23,24 @@ test("only header success resets the failure counter", () => {
 test("empty API_KEY appends no token param", () => {
   assert.match(src, /opts\.token !== false && mode === "query" && API_KEY/);
 });
+
+test("no API key throws typed no-auth error instead of querying hopelessly", () => {
+  assert.match(
+    src,
+    /throw new Error\("WS auth unavailable: no API key configured"\)/,
+  );
+});
+
+test("auto mode is documented as the default branch", () => {
+  assert.match(src, /"auto" \(documented in env\.d\.ts\)/);
+});
+
+test("consumer stops on the typed no-auth error (no hot 401 loop)", () => {
+  const hook = readFileSync(
+    join(import.meta.dir, "../hooks/useEventStream.ts"),
+    "utf8",
+  );
+  assert.match(hook, /WS auth unavailable: no API key configured/);
+  // The catch must distinguish the typed error from transient failures.
+  assert.match(hook, /err instanceof Error/);
+});

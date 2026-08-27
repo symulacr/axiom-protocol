@@ -134,8 +134,19 @@ export function useEventStream(
         wsRef.current = ws;
         attach(ws);
       })
-      .catch(() => {
-        /* both auth paths failed — backoff and retry */
+      .catch((err: unknown) => {
+        // Handshake-stage failures never deliver a close code, so the
+        // 1008/4401 guard in ws.onclose cannot see them. Detect the
+        // missing-credential case and stop: retrying would hammer the
+        // backend with guaranteed 401s forever.
+        if (
+          err instanceof Error &&
+          err.message === "WS auth unavailable: no API key configured"
+        ) {
+          setIsConnected(false);
+          return;
+        }
+        /* transient network failure — backoff and retry */
         scheduleReconnect();
       });
   }, [enabled, topicsKey, scheduleReconnect]);

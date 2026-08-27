@@ -75,6 +75,8 @@ function buildStreamWsUrl(
   for (const t of list) url.searchParams.append("topic", t);
   // Query token stays the guaranteed-compatible path; suppressed once the
   // header path is proven supported (or forced off via VITE_WS_AUTH=query).
+  // "auto" (documented in env.d.ts) is the default branch: header once
+  // proven, query until then.
   const mode =
     import.meta.env.VITE_WS_AUTH === "header"
       ? "header"
@@ -124,6 +126,12 @@ export function openStreamSocket(
     });
 
   return (async () => {
+    // No API key at all: the backend fails upgrades closed (missing token →
+    // 401), so neither path can succeed. Throw a typed error the consumer
+    // (useEventStream) recognizes and stops on, instead of looping forever.
+    if (!API_KEY) {
+      throw new Error("WS auth unavailable: no API key configured");
+    }
     // Try the header path while under the failure budget (or forced header).
     if (
       protocols &&
