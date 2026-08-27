@@ -201,6 +201,7 @@ contract AxiomAgentNFT is
     ///         for `tokenId`, sets it as the owner's access assistant, then immediately revokes the
     ///         authorization — final state = accessAssistants[msg.sender] == delegate, authorizedUsers empty.
     ///         Safe in one tx because no _update (which clears authorized users) runs between add and remove.
+    /// @dev No production producer of this calldata outside the contract; roadmap decision pending (ledger M1).
     function authorizeDelegateAndRevoke(
         address delegate,
         uint256 tokenId

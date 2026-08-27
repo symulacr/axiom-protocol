@@ -54,6 +54,13 @@ export function getComputeBaseUrl(): string {
 // declared/validated in @axiom/config env-schema (AXIOM_COMPUTE_DIRECT_PROXY_URL, W-2);
 // this literal mirrors the schema default so resolution works even when callers
 // construct config without running the full env parse (e.g. unit tests).
+// L6-P1 (waves-ledger): this direct-proxy shim is the second of two compute ingress
+// paths, gated behind AXIOM_COMPUTE_DIRECT_KEY. Decision pending (ledger L6-P1):
+// (1) if direct-provider mode ships, adopt @0gfoundation/0g-compute-ts-sdk@0.9.0 —
+// its broker API makes direct mode first-class and replaces this shim while adding
+// ledger/auto-fund/TEE-verify (R3 §5, npm-verified latest 0.9.0, 2026-07-17);
+// (2) if router-only, delete the shim and this literal. Either way it should not
+// survive as a third way.
 const DIRECT_PROXY_BASE_URL =
   "https://compute-network-6.integratenetwork.work/v1/proxy";
 

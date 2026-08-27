@@ -112,11 +112,6 @@ interface AgentEventQuery {
   limit?: number;
 }
 
-interface IndexPositions {
-  nameIdx: number;
-  tokenIdx?: number;
-}
-
 const byBlockThenLogReceived = (a: StoredEvent, b: StoredEvent) =>
   a.blockNumber - b.blockNumber ||
   a.logIndex - b.logIndex ||
@@ -170,13 +165,9 @@ function isStoredEvent(val: unknown): val is StoredEvent {
 export class EventStore {
   private readonly cap: number;
   private readonly buckets: Map<string, StoredEvent[]>;
-  private readonly byEventName: Map<string, StoredEvent[]>;
-  private readonly byTokenId: Map<string, StoredEvent[]>;
-  private readonly indexPositions = new WeakMap<StoredEvent, IndexPositions>();
   private readonly seenKeys = new Set<string>();
   private readonly serialized = new Map<string, string>();
   private readonly dirty = new Set<string>();
-  private total: number;
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
   private persistChain: Promise<void> = Promise.resolve();
 
@@ -188,9 +179,6 @@ export class EventStore {
     }
     this.cap = maxEventsPerSource;
     this.buckets = new Map();
-    this.byEventName = new Map();
-    this.byTokenId = new Map();
-    this.total = 0;
     this.load();
   }
 
@@ -210,14 +198,10 @@ export class EventStore {
     if (bucket.length >= this.cap) {
       const evicted = bucket.shift()!; // cap validated positive, so the bucket is non-empty here and shift cannot be undefined
       this.seenKeys.delete(dedupeKey(evicted));
-      this.removeFromIndex(evicted);
-      // total was incremented for every stored event, so it is ≥ 1 whenever an eviction fires.
-      this.total -= 1;
     }
     bucket.push(stored);
-    this.reindexEvent(stored, dedupe);
+    this.seenKeys.add(dedupe);
     this.dirty.add(bucketKey);
-    this.total += 1;
     this.persistDebounced();
     try {
       broadcast(stored.eventName, stored);
@@ -229,13 +213,19 @@ export class EventStore {
 
   queryByAgent(query: AgentEventQuery): readonly StoredEvent[] {
     const target = BigInt(query.tokenId).toString();
-    const bucket = this.byTokenId.get(target);
-    if (bucket === undefined) return [];
-    const matches = bucket.filter(
-      (evt) =>
-        (query.eventName === undefined || evt.eventName === query.eventName) &&
-        (query.source === undefined || evt.source === query.source),
-    );
+    const matches: StoredEvent[] = [];
+    for (const bucket of this.buckets.values()) {
+      for (const evt of bucket) {
+        if (
+          evtHasTokenId(evt, target) &&
+          (query.eventName === undefined ||
+            evt.eventName === query.eventName) &&
+          (query.source === undefined || evt.source === query.source)
+        ) {
+          matches.push(evt);
+        }
+      }
+    }
     return sortedLimited(matches, query.limit);
   }
   getAll(
@@ -243,15 +233,17 @@ export class EventStore {
     since?: number,
     eventName?: string,
   ): readonly StoredEvent[] {
-    if (eventName !== undefined) {
-      const bucket = this.byEventName.get(eventName);
-      if (!bucket) return [];
-      if (!since) return [...bucket];
-      return bucket.filter((e) => e.timestamp > since);
+    const results: StoredEvent[] = [];
+    for (const bucket of this.buckets.values()) {
+      for (const evt of bucket) {
+        if (
+          (eventName === undefined || evt.eventName === eventName) &&
+          (since === undefined || evt.timestamp > since)
+        ) {
+          results.push(evt);
+        }
+      }
     }
-    const results = [...this.allEvents()].filter(
-      (e) => since === undefined || e.timestamp > since,
-    );
     return sortedLimited(results, limit);
   }
 
@@ -259,31 +251,6 @@ export class EventStore {
     let n = 0;
     for (const bucket of this.buckets.values()) n += bucket.length;
     return n;
-  }
-
-  /** Flat iteration over every stored event, shared by getAll() and findByDedupeKey(). */
-  private *allEvents(): Generator<StoredEvent> {
-    for (const bucket of this.buckets.values()) yield* bucket;
-  }
-
-  /** Installs a validated/kept bucket and reindexes its events; load() and rollbackToBlock() share this so both rebuild indexes identically. */
-  private installBucket(bucketKey: string, events: StoredEvent[]): void {
-    this.buckets.set(bucketKey, events);
-    this.total += events.length;
-    for (const evt of events) {
-      this.reindexEvent(evt);
-    }
-  }
-
-  /** Single indexer shared by append(), load() and rollbackToBlock() so every insertion path keeps identical indexes; append() passes its precomputed dedupe key. */
-  private reindexEvent(
-    evt: StoredEvent,
-    dedupe: string = dedupeKey(evt),
-  ): void {
-    this.seenKeys.add(dedupe);
-    this.addToIndex(this.byEventName, evt.eventName, evt, "nameIdx", 0);
-    const tid = tokenIdFromPayload(evt.payload);
-    if (tid !== null) this.addToIndex(this.byTokenId, tid, evt, "tokenIdx", -1);
   }
 
   private load(): void {
@@ -295,78 +262,17 @@ export class EventStore {
         log.warn("skipping invalid persisted event", { bucketKey });
         return false;
       });
-      if (valid.length > 0) this.installBucket(bucketKey, valid);
+      if (valid.length > 0) {
+        this.buckets.set(bucketKey, valid);
+        for (const evt of valid) this.seenKeys.add(dedupeKey(evt));
+      }
     }
   }
 
-  /** Clears every index + counter; shared by load() and rollbackToBlock() before reinstalling kept buckets. */
+  /** Clears every index; shared by load() and rollbackToBlock() before reinstalling kept buckets. */
   private resetState(): void {
     this.buckets.clear();
-    this.byEventName.clear();
-    this.byTokenId.clear();
     this.seenKeys.clear();
-    this.total = 0;
-  }
-
-  private addToIndex(
-    map: Map<string, StoredEvent[]>,
-    key: string,
-    evt: StoredEvent,
-    field: "nameIdx" | "tokenIdx",
-    defaultNameIdx: number,
-  ): void {
-    const bucket = getOrCreate(map, key, () => []);
-    bucket.push(evt);
-    const pos = this.indexPositions.get(evt) ?? { nameIdx: defaultNameIdx };
-    pos[field] = bucket.length - 1;
-    this.indexPositions.set(evt, pos);
-  }
-
-  private removeFromIndexAt(
-    bucket: StoredEvent[],
-    idx: number,
-    updatePos: (evt: StoredEvent, newIdx: number) => void,
-  ): void {
-    const last = bucket.length - 1;
-    if (idx !== last) {
-      // idx is a recorded in-bucket position, so idx !== last implies bucket[last] exists.
-      const swapped = bucket[last]!;
-      bucket[idx] = swapped;
-      updatePos(swapped, idx);
-    }
-    bucket.pop();
-  }
-
-  /** Swap-remove the event at `pos[field]` from one indexed bucket and drop the bucket when it empties. */
-  private removeFromIndexedBucket(
-    map: Map<string, StoredEvent[]>,
-    key: string,
-    pos: IndexPositions,
-    field: "nameIdx" | "tokenIdx",
-  ): void {
-    const idx = pos[field];
-    const bucket = map.get(key);
-    if (bucket === undefined || idx === undefined) return;
-    this.removeFromIndexAt(bucket, idx, (swapped, newIdx) => {
-      const swappedPos = this.indexPositions.get(swapped);
-      if (swappedPos) swappedPos[field] = newIdx;
-    });
-    if (bucket.length === 0) map.delete(key);
-  }
-
-  private removeFromIndex(evt: StoredEvent): void {
-    const pos = this.indexPositions.get(evt);
-    if (!pos) return;
-    this.removeFromIndexedBucket(
-      this.byEventName,
-      evt.eventName,
-      pos,
-      "nameIdx",
-    );
-    const tid = tokenIdFromPayload(evt.payload);
-    if (tid !== null) {
-      this.removeFromIndexedBucket(this.byTokenId, tid, pos, "tokenIdx");
-    }
   }
 
   private enqueuePersist(): Promise<void> {
@@ -422,10 +328,10 @@ export class EventStore {
     }
     if (removed === 0) return 0;
 
-    // indexPositions is a WeakMap: removed-event entries GC once dereferenced; kept events get positions overwritten below (mirrors load()).
     this.resetState();
     for (const [bucketKey, kept] of remaining) {
-      this.installBucket(bucketKey, kept);
+      this.buckets.set(bucketKey, kept);
+      for (const evt of kept) this.seenKeys.add(dedupeKey(evt));
       this.dirty.add(bucketKey);
     }
     this.persistDebounced();
@@ -433,18 +339,26 @@ export class EventStore {
     broadcast("system.reorg", {
       cutoff,
       removed,
-      remaining: this.total,
+      remaining: this.size,
     });
     return removed;
   }
 
   private findByDedupeKey(key: string): StoredEvent | undefined {
     if (!this.seenKeys.has(key)) return undefined;
-    for (const evt of this.allEvents()) {
-      if (dedupeKey(evt) === key) return evt;
+    for (const bucket of this.buckets.values()) {
+      for (const evt of bucket) {
+        if (dedupeKey(evt) === key) return evt;
+      }
     }
     return undefined;
   }
+}
+
+/** True when the event's payload carries the given tokenId (normalized via BigInt string form). */
+function evtHasTokenId(evt: StoredEvent, target: string): boolean {
+  const raw = tokenIdFromPayload(evt.payload);
+  return raw !== null && raw === target;
 }
 
 function tokenIdFromPayload(payload: EventPayload): string | null {

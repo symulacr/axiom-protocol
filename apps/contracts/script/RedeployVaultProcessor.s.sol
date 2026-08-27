@@ -116,5 +116,9 @@ contract RedeployVaultProcessor is Script {
         console2.log("Processor proxy:    ", address(processor));
         console2.log("New fns: authorizeDelegateAndRevoke / transferAndCleanExpiredProofs /");
         console2.log("         depositSetStrategyAndWithdraw / payAndWithdrawEarnings live");
+        // transferAndCleanExpiredProofs / cleanExpiredProofs have NO production producer:
+        // no keeper automation is registered; sole cleaner is the e2e indexer job
+        // (apps/backend/e2e/e2e/steps.ts). Roadmap decision pending (ledger M2/M11) —
+        // see docs/adr/003-proof-cleanup-keeper-options.md.
     }
 }

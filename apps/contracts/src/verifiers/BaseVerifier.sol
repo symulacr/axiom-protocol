@@ -25,6 +25,8 @@ abstract contract BaseVerifier is IERC7857DataVerifier {
     function _getMaxProofAge() internal view virtual returns (uint256);
 
     /// @notice Reclaim storage from proofs that have exceeded their max age
+    /// @dev No production caller; sole cleaner is the e2e indexer job (apps/backend/e2e/e2e/steps.ts).
+    ///      Keeper decision (Chainlink / Gelato / status quo) pending — see docs/adr/003-proof-cleanup-keeper-options.md.
     function cleanExpiredProofs(
         bytes32[] calldata proofNonces
     ) external {

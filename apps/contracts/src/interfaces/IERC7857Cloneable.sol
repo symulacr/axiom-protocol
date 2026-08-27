@@ -4,6 +4,7 @@ import {IERC7857} from "./IERC7857.sol";
 import {TransferValidityProof} from "./IERC7857DataVerifier.sol";
 
 /// @title IERC7857Cloneable — extension to clone a token with the same metadata
+/// @dev No production producer of iClone/iCloneFrom calldata; roadmap decision pending (ledger M11).
 interface IERC7857Cloneable is IERC7857 {
     event Cloned(uint256 indexed tokenId, uint256 indexed newTokenId, address from, address to);
 

@@ -91,6 +91,7 @@ export function initParityMatrix(): void {
 
   for (const [fn, reason] of [
     ["mintWithRole", "requires MINTER_ROLE wallet (not E2E deployer path)"],
+    // iClone/iCloneFrom: no production producer; roadmap decision pending (ledger M11).
     ["iClone", "requires clone proofs + second data leg"],
     ["iCloneFrom", "requires clone proofs + parent token"],
     [

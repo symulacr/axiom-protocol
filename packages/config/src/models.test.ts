@@ -140,6 +140,49 @@ describe("storage adapters", () => {
     assert.ok(existsSync(`${file}.bak`), "corrupt file renamed to .bak");
   });
 
+  it("default InMemoryStorage is a pure test double — zero fs writes", () => {
+    // Guard W-5: the double's sink must never touch the filesystem, including
+    // via the module-level exit-flush (SIGINT/SIGTERM → flushSeenDataHashes).
+    // Proof shape: atomicWriteFileSync always mkdirs the .data home before any
+    // write, so an untouched dir after a full mark/flush/exit-flush cycle and
+    // concurrent doubles rules out every disk write path.
+    const dir = mkdtempSync(join(tmpdir(), "axiom-memstorage-clean-"));
+    const realDataDir = process.env.AXIOM_DATA_DIR;
+    process.env.AXIOM_DATA_DIR = dir;
+    try {
+      const storage = new InMemoryStorage();
+      const concurrent = new InMemoryStorage(); // durability contract exercises the sync first-mark path
+      const hash = ("0x" + "ee".repeat(32)) as `0x${string}`;
+      storage.markDataHashSeen(hash);
+      concurrent.markDataHashSeen(("0x" + "ff".repeat(32)) as `0x${string}`);
+      // threshold + timer + explicit exit-flush paths all exercised:
+      for (let i = 0; i < 10; i++) storage.markDataHashSeen(hash);
+      storage.flushSeenDataHashes();
+      concurrent.flushSeenDataHashes();
+      assert.equal(
+        storage.hasSeenDataHash(hash),
+        true,
+        "marks stay visible in memory",
+      );
+      assert.deepEqual(
+        storage.download(storage.upload(new Uint8Array([9])).rootHash),
+        new Uint8Array([9]),
+      );
+      assert.equal(
+        existsSync(join(dir, ".data")),
+        false,
+        "no .data dir created",
+      );
+      assert.equal(
+        existsSync(join(dir, ".data", "oracle-seen-hashes.json")),
+        false,
+        "no seen-hashes file written",
+      );
+    } finally {
+      process.env.AXIOM_DATA_DIR = realDataDir;
+    }
+  });
+
   it("ZeroGStorage shares the seen-hash mixin and uploads via the SDK indexer", async () => {
     const storage = new ZeroGStorage(
       {

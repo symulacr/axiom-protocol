@@ -62,6 +62,45 @@ interface SeenHashesOptions {
   seenHashesFile?: string;
 }
 
+/** Persistence seam for SeenHashesMixin: where seen hashes live across restarts. */
+interface SeenHashesSink {
+  load(): Set<string>;
+  persist(seen: Set<string>): void;
+  exists(): boolean;
+}
+
+/** Real disk-backed sink: same load/persist/backup behavior as before injection. */
+class FileSeenHashesSink implements SeenHashesSink {
+  constructor(private readonly file: string) {}
+
+  load(): Set<string> {
+    return loadSeenDataHashes(this.file);
+  }
+
+  persist(seen: Set<string>): void {
+    persistSeenDataHashes(this.file, seen);
+  }
+
+  exists(): boolean {
+    return existsSync(this.file);
+  }
+}
+
+/** Test-double sink: nothing ever touches the filesystem. */
+class MemorySeenHashesSink implements SeenHashesSink {
+  load(): Set<string> {
+    return new Set();
+  }
+
+  persist(_seen: Set<string>): void {
+    /* in-memory only */
+  }
+
+  exists(): boolean {
+    return false;
+  }
+}
+
 function loadSeenDataHashes(file: string): Set<string> {
   try {
     // ENOENT lands in the catch below, which skips the backup for a missing file.
@@ -121,13 +160,13 @@ function registerSeenHashesExitFlush(instance: SeenHashesMixin): void {
 
 abstract class SeenHashesMixin {
   protected seenDataHashes: Set<string>;
-  protected readonly seenHashesFile: string;
+  private readonly sink: SeenHashesSink;
   private dirtyCount = 0;
   private flushTimer: ReturnType<typeof setTimeout> | undefined;
 
-  constructor(seenHashesFile: string = ORACLE_SEEN_HASHES_FILE) {
-    this.seenHashesFile = seenHashesFile;
-    this.seenDataHashes = loadSeenDataHashes(seenHashesFile);
+  constructor(sink: SeenHashesSink) {
+    this.sink = sink;
+    this.seenDataHashes = sink.load();
     registerSeenHashesExitFlush(this);
   }
 
@@ -138,7 +177,7 @@ abstract class SeenHashesMixin {
     this.dirtyCount += 1;
     if (
       // First mark persists synchronously so concurrently-started instances observe it (durability contract).
-      (this.dirtyCount === 1 && !existsSync(this.seenHashesFile)) ||
+      (this.dirtyCount === 1 && !this.sink.exists()) ||
       this.dirtyCount >= SEEN_HASHES_FLUSH_THRESHOLD
     ) {
       this.flushSeenDataHashes();
@@ -156,7 +195,7 @@ abstract class SeenHashesMixin {
   /** Persist any in-memory marks not yet on disk. Safe to call repeatedly (no-op when clean). */
   flushSeenDataHashes(): void {
     if (this.dirtyCount === 0) return;
-    persistSeenDataHashes(this.seenHashesFile, this.seenDataHashes);
+    this.sink.persist(this.seenDataHashes);
     this.dirtyCount = 0;
   }
 
@@ -169,7 +208,13 @@ export class InMemoryStorage extends SeenHashesMixin implements StorageAdapter {
   private store = new Map<string, Uint8Array>();
 
   constructor(options: SeenHashesOptions = {}) {
-    super(options.seenHashesFile);
+    // Test double: default sink keeps everything in memory (no disk artifacts);
+    // an explicit seenHashesFile opts back into durable persistence for tests.
+    super(
+      options.seenHashesFile !== undefined
+        ? new FileSeenHashesSink(options.seenHashesFile)
+        : new MemorySeenHashesSink(),
+    );
   }
 
   upload(blob: Uint8Array, _encryption?: Encryption): { rootHash: Hex } {
@@ -277,7 +322,10 @@ export class ZeroGStorage extends SeenHashesMixin implements StorageAdapter {
   }
 
   constructor(config: ZeroGStorageConfig, options: SeenHashesOptions = {}) {
-    super(options.seenHashesFile);
+    // Production storage always persists seen hashes — default file unchanged.
+    super(
+      new FileSeenHashesSink(options.seenHashesFile ?? ORACLE_SEEN_HASHES_FILE),
+    );
     this.config = config;
     this.indexer = new Indexer(config.indexerRpc);
     this.storageKey = resolveTransportKey();

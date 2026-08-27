@@ -72,6 +72,24 @@ async function resolveLiveAddresses(
 }
 
 async function main(): Promise<void> {
+  // S-4: bind shutdown listeners BEFORE the async boot (address resolution hits the
+  // RPC; storage construction follows). A SIGTERM during boot must still drain —
+  // the pre-server guard below defers the drain until the EventStore exists, so a
+  // kill mid-boot exits fast instead of voiding the flush the handler protects.
+  let shuttingDown = false;
+  let drain: () => Promise<void> = async () => {};
+  const onSignal = (sig: NodeJS.Signals): void => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    createLogger("server").info("shutdown", { signal: sig });
+    const forceExit = setTimeout(() => process.exit(1), 10_000);
+    forceExit.unref();
+    void drain().then(() => process.exit(0));
+  };
+  process.on("SIGTERM", onSignal);
+  process.on("SIGINT", onSignal);
+  registerProcessHandlers();
+
   // Lazy: @sentry/node loads only when a DSN is configured; awaited before startServer
   // so the express error handler registers with Sentry already initialized.
   await initSentry(env);
@@ -119,25 +137,13 @@ async function main(): Promise<void> {
   const indexer = new IndexerService({ provider, env });
   indexer.start();
 
-  let shuttingDown = false;
-  const onSignal = (sig: NodeJS.Signals): void => {
-    if (shuttingDown) return;
-    shuttingDown = true;
-    createLogger("server").info("shutdown", { signal: sig });
-    // Bound the drain: a refusing socket must not turn graceful shutdown into
-    // SIGKILL-by-orchestrator (which would void the EventStore flush).
-    const forceExit = setTimeout(() => process.exit(1), 10_000);
-    forceExit.unref();
-    void (async () => {
-      await indexer.stop(); // final checkpoint rename completes first
-      await getEventStore().flush();
-      server.httpServer.closeAllConnections?.();
-      server.httpServer.close(() => process.exit(0));
-    })();
+  // S-4: server + indexer now exist — arm the real drain for the early-bound listener.
+  drain = async () => {
+    await indexer.stop(); // final checkpoint rename completes first
+    await getEventStore().flush();
+    server.httpServer.closeAllConnections?.();
+    server.httpServer.close(() => process.exit(0));
   };
-  process.on("SIGTERM", onSignal);
-  process.on("SIGINT", onSignal);
-  registerProcessHandlers();
 }
 
 void main().catch((err) => {
