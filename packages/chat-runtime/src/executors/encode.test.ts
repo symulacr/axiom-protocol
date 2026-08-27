@@ -1,12 +1,6 @@
 import { describe, it } from "bun:test";
 import assert from "node:assert/strict";
-import {
-  encodeFunctionData,
-  keccak256,
-  parseAbi,
-  parseUnits,
-  toHex,
-} from "viem";
+import { encodeFunctionData, parseAbi, parseUnits } from "viem";
 import { PAYMENT_PROCESSOR_ABI } from "@axiom/config/abis";
 import { runEncodeTool } from "./encode.js";
 import type { ToolRuntime } from "../transport.js";
@@ -49,14 +43,14 @@ function capturingCtx() {
   return {
     ctx,
     getBody: () =>
-      sentBody as { dataDescription?: string; dataHash?: string; to?: string },
+      sentBody as { name?: string; to?: string; dataHash?: string },
   };
 }
 
 type CapturedCall = {
   path: string;
   method?: string;
-  body?: { dataHash?: string; to?: string; dataDescription?: string };
+  body?: { name?: string; to?: string; dataHash?: string };
 };
 
 function capturingAllCtx(oracleUrl = "http://oracle.test:8787") {
@@ -111,7 +105,7 @@ describe("runEncodeTool", () => {
     assert.equal(res.ok, false);
   });
 
-  it("mint_agent without dataHash derives dataHash from dataDescription (first-time-user gate)", async () => {
+  it("mint_agent posts the hashless { name, to } shape (server derives dataHash)", async () => {
     const { ctx, getBody } = capturingCtx();
     const res = await runEncodeTool(
       "mint_agent",
@@ -124,109 +118,43 @@ describe("runEncodeTool", () => {
       "first-time users must be able to mint without a dataHash",
     );
     const body = getBody();
-    assert.equal(body.dataDescription, "my first agent");
+    assert.equal(body.name, "my first agent");
     assert.equal(body.to, "0xwallet");
     assert.equal(
       body.dataHash,
-      keccak256(toHex("my first agent")),
-      "dataHash must be derived from the agent name when omitted",
+      undefined,
+      "client must not derive dataHash — the server derives it from the name",
     );
   });
 
-  it("mint_agent with explicit dataHash passes it through unchanged", async () => {
+  it("mint_agent posts the trimmed name (server derives from the trimmed form)", async () => {
     const { ctx, getBody } = capturingCtx();
-    const explicit = ("0x" + "ab".repeat(32)) as `0x${string}`;
     const res = await runEncodeTool(
       "mint_agent",
-      { dataDescription: "named agent", dataHash: explicit },
+      { dataDescription: "  named agent  " },
       ctx,
     );
     assert.equal(res.ok, true);
-    assert.equal(
-      getBody().dataHash,
-      explicit,
-      "explicit dataHash must not be re-derived",
-    );
+    assert.equal(getBody().name, "named agent");
+    assert.equal(getBody().to, "0xwallet");
   });
 
-  it("mint_agent registers the derived dataHash with the oracle (markDataHashSeen)", async () => {
-    const { ctx, oracleCall } = capturingAllCtx();
+  it("mint_agent makes no separate oracle registration call (server-side)", async () => {
+    const { ctx, calls } = capturingAllCtx();
     const res = await runEncodeTool(
       "mint_agent",
       { dataDescription: "chat agent" },
       ctx,
     );
-    assert.equal(
-      res.ok,
-      true,
-      "mint must still succeed when oracle is reachable",
-    );
-
-    const call = oracleCall();
-    assert.ok(
-      call,
-      "chat mint MUST attempt oracle registration (POST /v1/agents/mint)",
-    );
-    assert.equal(call!.method, "POST");
-    assert.equal(
-      call!.body?.dataHash,
-      keccak256(toHex("chat agent")),
-      "oracle must be registered with the derived dataHash",
-    );
-    assert.equal(
-      call!.body?.to,
-      "0xwallet",
-      "oracle must be registered with the minter address (to)",
-    );
-  });
-
-  it("mint_agent with explicit dataHash registers it with the oracle", async () => {
-    const { ctx, oracleCall } = capturingAllCtx();
-    const explicit = ("0x" + "cd".repeat(32)) as `0x${string}`;
-    const res = await runEncodeTool(
-      "mint_agent",
-      { dataDescription: "named agent", dataHash: explicit },
-      ctx,
-    );
     assert.equal(res.ok, true);
-    const call = oracleCall();
-    assert.ok(call, "oracle registration must be attempted");
     assert.equal(
-      call!.body?.dataHash,
-      explicit,
-      "oracle must be registered with the explicit dataHash",
+      calls.filter((c) => c.path.includes("/v1/agents/mint")).length,
+      1,
+      "exactly one request: POST /v1/agents/mint/encode with the hashless body — no separate oracle round-trip",
     );
-  });
-
-  it("mint_agent fails when oracle registration fails (fatal, matches UI wizard)", async () => {
-    const oracleUrl = "http://oracle.test:8787";
-    const ctx = makeCtx({
-      oracleUrl,
-      mode: "encode-only",
-      http: {
-        fetch: async (path: string) => {
-          if (path.replace(/\/$/, "").endsWith("/v1/agents/mint")) {
-            throw new Error("oracle unreachable");
-          }
-          return {
-            ok: true,
-            status: 200,
-            text: async () =>
-              JSON.stringify({ to: "0xabc", data: "0xdef", value: "0" }),
-          };
-        },
-      },
-    });
-    const res = await runEncodeTool(
-      "mint_agent",
-      { dataDescription: "resilient agent" },
-      ctx,
-    );
-    assert.equal(
-      res.ok,
-      false,
-      "a failed oracle registration must abort the mint — an unregistered hash makes the agent un-transferable later",
-    );
+    const call = calls[0];
+    assert.match(call.path, /\/v1\/agents\/mint\/encode$/);
+    assert.equal(call.method, "POST");
   });
 });
 

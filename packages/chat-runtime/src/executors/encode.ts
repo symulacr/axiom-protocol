@@ -1,6 +1,6 @@
 import { getChatToolSpec } from "@axiom/config/chat-tools";
 import { PAYMENT_PROCESSOR_ABI } from "@axiom/config/abis";
-import { ADDRESS_REGEX, deriveMintDataHash } from "@axiom/config/types/hex";
+import { ADDRESS_REGEX } from "@axiom/config/types/hex";
 import { fetchJson, postJson, resolveTokenId, toolFail } from "../transport.js";
 import { encodeFunctionData, parseAbi, parseUnits } from "viem";
 import type { ToolRuntime } from "../transport.js";
@@ -95,35 +95,19 @@ async function encodeMint(
   if (!to) return toolFail("Wallet not connected");
 
   if (!args.dataDescription) return toolFail("dataDescription required");
-  // dataHash must match the UI mint wizard: deriveMintDataHash(trimmed description); the oracle signs only hashes it has seen, so both mint paths MUST derive identically — until upload, this name hash stands in for the payload's 0G Merkle root.
-  const description = String(args.dataDescription).trim();
-  // dataHash omitted → name-derived placeholder keeps first-time mints working; real sealed data attaches later via update().
-  const dataHash =
-    typeof args.dataHash === "string" && args.dataHash.length > 0
-      ? String(args.dataHash)
-      : deriveMintDataHash(description);
+  const name = String(args.dataDescription).trim();
+  if (!name) return toolFail("dataDescription required");
 
-  const body = {
-    dataDescription: description,
-    dataHash,
-    to,
-  };
-
+  // Hashless mint (P3 §(b) #1-#3): the server derives dataHash + description
+  // from the name and marks it seen with the oracle in-process — the client
+  // never derives the hash, so UI and chat mints cannot diverge.
   const { ok: httpOk, data } = await postJson<{
     to: string;
     data: string;
     value: string;
-  }>(ctx.http, "/v1/agents/mint/encode", body);
+  }>(ctx.http, "/v1/agents/mint/encode", { name, to });
 
   if (!httpOk || !data.to) return toolFail("mint encode fail");
-
-  try {
-    await registerDataHashWithOracle(ctx, dataHash, to);
-  } catch (e) {
-    return toolFail(
-      e instanceof Error ? e.message : "oracle registration failed",
-    );
-  }
 
   if (ctx.mode === "encode-only" || !ctx.wallet?.signAndSend) {
     return encodeOnlyResult(data);
@@ -303,25 +287,4 @@ async function encodePayForAgent(
     "pay sign failed",
     { tokenId, ...extra },
   );
-}
-
-async function registerDataHashWithOracle(
-  ctx: ToolRuntime,
-  dataHash: string,
-  to: string,
-): Promise<void> {
-  const oracleUrl = ctx.oracleUrl;
-  if (!oracleUrl) return;
-
-  const url = `${oracleUrl.replace(/\/$/, "")}/v1/agents/mint`;
-  // Fatal like the UI wizard: oracle-unseen hashes yield un-transferable agents ("Unknown dataHash").
-  const { ok } = await postJson<{ ok?: boolean }>(ctx.http, url, {
-    dataHash,
-    to,
-  });
-  if (!ok) {
-    throw new Error(
-      `oracle registration failed for dataHash=${dataHash} (mint aborted)`,
-    );
-  }
 }

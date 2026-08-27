@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useEffect,
   useId,
   useMemo,
   useState,
@@ -11,6 +12,7 @@ import { createPortal } from "react-dom";
 import { isAddress } from "viem";
 import { toast } from "sonner";
 import { useAccount } from "wagmi";
+import { apiFetch } from "../utils/apiFetch.js";
 import {
   useTransfer,
   type TransferInput,
@@ -23,9 +25,9 @@ import { useModalDismiss } from "../hooks/useModalDismiss.js";
 import { humanizeError, truncateAddress } from "../utils/format.js";
 import {
   buildTransferInput as assembleTransferInput,
-  freshAccessProofNonce,
   runCoSignStep,
 } from "../lib/transferHandoff.js";
+import { ReceiverKeyUnknownError } from "../hooks/useTransfer.js";
 import { useUiStore } from "../lib/uiStore.js";
 import { getCopy } from "../lib/copy.js";
 
@@ -125,7 +127,11 @@ function TransferFormPhase({
   receiverPubKey,
   onPubKeyChange,
   pubKeyError,
-  accessProofNonce,
+  pubkeyFallback,
+  pubkeyResolveStatus,
+  pubkeyFallbackSummary,
+  pubkeyResolvePending,
+  pubkeyResolveFailed,
   oldDataEncryptionKey,
   onOldDataKeyChange,
   oldDataUri,
@@ -136,7 +142,6 @@ function TransferFormPhase({
   canSubmit,
   isLoading,
   onSubmit,
-  walkthrough,
 }: {
   formId: string;
   receiverAddress: string;
@@ -145,7 +150,13 @@ function TransferFormPhase({
   receiverPubKey: string;
   onPubKeyChange: (value: string) => void;
   pubKeyError: string | null;
-  accessProofNonce: `0x${string}`;
+  /** P3 §(b)#4: the Advanced paste field only appears when the address has
+   * no on-chain key (NO_ONCHAIN_KEY) — the normal path never asks for hex. */
+  pubkeyFallback: boolean;
+  pubkeyResolveStatus: "idle" | "pending" | "failed";
+  pubkeyFallbackSummary: string;
+  pubkeyResolvePending: string;
+  pubkeyResolveFailed: string;
   oldDataEncryptionKey: string;
   onOldDataKeyChange: (value: string) => void;
   oldDataUri: string;
@@ -156,7 +167,6 @@ function TransferFormPhase({
   canSubmit: boolean;
   isLoading: boolean;
   onSubmit: (e: FormEvent<HTMLFormElement>) => Promise<void>;
-  walkthrough: { title: string; steps: readonly string[] };
 }): ReactElement {
   return (
     <form onSubmit={onSubmit}>
@@ -176,39 +186,30 @@ function TransferFormPhase({
         error={addressError ?? undefined}
       />
 
-      <Field
-        id={`${formId}-pubkey`}
-        label="Receiver public key"
-        value={receiverPubKey}
-        onChange={onPubKeyChange}
-        placeholder="0x…  (128 hex chars)"
-        maxLength={RECEIVER_PUBKEY_HEX_LENGTH}
-        multiline
-        rows={3}
-        mono
-        required
-        error={pubKeyError ?? undefined}
-      />
-
-      {/* U11: the one-line hint became an expanding 3-step walkthrough —
-          same validation/maxLength, self-service key retrieval. */}
-      <details className="transfer-modal-details">
-        <summary>{walkthrough.title}</summary>
-        <ol>
-          {walkthrough.steps.map((step) => (
-            <li key={step}>{step}</li>
-          ))}
-        </ol>
-      </details>
-
-      <Field
-        id={`${formId}-nonce`}
-        label="Access proof nonce"
-        value={accessProofNonce}
-        readOnly
-        mono
-        hint="Unique per transfer; generated automatically."
-      />
+      {pubkeyFallback ? (
+        <>
+          <p className="transfer-modal-lede">{pubkeyResolveFailed}</p>
+          <details className="transfer-modal-details">
+            <summary>{pubkeyFallbackSummary}</summary>
+            <Field
+              id={`${formId}-pubkey`}
+              label="Receiver public key"
+              value={receiverPubKey}
+              onChange={onPubKeyChange}
+              placeholder="0x…  (128 hex chars)"
+              maxLength={RECEIVER_PUBKEY_HEX_LENGTH}
+              multiline
+              rows={3}
+              mono
+              error={pubKeyError ?? undefined}
+            />
+          </details>
+        </>
+      ) : (
+        pubkeyResolveStatus === "pending" && (
+          <p className="transfer-modal-lede">{pubkeyResolvePending}</p>
+        )
+      )}
 
       <details className="transfer-modal-details">
         <summary>Re-encrypt for receiver (optional)</summary>
@@ -473,6 +474,12 @@ export function TransferModal({
 
   const [receiverAddress, setReceiverAddress] = useState("");
   const [receiverPubKey, setReceiverPubKey] = useState("");
+  // P3 §(b)#4: when the address resolves to NO_ONCHAIN_KEY the Advanced paste
+  // field (spec-mandated fallback) is revealed; reset whenever the address changes.
+  const [pubkeyFallback, setPubkeyFallback] = useState(false);
+  const [pubkeyResolveStatus, setPubkeyResolveStatus] = useState<
+    "idle" | "pending" | "failed"
+  >("idle");
   const [oldDataEncryptionKey, setOldDataEncryptionKey] = useState("");
   const [oldDataUri, setOldDataUri] = useState("");
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -485,16 +492,41 @@ export function TransferModal({
     },
     [onClose],
   );
+
+  // Probe the registry as soon as a valid address is typed: its verdict decides
+  // whether the Advanced paste fallback is needed before submit time.
+  useEffect(() => {
+    setPubkeyFallback(false);
+    setPubkeyResolveStatus("idle");
+    if (!isAddress(receiverAddress)) return;
+    let cancelled = false;
+    setPubkeyResolveStatus("pending");
+    apiFetch<{ receiverPubKey64?: string }>(
+      `/v1/registry/pubkey/${receiverAddress}`,
+    )
+      .then(() => {
+        if (!cancelled) setPubkeyResolveStatus("idle");
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setPubkeyResolveStatus("failed");
+        if (
+          err instanceof ReceiverKeyUnknownError ||
+          (err instanceof Error && err.message.includes("NO_ONCHAIN_KEY"))
+        ) {
+          setPubkeyFallback(true);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [receiverAddress]);
   const handleTransferred = useCallback(
     (txHash: `0x${string}`): void => {
       toast.success(`Transfer ${txHash.slice(0, 10)}… confirmed`);
       onSuccess?.(txHash);
     },
     [onSuccess],
-  );
-
-  const [accessProofNonce, setAccessProofNonce] = useState<`0x${string}`>(
-    freshAccessProofNonce,
   );
 
   const pubKeyError = useMemo(
@@ -524,17 +556,17 @@ export function TransferModal({
     return null;
   }, [oldDataEncryptionKey, oldDataUri]);
   const buildInput = useCallback((): TransferInput => {
+    // P3 §(b)#4: no client nonce, no required pubkey — the hook resolves the
+    // receiver key from the address at prepare time; a manual paste wins.
     return assembleTransferInput(
       {
         tokenId,
         to: receiverAddress,
-        receiverPubKey64: receiverPubKey,
-        accessProofNonce,
+        receiverPubKeyManual: receiverPubKey,
       },
       { oldDataEncryptionKey, oldDataUri },
     );
   }, [
-    accessProofNonce,
     oldDataEncryptionKey,
     oldDataUri,
     receiverAddress,
@@ -592,7 +624,6 @@ export function TransferModal({
     setSubmitError(null);
     setCoSignBlocked(false);
     setPhase("form");
-    setAccessProofNonce(freshAccessProofNonce());
   }, [reset]);
 
   // setState is stable — pass it straight to Field onChange (no wrapper needed).
@@ -641,7 +672,11 @@ export function TransferModal({
           receiverPubKey={receiverPubKey}
           onPubKeyChange={setReceiverPubKey}
           pubKeyError={pubKeyError}
-          accessProofNonce={accessProofNonce}
+          pubkeyFallback={pubkeyFallback}
+          pubkeyResolveStatus={pubkeyResolveStatus}
+          pubkeyFallbackSummary={flowCopy.transferPubkeyFallbackSummary}
+          pubkeyResolvePending={flowCopy.transferPubkeyResolvePending}
+          pubkeyResolveFailed={flowCopy.transferPubkeyResolveFailed}
           oldDataEncryptionKey={oldDataEncryptionKey}
           onOldDataKeyChange={setOldDataEncryptionKey}
           oldDataUri={oldDataUri}
@@ -652,10 +687,6 @@ export function TransferModal({
           canSubmit={canSubmit}
           isLoading={isLoading}
           onSubmit={onSubmit}
-          walkthrough={{
-            title: flowCopy.transferKeyWalkthroughTitle,
-            steps: flowCopy.transferKeyWalkthroughSteps,
-          }}
         />
       ) : phase === "co-sign" && coSignReceiver !== null ? (
         <>

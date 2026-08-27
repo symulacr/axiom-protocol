@@ -1,8 +1,8 @@
 /*
   FlowPage — v2 review-first operation page over the LIVE v1 encode-relay
   hooks (plan mapping, steps 6):
-    mint → useMintWizard (oracle ack POST /v1/agents/mint, then
-               POST /v1/agents/mint/encode + wallet sendTransaction)
+    mint → useMintWizard (single hashless POST /v1/agents/mint/encode
+               { name, owner } + wallet sendTransaction)
     payment → usePayment.payForAgent (exact ERC-20 approve when needed, then
                payForAgent) — the v2 2-boundary sheet: allowance review, then pay
     transfer → useTransfer.prepare (challenge) + confirm (EIP-712 sign +
@@ -104,7 +104,6 @@ import type {
 } from "@axiom/config/types/orchestrator";
 import {
   buildTransferInput as assembleTransferInput,
-  freshAccessProofNonce,
   runCoSignStep,
 } from "../lib/transferHandoff.js";
 
@@ -527,7 +526,6 @@ export function FlowPage({
     : undefined;
 
   const [allowance, setAllowance] = useState<string | null>(null);
-  const nonceRef = useRef(freshAccessProofNonce());
 
   // Prefilled instruction links (?instruction=…) seed the draft once.
   useEffect(() => {
@@ -652,7 +650,6 @@ export function FlowPage({
     });
   };
   const updateValue = (value: string): void => patchDraftText({ value });
-  const updateExtra = (extra: string): void => patchDraftText({ extra });
 
   // validate() names the failing FIELD for inline Field errors; recoverable-error state is execution-only.
   type FlowFieldError = {
@@ -682,8 +679,6 @@ export function FlowPage({
     assembleTransferInput({
       tokenId: BigInt(selectedTokenId || "0"),
       to: draft.value.trim(),
-      receiverPubKey64: draft.extra.trim(),
-      accessProofNonce: nonceRef.current,
     });
 
   const validate = (): FlowFieldError | null => {
@@ -706,15 +701,6 @@ export function FlowPage({
       return { field: "value", message: f.errNameLength };
     if (kind === "transfer" && !isAddress(trimmed))
       return { field: "value", message: f.errRecipientAddress };
-    if (kind === "transfer" && !/^0x[0-9a-fA-F]{128}$/.test(draft.extra.trim()))
-      // U10: the classic dead-end is pasting the 42-char ADDRESS into the
-      // 132-char pubkey field — name the mistake instead of echoing hex math.
-      return {
-        field: "extra",
-        message: /^0x[0-9a-fA-F]{40}$/.test(draft.extra.trim())
-          ? f.errRecipientKeyIsAddress
-          : f.errRecipientKey,
-      };
     if (kind === "tick" && trimmed.length < 3)
       return { field: "value", message: f.errInstruction };
     if (kind !== "mint" && !selectedTokenId)
@@ -786,7 +772,6 @@ export function FlowPage({
 
   // shared transfer tail — receipt row + confirm pipeline + notice.
   const completeTransfer = (txHash: `0x${string}`) => {
-    nonceRef.current = freshAccessProofNonce();
     // naming contract: the receipt kind IS the destination's nav name.
     settleFlowTx(
       txHash,
@@ -944,9 +929,8 @@ export function FlowPage({
     setDraftPhase("submitting");
     try {
       if (kind === "mint") {
-        const dataHash = await mint.registerOracle(draft.value);
         settleFlowTx(
-          await mint.chainMint(dataHash),
+          await mint.mint(draft.value),
           {
             kind: flow.receiptKind,
             detail: interpolate(flow.detail, { name: draft.value.trim() }),
@@ -1046,7 +1030,6 @@ export function FlowPage({
   };
 
   const restart = () => {
-    nonceRef.current = freshAccessProofNonce();
     tickHook.resetStream();
     setSubmitError(null);
     resetHandoff();
@@ -1224,18 +1207,9 @@ export function FlowPage({
           : flow.fieldHint,
     });
   } else if (kind === "transfer") {
-    formFields.push(
-      { ...baseValueField, maxLength: 42 },
-      {
-        key: "extra",
-        label: f.transferKeyLabel,
-        value: draft.extra,
-        onChange: updateExtra,
-        maxLength: 130,
-        error: fieldError("extra"),
-        hint: f.transferKeyHint,
-      },
-    );
+    // P3 §(b)#4: a single receiver-ADDRESS field — the pubkey is resolved
+    // from the address at prepare time (Advanced paste lives in the modal).
+    formFields.push({ ...baseValueField, maxLength: 42 });
   } else if (kind === "tick") {
     formFields.push({ ...baseValueField, maxLength: 320 });
   }
@@ -1343,18 +1317,6 @@ export function FlowPage({
                 hint={field.hint}
               />
             ))}
-            {/* U10: the paste-guidance error above points here — the
-                3-step receiver-key walkthrough, one expanding disclosure. */}
-            {kind === "transfer" && (
-              <details className="transfer-key-walkthrough">
-                <summary>{f.transferKeyWalkthroughTitle}</summary>
-                <ol>
-                  {f.transferKeyWalkthroughSteps.map((step) => (
-                    <li key={step}>{step}</li>
-                  ))}
-                </ol>
-              </details>
-            )}
           </div>
 
           {kind === "tick" &&

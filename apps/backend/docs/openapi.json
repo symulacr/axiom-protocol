@@ -645,31 +645,57 @@
         ]
       },
       "MintEncodeBody": {
-        "type": "object",
-        "properties": {
-          "dataDescription": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 1024
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "dataDescription": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1024
+              },
+              "dataHash": {
+                "type": "string",
+                "pattern": "^0x[a-fA-F0-9]+$",
+                "description": "0x-prefixed hex string"
+              },
+              "to": {
+                "type": "string",
+                "pattern": "^0x[a-fA-F0-9]{40}$",
+                "description": "0x-prefixed EVM address (20 bytes)",
+                "examples": [
+                  "0x0000000000000000000000000000000000000000"
+                ]
+              }
+            },
+            "required": [
+              "dataDescription",
+              "dataHash",
+              "to"
+            ]
           },
-          "dataHash": {
-            "type": "string",
-            "pattern": "^0x[a-fA-F0-9]+$",
-            "description": "0x-prefixed hex string"
-          },
-          "to": {
-            "type": "string",
-            "pattern": "^0x[a-fA-F0-9]{40}$",
-            "description": "0x-prefixed EVM address (20 bytes)",
-            "examples": [
-              "0x0000000000000000000000000000000000000000"
+          {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 80
+              },
+              "owner": {
+                "type": "string",
+                "pattern": "^0x[a-fA-F0-9]{40}$",
+                "description": "0x-prefixed EVM address (20 bytes)",
+                "examples": [
+                  "0x0000000000000000000000000000000000000000"
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "owner"
             ]
           }
-        },
-        "required": [
-          "dataDescription",
-          "dataHash",
-          "to"
         ]
       },
       "ArchiveQueryBody": {
@@ -2882,6 +2908,21 @@
           "tokenId",
           "to"
         ]
+      },
+      "ReceiverPubKeyResponse": {
+        "type": "object",
+        "properties": {
+          "receiverPubKey64": {
+            "type": "string",
+            "minLength": 130,
+            "maxLength": 130,
+            "pattern": "^0x[a-fA-F0-9]+$",
+            "description": "0x-prefixed hex string"
+          }
+        },
+        "required": [
+          "receiverPubKey64"
+        ]
       }
     }
   },
@@ -3700,6 +3741,67 @@
             "description": "Payment processor not configured",
             "x-error-codes": [
               "ADDRESS_NOT_CONFIGURED"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/registry/pubkey/{id}": {
+      "get": {
+        "summary": "Receiver pubkey lookup from the address's latest outgoing tx (60s cache)",
+        "description": "Returns { receiverPubKey64 } (0x + 64-byte X||Y). 404 NO_ONCHAIN_KEY when the backend has no tx-by-sender source for the address (fresh wallets) — the FE keeps the Advanced manual-paste fallback.",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Wallet address (0x + 40 hex)",
+            "schema": {
+              "type": "string",
+              "pattern": "^0x[0-9a-fA-F]{40}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recovered uncompressed pubkey",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceiverPubKeyResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid address",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No recoverable key",
+            "x-error-codes": [
+              "NO_ONCHAIN_KEY"
             ],
             "content": {
               "application/json": {

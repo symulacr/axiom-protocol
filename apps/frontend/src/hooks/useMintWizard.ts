@@ -1,12 +1,7 @@
 import { useCallback, useState } from "react";
 import { useAccount, useWalletClient } from "wagmi";
 import { useMutation } from "@tanstack/react-query";
-import { deriveMintDataHash } from "@axiom/config/types/hex";
-import {
-  apiFetch,
-  oracleFetch,
-  type EncodeResponse,
-} from "../utils/apiFetch.js";
+import { apiFetch, type EncodeResponse } from "../utils/apiFetch.js";
 
 export function buildDefaultPayload(agentName: string): string {
   const name = agentName.trim() || "Axiom agent";
@@ -28,40 +23,18 @@ export function useMintWizard() {
   const { address: owner } = useAccount();
   const { data: walletClient } = useWalletClient();
 
-  const deriveDataHash = useCallback(
-    (name?: string) => {
-      const n = (name ?? agentName).trim() || "Axiom agent";
-      // dataHash must match the chat mint_agent derivation (oracle signs only hashes it has SEEN); real hash is the 0G Merkle root once the payload uploads
-      return deriveMintDataHash(n);
-    },
-    [agentName],
-  );
-
-  const oracleMutation = useMutation({
+  const mintMutation = useMutation({
     retry: false,
-    mutationFn: (hash: `0x${string}`) =>
-      oracleFetch<{ ok?: boolean; dataHash?: string }>("/v1/agents/mint", {
-        method: "POST",
-        body: JSON.stringify({ dataHash: hash }),
-      }),
-  });
-
-  const encodeMutation = useMutation({
-    retry: false,
-    mutationFn: async (input: {
-      dataHash: `0x${string}`;
-      description: string;
-    }) => {
+    mutationFn: async (name: string) => {
       if (!owner || !walletClient) {
         throw new Error("wallet not connected");
       }
+      // Hashless mint (P3 §(b) #1-#3): the server derives dataHash + description
+      // from the name and registers it with the oracle in-process — no client
+      // keccak, one round-trip instead of two.
       const encoded = await apiFetch<EncodeResponse>("/v1/agents/mint/encode", {
         method: "POST",
-        body: JSON.stringify({
-          dataDescription: input.description,
-          dataHash: input.dataHash,
-          to: owner,
-        }),
+        body: JSON.stringify({ name, owner }),
       });
       return walletClient.sendTransaction({
         to: encoded.to,
@@ -72,39 +45,26 @@ export function useMintWizard() {
     },
   });
 
-  const registerOracle = useCallback(
+  const mint = useCallback(
     async (name?: string): Promise<`0x${string}`> => {
       setStep("minting");
       try {
-        const hash = deriveDataHash(name);
-        const body = await oracleMutation.mutateAsync(hash);
-        if (body.ok !== true) throw new Error("Oracle did not accept dataHash");
+        const txHash = await mintMutation.mutateAsync(
+          (name ?? agentName).trim() || "Axiom agent",
+        );
         setStep("ready");
-        return hash;
+        return txHash;
       } catch (err) {
         setStep("name");
         throw err;
       }
     },
-    [deriveDataHash, oracleMutation],
-  );
-
-  const chainMint = useCallback(
-    async (dataHash: `0x${string}`): Promise<`0x${string}`> =>
-      encodeMutation.mutateAsync({
-        dataHash,
-        description: agentName.trim() || "Axiom agent", // must match the name derived in deriveDataHash via keccak256(toHex(name)) so chat mint agrees
-      }),
-    [encodeMutation, agentName],
+    [agentName, mintMutation],
   );
 
   return {
     setAgentName,
-    registerOracle,
-    chainMint,
-    busy:
-      oracleMutation.isPending ||
-      encodeMutation.isPending ||
-      step === "minting",
+    mint,
+    busy: mintMutation.isPending || step === "minting",
   };
 }

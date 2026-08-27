@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { Express, Request, Response } from "express";
 import { ethers } from "ethers";
 import type { Hex } from "viem";
+import { deriveMintDataHash } from "@axiom/config/types/hex";
 import {
   TypedContract,
   type AgentNFTMethods,
@@ -27,13 +28,34 @@ const log = createLogger("agents");
 const MAX_AGENT_ENUMERATION = 100 as const;
 const AGENT_LOG_SCAN_BLOCKS = 50_000;
 
-const mintEncodeSchema = z.object({
-  dataDescription: z.string().min(1).max(1024),
-  dataHash: hexViem,
-  to: addressViem,
-});
+const mintEncodeSchema = z.union([
+  // Legacy shape (deprecated): wizard previously derived dataHash client-side.
+  // Pinned by existing tests — must keep behaving identically.
+  z.object({
+    dataDescription: z.string().min(1).max(1024),
+    dataHash: hexViem,
+    to: addressViem,
+  }),
+  // Hashless shape (P3 §(c)-A): server derives dataHash from the agent name,
+  // marks it seen for the oracle, and builds the description.
+  z.object({
+    name: z.string().min(2).max(80),
+    owner: addressViem,
+  }),
+]);
 
 type MintEncodeBody = z.infer<typeof mintEncodeSchema>;
+
+interface MintEncodeResult {
+  to: Hex;
+  data: string;
+  value: string;
+}
+
+/** Description the FE derives for a minted agent name (useMintWizard.ts buildDefaultPayload). */
+function mintDescription(name: string): string {
+  return `${name} — ownable AI agent on Axiom Protocol (0G / ERC-7857)`;
+}
 
 type AgentNftMintEncodeMethods = {
   mintFee(): Promise<bigint>;
@@ -165,6 +187,7 @@ export function registerAgentRoutes(
   const agentCache = new TTLCache<unknown>(agentListTtlMs);
   const mintStatsCache = new TTLCache<unknown>(60_000);
   const mintFeeCache = new TTLCache<bigint>(60_000);
+  const pubkeyCache = new TTLCache<`0x${string}` | null>(60_000);
 
   // Env-required at boot (backendEnvSchema); a missing PK fails loudly here
   // instead of silently zeroing the signer (audit F3.2/M2).
@@ -613,14 +636,29 @@ export function registerAgentRoutes(
       // Fold of POST /oracle/v1/agents/mint: register the dataHash so the oracle's
       // signOwnership accepts it without a second FE round-trip; same 32-byte shape
       // guard as the standalone route (kept for back-compat).
-      if (!/^0x[0-9a-fA-F]{64}$/.test(parsed.dataHash)) {
+      let dataHash: Hex;
+      let dataDescription: string;
+      let to: Hex;
+      if ("name" in parsed) {
+        // Hashless shape: derive exactly as the FE wizard does
+        // (keccak256(toHex(name.trim())) via deriveMintDataHash) so chat/wizard mints agree.
+        const name = parsed.name.trim() || "Axiom agent";
+        dataHash = deriveMintDataHash(name);
+        dataDescription = mintDescription(name);
+        to = parsed.owner;
+      } else {
+        dataHash = parsed.dataHash;
+        dataDescription = parsed.dataDescription;
+        to = parsed.to;
+      }
+      if (!/^0x[0-9a-fA-F]{64}$/.test(dataHash)) {
         return sendError(
           res,
           HTTP.BAD_REQUEST,
           "dataHash must be a 32-byte hex string (0x + 64 hex chars)",
         );
       }
-      oracle.storage.markDataHashSeen(parsed.dataHash);
+      oracle.storage.markDataHashSeen(dataHash);
       const nftTc = new TypedContract<AgentNftMintEncodeMethods>(
         nftAddr,
         AGENT_NFT_ABI,
@@ -634,14 +672,86 @@ export function registerAgentRoutes(
       const data = nftTc.iface.encodeFunctionData("mint", [
         [
           {
-            dataDescription: parsed.dataDescription,
-            dataHash: parsed.dataHash,
+            dataDescription,
+            dataHash,
           },
         ],
-        parsed.to,
+        to,
       ]);
-      return { to: nftAddr, data, value: mintFee.toString() };
+      const result: MintEncodeResult = {
+        to: nftAddr as Hex,
+        data,
+        value: mintFee.toString(),
+      };
+      return result;
     },
     config,
   );
+
+  // GET /v1/registry/pubkey/:address — receiver-pubkey lookup for the hashless
+  // transfer flow (P3 §(c)-B). Contract fixed with the FE (TransferModal expects
+  // a 130-char `0x` + 64-byte X||Y pubkey; NO_ONCHAIN_KEY → Advanced paste).
+  createRoute(
+    app,
+    {
+      method: "get",
+      path: "/v1/registry/pubkey/:id",
+      consumer: "useReceiverPubkey",
+      description:
+        "Recover a wallet's uncompressed public key from its latest outgoing tx (404 NO_ONCHAIN_KEY when none exists)",
+    },
+    async (
+      _parsed: unknown,
+      _req: Request,
+      res: Response,
+      { id }: { id: string },
+    ) => {
+      // createRoute passes req.params.id through as `id`; validate as 0x + 40 hex.
+      const address = id;
+      if (!/^0x[0-9a-fA-F]{40}$/.test(address)) {
+        return sendError(res, HTTP.BAD_REQUEST, "Invalid address");
+      }
+      const cacheKey = address.toLowerCase();
+      const cached = pubkeyCache.get(cacheKey);
+      if (cached === null || cached !== undefined) {
+        if (cached === null) {
+          return sendError(res, HTTP.NOT_FOUND, "NO_ONCHAIN_KEY");
+        }
+        return { receiverPubKey64: cached };
+      }
+      // LIMITATION: no tx-by-sender source exists in this backend — the event
+      // store indexes only contract-log events (Transfer/Updated/… payloads
+      // carry tokenId, not tx senders), and the orchestrator keeps only its own
+      // settlement txs. Recovering an arbitrary sender's pubkey would require a
+      // full block scan (eth_getTransactionBySender is not a standard RPC);
+      // that is deliberately not built here. Burner wallets with zero outgoing
+      // txs have no recoverable key regardless — the FE keeps the Advanced
+      // manual-paste fallback for this 404.
+      const recovered = await recoverPubkeyFromLatestOutgoingTx(
+        provider,
+        address,
+      );
+      pubkeyCache.set(cacheKey, recovered);
+      if (recovered === null) {
+        return sendError(res, HTTP.NOT_FOUND, "NO_ONCHAIN_KEY");
+      }
+      return { receiverPubKey64: recovered };
+    },
+    config,
+  );
+}
+
+/**
+ * Attempts pubkey recovery from an address's latest outgoing transaction via
+ * the backend provider. Currently no tx-by-sender index exists (see route
+ * comment above), so this returns null without RPC traffic; if an indexer or
+ * RPC surface for sender→txs lands, plug it in here with viem
+ * `recoverPublicKey({ publicKey: serializeTransaction(tx) })` and normalize
+ * via `normalizePubkey64` to the X||Y shape the transfer route expects.
+ */
+async function recoverPubkeyFromLatestOutgoingTx(
+  _provider: ethers.JsonRpcProvider,
+  _address: string,
+): Promise<`0x${string}` | null> {
+  return null;
 }

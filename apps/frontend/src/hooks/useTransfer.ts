@@ -35,6 +35,20 @@ import type {
 } from "@axiom/config/types/transfer";
 export type { TransferInput, TransferResponse, TransferPhase };
 
+/** Thrown when the receiver address has no on-chain-recoverable public key
+ * (GET /v1/registry/pubkey 404 NO_ONCHAIN_KEY) and no manual paste was
+ * supplied — the GUI offers the Advanced paste field, never a dead end. */
+export class ReceiverKeyUnknownError extends Error {
+  readonly receiver: `0x${string}`;
+  constructor(receiver: `0x${string}`) {
+    super(
+      `No public key found on-chain for ${receiver}. Ask the receiver to paste their public key (Advanced).`,
+    );
+    this.name = "ReceiverKeyUnknownError";
+    this.receiver = receiver;
+  }
+}
+
 /** prepare() outcome — self-transfers finish in one step ("ready");
  * cross-party transfers pause after the oracle challenge until the RECEIVER
  * co-signs the AccessProof (protocol requires recovered signer == recipient). */
@@ -245,16 +259,19 @@ export function useTransfer(): UseTransferResult {
     }): Promise<TransferChallenge> => {
       const path = agentTransferPath(input.tokenId);
 
-      let nonceBig: bigint;
-      try {
-        nonceBig = BigInt(input.accessProofNonce);
-      } catch {
-        throw new Error("Invalid access proof nonce");
-      }
+      // P3 §(b)#4: resolve the receiver pubkey from the address at prepare
+      // time (manual 130-hex paste wins). Backend nonce default verified
+      // read-only (routers/agents.ts `BigInt(accessProofNonce ?? 0)` +
+      // oracle/routes.ts canonicalNonce `?? 0`) — no client nonce is sent.
+      const receiverPubKey64 = await resolveReceiverPubKey(
+        input.to,
+        input.receiverPubKeyManual,
+        signal,
+      );
+
       const challengeBody: Record<string, unknown> = {
         to: input.to,
-        receiverPubKey64: input.receiverPubKey64,
-        accessProofNonce: nonceBig.toString(),
+        receiverPubKey64,
       };
       if (
         input.oldDataUri &&
@@ -279,7 +296,7 @@ export function useTransfer(): UseTransferResult {
       });
       if (!challenge.ok || challenge.stage !== "challenge") {
         throw new Error(
-          "backend did not return a transfer challenge. Challenge failed — generate a new nonce and try again.",
+          "backend did not return a transfer challenge. Challenge failed — try again.",
         );
       }
       if (
@@ -289,13 +306,34 @@ export function useTransfer(): UseTransferResult {
         challenge.validUntil === undefined
       ) {
         throw new Error(
-          "incomplete transfer challenge from backend — generate a new nonce and start over",
+          "incomplete transfer challenge from backend — start over",
         );
       }
       return challenge as TransferChallenge;
     },
     [],
   );
+
+  /** P3 §(b)#4: manual 130-hex paste wins; otherwise resolve the receiver's
+   * uncompressed pubkey from their address via the backend registry (ecrecover
+   * over their latest outgoing tx). 404 NO_ONCHAIN_KEY → ReceiverKeyUnknownError. */
+  async function resolveReceiverPubKey(
+    address: `0x${string}`,
+    manual: string | undefined,
+    signal?: AbortSignal,
+  ): Promise<`0x${string}`> {
+    if (manual && manual.length === 130) {
+      return manual as `0x${string}`;
+    }
+    const r = await apiFetch<{ receiverPubKey64?: `0x${string}` }>(
+      `/v1/registry/pubkey/${address}`,
+      { signal },
+    );
+    if (!r.receiverPubKey64) {
+      throw new ReceiverKeyUnknownError(address);
+    }
+    return r.receiverPubKey64;
+  }
 
   // Challenge fetch fires on transfer intent; prepare() awaits the same fetchQuery cache entry so signing/finalizing stay sequential
   const challengeQuery = useQuery<TransferChallenge, Error>({
@@ -359,7 +397,7 @@ export function useTransfer(): UseTransferResult {
           timeout: LONG_TIMEOUT,
           body: JSON.stringify({
             to: input.to,
-            receiverPubKey64: input.receiverPubKey64,
+            receiverPubKey64: challenge.targetPubkey,
             dataHash: proofDataHash,
             sealedKey: challenge.sealedKey,
             accessProof: {
@@ -462,7 +500,13 @@ export function useTransfer(): UseTransferResult {
       if (!from) {
         throw new Error("wallet not connected");
       }
-      if (input.receiverPubKey64.length !== 130) {
+      // Manual paste (when supplied) must still be the exact 64-byte shape;
+      // without a paste, runChallenge resolves the key from the address.
+      if (
+        input.receiverPubKeyManual !== undefined &&
+        input.receiverPubKeyManual.length > 0 &&
+        input.receiverPubKeyManual.length !== 130
+      ) {
         throw new Error(
           "receiverPubKey64 must be 0x-prefixed 64 raw bytes (X||Y, no 0x04 prefix)",
         );

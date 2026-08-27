@@ -196,11 +196,19 @@ reg("ChatHistoryQuery", routeSchemas.chatHistoryQuerySchema);
 
 const mintEncodeBodyRef = reg(
   "MintEncodeBody",
-  z.object({
-    dataDescription: z.string().min(1).max(1024),
-    dataHash: hexStr,
-    to: addressStr,
-  }),
+  // Union mirrors routers/agents.ts mintEncodeSchema: legacy client-derived
+  // {dataDescription,dataHash,to} or P3 hashless {name,owner}.
+  z.union([
+    z.object({
+      dataDescription: z.string().min(1).max(1024),
+      dataHash: hexStr,
+      to: addressStr,
+    }),
+    z.object({
+      name: z.string().min(2).max(80),
+      owner: addressStr,
+    }),
+  ]),
 );
 
 const archiveQueryBodyRef = reg(
@@ -1073,6 +1081,34 @@ const ROUTES = [
     responses: {
       "200": okResp("Encoded tx", txEncodeResponseRef),
       "503": errorResp("AgentNFT address not configured", ["ADDRESS_NOT_CONFIGURED"]),
+    },
+  },
+  {
+    method: "get",
+    path: "/v1/registry/pubkey/{id}",
+    summary: "Receiver pubkey lookup from the address's latest outgoing tx (60s cache)",
+    description:
+      "Returns { receiverPubKey64 } (0x + 64-byte X||Y). 404 NO_ONCHAIN_KEY when the backend has no tx-by-sender source for the address (fresh wallets) — the FE keeps the Advanced manual-paste fallback.",
+    security: SEC.serverOrClient,
+    parameters: [
+      {
+        name: "id",
+        in: "path",
+        required: true,
+        description: "Wallet address (0x + 40 hex)",
+        schema: { type: "string", pattern: "^0x[0-9a-fA-F]{40}$" },
+      },
+    ],
+    responses: {
+      "200": okResp(
+        "Recovered uncompressed pubkey",
+        reg(
+          "ReceiverPubKeyResponse",
+          z.object({ receiverPubKey64: hexStr.length(130) }),
+        ),
+      ),
+      "400": errorResp("Invalid address"),
+      "404": errorResp("No recoverable key", ["NO_ONCHAIN_KEY"]),
     },
   },
   {

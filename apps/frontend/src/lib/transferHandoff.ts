@@ -17,7 +17,7 @@ import type {
   TransferInput,
   TransferResponse,
 } from "@axiom/config/types/transfer";
-import { freshNonceHex, humanizeError } from "../utils/format.js";
+import { humanizeError } from "../utils/format.js";
 
 /** Thrown when the connected wallet cannot expose the receiver account, so the
  * co-sign can never succeed from this session — the GUI renders an honest
@@ -325,18 +325,13 @@ export function handoffClaimUrl(token: string, origin?: string): string {
 /* Phase machines, post-sign continuation and error surfaces stay per-surface
  * on purpose — the modal pauses at review; FlowPage chains confirm+receipt. */
 
-/** Canonical single-use access-proof nonce (freshNonceHex default = 32 bytes). */
-export function freshAccessProofNonce(): `0x${string}` {
-  return freshNonceHex(32);
-}
-
 type TransferInputFields = {
   tokenId: bigint;
   /** Receiver address — trimming/validation stays at the call sites. */
   to: string;
-  /** Receiver public key (0x-prefixed X||Y, 130 chars). */
-  receiverPubKey64: string;
-  accessProofNonce: `0x${string}`;
+  /** Optional manual 130-hex pubkey paste (Advanced NO_ONCHAIN_KEY fallback);
+   * when absent the hook resolves the key from the address at prepare time. */
+  receiverPubKeyManual?: string;
 };
 
 /** Attach the optional re-key pair only when both halves are supplied —
@@ -348,9 +343,10 @@ export function buildTransferInput(
   const input: TransferInput = {
     tokenId: fields.tokenId,
     to: fields.to as `0x${string}`,
-    receiverPubKey64: fields.receiverPubKey64 as `0x${string}`,
-    accessProofNonce: fields.accessProofNonce,
   };
+  if (fields.receiverPubKeyManual) {
+    input.receiverPubKeyManual = fields.receiverPubKeyManual;
+  }
   if (
     rekey &&
     rekey.oldDataEncryptionKey.length > 0 &&

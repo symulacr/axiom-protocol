@@ -589,6 +589,12 @@ export type Copy = {
     confirmReceiverThenSubmit: string;
     transferKeyLabel: string;
     transferKeyHint: string;
+    /** P3 §(b)#4: the pubkey field is replaced by an address resolved via
+     * GET /v1/registry/pubkey/:address; the paste field survives only as the
+     * NO_ONCHAIN_KEY fallback (Advanced details). */
+    transferPubkeyFallbackSummary: string;
+    transferPubkeyResolvePending: string;
+    transferPubkeyResolveFailed: string;
     transferAgentTitle: (id: string) => string;
     /** cross-wallet handoff — sender side (review-sheet co-sign step). */
     handoffTitle: string;
@@ -1367,6 +1373,10 @@ const english: Copy = {
     confirmReceiverThenSubmit: "Approval needed: yes",
     transferKeyLabel: "Recipient public key",
     transferKeyHint: "64-byte hex (0x…), the new owner's encryption key.",
+    transferPubkeyFallbackSummary: "Advanced — paste the public key instead",
+    transferPubkeyResolvePending: "Looking up the key for this address…",
+    transferPubkeyResolveFailed:
+      "No public key found on-chain for this address yet. Paste it manually below.",
     transferAgentTitle: (id) => `Transfer agent #${id}`,
     handoffTitle: "Receiver on another device?",
     handoffBody:
@@ -2145,6 +2155,10 @@ const french: Copy = {
     transferKeyLabel: "Clé publique du destinataire",
     transferKeyHint:
       "Hex 64 octets (0x…), la clé de chiffrement du nouveau propriétaire.",
+    transferPubkeyFallbackSummary: "Avancé — coller la clé publique à la place",
+    transferPubkeyResolvePending: "Recherche de la clé pour cette adresse…",
+    transferPubkeyResolveFailed:
+      "Aucune clé publique trouvée on-chain pour cette adresse. Collez-la manuellement ci-dessous.",
     transferAgentTitle: (id) => `Transférer l’agent #${id}`,
     handoffTitle: "Destinataire sur un autre appareil ?",
     handoffBody:
@@ -2929,6 +2943,11 @@ const german: Copy = {
     transferKeyLabel: "Öffentlicher Schlüssel des Empfängers",
     transferKeyHint:
       "64 Byte Hex (0x…), der Verschlüsselungsschlüssel des neuen Eigentümers.",
+    transferPubkeyFallbackSummary:
+      "Erweitert — öffentlichen Schlüssel stattdessen einfügen",
+    transferPubkeyResolvePending: "Schlüssel für diese Adresse wird gesucht…",
+    transferPubkeyResolveFailed:
+      "Kein öffentlicher Schlüssel on-chain für diese Adresse gefunden. Fügen Sie ihn unten manuell ein.",
     transferAgentTitle: (id) => `Agent #${id} übertragen`,
     handoffTitle: "Empfänger an einem anderen Gerät?",
     handoffBody:
