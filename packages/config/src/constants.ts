@@ -10,7 +10,7 @@ export function bigintReplacer(_key: string, value: unknown): unknown {
 // Single source of runtime tuning values; getRuntimeConfig() layers env overrides (INDEXER_POLL_WINDOW_BLOCKS=100) at startup; browser-safe when process.env is unavailable
 export const RUNTIME_DEFAULTS = {
   indexerPollWindowBlocks: 500,
-  indexerPollIntervalMs: 12_000,
+  indexerPollIntervalMs: 3_000,
   indexerReorgSafeDepth: 10n,
   wsMaxClients: 1000,
   wsHeartbeatIntervalMs: 30_000,

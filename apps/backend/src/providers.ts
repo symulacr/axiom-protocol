@@ -76,37 +76,56 @@ export function logEffectiveComputeConfig(
 const logRouter = createLogger("compute-router");
 const ROUTER_TIMEOUT_MS = 30_000;
 
+// Module-level singleton (StrategyRunner precedent, orchestrator/index.ts getClient):
+// one OpenAI client per (baseURL, key) keeps HTTP keep-alive alive across requests and
+// imports the SDK once. Creation is not cached until it succeeds, so a transient failure
+// retries on the next request.
+let cachedClient: OpenAI | null = null;
+let cachedClientKey: string | null = null;
+
 export async function createRouterClient(model?: string): Promise<OpenAI> {
+  const directKey = process.env.AXIOM_COMPUTE_DIRECT_KEY;
+  const routerKey =
+    process.env.AXIOM_COMPUTE_API_KEY ?? process.env.OG_COMPUTE_API_KEY;
   // Lazy: the openai SDK (~1MB parsed) joins the graph only when a compute
   // client is actually created, not at boot.
   const { default: OpenAI } = await import("openai");
   const timeout = ROUTER_TIMEOUT_MS;
-  logRouter.info("Creating router client", { model });
 
-  const directKey = process.env.AXIOM_COMPUTE_DIRECT_KEY;
   if (directKey) {
     const directBase =
       process.env.AXIOM_COMPUTE_DIRECT_URL ?? DIRECT_PROXY_BASE_URL;
+    const key = `direct:${directBase}:${directKey}`;
+    if (cachedClient && cachedClientKey === key) return cachedClient;
     logRouter.info("Using direct compute provider", { directBase, model });
-    return new OpenAI({
+    cachedClientKey = key;
+    // `fetch` resolved lazily so the OpenAI constructor doesn't pin a stale
+    // reference (matters for anything that swaps globalThis.fetch).
+    cachedClient = new OpenAI({
       baseURL: directBase,
       apiKey: directKey,
       timeout,
       maxRetries: 0,
+      fetch: (input, init) => globalThis.fetch(input, init),
     });
+    return cachedClient;
   }
 
   // Prefer the API-key router path over the wallet-signed path when a key is configured
-  const routerKey =
-    process.env.AXIOM_COMPUTE_API_KEY ?? process.env.OG_COMPUTE_API_KEY;
   if (routerKey) {
-    logRouter.info("Using API-key compute router", { model });
-    return new OpenAI({
-      baseURL: getComputeBaseUrl(),
+    const baseURL = getComputeBaseUrl();
+    const key = `router:${baseURL}:${routerKey}`;
+    if (cachedClient && cachedClientKey === key) return cachedClient;
+    logRouter.info("Creating router client", { model, baseURL });
+    cachedClientKey = key;
+    cachedClient = new OpenAI({
+      baseURL,
       apiKey: routerKey,
       timeout,
       maxRetries: 0,
+      fetch: (input, init) => globalThis.fetch(input, init),
     });
+    return cachedClient;
   }
 
   throw new Error("AXIOM_COMPUTE_API_KEY or OG_COMPUTE_API_KEY required");

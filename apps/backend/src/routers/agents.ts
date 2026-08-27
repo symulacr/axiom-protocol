@@ -164,6 +164,7 @@ export function registerAgentRoutes(
   const agentListTtlMs = config.env?.AXIOM_AGENT_LIST_CACHE_MS ?? 120_000;
   const agentCache = new TTLCache<unknown>(agentListTtlMs);
   const mintStatsCache = new TTLCache<unknown>(60_000);
+  const mintFeeCache = new TTLCache<bigint>(60_000);
 
   // Env-required at boot (backendEnvSchema); a missing PK fails loudly here
   // instead of silently zeroing the signer (audit F3.2/M2).
@@ -606,15 +607,30 @@ export function registerAgentRoutes(
       description:
         "Encode AxiomAgentNFT mint transaction (value = on-chain mintFee)",
     },
-    async (parsed: MintEncodeBody, _req, _res, { config: cfg }) => {
+    async (parsed: MintEncodeBody, _req, res, { config: cfg }) => {
       // requireAddress guard above already 503s (ADDRESS_NOT_CONFIGURED) when agentNft is unset.
       const nftAddr = cfg.addresses!.agentNft;
+      // Fold of POST /oracle/v1/agents/mint: register the dataHash so the oracle's
+      // signOwnership accepts it without a second FE round-trip; same 32-byte shape
+      // guard as the standalone route (kept for back-compat).
+      if (!/^0x[0-9a-fA-F]{64}$/.test(parsed.dataHash)) {
+        return sendError(
+          res,
+          HTTP.BAD_REQUEST,
+          "dataHash must be a 32-byte hex string (0x + 64 hex chars)",
+        );
+      }
+      oracle.storage.markDataHashSeen(parsed.dataHash);
       const nftTc = new TypedContract<AgentNftMintEncodeMethods>(
         nftAddr,
         AGENT_NFT_ABI,
         provider,
       );
-      const mintFee = await nftTc.contract.mintFee();
+      let mintFee = mintFeeCache.get(nftAddr);
+      if (mintFee === undefined) {
+        mintFee = await nftTc.contract.mintFee();
+        mintFeeCache.set(nftAddr, mintFee);
+      }
       const data = nftTc.iface.encodeFunctionData("mint", [
         [
           {
