@@ -21,6 +21,9 @@ import { TypedContract } from "@axiom/config/types/contract";
 import { getSharedProvider } from "../providers.js";
 import { keccak256, solidityPacked } from "ethers";
 import { ZERO_DATA_ROOT } from "@axiom/config/constants";
+import { createLogger } from "../utils/logger.js";
+
+const log = createLogger("orchestrator-router");
 
 const modelDataRootCache = new TTLCache<`0x${string}`>(5 * 60 * 1000, 1000);
 
@@ -265,17 +268,65 @@ export function registerOrchestratorRoutes(
         return;
       }
 
-      try {
-        const orchestratorResult = await runner.runTick(spec, signal);
-        appendTickEvent(events, chainId, spec, orchestratorResult);
-        sendToTopic("orchestrator.tick", {
-          agentTokenId: spec.agentTokenId.toString(),
-          recommendation: orchestratorResult.recommendation,
+      // R4 optimistic settlement: the recommendation + execution plan are final once
+      // inference returns — only the vault receipt wait sits behind them. With an
+      // executionPlan we respond at the broadcast boundary (status "pending", real
+      // txHash) and finish settlement in the background; completion goes out over the
+      // existing paths: EventStore Tick append (broadcasts its eventName to WS) and
+      // sendToTopic("tick.<id>") with the settled TickResult. Hold ticks / skipped
+      // settlements resolve before the pending hook fires, so the response is the
+      // full settled TickResult — byte-compatible with the pre-R4 shape.
+      const topic = `tick.${agentTokenId}`;
+      let optimisticSettled = false;
+      const tickPromise = runner
+        .runTick(spec, signal, undefined, (pending, base) => {
+          // Broadcast boundary: respond with the settled base + pending execution.
+          if (optimisticSettled || res.headersSent) return;
+          optimisticSettled = true;
+          res.status(HTTP.OK).json({ ...base, execution: pending });
+        })
+        .then((result) => {
+          // No broadcast happened (hold tick / skipped settlement): settle the
+          // response with the full TickResult — identical shape to pre-R4.
+          if (!optimisticSettled && !res.headersSent) {
+            optimisticSettled = true;
+            res.status(HTTP.OK).json(result);
+          }
+          appendTickEvent(events, chainId, spec, result);
+          sendToTopic(topic, { type: "complete", ...result });
+          return result;
         });
-        res.status(HTTP.OK).json(orchestratorResult);
-      } finally {
-        releaseTickSlot(tickKey);
-      }
+      void tickPromise.catch((err) => {
+        if (!res.headersSent) {
+          sendError(res, HTTP.INTERNAL, extractErrorMessage(err));
+        }
+        log.warn("background tick settlement failed", {
+          error: extractErrorMessage(err),
+          tokenId: spec.agentTokenId.toString(),
+        });
+        appendTickEvent(events, chainId, spec, {
+          recommendation: { action: "hold", reason: "tick failed" },
+          rawModelOutput: "",
+          onchain: { vaultBalance: 0n, recentEvents: [] },
+          storage: { rootHash: ZERO_DATA_ROOT, size: 0 },
+          execution: {
+            status: "failed",
+            success: false,
+            result:
+              `0x${extractErrorMessage(err).slice(0, 128)}` as `0x${string}`,
+          },
+          durationMs: 0,
+        });
+        sendToTopic(topic, {
+          type: "error",
+          error: extractErrorMessage(err),
+        });
+      });
+      await tickPromise
+        .catch(() => {})
+        .finally(() => {
+          releaseTickSlot(tickKey);
+        });
     },
     config,
   );

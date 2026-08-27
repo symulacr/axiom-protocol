@@ -19,7 +19,7 @@ interface TickStorageInfo {
 
 interface TickExecution {
   success?: boolean;
-  status?: "success" | "skipped" | "executed" | "failed";
+  status?: "pending" | "success" | "skipped" | "executed" | "failed";
   reason?: string;
   txHash?: `0x${string}`;
   action?: string;

@@ -90,7 +90,13 @@ export async function readVaultStrategy(
   if (variant === "legacy") {
     const vault = new Contract(vaultAddress, STRATEGY_OF_LEGACY, provider);
     const [root, dailyLimit] = await vault.getFunction("strategyOf")(tokenId);
-    return { root, dailyLimit, dailySpent: 0n, resetDay: 0n, validUntilDay: 0n };
+    return {
+      root,
+      dailyLimit,
+      dailySpent: 0n,
+      resetDay: 0n,
+      validUntilDay: 0n,
+    };
   }
   const vault = new Contract(vaultAddress, STRATEGY_OF_CURRENT, provider);
   const [root, dailyLimit, dailySpent, resetDay, validUntilDay] =
@@ -187,6 +193,14 @@ export class StrategyRunner {
     strategy: StrategySpec,
     signal: MarketSignal,
     onChunk?: StreamCallback,
+    /** R4 optimistic settlement: invoked once right after the vault tx is broadcast
+     *  (before tx.wait) with the pending execution plus the settled base result
+     *  (recommendation/onchain/storage/durationMs are final at that point) — the
+     *  router responds with `{...base, execution: pending}` from this callback. */
+    onExecutionPending?: (
+      pending: NonNullable<TickResult["execution"]>,
+      base: Omit<TickResult, "execution">,
+    ) => void,
   ): Promise<TickResult> {
     const start = Date.now();
 
@@ -242,10 +256,25 @@ export class StrategyRunner {
 
     const recommendation = parseRecommendation(rawModelOutput);
 
+    // Base result snapshot at the broadcast boundary: recommendation, onchain state
+    // and storage info are final here — only `execution` is still settling.
+    const base: Omit<TickResult, "execution"> = {
+      recommendation,
+      rawModelOutput,
+      onchain,
+      storage,
+      durationMs: Date.now() - start,
+    };
+
     const execution =
       recommendation.action === "hold"
         ? undefined
-        : await this.settleOnChain(strategy, recommendation.action).catch(
+        : await this.settleOnChain(
+            strategy,
+            recommendation.action,
+            onExecutionPending,
+            base,
+          ).catch(
             (err) =>
               ({
                 txHash: "0x" as `0x${string}`,
@@ -273,10 +302,20 @@ export class StrategyRunner {
     return result;
   }
 
-  /** Settles only when executionPlan is present (target/value/data/merkleProof); without one, explicit skip — inference alone never spends vault funds. */
+  /**
+   * Settles only when executionPlan is present (target/value/data/merkleProof); without one, explicit skip — inference alone never spends vault funds.
+   * R4 optimistic split: after the vault execute tx is broadcast (but before tx.wait),
+   * `onExecutionPending` fires with a status:"pending" execution carrying the txHash —
+   * the router responds then; the settled shape is emitted later via WS + EventStore.
+   */
   private async settleOnChain(
     strategy: StrategySpec,
     action: string,
+    onExecutionPending?: (
+      pending: NonNullable<TickResult["execution"]>,
+      base: Omit<TickResult, "execution">,
+    ) => void,
+    base?: Omit<TickResult, "execution">,
   ): Promise<NonNullable<TickResult["execution"]>> {
     const vaultAddr = this.addresses?.vault;
     if (!vaultAddr) {
@@ -363,6 +402,19 @@ export class StrategyRunner {
       plan.data ?? "0x",
       plan.merkleProof,
     );
+    // R4: tx is broadcast — report pending with the real txHash; the receipt wait
+    // moves off the request path. All settled fields stay identical once it lands.
+    if (onExecutionPending && base) {
+      onExecutionPending(
+        {
+          status: "pending",
+          txHash: tx.hash as `0x${string}`,
+          action,
+          target: plan.target as `0x${string}`,
+        },
+        base,
+      );
+    }
     const receipt = await tx.wait();
     log.info("settleOnChain executed", {
       action,

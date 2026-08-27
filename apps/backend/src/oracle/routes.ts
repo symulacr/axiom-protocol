@@ -40,6 +40,52 @@ export class OracleRequestError extends Error {
 
 const DEFAULT_MAX_PROOF_AGE_SECONDS = 7n * 24n * 3600n;
 
+/**
+ * Content-addressed blob LRU (key = rootHash, value = raw bytes). Roots are immutable by
+ * construction (the transfer route rejects any rootHash ≠ URI binding), so entries never
+ * need invalidation. Rekey challenges previously re-downloaded the old blob on every call
+ * — the 20s-timeout storage leg — making repeat challenges ~free. Same helper is reusable
+ * for runTick's modelDataRoot read and chat-history reads; only transferValidity is wired
+ * this pass. Bounded by AXIOM_BLOB_CACHE_MAX_ENTRIES (default 32) and ~64 MB total.
+ */
+const blobCache = new Map<string, Uint8Array>();
+const BLOB_CACHE_MAX_BYTES = 64 * 1024 * 1024;
+let blobCacheBytes = 0;
+
+function blobCacheMaxEntries(): number {
+  const raw = Number(process.env.AXIOM_BLOB_CACHE_MAX_ENTRIES);
+  return Number.isInteger(raw) && raw > 0 ? raw : 32;
+}
+
+/** @internal Cache lookup+fill for immutable storage roots; exposed for future adopters. */
+export async function downloadBlobCached(
+  storage: StorageAdapter,
+  rootHash: string,
+): Promise<Uint8Array> {
+  const key = rootHash.toLowerCase();
+  const cached = blobCache.get(key);
+  if (cached) {
+    // LRU touch: delete+set moves the entry to eviction-freshest position.
+    blobCache.delete(key);
+    blobCache.set(key, cached);
+    return cached;
+  }
+  const blob = await storage.download(rootHash as `0x${string}`);
+  blobCache.set(key, blob);
+  blobCacheBytes += blob.length;
+  while (
+    blobCache.size > blobCacheMaxEntries() ||
+    blobCacheBytes > BLOB_CACHE_MAX_BYTES
+  ) {
+    const oldest = blobCache.keys().next().value;
+    if (oldest === undefined) break;
+    const evicted = blobCache.get(oldest);
+    blobCache.delete(oldest);
+    if (evicted) blobCacheBytes -= evicted.length;
+  }
+  return blob;
+}
+
 /** Single funnel for BAD_REQUEST validation failures so every rejection keeps the same error shape. */
 function requireCond(cond: unknown, message: string): asserts cond {
   if (!cond) throw new OracleRequestError(HTTP.BAD_REQUEST, message);
@@ -177,11 +223,13 @@ export async function transferValidity(
   // E2: a failed or missing download MUST abort the transfer — falling back to an empty
   // blob would re-encrypt nothing and sign transfer proofs over fabricated data, silently
   // destroying the token's stored data (wrong transport key after restart, 0G outage, timeout).
+  // Cached: rootHash is content-addressed and immutable, so repeat challenges never
+  // re-download (the 20s storage leg vanishes on cache hit).
   let downloadTimer: NodeJS.Timeout | undefined;
   let oldBlob: Uint8Array;
   try {
     oldBlob = await Promise.race([
-      Promise.resolve(storage.download(oldDataUri)),
+      Promise.resolve(downloadBlobCached(storage, oldDataUri)),
       new Promise<Uint8Array>((_, reject) => {
         downloadTimer = setTimeout(
           () => reject(new Error("storage.download timed out after 20000ms")),

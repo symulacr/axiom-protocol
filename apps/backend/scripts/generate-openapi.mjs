@@ -511,7 +511,9 @@ const tickResultRef = reg(
     execution: z
       .object({
         success: z.boolean().optional(),
-        status: z.enum(["success", "skipped", "executed", "failed"]).optional(),
+        // "pending" (R4): response returned at tx broadcast, receipt wait runs in the
+        // background — settled shape arrives via WS tick.<id> + the EventStore Tick append.
+        status: z.enum(["pending", "success", "skipped", "executed", "failed"]).optional(),
         reason: z.string().optional(),
         txHash: hexStr.optional(),
         action: z.string().optional(),

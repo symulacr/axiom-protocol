@@ -371,3 +371,92 @@ test(
     });
   }),
 );
+
+test(
+  "runTick fires onExecutionPending at the broadcast boundary with a pending execution + real txHash, then returns the settled shape",
+  withDirectComputeEnv(async () => {
+    const runner = makeVaultRunner();
+    const strategy = makeStrategy({
+      executionPlan: {
+        target: NFT_ADDR,
+        value: 0n,
+        data: "0x1234",
+        merkleProof: [("0x" + "aa".repeat(32)) as `0x${string}`],
+      },
+    });
+    const signal = marketSignal({ trend: "up" });
+    await withHttpStub(vaultRpc(NON_ZERO_ROOT), ACT_OUTPUT, async () => {
+      let pendingShape: unknown;
+      let firedBeforeSettle = false;
+      const result = await runner.runTick(
+        strategy,
+        signal,
+        undefined,
+        (pending) => {
+          firedBeforeSettle = true;
+          pendingShape = pending;
+        },
+      );
+      assert.equal(
+        firedBeforeSettle,
+        true,
+        "pending hook fires when the vault tx is broadcast",
+      );
+      const p = pendingShape as NonNullable<typeof result.execution>;
+      assert.equal(p.status, "pending");
+      assert.match(p.txHash ?? "", /^0x[0-9a-fA-F]{64}$/);
+      assert.equal(p.action, "act");
+      assert.equal(p.target, NFT_ADDR);
+      // Awaited result keeps the settled shape (backward-compatible).
+      assert.equal(result.execution?.status, "executed");
+      assert.equal(result.execution?.success, true);
+      assert.equal(result.execution?.txHash, p.txHash);
+    });
+  }),
+);
+
+test(
+  "runTick never fires onExecutionPending for hold ticks or skipped settlement",
+  withDirectComputeEnv(async () => {
+    const runner = makeVaultRunner();
+    const signal = marketSignal({ trend: "flat" });
+    // Hold tick: inference returns hold → no settlement at all.
+    await withHttpStub(
+      vaultRpc(NON_ZERO_ROOT),
+      JSON.stringify({ action: "hold", reason: "boring" }),
+      async () => {
+        let fired = false;
+        await runner.runTick(
+          makeStrategy({
+            executionPlan: {
+              target: NFT_ADDR,
+              value: 0n,
+              data: "0x",
+              merkleProof: [("0x" + "aa".repeat(32)) as `0x${string}`],
+            },
+          }),
+          signal,
+          undefined,
+          () => {
+            fired = true;
+          },
+        );
+        assert.equal(fired, false, "hold tick has no broadcast to report");
+      },
+    );
+    // Act tick without a plan → settlement skipped before any broadcast.
+    await withHttpStub(vaultRpc(NON_ZERO_ROOT), ACT_OUTPUT, async () => {
+      let fired = false;
+      const result = await runner.runTick(
+        makeStrategy(),
+        signal,
+        undefined,
+        () => {
+          fired = true;
+        },
+      );
+      assert.equal(fired, false, "skipped settlement never broadcasts");
+      assert.equal(result.execution?.status, "skipped");
+    });
+  }),
+);
