@@ -1762,9 +1762,14 @@ function ChatPageInner(): ReactElement {
                         key={tc.id}
                         run={
                           run ?? {
+                            // R1-8: no live run (reset or never marked) must
+                            // read as "running" — that liar card renders
+                            // "0s…" forever; the tool row itself carries the
+                            // truth (humanized result / error).
                             name: tc.function.name,
-                            status: "running",
-                            startedAt: Date.now(),
+                            status: "error",
+                            error: chatCopy.toolResultFallback,
+                            startedAt: 0,
                           }
                         }
                         expanded={expandedToolCalls.has(tc.id)}

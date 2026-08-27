@@ -128,4 +128,31 @@ export const lockedRouteMeta: Record<
     copy: "Identity, ownership, activity and receipts per agent.",
     media: MEDIA.onboarding,
   },
+  // F1: flow-route entries so /tick, /deposit, /withdraw no longer fall back
+  // to the /app console-overview hero. Hero text is localized via
+  // copy.lockedHero (LockedRoute prefers it when present).
+  "/tick": {
+    slug: "tick",
+    label: "Run agent task",
+    title: "Run one agent task,",
+    emphasis: "bounded.",
+    copy: "Give the agent one instruction — it streams the result and stops.",
+    media: MEDIA.proof,
+  },
+  "/deposit": {
+    slug: "deposit",
+    label: "Deposit",
+    title: "Fund an agent",
+    emphasis: "vault.",
+    copy: "Add native gas to one agent's vault before it runs.",
+    media: MEDIA.payment,
+  },
+  "/withdraw": {
+    slug: "withdraw",
+    label: "Withdraw",
+    title: "Withdraw from an",
+    emphasis: "agent vault.",
+    copy: "Move funds out of one agent's vault — balance shown first.",
+    media: MEDIA.transfer,
+  },
 };

@@ -682,19 +682,9 @@ function AgentRoute({
   const location = useLocation();
   const tokenId = shortTokenId(location.pathname);
   if (tokenId === null) {
-    // /agents/<slug> that is not a tokenId → the register lives on Overview.
-    return (
-      <div className="ops-page">
-        <div className="empty-state">
-          <strong>Agent not addressable</strong>
-          <span>
-            Agent pages use /agents/&lt;tokenId&gt;. Open the register on the
-            overview.
-          </span>
-        </div>
-        <Button onClick={() => go("/app")}>Open the register</Button>
-      </div>
-    );
+    // F1: /agents/<slug> that is not a tokenId is a dead link, not a gate —
+    // render the same 404 surface as any other unknown route.
+    return <Recovery404 go={go} locale={locale} />;
   }
   return <AgentPage tokenId={tokenId} go={go} locale={locale} />;
 }
@@ -777,6 +767,23 @@ function LockedRoute({
       : lockedRouteMeta["/app"]) ??
     lockedRouteMeta["/app"];
   if (!meta) return null;
+  // Flow routes keep their hero text in copy.lockedHero (locale-owned, like
+  // every other user-facing sentence); the meta table only supplies slug/label/media.
+  const localizedHero = (
+    {
+      "/tick": copy.lockedHero.tick,
+      "/deposit": copy.lockedHero.deposit,
+      "/withdraw": copy.lockedHero.withdraw,
+    } as Record<
+      string,
+      { titleLead: string; titleEmphasis: string; copy: string } | undefined
+    >
+  )[pathname];
+  const hero = localizedHero ?? {
+    titleLead: meta.title,
+    titleEmphasis: meta.emphasis,
+    copy: meta.copy,
+  };
 
   return (
     <LockedShell
@@ -785,11 +792,11 @@ function LockedRoute({
     >
       <section className="locked-route-copy">
         <h1>
-          {meta.title}
+          {hero.titleLead}
           <br />
-          <i>{meta.emphasis}</i>
+          <i>{hero.titleEmphasis}</i>
         </h1>
-        <p>{meta.copy}</p>
+        <p>{hero.copy}</p>
         <div className="button-row">
           <Button onClick={onConnect} icon={<Wallet size={15} />}>
             {copy.nav.connectWallet}

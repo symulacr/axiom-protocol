@@ -146,10 +146,12 @@
   gap:clamp(24px, 5vw, 74px);
   align-items:stretch;
   width:min(1280px, calc(100% - 40px));
-  padding:clamp(56px, 8vw, 112px) 0 84px;
+  /* Top padding is a bounded step, not a viewport band: the previous
+     clamp(56px,8vw,112px) put 173px of empty canvas above the h1 (R1 audit). */
+  padding:clamp(32px, 5vh, 52px) 0 84px;
 }
 
-.locked-route-copy { grid-column:2; align-self:center; max-width:620px; padding:var(--space-6) 0 38px; border-top:2px solid var(--route-accent); border-bottom:1px solid color-mix(in srgb, var(--route-accent) 24%, transparent); }
+.locked-route-copy { grid-column:2; align-self:start; max-width:620px; padding:var(--space-6) 0 38px; border-top:2px solid var(--route-accent); border-bottom:1px solid color-mix(in srgb, var(--route-accent) 24%, transparent); }
 .locked-route-copy h1 i { color:var(--completion-bright); font-style:normal; }
 .locked-route-copy p { max-width:500px; color:var(--completion-muted); font-size:var(--fs-body); line-height:1.75; }
 .locked-route-copy .button-row { margin-top:var(--space-6); }
@@ -743,9 +745,11 @@ body:has(.flow-action) .notice-toast { bottom:96px; }
 .landing-page .landing-main {
   min-block-size: 0;
   block-size: 100%;
-  align-items: center;
+  /* Top-align the hero instead of centering it: centering inside the flexible
+     row produced a ~240px empty band above the headline (R1 dead-space audit). */
+  align-items: start;
   gap: clamp(24px, 3.5vw, 54px);
-  padding: clamp(12px, 2vh, 20px) clamp(24px, 7vw, 88px);
+  padding: clamp(28px, 4.5vh, 44px) clamp(24px, 7vw, 88px);
   position: relative;
 }
 
@@ -796,7 +800,8 @@ body:has(.flow-action) .notice-toast { bottom:96px; }
 .landing-strip {
   min-block-size: 108px;
   margin: 0;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  /* Component renders exactly two journey cells (LandingPage strip section). */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .landing-strip > div,
@@ -897,8 +902,10 @@ body:has(.flow-action) .notice-toast { bottom:96px; }
     display: none;
   }
 
+  /* Top-align mobile hero too: centering put ~293px of empty canvas above the
+     h1 on an 844px budget (R1 dead-space audit). */
   .landing-copy {
-    align-self: center;
+    align-self: start;
   }
 
   .landing-copy h1 {
@@ -1360,7 +1367,9 @@ button, input, textarea, select { line-height: var(--support-leading); }
 .landing-visual.hero-visual-modern > img.hero-visual-poster { object-position: 100% center; }
 
 /* Landing summary becomes an asymmetric ledger rather than four equivalent cards. */
-.landing-strip { grid-template-columns: minmax(0, 1.5fr) minmax(0, 0.86fr) minmax(0, 0.86fr) minmax(0, 1.08fr); }
+/* Journey cells: the component renders exactly two controls, so the rail is a
+   two-track asymmetric ledger (1.5fr feature + 1fr secondary). */
+.landing-strip { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
 .landing-strip > button:first-child {
   position: relative;
   padding-left: clamp(28px, 3vw, 42px);

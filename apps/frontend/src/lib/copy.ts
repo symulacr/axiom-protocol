@@ -171,6 +171,14 @@ export type Copy = {
     /** document.title for unknown routes. */
     title: string;
   };
+  /** Pre-auth locked-route hero copy for the flow routes (/tick, /deposit,
+   * /withdraw) whose visual meta lives in lockedRouteMeta but whose
+   * localized text lives here — one locale owner per surface. */
+  lockedHero: {
+    tick: { titleLead: string; titleEmphasis: string; copy: string };
+    deposit: { titleLead: string; titleEmphasis: string; copy: string };
+    withdraw: { titleLead: string; titleEmphasis: string; copy: string };
+  };
   /** ErrorBoundary fallback chrome (localized like every other surface —
    * the raw error text itself still routes through humanizeError). */
   errorBoundary: {
@@ -1537,6 +1545,25 @@ const english: Copy = {
     rejected: "Rejected",
     stale: "Needs review",
   },
+  // F1 executor A: pre-auth hero copy for the three flow routes missing from
+  // lockedRouteMeta's fallback table (/tick, /deposit, /withdraw).
+  lockedHero: {
+    tick: {
+      titleLead: "Run one agent task,",
+      titleEmphasis: "bounded.",
+      copy: "Give the agent one instruction — it streams the result and stops.",
+    },
+    deposit: {
+      titleLead: "Fund an agent",
+      titleEmphasis: "vault.",
+      copy: "Add native gas to one agent's vault before it runs.",
+    },
+    withdraw: {
+      titleLead: "Withdraw from an",
+      titleEmphasis: "agent vault.",
+      copy: "Move funds out of one agent's vault — balance shown first.",
+    },
+  },
 };
 
 const frFlowNotice = (head: string): string =>
@@ -2326,6 +2353,23 @@ const french: Copy = {
     rejected: "Refusée",
     stale: "À vérifier",
   },
+  lockedHero: {
+    tick: {
+      titleLead: "Lance une tâche d'agent,",
+      titleEmphasis: "bornée.",
+      copy: "Donne une instruction à l'agent — il diffuse le résultat puis s'arrête.",
+    },
+    deposit: {
+      titleLead: "Alimente le vault",
+      titleEmphasis: "d'un agent.",
+      copy: "Ajoute du gas natif au vault d'un agent avant son exécution.",
+    },
+    withdraw: {
+      titleLead: "Retire des fonds du",
+      titleEmphasis: "vault d'un agent.",
+      copy: "Sors des fonds du vault d'un agent — solde affiché avant signature.",
+    },
+  },
 };
 
 const deFlowNotice = (head: string): string =>
@@ -3111,6 +3155,23 @@ const german: Copy = {
     reverted: "Zurückgesetzt",
     rejected: "Abgelehnt",
     stale: "Prüfung nötig",
+  },
+  lockedHero: {
+    tick: {
+      titleLead: "Führe eine Agent-Aufgabe aus,",
+      titleEmphasis: "begrenzt.",
+      copy: "Gib dem Agent eine Anweisung — er streamt das Ergebnis und stoppt.",
+    },
+    deposit: {
+      titleLead: "Das Vault eines",
+      titleEmphasis: "Agents füllen.",
+      copy: "Füge natives Gas zum Vault eines Agents hinzu, bevor er läuft.",
+    },
+    withdraw: {
+      titleLead: "Aus dem Agent-Vault",
+      titleEmphasis: "abheben.",
+      copy: "Ziehe Geld aus dem Vault eines Agents ab — Guthaben zuerst sichtbar.",
+    },
   },
 };
 

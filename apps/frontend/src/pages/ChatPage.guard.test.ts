@@ -37,3 +37,24 @@ test("edit-confirm bumps run epoch and aborts in-flight run", () => {
     /runEpochRef\.current \+= 1;\s*\n\s*abortRef\.current\?\.abort\(\);/,
   );
 });
+
+// R1-8: a tool_calls message with no live toolRun (post-run reset or never
+// marked id) must not synthesize a `running` run — that renders a spinner +
+// "0s…" elapsed clock forever on a card whose tool already finished/failed.
+test("tool-card fallback run is never a synthetic running state (R1-8)", () => {
+  const fallback = src.indexOf("run ?? {");
+  assert.ok(fallback >= 0, "tool-card fallback run present");
+  const window = src.slice(fallback, fallback + 400);
+  assert.doesNotMatch(
+    window,
+    /status:\s*"running"/,
+    "fallback run must never be status running (stale Loading 0s… card)",
+  );
+  assert.match(
+    window,
+    /status:\s*"error"/,
+    "fallback run reads as an honest failed state",
+  );
+  // The success/error paths mark real runs; only the no-run fallback is guarded here.
+  assert.match(src, /status: "running",\s*\n\s*startedAt: Date\.now\(\)/);
+});

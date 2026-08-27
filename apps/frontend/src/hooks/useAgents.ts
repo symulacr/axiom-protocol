@@ -21,15 +21,18 @@ export function useAgents(): {
   isLoading: boolean;
   error: Error | null;
   refetch: () => void;
+  /** Settled-and-successful: safe to conclude an absent id does not exist. */
+  settled: boolean;
 } {
   const { address } = useAccount();
-  const { data, isLoading, error, refetch } = usePolledApi<AgentsApiResponse>(
-    () => (address ? `/v1/agents?owner=${address}` : ""),
-    {
-      queryKey: ["agents", address],
-      enabled: Boolean(address),
-    },
-  );
+  const { data, isLoading, error, refetch, isSuccess } =
+    usePolledApi<AgentsApiResponse>(
+      () => (address ? `/v1/agents?owner=${address}` : ""),
+      {
+        queryKey: ["agents", address],
+        enabled: Boolean(address),
+      },
+    );
 
   const agents = useMemo<AgentInfo[]>(() => {
     return (data?.agents ?? []).map((a) => ({
@@ -38,5 +41,11 @@ export function useAgents(): {
     }));
   }, [data?.agents]);
 
-  return { agents, isLoading, error, refetch: () => void refetch() };
+  return {
+    agents,
+    isLoading,
+    error,
+    refetch: () => void refetch(),
+    settled: isSuccess,
+  };
 }

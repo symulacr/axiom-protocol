@@ -37,6 +37,7 @@ import {
 import { StatePill } from "../components/StatePill.js";
 import { getCopy, interpolate, type Locale } from "../lib/copy.js";
 import { routePath } from "../lib/routeRegistry.js";
+import { useAgents } from "../hooks/useAgents.js";
 import {
   useEventHistory,
   eventTokenId,
@@ -252,6 +253,7 @@ export function AgentPage({
   const agentCopy = copy.agentDetail;
   const chainId = useChainId();
   const explorerTx = (hash: string) => explorerTxUrl(chainId, hash);
+  const { agents, settled: agentsSettled } = useAgents();
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get("tab") as AgentTab | null;
   const [tab, setTab] = useState<AgentTab>(
@@ -311,8 +313,20 @@ export function AgentPage({
   const agentName = `Agent #${tokenId.toString()}`;
   const lastEvent = events[events.length - 1];
   const agentId = tokenId.toString();
-  // Bounded-operation launcher: one primary money action + task runner,
-  // the rest behind a "More…" disclosure (choice-parity with the overview).
+
+  // F1: unknown agent id → the 404 route, never a plausible locked gate.
+  // Decided only on a settled successful agents read (wallet connected + list
+  // loaded): absent id means the token does not exist for this operator.
+  // Loading, error, and empty-wallet states keep rendering the page honestly.
+  const agentKnown = agents.some((agent) => agent.tokenId === tokenId);
+  const agentMissing = agentsSettled && agents.length > 0 && !agentKnown;
+  useEffect(() => {
+    if (agentMissing) go("/this-path-does-not-exist-404");
+    // hooks: one navigation per concluded-missing id
+  }, [agentMissing, go]);
+
+  if (agentMissing) return null;
+
   const [moreOpen, setMoreOpen] = useState(false);
   const primaryActions: {
     path: string;

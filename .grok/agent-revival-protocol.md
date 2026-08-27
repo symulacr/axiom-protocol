@@ -15,3 +15,13 @@
 - Fixed contract shapes agreed up-front so concurrent FE/BE agents code against the same interface.
 - Every executor writes its report file INCREMENTALLY (edit → append), so any death leaves recoverable state.
 - Timed state checks while lanes run; revive immediately on failure or stall (no output progress).
+
+## Shared executor hardening (F-waves, all agents MUST follow)
+
+1. READ your assigned audit report FIRST (r1/r2/r3 sections quoted in your brief), verify every file:line anchor against current code before editing — prior waves moved lines.
+2. Skills: load ONLY the skills named in your brief (r4-skills-map.md approved list). Never load high-end-visual-design / minimalist-ui / gpt-taste — they conflict with the committed Copper identity.
+3. Every change must state its USER-EXPERIENCE win in one line (ROI: less cognitive load / fewer clicks / clearer state) in the incremental report.
+4. Small increments; report file appended after each item; never idle; never stop early.
+5. No suppressions of any kind; mockUsdc.ts untouchable; i18n contract + ChatPage guard tests must stay green.
+6. Gates before finishing: backend bunx tsc + bun test (139 baseline), frontend tsc + enumerated tests (79 baseline) + build — report exact counts. Coordinator commits.
+7. Screenshots for evidence: chrome-devtools take_screenshot with filePath ONLY (never inline — provider image limit).
