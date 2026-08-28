@@ -512,6 +512,8 @@
               "ProtocolTreasuryProposalCancelled",
               "ProtocolFeeBpsUpdated",
               "PaymentTokenUpdated",
+              "Paused",
+              "Unpaused",
               "MetadataJsonDecisionDocumented",
               "Cloned",
               "Upgraded",
@@ -1954,6 +1956,88 @@
         "required": [
           "routes",
           "meta"
+        ]
+      },
+      "TimelockEntry": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "enum": [
+              "verifier",
+              "teeSigner",
+              "protocolTreasury"
+            ]
+          },
+          "contract": {
+            "type": "string",
+            "description": "Source contract of the timelock views"
+          },
+          "currentAddress": {
+            "type": "null",
+            "description": "Reserved for the current holder view; always null today"
+          },
+          "pendingAddress": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^0x[a-fA-F0-9]{40}$",
+            "description": "Proposed rotation target (null = idle / zero address)",
+            "examples": [
+              "0x0000000000000000000000000000000000000000"
+            ]
+          },
+          "executableAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Unix seconds when execute() unlocks (null = idle, or view absent e.g. teeSigner)"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "idle",
+              "pending"
+            ]
+          },
+          "executableIn": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "description": "Seconds until executable (server-clock derived, clamped ≥0)"
+          }
+        },
+        "required": [
+          "key",
+          "contract",
+          "currentAddress",
+          "pendingAddress",
+          "executableAt",
+          "status",
+          "executableIn"
+        ]
+      },
+      "TimelockResponse": {
+        "type": "object",
+        "properties": {
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TimelockEntry"
+            }
+          },
+          "asOfBlock": {
+            "type": "null",
+            "description": "Reserved; block pinning not implemented"
+          }
+        },
+        "required": [
+          "entries",
+          "asOfBlock"
         ]
       },
       "ArchiveResult": {
@@ -3709,6 +3793,31 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/governance/timelock": {
+      "get": {
+        "summary": "Pending rotation timelocks (verifier / tee signer / treasury) with derived status (30s cache)",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Timelock entries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimelockResponse"
                 }
               }
             }

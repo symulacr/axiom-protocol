@@ -44,6 +44,7 @@ import { registerEventRoutes } from "./routers/events.js";
 import { registerComputeRoutes } from "./routers/compute.js";
 import { registerChatRoutes } from "./routers/chat.js";
 import { registerPaymentRoutes } from "./routers/payment.js";
+import { registerGovernanceRoutes } from "./routers/governance.js";
 import { pushRouteMeta, routeMeta } from "./routers/shared.js";
 import { registerPerformanceRoutes } from "./routers/performance.js";
 import { registerOrchestratorRoutes } from "./routers/orchestrator.js";
@@ -349,6 +350,10 @@ export function startServer(config: ServerConfig): {
   );
 
   registerPaymentRoutes(app, config, nftTc, getPayment);
+
+  // M12: pending rotation timelocks (verifier/teeSigner/treasury) were observable
+  // nowhere in prod — read-only surface, no contract address required at boot.
+  registerGovernanceRoutes(app, config, provider);
 
   pushRouteMeta(
     ["POST", "/mcp", "mcp", "MCP streamable HTTP endpoint (read-only tools)"],

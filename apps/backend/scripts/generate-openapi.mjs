@@ -553,6 +553,32 @@ const routesResponseRef = reg(
   }),
 );
 
+// M12: pending rotation timelock entries (verifier / tee signer / treasury).
+const timelockEntryRef = reg(
+  "TimelockEntry",
+  z.object({
+    key: z.enum(["verifier", "teeSigner", "protocolTreasury"]),
+    contract: z.string().meta({ description: "Source contract of the timelock views" }),
+    currentAddress: z.null().meta({ description: "Reserved for the current holder view; always null today" }),
+    pendingAddress: addressStr.nullable().meta({ description: "Proposed rotation target (null = idle / zero address)" }),
+    executableAt: bigintStr.nullable().meta({ description: "Unix seconds when execute() unlocks (null = idle, or view absent e.g. teeSigner)" }),
+    status: z.enum(["idle", "pending"]),
+    executableIn: z
+      .number()
+      .int()
+      .nonnegative()
+      .nullable()
+      .meta({ description: "Seconds until executable (server-clock derived, clamped ≥0)" }),
+  }),
+);
+const timelockResponseRef = reg(
+  "TimelockResponse",
+  z.object({
+    entries: z.array(timelockEntryRef),
+    asOfBlock: z.null().meta({ description: "Reserved; block pinning not implemented" }),
+  }),
+);
+
 // Open-ended response payloads (archive facade, skill results).
 const archiveResultRef = reg(
   "ArchiveResult",
@@ -1150,6 +1176,15 @@ const ROUTES = [
     responses: {
       "200": okResp("Payment config", paymentConfigResponseRef),
       "503": errorResp("Payment processor not configured", ["ADDRESS_NOT_CONFIGURED"]),
+    },
+  },
+  {
+    method: "get",
+    path: "/v1/governance/timelock",
+    summary: "Pending rotation timelocks (verifier / tee signer / treasury) with derived status (30s cache)",
+    security: SEC.serverOrClient,
+    responses: {
+      "200": okResp("Timelock entries", timelockResponseRef),
     },
   },
   {

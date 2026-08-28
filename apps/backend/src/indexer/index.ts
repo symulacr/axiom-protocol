@@ -156,7 +156,12 @@ const DEFAULT_WATCH: ReadonlyArray<
     "AdminChanged",
     "BeaconUpgraded",
     "Initialized",
+    // OZ Pausable emits these from NFT, Vault AND PaymentProcessor; the
+    // indexer batches per-address, so watching them on every Pausable
+    // contract guarantees no pause event is missed.
   ]),
+  ...watchGroup("AXIOM_STRATEGY_VAULT", ["Paused", "Unpaused"]),
+  ...watchGroup("AXIOM_PAYMENT_PROCESSOR", ["Paused", "Unpaused"]),
 ];
 
 export function buildDefaultWatchList(

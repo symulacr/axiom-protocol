@@ -57,6 +57,10 @@ const EVENT_SOURCES = {
   ProtocolTreasuryProposalCancelled: PAY,
   ProtocolFeeBpsUpdated: PAY,
   PaymentTokenUpdated: PAY,
+  // OZ PausableUpgradeable standard events — inherited by NFT, Vault and
+  // PaymentProcessor (same topic0 from all three; account param is shared).
+  Paused: NFT,
+  Unpaused: NFT,
   MetadataJsonDecisionDocumented: NFT,
   Cloned: NFT,
   Upgraded: NFT,
@@ -228,6 +232,11 @@ export type AxiomEvent =
       oldToken: string;
       newToken: string;
     })
+  | (EventEnvelope & {
+      kind: "Paused";
+      account: string;
+    })
+  | (EventEnvelope & { kind: "Unpaused"; account: string })
   | (EventEnvelope & {
       kind: "MetadataJsonDecisionDocumented";
       collectionName: string;

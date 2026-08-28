@@ -216,6 +216,34 @@ test("decodeAxiomLog decodes Updated(tokenId, oldDatas, newDatas) into count fie
   }
 });
 
+// --- M10: OZ Pausable events are watched — Paused log parses to kind/payload ---
+
+for (const [name, account] of [
+  ["Paused", "0x" + "44".repeat(20)],
+  ["Unpaused", "0x" + "55".repeat(20)],
+] as const) {
+  test(`decodeAxiomLog decodes ${name}(account) into the AxiomEvent shape`, () => {
+    const topics = encodeEventTopics({
+      abi: [EVENT_ABI[name]],
+      eventName: name,
+      args: {},
+    });
+    // OZ Pausable's `account` param is NOT indexed — it rides in the data.
+    const data = encodeAbiParameters(
+      [{ type: "address" }],
+      [account as `0x${string}`],
+    );
+    const decoded = decodeAxiomLog(decodeLog(topics, data));
+    assert.deepEqual(decoded, {
+      kind: name,
+      blockNumber: 100,
+      txHash: DECODE_TX,
+      logIndex: 2,
+      account,
+    });
+  });
+}
+
 test("decodeAxiomLog drops a log whose topic0 matches no watched event", () => {
   const decoded = decodeAxiomLog(
     decodeLog(["0x" + "ff".repeat(32)], "0x", 101),

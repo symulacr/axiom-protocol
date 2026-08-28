@@ -179,6 +179,8 @@ const EVENT_PARSERS: Record<string, EventParser> = {
     from: addr(a["from"]),
     to: addr(a["to"]),
   })),
+  Paused: p("Paused", (a) => ({ account: addr(a["account"]) })),
+  Unpaused: p("Unpaused", (a) => ({ account: addr(a["account"]) })),
   MetadataJsonDecisionDocumented: p("MetadataJsonDecisionDocumented", (a) => ({
     collectionName: a["collectionName"] as string,
     collectionSymbol: a["collectionSymbol"] as string,

@@ -1,7 +1,8 @@
 /*
-  StoragePage — read-only demo pipeline. There is no backend storage endpoint
-  yet (apps/backend has no storage router), so the page documents the stages a
-  real upload will expose and every value stays in its honest pending state.
+  StoragePage — read-only documentation pipeline. There is no backend storage
+  endpoint yet (apps/backend has no storage router), so the page documents the
+  stages a real upload will expose and every value stays in its honest pending
+  state.
 
   L2-B4: one operable element — the "Verify on 0G" block builds a real 0G
   storage-indexer URL from a user-entered root hash. The page itself still
