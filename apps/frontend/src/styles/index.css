@@ -46,7 +46,7 @@
 .rail-toggle svg { transition:transform .2s var(--ease); }
 .sidebar.is-collapsed .rail-toggle svg { transform:rotate(180deg); }
 .sidebar.is-collapsed .side-head { padding-left:var(--space-1); padding-right:var(--space-1); }
-.sidebar.is-collapsed .brand span,.sidebar.is-collapsed .nav-item span,.sidebar.is-collapsed .nav-item kbd,.sidebar.is-collapsed .network-card div,.sidebar.is-collapsed .account div:not(.avatar),.sidebar.is-collapsed .account>svg { display:none; }
+.sidebar.is-collapsed .brand span,.sidebar.is-collapsed .nav-item span,.sidebar.is-collapsed .nav-item kbd,.sidebar.is-collapsed .nav-group-label,.sidebar.is-collapsed .network-card div,.sidebar.is-collapsed .account div:not(.avatar),.sidebar.is-collapsed .account>svg { display:none; }
 .rail-resize:hover { background:rgba(210,139,82,.18) /* raw copper x2, below token threshold */; }
 .is-resizing,.is-resizing * { cursor:ew-resize!important; user-select:none!important; }
 .settings-toggle-row,.range-control { display:flex; align-items:center; justify-content:space-between; gap:var(--space-5); padding:var(--space-4) 0; border-top:1px solid var(--line-soft); }
@@ -616,12 +616,53 @@ body:has(.flow-action) .notice-toast { bottom:96px; }
 }
 
 .app-shell .sidebar .nav-item {
-  grid-template-columns: 18px minmax(0, 1fr);
+  grid-template-columns: 20px minmax(0, 1fr);
   gap: var(--space-2);
 }
 
+/* H2-T3b sidebar groups (h1 §1): three labeled sections + collapsed tooltips.
+   Group headers are small muted mono labels; groups split by space + hairline. */
+.app-shell .sidebar .nav-group + .nav-group {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line-soft);
+}
+.app-shell .sidebar .nav-group-label {
+  display: block;
+  padding: 0 var(--space-2) var(--space-2);
+  color: var(--dim);
+  font: 500 var(--fs-mono) "JetBrains Mono", monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
 .app-shell .sidebar.is-collapsed .nav-item {
   grid-template-columns: 1fr;
+}
+/* Collapsed rail tooltips: icon-only buttons recover their label on hover/focus. */
+.sidebar.is-collapsed .nav-item {
+  position: relative;
+}
+.sidebar.is-collapsed .nav-item::after {
+  content: attr(data-label);
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  translate: 0 -50%;
+  z-index: 40;
+  padding: 5px 9px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--panel-2);
+  color: var(--text);
+  font: 500 var(--fs-mono) "JetBrains Mono", monospace;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 125ms var(--ease-out, ease-out);
+}
+.sidebar.is-collapsed .nav-item:hover::after,
+.sidebar.is-collapsed .nav-item:focus-visible::after {
+  opacity: 1;
 }
 
 /* Copper Command Deck: one text-free split-chevron with a copper nucleus on every route. */
@@ -1824,6 +1865,7 @@ body.light .filters-popover {
   .mobile-nav-drawer .sidebar.is-collapsed { width: 100%; }
   .mobile-nav-drawer .sidebar.is-collapsed .brand span,
   .mobile-nav-drawer .sidebar.is-collapsed .nav-item span,
+  .mobile-nav-drawer .sidebar.is-collapsed .nav-group-label,
   .mobile-nav-drawer .sidebar.is-collapsed .network-card div,
   .mobile-nav-drawer .sidebar.is-collapsed .account div:not(.avatar),
   .mobile-nav-drawer .sidebar.is-collapsed .account > svg { display: initial; }
@@ -2252,10 +2294,26 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
 }
 
 .stream-tail { overflow-wrap: anywhere; }
+/* T5 streaming cue: settled text of an in-flight assistant answer reads
+   slightly dimmer than a finished one (the blinking .caret-blink marks the
+   write head). Static opacity/color only — no motion, so both reduced-motion
+   switches keep the (informative) dim state while neutralizing the caret. */
+.chat-bubble .chat-msg .stream-tail {
+  color: var(--c-text-dim);
+}
 
 /* N-3: static inline style factories from ChatPage moved to classes.
    Dynamic per-render styles stay inline at their call sites. */
 .chat-msg { font-size: var(--fs-body); color: var(--c-text); line-height: var(--lh-normal); }
+/* T5 chat parity: the assistant answer — the surface users actually read —
+   sits at 15px/1.6 (calc keeps the 15px tied to the body token, no new
+   ladder entry). Role hierarchy by size: user/tool bubbles keep 14px via
+   their role modifiers; assistant bubbles carry no modifier, so the :not()
+   scoping needs no role class added at the render site. */
+.chat-bubble:not(.chat-bubble--user):not(.chat-bubble--tool) .chat-msg {
+  font-size: calc(var(--fs-body) + 1px);
+  line-height: 1.6;
+}
 .chat-msg-wrap { white-space: pre-wrap; overflow-wrap: anywhere; }
 .chat-msg--flush { margin: 0; }
 .chat-bubble {
@@ -2829,14 +2887,22 @@ strong {
     padding: 11px;
     border-radius: var(--radius-md);
     text-align: left;
-    transition: 0.18s var(--ease);
+    /* H2-T3b: explicit properties + hover ≠ active (h1 §1b) — never transition:all */
+    transition:
+      background 150ms var(--ease-out, ease-out),
+      color 150ms var(--ease-out, ease-out),
+      transform 120ms var(--ease-out, ease-out);
   }
-  .nav-item:hover,
+  .nav-item:hover {
+    background: var(--copper-06);
+    color: var(--text);
+  }
+  .nav-item:active {
+    transform: scale(0.985);
+  }
   .nav-item.active {
     background: var(--copper-10);
     color: var(--text);
-  }
-  .nav-item.active {
     box-shadow: inset 2px 0 0 var(--copper);
   }
   .nav-item.active svg {

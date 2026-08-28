@@ -30,6 +30,7 @@ import { erc20Abi, formatUnits, isAddress, parseUnits } from "viem";
 import {
   AlertTriangle,
   ArrowRight,
+  Bot,
   Check,
   CircleCheck,
   Copy,
@@ -42,6 +43,7 @@ import {
 } from "../components/axiom/icons.js";
 import { Button, Field } from "../components/axiom/Controls.js";
 import { StatePill } from "../components/StatePill.js";
+import { routePath } from "../lib/routeRegistry.js";
 import { getCopy, interpolate } from "../lib/copy.js";
 import type {
   AppState,
@@ -466,6 +468,26 @@ function useOrchestratorTick(): {
   };
 }
 
+/** Same panel placeholder as DashboardPage's — title + hint (+ trailing
+ * control); kept local because EmptyState is per-page today, not shared. */
+function EmptyState({
+  title,
+  hint,
+  children,
+}: {
+  title: string;
+  hint?: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="empty-state">
+      <strong>{title}</strong>
+      {hint !== undefined && <span>{hint}</span>}
+      {children}
+    </div>
+  );
+}
+
 export function FlowPage({
   kind,
   state,
@@ -488,7 +510,7 @@ export function FlowPage({
   const chainId = useChainId();
   const { address } = useAccount();
   const publicClient = usePublicClient();
-  const { agents } = useAgents();
+  const { agents, isLoading: agentsLoading } = useAgents();
   const mint = useMintWizard();
   const payment = usePayment();
   const transfer = useTransfer();
@@ -1141,6 +1163,15 @@ export function FlowPage({
     [agents],
   );
 
+  // T3a: the agents poll is the only unknown at first paint — a settled-but-empty
+  // register means every non-mint flow is blocked, so the form is replaced by the
+  // Dashboard's no-agents EmptyState (Mint CTA) instead of a dead disabled select.
+  const zeroAgentFlow =
+    kind !== "mint" && !agentsLoading && agentOptions.length === 0;
+  // And a still-loading register must not flash "No agents yet" — skeleton row
+  // mirrors the Transactions first-load pattern until the poll delivers once.
+  const agentsPending = kind !== "mint" && agentsLoading;
+
   // Resulting-balance estimate for the vault review sheet — cheap since the vault read is already live.
   const balanceFact = useMemo(() => {
     if (!isVaultFlow || vaultBalanceWei === undefined) return undefined;
@@ -1268,7 +1299,36 @@ export function FlowPage({
           </div>
 
           <div className="flow-form">
-            {kind !== "mint" && (
+            {kind !== "mint" && agentsPending && (
+              // T3a: skeleton select row — same footprint as the real field so
+              // the form doesn't jump when agents arrive (aria-busy while the
+              // agents poll is in flight, aria-hidden placeholder content).
+              <div className="field" aria-busy="true">
+                <span className="field-label">{f.agentLabel} *</span>
+                <span className="field-control" aria-hidden="true">
+                  <select className="axiom-field" tabIndex={-1} disabled>
+                    <option value="">&nbsp;</option>
+                  </select>
+                </span>
+                <span className="field-hint">{f.agentHint}</span>
+              </div>
+            )}
+            {kind !== "mint" && zeroAgentFlow && (
+              // T3a: settled with zero agents — the dead select becomes the
+              // Dashboard's no-agents EmptyState: honest block + Mint CTA.
+              <EmptyState
+                title={copy.dashboard.noAgents}
+                hint={copy.dashboard.noAgentsHint}
+              >
+                <Button
+                  onClick={() => go(routePath("mint"))}
+                  icon={<Bot size={15} />}
+                >
+                  {copy.dashboard.mintAgent}
+                </Button>
+              </EmptyState>
+            )}
+            {kind !== "mint" && !agentsPending && !zeroAgentFlow && (
               <label
                 className={`field${submitError?.field === "agent" ? " field-error" : ""}`}
               >
@@ -1291,9 +1351,6 @@ export function FlowPage({
                       });
                     }}
                   >
-                    {agentOptions.length === 0 && (
-                      <option value="">{f.noAgentsOption}</option>
-                    )}
                     {agentOptions.map((id) => (
                       <option key={id} value={id}>
                         {f.agentOption(id)}
@@ -1310,19 +1367,22 @@ export function FlowPage({
                 )}
               </label>
             )}
-            {formFields.map((field) => (
-              <Field
-                key={field.key}
-                label={field.label}
-                value={field.value}
-                onChange={field.onChange}
-                required
-                maxLength={field.maxLength}
-                suffix={field.suffix}
-                error={field.error}
-                hint={field.hint}
-              />
-            ))}
+            {/* T3a: no Mint CTA pointing at value fields that cannot be used —
+                the form body waits for agents like the select row does. */}
+            {!zeroAgentFlow &&
+              formFields.map((field) => (
+                <Field
+                  key={field.key}
+                  label={field.label}
+                  value={field.value}
+                  onChange={field.onChange}
+                  required
+                  maxLength={field.maxLength}
+                  suffix={field.suffix}
+                  error={field.error}
+                  hint={field.hint}
+                />
+              ))}
           </div>
 
           {kind === "tick" &&
@@ -1411,6 +1471,7 @@ export function FlowPage({
                 busy={isBusy}
                 onClick={openReview}
                 icon={<ArrowRight size={15} />}
+                disabled={zeroAgentFlow}
               >
                 {isReviewOpen ? f.reviewOpenLabel : f.reviewAction}
               </Button>

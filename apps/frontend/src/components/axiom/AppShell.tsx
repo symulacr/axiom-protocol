@@ -22,13 +22,11 @@ import {
   Menu,
   MessageSquare,
   Network,
-  Play,
   ReceiptText,
   Search,
   Settings2,
   ShieldCheck,
   Sparkles,
-  UploadCloud,
   Wallet,
   X,
 } from "./icons.js";
@@ -48,7 +46,7 @@ import {
 import { useHealth } from "../../hooks/useHealth.js";
 import { truncateAddress, trapTabFocus } from "../../utils/format.js";
 import { APP_CHAIN, APP_CHAIN_ID } from "../../config/wagmi.js";
-import { getCopy, type Copy } from "../../lib/copy.js";
+import { getCopy, type Copy, type NavGroupKey } from "../../lib/copy.js";
 
 export function Logo({ compact = false }: { compact?: boolean }) {
   return (
@@ -85,72 +83,70 @@ function Sidebar({
     [],
   );
   // One nav owner per destination: /app is "Overview"; labels come from copy.nav for localization.
+  // Rail = 6 destinations only (T3b): agent-scoped verbs (tick/deposit/withdraw) live in
+  // AgentPage's action rows + Command Center; transfer stays reachable from Payment +
+  // Command Center + transaction receipts. Groups per h1-sidebardesign-plan §1.
   const copy = getCopy(settings.locale);
   const identified = session.status === "authenticated";
   const setSettings = (patch: Partial<UiSettings>) =>
     dispatch({ type: "settings", patch });
-  const items = [
+  type NavItem = {
+    path: string;
+    label: string;
+    icon: ReactNode;
+    active: boolean;
+  };
+  const navGroups: { labelKey: NavGroupKey; items: NavItem[] }[] = [
     {
-      path: "/app",
-      label: copy.nav.overview,
-      icon: <LayoutDashboard size={15} />,
-      active: route === "dashboard" || route === "agent",
+      labelKey: "groupOverview",
+      items: [
+        {
+          path: "/app",
+          label: copy.nav.overview,
+          icon: <LayoutDashboard size={16} />,
+          active: route === "dashboard" || route === "agent",
+        },
+        {
+          path: "/chat",
+          label: copy.nav.chat,
+          icon: <MessageSquare size={16} />,
+          active: route === "chat",
+        },
+      ],
     },
     {
-      path: "/chat",
-      label: copy.nav.chat,
-      icon: <MessageSquare size={15} />,
-      active: route === "chat",
+      labelKey: "groupOperations",
+      items: [
+        {
+          path: "/transactions",
+          label: copy.nav.transactions,
+          icon: <ReceiptText size={16} />,
+          active: route === "transactions",
+        },
+        {
+          path: "/storage",
+          label: copy.nav.storage,
+          icon: <Database size={16} />,
+          active: route === "storage",
+        },
+      ],
     },
     {
-      path: "/transactions",
-      label: copy.nav.transactions,
-      icon: <ReceiptText size={15} />,
-      active: route === "transactions",
-    },
-    {
-      path: "/storage",
-      label: copy.nav.storage,
-      icon: <Database size={15} />,
-      active: route === "storage",
-    },
-  ];
-  const flows = [
-    {
-      path: "/mint",
-      label: copy.nav.mint,
-      icon: <Sparkles size={14} />,
-      active: route === "mint",
-    },
-    {
-      path: "/payment",
-      label: copy.nav.payment,
-      icon: <CreditCard size={14} />,
-      active: route === "payment",
-    },
-    {
-      path: "/transfer",
-      label: copy.nav.transfer,
-      icon: <ShieldCheck size={14} />,
-      active: route === "transfer",
-    },
-    {
-      path: "/tick",
-      label: copy.nav.tick,
-      icon: <Play size={14} />,
-      active: route === "tick",
-    },
-    {
-      path: "/deposit",
-      label: copy.nav.deposit,
-      icon: <Wallet size={14} />,
-      active: route === "deposit",
-    },
-    {
-      path: "/withdraw",
-      label: copy.nav.withdraw,
-      icon: <UploadCloud size={14} />,
-      active: route === "withdraw",
+      labelKey: "groupResources",
+      items: [
+        {
+          path: "/mint",
+          label: copy.nav.mint,
+          icon: <Sparkles size={16} />,
+          active: route === "mint",
+        },
+        {
+          path: "/payment",
+          label: copy.nav.payment,
+          icon: <CreditCard size={16} />,
+          active: route === "payment",
+        },
+      ],
     },
   ];
   const resizeWithKeyboard = (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -251,15 +247,23 @@ function Sidebar({
         </div>
       </div>
       <nav className="side-nav" aria-label={copy.a11y.primaryNav}>
-        {[...items, ...flows].map((item) => (
-          <button
-            key={item.path}
-            className={`nav-item ${item.active ? "active" : ""}`}
-            onClick={() => go(item.path)}
-          >
-            {item.icon}
-            <span>{item.label}</span>
-          </button>
+        {navGroups.map((group) => (
+          <div key={group.labelKey} className="nav-group">
+            <span className="nav-group-label" aria-hidden="true">
+              {copy.nav[group.labelKey]}
+            </span>
+            {group.items.map((item) => (
+              <button
+                key={item.path}
+                className={`nav-item ${item.active ? "active" : ""}`}
+                onClick={() => go(item.path)}
+                data-label={item.label}
+              >
+                {item.icon}
+                <span>{item.label}</span>
+              </button>
+            ))}
+          </div>
         ))}
       </nav>
       <div className="network-card">

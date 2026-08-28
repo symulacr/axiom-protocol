@@ -398,6 +398,9 @@ export function ToolCallCard({
         )}
         <strong style={{ color: COLORS.bronzeLight }}>{label}</strong>
         <ToolClassBadge name={run.name} />
+        {/* T5 a11y: the ticking seconds re-announce every second on the
+            live tool-card status; hide the running count — the honest
+            "done"/"failed" terminal text below stays announced. */}
         <span
           style={{
             marginLeft: "auto",
@@ -405,6 +408,7 @@ export function ToolCallCard({
             fontSize: "var(--text-xs)",
             whiteSpace: "nowrap",
           }}
+          aria-hidden={run.status === "running" || undefined}
         >
           {run.status === "running"
             ? `${elapsedSec}s…`
@@ -423,9 +427,16 @@ export function ToolCallCard({
           }}
         >
           <div style={{ marginBottom: 6 }}>
-            {run.status === "running"
-              ? `running ${elapsedSec}s`
-              : `ran in ${elapsedSec}s`}
+            <span aria-hidden={run.status === "running" || undefined}>
+              {run.status === "running"
+                ? `running ${elapsedSec}s`
+                : `ran in ${elapsedSec}s`}
+            </span>
+            {run.status !== "running" ? (
+              <span className="visually-hidden">
+                {run.status === "success" ? "done" : "failed"}
+              </span>
+            ) : null}
           </div>
           {run.result && !hasEncodePreview(run.result) ? (
             <div

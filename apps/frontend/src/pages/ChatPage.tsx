@@ -236,6 +236,10 @@ function EmptyState(props: {
         padding: "var(--space-2xl)",
         textAlign: "center",
         maxWidth: 520,
+        /* T5: stretch to the 520px max — as a shrink-to-fit flex item the
+           wrapper capped the card grid at ~303px and the 220px floor below
+           could never form a 2×2. */
+        width: "100%",
       }}
     >
       <h2
@@ -260,7 +264,9 @@ function EmptyState(props: {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+          /* T5: 220px floor — 4 starter cards land 2×2 at ~520px instead of
+             4-across 118px slivers. */
+          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
           gap: "var(--space-sm)",
         }}
       >

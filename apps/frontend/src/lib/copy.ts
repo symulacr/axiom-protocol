@@ -5,6 +5,9 @@
  */
 
 export type Locale = "en" | "fr" | "de";
+/** Sidebar rail group-header keys (h1 §1) — indexable subset of Copy["nav"]. */
+export type NavGroupKey =
+  "groupOverview" | "groupOperations" | "groupResources";
 type CopyFlow =
   "mint" | "payment" | "transfer" | "tick" | "deposit" | "withdraw";
 
@@ -40,6 +43,10 @@ export type Copy = {
     tick: string;
     deposit: string;
     withdraw: string;
+    /** Sidebar rail group headers (small muted labels, h1 §1). */
+    groupOverview: string;
+    groupOperations: string;
+    groupResources: string;
   };
   /** Shell chrome above/beside the page body. */
   topbar: {
@@ -835,6 +842,9 @@ const english: Copy = {
     tick: "Run agent task",
     deposit: "Deposit",
     withdraw: "Withdraw",
+    groupOverview: "Overview",
+    groupOperations: "Operations",
+    groupResources: "Resources",
   },
   topbar: {
     connected: "connected",
@@ -1667,6 +1677,9 @@ const french: Copy = {
     howItWorks: "Comprendre Axiom",
     connectWallet: "Connecter le wallet",
     overview: "Vue d’ensemble",
+    groupOverview: "Aperçu",
+    groupOperations: "Opérations",
+    groupResources: "Ressources",
     payment: "Paiement",
     transfer: "Transfert",
     deposit: "Dépôt",
@@ -2520,6 +2533,9 @@ const german: Copy = {
     howItWorks: "So funktioniert Axiom",
     connectWallet: "Wallet verbinden",
     overview: "Übersicht",
+    groupOverview: "Überblick",
+    groupOperations: "Vorgänge",
+    groupResources: "Ressourcen",
     transactions: "Transaktionen",
     payment: "Zahlung",
     deposit: "Einzahlen",
