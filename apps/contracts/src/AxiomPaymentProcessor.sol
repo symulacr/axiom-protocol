@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
@@ -13,7 +13,7 @@ import {TimelockManager} from "./libraries/TimelockManager.sol";
 using TimelockManager for TimelockManager.State;
 
 /// @title AxiomPaymentProcessor — routes payments to creators, compute providers, and the protocol treasury; payers approve an ERC-20 stable, creators pull via `withdrawAgentEarnings()`. UUPS-upgradeable.
-contract AxiomPaymentProcessor is Initializable, OwnableUpgradeable, PausableUpgradeable, ReentrancyGuard, UUPSUpgradeable {
+contract AxiomPaymentProcessor is Initializable, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuard, UUPSUpgradeable {
     using SafeERC20 for IERC20;
 
     error ZeroAddress();
@@ -23,6 +23,7 @@ contract AxiomPaymentProcessor is Initializable, OwnableUpgradeable, PausableUpg
     error InvalidBps();
     error AgentCreatorNotRegistered();
     error MigrationBlocked();
+    error PayAmountExceedsCap(uint256 amount, uint256 cap);
     error TransferAmountMismatch(uint256 expected, uint256 received);
     error NoPendingProposal();
 
@@ -42,8 +43,13 @@ contract AxiomPaymentProcessor is Initializable, OwnableUpgradeable, PausableUpg
     event ProtocolTreasuryProposalCancelled(address indexed pendingTreasury);
     event ProtocolFeeBpsUpdated(uint256 oldBps, uint256 newBps);
     event PaymentTokenUpdated(address indexed oldToken, address indexed newToken);
+    event MaxPayCapUpdated(uint256 oldCap, uint256 newCap);
 
     uint256 public constant BPS_DENOMINATOR = 10_000;
+
+    /// @dev Governance model matches AxiomAgentNFT: DEFAULT_ADMIN_ROLE governs upgrades,
+    ///      ADMIN_ROLE governs parameter ops (pause, fee, token, cap, treasury timelock).
+    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
     /// @custom:storage-location erc7201:agent.storage.AxiomPaymentProcessor
     struct PaymentProcessorStorage {
@@ -55,7 +61,10 @@ contract AxiomPaymentProcessor is Initializable, OwnableUpgradeable, PausableUpg
         mapping(address => uint256) agentEarnings;
         IAxiomAgentNFT axiomNft;
         TimelockManager.State treasuryTimelock;
-        uint256[49] __gap;
+        // V2: appended in place of a former __gap slot (layout-delta rule: new vars append
+        // at the gap tail; total struct footprint stays byte-identical for upgrade-in-place).
+        uint256 maxPayCap;
+        uint256[48] __gap;
     }
 
     bytes32 private constant STORAGE_LOCATION = 0xb6e9ac8ab7d5307044651d01576943b58a3563d54e8f2be64d1601b1a6cebc00;
@@ -92,7 +101,9 @@ contract AxiomPaymentProcessor is Initializable, OwnableUpgradeable, PausableUpg
         if (paymentTokenAddr == address(0)) revert ZeroAddress();
         if (treasuryAddr == address(0)) revert ZeroAddress();
         if (protocolFeeBps_ > BPS_DENOMINATOR) revert InvalidBps();
-        __Ownable_init(initialOwner);
+        __AccessControl_init();
+        _grantRole(DEFAULT_ADMIN_ROLE, initialOwner);
+        _grantRole(ADMIN_ROLE, initialOwner);
         PaymentProcessorStorage storage $ = _getStorage();
         $.axiomNft = IAxiomAgentNFT(nftAddr);
         $.protocolTreasury = treasuryAddr;
@@ -102,21 +113,21 @@ contract AxiomPaymentProcessor is Initializable, OwnableUpgradeable, PausableUpg
 
     function proposeProtocolTreasury(
         address newTreasury
-    ) external onlyOwner {
+    ) external onlyRole(ADMIN_ROLE) {
         if (newTreasury == address(0)) revert ZeroAddress();
         PaymentProcessorStorage storage $ = _getStorage();
         $.treasuryTimelock.propose(newTreasury);
         emit ProtocolTreasuryProposed(newTreasury, block.timestamp + 1 days);
     }
 
-    function executeProtocolTreasury() external onlyOwner {
+    function executeProtocolTreasury() external onlyRole(ADMIN_ROLE) {
         PaymentProcessorStorage storage $ = _getStorage();
         address old = $.protocolTreasury;
         $.protocolTreasury = $.treasuryTimelock.execute();
         emit ProtocolTreasuryUpdated(old, $.protocolTreasury);
     }
 
-    function cancelProtocolTreasuryProposal() external onlyOwner {
+    function cancelProtocolTreasuryProposal() external onlyRole(ADMIN_ROLE) {
         PaymentProcessorStorage storage $ = _getStorage();
         address pending = $.treasuryTimelock.proposed;
         if (pending == address(0)) revert NoPendingProposal();
@@ -126,7 +137,7 @@ contract AxiomPaymentProcessor is Initializable, OwnableUpgradeable, PausableUpg
 
     function setProtocolFeeBps(
         uint256 newBps
-    ) external onlyOwner {
+    ) external onlyRole(ADMIN_ROLE) {
         if (newBps >= BPS_DENOMINATOR) revert InvalidBps();
         require(newBps <= type(uint16).max, "fee bps overflows uint16");
         PaymentProcessorStorage storage $ = _getStorage();
@@ -138,7 +149,7 @@ contract AxiomPaymentProcessor is Initializable, OwnableUpgradeable, PausableUpg
     /// @notice Rotate the payment ERC-20; blocked while outstanding earnings exist or the old token balance remains — drain both before migrating.
     function setPaymentToken(
         address newPaymentToken
-    ) external onlyOwner {
+    ) external onlyRole(ADMIN_ROLE) {
         if (newPaymentToken == address(0)) revert ZeroAddress();
         PaymentProcessorStorage storage $ = _getStorage();
         if ($.totalOutstandingEarnings > 0) revert MigrationBlocked();
@@ -146,6 +157,20 @@ contract AxiomPaymentProcessor is Initializable, OwnableUpgradeable, PausableUpg
         if (IERC20(oldToken).balanceOf(address(this)) > 0) revert MigrationBlocked();
         $.paymentToken = newPaymentToken;
         emit PaymentTokenUpdated(oldToken, newPaymentToken);
+    }
+
+    /// @notice Chain-invariant per-pay upper bound enforced on both pay lanes (M8: the off-chain cap becomes an on-chain invariant). 0 disables the cap.
+    function setMaxPayCap(
+        uint256 newCap
+    ) external onlyRole(ADMIN_ROLE) {
+        PaymentProcessorStorage storage $ = _getStorage();
+        uint256 old = $.maxPayCap;
+        $.maxPayCap = newCap;
+        emit MaxPayCapUpdated(old, newCap);
+    }
+
+    function maxPayCap() external view returns (uint256) {
+        return _getStorage().maxPayCap;
     }
 
     function setRoyaltyBps(
@@ -234,27 +259,31 @@ contract AxiomPaymentProcessor is Initializable, OwnableUpgradeable, PausableUpg
         return _getStorage().agentEarnings[creator];
     }
 
-    /// @notice Split `amount` between creator (royalty credited to withdrawable balance) and treasury (forwarded immediately); approve first; splits use actual received tokens, so fee-on-transfer tokens revert.
-    function payForAgent(
+    /// @dev Single split implementation (V2 dedup): pulls `amount` of the payment token from
+    ///      `payer`, splits it creator-vs-treasury, credits the creator's cut as withdrawable
+    ///      earnings, forwards the protocol cut, emits PaymentProcessed. Splits use actual
+    ///      received tokens, so fee-on-transfer tokens revert. Callers must hold nonReentrant
+    ///      + whenNotPaused; the MAX_PAY cap is enforced here so every pay lane inherits it.
+    function _paySplit(
+        address payer,
         uint256 agentTokenId,
         uint256 amount
-    ) external nonReentrant whenNotPaused {
-        if (amount == 0) revert ZeroAmount();
+    ) internal returns (uint256 creatorCut, uint256 protocolCut) {
         PaymentProcessorStorage storage $ = _getStorage();
+        if ($.maxPayCap != 0 && amount > $.maxPayCap) revert PayAmountExceedsCap(amount, $.maxPayCap);
+
         IERC20 token = IERC20($.paymentToken);
 
         address creator = $.axiomNft.creatorOf(agentTokenId);
         if (creator == address(0)) revert AgentCreatorNotRegistered();
 
         uint256 balanceBefore = token.balanceOf(address(this));
-        token.safeTransferFrom(msg.sender, address(this), amount);
+        token.safeTransferFrom(payer, address(this), amount);
         uint256 received = token.balanceOf(address(this)) - balanceBefore;
         if (received != amount) revert TransferAmountMismatch(amount, received);
 
         (uint256 royaltyBps, bool royaltyIsSet) = _effectiveRoyaltyBps($, agentTokenId);
         uint256 feeBps = $.protocolFeeBps;
-        uint256 creatorCut;
-        uint256 protocolCut;
         if (!royaltyIsSet) {
             protocolCut = (received * feeBps) / BPS_DENOMINATOR;
             creatorCut = received - protocolCut;
@@ -277,7 +306,16 @@ contract AxiomPaymentProcessor is Initializable, OwnableUpgradeable, PausableUpg
             token.safeTransfer($.protocolTreasury, protocolCut);
         }
 
-        emit PaymentProcessed(agentTokenId, msg.sender, creator, amount, creatorCut, protocolCut);
+        emit PaymentProcessed(agentTokenId, payer, creator, amount, creatorCut, protocolCut);
+    }
+
+    /// @notice Split `amount` between creator (royalty credited to withdrawable balance) and treasury (forwarded immediately); approve first; splits use actual received tokens, so fee-on-transfer tokens revert.
+    function payForAgent(
+        uint256 agentTokenId,
+        uint256 amount
+    ) external nonReentrant whenNotPaused {
+        if (amount == 0) revert ZeroAmount();
+        _paySplit(msg.sender, agentTokenId, amount);
     }
 
     /// @dev Operator approves this contract to spend `amount`, then the full amount is forwarded to `provider`.
@@ -302,116 +340,10 @@ contract AxiomPaymentProcessor is Initializable, OwnableUpgradeable, PausableUpg
         if (provider == address(0)) revert ZeroAddress();
         if (agentAmount == 0) revert ZeroAmount();
         if (computeAmount == 0) revert ZeroAmount();
-        PaymentProcessorStorage storage $ = _getStorage();
-        IERC20 token = IERC20($.paymentToken);
+        _paySplit(msg.sender, agentTokenId, agentAmount);
 
-        address creator = $.axiomNft.creatorOf(agentTokenId);
-        if (creator == address(0)) revert AgentCreatorNotRegistered();
-
-        uint256 balanceBefore = token.balanceOf(address(this));
-        token.safeTransferFrom(msg.sender, address(this), agentAmount);
-        uint256 received = token.balanceOf(address(this)) - balanceBefore;
-        if (received != agentAmount) revert TransferAmountMismatch(agentAmount, received);
-
-        (uint256 royaltyBps, bool royaltyIsSet) = _effectiveRoyaltyBps($, agentTokenId);
-        uint256 feeBps = $.protocolFeeBps;
-        uint256 creatorCut;
-        uint256 protocolCut;
-        if (!royaltyIsSet) {
-            protocolCut = (received * feeBps) / BPS_DENOMINATOR;
-            creatorCut = received - protocolCut;
-        } else {
-            creatorCut = (received * royaltyBps) / BPS_DENOMINATOR;
-            protocolCut = received - creatorCut;
-            uint256 minProtocolCut = (received * feeBps) / BPS_DENOMINATOR;
-            if (protocolCut < minProtocolCut) {
-                protocolCut = minProtocolCut;
-                creatorCut = received - protocolCut;
-            }
-        }
-
-        if (creatorCut > 0) {
-            $.agentEarnings[creator] += creatorCut;
-            $.totalOutstandingEarnings += creatorCut;
-        }
-
-        if (protocolCut > 0) {
-            token.safeTransfer($.protocolTreasury, protocolCut);
-        }
-
-        emit PaymentProcessed(agentTokenId, msg.sender, creator, agentAmount, creatorCut, protocolCut);
-
-        token.safeTransferFrom(msg.sender, provider, computeAmount);
+        IERC20(_getStorage().paymentToken).safeTransferFrom(msg.sender, provider, computeAmount);
         emit ComputeProviderPaid(provider, computeAmount);
-    }
-
-    /// @notice One-tx payForAgentAndCompute + withdrawAgentEarnings with the royalty folded in:
-    ///         sets `royaltyBps` (creator-only, same guard as `setRoyaltyBps`), credits the creator's
-    ///         split of `agentAmount` to withdrawable earnings, forwards `computeAmount` to `provider`,
-    ///         then immediately pays out the creator's full earnings balance (3 txs -> 1).
-    function payAndWithdrawEarnings(
-        uint256 agentTokenId,
-        address provider,
-        uint256 agentAmount,
-        uint256 computeAmount,
-        uint256 royaltyBps
-    ) external nonReentrant whenNotPaused onlyAgentCreator(agentTokenId) {
-        // Royalty MUST be set before the split read below — `_effectiveRoyaltyBps` reads it at pay time.
-        _setRoyaltyBps(agentTokenId, royaltyBps);
-
-        if (provider == address(0)) revert ZeroAddress();
-        if (agentAmount == 0) revert ZeroAmount();
-        if (computeAmount == 0) revert ZeroAmount();
-        PaymentProcessorStorage storage $ = _getStorage();
-        IERC20 token = IERC20($.paymentToken);
-
-        address creator = $.axiomNft.creatorOf(agentTokenId);
-        if (creator == address(0)) revert AgentCreatorNotRegistered();
-
-        uint256 balanceBefore = token.balanceOf(address(this));
-        token.safeTransferFrom(msg.sender, address(this), agentAmount);
-        uint256 received = token.balanceOf(address(this)) - balanceBefore;
-        if (received != agentAmount) revert TransferAmountMismatch(agentAmount, received);
-
-        (uint256 royaltyBps_, bool royaltyIsSet) = _effectiveRoyaltyBps($, agentTokenId);
-        uint256 feeBps = $.protocolFeeBps;
-        uint256 creatorCut;
-        uint256 protocolCut;
-        if (!royaltyIsSet) {
-            protocolCut = (received * feeBps) / BPS_DENOMINATOR;
-            creatorCut = received - protocolCut;
-        } else {
-            creatorCut = (received * royaltyBps_) / BPS_DENOMINATOR;
-            protocolCut = received - creatorCut;
-            uint256 minProtocolCut = (received * feeBps) / BPS_DENOMINATOR;
-            if (protocolCut < minProtocolCut) {
-                protocolCut = minProtocolCut;
-                creatorCut = received - protocolCut;
-            }
-        }
-
-        if (creatorCut > 0) {
-            $.agentEarnings[creator] += creatorCut;
-            $.totalOutstandingEarnings += creatorCut;
-        }
-
-        if (protocolCut > 0) {
-            token.safeTransfer($.protocolTreasury, protocolCut);
-        }
-
-        emit PaymentProcessed(agentTokenId, msg.sender, creator, agentAmount, creatorCut, protocolCut);
-
-        token.safeTransferFrom(msg.sender, provider, computeAmount);
-        emit ComputeProviderPaid(provider, computeAmount);
-
-        // Withdraw leg — same semantics as `withdrawAgentEarnings`: pull the full balance
-        // (just-credited creatorCut plus any prior earnings), zero it, then transfer out.
-        uint256 withdrawAmount = $.agentEarnings[msg.sender];
-        if (withdrawAmount == 0) revert NoEarnings();
-        $.agentEarnings[msg.sender] = 0;
-        $.totalOutstandingEarnings -= withdrawAmount;
-        emit EarningsWithdrawn(msg.sender, withdrawAmount);
-        token.safeTransfer(msg.sender, withdrawAmount);
     }
 
     /// @notice Creator pulls accumulated earnings in the configured payment token (not native).
@@ -425,11 +357,11 @@ contract AxiomPaymentProcessor is Initializable, OwnableUpgradeable, PausableUpg
         IERC20($.paymentToken).safeTransfer(msg.sender, amount);
     }
 
-    function pause() external onlyOwner {
+    function pause() external onlyRole(ADMIN_ROLE) {
         _pause();
     }
 
-    function unpause() external onlyOwner {
+    function unpause() external onlyRole(ADMIN_ROLE) {
         _unpause();
     }
 
@@ -437,5 +369,6 @@ contract AxiomPaymentProcessor is Initializable, OwnableUpgradeable, PausableUpg
         return _getStorage().axiomNft;
     }
 
-    function _authorizeUpgrade(address) internal override onlyOwner {}
+    /// @dev UUPS gate: the EIP-1967 impl-slot rewrite is protected only by this check; DEFAULT_ADMIN_ROLE keeps governance in AccessControl.
+    function _authorizeUpgrade(address) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
 }

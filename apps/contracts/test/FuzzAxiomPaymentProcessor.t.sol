@@ -5,6 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {StdInvariant} from "forge-std/StdInvariant.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import {AxiomPaymentProcessor} from "../src/AxiomPaymentProcessor.sol";
@@ -92,6 +93,8 @@ contract FuzzAxiomPaymentProcessorUnit is Test {
     StubAxiomAgentNFT internal nft;
 
     address internal owner = address(0x0A11CE);
+    address internal admin;
+    bytes32 internal adminRole;
     address internal treasury = address(0x0A1D);
     address internal creator = address(0xC0FFEE);
     address internal payer = address(0xBA7A);
@@ -121,30 +124,41 @@ contract FuzzAxiomPaymentProcessorUnit is Test {
             abi.encodeWithSelector(impl.initialize.selector, address(nft), address(token), treasury, PROTOCOL_FEE_BPS, owner)
         );
         processor = AxiomPaymentProcessor(address(proxy));
+        // V2 governance: role accounts are distinct from the deploy/init beneficiary,
+        // mirroring the production pattern (multisig holds ops roles, deployer holds only
+        // DEFAULT_ADMIN). `owner` keeps DEFAULT_ADMIN-only for upgrade-gate tests.
+        admin = address(0xAD71);
+        adminRole = processor.ADMIN_ROLE();
+        vm.startPrank(owner);
+        processor.grantRole(processor.ADMIN_ROLE(), admin);
+        vm.stopPrank();
     }
 
     // ─── 1. Fuzz setPaymentToken ──────────────────────────────────────
 
-    /// @notice setPaymentToken accepts any non-zero address.
-    function testFuzz_setPaymentToken_ownerSucceeds(
+    /// @notice setPaymentToken accepts any non-zero address (ADMIN_ROLE op).
+    function testFuzz_setPaymentToken_adminSucceeds(
         address newToken
     ) public {
         vm.assume(newToken != address(0));
-        vm.prank(owner);
+        vm.prank(admin);
         processor.setPaymentToken(newToken);
         assertEq(processor.paymentToken(), newToken, "paymentToken should be updated");
     }
 
-    /// @notice A non-owner calling setPaymentToken reverts.
-    function testFuzz_setPaymentToken_revertsForNonOwner(
+    /// @notice A caller with neither DEFAULT_ADMIN nor ADMIN_ROLE reverts.
+    function testFuzz_setPaymentToken_revertsForNonAdmin(
         address caller,
         address newToken
     ) public {
         vm.assume(caller != owner);
+        vm.assume(caller != admin);
         vm.assume(caller != address(0));
         vm.assume(newToken != address(0));
         vm.prank(caller);
-        vm.expectRevert();
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, caller, adminRole)
+        );
         processor.setPaymentToken(newToken);
         // Storage untouched.
         assertEq(processor.paymentToken(), address(token), "paymentToken should be unchanged");
@@ -152,7 +166,7 @@ contract FuzzAxiomPaymentProcessorUnit is Test {
 
     /// @notice setPaymentToken(0) reverts with ZeroAddress.
     function testFuzz_setPaymentToken_revertsOnZero() public {
-        vm.prank(owner);
+        vm.prank(admin);
         vm.expectRevert(AxiomPaymentProcessor.ZeroAddress.selector);
         processor.setPaymentToken(address(0));
     }
@@ -171,7 +185,7 @@ contract FuzzAxiomPaymentProcessorUnit is Test {
         address newToken = address(uint160(uint256(keccak256(abi.encode(amount, block.timestamp)))));
         vm.assume(newToken != address(0));
 
-        vm.prank(owner);
+        vm.prank(admin);
         vm.expectRevert(AxiomPaymentProcessor.MigrationBlocked.selector);
         processor.setPaymentToken(newToken);
     }
@@ -185,7 +199,7 @@ contract FuzzAxiomPaymentProcessorUnit is Test {
         vm.assume(newToken != address(token));
         vm.expectEmit(true, true, false, false);
         emit PaymentTokenUpdated(address(token), newToken);
-        vm.prank(owner);
+        vm.prank(admin);
         processor.setPaymentToken(newToken);
     }
 
@@ -255,7 +269,7 @@ contract FuzzAxiomPaymentProcessorUnit is Test {
     ) public {
         amount = bound(amount, 1, type(uint128).max);
         FalseReturningERC20 bad = new FalseReturningERC20();
-        vm.prank(owner);
+        vm.prank(admin);
         processor.setPaymentToken(address(bad));
 
         // The bad token's `transferFrom` ALWAYS returns false. We must
@@ -270,6 +284,96 @@ contract FuzzAxiomPaymentProcessorUnit is Test {
         vm.prank(payer);
         vm.expectRevert(abi.encodeWithSelector(SafeERC20.SafeERC20FailedOperation.selector, address(bad)));
         processor.payForAgent(AGENT_TOKEN_ID, amount);
+    }
+
+    /// @notice V2: the agent leg of payForAgentAndCompute routes through the same internal
+    ///         _paySplit as payForAgent — per-pay deltas (earnings, treasury, outstanding,
+    ///         events) must be identical for the same amount.
+    function testFuzz_payForAgentAndCompute_splitDeltasMatchPayForAgent(
+        uint256 agentAmount,
+        uint256 computeAmount
+    ) public {
+        agentAmount = bound(agentAmount, 1, type(uint128).max);
+        computeAmount = bound(computeAmount, 1, type(uint128).max);
+        address provider = address(0xD3F);
+
+        // Reference deltas via payForAgent.
+        token.mint(payer, agentAmount);
+        vm.prank(payer);
+        token.approve(address(processor), agentAmount);
+        vm.prank(payer);
+        processor.payForAgent(AGENT_TOKEN_ID, agentAmount);
+        uint256 refCreatorDelta = processor.agentEarningsOf(creator);
+        uint256 refTreasuryDelta = token.balanceOf(treasury);
+        assertTrue(refCreatorDelta > 0 || refTreasuryDelta > 0, "reference pay must move value");
+
+        // Same-size agent leg via payForAgentAndCompute.
+        token.mint(payer, agentAmount + computeAmount);
+        vm.prank(payer);
+        token.approve(address(processor), agentAmount + computeAmount);
+        uint256 creatorBefore = processor.agentEarningsOf(creator);
+        uint256 treasuryBefore = token.balanceOf(treasury);
+
+        vm.expectEmit(true, true, true, true);
+        emit PaymentProcessed(AGENT_TOKEN_ID, payer, creator, agentAmount, refCreatorDelta, refTreasuryDelta);
+        vm.prank(payer);
+        processor.payForAgentAndCompute(AGENT_TOKEN_ID, provider, agentAmount, computeAmount);
+
+        assertEq(processor.agentEarningsOf(creator) - creatorBefore, refCreatorDelta, "same creator cut");
+        assertEq(token.balanceOf(treasury) - treasuryBefore, refTreasuryDelta, "same protocol cut");
+        assertEq(token.balanceOf(provider), computeAmount, "provider leg paid compute");
+    }
+
+    // ─── 2b. Fuzz MAX_PAY cap ─────────────────────────────────────────
+
+    /// @notice Cap enforcement: pays above the configured cap revert on both lanes;
+    ///         below-cap pays succeed and respect the exact split.
+    function testFuzz_maxPayCap_enforcedOnBothPayLanes(
+        uint256 cap,
+        uint256 amount
+    ) public {
+        cap = bound(cap, 1, type(uint128).max);
+        amount = bound(amount, 1, type(uint128).max);
+        vm.prank(admin);
+        processor.setMaxPayCap(cap);
+
+        token.mint(payer, amount);
+        vm.prank(payer);
+        token.approve(address(processor), amount);
+
+        if (amount > cap) {
+            vm.prank(payer);
+            vm.expectRevert(abi.encodeWithSelector(AxiomPaymentProcessor.PayAmountExceedsCap.selector, amount, cap));
+            processor.payForAgent(AGENT_TOKEN_ID, amount);
+
+            vm.prank(payer);
+            vm.expectRevert(abi.encodeWithSelector(AxiomPaymentProcessor.PayAmountExceedsCap.selector, amount, cap));
+            processor.payForAgentAndCompute(AGENT_TOKEN_ID, address(0xD3F), amount, 1);
+        } else {
+            uint256 expectedProtocolCut = (amount * PROTOCOL_FEE_BPS) / 10_000;
+            uint256 expectedCreatorCut = amount - expectedProtocolCut;
+
+            vm.prank(payer);
+            processor.payForAgent(AGENT_TOKEN_ID, amount);
+
+            assertEq(processor.agentEarningsOf(creator), expectedCreatorCut, "at-cap pay split creator");
+            assertEq(token.balanceOf(treasury), expectedProtocolCut, "at-cap pay split protocol");
+        }
+    }
+
+    /// @notice Only ADMIN_ROLE can change the cap.
+    function testFuzz_setMaxPayCap_revertsForNonAdmin(
+        address caller,
+        uint256 cap
+    ) public {
+        vm.assume(caller != owner);
+        vm.assume(caller != admin);
+        vm.assume(caller != address(0));
+        vm.prank(caller);
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, caller, adminRole)
+        );
+        processor.setMaxPayCap(cap);
     }
 
     // ─── 3. Fuzz withdrawAgentEarnings ──────────────────────────────────

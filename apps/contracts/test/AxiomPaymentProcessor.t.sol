@@ -3,6 +3,8 @@ pragma solidity ^0.8.20;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import {AxiomPaymentProcessor} from "../src/AxiomPaymentProcessor.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {IAxiomAgentNFT} from "../src/interfaces/IAxiomAgentNFT.sol";
@@ -337,76 +339,157 @@ contract AxiomPaymentProcessorTest is Test {
         processor.payForAgentAndCompute(AGENT_TOKEN_ID, provider, agentAmount, 0);
     }
 
-    // ─── payAndWithdrawEarnings ─────────────────────────────────────
-    function test_payAndWithdrawEarnings_creditsCreatorThenPaysOut() public {
+    // ─── V2: _split dedup equivalence ───────────────────────────────
+    function test_payForAgentAndCompute_splitMatchesPayForAgent() public {
         uint256 agentAmount = 1000e6;
         uint256 computeAmount = 300e6;
-        uint256 royaltyBps = 8000;
         address provider = address(0xD3F);
-        uint256 expectedCreatorCut = (agentAmount * royaltyBps) / 10_000;
-        uint256 expectedProtocolCut = agentAmount - expectedCreatorCut;
 
-        token.mint(creator, agentAmount + computeAmount);
-        vm.prank(creator);
-        token.approve(address(processor), agentAmount + computeAmount);
-
-        assertEq(token.balanceOf(creator), agentAmount + computeAmount, "creator pre-balance");
-        assertEq(token.balanceOf(provider), 0, "provider pre-balance");
-        assertEq(processor.agentEarningsOf(creator), 0, "creator pre-earnings");
-        assertEq(processor.totalOutstandingEarnings(), 0, "no outstanding pre-call");
-
-        vm.prank(creator);
-        processor.payAndWithdrawEarnings(AGENT_TOKEN_ID, provider, agentAmount, computeAmount, royaltyBps);
-
-        assertEq(token.balanceOf(provider), computeAmount, "provider post-balance");
-        assertEq(token.balanceOf(creator), expectedCreatorCut, "creator post-balance (net: creatorCut)");
-        assertEq(processor.agentEarningsOf(creator), 0, "earnings back to prior");
-        assertEq(processor.totalOutstandingEarnings(), 0, "outstanding back to prior");
-        assertEq(token.balanceOf(treasury), expectedProtocolCut, "treasury receives protocol cut");
-        assertEq(token.balanceOf(address(processor)), 0, "processor holds no funds");
-        assertTrue(processor.royaltyBpsSet(AGENT_TOKEN_ID), "royalty set by merged call");
-        assertEq(processor.royaltyBpsOf(AGENT_TOKEN_ID), royaltyBps, "royalty stored");
-    }
-
-    function test_payAndWithdrawEarnings_revertsOnZeroProvider() public {
-        uint256 agentAmount = 100e6;
-        token.mint(creator, agentAmount);
-        vm.prank(creator);
-        token.approve(address(processor), agentAmount);
-
-        vm.prank(creator);
-        vm.expectRevert(AxiomPaymentProcessor.ZeroAddress.selector);
-        processor.payAndWithdrawEarnings(AGENT_TOKEN_ID, address(0), agentAmount, 50e6, 8000);
-    }
-
-    function test_payAndWithdrawEarnings_revertsOnZeroAmount() public {
-        address provider = address(0xD3F);
-        uint256 agentAmount = 100e6;
-        uint256 computeAmount = 50e6;
-        token.mint(creator, agentAmount + computeAmount);
-        vm.prank(creator);
-        token.approve(address(processor), agentAmount + computeAmount);
-
-        vm.prank(creator);
-        vm.expectRevert(AxiomPaymentProcessor.ZeroAmount.selector);
-        processor.payAndWithdrawEarnings(AGENT_TOKEN_ID, provider, 0, computeAmount, 8000);
-
-        vm.prank(creator);
-        vm.expectRevert(AxiomPaymentProcessor.ZeroAmount.selector);
-        processor.payAndWithdrawEarnings(AGENT_TOKEN_ID, provider, agentAmount, 0, 8000);
-    }
-
-    function test_payAndWithdrawEarnings_revertsForNonCreatorCaller() public {
-        address provider = address(0xD3F);
-        uint256 agentAmount = 100e6;
-        uint256 computeAmount = 50e6;
-        token.mint(payer, agentAmount + computeAmount);
+        // Reference run: payForAgent alone establishes the per-pay deltas.
+        token.mint(payer, 2 * (agentAmount + computeAmount));
         vm.prank(payer);
-        token.approve(address(processor), agentAmount + computeAmount);
+        token.approve(address(processor), 2 * (agentAmount + computeAmount));
 
         vm.prank(payer);
-        vm.expectRevert(AxiomPaymentProcessor.NotCreator.selector);
-        processor.payAndWithdrawEarnings(AGENT_TOKEN_ID, provider, agentAmount, computeAmount, 8000);
+        processor.payForAgent(AGENT_TOKEN_ID, agentAmount);
+        uint256 refCreatorEarnings = processor.agentEarningsOf(creator);
+        uint256 refTreasuryBalance = token.balanceOf(treasury);
+        uint256 refOutstanding = processor.totalOutstandingEarnings();
+        assertGt(refCreatorEarnings, 0, "reference pay credited creator");
+
+        // Second run: the agent leg of payForAgentAndCompute delegates to the
+        // same internal _paySplit — deltas must match the reference exactly.
+        uint256 payerBefore = token.balanceOf(payer);
+        uint256 providerBefore = token.balanceOf(provider);
+
+        vm.prank(payer);
+        processor.payForAgentAndCompute(AGENT_TOKEN_ID, provider, agentAmount, computeAmount);
+
+        assertEq(processor.agentEarningsOf(creator) - refCreatorEarnings, refCreatorEarnings, "same creator cut per pay");
+        assertEq(token.balanceOf(treasury) - refTreasuryBalance, refTreasuryBalance, "same protocol cut per pay");
+        assertEq(processor.totalOutstandingEarnings() - refOutstanding, refCreatorEarnings, "same outstanding delta");
+        assertEq(token.balanceOf(provider), providerBefore + computeAmount, "provider leg paid compute");
+        assertEq(token.balanceOf(payer), payerBefore - agentAmount - computeAmount, "payer debited both legs");
+    }
+
+    // ─── V2: MAX_PAY cap ─────────────────────────────────────────────
+    function test_setMaxPayCap_adminSetsCapAndPayLanesEnforceIt() public {
+        uint256 cap = 500e6;
+        vm.prank(owner);
+        processor.setMaxPayCap(cap);
+        assertEq(processor.maxPayCap(), cap, "cap stored");
+
+        token.mint(payer, 1500e6);
+        vm.prank(payer);
+        token.approve(address(processor), 1500e6);
+
+        vm.expectRevert(abi.encodeWithSelector(AxiomPaymentProcessor.PayAmountExceedsCap.selector, 1000e6, cap));
+        vm.prank(payer);
+        processor.payForAgent(AGENT_TOKEN_ID, 1000e6);
+
+        vm.expectRevert(abi.encodeWithSelector(AxiomPaymentProcessor.PayAmountExceedsCap.selector, 1000e6, cap));
+        vm.prank(payer);
+        processor.payForAgentAndCompute(AGENT_TOKEN_ID, address(0xD3F), 1000e6, 100e6);
+
+        // At-cap and below-cap pays succeed on both lanes.
+        vm.prank(payer);
+        processor.payForAgent(AGENT_TOKEN_ID, cap);
+        vm.prank(payer);
+        processor.payForAgentAndCompute(AGENT_TOKEN_ID, address(0xD3F), cap, 100e6);
+    }
+
+    function test_setMaxPayCap_zeroDisablesCap() public {
+        token.mint(payer, 10_000e6);
+        vm.prank(payer);
+        token.approve(address(processor), 10_000e6);
+
+        vm.prank(owner);
+        processor.setMaxPayCap(100e6);
+        vm.prank(owner);
+        processor.setMaxPayCap(0);
+
+        vm.prank(payer);
+        processor.payForAgent(AGENT_TOKEN_ID, 10_000e6);
+        assertGt(processor.agentEarningsOf(creator), 0, "uncapped pay succeeded after cap cleared");
+    }
+
+    function test_setMaxPayCap_emitsEvent() public {
+        vm.prank(owner);
+        vm.expectEmit(false, false, false, true);
+        emit AxiomPaymentProcessor.MaxPayCapUpdated(0, 1000e6);
+        processor.setMaxPayCap(1000e6);
+    }
+
+    // ─── V2: role gating (Ownable -> AccessControl) ──────────────────
+    function test_nonAdmin_cannotPauseOrUnpause() public {
+        bytes32 adminRole = processor.ADMIN_ROLE();
+
+        vm.prank(payer);
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, payer, adminRole));
+        processor.pause();
+
+        vm.prank(payer);
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, payer, adminRole));
+        processor.unpause();
+    }
+
+    function test_nonAdmin_cannotSetProtocolFeeBps() public {
+        bytes32 adminRole = processor.ADMIN_ROLE();
+
+        vm.prank(payer);
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, payer, adminRole));
+        processor.setProtocolFeeBps(500);
+    }
+
+    function test_nonAdmin_cannotSetMaxPayCap() public {
+        bytes32 adminRole = processor.ADMIN_ROLE();
+
+        vm.prank(payer);
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, payer, adminRole));
+        processor.setMaxPayCap(1);
+    }
+
+    function test_nonAdmin_cannotSetPaymentToken() public {
+        bytes32 adminRole = processor.ADMIN_ROLE();
+        MockERC20 newToken = new MockERC20("Mock USDG", "mUSDG");
+
+        vm.prank(payer);
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, payer, adminRole));
+        processor.setPaymentToken(address(newToken));
+    }
+
+    function test_admin_canPauseAndUnpause_blocksPaysWhilePaused() public {
+        token.mint(payer, 1000e6);
+        vm.prank(payer);
+        token.approve(address(processor), 1000e6);
+
+        vm.prank(owner);
+        processor.pause();
+
+        vm.expectRevert(PausableUpgradeable.EnforcedPause.selector);
+        vm.prank(payer);
+        processor.payForAgent(AGENT_TOKEN_ID, 1000e6);
+
+        vm.prank(owner);
+        processor.unpause();
+
+        vm.prank(payer);
+        processor.payForAgent(AGENT_TOKEN_ID, 1000e6);
+        assertGt(processor.agentEarningsOf(creator), 0, "pay succeeded after unpause");
+    }
+
+    function test_nonDefaultAdmin_cannotUpgradeImplementation() public {
+        AxiomPaymentProcessor implV2 = new AxiomPaymentProcessor();
+
+        vm.prank(payer);
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, payer, bytes32(0))
+        );
+        processor.upgradeToAndCall(address(implV2), "");
+
+        // DEFAULT_ADMIN (the initialize beneficiary) can still upgrade.
+        vm.prank(owner);
+        processor.upgradeToAndCall(address(implV2), "");
     }
 
     // ─── withdrawAgentEarnings ──────────────────────────────────────

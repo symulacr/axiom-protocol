@@ -49,9 +49,12 @@ type AgentNftExtended = {
   creatorOf(tokenId: bigint): Promise<string>;
   ownerOf(tokenId: bigint): Promise<string>;
   supportsInterface(id: string): Promise<boolean>;
-  authorizeDelegateAndRevoke(
-    delegate: string,
+  // authorizeDelegateAndRevoke removed in V2 (ADR-004 §2.3): use the composable
+  // authorizeUsage + delegateAccess + revokeAuthorization calls instead.
+  authorizeUsage(tokenId: bigint, user: string): Promise<TransactionResponse>;
+  revokeAuthorization(
     tokenId: bigint,
+    user: string,
   ): Promise<TransactionResponse>;
   authorizedUsersOf(tokenId: bigint): Promise<string[]>;
   delegateAccess(assistant: string): Promise<TransactionResponse>;
@@ -526,19 +529,24 @@ async function buildAuthorizeDelegatePipelineSteps(
   );
   const steps: Parameters<typeof pipelineWalletTxs>[1] = [];
   if (!alreadyAuthorized) {
-    // One tx: authorizeDelegateAndRevoke merges authorizeUsage + delegateAccess + revokeAuthorization.
-    steps.push({
-      name: "authorizeDelegateAndRevoke",
-      send: () =>
-        nft.contract.authorizeDelegateAndRevoke(delegateAddress, tokenId),
-    });
-  } else {
-    // Already authorized (edge reuse state): only re-set the delegate.
-    steps.push({
-      name: "delegateAccess",
-      send: () => nft.contract.delegateAccess(delegateAddress),
-    });
+    // Composable flow (V2, ADR-004 §2.3): authorizeUsage + delegateAccess +
+    // revokeAuthorization replace the removed merged authorizeDelegateAndRevoke.
+    steps.push(
+      {
+        name: "authorizeUsage",
+        send: () => nft.contract.authorizeUsage(tokenId, delegateAddress),
+      },
+      {
+        name: "revokeAuthorization",
+        send: () => nft.contract.revokeAuthorization(tokenId, delegateAddress),
+      },
+    );
   }
+  // Delegate assignment is always sent: delegateAccess (composable half of the old merge).
+  steps.push({
+    name: "delegateAccess",
+    send: () => nft.contract.delegateAccess(delegateAddress),
+  });
   return steps;
 }
 
@@ -557,7 +565,7 @@ async function authorizeDelegateCore(
     delegateAddress,
   );
   const receipts = await pipelineWalletTxs(pipelineLabel, steps);
-  const isReuse = steps[0]?.name === "delegateAccess";
+  const isReuse = !steps.some((s) => s.name === "authorizeUsage");
   const assistant = await nft.contract.getDelegateAccess(deployerAddress);
   if (assistant.toLowerCase() !== delegateAddress.toLowerCase()) {
     throw new Error(`getDelegateAccess ${assistant} != ${delegateAddress}`);
@@ -565,7 +573,7 @@ async function authorizeDelegateCore(
   markCovered(
     "AxiomAgentNFT",
     "authorizedUsersOf",
-    "authorizeDelegateAndRevoke",
+    "composable authorize-delegate-revoke",
   );
   markCovered("AxiomAgentNFT", "delegateAccess", "delegateAccess");
   markCovered("AxiomAgentNFT", "getDelegateAccess", "delegateAccess");
@@ -575,24 +583,16 @@ async function authorizeDelegateCore(
     if (afterRevoke.length !== 0) {
       throw new Error(`${notClearedMsg}: ${afterRevoke.join(",")}`);
     }
-    markScenarioCovered("agent.authorize", "authorizeDelegateAndRevoke", {
+    markScenarioCovered("agent.authorize", "authorizeUsage", {
       txs: 1,
       reads: 1,
     });
-    markScenarioCovered("agent.revoke", "authorizeDelegateAndRevoke", {
+    markScenarioCovered("agent.revoke", "revokeAuthorization", {
       txs: 1,
       reads: 1,
     });
-    markCovered(
-      "AxiomAgentNFT",
-      "authorizeUsage",
-      "authorizeDelegateAndRevoke",
-    );
-    markCovered(
-      "AxiomAgentNFT",
-      "revokeAuthorization",
-      "authorizeDelegateAndRevoke",
-    );
+    markCovered("AxiomAgentNFT", "authorizeUsage", "authorizeUsage");
+    markCovered("AxiomAgentNFT", "revokeAuthorization", "revokeAuthorization");
   }
   return { isReuse, receipt: receipts[0]! };
 }
@@ -605,7 +605,7 @@ export async function runAuthorizeDelegateStep(deps: {
   chainId: number;
 }): Promise<void> {
   console.log(
-    `\n[Parity] authorizeDelegateAndRevoke / delegateAccess (${deps.delegateAddress})`,
+    `\n[Parity] composable authorize/revoke + delegateAccess (${deps.delegateAddress})`,
   );
   const nft = new TypedContract<AgentNftExtended>(
     deps.agentNft,
@@ -617,12 +617,12 @@ export async function runAuthorizeDelegateStep(deps: {
     deps.deployer.address,
     deps.tokenId,
     deps.delegateAddress,
-    "authorizeDelegateAndRevoke",
-    "authorizedUsersOf not cleared after authorizeDelegateAndRevoke",
+    "composable authorize-delegate-revoke",
+    "authorizedUsersOf not cleared after composable authorize-delegate-revoke",
   );
   recordReceipt(
     17,
-    isReuse ? "delegateAccess" : "authorizeDelegateAndRevoke",
+    isReuse ? "delegateAccess" : "authorizeUsage+revokeAuthorization",
     `delegate=${deps.delegateAddress.slice(0, 10)}…`,
     authReceipt,
     deps.chainId,
@@ -638,7 +638,7 @@ export async function runPostVaultCoveragePipeline(deps: {
   chainId: number;
 }): Promise<bigint> {
   console.log(
-    "\n[Parity] post-vault mega: authorizeDelegateAndRevoke (withdraw folded into deposit; update folded into mint; royalty folded into pay)",
+    "\n[Parity] post-vault mega: composable authorize/revoke (withdraw folded into deposit; update folded into mint; royalty folded into pay)",
   );
   const vault = new TypedContract<VaultCov>(
     deps.vault,
@@ -670,7 +670,7 @@ export async function runPostVaultCoveragePipeline(deps: {
 
   recordReceipt(
     17,
-    isReuse ? "delegateAccess" : "authorizeDelegateAndRevoke",
+    isReuse ? "delegateAccess" : "authorizeUsage+revokeAuthorization",
     `delegate=${deps.delegateAddress.slice(0, 10)}…`,
     lastReceipt,
     deps.chainId,

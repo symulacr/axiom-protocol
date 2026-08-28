@@ -32,7 +32,10 @@ describe("currentUtcDay", () => {
 describe("utcDayDateLabel", () => {
   test("formats a day index as its UTC calendar date", () => {
     assert.equal(utcDayDateLabel(0n), "1970-01-01");
-    assert.equal(utcDayDateLabel(TODAY), new Date(Number(TODAY) * DAY_MS).toISOString().slice(0, 10));
+    assert.equal(
+      utcDayDateLabel(TODAY),
+      new Date(Number(TODAY) * DAY_MS).toISOString().slice(0, 10),
+    );
   });
 });
 
@@ -57,14 +60,14 @@ describe("strategyGuardError", () => {
     );
   });
 
-  test("ignores the limit entirely when no limit is set (0n sentinel)", () => {
-    assert.equal(
+  test("blocks when the daily limit is 0 — no unlimited sentinel (contract: DailyLimitExceeded)", () => {
+    assert.match(
       strategyGuardError(
         { ...base, dailyLimitWei: 0n, dailySpentWei: 999n },
         1_000_000n,
         TODAY,
-      ),
-      null,
+      ) ?? "",
+      /Daily limit exceeded/,
     );
   });
 

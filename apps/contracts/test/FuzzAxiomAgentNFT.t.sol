@@ -496,8 +496,18 @@ contract FuzzAxiomAgentNFTSanity is LiveForkTest {
         AxiomPaymentProcessor processor = AxiomPaymentProcessor(processorProxy);
         assertEq(processor.paymentToken(), address(0x354CA53bAB51C0666964fa050628d8351f8A7d19), "payment token");
         assertEq(processor.protocolFeeBps(), 100, "protocol fee bps");
-        assertEq(processor.owner(), oracleAdmin, "processor owner");
+        // The deployed processor is still V1 (Ownable). Cast to the V1 shape so this
+        // fork probe keeps compiling after the V2 source moved to AccessControl;
+        // flip to hasRole(ADMIN_ROLE) assertions when the V2 processor is deployed.
+        V1OwnableProcessor v1Processor = V1OwnableProcessor(processorProxy);
+        assertEq(v1Processor.owner(), oracleAdmin, "processor owner");
     }
+}
+
+/// @dev Minimal V1 governance shape of the deployed (pre-V2) AxiomPaymentProcessor.
+///      Staticcalls hit the live chain — the local declaration is never executed.
+abstract contract V1OwnableProcessor {
+    function owner() external view virtual returns (address);
 }
 
 /// @title FuzzAxiomAgentNFTLocal

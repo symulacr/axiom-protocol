@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import {Test} from "forge-std/Test.sol";
 import {AxiomAgentNFT} from "../src/AxiomAgentNFT.sol";
-import {IERC7857} from "../src/interfaces/IERC7857.sol";
+import {IERC7857Authorize} from "../src/interfaces/IERC7857Authorize.sol";
 import {AxiomTeeVerifier} from "../src/verifiers/AxiomTeeVerifier.sol";
 import {BaseVerifier} from "../src/verifiers/BaseVerifier.sol";
 import {IntelligentData} from "../src/interfaces/IERC7857Metadata.sol";
@@ -220,7 +220,6 @@ contract AxiomAgentNFTTest is Test {
         assertEq(nft.name(), "Axiom Agent NFT");
         assertEq(nft.symbol(), "AXM-A");
         assertTrue(nft.hasRole(nft.ADMIN_ROLE(), admin));
-        assertTrue(nft.hasRole(nft.OPERATOR_ROLE(), admin));
         assertTrue(nft.hasRole(nft.MINTER_ROLE(), admin));
         assertEq(address(nft.verifier()), address(verifier));
     }
@@ -232,20 +231,61 @@ contract AxiomAgentNFTTest is Test {
         assertEq(nft.intelligentDatasOf(tokenId).length, 1);
     }
 
-    function test_withdrawMintFees_onlyAdmin() public {
+    // ─── Timelocked fee withdrawal (ADR-004 §1.1 admin hardening) ──────
+
+    function test_proposeFeeWithdrawal_cannotWithdrawUntilDelay_thenExecuteSucceeds() public {
         vm.deal(address(nft), 1 ether);
+        vm.prank(admin);
+        nft.proposeFeeWithdrawal(payable(bob));
+        assertEq(nft.pendingFeeWithdrawal(), address(bob));
+
+        // Delay not elapsed: the withdrawal must fail and funds must stay.
+        vm.expectRevert(abi.encodeWithSelector(TimelockManager.DelayNotElapsed.selector, 1 days));
+        vm.prank(admin);
+        nft.executeFeeWithdrawal();
+        assertEq(address(nft).balance, 1 ether);
+
+        vm.warp(block.timestamp + 1 days + 1);
         uint256 balanceBefore = bob.balance;
         vm.prank(admin);
-        nft.withdrawMintFees(payable(bob));
+        nft.executeFeeWithdrawal();
         assertEq(bob.balance, balanceBefore + 1 ether);
         assertEq(address(nft).balance, 0);
+        assertEq(nft.pendingFeeWithdrawal(), address(0), "proposal must clear after execute");
     }
 
-    function test_withdrawMintFees_revertNotAdmin() public {
+    function test_executeFeeWithdrawal_revertNotAdmin() public {
         vm.deal(address(nft), 1 ether);
+        vm.prank(admin);
+        nft.proposeFeeWithdrawal(payable(bob));
+        vm.warp(block.timestamp + 1 days + 1);
         vm.prank(alice);
         vm.expectRevert();
+        nft.executeFeeWithdrawal();
+        assertEq(address(nft).balance, 1 ether);
+    }
+
+    function test_cancelFeeWithdrawal() public {
+        vm.deal(address(nft), 1 ether);
+        vm.prank(admin);
+        nft.proposeFeeWithdrawal(payable(bob));
+        vm.prank(admin);
+        nft.cancelFeeWithdrawal();
+        assertEq(nft.pendingFeeWithdrawal(), address(0));
+
+        vm.warp(block.timestamp + 2 days);
+        vm.prank(admin);
+        vm.expectRevert(TimelockManager.NoPendingProposal.selector);
+        nft.executeFeeWithdrawal();
+        assertEq(address(nft).balance, 1 ether, "cancelled proposal must not drain funds");
+    }
+
+    function test_withdrawMintFees_legacySelector_revertsToTimelock() public {
+        vm.deal(address(nft), 1 ether);
+        vm.prank(admin);
+        vm.expectRevert(AxiomAgentNFT.UseTimelockedFeeWithdrawal.selector);
         nft.withdrawMintFees(payable(bob));
+        assertEq(address(nft).balance, 1 ether);
     }
 
     function test_mint_revertZeroAddress() public {
@@ -506,6 +546,78 @@ contract AxiomAgentNFTTest is Test {
         );
     }
 
+    // ─── Timelocked upgrade path (ADR-004 §1.1 admin hardening) ────────
+
+    function test_proposeUpgrade_cannotExecuteUntilDelay_thenUpgradeSucceeds() public {
+        MockAxiomAgentNFTV2 mockV2 = new MockAxiomAgentNFTV2();
+        address proxyAddr = address(nft);
+
+        vm.prank(admin);
+        nft.proposeUpgrade(address(mockV2));
+        assertEq(nft.pendingUpgrade(), address(mockV2));
+
+        vm.expectRevert(abi.encodeWithSelector(TimelockManager.DelayNotElapsed.selector, 1 days));
+        vm.prank(admin);
+        nft.executeUpgrade();
+        // Impl slot untouched while the delay runs.
+        assertTrue(uint256(vm.load(proxyAddr, EIP1967_IMPL_SLOT)) != uint256(uint160(address(mockV2))));
+
+        vm.warp(block.timestamp + 1 days + 1);
+        vm.prank(admin);
+        nft.executeUpgrade();
+        assertEq(
+            uint256(vm.load(proxyAddr, EIP1967_IMPL_SLOT)),
+            uint256(uint160(address(mockV2))),
+            "post-upgrade: EIP-1967 slot must equal mockV2"
+        );
+        // NOTE: after a successful upgrade the proxy delegates to MockAxiomAgentNFTV2, which
+        // deliberately does not inherit AxiomAgentNFT — pendingUpgrade() is unreadable there.
+        // The DelayNotElapsed revert above proves the proposal is still pending pre-delay; the
+        // cancel path's pendingUpgrade()==0 assertion covers proposal clearing.
+    }
+
+    function test_cancelUpgrade() public {
+        MockAxiomAgentNFTV2 mockV2 = new MockAxiomAgentNFTV2();
+        address proxyAddr = address(nft);
+
+        vm.prank(admin);
+        nft.proposeUpgrade(address(mockV2));
+        vm.prank(admin);
+        nft.cancelUpgrade();
+        assertEq(nft.pendingUpgrade(), address(0));
+
+        vm.warp(block.timestamp + 2 days);
+        vm.prank(admin);
+        vm.expectRevert(TimelockManager.NoPendingProposal.selector);
+        nft.executeUpgrade();
+        assertTrue(uint256(vm.load(proxyAddr, EIP1967_IMPL_SLOT)) != uint256(uint160(address(mockV2))));
+    }
+
+    function test_proposeUpgrade_revertNotAdmin() public {
+        MockAxiomAgentNFTV2 mockV2 = new MockAxiomAgentNFTV2();
+        vm.prank(alice);
+        vm.expectRevert();
+        nft.proposeUpgrade(address(mockV2));
+        assertEq(nft.pendingUpgrade(), address(0));
+    }
+
+    function test_proposeUpgrade_revertZeroAddress() public {
+        vm.prank(admin);
+        vm.expectRevert("Zero implementation");
+        nft.proposeUpgrade(address(0));
+    }
+
+    function test_executeUpgrade_revertNoCodeAtImplementation() public {
+        vm.prank(admin);
+        nft.proposeUpgrade(address(0xBEEF));
+        vm.warp(block.timestamp + 1 days + 1);
+        vm.prank(admin);
+        vm.expectRevert("No code at implementation");
+        nft.executeUpgrade();
+    }
+
+    // ─── authorizeDelegateAndRevoke (merged authorizeAndDelegate + revokeAuthorization) ──
+
     // ─── iCloneFrom tests ──────────────────────────────────────────
 
     function testICloneFrom_succeeds() public {
@@ -583,38 +695,42 @@ contract AxiomAgentNFTTest is Test {
         assertEq(nft.getDelegateAccess(alice), carol, "delegate must be updated to carol");
     }
 
-    // ─── authorizeDelegateAndRevoke (merged authorizeAndDelegate + revokeAuthorization) ──
+    // ─── Composable authorize-delegate-revoke (replaces merged authorizeDelegateAndRevoke, ADR-004 §2.3) ──
 
-    function test_authorizeDelegateAndRevoke_succeeds() public {
+    function test_composableAuthorizeDelegateRevoke_succeeds() public {
         uint256 tokenId = _mintTo(alice);
 
-        vm.prank(alice);
-        nft.authorizeDelegateAndRevoke(bob, tokenId);
+        vm.startPrank(alice);
+        nft.authorizeUsage(tokenId, bob);
+        nft.delegateAccess(bob);
+        nft.revokeAuthorization(tokenId, bob);
+        vm.stopPrank();
 
         // Delegate access persists...
         assertEq(nft.getDelegateAccess(alice), bob, "delegate must be bob");
-        // ...but the authorization is revoked in the same tx (final state identical to the
-        // old two-tx flow: authorizeAndDelegate then revokeAuthorization).
+        // ...but the authorization is revoked (final state identical to the removed
+        // merged function: accessAssistants[owner] == delegate, authorizedUsers empty).
         address[] memory users = nft.authorizedUsersOf(tokenId);
         assertEq(users.length, 0, "authorized users must be empty after revoke");
     }
 
-    function test_authorizeDelegateAndRevoke_revertNotOwner() public {
+    function test_composableAuthorizeDelegateRevoke_revertNotOwner() public {
         uint256 tokenId = _mintTo(alice);
 
+        // Non-owner cannot even start the flow: authorizeUsage reverts before delegate state moves.
         vm.prank(bob);
-        vm.expectRevert("Not owner");
-        nft.authorizeDelegateAndRevoke(bob, tokenId);
+        vm.expectRevert();
+        nft.authorizeUsage(tokenId, bob);
 
         assertEq(nft.getDelegateAccess(alice), address(0), "no delegate must be set");
     }
 
-    function test_authorizeDelegateAndRevoke_revertZeroDelegate() public {
+    function test_composableAuthorizeDelegateRevoke_revertZeroDelegate() public {
         uint256 tokenId = _mintTo(alice);
 
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(IERC7857.ERC7857InvalidAssistant.selector, address(0)));
-        nft.authorizeDelegateAndRevoke(address(0), tokenId);
+        vm.expectRevert(abi.encodeWithSelector(IERC7857Authorize.ERC7857InvalidAuthorizedUser.selector, address(0)));
+        nft.authorizeUsage(tokenId, address(0));
     }
 
     // ─── transferAndCleanExpiredProofs (merged iTransferFrom + cleanExpiredProofs) ────
