@@ -1,0 +1,76 @@
+{
+  "network": "0G Galileo testnet",
+  "chainId": 16602,
+  "deployedAt": "2026-08-28",
+  "purpose": "V2 fresh deploy per ADR 004 §3 — Processor MAX_PAY + AccessControl (_split dedup), NFT fee/upgrade timelocks (authorizeDelegateAndRevoke + OPERATOR_ROLE removed), TeeVerifier signer allowlist (CV2 UUPS posture). Testnet data loss accepted per ADR §4.",
+  "rpc": "https://evmrpc-testnet.0g.ai",
+  "script": "apps/contracts/script/Deploy.s.sol",
+  "deployFlags": ["--legacy", "--slow", "--broadcast"],
+  "contractCommits": { "CV1": "5ab74921b", "CV2": "a590d256d" },
+  "contracts": {
+    "AxiomTeeVerifier": {
+      "impl": "0xfc8723f4fae66eaa7cbb9f653cc7171d8c042159",
+      "proxy": "0x72a381226E09b9AAe15D9309A656d7e5DD2bFbb2"
+    },
+    "AxiomAgentNFT": {
+      "impl": "0x84115c4d70161a31774e7c7eff602e27a202b1fd",
+      "proxy": "0xdBB2e63807a13272789B716692fbe0d09E010097"
+    },
+    "AxiomStrategyVault": {
+      "impl": "0x6d038a96b5aa91da33e28fa9ea03370052b0cae1",
+      "proxy": "0x4607D749a7b8BBD2593742F8432410231C805c57"
+    },
+    "AxiomPaymentProcessor": {
+      "impl": "0x2157f99a0536375e6a8c70071f66eb88ac3942fc",
+      "proxy": "0x7490D693364A31E0513bcef8E346397cc4BA9E9c"
+    }
+  },
+  "reused": {
+    "AxiomMockUSDC": "0x354CA53bAB51C0666964fa050628d8351f8A7d19"
+  },
+  "transactions": {
+    "AxiomTeeVerifier impl": "0xa39b28b9fc1995821612d3b6e244b79fa05a13ddfaf28adb59bdd4f6988cebbe",
+    "AxiomTeeVerifier proxy": "0xc301f97c96d8cbc3fb55acca10a793991301c72c5c9cb2961be90d9f55e6de8b",
+    "AxiomAgentNFT impl": "0x7083a4af377909cdb58ed20d6f173ad7f77940fc6c1e1cd9bc4a25149e2210f3",
+    "AxiomAgentNFT proxy": "0x895bf24d2fb83abb81c810c0193e2ebd35b3a457bd02232714e9002051a90162",
+    "AxiomStrategyVault impl": "0x8a0ec4dea56cb60fe6f7a2c93e6401f47b6f9bdfd0675f8129580c884916035a",
+    "AxiomStrategyVault proxy": "0x0e0b32d5722ea1660dbc6e966f5a9ff94c04ff2bd294469fdedd3229f9ae3386",
+    "AxiomPaymentProcessor impl": "0x20abdb0c5fcfc67c8870eeba33f341aa0295bb26ee350e7f7e4b834a44ca6b6f",
+    "AxiomPaymentProcessor proxy": "0x59707d85cbda646b67b6e77d200002424e38e18ca687c87f910b5e906e5f51dc"
+  },
+  "wiringVerified": {
+    "nft.verifier()": "0x72a381226E09b9AAe15D9309A656d7e5DD2bFbb2",
+    "vault.nft()": "0xdBB2e63807a13272789B716692fbe0d09E010097",
+    "processor.AXIOM_NFT()": "0xdBB2e63807a13272789B716692fbe0d09E010097",
+    "processor.paymentToken()": "0x354CA53bAB51C0666964fa050628d8351f8A7d19",
+    "verifier.registeredSigner()": "0x0553f58a0209Fb8DcE201fCD9406Be56da890D73",
+    "verifier.signerCount()": "1",
+    "verifier.maxProofAgeSeconds()": "604800",
+    "verifier.owner()": "0xaf7c581b1C1C250aA69ac1F19f8014C0636c4d20",
+    "nft.hasRole(MINTER_ROLE, 0x0553f58a0209Fb8DcE201fCD9406Be56da890D73)": true,
+    "nft.hasRole(DEFAULT_ADMIN_ROLE, 0x0553f58a0209Fb8DcE201fCD9406Be56da890D73)": true,
+    "processor.hasRole(DEFAULT_ADMIN_ROLE, 0x0553f58a0209Fb8DcE201fCD9406Be56da890D73)": true,
+    "processor.protocolFeeBps()": "100",
+    "nft.name()": "Axiom Agent NFT",
+    "nft.symbol()": "AXM-A"
+  },
+  "roles": {
+    "note": "oracleAdmin (0x0553..., addr of AXIOM_TEE_SIGNER_PK per wallets/ADDRESSES.md shared-funding strategy) holds NFT DEFAULT_ADMIN + MINTER_ROLE and Processor DEFAULT_ADMIN_ROLE. Verifier owner is AXIOM_DEPLOYER_ADDRESS (0xaf7c...) per the deploy-script env contract (registerSigner gate). ORACLE_ADMIN_PK is vestigial (standalone oracle removed).",
+    "backendRelayMint": "backend relay uses mintWithRole via 0x0553... (MINTER_ROLE granted at initialize, AxiomAgentNFT.sol:103)"
+  },
+  "envCutover": {
+    "files": [".env", ".env.example"],
+    "vars": [
+      "AXIOM_AGENT_NFT_ADDRESS",
+      "AXIOM_STRATEGY_VAULT_ADDRESS",
+      "AXIOM_TEE_VERIFIER_ADDRESS",
+      "AXIOM_PAYMENT_PROCESSOR_ADDRESS",
+      "VITE_AGENT_NFT_ADDRESS",
+      "VITE_STRATEGY_VAULT_ADDRESS",
+      "VITE_TEE_VERIFIER_ADDRESS",
+      "VITE_PAYMENT_PROCESSOR_ADDRESS"
+    ]
+  },
+  "supersedes": "docs/deployments/galileo-merged-2026-08-13.json",
+  "adr": "docs/adr/004-contract-rewrite-plan.md §3"
+}
