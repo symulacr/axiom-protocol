@@ -19,13 +19,13 @@
     "@axiom/chat-runtime": "workspace:*",
     "@axiom/config": "workspace:*",
     "@tanstack/react-query": "5.102.4",
-    "@walletconnect/ethereum-provider": "^2.21.1",
+    "@walletconnect/ethereum-provider": "^2.23.10",
     "dompurify": "^3.4.14",
     "marked": "18.0.11",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.2",
-    "sonner": "^2.0.7",
+    "sonner": "^2.0.8",
     "viem": "2.55.19",
     "wagmi": "^3.7.6"
   },
@@ -35,7 +35,7 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "eslint": "^9.39.5",
-    "typescript-eslint": "^8.66.0"
+    "typescript-eslint": "^8.68.0"
   },
   "license": "MIT"
 }
