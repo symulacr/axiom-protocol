@@ -1096,6 +1096,8 @@ body:has(.flow-action) .notice-toast { bottom:96px; }
 .operation-receipt strong { overflow-wrap: anywhere; color: var(--text, #f4efe7); font: var(--fw-title) var(--fs-body)/1.3 var(--font-mono, monospace); }
 .operation-receipt small { color: var(--muted, #cfc4b5); font-size: var(--fs-small); }
 .operation-receipt > div:last-child { display: flex; flex-wrap: wrap; gap: .5rem; }
+/* T6 recovery: remedy line under a reverted/stale receipt (one per failure class). */
+.receipt-remedy { color: #ffd2bd; border: 1px solid rgba(234,119,80,.45); background: rgba(234,119,80,.1); padding: .68rem; font-size: var(--fs-small); line-height: 1.4; }
 @media (max-width: 700px) { .operation-review-layer { align-items: end; padding: .75rem; } .operation-review-sheet { max-height: min(88dvh, 760px); } .review-facts { grid-template-columns: 1fr; } .review-actions .button { flex: 1 1 100%; justify-content: center; } }
 
 /* Locked product surfaces: copper accents mark the active route. */
@@ -3136,4 +3138,92 @@ strong {
 .flow-page .flow-visual img {
   height: 64px;
   object-position: center;
+}
+
+/* T1 guided first success: Dashboard activation checklist (executor A).
+   Follows the .panel card chrome and .agent-row row pattern — existing
+   tokens only, no new ladder entries. */
+.checklist-card {
+  margin-bottom: var(--space-5);
+  border: 1px solid var(--completion-line);
+  background: var(--completion-panel);
+}
+.checklist-card .panel-head h2 {
+  font-size: var(--fs-body);
+}
+.checklist-dismiss {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--completion-dim);
+  cursor: pointer;
+}
+.checklist-dismiss:hover {
+  color: var(--ink);
+}
+.checklist-steps {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.checklist-step {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  border: 0;
+  border-top: 1px solid var(--completion-line);
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  transition: background 0.17s var(--completion-ease);
+}
+.checklist-step:hover {
+  background: rgba(210, 139, 82, 0.07) /* raw copper x2, below token threshold */;
+}
+.checklist-step[aria-disabled="true"] {
+  cursor: default;
+}
+.checklist-step[aria-disabled="true"]:hover {
+  background: transparent;
+}
+.checklist-mark {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--completion-copper);
+  color: var(--completion-copper);
+}
+.checklist-mark.done {
+  border-color: var(--completion-bright);
+  color: var(--completion-bright);
+}
+.checklist-copy strong {
+  display: block;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-label);
+}
+.checklist-copy small {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--completion-dim);
+  font: var(--fs-small) "JetBrains Mono", monospace;
+  overflow-wrap: anywhere;
+}
+.checklist-done {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  color: var(--completion-bright);
+  font-size: var(--fs-body);
 }

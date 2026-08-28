@@ -15,11 +15,13 @@ import {
   KeyRound,
   RefreshCw,
   ReceiptText,
+  RotateCcw,
   ShieldCheck,
   TrendingUp,
   Wallet,
 } from "../components/axiom/icons.js";
 import { Button, PanelHead, Status } from "../components/axiom/Controls.js";
+import { FirstRunChecklist } from "../components/axiom/FirstRunChecklist.js";
 import { StatePill } from "../components/StatePill.js";
 import { MobileDisclosure } from "../components/MobileDisclosure.js";
 import { getCopy } from "../lib/copy.js";
@@ -98,6 +100,7 @@ function ContextStrip({
   chainOk,
   connectorName,
   reviewCount,
+  health,
   copy,
 }: {
   go: (path: string) => void;
@@ -105,6 +108,8 @@ function ContextStrip({
   chainOk: boolean;
   connectorName?: string;
   reviewCount: number;
+  /** T2: live health/queue readout moved out of the stats grid. */
+  health?: { ok: boolean } | null;
   copy: ReturnType<typeof getCopy>;
 }) {
   return (
@@ -136,6 +141,18 @@ function ContextStrip({
         >
           {copy.dashboard.openReviewQueue} <ArrowRight size={14} />
         </button>
+      </div>
+      <div className="context-cell">
+        <strong>
+          <Gauge size={15} /> {copy.dashboard.healthCheckLabel}
+        </strong>
+        <span className="mono">
+          {health
+            ? health.ok
+              ? copy.dashboard.queueAwaiting
+              : copy.dashboard.oracleDown
+            : "—"}
+        </span>
       </div>
     </section>
   );
@@ -234,16 +251,28 @@ export function DashboardPage({
     return sum;
   }, [vaultMap]);
 
-  const attention = useMemo(
-    () =>
-      agents.filter((agent) => {
-        const vault = vaultMap.get(agent.tokenId.toString());
-        if (!vault) return true; // no vault data yet — needs review
-        const root = vault.strategyRoot?.toLowerCase?.() ?? "";
-        return vault.depositsWei === 0n || !hasStrategyRoot(root);
-      }),
-    [agents, vaultMap],
-  );
+  // T2 attention split: unconfigured = expected setup state for fresh agents
+  // (no vault row yet / zero deposits) — never counted as trouble. failing =
+  // real faults only (vault fetch error, stale strategy root) — the sole
+  // driver of the action-lane count and "need review" wording.
+  const { unconfigured, failing } = useMemo(() => {
+    const unconfigured: PortfolioAgent[] = [];
+    const failing: PortfolioAgent[] = [];
+    for (const agent of agents) {
+      const vault = vaultMap.get(agent.tokenId.toString());
+      if (vault?.readError) failing.push(agent);
+      else if (
+        vault &&
+        vault.depositsWei > 0n &&
+        !hasStrategyRoot(vault.strategyRoot?.toLowerCase?.() ?? "")
+      )
+        // Funded but the strategy root never bound — a fault, not a fresh
+        // agent waiting on its first deposit.
+        failing.push(agent);
+      else unconfigured.push(agent);
+    }
+    return { unconfigured, failing };
+  }, [agents, vaultMap]);
 
   const refresh = () => {
     refetch();
@@ -260,7 +289,8 @@ export function DashboardPage({
   ).length;
 
   // First unready agent drives the one primary CTA (next-action panel).
-  const firstAttention = attention[0];
+  const firstUnconfigured = unconfigured[0];
+  const firstFailing = failing[0];
 
   const activityRows = useMemo(() => {
     // Chat-transcript storage pointers are not operator activity — receipts only.
@@ -298,7 +328,12 @@ export function DashboardPage({
           <h1>{copy.dashboard.title}</h1>
         </div>
         <div className="action-lane">
-          <strong>{copy.dashboard.review(attention.length)}</strong>
+          <strong>{copy.dashboard.review(failing.length)}</strong>
+          {/* T2: scope line — fresh agents are setup, never failures. */}
+          <small>
+            {copy.dashboard.unconfigured(unconfigured.length)} ·{" "}
+            {copy.dashboard.failing(failing.length)}
+          </small>
           {/* One owner for the payment next-action at depth 0: the
               PriorityActionStrip (global chrome). The action lane keeps the
               attention readout + Refresh only. */}
@@ -314,8 +349,21 @@ export function DashboardPage({
         chainOk={chainOk}
         connectorName={connector?.name}
         reviewCount={reviewCount}
+        health={health}
         copy={copy}
       />
+
+      {/* T1: activation checklist — dismissal + completion live in the store;
+          step state self-checks from agents/vault/receipts above. */}
+      {!state.settings.firstRunDismissed && (
+        <FirstRunChecklist
+          go={go}
+          state={state}
+          dispatch={dispatch}
+          agentsCount={agents.length}
+          vaultMap={vaultMap}
+        />
+      )}
 
       <MobileDisclosure
         className="dashboard-mobile-disclosure"
@@ -334,10 +382,10 @@ export function DashboardPage({
           />
           <Stat
             label={copy.dashboard.agentsOnline}
-            value={`${agents.length - attention.length} / ${agents.length}`}
+            value={`${agents.length - failing.length} / ${agents.length}`}
             change={
-              attention.length
-                ? copy.dashboard.needReview(attention.length)
+              failing.length
+                ? copy.dashboard.needReview(failing.length)
                 : copy.dashboard.fleetNominal
             }
             icon={<Bot size={16} />}
@@ -347,11 +395,7 @@ export function DashboardPage({
             value={String(
               state.transactions.filter((tx) => isInFlightTx(tx.state)).length,
             )}
-            change={
-              health && !health.ok
-                ? copy.dashboard.oracleUnreachable
-                : copy.dashboard.queueAwaiting
-            }
+            change={copy.dashboard.queueAwaiting}
             icon={<Gauge size={16} />}
           />
         </section>
@@ -399,7 +443,16 @@ export function DashboardPage({
               <EmptyState
                 title={copy.dashboard.registerUnavailable}
                 hint={agentsError.message}
-              />
+              >
+                {/* T6 recovery: raw message alone gave no path forward —
+                    retry is one click, reusing the page's own refetch. */}
+                <Button
+                  onClick={() => refetch()}
+                  icon={<RotateCcw size={15} />}
+                >
+                  {copy.dashboard.retryFetch}
+                </Button>
+              </EmptyState>
             )}
             {/* U4: the register is empty only after load — during fetch the
                 panel shows a busy placeholder, never "No agents yet". */}
@@ -423,7 +476,7 @@ export function DashboardPage({
             )}
             {agents.map((agent) => {
               const vault = vaultMap.get(agent.tokenId.toString());
-              const needsAttention = attention.some(
+              const isFailing = failing.some(
                 (a) => a.tokenId === agent.tokenId,
               );
               return (
@@ -451,11 +504,11 @@ export function DashboardPage({
                     </b>
                     <Status
                       label={
-                        needsAttention
-                          ? copy.dashboard.needsSetupLabel
-                          : copy.dashboard.readyLabel
+                        isFailing
+                          ? copy.dashboard.needReview(1)
+                          : copy.dashboard.unconfiguredLabel
                       }
-                      tone={needsAttention ? "warning" : "success"}
+                      tone={isFailing ? "warning" : "muted"}
                     />
                   </span>
                   <ChevronRight size={15} />
@@ -469,29 +522,44 @@ export function DashboardPage({
             <ShieldCheck size={18} className="copper" />
           </PanelHead>
           <div className="proof-card">
-            {/* U8: no canned allowance card when nothing needs attention —
-                the fallback collapses to honest text-only. */}
-            {firstAttention ? (
-              <>
-                <div>
-                  <small>
-                    {copy.dashboard.agentFundingLabel(
-                      firstAttention.tokenId.toString(),
-                    )}
-                  </small>
-                  <strong>{copy.dashboard.allowanceReady}</strong>
-                </div>
+            {/* T2: faults outrank funding; funded agents route to the fix
+                verb, fresh agents keep the deposit CTA. */}
+            {firstFailing ? (
+              <div>
+                <small>
+                  {copy.dashboard.agentFundingLabel(
+                    firstFailing.tokenId.toString(),
+                  )}
+                </small>
+                <strong>{copy.dashboard.needReview(1)}</strong>
+                <Button
+                  onClick={() =>
+                    go(`/agents/${firstFailing.tokenId.toString()}`)
+                  }
+                  icon={<ShieldCheck size={15} />}
+                >
+                  {copy.dashboard.review(1)}
+                </Button>
+              </div>
+            ) : firstUnconfigured ? (
+              <div>
+                <small>
+                  {copy.dashboard.agentFundingLabel(
+                    firstUnconfigured.tokenId.toString(),
+                  )}
+                </small>
+                <strong>{copy.dashboard.allowanceReady}</strong>
                 <Button
                   onClick={() =>
                     go(
-                      `${routePath("deposit")}?agent=${firstAttention.tokenId.toString()}`,
+                      `${routePath("deposit")}?agent=${firstUnconfigured.tokenId.toString()}`,
                     )
                   }
                   icon={<Wallet size={15} />}
                 >
                   {copy.dashboard.addMoney}
                 </Button>
-              </>
+              </div>
             ) : (
               <div>
                 <strong>{copy.dashboard.fleetNominal}</strong>

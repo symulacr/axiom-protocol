@@ -96,6 +96,8 @@ export type ConsoleAction =
     }
   | { type: "clear-draft"; flow: FlowKind }
   | { type: "guide" }
+  | { type: "first-run-open" }
+  | { type: "first-run-dismiss" }
   | { type: "notice"; notice: string | null; severity?: NoticeSeverity }
   | { type: "reset" };
 
@@ -105,6 +107,7 @@ export const defaultSettings: UiSettings = {
   railWidth: 248,
   reducedMotion: false,
   guideCompleted: false,
+  firstRunDismissed: false,
   density: "calm",
   theme: "dark",
   fixtureWallet: "MetaMask",
@@ -222,6 +225,7 @@ export function createInitialConsoleState(
     session,
     transactions,
     guideOpen: false,
+    firstRunOpen: false,
     notice: null,
     noticeSeverity: null,
     ...safeOperationState,
@@ -310,6 +314,13 @@ export function consoleReducer(
       }),
     };
   if (action.type === "guide") return { ...state, guideOpen: !state.guideOpen };
+  if (action.type === "first-run-open") return { ...state, firstRunOpen: true };
+  if (action.type === "first-run-dismiss")
+    return {
+      ...state,
+      firstRunOpen: false,
+      settings: { ...state.settings, firstRunDismissed: true },
+    };
   if (action.type === "notice")
     return {
       ...state,

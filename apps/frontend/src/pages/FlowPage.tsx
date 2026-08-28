@@ -1367,6 +1367,14 @@ export function FlowPage({
                   <small>{receiptBody}</small>
                 </div>
               </div>
+              {receiptState === "reverted" || receiptState === "stale" ? (
+                /* T6 recovery: the bare state word left the user with no
+                   next action — one remedy line maps the failure class to
+                   what to DO (retry tx / raise gas / check network). */
+                <div className="receipt-remedy" role="alert">
+                  {f.receiptRemedy}
+                </div>
+              ) : null}
               <div>
                 {receiptId ? (
                   <>

@@ -150,15 +150,17 @@ function LockedShell({
 
 const ReturnToLanding = ({
   go,
+  locale,
 }: {
   go: (path: string) => void;
+  locale: Locale;
 }): ReactElement => (
   <Button
     variant="ghost"
     onClick={() => go("/")}
     icon={<ArrowLeft size={14} />}
   >
-    Return to landing
+    {getCopy(locale).notFound.returnToLanding}
   </Button>
 );
 
@@ -492,6 +494,11 @@ export function App(): ReactElement {
     const destination = state.pendingIntent?.path || "/app";
     dispatch({ type: "clear-pending-intent" });
     setWalletOpen(false);
+    // T1: a first run that isn't done yet re-enters at /app with the
+    // activation checklist open (the card self-collapses once all 3 steps
+    // are done; dismissal persists in settings).
+    if (!state.settings.firstRunDismissed && destination === "/app")
+      dispatch({ type: "first-run-open" });
     go(destination);
   };
   const lockConsole = () => {
@@ -743,7 +750,7 @@ function WrongNetworkNotice({
           >
             {interpolate(copy.wallet.switchNetwork, chainVars)}
           </Button>
-          <ReturnToLanding go={go} />
+          <ReturnToLanding go={go} locale={locale} />
         </div>
         {error ? <p>{error}</p> : null}
       </section>
@@ -810,7 +817,7 @@ function LockedRoute({
           <Button onClick={onConnect} icon={<Wallet size={15} />}>
             {copy.nav.connectWallet}
           </Button>
-          <ReturnToLanding go={go} />
+          <ReturnToLanding go={go} locale={locale} />
         </div>
       </section>
       <aside className="locked-evidence">

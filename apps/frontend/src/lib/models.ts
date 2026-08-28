@@ -60,6 +60,8 @@ export type UiSettings = {
   railWidth: number;
   reducedMotion: boolean;
   guideCompleted: boolean;
+  /** T1 first-run checklist: user dismissed the activation card. */
+  firstRunDismissed: boolean;
   density: "calm" | "dense";
   theme: "dark" | "light";
   fixtureWallet: string;
@@ -125,6 +127,8 @@ export type AppState = {
   session: Session;
   transactions: Transaction[];
   guideOpen: boolean;
+  /** T1: resumeAfterAuth opens the checklist for a not-yet-done first run. */
+  firstRunOpen: boolean;
   notice: string | null;
   /** U24: error notices persist (no auto-dismiss); successes toast for 4s. */
   noticeSeverity: NoticeSeverity | null;

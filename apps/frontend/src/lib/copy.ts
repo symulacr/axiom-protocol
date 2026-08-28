@@ -295,13 +295,27 @@ export type Copy = {
     noEvidence: string;
     noEvidenceHint: string;
     registerUnavailable: string;
+    /** T6 recovery: retry CTA on the register-error empty state. */
+    retryFetch: string;
     noAgents: string;
     noAgentsHint: string;
     mintAgent: string;
     noDescription: string;
     refreshNotice: string;
+    /** T6 recovery: actionable remedy for a stale/reverted receipt. */
+    receiptRemedy: string;
     /** Proof-card category line above the allowance headline. */
     agentFundingLabel: (tokenId: string) => string;
+    /** T2 attention split: scope text for the agents-online Stat subline.
+     * unconfigured = fresh agents (zero deposits / no vault row) — expected,
+     * neutral; failing = vault fetch error or stale strategy root — faults. */
+    unconfigured: (count: number) => string;
+    failing: (count: number) => string;
+    /** T2: ContextStrip health cell — replaces the in-grid oracle subline. */
+    healthCheckLabel: string;
+    oracleDown: string;
+    /** T2: per-row neutral setup status label (muted tone, not warning). */
+    unconfiguredLabel: string;
   };
   /** Live /chat surface (v1 SSE chat). Every rendered string routes through
    * this section — hardcoded English in ChatPage was the defect. */
@@ -564,6 +578,9 @@ export type Copy = {
     /** Placeholder: {seconds}. */
     receiptBodyStale: string;
     receiptBodyConfirming: string;
+    /** T6 recovery: one remedy line per humanizeError map (retry tx / raise
+     * gas / check network) shown under a stale/reverted receipt body. */
+    receiptRemedy: string;
     copyReceiptAction: string;
     openReceiptAction: string;
     startAnotherAction: string;
@@ -778,6 +795,17 @@ export type Copy = {
     proofTitle: string;
   };
   status: Record<string, string>;
+  /** T1 guided first success: the dismissible Dashboard activation card. */
+  checklist: {
+    title: string;
+    dismiss: string;
+    done: string;
+    steps: {
+      mint: { label: string; hint: string };
+      deposit: { label: string; hint: string };
+      tick: { label: string; hint: string };
+    };
+  };
 };
 
 /** Flow receipt-notice tails: the four submitted-flow notices differ only
@@ -1033,12 +1061,19 @@ const english: Copy = {
     noEvidence: "Nothing here yet",
     noEvidenceHint: "Mint an agent to create the first receipt.",
     registerUnavailable: "Agent register unavailable",
+    retryFetch: "Retry",
     noAgents: "You don't have an agent yet",
     noAgentsHint: "Make one. About a minute.",
     mintAgent: "Create agent",
     noDescription: "no description",
     refreshNotice: "Updated",
     agentFundingLabel: (tokenId) => `Agent #${tokenId} has nothing to spend`,
+    receiptRemedy: "Check the receipt's remedy hint, or retry below.",
+    unconfigured: (count) => `${count} unconfigured`,
+    failing: (count) => `${count} failing`,
+    healthCheckLabel: "status checks",
+    oracleDown: "oracle down",
+    unconfiguredLabel: "setup",
   },
   chat: {
     pageTitle: "Chat",
@@ -1368,6 +1403,8 @@ const english: Copy = {
     receiptBodyStale:
       "No confirmation after {seconds}s. Check the explorer; the row is marked Needs review.",
     receiptBodyConfirming: "Submitted, awaiting on-chain confirmation.",
+    receiptRemedy:
+      "Reverted or timed out? Retry the transaction — raise gas if the network is busy, or check your connection.",
     copyReceiptAction: "Copy receipt",
     openReceiptAction: "Open receipt",
     startAnotherAction: "Start another",
@@ -1597,6 +1634,25 @@ const english: Copy = {
       titleLead: "Withdraw from an",
       titleEmphasis: "agent vault.",
       copy: "Move funds out of one agent's vault, balance shown first.",
+    },
+  },
+  checklist: {
+    title: "Get your first agent working",
+    dismiss: "Dismiss",
+    done: "Fleet active — your agents are funded and running.",
+    steps: {
+      mint: {
+        label: "Mint your agent",
+        hint: "Register an agent — no funds needed yet.",
+      },
+      deposit: {
+        label: "Fund its vault",
+        hint: "Add native gas so the agent can pay for runs.",
+      },
+      tick: {
+        label: "Run a task",
+        hint: "Give one instruction and watch the receipt land.",
+      },
     },
   },
 };
@@ -1844,12 +1900,20 @@ const french: Copy = {
     noEvidenceHint:
       "Mintez un agent ou lancez un paiement pour créer le premier reçu.",
     registerUnavailable: "Registre d’agents indisponible",
+    retryFetch: "Réessayer",
     noAgents: "Vous n'avez pas encore d'agent",
     noAgentsHint: "Créez-en un. Environ une minute.",
     mintAgent: "Créer un agent",
     noDescription: "sans description",
     refreshNotice: "Mis à jour",
     agentFundingLabel: (tokenId) => `L’agent #${tokenId} n’a rien à dépenser`,
+    receiptRemedy:
+      "Suivez le remède indiqué sur le reçu, ou réessayez ci-dessous.",
+    unconfigured: (count) => `${count} à configurer`,
+    failing: (count) => `${count} en échec`,
+    healthCheckLabel: "vérifications d’état",
+    oracleDown: "oracle hors ligne",
+    unconfiguredLabel: "configuration",
   },
   chat: {
     ...english.chat,
@@ -2186,6 +2250,8 @@ const french: Copy = {
     receiptBodyStale:
       "Aucune confirmation après {seconds} s. Vérifiez l’explorateur ; la ligne est marquée À examiner.",
     receiptBodyConfirming: "Soumis, en attente de confirmation on-chain.",
+    receiptRemedy:
+      "Rejeté ou expiré ? Relancez la transaction — augmentez le gas si le réseau est chargé, ou vérifiez votre connexion.",
     copyReceiptAction: "Copier le reçu",
     openReceiptAction: "Ouvrir le reçu",
     startAnotherAction: "Recommencer",
@@ -2421,6 +2487,25 @@ const french: Copy = {
       titleLead: "Retire des fonds du",
       titleEmphasis: "vault d'un agent.",
       copy: "Sors des fonds du vault d'un agent, solde affiché avant signature.",
+    },
+  },
+  checklist: {
+    title: "Faites travailler votre premier agent",
+    dismiss: "Fermer",
+    done: "Flotte active — vos agents sont financés et opérationnels.",
+    steps: {
+      mint: {
+        label: "Créez votre agent",
+        hint: "Enregistrez un agent — aucun fonds requis pour l'instant.",
+      },
+      deposit: {
+        label: "Alimentez son vault",
+        hint: "Ajoutez du gas natif pour payer les exécutions.",
+      },
+      tick: {
+        label: "Lancez une tâche",
+        hint: "Donnez une instruction et voyez le reçu arriver.",
+      },
     },
   },
 };
@@ -2665,12 +2750,20 @@ const german: Copy = {
     noEvidenceHint:
       "Minte einen Agent oder führe eine Zahlung aus, um den ersten Beleg zu erzeugen.",
     registerUnavailable: "Agentenregister nicht verfügbar",
+    retryFetch: "Erneut versuchen",
     noAgents: "Du hast noch keinen Agent",
     noAgentsHint: "Erstelle einen. Dauert etwa eine Minute.",
     mintAgent: "Agent erstellen",
     noDescription: "keine Beschreibung",
     refreshNotice: "Aktualisiert",
     agentFundingLabel: (tokenId) => `Agent #${tokenId} hat nichts zum Ausgeben`,
+    receiptRemedy:
+      "Folgen Sie dem Lösungshinweis auf dem Beleg oder versuchen Sie es unten erneut.",
+    unconfigured: (count) => `${count} unkonfiguriert`,
+    failing: (count) => `${count} fehlerhaft`,
+    healthCheckLabel: "Statusprüfungen",
+    oracleDown: "Oracle offline",
+    unconfiguredLabel: "Einrichtung",
   },
   chat: {
     ...english.chat,
@@ -3008,6 +3101,8 @@ const german: Copy = {
     receiptBodyStale:
       "Keine Bestätigung nach {seconds} s. Prüfen Sie den Explorer; die Zeile ist als Prüfbedarf markiert.",
     receiptBodyConfirming: "Eingereicht, wartet auf On-Chain-Bestätigung.",
+    receiptRemedy:
+      "Zurückgesetzt oder abgelaufen? Wiederholen Sie die Transaktion — erhöhen Sie das Gas bei Netzüberlastung oder prüfen Sie Ihre Verbindung.",
     copyReceiptAction: "Beleg kopieren",
     openReceiptAction: "Beleg öffnen",
     startAnotherAction: "Neu beginnen",
@@ -3242,6 +3337,25 @@ const german: Copy = {
       titleLead: "Aus dem Agent-Vault",
       titleEmphasis: "abheben.",
       copy: "Ziehe Geld aus dem Vault eines Agents ab, Guthaben zuerst sichtbar.",
+    },
+  },
+  checklist: {
+    title: "Bringe deinen ersten Agenten ans Laufen",
+    dismiss: "Ausblenden",
+    done: "Flotte aktiv — deine Agenten sind finanziert und laufen.",
+    steps: {
+      mint: {
+        label: "Minte deinen Agenten",
+        hint: "Registriere einen Agenten — noch keine Guthaben nötig.",
+      },
+      deposit: {
+        label: "Fülle seinen Vault",
+        hint: "Füge natives Gas hinzu, damit der Agent laufen kann.",
+      },
+      tick: {
+        label: "Starte eine Aufgabe",
+        hint: "Gib eine Anweisung und sieh zu, wie der Beleg eintrifft.",
+      },
     },
   },
 };
