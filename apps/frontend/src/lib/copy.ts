@@ -121,6 +121,12 @@ export type Copy = {
     tryAssistant: string;
     stripVerifySmall: string;
     stripOperateSmall: string;
+    /** T4: real product preview inside the hero plate (self-demonstrating). */
+    previewAgentTitle: string;
+    previewAgentDesc: string;
+    previewVaultLabel: string;
+    previewReceiptTitle: string;
+    previewReceiptMeta: string;
   };
   wallet: {
     /** Placeholder: `{chainName}` — the TARGET network (APP_CHAIN.name). */
@@ -716,7 +722,7 @@ export type Copy = {
     explorerLabel: string;
     viewRecordLink: string;
     metadataReadFailed: string;
-    inspectStorageProof: string;
+    openStorage: string;
     chooseBoundedOperation: string;
     addMoneyPrimary: string;
     runTask: string;
@@ -913,6 +919,11 @@ const english: Copy = {
     tryAssistant: "Try the assistant, no wallet",
     stripVerifySmall: "No gas, no custody",
     stripOperateSmall: "Receipts beside action",
+    previewAgentTitle: "Agent #7",
+    previewAgentDesc: "Oracle attestations, every 10 minutes",
+    previewVaultLabel: "Vault",
+    previewReceiptTitle: "Tick receipt",
+    previewReceiptMeta: "Just now",
   },
   wallet: {
     wrongNetworkTitle: "Switch to {chainName}.",
@@ -1536,7 +1547,7 @@ const english: Copy = {
     explorerLabel: "Explorer",
     viewRecordLink: "View record",
     metadataReadFailed: "Couldn't load this agent's details.",
-    inspectStorageProof: "Files & records",
+    openStorage: "Open storage",
     chooseBoundedOperation: "What do you want to do?",
     addMoneyPrimary: "Add money",
     runTask: "Run task",
@@ -1755,6 +1766,11 @@ const french: Copy = {
     menuDevelopersHint: "APIs et outils pour développeurs",
     stripVerifySmall: "Sans gas, sans garde",
     stripOperateSmall: "Reçus à côté de l’action",
+    previewAgentTitle: "Agent nº 7",
+    previewAgentDesc: "Attestations oracle, toutes les 10 minutes",
+    previewVaultLabel: "Coffre",
+    previewReceiptTitle: "Reçu de tick",
+    previewReceiptMeta: "À l’instant",
   },
   wallet: {
     wrongNetworkTitle: "Passez sur {chainName}.",
@@ -2393,7 +2409,7 @@ const french: Copy = {
     explorerLabel: "Explorateur",
     viewRecordLink: "Voir l’enregistrement",
     metadataReadFailed: "Impossible de charger les détails de cet agent.",
-    inspectStorageProof: "Fichiers et enregistrements",
+    openStorage: "Ouvrir le stockage",
     chooseBoundedOperation: "Que voulez-vous faire ?",
     addMoneyPrimary: "Ajouter des fonds",
     runTask: "Lancer une tâche",
@@ -2611,6 +2627,11 @@ const german: Copy = {
     menuDevelopersHint: "APIs und Entwickler-Tools",
     stripVerifySmall: "Kein Gas, keine Verwahrung",
     stripOperateSmall: "Belege neben der Aktion",
+    previewAgentTitle: "Agent Nr. 7",
+    previewAgentDesc: "Oracle-Attestierungen, alle 10 Minuten",
+    previewVaultLabel: "Tresor",
+    previewReceiptTitle: "Tick-Beleg",
+    previewReceiptMeta: "Gerade eben",
   },
   wallet: {
     wrongNetworkTitle: "Zu {chainName} wechseln.",
@@ -3248,7 +3269,7 @@ const german: Copy = {
     viewRecordLink: "Eintrag ansehen",
     metadataReadFailed:
       "Die Details dieses Agents konnten nicht geladen werden.",
-    inspectStorageProof: "Dateien & Nachweise",
+    openStorage: "Speicher öffnen",
     chooseBoundedOperation: "Was möchtest du tun?",
     addMoneyPrimary: "Geld hinzufügen",
     runTask: "Aufgabe starten",

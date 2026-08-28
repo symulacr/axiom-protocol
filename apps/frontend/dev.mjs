@@ -129,13 +129,27 @@ serve({
     const path = url.pathname === "/" ? "/index.html" : url.pathname;
     const file = Bun.file(join(distDev, path));
     if (await file.exists()) return new Response(file);
-    const publicFile = Bun.file(join(frontendDir, "public", path));
+        if (path === "__h3b_mock.js") {
+      return new Response(Bun.file(join(frontendDir, "public", "__h3b_mock.js")), {
+        headers: { "content-type": "text/javascript" },
+      });
+    }
+const publicFile = Bun.file(join(frontendDir, "public", path));
     if (await publicFile.exists()) {
       return new Response(publicFile, {
         headers: { "cache-control": "no-cache" },
       });
     }
     const index = Bun.file(join(distDev, "index.html"));
+    // h3-b TEMP: workspace index.html carries the mock script tag; dist-dev copy is built before injection.
+    // HTML swap only for document navigations — module scripts still get the dist-dev fallback.
+    const wantsIndex = url.pathname === "/" || url.pathname === "/index.html";
+    if (wantsIndex) {
+      const wsIndex = Bun.file(join(frontendDir, "index.html"));
+      return new Response(await wsIndex.exists() ? await wsIndex.arrayBuffer() : await index.arrayBuffer(), {
+        headers: { "content-type": "text/html; charset=utf-8" },
+      });
+    }
     return new Response(index);
     } catch {
       return new Response("Server error", { status: 500 });

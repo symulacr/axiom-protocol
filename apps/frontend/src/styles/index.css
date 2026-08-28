@@ -181,6 +181,27 @@
     var(--surface-elevated);
 }
 .landing-visual.hero-visual-modern > img { display:none; }
+/* T4: real product preview inside the plate chrome — the actual .agent-row /
+   .activity-row console markup, framed by the hero plate's identity gradient.
+   Rows resolve on the dark-locked landing via the --completion-* fallbacks. */
+.landing-plate {
+  display: grid;
+  gap: 2px;
+  align-self: center;
+  width: min(430px, 100%);
+  margin-inline: auto;
+  padding: var(--space-2);
+  border: 1px solid var(--completion-line);
+  background: var(--completion-panel);
+  box-shadow: var(--shadow-plate-s);
+}
+.landing-plate .agent-row,
+.landing-plate .activity-row {
+  /* Row cells inherit the global grids; the plate frame replaces the
+     dashboard's full-bleed list context. */
+  border-bottom: 0;
+  padding: var(--space-3) var(--space-4);
+}
 .landing-main, .landing-copy { min-width:0; }
 .landing-copy h1 { max-width:560px; overflow:visible; }
 .landing-copy h1 span, .landing-copy h1 i { display:inline-block; white-space:nowrap; }
@@ -321,6 +342,12 @@ body:has(.flow-action) .notice-toast { bottom:96px; }
   .storage-file>.mono { width:100%; overflow-wrap:anywhere; }
   .not-integrated-actions, .button-row, .command-actions { align-items:stretch; }
   .not-integrated-actions .button, .button-row .button { width:100%; }
+  /* T7 mobile pass: rows are primary tap targets — enforce the 44px floor;
+     long stat/context values must wrap, never force a dead horizontal scroll. */
+  .agent-row, .activity-row { min-height:var(--hit-area); }
+  .context-cell { min-height:var(--hit-area); }
+  .stat { min-width:0; }
+  .stat strong, .context-cell strong { overflow-wrap:anywhere; }
 }
 
 @media (max-width:480px) {
@@ -2145,6 +2172,9 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
 .spinner--churn::after { left: 6px; animation-delay: 220ms; }
 @keyframes axiom-caret { 50% { opacity: 0; } }
 .caret-blink { animation: axiom-caret 1s steps(1) infinite; }
+
+/* T8 poll-gap shimmer: no new skeleton/token classes — vault balances reuse
+   the .spinner--churn dots above as the busy cue between 30s polls. */
 
 /* ---------------------------------------------------------------- *
  * Chat surface (message rail, composer, thread list).               *

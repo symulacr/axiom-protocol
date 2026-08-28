@@ -1212,6 +1212,7 @@ export function FlowPage({
     suffix?: string;
     error?: string;
     hint?: string;
+    inputMode?: "text" | "decimal";
   };
   const fieldError = (field: "value" | "extra"): string | undefined =>
     submitError?.field === field ? submitError.message : undefined;
@@ -1233,6 +1234,8 @@ export function FlowPage({
     formFields.push({
       ...baseValueField,
       maxLength: 24,
+      // Amount entry: decimal keypad on mobile (T7).
+      inputMode: "decimal",
       suffix: kind === "payment" ? paymentSymbol : nativeSymbol,
       error: amountFieldError,
       hint:
@@ -1381,6 +1384,7 @@ export function FlowPage({
                   suffix={field.suffix}
                   error={field.error}
                   hint={field.hint}
+                  inputMode={field.inputMode}
                 />
               ))}
           </div>

@@ -66,6 +66,8 @@ import {
 import { apiFetch, type EncodeResponse } from "../utils/apiFetch.js";
 import { getAxiomAgentNftAddress, toViemAbi } from "../abi/addresses.js";
 import { toastError, toastSuccess } from "./shared.js";
+import { useUiStore } from "../lib/uiStore.js";
+import { Spinner } from "../components/ui.js";
 
 const AGENT_TABS = ["overview", "execute", "payments", "activity"] as const;
 type AgentTab = (typeof AGENT_TABS)[number];
@@ -267,6 +269,13 @@ export function AgentPage({
 
   const { data: metadata, error: metadataError } = useAgentMetadata(tokenId);
   const { events, isLoading: eventsLoading } = useAgentEvents(tokenId);
+  // T8: in-flight receipts from the flow pages join the activity tab the
+  // moment the user signs — no wait for the 15s event poll.
+  const { state: consoleState } = useUiStore();
+  const agentId = tokenId.toString();
+  const localReceipts = consoleState.transactions.filter(
+    (tx) => tx.agent === agentId,
+  );
   const { metrics } = usePerformance(tokenId);
   const vault = useVaultData(tokenId);
   const payment = usePayment();
@@ -312,7 +321,6 @@ export function AgentPage({
 
   const agentName = `Agent #${tokenId.toString()}`;
   const lastEvent = events[events.length - 1];
-  const agentId = tokenId.toString();
 
   // F1: unknown agent id → the 404 route, never a plausible locked gate.
   // Decided only on a settled successful agents read (wallet connected + list
@@ -473,7 +481,11 @@ export function AgentPage({
           <Bot size={28} />
         </div>
         <div>
-          <strong>{vaultBalance}</strong>
+          <strong>
+            {vaultBalance}
+            {/* T8: churn cue while the 30s vault poll re-reads this balance. */}
+            {vault.isFetching && <Spinner size={10} variant="churn" />}
+          </strong>
           <small>
             {strategyBound
               ? interpolate(agentCopy.balanceToSpend, {
@@ -561,7 +573,7 @@ export function AgentPage({
               onClick={() => go("/storage")}
               icon={<Database size={15} />}
             >
-              {agentCopy.inspectStorageProof}
+              {agentCopy.openStorage}
             </Button>
           </section>
           <section className="panel agent-command-card">
@@ -760,7 +772,7 @@ export function AgentPage({
         <section className="panel tab-panel">
           <h2>{agentCopy.evidenceTied}</h2>
           <div className="activity-list">
-            {events.length === 0 && (
+            {events.length === 0 && localReceipts.length === 0 && (
               <div className="empty-state">
                 <strong>
                   {eventsLoading
@@ -788,6 +800,23 @@ export function AgentPage({
                   </small>
                 </span>
                 <StatePill state="confirmed" />
+                <ArrowRight size={14} />
+              </button>
+            ))}
+            {localReceipts.map((tx) => (
+              <button
+                key={tx.id}
+                className="activity-row"
+                onClick={() =>
+                  go(`/transactions?tx=${encodeURIComponent(tx.id)}`)
+                }
+              >
+                <span>{tx.icon}</span>
+                <span>
+                  <strong>{tx.kind}</strong>
+                  <small>{tx.detail}</small>
+                </span>
+                <StatePill state={tx.state} />
                 <ArrowRight size={14} />
               </button>
             ))}

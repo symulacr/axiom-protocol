@@ -24,6 +24,7 @@ import { Button, PanelHead, Status } from "../components/axiom/Controls.js";
 import { FirstRunChecklist } from "../components/axiom/FirstRunChecklist.js";
 import { StatePill } from "../components/StatePill.js";
 import { MobileDisclosure } from "../components/MobileDisclosure.js";
+import { Spinner } from "../components/ui.js";
 import { getCopy } from "../lib/copy.js";
 import { routePath } from "../lib/routeRegistry.js";
 import type { AppState } from "../lib/models.js";
@@ -72,6 +73,7 @@ function usePortfolio(): {
   error: Error | null;
   vaultMap: Map<string, VaultDataEntry>;
   loading: boolean;
+  vaultFetching: boolean;
   refetch: () => void;
 } {
   const { agents, isLoading, error, refetch: refetchAgents } = useAgents();
@@ -79,6 +81,7 @@ function usePortfolio(): {
   const {
     data: vaultMap,
     isLoading: vaultLoading,
+    isFetching: vaultFetching,
     refetch: refetchVaults,
   } = useVaultDataBatch(tokenIds);
 
@@ -87,6 +90,9 @@ function usePortfolio(): {
     error,
     vaultMap,
     loading: isLoading || vaultLoading,
+    // T8 poll-gap shimmer: the balance shows the churn cue while a poll is in
+    // flight, never a silently frozen number from a stale cache.
+    vaultFetching,
     refetch: () => {
       refetchAgents();
       refetchVaults();
@@ -163,11 +169,14 @@ function Stat({
   value,
   change,
   icon,
+  busy,
 }: {
   label: string;
   value: string;
   change: string;
   icon: React.ReactNode;
+  /** T8 poll-gap shimmer: reuses the existing churn cue while a poll is in flight. */
+  busy?: boolean;
 }) {
   return (
     <div className="stat">
@@ -175,7 +184,9 @@ function Stat({
         <span>{label}</span>
         <span className="stat-icon">{icon}</span>
       </div>
-      <strong>{value}</strong>
+      <strong>
+        {value} {busy && <Spinner size={12} variant="churn" />}
+      </strong>
       <small>{change}</small>
     </div>
   );
@@ -219,6 +230,7 @@ export function DashboardPage({
     error: agentsError,
     vaultMap,
     loading,
+    vaultFetching,
     refetch,
   } = usePortfolio();
   const { data: health, refetch: refetchHealth } = useHealth();
@@ -379,6 +391,8 @@ export function DashboardPage({
                 : copy.dashboard.agentsScoped(agents.length)
             }
             icon={<TrendingUp size={16} />}
+            // Poll-gap cue only — initial load keeps the loadingVaults label above.
+            busy={vaultFetching && !loading}
           />
           <Stat
             label={copy.dashboard.agentsOnline}
@@ -501,6 +515,8 @@ export function DashboardPage({
                       {vault
                         ? `${formatTokenAmount(vault.depositsWei)} ${nativeSymbol}`
                         : "—"}
+                      {/* T8: churn cue while the 30s vault poll re-reads this row. */}
+                      {vaultFetching && <Spinner size={10} variant="churn" />}
                     </b>
                     <Status
                       label={

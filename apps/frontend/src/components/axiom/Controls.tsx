@@ -71,6 +71,7 @@ export function Field({
   readOnly = false,
   mono = false,
   className,
+  inputMode,
 }: {
   id?: string;
   label: string;
@@ -89,6 +90,8 @@ export function Field({
   /** Monospace value (addresses, keys, codes). */
   mono?: boolean;
   className?: string;
+  /** e.g. "decimal" — picks the mobile keypad; ignored for multiline. */
+  inputMode?: "none" | "text" | "tel" | "url" | "email" | "numeric" | "decimal";
 }) {
   const fieldId =
     id || `field-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
@@ -117,6 +120,8 @@ export function Field({
             "aria-invalid": Boolean(error),
             "aria-describedby": error || hint ? messageId : undefined,
             className: mono ? "mono" : undefined,
+            // Keypad hint only on the single-line input; textarea has no inputMode.
+            inputMode: multiline ? undefined : inputMode,
           };
           return multiline ? (
             <textarea {...shared} rows={rows} />

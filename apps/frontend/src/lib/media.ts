@@ -13,7 +13,8 @@ const TEAL_LEGACY = "#79c4cd";
 const TEAL_ROUTE = "#6bb9c8";
 
 const ART = {
-  heroPulse: PHOSPHOR,
+  // T4: heroPulse retired — the landing plate now renders the real console
+  // row markup instead of the generative field (the img was display:none'd).
   onboarding: TEAL_LEGACY,
   proof: PHOSPHOR,
   recovery: WARNING,
@@ -50,7 +51,6 @@ function field(accent: string, seed: number): string {
 }
 
 export const MEDIA = {
-  heroPulse: field(ART.heroPulse, 2),
   onboarding: field(ART.onboarding, 4),
   proof: field(ART.proof, 5),
   recovery: field(ART.recovery, 6),

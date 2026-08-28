@@ -44,6 +44,7 @@ export {
 export function useVaultDataBatch(tokenIds: readonly bigint[]): {
   data: Map<string, VaultDataEntry>;
   isLoading: boolean;
+  isFetching: boolean;
   error: Error | null;
   refetch: () => void;
 } {
@@ -126,12 +127,15 @@ export function useVaultDataBatch(tokenIds: readonly bigint[]): {
     () => ({
       data,
       isLoading: query.isLoading,
+      // T8: distinguishes a foreground 30s poll refresh from the initial load;
+      // callers keep the last balance visible and add a busy cue only here.
+      isFetching: query.isFetching,
       error: aggregateError,
       refetch: () => {
         query.refetch();
       },
     }),
-    [data, query.isLoading, aggregateError, query.refetch],
+    [data, query.isLoading, query.isFetching, aggregateError, query.refetch],
   );
 }
 
@@ -142,6 +146,7 @@ type VaultData = {
   dailySpentWei: bigint;
   resetDay: bigint;
   validUntilDay: bigint;
+  isFetching: boolean;
   refetch: () => void;
 };
 
@@ -156,6 +161,7 @@ export function useVaultData(tokenId: bigint): VaultData {
     dailySpentWei: entry?.dailySpentWei ?? 0n,
     resetDay: entry?.resetDay ?? 0n,
     validUntilDay: entry?.validUntilDay ?? 0n,
+    isFetching: result.isFetching,
     refetch: result.refetch,
   };
 }
