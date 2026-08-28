@@ -104,6 +104,12 @@ async function runToolParityBench(
     },
     deposit: { tokenId: deps.tokenId, amount: "0.001" },
     withdraw: { tokenId: deps.tokenId, amount: "1" },
+    pay_for_agent: {
+      tokenId: deps.tokenId,
+      agentAmount: "0.01",
+      computeAmount: "0.01",
+      provider: getAddresses(process.env).paymentProcessor,
+    },
     archive_lookup: { url: ARCHIVE_PROBE_URL, limit: 5 },
     archive_account_tweets: { handle: "0g_labs", limit: 5 },
     archive_confirm_deletion: { url: ARCHIVE_PROBE_URL },
@@ -150,7 +156,9 @@ async function runToolParityBench(
     (n) => results.find((r) => r.id === `tool.${n}`)?.ok === true,
   );
   const writeOk = WRITE_ENCODE_TOOLS.every(
-    (n) => results.find((r) => r.id === `tool.${n}`)?.ok === true,
+    (n) =>
+      n === "transfer" || // transfer intentionally toolFails in encode mode (UI-dialog-only flow)
+      results.find((r) => r.id === `tool.${n}`)?.ok === true,
   );
   const okCount = results.filter((r) => r.ok).length;
   if (readOk) {
@@ -216,10 +224,11 @@ async function runCacheHitBench(deps: {
     path: string,
     validate: (data: unknown) => boolean,
   ): Promise<void> {
+    const init: RequestInit = { headers: apiKeyHeader() };
     const t0 = performance.now();
-    const first = await fetchJson(`${deps.backendUrl}${path}`);
+    const first = await fetchJson(`${deps.backendUrl}${path}`, init);
     const t1 = performance.now();
-    const second = await fetchJson(`${deps.backendUrl}${path}`);
+    const second = await fetchJson(`${deps.backendUrl}${path}`, init);
     const t2 = performance.now();
     const coldMs = Math.round(t1 - t0);
     const warmMs = Math.round(t2 - t1);
@@ -576,6 +585,7 @@ export async function runChatBench(deps: {
     tokenId: deps.tokenId,
     vault,
     agentNft,
+    paymentProcessor: addresses.paymentProcessor,
     chainId,
     operatorSigner: deps.operatorSigner,
   };

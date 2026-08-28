@@ -383,6 +383,27 @@ function seed(): void {
       ],
       intent: "Single batched pass over all query endpoints",
     },
+    {
+      id: "reverts.failure-scenarios",
+      title: "Invalid paths revert with intended errors",
+      actor: "operator",
+      contracts: [
+        "AxiomAgentNFT",
+        "AxiomStrategyVault",
+        "AxiomPaymentProcessor",
+        "AxiomTeeVerifier",
+      ],
+      functions: [
+        "mint",
+        "deposit",
+        "execute",
+        "payForAgentAndCompute",
+        "transferAndCleanExpiredProofs",
+        "verifyTransferValidity",
+      ],
+      intent:
+        "Failure-path proof: each misuse is rejected with its exact custom error",
+    },
   ];
 
   for (const d of defs) {

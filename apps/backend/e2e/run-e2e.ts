@@ -38,6 +38,11 @@ import {
 import { resolveE2eWallets, runWalletPreflight } from "./e2e/wallet.js";
 import { initUsageScenarios, markScenarioSkipped } from "./e2e/scenarios.js";
 import {
+  runFailureScenarioSteps,
+  type ExpectRevertDeps,
+} from "./e2e/failure-scenarios.js";
+import { printFailureScenarioReport } from "./e2e/revert-utils.js";
+import {
   noteFriction,
   recordStepDuration,
   resetFrictionFindings,
@@ -152,6 +157,7 @@ const eip712Domain = buildEip712Domain(
 );
 
 const RUN_PAYMENT = getEnv("E2E_PAYMENT", "1") !== "0";
+const RUN_FAILURE_SCENARIOS = getEnv("E2E_FAILURE_SCENARIOS", "1") !== "0";
 const LIVE_GATE_MIN_PCT = Number.parseInt(
   getEnv("E2E_LIVE_GATE_MIN_PCT", "85"),
   10,
@@ -211,6 +217,9 @@ async function main(): Promise<void> {
 
   if (!RUN_PAYMENT) {
     skipPaymentScenarios("E2E_PAYMENT=0");
+  }
+  if (!RUN_FAILURE_SCENARIOS) {
+    markScenarioSkipped("reverts.failure-scenarios", "E2E_FAILURE_SCENARIOS=0");
   }
 
   printE2eBanner({
@@ -511,6 +520,21 @@ async function main(): Promise<void> {
     }),
   ]);
 
+  // Failure scenarios: every invalid path must revert with its intended error.
+  if (RUN_FAILURE_SCENARIOS) {
+    const failureDeps: ExpectRevertDeps = {
+      ...contractAddrs,
+      deployer: operator,
+      receiver,
+      tokenId,
+      strategyRoot: uploadRoot,
+      sealedKey: hexlify(sealedKey) as `0x${string}`,
+      eip712Domain,
+      chainId: OG_CHAIN_ID,
+    };
+    await runFailureScenarioSteps(failureDeps);
+  }
+
   if (E2E_SKIP_TRANSFER) {
     if (!E2E_REUSE) {
       saveE2eReuseSnapshot({
@@ -592,6 +616,7 @@ async function main(): Promise<void> {
   const elapsed = (elapsedMs / 1000).toFixed(1);
   console.log(`\n  Total wall time: ${elapsed}s (fast=${E2E_FAST})`);
   printReport({ liveGateMinPct: LIVE_GATE_MIN_PCT });
+  printFailureScenarioReport();
   process.exit(0);
 }
 

@@ -68,13 +68,12 @@ type VaultCov = {
 
 type PaymentCov = {
   AXIOM_NFT(): Promise<string>;
-  // e2e-only, no production producer (ledger M5) — no backend route, hook, or chat tool calls it.
-  payAndWithdrawEarnings(
+  // V2 canonical merged pay lane (ADR-004 §1.2) — payAndWithdrawEarnings was removed in V2.
+  payForAgentAndCompute(
     agentTokenId: bigint,
     provider: string,
     agentAmount: bigint,
     computeAmount: bigint,
-    royaltyBps: bigint,
   ): Promise<TransactionResponse>;
   payComputeProvider(
     provider: string,
@@ -352,7 +351,7 @@ export async function runPaymentPipelineStep(deps: {
   chainId: number;
   payAmount?: bigint;
   computeAmount?: bigint;
-  /** Royalty folded into payAndWithdrawEarnings (set in-tx before the split). */
+  /** Royalty expected for the agent-amount split (asserted on-chain post-pay; royalty is pre-set via reuse path). */
   royaltyBps?: bigint;
 }): Promise<void> {
   const token = new TypedContract<Erc20Cov>(
@@ -365,12 +364,7 @@ export async function runPaymentPipelineStep(deps: {
     PAYMENT_PROCESSOR_ABI,
     deps.deployer,
   );
-  const royaltyBps = deps.royaltyBps ?? 8000n;
-  if (royaltyBps === 0n) {
-    throw new Error(
-      "payment pipeline: royaltyBps must be > 0 (merged pay sets royalty in-tx; a 0 split would leave nothing to withdraw)",
-    );
-  }
+  const royaltyBps = deps.royaltyBps ?? 0n;
   const walletBal = await token.contract.balanceOf(deps.deployer.address);
   const defaultPay = parseUnits("0.5", 6);
   const defaultCompute = parseUnits("0.3", 6);
@@ -393,7 +387,7 @@ export async function runPaymentPipelineStep(deps: {
     );
   }
   console.log(
-    `\n[Parity] payment pipeline payAndWithdrawEarnings(agent=${payAmount} compute=${computeAmount} royalty=${royaltyBps}) — 1 tx (approve cached)`,
+    `\n[Parity] payment pipeline payForAgentAndCompute(agent=${payAmount} compute=${computeAmount}) — 1 tx (approve cached)`,
   );
   const earningsBefore = await pay.contract.agentEarningsOf(
     deps.deployer.address,
@@ -409,109 +403,99 @@ export async function runPaymentPipelineStep(deps: {
     amount: needTotal,
     step: "payment-pipeline",
   });
-  // e2e-only, no production producer (ledger M5): payAndWithdrawEarnings is exercised here only —
-  // no backend route, hook, or chat tool calls it.
-  const payTx = await pay.contract.payAndWithdrawEarnings(
+  // V2 canonical merged pay lane (ADR-004 §1.2): agent split credits creator earnings,
+  // compute amount forwards directly to the provider. Replaces V2-removed payAndWithdrawEarnings.
+  const payTx = await pay.contract.payForAgentAndCompute(
     deps.tokenId,
     deps.provider,
     payAmount,
     computeAmount,
-    royaltyBps,
   );
   const payReceipt = assertReceiptOk(
     await payTx.wait(),
-    "payAndWithdrawEarnings",
+    "payForAgentAndCompute",
   );
 
-  // All payment legs (royalty, credit, payout, withdraw) ran in one tx — assert final state only.
   const earningsAfter = await pay.contract.agentEarningsOf(
     deps.deployer.address,
   );
-  if (earningsAfter !== earningsBefore) {
+  const feeBps = await pay.contract.protocolFeeBps();
+  const onChainRoyalty = await pay.contract.royaltyBpsOf(deps.tokenId);
+  if (onChainRoyalty !== royaltyBps) {
     throw new Error(
-      `payAndWithdrawEarnings: earnings ${earningsBefore} -> ${earningsAfter} (expected back to pre-pay)`,
+      `payForAgentAndCompute: royaltyBpsOf ${onChainRoyalty} != ${royaltyBps}`,
+    );
+  }
+  const creatorCut = computeCreatorCut(payAmount, royaltyBps, feeBps);
+  if (earningsAfter !== earningsBefore + creatorCut) {
+    throw new Error(
+      `payForAgentAndCompute: earnings ${earningsBefore} -> ${earningsAfter} (expected +${creatorCut})`,
     );
   }
   const providerBalAfter = await token.contract.balanceOf(deps.provider);
   if (providerBalAfter !== providerBalBefore + computeAmount) {
     throw new Error(
-      `payAndWithdrawEarnings: provider balance did not increase by computeAmount (${providerBalAfter} != ${providerBalBefore + computeAmount})`,
+      `payForAgentAndCompute: provider balance did not increase by computeAmount (${providerBalAfter} != ${providerBalBefore + computeAmount})`,
     );
   }
   const deployerBalAfter = await token.contract.balanceOf(
     deps.deployer.address,
   );
-  const feeBps = await pay.contract.protocolFeeBps();
-  const creatorCut = computeCreatorCut(payAmount, royaltyBps, feeBps);
-  // Net deployer delta = -(payAmount + computeAmount) + (prior earnings + creatorCut).
-  const expectedDelta = earningsBefore + creatorCut - payAmount - computeAmount;
-  if (deployerBalAfter - deployerBalBefore < expectedDelta) {
+  // USDC delta is exactly -(pay+compute): the creatorCut is CREDITED to agentEarnings
+  // (withdrawable later via withdrawAgentEarnings), never transferred in-tx.
+  const expectedDelta = -(payAmount + computeAmount);
+  if (deployerBalAfter - deployerBalBefore !== expectedDelta) {
     throw new Error(
-      `payAndWithdrawEarnings: deployer delta ${deployerBalAfter - deployerBalBefore} < expected ${expectedDelta}`,
+      `payForAgentAndCompute: deployer delta ${deployerBalAfter - deployerBalBefore} != expected ${expectedDelta}`,
     );
   }
-  const onChainRoyalty = await pay.contract.royaltyBpsOf(deps.tokenId);
-  if (onChainRoyalty !== royaltyBps) {
-    throw new Error(
-      `payAndWithdrawEarnings: royaltyBpsOf ${onChainRoyalty} != ${royaltyBps}`,
-    );
-  }
-  if (!(await pay.contract.royaltyBpsSet(deps.tokenId))) {
-    throw new Error("payAndWithdrawEarnings: royaltyBpsSet false after pay");
-  }
-  markScenarioCovered("payment.agent", "payAndWithdrawEarnings", {
+  markScenarioCovered("payment.agent", "payForAgentAndCompute", {
     txs: 1,
     reads: 2,
   });
-  markScenarioCovered("payment.compute", "payAndWithdrawEarnings", {
+  markScenarioCovered("payment.compute", "payForAgentAndCompute", {
     txs: 1,
   });
-  markScenarioCovered("payment.withdraw", "payAndWithdrawEarnings", {
-    txs: 1,
-    reads: 2,
-  });
-  markScenarioCovered("payment.royalty", "payAndWithdrawEarnings", {
+  markScenarioCovered("payment.withdraw", "payForAgentAndCompute", {
     txs: 1,
     reads: 2,
   });
-  markCovered("AxiomPaymentProcessor", "payForAgent", "payAndWithdrawEarnings");
+  markScenarioCovered("payment.royalty", "payForAgentAndCompute", {
+    txs: 1,
+    reads: 2,
+  });
+  markCovered(
+    "AxiomPaymentProcessor",
+    "payForAgentAndCompute",
+    "payForAgentAndCompute",
+  );
   markCovered(
     "AxiomPaymentProcessor",
     "agentEarningsOf",
-    "payAndWithdrawEarnings",
+    "payForAgentAndCompute",
   );
-  markCovered(
-    "AxiomPaymentProcessor",
-    "payComputeProvider",
-    "payAndWithdrawEarnings",
-  );
-  markCovered(
-    "AxiomPaymentProcessor",
-    "withdrawAgentEarnings",
-    "payAndWithdrawEarnings",
-  );
-  markCovered(
-    "AxiomPaymentProcessor",
-    "setRoyaltyBps",
-    "payAndWithdrawEarnings",
-  );
-  markCovered("MockUSDC", "transfer", "payAndWithdrawEarnings");
+  markCovered("MockUSDC", "transfer", "payForAgentAndCompute");
   recordReceipt(
     9,
-    "AxiomPaymentProcessor.payAndWithdrawEarnings",
-    `creator earned ${creatorCut} (royalty ${royaltyBps}); provider +${providerBalAfter - providerBalBefore}; earnings back to ${earningsAfter}`,
+    "AxiomPaymentProcessor.payForAgentAndCompute",
+    `creator earned ${creatorCut} (royalty ${royaltyBps}); provider +${providerBalAfter - providerBalBefore}`,
     payReceipt,
     deps.chainId,
   );
 }
 
-/** Mirrors the processor's split math (royalty set -> read at pay time). */
+/** Mirrors the processor's split math: royalty when set (read on-chain at pay time),
+ * else protocolFeeBps share to treasury with the remainder credited to the creator. */
 function computeCreatorCut(
   received: bigint,
   royaltyBps: bigint,
   feeBps: bigint,
 ): bigint {
   const BPS = 10000n;
+  if (royaltyBps === 0n) {
+    const protocolCut = (received * feeBps) / BPS;
+    return received - protocolCut;
+  }
   const creatorCut = (received * royaltyBps) / BPS;
   const protocolCut = received - creatorCut;
   const minProtocolCut = (received * feeBps) / BPS;
@@ -564,7 +548,10 @@ async function authorizeDelegateCore(
     tokenId,
     delegateAddress,
   );
-  const receipts = await pipelineWalletTxs(pipelineLabel, steps);
+  const receipts = await pipelineWalletTxs(pipelineLabel, steps, {
+    // authorize must mine before revoke estimates (Galileo fast blocks; rd1 batch-race).
+    sequential: true,
+  });
   const isReuse = !steps.some((s) => s.name === "authorizeUsage");
   const assistant = await nft.contract.getDelegateAccess(deployerAddress);
   if (assistant.toLowerCase() !== delegateAddress.toLowerCase()) {

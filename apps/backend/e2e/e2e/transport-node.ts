@@ -6,12 +6,16 @@ import {
   type ToolResult,
 } from "@axiom/chat-runtime";
 import { getSharedProvider } from "../../src/providers.js";
+import { apiKeyHeader } from "./shared.js";
 export type E2eToolDeps = {
   backendUrl: string;
   operatorAddress: string;
   tokenId: string;
   vault: string;
   agentNft: string;
+  paymentProcessor?: string;
+  /** Compute-provider address for pay_for_agent encoding (none registered on-chain). */
+  provider?: string;
   chainId: number;
   operatorSigner?: Wallet;
 };
@@ -35,7 +39,16 @@ function createNodeTransport(
         !(init.body instanceof Uint8Array)
           ? JSON.stringify(init.body)
           : init?.body;
-      return fetch(url, { ...init, body } as RequestInit);
+      // Frontend parity (transport-browser.ts): every tool call is x-api-key authenticated.
+      return fetch(url, {
+        ...init,
+        headers: {
+          "content-type": "application/json",
+          ...apiKeyHeader(),
+          ...(init?.headers ?? {}),
+        },
+        body,
+      } as RequestInit);
     },
   };
 
@@ -108,6 +121,9 @@ function createNodeTransport(
       addresses: {
         vault: deps.vault as `0x${string}`,
         agentNft: deps.agentNft as `0x${string}`,
+        ...(deps.paymentProcessor
+          ? { paymentProcessor: deps.paymentProcessor as `0x${string}` }
+          : {}),
       },
     }),
   };

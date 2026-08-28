@@ -117,7 +117,7 @@ export async function postChatCompletionsSse(
   for (let attempt = 0; attempt <= retries; attempt++) {
     res = await fetch(`${backendUrl}/v1/chat/completions`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...apiKeyHeader() },
       body: JSON.stringify(body),
       ...(opts?.keepAlive ? { keepalive: true } : {}),
     });
