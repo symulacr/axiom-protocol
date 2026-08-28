@@ -696,17 +696,19 @@ contract FuzzAxiomTeeVerifierTest is StdInvariant, Test {
     //  2. proposeSigner / executeSigner — auth + zero-address + rotation
     // ════════════════════════════════════════════════════════════════════
 
-    /// @notice Fuzz signer rotation with a random address. Owner propose + execute succeeds.
+    /// @notice Fuzz signer ADD with a random address. Owner propose + execute appends to the allowlist (ADR-004 §1.4); the seed entry stays valid.
     function testFuzz_proposeSigner_ownerRotatesToNewSigner(
         uint256 newSignerKeySeed,
         uint8 /* seed */
     ) public {
         newSignerKeySeed = bound(newSignerKeySeed, 1, SECP256K1_ORDER_MINUS_1);
         address newSigner = vm.addr(newSignerKeySeed);
+        vm.assume(newSigner != teeSigner); // seed entry already allowlisted; adding it reverts
 
         _rotateSigner(newSigner);
 
-        assertEq(verifier.registeredSigner(), newSigner, "signer rotated");
+        assertTrue(verifier.isAllowlistedSigner(newSigner), "signer allowlisted");
+        assertEq(verifier.registeredSigner(), teeSigner, "seed entry still first");
         assertTrue(newSigner != address(0), "sanity: newSigner != 0 (we just bounded it)");
     }
 
@@ -743,15 +745,17 @@ contract FuzzAxiomTeeVerifierTest is StdInvariant, Test {
         assertEq(verifier.registeredSigner(), teeSigner, "signer unchanged after revert");
     }
 
-    /// @notice Fuzz rotation to the CURRENT signer (no-op). Must NOT revert.
-    function testFuzz_proposeSigner_rotateToCurrentSigner_succeeds(
+    /// @notice Proposing the CURRENT signer is rejected: it is already allowlisted, a timelocked no-op add is meaningless (ADR-004 §1.4).
+    function testFuzz_proposeSigner_rotateToCurrentSigner_reverts(
         uint8 seed
     ) public {
         assertEq(verifier.registeredSigner(), teeSigner, "precondition: current signer");
 
-        _rotateSigner(teeSigner);
+        vm.prank(owner);
+        vm.expectRevert(AxiomTeeVerifier.SignerAlreadyAllowlisted.selector);
+        verifier.proposeSigner(teeSigner);
 
-        assertEq(verifier.registeredSigner(), teeSigner, "signer unchanged after no-op rotation");
+        assertEq(verifier.pendingSigner(), address(0), "no pending proposal created");
         seed;
     }
 

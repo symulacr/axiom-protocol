@@ -15,14 +15,18 @@ import {
 } from "../interfaces/IERC7857DataVerifier.sol";
 
 /// @title AxiomTeeVerifier — TEE-based verifier for ERC-7857 transfer validity proofs (0G reference, MIT)
-/// @dev Registered signer is an Intel TDX/AMD SEV TEE in production; for buildathon it is the TS signer service (apps/oracle), registered via proposeSigner + executeSigner.
-/// @dev Signer rotation is Ownable + 1-day timelock; deployed non-upgradeable but upgrade-safe so the same bytecode can move behind a proxy later.
+/// @dev Registered signers form a small allowlist (k-of-1 quorum: any allowlisted signer verifies); for buildathon it is the TS signer service (apps/oracle), seeded via initialize.
+/// @dev ADDING a signer keeps the proven 1-day timelock (proposeSigner + executeSigner); REVOKING is immediate (revokeSigner) so a compromised signer key can be contained without waiting out the delay from the same owner key. Signer management is Ownable. See ADR-004 §1.4.
+/// @dev Deployed non-upgradeable-but-behind-proxy: UUPS machinery is intentionally kept because every deploy script proxies this contract; posture is "committed proxy" (ADR-004 §1.4).
 contract AxiomTeeVerifier is Initializable, BaseVerifier, OwnableUpgradeable, UUPSUpgradeable {
     error AxiomInvalidSigner();
     error AxiomInvalidOwnershipProof();
     error AxiomInvalidAccessProof();
     error ZeroAddress();
     error NoPendingProposal();
+    error SignerNotAllowlisted();
+    error SignerAlreadyAllowlisted();
+    error SignerAllowlistEmpty();
     error ProofFieldMismatch();
     error AxiomProofExpired(uint256 validUntil, uint256 blockTimestamp);
     /// @dev Thrown when `validUntil` is too far ahead — guards against long-lived TEE proofs and overflow attacks (validUntil = type(uint256).max).
@@ -31,10 +35,13 @@ contract AxiomTeeVerifier is Initializable, BaseVerifier, OwnableUpgradeable, UU
     event SignerProposed(address indexed newSigner, uint256 executableAt);
     event SignerExecuted(address indexed oldSigner, address indexed newSigner);
     event SignerProposalCancelled(address indexed cancelledSigner);
+    event SignerRevoked(address indexed revokedSigner);
 
 
     uint256 public maxProofAgeSeconds;
-    address public registeredSigner;
+    /// @dev Append-only allowlist per ADR-004 §1.4 storage rule: entries are only added (timelocked) or removed (immediate revoke); never re-purposed.
+    address[] private _signers;
+    mapping(address => bool) private _isSigner;
     TimelockManager.State private _signerTimelock;
 
     /// @dev Domain separator binds signatures to this instance and chain, preventing cross-contract/cross-chain replay; signTypedData_v4 yields raw ECDSA over the digest.
@@ -57,23 +64,66 @@ contract AxiomTeeVerifier is Initializable, BaseVerifier, OwnableUpgradeable, UU
         require(_maxProofAge > 0, "Zero max proof age");
         __Ownable_init(_owner);
         maxProofAgeSeconds = _maxProofAge;
-        registeredSigner = _signer;
+        _signers.push(_signer);
+        _isSigner[_signer] = true;
+    }
+
+    /// @notice Backward-compat view: the FIRST allowlist entry. External consumers (backend e2e coverage.ts, matrix.ts) read this; any allowlisted signer verifies, but the oracle parity check uses the seed entry.
+    function registeredSigner() external view returns (address) {
+        return _signers[0];
+    }
+
+    /// @notice Number of currently allowlisted signers (k-of-1 quorum: count >= 1 is enforced by revoke).
+    function signerCount() external view returns (uint256) {
+        return _signers.length;
+    }
+
+    /// @notice Full allowlist (frontends/oracles enumerate; order matches add sequence, [0] = registeredSigner).
+    function allowlistedSigners() external view returns (address[] memory) {
+        return _signers;
+    }
+
+    /// @notice Whether an address is currently allowlisted to sign ownership proofs.
+    function isAllowlistedSigner(address signer) external view returns (bool) {
+        return _isSigner[signer];
+    }
+
+    /// @notice Adds a signer after the 1-day timelock; appends to the allowlist (does not replace — existing entries stay valid).
+    function executeSigner() external onlyOwner {
+        address newSigner = _signerTimelock.execute();
+        address old = _signers[0];
+        _signers.push(newSigner);
+        _isSigner[newSigner] = true;
+        emit SignerExecuted(old, newSigner);
+    }
+
+    /// @notice Immediate revocation — a compromised signer key is blocked the same block, no 1-day propose/execute cycle (ADR-004 §1.4 containment rationale).
+    /// @dev Reverts when removing the last entry: the allowlist must never be empty or every transfer would fail verification.
+    function revokeSigner(address signer) external onlyOwner {
+        if (!_isSigner[signer]) revert SignerNotAllowlisted();
+        if (_signers.length == 1) revert SignerAllowlistEmpty();
+        _isSigner[signer] = false;
+        // Swap-and-pop keeps the list dense; [0] always holds a live signer because length > 1 here.
+        uint256 len = _signers.length;
+        for (uint256 i = 0; i < len; i++) {
+            if (_signers[i] == signer) {
+                _signers[i] = _signers[len - 1];
+                _signers.pop();
+                break;
+            }
+        }
+        emit SignerRevoked(signer);
     }
 
     function proposeSigner(
         address newSigner
     ) external onlyOwner {
         if (newSigner == address(0)) revert ZeroAddress();
+        if (_isSigner[newSigner]) revert SignerAlreadyAllowlisted();
         _signerTimelock.propose(newSigner);
         emit SignerProposed(newSigner, block.timestamp + 1 days);
     }
 
-    function executeSigner() external onlyOwner {
-        address newSigner = _signerTimelock.execute();
-        address old = registeredSigner;
-        registeredSigner = newSigner;
-        emit SignerExecuted(old, newSigner);
-    }
     function cancelSignerProposal() external onlyOwner {
         if (_signerTimelock.proposed == address(0)) revert NoPendingProposal();
         address cancelled = _signerTimelock.proposed;
@@ -123,7 +173,6 @@ contract AxiomTeeVerifier is Initializable, BaseVerifier, OwnableUpgradeable, UU
         address to,
         address nft
     ) external override returns (TransferValidityProofOutput[] memory outputs) {
-        address expectedSigner = registeredSigner;
         uint256 maxAge = maxProofAgeSeconds;
         uint256 nowTs = block.timestamp;
         outputs = new TransferValidityProofOutput[](proofs.length);
@@ -135,7 +184,6 @@ contract AxiomTeeVerifier is Initializable, BaseVerifier, OwnableUpgradeable, UU
                 proofs[i],
                 to,
                 nft,
-                expectedSigner,
                 domainSep,
                 nowTs,
                 maxAge
@@ -149,7 +197,6 @@ contract AxiomTeeVerifier is Initializable, BaseVerifier, OwnableUpgradeable, UU
         TransferValidityProof calldata p,
         address to,
         address nft,
-        address expectedSigner,
         bytes32 domainSep,
         uint256 nowTs,
         uint256 maxAge
@@ -194,7 +241,8 @@ contract AxiomTeeVerifier is Initializable, BaseVerifier, OwnableUpgradeable, UU
                 abi.encodePacked("\x19\x01", domainSep, ownershipStructHash)
             );
             address recovered = _recoverSigner(ownershipMessage, p.ownershipProof.proof);
-            if (recovered != expectedSigner) revert AxiomInvalidOwnershipProof();
+            // k-of-1 quorum: any allowlisted signer verifies (ADR-004 §1.4).
+            if (!_isSigner[recovered]) revert AxiomInvalidOwnershipProof();
 
             // Verify AccessProof (receiver via signTypedData_v4); recovered signer must equal `to`.
             bytes32 accessStructHash = keccak256(

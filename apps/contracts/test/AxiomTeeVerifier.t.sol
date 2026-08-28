@@ -87,7 +87,10 @@ contract AxiomTeeVerifierTest is Test {
         vm.prank(owner);
         verifier.executeSigner();
 
-        assertEq(verifier.registeredSigner(), newTeeSigner, "signer should rotate to newTeeSigner");
+        // ADR-004 §1.4: execute now APPENDS to the allowlist (k-of-1); the seed entry stays valid.
+        assertEq(verifier.registeredSigner(), teeSigner, "first entry unchanged after add");
+        assertTrue(verifier.isAllowlistedSigner(newTeeSigner), "new signer allowlisted");
+        assertEq(verifier.signerCount(), 2, "allowlist grew to 2");
         assertEq(verifier.pendingSigner(), address(0), "pending signer cleared");
 
         vm.prank(owner);
@@ -147,6 +150,200 @@ contract AxiomTeeVerifierTest is Test {
         verifier.verifyTransferValidity(proofs, wrongTo, address(0xBEEF));
     }
 
+    // ─── ADR-004 §1.4: signer allowlist (k-of-1 quorum) ──────────────────────
+
+    /// @notice After adding a second signer via the 1-day timelock, proofs signed by it verify.
+    function test_allowlist_secondSigner_canVerify() public {
+        // Timelocked add of newTeeSigner.
+        vm.prank(owner);
+        verifier.proposeSigner(newTeeSigner);
+        vm.warp(block.timestamp + 1 days + 1);
+        vm.prank(owner);
+        verifier.executeSigner();
+
+        assertEq(verifier.signerCount(), 2, "two signers allowlisted");
+        assertEq(verifier.registeredSigner(), teeSigner, "seed entry remains first");
+
+        // Proof signed by the SECOND signer must verify.
+        address receiver = vm.addr(RECEIVER_KEY);
+        TransferValidityProof[] memory proofs = _signProofWithOwnershipKey(receiver, receiver, NEW_TEE_KEY);
+        TransferValidityProofOutput[] memory outs = verifier.verifyTransferValidity(proofs, receiver, address(0xBEEF));
+        assertEq(outs.length, 1, "second-signer proof accepted");
+    }
+
+    /// @notice Revoking a signer is immediate (no 1-day delay) and blocks its proofs at once.
+    function test_revokeSigner_immediatelyBlocks() public {
+        vm.prank(owner);
+        verifier.proposeSigner(newTeeSigner);
+        vm.warp(block.timestamp + 1 days + 1);
+        vm.prank(owner);
+        verifier.executeSigner();
+
+        // Advance time past the proof window used below so the revoked signer
+        // cannot ride a pre-signed proof; revoke must still take effect the same block.
+        vm.prank(owner);
+        verifier.revokeSigner(newTeeSigner);
+
+        assertTrue(!verifier.isAllowlistedSigner(newTeeSigner), "revoked signer removed");
+        assertEq(verifier.signerCount(), 1, "back to one signer");
+        assertTrue(verifier.isAllowlistedSigner(teeSigner), "seed entry untouched");
+
+        address receiver = vm.addr(RECEIVER_KEY);
+        TransferValidityProof[] memory proofs = _signProofWithOwnershipKey(receiver, receiver, NEW_TEE_KEY);
+        vm.expectRevert(AxiomTeeVerifier.AxiomInvalidOwnershipProof.selector);
+        verifier.verifyTransferValidity(proofs, receiver, address(0xBEEF));
+    }
+
+    /// @notice Revoked signer cannot verify mid-flow: a proof batch co-signed by both
+    ///         signers fails once the revoke lands between signing and verification.
+    function test_revokeSigner_blocksMidFlow() public {
+        vm.prank(owner);
+        verifier.proposeSigner(newTeeSigner);
+        vm.warp(block.timestamp + 1 days + 1);
+        vm.prank(owner);
+        verifier.executeSigner();
+
+        address receiver = vm.addr(RECEIVER_KEY);
+        // Batch of two proofs: first signed by seed signer, second by newTeeSigner.
+        TransferValidityProof[] memory proofs = new TransferValidityProof[](2);
+        TransferValidityProof[] memory p1 = _signProofWithOwnershipKey(receiver, receiver, TEE_KEY);
+        TransferValidityProof[] memory p2 = _signProofWithOwnershipKey(receiver, receiver, NEW_TEE_KEY);
+        proofs[0] = p1[0];
+        proofs[1] = p2[0];
+
+        // Revoke BEFORE verification lands — the compromised key must not verify.
+        vm.prank(owner);
+        verifier.revokeSigner(newTeeSigner);
+
+        vm.expectRevert(AxiomTeeVerifier.AxiomInvalidOwnershipProof.selector);
+        verifier.verifyTransferValidity(proofs, receiver, address(0xBEEF));
+    }
+
+    /// @notice Cannot revoke the last remaining signer — the allowlist must never be empty.
+    function test_revokeSigner_lastEntry_reverts() public {
+        vm.prank(owner);
+        vm.expectRevert(AxiomTeeVerifier.SignerAllowlistEmpty.selector);
+        verifier.revokeSigner(teeSigner);
+    }
+
+    /// @notice Revoking an address that was never allowlisted reverts.
+    function test_revokeSigner_notAllowlisted_reverts() public {
+        vm.prank(owner);
+        vm.expectRevert(AxiomTeeVerifier.SignerNotAllowlisted.selector);
+        verifier.revokeSigner(newTeeSigner);
+    }
+
+    /// @notice Revoking the FIRST entry reorders the allowlist; registeredSigner() then returns the next live signer.
+    function test_revokeSigner_firstEntry_shiftsView() public {
+        vm.prank(owner);
+        verifier.proposeSigner(newTeeSigner);
+        vm.warp(block.timestamp + 1 days + 1);
+        vm.prank(owner);
+        verifier.executeSigner();
+
+        vm.prank(owner);
+        verifier.revokeSigner(teeSigner);
+
+        assertEq(verifier.registeredSigner(), newTeeSigner, "view falls through to next live signer");
+        assertEq(verifier.signerCount(), 1, "one signer remains");
+        assertTrue(verifier.isAllowlistedSigner(newTeeSigner), "surviving entry still allowlisted");
+    }
+
+    /// @notice Full add-after-timelock flow: propose before the delay elapses must revert on execute; after the delay it succeeds.
+    function test_addSigner_timelock_flow() public {
+        vm.prank(owner);
+        verifier.proposeSigner(newTeeSigner);
+
+        // Execute too early → DelayNotElapsed, allowlist unchanged.
+        vm.warp(block.timestamp + 1 days - 1);
+        vm.prank(owner);
+        vm.expectRevert(abi.encodeWithSelector(TimelockManager.DelayNotElapsed.selector, 1));
+        verifier.executeSigner();
+        assertEq(verifier.signerCount(), 1, "nothing added before delay");
+
+        // After the delay the same proposal executes.
+        vm.warp(block.timestamp + 2);
+        vm.prank(owner);
+        verifier.executeSigner();
+        assertTrue(verifier.isAllowlistedSigner(newTeeSigner), "signer added after timelock");
+        assertEq(verifier.signerCount(), 2, "allowlist grew");
+
+        // A used proposal cannot execute twice.
+        vm.prank(owner);
+        vm.expectRevert(TimelockManager.NoPendingProposal.selector);
+        verifier.executeSigner();
+    }
+
+    /// @notice Re-adding a revoked signer requires the full 1-day timelock again — no instant re-admission.
+    function test_reAddRevokedSigner_requiresTimelock() public {
+        vm.prank(owner);
+        verifier.proposeSigner(newTeeSigner);
+        vm.warp(block.timestamp + 1 days + 1);
+        vm.prank(owner);
+        verifier.executeSigner();
+
+        vm.prank(owner);
+        verifier.revokeSigner(newTeeSigner);
+
+        // Immediate re-add without timelock is impossible: propose must go through the delay again.
+        uint256 proposedAt = block.timestamp;
+        vm.prank(owner);
+        verifier.proposeSigner(newTeeSigner);
+        assertEq(verifier.pendingSigner(), newTeeSigner, "proposal pending");
+
+        // Executing before the delay elapses reverts; the proposal survives.
+        vm.prank(owner);
+        vm.expectRevert(abi.encodeWithSelector(TimelockManager.DelayNotElapsed.selector, 1 days));
+        verifier.executeSigner();
+
+        vm.warp(proposedAt + 1 days + 2);
+        vm.prank(owner);
+        verifier.executeSigner();
+        assertTrue(verifier.isAllowlistedSigner(newTeeSigner), "re-added after full delay");
+    }
+
+    /// @notice Non-admin cannot add (timelock path) or revoke.
+    function test_nonAdmin_cannotAddOrRevoke() public {
+        vm.prank(stranger);
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, stranger));
+        verifier.proposeSigner(newTeeSigner);
+
+        vm.prank(stranger);
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, stranger));
+        verifier.revokeSigner(teeSigner);
+
+        // Even a stolen pending proposal cannot be executed by a stranger.
+        vm.prank(owner);
+        verifier.proposeSigner(newTeeSigner);
+        vm.warp(block.timestamp + 1 days + 1);
+        vm.prank(stranger);
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, stranger));
+        verifier.executeSigner();
+
+        assertEq(verifier.signerCount(), 1, "allowlist unchanged");
+    }
+
+    /// @notice Proposing an already-allowlisted signer reverts (no no-op timelock churn).
+    function test_proposeSigner_alreadyAllowlisted_reverts() public {
+        vm.prank(owner);
+        vm.expectRevert(AxiomTeeVerifier.SignerAlreadyAllowlisted.selector);
+        verifier.proposeSigner(teeSigner);
+    }
+
+    /// @notice The allowlist view returns entries in add order, [0] = registeredSigner.
+    function test_allowlistedSigners_view_order() public {
+        vm.prank(owner);
+        verifier.proposeSigner(newTeeSigner);
+        vm.warp(block.timestamp + 1 days + 1);
+        vm.prank(owner);
+        verifier.executeSigner();
+
+        address[] memory signers = verifier.allowlistedSigners();
+        assertEq(signers.length, 2, "two entries");
+        assertEq(signers[0], teeSigner, "seed first");
+        assertEq(signers[1], newTeeSigner, "added second");
+    }
+
     function _domainSeparator() internal view returns (bytes32) {
         return keccak256(
             abi.encode(
@@ -158,6 +355,14 @@ contract AxiomTeeVerifierTest is Test {
     function _signProof(
         address to,
         address receiver
+    ) internal view returns (TransferValidityProof[] memory proofs) {
+        return _signProofWithOwnershipKey(to, receiver, TEE_KEY);
+    }
+
+    function _signProofWithOwnershipKey(
+        address to,
+        address receiver,
+        uint256 ownershipKey
     ) internal view returns (TransferValidityProof[] memory proofs) {
         uint256 validUntil = block.timestamp + 1 days;
         uint256 nonce = 42;
@@ -183,7 +388,7 @@ contract AxiomTeeVerifierTest is Test {
                 )
             )
         );
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(TEE_KEY, ownershipMsg);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownershipKey, ownershipMsg);
         bytes memory ownershipSig = abi.encodePacked(r, s, v);
 
         bytes32 accessMsg = keccak256(
