@@ -339,6 +339,32 @@ docs/hackathon/
 .DS_Store
 Thumbs.db
 
+
+# ── Non-runtime extras: docs, benches, session evidence ──
+# (keep on disk; not needed to run/build/deploy)
+docs/hackathon/
+apps/bench/
+**/e2e/
+**/*.spec.ts
+**/*.spec.mjs
+apps/frontend/playwright.config.ts
+apps/frontend/scripts/generate-og.mjs
+apps/backend/scripts/
+apps/contracts/script/
+apps/contracts/test/
+scripts/deploy-mainnet.sh
+scripts/generate-production-wallets.sh
+**/*.t.sol
+**/Fuzz*.sol
+apps/contracts/BUGS.md
+apps/contracts/README.md
+**/BUGS.md
+apps/frontend/README.md
+apps/backend/README.md
+apps/contracts/docs/
+**/openapi*.json
+!docs/deployments/
+
 # ── Runtime data ─────────────────────────────────────
 .data/
 apps/backend/data/
