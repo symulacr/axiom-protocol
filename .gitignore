@@ -324,6 +324,21 @@ docs/*
 apps/contracts/docs/
 wallets/
 
+
+# ── Agent-session artifacts (evidence trails, not runtime source) ──
+audit/
+report/
+rules/
+.grok/
+docs/hackathon/
+
+# ── Misc editor/OS noise ──────────────────────────────
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
 # ── Runtime data ─────────────────────────────────────
 .data/
 apps/backend/data/
