@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  ERC-7857 Agentic ID iNFTs on <a href="https://0g.ai">0G</a> — trade on 0G Chain, run via 0G Compute, store on 0G Storage. · <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT" /></a>
+  ERC-7857 Agentic ID iNFTs on <a href="https://0g.ai">0G</a>: trade on 0G Chain, run via 0G Compute, store on 0G Storage. · <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT" /></a>
 </p>
 
 ## What this is
@@ -220,22 +220,22 @@ not match current contract source.
 ## Deployment
 
 - **Railway** (`railway.json`, two services):
-  - `axiom-backend` — built by `bun scripts/build-binaries.mjs` into a standalone binary, started as `./dist/axiom-backend` (health: `/health`).
-  - `axiom-frontend` — static build + `bun apps/frontend/server.mjs`.
-- **Vercel** (`vercel.json`) — static SPA from `apps/frontend/dist`, rewriting `/api/*` and `/oracle/*` to the Railway backend.
+  - `axiom-backend`, built by `bun scripts/build-binaries.mjs` into a standalone binary, started as `./dist/axiom-backend` (health: `/health`).
+  - `axiom-frontend`, static build + `bun apps/frontend/server.mjs`.
+- **Vercel** (`vercel.json`), static SPA from `apps/frontend/dist`, rewriting `/api/*` and `/oracle/*` to the Railway backend.
 - Mainnet cutover plan: ADR 004 §4 (upgrade-in-place or scripted migration, never a fresh deploy).
 
 ## Security posture (honest)
 
 - Auth is **API-key based**: `AXIOM_API_KEY` (server, full access) and
-  `AXIOM_CLIENT_API_KEY` / `VITE_API_KEY` (browser, hard allowlist — no vault execute).
+  `AXIOM_CLIENT_API_KEY` / `VITE_API_KEY` (browser, hard allowlist, no vault execute).
   `AXIOM_DISABLE_AUTH=true` is refused when `NODE_ENV=production`.
 - The TEE signer is **simulated**: a software secp256k1 signer holding a cleartext key.
   It is not a hardware TEE. Transfers require an ECIES-**sealed** data-encryption key;
   cleartext DEKs are rejected.
 - **Signer allowlist** (V2): revocation is immediate, adding a signer keeps the 1-day
   timelock. A compromised key is contained in one block instead of one day.
-- Production deploy keys live in `wallets/*.json` (git-ignored) or env vars — never in the
+- Production deploy keys live in `wallets/*.json` (git-ignored) or env vars, never in the
   repo. Rotate testnet keys before mainnet.
 - **Known gaps, stated plainly:** the DEK custody store is a JSON file (fine for testnet,
   needs a real store for mainnet); the keeper's Chainlink/Gelato modes are documented
