@@ -1,4 +1,4 @@
-import { getSharedProvider } from "../providers.js";
+import { getSharedProvider, sendRpcRaw } from "../providers.js";
 import { TTLCache } from "../utils/response.js";
 import { createLogger } from "../utils/logger.js";
 
@@ -74,7 +74,9 @@ export async function* getLogsChunked(
       };
 
       try {
-        const logs: RpcLog[] = await provider.send("eth_getLogs", [params]);
+        const logs: RpcLog[] = (await sendRpcRaw(provider, "eth_getLogs", [
+          params,
+        ])) as RpcLog[];
         yield logs;
         success = true;
       } catch (err: unknown) {

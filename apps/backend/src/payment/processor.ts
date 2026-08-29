@@ -2,6 +2,7 @@ import type {
   ContractTransactionReceipt,
   TransactionResponse,
   Wallet,
+  FallbackProvider,
   JsonRpcProvider,
   Log,
   EventLog,
@@ -36,7 +37,7 @@ type ERC20Methods = {
 export interface PaymentConfig {
   readonly address: string;
   readonly signer: Wallet;
-  readonly provider: JsonRpcProvider;
+  readonly provider: JsonRpcProvider | FallbackProvider;
   readonly paymentTokenAddress: string;
 }
 
@@ -104,7 +105,10 @@ export class PaymentProcessorClient {
 
   encodeWithdrawEarnings(): { to: string; data: string; value: bigint } {
     // Mirrors encodeSetRoyalty: relay-only, funds move when the creator signs.
-    const data = this.payment.iface.encodeFunctionData("withdrawAgentEarnings", []);
+    const data = this.payment.iface.encodeFunctionData(
+      "withdrawAgentEarnings",
+      [],
+    );
     return { to: this.address, data, value: 0n };
   }
 

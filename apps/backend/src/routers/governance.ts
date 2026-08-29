@@ -86,7 +86,7 @@ export function toTimelockEntry(
 export function registerGovernanceRoutes(
   app: Express,
   config: ServerConfig,
-  provider: ethers.JsonRpcProvider,
+  provider: ethers.JsonRpcProvider | ethers.FallbackProvider,
 ): void {
   const cache = new TTLCache<TimelockResponse>(30_000);
 

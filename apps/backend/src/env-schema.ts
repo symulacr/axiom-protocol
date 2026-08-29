@@ -15,6 +15,27 @@ export const backendEnvSchema = sharedEnvSchema.merge(
       .optional(),
     AXIOM_INDEXER_API_KEY: z.string().optional(),
     AXIOM_EVM_RPC: z.string().url(),
+    // Comma-separated fallback RPC URLs appended after AXIOM_EVM_RPC in the
+    // shared FallbackProvider; empty/absent = single JsonRpcProvider.
+    AXIOM_EVM_RPC_FALLBACKS: z
+      .string()
+      .refine(
+        (val) =>
+          val
+            .split(",")
+            .map((u) => u.trim())
+            .filter(Boolean)
+            .every((u) => {
+              try {
+                new URL(u);
+                return true;
+              } catch {
+                return false;
+              }
+            }),
+        "AXIOM_EVM_RPC_FALLBACKS must be a comma-separated list of valid URLs",
+      )
+      .optional(),
     INDEXER_POLL_WINDOW_BLOCKS: z.coerce
       .number()
       .int()

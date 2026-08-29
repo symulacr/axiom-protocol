@@ -1,5 +1,5 @@
 import type { ethers } from "ethers";
-import type { JsonRpcProvider, Log } from "ethers";
+import type { FallbackProvider, JsonRpcProvider, Log } from "ethers";
 import { writeFileAtomic, joinPath } from "@axiom/config/path";
 import { getRuntimeConfig } from "@axiom/config/constants";
 import { getEnv } from "@axiom/config/env";
@@ -19,7 +19,7 @@ import {
 import { extractErrorMessage } from "../utils/response.js";
 
 interface IndexerServiceConfig {
-  provider: ethers.JsonRpcProvider;
+  provider: ethers.JsonRpcProvider | ethers.FallbackProvider;
   env: {
     INDEXER_POLL_WINDOW_BLOCKS?: number;
     INDEXER_START_BLOCK?: number;
@@ -67,7 +67,7 @@ async function saveCheckpoint(
 }
 
 async function pollOnce(
-  provider: JsonRpcProvider,
+  provider: JsonRpcProvider | FallbackProvider,
   watchList: readonly WatchedEvent[],
   fromBlock: bigint,
   window: bigint,
@@ -177,7 +177,7 @@ export function buildDefaultWatchList(
 type EventSink = (event: AxiomEvent) => void | Promise<void>;
 
 type WatcherOptions = {
-  provider: JsonRpcProvider;
+  provider: JsonRpcProvider | FallbackProvider;
   watchList?: readonly WatchedEvent[];
   pollWindow?: bigint;
   pollIntervalMs?: number;
@@ -192,7 +192,7 @@ type WatcherOptions = {
 };
 
 export class Watcher {
-  readonly provider: JsonRpcProvider;
+  readonly provider: JsonRpcProvider | FallbackProvider;
   readonly watchList: readonly WatchedEvent[];
   readonly window: bigint;
   readonly intervalMs: number;
@@ -268,7 +268,44 @@ export class Watcher {
       }
 
       if (this.nextBlock === 0n) {
-        this.nextBlock = latest >= this.window ? latest - this.window : 0n;
+        // Checkpoint was corrupt/missing (or unset): the cursor jumps to
+        // latest - window, silently dropping every event older than that.
+        // Default is LOUD (error log + system.resync event in the EventStore
+        // + WS broadcast, mirroring the system.reorg precedent); set
+        // AXIOM_QUIET_RESYNC=true for the old silent behavior.
+        const resyncFrom = latest >= this.window ? latest - this.window : 0n;
+        this.nextBlock = resyncFrom;
+        if (process.env.AXIOM_QUIET_RESYNC !== "true") {
+          this.logger({
+            level: "error",
+            msg: "checkpoint lost — resyncing to latest-window; older blocks may be unprocessed",
+            droppedThroughBlock: resyncFrom.toString(),
+            latest: latest.toString(),
+            window: this.window.toString(),
+          });
+          try {
+            getEventStore().append({
+              source: "indexer",
+              chainId: Number(id),
+              blockNumber: Number(resyncFrom),
+              txHash: null,
+              logIndex: 0,
+              eventName: "system.resync",
+              payload: {
+                reason: "checkpoint lost — silent resync to latest-window",
+                droppedThroughBlock: resyncFrom.toString(),
+                latest: latest.toString(),
+              },
+            });
+          } catch (err) {
+            /* resync event is best-effort; the loud log above still fired */
+            this.logger({
+              level: "warn",
+              msg: "failed to append system.resync event",
+              err: extractErrorMessage(err),
+            });
+          }
+        }
       }
 
       // bigint clamp — Math.min() throws on BigInt, ternary is the only option

@@ -175,7 +175,7 @@ async function signOwnershipVerified(
 export function registerAgentRoutes(
   app: Express,
   config: ServerConfig,
-  provider: ethers.JsonRpcProvider,
+  provider: ethers.JsonRpcProvider | ethers.FallbackProvider,
   oracle: OracleRouteDeps,
   eip712Domain: Eip712Domain,
   nftTc: TypedContract<AgentNFTMethods> | null,
@@ -747,7 +747,7 @@ export function registerAgentRoutes(
  * via `normalizePubkey64` to the X||Y shape the transfer route expects.
  */
 async function recoverPubkeyFromLatestOutgoingTx(
-  _provider: ethers.JsonRpcProvider,
+  _provider: ethers.JsonRpcProvider | ethers.FallbackProvider,
   _address: string,
 ): Promise<`0x${string}` | null> {
   return null;

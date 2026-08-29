@@ -22,6 +22,117 @@ interface DownloadResult {
   size: number;
 }
 
+/**
+ * Thrown when a blob decrypted under the transport key does not match the canary the
+ * adapter embeds at upload time. The 0G SDK's decrypt is best-effort (AES-CTR has no
+ * authentication): a wrong key silently yields garbage bytes instead of an error, so the
+ * canary check is the only wrong-key signal. Carries the rootHash for typed handling.
+ */
+export class WrongKeyOrCorruptError extends Error {
+  readonly rootHash: Hex;
+  readonly reason: string;
+  constructor(rootHash: Hex, reason: string) {
+    super(
+      `0G download failed canary check for ${rootHash}: ${reason} — decryption key is wrong or the blob is corrupted`,
+    );
+    this.name = "WrongKeyOrCorruptError";
+    this.rootHash = rootHash;
+    this.reason = reason;
+  }
+}
+
+/**
+ * Canary prefix embedded before transport encryption on every upload so `download()` can
+ * prove decryption actually happened: the SDK's decrypt is best-effort CTR with no
+ * authentication AND strips the encryption header before returning, so a wrong key yields
+ * garbage bytes that are shape-identical to plaintext. Bumped only with a migration plan.
+ */
+const STORAGE_CANARY_PREFIX = toUtf8Bytes("AXIOM1");
+
+/**
+ * Roots uploaded by a canary-era adapter (this file). A registered root whose downloaded
+ * bytes LACK the canary is proof of a wrong key or corruption → typed error. Roots absent
+ * from the registry are legacy blobs (uploaded before the canary existed) — their plaintext
+ * (e.g. deploy-plane AES-GCM app ciphertext) is legitimately canary-free, so they pass
+ * through rather than false-throwing. Same data dir as the transport key; single-instance
+ * backend per docs. Persisted merges may drop roots under concurrent uploads (fail-open:
+ * a dropped root is treated as legacy, never as a false wrong-key signal).
+ */
+const CANARY_REGISTRY_FILE = dataFilePath("storage-canary-roots.json");
+
+/**
+ * True under `bun test` (Bun.main is the .test.ts entry) or the explicit BUN_TEST=1
+ * convention — the BUN_TEST env var alone is not set by bun ≥1.4 test runner.
+ */
+function isTestRun(): boolean {
+  if (process.env.BUN_TEST === "1") return true;
+  const main = (globalThis as { Bun?: { main?: string } }).Bun?.main;
+  return /(\.test|\.spec)\.[cm]?[jt]sx?$/.test(main ?? "");
+}
+
+function loadCanaryRegistry(file: string): Set<string> {
+  try {
+    const parsed = JSON.parse(readFileSync(file, "utf-8")) as {
+      canaryRoots?: unknown;
+    };
+    if (!Array.isArray(parsed.canaryRoots)) return new Set();
+    return new Set(
+      parsed.canaryRoots
+        .filter((item): item is string => typeof item === "string")
+        .map((item) => item.toLowerCase()),
+    );
+  } catch {
+    return new Set();
+  }
+}
+
+function persistCanaryRegistry(file: string, roots: Set<string>): void {
+  // Re-read before writing so concurrently-uploading instances merge instead of clobber.
+  const merged = loadCanaryRegistry(file);
+  for (const root of roots) merged.add(root);
+  atomicWriteFileSync(file, JSON.stringify({ canaryRoots: [...merged] }));
+}
+
+/** True when `data` starts with the adapter's canary magic. */
+function hasCanaryPrefix(data: Uint8Array): boolean {
+  if (data.length < STORAGE_CANARY_PREFIX.length) return false;
+  for (let i = 0; i < STORAGE_CANARY_PREFIX.length; i++) {
+    if (data[i] !== STORAGE_CANARY_PREFIX[i]) return false;
+  }
+  return true;
+}
+
+function withCanaryPrefix(blob: Uint8Array): Uint8Array {
+  const out = new Uint8Array(STORAGE_CANARY_PREFIX.length + blob.length);
+  out.set(STORAGE_CANARY_PREFIX, 0);
+  out.set(blob, STORAGE_CANARY_PREFIX.length);
+  return out;
+}
+
+/**
+ * Wrong-key canary on a freshly decrypted download (RD2 S4). Semantics:
+ * - Root registered as canary-era (uploaded via this adapter) and bytes lack the AXIOM1
+ *   magic → wrong transport key or corrupted blob → WrongKeyOrCorruptError (the SDK's
+ *   CTR decrypt has no authentication, so this content check is the only signal).
+ * - Bytes carry the magic → strip it; callers get the exact payload that was uploaded.
+ * - Unregistered root → legacy blob, returned untouched (no false positives on
+ *   deploy/e2e-plane app ciphertext).
+ */
+function verifyCanaryAndStrip(
+  data: Uint8Array,
+  rootHash: Hex,
+  canaryRoots: Set<string>,
+): Uint8Array {
+  if (!canaryRoots.has(rootHash.toLowerCase())) return data;
+  if (!hasCanaryPrefix(data)) {
+    throw new WrongKeyOrCorruptError(
+      rootHash,
+      "decrypted bytes lack the AXIOM1 canary prefix",
+    );
+  }
+  return data.subarray(STORAGE_CANARY_PREFIX.length);
+}
+
 export interface StorageAdapter {
   upload(
     blob: Uint8Array,
@@ -315,6 +426,10 @@ export class ZeroGStorage extends SeenHashesMixin implements StorageAdapter {
   readonly config: ZeroGStorageConfig;
   // 32-byte transport AES key: env hex wins verbatim, else load-or-create from AXIOM_DATA_DIR/.data (bun test: ephemeral).
   private readonly storageKey: Uint8Array;
+  /** Roots uploaded by a canary-era adapter — see CANARY_REGISTRY_FILE. */
+  private readonly canaryRoots: Set<string>;
+  /** Registry file backing canaryRoots; undefined = memory-only (bun test). */
+  private readonly canaryFile: string | undefined;
 
   /** Exposes the transport AES key so a verify step on the same instance can decrypt. */
   get transportKey(): Uint8Array {
@@ -329,6 +444,9 @@ export class ZeroGStorage extends SeenHashesMixin implements StorageAdapter {
     this.config = config;
     this.indexer = new Indexer(config.indexerRpc);
     this.storageKey = resolveTransportKey();
+    // Same test hygiene as the transport key: bun tests stay memory-only (no .data writes).
+    this.canaryFile = isTestRun() ? undefined : CANARY_REGISTRY_FILE;
+    this.canaryRoots = loadCanaryRegistry(this.canaryFile ?? "");
   }
 
   async upload(
@@ -338,13 +456,15 @@ export class ZeroGStorage extends SeenHashesMixin implements StorageAdapter {
     // uploadData applies the storageKey aes256 default when encryption is omitted.
     const options: UploadOptions = { encryption };
     if (this.config.fee !== undefined) options.fee = this.config.fee;
-    const { rootHash } = await this.uploadData(blob, options);
-    return { rootHash };
+    // Canary prefix travels inside the encrypted envelope; download() verifies + strips it.
+    const result = await this.uploadData(withCanaryPrefix(blob), options);
+    this.registerCanaryRoot(result.rootHash);
+    return { rootHash: result.rootHash };
   }
 
   async download(rootHash: Hex): Promise<Uint8Array> {
     const result = await this.downloadWithOpts(rootHash, { withProof: true });
-    return result.data;
+    return verifyCanaryAndStrip(result.data, rootHash, this.canaryRoots);
   }
 
   async uploadData(
@@ -355,13 +475,26 @@ export class ZeroGStorage extends SeenHashesMixin implements StorageAdapter {
       type: "aes256",
       key: this.storageKey,
     };
-    return uploadToStorage(
+    const result = await uploadToStorage(
       this.indexer,
       data,
       this.config.evmRpc,
       this.config.signer,
       { ...options, encryption },
     );
+    return result;
+  }
+
+  /** Persist the root as canary-era, in-memory first, disk merge best-effort. */
+  private registerCanaryRoot(rootHash: Hex): void {
+    const key = rootHash.toLowerCase();
+    this.canaryRoots.add(key);
+    if (this.canaryFile === undefined) return;
+    try {
+      persistCanaryRegistry(this.canaryFile, this.canaryRoots);
+    } catch {
+      /* fail-open: registry loss only downgrades to legacy handling, never false-throws */
+    }
   }
 
   async downloadWithOpts(

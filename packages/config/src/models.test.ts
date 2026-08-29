@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { keccak256, Wallet } from "ethers";
 import { InMemoryStorage, ZeroGStorage } from "./storage/0g.js";
+import type { WrongKeyOrCorruptError } from "./storage/0g.js";
 import {
   AXIOM_ASSISTANT_NAME,
   DEFAULT_CHAT_MODEL,
@@ -13,6 +14,7 @@ import {
 import {
   defaultChatModelForChain,
   resolveComputeRouterUrl,
+  resolveRpcFallbackUrls,
 } from "./networks.js";
 
 describe("resolveChatModel", () => {
@@ -89,6 +91,47 @@ describe("chain-driven compute resolution", () => {
     assert.equal(resolveChatModel(undefined, 16602), "qwen2.5-omni");
     assert.equal(resolveChatModel("", 16661), DEFAULT_CHAT_MODEL);
     assert.equal(resolveChatModel("custom/model", 16602), "custom/model");
+  });
+});
+
+describe("resolveRpcFallbackUrls (RPC resilience, rd2 §1)", () => {
+  const FALLBACK_KEYS = ["AXIOM_EVM_RPC_FALLBACKS"] as const;
+  const savedFallbacks = FALLBACK_KEYS.map((k) => process.env[k]);
+
+  afterEach(() => {
+    for (const [i, key] of FALLBACK_KEYS.entries()) {
+      if (savedFallbacks[i] === undefined) delete process.env[key];
+      else process.env[key] = savedFallbacks[i];
+    }
+  });
+
+  it("defaults to the chain registry's sanctioned 3rd-party list for 16602", () => {
+    delete process.env.AXIOM_EVM_RPC_FALLBACKS;
+    assert.deepEqual(resolveRpcFallbackUrls(16602), [
+      "https://0g-galileo-testnet.drpc.org",
+      "https://rpc.ankr.com/0g_galileo_testnet_evm",
+    ]);
+  });
+
+  it("returns an empty list for mainnet (no verified 3rd-party endpoints)", () => {
+    delete process.env.AXIOM_EVM_RPC_FALLBACKS;
+    assert.deepEqual(resolveRpcFallbackUrls(16661), []);
+    assert.deepEqual(resolveRpcFallbackUrls(31337), []);
+  });
+
+  it("explicit env comma-list beats the registry and is trimmed/whitespace-tolerant", () => {
+    process.env.AXIOM_EVM_RPC_FALLBACKS =
+      " https://a.example , https://b.example ,,https://c.example ";
+    assert.deepEqual(resolveRpcFallbackUrls(16661), [
+      "https://a.example",
+      "https://b.example",
+      "https://c.example",
+    ]);
+    assert.deepEqual(resolveRpcFallbackUrls(16602), [
+      "https://a.example",
+      "https://b.example",
+      "https://c.example",
+    ]);
   });
 });
 
@@ -224,5 +267,89 @@ describe("storage adapters", () => {
       () => storage.upload(new Uint8Array([1])),
       /0G upload failed: boom/,
     );
+  });
+
+  // Download canary (rd2 §2 S4): the SDK's decrypt is best-effort CTR with no auth and
+  // never throws on a wrong key, so ZeroGStorage embeds an AXIOM1 prefix inside the
+  // encrypted envelope and rejects registered roots whose plaintext lacks it.
+  it("ZeroGStorage download round-trips a JSON payload: canary verified + stripped", async () => {
+    const storage = new ZeroGStorage(
+      {
+        indexerRpc: "http://127.0.0.1:1",
+        evmRpc: "http://127.0.0.1:1",
+        signer: new Wallet("0x" + "11".repeat(32)),
+      },
+      { seenHashesFile: seenFile("0g-canary.json") },
+    );
+    const rootHash = ("0x" + "c1".repeat(32)) as `0x${string}`;
+    const payload = JSON.stringify({ messages: [{ role: "user" }] });
+    (storage.indexer as unknown as { upload: unknown }).upload = async () => [
+      { rootHash, txHash: "0x" + "bb".repeat(32) },
+      null,
+    ];
+    await storage.upload(new TextEncoder().encode(payload));
+    // Simulated correct-key SDK return: plaintext with the canary prefix intact.
+    const canaryBytes = new TextEncoder().encode(`AXIOM1${payload}`);
+    (storage.indexer as unknown as { downloadToBlob: unknown }).downloadToBlob =
+      async () => [new Blob([canaryBytes]), null];
+    const out = await storage.download(rootHash);
+    assert.equal(
+      new TextDecoder().decode(out),
+      payload,
+      "canary stripped — caller sees the exact uploaded payload",
+    );
+  });
+
+  it("ZeroGStorage download throws WrongKeyOrCorruptError on ciphertext bytes (wrong-key signal)", async () => {
+    const storage = new ZeroGStorage(
+      {
+        indexerRpc: "http://127.0.0.1:1",
+        evmRpc: "http://127.0.0.1:1",
+        signer: new Wallet("0x" + "11".repeat(32)),
+      },
+      { seenHashesFile: seenFile("0g-canary-wrong.json") },
+    );
+    const rootHash = ("0x" + "c2".repeat(32)) as `0x${string}`;
+    (storage.indexer as unknown as { upload: unknown }).upload = async () => [
+      { rootHash, txHash: "0x" + "bb".repeat(32) },
+      null,
+    ];
+    await storage.upload(new TextEncoder().encode("{}"));
+    // Simulated wrong-key SDK return: raw ciphertext bytes, Error=null (SDK never throws).
+    (storage.indexer as unknown as { downloadToBlob: unknown }).downloadToBlob =
+      async () => [new Blob([new Uint8Array([9, 9, 9, 9, 7, 7])]), null];
+    let caught: WrongKeyOrCorruptError | undefined;
+    try {
+      await storage.download(rootHash);
+    } catch (err) {
+      caught = err as WrongKeyOrCorruptError;
+    }
+    assert.ok(caught, "wrong-key download must throw");
+    assert.equal(caught.name, "WrongKeyOrCorruptError");
+    assert.match(
+      caught.message,
+      /canary check/,
+      "error names the canary check, not a generic failure",
+    );
+    assert.equal(caught.rootHash, rootHash, "typed error carries the rootHash");
+  });
+
+  it("ZeroGStorage download passes unregistered legacy roots through untouched", async () => {
+    const storage = new ZeroGStorage(
+      {
+        indexerRpc: "http://127.0.0.1:1",
+        evmRpc: "http://127.0.0.1:1",
+        signer: new Wallet("0x" + "11".repeat(32)),
+      },
+      { seenHashesFile: seenFile("0g-canary-legacy.json") },
+    );
+    // Deploy/e2e plane uploads raw app ciphertext via uploadData on pre-canary roots;
+    // a canary-era check on those would false-throw. Unregistered = legacy = pass-through.
+    const legacyCiphertext = new Uint8Array([1, 2, 3, 4, 5]);
+    const rootHash = ("0x" + "c3".repeat(32)) as `0x${string}`;
+    (storage.indexer as unknown as { downloadToBlob: unknown }).downloadToBlob =
+      async () => [new Blob([legacyCiphertext]), null];
+    const out = await storage.download(rootHash);
+    assert.deepEqual([...out], [...legacyCiphertext]);
   });
 });

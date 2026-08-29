@@ -1,4 +1,4 @@
-import { type ethers, Wallet } from "ethers";
+import { Wallet } from "ethers";
 import { resolveAddress } from "@axiom/config/addresses";
 import { startServer, type ServerConfig } from "./server.js";
 import { createLogger } from "./utils/logger.js";
@@ -36,7 +36,7 @@ function parseStorageFee(): bigint | undefined {
 
 // Testnet-only contracts have no live-chain bytecode, so on-chain reads revert (500); omit empty-code addresses so existing guards return a clean 503 ("address not configured").
 async function resolveLiveAddresses(
-  chainProvider: ethers.JsonRpcProvider,
+  chainProvider: Awaited<ReturnType<typeof getSharedProvider>>,
   backendEnv: typeof env,
 ): Promise<Partial<NonNullable<ServerConfig["addresses"]>>> {
   const resolved = {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { createConfig, http, WagmiProvider } from "wagmi";
+import { createConfig, fallback, http, WagmiProvider } from "wagmi";
 import { injected, walletConnect } from "wagmi/connectors";
 import { zeroGMainnet, zeroGTestnet } from "viem/chains";
 
@@ -16,7 +16,13 @@ const CHAINS = {
 // every read/write). The resolved chain's own default RPC is always accepted.
 const RPC_ALLOWLISTS: Record<number, readonly string[]> = {
   [zeroGMainnet.id]: ["https://evmrpc.0g.ai", "https://rpc.0g.ai"],
-  [zeroGTestnet.id]: ["https://evmrpc-testnet.0g.ai"],
+  // Official evmrpc-testnet is documented "development only"; dRPC/Ankr are the
+  // sanctioned production 3rd-party endpoints (rd2 §1 R1/R4).
+  [zeroGTestnet.id]: [
+    "https://evmrpc-testnet.0g.ai",
+    "https://0g-galileo-testnet.drpc.org",
+    "https://rpc.ankr.com/0g_galileo_testnet_evm",
+  ],
 };
 
 /**
@@ -108,13 +114,28 @@ function resolveWagmiInputs() {
   };
 }
 
+// Sanctioned 3rd-party Galileo RPCs (rd2 §1 R4): the official testnet endpoint
+// is dev-only, so the transport degrades to dRPC/Ankr when the primary fails.
+const TESTNET_RPC_FALLBACKS = [
+  "https://0g-galileo-testnet.drpc.org",
+  "https://rpc.ankr.com/0g_galileo_testnet_evm",
+] as const;
+
 function createWagmiConfig(inputs: ReturnType<typeof resolveWagmiInputs>) {
   return createConfig({
     chains: [APP_CHAIN],
     ssr: false,
     transports: {
       [zeroGMainnet.id]: http(inputs.mainnetRpc),
-      [zeroGTestnet.id]: http(inputs.testnetRpc),
+      [zeroGTestnet.id]: fallback(
+        [
+          http(inputs.testnetRpc),
+          ...TESTNET_RPC_FALLBACKS.map((url) => http(url)),
+        ],
+        // rank: pings all transports and prefers the healthiest; retryCount 3
+        // per rd2 §1 R2 (viem default is also 3 — pinned explicitly here).
+        { rank: true, retryCount: 3 },
+      ),
     },
     connectors: [
       // Bare injected() = mipd/EIP-6963 discovery lists every installed

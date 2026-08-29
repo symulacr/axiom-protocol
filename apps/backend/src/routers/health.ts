@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from "express";
-import { hexlify, type JsonRpcProvider } from "ethers";
+import { hexlify, type FallbackProvider, type JsonRpcProvider } from "ethers";
 import type { TeeSigner } from "../oracle/signer.js";
 import { HTTP } from "@axiom/config/constants";
 import { createLogger } from "../utils/logger.js";
@@ -25,7 +25,7 @@ function probeTtlMs(config: ServerConfig): number {
 }
 
 export function createHealthRouter(
-  provider: JsonRpcProvider,
+  provider: JsonRpcProvider | FallbackProvider,
   teeSigner: TeeSigner,
   config: ServerConfig,
 ): Router {

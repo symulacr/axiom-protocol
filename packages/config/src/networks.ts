@@ -2,6 +2,8 @@ export interface OGNetwork {
   readonly name: string;
   readonly chainId: number;
   readonly evmRpc: string;
+  /** Sanctioned 3rd-party RPC fallbacks, appended after the primary (rd2 §1). */
+  readonly evmRpcFallbacks?: readonly string[];
   readonly storageRpc: string;
   readonly computeRouterUrl: string;
   /** Default 0G Compute chat model — each chain's router has a distinct catalog (Galileo: qwen2.5-omni only). */
@@ -31,6 +33,12 @@ const OG_NETWORKS: Record<number, OGNetwork> = {
     name: "galileo",
     chainId: 16602,
     evmRpc: "https://evmrpc-testnet.0g.ai",
+    // Official endpoint is documented "development only"; dRPC/Ankr are the
+    // sanctioned production 3rd-party RPCs (0g-doc testnet overview, rd2 §1 R1).
+    evmRpcFallbacks: [
+      "https://0g-galileo-testnet.drpc.org",
+      "https://rpc.ankr.com/0g_galileo_testnet_evm",
+    ],
     storageRpc: "https://indexer-storage-testnet-turbo.0g.ai",
     computeRouterUrl: "https://router-api-testnet.integratenetwork.work/v1",
     computeDefaultModel: "qwen2.5-omni",
@@ -73,6 +81,20 @@ export function resolveRpcUrl(chainId?: number): string {
     "evmRpc",
     "https://evmrpc-testnet.0g.ai",
   );
+}
+
+// Env fallbacks (AXIOM_EVM_RPC_FALLBACKS) win over the chain registry's list;
+// both are ordered — primary first semantics live in the FallbackProvider caller.
+export function resolveRpcFallbackUrls(chainId?: number): string[] {
+  const envVal = envVar("AXIOM_EVM_RPC_FALLBACKS");
+  if (envVal) {
+    return envVal
+      .split(",")
+      .map((url) => url.trim())
+      .filter((url) => url.length > 0);
+  }
+  const network = chainId ? pickOGNetwork(chainId) : null;
+  return [...(network?.evmRpcFallbacks ?? [])];
 }
 
 export function resolveStorageRpc(chainId?: number): string {
