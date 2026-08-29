@@ -6,56 +6,170 @@
   ERC-7857 Agentic ID iNFTs on <a href="https://0g.ai">0G</a> — trade on 0G Chain, run via 0G Compute, store on 0G Storage. · <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT" /></a>
 </p>
 
-## Overview
+## What this is
 
-Axiom Protocol turns an AI strategy into an **ERC-7857 Intelligent NFT (iNFT)**: an ownable,
-transferable on-chain asset whose encrypted metadata is re-keyed on every transfer by a
-**TEE-style signer** (simulated TEE today — Node signer with cleartext key, not Intel TDX/SEV).
-Agents run vaults, execute strategy ticks, and trade on a live 0G Chain market.
+Axiom Protocol turns a trading strategy into an **ERC-7857 Intelligent NFT (iNFT)** on 0G:
+an ownable, transferable asset whose encrypted metadata is re-keyed on every transfer by a
+TEE-style signer. Agents hold vaults with daily spend limits, run AI ticks through 0G
+Compute, and pay their creators from a single on-chain split. When you sell an agent, the
+buyer gets the secrets re-keyed to their wallet and you get paid. The old owner's access is
+swept.
 
-**One backend service.** The oracle (TEE signer, `src/oracle/`) and the chain indexer
-(`src/indexer/`) run **in-process** inside `apps/backend` — there are no separate
-oracle/indexer services or ports. Oracle routes are mounted under `/oracle/*` on the
-backend's own HTTP server.
+The TEE signer is simulated today: a software secp256k1 signer with a cleartext key, not
+Intel TDX/SEV hardware. Everything else (sealed key transport, one-shot proof nonces,
+7-day freshness, signer allowlist) is built as if the hardware were real, so the swap is a
+deployment change, not a rewrite.
+
+State: **V2 contracts live on 0G Galileo testnet** (fresh deploy 2026-08-28, all wiring
+asserted on-chain). 599 tests green across five suites, zero lint suppressions.
 
 ## Monorepo layout
 
-```text
-apps/backend     Bun + Express API: orchestrator, in-process oracle + indexer, chat, WS events
-apps/frontend    Bun + React 18 + wagmi v2 + RainbowKit dashboard (Bun-native dev/build, no Vite)
-apps/contracts   Foundry Solidity: AxiomAgentNFT (ERC-7857), StrategyVault, PaymentProcessor, TeeVerifier
-apps/bench       Live E2E benchmark harness (local-only, not tracked)
-packages/config  Shared chains, ABIs, env schema, 0G Storage SDK wiring
-packages/chat-runtime  Tool-calling chat engine used by backend
-scripts/         CI + deploy tooling (forge install, ABI drift check, mainnet deploy, wallets)
-```
+| Path | What lives there |
+| --- | --- |
+| `apps/backend` | Bun + Express. Orchestrator, in-process oracle + indexer, chat, WS events |
+| `apps/frontend` | Bun + React 19 + wagmi v3. Console for the flows above |
+| `apps/contracts` | Foundry Solidity. AgentNFT, StrategyVault, PaymentProcessor, TeeVerifier |
+| `packages/config` | Shared chains, ABIs, env schema, 0G Storage SDK wiring |
+| `packages/chat-runtime` | Tool-calling chat engine used by the backend |
+| `docs/adr` | ADR 002 (DA rejection), 003 (keeper options), 004 (V2 rewrite plan) |
+| `docs/deployments` | Deployment records; `galileo-v2-2026-08-28.json` is current |
 
 ## Architecture
+
+One backend process hosts the oracle, indexer, orchestrator, and chat runtime. No
+cross-service hops. The frontend never touches the chain except through wagmi for user
+signatures; data flows through the backend, which fans out to the three 0G services.
+
+```mermaid
+flowchart LR
+    subgraph User["User"]
+        W["Wallet"]
+    end
+    subgraph FE["Frontend (React 19, wagmi v3)"]
+        UI["Console pages"]
+        WS["WS subscriber, 3s floor"]
+    end
+    subgraph BE["Backend, one Bun process"]
+        ORCH["Orchestrator"]
+        ORACLE["Oracle, simulated TEE"]
+        IDX["Indexer, 3s poll"]
+        CHAT["Chat runtime"]
+        CUST["DEK custody, env-gated"]
+    end
+    subgraph OG["0G stack"]
+        CHAIN["0G Chain 16602, 4 V2 proxies"]
+        COMPUTE["0G Compute"]
+        STORAGE["0G Storage Turbo"]
+    end
+    W -->|"EIP-6963, one click"| UI
+    UI -->|"REST + encode relay"| BE
+    UI <--> WS
+    WS --> BE
+    ORCH --> CHAT
+    CHAT --> COMPUTE
+    ORACLE --> STORAGE
+    CUST --> STORAGE
+    ORCH --> CHAIN
+    IDX -->|"3s getLogs"| CHAIN
+    ORACLE -->|"EIP-712 proofs"| CHAIN
+```
+
+### User journey
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor User
+    actor U as User
     participant FE as Frontend
-    participant BE as Backend (in-process oracle + indexer)
-    participant CH as 0G Chain
-
-    Note over User,CH: 1) Mint — tokenize strategy as ERC-7857 iNFT
-    User->>FE: Connect wallet (RainbowKit)
-    User->>FE: Mint iNFT (strategy + encrypted metadata)
-    FE->>BE: POST /mint (API key)
-    BE->>CH: Mint + register dataHash (AXIOM_EVM_RPC)
-    Note over User,CH: 2) Run — ticks, deposits, transfers re-key metadata
-    User->>FE: Execute tick / deposit / transfer
-    FE->>BE: Strategy tick (chat model inference via 0G Compute)
-    BE->>BE: Ownership proof + re-key (in-process oracle, AXIOM_TEE_SIGNER_PK)
-    BE->>CH: EIP-712 TEE-signed proof
-    Note over User,CH: 3) Chat — streaming assistant with on-chain tools
-    User->>FE: Open chat assistant
-    FE->>BE: SSE /v1/chat/completions
-    BE-->>FE: Streamed response
-    FE->>CH: Market data — transfers + leaderboard
+    participant BE as Backend
+    participant C as 0G Chain
+    participant S as 0G Storage
+    participant M as 0G Compute
+    Note over U,M: Mint, about 5 seconds
+    U->>FE: Pick a name
+    FE->>BE: POST mint/encode {name, owner}
+    BE->>BE: derive dataHash = keccak256(name)
+    BE-->>FE: calldata + value
+    U->>C: one click, sign and broadcast
+    C-->>U: iNFT #N, CreatorSet
+    Note over U,M: Fund, one merged transaction
+    U->>C: depositAndSetStrategy(N, root, dailyLimit)
+    C-->>U: Deposited + StrategySet
+    Note over U,M: Run, AI decides, vault enforces
+    FE->>M: strategy context, SSE
+    M-->>FE: recommendation, streamed
+    FE->>C: vault.execute(proof), strategyGuard pre-check
+    C-->>U: Executed, or DailyLimitExceeded
+    Note over U,M: Transfer, ownership moves, secrets re-key, about 25 seconds
+    U->>S: new blob, receiver-keyed DEK
+    U->>BE: ownership proof, EIP-712
+    BE->>C: iTransferFrom + cleanExpiredProofs
+    C-->>U: ownership migrated, old proofs swept
 ```
+
+### Payment split (one canonical path)
+
+```mermaid
+flowchart LR
+    P["Payer"] -->|"payForAgentAndCompute"| PP["PaymentProcessor V2"]
+    PP --> SPLIT{"_paySplit()"}
+    SPLIT -->|"creatorCut"| CR["Creator earnings"]
+    SPLIT -->|"protocolCut, 100bps"| TR["Treasury, 1-day timelock"]
+    SPLIT -->|"computeAmount"| CP["Compute provider"]
+    PP -.->|"over cap"| X["PayAmountExceedsCap"]
+```
+
+### Trust: the re-key dance
+
+```mermaid
+flowchart TB
+    subgraph AtMint["At mint"]
+        DEK["DEK, never on chain"] --> ENC["AES-encrypt metadata"]
+        ENC --> BLOB["0G blob, rootHash = content address"]
+        DEK -->|"ECIES seal to verifier pubkey"| SEALED["sealedKey"]
+    end
+    subgraph OnTransfer["On transfer"]
+        OLD["old DEK"] --> OR["Oracle downloads, decrypts"]
+        OR -->|"re-encrypt, NEW DEK sealed to receiver"| NEWB["new blob"]
+        OR -->|"EIP-712 proof"| V["TeeVerifier allowlist"]
+        V -->|"fresh, unused, allowlisted"| NFT["iTransferFrom"]
+    end
+```
+
+The chain sees hashes and sealed keys only. The verifier signer allowlist (V2) means a
+leaked TEE key is revoked in one transaction. The storage canary (AXIOM1 magic prefix)
+makes silent wrong-key ciphertext downloads impossible; AES-CTR has no built-in auth.
+
+## What V2 changed
+
+Fresh deploy per [ADR 004](docs/adr/004-contract-rewrite-plan.md). Every item below is a
+closed audit finding, proven by test.
+
+| Surface | Before | Now |
+| --- | --- | --- |
+| Fee withdrawal + upgrades | instant, single admin key | 1-day timelock, propose/execute/cancel |
+| Payment splits | three divergent copies | one `_paySplit()`, wrappers only |
+| Pay bound | app-level caps only | `MAX_PAY` chain invariant, reverts on-chain |
+| Verifier signer | single key, compromise forges transfers for a day | allowlist, revoke in one tx |
+| Payment governance | Ownable | AccessControl, matching the NFT |
+| Dead surfaces | `authorizeDelegateAndRevoke`, `OPERATOR_ROLE`, `payAndWithdrawEarnings` | removed |
+| Strategy invariants | hand-mirrored Solidity ↔ TS, drifted silently | 12-case machine-pinned parity test |
+
+## Guarantees, proven on the live chain
+
+Every invalid path was driven against the deployed V2 contracts and asserts the exact
+revert. This is the failure matrix, not a wish list.
+
+| Failure | On-chain result | Proof |
+| --- | --- | --- |
+| Execute over daily limit | `DailyLimitExceeded()` | e2e + 12 chain-parity tests |
+| Pay over MAX_PAY | `PayAmountExceedsCap(amount, cap)` | live tx on V2 |
+| Stale proof replay | `AxiomProofExpired()` | e2e, exact selector |
+| Compromised signer forges transfer | revoke in one tx blocks it | verifier allowlist tests |
+| Rogue admin upgrades or drains | blocked 1 day by timelock | NFT timelock tests |
+| Wrong-key blob download | typed `WrongKeyOrCorruptError`, canary | storage tests |
+| 0G RPC outage | wagmi + ethers degrade to dRPC/Ankr | live-proven, dual-endpoint abort |
 
 ## Quick start
 
@@ -86,21 +200,22 @@ Contracts: `cd apps/contracts && forge build && forge test`
 Chain is env-driven: `AXIOM_CHAIN_ID` / `VITE_CHAIN_ID`, defaulting to **0G Galileo testnet
 (16602)**. Set `16661` for Aristotle mainnet.
 
-The current deployed prototype is the **tx-merge build on Galileo** —
-[docs/deployments/galileo-merged-2026-08-13.json](docs/deployments/galileo-merged-2026-08-13.json)
-(5 merged tx functions, e2e flow 12 → 6 on-chain txs):
+Current deployment is the **V2 suite on Galileo**, fresh deploy 2026-08-28
+([docs/deployments/galileo-v2-2026-08-28.json](docs/deployments/galileo-v2-2026-08-28.json)).
+All wiring assertions passed on-chain (`nft.verifier()`, `vault.nft()`,
+`processor.AXIOM_NFT()`, payment token match, signer allowlisted, MINTER granted).
 
-| Contract | Address (proxy) |
-| --------- | ---------------- |
-| AxiomAgentNFT | `0x4e57e954D82A99Ee94c48e1bc804bA9D131a3622` |
-| AxiomStrategyVault | `0x4D0A123fbb83F7a5f137ec0B720a5D69fCB52251` |
-| AxiomPaymentProcessor | `0x9cDeDd99fe5F2E25f30920e092fC1C586716c0eC` |
-| AxiomTeeVerifier (reused) | `0x1ba37125bba23b66b549ccb33bc9b4952fd4dcc4` |
-| MockUSDC (payment token) | `0x354CA53bAB51C0666964fa050628d8351f8A7d19` |
+| Contract | Proxy | V2 changes |
+| --------- | ---------------- | --- |
+| AxiomAgentNFT | `0xdBB2e63807a13272789B716692fbe0d09E010097` | fee/upgrade timelocks, dead surfaces removed |
+| AxiomStrategyVault | `0x4607D749a7b8BBD2593742F8432410231C805c57` | unchanged, non-upgradeable by design |
+| AxiomPaymentProcessor | `0x7490D693364A31E0513bcef8E346397cc4BA9E9c` | MAX_PAY, AccessControl, single `_split` |
+| AxiomTeeVerifier | `0x72a381226E09b9AAe15D9309A656d7e5DD2bFbb2` | signer allowlist, same-block revoke |
+| MockUSDC (payment token) | `0x354CA53bAB51C0666964fa050628d8351f8A7d19` | unchanged |
 
-The older Aristotle mainnet record
-([2026-07-22](docs/deployments/aristotle-2026-07-22.json)) is **stale** — it predates the
-merged transaction functions and does not match current contract source.
+The older records ([merged 2026-08-13](docs/deployments/galileo-merged-2026-08-13.json),
+[Aristotle 2026-07-22](docs/deployments/aristotle-2026-07-22.json)) are superseded and do
+not match current contract source.
 
 ## Deployment
 
@@ -108,6 +223,7 @@ merged transaction functions and does not match current contract source.
   - `axiom-backend` — built by `bun scripts/build-binaries.mjs` into a standalone binary, started as `./dist/axiom-backend` (health: `/health`).
   - `axiom-frontend` — static build + `bun apps/frontend/server.mjs`.
 - **Vercel** (`vercel.json`) — static SPA from `apps/frontend/dist`, rewriting `/api/*` and `/oracle/*` to the Railway backend.
+- Mainnet cutover plan: ADR 004 §4 (upgrade-in-place or scripted migration, never a fresh deploy).
 
 ## Security posture (honest)
 
@@ -117,4 +233,31 @@ merged transaction functions and does not match current contract source.
 - The TEE signer is **simulated**: a software secp256k1 signer holding a cleartext key.
   It is not a hardware TEE. Transfers require an ECIES-**sealed** data-encryption key;
   cleartext DEKs are rejected.
-- Production deploy keys live in `wallets/*.json` (git-ignored) or env vars — never in the repo.
+- **Signer allowlist** (V2): revocation is immediate, adding a signer keeps the 1-day
+  timelock. A compromised key is contained in one block instead of one day.
+- Production deploy keys live in `wallets/*.json` (git-ignored) or env vars — never in the
+  repo. Rotate testnet keys before mainnet.
+- **Known gaps, stated plainly:** the DEK custody store is a JSON file (fine for testnet,
+  needs a real store for mainnet); the keeper's Chainlink/Gelato modes are documented
+  stubs; the strategy-invariant TS mirror is machine-pinned against current Solidity and
+  must be re-pinned after any vault change.
+
+## Testing
+
+599 tests, zero suppressions.
+
+| Suite | Count | Notes |
+| --- | --- | --- |
+| Foundry (contracts) | 201 | incl. fuzz; storage-layout append-only enforced |
+| Backend (Bun) | 175 | incl. e2e Live Path Gate 43/43 + 11-scenario failure matrix on live V2 |
+| Frontend (Bun) | 112 | incl. ChatPage guards, contrast, i18n contract |
+| Chat runtime | 64 | tool-calling executors |
+| Shared config | 47 | incl. 12-case Solidity↔TS strategy-guard parity |
+
+## Further docs
+
+- [ADR 004 — V2 rewrite plan + redeploy checklist](docs/adr/004-contract-rewrite-plan.md)
+- [ADR 003 — proof-cleanup keeper options](docs/adr/003-proof-cleanup-keeper-options.md)
+- [Diagram pack (mermaid) + logic tables](docs/hackathon/)
+- [One-pager (HTML)](docs/hackathon/axiom-onepager.html)
+- [Full change log, all 689 commits](docs/hackathon/CHANGELOG-full-688.md)
