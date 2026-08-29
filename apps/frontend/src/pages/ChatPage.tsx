@@ -123,7 +123,13 @@ import {
   MonoLabel,
 } from "../components/ui.js";
 import { Button } from "../components/axiom/Controls.js";
-import { MessageSquare, Network } from "../components/axiom/icons.js";
+import {
+  Menu,
+  MessageSquare,
+  Network,
+  Plus,
+  X,
+} from "../components/axiom/icons.js";
 
 const SUPPORTED_CHAIN_IDS = new Set([APP_CHAIN_ID]);
 
@@ -196,7 +202,7 @@ function loadStoredThreadId(): string | null {
 }
 
 /** Inline message action chip — Edit / Regenerate / tool-card Retry all
- * share the `.msg-action` button recipe. */
+ * ride the one `.icon-button` ghost-sm recipe (§2). */
 function MsgActionBtn(props: {
   title?: string;
   style?: CSSProperties;
@@ -206,7 +212,7 @@ function MsgActionBtn(props: {
   return (
     <button
       type="button"
-      className="msg-action"
+      className="icon-button icon-button--sm icon-button--ghost msg-action"
       title={props.title}
       style={props.style}
       onClick={props.onClick}
@@ -1549,7 +1555,7 @@ function ChatPageInner(): ReactElement {
         <div className="chat-topbar">
           <button
             type="button"
-            className="shell-icon-btn chat-sidebar-toggle"
+            className="icon-button chat-sidebar-toggle"
             aria-label={chatCopy.historyToggle}
             aria-expanded={sidebarOpen}
             ref={sidebarToggleRef}
@@ -1561,7 +1567,7 @@ function ChatPageInner(): ReactElement {
               if (opening) setHistoryRequested(true);
             }}
           >
-            ☰
+            <Menu size={16} />
           </button>
           <img
             src={BRAND.chatAvatar}
@@ -1578,8 +1584,12 @@ function ChatPageInner(): ReactElement {
                 : interpolate(chatCopy.statusWrongNetwork, chainVars)}
             </div>
           </div>
+          {/* Plan §3: the rail head owns creation on desktop (rail is always
+              visible ≥701px); this topbar affordance stays mobile-only, where
+              the rail is a closed drawer. Kept as a no-JS CSS show/hide. */}
           <Button
             variant="ghost"
+            className="chat-topbar__new"
             onClick={startNewChat}
             icon={<MessageSquare size={13} />}
           >
@@ -1997,7 +2007,7 @@ function ChatPageInner(): ReactElement {
                 <button
                   type="button"
                   aria-label={chatCopy.removeQueued}
-                  className="chat-queue-remove"
+                  className="icon-button icon-button--sm icon-button--ghost chat-queue-remove"
                   onClick={() => {
                     const next = queueRef.current.filter((_, idx) => idx !== i);
                     queueRef.current = next;
@@ -2357,18 +2367,24 @@ function ChatHistorySection({
         </div>
       ) : null}
       <div className="chat-history__head">
-        <h2 className="chat-history__title">{copy.historyTitle}</h2>
-        <button type="button" className="chat-history__new" onClick={onNew}>
-          {copy.historyNew}
+        <button
+          type="button"
+          className="icon-button chat-history__new"
+          onClick={onNew}
+          title={copy.historyNew}
+          aria-label={copy.historyNew}
+        >
+          <Plus size={16} />
         </button>
+        <input
+          aria-label={copy.historySearch}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={copy.historySearch}
+          className="chat-history__search"
+        />
+        <h2 className="chat-history__title">{copy.historyTitle}</h2>
       </div>
-      <input
-        aria-label={copy.historySearch}
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder={copy.historySearch}
-        className="chat-history__search"
-      />
       <div className="chat-history__list" aria-live="polite">
         {filtered.length === 0 ? (
           <p className="chat-history__empty">
@@ -2395,11 +2411,11 @@ function ChatHistorySection({
               </button>
               <button
                 type="button"
-                className="chat-history__delete"
+                className="icon-button icon-button--sm icon-button--ghost chat-history__delete"
                 aria-label={copy.historyDelete(t.title)}
                 onClick={() => onDelete(t.id)}
               >
-                ✕
+                <X size={14} />
               </button>
             </div>
           ))

@@ -1,37 +1,17 @@
 import type { Express } from "express";
 import { HTTP, EVENT_NAMES } from "@axiom/config/constants";
 import { createRoute, positiveIntQuery } from "./route-factory.js";
-import { sendError } from "../utils/response.js";
+import { sendError, TTLCache } from "../utils/response.js";
 import type { EventStore } from "../events/store.js";
 import type { ServerConfig } from "../config-types.js";
 import { payloadField, payloadNumber } from "../events/store.js";
-import { TTLCache } from "../utils/response.js";
+import {
+  recordAction,
+  summarizeCounts,
+  type ActionCounts,
+} from "../agents/tick-metrics.js";
 
 const perfCache = new TTLCache<unknown>(30_000);
-
-type ActionCounts = { buyCount: number; sellCount: number; holdCount: number };
-
-function recordAction(payload: unknown, counts: ActionCounts): string {
-  const action = (payloadField(payload, "action") ?? "").toLowerCase();
-  if (action === "buy") counts.buyCount++;
-  else if (action === "sell") counts.sellCount++;
-  else counts.holdCount++;
-  return action;
-}
-
-/** Canonical metrics shared by per-agent and batch handlers so both agree; winRate = non-hold ticks (buy OR sell), NOT buyRate. */
-function summarizeCounts(counts: ActionCounts) {
-  const totalTicks = counts.buyCount + counts.sellCount + counts.holdCount;
-  return {
-    totalTicks,
-    buyCount: counts.buyCount,
-    sellCount: counts.sellCount,
-    holdCount: counts.holdCount,
-    buyRate: totalTicks > 0 ? counts.buyCount / totalTicks : 0,
-    winRate:
-      totalTicks > 0 ? (counts.buyCount + counts.sellCount) / totalTicks : 0,
-  };
-}
 
 export function registerPerformanceRoutes(
   app: Express,

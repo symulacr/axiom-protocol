@@ -228,3 +228,22 @@ export function Spinner({
     />
   );
 }
+
+/** Shared panel placeholder: title + optional hint line (+ trailing control). */
+export function EmptyState({
+  title,
+  hint,
+  children,
+}: {
+  title: string;
+  hint?: string;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="empty-state">
+      <strong>{title}</strong>
+      {hint !== undefined && <span>{hint}</span>}
+      {children}
+    </div>
+  );
+}

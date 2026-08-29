@@ -235,14 +235,14 @@ function Sidebar({
             }
             aria-label={copy.a11y.collapseSidebar}
           >
-            <ChevronLeft size={15} />
+            <ChevronLeft size={16} />
           </button>
           <button
             className="icon-button rail-hide"
             onClick={() => setSettings({ railHidden: true })}
             aria-label={copy.a11y.hideSidebar}
           >
-            <Menu size={15} />
+            <Menu size={16} />
           </button>
         </div>
       </div>
@@ -759,7 +759,7 @@ function Topbar({
           aria-label={copy.a11y.openNav}
           aria-haspopup="dialog"
         >
-          <Menu size={18} />
+          <Menu size={16} />
         </button>
       </div>
       <div className="topbar-actions">
@@ -783,7 +783,7 @@ function Topbar({
           onClick={onLock}
           aria-label={copy.settings.lockConsole}
         >
-          <LogOut size={15} />
+          <LogOut size={16} />
         </button>
       </div>
     </header>

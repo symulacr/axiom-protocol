@@ -256,6 +256,10 @@ export const Network = createLucideIcon([
   ["path", { d: "M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3", key: "1jsf9p" }],
   ["path", { d: "M12 12V8", key: "2874zd" }],
 ] as const);
+export const Plus = createLucideIcon([
+  ["path", { d: "M5 12h14", key: "1hd3sl" }],
+  ["path", { d: "M12 5v14", key: "1hx3e0" }],
+] as const);
 export const Play = createLucideIcon([
   ["polygon", { points: "6 3 20 12 6 21 6 3", key: "1oa8hb" }],
 ] as const);

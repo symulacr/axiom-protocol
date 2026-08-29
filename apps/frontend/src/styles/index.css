@@ -260,7 +260,7 @@
 .button:focus-visible, .icon-button:focus-visible, .nav-item:focus-visible, .filter:focus-visible, .transaction-row:focus-visible,
 /* L2-C9: the remaining interactive classes — row buttons, chips, msg actions,
    thread items and their nested delete buttons — need the same visible ring. */
-.agent-row:focus-visible, .activity-row:focus-visible, .msg-action:focus-visible, .routing-chip:focus-visible, .chat-tool-row:focus-visible, .chat-history__item:focus-visible, .chat-history__delete:focus-visible, .chat-queue-remove:focus-visible, .text-link:focus-visible
+.agent-row:focus-visible, .activity-row:focus-visible, .routing-chip:focus-visible, .chat-tool-row:focus-visible, .chat-history__item:focus-visible, .text-link:focus-visible
 { outline:2px solid var(--copper-bright, #e6aa78); outline-offset:3px; }
 .transaction-table, .transaction-panel, .storage-stage, .provenance-panel { overflow-x:auto; }
 .empty-state { overflow-wrap:anywhere; }
@@ -1307,7 +1307,7 @@ button, input, textarea, select { line-height: var(--support-leading); }
   .command-center-layer { display: flex; align-items: flex-end; padding: 0; }
   .command-center { box-sizing: border-box; width: 100%; max-height: min(78dvh, 660px); margin: 0; padding: var(--space-3); overflow-y: auto; border-inline: 0; border-bottom: 0; border-radius: var(--radius-xl) var(--radius-xl) 0 0; }
   .command-center-head { display: flex; align-items: center; justify-content: space-between; padding: 0 var(--space-1) var(--space-2); }
-  .command-center-close { width: var(--hit-area); height: var(--hit-area); }
+  .command-center-close { width: var(--icon-hit-lg); height: var(--icon-hit-lg); min-width: var(--icon-hit-lg); min-height: var(--icon-hit-lg); }
   .topbar { min-height: 64px; height: auto; padding-inline: var(--space-4); }
   .page-head { align-items: flex-start; gap: var(--space-3); margin-bottom: var(--space-5); }
   .page-head p,
@@ -1333,7 +1333,7 @@ button, input, textarea, select { line-height: var(--support-leading); }
    in the ≤640px block, rendering an unpositioned full-width strip on
    desktop). Mobile goes full-bleed; desktop is right-anchored and capped. */
 .landing-nav { position: relative; }
-.landing-menu-trigger { display: grid; min-width: var(--hit-area); min-height: var(--hit-area); }
+.landing-menu-trigger { display: grid; min-width: var(--icon-hit-lg); min-height: var(--icon-hit-lg); }
 .landing-mobile-menu { position: absolute; z-index: var(--layer-popover, 60); top: calc(100% - var(--space-2)); right: var(--space-3); width: min(420px, calc(100vw - 2 * var(--space-3))); display: grid; gap: 1px; padding: var(--space-2); border: 1px solid var(--completion-line); background: color-mix(in srgb, var(--completion-panel) 95%, black); box-shadow: var(--shadow-modal); }
 .landing-mobile-menu > button:not(.button) { display: grid; grid-template-columns: 22px minmax(0, 1fr); align-items: center; gap: var(--space-3); width: 100%; min-height: var(--hit-area); padding: var(--space-3); color: var(--completion-text); text-align: left; border: 0; background: transparent; }
 .landing-mobile-menu > button:not(.button) svg { color: var(--completion-copper); }
@@ -1460,8 +1460,8 @@ button, input, textarea, select { line-height: var(--support-leading); }
 .wallet-gate-close,
 .drawer-close,
 .guide-close {
-  min-width: 44px;
-  min-height: 44px;
+  min-width: var(--icon-hit-lg);
+  min-height: var(--icon-hit-lg);
 }
 
 .wallet-gate .wallet-gate-close {
@@ -1518,7 +1518,11 @@ button, input, textarea, select { line-height: var(--support-leading); }
 .connect-option small { color: var(--dim); font-size: var(--fs-small); font-family: 'JetBrains Mono', monospace; }
 
 /* One shared tactile contract for existing controls; visual density remains in the content, not the hit area. */
-:root { --hit-area: 44px; --control-hit-area: var(--hit-area); }
+:root { --hit-area: 44px; --control-hit-area: var(--hit-area);
+  /* ONE icon-button recipe (design plan §2): hit ladder sm/md/lg + matching glyph steps. */
+  --icon-hit-sm: 24px; --icon-hit-md: 32px; --icon-hit-lg: 40px;
+  --icon-glyph-sm: 14px; --icon-glyph-md: 16px; --icon-glyph-lg: 18px;
+}
 
 /* Action labels sit on the mono step like every other control label. */
 body .button { font-size: var(--fs-mono); }
@@ -1527,11 +1531,61 @@ body .button {
   min-height: var(--control-hit-area);
 }
 
+/* ONE icon-button recipe (§2): md (32px) is the shell default. Un-layered so
+   it outranks the layered v0 base (:107 transparent-border) and @layer
+   axiom-base. Sizes + variants via modifiers — no per-site geometry. */
 body .icon-button {
-  min-width: var(--control-hit-area);
-  min-height: var(--control-hit-area);
-  width: var(--control-hit-area);
-  height: var(--control-hit-area);
+  display: grid;
+  place-items: center;
+  width: var(--icon-hit-md);
+  height: var(--icon-hit-md);
+  min-width: var(--icon-hit-md);
+  min-height: var(--icon-hit-md);
+  padding: 0;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: color 150ms var(--ease-out), border-color 150ms var(--ease-out),
+    transform 120ms var(--ease-out);
+}
+
+body .icon-button:hover {
+  color: var(--text);
+  border-color: var(--copper);
+}
+
+body .icon-button:active { transform: scale(0.97); }
+
+/* sm — inline text-flow chips (msg actions, thread/queue deletes). Ghost:
+   borderless but identical hit ladder, hover, press and focus semantics. */
+body .icon-button--sm {
+  width: var(--icon-hit-sm);
+  height: var(--icon-hit-sm);
+  min-width: var(--icon-hit-sm);
+  min-height: var(--icon-hit-sm);
+}
+
+body .icon-button--lg {
+  width: var(--icon-hit-lg);
+  height: var(--icon-hit-lg);
+  min-width: var(--icon-hit-lg);
+  min-height: var(--icon-hit-lg);
+}
+
+body .icon-button--ghost { border-color: transparent; }
+body .icon-button--ghost:hover { border-color: transparent; }
+
+/* Glyph steps: SVGs inside the recipe snap to the matching glyph token so a
+   size prop of 12–18 all resolve to one optical size per ladder step. */
+body .icon-button svg { width: var(--icon-glyph-md); height: var(--icon-glyph-md); }
+body .icon-button--sm svg { width: var(--icon-glyph-sm); height: var(--icon-glyph-sm); }
+body .icon-button--lg svg { width: var(--icon-glyph-lg); height: var(--icon-glyph-lg); }
+
+/* Touch-primary surfaces keep the lg step. */
+@media (max-width: 700px) {
+  body .chat-sidebar-toggle.icon-button { width: var(--icon-hit-lg); height: var(--icon-hit-lg); min-width: var(--icon-hit-lg); min-height: var(--icon-hit-lg); }
 }
 
 body .session-top,
@@ -1992,15 +2046,10 @@ body.light .filters-popover {
 }
 .chat-tool-row:hover { background: var(--copper-08); }
 .chat-queue-remove {
-  border: none;
-  background: none;
-  cursor: pointer;
   color: var(--dim);
-  padding: 0;
   font-family: inherit;
   font-size: var(--text-xs);
   line-height: 1;
-  transition: color 0.16s var(--ease);
 }
 .chat-queue-remove:hover { color: var(--danger); }
 .chat-inline-select {
@@ -2120,17 +2169,11 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
 
 .field-error { color: var(--danger); font-size: var(--text-xs); margin: var(--space-1) 0 0; }
 
-/* shell-icon-btn shares the canonical icon-button recipe (layered block above);
-   only the kit-specific diffs live here. */
-.shell-icon-btn {
-  display: inline-grid;
-  min-width: 32px;
-  min-height: 32px;
-  place-items: center;
-  cursor: pointer;
-  transition: 150ms var(--ease-out);
-}
-.shell-icon-btn:hover { color: var(--text); border-color: var(--copper); }
+/* shell-icon-btn retired (§2): ChatPage sidebar toggle migrated to the one
+   .icon-button recipe; the chat-kit dup block was deleted. */
+.msg-action, .chat-history__delete { cursor: pointer; }
+.msg-action:hover { color: var(--copper-bright); }
+.msg-action--danger { color: var(--danger); }
 
 /* ---------------------------------------------------------------- *
  * Animations.                                                       *
@@ -2229,6 +2272,12 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
 @media (max-width: 700px) {
   .chat-sidebar-toggle { display: inline-grid; }
 }
+/* Plan §3: the rail head owns "New chat" wherever the thread rail is visible
+   (always ≥701px); the topbar ghost duplicate stays mobile-only, where the
+   rail is a closed drawer. */
+@media (min-width: 701px) {
+  .chat-topbar__new { display: none; }
+}
 
 .chat-md { line-height: var(--lh-normal); overflow-wrap: anywhere; }
 .chat-md > :first-child { margin-top: 0; }
@@ -2272,17 +2321,12 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
 .chat-md img { max-width: 100%; border-radius: var(--radius-md, 6px); }
 
 .msg-actions { display: inline-flex; gap: var(--space-1); align-items: center; }
+/* Sizing/hover/press/focus owned by the one .icon-button recipe (§2);
+   only the chip's text-density remains here. */
 .msg-action {
-  border: 0;
-  background: none;
   color: var(--dim);
   font-size: var(--text-2xs);
-  cursor: pointer;
-  padding: 1px var(--space-1);
-  border-radius: var(--radius-sm, 4px);
 }
-.msg-action:hover { color: var(--copper-bright); }
-.msg-action--danger { color: var(--danger); }
 .msg-confirm { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--text-2xs); color: var(--warning); }
 .msg-confirm__text { color: var(--warning); }
 .msg-insights {
@@ -2364,69 +2408,70 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
 
 /* Thread rail (ChatHistorySection), styled as the v2 thread-list panel body. */
 .chat-history { display: flex; flex-direction: column; gap: var(--space-2); min-height: 0; height: 100%; }
-.chat-history__head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; row-gap: var(--space-2); }
-.chat-history__title {
-  margin: 0;
-  font-family: Syne, sans-serif;
-  font-size: var(--fs-title);
-  letter-spacing: -0.02em;
-}
-.chat-history__new {
-  border: 1px solid var(--copper);
-  color: var(--copper-bright);
-  background: transparent;
-  border-radius: var(--radius-md, 6px);
-  font-size: var(--fs-mono);
-  padding: var(--space-1) var(--space-2);
-  cursor: pointer;
-}
-/* Sticky full-width New chat pinned to the rail top; head never scrolls
-   (only __list does), so sticky is a forward-safe width/juice upgrade. */
-.chat-history__new {
-  flex: 1 1 100%;
+/* Plan §3 rail head: [+ New (icon)] [⌕ search] [CHATS]. One canonical
+   "+ New" gesture; search keeps its zero-JS CSS expand, restyled to match
+   the icon-button square. */
+.chat-history__head {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: var(--space-1);
-  width: 100%;
+  gap: var(--space-2);
   position: sticky;
   top: calc(-1 * var(--space-2));
   z-index: 1;
-  padding: var(--space-2);
+  padding: var(--space-1) 0;
   background: color-mix(in srgb, var(--panel) 88%, transparent);
   backdrop-filter: blur(6px);
 }
-.chat-history__new::before { content: "＋"; }
+/* Title demoted to a small mono group label, right-aligned (plan §3):
+   heading hierarchy preserved (still the h2), visual weight shifts to actions. */
+.chat-history__title {
+  margin: 0 0 0 auto;
+  font-family: "JetBrains Mono", monospace;
+  font-size: var(--fs-mono);
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+/* Copper-bordered primary: persisting copper border is the one affordance
+   that says "start here" (plan §3a target). Size/hover/focus from the
+   canonical .icon-button recipe; only the copper accent lives here. */
+.chat-history__new { border-color: var(--copper); color: var(--copper-bright); }
 .chat-history__new:hover { background: var(--copper-10); }
-/* Search demoted to an icon-expandable affordance: collapsed 32px ⌕ square
-   aligned right under the rail head, expands to full width on focus or when
-   it holds a query. Pure CSS — no markup/state dependency. */
+/* Search collapsed to the ⌕ square beside [+ New]; expands to the full
+   head width on focus or when it holds a query. Pure CSS — no JS/state. */
 .chat-history__search {
   border: 1px solid var(--line);
   background: var(--bg-2);
   color: var(--text);
   border-radius: var(--radius-md, 6px);
-  padding: var(--space-2) var(--space-2);
   font-size: var(--fs-small);
-  align-self: flex-end;
   box-sizing: border-box;
   width: 32px;
   height: 32px;
+  min-height: 0;
   padding: 0;
   cursor: pointer;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2399a09f' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: center;
   background-size: 16px;
-  transition: width 160ms var(--ease);
+  transition: width 160ms var(--ease-out);
 }
 .chat-history__search:focus,
 .chat-history__search:not(:placeholder-shown) {
+  flex: 1;
+  min-width: 0;
   width: 100%;
-  align-self: stretch;
   padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
   background-position: var(--space-2) center;
   cursor: text;
+}
+/* While the search is expanded it takes the whole head row: the label yields
+   (pure CSS via :has — the expansion stays zero-JS). */
+.chat-history__head:has(.chat-history__search:focus) .chat-history__title,
+.chat-history__head:has(.chat-history__search:not(:placeholder-shown))
+  .chat-history__title {
+  display: none;
 }
 .chat-history__search::placeholder { opacity: 0; transition: opacity 120ms var(--ease); }
 .chat-history__search:focus::placeholder,
@@ -2454,13 +2499,7 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
 .chat-history__open { display: grid; gap: var(--space-1); min-width: 0; }
 .chat-history__badge { font-size: var(--fs-mono); color: var(--dim); }
 .chat-history__delete {
-  border: 0;
-  background: none;
   color: var(--dim);
-  font-size: var(--fs-small);
-  cursor: pointer;
-  padding: var(--space-1) var(--space-1);
-  border-radius: var(--radius-md, 6px);
   visibility: hidden;
 }
 .chat-history__item:hover .chat-history__delete,
@@ -3021,28 +3060,9 @@ strong {
     padding: 0 38px;
   }
 
-  /* Shared icon-button base: border/surface/color are the common recipe.
-     Geometry intentionally differs: .icon-button is the fixed 32px shell
-     square (centered glyph); .shell-icon-btn (chat kit, un-layered block
-     below) sizes via min-width/height with inline-grid + its own curve. */
-  .icon-button,
-  .shell-icon-btn {
-    border: 1px solid var(--line);
-    background: transparent;
-    color: var(--muted);
-    border-radius: var(--radius-md);
-  }
-  .icon-button {
-    width: 32px;
-    height: 32px;
-    display: grid;
-    place-items: center;
-    transition: 0.18s var(--ease);
-  }
-  .icon-button:hover {
-    color: var(--text);
-    border-color: var(--copper);
-  }
+  /* Layered v0 icon-button base is superseded by the ONE un-layered recipe
+     (§2, tactile-contract block): border/surface/color/geometry/hover all
+     live there; this layered remnant was deleted to end the dual-recipe split. */
 
   /* The layered .text-link block was deleted: its color/hover states matched
      the canonical completion rule (:104) and its only live declaration

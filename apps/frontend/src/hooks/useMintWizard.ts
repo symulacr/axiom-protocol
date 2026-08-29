@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { useAccount, useWalletClient } from "wagmi";
 import { useMutation } from "@tanstack/react-query";
-import { apiFetch, type EncodeResponse } from "../utils/apiFetch.js";
+import { encodeRelayTransaction } from "../utils/encodeRelay.js";
 
 export function buildDefaultPayload(agentName: string): string {
   const name = agentName.trim() || "Axiom agent";
@@ -32,15 +32,9 @@ export function useMintWizard() {
       // Hashless mint (P3 §(b) #1-#3): the server derives dataHash + description
       // from the name and registers it with the oracle in-process — no client
       // keccak, one round-trip instead of two.
-      const encoded = await apiFetch<EncodeResponse>("/v1/agents/mint/encode", {
-        method: "POST",
-        body: JSON.stringify({ name, owner }),
-      });
-      return walletClient.sendTransaction({
-        to: encoded.to,
-        data: encoded.data,
-        value: BigInt(encoded.value),
-        chain: walletClient.chain,
+      return encodeRelayTransaction(walletClient, "/v1/agents/mint/encode", {
+        name,
+        owner,
       });
     },
   });

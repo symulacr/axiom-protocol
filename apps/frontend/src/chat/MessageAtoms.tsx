@@ -246,7 +246,7 @@ export function MsgCopyAction({
   return (
     <button
       type="button"
-      className="msg-action"
+      className="icon-button icon-button--sm icon-button--ghost msg-action"
       title={copied ? copy.copiedMessage : copy.copyMessage}
       onClick={() => {
         void navigator.clipboard?.writeText(text);
@@ -274,16 +274,18 @@ export function MessageEditConfirm({
       <span className="msg-confirm__text">{copy.editDiscards}</span>
       <button
         type="button"
-        className="msg-action msg-action--danger"
+        className="icon-button icon-button--sm icon-button--ghost msg-action msg-action--danger"
         title={copy.discardEditTitle}
+        aria-label={copy.discardEditTitle}
         onClick={onConfirm}
       >
         {copy.edit}
       </button>
       <button
         type="button"
-        className="msg-action"
+        className="icon-button icon-button--sm icon-button--ghost msg-action"
         title={copy.keepConversationTitle}
+        aria-label={copy.keepConversationTitle}
         onClick={onCancel}
       >
         {copy.cancel}
@@ -473,7 +475,7 @@ export function ToolCallCard({
               {onRetry && retryLabel ? (
                 <button
                   type="button"
-                  className="msg-action"
+                  className="icon-button icon-button--sm icon-button--ghost msg-action"
                   style={{ marginLeft: 8 }}
                   onClick={onRetry}
                 >

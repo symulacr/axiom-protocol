@@ -63,7 +63,7 @@ import {
   truncateHex,
   explorerTxUrl,
 } from "../utils/format.js";
-import { apiFetch, type EncodeResponse } from "../utils/apiFetch.js";
+import { encodeRelayTransaction } from "../utils/encodeRelay.js";
 import { getAxiomAgentNftAddress, toViemAbi } from "../abi/addresses.js";
 import { toastError, toastSuccess } from "./shared.js";
 import { useUiStore } from "../lib/uiStore.js";
@@ -424,24 +424,16 @@ export function AgentPage({
     setStrategySubmitting(true);
     setStrategyError(null);
     try {
-      const encoded = await apiFetch<EncodeResponse>(
+      const hash = await encodeRelayTransaction(
+        walletClient,
         `/v1/agents/${agentId}/set-strategy`,
         {
-          method: "POST",
-          body: JSON.stringify({
-            root: strategyBound ? vault.strategyRoot : undefined,
-            dailyLimit: value,
-            // Preserve the live expiry; "0" sentinel keeps "no expiry" when unset.
-            validUntilDay: vault.validUntilDay.toString(),
-          }),
+          root: strategyBound ? vault.strategyRoot : undefined,
+          dailyLimit: value,
+          // Preserve the live expiry; "0" sentinel keeps "no expiry" when unset.
+          validUntilDay: vault.validUntilDay.toString(),
         },
       );
-      const hash = await walletClient.sendTransaction({
-        to: encoded.to,
-        data: encoded.data,
-        value: BigInt(encoded.value || "0"),
-        chain: walletClient.chain,
-      });
       toastSuccess(agentCopy.limitToast(hash));
       setLimitInput("");
       vault.refetch();

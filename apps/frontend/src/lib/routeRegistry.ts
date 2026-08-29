@@ -114,11 +114,16 @@ const PUBLIC_SEO_ROUTES: Record<string, PublicSeoSlug> = Object.fromEntries(
   ).map((entry) => [entry.path, entry.publicSlug]),
 );
 
+/** Strip the query string from a path before registry lookups (shared by all resolvers). */
+function cleanPathOf(path: string): string {
+  return path.split("?", 1)[0] ?? path;
+}
+
 /** Public hub slug for a request path, following short-URL aliases. Legacy
  *  spellings (handled by redirectHubTarget) intentionally do NOT resolve to a
  *  200-render slug — a redirect must never render duplicate content. */
 export function resolvePublicSeoSlug(path: string): PublicSeoSlug | null {
-  const cleanPath = path.split("?", 1)[0] ?? path;
+  const cleanPath = cleanPathOf(path);
   const canonical = SHORT_HUB_ALIASES[cleanPath] ?? cleanPath;
   return PUBLIC_SEO_ROUTES[canonical] ?? null;
 }
@@ -127,7 +132,7 @@ export function resolvePublicSeoSlug(path: string): PublicSeoSlug | null {
  *  Consumed by the SPA (<Navigate replace>) and mirrored in dev.mjs /
  *  server.mjs so the redirect fires before the SPA fallback in every mode. */
 export function redirectHubTarget(path: string): string | null {
-  const cleanPath = path.split("?", 1)[0] ?? path;
+  const cleanPath = cleanPathOf(path);
   return LEGACY_HUB_REDIRECTS[cleanPath] ?? null;
 }
 
@@ -146,7 +151,7 @@ export const KNOWN_PATHS = new Set([
 ]);
 
 export function resolveRoute(path: string): Route {
-  const cleanPath = path.split("?", 1)[0] ?? path;
+  const cleanPath = cleanPathOf(path);
   if (cleanPath.startsWith("/agents/")) return "agent";
   // Legacy spellings redirect (App.tsx <Navigate replace> + server 308s);
   // they must never 200-render alongside their canonical short form.

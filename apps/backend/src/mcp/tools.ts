@@ -3,10 +3,11 @@
 // coupling between the MCP server and the listening HTTP server. The loopback path is kept
 // as a fallback behind AXIOM_MCP_LOOPBACK=true (see mcp/server.ts).
 import { z } from "zod";
-import { ethers } from "ethers";
-import { AGENT_NFT_ABI } from "@axiom/config/abis";
 import { EVENT_NAMES, bigintReplacer } from "@axiom/config/constants";
 import { getEventStore } from "../events/store.js";
+import { payloadField, payloadNumber } from "../events/store.js";
+import { recordAction, summarizeCounts } from "../agents/tick-metrics.js";
+import { enumerateOwnedAgents } from "../agents/enumerate.js";
 import { QUERYABLE_EVENT_NAMES } from "../indexer/events.js";
 import { getSharedProvider } from "../providers.js";
 import type { ServerConfig } from "../config-types.js";
@@ -36,10 +37,8 @@ class TTLCache<T> {
 const agentCache = new TTLCache<unknown>(AGENT_LIST_TTL_MS);
 const configCache = new TTLCache<unknown>(CONFIG_TTL_MS);
 
-// Mirrors MAX_AGENT_ENUMERATION / AGENT_LOG_SCAN_BLOCKS in routers/agents.ts — the MCP
+// Mirrors MAX_AGENT_ENUMERATION / AGENT_LOG_SCAN_BLOCKS via agents/enumerate.ts — the MCP
 // tool must return the same shape and obey the same caps as GET /v1/agents.
-const MAX_AGENT_ENUMERATION = 100;
-const AGENT_LOG_SCAN_BLOCKS = 50_000;
 
 export type McpToolOutcome =
   | { ok: true; payload: unknown }
@@ -75,87 +74,11 @@ async function listAgents(
       status: 503,
       message: "Agent NFT address not configured",
     };
-  const provider = getSharedProvider();
-  const iface = new ethers.Interface(AGENT_NFT_ABI);
-  const balanceHex = await provider.call({
-    to: nftAddr,
-    data: iface.encodeFunctionData("balanceOf", [owner]),
-  });
-  const balance = BigInt(balanceHex);
-  const tokens: { tokenId: string; owner: string; dataDescription?: string }[] =
-    [];
-  const transferTopic = iface.getEvent("Transfer")!.topicHash;
-  if (balance > 0n) {
-    const paddedOwner = ("0x" +
-      "00".repeat(12) +
-      owner.slice(2)) as `0x${string}`;
-    const latest = await provider.getBlockNumber();
-    const fromBlock = Math.max(0, latest - AGENT_LOG_SCAN_BLOCKS);
-    let transferLogs = await provider.getLogs({
-      address: nftAddr,
-      fromBlock,
-      toBlock: "latest",
-      topics: [transferTopic, null, paddedOwner],
-    });
-    if (transferLogs.length === 0) {
-      try {
-        transferLogs = await provider.getLogs({
-          address: nftAddr,
-          fromBlock: 0,
-          toBlock: "latest",
-          topics: [transferTopic, null, paddedOwner],
-        });
-      } catch {
-        // best-effort: a log fetch failure must not abort the owner lookup
-      }
-    }
-    const uniqueTokenIds = [
-      ...new Set(
-        transferLogs.flatMap((entry) =>
-          entry.topics[3] ? [BigInt(entry.topics[3])] : [],
-        ),
-      ),
-    ];
-    const ownerResults = await Promise.all(
-      uniqueTokenIds.slice(0, MAX_AGENT_ENUMERATION).map(async (tokenId) => {
-        const ownerHex = await provider.call({
-          to: nftAddr,
-          data: iface.encodeFunctionData("ownerOf", [tokenId]),
-        });
-        const currentOwner = ethers.getAddress("0x" + ownerHex.slice(26));
-        return currentOwner.toLowerCase() === owner
-          ? { tokenId: tokenId.toString(), owner }
-          : null;
-      }),
-    );
-    for (const t of ownerResults) if (t) tokens.push(t);
-    const metadataResults = await Promise.allSettled(
-      tokens.map(async (t) => {
-        try {
-          const dataHex = await provider.call({
-            to: nftAddr,
-            data: iface.encodeFunctionData("intelligentDatasOf", [
-              BigInt(t.tokenId),
-            ]),
-          });
-          const decoded = iface.decodeFunctionResult(
-            "intelligentDatasOf",
-            dataHex,
-          );
-          const datas = decoded[0] as Array<{ dataDescription: string }>;
-          return datas[0]?.dataDescription ?? "";
-        } catch {
-          return "";
-        }
-      }),
-    );
-    tokens.forEach((token, i) => {
-      const result = metadataResults[i];
-      if (result?.status === "fulfilled")
-        token.dataDescription = String(result.value ?? "");
-    });
-  }
-  const result = { owner, agents: tokens };
+  const result = await enumerateOwnedAgents(
+    getSharedProvider(),
+    nftAddr,
+    owner,
+  );
   agentCache.set(owner, result);
   return { ok: true, payload: result };
 }
@@ -308,44 +231,7 @@ async function listRoutes(
   };
 }
 
-// ─── performance helpers (inlined from routers/performance.ts local fns) ───
-type ActionCounts = { buyCount: number; sellCount: number; holdCount: number };
-
-function recordAction(payload: unknown, counts: ActionCounts): string {
-  const action = payloadField(payload, "action") ?? "";
-  if (action === "buy") counts.buyCount++;
-  else if (action === "sell") counts.sellCount++;
-  else counts.holdCount++;
-  return action;
-}
-
-function payloadNumber(payload: unknown, key: string): number | undefined {
-  const val =
-    typeof payload === "object" && payload !== null
-      ? (payload as Record<string, unknown>)[key]
-      : undefined;
-  const n = Number(val);
-  return Number.isFinite(n) ? n : undefined;
-}
-
-function payloadField(payload: unknown, key: string): string | undefined {
-  const val =
-    typeof payload === "object" && payload !== null
-      ? (payload as Record<string, unknown>)[key]
-      : undefined;
-  return val === undefined || val === null ? undefined : String(val);
-}
-
-function summarizeCounts(counts: ActionCounts) {
-  const totalTicks = counts.buyCount + counts.sellCount + counts.holdCount;
-  return {
-    totalTicks,
-    ...counts,
-    buyRate: totalTicks > 0 ? counts.buyCount / totalTicks : 0,
-    winRate:
-      totalTicks > 0 ? (counts.buyCount + counts.sellCount) / totalTicks : 0,
-  };
-}
+// ─── performance helpers: shared with routers/performance.ts via agents/tick-metrics.ts ───
 
 export interface McpInProcessToolDef {
   name: string;

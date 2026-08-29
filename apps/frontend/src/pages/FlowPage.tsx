@@ -42,6 +42,7 @@ import {
   X,
 } from "../components/axiom/icons.js";
 import { Button, Field } from "../components/axiom/Controls.js";
+import { EmptyState } from "../components/ui.js";
 import { StatePill } from "../components/StatePill.js";
 import { routePath } from "../lib/routeRegistry.js";
 import { getCopy, interpolate } from "../lib/copy.js";
@@ -93,11 +94,8 @@ import {
   validateNumericInput,
 } from "../utils/format.js";
 import { toastError, toastSuccess } from "./shared.js";
-import {
-  apiFetch,
-  STREAM_TIMEOUT,
-  type EncodeResponse,
-} from "../utils/apiFetch.js";
+import { apiFetch, STREAM_TIMEOUT } from "../utils/apiFetch.js";
+import { encodeRelayTransaction } from "../utils/encodeRelay.js";
 import { openStreamSocket } from "../config/env.js";
 import type {
   TickRequest,
@@ -172,19 +170,11 @@ function useVaultWrite(
       setIsSubmitting(true);
       try {
         // Same backend encode relay as the chat deposit tool — single vault ABI source, no frontend drift.
-        const encoded = await apiFetch<EncodeResponse>(
+        const hash = await encodeRelayTransaction(
+          walletClient,
           `/v1/agents/${tokenId.toString()}/${endpoint}`,
-          {
-            method: "POST",
-            body: JSON.stringify({ amount: value }),
-          },
+          { amount: value },
         );
-        const hash = await walletClient.sendTransaction({
-          to: encoded.to,
-          data: encoded.data,
-          value: BigInt(encoded.value || "0"),
-          chain: walletClient.chain,
-        });
         if (toasts) toastSuccess(`${verb} submitted (${hash.slice(0, 10)}…)`);
         setAmount("");
         await vd.refetch();
@@ -466,26 +456,6 @@ function useOrchestratorTick(): {
     streamingError,
     resetStream,
   };
-}
-
-/** Same panel placeholder as DashboardPage's — title + hint (+ trailing
- * control); kept local because EmptyState is per-page today, not shared. */
-function EmptyState({
-  title,
-  hint,
-  children,
-}: {
-  title: string;
-  hint?: string;
-  children?: React.ReactNode;
-}) {
-  return (
-    <div className="empty-state">
-      <strong>{title}</strong>
-      {hint !== undefined && <span>{hint}</span>}
-      {children}
-    </div>
-  );
 }
 
 export function FlowPage({

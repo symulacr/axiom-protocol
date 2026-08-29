@@ -45,6 +45,20 @@ function setCanonical(href: string) {
   document.head.appendChild(link);
 }
 
+/** Multiline heading body: one <span> per line, break after the first. */
+function MultilineHeading({ text }: { text: string }) {
+  return (
+    <>
+      {text.split("\n").map((line, index) => (
+        <span key={line}>
+          {line}
+          {index === 0 && <br />}
+        </span>
+      ))}
+    </>
+  );
+}
+
 function useAgentRegistryStats(enabled: boolean): AgentRegistryStats | null {
   const [stats, setStats] = useState<AgentRegistryStats | null>(null);
   useEffect(() => {
@@ -352,12 +366,7 @@ export function PublicSeoPage({ slug }: { slug: PublicSeoSlug }) {
         <div className="seo-route-rail" role="presentation" />
         <div className="seo-hero-copy">
           <h1>
-            {page.title.split("\n").map((line, index) => (
-              <span key={line}>
-                {line}
-                {index === 0 && <br />}
-              </span>
-            ))}
+            <MultilineHeading text={page.title} />
           </h1>
           <p>{page.accent}</p>
           <div className="seo-hero-actions">
@@ -401,12 +410,7 @@ export function PublicSeoPage({ slug }: { slug: PublicSeoSlug }) {
       <section className="seo-link-field" aria-labelledby="related-title">
         <div>
           <h2 id="related-title">
-            {page.journey.split("\n").map((line, index) => (
-              <span key={line}>
-                {line}
-                {index === 0 && <br />}
-              </span>
-            ))}
+            <MultilineHeading text={page.journey} />
           </h2>
         </div>
         <div className="seo-link-grid">

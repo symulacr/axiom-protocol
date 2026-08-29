@@ -22,11 +22,9 @@ import {
 import { createLogger } from "../utils/logger.js";
 import { readAgentDataHash } from "../skills/shared.js";
 import { createRoute } from "./route-factory.js";
+import { enumerateOwnedAgents } from "../agents/enumerate.js";
 
 const log = createLogger("agents");
-
-const MAX_AGENT_ENUMERATION = 100 as const;
-const AGENT_LOG_SCAN_BLOCKS = 50_000;
 
 const mintEncodeSchema = z.union([
   // Legacy shape (deprecated): wizard previously derived dataHash client-side.
@@ -226,89 +224,7 @@ export function registerAgentRoutes(
           HTTP.SERVICE_UNAVAILABLE,
           "Agent NFT address not configured",
         );
-      const iface = new ethers.Interface(AGENT_NFT_ABI);
-      const balanceHex = await provider.call({
-        to: nftAddr,
-        data: iface.encodeFunctionData("balanceOf", [owner]),
-      });
-      const balance = BigInt(balanceHex);
-      if (balance === 0n) {
-        res.json({ owner, agents: [] });
-        return;
-      }
-      const paddedOwner = ("0x" +
-        "00".repeat(12) +
-        owner.slice(2)) as `0x${string}`;
-      const latest = await provider.getBlockNumber();
-      const fromBlock = Math.max(0, latest - AGENT_LOG_SCAN_BLOCKS);
-      let transferLogs = await provider.getLogs({
-        address: nftAddr,
-        fromBlock,
-        toBlock: "latest",
-        topics: [TRANSFER_TOPIC, null, paddedOwner],
-      });
-      if (transferLogs.length === 0) {
-        try {
-          transferLogs = await provider.getLogs({
-            address: nftAddr,
-            fromBlock: 0,
-            toBlock: "latest",
-            topics: [TRANSFER_TOPIC, null, paddedOwner],
-          });
-        } catch {
-          // best-effort: a log fetch failure must not abort the owner lookup
-        }
-      }
-      const uniqueTokenIds = [
-        ...new Set(
-          transferLogs.flatMap((entry) =>
-            entry.topics[3] ? [BigInt(entry.topics[3])] : [],
-          ),
-        ),
-      ];
-      const ownerResults = await Promise.all(
-        uniqueTokenIds.slice(0, MAX_AGENT_ENUMERATION).map(async (tokenId) => {
-          const ownerHex = await provider.call({
-            to: nftAddr,
-            data: iface.encodeFunctionData("ownerOf", [tokenId]),
-          });
-          const currentOwner = ethers.getAddress("0x" + ownerHex.slice(26));
-          return currentOwner.toLowerCase() === owner
-            ? { tokenId: tokenId.toString(), owner }
-            : null;
-        }),
-      );
-      const tokens: {
-        tokenId: string;
-        owner: string;
-        dataDescription?: string;
-      }[] = ownerResults.filter((t): t is NonNullable<typeof t> => t !== null);
-      const metadataResults = await Promise.allSettled(
-        tokens.map(async (t) => {
-          try {
-            const dataHex = await provider.call({
-              to: nftAddr,
-              data: iface.encodeFunctionData("intelligentDatasOf", [
-                BigInt(t.tokenId),
-              ]),
-            });
-            const decoded = iface.decodeFunctionResult(
-              "intelligentDatasOf",
-              dataHex,
-            );
-            const datas = decoded[0] as Array<{ dataDescription: string }>;
-            return datas[0]?.dataDescription ?? "";
-          } catch {
-            return "";
-          }
-        }),
-      );
-      tokens.forEach((token, i) => {
-        const result = metadataResults[i];
-        if (result?.status === "fulfilled")
-          token.dataDescription = String(result.value ?? "");
-      });
-      const result = { owner, agents: tokens };
+      const result = await enumerateOwnedAgents(provider, nftAddr, owner);
       agentCache.set(owner, result);
       res.json(result);
     },

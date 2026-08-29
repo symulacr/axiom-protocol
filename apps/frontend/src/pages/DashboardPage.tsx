@@ -24,7 +24,7 @@ import { Button, PanelHead, Status } from "../components/axiom/Controls.js";
 import { FirstRunChecklist } from "../components/axiom/FirstRunChecklist.js";
 import { StatePill } from "../components/StatePill.js";
 import { MobileDisclosure } from "../components/MobileDisclosure.js";
-import { Spinner } from "../components/ui.js";
+import { EmptyState, Spinner } from "../components/ui.js";
 import { getCopy } from "../lib/copy.js";
 import { routePath } from "../lib/routeRegistry.js";
 import type { AppState } from "../lib/models.js";
@@ -188,25 +188,6 @@ function Stat({
         {value} {busy && <Spinner size={12} variant="churn" />}
       </strong>
       <small>{change}</small>
-    </div>
-  );
-}
-
-/** Shared panel placeholder: title + optional hint line (+ trailing control). */
-function EmptyState({
-  title,
-  hint,
-  children,
-}: {
-  title: string;
-  hint?: string;
-  children?: React.ReactNode;
-}) {
-  return (
-    <div className="empty-state">
-      <strong>{title}</strong>
-      {hint !== undefined && <span>{hint}</span>}
-      {children}
     </div>
   );
 }
