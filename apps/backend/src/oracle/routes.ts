@@ -2,7 +2,7 @@ import type { Express, Request, Response } from "express";
 import { getBytes, hexlify, isAddress } from "ethers";
 import { isHex, type Hex } from "viem";
 import { HTTP } from "@axiom/config/constants";
-import { ZodError } from "zod";
+import { ZodError, z } from "zod";
 import { canonicalNonceHex } from "@axiom/config/eip712";
 
 import {
@@ -20,6 +20,7 @@ import type { StorageAdapter } from "@axiom/config/storage/0g";
 import { mintDataHashSchema } from "../route-schemas.js";
 import type { BackendEnv } from "../env-schema.js";
 import { extractErrorMessage } from "../utils/response.js";
+import type { DekCustodyStore, SealedDekEntry } from "./storage.js";
 
 /** In-process oracle deps: the TEE signer and storage are shared with the host backend (no HTTP hop). */
 export interface OracleRouteDeps {
@@ -28,6 +29,8 @@ export interface OracleRouteDeps {
   chainId: bigint;
   verifier: Hex;
   env?: BackendEnv;
+  /** Sealed-DEK custody vault; consulted only when env.AXIOM_DEK_CUSTODY === "true". */
+  dekCustody?: DekCustodyStore;
 }
 
 /** Structured failure from the in-process helpers; the transfer route maps it to `status` + message. */
@@ -135,6 +138,8 @@ export interface TransferValidityInput {
   oldDataEncryptionKey?: string;
   /** ECIES-sealed 32-byte DEK to the oracle TEE pubkey (preferred over cleartext). */
   sealedDataEncryptionKey?: string;
+  /** Decimal tokenId of the transferred agent — the custody vault's lookup key. */
+  tokenId?: string | number | bigint;
   to: `0x${string}`;
   nft: `0x${string}`;
 }
@@ -190,14 +195,43 @@ export async function transferValidity(
     env?.AXIOM_ALLOW_CLEARTEXT_DEK === "true" &&
     process.env.NODE_ENV !== "production";
 
-  let oldDataKey: Uint8Array | undefined;
-  if (
+  // Sealed-DEK custody (proto option C / ADR-004 §2.4): when the sender did not
+  // bring the sealed DEK, pull the mint-time row for this token. The stored DEK
+  // is opaque to the vault — it is unsealed only here, on the re-key path.
+  // Narrowed once so TS sees a defined store inside the custody branch.
+  const custodyStore =
+    env?.AXIOM_DEK_CUSTODY === "true" && deps.dekCustody
+      ? deps.dekCustody
+      : undefined;
+  const senderProvidedSealedDek =
     typeof sealedDataEncryptionKey === "string" &&
-    sealedDataEncryptionKey.length > 0
+    sealedDataEncryptionKey.length > 0;
+  let custodiedRow: SealedDekEntry | undefined;
+  if (
+    custodyStore &&
+    !senderProvidedSealedDek &&
+    !oldDataEncryptionKey &&
+    input.tokenId !== undefined
   ) {
+    custodiedRow = custodyStore.lookup(String(input.tokenId));
+    requireCond(
+      custodiedRow !== undefined,
+      "no sealed data key on file for this token — the sender must provide sealedDataEncryptionKey (ECIES to oracle pubkey from GET /oracle/health) or re-upload the agent data",
+    );
+  }
+
+  let oldDataKey: Uint8Array | undefined;
+  if (senderProvidedSealedDek) {
     const hexEncoded = sealedDataEncryptionKey.startsWith("0x");
     const sealedBytes = Buffer.from(
       hexEncoded ? sealedDataEncryptionKey.slice(2) : sealedDataEncryptionKey,
+      hexEncoded ? "hex" : "base64",
+    );
+    oldDataKey = unsealKeyForReceiver(signer.privateKeyBytes, sealedBytes);
+  } else if (custodiedRow !== undefined) {
+    const hexEncoded = custodiedRow.sealedDek.startsWith("0x");
+    const sealedBytes = Buffer.from(
+      hexEncoded ? custodiedRow.sealedDek.slice(2) : custodiedRow.sealedDek,
       hexEncoded ? "hex" : "base64",
     );
     oldDataKey = unsealKeyForReceiver(signer.privateKeyBytes, sealedBytes);
@@ -206,9 +240,13 @@ export async function transferValidity(
   }
   requireCond(
     oldDataKey !== undefined,
-    oldDataEncryptionKey
+    senderProvidedSealedDek ||
+      custodiedRow !== undefined ||
+      oldDataEncryptionKey
       ? "cleartext oldDataEncryptionKey rejected; send sealedDataEncryptionKey (ECIES to oracle pubkey from GET /oracle/health)"
-      : "sealedDataEncryptionKey is required (ECIES-seal the 32-byte DEK to oracle uncompressed pubkey)",
+      : custodyStore
+        ? "no sealed data key on file for this token and none provided — send sealedDataEncryptionKey (ECIES-seal the 32-byte DEK to oracle uncompressed pubkey from GET /oracle/health)"
+        : "sealedDataEncryptionKey is required (ECIES-seal the 32-byte DEK to oracle uncompressed pubkey from GET /oracle/health)",
   );
   requireCond(
     oldDataKey.length === 32,
@@ -263,6 +301,17 @@ export async function transferValidity(
   const { rootHash } = await storage.upload(newBlob);
   const newDataHash = rootHash as `0x${string}`;
   storage.markDataHashSeen(newDataHash);
+
+  // Custody row is burned once the re-key has fully succeeded (new blob is
+  // durable + sealed to the receiver): ADR-004 §2.4 "deletion on successful
+  // re-key". A sender-supplied DEK never touches the vault, so nothing to burn.
+  if (
+    custodiedRow !== undefined &&
+    custodyStore &&
+    input.tokenId !== undefined
+  ) {
+    custodyStore.delete(String(input.tokenId));
+  }
 
   const targetPubkeyBytes = getBytes(targetPubkey64);
   const sealedKey = sealKeyForReceiver(targetPubkeyBytes, newDataKey);
@@ -393,12 +442,37 @@ export function registerOracleRoutes(
 
   app.post("/oracle/v1/agents/mint", (req: Request, res: Response) => {
     try {
-      const { dataHash } = mintDataHashSchema.parse(req.body);
+      // Optional custody fields (proto option C): the caller may upload the
+      // ECIES-sealed DEK alongside mint registration. Opaque bytes to the
+      // server — stored verbatim, never logged, never decrypted here.
+      const { dataHash, tokenId, sealedDataEncryptionKey } = mintDataHashSchema
+        .extend({
+          tokenId: z.string().regex(/^\d+$/).optional(),
+          sealedDataEncryptionKey: z.string().min(1).optional(),
+        })
+        .parse(req.body);
       requireCond(
         /^0x[0-9a-fA-F]{64}$/.test(dataHash),
         "dataHash must be a 32-byte hex string (0x + 64 hex chars)",
       );
+      requireCond(
+        sealedDataEncryptionKey === undefined || tokenId !== undefined,
+        "sealedDataEncryptionKey requires tokenId (the vault is keyed by token)",
+      );
+      requireCond(
+        sealedDataEncryptionKey === undefined ||
+          (deps.env?.AXIOM_DEK_CUSTODY === "true" &&
+            deps.dekCustody !== undefined),
+        "sealedDataEncryptionKey storage refused: AXIOM_DEK_CUSTODY is not enabled",
+      );
       storage.markDataHashSeen(dataHash);
+      if (sealedDataEncryptionKey !== undefined && tokenId !== undefined) {
+        deps.dekCustody?.persist({
+          tokenId,
+          sealedDek: sealedDataEncryptionKey,
+          uploadedAt: Date.now(),
+        });
+      }
       res.json({ ok: true, dataHash, seen: true });
     } catch (err) {
       if (!(err instanceof OracleRequestError || err instanceof ZodError))

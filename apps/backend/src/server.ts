@@ -25,6 +25,7 @@ import { AGENT_NFT_ABI } from "@axiom/config/abis";
 import { StrategyRunner } from "./orchestrator/index.js";
 import { TeeSigner } from "./oracle/signer.js";
 import { registerOracleRoutes, type OracleRouteDeps } from "./oracle/routes.js";
+import { DekCustodyStore } from "./oracle/storage.js";
 import { type Eip712Domain, buildEip712Domain } from "@axiom/config/eip712";
 import { getRuntimeConfig, HTTP } from "@axiom/config/constants";
 import { getSharedProvider } from "./providers.js";
@@ -232,7 +233,18 @@ export function startServer(config: ServerConfig): {
     chainId: BigInt(ogChainId),
     verifier: config.addresses!.verifier,
     env: config.env,
+    // Sealed-DEK custody (proto option C / ADR-004 §2.4): constructed only
+    // when the flag is on — vault file exists only in custody mode.
+    dekCustody:
+      config.env?.AXIOM_DEK_CUSTODY === "true"
+        ? new DekCustodyStore()
+        : undefined,
   };
+  // Test seam: lets server-level tests inspect/replace the custody vault
+  // (dek-custody.test.ts) without reading the data-dir JSON file.
+  (
+    startServer as unknown as { __lastOracleDeps?: OracleRouteDeps }
+  ).__lastOracleDeps = oracleDeps;
   let orchestratorHandle: StrategyRunner | null = null;
 
   function getOrCreateOrchestrator(): StrategyRunner | null {

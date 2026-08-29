@@ -11,6 +11,7 @@ import { ZeroGStorage, type StorageAdapter } from "@axiom/config/storage/0g";
 
 import { getEventStore } from "./events/store.js";
 import { IndexerService } from "./indexer/index.js";
+import { startKeeper } from "./keepers/index.js";
 
 loadEnv();
 
@@ -137,8 +138,12 @@ async function main(): Promise<void> {
   const indexer = new IndexerService({ provider, env });
   indexer.start();
 
+  // Proof-cleanup keeper (ADR-003 wave I3): OFF by default — null unless
+  // AXIOM_KEEPER_MODE enables it, so current deploys are unchanged.
+  const keeper = startKeeper({ env });
   // S-4: server + indexer now exist — arm the real drain for the early-bound listener.
   drain = async () => {
+    keeper?.stop();
     await indexer.stop(); // final checkpoint rename completes first
     await getEventStore().flush();
     server.httpServer.closeAllConnections?.();

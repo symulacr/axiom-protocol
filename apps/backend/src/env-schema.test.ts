@@ -41,3 +41,31 @@ describe("backendEnvSchema ad-hoc knobs (W0-9)", () => {
     }
   });
 });
+
+describe("AXIOM_DEK_CUSTODY (sealed-DEK custody flag, ADR-004 §2.4)", () => {
+  test("defaults to false when unset — prod-off per spec", () => {
+    const env = backendEnvSchema.parse({ ...base });
+    assert.equal(env.AXIOM_DEK_CUSTODY, "false");
+  });
+
+  test("accepts explicit true/false", () => {
+    for (const value of ["true", "false"] as const) {
+      const env = backendEnvSchema.parse({ ...base, AXIOM_DEK_CUSTODY: value });
+      assert.equal(env.AXIOM_DEK_CUSTODY, value);
+    }
+  });
+
+  test("rejects values outside the true/false enum", () => {
+    for (const value of ["1", "yes", "TRUE", "on", ""]) {
+      const result = backendEnvSchema.safeParse({
+        ...base,
+        AXIOM_DEK_CUSTODY: value,
+      });
+      assert.notEqual(
+        result.success,
+        true,
+        `AXIOM_DEK_CUSTODY=${value} must be rejected`,
+      );
+    }
+  });
+});

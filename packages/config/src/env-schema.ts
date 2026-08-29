@@ -45,4 +45,29 @@ export const sharedEnvSchema = z.object({
   AXIOM_DATA_DIR: z.string().optional(),
   AXIOM_ALLOW_MULTI_INSTANCE: z.string().optional(),
   AXIOM_ALLOW_CLEARTEXT_DEK: z.string().optional(),
+  // Proof-cleanup keeper (ADR-003 wave I3, docs/adr/003-proof-cleanup-keeper-options.md).
+  // Mode default OFF — zero behavior change for existing deploys.
+  AXIOM_KEEPER_MODE: z
+    .enum(["chainlink", "gelato", "indexer", "off"])
+    .default("off"),
+  AXIOM_KEEPER_INTERVAL_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(86_400_000),
+  AXIOM_KEEPER_GAS_CAP_GWEI: z.coerce.number().nonnegative().optional(),
+  // Operator-supplied candidate nonces (comma-separated 0x-padded 32-byte hex);
+  // the on-chain usedProofs mapping is internal, so no enumeration exists.
+  AXIOM_KEEPER_NONCES: z.string().optional(),
+  // Sweep-batch ceiling; the contract require()s batchMax <= 256 (BaseVerifier.sol:24).
+  AXIOM_KEEPER_BATCH_MAX: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(256)
+    .default(256),
+  // Sealed-DEK custody (proto-hashless-completion.md option C, ADR-004 §2.4):
+  // oracle stores ECIES-sealed DEKs keyed by tokenId and re-keys transfers from
+  // custody. Default OFF — prod trust geometry unchanged (BYOK stays the default).
+  AXIOM_DEK_CUSTODY: z.enum(["true", "false"]).default("false"),
 });

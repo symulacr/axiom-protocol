@@ -356,6 +356,16 @@ export function registerAgentRoutes(
         }
         if (!accessProof) {
           const nonce = BigInt(accessProofNonce ?? 0);
+          // Custody (proto option C / ADR-004 §2.4): with AXIOM_DEK_CUSTODY on,
+          // a sender that brings no DEK material is served from the vault —
+          // transferValidity re-keys from the stored row when one exists and
+          // throws the typed "no sealed data key on file" 400 when one does
+          // not, telling the sender to provide sealedDataEncryptionKey.
+          // oldDataUri falls back to the on-chain dataHash, which satisfies
+          // the root-binding rule (the dataHash IS the 0G storage root).
+          const custodyAttempt =
+            config.env?.AXIOM_DEK_CUSTODY === "true" &&
+            oracle.dekCustody !== undefined;
           if (oldDataUri && sealedDataEncryptionKey) {
             const rekey = await transferValidity(oracle, {
               oldDataHash: dataHash,
@@ -363,6 +373,7 @@ export function registerAgentRoutes(
               targetPubkey64: pk,
               accessProofNonce: nonce.toString(),
               sealedDataEncryptionKey,
+              tokenId: id,
               to,
               nft,
             });
@@ -385,6 +396,42 @@ export function registerAgentRoutes(
               ownershipSignature: rekey.ownershipSignature,
               signer: config.signer.address as `0x${string}`,
               rekeyed: true,
+            });
+            return;
+          }
+          if (custodyAttempt) {
+            // Sender brought no DEK material at all — custody supplies it.
+            // root-binding rule: oldDataUri must equal oldDataHash, and the
+            // on-chain dataHash IS the storage root (skills/shared.ts:21-34).
+            const rekey = await transferValidity(oracle, {
+              oldDataHash: dataHash,
+              oldDataUri: dataHash,
+              targetPubkey64: pk,
+              accessProofNonce: nonce.toString(),
+              tokenId: id,
+              to,
+              nft,
+            });
+            const validUntil = BigInt(
+              rekey.validUntil ?? Math.floor(Date.now() / 1000) + 86400,
+            );
+            res.json({
+              ok: true,
+              stage: "challenge",
+              tokenId: id,
+              to,
+              dataHash,
+              oldDataHash: dataHash,
+              newDataHash: rekey.newDataHash,
+              newDataUri: rekey.newDataUri,
+              targetPubkey: pk,
+              accessProofNonce: nonce.toString(),
+              validUntil: validUntil.toString(),
+              sealedKey: rekey.sealedKey,
+              ownershipSignature: rekey.ownershipSignature,
+              signer: config.signer.address as `0x${string}`,
+              rekeyed: true,
+              rekeyedFromCustody: true,
             });
             return;
           }
