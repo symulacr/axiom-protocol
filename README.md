@@ -235,7 +235,7 @@ not match current contract source.
   cleartext DEKs are rejected.
 - **Signer allowlist** (V2): revocation is immediate, adding a signer keeps the 1-day
   timelock. A compromised key is contained in one block instead of one day.
-- Production deploy keys live in `wallets/*.json` (git-ignored) or env vars, never in the
+- Production deploy keys live only in git-ignored local files or env vars, never in the
   repo. Rotate testnet keys before mainnet.
 - **Known gaps, stated plainly:** the DEK custody store is a JSON file (fine for testnet,
   needs a real store for mainnet); the keeper's Chainlink/Gelato modes are documented
