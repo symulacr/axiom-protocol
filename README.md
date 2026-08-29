@@ -256,8 +256,8 @@ not match current contract source.
 
 ## Further docs
 
-- [ADR 004 — V2 rewrite plan + redeploy checklist](docs/adr/004-contract-rewrite-plan.md)
-- [ADR 003 — proof-cleanup keeper options](docs/adr/003-proof-cleanup-keeper-options.md)
+- [ADR 004, V2 rewrite plan and redeploy checklist](docs/adr/004-contract-rewrite-plan.md)
+- [ADR 003, proof-cleanup keeper options](docs/adr/003-proof-cleanup-keeper-options.md)
 - [Diagram pack (mermaid) + logic tables](docs/hackathon/)
 - [One-pager (HTML)](docs/hackathon/axiom-onepager.html)
 - [Full change log, all 689 commits](docs/hackathon/CHANGELOG-full-688.md)
