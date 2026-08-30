@@ -91,7 +91,13 @@ export const tickSchema = z.object({
       /^\d+$/,
       "agentTokenId must be a numeric string — call list_my_agents to get your agent's tokenId",
     )
-    .refine((v) => BigInt(v) >= 0n, "agentTokenId must be non-negative"),
+    .refine((v) => {
+      try {
+        return BigInt(v) >= 0n;
+      } catch {
+        return false;
+      }
+    }, "agentTokenId must be non-negative"),
   computeModel: z.string().optional(),
   strategy: z.string().optional(),
   systemPrompt: z.string().optional(),
