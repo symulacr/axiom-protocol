@@ -266,6 +266,9 @@ export type Copy = {
     shortcutSurfaces: string;
     shortcutFlows: string;
     replayOnboarding: string;
+    /** First-run checklist replay (T1): distinct from replayOnboarding,
+     * which reopens the Guide overlay. */
+    showChecklistAgain: string;
     resetSurface: string;
     resetConfirmTitle: string;
     resetConfirmBody: string;
@@ -329,6 +332,9 @@ export type Copy = {
     oracleDown: string;
     /** T2: per-row neutral setup status label (muted tone, not warning). */
     unconfiguredLabel: string;
+    /** T1 replay: inline link shown when the checklist was dismissed but
+     * the fleet is not fully activated yet. */
+    showChecklist: string;
   };
   /** Live /chat surface (v1 SSE chat). Every rendered string routes through
    * this section — hardcoded English in ChatPage was the defect. */
@@ -1040,6 +1046,7 @@ const english: Copy = {
     shortcutSurfaces: "Open main areas",
     shortcutFlows: "Open execution flows",
     replayOnboarding: "Replay onboarding",
+    showChecklistAgain: "Show setup checklist again",
     resetSurface: "Reset settings",
     resetConfirmTitle: "Reset the settings?",
     resetConfirmBody: "Signs you out and wipes drafts and receipts. No undo.",
@@ -1095,6 +1102,7 @@ const english: Copy = {
     healthCheckLabel: "status checks",
     oracleDown: "oracle down",
     unconfiguredLabel: "setup",
+    showChecklist: "Show setup checklist",
   },
   chat: {
     pageTitle: "Chat",
@@ -1886,6 +1894,7 @@ const french: Copy = {
     shortcutSurfaces: "Ouvrir les zones principales",
     shortcutFlows: "Ouvrir les flows d’exécution",
     replayOnboarding: "Rejouer l’onboarding",
+    showChecklistAgain: "Revoir la liste de configuration",
     resetSurface: "Réinitialiser les réglages",
     resetConfirmTitle: "Réinitialiser les réglages ?",
     resetConfirmBody:
@@ -1943,6 +1952,7 @@ const french: Copy = {
     healthCheckLabel: "vérifications d’état",
     oracleDown: "oracle hors ligne",
     unconfiguredLabel: "configuration",
+    showChecklist: "Afficher la liste de configuration",
   },
   chat: {
     ...english.chat,
@@ -2743,6 +2753,7 @@ const german: Copy = {
     shortcutSurfaces: "Hauptbereiche öffnen",
     shortcutFlows: "Ausführungs-Flows öffnen",
     replayOnboarding: "Onboarding wiederholen",
+    showChecklistAgain: "Einrichtungsliste erneut anzeigen",
     resetSurface: "Einstellungen zurücksetzen",
     resetConfirmTitle: "Einstellungen zurücksetzen?",
     resetConfirmBody:
@@ -2801,6 +2812,7 @@ const german: Copy = {
     healthCheckLabel: "Statusprüfungen",
     oracleDown: "Oracle offline",
     unconfiguredLabel: "Einrichtung",
+    showChecklist: "Einrichtungsliste anzeigen",
   },
   chat: {
     ...english.chat,

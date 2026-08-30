@@ -3343,6 +3343,11 @@ strong {
   color: var(--completion-bright);
   font-size: var(--fs-body);
 }
+/* T1 replay: muted recovery link under the ContextStrip. */
+.checklist-replay {
+  align-self: start;
+  margin-bottom: var(--space-5);
+}
 
 /* Landing Proof Field image integration: the static art replaces the retired
    console-preview plate without changing the landing's copy or controls. */

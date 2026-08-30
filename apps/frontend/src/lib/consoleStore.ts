@@ -98,6 +98,7 @@ export type ConsoleAction =
   | { type: "guide" }
   | { type: "first-run-open" }
   | { type: "first-run-dismiss" }
+  | { type: "first-run-reset" }
   | { type: "notice"; notice: string | null; severity?: NoticeSeverity }
   | { type: "reset" };
 
@@ -320,6 +321,14 @@ export function consoleReducer(
       ...state,
       firstRunOpen: false,
       settings: { ...state.settings, firstRunDismissed: true },
+    };
+  // Replay affordance (Settings + Dashboard link): clear the dismissal and
+  // open the checklist in one action so the flag can never desync from the card.
+  if (action.type === "first-run-reset")
+    return {
+      ...state,
+      firstRunOpen: true,
+      settings: { ...state.settings, firstRunDismissed: false },
     };
   if (action.type === "notice")
     return {

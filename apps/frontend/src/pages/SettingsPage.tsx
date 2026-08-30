@@ -429,6 +429,15 @@ export function SettingsPage({
             >
               {labels.replayOnboarding}
             </Button>
+            {/* T1 replay: the checklist lives on the Dashboard; clearing the
+                dismissal here restores it there on the next visit. */}
+            <Button
+              variant="ghost"
+              onClick={() => dispatch({ type: "first-run-reset" })}
+              icon={<RotateCcw size={14} />}
+            >
+              {labels.showChecklistAgain}
+            </Button>
           </div>
         </SettingsDisclosure>
       </div>

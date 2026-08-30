@@ -21,7 +21,12 @@ import {
   Wallet,
 } from "../components/axiom/icons.js";
 import { Button, PanelHead, Status } from "../components/axiom/Controls.js";
-import { FirstRunChecklist } from "../components/axiom/FirstRunChecklist.js";
+import {
+  FirstRunChecklist,
+  firstRunSteps,
+  hasCompletedTick,
+  hasFundedVault,
+} from "../components/axiom/FirstRunChecklist.js";
 import { StatePill } from "../components/StatePill.js";
 import { MobileDisclosure } from "../components/MobileDisclosure.js";
 import { EmptyState, Spinner } from "../components/ui.js";
@@ -219,6 +224,15 @@ export function DashboardPage({
     pollIntervalMs: 20_000,
   });
 
+  // T1 replay: once dismissed, a not-yet-complete fleet keeps one muted
+  // recovery link — the card itself stays hidden until the user opts back in.
+  const checklistDismissed = state.settings.firstRunDismissed;
+  const checklistIncomplete = !firstRunSteps({
+    hasAgent: agents.length > 0,
+    hasFundedVault: hasFundedVault(vaultMap),
+    hasTickReceipt: hasCompletedTick(state.transactions),
+  }).allDone;
+
   // U8: the indexer subscribes with topics ["*"] — every event surface on
   // this page goes through the shared isOwnEvent scope, never raw length.
   const ownTokenIds = useMemo(
@@ -345,6 +359,16 @@ export function DashboardPage({
         health={health}
         copy={copy}
       />
+
+      {/* T1 replay: single muted text-link, only when dismissed too early. */}
+      {checklistDismissed && checklistIncomplete && (
+        <button
+          className="text-link checklist-replay"
+          onClick={() => dispatch({ type: "first-run-reset" })}
+        >
+          {copy.dashboard.showChecklist}
+        </button>
+      )}
 
       {/* T1: activation checklist — dismissal + completion live in the store;
           step state self-checks from agents/vault/receipts above. */}
