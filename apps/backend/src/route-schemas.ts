@@ -51,7 +51,10 @@ export const vaultWithdrawEncodeSchema = amountStringSchema;
  *  is the contract's no-expiry sentinel. */
 export const vaultSetStrategySchema = z
   .object({
-    root: z.string().regex(/^0x[0-9a-fA-F]{64}$/).optional(), // 32-byte Merkle root hex
+    root: z
+      .string()
+      .regex(/^0x[0-9a-fA-F]{64}$/)
+      .optional(), // 32-byte Merkle root hex
     dailyLimit: z.string().regex(/^\d+(\.\d+)?$/), // native OG human units, parsed with ethers.parseEther
     validUntilDay: z.string().regex(/^\d+$/), // UTC day index; "0" sentinel = no expiry
   })
@@ -82,7 +85,13 @@ export const eventBodySchema = z.object({
 export const tickSchema = z.object({
   vault: addressViem,
   agentNft: addressViem,
-  agentTokenId: z.string().regex(/^\d+$/),
+  agentTokenId: z
+    .string()
+    .regex(
+      /^\d+$/,
+      "agentTokenId must be a numeric string — call list_my_agents to get your agent's tokenId",
+    )
+    .refine((v) => BigInt(v) >= 0n, "agentTokenId must be non-negative"),
   computeModel: z.string().optional(),
   strategy: z.string().optional(),
   systemPrompt: z.string().optional(),

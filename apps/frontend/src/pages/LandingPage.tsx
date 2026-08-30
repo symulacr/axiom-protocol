@@ -9,15 +9,10 @@ import {
   Menu,
   Wallet,
   ArrowRight,
-  Bot,
-  ChevronRight,
-  ReceiptText,
 } from "../components/axiom/icons.js";
-import { Button, Status } from "../components/axiom/Controls.js";
-import { StatePill } from "../components/StatePill.js";
+import { Button } from "../components/axiom/Controls.js";
 import { Logo } from "../components/axiom/AppShell.js";
 import { routePath } from "../lib/routeRegistry.js";
-import { APP_CHAIN } from "../config/wagmi.js";
 import { getCopy, type Locale } from "../lib/copy.js";
 
 export function Landing({
@@ -33,9 +28,6 @@ export function Landing({
 }) {
   const copy = getCopy(locale);
   const [menuOpen, setMenuOpen] = useState(false);
-  // T4 preview uses the live chain's native symbol — same interpolation
-  // source as the console rows it demonstrates (no hardcoded token unit).
-  const nativeSymbol = APP_CHAIN.nativeCurrency.symbol;
   const navigate = (path: string) => {
     setMenuOpen(false);
     go(path);
@@ -127,34 +119,12 @@ export function Landing({
           </div>
         </section>
         <section className="landing-visual hero-visual-modern">
-          {/* T4: self-demonstrating preview — the real .agent-row /
-              .activity-row / StatePill markup inside the plate chrome, so
-              visitors see the actual console surface instead of art. */}
-          <div className="landing-plate" aria-hidden="true">
-            <div className="agent-row">
-              <span className="agent-row-mark">
-                <Bot size={16} />
-              </span>
-              <span>
-                <strong>{copy.landing.previewAgentTitle}</strong>
-                <small>{copy.landing.previewAgentDesc}</small>
-              </span>
-              <span className="agent-value">
-                <b>2.45 {nativeSymbol}</b>
-                <Status label={copy.dashboard.unconfiguredLabel} tone="muted" />
-              </span>
-              <ChevronRight size={15} />
-            </div>
-            <div className="activity-row">
-              <ReceiptText size={16} />
-              <div>
-                <strong>{copy.landing.previewReceiptTitle}</strong>
-                <small>{copy.landing.previewReceiptMeta}</small>
-              </div>
-              <StatePill state="confirmed" />
-              <ChevronRight size={15} />
-            </div>
-          </div>
+          <img
+            className="hero-visual-poster"
+            src="/brand/landing-proof-field-1536.webp"
+            alt=""
+            aria-hidden="true"
+          />
         </section>
       </main>
       {/* Journey strip: each cell is a live control (arrow + hover tint). */}
