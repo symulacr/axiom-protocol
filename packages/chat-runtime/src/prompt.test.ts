@@ -38,4 +38,36 @@ describe("buildSystemPrompt", () => {
     // repeated builds are byte-identical (no session, no clock)
     assert.equal(buildSystemPrompt(), prompt);
   });
+
+  it("mandates autonomous step chaining, no permission pauses (J2 continuity)", () => {
+    assert.match(prompt, /CONTINUITY/);
+    assert.match(
+      prompt,
+      /mint → fund \(deposit\) → set strategy → run tick → pay/,
+    );
+    assert.match(prompt, /IMMEDIATELY call the next tool/);
+    assert.match(prompt, /unless a tool FAILED/);
+  });
+
+  it("names what it is waiting on (wallet vs chain) instead of shrugging (J2 waiting-state)", () => {
+    assert.match(prompt, /WAITING-STATE AWARENESS/);
+    assert.match(prompt, /Waiting for wallet confirmation…/);
+    assert.match(prompt, /Submitted, waiting for chain confirmation…/);
+    assert.match(prompt, /Never describe a wait as 'I don't know what to do'/);
+  });
+
+  it("'next'/'continue' resumes the pending step from session memory (J2 session state)", () => {
+    assert.match(prompt, /SESSION STATE/);
+    assert.match(prompt, /lastTokenId/);
+    assert.match(
+      prompt,
+      /'next', 'continue', 'go on'[\s\S]*?EXECUTE THE NEXT PENDING STEP/,
+    );
+  });
+
+  it("executes approved numbered plans in order, one tool per step (J2 plan tracking)", () => {
+    assert.match(prompt, /PLAN TRACKING/);
+    assert.match(prompt, /execute items IN ORDER, one tool call per step/);
+    assert.match(prompt, /until the plan completes or a step fails/);
+  });
 });

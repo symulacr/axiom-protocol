@@ -2,6 +2,7 @@ import type { ChatToolName } from "@axiom/config/chat-tools";
 import {
   getChatToolSpec,
   resolveContextWindow,
+  CHAT_TOOL_CATALOG,
 } from "@axiom/config/chat-tools";
 import type { ChatSessionContext, ToolResult } from "./types.js";
 import { toolFail, type ToolRuntime } from "./transport.js";
@@ -77,6 +78,7 @@ export function createSession(
     walletAddress: partial.walletAddress,
     lastTokenId: partial.lastTokenId,
     lastToolName: partial.lastToolName,
+    lastPlan: partial.lastPlan,
     backendUrl: partial.backendUrl,
     addresses: partial.addresses,
   };
@@ -147,10 +149,74 @@ export function applyToolResult(
         // try next candidate
       }
     }
+    // A successful plan-head call consumes it; failures keep the plan for retry. Reads never
+    // clear the plan (interstitial list_my_agents etc. is expected mid-flow) — a successful
+    // off-plan STATE-CHANGING call means the model re-planned, so drop the stale plan.
+    if (session.lastPlan?.length && result.ok) {
+      if (session.lastPlan[0] === name) session.lastPlan.shift();
+      else if (!session.lastPlan.includes(name) && isStateChanging(name))
+        session.lastPlan = [];
+    }
   } catch {
     // malformed tool result body parsing is best-effort and silently ignored
   }
   return session;
+}
+
+// Heuristic scope note: applyToolResult never sees assistant prose (transport passes tool results
+// only), so plan capture from assistant messages belongs to the caller; detectPlan is the shared
+// matcher so the caller cannot drift from this contract, and matchPlan maps plan items onto real
+// tool names so "next" continuity calls the actual catalog tool instead of prose.
+const TOOL_NAMES = new Set<string>(CHAT_TOOL_CATALOG.map((t) => t.name));
+
+const PLAN_ITEM_RE = /^\s*\d+[.)]\s+(.+)$/;
+
+function isStateChanging(name: string): boolean {
+  const spec = getChatToolSpec(name);
+  return spec?.class === "encode" || spec?.class === "orchestrate";
+}
+
+/** Numbered-list items from assistant prose ("1. Mint the agent" → ["Mint the agent"]). */
+export function detectPlan(assistantText: string): string[] {
+  const items: string[] = [];
+  for (const line of assistantText.split("\n")) {
+    const m = PLAN_ITEM_RE.exec(line);
+    if (m) {
+      const item = m[1]!.trim();
+      if (item) items.push(item);
+    } else if (items.length) {
+      // prose after the list ends it
+      break;
+    }
+  }
+  return items;
+}
+
+const PLAN_WORD_RE =
+  /\b(mint|deposit|fund|withdraw|strategy|tick|simulate_tick|execute_tick|pay|transfer|list_my_agents|vault_balance|agent_metadata|event_history|pay_for_agent|mint_agent|simulate|execute)\b/i;
+
+export function matchPlan(items: string[]): string[] {
+  const tools: string[] = [];
+  for (const item of items) {
+    const words = item.match(PLAN_WORD_RE);
+    if (!words) break;
+    const tool = words[0]!.toLowerCase().replace(/\s+/g, "_");
+    if (!TOOL_NAMES.has(tool)) {
+      // single known alias in the flow vocabulary → canonical name, else drop the item
+      const alias: Record<string, string> = {
+        mint: "mint_agent",
+        fund: "deposit",
+        tick: "simulate_tick",
+        strategy: "vault_balance",
+      };
+      const mapped = alias[tool];
+      if (!mapped || !TOOL_NAMES.has(mapped)) break;
+      tools.push(mapped);
+    } else {
+      tools.push(tool);
+    }
+  }
+  return tools;
 }
 
 const MAX_TOOL_CHARS = 1200;

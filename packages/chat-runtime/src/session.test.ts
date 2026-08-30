@@ -6,6 +6,8 @@ import {
   applyToolResult,
   createSession,
   groupParallelTools,
+  detectPlan,
+  matchPlan,
 } from "./session.js";
 
 const mk = (role: string, content: string) => ({ role, content });
@@ -66,6 +68,100 @@ test("applyToolResult captures tokenId from plain body, {data} wrapper, and firs
     content: JSON.stringify({ agents: [{ tokenId: 3 }] }),
   });
   assert.equal(agents.lastTokenId, "3");
+});
+
+describe("lastPlan continuity (J2)", () => {
+  it("createSession threads lastPlan through", () => {
+    const s = createSession({ chainId: 16602, lastPlan: ["mint_agent"] });
+    assert.deepEqual(s.lastPlan, ["mint_agent"]);
+    assert.equal(createSession({ chainId: 16602 }).lastPlan, undefined);
+  });
+
+  it("a successful plan-head call consumes it; later calls leave the rest", () => {
+    const s = createSession({
+      chainId: 16602,
+      lastPlan: ["mint_agent", "deposit", "simulate_tick"],
+    });
+    applyToolResult(s, "mint_agent", {
+      ok: true,
+      content: JSON.stringify({ tokenId: 7 }),
+    });
+    assert.deepEqual(s.lastPlan, ["deposit", "simulate_tick"]);
+    applyToolResult(s, "list_my_agents", {
+      ok: true,
+      content: JSON.stringify({ agents: [] }),
+    });
+    assert.deepEqual(s.lastPlan, ["deposit", "simulate_tick"]);
+  });
+
+  it("a FAILED plan-head call keeps the plan for retry", () => {
+    const s = createSession({
+      chainId: 16602,
+      lastPlan: ["deposit", "simulate_tick"],
+    });
+    applyToolResult(s, "deposit", { ok: false, content: "user rejected" });
+    assert.deepEqual(s.lastPlan, ["deposit", "simulate_tick"]);
+  });
+
+  it("an off-plan successful STATE-CHANGING tool clears a stale plan (model re-planned)", () => {
+    const s = createSession({
+      chainId: 16602,
+      lastPlan: ["deposit", "simulate_tick"],
+    });
+    applyToolResult(s, "transfer", {
+      ok: true,
+      content: JSON.stringify({ ok: true }),
+    });
+    assert.deepEqual(s.lastPlan, []);
+  });
+
+  it("an off-plan READ does not clear the plan (interstitial reads are expected)", () => {
+    const s = createSession({
+      chainId: 16602,
+      lastPlan: ["deposit", "simulate_tick"],
+    });
+    applyToolResult(s, "list_my_agents", {
+      ok: true,
+      content: JSON.stringify({ agents: [] }),
+    });
+    assert.deepEqual(s.lastPlan, ["deposit", "simulate_tick"]);
+  });
+});
+
+describe("detectPlan / matchPlan (J2)", () => {
+  it("extracts contiguous numbered items and stops at prose", () => {
+    const text = [
+      "Here is the plan:",
+      "1. Mint the agent",
+      "2. Deposit funds",
+      "",
+      "Note: gas is paid separately.",
+    ].join("\n");
+    assert.deepEqual(detectPlan(text), ["Mint the agent", "Deposit funds"]);
+  });
+
+  it("ignores prose without numbered items", () => {
+    assert.deepEqual(detectPlan("no plan here"), []);
+  });
+
+  it("maps plan text onto real catalog tool names (mint/fund/tick flow)", () => {
+    assert.deepEqual(
+      matchPlan(
+        detectPlan(
+          "1. Mint the agent\n2. Fund the vault\n3. Run a tick\n4. Pay",
+        ),
+      ),
+      ["mint_agent", "deposit", "simulate_tick"],
+    );
+  });
+
+  it("maps 'set strategy' onto a session read (no strategy tool in catalog) and keeps exact names", () => {
+    assert.deepEqual(matchPlan(["deposit", "set strategy", "execute_tick"]), [
+      "deposit",
+      "vault_balance",
+      "execute_tick",
+    ]);
+  });
 });
 
 describe("groupParallelTools", () => {

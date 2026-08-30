@@ -372,6 +372,14 @@ export function registerChatRoutes(
           );
           return;
         }
+        if (status === 429 || /rate limit/i.test(String(msg))) {
+          jsonFail(
+            429,
+            "Compute provider is rate-limiting requests. Retry in a moment.",
+            "rate_limit_exceeded",
+          );
+          return;
+        }
         jsonFail(
           502,
           msg

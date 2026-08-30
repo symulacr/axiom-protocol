@@ -24,6 +24,8 @@ export interface ChatSessionContext {
   walletAddress?: `0x${string}`;
   lastTokenId?: string;
   lastToolName?: ChatToolName;
+  /** Remaining tool names of the plan the assistant presented and the user approved (continuity for "next"). */
+  lastPlan?: string[];
   backendUrl?: string;
   addresses?: {
     vault: `0x${string}`;

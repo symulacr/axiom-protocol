@@ -109,6 +109,10 @@ export function humanizeError(err: unknown): string {
     return "Insufficient balance to complete this transaction. Please add funds and try again.";
   }
 
+  if (has("rate_limit_exceeded", "rate-limiting requests")) {
+    return "The compute provider is rate-limiting requests. Wait a few seconds and send again.";
+  }
+
   if (lower.includes("compute upstream")) {
     return "Compute is unavailable right now. Check backend compute keys and balance.";
   }
