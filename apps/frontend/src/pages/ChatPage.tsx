@@ -1082,6 +1082,8 @@ function ChatPageInner(): ReactElement {
               method: "POST",
               body: JSON.stringify({
                 model: CHAT_MODEL,
+                // Cap at the backend's max(50) — tool-heavy sessions otherwise
+                // brick with "Validation failed" once history exceeds it.
                 messages: [
                   { role: "system", content: systemContent },
                   ...fitToContext(
@@ -1092,7 +1094,7 @@ function ChatPageInner(): ReactElement {
                       tools: TOOLS,
                       contextWindow: effectiveContextWindow,
                     },
-                  ),
+                  ).slice(-50),
                 ],
                 tools: TOOLS,
                 stream: true,

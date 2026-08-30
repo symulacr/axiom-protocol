@@ -4,7 +4,8 @@ import { ADDRESS_REGEX, HASH_REGEX } from "../types/hex.js";
 
 const evmAddressField = z
   .string()
-  .regex(ADDRESS_REGEX, "must be a 0x-prefixed 20-byte address");
+  .regex(ADDRESS_REGEX, "must be a 0x-prefixed 20-byte address")
+  .transform((v) => v.toLowerCase()); // normalize casing — uppercase 0X prefix and mixed-case addresses crash ethers arg encoding
 const evmHashField = z
   .string()
   .regex(HASH_REGEX, "must be a 0x-prefixed 32-byte hash");
