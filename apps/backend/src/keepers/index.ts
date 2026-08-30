@@ -13,6 +13,14 @@ export interface VerifierSweeperMethods {
   cleanExpiredProofs(proofNonces: string[]): Promise<unknown>;
 }
 
+/**
+ * Log-discovery surface for the ProofUsed event (BaseVerifier._checkAndMarkProof).
+ * Wave 1B: every consumed proof nonce is now logged, so sweep candidates are
+ * derivable from chain logs instead of a static operator list. Accessed through
+ * the untyped ethers Contract (TypedContract.raw) — the event is ABI-known but
+ * not part of the sweeper method type.
+ */
+
 export interface SweeperContract {
   contract: VerifierSweeperMethods;
 }
@@ -45,6 +53,8 @@ interface KeeperDeps {
   provider?: import("ethers").JsonRpcProvider;
   signer?: Wallet;
   verifier?: SweeperContract;
+  /** Test seam: override the raw ethers Contract used for ProofUsed log queries. */
+  verifierRaw?: import("ethers").Contract;
 }
 
 /** Contract-side batch ceiling — BaseVerifier.sol:24 require()s proofNonces.length <= batchMax (256). */
@@ -58,11 +68,12 @@ const MODE_PREREQS: Record<Exclude<KeeperMode, "indexer" | "off">, string> = {
 };
 
 /**
- * Operator-supplied candidate nonces. The on-chain `usedProofs` mapping is
- * `internal` (BaseVerifier.sol:14), no ProofUsed event exists, and transfer
- * route responses are not persisted — so without a contract change (ADR-003:
- * none required) the candidate set comes from the operator, collected the same
- * way the e2e cleaner derives nonces (e2e/steps.ts computeTransferProofNonce).
+ * Fallback candidate nonces (AXIOM_KEEPER_NONCES). Since Wave 1B the verifier
+ * emits `ProofUsed(nonce, timestamp)` on every consumed nonce
+ * (BaseVerifier._checkAndMarkProof), so `deriveCandidates` prefers a live log
+ * scan (fetchProofUsedNonces) and only uses this static list when the verifier
+ * predates the event or the scan fails — e.g. nonces collected the same way
+ * the e2e cleaner derives them (e2e/steps.ts computeTransferProofNonce).
  */
 export function parseKeeperNonces(raw: string | undefined): string[] {
   return (raw ?? "")
@@ -70,6 +81,33 @@ export function parseKeeperNonces(raw: string | undefined): string[] {
     .map((n) => n.trim())
     .filter(Boolean)
     .map((n) => canonicalNonceHex(n));
+}
+
+/**
+ * Derive sweep candidates from ProofUsed(nonce, timestamp) logs on the verifier.
+ * @param fromBlock first block to scan (use the deployment/lookback start);
+ * @param toBlock   last block to scan (defaults to latest via the provider).
+ * Returns canonical 0x-padded 32-byte nonce hex, newest-last, deduped.
+ * A failed scan resolves [] — the caller falls back to AXIOM_KEEPER_NONCES.
+ */
+export async function fetchProofUsedNonces(
+  raw: import("ethers").Contract,
+  fromBlock: number | string | bigint,
+  toBlock?: number | string | bigint,
+): Promise<string[]> {
+  const logs = await raw.queryFilter("ProofUsed", fromBlock, toBlock);
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const log of logs) {
+    // EventLog (abi-decoded); a plain Log means the ABI lacks the event.
+    if (!("args" in log)) continue;
+    const nonce = canonicalNonceHex(log.args[0] as string);
+    if (!seen.has(nonce)) {
+      seen.add(nonce);
+      out.push(nonce);
+    }
+  }
+  return out;
 }
 
 /** Current gas price in gwei, or null when the RPC cannot answer (treated as within cap). */
@@ -121,12 +159,55 @@ export function startKeeper(deps: KeeperDeps): KeeperHandle | null {
       TEE_VERIFIER_ABI,
       signer,
     );
+  // Same address+ABI, untyped view — used only for ProofUsed log discovery.
+  // Absent for test-supplied stub verifiers: those exercise the env fallback.
+  const verifierRaw: import("ethers").Contract | undefined =
+    deps.verifierRaw ??
+    (deps.verifier
+      ? undefined
+      : (verifier as TypedContract<VerifierSweeperMethods>).raw);
+
+  // Lookback window for ProofUsed log scans. Proofs live maxProofAgeSeconds on
+  // chain (default 7d), so anything older is unsweepable regardless — the
+  // default covers exactly the sweepable window.
+  const lookbackBlocks = deps.env.AXIOM_KEEPER_LOG_LOOKBACK_BLOCKS ?? 2_000_000;
+
+  async function deriveCandidates(): Promise<string[]> {
+    // Wave 1B: ProofUsed is emitted by BaseVerifier._checkAndMarkProof on every
+    // consumed nonce. When the verifier predates the event (or the scan fails),
+    // fall back to the operator-supplied AXIOM_KEEPER_NONCES list.
+    if (verifierRaw) {
+      try {
+        const current = await provider.getBlockNumber();
+        const fromBlock = Math.max(0, current - lookbackBlocks);
+        const candidates = await fetchProofUsedNonces(
+          verifierRaw,
+          fromBlock,
+          current,
+        );
+        if (candidates.length > 0) {
+          log.info("keeper candidates from ProofUsed logs", {
+            found: candidates.length,
+            fromBlock,
+            toBlock: current,
+          });
+          return candidates;
+        }
+        log.info(
+          "no ProofUsed logs found — falling back to AXIOM_KEEPER_NONCES",
+        );
+      } catch (err) {
+        log.warn("ProofUsed log scan failed — falling back to env config", {
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+    return parseKeeperNonces(deps.env.AXIOM_KEEPER_NONCES);
+  }
 
   async function sweepOnce(): Promise<number> {
-    const candidates = parseKeeperNonces(deps.env.AXIOM_KEEPER_NONCES).slice(
-      0,
-      batchMax,
-    );
+    const allCandidates = await deriveCandidates();
+    const candidates = allCandidates.slice(0, batchMax);
     if (candidates.length === 0) {
       log.info(
         "sweep skipped: no candidate nonces configured (AXIOM_KEEPER_NONCES empty)",

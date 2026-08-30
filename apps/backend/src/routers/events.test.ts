@@ -164,7 +164,7 @@ test("decodeAxiomLog decodes StorageInfoUpdated(oldInfo, newInfo) into the Axiom
   });
 });
 
-test("decodeAxiomLog decodes Updated(tokenId, oldDatas, newDatas) into count fields", () => {
+test("decodeAxiomLog decodes Updated(tokenId, oldRoot, newDatas) into count + root fields", () => {
   const abi = EVENT_ABI.Updated;
   const topics = encodeEventTopics({
     abi: [abi],
@@ -173,13 +173,7 @@ test("decodeAxiomLog decodes Updated(tokenId, oldDatas, newDatas) into count fie
   });
   const data = encodeAbiParameters(
     [
-      {
-        type: "tuple[]",
-        components: [
-          { name: "dataDescription", type: "string" },
-          { name: "dataHash", type: "bytes32" },
-        ],
-      },
+      { type: "bytes32" },
       {
         type: "tuple[]",
         components: [
@@ -189,12 +183,7 @@ test("decodeAxiomLog decodes Updated(tokenId, oldDatas, newDatas) into count fie
       },
     ],
     [
-      [
-        {
-          dataDescription: "old",
-          dataHash: ("0x" + "aa".repeat(32)) as `0x${string}`,
-        },
-      ],
+      ("0x" + "dd".repeat(32)) as `0x${string}`,
       [
         {
           dataDescription: "new-1",
@@ -211,7 +200,7 @@ test("decodeAxiomLog decodes Updated(tokenId, oldDatas, newDatas) into count fie
   assert.equal(decoded?.kind, "Updated");
   if (decoded?.kind === "Updated") {
     assert.equal(decoded.tokenId, 7n);
-    assert.equal(decoded.oldDatasCount, 1);
+    assert.equal(decoded.oldRoot, "0x" + "dd".repeat(32));
     assert.equal(decoded.newDatasCount, 2);
   }
 });

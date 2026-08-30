@@ -9,7 +9,21 @@ import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProo
 
 import {IAxiomAgentNFT} from "./interfaces/IAxiomAgentNFT.sol";
 
-/// @title AxiomStrategyVault — per-token vault; only the NFT owner sets strategy/withdraws, while `execute()` verifies each action against the Merkle root and enforces a daily limit. Non-upgradeable (holds user funds).
+    /// @title AxiomStrategyVault — per-token vault; only the NFT owner sets strategy/withdraws, while `execute()` verifies each action against the Merkle root and enforces a daily limit. Non-upgradeable (holds user funds).
+/// @dev Known residuals, documented for the V3 (Wave 3) redeploy — deliberately NOT patched here
+///      because this contract is non-upgradeable and any source change would desync it from the
+///      deployed bytecode:
+///      1. Strategy survives iTransfer: ownership is read live via `nft.ownerOf`, but a sale does
+///         not clear `strategyRoot`/`dailyLimit`, so the buyer silently inherits the seller's
+///         Merkle strategy and daily limit. Buyers MUST call `setStrategy` (or
+///         `depositAndSetStrategy`) immediately after acquiring a token before any `execute`.
+///         Backend/frontend must surface a "set your strategy" prompt post-purchase; Wave 3
+///         integration should either clear the strategy on transfer or gate `execute` until the
+///         current owner has set a strategy. No cross-contract write coupling is added in V2.
+///      2. `setStrategy` (and both merged deposit variants) reset `dailySpent` to 0 on every
+///         call, so the daily limit is refreshable at will by the owner and is NOT a hard
+///         invariant — the TS mirror (`packages/config/src/strategy-guard.ts`) must not assume
+///         cross-set continuity. Wave 3 fix: only reset when the root changes.
 contract AxiomStrategyVault is Initializable, OwnableUpgradeable, PausableUpgradeable, ReentrancyGuard {
     error NotTokenOwner();
     error InvalidMerkleProof();

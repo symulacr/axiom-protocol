@@ -78,7 +78,7 @@ const EVENT_PARSERS: Record<string, EventParser> = {
   })),
   Updated: p("Updated", (a) => ({
     tokenId: a["tokenId"] as bigint,
-    oldDatasCount: (a["oldDatas"] as unknown[]).length,
+    oldRoot: a["oldRoot"] as `0x${string}`,
     newDatasCount: (a["newDatas"] as unknown[]).length,
   })),
   Authorization: p("Authorization", authFields),

@@ -66,6 +66,14 @@ export const sharedEnvSchema = z.object({
     .positive()
     .max(256)
     .default(256),
+  // ProofUsed log-scan lookback in blocks (wave 1B). Sweep candidates derive
+  // from ProofUsed logs in [latest - lookback, latest]; proofs live
+  // maxProofAgeSeconds (default 7d) on chain, so older logs are unsweepable.
+  AXIOM_KEEPER_LOG_LOOKBACK_BLOCKS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .optional(),
   // Sealed-DEK custody (proto-hashless-completion.md option C, ADR-004 §2.4):
   // oracle stores ECIES-sealed DEKs keyed by tokenId and re-keys transfers from
   // custody. Default OFF — prod trust geometry unchanged (BYOK stays the default).

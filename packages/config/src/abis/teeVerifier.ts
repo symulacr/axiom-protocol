@@ -21,6 +21,7 @@ export const TEE_VERIFIER_ABI = [
   "function verifyTransferValidity(((bytes32 dataHash, bytes targetPubkey, bytes nonce, bytes proof, uint256 validUntil) accessProof, (uint8 oracleType, bytes32 dataHash, bytes sealedKey, bytes targetPubkey, bytes nonce, bytes proof, uint256 validUntil) ownershipProof)[] proofs, address to, address nft) returns ((bytes32 dataHash, bytes sealedKey, bytes targetPubkey, bytes wantedKey, address accessAssistant, bytes accessProofNonce, bytes ownershipProofNonce)[] outputs)",
   "event Initialized(uint64 version)",
   "event OwnershipTransferred(address indexed previousOwner, address indexed newOwner)",
+  "event ProofUsed(bytes32 indexed nonce, uint256 indexed timestamp)",
   "event SignerExecuted(address indexed oldSigner, address indexed newSigner)",
   "event SignerProposalCancelled(address indexed cancelledSigner)",
   "event SignerProposed(address indexed newSigner, uint256 executableAt)",

@@ -26,6 +26,7 @@ contract AxiomPaymentProcessor is Initializable, AccessControlUpgradeable, Pausa
     error PayAmountExceedsCap(uint256 amount, uint256 cap);
     error TransferAmountMismatch(uint256 expected, uint256 received);
     error NoPendingProposal();
+    error ComputeRatioExceeded(uint256 computeAmount, uint256 maxCompute);
 
     event PaymentProcessed(
         uint256 indexed agentTokenId,
@@ -44,6 +45,7 @@ contract AxiomPaymentProcessor is Initializable, AccessControlUpgradeable, Pausa
     event ProtocolFeeBpsUpdated(uint256 oldBps, uint256 newBps);
     event PaymentTokenUpdated(address indexed oldToken, address indexed newToken);
     event MaxPayCapUpdated(uint256 oldCap, uint256 newCap);
+    event ComputeRatioMaxUpdated(uint256 oldRatioMax, uint256 newRatioMax);
 
     uint256 public constant BPS_DENOMINATOR = 10_000;
 
@@ -64,7 +66,11 @@ contract AxiomPaymentProcessor is Initializable, AccessControlUpgradeable, Pausa
         // V2: appended in place of a former __gap slot (layout-delta rule: new vars append
         // at the gap tail; total struct footprint stays byte-identical for upgrade-in-place).
         uint256 maxPayCap;
-        uint256[48] __gap;
+        // V3 (W1-A): appended at the gap tail per the V2 layout-delta rule (AxiomAgentNFT.sol
+        // append discipline) — gap shrunk 48→47; upgrade-in-place safe: pre-V3 impls never read
+        // this slot, so its zero default (0 = unlimited ratio) is inert until the admin sets it.
+        uint256 computeRatioMax;
+        uint256[47] __gap;
     }
 
     bytes32 private constant STORAGE_LOCATION = 0xb6e9ac8ab7d5307044651d01576943b58a3563d54e8f2be64d1601b1a6cebc00;
@@ -160,6 +166,9 @@ contract AxiomPaymentProcessor is Initializable, AccessControlUpgradeable, Pausa
     }
 
     /// @notice Chain-invariant per-pay upper bound enforced on both pay lanes (M8: the off-chain cap becomes an on-chain invariant). 0 disables the cap.
+    /// @dev    0 = cap disabled entirely — V3 policy treats this as an admin-only emergency
+    ///         setting, not an operating mode: it must only be used transiently (e.g. during an
+    ///         incident), with off-chain monitoring expected to alert on `MaxPayCapUpdated(_, 0)`.
     function setMaxPayCap(
         uint256 newCap
     ) external onlyRole(ADMIN_ROLE) {
@@ -171,6 +180,25 @@ contract AxiomPaymentProcessor is Initializable, AccessControlUpgradeable, Pausa
 
     function maxPayCap() external view returns (uint256) {
         return _getStorage().maxPayCap;
+    }
+
+    /// @notice Max `computeAmount` as a multiple of `agentAmount` in `payForAgentAndCompute`.
+    ///         Caps how far the compute leg can starve the creator royalty split. 0 = unlimited.
+    /// @dev    Keep in sync with the off-chain ratio mirror used by the pay confirmation flow.
+    function computeRatioMax() external view returns (uint256) {
+        return _getStorage().computeRatioMax;
+    }
+
+    /// @notice Set the agentAmount→computeAmount ratio bound (0 = unlimited). The bound is
+    ///         additive headroom: `computeAmount ≤ computeRatioMax * agentAmount`, so agent pays
+    ///         remain unaffected; only the compute leg's weight relative to the agent leg is bounded.
+    function setComputeRatioMax(
+        uint256 newRatioMax
+    ) external onlyRole(ADMIN_ROLE) {
+        PaymentProcessorStorage storage $ = _getStorage();
+        uint256 old = $.computeRatioMax;
+        $.computeRatioMax = newRatioMax;
+        emit ComputeRatioMaxUpdated(old, newRatioMax);
     }
 
     function setRoyaltyBps(
@@ -259,6 +287,17 @@ contract AxiomPaymentProcessor is Initializable, AccessControlUpgradeable, Pausa
         return _getStorage().agentEarnings[creator];
     }
 
+    /// @dev Single capped token-pull primitive (V3 W1-A): enforces the MAX_PAY cap (0 disables
+    ///      it, see setMaxPayCap) plus the zero-amount guard on EVERY pay lane, so no caller can
+    ///      bypass the cap by routing through the compute legs. Callers handle the zero-address
+    ///      checks (revert context differs per lane).
+    function _payTransferFrom(address payer, address to, uint256 amount) internal {
+        PaymentProcessorStorage storage $ = _getStorage();
+        if ($.maxPayCap != 0 && amount > $.maxPayCap) revert PayAmountExceedsCap(amount, $.maxPayCap);
+        if (amount == 0) revert ZeroAmount();
+        IERC20($.paymentToken).safeTransferFrom(payer, to, amount);
+    }
+
     /// @dev Single split implementation (V2 dedup): pulls `amount` of the payment token from
     ///      `payer`, splits it creator-vs-treasury, credits the creator's cut as withdrawable
     ///      earnings, forwards the protocol cut, emits PaymentProcessed. Splits use actual
@@ -270,7 +309,6 @@ contract AxiomPaymentProcessor is Initializable, AccessControlUpgradeable, Pausa
         uint256 amount
     ) internal returns (uint256 creatorCut, uint256 protocolCut) {
         PaymentProcessorStorage storage $ = _getStorage();
-        if ($.maxPayCap != 0 && amount > $.maxPayCap) revert PayAmountExceedsCap(amount, $.maxPayCap);
 
         IERC20 token = IERC20($.paymentToken);
 
@@ -278,7 +316,7 @@ contract AxiomPaymentProcessor is Initializable, AccessControlUpgradeable, Pausa
         if (creator == address(0)) revert AgentCreatorNotRegistered();
 
         uint256 balanceBefore = token.balanceOf(address(this));
-        token.safeTransferFrom(payer, address(this), amount);
+        _payTransferFrom(payer, address(this), amount);
         uint256 received = token.balanceOf(address(this)) - balanceBefore;
         if (received != amount) revert TransferAmountMismatch(amount, received);
 
@@ -324,13 +362,15 @@ contract AxiomPaymentProcessor is Initializable, AccessControlUpgradeable, Pausa
         uint256 amount
     ) external nonReentrant whenNotPaused {
         if (provider == address(0)) revert ZeroAddress();
-        if (amount == 0) revert ZeroAmount();
-        IERC20(_getStorage().paymentToken).safeTransferFrom(msg.sender, provider, amount);
+        _payTransferFrom(msg.sender, provider, amount);
         emit ComputeProviderPaid(provider, amount);
     }
 
     /// @notice One-tx payForAgent + payComputeProvider: credits the creator's split of `agentAmount`
     ///         to withdrawable earnings and forwards `computeAmount` directly to `provider` (2 txs -> 1).
+    /// @dev    The compute leg is ratio-bounded (`computeAmount <= computeRatioMax * agentAmount`,
+    ///         0 = unlimited) so it cannot be used to starve the creator royalty split by paying
+    ///         ~the whole invoice as "compute" to an arbitrary provider.
     function payForAgentAndCompute(
         uint256 agentTokenId,
         address provider,
@@ -338,11 +378,13 @@ contract AxiomPaymentProcessor is Initializable, AccessControlUpgradeable, Pausa
         uint256 computeAmount
     ) external nonReentrant whenNotPaused {
         if (provider == address(0)) revert ZeroAddress();
-        if (agentAmount == 0) revert ZeroAmount();
-        if (computeAmount == 0) revert ZeroAmount();
+        uint256 ratioMax = _getStorage().computeRatioMax;
+        if (ratioMax != 0 && computeAmount > ratioMax * agentAmount) {
+            revert ComputeRatioExceeded(computeAmount, ratioMax * agentAmount);
+        }
         _paySplit(msg.sender, agentTokenId, agentAmount);
 
-        IERC20(_getStorage().paymentToken).safeTransferFrom(msg.sender, provider, computeAmount);
+        _payTransferFrom(msg.sender, provider, computeAmount);
         emit ComputeProviderPaid(provider, computeAmount);
     }
 

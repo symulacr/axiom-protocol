@@ -121,7 +121,7 @@ export type AxiomEvent =
   | (EventEnvelope & {
       kind: "Updated";
       tokenId: bigint;
-      oldDatasCount: number;
+      oldRoot: `0x${string}`;
       newDatasCount: number;
     })
   | (EventEnvelope & {

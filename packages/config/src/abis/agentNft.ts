@@ -88,7 +88,7 @@ export const AGENT_NFT_ABI = [
   "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)",
   "event Transferred(uint256 indexed _tokenId, address indexed _from, address indexed _to)",
   "event Unpaused(address account)",
-  "event Updated(uint256 indexed tokenId, (string dataDescription, bytes32 dataHash)[] oldDatas, (string dataDescription, bytes32 dataHash)[] newDatas)",
+  "event Updated(uint256 indexed tokenId, bytes32 oldRoot, (string dataDescription, bytes32 dataHash)[] newDatas)",
   "event UpgradeCancelled()",
   "event UpgradeExecuted(address indexed newImplementation)",
   "event UpgradeProposed(address indexed newImplementation)",

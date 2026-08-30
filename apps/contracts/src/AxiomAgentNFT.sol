@@ -34,6 +34,12 @@ contract AxiomAgentNFT is
     ERC7857IDataStorageUpgradeable
 {
     error UseTimelockedFeeWithdrawal();
+    error DataSizeExceeded(uint256 provided, uint256 max);
+
+    /// @dev Aggregate byte budget for a token's IntelligentData[] (sum of abi.encode sizes of
+    ///      every entry: dataDescription string + dataHash). Caps per-mint/update gas and the
+    ///      `Updated` event payload; V3 moves payload bodies to 0G Storage (proposal 03 §2a).
+    uint256 public constant MAX_I_DATA_BYTES = 4096;
 
     event VerifierUpdated(address indexed oldVerifier, address indexed newVerifier);
     event VerifierProposed(address indexed newVerifier);
@@ -313,6 +319,7 @@ contract AxiomAgentNFT is
     ) public virtual whenNotPaused {
         require(_ownerOf(tokenId) == msg.sender, "Not owner");
         require(newDatas.length > 0, "Empty data array");
+        _checkDataSize(newDatas);
         _updateData(tokenId, newDatas);
     }
 
@@ -328,6 +335,7 @@ contract AxiomAgentNFT is
     ) public payable virtual whenNotPaused nonReentrant returns (uint256 tokenId) {
         require(to != address(0), "Zero address");
         require(iDatas.length > 0, "Empty data array");
+        _checkDataSize(iDatas);
         uint256 fee = _getAxiomAgentNFTStorage().mintFee;
         require(msg.value >= fee, "Insufficient mint fee");
 
@@ -363,13 +371,17 @@ contract AxiomAgentNFT is
     ) internal returns (uint256 tokenId) {
         require(to != address(0), "Zero address");
         require(iDatas.length > 0, "Empty data array");
+        _checkDataSize(iDatas);
         tokenId = _incrementTokenId();
         _updateData(tokenId, iDatas);
         _safeMint(to, tokenId);
-        if (creator != address(0)) {
-            _getAxiomAgentNFTStorage().creators[tokenId] = creator;
-            emit CreatorSet(tokenId, creator);
+        // Zero-creator default mirrors the 2-arg mintWithRole overload: without this, such
+        // tokens would revert AgentCreatorNotRegistered in the Processor's _paySplit forever.
+        if (creator == address(0)) {
+            creator = to;
         }
+        _getAxiomAgentNFTStorage().creators[tokenId] = creator;
+        emit CreatorSet(tokenId, creator);
     }
 
     function creatorOf(
@@ -391,11 +403,25 @@ contract AxiomAgentNFT is
         // V2 (ADR-004 §1.1): fee withdrawal is timelocked. proposeFeeWithdrawal/executeFeeWithdrawal
         // replace the old instant drain; the function stays as a view stub so the deployed ABI keeps
         // its selector for backend callers, who now get the timelock views instead of a balance sweep.
+        // DEPRECATED: this stub reverts unconditionally and is scheduled for removal at the V3
+        // deploy (W1-C) — backend callers must migrate to the timelocked propose/execute pair
+        // before that deploy; the selector will not survive into the V3 ABI.
         revert UseTimelockedFeeWithdrawal();
     }
 
     function tokenURI(uint256 tokenId) public view virtual override(ERC721Upgradeable, IERC721Metadata) returns (string memory) {
         _requireOwned(tokenId);
         return tokenId.buildMetadataJsonDataUri(_intelligentDatasOf(tokenId), name(), symbol());
+    }
+
+    /// @dev Sum of abi.encode lengths across all entries — each entry is dataDescription
+    ///      (unbounded string) + dataHash (fixed 32 bytes), so the total is attacker-bounded
+    ///      by the string sizes alone; a single aggregate check covers mint and update.
+    function _checkDataSize(IntelligentData[] calldata iDatas) internal pure {
+        uint256 total;
+        for (uint256 i = 0; i < iDatas.length; i++) {
+            total += abi.encode(iDatas[i]).length;
+        }
+        if (total > MAX_I_DATA_BYTES) revert DataSizeExceeded(total, MAX_I_DATA_BYTES);
     }
 }

@@ -22,8 +22,10 @@ abstract contract ERC7857IDataStorageUpgradeable is ERC7857Upgradeable {
         }
     }
 
-    /// @notice Emitted whenever a token's stored IntelligentData array is replaced wholesale
-    event Updated(uint256 indexed tokenId, IntelligentData[] oldDatas, IntelligentData[] newDatas);
+    /// @notice Emitted whenever a token's stored IntelligentData array is replaced wholesale.
+    ///      W1-C capacity fix: the old full array is no longer emitted (event/gas bloat scaled
+    ///      with data size); consumers can recover it from 0G Storage via `oldRoot`.
+    event Updated(uint256 indexed tokenId, bytes32 oldRoot, IntelligentData[] newDatas);
 
     function _intelligentDatasOf(
         uint256 tokenId
@@ -48,9 +50,15 @@ abstract contract ERC7857IDataStorageUpgradeable is ERC7857Upgradeable {
         IntelligentData[] storage stored = $.iDatas[tokenId];
         uint256 oldLen = stored.length;
 
-        IntelligentData[] memory oldDatas = new IntelligentData[](oldLen);
-        for (uint256 i = 0; i < oldLen; i++) {
-            oldDatas[i] = stored[i];
+        // W1-C: commit the old array as a single hash instead of emitting it in full — the
+        // pre-change event carried both arrays, so decode cost grew with total data size.
+        bytes32 oldRoot;
+        if (oldLen != 0) {
+            IntelligentData[] memory oldDatas = new IntelligentData[](oldLen);
+            for (uint256 i = 0; i < oldLen; i++) {
+                oldDatas[i] = stored[i];
+            }
+            oldRoot = keccak256(abi.encode(oldDatas));
         }
 
         delete $.iDatas[tokenId];
@@ -58,6 +66,6 @@ abstract contract ERC7857IDataStorageUpgradeable is ERC7857Upgradeable {
             stored.push(newDatas[i]);
         }
 
-        emit Updated(tokenId, oldDatas, newDatas);
+        emit Updated(tokenId, oldRoot, newDatas);
     }
 }

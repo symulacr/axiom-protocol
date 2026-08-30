@@ -1,6 +1,12 @@
 import { test, describe, beforeEach } from "bun:test";
 import assert from "node:assert/strict";
-import { startKeeper, parseKeeperNonces } from "./index.js";
+import { Contract } from "ethers";
+import {
+  startKeeper,
+  parseKeeperNonces,
+  fetchProofUsedNonces,
+} from "./index.js";
+import { TEE_VERIFIER_ABI } from "@axiom/config/abis";
 import type { BackendEnv } from "../env-schema.js";
 
 type BackendEnvPatch = Partial<Record<keyof BackendEnv, unknown>>;
@@ -13,13 +19,14 @@ function fakeEnv(patch: BackendEnvPatch = {}): BackendEnv {
   } as unknown as BackendEnv;
 }
 
-/** Minimal provider stub: only getFeeData (gas-cap path) is consulted. */
+/** Minimal provider stub: getFeeData (gas-cap path) + getBlockNumber (log-scan window). */
 function fakeProvider(gasPriceGwei: number | null) {
   return {
     getFeeData: async () => ({
       gasPrice:
         gasPriceGwei === null ? null : BigInt(Math.round(gasPriceGwei * 1e9)),
     }),
+    getBlockNumber: async () => 1_000_000,
   } as unknown as import("ethers").JsonRpcProvider;
 }
 
@@ -234,5 +241,117 @@ describe("parseKeeperNonces", () => {
   test("empty input yields empty batch", () => {
     assert.deepEqual(parseKeeperNonces(undefined), []);
     assert.deepEqual(parseKeeperNonces(""), []);
+  });
+});
+
+/** Raw ethers Contract stub whose queryFilter replays canned ProofUsed logs. */
+function rawContractWithLogs(nonces: string[], opts: { fail?: boolean } = {}) {
+  const iface = new Contract(
+    "0x0000000000000000000000000000000000000001",
+    TEE_VERIFIER_ABI,
+  ).interface;
+  return {
+    interface: iface,
+    queryFilter: async () => {
+      if (opts.fail) throw new Error("rpc log scan down");
+      return nonces.map((n) => ({ args: [n, 123456n] })) as never[];
+    },
+  } as unknown as Contract;
+}
+
+const pad = (n: string) => `0x${n.replace(/^0x/, "").padStart(64, "0")}`;
+
+describe("ProofUsed log discovery (wave 1B)", () => {
+  let calls: string[][];
+
+  beforeEach(() => {
+    calls = [];
+  });
+
+  test("log-derived candidates drive the sweep when logs exist", async () => {
+    const handle = startKeeper({
+      env: fakeEnv({
+        AXIOM_KEEPER_MODE: "indexer",
+        AXIOM_KEEPER_NONCES: "0xdeadbeef",
+      }),
+      provider: fakeProvider(null),
+      signer: walletStub,
+      verifier: recorder(calls),
+      verifierRaw: rawContractWithLogs([pad("0xa1"), pad("0xa2")]),
+    });
+    assert.equal(await handle!.sweepOnce(), 2);
+    assert.deepEqual(calls[0], [pad("0xa1"), pad("0xa2")]);
+  });
+
+  test("log candidates dedupe and clamp to the 256 batch ceiling", async () => {
+    const nonces = Array.from({ length: 300 }, (_, i) => pad(i.toString(16)));
+    // 300 unique + 5 duplicate tails → 300 unique total after dedupe.
+    nonces.push(...nonces.slice(0, 5));
+    const handle = startKeeper({
+      env: fakeEnv({ AXIOM_KEEPER_MODE: "indexer" }),
+      provider: fakeProvider(null),
+      signer: walletStub,
+      verifier: recorder(calls),
+      verifierRaw: rawContractWithLogs(nonces),
+    });
+    assert.equal(await handle!.sweepOnce(), 256);
+    assert.equal(calls[0]!.length, 256);
+  });
+
+  test("empty log stream falls back to AXIOM_KEEPER_NONCES", async () => {
+    const handle = startKeeper({
+      env: fakeEnv({
+        AXIOM_KEEPER_MODE: "indexer",
+        AXIOM_KEEPER_NONCES: "0x02",
+      }),
+      provider: fakeProvider(null),
+      signer: walletStub,
+      verifier: recorder(calls),
+      verifierRaw: rawContractWithLogs([]),
+    });
+    assert.equal(await handle!.sweepOnce(), 1);
+    assert.deepEqual(calls[0], [pad("0x02")]);
+  });
+
+  test("failed log scan falls back to AXIOM_KEEPER_NONCES", async () => {
+    const handle = startKeeper({
+      env: fakeEnv({
+        AXIOM_KEEPER_MODE: "indexer",
+        AXIOM_KEEPER_NONCES: "0x03",
+      }),
+      provider: fakeProvider(null),
+      signer: walletStub,
+      verifier: recorder(calls),
+      verifierRaw: rawContractWithLogs([], { fail: true }),
+    });
+    assert.equal(await handle!.sweepOnce(), 1);
+    assert.deepEqual(calls[0], [pad("0x03")]);
+  });
+
+  test("stub verifier without verifierRaw keeps the env fallback path", async () => {
+    const handle = startKeeper({
+      env: fakeEnv({
+        AXIOM_KEEPER_MODE: "indexer",
+        AXIOM_KEEPER_NONCES: "0x04",
+      }),
+      provider: fakeProvider(null),
+      signer: walletStub,
+      verifier: recorder(calls),
+    });
+    assert.equal(await handle!.sweepOnce(), 1);
+    assert.deepEqual(calls[0], [pad("0x04")]);
+  });
+});
+
+describe("fetchProofUsedNonces", () => {
+  test("dedupes repeated nonce logs and canonicalizes hex", async () => {
+    const raw = rawContractWithLogs([
+      pad("0x1"),
+      pad("0x2"),
+      pad("0x1"),
+      pad("0x03"),
+    ]);
+    const out = await fetchProofUsedNonces(raw, 0, 100);
+    assert.deepEqual(out, [pad("0x1"), pad("0x2"), pad("0x03")]);
   });
 });

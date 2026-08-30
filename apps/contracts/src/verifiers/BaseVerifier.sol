@@ -7,6 +7,12 @@ import {IERC7857DataVerifier} from "../interfaces/IERC7857DataVerifier.sol";
 abstract contract BaseVerifier is IERC7857DataVerifier {
     error ProofAlreadyUsed(bytes32 proofHash);
 
+    /// @notice Emitted when a proof nonce is consumed (replay protection write).
+    /// @dev The proof-cleanup keeper derives sweep candidates from these logs
+    ///      (apps/backend/src/keepers/index.ts) instead of a static env list;
+    ///      events cost nothing under the committed-proxy posture (ADR-004 §1.4).
+    event ProofUsed(bytes32 indexed nonce, uint256 indexed timestamp);
+
     struct ProofRecord {
         bool used;
         uint256 timestamp;
@@ -20,6 +26,7 @@ abstract contract BaseVerifier is IERC7857DataVerifier {
         if (rec.used) revert ProofAlreadyUsed(proofNonce);
         rec.used = true;
         rec.timestamp = block.timestamp;
+        emit ProofUsed(proofNonce, block.timestamp);
     }
 
     function _getMaxProofAge() internal view virtual returns (uint256);

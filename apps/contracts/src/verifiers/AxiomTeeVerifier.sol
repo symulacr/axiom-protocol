@@ -16,6 +16,7 @@ import {
 
 /// @title AxiomTeeVerifier — TEE-based verifier for ERC-7857 transfer validity proofs (0G reference, MIT)
 /// @dev Registered signers form a small allowlist (k-of-1 quorum: any allowlisted signer verifies); for buildathon it is the TS signer service (apps/oracle), seeded via initialize.
+/// @dev k-of-1 RESIDUAL RISK: a single allowlisted TEE key that verifies transfers carries total transfer-forgery power over all agents if it leaks. Containment is IMMEDIATE revocation (revokeSigner, no timelock) — a compromised key is blocked the same block the compromise is detected; the 1-day propose/execute delay applies only to adds. Deliberately NOT k-of-n (product decision, V3 wave 1B): quorum would multiply TEE infrastructure for a buildathon-scale deployment without changing the containment story.
 /// @dev ADDING a signer keeps the proven 1-day timelock (proposeSigner + executeSigner); REVOKING is immediate (revokeSigner) so a compromised signer key can be contained without waiting out the delay from the same owner key. Signer management is Ownable. See ADR-004 §1.4.
 /// @dev Deployed non-upgradeable-but-behind-proxy: UUPS machinery is intentionally kept because every deploy script proxies this contract; posture is "committed proxy" (ADR-004 §1.4).
 contract AxiomTeeVerifier is Initializable, BaseVerifier, OwnableUpgradeable, UUPSUpgradeable {
@@ -27,6 +28,14 @@ contract AxiomTeeVerifier is Initializable, BaseVerifier, OwnableUpgradeable, UU
     error SignerNotAllowlisted();
     error SignerAlreadyAllowlisted();
     error SignerAllowlistEmpty();
+    error SignerAllowlistFull();
+    /// @dev Thrown when a caller other than the NFT named in the proof digests invokes
+    ///      verifyTransferValidity directly. Blocks the proof-nonce-burning front-run (F-1):
+    ///      a bystander replaying an in-flight iTransferFrom's proofs against the verifier
+    ///      would burn the nonce (_checkAndMarkProof) and make the genuine transfer revert
+    ///      with ProofAlreadyUsed. The NFT (ERC7857Upgradeable._proofCheck) is the only
+    ///      legitimate consumer of the verifier's outputs.
+    error UnauthorizedVerifierCaller(address caller, address nft);
     error ProofFieldMismatch();
     error AxiomProofExpired(uint256 validUntil, uint256 blockTimestamp);
     /// @dev Thrown when `validUntil` is too far ahead — guards against long-lived TEE proofs and overflow attacks (validUntil = type(uint256).max).
@@ -36,6 +45,10 @@ contract AxiomTeeVerifier is Initializable, BaseVerifier, OwnableUpgradeable, UU
     event SignerExecuted(address indexed oldSigner, address indexed newSigner);
     event SignerProposalCancelled(address indexed cancelledSigner);
     event SignerRevoked(address indexed revokedSigner);
+
+    /// @dev Allowlist size cap (LOW finding): bounds gas growth of swap-and-pop scans and
+    ///      keeps the k-of-1 trust surface explicit.
+    uint256 private constant MAX_SIGNERS = 5;
 
 
     uint256 public maxProofAgeSeconds;
@@ -68,7 +81,12 @@ contract AxiomTeeVerifier is Initializable, BaseVerifier, OwnableUpgradeable, UU
         _isSigner[_signer] = true;
     }
 
-    /// @notice Backward-compat view: the FIRST allowlist entry. External consumers (backend e2e coverage.ts, matrix.ts) read this; any allowlisted signer verifies, but the oracle parity check uses the seed entry.
+    /// @notice Backward-compat view: the CURRENT FIRST allowlist entry. External consumers
+    ///     (backend e2e coverage.ts, matrix.ts) read this. NOTE: the first entry can CHANGE
+    ///     under swap-and-pop revocation — removing `_signers[0]` moves the last entry into
+    ///     slot 0 (see test_revokeSigner_firstEntry_shiftsView), so this value is not pinned
+    ///     to the deployment seed. Prefer `allowlistedSigners()` / `isAllowlistedSigner()`
+    ///     for allowlist enumeration and membership checks.
     function registeredSigner() external view returns (address) {
         return _signers[0];
     }
@@ -89,7 +107,9 @@ contract AxiomTeeVerifier is Initializable, BaseVerifier, OwnableUpgradeable, UU
     }
 
     /// @notice Adds a signer after the 1-day timelock; appends to the allowlist (does not replace — existing entries stay valid).
+    /// @dev Reverts SignerAllowlistFull once MAX_SIGNERS (5) entries are live.
     function executeSigner() external onlyOwner {
+        if (_signers.length >= MAX_SIGNERS) revert SignerAllowlistFull();
         address newSigner = _signerTimelock.execute();
         address old = _signers[0];
         _signers.push(newSigner);
@@ -168,11 +188,18 @@ contract AxiomTeeVerifier is Initializable, BaseVerifier, OwnableUpgradeable, UU
     /// @dev Per proof: enforce both validUntil deadlines (expiry + maxProofAgeSeconds),
     ///      verify OwnershipProof (TEE) then AccessProof (receiver) EIP-712 digests,
     ///      mark the nonce used (replay protection), populate the output.
+    /// @dev Caller gate (F-1 fix): only the NFT contract named in the proof digests may
+    ///      invoke this (zero storage — the `nft` param already flows through the EIP-712
+    ///      struct hashes). Direct calls from any other address revert before any signature
+    ///      work, so bystanders cannot burn proof nonces by replaying an in-flight
+    ///      iTransferFrom's proofs. Does NOT affect proof validity: proofs signed for
+    ///      nft=X still fail at signature recovery if submitted with a different `nft`.
     function verifyTransferValidity(
         TransferValidityProof[] calldata proofs,
         address to,
         address nft
     ) external override returns (TransferValidityProofOutput[] memory outputs) {
+        if (msg.sender != nft) revert UnauthorizedVerifierCaller(msg.sender, nft);
         uint256 maxAge = maxProofAgeSeconds;
         uint256 nowTs = block.timestamp;
         outputs = new TransferValidityProofOutput[](proofs.length);
