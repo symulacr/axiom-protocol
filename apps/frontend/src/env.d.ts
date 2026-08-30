@@ -5,6 +5,8 @@ interface ImportMetaEnv {
   readonly VITE_API_KEY?: string;
   /** WS auth path: "auto" (default) | "header" | "query" */
   readonly VITE_WS_AUTH?: string;
+  /** Vite build mode: "production" during builds */
+  readonly MODE?: string;
   readonly VITE_ORACLE_URL?: string;
   readonly VITE_CHAT_MODEL?: string;
   readonly VITE_CHAIN_ID?: string;
