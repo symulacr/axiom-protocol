@@ -194,7 +194,11 @@ export function usePayment(): UsePaymentResult {
   one unit source so form suffix, confirm CTA and fact rows can never diverge or hardcode a token.
 */
 
-type PaymentTokenMeta = { symbol: string; decimals: number };
+type PaymentTokenMeta = {
+  paymentToken?: string;
+  symbol: string;
+  decimals: number;
+};
 
 /** Neutral unit placeholder while the config fetch is in flight (or when the
  * backend is unreachable — the flow's allowance/execute path needs the same
@@ -218,6 +222,7 @@ function fetchMeta(): Promise<PaymentTokenMeta | null> {
     .then((config) => {
       cached = config.paymentTokenSymbol
         ? {
+            paymentToken: config.paymentToken,
             symbol: config.paymentTokenSymbol,
             decimals: config.paymentTokenDecimals ?? 18,
           }

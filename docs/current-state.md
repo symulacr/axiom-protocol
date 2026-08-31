@@ -20,7 +20,7 @@ Axiom tokenizes AI trading strategies as **ERC-7857 Intelligent NFTs (iNFTs)** o
 
 | Component    | SDK / library                           | Version   | Status                                                                                                                                          |
 | ------------ | --------------------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| Storage      | `@0gfoundation/0g-storage-ts-sdk`       | 1.2.10    | Current — used in `packages/config`, `apps/bench`                                                                                               |
+| Storage      | `@0gfoundation/0g-storage-ts-sdk`       | 1.2.11    | Current — used in `packages/config`, `apps/bench`                                                                                               |
 | Compute      | `openai` npm (API-key router path)      | 4.104.0   | SDK-recommended path for 0G Router. `@0gfoundation/0g-compute-ts-sdk` (0.9.0) is for the wallet-signed broker path, which the repo does NOT use |
 | ERC-7857     | `lib/0g-agent-nft` (forge git dep, CC0) | —         | Canonical reference. No npm package exists                                                                                                      |
 | Chain config | viem `zeroGMainnet`                     | ≥2.22     | Available in installed 2.52.2, not yet imported (custom `defineChain` in use)                                                                   |

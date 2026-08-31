@@ -9,11 +9,18 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/Pau
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {IAxiomAgentNFT} from "./interfaces/IAxiomAgentNFT.sol";
+import {ISignatureTransfer} from "./permit2/ISignatureTransfer.sol";
 import {TimelockManager} from "./libraries/TimelockManager.sol";
 using TimelockManager for TimelockManager.State;
 
 /// @title AxiomPaymentProcessor — routes payments to creators, compute providers, and the protocol treasury; payers approve an ERC-20 stable, creators pull via `withdrawAgentEarnings()`. UUPS-upgradeable.
-contract AxiomPaymentProcessor is Initializable, AccessControlUpgradeable, PausableUpgradeable, ReentrancyGuard, UUPSUpgradeable {
+contract AxiomPaymentProcessor is
+    Initializable,
+    AccessControlUpgradeable,
+    PausableUpgradeable,
+    ReentrancyGuard,
+    UUPSUpgradeable
+{
     using SafeERC20 for IERC20;
 
     error ZeroAddress();
@@ -27,6 +34,9 @@ contract AxiomPaymentProcessor is Initializable, AccessControlUpgradeable, Pausa
     error TransferAmountMismatch(uint256 expected, uint256 received);
     error NoPendingProposal();
     error ComputeRatioExceeded(uint256 computeAmount, uint256 maxCompute);
+    error InvalidPermitToken();
+    error InvalidPermitAmount(uint256 permitted, uint256 requested);
+    error PermitExpired(uint256 deadline, uint256 timestamp);
 
     event PaymentProcessed(
         uint256 indexed agentTokenId,
@@ -46,6 +56,29 @@ contract AxiomPaymentProcessor is Initializable, AccessControlUpgradeable, Pausa
     event PaymentTokenUpdated(address indexed oldToken, address indexed newToken);
     event MaxPayCapUpdated(uint256 oldCap, uint256 newCap);
     event ComputeRatioMaxUpdated(uint256 oldRatioMax, uint256 newRatioMax);
+
+    /// @dev Canonical Permit2 deployment (Uniswap CREATE2 address, identical on every supported chain;
+    ///      verified on Galileo testnet — docs/v3-proposals/04-web-research-digest.md Q2). Constant, not
+    ///      storage: chain-invariant, saves an SLOAD per permit pay, and cannot drift via initialize();
+    ///      if a chain ever lacks it there, the contract must be redeployed there anyway.
+    address public constant PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
+
+    /// @dev EIP-712 type definition stub Permit2 hashes against for witness permits (PermitHash.sol,
+    ///      `_PERMIT_TRANSFER_FROM_WITNESS_TYPEHASH_STUB`); the full typehash is this stub +
+    ///      `WITNESS_TYPE_STRING` + the TokenPermissions tail. The `spender` field binds msg.sender.
+    string private constant WITNESS_TYPE_STRING = "AgentPayment witness)TokenPermissions(address token,uint256 amount)";
+
+    /// @dev Witness payload signed into every Permit2 payment: pins the paying agent and the
+    ///      amount. (Permit2's hash additionally binds spender = msg.sender and the single-use
+    ///      unordered nonce, so no extra salt is needed.)
+    struct AgentPaymentWitness {
+        uint256 agentTokenId;
+        uint256 amount;
+    }
+
+    /// @notice keccak256("AgentPayment(uint256 agentTokenId,uint256 amount)") = 0x276d0fdb…
+    bytes32 private constant AGENT_PAYMENT_WITNESS_TYPEHASH =
+        0x276d0fdb23abe75e231455932314e625fc515aa5a37c6e73a306d719c2184e7e;
 
     uint256 public constant BPS_DENOMINATOR = 10_000;
 
@@ -70,6 +103,8 @@ contract AxiomPaymentProcessor is Initializable, AccessControlUpgradeable, Pausa
         // append discipline) — gap shrunk 48→47; upgrade-in-place safe: pre-V3 impls never read
         // this slot, so its zero default (0 = unlimited ratio) is inert until the admin sets it.
         uint256 computeRatioMax;
+        // W2-A note: the Permit2 lane adds NO storage vars (PERMIT2 is a chain-invariant constant,
+        // see below) — the gap therefore stays at 47 and the layout is unchanged vs Wave 1.
         uint256[47] __gap;
     }
 
@@ -80,7 +115,6 @@ contract AxiomPaymentProcessor is Initializable, AccessControlUpgradeable, Pausa
             $.slot := STORAGE_LOCATION
         }
     }
-
 
     modifier onlyAgentCreator(
         uint256 agentTokenId
@@ -208,8 +242,6 @@ contract AxiomPaymentProcessor is Initializable, AccessControlUpgradeable, Pausa
         _setRoyaltyBps(agentTokenId, newBps);
     }
 
-
-
     function _setRoyaltyBps(
         uint256 agentTokenId,
         uint256 newBps
@@ -291,7 +323,11 @@ contract AxiomPaymentProcessor is Initializable, AccessControlUpgradeable, Pausa
     ///      it, see setMaxPayCap) plus the zero-amount guard on EVERY pay lane, so no caller can
     ///      bypass the cap by routing through the compute legs. Callers handle the zero-address
     ///      checks (revert context differs per lane).
-    function _payTransferFrom(address payer, address to, uint256 amount) internal {
+    function _payTransferFrom(
+        address payer,
+        address to,
+        uint256 amount
+    ) internal {
         PaymentProcessorStorage storage $ = _getStorage();
         if ($.maxPayCap != 0 && amount > $.maxPayCap) revert PayAmountExceedsCap(amount, $.maxPayCap);
         if (amount == 0) revert ZeroAmount();
@@ -299,27 +335,40 @@ contract AxiomPaymentProcessor is Initializable, AccessControlUpgradeable, Pausa
     }
 
     /// @dev Single split implementation (V2 dedup): pulls `amount` of the payment token from
-    ///      `payer`, splits it creator-vs-treasury, credits the creator's cut as withdrawable
-    ///      earnings, forwards the protocol cut, emits PaymentProcessed. Splits use actual
-    ///      received tokens, so fee-on-transfer tokens revert. Callers must hold nonReentrant
-    ///      + whenNotPaused; the MAX_PAY cap is enforced here so every pay lane inherits it.
+    ///      `payer` and hands off to _paySplitReceived. Callers must hold nonReentrant +
+    ///      whenNotPaused; the MAX_PAY cap is enforced inside _payTransferFrom so every pay
+    ///      lane that pulls tokens inherits it.
     function _paySplit(
         address payer,
         uint256 agentTokenId,
         uint256 amount
     ) internal returns (uint256 creatorCut, uint256 protocolCut) {
-        PaymentProcessorStorage storage $ = _getStorage();
-
-        IERC20 token = IERC20($.paymentToken);
-
-        address creator = $.axiomNft.creatorOf(agentTokenId);
-        if (creator == address(0)) revert AgentCreatorNotRegistered();
+        IERC20 token = IERC20(_getStorage().paymentToken);
 
         uint256 balanceBefore = token.balanceOf(address(this));
         _payTransferFrom(payer, address(this), amount);
         uint256 received = token.balanceOf(address(this)) - balanceBefore;
         if (received != amount) revert TransferAmountMismatch(amount, received);
 
+        (creatorCut, protocolCut) = _paySplitReceived(payer, agentTokenId, received);
+    }
+
+    /// @dev Split of tokens ALREADY held by this contract (W2-A factoring): resolves the creator,
+    ///      splits `amount` creator-vs-treasury, credits the creator's cut as withdrawable earnings,
+    ///      forwards the protocol cut, emits PaymentProcessed. Used by both pay lanes — the
+    ///      Permit2 lane calls it after permit2.permitWitnessTransferFrom has delivered the tokens.
+    ///      Callers must hold nonReentrant + whenNotPaused and pre-validate the amount (> 0).
+    function _paySplitReceived(
+        address payer,
+        uint256 agentTokenId,
+        uint256 amount
+    ) internal returns (uint256 creatorCut, uint256 protocolCut) {
+        PaymentProcessorStorage storage $ = _getStorage();
+
+        address creator = $.axiomNft.creatorOf(agentTokenId);
+        if (creator == address(0)) revert AgentCreatorNotRegistered();
+
+        uint256 received = amount;
         (uint256 royaltyBps, bool royaltyIsSet) = _effectiveRoyaltyBps($, agentTokenId);
         uint256 feeBps = $.protocolFeeBps;
         if (!royaltyIsSet) {
@@ -341,10 +390,68 @@ contract AxiomPaymentProcessor is Initializable, AccessControlUpgradeable, Pausa
         }
 
         if (protocolCut > 0) {
-            token.safeTransfer($.protocolTreasury, protocolCut);
+            IERC20($.paymentToken).safeTransfer($.protocolTreasury, protocolCut);
         }
 
         emit PaymentProcessed(agentTokenId, payer, creator, amount, creatorCut, protocolCut);
+    }
+
+    /// @notice Cap + zero-guard shared by the Permit2 lane (W2-A). Kept OUT of _paySplitReceived:
+    ///         the permit lane enforces the cap BEFORE the transfer moves any tokens, mirroring
+    ///         how _payTransferFrom front-runs the pull on the approval lane.
+    function _enforcePayCap(
+        uint256 amount
+    ) internal view {
+        PaymentProcessorStorage storage $ = _getStorage();
+        if ($.maxPayCap != 0 && amount > $.maxPayCap) revert PayAmountExceedsCap(amount, $.maxPayCap);
+        if (amount == 0) revert ZeroAmount();
+    }
+
+    /// @notice Pay for an agent with a Permit2 signature (gasless-style approval): the payer signs
+    ///         one EIP-712 Permit2 message over a transfer to this contract; this tx pulls the
+    ///         payment from `owner` and runs the same creator/treasury split as payForAgent. The
+    ///         owner must have approved the canonical Permit2 contract for the payment token
+    ///         (one-time, any amount).
+    ///         Replay protection is Permit2's unordered nonce bitmap — consumed inside Permit2, so
+    ///         this contract deliberately keeps no nonce state of its own.
+    /// @dev    The witness binds (agentTokenId, amount) so a captured signature cannot be
+    ///         redirected to another agent or amount, and `spender` binds msg.sender inside
+    ///         Permit2's hash. The MAX_PAY cap applies on this lane too.
+    /// @param owner Token owner whose signature authorizes the transfer; Permit2 reverts unless
+    ///              the signature recovers to this address (canonical Permit2 keeps `owner` out of
+    ///              the signed struct — it is a separate call parameter).
+    function payForAgentWithPermit2(
+        uint256 agentTokenId,
+        uint256 amount,
+        address owner,
+        ISignatureTransfer.PermitTransferFrom calldata permit,
+        bytes calldata signature
+    ) external nonReentrant whenNotPaused {
+        _enforcePayCap(amount);
+
+        PaymentProcessorStorage storage $ = _getStorage();
+        if (permit.permitted.token != $.paymentToken) revert InvalidPermitToken();
+        if (permit.permitted.amount < amount) revert InvalidPermitAmount(permit.permitted.amount, amount);
+        if (permit.deadline < block.timestamp) revert PermitExpired(permit.deadline, block.timestamp);
+
+        bytes32 witness =
+            keccak256(abi.encode(AGENT_PAYMENT_WITNESS_TYPEHASH, AgentPaymentWitness(agentTokenId, amount)));
+
+        // Permit2 verifies the signature recovers to `owner` (revert otherwise), burns the
+
+        // Permit2 verifies the signature recovers to `owner` (revert otherwise), burns the
+        // unordered nonce, and transfers `amount` of the permitted token from the owner to us.
+        ISignatureTransfer(PERMIT2)
+            .permitWitnessTransferFrom(
+                permit,
+                ISignatureTransfer.SignatureTransferDetails({to: address(this), requestedAmount: amount}),
+                owner,
+                witness,
+                WITNESS_TYPE_STRING,
+                signature
+            );
+
+        _paySplitReceived(owner, agentTokenId, amount);
     }
 
     /// @notice Split `amount` between creator (royalty credited to withdrawable balance) and treasury (forwarded immediately); approve first; splits use actual received tokens, so fee-on-transfer tokens revert.
@@ -412,5 +519,7 @@ contract AxiomPaymentProcessor is Initializable, AccessControlUpgradeable, Pausa
     }
 
     /// @dev UUPS gate: the EIP-1967 impl-slot rewrite is protected only by this check; DEFAULT_ADMIN_ROLE keeps governance in AccessControl.
-    function _authorizeUpgrade(address) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
+    function _authorizeUpgrade(
+        address
+    ) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
 }

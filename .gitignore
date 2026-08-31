@@ -409,3 +409,4 @@ report/campaign/
 
 # Brand assets are shipped app content, not generated artifacts
 !apps/frontend/public/brand/
+.firecrawl/

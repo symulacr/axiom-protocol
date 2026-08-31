@@ -54,6 +54,7 @@ import {
   paymentSymbolOf,
 } from "../hooks/usePayment.js";
 import { useVaultData, utcDayDateLabel } from "../hooks/useVaultDataBatch.js";
+import { usePaymentTokenOnchain } from "../hooks/usePaymentTokenOnchain.js";
 import { formatUnits, type Address, type Hex } from "viem";
 import { APP_CHAIN } from "../config/wagmi.js";
 import { hasStrategyRoot } from "../lib/models.js";
@@ -378,6 +379,14 @@ export function AgentPage({
   const nativeSymbol = APP_CHAIN.nativeCurrency.symbol;
   const paymentToken = usePaymentToken();
   const paymentSymbol = paymentSymbolOf(paymentToken);
+  // W2-C: live decimals via ONE Multicall3 aggregate3 round-trip (also carries the
+  // caller's allowance read for the pay flow) instead of a second sequential RPC.
+  const onchain = usePaymentTokenOnchain(
+    paymentToken?.paymentToken
+      ? (paymentToken.paymentToken.toLowerCase() as Address)
+      : null,
+  );
+  const liveDecimals = onchain.decimals ?? paymentToken?.decimals;
   const vaultBalance =
     vault.depositsWei !== undefined
       ? `${formatTokenAmount(vault.depositsWei)} ${nativeSymbol}`
@@ -660,7 +669,7 @@ export function AgentPage({
                 },
                 {
                   value: earnings
-                    ? `${formatUnits(BigInt(earnings.earnings), paymentToken?.decimals ?? 18)} ${paymentSymbol}`
+                    ? `${formatUnits(BigInt(earnings.earnings), liveDecimals ?? 18)} ${paymentSymbol}`
                     : "—",
                   label: agentCopy.earnings,
                 },

@@ -6,7 +6,7 @@ export interface OGNetwork {
   readonly evmRpcFallbacks?: readonly string[];
   readonly storageRpc: string;
   readonly computeRouterUrl: string;
-  /** Default 0G Compute chat model — each chain's router has a distinct catalog (Galileo: qwen2.5-omni only). */
+  /** Default 0G Compute chat model — each chain's router has a distinct catalog (Galileo catalog: qwen2.5-omni, qwen-image-edit; live /v1/models as of 2026-08-31). */
   readonly computeDefaultModel: string;
   readonly blockExplorer: string;
 }
