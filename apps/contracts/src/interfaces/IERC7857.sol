@@ -5,7 +5,7 @@ import {IERC721} from "@openzeppelin/contracts/interfaces/IERC721.sol";
 import {IERC7857DataVerifier, TransferValidityProof} from "./IERC7857DataVerifier.sol";
 import {IERC7857Metadata} from "./IERC7857Metadata.sol";
 
-/// @title IERC7857 — re-implementation of the ERC-7857 standard interface (FINAL, 2025-01-02)
+/// @title IERC7857 — re-implementation of the ERC-7857 standard interface (EIP created 2025-01-02; status Final)
 /// @dev Re-implemented (not copied) from the GPL-3.0 reference IERC7857.sol so this stays MIT-licensed.
 interface IERC7857 is IERC721, IERC7857Metadata {
     error ERC7857InvalidAssistant(address _assistant);
