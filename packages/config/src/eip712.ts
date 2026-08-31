@@ -14,6 +14,38 @@ import type { Hex } from "viem";
 export const EIP712_DOMAIN_NAME = "AxiomTeeVerifier" as const;
 export const EIP712_DOMAIN_VERSION = "1" as const;
 
+/** GasTank ForwardRequest domain (V3 W5-B) — matches AxiomGasTank's constructor-cached separator. */
+export const GAS_TANK_DOMAIN_NAME = "AxiomGasTank" as const;
+export const GAS_TANK_DOMAIN_VERSION = "1" as const;
+
+export const GAS_TANK_FORWARD_REQUEST_TYPES = {
+  ForwardRequest: [
+    { name: "user", type: "address" as const },
+    { name: "target", type: "address" as const },
+    { name: "data", type: "bytes" as const },
+    { name: "maxGasCost", type: "uint256" as const },
+    { name: "nonce", type: "uint256" as const },
+    { name: "deadline", type: "uint256" as const },
+  ],
+} as const;
+
+export function buildGasTankDomain(
+  chainId: number | bigint,
+  verifyingContract: `0x${string}`,
+): {
+  name: typeof GAS_TANK_DOMAIN_NAME;
+  version: typeof GAS_TANK_DOMAIN_VERSION;
+  chainId: bigint;
+  verifyingContract: `0x${string}`;
+} {
+  return {
+    name: GAS_TANK_DOMAIN_NAME,
+    version: GAS_TANK_DOMAIN_VERSION,
+    chainId: BigInt(chainId),
+    verifyingContract,
+  };
+}
+
 /**
  * Canonical 32-byte nonce hex: the minimal form can drop to an ODD number of
  * hex chars (top nibble zero, ~1/16 of random nonces), which wallets reject

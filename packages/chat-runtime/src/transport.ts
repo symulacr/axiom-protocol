@@ -54,8 +54,31 @@ interface ToolWallet {
     args: readonly unknown[];
     value?: bigint;
   }): Promise<`0x${string}`>;
+  /** Optional GasTank sponsor capability (V3 W5-B): signs the EIP-712
+   *  ForwardRequest (domain AxiomGasTank/1) and returns the user signature for
+   *  POST /v1/relayer/sponsor. Absent ⇒ encode tools fall back to the
+   *  wallet-signing lane. */
+  sponsor?(req: SponsorRequest): Promise<{ signature: `0x${string}` }>;
 }
 
+/** EIP-712 ForwardRequest payload the wallet signs (domain AxiomGasTank/1). */
+export interface SponsorRequest {
+  user: `0x${string}`;
+  target: `0x${string}`;
+  data: `0x${string}`;
+  maxGasCost: bigint;
+  nonce: bigint;
+  deadline: bigint;
+}
+
+export interface SponsorSubmitResult {
+  ok: boolean;
+  id?: string;
+  nonce?: string;
+  status?: number;
+  code?: string;
+  error?: string;
+}
 export interface ToolRuntime {
   http: ToolHttp;
   chain?: ToolChain;

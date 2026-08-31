@@ -12,6 +12,8 @@ import rateLimit from "express-rate-limit";
 import { createServer, type Server as HttpServer } from "node:http";
 import { WebSocketServer, type WebSocket } from "ws";
 import type { ServerConfig } from "./config-types.js";
+import { ethers } from "ethers";
+import { GAS_TANK_ABI } from "@axiom/config/abis";
 import {
   TypedContract,
   type AgentNFTMethods,
@@ -47,6 +49,14 @@ import { registerChatRoutes } from "./routers/chat.js";
 import { registerPaymentRoutes } from "./routers/payment.js";
 import { registerGovernanceRoutes } from "./routers/governance.js";
 import { registerStateViewRoutes } from "./routers/stateview.js";
+import {
+  registerRelayerRoutes,
+  type RelayerRouteDeps,
+} from "./routers/relayer.js";
+import { createRelayerQueue } from "./relayer/queue.js";
+import { SponsorGate } from "./relayer/sponsor.js";
+import { ReconcileEngine } from "./relayer/reconcile.js";
+import { startRelayer, type RelayerHandle } from "./relayer/index.js";
 import { pushRouteMeta, routeMeta } from "./routers/shared.js";
 import { registerPerformanceRoutes } from "./routers/performance.js";
 import { registerOrchestratorRoutes } from "./routers/orchestrator.js";
@@ -373,6 +383,89 @@ export function startServer(config: ServerConfig): {
   // address is configured.
   registerStateViewRoutes(app, config, provider);
 
+  // V3 W5-B relayer: mode-gated — mounts the routes (they self-503 while the
+  // GasTank address is unset) but only boots the worker when mode=on AND the
+  // address + relayer key resolve. Soft-fail keeps current deploys unchanged.
+  let relayerHandle: RelayerHandle | null = null;
+  const relayerModeOn = config.env?.AXIOM_RELAYER_MODE === "on";
+  const gasTankAddr = config.addresses?.gasTank;
+  if (relayerModeOn && !gasTankAddr && process.env.NODE_ENV === "production") {
+    throw new Error(
+      "Refusing to start: AXIOM_RELAYER_MODE=on in production requires AXIOM_GAS_TANK_ADDRESS and AXIOM_RELAYER_PK (risk §1).",
+    );
+  }
+  let relayerDeps: RelayerRouteDeps | undefined;
+  if (relayerModeOn && gasTankAddr) {
+    const relayerPk = config.env?.AXIOM_RELAYER_PK;
+    if (!relayerPk && process.env.NODE_ENV === "production") {
+      throw new Error(
+        "Refusing to start: AXIOM_RELAYER_MODE=on in production requires AXIOM_RELAYER_PK.",
+      );
+    }
+    const queue = createRelayerQueue();
+    const gate = new SponsorGate();
+    const reconcile = new ReconcileEngine(queue, gasTankAddr, provider);
+    const relayerWallet = relayerPk
+      ? new ethers.Wallet(relayerPk, provider)
+      : null;
+    const relayIface = new ethers.Interface(GAS_TANK_ABI);
+    relayerDeps = {
+      queue,
+      gate,
+      reconcile,
+      gasTankAddress: gasTankAddr,
+      relayerAddress: relayerWallet?.address,
+      // Simulate-before-queue: eth_call the relay against head state; a revert
+      // here (TankExhausted, ReserveDepleted, InvalidMerkleProof…) never costs gas.
+      simulate: async (record) => {
+        const data = relayIface.encodeFunctionData("relay", [
+          [
+            record.request.user,
+            record.request.target,
+            record.request.data,
+            record.request.maxGasCost,
+            record.request.nonce,
+            record.request.deadline,
+          ],
+          record.userSig,
+        ]);
+        await provider.call({
+          to: gasTankAddr,
+          data,
+          from: relayerWallet?.address,
+        });
+      },
+      // Broadcast leg: the relayer key signs relay() with the gas-price cap.
+      // Key absence is a dev/test posture — records dead-letter loudly.
+      submit: async (record) => {
+        if (!relayerWallet) throw new Error("relayer key not configured");
+        const data = relayIface.encodeFunctionData("relay", [
+          [
+            record.request.user,
+            record.request.target,
+            record.request.data,
+            record.request.maxGasCost,
+            record.request.nonce,
+            record.request.deadline,
+          ],
+          record.userSig,
+        ]);
+        const tx = await relayerWallet.sendTransaction({
+          to: gasTankAddr,
+          data,
+          gasLimit: 500_000,
+        });
+        return tx.hash as `0x${string}`;
+      },
+    };
+    relayerHandle = startRelayer({
+      queue,
+      gate,
+      reconcile,
+    });
+  }
+  registerRelayerRoutes(app, config, provider, relayerDeps);
+
   pushRouteMeta(
     ["POST", "/mcp", "mcp", "MCP streamable HTTP endpoint (read-only tools)"],
     ["GET", "/mcp", "mcp", "MCP SSE session stream (requires mcp-session-id)"],
@@ -413,6 +506,7 @@ export function startServer(config: ServerConfig): {
   });
   httpServer.on("close", () => {
     clearInterval(heartbeatTimer);
+    relayerHandle?.stop();
   });
 
   return { app, httpServer };

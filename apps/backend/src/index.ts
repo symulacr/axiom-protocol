@@ -55,6 +55,9 @@ async function resolveLiveAddresses(
       "delegationRegistry",
       backendEnv,
     ),
+    // V3 W5-B: GasTank is optional until lane A's deploy lane publishes it —
+    // omitted keeps relayer routes 503ing cleanly instead of failing boot.
+    gasTank: resolveAddressOptional("gasTank", backendEnv),
   };
   const live: Partial<typeof resolved> = {};
   await Promise.all(

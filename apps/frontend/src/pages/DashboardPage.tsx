@@ -30,6 +30,7 @@ import {
 import { StatePill } from "../components/StatePill.js";
 import { MobileDisclosure } from "../components/MobileDisclosure.js";
 import { EmptyState, Spinner } from "../components/ui.js";
+import { GasTankCard } from "../components/axiom/GasTankCard.js";
 import { getCopy } from "../lib/copy.js";
 import { routePath } from "../lib/routeRegistry.js";
 import type { AppState } from "../lib/models.js";
@@ -418,6 +419,8 @@ export function DashboardPage({
             icon={<Gauge size={16} />}
           />
         </section>
+        {/* V3 W5-B: GasTank card — prepaid gas + grants; disabled-when-unset. */}
+        <GasTankCard locale={state.settings.locale} />
         <section className="panel activity-panel">
           <PanelHead title={copy.dashboard.latestEvidence}>
             <Button

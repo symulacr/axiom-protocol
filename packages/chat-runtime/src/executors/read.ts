@@ -100,6 +100,78 @@ export async function runReadTool(
         }),
       };
     }
+    case "gas_tank_status": {
+      // GasTank status (V3 W5-B): tank balance + grants for the session wallet.
+      const owner = ctx.session.walletAddress;
+      if (!owner) return toolFail("Wallet not connected");
+      if (ctx.chain?.readContract) {
+        const gasTank = ctx.session.addresses?.gasTank;
+        if (!gasTank) return toolFail("GasTank address not configured");
+        try {
+          const [balance, grantsUsed, grantsCap, gasGrant] = await Promise.all([
+            ctx.chain.readContract<bigint>({
+              address: gasTank,
+              abi: parseAbi([
+                "function balanceOf(address) view returns (uint256)",
+              ]),
+              functionName: "balanceOf",
+              args: [owner],
+            }),
+            ctx.chain.readContract<bigint>({
+              address: gasTank,
+              abi: parseAbi([
+                "function grantsUsed(address) view returns (uint256)",
+              ]),
+              functionName: "grantsUsed",
+              args: [owner],
+            }),
+            ctx.chain.readContract<bigint>({
+              address: gasTank,
+              abi: parseAbi(["function grantsCap() view returns (uint256)"]),
+              functionName: "grantsCap",
+            }),
+            ctx.chain.readContract<bigint>({
+              address: gasTank,
+              abi: parseAbi(["function gasGrant() view returns (uint256)"]),
+              functionName: "gasGrant",
+            }),
+          ]);
+          const grantsLeft =
+            grantsCap > grantsUsed ? grantsCap - grantsUsed : 0n;
+          return {
+            ok: true as const,
+            content: JSON.stringify({
+              address: owner,
+              balance: balance.toString(),
+              grantsUsed: grantsUsed.toString(),
+              grantsCap: grantsCap.toString(),
+              grantsLeft: grantsLeft.toString(),
+              gasGrant: gasGrant.toString(),
+              opsLeft: gasGrant > 0n ? Number(balance / gasGrant) : 0,
+              // Lazy grant: a depleted tank still sponsors the next op while grants remain.
+              sponsored: balance === 0n ? grantsLeft > 0n : true,
+            }),
+          };
+        } catch (e) {
+          return toolFail(
+            `gas tank read failed: ${e instanceof Error ? e.message : "rpc error"}`,
+          );
+        }
+      }
+      // No direct chain access — fall back to the backend read route.
+      const { ok: tankOk, data } = await fetchJson<Record<string, unknown>>(
+        ctx.http,
+        `/v1/relayer/tank/${owner}`,
+      );
+      if (!tankOk) {
+        return toolFail(
+          typeof (data as { error?: string }).error === "string"
+            ? ((data as { error: string }).error as string)
+            : "gas tank status unavailable",
+        );
+      }
+      return { ok: true as const, content: JSON.stringify(data) };
+    }
     case "event_history": {
       const limit = Number(args.limit ?? 20);
       let path = `/v1/events?limit=${limit}`;

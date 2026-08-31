@@ -354,6 +354,11 @@ export function ToolCallCard({
   retryLabel?: string;
 }): ReactElement {
   const label = TOOL_LABELS[run.name] ?? run.name;
+  // Sponsored badge (V3 W5-B): the sponsor-lane result envelope carries
+  // sponsored:true + relayerNonce — parse it out of the run result JSON.
+  const sponsored =
+    run.status === "success" &&
+    parseObj(run.result ?? null)?.sponsored === true;
   const elapsedSec = Math.max(
     0,
     Math.floor((Date.now() - run.startedAt) / 1000),
@@ -400,6 +405,20 @@ export function ToolCallCard({
         )}
         <strong style={{ color: COLORS.bronzeLight }}>{label}</strong>
         <ToolClassBadge name={run.name} />
+        {sponsored ? (
+          <span
+            aria-label="sponsored relay"
+            title="Executed gas-free via the protocol GasTank"
+            style={{
+              fontSize: "var(--text-xs)",
+              fontWeight: "var(--fw-medium)",
+              color: "var(--c-success)",
+              textTransform: "lowercase",
+            }}
+          >
+            sponsored
+          </span>
+        ) : null}
         {/* T5 a11y: the ticking seconds re-announce every second on the
             live tool-card status; hide the running count — the honest
             "done"/"failed" terminal text below stays announced. */}

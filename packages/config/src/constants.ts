@@ -27,6 +27,50 @@ export type RuntimeConfig = {
   [K in keyof typeof RUNTIME_DEFAULTS]: (typeof RUNTIME_DEFAULTS)[K];
 };
 
+/** Relayer tuning values — resolved from env each call (no WeakMap caching here:
+ *  callers pass test envs whose identity varies; the numbers are tiny to recompute). */
+export const RELAYER_DEFAULTS = {
+  intervalMs: 3_000,
+  batchMax: 64,
+  gasCapGwei: 2,
+  logLookbackBlocks: 2_000,
+  reconcileIntervalMs: 60_000,
+  sponsorRatePerMin: 6,
+  sponsorMaxGasCostWei: 1_000_000_000_000_000n,
+  sponsorMaxInflightPerUser: 2,
+} as const;
+
+const RELAYER_ENV_VARS = {
+  intervalMs: "AXIOM_RELAYER_INTERVAL_MS",
+  batchMax: "AXIOM_RELAYER_BATCH_MAX",
+  gasCapGwei: "AXIOM_RELAYER_GAS_CAP_GWEI",
+  logLookbackBlocks: "AXIOM_RELAYER_LOG_LOOKBACK_BLOCKS",
+  reconcileIntervalMs: "AXIOM_RELAYER_RECONCILE_INTERVAL_MS",
+  sponsorRatePerMin: "AXIOM_RELAYER_SPONSOR_RATE_PER_MIN",
+  sponsorMaxGasCostWei: "AXIOM_RELAYER_SPONSOR_MAX_GAS_COST_WEI",
+  sponsorMaxInflightPerUser: "AXIOM_RELAYER_SPONSOR_MAX_INFLIGHT_PER_USER",
+} as const;
+
+export function getRelayerConfig(
+  env: EnvLike = defaultRuntimeEnv(),
+): RuntimeConfig & typeof RELAYER_DEFAULTS {
+  const out: Record<string, string | number | bigint> = {
+    ...RUNTIME_DEFAULTS,
+  };
+  for (const [key, dflt] of Object.entries(RELAYER_DEFAULTS)) {
+    const envName = RELAYER_ENV_VARS[key as keyof typeof RELAYER_ENV_VARS];
+    const raw = env[envName];
+    if (raw === undefined) {
+      out[key] = dflt;
+    } else if (typeof dflt === "bigint") {
+      out[key] = BigInt(raw);
+    } else {
+      out[key] = Number(raw);
+    }
+  }
+  return out as RuntimeConfig & typeof RELAYER_DEFAULTS;
+}
+
 const RUNTIME_ENV_VARS = {
   indexerPollWindowBlocks: "INDEXER_POLL_WINDOW_BLOCKS",
   indexerPollIntervalMs: "INDEXER_POLL_INTERVAL_MS",
@@ -85,6 +129,7 @@ export const HTTP = {
   FORBIDDEN: 403,
   NOT_FOUND: 404,
   UNPROCESSABLE: 422,
+  PAYMENT_REQUIRED: 402,
   CONFLICT: 409,
   TOO_MANY: 429,
   INTERNAL: 500,

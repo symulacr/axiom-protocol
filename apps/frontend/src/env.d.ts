@@ -15,6 +15,8 @@ interface ImportMetaEnv {
   readonly VITE_STRATEGY_VAULT_ADDRESS?: string;
   readonly VITE_TEE_VERIFIER_ADDRESS?: string;
   readonly VITE_PAYMENT_PROCESSOR_ADDRESS?: string;
+  readonly VITE_DELEGATION_REGISTRY_ADDRESS?: string;
+  readonly VITE_GAS_TANK_ADDRESS?: string;
 }
 
 interface ImportMeta {

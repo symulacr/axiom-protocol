@@ -70,4 +70,23 @@ describe("buildSystemPrompt", () => {
     assert.match(prompt, /execute items IN ORDER, one tool call per step/);
     assert.match(prompt, /until the plan completes or a step fails/);
   });
+
+  it("documents the GAS-TANK sponsored lane as the 5th rule after PLAN TRACKING (V3 W5-B)", () => {
+    // Order pin: GAS-TANK comes immediately after PLAN TRACKING.
+    const planIdx = prompt.indexOf("PLAN TRACKING —");
+    const gasIdx = prompt.indexOf("GAS-TANK —");
+    assert.ok(planIdx >= 0, "PLAN TRACKING rule present");
+    assert.ok(gasIdx > planIdx, "GAS-TANK rule after PLAN TRACKING");
+    const body = prompt.slice(planIdx, gasIdx);
+    // Rule blocks join with \n\n — exactly one separator between the two rules.
+    assert.equal(
+      body.match(/\n\n/g)?.length,
+      1,
+      "GAS-TANK is the very next rule block",
+    );
+    assert.match(prompt, /withdraw and pay_for_agent normally run GAS-FREE/);
+    assert.match(prompt, /gas tank is exhausted/);
+    assert.match(prompt, /GasTank UI/);
+    assert.match(prompt, /gas_tank_status/);
+  });
 });

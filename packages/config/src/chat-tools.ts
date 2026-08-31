@@ -118,7 +118,10 @@ function vaultOpTool(
     name,
     class: "encode",
     label,
-    hint,
+    hint:
+      name === "withdraw"
+        ? `${hint} Runs gas-free via the protocol GasTank when the tank has headroom; otherwise opens MetaMask.`
+        : hint,
     requiresWallet: true,
     requiresTokenId: true,
     friction: "medium",
@@ -493,6 +496,17 @@ export const CHAT_TOOL_CATALOG = [
     }),
   }),
   tool({
+    name: "gas_tank_status",
+    class: "read",
+    label: "Gas Tank Status",
+    hint: "Get the connected wallet's GasTank status: prepaid gas balance, grants used/cap, and ops remaining. Zero balance with grants left = next ops are protocol-sponsored.",
+    requiresWallet: true,
+    context: "on-chain read (gas tank)",
+    capabilities: ["read", "gas-tank"],
+    friction: "low",
+    parameters: params({}),
+  }),
+  tool({
     name: "execute_tick",
     class: "orchestrate",
     label: "Execute Tick",
@@ -547,7 +561,7 @@ export const CHAT_TOOL_CATALOG = [
     name: "pay_for_agent",
     class: "encode",
     label: "Pay Agent",
-    hint: "Pay an agent's creator (royalty split) and optionally its compute provider via AxiomPaymentProcessor. agentAmount is in USDC (e.g. 1.5). computeAmount optional: omit for a creator-only payment (payForAgent); provide >0 to also pay the compute provider (payForAgentAndCompute — then provider is required). Opens MetaMask.",
+    hint: "Pay an agent's creator (royalty split) and optionally its compute provider via AxiomPaymentProcessor. agentAmount is in USDC (e.g. 1.5). computeAmount optional: omit for a creator-only payment (payForAgent); provide >0 to also pay the compute provider (payForAgentAndCompute — then provider is required). Runs gas-free via the protocol GasTank when the tank has headroom; otherwise opens MetaMask.",
     requiresWallet: true,
     requiresTokenId: true,
     friction: "medium",
@@ -677,6 +691,16 @@ export const CHAT_TOOL_CATALOG = [
 ] as const;
 
 export type ChatToolName = (typeof CHAT_TOOL_CATALOG)[number]["name"];
+
+/** Phase-1 sponsored tools (V3 W5-B): encode-class ops the relayer can execute
+ *  gas-free through the GasTank before falling back to the wallet lane. */
+export const SPONSORED_TOOLS = ["withdraw", "pay_for_agent"] as const;
+
+export type SponsoredToolName = (typeof SPONSORED_TOOLS)[number];
+
+export function isSponsoredTool(name: string): name is SponsoredToolName {
+  return (SPONSORED_TOOLS as readonly string[]).includes(name);
+}
 
 const byName = new Map<string, ChatToolSpec>(
   CHAT_TOOL_CATALOG.map((t) => [t.name, t] as const),

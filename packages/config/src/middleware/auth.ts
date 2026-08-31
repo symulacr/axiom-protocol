@@ -73,6 +73,14 @@ const CLIENT_ALLOWED_ROUTES: ReadonlyArray<{
       p.startsWith("/v1/skills/stocks/") ||
       p.startsWith("/v1/skills/osint/"),
   },
+  // GasTank relayer (V3 W5-B §6 item 12): browser keys must reach the tank
+  // read route and the sponsor submit — without these, browser keys get 403.
+  {
+    methods: ["GET"],
+    match: (p) =>
+      p.startsWith("/v1/relayer/tank/") || p === "/v1/relayer/status",
+  },
+  { methods: ["POST"], match: (p) => p === "/v1/relayer/sponsor" },
 ];
 
 export function isClientPathAllowed(method: string, path: string): boolean {

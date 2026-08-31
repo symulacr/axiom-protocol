@@ -15,6 +15,7 @@ import {
   useAccount,
   useChainId,
   usePublicClient,
+  useSignTypedData,
   useWriteContract,
   useWalletClient,
 } from "wagmi";
@@ -111,8 +112,9 @@ import {
 } from "@axiom/config/chat-tools";
 import { CHAT_MODEL } from "../config/env.js";
 import { APP_CHAIN, APP_CHAIN_ID } from "../config/wagmi.js";
-import { getCopy, interpolate, type Copy } from "../lib/copy.js";
+import { getCopy, interpolate, type Copy, type Locale } from "../lib/copy.js";
 import { useUiStore } from "../lib/uiStore.js";
+import { useGasTank } from "../hooks/useGasTank.js";
 import {
   COLORS,
   Textarea,
@@ -579,6 +581,21 @@ function useChatTxStream(
   return { rows };
 }
 
+/**
+ * V3 W5-B tank strip: renders the low-tank ChatBanner when the connected
+ * wallet's prepaid gas AND grants are exhausted. Silent when the GasTank is
+ * unset (pre-deploy) or the wallet isn't connected — wallet-less first-run.
+ */
+function TankStrip({ locale }: { locale: Locale }): ReactElement | null {
+  const { address } = useAccount();
+  const publicClient = usePublicClient();
+  const { tank } = useGasTank(address, publicClient);
+  const gasTankCopy = getCopy(locale).gasTank;
+  if (!tank) return null;
+  if (tank.sponsored) return null;
+  return <ChatBanner>{gasTankCopy.tankLowBanner}</ChatBanner>;
+}
+
 function ChatPageInner(): ReactElement {
   const { address } = useAccount();
   const chainId = useChainId();
@@ -593,6 +610,7 @@ function ChatPageInner(): ReactElement {
     useChatSession();
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
+  const { signTypedDataAsync } = useSignTypedData();
   const { data: walletClient } = useWalletClient();
 
   const [messages, setMessages] = useState(loadStoredMessages);
@@ -757,6 +775,7 @@ function ChatPageInner(): ReactElement {
   const writeContractAsyncRef = useRef(writeContractAsync);
   const walletClientRef = useRef(walletClient);
   const publicClientRef = useRef(publicClient);
+  const signTypedDataAsyncRef = useRef(signTypedDataAsync);
 
   // Opens the shared TransferModal (same flow as AgentDetail) and resolves when the user completes or cancels it.
   const openTransfer = useCallback((tokenId: string): Promise<string> => {
@@ -784,6 +803,8 @@ function ChatPageInner(): ReactElement {
             walletClient.sendTransaction({ to, data, value })
         : undefined,
       waitForReceipt: buildWaitForReceipt(publicClient),
+      signTypedDataAsync:
+        signTypedDataAsync as unknown as ToolContext["signTypedDataAsync"],
       publicClient,
       openTransfer,
     }),
@@ -794,6 +815,7 @@ function ChatPageInner(): ReactElement {
       writeContractAsync,
       walletClient,
       publicClient,
+      signTypedDataAsync,
       openTransfer,
     ],
   );
@@ -814,6 +836,8 @@ function ChatPageInner(): ReactElement {
             walletClientRef.current!.sendTransaction({ to, data, value })
         : undefined,
       waitForReceipt: buildWaitForReceipt(publicClientRef.current),
+      signTypedDataAsync: signTypedDataAsyncRef.current as unknown as
+        ToolContext["signTypedDataAsync"] | undefined,
       publicClient: publicClientRef.current,
       openTransfer,
     }),
@@ -1600,6 +1624,9 @@ function ChatPageInner(): ReactElement {
         </div>
 
         {computeHint && <ChatBanner>{computeHint}</ChatBanner>}
+
+        {/* V3 W5-B tank strip: low-tank banner when prepaid gas + grants run out. */}
+        <TankStrip locale={uiState.settings.locale} />
 
         {!chainSupported && (
           <ChatBanner>

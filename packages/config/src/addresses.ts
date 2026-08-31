@@ -6,7 +6,8 @@ export type AddressName =
   | "teeVerifier"
   | "paymentProcessor"
   | "paymentToken"
-  | "delegationRegistry";
+  | "delegationRegistry"
+  | "gasTank";
 
 const ENV_VAR_NAMES: Record<AddressName, string[]> = {
   agentNft: ["AXIOM_AGENT_NFT_ADDRESS", "AGENT_NFT_ADDRESS"],
@@ -19,6 +20,7 @@ const ENV_VAR_NAMES: Record<AddressName, string[]> = {
   ],
   paymentToken: ["AXIOM_PAYMENT_TOKEN", "AXIOM_MOCK_USDC_ADDRESS"],
   delegationRegistry: ["AXIOM_DELEGATION_REGISTRY_ADDRESS"],
+  gasTank: ["AXIOM_GAS_TANK_ADDRESS"],
 };
 
 const ADDRESS_NAMES = Object.keys(ENV_VAR_NAMES) as AddressName[];
@@ -46,7 +48,10 @@ export function resolveAddress(
 }
 
 /** Addresses that may legitimately be unset pre-deploy — resolveAddressOptional returns undefined instead of throwing. */
-const OPTIONAL_ADDRESS_NAMES: readonly AddressName[] = ["delegationRegistry"];
+const OPTIONAL_ADDRESS_NAMES: readonly AddressName[] = [
+  "delegationRegistry",
+  "gasTank",
+];
 
 export function resolveAddressOptional(
   name: AddressName,

@@ -1,10 +1,14 @@
-import { getChatToolSpec } from "@axiom/config/chat-tools";
+import { getChatToolSpec, isSponsoredTool } from "@axiom/config/chat-tools";
 import { PAYMENT_PROCESSOR_ABI } from "@axiom/config/abis";
 import { ADDRESS_REGEX } from "@axiom/config/types/hex";
 import { fetchJson, postJson, resolveTokenId, toolFail } from "../transport.js";
 import { encodeFunctionData, parseAbi, parseUnits } from "viem";
 import type { ToolRuntime } from "../transport.js";
 import type { ToolResult } from "../types.js";
+
+/** Sponsor lane deadline: 10 minutes — enough relayer queue latency, short enough
+ *  to bound signature-reuse risk (plan §1 deadline discipline). */
+const SPONSOR_DEADLINE_SECS = 600n;
 
 function encodeOnlyResult(
   data: { to: string; data: string; value: string },
@@ -109,21 +113,11 @@ async function encodeMint(
 
   if (!httpOk || !data.to) return toolFail("mint encode fail");
 
+  // mint is NOT in phase-1 SPONSORED_TOOLS — always the wallet lane.
   if (ctx.mode === "encode-only" || !ctx.wallet?.signAndSend) {
     return encodeOnlyResult(data);
   }
 
-  return sendWithReceiptResult(ctx, data, "mint sign failed");
-}
-
-/** Shared send leg: sign+send calldata, then shape the ok/receipt envelope wallet-bound tool results use. */
-function sendWithReceiptResult(
-  ctx: ToolRuntime,
-  data: { to: string; data: string; value: string },
-  failLabel: string,
-  extra?: Record<string, unknown>,
-): Promise<ToolResult> {
-  const fields = extra ?? {};
   return signAndSendWithReceipt(ctx, {
     to: data.to as `0x${string}`,
     data: data.data as `0x${string}`,
@@ -136,16 +130,165 @@ function sendWithReceiptResult(
           ? {
               ok: true,
               txHash,
-              ...fields,
               receiptStatus: receipt.status,
               blockNumber: receipt.blockNumber,
             }
-          : { ok: true, txHash, ...fields },
+          : { ok: true, txHash },
+      ),
+    }))
+    .catch((e: unknown): ToolResult =>
+      toolFail(e instanceof Error ? e.message : "mint sign failed"),
+    );
+}
+
+/** Shared send leg: sponsor lane first (phase-1 sponsored tools with tank
+ *  headroom), then the wallet lane (fallback ladder §2.3). Sponsored ops are
+ *  value-free — the GasTank relay() forwards data only. */
+async function executeSponsoredOrWallet(
+  ctx: ToolRuntime,
+  calldata: { to: `0x${string}`; data: `0x${string}`; value: bigint },
+  failLabel: string,
+  extra: Record<string, unknown>,
+  estimateMaxGasCost: () => bigint,
+): Promise<ToolResult> {
+  // Sponsor lane: only for phase-1 SPONSORED_TOOLS, only when the transport
+  // exposes a sponsor capability, and only value-free ops.
+  if (
+    isSponsoredTool(String(extra.name ?? "")) &&
+    calldata.value === 0n &&
+    ctx.wallet?.sponsor &&
+    ctx.wallet.address
+  ) {
+    const result = await trySponsorLane(ctx, calldata, estimateMaxGasCost);
+    if (result.kind === "ok") {
+      return {
+        ok: true as const,
+        content: JSON.stringify({
+          ok: true,
+          ...extra,
+          sponsored: true,
+          relayerNonce: result.nonce,
+          ...(result.id ? { relayerId: result.id } : {}),
+          sponsoredMaxGasCost: result.maxGasCost,
+        }),
+      };
+    }
+    if (result.kind === "tank-exhausted") {
+      // 402 TANK_EXHAUSTED: terminal for the sponsor lane — surface the remedy.
+      return toolFail(
+        "Gas tank exhausted: no prepaid balance and no grants left for this address. Options: deposit via the GasTank UI, or connect a wallet to sign the op directly.",
+      );
+    }
+    // Transient sponsor-lane failure (rate limit, relayer off, network) —
+    // fall through to the wallet lane.
+  }
+  // Wallet lane: encode-only mode or no signer → encode-only envelope.
+  if (ctx.mode === "encode-only" || !ctx.wallet?.signAndSend) {
+    return encodeOnlyResult(
+      {
+        to: calldata.to,
+        data: calldata.data,
+        value: calldata.value.toString(),
+      },
+      extra,
+    );
+  }
+  return signAndSendWithReceipt(ctx, calldata)
+    .then(({ txHash, receipt }) => ({
+      ok: true as const,
+      content: JSON.stringify(
+        receipt
+          ? {
+              ok: true,
+              txHash,
+              ...extra,
+              receiptStatus: receipt.status,
+              blockNumber: receipt.blockNumber,
+            }
+          : { ok: true, txHash, ...extra },
       ),
     }))
     .catch((e: unknown): ToolResult =>
       toolFail(e instanceof Error ? e.message : failLabel),
     );
+}
+
+type SponsorLaneOutcome =
+  | { kind: "ok"; nonce: string; id?: string; maxGasCost: string }
+  | { kind: "tank-exhausted" }
+  | { kind: "transient"; error?: string };
+
+/** Sponsor lane: read nextNonce + tank headroom, sign the ForwardRequest via the
+ *  wallet's sponsor capability, and submit to POST /v1/relayer/sponsor. */
+async function trySponsorLane(
+  ctx: ToolRuntime,
+  calldata: { to: `0x${string}`; data: `0x${string}` },
+  estimateMaxGasCost: () => bigint,
+): Promise<SponsorLaneOutcome> {
+  const user = ctx.wallet!.address!;
+  try {
+    const { ok: tankOk, data: tank } = await fetchJson<{
+      nextNonce?: string;
+      balance?: string;
+      grantsLeft?: string;
+    }>(ctx.http, `/v1/relayer/tank/${user}`);
+    if (!tankOk || tank.nextNonce === undefined) {
+      return { kind: "transient", error: "tank read failed" };
+    }
+    // Headroom check (§2.3): the op is sponsored when the tank (or a pending
+    // lazy grant) covers the estimated max cost; otherwise the relayer's
+    // simulation would revert TankExhausted.
+    const balance = BigInt(tank.balance ?? "0");
+    const grantsLeft = BigInt(tank.grantsLeft ?? "0");
+    const maxGasCost = estimateMaxGasCost();
+    if (balance < maxGasCost && grantsLeft === 0n) {
+      return { kind: "tank-exhausted" };
+    }
+    const deadline =
+      BigInt(Math.floor(Date.now() / 1000)) + SPONSOR_DEADLINE_SECS;
+    // The transport's sponsor capability signs the ForwardRequest and returns
+    // the userSig — the executor never sees key material.
+    const { signature } = await ctx.wallet!.sponsor!({
+      user,
+      target: calldata.to,
+      data: calldata.data,
+      maxGasCost,
+      nonce: BigInt(tank.nextNonce),
+      deadline,
+    });
+    const { ok, data } = await postJson<{
+      ok?: boolean;
+      id?: string;
+      nonce?: string;
+      code?: string;
+      error?: string;
+    }>(ctx.http, "/v1/relayer/sponsor", {
+      user,
+      target: calldata.to,
+      data: calldata.data,
+      maxGasCost: maxGasCost.toString(),
+      nonce: tank.nextNonce,
+      deadline: deadline.toString(),
+      signature,
+    });
+    if (ok && data.ok) {
+      return {
+        kind: "ok",
+        nonce: data.nonce ?? tank.nextNonce,
+        id: data.id,
+        maxGasCost: maxGasCost.toString(),
+      };
+    }
+    if (data.code === "TANK_EXHAUSTED" || ok === false) {
+      if (data.code === "TANK_EXHAUSTED") return { kind: "tank-exhausted" };
+    }
+    return { kind: "transient", error: data.error ?? data.code };
+  } catch (e) {
+    return {
+      kind: "transient",
+      error: e instanceof Error ? e.message : "sponsor lane failed",
+    };
+  }
 }
 
 async function encodeVaultOp(
@@ -169,11 +312,19 @@ async function encodeVaultOp(
   }>(ctx.http, `/v1/agents/${tokenId}/${op}`, { amount });
   if (!httpOk || !data.to) return toolFail(`${op} encode fail`);
 
-  if (ctx.mode === "encode-only" || !ctx.wallet?.signAndSend) {
-    return encodeOnlyResult(data, { amount });
-  }
-
-  return sendWithReceiptResult(ctx, data, `${op} sign failed`, { amount });
+  return executeSponsoredOrWallet(
+    ctx,
+    {
+      to: data.to as `0x${string}`,
+      data: data.data as `0x${string}`,
+      value: BigInt(data.value || "0"),
+    },
+    `${op} sign failed`,
+    { name: op, amount },
+    // Vault ops are cheap; a flat 0.001 OG ceiling comfortably covers them and
+    // matches the backend's sponsor ceiling (env SPONSOR_MAX_GAS_COST_WEI default).
+    () => 1_000_000_000_000_000n,
+  );
 }
 
 /** Payment-token decimals from /v1/payment/config, cached per process; Galileo axmUSDC is 18-decimal, not 6. */
@@ -274,17 +425,13 @@ async function encodePayForAgent(
     args: encodeArgs,
   });
 
-  if (ctx.mode === "encode-only" || !ctx.wallet?.signAndSend) {
-    return encodeOnlyResult(
-      { to: processor, data, value: "0" },
-      { tokenId, ...extra },
-    );
-  }
-
-  return sendWithReceiptResult(
+  return executeSponsoredOrWallet(
     ctx,
-    { to: processor, data, value: "0" },
+    { to: processor, data, value: 0n },
     "pay sign failed",
-    { tokenId, ...extra },
+    { name: "pay_for_agent", tokenId, ...extra },
+    // USDC-style payments are ~120k gas; at 2 gwei that's well under the
+    // sponsor ceiling — estimate with headroom.
+    () => 300_000n * 2_000_000_000n,
   );
 }

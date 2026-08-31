@@ -78,4 +78,48 @@ export const sharedEnvSchema = z.object({
   // oracle stores ECIES-sealed DEKs keyed by tokenId and re-keys transfers from
   // custody. Default OFF — prod trust geometry unchanged (BYOK stays the default).
   AXIOM_DEK_CUSTODY: z.enum(["true", "false"]).default("false"),
+  // GasTank relayer (V3 W5-B). Mode default OFF — zero behavior change for
+  // existing deploys; when ON, AXIOM_GAS_TANK_ADDRESS + AXIOM_RELAYER_PK are
+  // mandatory (fail-start enforced by the backend relayer wiring).
+  AXIOM_RELAYER_MODE: z.enum(["on", "off"]).default("off"),
+  // Queue polling cadence for the relayer worker loop (batch submitter).
+  AXIOM_RELAYER_INTERVAL_MS: z.coerce.number().int().positive().optional(),
+  // Max queued forward-requests drained per relayer tick.
+  AXIOM_RELAYER_BATCH_MAX: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(64)
+    .default(64),
+  // Gas-price ceiling (gwei) for relayer-submitted relay() txs.
+  AXIOM_RELAYER_GAS_CAP_GWEI: z.coerce.number().nonnegative().optional(),
+  // Relayed-log scan lookback for reconciliation (blocks behind head).
+  AXIOM_RELAYER_LOG_LOOKBACK_BLOCKS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .optional(),
+  // Reconcile pass cadence (queue entries vs on-chain Relayed logs / dead-letter).
+  AXIOM_RELAYER_RECONCILE_INTERVAL_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(60_000),
+  // Sponsored-op admission: token-bucket refill rate per user per minute.
+  AXIOM_RELAYER_SPONSOR_RATE_PER_MIN: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(6),
+  // Sponsored-op admission: user-signed maxGasCost ceiling (wei) accepted per op.
+  AXIOM_RELAYER_SPONSOR_MAX_GAS_COST_WEI: z.coerce
+    .bigint()
+    .positive()
+    .default(1_000_000_000_000_000n),
+  // Sponsored-op admission: max concurrently inflight (queued or pending) ops per user.
+  AXIOM_RELAYER_SPONSOR_MAX_INFLIGHT_PER_USER: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(2),
 });

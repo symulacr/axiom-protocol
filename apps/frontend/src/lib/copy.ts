@@ -451,6 +451,23 @@ export type Copy = {
     metricsShow: string;
     metricsHide: string;
   };
+  /** GasTank card (V3 W5-B). Placeholders: {used}/{cap} grant counters. */
+  gasTank: {
+    title: string;
+    unsetNote: string;
+    loading: string;
+    opsLeftSuffix: string;
+    /** Shown when the tank is empty but grants remain (next op is sponsored). */
+    lazyGrantNote: string;
+    grantsBarTitle: string;
+    /** Placeholders: {used} consumed, {cap} cap. */
+    grantsUsage: string;
+    depositPlaceholder: string;
+    depositAction: string;
+    refillAction: string;
+    sponsoredBadge: string;
+    tankLowBanner: string;
+  };
   storage: {
     title: string;
     description: string;
@@ -1263,6 +1280,22 @@ const english: Copy = {
     undo: "Undo",
     metricsShow: "Metrics",
     metricsHide: "Hide metrics",
+  },
+  gasTank: {
+    title: "Gas Tank",
+    unsetNote:
+      "The protocol GasTank is not configured for this build — gas-free ops are disabled.",
+    loading: "Reading tank…",
+    opsLeftSuffix: "ops left",
+    lazyGrantNote: "next op sponsored",
+    grantsBarTitle: "Free gas grants consumed",
+    grantsUsage: "Grants: {used} of {cap} used",
+    depositPlaceholder: "Deposit amount",
+    depositAction: "Deposit",
+    refillAction: "Claim free gas grant",
+    sponsoredBadge: "sponsored",
+    tankLowBanner:
+      "Your gas tank is nearly empty — ops keep running until your free grants run out.",
   },
   storage: {
     title: "Store the payload, then verify its proof.",
@@ -2150,6 +2183,23 @@ const french: Copy = {
     metricsShow: "métriques",
     metricsHide: "masquer les métriques",
   },
+  gasTank: {
+    ...english.gasTank,
+    title: "Réservoir de gaz",
+    unsetNote:
+      "Le réservoir de gaz du protocole n'est pas configuré pour cette version — les opérations sans gaz sont désactivées.",
+    loading: "Lecture du réservoir…",
+    opsLeftSuffix: "opérations restantes",
+    lazyGrantNote: "prochaine opération offerte",
+    grantsBarTitle: "Subventions de gaz gratuites consommées",
+    grantsUsage: "Subventions : {used} sur {cap} utilisées",
+    depositPlaceholder: "Montant du dépôt",
+    depositAction: "Déposer",
+    refillAction: "Réclamer une subvention de gaz",
+    sponsoredBadge: "offert",
+    tankLowBanner:
+      "Votre réservoir de gaz est presque vide — les opérations continuent jusqu'à épuisement de vos subventions gratuites.",
+  },
   storage: {
     ...english.storage,
     title: "Stockez le payload, puis vérifiez sa preuve.",
@@ -3008,6 +3058,23 @@ const german: Copy = {
     undo: "Rückgängig",
     metricsShow: "Metriken",
     metricsHide: "Metriken ausblenden",
+  },
+  gasTank: {
+    ...english.gasTank,
+    title: "Gas-Tank",
+    unsetNote:
+      "Der Gas-Tank des Protokolls ist für diesen Build nicht konfiguriert — gasfreie Operationen sind deaktiviert.",
+    loading: "Tank wird gelesen…",
+    opsLeftSuffix: "Operationen übrig",
+    lazyGrantNote: "nächste Operation gratis",
+    grantsBarTitle: "Verbrauchte Gratis-Gas-Zuschüsse",
+    grantsUsage: "Zuschüsse: {used} von {cap} verbraucht",
+    depositPlaceholder: "Einzahlungsbetrag",
+    depositAction: "Einzahlen",
+    refillAction: "Gratis-Gas-Zuschuss anfordern",
+    sponsoredBadge: "gratis",
+    tankLowBanner:
+      "Dein Gas-Tank ist fast leer — Operationen laufen weiter, bis deine Gratis-Zuschüsse aufgebraucht sind.",
   },
   storage: {
     ...english.storage,

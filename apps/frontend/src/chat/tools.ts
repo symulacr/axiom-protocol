@@ -45,6 +45,13 @@ export type ToolContext = {
     status: "success" | "reverted";
     blockNumber: bigint;
   } | null>;
+  /** Optional EIP-712 typed-data signer — enables the GasTank sponsor lane (V3 W5-B). */
+  signTypedDataAsync?: (args: {
+    domain: unknown;
+    types: unknown;
+    primaryType: string;
+    message: unknown;
+  }) => Promise<`0x${string}`>;
   publicClient: ReturnType<typeof usePublicClient>;
   openTransfer?: (tokenId: string) => Promise<string>;
 };

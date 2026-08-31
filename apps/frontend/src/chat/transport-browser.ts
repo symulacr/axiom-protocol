@@ -1,9 +1,15 @@
 import { createSession, runTool } from "@axiom/chat-runtime";
 import type { ToolChain, ToolRuntime } from "@axiom/chat-runtime";
+import {
+  GAS_TANK_FORWARD_REQUEST_TYPES,
+  GAS_TANK_DOMAIN_NAME,
+  GAS_TANK_DOMAIN_VERSION,
+} from "@axiom/config/eip712";
 import { BACKEND_URL, ORACLE_URL } from "../config/env.js";
 import { apiKeyHeader } from "../utils/apiFetch.js";
 import {
   getAxiomAgentNftAddress,
+  getAxiomGasTankAddress,
   getAxiomPaymentProcessorAddress,
   getAxiomStrategyVaultAddress,
   toViemAbi,
@@ -46,8 +52,18 @@ function buildWallet(
         blockNumber: bigint;
       } | null>)
     | undefined,
+  signTypedDataAsync?:
+    | ((args: {
+        domain: unknown;
+        types: unknown;
+        primaryType: string;
+        message: unknown;
+      }) => Promise<`0x${string}`>)
+    | undefined,
+  chainId?: number,
 ): NonNullable<ToolRuntime["wallet"]> | undefined {
   if (!address) return undefined;
+  const gasTank = getAxiomGasTankAddress(chainId);
   return {
     address: address.toLowerCase() as `0x${string}`,
     ...(sendTransactionAsync
@@ -83,6 +99,34 @@ function buildWallet(
             }),
         }
       : {}),
+    // Sponsor capability (V3 W5-B): sign the EIP-712 ForwardRequest with the
+    // connected wallet — never a backend key. The executor submits the
+    // signature to POST /v1/relayer/sponsor; the relayer key broadcasts.
+    ...(gasTank && signTypedDataAsync
+      ? {
+          sponsor: async (req) => {
+            const signature = await signTypedDataAsync({
+              domain: {
+                name: GAS_TANK_DOMAIN_NAME,
+                version: GAS_TANK_DOMAIN_VERSION,
+                chainId,
+                verifyingContract: gasTank,
+              },
+              types: GAS_TANK_FORWARD_REQUEST_TYPES,
+              primaryType: "ForwardRequest",
+              message: {
+                user: req.user,
+                target: req.target,
+                data: req.data,
+                maxGasCost: req.maxGasCost,
+                nonce: req.nonce,
+                deadline: req.deadline,
+              },
+            });
+            return { signature };
+          },
+        }
+      : {}),
   };
 }
 
@@ -106,7 +150,12 @@ export function buildWaitForReceipt(
 
 function buildBrowserRuntime(ctx: ToolContext): ToolRuntime {
   const publicClient = ctx.publicClient;
-  const { address, sendTransactionAsync, writeContractAsync } = ctx;
+  const {
+    address,
+    sendTransactionAsync,
+    writeContractAsync,
+    signTypedDataAsync,
+  } = ctx;
 
   return {
     mode: "sign",
@@ -168,6 +217,8 @@ function buildBrowserRuntime(ctx: ToolContext): ToolRuntime {
       sendTransactionAsync,
       writeContractAsync,
       buildWaitForReceipt(publicClient),
+      signTypedDataAsync,
+      ctx.chainId,
     ),
     session: createSession({
       chainId: ctx.chainId,
@@ -179,6 +230,7 @@ function buildBrowserRuntime(ctx: ToolContext): ToolRuntime {
         vault: getAxiomStrategyVaultAddress(ctx.chainId),
         agentNft: getAxiomAgentNftAddress(ctx.chainId),
         paymentProcessor: getAxiomPaymentProcessorAddress(ctx.chainId),
+        gasTank: getAxiomGasTankAddress(ctx.chainId),
       },
     }),
   };

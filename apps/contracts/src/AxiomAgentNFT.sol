@@ -17,6 +17,8 @@ import {IntelligentData} from "./interfaces/IERC7857Metadata.sol";
 import {TransferValidityProof} from "./interfaces/IERC7857DataVerifier.sol";
 import {IERC1822Proxiable} from "@openzeppelin/contracts/interfaces/draft-IERC1822.sol";
 import {ERC1967Utils} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol";
+import {ERC2771ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/metatx/ERC2771ContextUpgradeable.sol";
+import {ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {AxiomMetadataJson} from "./extensions/AxiomMetadataJson.sol";
 import {TimelockManager} from "./libraries/TimelockManager.sol";
@@ -31,7 +33,8 @@ contract AxiomAgentNFT is
     UUPSUpgradeable,
     ERC7857CloneableUpgradeable,
     ERC7857AuthorizeUpgradeable,
-    ERC7857IDataStorageUpgradeable
+    ERC7857IDataStorageUpgradeable,
+    ERC2771ContextUpgradeable
 {
     error UseTimelockedFeeWithdrawal();
     error DataSizeExceeded(uint256 provided, uint256 max);
@@ -54,7 +57,7 @@ contract AxiomAgentNFT is
     event UpgradeProposed(address indexed newImplementation);
     event UpgradeExecuted(address indexed newImplementation);
     event UpgradeCancelled();
-
+    event TrustedForwarderUpdated(address indexed oldForwarder, address indexed newForwarder);
 
     /// @custom:storage-location erc7201:agent.storage.AxiomAgentNFT
     struct AxiomAgentNFTStorage {
@@ -67,7 +70,13 @@ contract AxiomAgentNFT is
         // state lives in former gap slots untouched by V1 code paths.
         TimelockManager.State feeWithdrawalTimelock;
         TimelockManager.State upgradeTimelock;
-        uint256[44] __gap;
+        // V3 W5 (ERC-2771 retrofit): appended at the gap tail per the V2 layout-delta rule
+        // (gap shrunk 44→43; upgrade-in-place safe: pre-W5 impls never read this slot, so its
+        // zero default = "no forwarder trusted" is inert until the admin wires the GasTank via
+        // setTrustedForwarder). The OZ base's immutable _trustedForwarder is left unset —
+        // trustedForwarder() below is overridden to read this storage field instead.
+        address trustedForwarder;
+        uint256[43] __gap;
     }
 
     using AxiomMetadataJson for uint256;
@@ -85,7 +94,7 @@ contract AxiomAgentNFT is
     }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {
+    constructor() ERC2771ContextUpgradeable(address(0)) {
         _disableInitializers();
     }
 
@@ -219,7 +228,9 @@ contract AxiomAgentNFT is
     /// @dev Fee drainage is two-step with a 1-day timelock (mirrors verifier rotation) so monitors
     ///      can react before the balance leaves the contract. ADR-004 §1.1: instant single-key
     ///      fee drain was the largest residual admin risk alongside instant upgrades.
-    function proposeFeeWithdrawal(address payable to) external onlyRole(ADMIN_ROLE) {
+    function proposeFeeWithdrawal(
+        address payable to
+    ) external onlyRole(ADMIN_ROLE) {
         require(to != address(0), "Zero address");
         AxiomAgentNFTStorage storage $ = _getAxiomAgentNFTStorage();
         $.feeWithdrawalTimelock.propose(to);
@@ -253,7 +264,9 @@ contract AxiomAgentNFT is
     ///      propose → delay → executeUpgrade, which performs the UUPS proxy upgrade. executeUpgrade
     ///      pre-validates the target (non-zero, code, ERC-1967 UUID) so a malformed proposal can be
     ///      cancelled instead of bricking the proxy at execution time.
-    function proposeUpgrade(address newImplementation) external onlyRole(ADMIN_ROLE) {
+    function proposeUpgrade(
+        address newImplementation
+    ) external onlyRole(ADMIN_ROLE) {
         require(newImplementation != address(0), "Zero implementation");
         AxiomAgentNFTStorage storage $ = _getAxiomAgentNFTStorage();
         $.upgradeTimelock.propose(newImplementation);
@@ -313,11 +326,58 @@ contract AxiomAgentNFT is
         _unpause();
     }
 
+    // ─── ERC-2771 trusted forwarder (V3 W5) ───
+    // The vendored OZ 5.0.2 base bakes the forwarder as an immutable; these storage-backed
+    // overrides replace it so the admin can wire/un-wire the GasTank post-upgrade. A zero
+    // forwarder is a valid un-wire (isTrustedForwarder guards zero).
+
+    /// @notice Wire the ERC-2771 forwarder whose relayed calldata resolves to the signed user.
+    function setTrustedForwarder(
+        address newForwarder
+    ) external onlyRole(ADMIN_ROLE) {
+        AxiomAgentNFTStorage storage $ = _getAxiomAgentNFTStorage();
+        address old = $.trustedForwarder;
+        $.trustedForwarder = newForwarder;
+        emit TrustedForwarderUpdated(old, newForwarder);
+    }
+
+    function trustedForwarder() public view override returns (address) {
+        return _getAxiomAgentNFTStorage().trustedForwarder;
+    }
+
+    function isTrustedForwarder(
+        address forwarder
+    ) public view override returns (bool) {
+        return forwarder != address(0) && forwarder == _getAxiomAgentNFTStorage().trustedForwarder;
+    }
+
+    /// @dev Explicit diamond overrides: ContextUpgradeable reaches this contract both directly
+    ///      (via ERC721Upgradeable) and via ERC2771ContextUpgradeable, so solc requires the
+    ///      derived contract to disambiguate. Delegating to the ERC-2771 variant wires every
+    ///      inherited _msgSender() call site (update, refund, approvals) through forwarder
+    ///      resolution.
+    function _msgSender() internal view override(ContextUpgradeable, ERC2771ContextUpgradeable) returns (address) {
+        return ERC2771ContextUpgradeable._msgSender();
+    }
+
+    function _msgData() internal view override(ContextUpgradeable, ERC2771ContextUpgradeable) returns (bytes calldata) {
+        return ERC2771ContextUpgradeable._msgData();
+    }
+
+    function _contextSuffixLength()
+        internal
+        view
+        override(ContextUpgradeable, ERC2771ContextUpgradeable)
+        returns (uint256)
+    {
+        return ERC2771ContextUpgradeable._contextSuffixLength();
+    }
+
     function update(
         uint256 tokenId,
         IntelligentData[] calldata newDatas
     ) public virtual whenNotPaused {
-        require(_ownerOf(tokenId) == msg.sender, "Not owner");
+        require(_ownerOf(tokenId) == _msgSender(), "Not owner");
         require(newDatas.length > 0, "Empty data array");
         _checkDataSize(newDatas);
         _updateData(tokenId, newDatas);
@@ -327,7 +387,9 @@ contract AxiomAgentNFT is
     ///      stays DEFAULT_ADMIN-gated, and the primary V2 path (proposeUpgrade/executeUpgrade) adds a
     ///      1-day timelock window (ADR-004 §1.1). Keep this guard: it is what forces every rewrite of
     ///      the slot through a role check even when the new implementation does not inherit this contract.
-    function _authorizeUpgrade(address newImplementation) internal virtual override onlyRole(DEFAULT_ADMIN_ROLE) {}
+    function _authorizeUpgrade(
+        address newImplementation
+    ) internal virtual override onlyRole(DEFAULT_ADMIN_ROLE) {}
 
     function mint(
         IntelligentData[] calldata iDatas,
@@ -390,9 +452,11 @@ contract AxiomAgentNFT is
         return _getAxiomAgentNFTStorage().creators[tokenId];
     }
 
-    function _refundExcess(uint256 fee) internal {
+    function _refundExcess(
+        uint256 fee
+    ) internal {
         if (msg.value > fee) {
-            (bool ok,) = payable(msg.sender).call{value: msg.value - fee}("");
+            (bool ok,) = payable(_msgSender()).call{value: msg.value - fee}("");
             require(ok, "Refund failed");
         }
     }
@@ -409,7 +473,9 @@ contract AxiomAgentNFT is
         revert UseTimelockedFeeWithdrawal();
     }
 
-    function tokenURI(uint256 tokenId) public view virtual override(ERC721Upgradeable, IERC721Metadata) returns (string memory) {
+    function tokenURI(
+        uint256 tokenId
+    ) public view virtual override(ERC721Upgradeable, IERC721Metadata) returns (string memory) {
         _requireOwned(tokenId);
         return tokenId.buildMetadataJsonDataUri(_intelligentDatasOf(tokenId), name(), symbol());
     }
@@ -417,7 +483,9 @@ contract AxiomAgentNFT is
     /// @dev Sum of abi.encode lengths across all entries — each entry is dataDescription
     ///      (unbounded string) + dataHash (fixed 32 bytes), so the total is attacker-bounded
     ///      by the string sizes alone; a single aggregate check covers mint and update.
-    function _checkDataSize(IntelligentData[] calldata iDatas) internal pure {
+    function _checkDataSize(
+        IntelligentData[] calldata iDatas
+    ) internal pure {
         uint256 total;
         for (uint256 i = 0; i < iDatas.length; i++) {
             total += abi.encode(iDatas[i]).length;

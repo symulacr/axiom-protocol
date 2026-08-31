@@ -9,3 +9,4 @@ export { PAYMENT_PROCESSOR_ABI } from "./paymentProcessor.js";
 export { ERC20_ABI, PAYMENT_TOKEN_ABI } from "./erc20.js";
 export { TEE_VERIFIER_ABI } from "./teeVerifier.js";
 export { DELEGATION_REGISTRY_ABI } from "./delegationRegistry.js";
+export { GAS_TANK_ABI } from "./gasTank.js";

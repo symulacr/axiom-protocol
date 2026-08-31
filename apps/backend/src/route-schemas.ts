@@ -208,3 +208,20 @@ export const chatBodySchema = z.object({
 export const chatHistoryQuerySchema = z.object({
   wallet: addressViem,
 });
+
+/** Body for POST /v1/relayer/sponsor (V3 W5-B): EIP-712 ForwardRequest + userSig.
+ *  maxGasCost/nonce/deadline ride as decimal strings (bigint-on-the-wire rule);
+ *  the route re-derives bigint and recovers the signer server-side. */
+export const sponsorBodySchema = z.object({
+  user: addressViem,
+  target: addressViem,
+  data: hexViem,
+  maxGasCost: z
+    .string()
+    .regex(/^\d+$/, "maxGasCost must be a decimal wei string"),
+  nonce: z.string().regex(/^\d+$/, "nonce must be a decimal string"),
+  deadline: z
+    .string()
+    .regex(/^\d+$/, "deadline must be a unix-seconds decimal string"),
+  signature: hexViem,
+});

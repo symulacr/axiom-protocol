@@ -18,6 +18,8 @@ export interface ServerConfig {
     paymentProcessor?: `0x${string}`;
     /** DelegationRegistry (V3 W2-B) — optional until the deploy lane publishes it. */
     delegationRegistry?: `0x${string}`;
+    /** GasTank (V3 W5-B) — optional until lane A deploys; relayer routes 503 without it. */
+    gasTank?: `0x${string}`;
   };
   env?: BackendEnv;
 }

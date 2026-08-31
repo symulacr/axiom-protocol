@@ -34,6 +34,7 @@ const env: Record<string, unknown> = {
     .VITE_PAYMENT_PROCESSOR_ADDRESS,
   AXIOM_DELEGATION_REGISTRY_ADDRESS: import.meta.env
     .VITE_DELEGATION_REGISTRY_ADDRESS,
+  AXIOM_GAS_TANK_ADDRESS: import.meta.env.VITE_GAS_TANK_ADDRESS,
 };
 
 // Only app-shell contracts — getAddresses() also hard-requires paymentToken and would crash the SPA
@@ -61,6 +62,13 @@ export const getAxiomPaymentProcessorAddress = (_chainId?: number): Address =>
 export const getAxiomDelegationRegistryAddress = (
   _chainId?: number,
 ): Address | undefined => delegationRegistry;
+
+// V3 W5-B: GasTank is optional until the deploy lane sets VITE_GAS_TANK_ADDRESS;
+// consumers (useGasTank, GasTankCard, chat sponsor lane) must gate on undefined.
+const gasTank = resolveAddressOptional("gasTank", env) as Address | undefined;
+export const getAxiomGasTankAddress = (
+  _chainId?: number,
+): Address | undefined => gasTank;
 
 const BASE_DOMAIN = {
   name: EIP712_DOMAIN_NAME,

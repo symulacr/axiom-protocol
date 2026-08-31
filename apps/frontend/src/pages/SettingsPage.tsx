@@ -36,6 +36,7 @@ import {
   Status,
 } from "../components/axiom/Controls.js";
 import { getCopy, type Copy } from "../lib/copy.js";
+import { GasTankCard } from "../components/axiom/GasTankCard.js";
 import type { AppState, UiSettings } from "../lib/models.js";
 import type { ConsoleAction } from "../lib/consoleStore.js";
 import { useHealth } from "../hooks/useHealth.js";
@@ -255,6 +256,8 @@ export function SettingsPage({
               <Status label={status} tone={toneFor(status)} />
             </div>
           ))}
+          {/* V3 W5-B: GasTank status card mount (disabled-when-unset). */}
+          <GasTankCard locale={state.settings.locale} />
           {/* 03: Settings owns the operator profile name — the
               WalletGate step only creates the first value; renames land here
               and propagate to sidebar/topbar/avatar without re-auth. */}

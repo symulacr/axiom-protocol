@@ -4,10 +4,12 @@ pragma solidity ^0.8.20;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {ERC2771ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/metatx/ERC2771ContextUpgradeable.sol";
 import {IAxiomAgentNFT} from "./interfaces/IAxiomAgentNFT.sol";
 import {AxiomStrategyVault} from "./AxiomStrategyVault.sol";
 import {ISignatureTransfer} from "./permit2/ISignatureTransfer.sol";
@@ -21,7 +23,8 @@ contract AxiomPaymentProcessor is
     AccessControlUpgradeable,
     PausableUpgradeable,
     ReentrancyGuard,
-    UUPSUpgradeable
+    UUPSUpgradeable,
+    ERC2771ContextUpgradeable
 {
     using SafeERC20 for IERC20;
 
@@ -60,6 +63,7 @@ contract AxiomPaymentProcessor is
     event MaxPayCapUpdated(uint256 oldCap, uint256 newCap);
     event ComputeRatioMaxUpdated(uint256 oldRatioMax, uint256 newRatioMax);
     event VaultAddressUpdated(address indexed oldVault, address indexed newVault);
+    event TrustedForwarderUpdated(address indexed oldForwarder, address indexed newForwarder);
 
     /// @dev Canonical Permit2 deployment (Uniswap CREATE2 address, identical on every supported chain;
     ///      verified on Galileo testnet — docs/v3-proposals/04-web-research-digest.md Q2). Constant, not
@@ -118,7 +122,13 @@ contract AxiomPaymentProcessor is
         // (gap shrunk 47→46; upgrade-in-place safe: pre-W4 impls never read this slot, so its
         // zero default is inert until the admin wires it via setAxiomVault).
         AxiomStrategyVault axiomVault;
-        uint256[46] __gap;
+        // V3 W5 (ERC-2771 retrofit): appended at the gap tail per the V2 layout-delta rule
+        // (gap shrunk 46→45; upgrade-in-place safe: pre-W5 impls never read this slot, so its
+        // zero default = "no forwarder trusted" is inert until the admin wires the GasTank via
+        // setTrustedForwarder). The OZ base's immutable _trustedForwarder is left unset —
+        // trustedForwarder() below is overridden to read this storage field instead.
+        address trustedForwarder;
+        uint256[45] __gap;
     }
 
     bytes32 private constant STORAGE_LOCATION = 0xb6e9ac8ab7d5307044651d01576943b58a3563d54e8f2be64d1601b1a6cebc00;
@@ -134,12 +144,12 @@ contract AxiomPaymentProcessor is
     ) {
         PaymentProcessorStorage storage $ = _getStorage();
         address creator = $.axiomNft.creatorOf(agentTokenId);
-        if (creator != msg.sender) revert NotCreator();
+        if (creator != _msgSender()) revert NotCreator();
         _;
     }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {
+    constructor() ERC2771ContextUpgradeable(address(0)) {
         _disableInitializers();
     }
 
@@ -262,6 +272,52 @@ contract AxiomPaymentProcessor is
 
     function axiomVault() external view returns (address) {
         return address(_getStorage().axiomVault);
+    }
+
+    // ─── ERC-2771 trusted forwarder (V3 W5) ───
+    // The vendored OZ 5.0.2 base bakes the forwarder as an immutable; these storage-backed
+    // overrides replace it so the admin can wire/un-wire the GasTank post-upgrade. A zero
+    // forwarder is a valid un-wire (isTrustedForwarder guards zero), matching setAxiomVault.
+
+    /// @notice Wire the ERC-2771 forwarder whose relayed calldata resolves to the signed user.
+    function setTrustedForwarder(
+        address newForwarder
+    ) external onlyRole(ADMIN_ROLE) {
+        PaymentProcessorStorage storage $ = _getStorage();
+        address old = $.trustedForwarder;
+        $.trustedForwarder = newForwarder;
+        emit TrustedForwarderUpdated(old, newForwarder);
+    }
+
+    function trustedForwarder() public view override returns (address) {
+        return _getStorage().trustedForwarder;
+    }
+
+    function isTrustedForwarder(
+        address forwarder
+    ) public view override returns (bool) {
+        return forwarder != address(0) && forwarder == _getStorage().trustedForwarder;
+    }
+
+    /// @dev Explicit diamond overrides: ContextUpgradeable reaches this contract both directly
+    ///      (via AccessControlUpgradeable) and via ERC2771ContextUpgradeable, so solc requires
+    ///      the derived contract to disambiguate. Delegating to the ERC-2771 variant wires every
+    ///      inherited _msgSender() call site (pay lanes, role checks) through forwarder resolution.
+    function _msgSender() internal view override(ContextUpgradeable, ERC2771ContextUpgradeable) returns (address) {
+        return ERC2771ContextUpgradeable._msgSender();
+    }
+
+    function _msgData() internal view override(ContextUpgradeable, ERC2771ContextUpgradeable) returns (bytes calldata) {
+        return ERC2771ContextUpgradeable._msgData();
+    }
+
+    function _contextSuffixLength()
+        internal
+        view
+        override(ContextUpgradeable, ERC2771ContextUpgradeable)
+        returns (uint256)
+    {
+        return ERC2771ContextUpgradeable._contextSuffixLength();
     }
 
     function setRoyaltyBps(
@@ -441,6 +497,9 @@ contract AxiomPaymentProcessor is
     ///         payment from `owner` and runs the same creator/treasury split as payForAgent. The
     ///         owner must have approved the canonical Permit2 contract for the payment token
     ///         (one-time, any amount).
+    ///         NOT ERC-2771-relayable: Permit2 binds the spender to the raw msg.sender inside its
+    ///         hash, so relaying this through the GasTank would make the GasTank the spender and
+    ///         the permit would not verify against the signed user. Call this directly.
     ///         Replay protection is Permit2's unordered nonce bitmap — consumed inside Permit2, so
     ///         this contract deliberately keeps no nonce state of its own.
     /// @dev    The witness binds (agentTokenId, amount) so a captured signature cannot be
@@ -489,7 +548,7 @@ contract AxiomPaymentProcessor is
         uint256 amount
     ) external nonReentrant whenNotPaused {
         if (amount == 0) revert ZeroAmount();
-        _paySplit(msg.sender, agentTokenId, amount);
+        _paySplit(_msgSender(), agentTokenId, amount);
     }
 
     /// @dev Operator approves this contract to spend `amount`, then the full amount is forwarded to `provider`.
@@ -498,7 +557,7 @@ contract AxiomPaymentProcessor is
         uint256 amount
     ) external nonReentrant whenNotPaused {
         if (provider == address(0)) revert ZeroAddress();
-        _payTransferFrom(msg.sender, provider, amount);
+        _payTransferFrom(_msgSender(), provider, amount);
         emit ComputeProviderPaid(provider, amount);
     }
 
@@ -518,21 +577,21 @@ contract AxiomPaymentProcessor is
         if (ratioMax != 0 && computeAmount > ratioMax * agentAmount) {
             revert ComputeRatioExceeded(computeAmount, ratioMax * agentAmount);
         }
-        _paySplit(msg.sender, agentTokenId, agentAmount);
+        _paySplit(_msgSender(), agentTokenId, agentAmount);
 
-        _payTransferFrom(msg.sender, provider, computeAmount);
+        _payTransferFrom(_msgSender(), provider, computeAmount);
         emit ComputeProviderPaid(provider, computeAmount);
     }
 
     /// @notice Creator pulls accumulated earnings in the configured payment token (not native).
     function withdrawAgentEarnings() external nonReentrant {
         PaymentProcessorStorage storage $ = _getStorage();
-        uint256 amount = $.agentEarnings[msg.sender];
+        uint256 amount = $.agentEarnings[_msgSender()];
         if (amount == 0) revert NoEarnings();
-        $.agentEarnings[msg.sender] = 0;
+        $.agentEarnings[_msgSender()] = 0;
         $.totalOutstandingEarnings -= amount;
-        emit EarningsWithdrawn(msg.sender, amount);
-        IERC20($.paymentToken).safeTransfer(msg.sender, amount);
+        emit EarningsWithdrawn(_msgSender(), amount);
+        IERC20($.paymentToken).safeTransfer(_msgSender(), amount);
     }
 
     function pause() external onlyRole(ADMIN_ROLE) {

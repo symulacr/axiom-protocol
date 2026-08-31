@@ -57,7 +57,9 @@ export {
   bigintReplacer,
   DEFAULT_EVENT_LIMIT,
   RUNTIME_DEFAULTS,
+  RELAYER_DEFAULTS,
   getRuntimeConfig,
+  getRelayerConfig,
 } from "./constants.js";
 export * from "./skills/schemas.js";
 export type { EventName } from "./constants.js";

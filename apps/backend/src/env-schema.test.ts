@@ -69,3 +69,78 @@ describe("AXIOM_DEK_CUSTODY (sealed-DEK custody flag, ADR-004 §2.4)", () => {
     }
   });
 });
+
+describe("backendEnvSchema relayer block (V3 W5-B)", () => {
+  test("mode defaults to off; knobs default when unset", () => {
+    const env = backendEnvSchema.parse({ ...base });
+    assert.equal(env.AXIOM_RELAYER_MODE, "off");
+    assert.equal(env.AXIOM_RELAYER_BATCH_MAX, 64);
+    assert.equal(env.AXIOM_RELAYER_RECONCILE_INTERVAL_MS, 60_000);
+    assert.equal(env.AXIOM_RELAYER_SPONSOR_RATE_PER_MIN, 6);
+    assert.equal(
+      env.AXIOM_RELAYER_SPONSOR_MAX_GAS_COST_WEI,
+      1_000_000_000_000_000n,
+    );
+    assert.equal(env.AXIOM_RELAYER_SPONSOR_MAX_INFLIGHT_PER_USER, 2);
+  });
+
+  test("AXIOM_RELAYER_MODE accepts on/off only", () => {
+    assert.equal(
+      backendEnvSchema.safeParse({ ...base, AXIOM_RELAYER_MODE: "on" }).success,
+      true,
+    );
+    assert.equal(
+      backendEnvSchema.safeParse({ ...base, AXIOM_RELAYER_MODE: "always" })
+        .success,
+      false,
+    );
+  });
+
+  test("BATCH_MAX capped at 64; garbage rejected", () => {
+    assert.equal(
+      backendEnvSchema.safeParse({ ...base, AXIOM_RELAYER_BATCH_MAX: "64" })
+        .success,
+      true,
+    );
+    assert.equal(
+      backendEnvSchema.safeParse({ ...base, AXIOM_RELAYER_BATCH_MAX: "65" })
+        .success,
+      false,
+    );
+    assert.equal(
+      backendEnvSchema.safeParse({ ...base, AXIOM_RELAYER_BATCH_MAX: "zero" })
+        .success,
+      false,
+    );
+  });
+
+  test("sponsor ceiling coerces to bigint; zero/negative rejected", () => {
+    const ok = backendEnvSchema.safeParse({
+      ...base,
+      AXIOM_RELAYER_SPONSOR_MAX_GAS_COST_WEI: "2000000000000000",
+    });
+    assert.equal(ok.success, true);
+    assert.equal(
+      ok.success && ok.data.AXIOM_RELAYER_SPONSOR_MAX_GAS_COST_WEI,
+      2_000_000_000_000_000n,
+    );
+    assert.equal(
+      backendEnvSchema.safeParse({
+        ...base,
+        AXIOM_RELAYER_SPONSOR_MAX_GAS_COST_WEI: "0",
+      }).success,
+      false,
+    );
+  });
+
+  test("GAS_TANK_ADDRESS and RELAYER_PK optional (mode-gated fail-start in server.ts)", () => {
+    const env = backendEnvSchema.parse({ ...base });
+    assert.equal(env.AXIOM_GAS_TANK_ADDRESS, undefined);
+    assert.equal(env.AXIOM_RELAYER_PK, undefined);
+    const withPk = backendEnvSchema.parse({
+      ...base,
+      AXIOM_RELAYER_PK: "0x" + "33".repeat(32),
+    });
+    assert.equal(withPk.AXIOM_RELAYER_PK, "0x" + "33".repeat(32));
+  });
+});

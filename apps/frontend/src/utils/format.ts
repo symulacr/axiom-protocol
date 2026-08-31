@@ -113,6 +113,18 @@ export function humanizeError(err: unknown): string {
     return "The compute provider is rate-limiting requests. Wait a few seconds and send again.";
   }
 
+  // GasTank (V3 W5-B): distinguish user-side remedy (deposit/refill) from the
+  // operator-side one (reserve funding) and the throttle (just wait).
+  if (has("gas tank exhausted", "tank_exhausted")) {
+    return "Your free gas grants are used up. Deposit via the GasTank UI, or connect a wallet to sign ops directly.";
+  }
+  if (has("reserve exhausted", "reserve_depleted")) {
+    return "The protocol gas reserve is temporarily empty. Sponsored ops pause until it's refunded — try again shortly.";
+  }
+  if (has("sponsor_rate_limited", "sponsor rate limit")) {
+    return "Too many sponsored ops in a row. Wait a moment and retry.";
+  }
+
   if (lower.includes("compute upstream")) {
     return "Compute is unavailable right now. Check backend compute keys and balance.";
   }
