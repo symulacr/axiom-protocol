@@ -105,8 +105,8 @@ contract AxiomAgentNFT is
         address verifierAddr,
         address admin_
     ) public virtual initializer {
-        require(verifierAddr != address(0), "Zero verifier address");
-        require(admin_ != address(0), "Zero admin address");
+        require(verifierAddr != address(0), "NoVerif");
+        require(admin_ != address(0), "Zero admin");
 
         __AccessControl_init();
         __Pausable_init();
@@ -171,7 +171,7 @@ contract AxiomAgentNFT is
     function proposeVerifier(
         address newVerifier
     ) external onlyRole(ADMIN_ROLE) {
-        require(newVerifier != address(0), "Zero verifier");
+        require(newVerifier != address(0), "NoVerif");
         AxiomAgentNFTStorage storage $ = _getAxiomAgentNFTStorage();
         $.verifierTimelock.propose(newVerifier);
         emit VerifierProposed(newVerifier);
@@ -231,7 +231,7 @@ contract AxiomAgentNFT is
     function proposeFeeWithdrawal(
         address payable to
     ) external onlyRole(ADMIN_ROLE) {
-        require(to != address(0), "Zero address");
+        require(to != address(0), "Zero addr");
         AxiomAgentNFTStorage storage $ = _getAxiomAgentNFTStorage();
         $.feeWithdrawalTimelock.propose(to);
         emit FeeWithdrawalProposed(to);
@@ -242,7 +242,7 @@ contract AxiomAgentNFT is
         address to = $.feeWithdrawalTimelock.execute();
         uint256 balance = address(this).balance;
         (bool ok,) = payable(to).call{value: balance}("");
-        require(ok, "Withdraw failed");
+        require(ok, "Wdrw err");
         emit FeeWithdrawalExecuted(to, balance);
     }
 
@@ -267,7 +267,7 @@ contract AxiomAgentNFT is
     function proposeUpgrade(
         address newImplementation
     ) external onlyRole(ADMIN_ROLE) {
-        require(newImplementation != address(0), "Zero implementation");
+        require(newImplementation != address(0), "Zero impl");
         AxiomAgentNFTStorage storage $ = _getAxiomAgentNFTStorage();
         $.upgradeTimelock.propose(newImplementation);
         emit UpgradeProposed(newImplementation);
@@ -276,10 +276,10 @@ contract AxiomAgentNFT is
     function executeUpgrade() external onlyRole(ADMIN_ROLE) {
         AxiomAgentNFTStorage storage $ = _getAxiomAgentNFTStorage();
         address newImplementation = $.upgradeTimelock.execute();
-        require(newImplementation.code.length > 0, "No code at implementation");
+        require(newImplementation.code.length > 0, "No impl");
         require(
             IERC1822Proxiable(newImplementation).proxiableUUID() == ERC1967Utils.IMPLEMENTATION_SLOT,
-            "UUID not ERC1967 implementation"
+            "Bad UUID"
         );
         // Called from the implementation (call context): OZ's external upgradeToAndCall relay would
         // revert on its _checkProxy guard and _authorizeUpgrade would see the NFT as msg.sender. The
@@ -377,8 +377,8 @@ contract AxiomAgentNFT is
         uint256 tokenId,
         IntelligentData[] calldata newDatas
     ) public virtual whenNotPaused {
-        require(_ownerOf(tokenId) == _msgSender(), "Not owner");
-        require(newDatas.length > 0, "Empty data array");
+        require(_ownerOf(tokenId) == _msgSender(), "NotOwner");
+        require(newDatas.length > 0, "No data");
         _checkDataSize(newDatas);
         _updateData(tokenId, newDatas);
     }
@@ -395,11 +395,11 @@ contract AxiomAgentNFT is
         IntelligentData[] calldata iDatas,
         address to
     ) public payable virtual whenNotPaused nonReentrant returns (uint256 tokenId) {
-        require(to != address(0), "Zero address");
-        require(iDatas.length > 0, "Empty data array");
+        require(to != address(0), "Zero addr");
+        require(iDatas.length > 0, "No data");
         _checkDataSize(iDatas);
         uint256 fee = _getAxiomAgentNFTStorage().mintFee;
-        require(msg.value >= fee, "Insufficient mint fee");
+        require(msg.value >= fee, "Low fee");
 
         tokenId = _incrementTokenId();
         _updateData(tokenId, iDatas);
@@ -431,8 +431,8 @@ contract AxiomAgentNFT is
         address to,
         address creator
     ) internal returns (uint256 tokenId) {
-        require(to != address(0), "Zero address");
-        require(iDatas.length > 0, "Empty data array");
+        require(to != address(0), "Zero addr");
+        require(iDatas.length > 0, "No data");
         _checkDataSize(iDatas);
         tokenId = _incrementTokenId();
         _updateData(tokenId, iDatas);
@@ -457,7 +457,7 @@ contract AxiomAgentNFT is
     ) internal {
         if (msg.value > fee) {
             (bool ok,) = payable(_msgSender()).call{value: msg.value - fee}("");
-            require(ok, "Refund failed");
+            require(ok, "Rfnd err");
         }
     }
 
