@@ -64,9 +64,13 @@ contract AxiomPaymentProcessor is
     address public constant PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
 
     /// @dev EIP-712 type definition stub Permit2 hashes against for witness permits (PermitHash.sol,
-    ///      `_PERMIT_TRANSFER_FROM_WITNESS_TYPEHASH_STUB`); the full typehash is this stub +
-    ///      `WITNESS_TYPE_STRING` + the TokenPermissions tail. The `spender` field binds msg.sender.
-    string private constant WITNESS_TYPE_STRING = "AgentPayment witness)TokenPermissions(address token,uint256 amount)";
+    ///      `hashWithWitness`): typeHash = keccak256(stub ++ witnessTypeString). The witness string
+    ///      must make stub++witness equal the wallet's full type concatenation — outer struct with
+    ///      `AgentPayment witness)`, then TokenPermissions def, then AgentPayment def (field-order
+    ///      referenced-type order: permitted→TokenPermissions, witness→AgentPayment). Verified
+    ///      byte-parity with apps/frontend/src/lib/permit2.ts types and the MockPermit2 stub.
+    string private constant WITNESS_TYPE_STRING =
+        "AgentPayment witness)TokenPermissions(address token,uint256 amount)AgentPayment(uint256 agentTokenId,uint256 amount)";
 
     /// @dev Witness payload signed into every Permit2 payment: pins the paying agent and the
     ///      amount. (Permit2's hash additionally binds spender = msg.sender and the single-use

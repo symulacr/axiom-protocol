@@ -113,7 +113,12 @@ function watchGroup<K extends keyof IndexerContractAddresses>(
 }
 
 const DEFAULT_WATCH: ReadonlyArray<
-  readonly [name: EventName, addrKey: keyof IndexerContractAddresses]
+  readonly [
+    name: EventName,
+    addrKey:
+      | Exclude<keyof IndexerContractAddresses, "AXIOM_DELEGATION_REGISTRY">
+      | "AXIOM_DELEGATION_REGISTRY",
+  ]
 > = [
   ...watchGroup("AXIOM_AGENT_NFT", [
     "Transfer",
@@ -148,6 +153,8 @@ const DEFAULT_WATCH: ReadonlyArray<
     "SignerProposed",
     "SignerExecuted",
     "SignerProposalCancelled",
+    // W3-B: every consumed proof nonce (BaseVerifier._checkAndMarkProof).
+    "ProofUsed",
   ]),
   ...watchGroup("AXIOM_AGENT_NFT", [
     "MetadataJsonDecisionDocumented",
@@ -162,16 +169,29 @@ const DEFAULT_WATCH: ReadonlyArray<
   ]),
   ...watchGroup("AXIOM_STRATEGY_VAULT", ["Paused", "Unpaused"]),
   ...watchGroup("AXIOM_PAYMENT_PROCESSOR", ["Paused", "Unpaused"]),
+  // W3-B: DelegationRegistry (W2-B contract) — watched only once the deploy
+  // lane sets AXIOM_DELEGATION_REGISTRY_ADDRESS; absent env keeps the default
+  // watch list free of its address (buildDefaultWatchList drops the group).
+  ...watchGroup("AXIOM_DELEGATION_REGISTRY", [
+    "DelegationInstalled",
+    "DelegationRevoked",
+    "DelegatedExecuted",
+  ]),
 ];
 
 export function buildDefaultWatchList(
   addresses?: IndexerContractAddresses,
 ): readonly WatchedEvent[] {
   const resolved = addresses ?? resolveIndexerAddresses();
-  return DEFAULT_WATCH.map(([name, addrKey]) => ({
-    name,
-    address: resolved[addrKey],
-  }));
+  const registry = resolved.AXIOM_DELEGATION_REGISTRY;
+  return DEFAULT_WATCH.flatMap(([name, addrKey]) => {
+    // Registry events are watched only once the deploy lane publishes the
+    // DelegationRegistry address; every other event requires its key.
+    if (addrKey === "AXIOM_DELEGATION_REGISTRY") {
+      return registry ? [{ name, address: registry }] : [];
+    }
+    return [{ name, address: resolved[addrKey] }];
+  });
 }
 
 type EventSink = (event: AxiomEvent) => void | Promise<void>;

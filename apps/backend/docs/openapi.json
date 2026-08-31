@@ -23,13 +23,13 @@
         "type": "apiKey",
         "in": "header",
         "name": "x-api-key",
-        "description": "Server key (AXIOM_API_KEY). Full access; also accepted by /v1/stream via ?token=. SAME header as clientKey — the key VALUE distinguishes the tier."
+        "description": "Server key (AXIOM_API_KEY). Full access; also accepted by /v1/stream via ?token=. SAME header as clientKey \u2014 the key VALUE distinguishes the tier."
       },
       "clientKey": {
         "type": "apiKey",
         "in": "header",
         "name": "x-api-key",
-        "description": "Browser key (AXIOM_CLIENT_API_KEY). SAME header as serverKey; only CLIENT_ALLOWED_ROUTES are reachable (everything else → 403 CLIENT_PATH_DENIED)."
+        "description": "Browser key (AXIOM_CLIENT_API_KEY). SAME header as serverKey; only CLIENT_ALLOWED_ROUTES are reachable (everything else \u2192 403 CLIENT_PATH_DENIED)."
       },
       "indexerKey": {
         "type": "apiKey",
@@ -100,7 +100,7 @@
               "type": "object",
               "additionalProperties": {}
             },
-            "description": "Raw zod issue objects (path/message/code/expected/received…)"
+            "description": "Raw zod issue objects (path/message/code/expected/received\u2026)"
           },
           "code": {
             "type": "string",
@@ -1733,7 +1733,7 @@
             "additionalProperties": {
               "$ref": "#/components/schemas/MetricSummary"
             },
-            "description": "Map of agent token ID → metrics"
+            "description": "Map of agent token ID \u2192 metrics"
           }
         },
         "required": [
@@ -1935,7 +1935,7 @@
               },
               "signer": {
                 "type": "string",
-                "description": "Short signer address (0x1234…abcd)"
+                "description": "Short signer address (0x1234\u2026abcd)"
               },
               "startedAt": {
                 "type": "integer"
@@ -2008,7 +2008,7 @@
               "null"
             ],
             "minimum": 0,
-            "description": "Seconds until executable (server-clock derived, clamped ≥0)"
+            "description": "Seconds until executable (server-clock derived, clamped \u22650)"
           }
         },
         "required": [
@@ -2167,7 +2167,7 @@
           "trace": {
             "type": "object",
             "additionalProperties": {},
-            "description": "Terminal chunk usage ∪ x_0g_trace ∪ providerHeader (from the upstream x-provider header, when present)"
+            "description": "Terminal chunk usage \u222a x_0g_trace \u222a providerHeader (from the upstream x-provider header, when present)"
           }
         },
         "required": [
@@ -3008,6 +3008,99 @@
         "required": [
           "receiverPubKey64"
         ]
+      },
+      "StateViewPaymentSnapshot": {
+        "type": "object",
+        "properties": {
+          "maxPayCap": {
+            "type": "string",
+            "description": "Payment cap (single-primitive, V3)"
+          },
+          "computeRatioMax": {
+            "type": "string"
+          },
+          "agentBalance": {
+            "type": "string",
+            "description": "Vault balance for the agent"
+          },
+          "payerAllowance": {
+            "type": "string",
+            "description": "Payer token allowance to the processor"
+          },
+          "paymentToken": {
+            "type": "string",
+            "description": "ERC-20 payment token address"
+          }
+        },
+        "required": [
+          "maxPayCap",
+          "computeRatioMax",
+          "agentBalance",
+          "payerAllowance",
+          "paymentToken"
+        ]
+      },
+      "StateViewVaultHealth": {
+        "type": "object",
+        "properties": {
+          "balance": {
+            "type": "string"
+          },
+          "strategyRoot": {
+            "type": "string",
+            "description": "bytes32 Merkle root of allowed (target,selector) pairs; zero = no strategy"
+          },
+          "dailyLimit": {
+            "type": "string"
+          },
+          "dailySpent": {
+            "type": "string"
+          },
+          "resetDay": {
+            "type": "string",
+            "description": "UTC day index the window resets on"
+          },
+          "validUntilDay": {
+            "type": "string",
+            "description": "0 = no expiry"
+          },
+          "expired": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "balance",
+          "strategyRoot",
+          "dailyLimit",
+          "dailySpent",
+          "resetDay",
+          "validUntilDay",
+          "expired"
+        ]
+      },
+      "AgentStateResponse": {
+        "type": "object",
+        "properties": {
+          "tokenId": {
+            "type": "string"
+          },
+          "payer": {
+            "$ref": "#/components/schemas/StateViewPaymentSnapshot"
+          },
+          "vaultHealth": {
+            "$ref": "#/components/schemas/StateViewVaultHealth"
+          },
+          "errors": {
+            "type": "object",
+            "description": "Per-read failure detail when one view fails but the other succeeded",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "tokenId"
+        ]
       }
     }
   },
@@ -3096,7 +3189,7 @@
           }
         ],
         "requestBody": {
-          "description": "JSON-RPC 2.0 request (initialize first; sessionless requests → 400 JSON-RPC error)",
+          "description": "JSON-RPC 2.0 request (initialize first; sessionless requests \u2192 400 JSON-RPC error)",
           "required": true,
           "content": {
             "application/json": {
@@ -3108,7 +3201,7 @@
         },
         "responses": {
           "200": {
-            "description": "JSON-RPC response — JSON (Accept: application/json) or SSE (text/event-stream)",
+            "description": "JSON-RPC response \u2014 JSON (Accept: application/json) or SSE (text/event-stream)",
             "content": {
               "application/json": {
                 "schema": {
@@ -3184,7 +3277,7 @@
             }
           },
           "503": {
-            "description": "Chain unhealthy — same shape with ok:false (or error envelope)",
+            "description": "Chain unhealthy \u2014 same shape with ok:false (or error envelope)",
             "content": {
               "application/json": {
                 "schema": {
@@ -3212,7 +3305,7 @@
             }
           },
           "503": {
-            "description": "Chain unhealthy — same shape with ok:false (or error envelope)",
+            "description": "Chain unhealthy \u2014 same shape with ok:false (or error envelope)",
             "content": {
               "application/json": {
                 "schema": {
@@ -3601,7 +3694,7 @@
     },
     "/v1/compute/providers": {
       "get": {
-        "summary": "List compute providers; ?model= → real provider passthrough",
+        "summary": "List compute providers; ?model= \u2192 real provider passthrough",
         "security": [
           {
             "serverKey": []
@@ -3615,7 +3708,7 @@
             "name": "model",
             "in": "query",
             "required": false,
-            "description": "Router model id — returns real provider records (address/latency/pricing/TEE)",
+            "description": "Router model id \u2014 returns real provider records (address/latency/pricing/TEE)",
             "schema": {
               "type": "string"
             }
@@ -3866,7 +3959,7 @@
     "/v1/registry/pubkey/{id}": {
       "get": {
         "summary": "Receiver pubkey lookup from the address's latest outgoing tx (60s cache)",
-        "description": "Returns { receiverPubKey64 } (0x + 64-byte X||Y). 404 NO_ONCHAIN_KEY when the backend has no tx-by-sender source for the address (fresh wallets) — the FE keeps the Advanced manual-paste fallback.",
+        "description": "Returns { receiverPubKey64 } (0x + 64-byte X||Y). 404 NO_ONCHAIN_KEY when the backend has no tx-by-sender source for the address (fresh wallets) \u2014 the FE keeps the Advanced manual-paste fallback.",
         "security": [
           {
             "serverKey": []
@@ -3968,7 +4061,7 @@
           },
           {
             "name": "<eventName>",
-            "description": "StoredEvent broadcast (Tick, Transfer, Deposited, Withdrawn, StrategySet, Executed, transcript, …)",
+            "description": "StoredEvent broadcast (Tick, Transfer, Deposited, Withdrawn, StrategySet, Executed, transcript, \u2026)",
             "schema": {
               "$ref": "#/components/schemas/WsFrameEnvelope"
             }
@@ -4007,7 +4100,7 @@
             "name": "topic",
             "in": "query",
             "required": false,
-            "description": "Repeatable (≤20). Prefix subscription (tick. → all tick.*); * = everything",
+            "description": "Repeatable (\u226420). Prefix subscription (tick. \u2192 all tick.*); * = everything",
             "schema": {
               "type": "string"
             }
@@ -4015,7 +4108,7 @@
         ],
         "responses": {
           "101": {
-            "description": "Switching Protocols — WS frames follow (JSON, bigints as strings)"
+            "description": "Switching Protocols \u2014 WS frames follow (JSON, bigints as strings)"
           },
           "401": {
             "description": "Raw HTTP/1.1 401 Unauthorized (no body)"
@@ -4351,7 +4444,7 @@
     },
     "/v1/agents/{id}/transfer": {
       "post": {
-        "summary": "Two-step ownership transfer (challenge → final)",
+        "summary": "Two-step ownership transfer (challenge \u2192 final)",
         "security": [
           {
             "serverKey": []
@@ -4373,7 +4466,7 @@
           }
         ],
         "requestBody": {
-          "description": "accessProof absent ⇒ challenge stage; present ⇒ final stage. Production requires sealedKey.",
+          "description": "accessProof absent \u21d2 challenge stage; present \u21d2 final stage. Production requires sealedKey.",
           "required": true,
           "content": {
             "application/json": {
@@ -4632,7 +4725,7 @@
         },
         "responses": {
           "200": {
-            "description": "SSE stream (text/event-stream): OpenAI chat.completion.chunk frames → trace frame → [DONE]. See x-sse-events.",
+            "description": "SSE stream (text/event-stream): OpenAI chat.completion.chunk frames \u2192 trace frame \u2192 [DONE]. See x-sse-events.",
             "x-sse-content-type": "application/json",
             "x-sse-events": [
               {
@@ -4651,14 +4744,14 @@
               },
               {
                 "name": "trace",
-                "description": "Usage ∪ x_0g_trace ∪ providerHeader",
+                "description": "Usage \u222a x_0g_trace \u222a providerHeader",
                 "schema": {
                   "$ref": "#/components/schemas/ChatStreamTraceFrame"
                 }
               },
               {
                 "name": "error",
-                "description": "Mid-stream failure (STREAM_ERROR) — only after headers flushed",
+                "description": "Mid-stream failure (STREAM_ERROR) \u2014 only after headers flushed",
                 "schema": {
                   "$ref": "#/components/schemas/ChatStreamErrorFrame"
                 }
@@ -4726,7 +4819,7 @@
             }
           },
           "429": {
-            "description": "429 — express-rate-limit (60s window, AXIOM_RATE_LIMIT_MAX default 100). Plain-text body, not the JSON envelope.",
+            "description": "429 \u2014 express-rate-limit (60s window, AXIOM_RATE_LIMIT_MAX default 100). Plain-text body, not the JSON envelope.",
             "headers": {
               "Retry-After": {
                 "schema": {
@@ -4782,7 +4875,7 @@
     },
     "/v1/orchestrator/tick": {
       "post": {
-        "summary": "Run an AI strategy tick (stream:true → 202 + WS stream to tick.<id>)",
+        "summary": "Run an AI strategy tick (stream:true \u2192 202 + WS stream to tick.<id>)",
         "security": [
           {
             "serverKey": []
@@ -4793,7 +4886,7 @@
         ],
         "x-server-only-property": "executionPlan",
         "requestBody": {
-          "description": "executionPlan requires the SERVER key (client key ⇒ 403 SERVER_KEY_REQUIRED).",
+          "description": "executionPlan requires the SERVER key (client key \u21d2 403 SERVER_KEY_REQUIRED).",
           "required": true,
           "content": {
             "application/json": {
@@ -4815,7 +4908,7 @@
             }
           },
           "202": {
-            "description": "Stream accepted — WS frames follow on tick.<id>",
+            "description": "Stream accepted \u2014 WS frames follow on tick.<id>",
             "content": {
               "application/json": {
                 "schema": {
@@ -6271,6 +6364,83 @@
             "x-error-codes": [
               "ADDRESS_NOT_CONFIGURED"
             ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/agents/{id}/state": {
+      "get": {
+        "summary": "Pre-flight agent state from AxiomStateView: paymentSnapshot + vaultHealthOf in one call (10s cache)",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Agent token ID (numeric)",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$"
+            }
+          },
+          {
+            "name": "payer",
+            "in": "query",
+            "required": false,
+            "description": "Payer address to scope paymentSnapshot; defaults to the zero address (aggregate view)",
+            "schema": {
+              "type": "string",
+              "pattern": "^0x[0-9a-fA-F]{40}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Combined snapshot; reads that failed are omitted and detailed in errors",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentStateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing/invalid id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Both stateview reads failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "AxiomStateView address not configured (pre-deploy)",
             "content": {
               "application/json": {
                 "schema": {

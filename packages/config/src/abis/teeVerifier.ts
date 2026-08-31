@@ -49,9 +49,11 @@ export const TEE_VERIFIER_ABI = [
   "error ProofAlreadyUsed(bytes32 proofHash)",
   "error ProofFieldMismatch()",
   "error SignerAllowlistEmpty()",
+  "error SignerAllowlistFull()",
   "error SignerAlreadyAllowlisted()",
   "error SignerNotAllowlisted()",
   "error UUPSUnauthorizedCallContext()",
   "error UUPSUnsupportedProxiableUUID(bytes32 slot)",
+  "error UnauthorizedVerifierCaller(address caller, address nft)",
   "error ZeroAddress()"
 ] as const;

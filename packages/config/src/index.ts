@@ -7,7 +7,12 @@ export {
   defaultChatModelForChain,
   resolveComputeRouterUrl,
 } from "./networks.js";
-export { getAddresses } from "./addresses.js";
+export {
+  getAddresses,
+  resolveAddress,
+  resolveAddressOptional,
+  type AddressName,
+} from "./addresses.js";
 export * from "./types/index.js";
 export * from "./eip712.js";
 export * from "./strategy-guard.js";

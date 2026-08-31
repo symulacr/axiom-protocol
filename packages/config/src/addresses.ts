@@ -5,7 +5,9 @@ export type AddressName =
   | "strategyVault"
   | "teeVerifier"
   | "paymentProcessor"
-  | "paymentToken";
+  | "paymentToken"
+  | "stateView"
+  | "delegationRegistry";
 
 const ENV_VAR_NAMES: Record<AddressName, string[]> = {
   agentNft: ["AXIOM_AGENT_NFT_ADDRESS", "AGENT_NFT_ADDRESS"],
@@ -17,6 +19,8 @@ const ENV_VAR_NAMES: Record<AddressName, string[]> = {
     "AXIOM_PAYMENT_PROCESSOR",
   ],
   paymentToken: ["AXIOM_PAYMENT_TOKEN", "AXIOM_MOCK_USDC_ADDRESS"],
+  stateView: ["AXIOM_STATE_VIEW_ADDRESS"],
+  delegationRegistry: ["AXIOM_DELEGATION_REGISTRY_ADDRESS"],
 };
 
 const ADDRESS_NAMES = Object.keys(ENV_VAR_NAMES) as AddressName[];
@@ -41,6 +45,24 @@ export function resolveAddress(
   throw new Error(
     `Missing deployed-address env var for "${name}" — set one of: ${varNames.join(", ")}`,
   );
+}
+
+/** Addresses that may legitimately be unset pre-deploy — resolveAddressOptional returns undefined instead of throwing. */
+const OPTIONAL_ADDRESS_NAMES: readonly AddressName[] = [
+  "delegationRegistry",
+  "stateView",
+];
+
+export function resolveAddressOptional(
+  name: AddressName,
+  env: Record<string, unknown>,
+): `0x${string}` | undefined {
+  try {
+    return resolveAddress(name, env);
+  } catch (err) {
+    if (OPTIONAL_ADDRESS_NAMES.includes(name)) return undefined;
+    throw err;
+  }
 }
 
 export function getAddresses(

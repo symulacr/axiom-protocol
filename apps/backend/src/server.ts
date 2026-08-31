@@ -46,6 +46,7 @@ import { registerComputeRoutes } from "./routers/compute.js";
 import { registerChatRoutes } from "./routers/chat.js";
 import { registerPaymentRoutes } from "./routers/payment.js";
 import { registerGovernanceRoutes } from "./routers/governance.js";
+import { registerStateViewRoutes } from "./routers/stateview.js";
 import { pushRouteMeta, routeMeta } from "./routers/shared.js";
 import { registerPerformanceRoutes } from "./routers/performance.js";
 import { registerOrchestratorRoutes } from "./routers/orchestrator.js";
@@ -366,6 +367,10 @@ export function startServer(config: ServerConfig): {
   // M12: pending rotation timelocks (verifier/teeSigner/treasury) were observable
   // nowhere in prod — read-only surface, no contract address required at boot.
   registerGovernanceRoutes(app, config, provider);
+
+  // V3 W3-B: one-call pre-flight (paymentSnapshot + vaultHealthOf) off AxiomStateView;
+  // 503s ADDRESS_NOT_CONFIGURED until the deploy lane sets AXIOM_STATE_VIEW_ADDRESS.
+  registerStateViewRoutes(app, config, provider);
 
   pushRouteMeta(
     ["POST", "/mcp", "mcp", "MCP streamable HTTP endpoint (read-only tools)"],

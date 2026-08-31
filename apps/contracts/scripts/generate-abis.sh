@@ -23,8 +23,10 @@ CONST_NAMES[AxiomTeeVerifier]=TEE_VERIFIER_ABI
 CONST_NAMES[AxiomStrategyVault]=VAULT_ABI
 CONST_NAMES[AxiomPaymentProcessor]=PAYMENT_PROCESSOR_ABI
 CONST_NAMES[AxiomMockUSDC]=MOCK_USDC_ABI
+CONST_NAMES[AxiomDelegationRegistry]=DELEGATION_REGISTRY_ABI
+CONST_NAMES[AxiomStateView]=STATE_VIEW_ABI
 
-CONTRACTS=(AxiomAgentNFT AxiomTeeVerifier AxiomStrategyVault AxiomPaymentProcessor AxiomMockUSDC)
+CONTRACTS=(AxiomAgentNFT AxiomTeeVerifier AxiomStrategyVault AxiomPaymentProcessor AxiomMockUSDC AxiomDelegationRegistry AxiomStateView)
 
 # Pyhon conversion script — writes TS human-readable format from forge inspect JSON
 PY_CONVERTER=$(
@@ -124,6 +126,8 @@ for name in "${CONTRACTS[@]}"; do
   AxiomStrategyVault) ts_name="vault" ;;
   AxiomPaymentProcessor) ts_name="paymentProcessor" ;;
   AxiomMockUSDC) ts_name="mockUsdc" ;;
+  AxiomDelegationRegistry) ts_name="delegationRegistry" ;;
+  AxiomStateView) ts_name="stateView" ;;
   *) ts_name="${name,}" ;;
   esac
 

@@ -1,0 +1,120 @@
+{
+  "network": "0G Galileo testnet",
+  "chainId": 16602,
+  "rpc": "https://evmrpc-testnet.0g.ai",
+  "deployedAt": "2026-08-31",
+  "deployedAtUnix": 1785513600,
+  "purpose": "V3 fresh redeploy per ADR 004 §3-4 (W3-A): Wave 1/2 changes (Permit2 settlement lane, compute-ratio cap, verifier NFT-caller gate + ProofUsed, DataSizeExceeded cap, DelegationRegistry, StateView) require new bytecode + new contracts — fresh deployment, not an upgrade. Testnet token data loss accepted per ADR §4. Supersedes the V2 suite (commit 7ec2e7df4) as address source of truth; V2 addresses retained below for rollback.",
+  "script": "apps/contracts/script/Deploy.s.sol (extended: +AxiomDelegationRegistry, +AxiomStateView, in-script wiring requires)",
+  "deployFlags": ["--legacy", "--slow", "--broadcast"],
+  "contractCommits": {
+    "CV1/CV2 base": "add2fdadf (w2)",
+    "deploy wave": "w3-a"
+  },
+  "contracts": {
+    "AxiomTeeVerifier": {
+      "impl": "0xd34c8b3a72f36026e5b4f9c7d468c72894171609",
+      "proxy": "0x4938F10B12051CE8DCd70E3F7555E71adb432545"
+    },
+    "AxiomAgentNFT": {
+      "impl": "0x0e0a9214506154cb35035c73f6c6a1b711210ba8",
+      "proxy": "0xe32f87C6F8070C89a82D51BDd3fab578C0d7be6f"
+    },
+    "AxiomStrategyVault": {
+      "impl": "0xbaef770df579844a6e81f86c53834a8310c7cd6e",
+      "proxy": "0xe8B3B31E5CE0436cCfD19a47351943CcB7703722"
+    },
+    "AxiomPaymentProcessor": {
+      "impl": "0xfa2b7e4aca36ba3029eb0d6ddb2d8f7860ddaf78",
+      "proxy": "0xe6956f663103c6E1e5077c3256c453b95924112a"
+    },
+    "AxiomDelegationRegistry": {
+      "impl": "0xeA411cC163CAab2678E3E40dF3C1622EB28CCD58",
+      "proxy": "0xeA411cC163CAab2678E3E40dF3C1622EB28CCD58",
+      "note": "non-upgradeable, no proxy — impl == deployed address"
+    },
+    "AxiomStateView": {
+      "impl": "0xf96a1fC4380B751B09452deFd945fBCd96Effdd1",
+      "proxy": "0xf96a1fC4380B751B09452deFd945fBCd96Effdd1",
+      "note": "stateless read facade, immutable wiring, no proxy"
+    }
+  },
+  "reused": {
+    "AxiomMockUSDC": "0x354CA53bAB51C0666964fa050628d8351f8A7d19",
+    "Permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
+  },
+  "v2Addresses": {
+    "note": "V2 Galileo suite (docs/deployments/galileo-v2-2026-08-28.json, RD1 commit 7ec2e7df4) — rollback reference only. V2 contracts remain live on-chain but are no longer the sanctioned suite; do not point new consumers at them.",
+    "AxiomTeeVerifier": "0x72a381226E09b9AAe15D9309A656d7e5DD2bFbb2",
+    "AxiomAgentNFT": "0xdBB2e63807a13272789B716692fbe0d09E010097",
+    "AxiomStrategyVault": "0x4607D749a7b8BBD2593742F8432410231C805c57",
+    "AxiomPaymentProcessor": "0x7490D693364A31E0513bcef8E346397cc4BA9E9c"
+  },
+  "transactions": {
+    "AxiomTeeVerifier impl": "0x90715a0e0c7d8ff401e438a995c9e687dbaf77f0fa49a464dec83e3cf238899a",
+    "AxiomTeeVerifier proxy": "0xc64a24c6ad0c47e099f2d27df7ead2bc035af31646a285b84044b63b7d6b5937",
+    "AxiomAgentNFT impl": "0x5c5ff9f3af33fd87696cc1f42b4f2c1f35d32119986cc286610a0a5eab744783",
+    "AxiomAgentNFT proxy": "0xcb593145fcfb1a29900e0f9f6ca90a4fc44b140b85ee842a9ab9c318394ed9e1",
+    "AxiomStrategyVault impl": "0x3e32626132e1e99ffdbfcc7dbadb6a8de67aa5fda5352883abee622724f58a28",
+    "AxiomStrategyVault proxy": "0xcb5c1df602d9bb2310c7a5415a6ab36a4518d7670a97dbf99f221e7ab59b9a68",
+    "AxiomPaymentProcessor impl": "0x652adfc56d0d1bcee2b296368de3c2e4c3e7896a62adbd9dd2dfc5291932cbdf",
+    "AxiomPaymentProcessor proxy": "0x8683a9a2571b43246a95bef63baacf090197d9ba22efdd0c7b8f270132cd0a65",
+    "AxiomDelegationRegistry": "0x3e7dc218e6807a6cde663cde3f1e688308ad5ed8b954fbbdfb281cf08b7df0c7",
+    "AxiomStateView": "0x6443cbc2bb2d4c77fd27db49da6e60e5bf1a47a40134f0669de84f54a58ae25c",
+    "smoke fund teeSigner": "0x9e57e1feebbc1772f7182f4b2cf1c81ee9b270e29b7cb68d69a948687de1949f",
+    "smoke mintWithRole token 0": "0x9865f6401f67b34926f56349c7e998bda0cb8423dfa27d14bf8c6e2ffc6bcbbd",
+    "smoke mockUSDC mint 1 axmUSDC": "0xb93b643fbbf6ee612b3664f87884a786b551c7e0095888b22bd6ca12014714b2",
+    "smoke mockUSDC approve processor": "0x03bc57c8f1a49a2e17482a98d36e8f6740732f091ae3c057e7cbcb26eae42c21",
+    "smoke payForAgent(0, 1 axmUSDC)": "0xbf0c71f12b2a8f76b80e5911509bcb35ac6f3a01b80e6575e29aa58ff39afb84"
+  },
+  "wiringVerified": {
+    "nft.verifier()": "0x4938F10B12051CE8DCd70E3F7555E71adb432545",
+    "vault.nft()": "0xe32f87C6F8070C89a82D51BDd3fab578C0d7be6f",
+    "processor.AXIOM_NFT()": "0xe32f87C6F8070C89a82D51BDd3fab578C0d7be6f",
+    "processor.paymentToken()": "0x354CA53bAB51C0666964fa050628d8351f8A7d19",
+    "registry.nft()": "0xe32f87C6F8070C89a82D51BDd3fab578C0d7be6f",
+    "registry.owner()": "0x0553f58a0209Fb8DcE201fCD9406Be56da890D73",
+    "registry.domainSeparator()": "0xb5ba71d7a0aa544c7efb330445d607cacd28b76017e6f44340f2cb9c04486e5a",
+    "stateView.nft()": "0xe32f87C6F8070C89a82D51BDd3fab578C0d7be6f",
+    "stateView.processor()": "0xe6956f663103c6E1e5077c3256c453b95924112a",
+    "stateView.vault()": "0xe8B3B31E5CE0436cCfD19a47351943CcB7703722",
+    "verifier.owner()": "0xaf7c581b1C1C250aA69ac1F19f8014C0636c4d20",
+    "verifier.signerCount()": "1",
+    "nft.hasRole(DEFAULT_ADMIN_ROLE, 0x0553f58a0209Fb8DcE201fCD9406Be56da890D73)": true,
+    "nft.hasRole(MINTER_ROLE, 0x0553f58a0209Fb8DcE201fCD9406Be56da890D73)": true,
+    "nft.mintFee()": "0",
+    "processor.pendingPayCap()": "0",
+    "processor.computeRatioMax()": "0",
+    "smoke ownerOf(0)": "0x0553f58a0209Fb8DcE201fCD9406Be56da890D73",
+    "smoke creatorOf(0)": "0x0553f58a0209Fb8DcE201fCD9406Be56da890D73",
+    "smoke stateView.royaltyRecipientOf(0)": "0x0553f58a0209Fb8DcE201fCD9406Be56da890D73",
+    "smoke stateView.agentEarningsOf after pay": "990000",
+    "smoke stateView.paymentSnapshot(teeSigner, 0)": "cap=0 ratioMax=0 agentBalance=990000 payerAllowance=0 token=0x354CA53bAB51C0666964fa050628d8351f8A7d19"
+  },
+  "roles": {
+    "note": "oracleAdmin == addr of AXIOM_TEE_SIGNER_PK (0x0553..., shared-funding strategy as V2): NFT DEFAULT_ADMIN + MINTER_ROLE, Processor DEFAULT_ADMIN_ROLE, Registry owner. Verifier owner is AXIOM_DEPLOYER_ADDRESS (0xaf7c...) per the deploy-script env contract. ORACLE_ADMIN_PK derived from AXIOM_TEE_SIGNER_PK at deploy time (identical address).",
+    "backendRelayMint": "backend relay uses mintWithRole via 0x0553... (MINTER_ROLE granted at initialize)"
+  },
+  "envCutover": {
+    "files": [
+      ".env",
+      ".env.example",
+      "apps/frontend/.env",
+      "apps/frontend/.env.local",
+      "packages/config/deployed.json"
+    ],
+    "vars": [
+      "AXIOM_AGENT_NFT_ADDRESS",
+      "AXIOM_STRATEGY_VAULT_ADDRESS",
+      "AXIOM_TEE_VERIFIER_ADDRESS",
+      "AXIOM_PAYMENT_PROCESSOR_ADDRESS",
+      "VITE_AGENT_NFT_ADDRESS",
+      "VITE_STRATEGY_VAULT_ADDRESS",
+      "VITE_TEE_VERIFIER_ADDRESS",
+      "VITE_PAYMENT_PROCESSOR_ADDRESS"
+    ],
+    "notCutOver": "AXIOM_DELEGATION_REGISTRY_ADDRESS / AXIOM_STATE_VIEW_ADDRESS intentionally not introduced this wave — no backend/FE consumers exist yet; the deployment JSON + abis are the source of truth for the new contracts (ADR 004 §3 ordering: env vars land with the consumers)."
+  },
+  "supersedes": "docs/deployments/galileo-v2-2026-08-28.json",
+  "adr": "docs/adr/004-contract-rewrite-plan.md §3-4"
+}

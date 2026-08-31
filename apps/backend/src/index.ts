@@ -1,5 +1,8 @@
 import { Wallet } from "ethers";
-import { resolveAddress } from "@axiom/config/addresses";
+import {
+  resolveAddress,
+  resolveAddressOptional,
+} from "@axiom/config/addresses";
 import { startServer, type ServerConfig } from "./server.js";
 import { createLogger } from "./utils/logger.js";
 import { initSentry } from "./utils/logger.js";
@@ -45,11 +48,25 @@ async function resolveLiveAddresses(
     vault: resolveAddress("strategyVault", backendEnv),
     verifier: resolveAddress("teeVerifier", backendEnv),
     paymentProcessor: resolveAddress("paymentProcessor", backendEnv),
+    // V3 W3-B: facade contracts are optional until the deploy lane publishes
+    // them — omitted addresses keep the routes 503ing cleanly instead of
+    // failing boot.
+    stateView: resolveAddressOptional("stateView", backendEnv),
+    delegationRegistry: resolveAddressOptional(
+      "delegationRegistry",
+      backendEnv,
+    ),
   };
   const live: Partial<typeof resolved> = {};
   await Promise.all(
     (Object.keys(resolved) as (keyof typeof resolved)[]).map(async (key) => {
       const addr = resolved[key];
+      if (!addr) {
+        console.warn(
+          `[boot] ${key} address not configured — omitted; related routes will 503`,
+        );
+        return false;
+      }
       try {
         const code = await chainProvider.getCode(addr);
         if (code && code !== "0x") {

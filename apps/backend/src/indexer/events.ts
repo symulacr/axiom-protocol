@@ -1,6 +1,7 @@
 import { parseAbiItem, type AbiEvent, type Address } from "viem";
 import {
   AGENT_NFT_ABI,
+  DELEGATION_REGISTRY_ABI,
   PAYMENT_PROCESSOR_ABI,
   TEE_VERIFIER_ABI,
   VAULT_ABI,
@@ -13,6 +14,8 @@ export type IndexerContractAddresses = {
   readonly AXIOM_STRATEGY_VAULT: Address;
   readonly AXIOM_TEE_VERIFIER: Address;
   readonly AXIOM_PAYMENT_PROCESSOR: Address;
+  /** Optional: unset until the deploy lane publishes DelegationRegistry. */
+  readonly AXIOM_DELEGATION_REGISTRY?: Address;
 };
 
 export function resolveIndexerAddresses(
@@ -24,6 +27,14 @@ export function resolveIndexerAddresses(
     AXIOM_STRATEGY_VAULT: resolveAddress("strategyVault", env),
     AXIOM_TEE_VERIFIER: resolveAddress("teeVerifier", env),
     AXIOM_PAYMENT_PROCESSOR: resolveAddress("paymentProcessor", env),
+    // DelegationRegistry (V3/W2-B) is address-configurable post-deploy: absent
+    // env keeps its logs unwatched instead of failing boot (same 503-able
+    // posture as the other optional addresses).
+    ...(env.AXIOM_DELEGATION_REGISTRY_ADDRESS
+      ? {
+          AXIOM_DELEGATION_REGISTRY: resolveAddress("delegationRegistry", env),
+        }
+      : {}),
   };
 }
 
@@ -32,6 +43,7 @@ const NFT = AGENT_NFT_ABI;
 const VAULT = VAULT_ABI;
 const PAY = PAYMENT_PROCESSOR_ABI;
 const TEE = TEE_VERIFIER_ABI;
+const DELEGATION_REGISTRY = DELEGATION_REGISTRY_ABI;
 
 const EVENT_SOURCES = {
   Transfer: NFT,
@@ -68,6 +80,12 @@ const EVENT_SOURCES = {
   SignerProposed: TEE,
   SignerExecuted: TEE,
   SignerProposalCancelled: TEE,
+  // W3-B: every consumed proof nonce is logged by BaseVerifier._checkAndMarkProof;
+  // watching it here keeps keepers' queryFilter and the /v1/events surface on one ABI source.
+  ProofUsed: TEE,
+  DelegationInstalled: DELEGATION_REGISTRY,
+  DelegationRevoked: DELEGATION_REGISTRY,
+  DelegatedExecuted: DELEGATION_REGISTRY,
   AdminChanged:
     "event AdminChanged(address previousAdmin, address newAdmin)" as const,
   BeaconUpgraded: "event BeaconUpgraded(address indexed beacon)" as const,
@@ -263,6 +281,31 @@ export type AxiomEvent =
   | (EventEnvelope & {
       kind: "SignerProposalCancelled";
       cancelledSigner: string;
+    })
+  | (EventEnvelope & {
+      kind: "ProofUsed";
+      nonce: string;
+      timestamp: bigint;
+    })
+  | (EventEnvelope & {
+      kind: "DelegationInstalled";
+      agentTokenId: bigint;
+      delegate: string;
+      expiresAt: bigint;
+      perTxCap: bigint;
+      windowCap: bigint;
+    })
+  | (EventEnvelope & {
+      kind: "DelegationRevoked";
+      agentTokenId: bigint;
+    })
+  | (EventEnvelope & {
+      kind: "DelegatedExecuted";
+      agentTokenId: bigint;
+      delegate: string;
+      target: string;
+      value: bigint;
+      actionHash: string;
     })
   | (EventEnvelope & { kind: "Upgraded"; implementation: string })
   | (EventEnvelope & {

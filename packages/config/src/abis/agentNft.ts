@@ -2,6 +2,7 @@ export const AGENT_NFT_ABI = [
   "function ADMIN_ROLE() view returns (bytes32)",
   "function DEFAULT_ADMIN_ROLE() view returns (bytes32)",
   "function MAX_AUTHORIZED_USERS() view returns (uint256)",
+  "function MAX_I_DATA_BYTES() view returns (uint256)",
   "function MINTER_ROLE() view returns (bytes32)",
   "function UPGRADE_INTERFACE_VERSION() view returns (string)",
   "function approve(address to, uint256 tokenId)",
@@ -99,6 +100,7 @@ export const AGENT_NFT_ABI = [
   "error AccessControlBadConfirmation()",
   "error AccessControlUnauthorizedAccount(address account, bytes32 neededRole)",
   "error AddressEmptyCode(address target)",
+  "error DataSizeExceeded(uint256 provided, uint256 max)",
   "error DelayNotElapsed(uint256 remaining)",
   "error ERC1967InvalidImplementation(address implementation)",
   "error ERC1967NonPayable()",
@@ -135,8 +137,6 @@ export const AGENT_NFT_ABI = [
   "error UseTimelockedFeeWithdrawal()"
 ] as const;
 
-// Human-readable iTransferFrom fragment for viem-based wallet callers (frontend useTransfer);
-// mirrors the tuple() encoding in the main AGENT_NFT_ABI transferAndCleanExpiredProofs entry.
 export const ITRANSFER_FROM_ABI = [
   {
     type: "function",

@@ -1,6 +1,6 @@
 import { test, describe, beforeEach } from "bun:test";
 import assert from "node:assert/strict";
-import { Contract } from "ethers";
+import { Contract, Interface } from "ethers";
 import {
   startKeeper,
   parseKeeperNonces,
@@ -353,5 +353,21 @@ describe("fetchProofUsedNonces", () => {
     ]);
     const out = await fetchProofUsedNonces(raw, 0, 100);
     assert.deepEqual(out, [pad("0x1"), pad("0x2"), pad("0x03")]);
+  });
+
+  test("resolves ProofUsed from the current (V3) TEE_VERIFIER_ABI shape", async () => {
+    // Guards against a config-lane ABI edit silently unbinding the keeper's
+    // queryFilter("ProofUsed") discovery: the event must exist on the ABI and
+    // its (nonce, timestamp) args must decode positionally as the keeper reads
+    // them (args[0] = nonce bytes32).
+    const iface = new Interface(TEE_VERIFIER_ABI as readonly string[]);
+    const ev = iface.getEvent("ProofUsed")!;
+    assert.equal(
+      ev.topicHash,
+      "0xfed988acc851f61b49ed5195271523fe601f9d547e09655f72c6afe920cff499",
+    );
+    const raw = rawContractWithLogs(["0x" + "ab".repeat(32)]);
+    const out = await fetchProofUsedNonces(raw, 0, 100);
+    assert.deepEqual(out, ["0x" + "ab".repeat(32)]);
   });
 });

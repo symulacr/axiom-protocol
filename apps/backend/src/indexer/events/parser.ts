@@ -7,6 +7,7 @@ import {
   type Address,
 } from "viem";
 import { validateHex, type Hex } from "@axiom/config/types/hex";
+import { canonicalNonceHex } from "@axiom/config/eip712";
 
 import { EVENT_ABI, type AxiomEvent, type EventName } from "../events.js";
 
@@ -196,6 +197,29 @@ const EVENT_PARSERS: Record<string, EventParser> = {
   })),
   SignerProposalCancelled: p("SignerProposalCancelled", (a) => ({
     cancelledSigner: addr(a["cancelledSigner"]),
+  })),
+  // W3-B: ProofUsed + DelegationRegistry events. nonce normalizes to canonical
+  // 0x + 64-hex so keepers' dedupe/comparison matches across sources.
+  ProofUsed: p("ProofUsed", (a) => ({
+    nonce: canonicalNonceHex(a["nonce"] as string),
+    timestamp: a["timestamp"] as bigint,
+  })),
+  DelegationInstalled: p("DelegationInstalled", (a) => ({
+    agentTokenId: a["agentTokenId"] as bigint,
+    delegate: addr(a["delegate"]),
+    expiresAt: a["expiresAt"] as bigint,
+    perTxCap: a["perTxCap"] as bigint,
+    windowCap: a["windowCap"] as bigint,
+  })),
+  DelegationRevoked: p("DelegationRevoked", (a) => ({
+    agentTokenId: a["agentTokenId"] as bigint,
+  })),
+  DelegatedExecuted: p("DelegatedExecuted", (a) => ({
+    agentTokenId: a["agentTokenId"] as bigint,
+    delegate: addr(a["delegate"]),
+    target: addr(a["target"]),
+    value: a["value"] as bigint,
+    actionHash: a["actionHash"] as Hex,
   })),
   Upgraded: p("Upgraded", (a) => ({
     implementation: addr(a["implementation"]),

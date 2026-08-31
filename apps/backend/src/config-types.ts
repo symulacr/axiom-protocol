@@ -16,6 +16,10 @@ export interface ServerConfig {
     vault: `0x${string}`;
     verifier: `0x${string}`;
     paymentProcessor?: `0x${string}`;
+    /** AxiomStateView facade (V3 W2) — optional until the deploy lane publishes it. */
+    stateView?: `0x${string}`;
+    /** DelegationRegistry (V3 W2-B) — optional until the deploy lane publishes it. */
+    delegationRegistry?: `0x${string}`;
   };
   env?: BackendEnv;
 }

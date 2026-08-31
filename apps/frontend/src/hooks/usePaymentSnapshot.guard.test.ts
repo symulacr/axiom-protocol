@@ -1,0 +1,39 @@
+import { test } from "bun:test";
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+// Convention: useProviders.test.ts — source-shape guards for hook wiring that
+// needs a wagmi Provider at runtime. These pin the contract-facing invariants.
+
+const src = readFileSync(
+  join(import.meta.dir, "usePaymentSnapshot.ts"),
+  "utf8",
+);
+
+test("paymentSnapshot is fetched through ONE aggregateReads call", () => {
+  assert.ok(src.includes("aggregateReads(publicClient, ["));
+  // exactly one call entry — the facade collapses cap/balance/allowance/token
+  const callBlocks = src.split("functionName:").length - 1;
+  assert.equal(callBlocks, 1);
+});
+
+test("snapshot shape matches AxiomStateView.paymentSnapshot return order", () => {
+  assert.ok(src.includes('functionName: "paymentSnapshot"'));
+  // destructuring order = maxPayCap, computeRatioMax, agentBalance, payerAllowance, paymentToken
+  assert.ok(
+    src.includes(
+      "[maxPayCap, computeRatioMax, agentBalance, payerAllowance, paymentToken]",
+    ),
+  );
+});
+
+test("facade is env-gated: no address → no RPC and null snapshot", () => {
+  assert.ok(src.includes("getAxiomStateViewAddress()"));
+  // early return before aggregateReads when unset
+  assert.ok(src.includes("if (!stateView || !address || !publicClient)"));
+});
+
+test("cap sentinel documented: 0 = unlimited", () => {
+  assert.ok(src.includes("0 = unlimited"));
+});

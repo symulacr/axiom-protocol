@@ -45,11 +45,9 @@ export const VAULT_ABI = [
   "error TransferFailed()",
   "error UseDeposit()",
   "error ZeroAddress()",
-  "error ZeroAmount()",
+  "error ZeroAmount()"
 ] as const;
 
-// Legacy pre-validUntilDay vault interface, kept for backward-compatible orchestrator reads of old contracts;
-// auto-appended by generate-abis.sh — update manually if the old contract changes.
 export const VAULT_ABI_LEGACY = [
   "function deposit(uint256 tokenId) payable",
   "function withdraw(uint256 tokenId, uint256 amount)",

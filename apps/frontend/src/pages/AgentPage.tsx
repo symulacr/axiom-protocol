@@ -65,7 +65,21 @@ import {
   explorerTxUrl,
 } from "../utils/format.js";
 import { encodeRelayTransaction } from "../utils/encodeRelay.js";
-import { getAxiomAgentNftAddress, toViemAbi } from "../abi/addresses.js";
+import {
+  getAxiomAgentNftAddress,
+  getAxiomDelegationRegistryAddress,
+  toViemAbi,
+} from "../abi/addresses.js";
+import { DELEGATION_REGISTRY_ABI } from "@axiom/config/abis";
+import { useGenericWrite } from "../hooks/useGenericWrite.js";
+import { useSignTypedData } from "wagmi";
+import {
+  AGENT_DELEGATION_TYPES,
+  DELEGATION_REGISTRY_DOMAIN,
+  buildAgentDelegation,
+} from "../lib/delegation.js";
+import { usePaymentSnapshot } from "../hooks/usePaymentSnapshot.js";
+import { useAgentDelegation } from "../hooks/useAgentDelegation.js";
 import { toastError, toastSuccess } from "./shared.js";
 import { useUiStore } from "../lib/uiStore.js";
 import { Spinner } from "../components/ui.js";
@@ -387,6 +401,9 @@ export function AgentPage({
       : null,
   );
   const liveDecimals = onchain.decimals ?? paymentToken?.decimals;
+  // W3-C: StateView.paymentSnapshot pre-flight for the pay panel (cap, earnings,
+  // allowance, token) — one more multicall leg, env-gated until the facade lands.
+  const snapshot = usePaymentSnapshot();
   const vaultBalance =
     vault.depositsWei !== undefined
       ? `${formatTokenAmount(vault.depositsWei)} ${nativeSymbol}`
@@ -456,6 +473,149 @@ export function AgentPage({
   const copyDataHash = () => {
     if (metadata?.dataHash) navigator.clipboard?.writeText(metadata.dataHash);
     action(agentCopy.copiedNotice);
+  };
+
+  // W3-C: Permit2 pay panel — amount input + sign-and-pay; the hook picks the
+  // lane (permit2 signature vs existing allowance) and reports which one ran.
+  const [payAmountInput, setPayAmountInput] = useState("");
+  const [isPermit2Submitting, setPermit2Submitting] = useState(false);
+  const [permit2Lane, setPermit2Lane] = useState<string | null>(null);
+  const submitPermit2Pay = async (): Promise<void> => {
+    const value = payAmountInput.trim();
+    if (!/^\d+(\.\d+)?$/.test(value) || Number(value) <= 0) {
+      toastError(new Error(agentCopy.errLimitPositive));
+      return;
+    }
+    setPermit2Submitting(true);
+    try {
+      const result = await payment.payForAgentWithPermit2(tokenId, value);
+      setPermit2Lane(result.lane);
+      toastSuccess(agentCopy.permit2LaneNote(result.lane));
+      setPayAmountInput("");
+    } catch (err) {
+      toastError(err);
+    } finally {
+      setPermit2Submitting(false);
+    }
+  };
+
+  // W3-C: Agent Delegation card — owner-only install/revoke over the registry.
+  const connectedAddress = walletClient?.account?.address;
+  const isOwner =
+    !!metadata?.owner &&
+    !!connectedAddress &&
+    metadata.owner.toLowerCase() === connectedAddress.toLowerCase();
+  const delegationRegistryAddress = getAxiomDelegationRegistryAddress();
+  const delegation = useAgentDelegation(tokenId);
+  const { write } = useGenericWrite();
+  const { signTypedDataAsync } = useSignTypedData();
+  const delegationAbi = useMemo(() => toViemAbi(DELEGATION_REGISTRY_ABI), []);
+  const [delegateInput, setDelegateInput] = useState("");
+  const [targetsInput, setTargetsInput] = useState("");
+  const [perTxCapInput, setPerTxCapInput] = useState("");
+  const [windowCapInput, setWindowCapInput] = useState("");
+  const [windowSecondsInput, setWindowSecondsInput] = useState("86400");
+  const [expiresDaysInput, setExpiresDaysInput] = useState("7");
+  const [delegationError, setDelegationError] = useState<string | null>(null);
+  const [isDelegationSubmitting, setDelegationSubmitting] = useState(false);
+
+  const installDelegation = async (): Promise<void> => {
+    if (!delegationRegistryAddress || !walletClient) return;
+    if (!walletClient.account) {
+      setDelegationError(agentCopy.errDelegationWallet);
+      return;
+    }
+    setDelegationSubmitting(true);
+    setDelegationError(null);
+    try {
+      const targets = targetsInput
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => {
+          const [target, selector] = line.split(":") as [string, string];
+          return { target: target as Address, selector: selector as Hex };
+        });
+      const { delegation: d, error } = buildAgentDelegation(
+        {
+          agentTokenId: tokenId,
+          delegate: delegateInput.trim() as Address,
+          perTxCap: perTxCapInput.trim(),
+          windowCap: windowCapInput.trim() || "0",
+          windowSeconds: windowSecondsInput.trim(),
+          expiresInDays: expiresDaysInput.trim(),
+          allowedTargets: targets,
+        },
+        BigInt(Math.floor(Date.now() / 1000)),
+      );
+      if (error || !d) {
+        setDelegationError(
+          (agentCopy.errDelegationForm as string).replace(
+            "{error}",
+            error ?? "",
+          ),
+        );
+        return;
+      }
+      const signature = await signTypedDataAsync({
+        domain: DELEGATION_REGISTRY_DOMAIN(chainId, delegationRegistryAddress),
+        types: AGENT_DELEGATION_TYPES,
+        primaryType: "AgentDelegation",
+        message: {
+          agentTokenId: d.agentTokenId,
+          delegate: d.delegate,
+          perTxCap: d.perTxCap,
+          windowCap: d.windowCap,
+          windowSeconds: d.windowSeconds,
+          expiresAt: d.expiresAt,
+          allowedSelectorsRoot: d.allowedSelectorsRoot,
+          nonce: d.nonce,
+        },
+      });
+      const hash = await write({
+        to: delegationRegistryAddress,
+        abi: delegationAbi,
+        functionName: "installDelegation",
+        args: [
+          [
+            d.agentTokenId,
+            d.delegate,
+            d.perTxCap,
+            d.windowCap,
+            d.windowSeconds,
+            d.expiresAt,
+            d.allowedSelectorsRoot,
+            d.nonce,
+          ],
+          signature,
+        ],
+      });
+      toastSuccess(agentCopy.delegationToast(hash));
+      delegation.refresh();
+    } catch (err) {
+      toastError(err);
+    } finally {
+      setDelegationSubmitting(false);
+    }
+  };
+
+  const revokeDelegation = async (): Promise<void> => {
+    if (!delegationRegistryAddress) return;
+    setDelegationSubmitting(true);
+    try {
+      const hash = await write({
+        to: delegationRegistryAddress,
+        abi: delegationAbi,
+        functionName: "revokeDelegation",
+        args: [tokenId],
+      });
+      toastSuccess(agentCopy.delegationToast(hash));
+      delegation.refresh();
+    } catch (err) {
+      toastError(err);
+    } finally {
+      setDelegationSubmitting(false);
+    }
   };
 
   return (
@@ -708,6 +868,52 @@ export function AgentPage({
             </div>
           </section>
           <section className="panel tab-panel">
+            <h2>{agentCopy.permit2Title}</h2>
+            <p className="field-hint">{agentCopy.permit2Hint}</p>
+            {snapshot.snapshot && (
+              <dl className="provenance-list">
+                <Fact label={agentCopy.permit2SnapshotCap} mono>
+                  {snapshot.snapshot.maxPayCap > 0n
+                    ? `${formatUnits(snapshot.snapshot.maxPayCap, liveDecimals ?? 18)} ${paymentSymbol}`
+                    : "—"}
+                </Fact>
+                <Fact label={agentCopy.permit2SnapshotAllowance} mono>
+                  {snapshot.snapshot.paymentToken
+                    ? `${formatUnits(snapshot.snapshot.payerAllowance, liveDecimals ?? 18)} ${paymentSymbol}`
+                    : "—"}
+                </Fact>
+                <Fact label={agentCopy.permit2SnapshotBalance} mono>
+                  {snapshot.snapshot.paymentToken
+                    ? `${formatUnits(snapshot.snapshot.agentBalance, liveDecimals ?? 18)} ${paymentSymbol}`
+                    : "—"}
+                </Fact>
+              </dl>
+            )}
+            <div className="execute-grid">
+              <Field
+                label={agentCopy.payAmountLabel}
+                value={payAmountInput}
+                onChange={setPayAmountInput}
+                suffix={paymentSymbol}
+                placeholder="e.g. 1.00"
+              />
+            </div>
+            {permit2Lane && (
+              <p className="field-hint">
+                {agentCopy.permit2LaneNote(permit2Lane)}
+              </p>
+            )}
+            <div className="button-row">
+              <Button
+                onClick={() => void submitPermit2Pay()}
+                busy={isPermit2Submitting}
+                disabled={!paymentToken}
+              >
+                {agentCopy.permit2Cta}
+              </Button>
+            </div>
+          </section>
+          <section className="panel tab-panel">
             <h2>{agentCopy.dailySpendingLimitTitle}</h2>
             <dl className="provenance-list">
               <Fact label={agentCopy.dailyLimitFact}>
@@ -766,6 +972,116 @@ export function AgentPage({
               </Button>
             </div>
           </section>
+          {isOwner && (
+            <section className="panel tab-panel">
+              <h2>{agentCopy.delegationTitle}</h2>
+              <p className="field-hint">{agentCopy.delegationHint}</p>
+              {!delegationRegistryAddress && (
+                <div className="diagnostic-note">
+                  <ShieldCheck size={14} />
+                  <span>{agentCopy.delegationNotConfigured}</span>
+                </div>
+              )}
+              {delegationRegistryAddress && (
+                <>
+                  <dl className="provenance-list">
+                    <Fact label={agentCopy.delegationActive}>
+                      {delegation.isLoading
+                        ? "…"
+                        : delegation.delegation?.delegate &&
+                            delegation.delegation.delegate !== "0x0" &&
+                            delegation.delegation.isDelegationActive
+                          ? truncateAddress(delegation.delegation.delegate)
+                          : agentCopy.delegationNone}
+                    </Fact>
+                    {delegation.delegation?.delegate &&
+                      delegation.delegation.delegate !== "0x0" &&
+                      delegation.delegation.isDelegationActive && (
+                        <>
+                          <Fact label={agentCopy.delegationPerTxCapLabel} mono>
+                            {formatTokenAmount(delegation.delegation.perTxCap)}{" "}
+                            {nativeSymbol}
+                          </Fact>
+                          <Fact label={agentCopy.delegationWindowCapLabel} mono>
+                            {delegation.delegation.windowCap > 0n
+                              ? `${formatTokenAmount(delegation.delegation.windowCap)} ${nativeSymbol} / ${delegation.delegation.windowSeconds}s`
+                              : "—"}
+                          </Fact>
+                          <Fact label={agentCopy.delegationExpiryLabel}>
+                            {new Date(
+                              Number(delegation.delegation.expiresAt) * 1000,
+                            ).toLocaleString()}
+                          </Fact>
+                        </>
+                      )}
+                  </dl>
+                  <div className="execute-grid">
+                    <Field
+                      label={agentCopy.delegationDelegateLabel}
+                      value={delegateInput}
+                      onChange={setDelegateInput}
+                      placeholder="0x…"
+                    />
+                    <Field
+                      label={agentCopy.delegationPerTxCapLabel}
+                      value={perTxCapInput}
+                      onChange={setPerTxCapInput}
+                      suffix={nativeSymbol}
+                      placeholder="e.g. 0.01 (wei)"
+                    />
+                    <Field
+                      label={agentCopy.delegationWindowCapLabel}
+                      value={windowCapInput}
+                      onChange={setWindowCapInput}
+                      suffix={nativeSymbol}
+                      placeholder="e.g. 0.1 (wei)"
+                    />
+                    <Field
+                      label={agentCopy.delegationWindowLabel}
+                      value={windowSecondsInput}
+                      onChange={setWindowSecondsInput}
+                      placeholder="86400"
+                    />
+                    <Field
+                      label={agentCopy.delegationExpiryLabel}
+                      value={expiresDaysInput}
+                      onChange={setExpiresDaysInput}
+                      placeholder="7"
+                    />
+                    <Field
+                      label={agentCopy.delegationTargetsLabel}
+                      value={targetsInput}
+                      onChange={setTargetsInput}
+                      placeholder={agentCopy.delegationTargetsPlaceholder}
+                    />
+                  </div>
+                  {delegationError && (
+                    <p className="field-hint">{delegationError}</p>
+                  )}
+                  <div className="button-row">
+                    <Button
+                      onClick={() => void installDelegation()}
+                      busy={isDelegationSubmitting}
+                    >
+                      {agentCopy.delegationInstall}
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      onClick={() => void revokeDelegation()}
+                      busy={isDelegationSubmitting}
+                      disabled={
+                        !delegation.delegation?.delegate ||
+                        delegation.delegation.delegate === "0x0" ||
+                        !delegation.delegation.isDelegationActive
+                      }
+                    >
+                      {agentCopy.delegationRevoke}
+                    </Button>
+                  </div>
+                </>
+              )}
+            </section>
+          )}
         </>
       )}
 

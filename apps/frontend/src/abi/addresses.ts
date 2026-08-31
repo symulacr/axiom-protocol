@@ -1,7 +1,10 @@
 import { useMemo } from "react";
 import { parseAbi, type Abi } from "viem";
 import { useChainId } from "wagmi";
-import { resolveAddress } from "@axiom/config/addresses";
+import {
+  resolveAddress,
+  resolveAddressOptional,
+} from "@axiom/config/addresses";
 import {
   EIP712_DOMAIN_NAME,
   EIP712_DOMAIN_VERSION,
@@ -29,6 +32,9 @@ const env: Record<string, unknown> = {
   AXIOM_TEE_VERIFIER_ADDRESS: import.meta.env.VITE_TEE_VERIFIER_ADDRESS,
   AXIOM_PAYMENT_PROCESSOR_ADDRESS: import.meta.env
     .VITE_PAYMENT_PROCESSOR_ADDRESS,
+  AXIOM_STATE_VIEW_ADDRESS: import.meta.env.VITE_STATE_VIEW_ADDRESS,
+  AXIOM_DELEGATION_REGISTRY_ADDRESS: import.meta.env
+    .VITE_DELEGATION_REGISTRY_ADDRESS,
 };
 
 // Only app-shell contracts — getAddresses() also hard-requires paymentToken and would crash the SPA
@@ -39,6 +45,13 @@ const ADDRESSES = {
   paymentProcessor: resolveAddress("paymentProcessor", env) as Address,
 } as const;
 
+// V3 W3: not yet deployed — resolveAddressOptional returns undefined until the
+// deploy lane sets the VITE_ vars; consumers must gate their UI on undefined.
+const stateView = resolveAddressOptional("stateView", env) as
+  Address | undefined;
+const delegationRegistry = resolveAddressOptional("delegationRegistry", env) as
+  Address | undefined;
+
 // Chain-agnostic: addresses are env-sourced, so the accessors ignore any chainId arg.
 export const getAxiomStrategyVaultAddress = (_chainId?: number): Address =>
   ADDRESSES.strategyVault;
@@ -48,6 +61,12 @@ const getAxiomTeeVerifierAddress = (_chainId?: number): Address =>
   ADDRESSES.teeVerifier;
 export const getAxiomPaymentProcessorAddress = (_chainId?: number): Address =>
   ADDRESSES.paymentProcessor;
+export const getAxiomStateViewAddress = (
+  _chainId?: number,
+): Address | undefined => stateView;
+export const getAxiomDelegationRegistryAddress = (
+  _chainId?: number,
+): Address | undefined => delegationRegistry;
 
 const BASE_DOMAIN = {
   name: EIP712_DOMAIN_NAME,

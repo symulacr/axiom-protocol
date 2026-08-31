@@ -1,9 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
 import { parseUnits, type Address } from "viem";
-import { useAccount, useChainId, usePublicClient } from "wagmi";
+import {
+  useAccount,
+  useChainId,
+  usePublicClient,
+  useSignTypedData,
+} from "wagmi";
 import { useGenericWrite } from "./useGenericWrite.js";
 import { useAsyncAction } from "./useAsyncAction.js";
 import { PAYMENT_PROCESSOR_ABI, ERC20_ABI } from "@axiom/config/abis";
+import {
+  buildPermit2WitnessTypedData,
+  type PermitTransferFrom,
+} from "../lib/permit2.js";
 import {
   getAxiomPaymentProcessorAddress,
   toViemAbi,
@@ -38,8 +47,23 @@ type AgentPayResult = {
   payment: unknown;
 };
 
+/** Which settle lane executed: "permit2" = witness-permit signature + one write,
+ * "approval" = the pre-existing approve + payForAgent path. */
+export type PaymentLane = "permit2" | "approval";
+
+export type Permit2PayResult = AgentPayResult & { lane: PaymentLane };
+
 type UsePaymentResult = {
   payForAgent: (tokenId: bigint, amount: string) => Promise<AgentPayResult>;
+  /** W3-C: Permit2 witness lane. Falls back to the approve+pay path when the
+   * wallet's live allowance already covers the amount (no re-signing for
+   * nothing; one migration-safe code path either way). */
+  payForAgentWithPermit2: (
+    tokenId: bigint,
+    amount: string,
+  ) => Promise<Permit2PayResult>;
+  /** Live processor allowance vs amount — the lane-selection gate. */
+  hasSufficientAllowance: (amount: string) => Promise<boolean>;
   approveExactAllowance: (amount: string) => Promise<{
     approveHash: `0x${string}` | null;
   }>;
@@ -61,6 +85,7 @@ export function usePayment(): UsePaymentResult {
   const earningsAction = useAsyncAction();
 
   const { write } = useGenericWrite();
+  const { signTypedDataAsync } = useSignTypedData();
   const [isPayLoading, setPayLoading] = useState(false);
 
   const getPaymentConfig = useCallback(
@@ -138,6 +163,108 @@ export function usePayment(): UsePaymentResult {
     [chainId, write, address, publicClient, priceAndApprove],
   );
 
+  /** Live processor allowance vs amount — the Permit2-vs-approval lane gate. */
+  const hasSufficientAllowance = useCallback(
+    async (amount: string): Promise<boolean> => {
+      if (!address || !publicClient) return false;
+      const config = await getPaymentConfig();
+      const amountWei = parseUnits(
+        amount.trim(),
+        config.paymentTokenDecimals ?? 18,
+      );
+      const processor = getAxiomPaymentProcessorAddress(chainId);
+      const allowance = (await publicClient.readContract({
+        address: config.paymentToken,
+        abi: erc20Abi,
+        functionName: "allowance",
+        args: [address, processor],
+      })) as bigint;
+      return allowance >= amountWei;
+    },
+    [chainId, address, publicClient, getPaymentConfig],
+  );
+
+  /**
+   * Payment boundary 3 (W3-C): Permit2 witness settlement. Sequence:
+   *   1. lane gate — allowance already covers amount → existing approve+pay path
+   *      (lane: "approval"), skipping a needless wallet signature;
+   *   2. build Permit2 typed data (domain name "Permit2"/chainId/PERMIT2, types =
+   *      PermitWitnessTransferFrom + TokenPermissions + AgentPayment — byte-matching
+   *      the Processor's witness variant) and ask the wallet to sign;
+   *   3. one write: payForAgentWithPermit2(agentTokenId, amount, owner, permit, sig).
+   * No approve tx ever happens on this lane — the signature IS the authorization.
+   */
+  const payForAgentWithPermit2 = useCallback(
+    async (tokenId: bigint, amount: string): Promise<Permit2PayResult> => {
+      setPayLoading(true);
+      try {
+        if (!address || !publicClient) throw new Error("wallet not connected");
+        // Lane gate: a sufficient standing allowance uses the migration-proven path.
+        if (await hasSufficientAllowance(amount)) {
+          const result = await payForAgent(tokenId, amount);
+          return { ...result, lane: "approval" };
+        }
+        const config = await getPaymentConfig();
+        const amountWei = parseUnits(
+          amount.trim(),
+          config.paymentTokenDecimals ?? 18,
+        );
+        const processor = getAxiomPaymentProcessorAddress(chainId);
+        // Sign BEFORE any state change: the permit is single-use (unordered nonce)
+        // and expires; a failed write burns nothing but the user's signature.
+        const { domain, types, primaryType, message, permit } =
+          buildPermit2WitnessTypedData({
+            chainId,
+            paymentToken: config.paymentToken,
+            permittedAmount: amountWei,
+            payAmount: amountWei,
+            spender: processor,
+            agentTokenId: tokenId,
+            // 30 minutes — generous for wallet prompts, tight against phishing reuse.
+            deadline: BigInt(Math.floor(Date.now() / 1000) + 30 * 60),
+          });
+        const signature = await signTypedDataAsync({
+          domain,
+          types,
+          primaryType,
+          message,
+        });
+        const txHash = await write({
+          to: processor,
+          abi: paymentProcessorAbi,
+          functionName: "payForAgentWithPermit2",
+          args: [
+            tokenId,
+            amountWei,
+            address,
+            permit as PermitTransferFrom,
+            signature,
+          ],
+        });
+        return {
+          ok: true,
+          tokenId: tokenId.toString(),
+          amount,
+          txHash,
+          payment: { txHash },
+          lane: "permit2",
+        };
+      } finally {
+        setPayLoading(false);
+      }
+    },
+    [
+      chainId,
+      write,
+      address,
+      publicClient,
+      signTypedDataAsync,
+      hasSufficientAllowance,
+      payForAgent,
+      getPaymentConfig,
+    ],
+  );
+
   /**
    * Payment boundary 1: the REAL approve leg split out of payForAgent so the "Approve exact
    * allowance" CTA actually prompts; no-op (approveHash: null) when live allowance covers amount.
@@ -181,6 +308,8 @@ export function usePayment(): UsePaymentResult {
 
   return {
     payForAgent,
+    payForAgentWithPermit2,
+    hasSufficientAllowance,
     approveExactAllowance,
     withdrawEarnings,
     getEarnings,

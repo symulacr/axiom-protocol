@@ -773,6 +773,34 @@ export type Copy = {
     activityLoading: string;
     activityEmptyTitle: string;
     activityEmptyHint: string;
+    /** W3-C Permit2 pay panel. */
+    permit2Title: string;
+    permit2Hint: string;
+    permit2Cta: string;
+    permit2LaneNote: (lane: string) => string;
+    permit2SnapshotCap: string;
+    permit2SnapshotAllowance: string;
+    permit2SnapshotBalance: string;
+    payAmountLabel: string;
+    /** W3-C Agent Delegation card (owner-only). */
+    delegationTitle: string;
+    delegationHint: string;
+    delegationDelegateLabel: string;
+    delegationPerTxCapLabel: string;
+    delegationWindowCapLabel: string;
+    delegationWindowLabel: string;
+    delegationExpiryLabel: string;
+    delegationActive: string;
+    delegationNone: string;
+    delegationInstall: string;
+    delegationRevoke: string;
+    delegationNotConfigured: string;
+    delegationTargetsLabel: string;
+    delegationTargetsPlaceholder: string;
+    delegationOwnerOnly: string;
+    delegationToast: (hash: string) => string;
+    errDelegationForm: string;
+    errDelegationWallet: string;
   };
   transactions: {
     title: string;
@@ -1602,6 +1630,41 @@ const english: Copy = {
     activityLoading: "Loading…",
     activityEmptyTitle: "Nothing yet",
     activityEmptyHint: "Runs will show up here.",
+    // W3-C Permit2 pay panel — terms render exactly what the signature permits.
+    permit2Title: "Pay with Permit2",
+    permit2Hint:
+      "Sign once — no approval transaction. The signature allows the payment processor to pull exactly this amount for this agent.",
+    permit2Cta: "Sign & pay",
+    payAmountLabel: "Amount to pay",
+    permit2LaneNote: (lane) =>
+      lane === "permit2"
+        ? "Settled via Permit2 signature."
+        : "Settled via existing token allowance.",
+    permit2SnapshotCap: "Payment cap",
+    permit2SnapshotAllowance: "Processor allowance",
+    permit2SnapshotBalance: "Your token balance",
+    // W3-C Agent Delegation card (owner-only).
+    delegationTitle: "Agent Delegation",
+    delegationHint:
+      "Let a delegate key run bounded operations for this agent under caps you set. Signed by you, revocable instantly.",
+    delegationDelegateLabel: "Delegate address",
+    delegationPerTxCapLabel: "Per-tx cap (wei)",
+    delegationWindowCapLabel: "Window cap (wei)",
+    delegationWindowLabel: "Window length (seconds)",
+    delegationExpiryLabel: "Expires in (days)",
+    delegationActive: "Active delegation",
+    delegationNone: "No active delegation",
+    delegationInstall: "Sign & install",
+    delegationRevoke: "Revoke",
+    delegationNotConfigured:
+      "Delegation registry not configured yet — available after the next deployment.",
+    delegationTargetsLabel:
+      "Allowed operations (contract:selector, one per line)",
+    delegationTargetsPlaceholder: "0x…:0x1a2b3c4d",
+    delegationOwnerOnly: "Only the agent owner sees this card.",
+    delegationToast: (hash) => `Delegation updated (${hash.slice(0, 10)}…)`,
+    errDelegationForm: "Check the delegation fields — {error}",
+    errDelegationWallet: "Connect your wallet to install a delegation.",
   },
   transactions: {
     title: "Transaction center",
