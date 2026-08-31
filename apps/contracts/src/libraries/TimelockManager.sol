@@ -8,7 +8,7 @@ library TimelockManager {
         uint256 proposedAt;
     }
 
-    uint256 internal constant DELAY = 1 days;
+    uint256 internal constant DELAY = 20 minutes;
 
     error NoPendingProposal();
     error DelayNotElapsed(uint256 remaining);

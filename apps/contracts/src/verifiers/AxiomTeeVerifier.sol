@@ -141,7 +141,7 @@ contract AxiomTeeVerifier is Initializable, BaseVerifier, OwnableUpgradeable, UU
         if (newSigner == address(0)) revert ZeroAddress();
         if (_isSigner[newSigner]) revert SignerAlreadyAllowlisted();
         _signerTimelock.propose(newSigner);
-        emit SignerProposed(newSigner, block.timestamp + 1 days);
+        emit SignerProposed(newSigner, block.timestamp + TimelockManager.DELAY);
     }
 
     function cancelSignerProposal() external onlyOwner {

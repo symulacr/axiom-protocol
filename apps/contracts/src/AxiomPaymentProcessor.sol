@@ -180,7 +180,7 @@ contract AxiomPaymentProcessor is
         if (newTreasury == address(0)) revert ZeroAddress();
         PaymentProcessorStorage storage $ = _getStorage();
         $.treasuryTimelock.propose(newTreasury);
-        emit ProtocolTreasuryProposed(newTreasury, block.timestamp + 1 days);
+        emit ProtocolTreasuryProposed(newTreasury, block.timestamp + TimelockManager.DELAY);
     }
 
     function executeProtocolTreasury() external onlyRole(ADMIN_ROLE) {
@@ -366,7 +366,7 @@ contract AxiomPaymentProcessor is
     function pendingTreasuryEffectiveAt() external view returns (uint256) {
         PaymentProcessorStorage storage $ = _getStorage();
         if ($.treasuryTimelock.proposed == address(0)) return 0;
-        return $.treasuryTimelock.proposedAt + 1 days;
+        return $.treasuryTimelock.proposedAt + TimelockManager.DELAY;
     }
 
     function protocolFeeBps() external view returns (uint256) {
