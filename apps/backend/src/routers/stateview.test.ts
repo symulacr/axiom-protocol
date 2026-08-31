@@ -5,13 +5,14 @@ import { Interface, type JsonRpcProvider } from "ethers";
 import { registerStateViewRoutes } from "./stateview.js";
 import type { ServerConfig } from "../config-types.js";
 
-// The route reads AxiomStateView.paymentSnapshot + vaultHealthOf via an ethers
-// Contract; a scripted fake provider answers by matching (to, selector) so all
-// four combinations (ok/partial/fail) are mockable without a chain.
+// The route reads the PaymentProcessor's statefold views (paymentSnapshot +
+// vaultHealthOf, ex-AxiomStateView) via an ethers Contract; a scripted fake
+// provider answers by matching (to, selector) so all four combinations
+// (ok/partial/fail) are mockable without a chain.
 
-const STATE_VIEW_ADDR = "0x" + "09".repeat(20);
+const PROCESSOR_ADDR = "0x" + "09".repeat(20);
 
-const stateViewIface = Interface.from([
+const processorIface = Interface.from([
   "function paymentSnapshot(address payer, uint256 tokenId) view returns (uint256 maxPayCap, uint256 computeRatioMax, uint256 agentBalance, uint256 payerAllowance, address paymentToken)",
   "function vaultHealthOf(uint256 tokenId) view returns (uint256 balance, bytes32 strategyRoot, uint128 dailyLimit, uint128 dailySpent, uint64 resetDay, uint64 validUntilDay, bool expired)",
 ]);
@@ -19,7 +20,7 @@ const stateViewIface = Interface.from([
 const PAYMENT_TOKEN = "0x" + "ee".repeat(20);
 
 function encodeSnapshot(): string {
-  return stateViewIface.encodeFunctionResult("paymentSnapshot", [
+  return processorIface.encodeFunctionResult("paymentSnapshot", [
     1_000n, // maxPayCap
     25_000n, // computeRatioMax
     5_000n, // agentBalance
@@ -29,7 +30,7 @@ function encodeSnapshot(): string {
 }
 
 function encodeHealth(): string {
-  return stateViewIface.encodeFunctionResult("vaultHealthOf", [
+  return processorIface.encodeFunctionResult("vaultHealthOf", [
     77_000n, // balance
     "0x" + "aa".repeat(32), // strategyRoot
     1_000n, // dailyLimit (uint128)
@@ -46,7 +47,7 @@ interface CallExpectation {
 }
 
 function selectorOf(signature: string): string {
-  return stateViewIface.getFunction(signature)!.selector;
+  return processorIface.getFunction(signature)!.selector;
 }
 
 function makeFakeProvider(expectations: CallExpectation[]): JsonRpcProvider {
@@ -65,7 +66,7 @@ function makeFakeProvider(expectations: CallExpectation[]): JsonRpcProvider {
   } as unknown as JsonRpcProvider;
 }
 
-function makeConfig(withStateView = true): ServerConfig {
+function makeConfig(withProcessor = true): ServerConfig {
   return {
     bind: "0.0.0.0",
     port: 0,
@@ -75,7 +76,7 @@ function makeConfig(withStateView = true): ServerConfig {
       agentNft: "0x" + "01".repeat(20),
       vault: "0x" + "02".repeat(20),
       verifier: "0x" + "03".repeat(20),
-      ...(withStateView ? { stateView: STATE_VIEW_ADDR } : {}),
+      ...(withProcessor ? { paymentProcessor: PROCESSOR_ADDR } : {}),
     },
   } as unknown as ServerConfig;
 }
@@ -110,7 +111,7 @@ async function getState(
 const snapshotSel = selectorOf("paymentSnapshot(address,uint256)");
 const healthSel = selectorOf("vaultHealthOf(uint256)");
 
-describe("GET /v1/agents/:id/state (AxiomStateView pre-flight)", () => {
+describe("GET /v1/agents/:id/state (PaymentProcessor statefold pre-flight)", () => {
   let expectations: CallExpectation[];
 
   beforeEach(() => {
@@ -203,7 +204,7 @@ describe("GET /v1/agents/:id/state (AxiomStateView pre-flight)", () => {
     assert.equal(status, 502);
   });
 
-  test("unset stateView address → 503 ADDRESS_NOT_CONFIGURED", async () => {
+  test("unset paymentProcessor address → 503 ADDRESS_NOT_CONFIGURED", async () => {
     const app = buildApp(makeFakeProvider(expectations), makeConfig(false));
     const { status, body } = await getState(app);
     assert.equal(status, 503);

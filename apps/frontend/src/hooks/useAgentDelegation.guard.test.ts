@@ -18,10 +18,26 @@ test("reads getDelegation + isDelegationActive in ONE aggregateReads batch", () 
 });
 
 test("tuple destructure order matches AxiomDelegationRegistry.AgentDelegation", () => {
+  // destructure is multiline in the hook; assert element order positionally
+  const names = [
+    "agentTokenId",
+    "delegate",
+    "perTxCap",
+    "windowCap",
+    "windowSeconds",
+    "expiresAt",
+    "allowedSelectorsRoot",
+    "nonce",
+  ];
+  const idxs = names.map((n) => src.indexOf(`            ${n},`));
   assert.ok(
-    src.includes(
-      "[agentTokenId, delegate, perTxCap, windowCap, windowSeconds, expiresAt, allowedSelectorsRoot, nonce]",
-    ),
+    idxs.every((i) => i > 0),
+    "all tuple elements present",
+  );
+  assert.deepEqual(
+    idxs,
+    [...idxs].sort((a, b) => a - b),
+    "destructure order must match the AgentDelegation tuple",
   );
 });
 

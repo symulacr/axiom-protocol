@@ -13,12 +13,12 @@ const src = readFileSync(
 
 test("paymentSnapshot is fetched through ONE aggregateReads call", () => {
   assert.ok(src.includes("aggregateReads(publicClient, ["));
-  // exactly one call entry — the facade collapses cap/balance/allowance/token
+  // exactly one call entry — the statefold view collapses cap/balance/allowance/token
   const callBlocks = src.split("functionName:").length - 1;
   assert.equal(callBlocks, 1);
 });
 
-test("snapshot shape matches AxiomStateView.paymentSnapshot return order", () => {
+test("snapshot shape matches Processor.paymentSnapshot return order (statefold)", () => {
   assert.ok(src.includes('functionName: "paymentSnapshot"'));
   // destructuring order = maxPayCap, computeRatioMax, agentBalance, payerAllowance, paymentToken
   assert.ok(
@@ -28,10 +28,11 @@ test("snapshot shape matches AxiomStateView.paymentSnapshot return order", () =>
   );
 });
 
-test("facade is env-gated: no address → no RPC and null snapshot", () => {
-  assert.ok(src.includes("getAxiomStateViewAddress()"));
+test("reads target the PaymentProcessor (statefold), env-gated: no address → no RPC and null snapshot", () => {
+  assert.ok(src.includes("getAxiomPaymentProcessorAddress()"));
+  assert.ok(!src.includes("getAxiomStateViewAddress"));
   // early return before aggregateReads when unset
-  assert.ok(src.includes("if (!stateView || !address || !publicClient)"));
+  assert.ok(src.includes("if (!processor || !address || !publicClient)"));
 });
 
 test("cap sentinel documented: 0 = unlimited", () => {

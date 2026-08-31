@@ -1,4 +1,4 @@
-import { STATE_VIEW_ABI } from "@axiom/config/abis";
+import { PAYMENT_PROCESSOR_ABI } from "@axiom/config/abis";
 import type { Express } from "express";
 import { createRoute } from "./route-factory.js";
 import { routeMeta } from "./shared.js";
@@ -11,7 +11,7 @@ import { HTTP } from "@axiom/config/constants";
 
 const log = createLogger("stateview");
 
-/** Return shape of AxiomStateView.paymentSnapshot (V3 W2 single-primitive caps). */
+/** Return shape of Processor.paymentSnapshot (V3 W4 statefold view, ex-AxiomStateView). */
 export interface PaymentSnapshot {
   maxPayCap: string;
   computeRatioMax: string;
@@ -20,7 +20,7 @@ export interface PaymentSnapshot {
   paymentToken: string;
 }
 
-/** Return shape of AxiomStateView.vaultHealthOf. */
+/** Return shape of Processor.vaultHealthOf (V3 W4 statefold view). */
 export interface VaultHealth {
   balance: string;
   strategyRoot: string;
@@ -97,9 +97,10 @@ function toStrings2(v: {
 }
 
 /**
- * GET /v1/agents/:id/state — one-call pre-flight view over AxiomStateView
- * (paymentSnapshot + vaultHealthOf) replacing the FE's fan-out of per-contract
- * calls. Both reads are optional: each reports its failure in `errors` so a
+ * GET /v1/agents/:id/state — one-call pre-flight view over the PaymentProcessor
+ * (paymentSnapshot + vaultHealthOf; V3 W4 statefold — the reads moved off the
+ * retired AxiomStateView facade onto the upgraded Processor, same shapes).
+ * Both reads are optional: each reports its failure in `errors` so a
  * partial outage degrades instead of 500ing the whole snapshot. Payer scoping
  * comes from ?payer=0x… (defaults to the zero address = aggregate view).
  */
@@ -115,8 +116,8 @@ export function registerStateViewRoutes(
     routeMeta(
       "/v1/agents/:id/state",
       "agents",
-      "Pre-flight agent state from AxiomStateView: paymentSnapshot(payer, tokenId) + vaultHealthOf(tokenId) in one call",
-      { method: "get", requireId: true, requireAddress: "stateView" },
+      "Pre-flight agent state from the PaymentProcessor (statefold): paymentSnapshot(payer, tokenId) + vaultHealthOf(tokenId) in one call",
+      { method: "get", requireId: true, requireAddress: "paymentProcessor" },
     ),
     async (_parsed: unknown, req, res, { id, config: cfg }) => {
       const payer =
@@ -131,18 +132,19 @@ export function registerStateViewRoutes(
         return;
       }
 
-      // requireAddress guard already 503s (ADDRESS_NOT_CONFIGURED) when stateView is unset.
-      const stateViewAddr = cfg.addresses!.stateView;
-      if (!stateViewAddr)
+      // requireAddress guard already 503s (ADDRESS_NOT_CONFIGURED) when the
+      // processor address is unset.
+      const processorAddr = cfg.addresses!.paymentProcessor;
+      if (!processorAddr)
         return sendError(
           res,
           HTTP.SERVICE_UNAVAILABLE,
-          "stateView address not configured",
+          "paymentProcessor address not configured",
           "ADDRESS_NOT_CONFIGURED",
         );
       const tc = new TypedContract<ViewMethods>(
-        stateViewAddr,
-        STATE_VIEW_ABI,
+        processorAddr,
+        PAYMENT_PROCESSOR_ABI,
         provider,
       );
 

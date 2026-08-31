@@ -32,7 +32,6 @@ const env: Record<string, unknown> = {
   AXIOM_TEE_VERIFIER_ADDRESS: import.meta.env.VITE_TEE_VERIFIER_ADDRESS,
   AXIOM_PAYMENT_PROCESSOR_ADDRESS: import.meta.env
     .VITE_PAYMENT_PROCESSOR_ADDRESS,
-  AXIOM_STATE_VIEW_ADDRESS: import.meta.env.VITE_STATE_VIEW_ADDRESS,
   AXIOM_DELEGATION_REGISTRY_ADDRESS: import.meta.env
     .VITE_DELEGATION_REGISTRY_ADDRESS,
 };
@@ -47,8 +46,6 @@ const ADDRESSES = {
 
 // V3 W3: not yet deployed — resolveAddressOptional returns undefined until the
 // deploy lane sets the VITE_ vars; consumers must gate their UI on undefined.
-const stateView = resolveAddressOptional("stateView", env) as
-  Address | undefined;
 const delegationRegistry = resolveAddressOptional("delegationRegistry", env) as
   Address | undefined;
 
@@ -61,9 +58,6 @@ const getAxiomTeeVerifierAddress = (_chainId?: number): Address =>
   ADDRESSES.teeVerifier;
 export const getAxiomPaymentProcessorAddress = (_chainId?: number): Address =>
   ADDRESSES.paymentProcessor;
-export const getAxiomStateViewAddress = (
-  _chainId?: number,
-): Address | undefined => stateView;
 export const getAxiomDelegationRegistryAddress = (
   _chainId?: number,
 ): Address | undefined => delegationRegistry;

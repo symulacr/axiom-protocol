@@ -3009,7 +3009,31 @@
           "receiverPubKey64"
         ]
       },
-      "StateViewPaymentSnapshot": {
+      "AgentStateResponse": {
+        "type": "object",
+        "properties": {
+          "tokenId": {
+            "type": "string"
+          },
+          "payer": {
+            "$ref": "#/components/schemas/AgentStatePaymentSnapshot"
+          },
+          "vaultHealth": {
+            "$ref": "#/components/schemas/AgentStateVaultHealth"
+          },
+          "errors": {
+            "type": "object",
+            "description": "Per-read failure detail when one view fails but the other succeeded",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "tokenId"
+        ]
+      },
+      "AgentStatePaymentSnapshot": {
         "type": "object",
         "properties": {
           "maxPayCap": {
@@ -3040,7 +3064,7 @@
           "paymentToken"
         ]
       },
-      "StateViewVaultHealth": {
+      "AgentStateVaultHealth": {
         "type": "object",
         "properties": {
           "balance": {
@@ -3076,30 +3100,6 @@
           "resetDay",
           "validUntilDay",
           "expired"
-        ]
-      },
-      "AgentStateResponse": {
-        "type": "object",
-        "properties": {
-          "tokenId": {
-            "type": "string"
-          },
-          "payer": {
-            "$ref": "#/components/schemas/StateViewPaymentSnapshot"
-          },
-          "vaultHealth": {
-            "$ref": "#/components/schemas/StateViewVaultHealth"
-          },
-          "errors": {
-            "type": "object",
-            "description": "Per-read failure detail when one view fails but the other succeeded",
-            "additionalProperties": {
-              "type": "string"
-            }
-          }
-        },
-        "required": [
-          "tokenId"
         ]
       }
     }
@@ -6377,7 +6377,7 @@
     },
     "/v1/agents/{id}/state": {
       "get": {
-        "summary": "Pre-flight agent state from AxiomStateView: paymentSnapshot + vaultHealthOf in one call (10s cache)",
+        "summary": "Pre-flight agent state from the PaymentProcessor (statefold): paymentSnapshot + vaultHealthOf in one call (10s cache)",
         "security": [
           {
             "serverKey": []
@@ -6440,7 +6440,7 @@
             }
           },
           "503": {
-            "description": "AxiomStateView address not configured (pre-deploy)",
+            "description": "PaymentProcessor address not configured (pre-deploy)",
             "content": {
               "application/json": {
                 "schema": {

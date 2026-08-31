@@ -6,7 +6,6 @@ export type AddressName =
   | "teeVerifier"
   | "paymentProcessor"
   | "paymentToken"
-  | "stateView"
   | "delegationRegistry";
 
 const ENV_VAR_NAMES: Record<AddressName, string[]> = {
@@ -19,7 +18,6 @@ const ENV_VAR_NAMES: Record<AddressName, string[]> = {
     "AXIOM_PAYMENT_PROCESSOR",
   ],
   paymentToken: ["AXIOM_PAYMENT_TOKEN", "AXIOM_MOCK_USDC_ADDRESS"],
-  stateView: ["AXIOM_STATE_VIEW_ADDRESS"],
   delegationRegistry: ["AXIOM_DELEGATION_REGISTRY_ADDRESS"],
 };
 
@@ -48,10 +46,7 @@ export function resolveAddress(
 }
 
 /** Addresses that may legitimately be unset pre-deploy — resolveAddressOptional returns undefined instead of throwing. */
-const OPTIONAL_ADDRESS_NAMES: readonly AddressName[] = [
-  "delegationRegistry",
-  "stateView",
-];
+const OPTIONAL_ADDRESS_NAMES: readonly AddressName[] = ["delegationRegistry"];
 
 export function resolveAddressOptional(
   name: AddressName,

@@ -51,7 +51,6 @@ async function resolveLiveAddresses(
     // V3 W3-B: facade contracts are optional until the deploy lane publishes
     // them — omitted addresses keep the routes 503ing cleanly instead of
     // failing boot.
-    stateView: resolveAddressOptional("stateView", backendEnv),
     delegationRegistry: resolveAddressOptional(
       "delegationRegistry",
       backendEnv,

@@ -368,8 +368,9 @@ export function startServer(config: ServerConfig): {
   // nowhere in prod — read-only surface, no contract address required at boot.
   registerGovernanceRoutes(app, config, provider);
 
-  // V3 W3-B: one-call pre-flight (paymentSnapshot + vaultHealthOf) off AxiomStateView;
-  // 503s ADDRESS_NOT_CONFIGURED until the deploy lane sets AXIOM_STATE_VIEW_ADDRESS.
+  // V3 W4 statefold: one-call pre-flight (paymentSnapshot + vaultHealthOf) off the upgraded
+  // PaymentProcessor (ex-AxiomStateView); 503s ADDRESS_NOT_CONFIGURED until the processor
+  // address is configured.
   registerStateViewRoutes(app, config, provider);
 
   pushRouteMeta(

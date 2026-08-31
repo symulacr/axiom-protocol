@@ -401,8 +401,8 @@ export function AgentPage({
       : null,
   );
   const liveDecimals = onchain.decimals ?? paymentToken?.decimals;
-  // W3-C: StateView.paymentSnapshot pre-flight for the pay panel (cap, earnings,
-  // allowance, token) — one more multicall leg, env-gated until the facade lands.
+  // W4 statefold: Processor.paymentSnapshot pre-flight for the pay panel (cap,
+  // earnings, allowance, token) — one more multicall leg.
   const snapshot = usePaymentSnapshot();
   const vaultBalance =
     vault.depositsWei !== undefined

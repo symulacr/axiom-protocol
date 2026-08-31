@@ -9,7 +9,9 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/Pau
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {IAxiomAgentNFT} from "./interfaces/IAxiomAgentNFT.sol";
+import {AxiomStrategyVault} from "./AxiomStrategyVault.sol";
 import {ISignatureTransfer} from "./permit2/ISignatureTransfer.sol";
+import {IERC7857Metadata, IntelligentData} from "@0g-agent-nft/interfaces/IERC7857Metadata.sol";
 import {TimelockManager} from "./libraries/TimelockManager.sol";
 using TimelockManager for TimelockManager.State;
 
@@ -37,6 +39,7 @@ contract AxiomPaymentProcessor is
     error InvalidPermitToken();
     error InvalidPermitAmount(uint256 permitted, uint256 requested);
     error PermitExpired(uint256 deadline, uint256 timestamp);
+    error VaultNotConfigured();
 
     event PaymentProcessed(
         uint256 indexed agentTokenId,
@@ -56,6 +59,7 @@ contract AxiomPaymentProcessor is
     event PaymentTokenUpdated(address indexed oldToken, address indexed newToken);
     event MaxPayCapUpdated(uint256 oldCap, uint256 newCap);
     event ComputeRatioMaxUpdated(uint256 oldRatioMax, uint256 newRatioMax);
+    event VaultAddressUpdated(address indexed oldVault, address indexed newVault);
 
     /// @dev Canonical Permit2 deployment (Uniswap CREATE2 address, identical on every supported chain;
     ///      verified on Galileo testnet — docs/v3-proposals/04-web-research-digest.md Q2). Constant, not
@@ -108,8 +112,13 @@ contract AxiomPaymentProcessor is
         // this slot, so its zero default (0 = unlimited ratio) is inert until the admin sets it.
         uint256 computeRatioMax;
         // W2-A note: the Permit2 lane adds NO storage vars (PERMIT2 is a chain-invariant constant,
-        // see below) — the gap therefore stays at 47 and the layout is unchanged vs Wave 1.
-        uint256[47] __gap;
+        // see below) — the layout was unchanged vs Wave 1.
+        // V3 W4 (5-contract statefold): the standalone AxiomStateView read facade is folded into
+        // this Processor — `axiomVault` is appended at the gap tail per the V2 layout-delta rule
+        // (gap shrunk 47→46; upgrade-in-place safe: pre-W4 impls never read this slot, so its
+        // zero default is inert until the admin wires it via setAxiomVault).
+        AxiomStrategyVault axiomVault;
+        uint256[46] __gap;
     }
 
     bytes32 private constant STORAGE_LOCATION = 0xb6e9ac8ab7d5307044651d01576943b58a3563d54e8f2be64d1601b1a6cebc00;
@@ -237,6 +246,22 @@ contract AxiomPaymentProcessor is
         uint256 old = $.computeRatioMax;
         $.computeRatioMax = newRatioMax;
         emit ComputeRatioMaxUpdated(old, newRatioMax);
+    }
+
+    /// @notice Wire the strategy vault this Processor reads for the statefold views (V3 W4).
+    ///         Zero address is a valid un-wire (vaultHealthOf reverts VaultNotConfigured until
+    ///         a vault is set again); the zero-check lives on the read side, not here.
+    function setAxiomVault(
+        address newVault
+    ) external onlyRole(ADMIN_ROLE) {
+        PaymentProcessorStorage storage $ = _getStorage();
+        address old = address($.axiomVault);
+        $.axiomVault = AxiomStrategyVault(payable(newVault));
+        emit VaultAddressUpdated(old, newVault);
+    }
+
+    function axiomVault() external view returns (address) {
+        return address(_getStorage().axiomVault);
     }
 
     function setRoyaltyBps(
@@ -526,4 +551,105 @@ contract AxiomPaymentProcessor is
     function _authorizeUpgrade(
         address
     ) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
+
+    // ─── Statefold views (V3 W4): the former AxiomStateView read facade, folded in ───
+    // Logic is ported 1:1 from the deleted src/AxiomStateView.sol — drift vs the originals
+    // is a bug; see docs/v3-proposals/waves/w4-statefold.md for the port table.
+
+    /// @notice Royalty recipient for `tokenId` = the NFT's mint-frozen creator. Zero is a VALID
+    ///         outcome ("no royalty recipient": nonexistent token / role-minted without creator) —
+    ///         callers treat zero as unset; the write path reverts AgentCreatorNotRegistered here
+    ///         instead, this view surfaces the same fact as address(0).
+    function royaltyRecipientOf(
+        uint256 tokenId
+    ) external view returns (address recipient) {
+        return _getStorage().axiomNft.creatorOf(tokenId);
+    }
+
+    /// @notice View mirror of `_effectiveRoyaltyBps` + `royaltyBpsOf`: reuses the internal clamp
+    ///         (stored == 0 → (0,false); bps = min(stored − 1, BPS_DENOMINATOR − protocolFeeBps))
+    ///         rather than duplicating it — clamp parity is structural, not by convention.
+    function effectiveRoyaltyBpsOf(
+        uint256 tokenId
+    ) external view returns (uint256 royaltyBps, bool isSet, uint256 protocolFeeBps) {
+        PaymentProcessorStorage storage $ = _getStorage();
+        (royaltyBps, isSet) = _effectiveRoyaltyBps($, tokenId);
+        return (royaltyBps, isSet, $.protocolFeeBps);
+    }
+
+    /// @notice Vault health for `tokenId`, mirroring `AxiomStrategyVault.execute`'s view of state.
+    ///         `expired` is the exact StrategyExpired predicate
+    ///         (`validUntilDay != 0 && today > validUntilDay`); 0 validUntilDay sentinel = no
+    ///         expiry. NOTE (Vault residual 1): strategyRoot/dailyLimit survive iTransfer — the
+    ///         buyer inherits the seller's strategy; consumers should prompt setStrategy
+    ///         post-purchase.
+    function vaultHealthOf(
+        uint256 tokenId
+    )
+        external
+        view
+        returns (
+            uint256 balance,
+            bytes32 strategyRoot,
+            uint128 dailyLimit,
+            uint128 dailySpent,
+            uint64 resetDay,
+            uint64 validUntilDay,
+            bool expired
+        )
+    {
+        AxiomStrategyVault vault = _getStorage().axiomVault;
+        if (address(vault) == address(0)) revert VaultNotConfigured();
+        // strategyOf returns (root, uint256 dailyLimit, uint256 dailySpent, resetDay, validUntilDay);
+        // uint256→uint128 widening is explicit here because tuple assignment has no implicit narrowing.
+        bytes32 root;
+        uint256 limitW;
+        uint256 spentW;
+        (root, limitW, spentW, resetDay, validUntilDay) = vault.strategyOf(tokenId);
+        strategyRoot = root;
+        dailyLimit = uint128(limitW);
+        dailySpent = uint128(spentW);
+        balance = vault.balanceOf(tokenId);
+        uint64 today = uint64(block.timestamp / 1 days);
+        expired = validUntilDay != 0 && today > validUntilDay;
+    }
+
+    /// @notice Payload attestation: `keccak256(payload)` equals the ERC-7857 iData commitment at
+    ///         `dataIndex`. Nonexistent token reverts inside the NFT getter
+    ///         (ERC721NonexistentToken); an out-of-range dataIndex reverts on array access. A
+    ///         stored bytes32(0) dataHash can never verify any payload (keccak256 ≠ 0) — never
+    ///         read a zero hash as "verified".
+    function verifyPayloadOf(
+        uint256 tokenId,
+        uint256 dataIndex,
+        bytes calldata payload
+    ) external view returns (bool) {
+        IntelligentData[] memory datas = IERC7857Metadata(address(_getStorage().axiomNft)).intelligentDatasOf(tokenId);
+        return keccak256(payload) == datas[dataIndex].dataHash;
+    }
+
+    /// @notice One-call pre-flight for the FE pay flow — every fact `payForAgent` checks. All
+    ///         reads are state this Processor already owns (no external facade hop).
+    function paymentSnapshot(
+        address payer,
+        uint256 tokenId
+    )
+        external
+        view
+        returns (
+            uint256 maxPayCap,
+            uint256 computeRatioMax,
+            uint256 agentBalance,
+            uint256 payerAllowance,
+            address paymentToken
+        )
+    {
+        PaymentProcessorStorage storage $ = _getStorage();
+        maxPayCap = $.maxPayCap;
+        computeRatioMax = $.computeRatioMax;
+        IERC20 token = IERC20($.paymentToken);
+        agentBalance = token.balanceOf(payer);
+        payerAllowance = token.allowance(payer, address(this));
+        paymentToken = $.paymentToken;
+    }
 }
