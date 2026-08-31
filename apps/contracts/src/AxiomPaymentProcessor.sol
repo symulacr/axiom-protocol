@@ -47,6 +47,7 @@ contract AxiomPaymentProcessor is
     error InvalidSwapToken(address tokenIn);
     error InvalidSwapPair();
     error InsufficientLiquidity();
+    error InsufficientPoolLiquidity();
     error SwapSlippage(uint256 amountOut, uint256 minOut);
     error SwapInsolvent(address token, uint256 tracked, uint256 balance);
     error PermitBatchTokenMissing(address token);
@@ -935,6 +936,35 @@ contract AxiomPaymentProcessor is
 
         _assertSwapSolvent($);
         emit LiquidityAdded(_msgSender(), usdcAmount, wethAmount, shares);
+    }
+
+    /// @notice ADMIN-ONLY pool provisioning: credits tokens the contract ALREADY HOLDS as tracked
+    ///      swap reserves and mints LP shares to `to`. Exists because the tokens are permissionless
+    ///      testnet mocks — the admin mints directly to this contract, then calls this; it is also
+    ///      the canonical ops path for pool provisioning without a Permit2 signature.
+    ///      Requires totalLpShares == 0 (founding liquidity only); reserves scale pro-rata after.
+    function seedSwapPool(uint256 usdcAmount, uint256 wethAmount, address to) external onlyRole(ADMIN_ROLE) {
+        if (usdcAmount == 0 || wethAmount == 0) revert ZeroAmount();
+        if (to == address(0)) revert ZeroAddress();
+        PaymentProcessorStorage storage $ = _getStorage();
+        uint256 balA = IERC20($.paymentToken).balanceOf(address(this));
+        uint256 balB = IERC20($.swapPairToken).balanceOf(address(this));
+        if (balA < usdcAmount || balB < wethAmount) revert InsufficientPoolLiquidity();
+        uint256 shares;
+        if ($.totalLpShares == 0) {
+            shares = Math.sqrt(usdcAmount * wethAmount);
+        } else {
+            shares = Math.min(
+                (usdcAmount * $.totalLpShares) / $.swapReserveA, (wethAmount * $.totalLpShares) / $.swapReserveB
+            );
+        }
+        if (shares == 0) revert InsufficientLiquidity();
+        $.swapReserveA += usdcAmount;
+        $.swapReserveB += wethAmount;
+        $.totalLpShares += shares;
+        $.lpShares[to] += shares;
+        _assertSwapSolvent($);
+        emit LiquidityAdded(to, usdcAmount, wethAmount, shares);
     }
 
     /// @notice Burn `shares`, receive both pool tokens pro-rata against the tracked reserves.
