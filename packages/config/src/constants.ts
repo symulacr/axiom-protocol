@@ -27,6 +27,14 @@ export type RuntimeConfig = {
   [K in keyof typeof RUNTIME_DEFAULTS]: (typeof RUNTIME_DEFAULTS)[K];
 };
 
+/** Faucet kill-switch (V3 W6-B): env-driven so a testnet deploy can disable
+ *  the drip without a code change. Defaults true (mock tokens, testnet only). */
+export function isFaucetEnabled(
+  env: Record<string, string | undefined> = defaultRuntimeEnv(),
+): boolean {
+  return env["AXIOM_FAUCET_ENABLED"] !== "false";
+}
+
 /** Relayer tuning values — resolved from env each call (no WeakMap caching here:
  *  callers pass test envs whose identity varies; the numbers are tiny to recompute). */
 export const RELAYER_DEFAULTS = {
@@ -38,6 +46,10 @@ export const RELAYER_DEFAULTS = {
   sponsorRatePerMin: 6,
   sponsorMaxGasCostWei: 1_000_000_000_000_000n,
   sponsorMaxInflightPerUser: 2,
+  /** One-time axmUSDC faucet drip (base units, 6 decimals) — default 1000e6. */
+  faucetAmountUsdc: 1_000_000_000n,
+  /** Balance gate: an address holding ≥ 1 axmUSDC is not faucet-eligible. */
+  faucetBalanceGate: 1_000_000n,
 } as const;
 
 const RELAYER_ENV_VARS = {
@@ -49,6 +61,7 @@ const RELAYER_ENV_VARS = {
   sponsorRatePerMin: "AXIOM_RELAYER_SPONSOR_RATE_PER_MIN",
   sponsorMaxGasCostWei: "AXIOM_RELAYER_SPONSOR_MAX_GAS_COST_WEI",
   sponsorMaxInflightPerUser: "AXIOM_RELAYER_SPONSOR_MAX_INFLIGHT_PER_USER",
+  faucetAmountUsdc: "AXIOM_FAUCET_AMOUNT_USDC",
 } as const;
 
 export function getRelayerConfig(

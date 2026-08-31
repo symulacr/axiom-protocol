@@ -507,6 +507,17 @@ export const CHAT_TOOL_CATALOG = [
     parameters: params({}),
   }),
   tool({
+    name: "faucet_status",
+    class: "read",
+    label: "Faucet Status",
+    hint: "Check the connected wallet's testnet axmUSDC faucet status: whether the one-time drip is still claimable and its size. Use before payments when a wallet has no USDC.",
+    requiresWallet: true,
+    context: "backend read (faucet)",
+    capabilities: ["read", "faucet"],
+    friction: "low",
+    parameters: params({}),
+  }),
+  tool({
     name: "execute_tick",
     class: "orchestrate",
     label: "Execute Tick",

@@ -78,9 +78,15 @@ const CLIENT_ALLOWED_ROUTES: ReadonlyArray<{
   {
     methods: ["GET"],
     match: (p) =>
-      p.startsWith("/v1/relayer/tank/") || p === "/v1/relayer/status",
+      p.startsWith("/v1/relayer/tank/") ||
+      p === "/v1/relayer/status" ||
+      p.startsWith("/v1/relayer/faucet/"),
   },
   { methods: ["POST"], match: (p) => p === "/v1/relayer/sponsor" },
+  // Faucet claim (V3 W6-B): relayer-initiated mint, no key material involved.
+  { methods: ["POST"], match: (p) => p.startsWith("/v1/relayer/faucet/") },
+  // Public market data (V3 W6-B): Pyth prices for the swap UI's slippage check.
+  { methods: ["GET"], match: (p) => p === "/v1/prices" },
 ];
 
 export function isClientPathAllowed(method: string, path: string): boolean {

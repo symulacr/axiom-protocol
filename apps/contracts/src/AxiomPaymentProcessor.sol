@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {ContextUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
@@ -43,6 +44,14 @@ contract AxiomPaymentProcessor is
     error InvalidPermitAmount(uint256 permitted, uint256 requested);
     error PermitExpired(uint256 deadline, uint256 timestamp);
     error VaultNotConfigured();
+    error InvalidSwapToken(address tokenIn);
+    error InvalidSwapPair();
+    error InsufficientLiquidity();
+    error SwapSlippage(uint256 amountOut, uint256 minOut);
+    error SwapInsolvent(address token, uint256 tracked, uint256 balance);
+    error PermitBatchTokenMissing(address token);
+    error InsufficientBorrowCollateral(uint256 required, uint256 available);
+    error InsufficientPoolReserve(uint256 requested, uint256 available);
 
     event PaymentProcessed(
         uint256 indexed agentTokenId,
@@ -64,6 +73,16 @@ contract AxiomPaymentProcessor is
     event ComputeRatioMaxUpdated(uint256 oldRatioMax, uint256 newRatioMax);
     event VaultAddressUpdated(address indexed oldVault, address indexed newVault);
     event TrustedForwarderUpdated(address indexed oldForwarder, address indexed newForwarder);
+    event SwapPairTokenUpdated(address indexed oldToken, address indexed newToken);
+    event SwapFeeBpsUpdated(uint256 oldBps, uint256 newBps);
+    event BorrowFactorBpsUpdated(uint256 oldBps, uint256 newBps);
+    event LiquidityAdded(address indexed lp, uint256 usdcAmount, uint256 wethAmount, uint256 shares);
+    event LiquidityRemoved(address indexed lp, uint256 usdcAmount, uint256 wethAmount, uint256 shares);
+    event Swapped(
+        address indexed tokenIn, uint256 amountIn, address indexed tokenOut, uint256 amountOut, address indexed swapper
+    );
+    event Borrowed(address indexed borrower, uint256 amount);
+    event Repaid(address indexed repayer, uint256 amount);
 
     /// @dev Canonical Permit2 deployment (Uniswap CREATE2 address, identical on every supported chain;
     ///      verified on Galileo testnet — docs/v3-proposals/04-web-research-digest.md Q2). Constant, not
@@ -128,7 +147,19 @@ contract AxiomPaymentProcessor is
         // setTrustedForwarder). The OZ base's immutable _trustedForwarder is left unset —
         // trustedForwarder() below is overridden to read this storage field instead.
         address trustedForwarder;
-        uint256[45] __gap;
+        // V3 W6-A (swap pool + lending, task brief item 5): 8 new vars appended at the gap tail
+        // per the V2 layout-delta rule (gap shrunk 45→37; upgrade-in-place safe: pre-W6 impls
+        // never read these slots, so their zero defaults are inert until the admin sets
+        // swapPairToken / swapFeeBps / borrowFactorBps and the first LP adds liquidity).
+        address swapPairToken; // token B of the two-token pool (token A = paymentToken)
+        uint256 swapReserveA; // tracked paymentToken pool reserve (token A)
+        uint256 swapReserveB; // tracked swapPairToken pool reserve (token B)
+        uint256 swapFeeBps; // swap fee on input, bps (default 30 = 0.3%)
+        uint256 totalLpShares;
+        mapping(address lp => uint256) lpShares;
+        uint256 borrowFactorBps; // max LTV in bps (default 5000 = 50%)
+        mapping(address borrower => uint256) borrowDebt; // USDC-denominated debt
+        uint256[37] __gap;
     }
 
     bytes32 private constant STORAGE_LOCATION = 0xb6e9ac8ab7d5307044651d01576943b58a3563d54e8f2be64d1601b1a6cebc00;
@@ -710,5 +741,369 @@ contract AxiomPaymentProcessor is
         agentBalance = token.balanceOf(payer);
         payerAllowance = token.allowance(payer, address(this));
         paymentToken = $.paymentToken;
+    }
+
+    // ─── Swap pool + lending (V3 W6-A) ──────────────────────────────
+    // Two-token constant-product pool inside the Processor. Reserves are tracked
+    // explicitly (swapReserveA/swapReserveB, updated ONLY by add/remove/swap/borrow/repay)
+    // so the pool never double-counts creator earnings held here; solvency = tracked
+    // reserves must always fit within the raw ERC-20 balances. Token A is paymentToken;
+    // token B is admin-set. TESTNET RAILS ONLY: borrow has NO interest accrual and NO
+    // liquidation — v1 lending exposure is bounded by borrowFactorBps on credit the
+    // borrower already owns (agentEarnings + LP shares), and the pool treasury is the
+    // admin-gated Processor itself.
+
+    /// @notice Set the pool's token B (token A is paymentToken). Must differ from token A;
+    ///         callable again to re-point the pool ONLY while it holds no liquidity.
+    function setSwapPairToken(
+        address newSwapPairToken
+    ) external onlyRole(ADMIN_ROLE) {
+        if (newSwapPairToken == address(0)) revert ZeroAddress();
+        if (newSwapPairToken == _getStorage().paymentToken) revert InvalidSwapPair();
+        PaymentProcessorStorage storage $ = _getStorage();
+        if ($.swapReserveA > 0 || $.swapReserveB > 0 || $.totalLpShares > 0) revert MigrationBlocked();
+        address old = $.swapPairToken;
+        $.swapPairToken = newSwapPairToken;
+        emit SwapPairTokenUpdated(old, newSwapPairToken);
+    }
+
+    function swapPairToken() external view returns (address) {
+        return _getStorage().swapPairToken;
+    }
+
+    /// @notice Swap fee in bps charged on the input amount (default 30 = 0.3%, max 1000 = 10%).
+    function setSwapFeeBps(
+        uint256 newBps
+    ) external onlyRole(ADMIN_ROLE) {
+        if (newBps > 1000) revert InvalidBps();
+        PaymentProcessorStorage storage $ = _getStorage();
+        uint256 old = $.swapFeeBps;
+        $.swapFeeBps = newBps;
+        emit SwapFeeBpsUpdated(old, newBps);
+    }
+
+    function swapFeeBps() external view returns (uint256) {
+        return _getStorage().swapFeeBps;
+    }
+
+    /// @notice Max LTV for borrow in bps (default 5000 = 50%, max 8000 = 80%).
+    function setBorrowFactorBps(
+        uint256 newBps
+    ) external onlyRole(ADMIN_ROLE) {
+        if (newBps > 8000) revert InvalidBps();
+        PaymentProcessorStorage storage $ = _getStorage();
+        uint256 old = $.borrowFactorBps;
+        $.borrowFactorBps = newBps;
+        emit BorrowFactorBpsUpdated(old, newBps);
+    }
+
+    function borrowFactorBps() external view returns (uint256) {
+        return _getStorage().borrowFactorBps;
+    }
+
+    function lpSharesOf(
+        address lp
+    ) external view returns (uint256) {
+        return _getStorage().lpShares[lp];
+    }
+
+    function totalLpShares() external view returns (uint256) {
+        return _getStorage().totalLpShares;
+    }
+
+    function borrowDebtOf(
+        address borrower
+    ) external view returns (uint256) {
+        return _getStorage().borrowDebt[borrower];
+    }
+
+    function swapReserveA() external view returns (uint256) {
+        return _getStorage().swapReserveA;
+    }
+
+    function swapReserveB() external view returns (uint256) {
+        return _getStorage().swapReserveB;
+    }
+
+    /// @dev Validate a swap lane's token side and return both pool tokens.
+    function _swapTokens(
+        address tokenIn
+    ) internal view returns (IERC20 inToken, IERC20 outToken) {
+        PaymentProcessorStorage storage $ = _getStorage();
+        if (tokenIn != $.paymentToken && tokenIn != $.swapPairToken) revert InvalidSwapToken(tokenIn);
+        inToken = IERC20(tokenIn);
+        outToken = IERC20(tokenIn == $.paymentToken ? $.swapPairToken : $.paymentToken);
+    }
+
+    /// @dev Solvency check: tracked reserves can never exceed the raw ERC-20 balances. View
+    ///      variant for monitoring; the state-changing lanes run it via _assertSwapSolvent.
+    function swapSolvency() public view {
+        _assertSwapSolvent(_getStorage());
+    }
+
+    function _assertSwapSolvent(
+        PaymentProcessorStorage storage $
+    ) internal view {
+        uint256 balA = IERC20($.paymentToken).balanceOf(address(this));
+        if ($.swapReserveA > balA) revert SwapInsolvent(address($.paymentToken), $.swapReserveA, balA);
+        if (address($.swapPairToken) != address(0)) {
+            uint256 balB = IERC20($.swapPairToken).balanceOf(address(this));
+            if ($.swapReserveB > balB) revert SwapInsolvent(address($.swapPairToken), $.swapReserveB, balB);
+        }
+    }
+
+    /// @dev Constant-product quote: fee charged on the input. Mirror of the Uniswap V2
+    ///      getAmountOut formula; asserted against hand-computed values in the test suite.
+    function _quoteSwap(
+        uint256 amountIn,
+        uint256 reserveIn,
+        uint256 reserveOut
+    ) internal view returns (uint256 amountOut) {
+        uint256 amountInWithFee = amountIn * (BPS_DENOMINATOR - _getStorage().swapFeeBps);
+        amountOut = (reserveOut * amountInWithFee) / (reserveIn * BPS_DENOMINATOR + amountInWithFee);
+    }
+
+    /// @notice Add liquidity with ONE Permit2 signature over both pool tokens: `permit.permitted`
+    ///         must contain exactly paymentToken and swapPairToken (any order), each permitted
+    ///         amount >= the corresponding requested amount. First LP gets
+    ///         sqrt(usdc*weth); later LPs get min(share-by-A, share-by-B).
+    ///         EXEMPT from maxPayCap: this deposits into an LP position the caller owns and
+    ///         can withdraw via removeLiquidity — it is not a payment, so capping it would
+    ///         only cap the LP's own position size.
+    function addLiquidity(
+        uint256 usdcAmount,
+        uint256 wethAmount,
+        ISignatureTransfer.PermitBatchTransferFrom calldata permit,
+        bytes calldata signature
+    ) external nonReentrant whenNotPaused {
+        if (usdcAmount == 0 || wethAmount == 0) revert ZeroAmount();
+        PaymentProcessorStorage storage $ = _getStorage();
+        address tokenA = $.paymentToken;
+        address tokenB = $.swapPairToken;
+        if (tokenB == address(0)) revert InvalidSwapPair();
+        if (permit.permitted.length != 2) revert InvalidSwapPair();
+        if (permit.deadline < block.timestamp) revert PermitExpired(permit.deadline, block.timestamp);
+
+        // Match both permitted entries to the pool tokens and validate the permitted amounts.
+        ISignatureTransfer.SignatureTransferDetails[] memory details =
+            new ISignatureTransfer.SignatureTransferDetails[](2);
+        bool[2] memory matched;
+        for (uint256 i = 0; i < 2; ++i) {
+            address permittedToken = permit.permitted[i].token;
+            if (permittedToken == tokenA && !matched[0]) {
+                if (permit.permitted[i].amount < usdcAmount) revert InvalidPermitAmount(permit.permitted[i].amount, usdcAmount);
+                details[0] = ISignatureTransfer.SignatureTransferDetails({to: address(this), requestedAmount: usdcAmount});
+                matched[0] = true;
+            } else if (permittedToken == tokenB && !matched[1]) {
+                if (permit.permitted[i].amount < wethAmount) revert InvalidPermitAmount(permit.permitted[i].amount, wethAmount);
+                details[1] = ISignatureTransfer.SignatureTransferDetails({to: address(this), requestedAmount: wethAmount});
+                matched[1] = true;
+            } else {
+                revert PermitBatchTokenMissing(permittedToken);
+            }
+        }
+        if (!matched[0]) revert PermitBatchTokenMissing(tokenA);
+        if (!matched[1]) revert PermitBatchTokenMissing(tokenB);
+
+        uint256 balABefore = IERC20(tokenA).balanceOf(address(this));
+        uint256 balBBefore = IERC20(tokenB).balanceOf(address(this));
+
+        ISignatureTransfer(PERMIT2).permitBatchTransferFrom(permit, details, _msgSender(), signature);
+
+        // Balance-diff guard (same received-diff pattern as _paySplit) — trusted mocks, but
+        // the guard is structural: tracked reserves move only by exactly what arrived.
+        uint256 receivedA = IERC20(tokenA).balanceOf(address(this)) - balABefore;
+        uint256 receivedB = IERC20(tokenB).balanceOf(address(this)) - balBBefore;
+        if (receivedA != usdcAmount || receivedB != wethAmount) {
+            revert TransferAmountMismatch(usdcAmount, receivedA);
+        }
+
+        uint256 shares;
+        if ($.totalLpShares == 0) {
+            shares = Math.sqrt(usdcAmount * wethAmount);
+        } else {
+            shares = Math.min(
+                (usdcAmount * $.totalLpShares) / $.swapReserveA, (wethAmount * $.totalLpShares) / $.swapReserveB
+            );
+        }
+        if (shares == 0) revert InsufficientLiquidity();
+
+        $.swapReserveA += receivedA;
+        $.swapReserveB += receivedB;
+        $.lpShares[_msgSender()] += shares;
+        $.totalLpShares += shares;
+
+        _assertSwapSolvent($);
+        emit LiquidityAdded(_msgSender(), usdcAmount, wethAmount, shares);
+    }
+
+    /// @notice Burn `shares`, receive both pool tokens pro-rata against the tracked reserves.
+    function removeLiquidity(
+        uint256 shares
+    ) external nonReentrant whenNotPaused {
+        if (shares == 0) revert ZeroAmount();
+        PaymentProcessorStorage storage $ = _getStorage();
+        uint256 total = $.totalLpShares;
+        if (shares > $.lpShares[_msgSender()]) revert InsufficientLiquidity();
+
+        uint256 outA = ($.swapReserveA * shares) / total;
+        uint256 outB = ($.swapReserveB * shares) / total;
+        if (outA == 0 || outB == 0) revert InsufficientLiquidity();
+
+        $.lpShares[_msgSender()] -= shares;
+        $.totalLpShares = total - shares;
+        $.swapReserveA -= outA;
+        $.swapReserveB -= outB;
+
+        IERC20($.paymentToken).safeTransfer(_msgSender(), outA);
+        IERC20($.swapPairToken).safeTransfer(_msgSender(), outB);
+
+        _assertSwapSolvent($);
+        emit LiquidityRemoved(_msgSender(), outA, outB, shares);
+    }
+
+    /// @notice Constant-product quote for `amountIn` of `tokenIn` (fee on input, on tracked
+    ///         reserves). Pure read — no state validation beyond the token sides.
+    function quoteSwap(
+        address tokenIn,
+        uint256 amountIn
+    ) external view returns (uint256 amountOut) {
+        _swapTokens(tokenIn);
+        PaymentProcessorStorage storage $ = _getStorage();
+        if (tokenIn == $.paymentToken) {
+            return _quoteSwap(amountIn, $.swapReserveA, $.swapReserveB);
+        }
+        return _quoteSwap(amountIn, $.swapReserveB, $.swapReserveA);
+    }
+
+    /// @notice Swap `amountIn` of `tokenIn` for the other pool token: Permit2-pull the input
+    ///         (cap-enforced like every payment-sized pull), pay out the quote from the tracked
+    ///         reserve of the output token, minOut slippage guard, solvency asserted.
+    ///         Directly callable by the signer (Permit2 binds the spender to raw msg.sender) —
+    ///         NOT ERC-2771-relayable for the same reason payForAgentWithPermit2 is not; the
+    ///         relay test pins that contract.
+    function swapExactIn(
+        address tokenIn,
+        uint256 amountIn,
+        uint256 minOut,
+        ISignatureTransfer.PermitTransferFrom calldata permit,
+        bytes calldata signature
+    ) external nonReentrant whenNotPaused {
+        _enforcePayCap(amountIn);
+        (IERC20 inToken, IERC20 outToken) = _swapTokens(tokenIn);
+        if (permit.permitted.token != tokenIn) revert InvalidPermitToken();
+        if (permit.permitted.amount < amountIn) revert InvalidPermitAmount(permit.permitted.amount, amountIn);
+        if (permit.deadline < block.timestamp) revert PermitExpired(permit.deadline, block.timestamp);
+
+        PaymentProcessorStorage storage $ = _getStorage();
+        bool inIsA = tokenIn == $.paymentToken;
+        uint256 reserveIn;
+        uint256 reserveOut;
+        if (inIsA) {
+            reserveIn = $.swapReserveA;
+            reserveOut = $.swapReserveB;
+        } else {
+            reserveIn = $.swapReserveB;
+            reserveOut = $.swapReserveA;
+        }
+        uint256 amountOut = _quoteSwap(amountIn, reserveIn, reserveOut);
+        if (amountOut < minOut) revert SwapSlippage(amountOut, minOut);
+        if (amountOut > reserveOut) revert InsufficientPoolReserve(amountOut, reserveOut);
+
+        address msgSender = _msgSender();
+        uint256 balBefore = inToken.balanceOf(address(this));
+        ISignatureTransfer(PERMIT2).permitTransferFrom(
+            permit,
+            ISignatureTransfer.SignatureTransferDetails({to: address(this), requestedAmount: amountIn}),
+            msgSender,
+            signature
+        );
+        uint256 received = inToken.balanceOf(address(this)) - balBefore;
+        if (received != amountIn) revert TransferAmountMismatch(amountIn, received);
+
+        if (inIsA) {
+            $.swapReserveA += amountIn;
+            $.swapReserveB -= amountOut;
+        } else {
+            $.swapReserveB += amountIn;
+            $.swapReserveA -= amountOut;
+        }
+
+        outToken.safeTransfer(msgSender, amountOut);
+
+        _assertSwapSolvent($);
+        emit Swapped(tokenIn, amountIn, address(outToken), amountOut, msgSender);
+    }
+
+    /// @notice Collateral value in USDC terms: withdrawable agentEarnings + LP shares valued
+    ///         at the pool reserves ratio (price of B in A = reserveA/reserveB, so a balanced
+    ///         LP's position values at 2x its A-side share).
+    function lpValueInUsdc(
+        address lp
+    ) public view returns (uint256) {
+        PaymentProcessorStorage storage $ = _getStorage();
+        uint256 total = $.totalLpShares;
+        if (total == 0) return 0;
+        uint256 shares = $.lpShares[lp];
+        if (shares == 0) return 0;
+        uint256 aShare = ($.swapReserveA * shares) / total;
+        uint256 bShare = ($.swapReserveB * shares) / total;
+        return aShare + (bShare * $.swapReserveA) / $.swapReserveB;
+    }
+
+    /// @notice Borrow USDC (paymentToken) from swap reserve A against agentEarnings + LP value.
+    ///         NO INTEREST ACCRUAL — testnet lending rails only; debt is a fixed USDC figure
+    ///         until repaid. No liquidation in v1 (mock world, documented in the wave file).
+    function borrow(
+        uint256 amount
+    ) external nonReentrant whenNotPaused {
+        _enforcePayCap(amount);
+        PaymentProcessorStorage storage $ = _getStorage();
+        uint256 collateral = $.agentEarnings[_msgSender()] + lpValueInUsdc(_msgSender());
+        uint256 maxDebt = (collateral * $.borrowFactorBps) / BPS_DENOMINATOR;
+        uint256 current = $.borrowDebt[_msgSender()];
+        if (current + amount > maxDebt) {
+            revert InsufficientBorrowCollateral(current + amount, maxDebt);
+        }
+        if (amount > $.swapReserveA) revert InsufficientPoolReserve(amount, $.swapReserveA);
+
+        $.borrowDebt[_msgSender()] = current + amount;
+        $.swapReserveA -= amount;
+        IERC20($.paymentToken).safeTransfer(_msgSender(), amount);
+
+        _assertSwapSolvent($);
+        emit Borrowed(_msgSender(), amount);
+    }
+
+    /// @notice Repay USDC debt via Permit2 pull; over-repayment floors the debt at zero (the
+    ///         excess stays in the pool reserve — testnet rails, no refund leg).
+    function repay(
+        uint256 amount,
+        ISignatureTransfer.PermitTransferFrom calldata permit,
+        bytes calldata signature
+    ) external nonReentrant whenNotPaused {
+        if (amount == 0) revert ZeroAmount();
+        PaymentProcessorStorage storage $ = _getStorage();
+        if (permit.permitted.token != $.paymentToken) revert InvalidPermitToken();
+        if (permit.permitted.amount < amount) revert InvalidPermitAmount(permit.permitted.amount, amount);
+        if (permit.deadline < block.timestamp) revert PermitExpired(permit.deadline, block.timestamp);
+
+        address msgSender = _msgSender();
+        uint256 balBefore = IERC20($.paymentToken).balanceOf(address(this));
+        ISignatureTransfer(PERMIT2).permitTransferFrom(
+            permit,
+            ISignatureTransfer.SignatureTransferDetails({to: address(this), requestedAmount: amount}),
+            msgSender,
+            signature
+        );
+        uint256 received = IERC20($.paymentToken).balanceOf(address(this)) - balBefore;
+        if (received != amount) revert TransferAmountMismatch(amount, received);
+
+        uint256 debt = $.borrowDebt[msgSender];
+        $.borrowDebt[msgSender] = debt >= amount ? debt - amount : 0;
+        $.swapReserveA += amount;
+
+        _assertSwapSolvent($);
+        emit Repaid(msgSender, amount);
     }
 }

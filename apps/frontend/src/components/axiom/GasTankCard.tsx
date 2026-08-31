@@ -5,6 +5,7 @@ import { COLORS } from "../ui.js";
 import { Button } from "./Controls.js";
 import { getAxiomGasTankAddress } from "../../abi/addresses.js";
 import { useGasTank } from "../../hooks/useGasTank.js";
+import { useFaucet } from "../../hooks/useFaucet.js";
 import { formatTokenAmount, humanizeError } from "../../utils/format.js";
 import { APP_CHAIN } from "../../config/wagmi.js";
 import { getCopy } from "../../lib/copy.js";
@@ -39,6 +40,7 @@ export function GasTankCard({
   const gasTank = getAxiomGasTankAddress();
   const { tank, error } = useGasTank(address, publicClient);
   const copy = getCopy(locale).gasTank;
+  const faucet = useFaucet(address);
   const [depositValue, setDepositValue] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -155,6 +157,30 @@ export function GasTankCard({
           >
             {copy.refillAction}
           </Button>
+          <div
+            className="gas-tank-card__faucet"
+            data-testid="gas-tank-faucet-row"
+          >
+            <small style={{ color: COLORS.textDim }}>
+              {copy.faucetBalanceLabel}: {faucet.balance ?? "0"}
+            </small>
+            {faucet.eligible ? (
+              <>
+                <small>{copy.faucetEligibleBadge}</small>
+                <Button
+                  variant="ghost"
+                  onClick={() => void faucet.claim()}
+                  disabled={faucet.claiming}
+                >
+                  {copy.faucetClaimAction}
+                </Button>
+              </>
+            ) : (
+              <small style={{ color: COLORS.textDim }}>
+                {copy.faucetIneligibleBadge}
+              </small>
+            )}
+          </div>
         </>
       )}
     </div>

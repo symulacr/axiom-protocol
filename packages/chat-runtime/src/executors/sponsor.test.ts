@@ -414,3 +414,56 @@ describe("gas_tank_status read tool", () => {
     assert.match(result.content, /Wallet not connected/);
   });
 });
+
+describe("faucet_status read tool (V3 W6-B)", () => {
+  it("proxies GET /v1/relayer/faucet/:address and returns eligibility", async () => {
+    const paths: string[] = [];
+    const ctx = makeCtx({
+      respond: async (path) => {
+        paths.push(path);
+        return {
+          ok: true,
+          status: 200,
+          text: JSON.stringify({
+            eligible: true,
+            amount: "1000000000",
+            token: "axmUSDC",
+          }),
+        };
+      },
+    });
+    const result = await runReadTool("faucet_status", {}, ctx);
+    const parsed = JSON.parse(result.content) as Record<string, unknown>;
+    assert.equal(result.ok, true);
+    assert.equal(parsed.eligible, true);
+    assert.equal(parsed.amount, "1000000000");
+    assert.equal(parsed.token, "axmUSDC");
+    assert.match(paths[0] ?? "", /\/v1\/relayer\/faucet\//);
+  });
+
+  it("without a connected wallet → toolFail", async () => {
+    const ctx = makeCtx({}) as ToolRuntime & {
+      session: { walletAddress?: string };
+    };
+    ctx.session.walletAddress = undefined;
+    const result = await runReadTool("faucet_status", {}, ctx);
+    assert.equal(result.ok, false);
+    assert.match(result.content, /Wallet not connected/);
+  });
+
+  it("backend failure → toolFail with the surfaced error", async () => {
+    const ctx = makeCtx({
+      respond: async () => ({
+        ok: false,
+        status: 503,
+        text: JSON.stringify({
+          error: "relayer not enabled",
+          code: "ADDRESS_NOT_CONFIGURED",
+        }),
+      }),
+    });
+    const result = await runReadTool("faucet_status", {}, ctx);
+    assert.equal(result.ok, false);
+    assert.match(result.content, /relayer not enabled/);
+  });
+});

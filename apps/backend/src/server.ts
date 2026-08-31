@@ -14,6 +14,12 @@ import { WebSocketServer, type WebSocket } from "ws";
 import type { ServerConfig } from "./config-types.js";
 import { ethers } from "ethers";
 import { GAS_TANK_ABI } from "@axiom/config/abis";
+
+// Minimal read leg for the faucet balance gate (ERC20_ABI is far larger than
+// the one function this path needs).
+const ERC20_BALANCE_ABI = [
+  "function balanceOf(address account) view returns (uint256)",
+] as const;
 import {
   TypedContract,
   type AgentNFTMethods,
@@ -49,11 +55,13 @@ import { registerChatRoutes } from "./routers/chat.js";
 import { registerPaymentRoutes } from "./routers/payment.js";
 import { registerGovernanceRoutes } from "./routers/governance.js";
 import { registerStateViewRoutes } from "./routers/stateview.js";
+import { registerPriceRoutes } from "./routers/prices.js";
 import {
   registerRelayerRoutes,
   type RelayerRouteDeps,
 } from "./routers/relayer.js";
 import { createRelayerQueue } from "./relayer/queue.js";
+import { Faucet } from "./relayer/faucet.js";
 import { SponsorGate } from "./relayer/sponsor.js";
 import { ReconcileEngine } from "./relayer/reconcile.js";
 import { startRelayer, type RelayerHandle } from "./relayer/index.js";
@@ -377,6 +385,7 @@ export function startServer(config: ServerConfig): {
   // M12: pending rotation timelocks (verifier/teeSigner/treasury) were observable
   // nowhere in prod — read-only surface, no contract address required at boot.
   registerGovernanceRoutes(app, config, provider);
+  registerPriceRoutes(app, config);
 
   // V3 W4 statefold: one-call pre-flight (paymentSnapshot + vaultHealthOf) off the upgraded
   // PaymentProcessor (ex-AxiomStateView); 503s ADDRESS_NOT_CONFIGURED until the processor
@@ -409,10 +418,38 @@ export function startServer(config: ServerConfig): {
       ? new ethers.Wallet(relayerPk, provider)
       : null;
     const relayIface = new ethers.Interface(GAS_TANK_ABI);
+    // V3 W6-B faucet: relayer-initiated axmUSDC.mint for first-time users.
+    // Requires both the relayer key (broadcast leg) and the mock USDC address;
+    // silently absent otherwise (testnet-only convenience surface).
+    const usdcAddr = config.addresses?.paymentToken;
+    const faucet =
+      relayerWallet && usdcAddr
+        ? new Faucet(
+            queue,
+            async (user, amount) => {
+              const iface = new ethers.Interface([
+                "function mint(address to, uint256 amount)",
+              ]);
+              const tx = await relayerWallet.sendTransaction({
+                to: usdcAddr,
+                data: iface.encodeFunctionData("mint", [user, amount]),
+                gasLimit: 200_000,
+              });
+              return tx.hash as `0x${string}`;
+            },
+            async (user) => {
+              const erc20 = new TypedContract<{
+                balanceOf(u: string): Promise<bigint>;
+              }>(usdcAddr, ERC20_BALANCE_ABI, provider);
+              return erc20.contract.balanceOf(user);
+            },
+          )
+        : undefined;
     relayerDeps = {
       queue,
       gate,
       reconcile,
+      faucet,
       gasTankAddress: gasTankAddr,
       relayerAddress: relayerWallet?.address,
       // Simulate-before-queue: eth_call the relay against head state; a revert

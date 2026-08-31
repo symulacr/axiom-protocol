@@ -23,6 +23,7 @@ import type {
 } from "../relayer/queue.js";
 import type { SponsorGate } from "../relayer/sponsor.js";
 import type { ReconcileEngine } from "../relayer/reconcile.js";
+import type { Faucet } from "../relayer/faucet.js";
 import { sendError } from "../utils/response.js";
 import { createLogger } from "../utils/logger.js";
 
@@ -35,10 +36,15 @@ const FORWARD_REQUEST_TYPES = {
 
 const log = createLogger("relayer.routes");
 
+/** Internal signal: faucet dep absent (relayer off) → 503 ADDRESS_NOT_CONFIGURED. */
+class FaucetUnavailable extends Error {}
+
 export interface RelayerRouteDeps {
   queue: RelayerQueue;
   gate: SponsorGate;
   reconcile: ReconcileEngine;
+  /** First-relay axmUSDC faucet (V3 W6-B); optional — routes 503 without it. */
+  faucet?: Faucet;
   /** Broadcast leg (relayer key signs relay()); injected for test mocking. */
   submit: RelaySubmitter;
   /** Simulate-before-queue leg: provider.call against the GasTank. Throws on revert. */
@@ -98,6 +104,10 @@ export function tankResponse(
  *    simulate → gate → queue); TankExhausted reverts map to 402 TANK_EXHAUSTED.
  *  - GET  /v1/relayer/tank/:address — tank balance/grants view (read route).
  *  - GET  /v1/relayer/status — relayer mode + queue stats.
+ * V3 W6-B faucet surface:
+ *  - GET  /v1/relayer/faucet/:address — drip eligibility read (balance + set).
+ *  - POST /v1/relayer/faucet/:address — claim: enqueues the drip directly
+ *    (mint is permissionless; no user signature involved).
  * All routes 503 ADDRESS_NOT_CONFIGURED while the GasTank address is unset
  * (lane A deploy pending).
  */
@@ -344,6 +354,13 @@ export function registerRelayerRoutes(
         );
       }
 
+      // V3 W6-B: first sponsored relay from this address → enqueue the one-time
+      // axmUSDC drip (relayer-initiated mint, no user signature). Fire-and-
+      // forget: a failure here never blocks the user op.
+      if (deps.faucet) {
+        void deps.faucet.dripOnFirstRelay(recovered);
+      }
+
       void deps
         .submit(queued)
         .then((txHash) => {
@@ -363,6 +380,91 @@ export function registerRelayerRoutes(
         sponsored: true,
       };
       res.status(HTTP.ACCEPTED).json(body);
+    },
+    config,
+  );
+
+  // ── V3 W6-B faucet (testnet mock-token drip) ──────────────────────────
+  // Two registrations: createRoute's routeFn mounts ONE method per call, so
+  // GET and POST are separate createRoute invocations on the same path.
+  const faucetGuard = (): Faucet => {
+    if (!deps?.faucet) {
+      throw new FaucetUnavailable();
+    }
+    return deps.faucet;
+  };
+  createRoute(
+    app,
+    routeMeta(
+      // :address param (not requireId: that guard is numeric-only for tokenId
+      // routes); malformed addresses are rejected in the handler below.
+      "/v1/relayer/faucet/:address",
+      "relayer",
+      "Testnet axmUSDC faucet eligibility for an address (read route)",
+      { method: "get" },
+    ),
+    async (_parsed, req, res) => {
+      let faucet: Faucet;
+      try {
+        faucet = faucetGuard();
+      } catch {
+        return sendError(
+          res,
+          HTTP.SERVICE_UNAVAILABLE,
+          "relayer not enabled (AXIOM_RELAYER_MODE=off or gasTank unset)",
+          "ADDRESS_NOT_CONFIGURED",
+        );
+      }
+      const id = req.params.address ?? "";
+      if (!/^0x[0-9a-fA-F]{40}$/.test(id)) {
+        return sendError(
+          res,
+          HTTP.BAD_REQUEST,
+          "invalid address",
+          "VALIDATION_ERROR",
+        );
+      }
+      return faucet.statusOf(id);
+    },
+    config,
+  );
+  createRoute(
+    app,
+    routeMeta(
+      "/v1/relayer/faucet/:address",
+      "relayer",
+      "Claim the one-time axmUSDC drip (relayer-initiated mint; no user signature)",
+      {},
+    ),
+    async (_parsed, req, res) => {
+      let faucet: Faucet;
+      try {
+        faucet = faucetGuard();
+      } catch {
+        return sendError(
+          res,
+          HTTP.SERVICE_UNAVAILABLE,
+          "relayer not enabled (AXIOM_RELAYER_MODE=off or gasTank unset)",
+          "ADDRESS_NOT_CONFIGURED",
+        );
+      }
+      const address = req.params.address ?? "";
+      if (!/^0x[0-9a-fA-F]{40}$/.test(address)) {
+        return sendError(
+          res,
+          HTTP.BAD_REQUEST,
+          "invalid address",
+          "VALIDATION_ERROR",
+        );
+      }
+      const dripped = await faucet.dripOnFirstRelay(address);
+      return dripped
+        ? { ok: true, dripped: true }
+        : {
+            ok: true,
+            dripped: false,
+            reason: "already fauceted or ineligible",
+          };
     },
     config,
   );

@@ -838,6 +838,91 @@
           "reserve"
         ]
       },
+      "FaucetStatus": {
+        "type": "object",
+        "properties": {
+          "eligible": {
+            "type": "boolean"
+          },
+          "amount": {
+            "type": "string",
+            "description": "Drip size in axmUSDC base units (6 decimals)"
+          },
+          "token": {
+            "type": "string",
+            "enum": [
+              "axmUSDC"
+            ]
+          }
+        },
+        "required": [
+          "eligible",
+          "amount",
+          "token"
+        ]
+      },
+      "FaucetClaim": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "dripped": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ok",
+          "dripped"
+        ]
+      },
+      "PricesResponse": {
+        "type": "object",
+        "properties": {
+          "prices": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "symbol": {
+                  "type": "string"
+                },
+                "price": {
+                  "type": "string",
+                  "description": "Human price with expo applied"
+                },
+                "confidence": {
+                  "type": "string",
+                  "description": "Pyth confidence interval"
+                },
+                "expo": {
+                  "type": "integer"
+                },
+                "publishedAt": {
+                  "type": "integer",
+                  "description": "Publish time (unix ms)"
+                }
+              },
+              "required": [
+                "symbol",
+                "price",
+                "confidence",
+                "expo",
+                "publishedAt"
+              ]
+            }
+          }
+        },
+        "required": [
+          "prices"
+        ]
+      },
       "MintEncodeBody": {
         "anyOf": [
           {
@@ -4236,6 +4321,44 @@
         }
       }
     },
+    "/v1/prices": {
+      "get": {
+        "summary": "Pyth latest prices for the top-15 feed map (30s cache)",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Latest prices",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PricesResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Hermes unreachable",
+            "x-error-codes": [
+              "PRICES_UNAVAILABLE"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/registry/pubkey/{id}": {
       "get": {
         "summary": "Receiver pubkey lookup from the address's latest outgoing tx (60s cache)",
@@ -4285,6 +4408,124 @@
             "description": "No recoverable key",
             "x-error-codes": [
               "NO_ONCHAIN_KEY"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/relayer/faucet/{address}": {
+      "get": {
+        "summary": "Testnet axmUSDC faucet eligibility for an address (read route)",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "address",
+            "in": "path",
+            "required": true,
+            "description": "User EOA address",
+            "schema": {
+              "type": "string",
+              "pattern": "^0x[a-fA-F0-9]{40}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Faucet eligibility",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FaucetStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid address",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Relayer disabled",
+            "x-error-codes": [
+              "ADDRESS_NOT_CONFIGURED"
+            ],
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Claim the one-time axmUSDC drip (relayer-initiated mint; no user signature)",
+        "security": [
+          {
+            "serverKey": []
+          },
+          {
+            "clientKey": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "address",
+            "in": "path",
+            "required": true,
+            "description": "User EOA address",
+            "schema": {
+              "type": "string",
+              "pattern": "^0x[a-fA-F0-9]{40}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Claim result (dripped=false when already fauceted or ineligible)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FaucetClaim"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid address",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Relayer disabled",
+            "x-error-codes": [
+              "ADDRESS_NOT_CONFIGURED"
             ],
             "content": {
               "application/json": {

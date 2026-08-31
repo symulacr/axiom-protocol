@@ -122,4 +122,13 @@ export const sharedEnvSchema = z.object({
     .int()
     .positive()
     .default(2),
+  // Testnet faucet (V3 W6-B): one-time axmUSDC drip via the relayer, keyed on
+  // the first sponsor op seen for an address. ON by default — mock token
+  // testnet-only; flip off for Aristotle.
+  AXIOM_FAUCET_ENABLED: z.enum(["true", "false"]).default("true"),
+  // Faucet drip size in axmUSDC base units (6 decimals). Default 1000e6.
+  AXIOM_FAUCET_AMOUNT_USDC: z.coerce
+    .bigint()
+    .positive()
+    .default(1_000_000_000n),
 });

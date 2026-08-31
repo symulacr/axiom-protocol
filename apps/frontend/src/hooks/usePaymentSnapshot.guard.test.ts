@@ -21,9 +21,11 @@ test("paymentSnapshot is fetched through ONE aggregateReads call", () => {
 test("snapshot shape matches Processor.paymentSnapshot return order (statefold)", () => {
   assert.ok(src.includes('functionName: "paymentSnapshot"'));
   // destructuring order = maxPayCap, computeRatioMax, agentBalance, payerAllowance, paymentToken
+  // (format-agnostic: prettier may collapse the tuple to multi-line)
+  const normalized = src.replace(/\s+/g, " ").replace(/, \]/g, " ]");
   assert.ok(
-    src.includes(
-      "[maxPayCap, computeRatioMax, agentBalance, payerAllowance, paymentToken]",
+    normalized.includes(
+      "[ maxPayCap, computeRatioMax, agentBalance, payerAllowance, paymentToken ]",
     ),
   );
 });

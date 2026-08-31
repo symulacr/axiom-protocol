@@ -14,6 +14,12 @@ import {
 } from "@axiom/config/eip712";
 import { createRelayerQueue, getQueueStats } from "./queue.js";
 import { SponsorGate } from "./sponsor.js";
+import {
+  Faucet,
+  buildFaucetRecord,
+  isFaucetRecord,
+  faucetAmountOf,
+} from "./faucet.js";
 import { registerRelayerRoutes, tankResponse } from "../routers/relayer.js";
 import type { ServerConfig } from "../config-types.js";
 import type { RelaySubmitter } from "./queue.js";
@@ -108,10 +114,19 @@ interface Harness {
   submitted: string[];
   submitError: string | null;
   simulateError: string | null;
+  faucet: Faucet | null;
+  minted: Array<{ user: string; amount: bigint }>;
+  balances: Map<string, bigint>;
 }
 
-/** Stand up the relayer routes with mocked simulate/submit legs (no RPC). */
-async function buildApp(gasTank: `0x${string}` | undefined): Promise<Harness> {
+/**
+ * Stand up the relayer routes with mocked simulate/submit legs (no RPC).
+ * `faucetEnabled` toggles the W6-B faucet dep (null = absent, as pre-W6 boots).
+ */
+async function buildApp(
+  gasTank: `0x${string}` | undefined,
+  opts?: { faucetEnabled?: boolean; balances?: Map<string, bigint> },
+): Promise<Harness> {
   const h: Harness = {
     port: 0,
     close: async () => {},
@@ -120,6 +135,9 @@ async function buildApp(gasTank: `0x${string}` | undefined): Promise<Harness> {
     submitted: [],
     submitError: null,
     simulateError: null,
+    faucet: null,
+    minted: [],
+    balances: opts?.balances ?? new Map(),
   };
   const app = express();
   app.use(express.json());
@@ -130,21 +148,35 @@ async function buildApp(gasTank: `0x${string}` | undefined): Promise<Harness> {
     // deps omitted entirely when the GasTank is unset: mirrors a mode=off boot
     // (routes still mount and must 503, not 500).
     gasTank
-      ? {
-          queue: h.queue,
-          gate: h.gate,
-          reconcile: {} as never,
-          gasTankAddress: gasTank,
-          relayerAddress: "0x" + "dd".repeat(20),
-          simulate: async () => {
-            if (h.simulateError) throw new Error(h.simulateError);
-          },
-          submit: (async (record) => {
-            if (h.submitError) throw new Error(h.submitError);
-            h.submitted.push(record.id);
-            return ("0x" + "aa".repeat(32)) as `0x${string}`;
-          }) as RelaySubmitter,
-        }
+      ? (() => {
+          if (opts?.faucetEnabled !== false) {
+            h.faucet = new Faucet(
+              h.queue,
+              async (user, amount) => {
+                h.minted.push({ user, amount });
+                return ("0x" + "bb".repeat(32)) as `0x${string}`;
+              },
+              async (user) => h.balances.get(user) ?? 0n,
+              { AXIOM_FAUCET_ENABLED: String(opts?.faucetEnabled ?? true) },
+            );
+          }
+          return {
+            queue: h.queue,
+            gate: h.gate,
+            reconcile: {} as never,
+            faucet: h.faucet ?? undefined,
+            gasTankAddress: gasTank,
+            relayerAddress: "0x" + "dd".repeat(20),
+            simulate: async () => {
+              if (h.simulateError) throw new Error(h.simulateError);
+            },
+            submit: (async (record) => {
+              if (h.submitError) throw new Error(h.submitError);
+              h.submitted.push(record.id);
+              return ("0x" + "aa".repeat(32)) as `0x${string}`;
+            }) as RelaySubmitter,
+          };
+        })()
       : undefined,
   );
   // Mirror server.ts's terminal error mapping: ZodError → 400 VALIDATION_ERROR.
@@ -203,8 +235,13 @@ describe("POST /v1/relayer/sponsor", () => {
       assert.equal(json.sponsored, true);
       assert.equal(json.nonce, "0");
       assert.ok(typeof json.id === "string");
-      assert.equal(h.queue.all().length, 1);
-      assert.equal(h.queue.all()[0]?.status, "queued");
+      // W6-B: the sponsor op itself is one record; the faucet op executes
+      // async and confirms itself, so it may already be out of `queued`.
+      const sponsorRec = h.queue
+        .all()
+        .find((r) => r.request.nonce === 0n && !isFaucetRecord(r));
+      assert.ok(sponsorRec);
+      assert.equal(sponsorRec.status, "queued");
     } finally {
       await h.close();
     }
@@ -520,5 +557,161 @@ describe("tankResponse shape", () => {
     assert.equal(out.grantsLeft, "2");
     assert.equal(out.opsLeft, 2);
     assert.equal(out.gasGrant, "10000000000000000");
+  });
+});
+
+describe("V3 W6-B faucet", () => {
+  test("first sponsor op enqueues a faucet-mint op; second does not re-faucet", async () => {
+    const h = await buildApp(GAS_TANK_ADDRESS);
+    try {
+      const pk = "0x" + "55".repeat(32);
+      const first = await post(
+        h.port,
+        "/v1/relayer/sponsor",
+        (await signedBody({ userPk: pk, nonce: "0" })).body,
+      );
+      assert.equal(first.status, 202);
+      // The drip executes async; give it a tick.
+      await new Promise((r) => setTimeout(r, 20));
+      assert.equal(h.minted.length, 1);
+      assert.equal(
+        h.minted[0]!.user,
+        (await signedBody({ userPk: pk })).userAddress,
+      );
+      assert.equal(h.minted[0]!.amount, 1_000_000_000n);
+
+      // Second op from the same address: no re-drip.
+      h.queue.markConfirmed(h.queue.all().find((r) => !isFaucetRecord(r))!.id);
+      const second = await post(
+        h.port,
+        "/v1/relayer/sponsor",
+        (await signedBody({ userPk: pk, nonce: "1" })).body,
+      );
+      assert.equal(second.status, 202);
+      await new Promise((r) => setTimeout(r, 20));
+      assert.equal(h.minted.length, 1);
+    } finally {
+      await h.close();
+    }
+  });
+
+  test("balance gate: an address holding >= 1 axmUSDC is never dripped", async () => {
+    const richPk = "0x" + "66".repeat(32);
+    const rich = new Wallet(richPk).address.toLowerCase();
+    const balances = new Map([[rich, 1_000_000n]]);
+    const h = await buildApp(GAS_TANK_ADDRESS, { balances });
+    try {
+      await post(
+        h.port,
+        "/v1/relayer/sponsor",
+        (await signedBody({ userPk: richPk, nonce: "0" })).body,
+      );
+      await new Promise((r) => setTimeout(r, 20));
+      assert.equal(h.minted.length, 0);
+    } finally {
+      await h.close();
+    }
+  });
+
+  test("AXIOM_FAUCET_ENABLED=false disables the drip entirely", async () => {
+    const h = await buildApp(GAS_TANK_ADDRESS, { faucetEnabled: false });
+    try {
+      await post(h.port, "/v1/relayer/sponsor", (await signedBody()).body);
+      await new Promise((r) => setTimeout(r, 20));
+      assert.equal(h.minted.length, 0);
+    } finally {
+      await h.close();
+    }
+  });
+
+  test("GET faucet/:address reports eligibility, amount, token", async () => {
+    const h = await buildApp(GAS_TANK_ADDRESS);
+    try {
+      const addr = "0x" + "88".repeat(20);
+      const { status, json } = await get(h.port, `/v1/relayer/faucet/${addr}`);
+      assert.equal(status, 200);
+      assert.equal(json.eligible, true);
+      assert.equal(json.amount, "1000000000");
+      assert.equal(json.token, "axmUSDC");
+
+      // After a drip the set marks the address ineligible.
+      await h.faucet!.dripOnFirstRelay(addr);
+      await new Promise((r) => setTimeout(r, 10));
+      const after = await get(h.port, `/v1/relayer/faucet/${addr}`);
+      assert.equal(after.json.eligible, false);
+    } finally {
+      await h.close();
+    }
+  });
+
+  test("POST faucet/:address claims the drip directly; repeat returns dripped:false", async () => {
+    const h = await buildApp(GAS_TANK_ADDRESS);
+    try {
+      const addr = "0x" + "99".repeat(20);
+      const first = await post(h.port, `/v1/relayer/faucet/${addr}`, {});
+      assert.equal(first.status, 200);
+      assert.equal(first.json.ok, true);
+      assert.equal(first.json.dripped, true);
+      await new Promise((r) => setTimeout(r, 20));
+      assert.equal(h.minted.length, 1);
+
+      const second = await post(h.port, `/v1/relayer/faucet/${addr}`, {});
+      assert.equal(second.json.dripped, false);
+      assert.equal(h.minted.length, 1);
+    } finally {
+      await h.close();
+    }
+  });
+
+  test("faucet routes 503 ADDRESS_NOT_CONFIGURED when the relayer is off", async () => {
+    const h = await buildApp(undefined);
+    try {
+      const g = await get(
+        h.port,
+        `/v1/relayer/faucet/${"0x" + "aa".repeat(20)}`,
+      );
+      assert.equal(g.status, 503);
+      assert.equal(g.json.code, "ADDRESS_NOT_CONFIGURED");
+    } finally {
+      await h.close();
+    }
+  });
+
+  test("failed mint rolls back the fauceted marker (retryable)", async () => {
+    const h = await buildApp(GAS_TANK_ADDRESS);
+    try {
+      // Force the mint leg to fail by replacing it.
+      const addr = "0x" + "bb".repeat(20);
+      const failing = new Faucet(
+        h.queue,
+        async () => {
+          throw new Error("rpc down");
+        },
+        async () => 0n,
+        { AXIOM_FAUCET_ENABLED: "true" },
+      );
+      const ok = await failing.dripOnFirstRelay(addr);
+      assert.equal(ok, true);
+      await new Promise((r) => setTimeout(r, 20));
+      const rec = h.queue.all().find(isFaucetRecord);
+      assert.equal(rec?.status, "dead-lettered");
+      // Marker rolled back → still eligible.
+      const st = await failing.statusOf(addr);
+      assert.equal(st.eligible, true);
+    } finally {
+      await h.close();
+    }
+  });
+
+  test("buildFaucetRecord/isFaucetRecord/amount contract", () => {
+    const queue = createRelayerQueue();
+    const rec = buildFaucetRecord("0x" + "cc".repeat(20));
+    assert.equal(rec.request.maxGasCost, 0n);
+    assert.equal(rec.userSig, "0x");
+    const queued = queue.enqueue(rec);
+    assert.ok(queued);
+    // Marker is attached by enqueueDrip, not by buildFaucetRecord.
+    assert.ok(!isFaucetRecord(queued));
+    assert.equal(faucetAmountOf(queued), undefined);
   });
 });

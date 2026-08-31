@@ -20,6 +20,8 @@ export interface ServerConfig {
     delegationRegistry?: `0x${string}`;
     /** GasTank (V3 W5-B) — optional until lane A deploys; relayer routes 503 without it. */
     gasTank?: `0x${string}`;
+    /** Mock axmUSDC (payment token) — optional; the W6-B faucet mints via it. */
+    paymentToken?: `0x${string}`;
   };
   env?: BackendEnv;
 }

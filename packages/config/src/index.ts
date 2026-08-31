@@ -60,6 +60,7 @@ export {
   RELAYER_DEFAULTS,
   getRuntimeConfig,
   getRelayerConfig,
+  isFaucetEnabled,
 } from "./constants.js";
 export * from "./skills/schemas.js";
 export type { EventName } from "./constants.js";

@@ -467,6 +467,11 @@ export type Copy = {
     refillAction: string;
     sponsoredBadge: string;
     tankLowBanner: string;
+    /** V3 W6-B faucet row: balance + eligibility badge + claim button. */
+    faucetBalanceLabel: string;
+    faucetEligibleBadge: string;
+    faucetIneligibleBadge: string;
+    faucetClaimAction: string;
   };
   storage: {
     title: string;
@@ -1296,6 +1301,10 @@ const english: Copy = {
     sponsoredBadge: "sponsored",
     tankLowBanner:
       "Your gas tank is nearly empty — ops keep running until your free grants run out.",
+    faucetBalanceLabel: "Test tokens",
+    faucetEligibleBadge: "faucet available",
+    faucetIneligibleBadge: "faucet claimed",
+    faucetClaimAction: "Claim free test tokens",
   },
   storage: {
     title: "Store the payload, then verify its proof.",
@@ -2199,6 +2208,10 @@ const french: Copy = {
     sponsoredBadge: "offert",
     tankLowBanner:
       "Votre réservoir de gaz est presque vide — les opérations continuent jusqu'à épuisement de vos subventions gratuites.",
+    faucetBalanceLabel: "Jetons de test",
+    faucetEligibleBadge: "robinet disponible",
+    faucetIneligibleBadge: "robinet réclamé",
+    faucetClaimAction: "Réclamer les jetons de test",
   },
   storage: {
     ...english.storage,
@@ -3075,6 +3088,10 @@ const german: Copy = {
     sponsoredBadge: "gratis",
     tankLowBanner:
       "Dein Gas-Tank ist fast leer — Operationen laufen weiter, bis deine Gratis-Zuschüsse aufgebraucht sind.",
+    faucetBalanceLabel: "Test-Token",
+    faucetEligibleBadge: "Hahn verfügbar",
+    faucetIneligibleBadge: "Hahn abgerufen",
+    faucetClaimAction: "Gratis Test-Token anfordern",
   },
   storage: {
     ...english.storage,

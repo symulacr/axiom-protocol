@@ -3,9 +3,9 @@ pragma solidity ^0.8.20;
 
 /// @title ISignatureTransfer — minimal Uniswap Permit2 SignatureTransfer interface
 /// @notice Vendored (trimmed) from https://github.com/Uniswap/permit2 (MIT), src/interfaces/ISignatureTransfer.sol @ main.
-///         Only what AxiomPaymentProcessor consumes: `PermitTransferFrom` + `permitWitnessTransferFrom` (single-token).
-///         Batch variants, `permitTransferFrom`, and nonce-invalidation entry points are dropped — add them
-///         (byte-compatible with upstream) if a future lane needs them.
+///         What AxiomPaymentProcessor consumes: `PermitTransferFrom` + `permitWitnessTransferFrom` (single-token,
+///         W2-A pay lane) and `PermitBatchTransferFrom` + `permitBatchTransferFrom` (batch, W6-A two-token
+///         liquidity lane).
 /// @dev Requires the payer to have approved the canonical Permit2 contract (`permit2`) to spend the payment token.
 ///      Replay protection: Permit2 burns the signature's unordered nonce internally (nonceBitmap) — callers must NOT
 ///      layer their own nonce accounting.
@@ -31,6 +31,16 @@ interface ISignatureTransfer {
     struct PermitTransferFrom {
         // the permitted token and maximum amount
         TokenPermissions permitted;
+        // a unique value for every token owner's signature to prevent signature replays
+        uint256 nonce;
+        // deadline on the permit signature
+        uint256 deadline;
+    }
+
+    /// @notice The signed permit message for multiple token transfers (upstream type, W6-A addition)
+    struct PermitBatchTransferFrom {
+        // the tokens and corresponding amounts
+        TokenPermissions[] permitted;
         // a unique value for every token owner's signature to prevent signature replays
         uint256 nonce;
         // deadline on the permit signature
@@ -68,6 +78,31 @@ interface ISignatureTransfer {
         address owner,
         bytes32 witness,
         string calldata witnessTypeString,
+        bytes calldata signature
+    ) external;
+
+    /// @notice Transfers a token using a signed permit message (upstream function, W6-A addition)
+    /// @param permit The permit data signed over by the owner
+    /// @param owner The owner of the tokens to transfer (must recover from `signature`)
+    /// @param transferDetails The spender's requested transfer details for the permitted token
+    /// @param signature The signature to verify
+    function permitTransferFrom(
+        PermitTransferFrom memory permit,
+        SignatureTransferDetails calldata transferDetails,
+        address owner,
+        bytes calldata signature
+    ) external;
+
+    /// @notice Transfers multiple tokens using a signed permit message (upstream function, W6-A addition)
+    /// @dev Reverts if the requested amount for any transfer is greater than the permitted signed amount
+    /// @param permit The permit data signed over by the owner
+    /// @param owner The owner of the tokens to transfer (must recover from `signature`)
+    /// @param transferDetails Specifies the recipient and requested amount for each token in the permit
+    /// @param signature The signature to verify
+    function permitBatchTransferFrom(
+        PermitBatchTransferFrom memory permit,
+        SignatureTransferDetails[] calldata transferDetails,
+        address owner,
         bytes calldata signature
     ) external;
 }

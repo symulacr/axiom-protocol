@@ -172,6 +172,24 @@ export async function runReadTool(
       }
       return { ok: true as const, content: JSON.stringify(data) };
     }
+    case "faucet_status": {
+      // Testnet axmUSDC faucet (V3 W6-B): eligibility read for the session wallet.
+      const owner = ctx.session.walletAddress;
+      if (!owner) return toolFail("Wallet not connected");
+      const { ok: facuetOk, data } = await fetchJson<{
+        eligible?: boolean;
+        amount?: string;
+        token?: string;
+      }>(ctx.http, `/v1/relayer/faucet/${owner}`);
+      if (!facuetOk) {
+        return toolFail(
+          typeof (data as { error?: string }).error === "string"
+            ? ((data as { error: string }).error as string)
+            : "faucet status unavailable",
+        );
+      }
+      return { ok: true as const, content: JSON.stringify(data) };
+    }
     case "event_history": {
       const limit = Number(args.limit ?? 20);
       let path = `/v1/events?limit=${limit}`;

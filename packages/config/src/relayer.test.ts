@@ -1,6 +1,6 @@
 import { test, describe } from "bun:test";
 import assert from "node:assert/strict";
-import { HTTP, getRelayerConfig } from "./constants.js";
+import { HTTP, getRelayerConfig, isFaucetEnabled } from "./constants.js";
 import { SPONSORED_TOOLS, isSponsoredTool } from "./chat-tools.js";
 import { resolveAddressOptional, resolveAddress } from "./addresses.js";
 import {
@@ -30,14 +30,23 @@ describe("relayer config surface (V3 W5-B)", () => {
     assert.equal(dflt.sponsorRatePerMin, 6);
     assert.equal(dflt.sponsorMaxGasCostWei, 1_000_000_000_000_000n);
     assert.equal(dflt.sponsorMaxInflightPerUser, 2);
+    assert.equal(dflt.faucetAmountUsdc, 1_000_000_000n);
     const env = getRelayerConfig({
       AXIOM_RELAYER_INTERVAL_MS: "5000",
       AXIOM_RELAYER_SPONSOR_RATE_PER_MIN: "10",
       AXIOM_RELAYER_SPONSOR_MAX_GAS_COST_WEI: "2000000000000000",
+      AXIOM_FAUCET_AMOUNT_USDC: "2000000000",
     });
     assert.equal(env.intervalMs, 5_000);
     assert.equal(env.sponsorRatePerMin, 10);
     assert.equal(env.sponsorMaxGasCostWei, 2_000_000_000_000_000n);
+    assert.equal(env.faucetAmountUsdc, 2_000_000_000n);
+  });
+
+  test("faucet kill-switch defaults on and honors AXIOM_FAUCET_ENABLED=false", () => {
+    assert.equal(isFaucetEnabled({}), true);
+    assert.equal(isFaucetEnabled({ AXIOM_FAUCET_ENABLED: "false" }), false);
+    assert.equal(isFaucetEnabled({ AXIOM_FAUCET_ENABLED: "true" }), true);
   });
 
   test("gasTank address is optional (resolveAddressOptional) and env-keyed", () => {
