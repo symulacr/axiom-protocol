@@ -31,6 +31,8 @@ export interface ChatSessionContext {
     vault: `0x${string}`;
     agentNft: `0x${string}`;
     paymentProcessor?: `0x${string}`;
+    /** axmUSDC (paymentToken) address — W9 swap/pool tools resolve pool symbols against it. */
+    paymentToken?: `0x${string}`;
     /** GasTank (V3 W5-B) — optional until deployed; gas_tank_status + sponsor lane gate on it. */
     gasTank?: `0x${string}`;
   };

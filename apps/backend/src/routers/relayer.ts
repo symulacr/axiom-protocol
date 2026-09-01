@@ -1,4 +1,4 @@
-import { verifyTypedData } from "ethers";
+import { verifyTypedData, Interface } from "ethers";
 import type { Express } from "express";
 import {
   HTTP,
@@ -38,6 +38,96 @@ const log = createLogger("relayer.routes");
 
 /** Internal signal: faucet dep absent (relayer off) → 503 ADDRESS_NOT_CONFIGURED. */
 class FaucetUnavailable extends Error {}
+
+/** W9 DeFi selector gate: the GasTank relay() will execute whatever `data`
+ *  carries, so the sponsor route validates (target, selector) itself. The
+ *  Processor is the only permitted target for the swap/lend surface, and its
+ *  pool-token side is re-checked server-side: swap's tokenIn must be the
+ *  paymentToken or the swapPairToken — never an arbitrary token the signer
+ *  controls. Selectors are matched as bytes; the ABI fragment mirrors
+ *  packages/config/src/abis/paymentProcessor.ts (the two pool ops that take
+ *  user Permit2 permits plus the permit-free borrow). */
+const DEFI_PROCESSOR_IFACE = new Interface([
+  "function swapExactIn(address tokenIn, uint256 amountIn, uint256 minOut, ((address token, uint256 amount) permitted, uint256 nonce, uint256 deadline) permit, bytes signature)",
+  "function borrow(uint256 amount)",
+  "function addLiquidity(uint256 usdcAmount, uint256 wethAmount, ((address token, uint256 amount)[] permitted, uint256 nonce, uint256 deadline) permit, bytes signature)",
+]);
+
+const PROCESSOR_ENV_VARS = [
+  "AXIOM_PAYMENT_PROCESSOR_ADDRESS",
+  "PAYMENT_PROCESSOR_ADDRESS",
+  "AXIOM_PAYMENT_PROCESSOR",
+];
+
+function isAddressEqual(a: string, b: string): boolean {
+  return a.toLowerCase() === b.toLowerCase();
+}
+
+/** Verdict for a sponsored swap/lend forward-request body.
+ *  ok:false → the request must be rejected before simulation. */
+function validateDefiCalldata(
+  target: string,
+  data: string,
+  config: ServerConfig,
+): { ok: true } | { ok: false; reason: string; code: string } {
+  const selector = data.slice(0, 10).toLowerCase();
+  const isSwap =
+    selector === DEFI_PROCESSOR_IFACE.getFunction("swapExactIn")!.selector;
+  const isBorrow =
+    selector === DEFI_PROCESSOR_IFACE.getFunction("borrow")!.selector;
+  const isAddLiq =
+    selector === DEFI_PROCESSOR_IFACE.getFunction("addLiquidity")!.selector;
+  if (!isSwap && !isBorrow && !isAddLiq) return { ok: true };
+
+  // The DeFi surface lives on the Processor; find which configured address is
+  // being targeted (env-keyed — the route's config may pre-date the live proxy).
+  const candidates = [
+    config.addresses?.paymentProcessor,
+    ...PROCESSOR_ENV_VARS.map((v) => process.env[v]).filter(
+      (v): v is string =>
+        typeof v === "string" && /^0x[0-9a-fA-F]{40}$/.test(v),
+    ),
+  ].filter((v): v is string => typeof v === "string");
+  if (
+    candidates.length === 0 ||
+    !candidates.some((c) => isAddressEqual(c, target))
+  ) {
+    return {
+      ok: false,
+      reason: "swap/lend calldata must target the PaymentProcessor",
+      code: "DEFI_TARGET_REJECTED",
+    };
+  }
+
+  if (!isSwap) return { ok: true };
+
+  // Server-side token validation: swapExactIn tokenIn is arg 0 — must be a
+  // pool token (paymentToken or swapPairToken); the Processor reverts
+  // InvalidSwapToken anyway, but rejecting here keeps doomed ops out of the
+  // queue and never lets a third token near the permit pull.
+  const [tokenIn] = DEFI_PROCESSOR_IFACE.decodeFunctionData(
+    "swapExactIn",
+    data,
+  ) as unknown as [string, bigint, bigint, unknown, string];
+  const paymentToken =
+    config.addresses?.paymentToken ?? process.env.AXIOM_PAYMENT_TOKEN;
+  const swapPairToken = process.env.AXIOM_SWAP_PAIR_TOKEN;
+  const poolTokens = [paymentToken, swapPairToken].filter(
+    (v): v is string => typeof v === "string" && /^0x[0-9a-fA-F]{40}$/.test(v),
+  );
+  if (
+    poolTokens.length === 0 ||
+    !poolTokens.some((t) => isAddressEqual(t, tokenIn))
+  ) {
+    return {
+      ok: false,
+      reason:
+        "swap tokenIn is not a pool token (paymentToken or swapPairToken)",
+      code: "DEFI_TOKEN_REJECTED",
+    };
+  }
+  return { ok: true };
+}
 
 export interface RelayerRouteDeps {
   queue: RelayerQueue;
@@ -194,7 +284,7 @@ export function registerRelayerRoutes(
         };
       } catch (err) {
         log.warn(
-          `tank read failed for ${id}: ${err instanceof Error ? err.message : String(err)}`,
+          `tank read failed for ${addrParam}: ${err instanceof Error ? err.message : String(err)}`,
         );
         return sendError(
           res,
@@ -276,6 +366,12 @@ export function registerRelayerRoutes(
           "signature does not recover to user",
           "INVALID_SIGNER",
         );
+      }
+      // W9 DeFi gate: swap/lend calldata must target the Processor and swap's
+      // tokenIn must be a pool token (checked before simulate, no state hit).
+      const defi = validateDefiCalldata(request.target, request.data, config);
+      if (!defi.ok) {
+        return sendError(res, HTTP.BAD_REQUEST, defi.reason, defi.code);
       }
       if (BigInt(Math.floor(Date.now() / 1000)) > request.deadline) {
         return sendError(

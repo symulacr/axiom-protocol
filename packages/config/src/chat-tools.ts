@@ -138,6 +138,41 @@ function vaultOpTool(
   });
 }
 
+/** W6 swap-pool token symbols the chat tools accept; resolved to addresses via
+ *  AXM_TOKEN_ADDRESSES (paymentToken comes from the session addresses, the WETH
+ *  mock is env-pinned). Values must match AxiomMockUSDC.sol symbols. */
+export const AXM_SWAP_SYMBOLS = ["usdc", "weth"] as const;
+export type AxmSwapSymbol = (typeof AXM_SWAP_SYMBOLS)[number];
+
+/** env var pinning the deployed axmWETH mock (Galileo 16602: 0x62e5…f6ec). */
+export const AXM_WETH_ENV_VAR = "AXIOM_SWAP_PAIR_TOKEN";
+
+/** Resolve "usdc"|"weth" to the Processor pool token address. paymentToken is
+ *  taken from the session's live addresses; weth from the env pin. Returns
+ *  null when the requested side is not configured (caller surfaces a hint). */
+export function resolveAxmTokenAddress(
+  symbol: string,
+  paymentToken: string | undefined,
+  env: Record<string, string | undefined> = typeof process !== "undefined" &&
+  process.env
+    ? (process.env as Record<string, string | undefined>)
+    : {},
+): `0x${string}` | null {
+  const s = symbol.trim().toLowerCase();
+  if (s === "usdc" && paymentToken) return normalize(paymentToken);
+  if (s === "weth") {
+    const raw = env[AXM_WETH_ENV_VAR];
+    return raw ? normalize(raw) : null;
+  }
+  return null;
+}
+
+function normalize(addr: string): `0x${string}` | null {
+  return /^0x[0-9a-fA-F]{40}$/.test(addr.trim())
+    ? (addr.trim().toLowerCase() as `0x${string}`)
+    : null;
+}
+
 const SKILL_TOOL_DEFS = [
   skill({
     name: "evm_wallet",
@@ -569,6 +604,70 @@ export const CHAT_TOOL_CATALOG = [
     "0.5",
   ),
   tool({
+    name: "swap_tokens",
+    class: "encode",
+    label: "Swap Tokens",
+    hint: "Swap axmUSDC ⇄ axmWETH through the Processor swap pool (swapExactIn). tokenIn is the pool symbol you pay with ('usdc' or 'weth'); amountIn is human units (e.g. 1.5); minOut optional slippage floor in human out-units. Requires a Permit2 allowance prerequisite: the wallet must first approve Permit2 for tokenIn (the tool reports the exact approve calldata when missing). Runs gasless via the protocol GasTank when the tank has headroom; otherwise opens MetaMask.",
+    requiresWallet: true,
+    friction: "medium",
+    parameters: params(
+      {
+        tokenIn: {
+          type: "string",
+          description: "Pool token paid in: 'usdc' or 'weth'",
+        },
+        amountIn: {
+          type: "string",
+          description: "Amount in human token units (e.g. 1.5)",
+        },
+        minOut: {
+          type: "string",
+          description:
+            "Minimum accepted output in human out-token units (optional slippage guard)",
+        },
+      },
+      ["tokenIn", "amountIn"],
+    ),
+  }),
+  tool({
+    name: "add_liquidity",
+    class: "encode",
+    label: "Add Liquidity",
+    hint: "Provide both pool tokens to earn LP shares (addLiquidity). usdcAmount and wethAmount are human units and must both be > 0. Requires a Permit2 BATCH allowance prerequisite: the wallet must approve Permit2 for BOTH tokens (the tool reports the approve calldata when missing). Because the batch permit needs one EIP-712 signature over two tokens, this tool runs the wallet lane only — it does NOT use the GasTank sponsor lane.",
+    requiresWallet: true,
+    friction: "medium",
+    parameters: params(
+      {
+        usdcAmount: {
+          type: "string",
+          description: "axmUSDC side in human units (e.g. 100)",
+        },
+        wethAmount: {
+          type: "string",
+          description: "axmWETH side in human units (e.g. 0.1)",
+        },
+      },
+      ["usdcAmount", "wethAmount"],
+    ),
+  }),
+  tool({
+    name: "borrow",
+    class: "encode",
+    label: "Borrow",
+    hint: "Borrow axmUSDC against your agent earnings + LP-value collateral (borrow). amount is human axmUSDC; LTV cap 50% by default, pool reserve must cover it. No Permit2 needed — the op pays out to you. Runs gasless via the protocol GasTank when the tank has headroom; otherwise opens MetaMask.",
+    requiresWallet: true,
+    friction: "medium",
+    parameters: params(
+      {
+        amount: {
+          type: "string",
+          description: "axmUSDC to borrow in human units (e.g. 10)",
+        },
+      },
+      ["amount"],
+    ),
+  }),
+  tool({
     name: "pay_for_agent",
     class: "encode",
     label: "Pay Agent",
@@ -704,8 +803,17 @@ export const CHAT_TOOL_CATALOG = [
 export type ChatToolName = (typeof CHAT_TOOL_CATALOG)[number]["name"];
 
 /** Phase-1 sponsored tools (V3 W5-B): encode-class ops the relayer can execute
- *  gas-free through the GasTank before falling back to the wallet lane. */
-export const SPONSORED_TOOLS = ["withdraw", "pay_for_agent"] as const;
+ *  gas-free through the GasTank before falling back to the wallet lane.
+ *  W9 adds the DeFi surface: swap_tokens and borrow are single-permit /
+ *  permit-free Processor ops. add_liquidity stays wallet-only — its Permit2
+ *  BATCH permit needs a two-token EIP-712 signature the sponsor capability
+ *  does not model. */
+export const SPONSORED_TOOLS = [
+  "withdraw",
+  "pay_for_agent",
+  "swap_tokens",
+  "borrow",
+] as const;
 
 export type SponsoredToolName = (typeof SPONSORED_TOOLS)[number];
 
