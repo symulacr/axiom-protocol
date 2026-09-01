@@ -419,14 +419,13 @@
       border-radius:var(--radius-md);transition:background .16s var(--ease),color .16s var(--ease)}
     .inline-copy:hover{color:var(--copper-bright);background:rgba(210,139,82,.12)}
 
-    body[data-mode="after"] .receipt-drawer{border-left:1px solid var(--line);
+    body[data-mode="after"] .receipt-drawer:not([data-drawer-card]){border-left:1px solid var(--line);
       background:linear-gradient(180deg,var(--panel-2),var(--panel))}
-    body[data-mode="after"] .receipt-drawer::before{content:"";position:absolute;
+    body[data-mode="after"] .receipt-drawer:not([data-drawer-card])::before{content:"";position:absolute;
       top:78px;bottom:32px;left:-1px;width:2px;
       background:linear-gradient(180deg,var(--copper),transparent)}
-    body[data-mode="after"] .drawer-close{border-radius:var(--radius-md);border-color:var(--line)}
-    body[data-mode="after"] .drawer-list .row{padding:14px 0}
-    body[data-mode="after"] .drawer-list dd{justify-content:flex-end;text-align:right}
+    body[data-mode="after"] .drawer-list .row:not(.drawer-focus .row){padding:14px 0}
+    body[data-mode="after"] .drawer-list dd:not(.drawer-focus dd){justify-content:flex-end;text-align:right}
 
     /* ============================================================
        EMPTY STATE.
@@ -472,56 +471,60 @@
     .audit-legend .annotation{margin-left:0}
 
     /* ============================================================
-       DRAWER FOCUS BLOCK — a standalone clickable comparison that
-       flips its own receipt drawer treatment between before/after,
-       independent of the page-wide data-mode. Lets the reader focus
-       on just the receipt drawer without scrolling through the full
-       Transactions surface.
+       DRAWER FOCUS BLOCK — shows the receipt drawer treatment
+       BEFORE and AFTER side by side simultaneously. No toggle:
+       both states are always visible so the comparison is honest.
        ============================================================ */
     .drawer-focus{margin:0 0 32px;border:1px solid var(--line);background:var(--panel);
-      overflow:hidden}
-    .drawer-focus-head{display:flex;align-items:center;justify-content:space-between;
-      gap:16px;padding:16px 20px;border-bottom:1px solid var(--line);
+      overflow:hidden;border-radius:var(--radius-lg)}
+    .drawer-focus-head{display:grid;gap:6px;padding:16px 20px;border-bottom:1px solid var(--line);
       background:linear-gradient(180deg,var(--panel-2),var(--panel))}
     .drawer-focus-head h2{margin:0;font:700 14px/1.2 "Inter",sans-serif;letter-spacing:-.02em;
       color:var(--ink)}
-    .drawer-focus-head p{margin:4px 0 0;color:var(--muted);font-size:12px;max-width:520px;
+    .drawer-focus-head p{margin:0;color:var(--muted);font-size:12px;max-width:680px;
       line-height:1.5}
-    .drawer-focus-toggle{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;
-      border:1px solid var(--copper);background:transparent;color:var(--copper-bright);
-      font:600 11px/1 "JetBrains Mono",monospace;letter-spacing:.04em;
-      text-transform:uppercase;cursor:pointer;transition:background .16s var(--ease),
-        color .16s var(--ease);flex:0 0 auto}
-    .drawer-focus-toggle:hover{background:color-mix(in srgb,var(--copper) 14%,transparent)}
-    .drawer-focus-stage{position:relative;min-height:520px;background:
-      repeating-linear-gradient(135deg,
-        color-mix(in srgb,var(--panel-2) 40%,transparent) 0 6px,
-        transparent 6px 14px)}
-    .drawer-focus-drawer{position:absolute;top:24px;bottom:24px;right:24px;
-      width:min(420px,calc(100% - 48px));max-width:100%;overflow:auto;
-      transition:background .22s var(--ease),border-color .22s var(--ease)}
-    .drawer-focus-label{position:absolute;top:24px;left:24px;display:grid;gap:4px;
-      max-width:calc(100% - 480px);min-width:200px}
-    .drawer-focus-label .pill{display:inline-flex;align-items:center;gap:6px;padding:3px 8px;
-      border:1px solid var(--line);border-radius:999px;width:fit-content;
+
+    /* Stage = side-by-side BEFORE / AFTER comparison. Each side shows
+       its own drawer card with its own treatment. The blurred page
+       preview runs behind both as the ambient backdrop. */
+    .drawer-focus-stage{position:relative;overflow:hidden;background:
+      linear-gradient(180deg,var(--canvas),var(--panel-2))}
+    .drawer-focus-stage::before{content:"";position:absolute;inset:0;z-index:0;
+      background:
+        radial-gradient(60% 50% at 30% 10%,rgba(210,139,82,.10),transparent 70%),
+        linear-gradient(180deg,transparent,rgba(7,9,10,.55));
+      pointer-events:none}
+
+    .drawer-focus-pair{position:relative;z-index:1;display:grid;
+      grid-template-columns:1fr 1fr;gap:20px;padding:24px}
+    .drawer-focus-side{display:grid;gap:10px;align-content:start}
+    .drawer-focus-side-label{display:flex;align-items:center;gap:10px;padding:8px 14px;
+      border:1px solid var(--line);background:var(--panel);border-radius:var(--radius-md);
+      box-shadow:var(--shadow-modal-sm);width:fit-content}
+    .drawer-focus-side-label .pill{display:inline-flex;align-items:center;gap:6px;
+      padding:3px 8px;border:1px solid var(--line);border-radius:999px;
       font:600 10px/1 "JetBrains Mono",monospace;letter-spacing:.08em;
       text-transform:uppercase;color:var(--muted)}
-    .drawer-focus-label h3{margin:0;font:700 16px/1.2 "Inter",sans-serif;
+    .drawer-focus-side-label[data-side="after"] .pill{color:var(--phosphor);
+      border-color:rgba(116,224,194,.4)}
+    .drawer-focus-side-label strong{font:700 12px/1.2 "Inter",sans-serif;
       letter-spacing:-.02em;color:var(--ink)}
-    .drawer-focus-label p{margin:0;color:var(--muted);font-size:12px;line-height:1.5}
-    .drawer-focus-label .annotation{margin-left:0}
+    .drawer-focus-side-label .annotation{margin-left:0}
+    .drawer-focus-side-blurb{margin:0;color:var(--muted);font-size:12px;
+      line-height:1.5;max-width:380px}
 
-    @media (max-width:900px){.drawer-focus-label{position:static;margin:20px 20px 0;
-      max-width:none}.drawer-focus-drawer{position:static;width:auto;margin:20px}}
-    @media (prefers-reduced-motion:reduce){.drawer-focus-drawer{transition:none}}
+    /* Each drawer card inside the pair. */
+    .drawer-focus-card{position:relative}
+    .drawer-focus-card .receipt-drawer{position:relative;inset:auto;width:100%;
+      animation:none;box-shadow:var(--shadow-drawer)}
 
-    /* Scope the AFTER drawer treatment to the focus block by attribute,
-       so the AFTER card renders correctly even when the page itself is
-       in BEFORE mode (and the user is just exploring the drawer focus). */
+    /* The two side-by-side states both render the same receipt content;
+       only the visual treatment differs (driven by data-side attribute).
+       This proves to the reader that the upgrade is purely visual, not
+       a content change. */
     [data-drawer-card="after"] {
       border-left: 1px solid var(--line);
       background: linear-gradient(180deg, var(--panel-2), var(--panel));
-      position: relative;
     }
     [data-drawer-card="after"]::before {
       content: ""; position: absolute;
@@ -543,6 +546,10 @@
     [data-drawer-card="after"] .button {
       border-radius: var(--radius-md);
       box-shadow: 0 1px 0 rgba(255,255,255,.04) inset;
+    }
+
+    @media (max-width:900px){
+      .drawer-focus-pair{grid-template-columns:1fr}
     }
 
     @media (max-width:1100px){.dashboard-split{grid-template-columns:1fr}.ops-summary{grid-template-columns:repeat(3,1fr)}.context-strip{grid-template-columns:repeat(2,1fr)}.stats-grid{grid-template-columns:repeat(2,1fr)}}
@@ -567,67 +574,76 @@
     </div>
 
     <!-- ===================== DRAWER FOCUS BLOCK =====================
-         Standalone clickable comparison for the receipt drawer. The
-         toggle inside flips ONLY this block (data-mode="drawer-before"
-         vs "drawer-after"); the rest of the audit is unaffected. The
-         stage also accepts clicks anywhere on the dimmed backdrop to
-         flip — both interaction paths land on the same handler.
+         Side-by-side BEFORE / AFTER comparison of the receipt drawer.
+         Both states render at the same time so the visual upgrade
+         reads at a glance — no toggle, no hidden state.
          ============================================================== -->
-    <section class="drawer-focus" data-mode="drawer-before" aria-label="Receipt drawer focus comparison">
+    <section class="drawer-focus" aria-label="Receipt drawer focus comparison">
       <div class="drawer-focus-head">
-        <div>
-          <h2>Receipt drawer · focus</h2>
-          <p>A self-contained before/after comparison of the receipt drawer only. Click the toggle or the stage to flip the panel; the rest of the audit stays put.</p>
-        </div>
-        <button class="drawer-focus-toggle" type="button" data-drawer-toggle aria-live="polite">
-          <span data-drawer-toggle-label>Switch to After</span>
-        </button>
+        <h2>Receipt drawer · side-by-side</h2>
+        <p>Both treatments render at once. Compare the flat BEFORE panel on the left against the AFTER panel on the right — same content, different surface treatment.</p>
       </div>
-      <div class="drawer-focus-stage" data-drawer-stage role="button" tabindex="0" aria-label="Click to flip drawer treatment">
-        <div class="drawer-focus-label">
-          <span class="pill" data-drawer-pill>BEFORE</span>
-          <h3>Receipt detail</h3>
-          <p data-drawer-copy>Flat panel, copper left border, no entrance motion. Proof rows align left; the explorer link lives inside the disclosure.</p>
-          <span class="annotation" data-drawer-annotation hidden>drawer refined</span>
+      <div class="drawer-focus-stage">
+        <div class="drawer-focus-pair">
+
+          <!-- BEFORE side -->
+          <div class="drawer-focus-side">
+            <div class="drawer-focus-side-label" data-side="before">
+              <span class="pill">BEFORE</span>
+              <strong>Flat panel · copper border</strong>
+            </div>
+            <p class="drawer-focus-side-blurb">No entrance motion, no gradient hairline, proof rows align left. The disclosure sits inside the drawer without its own chrome.</p>
+            <div class="drawer-focus-card">
+              <aside class="receipt-drawer" data-drawer-card="before">
+                <button class="drawer-close" aria-label="Close receipt" type="button">✕</button>
+                <h2>Receipt detail</h2>
+                <div class="receipt-primary-action">
+                  <button class="button button-primary" type="button">View on explorer →</button>
+                  <button class="button button-ghost" type="button">Run another like this</button>
+                </div>
+                <details class="receipt-proof-disclosure" open>
+                  <summary>Technical details</summary>
+                  <dl class="drawer-list">
+                    <div class="row"><dt>Transaction hash</dt><dd class="mono">0x4f71c2a8…d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7</dd><dd><button class="inline-copy" aria-label="Copy receipt hash">⧉</button></dd></div>
+                    <div class="row"><dt>Network</dt><dd><a class="text-link" href="#">View on explorer →</a></dd><dd></dd></div>
+                    <div class="row"><dt>Agent</dt><dd>#1042</dd><dd></dd></div>
+                    <div class="row"><dt>Event</dt><dd>decoded + indexed</dd><dd></dd></div>
+                  </dl>
+                </details>
+              </aside>
+            </div>
+          </div>
+
+          <!-- AFTER side -->
+          <div class="drawer-focus-side">
+            <div class="drawer-focus-side-label" data-side="after">
+              <span class="pill">AFTER</span>
+              <strong>Copper hairline · rounded chrome</strong>
+              <span class="annotation">drawer refined</span>
+            </div>
+            <p class="drawer-focus-side-blurb">Gradient copper hairline on the left, rounded close button, right-aligned monospace amounts, refined proof rows with the disclosure in its own panel.</p>
+            <div class="drawer-focus-card">
+              <aside class="receipt-drawer" data-drawer-card="after">
+                <button class="drawer-close" aria-label="Close receipt" type="button">✕</button>
+                <h2>Receipt detail</h2>
+                <div class="receipt-primary-action">
+                  <button class="button button-primary" type="button">View on explorer →</button>
+                  <button class="button button-ghost" type="button">Run another like this</button>
+                </div>
+                <details class="receipt-proof-disclosure" open>
+                  <summary>Technical details</summary>
+                  <dl class="drawer-list">
+                    <div class="row"><dt>Transaction hash</dt><dd class="mono">0x4f71c2a8…d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7</dd><dd><button class="inline-copy" aria-label="Copy receipt hash">⧉</button></dd></div>
+                    <div class="row"><dt>Network</dt><dd><a class="text-link" href="#">View on explorer →</a></dd><dd></dd></div>
+                    <div class="row"><dt>Agent</dt><dd>#1042</dd><dd></dd></div>
+                    <div class="row"><dt>Event</dt><dd>decoded + indexed</dd><dd></dd></div>
+                  </dl>
+                </details>
+              </aside>
+            </div>
+          </div>
+
         </div>
-
-        <!-- BEFORE drawer card -->
-        <aside class="receipt-drawer drawer-focus-drawer" data-drawer-card="before">
-          <button class="drawer-close" aria-label="Close receipt" type="button">✕</button>
-          <h2>Receipt detail</h2>
-          <div class="receipt-primary-action">
-            <button class="button button-primary" type="button">View on explorer →</button>
-            <button class="button button-ghost" type="button">Run another like this</button>
-          </div>
-          <details class="receipt-proof-disclosure" open>
-            <summary>Technical details</summary>
-            <dl class="drawer-list">
-              <div class="row"><dt>Transaction hash</dt><dd class="mono">0x4f71c2a8…d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7</dd><dd><button class="inline-copy" aria-label="Copy receipt hash">⧉</button></dd></div>
-              <div class="row"><dt>Network</dt><dd><a class="text-link" href="#">View on explorer →</a></dd><dd></dd></div>
-              <div class="row"><dt>Agent</dt><dd>#1042</dd><dd></dd></div>
-              <div class="row"><dt>Event</dt><dd>decoded + indexed</dd><dd></dd></div>
-            </dl>
-          </details>
-        </aside>
-
-        <!-- AFTER drawer card -->
-        <aside class="receipt-drawer drawer-focus-drawer" data-drawer-card="after" hidden>
-          <button class="drawer-close" aria-label="Close receipt" type="button">✕</button>
-          <h2>Receipt detail</h2>
-          <div class="receipt-primary-action">
-            <button class="button button-primary" type="button">View on explorer →</button>
-            <button class="button button-ghost" type="button">Run another like this</button>
-          </div>
-          <details class="receipt-proof-disclosure" open>
-            <summary>Technical details</summary>
-            <dl class="drawer-list">
-              <div class="row"><dt>Transaction hash</dt><dd class="mono">0x4f71c2a8…d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7</dd><dd><button class="inline-copy" aria-label="Copy receipt hash">⧉</button></dd></div>
-              <div class="row"><dt>Network</dt><dd><a class="text-link" href="#">View on explorer →</a></dd><dd></dd></div>
-              <div class="row"><dt>Agent</dt><dd>#1042</dd><dd></dd></div>
-              <div class="row"><dt>Event</dt><dd>decoded + indexed</dd><dd></dd></div>
-            </dl>
-          </details>
-        </aside>
       </div>
     </section>
 
@@ -953,58 +969,6 @@
         sync();
       });
       sync();
-    })();
-
-    // Drawer focus block — independent toggle that flips only this
-    // block between before/after treatment of the receipt drawer. The
-    // stage backdrop and the explicit button both flip the same mode.
-    (function () {
-      var blocks = document.querySelectorAll(".drawer-focus");
-      blocks.forEach(function (block) {
-        var toggle = block.querySelector("[data-drawer-toggle]");
-        var label = block.querySelector("[data-drawer-toggle-label]");
-        var stage = block.querySelector("[data-drawer-stage]");
-        var pill = block.querySelector("[data-drawer-pill]");
-        var copy = block.querySelector("[data-drawer-copy]");
-        var ann = block.querySelector("[data-drawer-annotation]");
-        var cards = block.querySelectorAll("[data-drawer-card]");
-        var beforeCard = block.querySelector('[data-drawer-card="before"]');
-        var afterCard = block.querySelector('[data-drawer-card="after"]');
-
-        function syncDrawer() {
-          var mode = block.getAttribute("data-mode");
-          var isAfter = mode === "drawer-after";
-          label.textContent = isAfter ? "Switch to Before" : "Switch to After";
-          pill.textContent = isAfter ? "AFTER" : "BEFORE";
-          pill.style.color = isAfter ? "var(--phosphor)" : "var(--muted)";
-          pill.style.borderColor = isAfter ? "rgba(116,224,194,.4)" : "var(--line)";
-          copy.textContent = isAfter
-            ? "Copper gradient hairline on the left, rounded close, right-aligned monospace amounts, refined proof rows."
-            : "Flat panel, copper left border, no entrance motion. Proof rows align left; the explorer link lives inside the disclosure.";
-          if (ann) ann.hidden = !isAfter;
-          cards.forEach(function (c) { c.hidden = true; });
-          (isAfter ? afterCard : beforeCard).hidden = false;
-        }
-
-        function flip() {
-          var next = block.getAttribute("data-mode") === "drawer-before"
-            ? "drawer-after" : "drawer-before";
-          block.setAttribute("data-mode", next);
-          syncDrawer();
-        }
-
-        if (toggle) toggle.addEventListener("click", flip);
-        if (stage) {
-          stage.addEventListener("click", flip);
-          stage.addEventListener("keydown", function (e) {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              flip();
-            }
-          });
-        }
-        syncDrawer();
-      });
     })();
   </script>
 </body>

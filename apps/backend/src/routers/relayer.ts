@@ -164,23 +164,25 @@ export function registerRelayerRoutes(
       "GasTank balance/grants view for an address (read route)",
       { method: "get", requireAddress: "gasTank" },
     ),
-    async (_parsed, _req, res, { id, config: cfgSrv }) => {
+    async (_parsed, req, res, { config: cfgSrv }) => {
       // requireAddress guard already 503s when the gasTank address is unset.
       const gasTank = cfgSrv.addresses!.gasTank as `0x${string}`;
+      // The factory helpers expose only :id; this route's param is :address — pull it raw.
+      const addrParam = req.params.address ?? "";
       const tc = new TypedContract<TankViews>(gasTank, GAS_TANK_ABI, provider);
       try {
         const [balance, grants, grantsCapV, gasGrant, reserve, nextNonce] =
           await Promise.all([
-            tc.contract.balanceOf(id),
-            tc.contract.grantsUsed(id),
+            tc.contract.balanceOf(addrParam),
+            tc.contract.grantsUsed(addrParam),
             tc.contract.grantsCap(),
             tc.contract.gasGrant(),
             tc.contract.reserve(),
-            tc.contract.nonces(id),
+            tc.contract.nonces(addrParam),
           ]);
         res.setHeader("Cache-Control", "no-store");
         return {
-          ...tankResponse(id, {
+          ...tankResponse(addrParam, {
             balance,
             grants,
             grantsCap: grantsCapV,

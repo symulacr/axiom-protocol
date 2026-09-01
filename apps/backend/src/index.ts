@@ -60,34 +60,42 @@ async function resolveLiveAddresses(
     gasTank: resolveAddressOptional("gasTank", backendEnv),
   };
   const live: Partial<typeof resolved> = {};
-  await Promise.all(
-    (Object.keys(resolved) as (keyof typeof resolved)[]).map(async (key) => {
-      const addr = resolved[key];
-      if (!addr) {
-        console.warn(
-          `[boot] ${key} address not configured — omitted; related routes will 503`,
-        );
-        return false;
-      }
+  // Sequential with one retry: drpc's free plan rejects JSON-RPC batches >3, and
+  // Promise.all's parallel getCode calls trip it — serializing keeps boot deterministic.
+  for (const key of Object.keys(resolved) as (keyof typeof resolved)[]) {
+    const addr = resolved[key];
+    if (!addr) {
+      console.warn(
+        `[boot] ${key} address not configured — omitted; related routes will 503`,
+      );
+      continue;
+    }
+    let verified = false;
+    for (let attempt = 0; attempt < 2 && !verified; attempt++) {
       try {
         const code = await chainProvider.getCode(addr);
         if (code && code !== "0x") {
           live[key] = addr;
-          return true;
+          verified = true;
+        } else {
+          console.warn(
+            `[boot] ${key} at ${addr} has no bytecode — omitted; related routes will 503`,
+          );
+          break;
         }
-        console.warn(
-          `[boot] ${key} at ${addr} has no bytecode — omitted; related routes will 503`,
-        );
       } catch (err) {
+        if (attempt === 0) {
+          await new Promise((r) => setTimeout(r, 1500));
+          continue;
+        }
         console.warn(
           `[boot] could not verify ${key} at ${addr}: ${
             err instanceof Error ? err.message : String(err)
           } — omitted`,
         );
       }
-      return false;
-    }),
-  );
+    }
+  }
   return live;
 }
 
