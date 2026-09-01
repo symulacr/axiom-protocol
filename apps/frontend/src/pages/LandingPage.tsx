@@ -23,6 +23,10 @@ import { Logo } from "../components/axiom/AppShell.js";
 import { routePath } from "../lib/routeRegistry.js";
 import { getCopy, interpolate, type Locale } from "../lib/copy.js";
 import { useLandingStats } from "../hooks/useLandingStats.js";
+import {
+  useLandingTicker,
+  TICKER_MAX_ITEMS,
+} from "../hooks/useLandingTicker.js";
 
 /** L2-N2: format the live agents count as a comma-grouped number. */
 function formatCount(n: number | null): string {
@@ -53,6 +57,19 @@ export function Landing({
   const stats = useLandingStats();
   const chainId = stats.networkChain ?? 9000;
   const agentsCount = stats.agentsOnline;
+  const liveTickerItems = useLandingTicker(
+    copy.landing.ticker.actionLabels,
+    locale,
+  );
+  /** L2-N5-LIVE: live events first, padded with copy placeholders so the
+   *  rail is always exactly TICKER_MAX_ITEMS long. */
+  const tickerItems = [
+    ...liveTickerItems,
+    ...copy.landing.ticker.items.slice(
+      0,
+      TICKER_MAX_ITEMS - liveTickerItems.length,
+    ),
+  ];
   const navigate = (path: string) => {
     setMenuOpen(false);
     go(path);
@@ -261,8 +278,9 @@ export function Landing({
         </section>
       </main>
 
-      {/* L2-N5: live activity ticker (placeholder data; live event stream is
-          auth-gated and not appropriate for the signed-out Landing). */}
+      {/* L2-N5: live activity ticker. Renders the most recent events
+          pulled from /v1/events, padded with copy placeholders so the
+          rail always has TICKER_MAX_ITEMS rows. */}
       <section
         className="ticker"
         aria-label={interpolate(copy.landing.ticker.label, { chainId })}
@@ -272,7 +290,7 @@ export function Landing({
           {interpolate(copy.landing.ticker.label, { chainId })}
         </span>
         <div className="ticker-track">
-          {copy.landing.ticker.items.map((item, i) => (
+          {tickerItems.map((item, i) => (
             <span key={i} className="ticker-item">
               <span
                 className={`dot ${item.dot === "warning" ? "warning" : ""}`}

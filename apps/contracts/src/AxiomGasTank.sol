@@ -326,10 +326,27 @@ contract AxiomGasTank is Ownable, Pausable, ReentrancyGuard, EIP712 {
     }
 
     /// @notice EIP-712 digest a user signs to authorize `req` (off-chain signing parity aid).
+    /// @dev Canonical EIP-712 hashStruct: the dynamic `bytes data` member is keccak256'd and
+    ///      expanded EXPLICITLY (Permit2 PermitHash.hashWithWitness form), NOT `abi.encode(
+    ///      TYPEHASH, req)` — Solidity's struct expansion ABI-encodes dynamic members in-place
+    ///      (offset/length/tail), which diverges from the spec and from what wallets sign via
+    ///      eth_signTypedData_v4. Drift here breaks every wallet-signed relay (InvalidUserSignature).
     function forwardRequestDigest(
         ForwardRequest calldata req
     ) external view returns (bytes32) {
-        return _hashTypedDataV4(keccak256(abi.encode(FORWARD_REQUEST_TYPEHASH, req)));
+        return _hashTypedDataV4(
+            keccak256(
+                abi.encode(
+                    FORWARD_REQUEST_TYPEHASH,
+                    req.user,
+                    req.target,
+                    keccak256(req.data),
+                    req.maxGasCost,
+                    req.nonce,
+                    req.deadline
+                )
+            )
+        );
     }
 
     receive() external payable {
@@ -357,11 +374,24 @@ contract AxiomGasTank is Ownable, Pausable, ReentrancyGuard, EIP712 {
 
     /// @dev Dual-path ERC-1271 signature check: EOA → ECDSA.recover; contract → the contract's
     ///      own isValidSignature (0x1626ba7e). A zero-size code falls back to EOA recovery.
+    ///      Digest is the canonical EIP-712 hashStruct (see forwardRequestDigest NatSpec).
     function _verifySig(
         ForwardRequest calldata req,
         bytes calldata userSig
     ) internal view {
-        bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(FORWARD_REQUEST_TYPEHASH, req)));
+        bytes32 digest = _hashTypedDataV4(
+            keccak256(
+                abi.encode(
+                    FORWARD_REQUEST_TYPEHASH,
+                    req.user,
+                    req.target,
+                    keccak256(req.data),
+                    req.maxGasCost,
+                    req.nonce,
+                    req.deadline
+                )
+            )
+        );
         if (req.user.code.length > 0) {
             if (IERC1271(req.user).isValidSignature(digest, userSig) != ERC1271_VALID) {
                 revert InvalidUserSignature();

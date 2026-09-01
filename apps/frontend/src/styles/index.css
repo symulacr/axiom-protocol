@@ -849,12 +849,12 @@ body:has(.flow-action) .notice-toast { bottom:96px; }
 
 /* The complete landing journey now lives in the initial desktop viewport. */
 .landing-page {
-  display: grid;
-  grid-template-rows: 68px minmax(0, 1fr) 108px;
-  block-size: 100svh;
-  min-block-size: 640px;
+  display: block;
+  min-block-size: 100svh;
   position: relative;
-  overflow: hidden;
+  /* L2 (2026-09): removed the fixed 3-row grid + overflow:hidden so the new
+     ticker / principles / journey / footer sections can flow below the hero.
+     The strip was removed in L2 (replaced by the journey section). */
 }
 
 .landing-nav {
@@ -864,7 +864,7 @@ body:has(.flow-action) .notice-toast { bottom:96px; }
 
 .landing-page .landing-main {
   min-block-size: 0;
-  block-size: 100%;
+  block-size: auto;
   /* Top-align the hero instead of centering it: centering inside the flexible
      row produced a ~240px empty band above the headline (R1 dead-space audit). */
   align-items: start;
@@ -964,9 +964,7 @@ body:has(.flow-action) .notice-toast { bottom:96px; }
   }
 
   .landing-page {
-    grid-template-rows: 70px minmax(0, 1fr);
-    block-size: 100svh;
-    min-block-size: 0;
+    min-block-size: 100svh;
   }
 
   .landing-main {
@@ -3484,10 +3482,7 @@ strong {
 
 @media (max-width: 700px) {
   .landing-page {
-    grid-template-rows: 70px auto auto;
-    block-size: auto;
     min-block-size: 100svh;
-    overflow: visible;
   }
 
   .landing-page .landing-visual.hero-visual-modern {
@@ -3666,4 +3661,58 @@ strong {
 @media (max-width: 700px) {
   .landing-footer { flex-direction: column; align-items: flex-start; gap: var(--space-3); }
   .footer-meta { flex-wrap: wrap; }
+}
+
+/* ---- L2-RESPONSIVE: hero chrome overlap + overflow fixes ---- */
+/* Root cause: receipt and caption were both position:absolute, both
+   bottom-right-anchored with z-index: 4, and both targeted the same
+   bottom-right zone. At desktop they overlapped each other in x and y;
+   at tablet and landscape the receipt bled past the proof plate's left
+   edge (40px overflow) because it had no left constraint; at mobile the
+   caption was clipped by overflow:hidden because max-width:260px +
+   right anchor could not fit in the 307px proof plate. The proof plate
+   is only ~320–564px wide, so two ~260–360px elements cannot sit side
+   by side inside it. Fix: stack them vertically -- receipt at
+   BOTTOM-RIGHT (unchanged) and caption moved to TOP-RIGHT. Then cap
+   the receipt with a left safety, shrink it at intermediate tablet
+   widths, and move both into document flow on mobile. */
+/* 1. Cap the receipt so it can never exceed the proof plate width,
+      and explicitly set left:auto so future rules don't drift. */
+.landing-visual.hero-visual-modern .floating-receipt {
+  left: auto;
+  max-width: min(360px, calc(100% - 32px));
+}
+/* 2. Move the caption from bottom-right to TOP-RIGHT (below the
+      proof-label pill so the two top elements don't collide on narrow
+      proof plates). This removes the overlap with the bottom-anchored
+      receipt and matches the After HTML intent (caption small at top,
+      receipt larger at bottom). */
+.landing-visual.hero-visual-modern .hero-caption {
+  bottom: auto;
+  top: clamp(48px, 5vw, 60px);
+  right: clamp(16px, 3vw, 32px);
+  max-width: min(220px, calc(100% - 32px));
+}
+/* 3. Intermediate tablet (701-979px): proof plate is ~320px wide, so
+      shrink the receipt and tighten its right anchor. */
+@media (max-width: 979px) {
+  .landing-visual.hero-visual-modern .floating-receipt {
+    right: clamp(24px, 4vw, 48px);
+    width: clamp(220px, 32vw, 280px);
+    max-width: calc(100% - 32px);
+  }
+}
+/* 4. Mobile: caption moves to document flow above the receipt (where
+      the receipt already carries the chrome), and the receipt stays
+      static but is capped so it doesn't fill the entire plate. */
+@media (max-width: 700px) {
+  .landing-visual.hero-visual-modern .hero-caption {
+    position: static;
+    margin-top: var(--space-3);
+    width: auto;
+    max-width: 100%;
+  }
+  .landing-visual.hero-visual-modern .floating-receipt {
+    max-width: calc(100% - 32px);
+  }
 }
