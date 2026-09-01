@@ -61,6 +61,7 @@ export const backendEnvSchema = sharedEnvSchema.merge(
     AXIOM_TEE_VERIFIER_ADDRESS: z.string().optional(),
     AXIOM_PAYMENT_PROCESSOR_ADDRESS: z.string().optional(),
     AXIOM_GAS_TANK_ADDRESS: z.string().optional(),
+    AXIOM_DELEGATION_REGISTRY_ADDRESS: z.string().optional(),
     // Relayer operator key (separate from TEE/runtime keys; never printed).
     // Mandatory in prod when AXIOM_RELAYER_MODE=on — fail-start guarded in server.ts.
     AXIOM_RELAYER_PK: hexString.optional(),

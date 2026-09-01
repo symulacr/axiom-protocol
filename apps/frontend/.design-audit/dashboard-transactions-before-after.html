@@ -1,0 +1,1011 @@
+<!doctype html>
+<!--
+  Dashboard + Transactions design audit — visual before/after.
+  Mirrors the production surfaces at src/pages/DashboardPage.tsx +
+  src/pages/TransactionsPage.tsx (plus GasTankCard / FirstRunChecklist /
+  MobileDisclosure / ui / Controls) with the canonical token system from
+  src/styles/index.css (completion-layer :104–:114). The After column applies
+  the modernization proposals (CSS-only, token-faithful). One Google Font
+  (Inter + JetBrains Mono). Copy verbatim from src/lib/copy.ts.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Axiom · Dashboard + Transactions design audit</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ============================================================
+       TOKEN SURFACE — mirrors src/styles/index.css :104–:114.
+       ============================================================ */
+    :root {
+      --copper:#d28b52; --copper-bright:#f1b879;
+      --copper-05:rgba(210,139,82,.05); --copper-07:rgba(210,139,82,.07);
+      --copper-10:rgba(210,139,82,.10); --copper-18:rgba(210,139,82,.18);
+      --copper-22:rgba(210,139,82,.22);
+      --phosphor:#74e0c2; --warning:#ea7750;
+      --canvas:#0b0e0f; --panel:rgba(18,22,23,.92); --panel-2:rgba(23,28,29,.88);
+      --line:rgba(225,218,196,.12); --line-soft:rgba(225,218,196,.08);
+      --ink:#f6efe1; --text:#efe6d3; --muted:#a6aaa4; --dim:#7d8481;
+      --shadow-modal-sm:0 12px 32px rgba(0,0,0,.45);
+      --shadow-modal:0 24px 60px rgba(0,0,0,.55);
+      --shadow-drawer:-28px 0 80px rgba(0,0,0,.6);
+      --shadow-stat:0 1px 0 rgba(255,255,255,.02) inset, 0 8px 24px rgba(0,0,0,.32);
+      --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px;
+      --space-5:24px; --space-6:32px; --space-7:48px;
+      --fs-display:clamp(36px,5vw,56px); --fs-title:18px; --fs-body:14px;
+      --fs-small:12px; --fs-mono:12px;
+      --fw-label:600; --fw-title:700; --fw-strong:700;
+      --radius-md:6px; --radius-lg:12px;
+      --ease:cubic-bezier(.2,.7,.2,1);
+    }
+    *,*::before,*::after{box-sizing:border-box}
+    html,body{margin:0;background:var(--canvas);color:var(--ink);
+      font-family:"Inter",system-ui,-apple-system,sans-serif;
+      font-size:var(--fs-body);line-height:1.5;-webkit-font-smoothing:antialiased}
+    .mono,code,kbd{font-family:"JetBrains Mono",ui-monospace,monospace}
+
+    /* ============================================================
+       AUDIT CHROME + TOGGLE.
+       ============================================================ */
+    .audit-shell{max-width:1480px;margin:0 auto;padding:32px 24px 80px}
+    .audit-head{display:flex;flex-wrap:wrap;gap:16px;align-items:center;
+      justify-content:space-between;padding:20px 24px;margin-bottom:16px;
+      border:1px solid var(--line);background:var(--panel)}
+    .audit-head-titles{display:grid;gap:6px;min-width:0}
+    .audit-head h1{margin:0;font:800 22px/1.1 "Inter",sans-serif;letter-spacing:-.02em}
+    .audit-head p{margin:0;color:var(--muted);font-size:13px;max-width:480px}
+    .toggle{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;
+      border:1px solid var(--copper);background:var(--copper);color:var(--bg);
+      font:600 12px/1 "JetBrains Mono",monospace;letter-spacing:.04em;
+      text-transform:uppercase;cursor:pointer;transition:background .18s var(--ease)}
+    .toggle:hover{background:var(--copper-bright)}
+    .toggle-state{font-size:11px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;
+      align-self:start}
+
+    .surface{display:none;grid-template-columns:minmax(0,1fr);gap:24px}
+    body[data-mode="before"] .surface--before{display:grid}
+    body[data-mode="after"] .surface--after{display:grid}
+
+    /* ============================================================
+       OPS PAGE — mirrors .ops-page / .page-head / .action-lane :108.
+       ============================================================ */
+    .ops-page{max-width:1400px;margin:0 auto;padding:clamp(36px,6vw,84px) clamp(20px,5vw,70px) 90px}
+    .page-head{display:grid;grid-template-columns:minmax(0,1fr) minmax(270px,360px);
+      align-items:end;gap:24px;margin-bottom:32px}
+    .page-head h1{margin:8px 0;font:800 var(--fs-display)/1 "Inter",sans-serif;letter-spacing:-.045em}
+    .page-head h1 i{color:var(--copper-bright);font-style:normal}
+    .page-head p{max-width:500px;margin:0;color:var(--muted);font-size:var(--fs-body);line-height:1.7}
+    .action-lane{display:grid;gap:8px;align-content:end;padding:20px;
+      border-left:2px solid var(--copper);
+      background:linear-gradient(115deg,rgba(210,139,82,.14),transparent),var(--panel)}
+    .action-lane strong{font:700 var(--fs-body)/1.25 "Inter",sans-serif}
+    .action-lane small{color:var(--dim);font:500 var(--fs-mono) "JetBrains Mono",monospace}
+    .text-link{display:inline-flex;align-items:center;gap:4px;padding:0;border:0;
+      background:transparent;color:var(--copper-bright);
+      font:500 var(--fs-mono) "JetBrains Mono",monospace;
+      text-transform:lowercase;cursor:pointer;transition:color .18s var(--ease)}
+    .text-link:hover{color:#fff4dc}
+
+    /* ============================================================
+       CONTEXT STRIP — Dashboard .context-strip :108.
+       ============================================================ */
+    .context-strip{display:grid;grid-template-columns:repeat(3,1fr);
+      border:1px solid var(--line);background:var(--panel);margin-bottom:24px}
+    .context-cell{display:grid;gap:8px;min-width:0;padding:16px;
+      border-right:1px solid var(--line)}
+    .context-cell:last-child{border-right:0}
+    .context-cell strong{display:flex;align-items:center;gap:6px;
+      font-size:var(--fs-body);font-weight:var(--fw-label)}
+    .context-cell .mono{color:var(--dim);font-size:var(--fs-mono);overflow-wrap:anywhere}
+    .context-action{align-content:center;border-left:2px solid var(--copper)}
+    .context-action strong{color:var(--copper-bright)}
+    .context-action .text-link{margin-top:2px}
+
+    body[data-mode="after"] .context-strip{border-color:transparent;
+      background:linear-gradient(180deg,var(--panel-2),var(--panel));
+      box-shadow:var(--shadow-stat);position:relative}
+    body[data-mode="after"] .context-strip::before{content:"";position:absolute;
+      inset:0 0 auto 0;height:1px;
+      background:linear-gradient(90deg,transparent,var(--copper) 32%,var(--copper) 68%,transparent)}
+    body[data-mode="after"] .context-cell{padding:16px 20px}
+    body[data-mode="after"] .context-cell strong svg{color:var(--copper)}
+    body[data-mode="after"] .context-action strong{display:flex;align-items:center;gap:8px}
+    body[data-mode="after"] .context-action strong::after{content:"";width:6px;height:6px;
+      border-radius:50%;background:var(--copper-bright);box-shadow:0 0 8px var(--copper-bright);
+      animation:dot-pulse 2.6s var(--ease) infinite}
+    @keyframes dot-pulse{0%,100%{opacity:.55}50%{opacity:1}}
+
+    /* ============================================================
+       FIRST-RUN CHECKLIST.
+       ============================================================ */
+    .checklist-card{margin-bottom:24px;border:1px solid var(--line);background:var(--panel)}
+    .checklist-card .panel-head{padding:16px 20px;margin-bottom:0}
+    .checklist-card .panel-head h2{margin:4px 0 0;font:var(--fw-title) var(--fs-body) "Inter",sans-serif}
+    .checklist-dismiss{display:grid;place-items:center;width:28px;height:28px;
+      padding:0;border:0;background:transparent;color:var(--dim);cursor:pointer}
+    .checklist-dismiss:hover{color:var(--ink)}
+    .checklist-steps{margin:0;padding:0;list-style:none}
+    .checklist-step{display:grid;grid-template-columns:34px minmax(0,1fr);align-items:center;
+      gap:12px;width:100%;border:0;border-top:1px solid var(--line);
+      padding:12px 16px;text-align:left;background:transparent;color:var(--ink);
+      cursor:pointer;transition:background .17s var(--ease)}
+    .checklist-step:hover{background:rgba(210,139,82,.07)}
+    .checklist-step[aria-disabled="true"]{cursor:default}
+    .checklist-step[aria-disabled="true"]:hover{background:transparent}
+    .checklist-mark{display:grid;place-items:center;width:34px;height:34px;
+      border:1px solid var(--copper);color:var(--copper)}
+    .checklist-mark.done{border-color:var(--copper-bright);color:var(--copper-bright)}
+    .checklist-copy strong{display:block;font-size:var(--fs-body);font-weight:var(--fw-label)}
+    .checklist-copy small{display:block;margin-top:2px;color:var(--dim);
+      font:var(--fs-small) "JetBrains Mono",monospace}
+
+    body[data-mode="after"] .checklist-card{background:linear-gradient(160deg,var(--panel-2),var(--panel));position:relative}
+    body[data-mode="after"] .checklist-card::before{content:"";position:absolute;
+      left:0;top:0;bottom:0;width:2px;
+      background:linear-gradient(180deg,var(--copper-bright),transparent)}
+    body[data-mode="after"] .checklist-step{padding:14px 20px 14px 22px;position:relative}
+    body[data-mode="after"] .checklist-step:hover{background:linear-gradient(90deg,rgba(210,139,82,.1),transparent)}
+    body[data-mode="after"] .checklist-mark{border-radius:50%;
+      transition:background .24s var(--ease),color .24s var(--ease)}
+    body[data-mode="after"] .checklist-mark.done{background:color-mix(in srgb,var(--phosphor) 18%,transparent);
+      border-color:var(--phosphor);color:var(--phosphor)}
+
+    /* ============================================================
+       STATS GRID — Dashboard .stats-grid + .stat :108.
+       ============================================================ */
+    .stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;
+      border:1px solid var(--line);background:var(--line);margin-bottom:24px}
+    .stat{display:grid;gap:8px;padding:16px;background:var(--panel)}
+    .stat-top{display:flex;justify-content:space-between;color:var(--muted);
+      font:500 var(--fs-mono) "JetBrains Mono",monospace;
+      text-transform:uppercase;letter-spacing:.08em}
+    .stat-icon{color:var(--copper)}
+    .stat strong{font:700 var(--fs-title) "Inter",sans-serif;letter-spacing:-.03em}
+    .stat small{color:var(--dim);font-size:var(--fs-mono)}
+
+    body[data-mode="after"] .stats-grid{gap:14px;border:0;background:transparent}
+    body[data-mode="after"] .stat{position:relative;padding:18px 20px;gap:10px;
+      background:linear-gradient(180deg,var(--panel-2),var(--panel));
+      border:1px solid var(--line);border-radius:var(--radius-lg);
+      transition:transform .18s var(--ease),border-color .18s var(--ease),
+        box-shadow .18s var(--ease)}
+    body[data-mode="after"] .stat:hover{transform:translateY(-2px);
+      border-color:color-mix(in srgb,var(--copper) 40%,var(--line));
+      box-shadow:0 16px 36px rgba(0,0,0,.45)}
+    body[data-mode="after"] .stat::after{content:"";position:absolute;left:0;
+      top:14px;bottom:14px;width:2px;background:var(--copper);opacity:.6}
+    body[data-mode="after"] .stat-top{color:var(--dim);letter-spacing:.12em}
+    body[data-mode="after"] .stat strong{font:700 26px/1 "Inter",sans-serif;
+      font-variant-numeric:tabular-nums;color:var(--ink)}
+    body[data-mode="after"] .stat small{display:inline-flex;align-items:center;
+      gap:6px;letter-spacing:.02em}
+    body[data-mode="after"] .stat small.alert{color:var(--copper-bright)}
+    body[data-mode="after"] .stat-icon{display:grid;place-items:center;width:24px;
+      height:24px;border-radius:50%;
+      background:color-mix(in srgb,var(--copper) 16%,transparent);color:var(--copper-bright)}
+
+    /* ============================================================
+       GAS TANK CARD.
+       ============================================================ */
+    .gas-tank-card{margin-bottom:24px;padding:20px;border:1px solid var(--line);background:var(--panel)}
+    .gas-tank-card h3{margin:0 0 14px;font:var(--fw-title) var(--fs-title) "Inter",sans-serif;letter-spacing:-.02em}
+    .gas-tank-card__balance{display:grid;gap:4px;margin-bottom:12px}
+    .gas-tank-card__balance strong{font:700 24px/1 "Inter",sans-serif;font-variant-numeric:tabular-nums}
+    .gas-tank-card__balance small{color:var(--dim);font:var(--fs-mono) "JetBrains Mono",monospace}
+    .gas-tank-card__grants{height:6px;background:var(--panel-2);border:1px solid var(--line);overflow:hidden}
+    .gas-tank-card__grants>div{height:100%;background:var(--copper)}
+    .gas-tank-card__deposit{display:flex;gap:8px;margin-top:12px}
+    .gas-tank-card__deposit input{flex:1;min-width:0;height:38px;padding:0 12px;
+      border:1px solid var(--line);background:var(--panel-2);color:var(--ink);
+      font:14px "JetBrains Mono",monospace}
+    .gas-tank-card__deposit input:focus{outline:2px solid var(--copper);outline-offset:1px}
+    .gas-tank-card__faucet{display:grid;gap:6px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+
+    body[data-mode="after"] .gas-tank-card{background:linear-gradient(180deg,var(--panel-2),var(--panel));border-radius:var(--radius-lg)}
+    body[data-mode="after"] .gas-tank-card h3{display:flex;align-items:center;gap:10px;
+      text-transform:uppercase;font:600 12px/1 "JetBrains Mono",monospace;
+      letter-spacing:.14em;color:var(--muted)}
+    body[data-mode="after"] .gas-tank-card h3::before{content:"";width:6px;height:6px;
+      background:var(--copper);border-radius:50%}
+    body[data-mode="after"] .gas-tank-card__balance{display:grid;grid-template-columns:1fr auto;align-items:end;gap:12px}
+    body[data-mode="after"] .gas-tank-card__balance strong{font:700 28px/1 "Inter",sans-serif;font-variant-numeric:tabular-nums}
+    body[data-mode="after"] .gas-tank-card__grants{height:8px;
+      background:color-mix(in srgb,var(--panel-2) 50%,transparent);border:0;border-radius:999px}
+    body[data-mode="after"] .gas-tank-card__grants>div{background:linear-gradient(90deg,var(--copper),var(--copper-bright));
+      box-shadow:0 0 12px color-mix(in srgb,var(--copper) 50%,transparent)}
+    body[data-mode="after"] .gas-tank-card__note{color:var(--dim);font:var(--fs-mono) "JetBrains Mono",monospace}
+    body[data-mode="after"] .gas-tank-card__error{color:var(--warning);font:var(--fs-mono) "JetBrains Mono",monospace}
+
+    /* ============================================================
+       PANELS + AGENT ROW + ACTIVITY ROW.
+       ============================================================ */
+    .panel{min-width:0;border:1px solid var(--line);background:var(--panel)}
+    .panel-head{display:flex;justify-content:space-between;align-items:flex-start;
+      gap:12px;padding:20px;border-bottom:1px solid var(--line)}
+    .panel-head h2{margin:4px 0 0;font:var(--fw-title) var(--fs-title) "Inter",sans-serif;letter-spacing:-.02em}
+    .dashboard-split{display:grid;grid-template-columns:1.08fr .92fr;gap:20px;margin-bottom:24px}
+    .agent-list,.activity-list{display:grid}
+    .agent-row,.activity-row,.transaction-row{display:grid;align-items:center;gap:12px;
+      width:100%;border:0;border-bottom:1px solid var(--line);padding:12px 16px;
+      text-align:left;background:transparent;color:var(--ink);transition:background .17s var(--ease)}
+    .agent-row{grid-template-columns:38px minmax(0,1fr) auto 15px}
+    .activity-row{grid-template-columns:20px minmax(0,1fr) auto 15px}
+    .agent-row:hover,.activity-row:hover,.transaction-row:hover{background:rgba(210,139,82,.07)}
+    .agent-row:last-child,.activity-row:last-child,.transaction-row:last-child{border-bottom:0}
+    .agent-row-mark{display:grid;place-items:center;width:34px;height:34px;
+      border:1px solid var(--copper);color:var(--copper);
+      background:color-mix(in srgb,var(--panel-2) 55%,transparent)}
+    .agent-row strong,.activity-row strong{display:block;font-size:var(--fs-body);font-weight:var(--fw-label)}
+    .agent-row small,.activity-row small{display:block;margin-top:2px;color:var(--dim);
+      font:var(--fs-small) "JetBrains Mono",monospace;overflow-wrap:anywhere}
+    .agent-value{display:grid;justify-items:end;gap:4px}
+    .agent-value b{font:var(--fw-title) var(--fs-small) "JetBrains Mono",monospace}
+
+    body[data-mode="after"] .agent-row,body[data-mode="after"] .activity-row{position:relative;padding:14px 20px 14px 24px}
+    body[data-mode="after"] .agent-row::before,body[data-mode="after"] .activity-row::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:2px;background:var(--copper);opacity:0;transition:opacity .18s var(--ease)}
+    body[data-mode="after"] .agent-row:hover::before,body[data-mode="after"] .activity-row:hover::before{opacity:1}
+    body[data-mode="after"] .agent-row-mark{background:color-mix(in srgb,var(--copper) 8%,var(--panel-2));
+      box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--copper) 30%,transparent)}
+    body[data-mode="after"] .agent-value b{font-variant-numeric:tabular-nums;color:var(--ink)}
+
+    .next-action-panel{background:linear-gradient(140deg,color-mix(in srgb,var(--phosphor) 5%,transparent),transparent 44%),var(--panel)}
+    .proof-card{position:relative;min-height:280px;display:flex;align-items:flex-end;overflow:hidden;
+      background:linear-gradient(180deg,color-mix(in srgb,var(--copper) 6%,transparent),transparent 50%)}
+    .proof-card>div{position:relative;display:grid;gap:8px;padding:20px}
+    .proof-card strong{max-width:280px;font:700 var(--fs-title)/1.05 "Inter",sans-serif;letter-spacing:-.02em}
+    .proof-card small{color:var(--muted);font:var(--fs-mono) "JetBrains Mono",monospace;text-transform:uppercase;letter-spacing:.08em}
+    body[data-mode="after"] .proof-card{background:linear-gradient(140deg,color-mix(in srgb,var(--copper) 14%,transparent),transparent 60%),var(--panel);border-radius:var(--radius-lg)}
+    body[data-mode="after"] .proof-card strong{font:700 22px/1.1 "Inter",sans-serif}
+    .activity-panel{margin-bottom:24px}
+
+    /* ============================================================
+       BUTTONS — mirror .button + .button-* from :104.
+       ============================================================ */
+    .button{display:inline-flex;justify-content:center;align-items:center;gap:8px;
+      min-height:38px;padding:0 18px;border:1px solid var(--copper);border-radius:0;
+      font:500 var(--fs-mono) "JetBrains Mono",monospace;letter-spacing:.02em;
+      cursor:pointer;transition:transform .16s var(--ease),background .16s var(--ease),
+        color .16s var(--ease),border-color .16s var(--ease)}
+    .button:active{transform:scale(.97)}
+    .button:disabled{opacity:.45;cursor:not-allowed}
+    .button-primary{background:var(--copper);color:var(--bg);font-weight:700}
+    .button-primary:hover{background:var(--copper-bright)}
+    .button-secondary{background:rgba(210,139,82,.09);color:var(--copper-bright)}
+    .button-secondary:hover{background:rgba(210,139,82,.2)}
+    .button-ghost{border-color:transparent;color:var(--muted);background:transparent}
+    .button-ghost:hover{color:#f6eedf;border-color:var(--line)}
+
+    body[data-mode="after"] .button{border-radius:var(--radius-md);box-shadow:0 1px 0 rgba(255,255,255,.04) inset}
+    body[data-mode="after"] .button-primary{box-shadow:0 1px 0 rgba(255,255,255,.18) inset, 0 8px 20px rgba(210,139,82,.18)}
+
+    /* ============================================================
+       STATE PILL / STATUS.
+       ============================================================ */
+    .state-pill{display:inline-flex;align-items:center;gap:4px;color:var(--copper);
+      font:700 var(--fs-mono) "JetBrains Mono",monospace;text-transform:uppercase;white-space:nowrap}
+    .state-confirmed{color:var(--dim)}
+    .state-reverted,.state-rejected,.state-stale{color:var(--warning)}
+    .state-ready{color:var(--dim)}
+    .status{display:inline-flex;align-items:center;gap:4px;color:var(--phosphor);
+      font:500 var(--fs-mono) "JetBrains Mono",monospace;text-transform:uppercase;
+      letter-spacing:.04em;white-space:nowrap}
+    .status-warning{color:var(--warning)}
+    .status-muted{color:var(--dim)}
+
+    body[data-mode="after"] .state-pill{padding:2px 8px;border:1px solid currentColor;border-radius:999px;font-size:11px;letter-spacing:.06em}
+    body[data-mode="after"] .status{padding:2px 8px;border:1px solid currentColor;border-radius:999px;font-size:11px}
+
+    /* ============================================================
+       OPS-SUMMARY — Transactions header band.
+       ============================================================ */
+    .ops-summary{display:grid;grid-template-columns:repeat(2,.7fr) 1.6fr;gap:1px;
+      margin-bottom:24px;border:1px solid var(--line);background:var(--line)}
+    .ops-summary>div,.ops-summary>button{display:grid;gap:8px;padding:16px;
+      background:var(--panel);text-align:left;cursor:pointer;border:0;color:inherit}
+    .ops-summary-value{margin:0;font:700 var(--fs-title) "Inter",sans-serif;font-variant-numeric:tabular-nums}
+    .ops-summary small{color:var(--dim);font:var(--fs-mono) "JetBrains Mono",monospace}
+    .ops-summary-note{display:flex!important;align-items:center;gap:8px;color:var(--muted);font-size:var(--fs-small);line-height:1.5}
+    .ops-summary-note svg{flex:0 0 auto;color:var(--phosphor)}
+    .ops-summary-recovery{position:relative}
+    .ops-summary-recovery .ops-summary-value{color:var(--copper-bright)}
+    .ops-summary-recovery svg{position:absolute;top:6px;right:0;color:var(--copper)}
+    .ops-summary-recovery:hover{background:rgba(210,139,82,.08)}
+
+    body[data-mode="after"] .ops-summary{gap:14px;border:0;background:transparent}
+    body[data-mode="after"] .ops-summary>div,body[data-mode="after"] .ops-summary>button{padding:18px 22px;
+      background:linear-gradient(180deg,var(--panel-2),var(--panel));
+      border:1px solid var(--line);border-radius:var(--radius-lg);
+      transition:transform .18s var(--ease),border-color .18s var(--ease)}
+    body[data-mode="after"] .ops-summary>div:hover,body[data-mode="after"] .ops-summary>button:hover{transform:translateY(-2px);
+      border-color:color-mix(in srgb,var(--copper) 40%,var(--line))}
+    body[data-mode="after"] .ops-summary-value{font:700 26px/1 "Inter",sans-serif}
+    body[data-mode="after"] .ops-summary-recovery svg{position:static;margin-left:auto;align-self:end}
+
+    /* ============================================================
+       FILTERS + CHIP ROW.
+       ============================================================ */
+    .transaction-panel{overflow:hidden}
+    .transaction-panel-head{align-items:stretch}
+    .transaction-filter-controls{display:grid;justify-items:end;gap:8px;min-width:0}
+    .result-count{color:var(--dim);font:500 var(--fs-mono)/1 "JetBrains Mono",monospace}
+    .filters{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:4px}
+    .filter{border:0;border-bottom:2px solid transparent;padding:8px;background:transparent;
+      color:var(--dim);font:500 var(--fs-mono) "JetBrains Mono",monospace;
+      text-transform:uppercase;letter-spacing:.06em;cursor:pointer}
+    .filter.active,.filter:hover{color:var(--copper-bright);border-color:var(--copper)}
+    .filters-trigger{display:inline-flex;align-items:center;gap:4px}
+
+    body[data-mode="after"] .filters{gap:6px}
+    body[data-mode="after"] .filter{padding:6px 12px;border:1px solid var(--line);border-radius:999px;letter-spacing:.04em;
+      transition:background .18s var(--ease),border-color .18s var(--ease),color .18s var(--ease)}
+    body[data-mode="after"] .filter:hover{background:color-mix(in srgb,var(--copper) 8%,transparent);
+      border-color:color-mix(in srgb,var(--copper) 50%,var(--line))}
+    body[data-mode="after"] .filter.active{background:color-mix(in srgb,var(--copper) 18%,transparent);
+      border-color:var(--copper);color:var(--copper-bright);
+      box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--copper) 25%,transparent)}
+
+    /* ============================================================
+       TRANSACTION TABLE.
+       ============================================================ */
+    .transaction-table-head,.transaction-row{display:grid;
+      grid-template-columns:minmax(260px,1.35fr) 1fr .55fr .8fr 15px;
+      gap:12px;align-items:center}
+    .transaction-table-head{padding:12px 16px;color:var(--dim);
+      font:500 var(--fs-mono) "JetBrains Mono",monospace;letter-spacing:.08em;text-transform:uppercase}
+    .transaction-row{width:100%}
+    .transaction-kind{display:flex;align-items:center;gap:8px;min-width:0}
+    .transaction-kind>i{display:grid;place-items:center;width:28px;height:28px;
+      color:var(--copper);border:1px solid var(--line);font-style:normal}
+    .transaction-row .mono{color:var(--dim);font-size:var(--fs-small);overflow-wrap:anywhere}
+
+    body[data-mode="after"] .transaction-table{border-radius:0 0 var(--radius-lg) var(--radius-lg);overflow:hidden}
+    body[data-mode="after"] .transaction-table-head{background:color-mix(in srgb,var(--panel-2) 60%,transparent);border-bottom:1px solid var(--line)}
+    body[data-mode="after"] .transaction-row{position:relative;padding:14px 20px 14px 24px}
+    body[data-mode="after"] .transaction-row::before{content:"";position:absolute;left:0;top:6px;bottom:6px;
+      width:2px;background:var(--copper);opacity:0;transition:opacity .18s var(--ease)}
+    body[data-mode="after"] .transaction-row:hover::before,body[data-mode="after"] .transaction-row.is-active::before{opacity:1}
+    body[data-mode="after"] .transaction-row.is-active{background:color-mix(in srgb,var(--copper) 12%,transparent)}
+    body[data-mode="after"] .transaction-kind>i{border-radius:6px;
+      background:color-mix(in srgb,var(--copper) 8%,transparent);
+      box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--copper) 30%,transparent)}
+    body[data-mode="after"] .transaction-row .mono{font-variant-numeric:tabular-nums}
+
+    /* ============================================================
+       ADVANCED FILTERS POPOVER.
+       ============================================================ */
+    .filters-backdrop{position:fixed;inset:0;z-index:40;background:transparent}
+    .filters-popover{position:fixed;z-index:60;display:grid;gap:4px;min-width:200px;
+      max-height:min(60vh,340px);overflow:auto;padding:4px;border:1px solid var(--line);
+      background:var(--panel);box-shadow:var(--shadow-modal-sm);animation:popover-in .18s var(--ease)}
+    .filters-popover .filter{width:100%;text-align:left;padding:8px 12px;border:0;border-bottom:0;border-radius:var(--radius-md)}
+    @keyframes popover-in{from{opacity:0;transform:translateY(-6px) scale(.98)}to{opacity:1;transform:none}}
+
+    body[data-mode="after"] .filters-backdrop{background:rgba(7,9,10,.45);backdrop-filter:blur(6px)}
+    body[data-mode="after"] .filters-popover{padding:6px;border-radius:var(--radius-lg);box-shadow:var(--shadow-modal)}
+    body[data-mode="after"] .filters-popover .filter{padding:10px 12px;border:1px solid transparent;border-radius:var(--radius-md)}
+    body[data-mode="after"] .filters-popover .filter:hover{background:color-mix(in srgb,var(--copper) 10%,transparent);
+      border-color:color-mix(in srgb,var(--copper) 35%,transparent)}
+    body[data-mode="after"] .filters-popover .filter.active{background:color-mix(in srgb,var(--copper) 18%,transparent);color:var(--copper-bright)}
+
+    /* ============================================================
+       RECEIPT DRAWER.
+       ============================================================ */
+    .drawer-layer{position:fixed;inset:0;z-index:80;background:rgba(7,9,10,.72);backdrop-filter:blur(12px);display:none}
+    body[data-mode="before"] .drawer-layer.is-open{display:block}
+    body[data-mode="after"] .drawer-layer.is-open{display:block;animation:backdrop-in .22s var(--ease)}
+    @keyframes backdrop-in{from{opacity:0}to{opacity:1}}
+    .receipt-drawer{position:absolute;inset:0 0 0 auto;width:min(470px,100%);
+      padding:78px 32px 32px;overflow:auto;border-left:1px solid var(--copper);
+      background:var(--panel);box-shadow:var(--shadow-drawer);animation:drawer-in .22s var(--ease)}
+    @keyframes drawer-in{from{transform:translateX(20px);opacity:0}to{transform:none;opacity:1}}
+    .drawer-close{position:absolute;top:22px;right:22px;display:grid;place-items:center;
+      width:32px;height:32px;padding:0;border:1px solid transparent;background:transparent;
+      color:var(--muted);cursor:pointer}
+    .drawer-close:hover{color:var(--copper-bright);border-color:var(--line)}
+    .receipt-drawer h2{margin:0 0 4px;font:700 22px/1.05 "Inter",sans-serif;letter-spacing:-.02em}
+    .receipt-primary-action{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+    .receipt-proof-disclosure{margin-top:16px}
+    .drawer-list{margin:16px 0 0}
+    .drawer-list .row{display:grid;grid-template-columns:1fr 1.3fr auto;align-items:center;
+      gap:12px;min-width:0;padding:12px 0;border-top:1px solid var(--line)}
+    .drawer-list dt{color:var(--dim);font:500 var(--fs-mono) "JetBrains Mono",monospace}
+    .drawer-list dd{display:flex;align-items:center;gap:8px;min-width:0;margin:0;
+      font-size:var(--fs-small);font-weight:var(--fw-label);overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+    .inline-copy{display:grid;place-items:center;width:24px;height:24px;padding:0;
+      border:1px solid transparent;background:transparent;color:var(--dim);cursor:pointer;
+      border-radius:var(--radius-md);transition:background .16s var(--ease),color .16s var(--ease)}
+    .inline-copy:hover{color:var(--copper-bright);background:rgba(210,139,82,.12)}
+
+    body[data-mode="after"] .receipt-drawer{border-left:1px solid var(--line);
+      background:linear-gradient(180deg,var(--panel-2),var(--panel))}
+    body[data-mode="after"] .receipt-drawer::before{content:"";position:absolute;
+      top:78px;bottom:32px;left:-1px;width:2px;
+      background:linear-gradient(180deg,var(--copper),transparent)}
+    body[data-mode="after"] .drawer-close{border-radius:var(--radius-md);border-color:var(--line)}
+    body[data-mode="after"] .drawer-list .row{padding:14px 0}
+    body[data-mode="after"] .drawer-list dd{justify-content:flex-end;text-align:right}
+
+    /* ============================================================
+       EMPTY STATE.
+       ============================================================ */
+    .empty-state{padding:24px;color:var(--dim);font-size:var(--fs-small);text-align:left}
+    .empty-state strong{display:block;font-size:var(--fs-body);font-weight:var(--fw-label);color:var(--ink);margin-bottom:4px}
+    .empty-state span{display:block;margin-bottom:12px}
+    .empty-state .button{margin-top:8px}
+    .transaction-empty-state{display:grid;justify-items:start;gap:8px}
+    .transaction-empty-state p{margin:0}
+
+    body[data-mode="after"] .empty-state{padding:28px 24px;border:1px dashed var(--line);
+      border-radius:var(--radius-lg);background:color-mix(in srgb,var(--panel-2) 40%,transparent)}
+    body[data-mode="after"] .transaction-empty-state{padding:36px}
+
+    /* ============================================================
+       MOBILE DISCLOSURE — desktop default open.
+       ============================================================ */
+    .mobile-disclosure>summary{display:none}
+    .mobile-disclosure-content{display:contents}
+    body[data-mode="after"] .dashboard-mobile-disclosure{position:relative}
+    body[data-mode="after"] .dashboard-mobile-disclosure::before{content:"";position:absolute;
+      top:-1px;left:20%;right:20%;height:1px;
+      background:linear-gradient(90deg,transparent,var(--copper),transparent)}
+
+    /* ============================================================
+       ANNOTATIONS — short numbered markers dropped into After markup.
+       ============================================================ */
+    /* Annotations: small green pills that flag the After-only upgrades. They
+       sit inline next to (or under) the upgraded surface so the comparison
+       reads at a glance. The legend at the top of the page documents them. */
+    .annotation{display:inline-flex;align-items:center;gap:6px;margin-left:8px;padding:2px 8px;
+      background:rgba(116,224,194,.12);border:1px solid rgba(116,224,194,.4);
+      color:var(--phosphor);font:500 11px/1 "JetBrains Mono",monospace;
+      letter-spacing:.04em;text-transform:uppercase;border-radius:999px;
+      vertical-align:middle}
+    .annotation.block{display:flex;margin:8px 0 0;justify-content:flex-end}
+
+    /* Legend: small key explaining what the green pills mean. */
+    .audit-legend{display:flex;align-items:center;gap:10px;margin:0 0 24px;padding:12px 16px;
+      border:1px dashed var(--line);background:color-mix(in srgb,var(--panel-2) 40%,transparent);
+      font-size:12px;color:var(--muted)}
+    .audit-legend .annotation{margin-left:0}
+
+    /* ============================================================
+       DRAWER FOCUS BLOCK — a standalone clickable comparison that
+       flips its own receipt drawer treatment between before/after,
+       independent of the page-wide data-mode. Lets the reader focus
+       on just the receipt drawer without scrolling through the full
+       Transactions surface.
+       ============================================================ */
+    .drawer-focus{margin:0 0 32px;border:1px solid var(--line);background:var(--panel);
+      overflow:hidden}
+    .drawer-focus-head{display:flex;align-items:center;justify-content:space-between;
+      gap:16px;padding:16px 20px;border-bottom:1px solid var(--line);
+      background:linear-gradient(180deg,var(--panel-2),var(--panel))}
+    .drawer-focus-head h2{margin:0;font:700 14px/1.2 "Inter",sans-serif;letter-spacing:-.02em;
+      color:var(--ink)}
+    .drawer-focus-head p{margin:4px 0 0;color:var(--muted);font-size:12px;max-width:520px;
+      line-height:1.5}
+    .drawer-focus-toggle{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;
+      border:1px solid var(--copper);background:transparent;color:var(--copper-bright);
+      font:600 11px/1 "JetBrains Mono",monospace;letter-spacing:.04em;
+      text-transform:uppercase;cursor:pointer;transition:background .16s var(--ease),
+        color .16s var(--ease);flex:0 0 auto}
+    .drawer-focus-toggle:hover{background:color-mix(in srgb,var(--copper) 14%,transparent)}
+    .drawer-focus-stage{position:relative;min-height:520px;background:
+      repeating-linear-gradient(135deg,
+        color-mix(in srgb,var(--panel-2) 40%,transparent) 0 6px,
+        transparent 6px 14px)}
+    .drawer-focus-drawer{position:absolute;top:24px;bottom:24px;right:24px;
+      width:min(420px,calc(100% - 48px));max-width:100%;overflow:auto;
+      transition:background .22s var(--ease),border-color .22s var(--ease)}
+    .drawer-focus-label{position:absolute;top:24px;left:24px;display:grid;gap:4px;
+      max-width:calc(100% - 480px);min-width:200px}
+    .drawer-focus-label .pill{display:inline-flex;align-items:center;gap:6px;padding:3px 8px;
+      border:1px solid var(--line);border-radius:999px;width:fit-content;
+      font:600 10px/1 "JetBrains Mono",monospace;letter-spacing:.08em;
+      text-transform:uppercase;color:var(--muted)}
+    .drawer-focus-label h3{margin:0;font:700 16px/1.2 "Inter",sans-serif;
+      letter-spacing:-.02em;color:var(--ink)}
+    .drawer-focus-label p{margin:0;color:var(--muted);font-size:12px;line-height:1.5}
+    .drawer-focus-label .annotation{margin-left:0}
+
+    @media (max-width:900px){.drawer-focus-label{position:static;margin:20px 20px 0;
+      max-width:none}.drawer-focus-drawer{position:static;width:auto;margin:20px}}
+    @media (prefers-reduced-motion:reduce){.drawer-focus-drawer{transition:none}}
+
+    /* Scope the AFTER drawer treatment to the focus block by attribute,
+       so the AFTER card renders correctly even when the page itself is
+       in BEFORE mode (and the user is just exploring the drawer focus). */
+    [data-drawer-card="after"] {
+      border-left: 1px solid var(--line);
+      background: linear-gradient(180deg, var(--panel-2), var(--panel));
+      position: relative;
+    }
+    [data-drawer-card="after"]::before {
+      content: ""; position: absolute;
+      top: 78px; bottom: 32px; left: -1px; width: 2px;
+      background: linear-gradient(180deg, var(--copper), transparent);
+    }
+    [data-drawer-card="after"] .drawer-close {
+      border-radius: var(--radius-md); border-color: var(--line);
+    }
+    [data-drawer-card="after"] .drawer-list .row { padding: 14px 0; }
+    [data-drawer-card="after"] .drawer-list dd {
+      justify-content: flex-end; text-align: right;
+    }
+    [data-drawer-card="after"] .button-primary {
+      border-radius: var(--radius-md);
+      box-shadow: 0 1px 0 rgba(255,255,255,.18) inset,
+        0 8px 20px rgba(210,139,82,.18);
+    }
+    [data-drawer-card="after"] .button {
+      border-radius: var(--radius-md);
+      box-shadow: 0 1px 0 rgba(255,255,255,.04) inset;
+    }
+
+    @media (max-width:1100px){.dashboard-split{grid-template-columns:1fr}.ops-summary{grid-template-columns:repeat(3,1fr)}.context-strip{grid-template-columns:repeat(2,1fr)}.stats-grid{grid-template-columns:repeat(2,1fr)}}
+    @media (max-width:720px){.ops-page{padding:32px 16px 60px}.page-head,.page-head-asymmetric{grid-template-columns:1fr}.context-strip,.stats-grid{grid-template-columns:1fr}.context-cell{border-right:0!important;border-bottom:1px solid var(--line)}.context-cell:last-child{border-bottom:0}.ops-summary{grid-template-columns:repeat(2,1fr)}.ops-summary-note{grid-column:span 2}.transaction-table-head{display:none}.transaction-row{grid-template-columns:minmax(0,1fr) auto 15px}.transaction-row>.mono,.transaction-age{display:none}}
+    @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms!important;transition-duration:.001ms!important}}
+  </style>
+</head>
+<body data-mode="before">
+  <div class="audit-shell">
+    <header class="audit-head">
+      <div class="audit-head-titles">
+        <h1>Dashboard + Transactions · design audit</h1>
+        <span class="toggle-state" id="toggleState" aria-live="polite">showing BEFORE</span>
+        <p>The two list/grid surfaces of the operator console, rendered twice from the same markup. The After column applies the modernization proposals (CSS-only, token-faithful).</p>
+      </div>
+      <button class="toggle" id="toggle" type="button">Switch to After</button>
+    </header>
+
+    <div class="audit-legend" aria-label="Annotation key">
+      <span class="annotation" aria-hidden="true">after upgrade</span>
+      <span>Phosphor-bordered pills mark After-only upgrades. Compare the two surfaces side by side with the toggle above.</span>
+    </div>
+
+    <!-- ===================== DRAWER FOCUS BLOCK =====================
+         Standalone clickable comparison for the receipt drawer. The
+         toggle inside flips ONLY this block (data-mode="drawer-before"
+         vs "drawer-after"); the rest of the audit is unaffected. The
+         stage also accepts clicks anywhere on the dimmed backdrop to
+         flip — both interaction paths land on the same handler.
+         ============================================================== -->
+    <section class="drawer-focus" data-mode="drawer-before" aria-label="Receipt drawer focus comparison">
+      <div class="drawer-focus-head">
+        <div>
+          <h2>Receipt drawer · focus</h2>
+          <p>A self-contained before/after comparison of the receipt drawer only. Click the toggle or the stage to flip the panel; the rest of the audit stays put.</p>
+        </div>
+        <button class="drawer-focus-toggle" type="button" data-drawer-toggle aria-live="polite">
+          <span data-drawer-toggle-label>Switch to After</span>
+        </button>
+      </div>
+      <div class="drawer-focus-stage" data-drawer-stage role="button" tabindex="0" aria-label="Click to flip drawer treatment">
+        <div class="drawer-focus-label">
+          <span class="pill" data-drawer-pill>BEFORE</span>
+          <h3>Receipt detail</h3>
+          <p data-drawer-copy>Flat panel, copper left border, no entrance motion. Proof rows align left; the explorer link lives inside the disclosure.</p>
+          <span class="annotation" data-drawer-annotation hidden>drawer refined</span>
+        </div>
+
+        <!-- BEFORE drawer card -->
+        <aside class="receipt-drawer drawer-focus-drawer" data-drawer-card="before">
+          <button class="drawer-close" aria-label="Close receipt" type="button">✕</button>
+          <h2>Receipt detail</h2>
+          <div class="receipt-primary-action">
+            <button class="button button-primary" type="button">View on explorer →</button>
+            <button class="button button-ghost" type="button">Run another like this</button>
+          </div>
+          <details class="receipt-proof-disclosure" open>
+            <summary>Technical details</summary>
+            <dl class="drawer-list">
+              <div class="row"><dt>Transaction hash</dt><dd class="mono">0x4f71c2a8…d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7</dd><dd><button class="inline-copy" aria-label="Copy receipt hash">⧉</button></dd></div>
+              <div class="row"><dt>Network</dt><dd><a class="text-link" href="#">View on explorer →</a></dd><dd></dd></div>
+              <div class="row"><dt>Agent</dt><dd>#1042</dd><dd></dd></div>
+              <div class="row"><dt>Event</dt><dd>decoded + indexed</dd><dd></dd></div>
+            </dl>
+          </details>
+        </aside>
+
+        <!-- AFTER drawer card -->
+        <aside class="receipt-drawer drawer-focus-drawer" data-drawer-card="after" hidden>
+          <button class="drawer-close" aria-label="Close receipt" type="button">✕</button>
+          <h2>Receipt detail</h2>
+          <div class="receipt-primary-action">
+            <button class="button button-primary" type="button">View on explorer →</button>
+            <button class="button button-ghost" type="button">Run another like this</button>
+          </div>
+          <details class="receipt-proof-disclosure" open>
+            <summary>Technical details</summary>
+            <dl class="drawer-list">
+              <div class="row"><dt>Transaction hash</dt><dd class="mono">0x4f71c2a8…d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7</dd><dd><button class="inline-copy" aria-label="Copy receipt hash">⧉</button></dd></div>
+              <div class="row"><dt>Network</dt><dd><a class="text-link" href="#">View on explorer →</a></dd><dd></dd></div>
+              <div class="row"><dt>Agent</dt><dd>#1042</dd><dd></dd></div>
+              <div class="row"><dt>Event</dt><dd>decoded + indexed</dd><dd></dd></div>
+            </dl>
+          </details>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ===================== BEFORE ===================== -->
+    <section class="surface surface--before" aria-label="Before">
+      <div class="ops-page">
+        <div class="page-head page-head-asymmetric">
+          <div><h1>Your <i>agents</i>.</h1><p>One fleet, one register. Attention surfaces faults only — fresh agents show as setup, not trouble.</p></div>
+          <div class="action-lane">
+            <strong>2 agents aren't ready yet</strong>
+            <small>3 unconfigured · 2 failing</small>
+            <button class="text-link" type="button">Refresh <span aria-hidden="true">↻</span></button>
+          </div>
+        </div>
+
+        <section class="context-strip">
+          <div class="context-cell"><strong>0x4f…a31c</strong><span class="mono">connected</span></div>
+          <div class="context-cell"><strong>Ready to sign</strong><span class="mono">metamask, app chain</span></div>
+          <div class="context-cell context-action"><strong>2 receipts need review</strong><button class="text-link" type="button">Open review queue →</button></div>
+          <div class="context-cell"><strong>status checks</strong><span class="mono">awaiting confirmation</span></div>
+        </section>
+
+        <section class="checklist-card">
+          <div class="panel-head"><div><h2>Get your first agent working</h2></div><button class="checklist-dismiss" aria-label="Dismiss" type="button">✕</button></div>
+          <ol class="checklist-steps">
+            <li><button class="checklist-step" type="button"><span class="checklist-mark done">✓</span><span class="checklist-copy"><strong>Mint your agent</strong><small>Register an agent — no funds needed yet.</small></span></button></li>
+            <li><button class="checklist-step" type="button"><span class="checklist-mark">⌬</span><span class="checklist-copy"><strong>Fund its vault</strong><small>Add native gas so the agent can pay for runs.</small></span></button></li>
+            <li><button class="checklist-step" aria-disabled="true" type="button"><span class="checklist-mark">▶</span><span class="checklist-copy"><strong>Run a task</strong><small>Give one instruction and watch the receipt land.</small></span></button></li>
+          </ol>
+        </section>
+
+        <section class="stats-grid">
+          <div class="stat"><div class="stat-top"><span>MONEY HELD</span><span class="stat-icon">↑</span></div><strong>2.413 ETH</strong><small>across 5 agents</small></div>
+          <div class="stat"><div class="stat-top"><span>READY TO WORK</span><span class="stat-icon">◉</span></div><strong>3 / 5</strong><small>2 need review</small></div>
+          <div class="stat"><div class="stat-top"><span>IN PROGRESS</span><span class="stat-icon">◎</span></div><strong>1</strong><small>awaiting confirmation</small></div>
+        </section>
+
+        <div class="gas-tank-card">
+          <h3>Gas Tank</h3>
+          <div class="gas-tank-card__balance"><strong>0.142 ETH</strong><small>8 ops left</small></div>
+          <div class="gas-tank-card__grants" role="progressbar" aria-valuenow="42" aria-valuemin="0" aria-valuemax="100" title="Free gas grants consumed"><div style="width:42%"></div></div>
+          <small style="color:var(--dim)">Grants: 21 of 50 used</small>
+          <div class="gas-tank-card__deposit">
+            <input type="text" inputmode="decimal" placeholder="Deposit amount (min 0.01 ETH)" aria-label="Deposit amount" />
+            <button class="button button-ghost" type="button">Deposit</button>
+          </div>
+          <button class="button button-ghost" type="button">Claim free gas grant</button>
+          <div class="gas-tank-card__faucet">
+            <small style="color:var(--dim)">Test tokens: 2 left</small>
+            <small style="color:var(--dim)">faucet available</small>
+            <button class="button button-ghost" type="button">Claim test tokens</button>
+          </div>
+        </div>
+
+        <section class="panel activity-panel">
+          <div class="panel-head"><div><h2>Latest receipts</h2></div><button class="button button-ghost" type="button">All receipts</button></div>
+          <div class="activity-list">
+            <button class="activity-row" type="button"><span>◐</span><span><strong>Vault deposit</strong><small>agent #1042, 12m ago</small></span><span class="state-pill state-confirmed">CONFIRMED</span><span>›</span></button>
+            <button class="activity-row" type="button"><span>◑</span><span><strong>Tick run</strong><small>agent #1042, 4m ago</small></span><span class="state-pill state-confirming">CONFIRMING</span><span>›</span></button>
+            <button class="activity-row" type="button"><span>◓</span><span><strong>Approval</strong><small>agent #1044, 22m ago</small></span><span class="state-pill state-reverted">REVERTED</span><span>›</span></button>
+          </div>
+        </section>
+
+        <div class="dashboard-split">
+          <section class="panel agent-panel">
+            <div class="panel-head"><div><h2>Your agents</h2></div></div>
+            <div class="agent-list">
+              <button class="agent-row" type="button"><span class="agent-row-mark">◉</span><span><strong>Agent #1042</strong><small>yield-routing, 3 tasks today</small></span><span class="agent-value"><b>0.812 ETH</b><span class="status status-success">READY</span></span><span>›</span></button>
+              <button class="agent-row" type="button"><span class="agent-row-mark">◉</span><span><strong>Agent #1043</strong><small>no description</small></span><span class="agent-value"><b>—</b><span class="status status-muted">SETUP</span></span><span>›</span></button>
+              <button class="agent-row" type="button"><span class="agent-row-mark">◉</span><span><strong>Agent #1044</strong><small>payment-router, 1 failure</small></span><span class="agent-value"><b>0.302 ETH</b><span class="status status-warning">NEEDS REVIEW</span></span><span>›</span></button>
+              <button class="agent-row" type="button"><span class="agent-row-mark">◉</span><span><strong>Agent #1045</strong><small>no description</small></span><span class="agent-value"><b>—</b><span class="status status-muted">SETUP</span></span><span>›</span></button>
+            </div>
+          </section>
+          <section class="panel next-action-panel">
+            <div class="panel-head"><div><h2>Attention first</h2></div><span style="color:var(--copper)">▣</span></div>
+            <div class="proof-card"><div><small>AGENT #1044</small><strong>1 need review</strong><button class="button button-primary" type="button">Review</button></div></div>
+          </section>
+        </div>
+      </div>
+
+      <div class="ops-page">
+        <div class="page-head page-head-asymmetric">
+          <div><h1>Transaction <i>center</i>.</h1><p>Every signature has a state, a source and a recovery path.</p></div>
+          <div class="action-lane"><button class="button button-secondary" type="button">Refresh state</button></div>
+        </div>
+
+        <section class="ops-summary" aria-label="Stateful operations">
+          <div><h2 class="ops-summary-value">01</h2><small>confirming now</small></div>
+          <button class="ops-summary-recovery" type="button"><h2 class="ops-summary-value">02</h2><small>need review</small><span>→</span></button>
+          <div class="ops-summary-note"><span style="color:var(--phosphor)">▣</span><span>Confirmed = observed on-chain. Pending stays pending.</span></div>
+        </section>
+
+        <section class="panel transaction-panel">
+          <div class="panel-head transaction-panel-head">
+            <div><h2>Stateful operations</h2></div>
+            <div class="transaction-filter-controls">
+              <span class="result-count">8 of 8 receipts</span>
+              <div class="filters" role="group" aria-label="Receipt state filter">
+                <button class="filter active" type="button">All</button>
+                <button class="filter" type="button">Needs review</button>
+                <button class="filter" type="button">Confirmed</button>
+                <button class="filter filters-trigger" type="button">More filters <span aria-hidden="true">▾</span></button>
+              </div>
+            </div>
+          </div>
+          <div class="transaction-table">
+            <div class="transaction-table-head"><span>OPERATION</span><span>HASH</span><span>AGE</span><span>STATE</span></div>
+            <button class="transaction-row" type="button"><span class="transaction-kind"><i>$</i><span><strong>Vault deposit</strong><small>agent #1042, block 8210441</small></span></span><span class="mono">0x4f71…7c2a</span><span class="mono">12m ago</span><span class="state-pill state-confirmed">CONFIRMED</span><span>›</span></button>
+            <button class="transaction-row" type="button"><span class="transaction-kind"><i>$</i><span><strong>Tick run</strong><small>agent #1042, block 8210443</small></span></span><span class="mono">0x9a23…b4d1</span><span class="mono">4m ago</span><span class="state-pill state-confirming">CONFIRMING</span><span>›</span></button>
+            <button class="transaction-row" type="button"><span class="transaction-kind"><i>▣</i><span><strong>Approval</strong><small>agent #1044, block 8210433</small></span></span><span class="mono">0xc01d…3f08</span><span class="mono">22m ago</span><span class="state-pill state-reverted">REVERTED</span><span>›</span></button>
+            <button class="transaction-row" type="button"><span class="transaction-kind"><i>◉</i><span><strong>Mint agent</strong><small>agent #1042, block 8210350</small></span></span><span class="mono">0x7d2e…f1a9</span><span class="mono">3h ago</span><span class="state-pill state-confirmed">CONFIRMED</span><span>›</span></button>
+            <button class="transaction-row" type="button"><span class="transaction-kind"><i>$</i><span><strong>Pay agent</strong><small>agent #1044, block 8210431</small></span></span><span class="mono">0x2c9b…7e14</span><span class="mono">25m ago</span><span class="state-pill state-stale">NEEDS REVIEW</span><span>›</span></button>
+            <button class="transaction-row" type="button"><span class="transaction-kind"><i>◉</i><span><strong>Transfer</strong><small>agent #1041, block 8209901</small></span></span><span class="mono">0xa3b1…04c2</span><span class="mono">9h ago</span><span class="state-pill state-confirmed">CONFIRMED</span><span>›</span></button>
+            <button class="transaction-row" type="button"><span class="transaction-kind"><i>$</i><span><strong>Withdraw</strong><small>agent #1042, block 8209123</small></span></span><span class="mono">0x8f4c…a1b3</span><span class="mono">13h ago</span><span class="state-pill state-confirmed">CONFIRMED</span><span>›</span></button>
+            <button class="transaction-row" type="button"><span class="transaction-kind"><i>▶</i><span><strong>Tick run</strong><small>agent #1045, block 8209017</small></span></span><span class="mono">0x61d3…28af</span><span class="mono">14h ago</span><span class="state-pill state-rejected">REJECTED</span><span>›</span></button>
+          </div>
+        </section>
+
+        <div class="filters-backdrop" style="background:rgba(7,9,10,.4)"></div>
+        <div class="filters-popover" role="dialog" aria-label="More filters" style="top:220px;right:80px">
+          <button class="filter" type="button">Approval requested</button>
+          <button class="filter" type="button">Signature requested</button>
+          <button class="filter" type="button">Submitted</button>
+          <button class="filter" type="button">Confirming</button>
+          <button class="filter" type="button">Reverted</button>
+          <button class="filter" type="button">Rejected</button>
+          <button class="filter" type="button">Stale</button>
+        </div>
+
+        <div class="drawer-layer is-open">
+          <aside class="receipt-drawer" role="dialog" aria-modal="true" aria-label="Receipt detail">
+            <button class="drawer-close" aria-label="Close receipt" type="button">✕</button>
+            <h2>Receipt detail</h2>
+            <div class="receipt-primary-action">
+              <button class="button button-primary" type="button">View on explorer →</button>
+              <button class="button button-ghost" type="button">Run another like this</button>
+            </div>
+            <details class="receipt-proof-disclosure" open>
+              <summary>Technical details</summary>
+              <dl class="drawer-list">
+                <div class="row"><dt>Transaction hash</dt><dd class="mono">0x4f71c2a8…d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7</dd><dd><button class="inline-copy" aria-label="Copy receipt hash">⧉</button></dd></div>
+                <div class="row"><dt>Network</dt><dd><a class="text-link" href="#">View on explorer →</a></dd><dd></dd></div>
+                <div class="row"><dt>Agent</dt><dd>#1042</dd><dd></dd></div>
+                <div class="row"><dt>Event</dt><dd>decoded + indexed</dd><dd></dd></div>
+              </dl>
+            </details>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== AFTER ===================== -->
+    <section class="surface surface--after" aria-label="After">
+      <div class="ops-page">
+        <div class="page-head page-head-asymmetric">
+          <div><h1>Your <i>agents</i>.</h1><p>One fleet, one register. Attention surfaces faults only — fresh agents show as setup, not trouble.</p></div>
+          <div class="action-lane">
+            <strong>2 agents aren't ready yet</strong>
+            <small>3 unconfigured · 2 failing</small>
+            <button class="text-link" type="button">Refresh <span aria-hidden="true">↻</span></button>
+          </div>
+        </div>
+
+        <section class="context-strip">
+          <div class="context-cell"><strong>0x4f…a31c</strong><span class="mono">connected</span></div>
+          <div class="context-cell"><strong>Ready to sign</strong><span class="mono">metamask, app chain</span></div>
+          <div class="context-cell context-action"><strong>2 receipts need review</strong><button class="text-link" type="button">Open review queue →</button><span class="annotation">context strip refined</span></div>
+          <div class="context-cell"><strong>status checks</strong><span class="mono">awaiting confirmation</span></div>
+        </section>
+
+        <section class="checklist-card">
+          <div class="panel-head"><div><h2>Get your first agent working</h2></div><button class="checklist-dismiss" aria-label="Dismiss" type="button">✕</button><span class="annotation">checklist refined</span></div>
+          <ol class="checklist-steps">
+            <li><button class="checklist-step" type="button"><span class="checklist-mark done">✓</span><span class="checklist-copy"><strong>Mint your agent</strong><small>Register an agent — no funds needed yet.</small></span></button></li>
+            <li><button class="checklist-step" type="button"><span class="checklist-mark">⌬</span><span class="checklist-copy"><strong>Fund its vault</strong><small>Add native gas so the agent can pay for runs.</small></span></button></li>
+            <li><button class="checklist-step" aria-disabled="true" type="button"><span class="checklist-mark">▶</span><span class="checklist-copy"><strong>Run a task</strong><small>Give one instruction and watch the receipt land.</small></span></button></li>
+          </ol>
+        </section>
+
+        <section class="stats-grid">
+          <div class="stat"><div class="stat-top"><span>MONEY HELD</span><span class="stat-icon">↑</span></div><strong>2.413 ETH</strong><small>across 5 agents</small><span class="annotation">stat refined</span></div>
+          <div class="stat"><div class="stat-top"><span>READY TO WORK</span><span class="stat-icon">◉</span></div><strong>3 / 5</strong><small class="alert">2 need review</small></div>
+          <div class="stat"><div class="stat-top"><span>IN PROGRESS</span><span class="stat-icon">◎</span></div><strong>1</strong><small>awaiting confirmation</small></div>
+        </section>
+
+        <div class="gas-tank-card">
+          <h3>Gas Tank</h3>
+          <div class="gas-tank-card__balance"><strong>0.142 ETH</strong><small>8 ops left</small></div>
+          <div class="gas-tank-card__grants" role="progressbar" aria-valuenow="42" aria-valuemin="0" aria-valuemax="100" title="Free gas grants consumed"><div style="width:42%"></div></div>
+          <small class="gas-tank-card__note">Grants: 21 of 50 used</small>
+          <div class="gas-tank-card__deposit">
+            <input type="text" inputmode="decimal" placeholder="Deposit amount (min 0.01 ETH)" aria-label="Deposit amount" />
+            <button class="button button-ghost" type="button">Deposit</button>
+          </div>
+          <button class="button button-ghost" type="button">Claim free gas grant</button>
+          <div class="gas-tank-card__faucet">
+            <small class="gas-tank-card__note">Test tokens: 2 left</small>
+            <small class="gas-tank-card__note">faucet available</small>
+            <button class="button button-ghost" type="button">Claim test tokens</button>
+          </div>
+          <span class="annotation">gas tank token classes</span>
+        </div>
+
+        <section class="panel activity-panel">
+          <div class="panel-head"><div><h2>Latest receipts</h2></div><button class="button button-ghost" type="button">All receipts</button><span class="annotation">activity panel</span></div>
+          <div class="activity-list">
+            <button class="activity-row" type="button"><span>◐</span><span><strong>Vault deposit</strong><small>agent #1042, 12m ago</small></span><span class="state-pill state-confirmed">CONFIRMED</span><span>›</span></button>
+            <button class="activity-row" type="button"><span>◑</span><span><strong>Tick run</strong><small>agent #1042, 4m ago</small></span><span class="state-pill state-confirming">CONFIRMING</span><span>›</span></button>
+            <button class="activity-row" type="button"><span>◓</span><span><strong>Approval</strong><small>agent #1044, 22m ago</small></span><span class="state-pill state-reverted">REVERTED</span><span>›</span></button>
+          </div>
+        </section>
+
+        <div class="dashboard-split">
+          <section class="panel agent-panel">
+            <div class="panel-head"><div><h2>Your agents</h2></div><span class="annotation">agent row refined</span></div>
+            <div class="agent-list">
+              <button class="agent-row" type="button"><span class="agent-row-mark">◉</span><span><strong>Agent #1042</strong><small>yield-routing, 3 tasks today</small></span><span class="agent-value"><b>0.812 ETH</b><span class="status status-success">READY</span></span><span>›</span></button>
+              <button class="agent-row" type="button"><span class="agent-row-mark">◉</span><span><strong>Agent #1043</strong><small>no description</small></span><span class="agent-value"><b>—</b><span class="status status-muted">SETUP</span></span><span>›</span></button>
+              <button class="agent-row" type="button"><span class="agent-row-mark">◉</span><span><strong>Agent #1044</strong><small>payment-router, 1 failure</small></span><span class="agent-value"><b>0.302 ETH</b><span class="status status-warning">NEEDS REVIEW</span></span><span>›</span></button>
+              <button class="agent-row" type="button"><span class="agent-row-mark">◉</span><span><strong>Agent #1045</strong><small>no description</small></span><span class="agent-value"><b>—</b><span class="status status-muted">SETUP</span></span><span>›</span></button>
+            </div>
+          </section>
+          <section class="panel next-action-panel">
+            <div class="panel-head"><div><h2>Attention first</h2></div><span style="color:var(--copper)">▣</span></div>
+            <div class="proof-card"><div><small>AGENT #1044</small><strong>1 need review</strong><button class="button button-primary" type="button">Review</button></div></div>
+          </section>
+        </div>
+      </div>
+
+      <div class="ops-page">
+        <div class="page-head page-head-asymmetric">
+          <div><h1>Transaction <i>center</i>.</h1><p>Every signature has a state, a source and a recovery path.</p></div>
+          <div class="action-lane"><button class="button button-secondary" type="button">Refresh state</button></div>
+        </div>
+
+        <section class="ops-summary" aria-label="Stateful operations">
+          <div><h2 class="ops-summary-value">01</h2><small>confirming now</small></div>
+          <button class="ops-summary-recovery" type="button"><h2 class="ops-summary-value">02</h2><small>need review</small><span>→</span></button>
+          <div class="ops-summary-note">
+            <span style="color:var(--phosphor)">▣</span>
+            <span>Confirmed = observed on-chain. Pending stays pending.</span>
+            <span class="annotation block">ops summary refined</span>
+          </div>
+        </section>
+
+        <section class="panel transaction-panel">
+          <div class="panel-head transaction-panel-head">
+            <div><h2>Stateful operations</h2></div>
+            <div class="transaction-filter-controls">
+              <span class="result-count">8 of 8 receipts</span>
+              <div class="filters" role="group" aria-label="Receipt state filter">
+                <button class="filter active" type="button">All</button>
+                <button class="filter" type="button">Needs review</button>
+                <button class="filter" type="button">Confirmed</button>
+                <button class="filter filters-trigger" type="button">More filters <span aria-hidden="true">▾</span></button>
+                <span class="annotation">chips become pills</span>
+              </div>
+            </div>
+          </div>
+          <div class="transaction-table">
+            <div class="transaction-table-head"><span>OPERATION</span><span>HASH</span><span>AGE</span><span>STATE</span></div>
+            <button class="transaction-row is-active" type="button"><span class="transaction-kind"><i>$</i><span><strong>Vault deposit</strong><small>agent #1042, block 8210441</small></span></span><span class="mono">0x4f71…7c2a</span><span class="mono">12m ago</span><span class="state-pill state-confirmed">CONFIRMED</span><span>›</span></button>
+            <button class="transaction-row" type="button"><span class="transaction-kind"><i>$</i><span><strong>Tick run</strong><small>agent #1042, block 8210443</small></span></span><span class="mono">0x9a23…b4d1</span><span class="mono">4m ago</span><span class="state-pill state-confirming">CONFIRMING</span><span>›</span></button>
+            <button class="transaction-row" type="button"><span class="transaction-kind"><i>▣</i><span><strong>Approval</strong><small>agent #1044, block 8210433</small></span></span><span class="mono">0xc01d…3f08</span><span class="mono">22m ago</span><span class="state-pill state-reverted">REVERTED</span><span>›</span></button>
+            <button class="transaction-row" type="button"><span class="transaction-kind"><i>◉</i><span><strong>Mint agent</strong><small>agent #1042, block 8210350</small></span></span><span class="mono">0x7d2e…f1a9</span><span class="mono">3h ago</span><span class="state-pill state-confirmed">CONFIRMED</span><span>›</span></button>
+            <button class="transaction-row" type="button"><span class="transaction-kind"><i>$</i><span><strong>Pay agent</strong><small>agent #1044, block 8210431</small></span></span><span class="mono">0x2c9b…7e14</span><span class="mono">25m ago</span><span class="state-pill state-stale">NEEDS REVIEW</span><span>›</span></button>
+            <button class="transaction-row" type="button"><span class="transaction-kind"><i>◉</i><span><strong>Transfer</strong><small>agent #1041, block 8209901</small></span></span><span class="mono">0xa3b1…04c2</span><span class="mono">9h ago</span><span class="state-pill state-confirmed">CONFIRMED</span><span>›</span></button>
+            <button class="transaction-row" type="button"><span class="transaction-kind"><i>$</i><span><strong>Withdraw</strong><small>agent #1042, block 8209123</small></span></span><span class="mono">0x8f4c…a1b3</span><span class="mono">13h ago</span><span class="state-pill state-confirmed">CONFIRMED</span><span>›</span></button>
+            <button class="transaction-row" type="button"><span class="transaction-kind"><i>▶</i><span><strong>Tick run</strong><small>agent #1045, block 8209017</small></span></span><span class="mono">0x61d3…28af</span><span class="mono">14h ago</span><span class="state-pill state-rejected">REJECTED</span><span>›</span></button>
+            <span class="annotation">tx table refined · active row matches ?tx= deep link</span>
+          </div>
+        </section>
+
+        <div class="filters-backdrop"></div>
+        <div class="filters-popover" role="dialog" aria-label="More filters" style="inset:220px auto auto 80px">
+          <button class="filter" type="button">Approval requested</button>
+          <button class="filter active" type="button">Signature requested</button>
+          <button class="filter" type="button">Submitted</button>
+          <button class="filter" type="button">Confirming</button>
+          <button class="filter" type="button">Reverted</button>
+          <button class="filter" type="button">Rejected</button>
+          <button class="filter" type="button">Stale</button>
+          <span class="annotation" style="grid-column:1/-1;justify-self:end">inset shorthand · blurred backdrop</span>
+        </div>
+
+        <div class="drawer-layer is-open">
+          <aside class="receipt-drawer" role="dialog" aria-modal="true" aria-label="Receipt detail">
+            <button class="drawer-close" aria-label="Close receipt" type="button">✕</button>
+            <h2>Receipt detail</h2>
+            <div class="receipt-primary-action">
+              <button class="button button-primary" type="button">View on explorer →</button>
+              <button class="button button-ghost" type="button">Run another like this</button>
+            </div>
+            <details class="receipt-proof-disclosure" open>
+              <summary>Technical details</summary>
+              <dl class="drawer-list">
+                <div class="row"><dt>Transaction hash</dt><dd class="mono">0x4f71c2a8…d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7</dd><dd><button class="inline-copy" aria-label="Copy receipt hash">⧉</button></dd></div>
+                <div class="row"><dt>Network</dt><dd><a class="text-link" href="#">View on explorer →</a></dd><dd></dd></div>
+                <div class="row"><dt>Agent</dt><dd>#1042</dd><dd></dd></div>
+                <div class="row"><dt>Event</dt><dd>decoded + indexed</dd><dd></dd></div>
+              </dl>
+              <span class="annotation">drawer refined</span>
+            </details>
+          </aside>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    (function () {
+      var body = document.body;
+      var btn = document.getElementById("toggle");
+      var state = document.getElementById("toggleState");
+      function sync() {
+        var mode = body.getAttribute("data-mode");
+        btn.textContent = mode === "before" ? "Switch to After" : "Switch to Before";
+        state.textContent = mode === "before" ? "showing BEFORE" : "showing AFTER";
+      }
+      btn.addEventListener("click", function () {
+        var next = body.getAttribute("data-mode") === "before" ? "after" : "before";
+        body.setAttribute("data-mode", next);
+        sync();
+      });
+      sync();
+    })();
+
+    // Drawer focus block — independent toggle that flips only this
+    // block between before/after treatment of the receipt drawer. The
+    // stage backdrop and the explicit button both flip the same mode.
+    (function () {
+      var blocks = document.querySelectorAll(".drawer-focus");
+      blocks.forEach(function (block) {
+        var toggle = block.querySelector("[data-drawer-toggle]");
+        var label = block.querySelector("[data-drawer-toggle-label]");
+        var stage = block.querySelector("[data-drawer-stage]");
+        var pill = block.querySelector("[data-drawer-pill]");
+        var copy = block.querySelector("[data-drawer-copy]");
+        var ann = block.querySelector("[data-drawer-annotation]");
+        var cards = block.querySelectorAll("[data-drawer-card]");
+        var beforeCard = block.querySelector('[data-drawer-card="before"]');
+        var afterCard = block.querySelector('[data-drawer-card="after"]');
+
+        function syncDrawer() {
+          var mode = block.getAttribute("data-mode");
+          var isAfter = mode === "drawer-after";
+          label.textContent = isAfter ? "Switch to Before" : "Switch to After";
+          pill.textContent = isAfter ? "AFTER" : "BEFORE";
+          pill.style.color = isAfter ? "var(--phosphor)" : "var(--muted)";
+          pill.style.borderColor = isAfter ? "rgba(116,224,194,.4)" : "var(--line)";
+          copy.textContent = isAfter
+            ? "Copper gradient hairline on the left, rounded close, right-aligned monospace amounts, refined proof rows."
+            : "Flat panel, copper left border, no entrance motion. Proof rows align left; the explorer link lives inside the disclosure.";
+          if (ann) ann.hidden = !isAfter;
+          cards.forEach(function (c) { c.hidden = true; });
+          (isAfter ? afterCard : beforeCard).hidden = false;
+        }
+
+        function flip() {
+          var next = block.getAttribute("data-mode") === "drawer-before"
+            ? "drawer-after" : "drawer-before";
+          block.setAttribute("data-mode", next);
+          syncDrawer();
+        }
+
+        if (toggle) toggle.addEventListener("click", flip);
+        if (stage) {
+          stage.addEventListener("click", flip);
+          stage.addEventListener("keydown", function (e) {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              flip();
+            }
+          });
+        }
+        syncDrawer();
+      });
+    })();
+  </script>
+</body>
+</html>

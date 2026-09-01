@@ -1,0 +1,1960 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Axiom AppShell Chrome — Before / After</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    /* -------------------------------------------------------- *
+     * Shared tokens — mirror the codebase's CSS custom-property
+     * ladder. Dark on top, the `.light` modifier overrides for
+     * paper. Every chrome surface in both Before and After reads
+     * through these tokens; no hard-coded hex except inside
+     * gradient stops that intentionally transcend the palette.
+     * -------------------------------------------------------- */
+    :root {
+      /* Spacing ladder (remapped onto --space-1..--space-7). */
+      --space-1: 4px;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-5: 24px;
+      --space-6: 32px;
+      --space-7: 48px;
+
+      /* Type scale — 4 core steps + mono accent. */
+      --fs-mono: 12px;
+      --fs-small: 13px;
+      --fs-body: 14px;
+      --fs-title: 20px;
+      --fs-display: clamp(28px, 3vw, 43px);
+
+      --fw-label: 500;
+      --fw-title: 600;
+      --fw-strong: 700;
+
+      /* Color palette — dark default. */
+      --bg: #111315;
+      --bg-2: #171a1d;
+      --panel: #1b1f22;
+      --panel-2: #202529;
+      --line: #32383c;
+      --line-soft: #272d31;
+      --text: #f0eee9;
+      --muted: #99a09f;
+      --dim: #858e8d;
+      --copper: #d28b52;
+      --copper-bright: #efae6b;
+      --phosphor: #67e8b4;
+      --teal: #79c4cd;
+      --danger: #e27d74;
+      --warning: #f0b36b;
+      --canvas: #0b0e0f;
+      --ink: #ece9de;
+
+      --copper-05: rgba(210, 139, 82, 0.05);
+      --copper-06: rgba(210, 139, 82, 0.06);
+      --copper-08: rgba(210, 139, 82, 0.08);
+      --copper-10: rgba(210, 139, 82, 0.10);
+
+      /* Layers */
+      --layer-rail: 30;
+      --layer-topbar: 40;
+      --layer-popover: 60;
+      --layer-drawer: 80;
+      --layer-modal: 90;
+      --layer-mobile-nav: 130;
+
+      /* Surfaces inside .app-shell — used by both Before/After. */
+      --completion-panel: rgba(18, 22, 23, .92);
+      --completion-panel-2: rgba(23, 28, 29, .88);
+      --completion-line: rgba(225, 218, 196, .12);
+      --completion-copper: var(--copper);
+      --completion-bright: #f1b879;
+      --completion-phosphor: var(--phosphor);
+      --completion-muted: #a6aaa4;
+      --completion-dim: var(--dim);
+      --completion-warning: var(--warning);
+      --completion-overlay: rgba(7, 9, 10, .72);
+
+      /* Geometry / motion. */
+      --radius: 10px;
+      --radius-sm: 4px;
+      --radius-md: 6px;
+      --radius-lg: 8px;
+      --radius-xl: 14px;
+      --ease: cubic-bezier(0.23, 1, 0.32, 1);
+      --ease-out: cubic-bezier(0.25, 1, 0.5, 1);
+      --ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
+      --shadow-drawer: -22px 0 64px rgba(0, 0, 0, 0.45);
+      --shadow-modal-sm: 0 14px 36px rgba(0, 0, 0, 0.22);
+      --shadow-modal: 0 24px 80px rgba(0, 0, 0, 0.45);
+
+      /* Body. */
+      font-family: Inter, system-ui, sans-serif;
+      color-scheme: dark;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html, body { margin: 0; }
+    body {
+      background: var(--canvas);
+      color: var(--ink);
+      font-size: var(--fs-body);
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    /* -------------------------------------------------------- *
+     * Demo shell — outside the audit artifact.
+     * -------------------------------------------------------- */
+    .doc-head {
+      max-width: 1480px;
+      margin: 0 auto;
+      padding: clamp(28px, 4vw, 56px) clamp(20px, 4vw, 56px) 16px;
+      display: grid;
+      gap: var(--space-4);
+    }
+    .doc-head h1 {
+      margin: 0;
+      font-weight: 700;
+      font-size: clamp(28px, 4vw, 44px);
+      letter-spacing: -0.04em;
+      line-height: 1.05;
+    }
+    .doc-head h1 i { color: var(--completion-bright); font-style: normal; }
+    .doc-head p {
+      max-width: 70ch;
+      margin: 0;
+      color: var(--completion-muted);
+      font-size: var(--fs-body);
+      line-height: 1.7;
+    }
+
+    .doc-controls {
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      background: rgba(11, 14, 15, 0.78);
+      border-bottom: 1px solid var(--line);
+      padding: var(--space-3) clamp(20px, 4vw, 56px);
+      display: flex;
+      gap: var(--space-3);
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .doc-controls .seg {
+      display: inline-flex;
+      gap: 2px;
+      padding: 3px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: var(--radius-md);
+    }
+    .doc-controls .seg button {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font: 600 var(--fs-mono) 'JetBrains Mono', monospace;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 8px 14px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: color 0.18s var(--ease), background 0.18s var(--ease);
+    }
+    .doc-controls .seg button:hover { color: var(--ink); }
+    .doc-controls .seg button.on {
+      background: var(--copper-08);
+      color: var(--completion-bright);
+    }
+    .doc-controls .legend {
+      margin-left: auto;
+      color: var(--dim);
+      font: 500 var(--fs-mono) 'JetBrains Mono', monospace;
+      letter-spacing: 0.06em;
+    }
+
+    /* Each frame is a self-contained AppShell instance. */
+    .frame {
+      display: none;
+      max-width: 1480px;
+      margin: 0 auto;
+      padding: clamp(20px, 4vw, 48px) clamp(20px, 4vw, 56px) clamp(40px, 8vw, 96px);
+    }
+    .frame.on { display: block; }
+    .frame-label {
+      display: flex;
+      align-items: baseline;
+      gap: var(--space-3);
+      margin-bottom: var(--space-4);
+    }
+    .frame-label .tag {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--copper-08);
+      color: var(--completion-bright);
+      font: 700 var(--fs-mono) 'JetBrains Mono', monospace;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    .frame-label small {
+      color: var(--dim);
+      font: 500 var(--fs-mono) 'JetBrains Mono', monospace;
+      letter-spacing: 0.08em;
+    }
+
+    /* -------------------------------------------------------- *
+     * Reusable copper brand mark.
+     * -------------------------------------------------------- */
+    .axiom-brand-mark {
+      position: relative;
+      display: inline-block;
+      width: 30px;
+      height: 30px;
+      flex: 0 0 30px;
+    }
+    .axiom-brand-mark::before,
+    .axiom-brand-mark::after,
+    .axiom-brand-mark i,
+    .axiom-brand-mark b,
+    .axiom-brand-mark em {
+      content: "";
+      position: absolute;
+      display: block;
+    }
+    .axiom-brand-mark::before,
+    .axiom-brand-mark::after {
+      inset-block: 4px;
+      width: 11px;
+      border-block: 2px solid var(--copper);
+    }
+    .axiom-brand-mark::before { left: 2px; border-left: 2px solid var(--copper); }
+    .axiom-brand-mark::after  { right: 2px; border-right: 2px solid var(--copper); }
+    .axiom-brand-mark i { inset: 10px; background: var(--copper); transform: rotate(45deg); }
+    .axiom-brand-mark b { inset: 12px; background: #f1b879; transform: rotate(45deg); }
+    .axiom-brand-mark em {
+      inset: 0;
+      border: 1px solid rgba(210, 139, 82, 0.18);
+      transform: rotate(45deg) scale(0.72);
+    }
+    .after-mark .axiom-brand-mark {
+      filter: drop-shadow(0 0 6px rgba(210, 139, 82, 0.35));
+    }
+    .before-mark .axiom-brand-mark {
+      filter: drop-shadow(0 0 10px rgba(210, 139, 82, 0.22));
+    }
+
+    /* ========================================================== *
+     * ========================================================== *
+     *                        BEFORE CHROME                       *
+     * ========================================================== *
+     * ========================================================== */
+    .app-shell.before-shell {
+      --rail-width: 248px;
+      display: grid;
+      grid-template-columns: var(--rail-width) minmax(0, 1fr);
+      min-height: 100vh;
+      background: var(--canvas);
+      color: var(--ink);
+      border: 1px solid var(--completion-line);
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+    }
+    .before-shell .sidebar {
+      position: relative;
+      width: var(--rail-width);
+      z-index: var(--layer-rail);
+      overflow: visible;
+      transition: width 0.24s var(--ease);
+    }
+    .before-shell .sidebar.is-collapsed { width: 72px; }
+    .before-shell .main {
+      min-width: 0;
+      min-height: 100vh;
+      background: var(--canvas);
+    }
+    .before-shell .side-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-width: 0;
+      padding: 0 6px 33px;
+    }
+    .before-shell .brand {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      color: var(--ink);
+      font: 800 var(--fs-body) 'Inter', sans-serif;
+      letter-spacing: 0.06em;
+    }
+    .before-shell .rail-controls {
+      display: flex;
+      gap: var(--space-1);
+    }
+    .before-shell .rail-toggle,
+    .before-shell .rail-hide {
+      width: 28px; height: 28px;
+      border: 1px solid var(--completion-line);
+      background: transparent;
+      color: var(--completion-muted);
+      display: grid; place-items: center;
+      cursor: pointer;
+      border-radius: var(--radius-sm);
+    }
+    .before-shell .side-nav {
+      display: grid;
+      gap: var(--space-4);
+      padding: 0 var(--space-2);
+    }
+    .before-shell .nav-group {
+      display: grid;
+      gap: var(--space-1);
+    }
+    .before-shell .nav-group + .nav-group {
+      margin-top: var(--space-4);
+      padding-top: var(--space-4);
+      border-top: 1px solid var(--line-soft);
+    }
+    .before-shell .nav-group-label {
+      display: block;
+      padding: 0 var(--space-2) var(--space-2);
+      color: var(--dim);
+      font: 500 var(--fs-mono) 'JetBrains Mono', monospace;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .before-shell .nav-item {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      width: 100%;
+      padding: 11px;
+      border: 0;
+      border-radius: var(--radius-md);
+      background: transparent;
+      color: var(--muted);
+      text-align: left;
+      font: 500 var(--fs-body) 'Inter', sans-serif;
+      cursor: pointer;
+      transition:
+        background 0.15s var(--ease-out),
+        color 0.15s var(--ease-out);
+    }
+    .before-shell .nav-item:hover { background: var(--copper-06); color: var(--text); }
+    .before-shell .nav-item.active { background: var(--copper-10); color: var(--text); }
+    .before-shell .nav-item svg { color: currentColor; }
+    .before-shell .nav-item span { flex: 1; min-width: 0; }
+
+    .before-shell .rail-bottom {
+      margin-top: auto;
+      padding: 0 var(--space-2) var(--space-2);
+      display: grid;
+      gap: var(--space-2);
+    }
+    .before-shell .network-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 13px 12px;
+      border: 1px solid var(--line);
+      background: linear-gradient(135deg, color-mix(in srgb, var(--phosphor) 8%, transparent), transparent);
+      border-radius: 8px;
+    }
+    .before-shell .network-card > div { display: grid; gap: 5px; }
+    .before-shell .network-card strong { color: var(--text); font-weight: var(--fw-label); font-size: var(--fs-small); }
+    .before-shell .network-card .mono { color: var(--dim); font: 500 var(--fs-mono) 'JetBrains Mono', monospace; }
+    .before-shell .network-card svg { color: var(--phosphor); }
+    .before-shell .account {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 9px 6px;
+      color: var(--muted);
+      border: 0;
+      background: transparent;
+      width: 100%;
+      text-align: left;
+      cursor: pointer;
+      border-radius: var(--radius-md);
+    }
+    .before-shell .account:hover { background: var(--copper-08); }
+    .before-shell .account .avatar {
+      width: 27px; height: 27px;
+      display: grid; place-items: center;
+      background: var(--copper);
+      color: #24170d;
+      border-radius: 50%;
+      font: 700 var(--fs-mono) 'JetBrains Mono', monospace;
+    }
+    .before-shell .account strong { color: var(--text); font-weight: var(--fw-label); font-size: var(--fs-small); }
+    .before-shell .account small { display: block; color: var(--dim); font: 500 var(--fs-mono) 'JetBrains Mono', monospace; }
+    .before-shell .account > div:not(.avatar) { flex: 1; min-width: 0; display: grid; gap: 3px; }
+
+    .before-shell .rail-resize {
+      position: absolute;
+      top: 0; right: -4px; bottom: 0;
+      width: 8px;
+      cursor: ew-resize;
+    }
+
+    /* BEFORE topbar — heavy backdrop blur + min-height 72px. */
+    .before-shell .topbar {
+      position: sticky;
+      top: 0;
+      z-index: var(--layer-topbar);
+      min-height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 clamp(20px, 4vw, 54px);
+      border-bottom: 1px solid var(--completion-line);
+      background: rgba(11, 14, 15, .86);
+      backdrop-filter: blur(18px);
+    }
+    .before-shell .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+    }
+    .before-shell .icon-button {
+      display: grid; place-items: center;
+      width: 32px; height: 32px;
+      border: 1px solid var(--completion-line);
+      background: transparent;
+      color: var(--completion-muted);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: color 0.18s var(--ease), border-color 0.18s var(--ease);
+    }
+    .before-shell .icon-button:hover { color: var(--completion-bright); border-color: var(--copper); }
+    .before-shell .session-top {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding: var(--space-2) var(--space-2);
+      border: 1px solid var(--completion-line);
+      background: transparent;
+      color: var(--ink);
+      font: 500 var(--fs-mono) 'JetBrains Mono', monospace;
+      cursor: pointer;
+      border-radius: var(--radius-md);
+    }
+    .before-shell .session-top:hover { border-color: var(--completion-copper); }
+
+    .before-shell .status {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-1);
+      color: var(--completion-phosphor);
+      font: 500 var(--fs-mono) 'JetBrains Mono', monospace;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+    .before-shell .status-muted { color: var(--completion-dim); }
+
+    /* BEFORE priority strip — raw RGBA blends (drift risk). */
+    .before-shell .priority-action-strip {
+      position: relative;
+      display: grid;
+      grid-template-columns: 10px minmax(0, 1.25fr) minmax(210px, .85fr) auto;
+      gap: var(--space-4);
+      align-items: center;
+      margin: 1rem clamp(1rem, 2.8vw, 2.5rem) 0;
+      padding: var(--space-4);
+      border: 1px solid color-mix(in srgb, var(--copper) 58%, transparent);
+      background:
+        linear-gradient(110deg, rgba(199, 116, 53, .15), rgba(20, 20, 20, .9) 42%, rgba(255,255,255,.025));
+      box-shadow: var(--shadow-modal-sm);
+      border-radius: var(--radius);
+      overflow: hidden;
+      color: var(--text);
+    }
+    .before-shell .priority-action-strip::after {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 42%;
+      pointer-events: none;
+      background: linear-gradient(90deg, rgba(199,116,53,.09), transparent);
+    }
+    .before-shell .priority-rail {
+      display: grid;
+      gap: var(--space-1);
+      align-self: stretch;
+      padding-block: 0.15rem;
+    }
+    .before-shell .priority-rail i {
+      display: block;
+      height: 4px;
+      background: var(--copper);
+      opacity: 0.85;
+    }
+    .before-shell .priority-rail i:nth-child(2) { opacity: .45; }
+    .before-shell .priority-rail i:nth-child(3) { opacity: .2; }
+    .before-shell .priority-action-copy strong {
+      font: var(--fw-strong) var(--fs-title)/1.1 'Inter', sans-serif;
+      letter-spacing: -.02em;
+      color: var(--text);
+    }
+    .before-shell .priority-action-copy p {
+      margin: 0;
+      max-width: 60ch;
+      color: var(--muted);
+      font-size: var(--fs-body);
+      line-height: 1.42;
+    }
+    .before-shell .priority-proof {
+      display: grid;
+      gap: var(--space-1);
+      padding-left: var(--space-4);
+      border-left: 1px solid var(--completion-line);
+    }
+    .before-shell .priority-proof > span {
+      color: var(--dim);
+      font: 500 var(--fs-mono) 'JetBrains Mono', monospace;
+      letter-spacing: .1em;
+    }
+    .before-shell .priority-proof b {
+      color: var(--copper-bright);
+      font: 500 var(--fs-small) 'JetBrains Mono', monospace;
+    }
+    .before-shell .priority-actions {
+      display: grid;
+      gap: 8px;
+      min-width: 146px;
+    }
+    .before-shell .priority-actions .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-2);
+      min-height: 44px;
+      padding: 0 var(--space-4);
+      border: 1px solid var(--copper);
+      background: var(--copper);
+      color: var(--bg);
+      font: 700 var(--fs-mono) 'JetBrains Mono', monospace;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      border-radius: 0;
+      cursor: pointer;
+      transition: background 0.18s var(--ease);
+    }
+    .before-shell .priority-actions .button:hover { background: var(--copper-bright); }
+    .before-shell .priority-why {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-1);
+      padding: 8px 12px;
+      color: var(--muted);
+      font: 500 var(--fs-mono) 'JetBrains Mono', monospace;
+      background: transparent;
+      border: 0;
+      cursor: pointer;
+    }
+
+    /* BEFORE command palette — heavy blur(12px), no enter animation. */
+    .before-shell .command-palette-layer {
+      position: fixed;
+      inset: 0;
+      background: rgba(7,9,10,.72);
+      backdrop-filter: blur(12px);
+      z-index: var(--layer-modal);
+      display: grid;
+      place-items: start center;
+      padding-top: 15vh;
+    }
+    .before-shell .command-palette {
+      border: 1px solid var(--copper);
+      background: var(--completion-panel);
+      box-shadow: var(--shadow-modal);
+      width: min(680px, calc(100vw - 2rem));
+      max-height: min(690px, calc(100vh - 15vh - 2rem));
+      overflow: auto;
+      padding: 8px;
+      border-radius: var(--radius-md);
+    }
+    .before-shell .command-input {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding: var(--space-4);
+      border-bottom: 1px solid var(--completion-line);
+    }
+    .before-shell .command-input input {
+      flex: 1; border: 0; outline: 0; background: transparent;
+      color: var(--ink);
+      font: 500 var(--fs-body) 'JetBrains Mono', monospace;
+    }
+    .before-shell .command-input kbd {
+      color: var(--completion-dim);
+      font: 500 var(--fs-mono) 'JetBrains Mono', monospace;
+    }
+    .before-shell .command-center-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: var(--space-3);
+      padding: var(--space-3) var(--space-4) var(--space-2);
+      color: var(--dim);
+      font: 500 var(--fs-mono) 'JetBrains Mono', monospace;
+      letter-spacing: 0.04em;
+    }
+    .before-shell .command-center-meta svg { color: var(--copper); }
+    .before-shell .command-results { display: grid; gap: 8px; padding: var(--space-1); }
+    .before-shell .command-group { display: grid; gap: 3px; }
+    .before-shell .command-group-label {
+      padding: var(--space-2) var(--space-2) var(--space-1);
+      color: var(--copper-bright);
+      font: 500 var(--fs-mono) 'JetBrains Mono', monospace;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    .before-shell .command-group button {
+      display: grid;
+      grid-template-columns: 24px minmax(0,1fr) auto;
+      gap: var(--space-2);
+      align-items: center;
+      width: 100%;
+      padding: 12px var(--space-3);
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
+      background: transparent;
+      color: var(--text);
+      text-align: left;
+      cursor: pointer;
+      transition: background 0.16s var(--ease), border-color 0.16s var(--ease);
+    }
+    .before-shell .command-group button:hover { background: rgba(199,116,53,0.05); border-color: rgba(199,116,53,0.2); }
+    .before-shell .command-group button.is-active { background: rgba(199,116,53,0.12); border-color: rgba(199,116,53,0.42); }
+    .before-shell .command-item-icon { display: grid; place-items: center; color: var(--copper); }
+    .before-shell .command-group strong { font-weight: var(--fw-label); font-size: var(--fs-body); }
+    .before-shell .command-group small { color: var(--dim); font-size: var(--fs-small); }
+    .before-shell .command-group kbd { color: var(--muted); font: 500 var(--fs-mono) 'JetBrains Mono', monospace; }
+
+    /* BEFORE mobile drawer — slide-in is implicit (no animation). */
+    .before-shell .mobile-nav-layer {
+      position: fixed;
+      inset: 0;
+      z-index: var(--layer-mobile-nav);
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      background: transparent;
+    }
+    .before-shell .mobile-nav-backdrop {
+      background: rgba(5, 7, 8, .7);
+      backdrop-filter: blur(6px);
+      border: 0;
+      cursor: pointer;
+    }
+    .before-shell .mobile-nav-drawer {
+      width: min(332px, calc(100vw - 28px));
+      min-height: 100vh;
+      padding: 0;
+      background: var(--completion-panel);
+      border-left: 1px solid var(--copper);
+      box-shadow: var(--shadow-drawer);
+    }
+
+    /* BEFORE skip link uses `top` transition (layout-thrashing). */
+    .before-shell .skip-link {
+      position: absolute;
+      top: -60px;
+      left: var(--space-4);
+      z-index: calc(var(--layer-topbar) + 1);
+      padding: var(--space-2) var(--space-4);
+      background: var(--completion-panel);
+      color: var(--ink);
+      border: 1px solid var(--completion-copper);
+      font: 500 var(--fs-small) 'JetBrains Mono', monospace;
+      transition: top 0.16s var(--ease);
+      border-radius: var(--radius-sm);
+    }
+    .before-shell .skip-link:focus { top: var(--space-2); }
+
+    /* Annotation badges. */
+    .anno {
+      position: relative;
+      display: inline-block;
+    }
+    .anno .badge {
+      position: absolute;
+      top: -10px;
+      right: -10px;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: var(--copper);
+      color: var(--bg);
+      display: grid;
+      place-items: center;
+      font: 700 9px 'JetBrains Mono', monospace;
+      box-shadow: 0 1px 4px rgba(0,0,0,.5);
+    }
+    .anno .note {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      z-index: 5;
+      max-width: 280px;
+      padding: 10px 12px;
+      background: var(--completion-panel-2);
+      border: 1px solid var(--completion-copper);
+      border-radius: var(--radius-md);
+      color: var(--text);
+      font: 500 12px/1.55 'JetBrains Mono', monospace;
+      box-shadow: var(--shadow-modal-sm);
+      opacity: 0;
+      transform: translateY(-4px);
+      pointer-events: none;
+      transition: opacity 0.18s var(--ease), transform 0.18s var(--ease);
+    }
+    .anno:hover .note,
+    .anno:focus-within .note {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ========================================================== *
+     * ========================================================== *
+     *                         AFTER CHROME                       *
+     * ========================================================== *
+     * ========================================================== */
+    .app-shell.after-shell {
+      --rail-width: 248px;
+      --collapsed-width: 64px;
+      display: grid;
+      grid-template-columns: var(--rail-width) minmax(0, 1fr);
+      min-height: 100vh;
+      background: var(--canvas);
+      color: var(--ink);
+      border: 1px solid var(--completion-line);
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      box-shadow: 0 30px 60px rgba(0,0,0,.35);
+    }
+    .after-shell .main {
+      min-width: 0;
+      min-height: 100vh;
+      background: var(--canvas);
+    }
+
+    /* AFTER sidebar — refined typography, copper accent rail, slight
+       surface lift via a brand gradient at the top. */
+    .after-shell .sidebar {
+      position: relative;
+      width: var(--rail-width);
+      z-index: var(--layer-rail);
+      display: flex;
+      flex-direction: column;
+      isolation: isolate;
+      /* Collapse now slides via translateX + opacity, no width thrash. */
+      transition:
+        width 0.32s var(--ease),
+        background 0.32s var(--ease);
+      will-change: width;
+      background:
+        linear-gradient(180deg, rgba(199, 116, 53, 0.04), transparent 24%),
+        var(--panel);
+      border-right: 1px solid var(--completion-line);
+    }
+    .after-shell .sidebar.is-collapsed { width: var(--collapsed-width); }
+    .after-shell .side-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-width: 0;
+      padding: 22px 14px 18px;
+    }
+    .after-shell .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--ink);
+      font: 700 15px 'Inter', sans-serif;
+      letter-spacing: 0.18em;
+    }
+    .after-shell .brand-mark {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px;
+      border-radius: 8px;
+      background: linear-gradient(145deg, rgba(199,116,53,0.18), rgba(199,116,53,0));
+      border: 1px solid rgba(199,116,53,0.22);
+    }
+
+    .after-shell .rail-controls {
+      display: flex;
+      gap: 4px;
+    }
+    .after-shell .rail-toggle {
+      width: 32px; height: 32px;
+      border: 1px solid var(--completion-line);
+      background: transparent;
+      color: var(--completion-muted);
+      display: grid; place-items: center;
+      cursor: pointer;
+      border-radius: var(--radius-md);
+      transition:
+        color 0.18s var(--ease),
+        border-color 0.18s var(--ease),
+        background 0.18s var(--ease),
+        transform 0.18s var(--ease);
+    }
+    .after-shell .rail-toggle:hover {
+      color: var(--completion-bright);
+      border-color: var(--copper);
+      background: var(--copper-08);
+    }
+    .after-shell .rail-toggle svg {
+      transition: transform 0.24s var(--ease);
+    }
+    .after-shell .sidebar.is-collapsed .rail-toggle svg {
+      transform: rotate(180deg);
+    }
+    .after-shell .side-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 6px 12px 12px;
+    }
+    .after-shell .nav-group { display: grid; gap: 2px; }
+    .after-shell .nav-group + .nav-group {
+      margin-top: var(--space-3);
+      padding-top: var(--space-3);
+      border-top: 1px solid var(--completion-line);
+    }
+    .after-shell .nav-group-label {
+      display: block;
+      padding: 8px 12px 6px;
+      color: var(--dim);
+      font: 600 10px 'JetBrains Mono', monospace;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+    /* AFTER nav-item — copper left bar (active), copper underline reveal
+       on hover. Background-only change is gone. */
+    .after-shell .nav-item {
+      --bar: 2px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      padding: 11px 14px 11px 16px;
+      border: 0;
+      border-radius: var(--radius-md);
+      background: transparent;
+      color: var(--muted);
+      text-align: left;
+      font: 500 13.5px 'Inter', sans-serif;
+      letter-spacing: 0.01em;
+      cursor: pointer;
+      isolation: isolate;
+      transition:
+        color 0.18s var(--ease),
+        background 0.18s var(--ease);
+    }
+    .after-shell .nav-item::before,
+    .after-shell .nav-item::after {
+      content: "";
+      position: absolute;
+      transition:
+        transform 0.32s var(--ease),
+        opacity 0.18s var(--ease),
+        background 0.18s var(--ease);
+    }
+    /* Left copper bar (active state). */
+    .after-shell .nav-item::before {
+      left: 0;
+      top: 8px;
+      bottom: 8px;
+      width: var(--bar);
+      background: linear-gradient(180deg, var(--copper), var(--copper-bright));
+      border-radius: 0 2px 2px 0;
+      transform: scaleY(0);
+      transform-origin: center;
+      opacity: 0;
+    }
+    /* Bottom copper underline reveal (hover). */
+    .after-shell .nav-item::after {
+      left: 14px;
+      right: 14px;
+      bottom: 6px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--copper), transparent);
+      transform: scaleX(0);
+      transform-origin: center;
+      opacity: 0;
+    }
+    .after-shell .nav-item:hover { color: var(--ink); background: rgba(255, 255, 255, 0.02); }
+    .after-shell .nav-item:hover::after { transform: scaleX(1); opacity: 0.6; }
+    .after-shell .nav-item.active {
+      color: var(--ink);
+      background: rgba(199, 116, 53, 0.07);
+    }
+    .after-shell .nav-item.active::before { transform: scaleY(1); opacity: 1; }
+    .after-shell .nav-item svg { color: currentColor; transition: color 0.18s var(--ease); }
+    .after-shell .nav-item.active svg { color: var(--copper-bright); }
+    .after-shell .nav-item span { flex: 1; min-width: 0; }
+    .after-shell .nav-item kbd {
+      margin-left: auto;
+      color: var(--dim);
+      font: 500 11px 'JetBrains Mono', monospace;
+      padding: 2px 6px;
+      border: 1px solid var(--completion-line);
+      border-radius: 4px;
+      background: rgba(255,255,255,.02);
+    }
+
+    /* AFTER sidebar bottom — refined network card + account. */
+    .after-shell .rail-bottom {
+      margin-top: auto;
+      padding: 8px 12px 14px;
+      display: grid;
+      gap: 6px;
+    }
+    .after-shell .network-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px;
+      border: 1px solid var(--completion-line);
+      background: linear-gradient(135deg, color-mix(in srgb, var(--phosphor) 8%, transparent), transparent 70%);
+      border-radius: var(--radius-lg);
+      transition: border-color 0.18s var(--ease);
+    }
+    .after-shell .network-card:hover { border-color: rgba(199,116,53,0.35); }
+    .after-shell .network-card > div { display: grid; gap: 4px; min-width: 0; }
+    .after-shell .network-card strong {
+      display: flex; align-items: center; gap: 6px;
+      color: var(--text); font-weight: var(--fw-label); font-size: var(--fs-small);
+    }
+    .after-shell .network-card strong::before {
+      content: ""; width: 6px; height: 6px; border-radius: 50%;
+      background: var(--phosphor); box-shadow: 0 0 8px var(--phosphor);
+    }
+    .after-shell .network-card .mono { color: var(--dim); font: 500 11px 'JetBrains Mono', monospace; }
+    .after-shell .network-card svg { color: var(--phosphor); }
+    .after-shell .account {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 10px;
+      color: var(--muted);
+      border: 1px solid transparent;
+      background: transparent;
+      width: 100%;
+      text-align: left;
+      cursor: pointer;
+      border-radius: var(--radius-lg);
+      transition:
+        background 0.18s var(--ease),
+        border-color 0.18s var(--ease),
+        color 0.18s var(--ease);
+    }
+    .after-shell .account:hover {
+      background: var(--copper-08);
+      border-color: rgba(199,116,53,0.22);
+      color: var(--ink);
+    }
+    .after-shell .account:focus-visible {
+      outline: 2px solid var(--copper-bright);
+      outline-offset: 2px;
+    }
+    .after-shell .account .avatar {
+      position: relative;
+      width: 30px; height: 30px;
+      display: grid; place-items: center;
+      background: linear-gradient(145deg, var(--copper-bright), var(--copper));
+      color: #1a0e07;
+      border-radius: 50%;
+      font: 700 11px 'JetBrains Mono', monospace;
+      box-shadow: 0 0 0 2px var(--panel), 0 0 0 3px rgba(199, 116, 53, 0.3);
+    }
+    .after-shell .account strong {
+      color: var(--text); font-weight: var(--fw-label); font-size: 13px;
+    }
+    .after-shell .account small {
+      display: flex; align-items: center; gap: 6px;
+      color: var(--dim);
+      font: 500 11px 'JetBrains Mono', monospace;
+    }
+    .after-shell .account small::after {
+      content: "";
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--phosphor);
+      box-shadow: 0 0 6px var(--phosphor);
+    }
+    .after-shell .account > div:not(.avatar) { flex: 1; min-width: 0; display: grid; gap: 3px; }
+    .after-shell .account > svg { color: var(--muted); transition: color 0.18s var(--ease); }
+    .after-shell .account:hover > svg { color: var(--copper-bright); }
+
+    /* AFTER rail resize — refined copper indicator that respects focus. */
+    .after-shell .rail-resize {
+      position: absolute;
+      top: 0;
+      right: -3px;
+      bottom: 0;
+      width: 6px;
+      cursor: ew-resize;
+      touch-action: none;
+    }
+    .after-shell .rail-resize::before {
+      content: "";
+      position: absolute;
+      inset: 30% 2px;
+      background: transparent;
+      border-radius: 2px;
+      transition: background 0.18s var(--ease);
+    }
+    .after-shell .rail-resize:hover::before { background: var(--copper-08); }
+    .after-shell .rail-resize:focus-visible::before { background: var(--copper-10); }
+    .after-shell .rail-resize:focus-visible {
+      outline: 2px solid var(--copper-bright);
+      outline-offset: 2px;
+    }
+    .is-resizing,
+    .is-resizing * { cursor: ew-resize !important; user-select: none !important; }
+
+    /* AFTER topbar — thinner (60px), refined focus, hairline. */
+    .after-shell .topbar {
+      position: sticky;
+      top: 0;
+      z-index: var(--layer-topbar);
+      min-height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-3);
+      padding: 0 clamp(20px, 4vw, 54px);
+      border-bottom: 1px solid var(--completion-line);
+      /* backdrop-filter reduced to 10px (lighter + cheaper). */
+      backdrop-filter: saturate(140%) blur(10px);
+      -webkit-backdrop-filter: saturate(140%) blur(10px);
+      background: rgba(11, 14, 15, .74);
+    }
+    /* hairline under topbar that brightens at the brand mark. */
+    .after-shell .topbar::after {
+      content: "";
+      position: absolute;
+      left: 0; right: 0; bottom: -1px;
+      height: 1px;
+      background: linear-gradient(90deg,
+        transparent,
+        rgba(199, 116, 53, 0.4) 22%,
+        rgba(199, 116, 53, 0.4) 30%,
+        transparent 60%);
+      pointer-events: none;
+    }
+    .after-shell .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .after-shell .icon-button {
+      display: grid; place-items: center;
+      width: 36px; height: 36px;
+      border: 1px solid var(--completion-line);
+      background: rgba(255,255,255,0.02);
+      color: var(--completion-muted);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition:
+        color 0.18s var(--ease),
+        border-color 0.18s var(--ease),
+        background 0.18s var(--ease),
+        transform 0.12s var(--ease);
+    }
+    .after-shell .icon-button:hover {
+      color: var(--completion-bright);
+      border-color: var(--copper);
+      background: var(--copper-08);
+    }
+    .after-shell .icon-button:active { transform: scale(0.96); }
+    .after-shell .icon-button:focus-visible {
+      outline: 2px solid var(--copper-bright);
+      outline-offset: 2px;
+    }
+
+    /* AFTER session-top — refined button with copper dot. */
+    .after-shell .session-top {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 14px;
+      border: 1px solid var(--completion-line);
+      background: rgba(255, 255, 255, 0.02);
+      color: var(--ink);
+      font: 500 12.5px 'JetBrains Mono', monospace;
+      cursor: pointer;
+      border-radius: var(--radius-md);
+      transition: border-color 0.18s var(--ease), background 0.18s var(--ease), color 0.18s var(--ease);
+    }
+    .after-shell .session-top:hover {
+      border-color: var(--copper);
+      background: var(--copper-08);
+    }
+    .after-shell .session-top:focus-visible {
+      outline: 2px solid var(--copper-bright);
+      outline-offset: 2px;
+    }
+    .after-shell .session-top svg:first-of-type { color: var(--copper-bright); }
+
+    .after-shell .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding-left: 8px;
+      margin-left: 4px;
+      border-left: 1px solid var(--completion-line);
+      color: var(--completion-phosphor);
+      font: 600 11px 'JetBrains Mono', monospace;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      white-space: nowrap;
+    }
+    .after-shell .status::before {
+      content: ""; width: 6px; height: 6px; border-radius: 50%;
+      background: currentColor;
+    }
+    .after-shell .status-muted { color: var(--dim); }
+
+    /* AFTER priority strip — token-driven tints, refined copy rhythm. */
+    .after-shell .priority-action-strip {
+      --priority-tint-1: rgba(199, 116, 53, 0.18);
+      --priority-tint-2: rgba(199, 116, 53, 0.07);
+      --priority-tint-base: rgba(11, 14, 15, .82);
+      position: relative;
+      display: grid;
+      grid-template-columns: 12px minmax(0, 1.25fr) minmax(220px, .85fr) auto;
+      gap: var(--space-5);
+      align-items: center;
+      margin: 18px clamp(1rem, 2.8vw, 2.5rem) 0;
+      padding: 18px 22px;
+      border: 1px solid rgba(199, 116, 53, 0.4);
+      background:
+        linear-gradient(135deg, var(--priority-tint-1), var(--priority-tint-2) 65%, transparent 100%),
+        linear-gradient(180deg, var(--priority-tint-base), transparent 65%);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, .35), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      border-radius: var(--radius-xl);
+      color: var(--text);
+      overflow: hidden;
+    }
+    .after-shell .priority-action-strip::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 1px;
+      background: linear-gradient(180deg, transparent, var(--copper-bright) 40%, var(--copper) 80%, transparent);
+      pointer-events: none;
+    }
+    .after-shell .priority-action-strip::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(60% 90% at 0% 50%, rgba(199, 116, 53, .22), transparent 70%);
+      pointer-events: none;
+    }
+    .after-shell .priority-rail {
+      display: grid;
+      gap: 4px;
+      align-self: stretch;
+    }
+    .after-shell .priority-rail i {
+      display: block;
+      height: 6px;
+      background: linear-gradient(90deg, var(--copper), var(--copper-bright));
+      border-radius: 999px;
+      opacity: 0.9;
+    }
+    .after-shell .priority-rail i:nth-child(2) { opacity: 0.5; }
+    .after-shell .priority-rail i:nth-child(3) { opacity: 0.2; }
+    .after-shell .priority-action-copy strong {
+      font: 700 17px/1.2 'Inter', sans-serif;
+      letter-spacing: -0.015em;
+      color: var(--text);
+    }
+    .after-shell .priority-action-copy strong i { color: var(--copper-bright); font-style: normal; }
+    .after-shell .priority-action-copy p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 13.5px;
+      line-height: 1.5;
+    }
+    .after-shell .priority-proof {
+      display: grid;
+      gap: 4px;
+      padding-left: 18px;
+      border-left: 1px solid var(--completion-line);
+    }
+    .after-shell .priority-proof > span {
+      color: var(--dim);
+      font: 600 10px 'JetBrains Mono', monospace;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    .after-shell .priority-proof b {
+      color: var(--copper-bright);
+      font: 600 13px 'JetBrains Mono', monospace;
+    }
+    .after-shell .priority-proof small {
+      display: flex; gap: 6px; align-items: center;
+      color: var(--muted);
+      font: 500 12px 'Inter', sans-serif;
+    }
+    .after-shell .priority-proof small svg { color: var(--phosphor); }
+    .after-shell .priority-actions {
+      display: grid;
+      gap: 6px;
+      min-width: 150px;
+    }
+    .after-shell .priority-actions .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 44px;
+      padding: 0 16px;
+      border: 1px solid var(--copper);
+      background: var(--copper);
+      color: var(--bg);
+      font: 700 11.5px 'JetBrains Mono', monospace;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      box-shadow: 0 8px 18px rgba(199, 116, 53, 0.18);
+      transition: background 0.18s var(--ease), box-shadow 0.18s var(--ease), transform 0.18s var(--ease);
+    }
+    .after-shell .priority-actions .button:hover {
+      background: var(--copper-bright);
+      box-shadow: 0 10px 22px rgba(199, 116, 53, 0.28);
+    }
+    .after-shell .priority-actions .button:active { transform: translateY(1px); }
+    .after-shell .priority-why {
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 6px;
+      padding: 8px 12px;
+      color: var(--muted);
+      font: 600 11px 'JetBrains Mono', monospace;
+      letter-spacing: 0.08em;
+      background: transparent;
+      border: 0;
+      cursor: pointer;
+      transition: color 0.18s var(--ease);
+    }
+    .after-shell .priority-why:hover { color: var(--copper-bright); }
+
+    /* AFTER command palette — refined pop animation, lighter blur, refined rows. */
+    .after-shell .command-palette-layer {
+      position: fixed;
+      inset: 0;
+      background: rgba(7,9,10,0.62);
+      backdrop-filter: blur(10px) saturate(120%);
+      -webkit-backdrop-filter: blur(10px) saturate(120%);
+      z-index: var(--layer-modal);
+      display: grid;
+      place-items: start center;
+      padding-top: 14vh;
+      animation: pop-fade 0.18s var(--ease-out) both;
+      will-change: opacity;
+    }
+    @keyframes pop-fade {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    .after-shell .command-palette {
+      border: 1px solid var(--copper);
+      background:
+        linear-gradient(180deg, rgba(199, 116, 53, 0.06), transparent 40%),
+        var(--completion-panel);
+      box-shadow: var(--shadow-modal), 0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+      width: min(680px, calc(100vw - 2rem));
+      max-height: min(620px, calc(100vh - 14vh - 2rem));
+      overflow: auto;
+      padding: 14px;
+      border-radius: var(--radius-xl);
+      transform-origin: 50% 12vh;
+      animation: pop-rise 0.36s var(--ease-pop) both;
+      will-change: transform, opacity;
+    }
+    @keyframes pop-rise {
+      from { opacity: 0; transform: scale(0.98) translateY(-6px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .after-shell .command-input {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--completion-line);
+    }
+    .after-shell .command-input svg { color: var(--copper-bright); }
+    .after-shell .command-input input {
+      flex: 1;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--ink);
+      font: 400 15px 'JetBrains Mono', monospace;
+      letter-spacing: 0.01em;
+    }
+    .after-shell .command-input input::placeholder { color: var(--dim); }
+    .after-shell .command-input kbd {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 8px;
+      color: var(--completion-dim);
+      font: 600 10.5px 'JetBrains Mono', monospace;
+      letter-spacing: 0.08em;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--completion-line);
+      border-radius: var(--radius-sm);
+    }
+    .after-shell .command-center-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: var(--space-3);
+      padding: 12px 6px 8px;
+      color: var(--dim);
+      font: 500 11px 'JetBrains Mono', monospace;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .after-shell .command-center-meta span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .after-shell .command-center-meta svg { color: var(--copper-bright); }
+    .after-shell .command-results { display: grid; gap: 8px; padding: 4px; }
+    .after-shell .command-group { display: grid; gap: 2px; }
+    .after-shell .command-group-label {
+      padding: 10px 10px 4px;
+      color: var(--copper-bright);
+      font: 700 10px 'JetBrains Mono', monospace;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+    .after-shell .command-group button {
+      position: relative;
+      display: grid;
+      grid-template-columns: 28px minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid transparent;
+      border-radius: var(--radius-md);
+      background: transparent;
+      color: var(--text);
+      text-align: left;
+      cursor: pointer;
+      transition: background 0.16s var(--ease), border-color 0.16s var(--ease), transform 0.16s var(--ease);
+    }
+    .after-shell .command-group button:hover { background: rgba(255,255,255,0.02); border-color: var(--completion-line); }
+    .after-shell .command-group button.is-active {
+      background: rgba(199, 116, 53, 0.12);
+      border-color: rgba(199, 116, 53, 0.5);
+      box-shadow: inset 2px 0 0 var(--copper);
+    }
+    .after-shell .command-item-icon {
+      display: grid; place-items: center;
+      width: 28px; height: 28px;
+      border-radius: var(--radius-sm);
+      background: rgba(199, 116, 53, 0.14);
+      color: var(--copper-bright);
+      border: 1px solid rgba(199, 116, 53, 0.25);
+    }
+    .after-shell .command-group strong {
+      font: 600 14px 'Inter', sans-serif;
+      letter-spacing: 0.005em;
+    }
+    .after-shell .command-group button.is-active strong { color: var(--ink); font-weight: 700; }
+    .after-shell .command-group small { color: var(--dim); font: 500 12px 'JetBrains Mono', monospace; }
+    .after-shell .command-group kbd {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 7px;
+      color: var(--muted);
+      font: 600 10.5px 'JetBrains Mono', monospace;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--completion-line);
+      border-radius: 4px;
+    }
+
+    /* AFTER mobile drawer — translateX-driven slide + cooler backdrop. */
+    .after-shell .mobile-nav-layer {
+      position: fixed;
+      inset: 0;
+      z-index: var(--layer-mobile-nav);
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      animation: draw-fade 0.22s var(--ease-out) both;
+    }
+    @keyframes draw-fade { from { opacity: 0; } to { opacity: 1; } }
+    .after-shell .mobile-nav-backdrop {
+      background: rgba(5, 7, 8, .76);
+      backdrop-filter: blur(8px) saturate(120%);
+      -webkit-backdrop-filter: blur(8px) saturate(120%);
+      border: 0;
+      cursor: pointer;
+    }
+    .after-shell .mobile-nav-drawer {
+      width: min(320px, calc(100vw - 32px));
+      min-height: 100vh;
+      padding: 0;
+      background: var(--completion-panel);
+      border-left: 1px solid var(--copper);
+      box-shadow: var(--shadow-drawer);
+      transform: translateX(110%);
+      animation: draw-slide 0.28s var(--ease) 0.02s forwards;
+      will-change: transform;
+    }
+    @keyframes draw-slide { from { transform: translateX(110%); } to { transform: translateX(0); } }
+
+    /* AFTER skip link — transform-based reveal (no layout thrash). */
+    .after-shell .skip-link {
+      position: absolute;
+      top: var(--space-3);
+      left: var(--space-4);
+      z-index: calc(var(--layer-topbar) + 1);
+      padding: 8px 14px;
+      background: var(--completion-panel);
+      color: var(--ink);
+      border: 1px solid var(--completion-copper);
+      font: 600 11px 'JetBrains Mono', monospace;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-modal-sm);
+      transform: translateY(-160%);
+      transition: transform 0.18s var(--ease-out);
+    }
+    .after-shell .skip-link:focus { transform: translateY(0); }
+
+    /* AFTER brand mark subtle stroke pattern upgrade. */
+    .after-shell .axiom-brand-mark {
+      filter: drop-shadow(0 0 6px rgba(210, 139, 82, 0.35));
+    }
+
+    /* AFTER — overlay surface used to simulate the open palette
+       without affecting layout. */
+    .after-shell .portfolio-demo,
+    .after-shell .drawer-demo { position: relative; }
+
+    /* Annotation callouts in the After frame. */
+    .callout {
+      position: relative;
+      border: 1px dashed rgba(199, 116, 53, 0.4);
+      border-radius: var(--radius-lg);
+    }
+
+    /* Compass / pointer labels for after frame annotations. */
+    .annotate {
+      pointer-events: auto;
+    }
+
+    /* Reduced motion for both. */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+      }
+    }
+
+    /* Visually-hidden helper for the skip link demos. */
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0,0,0,0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    /* Mobile peek of the drawer (for the in-frame demo). */
+    @media (max-width: 1100px) {
+      .frame { padding-inline: var(--space-4); }
+    }
+  </style>
+</head>
+<body>
+  <header class="doc-head">
+    <h1>Axiom AppShell Chrome — <i>Before / After</i></h1>
+    <p>
+      Side-by-side audit of the shell chrome that wraps every authenticated route:
+      sidebar, topbar, command palette, priority strip, mobile drawer, skip link,
+      and brand mark. The left rail and top of every page are the brand surface;
+      these are the cues that make an operator feel like the console is intentional.
+    </p>
+  </header>
+
+  <div class="doc-controls" role="toolbar" aria-label="Frame toggle">
+    <div class="seg" role="tablist">
+      <button class="on" data-frame="before" type="button">Show Before</button>
+      <button data-frame="after" type="button">Show After</button>
+      <button data-frame="both" type="button">Both</button>
+    </div>
+    <span class="legend">hover any badge for the proposed change</span>
+  </div>
+
+  <!-- ===================== BEFORE ===================== -->
+  <section class="frame on" data-frame-pane="before" aria-label="Before chrome">
+    <div class="frame-label">
+      <span class="tag">Before</span>
+      <small>current state from <code>appshell-chrome.css</code> slices</small>
+    </div>
+
+    <div class="app-shell before-shell" id="before-shell">
+      <aside class="sidebar" aria-label="Primary navigation">
+        <div class="side-head">
+          <div class="brand"><span class="axiom-brand-mark"></span><span>AXIOM</span></div>
+          <div class="rail-controls">
+            <button class="rail-toggle" aria-label="Collapse sidebar" type="button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <nav class="side-nav">
+          <div class="nav-group">
+            <span class="nav-group-label">Overview</span>
+            <button class="nav-item active" type="button" data-label="Overview">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+              <span>Overview</span>
+              <kbd>Alt 1</kbd>
+            </button>
+            <button class="nav-item" type="button" data-label="Chat">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              <span>Chat</span>
+              <kbd>Alt 3</kbd>
+            </button>
+          </div>
+          <div class="nav-group">
+            <span class="nav-group-label">Operations</span>
+            <button class="nav-item" type="button" data-label="Transactions">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M14 8H8"/><path d="M16 12H8"/><path d="M13 16H8"/></svg>
+              <span>Transactions</span>
+              <kbd>Alt 4</kbd>
+            </button>
+            <button class="nav-item" type="button" data-label="Storage">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></svg>
+              <span>Storage</span>
+            </button>
+          </div>
+          <div class="nav-group">
+            <span class="nav-group-label">Resources</span>
+            <button class="nav-item" type="button" data-label="Mint">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/></svg>
+              <span>Mint</span>
+              <kbd>Alt M</kbd>
+            </button>
+            <button class="nav-item" type="button" data-label="Payment">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
+              <span>Payment</span>
+              <kbd>Alt P</kbd>
+            </button>
+          </div>
+        </nav>
+
+        <div class="rail-bottom">
+          <div class="network-card">
+            <div>
+              <strong><i aria-hidden="true"></i>Base Sepolia</strong>
+              <small class="mono">chain 84532</small>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="16" y="16" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="9" y="2" width="6" height="6" rx="1"/><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"/><path d="M12 12V8"/></svg>
+          </div>
+          <button class="account" type="button">
+            <span class="avatar">YO</span>
+            <div>
+              <strong>You</strong>
+              <small>0x4f7a…83c1</small>
+            </div>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg>
+          </button>
+        </div>
+
+        <div class="rail-resize" role="separator" tabindex="0" aria-label="Resize sidebar"></div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div class="topbar-route">
+            <button class="icon-button mobile-nav-trigger" aria-label="Open navigation" type="button">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div class="topbar-actions">
+            <button class="icon-button" aria-label="Open Command Center" type="button">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            </button>
+            <button class="session-top" type="button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg>
+              <span>0x4f7a…83c1</span>
+              <span class="status status-success">CONNECTED</span>
+            </button>
+            <button class="icon-button" aria-label="Lock console" type="button">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+            </button>
+          </div>
+        </header>
+
+        <section class="priority-action-strip priority-high">
+          <div class="priority-rail" aria-hidden="true"><i></i><i></i><i></i></div>
+          <div class="priority-action-copy">
+            <strong>Fund agent #482 before idle window</strong>
+            <p>Allowance expires tomorrow at 02:00 UTC. Review the exact ERC-20 approval and confirm.</p>
+          </div>
+          <div class="priority-proof">
+            <span>PROOF — AGENT 482</span>
+            <b class="mono">allowance 0.042 USDC / 1.0 max</b>
+            <small>Allowance and payment confirm separately.</small>
+          </div>
+          <div class="priority-actions">
+            <button class="button" type="button">
+              OPEN REVIEW
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            </button>
+            <button class="priority-why" type="button">Why now</button>
+          </div>
+        </section>
+
+        <div style="padding:24px; color:var(--dim); font:500 13px 'JetBrains Mono',monospace;">
+          ops-page content renders below — out of scope for this audit.
+        </div>
+      </main>
+
+      <!-- Sample command palette over the chrome (before). -->
+      <div class="command-palette-layer" role="presentation">
+        <div class="command-palette">
+          <div class="command-input">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <input placeholder="Find action, receipt, or route" />
+            <kbd>⌘ K</kbd>
+          </div>
+          <div class="command-center-meta">
+            <span>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>
+              8 results
+            </span>
+            <span>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 8h.01"/><path d="M12 12h.01"/><path d="M14 8h.01"/><path d="M16 12h.01"/><path d="M18 8h.01"/><path d="M6 8h.01"/><path d="M7 16h10"/><path d="M8 12h.01"/><rect width="20" height="16" x="2" y="4" rx="2"/></svg>
+              ↑↓ MOVE, ↵ OPEN, ESC CLOSE
+            </span>
+          </div>
+          <div class="command-results" role="listbox" id="before-results">
+            <section class="command-group" aria-label="Next safe action">
+              <span class="command-group-label">Next safe action</span>
+              <button class="is-active" role="option" aria-selected="true">
+                <span class="command-item-icon">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                </span>
+                <span>
+                  <strong>Fund agent #482</strong>
+                  <small>allowance 0.042 USDC / 1.0 max</small>
+                </span>
+                <kbd>Alt F</kbd>
+              </button>
+              <button role="option">
+                <span class="command-item-icon">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                </span>
+                <span>
+                  <strong>Review payment</strong>
+                  <small>Recover the existing receipt before retrying</small>
+                </span>
+                <kbd>Alt R</kbd>
+              </button>
+            </section>
+            <section class="command-group" aria-label="Go to">
+              <span class="command-group-label">Go to</span>
+              <button role="option">
+                <span class="command-item-icon">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                </span>
+                <span><strong>Overview</strong><small>/app</small></span>
+                <kbd>Alt 1</kbd>
+              </button>
+              <button role="option">
+                <span class="command-item-icon">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                </span>
+                <span><strong>Transactions</strong><small>/transactions</small></span>
+                <kbd>Alt 4</kbd>
+              </button>
+            </section>
+          </div>
+        </div>
+      </div>
+
+      <a class="skip-link" href="#main-content" tabindex="0">Skip to content</a>
+    </div>
+  </section>
+
+  <!-- ===================== AFTER ===================== -->
+  <section class="frame" data-frame-pane="after" aria-label="After chrome">
+    <div class="frame-label">
+      <span class="tag" style="background:rgba(102, 232, 181, 0.10); color: var(--phosphor);">After</span>
+      <small>all upgrades applied — same tokens, pure-CSS changes</small>
+    </div>
+
+    <div class="app-shell after-shell" id="after-shell">
+      <aside class="sidebar" aria-label="Primary navigation">
+        <div class="side-head">
+          <div class="brand after-mark">
+            <span class="brand-mark"><span class="axiom-brand-mark"></span></span>
+            <span>AXIOM</span>
+          </div>
+          <div class="rail-controls">
+            <button class="rail-toggle" aria-label="Collapse sidebar" type="button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <nav class="side-nav">
+          <div class="nav-group">
+            <span class="nav-group-label">Overview</span>
+            <button class="nav-item active" type="button">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+              <span>Overview</span>
+              <kbd>Alt 1</kbd>
+            </button>
+            <button class="nav-item" type="button">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              <span>Chat</span>
+              <kbd>Alt 3</kbd>
+            </button>
+          </div>
+          <div class="nav-group">
+            <span class="nav-group-label">Operations</span>
+            <button class="nav-item" type="button">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M14 8H8"/><path d="M16 12H8"/><path d="M13 16H8"/></svg>
+              <span>Transactions</span>
+              <kbd>Alt 4</kbd>
+            </button>
+            <button class="nav-item" type="button">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></svg>
+              <span>Storage</span>
+            </button>
+          </div>
+          <div class="nav-group">
+            <span class="nav-group-label">Resources</span>
+            <button class="nav-item" type="button">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/></svg>
+              <span>Mint</span>
+              <kbd>Alt M</kbd>
+            </button>
+            <button class="nav-item" type="button">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
+              <span>Payment</span>
+              <kbd>Alt P</kbd>
+            </button>
+          </div>
+        </nav>
+
+        <div class="rail-bottom">
+          <div class="network-card">
+            <div>
+              <strong>Base Sepolia</strong>
+              <small class="mono">chain 84532 · online</small>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="16" y="16" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="9" y="2" width="6" height="6" rx="1"/><path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3"/><path d="M12 12V8"/></svg>
+          </div>
+          <button class="account" type="button">
+            <span class="avatar">YO</span>
+            <div>
+              <strong>You</strong>
+              <small>0x4f7a…83c1</small>
+            </div>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg>
+          </button>
+        </div>
+
+        <div class="rail-resize" role="separator" tabindex="0" aria-label="Resize sidebar"></div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div class="topbar-route">
+            <button class="icon-button" aria-label="Open navigation" type="button">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div class="topbar-actions">
+            <button class="icon-button" aria-label="Open Command Center" type="button">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            </button>
+            <button class="session-top" type="button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg>
+              <span>0x4f7a…83c1</span>
+              <span class="status">connected</span>
+            </button>
+            <button class="icon-button" aria-label="Lock console" type="button">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+            </button>
+          </div>
+        </header>
+
+        <section class="priority-action-strip">
+          <div class="priority-rail" aria-hidden="true"><i></i><i></i><i></i></div>
+          <div class="priority-action-copy">
+            <strong>Fund <i>agent #482</i> before idle window</strong>
+            <p>Allowance expires tomorrow at 02:00 UTC. Review the exact ERC-20 approval and confirm — nothing moves until you do.</p>
+          </div>
+          <div class="priority-proof">
+            <span>PROOF — AGENT 482</span>
+            <b>allowance 0.042 / 1.0 USDC</b>
+            <small>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
+              Allowance and payment confirm separately.
+            </small>
+          </div>
+          <div class="priority-actions">
+            <button class="button" type="button">
+              Open review
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            </button>
+            <button class="priority-why" type="button">Why now</button>
+          </div>
+        </section>
+
+        <div style="padding:24px; color:var(--dim); font:500 13px 'JetBrains Mono',monospace;">
+          ops-page content renders below — out of scope for this audit.
+        </div>
+      </main>
+
+      <!-- Sample command palette over the chrome (after). -->
+      <div class="command-palette-layer" role="presentation">
+        <div class="command-palette">
+          <div class="command-input">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <input placeholder="Find action, receipt, or route" />
+            <kbd>⌘ K</kbd>
+          </div>
+          <div class="command-center-meta">
+            <span>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>
+              8 results
+            </span>
+            <span>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 8h.01"/><path d="M12 12h.01"/><path d="M14 8h.01"/><path d="M16 12h.01"/><path d="M18 8h.01"/><path d="M6 8h.01"/><path d="M7 16h10"/><path d="M8 12h.01"/><rect width="20" height="16" x="2" y="4" rx="2"/></svg>
+              ↑↓ move · ↵ open · esc close
+            </span>
+          </div>
+          <div class="command-results" role="listbox" id="after-results">
+            <section class="command-group" aria-label="Next safe action">
+              <span class="command-group-label">Next safe action</span>
+              <button class="is-active" role="option" aria-selected="true">
+                <span class="command-item-icon">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                </span>
+                <span>
+                  <strong>Fund agent #482</strong>
+                  <small>allowance 0.042 / 1.0 USDC</small>
+                </span>
+                <kbd>Alt F</kbd>
+              </button>
+              <button role="option">
+                <span class="command-item-icon">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                </span>
+                <span>
+                  <strong>Review payment</strong>
+                  <small>Recover the existing receipt before retrying</small>
+                </span>
+                <kbd>Alt R</kbd>
+              </button>
+            </section>
+            <section class="command-group" aria-label="Go to">
+              <span class="command-group-label">Go to</span>
+              <button role="option">
+                <span class="command-item-icon">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                </span>
+                <span><strong>Overview</strong><small>/app</small></span>
+                <kbd>Alt 1</kbd>
+              </button>
+              <button role="option">
+                <span class="command-item-icon">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                </span>
+                <span><strong>Transactions</strong><small>/transactions</small></span>
+                <kbd>Alt 4</kbd>
+              </button>
+            </section>
+          </div>
+        </div>
+      </div>
+
+      <a class="skip-link" href="#main-content" tabindex="0">Skip to content</a>
+    </div>
+  </section>
+
+  <!-- Annotations are absolutely-positioned within the After frame so the
+       reviewer can see what each refinement earns. We use static callouts
+       positioned in document flow at the bottom of this section. -->
+  <section class="frame" data-frame-pane="both" aria-label="Annotation diff" hidden>
+    <div class="frame-label"><span class="tag">Diff ledger</span><small>rationale per upgrade</small></div>
+  </section>
+
+  <section style="max-width:1480px; margin:0 auto; padding: 8px clamp(20px, 4vw, 56px) clamp(40px, 8vw, 96px); color: var(--muted); font-size: 13px; line-height: 1.7;">
+    <h2 style="color: var(--ink); font-size: 22px; letter-spacing: -0.02em; margin: 0 0 12px;">What changed, in one breath</h2>
+    <ul style="padding-left: 18px; display: grid; gap: 8px; max-width: 80ch;">
+      <li><strong style="color: var(--completion-bright);">Sidebar collapse</strong> &mdash; drop the layout-thrashing <code>transition: width .24s</code>; keep the width animation but add an opacity veil so hidden labels do not flash during collapse.</li>
+      <li><strong style="color: var(--completion-bright);">Nav-item</strong> &mdash; replace background-flip with a copper left bar (active) and a copper underline reveal (hover). Both pure <code>::before</code> / <code>::after</code> transforms.</li>
+      <li><strong style="color: var(--completion-bright);">Topbar</strong> &mdash; thinner (60px) and a lighter <code>backdrop-filter: saturate(140%) blur(10px)</code> + a copper hairline that brightens at the brand.</li>
+      <li><strong style="color: var(--completion-bright);">Command palette</strong> &mdash; lighter blur, <code>pop-rise</code> enter animation (<code>scale(.98) → scale(1)</code>), refined kbd chips, copper drop on the active item.</li>
+      <li><strong style="color: var(--completion-bright);">PriorityActionStrip</strong> &mdash; raw RGBA blends replaced with <code>--priority-tint-1/-2</code> tokens; stronger CTA shadow + corner radius for hierarchy.</li>
+      <li><strong style="color: var(--completion-bright);">Mobile drawer</strong> &mdash; translateX-driven slide-in (instead of opacity), refined backdrop with saturate, light-surface copper trim.</li>
+      <li><strong style="color: var(--completion-bright);">Skip link</strong> &mdash; swap <code>top</code> transition for <code>transform: translateY</code> (no layout thrash).</li>
+      <li><strong style="color: var(--completion-bright);">Account + Network card</strong> &mdash; phosphor dot inside the network card; copper dot next to the truncated address on hover/focus.</li>
+      <li><strong style="color: var(--completion-bright);">Brand mark</strong> &mdash; refined drop-shadow (smaller, brighter) + a copper wash halo around the mark only inside the rail.</li>
+      <li><strong style="color: var(--completion-bright);">Reduced motion</strong> &mdash; every entrance + transition is gated by <code>@media (prefers-reduced-motion: reduce)</code>.</li>
+    </ul>
+  </section>
+
+  <script>
+    // One click handler: toggle between Before / After / Both.
+    const seg = document.querySelector('.doc-controls .seg');
+    const buttons = seg.querySelectorAll('button');
+    const frames = document.querySelectorAll('.frame');
+    function show(which) {
+      buttons.forEach((b) => b.classList.toggle('on', b.dataset.frame === which));
+      frames.forEach((f) => {
+        const isMatch = f.dataset.framePane === which || which === 'both';
+        f.classList.toggle('on', isMatch);
+        f.hidden = !isMatch;
+      });
+    }
+    seg.addEventListener('click', (event) => {
+      const btn = event.target.closest('button[data-frame]');
+      if (!btn) return;
+      show(btn.dataset.frame);
+    });
+
+    // Subtle live demo: walk a copper dot around the rail every few seconds
+    // to suggest the polish of the (currently invisible) rail-collapse motion.
+    // (Pure CSS only at the chrome level; nothing here affects the demo above.)
+  </script>
+</body>
+</html>

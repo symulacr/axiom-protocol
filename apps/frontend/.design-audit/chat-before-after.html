@@ -1,0 +1,2710 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Axiom Chat — Design Audit (Before / After)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Syne:wght@500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+/* ==============================================================
+   AXIOM CHAT — DESIGN AUDIT
+   ----------------------------------------------------------
+   This single document renders two snapshots of the ChatPage
+   surface, side-by-side. Toggle in the top-right switches
+   between Before (current shipped treatment) and After
+   (recommended treatment). Only CSS varies — markup is
+   identical so the visual delta is unambiguous.
+   ============================================================== */
+
+/* ----- 1. Shared tokens (mirror v2 index.css stack) ----- */
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+
+  --fs-mono: 11px;
+  --fs-small: 13px;
+  --fs-body: 14px;
+  --fs-title: 17px;
+
+  --ease-out: cubic-bezier(0.25, 1, 0.5, 1);
+
+  /* v2 chat-kit aliases (mirrors :root remap in index.css) */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+
+  /* Dark canvas — matches the chat surface. */
+  --bg-0: #0d0d0e;
+  --bg-2: #15161a;
+  --panel: #1a1c20;
+  --panel-2: #20232a;
+  --line: #2a2d35;
+  --line-soft: #23262d;
+
+  --text: #f4efe7;
+  --muted: #c8c5be;
+  --dim: #8a8f97;
+
+  --copper: #d28b52;
+  --copper-bright: #e8a978;
+  --copper-05: rgba(210, 139, 82, 0.05);
+  --copper-06: rgba(210, 139, 82, 0.06);
+  --copper-08: rgba(210, 139, 82, 0.08);
+  --copper-10: rgba(210, 139, 82, 0.10);
+  --copper-12: rgba(210, 139, 82, 0.12);
+  --copper-22: rgba(210, 139, 82, 0.22);
+
+  --phosphor: #8fd0a1;
+  --phosphor-12: rgba(143, 208, 161, 0.12);
+  --phosphor-22: rgba(143, 208, 161, 0.22);
+  --danger: #f08266;
+  --danger-bg: rgba(240, 130, 102, 0.12);
+  --danger-border: rgba(240, 130, 102, 0.35);
+  --warning: #e6b94a;
+  --warning-bg: rgba(230, 185, 74, 0.12);
+  --warning-border: rgba(230, 185, 74, 0.35);
+
+  --shadow-modal: 0 24px 48px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-drawer: -16px 0 32px rgba(0, 0, 0, 0.45);
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.02) inset, 0 0 0 1px rgba(255, 255, 255, 0.02) inset;
+  --shadow-card-hover: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+
+  --layer-popover: 60;
+  --layer-topbar: 40;
+  --layer-drawer: 80;
+
+  --font-body: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  --font-display: "Syne", "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  --tabular: tabular-nums;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg-0);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  line-height: 1.5;
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ----- 2. Audit chrome (toggle + frame) ----- */
+.audit-shell {
+  min-height: 100vh;
+  background:
+    radial-gradient(1200px 800px at 70% -10%, rgba(210, 139, 82, 0.06), transparent 60%),
+    radial-gradient(900px 600px at -10% 100%, rgba(143, 208, 161, 0.04), transparent 65%),
+    var(--bg-0);
+  padding: 32px 24px 80px;
+}
+
+.audit-header {
+  max-width: 1280px;
+  margin: 0 auto 24px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.audit-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 28px;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+.audit-title em {
+  font-style: normal;
+  color: var(--copper-bright);
+}
+.audit-sub {
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono);
+  color: var(--dim);
+  margin: 6px 0 0;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.audit-toggle {
+  display: inline-flex;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 4px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono);
+}
+.audit-toggle button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  padding: 8px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: background 160ms var(--ease-out), color 160ms var(--ease-out);
+}
+.audit-toggle button:hover { color: var(--text); }
+.audit-toggle button.is-active {
+  background: var(--copper);
+  color: #1a0f08;
+  font-weight: 600;
+}
+
+.audit-stage {
+  max-width: 1280px;
+  margin: 0 auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--bg-2);
+  position: relative;
+}
+.audit-stage__label {
+  position: absolute;
+  top: 12px;
+  left: 16px;
+  z-index: 10;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+.audit-stage__label b { color: var(--copper-bright); }
+
+.audit-mode-before .audit-stage__label b { color: var(--danger); }
+
+/* When After is active, hide the Before markup */
+.audit-mode-after .before-only { display: none; }
+.audit-mode-before .after-only { display: none; }
+
+/* ----- 3. App shell: mock topbar ----- */
+.app-shell-mock {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 56px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-2);
+}
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+}
+.brand-mark {
+  width: 22px; height: 22px;
+  border-radius: 6px;
+  background: linear-gradient(140deg, var(--copper), #8a4a1e);
+  position: relative;
+}
+.brand-mark::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border: 1.5px solid #1a0f08;
+  border-radius: 4px;
+  border-top: 0;
+}
+.crumbs {
+  margin-left: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono);
+  color: var(--muted);
+}
+.crumbs .sep { color: var(--dim); }
+.crumbs .now {
+  color: var(--text);
+  border-bottom: 1px dashed var(--copper-22);
+  padding-bottom: 1px;
+}
+.spacer { flex: 1; }
+.user-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 4px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono);
+}
+.user-chip .avatar {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(120deg, var(--copper), var(--phosphor));
+}
+.user-chip .name { color: var(--text); }
+.user-chip .addr { color: var(--dim); margin-left: 4px; }
+
+/* ----- 4. Chat layout ----- */
+.chat-surface {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 240px;
+  gap: 16px;
+  padding: 16px;
+  min-height: calc(100vh - 56px - 80px - 80px);
+}
+
+.chat-layout {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: transparent;
+}
+
+.chat-main { display: flex; flex-direction: column; min-height: 0; height: 100%; }
+
+/* ---------- 4a. Topbar ---------- */
+.chat-topbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.chat-topbar__mark {
+  width: 28px; height: 28px;
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255,255,255,0.25), transparent 60%),
+    linear-gradient(140deg, var(--copper), #8a4a1e);
+}
+.chat-topbar__meta { flex: 1; min-width: 0; }
+.chat-topbar__name {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--fs-body);
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+.chat-topbar__status {
+  font-size: var(--fs-mono);
+  color: var(--dim);
+  font-family: var(--font-mono);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.status-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--phosphor);
+  box-shadow: 0 0 6px var(--phosphor-22);
+}
+
+/* ---------- 4b. Messages rail ---------- */
+.chat-messages {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 4px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+/* ----- 5. BEFORE: ship-exact chat bubble -----
+   Mirrors what MessageAtoms.tsx + index.css render today. */
+.audit-mode-before .chat-bubble {
+  padding: 12px 16px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--c-border);
+  background: var(--c-surface);
+}
+.audit-mode-before .chat-bubble--user { border-color: var(--c-bronze-border); background: var(--c-bronze-bg); }
+.audit-mode-before .chat-bubble--tool { background: var(--c-bg); }
+.audit-mode-before .chat-bubble--danger { border-color: var(--c-danger-border); background: var(--c-danger-bg); }
+
+/* The c-* family is what the JSX uses; remap locally so the Before markup
+   still picks up the values. */
+:root {
+  --c-bg: var(--bg-2);
+  --c-surface: var(--panel);
+  --c-border: var(--line);
+  --c-text: var(--text);
+  --c-text-muted: var(--muted);
+  --c-text-dim: var(--dim);
+  --c-bronze: var(--copper);
+  --c-bronze-light: var(--copper-bright);
+  --c-bronze-bg: var(--copper-12);
+  --c-bronze-border: var(--copper-22);
+  --c-danger: var(--danger);
+  --c-danger-bg: var(--danger-bg);
+  --c-danger-border: var(--danger-border);
+  --c-success: var(--phosphor);
+}
+
+.audit-mode-before .chat-msg {
+  font-size: var(--fs-body);
+  color: var(--c-text);
+  line-height: 1.6;
+}
+.audit-mode-before .chat-bubble--user .chat-msg,
+.audit-mode-before .chat-bubble--tool .chat-msg { font-size: 14px; line-height: 1.5; }
+
+.audit-mode-before .chat-dim-xs {
+  color: var(--c-text-dim);
+  font-size: var(--fs-mono);
+  font-family: var(--font-mono);
+}
+.audit-mode-before .chat-dim-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--c-text-dim);
+  font-size: var(--fs-mono);
+  font-family: var(--font-mono);
+}
+
+/* StatusDot before — flat one-line, 6px bullet */
+.audit-mode-before .status-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.audit-mode-before .status-pill .bullet {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--c-text-dim);
+}
+.audit-mode-before .status-pill .role {
+  font-weight: 600;
+  font-size: var(--fs-mono);
+  color: var(--c-text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ToolCallCard before — current shipped recipe */
+.audit-mode-before .tool-card-before {
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-md);
+  margin: 6px 0;
+  background: var(--c-surface);
+  overflow: hidden;
+}
+.audit-mode-before .tool-card-before__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: var(--text);
+  text-align: left;
+  font: inherit;
+  font-size: var(--fs-mono);
+}
+.audit-mode-before .tool-card-before__head .label {
+  color: var(--c-bronze-light);
+  font-weight: 600;
+}
+.audit-mode-before .tool-card-before__head .status {
+  margin-left: auto;
+  color: var(--c-text-dim);
+  font-size: var(--fs-mono);
+  white-space: nowrap;
+}
+.audit-mode-before .tool-card-before__body {
+  padding: 6px 10px;
+  border-top: 1px solid var(--c-border);
+  font-size: var(--fs-mono);
+  color: var(--c-text-muted);
+}
+.audit-mode-before .tool-card-before__pre {
+  font-size: var(--fs-mono);
+  font-family: var(--font-mono);
+  margin: 0 0 6px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--c-text-muted);
+}
+.audit-mode-before .badge-class {
+  margin-left: 6px;
+  font-size: var(--fs-mono);
+  font-weight: 500;
+  color: var(--c-text-dim);
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+}
+.audit-mode-before .check-ok { color: var(--c-success); }
+.audit-mode-before .check-fail { color: var(--c-danger); }
+
+/* Ask user card before — raw inputs, no chrome */
+.audit-mode-before .ask-card-before {
+  background: var(--c-bg);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  margin-top: 6px;
+}
+.audit-mode-before .ask-card-before p {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: var(--text);
+}
+.audit-mode-before .ask-card-before .opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.audit-mode-before .ask-card-before .opt {
+  border: 1px solid var(--c-border);
+  background: transparent;
+  color: var(--text);
+  padding: 4px 10px;
+  border-radius: var(--radius-md);
+  font-size: var(--fs-mono);
+  cursor: pointer;
+}
+
+/* Encode preview card before */
+.audit-mode-before .encode-before {
+  margin-top: 6px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--c-border);
+  background: var(--c-bg);
+  font-size: var(--fs-mono);
+  color: var(--c-text-muted);
+}
+.audit-mode-before .encode-before.head {
+  border-color: var(--c-bronze-border);
+  background: var(--c-bronze-bg);
+  font-size: var(--fs-body);
+}
+.audit-mode-before .encode-before strong { color: var(--c-bronze-light); }
+.audit-mode-before .encode-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.audit-mode-before .encode-row svg { color: var(--copper-bright); }
+.audit-mode-before .encode-data {
+  word-break: break-all;
+  margin-top: 4px;
+  color: var(--text);
+}
+.audit-mode-before .encode-data .note { color: var(--c-text-dim); margin-top: 2px; }
+
+/* ArchiveResultCard before -- MISSING CSS: renders raw div markup, not class chrome */
+.audit-mode-before .archive-before {
+  /* No styles defined in CSS for .archive-result! The JSX references:
+     .archive-result .archive-link-line .archive-muted-top
+     .archive-muted-top-xs .archive-heading .strong--success .strong--muted
+     All unstyled — render as plain block flow. */
+  font-size: var(--fs-mono);
+  color: var(--c-text);
+}
+.audit-mode-before .archive-before a {
+  color: var(--c-text-dim);
+  text-decoration: underline;
+  word-break: break-all;
+  display: block;
+  margin: 2px 0;
+}
+
+/* Composer before */
+.audit-mode-before .chat-composer {
+  border-top: 1px solid var(--line-soft);
+  padding-top: 12px;
+}
+.audit-mode-before .chat-composer__row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+.audit-mode-before .composer-ta-before {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--bg-2);
+  color: var(--text);
+  font: inherit;
+  font-family: var(--font-body);
+  font-size: 14px;
+  min-height: 40px;
+  outline: none;
+}
+.audit-mode-before .composer-ta-before:focus { border-color: var(--copper); }
+
+.audit-mode-before .btn-stop-before {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--c-text-dim);
+  font-family: inherit;
+  font-size: var(--fs-mono);
+  cursor: pointer;
+}
+.audit-mode-before .btn-stop-before.chat-stop--hidden { display: none; }
+
+.audit-mode-before .btn-send-before {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--copper);
+  background: var(--copper);
+  color: #1a0f08;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+}
+.audit-mode-before .btn-send-before[disabled] {
+  background: transparent;
+  border-color: var(--line);
+  color: var(--c-text-dim);
+  cursor: not-allowed;
+}
+
+/* Routing chip + popover before */
+.audit-mode-before .routing-chip-before {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--line);
+  color: var(--c-text-dim);
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.audit-mode-before .routing-chip-before.is-nondefault {
+  color: var(--copper-bright);
+  border-color: var(--copper);
+}
+
+.audit-mode-before .routing-pop-before {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 260px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  box-shadow: var(--shadow-modal);
+  border-radius: var(--radius-md);
+}
+.audit-mode-before .routing-pop-before__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.audit-mode-before .routing-pop-before__select {
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono);
+  background: var(--c-bg);
+  color: var(--c-text);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 4px 6px;
+}
+.audit-mode-before .routing-pop-before__check {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-mono);
+  color: var(--c-text-muted);
+}
+.audit-mode-before .routing-pop-before__check.is-disabled {
+  opacity: 0.45; cursor: not-allowed;
+}
+
+/* Thread rail before */
+.audit-mode-before .rail {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 12px 12px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  position: relative;
+}
+.audit-mode-before .rail__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  position: sticky;
+  top: 0;
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  backdrop-filter: blur(6px);
+}
+.audit-mode-before .rail__new {
+  display: inline-grid;
+  place-items: center;
+  width: 32px; height: 32px;
+  border: 1px solid var(--copper);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--copper-bright);
+  cursor: pointer;
+}
+.audit-mode-before .rail__title {
+  margin: 0 0 0 auto;
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono);
+  color: var(--c-text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+/* The exact shipped search: width transition (triggers layout) */
+.audit-mode-before .rail__search {
+  border: 1px solid var(--line);
+  background: var(--bg-2);
+  color: var(--text);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  box-sizing: border-box;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2399a09f' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 16px;
+  transition: width 160ms var(--ease-out); /* THE LAYOUT-THRASH OFFENDER */
+}
+.audit-mode-before .rail__search:focus-within,
+.audit-mode-before .rail__search.is-open {
+  width: 100%;
+  padding: 8px 8px 8px 12px;
+  background-position: 8px center;
+}
+
+.audit-mode-before .rail__item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--c-text-muted);
+  text-align: left;
+  padding: 8px 8px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--fs-mono);
+  transition: 150ms var(--ease-out);
+}
+.audit-mode-before .rail__item:hover { background: var(--copper-06); color: var(--text); }
+.audit-mode-before .rail__item.is-active {
+  background: var(--copper-12);
+  color: var(--text);
+  box-shadow: inset 2px 0 0 var(--copper);
+}
+.audit-mode-before .rail__item .preview {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Spinner--churn before — three concurrent infinite paint loops */
+.audit-mode-before .spinner-churn-before {
+  position: relative;
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  margin: 0 4px;
+  background-color: var(--c-text-dim);
+  animation: axiom-churn-before 650ms ease-out infinite;
+}
+.audit-mode-before .spinner-churn-before::before,
+.audit-mode-before .spinner-churn-before::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: 4px;
+  height: 4px;
+  background-color: var(--c-text-dim);
+  animation: axiom-churn-before 650ms ease-out infinite;
+}
+.audit-mode-before .spinner-churn-before::before { left: -6px; animation-delay: 110ms; }
+.audit-mode-before .spinner-churn-before::after { left: 6px; animation-delay: 220ms; }
+@keyframes axiom-churn-before {
+  0%, 70%, 100% { background-color: var(--c-text-dim); }
+  35% { background-color: var(--copper-bright); }
+}
+
+/* Caret blink before */
+.audit-mode-before .caret-blink-before { animation: axiom-caret-before 1s steps(1) infinite; }
+@keyframes axiom-caret-before { 50% { opacity: 0; } }
+
+/* fade-enter before */
+.audit-mode-before .fade-enter-before {
+  animation: axiom-fade-in-before 180ms var(--ease-out) both;
+}
+@keyframes axiom-fade-in-before {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* msg-action before — inline marginTop/marginLeft on the button itself */
+.audit-mode-before .msg-actions-before { display: inline-flex; gap: 4px; align-items: center; }
+.audit-mode-before .msg-action-before {
+  color: var(--c-text-dim);
+  font-size: var(--fs-mono);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+/* ====================================================
+   AFTER: refined treatment
+   ==================================================== */
+
+/* BEFORE-only annotation chips */
+.note {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: rgba(240, 130, 102, 0.15);
+  color: #ffbfac;
+  border: 1px solid rgba(240, 130, 102, 0.35);
+  vertical-align: middle;
+}
+.note-good {
+  background: rgba(143, 208, 161, 0.12);
+  color: #b8e7c5;
+  border-color: rgba(143, 208, 161, 0.35);
+}
+.note-fix {
+  background: rgba(230, 185, 74, 0.12);
+  color: #f3d684;
+  border-color: rgba(230, 185, 74, 0.35);
+}
+
+/* ----- 6. Refined chat bubble ----- */
+.audit-mode-after .chat-bubble {
+  --bubble-bg: var(--panel);
+  --bubble-border: var(--line);
+  --bubble-accent: var(--copper);
+
+  position: relative;
+  padding: 14px 18px 14px 22px;
+  border-radius: 12px;
+  border: 1px solid var(--bubble-border);
+  background: var(--bubble-bg);
+  box-shadow: var(--shadow-card);
+  transition: border-color 200ms var(--ease-out), background 200ms var(--ease-out);
+}
+.audit-mode-after .chat-bubble::before {
+  /* Subtle left rail — role differentiator */
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 14px;
+  bottom: 14px;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--bubble-accent);
+  opacity: 0.65;
+  transition: opacity 200ms var(--ease-out);
+}
+.audit-mode-after .chat-bubble:hover { border-color: color-mix(in srgb, var(--bubble-accent) 35%, var(--line)); }
+.audit-mode-after .chat-bubble:hover::before { opacity: 1; }
+
+.audit-mode-after .chat-bubble--user {
+  --bubble-bg: linear-gradient(160deg, color-mix(in srgb, var(--copper) 14%, var(--panel)), var(--panel));
+  --bubble-border: color-mix(in srgb, var(--copper) 35%, var(--line));
+  --bubble-accent: var(--copper);
+}
+.audit-mode-after .chat-bubble--assistant { --bubble-accent: var(--copper-bright); }
+.audit-mode-after .chat-bubble--tool {
+  --bubble-bg: var(--bg-2);
+  --bubble-accent: var(--phosphor);
+}
+.audit-mode-after .chat-bubble--danger {
+  --bubble-bg: color-mix(in srgb, var(--danger) 8%, var(--panel));
+  --bubble-border: var(--danger-border);
+  --bubble-accent: var(--danger);
+}
+
+.audit-mode-after .chat-msg {
+  font-size: var(--fs-body);
+  color: var(--text);
+  line-height: 1.65;
+  letter-spacing: -0.005em;
+}
+.audit-mode-after .chat-bubble--assistant .chat-msg {
+  font-size: calc(var(--fs-body) + 1px);
+  line-height: 1.6;
+}
+
+.audit-mode-after .chat-msg p { margin: 0 0 0.7em; }
+.audit-mode-after .chat-msg p:last-child { margin-bottom: 0; }
+.audit-mode-after .chat-msg code {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  background: var(--bg-0);
+  border: 1px solid var(--line-soft);
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+  color: var(--copper-bright);
+}
+.audit-mode-after .chat-msg h2 {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+  margin: 1em 0 0.4em;
+  font-size: 1.15em;
+}
+.audit-mode-after .chat-msg ul { margin: 0.4em 0 0.7em; padding-left: 1.2em; }
+.audit-mode-after .chat-msg a { color: var(--copper-bright); text-underline-offset: 2px; }
+
+.audit-mode-after .msg-timestamp {
+  margin-top: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 0.04em;
+}
+
+/* ----- 7. Refined status pill (replaces inline StatusDot) ----- */
+.audit-mode-after .status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 4px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-0) 60%, transparent);
+  border: 1px solid var(--line);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.audit-mode-after .status-pill .bullet {
+  position: relative;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--copper-bright);
+  box-shadow: 0 0 8px currentColor;
+}
+.audit-mode-after .status-pill .bullet::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  opacity: 0;
+  animation: pill-pulse 2.4s var(--ease-out) infinite;
+}
+@keyframes pill-pulse {
+  0% { transform: scale(0.6); opacity: 0.7; }
+  80% { opacity: 0; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+.audit-mode-after .status-pill .role { color: var(--text); font-weight: 600; }
+
+/* ----- 8. Refined ToolCallCard -----
+   Border, depth, status accent, running indicator. */
+.audit-mode-after .tool-card {
+  --tc-border: var(--line);
+  --tc-accent: var(--copper);
+  --tc-radius: 10px;
+
+  position: relative;
+  margin: 6px 0;
+  border-radius: var(--tc-radius);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--panel) 100%, transparent), var(--panel));
+  border: 1px solid var(--tc-border);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  transition: border-color 200ms var(--ease-out), transform 200ms var(--ease-out);
+}
+.audit-mode-after .tool-card:hover {
+  border-color: color-mix(in srgb, var(--tc-accent) 40%, var(--line));
+}
+
+.audit-mode-after .tool-card::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--tc-accent);
+  opacity: 0.55;
+}
+.audit-mode-after .tool-card--running {
+  --tc-accent: var(--copper);
+  --tc-border: color-mix(in srgb, var(--copper) 30%, var(--line));
+}
+.audit-mode-after .tool-card--success {
+  --tc-accent: var(--phosphor);
+  --tc-border: color-mix(in srgb, var(--phosphor) 32%, var(--line));
+}
+.audit-mode-after .tool-card--error {
+  --tc-accent: var(--danger);
+  --tc-border: color-mix(in srgb, var(--danger) 40%, var(--line));
+}
+
+.audit-mode-after .tool-card__head {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 14px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  color: var(--text);
+  text-align: left;
+  font: inherit;
+}
+.audit-mode-after .tool-card__glyph {
+  display: inline-grid;
+  place-items: center;
+  width: 24px; height: 24px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--tc-accent) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tc-accent) 30%, transparent);
+  color: var(--tc-accent);
+}
+.audit-mode-after .tool-card__glyph .glyph-ok { color: var(--tc-accent); }
+.audit-mode-after .tool-card__glyph .glyph-fail { color: var(--danger); }
+
+.audit-mode-after .tool-card__title {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.audit-mode-after .tool-card__name {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text);
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.audit-mode-after .tool-card__sub {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.audit-mode-after .tool-card__sub b { color: var(--copper-bright); font-weight: 500; }
+
+.audit-mode-after .tool-card__meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--dim);
+}
+.audit-mode-after .tool-card__meta .dot { width: 4px; height: 4px; border-radius: 50%; background: var(--dim); }
+.audit-mode-after .tool-card__meta .elapsed {
+  font-variant-numeric: tabular-nums;
+}
+.audit-mode-after .tool-card__meta.is-running .elapsed { color: var(--copper-bright); }
+
+/* Running indicator: staggered fade dots replacing caret-blink */
+.audit-mode-after .streaming-dots {
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+  padding: 0 4px;
+}
+.audit-mode-after .streaming-dots span {
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: var(--copper-bright);
+  opacity: 0.25;
+  animation: stream-fade 1.2s var(--ease-out) infinite;
+}
+.audit-mode-after .streaming-dots span:nth-child(2) { animation-delay: 0.18s; }
+.audit-mode-after .streaming-dots span:nth-child(3) { animation-delay: 0.36s; }
+@keyframes stream-fade {
+  0%, 70%, 100% { opacity: 0.2; transform: scale(1); }
+  35% { opacity: 1; transform: scale(1.4); }
+}
+
+/* Sponsored badge */
+.audit-mode-after .badge-sponsored {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--phosphor) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--phosphor) 35%, transparent);
+  color: var(--phosphor);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+}
+
+.audit-mode-after .tool-card__body {
+  position: relative;
+  padding: 12px 14px 14px 36px;
+  border-top: 1px solid var(--line-soft);
+  background: color-mix(in srgb, var(--bg-0) 50%, transparent);
+}
+.audit-mode-after .tool-card__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+.audit-mode-after .tool-card__row .label { color: var(--dim); }
+.audit-mode-after .tool-card__row .val { color: var(--text); }
+
+.audit-mode-after .tool-args {
+  margin: 0 0 8px;
+  padding: 10px 12px;
+  background: var(--bg-0);
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--muted);
+}
+.audit-mode-after .tool-args .k { color: var(--copper-bright); }
+.audit-mode-after .tool-args .s { color: var(--phosphor); }
+
+.audit-mode-after .tool-result-pre {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.5;
+  color: var(--muted);
+  background: var(--bg-0);
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+/* ----- 9. Encode preview card (After) ----- */
+.audit-mode-after .encode-card {
+  margin-top: 8px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--copper) 36%, var(--line));
+  background:
+    linear-gradient(155deg,
+      color-mix(in srgb, var(--copper) 12%, var(--panel)),
+      color-mix(in srgb, var(--copper) 6%, var(--panel)) 60%,
+      var(--panel));
+  padding: 14px 16px;
+  font-size: 13px;
+  box-shadow: var(--shadow-card);
+  position: relative;
+  overflow: hidden;
+}
+.audit-mode-after .encode-card::after {
+  content: "";
+  position: absolute;
+  right: -20px;
+  top: -20px;
+  width: 120px;
+  height: 120px;
+  background: radial-gradient(circle, color-mix(in srgb, var(--copper) 22%, transparent), transparent 70%);
+  pointer-events: none;
+}
+.audit-mode-after .encode-card__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: var(--text);
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+  margin-bottom: 12px;
+  position: relative;
+}
+.audit-mode-after .encode-card__title .shield {
+  display: inline-grid;
+  place-items: center;
+  width: 24px; height: 24px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--copper) 24%, transparent);
+  border: 1px solid color-mix(in srgb, var(--copper) 36%, transparent);
+  color: var(--copper-bright);
+}
+.audit-mode-after .encode-card__rows {
+  display: grid;
+  gap: 6px;
+  position: relative;
+}
+.audit-mode-after .encode-card__row {
+  display: grid;
+  grid-template-columns: 70px 1fr;
+  gap: 12px;
+  align-items: baseline;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.audit-mode-after .encode-card__row .k {
+  color: var(--dim);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.audit-mode-after .encode-card__row .v {
+  color: var(--text);
+  word-break: break-all;
+}
+.audit-mode-after .encode-card__data {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: var(--bg-0);
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+  word-break: break-all;
+  position: relative;
+}
+.audit-mode-after .encode-card__data .head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--dim);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 4px;
+}
+.audit-mode-after .encode-card__data .head svg { color: var(--copper-bright); }
+
+.audit-mode-after .encode-card.submitted {
+  border-color: color-mix(in srgb, var(--phosphor) 40%, var(--line));
+  background:
+    linear-gradient(155deg,
+      color-mix(in srgb, var(--phosphor) 10%, var(--panel)),
+      var(--panel));
+}
+.audit-mode-after .encode-card.submitted .encode-card__title .shield {
+  background: color-mix(in srgb, var(--phosphor) 24%, transparent);
+  border-color: color-mix(in srgb, var(--phosphor) 36%, transparent);
+  color: var(--phosphor);
+}
+.audit-mode-after .encode-card.submitted::after {
+  background: radial-gradient(circle, color-mix(in srgb, var(--phosphor) 22%, transparent), transparent 70%);
+}
+
+/* Sign button */
+.audit-mode-after .btn-sign {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--copper);
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--copper) 80%, var(--copper-bright)),
+      var(--copper));
+  color: #1a0f08;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.15) inset, 0 4px 12px rgba(210, 139, 82, 0.25);
+  transition: transform 120ms var(--ease-out), box-shadow 200ms var(--ease-out);
+  position: relative;
+}
+.audit-mode-after .btn-sign:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.2) inset, 0 6px 18px rgba(210, 139, 82, 0.35);
+}
+.audit-mode-after .btn-sign:active { transform: translateY(0); }
+
+/* ----- 10. Ask user card (After) ----- */
+.audit-mode-after .ask-card {
+  margin-top: 8px;
+  padding: 16px 18px;
+  border-radius: 12px;
+  background:
+    linear-gradient(155deg,
+      color-mix(in srgb, var(--copper) 10%, var(--panel)),
+      var(--panel));
+  border: 1px solid color-mix(in srgb, var(--copper) 30%, var(--line));
+  box-shadow: var(--shadow-card);
+  position: relative;
+}
+.audit-mode-after .ask-card__head {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--copper) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--copper) 32%, transparent);
+  color: var(--copper-bright);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 10px;
+}
+.audit-mode-after .ask-card__q {
+  margin: 0 0 14px;
+  font-size: 14.5px;
+  font-weight: 500;
+  color: var(--text);
+  line-height: 1.5;
+  letter-spacing: -0.005em;
+}
+.audit-mode-after .ask-card__opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.audit-mode-after .ask-card__opt {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--bg-0);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 160ms var(--ease-out);
+}
+.audit-mode-after .ask-card__opt:hover {
+  border-color: var(--copper);
+  background: color-mix(in srgb, var(--copper) 8%, var(--bg-0));
+  transform: translateY(-1px);
+}
+.audit-mode-after .ask-card__opt.is-primary {
+  background: var(--copper);
+  border-color: var(--copper);
+  color: #1a0f08;
+  font-weight: 600;
+}
+.audit-mode-after .ask-card__opt.is-primary:hover {
+  background: var(--copper-bright);
+  border-color: var(--copper-bright);
+}
+
+.audit-mode-after .ask-card__field {
+  display: flex;
+  gap: 8px;
+}
+.audit-mode-after .ask-card__input {
+  flex: 1;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg-0);
+  color: var(--text);
+  font: inherit;
+  font-family: var(--font-body);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 160ms var(--ease-out);
+}
+.audit-mode-after .ask-card__input:focus { border-color: var(--copper); }
+
+/* ----- 11. Archive card (After) — adds the missing CSS ----- */
+.audit-mode-after .archive-card {
+  margin-top: 8px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-card);
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+}
+.audit-mode-after .archive-card__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.audit-mode-after .archive-card__icon {
+  display: inline-grid;
+  place-items: center;
+  width: 22px; height: 22px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--phosphor) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--phosphor) 30%, transparent);
+  color: var(--phosphor);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+}
+.audit-mode-after .archive-card strong.strong--success {
+  color: var(--phosphor);
+  font-weight: 600;
+  font-size: 13.5px;
+  letter-spacing: -0.005em;
+}
+.audit-mode-after .archive-card strong.strong--muted {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 13.5px;
+}
+.audit-mode-after .archive-muted-top {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--dim);
+  margin-top: 2px;
+}
+.audit-mode-after .archive-muted-top-xs {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--dim);
+}
+.audit-mode-after .archive-heading {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text);
+  letter-spacing: -0.005em;
+}
+.audit-mode-after .archive-link-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 9px;
+  border-radius: 6px;
+  background: var(--bg-0);
+  border: 1px solid var(--line-soft);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.audit-mode-after .archive-link-line a {
+  color: var(--copper-bright);
+  text-decoration: none;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.audit-mode-after .archive-link-line a:hover { text-decoration: underline; }
+.audit-mode-after .archive-link-line .open-glyph { color: var(--dim); font-size: 10px; }
+
+/* ----- 12. Composer (After) ----- */
+.audit-mode-after .chat-composer {
+  border-top: 1px solid var(--line-soft);
+  padding: 14px 0 4px;
+}
+.audit-mode-after .composer-counter {
+  margin: 8px 0 0;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--warning);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.audit-mode-after .composer-frame {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: var(--shadow-card);
+  transition: border-color 200ms var(--ease-out), box-shadow 200ms var(--ease-out);
+}
+.audit-mode-after .composer-frame:focus-within {
+  border-color: color-mix(in srgb, var(--copper) 60%, var(--line));
+  box-shadow:
+    var(--shadow-card),
+    0 0 0 4px color-mix(in srgb, var(--copper) 18%, transparent);
+}
+
+.audit-mode-after .composer-ta {
+  flex: 1;
+  padding: 10px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 36px;
+  max-height: 180px;
+  outline: none;
+  resize: none;
+}
+.audit-mode-after .composer-ta::placeholder {
+  color: var(--dim);
+  transition: color 200ms var(--ease-out);
+}
+.audit-mode-after .composer-frame:focus-within .composer-ta::placeholder {
+  color: color-mix(in srgb, var(--copper) 50%, var(--dim));
+}
+
+.audit-mode-after .routing-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 160ms var(--ease-out);
+}
+.audit-mode-after .routing-chip:hover {
+  border-color: var(--copper);
+  color: var(--text);
+}
+.audit-mode-after .routing-chip.is-nondefault {
+  border-color: var(--copper);
+  color: var(--copper-bright);
+  background: color-mix(in srgb, var(--copper) 8%, transparent);
+}
+.audit-mode-after .routing-chip .pin-ico { color: var(--copper-bright); }
+
+.audit-mode-after .btn-stop,
+.audit-mode-after .btn-send,
+.audit-mode-after .btn-queue {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 160ms var(--ease-out);
+}
+.audit-mode-after .btn-stop { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 30%, var(--line)); }
+.audit-mode-after .btn-stop:hover {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  border-color: var(--danger);
+  transform: translateY(-1px);
+}
+.audit-mode-after .btn-stop .pulse-ring {
+  position: absolute;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--danger);
+  animation: stop-pulse 1.6s var(--ease-out) infinite;
+}
+@keyframes stop-pulse {
+  0%, 70%, 100% { opacity: 0.65; transform: scale(1); }
+  35% { opacity: 0; transform: scale(2.4); }
+}
+
+.audit-mode-after .btn-send {
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--copper) 88%, var(--copper-bright)),
+    var(--copper));
+  color: #1a0f08;
+  border-color: var(--copper);
+  font-weight: 600;
+  position: relative;
+  overflow: hidden;
+}
+.audit-mode-after .btn-send::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.18) 50%, transparent 70%);
+  transform: translateX(-110%);
+  transition: transform 0;
+}
+.audit-mode-after .btn-send:not([disabled]):hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(210, 139, 82, 0.35); }
+.audit-mode-after .btn-send:not([disabled]):hover::after { animation: sheen 700ms var(--ease-out) forwards; }
+@keyframes sheen { to { transform: translateX(110%); } }
+.audit-mode-after .btn-send[disabled] {
+  background: color-mix(in srgb, var(--line) 100%, transparent);
+  border-color: var(--line);
+  color: var(--dim);
+  cursor: not-allowed;
+}
+.audit-mode-after .btn-queue {
+  width: auto;
+  padding: 0 14px;
+  background: color-mix(in srgb, var(--copper) 10%, transparent);
+  border-color: var(--copper);
+  color: var(--copper-bright);
+  font-weight: 600;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* ----- 13. Routing popover (After) ----- */
+.audit-mode-after .routing-anchor { position: relative; }
+.audit-mode-after .routing-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--layer-topbar);
+  background: transparent;
+}
+.audit-mode-after .routing-pop {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 0;
+  z-index: var(--layer-popover);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 320px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  box-shadow: var(--shadow-modal);
+  border-radius: 14px;
+  animation: pop-in 220ms var(--ease-out) both;
+}
+.audit-mode-after .routing-pop::after {
+  /* Tooltip arrow */
+  content: "";
+  position: absolute;
+  left: 16px;
+  bottom: -6px;
+  width: 12px;
+  height: 12px;
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  transform: rotate(45deg);
+}
+@keyframes pop-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+
+.audit-mode-after .routing-pop__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.audit-mode-after .routing-pop__title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 14.5px;
+  color: var(--text);
+}
+.audit-mode-after .routing-pop__hint {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.audit-mode-after .routing-pop__label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.audit-mode-after .routing-pop__select {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--bg-0);
+  border: 1px solid var(--line);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 160ms var(--ease-out);
+}
+.audit-mode-after .routing-pop__select:hover { border-color: var(--copper); }
+
+.audit-mode-after .routing-pop__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--bg-0);
+  border: 1px solid var(--line-soft);
+  cursor: pointer;
+  transition: border-color 160ms var(--ease-out);
+}
+.audit-mode-after .routing-pop__row:hover { border-color: color-mix(in srgb, var(--copper) 40%, var(--line-soft)); }
+.audit-mode-after .routing-pop__row.is-on {
+  background: color-mix(in srgb, var(--copper) 10%, var(--bg-0));
+  border-color: color-mix(in srgb, var(--copper) 40%, transparent);
+}
+.audit-mode-after .routing-pop__row .l {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text);
+}
+.audit-mode-after .routing-pop__row .l svg { color: var(--copper-bright); }
+.audit-mode-after .routing-pop__row .l small {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--dim);
+  margin-top: 2px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.audit-mode-after .routing-pop__toggle {
+  position: relative;
+  width: 28px; height: 16px;
+  border-radius: 999px;
+  background: var(--line);
+  border: 0;
+  transition: background 200ms var(--ease-out);
+}
+.audit-mode-after .routing-pop__toggle::after {
+  content: "";
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: all 200ms var(--ease-out);
+}
+.audit-mode-after .routing-pop__toggle.is-on {
+  background: color-mix(in srgb, var(--copper) 50%, var(--line));
+}
+.audit-mode-after .routing-pop__toggle.is-on::after {
+  left: 14px;
+  background: var(--copper-bright);
+}
+.audit-mode-after .routing-pop__toggle:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.audit-mode-after .routing-pop__status {
+  margin: 0;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line-soft);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  line-height: 1.55;
+  color: var(--dim);
+  display: flex;
+  gap: 6px;
+}
+
+/* ----- 14. Thread rail (After) ----- */
+.audit-mode-after .rail {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 14px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  position: relative;
+}
+.audit-mode-after .rail__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0 10px;
+  border-bottom: 1px solid var(--line-soft);
+  margin-bottom: 10px;
+  position: sticky;
+  top: 0;
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  backdrop-filter: blur(6px);
+  z-index: 1;
+}
+.audit-mode-after .rail__new {
+  display: inline-grid;
+  place-items: center;
+  width: 32px; height: 32px;
+  border: 1px solid var(--copper);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--copper) 12%, transparent);
+  color: var(--copper-bright);
+  cursor: pointer;
+  transition: all 160ms var(--ease-out);
+}
+.audit-mode-after .rail__new:hover {
+  background: var(--copper);
+  color: #1a0f08;
+  transform: scale(1.05);
+}
+/* Rail search: flex animate, not width (no layout thrash) */
+.audit-mode-after .rail__search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 32px;
+  height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg-0);
+  padding: 0;
+  overflow: hidden;
+  transition: flex-basis 240ms var(--ease-out), border-color 200ms var(--ease-out);
+}
+.audit-mode-after .rail__search-wrap:focus-within,
+.audit-mode-after .rail__search-wrap.is-open {
+  flex: 1 1 auto;
+  border-color: var(--copper);
+}
+.audit-mode-after .rail__search-ico {
+  flex: 0 0 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  color: var(--dim);
+}
+.audit-mode-after .rail__search {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  outline: 0;
+  opacity: 0;
+  transition: opacity 200ms var(--ease-out) 80ms;
+  padding: 0 4px 0 0;
+}
+.audit-mode-after .rail__search-wrap:focus-within .rail__search,
+.audit-mode-after .rail__search-wrap.is-open .rail__search { opacity: 1; }
+.audit-mode-after .rail__search::placeholder { color: var(--dim); }
+
+.audit-mode-after .rail__title {
+  margin: 0 0 0 auto;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 600;
+}
+
+.audit-mode-after .rail__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+}
+.audit-mode-after .rail__item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  text-align: left;
+  padding: 8px 10px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12.5px;
+  position: relative;
+  transition: all 160ms var(--ease-out);
+}
+.audit-mode-after .rail__item:hover {
+  background: color-mix(in srgb, var(--copper) 6%, transparent);
+  color: var(--text);
+}
+.audit-mode-after .rail__item.is-active {
+  background: color-mix(in srgb, var(--copper) 12%, transparent);
+  color: var(--text);
+  box-shadow: inset 3px 0 0 var(--copper);
+}
+.audit-mode-after .rail__item .preview {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.audit-mode-after .rail__item .badge {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--dim);
+}
+.audit-mode-after .rail__item .del {
+  color: var(--dim);
+  padding: 4px;
+  border: 0;
+  background: transparent;
+  opacity: 0;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 160ms var(--ease-out);
+}
+.audit-mode-after .rail__item:hover .del,
+.audit-mode-after .rail__item.is-active .del { opacity: 1; }
+.audit-mode-after .rail__item .del:hover { color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); }
+
+/* ----- 15. Fade-enter (After): more deliberate ----- */
+.audit-mode-after .fade-enter {
+  animation: fade-enter-after 420ms var(--ease-out) both;
+}
+@keyframes fade-enter-after {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* msg-actions / msg-action */
+.audit-mode-after .msg-actions {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+.audit-mode-after .msg-action {
+  color: var(--dim);
+  font-size: var(--fs-mono);
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 160ms var(--ease-out);
+}
+.audit-mode-after .msg-action:hover {
+  color: var(--copper-bright);
+  background: color-mix(in srgb, var(--copper) 8%, transparent);
+  border-color: color-mix(in srgb, var(--copper) 22%, transparent);
+}
+
+/* ----- 16. Phase indicator (header streaming cue) ----- */
+.audit-mode-after .phase-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--copper-bright);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ----- 17. Misc label / visually hidden ----- */
+.audit-mode-after .visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap; border: 0;
+}
+
+/* ----- 18. Reduced motion ----- */
+@media (prefers-reduced-motion: reduce) {
+  .audit-mode-after *,
+  .audit-mode-before * {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+}
+
+/* ----- 19. Shared sample markup styles (text only) ----- */
+.tools-list {
+  display: grid;
+  gap: 2px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+.tools-list .row {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 0;
+  border-bottom: 1px dashed var(--line-soft);
+}
+.tools-list .row:last-child { border: 0; }
+.tools-list .row .nm { color: var(--text); }
+.tools-list .row .ct { color: var(--dim); }
+
+/* ====================================================
+   20. Layout shell (mock wrappers so HTML is self-contained)
+   ==================================================== */
+.app-shell-stage {
+  display: flex;
+  flex-direction: column;
+  min-height: 640px;
+  background: var(--bg-0);
+}
+.chat-surface-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 240px;
+  gap: 16px;
+  padding: 16px;
+  flex: 1;
+}
+
+/* Annotation captions next to the chrome */
+.audit-annotate {
+  max-width: 1280px;
+  margin: 12px auto 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+}
+.audit-annotate .cap {
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--copper) 8%, var(--panel));
+  border: 1px solid color-mix(in srgb, var(--copper) 20%, var(--line));
+  line-height: 1.5;
+  letter-spacing: 0.03em;
+}
+.audit-annotate .cap b {
+  display: block;
+  font-size: 9.5px;
+  color: var(--copper-bright);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.audit-annotate .cap.warn {
+  background: color-mix(in srgb, var(--warning) 8%, var(--panel));
+  border-color: color-mix(in srgb, var(--warning) 20%, var(--line));
+}
+.audit-annotate .cap.warn b { color: var(--warning); }
+.audit-annotate .cap.ok {
+  background: color-mix(in srgb, var(--phosphor) 8%, var(--panel));
+  border-color: color-mix(in srgb, var(--phosphor) 20%, var(--line));
+}
+.audit-annotate .cap.ok b { color: var(--phosphor); }
+</style>
+</head>
+<body class="audit-mode-before">
+
+<div class="audit-shell">
+
+  <header class="audit-header">
+    <div>
+      <h1 class="audit-title">Chat surface <em>audit</em></h1>
+      <p class="audit-sub">ChatPage.tsx · MessageAtoms.tsx · index.css · tools &amp; routing</p>
+    </div>
+    <div class="audit-toggle" role="group" aria-label="Audit mode">
+      <button type="button" id="btn-before" class="is-active">Before</button>
+      <button type="button" id="btn-after">After</button>
+    </div>
+  </header>
+
+  <!-- ============================================================
+       STAGE — both Before/After live here; only one is visible at a
+       time, controlled by the body class.
+       ============================================================ -->
+  <main class="audit-stage" aria-label="Chat surface snapshot">
+    <div class="audit-stage__label">Snapshot · <b id="stage-mode">Before (shipped)</b></div>
+
+    <div class="app-shell-stage before-only">
+      <!-- Mock topbar -->
+      <div class="app-shell-mock">
+        <div class="brand">
+          <div class="brand-mark"></div>
+          <span>ax·<i style="color:var(--copper-bright); font-style:normal;">i</i>·om</span>
+        </div>
+        <span class="crumbs"><span>/agents/3</span><span class="sep">›</span><span class="now">chat</span></span>
+        <span class="spacer"></span>
+        <span class="user-chip">
+          <span class="avatar"></span>
+          <span class="name">eya</span>
+          <span class="addr">0x9c…72f1</span>
+        </span>
+      </div>
+
+      <div class="chat-surface-stage">
+        <!-- =========== MAIN COLUMN =========== -->
+        <section class="chat-layout">
+          <header class="chat-topbar">
+            <div class="chat-topbar__mark"></div>
+            <div class="chat-topbar__meta">
+              <div class="chat-topbar__name">Axiom Assistant</div>
+              <div class="chat-topbar__status">
+                <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--phosphor);box-shadow:0 0 6px var(--phosphor-22);"></span>
+                Online, 0G Mainnet
+              </div>
+            </div>
+          </header>
+
+          <!-- Banners: wrong network -->
+          <div class="chat-banner" role="status" style="margin-top:10px;">
+            Wrong network. Switch wallet to 0G Mainnet.
+          </div>
+
+          <div class="chat-messages">
+
+            <!-- USER MESSAGE -->
+            <div class="fade-enter-before chat-bubble chat-bubble--user">
+              <div class="status-pill">
+                <span class="bullet" style="background:var(--copper-bright);"></span>
+                <span class="role">You</span>
+                <span style="margin-left:auto; font-size:10px; color:var(--dim);">2 minutes ago</span>
+              </div>
+              <div class="chat-msg">
+                List my agents and show the vault balance for each one.
+              </div>
+            </div>
+
+            <!-- ASSISTANT MESSAGE + RUNNING TOOL CARD -->
+            <div class="fade-enter-before chat-bubble">
+              <div class="status-pill">
+                <span class="bullet" style="background:var(--text);"></span>
+                <span class="role">Assistant</span>
+                <span style="margin-left:auto; font-size:10px; color:var(--dim);">just now</span>
+              </div>
+              <div class="chat-msg">
+                Sure — pulling the on-chain records. I'll list the agents first, then read each vault.
+              </div>
+
+              <div style="margin-top:8px; font-size:14px; color:var(--muted);">
+                <!-- Running tool card -->
+                <div class="tool-card-before">
+                  <button type="button" class="tool-card-before__head" aria-expanded="true">
+                    <span class="spinner-churn-before"></span>
+                    <span class="label">List my agents</span>
+                    <span class="badge-class">(on-chain)</span>
+                    <span class="status">running 3s…</span>
+                  </button>
+                  <div class="tool-card-before__body">
+                    <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:6px;">
+                      <span aria-hidden="true">running 3s</span>
+                      <span class="visually-hidden">running</span>
+                    </div>
+                    <pre class="tool-card-before__pre">{ "chain": "0G", "owner": "0x9c…72f1" }</pre>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- COMPLETED TOOL CARD + ASK USER -->
+            <div class="fade-enter-before chat-bubble">
+              <div class="status-pill">
+                <span class="bullet" style="background:var(--phosphor);"></span>
+                <span class="role">Assistant</span>
+              </div>
+
+              <div style="margin-top:6px; font-size:14px; color:var(--muted);">
+                <!-- Vault balance tool — success -->
+                <div class="tool-card-before">
+                  <button type="button" class="tool-card-before__head" aria-expanded="true">
+                    <span class="check-ok" aria-hidden="true">✓</span>
+                    <span class="label">Vault balance</span>
+                    <span class="badge-class">(on-chain)</span>
+                    <span class="status">done</span>
+                  </button>
+                  <div class="tool-card-before__body">
+                    <div style="margin-bottom:6px;">ran in 2s<span class="visually-hidden">done</span></div>
+                    <pre class="tool-card-before__pre">[
+  { "id": 1, "balance": "12.43 0G" },
+  { "id": 2, "balance": "0.10 0G" },
+  { "id": 3, "balance": "1.84 0G" }
+]</pre>
+                  </div>
+                </div>
+              </div>
+
+              <div style="margin-top:10px;">
+                <p style="margin:0 0 8px; font-size:14px; color:var(--text);">
+                  Would you like me to rebalance agent #2 from a healthy peer?
+                </p>
+                <div class="ask-card-before">
+                  <div class="opts">
+                    <button type="button" class="opt">Yes, rebalance to #1</button>
+                    <button type="button" class="opt">Yes, use #3 instead</button>
+                    <button type="button" class="opt">No, leave as is</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ASSISTANT WITH ENCODE CARD -->
+            <div class="fade-enter-before chat-bubble">
+              <div class="status-pill">
+                <span class="bullet" style="background:var(--text);"></span>
+                <span class="role">Assistant</span>
+              </div>
+              <div class="chat-msg">
+                I'll deposit 0.5 0G into the vault of agent #1. Sign in your wallet to broadcast.
+              </div>
+
+              <div class="encode-before">
+                <div class="encode-row">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+                  Sign this transaction
+                </div>
+                <div>to: 0xa1b2…f04d</div>
+                <div>value: 0.5 0G</div>
+                <div class="encode-data">
+                  data: 0xa9059cbb000000…00000001
+                  <div class="note">raw contract payload (developer view)</div>
+                </div>
+                <div style="margin-top:8px;">
+                  <button type="button" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:6px;border:1px solid var(--copper);background:transparent;color:var(--copper-bright);font-size:12px;font-weight:500;cursor:pointer;">
+                    Sign in wallet
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- ARCHIVE RESULT CARD — missing CSS so this is just raw markup -->
+            <div class="fade-enter-before chat-bubble chat-bubble--tool">
+              <div class="status-pill">
+                <span class="bullet" style="background:var(--dim);"></span>
+                <span class="role">Tool</span>
+                <span class="badge-class">archive</span>
+              </div>
+              <div class="archive-before">
+                <div>
+                  <strong style="color:var(--phosphor);">Was archived</strong>
+                </div>
+                <div style="color:var(--dim); margin-top:4px;">2025-08-31T14:22:09Z</div>
+                <div><a href="#">0x9c…72f1/0x9c72f1_archive_2025-08-31T14-22-09Z.json</a></div>
+                <div style="color:var(--dim); margin-top:6px;">
+                  Snapshot stored on 0G Storage. CIDs verified against the DA commitment.
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- =========== COMPOSER =========== -->
+          <div class="chat-composer">
+            <div class="chat-composer__row">
+
+              <!-- Routing chip + popover (open in the snapshot) -->
+              <div class="routing-anchor" style="position:relative; align-self:flex-end;">
+                <div class="routing-pop-before" role="dialog" aria-label="Routing">
+                  <div class="routing-pop-before__head">
+                    <strong>Routing</strong>
+                    <span style="font-size:var(--fs-mono); color:var(--dim);">This conversation only</span>
+                  </div>
+                  <select class="routing-pop-before__select">
+                    <option>Auto (fastest)</option>
+                    <option>Lowest cost</option>
+                    <option>Pin to 0xa1b2…f04d</option>
+                  </select>
+                  <label class="routing-pop-before__check">
+                    <input type="checkbox" /> Verified providers only
+                  </label>
+                  <label class="routing-pop-before__check is-disabled">
+                    <input type="checkbox" disabled /> Private providers (extra isolation)
+                  </label>
+                  <p style="margin:0; padding-top:8px; border-top:1px solid var(--line-soft); font-size:var(--fs-mono); line-height:1.5; color:var(--dim);">
+                    Fastest provider; follow-ups stay on it.
+                  </p>
+                </div>
+                <button type="button" class="routing-chip-before is-nondefault">
+                  <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--copper);"></span>
+                  Lowest cost
+                </button>
+              </div>
+
+              <textarea
+                aria-label="chat input"
+                class="composer-ta-before"
+                placeholder="Message Axiom Assistant…"
+              >Withdraw 0.2 0G from agent #2 into</textarea>
+
+              <button type="button" class="btn-stop-before chat-stop--hidden">Stop</button>
+              <button type="button" class="btn-send-before" disabled>Send</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- =========== RAIL =========== -->
+        <aside class="rail">
+          <div class="rail__head">
+            <button class="rail__new" type="button" title="New chat">+</button>
+            <input class="rail__search is-open" type="text" placeholder="Search chats…" value="vault" />
+            <span class="rail__title">Chats</span>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:2px;">
+            <button class="rail__item" type="button">
+              <span class="preview">Rebalance request</span>
+            </button>
+            <button class="rail__item is-active" type="button">
+              <span class="preview">List my agents and vault balances…</span>
+            </button>
+            <button class="rail__item" type="button">
+              <span class="preview">Help me mint a new agent named Atlas</span>
+            </button>
+            <button class="rail__item" type="button">
+              <span class="preview">Dry-run a strategy tick for agent #3</span>
+            </button>
+            <button class="rail__item" type="button">
+              <span class="preview">Restore server history</span>
+            </button>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+
+    <!-- =============== AFTER ================ -->
+    <div class="app-shell-stage after-only">
+      <!-- Mock topbar -->
+      <div class="app-shell-mock">
+        <div class="brand">
+          <div class="brand-mark"></div>
+          <span>ax·<i style="color:var(--copper-bright); font-style:normal;">i</i>·om</span>
+        </div>
+        <span class="crumbs"><span>/agents/3</span><span class="sep">›</span><span class="now">chat</span></span>
+        <span class="spacer"></span>
+        <span class="user-chip">
+          <span class="avatar"></span>
+          <span class="name">eya</span>
+          <span class="addr">0x9c…72f1</span>
+        </span>
+      </div>
+
+      <div class="chat-surface-stage">
+
+        <section class="chat-layout">
+          <header class="chat-topbar">
+            <div class="chat-topbar__mark"></div>
+            <div class="chat-topbar__meta">
+              <div class="chat-topbar__name">Axiom Assistant</div>
+              <div class="chat-topbar__status">
+                <span class="status-dot"></span>
+                Online, 0G Mainnet
+              </div>
+            </div>
+          </header>
+
+          <div style="margin-top:10px; padding:10px 14px; border-radius:10px; border:1px solid var(--warning-border); background:color-mix(in srgb, var(--warning) 10%, transparent); font-size:13px; color:var(--warning); display:flex; align-items:center; gap:8px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            Wrong network. Switch wallet to 0G Mainnet.
+          </div>
+
+          <div class="chat-messages">
+
+            <!-- USER MESSAGE -->
+            <div class="fade-enter chat-bubble chat-bubble--user">
+              <div class="status-pill">
+                <span class="bullet" style="background:var(--copper-bright);"></span>
+                <span class="role">You</span>
+                <span style="margin-left:auto; font-size:10px; color:var(--dim); letter-spacing:0.04em;">2 min ago</span>
+              </div>
+              <div class="chat-msg">
+                List my agents and show the vault balance for each one.
+              </div>
+            </div>
+
+            <!-- ASSISTANT MESSAGE + RUNNING TOOL CARD -->
+            <div class="fade-enter chat-bubble chat-bubble--assistant">
+              <div class="status-pill">
+                <span class="bullet" style="background:var(--copper-bright);"></span>
+                <span class="role">Assistant</span>
+                <span class="streaming-dots" aria-label="streaming">
+                  <span></span><span></span><span></span>
+                </span>
+                <span style="margin-left:auto; font-size:10px; color:var(--dim); letter-spacing:0.04em;">just now</span>
+              </div>
+              <div class="chat-msg">
+                Sure — pulling the on-chain records. I'll list the agents first, then read each vault.
+              </div>
+
+              <div style="margin-top:14px; display:flex; flex-direction:column; gap:8px;">
+                <!-- Running tool card -->
+                <div class="tool-card tool-card--running">
+                  <button type="button" class="tool-card__head" aria-expanded="true">
+                    <span class="tool-card__glyph">
+                      <span class="spinner-churn-before" aria-label="running"></span>
+                    </span>
+                    <span class="tool-card__title">
+                      <span class="tool-card__name">List my agents</span>
+                      <span class="tool-card__sub">on-chain · agent registry</span>
+                    </span>
+                    <span class="tool-card__meta is-running">
+                      <span class="dot"></span>
+                      <span class="elapsed">running 3s</span>
+                    </span>
+                  </button>
+                  <div class="tool-card__body">
+                    <div class="tool-card__row">
+                      <span class="label">ARGS</span>
+                      <span class="val">owner = 0x9c…72f1</span>
+                    </div>
+                    <div class="tool-card__row">
+                      <span class="label">PHASE</span>
+                      <span class="val">fetching registry events</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="msg-actions" style="margin-top:10px;">
+                <button type="button" class="msg-action">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                  Regenerate
+                </button>
+                <button type="button" class="msg-action">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                  Copy
+                </button>
+                <span class="msg-action" style="color:var(--dim); cursor:default; border-color:transparent;">metrics</span>
+              </div>
+            </div>
+
+            <!-- COMPLETED TOOL CARD + ASK USER -->
+            <div class="fade-enter chat-bubble chat-bubble--assistant">
+              <div class="status-pill">
+                <span class="bullet" style="background:var(--phosphor);"></span>
+                <span class="role">Assistant</span>
+              </div>
+
+              <div style="margin-top:14px; display:flex; flex-direction:column; gap:8px;">
+                <!-- Vault balance tool — success -->
+                <div class="tool-card tool-card--success">
+                  <button type="button" class="tool-card__head" aria-expanded="true">
+                    <span class="tool-card__glyph">
+                      <svg class="glyph-ok" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    </span>
+                    <span class="tool-card__title">
+                      <span class="tool-card__name">Vault balance · agent #1, #2, #3</span>
+                      <span class="tool-card__sub">on-chain · strategy vault</span>
+                    </span>
+                    <span class="tool-card__meta">
+                      <span class="badge-sponsored">sponsored</span>
+                      <span class="elapsed">2.1s</span>
+                    </span>
+                  </button>
+                  <div class="tool-card__body">
+                    <div class="tool-card__row">
+                      <span class="label">RESULT</span>
+                      <span class="val">3 vault(s) read · 14.37 0G total</span>
+                    </div>
+                    <pre class="tool-result-pre">agent #1 · 12.43 0G
+agent #2 ·  0.10 0G
+agent #3 ·  1.84 0G</pre>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Ask user — refined -->
+              <div class="ask-card" style="margin-top:14px;">
+                <div class="ask-card__head">Question</div>
+                <p class="ask-card__q">Would you like me to rebalance agent <b style="color:var(--text);">#2</b> from a healthy peer?</p>
+                <div class="ask-card__opts">
+                  <button type="button" class="ask-card__opt is-primary">Yes, rebalance to #1</button>
+                  <button type="button" class="ask-card__opt">Yes, use #3 instead</button>
+                  <button type="button" class="ask-card__opt">No, leave as is</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- ASSISTANT WITH ENCODE CARD -->
+            <div class="fade-enter chat-bubble chat-bubble--assistant">
+              <div class="status-pill">
+                <span class="bullet" style="background:var(--copper-bright);"></span>
+                <span class="role">Assistant</span>
+              </div>
+              <div class="chat-msg">
+                I'll deposit <code>0.5 0G</code> into the vault of agent <strong>#1</strong>. Sign in your wallet to broadcast.
+              </div>
+
+              <div class="encode-card">
+                <div class="encode-card__title">
+                  <span class="shield">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+                  </span>
+                  Sign this transaction
+                </div>
+
+                <div class="encode-card__rows">
+                  <div class="encode-card__row"><span class="k">To</span><span class="v">0xa1b2…f04d</span></div>
+                  <div class="encode-card__row"><span class="k">Value</span><span class="v">0.5 0G (500000000000000000 wei)</span></div>
+                  <div class="encode-card__row"><span class="k">Amount</span><span class="v">0.5 0G</span></div>
+                </div>
+
+                <div class="encode-card__data">
+                  <div class="head">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                    Raw contract payload · dev view
+                  </div>
+                  <div>0xa9059cbb000000000000000000000000a1b2c3d4e5f6…00000001</div>
+                </div>
+
+                <button type="button" class="btn-sign">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
+                  Sign in wallet
+                </button>
+              </div>
+            </div>
+
+            <!-- ARCHIVE RESULT CARD — now with real chrome -->
+            <div class="fade-enter chat-bubble chat-bubble--tool">
+              <div class="status-pill">
+                <span class="bullet" style="background:var(--phosphor);"></span>
+                <span class="role">Tool · archive</span>
+              </div>
+
+              <div class="archive-card">
+                <div class="archive-card__head">
+                  <span class="archive-card__icon">ARC</span>
+                  <strong class="strong--success">Was archived</strong>
+                </div>
+                <div class="archive-muted-top">2025-08-31 · 14:22:09 UTC</div>
+                <div class="archive-link-line">
+                  <a href="#">0x9c72f1/0x9c72f1_archive_2025-08-31T14-22-09Z.json</a>
+                  <span class="open-glyph">↗</span>
+                </div>
+                <div class="archive-muted-top-xs">
+                  Snapshot stored on 0G Storage. CIDs verified against the DA commitment.
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- =========== COMPOSER =========== -->
+          <div class="chat-composer">
+            <div class="composer-frame">
+              <div class="routing-anchor">
+                <div class="routing-backdrop"></div>
+                <div class="routing-pop" role="dialog" aria-label="Routing">
+                  <div class="routing-pop__head">
+                    <span class="routing-pop__title">Routing</span>
+                    <span class="routing-pop__hint">This conversation only</span>
+                  </div>
+
+                  <div>
+                    <span class="routing-pop__label">Provider</span>
+                    <select class="routing-pop__select">
+                      <option>Auto — fastest</option>
+                      <option selected>Lowest cost</option>
+                      <option>Pin to 0xa1b2…f04d</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <span class="routing-pop__label">Trust</span>
+                    <div style="display:flex; flex-direction:column; gap:6px;">
+                      <label class="routing-pop__row">
+                        <span class="l">
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+                          <span>
+                            Verified only
+                            <small>Audited TEE · 0x9c…72f1</small>
+                          </span>
+                        </span>
+                        <button type="button" class="routing-pop__toggle" aria-pressed="true"></button>
+                      </label>
+                      <label class="routing-pop__row">
+                        <span class="l">
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                          <span>
+                            Private inference
+                            <small>Disables on this model</small>
+                          </span>
+                        </span>
+                        <button type="button" class="routing-pop__toggle" disabled></button>
+                      </label>
+                    </div>
+                  </div>
+
+                  <p class="routing-pop__status">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin-top:2px; flex:0 0 auto;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <span>Cheapest first; may change between turns.</span>
+                  </p>
+                </div>
+
+                <button type="button" class="routing-chip is-nondefault" aria-expanded="true">
+                  <svg class="pin-ico" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                  Lowest cost
+                </button>
+              </div>
+
+              <textarea
+                aria-label="chat input"
+                class="composer-ta"
+                placeholder="Message Axiom Assistant…"
+              >Withdraw 0.2 0G from agent #2 into</textarea>
+
+              <button type="button" class="btn-stop" title="Stop generation">
+                <span class="pulse-ring"></span>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+              </button>
+
+              <button type="button" class="btn-send" title="Send">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- =========== RAIL =========== -->
+        <aside class="rail">
+          <div class="rail__head">
+            <button class="rail__new" type="button" title="New chat">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+            <div class="rail__search-wrap is-open">
+              <span class="rail__search-ico">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+              </span>
+              <input class="rail__search" type="text" value="vault" />
+            </div>
+            <span class="rail__title">Chats</span>
+          </div>
+          <div class="rail__list">
+            <button class="rail__item" type="button">
+              <span class="preview">Rebalance request</span>
+              <span class="badge">3m</span>
+            </button>
+            <button class="rail__item is-active" type="button">
+              <span class="preview">List my agents and vault balances…</span>
+              <span class="badge">now</span>
+            </button>
+            <button class="rail__item" type="button">
+              <span class="preview">Help me mint a new agent named Atlas</span>
+              <span class="badge">1h</span>
+              <button class="del" type="button" title="Delete" aria-label="Delete">×</button>
+            </button>
+            <button class="rail__item" type="button">
+              <span class="preview">Dry-run a strategy tick for agent #3</span>
+              <span class="badge">3h</span>
+            </button>
+            <button class="rail__item" type="button" style="border:1px dashed var(--line); color:var(--dim); margin-top:8px;">
+              <span class="preview" style="font-family:var(--font-mono); font-size:11px;">↻ Restore server history</span>
+            </button>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </main>
+
+  <!-- Annotations under the stage -->
+  <div class="audit-annotate">
+    <div class="cap warn"><b>Broken surface</b>ArchiveResultCard renders raw &lt;div&gt; markup — CSS for <code>.archive-result / .archive-link-line / .archive-muted-top / .archive-heading / .strong--success</code> is missing.</div>
+    <div class="cap warn"><b>Layout thrash</b>Search width transition (160ms) on every keystroke triggers reflow of the rail list — replaced by flex-basis animation in After.</div>
+    <div class="cap"><b>Inline styles</b><code>insetCardStyle</code>, <code>monoXs</code>, <code>preBlockStyle</code>, <code>cardBaseStyle</code> allocate new objects per render — collapsed into named classes.</div>
+    <div class="cap ok"><b>Hierarchy</b>Assistant bubble now has a copper-left accent, refined typography, and a breathing fade-enter — tool cards feel like product, not &lt;pre&gt; dumps.</div>
+    <div class="cap ok"><b>Motion</b><code>caret-blink</code> replaced with staggered streaming dots; Stop gains a danger pulse; Send has a sheen sweep on hover.</div>
+    <div class="cap ok"><b>Depth</b>Encode card has structured key/value rows + corner glow; routing popover has its own tooltip arrow + toggle switch.</div>
+  </div>
+
+</div>
+
+<script>
+  // Audit toggle
+  var btnBefore = document.getElementById('btn-before');
+  var btnAfter = document.getElementById('btn-after');
+  var stageLabel = document.getElementById('stage-mode');
+  function setMode(mode) {
+    document.body.classList.toggle('audit-mode-before', mode === 'before');
+    document.body.classList.toggle('audit-mode-after', mode === 'after');
+    btnBefore.classList.toggle('is-active', mode === 'before');
+    btnAfter.classList.toggle('is-active', mode === 'after');
+    stageLabel.textContent = mode === 'before' ? 'Before (shipped)' : 'After (recommended)';
+  }
+  btnBefore.addEventListener('click', function(){ setMode('before'); });
+  btnAfter.addEventListener('click', function(){ setMode('after'); });
+
+  // Simulate the running tool elapsed counter (purely visual, doesn't represent real data)
+  var els = document.querySelectorAll('.tool-card--running .elapsed');
+  setInterval(function(){
+    els.forEach(function(el){
+      var m = el.textContent.match(/(\d+)s/);
+      if (!m) return;
+      var next = parseInt(m[1], 10) + 1;
+      el.textContent = 'running ' + next + 's';
+    });
+  }, 1000);
+</script>
+
+</body>
+</html>
