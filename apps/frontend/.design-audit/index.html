@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Axiom Design Audit — All Surfaces</title>
+<style>
+  :root {
+    --copper: #d28b52;
+    --copper-bright: #efae6b;
+    --phosphor: #67e8b4;
+    --canvas: #0b0e0f;
+    --ink: #ece9de;
+    --line: rgba(199, 116, 53, 0.18);
+    --line-soft: rgba(199, 116, 53, 0.10);
+    --panel: rgba(18, 22, 23, 0.92);
+    --bg-2: rgba(11, 14, 15, 0.78);
+    --text-dim: rgba(180, 174, 165, 0.78);
+    --text: #ece9de;
+    --fs-xs: 11px;
+    --fs-sm: 13px;
+    --fs-body: 14px;
+    --fs-title: 17px;
+    --fs-display: 22px;
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 24px;
+    --space-6: 32px;
+    --space-7: 48px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --radius-xl: 20px;
+    --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; background: var(--canvas); color: var(--text); font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", sans-serif; font-size: var(--fs-body); }
+  body { display: grid; grid-template-rows: auto 1fr; }
+  header {
+    padding: var(--space-4) var(--space-5);
+    background: var(--bg-2);
+    border-bottom: 1px solid var(--line);
+    backdrop-filter: blur(12px) saturate(140%);
+    -webkit-backdrop-filter: blur(12px) saturate(140%);
+    display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3);
+  }
+  h1 {
+    margin: 0; font-size: var(--fs-title); font-weight: 600; letter-spacing: -0.01em;
+    color: var(--ink);
+    display: inline-flex; align-items: center; gap: var(--space-2);
+  }
+  h1::before {
+    content: ""; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--copper); box-shadow: 0 0 10px var(--copper);
+  }
+  .subtitle { font-size: var(--fs-xs); color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; }
+  nav {
+    display: flex; flex-wrap: wrap; gap: var(--space-1); margin-left: auto;
+    padding: var(--space-1); border-radius: var(--radius-lg);
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid var(--line-soft);
+  }
+  nav button {
+    appearance: none; border: none; cursor: pointer;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    background: transparent; color: var(--text-dim);
+    font: inherit; font-size: var(--fs-sm);
+    transition: background-color 200ms var(--ease), color 200ms var(--ease);
+    position: relative;
+    display: inline-flex; align-items: center; gap: var(--space-2);
+  }
+  nav button:hover { background: rgba(199, 116, 53, 0.08); color: var(--ink); }
+  nav button.is-active {
+    background: color-mix(in srgb, var(--copper) 18%, transparent);
+    color: var(--ink);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 6px 14px rgba(199, 116, 53, 0.10);
+  }
+  nav button.is-active::after {
+    content: ""; position: absolute; left: 12px; right: 12px; bottom: 4px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--copper-bright), transparent);
+    transform: scaleX(1); transition: transform 220ms var(--ease);
+  }
+  nav button:focus-visible {
+    outline: 2px solid var(--copper-bright); outline-offset: 2px;
+  }
+  nav .num {
+    font-family: ui-monospace, "JetBrains Mono", "SF Mono", Menlo, monospace;
+    font-size: var(--fs-xs); opacity: 0.6;
+  }
+  main { position: relative; overflow: hidden; }
+  .stage {
+    position: absolute; inset: 0;
+    display: grid;
+  }
+  iframe {
+    width: 100%; height: 100%; border: 0; background: var(--canvas);
+    color-scheme: dark;
+  }
+  .toolbar {
+    position: absolute; right: var(--space-4); bottom: var(--space-4);
+    display: flex; gap: var(--space-2);
+    padding: var(--space-2);
+    border-radius: var(--radius-lg);
+    background: rgba(7, 9, 10, 0.78);
+    border: 1px solid var(--line-soft);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+    z-index: 10;
+  }
+  .toolbar a, .toolbar button {
+    appearance: none; cursor: pointer;
+    border: 1px solid var(--line-soft);
+    background: transparent; color: var(--text);
+    font: inherit; font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.06em;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    transition: background-color 180ms var(--ease), border-color 180ms var(--ease), transform 180ms var(--ease);
+    text-decoration: none;
+  }
+  .toolbar a:hover, .toolbar button:hover {
+    background: rgba(199, 116, 53, 0.12);
+    border-color: var(--copper);
+    transform: translateY(-1px);
+  }
+  .toolbar a:focus-visible, .toolbar button:focus-visible {
+    outline: 2px solid var(--copper-bright); outline-offset: 2px;
+  }
+  @media (max-width: 900px) {
+    header { padding: var(--space-3); }
+    nav { width: 100%; margin-left: 0; margin-top: var(--space-2); }
+    nav button { flex: 1 1 calc(50% - 4px); justify-content: center; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Axiom Design Audit</h1>
+  <span class="subtitle">6 surfaces · Before / After</span>
+  <nav id="nav" role="tablist" aria-label="Design audit surfaces"></nav>
+</header>
+<main>
+  <div class="stage">
+    <iframe id="frame" title="Design audit surface" allow=""></iframe>
+  </div>
+  <div class="toolbar">
+    <button id="open" type="button">Open in new window</button>
+    <button id="fullscreen" type="button">Fullscreen</button>
+  </div>
+</main>
+<script>
+  const surfaces = [
+    { id: "appshell", label: "AppShell chrome",    file: "appshell-chrome-before-after.html" },
+    { id: "landing",  label: "LandingPage",       file: "landing-before-after.html" },
+    { id: "chat",     label: "Chat + tool cards",  file: "chat-before-after.html" },
+    { id: "dash",     label: "Dashboard + Tx",     file: "dashboard-transactions-before-after.html" },
+    { id: "agent",    label: "Agent + Flow",       file: "agent-flow-before-after.html" },
+    { id: "settings", label: "Settings etc.",      file: "settings-storage-cosign-staking-before-after.html" }
+  ];
+
+  const nav = document.getElementById("nav");
+  const frame = document.getElementById("frame");
+  const openBtn = document.getElementById("open");
+  const fsBtn = document.getElementById("fullscreen");
+
+  function makeUrl(file) {
+    return new URL(file, window.location.href).toString();
+  }
+
+  function activate(idx, push = true) {
+    const surface = surfaces[idx];
+    document.querySelectorAll("nav button").forEach((b, i) => {
+      const on = i === idx;
+      b.classList.toggle("is-active", on);
+      b.setAttribute("aria-selected", on ? "true" : "false");
+      b.tabIndex = on ? 0 : -1;
+    });
+    frame.src = makeUrl(surface.file);
+    document.title = `${surface.label} — Axiom Design Audit`;
+    if (push) {
+      const u = new URL(window.location.href);
+      u.searchParams.set("s", surface.id);
+      history.replaceState(null, "", u.toString());
+    }
+  }
+
+  surfaces.forEach((surface, idx) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.role = "tab";
+    btn.innerHTML = `<span class="num">${String(idx + 1).padStart(2, "0")}</span><span>${surface.label}</span>`;
+    btn.addEventListener("click", () => activate(idx));
+    nav.appendChild(btn);
+  });
+
+  const initial = new URL(window.location.href).searchParams.get("s");
+  const startIdx = Math.max(0, surfaces.findIndex(s => s.id === initial));
+  activate(startIdx || 0, false);
+
+  openBtn.addEventListener("click", () => {
+    const u = frame.src;
+    if (u) window.open(u, "_blank", "noopener,noreferrer");
+  });
+
+  fsBtn.addEventListener("click", async () => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen?.();
+    } else {
+      await document.documentElement.requestFullscreen?.();
+    }
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.target && e.target.matches("input, textarea, select")) return;
+    const current = [...nav.querySelectorAll("button")].findIndex(b => b.classList.contains("is-active"));
+    if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+      e.preventDefault();
+      activate((current + 1) % surfaces.length);
+    } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+      e.preventDefault();
+      activate((current - 1 + surfaces.length) % surfaces.length);
+    } else if (/^[1-6]$/.test(e.key)) {
+      const n = Number(e.key) - 1;
+      if (n < surfaces.length) { e.preventDefault(); activate(n); }
+    }
+  });
+</script>
+</body>
+</html>

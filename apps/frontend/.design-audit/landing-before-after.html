@@ -4,18 +4,18 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Landing Design Audit — Axiom Copper Command Deck</title>
+  <meta name="description" content="Side-by-side audit of the Axiom LandingPage: current treatment vs proposed scroll-aware modernized surface. Tokens-only, no copy changes." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
     rel="stylesheet"
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700;9..144,800&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500;600&display=swap"
   />
   <style>
     /* =====================================================================
        TOKENS — mirror the codebase: --space-*, --fs-*, --copper, --canvas
        ===================================================================== */
     :root {
-      /* Surface */
       --canvas: #0b0e0f;
       --canvas-2: #0d1012;
       --bg: #111315;
@@ -25,8 +25,6 @@
       --line: rgba(225, 218, 196, 0.10);
       --line-2: rgba(225, 218, 196, 0.16);
       --line-soft: #272d31;
-
-      /* Accents */
       --copper: #d28b52;
       --copper-bright: #efae6b;
       --copper-soft: #f1b879;
@@ -37,24 +35,18 @@
       --copper-22: rgba(210, 139, 82, 0.22);
       --phosphor: #67e8b4;
       --phosphor-soft: #a3ecc6;
-
-      /* Ink */
       --text: #f4efe7;
       --ink: #ece9de;
       --ink-soft: rgba(236, 233, 222, 0.78);
       --ink-faint: rgba(236, 233, 222, 0.52);
       --muted: #cfc4b5;
       --dim: #998d7d;
-
-      /* Type scale (mirrors --fs-*) */
       --fs-mono: 12px;
       --fs-small: 13px;
       --fs-body: 14px;
       --fs-title: 20px;
       --fs-display: clamp(28px, 3vw, 43px);
       --fs-modal: clamp(24px, 3vw, 36px);
-
-      /* Spacing ladder */
       --space-1: 4px;
       --space-2: 8px;
       --space-3: 12px;
@@ -64,8 +56,6 @@
       --space-7: 48px;
       --space-8: 64px;
       --space-9: 96px;
-
-      /* Geometry & motion */
       --radius: 12px;
       --radius-sm: 8px;
       --radius-lg: 16px;
@@ -80,152 +70,64 @@
       --shadow-plate-l: 0 24px 64px rgba(0, 0, 0, 0.42);
       --shadow-modal: 0 24px 80px rgba(0, 0, 0, 0.45);
       --shadow-modal-sm: 0 14px 36px rgba(0, 0, 0, 0.34);
-
-      /* Audit-only glow tokens */
       --copper-glow-sm: 0 0 12px rgba(217, 138, 72, 0.20);
-      --copper-glow-md: 0 0 22px rgba(217, 138, 72, 0.28);
+      --copper-glow-md: 0 0 22px rgba(217, 138, 72, 0.32);
       --copper-glow-lg: 0 0 32px rgba(217, 138, 72, 0.36);
       --phosphor-glow-sm: 0 0 8px rgba(103, 232, 180, 0.4);
-
-      /* Display pairing */
       --font-display: 'Fraunces', 'Syne', serif;
       --font-body: 'Inter', system-ui, -apple-system, sans-serif;
       --font-mono: 'JetBrains Mono', ui-monospace, monospace;
     }
 
     *, *::before, *::after { box-sizing: border-box; }
-
-    html, body {
-      margin: 0;
-      padding: 0;
-      background: #060809;
-      color: var(--ink);
-      font-family: var(--font-body);
-      font-size: var(--fs-body);
-      line-height: 1.55;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-      overflow-x: hidden;
-    }
+    html { scroll-behavior: smooth; }
+    html, body { margin: 0; padding: 0; background: #060809; color: var(--ink); font-family: var(--font-body); font-size: var(--fs-body); line-height: 1.55; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; overflow-x: hidden; }
 
     /* =====================================================================
-       AUDIT CHROME
+       AUDIT CHROME — sticky tab toggle + summary
        ===================================================================== */
     .audit { display: grid; grid-template-rows: auto auto 1fr; min-height: 100vh; background: #060809; }
-
-    .audit-head {
-      position: sticky;
-      top: 0;
-      z-index: 50;
-      padding: var(--space-5) clamp(20px, 5vw, 76px);
-      border-bottom: 1px solid var(--line);
-      background: rgba(8, 10, 11, 0.86);
-      backdrop-filter: blur(18px);
-    }
-    .audit-head-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: var(--space-5);
-      max-width: 1680px;
-      margin: 0 auto;
-    }
-    .audit-title {
-      display: flex;
-      align-items: center;
-      gap: var(--space-3);
-      font-family: var(--font-mono);
-      font-size: var(--fs-mono);
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--copper-bright);
-    }
-    .audit-title::before {
-      content: "";
-      width: 12px; height: 12px;
-      border-radius: 50%;
-      background: var(--copper);
-      box-shadow: var(--copper-glow-md);
-    }
+    .audit-head { position: sticky; top: 0; z-index: 50; padding: var(--space-5) clamp(20px, 5vw, 76px); border-bottom: 1px solid var(--line); background: rgba(8, 10, 11, 0.86); backdrop-filter: blur(18px); }
+    .audit-head-row { display: flex; justify-content: space-between; align-items: center; gap: var(--space-5); max-width: 1680px; margin: 0 auto; }
+    .audit-title { display: flex; align-items: center; gap: var(--space-3); font-family: var(--font-mono); font-size: var(--fs-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--copper-bright); }
+    .audit-title::before { content: ""; width: 12px; height: 12px; border-radius: 50%; background: var(--copper); box-shadow: var(--copper-glow-md); }
     .audit-title span { color: var(--dim); }
-
-    .audit-nav {
-      display: flex; gap: var(--space-1); padding: var(--space-1);
-      border: 1px solid var(--line); background: var(--bg-2); border-radius: var(--radius-sm);
-    }
-    .audit-nav button {
-      appearance: none; border: 1px solid transparent; background: transparent;
-      color: var(--muted); padding: 8px 16px; min-height: 36px;
-      font-family: var(--font-mono); font-size: var(--fs-mono);
-      letter-spacing: 0.06em; text-transform: uppercase;
-      cursor: pointer; transition: 180ms var(--ease-out);
-    }
-    .audit-nav button:hover {
-      color: var(--copper-soft);
-      border-color: rgba(210, 139, 82, 0.20);
-    }
-    .audit-nav button.is-active {
-      color: var(--copper-bright);
-      border-color: rgba(210, 139, 82, 0.42);
-      background: var(--copper-10);
-    }
-
-    .audit-summary {
-      padding: var(--space-6) clamp(20px, 5vw, 76px);
-      max-width: 1180px; margin: 0 auto;
-      display: grid; gap: var(--space-3);
-    }
-    .audit-summary h1 {
-      margin: 0;
-      font-family: var(--font-display);
-      font-weight: 500;
-      font-size: clamp(28px, 3vw, 40px);
-      line-height: 1.05;
-      letter-spacing: -0.02em;
-      color: var(--ink);
-      font-feature-settings: "ss01" on, "ss02" on;
-    }
+    .audit-nav { display: flex; gap: var(--space-1); padding: var(--space-1); border: 1px solid var(--line); background: var(--bg-2); border-radius: var(--radius-sm); }
+    .audit-nav button { appearance: none; border: 1px solid transparent; background: transparent; color: var(--muted); padding: 8px 16px; min-height: 36px; font-family: var(--font-mono); font-size: var(--fs-mono); letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer; transition: 180ms var(--ease-out); }
+    .audit-nav button:hover { color: var(--copper-soft); border-color: rgba(210, 139, 82, 0.20); }
+    .audit-nav button.is-active { color: var(--copper-bright); border-color: rgba(210, 139, 82, 0.42); background: var(--copper-10); }
+    .audit-summary { padding: var(--space-6) clamp(20px, 5vw, 76px); max-width: 1180px; margin: 0 auto; display: grid; gap: var(--space-3); }
+    .audit-summary h1 { margin: 0; font-family: var(--font-display); font-weight: 500; font-size: clamp(28px, 3vw, 40px); line-height: 1.05; letter-spacing: -0.02em; color: var(--ink); font-feature-settings: "ss01" on, "ss02" on; }
     .audit-summary h1 em { font-style: italic; color: var(--copper-bright); font-weight: 500; }
     .audit-summary p { margin: 0; max-width: 64ch; color: var(--muted); font-size: var(--fs-body); }
-    .audit-summary .meta {
-      display: flex; gap: var(--space-3); flex-wrap: wrap;
-      color: var(--dim); font-family: var(--font-mono);
-      font-size: var(--fs-mono); letter-spacing: 0.08em; text-transform: uppercase;
-    }
+    .audit-summary .meta { display: flex; gap: var(--space-3); flex-wrap: wrap; color: var(--dim); font-family: var(--font-mono); font-size: var(--fs-mono); letter-spacing: 0.08em; text-transform: uppercase; }
     .audit-stage { position: relative; overflow: hidden; }
     .panel-wrap { display: none; padding: 0 clamp(20px, 4vw, 56px) var(--space-7); }
     .panel-wrap.is-active { display: block; }
-    .panel-wrap .pair-grid {
-      display: grid; gap: var(--space-5);
-      max-width: 1680px; margin: 0 auto;
-    }
-    @media (min-width: 1280px) {
-      .panel-wrap .pair-grid { grid-template-columns: 1fr 1fr; }
-    }
-    .pair-grid aside {
-      display: grid; align-content: start; gap: var(--space-4);
-      padding: var(--space-5);
-      border: 1px solid var(--line);
-      background: rgba(18, 22, 23, 0.5);
-      border-radius: var(--radius);
-    }
-    .pair-grid aside h3 {
-      margin: 0;
-      font-family: var(--font-mono); font-size: var(--fs-mono);
-      letter-spacing: 0.12em; text-transform: uppercase; color: var(--copper-bright);
-    }
-    .pair-grid aside ol {
-      margin: 0; padding-left: var(--space-4);
-      display: grid; gap: var(--space-3);
-      color: var(--muted); font-size: var(--fs-small); line-height: 1.55;
-    }
-    .pair-grid aside ol li code {
-      font-family: var(--font-mono); font-size: 12px;
-      padding: 1px 6px; border: 1px solid var(--line);
-      border-radius: 4px; background: var(--bg-2); color: var(--copper-bright);
-    }
+    .panel-wrap .pair-grid { display: grid; gap: var(--space-5); max-width: 1680px; margin: 0 auto; }
+    @media (min-width: 1280px) { .panel-wrap .pair-grid { grid-template-columns: 1fr 1fr; } }
+    .pair-grid aside { display: grid; align-content: start; gap: var(--space-4); padding: var(--space-5); border: 1px solid var(--line); background: rgba(18, 22, 23, 0.5); border-radius: var(--radius); }
+    .pair-grid aside h3 { margin: 0; font-family: var(--font-mono); font-size: var(--fs-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--copper-bright); }
+    .pair-grid aside ol { margin: 0; padding-left: var(--space-4); display: grid; gap: var(--space-3); color: var(--muted); font-size: var(--fs-small); line-height: 1.55; }
+    .pair-grid aside ol li code { font-family: var(--font-mono); font-size: 12px; padding: 1px 6px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg-2); color: var(--copper-bright); }
+
     /* =====================================================================
-       BEFORE — faithful current state
+       AUDIT LEGEND
+       ===================================================================== */
+    .audit-legend { padding: var(--space-6) clamp(20px, 5vw, 76px); border-top: 1px solid var(--line); background: rgba(11, 14, 15, 0.7); max-width: 1680px; margin: 0 auto; width: 100%; display: grid; gap: var(--space-4); }
+    .audit-legend h2 { margin: 0; font-family: var(--font-display); font-weight: 500; font-size: clamp(20px, 2vw, 26px); letter-spacing: -0.015em; color: var(--ink); }
+    .audit-legend h2 em { font-style: italic; color: var(--copper-bright); }
+    .audit-legend .grid { display: grid; gap: var(--space-4); grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+    .audit-legend .card { padding: var(--space-4); border: 1px solid var(--line); border-radius: var(--radius); background: rgba(18, 22, 23, 0.4); display: grid; gap: var(--space-2); }
+    .audit-legend .card strong { font-family: var(--font-mono); font-size: var(--fs-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--copper-bright); }
+    .audit-legend .card p { margin: 0; color: var(--muted); font-size: var(--fs-small); line-height: 1.5; }
+    .audit-legend .card .risk { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--line); font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim); width: fit-content; }
+    .audit-legend .card .risk.very-low { color: #a3d9b6; border-color: rgba(103, 232, 180, 0.3); }
+    .audit-legend .card .risk.low { color: var(--copper-bright); border-color: rgba(210, 139, 82, 0.3); }
+    .audit-legend .card .risk.medium { color: #f0c97a; border-color: rgba(240, 201, 122, 0.3); }
+
+    /* =====================================================================
+       BEFORE — faithful current state (single-viewport)
        ===================================================================== */
     .landing.before {
       min-height: 100vh;
@@ -237,154 +139,57 @@
       display: grid;
       grid-template-rows: 68px minmax(0, 1fr) 108px;
     }
-    .landing.before .landing-nav {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: var(--space-5) clamp(20px, 5vw, 76px);
-    }
-    .landing.before .brand {
-      display: flex; align-items: center; gap: var(--space-2);
-      color: var(--ink); font: 800 var(--fs-body) 'Syne', sans-serif; letter-spacing: 0.06em;
-    }
-    .landing.before .brand .glyph {
-      width: 18px; height: 18px;
-      border: 1.5px solid var(--copper); border-radius: 50%;
-      display: grid; place-items: center; color: var(--phosphor);
-    }
-    .landing.before .brand .glyph::after {
-      content: ""; width: 6px; height: 6px;
-      background: var(--phosphor); border-radius: 50%;
-    }
-    .landing.before .menu-trigger {
-      display: grid; place-items: center;
-      width: var(--icon-hit-lg); height: var(--icon-hit-lg);
-      border: 1px solid transparent; background: transparent;
-      color: var(--muted); cursor: pointer;
-    }
-
-    .landing.before .landing-main {
-      display: grid;
-      grid-template-columns: 0.92fr 1.08fr;
-      gap: clamp(40px, 7vw, 104px);
-      align-items: start;
-      max-width: 1420px;
-      padding: clamp(28px, 4.5vh, 44px) clamp(24px, 7vw, 88px);
-      margin: 0 auto; width: 100%;
-    }
-    .landing.before .landing-copy h1 {
-      margin: var(--space-3) 0 var(--space-4);
-      font: 800 clamp(52px, 5.5vw, 78px) / 0.98 'Syne', sans-serif;
-      letter-spacing: -0.09em;
-    }
+    .landing.before .landing-nav { display: flex; align-items: center; justify-content: space-between; padding: var(--space-5) clamp(20px, 5vw, 76px); }
+    .landing.before .brand { display: flex; align-items: center; gap: var(--space-2); color: var(--ink); font: 800 var(--fs-body) 'Syne', sans-serif; letter-spacing: 0.06em; }
+    .landing.before .brand .glyph { width: 18px; height: 18px; border: 1.5px solid var(--copper); border-radius: 50%; display: grid; place-items: center; color: var(--phosphor); }
+    .landing.before .brand .glyph::after { content: ""; width: 6px; height: 6px; background: var(--phosphor); border-radius: 50%; }
+    .landing.before .menu-trigger { display: grid; place-items: center; width: var(--icon-hit-lg); height: var(--icon-hit-lg); border: 1px solid transparent; background: transparent; color: var(--muted); cursor: pointer; }
+    .landing.before .landing-main { display: grid; grid-template-columns: 0.92fr 1.08fr; gap: clamp(40px, 7vw, 104px); align-items: start; max-width: 1420px; padding: clamp(28px, 4.5vh, 44px) clamp(24px, 7vw, 88px); margin: 0 auto; width: 100%; }
+    .landing.before .landing-copy h1 { margin: var(--space-3) 0 var(--space-4); font: 800 clamp(52px, 5.5vw, 78px) / 0.98 'Syne', sans-serif; letter-spacing: -0.09em; }
     .landing.before .landing-copy h1 i { color: var(--copper-bright); font-style: normal; }
-    .landing.before .landing-copy p {
-      max-width: 440px; color: var(--muted);
-      font-size: var(--fs-body); line-height: 1.7;
-    }
-    .landing.before .button-row {
-      display: flex; align-items: center; gap: var(--space-3);
-      margin-top: var(--space-5); flex-wrap: wrap;
-    }
-    .landing.before .button {
-      display: inline-flex; justify-content: center; align-items: center;
-      gap: var(--space-2); min-height: 38px; padding: 0 var(--space-4);
-      border: 1px solid var(--copper); background: transparent; color: var(--ink);
-      font: 500 var(--fs-mono) 'JetBrains Mono', monospace;
-      letter-spacing: 0.02em; cursor: pointer; transition: 160ms var(--ease);
-    }
-    .landing.before .button-primary {
-      position: relative; overflow: hidden;
-      background: var(--copper); color: var(--bg); font-weight: 700;
-      box-shadow: 0 8px 24px rgba(210, 139, 82, 0.14);
-      padding: 0 var(--space-5); min-height: 44px;
-    }
-    .landing.before .button-primary::after {
-      content: ""; position: absolute; inset: 0 auto 0 -55%;
-      width: 45%; transform: skewX(-18deg);
-      background: rgba(255, 248, 225, 0.22);
-      transition: transform 450ms var(--ease);
-    }
+    .landing.before .landing-copy p { max-width: 440px; color: var(--muted); font-size: var(--fs-body); line-height: 1.7; }
+    .landing.before .button-row { display: flex; align-items: center; gap: var(--space-3); margin-top: var(--space-5); flex-wrap: wrap; }
+    .landing.before .button { display: inline-flex; justify-content: center; align-items: center; gap: var(--space-2); min-height: 38px; padding: 0 var(--space-4); border: 1px solid var(--copper); background: transparent; color: var(--ink); font: 500 var(--fs-mono) 'JetBrains Mono', monospace; letter-spacing: 0.02em; cursor: pointer; transition: 160ms var(--ease); }
+    .landing.before .button-primary { position: relative; overflow: hidden; background: var(--copper); color: var(--bg); font-weight: 700; box-shadow: 0 8px 24px rgba(210, 139, 82, 0.14); padding: 0 var(--space-5); min-height: 44px; }
+    .landing.before .button-primary::after { content: ""; position: absolute; inset: 0 auto 0 -55%; width: 45%; transform: skewX(-18deg); background: rgba(255, 248, 225, 0.22); transition: transform 450ms var(--ease); }
     .landing.before .button-primary:hover { background: var(--copper-bright); }
     .landing.before .button-primary:hover::after { transform: translateX(310%) skewX(-18deg); }
     .landing.before .button-ghost { border-color: transparent; color: var(--muted); background: transparent; }
     .landing.before .button-ghost:hover { color: #f6eedf; border-color: var(--line); }
-    .landing.before .text-link {
-      display: inline-flex; align-items: center; gap: var(--space-1);
-      border: 0; background: transparent; color: var(--copper-bright);
-      font: 500 var(--fs-mono) 'JetBrains Mono', monospace; cursor: pointer;
-    }
-
-    .landing.before .landing-visual {
-      position: relative; min-height: 540px; overflow: hidden;
-      isolation: isolate;
-      border: 1px solid rgba(217, 138, 72, 0.26);
-      background: var(--canvas);
-      box-shadow: var(--shadow-plate-l), var(--shadow-modal-sm);
-    }
-    .landing.before .landing-visual::before {
-      content: ""; position: absolute; z-index: 3;
-      inset: 0 auto 0 10.5%; width: 1px;
-      background: linear-gradient(180deg,
-        transparent 8%, rgba(217, 138, 72, 0.9) 22%,
-        rgba(217, 138, 72, 0.32) 74%, transparent 92%);
-      box-shadow: 0 0 22px rgba(217, 138, 72, 0.22);
-      pointer-events: none;
-    }
-    .landing.before .landing-visual::after {
-      content: ""; position: absolute; z-index: 1; inset: 0; pointer-events: none;
-      background:
-        linear-gradient(90deg,
-          rgba(8, 11, 12, 0.94) 0%, rgba(8, 11, 12, 0.75) 37%,
-          rgba(8, 11, 12, 0.12) 72%, rgba(8, 11, 12, 0.28) 100%),
-        linear-gradient(180deg, rgba(8, 11, 12, 0.1), rgba(8, 11, 12, 0.46));
-    }
-    .landing.before .landing-visual .poster {
-      position: absolute; inset: 0;
-      width: 100%; height: 100%;
-      object-fit: cover; object-position: 72% center;
-      filter: saturate(0.92) contrast(1.06);
-    }
-
-    .landing.before .landing-strip {
-      display: grid;
-      grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
-      max-width: 1420px; margin: 0 auto; width: 100%;
-      border-top: 1px solid var(--line);
-    }
-    .landing.before .landing-strip > button {
-      position: relative; display: grid; gap: var(--space-2); align-content: center;
-      padding: var(--space-2) var(--space-3);
-      border: 0; border-left: 1px solid rgba(217, 138, 72, 0.18);
-      background: rgba(217, 138, 72, 0.035);
-      color: var(--ink); text-align: left;
-      cursor: pointer; transition: background 160ms var(--ease);
-    }
-    .landing.before .landing-strip > button:first-child {
-      padding-left: clamp(28px, 3vw, 42px);
-      background: linear-gradient(90deg, rgba(217, 138, 72, 0.11), rgba(217, 138, 72, 0.025));
-    }
-    .landing.before .landing-strip > button:first-child::before {
-      content: ""; position: absolute;
-      inset: 16px auto 16px 14px; width: 2px;
-      background: #d98a48; box-shadow: 0 0 16px rgba(217, 138, 72, 0.26);
-    }
+    .landing.before .text-link { display: inline-flex; align-items: center; gap: var(--space-1); border: 0; background: transparent; color: var(--copper-bright); font: 500 var(--fs-mono) 'JetBrains Mono', monospace; cursor: pointer; }
+    .landing.before .landing-visual { position: relative; min-height: 540px; overflow: hidden; isolation: isolate; border: 1px solid rgba(217, 138, 72, 0.26); background: var(--canvas); box-shadow: var(--shadow-plate-l), var(--shadow-modal-sm); }
+    .landing.before .landing-visual::before { content: ""; position: absolute; z-index: 3; inset: 0 auto 0 10.5%; width: 1px; background: linear-gradient(180deg, transparent 8%, rgba(217, 138, 72, 0.9) 22%, rgba(217, 138, 72, 0.32) 74%, transparent 92%); box-shadow: 0 0 22px rgba(217, 138, 72, 0.22); pointer-events: none; }
+    .landing.before .landing-visual::after { content: ""; position: absolute; z-index: 1; inset: 0; pointer-events: none; background: linear-gradient(90deg, rgba(8, 11, 12, 0.94) 0%, rgba(8, 11, 12, 0.75) 37%, rgba(8, 11, 12, 0.12) 72%, rgba(8, 11, 12, 0.28) 100%), linear-gradient(180deg, rgba(8, 11, 12, 0.1), rgba(8, 11, 12, 0.46)); }
+    .landing.before .landing-visual .poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 72% center; filter: saturate(0.92) contrast(1.06); }
+    .landing.before .landing-strip { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); max-width: 1420px; margin: 0 auto; width: 100%; border-top: 1px solid var(--line); }
+    .landing.before .landing-strip > button { position: relative; display: grid; gap: var(--space-2); align-content: center; padding: var(--space-2) var(--space-3); border: 0; border-left: 1px solid rgba(217, 138, 72, 0.18); background: rgba(217, 138, 72, 0.035); color: var(--ink); text-align: left; cursor: pointer; transition: background 160ms var(--ease); }
+    .landing.before .landing-strip > button:first-child { padding-left: clamp(28px, 3vw, 42px); background: linear-gradient(90deg, rgba(217, 138, 72, 0.11), rgba(217, 138, 72, 0.025)); }
+    .landing.before .landing-strip > button:first-child::before { content: ""; position: absolute; inset: 16px auto 16px 14px; width: 2px; background: #d98a48; box-shadow: 0 0 16px rgba(217, 138, 72, 0.26); }
     .landing.before .landing-strip > button:hover { background: rgba(217, 138, 72, 0.11); }
     .landing.before .landing-strip > button svg { color: var(--copper); }
     .landing.before .landing-strip strong { font: 600 var(--fs-body) 'Syne', sans-serif; }
     .landing.before .landing-strip small { color: var(--dim); font-size: var(--fs-small); }
 
     /* =====================================================================
-       AFTER — modernized (V2: truly editorial)
+       AFTER — modernized, scroll-aware
        ===================================================================== */
     .landing.after {
       --copper-glow-md: 0 0 22px rgba(217, 138, 72, 0.32);
       --copper-glow-lg: 0 0 36px rgba(217, 138, 72, 0.40);
 
       position: relative;
-      min-height: 100vh;
       color: var(--ink);
       font-family: var(--font-body);
       background: var(--canvas);
-      overflow: hidden;
+      overflow-x: hidden;
+      isolation: isolate;
+    }
+
+    /* Smooth, tasteful scroll behavior — but ONLY when the user hasn't
+       requested reduced motion (CSS scroll-behavior respects the media query
+       automatically in modern engines, but we double-guard below). */
+    @media (prefers-reduced-motion: no-preference) {
+      .landing.after { scroll-behavior: smooth; }
     }
 
     /* Atmospheric backdrop — phosphor particles + copper mesh gradient */
@@ -392,21 +197,51 @@
       content: "";
       position: absolute; inset: 0; pointer-events: none; z-index: 0;
       background:
-        radial-gradient(ellipse 80% 60% at 90% 0%, rgba(210, 139, 82, 0.08), transparent 50%),
-        radial-gradient(ellipse 60% 50% at 0% 100%, rgba(103, 232, 180, 0.04), transparent 60%),
-        radial-gradient(circle at 50% 0%, rgba(241, 184, 121, 0.04), transparent 30%);
+        radial-gradient(ellipse 80% 60% at 90% 0%, rgba(210, 139, 82, 0.10), transparent 50%),
+        radial-gradient(ellipse 60% 50% at 0% 100%, rgba(103, 232, 180, 0.05), transparent 60%),
+        radial-gradient(circle at 50% 0%, rgba(241, 184, 121, 0.05), transparent 30%);
     }
     .landing.after::after {
       content: "";
       position: absolute; inset: 0; pointer-events: none; z-index: 0;
-      background-image:
-        linear-gradient(90deg, rgba(210, 139, 82, 0.025) 1px, transparent 1px);
+      background-image: linear-gradient(90deg, rgba(210, 139, 82, 0.025) 1px, transparent 1px);
       background-size: 96px 100%;
       mask-image: radial-gradient(ellipse at center, black 0%, transparent 70%);
       -webkit-mask-image: radial-gradient(ellipse at center, black 0%, transparent 70%);
     }
 
-    /* Entrance animations — gated by reduced-motion */
+    /* Scroll-reveal: sections rise into view as the user scrolls.
+       Uses native view-timeline + animation-timeline where supported.
+       Falls back to IntersectionObserver added in the script. */
+    .landing.after .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+    }
+    @supports (animation-timeline: view()) {
+      @media (prefers-reduced-motion: no-preference) {
+        .landing.after .reveal {
+          animation: reveal-up linear both;
+          animation-timeline: view();
+          animation-range: entry 0% cover 30%;
+        }
+        @keyframes reveal-up {
+          from { opacity: 0; transform: translateY(32px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      }
+    }
+    @media (prefers-reduced-motion: no-preference) {
+      .landing.after .reveal.is-visible { animation: reveal-fallback 700ms var(--ease-out) both; }
+      @keyframes reveal-fallback {
+        from { opacity: 0; transform: translateY(24px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .landing.after .reveal { opacity: 1; transform: none; }
+    }
+
+    /* Hero entrance animations — gated by reduced-motion */
     @media (prefers-reduced-motion: no-preference) {
       .landing.after .landing-nav { animation: nav-in 700ms var(--ease-out) both; }
       .landing.after .hero-eyebrow { animation: rise 600ms 100ms var(--ease-out) both; }
@@ -432,55 +267,31 @@
         animation: canvas-in 1100ms 300ms var(--ease-out) forwards;
       }
       .landing.after .floating-receipt {
-        opacity: 0;
-        animation: rise 700ms 900ms var(--ease-out) forwards,
-                   float 8s 1600ms ease-in-out infinite;
+        animation: rise 700ms 900ms var(--ease-out) forwards, float 8s 1600ms ease-in-out infinite;
       }
-      .landing.after .principles-section {
-        opacity: 0; transform: translateY(24px);
-        animation: rise 800ms 800ms var(--ease-out) forwards;
-      }
-      .landing.after .ticker-track {
-        animation: ticker 60s linear infinite;
-      }
-      .landing.after .live-pulse {
-        animation: pulse 2.4s ease-in-out infinite;
-      }
-
-      @keyframes rise {
-        to { opacity: 1; transform: translateY(0); }
-      }
-      @keyframes nav-in {
-        from { opacity: 0; transform: translateY(-8px); }
-        to { opacity: 1; transform: translateY(0); }
-      }
-      @keyframes canvas-in {
-        from { opacity: 0; transform: translateY(12px) scale(0.99); }
-        to { opacity: 1; transform: translateY(0) scale(1); }
-      }
+      @keyframes rise { to { opacity: 1; transform: translateY(0); } }
+      @keyframes nav-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes canvas-in { from { opacity: 0; transform: translateY(12px) scale(0.99); } to { opacity: 1; transform: translateY(0) scale(1); } }
       @keyframes float {
         0%, 100% { transform: translateY(0) rotate(0deg); }
         50% { transform: translateY(-8px) rotate(0.3deg); }
-      }
-      @keyframes ticker {
-        from { transform: translateX(0); }
-        to { transform: translateX(-50%); }
-      }
-      @keyframes pulse {
-        0%, 100% { opacity: 1; transform: scale(1); }
-        50% { opacity: 0.6; transform: scale(1.15); }
       }
     }
 
     /* ============== NAV ============== */
     .landing.after .landing-nav {
-      position: relative; z-index: 10; display: flex;
-      align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 10;
+      display: flex; align-items: center; justify-content: space-between;
       padding: var(--space-4) clamp(20px, 5vw, 76px);
       border-bottom: 1px solid transparent;
-      transition: border-color 200ms var(--ease);
+      backdrop-filter: blur(0px);
+      transition: border-color 240ms var(--ease), backdrop-filter 240ms var(--ease), background 240ms var(--ease);
     }
-    .landing.after .landing-nav:hover { border-bottom-color: var(--line); }
+    .landing.after .landing-nav.is-scrolled {
+      border-bottom-color: var(--line);
+      backdrop-filter: blur(14px);
+      background: rgba(11, 14, 15, 0.72);
+    }
 
     .landing.after .brand {
       display: flex; align-items: center; gap: 10px;
@@ -554,60 +365,47 @@
 
     /* ============== HERO ============== */
     .landing.after .hero {
-      position: relative;
-      z-index: 5;
+      position: relative; z-index: 5;
       display: grid;
       grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
       gap: clamp(40px, 6vw, 96px);
       align-items: center;
       max-width: 1440px;
-      padding: clamp(64px, 9vh, 128px) clamp(28px, 7vw, 96px) clamp(56px, 8vh, 96px);
+      padding: clamp(64px, 9vh, 128px) clamp(28px, 7vw, 96px) clamp(80px, 10vh, 140px);
       margin: 0 auto;
     }
 
-    /* Eyebrow chip — live indicator */
+    /* Eyebrow chip */
     .landing.after .hero-eyebrow {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
+      display: inline-flex; align-items: center; gap: 10px;
       margin-bottom: var(--space-5);
       padding: 7px 14px 7px 11px;
       border: 1px solid rgba(210, 139, 82, 0.28);
       border-radius: 999px;
       background: rgba(210, 139, 82, 0.06);
-      font-family: var(--font-mono);
-      font-size: 11px;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
+      font-family: var(--font-mono); font-size: 11px;
+      letter-spacing: 0.14em; text-transform: uppercase;
       color: var(--copper-bright);
-      width: fit-content;
-      backdrop-filter: blur(8px);
+      width: fit-content; backdrop-filter: blur(8px);
     }
     .landing.after .hero-eyebrow .live-dot {
-      position: relative;
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: var(--phosphor);
+      position: relative; width: 8px; height: 8px;
+      border-radius: 50%; background: var(--phosphor);
       box-shadow: var(--phosphor-glow-sm);
     }
     .landing.after .hero-eyebrow .live-dot::after {
       content: ""; position: absolute; inset: -3px;
-      border-radius: 50%;
-      background: var(--phosphor);
-      opacity: 0.4;
-      animation: pulse-ring 2.4s ease-in-out infinite;
+      border-radius: 50%; background: var(--phosphor);
+      opacity: 0.4; animation: pulse-ring 2.4s ease-in-out infinite;
     }
     @keyframes pulse-ring {
       0%, 100% { transform: scale(0.8); opacity: 0.4; }
       50% { transform: scale(1.6); opacity: 0; }
     }
-    .landing.after .hero-eyebrow .eyebrow-sep {
-      width: 1px; height: 10px;
-      background: rgba(210, 139, 82, 0.32);
-    }
+    .landing.after .hero-eyebrow .eyebrow-sep { width: 1px; height: 10px; background: rgba(210, 139, 82, 0.32); }
     .landing.after .hero-eyebrow .eyebrow-meta { color: var(--ink-soft); }
 
-    /* Headline — editorial scale, multi-line rhythm */
+    /* Headline — editorial scale */
     .landing.after .hero-h1 {
       margin: 0 0 var(--space-6); font-family: var(--font-display);
       font-weight: 500; font-size: clamp(48px, 6.8vw, 96px);
@@ -629,17 +427,15 @@
       z-index: -1; border-radius: 0.12em;
     }
 
-    /* Lede paragraph */
     .landing.after .hero-lede {
       max-width: 52ch; margin: 0 0 var(--space-6);
       color: var(--ink-soft); font-size: clamp(16px, 1.15vw, 19px);
       line-height: 1.55; letter-spacing: -0.005em; text-wrap: pretty;
     }
 
-    /* Meta line — sub-claim with mono separators */
+    /* Hero meta line */
     .landing.after .hero-meta {
-      display: flex; flex-wrap: wrap;
-      gap: var(--space-3) var(--space-4);
+      display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-4);
       margin-bottom: var(--space-6); padding: var(--space-3) 0;
       border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
       font-family: var(--font-mono); font-size: 12px;
@@ -653,7 +449,7 @@
     .landing.after .hero-meta .meta-item .dot.copper { background: var(--copper); box-shadow: var(--copper-glow-sm); }
     .landing.after .hero-meta .meta-item strong { color: var(--ink); font-weight: 500; }
 
-    /* CTA cluster — refined primary + secondary */
+    /* CTA cluster */
     .landing.after .button-row {
       display: flex; align-items: center; gap: var(--space-3);
       margin-bottom: var(--space-5); flex-wrap: wrap;
@@ -667,7 +463,6 @@
       transition: 220ms var(--ease-out);
     }
 
-    /* Primary CTA — pill, layered shadow, gradient sheen (NO skew) */
     .landing.after .button-primary {
       position: relative; overflow: hidden; isolation: isolate;
       background: linear-gradient(180deg, var(--copper-bright) 0%, var(--copper) 100%);
@@ -700,7 +495,6 @@
     .landing.after .button-primary:hover::after { opacity: 1; }
     .landing.after .button-primary:active { transform: translateY(0); }
 
-    /* Secondary — pill ghost */
     .landing.after .button-secondary {
       border-color: var(--line-2); color: var(--ink);
       background: rgba(18, 22, 23, 0.4);
@@ -713,7 +507,6 @@
       background: rgba(210, 139, 82, 0.06); color: var(--ink);
     }
 
-    /* Tertiary text link */
     .landing.after .text-link {
       display: inline-flex; align-items: center; gap: 8px;
       border: 0; background: transparent;
@@ -722,16 +515,13 @@
       cursor: pointer; padding: var(--space-2) var(--space-3);
       border-radius: 999px; transition: 200ms var(--ease);
     }
-    .landing.after .text-link:hover {
-      color: #fff3e8; background: rgba(210, 139, 82, 0.06);
-    }
+    .landing.after .text-link:hover { color: #fff3e8; background: rgba(210, 139, 82, 0.06); }
     .landing.after .text-link .arrow { transition: transform 200ms var(--ease); }
     .landing.after .text-link:hover .arrow { transform: translateX(3px); }
 
-    /* Trust line — small print under CTAs */
+    /* Trust line */
     .landing.after .trust-line {
-      display: flex; flex-wrap: wrap;
-      gap: var(--space-3) var(--space-4);
+      display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-4);
       margin-top: var(--space-5);
       font-family: var(--font-mono); font-size: 11px;
       letter-spacing: 0.06em; color: var(--dim);
@@ -748,8 +538,6 @@
       margin-left: auto;
       isolation: isolate;
     }
-
-    /* Atmospheric glow rings */
     .landing.after .hero-canvas::before {
       content: "";
       position: absolute;
@@ -771,7 +559,6 @@
       z-index: -1;
     }
 
-    /* Proof-field art card — main plate */
     .landing.after .proof-plate {
       position: relative; width: 100%; height: 100%;
       overflow: hidden; isolation: isolate;
@@ -786,8 +573,6 @@
         inset 0 0 0 1px rgba(255, 248, 225, 0.04);
       border-radius: var(--radius-lg);
     }
-
-    /* Subtle phosphor grain texture */
     .landing.after .proof-plate::before {
       content: "";
       position: absolute; inset: 0; pointer-events: none; z-index: 1;
@@ -797,8 +582,6 @@
       -webkit-mask-image: linear-gradient(135deg, black 0%, transparent 70%);
       opacity: 0.6;
     }
-
-    /* Proof field image */
     .landing.after .proof-plate .poster {
       position: absolute; inset: 0;
       width: 100%; height: 100%;
@@ -806,18 +589,14 @@
       filter: saturate(0.94) contrast(1.04) brightness(0.92);
       opacity: 0.85;
     }
-
-    /* Inner scrim */
     .landing.after .proof-plate::after {
       content: ""; position: absolute; z-index: 2; inset: 0; pointer-events: none;
       background:
         linear-gradient(120deg,
-          rgba(8, 11, 12, 0.82) 0%, rgba(8, 11, 12, 0.40) 38%,
+          rgba(8, 11, 12, 0.78) 0%, rgba(8, 11, 12, 0.40) 38%,
           rgba(8, 11, 12, 0.06) 72%, rgba(8, 11, 12, 0.20) 100%),
         linear-gradient(180deg, transparent 50%, rgba(8, 11, 12, 0.30));
     }
-
-    /* Hairline copper rail (refined — single accent, vertical center) */
     .landing.after .proof-hairline {
       position: absolute; z-index: 5;
       top: 10%; bottom: 10%; left: 50%; width: 1px;
@@ -827,8 +606,6 @@
       box-shadow: var(--copper-glow-md);
       pointer-events: none;
     }
-
-    /* Plate label — top-left badge */
     .landing.after .proof-label {
       position: absolute; z-index: 6; top: 16px; left: 16px;
       display: flex; align-items: center; gap: 8px;
@@ -844,8 +621,6 @@
       width: 6px; height: 6px; border-radius: 50%;
       background: var(--phosphor); box-shadow: var(--phosphor-glow-sm);
     }
-
-    /* Plate corner markers */
     .landing.after .proof-corners { position: absolute; z-index: 5; inset: 14px; pointer-events: none; }
     .landing.after .proof-corners::before,
     .landing.after .proof-corners::after,
@@ -859,7 +634,6 @@
     .landing.after .proof-corners .bl { bottom: 0; left: 0; border-bottom: 1px solid; border-left: 1px solid; }
     .landing.after .proof-corners .br { bottom: 0; right: 0; border-bottom: 1px solid; border-right: 1px solid; }
 
-    /* Floating receipt card — overlays the proof plate */
     .landing.after .floating-receipt {
       position: absolute; z-index: 8;
       left: -40px; bottom: -32px;
@@ -917,8 +691,6 @@
       overflow: hidden; text-overflow: ellipsis;
       white-space: nowrap; max-width: 60%;
     }
-
-    /* Plate caption — bottom-right */
     .landing.after .proof-caption {
       position: absolute; z-index: 6;
       right: 16px; bottom: 16px;
@@ -935,32 +707,95 @@
       color: var(--ink); line-height: 1.2;
     }
 
-    /* ============== PRINCIPLES SECTION ============== */
-    .landing.after .principles-section {
+    /* ============== SECTIONS — scroll-revealed ============== */
+    .landing.after section.scroll-section {
       position: relative; z-index: 5;
-      max-width: 1440px; margin: 0 auto;
-      padding: var(--space-7) clamp(28px, 7vw, 96px) var(--space-7);
-      border-top: 1px solid var(--line);
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: var(--space-8) clamp(28px, 7vw, 96px);
     }
-    .landing.after .principles-head {
-      display: grid; grid-template-columns: minmax(0, 1fr) auto;
-      align-items: end; gap: var(--space-5); margin-bottom: var(--space-6);
-    }
-    .landing.after .principles-head h2 {
-      margin: 0; font-family: var(--font-display);
-      font-weight: 500; font-size: clamp(28px, 3vw, 40px);
-      line-height: 1.05; letter-spacing: -0.02em;
-      color: var(--ink); max-width: 22ch;
-    }
-    .landing.after .principles-head h2 em {
-      font-style: italic; color: var(--copper-bright); font-weight: 400;
-    }
-    .landing.after .principles-head .section-meta {
-      font-family: var(--font-mono); font-size: 11px;
-      letter-spacing: 0.14em; text-transform: uppercase;
-      color: var(--dim); padding-bottom: 8px;
+    .landing.after section.scroll-section + section.scroll-section {
+      padding-top: 0;
     }
 
+    /* Section heads (consistent across all sections) */
+    .landing.after .section-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: end;
+      gap: var(--space-5);
+      margin-bottom: var(--space-7);
+    }
+    .landing.after .section-head h2 {
+      margin: 0; font-family: var(--font-display);
+      font-weight: 500; font-size: clamp(28px, 3.4vw, 48px);
+      line-height: 1.02; letter-spacing: -0.025em;
+      color: var(--ink); max-width: 22ch;
+      font-feature-settings: "ss01" on;
+    }
+    .landing.after .section-head h2 em {
+      font-style: italic; color: var(--copper-bright); font-weight: 400;
+    }
+    .landing.after .section-head .section-eyebrow {
+      font-family: var(--font-mono); font-size: 11px;
+      letter-spacing: 0.16em; text-transform: uppercase;
+      color: var(--dim); padding-bottom: 8px;
+    }
+    .landing.after .section-head .section-eyebrow .num {
+      color: var(--copper-bright); margin-right: 8px;
+    }
+
+    /* ============== LIVE TICKER ============== */
+    .landing.after .ticker {
+      position: relative; z-index: 5;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      background: rgba(11, 14, 15, 0.5);
+      overflow: hidden;
+      padding: var(--space-3) 0;
+    }
+    .landing.after .ticker-label {
+      position: absolute; z-index: 2;
+      left: clamp(20px, 5vw, 76px);
+      top: 50%; transform: translateY(-50%);
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 12px;
+      background: var(--canvas);
+      border: 1px solid var(--line-2);
+      border-radius: 999px;
+      font-family: var(--font-mono); font-size: 10px;
+      letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--copper-bright);
+    }
+    .landing.after .ticker-label .live-pulse {
+      width: 6px; height: 6px;
+      border-radius: 50%; background: var(--phosphor);
+      box-shadow: var(--phosphor-glow-sm);
+    }
+    .landing.after .ticker-track {
+      display: flex; gap: var(--space-6);
+      padding-left: 200px; width: max-content;
+    }
+    @media (prefers-reduced-motion: no-preference) {
+      .landing.after .ticker-track { animation: ticker 60s linear infinite; }
+    }
+    .landing.after .ticker-item {
+      display: inline-flex; align-items: center; gap: 10px;
+      padding-right: var(--space-6);
+      border-right: 1px solid var(--line);
+      font-family: var(--font-mono); font-size: 12px;
+      letter-spacing: 0.02em; color: var(--muted);
+      white-space: nowrap;
+    }
+    .landing.after .ticker-item .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%; background: var(--phosphor);
+    }
+    .landing.after .ticker-item .dot.warning { background: var(--copper-bright); }
+    .landing.after .ticker-item strong { color: var(--ink); font-weight: 500; }
+    @keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+    /* ============== PRINCIPLES SECTION ============== */
     .landing.after .principles-grid {
       display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 1px; background: var(--line);
@@ -1006,110 +841,134 @@
     .landing.after .principle .p-link .arrow { transition: transform 200ms var(--ease); }
     .landing.after .principle:hover .p-link .arrow { transform: translateX(2px); }
 
-    /* ============== TICKER (LIVE ACTIVITY) ============== */
-    .landing.after .ticker {
+    /* ============== HOW IT WORKS SECTION (split journey) ============== */
+    .landing.after .journey {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: var(--space-7);
+      align-items: stretch;
+    }
+    @media (max-width: 900px) {
+      .landing.after .journey { grid-template-columns: 1fr; }
+    }
+    .landing.after .journey-card {
       position: relative;
-      z-index: 5;
+      display: grid;
+      gap: var(--space-4);
+      padding: var(--space-6);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(18, 22, 23, 0.6);
+      transition: border-color 280ms var(--ease), background 280ms var(--ease), transform 280ms var(--ease-out);
+    }
+    .landing.after .journey-card:hover {
+      border-color: rgba(210, 139, 82, 0.42);
+      background: rgba(18, 22, 23, 0.88);
+      transform: translateY(-2px);
+    }
+    .landing.after .journey-card .j-num {
+      font-family: var(--font-mono); font-size: 11px;
+      letter-spacing: 0.16em; text-transform: uppercase;
+      color: var(--copper-bright);
+    }
+    .landing.after .journey-card h3 {
+      margin: 0; font-family: var(--font-display);
+      font-weight: 500; font-size: clamp(22px, 2vw, 28px);
+      letter-spacing: -0.02em; color: var(--ink); line-height: 1.15;
+    }
+    .landing.after .journey-card p {
+      margin: 0; max-width: 38ch;
+      color: var(--ink-soft); font-size: 14px; line-height: 1.6;
+    }
+    .landing.after .journey-card .j-meta {
+      display: flex; align-items: center; gap: var(--space-3);
+      margin-top: var(--space-3);
+      padding-top: var(--space-3);
+      border-top: 1px solid var(--line);
+      font-family: var(--font-mono); font-size: 11px;
+      letter-spacing: 0.06em; color: var(--dim);
+    }
+    .landing.after .journey-card .j-meta strong { color: var(--copper-bright); font-weight: 500; }
+    .landing.after .journey-card .j-cta {
+      display: inline-flex; align-items: center; gap: 8px;
+      align-self: start;
+      margin-top: var(--space-3);
+      padding: 10px 18px;
+      border: 1px solid rgba(210, 139, 82, 0.32);
+      border-radius: 999px;
+      background: rgba(210, 139, 82, 0.06);
+      color: var(--copper-bright);
+      font-family: var(--font-body); font-size: 13px;
+      font-weight: 500; cursor: pointer;
+      transition: 220ms var(--ease);
+    }
+    .landing.after .journey-card .j-cta:hover {
+      background: rgba(210, 139, 82, 0.12);
+      border-color: rgba(210, 139, 82, 0.56);
+      color: #fff3e8;
+    }
+    .landing.after .journey-card .j-cta .arrow { transition: transform 200ms var(--ease); }
+    .landing.after .journey-card .j-cta:hover .arrow { transform: translateX(2px); }
+
+    /* ============== FINAL CTA SECTION ============== */
+    .landing.after .final-cta {
+      position: relative; z-index: 5;
+      margin: 0 auto var(--space-9);
+      padding: clamp(48px, 6vw, 96px) clamp(28px, 7vw, 96px);
+      max-width: 1440px;
       border-top: 1px solid var(--line);
       border-bottom: 1px solid var(--line);
-      background: rgba(11, 14, 15, 0.5);
-      overflow: hidden;
-      padding: var(--space-3) 0;
+      text-align: center;
+      background:
+        radial-gradient(ellipse 60% 80% at 50% 0%, rgba(210, 139, 82, 0.08), transparent 60%),
+        radial-gradient(ellipse 80% 50% at 50% 100%, rgba(103, 232, 180, 0.04), transparent 60%);
     }
-    .landing.after .ticker-label {
-      position: absolute;
-      z-index: 2;
-      left: clamp(20px, 5vw, 76px);
-      top: 50%;
-      transform: translateY(-50%);
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 12px;
-      background: var(--canvas);
-      border: 1px solid var(--line-2);
-      border-radius: 999px;
-      font-family: var(--font-mono);
-      font-size: 10px;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      color: var(--copper-bright);
+    .landing.after .final-cta h2 {
+      margin: 0 auto var(--space-4);
+      max-width: 18ch;
+      font-family: var(--font-display);
+      font-weight: 500;
+      font-size: clamp(32px, 4.5vw, 60px);
+      line-height: 1.05;
+      letter-spacing: -0.03em;
+      color: var(--ink);
+      font-feature-settings: "ss01" on, "ss02" on;
     }
-    .landing.after .ticker-label .live-pulse {
-      width: 6px; height: 6px;
-      border-radius: 50%;
-      background: var(--phosphor);
-      box-shadow: var(--phosphor-glow-sm);
+    .landing.after .final-cta h2 em {
+      font-style: italic; color: var(--copper-bright); font-weight: 400;
     }
-    .landing.after .ticker-track {
-      display: flex; gap: var(--space-6);
-      padding-left: 200px; width: max-content;
+    .landing.after .final-cta p {
+      max-width: 52ch; margin: 0 auto var(--space-6);
+      color: var(--ink-soft); font-size: clamp(15px, 1.1vw, 17px);
+      line-height: 1.6;
     }
-    .landing.after .ticker-item {
-      display: inline-flex; align-items: center; gap: 10px;
-      padding-right: var(--space-6);
-      border-right: 1px solid var(--line);
-      font-family: var(--font-mono); font-size: 12px;
-      letter-spacing: 0.02em; color: var(--muted);
-      white-space: nowrap;
-    }
-    .landing.after .ticker-item .dot {
-      width: 6px; height: 6px;
-      border-radius: 50%; background: var(--phosphor);
-    }
-    .landing.after .ticker-item .dot.warning { background: var(--copper-bright); }
-    .landing.after .ticker-item strong { color: var(--ink); font-weight: 500; }
+    .landing.after .final-cta .button-row { justify-content: center; }
 
-    /* ============== STRIP (BOTTOM ROW) ============== */
-    .landing.after .landing-strip {
-      display: grid;
-      grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
-      max-width: 1440px; margin: 0 auto; width: 100%;
+    /* ============== FOOTER ============== */
+    .landing.after .landing-footer {
+      position: relative; z-index: 5;
+      display: flex; justify-content: space-between; align-items: center;
+      gap: var(--space-5);
+      flex-wrap: wrap;
+      max-width: 1440px; margin: 0 auto;
+      padding: var(--space-6) clamp(28px, 7vw, 96px) var(--space-7);
       border-top: 1px solid var(--line);
     }
-    .landing.after .landing-strip > button {
-      position: relative; display: grid; grid-template-columns: 1fr auto;
-      gap: var(--space-4); align-content: center; align-items: center;
-      padding: var(--space-4) var(--space-5); border: 0;
-      border-left: 1px solid rgba(217, 138, 72, 0.16);
-      background: transparent; color: var(--ink);
-      text-align: left; cursor: pointer;
-      transition: background 240ms var(--ease); overflow: hidden;
+    .landing.after .landing-footer small {
+      font-family: var(--font-mono); font-size: 11px;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--dim);
     }
-    .landing.after .landing-strip > button::after {
-      content: ""; position: absolute;
-      left: var(--space-5); right: var(--space-5); bottom: var(--space-3);
-      height: 1px;
-      background: linear-gradient(90deg, var(--copper-bright), transparent);
-      transform: scaleX(0); transform-origin: left;
-      transition: transform 360ms var(--ease-out);
+    .landing.after .landing-footer .footer-meta { display: flex; gap: var(--space-5); align-items: center; }
+    .landing.after .landing-footer .footer-meta a {
+      color: var(--muted); font-family: var(--font-mono);
+      font-size: 11px; letter-spacing: 0.06em;
+      text-decoration: none; padding: 4px 0;
+      border-bottom: 1px solid transparent;
+      transition: 200ms var(--ease);
     }
-    .landing.after .landing-strip > button:hover::after { transform: scaleX(1); }
-    .landing.after .landing-strip > button:hover { background: rgba(210, 139, 82, 0.05); }
-    .landing.after .landing-strip > button:first-child { padding-left: clamp(36px, 4vw, 56px); }
-    .landing.after .landing-strip > button:first-child::before {
-      content: ""; position: absolute;
-      inset: 18px auto 18px 22px; width: 1px;
-      background: linear-gradient(180deg, transparent, var(--copper), transparent);
-      box-shadow: var(--copper-glow-md);
-    }
-    .landing.after .landing-strip .strip-text { display: grid; gap: 4px; min-width: 0; }
-    .landing.after .landing-strip strong {
-      font-family: var(--font-display); font-weight: 500;
-      font-size: clamp(17px, 1.2vw, 19px); letter-spacing: -0.015em;
-      color: var(--ink);
-    }
-    .landing.after .landing-strip small { color: var(--dim); font-size: 12px; letter-spacing: 0.02em; }
-    .landing.after .landing-strip .strip-arrow {
-      width: 36px; height: 36px; display: grid; place-items: center;
-      border: 1px solid var(--line); border-radius: 50%;
-      color: var(--copper); transition: 240ms var(--ease);
-    }
-    .landing.after .landing-strip > button:hover .strip-arrow {
-      border-color: rgba(210, 139, 82, 0.42);
-      color: var(--copper-bright);
-      background: rgba(210, 139, 82, 0.08);
-      transform: scale(1.05);
+    .landing.after .landing-footer .footer-meta a:hover {
+      color: var(--ink); border-bottom-color: var(--copper);
     }
 
     /* ============== MOBILE MENU ============== */
@@ -1160,40 +1019,17 @@
        RESPONSIVE
        ===================================================================== */
     @media (max-width: 1120px) {
-      .landing.before .landing-main,
-      .landing.after .hero {
-        grid-template-columns: 1fr;
-        gap: var(--space-7);
-      }
-      .landing.after .hero-canvas {
-        margin: 0 auto;
-        min-height: 480px;
-      }
-      .landing.after .floating-receipt {
-        left: 0; right: 0; bottom: -24px;
-        margin: 0 auto;
-      }
+      .landing.after .hero { grid-template-columns: 1fr; gap: var(--space-7); }
+      .landing.after .hero-canvas { margin: 0 auto; min-height: 480px; }
+      .landing.after .floating-receipt { left: 0; right: 0; bottom: -24px; margin: 0 auto; }
     }
     @media (max-width: 700px) {
-      .landing.before .landing-strip,
       .landing.after .landing-strip { display: none; }
-      .landing.before .landing-copy h1,
-      .landing.after .hero-h1 {
-        font-size: clamp(40px, 12vw, 56px);
-      }
-      .landing.after .hero-h1 .row { white-space: normal; }
-      .landing.after .hero-meta { gap: var(--space-2); }
+      .landing.after .hero-h1 { font-size: clamp(40px, 12vw, 56px); }
       .landing.after .button-primary,
-      .landing.after .button-secondary {
-        width: 100%;
-        justify-content: center;
-      }
-      .landing.after .floating-receipt {
-        position: relative;
-        left: auto; bottom: auto;
-        margin: var(--space-4) auto 0;
-        width: calc(100% - 32px);
-      }
+      .landing.after .button-secondary { width: 100%; justify-content: center; }
+      .landing.after .floating-receipt { position: relative; left: auto; bottom: auto; margin: var(--space-4) auto 0; width: calc(100% - 32px); }
+      .landing.after .ticker-track { padding-left: 24px; }
     }
 
     /* =====================================================================
@@ -1215,70 +1051,6 @@
       font-weight: 600; text-transform: uppercase;
       letter-spacing: 0.08em;
     }
-
-    /* =====================================================================
-       LEGEND
-       ===================================================================== */
-    .audit-legend {
-      padding: var(--space-6) clamp(20px, 5vw, 76px);
-      border-top: 1px solid var(--line);
-      background: rgba(11, 14, 15, 0.7);
-      max-width: 1680px;
-      margin: 0 auto;
-      width: 100%;
-      display: grid;
-      gap: var(--space-4);
-    }
-    .audit-legend h2 {
-      margin: 0;
-      font-family: var(--font-display);
-      font-weight: 500;
-      font-size: clamp(20px, 2vw, 26px);
-      letter-spacing: -0.015em;
-      color: var(--ink);
-    }
-    .audit-legend h2 em { font-style: italic; color: var(--copper-bright); }
-    .audit-legend .grid {
-      display: grid; gap: var(--space-4);
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    }
-    .audit-legend .card {
-      padding: var(--space-4);
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      background: rgba(18, 22, 23, 0.4);
-      display: grid; gap: var(--space-2);
-    }
-    .audit-legend .card strong {
-      font-family: var(--font-mono);
-      font-size: var(--fs-mono);
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--copper-bright);
-    }
-    .audit-legend .card p {
-      margin: 0;
-      color: var(--muted);
-      font-size: var(--fs-small);
-      line-height: 1.5;
-    }
-    .audit-legend .card .risk {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 3px 8px;
-      border-radius: 999px;
-      border: 1px solid var(--line);
-      font-family: var(--font-mono);
-      font-size: 10px;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--dim);
-      width: fit-content;
-    }
-    .audit-legend .card .risk.very-low { color: #a3d9b6; border-color: rgba(103, 232, 180, 0.3); }
-    .audit-legend .card .risk.low { color: var(--copper-bright); border-color: rgba(210, 139, 82, 0.3); }
-    .audit-legend .card .risk.medium { color: #f0c97a; border-color: rgba(240, 201, 122, 0.3); }
   </style>
 </head>
 <body>
@@ -1296,11 +1068,13 @@
 
     <section class="audit-summary">
       <h1>The landing is the <em>first impression</em> of the entire product.</h1>
-      <p>Current treatment reads as competent but generic — heavy skewX sheen, two-decimal alpha drift on the glows, hairline grid that competes with the proof-field art, and headline tracking that pushes against the type system. Below: a faithful recreation of the current surface next to a modernized version that preserves every string, every component, every route — and only refines the chrome.</p>
+      <p>Current treatment reads as competent but generic — heavy skewX sheen, two-decimal alpha drift on the glows, hairline grid that competes with the proof-field art, and headline tracking that pushes against the type system. Below: a faithful recreation of the current surface next to a modernized, scroll-aware version that preserves every string, every component, every route — and only refines the chrome.</p>
       <div class="meta">
         <span>scope: LandingPage.tsx, ConnectModal chrome, lib/copy.ts (landing.*)</span>
         <span>·</span>
         <span>no copy changes</span>
+        <span>·</span>
+        <span>scroll-revealed sections</span>
         <span>·</span>
         <span>pure CSS + tokens</span>
       </div>
@@ -1316,13 +1090,8 @@
           <article>
             <div class="landing before" aria-label="Current landing (before)">
               <header class="landing-nav">
-                <div class="brand">
-                  <span class="glyph" aria-hidden="true"></span>
-                  Axiom
-                </div>
-                <button class="menu-trigger" type="button" aria-label="Explore public paths">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
-                </button>
+                <div class="brand"><span class="glyph" aria-hidden="true"></span> Axiom</div>
+                <button class="menu-trigger" type="button" aria-label="Explore public paths"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg></button>
               </header>
               <main class="landing-main">
                 <section class="landing-copy">
@@ -1354,6 +1123,7 @@
                 <li>Public nav is a hamburger at every viewport — no inline "How Axiom works" / "Developers" links.</li>
                 <li><code>.landing-mobile-menu</code> is a popover with no entrance animation and no backdrop.</li>
                 <li>The hero plate shows a generic art placeholder — no product state, no live data, no evidence.</li>
+                <li>The landing is a single 100svh viewport with no scroll rhythm — no sections, no reveal, no journey.</li>
               </ol>
             </aside>
           </article>
@@ -1364,10 +1134,10 @@
               <header class="landing-nav">
                 <div class="brand"><span class="glyph" aria-hidden="true"></span> Axiom</div>
                 <nav class="nav-inline" aria-label="Primary">
-                  <a href="#" class="is-active">Overview</a>
-                  <a href="#">How it works</a>
-                  <a href="#">Developers</a>
-                  <a href="#">Docs</a>
+                  <a href="#hero-after" class="is-active">Overview</a>
+                  <a href="#principles-after">Principles</a>
+                  <a href="#journey-after">How it works</a>
+                  <a href="#cta-after">Start</a>
                 </nav>
                 <div class="nav-right">
                   <button class="nav-connect" type="button"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/> <path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg> Connect</button>
@@ -1379,7 +1149,7 @@
                 </div>
               </header>
 
-              <main class="hero">
+              <main class="hero" id="hero-after">
                 <section class="hero-copy">
                   <span class="hero-eyebrow"><span class="live-dot"></span><span>Live on 0G</span><span class="eyebrow-sep"></span><span class="eyebrow-meta">Mainnet beta</span></span>
                   <h1 class="hero-h1">
@@ -1448,8 +1218,11 @@
                 </div>
               </section>
 
-              <section class="principles-section">
-                <header class="principles-head"><h2>What makes Axiom <em>different.</em></h2><span class="section-meta">// Three principles</span></header>
+              <section class="scroll-section principles-section reveal" id="principles-after">
+                <header class="section-head">
+                  <h2>What makes Axiom <em>different.</em></h2>
+                  <span class="section-eyebrow"><span class="num">02</span>// Three principles</span>
+                </header>
                 <div class="principles-grid">
                   <div class="principle">
                     <span class="p-num">01</span>
@@ -1475,32 +1248,64 @@
                 </div>
               </section>
 
-              <section class="landing-strip">
-                <button type="button">
-                  <span class="strip-text"><strong>How signing works</strong><small>No gas, no custody</small></span>
-                  <span class="strip-arrow" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></span>
-                </button>
-                <button type="button">
-                  <span class="strip-text"><strong>Console access</strong><small>Receipts beside action</small></span>
-                  <span class="strip-arrow" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></span>
-                </button>
+              <section class="scroll-section journey-section reveal" id="journey-after">
+                <header class="section-head">
+                  <h2>Two paths <em>to start.</em></h2>
+                  <span class="section-eyebrow"><span class="num">03</span>// Pick one</span>
+                </header>
+                <div class="journey">
+                  <article class="journey-card">
+                    <span class="j-num">// Journey A</span>
+                    <h3>Learn the boundary before you sign.</h3>
+                    <p>How Axiom splits signing from custody, what receipts look like, and which wallet choices keep your keys yours. No wallet required to read.</p>
+                    <div class="j-meta"><strong>Read time</strong> · 3 min</div>
+                    <button class="j-cta" type="button">How signing works <svg class="arrow" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>
+                  </article>
+                  <article class="journey-card">
+                    <span class="j-num">// Journey B</span>
+                    <h3>Open the console and operate receipts.</h3>
+                    <p>Connect once to mint, fund, and run. Every signature lands as an indexed receipt beside the action that produced it.</p>
+                    <div class="j-meta"><strong>Live</strong> · 7,412 agents online</div>
+                    <button class="j-cta" type="button">Console access <svg class="arrow" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>
+                  </article>
+                </div>
               </section>
+
+              <section class="final-cta reveal" id="cta-after">
+                <span class="section-eyebrow"><span class="num">04</span>// Start now</span>
+                <h2>One wallet.<br/>Every action, <em>on record.</em></h2>
+                <p>Mint your first agent in under a minute. The receipt center starts filling before your coffee cools.</p>
+                <div class="button-row">
+                  <button class="button button-primary" type="button"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg> Connect wallet</button>
+                  <button class="button button-secondary" type="button">Read the guide</button>
+                </div>
+              </section>
+
+              <footer class="landing-footer">
+                <small>Built on 0G · Mainnet beta</small>
+                <div class="footer-meta">
+                  <a href="#">Agents</a>
+                  <a href="#">Receipts</a>
+                  <a href="#">Storage</a>
+                  <a href="#">Developers</a>
+                </div>
+              </footer>
             </div>
-
-
 
             <aside style="margin-top: var(--space-5);">
               <h3>// Refinements applied (After)</h3>
               <ol>
-                <li><strong>Editorial headline.</strong> <code>Fraunces 500 -0.03em</code> at <code>clamp(48px, 6.8vw, 96px)</code>, <code>text-wrap: balance</code>. Italic emphasis rides a copper under-bar.</li>
-                <li><strong>Inline desktop nav.</strong> Overview / How it works / Developers / Docs at ≥980px with underline reveal. Hamburger collapses to mobile only.</li>
-                <li><strong>Live eyebrow.</strong> Phosphor-pulsing dot inside a copper-bordered pill. Hero meta line: chain, agents online, receipts indexed.</li>
-                <li><strong>Refined CTA.</strong> Pill radius, gradient copper, layered inset shadow + halo, 220ms ease-out. <strong>No skewX sheen.</strong></li>
+                <li><strong>Scroll-aware hero.</strong> Sticky nav picks up a frosted background + bottom border after 8&nbsp;px of scroll. Inline nav anchors scroll to each section.</li>
+                <li><strong>Scroll-reveal sections.</strong> Uses native <code>animation-timeline: view()</code> where supported; falls back to <code>IntersectionObserver</code> + <code>.is-visible</code> toggle. Gated by <code>prefers-reduced-motion</code>.</li>
+                <li><strong>Live activity ticker.</strong> Marquee under the hero with chain 9000 receipts/deposits/co-signs. 60s loop, paused for reduced-motion.</li>
+                <li><strong>Principles section.</strong> Three numbered cards: Bounded · Receipts · Wallet keys. Italic h3, copper icon, hover wash.</li>
+                <li><strong>Journey split.</strong> Two refined ledger cards: <em>Learn the boundary</em> vs <em>Open the console</em>. Each carries a CTA — same destination as the strip.</li>
+                <li><strong>Final CTA + footer.</strong> A closing editorial moment before the footer.</li>
+                <li><strong>Editorial typography.</strong> <code>Fraunces 500 -0.03em</code> at <code>clamp(48px, 6.8vw, 96px)</code>, copper under-bar on italic emphasis.</li>
+                <li><strong>Refined CTA halo.</strong> Pill radius, gradient copper, layered inset shadow + halo. The <code>skewX(-18deg)</code> sheen is gone.</li>
+                <li><strong>Inline desktop nav.</strong> Overview / Principles / How it works / Start at ≥980px with underline reveal. Hamburger collapses to mobile only.</li>
                 <li><strong>Floating receipt card.</strong> Real product state on the proof plate — agent #7, oracle attestation, block, gas, outcome, hash.</li>
-                <li><strong>Plate chrome.</strong> Corner brackets, top-left "Agent #7 · live" pill, refined copper hairline, phosphor grain texture.</li>
-                <li><strong>Live ticker.</strong> Marquee of recent on-chain activity under the hero. 60s loop, paused for reduced-motion.</li>
-                <li><strong>Principles section.</strong> Three numbered cards: Bounded by design · Receipts not promises · Your wallet, your keys.</li>
-                <li><strong>Trust line + strip.</strong> Trust captions under CTAs. Strip uses <code>Fraunces 500 -0.015em</code> with copper underline reveal.</li>
+                <li><strong>Unified glow tokens.</strong> Both <code>::before</code> accent rails read <code>--copper-glow-md</code> — 0.22/0.26 drift is gone.</li>
               </ol>
             </aside>
           </article>
@@ -1513,17 +1318,18 @@
 
       <!-- Recommendations legend -->
       <section class="audit-legend">
-        <h2>Nine high-leverage refinements, <em>all pure CSS, all token-only.</em></h2>
+        <h2>Ten high-leverage refinements, <em>all pure CSS, all token-only.</em></h2>
         <div class="grid">
-          <div class="card"><strong>1 · Editorial typography</strong><p><code>Fraunces 500 -0.03em</code> at <code>clamp(48px, 6.8vw, 96px)</code>, <code>text-wrap: balance</code>, copper under-bar.</p><span class="risk very-low">Risk · very low</span></div>
-          <div class="card"><strong>2 · Inline desktop nav</strong><p>Four real links at ≥980px with underline reveal. Hamburger collapses to mobile only.</p><span class="risk very-low">Risk · very low</span></div>
-          <div class="card"><strong>3 · Live eyebrow + meta line</strong><p>Phosphor-pulsing dot + mono sub-claim: chain, agents online, receipts indexed.</p><span class="risk very-low">Risk · very low</span></div>
-          <div class="card"><strong>4 · CTA halo</strong><p>Replace <code>skewX(-18deg)</code> 450ms sweep with pill radius + gradient copper + layered inset shadow + halo. 220ms ease-out.</p><span class="risk low">Risk · low</span></div>
-          <div class="card"><strong>5 · Floating receipt</strong><p>Real product-state card overlays the proof plate — agent, block, gas, outcome, hash.</p><span class="risk low">Risk · low</span></div>
-          <div class="card"><strong>6 · Plate chrome</strong><p>Corner brackets, top-left live pill, refined copper hairline with <code>--copper-glow-md</code> token.</p><span class="risk very-low">Risk · very low</span></div>
-          <div class="card"><strong>7 · Live ticker</strong><p>Marquee of recent on-chain activity under the hero. 60s loop, paused for reduced-motion.</p><span class="risk low">Risk · low</span></div>
-          <div class="card"><strong>8 · Principles section</strong><p>Three numbered cards: Bounded · Receipts · Wallet keys. Italic h3, hover wash.</p><span class="risk very-low">Risk · very low</span></div>
-          <div class="card"><strong>9 · Trust line + strip</strong><p>Trust captions under CTAs. Strip uses <code>Fraunces 500 -0.015em</code> with copper underline reveal (360ms).</p><span class="risk very-low">Risk · very low</span></div>
+          <div class="card"><strong>1 · Scroll-aware nav</strong><p>Sticky nav picks up a frosted background + bottom border after 8&nbsp;px of scroll. Inline nav anchors scroll to each section.</p><span class="risk very-low">Risk · very low</span></div>
+          <div class="card"><strong>2 · Scroll-reveal sections</strong><p>Native <code>animation-timeline: view()</code> where supported; falls back to <code>IntersectionObserver</code> + <code>.is-visible</code>. Gated by <code>prefers-reduced-motion</code>.</p><span class="risk very-low">Risk · very low</span></div>
+          <div class="card"><strong>3 · Live ticker</strong><p>Marquee of recent on-chain activity under the hero. 60s loop, paused for reduced-motion.</p><span class="risk low">Risk · low</span></div>
+          <div class="card"><strong>4 · Principles section</strong><p>Three numbered cards: Bounded · Receipts · Wallet keys. Italic h3, copper icon, hover wash.</p><span class="risk very-low">Risk · very low</span></div>
+          <div class="card"><strong>5 · Journey split</strong><p>Two refined ledger cards: Learn the boundary vs Open the console. Each carries a CTA — same destinations as the strip.</p><span class="risk very-low">Risk · very low</span></div>
+          <div class="card"><strong>6 · Final CTA + footer</strong><p>A closing editorial moment before the footer. Reuses the strip destinations.</p><span class="risk very-low">Risk · very low</span></div>
+          <div class="card"><strong>7 · Editorial typography</strong><p><code>Fraunces 500 -0.03em</code> at <code>clamp(48px, 6.8vw, 96px)</code>, copper under-bar on italic emphasis.</p><span class="risk very-low">Risk · very low</span></div>
+          <div class="card"><strong>8 · CTA halo</strong><p>Replace <code>skewX(-18deg)</code> 450ms sweep with pill radius + gradient copper + layered inset shadow + halo. 220ms ease-out.</p><span class="risk low">Risk · low</span></div>
+          <div class="card"><strong>9 · Inline desktop nav</strong><p>Four real links at ≥980px with underline reveal. Hamburger collapses to mobile only.</p><span class="risk very-low">Risk · very low</span></div>
+          <div class="card"><strong>10 · Plate chrome + receipt</strong><p>Corner brackets, top-left live pill, refined copper hairline with <code>--copper-glow-md</code> token. Real receipt card overlays the proof plate.</p><span class="risk very-low">Risk · very low</span></div>
         </div>
       </section>
     </section>
@@ -1531,6 +1337,7 @@
 
   <script>
     (function () {
+      // Populate single-view panels by cloning from the split view.
       const splitBefore = document.querySelector('.panel-wrap[data-view="split"] .pair-grid > article:first-child > .landing.before');
       const splitAfter  = document.querySelector('.panel-wrap[data-view="split"] .pair-grid > article:last-child > .landing.after');
       const beforeOnly  = document.querySelector('.panel-wrap[data-view="before"] .pair-grid');
@@ -1538,6 +1345,7 @@
       if (splitBefore && beforeOnly) beforeOnly.appendChild(splitBefore.cloneNode(true));
       if (splitAfter  && afterOnly)  afterOnly.appendChild(splitAfter.cloneNode(true));
 
+      // Tab toggle
       const tabs = document.querySelectorAll('.audit-nav button');
       const panels = document.querySelectorAll('.panel-wrap');
       tabs.forEach((tab) => {
@@ -1548,6 +1356,7 @@
         });
       });
 
+      // After menu popover (mirrors LandingPage's aria-expanded contract)
       document.querySelectorAll('.after-trigger').forEach((trigger) => {
         const menu = trigger.parentElement.querySelector('.after-menu');
         if (!menu) return;
@@ -1558,6 +1367,64 @@
           menu.classList.toggle('is-open', !open);
         });
       });
+
+      // ---- Scroll-aware behavior (After only) ----
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const supportsViewTimeline = CSS.supports && CSS.supports('animation-timeline: view()');
+
+      // 1. Sticky nav: add .is-scrolled after 8px of scroll so the chrome picks
+      //    up a frosted background + bottom border once the user is "in" the page.
+      document.querySelectorAll('.landing.after .landing-nav').forEach((nav) => {
+        const handler = () => nav.classList.toggle('is-scrolled', window.scrollY > 8);
+        handler();
+        window.addEventListener('scroll', handler, { passive: true });
+      });
+
+      // 2. Scroll-reveal: when view-timeline is unavailable, fall back to
+      //    IntersectionObserver. Sections animate from `translateY(24px) +
+      //    opacity:0` to `translateY(0) + opacity:1` over 700ms once they
+      //    cross the 15% threshold. Stagger children by index.
+      if (!supportsViewTimeline && !reducedMotion) {
+        const reveal = (root) => {
+          root.querySelectorAll('.reveal').forEach((el, idx) => {
+            const observer = new IntersectionObserver((entries) => {
+              entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                  // Slight stagger so siblings feel sequenced, not synchronized.
+                  el.style.transitionDelay = `${Math.min(idx * 80, 240)}ms`;
+                  el.classList.add('is-visible');
+                  observer.unobserve(el);
+                }
+              });
+            }, { threshold: 0.15, rootMargin: '0px 0px -10% 0px' });
+            observer.observe(el);
+          });
+        };
+        document.querySelectorAll('.landing.after').forEach(reveal);
+      }
+
+      // 3. Smooth anchor scroll for the inline nav. We don't intercept clicks;
+      //    `html { scroll-behavior: smooth }` (gated by reduced-motion above)
+      //    handles the easing. The only extra we do is keep the `.is-active`
+      //    highlight in sync as the user scrolls past each section.
+      if (!reducedMotion) {
+        const sections = ['hero-after', 'principles-after', 'journey-after', 'cta-after'];
+        const links = document.querySelectorAll('.landing.after .nav-inline a');
+        const setActive = (id) => {
+          links.forEach((l) => l.classList.toggle('is-active', l.getAttribute('href') === '#' + id));
+        };
+        const obs = new IntersectionObserver((entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting && entry.intersectionRatio > 0.4) {
+              setActive(entry.target.id);
+            }
+          });
+        }, { threshold: [0.4, 0.6] });
+        sections.forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) obs.observe(el);
+        });
+      }
     })();
   </script>
 </body>

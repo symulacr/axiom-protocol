@@ -30,10 +30,21 @@ export const PYTH_FEED_IDS: Readonly<Record<string, string>> = Object.freeze({
   WETH: "0x9d4294bbcd1174d6f2003ec365831e64cc31d9f6f15a2b85399db8d5000960f6",
 });
 
-/** Hermes cluster order: primary, fallback (both probed at write time). */
+/**
+ * Hermes cluster order: primary, fallback (both probed at write time).
+ * NOTE (W7-B probe): /api/* on both hosts returns 401 "unauthorized" without a
+ * key; the same hosts' /v2/* paths (e.g. /v2/price_feeds) stay open. Set
+ * AXIOM_PYTH_API_KEY to use the keyed path, or point `urls` at an open mirror.
+ */
 export const HERMES_URLS = [
   "https://hermes.pyth.network",
   "https://hermes-beta.pyth.network",
+] as const;
+
+/** Open (key-free) fallback cluster, used when no API key is configured. */
+export const HERMES_URLS_OPEN = [
+  "https://hermes.pyth.network/v2",
+  "https://hermes-beta.pyth.network/v2",
 ] as const;
 
 /** Fast-fail so a dead Hermes never stalls the HTTP route past its budget. */
@@ -92,14 +103,18 @@ export class PythOracle {
   private cache = new TTLCache<PythPrice[]>(30_000, 1);
   private fetchImpl: FetchLike;
   private urls: readonly string[];
+  private apiKey: string | undefined;
 
   constructor(opts?: {
     fetchImpl?: FetchLike;
     urls?: readonly string[];
     cacheTtlMs?: number;
+    /** Optional Hermes API key — sent as X-PYTH-API-Key on every request. */
+    apiKey?: string;
   }) {
     this.fetchImpl = opts?.fetchImpl ?? fetch;
     this.urls = opts?.urls ?? HERMES_URLS;
+    this.apiKey = opts?.apiKey ?? process.env.AXIOM_PYTH_API_KEY;
     if (opts?.cacheTtlMs !== undefined) {
       this.cache = new TTLCache<PythPrice[]>(opts.cacheTtlMs, 1);
     }
@@ -116,9 +131,12 @@ export class PythOracle {
     for (const base of this.urls) {
       try {
         const res = await this.fetchImpl(
-          `${base}/api/latest_price_feeds?${query}`,
+          `${base}/latest_price_feeds?${query}`,
           {
             signal: AbortSignal.timeout(HERMES_TIMEOUT_MS),
+            ...(this.apiKey
+              ? { headers: { "X-PYTH-API-Key": this.apiKey } }
+              : {}),
           },
         );
         if (!res.ok) {

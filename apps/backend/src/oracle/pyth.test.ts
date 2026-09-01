@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   PYTH_FEED_IDS,
   HERMES_URLS,
+  HERMES_URLS_OPEN,
   PythOracle,
   getPythOracle,
   setPythOracle,
@@ -79,6 +80,13 @@ describe("pyth feed-id map", () => {
       ["https://hermes.pyth.network", "https://hermes-beta.pyth.network"],
     );
   });
+
+  test("open fallback cluster points at the key-free /v2 paths", () => {
+    assert.deepEqual(
+      [...HERMES_URLS_OPEN],
+      ["https://hermes.pyth.network/v2", "https://hermes-beta.pyth.network/v2"],
+    );
+  });
 });
 
 describe("PythOracle", () => {
@@ -118,6 +126,34 @@ describe("PythOracle", () => {
     await oracle.latestAll();
     await oracle.latestAll();
     assert.equal(calls, 2);
+  });
+
+  test("sends X-PYTH-API-Key when configured", async () => {
+    let seen: string | undefined;
+    const oracle = new PythOracle({
+      fetchImpl: (_url, init) => {
+        seen = new Headers(init?.headers).get("X-PYTH-API-Key") ?? undefined;
+        return okFetch()(_url);
+      },
+      cacheTtlMs: 0,
+      apiKey: "test-key-123",
+    });
+    await oracle.latestAll();
+    assert.equal(seen, "test-key-123");
+  });
+
+  test("omits X-PYTH-API-Key when unset", async () => {
+    let headers: Headers | undefined;
+    const oracle = new PythOracle({
+      fetchImpl: (_url, init) => {
+        headers = new Headers(init?.headers);
+        return okFetch()(_url);
+      },
+      cacheTtlMs: 0,
+      apiKey: undefined,
+    });
+    await oracle.latestAll();
+    assert.equal(headers?.get("X-PYTH-API-Key"), null);
   });
 
   test("graceful degrade: all Hermes URLs failing → throws (route maps to 503)", async () => {

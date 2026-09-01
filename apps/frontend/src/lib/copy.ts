@@ -121,12 +121,98 @@ export type Copy = {
     tryAssistant: string;
     stripVerifySmall: string;
     stripOperateSmall: string;
+    /** R4: phosphor-dot eyebrow pill above the h1. */
+    eyebrow: string;
+    /** R10: proof-field caption — small mono caption + Fraunces italic body. */
+    proofCaptionSmall: string;
+    proofCaptionBody: string;
     /** T4: real product preview inside the hero plate (self-demonstrating). */
     previewAgentTitle: string;
     previewAgentDesc: string;
     previewVaultLabel: string;
     previewReceiptTitle: string;
     previewReceiptMeta: string;
+    /** L2-N1: top-nav inline links + Connect button (≥980px viewport). */
+    nav: {
+      overview: string;
+      principles: string;
+      howItWorks: string;
+      start: string;
+      connect: string;
+    };
+    /** L2-N2: hero meta strip — chain / agents / receipts counts. */
+    meta: {
+      /** Placeholder: `{chainId}`. */
+      network: string;
+      /** Placeholder: `{count}`. */
+      agentsOnline: string;
+      /** Placeholder: `{count}`. */
+      receiptsIndexed: string;
+    };
+    /** L2-N3: hero trust-line chips. */
+    trust: {
+      nonCustodial: string;
+      signedIn: string;
+      receipt: string;
+    };
+    /** L2-N4: proof plate chrome — live label + floating receipt. */
+    proof: {
+      label: string;
+      caption: string;
+      receipt: {
+        kind: string;
+        state: string;
+        title: string;
+        agent: string;
+        block: string;
+        gas: string;
+        outcome: string;
+        outcomeValue: string;
+        meta: string;
+      };
+    };
+    /** L2-N5: live activity ticker under the hero. */
+    ticker: {
+      /** Placeholder: `{chainId}`. */
+      label: string;
+      items: ReadonlyArray<{
+        dot: "default" | "warning";
+        agent: string;
+        action: string;
+        ago: string;
+      }>;
+    };
+    /** L2-N6: principles section — 3 cards. */
+    principles: {
+      eyebrow: string;
+      /** Placeholders: `{emphasis}` opens <em>, `{endEmphasis}` closes it. */
+      title: string;
+      items: ReadonlyArray<{
+        icon: "shield" | "receipt" | "wallet";
+        title: string;
+        body: string;
+        link: string;
+      }>;
+    };
+    /** L2-N7: journey section — 2 cards (replaces the strip). */
+    journey: {
+      eyebrow: string;
+      /** Placeholders: `{emphasis}` opens <em>, `{endEmphasis}` closes it. */
+      title: string;
+      items: ReadonlyArray<{
+        eyebrow: string;
+        title: string;
+        body: string;
+        meta: string;
+        cta: string;
+        onClick: "onGuide" | "goToApp";
+      }>;
+    };
+    /** L2-N8: landing footer. */
+    footer: {
+      credit: string;
+      links: ReadonlyArray<{ label: string }>;
+    };
   };
   wallet: {
     /** Placeholder: `{chainName}` — the TARGET network (APP_CHAIN.name). */
@@ -975,11 +1061,124 @@ const english: Copy = {
     tryAssistant: "Try the assistant",
     stripVerifySmall: "No gas, no custody",
     stripOperateSmall: "Receipts beside action",
+    eyebrow: "On-chain iNFT protocol",
+    proofCaptionSmall: "Sealed transfer",
+    proofCaptionBody: "Every payload is re-keyed to its new owner.",
     previewAgentTitle: "Agent #7",
     previewAgentDesc: "Oracle attestations, every 10 minutes",
     previewVaultLabel: "Vault",
     previewReceiptTitle: "Tick receipt",
     previewReceiptMeta: "Just now",
+    nav: {
+      overview: "Overview",
+      principles: "Principles",
+      howItWorks: "How it works",
+      start: "Start",
+      connect: "Connect",
+    },
+    meta: {
+      network: "Mainnet · chain {chainId}",
+      agentsOnline: "{count} agents online",
+      receiptsIndexed: "{count} receipts indexed",
+    },
+    trust: {
+      nonCustodial: "Non-custodial",
+      signedIn: "Signed in < 30s",
+      receipt: "Every action → receipt",
+    },
+    proof: {
+      label: "Agent #7 · live",
+      caption: "Receipts beside every action.",
+      receipt: {
+        kind: "Tick receipt",
+        state: "Just now",
+        title: "Oracle attestations",
+        agent: "Agent",
+        block: "Block",
+        gas: "Gas",
+        outcome: "Outcome",
+        outcomeValue: "Held (idle)",
+        meta: "agent 7 · tx mined",
+      },
+    },
+    ticker: {
+      label: "Live · chain {chainId}",
+      items: [
+        {
+          dot: "default",
+          agent: "agent #3",
+          action: "vault topped",
+          ago: "22s ago",
+        },
+        {
+          dot: "default",
+          agent: "agent #11",
+          action: "receipt indexed",
+          ago: "38s ago",
+        },
+        {
+          dot: "warning",
+          agent: "agent #88",
+          action: "oracle attestation",
+          ago: "51s ago",
+        },
+      ],
+    },
+    principles: {
+      eyebrow: "Three principles",
+      title: "What makes Axiom {emphasis}different.{endEmphasis}",
+      items: [
+        {
+          icon: "shield",
+          title: "Bounded by design.",
+          body: "Every agent ships with an explicit vault and a daily spending limit. The vault is enforced on-chain — no off-chain guardrails to drift.",
+          link: "Read the spec",
+        },
+        {
+          icon: "receipt",
+          title: "Receipts, not promises.",
+          body: "Each signature lands as an indexed receipt. The transaction center shows the proof — agent, block, outcome — beside the action that produced it.",
+          link: "How receipts work",
+        },
+        {
+          icon: "wallet",
+          title: "Your wallet, your keys.",
+          body: "Non-custodial. Connect with the wallet you already use. No accounts, no emails — the signature is the identity, the receipt is the history.",
+          link: "Wallet options",
+        },
+      ],
+    },
+    journey: {
+      eyebrow: "Pick one",
+      title: "Two paths {emphasis}to start.{endEmphasis}",
+      items: [
+        {
+          eyebrow: "Journey A",
+          title: "Learn the boundary before you sign.",
+          body: "How Axiom splits signing from custody, what receipts look like, and which wallet choices keep your keys yours. No wallet required to read.",
+          meta: "Read time · 3 min",
+          cta: "How signing works",
+          onClick: "onGuide",
+        },
+        {
+          eyebrow: "Journey B",
+          title: "Open the console and operate receipts.",
+          body: "Connect once to mint, fund, and run. Every signature lands as an indexed receipt beside the action that produced it.",
+          meta: "Live · {count} agents online",
+          cta: "Console access",
+          onClick: "goToApp",
+        },
+      ],
+    },
+    footer: {
+      credit: "Built on 0G · Mainnet beta",
+      links: [
+        { label: "Agents" },
+        { label: "Receipts" },
+        { label: "Storage" },
+        { label: "Developers" },
+      ],
+    },
   },
   wallet: {
     wrongNetworkTitle: "Switch to {chainName}.",
@@ -1879,11 +2078,125 @@ const french: Copy = {
     menuDevelopersHint: "APIs et outils pour développeurs",
     stripVerifySmall: "Sans gas, sans garde",
     stripOperateSmall: "Reçus à côté de l’action",
+    eyebrow: "Protocole iNFT on-chain",
+    proofCaptionSmall: "Transfert scellé",
+    proofCaptionBody:
+      "Chaque payload est recréé pour son nouveau propriétaire.",
     previewAgentTitle: "Agent nº 7",
     previewAgentDesc: "Attestations oracle, toutes les 10 minutes",
     previewVaultLabel: "Coffre",
     previewReceiptTitle: "Reçu de tick",
     previewReceiptMeta: "À l’instant",
+    nav: {
+      overview: "Aperçu",
+      principles: "Principes",
+      howItWorks: "Comment ça marche",
+      start: "Démarrer",
+      connect: "Connecter",
+    },
+    meta: {
+      network: "Mainnet · chaîne {chainId}",
+      agentsOnline: "{count} agents en ligne",
+      receiptsIndexed: "{count} reçus indexés",
+    },
+    trust: {
+      nonCustodial: "Non-dépositaire",
+      signedIn: "Signé en < 30s",
+      receipt: "Chaque action → reçu",
+    },
+    proof: {
+      label: "Agent n°7 · en direct",
+      caption: "Reçus à côté de chaque action.",
+      receipt: {
+        kind: "Reçu de tick",
+        state: "À l'instant",
+        title: "Attestations oracle",
+        agent: "Agent",
+        block: "Bloc",
+        gas: "Gas",
+        outcome: "Résultat",
+        outcomeValue: "Maintenu (inactif)",
+        meta: "agent 7 · tx minée",
+      },
+    },
+    ticker: {
+      label: "En direct · chaîne {chainId}",
+      items: [
+        {
+          dot: "default",
+          agent: "agent #3",
+          action: "coffre approvisionné",
+          ago: "il y a 22s",
+        },
+        {
+          dot: "default",
+          agent: "agent #11",
+          action: "reçu indexé",
+          ago: "il y a 38s",
+        },
+        {
+          dot: "warning",
+          agent: "agent #88",
+          action: "attestation oracle",
+          ago: "il y a 51s",
+        },
+      ],
+    },
+    principles: {
+      eyebrow: "Trois principes",
+      title: "Ce qui rend Axiom {emphasis}différent.{endEmphasis}",
+      items: [
+        {
+          icon: "shield",
+          title: "Délimité par conception.",
+          body: "Chaque agent est livré avec un coffre explicite et une limite de dépenses quotidienne. Le coffre est appliqué on-chain — pas de garde-fous hors chaîne.",
+          link: "Lire la spec",
+        },
+        {
+          icon: "receipt",
+          title: "Reçus, pas promesses.",
+          body: "Chaque signature devient un reçu indexé. Le centre de transactions montre la preuve — agent, bloc, résultat — à côté de l'action qui l'a produite.",
+          link: "Comment fonctionnent les reçus",
+        },
+        {
+          icon: "wallet",
+          title: "Votre wallet, vos clés.",
+          body: "Non-dépositaire. Connectez-vous avec le wallet que vous utilisez déjà. Pas de comptes, pas d'emails — la signature est l'identité, le reçu est l'historique.",
+          link: "Options de wallet",
+        },
+      ],
+    },
+    journey: {
+      eyebrow: "Choisissez",
+      title: "Deux chemins {emphasis}pour commencer.{endEmphasis}",
+      items: [
+        {
+          eyebrow: "Parcours A",
+          title: "Apprenez la limite avant de signer.",
+          body: "Comment Axiom sépare signature et garde, à quoi ressemblent les reçus, et quels wallets gardent vos clés. Pas besoin de wallet pour lire.",
+          meta: "Temps de lecture · 3 min",
+          cta: "Comment fonctionne la signature",
+          onClick: "onGuide",
+        },
+        {
+          eyebrow: "Parcours B",
+          title: "Ouvrir la console et opérer les reçus.",
+          body: "Connectez-vous une fois pour minter, financer et opérer. Chaque signature devient un reçu indexé à côté de l'action qui l'a produite.",
+          meta: "En direct · {count} agents en ligne",
+          cta: "Accès console",
+          onClick: "goToApp",
+        },
+      ],
+    },
+    footer: {
+      credit: "Construit sur 0G · Mainnet beta",
+      links: [
+        { label: "Agents" },
+        { label: "Reçus" },
+        { label: "Stockage" },
+        { label: "Développeurs" },
+      ],
+    },
   },
   wallet: {
     wrongNetworkTitle: "Passez sur {chainName}.",
@@ -2763,11 +3076,125 @@ const german: Copy = {
     menuDevelopersHint: "APIs und Entwickler-Tools",
     stripVerifySmall: "Kein Gas, keine Verwahrung",
     stripOperateSmall: "Belege neben der Aktion",
+    eyebrow: "On-Chain-iNFT-Protokoll",
+    proofCaptionSmall: "Versiegelte Übertragung",
+    proofCaptionBody:
+      "Jede Nutzlast wird neu für ihren neuen Eigentümer verschlüsselt.",
     previewAgentTitle: "Agent Nr. 7",
     previewAgentDesc: "Oracle-Attestierungen, alle 10 Minuten",
     previewVaultLabel: "Tresor",
     previewReceiptTitle: "Tick-Beleg",
     previewReceiptMeta: "Gerade eben",
+    nav: {
+      overview: "Überblick",
+      principles: "Prinzipien",
+      howItWorks: "So funktioniert es",
+      start: "Starten",
+      connect: "Verbinden",
+    },
+    meta: {
+      network: "Mainnet · Kette {chainId}",
+      agentsOnline: "{count} Agents online",
+      receiptsIndexed: "{count} Belege indexiert",
+    },
+    trust: {
+      nonCustodial: "Nicht-verwahrend",
+      signedIn: "In < 30s signiert",
+      receipt: "Jede Aktion → Beleg",
+    },
+    proof: {
+      label: "Agent Nr. 7 · live",
+      caption: "Belege neben jeder Aktion.",
+      receipt: {
+        kind: "Tick-Beleg",
+        state: "Gerade eben",
+        title: "Oracle-Attestierungen",
+        agent: "Agent",
+        block: "Block",
+        gas: "Gas",
+        outcome: "Ergebnis",
+        outcomeValue: "Gehalten (inaktiv)",
+        meta: "Agent 7 · tx gemined",
+      },
+    },
+    ticker: {
+      label: "Live · Kette {chainId}",
+      items: [
+        {
+          dot: "default",
+          agent: "agent #3",
+          action: "Tresor aufgefüllt",
+          ago: "vor 22s",
+        },
+        {
+          dot: "default",
+          agent: "agent #11",
+          action: "Beleg indexiert",
+          ago: "vor 38s",
+        },
+        {
+          dot: "warning",
+          agent: "agent #88",
+          action: "Oracle-Attestierung",
+          ago: "vor 51s",
+        },
+      ],
+    },
+    principles: {
+      eyebrow: "Drei Prinzipien",
+      title: "Was Axiom {emphasis}anders macht.{endEmphasis}",
+      items: [
+        {
+          icon: "shield",
+          title: "Grenzen durch Design.",
+          body: "Jeder Agent wird mit einem expliziten Tresor und einem täglichen Ausgabenlimit ausgeliefert. Der Tresor wird on-chain durchgesetzt — keine Off-Chain-Absicherungen.",
+          link: "Spec lesen",
+        },
+        {
+          icon: "receipt",
+          title: "Belege, keine Versprechen.",
+          body: "Jede Signatur landet als indexierter Beleg. Das Transaktions-Center zeigt den Beweis — Agent, Block, Ergebnis — neben der auslösenden Aktion.",
+          link: "Wie Belege funktionieren",
+        },
+        {
+          icon: "wallet",
+          title: "Dein Wallet, deine Schlüssel.",
+          body: "Nicht-verwahrend. Verbinde dich mit dem Wallet, das du bereits nutzt. Keine Accounts, keine E-Mails — die Signatur ist die Identität, der Beleg ist der Verlauf.",
+          link: "Wallet-Optionen",
+        },
+      ],
+    },
+    journey: {
+      eyebrow: "Wähle eines",
+      title: "Zwei Wege {emphasis}zum Start.{endEmphasis}",
+      items: [
+        {
+          eyebrow: "Weg A",
+          title: "Lerne die Grenze, bevor du unterschreibst.",
+          body: "Wie Axiom Signieren und Verwahrung trennt, wie Belege aussehen und welche Wallets deine Schlüssel behalten. Kein Wallet zum Lesen nötig.",
+          meta: "Lesezeit · 3 min",
+          cta: "Wie die Signatur funktioniert",
+          onClick: "onGuide",
+        },
+        {
+          eyebrow: "Weg B",
+          title: "Öffne die Konsole und bediene Belege.",
+          body: "Verbinde dich einmal zum Minten, Finanzieren und Ausführen. Jede Signatur landet als indexierter Beleg neben der auslösenden Aktion.",
+          meta: "Live · {count} Agents online",
+          cta: "Konsolenzugriff",
+          onClick: "goToApp",
+        },
+      ],
+    },
+    footer: {
+      credit: "Gebaut auf 0G · Mainnet beta",
+      links: [
+        { label: "Agents" },
+        { label: "Belege" },
+        { label: "Speicher" },
+        { label: "Entwickler" },
+      ],
+    },
   },
   wallet: {
     wrongNetworkTitle: "Zu {chainName} wechseln.",

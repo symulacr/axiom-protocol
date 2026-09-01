@@ -48,9 +48,18 @@ import { truncateAddress, trapTabFocus } from "../../utils/format.js";
 import { APP_CHAIN, APP_CHAIN_ID } from "../../config/wagmi.js";
 import { getCopy, type Copy, type NavGroupKey } from "../../lib/copy.js";
 
-export function Logo({ compact = false }: { compact?: boolean }) {
+export function Logo({
+  compact = false,
+  glyph = false,
+}: {
+  compact?: boolean;
+  glyph?: boolean;
+}) {
   return (
-    <div className={`brand ${compact ? "brand-compact" : ""}`}>
+    <div
+      className={`brand ${compact ? "brand-compact" : ""} ${glyph ? "brand--glyph" : ""}`.trim()}
+    >
+      {glyph && <span className="glyph" aria-hidden="true" />}
       <AxiomBrandMark />
       <span>AXIOM</span>
     </div>

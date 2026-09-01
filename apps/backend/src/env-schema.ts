@@ -44,6 +44,9 @@ export const backendEnvSchema = sharedEnvSchema.merge(
     INDEXER_START_BLOCK: z.coerce.number().int().nonnegative().optional(),
     AXIOM_COMPUTE_API_KEY: z.string().optional(),
     OG_COMPUTE_API_KEY: z.string().optional(),
+    // Pyth Hermes API key (optional): lifts the public rate limit; sent as
+    // X-PYTH-API-Key on every Hermes request when set.
+    AXIOM_PYTH_API_KEY: z.string().optional(),
     AXIOM_TEE_SIGNER_PK: z.string(),
     DEPLOYER_PK: hexString,
     AXIOM_RUNTIME_SIGNER_PK: z.string().optional(),
