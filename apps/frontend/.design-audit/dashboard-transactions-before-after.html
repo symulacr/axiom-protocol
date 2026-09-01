@@ -471,85 +471,142 @@
     .audit-legend .annotation{margin-left:0}
 
     /* ============================================================
-       DRAWER FOCUS BLOCK — shows the receipt drawer treatment
-       BEFORE and AFTER side by side simultaneously. No toggle:
-       both states are always visible so the comparison is honest.
+       DRAWER FOCUS BLOCK — a real interactive receipt drawer demo.
+       - Starts CLOSED (no overlay visible).
+       - "Open drawer" button shows the overlay with backdrop-filter
+         blur(12px) over a ghost transactions-page preview.
+       - Treatment toggle switches BEFORE ↔ AFTER chrome styling
+         while the drawer is open.
+       - Dismiss trio: ✕ click, Escape key, backdrop click.
        ============================================================ */
     .drawer-focus{margin:0 0 32px;border:1px solid var(--line);background:var(--panel);
       overflow:hidden;border-radius:var(--radius-lg)}
-    .drawer-focus-head{display:grid;gap:6px;padding:16px 20px;border-bottom:1px solid var(--line);
+    .drawer-focus-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 16px;
+      padding:16px 20px;border-bottom:1px solid var(--line);align-items:start;
       background:linear-gradient(180deg,var(--panel-2),var(--panel))}
-    .drawer-focus-head h2{margin:0;font:700 14px/1.2 "Inter",sans-serif;letter-spacing:-.02em;
+    .drawer-focus-titles{display:grid;gap:6px;min-width:0}
+    .drawer-focus-titles h2{margin:0;font:700 14px/1.2 "Inter",sans-serif;letter-spacing:-.02em;
       color:var(--ink)}
-    .drawer-focus-head p{margin:0;color:var(--muted);font-size:12px;max-width:680px;
+    .drawer-focus-titles p{margin:0;color:var(--muted);font-size:12px;max-width:560px;
       line-height:1.5}
+    .drawer-focus-controls{display:grid;gap:8px;justify-items:end}
 
-    /* Stage = side-by-side BEFORE / AFTER comparison. Each side shows
-       its own drawer card with its own treatment. The blurred page
-       preview runs behind both as the ambient backdrop. */
-    .drawer-focus-stage{position:relative;overflow:hidden;background:
-      linear-gradient(180deg,var(--canvas),var(--panel-2))}
-    .drawer-focus-stage::before{content:"";position:absolute;inset:0;z-index:0;
-      background:
-        radial-gradient(60% 50% at 30% 10%,rgba(210,139,82,.10),transparent 70%),
-        linear-gradient(180deg,transparent,rgba(7,9,10,.55));
-      pointer-events:none}
+    /* Treatment segmented control: BEFORE / AFTER. */
+    .drawer-treatment{display:inline-flex;border:1px solid var(--line);border-radius:999px;
+      padding:2px;background:var(--bg);gap:2px}
+    .drawer-treatment button{border:0;padding:6px 12px;background:transparent;
+      color:var(--muted);font:600 11px/1 "JetBrains Mono",monospace;letter-spacing:.06em;
+      text-transform:uppercase;border-radius:999px;cursor:pointer;
+      transition:background .16s var(--ease),color .16s var(--ease)}
+    .drawer-treatment button[aria-pressed="true"]{background:color-mix(in srgb,var(--copper) 18%,transparent);
+      color:var(--copper-bright);box-shadow:inset 0 0 0 1px var(--copper)}
 
-    .drawer-focus-pair{position:relative;z-index:1;display:grid;
-      grid-template-columns:1fr 1fr;gap:20px;padding:24px}
-    .drawer-focus-side{display:grid;gap:10px;align-content:start}
-    .drawer-focus-side-label{display:flex;align-items:center;gap:10px;padding:8px 14px;
-      border:1px solid var(--line);background:var(--panel);border-radius:var(--radius-md);
-      box-shadow:var(--shadow-modal-sm);width:fit-content}
-    .drawer-focus-side-label .pill{display:inline-flex;align-items:center;gap:6px;
-      padding:3px 8px;border:1px solid var(--line);border-radius:999px;
-      font:600 10px/1 "JetBrains Mono",monospace;letter-spacing:.08em;
-      text-transform:uppercase;color:var(--muted)}
-    .drawer-focus-side-label[data-side="after"] .pill{color:var(--phosphor);
-      border-color:rgba(116,224,194,.4)}
-    .drawer-focus-side-label strong{font:700 12px/1.2 "Inter",sans-serif;
-      letter-spacing:-.02em;color:var(--ink)}
-    .drawer-focus-side-label .annotation{margin-left:0}
-    .drawer-focus-side-blurb{margin:0;color:var(--muted);font-size:12px;
-      line-height:1.5;max-width:380px}
+    /* Open button — the primary CTA in the focus head. */
+    .drawer-open-btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;
+      border:1px solid var(--copper);background:var(--copper);color:var(--bg);
+      font:600 11px/1 "JetBrains Mono",monospace;letter-spacing:.06em;
+      text-transform:uppercase;cursor:pointer;border-radius:var(--radius-md);
+      transition:background .16s var(--ease)}
+    .drawer-open-btn:hover{background:var(--copper-bright)}
+    .drawer-open-btn[aria-expanded="true"]{background:transparent;color:var(--copper-bright)}
+    .drawer-open-btn[aria-expanded="true"]:hover{background:color-mix(in srgb,var(--copper) 14%,transparent)}
 
-    /* Each drawer card inside the pair. */
-    .drawer-focus-card{position:relative}
-    .drawer-focus-card .receipt-drawer{position:relative;inset:auto;width:100%;
-      animation:none;box-shadow:var(--shadow-drawer)}
+    /* Stage = the blurred transactions-page preview. Always visible —
+       it is the SOURCE for backdrop-filter to operate on. */
+    .drawer-focus-stage{position:relative;min-height:560px;overflow:hidden;
+      background:linear-gradient(180deg,var(--canvas),var(--panel-2))}
 
-    /* The two side-by-side states both render the same receipt content;
-       only the visual treatment differs (driven by data-side attribute).
-       This proves to the reader that the upgrade is purely visual, not
-       a content change. */
-    [data-drawer-card="after"] {
+    /* Ghost preview — the actual content that gets blurred by the
+       backdrop-filter when the drawer is open. */
+    .drawer-focus-ghost{position:absolute;inset:0;padding:32px 28px;display:grid;
+      gap:18px;align-content:start;pointer-events:none;z-index:0}
+    .drawer-focus-ghost-head{display:flex;align-items:end;justify-content:space-between;
+      gap:16px}
+    .drawer-focus-ghost-head h4{margin:0;font:800 28px/1 "Inter",sans-serif;
+      letter-spacing:-.04em;color:var(--ink)}
+    .drawer-focus-ghost-head h4 i{color:var(--copper-bright);font-style:normal}
+    .drawer-focus-ghost-summary{display:grid;grid-template-columns:repeat(3,1fr);
+      gap:1px;border:1px solid var(--line);background:var(--line)}
+    .drawer-focus-ghost-summary>div{padding:12px 14px;background:var(--panel);
+      display:grid;gap:4px}
+    .drawer-focus-ghost-summary b{font:700 18px/1 "Inter",sans-serif;
+      color:var(--copper-bright);font-variant-numeric:tabular-nums}
+    .drawer-focus-ghost-summary small{color:var(--dim);font:var(--fs-mono) "JetBrains Mono",monospace}
+    .drawer-focus-ghost-table{border:1px solid var(--line);background:var(--panel)}
+    .drawer-focus-ghost-table .gh{display:grid;grid-template-columns:
+      minmax(160px,1.35fr) 1fr .55fr .8fr 15px;gap:12px;padding:12px 16px;
+      border-bottom:1px solid var(--line);color:var(--dim);
+      font:500 var(--fs-mono) "JetBrains Mono",monospace;letter-spacing:.08em;
+      text-transform:uppercase}
+    .drawer-focus-ghost-table .gr{display:grid;grid-template-columns:
+      minmax(160px,1.35fr) 1fr .55fr .8fr 15px;gap:12px;padding:14px 16px;
+      align-items:center;border-bottom:1px solid var(--line);color:var(--ink);
+      font-size:13px}
+    .drawer-focus-ghost-table .gr:last-child{border-bottom:0}
+    .drawer-focus-ghost-table .gr .meta{display:grid;gap:2px;min-width:0}
+    .drawer-focus-ghost-table .gr strong{font-size:13px;font-weight:600;color:var(--ink)}
+    .drawer-focus-ghost-table .gr small{color:var(--dim);font:var(--fs-small) "JetBrains Mono",monospace}
+    .drawer-focus-ghost-table .gr .mono{color:var(--dim);font:var(--fs-small) "JetBrains Mono",monospace}
+    .gh-pill{display:inline-block;padding:2px 6px;border:1px solid var(--line);
+      border-radius:4px;color:var(--dim);
+      font:600 10px/1 "JetBrains Mono",monospace;letter-spacing:.06em;
+      text-transform:uppercase}
+
+    /* Drawer overlay layer (closed by default). */
+    .drawer-focus-layer{position:absolute;inset:0;z-index:5;display:none;
+      background:rgba(7,9,10,.72);backdrop-filter:blur(12px);
+      -webkit-backdrop-filter:blur(12px);justify-content:flex-end;align-items:stretch}
+    .drawer-focus-layer.is-open{display:flex;animation:drawer-backdrop-in .22s var(--ease)}
+    @keyframes drawer-backdrop-in{from{opacity:0}to{opacity:1}}
+    @media (prefers-reduced-motion:reduce){.drawer-focus-layer.is-open{animation:none}}
+
+    /* The actual drawer sidebar — anchored to right edge of the layer. */
+    .drawer-focus-card{position:relative;width:min(420px,100%);height:100%;overflow:auto;
+      margin:0;animation:drawer-slide-in .24s var(--ease)}
+    @keyframes drawer-slide-in{from{transform:translateX(24px);opacity:0}
+      to{transform:none;opacity:1}}
+    @media (prefers-reduced-motion:reduce){.drawer-focus-card{animation:none}}
+
+    /* Style the .receipt-drawer inside the focus block — overrides
+       the global .receipt-drawer defaults. */
+    .drawer-focus-card .receipt-drawer{position:relative;inset:auto;width:auto;
+      padding:24px 28px;height:auto;background:var(--panel);
+      border-left:1px solid var(--copper);box-shadow:var(--shadow-drawer);
+      animation:none}
+
+    /* AFTER treatment — applied by attribute selector so it works
+       regardless of the page-wide data-mode. */
+    .drawer-focus-card [data-drawer-card="after"] {
       border-left: 1px solid var(--line);
       background: linear-gradient(180deg, var(--panel-2), var(--panel));
+      position: relative;
     }
-    [data-drawer-card="after"]::before {
+    .drawer-focus-card [data-drawer-card="after"]::before {
       content: ""; position: absolute;
-      top: 78px; bottom: 32px; left: -1px; width: 2px;
+      top: 24px; bottom: 24px; left: -1px; width: 2px;
       background: linear-gradient(180deg, var(--copper), transparent);
     }
-    [data-drawer-card="after"] .drawer-close {
+    .drawer-focus-card [data-drawer-card="after"] .drawer-close {
       border-radius: var(--radius-md); border-color: var(--line);
     }
-    [data-drawer-card="after"] .drawer-list .row { padding: 14px 0; }
-    [data-drawer-card="after"] .drawer-list dd {
+    .drawer-focus-card [data-drawer-card="after"] .drawer-list .row { padding: 14px 0; }
+    .drawer-focus-card [data-drawer-card="after"] .drawer-list dd {
       justify-content: flex-end; text-align: right;
     }
-    [data-drawer-card="after"] .button-primary {
+    .drawer-focus-card [data-drawer-card="after"] .button-primary {
       border-radius: var(--radius-md);
       box-shadow: 0 1px 0 rgba(255,255,255,.18) inset,
         0 8px 20px rgba(210,139,82,.18);
     }
-    [data-drawer-card="after"] .button {
+    .drawer-focus-card [data-drawer-card="after"] .button {
       border-radius: var(--radius-md);
       box-shadow: 0 1px 0 rgba(255,255,255,.04) inset;
     }
 
     @media (max-width:900px){
-      .drawer-focus-pair{grid-template-columns:1fr}
+      .drawer-focus-head{grid-template-columns:1fr}
+      .drawer-focus-controls{justify-items:start}
+      .drawer-focus-ghost-head h4{font-size:22px}
     }
 
     @media (max-width:1100px){.dashboard-split{grid-template-columns:1fr}.ops-summary{grid-template-columns:repeat(3,1fr)}.context-strip{grid-template-columns:repeat(2,1fr)}.stats-grid{grid-template-columns:repeat(2,1fr)}}
@@ -574,75 +631,73 @@
     </div>
 
     <!-- ===================== DRAWER FOCUS BLOCK =====================
-         Side-by-side BEFORE / AFTER comparison of the receipt drawer.
-         Both states render at the same time so the visual upgrade
-         reads at a glance — no toggle, no hidden state.
+         Interactive receipt drawer demo. Starts CLOSED. The ghost
+         transactions-page preview underneath is always visible so
+         the backdrop-filter has content to blur when the drawer
+         opens. Dismiss trio: ✕ click, Escape, backdrop click.
          ============================================================== -->
-    <section class="drawer-focus" aria-label="Receipt drawer focus comparison">
+    <section class="drawer-focus" data-treatment="before" aria-label="Receipt drawer focus comparison">
       <div class="drawer-focus-head">
-        <h2>Receipt drawer · side-by-side</h2>
-        <p>Both treatments render at once. Compare the flat BEFORE panel on the left against the AFTER panel on the right — same content, different surface treatment.</p>
+        <div class="drawer-focus-titles">
+          <h2>Receipt drawer · interactive</h2>
+          <p>Open the drawer to see the BEFORE/AFTER chrome over a blurred transactions page. Switch treatments while open to compare. Close via the ✕ button, Escape, or clicking the backdrop.</p>
+        </div>
+        <div class="drawer-focus-controls">
+          <div class="drawer-treatment" role="group" aria-label="Drawer treatment">
+            <button type="button" data-treatment-btn="before" aria-pressed="true">BEFORE</button>
+            <button type="button" data-treatment-btn="after" aria-pressed="false">AFTER</button>
+          </div>
+          <button type="button" class="drawer-open-btn" data-drawer-open aria-expanded="false" aria-controls="drawerFocusLayer">
+            Open drawer
+          </button>
+        </div>
       </div>
+
       <div class="drawer-focus-stage">
-        <div class="drawer-focus-pair">
-
-          <!-- BEFORE side -->
-          <div class="drawer-focus-side">
-            <div class="drawer-focus-side-label" data-side="before">
-              <span class="pill">BEFORE</span>
-              <strong>Flat panel · copper border</strong>
-            </div>
-            <p class="drawer-focus-side-blurb">No entrance motion, no gradient hairline, proof rows align left. The disclosure sits inside the drawer without its own chrome.</p>
-            <div class="drawer-focus-card">
-              <aside class="receipt-drawer" data-drawer-card="before">
-                <button class="drawer-close" aria-label="Close receipt" type="button">✕</button>
-                <h2>Receipt detail</h2>
-                <div class="receipt-primary-action">
-                  <button class="button button-primary" type="button">View on explorer →</button>
-                  <button class="button button-ghost" type="button">Run another like this</button>
-                </div>
-                <details class="receipt-proof-disclosure" open>
-                  <summary>Technical details</summary>
-                  <dl class="drawer-list">
-                    <div class="row"><dt>Transaction hash</dt><dd class="mono">0x4f71c2a8…d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7</dd><dd><button class="inline-copy" aria-label="Copy receipt hash">⧉</button></dd></div>
-                    <div class="row"><dt>Network</dt><dd><a class="text-link" href="#">View on explorer →</a></dd><dd></dd></div>
-                    <div class="row"><dt>Agent</dt><dd>#1042</dd><dd></dd></div>
-                    <div class="row"><dt>Event</dt><dd>decoded + indexed</dd><dd></dd></div>
-                  </dl>
-                </details>
-              </aside>
-            </div>
+        <!-- Ghost transactions-page preview (always visible) — this is
+             the SOURCE for the backdrop-filter to blur when the drawer
+             is open. -->
+        <div class="drawer-focus-ghost" aria-hidden="true">
+          <div class="drawer-focus-ghost-head">
+            <h4>Transaction <i>center</i>.</h4>
+            <span class="gh-pill">Refresh state</span>
           </div>
-
-          <!-- AFTER side -->
-          <div class="drawer-focus-side">
-            <div class="drawer-focus-side-label" data-side="after">
-              <span class="pill">AFTER</span>
-              <strong>Copper hairline · rounded chrome</strong>
-              <span class="annotation">drawer refined</span>
-            </div>
-            <p class="drawer-focus-side-blurb">Gradient copper hairline on the left, rounded close button, right-aligned monospace amounts, refined proof rows with the disclosure in its own panel.</p>
-            <div class="drawer-focus-card">
-              <aside class="receipt-drawer" data-drawer-card="after">
-                <button class="drawer-close" aria-label="Close receipt" type="button">✕</button>
-                <h2>Receipt detail</h2>
-                <div class="receipt-primary-action">
-                  <button class="button button-primary" type="button">View on explorer →</button>
-                  <button class="button button-ghost" type="button">Run another like this</button>
-                </div>
-                <details class="receipt-proof-disclosure" open>
-                  <summary>Technical details</summary>
-                  <dl class="drawer-list">
-                    <div class="row"><dt>Transaction hash</dt><dd class="mono">0x4f71c2a8…d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7</dd><dd><button class="inline-copy" aria-label="Copy receipt hash">⧉</button></dd></div>
-                    <div class="row"><dt>Network</dt><dd><a class="text-link" href="#">View on explorer →</a></dd><dd></dd></div>
-                    <div class="row"><dt>Agent</dt><dd>#1042</dd><dd></dd></div>
-                    <div class="row"><dt>Event</dt><dd>decoded + indexed</dd><dd></dd></div>
-                  </dl>
-                </details>
-              </aside>
-            </div>
+          <div class="drawer-focus-ghost-summary">
+            <div><b>01</b><small>confirming now</small></div>
+            <div><b style="color:var(--copper-bright)">02</b><small>need review</small></div>
+            <div><small>Confirmed = observed on-chain. Pending stays pending.</small></div>
           </div>
+          <div class="drawer-focus-ghost-table">
+            <div class="gh"><span>OPERATION</span><span>HASH</span><span>AGE</span><span>STATE</span></div>
+            <div class="gr"><span class="meta"><strong>Vault deposit</strong><small>agent #1042, block 8210441</small></span><span class="mono">0x4f71…7c2a</span><span class="mono">12m ago</span><span class="gh-pill">CONFIRMED</span><span></span></div>
+            <div class="gr"><span class="meta"><strong>Tick run</strong><small>agent #1042, block 8210443</small></span><span class="mono">0x9a23…b4d1</span><span class="mono">4m ago</span><span class="gh-pill">CONFIRMING</span><span></span></div>
+            <div class="gr"><span class="meta"><strong>Approval</strong><small>agent #1044, block 8210433</small></span><span class="mono">0xc01d…3f08</span><span class="mono">22m ago</span><span class="gh-pill">REVERTED</span><span></span></div>
+            <div class="gr"><span class="meta"><strong>Mint agent</strong><small>agent #1042, block 8210350</small></span><span class="mono">0x7d2e…f1a9</span><span class="mono">3h ago</span><span class="gh-pill">CONFIRMED</span><span></span></div>
+            <div class="gr"><span class="meta"><strong>Pay agent</strong><small>agent #1044, block 8210431</small></span><span class="mono">0x2c9b…7e14</span><span class="mono">25m ago</span><span class="gh-pill">NEEDS REVIEW</span><span></span></div>
+          </div>
+        </div>
 
+        <!-- Drawer overlay layer (hidden by default). -->
+        <div class="drawer-focus-layer" id="drawerFocusLayer" data-drawer-layer role="presentation">
+          <div class="drawer-focus-card">
+            <aside class="receipt-drawer" data-drawer-card="before">
+              <button class="drawer-close" aria-label="Close receipt" type="button" data-drawer-close>✕</button>
+              <h2>Receipt detail</h2>
+              <div class="receipt-primary-action">
+                <button class="button button-primary" type="button">View on explorer →</button>
+                <button class="button button-ghost" type="button">Run another like this</button>
+              </div>
+              <details class="receipt-proof-disclosure" open>
+                <summary>Technical details</summary>
+                <dl class="drawer-list">
+                  <div class="row"><dt>Transaction hash</dt><dd class="mono">0x4f71c2a8…d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7</dd><dd><button class="inline-copy" aria-label="Copy receipt hash">⧉</button></dd></div>
+                  <div class="row"><dt>Network</dt><dd><a class="text-link" href="#">View on explorer →</a></dd><dd></dd></div>
+                  <div class="row"><dt>Agent</dt><dd>#1042</dd><dd></dd></div>
+                  <div class="row"><dt>Event</dt><dd>decoded + indexed</dd><dd></dd></div>
+                </dl>
+              </details>
+            </aside>
+          </div>
         </div>
       </div>
     </section>
@@ -969,6 +1024,66 @@
         sync();
       });
       sync();
+    })();
+
+    // Receipt drawer focus block — interactive demo. The drawer is
+    // CLOSED on load. Open via the open button; close via ✕, Escape,
+    // or clicking the dimmed backdrop. The BEFORE/AFTER treatment
+    // segmented control switches the chrome while the drawer is open.
+    (function () {
+      var block = document.querySelector(".drawer-focus");
+      if (!block) return;
+      var openBtn = block.querySelector("[data-drawer-open]");
+      var layer = block.querySelector("[data-drawer-layer]");
+      var card = block.querySelector(".drawer-focus-card .receipt-drawer");
+      var closeBtn = block.querySelector("[data-drawer-close]");
+      var treatmentBtns = block.querySelectorAll("[data-treatment-btn]");
+
+      function open() {
+        layer.classList.add("is-open");
+        openBtn.setAttribute("aria-expanded", "true");
+        openBtn.textContent = "Close drawer";
+        // Move focus to close button for keyboard users (matches
+        // production useModalDismiss focus-restoration contract).
+        if (closeBtn) closeBtn.focus({ preventScroll: true });
+      }
+      function close() {
+        layer.classList.remove("is-open");
+        openBtn.setAttribute("aria-expanded", "false");
+        openBtn.textContent = "Open drawer";
+        openBtn.focus({ preventScroll: true });
+      }
+      function isOpen() { return layer.classList.contains("is-open"); }
+
+      openBtn.addEventListener("click", function () {
+        isOpen() ? close() : open();
+      });
+      if (closeBtn) closeBtn.addEventListener("click", close);
+      // Backdrop click — only when the click target is the layer
+      // itself, not the drawer card or any descendant.
+      layer.addEventListener("click", function (e) {
+        if (e.target === layer) close();
+      });
+      // Escape key — dismiss the drawer while open.
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape" && isOpen()) {
+          e.preventDefault();
+          close();
+        }
+      });
+
+      // Treatment toggle — swap data-drawer-card attribute so the
+      // CSS swaps the chrome between BEFORE and AFTER instantly.
+      treatmentBtns.forEach(function (b) {
+        b.addEventListener("click", function () {
+          var t = b.getAttribute("data-treatment-btn");
+          treatmentBtns.forEach(function (other) {
+            other.setAttribute("aria-pressed", other === b ? "true" : "false");
+          });
+          card.setAttribute("data-drawer-card", t);
+          block.setAttribute("data-treatment", t);
+        });
+      });
     })();
   </script>
 </body>
