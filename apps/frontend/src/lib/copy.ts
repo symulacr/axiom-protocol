@@ -1061,7 +1061,7 @@ const english: Copy = {
     tryAssistant: "Try the assistant",
     stripVerifySmall: "No gas, no custody",
     stripOperateSmall: "Receipts beside action",
-    eyebrow: "On-chain iNFT protocol",
+    eyebrow: "On-chain agent protocol",
     proofCaptionSmall: "Sealed transfer",
     proofCaptionBody: "Every payload is re-keyed to its new owner.",
     previewAgentTitle: "Agent #7",
@@ -2078,7 +2078,7 @@ const french: Copy = {
     menuDevelopersHint: "APIs et outils pour développeurs",
     stripVerifySmall: "Sans gas, sans garde",
     stripOperateSmall: "Reçus à côté de l’action",
-    eyebrow: "Protocole iNFT on-chain",
+    eyebrow: "Protocole d’agents on-chain",
     proofCaptionSmall: "Transfert scellé",
     proofCaptionBody:
       "Chaque payload est recréé pour son nouveau propriétaire.",
@@ -3076,7 +3076,7 @@ const german: Copy = {
     menuDevelopersHint: "APIs und Entwickler-Tools",
     stripVerifySmall: "Kein Gas, keine Verwahrung",
     stripOperateSmall: "Belege neben der Aktion",
-    eyebrow: "On-Chain-iNFT-Protokoll",
+    eyebrow: "On-Chain-Agenten-Protokoll",
     proofCaptionSmall: "Versiegelte Übertragung",
     proofCaptionBody:
       "Jede Nutzlast wird neu für ihren neuen Eigentümer verschlüsselt.",
