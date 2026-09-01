@@ -1,10 +1,10 @@
-<!doctype html>
+﻿<!doctype html>
 <!--
-  Dashboard + Transactions design audit — visual before/after.
+  Dashboard + Transactions design audit â€” visual before/after.
   Mirrors the production surfaces at src/pages/DashboardPage.tsx +
   src/pages/TransactionsPage.tsx (plus GasTankCard / FirstRunChecklist /
   MobileDisclosure / ui / Controls) with the canonical token system from
-  src/styles/index.css (completion-layer :104–:114). The After column applies
+  src/styles/index.css (completion-layer :104â€“:114). The After column applies
   the modernization proposals (CSS-only, token-faithful). One Google Font
   (Inter + JetBrains Mono). Copy verbatim from src/lib/copy.ts.
 -->
@@ -12,13 +12,13 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Axiom · Dashboard + Transactions design audit</title>
+  <title>Axiom Â· Dashboard + Transactions design audit</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
   <style>
     /* ============================================================
-       TOKEN SURFACE — mirrors src/styles/index.css :104–:114.
+       TOKEN SURFACE â€” mirrors src/styles/index.css :104â€“:114.
        ============================================================ */
     :root {
       --copper:#d28b52; --copper-bright:#f1b879;
@@ -70,7 +70,7 @@
     body[data-mode="after"] .surface--after{display:grid}
 
     /* ============================================================
-       OPS PAGE — mirrors .ops-page / .page-head / .action-lane :108.
+       OPS PAGE â€” mirrors .ops-page / .page-head / .action-lane :108.
        ============================================================ */
     .ops-page{max-width:1400px;margin:0 auto;padding:clamp(36px,6vw,84px) clamp(20px,5vw,70px) 90px}
     .page-head{display:grid;grid-template-columns:minmax(0,1fr) minmax(270px,360px);
@@ -90,7 +90,7 @@
     .text-link:hover{color:#fff4dc}
 
     /* ============================================================
-       CONTEXT STRIP — Dashboard .context-strip :108.
+       CONTEXT STRIP â€” Dashboard .context-strip :108.
        ============================================================ */
     .context-strip{display:grid;grid-template-columns:repeat(3,1fr);
       border:1px solid var(--line);background:var(--panel);margin-bottom:24px}
@@ -154,7 +154,7 @@
       border-color:var(--phosphor);color:var(--phosphor)}
 
     /* ============================================================
-       STATS GRID — Dashboard .stats-grid + .stat :108.
+       STATS GRID â€” Dashboard .stats-grid + .stat :108.
        ============================================================ */
     .stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;
       border:1px solid var(--line);background:var(--line);margin-bottom:24px}
@@ -262,7 +262,7 @@
     .activity-panel{margin-bottom:24px}
 
     /* ============================================================
-       BUTTONS — mirror .button + .button-* from :104.
+       BUTTONS â€” mirror .button + .button-* from :104.
        ============================================================ */
     .button{display:inline-flex;justify-content:center;align-items:center;gap:8px;
       min-height:38px;padding:0 18px;border:1px solid var(--copper);border-radius:0;
@@ -299,7 +299,7 @@
     body[data-mode="after"] .status{padding:2px 8px;border:1px solid currentColor;border-radius:999px;font-size:11px}
 
     /* ============================================================
-       OPS-SUMMARY — Transactions header band.
+       OPS-SUMMARY â€” Transactions header band.
        ============================================================ */
     .ops-summary{display:grid;grid-template-columns:repeat(2,.7fr) 1.6fr;gap:1px;
       margin-bottom:24px;border:1px solid var(--line);background:var(--line)}
@@ -442,7 +442,7 @@
     body[data-mode="after"] .transaction-empty-state{padding:36px}
 
     /* ============================================================
-       MOBILE DISCLOSURE — desktop default open.
+       MOBILE DISCLOSURE â€” desktop default open.
        ============================================================ */
     .mobile-disclosure>summary{display:none}
     .mobile-disclosure-content{display:contents}
@@ -452,7 +452,7 @@
       background:linear-gradient(90deg,transparent,var(--copper),transparent)}
 
     /* ============================================================
-       ANNOTATIONS — short numbered markers dropped into After markup.
+       ANNOTATIONS â€” short numbered markers dropped into After markup.
        ============================================================ */
     /* Annotations: small green pills that flag the After-only upgrades. They
        sit inline next to (or under) the upgraded surface so the comparison
@@ -471,13 +471,13 @@
     .audit-legend .annotation{margin-left:0}
 
     /* ============================================================
-       DRAWER FOCUS BLOCK — a real interactive receipt drawer demo.
+       DRAWER FOCUS BLOCK â€” a real interactive receipt drawer demo.
        - Starts CLOSED (no overlay visible).
        - "Open drawer" button shows the overlay with backdrop-filter
          blur(12px) over a ghost transactions-page preview.
-       - Treatment toggle switches BEFORE ↔ AFTER chrome styling
+       - Treatment toggle switches BEFORE â†” AFTER chrome styling
          while the drawer is open.
-       - Dismiss trio: ✕ click, Escape key, backdrop click.
+       - Dismiss trio: âœ• click, Escape key, backdrop click.
        ============================================================ */
     .drawer-focus{margin:0 0 32px;border:1px solid var(--line);background:var(--panel);
       overflow:hidden;border-radius:var(--radius-lg)}
@@ -501,7 +501,7 @@
     .drawer-treatment button[aria-pressed="true"]{background:color-mix(in srgb,var(--copper) 18%,transparent);
       color:var(--copper-bright);box-shadow:inset 0 0 0 1px var(--copper)}
 
-    /* Open button — the primary CTA in the focus head. */
+    /* Open button â€” the primary CTA in the focus head. */
     .drawer-open-btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;
       border:1px solid var(--copper);background:var(--copper);color:var(--bg);
       font:600 11px/1 "JetBrains Mono",monospace;letter-spacing:.06em;
@@ -511,12 +511,12 @@
     .drawer-open-btn[aria-expanded="true"]{background:transparent;color:var(--copper-bright)}
     .drawer-open-btn[aria-expanded="true"]:hover{background:color-mix(in srgb,var(--copper) 14%,transparent)}
 
-    /* Stage = the blurred transactions-page preview. Always visible —
+    /* Stage = the blurred transactions-page preview. Always visible â€”
        it is the SOURCE for backdrop-filter to operate on. */
     .drawer-focus-stage{position:relative;min-height:560px;overflow:hidden;
       background:linear-gradient(180deg,var(--canvas),var(--panel-2))}
 
-    /* Ghost preview — the actual content that gets blurred by the
+    /* Ghost preview â€” the actual content that gets blurred by the
        backdrop-filter when the drawer is open. */
     .drawer-focus-ghost{position:absolute;inset:0;padding:32px 28px;display:grid;
       gap:18px;align-content:start;pointer-events:none;z-index:0}
@@ -560,21 +560,21 @@
     @keyframes drawer-backdrop-in{from{opacity:0}to{opacity:1}}
     @media (prefers-reduced-motion:reduce){.drawer-focus-layer.is-open{animation:none}}
 
-    /* The actual drawer sidebar — anchored to right edge of the layer. */
+    /* The actual drawer sidebar â€” anchored to right edge of the layer. */
     .drawer-focus-card{position:relative;width:min(420px,100%);height:100%;overflow:auto;
       margin:0;animation:drawer-slide-in .24s var(--ease)}
     @keyframes drawer-slide-in{from{transform:translateX(24px);opacity:0}
       to{transform:none;opacity:1}}
     @media (prefers-reduced-motion:reduce){.drawer-focus-card{animation:none}}
 
-    /* Style the .receipt-drawer inside the focus block — overrides
+    /* Style the .receipt-drawer inside the focus block â€” overrides
        the global .receipt-drawer defaults. */
     .drawer-focus-card .receipt-drawer{position:relative;inset:auto;width:auto;
       padding:24px 28px;height:auto;background:var(--panel);
       border-left:1px solid var(--copper);box-shadow:var(--shadow-drawer);
       animation:none}
 
-    /* AFTER treatment — applied by attribute selector so it works
+    /* AFTER treatment â€” applied by attribute selector so it works
        regardless of the page-wide data-mode. */
     .drawer-focus-card [data-drawer-card="after"] {
       border-left: 1px solid var(--line);
@@ -618,7 +618,7 @@
   <div class="audit-shell">
     <header class="audit-head">
       <div class="audit-head-titles">
-        <h1>Dashboard + Transactions · design audit</h1>
+        <h1>Dashboard + Transactions Â· design audit</h1>
         <span class="toggle-state" id="toggleState" aria-live="polite">showing BEFORE</span>
         <p>The two list/grid surfaces of the operator console, rendered twice from the same markup. The After column applies the modernization proposals (CSS-only, token-faithful).</p>
       </div>
@@ -634,13 +634,13 @@
          Interactive receipt drawer demo. Starts CLOSED. The ghost
          transactions-page preview underneath is always visible so
          the backdrop-filter has content to blur when the drawer
-         opens. Dismiss trio: ✕ click, Escape, backdrop click.
+         opens. Dismiss trio: âœ• click, Escape, backdrop click.
          ============================================================== -->
     <section class="drawer-focus" data-treatment="before" aria-label="Receipt drawer focus comparison">
       <div class="drawer-focus-head">
         <div class="drawer-focus-titles">
-          <h2>Receipt drawer · interactive</h2>
-          <p>Open the drawer to see the BEFORE/AFTER chrome over a blurred transactions page. Switch treatments while open to compare. Close via the ✕ button, Escape, or clicking the backdrop.</p>
+          <h2>Receipt drawer Â· interactive</h2>
+          <p>Open the drawer to see the BEFORE/AFTER chrome over a blurred transactions page. Switch treatments while open to compare. Close via the âœ• button, Escape, or clicking the backdrop.</p>
         </div>
         <div class="drawer-focus-controls">
           <div class="drawer-treatment" role="group" aria-label="Drawer treatment">
@@ -654,7 +654,7 @@
       </div>
 
       <div class="drawer-focus-stage">
-        <!-- Ghost transactions-page preview (always visible) — this is
+        <!-- Ghost transactions-page preview (always visible) â€” this is
              the SOURCE for the backdrop-filter to blur when the drawer
              is open. -->
         <div class="drawer-focus-ghost" aria-hidden="true">
@@ -669,11 +669,11 @@
           </div>
           <div class="drawer-focus-ghost-table">
             <div class="gh"><span>OPERATION</span><span>HASH</span><span>AGE</span><span>STATE</span></div>
-            <div class="gr"><span class="meta"><strong>Vault deposit</strong><small>agent #1042, block 8210441</small></span><span class="mono">0x4f71…7c2a</span><span class="mono">12m ago</span><span class="gh-pill">CONFIRMED</span><span></span></div>
-            <div class="gr"><span class="meta"><strong>Tick run</strong><small>agent #1042, block 8210443</small></span><span class="mono">0x9a23…b4d1</span><span class="mono">4m ago</span><span class="gh-pill">CONFIRMING</span><span></span></div>
-            <div class="gr"><span class="meta"><strong>Approval</strong><small>agent #1044, block 8210433</small></span><span class="mono">0xc01d…3f08</span><span class="mono">22m ago</span><span class="gh-pill">REVERTED</span><span></span></div>
-            <div class="gr"><span class="meta"><strong>Mint agent</strong><small>agent #1042, block 8210350</small></span><span class="mono">0x7d2e…f1a9</span><span class="mono">3h ago</span><span class="gh-pill">CONFIRMED</span><span></span></div>
-            <div class="gr"><span class="meta"><strong>Pay agent</strong><small>agent #1044, block 8210431</small></span><span class="mono">0x2c9b…7e14</span><span class="mono">25m ago</span><span class="gh-pill">NEEDS REVIEW</span><span></span></div>
+            <div class="gr"><span class="meta"><strong>Vault deposit</strong><small>agent #1042, block 8210441</small></span><span class="mono">0x4f71â€¦7c2a</span><span class="mono">12m ago</span><span class="gh-pill">CONFIRMED</span><span></span></div>
+            <div class="gr"><span class="meta"><strong>Tick run</strong><small>agent #1042, block 8210443</small></span><span class="mono">0x9a23â€¦b4d1</span><span class="mono">4m ago</span><span class="gh-pill">CONFIRMING</span><span></span></div>
+            <div class="gr"><span class="meta"><strong>Approval</strong><small>agent #1044, block 8210433</small></span><span class="mono">0xc01dâ€¦3f08</span><span class="mono">22m ago</span><span class="gh-pill">REVERTED</span><span></span></div>
+            <div class="gr"><span class="meta"><strong>Mint agent</strong><small>agent #1042, block 8210350</small></span><span class="mono">0x7d2eâ€¦f1a9</span><span class="mono">3h ago</span><span class="gh-pill">CONFIRMED</span><span></span></div>
+            <div class="gr"><span class="meta"><strong>Pay agent</strong><small>agent #1044, block 8210431</small></span><span class="mono">0x2c9bâ€¦7e14</span><span class="mono">25m ago</span><span class="gh-pill">NEEDS REVIEW</span><span></span></div>
           </div>
         </div>
 
@@ -681,17 +681,17 @@
         <div class="drawer-focus-layer" id="drawerFocusLayer" data-drawer-layer role="presentation">
           <div class="drawer-focus-card">
             <aside class="receipt-drawer" data-drawer-card="before">
-              <button class="drawer-close" aria-label="Close receipt" type="button" data-drawer-close>✕</button>
+              <button class="drawer-close" aria-label="Close receipt" type="button" data-drawer-close>âœ•</button>
               <h2>Receipt detail</h2>
               <div class="receipt-primary-action">
-                <button class="button button-primary" type="button">View on explorer →</button>
+                <button class="button button-primary" type="button">View on explorer â†’</button>
                 <button class="button button-ghost" type="button">Run another like this</button>
               </div>
               <details class="receipt-proof-disclosure" open>
                 <summary>Technical details</summary>
                 <dl class="drawer-list">
-                  <div class="row"><dt>Transaction hash</dt><dd class="mono">0x4f71c2a8…d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7</dd><dd><button class="inline-copy" aria-label="Copy receipt hash">⧉</button></dd></div>
-                  <div class="row"><dt>Network</dt><dd><a class="text-link" href="#">View on explorer →</a></dd><dd></dd></div>
+                  <div class="row"><dt>Transaction hash</dt><dd class="mono">0x4f71c2a8â€¦d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7</dd><dd><button class="inline-copy" aria-label="Copy receipt hash">â§‰</button></dd></div>
+                  <div class="row"><dt>Network</dt><dd><a class="text-link" href="#">View on explorer â†’</a></dd><dd></dd></div>
                   <div class="row"><dt>Agent</dt><dd>#1042</dd><dd></dd></div>
                   <div class="row"><dt>Event</dt><dd>decoded + indexed</dd><dd></dd></div>
                 </dl>
@@ -706,34 +706,34 @@
     <section class="surface surface--before" aria-label="Before">
       <div class="ops-page">
         <div class="page-head page-head-asymmetric">
-          <div><h1>Your <i>agents</i>.</h1><p>One fleet, one register. Attention surfaces faults only — fresh agents show as setup, not trouble.</p></div>
+          <div><h1>Your <i>agents</i>.</h1><p>One fleet, one register. Attention surfaces faults only â€” fresh agents show as setup, not trouble.</p></div>
           <div class="action-lane">
             <strong>2 agents aren't ready yet</strong>
-            <small>3 unconfigured · 2 failing</small>
-            <button class="text-link" type="button">Refresh <span aria-hidden="true">↻</span></button>
+            <small>3 unconfigured Â· 2 failing</small>
+            <button class="text-link" type="button">Refresh <span aria-hidden="true">â†»</span></button>
           </div>
         </div>
 
         <section class="context-strip">
-          <div class="context-cell"><strong>0x4f…a31c</strong><span class="mono">connected</span></div>
+          <div class="context-cell"><strong>0x4fâ€¦a31c</strong><span class="mono">connected</span></div>
           <div class="context-cell"><strong>Ready to sign</strong><span class="mono">metamask, app chain</span></div>
-          <div class="context-cell context-action"><strong>2 receipts need review</strong><button class="text-link" type="button">Open review queue →</button></div>
+          <div class="context-cell context-action"><strong>2 receipts need review</strong><button class="text-link" type="button">Open review queue â†’</button></div>
           <div class="context-cell"><strong>status checks</strong><span class="mono">awaiting confirmation</span></div>
         </section>
 
         <section class="checklist-card">
-          <div class="panel-head"><div><h2>Get your first agent working</h2></div><button class="checklist-dismiss" aria-label="Dismiss" type="button">✕</button></div>
+          <div class="panel-head"><div><h2>Get your first agent working</h2></div><button class="checklist-dismiss" aria-label="Dismiss" type="button">âœ•</button></div>
           <ol class="checklist-steps">
-            <li><button class="checklist-step" type="button"><span class="checklist-mark done">✓</span><span class="checklist-copy"><strong>Mint your agent</strong><small>Register an agent — no funds needed yet.</small></span></button></li>
-            <li><button class="checklist-step" type="button"><span class="checklist-mark">⌬</span><span class="checklist-copy"><strong>Fund its vault</strong><small>Add native gas so the agent can pay for runs.</small></span></button></li>
-            <li><button class="checklist-step" aria-disabled="true" type="button"><span class="checklist-mark">▶</span><span class="checklist-copy"><strong>Run a task</strong><small>Give one instruction and watch the receipt land.</small></span></button></li>
+            <li><button class="checklist-step" type="button"><span class="checklist-mark done">âœ“</span><span class="checklist-copy"><strong>Mint your agent</strong><small>Register an agent â€” no funds needed yet.</small></span></button></li>
+            <li><button class="checklist-step" type="button"><span class="checklist-mark">âŒ¬</span><span class="checklist-copy"><strong>Fund its vault</strong><small>Add native gas so the agent can pay for runs.</small></span></button></li>
+            <li><button class="checklist-step" aria-disabled="true" type="button"><span class="checklist-mark">â–¶</span><span class="checklist-copy"><strong>Run a task</strong><small>Give one instruction and watch the receipt land.</small></span></button></li>
           </ol>
         </section>
 
         <section class="stats-grid">
-          <div class="stat"><div class="stat-top"><span>MONEY HELD</span><span class="stat-icon">↑</span></div><strong>2.413 ETH</strong><small>across 5 agents</small></div>
-          <div class="stat"><div class="stat-top"><span>READY TO WORK</span><span class="stat-icon">◉</span></div><strong>3 / 5</strong><small>2 need review</small></div>
-          <div class="stat"><div class="stat-top"><span>IN PROGRESS</span><span class="stat-icon">◎</span></div><strong>1</strong><small>awaiting confirmation</small></div>
+          <div class="stat"><div class="stat-top"><span>MONEY HELD</span><span class="stat-icon">â†‘</span></div><strong>2.413 ETH</strong><small>across 5 agents</small></div>
+          <div class="stat"><div class="stat-top"><span>READY TO WORK</span><span class="stat-icon">â—‰</span></div><strong>3 / 5</strong><small>2 need review</small></div>
+          <div class="stat"><div class="stat-top"><span>IN PROGRESS</span><span class="stat-icon">â—Ž</span></div><strong>1</strong><small>awaiting confirmation</small></div>
         </section>
 
         <div class="gas-tank-card">
@@ -756,9 +756,9 @@
         <section class="panel activity-panel">
           <div class="panel-head"><div><h2>Latest receipts</h2></div><button class="button button-ghost" type="button">All receipts</button></div>
           <div class="activity-list">
-            <button class="activity-row" type="button"><span>◐</span><span><strong>Vault deposit</strong><small>agent #1042, 12m ago</small></span><span class="state-pill state-confirmed">CONFIRMED</span><span>›</span></button>
-            <button class="activity-row" type="button"><span>◑</span><span><strong>Tick run</strong><small>agent #1042, 4m ago</small></span><span class="state-pill state-confirming">CONFIRMING</span><span>›</span></button>
-            <button class="activity-row" type="button"><span>◓</span><span><strong>Approval</strong><small>agent #1044, 22m ago</small></span><span class="state-pill state-reverted">REVERTED</span><span>›</span></button>
+            <button class="activity-row" type="button"><span>â—</span><span><strong>Vault deposit</strong><small>agent #1042, 12m ago</small></span><span class="state-pill state-confirmed">CONFIRMED</span><span>â€º</span></button>
+            <button class="activity-row" type="button"><span>â—‘</span><span><strong>Tick run</strong><small>agent #1042, 4m ago</small></span><span class="state-pill state-confirming">CONFIRMING</span><span>â€º</span></button>
+            <button class="activity-row" type="button"><span>â—“</span><span><strong>Approval</strong><small>agent #1044, 22m ago</small></span><span class="state-pill state-reverted">REVERTED</span><span>â€º</span></button>
           </div>
         </section>
 
@@ -766,14 +766,14 @@
           <section class="panel agent-panel">
             <div class="panel-head"><div><h2>Your agents</h2></div></div>
             <div class="agent-list">
-              <button class="agent-row" type="button"><span class="agent-row-mark">◉</span><span><strong>Agent #1042</strong><small>yield-routing, 3 tasks today</small></span><span class="agent-value"><b>0.812 ETH</b><span class="status status-success">READY</span></span><span>›</span></button>
-              <button class="agent-row" type="button"><span class="agent-row-mark">◉</span><span><strong>Agent #1043</strong><small>no description</small></span><span class="agent-value"><b>—</b><span class="status status-muted">SETUP</span></span><span>›</span></button>
-              <button class="agent-row" type="button"><span class="agent-row-mark">◉</span><span><strong>Agent #1044</strong><small>payment-router, 1 failure</small></span><span class="agent-value"><b>0.302 ETH</b><span class="status status-warning">NEEDS REVIEW</span></span><span>›</span></button>
-              <button class="agent-row" type="button"><span class="agent-row-mark">◉</span><span><strong>Agent #1045</strong><small>no description</small></span><span class="agent-value"><b>—</b><span class="status status-muted">SETUP</span></span><span>›</span></button>
+              <button class="agent-row" type="button"><span class="agent-row-mark">â—‰</span><span><strong>Agent #1042</strong><small>yield-routing, 3 tasks today</small></span><span class="agent-value"><b>0.812 ETH</b><span class="status status-success">READY</span></span><span>â€º</span></button>
+              <button class="agent-row" type="button"><span class="agent-row-mark">â—‰</span><span><strong>Agent #1043</strong><small>no description</small></span><span class="agent-value"><b>â€”</b><span class="status status-muted">SETUP</span></span><span>â€º</span></button>
+              <button class="agent-row" type="button"><span class="agent-row-mark">â—‰</span><span><strong>Agent #1044</strong><small>payment-router, 1 failure</small></span><span class="agent-value"><b>0.302 ETH</b><span class="status status-warning">NEEDS REVIEW</span></span><span>â€º</span></button>
+              <button class="agent-row" type="button"><span class="agent-row-mark">â—‰</span><span><strong>Agent #1045</strong><small>no description</small></span><span class="agent-value"><b>â€”</b><span class="status status-muted">SETUP</span></span><span>â€º</span></button>
             </div>
           </section>
           <section class="panel next-action-panel">
-            <div class="panel-head"><div><h2>Attention first</h2></div><span style="color:var(--copper)">▣</span></div>
+            <div class="panel-head"><div><h2>Attention first</h2></div><span style="color:var(--copper)">â–£</span></div>
             <div class="proof-card"><div><small>AGENT #1044</small><strong>1 need review</strong><button class="button button-primary" type="button">Review</button></div></div>
           </section>
         </div>
@@ -787,8 +787,8 @@
 
         <section class="ops-summary" aria-label="Stateful operations">
           <div><h2 class="ops-summary-value">01</h2><small>confirming now</small></div>
-          <button class="ops-summary-recovery" type="button"><h2 class="ops-summary-value">02</h2><small>need review</small><span>→</span></button>
-          <div class="ops-summary-note"><span style="color:var(--phosphor)">▣</span><span>Confirmed = observed on-chain. Pending stays pending.</span></div>
+          <button class="ops-summary-recovery" type="button"><h2 class="ops-summary-value">02</h2><small>need review</small><span>â†’</span></button>
+          <div class="ops-summary-note"><span style="color:var(--phosphor)">â–£</span><span>Confirmed = observed on-chain. Pending stays pending.</span></div>
         </section>
 
         <section class="panel transaction-panel">
@@ -800,53 +800,24 @@
                 <button class="filter active" type="button">All</button>
                 <button class="filter" type="button">Needs review</button>
                 <button class="filter" type="button">Confirmed</button>
-                <button class="filter filters-trigger" type="button">More filters <span aria-hidden="true">▾</span></button>
+                <button class="filter filters-trigger" type="button">More filters <span aria-hidden="true">â–¾</span></button>
               </div>
             </div>
           </div>
           <div class="transaction-table">
             <div class="transaction-table-head"><span>OPERATION</span><span>HASH</span><span>AGE</span><span>STATE</span></div>
-            <button class="transaction-row" type="button"><span class="transaction-kind"><i>$</i><span><strong>Vault deposit</strong><small>agent #1042, block 8210441</small></span></span><span class="mono">0x4f71…7c2a</span><span class="mono">12m ago</span><span class="state-pill state-confirmed">CONFIRMED</span><span>›</span></button>
-            <button class="transaction-row" type="button"><span class="transaction-kind"><i>$</i><span><strong>Tick run</strong><small>agent #1042, block 8210443</small></span></span><span class="mono">0x9a23…b4d1</span><span class="mono">4m ago</span><span class="state-pill state-confirming">CONFIRMING</span><span>›</span></button>
-            <button class="transaction-row" type="button"><span class="transaction-kind"><i>▣</i><span><strong>Approval</strong><small>agent #1044, block 8210433</small></span></span><span class="mono">0xc01d…3f08</span><span class="mono">22m ago</span><span class="state-pill state-reverted">REVERTED</span><span>›</span></button>
-            <button class="transaction-row" type="button"><span class="transaction-kind"><i>◉</i><span><strong>Mint agent</strong><small>agent #1042, block 8210350</small></span></span><span class="mono">0x7d2e…f1a9</span><span class="mono">3h ago</span><span class="state-pill state-confirmed">CONFIRMED</span><span>›</span></button>
-            <button class="transaction-row" type="button"><span class="transaction-kind"><i>$</i><span><strong>Pay agent</strong><small>agent #1044, block 8210431</small></span></span><span class="mono">0x2c9b…7e14</span><span class="mono">25m ago</span><span class="state-pill state-stale">NEEDS REVIEW</span><span>›</span></button>
-            <button class="transaction-row" type="button"><span class="transaction-kind"><i>◉</i><span><strong>Transfer</strong><small>agent #1041, block 8209901</small></span></span><span class="mono">0xa3b1…04c2</span><span class="mono">9h ago</span><span class="state-pill state-confirmed">CONFIRMED</span><span>›</span></button>
-            <button class="transaction-row" type="button"><span class="transaction-kind"><i>$</i><span><strong>Withdraw</strong><small>agent #1042, block 8209123</small></span></span><span class="mono">0x8f4c…a1b3</span><span class="mono">13h ago</span><span class="state-pill state-confirmed">CONFIRMED</span><span>›</span></button>
-            <button class="transaction-row" type="button"><span class="transaction-kind"><i>▶</i><span><strong>Tick run</strong><small>agent #1045, block 8209017</small></span></span><span class="mono">0x61d3…28af</span><span class="mono">14h ago</span><span class="state-pill state-rejected">REJECTED</span><span>›</span></button>
+            <button class="transaction-row" type="button"><span class="transaction-kind"><i>$</i><span><strong>Vault deposit</strong><small>agent #1042, block 8210441</small></span></span><span class="mono">0x4f71â€¦7c2a</span><span class="mono">12m ago</span><span class="state-pill state-confirmed">CONFIRMED</span><span>â€º</span></button>
+            <button class="transaction-row" type="button"><span class="transaction-kind"><i>$</i><span><strong>Tick run</strong><small>agent #1042, block 8210443</small></span></span><span class="mono">0x9a23â€¦b4d1</span><span class="mono">4m ago</span><span class="state-pill state-confirming">CONFIRMING</span><span>â€º</span></button>
+            <button class="transaction-row" type="button"><span class="transaction-kind"><i>â–£</i><span><strong>Approval</strong><small>agent #1044, block 8210433</small></span></span><span class="mono">0xc01dâ€¦3f08</span><span class="mono">22m ago</span><span class="state-pill state-reverted">REVERTED</span><span>â€º</span></button>
+            <button class="transaction-row" type="button"><span class="transaction-kind"><i>â—‰</i><span><strong>Mint agent</strong><small>agent #1042, block 8210350</small></span></span><span class="mono">0x7d2eâ€¦f1a9</span><span class="mono">3h ago</span><span class="state-pill state-confirmed">CONFIRMED</span><span>â€º</span></button>
+            <button class="transaction-row" type="button"><span class="transaction-kind"><i>$</i><span><strong>Pay agent</strong><small>agent #1044, block 8210431</small></span></span><span class="mono">0x2c9bâ€¦7e14</span><span class="mono">25m ago</span><span class="state-pill state-stale">NEEDS REVIEW</span><span>â€º</span></button>
+            <button class="transaction-row" type="button"><span class="transaction-kind"><i>â—‰</i><span><strong>Transfer</strong><small>agent #1041, block 8209901</small></span></span><span class="mono">0xa3b1â€¦04c2</span><span class="mono">9h ago</span><span class="state-pill state-confirmed">CONFIRMED</span><span>â€º</span></button>
+            <button class="transaction-row" type="button"><span class="transaction-kind"><i>$</i><span><strong>Withdraw</strong><small>agent #1042, block 8209123</small></span></span><span class="mono">0x8f4câ€¦a1b3</span><span class="mono">13h ago</span><span class="state-pill state-confirmed">CONFIRMED</span><span>â€º</span></button>
+            <button class="transaction-row" type="button"><span class="transaction-kind"><i>â–¶</i><span><strong>Tick run</strong><small>agent #1045, block 8209017</small></span></span><span class="mono">0x61d3â€¦28af</span><span class="mono">14h ago</span><span class="state-pill state-rejected">REJECTED</span><span>â€º</span></button>
           </div>
         </section>
 
-        <div class="filters-backdrop" style="background:rgba(7,9,10,.4)"></div>
-        <div class="filters-popover" role="dialog" aria-label="More filters" style="top:220px;right:80px">
-          <button class="filter" type="button">Approval requested</button>
-          <button class="filter" type="button">Signature requested</button>
-          <button class="filter" type="button">Submitted</button>
-          <button class="filter" type="button">Confirming</button>
-          <button class="filter" type="button">Reverted</button>
-          <button class="filter" type="button">Rejected</button>
-          <button class="filter" type="button">Stale</button>
-        </div>
 
-        <div class="drawer-layer is-open">
-          <aside class="receipt-drawer" role="dialog" aria-modal="true" aria-label="Receipt detail">
-            <button class="drawer-close" aria-label="Close receipt" type="button">✕</button>
-            <h2>Receipt detail</h2>
-            <div class="receipt-primary-action">
-              <button class="button button-primary" type="button">View on explorer →</button>
-              <button class="button button-ghost" type="button">Run another like this</button>
-            </div>
-            <details class="receipt-proof-disclosure" open>
-              <summary>Technical details</summary>
-              <dl class="drawer-list">
-                <div class="row"><dt>Transaction hash</dt><dd class="mono">0x4f71c2a8…d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7</dd><dd><button class="inline-copy" aria-label="Copy receipt hash">⧉</button></dd></div>
-                <div class="row"><dt>Network</dt><dd><a class="text-link" href="#">View on explorer →</a></dd><dd></dd></div>
-                <div class="row"><dt>Agent</dt><dd>#1042</dd><dd></dd></div>
-                <div class="row"><dt>Event</dt><dd>decoded + indexed</dd><dd></dd></div>
-              </dl>
-            </details>
-          </aside>
-        </div>
       </div>
     </section>
 
@@ -854,34 +825,34 @@
     <section class="surface surface--after" aria-label="After">
       <div class="ops-page">
         <div class="page-head page-head-asymmetric">
-          <div><h1>Your <i>agents</i>.</h1><p>One fleet, one register. Attention surfaces faults only — fresh agents show as setup, not trouble.</p></div>
+          <div><h1>Your <i>agents</i>.</h1><p>One fleet, one register. Attention surfaces faults only â€” fresh agents show as setup, not trouble.</p></div>
           <div class="action-lane">
             <strong>2 agents aren't ready yet</strong>
-            <small>3 unconfigured · 2 failing</small>
-            <button class="text-link" type="button">Refresh <span aria-hidden="true">↻</span></button>
+            <small>3 unconfigured Â· 2 failing</small>
+            <button class="text-link" type="button">Refresh <span aria-hidden="true">â†»</span></button>
           </div>
         </div>
 
         <section class="context-strip">
-          <div class="context-cell"><strong>0x4f…a31c</strong><span class="mono">connected</span></div>
+          <div class="context-cell"><strong>0x4fâ€¦a31c</strong><span class="mono">connected</span></div>
           <div class="context-cell"><strong>Ready to sign</strong><span class="mono">metamask, app chain</span></div>
-          <div class="context-cell context-action"><strong>2 receipts need review</strong><button class="text-link" type="button">Open review queue →</button><span class="annotation">context strip refined</span></div>
+          <div class="context-cell context-action"><strong>2 receipts need review</strong><button class="text-link" type="button">Open review queue â†’</button><span class="annotation">context strip refined</span></div>
           <div class="context-cell"><strong>status checks</strong><span class="mono">awaiting confirmation</span></div>
         </section>
 
         <section class="checklist-card">
-          <div class="panel-head"><div><h2>Get your first agent working</h2></div><button class="checklist-dismiss" aria-label="Dismiss" type="button">✕</button><span class="annotation">checklist refined</span></div>
+          <div class="panel-head"><div><h2>Get your first agent working</h2></div><button class="checklist-dismiss" aria-label="Dismiss" type="button">âœ•</button><span class="annotation">checklist refined</span></div>
           <ol class="checklist-steps">
-            <li><button class="checklist-step" type="button"><span class="checklist-mark done">✓</span><span class="checklist-copy"><strong>Mint your agent</strong><small>Register an agent — no funds needed yet.</small></span></button></li>
-            <li><button class="checklist-step" type="button"><span class="checklist-mark">⌬</span><span class="checklist-copy"><strong>Fund its vault</strong><small>Add native gas so the agent can pay for runs.</small></span></button></li>
-            <li><button class="checklist-step" aria-disabled="true" type="button"><span class="checklist-mark">▶</span><span class="checklist-copy"><strong>Run a task</strong><small>Give one instruction and watch the receipt land.</small></span></button></li>
+            <li><button class="checklist-step" type="button"><span class="checklist-mark done">âœ“</span><span class="checklist-copy"><strong>Mint your agent</strong><small>Register an agent â€” no funds needed yet.</small></span></button></li>
+            <li><button class="checklist-step" type="button"><span class="checklist-mark">âŒ¬</span><span class="checklist-copy"><strong>Fund its vault</strong><small>Add native gas so the agent can pay for runs.</small></span></button></li>
+            <li><button class="checklist-step" aria-disabled="true" type="button"><span class="checklist-mark">â–¶</span><span class="checklist-copy"><strong>Run a task</strong><small>Give one instruction and watch the receipt land.</small></span></button></li>
           </ol>
         </section>
 
         <section class="stats-grid">
-          <div class="stat"><div class="stat-top"><span>MONEY HELD</span><span class="stat-icon">↑</span></div><strong>2.413 ETH</strong><small>across 5 agents</small><span class="annotation">stat refined</span></div>
-          <div class="stat"><div class="stat-top"><span>READY TO WORK</span><span class="stat-icon">◉</span></div><strong>3 / 5</strong><small class="alert">2 need review</small></div>
-          <div class="stat"><div class="stat-top"><span>IN PROGRESS</span><span class="stat-icon">◎</span></div><strong>1</strong><small>awaiting confirmation</small></div>
+          <div class="stat"><div class="stat-top"><span>MONEY HELD</span><span class="stat-icon">â†‘</span></div><strong>2.413 ETH</strong><small>across 5 agents</small><span class="annotation">stat refined</span></div>
+          <div class="stat"><div class="stat-top"><span>READY TO WORK</span><span class="stat-icon">â—‰</span></div><strong>3 / 5</strong><small class="alert">2 need review</small></div>
+          <div class="stat"><div class="stat-top"><span>IN PROGRESS</span><span class="stat-icon">â—Ž</span></div><strong>1</strong><small>awaiting confirmation</small></div>
         </section>
 
         <div class="gas-tank-card">
@@ -905,9 +876,9 @@
         <section class="panel activity-panel">
           <div class="panel-head"><div><h2>Latest receipts</h2></div><button class="button button-ghost" type="button">All receipts</button><span class="annotation">activity panel</span></div>
           <div class="activity-list">
-            <button class="activity-row" type="button"><span>◐</span><span><strong>Vault deposit</strong><small>agent #1042, 12m ago</small></span><span class="state-pill state-confirmed">CONFIRMED</span><span>›</span></button>
-            <button class="activity-row" type="button"><span>◑</span><span><strong>Tick run</strong><small>agent #1042, 4m ago</small></span><span class="state-pill state-confirming">CONFIRMING</span><span>›</span></button>
-            <button class="activity-row" type="button"><span>◓</span><span><strong>Approval</strong><small>agent #1044, 22m ago</small></span><span class="state-pill state-reverted">REVERTED</span><span>›</span></button>
+            <button class="activity-row" type="button"><span>â—</span><span><strong>Vault deposit</strong><small>agent #1042, 12m ago</small></span><span class="state-pill state-confirmed">CONFIRMED</span><span>â€º</span></button>
+            <button class="activity-row" type="button"><span>â—‘</span><span><strong>Tick run</strong><small>agent #1042, 4m ago</small></span><span class="state-pill state-confirming">CONFIRMING</span><span>â€º</span></button>
+            <button class="activity-row" type="button"><span>â—“</span><span><strong>Approval</strong><small>agent #1044, 22m ago</small></span><span class="state-pill state-reverted">REVERTED</span><span>â€º</span></button>
           </div>
         </section>
 
@@ -915,14 +886,14 @@
           <section class="panel agent-panel">
             <div class="panel-head"><div><h2>Your agents</h2></div><span class="annotation">agent row refined</span></div>
             <div class="agent-list">
-              <button class="agent-row" type="button"><span class="agent-row-mark">◉</span><span><strong>Agent #1042</strong><small>yield-routing, 3 tasks today</small></span><span class="agent-value"><b>0.812 ETH</b><span class="status status-success">READY</span></span><span>›</span></button>
-              <button class="agent-row" type="button"><span class="agent-row-mark">◉</span><span><strong>Agent #1043</strong><small>no description</small></span><span class="agent-value"><b>—</b><span class="status status-muted">SETUP</span></span><span>›</span></button>
-              <button class="agent-row" type="button"><span class="agent-row-mark">◉</span><span><strong>Agent #1044</strong><small>payment-router, 1 failure</small></span><span class="agent-value"><b>0.302 ETH</b><span class="status status-warning">NEEDS REVIEW</span></span><span>›</span></button>
-              <button class="agent-row" type="button"><span class="agent-row-mark">◉</span><span><strong>Agent #1045</strong><small>no description</small></span><span class="agent-value"><b>—</b><span class="status status-muted">SETUP</span></span><span>›</span></button>
+              <button class="agent-row" type="button"><span class="agent-row-mark">â—‰</span><span><strong>Agent #1042</strong><small>yield-routing, 3 tasks today</small></span><span class="agent-value"><b>0.812 ETH</b><span class="status status-success">READY</span></span><span>â€º</span></button>
+              <button class="agent-row" type="button"><span class="agent-row-mark">â—‰</span><span><strong>Agent #1043</strong><small>no description</small></span><span class="agent-value"><b>â€”</b><span class="status status-muted">SETUP</span></span><span>â€º</span></button>
+              <button class="agent-row" type="button"><span class="agent-row-mark">â—‰</span><span><strong>Agent #1044</strong><small>payment-router, 1 failure</small></span><span class="agent-value"><b>0.302 ETH</b><span class="status status-warning">NEEDS REVIEW</span></span><span>â€º</span></button>
+              <button class="agent-row" type="button"><span class="agent-row-mark">â—‰</span><span><strong>Agent #1045</strong><small>no description</small></span><span class="agent-value"><b>â€”</b><span class="status status-muted">SETUP</span></span><span>â€º</span></button>
             </div>
           </section>
           <section class="panel next-action-panel">
-            <div class="panel-head"><div><h2>Attention first</h2></div><span style="color:var(--copper)">▣</span></div>
+            <div class="panel-head"><div><h2>Attention first</h2></div><span style="color:var(--copper)">â–£</span></div>
             <div class="proof-card"><div><small>AGENT #1044</small><strong>1 need review</strong><button class="button button-primary" type="button">Review</button></div></div>
           </section>
         </div>
@@ -936,9 +907,9 @@
 
         <section class="ops-summary" aria-label="Stateful operations">
           <div><h2 class="ops-summary-value">01</h2><small>confirming now</small></div>
-          <button class="ops-summary-recovery" type="button"><h2 class="ops-summary-value">02</h2><small>need review</small><span>→</span></button>
+          <button class="ops-summary-recovery" type="button"><h2 class="ops-summary-value">02</h2><small>need review</small><span>â†’</span></button>
           <div class="ops-summary-note">
-            <span style="color:var(--phosphor)">▣</span>
+            <span style="color:var(--phosphor)">â–£</span>
             <span>Confirmed = observed on-chain. Pending stays pending.</span>
             <span class="annotation block">ops summary refined</span>
           </div>
@@ -953,22 +924,22 @@
                 <button class="filter active" type="button">All</button>
                 <button class="filter" type="button">Needs review</button>
                 <button class="filter" type="button">Confirmed</button>
-                <button class="filter filters-trigger" type="button">More filters <span aria-hidden="true">▾</span></button>
+                <button class="filter filters-trigger" type="button">More filters <span aria-hidden="true">â–¾</span></button>
                 <span class="annotation">chips become pills</span>
               </div>
             </div>
           </div>
           <div class="transaction-table">
             <div class="transaction-table-head"><span>OPERATION</span><span>HASH</span><span>AGE</span><span>STATE</span></div>
-            <button class="transaction-row is-active" type="button"><span class="transaction-kind"><i>$</i><span><strong>Vault deposit</strong><small>agent #1042, block 8210441</small></span></span><span class="mono">0x4f71…7c2a</span><span class="mono">12m ago</span><span class="state-pill state-confirmed">CONFIRMED</span><span>›</span></button>
-            <button class="transaction-row" type="button"><span class="transaction-kind"><i>$</i><span><strong>Tick run</strong><small>agent #1042, block 8210443</small></span></span><span class="mono">0x9a23…b4d1</span><span class="mono">4m ago</span><span class="state-pill state-confirming">CONFIRMING</span><span>›</span></button>
-            <button class="transaction-row" type="button"><span class="transaction-kind"><i>▣</i><span><strong>Approval</strong><small>agent #1044, block 8210433</small></span></span><span class="mono">0xc01d…3f08</span><span class="mono">22m ago</span><span class="state-pill state-reverted">REVERTED</span><span>›</span></button>
-            <button class="transaction-row" type="button"><span class="transaction-kind"><i>◉</i><span><strong>Mint agent</strong><small>agent #1042, block 8210350</small></span></span><span class="mono">0x7d2e…f1a9</span><span class="mono">3h ago</span><span class="state-pill state-confirmed">CONFIRMED</span><span>›</span></button>
-            <button class="transaction-row" type="button"><span class="transaction-kind"><i>$</i><span><strong>Pay agent</strong><small>agent #1044, block 8210431</small></span></span><span class="mono">0x2c9b…7e14</span><span class="mono">25m ago</span><span class="state-pill state-stale">NEEDS REVIEW</span><span>›</span></button>
-            <button class="transaction-row" type="button"><span class="transaction-kind"><i>◉</i><span><strong>Transfer</strong><small>agent #1041, block 8209901</small></span></span><span class="mono">0xa3b1…04c2</span><span class="mono">9h ago</span><span class="state-pill state-confirmed">CONFIRMED</span><span>›</span></button>
-            <button class="transaction-row" type="button"><span class="transaction-kind"><i>$</i><span><strong>Withdraw</strong><small>agent #1042, block 8209123</small></span></span><span class="mono">0x8f4c…a1b3</span><span class="mono">13h ago</span><span class="state-pill state-confirmed">CONFIRMED</span><span>›</span></button>
-            <button class="transaction-row" type="button"><span class="transaction-kind"><i>▶</i><span><strong>Tick run</strong><small>agent #1045, block 8209017</small></span></span><span class="mono">0x61d3…28af</span><span class="mono">14h ago</span><span class="state-pill state-rejected">REJECTED</span><span>›</span></button>
-            <span class="annotation">tx table refined · active row matches ?tx= deep link</span>
+            <button class="transaction-row is-active" type="button"><span class="transaction-kind"><i>$</i><span><strong>Vault deposit</strong><small>agent #1042, block 8210441</small></span></span><span class="mono">0x4f71â€¦7c2a</span><span class="mono">12m ago</span><span class="state-pill state-confirmed">CONFIRMED</span><span>â€º</span></button>
+            <button class="transaction-row" type="button"><span class="transaction-kind"><i>$</i><span><strong>Tick run</strong><small>agent #1042, block 8210443</small></span></span><span class="mono">0x9a23â€¦b4d1</span><span class="mono">4m ago</span><span class="state-pill state-confirming">CONFIRMING</span><span>â€º</span></button>
+            <button class="transaction-row" type="button"><span class="transaction-kind"><i>â–£</i><span><strong>Approval</strong><small>agent #1044, block 8210433</small></span></span><span class="mono">0xc01dâ€¦3f08</span><span class="mono">22m ago</span><span class="state-pill state-reverted">REVERTED</span><span>â€º</span></button>
+            <button class="transaction-row" type="button"><span class="transaction-kind"><i>â—‰</i><span><strong>Mint agent</strong><small>agent #1042, block 8210350</small></span></span><span class="mono">0x7d2eâ€¦f1a9</span><span class="mono">3h ago</span><span class="state-pill state-confirmed">CONFIRMED</span><span>â€º</span></button>
+            <button class="transaction-row" type="button"><span class="transaction-kind"><i>$</i><span><strong>Pay agent</strong><small>agent #1044, block 8210431</small></span></span><span class="mono">0x2c9bâ€¦7e14</span><span class="mono">25m ago</span><span class="state-pill state-stale">NEEDS REVIEW</span><span>â€º</span></button>
+            <button class="transaction-row" type="button"><span class="transaction-kind"><i>â—‰</i><span><strong>Transfer</strong><small>agent #1041, block 8209901</small></span></span><span class="mono">0xa3b1â€¦04c2</span><span class="mono">9h ago</span><span class="state-pill state-confirmed">CONFIRMED</span><span>â€º</span></button>
+            <button class="transaction-row" type="button"><span class="transaction-kind"><i>$</i><span><strong>Withdraw</strong><small>agent #1042, block 8209123</small></span></span><span class="mono">0x8f4câ€¦a1b3</span><span class="mono">13h ago</span><span class="state-pill state-confirmed">CONFIRMED</span><span>â€º</span></button>
+            <button class="transaction-row" type="button"><span class="transaction-kind"><i>â–¶</i><span><strong>Tick run</strong><small>agent #1045, block 8209017</small></span></span><span class="mono">0x61d3â€¦28af</span><span class="mono">14h ago</span><span class="state-pill state-rejected">REJECTED</span><span>â€º</span></button>
+            <span class="annotation">tx table refined Â· active row matches ?tx= deep link</span>
           </div>
         </section>
 
@@ -981,29 +952,9 @@
           <button class="filter" type="button">Reverted</button>
           <button class="filter" type="button">Rejected</button>
           <button class="filter" type="button">Stale</button>
-          <span class="annotation" style="grid-column:1/-1;justify-self:end">inset shorthand · blurred backdrop</span>
+          <span class="annotation" style="grid-column:1/-1;justify-self:end">inset shorthand Â· blurred backdrop</span>
         </div>
 
-        <div class="drawer-layer is-open">
-          <aside class="receipt-drawer" role="dialog" aria-modal="true" aria-label="Receipt detail">
-            <button class="drawer-close" aria-label="Close receipt" type="button">✕</button>
-            <h2>Receipt detail</h2>
-            <div class="receipt-primary-action">
-              <button class="button button-primary" type="button">View on explorer →</button>
-              <button class="button button-ghost" type="button">Run another like this</button>
-            </div>
-            <details class="receipt-proof-disclosure" open>
-              <summary>Technical details</summary>
-              <dl class="drawer-list">
-                <div class="row"><dt>Transaction hash</dt><dd class="mono">0x4f71c2a8…d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7c2a8d1b7</dd><dd><button class="inline-copy" aria-label="Copy receipt hash">⧉</button></dd></div>
-                <div class="row"><dt>Network</dt><dd><a class="text-link" href="#">View on explorer →</a></dd><dd></dd></div>
-                <div class="row"><dt>Agent</dt><dd>#1042</dd><dd></dd></div>
-                <div class="row"><dt>Event</dt><dd>decoded + indexed</dd><dd></dd></div>
-              </dl>
-              <span class="annotation">drawer refined</span>
-            </details>
-          </aside>
-        </div>
       </div>
     </section>
   </div>
@@ -1026,8 +977,8 @@
       sync();
     })();
 
-    // Receipt drawer focus block — interactive demo. The drawer is
-    // CLOSED on load. Open via the open button; close via ✕, Escape,
+    // Receipt drawer focus block â€” interactive demo. The drawer is
+    // CLOSED on load. Open via the open button; close via âœ•, Escape,
     // or clicking the dimmed backdrop. The BEFORE/AFTER treatment
     // segmented control switches the chrome while the drawer is open.
     (function () {
@@ -1059,12 +1010,12 @@
         isOpen() ? close() : open();
       });
       if (closeBtn) closeBtn.addEventListener("click", close);
-      // Backdrop click — only when the click target is the layer
+      // Backdrop click â€” only when the click target is the layer
       // itself, not the drawer card or any descendant.
       layer.addEventListener("click", function (e) {
         if (e.target === layer) close();
       });
-      // Escape key — dismiss the drawer while open.
+      // Escape key â€” dismiss the drawer while open.
       document.addEventListener("keydown", function (e) {
         if (e.key === "Escape" && isOpen()) {
           e.preventDefault();
@@ -1072,7 +1023,7 @@
         }
       });
 
-      // Treatment toggle — swap data-drawer-card attribute so the
+      // Treatment toggle â€” swap data-drawer-card attribute so the
       // CSS swaps the chrome between BEFORE and AFTER instantly.
       treatmentBtns.forEach(function (b) {
         b.addEventListener("click", function () {

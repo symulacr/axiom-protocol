@@ -192,7 +192,6 @@
       color: var(--dim); font-family: var(--font-mono);
       font-size: var(--fs-mono); letter-spacing: 0.08em; text-transform: uppercase;
     }
-
     .audit-stage { position: relative; overflow: hidden; }
     .panel-wrap { display: none; padding: 0 clamp(20px, 4vw, 56px) var(--space-7); }
     .panel-wrap.is-active { display: block; }
@@ -225,7 +224,6 @@
       padding: 1px 6px; border: 1px solid var(--line);
       border-radius: 4px; background: var(--bg-2); color: var(--copper-bright);
     }
-
     /* =====================================================================
        BEFORE — faithful current state
        ===================================================================== */
@@ -939,42 +937,28 @@
 
     /* ============== PRINCIPLES SECTION ============== */
     .landing.after .principles-section {
-      position: relative;
-      z-index: 5;
-      max-width: 1440px;
-      margin: 0 auto;
+      position: relative; z-index: 5;
+      max-width: 1440px; margin: 0 auto;
       padding: var(--space-7) clamp(28px, 7vw, 96px) var(--space-7);
       border-top: 1px solid var(--line);
     }
     .landing.after .principles-head {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      align-items: end;
-      gap: var(--space-5);
-      margin-bottom: var(--space-6);
+      display: grid; grid-template-columns: minmax(0, 1fr) auto;
+      align-items: end; gap: var(--space-5); margin-bottom: var(--space-6);
     }
     .landing.after .principles-head h2 {
-      margin: 0;
-      font-family: var(--font-display);
-      font-weight: 500;
-      font-size: clamp(28px, 3vw, 40px);
-      line-height: 1.05;
-      letter-spacing: -0.02em;
-      color: var(--ink);
-      max-width: 22ch;
+      margin: 0; font-family: var(--font-display);
+      font-weight: 500; font-size: clamp(28px, 3vw, 40px);
+      line-height: 1.05; letter-spacing: -0.02em;
+      color: var(--ink); max-width: 22ch;
     }
     .landing.after .principles-head h2 em {
-      font-style: italic;
-      color: var(--copper-bright);
-      font-weight: 400;
+      font-style: italic; color: var(--copper-bright); font-weight: 400;
     }
     .landing.after .principles-head .section-meta {
-      font-family: var(--font-mono);
-      font-size: 11px;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      color: var(--dim);
-      padding-bottom: 8px;
+      font-family: var(--font-mono); font-size: 11px;
+      letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--dim); padding-bottom: 8px;
     }
 
     .landing.after .principles-grid {
@@ -1130,8 +1114,7 @@
 
     /* ============== MOBILE MENU ============== */
     .landing.after .menu-panel {
-      position: absolute;
-      top: calc(100% + 10px);
+      position: absolute; top: calc(100% + 10px);
       right: clamp(20px, 5vw, 76px);
       width: min(360px, calc(100vw - 2 * var(--space-5)));
       padding: var(--space-3);
@@ -1140,15 +1123,13 @@
       border: 1px solid var(--line-2);
       border-radius: var(--radius);
       box-shadow: var(--shadow-modal);
-      opacity: 0;
-      pointer-events: none;
+      opacity: 0; pointer-events: none;
       transform: translateY(-6px) scale(0.98);
       transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
       z-index: 60;
     }
     .landing.after .menu-panel.is-open {
-      opacity: 1;
-      pointer-events: auto;
+      opacity: 1; pointer-events: auto;
       transform: translateY(0) scale(1);
     }
     .landing.after .menu-panel button {
@@ -1315,9 +1296,7 @@
 
     <section class="audit-summary">
       <h1>The landing is the <em>first impression</em> of the entire product.</h1>
-      <p>
-        Current treatment reads as competent but generic — heavy skewX sheen, two-decimal alpha drift on the glows, hairline grid that competes with the proof-field art, and headline tracking that pushes against the type system. Below: a faithful recreation of the current surface next to a modernized version that preserves every string, every component, every route — and only refines the chrome.
-      </p>
+      <p>Current treatment reads as competent but generic — heavy skewX sheen, two-decimal alpha drift on the glows, hairline grid that competes with the proof-field art, and headline tracking that pushes against the type system. Below: a faithful recreation of the current surface next to a modernized version that preserves every string, every component, every route — and only refines the chrome.</p>
       <div class="meta">
         <span>scope: LandingPage.tsx, ConnectModal chrome, lib/copy.ts (landing.*)</span>
         <span>·</span>
@@ -1507,6 +1486,8 @@
                 </button>
               </section>
             </div>
+
+
 
             <aside style="margin-top: var(--space-5);">
               <h3>// Refinements applied (After)</h3>
