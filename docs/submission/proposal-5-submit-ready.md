@@ -4,7 +4,7 @@
 > version built to fit a 3,000-character field with margin. Every claim traces to
 > proposal 1–4, the deployment records (`docs/deployments/galileo-v3-2026-08-31.json`),
 > or live RPC reads (2026-09-02). GitHub: <https://github.com/symulacr/axiom-protocol>
-> · Live app: <https://beta.axiom-protocol.xyz>
+> · Live app: <https://axiom-protocol.vercel.app>
 
 ---
 
@@ -24,7 +24,7 @@ Delivered this campaign (9 executed waves, 284 commits):
 - Canonical EIP-712 digest fix: browser E2E caught the live tank rejecting every wallet signature (InvalidUserSignature 0xe3fb657c); fixed, redeployed, digest parity verified on-chain, permanent drift-guard test added.
 - Permit2 witness settlement, DelegationRegistry, and a mainnet-ready DeployAristotle.s.sol with 7 pre-broadcast safety gates; 0G's deployed Permit2 verified byte-identical to upstream (1 of 9,152 words, the cached domain).
 
-Evidence: 907 tests green (forge 343/0, backend 249, chat-runtime 100, config 62, frontend 153); 699 public commits since June 23. Live on Galileo 16602: AgentNFT 0xe32f87C6F8070C89a82D51BDd3fab578C0d7be6f, Processor 0xe6956f663103c6E1e5077c3256c453b95924112a, Vault 0xe8B3B31E5CE0436cCfD19a47351943CcB7703722, TeeVerifier 0x4938F10B12051CE8DCd70E3F7555E71adb432545, GasTank 0xF19245876Cd6Cb115810D459B00e94130591CAaa, DelegationRegistry 0xeA411cC163CAab2678E3E40dF3C1622EB28CCD58. Demo: <https://beta.axiom-protocol.xyz> · Code: <https://github.com/symulacr/axiom-protocol>
+Evidence: 907 tests green (forge 343/0, backend 249, chat-runtime 100, config 62, frontend 153); 699 public commits since June 23. Live on Galileo 16602: AgentNFT 0xe32f87C6F8070C89a82D51BDd3fab578C0d7be6f, Processor 0xe6956f663103c6E1e5077c3256c453b95924112a, Vault 0xe8B3B31E5CE0436cCfD19a47351943CcB7703722, TeeVerifier 0x4938F10B12051CE8DCd70E3F7555E71adb432545, GasTank 0xF19245876Cd6Cb115810D459B00e94130591CAaa, DelegationRegistry 0xeA411cC163CAab2678E3E40dF3C1622EB28CCD58. Demo: <https://axiom-protocol.vercel.app> · Code: <https://github.com/symulacr/axiom-protocol>
 
 0G primitives: 0G Chain (settlement, gasless relay), 0G Storage (encrypted agent payloads with on-chain dataHash, chat transcripts, sealed-DEK custody), 0G Compute (chat + strategy-tick inference), Permit2, Pyth prices. DA was evaluated and declined with reasons recorded in ADR-002.
 ```text
