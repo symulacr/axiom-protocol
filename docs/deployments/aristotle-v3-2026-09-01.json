@@ -1,0 +1,30 @@
+{
+  "network": "0G Aristotle Mainnet",
+  "chainId": 16661,
+  "deployedAt": "2026-09-01",
+  "deployer": "0xaf7c581b1C1C250aA69ac1F19f8014C0636c4d20",
+  "oracleAdmin": "0x7080AE490cA3221aBf0C88eda97e72d286510a9B",
+  "teeSigner": "0x0553f58a0209Fb8DcE201fCD9406Be56da890D73",
+  "addresses": {
+    "AxiomTeeVerifier": "0x1424874A80D92D30A7d85AD8Ce9Bb370f35efD43",
+    "AxiomAgentNFT (proxy)": "0xA7DC2A0F1329149BD9643b0fe0677a686eb0d8F2",
+    "AxiomAgentNFT (impl)": "0x6FF0A72Eb26D9c0C278c3A499f7043d78d925A92",
+    "AxiomStrategyVault": "0x9dD615F93e3ae7FfDC69D47DC4bBF4027D28616C",
+    "AxiomPaymentProcessor": "0x9C9DB66AbDA3adb7C83480Ccb8729f94215ac6c2",
+    "AxiomDelegationRegistry": "0xAB1E333C498cd739120cEA9b44c71bea1f4891Fe",
+    "AxiomGasTank": "0x156D05Ea7D47Da0a264C43855240c91F8eA8c4B6"
+  },
+  "paymentToken": "0x1Cd0690fF9a693f5EF2dD976660a8dAFc81A109c (W0G)",
+  "swapPairToken": "0x0000000000000000000000000000000000001002 (WrappedOGBase precompile)",
+  "forwarderWiring": {
+    "gasTank": "0x156D05Ea7D47Da0a264C43855240c91F8eA8c4B6",
+    "processor.trustedForwarder": "0x156D05Ea7D47Da0a264C43855240c91F8eA8c4B6",
+    "nft.trustedForwarder": "0x156D05Ea7D47Da0a264C43855240c91F8eA8c4B6"
+  },
+  "caps": {
+    "maxPayCap": "1000000000",
+    "maxGasPerOp": "300000",
+    "gasGrant": "0 (mainnet default: off)",
+    "grantsCap": "0 (mainnet default: off)"
+  }
+}
