@@ -1234,7 +1234,7 @@ export function FlowPage({
         <Button
           variant="secondary"
           onClick={() => go("/transactions")}
-          icon={<ReceiptText size={15} />}
+          icon={<ReceiptText size={16} />}
         >
           {f.openTransactions}
         </Button>
@@ -1243,7 +1243,7 @@ export function FlowPage({
       {intentCopy && (
         // proto-subpages-b: one state label, not banner+stage+overlay stacked.
         <div className="flow-intent-banner">
-          <ShieldCheck size={15} />
+          <ShieldCheck size={16} />
           <strong>
             {interpolate(intentCopy, { agent: selectedTokenId || "—" })}
           </strong>
@@ -1295,7 +1295,7 @@ export function FlowPage({
               >
                 <Button
                   onClick={() => go(routePath("mint"))}
-                  icon={<Bot size={15} />}
+                  icon={<Bot size={16} />}
                 >
                   {copy.dashboard.mintAgent}
                 </Button>
@@ -1390,14 +1390,16 @@ export function FlowPage({
             <div className="operation-receipt">
               <div>
                 {receiptState === "confirmed" ? (
-                  <CircleCheck size={17} />
+                  <CircleCheck size={18} />
                 ) : receiptState === "reverted" || receiptState === "stale" ? (
-                  <AlertTriangle size={17} />
+                  <AlertTriangle size={18} />
                 ) : (
-                  <Timer size={17} />
+                  <Timer size={18} />
                 )}
                 <div>
-                  <strong>{truncateHex(draft.receiptId || "", 12, 8)}</strong>
+                  <strong className="num">
+                    {truncateHex(draft.receiptId || "", 12, 8)}
+                  </strong>
                   <small>{receiptBody}</small>
                 </div>
               </div>
@@ -1444,7 +1446,7 @@ export function FlowPage({
               <Button
                 busy={isBusy}
                 onClick={openReview}
-                icon={<ArrowRight size={15} />}
+                icon={<ArrowRight size={16} />}
                 disabled={zeroAgentFlow}
               >
                 {isReviewOpen ? f.reviewOpenLabel : f.reviewAction}
@@ -1657,8 +1659,11 @@ function OperationReviewSheet({
   const copy = getCopy(state.settings.locale);
   const f = copy.flowUi;
   const flow = copy.flows[kind];
-  // Dismiss trio: Esc + focus restore here, backdrop onMouseDown below, explicit X/"Edit details"; dismissing never submits.
-  useModalDismiss(onClose);
+  // Dismiss contract: Esc + Tab trap + initial focus + focus restore here, backdrop onMouseDown
+  // below, explicit X/"Edit details"; dismissing never submits. The trap keeps Tab inside the
+  // sheet — this is the confirm surface for irreversible wallet ops.
+  const sheetRef = useRef<HTMLElement>(null);
+  useModalDismiss(onClose, sheetRef);
   const paymentNeedsApproval =
     kind === "payment" && draft.phase === "approval-required";
   const paymentReady = kind === "payment" && draft.phase === "payment-required";
@@ -1717,6 +1722,7 @@ function OperationReviewSheet({
       onMouseDown={onClose}
     >
       <section
+        ref={sheetRef}
         className="operation-review-sheet"
         role="dialog"
         aria-modal="true"
@@ -1738,7 +1744,7 @@ function OperationReviewSheet({
         </header>
         <div className="review-decision">
           <span className="review-seal">
-            <ShieldCheck size={17} />
+            <ShieldCheck size={18} />
           </span>
           <div>
             <strong>{flow.consequence}</strong>
@@ -1762,12 +1768,12 @@ function OperationReviewSheet({
                     ? f.factName
                     : f.factInstruction}
             </dt>
-            <dd className="mono">{draft.value}</dd>
+            <dd className="mono num">{draft.value}</dd>
           </div>
           {balanceFact && (
             <div>
               <dt>{balanceFact.dt}</dt>
-              <dd className="mono">{balanceFact.dd}</dd>
+              <dd className="mono num">{balanceFact.dd}</dd>
             </div>
           )}
           {kind === "mint" ? (
@@ -1897,7 +1903,7 @@ function OperationReviewSheet({
             disabled={primaryDisabled}
             aria-busy={busy || undefined}
           >
-            <ShieldCheck size={15} />
+            <ShieldCheck size={16} />
             {busy ? f.awaitingWallet : primaryLabel}
           </button>
           <button className="button button-ghost" onClick={onClose}>

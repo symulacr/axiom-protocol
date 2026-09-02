@@ -26,6 +26,14 @@ export function interpolate(
   );
 }
 
+/** One locked-gate hero: lead + emphasized tail for the two-line h1, plus
+ * the lede under it. Shared shape across all gated routes and locales. */
+export type GateHero = {
+  titleLead: string;
+  titleEmphasis: string;
+  copy: string;
+};
+
 export type Copy = {
   localeName: string;
   nav: {
@@ -262,6 +270,10 @@ export type Copy = {
     lede: string;
     body: string;
     openVault: string;
+    /** Wave-9B (browser-4 /staking "orphaned navigation state"): return link
+     * into the console — the page is reachable via deep link with no rail
+     * item, so it must own its exit back to /app. */
+    backLabel: string;
     /** Outbound pointer to 0G's own staking docs — the honest forward action
      * for a surface that deliberately does not implement staking. */
     docsLink: string;
@@ -279,13 +291,23 @@ export type Copy = {
     /** document.title for unknown routes. */
     title: string;
   };
-  /** Pre-auth locked-route hero copy for the flow routes (/tick, /deposit,
-   * /withdraw) whose visual meta lives in lockedRouteMeta but whose
-   * localized text lives here — one locale owner per surface. */
+  /** Pre-auth locked-gate hero copy for every gated route — one locale owner
+   * per surface. The visual slots (slug/label/media/schematic) live in
+   * consoleCatalog.lockedGates; the words live here. */
   lockedHero: {
-    tick: { titleLead: string; titleEmphasis: string; copy: string };
-    deposit: { titleLead: string; titleEmphasis: string; copy: string };
-    withdraw: { titleLead: string; titleEmphasis: string; copy: string };
+    app: GateHero;
+    settings: GateHero;
+    transactions: GateHero;
+    chat: GateHero;
+    mint: GateHero;
+    payment: GateHero;
+    transfer: GateHero;
+    storage: GateHero;
+    agent: GateHero;
+    agentsList: GateHero;
+    tick: GateHero;
+    deposit: GateHero;
+    withdraw: GateHero;
   };
   /** ErrorBoundary fallback chrome (localized like every other surface —
    * the raw error text itself still routes through humanizeError). */
@@ -562,6 +584,12 @@ export type Copy = {
     faucetEligibleBadge: string;
     faucetIneligibleBadge: string;
     faucetClaimAction: string;
+    /** Outcome toasts (audit critique-2 C2: refill/claim were silent). */
+    depositQueued: string;
+    refillDone: string;
+    refillFailed: string;
+    faucetDone: string;
+    faucetFailed: string;
   };
   storage: {
     title: string;
@@ -1263,8 +1291,9 @@ const english: Copy = {
   },
   staking: {
     lede: "Staking isn\u0027t part of Axiom.",
-    body: "Staking needs the official 0G app. Axiom doesn\u0027t do staking.",
+    body: "Staking lives in the official 0G app — agents, vaults and receipts stay here.",
     openVault: "Go to my agents",
+    backLabel: "Back to console",
     docsLink:
       "https://docs.0g.ai/developer-hub/building-on-0g/contracts-on-0g/staking-interfaces",
     docsA11y: "0G staking documentation (opens in a new tab)",
@@ -1380,7 +1409,7 @@ const english: Copy = {
     needsSetupLabel: "needs setup",
     queueAwaiting: "awaiting confirmation",
     oracleUnreachable: "status checks failing",
-    telemetryTitle: "Recent activity",
+    telemetryTitle: "Balances & recent activity",
     noEvidence: "Nothing here yet",
     noEvidenceHint: "Mint an agent to create the first receipt.",
     registerUnavailable: "Agent register unavailable",
@@ -1550,6 +1579,12 @@ const english: Copy = {
     faucetEligibleBadge: "faucet available",
     faucetIneligibleBadge: "faucet claimed",
     faucetClaimAction: "Claim free test tokens",
+    depositQueued: "Deposit queued — track it in the transaction center.",
+    refillDone: "Gas grant claimed. Tank balance refreshed.",
+    refillFailed:
+      "Gas grant claim failed — check your connection and try again.",
+    faucetDone: "Test tokens minted.",
+    faucetFailed: "Faucet claim failed — you may already have claimed.",
   },
   storage: {
     title: "Store the payload, then verify its proof.",
@@ -1996,9 +2031,60 @@ const english: Copy = {
     rejected: "Rejected",
     stale: "Needs review",
   },
-  // F1 executor A: pre-auth hero copy for the three flow routes missing from
-  // lockedRouteMeta's fallback table (/tick, /deposit, /withdraw).
+  // Locked-gate heroes — every gated route in one table (was: English strings
+  // in consoleCatalog.lockedRouteMeta + a lockedHero override for the three
+  // flow routes; one locale owner now).
   lockedHero: {
+    app: {
+      titleLead: "Your console,",
+      titleEmphasis: "at a glance.",
+      copy: "See what your agents need next.",
+    },
+    settings: {
+      titleLead: "Console settings,",
+      titleEmphasis: "on your terms.",
+      copy: "Session, display and console preferences.",
+    },
+    transactions: {
+      titleLead: "Track every payment",
+      titleEmphasis: "to its receipt.",
+      copy: "Every receipt, its state, and recovery.",
+    },
+    chat: {
+      titleLead: "Chat that knows",
+      titleEmphasis: "your setup.",
+      copy: "Ask about your agents; chat knows your session.",
+    },
+    mint: {
+      titleLead: "Name your agent",
+      titleEmphasis: "on-chain.",
+      copy: "Your name becomes an on-chain identity with a receipt.",
+    },
+    payment: {
+      titleLead: "Pay exactly",
+      titleEmphasis: "what you approve.",
+      copy: "Approve exactly what you pay; fees shown up front.",
+    },
+    transfer: {
+      titleLead: "Transfers your receiver",
+      titleEmphasis: "co-signs.",
+      copy: "Receiver co-signs; expiry is enforced.",
+    },
+    storage: {
+      titleLead: "Storage you can",
+      titleEmphasis: "verify.",
+      copy: "Every storage step is verifiable, end to end.",
+    },
+    agent: {
+      titleLead: "Every agent,",
+      titleEmphasis: "in detail.",
+      copy: "Identity, ownership, activity and receipts per agent.",
+    },
+    agentsList: {
+      titleLead: "Browse agents,",
+      titleEmphasis: "before you commit.",
+      copy: "See the whole roster; connect to open yours.",
+    },
     tick: {
       titleLead: "Run one agent task,",
       titleEmphasis: "bounded.",
@@ -2325,8 +2411,9 @@ const french: Copy = {
   },
   staking: {
     lede: "Le staking ne fait pas partie d’Axiom.",
-    body: "Le staking passe par l’app officielle 0G. Axiom ne fait pas de staking.",
+    body: "Le staking passe par l’app officielle 0G — agents, coffres et reçus restent ici.",
     openVault: "Aller à mes agents",
+    backLabel: "Retour à la console",
     docsLink:
       "https://docs.0g.ai/developer-hub/building-on-0g/contracts-on-0g/staking-interfaces",
     docsA11y: "Documentation de staking 0G (s’ouvre dans un nouvel onglet)",
@@ -2439,7 +2526,7 @@ const french: Copy = {
     needsSetupLabel: "à configurer",
     queueAwaiting: "confirmation en attente",
     oracleUnreachable: "vérifications en échec",
-    telemetryTitle: "Activité récente",
+    telemetryTitle: "Soldes et activité récente",
     noEvidence: "Rien ici pour l’instant",
     noEvidenceHint:
       "Mintez un agent ou lancez un paiement pour créer le premier reçu.",
@@ -2613,6 +2700,14 @@ const french: Copy = {
     faucetEligibleBadge: "robinet disponible",
     faucetIneligibleBadge: "robinet réclamé",
     faucetClaimAction: "Réclamer les jetons de test",
+    depositQueued:
+      "Dépôt en file — suivez-le dans le centre des transactions.",
+    refillDone: "Subvention de gaz réclamée. Solde du réservoir actualisé.",
+    refillFailed:
+      "Échec de la réclamation de gaz — vérifiez votre connexion et réessayez.",
+    faucetDone: "Jetons de test mintés.",
+    faucetFailed:
+      "Échec de la réclamation du faucet — vous avez peut-être déjà réclamé.",
   },
   storage: {
     ...english.storage,
@@ -3039,6 +3134,56 @@ const french: Copy = {
     stale: "À vérifier",
   },
   lockedHero: {
+    app: {
+      titleLead: "Votre console,",
+      titleEmphasis: "en un coup d'œil.",
+      copy: "Voyez ce que vos agents attendent ensuite.",
+    },
+    settings: {
+      titleLead: "Réglages console,",
+      titleEmphasis: "à votre main.",
+      copy: "Session, affichage et préférences console.",
+    },
+    transactions: {
+      titleLead: "Chaque paiement suivi",
+      titleEmphasis: "jusqu'à son reçu.",
+      copy: "Chaque reçu, son état et sa récupération.",
+    },
+    chat: {
+      titleLead: "Un chat qui connaît",
+      titleEmphasis: "votre setup.",
+      copy: "Interrogez vos agents ; le chat connaît votre session.",
+    },
+    mint: {
+      titleLead: "Nommez votre agent",
+      titleEmphasis: "on-chain.",
+      copy: "Votre nom devient une identité on-chain avec reçu.",
+    },
+    payment: {
+      titleLead: "Payez exactement",
+      titleEmphasis: "ce que vous approuvez.",
+      copy: "Approuvez exactement ce que vous payez ; frais affichés d'avance.",
+    },
+    transfer: {
+      titleLead: "Les transferts que",
+      titleEmphasis: "votre destinataire co-signe.",
+      copy: "Le destinataire co-signe ; l'expiration est appliquée.",
+    },
+    storage: {
+      titleLead: "Un stockage",
+      titleEmphasis: "vérifiable.",
+      copy: "Chaque étape de stockage est vérifiable, de bout en bout.",
+    },
+    agent: {
+      titleLead: "Chaque agent,",
+      titleEmphasis: "en détail.",
+      copy: "Identité, propriété, activité et reçus par agent.",
+    },
+    agentsList: {
+      titleLead: "Parcourez les agents,",
+      titleEmphasis: "avant de vous engager.",
+      copy: "Voyez toute la flotte ; connectez-vous pour ouvrir la vôtre.",
+    },
     tick: {
       titleLead: "Lance une tâche d'agent,",
       titleEmphasis: "bornée.",
@@ -3364,8 +3509,9 @@ const german: Copy = {
   },
   staking: {
     lede: "Staking ist nicht Teil von Axiom.",
-    body: "Staking läuft über die offizielle 0G-App. Axiom macht kein Staking.",
+    body: "Staking läuft über die offizielle 0G-App — Agents, Vaults und Receipts bleiben hier.",
     openVault: "Zu meinen Agents",
+    backLabel: "Zurück zur Konsole",
     docsLink:
       "https://docs.0g.ai/developer-hub/building-on-0g/contracts-on-0g/staking-interfaces",
     docsA11y: "0G-Staking-Dokumentation (öffnet in neuem Tab)",
@@ -3476,7 +3622,7 @@ const german: Copy = {
     needsSetupLabel: "einrichten",
     queueAwaiting: "Bestätigung ausstehend",
     oracleUnreachable: "Statusprüfungen fehlerhaft",
-    telemetryTitle: "Letzte Aktivität",
+    telemetryTitle: "Guthaben & letzte Aktivität",
     noEvidence: "Noch nichts hier",
     noEvidenceHint:
       "Minte einen Agent oder führe eine Zahlung aus, um den ersten Beleg zu erzeugen.",
@@ -3649,6 +3795,15 @@ const german: Copy = {
     faucetEligibleBadge: "Hahn verfügbar",
     faucetIneligibleBadge: "Hahn abgerufen",
     faucetClaimAction: "Gratis Test-Token anfordern",
+    depositQueued:
+      "Einzahlung eingereicht — im Transaktionscenter verfolgen.",
+    refillDone:
+      "Gas-Zuschuss angefordert. Tankkonto aktualisiert.",
+    refillFailed:
+      "Gas-Zuschuss fehlgeschlagen — Verbindung prüfen und erneut versuchen.",
+    faucetDone: "Test-Token gemintet.",
+    faucetFailed:
+      "Faucet-Anforderung fehlgeschlagen — möglicherweise bereits abgerufen.",
   },
   storage: {
     ...english.storage,
@@ -4076,6 +4231,56 @@ const german: Copy = {
     stale: "Prüfung nötig",
   },
   lockedHero: {
+    app: {
+      titleLead: "Deine Konsole,",
+      titleEmphasis: "auf einen Blick.",
+      copy: "Sieh, was deine Agenten als Nächstes brauchen.",
+    },
+    settings: {
+      titleLead: "Konsolen-Einstellungen,",
+      titleEmphasis: "nach deinen Regeln.",
+      copy: "Sitzung, Anzeige und Konsolen-Präferenzen.",
+    },
+    transactions: {
+      titleLead: "Jede Zahlung verfolgt",
+      titleEmphasis: "bis zum Beleg.",
+      copy: "Jeder Beleg, sein Status und seine Wiederherstellung.",
+    },
+    chat: {
+      titleLead: "Ein Chat, der dein",
+      titleEmphasis: "Setup kennt.",
+      copy: "Frag deine Agenten; der Chat kennt deine Sitzung.",
+    },
+    mint: {
+      titleLead: "Benenne deinen Agent",
+      titleEmphasis: "on-chain.",
+      copy: "Dein Name wird eine On-Chain-Identität mit Beleg.",
+    },
+    payment: {
+      titleLead: "Zahle genau,",
+      titleEmphasis: "was du freigibst.",
+      copy: "Gib exakt frei, was du zahlst; Gebühren vorab sichtbar.",
+    },
+    transfer: {
+      titleLead: "Transfers, die dein",
+      titleEmphasis: "Empfänger co-signiert.",
+      copy: "Der Empfänger co-signiert; der Ablauf wird erzwungen.",
+    },
+    storage: {
+      titleLead: "Storage, den du",
+      titleEmphasis: "verifizieren kannst.",
+      copy: "Jeder Storage-Schritt ist nachprüfbar, von Ende zu Ende.",
+    },
+    agent: {
+      titleLead: "Jeder Agent,",
+      titleEmphasis: "im Detail.",
+      copy: "Identität, Eigentum, Aktivität und Belege pro Agent.",
+    },
+    agentsList: {
+      titleLead: "Agents entdecken,",
+      titleEmphasis: "bevor du dich bindest.",
+      copy: "Sieh die ganze Flotte; verbinde dich, um deine zu öffnen.",
+    },
     tick: {
       titleLead: "Führe eine Agent-Aufgabe aus,",
       titleEmphasis: "begrenzt.",

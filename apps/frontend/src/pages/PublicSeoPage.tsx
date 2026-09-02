@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { apiFetch } from "../utils/apiFetch.js";
 import {
   ArrowRight,
-  CheckCircle2,
+  CircleCheck,
   Code2,
   FileCheck2,
   LockKeyhole,
@@ -43,6 +43,17 @@ function setCanonical(href: string) {
   link.setAttribute("rel", "canonical");
   link.setAttribute("href", href);
   document.head.appendChild(link);
+}
+
+/** Create-or-update a property-tagged meta (og:/twitter: — name≠property in the HTML spec). */
+function setProperty(property: string, content: string) {
+  let meta = document.querySelector(`meta[property="${property}"]`);
+  if (!meta) {
+    meta = document.createElement("meta");
+    meta.setAttribute("property", property);
+    document.head.appendChild(meta);
+  }
+  meta.setAttribute("content", content);
 }
 
 /** Multiline heading body: one <span> per line, break after the first. */
@@ -306,7 +317,20 @@ export function PublicSeoPage({ slug }: { slug: PublicSeoSlug }) {
     setMeta("description", page.metaDescription);
     setMeta("robots", "index,follow");
     // L1-M7: PUBLIC_HUB_PATHS IS the short canonical path — no prefix hack.
-    setCanonical(new URL(PUBLIC_HUB_PATHS[slug], location.origin).href);
+    const canonicalHref = new URL(
+      PUBLIC_HUB_PATHS[slug],
+      location.origin,
+    ).href;
+    setCanonical(canonicalHref);
+    // Audit critique-3 C2: the five crawlable hubs shared the shell's single
+    // OG card. Each hub now owns its OG title/description/url/image.
+    setProperty("og:title", page.metaTitle);
+    setProperty("og:description", page.metaDescription);
+    setProperty("og:url", canonicalHref);
+    setProperty("og:type", "website");
+    setProperty("og:site_name", "Axiom");
+    setProperty("og:image", new URL("/brand/og-1200.jpg", location.origin).href);
+    setProperty("twitter:image", new URL("/brand/og-1200.jpg", location.origin).href);
     const schemaId = "axiom-public-schema";
     document.getElementById(schemaId)?.remove();
     const schema = document.createElement("script");
@@ -381,7 +405,7 @@ export function PublicSeoPage({ slug }: { slug: PublicSeoSlug }) {
         </div>
         <aside className="seo-proof-card">
           <div className="seo-proof-card-head">
-            <Icon size={19} />
+            <Icon size={18} />
           </div>
           <strong>{page.evidenceTitle}</strong>
           <div className="seo-evidence-artifact" aria-label={artifact.label}>
@@ -399,7 +423,7 @@ export function PublicSeoPage({ slug }: { slug: PublicSeoSlug }) {
           <ul>
             {page.evidence.map((item) => (
               <li key={item}>
-                <CheckCircle2 size={15} />
+                <CircleCheck size={16} />
                 {item}
               </li>
             ))}
@@ -417,7 +441,7 @@ export function PublicSeoPage({ slug }: { slug: PublicSeoSlug }) {
           {page.links.map((link) => (
             <a key={link.href} href={link.href}>
               <strong>{link.label}</strong>
-              <ArrowRight size={15} />
+              <ArrowRight size={16} />
             </a>
           ))}
         </div>

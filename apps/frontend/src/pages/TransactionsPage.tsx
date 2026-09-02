@@ -20,10 +20,12 @@ import {
   RefreshCw,
   RotateCcw,
   ShieldCheck,
+  Wallet,
   X,
   Zap,
 } from "../components/axiom/icons.js";
-import { Button, PageHead, PanelHead } from "../components/axiom/Controls.js";
+import { Button, PageHead, PanelHead, Status } from "../components/axiom/Controls.js";
+import { SkeletonRows } from "../components/ui.js";
 import { StatePill } from "../components/StatePill.js";
 import { MobileDisclosure } from "../components/MobileDisclosure.js";
 import { getCopy } from "../lib/copy.js";
@@ -46,13 +48,13 @@ import { useModalDismiss } from "../hooks/useModalDismiss.js";
 function eventKindIcon(eventName: string) {
   const name = eventName.toLowerCase();
   if (name.includes("pay") || name.includes("earning"))
-    return <CreditCard size={15} />;
+    return <CreditCard size={16} />;
   if (name.includes("approve") || name.includes("allowance"))
-    return <KeyRound size={15} />;
-  if (name.includes("transfer")) return <ShieldCheck size={15} />;
-  if (name.includes("tick") || name.includes("run")) return <Play size={15} />;
-  if (name.includes("mint") || name.includes("agent")) return <Bot size={15} />;
-  return <Zap size={15} />;
+    return <KeyRound size={16} />;
+  if (name.includes("transfer")) return <ShieldCheck size={16} />;
+  if (name.includes("tick") || name.includes("run")) return <Play size={16} />;
+  if (name.includes("mint") || name.includes("agent")) return <Bot size={16} />;
+  return <Zap size={16} />;
 }
 
 function eventToTransaction(event: AxiomEvent): Transaction {
@@ -112,12 +114,15 @@ function AdvancedFiltersPopover({
   onChoose: (value: AdvancedFilter) => void;
   onClose: () => void;
 }) {
-  // Dismiss contract: Esc + focus restore here; backdrop covers click-away; selection closes explicitly.
-  useModalDismiss(onClose);
+  // Dismiss contract: Esc + Tab trap + initial focus + focus restore here; backdrop covers click-away;
+  // selection closes explicitly.
+  const popoverRef = useRef<HTMLDivElement>(null);
+  useModalDismiss(onClose, popoverRef);
   return createPortal(
     <>
       <div className="filters-backdrop" onMouseDown={onClose} />
       <div
+        ref={popoverRef}
         className="filters-popover"
         role="dialog"
         aria-label={title}
@@ -159,8 +164,9 @@ function ReceiptDrawer({
 }) {
   const copy = getCopy(locale);
   const txCopy = copy.transactions;
-  // Dismiss trio: Esc + focus restore added here; backdrop and X already existed.
-  useModalDismiss(onClose);
+  // Dismiss contract: Esc + Tab trap + initial focus + focus restore added here; backdrop and X already existed.
+  const drawerRef = useRef<HTMLElement>(null);
+  useModalDismiss(onClose, drawerRef);
   // U5: chain rows without a txHash synthesize "—" — no explorer link for those.
   const explorerHref = explorerTx(tx.hash);
   const recover = isRecoverableTx(tx.state);
@@ -176,7 +182,7 @@ function ReceiptDrawer({
         onClose();
         go(`${tx.route}?intent=recovery`);
       }}
-      icon={<RotateCcw size={15} />}
+      icon={<RotateCcw size={16} />}
     >
       {txCopy.openRecovery}
     </Button>
@@ -192,19 +198,19 @@ function ReceiptDrawer({
           target="_blank"
           rel="noreferrer"
         >
-          <ArrowRight size={15} />
+          <ArrowRight size={16} />
           View on explorer
         </a>
       ) : (
         <span className="button button-primary" aria-disabled="true">
-          <ArrowRight size={15} />
+          <ArrowRight size={16} />
           View on explorer
         </span>
       )}
       <Button
         variant="ghost"
         onClick={() => go(`${tx.route}?intent=receipt`)}
-        icon={<RotateCcw size={15} />}
+        icon={<RotateCcw size={16} />}
       >
         {txCopy.runAnother}
       </Button>
@@ -213,6 +219,7 @@ function ReceiptDrawer({
   return createPortal(
     <div className="drawer-layer" onClick={onClose}>
       <aside
+        ref={drawerRef}
         className="receipt-drawer"
         role="dialog"
         aria-modal="true"
@@ -239,14 +246,14 @@ function ReceiptDrawer({
           <dl className="provenance-list drawer-list">
             <div>
               <dt>{txCopy.transactionHash}</dt>
-              <dd className="mono">
+              <dd className="mono num">
                 {tx.hash}{" "}
                 <button
                   className="inline-copy"
                   onClick={copyHash}
                   aria-label="Copy receipt hash"
                 >
-                  <Copy size={12} />
+                  <Copy size={14} />
                 </button>
               </dd>
             </div>
@@ -260,7 +267,7 @@ function ReceiptDrawer({
                     target="_blank"
                     rel="noreferrer"
                   >
-                    View on explorer <ArrowRight size={12} />
+                    View on explorer <ArrowRight size={14} />
                   </a>
                 ) : (
                   <span>View on explorer</span>
@@ -291,14 +298,23 @@ export function TransactionsPage({
   go,
   state,
   dispatch,
+  onConnect,
 }: {
   go: (path: string) => void;
   state: AppState;
   dispatch: React.Dispatch<ConsoleAction>;
+  /** Wired by App to openWallet() so the /chat-pattern demo state (audit §4.9)
+   * can offer the real connect path from inside the live layout. */
+  onConnect?: () => void;
 }) {
   const copy = getCopy(state.settings.locale);
   const txCopy = copy.transactions;
   const chainId = useChainId();
+  const { address, isConnected } = useAccount();
+  // §4.9 demo state: with no wallet the REAL receipt layout still renders —
+  // panels visible, filters inert (aria-disabled), skeleton rows where live
+  // data would be. Never a bare marketing lock.
+  const demo = !isConnected;
   // U5: only a real 32-byte tx hash gets an explorer URL; synthesized "—" rows render unlinked.
   const isTxHash = (hash: string) => /^0x[0-9a-fA-F]{64}$/.test(hash);
   const explorerTx = (hash: string) =>
@@ -324,7 +340,6 @@ export function TransactionsPage({
   const { events: wsEvents, isConnected: wsConnected } = useEventStream({
     topics: ["*"],
   });
-  const { address } = useAccount();
   // U7: the indexer subscribes with topics ["*"] — rows are scoped to this
   // wallet through the shared isOwnEvent predicate before they render.
   const { agents } = useAgents();
@@ -378,6 +393,8 @@ export function TransactionsPage({
   };
 
   const chooseFilter = (value: "all" | "review" | TxState) => {
+    // Demo state: filters stay visible but inert — no wallet, nothing to scope.
+    if (demo) return;
     setFilter(value);
     pushParams((next) => {
       next.set("filter", value);
@@ -414,28 +431,39 @@ export function TransactionsPage({
   return (
     <div className="ops-page">
       <PageHead title={txCopy.title} lede={txCopy.description}>
-        <Button
-          variant="secondary"
-          onClick={() => {
-            refetchHistory();
-            dispatch({
-              type: "notice",
-              notice: wsConnected
-                ? txCopy.refreshNotice
-                : `${txCopy.refreshNotice} ${txCopy.feedDown}`,
-            });
-          }}
-          icon={<RefreshCw size={15} />}
-        >
-          {txCopy.refreshState}
-        </Button>
+        {demo ? (
+          <>
+            {onConnect && (
+              <Button onClick={onConnect} icon={<Wallet size={16} />}>
+                {copy.nav.connectWallet}
+              </Button>
+            )}
+            <Status label={copy.topbar.notConnected} tone="muted" />
+          </>
+        ) : (
+          <Button
+            variant="secondary"
+            onClick={() => {
+              refetchHistory();
+              dispatch({
+                type: "notice",
+                notice: wsConnected
+                  ? txCopy.refreshNotice
+                  : `${txCopy.refreshNotice} ${txCopy.feedDown}`,
+              });
+            }}
+            icon={<RefreshCw size={16} />}
+          >
+            {txCopy.refreshState}
+          </Button>
+        )}
       </PageHead>
 
       <section className="ops-summary" aria-label={txCopy.statefulOperations}>
         <div>
           {/* L1-L7: these are section headers, not inline emphasis — real
               headings keep the document outline valid. */}
-          <h2 className="ops-summary-value">
+          <h2 className="ops-summary-value num">
             {String(
               transactions.filter((tx) => isInFlightTx(tx.state)).length,
             ).padStart(2, "0")}
@@ -446,7 +474,7 @@ export function TransactionsPage({
           className="ops-summary-recovery"
           onClick={() => chooseFilter("review")}
         >
-          <h2 className="ops-summary-value">
+          <h2 className="ops-summary-value num">
             {String(
               transactions.filter((tx) => isRecoverableTx(tx.state)).length,
             ).padStart(2, "0")}
@@ -466,7 +494,7 @@ export function TransactionsPage({
           title={txCopy.statefulOperations}
         >
           <div className="transaction-filter-controls">
-            <span className="result-count" aria-live="polite">
+            <span className="result-count num" aria-live="polite">
               {filtered.length} of {transactions.length} receipts
             </span>
             <div
@@ -478,6 +506,7 @@ export function TransactionsPage({
                 <button
                   key={value}
                   className={filter === value ? "filter active" : "filter"}
+                  aria-disabled={demo || undefined}
                   onClick={() => chooseFilter(value)}
                 >
                   {value === "all"
@@ -492,6 +521,7 @@ export function TransactionsPage({
                 className={`filter filters-trigger${advancedActive ? " active" : ""}`}
                 aria-expanded={Boolean(filtersPos)}
                 aria-haspopup="dialog"
+                aria-disabled={demo || undefined}
                 onClick={toggleFiltersPopover}
               >
                 {advancedActive
@@ -528,41 +558,46 @@ export function TransactionsPage({
                   <small>{tx.detail}</small>
                 </span>
               </span>
-              <span className="mono transaction-proof-cell">
+              <span className="mono num transaction-proof-cell">
                 {truncateHex(tx.hash, 8, 4)}
               </span>
-              <span className="mono transaction-age">{transactionAge(tx)}</span>
+              <span className="mono num transaction-age">
+                {transactionAge(tx)}
+              </span>
               <StatePill state={tx.state} />
-              <ChevronRight size={15} />
+              <ChevronRight size={16} />
             </button>
           ))}
-          {/* U5: first load is not an empty result — skeleton rows until the
+          {/* U5: first load is not an empty result — shared skeleton rows until the
               history poll has delivered once (background re-polls must not
-              resurrect them) and the WS stream has had its say; the true
-              empty state renders strictly post-load. */}
-          {historyLoading &&
+              resurrect them); in the §4.9 demo state the skeleton is the honest
+              "live data would land here" surface. True empty renders strictly
+              post-load with a wallet. */}
+          {(historyLoading || demo) &&
           events.length === 0 &&
           transactions.length === 0 &&
           wsEvents.length === 0 ? (
-            <div className="transaction-table-skeleton" aria-busy="true">
-              {[0, 1, 2].map((row) => (
-                <div key={row} className="transaction-row" aria-hidden="true">
-                  <span className="transaction-kind">
-                    <i />
-                    <span>
-                      <strong>&nbsp;</strong>
-                      <small>&nbsp;</small>
-                    </span>
+            <SkeletonRows
+              count={3}
+              className="transaction-table-skeleton"
+              rowClassName="transaction-row"
+              row={
+                <span className="transaction-kind">
+                  <i />
+                  <span>
+                    <strong>&nbsp;</strong>
+                    <small>&nbsp;</small>
                   </span>
-                </div>
-              ))}
-            </div>
+                </span>
+              }
+            />
           ) : null}
-          {!historyLoading && filtered.length === 0 && (
+          {!demo && !historyLoading && filtered.length === 0 && (
             <div className="empty-state transaction-empty-state">
               <p>{txCopy.emptyState}</p>
+              {/* U15 icon order: this is an action, so the icon leads. */}
               <button className="text-link" onClick={() => chooseFilter("all")}>
-                Clear filter <RotateCcw size={13} />
+                <RotateCcw size={14} /> Clear filter
               </button>
             </div>
           )}

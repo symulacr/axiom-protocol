@@ -25,6 +25,9 @@ import { APP_CHAIN, APP_CHAIN_ID } from "../../config/wagmi.js";
 
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 
+/** Hero alert glyph in `.wallet-state` — semantic exception to the 14/16/18 icon scale. */
+const WALLET_STATE_ICON_SIZE = 28;
+
 export function isSessionFresh(session: Session): boolean {
   if (session.status !== "authenticated" || !session.signedAt) return false;
   return Date.now() - Date.parse(session.signedAt) < SESSION_TTL_MS;
@@ -59,10 +62,12 @@ export function WalletGate({
   const { switchChainAsync } = useSwitchChain();
   const [error, setError] = useState<string | null>(null);
   const resumed = useRef(false);
-  // dismiss trio: Esc + focus restore here; backdrop via layer onMouseDown
-  // below; X already exists. Dismiss is safe in every view — the wagmi
-  // connection persists and the gate re-opens from any locked CTA.
-  useModalDismiss(onClose);
+  // dismiss contract: Esc + Tab trap + initial focus + focus restore here; backdrop via
+  // layer onMouseDown below; X already exists. Dismiss is safe in every view — the wagmi
+  // connection persists and the gate re-opens from any locked CTA. The trap binds to the
+  // layer (not the gate section) so the nested ConnectModal chooser stays inside it too.
+  const layerRef = useRef<HTMLDivElement>(null);
+  useModalDismiss(onClose, layerRef);
 
   const wrongNetwork =
     isConnected && chainId !== undefined && chainId !== APP_CHAIN_ID;
@@ -157,7 +162,7 @@ export function WalletGate({
   }, []);
 
   return (
-    <div className="wallet-gate-layer" onMouseDown={onClose}>
+    <div ref={layerRef} className="wallet-gate-layer" onMouseDown={onClose}>
       <section
         className="wallet-gate"
         role="dialog"
@@ -166,7 +171,7 @@ export function WalletGate({
         onMouseDown={(event) => event.stopPropagation()}
       >
         <button
-          className="wallet-gate-close"
+          className="icon-button icon-button--lg wallet-gate-close"
           onClick={onClose}
           aria-label={copy.a11y.closeWalletAccess}
         >
@@ -205,7 +210,7 @@ export function WalletGate({
                     ? setChooserOpen(true)
                     : void connectInjected()
                 }
-                icon={<LockKeyhole size={15} />}
+                icon={<LockKeyhole size={16} />}
               >
                 {copy.nav.connectWallet}
               </Button>
@@ -224,7 +229,10 @@ export function WalletGate({
 
           {view === "wrong-network" && (
             <div className="wallet-state">
-              <AlertTriangle className="warning-icon" size={28} />
+              <AlertTriangle
+                className="warning-icon"
+                size={WALLET_STATE_ICON_SIZE}
+              />
               <h2>{interpolate(copy.wallet.wrongNetworkTitle, chainVars)}</h2>
               <p>{copy.wallet.wrongNetworkDescription}</p>
               <div className="network-check">
@@ -243,7 +251,7 @@ export function WalletGate({
               </div>
               <Button
                 onClick={() => void switchNetwork()}
-                icon={<Network size={15} />}
+                icon={<Network size={16} />}
               >
                 {interpolate(copy.wallet.switchNetwork, chainVars)}
               </Button>

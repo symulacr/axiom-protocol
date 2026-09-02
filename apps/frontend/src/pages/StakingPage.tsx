@@ -8,6 +8,9 @@ import { getCopy } from "../lib/copy.js";
 import { routePath } from "../lib/routeRegistry.js";
 import type { Locale } from "../lib/copy.js";
 
+/** Empty-state glyph — semantic exception to the 14/16/18 icon scale. */
+const EMPTY_STATE_ICON_SIZE = 25;
+
 export function StakingPage({
   go,
   locale,
@@ -18,10 +21,21 @@ export function StakingPage({
   const copy = getCopy(locale).staking;
   return (
     <div className="ops-page">
-      <PageHead title="0G Stake" lede={copy.lede} />
+      {/* Wave-9B (browser-4 /staking "orphaned navigation state"): /staking has
+          no rail item and is reachable by deep link — the header itself carries
+          the return path so the page never floats parentless. */}
+      <PageHead
+        title="0G Stake"
+        lede={copy.lede}
+        actions={
+          <Button variant="ghost" onClick={() => go(routePath("dashboard"))}>
+            {copy.backLabel}
+          </Button>
+        }
+      />
       <section className="not-integrated">
         <div className="not-integrated-icon">
-          <ShieldAlert size={25} />
+          <ShieldAlert size={EMPTY_STATE_ICON_SIZE} />
         </div>
         <div>
           <p>{copy.body}</p>
@@ -31,7 +45,7 @@ export function StakingPage({
           <div className="not-integrated-actions">
             <Button
               onClick={() => go(routePath("dashboard"))}
-              icon={<Wallet size={15} />}
+              icon={<Wallet size={16} />}
             >
               {copy.openVault}
             </Button>

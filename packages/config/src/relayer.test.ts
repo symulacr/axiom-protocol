@@ -1,7 +1,13 @@
 import { test, describe } from "bun:test";
 import assert from "node:assert/strict";
 import { HTTP, getRelayerConfig, isFaucetEnabled } from "./constants.js";
-import { SPONSORED_TOOLS, isSponsoredTool } from "./chat-tools.js";
+import {
+  SPONSORED_TOOLS,
+  isSponsoredTool,
+  getChatToolSpec,
+  resolveAxmTokenAddress,
+} from "./chat-tools.js";
+import { CHAT_BENCH_ENCODE_TOOLS } from "./chat-tools.js";
 import { resolveAddressOptional, resolveAddress } from "./addresses.js";
 import {
   GAS_TANK_DOMAIN_NAME,
@@ -15,12 +21,56 @@ describe("relayer config surface (V3 W5-B)", () => {
     assert.equal(HTTP.PAYMENT_REQUIRED, 402);
   });
 
-  test("SPONSORED_TOOLS phase-1 set is exactly {withdraw, pay_for_agent}", () => {
-    assert.deepEqual([...SPONSORED_TOOLS], ["withdraw", "pay_for_agent"]);
+  test("SPONSORED_TOOLS set is exactly {withdraw, pay_for_agent} + the W9 DeFi ops", () => {
+    assert.deepEqual([...SPONSORED_TOOLS], [
+      "withdraw",
+      "pay_for_agent",
+      "swap_tokens",
+      "borrow",
+    ]);
     assert.equal(isSponsoredTool("withdraw"), true);
     assert.equal(isSponsoredTool("pay_for_agent"), true);
     assert.equal(isSponsoredTool("mint_agent"), false);
     assert.equal(isSponsoredTool("deposit"), false);
+  });
+
+  test("W9 DeFi tools are cataloged encode-class + wallet-gated + medium friction, and swap_tokens/borrow are sponsored", () => {
+    for (const name of ["swap_tokens", "add_liquidity", "borrow"] as const) {
+      const spec = getChatToolSpec(name);
+      assert.ok(spec, `${name} in catalog`);
+      assert.equal(spec.class, "encode", `${name} is encode-class`);
+      assert.equal(spec.requiresWallet, true, `${name} requires a wallet`);
+      assert.equal(spec.friction, "medium", `${name} friction medium`);
+      assert.ok(spec.hint.includes("GasTank"), `${name} hint documents the GasTank lane`);
+    }
+    assert.ok(getChatToolSpec("add_liquidity")!.hint.includes("Permit2"));
+    assert.equal(isSponsoredTool("swap_tokens"), true);
+    assert.equal(isSponsoredTool("borrow"), true);
+    // add_liquidity needs a Permit2 BATCH signature the sponsor capability
+    // cannot produce → stays in the wallet lane, outside SPONSORED_TOOLS.
+    assert.equal(isSponsoredTool("add_liquidity"), false);
+    assert.deepEqual(
+      CHAT_BENCH_ENCODE_TOOLS.filter((n) =>
+        ["swap_tokens", "add_liquidity", "borrow"].includes(n),
+      ),
+      ["swap_tokens", "add_liquidity", "borrow"],
+    );
+  });
+
+  test("resolveAxmTokenAddress maps pool symbols from session/env addresses", () => {
+    const usdc = "0x354ca53bab51c0666964fa050628d8351f8a7d19";
+    const weth = "0x62e5ead40c2105d44a705e87f370776bd12bf6ec";
+    assert.equal(resolveAxmTokenAddress("usdc", usdc), usdc);
+    assert.equal(resolveAxmTokenAddress("USDC", usdc), usdc);
+    assert.equal(resolveAxmTokenAddress("weth", usdc, { AXIOM_SWAP_PAIR_TOKEN: weth }), weth);
+    // unconfigured sides → null, never a fabricated address
+    assert.equal(resolveAxmTokenAddress("weth", usdc, {}), null);
+    assert.equal(resolveAxmTokenAddress("usdc", undefined), null);
+    assert.equal(resolveAxmTokenAddress("btc", usdc, { AXIOM_SWAP_PAIR_TOKEN: weth }), null);
+    assert.equal(
+      resolveAxmTokenAddress("weth", usdc, { AXIOM_SWAP_PAIR_TOKEN: "not-an-address" }),
+      null,
+    );
   });
 
   test("relayer defaults + env overrides", () => {

@@ -37,7 +37,7 @@ export default function Recovery404({
           <Button
             variant="secondary"
             onClick={() => go(routePath("dashboard"))}
-            icon={<LayoutDashboard size={15} />}
+            icon={<LayoutDashboard size={16} />}
           >
             {copy.openConsole}
           </Button>

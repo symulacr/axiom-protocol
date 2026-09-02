@@ -6,7 +6,7 @@ import express, {
   type NextFunction,
 } from "express";
 import { z } from "zod";
-import { Wallet, verifyTypedData } from "ethers";
+import { Wallet, verifyTypedData, Interface } from "ethers";
 import {
   GAS_TANK_FORWARD_REQUEST_TYPES,
   GAS_TANK_DOMAIN_NAME,
@@ -50,6 +50,7 @@ async function signedBody(opts?: {
   nonce?: string;
   deadline?: number;
   target?: string;
+  data?: string;
   mismatchUser?: boolean;
 }) {
   const userWallet = new Wallet(opts?.userPk ?? "0x" + "11".repeat(32));
@@ -58,7 +59,7 @@ async function signedBody(opts?: {
       ? "0x" + "99".repeat(20)
       : userWallet.address) as `0x${string}`,
     target: (opts?.target ?? "0x" + "ab".repeat(20)) as `0x${string}`,
-    data: "0xdeadbeef",
+    data: (opts?.data ?? "0xdeadbeef") as `0x${string}`,
     maxGasCost: BigInt(opts?.maxGasCost ?? "500000000000000"),
     nonce: BigInt(opts?.nonce ?? "0"),
     deadline: BigInt(opts?.deadline ?? Math.floor(Date.now() / 1000) + 300),
@@ -713,5 +714,138 @@ describe("V3 W6-B faucet", () => {
     // Marker is attached by enqueueDrip, not by buildFaucetRecord.
     assert.ok(!isFaucetRecord(queued));
     assert.equal(faucetAmountOf(queued), undefined);
+  });
+});
+
+describe("W9 DeFi selector gate (POST /v1/relayer/sponsor)", () => {
+  const PROCESSOR = ("0x" + "35".repeat(20)) as `0x${string}`;
+  const POOL_A = "0x354ca53bab51c0666964fa050628d8351f8a7d19";
+  const POOL_B = "0x62e5ead40c2105d44a705e87f370776bd12bf6ec";
+  const ROGUE = "0x" + "c0".repeat(20);
+
+  const SWAP_ABI = new Interface([
+    "function swapExactIn(address tokenIn, uint256 amountIn, uint256 minOut, ((address token, uint256 amount) permitted, uint256 nonce, uint256 deadline) permit, bytes signature)",
+    "function borrow(uint256 amount)",
+  ]);
+
+  function makeDeFiConfig(): ServerConfig {
+    const cfg = makeConfig(GAS_TANK_ADDRESS);
+    return {
+      ...cfg,
+      addresses: {
+        ...cfg.addresses,
+        paymentProcessor: PROCESSOR,
+        paymentToken: POOL_A as `0x${string}`,
+      },
+    };
+  }
+
+  test("swapExactIn targeting the Processor with a pool token → queued", async () => {
+    const h = await buildApp(GAS_TANK_ADDRESS);
+    // inject the DeFi config: buildApp uses makeConfig; re-register with a
+    // config carrying the processor + paymentToken addresses.
+    await h.close();
+    const app = express();
+    app.use(express.json());
+    const queue = createRelayerQueue();
+    const submitted: string[] = [];
+    registerRelayerRoutes(
+      app,
+      makeDeFiConfig(),
+      {} as never,
+      {
+        queue,
+        gate: new SponsorGate(),
+        reconcile: {} as never,
+        gasTankAddress: GAS_TANK_ADDRESS,
+        simulate: async () => {},
+        submit: (async (record) => {
+          submitted.push(record.id);
+          return ("0x" + "aa".repeat(32)) as `0x${string}`;
+        }) as RelaySubmitter,
+      },
+    );
+    const server = app.listen(0);
+    const port = (server.address() as { port: number }).port;
+    try {
+      const data = SWAP_ABI.encodeFunctionData("swapExactIn", [
+        POOL_A,
+        1_000_000n,
+        1n,
+        { permitted: { token: POOL_A, amount: 1_000_000n }, nonce: 0n, deadline: 0n },
+        "0x",
+      ]);
+      const { body } = await signedBody({ target: PROCESSOR, data });
+      const { status, json } = await post(port, "/v1/relayer/sponsor", body);
+      assert.equal(status, 202);
+      assert.equal(json.sponsored, true);
+      assert.equal(submitted.length, 1);
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  });
+
+  test("swapExactIn with a non-pool tokenIn → 400 DEFI_TOKEN_REJECTED, nothing queued", async () => {
+    const app = express();
+    app.use(express.json());
+    registerRelayerRoutes(
+      app,
+      makeDeFiConfig(),
+      {} as never,
+      {
+        queue: createRelayerQueue(),
+        gate: new SponsorGate(),
+        reconcile: {} as never,
+        gasTankAddress: GAS_TANK_ADDRESS,
+        simulate: async () => {},
+        submit: (async () => ("0x" + "aa".repeat(32)) as `0x${string}`) as RelaySubmitter,
+      },
+    );
+    const server = app.listen(0);
+    const port = (server.address() as { port: number }).port;
+    try {
+      const data = SWAP_ABI.encodeFunctionData("swapExactIn", [
+        ROGUE,
+        1_000_000n,
+        1n,
+        { permitted: { token: ROGUE, amount: 1_000_000n }, nonce: 0n, deadline: 0n },
+        "0x",
+      ]);
+      const { body } = await signedBody({ target: PROCESSOR, data });
+      const { status, json } = await post(port, "/v1/relayer/sponsor", body);
+      assert.equal(status, 400);
+      assert.equal(json.code, "DEFI_TOKEN_REJECTED");
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  });
+
+  test("borrow targeting a non-Processor address → 400 DEFI_TARGET_REJECTED", async () => {
+    const app = express();
+    app.use(express.json());
+    registerRelayerRoutes(
+      app,
+      makeDeFiConfig(),
+      {} as never,
+      {
+        queue: createRelayerQueue(),
+        gate: new SponsorGate(),
+        reconcile: {} as never,
+        gasTankAddress: GAS_TANK_ADDRESS,
+        simulate: async () => {},
+        submit: (async () => ("0x" + "aa".repeat(32)) as `0x${string}`) as RelaySubmitter,
+      },
+    );
+    const server = app.listen(0);
+    const port = (server.address() as { port: number }).port;
+    try {
+      const data = SWAP_ABI.encodeFunctionData("borrow", [1_000_000n]);
+      const { body } = await signedBody({ target: ("0x" + "12".repeat(20)) as `0x${string}`, data });
+      const { status, json } = await post(port, "/v1/relayer/sponsor", body);
+      assert.equal(status, 400);
+      assert.equal(json.code, "DEFI_TARGET_REJECTED");
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
   });
 });

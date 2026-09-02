@@ -144,15 +144,19 @@ export function Field({
   );
 }
 
-/** Shared ops-page header: h1 (+ optional lede) left, actions/status right. */
+/** Shared ops-page header: h1 (+ optional lede) left, actions/status right.
+ *  Wave-9B: optional `actions` slot renders into the existing .page-head-actions
+ *  lane — same styling contract as `children`, no CSS additions needed. */
 export function PageHead({
   title,
   lede,
   children,
+  actions,
 }: {
   title: ReactNode;
   lede?: ReactNode;
   children?: ReactNode;
+  actions?: ReactNode;
 }) {
   return (
     <div className="page-head">
@@ -160,6 +164,9 @@ export function PageHead({
         <h1>{title}</h1>
         {lede !== undefined && <p>{lede}</p>}
       </div>
+      {actions !== undefined ? (
+        <div className="page-head-actions">{actions}</div>
+      ) : null}
       {children}
     </div>
   );

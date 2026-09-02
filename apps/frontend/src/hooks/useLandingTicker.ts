@@ -36,14 +36,20 @@ export const TICKER_MAX_ITEMS = 3;
 
 const POLL_INTERVAL_MS = 8_000;
 
-function readTokenId(payload: Record<string, unknown> | undefined): string {
-  if (!payload) return "?";
+/** Wave 5: events without a readable agent id are skipped entirely —
+ *  rendering "agent #?" was placeholder junk on the flagship page
+ *  (audit MASTER-SUMMARY §3.11 / 2026-09-02 re-audit). Returns null when
+ *  the payload carries no tokenId. */
+function readTokenId(
+  payload: Record<string, unknown> | undefined,
+): string | null {
+  if (!payload) return null;
   const candidate = payload.tokenId ?? payload.agentTokenId ?? payload._tokenId;
-  if (candidate === undefined || candidate === null) return "?";
+  if (candidate === undefined || candidate === null) return null;
   // tokenId is typically a bigint-coerced string; trim any leading zeros
   // so "00007" becomes "7".
   const raw = String(candidate).replace(/^0+(?=\d)/, "");
-  return raw === "" ? "0" : raw;
+  return raw === "" ? null : raw;
 }
 
 function formatAgo(deltaMs: number, locale: string): string {
@@ -99,13 +105,16 @@ export function useLandingTicker(
       if (items.length >= TICKER_MAX_ITEMS) break;
       const ts = eventTimestamp(ev);
       if (ts <= 0) continue;
+      const tokenId = readTokenId(ev.payload);
+      // No agent id → not honestly attributable → not shown (Wave 5).
+      if (tokenId === null) continue;
       const eventName =
         typeof ev.eventName === "string" ? ev.eventName : "Unknown";
       const action =
         actionLabels[eventName] ?? actionLabels.Unknown ?? "tx mined";
       items.push({
         dot: WARNING_EVENT_NAMES.has(eventName) ? "warning" : "default",
-        agent: `agent #${readTokenId(ev.payload)}`,
+        agent: `agent #${tokenId}`,
         action,
         ago: formatAgo(now - ts, locale),
       });

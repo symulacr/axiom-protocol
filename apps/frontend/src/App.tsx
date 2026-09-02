@@ -16,6 +16,7 @@ import {
   Suspense,
   useCallback,
   useEffect,
+  useRef,
   useState,
   type ComponentType,
   type ErrorInfo,
@@ -53,7 +54,7 @@ import {
   resolvePublicSeoSlug,
   resolveRoute,
 } from "./lib/routeRegistry.js";
-import { lockedRouteMeta } from "./lib/consoleCatalog.js";
+import { lockedGateFor } from "./lib/consoleCatalog.js";
 import { MEDIA } from "./lib/media.js";
 import { getCopy, interpolate, type Locale } from "./lib/copy.js";
 import type { FlowKind, NoticeSeverity } from "./lib/models.js";
@@ -184,7 +185,7 @@ function Notice({
       role={isError ? "alert" : "status"}
       aria-live={isError ? "assertive" : "polite"}
     >
-      <CircleCheck size={15} />
+      <CircleCheck size={16} />
       <span>{text}</span>
       <button
         onClick={onClose}
@@ -206,8 +207,10 @@ function Guide({
   locale: "en" | "fr" | "de";
 }) {
   const copy = getCopy(locale);
-  // Dismiss trio: Esc + focus restore here; backdrop onMouseDown below; explicit close via X/skip.
-  useModalDismiss(onClose);
+  // Dismiss contract: Esc + Tab trap + initial focus + focus restore here; backdrop onMouseDown
+  // below; explicit close via X/skip.
+  const cardRef = useRef<HTMLElement>(null);
+  useModalDismiss(onClose, cardRef);
   const [step, setStep] = useState(0);
   const steps = [
     {
@@ -237,6 +240,7 @@ function Guide({
   return (
     <div className="guide-layer" onMouseDown={onClose}>
       <section
+        ref={cardRef}
         className="guide-card"
         onMouseDown={(event) => event.stopPropagation()}
       >
@@ -259,7 +263,7 @@ function Guide({
                 go(item.path);
                 onClose();
               }}
-              icon={<ArrowRight size={15} />}
+              icon={<ArrowRight size={16} />}
             >
               {item.label}
             </Button>
@@ -362,11 +366,11 @@ export function App(): ReactElement {
   const setSession = (session: Partial<typeof state.session>) =>
     dispatch({ type: "session", session });
 
-  // v1 compat redirects: /dashboard and /market are handled declaratively in Routes.
+  // v1 compat redirects: /dashboard and /market are handled declaratively in
+  // Routes; /agents/list is NOT bounced here anymore — disconnected visitors
+  // get its own "Browse agents" gate (LockedRoute resolves the path), and
+  // settled sessions jump to the overview from the authed branch below.
   useEffect(() => {
-    if (location.pathname === "/agents/list") {
-      navigate("/app", { replace: true });
-    }
     if (
       location.pathname === "/app" &&
       new URLSearchParams(location.search).get("mint") === "1"
@@ -523,9 +527,29 @@ export function App(): ReactElement {
     location.pathname !== "/" &&
     location.pathname !== "/chat" &&
     location.pathname !== "/staking" &&
-    location.pathname !== "/transfer/co-sign";
+    location.pathname !== "/transfer/co-sign" &&
+    // /transactions + /storage render their own /chat-pattern demo state when
+    // disconnected (real layout, inert controls, skeletons) instead of the
+    // standalone lock (audit §4.9).
+    location.pathname !== "/transactions" &&
+    location.pathname !== "/storage";
+  // Route-guard truth = persisted session AND the live wallet still being
+  // connected. The stored session alone is not proof: wagmi rehydrates async,
+  // and a persisted "authenticated" row must never paint the shell on top of
+  // a disconnected wallet (audit: browser-2 auth-state leak).
   const authenticated =
-    state.session.status === "authenticated" && isSessionFresh(state.session);
+    state.session.status === "authenticated" &&
+    isSessionFresh(state.session) &&
+    isConnected;
+
+  // wagmi is still settling its persisted connection (connecting/reconnecting):
+  // hold internal routes on a settling screen instead of guessing between the
+  // authed shell, the gate, and a redirect. Public routes stay live — they
+  // never depended on wallet state.
+  const sessionSettling =
+    internal &&
+    !authenticated &&
+    (accountStatus === "connecting" || accountStatus === "reconnecting");
 
   // One localized tab title per route ("<name> — Axiom"); public hubs own their SEO title.
   useEffect(() => {
@@ -615,6 +639,13 @@ export function App(): ReactElement {
                 // U12: a connected wrong-chain wallet gets the one-click remedy,
                 // not the full wallet-required lock screen.
                 <WrongNetworkNotice go={go} locale={locale} />
+              ) : sessionSettling ? (
+                // Guard settle screen: wagmi is restoring its persisted
+                // connection — render neutral chrome, never the authed shell
+                // or a premature gate (audit: browser-2 redirect roulette).
+                <div className="session-settling" aria-busy="true">
+                  <Spinner size={28} />
+                </div>
               ) : internal && !authenticated ? (
                 <LockedRoute
                   requested={path}
@@ -631,7 +662,13 @@ export function App(): ReactElement {
                   go={go}
                   onLock={lockConsole}
                 >
-                  {location.pathname === "/app" ? (
+                  {location.pathname === "/agents/list" ? (
+                    // Legacy roster spelling: a settled session jumps to the
+                    // overview during render (no post-paint bounce); the
+                    // disconnected path never reaches this branch — LockedRoute
+                    // renders its own "Browse agents" gate for it above.
+                    <Navigate to="/app" replace />
+                  ) : location.pathname === "/app" ? (
                     <DashboardPage go={go} state={state} dispatch={dispatch} />
                   ) : location.pathname.startsWith("/agents/") ? (
                     <AgentRoute go={go} locale={locale} />
@@ -642,15 +679,12 @@ export function App(): ReactElement {
                       go={go}
                       state={state}
                       dispatch={dispatch}
+                      onConnect={() => openWallet(path)}
                     />
                   ) : location.pathname === "/storage" ? (
                     <StoragePage state={state} go={go} />
                   ) : location.pathname === "/settings" ? (
-                    <SettingsPage
-                      state={state}
-                      dispatch={dispatch}
-                      onLock={lockConsole}
-                    />
+                    <SettingsPage state={state} dispatch={dispatch} />
                   ) : location.pathname === "/staking" ? (
                     <StakingPage go={go} locale={locale} />
                   ) : [
@@ -746,7 +780,7 @@ function WrongNetworkNotice({
         <div className="button-row">
           <Button
             onClick={() => void switchBack()}
-            icon={<Network size={15} />}
+            icon={<Network size={16} />}
           >
             {interpolate(copy.wallet.switchNetwork, chainVars)}
           </Button>
@@ -759,9 +793,11 @@ function WrongNetworkNotice({
 }
 
 /*
-  LockedRoute: shown when an internal route is
-  requested before the operator session is authenticated.
-  The CTA opens the live WalletGate.
+  LockedRoute — THE one pre-auth gate for every internal route (console pages,
+  agent detail, flow routes, /agents/list): one shell, one copy owner
+  (copy.lockedHero), one visual-slot table (consoleCatalog.lockedGates that
+  also carries the per-route schematic rows under the preview card). The CTA
+  opens the live WalletGate.
 */
 function LockedRoute({
   requested,
@@ -776,35 +812,14 @@ function LockedRoute({
 }) {
   const copy = getCopy(locale);
   const pathname = requested.split("?", 1)[0] ?? requested;
-  const meta =
-    lockedRouteMeta[pathname] ??
-    (pathname.startsWith("/agents/")
-      ? lockedRouteMeta["/agents/"]
-      : lockedRouteMeta["/app"]) ??
-    lockedRouteMeta["/app"];
-  if (!meta) return null;
-  // Flow routes keep their hero text in copy.lockedHero (locale-owned, like
-  // every other user-facing sentence); the meta table only supplies slug/label/media.
-  const localizedHero = (
-    {
-      "/tick": copy.lockedHero.tick,
-      "/deposit": copy.lockedHero.deposit,
-      "/withdraw": copy.lockedHero.withdraw,
-    } as Record<
-      string,
-      { titleLead: string; titleEmphasis: string; copy: string } | undefined
-    >
-  )[pathname];
-  const hero = localizedHero ?? {
-    titleLead: meta.title,
-    titleEmphasis: meta.emphasis,
-    copy: meta.copy,
-  };
+  const gate = lockedGateFor(pathname);
+  if (!gate) return null;
+  const hero = copy.lockedHero[gate.hero];
 
   return (
     <LockedShell
       statusLabel="wallet not connected"
-      shellClass={`locked-${meta.slug}`}
+      shellClass={`locked-${gate.slug}`}
     >
       <section className="locked-route-copy">
         <h1>
@@ -814,7 +829,7 @@ function LockedRoute({
         </h1>
         <p>{hero.copy}</p>
         <div className="button-row">
-          <Button onClick={onConnect} icon={<Wallet size={15} />}>
+          <Button onClick={onConnect} icon={<Wallet size={16} />}>
             {copy.nav.connectWallet}
           </Button>
           <ReturnToLanding go={go} locale={locale} />
@@ -822,10 +837,21 @@ function LockedRoute({
       </section>
       <aside className="locked-evidence">
         <div className="locked-preview">
-          <img src={meta.media} alt={`${meta.label} preview`} />
+          <img src={gate.media} alt={`${gate.label} preview`} />
           <div>
             <small>Preview — connect a wallet for live data.</small>
           </div>
+        </div>
+        {/* Schematic mock, not data: masked values only (the gate never fakes
+            live state) — per-route rows give every gate its own product shape. */}
+        <div className="locked-schematic" aria-hidden="true">
+          {gate.rows.map((row) => (
+            <div className="locked-schematic-row" key={row.label}>
+              {row.icon}
+              <span>{row.label}</span>
+              <em>{row.value}</em>
+            </div>
+          ))}
         </div>
       </aside>
     </LockedShell>

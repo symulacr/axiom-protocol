@@ -20,7 +20,10 @@ import {
 } from "../components/axiom/icons.js";
 import { Button } from "../components/axiom/Controls.js";
 import { Logo } from "../components/axiom/AppShell.js";
-import { routePath } from "../lib/routeRegistry.js";
+import {
+  routePath,
+  PUBLIC_HUB_PATHS,
+} from "../lib/routeRegistry.js";
 import { getCopy, interpolate, type Locale } from "../lib/copy.js";
 import { useLandingStats } from "../hooks/useLandingStats.js";
 import {
@@ -41,6 +44,24 @@ function PrincipleIcon({ name }: { name: "shield" | "receipt" | "wallet" }) {
   return <CreditCard size={18} aria-hidden="true" />;
 }
 
+/** Wave 5: footer + principle links are locale-keyed labels with no href in
+ *  copy.ts, so the destinations are wired by the (locale-stable) index order
+ *  — Agents/Receipts/Storage/Developers map onto the canonical hub paths. */
+const FOOTER_HREFS = [
+  PUBLIC_HUB_PATHS.agents,
+  PUBLIC_HUB_PATHS.proofs,
+  PUBLIC_HUB_PATHS.storage,
+  PUBLIC_HUB_PATHS.developers,
+] as const;
+
+/** Wave 5: principle cards (spec / receipts / wallet) get real destinations
+ *  too — the audit flagged every `href="#"` on the landing as a dead link. */
+const PRINCIPLE_HREFS = [
+  PUBLIC_HUB_PATHS.developers,
+  PUBLIC_HUB_PATHS.proofs,
+  PUBLIC_HUB_PATHS.payments,
+] as const;
+
 export function Landing({
   onConnect,
   onGuide,
@@ -55,21 +76,25 @@ export function Landing({
   const copy = getCopy(locale);
   const [menuOpen, setMenuOpen] = useState(false);
   const stats = useLandingStats();
-  const chainId = stats.networkChain ?? 9000;
+  // Wave 5: the 9000 testnet placeholder is gone — the landing speaks the
+  // Aristotle mainnet id (16661) until /v1/agents reports a chain.
+  const chainId = stats.networkChain ?? 16661;
   const agentsCount = stats.agentsOnline;
   const liveTickerItems = useLandingTicker(
     copy.landing.ticker.actionLabels,
     locale,
   );
   /** L2-N5-LIVE: live events first, padded with copy placeholders so the
-   *  rail is always exactly TICKER_MAX_ITEMS long. */
+   *  rail is always exactly TICKER_MAX_ITEMS long. Placeholders whose agent
+   *  id is already shown by a live row are dropped — a duplicated row read
+   *  as a rendering bug, not as data (2026-09-02 re-audit). */
+  const seenAgents = new Set(liveTickerItems.map((item) => item.agent));
   const tickerItems = [
     ...liveTickerItems,
-    ...copy.landing.ticker.items.slice(
-      0,
-      TICKER_MAX_ITEMS - liveTickerItems.length,
+    ...copy.landing.ticker.items.filter(
+      (item) => !seenAgents.has(item.agent),
     ),
-  ];
+  ].slice(0, TICKER_MAX_ITEMS);
   const navigate = (path: string) => {
     setMenuOpen(false);
     go(path);
@@ -151,6 +176,7 @@ export function Landing({
       <main className="landing-main" id="hero">
         <section className="landing-copy">
           <span className="eyebrow">
+            <span className="num">01</span>
             <span>{copy.landing.eyebrow}</span>
           </span>
           <h1>
@@ -182,14 +208,14 @@ export function Landing({
             <Button
               className="wallet-cta wallet-cta-hero"
               onClick={onConnect}
-              icon={<Wallet size={15} />}
+              icon={<Wallet size={16} />}
             >
               {copy.nav.connectWallet}
             </Button>
             <Button
               variant="ghost"
               onClick={onGuide}
-              icon={<CircleHelp size={15} />}
+              icon={<CircleHelp size={16} />}
             >
               {copy.nav.howItWorks}
             </Button>
@@ -204,15 +230,15 @@ export function Landing({
           {/* L2-N3: trust-line chips below the buttons. */}
           <div className="trust-line">
             <span className="trust-item">
-              <ShieldCheck size={12} aria-hidden="true" />
+              <ShieldCheck size={14} aria-hidden="true" />
               {copy.landing.trust.nonCustodial}
             </span>
             <span className="trust-item">
-              <Clock3 size={12} aria-hidden="true" />
+              <Clock3 size={14} aria-hidden="true" />
               {copy.landing.trust.signedIn}
             </span>
             <span className="trust-item">
-              <FileCheck2 size={12} aria-hidden="true" />
+              <FileCheck2 size={14} aria-hidden="true" />
               {copy.landing.trust.receipt}
             </span>
           </div>
@@ -222,7 +248,7 @@ export function Landing({
         <section className="landing-visual hero-visual-modern">
           <img
             className="hero-visual-poster"
-            src="/brand/landing-proof-field-1536.webp"
+            src="/brand/hero-seal-512.jpg"
             alt=""
             aria-hidden="true"
           />
@@ -289,7 +315,10 @@ export function Landing({
           <span className="live-pulse" />
           {interpolate(copy.landing.ticker.label, { chainId })}
         </span>
-        <div className="ticker-track">
+        {/* Wave 5: the track is aria-hidden — the section label above already
+            names the rail, so screen readers hear the summary once instead of
+            the row contents twice. */}
+        <div className="ticker-track" aria-hidden="true">
           {tickerItems.map((item, i) => (
             <span key={i} className="ticker-item">
               <span
@@ -329,8 +358,8 @@ export function Landing({
               </span>
               <h3 dangerouslySetInnerHTML={{ __html: p.title }} />
               <p dangerouslySetInnerHTML={{ __html: p.body }} />
-              <a href="#" className="p-link">
-                {p.link} <ArrowRight size={11} aria-hidden="true" />
+              <a href={PRINCIPLE_HREFS[i]} className="p-link">
+                {p.link} <ArrowRight size={14} aria-hidden="true" />
               </a>
             </article>
           ))}
@@ -372,7 +401,7 @@ export function Landing({
                 className="j-cta"
                 onClick={journeyOnClicks[item.onClick]}
               >
-                {item.cta} <ArrowRight size={13} aria-hidden="true" />
+                {item.cta} <ArrowRight size={14} aria-hidden="true" />
               </button>
             </article>
           ))}
@@ -384,7 +413,7 @@ export function Landing({
         <small>{copy.landing.footer.credit}</small>
         <div className="footer-meta">
           {copy.landing.footer.links.map((l, i) => (
-            <a key={i} href="#">
+            <a key={i} href={FOOTER_HREFS[i]}>
               {l.label}
             </a>
           ))}

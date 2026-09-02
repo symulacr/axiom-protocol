@@ -3,6 +3,7 @@ import {
   useEffect,
   useId,
   useMemo,
+  useRef,
   useState,
   type FormEvent,
   type ReactElement,
@@ -77,7 +78,9 @@ function ModalSheet({
   children: ReactNode;
 }): ReactElement {
   const titleId = useId();
-  useModalDismiss(onClose);
+  // Dismiss contract via useModalDismiss: Esc + Tab trap + initial focus + focus restore.
+  const sheetRef = useRef<HTMLElement>(null);
+  useModalDismiss(onClose, sheetRef);
   return createPortal(
     <div
       className="operation-review-layer"
@@ -85,6 +88,7 @@ function ModalSheet({
       onMouseDown={onClose}
     >
       <section
+        ref={sheetRef}
         className="operation-review-sheet transfer-modal-sheet"
         role="dialog"
         aria-modal="true"
@@ -248,7 +252,7 @@ function TransferFormPhase({
           type="submit"
           disabled={!canSubmit || rekeyError !== null}
           busy={isLoading}
-          icon={<ShieldCheck size={15} />}
+          icon={<ShieldCheck size={16} />}
         >
           {isLoading ? "Signing…" : "Sign transfer authorization"}
         </Button>
@@ -346,7 +350,7 @@ function ConfirmTransferPhase({
           type="submit"
           disabled={isLoading || signature === null}
           busy={isLoading}
-          icon={<ShieldCheck size={15} />}
+          icon={<ShieldCheck size={16} />}
         >
           {isLoading ? "Submitting…" : "Confirm on-chain transfer"}
         </Button>
@@ -424,7 +428,7 @@ function CoSignPhase({
             type="submit"
             disabled={isLoading}
             busy={isLoading}
-            icon={<ShieldCheck size={15} />}
+            icon={<ShieldCheck size={16} />}
           >
             {copy.action}
           </Button>

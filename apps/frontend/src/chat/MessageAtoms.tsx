@@ -8,11 +8,12 @@ import {
 } from "react";
 import { formatToolResult } from "@axiom/chat-runtime";
 import {
+  AXIOM_ASSISTANT_NAME,
   CHAT_TOOL_CLASS_LABELS,
   classOfTool,
   getChatToolSpec,
 } from "@axiom/config/chat-tools";
-import { COLORS, Spinner, Textarea } from "../components/ui.js";
+import { Spinner, Textarea } from "../components/ui.js";
 import { Button } from "../components/axiom/Controls.js";
 import { Check, ShieldCheck, Wallet } from "../components/axiom/icons.js";
 import { formatEther } from "viem";
@@ -24,8 +25,8 @@ import { TOOL_LABELS } from "./tools.js";
 import type { Copy } from "../lib/copy.js";
 
 export const insetCardStyle: CSSProperties = {
-  background: COLORS.bg,
-  border: `1px solid ${COLORS.border}`,
+  background: "var(--bg-2)",
+  border: "1px solid var(--line)",
   borderRadius: "var(--radius-md)",
   padding: "var(--space-sm) var(--space-md)",
   marginTop: "var(--space-xs)",
@@ -40,16 +41,9 @@ export function ToolClassBadge({
   if (!cls) return null;
   return (
     <span
+      className="tool-card__class"
       aria-label={CHAT_TOOL_CLASS_LABELS[cls]}
       title={getChatToolSpec(name)?.hint}
-      style={{
-        marginLeft: 6,
-        fontSize: "var(--text-xs)",
-        fontWeight: "var(--fw-medium)",
-        color: COLORS.textDim,
-        textTransform: "lowercase",
-        letterSpacing: "0.02em",
-      }}
     >
       ({CHAT_TOOL_CLASS_LABELS[cls]})
     </span>
@@ -64,25 +58,64 @@ export function StatusDot({
   children: ReactNode;
 }): ReactElement {
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-        marginBottom: "var(--space-xs)",
-      }}
-    >
-      <span
-        style={{
-          display: "inline-block",
-          width: 6,
-          height: 6,
-          borderRadius: "50%",
-          background: color,
-        }}
-      />
+    <div className="msg-statusdot">
+      <span className="msg-statusdot__dot" style={{ background: color }} />
       <span className="fw-semibold text-xs text-dim uppercase">{children}</span>
     </div>
+  );
+}
+
+/** Wave 6A (browser-3 #5: "no avatars — exactly 1 img on the page"): a
+ * deterministic glyph chip per turn — no network assets, no per-message
+ * state. User turns get the first letter of their own message (fallback
+ * "Y"); assistant turns the agent's initial. Tool rows stay avatar-less:
+ * the tool label IS the provenance. `aria-hidden` — the StatusDot role
+ * label already names the speaker, so the chip is decoration and stays
+ * out of the a11y tree. */
+export function MsgAvatar({
+  role,
+  content,
+}: {
+  role: "user" | "assistant" | "tool";
+  content?: string | null;
+}): ReactElement | null {
+  if (role === "tool") return null;
+  const first = (content ?? "").trim().match(/\p{L}/u)?.[0];
+  const glyph = role === "user" ? (first ?? "Y") : (AXIOM_ASSISTANT_NAME.charAt(0) || "A");
+  return (
+    <span className="msg-avatar" aria-hidden="true">
+      {glyph.toUpperCase()}
+    </span>
+  );
+}
+
+/** Wave 6A (browser-3 #5: "no timestamps — zero \d:\d matches in the
+ * transcript"): renders the turn's wall-clock time beside the role label.
+ * The store keeps no per-message clock (and W6-A must not restructure it),
+ * so the time is captured at first render and memoized per message id —
+ * stable across re-renders/streaming, never ticks. Caveat, documented:
+ * threads restored from persistence re-capture at load, so their times
+ * reflect the restore, not the original send. Full detail rides the
+ * `title` tooltip; display is 12px dim, tabular, non-uppercase. */
+const msgTimeMemo = new Map<string, number>();
+const MSG_TIME_MEMO_MAX = 500; // one entry per rendered message; bounded
+
+export function MsgTimestamp({ id }: { id: string }): ReactElement {
+  let ms = msgTimeMemo.get(id);
+  if (ms === undefined) {
+    if (msgTimeMemo.size >= MSG_TIME_MEMO_MAX) msgTimeMemo.clear();
+    ms = Date.now();
+    msgTimeMemo.set(id, ms);
+  }
+  const d = new Date(ms);
+  return (
+    <time
+      className="msg-time"
+      dateTime={d.toISOString()}
+      title={d.toLocaleString()}
+    >
+      {d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+    </time>
   );
 }
 
@@ -135,9 +168,9 @@ export function AskUserCard({
     <div style={insetCardStyle}>
       <p
         style={{
-          margin: "0 0 8px",
-          fontSize: "var(--text-sm)",
-          color: COLORS.text,
+          margin: "0 0 var(--space-2)",
+          fontSize: "var(--fs-body)",
+          color: "var(--text)",
         }}
       >
         {question}
@@ -148,7 +181,7 @@ export function AskUserCard({
             style={{
               display: "flex",
               flexDirection: "column",
-              gap: 6,
+              gap: "var(--space-1)",
               alignItems: "flex-start",
             }}
           >
@@ -160,9 +193,9 @@ export function AskUserCard({
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
-                    gap: 6,
-                    fontSize: "var(--text-sm)",
-                    color: COLORS.text,
+                    gap: "var(--space-1)",
+                    fontSize: "var(--fs-body)",
+                    color: "var(--text)",
                     cursor: "pointer",
                   }}
                 >
@@ -188,7 +221,7 @@ export function AskUserCard({
             </Button>
           </div>
         ) : (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-2)" }}>
             {options.map((o, i) => (
               <Button key={i} variant="secondary" onClick={() => submit(o)}>
                 {o}
@@ -197,7 +230,7 @@ export function AskUserCard({
           </div>
         )
       ) : (
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: "var(--space-2)" }}>
           <Textarea
             aria-label={copy.answerPlaceholder}
             value={freeText}
@@ -305,12 +338,6 @@ export type ToolRun = {
   args?: Record<string, unknown>;
 };
 
-/** Monospace detail text inside an expanded tool card. */
-const monoXs: CSSProperties = {
-  fontFamily: "var(--font-mono)",
-  fontSize: "var(--text-xs)",
-};
-
 /** Per-message telemetry, collapsed to a quiet one-line affordance: the full
  * TTFT/tok-s/cache/provider/cost dump only renders on explicit expand
  * (02-). Own state per message — no parent bookkeeping. */
@@ -339,12 +366,21 @@ export function InsightsDisclosure({
   );
 }
 
+/** Wave 6B: ONE expandable card per tool call — collapsed it is the status
+ * row, expanded it carries the full result details. This is the merge-ready
+ * surface for the re-audit MAJOR "tool output doubled" finding (status chip
+ * row + second card rendering the same header): ChatPage renders only this
+ * card per tool call and overlays `result`/`error` from the paired tool-role
+ * message, instead of emitting the StatusDot header + inset result card
+ * pair. */
 export function ToolCallCard({
   run,
   expanded,
   onToggle,
   onRetry,
   retryLabel,
+  result,
+  error,
 }: {
   run: ToolRun;
   expanded: boolean;
@@ -352,70 +388,48 @@ export function ToolCallCard({
   /** 04: retry-with-same-args affordance on failed tool runs. */
   onRetry?: () => void;
   retryLabel?: string;
+  /** Overlay from the paired tool-role message content (merge wiring);
+   * defaults to the live run's own payload. */
+  result?: string | null;
+  error?: string;
 }): ReactElement {
   const label = TOOL_LABELS[run.name] ?? run.name;
+  const resultBody = result !== undefined ? result : run.result;
+  const errorBody = error !== undefined ? error : run.error;
+  const failed = run.status === "error";
   // Sponsored badge (V3 W5-B): the sponsor-lane result envelope carries
   // sponsored:true + relayerNonce — parse it out of the run result JSON.
   const sponsored =
     run.status === "success" &&
-    parseObj(run.result ?? null)?.sponsored === true;
+    parseObj(resultBody ?? null)?.sponsored === true;
   const elapsedSec = Math.max(
     0,
     Math.floor((Date.now() - run.startedAt) / 1000),
   );
   return (
-    <div
-      style={{
-        border: "1px solid var(--c-border)",
-        borderRadius: "var(--radius-md)",
-        margin: "var(--space-xs) 0",
-        background: "var(--c-surface)",
-        overflow: "hidden",
-      }}
-    >
+    <div className={failed ? "tool-card tool-card--error" : "tool-card"}>
       <button
         type="button"
+        className="tool-card__head"
         onClick={onToggle}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "var(--space-sm)",
-          width: "100%",
-          padding: "6px 10px",
-          border: "none",
-          background: "none",
-          cursor: "pointer",
-          color: COLORS.text,
-          textAlign: "left",
-          font: "inherit",
-          fontSize: "var(--text-xs)",
-        }}
         aria-expanded={expanded}
       >
         {run.status === "running" ? (
           <Spinner size={12} />
         ) : run.status === "success" ? (
-          <span style={{ color: "var(--c-success)" }} aria-hidden="true">
+          <span className="tool-card__ok" aria-hidden="true">
             ✓
           </span>
         ) : (
-          <span style={{ color: "var(--c-danger)" }} aria-hidden="true">
+          <span className="tool-card__fail" aria-hidden="true">
             ✕
           </span>
         )}
-        <strong style={{ color: COLORS.bronzeLight }}>{label}</strong>
+        <strong className="copper tool-card__label">{label}</strong>
         <ToolClassBadge name={run.name} />
         {sponsored ? (
-          <span
-            aria-label="sponsored relay"
-            title="Executed gas-free via the protocol GasTank"
-            style={{
-              fontSize: "var(--text-xs)",
-              fontWeight: "var(--fw-medium)",
-              color: "var(--c-success)",
-              textTransform: "lowercase",
-            }}
-          >
+          <span className="tool-card__sponsored" aria-label="sponsored relay"
+            title="Executed gas-free via the protocol GasTank">
             sponsored
           </span>
         ) : null}
@@ -423,12 +437,7 @@ export function ToolCallCard({
             live tool-card status; hide the running count — the honest
             "done"/"failed" terminal text below stays announced. */}
         <span
-          style={{
-            marginLeft: "auto",
-            color: COLORS.textDim,
-            fontSize: "var(--text-xs)",
-            whiteSpace: "nowrap",
-          }}
+          className="tool-card__state"
           aria-hidden={run.status === "running" || undefined}
         >
           {run.status === "running"
@@ -439,15 +448,8 @@ export function ToolCallCard({
         </span>
       </button>
       {expanded && (
-        <div
-          style={{
-            padding: "6px 10px",
-            borderTop: "1px solid var(--c-border)",
-            fontSize: "var(--text-xs)",
-            color: COLORS.textMuted,
-          }}
-        >
-          <div style={{ marginBottom: 6 }}>
+        <div className="tool-card__body">
+          <div className="tool-card__meta">
             <span aria-hidden={run.status === "running" || undefined}>
               {run.status === "running"
                 ? `running ${elapsedSec}s`
@@ -459,57 +461,29 @@ export function ToolCallCard({
               </span>
             ) : null}
           </div>
-          {run.result && !hasEncodePreview(run.result) ? (
-            <div
-              style={{
-                ...monoXs,
-                margin: "0 0 6px",
-                color: COLORS.textMuted,
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-            >
-              {run.result.length > 80
-                ? `${run.result.slice(0, 80)}…`
-                : run.result}
-            </div>
-          ) : null}
           {run.args && Object.keys(run.args).length > 0 && (
-            <pre
-              style={{
-                ...monoXs,
-                margin: "0 0 6px",
-                whiteSpace: "pre-wrap",
-                wordBreak: "break-word",
-              }}
-            >
+            <pre className="tool-card__args">
               {JSON.stringify(run.args, null, 2)}
             </pre>
           )}
-          {run.error ? (
-            <span style={{ color: "var(--c-danger)" }}>
-              {/* 04: humanized — never a raw viem/backend dump. */}
-              {humanizeError(run.error)}
+          {errorBody ? (
+            <div className="tool-card__err">
+              <span>
+                {/* 04: humanized — never a raw viem/backend dump. */}
+                {humanizeError(errorBody)}
+              </span>
               {onRetry && retryLabel ? (
                 <button
                   type="button"
                   className="icon-button icon-button--sm icon-button--ghost msg-action"
-                  style={{ marginLeft: 8 }}
                   onClick={onRetry}
                 >
                   {retryLabel}
                 </button>
               ) : null}
-            </span>
-          ) : run.result ? (
-            hasEncodePreview(run.result) ? (
-              <span style={{ color: COLORS.textMuted }}>
-                Encode preview rendered in the tool card above.
-              </span>
-            ) : (
-              <ToolResultBody name={run.name} content={run.result} />
-            )
+            </div>
+          ) : resultBody ? (
+            <ToolResultBody name={run.name} content={resultBody} />
           ) : null}
         </div>
       )}
@@ -555,18 +529,32 @@ export function ToolResultBody({
   const text = formatToolResult(name, content);
   if (!text) return null;
 
+  // Wave 6B: a tool failure must never render in the same dim gray as
+  // helper text (browser-3 finding #6) — even when the live run map is
+  // gone (e.g. after reload), the payload itself marks the danger tone.
+  const failed = isFailurePayload(content);
   return (
     <pre
+      className={failed ? "tool-result tool-result--danger" : "tool-result"}
       style={{
         ...preBlockStyle,
         wordBreak: "break-word",
         lineHeight: "var(--lh-normal)",
-        color: COLORS.textMuted,
+        color: failed ? "var(--danger)" : "var(--muted)",
       }}
     >
       {text}
     </pre>
   );
+}
+
+/** Wave 6B: tool failures arrive either as an `{error}` JSON envelope or a
+ * bare "Error: …" string; both mark the danger tone. */
+function isFailurePayload(content: string | null): boolean {
+  if (!content) return false;
+  const obj = parseObj(content);
+  if (obj) return obj.error !== undefined;
+  return /^error\b/i.test(content.trim());
 }
 
 type EncodePreview = {
@@ -649,18 +637,19 @@ export function EncodePreviewCard({
       <div
         style={{
           ...cardBaseStyle,
-          border: `1px solid ${COLORS.bronzeBorder}`,
-          background: COLORS.bronzeBg,
-          fontSize: "var(--text-sm)",
+          border: `1px solid ${"color-mix(in srgb, var(--copper) 40%, transparent)"}`,
+          background: "color-mix(in srgb, var(--copper) 12%, transparent)",
+          fontSize: "var(--fs-body)",
         }}
       >
-        <strong style={{ color: COLORS.bronzeLight }}>
-          <Check size={13} /> {chatCopy.encodeSubmitted}
+        <strong style={{ color: "var(--copper-bright)" }}>
+          <Check size={14} /> {chatCopy.encodeSubmitted}
         </strong>
         <div
+          className="num"
           style={{
-            color: COLORS.textMuted,
-            marginTop: 4,
+            color: "var(--muted)",
+            marginTop: "var(--space-1)",
             wordBreak: "break-all",
           }}
         >
@@ -674,35 +663,37 @@ export function EncodePreviewCard({
     <div
       style={{
         ...cardBaseStyle,
-        border: `1px solid ${COLORS.border}`,
-        background: COLORS.bg,
-        fontSize: "var(--text-xs)",
-        color: COLORS.textMuted,
+        border: "1px solid var(--line)",
+        background: "var(--bg-2)",
+        fontSize: "var(--fs-small)",
+        color: "var(--muted)",
       }}
     >
       <div
         style={{
           display: "flex",
-          gap: 6,
+          gap: "var(--space-1)",
           alignItems: "center",
           fontWeight: "var(--fw-semibold)",
-          color: COLORS.text,
-          marginBottom: 6,
+          color: "var(--text)",
+          marginBottom: "var(--space-2)",
         }}
       >
-        <ShieldCheck size={13} />
+        <ShieldCheck size={14} />
         {chatCopy.encodeTitle}
       </div>
       {preview.to ? <div>to: {preview.to}</div> : null}
       {preview.value && preview.value !== "0" ? (
-        <div>value: {formatNativeValue(preview.value)}</div>
+        <div className="num">value: {formatNativeValue(preview.value)}</div>
       ) : null}
-      {amountLabel ? <div>amount: {amountLabel}</div> : null}
+      {amountLabel ? (
+        <div className="num">amount: {amountLabel}</div>
+      ) : null}
       {preview.data ? (
-        <div style={{ wordBreak: "break-all", marginTop: 4 }}>
+        <div style={{ wordBreak: "break-all", marginTop: "var(--space-1)" }}>
           data: {preview.data.slice(0, 66)}
           {preview.data.length > 66 ? "…" : ""}
-          <div style={{ color: COLORS.textDim, marginTop: 2 }}>
+          <div style={{ color: "var(--dim)", marginTop: "var(--space-1)" }}>
             {chatCopy.encodeRawData}
           </div>
         </div>
@@ -710,16 +701,16 @@ export function EncodePreviewCard({
       {signError ? (
         <div
           style={{
-            marginTop: 8,
-            color: "var(--c-danger)",
-            fontSize: "var(--text-xs)",
+            marginTop: "var(--space-2)",
+            color: "var(--danger)",
+            fontSize: "var(--fs-small)",
           }}
         >
           {signError}
         </div>
       ) : null}
       {onSign && preview.to && !signedHash ? (
-        <div style={{ marginTop: 8 }}>
+        <div style={{ marginTop: "var(--space-2)" }}>
           <Button onClick={handleSign} icon={<Wallet size={14} />}>
             {chatCopy.encodeSign}
           </Button>
@@ -730,7 +721,7 @@ export function EncodePreviewCard({
 }
 
 const preBlockStyle: CSSProperties = {
-  fontSize: "var(--text-xs)",
+  fontSize: "var(--fs-small)",
   margin: 0,
   whiteSpace: "pre-wrap",
   fontFamily: "inherit",

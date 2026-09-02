@@ -1,11 +1,25 @@
 /* Flow + locked-route metadata. */
 import {
+  Activity,
   Bot,
+  Clock3,
   CreditCard,
+  Database,
+  FileCheck2,
+  Gauge,
+  KeyRound,
+  LayoutDashboard,
+  MessageSquare,
   Play,
+  ReceiptText,
+  Search,
+  Server,
+  Settings2,
   ShieldCheck,
+  Timer,
   UploadCloud,
   Wallet,
+  Zap,
 } from "../components/axiom/icons";
 import type { FlowKind } from "./models";
 import { MEDIA } from "./media";
@@ -45,114 +59,158 @@ export const flowMeta: Record<
   },
 };
 
-export const lockedRouteMeta: Record<
-  string,
-  {
-    slug: string;
-    label: string;
-    title: string;
-    emphasis: string;
-    copy: string;
-    media: string;
-  }
-> = {
+/* Locked-gate visual slots (Wave 4 gate merge): one table, one gate component.
+ * The localized hero words live in copy.lockedHero (`hero` key); this table
+ * owns only what copy.ts must not: the route slug class, the preview media,
+ * the evidence label, and the schematic rows rendered under the preview
+ * (masked/teaser values only — the gate never fakes live data). */
+export type LockedGateRow = { icon: React.ReactNode; label: string; value: string };
+
+export type LockedGate = {
+  slug: string;
+  label: string;
+  media: string;
+  /** copy.lockedHero key carrying this route's localized hero. */
+  hero: keyof import("./copy").Copy["lockedHero"];
+  rows: [LockedGateRow, LockedGateRow];
+};
+
+export const lockedGates: Record<string, LockedGate | undefined> = {
   "/app": {
     slug: "overview",
     label: "Console overview",
-    title: "Your console,",
-    emphasis: "at a glance.",
-    copy: "See what your agents need next.",
     media: MEDIA.proof,
+    hero: "app",
+    rows: [
+      { icon: <Bot size={16} />, label: "Agents", value: "••• live" },
+      { icon: <Activity size={16} />, label: "Next tick", value: "••• queued" },
+    ],
   },
   "/settings": {
     slug: "settings",
     label: "Session settings",
-    title: "Settings live",
-    emphasis: "here.",
-    copy: "Session, display and console preferences.",
     media: MEDIA.recovery,
+    hero: "settings",
+    rows: [
+      { icon: <Settings2 size={16} />, label: "Display", value: "•••" },
+      { icon: <KeyRound size={16} />, label: "Session", value: "••• h" },
+    ],
   },
   "/transactions": {
     slug: "transactions",
     label: "Transaction center",
-    title: "Track every payment",
-    emphasis: "to its receipt.",
-    copy: "Every receipt, its state, and recovery.",
     media: MEDIA.transfer,
+    hero: "transactions",
+    rows: [
+      { icon: <ReceiptText size={16} />, label: "Receipts", value: "••• indexed" },
+      { icon: <Clock3 size={16} />, label: "Recovery", value: "ready" },
+    ],
   },
   "/chat": {
     slug: "chat",
     label: "Operator chat",
-    title: "Chat that knows",
-    emphasis: "your setup.",
-    copy: "Ask about your agents; chat knows your session.",
     media: MEDIA.onboarding,
+    hero: "chat",
+    rows: [
+      { icon: <MessageSquare size={16} />, label: "Thread", value: "••• turns" },
+      { icon: <Server size={16} />, label: "Tools", value: "••• live" },
+    ],
   },
   "/mint": {
     slug: "mint",
     label: "Mint an agent",
-    title: "Name your agent",
-    emphasis: "on-chain.",
-    copy: "Your name becomes an on-chain identity with a receipt.",
     media: MEDIA.mint,
+    hero: "mint",
+    rows: [
+      { icon: <KeyRound size={16} />, label: "Identity", value: "unique" },
+      { icon: <ShieldCheck size={16} />, label: "Ownership", value: "you" },
+    ],
   },
   "/payment": {
     slug: "payment",
     label: "Payment route",
-    title: "Pay exactly",
-    emphasis: "what you approve.",
-    copy: "Approve exactly what you pay; fees shown up front.",
     media: MEDIA.payment,
+    hero: "payment",
+    rows: [
+      { icon: <CreditCard size={16} />, label: "Approval cap", value: "••• 0G" },
+      { icon: <ShieldCheck size={16} />, label: "Fees", value: "up front" },
+    ],
   },
   "/transfer": {
     slug: "transfer",
     label: "Transfer flow",
-    title: "Transfers your receiver",
-    emphasis: "co-signs.",
-    copy: "Receiver co-signs; expiry is enforced.",
     media: MEDIA.transfer,
+    hero: "transfer",
+    rows: [
+      { icon: <ShieldCheck size={16} />, label: "Co-sign", value: "receiver" },
+      { icon: <Timer size={16} />, label: "Expiry", value: "enforced" },
+    ],
   },
   "/storage": {
     slug: "storage",
     label: "Storage proofs",
-    title: "Storage you can",
-    emphasis: "verify.",
-    copy: "Every storage step is verifiable, end to end.",
     media: MEDIA.proof,
+    hero: "storage",
+    rows: [
+      { icon: <Database size={16} />, label: "Proofs", value: "••• verified" },
+      { icon: <FileCheck2 size={16} />, label: "Roots", value: "on-chain" },
+    ],
   },
   "/agents/": {
     slug: "agent",
     label: "Agent detail",
-    title: "Every agent,",
-    emphasis: "in detail.",
-    copy: "Identity, ownership, activity and receipts per agent.",
     media: MEDIA.onboarding,
+    hero: "agent",
+    rows: [
+      { icon: <Bot size={16} />, label: "Identity", value: "ERC-7857" },
+      { icon: <ReceiptText size={16} />, label: "Receipts", value: "•••" },
+    ],
   },
-  // F1: flow-route entries so /tick, /deposit, /withdraw no longer fall back
-  // to the /app console-overview hero. Hero text is localized via
-  // copy.lockedHero (LockedRoute prefers it when present).
+  "/agents/list": {
+    slug: "roster",
+    label: "Agent roster",
+    media: MEDIA.onboarding,
+    hero: "agentsList",
+    rows: [
+      { icon: <LayoutDashboard size={16} />, label: "Roster", value: "••• agents" },
+      { icon: <Search size={16} />, label: "Details", value: "per agent" },
+    ],
+  },
   "/tick": {
     slug: "tick",
     label: "Run agent task",
-    title: "Run one agent task,",
-    emphasis: "bounded.",
-    copy: "Give the agent one instruction, it streams the result and stops.",
     media: MEDIA.proof,
+    hero: "tick",
+    rows: [
+      { icon: <Play size={16} />, label: "Instruction", value: "bounded" },
+      { icon: <Gauge size={16} />, label: "Stream", value: "••• tokens" },
+    ],
   },
   "/deposit": {
     slug: "deposit",
     label: "Deposit",
-    title: "Fund an agent",
-    emphasis: "vault.",
-    copy: "Add native gas to one agent's vault before it runs.",
     media: MEDIA.payment,
+    hero: "deposit",
+    rows: [
+      { icon: <Wallet size={16} />, label: "Vault gas", value: "••• 0G" },
+      { icon: <Zap size={16} />, label: "Top-up", value: "native" },
+    ],
   },
   "/withdraw": {
     slug: "withdraw",
     label: "Withdraw",
-    title: "Withdraw from an",
-    emphasis: "agent vault.",
-    copy: "Move funds out of one agent's vault, balance shown first.",
     media: MEDIA.transfer,
+    hero: "withdraw",
+    rows: [
+      { icon: <UploadCloud size={16} />, label: "Balance", value: "••• 0G" },
+      { icon: <Timer size={16} />, label: "Cooldown", value: "•••" },
+    ],
   },
 };
+
+/** Route → gate slot, with the /agents/:tokenId prefix and the /app console
+ * overview as the ordered fallbacks (unknown internal routes still gate). */
+export const lockedGateFor = (pathname: string): LockedGate | undefined =>
+  lockedGates[pathname] ??
+  (pathname.startsWith("/agents/") ? lockedGates["/agents/"] : undefined) ??
+  lockedGates["/app"];

@@ -44,6 +44,7 @@ import {
   isOperationPath,
 } from "../../lib/routeRegistry.js";
 import { useHealth } from "../../hooks/useHealth.js";
+import { listFocusables } from "../../hooks/useModalDismiss.js";
 import { truncateAddress, trapTabFocus } from "../../utils/format.js";
 import { APP_CHAIN, APP_CHAIN_ID } from "../../config/wagmi.js";
 import { getCopy, type Copy, type NavGroupKey } from "../../lib/copy.js";
@@ -309,11 +310,13 @@ function Sidebar({
               ? session.profile || copy.topbar.operator
               : copy.topbar.operator}
           </strong>
-          <small>
-            {identified
-              ? truncateAddress(session.address)
-              : copy.topbar.notConnected}
-          </small>
+          {/* W6-B (browser-3, Redundancy: "'not connected' appears twice in
+              one viewport — pick one home for connection state"): the topbar
+              Status pill (W5-B: one connection indicator per chip) is the
+              single owner of connection state. The sidebar account chip now
+              renders only its identified sublabel (the truncated address) and
+              stays silent when disconnected. */}
+          {identified && <small>{truncateAddress(session.address)}</small>}
         </div>
         <Settings2 size={14} />
       </button>
@@ -461,12 +464,8 @@ function routeItemsFor(copy: Copy): CommandItem[] {
   }));
 }
 
-// Focus-trap selector shared by the mobile drawer (focus-first + tab wrap).
-const FOCUSABLE_SELECTOR =
-  "button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])";
-
-const listFocusables = (root: HTMLElement | null): HTMLElement[] =>
-  Array.from(root?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR) ?? []);
+// listFocusables (+ the focusable selector it wraps) live in useModalDismiss —
+// the mobile drawer and the palette share the dialog trap contract with every sheet.
 
 /** Active element narrowed to HTMLElement (focus restore on dismiss). */
 const focusedElement = (): HTMLElement | null =>
@@ -667,10 +666,10 @@ function CommandCenter({
               </div>
               <div className="command-center-meta" aria-live="polite">
                 <span>
-                  <Sparkles size={13} /> {cmd.resultsCount(results.length)}
+                  <Sparkles size={14} /> {cmd.resultsCount(results.length)}
                 </span>
                 <span>
-                  <Keyboard size={13} /> {cmd.hintKeys}
+                  <Keyboard size={14} /> {cmd.hintKeys}
                 </span>
               </div>
               <div
@@ -718,7 +717,7 @@ function CommandCenter({
                             {item.shortcut ? (
                               <kbd>{item.shortcut}</kbd>
                             ) : (
-                              <CornerDownLeft size={13} />
+                              <CornerDownLeft size={14} />
                             )}
                           </button>
                         );
@@ -775,11 +774,13 @@ function Topbar({
         <CommandCenter state={state} go={go} fundTarget={fundTarget} />
         <button className="session-top" onClick={() => go("/settings")}>
           <Wallet size={14} />
-          <span>
-            {identified
-              ? session.profile || truncateAddress(session.address)
-              : copy.topbar.notConnected}
-          </span>
+          {/* W5-B (browser-2 Fix 2): one connection indicator per chip. The
+              Status pill is the semantic owner; the identity span renders only
+              for an authenticated session — otherwise the chip read
+              "not connected NOT CONNECTED". */}
+          {identified && (
+            <span>{session.profile || truncateAddress(session.address)}</span>
+          )}
           <Status
             label={
               identified ? copy.topbar.connected : copy.topbar.notConnected
@@ -856,12 +857,12 @@ function PriorityActionStrip({
         <span>{action.proofLabel}</span>
         <b className="mono">{action.proofValue}</b>
         <small>
-          <ShieldCheck size={12} /> {action.impact}
+          <ShieldCheck size={14} /> {action.impact}
         </small>
       </div>
       <div className="priority-actions">
         <button className="button button-primary" onClick={() => openAction()}>
-          {strip.openReview} <ArrowRight size={15} />
+          {strip.openReview} <ArrowRight size={16} />
         </button>
         <button
           className="priority-why"
@@ -882,11 +883,11 @@ function PriorityActionStrip({
                 key={alternative.id}
                 onClick={() => openAction(alternative)}
               >
-                {alternative.title} <ArrowRight size={13} />
+                {alternative.title} <ArrowRight size={14} />
               </button>
             ))}
             <button onClick={() => go("/transactions?filter=review")}>
-              {strip.seeAllQueue} <ArrowRight size={13} />
+              {strip.seeAllQueue} <ArrowRight size={14} />
             </button>
           </div>
         </div>

@@ -64,7 +64,7 @@ export function FirstRunChecklist({
   if (allDone)
     return (
       <section className="checklist-card checklist-done" aria-live="polite">
-        <Check size={15} />
+        <Check size={16} />
         <span>{copy.checklist.done}</span>
       </section>
     );
@@ -99,7 +99,7 @@ export function FirstRunChecklist({
           onClick={dismiss}
           aria-label={copy.checklist.dismiss}
         >
-          <X size={15} />
+          <X size={16} />
         </button>
       </PanelHead>
       <ol className="checklist-steps">

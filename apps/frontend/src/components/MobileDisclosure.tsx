@@ -26,7 +26,7 @@ export function MobileDisclosure({
         <span>
           <strong>{title}</strong>
         </span>
-        <ChevronDown size={17} aria-hidden="true" />
+        <ChevronDown size={18} aria-hidden="true" />
       </summary>
       <div className="mobile-disclosure-content">{children}</div>
     </details>

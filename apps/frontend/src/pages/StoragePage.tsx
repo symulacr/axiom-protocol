@@ -9,6 +9,7 @@
   performs no upload and shows no fabricated hashes.
 */
 import { useState } from "react";
+import { useAccount } from "wagmi";
 import {
   ArrowRight,
   FileCheck2,
@@ -33,6 +34,9 @@ import { routePath } from "../lib/routeRegistry.js";
 /** 0x + 64 hex digits — the shape of a 0G storage publication root. */
 const ROOT_HASH_RE = /^0x[a-fA-F0-9]{64}$/;
 
+/** File-glyph in `.file-icon` — semantic exception to the 14/16/18 icon scale. */
+const FILE_ICON_SIZE = 22;
+
 /** The indexer's file-info endpoint answers GET with the file's own record
  *  (HTTP 200 JSON even for unknown roots — no blind 404 link). */
 function indexerFileInfoUrl(rootHash: string): string {
@@ -48,54 +52,33 @@ export function StoragePage({
 }) {
   const copy = getCopy(state.settings.locale);
   const labels = copy.storage.labels;
+  const { isConnected } = useAccount();
   const [rootHash, setRootHash] = useState("");
   const valid = ROOT_HASH_RE.test(rootHash.trim());
   return (
     <div className="ops-page">
       <PageHead title={copy.storage.title} lede={copy.storage.description}>
+        {!isConnected && (
+          /* Verification itself needs no wallet (it opens the 0G indexer) —
+             the muted status is honest state, not a lock. */
+          <Status label={copy.topbar.notConnected} tone="muted" />
+        )}
         <Button
           variant="secondary"
           onClick={() => go("/chat")}
-          icon={<MessageSquare size={15} />}
+          icon={<MessageSquare size={16} />}
         >
           {copy.storage.openChat}
         </Button>
       </PageHead>
       <div className="storage-grid">
         <section className="panel storage-stage">
-          <PanelHead title={copy.storage.payload} />
-          <MobileDisclosure
-            className="storage-stage-details"
-            title={copy.storage.fileSteps}
-          >
-            <div className="storage-file">
-              <div className="file-icon">
-                <FileCheck2 size={22} />
-              </div>
-              <div>
-                <strong>axiom-prime.metadata.json</strong>
-                <span>{copy.storage.fileMeta}</span>
-              </div>
-              <span className="mono">JSON</span>
-            </div>
-            <div className="storage-steps">
-              {labels.map((label, index) => (
-                <div className="storage-step" key={label}>
-                  <span>{`0${index + 1}`}</span>
-                  <strong>{label}</strong>
-                  {index < labels.length - 1 && <i />}
-                </div>
-              ))}
-            </div>
-          </MobileDisclosure>
-          <div className="storage-note">
-            <ShieldCheck size={14} />
-            <span>{copy.storage.note}</span>
-          </div>
+          {/* 2026-09-02 audit: lead with the verify block — the page's only
+              real function; the static payload ladder is demoted below it. */}
+          <PanelHead title={copy.storage.verifyTitle} />
           {/* L2-B4: the single operable element on this otherwise read-only
               page — verification happens on 0G infrastructure, never faked here. */}
           <div className="provenance-source">
-            <strong>{copy.storage.verifyTitle}</strong>
             <span>{copy.storage.verifyHint}</span>
             <label className="field">
               <span className="field-label">{copy.storage.verifyLabel}</span>
@@ -146,6 +129,35 @@ export function StoragePage({
               </a>
             </span>
           </div>
+          <PanelHead title={copy.storage.payload} />
+          <MobileDisclosure
+            className="storage-stage-details"
+            title={copy.storage.fileSteps}
+          >
+            <div className="storage-file">
+              <div className="file-icon">
+                <FileCheck2 size={FILE_ICON_SIZE} />
+              </div>
+              <div>
+                <strong>axiom-prime.metadata.json</strong>
+                <span>{copy.storage.fileMeta}</span>
+              </div>
+              <span className="mono">JSON</span>
+            </div>
+            <div className="storage-steps">
+              {labels.map((label, index) => (
+                <div className="storage-step" key={label}>
+                  <span>{`0${index + 1}`}</span>
+                  <strong>{label}</strong>
+                  {index < labels.length - 1 && <i />}
+                </div>
+              ))}
+            </div>
+          </MobileDisclosure>
+          <div className="storage-note">
+            <ShieldCheck size={14} />
+            <span>{copy.storage.note}</span>
+          </div>
         </section>
         <section className="panel provenance-panel">
           <MobileDisclosure
@@ -163,7 +175,7 @@ export function StoragePage({
                 <Status label={copy.storage.pending} tone="warning" />
               </Fact>
               <Fact label={copy.storage.encryption}>
-                <LockKeyhole size={13} /> AES-GCM
+                <LockKeyhole size={14} /> AES-GCM
               </Fact>
               <Fact label={copy.storage.indexerAge} mono>
                 {copy.storage.notIndexed}
@@ -183,7 +195,7 @@ export function StoragePage({
               <div className="not-integrated-actions">
                 <Button
                   onClick={() => go(routePath("mint"))}
-                  icon={<FileCheck2 size={15} />}
+                  icon={<FileCheck2 size={16} />}
                 >
                   {copy.storage.forwardCta}
                 </Button>

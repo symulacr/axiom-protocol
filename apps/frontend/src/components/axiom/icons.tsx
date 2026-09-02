@@ -73,10 +73,6 @@ export const Bot = createLucideIcon([
 export const Check = createLucideIcon([
   ["path", { d: "M20 6 9 17l-5-5", key: "1gmf2c" }],
 ] as const);
-export const CheckCircle2 = createLucideIcon([
-  ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
-  ["path", { d: "m9 12 2 2 4-4", key: "dzmm74" }],
-] as const);
 export const ChevronDown = createLucideIcon([
   ["path", { d: "m6 9 6 6 6-6", key: "qrunsl" }],
 ] as const);

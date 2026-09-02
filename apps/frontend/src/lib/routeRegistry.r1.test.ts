@@ -93,18 +93,26 @@ describe("R1 route-surface guards (registry/config level)", () => {
     expect(read("../hooks/useAgents.ts")).toMatch(/settled: isSuccess/);
   });
 
-  it("R1-5: the three flow routes missing from lockedRouteMeta have their own pre-auth hero copy (no /app fallback)", () => {
-    // Every flow route must be a first-class lockedRouteMeta key…
+  it("R1-5: every gated route has first-class hero copy in copy.lockedHero (no English fallback table, no /app fallback)", () => {
+    // Wave-4 gate merge: consoleCatalog.lockedRouteMeta (English hero strings
+    // + a /app fallback) was deleted; copy.lockedHero is now the single
+    // locale owner for every gate route — tick/deposit/withdraw included.
     const catalogSrc = read("consoleCatalog.tsx");
-    for (const path of ['"/tick"', '"/deposit"', '"/withdraw"']) {
+    for (const path of ['"/tick"', '"/deposit"', '"/withdraw"', '"/agents/list"']) {
       expect(catalogSrc).toMatch(new RegExp(`${path}: \\{`));
     }
-    // …and LockedRoute must prefer the localized lockedHero copy over the
-    // meta table for those routes (copy.ts is the single locale owner).
-    expect(appSrc).toMatch(/copy\.lockedHero\.tick/);
-    expect(appSrc).toMatch(/copy\.lockedHero\.deposit/);
-    expect(appSrc).toMatch(/copy\.lockedHero\.withdraw/);
+    // The visual-slot table must point each route at its copy.lockedHero key…
     const copySrc = read("copy.ts");
+    for (const hero of ["app", "settings", "transactions", "chat", "mint", "payment", "transfer", "storage", "agent", "agentsList", "tick", "deposit", "withdraw"]) {
+      expect(copySrc).toMatch(new RegExp(`\\b${hero}: \\{\\s*\\n\\s*titleLead:`, "m"));
+    }
+    // …App's gate resolves route → slot via lockedGateFor (one gate component).
+    expect(appSrc).toMatch(/lockedGateFor\(/);
+    expect(appSrc).not.toMatch(/lockedRouteMeta/);
+    expect(catalogSrc).not.toMatch(/lockedRouteMeta/);
+    // LockedRoute still prefers the localized lockedHero copy (copy.ts is the
+    // single locale owner) — spot-check the three flow routes in every locale.
+    expect(appSrc).toMatch(/copy\.lockedHero\[gate\.hero\]/);
     for (const locale of ["en", "fr", "de"] as const) {
       for (const route of ["tick", "deposit", "withdraw"] as const) {
         const hero = getCopy(locale).lockedHero[route];

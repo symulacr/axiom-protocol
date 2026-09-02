@@ -6,30 +6,13 @@ import type {
   TextareaHTMLAttributes,
 } from "react";
 
-// Only keys with render-site consumers; status/danger/success/warning colors live in CSS classes.
-export const COLORS = {
-  bg: "var(--c-bg)",
-  surface: "var(--c-surface)",
-
-  border: "var(--c-border)",
-
-  text: "var(--c-text)",
-  textMuted: "var(--c-text-muted)",
-  textDim: "var(--c-text-dim)",
-
-  bronze: "var(--c-bronze)",
-  bronzeLight: "var(--c-bronze-light)",
-  bronzeBg: "var(--c-bronze-bg)",
-  bronzeBorder: "var(--c-bronze-border)",
-} as const;
-
 const formFieldBase: CSSProperties = {
   padding: "0.625rem 0.875rem",
   borderRadius: "var(--radius-md)",
   // No inline border: .axiom-field owns it so the :focus border change + focus ring actually apply.
-  background: COLORS.bg,
-  color: COLORS.text,
-  fontSize: "var(--text-sm)",
+  background: "var(--bg-2)",
+  color: "var(--text)",
+  fontSize: "var(--fs-body)",
   fontFamily: "inherit",
   minWidth: "0",
   transition: "var(--transition)",
@@ -119,12 +102,12 @@ export function CopyButton({
       aria-label={copied ? "Copied to clipboard" : "Copy to clipboard"}
       style={{
         background: "transparent",
-        color: COLORS.bronzeLight,
-        border: `1px solid ${COLORS.bronzeBorder}`,
+        color: "var(--copper-bright)",
+        border: `1px solid ${"color-mix(in srgb, var(--copper) 40%, transparent)"}`,
         borderRadius: "var(--radius-sm)",
         padding: "2px 6px",
         fontFamily: "inherit",
-        fontSize: "var(--text-xs)",
+        fontSize: "var(--fs-small)",
         lineHeight: 1,
         minWidth: "4ch",
         textAlign: "center",
@@ -149,10 +132,10 @@ export function MonoLabel({
     <code
       style={{
         fontFamily: "var(--font-data)",
-        fontSize: "var(--text-data-sm)",
+        fontSize: "var(--fs-small)",
         fontVariantNumeric: "var(--tabular)",
-        color: COLORS.bronzeLight,
-        background: COLORS.bronzeBg,
+        color: "var(--copper-bright)",
+        background: "color-mix(in srgb, var(--copper) 12%, transparent)",
         padding: "0.125rem 0.5rem",
         borderRadius: "var(--radius-sm)",
         display: "inline-block",
@@ -182,8 +165,8 @@ export function ErrorRef({
         display: "block",
         marginTop: "var(--space-xs)",
         fontFamily: "var(--font-mono)",
-        fontSize: "var(--text-xs)",
-        color: COLORS.textDim,
+        fontSize: "var(--fs-small)",
+        color: "var(--dim)",
       }}
     >
       Ref {ref}
@@ -218,14 +201,46 @@ export function Spinner({
         display: "inline-block",
         width: size,
         height: size,
-        border: `2px solid ${COLORS.border}`,
-        borderTopColor: COLORS.bronze,
+        border: "2px solid var(--line)",
+        borderTopColor: "var(--copper)",
         borderRadius: "50%",
         animation: "axiom-spin var(--dur-spin) linear infinite",
         ...style,
       }}
       aria-label="Loading"
     />
+  );
+}
+
+/**
+ * Shared skeleton primitive (audit §3.10: "no skeleton or spinner was ever
+ * observed on gated routes; content pops in"). ONE system for every async
+ * surface: an aria-busy container of geometry-matched aria-hidden placeholder
+ * rows, each carrying the T8 poll-gap churn cue (.spinner--churn dots) —
+ * no bespoke per-page skeletons, no new CSS.
+ */
+export function SkeletonRows({
+  count = 3,
+  className,
+  rowClassName,
+  row,
+}: {
+  count?: number;
+  /** Wrapper class (the real list container, when one exists). */
+  className?: string;
+  /** The real row class, so placeholder geometry matches live rows exactly. */
+  rowClassName?: string;
+  /** Per-row placeholder cells. Default: the churn cue alone. */
+  row?: ReactNode;
+}): ReactElement {
+  return (
+    <div className={className} aria-busy="true">
+      {Array.from({ length: count }, (_, index) => (
+        <div key={index} className={rowClassName} aria-hidden="true">
+          {row ?? <i className="spinner--churn" />}
+        </div>
+      ))}
+    </div>
   );
 }
 

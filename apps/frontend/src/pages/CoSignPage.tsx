@@ -162,7 +162,7 @@ export function CoSignPage({ go }: { go: (path: string) => void }) {
             <Button
               variant="ghost"
               onClick={() => go("/")}
-              icon={<ArrowLeft size={15} />}
+              icon={<ArrowLeft size={16} />}
             >
               {f.goHome}
             </Button>
@@ -180,7 +180,7 @@ export function CoSignPage({ go }: { go: (path: string) => void }) {
           <Button
             variant="ghost"
             onClick={() => go("/")}
-            icon={<ArrowLeft size={15} />}
+            icon={<ArrowLeft size={16} />}
           >
             {f.goHome}
           </Button>
@@ -317,7 +317,7 @@ export function CoSignPage({ go }: { go: (path: string) => void }) {
                       }
                       busy={isConnecting}
                       onClick={() => void connect(connector)}
-                      icon={<WalletIcon size={15} />}
+                      icon={<WalletIcon size={16} />}
                     >
                       {connectors.length === 1
                         ? f.receiveConnect
@@ -330,7 +330,7 @@ export function CoSignPage({ go }: { go: (path: string) => void }) {
                   busy={busy}
                   disabled={wrongAccount}
                   onClick={() => void sign()}
-                  icon={busy ? <Timer size={15} /> : <ShieldCheck size={15} />}
+                  icon={busy ? <Timer size={16} /> : <ShieldCheck size={16} />}
                 >
                   {busy ? f.receiveSigning : f.receiveSign}
                 </Button>
@@ -338,7 +338,7 @@ export function CoSignPage({ go }: { go: (path: string) => void }) {
               <Button
                 variant="ghost"
                 onClick={() => go("/")}
-                icon={<ArrowLeft size={15} />}
+                icon={<ArrowLeft size={16} />}
               >
                 {f.goHome}
               </Button>

@@ -4,7 +4,6 @@ import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { Toaster } from "sonner";
-import { COLORS } from "./components/ui.js";
 import { App } from "./App";
 import { WagmiConfigProvider } from "./config/wagmi";
 import { UiStoreProvider } from "./lib/uiStore";
@@ -95,12 +94,15 @@ createRoot(rootEl).render(
       </WagmiConfigProvider>
       <Toaster
         position="bottom-right"
+        // 3s applies to success/info only — error toasts pass duration: Infinity per-call
+        // (toastError in pages/shared.ts, GasTankCard, ChatPage) per the U24 Notice-rail
+        // policy: errors persist until dismissed.
         duration={3000}
         toastOptions={{
           style: {
-            background: COLORS.surface,
-            color: COLORS.text,
-            border: `1px solid ${COLORS.border}`,
+            background: "var(--panel)",
+            color: "var(--text)",
+            border: "1px solid var(--line)",
           },
         }}
       />

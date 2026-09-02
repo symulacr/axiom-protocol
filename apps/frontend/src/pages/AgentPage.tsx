@@ -87,6 +87,9 @@ import { Spinner } from "../components/ui.js";
 const AGENT_TABS = ["overview", "execute", "payments", "activity"] as const;
 type AgentTab = (typeof AGENT_TABS)[number];
 
+/** Framed agent mark — semantic exception to the 14/16/18 icon scale. */
+const AGENT_MARK_SIZE = 28;
+
 const axiomAgentNftAbiParsed = toViemAbi(AGENT_NFT_ABI);
 
 /** Fact/activity value: local clock/date via Intl — block numbers mean nothing to a first-time user. */
@@ -359,12 +362,12 @@ export function AgentPage({
   }[] = [
     {
       path: `${routePath("deposit")}?agent=${agentId}`,
-      icon: <Wallet size={15} />,
+      icon: <Wallet size={16} />,
       label: agentCopy.addMoneyPrimary,
     },
     {
       path: `/tick?agent=${agentId}&intent=bounded`,
-      icon: <Play size={15} />,
+      icon: <Play size={16} />,
       label: agentCopy.runTask,
     },
   ];
@@ -375,17 +378,17 @@ export function AgentPage({
   }[] = [
     {
       path: `/transfer?agent=${agentId}&intent=proof&stage=recipient`,
-      icon: <ShieldCheck size={15} />,
+      icon: <ShieldCheck size={16} />,
       label: agentCopy.transferProof,
     },
     {
       path: `/withdraw?agent=${agentId}`,
-      icon: <UploadCloud size={15} />,
+      icon: <UploadCloud size={16} />,
       label: agentCopy.withdrawFunds,
     },
     {
       path: `/payment?agent=${agentId}&intent=fund&stage=amount`,
-      icon: <CreditCard size={15} />,
+      icon: <CreditCard size={16} />,
       label: agentCopy.fundAgent,
     },
   ];
@@ -630,7 +633,7 @@ export function AgentPage({
             onClick={() =>
               go(`/tick?agent=${tokenId.toString()}&intent=bounded`)
             }
-            icon={<Play size={15} />}
+            icon={<Play size={16} />}
           >
             {agentCopy.runTask}
           </Button>
@@ -639,10 +642,10 @@ export function AgentPage({
 
       <div className="agent-detail-head">
         <div className="agent-detail-mark">
-          <Bot size={28} />
+          <Bot size={AGENT_MARK_SIZE} />
         </div>
         <div>
-          <strong>
+          <strong className="num">
             {vaultBalance}
             {/* T8: churn cue while the 30s vault poll re-reads this balance. */}
             {vault.isFetching && <Spinner size={10} variant="churn" />}
@@ -674,7 +677,7 @@ export function AgentPage({
           <CircleCheck size={14} />
           {notice}
           <button onClick={() => setNotice(null)} aria-label={agentCopy.cancel}>
-            <X size={13} />
+            <X size={14} />
           </button>
         </div>
       )}
@@ -699,7 +702,7 @@ export function AgentPage({
                   onClick={copyDataHash}
                   aria-label={agentCopy.copyHashA11y}
                 >
-                  <Copy size={12} />
+                  <Copy size={14} />
                 </button>
               </Fact>
               <Fact label={agentCopy.descriptionLabel}>
@@ -718,7 +721,7 @@ export function AgentPage({
                     target="_blank"
                     rel="noreferrer"
                   >
-                    {agentCopy.viewRecordLink} <ArrowRight size={12} />
+                    {agentCopy.viewRecordLink} <ArrowRight size={14} />
                   </a>
                 </Fact>
               )}
@@ -732,7 +735,7 @@ export function AgentPage({
             <Button
               variant="secondary"
               onClick={() => go("/storage")}
-              icon={<Database size={15} />}
+              icon={<Database size={16} />}
             >
               {agentCopy.openStorage}
             </Button>
@@ -806,7 +809,7 @@ export function AgentPage({
                   `/tick?agent=${tokenId.toString()}&intent=bounded&instruction=${encodeURIComponent(instruction)}`,
                 );
               }}
-              icon={<Zap size={15} />}
+              icon={<Zap size={16} />}
             >
               {agentCopy.previewRun}
             </Button>
@@ -853,7 +856,7 @@ export function AgentPage({
                     `/payment?agent=${tokenId.toString()}&intent=fund&stage=amount`,
                   )
                 }
-                icon={<ArrowRight size={15} />}
+                icon={<ArrowRight size={16} />}
               >
                 {agentCopy.openPaymentFlow}
               </Button>
@@ -1108,7 +1111,7 @@ export function AgentPage({
                 }
               >
                 <span>
-                  <Zap size={15} />
+                  <Zap size={16} />
                 </span>
                 <span>
                   <strong>{event.eventName}</strong>

@@ -81,6 +81,8 @@ import {
   MessageEditConfirm,
   MsgCopyAction,
   StatusDot,
+  MsgAvatar,
+  MsgTimestamp,
   ToolCallCard,
   ToolClassBadge,
   ToolResultBody,
@@ -116,7 +118,6 @@ import { getCopy, interpolate, type Copy, type Locale } from "../lib/copy.js";
 import { useUiStore } from "../lib/uiStore.js";
 import { useGasTank } from "../hooks/useGasTank.js";
 import {
-  COLORS,
   Textarea,
   ErrorRef,
   Spinner,
@@ -126,6 +127,7 @@ import {
 } from "../components/ui.js";
 import { Button } from "../components/axiom/Controls.js";
 import {
+  CornerDownLeft,
   Menu,
   MessageSquare,
   Network,
@@ -252,8 +254,8 @@ function EmptyState(props: {
     >
       <h2
         style={{
-          fontSize: "var(--text-xl)",
-          color: "var(--c-text-primary)",
+          fontSize: "var(--fs-title)",
+          color: "var(--text)",
           marginBottom: "var(--space-sm)",
           fontFamily: "var(--font-display)",
         }}
@@ -262,8 +264,8 @@ function EmptyState(props: {
       </h2>
       <p
         style={{
-          color: "var(--c-text-muted)",
-          fontSize: "var(--text-sm)",
+          color: "var(--muted)",
+          fontSize: "var(--fs-body)",
           margin: "0 auto var(--space-lg)",
         }}
       >
@@ -356,11 +358,11 @@ function EmptyState(props: {
                     }
                     title={t.hint}
                   >
-                    <span style={{ color: COLORS.text }}>{t.label}</span>
+                    <span style={{ color: "var(--text)" }}>{t.label}</span>
                     <MonoLabel style={{ padding: "0.125rem 0.35rem" }}>
                       {t.name}
                     </MonoLabel>
-                    <span style={{ color: COLORS.textMuted }}>
+                    <span style={{ color: "var(--muted)" }}>
                       {t.hintShort}
                     </span>
                   </button>
@@ -1383,7 +1385,12 @@ function ChatPageInner(): ReactElement {
           ) {
             setComputeHint(msg);
           }
-          const toastOpts = refDesc ? { description: refDesc } : undefined;
+          // U24: error toasts persist until dismissed (same regime as the Notice rail);
+          // the 3s Toaster default stays for success/info toasts only.
+          const toastOpts = {
+            duration: Infinity,
+            ...(refDesc ? { description: refDesc } : {}),
+          };
           if (msg.includes("429") || msg.toLowerCase().includes("rate limit")) {
             toast.error(
               "Rate limited — wait a moment and try again.",
@@ -1617,7 +1624,7 @@ function ChatPageInner(): ReactElement {
             variant="ghost"
             className="chat-topbar__new"
             onClick={startNewChat}
-            icon={<MessageSquare size={13} />}
+            icon={<MessageSquare size={14} />}
           >
             {chatCopy.newChat}
           </Button>
@@ -1678,12 +1685,16 @@ function ChatPageInner(): ReactElement {
               <StatusDot
                 color={
                   msg.role === "user"
-                    ? COLORS.bronzeLight
+                    ? "var(--copper-bright)"
                     : msg.role === "tool"
-                      ? COLORS.textDim
-                      : COLORS.text
+                      ? "var(--dim)"
+                      : "var(--text)"
                 }
               >
+                {/* W6-A: avatar fallback + per-turn timestamp (browser-3 #5
+                    "no timestamps, no avatars") — chips render inside the
+                    flex header row; see the Wave-6A CSS appendix. */}
+                <MsgAvatar role={msg.role} content={msg.content} />
                 {msg.role === "user"
                   ? chatCopy.roleYou
                   : msg.role === "tool"
@@ -1694,7 +1705,15 @@ function ChatPageInner(): ReactElement {
                 {msg.role === "tool" && msg.name ? (
                   <ToolClassBadge name={msg.name} />
                 ) : null}
-                <span className="msg-actions" style={{ marginLeft: "auto" }}>
+                {/* W6-A: per-turn timestamp (browser-3 #5). User/assistant
+                    rows only — a tool row's provenance is its tool name, and
+                    its wall-clock belongs to the parent turn. */}
+                {msg.role !== "tool" ? <MsgTimestamp id={msg.id} /> : null}
+                {/* W6-A: header is a flex row (see .chat-bubble header rules);
+                    CSS pins .msg-actions to the right edge — the old inline
+                    marginLeft:auto sat inside an inline span and did nothing
+                    ("YouEdit Copy" collision, 2026-09-02 re-audit). */}
+                <span className="msg-actions">
                   {msg.role === "user" && editConfirmId === msg.id ? (
                     <MessageEditConfirm
                       copy={chatCopy}
@@ -1777,10 +1796,10 @@ function ChatPageInner(): ReactElement {
                         }
                         style={{
                           ...insetCardStyle,
-                          fontSize: "var(--text-sm)",
+                          fontSize: "var(--fs-body)",
                           color: failedRun
-                            ? "var(--c-danger)"
-                            : COLORS.textMuted,
+                            ? "var(--danger)"
+                            : "var(--muted)",
                         }}
                       >
                         <ToolResultBody
@@ -1805,8 +1824,8 @@ function ChatPageInner(): ReactElement {
               ) : msg.tool_calls ? (
                 <div
                   style={{
-                    fontSize: "var(--text-sm)",
-                    color: COLORS.textMuted,
+                    fontSize: "var(--fs-body)",
+                    color: "var(--muted)",
                   }}
                 >
                   {dedupeToolCalls(msg.tool_calls).map((tc) => {
@@ -1905,7 +1924,7 @@ function ChatPageInner(): ReactElement {
                       href={explorerTxUrl(chainId, row.txHash)}
                       target="_blank"
                       rel="noreferrer noopener"
-                      style={{ color: COLORS.bronzeLight }}
+                      className="num copper"
                     >
                       {truncateHex(row.txHash)}
                     </a>
@@ -1929,7 +1948,7 @@ function ChatPageInner(): ReactElement {
                 }}
               >
                 <span
-                  style={{ fontSize: "var(--text-sm)", color: COLORS.text }}
+                  style={{ fontSize: "var(--fs-body)", color: "var(--text)" }}
                 >
                   {streamError}
                 </span>
@@ -1968,7 +1987,8 @@ function ChatPageInner(): ReactElement {
               aria-live="polite"
               aria-label={chatCopy.assistantResponding}
             >
-              <StatusDot color={COLORS.text}>
+              <StatusDot color="var(--text)">
+                <MsgAvatar role="assistant" />
                 {chatCopy.roleAssistant}
               </StatusDot>
               {streamText ? (
@@ -1981,7 +2001,7 @@ function ChatPageInner(): ReactElement {
                       display: "inline-block",
                       width: 2,
                       height: "1em",
-                      background: "var(--c-phosphor)",
+                      background: "var(--phosphor)",
                       marginLeft: 2,
                       verticalAlign: "text-bottom",
                     }}
@@ -1997,7 +2017,7 @@ function ChatPageInner(): ReactElement {
                     }}
                   >
                     <Spinner size={14} variant="churn" />
-                    <span style={{ color: COLORS.bronzeLight }}>
+                    <span style={{ color: "var(--copper-bright)" }}>
                       {phaseLabel(elapsed, toolRuns, streamText, chatCopy)}
                     </span>
                     {tickRunning ? (
@@ -2023,8 +2043,8 @@ function ChatPageInner(): ReactElement {
           >
             <span
               style={{
-                fontSize: "var(--text-xs)",
-                color: COLORS.textMuted,
+                fontSize: "var(--fs-small)",
+                color: "var(--muted)",
                 alignSelf: "center",
               }}
             >
@@ -2128,7 +2148,7 @@ function ChatPageInner(): ReactElement {
                 onClick={() => setRoutingOpen((v) => !v)}
                 title={chatCopy.routingChipTitle}
               >
-                <Network size={12} />
+                <Network size={14} />
                 {routingSummary(providerPref, chatCopy)}
               </button>
             </div>
@@ -2174,12 +2194,18 @@ function ChatPageInner(): ReactElement {
             >
               {chatCopy.stop}
             </Button>
+            {/* W6-A: send is an icon button inside the composer panel; the
+                accessible name stays the localized Send/Queue label. */}
             <Button
               variant="primary"
               onClick={() => sendMessage(input)}
               disabled={!input.trim()}
+              className="chat-send"
+              icon={<CornerDownLeft size={16} aria-hidden="true" />}
             >
-              {isStreaming ? chatCopy.queue : chatCopy.send}
+              <span className="visually-hidden">
+                {isStreaming ? chatCopy.queue : chatCopy.send}
+              </span>
             </Button>
           </div>
         </div>
@@ -2416,9 +2442,24 @@ function ChatHistorySection({
       </div>
       <div className="chat-history__list" aria-live="polite">
         {filtered.length === 0 ? (
-          <p className="chat-history__empty">
-            {search ? copy.historyNoMatch : copy.historyEmpty}
-          </p>
+          /* W6-B (browser-3, Empty states: thread rail): the bare
+             "No chats yet." paragraph gave the rail's first impression no
+             action; a new-chat affordance reuses the existing
+             copy.chat.historyNew string — no new copy key. */
+          <div className="chat-history__empty-group">
+            <p className="chat-history__empty">
+              {search ? copy.historyNoMatch : copy.historyEmpty}
+            </p>
+            {!search ? (
+              <button
+                type="button"
+                className="chat-history__empty-cta"
+                onClick={onNew}
+              >
+                {copy.historyNew}
+              </button>
+            ) : null}
+          </div>
         ) : (
           filtered.map((t) => (
             <div

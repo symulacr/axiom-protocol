@@ -4,11 +4,11 @@ import { apiFetch } from "../utils/apiFetch.js";
 export interface LandingStats {
   /** Total agents online; null while loading. */
   agentsOnline: number | null;
-  /** Chain id (default 9000 = Galileo testnet); null while loading. */
+  /** Chain id (default 16661 = Aristotle mainnet); null while loading. */
   networkChain: number | null;
 }
 
-const PLACEHOLDER: LandingStats = { agentsOnline: 7412, networkChain: 9000 };
+const PLACEHOLDER: LandingStats = { agentsOnline: 7412, networkChain: 16661 };
 
 /**
  * Fetches `/v1/agents?limit=1` on mount and returns the total count + chain id.

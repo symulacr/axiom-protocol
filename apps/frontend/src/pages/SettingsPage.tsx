@@ -4,24 +4,23 @@
   (uiStore). Theme also drives the document data-theme attribute via App.
 
   Depth contract:
-  - depth 0: Connection diagnostics (read-only, collapsed — proto-subpages-b:
-    the summary lives in the disclosure heading, detail inside) + Appearance
-    (theme, compact rail, density, language) + footer (staking link, Lock
-    console).
+  - depth 0: Connection diagnostics (read-only — W5-B: open at ≥1120px, the
+    summary carries a one-line connection status; detail inside) + Appearance
+    (theme, compact rail, density, language). Lock console lives in the
+    topbar session cell — one owner, no stranded footer ghost.
   - depth 1: Console layout + Advanced — disclosures start CLOSED at every
     viewport (an accordion that defaults open is grouping, not disclosure).
   - depth 2: Danger zone (closed) → Reset surface wears danger chrome behind
     an explicit confirm dialog (Esc/backdrop/Cancel via the modal-dismiss
     contract). Lock console is routine → ghost, never danger.
 */
-import { useState, type Dispatch, type ReactNode } from "react";
+import { useRef, useState, type Dispatch, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useAccount, useChainId } from "wagmi";
 import {
   CircleHelp,
   Keyboard,
   LayoutDashboard,
-  LogOut,
   Moon,
   RotateCcw,
   Settings2,
@@ -48,6 +47,11 @@ function SettingsDisclosure({
   title,
   icon,
   defaultOpen = false,
+  /** Daily-use diagnostics (Signing/Layout) default open on wide viewports —
+   * closed-by-default hid the page's most important status rows. */
+  openOnDesktop = false,
+  /** Optional one-line status rendered inside the summary row (W5-B). */
+  summary,
   className = "",
   children,
 }: {
@@ -56,10 +60,18 @@ function SettingsDisclosure({
   /** Shallow sections (read-only context, daily preferences) stay open; every
    * advanced/rare/destructive section starts closed at any viewport. */
   defaultOpen?: boolean;
+  openOnDesktop?: boolean;
+  summary?: ReactNode;
   className?: string;
   children: ReactNode;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
+  const [open, setOpen] = useState(
+    () =>
+      defaultOpen ||
+      (openOnDesktop &&
+        typeof window !== "undefined" &&
+        window.matchMedia("(min-width: 1120px)").matches),
+  );
   return (
     <section className={`panel settings-card ${className}`.trim()}>
       <details
@@ -71,6 +83,7 @@ function SettingsDisclosure({
           <div>
             <h2>{title}</h2>
           </div>
+          {summary}
           {icon}
         </summary>
         <div className="settings-disclosure-content">{children}</div>
@@ -91,10 +104,14 @@ function ResetConfirmDialog({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
-  useModalDismiss(onCancel);
+  // Canonical modal contract: Esc + Tab trap + initial focus + focus restore (useModalDismiss),
+  // backdrop + explicit Cancel below — initial focus lands on Cancel, the non-destructive choice.
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useModalDismiss(onCancel, dialogRef);
   return createPortal(
     <div className="drawer-layer settings-confirm-layer" onMouseDown={onCancel}>
       <div
+        ref={dialogRef}
         className="settings-confirm-dialog"
         role="dialog"
         aria-modal="true"
@@ -124,11 +141,9 @@ function ResetConfirmDialog({
 export function SettingsPage({
   state,
   dispatch,
-  onLock,
 }: {
   state: AppState;
   dispatch: Dispatch<ConsoleAction>;
-  onLock: () => void;
 }) {
   const copy = getCopy(state.settings.locale);
   const labels = copy.settings;
@@ -174,17 +189,30 @@ export function SettingsPage({
     [
       labels.rowApi,
       BACKEND_URL.replace(/^https?:\/\//, ""),
-      health?.ok ? labels.statusOnline : labels.statusOffline,
+      // Honest readout: the health read is still in flight → "checking",
+      // never a premature "Offline" (critique-2: statuses degrade silently).
+      health === undefined
+        ? labels.statusChecking
+        : health.ok
+          ? labels.statusOnline
+          : labels.statusOffline,
     ],
   ];
   // Status-pill tones key off the semantic kind, not the localized label.
+  // W5-B (critique-4): the old fallback mapped everything unread to "live"
+  // (green) — Offline/Mismatch rendered as healthy. Faults → warning,
+  // in-flight/unknown reads → muted; only the positive kinds go green.
   const toneFor = (status: string) =>
     status === labels.statusSelected ||
     status === labels.statusConnected ||
     status === labels.statusOnline ||
     status === copy.topbar.oracleLive
       ? "success"
-      : "live";
+      : status === labels.statusOffline || status === labels.statusMismatch
+        ? "warning"
+        : status === labels.statusChecking || status === "—"
+          ? "muted"
+          : "live";
 
   const toggleRow = (
     key: "railCollapsed" | "reducedMotion" | "railHidden",
@@ -247,7 +275,17 @@ export function SettingsPage({
         <SettingsDisclosure
           // F2/R2 #8: status lives in the row pills; the title is a plain label.
           title={labels.signingContext}
-          icon={<Wifi size={17} className="copper" />}
+          icon={<Wifi size={18} className="copper" />}
+          // W5-B: the connection diagnostics are the page's most important
+          // rows — open by default at ≥1120px, with a one-line status echoed
+          // in the summary so the answer survives the closed state too.
+          openOnDesktop
+          summary={
+            <Status
+              label={address ? labels.statusConnected : labels.statusOffline}
+              tone={address ? "success" : "warning"}
+            />
+          }
         >
           {walletRows.map(([label, value, status]) => (
             <div className="settings-row" key={label}>
@@ -293,7 +331,7 @@ export function SettingsPage({
 
         <SettingsDisclosure
           title={labels.dailyTitle}
-          icon={<Settings2 size={17} className="copper" />}
+          icon={<Settings2 size={18} className="copper" />}
           defaultOpen
         >
           <div className="settings-toggle-row theme-setting">
@@ -319,7 +357,7 @@ export function SettingsPage({
                   aria-pressed={state.settings.theme === value}
                   onClick={() => update({ theme: value })}
                 >
-                  <Icon size={13} />
+                  <Icon size={14} />
                   {text}
                 </button>
               ))}
@@ -355,7 +393,8 @@ export function SettingsPage({
 
         <SettingsDisclosure
           title={labels.layoutTitle}
-          icon={<LayoutDashboard size={17} className="copper" />}
+          icon={<LayoutDashboard size={18} className="copper" />}
+          openOnDesktop
         >
           {toggleRow("railHidden", labels.railHidden, labels.railHiddenHint)}
           {toggleRow(
@@ -389,7 +428,7 @@ export function SettingsPage({
 
         <SettingsDisclosure
           title={labels.advancedTitle}
-          icon={<Keyboard size={17} className="copper" />}
+          icon={<Keyboard size={18} className="copper" />}
         >
           <div className="settings-select-row">
             {selectRow(
@@ -405,7 +444,7 @@ export function SettingsPage({
           <div className="shortcut-map">
             <div>
               <strong>
-                <Keyboard size={15} /> {labels.shortcutTitle}
+                <Keyboard size={16} /> {labels.shortcutTitle}
               </strong>
               <small>{labels.shortcutHint}</small>
             </div>
@@ -428,7 +467,7 @@ export function SettingsPage({
             <Button
               variant="secondary"
               onClick={() => dispatch({ type: "guide" })}
-              icon={<CircleHelp size={15} />}
+              icon={<CircleHelp size={16} />}
             >
               {labels.replayOnboarding}
             </Button>
@@ -447,7 +486,7 @@ export function SettingsPage({
 
       <SettingsDisclosure
         title={labels.dangerTitle}
-        icon={<ShieldAlert size={17} className="copper" />}
+        icon={<ShieldAlert size={18} className="copper" />}
         className="settings-danger-zone"
       >
         <p className="settings-danger-hint">{labels.dangerHint}</p>
@@ -461,12 +500,6 @@ export function SettingsPage({
           </Button>
         </div>
       </SettingsDisclosure>
-
-      <div className="settings-footer-actions">
-        <Button variant="ghost" onClick={onLock} icon={<LogOut size={15} />}>
-          {labels.lockConsole}
-        </Button>
-      </div>
 
       {resetConfirmOpen && (
         <ResetConfirmDialog

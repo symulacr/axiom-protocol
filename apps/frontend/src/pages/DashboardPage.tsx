@@ -29,7 +29,7 @@ import {
 } from "../components/axiom/FirstRunChecklist.js";
 import { StatePill } from "../components/StatePill.js";
 import { MobileDisclosure } from "../components/MobileDisclosure.js";
-import { EmptyState, Spinner } from "../components/ui.js";
+import { EmptyState, SkeletonRows, Spinner } from "../components/ui.js";
 import { GasTankCard } from "../components/axiom/GasTankCard.js";
 import { getCopy } from "../lib/copy.js";
 import { routePath } from "../lib/routeRegistry.js";
@@ -130,13 +130,13 @@ function ContextStrip({
           surfaces via the signer cell. */}
       <div className="context-cell">
         <strong title={address ?? undefined}>
-          <Wallet size={15} />{" "}
+          <Wallet size={16} />{" "}
           {address ? truncateAddress(address) : copy.topbar.notConnected}
         </strong>
       </div>
       <div className="context-cell">
         <strong>
-          <KeyRound size={15} />{" "}
+          <KeyRound size={16} />{" "}
           {chainOk ? copy.dashboard.signerReady : copy.dashboard.signerWrong}
         </strong>
         <span className="mono">
@@ -156,7 +156,7 @@ function ContextStrip({
       </div>
       <div className="context-cell">
         <strong>
-          <Gauge size={15} /> {copy.dashboard.healthCheckLabel}
+          <Gauge size={16} /> {copy.dashboard.healthCheckLabel}
         </strong>
         <span className="mono">
           {health
@@ -190,7 +190,7 @@ function Stat({
         <span>{label}</span>
         <span className="stat-icon">{icon}</span>
       </div>
-      <strong>
+      <strong className="num">
         {value} {busy && <Spinner size={12} variant="churn" />}
       </strong>
       <small>{change}</small>
@@ -316,7 +316,7 @@ export function DashboardPage({
       const tokenId = eventTokenId(event);
       return {
         key: `${event.txHash}:${event.logIndex}`,
-        icon: <Activity size={15} />,
+        icon: <Activity size={16} />,
         kind: event.eventName || "Event",
         detail: tokenId
           ? `agent #${tokenId}, ${eventTimeLabel(event)}`
@@ -336,17 +336,17 @@ export function DashboardPage({
           <h1>{copy.dashboard.title}</h1>
         </div>
         <div className="action-lane">
+          {/* W5-B: the next-action panel is the one authoritative surface for
+              "needs review"; the lane keeps the count + Refresh only — the
+              scope line repeated the same fact on a third surface. */}
           <strong>{copy.dashboard.review(failing.length)}</strong>
-          {/* T2: scope line — fresh agents are setup, never failures. */}
-          <small>
-            {copy.dashboard.unconfigured(unconfigured.length)} ·{" "}
-            {copy.dashboard.failing(failing.length)}
-          </small>
           {/* One owner for the payment next-action at depth 0: the
               PriorityActionStrip (global chrome). The action lane keeps the
               attention readout + Refresh only. */}
+          {/* U15 icon order: actions lead with their icon; trailing arrows are
+              for navigation links only. */}
           <button className="text-link" onClick={refresh}>
-            {copy.dashboard.refresh} <RefreshCw size={13} />
+            <RefreshCw size={14} /> {copy.dashboard.refresh}
           </button>
         </div>
       </div>
@@ -450,7 +450,7 @@ export function DashboardPage({
                   <small>{row.detail}</small>
                 </span>
                 <StatePill state={row.state} />
-                <ChevronRight size={14} />
+                <ChevronRight size={16} />
               </button>
             ))}
           </div>
@@ -470,18 +470,17 @@ export function DashboardPage({
                     retry is one click, reusing the page's own refetch. */}
                 <Button
                   onClick={() => refetch()}
-                  icon={<RotateCcw size={15} />}
+                  icon={<RotateCcw size={16} />}
                 >
                   {copy.dashboard.retryFetch}
                 </Button>
               </EmptyState>
             )}
             {/* U4: the register is empty only after load — during fetch the
-                panel shows a busy placeholder, never "No agents yet". */}
+                panel shows geometry-matched skeleton rows (shared primitive,
+                audit §3.10), never "No agents yet". */}
             {!agentsError && loading && agents.length === 0 && (
-              <div aria-busy="true">
-                <EmptyState title={copy.dashboard.loadingVaults} />
-              </div>
+              <SkeletonRows count={3} rowClassName="agent-row" />
             )}
             {!agentsError && !loading && agents.length === 0 && (
               <EmptyState
@@ -490,7 +489,7 @@ export function DashboardPage({
               >
                 <Button
                   onClick={() => go(routePath("mint"))}
-                  icon={<Bot size={15} />}
+                  icon={<Bot size={16} />}
                 >
                   {copy.dashboard.mintAgent}
                 </Button>
@@ -519,7 +518,7 @@ export function DashboardPage({
                     </small>
                   </span>
                   <span className="agent-value">
-                    <b>
+                    <b className="num">
                       {vault
                         ? `${formatTokenAmount(vault.depositsWei)} ${nativeSymbol}`
                         : "—"}
@@ -535,7 +534,7 @@ export function DashboardPage({
                       tone={isFailing ? "warning" : "muted"}
                     />
                   </span>
-                  <ChevronRight size={15} />
+                  <ChevronRight size={16} />
                 </button>
               );
             })}
@@ -560,7 +559,7 @@ export function DashboardPage({
                   onClick={() =>
                     go(`/agents/${firstFailing.tokenId.toString()}`)
                   }
-                  icon={<ShieldCheck size={15} />}
+                  icon={<ShieldCheck size={16} />}
                 >
                   {copy.dashboard.review(1)}
                 </Button>
@@ -579,7 +578,7 @@ export function DashboardPage({
                       `${routePath("deposit")}?agent=${firstUnconfigured.tokenId.toString()}`,
                     )
                   }
-                  icon={<Wallet size={15} />}
+                  icon={<Wallet size={16} />}
                 >
                   {copy.dashboard.addMoney}
                 </Button>

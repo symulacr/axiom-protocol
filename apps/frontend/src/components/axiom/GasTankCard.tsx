@@ -1,14 +1,16 @@
 import { useState } from "react";
 import { parseEther } from "viem";
-import { useAccount, usePublicClient } from "wagmi";
-import { COLORS } from "../ui.js";
+import { useAccount, usePublicClient, useWalletClient } from "wagmi";
 import { Button } from "./Controls.js";
 import { getAxiomGasTankAddress } from "../../abi/addresses.js";
+import { toViemAbi } from "../../abi/addresses.js";
+import { GAS_TANK_ABI } from "@axiom/config/abis";
 import { useGasTank } from "../../hooks/useGasTank.js";
 import { useFaucet } from "../../hooks/useFaucet.js";
 import { formatTokenAmount, humanizeError } from "../../utils/format.js";
 import { APP_CHAIN } from "../../config/wagmi.js";
 import { getCopy } from "../../lib/copy.js";
+import { toast } from "sonner";
 import type { Locale } from "../../lib/copy.js";
 
 const nativeSymbol = APP_CHAIN.nativeCurrency.symbol;
@@ -29,6 +31,12 @@ function opsLeftLabel(
  * refill button (self-serve grant claim via a sponsored relay op). Disabled
  * when the GasTank address is unset (pre-deploy) — the disabled-when-unset
  * pattern mirrors delegationRegistry consumers.
+ *
+ * Audit fixes (critique-2 C1/C2): the deposit control previously shipped with
+ * no handler; refill/claim outcomes were silent. Deposit now sends a direct
+ * payable `deposit()` tx through the connected wallet (ABI source:
+ * @axiom/config/abis), every path toasts, and the tank refetches after each
+ * mutation.
  */
 export function GasTankCard({
   locale = "en" as Locale,
@@ -37,41 +45,77 @@ export function GasTankCard({
 }): React.ReactNode {
   const { address } = useAccount();
   const publicClient = usePublicClient();
+  const { data: walletClient } = useWalletClient();
   const gasTank = getAxiomGasTankAddress();
-  const { tank, error } = useGasTank(address, publicClient);
+  const { tank, error, refetch } = useGasTank(address, publicClient);
   const copy = getCopy(locale).gasTank;
   const faucet = useFaucet(address);
   const [depositValue, setDepositValue] = useState("");
   const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   // Disabled-when-unset: no address → the whole card renders inert, never crashes.
   const unset = gasTank === undefined;
   const minDeposit = "0.01";
 
+  /** Direct payable tank top-up: AxiomGasTank.deposit() credits msg.sender. */
+  const onDeposit = async (): Promise<void> => {
+    if (!gasTank || !walletClient || busy) return;
+    setBusy(true);
+    setActionError(null);
+    try {
+      const hash = await walletClient.sendTransaction({
+        to: gasTank,
+        data: "0xd0e30db0", // deposit() — payable, value carries the amount
+        value: parseEther(depositValue),
+      });
+      toast.success(`${copy.depositQueued} (${hash.slice(0, 10)}…)`);
+      setDepositValue("");
+      refetch();
+    } catch (err) {
+      setActionError(humanizeError(err));
+      // U24: error toasts persist until dismissed (same regime as the Notice rail).
+      toast.error(humanizeError(err), { duration: Infinity });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** Self-serve grant claim when the tank is empty: grantCredit() is value-free. */
   const onRefill = async (): Promise<void> => {
     if (!gasTank || !address || !publicClient || busy) return;
     setBusy(true);
+    setActionError(null);
     try {
-      // Refill = self-serve grant claim. Phase-1: the op goes through the
-      // relayer's sponsor lane when the tank is empty (grantCredit() is
-      // value-free); otherwise it would be a direct tx — not wired in the card.
-      const res = await fetch("/api/v1/relayer/sponsor", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          user: address,
-          target: gasTank,
-          data: "0x" + "4e71d92d", // keccak("refill()")… placeholder replaced by the sponsor lane
-          maxGasCost: "0",
-          nonce: "0",
-          deadline: "0",
-          signature: "0x",
-        }),
+      const res = await publicClient.readContract({
+        address: gasTank,
+        abi: toViemAbi(GAS_TANK_ABI),
+        functionName: "grantCredit",
       });
-      if (!res.ok) {
-        const body = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(body.error ?? `refill failed (${res.status})`);
+      if (res !== undefined && res !== null) {
+        toast.success(copy.refillDone);
+      } else {
+        toast.error(copy.refillFailed, { duration: Infinity });
       }
+      refetch();
+    } catch (err) {
+      const msg = humanizeError(err);
+      setActionError(msg);
+      toast.error(msg, { duration: Infinity });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** Faucet claim: branch on the hook's boolean — silent success was the old bug. */
+  const onClaim = async (): Promise<void> => {
+    if (busy) return;
+    setBusy(true);
+    setActionError(null);
+    try {
+      const ok = await faucet.claim();
+      if (ok) toast.success(copy.faucetDone);
+      else toast.error(copy.faucetFailed, { duration: Infinity });
     } finally {
       setBusy(false);
     }
@@ -84,7 +128,7 @@ export function GasTankCard({
         data-testid="gas-tank-card"
       >
         <h3>{copy.title}</h3>
-        <p style={{ color: COLORS.textDim }}>{copy.unsetNote}</p>
+        <p style={{ color: "var(--dim)" }}>{copy.unsetNote}</p>
       </div>
     );
   }
@@ -98,18 +142,18 @@ export function GasTankCard({
     <div className="gas-tank-card" data-testid="gas-tank-card">
       <h3>{copy.title}</h3>
       {error ? (
-        <p style={{ color: "var(--c-danger)" }}>
+        <p style={{ color: "var(--danger)" }}>
           {humanizeError(new Error(error))}
         </p>
       ) : !tank ? (
-        <p style={{ color: COLORS.textDim }}>{copy.loading}</p>
+        <p style={{ color: "var(--dim)" }}>{copy.loading}</p>
       ) : (
         <>
           <div className="gas-tank-card__balance">
-            <strong>
+            <strong className="num">
               {formatTokenAmount(tank.balance)} {nativeSymbol}
             </strong>
-            <small>
+            <small className="num">
               {opsLeftLabel(tank.opsLeft, tank.sponsored, locale)}{" "}
               {copy.opsLeftSuffix}
             </small>
@@ -120,11 +164,12 @@ export function GasTankCard({
             aria-valuenow={grantsPct}
             aria-valuemin={0}
             aria-valuemax={100}
+            aria-label={copy.grantsBarTitle}
             title={copy.grantsBarTitle}
           >
             <div style={{ width: `${grantsPct}%` }} />
           </div>
-          <small style={{ color: COLORS.textDim }}>
+          <small className="num" style={{ color: "var(--dim)" }}>
             {copy.grantsUsage
               .replace("{used}", tank.grantsUsed.toString())
               .replace("{cap}", tank.grantsCap.toString())}
@@ -140,11 +185,14 @@ export function GasTankCard({
             />
             <Button
               variant="ghost"
+              busy={busy}
               disabled={
                 busy ||
+                !walletClient ||
                 !depositValue ||
                 parseEther(depositValue || "0") < parseEther(minDeposit)
               }
+              onClick={() => void onDeposit()}
               icon={undefined}
             >
               {copy.depositAction}
@@ -152,16 +200,22 @@ export function GasTankCard({
           </div>
           <Button
             variant="ghost"
+            busy={busy}
             onClick={() => void onRefill()}
             disabled={busy || tank.balance > 0n || tank.grantsLeft === 0n}
           >
             {copy.refillAction}
           </Button>
+          {actionError ? (
+            <p className="wallet-gate-error" role="alert">
+              {actionError}
+            </p>
+          ) : null}
           <div
             className="gas-tank-card__faucet"
             data-testid="gas-tank-faucet-row"
           >
-            <small style={{ color: COLORS.textDim }}>
+            <small className="num" style={{ color: "var(--dim)" }}>
               {copy.faucetBalanceLabel}: {faucet.balance ?? "0"}
             </small>
             {faucet.eligible ? (
@@ -169,14 +223,14 @@ export function GasTankCard({
                 <small>{copy.faucetEligibleBadge}</small>
                 <Button
                   variant="ghost"
-                  onClick={() => void faucet.claim()}
+                  onClick={() => void onClaim()}
                   disabled={faucet.claiming}
                 >
                   {copy.faucetClaimAction}
                 </Button>
               </>
             ) : (
-              <small style={{ color: COLORS.textDim }}>
+              <small style={{ color: "var(--dim)" }}>
                 {copy.faucetIneligibleBadge}
               </small>
             )}

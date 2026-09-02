@@ -12,5 +12,12 @@ export const toastSuccess = (msg: string): void => {
 };
 export const toastError = (err: unknown): void => {
   const refStr = errorRefString(err);
-  toast.error(humanizeError(err), refStr ? { description: refStr } : undefined);
+  // U24: error toasts persist until dismissed — same regime as the Notice rail.
+  // The 3s Toaster default stays for success/info toasts only (main.tsx).
+  toast.error(
+    humanizeError(err),
+    refStr
+      ? { duration: Infinity, description: refStr }
+      : { duration: Infinity },
+  );
 };
