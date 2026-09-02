@@ -350,12 +350,12 @@ apps/bench/
 apps/frontend/playwright.config.ts
 apps/frontend/scripts/generate-og.mjs
 apps/backend/scripts/
-apps/contracts/script/
-apps/contracts/test/
+apps/contracts/script/cache/
+apps/contracts/script/broadcast*
+apps/contracts/script/cache/
+apps/contracts/script/broadcast*
 scripts/deploy-mainnet.sh
 scripts/generate-production-wallets.sh
-**/*.t.sol
-**/Fuzz*.sol
 apps/contracts/BUGS.md
 apps/contracts/README.md
 **/BUGS.md
