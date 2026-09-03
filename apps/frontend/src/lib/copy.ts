@@ -148,14 +148,12 @@ export type Copy = {
       start: string;
       connect: string;
     };
-    /** L2-N2: hero meta strip — chain / agents / receipts counts. */
+    /** L2-N2: hero meta strip — live chain + on-chain agent count. */
     meta: {
-      /** Placeholder: `{chainId}`. */
+      /** Placeholders: `{chainName}`, `{chainId}`. */
       network: string;
       /** Placeholder: `{count}`. */
       agentsOnline: string;
-      /** Placeholder: `{count}`. */
-      receiptsIndexed: string;
     };
     /** L2-N3: hero trust-line chips. */
     trust: {
@@ -1116,9 +1114,8 @@ const english: Copy = {
       connect: "Connect",
     },
     meta: {
-      network: "Mainnet · chain {chainId}",
+      network: "{chainName} · chain {chainId}",
       agentsOnline: "{count} agents online",
-      receiptsIndexed: "{count} receipts indexed",
     },
     trust: {
       nonCustodial: "Non-custodial",
@@ -2243,9 +2240,8 @@ const french: Copy = {
       connect: "Connecter",
     },
     meta: {
-      network: "Mainnet · chaîne {chainId}",
+      network: "{chainName} · chaîne {chainId}",
       agentsOnline: "{count} agents en ligne",
-      receiptsIndexed: "{count} reçus indexés",
     },
     trust: {
       nonCustodial: "Non-dépositaire",
@@ -3351,9 +3347,8 @@ const german: Copy = {
       connect: "Verbinden",
     },
     meta: {
-      network: "Mainnet · Kette {chainId}",
+      network: "{chainName} · Kette {chainId}",
       agentsOnline: "{count} Agents online",
-      receiptsIndexed: "{count} Belege indexiert",
     },
     trust: {
       nonCustodial: "Nicht-verwahrend",
