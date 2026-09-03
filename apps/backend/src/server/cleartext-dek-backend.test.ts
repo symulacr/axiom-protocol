@@ -12,7 +12,7 @@ import { join } from "node:path";
 process.env.AXIOM_DISABLE_AUTH = "true";
 // Parallel bun test workers share no env; give this file its own EventStore
 // data dir so on-disk event-store.lock never contends with sibling workers.
-process.env.AXIOM_DATA_DIR = join(tmpdir(), `axiom-be-cleartext-${process.pid}`);
+process.env.AXIOM_DATA_DIR = join(tmpdir(), `axiom-be-${process.pid}`);
 
 import { startServer as startBackendServer } from "../server.js";
 import { fetchJson } from "../utils/response.js";

@@ -348,6 +348,8 @@ apps/bench/
 **/*.spec.ts
 **/*.spec.mjs
 apps/frontend/playwright.config.ts
+apps/frontend/scripts/generate-og.mjs
+apps/backend/scripts/
 apps/contracts/script/cache/
 apps/contracts/script/broadcast*
 apps/contracts/script/cache/
@@ -382,6 +384,7 @@ apps/backend/COVERAGE-TODO.md
 apps/backend/COVERAGE-WEEK-PLAN.md
 apps/backend/E2E-DISCOVERIES.md
 apps/backend/bench-before.mts
+apps/contracts/remappings.txt
 apps/contracts/script/DeployPaymentProcessor.s.sol
 apps/contracts/script/RedeployTeeVerifier.s.sol
 apps/contracts/script/Deploy.s.sol

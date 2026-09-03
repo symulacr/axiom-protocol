@@ -128,7 +128,7 @@ function revokedSignerProof(
       dataHash,
       targetPubkey: targetPubkey as `0x${string}`,
       to: nonSigner.address as `0x${string}`,
-      nft: deps.agentNft as `0x${string}`,
+      nft: deps.agentNft,
       nonce: nonce as `0x${string}`,
       validUntil,
     },

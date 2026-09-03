@@ -650,6 +650,279 @@
           "wallet"
         ]
       },
+      "SponsorBody": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]{40}$"
+          },
+          "target": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]{40}$"
+          },
+          "data": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]+$"
+          },
+          "maxGasCost": {
+            "type": "string",
+            "pattern": "^\\d+$"
+          },
+          "nonce": {
+            "type": "string",
+            "pattern": "^\\d+$"
+          },
+          "deadline": {
+            "type": "string",
+            "pattern": "^\\d+$"
+          },
+          "signature": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]+$"
+          }
+        },
+        "required": [
+          "user",
+          "target",
+          "data",
+          "maxGasCost",
+          "nonce",
+          "deadline",
+          "signature"
+        ]
+      },
+      "SponsorAccepted": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "id": {
+            "type": "string",
+            "description": "Relayer-side correlation id"
+          },
+          "nonce": {
+            "type": "string",
+            "pattern": "^\\d+$",
+            "description": "Per-user ForwardRequest nonce (echoed decimal string)"
+          },
+          "sponsored": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          }
+        },
+        "required": [
+          "ok",
+          "id",
+          "nonce",
+          "sponsored"
+        ]
+      },
+      "RelayerStatus": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "on",
+              "off"
+            ]
+          },
+          "address": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^0x[a-fA-F0-9]{40}$",
+            "description": "0x-prefixed EVM address (20 bytes)",
+            "examples": [
+              "0x0000000000000000000000000000000000000000"
+            ]
+          },
+          "relayer": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^0x[a-fA-F0-9]{40}$",
+            "description": "0x-prefixed EVM address (20 bytes)",
+            "examples": [
+              "0x0000000000000000000000000000000000000000"
+            ]
+          },
+          "sponsorMaxGasCostWei": {
+            "type": "string",
+            "description": "Serialized bigint (decimal string)"
+          },
+          "sponsorRatePerMin": {
+            "type": "integer"
+          },
+          "sponsorMaxInflightPerUser": {
+            "type": "integer"
+          },
+          "batchMax": {
+            "type": "integer"
+          },
+          "queue": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer"
+            }
+          }
+        },
+        "required": [
+          "mode",
+          "address",
+          "relayer",
+          "sponsorMaxGasCostWei",
+          "sponsorRatePerMin",
+          "sponsorMaxInflightPerUser",
+          "batchMax",
+          "queue"
+        ]
+      },
+      "RelayerTank": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]{40}$",
+            "description": "0x-prefixed EVM address (20 bytes)",
+            "examples": [
+              "0x0000000000000000000000000000000000000000"
+            ]
+          },
+          "balance": {
+            "type": "string",
+            "description": "Tank balance in wei"
+          },
+          "grants": {
+            "type": "string",
+            "description": "Grants consumed"
+          },
+          "grantsCap": {
+            "type": "string",
+            "description": "Serialized bigint (decimal string)"
+          },
+          "grantsLeft": {
+            "type": "string",
+            "description": "Serialized bigint (decimal string)"
+          },
+          "gasGrant": {
+            "type": "string",
+            "description": "Live per-grant size in wei (admin-tunable, never hardcoded)"
+          },
+          "opsLeft": {
+            "type": "integer",
+            "description": "Approx ops remaining at gasGrant granularity"
+          },
+          "reserve": {
+            "type": "string",
+            "description": "Protocol gas reserve in wei"
+          }
+        },
+        "required": [
+          "address",
+          "balance",
+          "grants",
+          "grantsCap",
+          "grantsLeft",
+          "gasGrant",
+          "opsLeft",
+          "reserve"
+        ]
+      },
+      "FaucetStatus": {
+        "type": "object",
+        "properties": {
+          "eligible": {
+            "type": "boolean"
+          },
+          "amount": {
+            "type": "string",
+            "description": "Drip size in axmUSDC base units (6 decimals)"
+          },
+          "token": {
+            "type": "string",
+            "enum": [
+              "axmUSDC"
+            ]
+          }
+        },
+        "required": [
+          "eligible",
+          "amount",
+          "token"
+        ]
+      },
+      "FaucetClaim": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "dripped": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ok",
+          "dripped"
+        ]
+      },
+      "PricesResponse": {
+        "type": "object",
+        "properties": {
+          "prices": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "symbol": {
+                  "type": "string"
+                },
+                "price": {
+                  "type": "string",
+                  "description": "Human price with expo applied"
+                },
+                "confidence": {
+                  "type": "string",
+                  "description": "Pyth confidence interval"
+                },
+                "expo": {
+                  "type": "integer"
+                },
+                "publishedAt": {
+                  "type": "integer",
+                  "description": "Publish time (unix ms)"
+                }
+              },
+              "required": [
+                "symbol",
+                "price",
+                "confidence",
+                "expo",
+                "publishedAt"
+              ]
+            }
+          }
+        },
+        "required": [
+          "prices"
+        ]
+      },
       "MintEncodeBody": {
         "anyOf": [
           {
@@ -1744,383 +2017,6 @@
           "results"
         ]
       },
-      "AgentStateVaultHealth": {
-        "type": "object",
-        "properties": {
-          "balance": {
-            "type": "string",
-            "description": "Serialized bigint (decimal string)"
-          },
-          "strategyRoot": {
-            "type": "string",
-            "pattern": "^0x[a-fA-F0-9]+$",
-            "description": "bytes32 Merkle root of allowed (target,selector) pairs; zero = no strategy"
-          },
-          "dailyLimit": {
-            "type": "string",
-            "description": "Serialized bigint (decimal string)"
-          },
-          "dailySpent": {
-            "type": "string",
-            "description": "Serialized bigint (decimal string)"
-          },
-          "resetDay": {
-            "type": "string",
-            "description": "UTC day index the window resets on"
-          },
-          "validUntilDay": {
-            "type": "string",
-            "description": "0 = no expiry"
-          },
-          "expired": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "balance",
-          "strategyRoot",
-          "dailyLimit",
-          "dailySpent",
-          "resetDay",
-          "validUntilDay",
-          "expired"
-        ]
-      },
-      "AgentStatePaymentSnapshot": {
-        "type": "object",
-        "properties": {
-          "maxPayCap": {
-            "type": "string",
-            "description": "Payment cap (single-primitive, V3)"
-          },
-          "computeRatioMax": {
-            "type": "string",
-            "description": "Serialized bigint (decimal string)"
-          },
-          "agentBalance": {
-            "type": "string",
-            "description": "Vault balance for the agent"
-          },
-          "payerAllowance": {
-            "type": "string",
-            "description": "Payer token allowance to the processor"
-          },
-          "paymentToken": {
-            "type": "string",
-            "pattern": "^0x[a-fA-F0-9]{40}$",
-            "description": "ERC-20 payment token address",
-            "examples": [
-              "0x0000000000000000000000000000000000000000"
-            ]
-          }
-        },
-        "required": [
-          "maxPayCap",
-          "computeRatioMax",
-          "agentBalance",
-          "payerAllowance",
-          "paymentToken"
-        ]
-      },
-      "AgentStateResponse": {
-        "type": "object",
-        "properties": {
-          "tokenId": {
-            "type": "string",
-            "pattern": "^\\d+$",
-            "description": "Decimal token ID string"
-          },
-          "payer": {
-            "$ref": "#/components/schemas/AgentStatePaymentSnapshot"
-          },
-          "vaultHealth": {
-            "$ref": "#/components/schemas/AgentStateVaultHealth"
-          },
-          "errors": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "string"
-            },
-            "description": "Per-read failure detail when one view fails but the other succeeded"
-          }
-        },
-        "required": [
-          "tokenId"
-        ]
-      },
-      "RelayerTank": {
-        "type": "object",
-        "properties": {
-          "address": {
-            "type": "string",
-            "pattern": "^0x[a-fA-F0-9]{40}$",
-            "description": "0x-prefixed EVM address (20 bytes)",
-            "examples": [
-              "0x0000000000000000000000000000000000000000"
-            ]
-          },
-          "balance": {
-            "type": "string",
-            "description": "Tank balance in wei"
-          },
-          "grants": {
-            "type": "string",
-            "description": "Grants consumed"
-          },
-          "grantsCap": {
-            "type": "string",
-            "description": "Serialized bigint (decimal string)"
-          },
-          "grantsLeft": {
-            "type": "string",
-            "description": "Serialized bigint (decimal string)"
-          },
-          "gasGrant": {
-            "type": "string",
-            "description": "Live per-grant size in wei (admin-tunable, never hardcoded)"
-          },
-          "opsLeft": {
-            "type": "integer",
-            "description": "Approx ops remaining at gasGrant granularity"
-          },
-          "reserve": {
-            "type": "string",
-            "description": "Protocol gas reserve in wei"
-          }
-        },
-        "required": [
-          "address",
-          "balance",
-          "grants",
-          "grantsCap",
-          "grantsLeft",
-          "gasGrant",
-          "opsLeft",
-          "reserve"
-        ]
-      },
-      "RelayerStatus": {
-        "type": "object",
-        "properties": {
-          "mode": {
-            "type": "string",
-            "enum": [
-              "on",
-              "off"
-            ]
-          },
-          "address": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "pattern": "^0x[a-fA-F0-9]{40}$",
-            "description": "0x-prefixed EVM address (20 bytes)",
-            "examples": [
-              "0x0000000000000000000000000000000000000000"
-            ]
-          },
-          "relayer": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "pattern": "^0x[a-fA-F0-9]{40}$",
-            "description": "0x-prefixed EVM address (20 bytes)",
-            "examples": [
-              "0x0000000000000000000000000000000000000000"
-            ]
-          },
-          "sponsorMaxGasCostWei": {
-            "type": "string",
-            "description": "Serialized bigint (decimal string)"
-          },
-          "sponsorRatePerMin": {
-            "type": "integer"
-          },
-          "sponsorMaxInflightPerUser": {
-            "type": "integer"
-          },
-          "batchMax": {
-            "type": "integer"
-          },
-          "queue": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "integer"
-            }
-          }
-        },
-        "required": [
-          "mode",
-          "address",
-          "relayer",
-          "sponsorMaxGasCostWei",
-          "sponsorRatePerMin",
-          "sponsorMaxInflightPerUser",
-          "batchMax",
-          "queue"
-        ]
-      },
-      "SponsorBody": {
-        "type": "object",
-        "properties": {
-          "user": {
-            "type": "string",
-            "pattern": "^0x[a-fA-F0-9]{40}$"
-          },
-          "target": {
-            "type": "string",
-            "pattern": "^0x[a-fA-F0-9]{40}$"
-          },
-          "data": {
-            "type": "string",
-            "pattern": "^0x[a-fA-F0-9]+$"
-          },
-          "maxGasCost": {
-            "type": "string",
-            "pattern": "^\\d+$"
-          },
-          "nonce": {
-            "type": "string",
-            "pattern": "^\\d+$"
-          },
-          "deadline": {
-            "type": "string",
-            "pattern": "^\\d+$"
-          },
-          "signature": {
-            "type": "string",
-            "pattern": "^0x[a-fA-F0-9]+$"
-          }
-        },
-        "required": [
-          "user",
-          "target",
-          "data",
-          "maxGasCost",
-          "nonce",
-          "deadline",
-          "signature"
-        ]
-      },
-      "SponsorAccepted": {
-        "type": "object",
-        "properties": {
-          "ok": {
-            "type": "boolean",
-            "enum": [
-              true
-            ]
-          },
-          "id": {
-            "type": "string",
-            "description": "Relayer-side correlation id"
-          },
-          "nonce": {
-            "type": "string",
-            "pattern": "^\\d+$",
-            "description": "Per-user ForwardRequest nonce (echoed decimal string)"
-          },
-          "sponsored": {
-            "type": "boolean",
-            "enum": [
-              true
-            ]
-          }
-        },
-        "required": [
-          "ok",
-          "id",
-          "nonce",
-          "sponsored"
-        ]
-      },
-      "FaucetStatus": {
-        "type": "object",
-        "properties": {
-          "eligible": {
-            "type": "boolean"
-          },
-          "amount": {
-            "type": "string",
-            "description": "Drip size in axmUSDC base units (6 decimals)"
-          },
-          "token": {
-            "type": "string",
-            "enum": [
-              "axmUSDC"
-            ]
-          }
-        },
-        "required": [
-          "eligible",
-          "amount",
-          "token"
-        ]
-      },
-      "FaucetClaim": {
-        "type": "object",
-        "properties": {
-          "ok": {
-            "type": "boolean",
-            "enum": [
-              true
-            ]
-          },
-          "dripped": {
-            "type": "boolean"
-          },
-          "reason": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "ok",
-          "dripped"
-        ]
-      },
-      "PricesResponse": {
-        "type": "object",
-        "properties": {
-          "prices": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "symbol": {
-                  "type": "string"
-                },
-                "price": {
-                  "type": "string",
-                  "description": "Human price with expo applied"
-                },
-                "confidence": {
-                  "type": "string",
-                  "description": "Pyth confidence interval"
-                },
-                "expo": {
-                  "type": "integer"
-                },
-                "publishedAt": {
-                  "type": "integer",
-                  "description": "Publish time (unix ms)"
-                }
-              },
-              "required": [
-                "symbol",
-                "price",
-                "confidence",
-                "expo",
-                "publishedAt"
-              ]
-            }
-          }
-        },
-        "required": [
-          "prices"
-        ]
-      },
       "TickRecommendation": {
         "type": "object",
         "properties": {
@@ -2442,6 +2338,110 @@
         },
         "required": [
           "datas"
+        ]
+      },
+      "AgentStatePaymentSnapshot": {
+        "type": "object",
+        "properties": {
+          "maxPayCap": {
+            "type": "string",
+            "description": "Payment cap (single-primitive, V3)"
+          },
+          "computeRatioMax": {
+            "type": "string",
+            "description": "Serialized bigint (decimal string)"
+          },
+          "agentBalance": {
+            "type": "string",
+            "description": "Vault balance for the agent"
+          },
+          "payerAllowance": {
+            "type": "string",
+            "description": "Payer token allowance to the processor"
+          },
+          "paymentToken": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]{40}$",
+            "description": "ERC-20 payment token address",
+            "examples": [
+              "0x0000000000000000000000000000000000000000"
+            ]
+          }
+        },
+        "required": [
+          "maxPayCap",
+          "computeRatioMax",
+          "agentBalance",
+          "payerAllowance",
+          "paymentToken"
+        ]
+      },
+      "AgentStateVaultHealth": {
+        "type": "object",
+        "properties": {
+          "balance": {
+            "type": "string",
+            "description": "Serialized bigint (decimal string)"
+          },
+          "strategyRoot": {
+            "type": "string",
+            "pattern": "^0x[a-fA-F0-9]+$",
+            "description": "bytes32 Merkle root of allowed (target,selector) pairs; zero = no strategy"
+          },
+          "dailyLimit": {
+            "type": "string",
+            "description": "Serialized bigint (decimal string)"
+          },
+          "dailySpent": {
+            "type": "string",
+            "description": "Serialized bigint (decimal string)"
+          },
+          "resetDay": {
+            "type": "string",
+            "description": "UTC day index the window resets on"
+          },
+          "validUntilDay": {
+            "type": "string",
+            "description": "0 = no expiry"
+          },
+          "expired": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "balance",
+          "strategyRoot",
+          "dailyLimit",
+          "dailySpent",
+          "resetDay",
+          "validUntilDay",
+          "expired"
+        ]
+      },
+      "AgentStateResponse": {
+        "type": "object",
+        "properties": {
+          "tokenId": {
+            "type": "string",
+            "pattern": "^\\d+$",
+            "description": "Decimal token ID string"
+          },
+          "payer": {
+            "$ref": "#/components/schemas/AgentStatePaymentSnapshot"
+          },
+          "vaultHealth": {
+            "$ref": "#/components/schemas/AgentStateVaultHealth"
+          },
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Per-read failure detail when one view fails but the other succeeded"
+          }
+        },
+        "required": [
+          "tokenId"
         ]
       },
       "ChatStreamChunkFrame": {

@@ -2,7 +2,7 @@ process.env.AXIOM_ALLOW_CLEARTEXT_DEK = "true";
 process.env.AXIOM_DISABLE_AUTH = "true";
 // Parallel bun test workers share no env; give this file its own EventStore
 // data dir so on-disk event-store.lock never contends with sibling workers.
-process.env.AXIOM_DATA_DIR = join(tmpdir(), `axiom-be-transfer-${process.pid}`);
+process.env.AXIOM_DATA_DIR = join(tmpdir(), `axiom-be-${process.pid}`);
 
 import { randomBytes } from "node:crypto";
 import { tmpdir } from "node:os";
