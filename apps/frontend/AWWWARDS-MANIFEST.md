@@ -31,10 +31,10 @@
 | B | Design layer `src/styles/axiom-awwwards.css` (`--aw-*` tokens, aurora hero, glass nav, border-beam, marquee ticker, spotlight cards, parallax journey, wordmark footer, console chrome) + `main.tsx` import | done — contrast.test.ts green |
 | C | Landing rebuild — cinematic hero (OrbsField + aurora + grain), staggered reveals, CountUp meta, marquee ticker, spotlight principles, parallax journey, wordmark footer; **kicker spans removed** (hero eyebrow, section eyebrows, p-num, j-num) | done — browser-verified |
 | D | Public hubs (`/agents`, `/payments`, `/proofs`, `/storage/0g`, `/developers`) — cinematic treatment; **artifact spec-blocks + EXAMPLE/LIVE DATA badges removed** (noisy labels) | done — browser-verified |
-| E | Console chrome polish (topbar glass, rail glow, button sweep, panel hairline, page-head type) across app-shell pages | CSS done — visual verify pending (pages carry no kicker markup; audit found `page-head`/`panel-head` structural classes only) |
+| E | Console chrome polish (topbar glass, rail glow, button sweep, panel hairline, page-head type) across app-shell pages | done — verified on /app /transactions /chat /settings /storage /mint /payment /tick /deposit /withdraw /agents/7 (chrome computed styles live, 0 errors each) |
 | F | Dev environment: root `.env` (public VITE_* testnet addresses from `.env.example`) so contract-wired routes render | done — `/transfer/co-sign` no longer crashes |
-| G | Responsive pass: desktop / tablet / mobile on landing + hubs; reduced-motion, light-theme, RTL spot-checks | pending |
-| H | Final: `bun run test` + `tsc --noEmit` + eslint, manifest summary, commit | frontend gates green; full-repo pass pending |
+| G | Responsive pass: desktop / tablet / mobile on landing + hubs; reduced-motion, light-theme, RTL spot-checks | done — see verify log |
+| H | Final: `bun run test` + `tsc --noEmit` + eslint, manifest summary, commit | done — typecheck 4/4 pkgs, 563 tests 0 fail, lint 0 errors |
 
 ## Kicker/noise removal checklist (rule 1)
 
@@ -44,7 +44,7 @@
 | Landing principles | `.section-eyebrow` ("02 // Three principles") + `.p-num` chips | removed + DOM-verified |
 | Landing journey | `.section-eyebrow` ("03 // Pick one") + `.j-num` ("// Journey A/B") | removed + DOM-verified |
 | All hubs | `.seo-evidence-artifact` blocks (LIVE RECORD / TX HASH / … + EXAMPLE DATA badge) | removed + DOM-verified on all 5 hubs |
-| Console pages | kicker-style page-head labels | none found (audit: structural classes only) — visual verify pending |
+| Console pages | kicker-style page-head labels | none found (audit: structural classes only) — verified on all console routes |
 | copy.ts | now-unused `eyebrow` keys (en/fr/de) | removed |
 
 ## Verify log
@@ -59,3 +59,9 @@
 | 2026-09-03 20:45 | `/app` wallet gate renders preview state ("WALLET NOT CONNECTED" functional status, preview panels), 0 console errors | pass | `after-09-app-gate.png` |
 | 2026-09-03 20:45 | 404 renders route copy + hub links, 0 kickers, 0 console errors | pass | `after-10-notfound.png` |
 | 2026-09-03 20:5x | `bun run --filter @axiom/frontend typecheck` exit 0; `test` 150/150 pass (10417 expect) | pass | shell output |
+| 2026-09-03 21:0x | Console routes verified (preview/gate state): /app /transactions /chat /settings /storage /mint /payment /tick /deposit /withdraw /agents/7 — 0 kickers, 0 errors, no ErrorBoundary; AW chrome confirmed live via computed styles (topbar copper inset hairline, `.button-primary::after` metal sweep, `--aw-ink` resolves) | pass | `after-09..15-*.png`, DOM eval |
+| 2026-09-03 21:1x | Responsive (headless Chrome + CDP device-metrics override — daemon viewport emulation doesn't apply in this session): landing 390 / 834 / 1440 — no horizontal overflow at any width, h1 clamps 44.9 → 58.4 → 89.6px; /agents /app /transfer/co-sign at 390 — no overflow, 0 kickers | pass | `after-16..20-*.png` |
+| 2026-09-03 21:1x | Reduced-motion (emulated `prefers-reduced-motion: reduce`): all 5 landing reveals visible immediately (0 stuck), ticker animation `none`, orbs canvas not rendered | pass | DOM eval |
+| 2026-09-03 21:1x | RTL spot-check (`dir=rtl` on landing, scrolled): no horizontal overflow, journey cards stay in-viewport, 0 console errors | pass | DOM eval |
+| 2026-09-03 21:1x | Light theme: headless captures default to light `data-theme` — mobile/tablet shots above are light-mode renders; no overflow or kicker regressions | pass | `after-16..20-*.png` |
+| 2026-09-03 21:2x | Full-repo gates: `bun run typecheck` 4/4 packages exit 0; `bun run test` 563 tests (config 62, chat-runtime 100, backend 251, frontend 150) 0 fail, exit 0; `bun run lint` 0 errors (4 pre-existing unused-import warnings in untouched guard-test files) | pass | shell output |
