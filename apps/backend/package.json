@@ -22,7 +22,6 @@
     "run-chat-bench": "bun run e2e/run-chat-bench.ts",
     "run-chat-bench:live": "E2E_LIVE_COMPUTE=1 bun run e2e/run-chat-bench.ts",
     "run-load-bench": "bun run e2e/run-load-bench.ts",
-    "generate:openapi": "bun scripts/generate-openapi.mjs",
     "coverage-status": "bun run e2e/coverage-status.ts",
     "provision-e2e-wallet": "bun run e2e/provision-e2e-wallet.ts",
     "fund-e2e-usdc": "bun run e2e/fund-e2e-usdc.ts"
