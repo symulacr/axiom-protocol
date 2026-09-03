@@ -9,7 +9,13 @@ const frontendDir = import.meta.dirname;
 const repoRoot = resolve(frontendDir, "../..");
 
 // Load VITE_* from root .env (single source of truth; Vite's envDir is gone).
-const envSrc = await readFile(join(repoRoot, ".env"), "utf8");
+// A missing .env is fine — every VITE_* has a runtime default in src/config.
+let envSrc = "";
+try {
+  envSrc = await readFile(join(repoRoot, ".env"), "utf8");
+} catch {
+  envSrc = "";
+}
 const define = {};
 for (const line of envSrc.split("\n")) {
 	const key = /^VITE_[A-Z_]+(?==)/.exec(line)?.[0];
@@ -46,12 +52,6 @@ if (!build.success) {
 	for (const log of build.logs) console.error(log);
 	process.exit(1);
 }
-
-// P4 og-image: regenerate the v2-styled og-1200.jpg (1200×630 JPEG) with the
-// repo's headless chromium before public/ is copied into dist/. Optional —
-// when no chromium is available the script keeps the committed JPEG and the
-// build stays green.
-await Bun.$`bun ${join(frontendDir, "scripts", "generate-og.mjs")}`.quiet();
 
 // Copy public/ static assets (brand images, og-1200.jpg).
 await mkdir(dist, { recursive: true });
