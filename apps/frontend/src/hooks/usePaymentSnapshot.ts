@@ -31,14 +31,6 @@ export interface PaymentSnapshotResult {
   error: Error | null;
 }
 
-const EMPTY: PaymentSnapshot = {
-  maxPayCap: 0n,
-  computeRatioMax: 0n,
-  agentBalance: 0n,
-  payerAllowance: 0n,
-  paymentToken: null,
-};
-
 /**
  * W4 statefold: pay-panel pre-flight via Processor.paymentSnapshot (the
  * retired AxiomStateView facade was folded into the upgraded Processor). One
@@ -132,6 +124,3 @@ export function usePaymentSnapshot(): PaymentSnapshotResult {
     error: state.error,
   };
 }
-
-export type { PaymentSnapshot as PaymentSnapshotShape };
-export { EMPTY as EMPTY_PAYMENT_SNAPSHOT };

@@ -1186,9 +1186,15 @@ export function FlowPage({
   };
   const fieldError = (field: "value" | "extra"): string | undefined =>
     submitError?.field === field ? submitError.message : undefined;
+  // Wave-10B (critique-2-states-forms.md M7): the live <=0 clause fires only
+  // once the field has content — a pristine amount field must not open with a
+  // red "amount must be positive" line. Submit-time validate() still blocks
+  // empty/invalid drafts; the field-named submitError contract is untouched.
   const amountFieldError =
     fieldError("value") ??
-    (Number(draft.value) <= 0 ? f.errAmountPositive : undefined);
+    (draft.value.trim() !== "" && Number(draft.value) <= 0
+      ? f.errAmountPositive
+      : undefined);
   const baseValueField = {
     key: "value" as const,
     label: flow.fieldLabel,

@@ -620,7 +620,8 @@ export function App(): ReactElement {
               publicSeoSlug ? (
                 <PublicSeoPage slug={publicSeoSlug} />
               ) : isNotFound ? (
-                <Recovery404 go={go} locale={locale} />
+                // Wave-12B: 404 CTAs are real anchors now (no `go` handoff needed).
+                <Recovery404 locale={locale} />
               ) : hubRedirect ? (
                 // L1-M7: legacy hub spellings (/public-*, /features/*) are
                 // permanent redirects to the canonical short hub path — never
@@ -734,7 +735,8 @@ function AgentRoute({
   if (tokenId === null) {
     // F1: /agents/<slug> that is not a tokenId is a dead link, not a gate —
     // render the same 404 surface as any other unknown route.
-    return <Recovery404 go={go} locale={locale} />;
+    // Wave-12B: the 404 surface is self-navigating via real anchors.
+    return <Recovery404 locale={locale} />;
   }
   return <AgentPage tokenId={tokenId} go={go} locale={locale} />;
 }

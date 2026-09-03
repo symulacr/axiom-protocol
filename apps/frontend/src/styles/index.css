@@ -32,13 +32,29 @@
   /* R1: serif display face used only on Landing hero (h1 + strip + caption).
      Stays scoped to Landing — every other surface keeps --font-display: Syne. */
   --font-serif-display: "Fraunces", "Inter", ui-sans-serif, system-ui, sans-serif;
-  /* R3: shared copper-glow token (hero scrim, strip rail, eyebrow halo). */
-  --copper-glow-md: 0 0 14px color-mix(in srgb, var(--copper) 32%, transparent);
-  /* R5/R7/R8/R9: unified motion tokens for chrome transitions. */
+  /* R5/R7/R8/R9: unified motion tokens for chrome transitions.
+     Wave-11A: --motion-fade-220's 220ms now rides --dur-med (below). */
   --motion-rise: cubic-bezier(0.34, 1.56, 0.64, 1);
   --motion-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
   --motion-rise-180: 180ms var(--motion-rise);
-  --motion-fade-220: 220ms var(--motion-ease);
+  --motion-fade-220: var(--dur-med) var(--motion-ease);
+  /* ---- Wave-11A motion token consolidation (critique-3 M1; MASTER-SUMMARY
+     §3.14). One duration ladder + one standard curve for BOTH motion
+     languages (landing + console):
+       --dur-fast 150ms = buttons/toggles/links/rows (replaces .16s/.17s/.18s
+         Copper literals and 125/150/160ms chat literals)
+       --dur-med  220ms = drawer/layer/landing chrome transitions (was the
+         220ms literal inside --motion-fade-220)
+       --dur-slow 480ms = landing entrance animations (landing-rise 480ms)
+     --ease-standard names the single governing landing curve (--motion-ease,
+     per audit M1 "consolidate to … --ease-standard: var(--motion-ease)").
+     The console .button family keeps its own --ease curve value; both names
+     resolve through the alias block in the canonical token section. All NEW
+     motion must consume --dur-* / --ease-standard tokens instead of literals. */
+  --dur-fast: 150ms;
+  --dur-med: 220ms;
+  --dur-slow: 480ms;
+  --ease-standard: var(--motion-ease);
 }
 /* ---- inlined: axiom-base-patches.css ---- */
 /* axiom-base-patches: live rules from onboarding + refinement + landing-wallet-fix
@@ -126,7 +142,13 @@
 .wallet-gate-close:focus-visible { outline:2px solid var(--phosphor); outline-offset:2px; }
 /* ---- inlined: axiom-completion.css ---- */
 /* Copper Command Deck completion layer: shared surfaces, explicit states, asymmetric action lanes, proof-first hierarchy, and motion under 300ms. */
-:root { /* completion-* fallbacks for surfaces outside .app-shell (landing/locked
+/* Wave-11A bundler note: the selector list (`, :root`) is deliberate. Bun's
+   CSS minifier DROPS an earlier :root custom-property block once a later
+   :root block follows it with a property-bearing rule in between (repro:
+   ":root{--a:1} .x{color:red} :root{--b:2}" emits only --b). The list keeps
+   both blocks in the output; it matches the same element and changes nothing
+   at runtime. */
+:root, :root { /* completion-* fallbacks for surfaces outside .app-shell (landing/locked
    slabs): computed-identical values are var-aliased onto the canonical tokens;
    panel/panel-2/line/muted keep literal fallbacks — they intentionally
    DIFFER from the .app-shell palette (rgba blends, #a6aaa4≠#99a09f) and
@@ -135,7 +157,7 @@
    var(--copper-bright) — one bright copper, two encodings fewer. */
   --completion-panel: rgba(18,22,23,.92); --completion-panel-2: rgba(23,28,29,.88); --completion-line: rgba(225,218,196,.12); --completion-copper: var(--copper); --completion-bright: var(--copper-bright); --completion-phosphor: var(--phosphor); --completion-muted: #a6aaa4; --completion-dim: var(--dim); --completion-warning: var(--warning); --completion-ease: var(--ease); /* one curve (drift table) */ }
 .app-shell { display:grid; grid-template-columns:var(--rail-width,248px) minmax(0,1fr); min-height:100vh; background:var(--canvas); color:var(--ink); }
-.sidebar-wrap { min-width:0; }.sidebar { width:var(--rail-width,248px); position:fixed; inset:0 auto 0 0; z-index:30; overflow:visible; transition:width .24s var(--completion-ease); }.sidebar.is-collapsed { width:72px; }.main { min-width:0; min-height:100vh; /* overflow owned by stability pass (.main{overflow:visible}) */ }.topbar { position:sticky; top:0; z-index:20; min-height:72px; display:flex; align-items:center; justify-content:space-between; padding:0 clamp(20px,4vw,54px); border-bottom:1px solid var(--completion-line); background:rgba(11,14,15,.86); backdrop-filter:blur(18px); }.topbar-route,.topbar-actions,.session-top,.button-row,.page-head-actions,.context-action,.settings-select-row { display:flex; align-items:center; gap:var(--space-3); }.topbar-actions { gap:var(--space-2); }.session-top { border:1px solid var(--completion-line); padding:var(--space-2) var(--space-2); background:transparent; color:var(--ink); font:var(--fs-mono) 'JetBrains Mono',monospace; }.session-top:hover { border-color:var(--completion-copper); }.icon-button { display:grid; place-items:center; border:1px solid transparent; background:transparent; color:var(--completion-muted); }.icon-button:hover { color:var(--completion-bright); border-color:var(--completion-line); }/* L3-R1: this un-layered pair is canonical for display/border/color/hover — it outranks the layered geometry block (32px square, radius, transition) below regardless of order. NOT deletable. */.text-link { display:inline-flex; align-items:center; gap:var(--space-1); border:0; padding:0; background:transparent; color:var(--completion-bright); font:500 var(--fs-mono) 'JetBrains Mono',monospace; transition:.18s var(--ease); }.text-link:hover { color:var(--ink-bright); }.mono { font-family:'JetBrains Mono',monospace; }.brand { display:flex; align-items:center; gap:var(--space-2); color:var(--ink); font:800 var(--fs-body) Syne,sans-serif; letter-spacing:.06em; }.brand-compact { font-size:var(--fs-body); }.status { display:inline-flex; align-items:center; gap:var(--space-1); color:var(--completion-phosphor); font:500 var(--fs-mono) 'JetBrains Mono',monospace; text-transform:uppercase; letter-spacing:.04em; white-space:nowrap; }/* R2 S3: pill dots removed — tone color + text carry the state. */.status-warning { color:var(--completion-warning); }.status-muted { color:var(--completion-dim); }.status-success { color:var(--completion-phosphor); }.state-pill { display:inline-flex; align-items:center; gap:var(--space-1); color:var(--completion-copper); font:700 var(--fs-mono) 'JetBrains Mono',monospace; text-transform:uppercase; white-space:nowrap; }.state-confirmed { color:var(--completion-dim); }.state-reverted,.state-rejected,.state-stale { color:var(--completion-warning); }.state-ready { color:var(--completion-dim); }
+.sidebar-wrap { min-width:0; }.sidebar { width:var(--rail-width,248px); position:fixed; inset:0 auto 0 0; z-index:30; overflow:visible; /* Wave-11A: the rail-expand timing stays deliberately slower than the fast ladder (full-column move reads best oversized) but is now expressed over it: calc(--dur-fast + 90ms) = 240ms, identical to the former .24s literal (M1 mapping). */ transition:width calc(var(--dur-fast) + 90ms) var(--completion-ease); }.sidebar.is-collapsed { width:72px; }.main { min-width:0; min-height:100vh; /* overflow owned by stability pass (.main{overflow:visible}) */ }.topbar { position:sticky; top:0; z-index:20; min-height:72px; display:flex; align-items:center; justify-content:space-between; padding:0 clamp(20px,4vw,54px); border-bottom:1px solid var(--completion-line); background:rgba(11,14,15,.86); backdrop-filter:blur(18px); }.topbar-route,.topbar-actions,.session-top,.button-row,.page-head-actions,.context-action,.settings-select-row { display:flex; align-items:center; gap:var(--space-3); }.topbar-actions { gap:var(--space-2); }.session-top { border:1px solid var(--completion-line); padding:var(--space-2) var(--space-2); background:transparent; color:var(--ink); font:var(--fs-mono) 'JetBrains Mono',monospace; }.session-top:hover { border-color:var(--completion-copper); }.icon-button { display:grid; place-items:center; border:1px solid transparent; background:transparent; color:var(--completion-muted); }.icon-button:hover { color:var(--completion-bright); border-color:var(--completion-line); }/* L3-R1: this un-layered pair is canonical for display/border/color/hover — it outranks the layered geometry block (32px square, radius, transition) below regardless of order. NOT deletable. */.text-link { display:inline-flex; align-items:center; gap:var(--space-1); border:0; padding:0; background:transparent; color:var(--completion-bright); font:500 var(--fs-mono) 'JetBrains Mono',monospace; transition:var(--dur-fast) var(--ease); }.text-link:hover { color:var(--ink-bright); }.mono { font-family:'JetBrains Mono',monospace; }.brand { display:flex; align-items:center; gap:var(--space-2); color:var(--ink); font:800 var(--fs-body) Syne,sans-serif; letter-spacing:.06em; }.brand-compact { font-size:var(--fs-body); }.status { display:inline-flex; align-items:center; gap:var(--space-1); color:var(--completion-phosphor); font:500 var(--fs-mono) 'JetBrains Mono',monospace; text-transform:uppercase; letter-spacing:.04em; white-space:nowrap; }/* R2 S3: pill dots removed — tone color + text carry the state. */.status-warning { color:var(--completion-warning); }.status-muted { color:var(--completion-dim); }.status-success { color:var(--completion-phosphor); }.state-pill { display:inline-flex; align-items:center; gap:var(--space-1); color:var(--completion-copper); font:700 var(--fs-mono) 'JetBrains Mono',monospace; text-transform:uppercase; white-space:nowrap; }.state-confirmed { color:var(--completion-dim); }.state-reverted,.state-rejected,.state-stale { color:var(--completion-warning); }.state-ready { color:var(--completion-dim); }
 
 /* ------------------------------------------------------------------ *
  * ONE button dialect (audit §3.8). Extracted verbatim from the        *
@@ -154,7 +176,7 @@
  * panels). aria-disabled renders identically to :disabled in both     *
  * themes — see the .button:disabled consolidation block below.        *
  * ------------------------------------------------------------------ */
-.button { display:inline-flex; justify-content:center; align-items:center; gap:var(--space-2); min-height:var(--hit-area,44px); padding:0 var(--btn-pad-md); border:1px solid var(--completion-copper); border-radius:0; font:500 var(--fs-small) 'JetBrains Mono',monospace; letter-spacing:.02em; transition:transform .16s var(--completion-ease),background .16s var(--completion-ease),color .16s var(--completion-ease),border-color .16s var(--completion-ease); }
+.button { display:inline-flex; justify-content:center; align-items:center; gap:var(--space-2); min-height:var(--hit-area,44px); padding:0 var(--btn-pad-md); border:1px solid var(--completion-copper); border-radius:0; font:500 var(--fs-small) 'JetBrains Mono',monospace; letter-spacing:.02em; transition:transform var(--dur-fast) var(--completion-ease),background var(--dur-fast) var(--completion-ease),color var(--dur-fast) var(--completion-ease),border-color var(--dur-fast) var(--completion-ease); }
 .button:active { transform:scale(.97); }
 .button-primary { background:var(--completion-copper); color:var(--bg); font-weight:var(--fw-strong); }
 .button-primary:hover { background:var(--completion-bright); }
@@ -165,13 +187,13 @@
 .ops-page { max-width:1400px; margin:0 auto; padding:clamp(36px,6vw,84px) clamp(20px,5vw,70px) 90px; }.page-head { display:flex; justify-content:space-between; align-items:flex-end; gap:var(--space-6); margin-bottom:var(--space-7); }.page-head h1 { margin:var(--space-3) 0 var(--space-3); max-width:720px; font:800 var(--fs-display)/1 Syne,sans-serif; letter-spacing:-.045em; }.page-head h1 i,.page-head-asymmetric h1 i { color:var(--completion-bright); font-style:normal; }.page-head p { max-width:500px; color:var(--completion-muted); font-size:var(--fs-body); line-height:1.7; }.page-head-actions { align-self:flex-start; }.page-head-asymmetric { display:grid; grid-template-columns:minmax(0,1fr) minmax(270px,360px); align-items:end; }.action-lane { display:grid; gap:var(--space-3); align-self:stretch; align-content:end; padding:var(--space-5); border-left:1px solid var(--completion-line); background:var(--completion-panel); }.action-lane strong { font:var(--fw-title) var(--fs-body) Syne,sans-serif; line-height:1.25; }.context-strip { display:grid; border:1px solid var(--completion-line); background:var(--completion-panel); margin-bottom:var(--space-5); }.context-cell { display:grid; gap:var(--space-2); min-width:0; padding:var(--space-4) var(--space-4); border-right:1px solid var(--completion-line); }.context-cell:last-child { border:0; }.context-cell strong { display:flex; align-items:center; gap:var(--space-2); font-size:var(--fs-body); font-weight:var(--fw-label); }.context-cell .mono { color:var(--completion-dim); overflow-wrap:anywhere; font-size:var(--fs-mono); }.context-action { align-content:center; }.context-action strong { color:var(--completion-bright); }/* W5-B: the grid renders exactly the 3 mounted Stat cells (auto-fit) —
    repeat(4,1fr) left a bordered void at desktop and an orphan half-cell at
    701–900px. Single column ≤700px via the media blocks below. */
-.stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(0,1fr)); gap:1px; border:1px solid var(--completion-line); background:var(--completion-line); margin-bottom:var(--space-5); }.stat { display:grid; gap:var(--space-2); padding:var(--space-4); background:var(--completion-panel); }.stat-top { display:flex; justify-content:space-between; color:var(--completion-muted); font:500 var(--fs-mono) 'JetBrains Mono',monospace; }.stat-icon { color:var(--completion-copper); }.stat strong { font:var(--fw-strong) var(--fs-title) Syne,sans-serif; letter-spacing:-.03em; }.stat small { color:var(--completion-dim); font-size:var(--fs-mono); }.dashboard-split { display:grid; grid-template-columns:1.08fr .92fr; gap:var(--space-5); margin-bottom:var(--space-5); }.panel { min-width:0; border:1px solid var(--completion-line); background:var(--completion-panel); }.panel-head { display:flex; justify-content:space-between; align-items:flex-start; gap:var(--space-3); padding:var(--space-5); border-bottom:1px solid var(--completion-line); }.panel-head h2 { margin:var(--space-2) 0 0; font:var(--fw-title) var(--fs-title) Syne,sans-serif; letter-spacing:-.02em; }.agent-list,.activity-list { display:grid; }.agent-row,.activity-row,.transaction-row { display:grid; align-items:center; gap:var(--space-3); width:100%; border:0; border-bottom:1px solid var(--completion-line); padding:var(--space-3) var(--space-4); text-align:left; background:transparent; color:var(--ink); transition:background .17s var(--completion-ease); }.agent-row { grid-template-columns:38px minmax(0,1fr) auto 16px; }.activity-row { grid-template-columns:20px minmax(0,1fr) auto 16px; }.agent-row:hover,.activity-row:hover,.transaction-row:hover { background:color-mix(in srgb,var(--completion-copper) 7%,transparent); }.agent-row:last-child,.activity-row:last-child,.transaction-row:last-child { border-bottom:0; }.agent-row-mark,.agent-detail-mark { display:grid; place-items:center; width:34px; height:34px; border:1px solid var(--agent-motif,var(--completion-copper)); color:var(--agent-motif,var(--completion-copper)); background:color-mix(in srgb,var(--panel-2) 55%,transparent); }.agent-row strong,.activity-row strong { display:block; font-size:var(--fs-body); font-weight:var(--fw-label); }.agent-row small,.activity-row small { display:block; margin-top:var(--space-1); color:var(--completion-dim); font:var(--fs-small) 'JetBrains Mono',monospace; overflow-wrap:anywhere; }.agent-value { display:grid; justify-items:end; gap:var(--space-1); }.agent-value b { font:var(--fw-title) var(--fs-small) 'JetBrains Mono',monospace; }.next-action-panel { background:linear-gradient(140deg,color-mix(in srgb,var(--phosphor) 5%,transparent),transparent 44%),var(--completion-panel); }/* W5-B: content-sized — min-height:310px rendered a tall empty gradient slab
+.stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(0,1fr)); gap:1px; border:1px solid var(--completion-line); background:var(--completion-line); margin-bottom:var(--space-5); }.stat { display:grid; gap:var(--space-2); padding:var(--space-4); background:var(--completion-panel); }.stat-top { display:flex; justify-content:space-between; color:var(--completion-muted); font:500 var(--fs-mono) 'JetBrains Mono',monospace; }.stat-icon { color:var(--completion-copper); }.stat strong { font:var(--fw-strong) var(--fs-title) Syne,sans-serif; letter-spacing:-.03em; }.stat small { color:var(--completion-dim); font-size:var(--fs-mono); }.dashboard-split { display:grid; grid-template-columns:1.08fr .92fr; gap:var(--space-5); margin-bottom:var(--space-5); }.panel { min-width:0; border:1px solid var(--completion-line); background:var(--completion-panel); }.panel-head { display:flex; justify-content:space-between; align-items:flex-start; gap:var(--space-3); padding:var(--space-5); border-bottom:1px solid var(--completion-line); }.panel-head h2 { margin:var(--space-2) 0 0; font:var(--fw-title) var(--fs-title) Syne,sans-serif; letter-spacing:-.02em; }.agent-list,.activity-list { display:grid; }.agent-row,.activity-row,.transaction-row { display:grid; align-items:center; gap:var(--space-3); width:100%; border:0; border-bottom:1px solid var(--completion-line); padding:var(--space-3) var(--space-4); text-align:left; background:transparent; color:var(--ink); transition:background var(--dur-fast) var(--completion-ease); }.agent-row { grid-template-columns:38px minmax(0,1fr) auto 16px; }.activity-row { grid-template-columns:20px minmax(0,1fr) auto 16px; }.agent-row:hover,.activity-row:hover,.transaction-row:hover { background:color-mix(in srgb,var(--completion-copper) 7%,transparent); }.agent-row:last-child,.activity-row:last-child,.transaction-row:last-child { border-bottom:0; }.agent-row-mark,.agent-detail-mark { display:grid; place-items:center; width:34px; height:34px; border:1px solid var(--agent-motif,var(--completion-copper)); color:var(--agent-motif,var(--completion-copper)); background:color-mix(in srgb,var(--panel-2) 55%,transparent); }.agent-row strong,.activity-row strong { display:block; font-size:var(--fs-body); font-weight:var(--fw-label); }.agent-row small,.activity-row small { display:block; margin-top:var(--space-1); color:var(--completion-dim); font:var(--fs-small) 'JetBrains Mono',monospace; overflow-wrap:anywhere; }.agent-value { display:grid; justify-items:end; gap:var(--space-1); }.agent-value b { font:var(--fw-title) var(--fs-small) 'JetBrains Mono',monospace; }.next-action-panel { background:linear-gradient(140deg,color-mix(in srgb,var(--phosphor) 5%,transparent),transparent 44%),var(--completion-panel); }/* W5-B: content-sized — min-height:310px rendered a tall empty gradient slab
    (no artwork is ever mounted in the img slot). */
 .proof-card { position:relative; display:flex; align-items:flex-end; overflow:hidden; }.proof-card img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:.32; mix-blend-mode:screen; }.proof-card:after { content:""; position:absolute; inset:0; background:linear-gradient(180deg,transparent 20%,color-mix(in srgb, var(--completion-panel) 92%, black)); }.proof-card>div { position:relative; z-index:1; display:grid; gap:var(--space-2); padding:var(--space-5); }.proof-card strong { max-width:280px; font:var(--fw-strong) var(--fs-title)/1.05 Syne,sans-serif; letter-spacing:-.02em; }.proof-card p { max-width:330px; color:var(--completion-muted); font-size:var(--fs-body); line-height:1.6; }.activity-panel { margin-bottom:var(--space-5); }
 .agent-detail-head { display:grid; gap:var(--space-4); align-items:center; margin-bottom:var(--space-5); padding:var(--space-5); border:1px solid var(--completion-line); background:linear-gradient(115deg,var(--copper-10),transparent),var(--completion-panel); }.agent-detail-mark { width:58px; height:58px; }.agent-detail-head strong { display:block; margin:var(--space-1) 0; font:var(--fw-strong) var(--fs-title) Syne,sans-serif; }.agent-detail-head small { color:var(--completion-dim); font:var(--fs-small) 'JetBrains Mono',monospace; }.detail-tabs { display:flex; gap:0; border-bottom:1px solid var(--completion-line); margin-bottom:var(--space-5); overflow:auto; }.detail-tabs button,.filter { border:0; border-bottom:2px solid transparent; padding:var(--space-3) var(--space-4); background:transparent; color:var(--completion-dim); font:500 var(--fs-mono) 'JetBrains Mono',monospace; text-transform:uppercase; }.detail-tabs button.active,.detail-tabs button:hover,.filter.active,.filter:hover { color:var(--completion-bright); border-color:var(--completion-copper); }.agent-grid,.settings-grid,.storage-grid,.agent-identity-card,.agent-command-card,.tab-panel,.settings-card,.storage-stage,.provenance-panel { padding:var(--space-5); }.agent-identity-card h2,.agent-command-card h2,.tab-panel h2,.settings-card h2,.storage-stage h2,.provenance-panel h2 { margin:var(--space-2) 0 var(--space-5); font:var(--fw-title) var(--fs-title) Syne,sans-serif; letter-spacing:-.02em; }.provenance-list { display:grid; gap:0; margin:0 0 var(--space-5); }.provenance-list div,.settings-row { display:grid; grid-template-columns:1fr 1.3fr auto; align-items:center; gap:var(--space-3); min-width:0; padding:var(--space-3) 0; border-top:1px solid var(--completion-line); }.provenance-list dt,.settings-row>span:not(.status) { color:var(--completion-dim); font:500 var(--fs-mono) 'JetBrains Mono',monospace; }.provenance-list dd,.settings-row strong { display:flex; align-items:center; gap:var(--space-2); min-width:0; margin:0; font-size:var(--fs-small); font-weight:var(--fw-label); overflow-wrap:anywhere; }.command-actions { display:grid; gap:var(--space-2); }.agent-command-card p,.tab-panel p { margin-top:var(--space-5); color:var(--completion-muted); font-size:var(--fs-body); line-height:1.6; }.execute-grid,.receipt-grid { display:grid; grid-template-columns:1fr 1fr; gap:var(--space-4); }.field { display:grid; gap:var(--space-2); min-width:0; margin-bottom:var(--space-4); }.field-label { color:var(--completion-muted); font:500 var(--fs-mono) 'JetBrains Mono',monospace; }.field-control { display:flex; align-items:center; min-height:40px; border:1px solid var(--completion-line); background:color-mix(in srgb,var(--panel-2) 55%,transparent); }.field-control:focus-within { border-color:var(--completion-copper); box-shadow:0 0 0 3px color-mix(in srgb,var(--completion-copper) 9%,transparent); }.field-control input { min-width:0; width:100%; border:0; outline:0; padding:0 var(--space-3); background:transparent; color:var(--completion-text); font:16px 'JetBrains Mono',monospace; }.field-control em { padding-right:var(--space-3); color:var(--completion-copper); font:500 var(--fs-mono) 'JetBrains Mono',monospace; font-style:normal; }.field-hint,.field-message { color:var(--completion-dim); font-size:var(--fs-small); }.field-error .field-control { border-color:var(--completion-warning); }.field-message { color:var(--completion-warning); }.inline-notice,.notice-toast { display:flex; align-items:center; gap:var(--space-2); padding:var(--space-3) var(--space-3); border:1px solid color-mix(in srgb,var(--phosphor) 25%,transparent); background:color-mix(in srgb,var(--phosphor) 7%,transparent); color:var(--completion-phosphor); font-size:var(--fs-small); }.inline-notice { margin-bottom:var(--space-5); }.inline-notice button,.notice-toast button { margin-left:auto; border:0; background:transparent; color:inherit; }.notice-toast { position:fixed; right:22px; bottom:22px; max-width:min(420px,calc(100vw - 44px)); box-shadow: var(--shadow-modal-sm); }
 .ops-summary { display:grid; gap:1px; margin-bottom:var(--space-5); border:1px solid var(--completion-line); background:var(--completion-line); }.ops-summary>div { display:grid; gap:var(--space-2); padding:var(--space-4); background:var(--completion-panel); }.ops-summary strong { font:var(--fw-strong) var(--fs-title) Syne,sans-serif; }.ops-summary-value { margin:0; font:var(--fw-strong) var(--fs-title) Syne,sans-serif; }.ops-summary-recovery .ops-summary-value { color:var(--copper-bright); }.ops-summary small { color:var(--completion-dim); font:var(--fs-mono) 'JetBrains Mono',monospace; }.ops-summary-note { display:flex!important; align-items:center; gap:var(--space-2); color:var(--completion-muted); font-size:var(--fs-small); line-height:1.5; }.ops-summary-note svg { flex:0 0 auto; color:var(--completion-phosphor); }.filters { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:var(--space-1); }.filter { padding:var(--space-2) var(--space-2); font-size:var(--fs-mono); border-bottom-width:1px; }.transaction-panel { overflow:hidden; }.transaction-table-head,.transaction-row { display:grid; grid-template-columns:minmax(260px,1.35fr) 1fr .55fr .8fr 15px; gap:var(--space-3); align-items:center; }.transaction-table-head { padding:var(--space-3) var(--space-4); color:var(--completion-dim); font:500 var(--fs-mono) 'JetBrains Mono',monospace; letter-spacing:.08em; }.transaction-row { width:100%; }.transaction-kind { display:flex; align-items:center; gap:var(--space-2); min-width:0; }.transaction-kind>i { display:grid; place-items:center; width:28px; height:28px; color:var(--completion-copper); border:1px solid var(--completion-line); font-style:normal; }.transaction-row .mono { color:var(--completion-dim); font-size:var(--fs-small); overflow-wrap:anywhere; }.drawer-layer,.command-palette-layer { position:fixed; inset:0; background:rgba(7,9,10,.72); backdrop-filter:blur(12px); }.receipt-drawer { position:absolute; inset:0 0 0 auto; width:min(470px,100%); /* 78px clears the sticky topbar; not on a space step */ padding:78px var(--space-6) var(--space-6); overflow:auto; border-left:1px solid var(--completion-copper); background:var(--completion-panel); box-shadow: var(--shadow-drawer); }.drawer-close { position:absolute; top:22px; right:22px; }.drawer-list { margin-top:var(--space-6); }.command-palette-layer { display:grid; place-items:start center; padding-top:15vh; }.command-palette { border:1px solid var(--completion-copper); background:var(--completion-panel); box-shadow: var(--shadow-modal); }.command-input { display:flex; align-items:center; gap:var(--space-2); padding:var(--space-4); border-bottom:1px solid var(--completion-line); color:var(--completion-copper); }.command-input input { flex:1; border:0; outline:0; background:transparent; color:var(--ink); font:var(--fs-body) 'JetBrains Mono',monospace; }.command-input kbd { color:var(--completion-dim); font:500 var(--fs-mono) 'JetBrains Mono',monospace; }.empty-state { padding:var(--space-5); color:var(--completion-dim); font-size:var(--fs-small); }
-.storage-grid { grid-template-columns:1.12fr .88fr; }.storage-file { display:grid; grid-template-columns:38px 1fr auto; align-items:center; gap:var(--space-3); padding:var(--space-4) 0; border-bottom:1px solid var(--completion-line); }.file-icon { display:grid; place-items:center; width:34px; height:34px; color:var(--completion-phosphor); border:1px solid color-mix(in srgb,var(--phosphor) 25%,transparent); }.storage-file strong,.storage-file span { display:block; }.storage-file strong { font-size:var(--fs-body); font-weight:var(--fw-label); }.storage-file div span { margin-top:var(--space-1); color:var(--completion-dim); font-size:var(--fs-small); }.storage-steps { display:grid; gap:0; padding:var(--space-5) 0; }.storage-step { position:relative; display:grid; grid-template-columns:28px 1fr; align-items:center; min-height:39px; color:var(--completion-dim); }.storage-step>span { display:grid; place-items:center; width:22px; height:22px; border:1px solid var(--completion-line); font:500 var(--fs-mono) 'JetBrains Mono',monospace; }.storage-step strong { font-size:var(--fs-body); font-weight:var(--fw-label); }.storage-step i { position:absolute; top:31px; left:10px; width:1px; height:17px; background:var(--completion-line); }.storage-step.done { color:var(--completion-phosphor); }.storage-step.done>span { border-color:var(--completion-phosphor); }.storage-note,.diagnostic-note,.provenance-source { display:flex; gap:var(--space-2); align-items:flex-start; margin-top:var(--space-5); padding:var(--space-3); border-left:2px solid var(--completion-phosphor); background:color-mix(in srgb,var(--phosphor) 5%,transparent); color:var(--completion-muted); font-size:var(--fs-small); line-height:1.5; }.storage-note svg,.diagnostic-note svg { flex:0 0 auto; color:var(--completion-phosphor); }.provenance-source { display:grid; gap:var(--space-1); border-left-color:var(--completion-copper); }.provenance-source strong { font-size:var(--fs-body); font-weight:var(--fw-label); }.flow-layout { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(280px,.8fr); gap:var(--space-5); }.flow-stage { min-width:0; padding:0; border:1px solid var(--completion-line); background:var(--completion-panel); }.flow-stage-top { display:flex; align-items:center; gap:var(--space-3); padding:var(--space-5); border-bottom:1px solid var(--completion-line); }.flow-symbol { display:grid; place-items:center; width:36px; height:36px; color:var(--completion-copper); border:1px solid var(--completion-copper); }.flow-stage-top h2 { margin-top:var(--space-1); font:var(--fw-title) var(--fs-title) Syne,sans-serif; letter-spacing:-.02em; }.flow-stage-top>.state-pill { margin-left:auto; }.flow-visual { position:relative; min-height:240px; overflow:hidden; background:var(--surface-elevated); }.flow-visual img { width:100%; height:260px; object-fit:cover; opacity:.56; mix-blend-mode:screen; }.flow-visual-overlay { position:absolute; inset:auto 20px 20px; display:grid; gap:var(--space-1); }.flow-visual-overlay strong { font:var(--fw-title) var(--fs-title) Syne,sans-serif; letter-spacing:-.02em; }.flow-visual-overlay .mono { color:var(--completion-muted); font-size:var(--fs-mono); }.flow-form { display:grid; grid-template-columns:1fr 1fr; gap:var(--space-4); padding:var(--space-5); }.flow-action { display:flex; gap:var(--space-2); padding:var(--space-5); border-top:1px solid var(--completion-line); }.flow-context { align-self:start; padding:var(--space-5); border-top:2px solid var(--completion-copper); }.flow-context h2 { margin:var(--space-3) 0 var(--space-5); font:var(--fw-title) var(--fs-title)/1 Syne,sans-serif; letter-spacing:-.02em; }.flow-context .provenance-list { margin-bottom:0; }
-.thread-list { align-self:start; }.settings-grid { grid-template-columns:.88fr 1.12fr; }/* .settings-card padding dup removed — owned by the :106 grouped padding rule. */.settings-toggle-row { display:flex; align-items:center; justify-content:space-between; gap:var(--space-4); padding:var(--space-4) 0; border-top:1px solid var(--completion-line); }.settings-toggle-row>div { display:grid; gap:var(--space-1); }.settings-toggle-row strong,.range-control strong { font-size:var(--fs-body); font-weight:var(--fw-label); }.settings-toggle-row small,.range-control small { color:var(--completion-dim); font-size:var(--fs-small); line-height:1.4; }.toggle { width:40px; height:22px; padding:var(--space-1); border:1px solid var(--completion-line); border-radius:20px; background:var(--bg-2); }.toggle i { display:block; width:14px; height:14px; border-radius:50%; background:var(--completion-dim); transition:transform .18s var(--completion-ease),background .18s var(--completion-ease); }.toggle.on { border-color:var(--completion-copper); background:color-mix(in srgb,var(--completion-copper) 16%,transparent); }.toggle.on i { background:var(--completion-bright); transform:translateX(16px); }.range-control { display:flex; justify-content:space-between; align-items:center; gap:var(--space-4); padding:var(--space-4) 0; border-top:1px solid var(--completion-line); }.range-control span { display:grid; gap:var(--space-1); }.range-control input { width:150px; accent-color:var(--completion-copper); }.settings-select-row { display:grid; grid-template-columns:1fr 1fr; padding:var(--space-4) 0; gap:var(--space-4); }.settings-select-row label { display:grid; gap:var(--space-2); color:var(--completion-muted); font:500 var(--fs-mono) 'JetBrains Mono',monospace; }.settings-select-row select { min-height:36px; border:1px solid var(--completion-line); background:var(--bg-2); color:var(--completion-text); padding:0 var(--space-2); font:16px 'JetBrains Mono',monospace; }.settings-control-actions { display:flex; flex-wrap:wrap; gap:var(--space-2); margin-top:var(--space-5); }.not-integrated { display:grid; grid-template-columns:68px minmax(0,700px); gap:var(--space-5); padding:var(--space-6); border:1px solid color-mix(in srgb,var(--warning) 35%,transparent); background:linear-gradient(130deg,color-mix(in srgb,var(--warning) 9%,transparent),transparent),var(--completion-panel); }.not-integrated-icon { display:grid; place-items:center; width:54px; height:54px; border:1px solid var(--completion-warning); color:var(--completion-warning); }.not-integrated h2 { margin:var(--space-3) 0; font:var(--fw-title) var(--fs-title) Syne,sans-serif; letter-spacing:-.02em; }.not-integrated p { color:var(--completion-muted); font-size:var(--fs-body); line-height:1.7; }.not-integrated-actions { display:flex; gap:var(--space-2); margin-top:var(--space-5); }
+.storage-grid { grid-template-columns:1.12fr .88fr; }.storage-file { display:grid; grid-template-columns:38px 1fr auto; align-items:center; gap:var(--space-3); padding:var(--space-4) 0; border-bottom:1px solid var(--completion-line); }.file-icon { display:grid; place-items:center; width:34px; height:34px; color:var(--completion-phosphor); border:1px solid color-mix(in srgb,var(--phosphor) 25%,transparent); }.storage-file strong,.storage-file span { display:block; }.storage-file strong { font-size:var(--fs-body); font-weight:var(--fw-label); }.storage-file div span { margin-top:var(--space-1); color:var(--completion-dim); font-size:var(--fs-small); }.storage-steps { display:grid; gap:0; padding:var(--space-5) 0; }.storage-step { position:relative; display:grid; grid-template-columns:28px 1fr; align-items:center; min-height:39px; color:var(--completion-dim); }.storage-step>span { display:grid; place-items:center; width:22px; height:22px; border:1px solid var(--completion-line); font:500 var(--fs-mono) 'JetBrains Mono',monospace; }.storage-step strong { font-size:var(--fs-body); font-weight:var(--fw-label); }.storage-step i { position:absolute; top:31px; left:10px; width:1px; height:17px; background:var(--completion-line); }.storage-step.done { color:var(--completion-phosphor); }.storage-step.done>span { border-color:var(--completion-phosphor); }.storage-note,.diagnostic-note,.provenance-source { display:flex; gap:var(--space-2); align-items:flex-start; margin-top:var(--space-5); padding:var(--space-3); border-left:2px solid var(--completion-phosphor); background:color-mix(in srgb,var(--phosphor) 5%,transparent); color:var(--completion-muted); font-size:var(--fs-small); line-height:1.5; }.storage-note svg,.diagnostic-note svg { flex:0 0 auto; color:var(--completion-phosphor); }.provenance-source { display:grid; gap:var(--space-1); border-left-color:var(--completion-copper); }.provenance-source strong { font-size:var(--fs-body); font-weight:var(--fw-label); }.flow-layout { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(280px,.8fr); gap:var(--space-5); }.flow-stage { min-width:0; padding:0; border:1px solid var(--completion-line); background:var(--completion-panel); }.flow-stage-top { display:flex; align-items:center; gap:var(--space-3); padding:var(--space-5); border-bottom:1px solid var(--completion-line); }.flow-symbol { display:grid; place-items:center; width:36px; height:36px; color:var(--completion-copper); border:1px solid var(--completion-copper); }.flow-stage-top h2 { margin-top:var(--space-1); font:var(--fw-title) var(--fs-title) Syne,sans-serif; letter-spacing:-.02em; }.flow-stage-top>.state-pill { margin-left:auto; }.flow-visual { position:relative; min-height:240px; overflow:hidden; background:var(--surface-elevated); }.flow-visual img { width:100%; height:260px; object-fit:cover; opacity:.56; mix-blend-mode:screen; }.flow-form { display:grid; grid-template-columns:1fr 1fr; gap:var(--space-4); padding:var(--space-5); }.flow-action { display:flex; gap:var(--space-2); padding:var(--space-5); border-top:1px solid var(--completion-line); }.flow-context { align-self:start; padding:var(--space-5); border-top:2px solid var(--completion-copper); }.flow-context h2 { margin:var(--space-3) 0 var(--space-5); font:var(--fw-title) var(--fs-title)/1 Syne,sans-serif; letter-spacing:-.02em; }.flow-context .provenance-list { margin-bottom:0; }
+.thread-list { align-self:start; }.settings-grid { grid-template-columns:.88fr 1.12fr; }/* .settings-card padding dup removed — owned by the :106 grouped padding rule. */.settings-toggle-row { display:flex; align-items:center; justify-content:space-between; gap:var(--space-4); padding:var(--space-4) 0; border-top:1px solid var(--completion-line); }.settings-toggle-row>div { display:grid; gap:var(--space-1); }.settings-toggle-row strong,.range-control strong { font-size:var(--fs-body); font-weight:var(--fw-label); }.settings-toggle-row small,.range-control small { color:var(--completion-dim); font-size:var(--fs-small); line-height:1.4; }.toggle { width:40px; height:22px; padding:var(--space-1); border:1px solid var(--completion-line); border-radius:20px; background:var(--bg-2); }.toggle i { display:block; width:14px; height:14px; border-radius:50%; background:var(--completion-dim); transition:transform var(--dur-fast) var(--completion-ease),background var(--dur-fast) var(--completion-ease); }.toggle.on { border-color:var(--completion-copper); background:color-mix(in srgb,var(--completion-copper) 16%,transparent); }.toggle.on i { background:var(--completion-bright); transform:translateX(16px); }.range-control { display:flex; justify-content:space-between; align-items:center; gap:var(--space-4); padding:var(--space-4) 0; border-top:1px solid var(--completion-line); }.range-control span { display:grid; gap:var(--space-1); }.range-control input { width:150px; accent-color:var(--completion-copper); }.settings-select-row { display:grid; grid-template-columns:1fr 1fr; padding:var(--space-4) 0; gap:var(--space-4); }.settings-select-row label { display:grid; gap:var(--space-2); color:var(--completion-muted); font:500 var(--fs-mono) 'JetBrains Mono',monospace; }.settings-select-row select { min-height:36px; border:1px solid var(--completion-line); background:var(--bg-2); color:var(--completion-text); padding:0 var(--space-2); font:16px 'JetBrains Mono',monospace; }.settings-control-actions { display:flex; flex-wrap:wrap; gap:var(--space-2); margin-top:var(--space-5); }.not-integrated { display:grid; grid-template-columns:68px minmax(0,700px); gap:var(--space-5); padding:var(--space-6); border:1px solid color-mix(in srgb,var(--warning) 35%,transparent); background:linear-gradient(130deg,color-mix(in srgb,var(--warning) 9%,transparent),transparent),var(--completion-panel); }.not-integrated-icon { display:grid; place-items:center; width:54px; height:54px; border:1px solid var(--completion-warning); color:var(--completion-warning); }.not-integrated h2 { margin:var(--space-3) 0; font:var(--fw-title) var(--fs-title) Syne,sans-serif; letter-spacing:-.02em; }.not-integrated p { color:var(--completion-muted); font-size:var(--fs-body); line-height:1.7; }.not-integrated-actions { display:flex; gap:var(--space-2); margin-top:var(--space-5); }
 .public-locked { /* Intentional brand lock; see ledger L3-B9 — dark canvas regardless of light preference. */ min-height:100vh; background:var(--canvas); }.public-locked .locked-route-main { min-height:100vh; }.public-locked .locked-topbar { padding:0 clamp(20px,5vw,70px); }.recovery-404 { /* Intentional brand lock; see ledger L3-B9 (dark-locked art slab). */ min-height:100vh; display:grid; grid-template-columns:1.1fr .9fr; background:var(--canvas); color:var(--ink); }.recovery-404-art { min-height:100vh; overflow:hidden; border-right:1px solid var(--completion-line); }.recovery-404-art img { width:100%; height:100%; object-fit:cover; opacity:.7; mix-blend-mode:screen; }.recovery-404-copy { display:flex; flex-direction:column; justify-content:center; align-items:flex-start; gap:var(--space-4); padding:clamp(28px,7vw,90px); }.recovery-404-copy h1 { margin:var(--space-4) 0 var(--space-1); font:800 clamp(54px,7vw,100px)/.84 Syne,sans-serif; letter-spacing:-.08em; text-wrap:balance; }.recovery-404-copy h1 i { color:var(--completion-bright); font-style:normal; }.recovery-404-copy p { max-width:390px; color:var(--completion-muted); font-size:var(--fs-body); line-height:1.7; }.landing-nav { display:flex; align-items:center; justify-content:space-between; padding:var(--space-5) clamp(20px,5vw,76px); }.landing-main { display:grid; grid-template-columns:minmax(0,1.16fr) minmax(0,.84fr); gap:clamp(40px,4vw,56px); align-items:center; max-width:1180px; margin:0 auto; }.landing-copy h1 { margin:var(--space-4) 0 var(--space-5); letter-spacing:-.09em; }.landing-copy h1 i { color:var(--completion-bright); font-style:normal; }
 /* R1: Fraunces hero — wins over the Syne base above via cascade order.
    font: shorthand resets size/line-height/family; tracking + features come last. */
@@ -180,9 +202,9 @@
 /* R4: eyebrow pill — phosphor dot + mono caps above the h1.
    Sits inside .landing-copy so it inherits the grid alignment. */
 .landing-copy .eyebrow { display: inline-flex; align-items: center; gap: var(--space-2); padding: 6px 10px 6px 8px; margin-bottom: var(--space-3); border: 1px solid var(--line); border-radius: var(--radius-md); background: color-mix(in srgb, var(--copper) 8%, transparent); font: 500 var(--fs-mono)/1 "JetBrains Mono", monospace; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text); }
-.landing-copy .eyebrow::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--phosphor); box-shadow: 0 0 6px var(--phosphor); }.landing-copy>p { max-width:440px; color:var(--completion-muted); font-size:var(--fs-body); line-height:1.7; }.landing-visual { position:relative; min-height:580px; overflow:hidden; border:1px solid var(--completion-line); background:var(--surface-elevated); }.landing-visual>img { width:100%; height:100%; object-fit:cover; opacity:.65; mix-blend-mode:screen; }.landing-strip { display:grid; grid-template-columns:repeat(3,1fr); max-width:1420px; margin:0 auto; border-top:1px solid var(--completion-line); }.landing-strip>div,.landing-strip>button { display:grid; gap:var(--space-2); min-width:0; padding:var(--space-5); border:0; border-right:1px solid var(--completion-line); background:transparent; color:var(--ink); text-align:left; }.landing-strip>button:hover { background:color-mix(in srgb,var(--completion-copper) 7%,transparent); }.landing-strip strong { font:var(--fw-title) var(--fs-body) Syne,sans-serif; }.landing-strip small { color:var(--completion-dim); font-size:var(--fs-small); }.landing-strip button svg { color:var(--completion-copper); }
-@media (max-width: 900px) { .context-strip { grid-template-columns:repeat(2,1fr); }.context-cell:nth-child(2) { border-right:0; }.context-cell:nth-child(-n+2) { border-bottom:1px solid var(--completion-line); }.dashboard-split,.storage-grid,.settings-grid,.flow-layout { grid-template-columns:1fr; }.landing-main { grid-template-columns:1fr; }.landing-visual { min-height:420px; }.landing-strip { grid-template-columns:repeat(2,1fr); }.landing-strip>button:nth-child(2) { border-right:0; }.landing-strip>button:nth-child(-n+2) { border-bottom:1px solid var(--completion-line); }.page-head-asymmetric { grid-template-columns:1fr; }.action-lane { min-height:0; }.thread-list { display:none; }.ops-summary { grid-template-columns:repeat(2,1fr); }.ops-summary-note { grid-column:span 2; }.recovery-404 { grid-template-columns:1fr; }.recovery-404-art { min-height:340px; max-height:43vh; border-right:0; border-bottom:1px solid var(--completion-line); }.recovery-404-copy { padding:44px var(--space-5) 60px; } }
-@media (max-width:700px) { .app-shell { display:block; }.sidebar { display:none; }.topbar { min-height:60px; padding:0 var(--space-4); }.session-top span,.session-top .status { display:none; }.ops-page { padding:var(--space-6) var(--space-4) 60px; }.page-head { display:grid; gap:var(--space-5); margin-bottom:var(--space-5); }.page-head h1 { font-size:var(--fs-display); }.page-head-actions { justify-content:flex-start; }.context-strip,.stats-grid,.landing-strip { grid-template-columns:1fr; }.context-cell { border-right:0!important; border-bottom:1px solid var(--completion-line); }.context-cell:last-child { border-bottom:0; }.stats-grid { gap:1px; }.stat { padding:var(--space-3); }.agent-detail-head { grid-template-columns:48px 1fr; }.agent-grid,.execute-grid,.receipt-grid,.settings-select-row { grid-template-columns:1fr; }.transaction-table-head { display:none; }.transaction-row { grid-template-columns:minmax(0,1fr) auto 15px; }.transaction-row>.mono { display:none; }.transaction-age { display:none; }.flow-form { grid-template-columns:1fr; gap:0; }.flow-action { flex-wrap:wrap; }.not-integrated { grid-template-columns:1fr; padding:var(--space-5); }.not-integrated h2 { font-size:28px; }.landing-nav { padding:20px var(--space-4); }.landing-main { padding:58px var(--space-4) 52px; }.landing-copy h1 { font-size:clamp(42px, 13vw, 62px); }.landing-visual { min-height:360px; }.landing-strip>div,.landing-strip>button { border-right:0!important; border-bottom:1px solid var(--completion-line); }.landing-strip>button { border-bottom:0; }.guide-copy h2,.wallet-gate-panel h1 { overflow-wrap:normal; }.notice-toast { right:12px; bottom:12px; max-width:calc(100vw - 24px); }.recovery-404-copy h1 { font-size:clamp(42px, 13vw, 62px); } }
+.landing-copy .eyebrow::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--phosphor); box-shadow: 0 0 6px var(--phosphor); }.landing-copy>p { max-width:440px; color:var(--completion-muted); font-size:var(--fs-body); line-height:1.7; }.landing-visual { position:relative; min-height:580px; overflow:hidden; border:1px solid var(--completion-line); background:var(--surface-elevated); }.landing-visual>img { width:100%; height:100%; object-fit:cover; opacity:.65; mix-blend-mode:screen; }
+@media (max-width: 900px) { .context-strip { grid-template-columns:repeat(2,1fr); }.context-cell:nth-child(2) { border-right:0; }.context-cell:nth-child(-n+2) { border-bottom:1px solid var(--completion-line); }.dashboard-split,.storage-grid,.settings-grid,.flow-layout { grid-template-columns:1fr; }.landing-main { grid-template-columns:1fr; }.landing-visual { min-height:420px; }.page-head-asymmetric { grid-template-columns:1fr; }.action-lane { min-height:0; }.thread-list { display:none; }.ops-summary { grid-template-columns:repeat(2,1fr); }.ops-summary-note { grid-column:span 2; }.recovery-404 { grid-template-columns:1fr; }.recovery-404-art { min-height:340px; max-height:43vh; border-right:0; border-bottom:1px solid var(--completion-line); }.recovery-404-copy { padding:44px var(--space-5) 60px; } }
+@media (max-width:700px) { .app-shell { display:block; }.sidebar { display:none; }.topbar { min-height:60px; padding:0 var(--space-4); }.session-top span,.session-top .status { display:none; }.ops-page { padding:var(--space-6) var(--space-4) 60px; }.page-head { display:grid; gap:var(--space-5); margin-bottom:var(--space-5); }.page-head h1 { font-size:var(--fs-display); }.page-head-actions { justify-content:flex-start; }.context-strip,.stats-grid { grid-template-columns:1fr; }.context-cell { border-right:0!important; border-bottom:1px solid var(--completion-line); }.context-cell:last-child { border-bottom:0; }.stats-grid { gap:1px; }.stat { padding:var(--space-3); }.agent-detail-head { grid-template-columns:48px 1fr; }.agent-grid,.execute-grid,.receipt-grid,.settings-select-row { grid-template-columns:1fr; }.transaction-table-head { display:none; }.transaction-row { grid-template-columns:minmax(0,1fr) auto 15px; }.transaction-row>.mono { display:none; }.transaction-age { display:none; }.flow-form { grid-template-columns:1fr; gap:0; }.flow-action { flex-wrap:wrap; }.not-integrated { grid-template-columns:1fr; padding:var(--space-5); }.not-integrated h2 { font-size:28px; }.landing-nav { padding:20px var(--space-4); }.landing-main { padding:58px var(--space-4) 52px; }.landing-copy h1 { font-size:clamp(42px, 13vw, 62px); }.landing-visual { min-height:360px; }.guide-copy h2,.wallet-gate-panel h1 { overflow-wrap:normal; }.notice-toast { right:12px; bottom:12px; max-width:calc(100vw - 24px); }.recovery-404-copy h1 { font-size:clamp(42px, 13vw, 62px); } }
 
 /* ---- inlined: axiom-review-pass.css ---- */
 /* Axiom Copper Command Deck review pass.
@@ -270,27 +292,6 @@
     var(--surface-elevated);
 }
 .landing-visual.hero-visual-modern > img { display:none; }
-/* T4: real product preview inside the plate chrome — the actual .agent-row /
-   .activity-row console markup, framed by the hero plate's identity gradient.
-   Rows resolve on the dark-locked landing via the --completion-* fallbacks. */
-.landing-plate {
-  display: grid;
-  gap: 2px;
-  align-self: center;
-  width: min(430px, 100%);
-  margin-inline: auto;
-  padding: var(--space-2);
-  border: 1px solid var(--completion-line);
-  background: var(--completion-panel);
-  box-shadow: var(--shadow-plate-s);
-}
-.landing-plate .agent-row,
-.landing-plate .activity-row {
-  /* Row cells inherit the global grids; the plate frame replaces the
-     dashboard's full-bleed list context. */
-  border-bottom: 0;
-  padding: var(--space-3) var(--space-4);
-}
 .landing-main, .landing-copy { min-width:0; }
 /* Wave 5 (2026-09-02 re-audit): `white-space:nowrap` on both headline spans
    let the 78px italic line run ~405px under the hero visual plate (right
@@ -384,7 +385,6 @@
 
 /* Stability pass — operational content must never be clipped by decorative layers or test instrumentation. */
 :root {
-  --layer-content: 0;
   --layer-rail: 30;
   --layer-topbar: 40;
   --layer-popover: 60;
@@ -469,8 +469,6 @@ body:has(.flow-action) .notice-toast { bottom:96px; }
 /* Landing overflow fix: nav padding and hero readout tags must not push past viewport at 390 px. */
 @media (max-width: 480px) {
   .landing-nav { padding:var(--space-4) var(--space-3); }
-  .landing-strip { grid-template-columns:1fr; }
-  .landing-strip>div, .landing-strip>button { padding:var(--space-4) var(--space-3); }
   .landing-copy h1 { font-size:clamp(42px,13vw,56px); letter-spacing:-.09em; }
 }
 /* ---- inlined: axiom-theme-accessibility.css ---- */
@@ -550,9 +548,7 @@ body:has(.flow-action) .notice-toast { bottom:96px; }
 .app-shell .agent-row,
 .app-shell .activity-row,
 .app-shell .transaction-row,
-.app-shell .command-palette > button,
-.app-shell .landing-strip > div,
-.app-shell .landing-strip > button {
+.app-shell .command-palette > button {
   color: var(--completion-text);
 }
 
@@ -790,7 +786,7 @@ body:has(.flow-action) .notice-toast { bottom:96px; }
   white-space: nowrap;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 125ms var(--ease-out, ease-out);
+  transition: opacity var(--dur-fast) var(--ease-out, ease-out);
 }
 .sidebar.is-collapsed .nav-item:hover::after,
 .sidebar.is-collapsed .nav-item:focus-visible::after {
@@ -964,24 +960,6 @@ body:has(.flow-action) .notice-toast { bottom:96px; }
   block-size: min(100%, 420px);
 }
 
-.landing-strip {
-  min-block-size: 108px;
-  margin: 0;
-  /* Component renders exactly two journey cells (LandingPage strip section). */
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.landing-strip > div,
-.landing-strip > button {
-  min-inline-size: 0;
-  padding: var(--space-2) var(--space-3);
-}
-
-.landing-strip strong,
-.landing-strip small {
-  overflow-wrap: anywhere;
-}
-
 /* Locked routes use an explicit proof rail rather than a decorative seam. */
 .locked-route-main {
   position: relative;
@@ -1055,8 +1033,7 @@ body:has(.flow-action) .notice-toast { bottom:96px; }
     overflow-wrap: anywhere;
   }
 
-  .landing-visual,
-  .landing-strip {
+  .landing-visual {
     display: none;
   }
 
@@ -1137,7 +1114,7 @@ body:has(.flow-action) .notice-toast { bottom:96px; }
 .priority-actions { display: grid; justify-items: stretch; gap: .35rem; min-width: 132px; }
 .priority-actions .button { justify-content: center; min-height: var(--hit-area, 44px); white-space: nowrap; }
 .priority-why { display: inline-flex; align-items: center; justify-content: center; min-height: var(--hit-area, 44px); gap: .3rem; color: var(--muted); font: 500 var(--fs-mono)/1 var(--font-mono, monospace); letter-spacing: .04em; }
-.priority-why svg { transition: transform 160ms var(--ease-out, ease-out); }
+.priority-why svg { transition: transform var(--dur-fast) var(--ease-out, ease-out); }
 .priority-why[aria-expanded="true"] svg { transform: rotate(180deg); }
 .priority-details { grid-column: 2 / -1; display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding-top: .72rem; border-top: 1px solid var(--completion-line); }
 .priority-details > span { color: var(--dim); font-size: var(--fs-mono); }
@@ -1307,9 +1284,7 @@ body:has(.flow-action) .notice-toast { bottom:96px; }
   --space-sm: var(--space-2);
   --space-md: var(--space-3);
   --space-lg: var(--space-4);
-  --space-xl: var(--space-5);
   --space-2xl: var(--space-6);
-  --space-3xl: var(--space-7);
 }
 
 body { font-size: var(--fs-body); line-height: var(--copy-leading); }
@@ -1322,7 +1297,6 @@ button, input, textarea, select { line-height: var(--support-leading); }
 .session-top, .text-link, .priority-why,
 .context-cell .mono, .ops-summary small,
 .state-pill, .result-count, .stat-top, .field-control em,
-.flow-visual-overlay .mono,
 .provenance-list dt, .settings-row > span:not(.status),
 .diagnostic-note, .filter, .theme-segmented button,
 .field-hint,
@@ -1455,7 +1429,7 @@ button, input, textarea, select { line-height: var(--support-leading); }
 .landing-mobile-menu > button:not(.button) strong { font-size: var(--fs-body); font-weight: var(--fw-label); }
 .landing-mobile-menu > button:not(.button) small { color: var(--completion-dim); font-size: var(--fs-small); line-height: var(--support-leading); }
 /* R8: ↵ kbd affordance on menu items — visible on hover/focus only. */
-.landing-mobile-menu > button:not(.button)::after { content: "↵"; position: absolute; right: var(--space-3); top: 50%; transform: translateY(-50%); opacity: 0; transition: opacity 160ms var(--motion-ease); font: 500 var(--fs-mono)/1 "JetBrains Mono", monospace; color: var(--dim); }
+.landing-mobile-menu > button:not(.button)::after { content: "↵"; position: absolute; right: var(--space-3); top: 50%; transform: translateY(-50%); opacity: 0; transition: opacity var(--dur-fast) var(--motion-ease); font: 500 var(--fs-mono)/1 "JetBrains Mono", monospace; color: var(--dim); }
 .landing-mobile-menu > button:not(.button):hover::after,
 .landing-mobile-menu > button:not(.button):focus-visible::after { opacity: 0.7; }
 .landing-mobile-menu .button { width: 100%; }
@@ -1470,12 +1444,11 @@ button, input, textarea, select { line-height: var(--support-leading); }
 /* R9: subtle entrance animations on Landing hero.
    Gated behind prefers-reduced-motion: no-preference so the OS preference is honored. */
 @media (prefers-reduced-motion: no-preference) {
-  .landing-copy > * { animation: landing-rise 480ms var(--motion-ease) both; }
+  .landing-copy > * { animation: landing-rise var(--dur-slow) var(--ease-standard) both; }
   .landing-copy > *:nth-child(2) { animation-delay: 80ms; }
   .landing-copy > *:nth-child(3) { animation-delay: 160ms; }
   .landing-copy > *:nth-child(4) { animation-delay: 240ms; }
   .landing-visual.hero-visual-modern { animation: landing-fade 600ms var(--motion-ease) both; }
-  .landing-strip > button { animation: landing-rise 480ms var(--motion-ease) both; animation-delay: 320ms; }
 }
 @keyframes landing-rise {
   from { opacity: 0; transform: translateY(12px); }
@@ -1484,6 +1457,22 @@ button, input, textarea, select { line-height: var(--support-leading); }
 @keyframes landing-fade {
   from { opacity: 0; }
   to   { opacity: 1; }
+}
+/* Wave-11A (critique-3 RM-3; MASTER-SUMMARY §4.10): the in-app Reduced-motion
+   setting previously never reached this page — landing renders outside
+   .app-shell, so the .operator-preferences.reduce-motion kill-switch could
+   not cover it. The setting is now mirrored to
+   documentElement.dataset.reduceMotion (uiStore persistence effect + AppShell
+   effect + index.html boot script, same pattern as data-theme), and this
+   rule gates the landing ENTRANCE animations on it. The OS-level
+   prefers-reduced-motion gate above (no-preference wrapping) is untouched.
+   Scoped to the animated landing regions (.landing-copy children +
+   .landing-visual) — not a blanket kill, so the
+   reduced-motion contract stays minimal. */
+[data-reduce-motion="true"] .landing-copy *,
+[data-reduce-motion="true"] .landing-visual * {
+  animation: none !important;
+  transition: none !important;
 }
 @media (max-width: 700px) {
   .landing-mobile-menu { left: var(--space-3); width: auto; }
@@ -1549,31 +1538,8 @@ button, input, textarea, select { line-height: var(--support-leading); }
 /* The editorial landing statement remains singular; the artifact carries state, not another slogan. */
 .landing-visual.hero-visual-modern > img.hero-visual-poster { object-position: 100% center; }
 
-/* Landing summary becomes an asymmetric ledger rather than four equivalent cards. */
-/* Journey cells: the component renders exactly two controls, so the rail is a
-   two-track asymmetric ledger (1.5fr feature + 1fr secondary). */
-.landing-strip { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
-.landing-strip > button:first-child {
-  position: relative;
-  padding-left: clamp(28px, 3vw, 42px);
-  background: linear-gradient(90deg, color-mix(in srgb, var(--copper) 11%, transparent), color-mix(in srgb, var(--copper) 2.5%, transparent));
-}
-.landing-strip > button:first-child::before { content: ""; position: absolute; inset: 16px auto 16px 14px; width: 2px; background: var(--copper); box-shadow: 0 0 16px color-mix(in srgb, var(--copper) 26%, transparent); }
-.landing-strip > button:first-child strong { font-size: var(--fs-body); }
-.landing-strip > button { border-left: 1px solid color-mix(in srgb, var(--copper) 18%, transparent); background: color-mix(in srgb, var(--copper) 3.5%, transparent); }
-.landing-strip > button:hover { background: color-mix(in srgb, var(--copper) 11%, transparent); }
-/* R6: strip ledger — Fraunces headline wins over the minified Syne base above,
-   copper underline reveal on hover, arrow pill scales. */
-.landing-strip strong { font: 500 var(--fs-body)/1.15 var(--font-serif-display); letter-spacing: -0.015em; font-feature-settings: "ss01","cv11"; }
-.landing-strip > button { position: relative; overflow: hidden; transition: background-color var(--motion-fade-220); }
-.landing-strip > button::after { content: ""; position: absolute; left: var(--space-3); right: var(--space-3); bottom: 6px; height: 1px; background: linear-gradient(90deg, transparent, var(--copper-bright), transparent); transform: scaleX(0); transform-origin: center; transition: transform 320ms var(--motion-ease), opacity 200ms var(--motion-ease); opacity: 0; }
-.landing-strip > button:hover::after { transform: scaleX(1); opacity: 0.65; }
-.landing-strip > button svg { transition: transform 240ms var(--motion-ease); }
-.landing-strip > button:hover svg { transform: translateX(3px); }
 @media (max-width: 700px) {
   .landing-visual.hero-visual-modern > img.hero-visual-poster { object-position: 90% center; }
-  .landing-strip { grid-template-columns: 1fr 1fr; }
-  .landing-strip > button:first-child { grid-column: 1 / -1; padding-left: var(--space-6); }
 }
 
 /* Chat is an operating surface: threads, messages, and the composer keep independent readable tracks. */
@@ -1706,6 +1672,33 @@ button, input, textarea, select { line-height: var(--support-leading); }
 @media (prefers-reduced-motion: reduce) {
   .connect-modal-layer, .connect-modal { animation: none; }
 }
+/* ---- Wave-11A (critique-3 M2): shared modal ENTER animation. The connect
+   modal had a rise+fade enter, but the receipt drawer and the operation
+   review sheet had NO keyframe entrance at all (audit: "drawer just appears
+   under a fading layer"). One shared 220ms (--dur-med) rise — 16px on the
+   axis each surface actually opens from: the drawer slides in from the right
+   edge (translateX), centered sheets rise (translateY). Exits are SKIPPED by
+   design: neither surface has an unmount-delay mechanism, and this wave does
+   not add unmount timing machinery (audit M2 exit path = 150ms class before
+   unmount — requires an isClosing state; out of scope here). */
+@keyframes modal-rise-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes modal-rise-in-right {
+  from { opacity: 0; transform: translateX(16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.receipt-drawer {
+  animation: modal-rise-in-right var(--dur-med) var(--ease-standard) both;
+}
+.operation-review-sheet {
+  animation: modal-rise-in var(--dur-med) var(--ease-standard) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .receipt-drawer,
+  .operation-review-sheet { animation: none; }
+}
 .connect-modal-close {
   position: absolute;
   top: 8px;
@@ -1749,7 +1742,7 @@ body .icon-button {
   color: var(--muted);
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition: color 150ms var(--ease-out), border-color 150ms var(--ease-out),
+  transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out),
     transform 120ms var(--ease-out);
 }
 
@@ -1812,8 +1805,7 @@ input[type="range"] {
 .filter,
 .text-link,
 .inline-copy,
-.settings-select-row select,
-.landing-strip > button {
+.settings-select-row select {
   min-height: var(--hit-area);
 }
 
@@ -1999,7 +1991,7 @@ body.light .filters-popover {
   .mobile-disclosure > summary::-webkit-details-marker { display: none; }
   .mobile-disclosure > summary > span { display: grid; gap: var(--space-1); min-width: 0; }
   .mobile-disclosure > summary strong { font: var(--fw-title) var(--fs-body)/1.15 Syne, sans-serif; }
-  .mobile-disclosure > summary > svg { color: var(--completion-copper); transition: transform .16s var(--completion-ease); }
+  .mobile-disclosure > summary > svg { color: var(--completion-copper); transition: transform var(--dur-fast) var(--completion-ease); }
   .mobile-disclosure[open] > summary { border-bottom: 1px solid var(--completion-line); }
   .mobile-disclosure[open] > summary > svg { transform: rotate(180deg); }
   .mobile-disclosure-content { display: block; }
@@ -2135,6 +2127,9 @@ body.light .filters-popover {
   transition-duration: 0.01ms !important;
   animation-duration: 0.01ms !important;
   animation-iteration-count: 1 !important;
+  /* Wave-11A (critique-3 M7): parity with the global OS-level reduce block —
+     staggered delays are zeroed, not just durations. */
+  animation-delay: 0s !important;
 }
 
 [dir="rtl"] .app-shell { direction: rtl; }
@@ -2191,33 +2186,33 @@ body.light .filters-popover {
 .account:hover { background: var(--copper-08); border-radius: var(--radius-md, 6px); }
 
 /* 2. Inline copy icon buttons (agent/storage/transactions). */
-.inline-copy { border-radius: var(--radius-md, 6px); transition: background 0.16s var(--ease), color 0.16s var(--ease); }
+.inline-copy { border-radius: var(--radius-md, 6px); transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease); }
 .inline-copy:hover { color: var(--copper-bright); background: color-mix(in srgb, var(--copper) 12%, transparent); }
 
 /* 3. Settings toggle rows (full-row targets). */
-.settings-toggle-control { transition: background 0.16s var(--ease); }
+.settings-toggle-control { transition: background var(--dur-fast) var(--ease); }
 .settings-toggle-control:hover { background: var(--copper-06); }
 
 /* 4. Priority-strip "Why now" disclosure trigger. */
-.priority-why { transition: color 0.16s var(--ease); }
+.priority-why { transition: color var(--dur-fast) var(--ease); }
 .priority-why:hover { color: var(--copper-bright); }
 
 /* 6. Disclosure summaries (settings cards + mobile disclosures). */
 .settings-disclosure > summary.panel-head,
-.mobile-disclosure > summary { cursor: pointer; transition: background 0.16s var(--ease); }
+.mobile-disclosure > summary { cursor: pointer; transition: background var(--dur-fast) var(--ease); }
 .settings-disclosure > summary.panel-head:hover,
 .mobile-disclosure > summary:hover { background: var(--copper-05); }
 
 /* 7. Recovery cell: keep the text shift, add a real surface change. */
-.ops-summary-recovery { transition: background 0.16s var(--ease); }
+.ops-summary-recovery { transition: background var(--dur-fast) var(--ease); }
 .ops-summary-recovery:hover { background: var(--copper-08); }
 
 /* 12. Rail re-open edge button. */
-.rail-reopen { transition: background 0.16s var(--ease); }
+.rail-reopen { transition: background var(--dur-fast) var(--ease); }
 .rail-reopen:hover { background: color-mix(in srgb, var(--copper) 16%, transparent); }
 
 /* 13. Skip-to-content (U27): hidden until keyboard-focused; jumps past the command rail. */
-.skip-link { position: fixed; top: -60px; left: var(--space-4); z-index: calc(var(--layer-topbar) + 1); padding: var(--space-2) var(--space-4); background: var(--completion-panel); color: var(--ink); border: 1px solid var(--completion-copper); font: 500 var(--fs-small) 'JetBrains Mono', monospace; transition: top 0.16s var(--ease); }
+.skip-link { position: fixed; top: -60px; left: var(--space-4); z-index: calc(var(--layer-topbar) + 1); padding: var(--space-2) var(--space-4); background: var(--completion-panel); color: var(--ink); border: 1px solid var(--completion-copper); font: 500 var(--fs-small) 'JetBrains Mono', monospace; transition: top var(--dur-fast) var(--ease); }
 .skip-link:focus { top: var(--space-2); }
 
 /* C-02 follow-through: this un-layered restatement of .filter.active wins
@@ -2228,7 +2223,7 @@ body.light .filters-popover {
    class-styled selects (settings). The chat provider select is classed
    below (.chat-inline-select). */
 .app-shell select { cursor: pointer; }
-.settings-select-row select { transition: border-color 0.16s var(--ease); }
+.settings-select-row select { transition: border-color var(--dur-fast) var(--ease); }
 .settings-select-row select:hover { border-color: var(--copper); }
 
 /* 11. Composer checkboxes: theme the native box, pointer unless disabled. */
@@ -2249,7 +2244,7 @@ body.light .filters-popover {
   font-size: var(--text-xs);
   color: var(--text);
   border-radius: var(--radius-sm, 4px);
-  transition: background 0.16s var(--ease);
+  transition: background var(--dur-fast) var(--ease);
 }
 .chat-tool-row:hover { background: var(--copper-08); }
 .chat-queue-remove {
@@ -2268,7 +2263,7 @@ body.light .filters-popover {
   border-radius: var(--radius-sm);
   padding: var(--space-1) var(--space-1);
   cursor: pointer;
-  transition: border-color 0.16s var(--ease);
+  transition: border-color var(--dur-fast) var(--ease);
 }
 .chat-inline-select:hover { border-color: var(--copper); }
 
@@ -2290,9 +2285,7 @@ body.light .filters-popover {
   --space-sm: var(--space-2);
   --space-md: var(--space-3);
   --space-lg: var(--space-4);
-  --space-xl: var(--space-5);
   --space-2xl: var(--space-6);
-  --space-3xl: var(--space-7);
 
   /* S2: the v1 chat-kit scale is aliased onto the one S2 type scale (4 core
      steps + mono) — the two composed systems are one now. Only aliases with
@@ -2340,7 +2333,15 @@ body.light .filters-popover {
      the canonical :root token block below owns elevation. */
   --ease-out: cubic-bezier(0.25, 1, 0.5, 1);
   --dur-spin: 800ms;
-  --transition: 150ms var(--ease-out);
+  /* Wave-11A (critique-3 M1): the console 150ms literal rides --dur-fast and
+     --motion-fade-220 rides --dur-med — the single Wave-11A duration ladder.
+     --ease / --completion-ease keep their historical names as ALIASES: both
+     resolve to the same curve value they always held, but the token layer is
+     now single-sourced (new motion consumes --ease-standard/--dur-*). */
+  --ease: var(--ease-standard);
+  --completion-ease: var(--ease);
+  --transition: var(--dur-fast) var(--ease-out);
+  --motion-fade-220: var(--dur-med) var(--motion-ease);
 }
 
 /* ---------------------------------------------------------------- *
@@ -2367,7 +2368,7 @@ body.light .filters-popover {
   background: var(--bg-2);
   border: 1px solid var(--line);
   border-radius: var(--radius-md, 6px);
-  transition: 150ms var(--ease-out);
+  transition: var(--dur-fast) var(--ease-out);
 }
 /* Standard 2px copper focus ring; the class owns the border. */
 .axiom-field:focus-visible { outline: 2px solid var(--copper-bright); outline-offset: 2px; }
@@ -2624,7 +2625,7 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
   padding: var(--space-3) var(--space-3);
   text-align: left;
   cursor: pointer;
-  transition: 150ms var(--ease-out);
+  transition: var(--dur-fast) var(--ease-out);
 }
 .prompt-card:hover { border-color: var(--copper); background: var(--copper-05); }
 .prompt-card:focus-visible { outline: 2px solid var(--copper-bright); outline-offset: 2px; }
@@ -2867,7 +2868,7 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
   background-repeat: no-repeat;
   background-position: center;
   background-size: 16px;
-  transition: width 160ms var(--ease-out);
+  transition: width var(--dur-fast) var(--ease-out);
 }
 .chat-history__search:focus,
 .chat-history__search:not(:placeholder-shown) {
@@ -2904,7 +2905,7 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
   text-align: left;
   padding: var(--space-2) var(--space-2);
   cursor: pointer;
-  transition: 150ms var(--ease-out);
+  transition: var(--dur-fast) var(--ease-out);
 }
 .chat-history__item:hover { background: var(--copper-06); color: var(--text); }
 .chat-history__item.is-active { background: color-mix(in srgb, var(--copper) 12%, transparent); color: var(--text); box-shadow: inset 2px 0 0 var(--copper); }
@@ -3187,12 +3188,6 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
   /* Hover-bright ink: the single cream used by text/ghost/row hover accents
      (previously four near-identical literals #fff4dc/#f6eedf/#fff4ec/#fff3e8). */
   --ink-bright: #fff4dc;
-  /* Icon glyph scale (§3.16 numeric/icon foundations) — aliases of the
-     icon-button glyph ladder so any consumer snaps to one optical size:
-     sm = inline chips, md = shell default, lg = touch surfaces. */
-  --icon-sm: var(--icon-glyph-sm);
-  --icon-md: var(--icon-glyph-md);
-  --icon-lg: var(--icon-glyph-lg);
   /* L3-V4/V7: semantic canvases. --canvas/--ink are dark-locked art slabs —
      deliberately NOT overridden in .app-shell.light (see the multiply-blend
      media rules); only --surface-elevated re-tunes for paper. */
@@ -3205,14 +3200,16 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
   --shadow-plate-m: 12px 12px 0 var(--copper-05);
   --shadow-plate-l: 18px 18px 0 var(--copper-06);
   --shadow-drawer: -22px 0 64px rgba(0, 0, 0, 0.45);
-  --shadow-drawer-r: 22px 0 64px rgba(0, 0, 0, 0.45);
   --shadow-modal-sm: 0 14px 36px rgba(0, 0, 0, 0.22);
   --shadow-modal: 0 24px 80px rgba(0, 0, 0, 0.45);
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 8px;
   --radius-xl: 10px;
-  --ease: cubic-bezier(0.23, 1, 0.32, 1);
+  /* Wave-11A (critique-3 M1): --ease is now an ALIAS of --ease-standard —
+     same resolved value as the literal it replaces (single-source token
+     layer; the canonical :root block also re-aliases it below). */
+  --ease: var(--ease-standard);
   /* ---------------------------------------------------------------- *
    * S2 type-scale contract (audit 06 FINDING-002): ONE scale — 4 core  *
    * steps + the mono accent. Every font-size resolves to one of these  *
@@ -3259,7 +3256,6 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
   --shadow-plate-m: 12px 12px 0 rgba(169, 99, 51, 0.07);
   --shadow-plate-l: 18px 18px 0 rgba(169, 99, 51, 0.08);
   --shadow-drawer: -22px 0 64px rgba(66, 47, 31, 0.18);
-  --shadow-drawer-r: 22px 0 64px rgba(66, 47, 31, 0.18);
   --shadow-modal-sm: 0 14px 36px rgba(66, 47, 31, 0.14);
   --shadow-modal: 0 24px 80px rgba(66, 47, 31, 0.22);
   /* L3-V7: paper equivalent of #0d1112 — lifted warm slate over #f1eee8.
@@ -3394,8 +3390,8 @@ strong {
     text-align: left;
     /* H2-T3b: explicit properties + hover ≠ active (h1 §1b) — never transition:all */
     transition:
-      background 150ms var(--ease-out, ease-out),
-      color 150ms var(--ease-out, ease-out),
+      background var(--dur-fast) var(--ease-out, ease-out),
+      color var(--dur-fast) var(--ease-out, ease-out),
       transform 120ms var(--ease-out, ease-out);
   }
   .nav-item:hover {
@@ -3502,7 +3498,8 @@ strong {
 
   /* The layered .text-link block was deleted: its color/hover states matched
      the canonical completion rule (:104) and its only live declaration
-     (transition .18s) was moved there — dead code otherwise. */
+     (transition .18s, now var(--dur-fast)) was moved there — dead code
+     otherwise. */
 
   .page-head {
     display: flex;
@@ -3588,7 +3585,7 @@ strong {
     color: var(--text);
     text-align: left;
     padding: 14px 18px;
-    transition: 0.18s var(--ease);
+    transition: var(--dur-fast) var(--ease);
   }
   .agent-row:hover {
     background: var(--copper-05);
@@ -3619,7 +3616,7 @@ strong {
     border: 1px solid var(--line);
     background: var(--bg-2);
     border-radius: var(--radius-md);
-    transition: 0.18s var(--ease);
+    transition: var(--dur-fast) var(--ease);
   }
   .field-control:focus-within {
     border-color: var(--copper);
@@ -3669,6 +3666,10 @@ strong {
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+    /* Wave-11A (critique-3 M7): zero the staggered delays too — a 320ms
+       landing entrance delay would otherwise read as a 320ms invisible wait
+       under reduced motion. */
+    animation-delay: 0s !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
@@ -3736,7 +3737,7 @@ strong {
   background: transparent;
   color: var(--ink);
   cursor: pointer;
-  transition: background 0.17s var(--completion-ease);
+  transition: background var(--dur-fast) var(--completion-ease);
 }
 .checklist-step:hover {
   background: color-mix(in srgb, var(--copper) 7%, transparent);
@@ -3837,10 +3838,6 @@ strong {
     min-block-size: 0;
     margin-top: var(--space-2);
     padding: 56px var(--space-3) var(--space-3);
-  }
-
-  .landing-page .landing-strip {
-    display: none;
   }
 }
 
@@ -4450,3 +4447,290 @@ strong {
     overflow-wrap: anywhere; /* long FR/DE note lines wrap instead of clipping */
   }
 }
+
+/* ==========================================================================
+   Wave-10A appendix (co-sign mobile: CTA-over-disclaimer overlap + facts-grid
+   orphan balance)
+   Audit refs: WAVE-MANIFEST.md Wave 10 row ("mobile CTA-over-disclaimer
+   overlap, facts-grid orphan"); browser-4-cosign-staking-settings.md
+   /transfer/co-sign sections (flow-critical acceptance screen, mobile
+   no-overflow discipline); critique-2-states-forms.md CoSignPage praise
+   section (eight honest states — state machine untouched, CSS-only fix).
+   Append-only: overrides ride cascade order; existing rules untouched.
+   ========================================================================== */
+
+/* 1. CTA-over-disclaimer overlap fix. Root cause measured at 390px on
+   /transfer/co-sign?data=… (acceptance state): the Wave-8 sticky gradient
+   (index.css:2068 .review-actions { position: sticky; bottom: 0; }) pins the
+   CTA row to the viewport bottom inside .flow-stage — the acceptance page is
+   a normal page (no scroll container), so the sticky element paints over the
+   content above it in the same panel (measured pre-fix: CTA row 606.5–770.5
+   vs the .review-cosign panel 563.8–746.7 — 140.2px overlap, including
+   40.3px of the wallet-risk disclaimer small). The fix is flow layout, not
+   absolute geometry: on ≤700px the row returns to normal flow (margin-top
+   separates it from the panel above); desktop keeps the sticky gradient for
+   the review sheets where it has a real scroll container. The legacy ≤700px
+   .review-actions grid rule (index.css:2080) is kept by declaring the same
+   grid so nothing regresses. Scope: .cosign-page — the receiver page wrapper
+   (CoSignPage.tsx "ops-page cosign-page") — NOT .cosign-panel, which only
+   wraps the bare-visit/bad-link panels that have no .review-actions row. */
+@media (max-width: 700px) {
+  .cosign-page .review-actions {
+    position: static;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    margin-top: var(--space-3);
+    padding-bottom: var(--space-1);
+    background: none;
+  }
+}
+
+/* 2. Facts-grid orphan balance (WAVE-MANIFEST Wave 10: "facts-grid orphan").
+   .review-facts is a 2-col grid with 5 facts; the 5th (network fact) renders
+   as an orphaned single cell on its own row. On ≤700px the legacy collapse
+   to 1fr (index.css:1281/1435) is kept, so the phone layout is already
+   balanced. The fix targets the desktop/tablet band (701–1000px) where the
+   orphan shows: the last fact spans the full row, reading as a deliberate
+   closing row instead of a dropped cell. Scope: .cosign-page so the sender's
+   review sheet keeps its existing 2-col rhythm untouched. */
+@media (min-width: 701px) and (max-width: 1000px) {
+  .cosign-page .review-facts > div:last-child {
+    grid-column: 1 / -1;
+  }
+}
+/* ≥1001px the stage sits in the content column with room for a 3-col facts
+   grid: 5 facts fill rows of 3+2 — no orphan cell on its own row. */
+@media (min-width: 1001px) {
+  .cosign-page .review-facts {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .cosign-page .review-facts > div:last-child {
+    grid-column: auto;
+  }
+}
+
+/* ========================================================================== *
+ * Wave-10B appendix (Flow pages) — 2026-09-02 campaign, Agent B.
+ * Scope: FlowPage button/pill/callout MARKUP regions only; draft/review state
+ * machine logic untouched. Audit refs: WAVE-MANIFEST.md Wave 10 row
+ * ("primary connector button, state pill placement, callout tone split");
+ * browser-4-cosign-staking-settings.md Cross-Page Coherence #1 (button
+ * radius) + #3 (status chip drift); MASTER-SUMMARY.md §3.8/§3.9 (button
+ * dialect + wallet chips); critique-2-states-forms.md M7 (premature error —
+ * fixed in FlowPage.tsx, see the Wave-10B comment there).
+ * Append-only: overrides ride cascade order; existing rules untouched.
+ * ========================================================================== */
+
+/* 1. Primary connector button — dialect residue guard (browser-4 #1:
+   ".button-primary is a 999px pill on landing, 0px square in-app — the same
+   class, two geometries"). Wave 3 unified the dialect (44px hit area, radius
+   0, 13px mono label) and measured live: gates and flow pages already render
+   it correctly (radius 0, min-height 44px, 13px label on /payment at 1440).
+   The landing pill is owned by .landing-page scoping, not this class. This
+   rule is a drift GUARD: it pins the contract on flow/gate surfaces so a
+   future cascade regression (e.g. a pill radius reappearing on an ancestor)
+   cannot reach the six flow routes. No geometry change today. */
+.flow-page .button-primary,
+.locked-route-copy .button-primary {
+  border-radius: 0;
+  min-height: var(--hit-area, 44px);
+  font-size: var(--fs-small); /* 13px label contract (Wave 3) */
+}
+
+/* 2. Callout tone split (WAVE-MANIFEST Wave 10 "callout tone split").
+   The flow callout families were one shared recipe: .review-error and
+   .receipt-remedy carried literal rgba(234,119,80,…) danger tints while the
+   NOT-an-error callouts (.review-proof, .review-cosign, .diagnostic-note,
+   .flow-intent-banner) already ran phosphor/copper washes — and the amber
+   register existed only in chat (.chat-banner, index.css:2453). The split:
+   error surfaces re-express their literal tints through the Wave-7
+   --c-danger-bg/--c-danger-border color-mix tokens (var(--danger), so light
+   theme re-tunes automatically); a warning register is added beside them for
+   the receipt-remedy class, whose copy is guidance ("what to DO next"),
+   not failure (T6 comment, FlowPage.tsx). Same geometry as the original
+   recipe; copy keys unchanged. */
+.review-error,
+.flow-page .review-error {
+  color: var(--danger);
+  border-color: var(--c-danger-border);
+  background: var(--c-danger-bg);
+}
+.receipt-remedy {
+  color: var(--warning);
+  border-color: var(--c-warning-border);
+  background: var(--c-warning-bg);
+  padding: 0.68rem; /* base .receipt-remedy owned padding re-asserted */
+  font-size: var(--fs-small); /* as base rule */
+  line-height: 1.4; /* as base rule */
+}
+
+/* 3. Field error tone (critique-2-state-forms field-named errors): the legacy
+   :171 field recipe paints .field-message and the errored control border in
+   var(--completion-warning) — amber — while the newer chat-kit recipe
+   (index.css:2378/3649) uses var(--danger). One semantic, one tone: errors
+   read danger everywhere; the WARN register stays reserved for advisory
+   surfaces (chat banner, remedy). Field markup (aria-invalid + role=alert)
+   is owned by Controls.tsx and untouched. */
+.field-error .field-control {
+  border-color: color-mix(in srgb, var(--danger) 72%, transparent);
+}
+.field-message {
+  color: var(--danger);
+}
+
+/* 4. State-pill placement (WAVE-MANIFEST Wave 10 "state pill placement").
+   .flow-stage-top is a flex row: symbol → title block → pill. The legacy
+   rules (.flow-stage-top>.state-pill at index.css:173 and the broader
+   .flow-page .flow-stage-top .state-pill at :116) pin the pill right with
+   margin-left:auto; the title block (>.div) does NOT flex, so long stage
+   titles ("Review before you act.") plus a localized pill
+   ("Bestätigung läuft") can starve the row and wrap the pill text at the
+   gate widths. This rule makes the title block the flexible middle column
+   (min-width guards long DE/FR headings) and top-aligns the pill with the
+   heading's cap line instead of the row box, for a consistent rail across
+   all six flow routes. Placement contract (right-pinned, same row as the
+   h2) is unchanged. */
+.flow-stage-top > div {
+  flex: 1;
+  min-width: 0;
+}
+.flow-stage-top > .state-pill {
+  margin-left: var(--space-3);
+  flex-shrink: 0;
+}
+.flow-stage-top > .state-pill[aria-label] {
+  margin-top: 2px; /* optical alignment with the 20px Syne h2 cap height */
+}
+
+/* 5. Staged preview rails at 390px — VERIFIED NO-FIX-NEEDED (Wave-10B live
+   A/B probe, /payment /deposit /mint @390×844, en locale): the base ≤700px
+   rule (index.css:1407, 18px/minmax(0,1fr)/auto with flex/grid alignment)
+   already stacks each actor tag ("You"/"Us") on its own full-width line
+   under its step name — measured: step text spans the full 266px track,
+   actor tag beneath it, ragged-right start but zero clipping (actor right
+   ≤ 337 = track right), scrollWidth 390 = clientWidth (0 horizontal
+   overflow) on all three routes. An experimental grid-template-areas
+   re-layout was probed and REJECTED: it squeezed the step text to
+   141–149px (−117px usable width) for zero visual gain. No rule emitted. */
+
+/* ========================================================================== *
+ * Wave-11B appendix (mobile sweep) — 2026-09-02 campaign, Agent B.           *
+ * Scope: sub-32px hit-target re-census at 390px, iOS focus-zoom input guard, *
+ * tabular-nums residue on landing numerics.                                  *
+ * Audit refs: WAVE-MANIFEST.md Wave 11 row ("sub-32px targets");             *
+ * browser-1-landing.md Mobile (390x844): "13 interactive elements measured   *
+ * under 32px height, the spec/text links at 12px tall … nav links (28px) and *
+ * footer links (12px) are finger-hostile"; browser-3-chat-agent-flow.md      *
+ * #11 "the textarea stays at 14px — 16px would suppress iOS Safari's         *
+ * focus-zoom"; MASTER-SUMMARY.md §3.15/§3.16 (mobile hard defects, numeric   *
+ * foundations). Append-only: overrides ride cascade order.                   *
+ * BEFORE census (measured @390×844, raw-CDP, this session): / 9 targets <32px*
+ * (3 .p-link h=14, 2 .j-cta h=14, 4 footer links h=13 — nav links gone at    *
+ * 390 since Wave 5 replaced them with the 40px .landing-menu-trigger);       *
+ * /agents 0, /developers 0, /app 0; /chat 1 (the 28.6px .routing-chip).      *
+ * ========================================================================== */
+
+/* 1. Landing text-row hit targets (browser-1 Top Fix #2: "raise the landing's
+   13 sub-32px targets … minimum height 44px, 32px absolute floor").
+   .p-link / .j-cta / footer links are 13px mono rows on padding:0 — the
+   tap area is the glyph line itself (measured h=14/13). Transparent
+   vertical padding extends the hit area; border-box keeps the whole box
+   at the 32px floor (content-box would apply min-height to the content
+   box and pad on top → 48px with top-aligned glyphs). The inline-flex
+   .p-link/.j-cta center their glyph rows; footer links are blockified
+   flex items of .footer-meta and ride the same box. */
+.landing-page .principle .p-link,
+.landing-page .journey-card .j-cta,
+.landing-page .landing-footer .footer-meta a {
+  box-sizing: border-box;
+  min-height: 32px; /* the audit's absolute floor (44 is the comfort rec) */
+  padding-top: var(--space-2);
+  padding-bottom: var(--space-2);
+}
+
+/* 2. Provider-routing chip (chat composer): measured 28.6px tall at 390 —
+   the one sub-32px target in the app shell. Same floor treatment: the
+   shared chip recipe (index.css:2635) keeps 4px/8px padding, we lift the
+   block height only, so the popover trigger stays visually identical. */
+.routing-chip {
+  min-height: 32px;
+  box-sizing: border-box;
+}
+
+/* 3. iOS focus-zoom input guard (browser-3 #11 — the audit's "one hard
+   mobile defect"). Wave-6A pinned the chat composer to 16px @≤700px; the
+   live re-census found one other sub-16px input: /app's GasTankCard
+   deposit input (no class → `input { font: inherit }` at :3289 inherits
+   the .app-shell body size --fs-body:14px, :3225; the .field inputs are
+   already 16px via :348). Sub-16px font-size on ANY focused input makes
+   iOS Safari zoom the viewport mid-typing. Inputs keep their desktop
+   size ≥701px; the guard is touch-width only. */
+@media (max-width: 700px) {
+  .app-shell input,
+  .app-shell textarea,
+  .app-shell select {
+    font-size: 16px !important;
+  }
+}
+
+/* 4. Tabular-nums residue (MASTER-SUMMARY §3.16; Wave 3 put .num on 16
+   numeric sites — the landing receipt card and hero/ticker counters are
+   mono but lack tabular figures, so digits jitter as live values tick:
+   block "1,284,901", gas "0.0024", hash "0x9f3c…7a2e", ticker ages). */
+.hero-meta,
+.landing-visual.hero-visual-modern .receipt-rows strong,
+.landing-visual.hero-visual-modern .receipt-meta .hash,
+.ticker-item,
+.ticker-label {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ==================== Wave-12B appendix (404 anchors + explore row) ====================
+   browser-1 Top Fix #5 / MASTER-SUMMARY §3.18: the recovery-404 CTAs were
+   <button> elements (no href, no middle-click, no crawl path) and the page
+   had no hub escape hatch. NotFound.tsx now emits real anchors wearing the
+   console .button dialect — anchors need the two text-decoration resets and
+   the secondary variant (buttons never had an underline to strip). The
+   explore row reuses the seo-public-nav link grammar (mono, copper
+   underline on hover/focus) without importing the hub header chrome. */
+
+.recovery-404 a.button {
+  text-decoration: none;
+  width: auto;
+}
+
+.recovery-404-explore {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  margin-top: var(--space-2);
+}
+
+.recovery-404-explore a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--hit-area, 44px);
+  color: var(--completion-muted);
+  font: 500 var(--fs-mono)/1 'JetBrains Mono', monospace;
+  letter-spacing: 0.05em;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+
+.recovery-404-explore a:hover,
+.recovery-404-explore a:focus-visible {
+  border-color: var(--completion-copper);
+  color: var(--completion-bright);
+}
+
+.recovery-404-explore a:focus-visible {
+  outline: 2px solid var(--phosphor);
+  outline-offset: 3px;
+}
+
+@media (max-width: 700px) {
+  .recovery-404-explore a {
+    min-height: 44px;
+  }
+}
+/* ==================== end Wave-12B appendix ==================== */

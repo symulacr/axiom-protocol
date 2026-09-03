@@ -186,6 +186,29 @@ describe("Axiom i18n contract (C-08/C-11/C-12)", () => {
       }
     }
   });
+
+  it("keeps one vocabulary for money-into-an-agent (critique-3 C1, §3.12)", () => {
+    // Canonical family: fund = into an AGENT (any locale), deposit = the
+    // vault-only lane, withdraw = out. The retired synonyms — "Add money",
+    // "Add funds", "Give spending credit" — and their fr/de variants are a
+    // hard failure in every locale.
+    const forbidden =
+      /Add money|Add funds|Give spending credit|Ajouter des fonds|Geld hinzufügen|Guthaben hinzufügen|Donner du crédit|Ausgabenguthaben/;
+    for (const locale of ["en", "fr", "de"] as const) {
+      const copy = getCopy(locale);
+      for (const value of flatten(copy)) {
+        expect(value).not.toMatch(forbidden);
+      }
+      // The family must actually be in use at its four canonical homes.
+      expect(copy.dashboard.addMoney).toMatch(/Fund|Financer|finanzieren/);
+      expect(copy.agentDetail.fundAgent).toMatch(
+        /Fund|Financer|finanzieren/,
+      );
+      expect(copy.flows.payment.title).toMatch(
+        /Fund an agent|Financer un agent|Agenten finanzieren/,
+      );
+    }
+  });
 });
 
 function valueOrFunction(value: unknown): string {

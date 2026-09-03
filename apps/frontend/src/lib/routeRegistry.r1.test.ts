@@ -68,9 +68,9 @@ describe("R1 route-surface guards (registry/config level)", () => {
     expect(appSrc).toMatch(/function shortTokenId/);
     expect(appSrc).toMatch(/if \(tokenId === null\)/);
     expect(appSrc).not.toMatch(/Agent not addressable/);
-    expect(appSrc).toMatch(
-      /return <Recovery404 go=\{go\} locale=\{locale\} \/>;/,
-    );
+    // Wave-12B: the 404 surface self-navigates via real anchors (browser-1
+    // Top Fix #5) — the `go` handoff prop is gone, the surface is unchanged.
+    expect(appSrc).toMatch(/return <Recovery404 locale=\{locale\} \/>;/);
     // BigInt rejects the audit's fake slug, matching AgentRoute's null path.
     expect(() => BigInt("fake-agent-9999")).toThrow();
   });

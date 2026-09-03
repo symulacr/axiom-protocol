@@ -290,6 +290,13 @@ export type Copy = {
     openConsole: string;
     /** document.title for unknown routes. */
     title: string;
+    /** Wave-12B: accessible name for the recovery explore row. */
+    exploreA11y: string;
+    /** Wave-12B: public hub labels for the recovery explore row — the
+     * destinations are wired by the locale-stable PUBLIC_HUB_PATHS order
+     * (agents/payments/proofs/storage/developers, mirrors LandingPage's
+     * FOOTER_HREFS index contract). */
+    hubLabels: [string, string, string, string, string];
   };
   /** Pre-auth locked-gate hero copy for every gated route — one locale owner
    * per surface. The visual slots (slug/label/media/schematic) live in
@@ -1306,6 +1313,15 @@ const english: Copy = {
     returnToLanding: "Return to landing",
     openConsole: "Open the app",
     title: "Page not found",
+    // Wave-12B: recovery explore row (accessible name + hub labels).
+    exploreA11y: "Explore public paths",
+    hubLabels: [
+      "Agents",
+      "Payments",
+      "Proofs",
+      "Storage",
+      "Developers",
+    ],
   },
   errorBoundary: {
     networkTitle: "Connection problem",
@@ -1341,7 +1357,7 @@ const english: Copy = {
     railHidden: "Rail hidden",
     railHiddenHint: "Reopen from the vertical edge control.",
     railWidth: "Rail width",
-    railWidthHint: "drag to resize the sidebar.",
+    railWidthHint: "Drag the handle to resize the sidebar.",
     density: "Density",
     densityCalm: "Calm",
     densityDense: "Dense",
@@ -1391,7 +1407,7 @@ const english: Copy = {
     operatingFleet: "Your agents",
     attentionFirst: "Attention first",
     allowanceReady: "Needs money before it can work.",
-    addMoney: "Add money",
+    addMoney: "Fund agent",
     // One canonical allowance sentence, shared with the strip.
     latestEvidence: "Latest receipts",
     allReceipts: "All receipts",
@@ -1563,7 +1579,7 @@ const english: Copy = {
   gasTank: {
     title: "Gas Tank",
     unsetNote:
-      "The protocol GasTank is not configured for this build — gas-free ops are disabled.",
+      "Sponsored transactions are unavailable right now. Connect a wallet to sign gas fees directly.",
     loading: "Reading tank…",
     opsLeftSuffix: "ops left",
     lazyGrantNote: "next op sponsored",
@@ -1645,7 +1661,7 @@ const english: Copy = {
       notice: enFlowNotice("Mint submitted for {name}."),
     },
     payment: {
-      title: "Add funds",
+      title: "Fund an agent",
       copy: "One approval, then one payment.",
       steps: ["Approve", "Confirm", "Done"],
       receiptKind: "Payment",
@@ -1907,10 +1923,10 @@ const english: Copy = {
     metadataReadFailed: "Couldn't load this agent's details.",
     openStorage: "Open storage",
     chooseBoundedOperation: "What do you want to do?",
-    addMoneyPrimary: "Add money",
+    addMoneyPrimary: "Fund agent",
     runTask: "Run task",
     moreActions: "More…",
-    fundAgent: "Give spending credit",
+    fundAgent: "Fund agent",
     withdrawFunds: "Take money back",
     transferProof: "Send to someone",
     runRecoveryPath: "Give it something to do",
@@ -2426,6 +2442,15 @@ const french: Copy = {
     returnToLanding: "Retour à l’accueil",
     openConsole: "Ouvrir l’app",
     title: "Page introuvable",
+    // Wave-12B : rangée d’exploration de secours (nom accessible + libellés hubs).
+    exploreA11y: "Explorer les parcours publics",
+    hubLabels: [
+      "Agents",
+      "Paiements",
+      "Preuves",
+      "Stockage",
+      "Développeurs",
+    ],
   },
   errorBoundary: {
     networkTitle: "Problème de connexion",
@@ -2462,7 +2487,7 @@ const french: Copy = {
     railHidden: "Rail masqué",
     railHiddenHint: "Rouvrez-le depuis le contrôle vertical latéral.",
     railWidth: "Largeur du rail",
-    railWidthHint: "faites glisser pour régler la largeur.",
+    railWidthHint: "Faites glisser la poignée pour régler la largeur.",
     density: "Densité",
     densityCalm: "Calme",
     theme: "Thème de surface",
@@ -2509,7 +2534,7 @@ const french: Copy = {
     operatingFleet: "Vos agents",
     attentionFirst: "Attention d’abord",
     allowanceReady: "Il lui faut des fonds avant de pouvoir agir.",
-    addMoney: "Ajouter des fonds",
+    addMoney: "Financer l’agent",
     latestEvidence: "Derniers reçus",
     allReceipts: "Tous les reçus",
     switchRequired: "changement requis",
@@ -2684,7 +2709,7 @@ const french: Copy = {
     ...english.gasTank,
     title: "Réservoir de gaz",
     unsetNote:
-      "Le réservoir de gaz du protocole n'est pas configuré pour cette version — les opérations sans gaz sont désactivées.",
+      "Les transactions sponsorisées sont indisponibles pour le moment. Connectez un wallet pour signer les frais de gaz directement.",
     loading: "Lecture du réservoir…",
     opsLeftSuffix: "opérations restantes",
     lazyGrantNote: "prochaine opération offerte",
@@ -2775,7 +2800,7 @@ const french: Copy = {
     },
     payment: {
       ...english.flows.payment,
-      title: "Ajouter des fonds",
+      title: "Financer un agent",
       copy: "Une approbation, puis un paiement.",
       steps: ["Approuver", "Confirmer", "Terminé"],
       receiptKind: "Paiement",
@@ -3043,10 +3068,10 @@ const french: Copy = {
     metadataReadFailed: "Impossible de charger les détails de cet agent.",
     openStorage: "Ouvrir le stockage",
     chooseBoundedOperation: "Que voulez-vous faire ?",
-    addMoneyPrimary: "Ajouter des fonds",
+    addMoneyPrimary: "Financer l’agent",
     runTask: "Lancer une tâche",
     moreActions: "Plus…",
-    fundAgent: "Donner du crédit de dépense",
+    fundAgent: "Financer l’agent",
     withdrawFunds: "Reprendre des fonds",
     transferProof: "Envoyer à quelqu’un",
     runRecoveryPath: "Donnez-lui quelque chose à faire",
@@ -3524,6 +3549,15 @@ const german: Copy = {
     returnToLanding: "Zurück zur Startseite",
     openConsole: "App öffnen",
     title: "Seite nicht gefunden",
+    // Wave-12B: Erkennungsreihe (barrierefreier Name + Hub-Beschriftungen).
+    exploreA11y: "Öffentliche Pfade erkunden",
+    hubLabels: [
+      "Agents",
+      "Zahlungen",
+      "Nachweise",
+      "Storage",
+      "Developers",
+    ],
   },
   errorBoundary: {
     networkTitle: "Verbindungsproblem",
@@ -3559,7 +3593,7 @@ const german: Copy = {
     railHidden: "Leiste ausgeblendet",
     railHiddenHint: "Über die vertikale Kante wieder öffnen.",
     railWidth: "Leistenbreite",
-    railWidthHint: "ziehen, um die Breite einzustellen.",
+    railWidthHint: "Ziehe am Griff, um die Breite einzustellen.",
     density: "Dichte",
     densityCalm: "Ruhig",
     densityDense: "Dicht",
@@ -3605,7 +3639,7 @@ const german: Copy = {
     operatingFleet: "Deine Agents",
     attentionFirst: "Aufmerksamkeit zuerst",
     allowanceReady: "Es braucht Geld, bevor es arbeiten kann.",
-    addMoney: "Geld hinzufügen",
+    addMoney: "Agent finanzieren",
     latestEvidence: "Neueste Belege",
     allReceipts: "Alle Belege",
     switchRequired: "Wechsel erforderlich",
@@ -3779,7 +3813,7 @@ const german: Copy = {
     ...english.gasTank,
     title: "Gas-Tank",
     unsetNote:
-      "Der Gas-Tank des Protokolls ist für diesen Build nicht konfiguriert — gasfreie Operationen sind deaktiviert.",
+      "Sponsorierte Transaktionen sind derzeit nicht verfügbar. Verbinde ein Wallet, um Gasgebühren direkt zu signieren.",
     loading: "Tank wird gelesen…",
     opsLeftSuffix: "Operationen übrig",
     lazyGrantNote: "nächste Operation gratis",
@@ -3870,7 +3904,7 @@ const german: Copy = {
       notice: deFlowNotice("Mint für {name} eingereicht."),
     },
     payment: {
-      title: "Guthaben hinzufügen",
+      title: "Einen Agenten finanzieren",
       copy: "Eine Freigabe, dann eine Zahlung.",
       steps: ["Freigeben", "Bestätigen", "Fertig"],
       receiptKind: "Zahlung",
@@ -4142,10 +4176,10 @@ const german: Copy = {
       "Die Details dieses Agents konnten nicht geladen werden.",
     openStorage: "Speicher öffnen",
     chooseBoundedOperation: "Was möchtest du tun?",
-    addMoneyPrimary: "Geld hinzufügen",
+    addMoneyPrimary: "Agent finanzieren",
     runTask: "Aufgabe starten",
     moreActions: "Mehr…",
-    fundAgent: "Ausgabenguthaben geben",
+    fundAgent: "Agent finanzieren",
     withdrawFunds: "Geld zurückholen",
     transferProof: "An jemanden senden",
     runRecoveryPath: "Gib ihm etwas zu tun",

@@ -919,6 +919,16 @@ export function AppShell({
   const copy = getCopy(state.settings.locale);
   const setSettings = (patch: Partial<UiSettings>) =>
     dispatch({ type: "settings", patch });
+  // Wave-11A (critique-3 RM-3): mirror the in-app Reduced-motion setting to
+  // documentElement so the landing page (outside .app-shell) honors it via
+  // the [data-reduce-motion="true"] CSS scope. Same pattern as data-theme.
+  useEffect(() => {
+    if (state.settings.reducedMotion) {
+      document.documentElement.dataset.reduceMotion = "true";
+    } else {
+      delete document.documentElement.dataset.reduceMotion;
+    }
+  }, [state.settings.reducedMotion]);
   const className =
     `operator-preferences ${state.settings.reducedMotion ? "reduce-motion" : ""} ${state.settings.railHidden ? "rail-hidden" : ""}`.trim();
   return (

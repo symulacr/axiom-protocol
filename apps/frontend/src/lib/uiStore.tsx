@@ -86,6 +86,16 @@ export function UiStoreProvider({ children }: { children: ReactNode }) {
       delete document.documentElement.dataset.axiomReady;
     };
   }, []);
+  // Reduced-motion mirror to documentElement (critique-3 RM-3): the in-app
+  // setting must gate the landing page too, which renders outside the
+  // .operator-preferences kill-switch. Same boot-script pattern as theme.
+  useEffect(() => {
+    if (state.settings.reducedMotion) {
+      document.documentElement.dataset.reduceMotion = "true";
+    } else {
+      delete document.documentElement.dataset.reduceMotion;
+    }
+  }, [state.settings.reducedMotion]);
 
   const value = useMemo<UiStoreValue>(() => ({ state, dispatch }), [state]);
 
