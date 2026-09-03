@@ -146,6 +146,28 @@ Not verified: 10%-speed visual motion replay and screen-reader announcements
 (no pixel/audio inspection on this route; verified structurally + via
 accessible-name/landmark/focus DOM checks).
 
+## Round 5 — better-ui execution (2026-09-03)
+
+Direct execution of the pasted `better-ui` skill against the project (most rules
+already conformant from rounds 3–4; this pass closed the remaining gaps):
+
+| Severity | Location | Before → After |
+|---|---|---|
+| MEDIUM | `index.css` — `.text-link`, `.axiom-field`, `.prompt-card`, `.chat-history__item`, `.agent-row`, `.field-control` | Property-less transition shorthands (`transition: var(--dur-fast) var(--ease)` = ALL properties) → exact property lists matching each rule's actual state changes (color / border-color / background-color / box-shadow) |
+
+No applicable sites (documented): optical icon-side padding (no padded
+icon+label buttons exist — gap-based or icon-only), contextual icon
+cross-fade (no icon-component swaps; CopyButton's single-node label swap
+is the documented a11y-correct choice — one announcement, no layout shift
+via `min-width: 4ch`), `AnimatePresence initial={false}` (no motion
+library in the project), image outlines (screen-blend art slabs — rejected
+in rounds 3–4).
+
+Verified: 156/156 tests, lint 0 errors; fresh build serves
+`transition: color var(--dur-fast) var(--ease)` on `.text-link`; 0 console
+errors. Not verified: 10%-speed visual motion replay (no pixel inspection
+on this route).
+
 ## Round-2 verify log
 
 | Time (UTC) | Check | Result | Evidence |

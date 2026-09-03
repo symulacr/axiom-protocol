@@ -157,7 +157,7 @@
    var(--copper-bright) — one bright copper, two encodings fewer. */
   --completion-panel: rgba(18,22,23,.92); --completion-panel-2: rgba(23,28,29,.88); --completion-line: rgba(225,218,196,.12); --completion-copper: var(--copper); --completion-bright: var(--copper-bright); --completion-phosphor: var(--phosphor); --completion-muted: #a6aaa4; --completion-dim: var(--dim); --completion-warning: var(--warning); --completion-ease: var(--ease); /* one curve (drift table) */ }
 .app-shell { display:grid; grid-template-columns:var(--rail-width,248px) minmax(0,1fr); min-height:100vh; background:var(--canvas); color:var(--ink); }
-.sidebar-wrap { min-width:0; }.sidebar { width:var(--rail-width,248px); position:fixed; inset:0 auto 0 0; z-index:30; overflow:visible; /* Wave-11A: the rail-expand timing stays deliberately slower than the fast ladder (full-column move reads best oversized) but is now expressed over it: calc(--dur-fast + 90ms) = 240ms, identical to the former .24s literal (M1 mapping). */ transition:width calc(var(--dur-fast) + 90ms) var(--completion-ease); }.sidebar.is-collapsed { width:72px; }.main { min-width:0; min-height:100vh; /* overflow owned by stability pass (.main{overflow:visible}) */ }.topbar { position:sticky; top:0; z-index:20; min-height:72px; display:flex; align-items:center; justify-content:space-between; padding:0 clamp(20px,4vw,54px); border-bottom:1px solid var(--completion-line); background:rgba(11,14,15,.86); backdrop-filter:blur(18px); }.topbar-route,.topbar-actions,.session-top,.button-row,.page-head-actions,.context-action,.settings-select-row { display:flex; align-items:center; gap:var(--space-3); }.topbar-actions { gap:var(--space-2); }.session-top { border:1px solid var(--completion-line); padding:var(--space-2) var(--space-2); background:transparent; color:var(--ink); font:var(--fs-mono) 'JetBrains Mono',monospace; }.session-top:hover { border-color:var(--completion-copper); }.icon-button { display:grid; place-items:center; border:1px solid transparent; background:transparent; color:var(--completion-muted); }.icon-button:hover { color:var(--completion-bright); border-color:var(--completion-line); }/* L3-R1: this un-layered pair is canonical for display/border/color/hover — it outranks the layered geometry block (32px square, radius, transition) below regardless of order. NOT deletable. */.text-link { display:inline-flex; align-items:center; gap:var(--space-1); border:0; padding:0; background:transparent; color:var(--completion-bright); font:500 var(--fs-mono) 'JetBrains Mono',monospace; transition:var(--dur-fast) var(--ease); }.text-link:hover { color:var(--ink-bright); }.mono { font-family:'JetBrains Mono',monospace; }.brand { display:flex; align-items:center; gap:var(--space-2); color:var(--ink); font:800 var(--fs-body) Syne,sans-serif; letter-spacing:.06em; }.brand-compact { font-size:var(--fs-body); }.status { display:inline-flex; align-items:center; gap:var(--space-1); color:var(--completion-phosphor); font:500 var(--fs-mono) 'JetBrains Mono',monospace; text-transform:uppercase; letter-spacing:.04em; white-space:nowrap; }/* R2 S3: pill dots removed — tone color + text carry the state. */.status-warning { color:var(--completion-warning); }.status-muted { color:var(--completion-dim); }.status-success { color:var(--completion-phosphor); }.state-pill { display:inline-flex; align-items:center; gap:var(--space-1); color:var(--completion-copper); font:700 var(--fs-mono) 'JetBrains Mono',monospace; text-transform:uppercase; white-space:nowrap; }.state-confirmed { color:var(--completion-dim); }.state-reverted,.state-rejected,.state-stale { color:var(--completion-warning); }.state-ready { color:var(--completion-dim); }
+.sidebar-wrap { min-width:0; }.sidebar { width:var(--rail-width,248px); position:fixed; inset:0 auto 0 0; z-index:30; overflow:visible; /* Wave-11A: the rail-expand timing stays deliberately slower than the fast ladder (full-column move reads best oversized) but is now expressed over it: calc(--dur-fast + 90ms) = 240ms, identical to the former .24s literal (M1 mapping). */ transition:width calc(var(--dur-fast) + 90ms) var(--completion-ease); }.sidebar.is-collapsed { width:72px; }.main { min-width:0; min-height:100vh; /* overflow owned by stability pass (.main{overflow:visible}) */ }.topbar { position:sticky; top:0; z-index:20; min-height:72px; display:flex; align-items:center; justify-content:space-between; padding:0 clamp(20px,4vw,54px); border-bottom:1px solid var(--completion-line); background:rgba(11,14,15,.86); backdrop-filter:blur(18px); }.topbar-route,.topbar-actions,.session-top,.button-row,.page-head-actions,.context-action,.settings-select-row { display:flex; align-items:center; gap:var(--space-3); }.topbar-actions { gap:var(--space-2); }.session-top { border:1px solid var(--completion-line); padding:var(--space-2) var(--space-2); background:transparent; color:var(--ink); font:var(--fs-mono) 'JetBrains Mono',monospace; }.session-top:hover { border-color:var(--completion-copper); }.icon-button { display:grid; place-items:center; border:1px solid transparent; background:transparent; color:var(--completion-muted); }.icon-button:hover { color:var(--completion-bright); border-color:var(--completion-line); }/* L3-R1: this un-layered pair is canonical for display/border/color/hover — it outranks the layered geometry block (32px square, radius, transition) below regardless of order. NOT deletable. */.text-link { display:inline-flex; align-items:center; gap:var(--space-1); border:0; padding:0; background:transparent; color:var(--completion-bright); font:500 var(--fs-mono) 'JetBrains Mono',monospace; transition:color var(--dur-fast) var(--ease); }.text-link:hover { color:var(--ink-bright); }.mono { font-family:'JetBrains Mono',monospace; }.brand { display:flex; align-items:center; gap:var(--space-2); color:var(--ink); font:800 var(--fs-body) Syne,sans-serif; letter-spacing:.06em; }.brand-compact { font-size:var(--fs-body); }.status { display:inline-flex; align-items:center; gap:var(--space-1); color:var(--completion-phosphor); font:500 var(--fs-mono) 'JetBrains Mono',monospace; text-transform:uppercase; letter-spacing:.04em; white-space:nowrap; }/* R2 S3: pill dots removed — tone color + text carry the state. */.status-warning { color:var(--completion-warning); }.status-muted { color:var(--completion-dim); }.status-success { color:var(--completion-phosphor); }.state-pill { display:inline-flex; align-items:center; gap:var(--space-1); color:var(--completion-copper); font:700 var(--fs-mono) 'JetBrains Mono',monospace; text-transform:uppercase; white-space:nowrap; }.state-confirmed { color:var(--completion-dim); }.state-reverted,.state-rejected,.state-stale { color:var(--completion-warning); }.state-ready { color:var(--completion-dim); }
 
 /* ------------------------------------------------------------------ *
  * ONE button dialect (audit §3.8). Extracted verbatim from the        *
@@ -2381,7 +2381,8 @@ body.light .filters-popover {
   background: var(--bg-2);
   border: 1px solid var(--line);
   border-radius: var(--radius-md, 6px);
-  transition: var(--dur-fast) var(--ease-out);
+  transition: border-color var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out);
 }
 /* Standard 2px copper focus ring; the class owns the border. */
 .axiom-field:focus-visible { outline: 2px solid var(--copper-bright); outline-offset: 2px; }
@@ -2638,7 +2639,8 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
   padding: var(--space-3) var(--space-3);
   text-align: start;
   cursor: pointer;
-  transition: var(--dur-fast) var(--ease-out);
+  transition: border-color var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out);
 }
 .prompt-card:hover { border-color: var(--copper); background: var(--copper-05); }
 .prompt-card:focus-visible { outline: 2px solid var(--copper-bright); outline-offset: 2px; }
@@ -2918,7 +2920,9 @@ select.axiom-field option { background: var(--panel); color: var(--text); }
   text-align: start;
   padding: var(--space-2) var(--space-2);
   cursor: pointer;
-  transition: var(--dur-fast) var(--ease-out);
+  transition: background-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
 }
 .chat-history__item:hover { background: var(--copper-06); color: var(--text); }
 .chat-history__item.is-active { background: color-mix(in srgb, var(--copper) 12%, transparent); color: var(--text); box-shadow: inset 2px 0 0 var(--copper); }
@@ -3598,7 +3602,7 @@ strong {
     color: var(--text);
     text-align: start;
     padding: 14px 18px;
-    transition: var(--dur-fast) var(--ease);
+    transition: background-color var(--dur-fast) var(--ease);
   }
   .agent-row:hover {
     background: var(--copper-05);
@@ -3629,7 +3633,8 @@ strong {
     border: 1px solid var(--line);
     background: var(--bg-2);
     border-radius: var(--radius-md);
-    transition: var(--dur-fast) var(--ease);
+    transition: border-color var(--dur-fast) var(--ease),
+      box-shadow var(--dur-fast) var(--ease);
   }
   .field-control:focus-within {
     border-color: var(--copper);
