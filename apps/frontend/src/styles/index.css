@@ -177,7 +177,7 @@
  * themes — see the .button:disabled consolidation block below.        *
  * ------------------------------------------------------------------ */
 .button { display:inline-flex; justify-content:center; align-items:center; gap:var(--space-2); min-height:var(--hit-area,44px); padding:0 var(--btn-pad-md); border:1px solid var(--completion-copper); border-radius:0; font:500 var(--fs-small) 'JetBrains Mono',monospace; letter-spacing:.02em; transition:transform var(--dur-fast) var(--completion-ease),background var(--dur-fast) var(--completion-ease),color var(--dur-fast) var(--completion-ease),border-color var(--dur-fast) var(--completion-ease); }
-.button:active { transform:scale(.97); }
+.button:active { transform:scale(.96); }
 .button-primary { background:var(--completion-copper); color:var(--bg); font-weight:var(--fw-strong); }
 .button-primary:hover { background:var(--completion-bright); }
 .button-secondary { background:color-mix(in srgb,var(--completion-copper) 9%,transparent); color:var(--completion-bright); }
@@ -1731,6 +1731,7 @@ button, input, textarea, select { line-height: var(--support-leading); }
 body .icon-button {
   display: grid;
   place-items: center;
+  position: relative;
   width: var(--icon-hit-md);
   height: var(--icon-hit-md);
   min-width: var(--icon-hit-md);
@@ -1745,12 +1746,25 @@ body .icon-button {
     transform 120ms var(--ease-out);
 }
 
+/* 40px minimum hit halo (dense-desktop floor) without changing the visible
+   32px recipe geometry. --sm is exempt: inline chat stacks sit closer than
+   the halo and would collide (skill collision rule). */
+body .icon-button:not(.icon-button--sm)::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 40px;
+  height: 40px;
+  margin: -20px 0 0 -20px;
+}
+
 body .icon-button:hover {
   color: var(--text);
   border-color: var(--copper);
 }
 
-body .icon-button:active { transform: scale(0.97); }
+body .icon-button:active { transform: scale(0.96); }
 
 /* sm — inline text-flow chips (msg actions, thread/queue deletes). Ghost:
    borderless but identical hit ladder, hover, press and focus semantics. */
@@ -3298,7 +3312,7 @@ select:focus-visible {
   outline-offset: 3px;
 }
 button:active {
-  transform: scale(0.98);
+  transform: scale(0.96);
 }
 h1,
 h2,

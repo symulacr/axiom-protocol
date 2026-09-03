@@ -69,6 +69,50 @@
   API; per the no-dependency law the canvas-2D OrbsField remains the equivalent
   original (and degrades to nothing, same as their fallback path).
 
+## Round 3 — make-interfaces-feel-better skill review (2026-09-03)
+
+Skill installed at `skills/` (MIT, jakubkrehel/make-interfaces-feel-better — npx CLI
+hangs without a TTY in this sandbox; fetched the complete skill directory from
+GitHub per its own README instructions for non-Claude agents).
+
+Full-mode review findings, all fixed in the project's system (plain CSS + tokens):
+
+| Severity | Location | Change |
+|---|---|---|
+| MEDIUM | `index.css` icon-button recipe (md 32px default) | Added a 40×40 `::after` hit halo (dense-desktop floor) without changing visible geometry; `--sm` exempt (inline chat stacks sit closer than the halo — collision rule) |
+| MEDIUM | aw layer body copy | `text-wrap: pretty` on landing description, principle/journey bodies, hub accent + proof-card copy (headings already `balance`) |
+| LOW | `index.css` `.button:active`, `body .icon-button:active`, layered `button:active` | Press scale normalized 0.97/0.97/0.98 → 0.96 (skill's exact value) |
+
+Rejected candidates (documented per the skill's format): raising `--icon-hit-md`
+to 40px (breaks the sm/md/lg ladder contract + recipe test; halo achieves the
+goal); image outlines on art slabs (all images are screen-blend art inside
+bordered plates — a neutral outline reads as noise there); concentric-radius
+changes on principle cards (24px padding ≥ the skill's separate-surfaces
+threshold; governed 4/6/8/10 scale is the system); `.nav-item:active` 0.985 →
+0.96 (full-width rail surface; 0.96 on a 248px control reads dramatic).
+
+Already-conformant (no change needed): no `transition: all` anywhere; root
+`-webkit-font-smoothing: antialiased`; `--tabular` token applied to dynamic
+numbers (mono faces are fixed-width anyway); `text-wrap: balance` on all h1s;
+`will-change` only on transform/opacity lanes; enter stagger ~120ms on
+infrequent entrances only; interactive state changes use transitions
+(interruptible), keyframes reserved for one-shot staged sequences; every
+animated hover also carries a static color/border cue; icons are one
+`currentColor`/strokeWidth-2 set.
+
+### Round-3 verify log
+
+| Time (UTC) | Check | Result | Evidence |
+|---|---|---|---|
+| 22:2x | Gates after fixes: 156/156 tests (incl. iconButton recipe + both contrast gates), lint 0 errors | pass | shell output |
+| 22:2x | Fresh build live: `text-wrap: pretty` computed on landing description + principle body; all three `:active` scales read `scale(0.96)` from served CSS | pass | DOM eval |
+| 22:2x | Icon-button halo: visible 32×32, `::after` 40×40 absolute hit halo, `position: relative` base | pass | DOM eval |
+| 22:2x | State walk on /transactions: active nav item carries static cues (copper 10% wash + 2px inset rail) alongside any motion; 0 console errors | pass | DOM eval |
+
+Not verified: 10%-speed visual motion replay (this model route cannot inspect
+pixels; motion was verified structurally — transition/animation properties,
+durations, easings, and static cues — not visually).
+
 ## Round-2 verify log
 
 | Time (UTC) | Check | Result | Evidence |

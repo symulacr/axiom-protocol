@@ -151,6 +151,16 @@
   will-change: transform;
 }
 
+/* Orphan control on short-to-medium copy (headings already use balance). */
+.landing-copy > p,
+.principle p,
+.journey-card p,
+.seo-hero-copy > p,
+.seo-proof-card li,
+.seo-proof-card p {
+  text-wrap: pretty;
+}
+
 /* Thinking dots for agent working states (see ThinkingOrbs in fx.tsx). */
 .aw-thinking-orbs {
   display: inline-flex;
