@@ -47,7 +47,6 @@ export const VAULT_ABI = [
   "error ZeroAddress()",
   "error ZeroAmount()"
 ] as const;
-
 export const VAULT_ABI_LEGACY = [
   "function deposit(uint256 tokenId) payable",
   "function withdraw(uint256 tokenId, uint256 amount)",
