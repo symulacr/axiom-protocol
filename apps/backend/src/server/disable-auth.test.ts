@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 // Parallel bun test workers share no env; give this file its own EventStore
 // data dir so on-disk event-store.lock never contends with sibling workers.
-process.env.AXIOM_DATA_DIR = join(tmpdir(), `axiom-be-${process.pid}`);
+process.env.AXIOM_DATA_DIR = join(tmpdir(), `axiom-be-disable-auth-${process.pid}`);
 
 import {
   startServer,
