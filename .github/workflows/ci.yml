@@ -115,9 +115,9 @@ jobs:
     name: Chat tool parity
     runs-on: ubuntu-latest
     needs: [typecheck, unit-tests]
-    # Requires live 0G testnet keys (DEPLOYER_PK, AXIOM_TEE_SIGNER_PK, RECEIVER_PK)
-    # that are read from repo secrets; skip (green) until they are configured.
-    if: ${{ secrets.DEPLOYER_PK != '' && secrets.AXIOM_TEE_SIGNER_PK != '' && secrets.RECEIVER_PK != '' }}
+    # Needs live 0G testnet keys (DEPLOYER_PK, AXIOM_TEE_SIGNER_PK, RECEIVER_PK)
+    # from repo secrets. Detect their presence in a step (secrets are not a valid
+    # job-level `if` context) and skip the actual bench until they are configured.
     # Public Anvil test keys only — NOT production. Never fund on mainnet.
     env:
       AXIOM_EVM_RPC: https://evmrpc-testnet.0g.ai
@@ -134,7 +134,14 @@ jobs:
       - run: bun run --filter @axiom/config build
       - run: bun run --filter @axiom/chat-runtime build
       - run: bun run --filter @axiom/backend build
+      - name: Check required secrets
+        run: |
+          if [ -z "$DEPLOYER_PK" ] || [ -z "$AXIOM_TEE_SIGNER_PK" ] || [ -z "$RECEIVER_PK" ]; then
+            echo "chat-bench secrets not configured — skipping bench"
+            echo "SKIP=1" >> "$GITHUB_ENV"
+          fi
       - name: Start backend
+        if: env.SKIP != '1'
         run: |
           cd apps/backend
           AXIOM_RATE_LIMIT_MAX=50000 AXIOM_HEALTH_CACHE_MS=3000 \
@@ -148,6 +155,7 @@ jobs:
           cat /tmp/backend.log
           exit 1
       - name: Chat bench (CI mode)
+        if: env.SKIP != '1'
         run: bun run run-chat-bench
         working-directory: apps/backend
         env:
