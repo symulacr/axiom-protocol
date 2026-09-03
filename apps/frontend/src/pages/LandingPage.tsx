@@ -25,6 +25,7 @@ import {
   PUBLIC_HUB_PATHS,
 } from "../lib/routeRegistry.js";
 import { getCopy, interpolate, type Locale } from "../lib/copy.js";
+import { APP_CHAIN } from "../config/wagmi.js";
 import { useLandingStats } from "../hooks/useLandingStats.js";
 import {
   useLandingTicker,
@@ -76,9 +77,9 @@ export function Landing({
   const copy = getCopy(locale);
   const [menuOpen, setMenuOpen] = useState(false);
   const stats = useLandingStats();
-  // Wave 5: the 9000 testnet placeholder is gone — the landing speaks the
-  // Aristotle mainnet id (16661) until /v1/agents reports a chain.
-  const chainId = stats.networkChain ?? 16661;
+  // networkChain is the configured chain (APP_CHAIN_ID) — the landing no
+  // longer claims a hardcoded mainnet id on a testnet build.
+  const chainId = stats.networkChain;
   const agentsCount = stats.agentsOnline;
   const liveTickerItems = useLandingTicker(
     copy.landing.ticker.actionLabels,
@@ -185,22 +186,19 @@ export function Landing({
             <i>{copy.landing.titleEmphasis}</i>
           </h1>
           <p>{copy.landing.description}</p>
-          {/* L2-N2: hero meta strip — chain / agents / receipts counts. */}
+          {/* L2-N2: hero meta strip — live chain + on-chain agent count only. */}
           <div className="hero-meta">
             <span className="meta-item">
               <span className="dot" />
-              {interpolate(copy.landing.meta.network, { chainId })}
+              {interpolate(copy.landing.meta.network, {
+                chainName: APP_CHAIN.name,
+                chainId,
+              })}
             </span>
             <span className="meta-item">
               <span className="dot copper" />
               {interpolate(copy.landing.meta.agentsOnline, {
                 count: formatCount(agentsCount),
-              })}
-            </span>
-            <span className="meta-item">
-              <span className="dot" />
-              {interpolate(copy.landing.meta.receiptsIndexed, {
-                count: "2.4M",
               })}
             </span>
           </div>

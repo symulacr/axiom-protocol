@@ -1,42 +1,42 @@
 import { useEffect, useState } from "react";
 import { apiFetch } from "../utils/apiFetch.js";
+import { APP_CHAIN_ID } from "../config/wagmi.js";
 
 export interface LandingStats {
-  /** Total agents online; null while loading. */
+  /** Total minted agents (on-chain registry); null while loading or on error. */
   agentsOnline: number | null;
-  /** Chain id (default 16661 = Aristotle mainnet); null while loading. */
-  networkChain: number | null;
+  /** Chain the build is configured for (APP_CHAIN_ID) — never hardcoded. */
+  networkChain: number;
 }
 
-const PLACEHOLDER: LandingStats = { agentsOnline: 7412, networkChain: 16661 };
-
 /**
- * Fetches `/v1/agents?limit=1` on mount and returns the total count + chain id.
- * Falls back to placeholder values when the request fails or returns a non-numeric total.
- * Used by the signed-out Landing to populate the hero meta strip + journey card meta.
+ * Fetches `/v1/agents/stats` (client-reachable, 60s backend cache) for the
+ * real on-chain mint count and exposes the configured chain id. The count
+ * stays null ("—") when the request fails — a fabricated fallback read as
+ * live data, and a hardcoded mainnet chain id on a testnet build, were
+ * the papercut this replaces.
  */
 export function useLandingStats(): LandingStats {
   const [stats, setStats] = useState<LandingStats>({
     agentsOnline: null,
-    networkChain: null,
+    networkChain: APP_CHAIN_ID,
   });
   useEffect(() => {
     let cancelled = false;
-    apiFetch<{ total?: number }>("/v1/agents?limit=1")
+    apiFetch<{ totalMinted?: number }>("/v1/agents/stats")
       .then((res) => {
         if (cancelled) return;
-        if (typeof res.total === "number" && Number.isFinite(res.total)) {
+        if (
+          typeof res.totalMinted === "number" &&
+          Number.isFinite(res.totalMinted)
+        ) {
           setStats({
-            agentsOnline: res.total,
-            networkChain: PLACEHOLDER.networkChain,
+            agentsOnline: res.totalMinted,
+            networkChain: APP_CHAIN_ID,
           });
-        } else {
-          setStats(PLACEHOLDER);
         }
       })
-      .catch(() => {
-        if (!cancelled) setStats(PLACEHOLDER);
-      });
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
